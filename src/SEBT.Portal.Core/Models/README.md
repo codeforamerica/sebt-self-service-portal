@@ -1,0 +1,1 @@
+This directory is a placeholder for adding C# classes that define core model types used by the entire solution.

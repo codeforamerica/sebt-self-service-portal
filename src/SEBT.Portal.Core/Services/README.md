@@ -1,0 +1,1 @@
+This directory is a placeholder for adding C# interface types to define service contracts. These are abstractions used by SEBT.Portal.UseCases, and their implementations should live in SEBT.Portal.Infrastructure.

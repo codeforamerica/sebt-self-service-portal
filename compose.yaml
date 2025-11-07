@@ -1,0 +1,7 @@
+﻿services:
+  sebt.portal.api:
+    image: sebt.portal.api
+    build:
+      context: .
+      dockerfile: SEBT.Portal.Api/Dockerfile
+

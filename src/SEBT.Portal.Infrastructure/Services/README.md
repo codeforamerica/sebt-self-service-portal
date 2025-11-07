@@ -1,0 +1,1 @@
+This directory is a placeholder for adding C# classes to define service implementations, implementing the abstractions defined in SEBT.Portal.Core.
