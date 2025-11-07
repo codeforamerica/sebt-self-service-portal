@@ -1,0 +1,1 @@
+This C# project defines core abstract types for implementing Clean Architecture in .NET. This project should not contain any SEBT domain-specific types.

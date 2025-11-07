@@ -1,0 +1,1 @@
+This directory is a placeholder for adding C# types corresponding to application settings that will be used with the [.NET Options pattern](https://learn.microsoft.com/en-us/aspnet/core/fundamentals/configuration/options?view=aspnetcore-8.0).

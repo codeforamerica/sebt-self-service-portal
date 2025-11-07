@@ -1,0 +1,1 @@
+This directory is a placeholder for adding [C# extension methods/members](https://learn.microsoft.com/en-us/dotnet/csharp/programming-guide/classes-and-structs/extension-methods) that are intended to be used solution-wide by all projects.

@@ -1,0 +1,1 @@
+This directory is a placeholder for adding C# interface types to define repository contracts. These are a data-access abstraction used by SEBT.Portal.UseCases, and their implementations should live in SEBT.Portal.Infrastructure.
