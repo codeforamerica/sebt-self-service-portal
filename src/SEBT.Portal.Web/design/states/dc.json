@@ -1,0 +1,2034 @@
+{
+  "system": {
+    "0": {
+      "$type": "borderRadius",
+      "$value": "0"
+    },
+    "red-cool-5": {
+      "$type": "color",
+      "$value": "#f8eff1"
+    },
+    "red-cool-10": {
+      "$type": "color",
+      "$value": "#f3e1e4"
+    },
+    "red-cool-20": {
+      "$type": "color",
+      "$value": "#ecbec6"
+    },
+    "red-cool-30": {
+      "$type": "color",
+      "$value": "#e09aa6"
+    },
+    "red-cool-40": {
+      "$type": "color",
+      "$value": "#e16b80"
+    },
+    "red-cool-50": {
+      "$type": "color",
+      "$value": "#cd425b"
+    },
+    "red-cool-60": {
+      "$type": "color",
+      "$value": "#9e394b"
+    },
+    "red-cool-70": {
+      "$type": "color",
+      "$value": "#68363f"
+    },
+    "red-cool-80": {
+      "$type": "color",
+      "$value": "#40282c"
+    },
+    "red-cool-90": {
+      "$type": "color",
+      "$value": "#1e1517"
+    },
+    "red-cool-5v": {
+      "$type": "color",
+      "$value": "#fff0f3"
+    },
+    "red-cool-10v": {
+      "$type": "color",
+      "$value": "#f8dee1"
+    },
+    "red-cool-20v": {
+      "$type": "color",
+      "$value": "#f8b9c5"
+    },
+    "red-cool-30v": {
+      "$type": "color",
+      "$value": "#fd8ba0"
+    },
+    "red-cool-40v": {
+      "$type": "color",
+      "$value": "#f45d79"
+    },
+    "red-cool-50v": {
+      "$type": "color",
+      "$value": "#e41b3c"
+    },
+    "red-cool-60v": {
+      "$type": "color",
+      "$value": "#b41d39"
+    },
+    "red-cool-70v": {
+      "$type": "color",
+      "$value": "#832133"
+    },
+    "red-cool-80v": {
+      "$type": "color",
+      "$value": "#4f1c24"
+    },
+    "red-5": {
+      "$type": "color",
+      "$value": "#f9eeee"
+    },
+    "red-10": {
+      "$type": "color",
+      "$value": "#f8e1de"
+    },
+    "red-20": {
+      "$type": "color",
+      "$value": "#f7bbb1"
+    },
+    "red-30": {
+      "$type": "color",
+      "$value": "#f2938c"
+    },
+    "red-40": {
+      "$type": "color",
+      "$value": "#e9695f"
+    },
+    "red-50": {
+      "$type": "color",
+      "$value": "#d83933"
+    },
+    "red-60": {
+      "$type": "color",
+      "$value": "#a23737"
+    },
+    "red-70": {
+      "$type": "color",
+      "$value": "#6f3331"
+    },
+    "red-80": {
+      "$type": "color",
+      "$value": "#3e2927"
+    },
+    "red-90": {
+      "$type": "color",
+      "$value": "#1b1616"
+    },
+    "red-warm-5": {
+      "$type": "color",
+      "$value": "#f6efea"
+    },
+    "red-warm-10": {
+      "$type": "color",
+      "$value": "#f4e3db"
+    },
+    "red-warm-20": {
+      "$type": "color",
+      "$value": "#ecc0a7"
+    },
+    "red-warm-30": {
+      "$type": "color",
+      "$value": "#dca081"
+    },
+    "red-warm-40": {
+      "$type": "color",
+      "$value": "#d27a56"
+    },
+    "red-warm-50": {
+      "$type": "color",
+      "$value": "#c3512c"
+    },
+    "red-warm-60": {
+      "$type": "color",
+      "$value": "#805039"
+    },
+    "red-warm-70": {
+      "$type": "color",
+      "$value": "#524236"
+    },
+    "red-warm-80": {
+      "$type": "color",
+      "$value": "#332d29"
+    },
+    "red-warm-90": {
+      "$type": "color",
+      "$value": "#1f1c18"
+    },
+    "red-warm-5v": {
+      "$type": "color",
+      "$value": "#fff5ee"
+    },
+    "red-warm-10v": {
+      "$type": "color",
+      "$value": "#fce1d4"
+    },
+    "red-warm-20v": {
+      "$type": "color",
+      "$value": "#f6bd9c"
+    },
+    "red-warm-30v": {
+      "$type": "color",
+      "$value": "#f39268"
+    },
+    "red-warm-40v": {
+      "$type": "color",
+      "$value": "#ef5e25"
+    },
+    "red-warm-50v": {
+      "$type": "color",
+      "$value": "#d54309"
+    },
+    "red-warm-60v": {
+      "$type": "color",
+      "$value": "#9c3d10"
+    },
+    "red-warm-70v": {
+      "$type": "color",
+      "$value": "#63340f"
+    },
+    "red-warm-80v": {
+      "$type": "color",
+      "$value": "#3e2a1e"
+    },
+    "red-5v": {
+      "$type": "color",
+      "$value": "#fff3f2"
+    },
+    "red-10v": {
+      "$type": "color",
+      "$value": "#fde0db"
+    },
+    "red-20v": {
+      "$type": "color",
+      "$value": "#fdb8ae"
+    },
+    "red-30v": {
+      "$type": "color",
+      "$value": "#ff8d7b"
+    },
+    "red-40v": {
+      "$type": "color",
+      "$value": "#fb5a47"
+    },
+    "red-50v": {
+      "$type": "color",
+      "$value": "#e52207"
+    },
+    "red-60v": {
+      "$type": "color",
+      "$value": "#b50909"
+    },
+    "red-70v": {
+      "$type": "color",
+      "$value": "#8b0a03"
+    },
+    "red-80v": {
+      "$type": "color",
+      "$value": "#5c1111"
+    },
+    "orange-warm-10": {
+      "$type": "color",
+      "$value": "#fbe0d0"
+    },
+    "orange-warm-20": {
+      "$type": "color",
+      "$value": "#f7bca2"
+    },
+    "orange-warm-30": {
+      "$type": "color",
+      "$value": "#f3966d"
+    },
+    "orange-warm-40": {
+      "$type": "color",
+      "$value": "#e17141"
+    },
+    "orange-warm-5": {
+      "$type": "color",
+      "$value": "#faeee5"
+    },
+    "orange-warm-50": {
+      "$type": "color",
+      "$value": "#bd5727"
+    },
+    "orange-warm-60": {
+      "$type": "color",
+      "$value": "#914734"
+    },
+    "orange-warm-70": {
+      "$type": "color",
+      "$value": "#633a32"
+    },
+    "orange-warm-80": {
+      "$type": "color",
+      "$value": "#3d2925"
+    },
+    "orange-warm-90": {
+      "$type": "color",
+      "$value": "#1c1615"
+    },
+    "orange-warm-10v": {
+      "$type": "color",
+      "$value": "#ffe2d1"
+    },
+    "orange-warm-20v": {
+      "$type": "color",
+      "$value": "#fbbaa7"
+    },
+    "orange-warm-30v": {
+      "$type": "color",
+      "$value": "#fc906d"
+    },
+    "orange-warm-40v": {
+      "$type": "color",
+      "$value": "#ff580a"
+    },
+    "orange-warm-50v": {
+      "$type": "color",
+      "$value": "#cf4900"
+    },
+    "orange-warm-5v": {
+      "$type": "color",
+      "$value": "#fff3ea"
+    },
+    "orange-warm-60v": {
+      "$type": "color",
+      "$value": "#a72f10"
+    },
+    "orange-warm-70v": {
+      "$type": "color",
+      "$value": "#782312"
+    },
+    "orange-warm-80v": {
+      "$type": "color",
+      "$value": "#3d231d"
+    },
+    "orange-5": {
+      "$type": "color",
+      "$value": "#f6efe9"
+    },
+    "orange-10": {
+      "$type": "color",
+      "$value": "#f2e4d4"
+    },
+    "orange-20": {
+      "$type": "color",
+      "$value": "#f3bf90"
+    },
+    "orange-30": {
+      "$type": "color",
+      "$value": "#f09860"
+    },
+    "orange-40": {
+      "$type": "color",
+      "$value": "#dd7533"
+    },
+    "orange-50": {
+      "$type": "color",
+      "$value": "#a86437"
+    },
+    "orange-60": {
+      "$type": "color",
+      "$value": "#775540"
+    },
+    "orange-70": {
+      "$type": "color",
+      "$value": "#524236"
+    },
+    "orange-80": {
+      "$type": "color",
+      "$value": "#332d27"
+    },
+    "orange-90": {
+      "$type": "color",
+      "$value": "#1b1614"
+    },
+    "orange-5v": {
+      "$type": "color",
+      "$value": "#fef2e4"
+    },
+    "orange-10v": {
+      "$type": "color",
+      "$value": "#fce2c5"
+    },
+    "orange-20v": {
+      "$type": "color",
+      "$value": "#ffbc78"
+    },
+    "orange-30v": {
+      "$type": "color",
+      "$value": "#fa9441"
+    },
+    "orange-40v": {
+      "$type": "color",
+      "$value": "#e66f0e"
+    },
+    "orange-50v": {
+      "$type": "color",
+      "$value": "#c05600"
+    },
+    "orange-60v": {
+      "$type": "color",
+      "$value": "#8c471c"
+    },
+    "orange-70v": {
+      "$type": "color",
+      "$value": "#5f3617"
+    },
+    "orange-80v": {
+      "$type": "color",
+      "$value": "#352313"
+    },
+    "gold-5": {
+      "$type": "color",
+      "$value": "#f5f0e6"
+    },
+    "gold-10": {
+      "$type": "color",
+      "$value": "#f1e5cd"
+    },
+    "gold-20": {
+      "$type": "color",
+      "$value": "#dec69a"
+    },
+    "gold-30": {
+      "$type": "color",
+      "$value": "#c7a97b"
+    },
+    "gold-40": {
+      "$type": "color",
+      "$value": "#ad8b65"
+    },
+    "gold-50": {
+      "$type": "color",
+      "$value": "#8e704f"
+    },
+    "gold-60": {
+      "$type": "color",
+      "$value": "#6b5947"
+    },
+    "gold-70": {
+      "$type": "color",
+      "$value": "#4d4438"
+    },
+    "gold-80": {
+      "$type": "color",
+      "$value": "#322d26"
+    },
+    "gold-90": {
+      "$type": "color",
+      "$value": "#191714"
+    },
+    "gold-10v": {
+      "$type": "color",
+      "$value": "#ffe396"
+    },
+    "gold-20v": {
+      "$type": "color",
+      "$value": "#ffbe2e"
+    },
+    "gold-30v": {
+      "$type": "color",
+      "$value": "#e5a000"
+    },
+    "gold-40v": {
+      "$type": "color",
+      "$value": "#c2850c"
+    },
+    "gold-50v": {
+      "$type": "color",
+      "$value": "#936f38"
+    },
+    "gold-5v": {
+      "$type": "color",
+      "$value": "#fef0c8"
+    },
+    "gold-60v": {
+      "$type": "color",
+      "$value": "#7a591a"
+    },
+    "gold-70v": {
+      "$type": "color",
+      "$value": "#5c410a"
+    },
+    "gold-80v": {
+      "$type": "color",
+      "$value": "#3b2b15"
+    },
+    "yellow-10": {
+      "$type": "color",
+      "$value": "#f5e6af"
+    },
+    "yellow-20": {
+      "$type": "color",
+      "$value": "#e6c74c"
+    },
+    "yellow-30": {
+      "$type": "color",
+      "$value": "#c9ab48"
+    },
+    "yellow-40": {
+      "$type": "color",
+      "$value": "#a88f48"
+    },
+    "yellow-5": {
+      "$type": "color",
+      "$value": "#faf3d1"
+    },
+    "yellow-50": {
+      "$type": "color",
+      "$value": "#8a7237"
+    },
+    "yellow-60": {
+      "$type": "color",
+      "$value": "#6b5a39"
+    },
+    "yellow-70": {
+      "$type": "color",
+      "$value": "#504332"
+    },
+    "yellow-80": {
+      "$type": "color",
+      "$value": "#332d27"
+    },
+    "yellow-90": {
+      "$type": "color",
+      "$value": "#1a1614"
+    },
+    "yellow-10v": {
+      "$type": "color",
+      "$value": "#fee685"
+    },
+    "yellow-20v": {
+      "$type": "color",
+      "$value": "#face00"
+    },
+    "yellow-30v": {
+      "$type": "color",
+      "$value": "#ddaa01"
+    },
+    "yellow-40v": {
+      "$type": "color",
+      "$value": "#b38c00"
+    },
+    "yellow-50v": {
+      "$type": "color",
+      "$value": "#947100"
+    },
+    "yellow-5v": {
+      "$type": "color",
+      "$value": "#fff5c2"
+    },
+    "yellow-60v": {
+      "$type": "color",
+      "$value": "#776017"
+    },
+    "yellow-70v": {
+      "$type": "color",
+      "$value": "#5c4809"
+    },
+    "yellow-80v": {
+      "$type": "color",
+      "$value": "#422d19"
+    },
+    "green-warm-5": {
+      "$type": "color",
+      "$value": "#f1f4d7"
+    },
+    "green-warm-10": {
+      "$type": "color",
+      "$value": "#e7eab7"
+    },
+    "green-warm-20": {
+      "$type": "color",
+      "$value": "#cbd17a"
+    },
+    "green-warm-30": {
+      "$type": "color",
+      "$value": "#a6b557"
+    },
+    "green-warm-40": {
+      "$type": "color",
+      "$value": "#8a984b"
+    },
+    "green-warm-50": {
+      "$type": "color",
+      "$value": "#6f7a41"
+    },
+    "green-warm-60": {
+      "$type": "color",
+      "$value": "#5a5f38"
+    },
+    "green-warm-70": {
+      "$type": "color",
+      "$value": "#45472f"
+    },
+    "green-warm-80": {
+      "$type": "color",
+      "$value": "#2d2f21"
+    },
+    "green-warm-90": {
+      "$type": "color",
+      "$value": "#171712"
+    },
+    "green-warm-5v": {
+      "$type": "color",
+      "$value": "#f5fbc1"
+    },
+    "green-warm-10v": {
+      "$type": "color",
+      "$value": "#e7f434"
+    },
+    "green-warm-20v": {
+      "$type": "color",
+      "$value": "#c5d30a"
+    },
+    "green-warm-30v": {
+      "$type": "color",
+      "$value": "#a3b72c"
+    },
+    "green-warm-40v": {
+      "$type": "color",
+      "$value": "#7e9c1d"
+    },
+    "green-warm-50v": {
+      "$type": "color",
+      "$value": "#6a7d00"
+    },
+    "green-warm-60v": {
+      "$type": "color",
+      "$value": "#5a6613"
+    },
+    "green-warm-70v": {
+      "$type": "color",
+      "$value": "#4b4e10"
+    },
+    "green-warm-80v": {
+      "$type": "color",
+      "$value": "#38380b"
+    },
+    "green-5": {
+      "$type": "color",
+      "$value": "#eaf4dd"
+    },
+    "green-10": {
+      "$type": "color",
+      "$value": "#dfeacd"
+    },
+    "green-20": {
+      "$type": "color",
+      "$value": "#b8d293"
+    },
+    "green-30": {
+      "$type": "color",
+      "$value": "#9bb672"
+    },
+    "green-40": {
+      "$type": "color",
+      "$value": "#7d9b4e"
+    },
+    "green-50": {
+      "$type": "color",
+      "$value": "#607f35"
+    },
+    "green-60": {
+      "$type": "color",
+      "$value": "#4c6424"
+    },
+    "green-70": {
+      "$type": "color",
+      "$value": "#3c4a29"
+    },
+    "green-80": {
+      "$type": "color",
+      "$value": "#293021"
+    },
+    "green-90": {
+      "$type": "color",
+      "$value": "#161814"
+    },
+    "green-5v": {
+      "$type": "color",
+      "$value": "#ddf9c7"
+    },
+    "green-10v": {
+      "$type": "color",
+      "$value": "#c5ee93"
+    },
+    "green-20v": {
+      "$type": "color",
+      "$value": "#98d035"
+    },
+    "green-30v": {
+      "$type": "color",
+      "$value": "#7fb135"
+    },
+    "green-40v": {
+      "$type": "color",
+      "$value": "#719f2a"
+    },
+    "green-50v": {
+      "$type": "color",
+      "$value": "#538200"
+    },
+    "green-60v": {
+      "$type": "color",
+      "$value": "#466c04"
+    },
+    "green-70v": {
+      "$type": "color",
+      "$value": "#2f4a0b"
+    },
+    "green-80v": {
+      "$type": "color",
+      "$value": "#243413"
+    },
+    "green-cool-5": {
+      "$type": "color",
+      "$value": "#ecf3ec"
+    },
+    "green-cool-10": {
+      "$type": "color",
+      "$value": "#dbebde"
+    },
+    "green-cool-20": {
+      "$type": "color",
+      "$value": "#b4d0b9"
+    },
+    "green-cool-30": {
+      "$type": "color",
+      "$value": "#86b98e"
+    },
+    "green-cool-40": {
+      "$type": "color",
+      "$value": "#5e9f69"
+    },
+    "green-cool-50": {
+      "$type": "color",
+      "$value": "#4d8055"
+    },
+    "green-cool-60": {
+      "$type": "color",
+      "$value": "#446443"
+    },
+    "green-cool-70": {
+      "$type": "color",
+      "$value": "#37493b"
+    },
+    "green-cool-80": {
+      "$type": "color",
+      "$value": "#28312a"
+    },
+    "green-cool-90": {
+      "$type": "color",
+      "$value": "#1a1f1a"
+    },
+    "green-cool-5v": {
+      "$type": "color",
+      "$value": "#e3f5e1"
+    },
+    "green-cool-10v": {
+      "$type": "color",
+      "$value": "#b7f5bd"
+    },
+    "green-cool-20v": {
+      "$type": "color",
+      "$value": "#70e17b"
+    },
+    "green-cool-30v": {
+      "$type": "color",
+      "$value": "#21c834"
+    },
+    "green-cool-40v": {
+      "$type": "color",
+      "$value": "#00a91c"
+    },
+    "green-cool-50v": {
+      "$type": "color",
+      "$value": "#008817"
+    },
+    "green-cool-60v": {
+      "$type": "color",
+      "$value": "#216e1f"
+    },
+    "green-cool-70v": {
+      "$type": "color",
+      "$value": "#154c21"
+    },
+    "green-cool-80v": {
+      "$type": "color",
+      "$value": "#19311e"
+    },
+    "mint-10": {
+      "$type": "color",
+      "$value": "#c7efe2"
+    },
+    "mint-20": {
+      "$type": "color",
+      "$value": "#92d9bb"
+    },
+    "mint-30": {
+      "$type": "color",
+      "$value": "#5abf95"
+    },
+    "mint-40": {
+      "$type": "color",
+      "$value": "#34a37e"
+    },
+    "mint-5": {
+      "$type": "color",
+      "$value": "#dbf6ed"
+    },
+    "mint-50": {
+      "$type": "color",
+      "$value": "#2e8367"
+    },
+    "mint-60": {
+      "$type": "color",
+      "$value": "#286846"
+    },
+    "mint-70": {
+      "$type": "color",
+      "$value": "#204e34"
+    },
+    "mint-80": {
+      "$type": "color",
+      "$value": "#193324"
+    },
+    "mint-90": {
+      "$type": "color",
+      "$value": "#0d1a12"
+    },
+    "mint-5v": {
+      "$type": "color",
+      "$value": "#c9fbeb"
+    },
+    "mint-10v": {
+      "$type": "color",
+      "$value": "#83fcd4"
+    },
+    "mint-20v": {
+      "$type": "color",
+      "$value": "#0ceda6"
+    },
+    "mint-30v": {
+      "$type": "color",
+      "$value": "#04c585"
+    },
+    "mint-40v": {
+      "$type": "color",
+      "$value": "#00a871"
+    },
+    "mint-50v": {
+      "$type": "color",
+      "$value": "#008659"
+    },
+    "mint-60v": {
+      "$type": "color",
+      "$value": "#146947"
+    },
+    "mint-70v": {
+      "$type": "color",
+      "$value": "#0c4e29"
+    },
+    "mint-80v": {
+      "$type": "color",
+      "$value": "#0d351e"
+    },
+    "mint-cool-5": {
+      "$type": "color",
+      "$value": "#e0f7f6"
+    },
+    "mint-cool-10": {
+      "$type": "color",
+      "$value": "#c4eeeb"
+    },
+    "mint-cool-20": {
+      "$type": "color",
+      "$value": "#9bd4cf"
+    },
+    "mint-cool-30": {
+      "$type": "color",
+      "$value": "#6fbab3"
+    },
+    "mint-cool-40": {
+      "$type": "color",
+      "$value": "#4f9e99"
+    },
+    "mint-cool-50": {
+      "$type": "color",
+      "$value": "#40807e"
+    },
+    "mint-cool-60": {
+      "$type": "color",
+      "$value": "#376462"
+    },
+    "mint-cool-70": {
+      "$type": "color",
+      "$value": "#2a4b45"
+    },
+    "mint-cool-80": {
+      "$type": "color",
+      "$value": "#203131"
+    },
+    "mint-cool-90": {
+      "$type": "color",
+      "$value": "#111818"
+    },
+    "mint-cool-20v": {
+      "$type": "color",
+      "$value": "#29e1cb"
+    },
+    "mint-cool-50v": {
+      "$type": "color",
+      "$value": "#008480"
+    },
+    "mint-cool-5v": {
+      "$type": "color",
+      "$value": "#d5fbf3"
+    },
+    "mint-cool-60v": {
+      "$type": "color",
+      "$value": "#0f6460"
+    },
+    "mint-cool-70v": {
+      "$type": "color",
+      "$value": "#0b4b3f"
+    },
+    "mint-cool-80v": {
+      "$type": "color",
+      "$value": "#123131"
+    },
+    "mint-cool-10v": {
+      "$type": "color",
+      "$value": "#7efbe1"
+    },
+    "mint-cool-30v": {
+      "$type": "color",
+      "$value": "#1dc2ae"
+    },
+    "mint-cool-40v": {
+      "$type": "color",
+      "$value": "#00a398"
+    },
+    "cyan-5": {
+      "$type": "color",
+      "$value": "#e7f6f8"
+    },
+    "cyan-10": {
+      "$type": "color",
+      "$value": "#ccecf2"
+    },
+    "cyan-20": {
+      "$type": "color",
+      "$value": "#99deea"
+    },
+    "cyan-30": {
+      "$type": "color",
+      "$value": "#5dc0d1"
+    },
+    "cyan-40": {
+      "$type": "color",
+      "$value": "#449dac"
+    },
+    "cyan-50": {
+      "$type": "color",
+      "$value": "#168092"
+    },
+    "cyan-60": {
+      "$type": "color",
+      "$value": "#2a646d"
+    },
+    "cyan-70": {
+      "$type": "color",
+      "$value": "#2c4a4e"
+    },
+    "cyan-80": {
+      "$type": "color",
+      "$value": "#203133"
+    },
+    "cyan-90": {
+      "$type": "color",
+      "$value": "#111819"
+    },
+    "cyan-5v": {
+      "$type": "color",
+      "$value": "#e5faff"
+    },
+    "cyan-10v": {
+      "$type": "color",
+      "$value": "#a8f2ff"
+    },
+    "cyan-20v": {
+      "$type": "color",
+      "$value": "#52daf2"
+    },
+    "cyan-30v": {
+      "$type": "color",
+      "$value": "#00bde3"
+    },
+    "cyan-40v": {
+      "$type": "color",
+      "$value": "#009ec1"
+    },
+    "cyan-50v": {
+      "$type": "color",
+      "$value": "#0081a1"
+    },
+    "cyan-60v": {
+      "$type": "color",
+      "$value": "#00687d"
+    },
+    "cyan-70v": {
+      "$type": "color",
+      "$value": "#0e4f5c"
+    },
+    "cyan-80v": {
+      "$type": "color",
+      "$value": "#093b44"
+    },
+    "blue-cool-5": {
+      "$type": "color",
+      "$value": "#e7f2f5"
+    },
+    "blue-cool-10": {
+      "$type": "color",
+      "$value": "#dae9ee"
+    },
+    "blue-cool-20": {
+      "$type": "color",
+      "$value": "#adcfdc"
+    },
+    "blue-cool-30": {
+      "$type": "color",
+      "$value": "#82b4c9",
+      "$description": "82B4C9"
+    },
+    "blue-cool-40": {
+      "$type": "color",
+      "$value": "#6499af",
+      "$description": "6499AF"
+    },
+    "blue-cool-50": {
+      "$type": "color",
+      "$value": "#3a7d95",
+      "$description": "3A7D95"
+    },
+    "blue-cool-60": {
+      "$type": "color",
+      "$value": "#2e6276",
+      "$description": "2E6276"
+    },
+    "blue-cool-70": {
+      "$type": "color",
+      "$value": "#224a58",
+      "$description": "224A58"
+    },
+    "blue-cool-80": {
+      "$type": "color",
+      "$value": "#14333d",
+      "$description": "14333D"
+    },
+    "blue-cool-90": {
+      "$type": "color",
+      "$value": "#0f191c",
+      "$description": "0F191C"
+    },
+    "blue-cool-5v": {
+      "$type": "color",
+      "$value": "#e1f3f8"
+    },
+    "blue-cool-10v": {
+      "$type": "color",
+      "$value": "#c3ebfa"
+    },
+    "blue-cool-20v": {
+      "$type": "color",
+      "$value": "#97d4ea"
+    },
+    "blue-cool-30v": {
+      "$type": "color",
+      "$value": "#59b9de"
+    },
+    "blue-cool-40v": {
+      "$type": "color",
+      "$value": "#28a0cb"
+    },
+    "blue-cool-50v": {
+      "$type": "color",
+      "$value": "#0d7ea2"
+    },
+    "blue-cool-60v": {
+      "$type": "color",
+      "$value": "#07648d"
+    },
+    "blue-cool-70v": {
+      "$type": "color",
+      "$value": "#074b69"
+    },
+    "blue-cool-80v": {
+      "$type": "color",
+      "$value": "#002d3f"
+    },
+    "blue-5": {
+      "$type": "color",
+      "$value": "#eff6fb"
+    },
+    "blue-10": {
+      "$type": "color",
+      "$value": "#d9e8f6"
+    },
+    "blue-20": {
+      "$type": "color",
+      "$value": "#aacdec"
+    },
+    "blue-30": {
+      "$type": "color",
+      "$value": "#73b3e7"
+    },
+    "blue-40": {
+      "$type": "color",
+      "$value": "#4f97d1"
+    },
+    "blue-50": {
+      "$type": "color",
+      "$value": "#2378c3"
+    },
+    "blue-60": {
+      "$type": "color",
+      "$value": "#2c608a"
+    },
+    "blue-70": {
+      "$type": "color",
+      "$value": "#274863"
+    },
+    "blue-80": {
+      "$type": "color",
+      "$value": "#1f303e"
+    },
+    "blue-90": {
+      "$type": "color",
+      "$value": "#11181d"
+    },
+    "blue-5v": {
+      "$type": "color",
+      "$value": "#e8f5ff"
+    },
+    "blue-10v": {
+      "$type": "color",
+      "$value": "#cfe8ff"
+    },
+    "blue-20v": {
+      "$type": "color",
+      "$value": "#a1d3ff"
+    },
+    "blue-30v": {
+      "$type": "color",
+      "$value": "#58b4ff"
+    },
+    "blue-40v": {
+      "$type": "color",
+      "$value": "#2491ff"
+    },
+    "blue-50v": {
+      "$type": "color",
+      "$value": "#0076d6"
+    },
+    "blue-60v": {
+      "$type": "color",
+      "$value": "#005ea2"
+    },
+    "blue-70v": {
+      "$type": "color",
+      "$value": "#0b4778"
+    },
+    "blue-80v": {
+      "$type": "color",
+      "$value": "#112f4e"
+    },
+    "blue-warm-5": {
+      "$type": "color",
+      "$value": "#ecf1f7"
+    },
+    "blue-warm-10": {
+      "$type": "color",
+      "$value": "#e1e7f1"
+    },
+    "blue-warm-20": {
+      "$type": "color",
+      "$value": "#bbcae4"
+    },
+    "blue-warm-30": {
+      "$type": "color",
+      "$value": "#98afd2"
+    },
+    "blue-warm-40": {
+      "$type": "color",
+      "$value": "#7292c7"
+    },
+    "blue-warm-50": {
+      "$type": "color",
+      "$value": "#4a77b4"
+    },
+    "blue-warm-60": {
+      "$type": "color",
+      "$value": "#345d96"
+    },
+    "blue-warm-70": {
+      "$type": "color",
+      "$value": "#2f4668"
+    },
+    "blue-warm-80": {
+      "$type": "color",
+      "$value": "#252f3e"
+    },
+    "blue-warm-90": {
+      "$type": "color",
+      "$value": "#13171f"
+    },
+    "blue-warm-5v": {
+      "$type": "color",
+      "$value": "#edf5ff"
+    },
+    "blue-warm-10v": {
+      "$type": "color",
+      "$value": "#d4e5ff"
+    },
+    "blue-warm-20v": {
+      "$type": "color",
+      "$value": "#adcdff"
+    },
+    "blue-warm-30v": {
+      "$type": "color",
+      "$value": "#81aefc"
+    },
+    "blue-warm-40v": {
+      "$type": "color",
+      "$value": "#5994f6"
+    },
+    "blue-warm-50v": {
+      "$type": "color",
+      "$value": "#2672de"
+    },
+    "blue-warm-60v": {
+      "$type": "color",
+      "$value": "#0050d8"
+    },
+    "blue-warm-70v": {
+      "$type": "color",
+      "$value": "#1a4480"
+    },
+    "blue-warm-80v": {
+      "$type": "color",
+      "$value": "#162e51"
+    },
+    "indigo-cool-5": {
+      "$type": "color",
+      "$value": "#eef0f9"
+    },
+    "indigo-cool-10": {
+      "$type": "color",
+      "$value": "#e1e6f9"
+    },
+    "indigo-cool-20": {
+      "$type": "color",
+      "$value": "#bbc8f5"
+    },
+    "indigo-cool-30": {
+      "$type": "color",
+      "$value": "#96abee"
+    },
+    "indigo-cool-40": {
+      "$type": "color",
+      "$value": "#6b8ee8"
+    },
+    "indigo-cool-50": {
+      "$type": "color",
+      "$value": "#496fd8"
+    },
+    "indigo-cool-60": {
+      "$type": "color",
+      "$value": "#3f57a6"
+    },
+    "indigo-cool-70": {
+      "$type": "color",
+      "$value": "#374274"
+    },
+    "indigo-cool-80": {
+      "$type": "color",
+      "$value": "#292d42"
+    },
+    "indigo-cool-90": {
+      "$type": "color",
+      "$value": "#151622"
+    },
+    "indigo-cool-5v": {
+      "$type": "color",
+      "$value": "#edf0ff"
+    },
+    "indigo-cool-10v": {
+      "$type": "color",
+      "$value": "#dee5ff"
+    },
+    "indigo-cool-20v": {
+      "$type": "color",
+      "$value": "#b8c8ff"
+    },
+    "indigo-cool-30v": {
+      "$type": "color",
+      "$value": "#94adff"
+    },
+    "indigo-cool-40v": {
+      "$type": "color",
+      "$value": "#628ef4"
+    },
+    "indigo-cool-50v": {
+      "$type": "color",
+      "$value": "#4866ff"
+    },
+    "indigo-cool-60v": {
+      "$type": "color",
+      "$value": "#3e4ded"
+    },
+    "indigo-cool-70v": {
+      "$type": "color",
+      "$value": "#222fbf"
+    },
+    "indigo-cool-80v": {
+      "$type": "color",
+      "$value": "#1b2b85"
+    },
+    "indigo-5": {
+      "$type": "color",
+      "$value": "#efeff8"
+    },
+    "indigo-10": {
+      "$type": "color",
+      "$value": "#e5e4fa"
+    },
+    "indigo-20": {
+      "$type": "color",
+      "$value": "#c5c5f3"
+    },
+    "indigo-30": {
+      "$type": "color",
+      "$value": "#a5a8eb"
+    },
+    "indigo-40": {
+      "$type": "color",
+      "$value": "#8889db"
+    },
+    "indigo-50": {
+      "$type": "color",
+      "$value": "#676cc8"
+    },
+    "indigo-60": {
+      "$type": "color",
+      "$value": "#4d52af"
+    },
+    "indigo-70": {
+      "$type": "color",
+      "$value": "#3d4076"
+    },
+    "indigo-80": {
+      "$type": "color",
+      "$value": "#2b2c40"
+    },
+    "indigo-90": {
+      "$type": "color",
+      "$value": "#16171f"
+    },
+    "indigo-5v": {
+      "$type": "color",
+      "$value": "#f0f0ff"
+    },
+    "indigo-10v": {
+      "$type": "color",
+      "$value": "#e0e0ff"
+    },
+    "indigo-20v": {
+      "$type": "color",
+      "$value": "#ccceff"
+    },
+    "indigo-30v": {
+      "$type": "color",
+      "$value": "#a3a7fa"
+    },
+    "indigo-40v": {
+      "$type": "color",
+      "$value": "#8289ff"
+    },
+    "indigo-50v": {
+      "$type": "color",
+      "$value": "#656bd7"
+    },
+    "indigo-60v": {
+      "$type": "color",
+      "$value": "#4a50c4"
+    },
+    "indigo-70v": {
+      "$type": "color",
+      "$value": "#3333a3"
+    },
+    "indigo-80v": {
+      "$type": "color",
+      "$value": "#212463"
+    },
+    "indigo-warm-5": {
+      "$type": "color",
+      "$value": "#f1eff7"
+    },
+    "indigo-warm-10": {
+      "$type": "color",
+      "$value": "#e7e3fa"
+    },
+    "indigo-warm-20": {
+      "$type": "color",
+      "$value": "#cbc4f2"
+    },
+    "indigo-warm-30": {
+      "$type": "color",
+      "$value": "#afa5e8"
+    },
+    "indigo-warm-40": {
+      "$type": "color",
+      "$value": "#9287d8"
+    },
+    "indigo-warm-50": {
+      "$type": "color",
+      "$value": "#7665d1"
+    },
+    "indigo-warm-60": {
+      "$type": "color",
+      "$value": "#5e519e"
+    },
+    "indigo-warm-70": {
+      "$type": "color",
+      "$value": "#453c7b"
+    },
+    "indigo-warm-80": {
+      "$type": "color",
+      "$value": "#2e2c40"
+    },
+    "indigo-warm-90": {
+      "$type": "color",
+      "$value": "#18161d"
+    },
+    "indigo-warm-5v": {
+      "$type": "color",
+      "$value": "#f5f2ff"
+    },
+    "indigo-warm-10v": {
+      "$type": "color",
+      "$value": "#e4deff"
+    },
+    "indigo-warm-20v": {
+      "$type": "color",
+      "$value": "#cfc4fd"
+    },
+    "indigo-warm-30v": {
+      "$type": "color",
+      "$value": "#b69fff"
+    },
+    "indigo-warm-40v": {
+      "$type": "color",
+      "$value": "#967efb"
+    },
+    "indigo-warm-50v": {
+      "$type": "color",
+      "$value": "#745fe9"
+    },
+    "indigo-warm-60v": {
+      "$type": "color",
+      "$value": "#5942d2"
+    },
+    "indigo-warm-70v": {
+      "$type": "color",
+      "$value": "#3d2c9d"
+    },
+    "indigo-warm-80v": {
+      "$type": "color",
+      "$value": "#261f5b"
+    },
+    "violet-5": {
+      "$type": "color",
+      "$value": "#f4f1f9"
+    },
+    "violet-10": {
+      "$type": "color",
+      "$value": "#ebe3f9"
+    },
+    "violet-20": {
+      "$type": "color",
+      "$value": "#d0c3e9"
+    },
+    "violet-30": {
+      "$type": "color",
+      "$value": "#b8a2e3"
+    },
+    "violet-40": {
+      "$type": "color",
+      "$value": "#9d84d2"
+    },
+    "violet-50": {
+      "$type": "color",
+      "$value": "#8168b3"
+    },
+    "violet-60": {
+      "$type": "color",
+      "$value": "#665190"
+    },
+    "violet-70": {
+      "$type": "color",
+      "$value": "#4c3d69"
+    },
+    "violet-80": {
+      "$type": "color",
+      "$value": "#312b3f"
+    },
+    "violet-90": {
+      "$type": "color",
+      "$value": "#18161d"
+    },
+    "violet-5v": {
+      "$type": "color",
+      "$value": "#f7f2ff"
+    },
+    "violet-10v": {
+      "$type": "color",
+      "$value": "#ede3ff"
+    },
+    "violet-20v": {
+      "$type": "color",
+      "$value": "#d5bfff"
+    },
+    "violet-30v": {
+      "$type": "color",
+      "$value": "#c39deb"
+    },
+    "violet-40v": {
+      "$type": "color",
+      "$value": "#ad79e9"
+    },
+    "violet-50v": {
+      "$type": "color",
+      "$value": "#9355dc"
+    },
+    "violet-60v": {
+      "$type": "color",
+      "$value": "#783cb9"
+    },
+    "violet-70v": {
+      "$type": "color",
+      "$value": "#54278f"
+    },
+    "violet-80v": {
+      "$type": "color",
+      "$value": "#39215e"
+    },
+    "violet-warm-5": {
+      "$type": "color",
+      "$value": "#f8f0f9"
+    },
+    "violet-warm-10": {
+      "$type": "color",
+      "$value": "#f6dff8"
+    },
+    "violet-warm-20": {
+      "$type": "color",
+      "$value": "#e2bee4"
+    },
+    "violet-warm-30": {
+      "$type": "color",
+      "$value": "#d29ad8"
+    },
+    "violet-warm-40": {
+      "$type": "color",
+      "$value": "#bf77c8"
+    },
+    "violet-warm-50": {
+      "$type": "color",
+      "$value": "#b04abd"
+    },
+    "violet-warm-60": {
+      "$type": "color",
+      "$value": "#864381"
+    },
+    "violet-warm-70": {
+      "$type": "color",
+      "$value": "#5c395a"
+    },
+    "violet-warm-80": {
+      "$type": "color",
+      "$value": "#382936"
+    },
+    "violet-warm-90": {
+      "$type": "color",
+      "$value": "#1b151b"
+    },
+    "violet-warm-5v": {
+      "$type": "color",
+      "$value": "#fef2ff"
+    },
+    "violet-warm-10v": {
+      "$type": "color",
+      "$value": "#fbdcff"
+    },
+    "violet-warm-20v": {
+      "$type": "color",
+      "$value": "#f4b2ff"
+    },
+    "violet-warm-30v": {
+      "$type": "color",
+      "$value": "#ee83ff"
+    },
+    "violet-warm-40v": {
+      "$type": "color",
+      "$value": "#d85bef"
+    },
+    "violet-warm-50v": {
+      "$type": "color",
+      "$value": "#be32d0"
+    },
+    "violet-warm-60v": {
+      "$type": "color",
+      "$value": "#93348c"
+    },
+    "violet-warm-70v": {
+      "$type": "color",
+      "$value": "#711e6c"
+    },
+    "violet-warm-80v": {
+      "$type": "color",
+      "$value": "#481441"
+    },
+    "magenta-5": {
+      "$type": "color",
+      "$value": "#f9f0f2"
+    },
+    "magenta-10": {
+      "$type": "color",
+      "$value": "#f6e1e8"
+    },
+    "magenta-20": {
+      "$type": "color",
+      "$value": "#f0bbcc"
+    },
+    "magenta-30": {
+      "$type": "color",
+      "$value": "#e895b3"
+    },
+    "magenta-40": {
+      "$type": "color",
+      "$value": "#e0699f"
+    },
+    "magenta-50": {
+      "$type": "color",
+      "$value": "#c84281"
+    },
+    "magenta-60": {
+      "$type": "color",
+      "$value": "#8b4566"
+    },
+    "magenta-70": {
+      "$type": "color",
+      "$value": "#66364b"
+    },
+    "magenta-80": {
+      "$type": "color",
+      "$value": "#402731"
+    },
+    "magenta-90": {
+      "$type": "color",
+      "$value": "#1b1617"
+    },
+    "magenta-5v": {
+      "$type": "color",
+      "$value": "#fff2f5"
+    },
+    "magenta-10v": {
+      "$type": "color",
+      "$value": "#ffddea"
+    },
+    "magenta-20v": {
+      "$type": "color",
+      "$value": "#ffb4cf"
+    },
+    "magenta-30v": {
+      "$type": "color",
+      "$value": "#ff87b2"
+    },
+    "magenta-40v": {
+      "$type": "color",
+      "$value": "#fd4496"
+    },
+    "magenta-50v": {
+      "$type": "color",
+      "$value": "#d72d79"
+    },
+    "magenta-60v": {
+      "$type": "color",
+      "$value": "#ab2165"
+    },
+    "magenta-70v": {
+      "$type": "color",
+      "$value": "#731f44"
+    },
+    "magenta-80v": {
+      "$type": "color",
+      "$value": "#4f172e"
+    },
+    "gray-cool-1": {
+      "$type": "color",
+      "$value": "#fbfcfd"
+    },
+    "gray-cool-2": {
+      "$type": "color",
+      "$value": "#f7f9fa"
+    },
+    "gray-cool-3": {
+      "$type": "color",
+      "$value": "#f5f6f7"
+    },
+    "gray-cool-4": {
+      "$type": "color",
+      "$value": "#f1f3f6"
+    },
+    "gray-cool-5": {
+      "$type": "color",
+      "$value": "#edeff0"
+    },
+    "gray-cool-10": {
+      "$type": "color",
+      "$value": "#dfe1e2"
+    },
+    "gray-cool-20": {
+      "$type": "color",
+      "$value": "#c6cace"
+    },
+    "gray-cool-30": {
+      "$type": "color",
+      "$value": "#a9aeb1"
+    },
+    "gray-cool-40": {
+      "$type": "color",
+      "$value": "#8d9297"
+    },
+    "gray-cool-50": {
+      "$type": "color",
+      "$value": "#71767a"
+    },
+    "gray-cool-60": {
+      "$type": "color",
+      "$value": "#565c65"
+    },
+    "gray-cool-70": {
+      "$type": "color",
+      "$value": "#3d4551"
+    },
+    "gray-cool-80": {
+      "$type": "color",
+      "$value": "#2d2e2f"
+    },
+    "gray-cool-90": {
+      "$type": "color",
+      "$value": "#1c1d1f"
+    },
+    "gray-1": {
+      "$type": "color",
+      "$value": "#fcfcfc"
+    },
+    "gray-2": {
+      "$type": "color",
+      "$value": "#f9f9f9"
+    },
+    "gray-3": {
+      "$type": "color",
+      "$value": "#f6f6f6"
+    },
+    "gray-4": {
+      "$type": "color",
+      "$value": "#f3f3f3"
+    },
+    "gray-5": {
+      "$type": "color",
+      "$value": "#f0f0f0"
+    },
+    "gray-10": {
+      "$type": "color",
+      "$value": "#e6e6e6"
+    },
+    "gray-20": {
+      "$type": "color",
+      "$value": "#c9c9c9"
+    },
+    "gray-30": {
+      "$type": "color",
+      "$value": "#adadad"
+    },
+    "gray-40": {
+      "$type": "color",
+      "$value": "#919191"
+    },
+    "gray-50": {
+      "$type": "color",
+      "$value": "#757575"
+    },
+    "gray-60": {
+      "$type": "color",
+      "$value": "#5c5c5c"
+    },
+    "gray-70": {
+      "$type": "color",
+      "$value": "#454545"
+    },
+    "gray-80": {
+      "$type": "color",
+      "$value": "#2e2e2e"
+    },
+    "gray-90": {
+      "$type": "color",
+      "$value": "#1b1b1b"
+    },
+    "gray-warm-1": {
+      "$type": "color",
+      "$value": "#fcfcfb"
+    },
+    "gray-warm-2": {
+      "$type": "color",
+      "$value": "#f9f9f7"
+    },
+    "gray-warm-3": {
+      "$type": "color",
+      "$value": "#f6f6f2"
+    },
+    "gray-warm-4": {
+      "$type": "color",
+      "$value": "#f5f5f0"
+    },
+    "gray-warm-5": {
+      "$type": "color",
+      "$value": "#f0f0ec"
+    },
+    "gray-warm-10": {
+      "$type": "color",
+      "$value": "#e6e6e2"
+    },
+    "gray-warm-20": {
+      "$type": "color",
+      "$value": "#cac9c0"
+    },
+    "gray-warm-30": {
+      "$type": "color",
+      "$value": "#afaea2"
+    },
+    "gray-warm-40": {
+      "$type": "color",
+      "$value": "#929285"
+    },
+    "gray-warm-50": {
+      "$type": "color",
+      "$value": "#76766a"
+    },
+    "gray-warm-60": {
+      "$type": "color",
+      "$value": "#5d5d52"
+    },
+    "gray-warm-70": {
+      "$type": "color",
+      "$value": "#454540"
+    },
+    "gray-warm-80": {
+      "$type": "color",
+      "$value": "#2e2e2a"
+    },
+    "gray-warm-90": {
+      "$type": "color",
+      "$value": "#171716"
+    },
+    "grid-base-spacing": {
+      "$type": "spacing",
+      "$value": "8px",
+      "$description": "USWDS spacing unit tokens are based on multiples of 8px, with additional tokens for small sizes, named tokens for large sizes, and a more limited selection of negative tokens."
+    },
+    "grid-base-other": {
+      "$type": "other",
+      "$value": "8px",
+      "$description": "USWDS spacing unit tokens are based on multiples of 8px, with additional tokens for small sizes, named tokens for large sizes, and a more limited selection of negative tokens."
+    },
+    "grid-base-sizing": {
+      "$type": "sizing",
+      "$value": "8px",
+      "$description": "USWDS spacing unit tokens are based on multiples of 8px, with additional tokens for small sizes, named tokens for large sizes, and a more limited selection of negative tokens."
+    },
+    "grid-base-border-width": {
+      "$type": "borderWidth",
+      "$value": "8px",
+      "$description": "USWDS spacing unit tokens are based on multiples of 8px, with additional tokens for small sizes, named tokens for large sizes, and a more limited selection of negative tokens."
+    },
+    "grid-base-dimension": {
+      "$type": "dimension",
+      "$value": "8px",
+      "$description": "USWDS spacing unit tokens are based on multiples of 8px, with additional tokens for small sizes, named tokens for large sizes, and a more limited selection of negative tokens."
+    },
+    "focus-width": {
+      "$type": "sizing",
+      "$value": "0.5",
+      "$description": "The width of the focus outline."
+    },
+    "sm": {
+      "$type": "borderRadius",
+      "$value": "2px"
+    },
+    "md": {
+      "$type": "borderRadius",
+      "$value": "4px"
+    },
+    "lg": {
+      "$type": "borderRadius",
+      "$value": "8px"
+    },
+    "pill": {
+      "$type": "borderRadius",
+      "$value": "99rem"
+    }
+  },
+  "theme": {
+    "theme-color-primary-family": {
+      "$type": "color",
+      "$value": "'mint'",
+      "$description": "Family tokens designate the overall color set and do not map to explicit values. Therefore, they are blank."
+    },
+    "theme-primary-lightest": {
+      "$type": "color",
+      "$value": "{mint-cool-5}"
+    },
+    "theme-primary-lighter": {
+      "$type": "color",
+      "$value": "{mint-cool-10}"
+    },
+    "theme-primary-light": {
+      "$type": "color",
+      "$value": "{mint-cool-40v}"
+    },
+    "theme-primary": {
+      "$type": "color",
+      "$value": "{cyan-60}"
+    },
+    "theme-primary-vivid": {
+      "$type": "color",
+      "$value": "{mint-cool-60v}"
+    },
+    "theme-primary-dark": {
+      "$type": "color",
+      "$value": "{mint-cool-70v}"
+    },
+    "theme-primary-darker": {
+      "$type": "color",
+      "$value": "{mint-cool-80v}"
+    },
+    "theme-secondary-family": {
+      "$type": "color",
+      "$value": "'gold-vivid'",
+      "$description": "Family tokens designate the overall color set and do not map to explicit values. Therefore, they are blank."
+    },
+    "theme-secondary-lighter": {
+      "$type": "color",
+      "$value": "{yellow-5}"
+    },
+    "theme-secondary-light": {
+      "$type": "color",
+      "$value": "{gold-10v}"
+    },
+    "theme-secondary": {
+      "$type": "color",
+      "$value": "{gold-20v}"
+    },
+    "theme-secondary-vivid": {
+      "$type": "color",
+      "$value": "{yellow-20v}"
+    },
+    "theme-secondary-dark": {
+      "$type": "color",
+      "$value": "{gold-50v}"
+    },
+    "theme-secondary-darker": {
+      "$type": "color",
+      "$value": "{gold-70v}"
+    },
+    "theme-link-color": {
+      "$type": "color",
+      "$value": "{cyan-60}"
+    },
+    "theme-focus-color": {
+      "$type": "color",
+      "$value": "{mint-cool-30v}"
+    },
+    "theme-button-border-radius": {
+      "$type": "borderRadius",
+      "$value": "{pill}"
+    },
+    "theme-font-type-sans": {
+      "$type": "fontFamilies",
+      "$value": "Urbanist",
+      "$description": "In your HTML files, add a reference to the JavaScript and/or CSS files provided by the font hosting service. https://fonts.google.com/specimen/Urbanist\n\nIn your settings configuration, tell $theme-typeface-tokens to create a new typeface token. In the code example, we are creating a new typeface token:\n\n $theme-typeface-tokens: (\n   \"Urbanist\": (\n     \"display-name\": \"Urbanist\",\n     \"cap-height\": 364px\n   ),\n ),\n\nSource: https://designsystem.digital.gov/design-tokens/typesetting/font-family/#adding-fonts-to-uswds-2"
+    },
+    "theme-font-type-serif": {
+      "$type": "fontFamilies",
+      "$value": "Urbanist",
+      "$description": "In your HTML files, add a reference to the JavaScript and/or CSS files provided by the font hosting service. https://fonts.google.com/specimen/Urbanist\n\nIn your settings configuration, tell $theme-typeface-tokens to create a new typeface token. In the code example, we are creating a new typeface token:\n\n $theme-typeface-tokens: (\n   \"Urbanist\": (\n     \"display-name\": \"Urbanist\",\n     \"cap-height\": 364px\n   ),\n ),\n\nSource: https://designsystem.digital.gov/design-tokens/typesetting/font-family/#adding-fonts-to-uswds-2"
+    },
+    "theme-font-role-heading": {
+      "$type": "fontFamilies",
+      "$value": "'sans'"
+    },
+    "theme-font-role-alt": {
+      "$type": "fontFamilies",
+      "$value": "'sans'"
+    },
+    "theme-global-paragraph-styles": {
+      "$type": "boolean",
+      "$value": "true"
+    },
+    "theme-global-link-styles": {
+      "$type": "boolean",
+      "$value": "true"
+    },
+    "theme-global-content-styles": {
+      "$type": "boolean",
+      "$value": "true"
+    },
+    "theme-style-body-element": {
+      "$type": "boolean",
+      "$value": "true",
+      "$description": "Not well documented but necessary to make type size and line heights consistent with .usa-prose"
+    },
+    "theme-text-measure-narrow": {
+      "$type": "sizing",
+      "$value": "'none'",
+      "$description": "Setting measures to 'none' prevents text from having a fixed width and allows it to flow."
+    },
+    "theme-text-measure": {
+      "$type": "sizing",
+      "$value": "'none'",
+      "$description": "Setting measures to 'none' prevents text from having a fixed width and allows it to flow."
+    },
+    "theme-text-measure-wide": {
+      "$type": "sizing",
+      "$value": "'none'",
+      "$description": "Setting measures to 'none' prevents text from having a fixed width and allows it to flow."
+    }
+  },
+  "$themes": [],
+  "$metadata": {
+    "tokenSetOrder": [
+      "system",
+      "theme"
+    ]
+  }
+}
