@@ -1,0 +1,17 @@
+/*
+----------------------------------------
+USWDS Theme Configuration
+----------------------------------------
+This file loads USWDS with custom theme settings.
+USWDS theme variables are loaded from _uswds-theme-dc.scss
+*/
+
+// First, load DC theme overrides (from Figma tokens)
+@use "uswds-theme-dc";
+
+// Then load USWDS core with theme suppression
+// Path is relative to loadPaths in vite.config.ts
+@use "uswds-core" with (
+  // Suppress release notes
+  $theme-show-notifications: false
+);

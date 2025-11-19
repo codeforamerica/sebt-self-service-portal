@@ -1,0 +1,21 @@
+/**
+ * Main Styles Entry Point (USWDS Custom Compiler)
+ *
+ * This file is imported by src/main.ts and compiled by Vite.
+ * Following official USWDS custom compiler pattern:
+ * https://designsystem.digital.gov/documentation/getting-started/developers/phase-two-compile/
+ *
+ * Structure:
+ * 1. Load project's USWDS settings (_uswds-theme.scss)
+ * 2. Load USWDS source code
+ * 3. Load project's custom styles
+ */
+
+// 1. Load project's USWDS settings configuration (includes DC theme)
+@forward '../sass/uswds-theme';
+
+// 2. Load USWDS source code (from loadPaths in vite.config.ts)
+@forward 'uswds';
+
+// 3. Load project's custom styles
+@forward '../sass/uswds-theme-custom-styles';

@@ -1,0 +1,22 @@
+{
+  "name": "@sebt/web",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "tokens": "node scripts/tokens-to-scss.js",
+    "dev": "vite",
+    "build": "tsc && vite build",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "@uswds/uswds": "^3.8.0"
+  },
+  "devDependencies": {
+    "lightningcss": "^1.30.2",
+    "sass-embedded": "^1.93.3",
+    "typescript": "~5.9.3",
+    "vite": "^7.2.2",
+    "vite-plugin-static-copy": "^3.1.4"
+  }
+}

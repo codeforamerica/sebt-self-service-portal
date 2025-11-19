@@ -1,0 +1,117 @@
+<!doctype html>
+<html lang="en" class="usa-js-loading">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>SEBT Portal - USWDS Implementation Test</title>
+    <meta
+      name="description"
+      content="Summer EBT Portal - USWDS with Figma Design Tokens"
+    />
+    <!-- Vite automatically injects CSS from src/main.ts -->
+  </head>
+  <body>
+    <!-- Main Content -->
+    <div class="usa-section">
+      <div class="grid-container">
+        <!-- Header -->
+        <header class="usa-header" style="margin-bottom: 2rem">
+          <div class="usa-nav-container">
+            <div class="usa-navbar">
+              <div class="usa-logo" id="basic-logo">
+                <em class="usa-logo__text">
+                  <a href="/" title="Home" aria-label="Home">
+                    SEBT Self-Service Portal
+                  </a>
+                </em>
+              </div>
+            </div>
+          </div>
+        </header>
+
+        <!-- Implementation Verification -->
+        <section>
+          <h1 class="usa-prose">
+            USWDS Implementation with Figma Design Tokens
+          </h1>
+
+          <div class="usa-alert usa-alert--success">
+            <div class="usa-alert__body">
+              <h4 class="usa-alert__heading">✓ Implementation Working</h4>
+              <p class="usa-alert__text">
+                USWDS is successfully compiled with DC state theme tokens from
+                Figma. DC theme primary color (mint-cool-60v) is applied to
+                buttons and links.
+              </p>
+            </div>
+          </div>
+
+          <!-- Workflow Summary -->
+          <div style="margin-top: 2rem">
+            <h2 class="usa-prose">Build Workflow</h2>
+            <ol class="usa-list">
+              <li>
+                <strong>Figma Tokens Studio</strong> → Export design tokens to
+                <code>design/states/dc.json</code>
+              </li>
+              <li>
+                <strong>Token Transformation</strong> → Transform tokens to USWDS theme
+                variables in <code>sass/_uswds-theme-dc.scss</code>
+              </li>
+              <li>
+                <strong>Vite</strong> → Compile USWDS Sass with DC theme and bundle with Autoprefixer
+              </li>
+              <li>
+                <strong>HMR</strong> → Instant hot module replacement for rapid development
+              </li>
+            </ol>
+          </div>
+
+          <!-- Component Examples -->
+          <div style="margin-top: 2rem">
+            <h2 class="usa-prose">USWDS Components with DC Theme</h2>
+
+            <div class="usa-button-group">
+              <button class="usa-button">Primary Button (DC Theme)</button>
+              <button class="usa-button usa-button--secondary">
+                Secondary
+              </button>
+              <button class="usa-button usa-button--outline">Outline</button>
+            </div>
+
+            <div class="usa-alert usa-alert--info" style="margin-top: 2rem">
+              <div class="usa-alert__body">
+                <p class="usa-alert__text">
+                  <strong>DC Theme Active:</strong> Primary color is
+                  mint-cool-60v (#0f6460), Typography uses Urbanist font family
+                  from Figma tokens.
+                </p>
+              </div>
+            </div>
+          </div>
+        </section>
+      </div>
+    </div>
+
+    <!-- Footer -->
+    <footer class="usa-footer">
+      <div class="usa-footer__primary-section">
+        <div class="grid-container">
+          <div class="grid-row grid-gap">
+            <div class="tablet:grid-col-12">
+              <p class="usa-footer__primary-content">
+                SEBT Portal - USWDS with Figma Design Tokens
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </footer>
+
+    <!-- USWDS JavaScript -->
+    <script src="/js/uswds-init.min.js"></script>
+
+    <!-- Application JavaScript -->
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>
