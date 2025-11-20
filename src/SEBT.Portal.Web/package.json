@@ -5,8 +5,13 @@
   "type": "module",
   "scripts": {
     "tokens": "node scripts/tokens-to-scss.js",
+    "tokens:dc": "node scripts/tokens-to-scss.js dc",
+    "tokens:co": "node scripts/tokens-to-scss.js co",
+    "prebuild": "node scripts/tokens-to-scss.js",
     "dev": "vite",
     "build": "tsc && vite build",
+    "build:dc": "STATE=dc pnpm build",
+    "build:co": "STATE=co pnpm build",
     "preview": "vite preview"
   },
   "dependencies": {

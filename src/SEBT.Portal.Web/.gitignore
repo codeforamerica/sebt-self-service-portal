@@ -26,8 +26,11 @@ public/uswds.css
 *.sln
 *.sw?
 
-# USWDS generated files (auto-generated from dc.json theme tokens and Vite build)
-sass/_uswds-theme-dc.scss
+# Environment files
+.env
+.env.local
+
+# USWDS generated files (auto-generated during build from design/states/*.json)
 sass/_uswds-theme-*.scss
 public/fonts/
 public/img/

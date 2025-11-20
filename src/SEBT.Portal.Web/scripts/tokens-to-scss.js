@@ -2,20 +2,25 @@
 /**
  * Convert Figma Tokens Studio JSON to USWDS SCSS Variables
  *
- * This script reads dc.json from Tokens Studio and extracts ONLY the 'theme' object,
- * converting it to USWDS-compatible SCSS variables.
+ * Transforms state-specific design tokens from Figma into USWDS theme variables.
+ * Auto-runs during build via 'prebuild' script - generates only the needed state.
+ *
+ * Usage:
+ *   node tokens-to-scss.js           # Defaults to DC
+ *   node tokens-to-scss.js ca        # California state
+ *   STATE=tx node tokens-to-scss.js  # Environment variable
  *
  * Features:
- * - Smart caching: Only regenerates if dc.json changed
- * - Fast execution: Skips transformation if output is up-to-date
+ * - Smart caching: Only regenerates if source JSON changed
  * - USWDS compatible: Generates proper theme variable format
+ * - Build integration: Auto-runs during pnpm build
  *
  * Workflow:
- * 1. Read design/states/dc.json
- * 2. Check if transformation needed (file changed)
- * 3. Extract 'theme' object (ignore 'system' object - USWDS has those built-in)
+ * 1. Read design/states/{state}.json (source of truth)
+ * 2. Check if transformation needed (timestamp-based)
+ * 3. Extract 'theme' object (USWDS has 'system' tokens built-in)
  * 4. Convert to SCSS variables with USWDS naming conventions
- * 5. Keep token references as-is for USWDS to resolve
+ * 5. Output to sass/_uswds-theme-{state}.scss (gitignored)
  */
 
 import { readFileSync, writeFileSync, mkdirSync, existsSync, statSync } from 'fs';
@@ -25,13 +30,84 @@ import { fileURLToPath } from 'url';
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const projectRoot = join(__dirname, '..');
 
+// Configuration
+const USWDS_PREFIXES = new Set([
+  'color', 'font', 'link', 'focus', 'button',
+  'global', 'style', 'text'
+]);
+
+const CUSTOM_TYPEFACES = {
+  urbanist: {
+    displayName: 'Urbanist',
+    capHeight: 364
+  }
+};
+
+// Get state file paths
+function getStatePaths(state) {
+  const statesDir = join(projectRoot, 'design/states');
+  const sassDir = join(projectRoot, 'sass');
+
+  return {
+    input: join(statesDir, `${state}.json`),
+    output: join(sassDir, `_uswds-theme-${state}.scss`),
+    sassDir
+  };
+}
+
+// Check if token should get -color- infix
+function shouldInjectColorPrefix(tokenName, tokenType) {
+  if (!tokenName.startsWith('theme-') || tokenType !== 'color') {
+    return false;
+  }
+
+  // Check if any known prefix is already present
+  for (const prefix of USWDS_PREFIXES) {
+    if (tokenName.includes(`-${prefix}-`)) {
+      return false;
+    }
+  }
+
+  return true;
+}
+
+// Normalize font value (lowercase for custom typefaces)
+function normalizeFontValue(value, varName) {
+  if (!varName.includes('font-type') && !varName.includes('font-role')) {
+    return value;
+  }
+
+  // Auto-lowercase font names that are in CUSTOM_TYPEFACES
+  for (const typeface of Object.keys(CUSTOM_TYPEFACES)) {
+    const capitalized = `'${typeface.charAt(0).toUpperCase() + typeface.slice(1)}'`;
+    if (value === capitalized) {
+      return `'${typeface}'`;
+    }
+  }
+
+  return value;
+}
+
+// Generate typeface tokens SCSS
+function generateTypefaceTokens() {
+  if (Object.keys(CUSTOM_TYPEFACES).length === 0) {
+    return '';
+  }
+
+  const tokens = Object.entries(CUSTOM_TYPEFACES)
+    .map(([key, { displayName, capHeight }]) =>
+      `  ${key}: (\n    display-name: "${displayName}",\n    cap-height: ${capHeight}px\n  )`
+    )
+    .join(',\n');
+
+  return `\n// Custom typeface tokens for fonts not included in USWDS by default\n$theme-typeface-tokens: (\n${tokens}\n);\n`;
+}
+
 /**
  * Convert a token name to SCSS variable format
  * Example: "theme-primary-vivid" → "$theme-color-primary-vivid"
  */
 function toScssVariableName(name) {
-  // Token names should already be in the correct format
-  // Just ensure they start with $ if they don't
   return name.startsWith('$') ? name : `$${name}`;
 }
 
@@ -45,15 +121,12 @@ function toScssValue(value) {
   if (typeof value === 'string') {
     // Handle token references like {mint-cool-60v}
     if (value.startsWith('{') && value.endsWith('}')) {
-      // Extract token name and quote it for USWDS
       const tokenName = value.slice(1, -1);
       return `'${tokenName}'`;
     }
-    // Remove existing quotes and re-quote for consistency
     const cleaned = value.replace(/'/g, '');
     return `'${cleaned}'`;
   }
-  // Booleans and numbers stay as-is
   return value;
 }
 
@@ -69,18 +142,7 @@ function processThemeObject(obj, prefix = '') {
       let tokenName = prefix ? `${prefix}-${key}` : key;
 
       // USWDS expects color tokens to have "-color-" infix after "theme"
-      // Convert: theme-primary-lightest → theme-color-primary-lightest
-      // But keep: theme-font-type-sans, theme-link-color as-is
-      if (tokenName.startsWith('theme-') &&
-          !tokenName.includes('-color-') &&
-          !tokenName.includes('-font-') &&
-          !tokenName.includes('-link-') &&
-          !tokenName.includes('-focus-') &&
-          !tokenName.includes('-button-') &&
-          !tokenName.includes('-global-') &&
-          !tokenName.includes('-style-') &&
-          !tokenName.includes('-text-') &&
-          value.$type === 'color') {
+      if (shouldInjectColorPrefix(tokenName, value.$type)) {
         tokenName = tokenName.replace('theme-', 'theme-color-');
       }
 
@@ -102,9 +164,7 @@ function processThemeObject(obj, prefix = '') {
   return variables;
 }
 
-/**
- * Check if transformation is needed
- */
+// Check if transformation is needed
 function needsRegeneration(inputPath, outputPath) {
   if (!existsSync(outputPath)) {
     return true; // Output doesn't exist
@@ -117,89 +177,71 @@ function needsRegeneration(inputPath, outputPath) {
   return inputStats.mtimeMs > outputStats.mtimeMs;
 }
 
-/**
- * Main function
- */
-function main() {
-  try {
-    // Read dc.json
-    const dcJsonPath = join(projectRoot, 'design/states/dc.json');
-    const outputPath = join(projectRoot, 'sass/_uswds-theme-dc.scss');
+// Format a single SCSS variable
+function formatScssVariable({ name, value, description }) {
+  value = normalizeFontValue(value, name);
+  const comment = description
+    ? `  // ${description.split('\n')[0].trim()}`
+    : '';
+  return `${name}: ${value};${comment}`;
+}
 
-    // Check if regeneration needed
-    if (!needsRegeneration(dcJsonPath, outputPath)) {
-      console.log('⚡ Tokens unchanged, using cached SCSS');
-      console.log(`   Source: ${dcJsonPath}`);
-      console.log(`   Output: ${outputPath}`);
-      return;
-    }
+// Process a single state
+function processState(state) {
+  const paths = getStatePaths(state);
 
-    console.log(`Reading: ${dcJsonPath}`);
-    const dcJson = JSON.parse(readFileSync(dcJsonPath, 'utf8'));
+  if (!existsSync(paths.input)) {
+    throw new Error(`State token file not found: ${paths.input}`);
+  }
 
-    // Extract theme object
-    if (!dcJson.theme) {
-      console.error('❌ Error: No "theme" object found in dc.json');
-      process.exit(1);
-    }
+  if (!needsRegeneration(paths.input, paths.output)) {
+    console.log(`⚡ Tokens unchanged for ${state.toUpperCase()}\n   ${paths.input} → ${paths.output}`);
+    return { state, cached: true, success: true };
+  }
 
-    console.log('✅ Found theme object');
+  console.log(`Reading: ${paths.input}`);
+  const stateJson = JSON.parse(readFileSync(paths.input, 'utf8'));
 
-    // Process theme object to SCSS variables
-    const variables = processThemeObject(dcJson.theme);
-    console.log(`✅ Extracted ${variables.length} theme variables`);
+  if (!stateJson.theme) {
+    throw new Error(`No "theme" object found in ${state}.json`);
+  }
 
-    // Generate SCSS content
-    const header = `// _uswds-theme-dc.scss
+  console.log(`✅ Found theme object for ${state.toUpperCase()}`);
+
+  const variables = processThemeObject(stateJson.theme);
+  console.log(`✅ Extracted ${variables.length} theme variables`);
+
+  const scssContent = `// _uswds-theme-${state}.scss
 // Auto-generated USWDS theme variables from Figma Tokens Studio
-// Source: design/states/dc.json (theme object only)
+// Source: design/states/${state}.json (theme object only)
 // DO NOT EDIT DIRECTLY - This file is regenerated from design tokens
 //
 // Usage: Import this file before importing USWDS to customize the theme
-// @import 'uswds-theme-dc';
+// @import 'uswds-theme-${state}';
 // @use 'uswds';
+${generateTypefaceTokens()}
+` + variables.map(formatScssVariable).join('\n') + '\n';
 
-// Custom typeface tokens for fonts not included in USWDS by default
-$theme-typeface-tokens: (
-  urbanist: (
-    display-name: "Urbanist",
-    cap-height: 364px
-  )
-);
+  mkdirSync(paths.sassDir, { recursive: true });
+  writeFileSync(paths.output, scssContent, 'utf8');
 
-`;
+  console.log(`✅ Generated ${variables.length} variables for ${state.toUpperCase()}`);
+  console.log(`   ${paths.output}\n`);
 
-    const scssVariables = variables
-      .map(v => {
-        // Clean up description - only use first line, remove newlines
-        const cleanDesc = v.description
-          ? v.description.split('\n')[0].trim()
-          : '';
-        const comment = cleanDesc ? `  // ${cleanDesc}` : '';
+  return { state, cached: false, success: true, count: variables.length };
+}
 
-        // Convert font values to lowercase to match typeface token names
-        let value = v.value;
-        if ((v.name.includes('font-type') || v.name.includes('font-role')) && value === "'Urbanist'") {
-          value = "'urbanist'";
-        }
+function main() {
+  try {
+    const args = process.argv.slice(2);
+    const state = (args[0] || process.env.STATE || 'dc').toLowerCase();
 
-        return `${v.name}: ${value};${comment}`;
-      })
-      .join('\n');
-
-    const scssContent = header + scssVariables + '\n';
-
-    // Write SCSS file to sass directory (used by USWDS compile)
-    const outputDir = join(projectRoot, 'sass');
-    mkdirSync(outputDir, { recursive: true });
-
-    writeFileSync(outputPath, scssContent, 'utf8');
-
-    console.log(`✅ Generated: ${outputPath}`);
-    console.log(`\n📊 Summary:`);
-    console.log(`   - Theme variables: ${variables.length}`);
-    console.log(`   - Output file: sass/_uswds-theme-dc.scss`);
-    console.log(`\n✅ Done!`);
+    try {
+      processState(state);
+    } catch (error) {
+      console.error(`❌ Error: ${error.message}`);
+      process.exit(1);
+    }
 
   } catch (error) {
     console.error('❌ Error:', error.message);

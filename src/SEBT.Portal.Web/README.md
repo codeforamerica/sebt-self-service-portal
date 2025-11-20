@@ -8,6 +8,10 @@ Frontend for the Summer EBT Self-Service Portal using USWDS with Figma design to
 # Install dependencies
 pnpm install
 
+# Configure your local state
+cp .env.example .env
+# Edit .env to set STATE=dc or STATE=co
+
 # Start dev server (http://localhost:5173)
 pnpm dev
 
@@ -27,23 +31,59 @@ pnpm preview
 
 ## Design Token Workflow
 
+Each state deployment uses a single token file - tokens are generated automatically during build.
+
 ```
-Figma → Tokens Studio Plugin → design/states/dc.json
+Figma → Tokens Studio Plugin → design/states/{state}.json (committed to git)
                                       ↓
-                        scripts/tokens-to-scss.js
+                        pnpm build:dc (auto-generates during build)
                                       ↓
-                         sass/_uswds-theme-dc.scss
+                         sass/_uswds-theme-dc.scss (gitignored)
                                       ↓
                       Vite build → Compiled CSS
 ```
 
-### Update Tokens
+### Building for Production
 
 ```bash
-# Regenerate SCSS from dc.json
-pnpm tokens
+# Build for specific state (auto-generates tokens)
+pnpm web:build:dc    # DC deployment
+pnpm web:build:co    # Colorado deployment
 
-# Smart caching: only regenerates if dc.json changed
+# Or use environment variable
+STATE=co pnpm web:build
+
+# Default build uses DC
+pnpm web:build
+```
+
+### Local Development
+
+**State Configuration:**
+Your local state is configured via `.env` file. Vite automatically loads this file.
+
+```bash
+# .env file
+STATE=dc  # or co
+
+# Start dev server - uses state from .env
+pnpm dev
+
+# Override state temporarily
+STATE=co pnpm dev
+```
+
+**Manual Token Generation (Development Only):**
+
+```bash
+# Regenerate tokens when you update design/states/*.json
+pnpm tokens:dc
+pnpm tokens:co
+
+# Or use the script directly
+node scripts/tokens-to-scss.js dc
+
+# Smart caching: only regenerates if state JSON changed
 ```
 
 ## Project Structure
@@ -51,8 +91,13 @@ pnpm tokens
 ```
 src/SEBT.Portal.Web/
 ├── design/states/        # Figma design tokens (JSON)
+│   ├── dc.json          # District of Columbia
+│   └── co.json          # Colorado (when added)
 ├── sass/                 # USWDS theme configuration
-├── scripts/              # Token transformation script
+│   ├── _uswds-theme-dc.scss   # Auto-generated DC theme
+│   └── _uswds-theme.scss      # Theme loader
+├── scripts/
+│   └── tokens-to-scss.js      # Token transformation script
 ├── src/
 │   ├── main.ts          # App entry point
 │   └── styles.scss      # Sass entry point
@@ -63,11 +108,37 @@ src/SEBT.Portal.Web/
 
 ## Key Features
 
+- ✅ **Multi-state support**: Generate SCSS for any state (DC, CO, etc.)
 - ✅ **Smart token caching**: Instant builds when tokens unchanged
 - ✅ **Lightning CSS**: 5-10x faster CSS processing
 - ✅ **sass-embedded**: 10-30% faster Sass compilation
 - ✅ **HMR**: Instant hot module replacement
 - ✅ **USWDS compliant**: Follows official custom compiler pattern
+
+## Multi-State Deployment
+
+Each state is a **separate deployment** with its own build. The build process automatically generates the correct SCSS for that state.
+
+**Deployment Architecture:**
+```
+dc.portal.sebt.gov  → pnpm web:build:dc → Uses design/states/dc.json
+co.portal.sebt.gov  → pnpm web:build:co → Uses design/states/co.json
+```
+
+**CI/CD Integration:**
+```yaml
+# Example GitHub Actions workflow
+- name: Build DC Portal
+  run: pnpm web:build:dc  # Auto-generates tokens from dc.json
+
+- name: Build CO Portal
+  run: pnpm web:build:co  # Auto-generates tokens from co.json
+```
+
+**What's committed to Git:**
+- ✅ `design/states/*.json` - Source of truth for design tokens
+- ✅ `scripts/tokens-to-scss.js` - Token transformation script
+- ❌ `sass/_uswds-theme-*.scss` - Auto-generated, gitignored
 
 ## Documentation
 
