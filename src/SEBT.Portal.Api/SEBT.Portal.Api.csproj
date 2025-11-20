@@ -33,9 +33,15 @@
     <Message Importance="high" Text="Starting frontend watch mode..." />
 
     <!-- Check if frontend is already running (by checking if port 5173 is in use) -->
-    <Exec Command="lsof -ti:5173" IgnoreExitCode="true" ConsoleToMSBuild="true">
+    <!-- Unix-like systems: use lsof -->
+    <Exec Command="lsof -ti:5173" IgnoreExitCode="true" ConsoleToMSBuild="true"
+          Condition="'$(OS)' != 'Windows_NT'">
       <Output TaskParameter="ConsoleOutput" PropertyName="FrontendPort" />
     </Exec>
+    <!-- Windows: set FrontendPort to empty (always try to start frontend) -->
+    <PropertyGroup Condition="'$(OS)' == 'Windows_NT'">
+      <FrontendPort></FrontendPort>
+    </PropertyGroup>
 
     <Message Importance="high" Text="Frontend already running on port 5173"
       Condition="'$(FrontendPort)' != ''" />
