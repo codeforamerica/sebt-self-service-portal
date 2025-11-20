@@ -15,6 +15,9 @@ public class RequestOtpCommandHandlerTests
     private readonly Mock<IOtpRepository> otpRepository = new();
     private readonly NullLogger<RequestOtpCommandHandler> logger = NullLogger<RequestOtpCommandHandler>.Instance;
 
+    /// <summary>
+    /// Tests that Handle returns a Success Result when a valid email is provided.
+    /// </summary>
     [Fact]
     public async Task Handle_ShouldReturnSuccessResult_WhenEmailIsValid()
     {
@@ -35,10 +38,12 @@ public class RequestOtpCommandHandlerTests
         Assert.True(result.IsSuccess);
     }
 
+    /// <summary>
+    /// Tests that Handle generates an OTP when a valid email is provided.
+    /// </summary>
     [Fact]
     public async Task Handle_ShouldGenerateOtp_WhenEmailIsValid()
     {
-
         // Arrange
         var handler = new RequestOtpCommandHandler(
            new DataAnnotationsValidator<RequestOtpCommand>(null!),
@@ -55,7 +60,9 @@ public class RequestOtpCommandHandlerTests
         otpGenerator.Verify(g => g.GenerateOtp(), Times.Once);
     }
 
-
+    /// <summary>
+    /// Tests that Handle sends an OTP email when a valid email is provided.
+    /// </summary>
     [Fact]
     public async Task Handle_ShouldSendOtpEmail_WhenEmailIsValid()
     {
@@ -77,6 +84,9 @@ public class RequestOtpCommandHandlerTests
             .Verify(s => s.SendEmailAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>()), Times.Once);
     }
 
+    /// <summary>
+    /// Tests that Handle persists the OTP when a valid email is provided.
+    /// </summary>
     [Fact]
     public async Task Handle_ShouldPersistOtp_WhenEmailIsValid()
     {
@@ -99,6 +109,9 @@ public class RequestOtpCommandHandlerTests
 
     }
 
+    /// <summary>
+    /// Tests that Handle returns a ValidationFailed Result when an invalid email is provided.
+    /// </summary>
     [Fact]
     public async Task Handle_ShouldReturnFailure_WhenEmailIsInvalid()
     {
