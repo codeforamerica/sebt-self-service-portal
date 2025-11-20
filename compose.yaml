@@ -1,7 +1,24 @@
-﻿services:
+﻿# Docker Compose configuration for SEBT Portal Application and supporting services
+services:
+  # SEBT Portal API Service
   sebt.portal.api:
     image: sebt.portal.api
     build:
       context: .
       dockerfile: SEBT.Portal.Api/Dockerfile
+  # SEBT E Mail Service
+  mailpit:
+    image: axllent/mailpit
+    container_name: sebt_mailpit
+    ports:
+      - "8025:8025"
+      - "1025:1025"
+    environment:
+      - MP_MAX_MESSAGES=5000
+    networks:
+      - sebt.portal.api
 
+# Define custom networks
+networks:
+  sebt.portal.api:
+    driver: bridge
