@@ -3,23 +3,10 @@ namespace Sebt.Portal.Core.Models.Auth
     /// <summary>
     /// Represents a one-time password (OTP) code used for authentication purposes.
     /// </summary>
-    public record OtpCode
+    public record OtpCode(string Code, string Email)
     {
-        public required string Code { get; init; }
-        public required DateTime ExpiresAt { get; init; }
-        public required string Email { get; init; }
-        /// <summary>
-        /// Initializes a new instance of the <see cref="OtpCode"/> class with the specified code, email, and validity duration.
-        /// </summary>
-        /// <param name="code">The OTP code.</param>
-        /// <param name="email">The email address associated with the OTP code.</param>
-        /// <param name="validityMinutes">The duration in minutes for which the OTP code is valid. Default is 10 minutes.</param>
-        public OtpCode(string code, string email, int validityMinutes = 10)
-        {
-            Code = code;
-            Email = email;
-            ExpiresAt = DateTime.UtcNow.AddMinutes(validityMinutes);
-        }
+   
+        public DateTime ExpiresAt { get; } = DateTime.UtcNow.AddMinutes(10);
         /// <summary>
         /// Validates the provided code against the stored code and checks if it is still valid based on expiration time.
         /// </summary>
