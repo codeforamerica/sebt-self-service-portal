@@ -5,7 +5,12 @@ services:
     image: sebt.portal.api
     build:
       context: .
-      dockerfile: SEBT.Portal.Api/Dockerfile
+      dockerfile: src/SEBT.Portal.Api/Dockerfile
+    ports:
+          - "5280:8080"   # Maps localhost:5280 -> container:8080
+    environment:
+          - ASPNETCORE_ENVIRONMENT=Development
+
   # SEBT E Mail Service
   mailpit:
     image: axllent/mailpit
