@@ -5,9 +5,9 @@ namespace Sebt.Portal.Core.Models.Auth
     /// <summary>
     /// Represents a one-time password (OTP) code used for authentication purposes.
     /// </summary>
-    public record OtpCode(string Code, string Email, int MinutesToExpire = 10)
+    public record OtpCode(string Code, string Email)
     {
-        public DateTime ExpiresAt { get; init; } = DateTime.UtcNow.AddMinutes(MinutesToExpire);
+        public DateTime ExpiresAt { get; } = DateTime.UtcNow.AddMinutes(10);
         /// <summary>
         /// Validates the provided code against the stored code and checks if it is still valid based on expiration time.
         /// </summary>
