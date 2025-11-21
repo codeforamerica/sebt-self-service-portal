@@ -1,0 +1,146 @@
+<!doctype html>
+<html lang="en" class="usa-js-loading">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>SEBT Portal - USWDS Implementation Test</title>
+    <meta
+      name="description"
+      content="Summer EBT Portal - USWDS with Figma Design Tokens"
+    />
+
+    <!-- INJECTED_FONTS_START -->
+    <!-- Google Fonts: Auto-injected from design tokens -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Urbanist:ital,wght@0,300;0,400;0,700;1,300;1,400;1,700&display=swap" rel="stylesheet" />
+    <!-- Urbanist: Light (300), Regular (400), Bold (700) with italics -->
+    <!-- INJECTED_FONTS_END -->
+
+    <!-- Vite automatically injects CSS from src/main.ts -->
+
+    <!-- Critical CSS to prevent FOUC during dev server Sass compilation -->
+    <style>
+      /* Hide content until CSS is loaded */
+      body:not(.css-loaded) {
+        visibility: hidden;
+      }
+
+      /* Loading indicator */
+      body:not(.css-loaded)::before {
+        content: '';
+        position: fixed;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        width: 50px;
+        height: 50px;
+        border: 3px solid #f3f3f3;
+        border-top: 3px solid #005ea2;
+        border-radius: 50%;
+        animation: spin 1s linear infinite;
+        visibility: visible;
+      }
+
+      @keyframes spin {
+        0% { transform: translate(-50%, -50%) rotate(0deg); }
+        100% { transform: translate(-50%, -50%) rotate(360deg); }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="usa-section">
+      <div class="grid-container">
+        <header class="usa-header" style="margin-bottom: 2rem">
+          <div class="usa-nav-container">
+            <div class="usa-navbar">
+              <div class="usa-logo" id="basic-logo">
+                <em class="usa-logo__text">
+                  <a href="/" title="Home" aria-label="Home">
+                    SEBT Self-Service Portal
+                  </a>
+                </em>
+              </div>
+            </div>
+          </div>
+        </header>
+
+        <section>
+          <h1 class="usa-prose">
+            USWDS Implementation with Figma Design Tokens
+          </h1>
+
+          <div class="usa-alert usa-alert--success">
+            <div class="usa-alert__body">
+              <h4 class="usa-alert__heading">✓ Implementation Working</h4>
+              <p class="usa-alert__text">
+                USWDS is successfully compiled with DC state theme tokens from
+                Figma. DC theme primary color (mint-cool-60v) is applied to
+                buttons and links.
+              </p>
+            </div>
+          </div>
+
+          <div style="margin-top: 2rem">
+            <h2 class="usa-prose">Build Workflow</h2>
+            <ol class="usa-list">
+              <li>
+                <strong>Figma Tokens Studio</strong> → Export design tokens to
+                <code>design/states/dc.json</code>
+              </li>
+              <li>
+                <strong>Token Transformation</strong> → Transform tokens to USWDS theme
+                variables in <code>sass/_uswds-theme-dc.scss</code>
+              </li>
+              <li>
+                <strong>Vite</strong> → Compile USWDS Sass with DC theme and bundle with Autoprefixer
+              </li>
+              <li>
+                <strong>HMR</strong> → Instant hot module replacement for rapid development
+              </li>
+            </ol>
+          </div>
+
+          <div style="margin-top: 2rem">
+            <h2 class="usa-prose">USWDS Components with DC Theme</h2>
+
+            <div class="usa-button-group">
+              <button class="usa-button">Primary Button (DC Theme)</button>
+              <button class="usa-button usa-button--secondary">
+                Secondary
+              </button>
+              <button class="usa-button usa-button--outline">Outline</button>
+            </div>
+
+            <div class="usa-alert usa-alert--info" style="margin-top: 2rem">
+              <div class="usa-alert__body">
+                <p class="usa-alert__text">
+                  <strong>DC Theme Active:</strong> Primary color is
+                  mint-cool-60v (#0f6460), Typography uses Urbanist font family
+                  from Figma tokens.
+                </p>
+              </div>
+            </div>
+          </div>
+        </section>
+      </div>
+    </div>
+
+    <footer class="usa-footer">
+      <div class="usa-footer__primary-section">
+        <div class="grid-container">
+          <div class="grid-row grid-gap">
+            <div class="tablet:grid-col-12">
+              <p class="usa-footer__primary-content">
+                SEBT Portal - USWDS with Figma Design Tokens
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </footer>
+
+    <script src="/js/uswds-init.min.js"></script>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>
