@@ -11,11 +11,6 @@
  * 3. Load project's custom styles
  */
 
-// 1. Load project's USWDS settings configuration (includes DC theme)
 @forward '../sass/uswds-theme';
-
-// 2. Load USWDS source code (from loadPaths in vite.config.ts)
 @forward 'uswds';
-
-// 3. Load project's custom styles
 @forward '../sass/uswds-theme-custom-styles';

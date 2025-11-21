@@ -1,0 +1,18 @@
+/*
+========================================
+SEBT Portal - Custom USWDS Styles
+========================================
+Project-specific style overrides and custom components.
+Loaded after USWDS core to allow safe overrides.
+
+Structure:
+1. Custom utility classes
+2. Component overrides
+3. Project-specific components
+4. State-specific theming
+
+References:
+- USWDS Documentation: https://designsystem.digital.gov/
+- Theme Configuration: ../sass/_uswds-theme.scss
+- DC Theme Variables: ../sass/_uswds-theme-dc.scss (auto-generated from Figma tokens)
+*/

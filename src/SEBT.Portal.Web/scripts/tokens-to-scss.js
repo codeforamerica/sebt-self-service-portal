@@ -30,7 +30,6 @@ import { fileURLToPath } from 'url';
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const projectRoot = join(__dirname, '..');
 
-// Configuration
 const USWDS_PREFIXES = new Set([
   'color', 'font', 'link', 'focus', 'button',
   'global', 'style', 'text'
@@ -40,10 +39,13 @@ const CUSTOM_TYPEFACES = {
   urbanist: {
     displayName: 'Urbanist',
     capHeight: 364
+  },
+  'public-sans': {
+    displayName: 'Public Sans',
+    capHeight: 364
   }
 };
 
-// Get state file paths
 function getStatePaths(state) {
   const statesDir = join(projectRoot, 'design/states');
   const sassDir = join(projectRoot, 'sass');
@@ -55,13 +57,11 @@ function getStatePaths(state) {
   };
 }
 
-// Check if token should get -color- infix
 function shouldInjectColorPrefix(tokenName, tokenType) {
   if (!tokenName.startsWith('theme-') || tokenType !== 'color') {
     return false;
   }
 
-  // Check if any known prefix is already present
   for (const prefix of USWDS_PREFIXES) {
     if (tokenName.includes(`-${prefix}-`)) {
       return false;
@@ -71,13 +71,11 @@ function shouldInjectColorPrefix(tokenName, tokenType) {
   return true;
 }
 
-// Normalize font value (lowercase for custom typefaces)
 function normalizeFontValue(value, varName) {
   if (!varName.includes('font-type') && !varName.includes('font-role')) {
     return value;
   }
 
-  // Auto-lowercase font names that are in CUSTOM_TYPEFACES
   for (const typeface of Object.keys(CUSTOM_TYPEFACES)) {
     const capitalized = `'${typeface.charAt(0).toUpperCase() + typeface.slice(1)}'`;
     if (value === capitalized) {
@@ -88,7 +86,6 @@ function normalizeFontValue(value, varName) {
   return value;
 }
 
-// Generate typeface tokens SCSS
 function generateTypefaceTokens() {
   if (Object.keys(CUSTOM_TYPEFACES).length === 0) {
     return '';
@@ -103,23 +100,12 @@ function generateTypefaceTokens() {
   return `\n// Custom typeface tokens for fonts not included in USWDS by default\n$theme-typeface-tokens: (\n${tokens}\n);\n`;
 }
 
-/**
- * Convert a token name to SCSS variable format
- * Example: "theme-primary-vivid" → "$theme-color-primary-vivid"
- */
 function toScssVariableName(name) {
   return name.startsWith('$') ? name : `$${name}`;
 }
 
-/**
- * Convert a token value to SCSS format
- * - Token references like {mint-cool-60v} → 'mint-cool-60v' (for USWDS)
- * - Strings → quoted
- * - Booleans/numbers → as-is
- */
 function toScssValue(value) {
   if (typeof value === 'string') {
-    // Handle token references like {mint-cool-60v}
     if (value.startsWith('{') && value.endsWith('}')) {
       const tokenName = value.slice(1, -1);
       return `'${tokenName}'`;
@@ -130,18 +116,13 @@ function toScssValue(value) {
   return value;
 }
 
-/**
- * Process theme object recursively and collect SCSS variables
- */
 function processThemeObject(obj, prefix = '') {
   const variables = [];
 
   for (const [key, value] of Object.entries(obj)) {
     if (value && typeof value === 'object' && '$value' in value) {
-      // This is a token with a value
       let tokenName = prefix ? `${prefix}-${key}` : key;
 
-      // USWDS expects color tokens to have "-color-" infix after "theme"
       if (shouldInjectColorPrefix(tokenName, value.$type)) {
         tokenName = tokenName.replace('theme-', 'theme-color-');
       }
@@ -155,7 +136,6 @@ function processThemeObject(obj, prefix = '') {
         description: value.$description || ''
       });
     } else if (value && typeof value === 'object' && !('$value' in value)) {
-      // This is a nested object - recurse
       const nestedPrefix = prefix ? `${prefix}-${key}` : key;
       variables.push(...processThemeObject(value, nestedPrefix));
     }
@@ -164,20 +144,17 @@ function processThemeObject(obj, prefix = '') {
   return variables;
 }
 
-// Check if transformation is needed
 function needsRegeneration(inputPath, outputPath) {
   if (!existsSync(outputPath)) {
-    return true; // Output doesn't exist
+    return true;
   }
 
   const inputStats = statSync(inputPath);
   const outputStats = statSync(outputPath);
 
-  // Regenerate if input is newer than output
   return inputStats.mtimeMs > outputStats.mtimeMs;
 }
 
-// Format a single SCSS variable
 function formatScssVariable({ name, value, description }) {
   value = normalizeFontValue(value, name);
   const comment = description
@@ -186,7 +163,6 @@ function formatScssVariable({ name, value, description }) {
   return `${name}: ${value};${comment}`;
 }
 
-// Process a single state
 function processState(state) {
   const paths = getStatePaths(state);
 
@@ -226,7 +202,43 @@ ${generateTypefaceTokens()}
   writeFileSync(paths.output, scssContent, 'utf8');
 
   console.log(`✅ Generated ${variables.length} variables for ${state.toUpperCase()}`);
-  console.log(`   ${paths.output}\n`);
+  console.log(`   ${paths.output}`);
+
+  const entryPath = join(paths.sassDir, '_uswds-theme-entry.scss');
+  const entryContent = `/*
+----------------------------------------
+USWDS Theme Entry Point (Auto-Generated)
+----------------------------------------
+This file is auto-generated during build to load the correct state theme.
+DO NOT EDIT DIRECTLY - Regenerated from design tokens on every build.
+
+Current state: ${state.toUpperCase()}
+Source: design/states/${state}.json
+*/
+
+// Load ${state.toUpperCase()} theme variables
+@use "uswds-theme-${state}";
+
+// Load USWDS core with theme suppression
+// Path is relative to loadPaths in vite.config.ts
+@use "uswds-core" with (
+  // Suppress release notes
+  $theme-show-notifications: false
+);
+`;
+
+  if (existsSync(entryPath)) {
+    const currentEntry = readFileSync(entryPath, 'utf8');
+    if (currentEntry.includes(`Current state: ${state.toUpperCase()}`)) {
+      console.log(`⚡ Entry file unchanged for ${state.toUpperCase()}`);
+      console.log(`   ${entryPath}\n`);
+      return { state, cached: false, success: true, count: variables.length };
+    }
+  }
+
+  writeFileSync(entryPath, entryContent, 'utf8');
+  console.log(`✅ Generated theme entry for ${state.toUpperCase()}`);
+  console.log(`   ${entryPath}\n`);
 
   return { state, cached: false, success: true, count: variables.length };
 }

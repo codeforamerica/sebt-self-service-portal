@@ -2,16 +2,15 @@
 ----------------------------------------
 USWDS Theme Configuration
 ----------------------------------------
-This file loads USWDS with custom theme settings.
-USWDS theme variables are loaded from _uswds-theme-dc.scss
+This file loads USWDS with state-specific theme settings.
+State theme is loaded via auto-generated _uswds-theme-entry.scss
+which is regenerated during build based on STATE environment variable.
+
+Build commands:
+  pnpm build        # Defaults to DC
+  STATE=dc pnpm build
+  STATE=co pnpm build
 */
 
-// First, load DC theme overrides (from Figma tokens)
-@use "uswds-theme-dc";
-
-// Then load USWDS core with theme suppression
-// Path is relative to loadPaths in vite.config.ts
-@use "uswds-core" with (
-  // Suppress release notes
-  $theme-show-notifications: false
-);
+// Forward the auto-generated theme entry (loads state-specific theme + USWDS core)
+@forward "uswds-theme-entry";

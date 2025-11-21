@@ -5,11 +5,12 @@
  * It initializes the application and imports USWDS styles.
  */
 
-// Import USWDS styles (compiled by Vite)
 import './styles.scss';
 
-// Application initialization
-console.log('🎨 SEBT Portal initialized with USWDS')
+// Mark CSS as loaded to prevent FOUC
+document.body.classList.add('css-loaded');
 
-// Add any custom application logic here
-// USWDS components will auto-initialize from the script tag in index.html
+// Development-only logging
+if (import.meta.env.DEV) {
+  console.log('🎨 SEBT Portal initialized with USWDS');
+}
