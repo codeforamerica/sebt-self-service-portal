@@ -4,21 +4,20 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
-    "tokens": "node scripts/tokens-to-scss.js",
-    "tokens:dc": "node scripts/tokens-to-scss.js dc",
-    "tokens:co": "node scripts/tokens-to-scss.js co",
-    "prebuild": "node scripts/tokens-to-scss.js",
+    "predev": "node scripts/tokens-to-scss.js && node scripts/inject-fonts.js",
     "dev": "vite",
+    "prebuild": "node scripts/validate-tokens.js && node scripts/tokens-to-scss.js && node scripts/inject-fonts.js && node scripts/generate-token-types.js",
     "build": "tsc && vite build",
-    "build:dc": "STATE=dc pnpm build",
-    "build:co": "STATE=co pnpm build",
     "preview": "vite preview"
   },
   "dependencies": {
     "@uswds/uswds": "^3.8.0"
   },
   "devDependencies": {
+    "@fullhuman/postcss-purgecss": "^7.0.2",
+    "@types/node": "^24.10.1",
     "lightningcss": "^1.30.2",
+    "purgecss": "^7.0.2",
     "sass-embedded": "^1.93.3",
     "typescript": "~5.9.3",
     "vite": "^7.2.2",
