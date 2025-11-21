@@ -31,7 +31,8 @@ public/uswds.css
 .env.local
 
 # USWDS generated files (auto-generated during build from design/states/*.json)
-sass/_uswds-theme-*.scss
-public/fonts/
-public/img/
-public/js/
+# Only ignore state-specific auto-generated theme files (dc, co, etc.)
+# Manual files like _uswds-theme.scss and _uswds-theme-custom-styles.scss should be committed
+sass/_uswds-theme-dc.scss
+sass/_uswds-theme-co.scss
+sass/_uswds-theme-entry.scss
