@@ -3,16 +3,19 @@ using SEBT.Portal.Core.Services;
 using SEBT.Portal.Kernel;
 using SEBT.Portal.Kernel.Results;
 using SEBT.Portal.UseCases.Auth;
-using Moq;
+using NSubstitute;
 using SEBT.Portal.Core.Repositories;
 using Sebt.Portal.Core.Models.Auth;
+using NSubstitute.ReceivedExtensions;
+
+namespace SEBT.Portal.UseCases.Tests.Unit;
 
 public class RequestOtpCommandHandlerTests
 {
 
-    private readonly Mock<IOtpGenerator> otpGenerator = new();
-    private readonly Mock<IEmailSender> emailSender = new();
-    private readonly Mock<IOtpRepository> otpRepository = new();
+    private readonly IOtpGenerator otpGenerator = Substitute.For<IOtpGenerator>();
+    private readonly IEmailSender emailSender = Substitute.For<IEmailSender>();
+    private readonly IOtpRepository otpRepository = Substitute.For<IOtpRepository>();
     private readonly NullLogger<RequestOtpCommandHandler> logger = NullLogger<RequestOtpCommandHandler>.Instance;
     private readonly IValidator<RequestOtpCommand> validator = new DataAnnotationsValidator<RequestOtpCommand>(null!);
     private readonly RequestOtpCommandHandler handler;
@@ -21,9 +24,9 @@ public class RequestOtpCommandHandlerTests
         // Arrange
         handler = new RequestOtpCommandHandler(
             validator,
-            otpGenerator.Object,
-            emailSender.Object,
-            otpRepository.Object,
+            otpGenerator,
+            emailSender,
+            otpRepository,
             logger);
     }
     /// <summary>
@@ -55,7 +58,7 @@ public class RequestOtpCommandHandlerTests
         var result = await handler.Handle(command, CancellationToken.None);
 
         // Assert
-        otpGenerator.Verify(g => g.GenerateOtp(), Times.Once);
+        otpGenerator.Received(1).GenerateOtp();
     }
 
     /// <summary>
@@ -72,8 +75,8 @@ public class RequestOtpCommandHandlerTests
         var result = await handler.Handle(command, CancellationToken.None);
 
         // Assert
-        emailSender
-            .Verify(s => s.SendEmailAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>()), Times.Once);
+        await emailSender
+            .Received(1).SendEmailAsync(command.Email, Arg.Any<string>(), Arg.Any<string>());
     }
 
     /// <summary>
@@ -90,8 +93,8 @@ public class RequestOtpCommandHandlerTests
         var result = await handler.Handle(command, CancellationToken.None);
 
         // Assert
-        otpRepository
-            .Verify(s => s.SaveOtpCodeAsync(It.IsAny<OtpCode>()), Times.Once);
+        await otpRepository
+            .Received(1).SaveOtpCodeAsync(Arg.Is<OtpCode>(otp => otp.Email == command.Email));
 
     }
 
