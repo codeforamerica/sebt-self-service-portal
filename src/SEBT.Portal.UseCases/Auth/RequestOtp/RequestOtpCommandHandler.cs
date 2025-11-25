@@ -29,7 +29,7 @@ namespace SEBT.Portal.UseCases.Auth
                 var otp = new OtpCode(otpGenerator.GenerateOtp(), command.Email);
                 await otpRepository.SaveOtpCodeAsync(otp);
             }
-            catch (System.Exception e)
+            catch (Exception e)
             {
                 logger.LogError(e, "An error occurred while attemting to persist the OTP request for email {Email}", command.Email);
                 return Result.DependencyFailed(DependencyFailedReason.Timeout,
@@ -40,7 +40,7 @@ namespace SEBT.Portal.UseCases.Auth
             {
                 await emailService.SendEmailAsync(command.Email, "", "");
             }
-            catch (System.Exception e)
+            catch (Exception e)
             {
                 logger.LogError(e, "An error occurred while sending the OTP email for email {Email}", command.Email);
                 return Result.DependencyFailed(DependencyFailedReason.Timeout,
