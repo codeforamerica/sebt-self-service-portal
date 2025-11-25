@@ -2,7 +2,7 @@ using System;
 
 namespace SEBT.Portal.Core.Services
 {
-    public interface IOtpGenerator
+    public interface IOtpGeneratorService
     {
         string GenerateOtp();
     }

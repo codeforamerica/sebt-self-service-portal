@@ -22,7 +22,7 @@ namespace SEBT.Portal.UseCases.Auth
     public class RequestOtpCommandHandler(
         IValidator<RequestOtpCommand> validator,
         IOtpGeneratorService otpGenerator,
-        IOtpSenderService emailService,
+        IEmailSender emailService,
         IOtpRepository otpRepository,
         ILogger<RequestOtpCommandHandler> logger)
         : ICommandHandler<RequestOtpCommand>
@@ -55,7 +55,19 @@ namespace SEBT.Portal.UseCases.Auth
                     $"An error occurred while processing the OTP request");
             }
 
-            return await emailService.SendOtpAsync(command.Email, otp.Code);
+            try
+            {
+                var subject = "Your One-Time Password (OTP)";
+                var body = $"<p>Your One-Time Password (OTP) is:</p><h2>{otp.Code}</h2><p>This OTP is valid for 10 minutes.</p>";
+                await emailService.SendEmailAsync(command.Email, subject, body);
+                return Result.Success();
+            }
+            catch (Exception e)
+            {
+                logger.LogError(e, "Failed to send OTP email to {Email}", command.Email);
+                return Result.DependencyFailed(DependencyFailedReason.ConnectionFailed,
+                    $"Failed to send OTP email");
+            }
         }
     }
 }
