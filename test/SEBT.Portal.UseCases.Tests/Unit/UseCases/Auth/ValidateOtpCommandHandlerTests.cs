@@ -1,6 +1,5 @@
 using Microsoft.Extensions.Logging.Abstractions;
 using NSubstitute;
-using NSubstitute.ExceptionExtensions;
 using NSubstitute.ReceivedExtensions;
 using Sebt.Portal.Core.Models.Auth;
 using SEBT.Portal.Core.Repositories;
@@ -15,19 +14,16 @@ public class ValidateOtpCommandHandlerTests
     private readonly IOtpRepository otpRepository = Substitute.For<IOtpRepository>();
     private readonly NullLogger<ValidateOtpCommandHandler> logger = NullLogger<ValidateOtpCommandHandler>.Instance;
     private readonly IValidator<ValidateOtpCommand> validator = new DataAnnotationsValidator<ValidateOtpCommand>(null!);
-    private readonly ValidateOtpCommandHandler handler;
-    public ValidateOtpCommandHandlerTests()
-    {
-        handler = new ValidateOtpCommandHandler(
-            otpRepository,
-            validator,
-            logger);
-    }
-
+    
     [Fact]
     public async Task Handle_ShouldReturnSuccessResult_WhenUnexpiredOtpAndEmailAreValid()
     {
         // Arrange
+        var handler = new ValidateOtpCommandHandler(
+            otpRepository,
+            validator,
+            logger);
+            
         var command = new ValidateOtpCommand
         {
             Email = "jim@example.com",
@@ -47,6 +43,10 @@ public class ValidateOtpCommandHandlerTests
     public async Task Handle_ShouldReturnValidationFailure_WhenOtpIsExpired()
     {
         // Arrange
+        var handler = new ValidateOtpCommandHandler(
+            otpRepository,
+            validator,
+            logger);
         var command = new ValidateOtpCommand
         {
             Email = "jim@example.com",
@@ -72,6 +72,10 @@ public class ValidateOtpCommandHandlerTests
     public async Task Handle_ValidateOtpValidity_WhenEmailIsFoundInRepository()
     {
         // Arrange
+        var handler = new ValidateOtpCommandHandler(
+            otpRepository,
+            validator,
+            logger);
         var command = new ValidateOtpCommand
         {
             Email = "jim@example.com",
@@ -91,6 +95,10 @@ public class ValidateOtpCommandHandlerTests
     public async Task Handle_ShouldRetrieveCachedOtpObjectFromRepoistory_WhenEmailIsFound()
     {
         // Arrange
+        var handler = new ValidateOtpCommandHandler(
+            otpRepository,
+            validator,
+            logger);
         var command = new ValidateOtpCommand
         {
             Email = "jim@example.com",
@@ -107,6 +115,10 @@ public class ValidateOtpCommandHandlerTests
     public async Task Handle_ShouldReturnValidattionFailure_WhenOtpDoesNotMatchEmail()
     {
         // Arrange
+        var handler = new ValidateOtpCommandHandler(
+            otpRepository,
+            validator,
+            logger);
         var command = new ValidateOtpCommand
         {
             Email = "jim@example.com",
@@ -128,6 +140,10 @@ public class ValidateOtpCommandHandlerTests
     public async Task Handle_ShouldReturnValidattionFailure_WhenOtpIsNotSixDigits()
     {
         // Arrange
+        var handler = new ValidateOtpCommandHandler(
+            otpRepository,
+            validator,
+            logger);
         var command = new ValidateOtpCommand
         {
             Email = "jim@example.com",
@@ -148,6 +164,10 @@ public class ValidateOtpCommandHandlerTests
     public async Task Handle_ShouldReturnValidattionFailure_WhenEmailFormatIsIncorrect()
     {
         // Arrange
+        var handler = new ValidateOtpCommandHandler(
+            otpRepository,
+            validator,
+            logger);
         var command = new ValidateOtpCommand
         {
             Email = "jim",
@@ -169,6 +189,10 @@ public class ValidateOtpCommandHandlerTests
     public async Task Handle_ShouldReturnValidattionFailure_WhenOtpDoesNotExist()
     {
         // Arrange
+        var handler = new ValidateOtpCommandHandler(
+            otpRepository,
+            validator,
+            logger);
         var command = new ValidateOtpCommand
         {
             Email = "jim@example.com",
