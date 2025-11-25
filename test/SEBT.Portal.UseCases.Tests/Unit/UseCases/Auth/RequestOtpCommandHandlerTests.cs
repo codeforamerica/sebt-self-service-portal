@@ -13,7 +13,7 @@ namespace SEBT.Portal.UseCases.Tests.Unit;
 public class RequestOtpCommandHandlerTests
 {
 
-    private readonly IOtpGenerator otpGenerator = Substitute.For<IOtpGenerator>();
+    private readonly IOtpGeneratorService otpGenerator = Substitute.For<IOtpGeneratorService>();
     private readonly IEmailSender emailSender = Substitute.For<IEmailSender>();
     private readonly IOtpRepository otpRepository = Substitute.For<IOtpRepository>();
     private readonly NullLogger<RequestOtpCommandHandler> logger = NullLogger<RequestOtpCommandHandler>.Instance;
