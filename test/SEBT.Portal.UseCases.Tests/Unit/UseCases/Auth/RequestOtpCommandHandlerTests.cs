@@ -14,21 +14,25 @@ public class RequestOtpCommandHandlerTests
     private readonly Mock<IEmailSender> emailSender = new();
     private readonly Mock<IOtpRepository> otpRepository = new();
     private readonly NullLogger<RequestOtpCommandHandler> logger = NullLogger<RequestOtpCommandHandler>.Instance;
-
+    private readonly IValidator<RequestOtpCommand> validator = new DataAnnotationsValidator<RequestOtpCommand>(null!);
+    private readonly RequestOtpCommandHandler handler;
+    public RequestOtpCommandHandlerTests()
+    {
+        // Arrange
+        handler = new RequestOtpCommandHandler(
+            validator,
+            otpGenerator.Object,
+            emailSender.Object,
+            otpRepository.Object,
+            logger);
+    }
     /// <summary>
     /// Tests that Handle returns a Success Result when a valid email is provided.
     /// </summary>
     [Fact]
     public async Task Handle_ShouldReturnSuccessResult_WhenEmailIsValid()
     {
-
         // Arrange
-        var handler = new RequestOtpCommandHandler(
-           new DataAnnotationsValidator<RequestOtpCommand>(null!),
-           otpGenerator.Object,
-           emailSender.Object,
-           otpRepository.Object,
-           logger);
         var command = new RequestOtpCommand { Email = "user@example.com" };
 
         // Act
@@ -45,12 +49,6 @@ public class RequestOtpCommandHandlerTests
     public async Task Handle_ShouldGenerateOtp_WhenEmailIsValid()
     {
         // Arrange
-        var handler = new RequestOtpCommandHandler(
-           new DataAnnotationsValidator<RequestOtpCommand>(null!),
-           otpGenerator.Object,
-           emailSender.Object,
-           otpRepository.Object,
-           logger);
         var command = new RequestOtpCommand { Email = "user@example.com" };
 
         // Act
@@ -68,12 +66,6 @@ public class RequestOtpCommandHandlerTests
     {
 
         // Arrange
-        var handler = new RequestOtpCommandHandler(
-           new DataAnnotationsValidator<RequestOtpCommand>(null!),
-           otpGenerator.Object,
-           emailSender.Object,
-           otpRepository.Object,
-           logger);
         var command = new RequestOtpCommand { Email = "user@example.com" };
 
         // Act
@@ -92,12 +84,6 @@ public class RequestOtpCommandHandlerTests
     {
 
         // Arrange
-        var handler = new RequestOtpCommandHandler(
-           new DataAnnotationsValidator<RequestOtpCommand>(null!),
-           otpGenerator.Object,
-           emailSender.Object,
-           otpRepository.Object,
-           logger);
         var command = new RequestOtpCommand { Email = "user@example.com" };
 
         // Act
@@ -116,12 +102,6 @@ public class RequestOtpCommandHandlerTests
     public async Task Handle_ShouldReturnFailure_WhenEmailIsInvalid()
     {
         // Arrange
-        var handler = new RequestOtpCommandHandler(
-            new DataAnnotationsValidator<RequestOtpCommand>(null!),
-            otpGenerator.Object,
-            emailSender.Object,
-            otpRepository.Object,
-            logger);
         var command = new RequestOtpCommand { Email = "user@" };
 
         // Act
