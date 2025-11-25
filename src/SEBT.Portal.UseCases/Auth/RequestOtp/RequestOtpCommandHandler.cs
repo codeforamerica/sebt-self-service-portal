@@ -38,7 +38,7 @@ namespace SEBT.Portal.UseCases.Auth
 
             try
             {
-                await emailService.SendEmailAsync("", "", "");
+                await emailService.SendEmailAsync(command.Email, "", "");
             }
             catch (System.Exception e)
             {
