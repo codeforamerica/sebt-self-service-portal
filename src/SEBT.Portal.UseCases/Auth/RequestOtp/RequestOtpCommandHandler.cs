@@ -56,7 +56,6 @@ namespace SEBT.Portal.UseCases.Auth
             }
 
             return await emailService.SendOtpAsync(command.Email, otp.Code);
-
         }
     }
 }
