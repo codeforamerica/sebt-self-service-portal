@@ -14,7 +14,7 @@ public class RequestOtpCommandHandlerTests
 {
 
     private readonly IOtpGeneratorService otpGenerator = Substitute.For<IOtpGeneratorService>();
-    private readonly IOtpSenderService emailSender = Substitute.For<IOtpSenderService>();
+    private readonly IEmailSender emailSender = Substitute.For<IEmailSender>();
     private readonly IOtpRepository otpRepository = Substitute.For<IOtpRepository>();
     private readonly NullLogger<RequestOtpCommandHandler> logger = NullLogger<RequestOtpCommandHandler>.Instance;
     private readonly IValidator<RequestOtpCommand> validator = new DataAnnotationsValidator<RequestOtpCommand>(null!);
@@ -37,8 +37,8 @@ public class RequestOtpCommandHandlerTests
     {
         // Arrange
         var command = new RequestOtpCommand { Email = "user@example.com" };
-        emailSender.SendOtpAsync(command.Email, Arg.Any<string>())
-            .Returns(Result.Success()); 
+        emailSender.SendEmailAsync(command.Email, Arg.Any<string>(), Arg.Any<string>())
+            .Returns(Task.CompletedTask);
         // Act
         var result = await handler.Handle(command, CancellationToken.None);
 
@@ -54,7 +54,8 @@ public class RequestOtpCommandHandlerTests
     {
         // Arrange
         var command = new RequestOtpCommand { Email = "user@example.com" };
-
+        emailSender.SendEmailAsync(command.Email, Arg.Any<string>(), Arg.Any<string>())
+            .Returns(Task.CompletedTask);
         // Act
         var result = await handler.Handle(command, CancellationToken.None);
 
@@ -71,12 +72,14 @@ public class RequestOtpCommandHandlerTests
 
         // Arrange
         var command = new RequestOtpCommand { Email = "user@example.com" };
+        emailSender.SendEmailAsync(command.Email, Arg.Any<string>(), Arg.Any<string>())
+            .Returns(Task.CompletedTask);
         // Act
         var result = await handler.Handle(command, CancellationToken.None);
 
         // Assert
         await emailSender
-            .Received(1).SendOtpAsync(command.Email, Arg.Any<string>());
+            .Received(1).SendEmailAsync(command.Email, Arg.Any<string>(), Arg.Any<string>());
     }
 
     /// <summary>
@@ -88,7 +91,8 @@ public class RequestOtpCommandHandlerTests
 
         // Arrange
         var command = new RequestOtpCommand { Email = "user@example.com" };
-
+        emailSender.SendEmailAsync(command.Email, Arg.Any<string>(), Arg.Any<string>())
+            .Returns(Task.CompletedTask);
         // Act
         var result = await handler.Handle(command, CancellationToken.None);
 
