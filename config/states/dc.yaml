@@ -1,0 +1,38 @@
+# District of Columbia (DC) State Configuration
+
+state: dc
+version: "1.0.0"  # State-specific version for tracking deployments
+
+infrastructure:
+  use_docker: true
+  docker:
+    registry: "ghcr.io/codeforamerica"
+    network_mode: "bridge"
+    build_args: {}
+  native:
+    install_path: "/opt/sebt-dc"
+    cache_dir: "/var/cache/sebt-dc"
+
+versions:
+  node: "24.x"
+  pnpm: "10.x"
+  dotnet: "10.0.x"
+
+build:
+  configuration: "Release"
+  frontend_flags: ""
+  backend_flags: ""
+  skip_tests: false
+
+environment:
+  API_BASE_URL: "https://dc.sebt.gov/api"
+  features:
+    multi_language: true
+    advanced_search: true
+    experimental_ui: false
+
+deployment:
+  enabled: false
+  target: "production"
+  notify_on_success: true
+  notify_on_failure: true

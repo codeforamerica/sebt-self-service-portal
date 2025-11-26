@@ -1,0 +1,55 @@
+# State Configuration Template
+# Copy this file to create a new state configuration
+# Example: cp _template.yaml dc.yaml
+
+# State identifier (must match filename without .yaml)
+state: STATE_CODE
+version: "1.0.0"  # State-specific version for tracking deployments
+
+# Infrastructure configuration
+infrastructure:
+  # Use Docker for builds (true) or native tools (false)
+  use_docker: true
+
+  # Docker-specific settings (only used if use_docker: true)
+  docker:
+    registry: "ghcr.io/codeforamerica"
+    network_mode: "bridge"
+    # Optional: Custom build args
+    build_args: {}
+
+  # Native-specific settings (only used if use_docker: false)
+  native:
+    install_path: "/opt/sebt"
+    cache_dir: "/var/cache/sebt"
+
+# Version requirements
+versions:
+  node: "24.x"          # Node.js version
+  pnpm: "10.x"          # pnpm version
+  dotnet: "10.0.x"      # .NET SDK version
+
+# Build configuration
+build:
+  configuration: "Release"              # Debug or Release
+  frontend_flags: ""                     # Additional flags for frontend build
+  backend_flags: ""                      # Additional flags for backend build
+  skip_tests: false                      # Set to true to skip tests
+
+# Environment variables
+environment:
+  # API configuration
+  API_BASE_URL: "https://STATE_CODE.sebt.gov/api"
+
+  # Feature flags
+  features:
+    multi_language: false
+    advanced_search: false
+    experimental_ui: false
+
+# Deployment configuration (optional)
+deployment:
+  enabled: false
+  target: "production"
+  notify_on_success: true
+  notify_on_failure: true
