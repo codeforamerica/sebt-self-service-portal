@@ -6,4 +6,8 @@
         <Nullable>enable</Nullable>
     </PropertyGroup>
 
+    <ItemGroup>
+      <ProjectReference Include="../SEBT.Portal.Kernel/SEBT.Portal.Kernel.csproj" />
+    </ItemGroup>
+
 </Project>
