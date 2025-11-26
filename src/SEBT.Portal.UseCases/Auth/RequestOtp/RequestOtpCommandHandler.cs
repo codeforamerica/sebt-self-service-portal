@@ -22,7 +22,7 @@ namespace SEBT.Portal.UseCases.Auth
     public class RequestOtpCommandHandler(
         IValidator<RequestOtpCommand> validator,
         IOtpGeneratorService otpGenerator,
-        IEmailSenderService emailService,
+        IOtpSenderService emailService,
         IOtpRepository otpRepository,
         ILogger<RequestOtpCommandHandler> logger)
         : ICommandHandler<RequestOtpCommand>
@@ -57,10 +57,7 @@ namespace SEBT.Portal.UseCases.Auth
 
             try
             {
-                var subject = "Your One-Time Password (OTP)";
-                var body = $"<p>Your One-Time Password (OTP) is:</p><h2>{otp.Code}</h2><p>This OTP is valid for 10 minutes.</p>";
-                await emailService.SendEmailAsync(command.Email, subject, body);
-                return Result.Success();
+                await emailService.SendOtpAsync(command.Email, otp.Code);
             }
             catch (Exception e)
             {
