@@ -1,0 +1,23 @@
+# ACT Configuration for SEBT Portal
+# Local GitHub Actions testing with nektos/act
+
+# Use medium-sized container for .NET builds (includes build tools)
+-P ubuntu-latest=catthehacker/ubuntu:act-latest
+
+# Use Docker host network mode for better connectivity
+--use-gitignore=true
+
+# Container architecture (use host architecture)
+--container-architecture linux/amd64
+
+# Enable verbose output for debugging
+--verbose
+
+# Bind workspace to maintain file permissions
+--bind
+
+# Use local .env file if present (for secrets)
+--env-file .env.act
+
+# Default event type (can be overridden with -e flag)
+--eventpath .github/workflows/events/push.json
