@@ -14,7 +14,7 @@ public class RequestOtpCommandHandlerTests
 {
 
     private readonly IOtpGeneratorService otpGenerator = Substitute.For<IOtpGeneratorService>();
-    private readonly IEmailSenderService emailSender = Substitute.For<IEmailSenderService>();
+    private readonly IOtpSenderService emailSender = Substitute.For<IOtpSenderService>();
     private readonly IOtpRepository otpRepository = Substitute.For<IOtpRepository>();
     private readonly NullLogger<RequestOtpCommandHandler> logger = NullLogger<RequestOtpCommandHandler>.Instance;
     private readonly IValidator<RequestOtpCommand> validator = new DataAnnotationsValidator<RequestOtpCommand>(null!);
@@ -75,7 +75,7 @@ public class RequestOtpCommandHandlerTests
 
         // Assert
         await emailSender
-            .Received(1).SendEmailAsync(command.Email, Arg.Any<string>(), Arg.Any<string>());
+            .Received(1).SendOtpAsync(command.Email, Arg.Any<string>());
     }
 
     /// <summary>
