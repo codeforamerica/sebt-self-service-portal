@@ -1,0 +1,16 @@
+/*
+----------------------------------------
+USWDS Theme Configuration
+----------------------------------------
+This file loads USWDS with state-specific theme settings.
+State theme is loaded via auto-generated _uswds-theme-entry.scss
+which is regenerated during build based on STATE environment variable.
+
+Build commands:
+  pnpm build        # Defaults to DC
+  STATE=dc pnpm build
+  STATE=co pnpm build
+*/
+
+// Forward the auto-generated theme entry (loads state-specific theme + USWDS core)
+@forward "uswds-theme-entry";

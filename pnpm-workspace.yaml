@@ -1,0 +1,10 @@
+# pnpm workspace configuration
+# Defines packages in this repository for pnpm --filter to work
+#
+# Future packages can be added here as the project grows:
+# - 'src/SEBT.Portal.Admin'        # Admin dashboard (future)
+# - 'src/SEBT.Portal.Shared'       # Shared UI components (future)
+# - 'packages/*'                    # Shared packages (future)
+
+packages:
+  - 'src/SEBT.Portal.Web'
