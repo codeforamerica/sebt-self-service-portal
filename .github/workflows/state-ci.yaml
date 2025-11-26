@@ -125,7 +125,7 @@ jobs:
             -v ${{ github.workspace }}:/workspace \
             -w /workspace \
             node:${{ steps.config.outputs.node_version }}-alpine \
-            sh -c "corepack enable && corepack prepare pnpm@${{ steps.config.outputs.pnpm_version }} --activate && ./scripts/ci/build-frontend.sh --production ${{ steps.config.outputs.frontend_flags }}"
+            sh -c "corepack enable && corepack prepare pnpm@${{ steps.config.outputs.pnpm_version }} --activate && sh scripts/ci/build-frontend.sh --production ${{ steps.config.outputs.frontend_flags }}"
 
       - name: Test Frontend (Docker)
         if: steps.config.outputs.use_docker == 'true' && steps.config.outputs.skip_tests != 'true'
@@ -134,7 +134,7 @@ jobs:
             -v ${{ github.workspace }}:/workspace \
             -w /workspace \
             node:${{ steps.config.outputs.node_version }}-alpine \
-            sh -c "corepack enable && corepack prepare pnpm@${{ steps.config.outputs.pnpm_version }} --activate && ./scripts/ci/test-frontend.sh --skip-install"
+            sh -c "corepack enable && corepack prepare pnpm@${{ steps.config.outputs.pnpm_version }} --activate && sh scripts/ci/test-frontend.sh --skip-install"
 
       # Native Build Path
       - name: Setup .NET (Native)
