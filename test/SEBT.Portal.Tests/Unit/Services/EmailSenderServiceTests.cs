@@ -17,7 +17,6 @@ public class EmailSenderServiceTests
     [Fact]
     public async Task SendOtpAsync_WithValidParams_ShouldSendEmailSuccessfully()
     {
-
         // Arrange
         _optionsMonitor.CurrentValue.Returns(new EmailOtpSenderServiceSettings
         {
