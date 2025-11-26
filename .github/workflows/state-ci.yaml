@@ -1,0 +1,183 @@
+# State-based CI Workflow
+# Automatically discovers and builds for all configured states
+# Each state can specify Docker or native builds via config files
+
+name: State CI
+
+on:
+  push:
+    branches: ['main', 'deploy/*']
+  pull_request:
+    branches: ['main']
+  workflow_dispatch:
+    inputs:
+      state:
+        description: 'Specific state to build (leave empty for all)'
+        required: false
+        type: string
+
+jobs:
+  discover-states:
+    name: Discover States
+    runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.set-matrix.outputs.matrix }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Discover state configurations
+        id: set-matrix
+        run: |
+          BRANCH="${{ github.ref_name }}"
+
+          # Priority 1: Manual workflow_dispatch with specific state
+          if [ -n "${{ github.event.inputs.state }}" ]; then
+            echo "Manual trigger for state: ${{ github.event.inputs.state }}"
+            echo "matrix={\"state\":[\"${{ github.event.inputs.state }}\"]}" >> $GITHUB_OUTPUT
+
+          # Priority 2: Branch name pattern (deploy/STATE or deploy/STATE-feature)
+          elif [[ "$BRANCH" =~ ^deploy/([a-z]{2})(-.*)?$ ]]; then
+            STATE="${BASH_REMATCH[1]}"
+            echo "Branch-based trigger for state: $STATE"
+            echo "matrix={\"state\":[\"$STATE\"]}" >> $GITHUB_OUTPUT
+
+          # Priority 3: Default (main branch, feature branches, PRs) = all states
+          else
+            echo "Building all states (branch: $BRANCH)"
+            STATES=$(find config/states -name "*.yaml" ! -name "_template.yaml" -exec basename {} .yaml \; | jq -R -s -c 'split("\n")[:-1]')
+            echo "matrix={\"state\":$STATES}" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Show discovered states
+        run: |
+          echo "Building for states: ${{ steps.set-matrix.outputs.matrix }}"
+
+  build-and-test:
+    name: ${{ matrix.state }} - Build & Test
+    needs: discover-states
+    runs-on: ubuntu-latest
+    strategy:
+      matrix: ${{ fromJson(needs.discover-states.outputs.matrix) }}
+      fail-fast: false  # Continue other states even if one fails
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install yq (YAML parser)
+        run: |
+          sudo wget -qO /usr/local/bin/yq https://github.com/mikefarah/yq/releases/latest/download/yq_linux_amd64
+          sudo chmod +x /usr/local/bin/yq
+
+      - name: Load state configuration
+        id: config
+        run: |
+          CONFIG_FILE="config/states/${{ matrix.state }}.yaml"
+
+          if [ ! -f "$CONFIG_FILE" ]; then
+            echo "Error: Configuration file not found: $CONFIG_FILE"
+            exit 1
+          fi
+
+          # Extract configuration values
+          echo "use_docker=$(yq eval '.infrastructure.use_docker' $CONFIG_FILE)" >> $GITHUB_OUTPUT
+          echo "node_version=$(yq eval '.versions.node' $CONFIG_FILE)" >> $GITHUB_OUTPUT
+          echo "pnpm_version=$(yq eval '.versions.pnpm' $CONFIG_FILE)" >> $GITHUB_OUTPUT
+          echo "dotnet_version=$(yq eval '.versions.dotnet' $CONFIG_FILE)" >> $GITHUB_OUTPUT
+          echo "build_config=$(yq eval '.build.configuration' $CONFIG_FILE)" >> $GITHUB_OUTPUT
+          echo "frontend_flags=$(yq eval '.build.frontend_flags' $CONFIG_FILE)" >> $GITHUB_OUTPUT
+          echo "backend_flags=$(yq eval '.build.backend_flags' $CONFIG_FILE)" >> $GITHUB_OUTPUT
+          echo "skip_tests=$(yq eval '.build.skip_tests' $CONFIG_FILE)" >> $GITHUB_OUTPUT
+
+      - name: Show configuration
+        run: |
+          echo "State: ${{ matrix.state }}"
+          echo "Use Docker: ${{ steps.config.outputs.use_docker }}"
+          echo "Node: ${{ steps.config.outputs.node_version }}"
+          echo "pnpm: ${{ steps.config.outputs.pnpm_version }}"
+          echo ".NET: ${{ steps.config.outputs.dotnet_version }}"
+          echo "Build Config: ${{ steps.config.outputs.build_config }}"
+
+      # Docker Build Path
+      - name: Build Backend (Docker)
+        if: steps.config.outputs.use_docker == 'true'
+        run: |
+          docker run --rm \
+            -v ${{ github.workspace }}:/workspace \
+            -w /workspace \
+            mcr.microsoft.com/dotnet/sdk:${{ steps.config.outputs.dotnet_version }} \
+            bash -c "./scripts/ci/build-backend.sh --configuration ${{ steps.config.outputs.build_config }} ${{ steps.config.outputs.backend_flags }}"
+
+      - name: Test Backend (Docker)
+        if: steps.config.outputs.use_docker == 'true' && steps.config.outputs.skip_tests != 'true'
+        run: |
+          docker run --rm \
+            -v ${{ github.workspace }}:/workspace \
+            -w /workspace \
+            mcr.microsoft.com/dotnet/sdk:${{ steps.config.outputs.dotnet_version }} \
+            bash -c "./scripts/ci/test-backend.sh --skip-build --configuration ${{ steps.config.outputs.build_config }}"
+
+      - name: Build Frontend (Docker)
+        if: steps.config.outputs.use_docker == 'true'
+        run: |
+          docker run --rm \
+            -v ${{ github.workspace }}:/workspace \
+            -w /workspace \
+            node:${{ steps.config.outputs.node_version }}-alpine \
+            sh -c "corepack enable && corepack prepare pnpm@${{ steps.config.outputs.pnpm_version }} --activate && sh scripts/ci/build-frontend.sh --production ${{ steps.config.outputs.frontend_flags }}"
+
+      - name: Test Frontend (Docker)
+        if: steps.config.outputs.use_docker == 'true' && steps.config.outputs.skip_tests != 'true'
+        run: |
+          docker run --rm \
+            -v ${{ github.workspace }}:/workspace \
+            -w /workspace \
+            node:${{ steps.config.outputs.node_version }}-alpine \
+            sh -c "corepack enable && corepack prepare pnpm@${{ steps.config.outputs.pnpm_version }} --activate && sh scripts/ci/test-frontend.sh --skip-install"
+
+      # Native Build Path
+      - name: Setup .NET (Native)
+        if: steps.config.outputs.use_docker != 'true'
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: ${{ steps.config.outputs.dotnet_version }}
+
+      - name: Setup pnpm (Native)
+        if: steps.config.outputs.use_docker != 'true'
+        uses: pnpm/action-setup@v4
+        with:
+          version: ${{ steps.config.outputs.pnpm_version }}
+
+      - name: Setup Node.js (Native)
+        if: steps.config.outputs.use_docker != 'true'
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ steps.config.outputs.node_version }}
+          cache: 'pnpm'
+
+      - name: Build Backend (Native)
+        if: steps.config.outputs.use_docker != 'true'
+        run: ./scripts/ci/build-backend.sh --configuration ${{ steps.config.outputs.build_config }} ${{ steps.config.outputs.backend_flags }}
+
+      - name: Test Backend (Native)
+        if: steps.config.outputs.use_docker != 'true' && steps.config.outputs.skip_tests != 'true'
+        run: ./scripts/ci/test-backend.sh --skip-build --configuration ${{ steps.config.outputs.build_config }}
+
+      - name: Build Frontend (Native)
+        if: steps.config.outputs.use_docker != 'true'
+        run: ./scripts/ci/build-frontend.sh --production ${{ steps.config.outputs.frontend_flags }}
+
+      - name: Test Frontend (Native)
+        if: steps.config.outputs.use_docker != 'true' && steps.config.outputs.skip_tests != 'true'
+        run: ./scripts/ci/test-frontend.sh --skip-install
+
+      # Upload artifacts
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.state }}-build-artifacts
+          path: |
+            src/SEBT.Portal.Web/dist
+            src/**/bin/${{ steps.config.outputs.build_config }}
+          retention-days: 7

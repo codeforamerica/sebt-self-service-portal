@@ -1,0 +1,18 @@
+{
+  "action": "opened",
+  "number": 1,
+  "pull_request": {
+    "head": {
+      "ref": "feature-branch"
+    },
+    "base": {
+      "ref": "main"
+    }
+  },
+  "repository": {
+    "name": "sebt-self-service-portal",
+    "owner": {
+      "login": "codeforamerica"
+    }
+  }
+}

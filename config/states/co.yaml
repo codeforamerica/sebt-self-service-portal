@@ -1,0 +1,38 @@
+# Colorado (CO) State Configuration
+
+state: co
+version: "1.0.0"  # State-specific version for tracking deployments
+
+infrastructure:
+  use_docker: true
+  docker:
+    registry: "ghcr.io/codeforamerica"
+    network_mode: "bridge"
+    build_args: {}
+  native:
+    install_path: "/opt/sebt-co"
+    cache_dir: "/var/cache/sebt-co"
+
+versions:
+  node: "24"
+  pnpm: "10"
+  dotnet: "10.0"
+
+build:
+  configuration: "Release"
+  frontend_flags: ""
+  backend_flags: "-p:BuildFrontend=false"  # Skip frontend build in Docker (frontend built separately)
+  skip_tests: false
+
+environment:
+  API_BASE_URL: "https://co.sebt.gov/api"
+  features:
+    multi_language: false
+    advanced_search: true
+    experimental_ui: false
+
+deployment:
+  enabled: false
+  target: "production"
+  notify_on_success: true
+  notify_on_failure: true
