@@ -10,7 +10,7 @@ namespace SEBT.Portal.UseCases.Auth
     public class RequestOtpCommandHandler(
         IValidator<RequestOtpCommand> validator,
         IOtpGeneratorService otpGenerator,
-        IEmailSenderService emailService,
+        IOtpSenderService emailService,
         IOtpRepository otpRepository,
         ILogger<RequestOtpCommandHandler> logger)
         : ICommandHandler<RequestOtpCommand>
@@ -24,9 +24,10 @@ namespace SEBT.Portal.UseCases.Auth
                 return Result.ValidationFailed(validationFailedResult.Errors);
             }
 
+            var otp = new OtpCode(otpGenerator.GenerateOtp(), command.Email);
+
             try
             {
-                var otp = new OtpCode(otpGenerator.GenerateOtp(), command.Email);
                 await otpRepository.SaveOtpCodeAsync(otp);
             }
             catch (Exception e)
@@ -38,7 +39,7 @@ namespace SEBT.Portal.UseCases.Auth
 
             try
             {
-                await emailService.SendEmailAsync(command.Email, "", "");
+                await emailService.SendOtpAsync(command.Email, otp.Code);
             }
             catch (Exception e)
             {
