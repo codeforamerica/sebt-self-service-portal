@@ -7,7 +7,7 @@ using SEBT.Portal.Kernel;
 using SEBT.Portal.Kernel.Results;
 using SEBT.Portal.UseCases.Auth;
 
-namespace SEBT.Portal.UseCases.Tests.Unit;
+namespace SEBT.Portal.Tests.Unit.UseCases.Auth;
 
 public class ValidateOtpCommandHandlerTests
 {
