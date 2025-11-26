@@ -1,6 +1,4 @@
-using SEBT.Portal.Core.Services;
-
-namespace SEBT.Portal.UseCases.Tests.Unit.Services;
+namespace SEBT.Portal.Tests.Unit.Services;
 
 public class OtpGeneratorServiceTests
 {

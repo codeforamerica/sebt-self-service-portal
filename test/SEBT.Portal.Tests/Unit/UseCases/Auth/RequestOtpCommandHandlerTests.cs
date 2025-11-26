@@ -8,13 +8,13 @@ using SEBT.Portal.Core.Repositories;
 using Sebt.Portal.Core.Models.Auth;
 using NSubstitute.ReceivedExtensions;
 
-namespace SEBT.Portal.UseCases.Tests.Unit;
+namespace SEBT.Portal.Tests.Unit.UseCases.Auth;
 
 public class RequestOtpCommandHandlerTests
 {
 
     private readonly IOtpGeneratorService otpGenerator = Substitute.For<IOtpGeneratorService>();
-    private readonly IEmailSender emailSender = Substitute.For<IEmailSender>();
+    private readonly IEmailSenderService emailSender = Substitute.For<IEmailSenderService>();
     private readonly IOtpRepository otpRepository = Substitute.For<IOtpRepository>();
     private readonly NullLogger<RequestOtpCommandHandler> logger = NullLogger<RequestOtpCommandHandler>.Instance;
     private readonly IValidator<RequestOtpCommand> validator = new DataAnnotationsValidator<RequestOtpCommand>(null!);
@@ -70,7 +70,6 @@ public class RequestOtpCommandHandlerTests
 
         // Arrange
         var command = new RequestOtpCommand { Email = "user@example.com" };
-
         // Act
         var result = await handler.Handle(command, CancellationToken.None);
 
