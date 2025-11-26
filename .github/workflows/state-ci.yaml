@@ -143,18 +143,18 @@ jobs:
         with:
           dotnet-version: ${{ steps.config.outputs.dotnet_version }}
 
+      - name: Setup pnpm (Native)
+        if: steps.config.outputs.use_docker != 'true'
+        uses: pnpm/action-setup@v4
+        with:
+          version: ${{ steps.config.outputs.pnpm_version }}
+
       - name: Setup Node.js (Native)
         if: steps.config.outputs.use_docker != 'true'
         uses: actions/setup-node@v4
         with:
           node-version: ${{ steps.config.outputs.node_version }}
           cache: 'pnpm'
-
-      - name: Setup pnpm (Native)
-        if: steps.config.outputs.use_docker != 'true'
-        uses: pnpm/action-setup@v4
-        with:
-          version: ${{ steps.config.outputs.pnpm_version }}
 
       - name: Build Backend (Native)
         if: steps.config.outputs.use_docker != 'true'
