@@ -10,7 +10,7 @@ namespace SEBT.Portal.UseCases.Auth
     public class RequestOtpCommandHandler(
         IValidator<RequestOtpCommand> validator,
         IOtpGeneratorService otpGenerator,
-        IEmailSender emailService,
+        IEmailSenderService emailService,
         IOtpRepository otpRepository,
         ILogger<RequestOtpCommandHandler> logger)
         : ICommandHandler<RequestOtpCommand>
