@@ -26,6 +26,7 @@ PROJECT_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
 # Parse arguments
 SKIP_RESTORE=false
 CONFIGURATION="Debug"
+EXTRA_BUILD_ARGS=""
 
 # Auto-detect CI environment
 if [ "${CI:-false}" = "true" ] || [ -n "${GITHUB_ACTIONS:-}" ]; then
@@ -43,8 +44,9 @@ while [[ $# -gt 0 ]]; do
       shift 2
       ;;
     *)
-      echo "Unknown option: $1"
-      exit 1
+      # Pass through any unknown arguments to dotnet build
+      EXTRA_BUILD_ARGS="$EXTRA_BUILD_ARGS $1"
+      shift
       ;;
   esac
 done
@@ -129,7 +131,8 @@ build_backend() {
   dotnet build \
     --configuration "$CONFIGURATION" \
     --no-restore \
-    --verbosity minimal
+    --verbosity minimal \
+    $EXTRA_BUILD_ARGS
 
   log_success "Backend build complete"
 }
