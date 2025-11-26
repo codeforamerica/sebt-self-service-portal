@@ -21,7 +21,7 @@ versions:
 build:
   configuration: "Release"
   frontend_flags: ""
-  backend_flags: ""
+  backend_flags: "-p:BuildFrontend=false"  # Skip frontend build in Docker (frontend built separately)
   skip_tests: false
 
 environment:
