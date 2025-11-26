@@ -24,10 +24,11 @@ infrastructure:
     cache_dir: "/var/cache/sebt"
 
 # Version requirements
+# Use Docker-compatible format (no .x suffix) - works for both Docker and native builds
 versions:
-  node: "24.x"          # Node.js version
-  pnpm: "10.x"          # pnpm version
-  dotnet: "10.0.x"      # .NET SDK version
+  node: "24"            # Node.js (Docker: node:24, Native: 24.x)
+  pnpm: "10"            # pnpm (Docker: pnpm@10, Native: 10.x)
+  dotnet: "10.0"        # .NET SDK (Docker: sdk:10.0, Native: 10.0.x)
 
 # Build configuration
 build:

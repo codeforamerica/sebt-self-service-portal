@@ -14,9 +14,9 @@ infrastructure:
     cache_dir: "/var/cache/sebt-dc"
 
 versions:
-  node: "24.x"
-  pnpm: "10.x"
-  dotnet: "10.0.x"
+  node: "24"
+  pnpm: "10"
+  dotnet: "10.0"
 
 build:
   configuration: "Release"
