@@ -20,8 +20,8 @@ public static class Dependencies
     public static IServiceCollection AddPortalInfrastructureRepositories(this IServiceCollection services)
     {
         services.AddTransient<IOtpRepository, InMemoryOtpRepository>();
-        services.AddDistributedMemoryCache();
-        
+        services.AddMemoryCache();
+
         return services;
     }
 
