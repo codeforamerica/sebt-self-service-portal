@@ -11,7 +11,7 @@ public class SmtpClientService(IOptionsMonitor<SmtpClientSettings> optionsMonito
     {
         // Configure the SMTP client
         SmtpClient smtpClient = new SmtpClient(smtpClientSettings.SmtpServer, smtpClientSettings.SmtpPort);
-        smtpClient.EnableSsl = true;
+        smtpClient.EnableSsl = smtpClientSettings.EnableSsl;
 
         // Send the email        
         try
@@ -21,6 +21,7 @@ public class SmtpClientService(IOptionsMonitor<SmtpClientSettings> optionsMonito
         catch (Exception ex)
         {
             logger.LogError(ex, $"Error sending email to: {message.To}");
+            throw;
         }
     }
 }
