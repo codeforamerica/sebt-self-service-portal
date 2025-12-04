@@ -17,7 +17,8 @@ public class SmtpClientServiceTests
         _optionsMonitor.CurrentValue.Returns(new SmtpClientSettings
         {
             SmtpServer = "smtp.example.com",
-            SmtpPort = 587
+            SmtpPort = 587,
+            EnableSsl = true
         });
 
         var smtpClientService = new SmtpClientService(_optionsMonitor, _logger);
