@@ -33,7 +33,7 @@ namespace SEBT.Portal.UseCases.Auth
                     new ValidationError("Otp", "The provided OTP is invalid or has expired.")
                 });
             }
-
+            await otpRepository.DeleteOtpCodeByEmailAsync(command.Email);
             logger.LogInformation("OTP validated successfully for email {Email}", command.Email);
             return new SuccessResult();
         }
