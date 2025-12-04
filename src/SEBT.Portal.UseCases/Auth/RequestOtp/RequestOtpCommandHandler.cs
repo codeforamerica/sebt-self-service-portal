@@ -55,16 +55,7 @@ namespace SEBT.Portal.UseCases.Auth
                     $"An error occurred while processing the OTP request");
             }
 
-            try
-            {
-                await emailService.SendOtpAsync(command.Email, otp.Code);
-            }
-            catch (Exception e)
-            {
-                logger.LogError(e, "Failed to send OTP email to {Email}", command.Email);
-                return Result.DependencyFailed(DependencyFailedReason.ConnectionFailed,
-                    $"Failed to send OTP email");
-            }
+            return await emailService.SendOtpAsync(command.Email, otp.Code);
         }
     }
 }
