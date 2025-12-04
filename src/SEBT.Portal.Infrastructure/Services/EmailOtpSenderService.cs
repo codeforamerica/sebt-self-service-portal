@@ -43,7 +43,6 @@ namespace SEBT.Portal.Infrastructure.Services
                 return new PreconditionFailedResult(PreconditionFailedReason.Conflict, $"Failed to send OTP to: {to}");
             }
 
-
             return new SuccessResult();
         }
     }
