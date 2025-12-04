@@ -28,9 +28,11 @@ public static class Dependencies
     public static IServiceCollection AddPortalInfrastructureAppSettings(this IServiceCollection services)
     {
 
-        services.AddOptionsWithValidateOnStart<EmailOtpSenderServiceSettings>(EmailOtpSenderServiceSettings.SectionName);
-        services.AddOptionsWithValidateOnStart<SmtpClientSettings>(SmtpClientSettings.SectionName);
+        services.AddOptionsWithValidateOnStart<EmailOtpSenderServiceSettings>()
+            .BindConfiguration(EmailOtpSenderServiceSettings.SectionName);
+        services.AddOptionsWithValidateOnStart<SmtpClientSettings>()
+            .BindConfiguration(SmtpClientSettings.SectionName);
 
         return services;
     }
-}
+} 

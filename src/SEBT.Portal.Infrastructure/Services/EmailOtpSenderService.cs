@@ -29,9 +29,9 @@ public class EmailOtpSenderService(
             await smtpClientService.SendEmailAsync(message);
             logger.LogInformation($"OTP email sent to {to}.");
         }
-        catch (Exception ex)
+        catch
         {
-            logger.LogError(ex, $"Failed to send OTP to: {to}");
+            return new PreconditionFailedResult(PreconditionFailedReason.Conflict, $"Failed to send OTP to: {to}");
         }
 
         return new SuccessResult();
