@@ -18,7 +18,9 @@ builder.Services.AddSwaggerGen();
 
 // Adds use cases (i.e., query and command handlers) for portal business logic
 builder.Services.AddUseCases();
-builder.Services.AddPortalInfrastructureServices();
+builder.Services.AddPortalInfrastructureServices(); 
+builder.Services.AddPortalInfrastructureRepositories();
+builder.Services.AddPortalInfrastructureAppSettings();
 
 var app = builder.Build();
 
