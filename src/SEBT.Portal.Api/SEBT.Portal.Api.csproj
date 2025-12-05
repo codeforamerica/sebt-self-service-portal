@@ -1,28 +1,82 @@
 <Project Sdk="Microsoft.NET.Sdk.Web">
 
-    <PropertyGroup>
-        <TargetFramework>net8.0</TargetFramework>
-        <Nullable>enable</Nullable>
-        <ImplicitUsings>enable</ImplicitUsings>
-        <DockerDefaultTargetOS>Linux</DockerDefaultTargetOS>
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <DockerDefaultTargetOS>Linux</DockerDefaultTargetOS>
+
+    <!-- Frontend build configuration -->
+    <FrontendRoot>$(MSBuildProjectDirectory)/../SEBT.Portal.Web</FrontendRoot>
+    <FrontendDist>$(FrontendRoot)/dist</FrontendDist>
+    <WorkspaceRoot>$(MSBuildProjectDirectory)/../..</WorkspaceRoot>
+  </PropertyGroup>
+
+  <!-- Production Build: Build frontend before .NET build -->
+  <Target Name="BuildFrontend" BeforeTargets="Build"
+    Condition="'$(BuildFrontend)' != 'false' AND '$(Configuration)' == 'Release'">
+    <Message Importance="high" Text="Building frontend with Vite..." />
+
+    <!-- Install dependencies if node_modules doesn't exist -->
+    <Exec Command="pnpm install" WorkingDirectory="$(WorkspaceRoot)"
+      Condition="!Exists('$(FrontendRoot)/node_modules')" />
+
+    <!-- Build frontend (Vite handles token transformation automatically) -->
+    <Exec Command="pnpm web:build" WorkingDirectory="$(WorkspaceRoot)" />
+
+    <Message Importance="high" Text="Frontend build complete: $(FrontendDist)" />
+  </Target>
+
+  <!-- Development: Start frontend watch mode alongside dotnet watch -->
+  <Target Name="StartFrontendWatch" BeforeTargets="BeforeBuild"
+    Condition="'$(DOTNET_WATCH)' == '1' AND '$(Configuration)' == 'Debug'">
+    <Message Importance="high" Text="Starting frontend watch mode..." />
+
+    <!-- Check if frontend is already running (by checking if port 5173 is in use) -->
+    <!-- Unix-like systems: use lsof -->
+    <Exec Command="lsof -ti:5173" IgnoreExitCode="true" ConsoleToMSBuild="true"
+          Condition="'$(OS)' != 'Windows_NT'">
+      <Output TaskParameter="ConsoleOutput" PropertyName="FrontendPort" />
+    </Exec>
+    <!-- Windows: set FrontendPort to empty (always try to start frontend) -->
+    <PropertyGroup Condition="'$(OS)' == 'Windows_NT'">
+      <FrontendPort></FrontendPort>
     </PropertyGroup>
 
-    <ItemGroup>
-        <PackageReference Include="Swashbuckle.AspNetCore" Version="6.6.2"/>
-    </ItemGroup>
+    <Message Importance="high" Text="Frontend already running on port 5173"
+      Condition="'$(FrontendPort)' != ''" />
 
-    <ItemGroup>
-      <Content Include="..\.dockerignore">
-        <Link>.dockerignore</Link>
-      </Content>
-    </ItemGroup>
+    <!-- Start frontend watch if not already running -->
+    <Exec Command="pnpm web:dev &amp;" WorkingDirectory="$(WorkspaceRoot)"
+      Condition="'$(FrontendPort)' == ''" ContinueOnError="true" />
 
-    <ItemGroup>
-      <ProjectReference Include="..\SEBT.Portal.Infrastructure\SEBT.Portal.Infrastructure.csproj" />
-      <ProjectReference Include="..\SEBT.Portal.Kernel.AspNetCore\SEBT.Portal.Kernel.AspNetCore.csproj" />
-      <ProjectReference Include="..\SEBT.Portal.Kernel\SEBT.Portal.Kernel.csproj" />
-      <ProjectReference Include="..\SEBT.Portal.UseCases\SEBT.Portal.UseCases.csproj" />
-      <ProjectReference Include="..\SEBT.Portal.Core\SEBT.Portal.Core.csproj" />
-    </ItemGroup>
+    <Message Importance="high" Text="Frontend watch mode started (http://localhost:5173)"
+      Condition="'$(FrontendPort)' == ''" />
+  </Target>
+
+  <!-- Clean frontend on dotnet clean -->
+  <Target Name="CleanFrontend" AfterTargets="Clean">
+    <Message Importance="high" Text="Cleaning frontend dist directory..." />
+    <RemoveDir Directories="$(FrontendDist)" Condition="Exists('$(FrontendDist)')" />
+  </Target>
+
+  <ItemGroup>
+    <PackageReference Include="Swashbuckle.AspNetCore" Version="6.6.2" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Content Include="..\.dockerignore">
+      <Link>.dockerignore</Link>
+    </Content>
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\SEBT.Portal.Infrastructure\SEBT.Portal.Infrastructure.csproj" />
+    <ProjectReference
+      Include="..\SEBT.Portal.Kernel.AspNetCore\SEBT.Portal.Kernel.AspNetCore.csproj" />
+    <ProjectReference Include="..\SEBT.Portal.Kernel\SEBT.Portal.Kernel.csproj" />
+    <ProjectReference Include="..\SEBT.Portal.UseCases\SEBT.Portal.UseCases.csproj" />
+    <ProjectReference Include="..\SEBT.Portal.Core\SEBT.Portal.Core.csproj" />
+  </ItemGroup>
 
 </Project>

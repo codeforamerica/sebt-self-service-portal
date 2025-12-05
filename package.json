@@ -1,0 +1,31 @@
+{
+  "name": "sebt-portal",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Summer EBT (SUN Bucks) Self-Service Portal - Root package for convenience scripts",
+  "scripts": {
+    "web:dev": "pnpm --filter @sebt/web dev",
+    "web:build": "pnpm --filter @sebt/web build",
+    "web:build:dc": "pnpm --filter @sebt/web build:dc",
+    "web:build:co": "pnpm --filter @sebt/web build:co",
+    "web:tokens": "pnpm --filter @sebt/web tokens",
+    "web:tokens:dc": "pnpm --filter @sebt/web tokens:dc",
+    "web:tokens:co": "pnpm --filter @sebt/web tokens:co",
+    "web:preview": "pnpm --filter @sebt/web preview",
+    "api:run": "dotnet watch --project src/SEBT.Portal.Api",
+    "api:build": "dotnet build",
+    "api:test": "dotnet test",
+    "api:restore": "dotnet restore",
+    "dev": "concurrently -n \"API,Web\" -c \"blue,green\" \"pnpm api:run\" \"pnpm web:dev\"",
+    "dev:web-only": "pnpm web:dev",
+    "install:web": "pnpm --filter @sebt/web install",
+    "install:all": "pnpm install"
+  },
+  "devDependencies": {
+    "concurrently": "^9.2.1"
+  },
+  "engines": {
+    "node": ">=18.0.0",
+    "pnpm": ">=8.0.0"
+  }
+}
