@@ -13,7 +13,10 @@ namespace Sebt.Portal.Core.Models.Auth
         /// <returns>Returns <c>true</c> if the provided code matches the stored code and is not expired; otherwise, <c>false</c>.</returns>
         public bool IsCodeValid(string code)
         {
-            return string.Equals(Code, code, StringComparison.OrdinalIgnoreCase) && DateTime.UtcNow <= ExpiresAt;
+            return CryptographicOperations.FixedTimeEquals(
+                System.Text.Encoding.UTF8.GetBytes(Code),
+                System.Text.Encoding.UTF8.GetBytes(code)
+            ) && DateTime.UtcNow <= ExpiresAt;
         }
     }
 }

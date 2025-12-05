@@ -16,7 +16,7 @@ namespace SEBT.Portal.UseCases.Auth
         /// The one-time password (OTP) to validate.
         /// </summary>
         [Required(ErrorMessage = "One time password is required.")]
-        [Length(6, 6, ErrorMessage = "One time password must be exactly six characters.")]
+        [Length(6, 6, ErrorMessage = "One time password must be exactly six digits.")]
         public string Otp { get; init; } = string.Empty;
     }
 }

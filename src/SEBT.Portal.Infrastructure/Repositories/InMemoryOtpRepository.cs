@@ -15,11 +15,8 @@ namespace SEBT.Portal.Infrastructure.Repositories
                 return Task.CompletedTask;
             }
 
-            else
-            {
-                memoryCache.Set(otpCode.Email, otpCode, otpCode.ExpiresAt);
-                return Task.CompletedTask;
-            }
+            memoryCache.Set(otpCode.Email, otpCode, otpCode.ExpiresAt);
+            return Task.CompletedTask;
         }
 
         public Task<OtpCode?> GetOtpCodeByEmailAsync(string email)
