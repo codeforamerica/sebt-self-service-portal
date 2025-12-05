@@ -10,7 +10,7 @@ public class OtpControllerTests
 {
     private readonly OtpController _controller;
 
-    public OtpControllerTest()
+    public OtpControllerTests()
     {
         _controller = new OtpController();
     }
