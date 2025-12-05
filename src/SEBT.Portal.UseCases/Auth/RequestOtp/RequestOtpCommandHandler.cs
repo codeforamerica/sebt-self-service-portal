@@ -30,10 +30,16 @@ namespace SEBT.Portal.UseCases.Auth
             {
                 await otpRepository.SaveOtpCodeAsync(otp);
             }
+            catch (TimeoutException e)
+            {
+                logger.LogError(e, "A timeout occurred while attempting to persist the OTP request for email {Email}", command.Email);
+                return Result.DependencyFailed(DependencyFailedReason.Timeout,
+                    $"A timeout occurred while processing the OTP request");
+            }
             catch (Exception e)
             {
                 logger.LogError(e, "An error occurred while attempting to persist the OTP request for email {Email}", command.Email);
-                return Result.DependencyFailed(DependencyFailedReason.Timeout,
+                return Result.DependencyFailed(DependencyFailedReason.Unknown,
                     $"An error occurred while processing the OTP request");
             }
 

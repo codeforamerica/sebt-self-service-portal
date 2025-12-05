@@ -31,7 +31,7 @@ public class InMemoryOtpRepositoryTests
         var memoryCache = new MemoryCache(new MemoryCacheOptions());
         var repo = new InMemoryOtpRepository(memoryCache);
 
-        var existing = new OtpCode("0000000", "user@example.com");
+        var existing = new OtpCode("000000", "user@example.com");
 
         // seed existing code directly into the cache to simulate a valid existing OTP
         memoryCache.Set(existing.Email, existing, existing.ExpiresAt);

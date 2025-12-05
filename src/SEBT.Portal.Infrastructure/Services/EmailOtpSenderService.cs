@@ -18,22 +18,25 @@ namespace SEBT.Portal.Infrastructure.Services
         public async Task<Result> SendOtpAsync(string to, string otp)
         {
             // Create the email message
-            MailMessage message = new MailMessage();
-            message.From = new MailAddress(settings.SenderEmail);
-            message.To.Add(to);
-            message.Subject = settings.Subject;
-            message.IsBodyHtml = true;
-            message.Body = $"{settings.HtmlPreOtp}{otp}{settings.HtmlPostOtp}";
+            using (MailMessage message = new MailMessage())
+            {
+                message.From = new MailAddress(settings.SenderEmail);
+                message.To.Add(to);
+                message.Subject = settings.Subject;
+                message.IsBodyHtml = true;
+                message.Body = $"{settings.HtmlPreOtp}{otp}{settings.HtmlPostOtp}";
 
-            try
+                try
+                {
+                    // Send the email        
+                    await smtpClientService.SendEmailAsync(message);
+                    logger.LogInformation("OTP email sent to {To}", to);
+            catch (Exception ex)
             {
-                // Send the email        
-                await smtpClientService.SendEmailAsync(message);
-                logger.LogInformation($"OTP email sent to {to}.");
-            }
-            catch
-            {
+                logger.LogError(ex, $"Failed to send OTP to: {to}");
                 return new PreconditionFailedResult(PreconditionFailedReason.Conflict, $"Failed to send OTP to: {to}");
+            }
+                }
             }
 
             return new SuccessResult();

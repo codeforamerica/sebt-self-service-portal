@@ -12,6 +12,7 @@ public class SmtpClientServiceTests
         Substitute.For<IOptionsMonitor<SmtpClientSettings>>();
     private readonly ILogger<SmtpClientService> _logger = Substitute.For<ILogger<SmtpClientService>>();
 
+    [Xunit.Fact]
     public async Task SendEmailAsync_WithValidMailMessage_ShouldSendEmail()
     {
         // Arrange
@@ -21,7 +22,8 @@ public class SmtpClientServiceTests
             SmtpPort = 587,
             EnableSsl = true
         });
-
+        var smtpClient = Substitute.For<System.Net.Mail.SmtpClient>();
+        var smtpClientService = new SmtpClientService(_optionsMonitor, _logger, smtpClient);
         var smtpClientService = new SmtpClientService(_optionsMonitor, _logger);
         var mailMessage = new System.Net.Mail.MailMessage
         {
@@ -36,7 +38,7 @@ public class SmtpClientServiceTests
 
         // Assert
         // Since SmtpClient.SendMailAsync does not return a value, we verify that no exceptions were thrown
-        // Verify that the SMTP client was called with the correct parameters
+        // The SmtpClient is now injected, so no need to create a new instance here
         var smtpClient = Substitute.For<System.Net.Mail.SmtpClient>();
         _ = smtpClient.Received(1).SendMailAsync(Arg.Is<System.Net.Mail.MailMessage>(msg =>
             msg.From.Address == "jon@example.com" &&

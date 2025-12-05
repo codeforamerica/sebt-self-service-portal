@@ -30,7 +30,7 @@ public class ValidateOtpCommandHandlerTests
             Otp = "123456"
         };
 
-        otpRepository.GetOtpCodeByEmailAsync(Arg.Any<string>())
+        otpRepository.GetOtpCodeByEmailAsync(Arg.Is<string>(email => email == command.Email))
             .Returns(new OtpCode(command.Otp, command.Email));
 
         // Act
