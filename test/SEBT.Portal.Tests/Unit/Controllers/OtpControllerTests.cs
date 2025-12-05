@@ -79,6 +79,7 @@ public class OtpControllerTests
 
         // Assert
         Assert.NotNull(result);
+        Assert.IsType<OkResult>(result);
     }
 
     [Fact]
