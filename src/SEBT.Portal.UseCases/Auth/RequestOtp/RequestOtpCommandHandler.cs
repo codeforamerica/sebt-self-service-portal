@@ -7,6 +7,18 @@ using SEBT.Portal.Kernel.Results;
 
 namespace SEBT.Portal.UseCases.Auth
 {
+    /// <summary>
+    /// Handles the request to generate and send a one-time password (OTP) to a user's email.
+    /// </summary>
+    /// <remarks>
+    /// This handler validates the incoming command, generates a new OTP code, 
+    /// persists it to the repository, and sends it to the user via email.
+    /// </remarks>
+    /// <param name="validator">The validator used to validate the <see cref="RequestOtpCommand"/>.</param>
+    /// <param name="otpGenerator">The service used to generate OTP codes.</param>
+    /// <param name="emailService">The service used to send the OTP to the user's email.</param>
+    /// <param name="otpRepository">The repository used to persist OTP codes.</param>
+    /// <param name="logger">The logger for recording errors and diagnostic information.</param>
     public class RequestOtpCommandHandler(
         IValidator<RequestOtpCommand> validator,
         IOtpGeneratorService otpGenerator,

@@ -7,7 +7,17 @@ using SEBT.Portal.Kernel;
 using SEBT.Portal.Kernel.Results;
 
 namespace SEBT.Portal.Infrastructure.Services
-{
+{    
+    /// <summary>
+    /// Service responsible for sending One-Time Password (OTP) codes via email.
+    /// </summary>
+    /// <remarks>
+    /// This service uses SMTP to send HTML-formatted emails containing OTP codes
+    /// for user authentication purposes.
+    /// </remarks>
+    /// <param name="optionsMonitor">The options monitor for email sender settings.</param>
+    /// <param name="smtpClientService">The SMTP client service used to send emails.</param>
+    /// <param name="logger">The logger for recording email sending operations.</param>
     public class EmailOtpSenderService(
         IOptionsMonitor<EmailOtpSenderServiceSettings> optionsMonitor,
         ILogger<EmailOtpSenderService> logger,
@@ -38,7 +48,6 @@ namespace SEBT.Portal.Infrastructure.Services
                     return new PreconditionFailedResult(PreconditionFailedReason.Conflict, $"Failed to send OTP to: {to}");
                 }
             }
-
 
             return new SuccessResult();
         }

@@ -5,6 +5,16 @@ using SEBT.Portal.Kernel.Results;
 
 namespace SEBT.Portal.UseCases.Auth
 {
+    /// <summary>
+    /// Handles the validation of one-time passwords (OTP) for user authentication.
+    /// </summary>
+    /// <remarks>
+    /// This handler validates the OTP provided by the user against the stored OTP in the repository.
+    /// If validation succeeds, the OTP is deleted from the repository to prevent reuse.
+    /// </remarks>
+    /// <param name="otpRepository">Repository for OTP storage and retrieval operations.</param>
+    /// <param name="validator">Validator for the <see cref="ValidateOtpCommand"/>.</param>
+    /// <param name="logger">Logger for tracking OTP validation attempts and results.</param>
     public class ValidateOtpCommandHandler(
         IOtpRepository otpRepository,
         IValidator<ValidateOtpCommand> validator,
