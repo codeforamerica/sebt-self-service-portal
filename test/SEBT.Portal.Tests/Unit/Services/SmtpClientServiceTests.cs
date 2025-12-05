@@ -23,7 +23,6 @@ public class SmtpClientServiceTests
             EnableSsl = true
         });
         var smtpClient = Substitute.For<System.Net.Mail.SmtpClient>();
-        var smtpClientService = new SmtpClientService(_optionsMonitor, _logger, smtpClient);
         var smtpClientService = new SmtpClientService(_optionsMonitor, _logger);
         var mailMessage = new System.Net.Mail.MailMessage
         {
@@ -39,7 +38,6 @@ public class SmtpClientServiceTests
         // Assert
         // Since SmtpClient.SendMailAsync does not return a value, we verify that no exceptions were thrown
         // The SmtpClient is now injected, so no need to create a new instance here
-        var smtpClient = Substitute.For<System.Net.Mail.SmtpClient>();
         _ = smtpClient.Received(1).SendMailAsync(Arg.Is<System.Net.Mail.MailMessage>(msg =>
             msg.From.Address == "jon@example.com" &&
             msg.Subject == "Test Email" &&

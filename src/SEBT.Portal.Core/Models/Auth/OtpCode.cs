@@ -1,3 +1,5 @@
+using System.Security.Cryptography;
+
 namespace Sebt.Portal.Core.Models.Auth
 {
     /// <summary>
@@ -7,7 +9,7 @@ namespace Sebt.Portal.Core.Models.Auth
     {
         public DateTime ExpiresAt { get; init; } = DateTime.UtcNow.AddMinutes(MinutesToExpire);
         /// <summary>
-        /// Validates the provided code against the stored code and checks if it is still valid based on expiration time.
+        /// Validates the provided OTP code against the stored code.
         /// </summary>
         /// <param name="code">The OTP code to validate.</param>
         /// <returns>Returns <c>true</c> if the provided code matches the stored code and is not expired; otherwise, <c>false</c>.</returns>
