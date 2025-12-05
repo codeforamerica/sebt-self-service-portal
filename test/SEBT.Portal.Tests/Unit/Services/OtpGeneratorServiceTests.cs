@@ -1,3 +1,5 @@
+using SEBT.Portal.Infrastructure.Services;
+
 namespace SEBT.Portal.Tests.Unit.Services;
 
 public class OtpGeneratorServiceTests
