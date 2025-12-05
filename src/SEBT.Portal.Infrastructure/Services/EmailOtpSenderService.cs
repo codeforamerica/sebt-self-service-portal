@@ -1,3 +1,4 @@
+using System.Net.Mail;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using SEBT.Portal.Core.AppSettings;
@@ -26,15 +27,18 @@ namespace SEBT.Portal.Infrastructure.Services
 
         public async Task<Result> SendOtpAsync(string to, string otp)
         {
+            // Create the email message
+            using var message = new MailMessage();
+            message.From = new MailAddress(settings.SenderEmail);
+            message.To.Add(to);
+            message.Subject = settings.Subject;
+            message.IsBodyHtml = true;
+            message.Body = $"{settings.HtmlPreOtp}{otp}{settings.HtmlPostOtp}";
+
             try
             {
                 // Send the email        
-                await smtpClientService.SendEmailAsync(
-                    to,
-                    settings.SenderEmail,
-                    settings.Subject,
-                    $"{settings.HtmlPreOtp}{otp}{settings.HtmlPostOtp}");
-                    
+                await smtpClientService.SendEmailAsync(message);
                 logger.LogInformation("OTP email sent to {To}", to);
             }
             catch (Exception ex)
