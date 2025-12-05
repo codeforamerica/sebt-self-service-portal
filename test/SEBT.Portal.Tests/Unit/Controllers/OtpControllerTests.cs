@@ -96,5 +96,7 @@ public class OtpControllerTests
 
         // Assert
         Assert.NotNull(result);
+        var badRequestResult = Assert.IsType<BadRequestObjectResult>(result);
+        Assert.Contains("The operation failed due to validation", badRequestResult?.Value?.ToString() ?? string.Empty);
     }
 }
