@@ -20,17 +20,8 @@ namespace SEBT.Portal.Infrastructure.Services
     {
         private readonly SmtpClientSettings smtpClientSettings = optionsMonitor.CurrentValue;
 
-        public async Task SendEmailAsync(string to, string from, string subject, string body, bool isBodyHtml = true)
+        public async Task SendEmailAsync(MailMessage message)
         {
-            using var message = new MailMessage
-            {
-                From = new MailAddress(from),
-                Subject = subject,
-                Body = body,
-                IsBodyHtml = isBodyHtml
-            };
-            message.To.Add(new MailAddress(to));
-
             // Configure the SMTP client
             using var smtpClient = new SmtpClient(smtpClientSettings.SmtpServer, smtpClientSettings.SmtpPort)
             {
