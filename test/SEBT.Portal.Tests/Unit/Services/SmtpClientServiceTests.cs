@@ -1,7 +1,8 @@
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using NSubstitute;
-using NSubstitute.ExceptionExtensions;
+using SEBT.Portal.Core.AppSettings;
+using SEBT.Portal.Infrastructure.Services;
 
 namespace SEBT.Portal.Tests.Unit.Services;
 
@@ -35,7 +36,14 @@ public class SmtpClientServiceTests
 
         // Assert
         // Since SmtpClient.SendMailAsync does not return a value, we verify that no exceptions were thrown
-        Assert.True(true);
+        // Verify that the SMTP client was called with the correct parameters
+        var smtpClient = Substitute.For<System.Net.Mail.SmtpClient>();
+        _ = smtpClient.Received(1).SendMailAsync(Arg.Is<System.Net.Mail.MailMessage>(msg =>
+            msg.From.Address == "jon@example.com" &&
+            msg.Subject == "Test Email" &&
+            msg.Body == "This is a test email." &&
+            msg.To.Contains(new System.Net.Mail.MailAddress("jane@example.com"))
+        ));
 
     }
 }

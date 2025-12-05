@@ -39,6 +39,7 @@ public class ValidateOtpCommandHandlerTests
         // Assert
         Assert.True(result.IsSuccess);
     }
+
     [Fact]
     public async Task Handle_ShouldReturnValidationFailure_WhenOtpIsExpired()
     {
