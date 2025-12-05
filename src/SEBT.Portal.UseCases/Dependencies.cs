@@ -1,7 +1,6 @@
 using Microsoft.Extensions.DependencyInjection;
 using SEBT.Portal.Kernel;
 using SEBT.Portal.UseCases.Auth;
-using SEBT.Portal.UseCases.WeatherForecast;
 
 namespace SEBT.Portal.UseCases;
 
