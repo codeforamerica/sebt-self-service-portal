@@ -9,7 +9,7 @@ ARG BUILD_CONFIGURATION=Release
 
 # Install Node.js and pnpm in the build stage
 RUN apt-get update && apt-get install -y curl
-RUN curl -fsSL https://deb.nodesource.com/setup_20.x | bash -
+RUN curl -fsSL https://deb.nodesource.com/setup_24.x | bash -
 RUN apt-get install -y nodejs
 RUN corepack enable
 RUN corepack prepare pnpm@latest --activate
