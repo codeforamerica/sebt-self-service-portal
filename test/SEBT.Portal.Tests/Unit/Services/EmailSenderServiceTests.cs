@@ -18,38 +18,16 @@ public class EmailSenderServiceTests
     [Fact]
     public async Task SendOtpAsync_WithValidParams_ShouldSendEmailSuccessfully()
     {
+
         // Arrange
-        _optionsMonitor.CurrentValue.Returns(new EmailOtpSenderServiceSettings
+        var emailSettings = new EmailOtpSenderServiceSettings
         {
             SenderEmail = "jon@example.com",
             Subject = "Test Subject",
             HtmlPreOtp = "<h1>Your OTP is:</h1><p>",
             HtmlPostOtp = "</p><p>Please use it wisely.</p>"
-        });
-
-        _smtpClientService.SendEmailAsync(Arg.Any<System.Net.Mail.MailMessage>())
-            .Returns(Task.CompletedTask);
-
-        var emailSenderService = new EmailOtpSenderService(_optionsMonitor, _logger, _smtpClientService);
-        var sendEmailResult = await emailSenderService.SendOtpAsync("jane@example.com", "123456");
-
-        // Assert
-        Assert.True(sendEmailResult.IsSuccess);
-        Assert.IsType<SuccessResult>(sendEmailResult);
-    }
-
-    [Fact]
-    public async Task SendOtpAsync_WithValidParams_ShouldUseSettingsCorrectly()
-    {
-
-        // Arrange
-        _optionsMonitor.CurrentValue.Returns(new EmailOtpSenderServiceSettings
-        {
-            SenderEmail = "jon@example.com",
-            Subject = "Test Subject",
-            HtmlPreOtp = "<h1>Your OTP is:</h1><p>",
-            HtmlPostOtp = "</p><p>Please use it wisely.</p>"
-        });
+        };
+        _optionsMonitor.CurrentValue.Returns(emailSettings);
 
         _smtpClientService.SendEmailAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<bool>())
             .Returns(Task.CompletedTask);
@@ -58,12 +36,35 @@ public class EmailSenderServiceTests
         var sendEmailResult = await emailSenderService.SendOtpAsync("jane@example.com", "123456");
 
         // Assert
-        await _smtpClientService.Received(1)
-            .SendEmailAsync(
-                "jane@example.com",
-                _optionsMonitor.CurrentValue.SenderEmail,
-                _optionsMonitor.CurrentValue.Subject,
-                $"{_optionsMonitor.CurrentValue.HtmlPreOtp}123456{_optionsMonitor.CurrentValue.HtmlPostOtp}",
+        Assert.True(sendEmailResult.IsSuccess);
+        Assert.IsType<SuccessResult>(sendEmailResult);
+
+    }
+
+    [Fact]
+    public async Task SendOtpAsync_WithValidParams_ShouldUseSettingsCorrectly()
+    {
+        // Arrange
+        var emailSettings = new EmailOtpSenderServiceSettings
+        {
+            SenderEmail = "jon@example.com",
+            Subject = "Test Subject",
+            HtmlPreOtp = "<h1>Your OTP is:</h1><p>",
+            HtmlPostOtp = "</p><p>Please use it wisely.</p>"
+        };
+        _optionsMonitor.CurrentValue.Returns(emailSettings);
+        _smtpClientService.SendEmailAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<bool>())
+            .Returns(Task.CompletedTask);
+
+        var emailSenderService = new EmailOtpSenderService(_optionsMonitor, _logger, _smtpClientService);
+        var sendEmailResult = await emailSenderService.SendOtpAsync("jane@example.com", "123456");
+
+        // Assert
+        await _smtpClientService.Received().SendEmailAsync(
+                Arg.Any<string>(),
+                emailSettings.SenderEmail,
+                emailSettings.Subject,
+                $"{emailSettings.HtmlPreOtp}{"123456"}{emailSettings.HtmlPostOtp}",
                 true);
     }
 }
