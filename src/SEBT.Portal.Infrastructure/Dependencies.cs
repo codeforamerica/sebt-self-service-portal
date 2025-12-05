@@ -2,6 +2,8 @@ using Microsoft.Extensions.DependencyInjection;
 using SEBT.Portal.Core.AppSettings;
 using SEBT.Portal.Core.Repositories;
 using SEBT.Portal.Core.Services;
+using SEBT.Portal.Infrastructure.Repositories;
+using SEBT.Portal.Infrastructure.Services;
 
 namespace SEBT.Portal.Infrastructure;
 

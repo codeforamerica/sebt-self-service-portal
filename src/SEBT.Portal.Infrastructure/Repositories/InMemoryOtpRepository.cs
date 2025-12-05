@@ -2,34 +2,38 @@ using Microsoft.Extensions.Caching.Memory;
 using Sebt.Portal.Core.Models.Auth;
 using SEBT.Portal.Core.Repositories;
 
-public class InMemoryOtpRepository(IMemoryCache memoryCache) : IOtpRepository
+namespace SEBT.Portal.Infrastructure.Repositories
 {
-    public Task SaveOtpCodeAsync(OtpCode otpCode)
+    public class InMemoryOtpRepository(IMemoryCache memoryCache) : IOtpRepository
     {
-        var existingCode = memoryCache.Get<OtpCode>(otpCode.Email);
-        if (existingCode != null)
+        public Task SaveOtpCodeAsync(OtpCode otpCode)
         {
-            // If there's an existing valid OTP, do not overwrite it
+            var existingCode = memoryCache.Get<OtpCode>(otpCode.Email);
+            if (existingCode != null)
+            {
+                // If there's an existing valid OTP, do not overwrite it
+                return Task.CompletedTask;
+            }
+
+            else
+            {
+                memoryCache.Set(otpCode.Email, otpCode, otpCode.ExpiresAt);
+                return Task.CompletedTask;
+            }
+        }
+
+        public Task<OtpCode?> GetOtpCodeByEmailAsync(string email)
+        {
+            var otpCode = memoryCache.Get<OtpCode>(email);
+
+            return Task.FromResult(otpCode);
+        }
+
+        public Task DeleteOtpCodeByEmailAsync(string email)
+        {
+            memoryCache.Remove(email);
+
             return Task.CompletedTask;
         }
-        else
-        {   
-            memoryCache.Set(otpCode.Email, otpCode, otpCode.ExpiresAt);
-            return Task.CompletedTask;
-        }
-    }
-
-    public Task<OtpCode?> GetOtpCodeByEmailAsync(string email)
-    {
-        var otpCode = memoryCache.Get<OtpCode>(email);
-
-        return Task.FromResult(otpCode);
-    }
-
-    public Task DeleteOtpCodeByEmailAsync(string email)
-    {
-        memoryCache.Remove(email);
-
-        return Task.CompletedTask;
     }
 }

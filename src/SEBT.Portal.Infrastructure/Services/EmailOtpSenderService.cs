@@ -6,34 +6,37 @@ using SEBT.Portal.Core.Services;
 using SEBT.Portal.Kernel;
 using SEBT.Portal.Kernel.Results;
 
-public class EmailOtpSenderService(
-    IOptionsMonitor<EmailOtpSenderServiceSettings> optionsMonitor,
-    ILogger<EmailOtpSenderService> logger,
-    ISmtpClientService smtpClientService) : IOtpSenderService
+namespace SEBT.Portal.Infrastructure.Services
 {
-    private readonly EmailOtpSenderServiceSettings settings = optionsMonitor.CurrentValue;
-
-    public async Task<Result> SendOtpAsync(string to, string otp)
+    public class EmailOtpSenderService(
+        IOptionsMonitor<EmailOtpSenderServiceSettings> optionsMonitor,
+        ILogger<EmailOtpSenderService> logger,
+        ISmtpClientService smtpClientService) : IOtpSenderService
     {
-        // Create the email message
-        MailMessage message = new MailMessage();
-        message.From = new MailAddress(settings.SenderEmail);
-        message.To.Add(to);
-        message.Subject = settings.Subject;
-        message.IsBodyHtml = true;
-        message.Body = $"{settings.HtmlPreOtp}{otp}{settings.HtmlPostOtp}";
+        private readonly EmailOtpSenderServiceSettings settings = optionsMonitor.CurrentValue;
 
-        try
+        public async Task<Result> SendOtpAsync(string to, string otp)
         {
-            // Send the email        
-            await smtpClientService.SendEmailAsync(message);
-            logger.LogInformation($"OTP email sent to {to}.");
-        }
-        catch
-        {
-            return new PreconditionFailedResult(PreconditionFailedReason.Conflict, $"Failed to send OTP to: {to}");
-        }
+            // Create the email message
+            MailMessage message = new MailMessage();
+            message.From = new MailAddress(settings.SenderEmail);
+            message.To.Add(to);
+            message.Subject = settings.Subject;
+            message.IsBodyHtml = true;
+            message.Body = $"{settings.HtmlPreOtp}{otp}{settings.HtmlPostOtp}";
 
-        return new SuccessResult();
+            try
+            {
+                // Send the email        
+                await smtpClientService.SendEmailAsync(message);
+                logger.LogInformation($"OTP email sent to {to}.");
+            }
+            catch
+            {
+                return new PreconditionFailedResult(PreconditionFailedReason.Conflict, $"Failed to send OTP to: {to}");
+            }
+
+            return new SuccessResult();
+        }
     }
 }

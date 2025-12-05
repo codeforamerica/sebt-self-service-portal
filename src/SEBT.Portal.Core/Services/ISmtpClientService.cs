@@ -1,6 +1,9 @@
 using System.Net.Mail;
 
-public interface ISmtpClientService
+namespace SEBT.Portal.Core.Services
 {
-    Task SendEmailAsync(MailMessage message);
+    public interface ISmtpClientService
+    {
+        Task SendEmailAsync(MailMessage message);
+    }
 }

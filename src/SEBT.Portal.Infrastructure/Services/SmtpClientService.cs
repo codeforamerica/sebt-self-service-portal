@@ -1,29 +1,34 @@
 using System.Net.Mail;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
+using SEBT.Portal.Core.AppSettings;
+using SEBT.Portal.Core.Services;
 
-public class SmtpClientService(IOptionsMonitor<SmtpClientSettings> optionsMonitor, ILogger<SmtpClientService> logger)
-    : ISmtpClientService
+namespace SEBT.Portal.Infrastructure.Services
 {
-    private readonly SmtpClientSettings smtpClientSettings = optionsMonitor.CurrentValue;
-
-    public async Task SendEmailAsync(MailMessage message)
+    public class SmtpClientService(IOptionsMonitor<SmtpClientSettings> optionsMonitor, ILogger<SmtpClientService> logger)
+        : ISmtpClientService
     {
-        // Configure the SMTP client
-        using var smtpClient = new SmtpClient(smtpClientSettings.SmtpServer, smtpClientSettings.SmtpPort)
-        {
-            EnableSsl = smtpClientSettings.EnableSsl
-        };
+        private readonly SmtpClientSettings smtpClientSettings = optionsMonitor.CurrentValue;
 
-        // Send the email        
-        try
+        public async Task SendEmailAsync(MailMessage message)
         {
-            await smtpClient.SendMailAsync(message);
-        }
-        catch (Exception ex)
-        {
-            logger.LogError(ex, $"Error sending email to: {message.To}");
-            throw;
+            // Configure the SMTP client
+            using var smtpClient = new SmtpClient(smtpClientSettings.SmtpServer, smtpClientSettings.SmtpPort)
+            {
+                EnableSsl = smtpClientSettings.EnableSsl
+            };
+
+            // Send the email        
+            try
+            {
+                await smtpClient.SendMailAsync(message);
+            }
+            catch (Exception ex)
+            {
+                logger.LogError(ex, "Error sending email to: {Recipients}", message.To);
+                throw;
+            }
         }
     }
 }
