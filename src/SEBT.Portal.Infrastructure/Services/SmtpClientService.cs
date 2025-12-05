@@ -6,6 +6,15 @@ using SEBT.Portal.Core.Services;
 
 namespace SEBT.Portal.Infrastructure.Services
 {
+    /// <summary>
+    /// Service for sending emails using SMTP protocol.
+    /// </summary>
+    /// <remarks>
+    /// This service wraps the <see cref="SmtpClient"/> to provide email sending capabilities
+    /// with configuration from <see cref="SmtpClientSettings"/>.
+    /// </remarks>
+    /// <param name="optionsMonitor">Options monitor for SMTP client settings.</param>
+    /// <param name="logger">Logger instance for logging email operations.</param>
     public class SmtpClientService(IOptionsMonitor<SmtpClientSettings> optionsMonitor, ILogger<SmtpClientService> logger)
         : ISmtpClientService
     {

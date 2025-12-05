@@ -4,6 +4,14 @@ using SEBT.Portal.Core.Repositories;
 
 namespace SEBT.Portal.Infrastructure.Repositories
 {
+    /// <summary>
+    /// An in-memory implementation of <see cref="IOtpRepository"/> that uses <see cref="IMemoryCache"/> for storing OTP codes.
+    /// </summary>
+    /// <param name="memoryCache">The memory cache instance used to store and retrieve OTP codes.</param>
+    /// <remarks>
+    /// This implementation is suitable for single-instance applications. For distributed scenarios,
+    /// consider using a distributed cache implementation instead.
+    /// </remarks>
     public class InMemoryOtpRepository(IMemoryCache memoryCache) : IOtpRepository
     {
         public Task SaveOtpCodeAsync(OtpCode otpCode)
