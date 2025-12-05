@@ -35,7 +35,7 @@ public class OtpController() : ControllerBase
         }
         else
         {
-            return BadRequest(new {result.Message});
+            return BadRequest(new { result.Message });
         }
 
     }
@@ -57,13 +57,13 @@ public class OtpController() : ControllerBase
 
         var result = await handler.Handle(command);
 
-        if(result.IsSuccess)
+        if (result.IsSuccess)
         {
             return Ok();
         }
         else
         {
-            return BadRequest(new {result.Message});
+            return BadRequest(new { result.Message });
         }
     }
 }
