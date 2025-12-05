@@ -35,7 +35,7 @@ public class OtpController() : ControllerBase
         }
         else
         {
-            return BadRequest(new { result.Message });
+            return BadRequest(new { Error = result.Message });
         }
 
     }
