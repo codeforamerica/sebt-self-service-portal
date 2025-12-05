@@ -6,7 +6,7 @@ using SEBT.Portal.UseCases.Auth;
 
 namespace SEBT.Portal.Tests.Unit.Controllers;
 
-public class OtpControllerTest
+public class OtpControllerTests
 {
     private readonly OtpController _controller;
 

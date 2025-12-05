@@ -5,6 +5,9 @@ using SEBT.Portal.UseCases.Auth;
 
 namespace SEBT.Portal.Api.Controllers;
 
+/// <summary>
+/// Controller for handling one-time password (OTP) requests and validations.
+/// </summary>  
 [ApiController]
 [Route("api/auth/otp")]
 public class OtpController() : ControllerBase

@@ -32,7 +32,7 @@ namespace SEBT.Portal.UseCases.Auth
             }
             catch (Exception e)
             {
-                logger.LogError(e, "An error occurred while attemting to persist the OTP request for email {Email}", command.Email);
+                logger.LogError(e, "An error occurred while attempting to persist the OTP request for email {Email}", command.Email);
                 return Result.DependencyFailed(DependencyFailedReason.Timeout,
                     $"An error occurred while processing the OTP request");
             }
