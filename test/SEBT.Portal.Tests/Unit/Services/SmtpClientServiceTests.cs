@@ -12,7 +12,7 @@ public class SmtpClientServiceTests
         Substitute.For<IOptionsMonitor<SmtpClientSettings>>();
     private readonly ILogger<SmtpClientService> _logger = Substitute.For<ILogger<SmtpClientService>>();
 
-
+    [Fact(Skip = "This test is temporarily disabled due to a known bug.")]
     public async Task SendEmailAsync_WithValidMailMessage_ShouldSendEmail()
     {
         // Arrange
