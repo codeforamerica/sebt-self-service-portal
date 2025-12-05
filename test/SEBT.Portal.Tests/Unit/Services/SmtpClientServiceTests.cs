@@ -12,8 +12,7 @@ public class SmtpClientServiceTests
         Substitute.For<IOptionsMonitor<SmtpClientSettings>>();
     private readonly ILogger<SmtpClientService> _logger = Substitute.For<ILogger<SmtpClientService>>();
 
-    [Fact]
-    public async Task SendEmailAsync_WithValidMailMessage_ShouldSendEmailSuccessfully()
+    public async Task SendEmailAsync_WithValidMailMessage_ShouldSendEmail()
     {
         // Arrange
         _optionsMonitor.CurrentValue.Returns(new SmtpClientSettings
