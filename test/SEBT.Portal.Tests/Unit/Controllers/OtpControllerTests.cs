@@ -1,4 +1,4 @@
-﻿using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc;
 using NSubstitute;
 using SEBT.Portal.Api.Controllers;
 using SEBT.Portal.Kernel;
