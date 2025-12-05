@@ -37,6 +37,5 @@ public class SmtpClientServiceTests
         // For now, we're just verifying the method signature and that it doesn't throw for invalid calls.
         await Assert.ThrowsAsync<System.Net.Mail.SmtpException>(async () =>
             await smtpClientService.SendEmailAsync(mailMessage));
-
     }
 }
