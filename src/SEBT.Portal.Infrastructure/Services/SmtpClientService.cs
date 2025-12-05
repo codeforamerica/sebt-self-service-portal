@@ -10,8 +10,10 @@ public class SmtpClientService(IOptionsMonitor<SmtpClientSettings> optionsMonito
     public async Task SendEmailAsync(MailMessage message)
     {
         // Configure the SMTP client
-        SmtpClient smtpClient = new SmtpClient(smtpClientSettings.SmtpServer, smtpClientSettings.SmtpPort);
-        smtpClient.EnableSsl = smtpClientSettings.EnableSsl;
+        using var smtpClient = new SmtpClient(smtpClientSettings.SmtpServer, smtpClientSettings.SmtpPort)
+        {
+            EnableSsl = smtpClientSettings.EnableSsl
+        };
 
         // Send the email        
         try
