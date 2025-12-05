@@ -31,13 +31,14 @@ namespace SEBT.Portal.Infrastructure.Services
                     // Send the email        
                     await smtpClientService.SendEmailAsync(message);
                     logger.LogInformation("OTP email sent to {To}", to);
-            catch (Exception ex)
-            {
-                logger.LogError(ex, $"Failed to send OTP to: {to}");
-                return new PreconditionFailedResult(PreconditionFailedReason.Conflict, $"Failed to send OTP to: {to}");
-            }
+                }
+                catch (Exception ex)
+                {
+                    logger.LogError(ex, $"Failed to send OTP to: {to}");
+                    return new PreconditionFailedResult(PreconditionFailedReason.Conflict, $"Failed to send OTP to: {to}");
                 }
             }
+
 
             return new SuccessResult();
         }

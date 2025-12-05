@@ -39,7 +39,7 @@ namespace SEBT.Portal.UseCases.Auth
             catch (Exception e)
             {
                 logger.LogError(e, "An error occurred while attempting to persist the OTP request for email {Email}", command.Email);
-                return Result.DependencyFailed(DependencyFailedReason.Unknown,
+                return Result.DependencyFailed(DependencyFailedReason.ConnectionFailed,
                     $"An error occurred while processing the OTP request");
             }
 
