@@ -8,6 +8,9 @@
   </PropertyGroup>
  <ItemGroup>
         <PackageReference Include="coverlet.collector" Version="6.0.0" />
+        <PackageReference Include="Microsoft.AspNetCore.Mvc" Version="2.3.0" />
+        <PackageReference Include="Microsoft.AspNetCore.Mvc.Abstractions" Version="2.3.0" />
+        <PackageReference Include="Microsoft.AspNetCore.Mvc.Core" Version="2.3.0" />
         <PackageReference Include="Microsoft.Extensions.Logging" Version="10.0.0" />
         <PackageReference Include="Microsoft.Extensions.Options" Version="10.0.0" />
         <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.8.0" />
@@ -23,6 +26,8 @@
     <ItemGroup>
       <ProjectReference Include="../../src/SEBT.Portal.Infrastructure/SEBT.Portal.Infrastructure.csproj" />
       <ProjectReference Include="..\..\src\SEBT.Portal.UseCases\SEBT.Portal.UseCases.csproj" />
+            <ProjectReference Include="../../src/SEBT.Portal.Api/SEBT.Portal.Api.csproj" />
+
     </ItemGroup>
 
 </Project>
