@@ -11,7 +11,7 @@ services:
     environment:
           - ASPNETCORE_ENVIRONMENT=Development
 
-  # SEBT E Mail Service
+  # SEBT Email Service
   mailpit:
     image: axllent/mailpit
     container_name: sebt_mailpit

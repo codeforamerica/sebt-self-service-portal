@@ -4,8 +4,6 @@ using SEBT.Portal.Core.Repositories;
 
 public class InMemoryOtpRepository(IMemoryCache memoryCache) : IOtpRepository
 {
-    private readonly Dictionary<string, OtpCode> _store = new();
-
     public Task SaveOtpCodeAsync(OtpCode otpCode)
     {
         var existingCode = memoryCache.Get<OtpCode>(otpCode.Email);

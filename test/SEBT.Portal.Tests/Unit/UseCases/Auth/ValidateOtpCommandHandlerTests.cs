@@ -69,30 +69,7 @@ public class ValidateOtpCommandHandlerTests
     }
 
     [Fact]
-    public async Task Handle_ValidateOtpValidity_WhenEmailIsFoundInRepository()
-    {
-        // Arrange
-        var handler = new ValidateOtpCommandHandler(
-            otpRepository,
-            validator,
-            logger);
-        var command = new ValidateOtpCommand
-        {
-            Email = "jim@example.com",
-            Otp = "123456"
-        };
-
-        otpRepository.GetOtpCodeByEmailAsync(Arg.Any<string>())
-               .Returns(new OtpCode(command.Otp, command.Email));
-
-        // Act
-        var result = await handler.Handle(command, CancellationToken.None);
-
-        // Assert
-        Assert.True(result.IsSuccess);
-    }
-    [Fact]
-    public async Task Handle_ShouldRetrieveCachedOtpObjectFromRepoistory_WhenEmailIsFound()
+    public async Task Handle_ShouldRetrieveCachedOtpObjectFromRepository_WhenEmailIsFound()
     {
         // Arrange
         var handler = new ValidateOtpCommandHandler(
@@ -112,7 +89,7 @@ public class ValidateOtpCommandHandlerTests
     }
 
     [Fact]
-    public async Task Handle_ShouldReturnValidattionFailure_WhenOtpDoesNotMatchEmail()
+    public async Task Handle_ShouldReturnValidationFailure_WhenOtpDoesNotMatchEmail()
     {
         // Arrange
         var handler = new ValidateOtpCommandHandler(
@@ -137,7 +114,7 @@ public class ValidateOtpCommandHandlerTests
     }
 
     [Fact]
-    public async Task Handle_ShouldReturnValidattionFailure_WhenOtpIsNotSixDigits()
+    public async Task Handle_ShouldReturnValidationFailure_WhenOtpIsNotSixDigits()
     {
         // Arrange
         var handler = new ValidateOtpCommandHandler(
@@ -161,7 +138,7 @@ public class ValidateOtpCommandHandlerTests
         var failedResult = Assert.IsType<ValidationFailedResult>(result);
     }
     [Fact]
-    public async Task Handle_ShouldReturnValidattionFailure_WhenEmailFormatIsIncorrect()
+    public async Task Handle_ShouldReturnValidationFailure_WhenEmailFormatIsIncorrect()
     {
         // Arrange
         var handler = new ValidateOtpCommandHandler(
@@ -186,7 +163,7 @@ public class ValidateOtpCommandHandlerTests
     }
 
     [Fact]
-    public async Task Handle_ShouldReturnValidattionFailure_WhenOtpDoesNotExist()
+    public async Task Handle_ShouldReturnValidationFailure_WhenOtpDoesNotExist()
     {
         // Arrange
         var handler = new ValidateOtpCommandHandler(
