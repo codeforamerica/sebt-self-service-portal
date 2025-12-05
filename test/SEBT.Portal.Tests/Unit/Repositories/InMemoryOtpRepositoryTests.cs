@@ -43,9 +43,10 @@ public class InMemoryOtpRepositoryTests
         var stored = await repo.GetOtpCodeByEmailAsync(existing.Email);
 
         Assert.NotNull(stored);
-        // should still be the original code, not overwritten by newOtp
-        Assert.Equal(existing.Code, stored!.Code);
-        Assert.Equal(existing.ExpiresAt, stored.ExpiresAt);
+        
+        // should oveerride the existing code and send the new one
+        Assert.Equal(newOtp.Code, stored!.Code);
+        Assert.Equal(newOtp.ExpiresAt, stored.ExpiresAt);
     }
 
     [Fact]
