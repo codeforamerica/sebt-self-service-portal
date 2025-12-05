@@ -14,17 +14,17 @@ namespace SEBT.Portal.Infrastructure.Repositories
     /// </remarks>
     public class InMemoryOtpRepository(IMemoryCache memoryCache) : IOtpRepository
     {
-        public Task SaveOtpCodeAsync(OtpCode otpCode)
+        public async Task SaveOtpCodeAsync(OtpCode newOtpCode)
         {
-            var existingCode = memoryCache.Get<OtpCode>(otpCode.Email);
+            var existingCode = await GetOtpCodeByEmailAsync(newOtpCode.Email);
+
             if (existingCode != null)
             {
-                // If there's an existing valid OTP, do not overwrite it
-                return Task.CompletedTask;
+                await DeleteOtpCodeByEmailAsync(newOtpCode.Email);
             }
 
-            memoryCache.Set(otpCode.Email, otpCode, otpCode.ExpiresAt);
-            return Task.CompletedTask;
+            memoryCache.Set(newOtpCode.Email, newOtpCode, newOtpCode.ExpiresAt);
+            return;
         }
 
         public Task<OtpCode?> GetOtpCodeByEmailAsync(string email)
