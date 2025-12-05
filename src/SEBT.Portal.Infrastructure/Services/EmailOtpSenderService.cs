@@ -7,7 +7,7 @@ using SEBT.Portal.Kernel;
 using SEBT.Portal.Kernel.Results;
 
 namespace SEBT.Portal.Infrastructure.Services
-{    
+{
     /// <summary>
     /// Service responsible for sending One-Time Password (OTP) codes via email.
     /// </summary>
@@ -27,27 +27,23 @@ namespace SEBT.Portal.Infrastructure.Services
 
         public async Task<Result> SendOtpAsync(string to, string otp)
         {
-            // Create the email message
-            using (MailMessage message = new MailMessage())
+            try
             {
-                message.From = new MailAddress(settings.SenderEmail);
-                message.To.Add(to);
-                message.Subject = settings.Subject;
-                message.IsBodyHtml = true;
-                message.Body = $"{settings.HtmlPreOtp}{otp}{settings.HtmlPostOtp}";
-
-                try
-                {
-                    // Send the email        
-                    await smtpClientService.SendEmailAsync(message);
-                    logger.LogInformation("OTP email sent to {To}", to);
-                }
-                catch (Exception ex)
-                {
-                    logger.LogError(ex, $"Failed to send OTP to: {to}");
-                    return new PreconditionFailedResult(PreconditionFailedReason.Conflict, $"Failed to send OTP to: {to}");
-                }
+                // Send the email        
+                await smtpClientService.SendEmailAsync(
+                    to,
+                    settings.SenderEmail,
+                    settings.Subject,
+                    $"{settings.HtmlPreOtp}{otp}{settings.HtmlPostOtp}");
+                    
+                logger.LogInformation("OTP email sent to {To}", to);
             }
+            catch (Exception ex)
+            {
+                logger.LogError(ex, $"Failed to send OTP to: {to}");
+                return new PreconditionFailedResult(PreconditionFailedReason.Conflict, $"Failed to send OTP to: {to}");
+            }
+
 
             return new SuccessResult();
         }

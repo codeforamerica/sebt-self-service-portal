@@ -14,7 +14,7 @@ public static class Dependencies
         // Otp Services
         services.AddTransient<IOtpSenderService, EmailOtpSenderService>();
         services.AddTransient<IOtpGeneratorService, OtpGeneratorService>();
-        services.AddTransient<ISmtpClientService, SmtpClientService>();
+        services.AddTransient<ISmtpClientService, MailKitClientService>();
 
         return services;
     }

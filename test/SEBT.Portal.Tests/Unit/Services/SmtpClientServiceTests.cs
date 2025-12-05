@@ -12,7 +12,7 @@ public class SmtpClientServiceTests
         Substitute.For<IOptionsMonitor<SmtpClientSettings>>();
     private readonly ILogger<SmtpClientService> _logger = Substitute.For<ILogger<SmtpClientService>>();
 
-    
+
     public async Task SendEmailAsync_WithValidMailMessage_ShouldSendEmail()
     {
         // Arrange
@@ -33,7 +33,7 @@ public class SmtpClientServiceTests
         mailMessage.To.Add("jane@example.com");
 
         // Act
-        await smtpClientService.SendEmailAsync(mailMessage);
+        await smtpClientService.SendEmailAsync("", "", "", "");
 
         // Assert
         // Since SmtpClient.SendMailAsync does not return a value, we verify that no exceptions were thrown
