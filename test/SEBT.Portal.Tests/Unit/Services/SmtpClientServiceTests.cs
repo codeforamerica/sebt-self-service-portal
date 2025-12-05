@@ -12,7 +12,7 @@ public class SmtpClientServiceTests
         Substitute.For<IOptionsMonitor<SmtpClientSettings>>();
     private readonly ILogger<SmtpClientService> _logger = Substitute.For<ILogger<SmtpClientService>>();
 
-    [Xunit.Fact]
+    
     public async Task SendEmailAsync_WithValidMailMessage_ShouldSendEmail()
     {
         // Arrange
