@@ -4,6 +4,6 @@ namespace SEBT.Portal.Core.Services
 {
     public interface ISmtpClientService
     {
-        Task SendEmailAsync(MailMessage message);
+        Task SendEmailAsync(string to, string from, string subject, string body, bool isBodyHtml = true);
     }
 }

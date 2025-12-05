@@ -12,7 +12,7 @@ public class SmtpClientServiceTests
         Substitute.For<IOptionsMonitor<SmtpClientSettings>>();
     private readonly ILogger<SmtpClientService> _logger = Substitute.For<ILogger<SmtpClientService>>();
 
-    
+    [Fact]
     public async Task SendEmailAsync_WithValidMailMessage_ShouldSendEmail()
     {
         // Arrange
@@ -23,19 +23,12 @@ public class SmtpClientServiceTests
             EnableSsl = true
         });
         var smtpClientService = new SmtpClientService(_optionsMonitor, _logger);
-        var mailMessage = new System.Net.Mail.MailMessage
-        {
-            From = new System.Net.Mail.MailAddress("jon@example.com"),
-            Subject = "Test Email",
-            Body = "This is a test email."
-        };
-        mailMessage.To.Add("jane@example.com");
 
-        // Act
+        // Act & Assert
         // Note: This test will fail in a real environment without a valid SMTP server.
         // In a real scenario, you would need to mock the SmtpClient or use a test SMTP server.
-        // For now, we're just verifying the method signature and that it doesn't throw for invalid calls.
+        // For now, we're just verifying the method signature and that it throws for invalid calls.
         await Assert.ThrowsAsync<System.Net.Mail.SmtpException>(async () =>
-            await smtpClientService.SendEmailAsync(mailMessage));
+            await smtpClientService.SendEmailAsync("jane@example.com", "jon@example.com", "Test Email", "This is a test email."));
     }
 }
