@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 using SEBT.Portal.Kernel;
 using SEBT.Portal.Kernel.AspNetCore;
 using SEBT.Portal.UseCases.Auth;
@@ -19,9 +20,12 @@ public class OtpController() : ControllerBase
     /// <returns>A Created result if the OTP was sent successfully; otherwise, a BadRequest result.</returns>
     /// <response code="201">OTP requested successfully.</response>
     /// <response code="400">Invalid request.</response>
+    /// <response code="429">Rate limit exceeded. Maximum 5 OTP requests per minute allowed.</response>
     [HttpPost("request")]
+    [EnableRateLimiting("otp-policy")]
     [ProducesResponseType(StatusCodes.Status201Created)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status429TooManyRequests)]
     public async Task<IActionResult> RequestOtp(
         [FromBody] RequestOtpCommand command,
         [FromServices] ICommandHandler<RequestOtpCommand> handler)
