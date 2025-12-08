@@ -1,3 +1,4 @@
+using System.Linq;
 using Microsoft.Extensions.Logging;
 using SEBT.Portal.Core.Repositories;
 using SEBT.Portal.Kernel;
