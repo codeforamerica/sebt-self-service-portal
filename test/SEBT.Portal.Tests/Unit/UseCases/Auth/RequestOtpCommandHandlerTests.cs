@@ -1,4 +1,4 @@
-using Microsoft.Extensions.Logging.Abstractions;
+using Microsoft.Extensions.Logging;
 using SEBT.Portal.Core.Services;
 using SEBT.Portal.Kernel;
 using SEBT.Portal.Kernel.Results;
@@ -16,7 +16,7 @@ public class RequestOtpCommandHandlerTests
     private readonly IOtpGeneratorService otpGenerator = Substitute.For<IOtpGeneratorService>();
     private readonly IOtpSenderService emailSender = Substitute.For<IOtpSenderService>();
     private readonly IOtpRepository otpRepository = Substitute.For<IOtpRepository>();
-    private readonly NullLogger<RequestOtpCommandHandler> logger = NullLogger<RequestOtpCommandHandler>.Instance;
+    private readonly ILogger<RequestOtpCommandHandler> logger = Substitute.For<ILogger<RequestOtpCommandHandler>>();
     private readonly IValidator<RequestOtpCommand> validator = new DataAnnotationsValidator<RequestOtpCommand>(null!);
     private readonly RequestOtpCommandHandler handler;
     public RequestOtpCommandHandlerTests()
@@ -47,6 +47,96 @@ public class RequestOtpCommandHandlerTests
     }
 
     /// <summary>
+    /// Tests that Handle logs when an OTP is requested.
+    /// </summary>
+    [Fact]
+    public async Task Handle_ShouldLogInformation_WhenOtpIsRequested()
+    {
+        // Arrange
+        var command = new RequestOtpCommand { Email = "user@example.com" };
+        emailSender.SendOtpAsync(command.Email, Arg.Any<string>())
+            .Returns(Result.Success());
+
+        // Act
+        await handler.Handle(command, CancellationToken.None);
+
+        // Assert
+        logger.Received().Log(
+            LogLevel.Information,
+            Arg.Any<EventId>(),
+            Arg.Is<object>(o => o.ToString()!.Contains("OTP requested for email")),
+            Arg.Any<Exception>(),
+            Arg.Any<Func<object, Exception?, string>>());
+    }
+
+    /// <summary>
+    /// Tests that Handle logs a warning when validation fails.
+    /// </summary>
+    [Fact]
+    public async Task Handle_ShouldLogWarning_WhenValidationFails()
+    {
+        // Arrange
+        var command = new RequestOtpCommand { Email = "user@" };
+
+        // Act
+        await handler.Handle(command, CancellationToken.None);
+
+        // Assert
+        logger.Received().Log(
+            LogLevel.Warning,
+            Arg.Any<EventId>(),
+            Arg.Is<object>(o => o.ToString()!.Contains("OTP request failed for email")),
+            Arg.Any<Exception>(),
+            Arg.Any<Func<object, Exception?, string>>());
+    }
+
+    /// <summary>
+    /// Tests that Handle logs success when OTP request completes successfully.
+    /// </summary>
+    [Fact]
+    public async Task Handle_ShouldLogInformation_WhenOtpRequestSucceeds()
+    {
+        // Arrange
+        var command = new RequestOtpCommand { Email = "user@example.com" };
+        emailSender.SendOtpAsync(command.Email, Arg.Any<string>())
+            .Returns(Result.Success());
+
+        // Act
+        await handler.Handle(command, CancellationToken.None);
+
+        // Assert
+        logger.Received().Log(
+            LogLevel.Information,
+            Arg.Any<EventId>(),
+            Arg.Is<object>(o => o.ToString()!.Contains("OTP request successful for email")),
+            Arg.Any<Exception>(),
+            Arg.Any<Func<object, Exception?, string>>());
+    }
+
+    /// <summary>
+    /// Tests that Handle logs a warning when email sending fails.
+    /// </summary>
+    [Fact]
+    public async Task Handle_ShouldLogWarning_WhenEmailSendingFails()
+    {
+        // Arrange
+        var command = new RequestOtpCommand { Email = "user@example.com" };
+        emailSender.SendOtpAsync(command.Email, Arg.Any<string>())
+            .Returns(Result.DependencyFailed(DependencyFailedReason.ConnectionFailed, "Email service unavailable"));
+
+        // Act
+        await handler.Handle(command, CancellationToken.None);
+
+        // Assert
+        logger.Received().Log(
+            LogLevel.Warning,
+            Arg.Any<EventId>(),
+            Arg.Is<object>(o => o.ToString()!.Contains("OTP request failed to send email")),
+            Arg.Any<Exception>(),
+            Arg.Any<Func<object, Exception?, string>>());
+    }
+
+    /// <summary>
     /// Tests that Handle generates an OTP when a valid email is provided.
     /// </summary>
     [Fact]
@@ -54,6 +144,8 @@ public class RequestOtpCommandHandlerTests
     {
         // Arrange
         var command = new RequestOtpCommand { Email = "user@example.com" };
+        emailSender.SendOtpAsync(command.Email, Arg.Any<string>())
+            .Returns(Result.Success());
 
         // Act
         var result = await handler.Handle(command, CancellationToken.None);
@@ -71,6 +163,9 @@ public class RequestOtpCommandHandlerTests
 
         // Arrange
         var command = new RequestOtpCommand { Email = "user@example.com" };
+        emailSender.SendOtpAsync(command.Email, Arg.Any<string>())
+            .Returns(Result.Success());
+
         // Act
         var result = await handler.Handle(command, CancellationToken.None);
 
@@ -88,6 +183,8 @@ public class RequestOtpCommandHandlerTests
 
         // Arrange
         var command = new RequestOtpCommand { Email = "user@example.com" };
+        emailSender.SendOtpAsync(command.Email, Arg.Any<string>())
+            .Returns(Result.Success());
 
         // Act
         var result = await handler.Handle(command, CancellationToken.None);
