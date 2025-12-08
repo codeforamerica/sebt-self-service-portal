@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
+using Microsoft.Extensions.Logging;
 using SEBT.Portal.Kernel;
 using SEBT.Portal.Kernel.AspNetCore;
 using SEBT.Portal.UseCases.Auth;
@@ -11,7 +12,7 @@ namespace SEBT.Portal.Api.Controllers;
 /// </summary>  
 [ApiController]
 [Route("api/auth/otp")]
-public class OtpController() : ControllerBase
+public class OtpController(ILogger<OtpController> logger) : ControllerBase
 {
     /// <summary>
     /// Request a one-time password (OTP) to be sent to the specified email address.
@@ -30,6 +31,7 @@ public class OtpController() : ControllerBase
         [FromBody] RequestOtpCommand command,
         [FromServices] ICommandHandler<RequestOtpCommand> handler)
     {
+        logger.LogInformation("OTP request received for email {Email}", command.Email);
 
         var result = await handler.Handle(command);
 
@@ -58,6 +60,7 @@ public class OtpController() : ControllerBase
     [FromBody] ValidateOtpCommand command,
     [FromServices] ICommandHandler<ValidateOtpCommand> handler)
     {
+        logger.LogInformation("OTP validation request received for email {Email}", command.Email);
 
         var result = await handler.Handle(command);
 
