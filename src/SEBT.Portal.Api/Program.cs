@@ -1,10 +1,19 @@
+using Serilog;
 using SEBT.Portal.UseCases;
 using SEBT.Portal.Infrastructure;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// Add services to the container.
+// Configure Serilog
+Log.Logger = new LoggerConfiguration()
+    .ReadFrom.Configuration(builder.Configuration)
+    .Enrich.FromLogContext()
+    .CreateLogger();
 
+// Use Serilog instead of default logger
+builder.Host.UseSerilog();
+
+// Add services to the container.
 builder.Services.AddControllers();
 builder.Services.Configure<RouteOptions>(options =>
 {
@@ -43,4 +52,17 @@ app.UseAuthorization();
 
 app.MapControllers();
 
-app.Run();
+try
+{
+    Log.Information("SEBT Portal API started successfully");
+    app.Run();
+}
+catch (Exception ex)
+{
+    Log.Fatal(ex, "SEBT Portal API terminated unexpectedly");
+    throw;
+}
+finally
+{
+    Log.CloseAndFlush();
+}
