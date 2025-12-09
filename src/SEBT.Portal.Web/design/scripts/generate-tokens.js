@@ -19,7 +19,7 @@
  * 2. Check if transformation needed (timestamp-based)
  * 3. Extract 'theme' object (USWDS has 'system' tokens built-in)
  * 4. Convert to CSS custom properties with semantic naming
- * 5. Output to src/app/tokens.css (imported in layout.tsx)
+ * 5. Output to design/tokens.css (imported in layout.tsx)
  */
 
 import { readFileSync, writeFileSync, existsSync, statSync } from 'fs';
@@ -37,13 +37,13 @@ const USWDS_PREFIXES = new Set([
 
 function getStatePaths(state) {
   const designDir = join(rootDir, 'design', 'states');
-  const appDir = join(rootDir, 'src', 'app');
+  const designOutputDir = join(rootDir, 'design');
 
   return {
     input: join(designDir, `${state}.json`),
-    output: join(appDir, 'tokens.css'),
+    output: join(designOutputDir, 'tokens.css'),
     designDir,
-    appDir
+    designOutputDir
   };
 }
 

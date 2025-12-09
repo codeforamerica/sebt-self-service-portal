@@ -12,8 +12,23 @@ dist
 dist-ssr
 *.local
 
-# Build outputs
-public/uswds.css
+# Next.js Build Outputs
+.next/
+.next-dc/
+.next-co/
+out/
+
+# Test Coverage Reports
+coverage/
+
+# USWDS assets (copied from node_modules during postinstall)
+public/css/
+public/img/
+public/js/
+public/fonts/
+
+# Keep only manually created public assets
+!public/.gitkeep
 
 # Editor directories and files
 .vscode/*
@@ -29,10 +44,25 @@ public/uswds.css
 # Environment files
 .env
 .env.local
+.env.production
 
-# USWDS generated files (auto-generated during build from design/states/*.json)
-# Only ignore state-specific auto-generated theme files (dc, co, etc.)
-# Manual files like _uswds-theme.scss and _uswds-theme-custom-styles.scss should be committed
-sass/_uswds-theme-dc.scss
-sass/_uswds-theme-co.scss
-sass/_uswds-theme-entry.scss
+# Next.js Type Definitions
+next-env.d.ts
+
+# TypeScript Build Cache
+*.tsbuildinfo
+
+# Generated Design Tokens (auto-generated from design/states/*.json)
+design/tokens.css
+
+# Generated USWDS Theme Files (auto-generated from design/states/*.json)
+design/sass/_uswds-theme-*.scss
+!design/sass/_uswds-theme.scss
+!design/sass/_uswds-theme-custom-styles.scss
+
+# Playwright Test Output
+playwright-report/
+test-results/
+
+# Lighthouse CI Reports
+.lighthouseci/
