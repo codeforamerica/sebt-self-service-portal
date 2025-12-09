@@ -4,18 +4,18 @@
 
 These scripts manage the Figma design token pipeline for multi-state deployments.
 
-## Architecture: Single Build, Runtime Configuration
+## Architecture: Build-Time State Detection
 
-**Key Principle:** Build once with all state tokens, configure state at deployment time via environment variable.
+**Key Principle:** Each state gets its own build with state-specific design tokens baked in at build time.
 
 ```
-Single Build                  Runtime Configuration
-┌──────────────┐             ┌─────────┐  ┌─────────┐
-│              │             │ DC      │  │ CO      │
-│  Next.js     │────────────▶│ Deploy  │  │ Deploy  │
-│  (all tokens)│             │ STATE=dc│  │ STATE=co│
-│              │             └─────────┘  └─────────┘
-└──────────────┘
+Separate Builds per State
+┌─────────────────┐          ┌─────────────────┐
+│ STATE=dc        │          │ STATE=co        │
+│ pnpm build      │          │ pnpm build      │
+│ ↓               │          │ ↓               │
+│ dc.sebt.gov     │          │ co.sebt.gov     │
+└─────────────────┘          └─────────────────┘
 ```
 
 ## Scripts
@@ -38,22 +38,21 @@ pnpm dev                  # Uses STATE from .env
 - `predev` hook (before `pnpm dev`)
 - Manual: `pnpm tokens`
 
-### `generate-all-tokens.js` (Production)
+### `generate-all-tokens.js` (CI/CD)
 
-Generates tokens for ALL states for production builds.
+Generates tokens for ALL states in CI/CD pipelines for validation.
 
 ```bash
 # Usage
-pnpm tokens:all           # Generate all state tokens
+pnpm tokens:all           # Generate all state tokens for CI validation
 
-# Auto-runs before build
-pnpm build                # Generates all tokens via prebuild
+# Not used in normal builds (each build only generates its own state)
 ```
 
 **When it runs:**
 
-- `prebuild` hook (before `pnpm build`)
-- Manual: `pnpm tokens:all`
+- CI/CD validation workflows
+- Manual: `pnpm tokens:all` for testing all state configs
 
 ## Token Generation Flow
 
@@ -61,61 +60,28 @@ pnpm build                # Generates all tokens via prebuild
 1. Figma Design
    ↓ Figma Tokens Studio Plugin
 2. design/states/{state}.json (Git)
-   ↓ generate-all-tokens.js
-3. sass/_uswds-theme-{state}.scss (All states)
-   ↓ Next.js SASS Compilation
-4. CSS with CSS Variables
-   ↓ Runtime: data-state attribute
-5. Correct tokens applied
-```
-
-## CSS Variables Approach
-
-**Implementation Pattern:**
-
-```scss
-// sass/_uswds-theme.scss
-:root {
-  /* DC tokens as defaults */
-  --color-primary: #1a4480;
-  --font-family-sans: 'Public Sans', sans-serif;
-}
-
-[data-state='co'] {
-  /* CO overrides */
-  --color-primary: #0071bc;
-  --font-family-sans: 'Roboto', sans-serif;
-}
-
-[data-state='va'] {
-  /* VA overrides */
-  --color-primary: #2e8540;
-}
-```
-
-```tsx
-// layout.tsx
-<html data-state={process.env.NEXT_PUBLIC_STATE || 'dc'}>{children}</html>
+   ↓ generate-tokens.js (STATE={state})
+3. design/tokens.css (CSS custom properties)
+   design/sass/_uswds-theme-{state}.scss (SASS variables)
+   ↓ Next.js Build
+4. Compiled CSS with state-specific tokens
+   ↓ Deployment
+5. State-specific build deployed to subdomain
 ```
 
 ## Deployment
 
-### Single Build Process
+### State-Specific Build Process
 
 ```bash
-# CI/CD: Build once
-pnpm build                # Includes ALL state tokens
+# CI/CD: Build per state
+STATE=dc pnpm build       # Build for DC with DC tokens
+STATE=co pnpm build       # Build for CO with CO tokens
 
-# Deploy multiple times with different config
-STATE=dc pnpm start       # DC deployment
-STATE=co pnpm start       # CO deployment
-STATE=va pnpm start       # VA deployment (when added)
+# Each build is deployed to its own subdomain
+# dc.sebt.gov  → DC build
+# co.sebt.gov  → CO build
 ```
-
-### Build Time Savings
-
-- **Before:** 3 states = 3 builds = ~9 minutes
-- **After:** 3 states = 1 build = ~3 minutes
 
 ## Adding New States
 
@@ -133,44 +99,14 @@ design/states/va.json
 const STATES = ['dc', 'co', 'va'] // Add 'va'
 ```
 
-**3. Deploy**
+**3. Build and Deploy**
 
 ```bash
-pnpm build              # All tokens auto-included
-STATE=va pnpm start     # Deploy with VA config
+STATE=va pnpm build     # Build for VA
+# Deploy VA build to va.sebt.gov
 ```
 
-**That's it!** No new build scripts or separate build artifacts needed.
-
-## TODO: Implement Token Generation
-
-The current scripts are placeholders. Implement the actual token transformation logic:
-
-**Steps:**
-
-1. Read `design/states/{state}.json`
-2. Transform JSON tokens to SCSS variables
-3. Write to `sass/_uswds-theme-{state}.scss` (gitignored)
-4. Generate CSS variables in `:root` and `[data-state="{state}"]` blocks
-5. Optional: Generate TypeScript types for design tokens
-
-**Example Implementation:**
-
-```javascript
-// In generate-tokens.js or generate-all-tokens.js
-import { readFileSync, writeFileSync } from 'fs'
-
-function generateTokensForState(state) {
-  // 1. Read token file
-  const tokens = JSON.parse(readFileSync(`design/states/${state}.json`, 'utf8'))
-
-  // 2. Transform to SCSS
-  const scss = transformToScss(tokens, state)
-
-  // 3. Write output
-  writeFileSync(`sass/_uswds-theme-${state}.scss`, scss)
-}
-```
+**That's it!** The token generation system automatically handles the new state.
 
 ## Token File Structure
 
@@ -195,8 +131,8 @@ Expected structure from Figma Tokens Studio:
 ## Environment Variables
 
 - `STATE` or `NEXT_PUBLIC_STATE`: State code (dc, co, va, etc.)
-- Used at **runtime** to apply correct tokens via `data-state` attribute
-- No longer used at **build time** (all tokens included in build)
+- Used at **build time** to generate state-specific tokens
+- Each state gets its own separate build with baked-in tokens
 
 ## Reference
 
