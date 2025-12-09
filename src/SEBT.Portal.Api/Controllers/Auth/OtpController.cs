@@ -31,7 +31,7 @@ public class OtpController(ILogger<OtpController> logger) : ControllerBase
         [FromBody] RequestOtpCommand command,
         [FromServices] ICommandHandler<RequestOtpCommand> handler)
     {
-        logger.LogInformation("OTP request received for email {Email}", command.Email);
+        logger.LogInformation("OTP request received for email {Email}", command?.Email ?? "unknown");
 
         var result = await handler.Handle(command);
 
@@ -60,7 +60,7 @@ public class OtpController(ILogger<OtpController> logger) : ControllerBase
     [FromBody] ValidateOtpCommand command,
     [FromServices] ICommandHandler<ValidateOtpCommand> handler)
     {
-        logger.LogInformation("OTP validation request received for email {Email}", command.Email);
+        logger.LogInformation("OTP validation request received for email {Email}", command?.Email ?? "unknown");
 
         var result = await handler.Handle(command);
 
