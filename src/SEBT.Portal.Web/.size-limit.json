@@ -1,0 +1,12 @@
+[
+  {
+    "name": "Client JS (First Load)",
+    "path": ".next/static/chunks/app/page*.js",
+    "limit": "150 KB"
+  },
+  {
+    "name": "Client JS (All)",
+    "path": ".next/static/**/*.js",
+    "limit": "500 KB"
+  }
+]
