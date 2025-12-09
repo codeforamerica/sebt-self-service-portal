@@ -23,7 +23,7 @@ import { join, dirname } from 'path';
 import { fileURLToPath } from 'url';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
-const projectRoot = join(__dirname, '..');
+const projectRoot = join(__dirname, '..', '..');
 
 /**
  * Convert token name to TypeScript-friendly property name
@@ -213,8 +213,16 @@ ${generateTokenMap(state, properties)}
 
 function main() {
   try {
+    const VALID_STATES = ['dc', 'co'];
     const args = process.argv.slice(2);
     const state = (args[0] || process.env.STATE || 'dc').toLowerCase();
+
+    // Validate state
+    if (!VALID_STATES.includes(state)) {
+      console.error(`❌ Invalid state: "${state}"`);
+      console.error(`   Valid states: ${VALID_STATES.join(', ')}`);
+      process.exit(1);
+    }
 
     generateTypes(state);
   } catch (error) {

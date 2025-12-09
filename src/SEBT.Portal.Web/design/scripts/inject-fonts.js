@@ -22,7 +22,7 @@ import { join, dirname } from 'path';
 import { fileURLToPath } from 'url';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
-const projectRoot = join(__dirname, '..');
+const projectRoot = join(__dirname, '..', '..');
 
 const GOOGLE_FONTS_BASE = 'https://fonts.googleapis.com/css2';
 const DEFAULT_WEIGHTS = [300, 400, 700];
