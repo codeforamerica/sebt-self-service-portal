@@ -3,7 +3,7 @@
 # Environment-agnostic: Works in Docker, GitHub Actions, and local development
 #
 # Usage:
-#   ./scripts/ci/build-frontend.sh [--skip-install] [--production]
+#   ./.github/workflows/scripts/build-frontend.sh [--skip-install] [--production]
 #
 # Options:
 #   --skip-install    Skip dependency installation (useful if already installed)

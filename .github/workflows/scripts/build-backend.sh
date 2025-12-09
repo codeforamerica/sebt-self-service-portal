@@ -3,7 +3,7 @@
 # Environment-agnostic: Works in Docker, GitHub Actions, and local development
 #
 # Usage:
-#   ./scripts/ci/build-backend.sh [--skip-restore] [--configuration <config>]
+#   ./.github/workflows/scripts/build-backend.sh [--skip-restore] [--configuration <config>]
 #
 # Options:
 #   --skip-restore           Skip dotnet restore (useful if already restored)

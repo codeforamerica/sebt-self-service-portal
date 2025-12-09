@@ -3,7 +3,7 @@
 # Environment-agnostic: Works in Docker, GitHub Actions, and local development
 #
 # Usage:
-#   ./scripts/ci/test-backend.sh [--skip-build] [--configuration <config>] [--coverage]
+#   ./.github/workflows/scripts/test-backend.sh [--skip-build] [--configuration <config>] [--coverage]
 #
 # Options:
 #   --skip-build             Skip build step (useful if already built)

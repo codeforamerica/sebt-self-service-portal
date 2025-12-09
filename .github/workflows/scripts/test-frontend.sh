@@ -3,7 +3,7 @@
 # Environment-agnostic: Works in Docker, GitHub Actions, and local development
 #
 # Usage:
-#   ./scripts/ci/test-frontend.sh [--skip-install]
+#   ./.github/workflows/scripts/test-frontend.sh [--skip-install]
 #
 # Options:
 #   --skip-install    Skip dependency installation (useful if already installed)

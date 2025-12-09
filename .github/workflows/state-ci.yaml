@@ -45,7 +45,7 @@ jobs:
           # Priority 3: Default (main branch, feature branches, PRs) = all states
           else
             echo "Building all states (branch: $BRANCH)"
-            STATES=$(find config/states -name "*.yaml" ! -name "_template.yaml" -exec basename {} .yaml \; | jq -R -s -c 'split("\n")[:-1]')
+            STATES=$(find .github/config/states -name "*.yaml" ! -name "_template.yaml" -exec basename {} .yaml \; | jq -R -s -c 'split("\n")[:-1]')
             echo "matrix={\"state\":$STATES}" >> $GITHUB_OUTPUT
           fi
 
@@ -73,7 +73,7 @@ jobs:
       - name: Load state configuration
         id: config
         run: |
-          CONFIG_FILE="config/states/${{ matrix.state }}.yaml"
+          CONFIG_FILE=".github/config/states/${{ matrix.state }}.yaml"
 
           if [ ! -f "$CONFIG_FILE" ]; then
             echo "Error: Configuration file not found: $CONFIG_FILE"
@@ -107,7 +107,7 @@ jobs:
             -v ${{ github.workspace }}:/workspace \
             -w /workspace \
             mcr.microsoft.com/dotnet/sdk:${{ steps.config.outputs.dotnet_version }} \
-            bash -c "./scripts/ci/build-backend.sh --configuration ${{ steps.config.outputs.build_config }} ${{ steps.config.outputs.backend_flags }}"
+            bash -c "./.github/workflows/scripts/build-backend.sh --configuration ${{ steps.config.outputs.build_config }} ${{ steps.config.outputs.backend_flags }}"
 
       - name: Test Backend (Docker)
         if: steps.config.outputs.use_docker == 'true' && steps.config.outputs.skip_tests != 'true'
@@ -116,7 +116,7 @@ jobs:
             -v ${{ github.workspace }}:/workspace \
             -w /workspace \
             mcr.microsoft.com/dotnet/sdk:${{ steps.config.outputs.dotnet_version }} \
-            bash -c "./scripts/ci/test-backend.sh --skip-build --configuration ${{ steps.config.outputs.build_config }}"
+            bash -c "./.github/workflows/scripts/test-backend.sh --skip-build --configuration ${{ steps.config.outputs.build_config }}"
 
       - name: Build Frontend (Docker)
         if: steps.config.outputs.use_docker == 'true'
@@ -125,7 +125,7 @@ jobs:
             -v ${{ github.workspace }}:/workspace \
             -w /workspace \
             node:${{ steps.config.outputs.node_version }}-alpine \
-            sh -c "corepack enable && corepack prepare pnpm@${{ steps.config.outputs.pnpm_version }} --activate && sh scripts/ci/build-frontend.sh --production ${{ steps.config.outputs.frontend_flags }}"
+            sh -c "corepack enable && corepack prepare pnpm@${{ steps.config.outputs.pnpm_version }} --activate && sh .github/workflows/scripts/build-frontend.sh --production ${{ steps.config.outputs.frontend_flags }}"
 
       - name: Test Frontend (Docker)
         if: steps.config.outputs.use_docker == 'true' && steps.config.outputs.skip_tests != 'true'
@@ -134,7 +134,7 @@ jobs:
             -v ${{ github.workspace }}:/workspace \
             -w /workspace \
             node:${{ steps.config.outputs.node_version }}-alpine \
-            sh -c "corepack enable && corepack prepare pnpm@${{ steps.config.outputs.pnpm_version }} --activate && sh scripts/ci/test-frontend.sh --skip-install"
+            sh -c "corepack enable && corepack prepare pnpm@${{ steps.config.outputs.pnpm_version }} --activate && sh .github/workflows/scripts/test-frontend.sh --skip-install"
 
       # Native Build Path
       - name: Setup .NET (Native)
@@ -158,19 +158,19 @@ jobs:
 
       - name: Build Backend (Native)
         if: steps.config.outputs.use_docker != 'true'
-        run: ./scripts/ci/build-backend.sh --configuration ${{ steps.config.outputs.build_config }} ${{ steps.config.outputs.backend_flags }}
+        run: ./.github/workflows/scripts/build-backend.sh --configuration ${{ steps.config.outputs.build_config }} ${{ steps.config.outputs.backend_flags }}
 
       - name: Test Backend (Native)
         if: steps.config.outputs.use_docker != 'true' && steps.config.outputs.skip_tests != 'true'
-        run: ./scripts/ci/test-backend.sh --skip-build --configuration ${{ steps.config.outputs.build_config }}
+        run: ./.github/workflows/scripts/test-backend.sh --skip-build --configuration ${{ steps.config.outputs.build_config }}
 
       - name: Build Frontend (Native)
         if: steps.config.outputs.use_docker != 'true'
-        run: ./scripts/ci/build-frontend.sh --production ${{ steps.config.outputs.frontend_flags }}
+        run: ./.github/workflows/scripts/build-frontend.sh --production ${{ steps.config.outputs.frontend_flags }}
 
       - name: Test Frontend (Native)
         if: steps.config.outputs.use_docker != 'true' && steps.config.outputs.skip_tests != 'true'
-        run: ./scripts/ci/test-frontend.sh --skip-install
+        run: ./.github/workflows/scripts/test-frontend.sh --skip-install
 
       # Upload artifacts
       - name: Upload build artifacts
