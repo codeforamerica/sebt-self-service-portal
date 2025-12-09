@@ -37,11 +37,9 @@ for arg in "$@"; do
   case $arg in
     --skip-install)
       SKIP_INSTALL=true
-      shift
       ;;
     --production)
       PRODUCTION=true
-      shift
       ;;
   esac
 done

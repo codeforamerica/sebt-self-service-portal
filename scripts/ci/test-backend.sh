@@ -34,7 +34,7 @@ if [ "${CI:-false}" = "true" ] || [ -n "${GITHUB_ACTIONS:-}" ]; then
   CONFIGURATION="Release"
 fi
 
-while [[ $# -gt 0 ]]; do
+while [ $# -gt 0 ]; do
   case $1 in
     --skip-build)
       SKIP_BUILD=true
@@ -106,23 +106,21 @@ run_tests() {
   log_info "Running .NET tests..."
   cd "$PROJECT_ROOT"
 
-  local test_args=(
-    "test"
-    "--configuration" "$CONFIGURATION"
-    "--no-build"
-    "--verbosity" "normal"
-  )
-
   # Add coverage collection if requested
   if [ "$COLLECT_COVERAGE" = true ]; then
     log_info "Code coverage collection enabled"
-    test_args+=(
-      "--collect:\"XPlat Code Coverage\""
-      "--results-directory" "./TestResults"
-    )
+    dotnet test \
+      --configuration "$CONFIGURATION" \
+      --no-build \
+      --verbosity normal \
+      "--collect:XPlat Code Coverage" \
+      --results-directory "./TestResults"
+  else
+    dotnet test \
+      --configuration "$CONFIGURATION" \
+      --no-build \
+      --verbosity normal
   fi
-
-  dotnet "${test_args[@]}"
 
   log_success "All tests passed"
 }

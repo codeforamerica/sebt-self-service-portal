@@ -33,7 +33,7 @@ if [ "${CI:-false}" = "true" ] || [ -n "${GITHUB_ACTIONS:-}" ]; then
   CONFIGURATION="Release"
 fi
 
-while [[ $# -gt 0 ]]; do
+while [ $# -gt 0 ]; do
   case $1 in
     --skip-restore)
       SKIP_RESTORE=true
