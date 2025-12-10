@@ -6,13 +6,13 @@ name: State CI
 
 on:
   push:
-    branches: ['main', 'deploy/*']
+    branches: ["main", "deploy/*"]
   pull_request:
-    branches: ['main']
+    branches: ["main"]
   workflow_dispatch:
     inputs:
       state:
-        description: 'Specific state to build (leave empty for all)'
+        description: "Specific state to build (leave empty for all)"
         required: false
         type: string
 
@@ -59,7 +59,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix: ${{ fromJson(needs.discover-states.outputs.matrix) }}
-      fail-fast: false  # Continue other states even if one fails
+      fail-fast: false # Continue other states even if one fails
 
     steps:
       - name: Checkout code
@@ -154,7 +154,7 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: ${{ steps.config.outputs.node_version }}
-          cache: 'pnpm'
+          cache: "pnpm"
 
       - name: Build Backend (Native)
         if: steps.config.outputs.use_docker != 'true'
