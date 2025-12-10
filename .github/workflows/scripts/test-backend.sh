@@ -22,7 +22,7 @@ NC='\033[0m' # No Color
 
 # Script directory (POSIX-compatible)
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
-PROJECT_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
+PROJECT_ROOT="$(cd "$SCRIPT_DIR/../../.." && pwd)"
 
 # Parse arguments
 SKIP_BUILD=false
