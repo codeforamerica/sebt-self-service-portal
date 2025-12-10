@@ -3,7 +3,7 @@
 # Environment-agnostic: Works in Docker, GitHub Actions, and local development
 #
 # Usage:
-#   ./scripts/ci/build-frontend.sh [--skip-install] [--production]
+#   ./.github/workflows/scripts/build-frontend.sh [--skip-install] [--production]
 #
 # Options:
 #   --skip-install    Skip dependency installation (useful if already installed)
@@ -21,7 +21,7 @@ NC='\033[0m' # No Color
 
 # Script directory (POSIX-compatible)
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
-PROJECT_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
+PROJECT_ROOT="$(cd "$SCRIPT_DIR/../../.." && pwd)"
 FRONTEND_DIR="$PROJECT_ROOT/src/SEBT.Portal.Web"
 
 # Parse arguments

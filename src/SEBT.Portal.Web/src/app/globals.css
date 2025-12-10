@@ -1,0 +1,36 @@
+/**
+ * Global Styles - SEBT Portal
+ *
+ * This file contains global styles and USWDS customizations.
+ * State-specific design tokens are loaded dynamically in layout.tsx
+ */
+
+/* Apply Urbanist font from next/font/google */
+html,
+body {
+  margin: 0;
+  padding: 0;
+  font-family: var(--font-urbanist), system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Focus visible for accessibility */
+*:focus-visible {
+  outline: 2px solid var(--theme-focus-color, #0f6460);
+  outline-offset: 2px;
+}
+
+/* Custom USWDS overrides */
+.usa-header {
+  border-bottom: 1px solid var(--theme-primary, #2a646d);
+}
+
+.usa-button--secondary {
+  background-color: var(--theme-secondary, #ffbe2e);
+  color: #1b1b1b;
+}
+
+.usa-button--secondary:hover {
+  background-color: var(--theme-secondary-dark, #b38c00);
+}

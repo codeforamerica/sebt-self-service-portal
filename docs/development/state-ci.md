@@ -35,13 +35,13 @@ pnpm ci:test:state:co
 
 ```bash
 # 1. Copy template
-cp config/states/_template.yaml config/states/va.yaml
+cp .github/config/states/_template.yaml .github/config/states/va.yaml
 
 # 2. Edit configuration
-vim config/states/va.yaml
+vim .github/config/states/va.yaml
 
 # 3. Commit and push
-git add config/states/va.yaml
+git add .github/config/states/va.yaml
 git commit -m "feat: add Virginia (VA) state configuration"
 git push
 
@@ -71,7 +71,7 @@ Branch → State Discovery → Workflow → Build (Docker or Native)
 - `feature/*`, `main` → All states build (validates everywhere)
 
 All states share:
-- ✅ Same CI scripts ([scripts/ci/](../../scripts/ci/))
+- ✅ Same CI scripts ([.github/workflows/scripts/](../../.github/workflows/scripts/))
 - ✅ Same workflow logic ([.github/workflows/state-ci.yaml](../../.github/workflows/state-ci.yaml))
 - ✅ Same codebase (in `main`)
 
@@ -89,7 +89,7 @@ Each state customizes:
 ### File Location
 
 ```
-config/states/
+.github/config/states/
 ├── _template.yaml    # Template for new states
 ├── dc.yaml           # District of Columbia
 └── co.yaml           # Colorado
@@ -169,7 +169,7 @@ Workflow discovers states based on **branch name**:
 
     # Priority 3: Default (main, feature branches, PRs) = all states
     else
-      STATES=$(find config/states -name "*.yaml" ...)
+      STATES=$(find .github/config/states -name "*.yaml" ...)
       echo "matrix={\"state\":$STATES}"
     fi
 ```
@@ -186,8 +186,8 @@ For each state, load YAML config:
 ```yaml
 - name: Load state configuration
   run: |
-    yq eval '.infrastructure.use_docker' config/states/${{ matrix.state }}.yaml
-    yq eval '.versions.node' config/states/${{ matrix.state }}.yaml
+    yq eval '.infrastructure.use_docker' .github/config/states/${{ matrix.state }}.yaml
+    yq eval '.versions.node' .github/config/states/${{ matrix.state }}.yaml
     # ... load all config values
 ```
 
@@ -221,7 +221,7 @@ Based on `use_docker`, choose build path:
 ### Example 1: Docker State (DC)
 
 ```yaml
-# config/states/dc.yaml
+# .github/config/states/dc.yaml
 state: dc
 infrastructure:
   use_docker: true
@@ -237,7 +237,7 @@ versions:
 ### Example 2: Custom Flags
 
 ```yaml
-# config/states/co.yaml
+# .github/config/states/co.yaml
 state: co
 infrastructure:
   use_docker: true
@@ -318,7 +318,7 @@ git push origin main
 
 ```bash
 # Copy template
-cp config/states/_template.yaml config/states/NEW_STATE.yaml
+cp .github/config/states/_template.yaml .github/config/states/NEW_STATE.yaml
 ```
 
 ### Step 2: Edit Configuration
@@ -340,7 +340,7 @@ pnpm ci:test:state:NEW_STATE
 ### Step 4: Commit and Push
 
 ```bash
-git add config/states/NEW_STATE.yaml
+git add .github/config/states/NEW_STATE.yaml
 git commit -m "feat: add NEW_STATE state configuration"
 git push
 ```
@@ -357,7 +357,7 @@ git push
 
 Always start from `_template.yaml`:
 ```bash
-cp config/states/_template.yaml config/states/NEW_STATE.yaml
+cp .github/config/states/_template.yaml .github/config/states/NEW_STATE.yaml
 ```
 
 ### 2. **Test Before Committing**
@@ -390,12 +390,12 @@ versions:
 
 Use feature flags for state-specific behavior (all code lives in `main`):
 ```yaml
-# config/states/dc.yaml
+# .github/config/states/dc.yaml
 environment:
   features:
     new_dashboard: true  # DC has this
 
-# config/states/co.yaml
+# .github/config/states/co.yaml
 environment:
   features:
     new_dashboard: false  # CO doesn't
@@ -424,7 +424,7 @@ if (config.features.new_dashboard && state === 'dc') {
 **Symptom**: New state config not found
 
 **Solution**: Ensure:
-- File is in `config/states/`
+- File is in `.github/config/states/`
 - File has `.yaml` extension
 - File is not named `_template.yaml`
 - File is committed and pushed
@@ -482,12 +482,12 @@ versions:
 
 **After** (unified):
 ```
-.github/workflows/
-└── state-ci.yaml
-
-config/states/
-├── dc.yaml (Docker)
-└── co.yaml (Docker)
+.github/
+├── workflows/
+│   └── state-ci.yaml
+└── config/states/
+    ├── dc.yaml (Docker)
+    └── co.yaml (Docker)
 ```
 
 **Migration steps:**
@@ -540,12 +540,12 @@ View full matrix:
 
 A: Yes, use YAML anchors or create a `defaults.yaml`:
 ```yaml
-# config/defaults.yaml
+# .github/config/defaults.yaml
 versions: &default_versions
   node: "24.x"
   pnpm: "10.x"
 
-# config/states/dc.yaml
+# .github/config/states/dc.yaml
 versions: *default_versions
 ```
 
@@ -553,7 +553,7 @@ versions: *default_versions
 
 A: Rename file:
 ```bash
-mv config/states/dc.yaml config/states/dc.yaml.disabled
+mv .github/config/states/dc.yaml .github/config/states/dc.yaml.disabled
 ```
 
 **Q: Can I test multiple states locally?**

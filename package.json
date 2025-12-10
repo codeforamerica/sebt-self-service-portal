@@ -21,13 +21,18 @@
     "ci:test:state:dc": "act workflow_dispatch -W .github/workflows/state-ci.yaml --input state=dc",
     "ci:test:state:co": "act workflow_dispatch -W .github/workflows/state-ci.yaml --input state=co",
     "ci:test:pr": "./act-test.sh pr",
-    "ci:validate": "./act-test.sh dry-run"
+    "ci:validate": "./act-test.sh dry-run",
+    "prepare": "husky"
   },
   "devDependencies": {
-    "concurrently": "^9.2.1"
+    "concurrently": "^9.2.1",
+    "husky": "^9.1.7",
+    "knip": "^5.71.0",
+    "lint-staged": "^16.2.7",
+    "tsx": "^4.21.0"
   },
   "engines": {
-    "node": ">=18.0.0",
-    "pnpm": ">=8.0.0"
+    "node": ">=24.0.0",
+    "pnpm": ">=10.0.0"
   }
 }
