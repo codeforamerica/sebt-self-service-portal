@@ -65,7 +65,7 @@ for (const state of STATES) {
 
     // Run token generation for this state using child_process
     const { execSync } = await import('child_process');
-    execSync(`STATE=${state} node scripts/generate-tokens.js`, {
+    execSync(`STATE=${state} node design/scripts/generate-tokens.js`, {
       cwd: rootDir,
       stdio: 'inherit'
     });
