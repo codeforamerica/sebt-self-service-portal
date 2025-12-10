@@ -106,6 +106,7 @@ jobs:
           docker run --rm \
             -v ${{ github.workspace }}:/workspace \
             -w /workspace \
+            -e CI=true \
             mcr.microsoft.com/dotnet/sdk:${{ steps.config.outputs.dotnet_version }} \
             bash -c "./scripts/ci/build-backend.sh --configuration ${{ steps.config.outputs.build_config }} ${{ steps.config.outputs.backend_flags }}"
 
@@ -115,6 +116,7 @@ jobs:
           docker run --rm \
             -v ${{ github.workspace }}:/workspace \
             -w /workspace \
+            -e CI=true \
             mcr.microsoft.com/dotnet/sdk:${{ steps.config.outputs.dotnet_version }} \
             bash -c "./scripts/ci/test-backend.sh --skip-build --configuration ${{ steps.config.outputs.build_config }}"
 
@@ -124,6 +126,7 @@ jobs:
           docker run --rm \
             -v ${{ github.workspace }}:/workspace \
             -w /workspace \
+            -e CI=true \
             node:${{ steps.config.outputs.node_version }}-alpine \
             sh -c "corepack enable && corepack prepare pnpm@${{ steps.config.outputs.pnpm_version }} --activate && sh scripts/ci/build-frontend.sh --production ${{ steps.config.outputs.frontend_flags }}"
 
@@ -133,6 +136,7 @@ jobs:
           docker run --rm \
             -v ${{ github.workspace }}:/workspace \
             -w /workspace \
+            -e CI=true \
             node:${{ steps.config.outputs.node_version }}-alpine \
             sh -c "corepack enable && corepack prepare pnpm@${{ steps.config.outputs.pnpm_version }} --activate && sh scripts/ci/test-frontend.sh --skip-install"
 
