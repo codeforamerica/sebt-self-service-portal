@@ -1,0 +1,9 @@
+{
+  "ref": "refs/heads/main",
+  "repository": {
+    "name": "sebt-self-service-portal",
+    "owner": {
+      "login": "codeforamerica"
+    }
+  }
+}
