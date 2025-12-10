@@ -122,24 +122,11 @@ build_frontend() {
   log_info "Building frontend..."
   cd "$FRONTEND_DIR"
 
-  # Run prebuild script (tokens, fonts, validation)
-  log_info "Running prebuild steps..."
-  node scripts/validate-tokens.js
-  node scripts/tokens-to-scss.js
-  node scripts/inject-fonts.js
-  node scripts/generate-token-types.js
-
-  # TypeScript compilation
-  log_info "Compiling TypeScript..."
-  pnpm exec tsc --noEmit
-
-  # Vite build
-  log_info "Building with Vite..."
-  if [ "$PRODUCTION" = true ]; then
-    pnpm exec vite build --mode production
-  else
-    pnpm exec vite build
-  fi
+  # Build uses Next.js with automatic prebuild hook
+  # prebuild runs: pnpm tokens:all (generates design tokens for all states)
+  # build runs: next build (outputs to .next/standalone)
+  log_info "Running Next.js build (includes token generation via prebuild hook)..."
+  pnpm build
 
   log_success "Frontend build complete"
 }
@@ -161,9 +148,9 @@ main() {
   log_success "=== Frontend build completed successfully ==="
 
   # Display output info
-  if [ -d "$FRONTEND_DIR/dist" ]; then
-    log_info "Build output: $FRONTEND_DIR/dist"
-    log_info "Build size: $(du -sh "$FRONTEND_DIR/dist" | cut -f1)"
+  if [ -d "$FRONTEND_DIR/.next/standalone" ]; then
+    log_info "Build output: $FRONTEND_DIR/.next/standalone"
+    log_info "Build size: $(du -sh "$FRONTEND_DIR/.next/standalone" | cut -f1)"
   fi
 }
 
