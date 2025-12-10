@@ -178,6 +178,6 @@ jobs:
         with:
           name: ${{ matrix.state }}-build-artifacts
           path: |
-            src/SEBT.Portal.Web/dist
+            src/SEBT.Portal.Web/.next/standalone
             src/**/bin/${{ steps.config.outputs.build_config }}
           retention-days: 7

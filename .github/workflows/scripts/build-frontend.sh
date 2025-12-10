@@ -163,9 +163,9 @@ main() {
   log_success "=== Frontend build completed successfully ==="
 
   # Display output info
-  if [ -d "$FRONTEND_DIR/dist" ]; then
-    log_info "Build output: $FRONTEND_DIR/dist"
-    log_info "Build size: $(du -sh "$FRONTEND_DIR/dist" | cut -f1)"
+  if [ -d "$FRONTEND_DIR/.next/standalone" ]; then
+    log_info "Build output: $FRONTEND_DIR/.next/standalone"
+    log_info "Build size: $(du -sh "$FRONTEND_DIR/.next/standalone" | cut -f1)"
   fi
 }
 
