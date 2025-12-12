@@ -2,11 +2,33 @@
 
 [![State CI](https://github.com/codeforamerica/sebt-self-service-portal/actions/workflows/state-ci.yaml/badge.svg)](https://github.com/codeforamerica/sebt-self-service-portal/actions/workflows/state-ci.yaml)
 
-## Quick Start
+## Background
+The Summer EBT (SUN Bucks) Self-Service Portal is an application that allows parents/guardians
+of children eligible for [Summer EBT](https://www.fns.usda.gov/summer/sunbucks) manage their benefit, including the following core features:
+- Verifying a child's eligibility
+- Verifying when and how the benefit will be received (which EBT card)
+- Changing mailing address on file
+- Requesting a replacement EBT card
 
-### Development
+## Quick start 🧰
+> **Note:** The following steps assume you are working on macOS. Steps may differ if you are working on a different operating system.
+
+### Prerequisites 👷
+- The application backend is built with the .NET 10 SDK, which can be downloaded [here](https://dotnet.microsoft.com/en-us/download).
+- Frontend packages and local development scripts are managed with [pnpm](https://pnpm.io/).
+- [Docker](https://www.docker.com/) is required for packaging and running containers.
+
+### Development 💻
+```bash
+pnpm install          # Install dependencies
+```
+***
 ```bash
 pnpm dev              # Start both API and frontend
+```
+
+```bash
+pnpm web:dev          # Start frontend only
 ```
 
 ### Local Build & Test (Debug mode)
@@ -20,17 +42,6 @@ pnpm api:test         # Test backend only
 pnpm ci:build         # Build frontend + backend (Release)
 pnpm ci:test          # Test frontend + backend
 
-## Background
-The Summer EBT (SUN Bucks) Self-Service Portal is an application that allows parents/guardians
-of children eligible for [Summer EBT](https://www.fns.usda.gov/summer/sunbucks) manage their benefit, including the following core features:
-- Verifying a child's eligibility
-- Verifying when and how the benefit will be received (which EBT card)
-- Changing mailing address on file
-- Requesting a replacement EBT card
-
-## Setup 🧰
-**Assumptions**
-> The following steps assume you are working on macOS. Steps may differ if you are working on a different operating system.
 
 TODO
 # Individual components
@@ -52,7 +63,7 @@ pnpm ci:list          # List all ACT workflows
 pnpm ci:validate      # Validate workflows (dry-run)
 ```
 
-## Branch Strategy
+## Branch Strategy 🌿
 
 **State-Specific Development:**
 ```bash
@@ -69,9 +80,6 @@ main           # Production source for all states
 **How it works:** `main` contains all code (shared + state-specific). Each state deployment uses only what it needs via configuration and feature flags.
 
 See [docs/development/state-ci.md](docs/development/state-ci.md) for detailed CI documentation.
-
-## Development 💻
-TODO
 
 ## Documentation 📚
 More documentation can be found in the [docs](./docs) folder. 
