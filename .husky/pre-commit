@@ -1,0 +1,7 @@
+# Run lint-staged from the web package directory
+cd src/SEBT.Portal.Web || {
+  echo "Error: Could not change to web package directory"
+  exit 1
+}
+
+pnpm exec lint-staged

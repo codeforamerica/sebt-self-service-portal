@@ -1,0 +1,16 @@
+{
+  "$schema": "https://unpkg.com/knip@5/schema.json",
+  "entry": [
+    "src/app/**/*.{ts,tsx}",
+    "src/lib/**/*.{ts,tsx}",
+    "src/env.ts",
+    "e2e/**/*.{ts,tsx}",
+    "vitest.config.ts",
+    "playwright.config.ts",
+    "next.config.ts"
+  ],
+  "project": ["src/**/*.{ts,tsx}", "e2e/**/*.{ts,tsx}"],
+  "ignore": [".next/**", "node_modules/**", "public/**", "dist/**", "out/**"],
+  "ignoreDependencies": ["@uswds/uswds", "axe-core", "@t3-oss/env-nextjs", "zod"],
+  "ignoreBinaries": ["knip"]
+}

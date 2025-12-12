@@ -1,0 +1,9 @@
+node_modules
+.next
+.next-dc
+.next-co
+out
+dist
+public
+*.min.js
+*.min.css

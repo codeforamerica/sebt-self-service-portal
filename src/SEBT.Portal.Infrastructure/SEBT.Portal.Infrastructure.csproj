@@ -1,13 +1,20 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
     <PropertyGroup>
-        <TargetFramework>net8.0</TargetFramework>
+        <TargetFramework>net10.0</TargetFramework>
         <ImplicitUsings>enable</ImplicitUsings>
         <Nullable>enable</Nullable>
     </PropertyGroup>
 
     <ItemGroup>
+      <ProjectReference Include="../SEBT.Portal.Kernel/SEBT.Portal.Kernel.csproj" />
       <ProjectReference Include="..\SEBT.Portal.Core\SEBT.Portal.Core.csproj" />
+    </ItemGroup>
+
+    <ItemGroup>
+      <PackageReference Include="MailKit" Version="4.14.1" />
+      <PackageReference Include="Microsoft.Extensions.Caching.Memory" Version="10.0.0" /> 
+      <PackageReference Include="Microsoft.Extensions.Options.ConfigurationExtensions" Version="10.0.0" /> 
     </ItemGroup>
 
 </Project>

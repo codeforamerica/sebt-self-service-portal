@@ -5,11 +5,12 @@
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <DockerDefaultTargetOS>Linux</DockerDefaultTargetOS>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
 
     <!-- Frontend build configuration -->
     <FrontendRoot>$(MSBuildProjectDirectory)/../SEBT.Portal.Web</FrontendRoot>
     <FrontendDist>$(FrontendRoot)/dist</FrontendDist>
-    <WorkspaceRoot>$(MSBuildProjectDirectory)/../..</WorkspaceRoot>
+    <WorkspaceRoot>$(MSBuildProjectDirectory)/..</WorkspaceRoot>
   </PropertyGroup>
 
   <!-- Production Build: Build frontend before .NET build -->
@@ -18,7 +19,7 @@
     <Message Importance="high" Text="Building frontend with Vite..." />
 
     <!-- Install dependencies if node_modules doesn't exist -->
-    <Exec Command="pnpm install" WorkingDirectory="$(WorkspaceRoot)"
+    <Exec Command="pnpm install:web" WorkingDirectory="$(WorkspaceRoot)"
       Condition="!Exists('$(FrontendRoot)/node_modules')" />
 
     <!-- Build frontend (Vite handles token transformation automatically) -->
