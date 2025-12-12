@@ -1,3 +1,4 @@
+using Microsoft.EntityFrameworkCore;
 using SEBT.Portal.UseCases;
 using SEBT.Portal.Infrastructure;
 
@@ -23,10 +24,18 @@ builder.Services.AddSwaggerGen(options =>
 // Adds use cases (i.e., query and command handlers) for portal business logic
 builder.Services.AddUseCases();
 builder.Services.AddPortalInfrastructureServices();
+builder.Services.AddPortalDbContext(builder.Configuration);
 builder.Services.AddPortalInfrastructureRepositories();
 builder.Services.AddPortalInfrastructureAppSettings();
 
 var app = builder.Build();
+
+// Apply database migrations
+using (var scope = app.Services.CreateScope())
+{
+    var dbContext = scope.ServiceProvider.GetRequiredService<SEBT.Portal.Infrastructure.Data.PortalDbContext>();
+    await dbContext.Database.MigrateAsync();
+}
 
 // Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())
