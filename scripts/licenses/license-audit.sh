@@ -12,6 +12,8 @@ set -u  # Exit on undefined variable
 #  -o json \
 #  | jq .
 
+dotnet tool restore
+
 dotnet tool run nuget-license \
   --input SEBT.Portal.sln \
   -o json \

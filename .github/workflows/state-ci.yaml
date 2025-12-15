@@ -160,6 +160,10 @@ jobs:
         if: steps.config.outputs.use_docker != 'true'
         run: ./.github/workflows/scripts/build-backend.sh --configuration ${{ steps.config.outputs.build_config }} ${{ steps.config.outputs.backend_flags }}
 
+      - name: Generate Backend Dependencies CSV
+        id: generate-backend-dependencies-csv
+        run: ./scripts/licenses/license-audit.sh
+
       - name: Test Backend (Native)
         if: steps.config.outputs.use_docker != 'true' && steps.config.outputs.skip_tests != 'true'
         run: ./.github/workflows/scripts/test-backend.sh --skip-build --configuration ${{ steps.config.outputs.build_config }}
@@ -171,10 +175,6 @@ jobs:
       - name: Test Frontend (Native)
         if: steps.config.outputs.use_docker != 'true' && steps.config.outputs.skip_tests != 'true'
         run: ./.github/workflows/scripts/test-frontend.sh --skip-install
-
-      - name: Generate Backend Dependencies CSV
-        id: generate-backend-dependencies-csv
-        run: ./scripts/licenses/license-audit.sh
 
       # Upload artifacts
       - name: Upload build artifacts
