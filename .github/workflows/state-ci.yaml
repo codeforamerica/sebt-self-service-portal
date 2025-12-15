@@ -172,6 +172,10 @@ jobs:
         if: steps.config.outputs.use_docker != 'true' && steps.config.outputs.skip_tests != 'true'
         run: ./.github/workflows/scripts/test-frontend.sh --skip-install
 
+      - name: Generate Backend Dependencies CSV
+        id: generate-backend-dependencies-csv
+        run: ./scripts/licenses/license-audit.sh
+
       # Upload artifacts
       - name: Upload build artifacts
         uses: actions/upload-artifact@v4
@@ -180,4 +184,5 @@ jobs:
           path: |
             src/SEBT.Portal.Web/.next/standalone
             src/**/bin/${{ steps.config.outputs.build_config }}
+            scripts/licenses/backend-dependencies.csv
           retention-days: 7

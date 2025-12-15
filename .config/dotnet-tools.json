@@ -1,0 +1,13 @@
+{
+  "version": 1,
+  "isRoot": true,
+  "tools": {
+    "nuget-license": {
+      "version": "4.0.3",
+      "commands": [
+        "nuget-license"
+      ],
+      "rollForward": false
+    }
+  }
+}
