@@ -5,7 +5,7 @@ namespace SEBT.Portal.Core.AppSettings;
 public class EmailOtpSenderServiceSettings
 {
     public static readonly string SectionName = "EmailOtpSenderServiceSettings";
-   
+
     [EmailAddress]
     public required string SenderEmail { get; init; }
     public required string Subject { get; init; }
