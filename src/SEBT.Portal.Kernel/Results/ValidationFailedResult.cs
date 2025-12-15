@@ -12,6 +12,6 @@ public class ValidationFailedResult<T>(IReadOnlyCollection<ValidationError> erro
     public override string Message => "The operation failed due to validation errors.";
 
     public IReadOnlyCollection<ValidationError> Errors => errors;
-    
+
     public override Result Map() => new ValidationFailedResult(Errors);
 }

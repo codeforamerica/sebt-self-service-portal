@@ -18,7 +18,7 @@ public class MailKitClientService(IOptionsMonitor<SmtpClientSettings> optionsMon
         message.To.Add(new MailboxAddress(to, to));
         message.Subject = subject;
 
-        message.Body = new TextPart(isBodyHtml? MimeKit.Text.TextFormat.Html : MimeKit.Text.TextFormat.Plain)
+        message.Body = new TextPart(isBodyHtml ? MimeKit.Text.TextFormat.Html : MimeKit.Text.TextFormat.Plain)
         {
             Text = body
         };

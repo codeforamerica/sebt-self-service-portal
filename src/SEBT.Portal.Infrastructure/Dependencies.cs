@@ -37,4 +37,4 @@ public static class Dependencies
 
         return services;
     }
-} 
+}

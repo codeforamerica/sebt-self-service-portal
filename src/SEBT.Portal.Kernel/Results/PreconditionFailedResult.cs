@@ -12,6 +12,6 @@ public class PreconditionFailedResult<T>(PreconditionFailedReason reason, string
     public PreconditionFailedReason Reason { get; } = reason;
 
     public override string Message => message ?? Reason.ToMessage();
-    
+
     public override Result Map() => new PreconditionFailedResult(Reason, Message);
 }
