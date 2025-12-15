@@ -38,7 +38,7 @@ public class RequestOtpCommandHandlerTests
         // Arrange
         var command = new RequestOtpCommand { Email = "user@example.com" };
         emailSender.SendOtpAsync(command.Email, Arg.Any<string>())
-            .Returns(Result.Success()); 
+            .Returns(Result.Success());
         // Act
         var result = await handler.Handle(command, CancellationToken.None);
 

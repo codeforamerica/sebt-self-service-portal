@@ -47,7 +47,7 @@ public static class MvcResultExtensions
             PreconditionFailedResult { Reason: PreconditionFailedReason.ConcurrencyMismatch } when useProblemDetails
                 => result.ToProblemDetailsResult(HttpStatusCode.PreconditionFailed),
             PreconditionFailedResult { Reason: PreconditionFailedReason.ConcurrencyMismatch } when !useProblemDetails
-                => new StatusCodeResult((int) HttpStatusCode.PreconditionFailed),
+                => new StatusCodeResult((int)HttpStatusCode.PreconditionFailed),
             PreconditionFailedResult { Reason: PreconditionFailedReason.Conflict } when useProblemDetails
                 => result.ToProblemDetailsResult(HttpStatusCode.Conflict),
             PreconditionFailedResult { Reason: PreconditionFailedReason.Conflict } when !useProblemDetails
@@ -56,10 +56,10 @@ public static class MvcResultExtensions
                 => new ObjectResult(new ValidationProblemDetails(validationFailed.Errors.ToModelState())
                 {
                     Title = result.Message,
-                    Status = (int) HttpStatusCode.BadRequest,
+                    Status = (int)HttpStatusCode.BadRequest,
                 })
                 {
-                    StatusCode = (int) HttpStatusCode.BadRequest,
+                    StatusCode = (int)HttpStatusCode.BadRequest,
                 },
             ValidationFailedResult validationFailed when !useProblemDetails
                 => new BadRequestObjectResult(validationFailed.Errors.ToModelState()),
@@ -111,7 +111,7 @@ public static class MvcResultExtensions
             PreconditionFailedResult<T> { Reason: PreconditionFailedReason.ConcurrencyMismatch } when useProblemDetails
                 => result.ToProblemDetailsResult(HttpStatusCode.PreconditionFailed),
             PreconditionFailedResult<T> { Reason: PreconditionFailedReason.ConcurrencyMismatch } when !useProblemDetails
-                => new StatusCodeResult((int) HttpStatusCode.PreconditionFailed),
+                => new StatusCodeResult((int)HttpStatusCode.PreconditionFailed),
             PreconditionFailedResult<T> { Reason: PreconditionFailedReason.Conflict } when useProblemDetails
                 => result.ToProblemDetailsResult(HttpStatusCode.Conflict),
             PreconditionFailedResult<T> { Reason: PreconditionFailedReason.Conflict } when !useProblemDetails
@@ -120,10 +120,10 @@ public static class MvcResultExtensions
                 => new ObjectResult(new ValidationProblemDetails(validationFailed.Errors.ToModelState())
                 {
                     Title = result.Message,
-                    Status = (int) HttpStatusCode.BadRequest,
+                    Status = (int)HttpStatusCode.BadRequest,
                 })
                 {
-                    StatusCode = (int) HttpStatusCode.BadRequest,
+                    StatusCode = (int)HttpStatusCode.BadRequest,
                 },
             ValidationFailedResult<T> validationFailed when !useProblemDetails
                 => new BadRequestObjectResult(validationFailed.Errors.ToModelState()),
