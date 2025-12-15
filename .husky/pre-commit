@@ -51,12 +51,12 @@ cd "$PROJECT_ROOT"
 
 if command -v dotnet &> /dev/null; then
   # Verify code formatting matches .editorconfig (fails if changes needed)
-  dotnet format --verify-no-changes --verbosity quiet || {
-    log_error ".NET code formatting check failed - run 'dotnet format' to fix"
+  dotnet format SEBT.Portal.sln --verify-no-changes --verbosity quiet || {
+    log_error ".NET code formatting check failed - run 'dotnet format SEBT.Portal.sln' to fix"
     exit 1
   }
   
-  dotnet format analyzers --verify-no-changes --verbosity quiet || {
+  dotnet format SEBT.Portal.sln analyzers --verify-no-changes --verbosity quiet || {
     log_error ".NET analyzer checks failed - fix the reported issues"
     exit 1
   }
