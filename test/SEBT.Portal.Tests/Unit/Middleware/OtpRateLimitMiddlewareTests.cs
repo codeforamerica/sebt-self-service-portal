@@ -28,7 +28,8 @@ public class OtpRateLimitMiddlewareTests
     {
         // Arrange
         var email = "user@example.com";
-        var httpContext = CreateHttpContext("/api/auth/otp/request", "POST", CreateStream(CreateJsonBody(email)));
+        await using var bodyStream = CreateStream(CreateJsonBody(email));
+        var httpContext = CreateHttpContext("/api/auth/otp/request", "POST", bodyStream);
 
         // Act
         await _middleware.InvokeAsync(httpContext);
@@ -48,7 +49,8 @@ public class OtpRateLimitMiddlewareTests
         // Arrange
         var email = "User@Example.COM";
         var jsonBody = $@"{{""Email"": ""{email}""}}";
-        var httpContext = CreateHttpContext("/api/auth/otp/request", "POST", CreateStream(jsonBody));
+        await using var bodyStream = CreateStream(jsonBody);
+        var httpContext = CreateHttpContext("/api/auth/otp/request", "POST", bodyStream);
 
         // Act
         await _middleware.InvokeAsync(httpContext);
@@ -65,7 +67,8 @@ public class OtpRateLimitMiddlewareTests
     public async Task InvokeAsync_ShouldNotExtractEmail_WhenNotOtpEndpoint()
     {
         // Arrange
-        var httpContext = CreateHttpContext("/api/other/endpoint", "POST", CreateStream(CreateJsonBody("user@example.com")));
+        await using var bodyStream = CreateStream(CreateJsonBody("user@example.com"));
+        var httpContext = CreateHttpContext("/api/other/endpoint", "POST", bodyStream);
 
         // Act
         await _middleware.InvokeAsync(httpContext);
@@ -82,7 +85,8 @@ public class OtpRateLimitMiddlewareTests
     public async Task InvokeAsync_ShouldHandleInvalidJson_Gracefully()
     {
         // Arrange
-        var httpContext = CreateHttpContext("/api/auth/otp/request", "POST", CreateStream("{ invalid json }"));
+        await using var bodyStream = CreateStream("{ invalid json }");
+        var httpContext = CreateHttpContext("/api/auth/otp/request", "POST", bodyStream);
 
         // Act
         await _middleware.InvokeAsync(httpContext);
@@ -99,7 +103,8 @@ public class OtpRateLimitMiddlewareTests
     public async Task InvokeAsync_ShouldHandleEmptyBody_Gracefully()
     {
         // Arrange
-        var httpContext = CreateHttpContext("/api/auth/otp/request", "POST", new MemoryStream());
+        await using var bodyStream = new MemoryStream();
+        var httpContext = CreateHttpContext("/api/auth/otp/request", "POST", bodyStream);
 
         // Act
         await _middleware.InvokeAsync(httpContext);
@@ -116,7 +121,8 @@ public class OtpRateLimitMiddlewareTests
     public async Task InvokeAsync_ShouldHandleMissingEmailProperty_Gracefully()
     {
         // Arrange
-        var httpContext = CreateHttpContext("/api/auth/otp/request", "POST", CreateStream(@"{""otherProperty"": ""value""}"));
+        await using var bodyStream = CreateStream(@"{""otherProperty"": ""value""}");
+        var httpContext = CreateHttpContext("/api/auth/otp/request", "POST", bodyStream);
 
         // Act
         await _middleware.InvokeAsync(httpContext);
@@ -134,7 +140,7 @@ public class OtpRateLimitMiddlewareTests
     {
         // Arrange
         var email = "user@example.com";
-        var bodyStream = CreateStream(CreateJsonBody(email));
+        await using var bodyStream = CreateStream(CreateJsonBody(email));
         var initialPosition = bodyStream.Position;
         var httpContext = CreateHttpContext("/api/auth/otp/request", "POST", bodyStream);
 
@@ -154,7 +160,8 @@ public class OtpRateLimitMiddlewareTests
         // Arrange - Create a body larger than MaxBodySize (1024 bytes)
         var largeBody = new string('a', 2048); // 2KB body
         var jsonBody = $@"{{""email"": ""{largeBody}@example.com""}}";
-        var httpContext = CreateHttpContext("/api/auth/otp/request", "POST", CreateStream(jsonBody));
+        await using var bodyStream = CreateStream(jsonBody);
+        var httpContext = CreateHttpContext("/api/auth/otp/request", "POST", bodyStream);
 
         // Act
         await _middleware.InvokeAsync(httpContext);
@@ -171,7 +178,8 @@ public class OtpRateLimitMiddlewareTests
     public async Task InvokeAsync_ShouldNotExtractEmail_WhenEmailIsWhitespace()
     {
         // Arrange
-        var httpContext = CreateHttpContext("/api/auth/otp/request", "POST", CreateStream(@"{""email"": ""   ""}"));
+        await using var bodyStream = CreateStream(@"{""email"": ""   ""}");
+        var httpContext = CreateHttpContext("/api/auth/otp/request", "POST", bodyStream);
 
         // Act
         await _middleware.InvokeAsync(httpContext);
@@ -188,7 +196,8 @@ public class OtpRateLimitMiddlewareTests
     public async Task InvokeAsync_ShouldNotExtractEmail_WhenEmailIsNull()
     {
         // Arrange
-        var httpContext = CreateHttpContext("/api/auth/otp/request", "POST", CreateStream(@"{""email"": null}"));
+        await using var bodyStream = CreateStream(@"{""email"": null}");
+        var httpContext = CreateHttpContext("/api/auth/otp/request", "POST", bodyStream);
 
         // Act
         await _middleware.InvokeAsync(httpContext);
@@ -205,7 +214,8 @@ public class OtpRateLimitMiddlewareTests
     public async Task InvokeAsync_ShouldNotExtractEmail_WhenEmailIsEmpty()
     {
         // Arrange
-        var httpContext = CreateHttpContext("/api/auth/otp/request", "POST", CreateStream(@"{""email"": """"}"));
+        await using var bodyStream = CreateStream(@"{""email"": """"}");
+        var httpContext = CreateHttpContext("/api/auth/otp/request", "POST", bodyStream);
 
         // Act
         await _middleware.InvokeAsync(httpContext);
