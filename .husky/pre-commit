@@ -63,7 +63,7 @@ if command -v dotnet &> /dev/null; then
   
   log_success ".NET linting passed"
 else
-  log_error ".NET SDK not found - Please install via `brew install dotnet` or via the Windows Installer (if using Windows). Skipping .NET linting."
+  log_error ".NET SDK not found - Please install via `brew install dotnet` or via the Windows Installer (if using Windows). Aborting .NET linting."
   exit 1
 fi
 echo ""
@@ -82,7 +82,7 @@ if command -v dotnet &> /dev/null; then
   }
   log_success "Backend build validation passed"
 else
-  log_error ".NET SDK not found - Please install via `brew install dotnet` or via the Windows Installer (if using Windows). Skipping backend tests."
+  log_error ".NET SDK not found - Please install via `brew install dotnet` or via the Windows Installer (if using Windows). Aborting backend build validation."
   exit 1
 fi
 echo ""
@@ -119,7 +119,7 @@ if command -v dotnet &> /dev/null; then
   }
   log_success "Backend tests passed"
 else
-  log_error ".NET SDK not found - Please install via `brew install dotnet` or via the Windows Installer (if using Windows). Skipping backend tests."
+  log_error ".NET SDK not found - Please install via `brew install dotnet` or via the Windows Installer (if using Windows). Aborting backend tests."
   exit 1
 fi
 echo ""
