@@ -88,19 +88,10 @@ fi
 echo ""
 
 log_info "Step 4/6: Validating frontend build..."
-
-# Check for Node.js and pnpm
-if ! command -v node &> /dev/null; then
-  log_error "Node.js not found - Please install via `brew install node` or from https://nodejs.org/"
+cd src/SEBT.Portal.Web || {
+  log_error "Could not change to web package directory"
   exit 1
-fi
-
-if ! command -v pnpm &> /dev/null; then
-  log_error "pnpm not found - Please install via `npm install -g pnpm` or `brew install pnpm`"
-  exit 1
-fi
-
-cd src/SEBT.Portal.Web
+}
 
 pnpm build || {
   log_error "Frontend build failed"
@@ -125,18 +116,10 @@ fi
 echo ""
 
 log_info "Step 6/6: Running frontend tests..."
-
-if ! command -v node &> /dev/null; then
-  log_error "Node.js not found - Please install via `brew install node` or from https://nodejs.org/"
+cd src/SEBT.Portal.Web || {
+  log_error "Could not change to web package directory"
   exit 1
-fi
-
-if ! command -v pnpm &> /dev/null; then
-  log_error "pnpm not found - Please install via `npm install -g pnpm` or `brew install pnpm`"
-  exit 1
-fi
-
-cd src/SEBT.Portal.Web
+}
 
 pnpm exec vitest run || {
   log_error "Frontend tests failed"
