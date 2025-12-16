@@ -1,5 +1,5 @@
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
 using NSubstitute;
 using SEBT.Portal.Api.Controllers;
 using SEBT.Portal.Kernel;
@@ -10,12 +10,11 @@ namespace SEBT.Portal.Tests.Unit.Controllers;
 public class OtpControllerTests
 {
     private readonly OtpController _controller;
-    private readonly ILogger<OtpController> _logger;
 
     public OtpControllerTests()
     {
-        _logger = Substitute.For<ILogger<OtpController>>();
-        _controller = new OtpController(_logger);
+        var logger = NullLogger<OtpController>.Instance;
+        _controller = new OtpController(logger);
     }
 
     [Fact]
