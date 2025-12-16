@@ -1,3 +1,4 @@
+using System.Linq;
 using Microsoft.Extensions.Logging;
 using Sebt.Portal.Core.Models.Auth;
 using SEBT.Portal.Core.Repositories;
@@ -33,8 +34,13 @@ namespace SEBT.Portal.UseCases.Auth
 
             if (validationResult is ValidationFailedResult validationFailedResult)
             {
+                logger.LogWarning("OTP request failed for email {Email}: {Errors}",
+                    command.Email,
+                    string.Join(", ", validationFailedResult.Errors.Select(e => $"{e.Key}: {e.Message}")));
                 return Result.ValidationFailed(validationFailedResult.Errors);
             }
+
+            logger.LogInformation("OTP requested for email {Email}", command.Email);
 
             var otp = new OtpCode(otpGenerator.GenerateOtp(), command.Email);
 
@@ -55,8 +61,18 @@ namespace SEBT.Portal.UseCases.Auth
                     $"An error occurred while processing the OTP request");
             }
 
-            return await emailService.SendOtpAsync(command.Email, otp.Code);
+            var sendResult = await emailService.SendOtpAsync(command.Email, otp.Code);
 
+            if (sendResult.IsSuccess)
+            {
+                logger.LogInformation("OTP request successful for email {Email}", command.Email);
+            }
+            else
+            {
+                logger.LogWarning("OTP request failed to send email for {Email}: {Message}", command.Email, sendResult.Message);
+            }
+
+            return sendResult;
         }
     }
 }
