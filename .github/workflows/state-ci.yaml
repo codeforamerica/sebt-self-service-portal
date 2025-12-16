@@ -166,7 +166,7 @@ jobs:
 
       - name: Generate Backend Dependencies CSV
         id: generate-backend-dependencies-csv
-        run: ./scripts/licenses/license-audit.sh
+        run: ./.github/workflows/scripts/license-audit.sh
 
       - name: Build Frontend (Native)
         if: steps.config.outputs.use_docker != 'true'
