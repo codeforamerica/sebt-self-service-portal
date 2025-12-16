@@ -184,5 +184,5 @@ jobs:
           path: |
             src/SEBT.Portal.Web/.next/standalone
             src/**/bin/${{ steps.config.outputs.build_config }}
-            scripts/licenses/backend-dependencies.csv
+            output/backend-dependencies.csv
           retention-days: 7
