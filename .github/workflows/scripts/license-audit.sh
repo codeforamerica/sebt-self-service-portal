@@ -7,6 +7,13 @@
 set -e  # Exit on error
 set -u  # Exit on undefined variable
 
+SCRIPT_DIR=$( cd -- "$( dirname -- "$0" )" &> /dev/null && pwd -P )
+ALLOWED_LICENSES="$SCRIPT_DIR/licenses/allowed-licenses.json"
+LICENSE_MAPPINGS="$SCRIPT_DIR/licenses/license-mappings.json"
+BACKEND_OUTPUT="output/backend-dependencies.csv"
+
+mkdir -p output
+
 #dotnet tool run nuget-license \
 #  --input SEBT.Portal.sln \
 #  -o json \
@@ -17,8 +24,8 @@ dotnet tool restore
 dotnet tool run nuget-license \
   --input SEBT.Portal.sln \
   -o json \
-  -a scripts/licenses/allowed-licenses.json \
-  -mapping scripts/licenses/license-mappings.json \
+  -a $ALLOWED_LICENSES \
+  -mapping $LICENSE_MAPPINGS \
   | jq -r '
     # 1. Header Row Filter
     ["name", "license", "scope", "coordinate", "package", "version", "errors"],
@@ -33,4 +40,4 @@ dotnet tool run nuget-license \
       .PackageVersion, 
       ((.ValidationErrors // []) | map("ERROR: \(.Error)") | join("; "))
     ]) 
-    | @csv' > scripts/licenses/backend-dependencies.csv
+    | @csv' > $BACKEND_OUTPUT
