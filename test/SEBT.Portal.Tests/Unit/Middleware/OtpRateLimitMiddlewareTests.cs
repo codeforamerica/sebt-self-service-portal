@@ -79,10 +79,10 @@ public class OtpRateLimitMiddlewareTests
     }
 
     /// <summary>
-    /// Tests that the middleware handles invalid JSON gracefully.
+    /// Tests that the middleware rejects requests with invalid JSON.
     /// </summary>
     [Fact]
-    public async Task InvokeAsync_ShouldHandleInvalidJson_Gracefully()
+    public async Task InvokeAsync_ShouldRejectRequest_WhenJsonIsInvalid()
     {
         // Arrange
         await using var bodyStream = CreateStream("{ invalid json }");
@@ -93,14 +93,15 @@ public class OtpRateLimitMiddlewareTests
 
         // Assert
         Assert.False(httpContext.Items.ContainsKey("RateLimitEmail"));
-        await _next.Received(1).Invoke(httpContext);
+        Assert.Equal(StatusCodes.Status400BadRequest, httpContext.Response.StatusCode);
+        await _next.DidNotReceive().Invoke(httpContext);
     }
 
     /// <summary>
-    /// Tests that the middleware handles empty body gracefully.
+    /// Tests that the middleware rejects requests with empty body.
     /// </summary>
     [Fact]
-    public async Task InvokeAsync_ShouldHandleEmptyBody_Gracefully()
+    public async Task InvokeAsync_ShouldRejectRequest_WhenBodyIsEmpty()
     {
         // Arrange
         await using var bodyStream = new MemoryStream();
@@ -111,14 +112,15 @@ public class OtpRateLimitMiddlewareTests
 
         // Assert
         Assert.False(httpContext.Items.ContainsKey("RateLimitEmail"));
-        await _next.Received(1).Invoke(httpContext);
+        Assert.Equal(StatusCodes.Status400BadRequest, httpContext.Response.StatusCode);
+        await _next.DidNotReceive().Invoke(httpContext);
     }
 
     /// <summary>
-    /// Tests that the middleware handles missing email property gracefully.
+    /// Tests that the middleware rejects requests with missing email property.
     /// </summary>
     [Fact]
-    public async Task InvokeAsync_ShouldHandleMissingEmailProperty_Gracefully()
+    public async Task InvokeAsync_ShouldRejectRequest_WhenEmailPropertyIsMissing()
     {
         // Arrange
         await using var bodyStream = CreateStream(@"{""otherProperty"": ""value""}");
@@ -129,7 +131,8 @@ public class OtpRateLimitMiddlewareTests
 
         // Assert
         Assert.False(httpContext.Items.ContainsKey("RateLimitEmail"));
-        await _next.Received(1).Invoke(httpContext);
+        Assert.Equal(StatusCodes.Status400BadRequest, httpContext.Response.StatusCode);
+        await _next.DidNotReceive().Invoke(httpContext);
     }
 
     /// <summary>
@@ -152,10 +155,10 @@ public class OtpRateLimitMiddlewareTests
     }
 
     /// <summary>
-    /// Tests that the middleware handles oversized request bodies gracefully.
+    /// Tests that the middleware rejects requests with oversized bodies.
     /// </summary>
     [Fact]
-    public async Task InvokeAsync_ShouldHandleOversizedBody_Gracefully()
+    public async Task InvokeAsync_ShouldRejectRequest_WhenBodyExceedsMaxSize()
     {
         // Arrange - Create a body larger than MaxBodySize (1024 bytes)
         var largeBody = new string('a', 2048); // 2KB body
@@ -166,16 +169,17 @@ public class OtpRateLimitMiddlewareTests
         // Act
         await _middleware.InvokeAsync(httpContext);
 
-        // Assert - Should not extract email due to size limit, but request should continue
+        // Assert - Should reject request due to size limit
         Assert.False(httpContext.Items.ContainsKey("RateLimitEmail"));
-        await _next.Received(1).Invoke(httpContext);
+        Assert.Equal(StatusCodes.Status400BadRequest, httpContext.Response.StatusCode);
+        await _next.DidNotReceive().Invoke(httpContext);
     }
 
     /// <summary>
-    /// Tests that the middleware handles whitespace-only email gracefully.
+    /// Tests that the middleware rejects requests with whitespace-only email.
     /// </summary>
     [Fact]
-    public async Task InvokeAsync_ShouldNotExtractEmail_WhenEmailIsWhitespace()
+    public async Task InvokeAsync_ShouldRejectRequest_WhenEmailIsWhitespace()
     {
         // Arrange
         await using var bodyStream = CreateStream(@"{""email"": ""   ""}");
@@ -186,14 +190,15 @@ public class OtpRateLimitMiddlewareTests
 
         // Assert
         Assert.False(httpContext.Items.ContainsKey("RateLimitEmail"));
-        await _next.Received(1).Invoke(httpContext);
+        Assert.Equal(StatusCodes.Status400BadRequest, httpContext.Response.StatusCode);
+        await _next.DidNotReceive().Invoke(httpContext);
     }
 
     /// <summary>
-    /// Tests that the middleware handles null email value gracefully.
+    /// Tests that the middleware rejects requests with null email value.
     /// </summary>
     [Fact]
-    public async Task InvokeAsync_ShouldNotExtractEmail_WhenEmailIsNull()
+    public async Task InvokeAsync_ShouldRejectRequest_WhenEmailIsNull()
     {
         // Arrange
         await using var bodyStream = CreateStream(@"{""email"": null}");
@@ -204,14 +209,15 @@ public class OtpRateLimitMiddlewareTests
 
         // Assert
         Assert.False(httpContext.Items.ContainsKey("RateLimitEmail"));
-        await _next.Received(1).Invoke(httpContext);
+        Assert.Equal(StatusCodes.Status400BadRequest, httpContext.Response.StatusCode);
+        await _next.DidNotReceive().Invoke(httpContext);
     }
 
     /// <summary>
-    /// Tests that the middleware handles empty email string gracefully.
+    /// Tests that the middleware rejects requests with empty email string.
     /// </summary>
     [Fact]
-    public async Task InvokeAsync_ShouldNotExtractEmail_WhenEmailIsEmpty()
+    public async Task InvokeAsync_ShouldRejectRequest_WhenEmailIsEmpty()
     {
         // Arrange
         await using var bodyStream = CreateStream(@"{""email"": """"}");
@@ -222,28 +228,24 @@ public class OtpRateLimitMiddlewareTests
 
         // Assert
         Assert.False(httpContext.Items.ContainsKey("RateLimitEmail"));
-        await _next.Received(1).Invoke(httpContext);
+        Assert.Equal(StatusCodes.Status400BadRequest, httpContext.Response.StatusCode);
+        await _next.DidNotReceive().Invoke(httpContext);
     }
 
     // Helper methods to reduce code duplication
     private HttpContext CreateHttpContext(string path, string method, Stream bodyStream)
     {
-        var httpContext = Substitute.For<HttpContext>();
+        var httpContext = new DefaultHttpContext();
         
-        var requestFeature = new HttpRequestFeature();
-        var featureCollection = new FeatureCollection();
-        featureCollection.Set<IHttpRequestFeature>(requestFeature);
-        httpContext.Features.Returns(featureCollection);
+        httpContext.Request.Path = new PathString(path);
+        httpContext.Request.Method = method;
+        httpContext.Request.Body = bodyStream;
+        httpContext.Request.Headers.Clear();
         
-        var request = Substitute.For<HttpRequest>();
-        httpContext.Request.Returns(request);
-        request.Path.Returns(new PathString(path));
-        request.Method.Returns(method);
-        request.Body.Returns(bodyStream);
-        request.Headers.Returns(new HeaderDictionary());
+        httpContext.Request.EnableBuffering();
         
-        var items = new Dictionary<object, object?>();
-        httpContext.Items.Returns(items);
+        httpContext.Response.Body = new MemoryStream();
+        httpContext.Response.StatusCode = 200;
 
         return httpContext;
     }

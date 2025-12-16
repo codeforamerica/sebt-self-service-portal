@@ -39,24 +39,53 @@ public class OtpRateLimitMiddleware
         {
             context.Request.EnableBuffering();
 
+            string body;
             try
             {
-                var body = await ReadBodyWithLimitAsync(context.Request.Body, MaxBodySize);
-                context.Request.Body.Position = 0;
-
-                // Try to extract email from JSON body
-                if (!string.IsNullOrEmpty(body))
-                {
-                    ExtractEmailFromJson(body, context);
-                }
+                body = await ReadBodyWithLimitAsync(context.Request.Body, MaxBodySize);
             }
-            catch (InvalidOperationException ex)
+            catch (RequestBodyTooLargeException ex)
             {
-                _logger.LogWarning(ex, "Failed to read request body for rate limiting. Request body may be too large.");
+                _logger.LogWarning(ex, "OTP request body exceeds maximum size. Rejecting request.");
+                context.Response.StatusCode = StatusCodes.Status400BadRequest;
+                await context.Response.WriteAsJsonAsync(new { Error = $"Request body exceeds maximum size of {MaxBodySize} bytes." });
+                return;
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Unexpected error extracting email for rate limiting");
+                _logger.LogError(ex, "Unexpected error reading request body. Rejecting request.");
+                context.Response.StatusCode = StatusCodes.Status400BadRequest;
+                await context.Response.WriteAsJsonAsync(new { Error = "Invalid request format." });
+                return;
+            }
+
+            try
+            {
+                context.Request.Body.Position = 0;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Failed to reset request body stream position. This may indicate a stream configuration issue.");
+                // Continue processing - the body has already been read
+            }
+
+            // For OTP request endpoint, we require a valid email to be extracted
+            // This prevents bypassing email-based rate limiting with malformed requests
+            if (string.IsNullOrEmpty(body))
+            {
+                _logger.LogWarning("OTP request received with empty body. Rejecting request.");
+                context.Response.StatusCode = StatusCodes.Status400BadRequest;
+                await context.Response.WriteAsJsonAsync(new { Error = "Request body is required and must contain a valid email address." });
+                return;
+            }
+
+            var emailExtracted = ExtractEmailFromJson(body, context);
+            if (!emailExtracted)
+            {
+                _logger.LogWarning("OTP request received but email could not be extracted from request body. Rejecting request.");
+                context.Response.StatusCode = StatusCodes.Status400BadRequest;
+                await context.Response.WriteAsJsonAsync(new { Error = "Request body must be valid JSON containing an 'email' property." });
+                return;
             }
         }
 
@@ -70,7 +99,7 @@ public class OtpRateLimitMiddleware
         
         if (bytesRead > maxSizeBytes)
         {
-            throw new InvalidOperationException($"Request body exceeds maximum size of {maxSizeBytes} bytes");
+            throw new RequestBodyTooLargeException(maxSizeBytes);
         }
         
         if (bytesRead == 0)
@@ -81,7 +110,27 @@ public class OtpRateLimitMiddleware
         return Encoding.UTF8.GetString(buffer, 0, bytesRead);
     }
 
-    private void ExtractEmailFromJson(string jsonBody, HttpContext context)
+    /// <summary>
+    /// Exception thrown when a request body exceeds the maximum allowed size.
+    /// </summary>
+    private sealed class RequestBodyTooLargeException : InvalidOperationException
+    {
+        public int MaxSizeBytes { get; }
+
+        public RequestBodyTooLargeException(int maxSizeBytes)
+            : base($"Request body exceeds maximum size of {maxSizeBytes} bytes")
+        {
+            MaxSizeBytes = maxSizeBytes;
+        }
+    }
+
+    /// <summary>
+    /// Extracts the email address from a JSON request body and stores it in HttpContext.Items.
+    /// </summary>
+    /// <param name="jsonBody">The JSON body string to parse.</param>
+    /// <param name="context">The HTTP context to store the email in.</param>
+    /// <returns>True if a valid email was extracted; otherwise, false.</returns>
+    private bool ExtractEmailFromJson(string jsonBody, HttpContext context)
     {
         try
         {
@@ -104,16 +153,21 @@ public class OtpRateLimitMiddleware
                     // Store email in HttpContext.Items for rate limiting partition key resolver
                     context.Items[EmailKey] = email.ToLowerInvariant();
                     _logger.LogDebug("Extracted email {Email} for rate limiting", email);
+                    return true;
                 }
             }
+            
+            return false;
         }
         catch (JsonException ex)
         {
-            _logger.LogDebug(ex, "Failed to parse JSON body for email extraction. Continuing without email-based rate limiting.");
+            _logger.LogDebug(ex, "Failed to parse JSON body for email extraction.");
+            return false;
         }
         catch (Exception ex)
         {
             _logger.LogWarning(ex, "Unexpected error parsing JSON for email extraction");
+            return false;
         }
     }
 }
