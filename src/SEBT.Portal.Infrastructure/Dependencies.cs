@@ -34,6 +34,8 @@ public static class Dependencies
             .BindConfiguration(EmailOtpSenderServiceSettings.SectionName);
         services.AddOptionsWithValidateOnStart<SmtpClientSettings>()
             .BindConfiguration(SmtpClientSettings.SectionName);
+        services.AddOptionsWithValidateOnStart<OtpRateLimitSettings>()
+            .BindConfiguration(OtpRateLimitSettings.SectionName);
 
         return services;
     }
