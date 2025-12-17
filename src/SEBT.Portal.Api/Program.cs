@@ -54,10 +54,10 @@ builder.Services.AddRateLimiter(options =>
             .GetRequiredService<IOptionsMonitor<OtpRateLimitSettings>>()
             .CurrentValue;
 
-        var windowDescription = rateLimitSettings.WindowMinutes == 1.0 
-            ? "minute" 
+        var windowDescription = rateLimitSettings.WindowMinutes == 1.0
+            ? "minute"
             : $"{rateLimitSettings.WindowMinutes} minutes";
-        
+
         context.HttpContext.Response.StatusCode = StatusCodes.Status429TooManyRequests;
         await context.HttpContext.Response.WriteAsJsonAsync(
             new { Error = $"Rate limit exceeded. Maximum {rateLimitSettings.PermitLimit} OTP requests per {windowDescription} allowed." },

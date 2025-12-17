@@ -236,14 +236,14 @@ public class OtpRateLimitMiddlewareTests
     private HttpContext CreateHttpContext(string path, string method, Stream bodyStream)
     {
         var httpContext = new DefaultHttpContext();
-        
+
         httpContext.Request.Path = new PathString(path);
         httpContext.Request.Method = method;
         httpContext.Request.Body = bodyStream;
         httpContext.Request.Headers.Clear();
-        
+
         httpContext.Request.EnableBuffering();
-        
+
         httpContext.Response.Body = new MemoryStream();
         httpContext.Response.StatusCode = 200;
 

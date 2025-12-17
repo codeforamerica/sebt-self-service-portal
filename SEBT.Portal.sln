@@ -85,6 +85,8 @@ Global
 		{DA846D06-704D-4661-8A8C-07F711EEAA29}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{DA846D06-704D-4661-8A8C-07F711EEAA29}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{DA846D06-704D-4661-8A8C-07F711EEAA29}.Release|Any CPU.Build.0 = Release|Any CPU
+		{BEB59B5C-F8DA-4144-99EB-6255B2169144}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{BEB59B5C-F8DA-4144-99EB-6255B2169144}.Debug|Any CPU.Build.0 = Debug|Any CPU
 	EndGlobalSection
 
 EndGlobal

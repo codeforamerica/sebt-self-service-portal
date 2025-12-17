@@ -96,17 +96,17 @@ public class OtpRateLimitMiddleware
     {
         var buffer = new byte[maxSizeBytes + 1];
         var bytesRead = await bodyStream.ReadAsync(buffer, 0, maxSizeBytes + 1);
-        
+
         if (bytesRead > maxSizeBytes)
         {
             throw new RequestBodyTooLargeException(maxSizeBytes);
         }
-        
+
         if (bytesRead == 0)
         {
             return string.Empty;
         }
-        
+
         return Encoding.UTF8.GetString(buffer, 0, bytesRead);
     }
 
@@ -142,7 +142,7 @@ public class OtpRateLimitMiddleware
 
             using var doc = JsonDocument.Parse(jsonBody, options);
             var root = doc.RootElement;
-            
+
             JsonElement emailElement;
             if (root.TryGetProperty("email", out emailElement) ||
                 root.TryGetProperty("Email", out emailElement))
@@ -156,7 +156,7 @@ public class OtpRateLimitMiddleware
                     return true;
                 }
             }
-            
+
             return false;
         }
         catch (JsonException ex)
