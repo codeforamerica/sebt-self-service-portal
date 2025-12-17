@@ -177,5 +177,5 @@ public class PortalDbContextTests
         Assert.NotNull(updatedAtProperty);
         Assert.False(updatedAtProperty!.IsNullable);
     }
-    
+
 }

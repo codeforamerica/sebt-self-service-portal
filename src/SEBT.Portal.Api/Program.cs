@@ -103,7 +103,7 @@ static FixedWindowRateLimiterOptions CreateOtpRateLimitOptions(OtpRateLimitSetti
 var app = builder.Build();
 
 // Apply database migrations
-using (var scope = app.Services.CreateScope())
+await using (var scope = app.Services.CreateAsyncScope())
 {
     var dbContext = scope.ServiceProvider.GetRequiredService<SEBT.Portal.Infrastructure.Data.PortalDbContext>();
     await dbContext.Database.MigrateAsync();
