@@ -44,6 +44,8 @@ public static class Dependencies
         services.AddDbContext<PortalDbContext>(options =>
             options.UseSqlServer(connectionString));
 
+        services.AddScoped<IDatabaseMigrator, DatabaseMigrator>();
+
         return services;
     }
 

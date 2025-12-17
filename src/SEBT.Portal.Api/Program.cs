@@ -1,10 +1,10 @@
 using System.Threading.RateLimiting;
 using Microsoft.AspNetCore.RateLimiting;
-using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 using Serilog;
 using SEBT.Portal.Api.Middleware;
 using SEBT.Portal.Core.AppSettings;
+using SEBT.Portal.Infrastructure.Services;
 using SEBT.Portal.UseCases;
 using SEBT.Portal.Infrastructure;
 
@@ -105,8 +105,8 @@ var app = builder.Build();
 // Apply database migrations
 await using (var scope = app.Services.CreateAsyncScope())
 {
-    var dbContext = scope.ServiceProvider.GetRequiredService<SEBT.Portal.Infrastructure.Data.PortalDbContext>();
-    await dbContext.Database.MigrateAsync();
+    var databaseMigrator = scope.ServiceProvider.GetRequiredService<IDatabaseMigrator>();
+    await databaseMigrator.MigrateAsync();
 }
 
 // Configure the HTTP request pipeline.
