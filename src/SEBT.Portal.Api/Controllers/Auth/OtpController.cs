@@ -1,4 +1,6 @@
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
+using Microsoft.Extensions.Logging;
 using SEBT.Portal.Kernel;
 using SEBT.Portal.Kernel.AspNetCore;
 using SEBT.Portal.UseCases.Auth;
@@ -10,7 +12,7 @@ namespace SEBT.Portal.Api.Controllers;
 /// </summary>  
 [ApiController]
 [Route("api/auth/otp")]
-public class OtpController() : ControllerBase
+public class OtpController(ILogger<OtpController> logger) : ControllerBase
 {
     /// <summary>
     /// Request a one-time password (OTP) to be sent to the specified email address.
@@ -19,13 +21,17 @@ public class OtpController() : ControllerBase
     /// <returns>A Created result if the OTP was sent successfully; otherwise, a BadRequest result.</returns>
     /// <response code="201">OTP requested successfully.</response>
     /// <response code="400">Invalid request.</response>
+    /// <response code="429">Rate limit exceeded. Maximum 5 OTP requests per minute allowed.</response>
     [HttpPost("request")]
+    [EnableRateLimiting("otp-policy")]
     [ProducesResponseType(StatusCodes.Status201Created)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status429TooManyRequests)]
     public async Task<IActionResult> RequestOtp(
         [FromBody] RequestOtpCommand command,
         [FromServices] ICommandHandler<RequestOtpCommand> handler)
     {
+        logger.LogInformation("OTP request received for email {Email}", command?.Email ?? "unknown");
 
         var result = await handler.Handle(command);
 
@@ -54,6 +60,7 @@ public class OtpController() : ControllerBase
     [FromBody] ValidateOtpCommand command,
     [FromServices] ICommandHandler<ValidateOtpCommand> handler)
     {
+        logger.LogInformation("OTP validation request received for email {Email}", command?.Email ?? "unknown");
 
         var result = await handler.Handle(command);
 

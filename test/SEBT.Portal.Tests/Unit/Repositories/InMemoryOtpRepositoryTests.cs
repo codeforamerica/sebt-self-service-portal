@@ -26,7 +26,7 @@ public class InMemoryOtpRepositoryTests
     }
 
     [Fact]
-    public async Task SaveOtpCodeAsync_WhenExistingCode_ShouldNotOverwrite()
+    public async Task SaveOtpCodeAsync_WhenExistingCode_ShouldOverwrite()
     {
         var memoryCache = new MemoryCache(new MemoryCacheOptions());
         var repo = new InMemoryOtpRepository(memoryCache);
@@ -43,8 +43,8 @@ public class InMemoryOtpRepositoryTests
         var stored = await repo.GetOtpCodeByEmailAsync(existing.Email);
 
         Assert.NotNull(stored);
-
-        // should oveerride the existing code and send the new one
+        
+        // should override the existing code and send the new one
         Assert.Equal(newOtp.Code, stored!.Code);
         Assert.Equal(newOtp.ExpiresAt, stored.ExpiresAt);
     }

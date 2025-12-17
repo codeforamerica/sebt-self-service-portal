@@ -35,7 +35,7 @@ namespace SEBT.Portal.Infrastructure.Services
                     settings.SenderEmail,
                     settings.Subject,
                     $"{settings.HtmlPreOtp}{otp}{settings.HtmlPostOtp}");
-
+                    
                 logger.LogInformation("OTP email sent to {To}", to);
             }
             catch (Exception ex)
@@ -43,7 +43,6 @@ namespace SEBT.Portal.Infrastructure.Services
                 logger.LogError(ex, $"Failed to send OTP to: {to}");
                 return new PreconditionFailedResult(PreconditionFailedReason.Conflict, $"Failed to send OTP to: {to}");
             }
-
 
             return new SuccessResult();
         }
