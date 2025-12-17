@@ -178,4 +178,158 @@ public class PortalDbContextTests
         Assert.False(updatedAtProperty!.IsNullable);
     }
 
+    [Fact]
+    public async Task SaveChangesAsync_WhenEmailOptInChanges_ShouldUpdateUpdatedAt()
+    {
+        // Arrange
+        var options = new DbContextOptionsBuilder<PortalDbContext>()
+            .UseInMemoryDatabase(databaseName: Guid.NewGuid().ToString())
+            .Options;
+
+        using var context = new PortalDbContext(options);
+        var entity = new UserOptInEntity
+        {
+            Email = "test@example.com",
+            EmailOptIn = false,
+            DobOptIn = false
+        };
+
+        context.UserOptIns.Add(entity);
+        await context.SaveChangesAsync();
+
+        var originalUpdatedAt = entity.UpdatedAt;
+        await Task.Delay(10); // Small delay to ensure timestamp difference
+
+        // Act
+        entity.EmailOptIn = true;
+        await context.SaveChangesAsync();
+
+        // Assert
+        Assert.True(entity.UpdatedAt > originalUpdatedAt);
+    }
+
+    [Fact]
+    public async Task SaveChangesAsync_WhenDobOptInChanges_ShouldUpdateUpdatedAt()
+    {
+        // Arrange
+        var options = new DbContextOptionsBuilder<PortalDbContext>()
+            .UseInMemoryDatabase(databaseName: Guid.NewGuid().ToString())
+            .Options;
+
+        using var context = new PortalDbContext(options);
+        var entity = new UserOptInEntity
+        {
+            Email = "test@example.com",
+            EmailOptIn = false,
+            DobOptIn = false
+        };
+
+        context.UserOptIns.Add(entity);
+        await context.SaveChangesAsync();
+
+        var originalUpdatedAt = entity.UpdatedAt;
+        await Task.Delay(10); // Small delay to ensure timestamp difference
+
+        // Act
+        entity.DobOptIn = true;
+        await context.SaveChangesAsync();
+
+        // Assert
+        Assert.True(entity.UpdatedAt > originalUpdatedAt);
+    }
+
+    [Fact]
+    public async Task SaveChangesAsync_WhenEmailChanges_ShouldNotUpdateUpdatedAt()
+    {
+        // Arrange
+        var options = new DbContextOptionsBuilder<PortalDbContext>()
+            .UseInMemoryDatabase(databaseName: Guid.NewGuid().ToString())
+            .Options;
+
+        using var context = new PortalDbContext(options);
+        var entity = new UserOptInEntity
+        {
+            Email = "test@example.com",
+            EmailOptIn = false,
+            DobOptIn = false
+        };
+
+        context.UserOptIns.Add(entity);
+        await context.SaveChangesAsync();
+
+        var originalUpdatedAt = entity.UpdatedAt;
+        await Task.Delay(10); // Small delay to ensure timestamp difference
+
+        // Act
+        entity.Email = "newemail@example.com";
+        await context.SaveChangesAsync();
+
+        // Assert
+        // UpdatedAt should NOT change when only Email changes (not an opt-in property)
+        Assert.Equal(originalUpdatedAt, entity.UpdatedAt);
+    }
+
+    [Fact]
+    public async Task SaveChangesAsync_WhenBothOptInPropertiesChange_ShouldUpdateUpdatedAt()
+    {
+        // Arrange
+        var options = new DbContextOptionsBuilder<PortalDbContext>()
+            .UseInMemoryDatabase(databaseName: Guid.NewGuid().ToString())
+            .Options;
+
+        using var context = new PortalDbContext(options);
+        var entity = new UserOptInEntity
+        {
+            Email = "test@example.com",
+            EmailOptIn = false,
+            DobOptIn = false
+        };
+
+        context.UserOptIns.Add(entity);
+        await context.SaveChangesAsync();
+
+        var originalUpdatedAt = entity.UpdatedAt;
+        await Task.Delay(10); // Small delay to ensure timestamp difference
+
+        // Act - Change both opt-in properties simultaneously
+        entity.EmailOptIn = true;
+        entity.DobOptIn = true;
+        await context.SaveChangesAsync();
+
+        // Assert
+        Assert.True(entity.UpdatedAt > originalUpdatedAt);
+    }
+
+    [Fact]
+    public async Task SaveChangesAsync_WhenNewEntityAdded_ShouldSetBothCreatedAtAndUpdatedAt()
+    {
+        // Arrange
+        var options = new DbContextOptionsBuilder<PortalDbContext>()
+            .UseInMemoryDatabase(databaseName: Guid.NewGuid().ToString())
+            .Options;
+
+        using var context = new PortalDbContext(options);
+        var beforeCreation = DateTime.UtcNow;
+
+        var entity = new UserOptInEntity
+        {
+            Email = "test@example.com",
+            EmailOptIn = true,
+            DobOptIn = false
+        };
+
+        // Act
+        context.UserOptIns.Add(entity);
+        await context.SaveChangesAsync();
+
+        var afterCreation = DateTime.UtcNow;
+
+        // Assert
+        Assert.True(entity.CreatedAt >= beforeCreation);
+        Assert.True(entity.CreatedAt <= afterCreation);
+        Assert.True(entity.UpdatedAt >= beforeCreation);
+        Assert.True(entity.UpdatedAt <= afterCreation);
+        Assert.Equal(entity.CreatedAt, entity.UpdatedAt);
+    }
+
 }
