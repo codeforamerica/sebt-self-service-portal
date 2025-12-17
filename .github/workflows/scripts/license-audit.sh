@@ -12,15 +12,15 @@ ALLOWED_LICENSES="$SCRIPT_DIR/licenses/allowed-licenses.json"
 LICENSE_MAPPINGS="$SCRIPT_DIR/licenses/license-mappings.json"
 BACKEND_OUTPUT="output/backend-dependencies.csv"
 
+# Create a directory for output if needed
 mkdir -p output
 
-#dotnet tool run nuget-license \
-#  --input SEBT.Portal.sln \
-#  -o json \
-#  | jq .
-
+# Ensure the nuget-license tool is installed
 dotnet tool restore
 
+# Get license information for all NuGet packages,
+# output as JSON. Use jq to extract relevant 
+# attributes and output as a CSV into a file.
 dotnet tool run nuget-license \
   --input SEBT.Portal.sln \
   -o json \

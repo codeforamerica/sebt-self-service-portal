@@ -18,6 +18,12 @@ of children eligible for [Summer EBT](https://www.fns.usda.gov/summer/sunbucks) 
 - Frontend packages and local development scripts are managed with [pnpm](https://pnpm.io/).
 - [Docker](https://www.docker.com/) is required for packaging and running containers.
 
+### .NET Tools 🛠️
+.NET tools are CLI utilities installed and managed using NuGet. Currently, we are using
+the `nuget-license` tool for auditing backend dependency license. To install .NET tools,
+run `dotnet tool restore` from the solution root. Needed tools are defined in the tools 
+manifest in `.config/dotnet-tools.json`.
+
 ### Development 💻
 ```bash
 pnpm install          # Install dependencies
