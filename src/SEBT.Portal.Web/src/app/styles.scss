@@ -1,0 +1,14 @@
+// ==========================================================================
+// SEBT Portal Main Stylesheet
+// ==========================================================================
+//
+// This file compiles USWDS with state-specific theme settings from Figma tokens.
+// Theme variables are injected via next.config.ts sassOptions.additionalData
+//
+// Build:
+//   STATE=dc pnpm build  # DC theme
+//   STATE=co pnpm build  # CO theme
+//
+// ==========================================================================
+
+@forward '../../design/sass/uswds-bundle';

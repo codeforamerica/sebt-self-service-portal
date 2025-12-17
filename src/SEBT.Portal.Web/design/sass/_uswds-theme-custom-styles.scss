@@ -16,3 +16,90 @@ References:
 - Theme Configuration: ../sass/_uswds-theme.scss
 - DC Theme Variables: ../sass/_uswds-theme-dc.scss (auto-generated from Figma tokens)
 */
+
+@use 'uswds-core' as *;
+
+/*
+----------------------------------------
+Custom Utility Classes
+----------------------------------------
+Additional utilities not available in USWDS core.
+----------------------------------------
+*/
+
+// Semibold weight (600) - USWDS has this disabled by default
+.text-semibold {
+  font-weight: 600;
+}
+
+/*
+----------------------------------------
+Language Selector Overrides
+----------------------------------------
+Custom styling for language selector to match Figma design.
+Uses USWDS color tokens and spacing units.
+----------------------------------------
+*/
+
+// Header language selector
+.usa-header .usa-language__link {
+  background-color: color('white');
+  border: 2px solid color('secondary');
+  border-radius: 60px;
+  color: color('ink');
+  padding: 4px 20px;
+  min-width: 152px;
+  min-height: 48px;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  justify-content: center;
+  gap: 0;
+
+  // "Translate" row
+  > div:first-child {
+    display: flex;
+    align-items: center;
+    justify-content: flex-start;
+    gap: 8px;
+
+    span {
+      font-weight: 700;
+      font-size: 16px;
+      line-height: 24px;
+    }
+  }
+
+  // Language options row
+  > div:last-child {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    button,
+    span {
+      background: none;
+      border: none;
+      padding: 0;
+      color: color('ink'); // Figma: #000000
+      font-weight: 400;
+      font-size: 11.3px;
+      line-height: 15px;
+    }
+
+    button {
+      cursor: pointer;
+      text-decoration: none;
+
+      &:hover,
+      &:focus {
+        color: color('primary');
+      }
+
+      &:focus {
+        outline: 2px solid color('primary');
+        outline-offset: 2px;
+      }
+    }
+  }
+}

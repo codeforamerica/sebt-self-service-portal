@@ -1,0 +1,27 @@
+// ==========================================================================
+// USWDS Bundle with Theme Integration
+// ==========================================================================
+//
+// This file loads USWDS with state-specific theme settings.
+// Settings are configured via @use ... with () syntax for SASS modules.
+//
+// IMPORTANT: The settings file MUST configure uswds-core BEFORE any
+// other USWDS module is loaded. SASS modules are singletons, so the
+// first loader with configuration "wins".
+// ==========================================================================
+
+// First, configure and load uswds-core with our custom settings
+// This MUST be the first USWDS import to properly override defaults
+@use 'uswds-settings';
+
+// Forward our configured uswds-core for use by other modules
+// This ensures all subsequent USWDS modules use our settings
+@forward 'uswds-settings';
+
+// Now load the complete USWDS package
+// Since uswds-core is already loaded with our settings, all
+// USWDS modules will inherit our theme configuration
+@forward 'uswds';
+
+// Custom project styles (loaded after USWDS)
+@use 'uswds-theme-custom-styles';

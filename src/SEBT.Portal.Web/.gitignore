@@ -54,9 +54,11 @@ next-env.d.ts
 
 # Generated Design Tokens (auto-generated from design/states/*.json)
 design/tokens.css
+src/app/fonts.ts
 
 # Generated USWDS Theme Files (auto-generated from design/states/*.json)
 design/sass/_uswds-theme-*.scss
+design/sass/_uswds-settings.scss
 !design/sass/_uswds-theme.scss
 !design/sass/_uswds-theme-custom-styles.scss
 

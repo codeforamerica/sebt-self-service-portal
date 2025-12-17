@@ -65,7 +65,21 @@ for (const state of STATES) {
 
     // Run token generation for this state using child_process
     const { execSync } = await import('child_process');
+
+    // Generate CSS custom properties (for runtime use)
     execSync(`STATE=${state} node design/scripts/generate-tokens.js`, {
+      cwd: rootDir,
+      stdio: 'inherit'
+    });
+
+    // Generate SASS variables (for USWDS compile-time theming)
+    execSync(`STATE=${state} node design/scripts/generate-sass-tokens.js`, {
+      cwd: rootDir,
+      stdio: 'inherit'
+    });
+
+    // Generate fonts.ts (for Next.js font loading)
+    execSync(`STATE=${state} node design/scripts/generate-fonts.js`, {
       cwd: rootDir,
       stdio: 'inherit'
     });
