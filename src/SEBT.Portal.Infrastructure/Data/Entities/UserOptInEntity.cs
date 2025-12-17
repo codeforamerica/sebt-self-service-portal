@@ -18,12 +18,30 @@ public class UserOptInEntity
     /// <summary>
     /// Whether the user has opted in to storing their email address.
     /// </summary>
-    public bool EmailOptIn { get; set; }
+    public bool EmailOptIn
+    {
+        get => field;
+        set
+        {
+            if (field == value) return;
+            field = value;
+            UpdatedAt = DateTime.UtcNow;
+        }
+    }
 
     /// <summary>
     /// Whether the user has opted in to storing their date of birth.
     /// </summary>
-    public bool DobOptIn { get; set; }
+    public bool DobOptIn
+    {
+        get => field;
+        set
+        {
+            if (field == value) return;
+            field = value;
+            UpdatedAt = DateTime.UtcNow;
+        }
+    }
 
     /// <summary>
     /// When the opt-in record was created.

@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Metadata;
 using SEBT.Portal.Infrastructure.Data.Entities;
 
 namespace SEBT.Portal.Infrastructure.Data;
@@ -27,8 +28,12 @@ public class PortalDbContext : DbContext
             entity.HasKey(e => e.Id);
             entity.HasIndex(e => e.Email).IsUnique();
             entity.Property(e => e.Email).IsRequired().HasMaxLength(255);
-            entity.Property(e => e.EmailOptIn).IsRequired();
-            entity.Property(e => e.DobOptIn).IsRequired();
+            entity.Property(e => e.EmailOptIn)
+                .IsRequired()
+                .UsePropertyAccessMode(PropertyAccessMode.FieldDuringConstruction);
+            entity.Property(e => e.DobOptIn)
+                .IsRequired()
+                .UsePropertyAccessMode(PropertyAccessMode.FieldDuringConstruction);
             entity.Property(e => e.CreatedAt).IsRequired();
             entity.Property(e => e.UpdatedAt).IsRequired();
         });
@@ -36,38 +41,25 @@ public class PortalDbContext : DbContext
 
     public override int SaveChanges()
     {
-        UpdateTimestamps();
+        SetCreateTimestamps();
         return base.SaveChanges();
     }
 
     public override async Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
     {
-        UpdateTimestamps();
+        SetCreateTimestamps();
         return await base.SaveChangesAsync(cancellationToken);
     }
 
-    private void UpdateTimestamps()
+    private void SetCreateTimestamps()
     {
         var entries = ChangeTracker.Entries<UserOptInEntity>()
-            .Where(e => e.State == EntityState.Added || e.State == EntityState.Modified);
+            .Where(e => e.State == EntityState.Added);
 
         foreach (var entry in entries)
         {
-            if (entry.State == EntityState.Added)
-            {
-                entry.Entity.CreatedAt = DateTime.UtcNow;
-                entry.Entity.UpdatedAt = DateTime.UtcNow;
-            }
-            else if (entry.State == EntityState.Modified)
-            {
-                // Update UpdatedAt only when opt-in properties (EmailOptIn or DobOptIn) change.
-                // This ensures we track when consent preferences are modified, not when other fields like Email change.
-                // To update UpdatedAt for all property changes, remove the 'if' condition.
-                if (entry.Property(e => e.EmailOptIn).IsModified || entry.Property(e => e.DobOptIn).IsModified)
-                {
-                    entry.Entity.UpdatedAt = DateTime.UtcNow;
-                }
-            }
+            entry.Entity.CreatedAt = DateTime.UtcNow;
+            entry.Entity.UpdatedAt = DateTime.UtcNow;
         }
     }
 }
