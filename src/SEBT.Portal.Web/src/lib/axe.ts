@@ -10,9 +10,15 @@ let axeInitialized = false
 export async function initAxe() {
   // Only run in development and browser environment
   if (process.env.NODE_ENV !== 'production' && typeof window !== 'undefined' && !axeInitialized) {
-    const React = await import('react')
-    const ReactDOM = await import('react-dom')
+    const ReactModule = await import('react')
+    const ReactDOMModule = await import('react-dom')
     const axe = await import('@axe-core/react')
+
+    // Create mutable wrapper objects for React 19 ESM compatibility
+    // @axe-core/react needs to monkey-patch createElement, but React 19's
+    // ESM exports are read-only. Spreading into new objects allows mutation.
+    const React = { ...ReactModule }
+    const ReactDOM = { ...ReactDOMModule }
 
     axe.default(React, ReactDOM, 1000, {
       // Configure axe-core rules for USWDS/WCAG compliance
