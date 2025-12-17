@@ -48,8 +48,6 @@ pnpm api:test         # Test backend only
 pnpm ci:build         # Build frontend + backend (Release)
 pnpm ci:test          # Test frontend + backend
 
-
-TODO
 # Individual components
 pnpm ci:build:frontend   # Build frontend only
 pnpm ci:build:backend    # Build backend only
