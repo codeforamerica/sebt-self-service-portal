@@ -34,32 +34,14 @@ public class PortalDbContext : DbContext
             entity.Property(e => e.DobOptIn)
                 .IsRequired()
                 .UsePropertyAccessMode(PropertyAccessMode.FieldDuringConstruction);
-            entity.Property(e => e.CreatedAt).IsRequired();
-            entity.Property(e => e.UpdatedAt).IsRequired();
+            entity.Property(e => e.CreatedAt)
+                .IsRequired()
+                .HasDefaultValueSql("GETUTCDATE()")
+                .ValueGeneratedOnAdd();
+            entity.Property(e => e.UpdatedAt)
+                .IsRequired()
+                .HasDefaultValueSql("GETUTCDATE()")
+                .ValueGeneratedOnAdd();
         });
-    }
-
-    public override int SaveChanges()
-    {
-        SetCreateTimestamps();
-        return base.SaveChanges();
-    }
-
-    public override async Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
-    {
-        SetCreateTimestamps();
-        return await base.SaveChangesAsync(cancellationToken);
-    }
-
-    private void SetCreateTimestamps()
-    {
-        var entries = ChangeTracker.Entries<UserOptInEntity>()
-            .Where(e => e.State == EntityState.Added);
-
-        foreach (var entry in entries)
-        {
-            entry.Entity.CreatedAt = DateTime.UtcNow;
-            entry.Entity.UpdatedAt = DateTime.UtcNow;
-        }
     }
 }
