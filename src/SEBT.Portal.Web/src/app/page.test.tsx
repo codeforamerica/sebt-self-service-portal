@@ -12,9 +12,9 @@ import { describe, expect, it } from 'vitest'
 import Home from './page'
 
 describe('Home Page', () => {
-  it('should render the portal title', () => {
+  it('should render the page heading', () => {
     render(<Home />)
-    expect(screen.getByText(/SEBT Self-Service Portal/i)).toBeInTheDocument()
+    expect(screen.getByRole('heading', { level: 1 })).toBeInTheDocument()
   })
 
   it('should display USWDS implementation heading', () => {

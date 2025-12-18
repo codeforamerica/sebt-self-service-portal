@@ -8,20 +8,20 @@ export function proxy(request: NextRequest) {
   const nonce = Buffer.from(crypto.randomUUID()).toString('base64')
   const isDev = process.env.NODE_ENV === 'development'
 
-  // Build CSP header with nonce
-  // In development, allow unsafe-eval for hot reloading and debugging
-  // In production, use strict nonce-based policy
+  // Build CSP header
+  // Development: Allow unsafe-inline and unsafe-eval for Next.js hot reload
+  // Production: Strict CSP with 'self' only (no inline scripts allowed)
   const cspHeader = `
     default-src 'self';
-    script-src 'self' 'nonce-${nonce}' 'strict-dynamic' ${isDev ? "'unsafe-eval'" : ''};
-    style-src 'self' 'nonce-${nonce}' https://fonts.googleapis.com ${isDev ? "'unsafe-inline'" : ''};
+    script-src 'self' ${isDev ? "'unsafe-inline' 'unsafe-eval'" : ''};
+    style-src 'self' ${isDev ? "'unsafe-inline'" : ''} https://fonts.googleapis.com;
     font-src 'self' https://fonts.gstatic.com;
     img-src 'self' data: https:;
     connect-src 'self' ${isDev ? 'ws://localhost:* http://localhost:*' : ''};
     frame-ancestors 'none';
     base-uri 'self';
     form-action 'self';
-    upgrade-insecure-requests;
+    ${isDev ? '' : 'upgrade-insecure-requests;'}
   `
 
   const contentSecurityPolicyHeaderValue = cspHeader.replace(/\s{2,}/g, ' ').trim()

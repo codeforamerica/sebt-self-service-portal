@@ -14,15 +14,41 @@ const nextConfig: NextConfig = {
   env: {
     NEXT_PUBLIC_STATE: state
   },
+  experimental: {
+    // Use our custom sass-loader configuration instead of built-in
+    turbopackUseBuiltinSass: false
+  },
   /* SASS Configuration for USWDS */
   sassOptions: {
+    implementation: 'sass-embedded',
     includePaths: [
       path.join(__dirname, 'design/sass'),
       path.join(__dirname, 'node_modules/@uswds/uswds/packages'),
       path.join(__dirname, 'node_modules')
-    ],
-    // Only provide sass:math globally, let each file import uswds-core as needed
-    additionalData: `@use "sass:math";`
+    ]
+  },
+  /* Turbopack configuration for USWDS SASS imports */
+  turbopack: {
+    rules: {
+      '*.scss': {
+        loaders: [
+          {
+            loader: 'sass-loader',
+            options: {
+              implementation: 'sass-embedded',
+              sassOptions: {
+                loadPaths: [
+                  path.join(__dirname, 'design/sass'),
+                  path.join(__dirname, 'node_modules/@uswds/uswds/packages'),
+                  path.join(__dirname, 'node_modules')
+                ]
+              }
+            }
+          }
+        ],
+        as: '*.css'
+      }
+    }
   },
   output: 'standalone', // For multi-state deployments
   poweredByHeader: false,

@@ -1,15 +1,12 @@
-import '@/design/tokens.css'
-import { initAxe } from '@/src/lib/axe'
+import { getState } from '@/src/lib/state'
 import type { Metadata } from 'next'
-import { urbanist } from './fonts'
+import { Footer, Header } from './components'
+import { primaryFont } from './fonts'
 import './globals.css'
+import { AxeProvider } from './providers'
+import './styles.scss'
 
-const state = process.env.NEXT_PUBLIC_STATE || 'dc'
-
-// Initialize axe-core in development for accessibility monitoring
-if (process.env.NODE_ENV === 'development') {
-  initAxe()
-}
+const state = getState()
 
 export const metadata: Metadata = {
   title: `${state.toUpperCase()} SEBT Self-Service Portal`,
@@ -25,17 +22,21 @@ export default function RootLayout({
     <html
       lang="en"
       data-state={state}
-      className={`usa-js-loading ${urbanist.variable}`}
+      className={`usa-js-loading ${primaryFont.variable}`}
     >
-      <head>
-        {/* eslint-disable-next-line @next/next/no-css-tags */}
-        <link
-          rel="stylesheet"
-          href="/css/uswds.min.css"
-        />
-      </head>
       <body>
-        {children}
+        <a
+          className="usa-skipnav"
+          href="#main-content"
+        >
+          Skip to main content
+        </a>
+        <AxeProvider>
+          <Header state={state} />
+          <main id="main-content">{children}</main>
+          <Footer state={state} />
+        </AxeProvider>
+        {/* USWDS initialization script - CSP allows 'self' scripts */}
         <script
           src="/js/uswds-init.min.js"
           defer
