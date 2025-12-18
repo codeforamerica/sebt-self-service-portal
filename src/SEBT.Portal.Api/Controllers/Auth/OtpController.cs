@@ -18,6 +18,7 @@ public class OtpController(ILogger<OtpController> logger) : ControllerBase
     /// Request a one-time password (OTP) to be sent to the specified email address.
     /// </summary>
     /// <param name="command">The command containing the email address.</param>
+    /// <param name="handler">The command handler for processing the OTP request.</param>
     /// <returns>A Created result if the OTP was sent successfully; otherwise, a BadRequest result.</returns>
     /// <response code="201">OTP requested successfully.</response>
     /// <response code="400">Invalid request.</response>
@@ -50,6 +51,7 @@ public class OtpController(ILogger<OtpController> logger) : ControllerBase
     /// Validate a one-time password (OTP) for the specified email address.
     /// </summary>
     /// <param name="command">The command containing the email address and OTP code.</param>
+    /// <param name="handler">The command handler for processing the OTP validation.</param>
     /// <returns>An OK result if the OTP is valid; otherwise, a BadRequest result.</returns>
     /// <response code="200">OTP validated successfully.</response>
     /// <response code="400">Invalid OTP or request.</response>

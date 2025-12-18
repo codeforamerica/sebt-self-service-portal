@@ -10,6 +10,13 @@ services:
       - "5280:8080"   # Maps localhost:5280 -> container:8080
     environment:
       - ASPNETCORE_ENVIRONMENT=Development
+      # Note: TrustServerCertificate=True bypasses TLS certificate validation and should ONLY be used for local development.
+      # Do NOT include this in connection strings for deployed environments (UAT, production).
+      - ConnectionStrings__DefaultConnection=Server=${MSSQL_SERVER:-mssql},${MSSQL_PORT:-1433};Database=${MSSQL_DATABASE:-SebtPortal};User Id=${MSSQL_USER:-sa};Password=${MSSQL_SA_PASSWORD:-YourStrong@Passw0rd};TrustServerCertificate=True;
+      - SmtpClientSettings__SmtpServer=mailpit
+    depends_on:
+      mssql:
+        condition: service_healthy
     networks:
       - sebt.portal.api
 
@@ -25,7 +32,32 @@ services:
     networks:
       - sebt.portal.api
 
+  # MSSQL Server Database
+  mssql:
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    container_name: sebt_mssql
+    ports:
+      - "${MSSQL_PORT:-1433}:1433"
+    environment:
+      - ACCEPT_EULA=Y
+      - MSSQL_SA_PASSWORD=${MSSQL_SA_PASSWORD:-YourStrong@Passw0rd}
+      - MSSQL_PID=Developer
+    volumes:
+      - mssql_data:/var/opt/mssql
+    networks:
+      - sebt.portal.api
+    healthcheck:
+      test: ["CMD-SHELL", "/opt/mssql-tools18/bin/sqlcmd -S localhost -U ${MSSQL_USER:-sa} -P ${MSSQL_SA_PASSWORD:-YourStrong@Passw0rd} -Q 'SELECT 1' -C -b -o /dev/null || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+
 # Define custom networks
 networks:
   sebt.portal.api:
     driver: bridge
+
+# Define volumes
+volumes:
+  mssql_data:
