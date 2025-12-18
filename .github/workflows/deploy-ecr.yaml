@@ -1,0 +1,91 @@
+name: Deploy (ECR)
+
+on:
+  workflow_dispatch:
+    inputs:
+      state:
+        description: "State to deploy (e.g. dc, co)"
+        required: true
+        type: string
+      stage:
+        description: "Environment/stage (e.g. dev, staging, prod)"
+        required: true
+        default: "dev"
+        type: string
+      aws_region:
+        description: "AWS region"
+        required: true
+        default: "us-east-1"
+        type: string
+      image_tag:
+        description: "Image tag to push/deploy (default: git sha)"
+        required: false
+        type: string
+
+permissions:
+  id-token: write
+  contents: read
+
+concurrency:
+  group: deploy-${{ inputs.stage }}-${{ inputs.state }}
+  cancel-in-progress: false
+
+jobs:
+  build-push-and-deploy:
+    runs-on: ubuntu-latest
+
+    env:
+      AWS_REGION: ${{ inputs.aws_region }}
+      STAGE: ${{ inputs.stage }}
+      STATE: ${{ inputs.state }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Compute image tag
+        id: tag
+        run: |
+          if [ -n "${{ inputs.image_tag }}" ]; then
+            echo "tag=${{ inputs.image_tag }}" >> "$GITHUB_OUTPUT"
+          else
+            echo "tag=${GITHUB_SHA}" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Configure AWS credentials (OIDC)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_TO_ASSUME }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Resolve ECR repository URLs
+        id: ecr
+        run: |
+          if [ -z "${{ secrets.ECR_API_REPOSITORY_URL }}" ] || [ -z "${{ secrets.ECR_WEB_REPOSITORY_URL }}" ]; then
+            echo "Missing secrets ECR_API_REPOSITORY_URL and/or ECR_WEB_REPOSITORY_URL" >&2
+            exit 1
+          fi
+
+          echo "api_repo=${{ secrets.ECR_API_REPOSITORY_URL }}" >> "$GITHUB_OUTPUT"
+          echo "web_repo=${{ secrets.ECR_WEB_REPOSITORY_URL }}" >> "$GITHUB_OUTPUT"
+
+      - name: Build + push API image
+        run: |
+          docker build \
+            -f src/SEBT.Portal.Api/Dockerfile \
+            -t "${{ steps.ecr.outputs.api_repo }}:${{ steps.tag.outputs.tag }}" \
+            .
+          docker push "${{ steps.ecr.outputs.api_repo }}:${{ steps.tag.outputs.tag }}"
+
+      - name: Build + push Web image
+        run: |
+          docker build \
+            -f src/SEBT.Portal.Web/Dockerfile \
+            --build-arg STATE="${STATE}" \
+            -t "${{ steps.ecr.outputs.web_repo }}:${{ steps.tag.outputs.tag }}" \
+            .
+          docker push "${{ steps.ecr.outputs.web_repo }}:${{ steps.tag.outputs.tag }}"
