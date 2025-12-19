@@ -1,0 +1,17 @@
+aws_region = "us-east-1"
+name       = "sebt-portal"
+stage      = "dev"
+state      = "dc"
+
+# Tag that exists in ECR for both images.
+image_tag = "dev"
+
+# Optional: if you want OpenTofu to create a GitHub Actions role for ECR push
+enable_github_actions_ecr_push = true
+github_repo                   = "codeforamerica/sebt-self-service-portal"
+
+desired_count = 1
+
+tags = {
+  Owner = "sebt"
+}

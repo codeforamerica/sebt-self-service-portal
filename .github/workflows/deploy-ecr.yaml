@@ -53,6 +53,7 @@ jobs:
           fi
 
       - name: Configure AWS credentials (OIDC)
+        if: ${{ env.ACT != 'true' }}
         uses: aws-actions/configure-aws-credentials@v4
         with:
           role-to-assume: ${{ secrets.AWS_ROLE_TO_ASSUME }}

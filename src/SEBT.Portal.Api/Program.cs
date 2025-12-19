@@ -128,6 +128,8 @@ app.UseRateLimiter();
 
 app.UseAuthorization();
 
+app.MapGet("/health", () => Results.Ok(new { Status = "ok" }));
+
 app.MapControllers();
 
 try

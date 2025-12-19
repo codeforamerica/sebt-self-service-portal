@@ -16,14 +16,14 @@
   <!-- Production Build: Build frontend before .NET build -->
   <Target Name="BuildFrontend" BeforeTargets="Build"
     Condition="'$(BuildFrontend)' != 'false' AND '$(Configuration)' == 'Release'">
-    <Message Importance="high" Text="Building frontend with Vite..." />
+    <Message Importance="high" Text="Building frontend (pnpm workspace)..." />
 
     <!-- Install dependencies if node_modules doesn't exist -->
-    <Exec Command="pnpm install:web" WorkingDirectory="$(WorkspaceRoot)"
+    <Exec Command="pnpm install" WorkingDirectory="$(WorkspaceRoot)"
       Condition="!Exists('$(FrontendRoot)/node_modules')" />
 
-    <!-- Build frontend (Vite handles token transformation automatically) -->
-    <Exec Command="pnpm web:build" WorkingDirectory="$(WorkspaceRoot)" />
+    <!-- Build frontend (Next.js) -->
+    <Exec Command="pnpm --filter @sebt/web build" WorkingDirectory="$(WorkspaceRoot)" />
 
     <Message Importance="high" Text="Frontend build complete: $(FrontendDist)" />
   </Target>
