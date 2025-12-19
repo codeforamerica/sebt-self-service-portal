@@ -434,14 +434,20 @@ FodyWeavers.xsd
 *.msm
 *.msp
 
-# OpenTofu / Terraform
-tofu/
-
 # AI
 CLAUDE.local.md
 
 # output files
 output
+
+## OpenTofu / Terraform
+**/.terraform/
+**/*.tfstate
+**/*.tfstate.*
+**/*.tfplan
+**/crash.log
+**/crash.*.log
+
 
 # temporary files
 /temp
