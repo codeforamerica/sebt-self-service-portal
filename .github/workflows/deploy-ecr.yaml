@@ -77,6 +77,7 @@ jobs:
       - name: Build + push API image
         run: |
           docker build \
+            --platform linux/amd64 \
             -f src/SEBT.Portal.Api/Dockerfile \
             -t "${{ steps.ecr.outputs.api_repo }}:${{ steps.tag.outputs.tag }}" \
             .
@@ -85,6 +86,7 @@ jobs:
       - name: Build + push Web image
         run: |
           docker build \
+            --platform linux/amd64 \
             -f src/SEBT.Portal.Web/Dockerfile \
             --build-arg STATE="${STATE}" \
             -t "${{ steps.ecr.outputs.web_repo }}:${{ steps.tag.outputs.tag }}" \

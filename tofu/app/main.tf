@@ -28,7 +28,7 @@ locals {
 
 resource "aws_ecr_repository" "api" {
   name                 = "${local.prefix}-api"
-  image_tag_mutability = "IMMUTABLE"
+  image_tag_mutability = var.stage == "dev" ? "MUTABLE" : "IMMUTABLE"
 
   image_scanning_configuration {
     scan_on_push = true
@@ -39,7 +39,7 @@ resource "aws_ecr_repository" "api" {
 
 resource "aws_ecr_repository" "web" {
   name                 = "${local.prefix}-web"
-  image_tag_mutability = "IMMUTABLE"
+  image_tag_mutability = var.stage == "dev" ? "MUTABLE" : "IMMUTABLE"
 
   image_scanning_configuration {
     scan_on_push = true
@@ -203,6 +203,78 @@ resource "aws_cloudwatch_log_group" "web" {
   tags              = local.tags
 }
 
+# --- Database (RDS SQL Server 2022) ---
+
+resource "aws_db_subnet_group" "main" {
+  count = var.enable_database ? 1 : 0
+
+  name       = "${local.prefix}-db-subnet-group"
+  subnet_ids = [for s in aws_subnet.private : s.id]
+
+  tags = merge(local.tags, { Name = "${local.prefix}-db-subnet-group" })
+}
+
+resource "aws_security_group" "rds" {
+  count = var.enable_database ? 1 : 0
+
+  name        = "${local.prefix}-rds"
+  description = "RDS SQL Server access from ECS tasks"
+  vpc_id      = aws_vpc.main.id
+
+  ingress {
+    from_port       = 1433
+    to_port         = 1433
+    protocol        = "tcp"
+    security_groups = [aws_security_group.ecs.id]
+  }
+
+  egress {
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  tags = local.tags
+}
+
+resource "aws_db_instance" "main" {
+  count = var.enable_database ? 1 : 0
+
+  identifier = "${local.prefix}-db"
+
+  engine         = var.database_engine
+  engine_version = var.database_engine_version
+  license_model  = var.database_engine == "sqlserver-se" ? "license-included" : null
+  instance_class = var.database_instance_class
+
+  allocated_storage     = var.database_allocated_storage
+  max_allocated_storage = var.database_allocated_storage * 2
+  storage_type         = "gp3"
+  storage_encrypted     = true
+
+  # SQL Server Express Edition doesn't allow db_name at creation time
+  db_name  = var.database_engine == "sqlserver-se" ? var.database_name : null
+  username = var.database_master_username
+  password = var.database_master_password != "" ? var.database_master_password : null
+
+  db_subnet_group_name   = aws_db_subnet_group.main[0].name
+  vpc_security_group_ids = [aws_security_group.rds[0].id]
+  publicly_accessible    = false
+
+  backup_retention_period = 7
+  backup_window          = "03:00-04:00"
+  maintenance_window     = "sun:04:00-sun:05:00"
+
+  skip_final_snapshot       = var.stage == "dev" ? true : false
+  final_snapshot_identifier = var.stage == "dev" ? null : "${local.prefix}-db-final-snapshot-${formatdate("YYYY-MM-DD-hhmm", timestamp())}"
+
+  enabled_cloudwatch_logs_exports = ["error", "agent"]
+  performance_insights_enabled    = var.stage != "dev"
+
+  tags = local.tags
+}
+
 # --- Load Balancer ---
 
 resource "aws_security_group" "alb" {
@@ -359,6 +431,30 @@ resource "aws_iam_role_policy_attachment" "task_execution" {
   policy_arn = "arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy"
 }
 
+# Task role (for the running container, needed for ECS Exec)
+resource "aws_iam_role" "task" {
+  name = "${local.prefix}-task"
+
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect    = "Allow"
+        Principal = { Service = "ecs-tasks.amazonaws.com" }
+        Action    = "sts:AssumeRole"
+      }
+    ]
+  })
+
+  tags = local.tags
+}
+
+# SSM permissions for ECS Exec (allows connecting to running tasks)
+resource "aws_iam_role_policy_attachment" "task_ssm" {
+  role       = aws_iam_role.task.name
+  policy_arn = "arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore"
+}
+
 # --- CI: GitHub Actions -> ECR push (OIDC) ---
 
 # OIDC provider is account-level, so use data source if it already exists
@@ -442,6 +538,7 @@ resource "aws_ecs_task_definition" "api" {
   cpu                      = tostring(var.cpu)
   memory                   = tostring(var.memory)
   execution_role_arn       = aws_iam_role.task_execution.arn
+  task_role_arn            = aws_iam_role.task.arn
 
   container_definitions = jsonencode([
     {
@@ -451,9 +548,17 @@ resource "aws_ecs_task_definition" "api" {
       portMappings = [
         { containerPort = 8080, hostPort = 8080, protocol = "tcp" }
       ]
-      environment = [
-        { name = "ASPNETCORE_ENVIRONMENT", value = var.stage }
-      ]
+      environment = concat(
+        [
+          { name = "ASPNETCORE_ENVIRONMENT", value = var.stage }
+        ],
+        var.enable_database ? [
+          { 
+            name  = "ConnectionStrings__DefaultConnection", 
+            value = "Server=${replace(aws_db_instance.main[0].endpoint, ":", ",")};Database=${var.database_name};User Id=${var.database_master_username};Password=${var.database_master_password};Encrypt=True;TrustServerCertificate=True;" 
+          }
+        ] : []
+      )
       logConfiguration = {
         logDriver = "awslogs"
         options = {
@@ -475,6 +580,7 @@ resource "aws_ecs_task_definition" "web" {
   cpu                      = tostring(var.cpu)
   memory                   = tostring(var.memory)
   execution_role_arn       = aws_iam_role.task_execution.arn
+  task_role_arn            = aws_iam_role.task.arn
 
   container_definitions = jsonencode([
     {
@@ -511,6 +617,8 @@ resource "aws_ecs_service" "api" {
 
   launch_type = "FARGATE"
 
+  enable_execute_command = true
+
   network_configuration {
     subnets          = [for s in aws_subnet.private : s.id]
     security_groups  = [aws_security_group.ecs.id]
@@ -535,6 +643,8 @@ resource "aws_ecs_service" "web" {
   desired_count   = var.desired_count
 
   launch_type = "FARGATE"
+
+  enable_execute_command = true
 
   network_configuration {
     subnets          = [for s in aws_subnet.private : s.id]
