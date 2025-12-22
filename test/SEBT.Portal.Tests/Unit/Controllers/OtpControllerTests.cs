@@ -1,4 +1,5 @@
-﻿using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Logging.Abstractions;
 using NSubstitute;
 using SEBT.Portal.Api.Controllers;
 using SEBT.Portal.Kernel;
@@ -12,7 +13,8 @@ public class OtpControllerTests
 
     public OtpControllerTests()
     {
-        _controller = new OtpController();
+        var logger = NullLogger<OtpController>.Instance;
+        _controller = new OtpController(logger);
     }
 
     [Fact]

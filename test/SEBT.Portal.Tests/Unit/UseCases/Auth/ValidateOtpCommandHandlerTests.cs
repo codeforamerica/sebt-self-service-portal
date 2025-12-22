@@ -14,7 +14,7 @@ public class ValidateOtpCommandHandlerTests
     private readonly IOtpRepository otpRepository = Substitute.For<IOtpRepository>();
     private readonly NullLogger<ValidateOtpCommandHandler> logger = NullLogger<ValidateOtpCommandHandler>.Instance;
     private readonly IValidator<ValidateOtpCommand> validator = new DataAnnotationsValidator<ValidateOtpCommand>(null!);
-    
+
     [Fact]
     public async Task Handle_ShouldReturnSuccessResult_WhenUnexpiredOtpAndEmailAreValid()
     {
@@ -23,7 +23,7 @@ public class ValidateOtpCommandHandlerTests
             otpRepository,
             validator,
             logger);
-            
+
         var command = new ValidateOtpCommand
         {
             Email = "jim@example.com",
@@ -177,8 +177,8 @@ public class ValidateOtpCommandHandlerTests
             Otp = "123456"
         };
 
-       otpRepository.GetOtpCodeByEmailAsync(command.Email)
-            .Returns(new OtpCode("000000", command.Email));
+        otpRepository.GetOtpCodeByEmailAsync(command.Email)
+             .Returns(new OtpCode("000000", command.Email));
 
         // Act
         var result = await handler.Handle(command, CancellationToken.None);

@@ -48,7 +48,7 @@ public static class MinimalApiResultExtensions
             PreconditionFailedResult { Reason: PreconditionFailedReason.ConcurrencyMismatch } when useProblemDetails
                 => result.ToProblemHttpResult(HttpStatusCode.PreconditionFailed),
             PreconditionFailedResult { Reason: PreconditionFailedReason.ConcurrencyMismatch } when !useProblemDetails
-                => HttpResults.StatusCode((int) HttpStatusCode.PreconditionFailed),
+                => HttpResults.StatusCode((int)HttpStatusCode.PreconditionFailed),
             PreconditionFailedResult { Reason: PreconditionFailedReason.Conflict } when useProblemDetails
                 => result.ToProblemHttpResult(HttpStatusCode.Conflict),
             PreconditionFailedResult { Reason: PreconditionFailedReason.Conflict } when !useProblemDetails

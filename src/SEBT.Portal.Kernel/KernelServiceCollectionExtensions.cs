@@ -13,7 +13,7 @@ public static class KernelServiceCollectionExtensions
 
         return services;
     }
-    
+
     public static IServiceCollection RegisterQueryHandler<TQuery, TResult>(
         this IServiceCollection services,
         Func<IServiceProvider, IQueryHandler<TQuery, TResult>> queryHandlerFactory)
@@ -31,10 +31,10 @@ public static class KernelServiceCollectionExtensions
     {
         services.AddTransient<IValidator<TCommand>, DataAnnotationsValidator<TCommand>>();
         services.AddTransient<ICommandHandler<TCommand, TResult>, TCommandHandler>();
-        
+
         return services;
     }
-    
+
     public static IServiceCollection RegisterCommandHandler<TCommand, TResult>(
         this IServiceCollection services,
         Func<IServiceProvider, ICommandHandler<TCommand, TResult>> commandHandlerFactory)
@@ -42,20 +42,20 @@ public static class KernelServiceCollectionExtensions
     {
         services.AddTransient<IValidator<TCommand>, DataAnnotationsValidator<TCommand>>();
         services.AddTransient(commandHandlerFactory);
-        
+
         return services;
     }
-    
+
     public static IServiceCollection RegisterCommandHandler<TCommand, TCommandHandler>(this IServiceCollection services)
         where TCommand : ICommand
         where TCommandHandler : class, ICommandHandler<TCommand>
     {
         services.AddTransient<IValidator<TCommand>, DataAnnotationsValidator<TCommand>>();
         services.AddTransient<ICommandHandler<TCommand>, TCommandHandler>();
-        
+
         return services;
     }
-    
+
     public static IServiceCollection RegisterCommandHandler<TCommand>(
         this IServiceCollection services,
         Func<IServiceProvider, ICommandHandler<TCommand>> commandHandlerFactory)
@@ -63,14 +63,14 @@ public static class KernelServiceCollectionExtensions
     {
         services.AddTransient<IValidator<TCommand>, DataAnnotationsValidator<TCommand>>();
         services.AddTransient(commandHandlerFactory);
-        
+
         return services;
     }
 
     public static IServiceCollection RegisterDataAnnotationsValidation(this IServiceCollection services)
     {
         services.AddTransient(typeof(IValidator<>), typeof(DataAnnotationsValidator<>));
-        
+
         return services;
-    } 
+    }
 }
