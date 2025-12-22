@@ -184,9 +184,10 @@ if (app.Environment.IsProduction())
     IdentifierHasherGuard.ValidateForProduction(app.Configuration["IdentifierHasher:SecretKey"]);
 }
 
-// Apply database migrations
-await using (var scope = app.Services.CreateAsyncScope())
+// Apply database migrations (non-blocking: app will start even if DB is unavailable)
+try
 {
+    await using var scope = app.Services.CreateAsyncScope();
     var databaseMigrator = scope.ServiceProvider.GetRequiredService<IDatabaseMigrator>();
     await databaseMigrator.MigrateAsync();
 
@@ -196,6 +197,11 @@ await using (var scope = app.Services.CreateAsyncScope())
         var databaseSeeder = scope.ServiceProvider.GetRequiredService<IDatabaseSeeder>();
         await databaseSeeder.SeedTestUsersAsync(useMockHouseholdData, CancellationToken.None);
     }
+    Log.Information("Database migrations completed successfully");
+}
+catch (Exception ex)
+{
+    Log.Warning(ex, "Database migrations failed or database unavailable. App will continue to start.");
 }
 
 // Configure the HTTP request pipeline.

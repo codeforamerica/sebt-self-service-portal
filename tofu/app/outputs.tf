@@ -37,3 +37,14 @@ output "web_url" {
   description = "Web URL (HTTP)."
   value       = "http://${aws_lb.main.dns_name}/"
 }
+
+output "database_endpoint" {
+  description = "RDS SQL Server endpoint."
+  value       = try(aws_db_instance.main[0].endpoint, null)
+}
+
+output "database_connection_string" {
+  description = "SQL Server connection string for the API."
+  value       = var.enable_database ? "Server=${replace(aws_db_instance.main[0].endpoint, ":", ",")};Database=${var.database_name};User Id=${var.database_master_username};Password=${var.database_master_password};Encrypt=True;TrustServerCertificate=True;" : null
+  sensitive   = true
+}
