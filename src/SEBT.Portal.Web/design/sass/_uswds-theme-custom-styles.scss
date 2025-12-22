@@ -38,10 +38,71 @@ Language Selector Overrides
 ----------------------------------------
 Custom styling for language selector to match Figma design.
 Uses USWDS color tokens and spacing units.
+
+Responsive behavior:
+- Desktop (>= tablet): Inline text links with underline on hover
+- Mobile (< tablet): Dropdown button with submenu
 ----------------------------------------
 */
 
-// Header language selector
+// Desktop language selector - inline text links
+.usa-language__desktop {
+  display: none;
+
+  @include at-media('tablet') {
+    display: block;
+  }
+
+  .usa-language__list {
+    display: flex;
+    align-items: center;
+    gap: units(3);
+    list-style: none;
+    margin: 0;
+    padding: 0;
+  }
+
+  .usa-language__list-item {
+    margin: 0;
+  }
+
+  // Figma: USWDS Theme/Body Link
+  // Font: Urbanist, Weight: 700 (Bold), Size: 16px, Line height: 150% (24px)
+  // Decoration: Underline (solid), Color: USWDS Theme/Links
+  .usa-language__link-button {
+    background: none;
+    border: none;
+    color: color('primary'); // USWDS Theme/Links
+    cursor: pointer;
+    font-family: inherit;
+    font-size: 16px;
+    font-weight: 700;
+    line-height: 150%;
+    padding: 0;
+    text-decoration: underline;
+    text-decoration-style: solid;
+
+    &:hover {
+      color: color('primary-dark');
+    }
+
+    &:focus {
+      outline: 2px solid color('primary');
+      outline-offset: 2px;
+    }
+  }
+}
+
+// Mobile language selector - hidden on desktop
+.usa-language__mobile {
+  display: block;
+
+  @include at-media('tablet') {
+    display: none;
+  }
+}
+
+// Header language selector button (mobile dropdown trigger)
 .usa-header .usa-language__link {
   background-color: color('white');
   border: 2px solid color('secondary');
@@ -102,4 +163,60 @@ Uses USWDS color tokens and spacing units.
       }
     }
   }
+}
+
+/*
+----------------------------------------
+Language Submenu Styles
+----------------------------------------
+Custom styles for language dropdown menu .
+----------------------------------------
+*/
+
+// Language submenu dropdown - uses theme-secondary-dark per Figma
+.usa-language__submenu {
+  background-color: color('secondary-dark');
+}
+
+// Language submenu button - matches USWDS anchor styles
+.usa-language__submenu-button {
+  background: none;
+  border: none;
+  color: color('white');
+  cursor: pointer;
+  display: block;
+  font-family: inherit;
+  font-size: inherit;
+  line-height: line-height($theme-navigation-font-family, 3);
+  padding: units(1);
+  text-align: left;
+  text-decoration: none;
+  width: 100%;
+
+  &:focus {
+    outline-offset: units('neg-05');
+  }
+
+  &:hover {
+    color: color('white');
+    text-decoration: underline;
+  }
+
+  &[aria-current='true'] {
+    font-weight: bold;
+  }
+}
+
+/*
+----------------------------------------
+Footer Styles
+----------------------------------------
+Custom footer background colors
+----------------------------------------
+*/
+
+// Footer sections - #00A4A4
+.usa-footer__primary-section,
+.usa-footer__secondary-section {
+  background-color: #00a4a4;
 }

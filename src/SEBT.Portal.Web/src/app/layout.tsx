@@ -1,9 +1,10 @@
 import { getState } from '@/src/lib/state'
 import type { Metadata } from 'next'
-import { Footer, Header } from './components'
+import { headers } from 'next/headers'
+import { Footer, Header, SkipNav } from './components'
 import { primaryFont } from './fonts'
 import './globals.css'
-import { AxeProvider } from './providers'
+import { AxeProvider, I18nProvider } from './providers'
 import './styles.scss'
 
 const state = getState()
@@ -13,11 +14,14 @@ export const metadata: Metadata = {
   description: `Summer EBT Self-Service Portal for ${state.toUpperCase()} - USWDS Implementation`
 }
 
-export default function RootLayout({
+export default async function RootLayout({
   children
 }: Readonly<{
   children: React.ReactNode
 }>) {
+  // Get nonce from proxy for CSP-compliant script loading
+  const nonce = (await headers()).get('x-nonce') ?? undefined
+
   return (
     <html
       lang="en"
@@ -25,21 +29,21 @@ export default function RootLayout({
       className={`usa-js-loading ${primaryFont.variable}`}
     >
       <body>
-        <a
-          className="usa-skipnav"
-          href="#main-content"
-        >
-          Skip to main content
-        </a>
-        <AxeProvider>
-          <Header state={state} />
-          <main id="main-content">{children}</main>
-          <Footer state={state} />
-        </AxeProvider>
-        {/* USWDS initialization script - CSP allows 'self' scripts */}
+        <I18nProvider>
+          <SkipNav />
+          <AxeProvider>
+            <Header state={state} />
+            <main id="main-content">{children}</main>
+            <Footer state={state} />
+          </AxeProvider>
+        </I18nProvider>
+        {/* USWDS initialization script - uses nonce for CSP compliance */}
+        {/* suppressHydrationWarning: nonce changes per request, mismatch is expected */}
         <script
           src="/js/uswds-init.min.js"
           defer
+          nonce={nonce}
+          suppressHydrationWarning
         />
       </body>
     </html>
