@@ -1,9 +1,12 @@
+'use client'
+
 import type { FooterProps } from '@/src/types/components'
 import Image from 'next/image'
 import Link from 'next/link'
+import { useTranslation } from 'react-i18next'
 
 export function Footer({ state = 'dc' }: FooterProps) {
-  const currentYear = new Date().getFullYear()
+  const { t } = useTranslation('common')
 
   return (
     <footer
@@ -34,7 +37,7 @@ export function Footer({ state = 'dc' }: FooterProps) {
             href="/notifications"
             className="usa-link text-ink font-ui-md text-semibold"
           >
-            Public Notifications
+            {t('publicNotifications')}
           </Link>
         </div>
       </div>
@@ -49,7 +52,7 @@ export function Footer({ state = 'dc' }: FooterProps) {
                   href="/accessibility"
                   className="usa-link text-ink font-sans-xs"
                 >
-                  Accessibility
+                  {t('accessibility')}
                 </Link>
               </li>
               <li className="margin-y-1">
@@ -57,7 +60,7 @@ export function Footer({ state = 'dc' }: FooterProps) {
                   href="/privacy"
                   className="usa-link text-ink font-sans-xs"
                 >
-                  Privacy and Security
+                  {t('privacyAndSecurity')}
                 </Link>
               </li>
               <li className="margin-y-1">
@@ -65,7 +68,7 @@ export function Footer({ state = 'dc' }: FooterProps) {
                   href="/translate-disclaimer"
                   className="usa-link text-ink font-sans-xs"
                 >
-                  Google Translate Disclaimer
+                  {t('googleTranslateDisclaimer')}
                 </Link>
               </li>
               <li className="margin-y-1">
@@ -75,7 +78,7 @@ export function Footer({ state = 'dc' }: FooterProps) {
                   rel="noopener noreferrer"
                   className="usa-link usa-link--external text-ink font-sans-xs"
                 >
-                  About {state.toUpperCase()}.GOV
+                  {t('about')}
                 </Link>
               </li>
               <li className="margin-y-1">
@@ -83,7 +86,7 @@ export function Footer({ state = 'dc' }: FooterProps) {
                   href="/terms"
                   className="usa-link text-ink font-sans-xs"
                 >
-                  Terms and Conditions
+                  {t('termsAndConditions')}
                 </Link>
               </li>
             </ul>
@@ -94,10 +97,7 @@ export function Footer({ state = 'dc' }: FooterProps) {
       {/* Copyright */}
       <div className="usa-footer__secondary-section text-center">
         <div className="grid-container">
-          <p className="margin-0 text-ink footer-copyright">
-            © {currentYear}{' '}
-            {state === 'dc' ? 'District of Columbia' : `State of ${state.toUpperCase()}`}
-          </p>
+          <p className="margin-0 text-ink footer-copyright">{t('copyright')}</p>
         </div>
       </div>
     </footer>

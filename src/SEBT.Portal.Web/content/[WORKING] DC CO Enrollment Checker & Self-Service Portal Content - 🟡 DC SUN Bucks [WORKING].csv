@@ -1,0 +1,453 @@
+🟡 Content,English,Español,
+S1 - Landing Page - Title,Get a one-time payment of $120 in summer food benefits for your child,Obtenga un pago único de $120 para pagar la comida de su estudiante este verano,
+S1 - Landing Page - Body,"Each eligible child can receive a *one-time payment of $120*. Families may use the money to pay for groceries during the summer months. 
+
+Some eligible families are automatically enrolled, and some need to submit an application. We can recommend whether you should apply for your child. Tap ""Do I need to apply?"" and enter your child's information.","Cada estudiante elegible puede recibir un *pago único de $120*. Este dinero se puede usar para comprar alimentos durante los meses de verano. 
+
+Algunas familias elegibles son inscritas automátocamente y otras tienen que aplicar. Podemos recomendarle si necesita aplicar. Toque “¿Necesito presentar una solicitud?” e ingrese la información de su hijo/a.  ",
+S1 - Landing Page - Action,Do I need to apply?,¿Necesito aplicar?,
+S1 - Landing Page - Action Español,¿Necesito aplicar?,Do I need to apply?,
+S1 - Landing Page - Action Subtext,Safe and secure,Seguro y protegido,
+S1 - Landing Page - Accordion Title,How do I know if my child can get Summer EBT?,,
+S1 - Landing Page - Body 2,Children may be automatically enrolled if we have information to confirm their eligibility. This usually happens for one of the following reasons:,Es posible que inscribamos automáticamente a tu hijo/a si contamos con información para confirmar su elegibilidad. Esto puede suceder por alguno de los siguientes motivos: ,
+S1 - Landing Page - Body 3,"They are between ages 5 and 18. And they get SNAP (food stamps), TANF (cash assistance), Medicaid, or the Food Distribution Program on Indian Reservations (FDPIR)
+Or they are temporarily unhoused or in foster care
+Or they get free or low-cost meals at school
+Or they are enrolled in a school that participates in the National School Lunch Program (NSLP)","Tiene entre 5 y 18 años y recibe SNAP (cupones de alimentos), TANF (asistencia en efectivo), Medicaid o el Programa de Distribución de Alimentos en Reservas Indígenas (FDPIR)
+O, está temporalmente sin hogar o en cuidado de crianza temporal (foster care)
+O, recibe comidas gratuitas o a bajo costo en la escuela
+O, está inscrito/a en una escuela que participa en el Programa Nacional de Almuerzos Escolares (NSLP)",
+S1 - Landing Page - Body 4,"But, children who are not automatically enrolled may still be able to get the benefit. Parents or guardians should fill out an application to see if they qualify. Tap [""Do I need to apply?""](link) to see if you need to apply for your child.","Si tu hijo/a no queda inscrito/a automáticamente, aún podría recibir el beneficio. Deberías llenar una solicitud para ver si califica. Toca [""¿Necesito aplicar?""] (link) para saber si necesitas aplicar.",
+S1 - Disclaimer - Title,What to know before we begin,Lo que debes saber antes de comenzar,
+S1 - Disclaimer - Body 1,This is not an application for DC SUN Bucks.,Esto NO es una aplicación para DC SUN Bucks,
+S1 - Disclaimer - Body 2,This tool will help you learn if your children are potentially eligible for Summer EBT and if you should apply.,Esta herramienta te ayudará a saber si tus hijos podrían ser elegibles para el EBT de Verano (Summer EBT) y si debes presentar una solicitud.,
+S1 - Disclaimer - Body 3,The information you provide will be kept private and secure.,La información que nos proporciones se mantendrá privada y segura.,
+S1 - Disclaimer - Body 4,Using this tool will not affect your potential DC SUN Bucks benefits or other benefits you get.,Usar esta herramienta no afectará tus posibles beneficios de DC SUN Bucks ni otros beneficios que recibes.,
+S1 - Personal Information - Title,Check if your child needs to apply for DC SUN Bucks,Compruebe si su hijo(a) necesita solicitar beneficios de DC SUN Bucks,
+S1 - Personal Information - Body,Please provide your student's information in the required fields below. This tool will check if your child is automatically enrolled to receive benefits.,Proporcione la información de su estudiante en los campos obligatorios a continuación. Esta herramienta comprobará si su hijo(a) queda inscrito de forma automática para recibir beneficios.,
+S1 - Personal Information - Label Birthdate,Birthdate,Fecha de nacimiento,
+S1 - Personal Information - Label Month,Month,Mes,
+S1 - Personal Information - Label Day,Day,Día,
+S1 - Personal Information - Label Year,Year,Año,
+S1 - Confirm Personal Information - Title,Here's the information we have so far,Aquí está la información que tenemos hasta ahora.,
+S1 - Confirm Personal Information - Body,"Review your child(ren)'s information below. You may add another child to see if they need to apply, too. Tap ""Submit"" if you've finished adding children.","Revise la información de su(s) hijo(s) a continuación. Puede agregar otro hijo para ver si también debe solicitar. Toque ""Enviar"" si ya terminó de agregar hijos.",
+S1 - Confirm Personal Information - Table Name Heading,Name,Nombre,
+S1 - Confirm Personal Information - Table Name Value,[First name] [M.] [Last name],[Nombre] [Inicial del segundo nombre] [Apellido],
+S1 - Confirm Personal Information - Table Birthdate Heading,Birthdate,Fecha de nacimiento,
+S1 - Confirm Personal Information - Table Birthdate Value,"[Month], [Day] [Year]","[Mes], [Día] [Año]",
+S1 - Confirm Personal Information - Table Action,Update this child's information,Actualizar la información de este menor,
+S1 - Confirm Personal Information - Action Add,Add another child,Agregue otro niño,
+S1 - Optional ID Information - Title,We checked our records and need more information to see if this child can get DC SUN Bucks,Revisamos nuestros registros y necesitamos más información para ver si este niño puede recibir DC SUN Bucks,
+S1 - Optional ID Information - Body,"We suggest providing any of the child's Student ID, SNAP, TANF, or Medicaid number if you have them. We can give you a better answer about whether they are pre-approved.","Sugerimos que proporciones el número de identificación estudiantil, SNAP, TANF o Medicaid del niño, si los tienes. Así podemos darte una mejor respuesta sobre si ya están preaprobados.",
+S1 - Optional ID Information - Label Which ID,Which ID number can you provide? *,¿Cuál número de identificación puedes proporcionar? *,
+S1 - Optional ID Information - Option Student ID,Unique Student ID,Identificación de estudiante única,
+S1 - Optional ID Information - Option Helper Student ID,This number is the Universal Student ID Number for your child.,Este es el número de identificación universal de estudiante de su hijo(a).,
+S1 - Optional ID Information - Option Medicaid ID,Medicaid identification number (CIN / I-CIN),Número de identificación de Medicaid (CIN / I-CIN),
+S1 - Optional ID Information - Option Helper Medicaid ID,This number can be found on your child's Medicaid program notices and is typically 7 or 8 digits long.,Este número se puede encontrar en los avisos del programa Medicaid de su hijo(a) y suele tener entre 7 y 8 dígitos.,
+S1 - Optional ID Information - Option SNAP Case Number,SNAP case number,Número de caso de SNAP,
+S1 - Optional ID Information - Option Helper SNAP Case Number,This number can be found on your child's SNAP program notices and is typically 7 or 8 digits long.,Este número se puede encontrar en los avisos del programa SNAP de su hijo(a) y suele tener 7 u 8 dígitos.,
+S1 - Optional ID Information - Option TANF ID,TANF identification number,Número de identificación de TANF,
+S1 - Optional ID Information - Option Helper TANF ID,This number can be found on your child's TANF program notices and is typically 7 or 8 digits long.,Este número se puede encontrar en los avisos del programa TANF de su hijo(a) y suele tener 7 u 8 dígitos.,
+S1 - Optional ID Information - Label Enter Student ID,Enter their Unique Student ID,Ingrese su ID de estudiante único,
+S1 - Optional ID Information - Label Enter Medicaid ID,Enter their Medicaid identification number (CIN / I-CIN),Ingrese su número de identificación de Medicaid (CIN / I-CIN),
+S1 - Optional ID Information - Label Enter SNAP Case Number,Enter their SNAP case number,Ingrese su número de caso SNAP,
+S1 - Optional ID Information - Label Enter TANF ID,Enter their TANF identification number,Ingrese su número de identificación TANF,
+S1 - Optional ID Information - Alert Action Log Into Portal,Contact us if you can't provide any of the suggested ID numbers.,Contáctenos si no puede proporcionar ninguno de los números de identificación sugeridos.,
+S1 - Result - Title,Here's the information we found,Aquí está la información que encontramos,
+S1 - Result - Apply for SEBT - Title,We recommend that you fill out an application for this child,"Para ayudarnos a decidir, le recomendamos que complete una solicitud para este menor",
+S1 - Result - Apply for SEBT - Body,"Children may not be automatically enrolled because we do not have enough information to confirm their eligibility. But, they may still be eligible.","A veces los niños no se inscriben automáticamente porque no tenemos toda la información necesaria para ver si pueden participar. Sin embargo, igual podrían calificar.",
+S1 - Result - Apply for SEBT - Body 1,The following children *may not be automatically enrolled*.,Es posible que los siguientes menores *no estén inscritos automáticamente*.,
+S1 - Result - Apply for SEBT - Action Apply,We recommend submitting a DC SUN Bucks application for them,Recomendamos presentar una solicitud de DC SUN Bucks para ellos,
+S1 - Result - Apply for SEBT - Body 2,"Children may not be automatically enrolled because we do not have enough information to determine their eligibility. However, they may still be eligible.","Es posible que los menores no estén inscritos automáticamente porque no tenemos suficiente información para determinar su elegibilidad. Sin embargo, aún podrían ser elegibles.",
+S1 - Result - Apply for SEBT - Body 3,"To receive food benefits for Summer 2026, you must apply by [Date]. Applying for DC SUN Bucks usually takes 10 minutes or less.","Para recibir beneficios de alimentos en el verano de 2026, debe presentar una solicitud antes de [Fecha]. Presentar una solicitud para DC SUN Bucks suele tomar 10 minutos o menos.",
+S1 - Result - Apply for SEBT - Body 4,"After you apply, you will be contacted once your application is reviewed.","Después de presentar su solicitud, nos comunicaremos con usted una vez que se haya revisado su solicitud.",
+S1 - Result - Apply for SEBT - Accordion Title,How do I know if they're eligible?,¿Cómo sé si pueden calificar?,
+S1 - Result - Apply for SEBT - Accordion Body 1,You should apply if your child attends a school that participates in the National School Lunch Program (NSLP) or School Breakfast Program (SBP).,"Si tu hijo va a una escuela que participa en el Programa Nacional de Almuerzos Escolares (NSLP) y recibe almuerzo gratis o a precio reducido, deberías aplicar.",
+S1 - Result - Apply for SEBT - Accordion Body 2,Tap here to fill out an application.,Toca tu pantalla aquí para llenar una solicitud,
+S1 - Result - Apply for SEBT - Accordion Body 3,You may also use the dropdown below to check how much money your household can make in a year to be eligible.,Puedes usar este menú para ver cuánto dinero puede ganar tu familia en un año para calificar,
+S1 - Result - Apply for SEBT - Accordion Label Select Number People,Select the number of people in your household,Selecciona el número de personas que viven en tu hogar,
+S1 - Result - Apply for SEBT - Accordion Body Alert Income,"If your household's total gross income is less than [$28,953] every year, you are likely to be eligible. Gross income is the amount before any deductions, taxes, or expenses are taken out.","Si el ingreso total de tu hogar es menos de $28,953 cada año, es probable que seas elegible. El ingreso total es la cantidad antes de que se hagan deducciones, impuestos o gastos.",
+S1 - Result - Apply for SEBT - Card 1 Title,"To receive benefits for this summer, you must apply by August 25",Para recibir beneficios para este verano debe presentar su solicitud antes del 25 de agosto,
+S1 - Result - Apply for SEBT - Card 1 Body,"The sooner you apply, the sooner your application will be reviewed. Applying for DC SUN Bucks usually takes 15 minutes or less.","Cuanto antes presente su solicitud, más rápido se revisará. Solicitar beneficios de DC SUN Bucks suele tardar 15 minutos o menos.",
+S1 - Result - Apply for SEBT - Card 1 Action,Apply for DC SUN Bucks,Solicitar DC SUN Bucks,
+S1 - Result - Apply for SEBT - Library Applications,Copies of the paper application are also available at DC public libraries.,También hay copias de la solicitud disponibles en las bibliotecas públicas de DC.,
+S1 - Result - Apply for SEBT - Card 2 Title,Do you have other children in your household?,¿Tiene otros hijos en su grupo familiar?,
+S1 - Result - Apply for SEBT - Card 2 Body,"To check if you need to submit a DC SUN Bucks application for any other school-age children in your household, please provide their information by clicking on the button below.","Para verificar si necesita presentar una solicitud de DC SUN Bucks para algún otro menor en edad escolar de su grupo familiar, proporcione su información haciendo clic en el botón a continuación.",
+S1 - Result - Apply for SEBT - Card 2 Action,Check another child,Revisar otro(a) niño(a),
+S1 - Result - Streamlined Enrolled - Title,"Looks like your child is eligible, and you DO NOT need to submit an application for this child",Parece que su hijo(a) es elegible y NO es necesario que presente una solicitud.,
+S1 - Result - Streamlined Enrolled - Body,"Based on our records, we already have all the information we need to determine your child's DC Sun Bucks eligibility for 2025.
+
+2025 Sun Bucks benefits were issued beginning in June 2025 and expire 122 days after issuance.","Según nuestros registros ya tenemos toda la información que necesitamos para determinar la elegibilidad de DC SUN Bucks de su hijo(a) para 2025.
+
+Los beneficios de DC SUN Bucks 2025 se emitieron a partir de junio de 2025 y vencen 122 días después de su emisión.",
+S1 - Result - Streamlined Enrolled - Body 1,The following children are *likely automatically enrolled for DC SUN Bucks for 2026*.,Es *probable que los siguientes menores estén inscritos automáticamente* en DC SUN Bucks para 2026,
+S1 - Result - Streamlined Enrolled - Alert Title,Check the DC SUN Bucks Portal to see where your children will receive their summer food benefits,Revisa el portal de DC SUN Bucks para ver dónde tus hijos recibirán sus beneficios de alimentos de verano,
+S1 - Result - Streamlined Enrolled - Alert Body,"If they are not enrolled in SNAP or TANF and received DC SUN Bucks cards last summer, we will issue their one-time payment of $120 to the same cards.
+
+If they are not enrolled in SNAP or TANF and new to DC SUN Bucks or their previous card has been deactivated, we will mail a new card to the address we have on file.","Si no están inscritos en SNAP o TANF y recibieron tarjetas de DC SUN Bucks el verano pasado, emitiremos su pago total de $120 en las mismas tarjetas. 
+
+Si no está inscrito en SNAP o TANF y aún no participa en DC SUN Bucks, o si su tarjeta anterior ha sido desactivada, enviaremos por correo una tarjeta nueva a la dirección que tenemos en nuestros registros.",
+S1 - Result - Streamlined Enrolled - Alert Action,"To check the mailing address we have on file, log in to the DC SUN Bucks Portal","Para verificar la dirección de envío que tenemos registrada, inicia sesión en el portal de DC SUN Bucks.",
+S1 - Result - Streamlined Enrolled - Body 2,We recommend logging into the DC SUN Bucks portal to confirm,Recomendamos iniciar sesión en el portal de DC SUN Bucks para confirmar,
+S1 - Result - Streamlined Enrolled - Body 3,Scroll down to view information we found about your other children.,Desliza hacia abajo para ver la información que encontramos sobre tus otros hijos.,
+S1 - Result - Streamlined Enrolled - Action,Go to the DC SUN Bucks Portal,Ve al Portal DC SUN Bucks,
+S1 - Result - Streamlined Enrolled - Card 1 Title,Enrolled in SNAP or TANF?,¿Está inscrito en el SNAP o TANF?,
+S1 - Result - Streamlined Enrolled - Card 1 Body,"If your student has SNAP or TANF, your DC SUN Bucks will be loaded on the existing SNAP or TANF card on that date.","Si su estudiante tiene SNAP o TANF, sus beneficios de DC SUN Bucks se cargarán en la tarjeta de SNAP o TANF que ya tiene en esa fecha.",
+S1 - Result - Streamlined Enrolled - Card 2 Title,Do you have other children in your household?,¿Tiene otros hijos en su grupo familiar?,
+S1 - Result - Streamlined Enrolled - Card 2 Body,"To check if you need to submit a DC SUN Bucks application for any other school-age children in your household, please provide their information by clicking on the button below.","Para verificar si necesita presentar una solicitud de DC SUN Bucks para algún otro menor en edad escolar de su grupo familiar, proporcione su información haciendo clic en el botón a continuación.",
+S1 - Result - None - Body 1,We don't have enough information for the following children.,No tenemos suficiente información para los siguientes niños,
+S1 - Result - None - Body 2,We recommend logging into the Summer EBT portal to confirm if they are automatically enrolled.,Le recomendamos entrar al portal de Summer EBT para confirmar si sus hijos están inscritos automáticamente.,
+S1 - Result - Streamlined Enrolled - Steps Heading,Next steps,,
+S1 - Result - Streamlined Enrolled - Card 2 Action,Check another child,Revisar otro(a) niño(a),
+S2 - Log In Disclaimer - Title,Log in to your DC SUN Bucks account,Portal de los participantes de las DC SUN Bucks,
+S2 - Log In Disclaimer - Log In Disclaimer - Body 1,"You can use the same login you use to access the OSSE Parent Portal. Also, if you don't have an account, you can create one using your email address.","Puede usar el mismo inicio de sesión que utiliza para acceder al Portal de Padres de OSSE. Si no tiene una cuenta, puede crear una. ",
+S2 - Log In Disclaimer - Log In Disclaimer - Body 2,Contact us if you need assistance logging into your account.,Contáctenos si necesita ayuda para iniciar sesión en su cuenta ,
+S2 - Log In Disclaimer - Log In Disclaimer - Body 3,DC SUN Bucks Call Center.,línea de servicio al cliente de la DC SUN Bucks.,
+S2 - Portal Dashboard - Alert Address Updated,Your mailing address has been updated,Su dirección ha sido actualizada,
+S2 - Portal Dashboard - Alert Address Title,"A replacement for the card[s] ending in [[9999], [9999], and [9999],] will be sent to the following address","Las tarjeta terminadas en [[9999], [9999], y [9999], van a ser remplazadas y enviadas a la siguiente dirección",
+S2 - Portal Dashboard - Alert Address Body,"[Street address line 1]
+[Street address line 2]
+[City], [State] [ZIP Code]
+
+Check back here to see when the card has been mailed.","[Street address line 1]
+[Street address line 2]
+[City], [State] [ZIP Code]
+
+Regrese aquí para ver cuando se ha enviado su tarjeta. ",
+S2 - Portal Dashboard - Alert Contact Updated,Your contact preferences have been updated,Se han actualizado sus preferencias de contacto,
+S2 - Portal Dashboard - Alert Address Update Error,There was an issue updating your mailing address. Please try again later.,Hubo un problema al actualizar su dirección postal. Vuelva a intentarlo más tarde,
+S2 - Portal Dashboard - Alert Contact Update Error,There was an issue updating your contact preferences. Please try again later.,Hubo un problema al actualizar sus preferencias  de conta. Vuelva a intentarlo más tarde,
+S2 - Portal Dashboard - Alert Check Address Title,Is your address correct?,Revisa tu dirección,
+S2 - Portal Dashboard - Alert Check Address Body,Please check your preferred mailing address to make sure you can receive DC SUN Bucks cards and other mail from us.,"Por favor, revisa tu dirección postal preferida para asegurarte de que puedas recibir las tarjetas DC SUN Bucks y otros envíos por correo de nuestra parte.",
+S2 - Portal Dashboard - Alert Check Address Link 1,"Yes, this is my address","Si, esta es mi dirección postal",
+S2 - Portal Dashboard - Alert Check Address Link 2,"No, change my mailing address","No, cambiar mi dirección postal",
+S2 - Portal Dashboard - Logout,Logout,Cerrar sesión,
+S2 - Portal Dashboard - Action Navigation - Lead,I want to,Quiero,
+S2 - Portal Dashboard - Action Navigation - Check Existing Cards,Check existing cards,Revisar mis tarjetas existentes,
+S2 - Portal Dashboard - Action Navigation - Order replacement cards,Request new cards,Pedir tarjetas de reemplazo,
+S2 - Portal Dashboard - Action Navigation - Change my mailing address,Change my mailing address,Cambiar mi dirección de correspondencia,
+S2 - Portal Dashboard - Action Navigation - Change my contact information,Change my contact information,Cambiar mi información de contacto,
+S2 - Portal Dashboard - Action Navigation - Check existing applications,Check existing applications,Revisar solicitudes pendientes,
+S2 - Portal Dashboard - Action Navigation - Activate Card,Activate a card,,
+S2 - Portal Dashboard - Action Navigation - Apply,Apply for DC SUN Bucks,Enviar una solicitud para la DC SUN Bucks,
+S2 - Portal Dashboard - Profile Table - Heading Status,Status,Estado,
+S2 - Portal Dashboard - Profile Table - Status Enrolled,Enrolled,Inscrito automáticamente,
+S2 - Portal Dashboard - Profile Table - Status Application In-Progress,Application in-progress,Solicitud en proceso,
+S2 - Portal Dashboard - Profile Table - Status Application Denied,Application denied,Solicitud rechazada,
+S2 - Portal Dashboard - Profile Table - Status Enrolled Description,Your children are enrolled because we have enough information to confirm their eligibility automatically.,,
+S2 - Portal Dashboard - Profile Table - Status Check Address,Check mailing address,Revisar dirección postal,
+S2 - Portal Dashboard - Profile Table - Heading Contact,Your preferred contact,Su método de contacto preferido,
+S2 - Portal Dashboard - Profile Table - Heading Address,Your mailing address,Su dirección de correspondencia,
+S2 - Portal Dashboard - Profile Table - Update your profile,Update your profile,Actualizar su perfil,
+S2 - Portal Dashboard - Profile Table - Physical Mail,Physical Mail,Correo físico,
+S2 - Portal Dashboard - Profile Table - Action Change Address,Change my mailing address,Cambiar mi dirección de correspondencia,
+S2 - Portal Dashboard - Profile Table - Action Change Contact,Change my contact information,Cambiar mi información de contacto,
+S2 - Portal Dashboard - Section - Cards Heading,DC SUN Bucks Cards,Tarjetas DC SUN Bucks,
+S2 - Portal Dashboard - Section - Cards Body,Here are your children's DC SUN Bucks cards we have on file.,Estas son las tarjetas DC SUN Bucks de sus hijos que tenemos en archivo. Aprende a gestionar tus tarjetas usando ebtEDGE a continuación.,
+S2 - Portal Dashboard - Section - Cards Alert Body,"If your child is eligible for SUN Bucks through SNAP or TANF participation, they will not have a DC Sun Bucks card. Their benefits will be loaded onto the SNAP or TANF EBT card.","Si su hijo es elegible para SUN Bucks a través de la participación en SNAP o TANF, no tendrá una tarjeta DC Sun Bucks. Sus beneficios se cargarán en la tarjeta EBT de SNAP o TANF.",
+S2 - Portal Dashboard - Card Table - Heading Issued,Benefit issue date,Beneficios asignados,
+S2 - Portal Dashboard - Card Table - Heading Exp Date,Benefit expiration date,Fecha de vencimiento del beneficio,
+S2 - Portal Dashboard - Card Table - Heading Card Type,Benefit issued to,Beneficios asignados a,
+S2 - Portal Dashboard - Card Table - Types,[DC SUN Bucks/SNAP EBT/TANF EBT] Card,Tarjeta [DC SUN Bucks/SNAP EBT/TANF EBT],
+S2 - Portal Dashboard - Card Table - Types Co-loaded,[SNAP EBT/TANF EBT] Card,Tarjeta [SNAP EBT/TANF EBT] ,
+S2 - Portal Dashboard - Card Table - Type SEBT,DC SUN Bucks Card,Tarjeta DC SUN Bucks,
+S2 - Portal Dashboard - Card Table - Type SNAP,SNAP EBT Card,Tarjeta SNAP EBT ,
+S2 - Portal Dashboard - Card Table - Type TANF,TANF EBT Card,Tarjeta TANF EBT,
+S2 - Portal Dashboard - Card Table - Heading Card Number,Card number,Número de tarjeta,
+S2 - Portal Dashboard - Card Table - Last Four Digits,[9999] (last 4 digits),[9999] (últimos 4 dígitos),
+S2 - Portal Dashboard - Card Table - Heading Card Status,Card status,Estado de la tarjeta,
+S2 - Portal Dashboard - Card Table - Heading Mailing address,Mailing address,Dirección de correspondencia,
+S2 - Portal Dashboard - Card Table - Status Requested,Requested on [MM/DD/YYYY],Solicitada el [MM/DD/YYYY],
+S2 - Portal Dashboard - Card Table - Status Mailed,Mailed on [MM/DD/YYYY],Enviado por correo el [MM/DD/YYYY],
+S2 - Portal Dashboard - Card Table - Status Active,Active,Activa,
+S2 - Portal Dashboard - Card Table - Status Deactivated,Deactivated,Desactivada,
+S2 - Portal Dashboard - Card Table - Status Message Requested 1,We've requested a new DC Sun Bucks card that will arrive in the mail within 2–3 weeks. Check back here to see when the card has been mailed.,Hemos solicitado una nueva tarjeta de DC SUN Bucks que llegará por correo en un plazo de 2 a 3 semanas. Regrese aquí para ver cuándo se ha enviado la tarjeta.,
+S2 - Portal Dashboard - Card Table - Status Message Requested 2,A replacement card will arrive in the mail in around 5–7 business days. The card should be mailed within 2 days. Check back here to see when the replacement card has been mailed.,Una tarjeta de reemplazo llegará por correo en aproximadamente 5 a 7 días. La tarjeta debería ser enviada dentro de 2 días. Regrese  aquí para ver cuándo se ha enviado la tarjeta de reemplazo.,
+S2 - Portal Dashboard - Card Table - Status Message Mailed,"After the new card is mailed, it should arrive in around 5–7 days. If it doesn't arrive after two weeks, you can request a replacement card.","Una vez que se envíe por correo la nueva tarjeta, debería llegar en un plazo de 5 a 7 días. Si no llega después de dos semanas, puede solicitar una tarjeta de reemplazo.",
+S2 - Portal Dashboard - Card Table - Action Update Mailing Address,Update this card's mailing address,Actualizar la dirección de correspondencia de esta tarjeta,
+S2 - Portal Dashboard - Card Table - Action Request Replacement,Request a replacement card,Solicitar una tarjeta de reemplazo,
+S2 - Portal Dashboard - Alert EBT Edge - Title,Check balance or change PIN number,Revisar balance o cambiar número de PIN,
+S2 - Portal Dashboard - Alert EBT Edge - Body,"When you add your cards to an ebtEDGE account, you can","Cuando agregue sus tarjetas a una cuenta de ebtEDGE, usted podrá",
+S2 - Portal Dashboard - Alert EBT Edge - Features,"Check the card balance, 
+Freeze or unfreeze to protect benefits from theft, 
+or Change the card PIN","Revisar el balance de la tarjeta, 
+Congelarlas descongelarlas para proteger sus beneficios del robo, 
+Cambiar la clave de la tarjeta",
+S2 - Portal Dashboard - Alert EBT Edge - Body 2,,,
+S2 - Portal Dashboard - Alert EBT Edge - Action,Go to ebtEDGE,Ir a ebtEDGE,
+S2 - Portal Dashboard - Alert EBT Edge - Action 2,,,
+S2 - Portal Dashboard - Section - Enrolled Children Heading,Enrolled Children,Niños inscritos,
+S2 - Portal Dashboard - Section - Enrolled Children Body 1,"The following children are enrolled in DC SUN Bucks. If you would like to submit an application for a child who isn't enrolled, you may","Los siguientes niños han sido inscritos automáticamente en el DC SUN Bucks. Si quiere, puede enviar una solicitud de un niño que no está inscrito.",
+S2 - Portal Dashboard - Section - Enrolled Children Body 2,"If you would like to submit an application for a child who isn't enrolled, you may","Si quiere, puede enviar una solicitud de un niño que no está inscrito ",
+S2 - Portal Dashboard - Section - Enrolled Children Action,submit a DC SUN Bucks application.,enviar una solicitud para DC SUN Bucks.,
+S2 - Portal Dashboard - Section - Applications Heading,DC SUN Bucks Applications,Solicitudes de la DC SUN Bucks,
+S2 - Portal Dashboard - Section - Applications Body,Here are your DC SUN Bucks applications for children who haven't been automatically enrolled.,Estas son sus solicitudes de la DC SUN Bucks de los niños que no han sido registrados automáticamente.,
+S2 - Portal Dashboard - Applications Table - Heading Number,Case number,Número de la solicitud,
+S2 - Portal Dashboard - Applications Table - Heading Children Included,Children included in application,Niños incluídos en la solicitud,
+S2 - Portal Dashboard - Applications Table - Heading Status,Status,Estado,
+S2 - Portal Dashboard - Applications Table - Status Approved,Approved,Aprobada,
+S2 - Portal Dashboard - Alert Applications Title,"Currently, you have no children enrolled in DC SUN Bucks or DC SUN Bucks applications","Actualmente, no tiene menores inscritos en DC SUN Bucks ni solicitudes de DC SUN Bucks",
+S2 - Portal Dashboard - Alert Applications Body,Come back to this dashboard tomorrow if you've just recently applied and your application is not displayed.,Vuelva a este portal mañana si acaba de presentar una solicitud y su solicitud aún no aparece.,
+S2 - Portal Dashboard - Alert Applications Action,Apply for DC SUN Bucks now,Aplique ahora para DC Sun Bucks,
+S3 - Contact Preferences Update - Title,Your contact preferences,Actualizar su perfil e información de contacto,
+S3 - Contact Preferences Update - Label Language,Your preferred language,El idioma que prefiere,
+S3 - Contact Preferences Update - Label Contact Preference,How do you prefer to be contacted?,¿Cómo prefiere que nos pongamos en contacto con usted?,
+S3 - Contact Preferences Update - Action Update Contact,Update contact preferences,Actualizar las preferencias de contacto,
+S3 - Parent Profile Update - Alert Profile Update,Your profile has been updated,Su perfil ha sido actualizado,
+S3 - Parent Profile Update - Title,Your DC SUN Bucks Profile,Su perfil de DC SUN Bucks,
+S3 - Parent Profile Update - Back,Back to portal home,Regresar a la página de inicio del portal,
+S4 - Parent Profile Update - Heading Mailing Address,Your mailing address,Su dirección de correspondencia,
+S3 - Parent Profile Update - Label Preferred Mailing Address,Select your preferred mailing address,Seleccione la dirección de correspondencia que prefiera,
+S3 - Parent Profile Update - Helper Preferred Mailing Address,You may add or edit addresses in this list using the links below.,Puede agregar o editar las direcciones en esta lista usando los enlaces de abajo.,
+S3 - Parent Profile Update - Action Add Mailing Address,Add a new mailing address,Agregar una nueva dirección de correspondencia,
+S3 - Parent Profile Update - Edit Mailing Address,Edit mailing addresses,Editar la dirección de correspondencia,
+S3 - Mailing Address Edit - Title,Edit your mailing addresses,Editar su dirección de correspondencia,
+S3 - Mailing Address Edit - Label Select Address,Select the address to edit,Seleccione la dirección que quiere editar,
+S3 - Mailing Address Edit - Label Update or Delete,Do you want to update or delete this address?,¿Quiere actualizar o borrar esta dirección?,
+S3 - Mailing Address Edit - Option Update,Update,Actualizar,
+S3 - Mailing Address Edit - Option Delete,Delete,Borarr,
+S3 - Confirm Delete Address - Title,Are you sure you want to delete this address?,¿Está seguro de querer borrar esta dirección?,
+S3 - Parent Profile Update - Action Update Address,Update address preferences,Actualizar las preferencias de direcciones,
+S4 - Mailing Address Update - Title Your,Tell us where to safely send your mail,Compártanos dónde enviarle correo de manera segura,
+S4 - Address Not Found - Title,Make sure the address is correct,Asegúrese de que la dirección sea correcta,
+S4 - Address Not Found - Body,"We couldn't find the address you entered. To make sure mail can be received at the provided address, check the address. If it is correct, tap ""Use this address"".
+
+If you need to make a change, tap ""Edit the address"".","No pudimos encontrar la dirección que ingresó. Para asegurarse de que el correo pueda ser recibido en la dirección ingresada, verifique la dirección. Si es correcta, seleccione ""Usar esta dirección"".
+
+Si necesita hacer un cambio, seleccione ""Editar la dirección"".",
+S4 - Address Not Found - Alert Title,Address you entered,Dirección que ingresó,
+S4 - Address Not Found - Alert Action,Edit the address,Editar esta dirección,
+S4 - Address Not Found - Continue,Use this address,Usar esta dirección,
+S4 - Suggested Address - Title,Check the address,Confirme la dirección,
+S4 - Suggested Address - Body,"We updated the address you entered. If correct, use the suggested address.","Hemos actualizado la dirección que ingresó. Si es correcta, seleccione la dirección sugerida.",
+S4 - Suggested Address - Label Select,Select the address to use,Seleccione la dirección que quiere usar,
+S5 - Bulk Order New Cards - Title,Do you want to request replacement DC SUN Bucks cards to be sent to this address?,¿Quiere solicitar que las tarjetas DC SUN Bucks de reemplazo sean enviadas a esta dirección?,
+S5 - Bulk Order New Cards - Body,"We can send replacement cards if
+
+• You haven't received them in the mail after two weeks
+• Or you no longer have them","Podemos enviar tarjetas de reemplazo si
+
+• No las ha recibido por correo después de dos semanas
+• O ya no las tiene",
+S5 - Bulk Order New Cards Who - Title,A few things to know before replacing DC SUN Bucks cards,Algunas cosas a tener en cuenta antes de reemplazar las tarjetas de DC SUN Bucks,
+S5 - Bulk Order New Cards Who - Body,"Once replacement cards are created, the previous cards will be permanently deactivated
+Cards will arrive by mail in around 5–7 days
+You can check here to see when the card has been mailed
+Any remaining balance on the previous card will automatically be rolled over to the replacement card","Una vez que se creen las tarjetas de reemplazo, las tarjetas anteriores se desactivarán permanentemente.
+Las tarjetas llegarán por correo entre 5 y 7 días, aproximadamente.
+Puede verificar aquí cuándo se ha enviado la tarjeta.
+Cualquier saldo restante en la tarjeta anterior se transferirá automáticamente a la tarjeta de reemplazo",
+S5 - Bulk Order New Cards Who - Label Select Cards,Select which cards you want to replace,Seleccione las tarjetas que desea reemplazar,
+S6 - Replacement Card Address - Title,Do you want the replacement for the card ending in [9999] mailed to this address?,¿Desea que el reemplazo de la tarjeta que termina en [9999] se envíe por correo a esta dirección?,
+S6 - Confirm Request Replacement Card - Title,A few things to know before replacing cards,Cosas que saber antes de solicitar una tarjeta de reemplazo,
+S6 - Confirm Request Replacement Card - Replace Card Body 1,Call Fidelity Information Services (FIS) at (888) 304-9167 to request a replacement card to be sent to your address listed here.,Llame a Fidelity Information Services (FIS) al (888) 304-9167 para solicitar el envío de una tarjeta de reemplazo a la dirección que aparece aquí.,
+S6 - Confirm Request Replacement Card - Replace Card Body 2,"If FIS has your current, correct address, they will process your request directly.","Si FIS tiene su dirección actual y correcta, procesarán su solicitud directamente",
+S6 - Confirm Request Replacement Card - Keep Card,Keep your card for next year. Benefits will be added to your new card.,Guarde su tarjeta para el próximo año. Sus beneficios serán agregados a su nueva tarjeta.,
+S6 - Confirm Request Replacement Card - Tap to Call,Tap to call Fidelity Information Services (FIS),Toqué la pantalla para llamar a FIS,
+S6 - Confirm Request Replacement Card - Subtle Link,I want a replacement for the card ending in [9999] mailed to a different address,,
+S7 - Pin Card - Title,Activate a card,,
+S7 - Pin Card - Body,"Once you receive your child's card, call EBT Customer Service at (888) 328-2656. Follow the instructions to set the PIN number to activate the card.
+
+When asked to ""enter your date of birth"" by the recording, do not enter your own birthday. Enter the child's birthdate in the format MONTH-DAY-YEAR.
+
+When asked to ""enter the primary cardholder's"" ZIP Code, enter the ZIP Code of the address it was mailed to.",,
+S7 - Pin Card - Action,Tap to call EBT Customer Service,Toqué la pantalla para llamar a servicios al cliente de EBT,
+S8 - OTP Enter Email - Title,Enter your email and we'll send you a code to log into your DC SUN Bucks account,Ingresa tu correo electrónico y te enviaremos un código para entrar a tu cuenta de DC SUN Bucks,
+S8 - OTP Enter Email - Body,If you are your child’s primary guardian enter your email to see their DC SUN Bucks information.,"Si eres el cuidador principal de tu hijo, ingresa tu correo electrónico para ver su información de DC SUN Bucks.","cuidador principal or ""tutor principal"" or ""representate legal?"""
+S8 - OTP Enter Email - Label Email,Enter your email address,Ingresa tu correo electrónico,
+S8 - OTP Confirm - Title,Confirm the code sent to your email,Confirma el código que enviamos a tu correo electrónico ,
+S8 - OTP Confirm - Label Code,Enter the 6 digit confirmation code,Ingresa el código de confirmación de 6 dígitos,
+S8 - OTP Confirm - Label Digit 1,Enter first digit of the confirmation code,,
+S8 - OTP Confirm - Label Digit 2,Enter second digit of the confirmation code,,
+S8 - OTP Confirm - Label Digit 3,Enter third digit of the confirmation code,,
+S8 - OTP Confirm - Label Digit 4,Enter fourth digit of the confirmation code,,
+S8 - OTP Confirm - Label Digit 5,Enter fifth digit of the confirmation code,,
+S8 - OTP Confirm - Label Digit 6,Enter sixth digit of the confirmation code,,
+S8 - OTP Confirm - Invalid Error Message,Enter a valid code that is [6] digits long.,,
+S8 - OTP Confirm - Expired Error Message,That code has expired. Tap here to send a new code.,,
+S8 - OTP Confirm - Action Resend,Resend code,Reenviar el código,
+S8 - OTP Confirm - Action Confirm,Confirm,Confirmar,
+S8 - OTP Email Message - Sender,DC SUN Bucks,DC SUN Bucks,
+S8 - OTP Email Message - Subject,Your DC SUN Bucks Login Code,Tu código de acceso de DC SUN Bucks,
+S8 - OTP Email Message - Body 1,Use this code to log in to your account.,Usa este código para iniciar sesión en tu cuenta,
+S8 - OTP Email Message - Body 2,990011,990011,
+S8 - OTP Email Message - Body 3,The code will expire in 10 minutes. Do not share this code with anyone.,El código vence en 10 minutos. No compartes este código con nadie.,
+S8 - ID Proofing Optional ID Info - Title,"Thank you for confirming your email. To keep your account safe, we need check your identity","Gracias por confirmar tu correo electrónico. Para mantener tu cuenta segura, necesitamos verificar tu identidad",
+S8 - ID Proofing Optional ID Info - Body,"By providing your date of birth and one ID number, you are consent to sharing this information with our third-party vendor. We will only use these once and not share or save them without your permission. Solo utilizaremos estos datos una vez y no los compartiremos ni los guardaremos sin tu permiso.","Al proporcionar tu fecha de nacimiento y un número de identificación, aceptas compartir esta información con nuestro proveedor externo.",
+S8 - ID Proofing Optional ID Info - Label DOB,What's your date of birth?,¿Cuál es tu fecha de nacimiento?,
+S8 - ID Proofing Optional ID Info - Label ID,Which ID number can you provide?,¿Qué número de identificación puedes proporcionar?,For Spanish speakers it might be useful to clarify that only 1 number needs to be provided. I know they can only select one but this explanation might provide additional peace of mind. Just something to consider as we iterate. 
+S8 - ID Proofing Optional ID Info - Helper ID,!!!,!!!,
+S8 - ID Proofing Optional ID Info - Option Label SSN,Social Security Number (SSN),Número de seguro social (SSN),
+S8 - ID Proofing Optional ID Info - Option Label Medicaid ID,Medicaid ID,Medicaid ID,
+S8 - ID Proofing Optional ID Info - Option Helper Medicaid ID,This number can be found on your Medicaid letters and is typically 7 or 8 digits long.,"
+Este número puede encontrarse en tus cartas de Medicaid y suele tener 7 u 8 dígitos",
+S8 - ID Proofing Optional ID Info - Option Account ID,SNAP or TANF account ID,ID de la cuenta de SNAP o TANF,
+S8 - ID Proofing Optional ID Info - Option Helper Account ID,This number can be found on your SNAP or TANF letters and is typically 7 or 8 digits long.,"
+Este número puede encontrarse en tus cartas de SNAP o TANF y suele tener 7 u 8 dígitos.",
+S8 - ID Proofing Optional ID Info - Option Person ID,SNAP or TANF person ID,ID de persona de SNAP o TANF,
+S8 - ID Proofing Optional ID Info - Option Helper Person ID,This number can be found on your SNAP or TANF letters and is typically 7 or 8 digits long.,"
+Este número puede encontrarse en tus cartas de SNAP o TANF  y suele tener 7 u 8 dígitos.",
+S8 - ID Proofing Optional ID Info - Label SSN,Enter your Social Secuirty Number (SSN),Ingresa tu número de seguro social (SSN),
+S8 - ID Proofing Optional ID Info - Label Medicaid ID,Enter your Medicaid ID,Ingresa tu Medicaid ID,
+S8 - ID Proofing Optional ID Info - Label Account ID,Enter your SNAP or TANF account ID,Ingresa tu número de cuenta de SNAP o TANF,I'm not sure if Spanish speakers will understand the difference between account ID and person ID. Do we have these terms translated elsewhere Devon Hirth - Code for America
+S8 - ID Proofing Optional ID Info - Label Person ID,Enter your SNAP or TANF person ID,Ingresa tu número de ID de persona de SNAP o TANF,
+S8 - Opt-in - Title,Thank you. How can we reach you?,Gracias. ¿Cómo podemos contactarte?,
+S8 - Opt-in - Body,Select how you want to hear from us about important DC SUN Bucks information.,Seleccione cómo desea recibir información importante sobre los DC SUN Bucks.,
+S8 - Opt-in - Label Email,May we save your email ([email]@[domain.com]) to send you information about your DC SUN Bucks account?,¿Podemos guardar tu correo electrónico ([email]@[domain.com]) para enviarte información sobre tu cuenta de DC SUN Bucks?,
+S8 - Opt-in - Helper Email,This will help us communicate important information about your benefits.,Esto nos ayudará a enviarte información importante sobre tus beneficios.,
+S8 - Opt-in - Label DOB,May we store your date of birth?,¿Podemos guardar tu fecha de nacimiento?,
+S8 - Opt-in - Helper DOB,This will help us find information about your benefits more easily.,Esto nos ayudará a encontrar información sobre tus beneficios más fácilmente.,
+S8 - Opt-in - Label Contact Preference,Select at least one option,Selecciona al menos una opción,"Wondering if we could/should bold ""una"" here for emphasis Devon Hirth - Code for America"
+S8 - Opt-in - Option Helper Phone,"If this is your preference, messaging and data rates will apply.","Si esta es tu preferencia, se aplicarán tarifas de mensajes y datos.",
+S8 - Opt-in - Label Enter Phone,Enter your phone number,Ingresa tu número de telefono,
+S8 - Opt-in - Label Text,May we text this phone number?,¿Podemos enviarte mensajes de texto a este número?,
+S8 - Opt-in - Label Language,Which language do you prefer to be contacted in?,¿En qué idioma prefieres que te contactemos?,
+S8 - Opt-in - Action,Continue to my account,Continuar a mi cuenta,
+S8 - Off-boarding - Title,In order to confirm your identity we'll need to ask for additional documentation,"Para confirmar tu identidad, necesitamos pedirte documentación adicional.",
+S8 - Off-boarding - Body,"We'll ask you to upload a picture of your driver's license or other photo ID on the next screen.
+
+You can also go back and enter an additional ID number.","En la siguiente pantalla te pediremos que subas una foto de tu licencia de conducir u otra identificación con foto.
+
+También puedes volver e ingresar un número de identificación adicional.",
+S8 - Co-loaded Off-boarding - Title,"We're sorry, we aren't able to show your DC SUN Bucks information ","Lo sentimos, no podemos mostrar tu información de DC SUN Bucks",
+S8 - Co-loaded Off-boarding - Body,You can go back and enter an additional ID number or contact us if you need further assistance.,Puedes volver e ingresar un número de identificación adicional o contactarnos si necesitas más ayuda,
+S8 - Co-loaded Off-boarding - Action,Contact us,Contáctanos,
+GLOBAL - Label - Languages,Languages,Idiomas,
+GLOBAL - Options - Languages,"English
+Español (Spanish)
+አማርኛ (Amharic)","English (inglés)
+Español
+አማርኛ (amarico)",
+GLOBAL - Language - English,English,English (Inglés),
+GLOBAL - Language - Español,Español (Spanish),Español,
+GLOBAL - Language - Amharic,አማርኛ (Amharic),አማርኛ (amarico),
+GLOBAL - Header - Logo Alt,DC SUN Bucks,,
+GLOBAL - Header - Language Selector,Language,,
+GLOBAL - Header - Translate,Translate,,
+GLOBAL - Footer - FAQs,FAQs,,
+GLOBAL - Footer - Contact Us,Contact Us,,
+GLOBAL - Footer - Public Notifications,Public notifications,,
+GLOBAL - Footer - Accessibility,Accessibility,,
+GLOBAL - Footer - Privacy and Security,Privacy and Security,,
+GLOBAL - Footer - Google Translate Disclaimer,Google Translate Disclaimer,,
+GLOBAL - Footer - About ,About DC.GOV,,
+GLOBAL - Terms and Conditions,Terms and Conditions,,
+GLOBAL - Footer - Copyright,© 2026 District of Columbia,,
+GLOBAL - Address Format,"[Street address line 1]
+[Street address line 2]
+[City], [State] [ZIP Code]","[Street address line 1]
+[Street address line 2]
+[City], [State] [ZIP Code]",
+GLOBAL - Label First name,First name,Nombre,
+GLOBAL - Helper Text - Legally as it appears,"Legally as it appears on official documents, e.g. birth certificate","Legalmente como aparece en documentos oficiales, ej. partida de nacimiento.",
+GLOBAL - Label Middle name,Middle name,Segundo nombre,
+GLOBAL - Helper Text - Optional,Optional. If they have one.,Opcional. Si tiene uno.,
+GLOBAL - Label Last name,Last name,Apellido,
+GLOBAL - Action - Continue,Continue,Continuar,
+GLOBAL - Action - Submit,Submit,Enviar,
+GLOBAL - Placeholder - Select one,- Select one -,- Seleccione una op...,
+GLOBAL - Options - January - February,"January
+
+February
+
+March
+
+April
+
+May
+
+June
+
+July
+
+August
+
+September
+
+October
+
+November
+
+December","enero
+
+febrero
+
+marzo
+
+abril
+
+mayo
+
+junio
+
+julio
+
+agosto
+
+septiembre
+
+octubre
+
+noviembre
+
+diciembre",
+GLOBAL - Options - January,January,enero,
+GLOBAL - Options - August,August,agosto,
+GLOBAL - Option - None of the above,None of the above,Ninguna de las anteriores,
+GLOBAL - Required Fields,Asterisks (*) indicate a required field.,Los asteriscos (*) indican que es un campo requerido.,
+GLOBAL - Helper Select at least one,Select at least one option.,Seleccione por lo menos una opción.,
+GLOBAL - Email,Email,Correo electrónico,
+GLOBAL - Phone,Phone,Teléfono,
+GLOBAL - Physical mail,Physical mail,Correo físico,
+GLOBAL - Email address,Email address,Correo electrónico,
+GLOBAL - Phone number,Phone number,Número de teléfono,
+GLOBAL - Label Send Cards to Preferred Address,Do you want us to send DC SUN Bucks cards for all of your enrolled children to your preferred address?,¿Quiere que enviemos las tarjetas DC SUN Bucks para todos sus hijos inscritos a la dirección de preferencia?,
+GLOBAL - Co-loaded Card Helper,"If your child is eligible for DC SUN Bucks through SNAP or TANF participation, they will not receive a DC SUN Bucks card.","Si su hijo es elegible para DC SUN Bucks a través de la participación en SNAP o TANF, no recibirá una tarjeta DC SUN Bucks.",
+GLOBAL - Yes,Yes,Sí,
+GLOBAL - No,No,No,
+GLOBAL - Action - Back,Back,Regresar,
+GLOBAL - Label - Select One,Select one,Seleccione una opción,
+GLOBAL - Street Address,Street address,Dirección,
+GLOBAL - Helper Street Address,"Include direction, NW, NE, SE, or SW.","Incluya la dirección: NO, NE, SE o SO.",
+GLOBAL - Street Address 2,Street address line 2,"Dirección, línea 2",
+GLOBAL - Helper Street Address 2,"For example, an apartment number, unit number, floor, or PO Box.","Por ejemplo, número de suite, número de unidad, piso o apartado postal",
+GLOBAL - City,City,Ciudad,
+GLOBAL - Default City,Washington,Washington,
+GLOBAL - State or Territory,State or territory,Estado o territorio,
+GLOBAL - Default State or Territory,District of Columbia,District of Columbia,
+GLOBAL - ZIP Code,ZIP Code,Código postal,
+GLOBAL - Label Make Preferred Mailing Address,Do you want to make this your preferred mailing address?,¿Quiere que esta sea su dirección de correspondencia de preferencia?,
+GLOBAL - Apply Online,Apply online,Solicitar en línea,
+GLOBAL - Download Application,Download Application,Descargar la solicitud,
+GLOBAL - Action - Log In,Log in,Iniciar sesión,
+GLOBAL - Action - Log In Esp,Iniciar sesión,Log in,
+GLOBAL - Label - Suggested Address,Suggested address,Dirección sugerida,
+GLOBAL - Label - Address Entered,Address you entered,La dirección que ingresó,
+PROTO - S1 - Optional ID Information - Title 2,We checked our records and need more information to see if Kalai F. Curtis can get DC SUN Bucks,Revisamos nuestros registros y necesitamos más información para ver si Kalai F. Curtis puede recibir DC SUN Bucks,
+PROTO - S2 - Portal Dashboard - Card Table - Kalai Frances Curtis' card,Kalai Frances Curtis' card,Tarjeta de Kalai Frances Curtis,
+PROTO - S2 - Portal Dashboard - Card Table - Caleb David Curtis' card,Caleb David Curtis' card,Tarjeta de Caleb David Curtis,
+PROTO - S2 - Portal Dashboard - Card Table - 1234 (last 4 digits),1234 (last 4 digits),1234 (últimos 4 dígitos),
+PROTO - S2 - Portal Dashboard - Card Table - 5678 (last 4 digits),5678 (last 4 digits),5678 (últimos 4 dígitos),
+PROTO - S2 - Portal Dashboard - Card Table - Status Requested On 1,Requested on 04/01/2024,Solicitada el 04/01/2024,
+PROTO - S2 - Portal Dashboard - Card Table - Status Requested On 2,Requested on 05/05/2024,Solicitada el 05/05/2024,
+PROTO - S4 - Mailing Address Update - Title Caleb David Curtis,Tell us where to safely send Caleb David Curtis' mail,Compártanos dónde enviarle a Caleb David Curtis correo de manera segura,
+PROTO - S5 - Bulk Order New Cards Who - Card Number Kalai,Card number: 1234 (last 4 digits),Número de tarjeta: 1234 (últimos 4 dígitos),
+PROTO - S5 - Bulk Order New Cards Who - Card Number Caleb,Card number: 6789 (last 4 digits),Número de tarjeta: 6789 (últimos 4 dígitos),
+PROTO - First Name 1,Kalai,Kalai,
+PROTO - Middle Name 1,Frances,Frances,
+PROTO - Last Name 1,Curtis,Curtis,
+PROTO - Birthdate Month 1,August,August,
+PROTO - Birthdate Day 1,13,13,
+PROTO - Birthdate Year 1,2017,2017,
+PROTO - Name 1,Kalai Frances Curtis,Kalai F. Curtis,
+PROTO - Birthdate 1,"August 13, 2017","August, 13 2017",
+PROTO - Name 2,Caleb David Curtis,Caleb David Curtis,
+PROTO - First Name 2,Caleb,Caleb,
+PROTO - Middle Name 2,David,David,
+PROTO - Last Name 2,Curtis,Curtis,
+PROTO - Birthdate 2,"January 7, 2009","January 7, 2009",
+PROTO - Birthdate Month 2,January,January,
+PROTO - Birthdate Day 2,7,7,
+PROTO - Birthdate Year 2,2009,2009,
+PROTO - LOGIN EMAIL,frances.curtis@gmail.com,frances.curtis@gmail.com,
+PROTO - S2 - Portal Dashboard - Alert Address Title,A replacement for the card ending in 1234 will be sent to the following address,Las tarjeta terminada en 1234 será remplazadas y enviada a la siguiente dirección,
