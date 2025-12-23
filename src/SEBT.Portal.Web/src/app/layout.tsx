@@ -1,6 +1,6 @@
 import { getState } from '@/src/lib/state'
 import type { Metadata } from 'next'
-import { Footer, Header } from './components'
+import { Footer, Header } from './components/layout'
 import { primaryFont } from './fonts'
 import './globals.css'
 import { AxeProvider } from './providers'

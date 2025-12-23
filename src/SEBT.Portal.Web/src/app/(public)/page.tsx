@@ -1,5 +1,5 @@
 import { getState } from '@/src/lib/state'
-import { HelpSection } from './components'
+import { HelpSection } from '../components/layout'
 
 export default function Home() {
   const state = getState()
