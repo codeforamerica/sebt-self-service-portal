@@ -3,24 +3,33 @@ import { NextRequest, NextResponse } from 'next/server'
 /**
  * Proxy function to generate CSP nonce for each request
  * Implements nonce-based Content Security Policy for enhanced security
+ *
+ * Next.js 16 uses proxy() instead of middleware() for request interception.
+ * The nonce is passed via x-nonce header and read in layout.tsx using headers().
+ *
+ * @see https://nextjs.org/docs/app/guides/content-security-policy
  */
 export function proxy(request: NextRequest) {
   const nonce = Buffer.from(crypto.randomUUID()).toString('base64')
   const isDev = process.env.NODE_ENV === 'development'
 
-  // Build CSP header
-  // Development: Allow unsafe-inline and unsafe-eval for Next.js hot reload
-  // Production: Strict CSP with 'self' only (no inline scripts allowed)
+  // Build CSP header with nonce for script and style sources
+  // Development: Allow unsafe-eval for Next.js hot reload, unsafe-inline for styles (no nonce for styles)
+  // Production: Strict nonce-based policy with strict-dynamic for script loading
+  //
+  // Note: When nonce is present, 'unsafe-inline' is ignored by browsers.
+  // In dev, we skip style nonce to allow HMR style injection.
   const cspHeader = `
     default-src 'self';
-    script-src 'self' ${isDev ? "'unsafe-inline' 'unsafe-eval'" : ''};
-    style-src 'self' ${isDev ? "'unsafe-inline'" : ''} https://fonts.googleapis.com;
+    script-src 'self' 'nonce-${nonce}' 'strict-dynamic' ${isDev ? "'unsafe-eval'" : ''};
+    style-src 'self' ${isDev ? "'unsafe-inline'" : `'nonce-${nonce}'`} https://fonts.googleapis.com;
     font-src 'self' https://fonts.gstatic.com;
     img-src 'self' data: https:;
     connect-src 'self' ${isDev ? 'ws://localhost:* http://localhost:*' : ''};
     frame-ancestors 'none';
     base-uri 'self';
     form-action 'self';
+    object-src 'none';
     ${isDev ? '' : 'upgrade-insecure-requests;'}
   `
 

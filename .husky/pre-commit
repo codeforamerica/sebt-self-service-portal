@@ -1,7 +1,131 @@
-# Run lint-staged from the web package directory
+#!/bin/sh
+# Pre-commit hook: Runs linting, build validation, and test validation
+# 
+
+set -e  # Exit on error
+
+log_info() {
+  echo "ℹ️  $1"
+}
+
+log_success() {
+  echo "✅ $1"
+}
+
+log_error() {
+  echo "❌ $1"
+}
+
+PROJECT_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+cd "$PROJECT_ROOT"
+
+log_info "=== Running pre-commit checks ==="
+echo ""
+
+log_info "Step 1/6: Running linters and auto-fixing staged files..."
+
+if ! command -v node &> /dev/null; then
+  log_error "Node.js not found - Please install via `brew install node` or from https://nodejs.org/"
+  exit 1
+fi
+
+if ! command -v pnpm &> /dev/null; then
+  log_error "pnpm not found - Please install via `npm install -g pnpm` or `brew install pnpm`"
+  exit 1
+fi
+
 cd src/SEBT.Portal.Web || {
-  echo "Error: Could not change to web package directory"
+  log_error "Could not change to web package directory"
   exit 1
 }
 
-pnpm exec lint-staged
+pnpm exec lint-staged || {
+  log_error "Linting failed"
+  exit 1
+}
+log_success "Linting passed"
+echo ""
+
+log_info "Step 2/6: Running .NET code formatting and analyzer checks..."
+cd "$PROJECT_ROOT"
+
+if command -v dotnet &> /dev/null; then
+  # Verify code formatting matches .editorconfig (fails if changes needed)
+  dotnet format SEBT.Portal.sln --verify-no-changes --verbosity quiet || {
+    log_error ".NET code formatting check failed - run 'dotnet format SEBT.Portal.sln' to fix"
+    exit 1
+  }
+  
+  dotnet format SEBT.Portal.sln analyzers --verify-no-changes --verbosity quiet || {
+    log_error ".NET analyzer checks failed - fix the reported issues"
+    exit 1
+  }
+  
+  log_success ".NET linting passed"
+else
+  log_error ".NET SDK not found - Please install via `brew install dotnet` or via the Windows Installer (if using Windows). Aborting .NET linting."
+  exit 1
+fi
+echo ""
+
+log_info "Step 3/6: Validating backend build..."
+cd "$PROJECT_ROOT"
+
+if command -v dotnet &> /dev/null; then
+  dotnet restore --verbosity quiet || {
+    log_error "Backend dependency restore failed"
+    exit 1
+  }
+  dotnet build --configuration Debug --no-restore --verbosity quiet || {
+    log_error "Backend build failed"
+    exit 1
+  }
+  log_success "Backend build validation passed"
+else
+  log_error ".NET SDK not found - Please install via `brew install dotnet` or via the Windows Installer (if using Windows). Aborting backend build validation."
+  exit 1
+fi
+echo ""
+
+log_info "Step 4/6: Validating frontend build..."
+cd src/SEBT.Portal.Web || {
+  log_error "Could not change to web package directory"
+  exit 1
+}
+
+pnpm build || {
+  log_error "Frontend build failed"
+  exit 1
+}
+log_success "Frontend build validation passed"
+echo ""
+
+log_info "Step 5/6: Running backend tests..."
+cd "$PROJECT_ROOT"
+
+if command -v dotnet &> /dev/null; then
+  dotnet test --configuration Debug --verbosity quiet || {
+    log_error "Backend tests failed"
+    exit 1
+  }
+  log_success "Backend tests passed"
+else
+  log_error ".NET SDK not found - Please install via `brew install dotnet` or via the Windows Installer (if using Windows). Aborting backend tests."
+  exit 1
+fi
+echo ""
+
+log_info "Step 6/6: Running frontend tests..."
+cd src/SEBT.Portal.Web || {
+  log_error "Could not change to web package directory"
+  exit 1
+}
+
+pnpm exec vitest run || {
+  log_error "Frontend tests failed"
+  exit 1
+}
+log_success "Frontend tests passed"
+echo ""
+
+log_success "=== All pre-commit checks passed! ==="

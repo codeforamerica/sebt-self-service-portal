@@ -1,8 +1,13 @@
+'use client'
+
 import type { HelpSectionProps } from '@/src/types/components'
 import Image from 'next/image'
 import Link from 'next/link'
+import { useTranslation } from 'react-i18next'
 
 export function HelpSection({ state = 'dc' }: HelpSectionProps) {
+  const { t } = useTranslation('common')
+
   return (
     <section
       className="bg-secondary padding-x-3"
@@ -29,7 +34,7 @@ export function HelpSection({ state = 'dc' }: HelpSectionProps) {
               aria-hidden="true"
             />
           </div>
-          <span className="help-link-text">FAQs</span>
+          <span className="help-link-text">{t('faqs')}</span>
         </Link>
 
         <Link
@@ -45,7 +50,7 @@ export function HelpSection({ state = 'dc' }: HelpSectionProps) {
               aria-hidden="true"
             />
           </div>
-          <span className="help-link-text">Contact Us</span>
+          <span className="help-link-text">{t('contactUs')}</span>
         </Link>
       </div>
     </section>

@@ -15,6 +15,16 @@ const eslintConfig = defineConfig([
       ...security.configs.recommended.rules,
     },
   },
+  // Build scripts exception: These scripts run only at build time with trusted
+  // repository files. Dynamic object access and filesystem operations use
+  // controlled configuration values, not user input.
+  {
+    files: ["content/scripts/**/*.js", "design/scripts/**/*.js"],
+    rules: {
+      "security/detect-object-injection": "off",
+      "security/detect-non-literal-fs-filename": "off",
+    },
+  },
   // Enhanced accessibility checks for USWDS compliance (extends Next.js defaults)
   {
     rules: {

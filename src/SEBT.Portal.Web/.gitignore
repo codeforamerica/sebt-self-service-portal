@@ -68,3 +68,8 @@ test-results/
 
 # Lighthouse CI Reports
 .lighthouseci/
+
+# Generated i18n Locale Files (auto-generated from content/copy.csv)
+content/locales/
+!content/locales/**/common.json
+content/.copy-hash

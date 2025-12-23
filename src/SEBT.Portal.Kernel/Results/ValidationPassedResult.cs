@@ -8,6 +8,6 @@ public class ValidationPassedResult() : ValidationResult(true)
 public class ValidationPassedResult<T>() : ValidationResult<T>(true)
 {
     public override string Message => "Validation passed";
-    
+
     public override Result Map() => new ValidationPassedResult();
 }

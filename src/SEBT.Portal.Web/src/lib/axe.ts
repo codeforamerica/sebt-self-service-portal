@@ -39,6 +39,5 @@ export async function initAxe() {
     })
 
     axeInitialized = true
-    console.log('🔍 axe-core accessibility monitoring enabled')
   }
 }

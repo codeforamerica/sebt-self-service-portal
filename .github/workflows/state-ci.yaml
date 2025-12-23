@@ -164,6 +164,11 @@ jobs:
         if: steps.config.outputs.use_docker != 'true' && steps.config.outputs.skip_tests != 'true'
         run: ./.github/workflows/scripts/test-backend.sh --skip-build --configuration ${{ steps.config.outputs.build_config }}
 
+      - name: Generate Backend Dependencies CSV
+        id: generate-backend-dependencies-csv
+        if: steps.config.outputs.use_docker != 'true'
+        run: ./.github/workflows/scripts/license-audit.sh
+
       - name: Build Frontend (Native)
         if: steps.config.outputs.use_docker != 'true'
         run: ./.github/workflows/scripts/build-frontend.sh --production ${{ steps.config.outputs.frontend_flags }}
@@ -180,4 +185,5 @@ jobs:
           path: |
             src/SEBT.Portal.Web/.next/standalone
             src/**/bin/${{ steps.config.outputs.build_config }}
+            output/backend-dependencies.csv
           retention-days: 7
