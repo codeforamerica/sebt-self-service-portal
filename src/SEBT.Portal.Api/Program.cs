@@ -10,6 +10,12 @@ using SEBT.Portal.Infrastructure;
 
 var builder = WebApplication.CreateBuilder(args);
 
+var jwtSecretKey = Environment.GetEnvironmentVariable("JWT_SECRET_KEY");
+if (!string.IsNullOrEmpty(jwtSecretKey))
+{
+    builder.Configuration["JwtSettings:SecretKey"] = jwtSecretKey;
+}
+
 // Configure Serilog
 Log.Logger = new LoggerConfiguration()
     .ReadFrom.Configuration(builder.Configuration)
