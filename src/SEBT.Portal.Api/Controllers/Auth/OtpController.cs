@@ -2,9 +2,9 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.Extensions.Logging;
 using SEBT.Portal.Api.Models;
-using SEBT.Portal.Core.Services;
 using SEBT.Portal.Kernel;
 using SEBT.Portal.Kernel.AspNetCore;
+using SEBT.Portal.Kernel.Results;
 using SEBT.Portal.UseCases.Auth;
 
 namespace SEBT.Portal.Api.Controllers;
@@ -59,7 +59,6 @@ public class OtpController(ILogger<OtpController> logger) : ControllerBase
     /// </summary>
     /// <param name="command">The command containing the email address and OTP code.</param>
     /// <param name="handler">The command handler for processing the OTP validation.</param>
-    /// <param name="jwtTokenService">The JWT token service for generating authentication tokens.</param>
     /// <returns>An OK result with a JWT token if the OTP is valid; otherwise, a BadRequest result.</returns>
     /// <response code="200">OTP validated successfully. Returns a JWT token.</response>
     /// <response code="400">Invalid OTP or request.</response>
@@ -70,8 +69,7 @@ public class OtpController(ILogger<OtpController> logger) : ControllerBase
     [ProducesResponseType(StatusCodes.Status500InternalServerError)]
     public async Task<IActionResult> ValidateOtp(
         [FromBody] ValidateOtpCommand command,
-        [FromServices] ICommandHandler<ValidateOtpCommand> handler,
-        [FromServices] IJwtTokenService jwtTokenService)
+        [FromServices] ICommandHandler<ValidateOtpCommand, string> handler)
     {
         if (command == null)
         {
@@ -84,17 +82,14 @@ public class OtpController(ILogger<OtpController> logger) : ControllerBase
 
         if (result.IsSuccess)
         {
-            try
+            if (result is SEBT.Portal.Kernel.Results.SuccessResult<string> successResult)
             {
-                var token = jwtTokenService.GenerateToken(command.Email);
                 logger.LogInformation("JWT token generated successfully for email {Email}", command.Email);
-                return Ok(new ValidateOtpResponse(token));
+                return Ok(new ValidateOtpResponse(successResult.Value));
             }
-            catch (Exception ex)
-            {
-                logger.LogError(ex, "Error generating JWT token for email {Email}", command.Email);
-                return StatusCode(500, new { Error = "An error occurred while generating the authentication token." });
-            }
+
+            logger.LogError("Unexpected result type for successful OTP validation for email {Email}", command.Email);
+            return StatusCode(500, new { Error = "An error occurred while processing the authentication token." });
         }
         else
         {

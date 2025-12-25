@@ -9,7 +9,7 @@ public static class Dependencies
     public static IServiceCollection AddUseCases(this IServiceCollection services)
     {
         services.RegisterCommandHandler<RequestOtpCommand, RequestOtpCommandHandler>();
-        services.RegisterCommandHandler<ValidateOtpCommand, ValidateOtpCommandHandler>();
+        services.RegisterCommandHandler<ValidateOtpCommand, string, ValidateOtpCommandHandler>();
 
         return services;
     }

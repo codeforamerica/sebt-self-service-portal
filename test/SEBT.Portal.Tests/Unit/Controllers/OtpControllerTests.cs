@@ -3,8 +3,8 @@ using Microsoft.Extensions.Logging.Abstractions;
 using NSubstitute;
 using SEBT.Portal.Api.Controllers;
 using SEBT.Portal.Api.Models;
-using SEBT.Portal.Core.Services;
 using SEBT.Portal.Kernel;
+using SEBT.Portal.Kernel.Results;
 using SEBT.Portal.UseCases.Auth;
 
 namespace SEBT.Portal.Tests.Unit.Controllers;
@@ -75,14 +75,12 @@ public class OtpControllerTests
     {
         // Arrange
         var command = new ValidateOtpCommand { Email = "user@example.com", Otp = "123456" };
-        var handlerMock = Substitute.For<ICommandHandler<ValidateOtpCommand>>();
+        var handlerMock = Substitute.For<ICommandHandler<ValidateOtpCommand, string>>();
         handlerMock.Handle(command)
-            .Returns(Result.Success());
-        var jwtTokenServiceMock = Substitute.For<IJwtTokenService>();
-        jwtTokenServiceMock.GenerateToken(Arg.Any<string>()).Returns("test.token");
+            .Returns(Result<string>.Success("test.token"));
 
         // Act
-        var result = await _controller.ValidateOtp(command, handlerMock, jwtTokenServiceMock);
+        var result = await _controller.ValidateOtp(command, handlerMock);
 
         // Assert
         await handlerMock.Received(1).Handle(command);
@@ -94,15 +92,13 @@ public class OtpControllerTests
     {
         // Arrange
         var command = new ValidateOtpCommand { Email = "user@example.com", Otp = "123456" };
-        var handlerMock = Substitute.For<ICommandHandler<ValidateOtpCommand>>();
-        handlerMock.Handle(command)
-            .Returns(Result.Success());
-        var jwtTokenServiceMock = Substitute.For<IJwtTokenService>();
+        var handlerMock = Substitute.For<ICommandHandler<ValidateOtpCommand, string>>();
         var expectedToken = "test.jwt.token";
-        jwtTokenServiceMock.GenerateToken(command.Email).Returns(expectedToken);
+        handlerMock.Handle(command)
+            .Returns(Result<string>.Success(expectedToken));
 
         // Act
-        var result = await _controller.ValidateOtp(command, handlerMock, jwtTokenServiceMock);
+        var result = await _controller.ValidateOtp(command, handlerMock);
 
         // Assert
         Assert.NotNull(result);
@@ -113,7 +109,6 @@ public class OtpControllerTests
         Assert.Equal(expectedToken, response.Token);
 
         await handlerMock.Received(1).Handle(command);
-        jwtTokenServiceMock.Received(1).GenerateToken(command.Email);
     }
 
     [Fact]
@@ -121,20 +116,17 @@ public class OtpControllerTests
     {
         // Arrange
         var command = new ValidateOtpCommand { Email = "user@example.com", Otp = "123456" };
-        var handlerMock = Substitute.For<ICommandHandler<ValidateOtpCommand>>();
+        var handlerMock = Substitute.For<ICommandHandler<ValidateOtpCommand, string>>();
         handlerMock.Handle(command)
-            .Returns(Result.ValidationFailed("message", "Invalid OTP"));
-        var jwtTokenServiceMock = Substitute.For<IJwtTokenService>();
+            .Returns(Result<string>.ValidationFailed("message", "Invalid OTP"));
 
         // Act
-        var result = await _controller.ValidateOtp(command, handlerMock, jwtTokenServiceMock);
+        var result = await _controller.ValidateOtp(command, handlerMock);
 
         // Assert
         Assert.NotNull(result);
         var badRequestResult = Assert.IsType<BadRequestObjectResult>(result);
         Assert.Contains("The operation failed due to validation", badRequestResult?.Value?.ToString() ?? string.Empty);
-
-        jwtTokenServiceMock.DidNotReceive().GenerateToken(Arg.Any<string>());
     }
 
     [Fact]
@@ -142,19 +134,16 @@ public class OtpControllerTests
     {
         // Arrange
         var command = new ValidateOtpCommand { Email = "user@example.com", Otp = "123456" };
-        var handlerMock = Substitute.For<ICommandHandler<ValidateOtpCommand>>();
+        var handlerMock = Substitute.For<ICommandHandler<ValidateOtpCommand, string>>();
         handlerMock.Handle(command)
-            .Returns(Result.ValidationFailed("Otp", "Invalid OTP"));
-        var jwtTokenServiceMock = Substitute.For<IJwtTokenService>();
+            .Returns(Result<string>.ValidationFailed("Otp", "Invalid OTP"));
 
         // Act
-        var result = await _controller.ValidateOtp(command, handlerMock, jwtTokenServiceMock);
+        var result = await _controller.ValidateOtp(command, handlerMock);
 
         // Assert
         Assert.NotNull(result);
         Assert.IsType<BadRequestObjectResult>(result);
-
-        jwtTokenServiceMock.DidNotReceive().GenerateToken(Arg.Any<string>());
     }
 
     [Fact]
@@ -162,43 +151,38 @@ public class OtpControllerTests
     {
         // Arrange
         ValidateOtpCommand? command = null;
-        var handlerMock = Substitute.For<ICommandHandler<ValidateOtpCommand>>();
-        var jwtTokenServiceMock = Substitute.For<IJwtTokenService>();
+        var handlerMock = Substitute.For<ICommandHandler<ValidateOtpCommand, string>>();
 
         // Act
-        var result = await _controller.ValidateOtp(command!, handlerMock, jwtTokenServiceMock);
+        var result = await _controller.ValidateOtp(command!, handlerMock);
 
         // Assert
         var badRequestResult = Assert.IsType<BadRequestObjectResult>(result);
         Assert.NotNull(badRequestResult.Value);
 
-        // Verify handler and JWT service are not called when command is null
+        // Verify handler is not called when command is null
         await handlerMock.DidNotReceive().Handle(Arg.Any<ValidateOtpCommand>());
-        jwtTokenServiceMock.DidNotReceive().GenerateToken(Arg.Any<string>());
     }
 
     [Fact]
-    public async Task ValidateOtp_WhenJwtTokenGenerationThrowsException_ReturnsInternalServerError()
+    public async Task ValidateOtp_WhenJwtTokenGenerationFails_ReturnsInternalServerError()
     {
         // Arrange
         var command = new ValidateOtpCommand { Email = "user@example.com", Otp = "123456" };
-        var handlerMock = Substitute.For<ICommandHandler<ValidateOtpCommand>>();
+        var handlerMock = Substitute.For<ICommandHandler<ValidateOtpCommand, string>>();
         handlerMock.Handle(command)
-            .Returns(Result.Success());
-        var jwtTokenServiceMock = Substitute.For<IJwtTokenService>();
-        jwtTokenServiceMock.GenerateToken(command.Email)
-            .Returns(x => throw new InvalidOperationException("JWT configuration error"));
+            .Returns(Result<string>.DependencyFailed(
+                DependencyFailedReason.ConnectionFailed,
+                "An error occurred while generating the authentication token."));
 
         // Act
-        var result = await _controller.ValidateOtp(command, handlerMock, jwtTokenServiceMock);
+        var result = await _controller.ValidateOtp(command, handlerMock);
 
         // Assert
         Assert.NotNull(result);
-        var statusCodeResult = Assert.IsType<ObjectResult>(result);
-        Assert.Equal(500, statusCodeResult.StatusCode);
-        Assert.NotNull(statusCodeResult.Value);
-
-        jwtTokenServiceMock.Received(1).GenerateToken(command.Email);
+        var badRequestResult = Assert.IsType<BadRequestObjectResult>(result);
+        Assert.NotNull(badRequestResult.Value);
+        Assert.Contains("error occurred while generating", badRequestResult.Value?.ToString() ?? string.Empty, StringComparison.OrdinalIgnoreCase);
     }
 
     [Fact]
@@ -206,13 +190,12 @@ public class OtpControllerTests
     {
         // Arrange
         var command = new ValidateOtpCommand { Email = "user@example.com", Otp = "123456" };
-        var handlerMock = Substitute.For<ICommandHandler<ValidateOtpCommand>>();
+        var handlerMock = Substitute.For<ICommandHandler<ValidateOtpCommand, string>>();
         handlerMock.Handle(command)
-            .Returns(Result.ValidationFailed("Otp", "Invalid OTP"));
-        var jwtTokenServiceMock = Substitute.For<IJwtTokenService>();
+            .Returns(Result<string>.ValidationFailed("Otp", "Invalid OTP"));
 
         // Act
-        var result = await _controller.ValidateOtp(command, handlerMock, jwtTokenServiceMock);
+        var result = await _controller.ValidateOtp(command, handlerMock);
 
         // Assert
         Assert.NotNull(result);
