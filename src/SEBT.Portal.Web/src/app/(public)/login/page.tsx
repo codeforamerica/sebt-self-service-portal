@@ -1,67 +1,41 @@
-import { getState } from '@/src/lib/state'
 import Link from 'next/link'
-import { HelpSection } from '../../components/layout'
-import styles from './login.module.css'
+
+import { HelpSection } from '@/components/layout'
+import { LoginForm } from '@/features/auth'
+import { getStateLinks } from '@/lib/links'
+import { getState } from '@/lib/state'
+import { getTranslations } from '@/lib/translations'
 
 export default function LoginPage() {
   const state = getState()
-  const stateName = state === 'dc' ? 'DC' : state.toUpperCase()
+  const links = getStateLinks(state)
+  const t = getTranslations('login')
+  const tDisclaimer = getTranslations('disclaimer')
 
   return (
     <>
       <div className="usa-section">
         <div className="grid-container maxw-tablet">
-          <section
-            className={styles.content}
-            aria-labelledby="login-title"
-          >
+          <section aria-labelledby="login-title">
             <h1
               id="login-title"
-              className={styles.title}
+              className="font-sans-xl text-bold line-height-sans-1 margin-bottom-3"
             >
-              To see your child&apos;s {stateName} SUN Bucks information, use your email your
-              child&apos;s school has on file. If you don&apos;t have access to that email, contact
-              the school to update it.
+              {t('title')}
             </h1>
 
-            <p className={styles.instruction}>
-              If you applied to {stateName} SUN Bucks using the application form, use the email you
-              provided on your application.
-            </p>
+            <p className="margin-top-4 font-sans-sm">{t('body')}</p>
+            <LoginForm />
 
-            <form className={`usa-form ${styles.form}`}>
-              <label
-                className={`usa-label ${styles.label}`}
-                htmlFor="email"
-              >
-                Enter your email address <span className="text-secondary-dark">*</span>
-              </label>
-              <input
-                className={`usa-input ${styles.input}`}
-                id="email"
-                name="email"
-                type="email"
-                autoComplete="email"
-                required
-                aria-required="true"
-              />
-
-              <button
-                type="submit"
-                className={`usa-button usa-button--full-width margin-top-3 ${styles.button}`}
-              >
-                Continue
-              </button>
-            </form>
-
-            <p className={`margin-top-4 ${styles.contact}`}>
+            <p className="margin-top-4 font-sans-sm">
               <Link
-                href="/contact"
-                className={`usa-link ${styles.contactLink}`}
+                href={links.external.contactUsAssistance}
+                className="text-bold text-ink text-underline"
+                target="_blank"
+                rel="noopener noreferrer"
               >
-                Contact us
-              </Link>{' '}
-              if you need assistance logging into your account.
+                {tDisclaimer('logInDisclaimerBody2')}
+              </Link>
             </p>
           </section>
         </div>
