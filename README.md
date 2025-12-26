@@ -52,6 +52,9 @@ docker compose down
 docker compose down -v
 ```
 
+#### Mailpit (Local Email Testing)
+Mailpit captures all outgoing emails in development. Access the web UI at http://localhost:8025
+
 ### Local Build & Test (Debug mode)
 ```bash
 pnpm api:build        # Build backend only (Debug)
