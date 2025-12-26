@@ -1,0 +1,26 @@
+/*
+----------------------------------------
+Header Overrides
+----------------------------------------
+Fix USWDS header padding that increases at larger breakpoints.
+----------------------------------------
+*/
+
+@use 'uswds-core' as *;
+
+.usa-header--basic {
+  // Reset USWDS responsive padding/margin to be consistent across all breakpoints
+  .usa-navbar {
+    padding: 0;
+  }
+
+  .usa-logo {
+    // Keep mobile margin-left, reset only vertical margins at desktop
+    margin-top: 0;
+    margin-bottom: 0;
+
+    @include at-media($theme-header-min-width) {
+      margin-left: units($theme-site-margins-mobile-width);
+    }
+  }
+}

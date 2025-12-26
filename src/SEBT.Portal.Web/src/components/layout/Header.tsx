@@ -15,7 +15,7 @@ export function Header({ state = 'dc' }: HeaderProps) {
       className="usa-header usa-header--basic bg-white shadow-2"
       role="banner"
     >
-      <div className="display-flex flex-justify flex-align-center width-full padding-y-3 padding-left-1 padding-right-3">
+      <div className="display-flex flex-justify flex-align-center width-full padding-y-105 padding-left-1 padding-right-3">
         <div className="usa-navbar border-0">
           <div className="usa-logo">
             <Link
