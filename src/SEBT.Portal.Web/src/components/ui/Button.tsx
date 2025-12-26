@@ -37,7 +37,7 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(function Button
       aria-busy={isLoading}
       {...props}
     >
-      {isLoading ? (loadingText ?? 'Loading...') : children}
+      {isLoading && loadingText ? loadingText : children}
     </button>
   )
 })

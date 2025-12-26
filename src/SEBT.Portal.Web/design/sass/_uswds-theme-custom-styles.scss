@@ -30,6 +30,8 @@ This ensures all USWDS components use our design token font.
 
 // Override all USWDS font-family declarations to use our custom font
 // This is necessary because USWDS sets font-family on many utility classes
+// TODO: Register Urbanist as a custom USWDS typeface to remove !important hack
+// See: https://designsystem.digital.gov/documentation/settings/#typography-settings
 body,
 .usa-prose,
 [class*='font-'],
