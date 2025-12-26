@@ -98,13 +98,13 @@ describe('Button', () => {
       expect(screen.getByRole('button')).toBeDisabled()
     })
 
-    it('should show default loading text when isLoading', () => {
+    it('should show children when isLoading without loadingText', () => {
       render(<Button isLoading>Click me</Button>)
 
-      expect(screen.getByRole('button')).toHaveTextContent('Loading...')
+      expect(screen.getByRole('button')).toHaveTextContent('Click me')
     })
 
-    it('should show custom loading text when provided', () => {
+    it('should show loadingText when provided and isLoading', () => {
       render(
         <Button
           isLoading
