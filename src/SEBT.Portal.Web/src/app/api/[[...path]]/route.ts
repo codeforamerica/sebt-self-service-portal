@@ -50,7 +50,10 @@ async function proxyRequest(request: NextRequest, context: RouteContext): Promis
       return NextResponse.json({ error: 'Request timeout' }, { status: 504 })
     }
 
-    console.error('Proxy error:', error)
+    // Only log detailed errors in development to avoid exposing sensitive information
+    if (process.env.NODE_ENV === 'development') {
+      console.error('Proxy error:', error)
+    }
     return NextResponse.json({ error: 'Backend unavailable' }, { status: 502 })
   } finally {
     clearTimeout(timeoutId)
