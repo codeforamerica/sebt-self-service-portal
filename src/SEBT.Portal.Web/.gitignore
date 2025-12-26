@@ -69,6 +69,9 @@ test-results/
 # Lighthouse CI Reports
 .lighthouseci/
 
+# Pa11y Accessibility Test Screenshots
+pa11y-screenshots/
+
 # Generated i18n Locale Files (auto-generated from content/copy.csv)
 content/locales/
 !content/locales/**/common.json

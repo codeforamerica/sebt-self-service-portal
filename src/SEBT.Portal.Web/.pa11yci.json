@@ -2,9 +2,21 @@
   "defaults": {
     "standard": "WCAG2AA",
     "timeout": 30000,
+    "wait": 1000,
     "chromeLaunchConfig": {
-      "args": ["--no-sandbox"]
-    }
+      "args": ["--no-sandbox", "--disable-setuid-sandbox"]
+    },
+    "hideElements": ".axe-exclude",
+    "runners": ["axe", "htmlcs"]
   },
-  "urls": ["http://localhost:3000"]
+  "urls": [
+    {
+      "url": "http://localhost:3000",
+      "screenCapture": "./pa11y-screenshots/home.png"
+    },
+    {
+      "url": "http://localhost:3000/login",
+      "screenCapture": "./pa11y-screenshots/login.png"
+    }
+  ]
 }
