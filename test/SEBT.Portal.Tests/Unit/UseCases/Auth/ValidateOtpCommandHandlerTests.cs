@@ -210,4 +210,122 @@ public class ValidateOtpCommandHandlerTests
         Assert.Contains("Otp", failedResult.Errors.Select(e => e.Key));
         jwtTokenService.DidNotReceive().GenerateToken(Arg.Any<string>());
     }
+
+    [Fact]
+    public async Task Handle_ShouldReturnValidationFailure_WhenOtpIsNull()
+    {
+        // Arrange
+        var handler = new ValidateOtpCommandHandler(
+            otpRepository,
+            jwtTokenService,
+            validator,
+            logger);
+        var command = new ValidateOtpCommand
+        {
+            Email = "jim@example.com",
+            Otp = "123456"
+        };
+
+        otpRepository.GetOtpCodeByEmailAsync(command.Email)
+            .Returns((OtpCode?)null);
+
+        // Act
+        var result = await handler.Handle(command, CancellationToken.None);
+
+        // Assert
+        Assert.False(result.IsSuccess);
+        var failedResult = Assert.IsType<ValidationFailedResult<string>>(result);
+        Assert.Contains("Otp", failedResult.Errors.Select(e => e.Key));
+        jwtTokenService.DidNotReceive().GenerateToken(Arg.Any<string>());
+        await otpRepository.DidNotReceive().DeleteOtpCodeByEmailAsync(Arg.Any<string>());
+    }
+
+    [Fact]
+    public async Task Handle_ShouldDeleteOtpAfterSuccessfulValidation()
+    {
+        // Arrange
+        var handler = new ValidateOtpCommandHandler(
+            otpRepository,
+            jwtTokenService,
+            validator,
+            logger);
+        var command = new ValidateOtpCommand
+        {
+            Email = "jim@example.com",
+            Otp = "123456"
+        };
+
+        otpRepository.GetOtpCodeByEmailAsync(Arg.Is<string>(email => email == command.Email))
+            .Returns(new OtpCode(command.Otp, command.Email));
+        jwtTokenService.GenerateToken(command.Email).Returns("test.jwt.token");
+
+        // Act
+        var result = await handler.Handle(command, CancellationToken.None);
+
+        // Assert
+        Assert.True(result.IsSuccess);
+        await otpRepository.Received(1).DeleteOtpCodeByEmailAsync(command.Email);
+    }
+
+    [Fact]
+    public async Task Handle_ShouldReturnDependencyFailed_WhenJwtTokenGenerationThrowsException()
+    {
+        // Arrange
+        var handler = new ValidateOtpCommandHandler(
+            otpRepository,
+            jwtTokenService,
+            validator,
+            logger);
+        var command = new ValidateOtpCommand
+        {
+            Email = "jim@example.com",
+            Otp = "123456"
+        };
+
+        otpRepository.GetOtpCodeByEmailAsync(Arg.Is<string>(email => email == command.Email))
+            .Returns(new OtpCode(command.Otp, command.Email));
+        jwtTokenService
+            .When(x => x.GenerateToken(Arg.Any<string>()))
+            .Do(x => throw new Exception("JWT generation failed"));
+
+        // Act
+        var result = await handler.Handle(command, CancellationToken.None);
+
+        // Assert
+        Assert.False(result.IsSuccess);
+        var failedResult = Assert.IsType<DependencyFailedResult<string>>(result);
+        Assert.Equal(DependencyFailedReason.ConnectionFailed, failedResult.Reason);
+        Assert.Contains("error occurred while generating", failedResult.Message, StringComparison.OrdinalIgnoreCase);
+        await otpRepository.DidNotReceive().DeleteOtpCodeByEmailAsync(Arg.Any<string>());
+    }
+
+    [Fact]
+    public async Task Handle_ShouldNotDeleteOtp_WhenJwtTokenGenerationFails()
+    {
+        // Arrange
+        var handler = new ValidateOtpCommandHandler(
+            otpRepository,
+            jwtTokenService,
+            validator,
+            logger);
+        var command = new ValidateOtpCommand
+        {
+            Email = "jim@example.com",
+            Otp = "123456"
+        };
+
+        otpRepository.GetOtpCodeByEmailAsync(Arg.Is<string>(email => email == command.Email))
+            .Returns(new OtpCode(command.Otp, command.Email));
+        jwtTokenService
+            .When(x => x.GenerateToken(Arg.Any<string>()))
+            .Do(x => throw new Exception("JWT generation failed"));
+
+        // Act
+        var result = await handler.Handle(command, CancellationToken.None);
+
+        // Assert
+        Assert.False(result.IsSuccess);
+        // OTP should not be deleted if token generation fails
+        await otpRepository.DidNotReceive().DeleteOtpCodeByEmailAsync(Arg.Any<string>());
+    }
 }

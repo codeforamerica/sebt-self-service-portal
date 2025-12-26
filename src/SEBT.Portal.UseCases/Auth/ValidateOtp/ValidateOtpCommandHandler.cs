@@ -48,11 +48,12 @@ namespace SEBT.Portal.UseCases.Auth
                 });
             }
 
-            await otpRepository.DeleteOtpCodeByEmailAsync(command.Email);
-
             try
             {
                 var token = jwtTokenService.GenerateToken(command.Email);
+
+                await otpRepository.DeleteOtpCodeByEmailAsync(command.Email);
+
                 logger.LogInformation("OTP validated successfully and JWT token generated for email {Email}", command.Email);
                 return Result<string>.Success(token);
             }

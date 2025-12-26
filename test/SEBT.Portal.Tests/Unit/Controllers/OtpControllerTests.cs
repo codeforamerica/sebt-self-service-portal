@@ -209,4 +209,28 @@ public class OtpControllerTests
 
         Assert.Contains("validation errors", errorValue.ToString() ?? string.Empty, StringComparison.OrdinalIgnoreCase);
     }
+
+    [Fact]
+    public async Task ValidateOtp_WhenSuccess_ReturnsValidateOtpResponseWithToken()
+    {
+        // Arrange
+        var command = new ValidateOtpCommand { Email = "user@example.com", Otp = "123456" };
+        var handlerMock = Substitute.For<ICommandHandler<ValidateOtpCommand, string>>();
+        var expectedToken = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.test.token";
+        handlerMock.Handle(command)
+            .Returns(Result<string>.Success(expectedToken));
+
+        // Act
+        var result = await _controller.ValidateOtp(command, handlerMock);
+
+        // Assert
+        Assert.NotNull(result);
+        var okResult = Assert.IsType<OkObjectResult>(result);
+        Assert.NotNull(okResult.Value);
+
+        var response = Assert.IsType<ValidateOtpResponse>(okResult.Value);
+        Assert.Equal(expectedToken, response.Token);
+        Assert.NotNull(response.Token);
+        Assert.NotEmpty(response.Token);
+    }
 }

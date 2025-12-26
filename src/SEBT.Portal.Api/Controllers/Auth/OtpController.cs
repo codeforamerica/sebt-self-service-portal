@@ -82,14 +82,8 @@ public class OtpController(ILogger<OtpController> logger) : ControllerBase
 
         if (result.IsSuccess)
         {
-            if (result is SEBT.Portal.Kernel.Results.SuccessResult<string> successResult)
-            {
-                logger.LogInformation("JWT token generated successfully for email {Email}", command.Email);
-                return Ok(new ValidateOtpResponse(successResult.Value));
-            }
-
-            logger.LogError("Unexpected result type for successful OTP validation for email {Email}", command.Email);
-            return StatusCode(500, new { Error = "An error occurred while processing the authentication token." });
+            logger.LogInformation("JWT token generated successfully for email {Email}", command.Email);
+            return Ok(new ValidateOtpResponse(result.Value));
         }
         else
         {
