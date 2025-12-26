@@ -7,7 +7,7 @@ import { useTranslation } from 'react-i18next'
 import { ApiError } from '@/api/client'
 import { Alert, Button, InputField } from '@/components/ui'
 
-import { useRequestOtp } from '../../api'
+import { RequestOtpRequestSchema, useRequestOtp } from '../../api'
 
 export function LoginForm() {
   const router = useRouter()
@@ -23,7 +23,8 @@ export function LoginForm() {
     if (!value.trim()) {
       return tLogin('errorEmailRequired')
     }
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)) {
+    const result = RequestOtpRequestSchema.shape.email.safeParse(value)
+    if (!result.success) {
       return tLogin('errorEmailInvalid')
     }
     return null
