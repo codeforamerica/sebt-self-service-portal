@@ -98,10 +98,9 @@ describe('apiFetch', () => {
         })
       )
 
-      await expect(apiFetch('/test', { method: 'POST' })).rejects.toThrow(ApiError)
-
       try {
         await apiFetch('/test', { method: 'POST' })
+        expect.fail('Expected ApiError to be thrown')
       } catch (error) {
         expect(error).toBeInstanceOf(ApiError)
         expect((error as ApiError).status).toBe(400)
