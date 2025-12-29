@@ -54,6 +54,12 @@ public abstract class Result<T>(bool isSuccess) : Result(isSuccess)
     public new static Result<T> DependencyFailed(DependencyFailedReason reason, string? message = null)
         => new DependencyFailedResult<T>(reason, message);
 
+    public T Value => this switch
+    {
+        SuccessResult<T> success => success.Value,
+        _ => throw new InvalidOperationException($"Cannot access Value on a {GetType().Name}. Check IsSuccess before accessing Value.")
+    };
+
     public Result<TOther> Map<TOther>(Func<T, TOther> successMapper) =>
         this switch
         {

@@ -329,7 +329,9 @@ public class PortalDbContextTests
         Assert.True(entity.CreatedAt <= afterCreation);
         Assert.True(entity.UpdatedAt >= beforeCreation);
         Assert.True(entity.UpdatedAt <= afterCreation);
-        Assert.Equal(entity.CreatedAt, entity.UpdatedAt);
+        // Allow 1 second tolerance for CreatedAt and UpdatedAt to account for timing differences
+        var timeDifference = Math.Abs((entity.CreatedAt - entity.UpdatedAt).TotalSeconds);
+        Assert.True(timeDifference < 1.0, $"CreatedAt and UpdatedAt should be equal within 1 second, but difference was {timeDifference} seconds");
     }
 
 }

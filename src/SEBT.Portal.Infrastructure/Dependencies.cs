@@ -19,6 +19,9 @@ public static class Dependencies
         services.AddTransient<IOtpGeneratorService, OtpGeneratorService>();
         services.AddTransient<ISmtpClientService, MailKitClientService>();
 
+        // JWT Services
+        services.AddTransient<IJwtTokenService, JwtTokenService>();
+
         return services;
     }
 
@@ -58,6 +61,8 @@ public static class Dependencies
             .BindConfiguration(SmtpClientSettings.SectionName);
         services.AddOptionsWithValidateOnStart<OtpRateLimitSettings>()
             .BindConfiguration(OtpRateLimitSettings.SectionName);
+        services.AddOptionsWithValidateOnStart<JwtSettings>()
+            .BindConfiguration(JwtSettings.SectionName);
 
         return services;
     }

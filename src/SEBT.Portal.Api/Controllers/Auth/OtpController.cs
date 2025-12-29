@@ -1,8 +1,10 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.Extensions.Logging;
+using SEBT.Portal.Api.Models;
 using SEBT.Portal.Kernel;
 using SEBT.Portal.Kernel.AspNetCore;
+using SEBT.Portal.Kernel.Results;
 using SEBT.Portal.UseCases.Auth;
 
 namespace SEBT.Portal.Api.Controllers;
@@ -32,7 +34,12 @@ public class OtpController(ILogger<OtpController> logger) : ControllerBase
         [FromBody] RequestOtpCommand command,
         [FromServices] ICommandHandler<RequestOtpCommand> handler)
     {
-        logger.LogInformation("OTP request received for email {Email}", command?.Email ?? "unknown");
+        if (command == null)
+        {
+            return BadRequest(new { Error = "Request body is required." });
+        }
+
+        logger.LogInformation("OTP request received for email {Email}", command.Email);
 
         var result = await handler.Handle(command);
 
@@ -52,27 +59,36 @@ public class OtpController(ILogger<OtpController> logger) : ControllerBase
     /// </summary>
     /// <param name="command">The command containing the email address and OTP code.</param>
     /// <param name="handler">The command handler for processing the OTP validation.</param>
-    /// <returns>An OK result if the OTP is valid; otherwise, a BadRequest result.</returns>
-    /// <response code="200">OTP validated successfully.</response>
+    /// <returns>An OK result with a JWT token if the OTP is valid; otherwise, a BadRequest result.</returns>
+    /// <response code="200">OTP validated successfully. Returns a JWT token.</response>
     /// <response code="400">Invalid OTP or request.</response>
+    /// <response code="500">An error occurred while generating the authentication token.</response>
     [HttpPost("validate")]
-    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ValidateOtpResponse), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status500InternalServerError)]
     public async Task<IActionResult> ValidateOtp(
-    [FromBody] ValidateOtpCommand command,
-    [FromServices] ICommandHandler<ValidateOtpCommand> handler)
+        [FromBody] ValidateOtpCommand command,
+        [FromServices] ICommandHandler<ValidateOtpCommand, string> handler)
     {
-        logger.LogInformation("OTP validation request received for email {Email}", command?.Email ?? "unknown");
+        if (command == null)
+        {
+            return BadRequest(new { Error = "Request body is required." });
+        }
+
+        logger.LogInformation("OTP validation request received for email {Email}", command.Email);
 
         var result = await handler.Handle(command);
 
         if (result.IsSuccess)
         {
-            return Ok();
+            logger.LogInformation("JWT token generated successfully for email {Email}", command.Email);
+            return Ok(new ValidateOtpResponse(result.Value));
         }
         else
         {
-            return BadRequest(new { result.Message });
+            logger.LogWarning("OTP validation failed for email {Email}: {Message}", command.Email, result.Message);
+            return BadRequest(new { Error = result.Message });
         }
     }
 }
