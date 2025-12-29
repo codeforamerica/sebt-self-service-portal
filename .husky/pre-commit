@@ -19,113 +19,178 @@ log_error() {
 PROJECT_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$PROJECT_ROOT"
 
+# Check if there are backend changes in staged files
+has_backend_changes() {
+  git diff --cached --name-only | grep -vE '^src/SEBT\.Portal\.Web' | grep -qE '^SEBT\.Portal\.sln$|^src/SEBT\.Portal\.|\.(csproj|sln)$' || return 1
+}
+
+# Check if there are frontend changes in staged files
+has_frontend_changes() {
+  git diff --cached --name-only | grep -qE '^src/SEBT\.Portal\.Web/' || return 1
+}
+
 log_info "=== Running pre-commit checks ==="
 echo ""
 
-log_info "Step 1/6: Running linters and auto-fixing staged files..."
+# Determine what needs to run
+BACKEND_CHANGES=false
+FRONTEND_CHANGES=false
 
-if ! command -v node &> /dev/null; then
-  log_error "Node.js not found - Please install via `brew install node` or from https://nodejs.org/"
-  exit 1
+if has_backend_changes; then
+  BACKEND_CHANGES=true
 fi
 
-if ! command -v pnpm &> /dev/null; then
-  log_error "pnpm not found - Please install via `npm install -g pnpm` or `brew install pnpm`"
-  exit 1
+if has_frontend_changes; then
+  FRONTEND_CHANGES=true
 fi
 
-cd src/SEBT.Portal.Web || {
-  log_error "Could not change to web package directory"
-  exit 1
-}
+# Calculate step numbers
+STEP_NUM=0
+TOTAL_STEPS=0
 
-pnpm exec lint-staged || {
-  log_error "Linting failed"
-  exit 1
-}
-log_success "Linting passed"
-echo ""
-
-log_info "Step 2/6: Running .NET code formatting and analyzer checks..."
-cd "$PROJECT_ROOT"
-
-if command -v dotnet &> /dev/null; then
-  # Verify code formatting matches .editorconfig (fails if changes needed)
-  dotnet format SEBT.Portal.sln --verify-no-changes --verbosity quiet || {
-    log_error ".NET code formatting check failed - run 'dotnet format SEBT.Portal.sln' to fix"
-    exit 1
-  }
-  
-  dotnet format SEBT.Portal.sln analyzers --verify-no-changes --verbosity quiet || {
-    log_error ".NET analyzer checks failed - fix the reported issues"
-    exit 1
-  }
-  
-  log_success ".NET linting passed"
-else
-  log_error ".NET SDK not found - Please install via `brew install dotnet` or via the Windows Installer (if using Windows). Aborting .NET linting."
-  exit 1
+if [ "$FRONTEND_CHANGES" = "true" ]; then
+  TOTAL_STEPS=$((TOTAL_STEPS + 3))  # lint-staged + build + tests
 fi
-echo ""
 
-log_info "Step 3/6: Validating backend build..."
-cd "$PROJECT_ROOT"
-
-if command -v dotnet &> /dev/null; then
-  dotnet restore --verbosity quiet || {
-    log_error "Backend dependency restore failed"
-    exit 1
-  }
-  dotnet build --configuration Debug --no-restore --verbosity quiet || {
-    log_error "Backend build failed"
-    exit 1
-  }
-  log_success "Backend build validation passed"
-else
-  log_error ".NET SDK not found - Please install via `brew install dotnet` or via the Windows Installer (if using Windows). Aborting backend build validation."
-  exit 1
+if [ "$BACKEND_CHANGES" = "true" ]; then
+  TOTAL_STEPS=$((TOTAL_STEPS + 3))  # format + build + tests
 fi
-echo ""
 
-log_info "Step 4/6: Validating frontend build..."
-cd src/SEBT.Portal.Web || {
-  log_error "Could not change to web package directory"
-  exit 1
-}
+# Step 1: Frontend linting (if frontend changes)
+if [ "$FRONTEND_CHANGES" = "true" ]; then
+  STEP_NUM=$((STEP_NUM + 1))
+  log_info "Step $STEP_NUM/$TOTAL_STEPS: Running linters and auto-fixing staged files..."
 
-pnpm build || {
-  log_error "Frontend build failed"
-  exit 1
-}
-log_success "Frontend build validation passed"
-echo ""
+  if ! command -v node &> /dev/null; then
+    log_error "Node.js not found - Please install via `brew install node` or from https://nodejs.org/"
+    exit 1
+  fi
 
-log_info "Step 5/6: Running backend tests..."
-cd "$PROJECT_ROOT"
+  if ! command -v pnpm &> /dev/null; then
+    log_error "pnpm not found - Please install via `npm install -g pnpm` or `brew install pnpm`"
+    exit 1
+  fi
 
-if command -v dotnet &> /dev/null; then
-  dotnet test --configuration Debug --verbosity quiet || {
-    log_error "Backend tests failed"
+  cd src/SEBT.Portal.Web || {
+    log_error "Could not change to web package directory"
     exit 1
   }
-  log_success "Backend tests passed"
-else
-  log_error ".NET SDK not found - Please install via `brew install dotnet` or via the Windows Installer (if using Windows). Aborting backend tests."
-  exit 1
+
+  pnpm exec lint-staged || {
+    log_error "Linting failed"
+    exit 1
+  }
+  log_success "Linting passed"
+  echo ""
+  cd "$PROJECT_ROOT"
 fi
-echo ""
 
-log_info "Step 6/6: Running frontend tests..."
-cd src/SEBT.Portal.Web || {
-  log_error "Could not change to web package directory"
-  exit 1
-}
+# Step 2: Backend formatting (if backend changes)
+if [ "$BACKEND_CHANGES" = "true" ]; then
+  STEP_NUM=$((STEP_NUM + 1))
+  log_info "Step $STEP_NUM/$TOTAL_STEPS: Running .NET code formatting and analyzer checks..."
+  cd "$PROJECT_ROOT"
 
-pnpm exec vitest run || {
-  log_error "Frontend tests failed"
-  exit 1
-}
-log_success "Frontend tests passed"
-echo ""
+  if command -v dotnet &> /dev/null; then
+    # Verify code formatting matches .editorconfig (fails if changes needed)
+    dotnet format SEBT.Portal.sln --verify-no-changes --verbosity quiet || {
+      log_error ".NET code formatting check failed - run 'dotnet format SEBT.Portal.sln' to fix"
+      exit 1
+    }
+    
+    dotnet format SEBT.Portal.sln analyzers --verify-no-changes --verbosity quiet || {
+      log_error ".NET analyzer checks failed - fix the reported issues"
+      exit 1
+    }
+    
+    log_success ".NET linting passed"
+  else
+    log_error ".NET SDK not found - Please install via `brew install dotnet` or via the Windows Installer (if using Windows). Aborting .NET linting."
+    exit 1
+  fi
+  echo ""
+fi
+
+# Step 3: Backend build (if backend changes)
+if [ "$BACKEND_CHANGES" = "true" ]; then
+  STEP_NUM=$((STEP_NUM + 1))
+  log_info "Step $STEP_NUM/$TOTAL_STEPS: Validating backend build..."
+  cd "$PROJECT_ROOT"
+
+  if command -v dotnet &> /dev/null; then
+    dotnet restore --verbosity quiet || {
+      log_error "Backend dependency restore failed"
+      exit 1
+    }
+    dotnet build --configuration Debug --no-restore --verbosity quiet || {
+      log_error "Backend build failed"
+      exit 1
+    }
+    log_success "Backend build validation passed"
+  else
+    log_error ".NET SDK not found - Please install via `brew install dotnet` or via the Windows Installer (if using Windows). Aborting backend build validation."
+    exit 1
+  fi
+  echo ""
+fi
+
+# Step 4: Frontend build (if frontend changes)
+if [ "$FRONTEND_CHANGES" = "true" ]; then
+  STEP_NUM=$((STEP_NUM + 1))
+  log_info "Step $STEP_NUM/$TOTAL_STEPS: Validating frontend build..."
+  cd src/SEBT.Portal.Web || {
+    log_error "Could not change to web package directory"
+    exit 1
+  }
+
+  pnpm build || {
+    log_error "Frontend build failed"
+    exit 1
+  }
+  log_success "Frontend build validation passed"
+  echo ""
+fi
+
+# Step 5: Backend tests (if backend changes)
+if [ "$BACKEND_CHANGES" = "true" ]; then
+  STEP_NUM=$((STEP_NUM + 1))
+  log_info "Step $STEP_NUM/$TOTAL_STEPS: Running backend tests..."
+  cd "$PROJECT_ROOT"
+
+  if command -v dotnet &> /dev/null; then
+    dotnet test --configuration Debug --verbosity quiet || {
+      log_error "Backend tests failed"
+      exit 1
+    }
+    log_success "Backend tests passed"
+  else
+    log_error ".NET SDK not found - Please install via `brew install dotnet` or via the Windows Installer (if using Windows). Aborting backend tests."
+    exit 1
+  fi
+  echo ""
+fi
+
+# Step 6: Frontend tests (if frontend changes)
+if [ "$FRONTEND_CHANGES" = "true" ]; then
+  STEP_NUM=$((STEP_NUM + 1))
+  log_info "Step $STEP_NUM/$TOTAL_STEPS: Running frontend tests..."
+  cd src/SEBT.Portal.Web || {
+    log_error "Could not change to web package directory"
+    exit 1
+  }
+
+  pnpm exec vitest run || {
+    log_error "Frontend tests failed"
+    exit 1
+  }
+  log_success "Frontend tests passed"
+  echo ""
+  cd "$PROJECT_ROOT"
+fi
+
+if [ "$BACKEND_CHANGES" = "false" ] && [ "$FRONTEND_CHANGES" = "false" ]; then
+  log_info "No staged changes detected. Skipping pre-commit checks."
+  exit 0
+fi
 
 log_success "=== All pre-commit checks passed! ==="
