@@ -30,7 +30,9 @@
       }
     ],
     "paths": {
-      "@/*": ["./*"]
+      "@/*": ["./src/*"],
+      "@/design/*": ["./design/*"],
+      "@/content/*": ["./content/*"]
     }
   },
   "include": [

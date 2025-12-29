@@ -5,7 +5,7 @@
  * Catches missing or invalid environment variables at build time.
  *
  * Usage:
- *   import { env } from '@/src/env';
+ *   import { env } from '@/env';
  *   const state = env.NEXT_PUBLIC_STATE; // Type-safe!
  */
 import { createEnv } from '@t3-oss/env-nextjs'
@@ -17,7 +17,8 @@ export const env = createEnv({
    * Not exposed to the client
    */
   server: {
-    NODE_ENV: z.enum(['development', 'test', 'production']).optional()
+    NODE_ENV: z.enum(['development', 'test', 'production']).optional(),
+    BACKEND_URL: z.url().default('http://localhost:5280')
   },
 
   /**
@@ -34,6 +35,7 @@ export const env = createEnv({
    */
   runtimeEnv: {
     NODE_ENV: process.env.NODE_ENV,
+    BACKEND_URL: process.env.BACKEND_URL,
     NEXT_PUBLIC_STATE: process.env.NEXT_PUBLIC_STATE
   },
 

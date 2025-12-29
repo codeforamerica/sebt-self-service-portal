@@ -1,0 +1,17 @@
+/*
+----------------------------------------
+Footer Styles
+----------------------------------------
+Custom footer background colors per Figma design.
+TODO: Replace hardcoded color with design token when available.
+----------------------------------------
+*/
+
+@use 'uswds-core' as *;
+
+// Footer sections - #00A4A4
+// TODO: This should use a token like color('footer-bg') when defined
+.usa-footer__primary-section,
+.usa-footer__secondary-section {
+  background-color: #00a4a4;
+}

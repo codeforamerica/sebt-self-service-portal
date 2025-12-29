@@ -1,0 +1,12 @@
+# robots.txt for SEBT Self-Service Portal
+# https://www.robotstxt.org/robotstxt.html
+
+User-agent: *
+Allow: /
+
+# Disallow admin and API routes
+Disallow: /api/
+Disallow: /admin/
+
+# Sitemap location
+Sitemap: https://sebt.dc.gov/sitemap.xml

@@ -12,7 +12,7 @@
  * Workflow:
  * 1. Read design/states/{state}.json
  * 2. Extract font families from theme-font-type-sans and theme-font-type-serif
- * 3. Generate src/app/fonts.ts with proper next/font/google imports
+ * 3. Generate design/fonts.ts with proper next/font/google imports
  */
 
 import { readFileSync, writeFileSync, existsSync } from 'fs'
@@ -147,7 +147,7 @@ function main() {
   try {
     const state = (process.env.STATE || process.env.NEXT_PUBLIC_STATE || 'dc').toLowerCase()
     const tokensPath = join(rootDir, 'design', 'states', `${state}.json`)
-    const outputPath = join(rootDir, 'src', 'app', 'fonts.ts')
+    const outputPath = join(rootDir, 'design', 'fonts.ts')
 
     console.log(`🔤 Generating fonts.ts for ${state.toUpperCase()}...`)
 

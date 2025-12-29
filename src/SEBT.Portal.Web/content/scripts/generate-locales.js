@@ -97,6 +97,17 @@ const CONFIG = {
     'result': 'result',
     // S7 - Portal Dashboard
     'portal dashboard': 'dashboard',
+    // S8 - Login/OTP flow
+    'otp enter email': 'login',
+    'otp confirm': 'login',
+    'otp email message': 'login',
+    // S8 - Identity proofing
+    'id proofing optional id info': 'idProofing',
+    // S8 - Opt-in preferences
+    'opt-in': 'optIn',
+    // S8 - Off-boarding screens
+    'off-boarding': 'offBoarding',
+    'co-loaded off-boarding': 'offBoarding',
     // S8 - Edit screens
     'contact preferences update': 'editContactPreferences',
     'mailing address edit': 'editMailingAddress',

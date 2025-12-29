@@ -6,10 +6,8 @@ Project-specific style overrides and custom components.
 Loaded after USWDS core to allow safe overrides.
 
 Structure:
-1. Custom utility classes
-2. Component overrides
-3. Project-specific components
-4. State-specific theming
+1. Base overrides (fonts, utilities)
+2. Component overrides (imported from components/)
 
 References:
 - USWDS Documentation: https://designsystem.digital.gov/
@@ -18,6 +16,36 @@ References:
 */
 
 @use 'uswds-core' as *;
+@use 'components';
+
+/*
+----------------------------------------
+Custom Font Override
+----------------------------------------
+Override USWDS default fonts with our custom font from Next.js font loader.
+The --font-urbanist CSS variable is set by Next.js in layout.tsx.
+This ensures all USWDS components use our design token font.
+----------------------------------------
+*/
+
+// Override all USWDS font-family declarations to use our custom font
+// This is necessary because USWDS sets font-family on many utility classes
+// TODO: Register Urbanist as a custom USWDS typeface to remove !important hack
+// See: https://designsystem.digital.gov/documentation/settings/#typography-settings
+body,
+.usa-prose,
+[class*='font-'],
+[class*='text-'],
+[class*='usa-'] {
+  font-family:
+    var(--font-urbanist),
+    system-ui,
+    -apple-system,
+    BlinkMacSystemFont,
+    'Segoe UI',
+    Roboto,
+    sans-serif !important;
+}
 
 /*
 ----------------------------------------
@@ -32,191 +60,15 @@ Additional utilities not available in USWDS core.
   font-weight: 600;
 }
 
-/*
-----------------------------------------
-Language Selector Overrides
-----------------------------------------
-Custom styling for language selector to match Figma design.
-Uses USWDS color tokens and spacing units.
-
-Responsive behavior:
-- Desktop (>= tablet): Inline text links with underline on hover
-- Mobile (< tablet): Dropdown button with submenu
-----------------------------------------
-*/
-
-// Desktop language selector - inline text links
-.usa-language__desktop {
-  display: none;
-
-  @include at-media('tablet') {
-    display: block;
-  }
-
-  .usa-language__list {
-    display: flex;
-    align-items: center;
-    gap: units(3);
-    list-style: none;
-    margin: 0;
-    padding: 0;
-  }
-
-  .usa-language__list-item {
-    margin: 0;
-  }
-
-  // Figma: USWDS Theme/Body Link
-  // Font: Urbanist, Weight: 700 (Bold), Size: 16px, Line height: 150% (24px)
-  // Decoration: Underline (solid), Color: USWDS Theme/Links
-  .usa-language__link-button {
-    background: none;
-    border: none;
-    color: color('primary'); // USWDS Theme/Links
-    cursor: pointer;
-    font-family: inherit;
-    font-size: 16px;
-    font-weight: 700;
-    line-height: 150%;
-    padding: 0;
-    text-decoration: underline;
-    text-decoration-style: solid;
-
-    &:hover {
-      color: color('primary-dark');
-    }
-
-    &:focus {
-      outline: 2px solid color('primary');
-      outline-offset: 2px;
-    }
-  }
+// Thinner underlines on links - USWDS default is too thick
+.usa-link,
+.text-underline,
+a {
+  text-decoration-thickness: 1px !important;
+  text-underline-offset: 1px !important;
 }
 
-// Mobile language selector - hidden on desktop
-.usa-language__mobile {
-  display: block;
-
-  @include at-media('tablet') {
-    display: none;
-  }
-}
-
-// Header language selector button (mobile dropdown trigger)
-.usa-header .usa-language__link {
-  background-color: color('white');
-  border: 2px solid color('secondary');
-  border-radius: 60px;
-  color: color('ink');
-  padding: 4px 20px;
-  min-width: 152px;
-  min-height: 48px;
-  display: flex;
-  flex-direction: column;
-  align-items: stretch;
-  justify-content: center;
-  gap: 0;
-
-  // "Translate" row
-  > div:first-child {
-    display: flex;
-    align-items: center;
-    justify-content: flex-start;
-    gap: 8px;
-
-    span {
-      font-weight: 700;
-      font-size: 16px;
-      line-height: 24px;
-    }
-  }
-
-  // Language options row
-  > div:last-child {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-
-    button,
-    span {
-      background: none;
-      border: none;
-      padding: 0;
-      color: color('ink'); // Figma: #000000
-      font-weight: 400;
-      font-size: 11.3px;
-      line-height: 15px;
-    }
-
-    button {
-      cursor: pointer;
-      text-decoration: none;
-
-      &:hover,
-      &:focus {
-        color: color('primary');
-      }
-
-      &:focus {
-        outline: 2px solid color('primary');
-        outline-offset: 2px;
-      }
-    }
-  }
-}
-
-/*
-----------------------------------------
-Language Submenu Styles
-----------------------------------------
-Custom styles for language dropdown menu .
-----------------------------------------
-*/
-
-// Language submenu dropdown - uses theme-secondary-dark per Figma
-.usa-language__submenu {
-  background-color: color('secondary-dark');
-}
-
-// Language submenu button - matches USWDS anchor styles
-.usa-language__submenu-button {
-  background: none;
-  border: none;
-  color: color('white');
-  cursor: pointer;
-  display: block;
-  font-family: inherit;
-  font-size: inherit;
-  line-height: line-height($theme-navigation-font-family, 3);
-  padding: units(1);
-  text-align: left;
-  text-decoration: none;
-  width: 100%;
-
-  &:focus {
-    outline-offset: units('neg-05');
-  }
-
-  &:hover {
-    color: color('white');
-    text-decoration: underline;
-  }
-
-  &[aria-current='true'] {
-    font-weight: bold;
-  }
-}
-
-/*
-----------------------------------------
-Footer Styles
-----------------------------------------
-Custom footer background colors
-----------------------------------------
-*/
-
-// Footer sections - #00A4A4
-.usa-footer__primary-section,
-.usa-footer__secondary-section {
-  background-color: #00a4a4;
+// Form labels should be semibold per Figma (DCSB Text Input Label)
+.usa-label {
+  font-weight: 600;
 }

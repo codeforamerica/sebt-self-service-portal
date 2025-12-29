@@ -149,6 +149,7 @@ if [ "$FRONTEND_CHANGES" = "true" ]; then
   }
   log_success "Frontend build validation passed"
   echo ""
+  cd "$PROJECT_ROOT"
 fi
 
 # Step 5: Backend tests (if backend changes)

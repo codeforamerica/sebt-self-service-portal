@@ -1,5 +1,7 @@
 import '@testing-library/jest-dom'
 import { afterAll, afterEach, beforeAll } from 'vitest'
+
+import '@/lib/i18n'
 import { server } from '../src/mocks/server'
 
 // Setup file for Vitest

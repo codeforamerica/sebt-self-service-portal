@@ -26,6 +26,9 @@ export function proxy(request: NextRequest) {
     font-src 'self' https://fonts.gstatic.com;
     img-src 'self' data: https:;
     connect-src 'self' ${isDev ? 'ws://localhost:* http://localhost:*' : ''};
+    frame-src 'none';
+    child-src 'none';
+    worker-src 'self';
     frame-ancestors 'none';
     base-uri 'self';
     form-action 'self';

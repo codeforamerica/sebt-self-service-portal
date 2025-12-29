@@ -54,7 +54,7 @@ next-env.d.ts
 
 # Generated Design Tokens (auto-generated from design/states/*.json)
 design/tokens.css
-src/app/fonts.ts
+design/fonts.ts
 
 # Generated USWDS Theme Files (auto-generated from design/states/*.json)
 design/sass/_uswds-theme-*.scss
@@ -68,6 +68,9 @@ test-results/
 
 # Lighthouse CI Reports
 .lighthouseci/
+
+# Pa11y Accessibility Test Screenshots
+pa11y-screenshots/
 
 # Generated i18n Locale Files (auto-generated from content/copy.csv)
 content/locales/

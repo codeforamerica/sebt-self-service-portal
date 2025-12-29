@@ -1,0 +1,32 @@
+/*
+----------------------------------------
+Button Overrides
+----------------------------------------
+Primary button styling per Figma design.
+Background: secondary, Border: 1px secondary, Padding: 12px 20px
+Typography: 16px, Bold (700), Line height 24px
+----------------------------------------
+*/
+
+@use 'uswds-core' as *;
+
+.usa-button {
+  background-color: color('secondary');
+  border: 1px solid color('secondary');
+  color: color('ink');
+  font-size: 16px;
+  font-weight: 700;
+  line-height: 24px;
+  padding: units(1.5) units(2.5);
+  width: auto;
+
+  &:hover {
+    background-color: color('secondary-dark');
+    border-color: color('secondary-dark');
+  }
+
+  &:active {
+    background-color: color('secondary-darker');
+    border-color: color('secondary-darker');
+  }
+}

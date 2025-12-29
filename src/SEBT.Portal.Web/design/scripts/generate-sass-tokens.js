@@ -240,12 +240,15 @@ function generateSettingsContent(state, variables, timestamp) {
   // Add component settings
   if (otherVars.length > 0) {
     settingsLines.push('  // Component settings')
-    for (let i = 0; i < otherVars.length; i++) {
-      const v = otherVars[i]
-      const isLast = i === otherVars.length - 1
-      settingsLines.push(`  ${v.name}: ${v.value}${isLast ? '' : ','}`)
+    for (const v of otherVars) {
+      settingsLines.push(`  ${v.name}: ${v.value},`)
     }
+    settingsLines.push('')
   }
+
+  // Add utility settings - ensures utility classes override component styles
+  settingsLines.push('  // Utility settings')
+  settingsLines.push('  $utilities-use-important: true')
 
   return `// ==========================================================================
 // USWDS Settings Override - ${state.toUpperCase()}

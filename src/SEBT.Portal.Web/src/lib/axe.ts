@@ -8,7 +8,6 @@
 let axeInitialized = false
 
 export async function initAxe() {
-  // Only run in development and browser environment
   if (process.env.NODE_ENV !== 'production' && typeof window !== 'undefined' && !axeInitialized) {
     const ReactModule = await import('react')
     const ReactDOMModule = await import('react-dom')

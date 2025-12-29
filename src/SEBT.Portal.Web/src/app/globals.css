@@ -1,11 +1,8 @@
 /**
  * Global Styles - SEBT Portal
  *
- * This file contains minimal global styles and USWDS customizations.
- * Components use USWDS utility classes first, then theme settings,
- * with custom CSS only where absolutely necessary.
- *
- * State-specific design tokens are loaded dynamically in layout.tsx
+ * Minimal global styles. USWDS theme settings handle most styling.
+ * Only override where USWDS classes don't provide what's needed.
  */
 
 /* ========================================
@@ -15,74 +12,27 @@ html,
 body {
   margin: 0;
   padding: 0;
-  font-family: var(--font-urbanist), system-ui, sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-}
-
-/* Focus visible for accessibility */
-*:focus-visible {
-  outline: 2px solid var(--theme-focus-color, #0f6460);
-  outline-offset: 2px;
+  /* Use the primary font loaded by Next.js font loader */
+  /* The CSS variable is set via primaryFont.variable in layout.tsx */
+  font-family: var(--font-urbanist), system-ui, sans-serif;
 }
 
 /* ========================================
    USWDS Component Overrides
+   These are necessary where USWDS theme settings don't reach
    ======================================== */
 
-.usa-button--secondary {
-  background-color: var(--theme-color-secondary, #ffbe2e);
-  color: #1b1b1b;
-}
-
-.usa-button--secondary:hover {
-  background-color: var(--theme-color-secondary-dark, #b38c00);
-}
-
+/* Footer uses primary color as background (not standard USWDS) */
 .usa-footer,
 .usa-footer__primary-section,
 .usa-footer__secondary-section {
-  background-color: var(--theme-color-footer-bg, #00a4a4);
+  background-color: var(--color-primary);
 }
 
 .footer-logo {
   height: auto;
   width: auto;
   max-height: 50px;
-}
-
-/* Footer link */
-.usa-footer a {
-  font-size: 16px;
-  font-weight: 400;
-  line-height: 24px;
-  text-decoration: underline;
-  text-decoration-thickness: from-font;
-  text-underline-offset: 1px;
-  text-decoration-skip-ink: auto;
-}
-
-/* Public Notifications link */
-.usa-footer a.text-semibold {
-  font-family: var(--font-urbanist), system-ui, sans-serif;
-  font-weight: 600;
-}
-
-.help-link-text {
-  font-family: var(--font-urbanist), system-ui, sans-serif;
-  font-size: 26px;
-  font-weight: 600;
-  line-height: 39px;
-  text-decoration: underline;
-  text-decoration-style: solid;
-  text-decoration-thickness: 1px;
-  text-underline-offset: 2px;
-  text-decoration-skip-ink: auto;
-}
-
-.footer-copyright {
-  font-family: var(--font-urbanist), system-ui, sans-serif;
-  font-size: 16px;
-  font-weight: 400;
-  line-height: 24px;
 }
