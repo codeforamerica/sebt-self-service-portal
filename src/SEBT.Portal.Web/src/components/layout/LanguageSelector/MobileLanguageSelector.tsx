@@ -33,8 +33,9 @@ export function MobileLanguageSelector({
 
     if (isOpen) {
       document.addEventListener('mousedown', handleClickOutside)
+      return () => document.removeEventListener('mousedown', handleClickOutside)
     }
-    return () => document.removeEventListener('mousedown', handleClickOutside)
+    return undefined
   }, [isOpen])
 
   const handleKeyDown = (event: React.KeyboardEvent) => {
