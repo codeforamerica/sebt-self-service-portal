@@ -25,8 +25,9 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(function Button
 ) {
   // eslint-disable-next-line security/detect-object-injection -- variant is typed ButtonVariant
   const baseClass = variantClasses[variant]
-  const widthClass = fullWidth ? 'usa-button--full-width' : ''
-  const combinedClassName = `${baseClass} ${widthClass} ${className}`.trim()
+  const combinedClassName = [baseClass, fullWidth && 'usa-button--full-width', className]
+    .filter(Boolean)
+    .join(' ')
 
   return (
     <button
