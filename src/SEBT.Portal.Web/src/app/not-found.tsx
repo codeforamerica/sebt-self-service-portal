@@ -1,6 +1,7 @@
 import { Alert } from '@/components/ui'
 import Link from 'next/link'
 
+// TODO: Localize hardcoded strings (heading, body, link text)
 export default function NotFound() {
   return (
     <section
