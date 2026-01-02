@@ -1,3 +1,5 @@
+using SEBT.Portal.Core.Models.Auth;
+
 namespace SEBT.Portal.Core.Services;
 
 /// <summary>
@@ -6,10 +8,10 @@ namespace SEBT.Portal.Core.Services;
 public interface IJwtTokenService
 {
     /// <summary>
-    /// Generates a JWT token for the specified email address.
+    /// Generates a JWT token for the specified user, including ID proofing status in claims.
     /// </summary>
-    /// <param name="email">The email address of the authenticated user.</param>
+    /// <param name="user">The authenticated user.</param>
     /// <returns>A JWT token string.</returns>
-    string GenerateToken(string email);
+    string GenerateToken(User user);
 }
 

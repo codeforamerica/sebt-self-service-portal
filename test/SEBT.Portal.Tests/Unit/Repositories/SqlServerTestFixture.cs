@@ -30,7 +30,7 @@ public class SqlServerTestFixture : IAsyncLifetime
             await _container.StartAsync();
 
             // Create the database schema for the test database.  This is a test
-            // environment, this should be fine
+            // environment, so this should be fine.
             var options = new DbContextOptionsBuilder<PortalDbContext>()
                 .UseSqlServer(ConnectionString)
                 .Options;
