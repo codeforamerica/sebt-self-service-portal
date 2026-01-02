@@ -1,6 +1,5 @@
-import Link from 'next/link'
-
 import { HelpSection } from '@/components/layout'
+import { TextLink } from '@/components/ui'
 import { LoginForm } from '@/features/auth'
 import { getStateLinks } from '@/lib/links'
 import { getState } from '@/lib/state'
@@ -28,14 +27,13 @@ export default function LoginPage() {
             <LoginForm />
 
             <p className="margin-top-4 font-sans-sm">
-              <Link
+              <TextLink
                 href={links.external.contactUsAssistance}
-                className="text-bold text-ink text-underline"
                 target="_blank"
                 rel="noopener noreferrer"
               >
                 {tDisclaimer('logInDisclaimerBody2')}
-              </Link>
+              </TextLink>
             </p>
           </section>
         </div>
