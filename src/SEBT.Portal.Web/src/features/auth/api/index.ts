@@ -1,3 +1,9 @@
 export { RequestOtpRequestSchema, useRequestOtp, type RequestOtpRequest } from './request-otp'
 
-export { ValidateOtpRequestSchema, type ValidateOtpRequest } from './validate-otp'
+export {
+  ValidateOtpRequestSchema,
+  ValidateOtpResponseSchema,
+  useValidateOtp,
+  type ValidateOtpRequest,
+  type ValidateOtpResponse
+} from './validate-otp'

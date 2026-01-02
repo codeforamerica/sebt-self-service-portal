@@ -73,6 +73,9 @@ export const handlers = [
   http.post('/api/auth/otp/validate', async ({ request }) => {
     const body = (await request.json()) as ValidateOtpRequest
 
+    // Add small delay to allow loading state to be observable in tests
+    await delay(50)
+
     // Validate required fields
     if (!body.email || !body.otp) {
       return HttpResponse.json({ error: 'Email and OTP are required' }, { status: 400 })
@@ -95,8 +98,7 @@ export const handlers = [
 
     // Success - return mock token
     return HttpResponse.json({
-      token: 'mock-jwt-token-for-testing',
-      expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString()
+      token: 'mock-jwt-token-for-testing'
     })
   })
 ]
