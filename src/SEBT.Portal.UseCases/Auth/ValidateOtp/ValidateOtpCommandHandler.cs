@@ -53,7 +53,7 @@ namespace SEBT.Portal.UseCases.Auth
 
             try
             {
-                var user = await userRepository.GetOrCreateUserAsync(command.Email);
+                var user = await userRepository.GetOrCreateUserAsync(command.Email, cancellationToken);
 
                 var token = jwtTokenService.GenerateToken(user);
 

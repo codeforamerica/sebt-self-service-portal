@@ -19,27 +19,31 @@ public interface IUserRepository
     /// Creates a new user record.
     /// </summary>
     /// <param name="user">The user to create.</param>
+    /// <param name="cancellationToken">A token to monitor for cancellation requests.</param>
     /// <returns>A task representing the asynchronous operation.</returns>
-    Task CreateUserAsync(User user);
+    Task CreateUserAsync(User user, CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Updates an existing user record.
     /// </summary>
     /// <param name="user">The user to update.</param>
+    /// <param name="cancellationToken">A token to monitor for cancellation requests.</param>
     /// <returns>A task representing the asynchronous operation.</returns>
-    Task UpdateUserAsync(User user);
+    Task UpdateUserAsync(User user, CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Gets or creates a user by email. If the user doesn't exist, creates a new one.
     /// </summary>
     /// <param name="email">The email address of the user.</param>
+    /// <param name="cancellationToken">A token to monitor for cancellation requests.</param>
     /// <returns>The existing or newly created user.</returns>
-    Task<User> GetOrCreateUserAsync(string email);
+    Task<User> GetOrCreateUserAsync(string email, CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Retrieves a user by their ID proofing session ID.
     /// </summary>
     /// <param name="sessionId">The session ID from the proofing provider.</param>
+    /// <param name="cancellationToken">A token to monitor for cancellation requests.</param>
     /// <returns>The user if found; otherwise, <c>null</c>.</returns>
-    Task<User?> GetUserBySessionIdAsync(string sessionId);
+    Task<User?> GetUserBySessionIdAsync(string sessionId, CancellationToken cancellationToken = default);
 }

@@ -142,7 +142,7 @@ public class DatabaseUserRepositoryTests : IClassFixture<SqlServerTestFixture>
         };
 
         // Act
-        await repository.CreateUserAsync(user);
+        await repository.CreateUserAsync(user, CancellationToken.None);
 
         // Assert
         var stored = await context.Users.FirstOrDefaultAsync(u => u.Email == uniqueEmail);
@@ -169,7 +169,7 @@ public class DatabaseUserRepositoryTests : IClassFixture<SqlServerTestFixture>
         };
 
         // Act
-        await repository.CreateUserAsync(user);
+        await repository.CreateUserAsync(user, CancellationToken.None);
 
         // Assert
         var normalizedEmail = $"user-{uniqueId}@example.com";
@@ -186,7 +186,7 @@ public class DatabaseUserRepositoryTests : IClassFixture<SqlServerTestFixture>
         var repository = new DatabaseUserRepository(context);
 
         // Act & Assert
-        await Assert.ThrowsAsync<ArgumentNullException>(() => repository.CreateUserAsync(null!));
+        await Assert.ThrowsAsync<ArgumentNullException>(() => repository.CreateUserAsync(null!, CancellationToken.None));
     }
 
     [Fact]
@@ -205,7 +205,7 @@ public class DatabaseUserRepositoryTests : IClassFixture<SqlServerTestFixture>
         };
 
         // Act & Assert
-        await Assert.ThrowsAsync<ArgumentException>(() => repository.CreateUserAsync(user));
+        await Assert.ThrowsAsync<ArgumentException>(() => repository.CreateUserAsync(user, CancellationToken.None));
     }
 
     [Fact]
@@ -238,7 +238,7 @@ public class DatabaseUserRepositoryTests : IClassFixture<SqlServerTestFixture>
         };
 
         // Act
-        await repository.UpdateUserAsync(user);
+        await repository.UpdateUserAsync(user, CancellationToken.None);
 
         // Assert
         var updated = await context.Users.FirstOrDefaultAsync(u => u.Email == uniqueEmail);
@@ -279,7 +279,7 @@ public class DatabaseUserRepositoryTests : IClassFixture<SqlServerTestFixture>
         };
 
         // Act
-        await repository.UpdateUserAsync(user);
+        await repository.UpdateUserAsync(user, CancellationToken.None);
 
         // Assert
         var updated = await context.Users.FirstOrDefaultAsync(u => u.Email == uniqueEmail);
@@ -303,7 +303,7 @@ public class DatabaseUserRepositoryTests : IClassFixture<SqlServerTestFixture>
         };
 
         // Act & Assert
-        await Assert.ThrowsAsync<InvalidOperationException>(() => repository.UpdateUserAsync(user));
+        await Assert.ThrowsAsync<InvalidOperationException>(() => repository.UpdateUserAsync(user, CancellationToken.None));
     }
 
     [Fact]
@@ -314,7 +314,7 @@ public class DatabaseUserRepositoryTests : IClassFixture<SqlServerTestFixture>
         var repository = new DatabaseUserRepository(context);
 
         // Act & Assert
-        await Assert.ThrowsAsync<ArgumentNullException>(() => repository.UpdateUserAsync(null!));
+        await Assert.ThrowsAsync<ArgumentNullException>(() => repository.UpdateUserAsync(null!, CancellationToken.None));
     }
 
     [Fact]
@@ -345,7 +345,7 @@ public class DatabaseUserRepositoryTests : IClassFixture<SqlServerTestFixture>
         };
 
         // Act
-        await repository.UpdateUserAsync(user);
+        await repository.UpdateUserAsync(user, CancellationToken.None);
 
         // Assert
         var updated = await context.Users.FirstOrDefaultAsync(u => u.Email == baseEmail);
@@ -372,7 +372,7 @@ public class DatabaseUserRepositoryTests : IClassFixture<SqlServerTestFixture>
         await context.SaveChangesAsync();
 
         // Act
-        var result = await repository.GetOrCreateUserAsync(uniqueEmail);
+        var result = await repository.GetOrCreateUserAsync(uniqueEmail, CancellationToken.None);
 
         // Assert
         Assert.NotNull(result);
@@ -395,7 +395,7 @@ public class DatabaseUserRepositoryTests : IClassFixture<SqlServerTestFixture>
         var uniqueEmail = $"newuser-{Guid.NewGuid()}@example.com";
 
         // Act
-        var result = await repository.GetOrCreateUserAsync(uniqueEmail);
+        var result = await repository.GetOrCreateUserAsync(uniqueEmail, CancellationToken.None);
 
         // Assert
         Assert.NotNull(result);
@@ -440,7 +440,7 @@ public class DatabaseUserRepositoryTests : IClassFixture<SqlServerTestFixture>
         var repository = new DatabaseUserRepository(context);
 
         // Act & Assert
-        await Assert.ThrowsAsync<ArgumentException>(() => repository.GetOrCreateUserAsync(null!));
+        await Assert.ThrowsAsync<ArgumentException>(() => repository.GetOrCreateUserAsync(null!, CancellationToken.None));
     }
 
     [Fact]
@@ -451,7 +451,7 @@ public class DatabaseUserRepositoryTests : IClassFixture<SqlServerTestFixture>
         var repository = new DatabaseUserRepository(context);
 
         // Act & Assert
-        await Assert.ThrowsAsync<ArgumentException>(() => repository.GetOrCreateUserAsync("   "));
+        await Assert.ThrowsAsync<ArgumentException>(() => repository.GetOrCreateUserAsync("   ", CancellationToken.None));
     }
 
     [Fact]
@@ -475,7 +475,7 @@ public class DatabaseUserRepositoryTests : IClassFixture<SqlServerTestFixture>
         await context.SaveChangesAsync();
 
         // Act
-        var result = await repository.GetUserBySessionIdAsync(sessionId);
+        var result = await repository.GetUserBySessionIdAsync(sessionId, CancellationToken.None);
 
         // Assert
         Assert.NotNull(result);
@@ -659,7 +659,7 @@ public class DatabaseUserRepositoryTests : IClassFixture<SqlServerTestFixture>
         };
 
         // Act
-        await repository.CreateUserAsync(user);
+        await repository.CreateUserAsync(user, CancellationToken.None);
 
         // Assert
         var stored = await context.Users.FirstOrDefaultAsync(u => u.Email == uniqueEmail);

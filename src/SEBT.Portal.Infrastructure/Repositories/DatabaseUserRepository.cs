@@ -27,7 +27,7 @@ public class DatabaseUserRepository(PortalDbContext dbContext) : IUserRepository
         return entity == null ? null : MapToDomainModel(entity);
     }
 
-    public async Task CreateUserAsync(User user)
+    public async Task CreateUserAsync(User user, CancellationToken cancellationToken = default)
     {
         if (user == null)
         {
@@ -43,10 +43,10 @@ public class DatabaseUserRepository(PortalDbContext dbContext) : IUserRepository
         // Normalize email to lowercase for consistent storage
         entity.Email = NormalizeEmail(entity.Email);
         dbContext.Users.Add(entity);
-        await dbContext.SaveChangesAsync();
+        await dbContext.SaveChangesAsync(cancellationToken);
     }
 
-    public async Task UpdateUserAsync(User user)
+    public async Task UpdateUserAsync(User user, CancellationToken cancellationToken = default)
     {
         if (user == null)
         {
@@ -60,7 +60,7 @@ public class DatabaseUserRepository(PortalDbContext dbContext) : IUserRepository
 
         var normalizedEmail = NormalizeEmail(user.Email);
         var entity = await dbContext.Users
-            .FirstOrDefaultAsync(u => u.Email == normalizedEmail);
+            .FirstOrDefaultAsync(u => u.Email == normalizedEmail, cancellationToken);
 
         if (entity == null)
         {
@@ -74,10 +74,10 @@ public class DatabaseUserRepository(PortalDbContext dbContext) : IUserRepository
         entity.IdProofingExpiresAt = user.IdProofingExpiresAt;
         entity.UpdatedAt = DateTime.UtcNow;
 
-        await dbContext.SaveChangesAsync();
+        await dbContext.SaveChangesAsync(cancellationToken);
     }
 
-    public async Task<User> GetOrCreateUserAsync(string email)
+    public async Task<User> GetOrCreateUserAsync(string email, CancellationToken cancellationToken = default)
     {
         if (string.IsNullOrWhiteSpace(email))
         {
@@ -86,7 +86,7 @@ public class DatabaseUserRepository(PortalDbContext dbContext) : IUserRepository
 
         var normalizedEmail = NormalizeEmail(email);
         var entity = await dbContext.Users
-            .FirstOrDefaultAsync(u => u.Email == normalizedEmail);
+            .FirstOrDefaultAsync(u => u.Email == normalizedEmail, cancellationToken);
 
         if (entity != null)
         {
@@ -103,12 +103,12 @@ public class DatabaseUserRepository(PortalDbContext dbContext) : IUserRepository
         };
 
         dbContext.Users.Add(newEntity);
-        await dbContext.SaveChangesAsync();
+        await dbContext.SaveChangesAsync(cancellationToken);
 
         return MapToDomainModel(newEntity);
     }
 
-    public async Task<User?> GetUserBySessionIdAsync(string sessionId)
+    public async Task<User?> GetUserBySessionIdAsync(string sessionId, CancellationToken cancellationToken = default)
     {
         if (string.IsNullOrWhiteSpace(sessionId))
         {
@@ -117,7 +117,7 @@ public class DatabaseUserRepository(PortalDbContext dbContext) : IUserRepository
 
         var entity = await dbContext.Users
             .AsNoTracking()
-            .FirstOrDefaultAsync(u => u.IdProofingSessionId == sessionId);
+            .FirstOrDefaultAsync(u => u.IdProofingSessionId == sessionId, cancellationToken);
 
         return entity == null ? null : MapToDomainModel(entity);
     }
