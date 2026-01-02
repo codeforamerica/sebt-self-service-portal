@@ -43,8 +43,8 @@ export function LoginForm() {
 
     try {
       await requestOtp.mutateAsync({ email })
-      const encodedEmail = encodeURIComponent(email)
-      router.push(`/login/verify?email=${encodedEmail}`)
+      sessionStorage.setItem('otp_email', email)
+      router.push('/login/verify')
     } catch (err) {
       if (err instanceof ApiError) {
         setSubmitError(err.message)

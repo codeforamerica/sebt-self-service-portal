@@ -50,6 +50,7 @@ function renderWithProviders(ui: React.ReactElement) {
 describe('LoginForm', () => {
   beforeEach(() => {
     mockPush.mockClear()
+    sessionStorage.clear()
   })
 
   describe('Rendering', () => {
@@ -71,7 +72,7 @@ describe('LoginForm', () => {
   })
 
   describe('Form Submission', () => {
-    it('should submit form with valid email and navigate on success', async () => {
+    it('should submit form with valid email, store email in sessionStorage, and navigate on success', async () => {
       const user = userEvent.setup()
       renderWithProviders(<LoginForm />)
 
@@ -82,9 +83,8 @@ describe('LoginForm', () => {
       await user.click(submitButton)
 
       await waitFor(() => {
-        expect(mockPush).toHaveBeenCalledWith(
-          `/login/verify?email=${encodeURIComponent(TEST_EMAILS.success)}`
-        )
+        expect(sessionStorage.getItem('otp_email')).toBe(TEST_EMAILS.success)
+        expect(mockPush).toHaveBeenCalledWith('/login/verify')
       })
     })
 
