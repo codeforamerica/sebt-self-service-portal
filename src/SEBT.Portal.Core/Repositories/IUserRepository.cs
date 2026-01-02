@@ -11,8 +11,9 @@ public interface IUserRepository
     /// Retrieves a user by their email address.
     /// </summary>
     /// <param name="email">The email address of the user.</param>
+    /// <param name="cancellationToken">A token to monitor for cancellation requests.</param>
     /// <returns>The user if found; otherwise, <c>null</c>.</returns>
-    Task<User?> GetUserByEmailAsync(string email);
+    Task<User?> GetUserByEmailAsync(string email, CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Creates a new user record.

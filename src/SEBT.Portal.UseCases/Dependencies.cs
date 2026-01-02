@@ -10,6 +10,7 @@ public static class Dependencies
     {
         services.RegisterCommandHandler<RequestOtpCommand, RequestOtpCommandHandler>();
         services.RegisterCommandHandler<ValidateOtpCommand, string, ValidateOtpCommandHandler>();
+        services.RegisterCommandHandler<RefreshTokenCommand, string, RefreshTokenCommandHandler>();
 
         return services;
     }

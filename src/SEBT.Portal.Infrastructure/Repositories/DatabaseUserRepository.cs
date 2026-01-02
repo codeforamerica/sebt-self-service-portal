@@ -12,7 +12,7 @@ namespace SEBT.Portal.Infrastructure.Repositories;
 /// <param name="dbContext">The database context for accessing user data.</param>
 public class DatabaseUserRepository(PortalDbContext dbContext) : IUserRepository
 {
-    public async Task<User?> GetUserByEmailAsync(string email)
+    public async Task<User?> GetUserByEmailAsync(string email, CancellationToken cancellationToken = default)
     {
         if (string.IsNullOrWhiteSpace(email))
         {
@@ -22,7 +22,7 @@ public class DatabaseUserRepository(PortalDbContext dbContext) : IUserRepository
         var normalizedEmail = NormalizeEmail(email);
         var entity = await dbContext.Users
             .AsNoTracking()
-            .FirstOrDefaultAsync(u => u.Email == normalizedEmail);
+            .FirstOrDefaultAsync(u => u.Email == normalizedEmail, cancellationToken);
 
         return entity == null ? null : MapToDomainModel(entity);
     }
