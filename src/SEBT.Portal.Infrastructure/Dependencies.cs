@@ -7,6 +7,7 @@ using SEBT.Portal.Core.Services;
 using SEBT.Portal.Infrastructure.Data;
 using SEBT.Portal.Infrastructure.Repositories;
 using SEBT.Portal.Infrastructure.Services;
+using SEBT.Portal.Kernel;
 
 namespace SEBT.Portal.Infrastructure;
 
@@ -21,6 +22,9 @@ public static class Dependencies
 
         // JWT Services
         services.AddTransient<IJwtTokenService, JwtTokenService>();
+
+        // Feature Flag Services
+        services.AddSingleton<IFeatureFlagService, FeatureFlagService>();
 
         return services;
     }
@@ -63,6 +67,8 @@ public static class Dependencies
             .BindConfiguration(OtpRateLimitSettings.SectionName);
         services.AddOptionsWithValidateOnStart<JwtSettings>()
             .BindConfiguration(JwtSettings.SectionName);
+        services.AddOptionsWithValidateOnStart<FeatureFlagSettings>()
+            .BindConfiguration(FeatureFlagSettings.SectionName);
 
         return services;
     }

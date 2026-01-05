@@ -13,6 +13,13 @@ using SEBT.Portal.Infrastructure;
 
 var builder = WebApplication.CreateBuilder(args);
 
+var state = Environment.GetEnvironmentVariable("STATE") ?? Environment.GetEnvironmentVariable("NEXT_PUBLIC_STATE");
+if (!string.IsNullOrEmpty(state))
+{
+    var stateConfigFile = $"appsettings.{state.ToLowerInvariant()}.json";
+    builder.Configuration.AddJsonFile(stateConfigFile, optional: true, reloadOnChange: true);
+}
+
 var jwtSecretKey = Environment.GetEnvironmentVariable("JWT_SECRET_KEY");
 if (!string.IsNullOrEmpty(jwtSecretKey))
 {
@@ -42,6 +49,7 @@ builder.Services.AddSwaggerGen(options =>
 {
     var xmlFilename = $"{System.Reflection.Assembly.GetExecutingAssembly().GetName().Name}.xml";
     options.IncludeXmlComments(Path.Combine(AppContext.BaseDirectory, xmlFilename));
+    options.EnableAnnotations();
 
     // Add JWT Bearer authentication to Swagger
     options.AddSecurityDefinition("Bearer", new Microsoft.OpenApi.Models.OpenApiSecurityScheme
