@@ -3,10 +3,10 @@
 import { useRouter } from 'next/navigation'
 import { useCallback, useState, type FormEvent } from 'react'
 import { useTranslation } from 'react-i18next'
+import { useCountdown } from 'usehooks-ts'
 
 import { ApiError } from '@/api/client'
 import { Alert, Button, InputField, TextLink } from '@/components/ui'
-import { useCountdown } from '@/hooks'
 
 import { useRequestOtp, useValidateOtp, ValidateOtpRequestSchema } from '../../api'
 
@@ -26,7 +26,12 @@ export function VerifyOtpForm({ email, contactLink }: VerifyOtpFormProps) {
   const [submitError, setSubmitError] = useState<string | null>(null)
   const [successMessage, setSuccessMessage] = useState<string | null>(null)
 
-  const countdown = useCountdown()
+  const [count, { startCountdown, resetCountdown }] = useCountdown({
+    countStart: RESEND_COOLDOWN_SECONDS,
+    countStop: 0,
+    intervalMs: 1000
+  })
+
   const validateOtp = useValidateOtp()
   const requestOtp = useRequestOtp()
 
@@ -71,8 +76,12 @@ export function VerifyOtpForm({ email, contactLink }: VerifyOtpFormProps) {
     }
   }
 
+  // Countdown is active when count > 0 and has been started (not at initial value before first start)
+  const [hasStartedCountdown, setHasStartedCountdown] = useState(false)
+  const isCountdownActive = hasStartedCountdown && count > 0
+
   async function handleResend() {
-    if (countdown.isActive) return
+    if (isCountdownActive) return
 
     setSubmitError(null)
     setSuccessMessage(null)
@@ -80,7 +89,9 @@ export function VerifyOtpForm({ email, contactLink }: VerifyOtpFormProps) {
     try {
       await requestOtp.mutateAsync({ email })
       setSuccessMessage(tLogin('verifyCodeSent'))
-      countdown.start(RESEND_COOLDOWN_SECONDS)
+      resetCountdown()
+      startCountdown()
+      setHasStartedCountdown(true)
     } catch (err) {
       if (err instanceof ApiError) {
         setSubmitError(err.message)
@@ -92,7 +103,7 @@ export function VerifyOtpForm({ email, contactLink }: VerifyOtpFormProps) {
 
   const isSubmitting = validateOtp.isPending
   const isResending = requestOtp.isPending
-  const resendDisabled = countdown.isActive || isResending || isSubmitting
+  const resendDisabled = isCountdownActive || isResending || isSubmitting
 
   return (
     <form
@@ -154,8 +165,8 @@ export function VerifyOtpForm({ email, contactLink }: VerifyOtpFormProps) {
         isLoading={isResending}
         className="margin-top-3 display-block"
       >
-        {countdown.isActive
-          ? tLogin('verifyResendCountdown', { seconds: countdown.secondsRemaining })
+        {isCountdownActive
+          ? tLogin('verifyResendCountdown', { seconds: count })
           : tLogin('verifyActionResend')}
       </Button>
 
