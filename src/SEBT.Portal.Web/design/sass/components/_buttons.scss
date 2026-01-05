@@ -31,20 +31,20 @@ Typography: 16px, Bold (700), Line height 24px
   }
 
   &--outline {
-    background-color: #fff;
-    border: 2px solid #ffbe2e;
+    background-color: color('white');
+    border: 2px solid color('secondary');
     box-shadow: none;
     color: color('ink');
 
     &:hover {
-      background-color: #faf3d1;
-      border-color: #936f38;
+      background-color: color('secondary-lighter');
+      border-color: color('secondary-dark');
       box-shadow: none;
     }
 
     &:active {
-      background-color: #f5e6a3;
-      border-color: #5c410a;
+      background-color: color('secondary-light');
+      border-color: color('secondary-darker');
       box-shadow: none;
     }
   }
