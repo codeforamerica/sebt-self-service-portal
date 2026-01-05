@@ -53,6 +53,10 @@ namespace SEBT.Portal.UseCases.Auth
 
             try
             {
+
+                var existingUser = await userRepository.GetUserByEmailAsync(command.Email, cancellationToken);
+                var isNewUser = existingUser == null;
+
                 var user = await userRepository.GetOrCreateUserAsync(command.Email, cancellationToken);
 
                 var token = jwtTokenService.GenerateToken(user);
@@ -60,10 +64,24 @@ namespace SEBT.Portal.UseCases.Auth
                 // Delete OTP after successful validation
                 await otpRepository.DeleteOtpCodeByEmailAsync(command.Email);
 
+                if (isNewUser)
+                {
+                    logger.LogInformation(
+                        "New user authenticated via OTP for email {Email} with ID proofing status {Status}",
+                        command.Email,
+                        user.IdProofingStatus);
+                }
+                else
+                {
+                    logger.LogInformation(
+                        "Returning user authenticated via OTP for email {Email} with ID proofing status {Status}",
+                        command.Email,
+                        user.IdProofingStatus);
+                }
+
                 logger.LogInformation(
-                    "OTP validated successfully and JWT token generated for email {Email} with ID proofing status {Status}",
-                    command.Email,
-                    user.IdProofingStatus);
+                    "OTP validated successfully and JWT token generated for email {Email}",
+                    command.Email);
                 return Result<string>.Success(token);
             }
             catch (Exception ex)
