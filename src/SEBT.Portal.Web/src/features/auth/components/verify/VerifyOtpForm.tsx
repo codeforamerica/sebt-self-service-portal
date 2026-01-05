@@ -57,13 +57,10 @@ export function VerifyOtpForm({ email, contactLink }: VerifyOtpFormProps) {
     setFieldError(null)
 
     try {
-      const response = await validateOtp.mutateAsync({ email, otp })
+      await validateOtp.mutateAsync({ email, otp })
       // Clear the stored email
       sessionStorage.removeItem('otp_email')
-      // Store the token (for now just log it - auth context will handle this later)
       // TODO: Store token in auth context and redirect to dashboard
-      console.log('Auth token received:', response.token)
-      // Redirect to authenticated area (placeholder for now)
       router.push('/')
     } catch (err) {
       if (err instanceof ApiError) {
