@@ -82,6 +82,19 @@ install_dependencies() {
   log_success "Dependencies installed"
 }
 
+# Generate locale files (required for i18n in tests)
+generate_locales() {
+  log_info "Generating locale files..."
+  cd "$FRONTEND_DIR"
+
+  if grep -q '"copy:generate"' package.json 2>/dev/null; then
+    pnpm run copy:generate
+    log_success "Locale files generated"
+  else
+    log_warning "No copy:generate script found, skipping"
+  fi
+}
+
 # Run linting
 run_lint() {
   log_info "Running linter..."
@@ -128,6 +141,7 @@ main() {
 
   check_prerequisites
   install_dependencies
+  generate_locales
   run_type_check
   run_lint
   run_tests
