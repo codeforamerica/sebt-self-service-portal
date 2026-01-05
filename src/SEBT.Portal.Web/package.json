@@ -18,6 +18,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
+    "pretest": "pnpm copy:generate",
     "test": "vitest",
     "test:ui": "vitest --ui",
     "test:coverage": "vitest --coverage",
