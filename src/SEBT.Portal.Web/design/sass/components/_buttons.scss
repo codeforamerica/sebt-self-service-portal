@@ -29,4 +29,23 @@ Typography: 16px, Bold (700), Line height 24px
     background-color: color('secondary-darker');
     border-color: color('secondary-darker');
   }
+
+  &--outline {
+    background-color: color('white');
+    border: 2px solid color('secondary');
+    box-shadow: none;
+    color: color('ink');
+
+    &:hover {
+      background-color: color('secondary-lighter');
+      border-color: color('secondary-dark');
+      box-shadow: none;
+    }
+
+    &:active {
+      background-color: color('secondary-light');
+      border-color: color('secondary-darker');
+      box-shadow: none;
+    }
+  }
 }
