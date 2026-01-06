@@ -20,6 +20,7 @@ interface VerifyOtpFormProps {
 export function VerifyOtpForm({ email, contactLink }: VerifyOtpFormProps) {
   const router = useRouter()
   const { t: tLogin } = useTranslation('login')
+  const { t: tCommon } = useTranslation('common')
 
   const [otp, setOtp] = useState('')
   const [fieldError, setFieldError] = useState<string | null>(null)
@@ -38,11 +39,11 @@ export function VerifyOtpForm({ email, contactLink }: VerifyOtpFormProps) {
   const validateCode = useCallback(
     (value: string): string | null => {
       if (!value.trim()) {
-        return tLogin('verifyErrorCodeRequired')
+        return tLogin('verifyLabelCode')
       }
       const result = ValidateOtpRequestSchema.shape.otp.safeParse(value)
       if (!result.success) {
-        return tLogin('verifyErrorCodeInvalid')
+        return tLogin('verifyInvalidErrorMessage')
       }
       return null
     },
@@ -71,7 +72,7 @@ export function VerifyOtpForm({ email, contactLink }: VerifyOtpFormProps) {
       if (err instanceof ApiError) {
         setSubmitError(err.message)
       } else {
-        setSubmitError(tLogin('errorUnexpected'))
+        setSubmitError(tCommon('errorUnexpected'))
       }
     }
   }
@@ -88,7 +89,7 @@ export function VerifyOtpForm({ email, contactLink }: VerifyOtpFormProps) {
 
     try {
       await requestOtp.mutateAsync({ email })
-      setSuccessMessage(tLogin('verifyCodeSent'))
+      setSuccessMessage(tLogin('verifyCodeSentSuccess'))
       resetCountdown()
       startCountdown()
       setHasStartedCountdown(true)
@@ -96,7 +97,7 @@ export function VerifyOtpForm({ email, contactLink }: VerifyOtpFormProps) {
       if (err instanceof ApiError) {
         setSubmitError(err.message)
       } else {
-        setSubmitError(tLogin('errorUnexpected'))
+        setSubmitError(tCommon('errorUnexpected'))
       }
     }
   }
@@ -166,7 +167,7 @@ export function VerifyOtpForm({ email, contactLink }: VerifyOtpFormProps) {
         className="margin-top-3 display-block"
       >
         {isCountdownActive
-          ? tLogin('verifyResendCountdown', { seconds: count })
+          ? `${tLogin('verifyActionResend')} (${count}s)`
           : tLogin('verifyActionResend')}
       </Button>
 
@@ -176,7 +177,7 @@ export function VerifyOtpForm({ email, contactLink }: VerifyOtpFormProps) {
           target="_blank"
           rel="noopener noreferrer"
         >
-          {tLogin('verifyHelpText')}
+          {tLogin('logInDisclaimerBody2')}
         </TextLink>
       </p>
     </form>

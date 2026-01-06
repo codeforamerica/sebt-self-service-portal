@@ -101,6 +101,8 @@ const CONFIG = {
     'otp enter email': 'login',
     'otp confirm': 'login',
     'otp email message': 'login',
+    // S2 - Log In Disclaimer (maps to login namespace)
+    'log in disclaimer': 'login',
     // S8 - Identity proofing
     'id proofing optional id info': 'idProofing',
     // S8 - Opt-in preferences
@@ -118,6 +120,11 @@ const CONFIG = {
     'global': 'common',
     // PROTO - Prototype screens
     'prototypes': 'proto',
+  },
+  // Key prefixes for pages that share a namespace but need distinct keys
+  // This prevents key collisions (e.g., both OTP Enter Email and OTP Confirm have "title")
+  pageKeyPrefix: {
+    'otp confirm': 'verify',
   },
 };
 
@@ -228,7 +235,7 @@ function parseContentKey(contentKey) {
 
   // Handle 3+ part format: "SECTION - Page - Key Name"
   const [section, page, ...keyParts] = parts;
-  const key = toCamelCase(keyParts.join(' '));
+  let key = toCamelCase(keyParts.join(' '));
   const pageLower = page.toLowerCase();
 
   // Determine namespace from page name or section
@@ -240,6 +247,13 @@ function parseContentKey(contentKey) {
   } else {
     // Fallback: use sanitized page name
     namespace = toCamelCase(page);
+  }
+
+  // Apply key prefix for pages that share a namespace but need distinct keys
+  const keyPrefix = CONFIG.pageKeyPrefix[pageLower];
+  if (keyPrefix) {
+    // Capitalize first letter of key and prepend prefix
+    key = keyPrefix + key.charAt(0).toUpperCase() + key.slice(1);
   }
 
   return {
@@ -357,6 +371,24 @@ function calculateHash(filePath) {
 }
 
 /**
+ * Check if expected locale files exist
+ * Returns false if any required locale file is missing
+ */
+function localeFilesExist() {
+  // Check for at least one expected locale file per state/language
+  for (const locale of Object.keys(CONFIG.locales)) {
+    for (const state of CONFIG.states) {
+      // Check for login.json as a representative file (commonly needed)
+      const loginPath = join(CONFIG.outputDir, locale, state, 'login.json');
+      if (!existsSync(loginPath)) {
+        return false;
+      }
+    }
+  }
+  return true;
+}
+
+/**
  * Check if regeneration is needed based on hash
  */
 function needsRegeneration() {
@@ -364,6 +396,9 @@ function needsRegeneration() {
   if (!currentHash) return true;
 
   if (!existsSync(CONFIG.hashFile)) return true;
+
+  // Even if hash matches, regenerate if output files are missing
+  if (!localeFilesExist()) return true;
 
   const storedHash = readFileSync(CONFIG.hashFile, 'utf8').trim();
   return currentHash !== storedHash;

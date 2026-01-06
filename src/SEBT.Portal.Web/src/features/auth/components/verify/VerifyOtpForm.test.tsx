@@ -71,7 +71,7 @@ describe('VerifyOtpForm', () => {
       )
 
       await waitFor(() => {
-        const otpInput = screen.getByRole('textbox', { name: /enter the confirmation code/i })
+        const otpInput = screen.getByRole('textbox', { name: /enter.*confirmation code/i })
         expect(otpInput).toBeInTheDocument()
         expect(otpInput).toHaveAttribute('inputMode', 'numeric')
         expect(otpInput).toHaveAttribute('maxLength', '6')
@@ -122,11 +122,11 @@ describe('VerifyOtpForm', () => {
 
       await waitFor(() => {
         expect(
-          screen.getByRole('textbox', { name: /enter the confirmation code/i })
+          screen.getByRole('textbox', { name: /enter.*confirmation code/i })
         ).toBeInTheDocument()
       })
 
-      const otpInput = screen.getByRole('textbox', { name: /enter the confirmation code/i })
+      const otpInput = screen.getByRole('textbox', { name: /enter.*confirmation code/i })
       const confirmButton = screen.getByRole('button', { name: /confirm/i })
 
       await user.type(otpInput, TEST_OTP.valid)
@@ -149,11 +149,11 @@ describe('VerifyOtpForm', () => {
 
       await waitFor(() => {
         expect(
-          screen.getByRole('textbox', { name: /enter the confirmation code/i })
+          screen.getByRole('textbox', { name: /enter.*confirmation code/i })
         ).toBeInTheDocument()
       })
 
-      const otpInput = screen.getByRole('textbox', { name: /enter the confirmation code/i })
+      const otpInput = screen.getByRole('textbox', { name: /enter.*confirmation code/i })
       const confirmButton = screen.getByRole('button', { name: /confirm/i })
 
       await user.type(otpInput, TEST_OTP.valid)
@@ -174,11 +174,11 @@ describe('VerifyOtpForm', () => {
 
       await waitFor(() => {
         expect(
-          screen.getByRole('textbox', { name: /enter the confirmation code/i })
+          screen.getByRole('textbox', { name: /enter.*confirmation code/i })
         ).toBeInTheDocument()
       })
 
-      const otpInput = screen.getByRole('textbox', { name: /enter the confirmation code/i })
+      const otpInput = screen.getByRole('textbox', { name: /enter.*confirmation code/i })
       const confirmButton = screen.getByRole('button', { name: /confirm/i })
 
       await user.type(otpInput, TEST_OTP.valid)
@@ -200,17 +200,19 @@ describe('VerifyOtpForm', () => {
 
       await waitFor(() => {
         expect(
-          screen.getByRole('textbox', { name: /enter the confirmation code/i })
+          screen.getByRole('textbox', { name: /enter.*confirmation code/i })
         ).toBeInTheDocument()
       })
 
-      const otpInput = screen.getByRole('textbox', { name: /enter the confirmation code/i })
+      const otpInput = screen.getByRole('textbox', { name: /enter.*confirmation code/i })
 
       await user.click(otpInput)
       await user.tab()
 
       await waitFor(() => {
-        expect(screen.getByText(/please enter the confirmation code/i)).toBeInTheDocument()
+        const errorMessage = document.querySelector('.usa-error-message')
+        expect(errorMessage).toBeInTheDocument()
+        expect(errorMessage).toHaveTextContent(/enter.*6 digit confirmation code/i)
       })
     })
 
@@ -225,17 +227,17 @@ describe('VerifyOtpForm', () => {
 
       await waitFor(() => {
         expect(
-          screen.getByRole('textbox', { name: /enter the confirmation code/i })
+          screen.getByRole('textbox', { name: /enter.*confirmation code/i })
         ).toBeInTheDocument()
       })
 
-      const otpInput = screen.getByRole('textbox', { name: /enter the confirmation code/i })
+      const otpInput = screen.getByRole('textbox', { name: /enter.*confirmation code/i })
 
       await user.type(otpInput, '123')
       await user.tab()
 
       await waitFor(() => {
-        expect(screen.getByText(/code must be 6 characters/i)).toBeInTheDocument()
+        expect(screen.getByText(/enter a valid code.*6.*digits/i)).toBeInTheDocument()
       })
     })
   })
@@ -252,11 +254,11 @@ describe('VerifyOtpForm', () => {
 
       await waitFor(() => {
         expect(
-          screen.getByRole('textbox', { name: /enter the confirmation code/i })
+          screen.getByRole('textbox', { name: /enter.*confirmation code/i })
         ).toBeInTheDocument()
       })
 
-      const otpInput = screen.getByRole('textbox', { name: /enter the confirmation code/i })
+      const otpInput = screen.getByRole('textbox', { name: /enter.*confirmation code/i })
       const confirmButton = screen.getByRole('button', { name: /confirm/i })
 
       await user.type(otpInput, TEST_OTP.invalid)
@@ -279,11 +281,11 @@ describe('VerifyOtpForm', () => {
 
       await waitFor(() => {
         expect(
-          screen.getByRole('textbox', { name: /enter the confirmation code/i })
+          screen.getByRole('textbox', { name: /enter.*confirmation code/i })
         ).toBeInTheDocument()
       })
 
-      const otpInput = screen.getByRole('textbox', { name: /enter the confirmation code/i })
+      const otpInput = screen.getByRole('textbox', { name: /enter.*confirmation code/i })
       const confirmButton = screen.getByRole('button', { name: /confirm/i })
 
       await user.type(otpInput, TEST_OTP.expired)
@@ -412,14 +414,14 @@ describe('VerifyOtpForm', () => {
 
       await waitFor(() => {
         expect(
-          screen.getByRole('textbox', { name: /enter the confirmation code/i })
+          screen.getByRole('textbox', { name: /enter.*confirmation code/i })
         ).toBeInTheDocument()
       })
 
       const form = document.querySelector('form')
       expect(form).toBeInTheDocument()
 
-      const otpInput = screen.getByRole('textbox', { name: /enter the confirmation code/i })
+      const otpInput = screen.getByRole('textbox', { name: /enter.*confirmation code/i })
       expect(otpInput).toHaveAttribute('aria-required', 'true')
     })
 
@@ -434,11 +436,11 @@ describe('VerifyOtpForm', () => {
 
       await waitFor(() => {
         expect(
-          screen.getByRole('textbox', { name: /enter the confirmation code/i })
+          screen.getByRole('textbox', { name: /enter.*confirmation code/i })
         ).toBeInTheDocument()
       })
 
-      const otpInput = screen.getByRole('textbox', { name: /enter the confirmation code/i })
+      const otpInput = screen.getByRole('textbox', { name: /enter.*confirmation code/i })
       const confirmButton = screen.getByRole('button', { name: /confirm/i })
 
       await user.type(otpInput, TEST_OTP.invalid)
@@ -475,9 +477,7 @@ describe('VerifyOtpFormWrapper', () => {
     renderWithProviders(<VerifyOtpFormWrapper contactLink={TEST_CONTACT_LINK} />)
 
     await waitFor(() => {
-      expect(
-        screen.getByRole('textbox', { name: /enter the confirmation code/i })
-      ).toBeInTheDocument()
+      expect(screen.getByRole('textbox', { name: /enter.*confirmation code/i })).toBeInTheDocument()
     })
   })
 })
