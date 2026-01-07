@@ -72,11 +72,11 @@ EXPOSE 8080
 EXPOSE 8081
 
 # Copy .NET application
-COPY --from=dotnet-build /app/publish .
+COPY --chown=$APP_UID:$APP_UID --from=dotnet-build /app/publish .
 
 # Copy Next.js standalone output
-COPY --from=frontend-build /app/src/SEBT.Portal.Web/.next/standalone ./frontend/
-COPY --from=frontend-build /app/src/SEBT.Portal.Web/.next/static ./frontend/.next/static/
-COPY --from=frontend-build /app/src/SEBT.Portal.Web/public ./frontend/public/
+COPY --chown=$APP_UID:$APP_UID --from=frontend-build /app/src/SEBT.Portal.Web/.next/standalone ./frontend/
+COPY --chown=$APP_UID:$APP_UID --from=frontend-build /app/src/SEBT.Portal.Web/.next/static ./frontend/.next/static/
+COPY --chown=$APP_UID:$APP_UID --from=frontend-build /app/src/SEBT.Portal.Web/public ./frontend/public/
 
 ENTRYPOINT ["dotnet", "SEBT.Portal.Api.dll"]
