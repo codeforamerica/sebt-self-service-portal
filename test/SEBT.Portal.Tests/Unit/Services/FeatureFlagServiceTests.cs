@@ -2,12 +2,14 @@ using Microsoft.Extensions.Options;
 using NSubstitute;
 using SEBT.Portal.Core.AppSettings;
 using SEBT.Portal.Infrastructure.Services;
+using SEBT.Portal.Kernel;
 
 namespace SEBT.Portal.Tests.Unit.Services;
 
 public class FeatureFlagServiceTests
 {
     private readonly IOptions<FeatureFlagSettings> _options = Substitute.For<IOptions<FeatureFlagSettings>>();
+    private readonly IStatePluginRegistry _pluginRegistry = Substitute.For<IStatePluginRegistry>();
     private readonly FeatureFlagService _featureFlagService;
 
     public FeatureFlagServiceTests()
@@ -22,7 +24,8 @@ public class FeatureFlagServiceTests
             }
         };
         _options.Value.Returns(settings);
-        _featureFlagService = new FeatureFlagService(_options);
+        _pluginRegistry.GetActivePlugin().Returns((SEBT.Portal.StateConnector.IStatePlugin?)null);
+        _featureFlagService = new FeatureFlagService(_options, _pluginRegistry);
     }
 
     [Fact]
@@ -79,7 +82,9 @@ public class FeatureFlagServiceTests
         };
         var emptyOptions = Substitute.For<IOptions<FeatureFlagSettings>>();
         emptyOptions.Value.Returns(emptySettings);
-        var service = new FeatureFlagService(emptyOptions);
+        var emptyPluginRegistry = Substitute.For<IStatePluginRegistry>();
+        emptyPluginRegistry.GetActivePlugin().Returns((SEBT.Portal.StateConnector.IStatePlugin?)null);
+        var service = new FeatureFlagService(emptyOptions, emptyPluginRegistry);
 
         // Act
         var flags = service.GetFeatureFlags();

@@ -4,6 +4,8 @@
         <TargetFramework>net8.0</TargetFramework>
         <ImplicitUsings>enable</ImplicitUsings>
         <Nullable>enable</Nullable>
+        <!-- Suppress NU1603 warnings for transitive StateConnector dependencies - version 9.0.0 is compatible -->
+        <NoWarn>$(NoWarn);NU1603</NoWarn>
     </PropertyGroup>
 
     <ItemGroup>

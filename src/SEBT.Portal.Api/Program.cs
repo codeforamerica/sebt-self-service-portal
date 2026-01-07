@@ -2,12 +2,15 @@ using System.Text;
 using System.Threading.RateLimiting;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.RateLimiting;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
 using Serilog;
 using SEBT.Portal.Api.Middleware;
 using SEBT.Portal.Core.AppSettings;
 using SEBT.Portal.Infrastructure.Services;
+using SEBT.Portal.Infrastructure.States;
+using SEBT.Portal.Kernel;
 using SEBT.Portal.UseCases;
 using SEBT.Portal.Infrastructure;
 
@@ -78,12 +81,55 @@ builder.Services.AddSwaggerGen(options =>
 
 // Adds use cases (i.e., query and command handlers) for portal business logic
 builder.Services.AddUseCases();
-builder.Services.AddPortalInfrastructureServices();
-builder.Services.AddPortalDbContext(builder.Configuration);
 builder.Services.AddPortalInfrastructureRepositories();
+builder.Services.AddPortalDbContext(builder.Configuration);
 builder.Services.AddPortalInfrastructureAppSettings();
 
-// Configure JWT Authentication
+// Discover and configure state plugins BEFORE building the app
+var loggerFactory = LoggerFactory.Create(b => b.AddSerilog());
+var pluginRegistryLogger = loggerFactory.CreateLogger<StatePluginRegistry>();
+var pluginRegistry = new StatePluginRegistry(pluginRegistryLogger);
+var activePlugin = pluginRegistry.GetActivePlugin();
+
+if (activePlugin != null)
+{
+    Log.Information("Loading state plugin: {StateCode} ({StateName}) v{Version}",
+        activePlugin.StateCode, activePlugin.StateName, activePlugin.Version);
+
+    try
+    {
+        activePlugin.RegisterConfiguration(builder.Services, builder.Configuration);
+
+        activePlugin.RegisterServices(builder.Services);
+
+        var (isValid, errorMessage) = activePlugin.ValidateConfiguration(builder.Configuration);
+        if (!isValid)
+        {
+            var errorMsg = $"State plugin configuration validation failed: {errorMessage}";
+            Log.Warning(errorMsg);
+
+            // In production, fail fast on validation errors
+            if (!builder.Environment.IsDevelopment())
+            {
+                throw new InvalidOperationException(errorMsg);
+            }
+        }
+    }
+    catch (Exception ex)
+    {
+        Log.Fatal(ex, "Failed to configure state plugin: {StateCode}", activePlugin.StateCode);
+        throw;
+    }
+}
+else if (!string.IsNullOrEmpty(state))
+{
+    Log.Warning("No plugin found for state: {State}. Using configuration files only.", state);
+}
+
+builder.Services.AddSingleton<IStatePluginRegistry>(pluginRegistry);
+
+builder.Services.AddPortalInfrastructureServices();
+
 builder.Services.AddAuthentication(options =>
 {
     options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;

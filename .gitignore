@@ -431,3 +431,8 @@ CLAUDE.md
 
 # output files
 output
+
+# Plugin DLLs (build artifacts - should be built from source or deployed from NuGet packages)
+**/plugins/*.dll
+**/plugins/*.pdb
+plugins/

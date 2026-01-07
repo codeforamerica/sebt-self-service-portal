@@ -23,7 +23,9 @@ public class FeaturesController : ControllerBase
 
     /// <summary>
     /// Gets the current feature flag states.
-    /// Returns only flags that are explicitly configured in appsettings.{State}.json.
+    /// Returns flags from the active state plugin (defaults) merged with configuration file settings (appsettings.{State}.json).
+    /// Configuration file values take precedence over plugin defaults.
+    /// Only flags that are explicitly configured (enabled or disabled) are returned.
     /// Unknown flags are not included in the response.
     /// </summary>
     /// <returns>An OK result with feature flag states as JSON.</returns>

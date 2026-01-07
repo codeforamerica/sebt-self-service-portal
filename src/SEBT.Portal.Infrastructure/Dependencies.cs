@@ -7,6 +7,7 @@ using SEBT.Portal.Core.Services;
 using SEBT.Portal.Infrastructure.Data;
 using SEBT.Portal.Infrastructure.Repositories;
 using SEBT.Portal.Infrastructure.Services;
+using SEBT.Portal.Infrastructure.States;
 using SEBT.Portal.Kernel;
 
 namespace SEBT.Portal.Infrastructure;
@@ -15,6 +16,9 @@ public static class Dependencies
 {
     public static IServiceCollection AddPortalInfrastructureServices(this IServiceCollection services)
     {
+        // Note: State Plugin Registry is registered manually in Program.cs before this method is called
+        // to allow plugin discovery and service registration before the service provider is built
+
         // Otp Services
         services.AddTransient<IOtpSenderService, EmailOtpSenderService>();
         services.AddTransient<IOtpGeneratorService, OtpGeneratorService>();
