@@ -20,7 +20,27 @@
 **/npm-debug.log
 **/obj
 **/dist
+**/.next
 **/secrets.dev.yaml
 **/values.dev.yaml
+
+# Test files (not needed in production build)
+**/*.test.ts
+**/*.test.tsx
+**/*.spec.ts
+**/*.spec.tsx
+**/test-setup.ts
+**/e2e
+**/test
+**/__tests__
+**/__mocks__
+**/mocks
+**/*.stories.tsx
+**/coverage
+**/.nyc_output
+
+# Documentation
 LICENSE
 README.md
+**/docs
+**/*.md
