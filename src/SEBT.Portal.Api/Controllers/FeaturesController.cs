@@ -1,5 +1,5 @@
 using Microsoft.AspNetCore.Mvc;
-using SEBT.Portal.Kernel;
+using SEBT.Portal.Infrastructure.Services;
 
 namespace SEBT.Portal.Api.Controllers;
 
@@ -10,15 +10,15 @@ namespace SEBT.Portal.Api.Controllers;
 [Route("api/features")]
 public class FeaturesController : ControllerBase
 {
-    private readonly IFeatureFlagService _featureFlagService;
+    private readonly FeatureFlagQueryService _featureFlagQueryService;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="FeaturesController"/> class.
     /// </summary>
-    /// <param name="featureFlagService">The feature flag service.</param>
-    public FeaturesController(IFeatureFlagService featureFlagService)
+    /// <param name="featureFlagQueryService">The feature flag query service.</param>
+    public FeaturesController(FeatureFlagQueryService featureFlagQueryService)
     {
-        _featureFlagService = featureFlagService;
+        _featureFlagQueryService = featureFlagQueryService;
     }
 
     /// <summary>
@@ -27,15 +27,29 @@ public class FeaturesController : ControllerBase
     /// Flags are merged in priority order with state-specific JSON having the highest priority.
     /// Unknown flags are not included in the response.
     /// </summary>
+    /// <param name="cancellationToken">A token to monitor for cancellation requests.</param>
     /// <returns>An OK result with feature flag states as JSON.</returns>
     /// <response code="200">Returns the current feature flag states.</response>
+    /// <response code="500">An error occurred while retrieving feature flags.</response>
     [HttpGet]
     [Produces("application/json")]
     [ProducesResponseType(typeof(Dictionary<string, bool>), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status500InternalServerError)]
     [Tags("Features")]
-    public async Task<IActionResult> GetFeatureFlags()
+    public async Task<IActionResult> GetFeatureFlags(CancellationToken cancellationToken = default)
     {
-        var flags = await _featureFlagService.GetFeatureFlagsAsync();
-        return Ok(flags);
+        try
+        {
+            var flags = await _featureFlagQueryService.GetFeatureFlagsAsync(cancellationToken);
+            return Ok(flags);
+        }
+        catch (OperationCanceledException)
+        {
+            return StatusCode(StatusCodes.Status499ClientClosedRequest, new { error = "Request was cancelled" });
+        }
+        catch (Exception)
+        {
+            return StatusCode(StatusCodes.Status500InternalServerError, new { error = "Failed to retrieve feature flags" });
+        }
     }
 }

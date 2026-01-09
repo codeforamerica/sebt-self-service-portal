@@ -1,5 +1,6 @@
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using Microsoft.FeatureManagement;
 using NSubstitute;
@@ -11,7 +12,7 @@ namespace SEBT.Portal.Tests.Unit.Services;
 public class FeatureFlagServiceTests
 {
     private readonly IFeatureManager _featureManager = Substitute.For<IFeatureManager>();
-    private readonly ILogger<FeatureFlagService> _logger = Substitute.For<ILogger<FeatureFlagService>>();
+    private readonly ILogger<FeatureFlagQueryService> _logger = NullLogger<FeatureFlagQueryService>.Instance;
 
     private IConfiguration CreateEmptyConfiguration()
     {
@@ -31,7 +32,7 @@ public class FeatureFlagServiceTests
         var emptyConfig = CreateEmptyConfiguration();
         var defaultFlags = new DefaultFeatureFlagSettings();
         var defaultFlagsOptions = Options.Create(defaultFlags);
-        var service = new FeatureFlagService(_featureManager, emptyConfig, defaultFlagsOptions, _logger);
+        var service = new FeatureFlagQueryService(_featureManager, emptyConfig, defaultFlagsOptions, _logger);
 
         // Act
         var result = await service.GetFeatureFlagsAsync();
@@ -53,7 +54,7 @@ public class FeatureFlagServiceTests
         var emptyConfig = CreateEmptyConfiguration();
         var defaultFlags = new DefaultFeatureFlagSettings();
         var defaultFlagsOptions = Options.Create(defaultFlags);
-        var service = new FeatureFlagService(_featureManager, emptyConfig, defaultFlagsOptions, _logger);
+        var service = new FeatureFlagQueryService(_featureManager, emptyConfig, defaultFlagsOptions, _logger);
 
         // Act
         var result = await service.GetFeatureFlagsAsync();
@@ -74,7 +75,7 @@ public class FeatureFlagServiceTests
         // Empty default flags - no flags configured anywhere
         var emptyDefaultFlags = new DefaultFeatureFlagSettings { Flags = new Dictionary<string, bool>() };
         var emptyDefaultFlagsOptions = Options.Create(emptyDefaultFlags);
-        var service = new FeatureFlagService(_featureManager, emptyConfig, emptyDefaultFlagsOptions, _logger);
+        var service = new FeatureFlagQueryService(_featureManager, emptyConfig, emptyDefaultFlagsOptions, _logger);
 
         // Act
         var result = await service.GetFeatureFlagsAsync();
@@ -98,7 +99,7 @@ public class FeatureFlagServiceTests
         var emptyConfig = CreateEmptyConfiguration();
         var defaultFlags = new DefaultFeatureFlagSettings();
         var defaultFlagsOptions = Options.Create(defaultFlags);
-        var service = new FeatureFlagService(_featureManager, emptyConfig, defaultFlagsOptions, _logger);
+        var service = new FeatureFlagQueryService(_featureManager, emptyConfig, defaultFlagsOptions, _logger);
 
         // Act
         var result = await service.GetFeatureFlagsAsync();
@@ -122,7 +123,7 @@ public class FeatureFlagServiceTests
         var emptyConfig = CreateEmptyConfiguration();
         var defaultFlags = new DefaultFeatureFlagSettings();
         var defaultFlagsOptions = Options.Create(defaultFlags);
-        var service = new FeatureFlagService(_featureManager, emptyConfig, defaultFlagsOptions, _logger);
+        var service = new FeatureFlagQueryService(_featureManager, emptyConfig, defaultFlagsOptions, _logger);
 
         // Act
         var result = await service.GetFeatureFlagsAsync();
