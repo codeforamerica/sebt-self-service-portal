@@ -5,6 +5,7 @@ using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
 using Serilog;
+using Microsoft.FeatureManagement;
 using SEBT.Portal.Api.Extensions;
 using SEBT.Portal.Api.Middleware;
 using SEBT.Portal.Core.AppSettings;
@@ -17,6 +18,14 @@ using SEBT.Portal.UseCases;
 using SEBT.Portal.Infrastructure;
 
 var builder = WebApplication.CreateBuilder(args);
+
+// Load state-specific configuration
+var state = Environment.GetEnvironmentVariable("STATE") ?? Environment.GetEnvironmentVariable("NEXT_PUBLIC_STATE");
+if (!string.IsNullOrEmpty(state))
+{
+    var stateConfigFile = $"appsettings.{state.ToLowerInvariant()}.json";
+    builder.Configuration.AddJsonFile(stateConfigFile, optional: true, reloadOnChange: true);
+}
 
 var jwtSecretKey = Environment.GetEnvironmentVariable("JWT_SECRET_KEY");
 if (!string.IsNullOrEmpty(jwtSecretKey))
@@ -73,6 +82,9 @@ builder.Services.AddSwaggerGen(options =>
         }
     });
 });
+
+// Add Feature Management
+builder.Services.AddFeatureManagement(builder.Configuration.GetSection("FeatureManagement"));
 
 // Adds use cases (i.e., query and command handlers) for portal business logic
 builder.Services.AddUseCases();

@@ -12,7 +12,7 @@ namespace SEBT.Portal.Infrastructure;
 
 public static class Dependencies
 {
-    public static IServiceCollection AddPortalInfrastructureServices(this IServiceCollection services)
+    public static IServiceCollection AddPortalInfrastructureServices(this IServiceCollection services, IConfiguration? configuration = null)
     {
         // Otp Services
         services.AddTransient<IOtpSenderService, EmailOtpSenderService>();
@@ -21,6 +21,9 @@ public static class Dependencies
 
         // JWT Services
         services.AddTransient<IJwtTokenService, JwtTokenService>();
+
+        // Feature Flag Services
+        services.AddSingleton<Kernel.IFeatureFlagService, Services.FeatureFlagService>();
 
         return services;
     }
@@ -81,6 +84,8 @@ public static class Dependencies
             .BindConfiguration(OtpRateLimitSettings.SectionName);
         services.AddOptionsWithValidateOnStart<JwtSettings>()
             .BindConfiguration(JwtSettings.SectionName);
+        services.AddOptionsWithValidateOnStart<Core.AppSettings.DefaultFeatureFlagSettings>()
+            .BindConfiguration(Core.AppSettings.DefaultFeatureFlagSettings.SectionName);
 
         return services;
     }
