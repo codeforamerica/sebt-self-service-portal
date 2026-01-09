@@ -30,7 +30,9 @@ public class FeaturesController : ControllerBase
     /// <returns>An OK result with feature flag states as JSON.</returns>
     /// <response code="200">Returns the current feature flag states.</response>
     [HttpGet]
+    [Produces("application/json")]
     [ProducesResponseType(typeof(Dictionary<string, bool>), StatusCodes.Status200OK)]
+    [Tags("Features")]
     public async Task<IActionResult> GetFeatureFlags()
     {
         var flags = await _featureFlagService.GetFeatureFlagsAsync();
