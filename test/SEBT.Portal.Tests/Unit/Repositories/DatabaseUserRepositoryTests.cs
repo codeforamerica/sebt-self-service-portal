@@ -372,10 +372,11 @@ public class DatabaseUserRepositoryTests : IClassFixture<SqlServerTestFixture>
         await context.SaveChangesAsync();
 
         // Act
-        var result = await repository.GetOrCreateUserAsync(uniqueEmail, CancellationToken.None);
+        var (result, isNewUser) = await repository.GetOrCreateUserAsync(uniqueEmail, CancellationToken.None);
 
         // Assert
         Assert.NotNull(result);
+        Assert.False(isNewUser);
         Assert.Equal(uniqueEmail, result.Email);
         Assert.Equal(IdProofingStatus.Completed, result.IdProofingStatus);
         Assert.Equal(entity.CreatedAt, result.CreatedAt);
@@ -395,10 +396,11 @@ public class DatabaseUserRepositoryTests : IClassFixture<SqlServerTestFixture>
         var uniqueEmail = $"newuser-{Guid.NewGuid()}@example.com";
 
         // Act
-        var result = await repository.GetOrCreateUserAsync(uniqueEmail, CancellationToken.None);
+        var (result, isNewUser) = await repository.GetOrCreateUserAsync(uniqueEmail, CancellationToken.None);
 
         // Assert
         Assert.NotNull(result);
+        Assert.True(isNewUser);
         Assert.Equal(uniqueEmail, result.Email);
         Assert.Equal(IdProofingStatus.NotStarted, result.IdProofingStatus);
         Assert.NotEqual(default(DateTime), result.CreatedAt);
@@ -420,10 +422,11 @@ public class DatabaseUserRepositoryTests : IClassFixture<SqlServerTestFixture>
         var mixedCaseEmail = $"MIXED-{uniqueId}@CASE.COM";
 
         // Act
-        var result = await repository.GetOrCreateUserAsync(mixedCaseEmail);
+        var (result, isNewUser) = await repository.GetOrCreateUserAsync(mixedCaseEmail);
 
         // Assert
         Assert.NotNull(result);
+        Assert.True(isNewUser);
         var expectedEmail = $"mixed-{uniqueId}@case.com";
         Assert.Equal(expectedEmail, result.Email);
 

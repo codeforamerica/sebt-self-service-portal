@@ -36,8 +36,8 @@ public interface IUserRepository
     /// </summary>
     /// <param name="email">The email address of the user.</param>
     /// <param name="cancellationToken">A token to monitor for cancellation requests.</param>
-    /// <returns>The existing or newly created user.</returns>
-    Task<User> GetOrCreateUserAsync(string email, CancellationToken cancellationToken = default);
+    /// <returns>A tuple containing the existing or newly created user and a boolean indicating if the user was newly created.</returns>
+    Task<(User user, bool isNewUser)> GetOrCreateUserAsync(string email, CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Retrieves a user by their ID proofing session ID.

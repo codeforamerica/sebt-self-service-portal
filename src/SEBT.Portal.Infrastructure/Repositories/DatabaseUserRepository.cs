@@ -77,7 +77,7 @@ public class DatabaseUserRepository(PortalDbContext dbContext) : IUserRepository
         await dbContext.SaveChangesAsync(cancellationToken);
     }
 
-    public async Task<User> GetOrCreateUserAsync(string email, CancellationToken cancellationToken = default)
+    public async Task<(User user, bool isNewUser)> GetOrCreateUserAsync(string email, CancellationToken cancellationToken = default)
     {
         if (string.IsNullOrWhiteSpace(email))
         {
@@ -90,7 +90,7 @@ public class DatabaseUserRepository(PortalDbContext dbContext) : IUserRepository
 
         if (entity != null)
         {
-            return MapToDomainModel(entity);
+            return (MapToDomainModel(entity), false);
         }
 
         // Create new user with normalized email
@@ -103,9 +103,34 @@ public class DatabaseUserRepository(PortalDbContext dbContext) : IUserRepository
         };
 
         dbContext.Users.Add(newEntity);
-        await dbContext.SaveChangesAsync(cancellationToken);
 
-        return MapToDomainModel(newEntity);
+        try
+        {
+            await dbContext.SaveChangesAsync(cancellationToken);
+        }
+        catch (DbUpdateException ex)
+        {
+            // Handle race condition: if another request created the user between our check and save,
+            // retry by fetching the existing user
+            if (ex.InnerException?.Message.Contains("PRIMARY KEY") == true ||
+                ex.InnerException?.Message.Contains("UNIQUE") == true ||
+                ex.InnerException?.Message.Contains("duplicate key") == true)
+            {
+                // User was created by another request, fetch it
+                entity = await dbContext.Users
+                    .FirstOrDefaultAsync(u => u.Email == normalizedEmail, cancellationToken);
+
+                if (entity != null)
+                {
+                    return (MapToDomainModel(entity), false);
+                }
+            }
+
+            // Re-throw if it's not a duplicate key violation
+            throw;
+        }
+
+        return (MapToDomainModel(newEntity), true);
     }
 
     public async Task<User?> GetUserBySessionIdAsync(string sessionId, CancellationToken cancellationToken = default)

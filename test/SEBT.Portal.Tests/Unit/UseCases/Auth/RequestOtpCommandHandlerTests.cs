@@ -5,7 +5,7 @@ using SEBT.Portal.Kernel.Results;
 using SEBT.Portal.UseCases.Auth;
 using NSubstitute;
 using SEBT.Portal.Core.Repositories;
-using Sebt.Portal.Core.Models.Auth;
+using SEBT.Portal.Core.Models.Auth;
 using NSubstitute.ReceivedExtensions;
 
 namespace SEBT.Portal.Tests.Unit.UseCases.Auth;

@@ -1,6 +1,6 @@
 using System.Security.Cryptography;
 
-namespace Sebt.Portal.Core.Models.Auth
+namespace SEBT.Portal.Core.Models.Auth
 {
     /// <summary>
     /// Represents a one-time password (OTP) code used for authentication purposes.
