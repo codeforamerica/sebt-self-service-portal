@@ -53,18 +53,38 @@ public class DatabaseUserRepository(PortalDbContext dbContext) : IUserRepository
             throw new ArgumentNullException(nameof(user));
         }
 
+        if (user.Id <= 0)
+        {
+            throw new ArgumentException("User Id must be greater than zero.", nameof(user));
+        }
+
         if (string.IsNullOrWhiteSpace(user.Email))
         {
             throw new ArgumentException("Email cannot be null or empty.", nameof(user));
         }
 
-        var normalizedEmail = NormalizeEmail(user.Email);
         var entity = await dbContext.Users
-            .FirstOrDefaultAsync(u => u.Email == normalizedEmail, cancellationToken);
+            .FirstOrDefaultAsync(u => u.Id == user.Id, cancellationToken);
 
         if (entity == null)
         {
-            throw new InvalidOperationException($"User with email {user.Email} not found.");
+            throw new InvalidOperationException($"User with Id {user.Id} not found.");
+        }
+
+        var normalizedEmail = NormalizeEmail(user.Email);
+
+        // If email is being changed, check that the new email doesn't already exist on another User
+        if (entity.Email != normalizedEmail)
+        {
+            var existingUserWithEmail = await dbContext.Users
+                .FirstOrDefaultAsync(u => u.Email == normalizedEmail && u.Id != user.Id, cancellationToken);
+
+            if (existingUserWithEmail != null)
+            {
+                throw new InvalidOperationException($"A user with email {user.Email} already exists.");
+            }
+
+            entity.Email = normalizedEmail;
         }
 
         // Update properties
@@ -164,6 +184,7 @@ public class DatabaseUserRepository(PortalDbContext dbContext) : IUserRepository
     {
         return new User
         {
+            Id = entity.Id,
             Email = entity.Email,
             IdProofingStatus = (IdProofingStatus)entity.IdProofingStatus,
             IdProofingSessionId = entity.IdProofingSessionId,
@@ -180,6 +201,7 @@ public class DatabaseUserRepository(PortalDbContext dbContext) : IUserRepository
     {
         return new UserEntity
         {
+            Id = user.Id, // Will be 0 for new users, set by database
             Email = user.Email, // Will be normalized in calling method
             IdProofingStatus = (int)user.IdProofingStatus,
             IdProofingSessionId = user.IdProofingSessionId,

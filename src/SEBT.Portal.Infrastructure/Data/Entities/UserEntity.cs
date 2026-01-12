@@ -6,7 +6,12 @@ namespace SEBT.Portal.Infrastructure.Data.Entities;
 public class UserEntity
 {
     /// <summary>
-    /// The user's email address, used as the primary key.
+    /// The unique identifier for the user (primary key).
+    /// </summary>
+    public int Id { get; set; }
+
+    /// <summary>
+    /// The user's email address, used as a unique identifier.
     /// </summary>
     public string Email { get; set; } = string.Empty;
 
@@ -41,7 +46,7 @@ public class UserEntity
     public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
 
     /// <summary>
-    /// Indicates whether the user's benefits are co-loaded onto SNAP/TANF EBT card.
+    /// Indicates whether the user's record was co-loaded from an external system.
     /// This value is populated from external systems via batch processes or database queries.
     /// </summary>
     public bool IsCoLoaded { get; set; }

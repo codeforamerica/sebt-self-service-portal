@@ -3,6 +3,7 @@ using SEBT.Portal.Core.Models.Auth;
 using SEBT.Portal.Infrastructure.Data;
 using SEBT.Portal.Infrastructure.Data.Entities;
 using SEBT.Portal.Infrastructure.Repositories;
+using SEBT.Portal.Tests.Helpers;
 
 namespace SEBT.Portal.Tests.Unit.Repositories;
 
@@ -28,13 +29,11 @@ public class DatabaseUserRepositoryTests : IClassFixture<SqlServerTestFixture>
         using var context = CreateContext();
         var repository = new DatabaseUserRepository(context);
 
-        var entity = new UserEntity
+        var entity = UserFactory.CreateUserEntity(e =>
         {
-            Email = $"test-{Guid.NewGuid()}@example.com",
-            IdProofingStatus = (int)IdProofingStatus.Completed,
-            CreatedAt = DateTime.UtcNow,
-            UpdatedAt = DateTime.UtcNow
-        };
+            e.Email = $"test-{Guid.NewGuid()}@example.com";
+            e.IdProofingStatus = (int)IdProofingStatus.Completed;
+        });
         context.Users.Add(entity);
         await context.SaveChangesAsync();
 
@@ -69,13 +68,11 @@ public class DatabaseUserRepositoryTests : IClassFixture<SqlServerTestFixture>
         var repository = new DatabaseUserRepository(context);
 
         var testEmail = $"test-{Guid.NewGuid()}@example.com";
-        var entity = new UserEntity
+        var entity = UserFactory.CreateUserEntity(e =>
         {
-            Email = testEmail.ToLowerInvariant(), // lowercase
-            IdProofingStatus = (int)IdProofingStatus.NotStarted,
-            CreatedAt = DateTime.UtcNow,
-            UpdatedAt = DateTime.UtcNow
-        };
+            e.Email = testEmail.ToLowerInvariant(); // lowercase
+            e.IdProofingStatus = (int)IdProofingStatus.NotStarted;
+        });
         context.Users.Add(entity);
         await context.SaveChangesAsync();
 
@@ -145,9 +142,10 @@ public class DatabaseUserRepositoryTests : IClassFixture<SqlServerTestFixture>
         await repository.CreateUserAsync(user, CancellationToken.None);
 
         // Assert
-        var stored = await context.Users.FirstOrDefaultAsync(u => u.Email == uniqueEmail);
+        var normalizedEmail = uniqueEmail.ToLowerInvariant();
+        var stored = await context.Users.FirstOrDefaultAsync(u => u.Email == normalizedEmail);
         Assert.NotNull(stored);
-        Assert.Equal(uniqueEmail, stored!.Email);
+        Assert.Equal(normalizedEmail, stored!.Email);
         Assert.Equal((int)IdProofingStatus.InProgress, stored.IdProofingStatus);
         Assert.Equal("session-123", stored.IdProofingSessionId);
     }
@@ -160,13 +158,10 @@ public class DatabaseUserRepositoryTests : IClassFixture<SqlServerTestFixture>
         var repository = new DatabaseUserRepository(context);
 
         var uniqueId = Guid.NewGuid();
-        var user = new User
+        var user = UserFactory.CreateUserWithEmail($"USER-{uniqueId}@EXAMPLE.COM", u =>
         {
-            Email = $"USER-{uniqueId}@EXAMPLE.COM",
-            IdProofingStatus = IdProofingStatus.NotStarted,
-            CreatedAt = DateTime.UtcNow,
-            UpdatedAt = DateTime.UtcNow
-        };
+            u.IdProofingStatus = IdProofingStatus.NotStarted;
+        });
 
         // Act
         await repository.CreateUserAsync(user, CancellationToken.None);
@@ -196,13 +191,10 @@ public class DatabaseUserRepositoryTests : IClassFixture<SqlServerTestFixture>
         using var context = CreateContext();
         var repository = new DatabaseUserRepository(context);
 
-        var user = new User
+        var user = UserFactory.CreateUserWithEmail("", u =>
         {
-            Email = "",
-            IdProofingStatus = IdProofingStatus.NotStarted,
-            CreatedAt = DateTime.UtcNow,
-            UpdatedAt = DateTime.UtcNow
-        };
+            u.IdProofingStatus = IdProofingStatus.NotStarted;
+        });
 
         // Act & Assert
         await Assert.ThrowsAsync<ArgumentException>(() => repository.CreateUserAsync(user, CancellationToken.None));
@@ -216,26 +208,26 @@ public class DatabaseUserRepositoryTests : IClassFixture<SqlServerTestFixture>
         var repository = new DatabaseUserRepository(context);
 
         var uniqueEmail = $"update-{Guid.NewGuid()}@example.com";
-        var entity = new UserEntity
+        var entity = UserFactory.CreateUserEntity(e =>
         {
-            Email = uniqueEmail,
-            IdProofingStatus = (int)IdProofingStatus.NotStarted,
-            CreatedAt = DateTime.UtcNow,
-            UpdatedAt = DateTime.UtcNow
-        };
+            e.Email = uniqueEmail;
+            e.IdProofingStatus = (int)IdProofingStatus.NotStarted;
+        });
         context.Users.Add(entity);
         await context.SaveChangesAsync();
 
-        var user = new User
+        var user = UserFactory.CreateUserWithEmail(uniqueEmail, u =>
         {
-            Email = uniqueEmail,
-            IdProofingStatus = IdProofingStatus.Completed,
-            IdProofingSessionId = "new-session-456",
-            IdProofingCompletedAt = DateTime.UtcNow,
-            IdProofingExpiresAt = DateTime.UtcNow.AddYears(1),
-            CreatedAt = entity.CreatedAt,
-            UpdatedAt = DateTime.UtcNow
-        };
+            u.IdProofingStatus = IdProofingStatus.Completed;
+            u.IdProofingSessionId = "new-session-456";
+            u.IdProofingCompletedAt = DateTime.UtcNow;
+            u.IdProofingExpiresAt = DateTime.UtcNow.AddYears(1);
+        });
+        // Set init-only properties using reflection
+        var idProperty = typeof(User).GetProperty(nameof(User.Id));
+        var createdAtProperty = typeof(User).GetProperty(nameof(User.CreatedAt));
+        idProperty?.SetValue(user, entity.Id);
+        createdAtProperty?.SetValue(user, entity.CreatedAt);
 
         // Act
         await repository.UpdateUserAsync(user, CancellationToken.None);
@@ -258,25 +250,27 @@ public class DatabaseUserRepositoryTests : IClassFixture<SqlServerTestFixture>
 
         var uniqueEmail = $"timestamp-{Guid.NewGuid()}@example.com";
         var originalTime = DateTime.UtcNow.AddMinutes(-5);
-        var entity = new UserEntity
+        var entity = UserFactory.CreateUserEntity(e =>
         {
-            Email = uniqueEmail,
-            IdProofingStatus = (int)IdProofingStatus.NotStarted,
-            CreatedAt = originalTime,
-            UpdatedAt = originalTime
-        };
+            e.Email = uniqueEmail;
+            e.IdProofingStatus = (int)IdProofingStatus.NotStarted;
+            e.CreatedAt = originalTime;
+            e.UpdatedAt = originalTime;
+        });
         context.Users.Add(entity);
         await context.SaveChangesAsync();
 
         await Task.Delay(10); // Small delay to ensure timestamp difference
 
-        var user = new User
+        var user = UserFactory.CreateUserWithEmail(uniqueEmail, u =>
         {
-            Email = uniqueEmail,
-            IdProofingStatus = IdProofingStatus.InProgress,
-            CreatedAt = originalTime,
-            UpdatedAt = DateTime.UtcNow
-        };
+            u.IdProofingStatus = IdProofingStatus.InProgress;
+        });
+        // Set init-only properties using reflection
+        var idProperty = typeof(User).GetProperty(nameof(User.Id));
+        var createdAtProperty = typeof(User).GetProperty(nameof(User.CreatedAt));
+        idProperty?.SetValue(user, entity.Id);
+        createdAtProperty?.SetValue(user, originalTime);
 
         // Act
         await repository.UpdateUserAsync(user, CancellationToken.None);
@@ -294,13 +288,13 @@ public class DatabaseUserRepositoryTests : IClassFixture<SqlServerTestFixture>
         using var context = CreateContext();
         var repository = new DatabaseUserRepository(context);
 
-        var user = new User
+        var user = UserFactory.CreateUserWithEmail("nonexistent@example.com", u =>
         {
-            Email = "nonexistent@example.com",
-            IdProofingStatus = IdProofingStatus.Completed,
-            CreatedAt = DateTime.UtcNow,
-            UpdatedAt = DateTime.UtcNow
-        };
+            u.IdProofingStatus = IdProofingStatus.Completed;
+        });
+        // Set Id to a non-existent value
+        var idProperty = typeof(User).GetProperty(nameof(User.Id));
+        idProperty?.SetValue(user, 99999);
 
         // Act & Assert
         await Assert.ThrowsAsync<InvalidOperationException>(() => repository.UpdateUserAsync(user, CancellationToken.None));
@@ -326,23 +320,23 @@ public class DatabaseUserRepositoryTests : IClassFixture<SqlServerTestFixture>
 
         var uniqueId = Guid.NewGuid();
         var baseEmail = $"case-{uniqueId}@example.com";
-        var entity = new UserEntity
+        var entity = UserFactory.CreateUserEntity(e =>
         {
-            Email = baseEmail,
-            IdProofingStatus = (int)IdProofingStatus.NotStarted,
-            CreatedAt = DateTime.UtcNow,
-            UpdatedAt = DateTime.UtcNow
-        };
+            e.Email = baseEmail;
+            e.IdProofingStatus = (int)IdProofingStatus.NotStarted;
+        });
         context.Users.Add(entity);
         await context.SaveChangesAsync();
 
-        var user = new User
+        var user = UserFactory.CreateUserWithEmail(baseEmail.ToUpperInvariant(), u =>
         {
-            Email = baseEmail.ToUpperInvariant(), // Different casing
-            IdProofingStatus = IdProofingStatus.Completed,
-            CreatedAt = entity.CreatedAt,
-            UpdatedAt = DateTime.UtcNow
-        };
+            u.IdProofingStatus = IdProofingStatus.Completed;
+        });
+        // Set init-only properties using reflection
+        var idProperty = typeof(User).GetProperty(nameof(User.Id));
+        var createdAtProperty = typeof(User).GetProperty(nameof(User.CreatedAt));
+        idProperty?.SetValue(user, entity.Id);
+        createdAtProperty?.SetValue(user, entity.CreatedAt);
 
         // Act
         await repository.UpdateUserAsync(user, CancellationToken.None);
@@ -354,6 +348,81 @@ public class DatabaseUserRepositoryTests : IClassFixture<SqlServerTestFixture>
     }
 
     [Fact]
+    public async Task UpdateUserAsync_ShouldUpdateEmail()
+    {
+        // Arrange
+        using var context = CreateContext();
+        var repository = new DatabaseUserRepository(context);
+
+        var originalEmail = $"original-{Guid.NewGuid()}@example.com";
+        var newEmail = $"new-{Guid.NewGuid()}@example.com";
+        var entity = UserFactory.CreateUserEntity(e =>
+        {
+            e.Email = originalEmail;
+            e.IdProofingStatus = (int)IdProofingStatus.NotStarted;
+        });
+        context.Users.Add(entity);
+        await context.SaveChangesAsync();
+
+        var user = UserFactory.CreateUserWithEmail(newEmail, u =>
+        {
+            u.IdProofingStatus = IdProofingStatus.Completed;
+        });
+        // Set init-only properties using reflection
+        var idProperty = typeof(User).GetProperty(nameof(User.Id));
+        var createdAtProperty = typeof(User).GetProperty(nameof(User.CreatedAt));
+        idProperty?.SetValue(user, entity.Id);
+        createdAtProperty?.SetValue(user, entity.CreatedAt);
+
+        // Act
+        await repository.UpdateUserAsync(user, CancellationToken.None);
+
+        // Assert
+        var updated = await context.Users.FirstOrDefaultAsync(u => u.Id == entity.Id);
+        Assert.NotNull(updated);
+        Assert.Equal(newEmail.ToLowerInvariant(), updated!.Email);
+        Assert.Equal((int)IdProofingStatus.Completed, updated.IdProofingStatus);
+    }
+
+    [Fact]
+    public async Task UpdateUserAsync_WhenEmailAlreadyExists_ShouldThrowInvalidOperationException()
+    {
+        // Arrange
+        using var context = CreateContext();
+        var repository = new DatabaseUserRepository(context);
+
+        var existingEmail = $"existing-{Guid.NewGuid()}@example.com";
+        var entity1 = UserFactory.CreateUserEntity(e =>
+        {
+            e.Email = existingEmail;
+            e.IdProofingStatus = (int)IdProofingStatus.NotStarted;
+        });
+        context.Users.Add(entity1);
+
+        var originalEmail = $"original-{Guid.NewGuid()}@example.com";
+        var entity2 = UserFactory.CreateUserEntity(e =>
+        {
+            e.Email = originalEmail;
+            e.IdProofingStatus = (int)IdProofingStatus.NotStarted;
+        });
+        context.Users.Add(entity2);
+        await context.SaveChangesAsync();
+
+        var user = UserFactory.CreateUserWithEmail(existingEmail, u =>
+        {
+            u.IdProofingStatus = IdProofingStatus.Completed;
+        });
+        // Set init-only properties using reflection
+        var idProperty = typeof(User).GetProperty(nameof(User.Id));
+        var createdAtProperty = typeof(User).GetProperty(nameof(User.CreatedAt));
+        idProperty?.SetValue(user, entity2.Id); // Try to change entity2's email to entity1's email
+        createdAtProperty?.SetValue(user, entity2.CreatedAt);
+
+        // Act & Assert
+        await Assert.ThrowsAsync<InvalidOperationException>(() => repository.UpdateUserAsync(user, CancellationToken.None));
+    }
+
+    [Fact]
     public async Task GetOrCreateUserAsync_WhenUserExists_ShouldReturnExistingUser()
     {
         // Arrange
@@ -361,13 +430,13 @@ public class DatabaseUserRepositoryTests : IClassFixture<SqlServerTestFixture>
         var repository = new DatabaseUserRepository(context);
 
         var uniqueEmail = $"existing-{Guid.NewGuid()}@example.com";
-        var entity = new UserEntity
+        var entity = UserFactory.CreateUserEntity(e =>
         {
-            Email = uniqueEmail,
-            IdProofingStatus = (int)IdProofingStatus.Completed,
-            CreatedAt = DateTime.UtcNow.AddDays(-1),
-            UpdatedAt = DateTime.UtcNow.AddDays(-1)
-        };
+            e.Email = uniqueEmail;
+            e.IdProofingStatus = (int)IdProofingStatus.Completed;
+            e.CreatedAt = DateTime.UtcNow.AddDays(-1);
+            e.UpdatedAt = DateTime.UtcNow.AddDays(-1);
+        });
         context.Users.Add(entity);
         await context.SaveChangesAsync();
 
@@ -466,14 +535,12 @@ public class DatabaseUserRepositoryTests : IClassFixture<SqlServerTestFixture>
 
         var uniqueEmail = $"session-{Guid.NewGuid()}@example.com";
         var sessionId = $"session-{Guid.NewGuid()}";
-        var entity = new UserEntity
+        var entity = UserFactory.CreateUserEntity(e =>
         {
-            Email = uniqueEmail,
-            IdProofingStatus = (int)IdProofingStatus.InProgress,
-            IdProofingSessionId = sessionId,
-            CreatedAt = DateTime.UtcNow,
-            UpdatedAt = DateTime.UtcNow
-        };
+            e.Email = uniqueEmail;
+            e.IdProofingStatus = (int)IdProofingStatus.InProgress;
+            e.IdProofingSessionId = sessionId;
+        });
         context.Users.Add(entity);
         await context.SaveChangesAsync();
 
@@ -543,22 +610,18 @@ public class DatabaseUserRepositoryTests : IClassFixture<SqlServerTestFixture>
         var session1 = $"session-{uniqueId1}";
         var session2 = $"session-{uniqueId2}";
 
-        var entity1 = new UserEntity
+        var entity1 = UserFactory.CreateUserEntity(e =>
         {
-            Email = email1,
-            IdProofingStatus = (int)IdProofingStatus.InProgress,
-            IdProofingSessionId = session1,
-            CreatedAt = DateTime.UtcNow,
-            UpdatedAt = DateTime.UtcNow
-        };
-        var entity2 = new UserEntity
+            e.Email = email1;
+            e.IdProofingStatus = (int)IdProofingStatus.InProgress;
+            e.IdProofingSessionId = session1;
+        });
+        var entity2 = UserFactory.CreateUserEntity(e =>
         {
-            Email = email2,
-            IdProofingStatus = (int)IdProofingStatus.InProgress,
-            IdProofingSessionId = session2,
-            CreatedAt = DateTime.UtcNow,
-            UpdatedAt = DateTime.UtcNow
-        };
+            e.Email = email2;
+            e.IdProofingStatus = (int)IdProofingStatus.InProgress;
+            e.IdProofingSessionId = session2;
+        });
         context.Users.AddRange(entity1, entity2);
         await context.SaveChangesAsync();
 
@@ -581,14 +644,12 @@ public class DatabaseUserRepositoryTests : IClassFixture<SqlServerTestFixture>
         var repository = new DatabaseUserRepository(context);
 
         var uniqueEmail = $"nosession-{Guid.NewGuid()}@example.com";
-        var entity = new UserEntity
+        var entity = UserFactory.CreateUserEntity(e =>
         {
-            Email = uniqueEmail,
-            IdProofingStatus = (int)IdProofingStatus.NotStarted,
-            IdProofingSessionId = null,
-            CreatedAt = DateTime.UtcNow,
-            UpdatedAt = DateTime.UtcNow
-        };
+            e.Email = uniqueEmail;
+            e.IdProofingStatus = (int)IdProofingStatus.NotStarted;
+            e.IdProofingSessionId = null;
+        });
         context.Users.Add(entity);
         await context.SaveChangesAsync();
 
@@ -613,18 +674,17 @@ public class DatabaseUserRepositoryTests : IClassFixture<SqlServerTestFixture>
         var updatedAt = DateTime.UtcNow.AddDays(-2);
 
         var coLoadedUpdated = DateTime.UtcNow.AddDays(-3);
-        var entity = new UserEntity
+        var entity = UserFactory.CreateCoLoadedUserEntity(e =>
         {
-            Email = uniqueEmail,
-            IdProofingStatus = (int)IdProofingStatus.Completed,
-            IdProofingSessionId = "test-session",
-            IdProofingCompletedAt = completedAt,
-            IdProofingExpiresAt = expiresAt,
-            IsCoLoaded = true,
-            CoLoadedLastUpdated = coLoadedUpdated,
-            CreatedAt = createdAt,
-            UpdatedAt = updatedAt
-        };
+            e.Email = uniqueEmail;
+            e.IdProofingStatus = (int)IdProofingStatus.Completed;
+            e.IdProofingSessionId = "test-session";
+            e.IdProofingCompletedAt = completedAt;
+            e.IdProofingExpiresAt = expiresAt;
+            e.CoLoadedLastUpdated = coLoadedUpdated;
+            e.CreatedAt = createdAt;
+            e.UpdatedAt = updatedAt;
+        });
         context.Users.Add(entity);
         await context.SaveChangesAsync();
 
@@ -656,18 +716,19 @@ public class DatabaseUserRepositoryTests : IClassFixture<SqlServerTestFixture>
         var expiresAt = DateTime.UtcNow.AddYears(1);
         var coLoadedUpdated = DateTime.UtcNow.AddDays(-2);
 
-        var user = new User
+        var user = UserFactory.CreateUserWithEmail(uniqueEmail, u =>
         {
-            Email = uniqueEmail,
-            IdProofingStatus = IdProofingStatus.Failed,
-            IdProofingSessionId = "full-session",
-            IdProofingCompletedAt = completedAt,
-            IdProofingExpiresAt = expiresAt,
-            IsCoLoaded = true,
-            CoLoadedLastUpdated = coLoadedUpdated,
-            CreatedAt = DateTime.UtcNow.AddDays(-10),
-            UpdatedAt = DateTime.UtcNow.AddDays(-5)
-        };
+            u.IdProofingStatus = IdProofingStatus.Failed;
+            u.IdProofingSessionId = "full-session";
+            u.IdProofingCompletedAt = completedAt;
+            u.IdProofingExpiresAt = expiresAt;
+            u.IsCoLoaded = true;
+            u.CoLoadedLastUpdated = coLoadedUpdated;
+            u.UpdatedAt = DateTime.UtcNow.AddDays(-5);
+        });
+        // Set init-only CreatedAt using reflection
+        var createdAtProperty = typeof(User).GetProperty(nameof(User.CreatedAt));
+        createdAtProperty?.SetValue(user, DateTime.UtcNow.AddDays(-10));
 
         // Act
         await repository.CreateUserAsync(user, CancellationToken.None);
