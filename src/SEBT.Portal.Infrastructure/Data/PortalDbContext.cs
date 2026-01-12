@@ -61,6 +61,9 @@ public class PortalDbContext : DbContext
                 .HasDefaultValue(0); // 0 = NotStarted
             entity.Property(e => e.IdProofingSessionId)
                 .HasMaxLength(255);
+            entity.Property(e => e.IsCoLoaded)
+                .IsRequired()
+                .HasDefaultValue(false);
             entity.Property(e => e.CreatedAt)
                 .IsRequired()
                 .HasDefaultValueSql("GETUTCDATE()")

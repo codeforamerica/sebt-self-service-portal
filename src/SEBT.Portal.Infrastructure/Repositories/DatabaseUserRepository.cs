@@ -72,6 +72,8 @@ public class DatabaseUserRepository(PortalDbContext dbContext) : IUserRepository
         entity.IdProofingSessionId = user.IdProofingSessionId;
         entity.IdProofingCompletedAt = user.IdProofingCompletedAt;
         entity.IdProofingExpiresAt = user.IdProofingExpiresAt;
+        entity.IsCoLoaded = user.IsCoLoaded;
+        entity.CoLoadedLastUpdated = user.CoLoadedLastUpdated;
         entity.UpdatedAt = DateTime.UtcNow;
 
         await dbContext.SaveChangesAsync(cancellationToken);
@@ -98,6 +100,7 @@ public class DatabaseUserRepository(PortalDbContext dbContext) : IUserRepository
         {
             Email = normalizedEmail,
             IdProofingStatus = (int)IdProofingStatus.NotStarted,
+            IsCoLoaded = false,
             CreatedAt = DateTime.UtcNow,
             UpdatedAt = DateTime.UtcNow
         };
@@ -166,6 +169,8 @@ public class DatabaseUserRepository(PortalDbContext dbContext) : IUserRepository
             IdProofingSessionId = entity.IdProofingSessionId,
             IdProofingCompletedAt = entity.IdProofingCompletedAt,
             IdProofingExpiresAt = entity.IdProofingExpiresAt,
+            IsCoLoaded = entity.IsCoLoaded,
+            CoLoadedLastUpdated = entity.CoLoadedLastUpdated,
             CreatedAt = entity.CreatedAt,
             UpdatedAt = entity.UpdatedAt
         };
@@ -180,6 +185,8 @@ public class DatabaseUserRepository(PortalDbContext dbContext) : IUserRepository
             IdProofingSessionId = user.IdProofingSessionId,
             IdProofingCompletedAt = user.IdProofingCompletedAt,
             IdProofingExpiresAt = user.IdProofingExpiresAt,
+            IsCoLoaded = user.IsCoLoaded,
+            CoLoadedLastUpdated = user.CoLoadedLastUpdated,
             CreatedAt = user.CreatedAt,
             UpdatedAt = user.UpdatedAt
         };

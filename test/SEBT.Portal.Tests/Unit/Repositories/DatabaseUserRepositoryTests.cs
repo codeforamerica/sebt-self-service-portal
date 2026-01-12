@@ -612,6 +612,7 @@ public class DatabaseUserRepositoryTests : IClassFixture<SqlServerTestFixture>
         var createdAt = DateTime.UtcNow.AddDays(-5);
         var updatedAt = DateTime.UtcNow.AddDays(-2);
 
+        var coLoadedUpdated = DateTime.UtcNow.AddDays(-3);
         var entity = new UserEntity
         {
             Email = uniqueEmail,
@@ -619,6 +620,8 @@ public class DatabaseUserRepositoryTests : IClassFixture<SqlServerTestFixture>
             IdProofingSessionId = "test-session",
             IdProofingCompletedAt = completedAt,
             IdProofingExpiresAt = expiresAt,
+            IsCoLoaded = true,
+            CoLoadedLastUpdated = coLoadedUpdated,
             CreatedAt = createdAt,
             UpdatedAt = updatedAt
         };
@@ -635,6 +638,8 @@ public class DatabaseUserRepositoryTests : IClassFixture<SqlServerTestFixture>
         Assert.Equal("test-session", result.IdProofingSessionId);
         Assert.Equal(completedAt, result.IdProofingCompletedAt);
         Assert.Equal(expiresAt, result.IdProofingExpiresAt);
+        Assert.True(result.IsCoLoaded);
+        Assert.Equal(coLoadedUpdated, result.CoLoadedLastUpdated);
         Assert.Equal(createdAt, result.CreatedAt);
         Assert.Equal(updatedAt, result.UpdatedAt);
     }
@@ -649,6 +654,7 @@ public class DatabaseUserRepositoryTests : IClassFixture<SqlServerTestFixture>
         var uniqueEmail = $"fulluser-{Guid.NewGuid()}@example.com";
         var completedAt = DateTime.UtcNow.AddDays(-1);
         var expiresAt = DateTime.UtcNow.AddYears(1);
+        var coLoadedUpdated = DateTime.UtcNow.AddDays(-2);
 
         var user = new User
         {
@@ -657,6 +663,8 @@ public class DatabaseUserRepositoryTests : IClassFixture<SqlServerTestFixture>
             IdProofingSessionId = "full-session",
             IdProofingCompletedAt = completedAt,
             IdProofingExpiresAt = expiresAt,
+            IsCoLoaded = true,
+            CoLoadedLastUpdated = coLoadedUpdated,
             CreatedAt = DateTime.UtcNow.AddDays(-10),
             UpdatedAt = DateTime.UtcNow.AddDays(-5)
         };
@@ -671,6 +679,8 @@ public class DatabaseUserRepositoryTests : IClassFixture<SqlServerTestFixture>
         Assert.Equal("full-session", stored.IdProofingSessionId);
         Assert.Equal(completedAt, stored.IdProofingCompletedAt);
         Assert.Equal(expiresAt, stored.IdProofingExpiresAt);
+        Assert.True(stored.IsCoLoaded);
+        Assert.Equal(coLoadedUpdated, stored.CoLoadedLastUpdated);
     }
 }
 

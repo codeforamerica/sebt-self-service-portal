@@ -39,4 +39,15 @@ public class UserEntity
     /// The date and time when the user record was last updated.
     /// </summary>
     public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
+
+    /// <summary>
+    /// Indicates whether the user's benefits are co-loaded onto SNAP/TANF EBT card.
+    /// This value is populated from external systems via batch processes or database queries.
+    /// </summary>
+    public bool IsCoLoaded { get; set; }
+
+    /// <summary>
+    /// The date and time when the co-loaded status was last updated from the source system.
+    /// </summary>
+    public DateTime? CoLoadedLastUpdated { get; set; }
 }
