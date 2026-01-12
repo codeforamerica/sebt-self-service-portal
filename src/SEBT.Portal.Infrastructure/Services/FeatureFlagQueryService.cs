@@ -108,8 +108,6 @@ public class FeatureFlagQueryService
             // These are flags that might be configured directly in FeatureManagement but not in our priority sources
             await foreach (var featureName in _featureManager.GetFeatureNamesAsync().WithCancellation(cancellationToken))
             {
-                cancellationToken.ThrowIfCancellationRequested();
-
                 if (!flags.ContainsKey(featureName))
                 {
                     if (IsValidFeatureFlagName(featureName))

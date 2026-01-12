@@ -30,10 +30,12 @@ public class FeaturesController : ControllerBase
     /// <param name="cancellationToken">A token to monitor for cancellation requests.</param>
     /// <returns>An OK result with feature flag states as JSON.</returns>
     /// <response code="200">Returns the current feature flag states.</response>
+    /// <response code="499">The request was cancelled by the client.</response>
     /// <response code="500">An error occurred while retrieving feature flags.</response>
     [HttpGet]
     [Produces("application/json")]
     [ProducesResponseType(typeof(Dictionary<string, bool>), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status499ClientClosedRequest)]
     [ProducesResponseType(StatusCodes.Status500InternalServerError)]
     [Tags("Features")]
     public async Task<IActionResult> GetFeatureFlags(CancellationToken cancellationToken = default)
