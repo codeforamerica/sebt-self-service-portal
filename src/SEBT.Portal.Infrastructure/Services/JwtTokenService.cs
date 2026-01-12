@@ -4,6 +4,7 @@ using System.Text;
 using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
 using SEBT.Portal.Core.AppSettings;
+using SEBT.Portal.Core.Models.Auth;
 using SEBT.Portal.Core.Services;
 
 namespace SEBT.Portal.Infrastructure.Services;
@@ -21,11 +22,11 @@ public class JwtTokenService : IJwtTokenService
     }
 
     /// <summary>
-    /// Generates a JWT token for the specified email address.
+    /// Generates a JWT token for the specified user
     /// </summary>
-    /// <param name="email">The email address of the authenticated user.</param>
+    /// <param name="user">The authenticated user.</param>
     /// <returns>A JWT token string.</returns>
-    public string GenerateToken(string email)
+    public string GenerateToken(User user)
     {
         var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_settings.SecretKey));
         var credentials = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
@@ -33,14 +34,38 @@ public class JwtTokenService : IJwtTokenService
         var now = DateTimeOffset.UtcNow;
         var unixTimeSeconds = now.ToUnixTimeSeconds();
 
-        var claims = new[]
+        var claims = new List<Claim>
         {
-            new Claim(ClaimTypes.Email, email),
-            new Claim(JwtRegisteredClaimNames.Sub, email),
+            new Claim(ClaimTypes.Email, user.Email),
+            new Claim(JwtRegisteredClaimNames.Sub, user.Email),
             new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString()),
             new Claim(JwtRegisteredClaimNames.Iat, unixTimeSeconds.ToString(), ClaimValueTypes.Integer64),
-            new Claim(JwtRegisteredClaimNames.Nbf, unixTimeSeconds.ToString(), ClaimValueTypes.Integer64)
+            new Claim(JwtRegisteredClaimNames.Nbf, unixTimeSeconds.ToString(), ClaimValueTypes.Integer64),
+            // ID proofing claims
+            new Claim("id_proofing_status", ((int)user.IdProofingStatus).ToString(), ClaimValueTypes.Integer32)
         };
+
+        // Add optional ID proofing claims if available
+        if (!string.IsNullOrWhiteSpace(user.IdProofingSessionId))
+        {
+            claims.Add(new Claim("id_proofing_session_id", user.IdProofingSessionId));
+        }
+
+        if (user.IdProofingCompletedAt.HasValue)
+        {
+            var completedAtOffset = new DateTimeOffset(user.IdProofingCompletedAt.Value, TimeSpan.Zero);
+            claims.Add(new Claim("id_proofing_completed_at",
+                completedAtOffset.ToUnixTimeSeconds().ToString(),
+                ClaimValueTypes.Integer64));
+        }
+
+        if (user.IdProofingExpiresAt.HasValue)
+        {
+            var expiresAtOffset = new DateTimeOffset(user.IdProofingExpiresAt.Value, TimeSpan.Zero);
+            claims.Add(new Claim("id_proofing_expires_at",
+                expiresAtOffset.ToUnixTimeSeconds().ToString(),
+                ClaimValueTypes.Integer64));
+        }
 
         var token = new JwtSecurityToken(
             issuer: _settings.Issuer,

@@ -12,14 +12,17 @@ namespace SEBT.Portal.UseCases.Auth
     /// </summary>
     /// <remarks>
     /// This handler validates the OTP provided by the user against the stored OTP in the repository.
-    /// If validation succeeds, the OTP is deleted from the repository to prevent reuse and a JWT token is generated.
+    /// If validation succeeds, the OTP is deleted from the repository to prevent reuse, the user is retrieved
+    /// or created, and a JWT token is generated with ID proofing status included in the claims.
     /// </remarks>
     /// <param name="otpRepository">Repository for OTP storage and retrieval operations.</param>
+    /// <param name="userRepository">Repository for user data and ID proofing status.</param>
     /// <param name="jwtTokenService">Service for generating JWT tokens for authenticated users.</param>
     /// <param name="validator">Validator for the <see cref="ValidateOtpCommand"/>.</param>
     /// <param name="logger">Logger for tracking OTP validation attempts and results.</param>
     public class ValidateOtpCommandHandler(
         IOtpRepository otpRepository,
+        IUserRepository userRepository,
         IJwtTokenService jwtTokenService,
         IValidator<ValidateOtpCommand> validator,
         ILogger<ValidateOtpCommandHandler> logger)
@@ -50,19 +53,39 @@ namespace SEBT.Portal.UseCases.Auth
 
             try
             {
-                var token = jwtTokenService.GenerateToken(command.Email);
+                var (user, isNewUser) = await userRepository.GetOrCreateUserAsync(command.Email, cancellationToken);
 
+                var token = jwtTokenService.GenerateToken(user);
+
+                // Delete OTP after successful validation
                 await otpRepository.DeleteOtpCodeByEmailAsync(command.Email);
 
-                logger.LogInformation("OTP validated successfully and JWT token generated for email {Email}", command.Email);
+                if (isNewUser)
+                {
+                    logger.LogInformation(
+                        "New user authenticated via OTP for email {Email} with ID proofing status {Status}",
+                        command.Email,
+                        user.IdProofingStatus);
+                }
+                else
+                {
+                    logger.LogInformation(
+                        "Returning user authenticated via OTP for email {Email} with ID proofing status {Status}",
+                        command.Email,
+                        user.IdProofingStatus);
+                }
+
+                logger.LogInformation(
+                    "OTP validated successfully and JWT token generated for email {Email}",
+                    command.Email);
                 return Result<string>.Success(token);
             }
             catch (Exception ex)
             {
-                logger.LogError(ex, "Error generating JWT token for email {Email}", command.Email);
+                logger.LogError(ex, "Error processing OTP validation for email {Email}", command.Email);
                 return Result<string>.DependencyFailed(
                     DependencyFailedReason.ConnectionFailed,
-                    "An error occurred while generating the authentication token.");
+                    "An error occurred while processing the authentication request.");
             }
         }
     }

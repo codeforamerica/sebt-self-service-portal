@@ -18,6 +18,11 @@ public class PortalDbContext : DbContext
     /// </summary>
     public DbSet<UserOptInEntity> UserOptIns { get; set; }
 
+    /// <summary>
+    /// User records with ID proofing status stored in the database.
+    /// </summary>
+    public DbSet<UserEntity> Users { get; set; }
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
@@ -42,6 +47,32 @@ public class PortalDbContext : DbContext
                 .IsRequired()
                 .HasDefaultValueSql("GETUTCDATE()")
                 .ValueGeneratedOnAdd();
+        });
+
+        modelBuilder.Entity<UserEntity>(entity =>
+        {
+            entity.ToTable("Users");
+            entity.HasKey(e => e.Email);
+            entity.Property(e => e.Email)
+                .IsRequired()
+                .HasMaxLength(255);
+            entity.Property(e => e.IdProofingStatus)
+                .IsRequired()
+                .HasDefaultValue(0); // 0 = NotStarted
+            entity.Property(e => e.IdProofingSessionId)
+                .HasMaxLength(255);
+            entity.Property(e => e.CreatedAt)
+                .IsRequired()
+                .HasDefaultValueSql("GETUTCDATE()")
+                .ValueGeneratedOnAdd();
+            entity.Property(e => e.UpdatedAt)
+                .IsRequired()
+                .HasDefaultValueSql("GETUTCDATE()")
+                .ValueGeneratedOnAdd();
+
+            // Create index on session ID for faster lookups
+            entity.HasIndex(e => e.IdProofingSessionId)
+                .HasDatabaseName("IX_Users_IdProofingSessionId");
         });
     }
 }

@@ -28,6 +28,7 @@ public static class Dependencies
     public static IServiceCollection AddPortalInfrastructureRepositories(this IServiceCollection services)
     {
         services.AddTransient<IOtpRepository, InMemoryOtpRepository>();
+        services.AddTransient<IUserRepository, DatabaseUserRepository>();
         services.AddMemoryCache();
 
         return services;

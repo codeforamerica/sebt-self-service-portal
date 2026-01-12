@@ -1,7 +1,8 @@
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using NSubstitute;
 using NSubstitute.ReceivedExtensions;
-using Sebt.Portal.Core.Models.Auth;
+using SEBT.Portal.Core.Models.Auth;
 using SEBT.Portal.Core.Repositories;
 using SEBT.Portal.Core.Services;
 using SEBT.Portal.Kernel;
@@ -13,6 +14,7 @@ namespace SEBT.Portal.Tests.Unit.UseCases.Auth;
 public class ValidateOtpCommandHandlerTests
 {
     private readonly IOtpRepository otpRepository = Substitute.For<IOtpRepository>();
+    private readonly IUserRepository userRepository = Substitute.For<IUserRepository>();
     private readonly IJwtTokenService jwtTokenService = Substitute.For<IJwtTokenService>();
     private readonly NullLogger<ValidateOtpCommandHandler> logger = NullLogger<ValidateOtpCommandHandler>.Instance;
     private readonly IValidator<ValidateOtpCommand> validator = new DataAnnotationsValidator<ValidateOtpCommand>(null!);
@@ -23,6 +25,7 @@ public class ValidateOtpCommandHandlerTests
         // Arrange
         var handler = new ValidateOtpCommandHandler(
             otpRepository,
+            userRepository,
             jwtTokenService,
             validator,
             logger);
@@ -33,9 +36,18 @@ public class ValidateOtpCommandHandlerTests
             Otp = "123456"
         };
 
+        var user = new User
+        {
+            Email = command.Email,
+            IdProofingStatus = IdProofingStatus.NotStarted
+        };
+
         otpRepository.GetOtpCodeByEmailAsync(Arg.Is<string>(email => email == command.Email))
             .Returns(new OtpCode(command.Otp, command.Email));
-        jwtTokenService.GenerateToken(command.Email).Returns("test.jwt.token");
+        userRepository.GetOrCreateUserAsync(Arg.Is<string>(email => email == command.Email), Arg.Any<CancellationToken>())
+            .Returns((user, false));
+        jwtTokenService.GenerateToken(Arg.Is<User>(u => u.Email == command.Email))
+            .Returns("test.jwt.token");
 
         // Act
         var result = await handler.Handle(command, CancellationToken.None);
@@ -44,7 +56,8 @@ public class ValidateOtpCommandHandlerTests
         Assert.True(result.IsSuccess);
         var successResult = Assert.IsType<SuccessResult<string>>(result);
         Assert.Equal("test.jwt.token", successResult.Value);
-        jwtTokenService.Received(1).GenerateToken(command.Email);
+        await userRepository.Received(1).GetOrCreateUserAsync(command.Email, Arg.Any<CancellationToken>());
+        jwtTokenService.Received(1).GenerateToken(Arg.Is<User>(u => u.Email == command.Email));
     }
 
     [Fact]
@@ -53,6 +66,7 @@ public class ValidateOtpCommandHandlerTests
         // Arrange
         var handler = new ValidateOtpCommandHandler(
             otpRepository,
+            userRepository,
             jwtTokenService,
             validator,
             logger);
@@ -75,7 +89,8 @@ public class ValidateOtpCommandHandlerTests
         Assert.False(result.IsSuccess);
         var failedResult = Assert.IsType<ValidationFailedResult<string>>(result);
         Assert.Contains("Otp", failedResult.Errors.Select(e => e.Key));
-        jwtTokenService.DidNotReceive().GenerateToken(Arg.Any<string>());
+        await userRepository.DidNotReceive().GetOrCreateUserAsync(Arg.Any<string>(), Arg.Any<CancellationToken>());
+        jwtTokenService.DidNotReceive().GenerateToken(Arg.Any<User>());
     }
 
     [Fact]
@@ -84,6 +99,7 @@ public class ValidateOtpCommandHandlerTests
         // Arrange
         var handler = new ValidateOtpCommandHandler(
             otpRepository,
+            userRepository,
             jwtTokenService,
             validator,
             logger);
@@ -92,15 +108,24 @@ public class ValidateOtpCommandHandlerTests
             Email = "jim@example.com",
             Otp = "123456"
         };
+        var user = new User
+        {
+            Email = command.Email,
+            IdProofingStatus = IdProofingStatus.NotStarted
+        };
         otpRepository.GetOtpCodeByEmailAsync(Arg.Any<string>())
             .Returns(new OtpCode(command.Otp, command.Email));
-        jwtTokenService.GenerateToken(command.Email).Returns("test.token");
+        userRepository.GetOrCreateUserAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns((user, false));
+        jwtTokenService.GenerateToken(Arg.Any<User>())
+            .Returns("test.token");
 
         // Act
         var result = await handler.Handle(command, CancellationToken.None);
 
         // Assert
         await otpRepository.Received(1).GetOtpCodeByEmailAsync(command.Email);
+        await userRepository.Received(1).GetOrCreateUserAsync(command.Email, Arg.Any<CancellationToken>());
     }
 
     [Fact]
@@ -109,6 +134,7 @@ public class ValidateOtpCommandHandlerTests
         // Arrange
         var handler = new ValidateOtpCommandHandler(
             otpRepository,
+            userRepository,
             jwtTokenService,
             validator,
             logger);
@@ -127,7 +153,8 @@ public class ValidateOtpCommandHandlerTests
         // Assert
         Assert.False(result.IsSuccess);
         var failedResult = Assert.IsType<ValidationFailedResult<string>>(result);
-        jwtTokenService.DidNotReceive().GenerateToken(Arg.Any<string>());
+        await userRepository.DidNotReceive().GetOrCreateUserAsync(Arg.Any<string>(), Arg.Any<CancellationToken>());
+        jwtTokenService.DidNotReceive().GenerateToken(Arg.Any<User>());
     }
 
     [Fact]
@@ -136,6 +163,7 @@ public class ValidateOtpCommandHandlerTests
         // Arrange
         var handler = new ValidateOtpCommandHandler(
             otpRepository,
+            userRepository,
             jwtTokenService,
             validator,
             logger);
@@ -154,7 +182,8 @@ public class ValidateOtpCommandHandlerTests
         // Assert
         Assert.False(result.IsSuccess);
         var failedResult = Assert.IsType<ValidationFailedResult<string>>(result);
-        jwtTokenService.DidNotReceive().GenerateToken(Arg.Any<string>());
+        await userRepository.DidNotReceive().GetOrCreateUserAsync(Arg.Any<string>(), Arg.Any<CancellationToken>());
+        jwtTokenService.DidNotReceive().GenerateToken(Arg.Any<User>());
     }
     [Fact]
     public async Task Handle_ShouldReturnValidationFailure_WhenEmailFormatIsIncorrect()
@@ -162,6 +191,7 @@ public class ValidateOtpCommandHandlerTests
         // Arrange
         var handler = new ValidateOtpCommandHandler(
             otpRepository,
+            userRepository,
             jwtTokenService,
             validator,
             logger);
@@ -180,7 +210,8 @@ public class ValidateOtpCommandHandlerTests
         // Assert
         Assert.False(result.IsSuccess);
         var failedResult = Assert.IsType<ValidationFailedResult<string>>(result);
-        jwtTokenService.DidNotReceive().GenerateToken(Arg.Any<string>());
+        await userRepository.DidNotReceive().GetOrCreateUserAsync(Arg.Any<string>(), Arg.Any<CancellationToken>());
+        jwtTokenService.DidNotReceive().GenerateToken(Arg.Any<User>());
     }
 
     [Fact]
@@ -189,6 +220,7 @@ public class ValidateOtpCommandHandlerTests
         // Arrange
         var handler = new ValidateOtpCommandHandler(
             otpRepository,
+            userRepository,
             jwtTokenService,
             validator,
             logger);
@@ -208,7 +240,8 @@ public class ValidateOtpCommandHandlerTests
         Assert.False(result.IsSuccess);
         var failedResult = Assert.IsType<ValidationFailedResult<string>>(result);
         Assert.Contains("Otp", failedResult.Errors.Select(e => e.Key));
-        jwtTokenService.DidNotReceive().GenerateToken(Arg.Any<string>());
+        await userRepository.DidNotReceive().GetOrCreateUserAsync(Arg.Any<string>(), Arg.Any<CancellationToken>());
+        jwtTokenService.DidNotReceive().GenerateToken(Arg.Any<User>());
     }
 
     [Fact]
@@ -217,6 +250,7 @@ public class ValidateOtpCommandHandlerTests
         // Arrange
         var handler = new ValidateOtpCommandHandler(
             otpRepository,
+            userRepository,
             jwtTokenService,
             validator,
             logger);
@@ -236,7 +270,8 @@ public class ValidateOtpCommandHandlerTests
         Assert.False(result.IsSuccess);
         var failedResult = Assert.IsType<ValidationFailedResult<string>>(result);
         Assert.Contains("Otp", failedResult.Errors.Select(e => e.Key));
-        jwtTokenService.DidNotReceive().GenerateToken(Arg.Any<string>());
+        await userRepository.DidNotReceive().GetOrCreateUserAsync(Arg.Any<string>(), Arg.Any<CancellationToken>());
+        jwtTokenService.DidNotReceive().GenerateToken(Arg.Any<User>());
         await otpRepository.DidNotReceive().DeleteOtpCodeByEmailAsync(Arg.Any<string>());
     }
 
@@ -246,6 +281,7 @@ public class ValidateOtpCommandHandlerTests
         // Arrange
         var handler = new ValidateOtpCommandHandler(
             otpRepository,
+            userRepository,
             jwtTokenService,
             validator,
             logger);
@@ -255,9 +291,18 @@ public class ValidateOtpCommandHandlerTests
             Otp = "123456"
         };
 
+        var user = new User
+        {
+            Email = command.Email,
+            IdProofingStatus = IdProofingStatus.NotStarted
+        };
+
         otpRepository.GetOtpCodeByEmailAsync(Arg.Is<string>(email => email == command.Email))
             .Returns(new OtpCode(command.Otp, command.Email));
-        jwtTokenService.GenerateToken(command.Email).Returns("test.jwt.token");
+        userRepository.GetOrCreateUserAsync(Arg.Is<string>(email => email == command.Email), Arg.Any<CancellationToken>())
+            .Returns((user, false));
+        jwtTokenService.GenerateToken(Arg.Is<User>(u => u.Email == command.Email))
+            .Returns("test.jwt.token");
 
         // Act
         var result = await handler.Handle(command, CancellationToken.None);
@@ -273,6 +318,7 @@ public class ValidateOtpCommandHandlerTests
         // Arrange
         var handler = new ValidateOtpCommandHandler(
             otpRepository,
+            userRepository,
             jwtTokenService,
             validator,
             logger);
@@ -282,10 +328,18 @@ public class ValidateOtpCommandHandlerTests
             Otp = "123456"
         };
 
+        var user = new User
+        {
+            Email = command.Email,
+            IdProofingStatus = IdProofingStatus.NotStarted
+        };
+
         otpRepository.GetOtpCodeByEmailAsync(Arg.Is<string>(email => email == command.Email))
             .Returns(new OtpCode(command.Otp, command.Email));
+        userRepository.GetOrCreateUserAsync(Arg.Is<string>(email => email == command.Email), Arg.Any<CancellationToken>())
+            .Returns((user, false));
         jwtTokenService
-            .When(x => x.GenerateToken(Arg.Any<string>()))
+            .When(x => x.GenerateToken(Arg.Any<User>()))
             .Do(x => throw new Exception("JWT generation failed"));
 
         // Act
@@ -295,7 +349,7 @@ public class ValidateOtpCommandHandlerTests
         Assert.False(result.IsSuccess);
         var failedResult = Assert.IsType<DependencyFailedResult<string>>(result);
         Assert.Equal(DependencyFailedReason.ConnectionFailed, failedResult.Reason);
-        Assert.Contains("error occurred while generating", failedResult.Message, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("error occurred while processing", failedResult.Message, StringComparison.OrdinalIgnoreCase);
         await otpRepository.DidNotReceive().DeleteOtpCodeByEmailAsync(Arg.Any<string>());
     }
 
@@ -305,6 +359,7 @@ public class ValidateOtpCommandHandlerTests
         // Arrange
         var handler = new ValidateOtpCommandHandler(
             otpRepository,
+            userRepository,
             jwtTokenService,
             validator,
             logger);
@@ -314,10 +369,18 @@ public class ValidateOtpCommandHandlerTests
             Otp = "123456"
         };
 
+        var user = new User
+        {
+            Email = command.Email,
+            IdProofingStatus = IdProofingStatus.NotStarted
+        };
+
         otpRepository.GetOtpCodeByEmailAsync(Arg.Is<string>(email => email == command.Email))
             .Returns(new OtpCode(command.Otp, command.Email));
+        userRepository.GetOrCreateUserAsync(Arg.Is<string>(email => email == command.Email), Arg.Any<CancellationToken>())
+            .Returns((user, false));
         jwtTokenService
-            .When(x => x.GenerateToken(Arg.Any<string>()))
+            .When(x => x.GenerateToken(Arg.Any<User>()))
             .Do(x => throw new Exception("JWT generation failed"));
 
         // Act
@@ -327,5 +390,306 @@ public class ValidateOtpCommandHandlerTests
         Assert.False(result.IsSuccess);
         // OTP should not be deleted if token generation fails
         await otpRepository.DidNotReceive().DeleteOtpCodeByEmailAsync(Arg.Any<string>());
+    }
+
+    [Fact]
+    public async Task Handle_ShouldGetOrCreateUser_WhenOtpIsValid()
+    {
+        // Arrange
+        var handler = new ValidateOtpCommandHandler(
+            otpRepository,
+            userRepository,
+            jwtTokenService,
+            validator,
+            logger);
+        var command = new ValidateOtpCommand
+        {
+            Email = "jim@example.com",
+            Otp = "123456"
+        };
+
+        var user = new User
+        {
+            Email = command.Email,
+            IdProofingStatus = IdProofingStatus.Completed
+        };
+
+        otpRepository.GetOtpCodeByEmailAsync(Arg.Is<string>(email => email == command.Email))
+            .Returns(new OtpCode(command.Otp, command.Email));
+        userRepository.GetOrCreateUserAsync(Arg.Is<string>(email => email == command.Email), Arg.Any<CancellationToken>())
+            .Returns((user, false));
+        jwtTokenService.GenerateToken(Arg.Is<User>(u => u.Email == command.Email && u.IdProofingStatus == IdProofingStatus.Completed))
+            .Returns("test.jwt.token");
+
+        // Act
+        var result = await handler.Handle(command, CancellationToken.None);
+
+        // Assert
+        Assert.True(result.IsSuccess);
+        await userRepository.Received(1).GetOrCreateUserAsync(command.Email, Arg.Any<CancellationToken>());
+        jwtTokenService.Received(1).GenerateToken(Arg.Is<User>(u => u.Email == command.Email && u.IdProofingStatus == IdProofingStatus.Completed));
+    }
+
+    [Fact]
+    public async Task Handle_ShouldPassUserWithIdProofingStatus_ToJwtTokenService()
+    {
+        // Arrange
+        var handler = new ValidateOtpCommandHandler(
+            otpRepository,
+            userRepository,
+            jwtTokenService,
+            validator,
+            logger);
+        var command = new ValidateOtpCommand
+        {
+            Email = "jim@example.com",
+            Otp = "123456"
+        };
+
+        var user = new User
+        {
+            Email = command.Email,
+            IdProofingStatus = IdProofingStatus.InProgress,
+            IdProofingSessionId = "session-123",
+            IdProofingCompletedAt = null,
+            IdProofingExpiresAt = DateTime.UtcNow.AddYears(1)
+        };
+
+        otpRepository.GetOtpCodeByEmailAsync(Arg.Is<string>(email => email == command.Email))
+            .Returns(new OtpCode(command.Otp, command.Email));
+        userRepository.GetOrCreateUserAsync(Arg.Is<string>(email => email == command.Email), Arg.Any<CancellationToken>())
+            .Returns((user, false));
+        jwtTokenService.GenerateToken(Arg.Any<User>())
+            .Returns("test.jwt.token");
+
+        // Act
+        var result = await handler.Handle(command, CancellationToken.None);
+
+        // Assert
+        Assert.True(result.IsSuccess);
+        jwtTokenService.Received(1).GenerateToken(Arg.Is<User>(u =>
+            u.Email == command.Email &&
+            u.IdProofingStatus == IdProofingStatus.InProgress &&
+            u.IdProofingSessionId == "session-123"));
+    }
+
+    [Fact]
+    public async Task Handle_ShouldLogNewUser_WhenUserDoesNotExist()
+    {
+        // Arrange
+        var mockLogger = Substitute.For<ILogger<ValidateOtpCommandHandler>>();
+        var handler = new ValidateOtpCommandHandler(
+            otpRepository,
+            userRepository,
+            jwtTokenService,
+            validator,
+            mockLogger);
+        var command = new ValidateOtpCommand
+        {
+            Email = "newuser@example.com",
+            Otp = "123456"
+        };
+
+        var newUser = new User
+        {
+            Email = command.Email,
+            IdProofingStatus = IdProofingStatus.NotStarted
+        };
+
+        otpRepository.GetOtpCodeByEmailAsync(Arg.Is<string>(email => email == command.Email))
+            .Returns(new OtpCode(command.Otp, command.Email));
+        userRepository.GetOrCreateUserAsync(Arg.Is<string>(email => email == command.Email), Arg.Any<CancellationToken>())
+            .Returns((newUser, true));
+        jwtTokenService.GenerateToken(Arg.Is<User>(u => u.Email == command.Email))
+            .Returns("test.jwt.token");
+
+        // Act
+        var result = await handler.Handle(command, CancellationToken.None);
+
+        // Assert
+        Assert.True(result.IsSuccess);
+        mockLogger.Received().Log(
+            LogLevel.Information,
+            Arg.Any<EventId>(),
+            Arg.Is<object>(o => o.ToString()!.Contains("New user authenticated via OTP") && o.ToString()!.Contains(command.Email)),
+            Arg.Any<Exception>(),
+            Arg.Any<Func<object, Exception?, string>>());
+    }
+
+    [Fact]
+    public async Task Handle_ShouldLogReturningUser_WhenUserExists()
+    {
+        // Arrange
+        var mockLogger = Substitute.For<ILogger<ValidateOtpCommandHandler>>();
+        var handler = new ValidateOtpCommandHandler(
+            otpRepository,
+            userRepository,
+            jwtTokenService,
+            validator,
+            mockLogger);
+        var command = new ValidateOtpCommand
+        {
+            Email = "existinguser@example.com",
+            Otp = "123456"
+        };
+
+        var existingUser = new User
+        {
+            Email = command.Email,
+            IdProofingStatus = IdProofingStatus.Completed
+        };
+
+        otpRepository.GetOtpCodeByEmailAsync(Arg.Is<string>(email => email == command.Email))
+            .Returns(new OtpCode(command.Otp, command.Email));
+        userRepository.GetOrCreateUserAsync(Arg.Is<string>(email => email == command.Email), Arg.Any<CancellationToken>())
+            .Returns((existingUser, false));
+        jwtTokenService.GenerateToken(Arg.Is<User>(u => u.Email == command.Email))
+            .Returns("test.jwt.token");
+
+        // Act
+        var result = await handler.Handle(command, CancellationToken.None);
+
+        // Assert
+        Assert.True(result.IsSuccess);
+        mockLogger.Received().Log(
+            LogLevel.Information,
+            Arg.Any<EventId>(),
+            Arg.Is<object>(o => o.ToString()!.Contains("Returning user authenticated via OTP") && o.ToString()!.Contains(command.Email)),
+            Arg.Any<Exception>(),
+            Arg.Any<Func<object, Exception?, string>>());
+    }
+
+    [Fact]
+    public async Task Handle_ShouldLogIdProofingStatus_ForNewUser()
+    {
+        // Arrange
+        var mockLogger = Substitute.For<ILogger<ValidateOtpCommandHandler>>();
+        var handler = new ValidateOtpCommandHandler(
+            otpRepository,
+            userRepository,
+            jwtTokenService,
+            validator,
+            mockLogger);
+        var command = new ValidateOtpCommand
+        {
+            Email = "newuser@example.com",
+            Otp = "123456"
+        };
+
+        var newUser = new User
+        {
+            Email = command.Email,
+            IdProofingStatus = IdProofingStatus.NotStarted
+        };
+
+        otpRepository.GetOtpCodeByEmailAsync(Arg.Is<string>(email => email == command.Email))
+            .Returns(new OtpCode(command.Otp, command.Email));
+        userRepository.GetOrCreateUserAsync(Arg.Is<string>(email => email == command.Email), Arg.Any<CancellationToken>())
+            .Returns((newUser, true));
+        jwtTokenService.GenerateToken(Arg.Is<User>(u => u.Email == command.Email))
+            .Returns("test.jwt.token");
+
+        // Act
+        var result = await handler.Handle(command, CancellationToken.None);
+
+        // Assert
+        Assert.True(result.IsSuccess);
+        mockLogger.Received().Log(
+            LogLevel.Information,
+            Arg.Any<EventId>(),
+            Arg.Is<object>(o => o.ToString()!.Contains("New user authenticated via OTP") &&
+                               o.ToString()!.Contains(command.Email) &&
+                               o.ToString()!.Contains("NotStarted")),
+            Arg.Any<Exception>(),
+            Arg.Any<Func<object, Exception?, string>>());
+    }
+
+    [Fact]
+    public async Task Handle_ShouldLogIdProofingStatus_ForReturningUser()
+    {
+        // Arrange
+        var mockLogger = Substitute.For<ILogger<ValidateOtpCommandHandler>>();
+        var handler = new ValidateOtpCommandHandler(
+            otpRepository,
+            userRepository,
+            jwtTokenService,
+            validator,
+            mockLogger);
+        var command = new ValidateOtpCommand
+        {
+            Email = "existinguser@example.com",
+            Otp = "123456"
+        };
+
+        var existingUser = new User
+        {
+            Email = command.Email,
+            IdProofingStatus = IdProofingStatus.InProgress
+        };
+
+        otpRepository.GetOtpCodeByEmailAsync(Arg.Is<string>(email => email == command.Email))
+            .Returns(new OtpCode(command.Otp, command.Email));
+        userRepository.GetOrCreateUserAsync(Arg.Is<string>(email => email == command.Email), Arg.Any<CancellationToken>())
+            .Returns((existingUser, false));
+        jwtTokenService.GenerateToken(Arg.Is<User>(u => u.Email == command.Email))
+            .Returns("test.jwt.token");
+
+        // Act
+        var result = await handler.Handle(command, CancellationToken.None);
+
+        // Assert
+        Assert.True(result.IsSuccess);
+        mockLogger.Received().Log(
+            LogLevel.Information,
+            Arg.Any<EventId>(),
+            Arg.Is<object>(o => o.ToString()!.Contains("Returning user authenticated via OTP") &&
+                               o.ToString()!.Contains(command.Email) &&
+                               o.ToString()!.Contains("InProgress")),
+            Arg.Any<Exception>(),
+            Arg.Any<Func<object, Exception?, string>>());
+    }
+
+    [Fact]
+    public async Task Handle_ShouldLogGeneralSuccessMessage_AfterUserTypeLogging()
+    {
+        // Arrange
+        var mockLogger = Substitute.For<ILogger<ValidateOtpCommandHandler>>();
+        var handler = new ValidateOtpCommandHandler(
+            otpRepository,
+            userRepository,
+            jwtTokenService,
+            validator,
+            mockLogger);
+        var command = new ValidateOtpCommand
+        {
+            Email = "user@example.com",
+            Otp = "123456"
+        };
+
+        var user = new User
+        {
+            Email = command.Email,
+            IdProofingStatus = IdProofingStatus.NotStarted
+        };
+
+        otpRepository.GetOtpCodeByEmailAsync(Arg.Is<string>(email => email == command.Email))
+            .Returns(new OtpCode(command.Otp, command.Email));
+        userRepository.GetOrCreateUserAsync(Arg.Is<string>(email => email == command.Email), Arg.Any<CancellationToken>())
+            .Returns((user, true));
+        jwtTokenService.GenerateToken(Arg.Is<User>(u => u.Email == command.Email))
+            .Returns("test.jwt.token");
+
+        // Act
+        var result = await handler.Handle(command, CancellationToken.None);
+
+        // Assert
+        Assert.True(result.IsSuccess);
+        mockLogger.Received().Log(
+            LogLevel.Information,
+            Arg.Any<EventId>(),
+            Arg.Is<object>(o => o.ToString()!.Contains("OTP validated successfully and JWT token generated") &&
+                               o.ToString()!.Contains(command.Email)),
+            Arg.Any<Exception>(),
+            Arg.Any<Func<object, Exception?, string>>());
     }
 }

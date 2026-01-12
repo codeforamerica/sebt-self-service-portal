@@ -1,5 +1,5 @@
 using Microsoft.Extensions.Caching.Memory;
-using Sebt.Portal.Core.Models.Auth;
+using SEBT.Portal.Core.Models.Auth;
 using SEBT.Portal.Infrastructure.Repositories;
 
 namespace SEBT.Portal.Tests.Unit.Repositories;

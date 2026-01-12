@@ -3,6 +3,7 @@ using System.Security.Claims;
 using Microsoft.Extensions.Options;
 using NSubstitute;
 using SEBT.Portal.Core.AppSettings;
+using SEBT.Portal.Core.Models.Auth;
 using SEBT.Portal.Infrastructure.Services;
 
 namespace SEBT.Portal.Tests.Unit.Services;
@@ -29,10 +30,14 @@ public class JwtTokenServiceTests
     public void GenerateToken_ShouldReturnValidJwtToken()
     {
         // Arrange
-        var email = "user@example.com";
+        var user = new User
+        {
+            Email = "user@example.com",
+            IdProofingStatus = IdProofingStatus.NotStarted
+        };
 
         // Act
-        var token = _jwtTokenService.GenerateToken(email);
+        var token = _jwtTokenService.GenerateToken(user);
 
         // Assert
         Assert.NotNull(token);
@@ -47,10 +52,14 @@ public class JwtTokenServiceTests
     public void GenerateToken_ShouldContainEmailClaim()
     {
         // Arrange
-        var email = "user@example.com";
+        var user = new User
+        {
+            Email = "user@example.com",
+            IdProofingStatus = IdProofingStatus.NotStarted
+        };
 
         // Act
-        var token = _jwtTokenService.GenerateToken(email);
+        var token = _jwtTokenService.GenerateToken(user);
 
         // Assert
         var handler = new JwtSecurityTokenHandler();
@@ -58,17 +67,21 @@ public class JwtTokenServiceTests
         var emailClaim = jsonToken.Claims.FirstOrDefault(c => c.Type == ClaimTypes.Email);
 
         Assert.NotNull(emailClaim);
-        Assert.Equal(email, emailClaim.Value);
+        Assert.Equal(user.Email, emailClaim.Value);
     }
 
     [Fact]
     public void GenerateToken_ShouldContainSubjectClaim()
     {
         // Arrange
-        var email = "user@example.com";
+        var user = new User
+        {
+            Email = "user@example.com",
+            IdProofingStatus = IdProofingStatus.NotStarted
+        };
 
         // Act
-        var token = _jwtTokenService.GenerateToken(email);
+        var token = _jwtTokenService.GenerateToken(user);
 
         // Assert
         var handler = new JwtSecurityTokenHandler();
@@ -76,17 +89,21 @@ public class JwtTokenServiceTests
         var subClaim = jsonToken.Claims.FirstOrDefault(c => c.Type == JwtRegisteredClaimNames.Sub);
 
         Assert.NotNull(subClaim);
-        Assert.Equal(email, subClaim.Value);
+        Assert.Equal(user.Email, subClaim.Value);
     }
 
     [Fact]
     public void GenerateToken_ShouldContainJtiClaim()
     {
         // Arrange
-        var email = "user@example.com";
+        var user = new User
+        {
+            Email = "user@example.com",
+            IdProofingStatus = IdProofingStatus.NotStarted
+        };
 
         // Act
-        var token = _jwtTokenService.GenerateToken(email);
+        var token = _jwtTokenService.GenerateToken(user);
 
         // Assert
         var handler = new JwtSecurityTokenHandler();
@@ -101,10 +118,14 @@ public class JwtTokenServiceTests
     public void GenerateToken_ShouldHaveCorrectIssuer()
     {
         // Arrange
-        var email = "user@example.com";
+        var user = new User
+        {
+            Email = "user@example.com",
+            IdProofingStatus = IdProofingStatus.NotStarted
+        };
 
         // Act
-        var token = _jwtTokenService.GenerateToken(email);
+        var token = _jwtTokenService.GenerateToken(user);
 
         // Assert
         var handler = new JwtSecurityTokenHandler();
@@ -117,10 +138,14 @@ public class JwtTokenServiceTests
     public void GenerateToken_ShouldHaveCorrectAudience()
     {
         // Arrange
-        var email = "user@example.com";
+        var user = new User
+        {
+            Email = "user@example.com",
+            IdProofingStatus = IdProofingStatus.NotStarted
+        };
 
         // Act
-        var token = _jwtTokenService.GenerateToken(email);
+        var token = _jwtTokenService.GenerateToken(user);
 
         // Assert
         var handler = new JwtSecurityTokenHandler();
@@ -133,10 +158,14 @@ public class JwtTokenServiceTests
     public void GenerateToken_ShouldHaveExpirationTime()
     {
         // Arrange
-        var email = "user@example.com";
+        var user = new User
+        {
+            Email = "user@example.com",
+            IdProofingStatus = IdProofingStatus.NotStarted
+        };
 
         // Act
-        var token = _jwtTokenService.GenerateToken(email);
+        var token = _jwtTokenService.GenerateToken(user);
 
         // Assert
         var handler = new JwtSecurityTokenHandler();
@@ -147,14 +176,18 @@ public class JwtTokenServiceTests
     }
 
     [Fact]
-    public void GenerateToken_ShouldGenerateDifferentTokensForSameEmail()
+    public void GenerateToken_ShouldGenerateDifferentTokensForSameUser()
     {
         // Arrange
-        var email = "user@example.com";
+        var user = new User
+        {
+            Email = "user@example.com",
+            IdProofingStatus = IdProofingStatus.NotStarted
+        };
 
         // Act
-        var token1 = _jwtTokenService.GenerateToken(email);
-        var token2 = _jwtTokenService.GenerateToken(email);
+        var token1 = _jwtTokenService.GenerateToken(user);
+        var token2 = _jwtTokenService.GenerateToken(user);
 
         // Assert
         // Tokens should be different due to unique JTI
@@ -168,8 +201,8 @@ public class JwtTokenServiceTests
         var email1 = token1Claims.Claims.First(c => c.Type == ClaimTypes.Email).Value;
         var email2 = token2Claims.Claims.First(c => c.Type == ClaimTypes.Email).Value;
 
-        Assert.Equal(email, email1);
-        Assert.Equal(email, email2);
+        Assert.Equal(user.Email, email1);
+        Assert.Equal(user.Email, email2);
     }
 
     [Fact]
@@ -186,10 +219,14 @@ public class JwtTokenServiceTests
         var options = Substitute.For<IOptions<JwtSettings>>();
         options.Value.Returns(settings);
         var service = new JwtTokenService(options);
-        var email = "user@example.com";
+        var user = new User
+        {
+            Email = "user@example.com",
+            IdProofingStatus = IdProofingStatus.NotStarted
+        };
 
         // Act
-        var token = service.GenerateToken(email);
+        var token = service.GenerateToken(user);
 
         // Assert
         var handler = new JwtSecurityTokenHandler();
@@ -205,11 +242,15 @@ public class JwtTokenServiceTests
     public void GenerateToken_ShouldContainIatClaim()
     {
         // Arrange
-        var email = "user@example.com";
+        var user = new User
+        {
+            Email = "user@example.com",
+            IdProofingStatus = IdProofingStatus.NotStarted
+        };
         var beforeGeneration = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
 
         // Act
-        var token = _jwtTokenService.GenerateToken(email);
+        var token = _jwtTokenService.GenerateToken(user);
 
         // Assert
         var handler = new JwtSecurityTokenHandler();
@@ -229,11 +270,15 @@ public class JwtTokenServiceTests
     public void GenerateToken_ShouldContainNbfClaim()
     {
         // Arrange
-        var email = "user@example.com";
+        var user = new User
+        {
+            Email = "user@example.com",
+            IdProofingStatus = IdProofingStatus.NotStarted
+        };
         var beforeGeneration = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
 
         // Act
-        var token = _jwtTokenService.GenerateToken(email);
+        var token = _jwtTokenService.GenerateToken(user);
 
         // Assert
         var handler = new JwtSecurityTokenHandler();
@@ -253,10 +298,14 @@ public class JwtTokenServiceTests
     public void GenerateToken_ShouldHaveIatAndNbfEqual()
     {
         // Arrange
-        var email = "user@example.com";
+        var user = new User
+        {
+            Email = "user@example.com",
+            IdProofingStatus = IdProofingStatus.NotStarted
+        };
 
         // Act
-        var token = _jwtTokenService.GenerateToken(email);
+        var token = _jwtTokenService.GenerateToken(user);
 
         // Assert
         var handler = new JwtSecurityTokenHandler();
@@ -268,6 +317,156 @@ public class JwtTokenServiceTests
         Assert.NotNull(nbfClaim);
         // IAT and NBF should be equal (token is valid immediately)
         Assert.Equal(iatClaim.Value, nbfClaim.Value);
+    }
+
+    [Fact]
+    public void GenerateToken_ShouldContainIdProofingStatusClaim()
+    {
+        // Arrange
+        var user = new User
+        {
+            Email = "user@example.com",
+            IdProofingStatus = IdProofingStatus.Completed
+        };
+
+        // Act
+        var token = _jwtTokenService.GenerateToken(user);
+
+        // Assert
+        var handler = new JwtSecurityTokenHandler();
+        var jsonToken = handler.ReadJwtToken(token);
+        var statusClaim = jsonToken.Claims.FirstOrDefault(c => c.Type == "id_proofing_status");
+
+        Assert.NotNull(statusClaim);
+        Assert.Equal("2", statusClaim.Value); // 2 = Completed
+        Assert.Equal(ClaimValueTypes.Integer32, statusClaim.ValueType);
+    }
+
+    [Fact]
+    public void GenerateToken_ShouldContainIdProofingSessionId_WhenSessionIdIsProvided()
+    {
+        // Arrange
+        var user = new User
+        {
+            Email = "user@example.com",
+            IdProofingStatus = IdProofingStatus.InProgress,
+            IdProofingSessionId = "session-123-abc"
+        };
+
+        // Act
+        var token = _jwtTokenService.GenerateToken(user);
+
+        // Assert
+        var handler = new JwtSecurityTokenHandler();
+        var jsonToken = handler.ReadJwtToken(token);
+        var sessionIdClaim = jsonToken.Claims.FirstOrDefault(c => c.Type == "id_proofing_session_id");
+
+        Assert.NotNull(sessionIdClaim);
+        Assert.Equal("session-123-abc", sessionIdClaim.Value);
+    }
+
+    [Fact]
+    public void GenerateToken_ShouldNotContainIdProofingSessionId_WhenSessionIdIsNull()
+    {
+        // Arrange
+        var user = new User
+        {
+            Email = "user@example.com",
+            IdProofingStatus = IdProofingStatus.NotStarted,
+            IdProofingSessionId = null
+        };
+
+        // Act
+        var token = _jwtTokenService.GenerateToken(user);
+
+        // Assert
+        var handler = new JwtSecurityTokenHandler();
+        var jsonToken = handler.ReadJwtToken(token);
+        var sessionIdClaim = jsonToken.Claims.FirstOrDefault(c => c.Type == "id_proofing_session_id");
+
+        Assert.Null(sessionIdClaim);
+    }
+
+    [Fact]
+    public void GenerateToken_ShouldContainIdProofingCompletedAt_WhenCompletedAtIsProvided()
+    {
+        // Arrange
+        var completedAt = DateTime.UtcNow.AddDays(-5);
+        var user = new User
+        {
+            Email = "user@example.com",
+            IdProofingStatus = IdProofingStatus.Completed,
+            IdProofingCompletedAt = completedAt
+        };
+
+        // Act
+        var token = _jwtTokenService.GenerateToken(user);
+
+        // Assert
+        var handler = new JwtSecurityTokenHandler();
+        var jsonToken = handler.ReadJwtToken(token);
+        var completedAtClaim = jsonToken.Claims.FirstOrDefault(c => c.Type == "id_proofing_completed_at");
+
+        Assert.NotNull(completedAtClaim);
+        Assert.True(long.TryParse(completedAtClaim.Value, out var unixTimestamp));
+        var claimDateTime = DateTimeOffset.FromUnixTimeSeconds(unixTimestamp).DateTime;
+        // Allow 1 second tolerance for conversion
+        Assert.True(Math.Abs((claimDateTime - completedAt).TotalSeconds) < 1);
+    }
+
+    [Fact]
+    public void GenerateToken_ShouldContainIdProofingExpiresAt_WhenExpiresAtIsProvided()
+    {
+        // Arrange
+        var expiresAt = DateTime.UtcNow.AddYears(1);
+        var user = new User
+        {
+            Email = "user@example.com",
+            IdProofingStatus = IdProofingStatus.Completed,
+            IdProofingExpiresAt = expiresAt
+        };
+
+        // Act
+        var token = _jwtTokenService.GenerateToken(user);
+
+        // Assert
+        var handler = new JwtSecurityTokenHandler();
+        var jsonToken = handler.ReadJwtToken(token);
+        var expiresAtClaim = jsonToken.Claims.FirstOrDefault(c => c.Type == "id_proofing_expires_at");
+
+        Assert.NotNull(expiresAtClaim);
+        Assert.True(long.TryParse(expiresAtClaim.Value, out var unixTimestamp));
+        var claimDateTime = DateTimeOffset.FromUnixTimeSeconds(unixTimestamp).DateTime;
+        // Allow 1 second tolerance for conversion
+        Assert.True(Math.Abs((claimDateTime - expiresAt).TotalSeconds) < 1);
+    }
+
+    [Fact]
+    public void GenerateToken_ShouldIncludeAllIdProofingClaims_WhenUserHasCompleteData()
+    {
+        // Arrange
+        var completedAt = DateTime.UtcNow.AddDays(-10);
+        var expiresAt = DateTime.UtcNow.AddYears(1);
+        var user = new User
+        {
+            Email = "user@example.com",
+            IdProofingStatus = IdProofingStatus.Completed,
+            IdProofingSessionId = "session-xyz-789",
+            IdProofingCompletedAt = completedAt,
+            IdProofingExpiresAt = expiresAt
+        };
+
+        // Act
+        var token = _jwtTokenService.GenerateToken(user);
+
+        // Assert
+        var handler = new JwtSecurityTokenHandler();
+        var jsonToken = handler.ReadJwtToken(token);
+
+        Assert.NotNull(jsonToken.Claims.FirstOrDefault(c => c.Type == "id_proofing_status"));
+        Assert.NotNull(jsonToken.Claims.FirstOrDefault(c => c.Type == "id_proofing_session_id"));
+        Assert.NotNull(jsonToken.Claims.FirstOrDefault(c => c.Type == "id_proofing_completed_at"));
+        Assert.NotNull(jsonToken.Claims.FirstOrDefault(c => c.Type == "id_proofing_expires_at"));
     }
 }
 

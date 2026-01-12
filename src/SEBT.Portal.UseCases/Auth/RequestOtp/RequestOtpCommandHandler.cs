@@ -1,6 +1,6 @@
 using System.Linq;
 using Microsoft.Extensions.Logging;
-using Sebt.Portal.Core.Models.Auth;
+using SEBT.Portal.Core.Models.Auth;
 using SEBT.Portal.Core.Repositories;
 using SEBT.Portal.Core.Services;
 using SEBT.Portal.Kernel;

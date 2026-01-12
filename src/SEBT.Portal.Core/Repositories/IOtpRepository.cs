@@ -1,6 +1,6 @@
 namespace SEBT.Portal.Core.Repositories
 {
-    using Sebt.Portal.Core.Models.Auth;
+    using SEBT.Portal.Core.Models.Auth;
     /// <summary>
     /// Repository interface for managing OTP (One-Time Password) codes.
     /// </summary>
