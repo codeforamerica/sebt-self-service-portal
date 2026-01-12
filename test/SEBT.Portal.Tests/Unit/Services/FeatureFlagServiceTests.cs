@@ -1,3 +1,4 @@
+using System.Linq;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -132,20 +133,5 @@ public class FeatureFlagServiceTests
         Assert.Single(result);
         Assert.True(result.ContainsKey(configuredFeature));
         Assert.False(result.ContainsKey("unknown_feature"));
-    }
-}
-
-/// <summary>
-/// Helper extension to convert IEnumerable to IAsyncEnumerable for testing.
-/// </summary>
-internal static class AsyncEnumerableExtensions
-{
-    public static async IAsyncEnumerable<T> ToAsyncEnumerable<T>(this IEnumerable<T> source)
-    {
-        foreach (var item in source)
-        {
-            yield return item;
-        }
-        await Task.CompletedTask;
     }
 }
