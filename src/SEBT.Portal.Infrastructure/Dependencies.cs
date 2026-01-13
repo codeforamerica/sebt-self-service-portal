@@ -50,22 +50,6 @@ public static class Dependencies
             options.UseSqlServer(connectionString)
                 // These are called automatically during migrations, EnsureCreated, and `dotnet ef database update`
                 // See: https://learn.microsoft.com/en-us/ef/core/modeling/data-seeding
-                .UseSeeding((context, _) =>
-                {
-                    var environment = Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT");
-                    if (environment != "Development")
-                    {
-                        return;
-                    }
-
-                    if (context is PortalDbContext portalContext && portalContext.Users.Any())
-                    {
-                        return;
-                    }
-
-                    // For synchronous seeding, we'll use a simpler approach
-                    // The async version below handles the full seeding logic
-                })
                 .UseAsyncSeeding(async (context, _, cancellationToken) =>
                 {
                     // Only seed in Development environment
