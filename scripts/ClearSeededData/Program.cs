@@ -62,7 +62,7 @@ try
 }
 catch (Exception ex)
 {
-    Console.WriteLine($"✗ Error clearing seeded data: {ex.Message}");
+    Console.WriteLine($"Error clearing seeded data: {ex.Message}");
     Console.WriteLine($"  {ex.GetType().Name}");
     if (ex.InnerException != null)
     {

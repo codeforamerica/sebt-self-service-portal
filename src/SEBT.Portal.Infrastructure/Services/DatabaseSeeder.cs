@@ -49,27 +49,25 @@ public class DatabaseSeeder : IDatabaseSeeder
     {
         var testUsers = new[]
         {
-            UserFactory.CreateUserWithEmail("co-loaded@example.com", u =>
+            UserFactory.CreateCoLoadedUser(u =>
             {
+                u.Email = "co-loaded@example.com";
                 u.IdProofingStatus = IdProofingStatus.Completed;
-                u.IsCoLoaded = true;
                 u.CoLoadedLastUpdated = DateTime.UtcNow.AddDays(-5);
                 u.IdProofingCompletedAt = DateTime.UtcNow.AddDays(-10);
                 u.IdProofingExpiresAt = DateTime.UtcNow.AddDays(355);
                 // CreatedAt and UpdatedAt are init-only, so factory-generated dates are used
             }),
-            UserFactory.CreateUserWithEmail("non-co-loaded@example.com", u =>
+            UserFactory.CreateNonCoLoadedUser(u =>
             {
+                u.Email = "non-co-loaded@example.com";
                 u.IdProofingStatus = IdProofingStatus.InProgress;
-                u.IsCoLoaded = false;
-                u.CoLoadedLastUpdated = null;
                 // CreatedAt and UpdatedAt are init-only, so factory-generated dates are used
             }),
-            UserFactory.CreateUserWithEmail("not-started@example.com", u =>
+            UserFactory.CreateNonCoLoadedUser(u =>
             {
+                u.Email = "not-started@example.com";
                 u.IdProofingStatus = IdProofingStatus.NotStarted;
-                u.IsCoLoaded = false;
-                u.CoLoadedLastUpdated = null;
                 // CreatedAt and UpdatedAt are init-only, so factory-generated dates are used
             })
         };
