@@ -13,6 +13,7 @@ export function LoginForm() {
   const router = useRouter()
   const { t } = useTranslation('common')
   const { t: tLogin } = useTranslation('login')
+  const { t: tValidation } = useTranslation('validation')
   const [email, setEmail] = useState('')
   const [fieldError, setFieldError] = useState<string | null>(null)
   const [submitError, setSubmitError] = useState<string | null>(null)
@@ -21,11 +22,11 @@ export function LoginForm() {
 
   function validateEmail(value: string): string | null {
     if (!value.trim()) {
-      return tLogin('errorEmailRequired')
+      return tValidation('required')
     }
     const result = RequestOtpRequestSchema.shape.email.safeParse(value)
     if (!result.success) {
-      return tLogin('errorEmailInvalid')
+      return tValidation('enterEmail')
     }
     return null
   }
@@ -49,7 +50,8 @@ export function LoginForm() {
       if (err instanceof ApiError) {
         setSubmitError(err.message)
       } else {
-        setSubmitError(tLogin('errorUnexpected'))
+        // TODO: Add translation key for unexpected error (e.g., GLOBAL - Error Unexpected)
+        setSubmitError('Something went wrong. Please try again.')
       }
     }
   }

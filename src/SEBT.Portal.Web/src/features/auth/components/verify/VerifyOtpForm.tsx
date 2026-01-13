@@ -20,7 +20,7 @@ interface VerifyOtpFormProps {
 export function VerifyOtpForm({ email, contactLink }: VerifyOtpFormProps) {
   const router = useRouter()
   const { t: tLogin } = useTranslation('login')
-  const { t: tCommon } = useTranslation('common')
+  const { t: tValidation } = useTranslation('validation')
 
   const [otp, setOtp] = useState('')
   const [fieldError, setFieldError] = useState<string | null>(null)
@@ -39,15 +39,15 @@ export function VerifyOtpForm({ email, contactLink }: VerifyOtpFormProps) {
   const validateCode = useCallback(
     (value: string): string | null => {
       if (!value.trim()) {
-        return tLogin('verifyLabelCode')
+        return tValidation('required')
       }
       const result = ValidateOtpRequestSchema.shape.otp.safeParse(value)
       if (!result.success) {
-        return tLogin('verifyInvalidErrorMessage')
+        return tValidation('otpInvalid')
       }
       return null
     },
-    [tLogin]
+    [tValidation]
   )
 
   async function handleSubmit(e: FormEvent<HTMLFormElement>) {
@@ -72,7 +72,8 @@ export function VerifyOtpForm({ email, contactLink }: VerifyOtpFormProps) {
       if (err instanceof ApiError) {
         setSubmitError(err.message)
       } else {
-        setSubmitError(tCommon('errorUnexpected'))
+        // TODO: Add translation key for unexpected error (e.g., GLOBAL - Error Unexpected)
+        setSubmitError('Something went wrong. Please try again.')
       }
     }
   }
@@ -89,7 +90,8 @@ export function VerifyOtpForm({ email, contactLink }: VerifyOtpFormProps) {
 
     try {
       await requestOtp.mutateAsync({ email })
-      setSuccessMessage(tLogin('verifyCodeSentSuccess'))
+      // TODO: Add translation key for code sent success (e.g., S8 - OTP Confirm - Code Sent Success)
+      setSuccessMessage('A new code has been sent to your email.')
       resetCountdown()
       startCountdown()
       setHasStartedCountdown(true)
@@ -97,7 +99,8 @@ export function VerifyOtpForm({ email, contactLink }: VerifyOtpFormProps) {
       if (err instanceof ApiError) {
         setSubmitError(err.message)
       } else {
-        setSubmitError(tCommon('errorUnexpected'))
+        // TODO: Add translation key for unexpected error (e.g., GLOBAL - Error Unexpected)
+        setSubmitError('Something went wrong. Please try again.')
       }
     }
   }
