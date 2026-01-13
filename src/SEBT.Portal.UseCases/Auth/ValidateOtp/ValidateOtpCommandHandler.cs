@@ -63,21 +63,24 @@ namespace SEBT.Portal.UseCases.Auth
                 if (isNewUser)
                 {
                     logger.LogInformation(
-                        "New user authenticated via OTP for email {Email} with ID proofing status {Status}",
+                        "New user authenticated via OTP for email {Email} with ID proofing status {Status} and co-loaded status {IsCoLoaded}",
                         command.Email,
-                        user.IdProofingStatus);
+                        user.IdProofingStatus,
+                        user.IsCoLoaded);
                 }
                 else
                 {
                     logger.LogInformation(
-                        "Returning user authenticated via OTP for email {Email} with ID proofing status {Status}",
+                        "Returning user authenticated via OTP for email {Email} with ID proofing status {Status} and co-loaded status {IsCoLoaded}",
                         command.Email,
-                        user.IdProofingStatus);
+                        user.IdProofingStatus,
+                        user.IsCoLoaded);
                 }
 
                 logger.LogInformation(
-                    "OTP validated successfully and JWT token generated for email {Email}",
-                    command.Email);
+                    "OTP validated successfully and JWT token generated for email {Email} with co-loaded status {IsCoLoaded}",
+                    command.Email,
+                    user.IsCoLoaded);
                 return Result<string>.Success(token);
             }
             catch (Exception ex)
