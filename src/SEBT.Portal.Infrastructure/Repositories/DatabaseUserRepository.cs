@@ -55,7 +55,7 @@ public class DatabaseUserRepository(PortalDbContext dbContext) : IUserRepository
 
         if (user.Id <= 0)
         {
-            throw new ArgumentException("User Id must be greater than zero.", nameof(user));
+            throw new ArgumentException("User Id must be greater than zero for updates.", nameof(user));
         }
 
         if (string.IsNullOrWhiteSpace(user.Email))
@@ -73,17 +73,8 @@ public class DatabaseUserRepository(PortalDbContext dbContext) : IUserRepository
 
         var normalizedEmail = NormalizeEmail(user.Email);
 
-        // If email is being changed, check that the new email doesn't already exist on another User
         if (entity.Email != normalizedEmail)
         {
-            var existingUserWithEmail = await dbContext.Users
-                .FirstOrDefaultAsync(u => u.Email == normalizedEmail && u.Id != user.Id, cancellationToken);
-
-            if (existingUserWithEmail != null)
-            {
-                throw new InvalidOperationException($"A user with email {user.Email} already exists.");
-            }
-
             entity.Email = normalizedEmail;
         }
 
@@ -96,7 +87,23 @@ public class DatabaseUserRepository(PortalDbContext dbContext) : IUserRepository
         entity.CoLoadedLastUpdated = user.CoLoadedLastUpdated;
         entity.UpdatedAt = DateTime.UtcNow;
 
-        await dbContext.SaveChangesAsync(cancellationToken);
+        try
+        {
+            await dbContext.SaveChangesAsync(cancellationToken);
+        }
+        catch (DbUpdateException ex)
+        {
+            // Handle unique constraint violation for email (race condition or duplicate email)
+            if (ex.InnerException?.Message.Contains("UNIQUE") == true ||
+                ex.InnerException?.Message.Contains("duplicate key") == true ||
+                ex.InnerException?.Message.Contains("IX_Users_Email") == true)
+            {
+                throw new InvalidOperationException($"A user with email {user.Email} already exists.", ex);
+            }
+
+            // Re-throw if it's not a unique constraint violation
+            throw;
+        }
     }
 
     public async Task<(User user, bool isNewUser)> GetOrCreateUserAsync(string email, CancellationToken cancellationToken = default)
