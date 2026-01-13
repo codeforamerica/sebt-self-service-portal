@@ -4,10 +4,11 @@ using SEBT.Portal.Core.Models.Auth;
 using SEBT.Portal.Infrastructure.Data;
 using SEBT.Portal.Infrastructure.Data.Entities;
 
-namespace SEBT.Portal.Tests.Helpers;
+namespace SEBT.Portal.Infrastructure.Helpers;
 
 /// <summary>
-/// Factory for creating test User and UserEntity instances using Bogus for generating fake data.
+/// Factory for creating User and UserEntity instances using Bogus for generating fake data.
+/// Used for both testing and database seeding.
 /// See https://github.com/bchavez/Bogus for more information
 /// </summary>
 public static class UserFactory
@@ -95,7 +96,7 @@ public static class UserFactory
         return CreateUser(u =>
         {
             u.IsCoLoaded = true;
-            // Use Bogus's randomizer for consistency with other factory methods
+            // Create a temporary faker for date generation (acceptable for single date value)
             var faker = new Faker();
             u.CoLoadedLastUpdated = faker.Date.Recent(60);
             customize?.Invoke(u);
@@ -127,7 +128,7 @@ public static class UserFactory
         return CreateUserEntity(e =>
         {
             e.IsCoLoaded = true;
-            // Use Bogus's randomizer for consistency with other factory methods
+            // Create a temporary faker for date generation (acceptable for single date value)
             var faker = new Faker();
             e.CoLoadedLastUpdated = faker.Date.Recent(60);
             customize?.Invoke(e);
@@ -164,7 +165,7 @@ public static class UserFactory
             // Set related dates based on status
             if (status == IdProofingStatus.Completed || status == IdProofingStatus.Expired)
             {
-                // Use Bogus's randomizer for consistency with other factory methods
+                // Create a temporary faker for date generation (acceptable for single date value)
                 var faker = new Faker();
                 u.IdProofingCompletedAt = faker.Date.Recent(30);
                 u.IdProofingExpiresAt = u.IdProofingCompletedAt.Value.AddYears(1);
@@ -196,11 +197,12 @@ public static class UserFactory
     /// <returns>A new UserEntity instance that has been saved to the database (with Id populated).</returns>
     public static async Task<UserEntity> CreateAndSaveUserEntityAsync(
         PortalDbContext context,
-        Action<UserEntity>? customize = null)
+        Action<UserEntity>? customize = null,
+        CancellationToken cancellationToken = default)
     {
         var entity = CreateUserEntity(customize);
         context.Users.Add(entity);
-        await context.SaveChangesAsync();
+        await context.SaveChangesAsync(cancellationToken);
         return entity;
     }
 
@@ -214,7 +216,8 @@ public static class UserFactory
     public static async Task<UserEntity> CreateAndSaveUserEntityWithEmailAsync(
         PortalDbContext context,
         string email,
-        Action<UserEntity>? customize = null)
+        Action<UserEntity>? customize = null,
+        CancellationToken cancellationToken = default)
     {
         var entity = CreateUserEntity(e =>
         {
@@ -222,7 +225,7 @@ public static class UserFactory
             customize?.Invoke(e);
         });
         context.Users.Add(entity);
-        await context.SaveChangesAsync();
+        await context.SaveChangesAsync(cancellationToken);
         return entity;
     }
 
@@ -234,11 +237,12 @@ public static class UserFactory
     /// <returns>A new UserEntity instance with IsCoLoaded = true that has been saved to the database.</returns>
     public static async Task<UserEntity> CreateAndSaveCoLoadedUserEntityAsync(
         PortalDbContext context,
-        Action<UserEntity>? customize = null)
+        Action<UserEntity>? customize = null,
+        CancellationToken cancellationToken = default)
     {
         var entity = CreateCoLoadedUserEntity(customize);
         context.Users.Add(entity);
-        await context.SaveChangesAsync();
+        await context.SaveChangesAsync(cancellationToken);
         return entity;
     }
 
@@ -250,11 +254,12 @@ public static class UserFactory
     /// <returns>A new UserEntity instance with IsCoLoaded = false that has been saved to the database.</returns>
     public static async Task<UserEntity> CreateAndSaveNonCoLoadedUserEntityAsync(
         PortalDbContext context,
-        Action<UserEntity>? customize = null)
+        Action<UserEntity>? customize = null,
+        CancellationToken cancellationToken = default)
     {
         var entity = CreateNonCoLoadedUserEntity(customize);
         context.Users.Add(entity);
-        await context.SaveChangesAsync();
+        await context.SaveChangesAsync(cancellationToken);
         return entity;
     }
 }
