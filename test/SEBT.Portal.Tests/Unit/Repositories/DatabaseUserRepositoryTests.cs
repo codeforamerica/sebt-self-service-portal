@@ -2,8 +2,8 @@ using Microsoft.EntityFrameworkCore;
 using SEBT.Portal.Core.Models.Auth;
 using SEBT.Portal.Infrastructure.Data;
 using SEBT.Portal.Infrastructure.Data.Entities;
+using SEBT.Portal.Infrastructure.Helpers;
 using SEBT.Portal.Infrastructure.Repositories;
-using SEBT.Portal.Tests.Helpers;
 
 namespace SEBT.Portal.Tests.Unit.Repositories;
 
