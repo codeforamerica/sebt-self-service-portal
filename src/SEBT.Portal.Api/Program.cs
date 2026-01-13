@@ -13,9 +13,8 @@ using SEBT.Portal.Core.AppSettings;
 using SEBT.Portal.Core.Repositories;
 using SEBT.Portal.Core.Services;
 using SEBT.Portal.Infrastructure.Data;
-using SEBT.Portal.Infrastructure.Services;
 using SEBT.Portal.Infrastructure.Configuration;
-using SEBT.Portal.Infrastructure.Seeding.Services;
+using SEBT.Portal.Infrastructure.Services;
 using SEBT.Portal.UseCases;
 using SEBT.Portal.Infrastructure;
 
@@ -88,14 +87,7 @@ builder.Services.AddPortalDbContext(builder.Configuration, options => options.Co
 builder.Services.AddPortalInfrastructureRepositories();
 builder.Services.AddPortalInfrastructureAppSettings(builder.Configuration);
 
-// Register IDatabaseSeeder for development utilities (e.g., ClearSeededData script)
-builder.Services.AddScoped<IDatabaseSeeder>(sp =>
-{
-    var dataSeeder = sp.GetRequiredService<IDataSeeder>();
-    var logger = sp.GetService<ILogger<DatabaseSeeder>>();
-    var timeProvider = sp.GetRequiredService<TimeProvider>();
-    return new DatabaseSeeder(dataSeeder, logger, timeProvider);
-});
+// IDatabaseSeeder is registered in Infrastructure.Dependencies (AddPortalDbContext) for development utilities (e.g., ClearSeededData script)
 
 // Configure JWT Authentication
 builder.Services.AddAuthentication(options =>

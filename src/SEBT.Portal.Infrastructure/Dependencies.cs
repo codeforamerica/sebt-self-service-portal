@@ -8,6 +8,7 @@ using SEBT.Portal.Core.Services;
 using SEBT.Portal.Kernel.Services;
 using SEBT.Portal.Infrastructure.Configuration;
 using SEBT.Portal.Infrastructure.Data;
+using SEBT.Portal.Infrastructure.Helpers;
 using SEBT.Portal.Infrastructure.Repositories;
 using SEBT.Portal.Infrastructure.Services;
 
@@ -66,12 +67,57 @@ public static class Dependencies
 
         services.AddDbContext<PortalDbContext>(options =>
         {
-            options.UseSqlServer(connectionString);
+            options.UseSqlServer(connectionString)
+                // These are called automatically during migrations, EnsureCreated, and `dotnet ef database update`
+                // See: https://learn.microsoft.com/en-us/ef/core/modeling/data-seeding
+                .UseSeeding((context, _) =>
+                {
+                    var environment = Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT");
+                    if (environment != "Development")
+                    {
+                        return;
+                    }
+
+                    if (context is PortalDbContext portalContext && portalContext.Users.Any())
+                    {
+                        return;
+                    }
+
+                    // For synchronous seeding, we'll use a simpler approach
+                    // The async version below handles the full seeding logic
+                })
+                .UseAsyncSeeding(async (context, _, cancellationToken) =>
+                {
+                    // Only seed in Development environment
+                    var environment = Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT");
+                    if (environment != "Development")
+                    {
+                        return;
+                    }
+
+                    // Cast to PortalDbContext to access models DbSet
+                    if (context is not PortalDbContext portalContext)
+                    {
+                        return;
+                    }
+
+                    // Check if records already exist to avoid re-seeding
+                    if (await portalContext.Users.AnyAsync(cancellationToken))
+                    {
+                        return;
+                    }
+
+                    var userRepository = new Repositories.DatabaseUserRepository(portalContext);
+                    var seeder = new DatabaseSeeder(userRepository, portalContext);
+                    await seeder.SeedTestUsersAsync(cancellationToken);
+                });
+
             configureOptions?.Invoke(options);
         });
 
         services.AddScoped<IDatabaseMigrator, DatabaseMigrator>();
         services.AddScoped<IDataSeeder, DataSeeder>();
+        services.AddScoped<Services.IDatabaseSeeder, DatabaseSeeder>();
 
         return services;
     }

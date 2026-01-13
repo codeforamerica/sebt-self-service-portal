@@ -9,9 +9,8 @@ using System.Threading.Tasks;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
-using SEBT.Portal.Core.Services;
 using SEBT.Portal.Infrastructure;
-using SEBT.Portal.Infrastructure.Seeding.Services;
+using SEBT.Portal.Infrastructure.Services;
 
 Console.WriteLine("Clearing seeded data from database...");
 Console.WriteLine("WARNING: This will delete records!");
@@ -43,18 +42,12 @@ try
         .AddEnvironmentVariables()
         .Build();
 
-    // Build host with services
+    // Build host with services (IDatabaseSeeder is registered by AddPortalDbContext)
     var host = Host.CreateDefaultBuilder()
         .ConfigureServices((context, services) =>
         {
             services.AddPortalDbContext(configuration);
             services.AddPortalInfrastructureRepositories();
-            // Register IDatabaseSeeder from Seeding project
-            services.AddScoped<IDatabaseSeeder>(sp =>
-            {
-                var dataSeeder = sp.GetRequiredService<IDataSeeder>();
-                return new DatabaseSeeder(dataSeeder);
-            });
         })
         .Build();
 
@@ -69,7 +62,7 @@ try
 }
 catch (Exception ex)
 {
-    Console.WriteLine($"Error clearing seeded data: {ex.Message}");
+    Console.WriteLine($"✗ Error clearing seeded data: {ex.Message}");
     Console.WriteLine($"  {ex.GetType().Name}");
     if (ex.InnerException != null)
     {

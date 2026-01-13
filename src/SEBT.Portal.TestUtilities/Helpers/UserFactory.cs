@@ -1,15 +1,12 @@
 using Bogus;
-using Microsoft.EntityFrameworkCore;
 using SEBT.Portal.Core.Models.Auth;
 using SEBT.Portal.Core.Utilities;
-using SEBT.Portal.Infrastructure.Data;
-using SEBT.Portal.Infrastructure.Data.Entities;
 
 namespace SEBT.Portal.TestUtilities.Helpers;
 
 /// <summary>
 /// Factory for creating User instances using Bogus for generating fake data.
-/// Used for both testing and database seeding.
+/// Used for testing. For UserEntity and database helpers, use Infrastructure.Helpers.UserFactory.
 /// See https://github.com/bchavez/Bogus for more information
 /// </summary>
 public static class UserFactory
@@ -54,7 +51,6 @@ public static class UserFactory
     public static User CreateUserWithEmail(string email, Action<User>? customize = null)
     {
         var user = UserFaker.Generate();
-        // Only normalize if email is not empty/null (allows testing repository validation)
         user.Email = string.IsNullOrWhiteSpace(email) ? email : EmailNormalizer.Normalize(email);
         customize?.Invoke(user);
         return user;
@@ -70,7 +66,6 @@ public static class UserFactory
         return CreateUser(u =>
         {
             u.IsCoLoaded = true;
-            // Create a temporary faker for date generation (acceptable for single date value)
             var faker = new Faker();
             u.CoLoadedLastUpdated = faker.Date.Recent(60);
             customize?.Invoke(u);
@@ -104,10 +99,8 @@ public static class UserFactory
         {
             u.IdProofingStatus = status;
 
-            // Set related dates based on status
             if (status == IdProofingStatus.Completed || status == IdProofingStatus.Expired)
             {
-                // Create a temporary faker for date generation (acceptable for single date value)
                 var faker = new Faker();
                 u.IdProofingCompletedAt = faker.Date.Recent(30);
                 u.IdProofingExpiresAt = u.IdProofingCompletedAt.Value.AddYears(1);
@@ -129,75 +122,5 @@ public static class UserFactory
     public static void SetSeed(int seed)
     {
         Randomizer.Seed = new Random(seed);
-    }
-
-    /// <summary>
-    /// Creates a new UserEntity instance and saves it to the database.
-    /// </summary>
-    /// <param name="context">The database context to save the entity to.</param>
-    /// <param name="customize">Optional action to customize the generated entity.</param>
-    /// <returns>A new UserEntity instance that has been saved to the database (with Id populated).</returns>
-    public static async Task<UserEntity> CreateAndSaveUserEntityAsync(
-        PortalDbContext context,
-        Action<UserEntity>? customize = null)
-    {
-        var entity = CreateUserEntity(customize);
-        context.Users.Add(entity);
-        await context.SaveChangesAsync();
-        return entity;
-    }
-
-    /// <summary>
-    /// Creates a new UserEntity instance with a specific email and saves it to the database.
-    /// </summary>
-    /// <param name="context">The database context to save the entity to.</param>
-    /// <param name="email">The email address to use.</param>
-    /// <param name="customize">Optional action to further customize the entity.</param>
-    /// <returns>A new UserEntity instance that has been saved to the database (with Id populated).</returns>
-    public static async Task<UserEntity> CreateAndSaveUserEntityWithEmailAsync(
-        PortalDbContext context,
-        string email,
-        Action<UserEntity>? customize = null)
-    {
-        var entity = CreateUserEntity(e =>
-        {
-            e.Email = email.ToLowerInvariant().Trim();
-            customize?.Invoke(e);
-        });
-        context.Users.Add(entity);
-        await context.SaveChangesAsync();
-        return entity;
-    }
-
-    /// <summary>
-    /// Creates a co-loaded UserEntity instance and saves it to the database.
-    /// </summary>
-    /// <param name="context">The database context to save the entity to.</param>
-    /// <param name="customize">Optional action to further customize the entity.</param>
-    /// <returns>A new UserEntity instance with IsCoLoaded = true that has been saved to the database.</returns>
-    public static async Task<UserEntity> CreateAndSaveCoLoadedUserEntityAsync(
-        PortalDbContext context,
-        Action<UserEntity>? customize = null)
-    {
-        var entity = CreateCoLoadedUserEntity(customize);
-        context.Users.Add(entity);
-        await context.SaveChangesAsync();
-        return entity;
-    }
-
-    /// <summary>
-    /// Creates a non-co-loaded UserEntity instance and saves it to the database.
-    /// </summary>
-    /// <param name="context">The database context to save the entity to.</param>
-    /// <param name="customize">Optional action to further customize the entity.</param>
-    /// <returns>A new UserEntity instance with IsCoLoaded = false that has been saved to the database.</returns>
-    public static async Task<UserEntity> CreateAndSaveNonCoLoadedUserEntityAsync(
-        PortalDbContext context,
-        Action<UserEntity>? customize = null)
-    {
-        var entity = CreateNonCoLoadedUserEntity(customize);
-        context.Users.Add(entity);
-        await context.SaveChangesAsync();
-        return entity;
     }
 }
