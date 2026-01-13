@@ -1,6 +1,3 @@
-
-
-using System.Net.Mail;
 using Microsoft.Extensions.Options;
 using MimeKit;
 using SEBT.Portal.Core.AppSettings;
@@ -11,25 +8,34 @@ namespace SEBT.Portal.Infrastructure.Services;
 public class MailKitClientService(IOptionsMonitor<SmtpClientSettings> optionsMonitor) : ISmtpClientService
 {
     private readonly SmtpClientSettings _smtpSettings = optionsMonitor.CurrentValue;
-    public Task SendEmailAsync(string to, string from, string subject, string body, bool isBodyHtml = true)
+
+    public Task SendEmailAsync(string to, string from, string subject, string body)
+    {
+        return SendEmailAsync(to, from, subject, body, []);
+    }
+
+    public Task SendEmailAsync(string to, string from, string subject, string body, IEnumerable<EmailLinkedResource> linkedResources)
     {
         var message = new MimeMessage();
         message.From.Add(new MailboxAddress(from, from));
         message.To.Add(new MailboxAddress(to, to));
         message.Subject = subject;
 
-        message.Body = new TextPart(isBodyHtml ? MimeKit.Text.TextFormat.Html : MimeKit.Text.TextFormat.Plain)
-        {
-            Text = body
-        };
+        var builder = new BodyBuilder { HtmlBody = body };
 
-        using (var client = new MailKit.Net.Smtp.SmtpClient())
+        foreach (var resource in linkedResources)
         {
-            client.Connect(_smtpSettings.SmtpServer, _smtpSettings.SmtpPort, _smtpSettings.EnableSsl);
-
-            client.Send(message);
-            client.Disconnect(true);
+            var linkedResource = builder.LinkedResources.Add(resource.FileName, resource.Data, ContentType.Parse(resource.ContentType));
+            linkedResource.ContentId = resource.ContentId;
+            linkedResource.ContentDisposition = new ContentDisposition(ContentDisposition.Inline);
         }
+
+        message.Body = builder.ToMessageBody();
+
+        using var client = new MailKit.Net.Smtp.SmtpClient();
+        client.Connect(_smtpSettings.SmtpServer, _smtpSettings.SmtpPort, _smtpSettings.EnableSsl);
+        client.Send(message);
+        client.Disconnect(true);
 
         return Task.CompletedTask;
     }
