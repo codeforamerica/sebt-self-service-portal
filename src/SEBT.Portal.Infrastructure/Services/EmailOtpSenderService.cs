@@ -26,9 +26,8 @@ public class EmailOtpSenderService(
 {
     private const string LogoContentId = "logo";
     private readonly EmailOtpSenderServiceSettings _settings = optionsMonitor.CurrentValue;
-    private static string? _cachedTemplate;
-    private static byte[]? _cachedLogo;
-    private static readonly object _templateLock = new();
+    private static readonly Lazy<string> _cachedTemplate = new(LoadEmailTemplate);
+    private static readonly Lazy<byte[]> _cachedLogo = new(LoadLogoData);
 
     public async Task<Result> SendOtpAsync(string to, string otp)
     {
@@ -62,7 +61,7 @@ public class EmailOtpSenderService(
     /// <returns>The fully rendered HTML email content.</returns>
     private string RenderEmailTemplate(string otp)
     {
-        var template = GetEmailTemplate();
+        var template = _cachedTemplate.Value;
         var logoHtml = $"<img src=\"cid:{LogoContentId}\" alt=\"{_settings.ProgramName}\" width=\"140\" style=\"max-width: 100%; height: auto;\" />";
 
         return template
@@ -80,71 +79,42 @@ public class EmailOtpSenderService(
     /// <returns>Collection of linked resources to embed in the email.</returns>
     private static List<EmailLinkedResource> GetLinkedResources()
     {
-        var logoData = GetLogoData();
         return
         [
-            new EmailLinkedResource(LogoContentId, logoData, "image/png", "logo.png")
+            new EmailLinkedResource(LogoContentId, _cachedLogo.Value, "image/png", "logo.png")
         ];
     }
 
     /// <summary>
-    /// Gets the logo image data from the embedded resource, with caching.
+    /// Loads the logo image data from the embedded resource.
     /// </summary>
     /// <returns>The logo image as a byte array.</returns>
-    private static byte[] GetLogoData()
+    private static byte[] LoadLogoData()
     {
-        if (_cachedLogo != null)
-        {
-            return _cachedLogo;
-        }
+        var assembly = Assembly.GetExecutingAssembly();
+        var resourceName = "SEBT.Portal.Infrastructure.Templates.Email.logo.png";
 
-        lock (_templateLock)
-        {
-            if (_cachedLogo != null)
-            {
-                return _cachedLogo;
-            }
+        using var stream = assembly.GetManifestResourceStream(resourceName)
+            ?? throw new InvalidOperationException($"Logo image not found: {resourceName}");
 
-            var assembly = Assembly.GetExecutingAssembly();
-            var resourceName = "SEBT.Portal.Infrastructure.Templates.Email.logo.png";
-
-            using var stream = assembly.GetManifestResourceStream(resourceName)
-                ?? throw new InvalidOperationException($"Logo image not found: {resourceName}");
-
-            using var memoryStream = new MemoryStream();
-            stream.CopyTo(memoryStream);
-            _cachedLogo = memoryStream.ToArray();
-            return _cachedLogo;
-        }
+        using var memoryStream = new MemoryStream();
+        stream.CopyTo(memoryStream);
+        return memoryStream.ToArray();
     }
 
     /// <summary>
-    /// Gets the email template from the embedded resource, with caching.
+    /// Loads the email template from the embedded resource.
     /// </summary>
     /// <returns>The raw HTML template string.</returns>
-    private static string GetEmailTemplate()
+    private static string LoadEmailTemplate()
     {
-        if (_cachedTemplate != null)
-        {
-            return _cachedTemplate;
-        }
+        var assembly = Assembly.GetExecutingAssembly();
+        var resourceName = "SEBT.Portal.Infrastructure.Templates.Email.OtpEmail.html";
 
-        lock (_templateLock)
-        {
-            if (_cachedTemplate != null)
-            {
-                return _cachedTemplate;
-            }
+        using var stream = assembly.GetManifestResourceStream(resourceName)
+            ?? throw new InvalidOperationException($"Email template not found: {resourceName}");
 
-            var assembly = Assembly.GetExecutingAssembly();
-            var resourceName = "SEBT.Portal.Infrastructure.Templates.Email.OtpEmail.html";
-
-            using var stream = assembly.GetManifestResourceStream(resourceName)
-                ?? throw new InvalidOperationException($"Email template not found: {resourceName}");
-
-            using var reader = new StreamReader(stream);
-            _cachedTemplate = reader.ReadToEnd();
-            return _cachedTemplate;
-        }
+        using var reader = new StreamReader(stream);
+        return reader.ReadToEnd();
     }
 }
