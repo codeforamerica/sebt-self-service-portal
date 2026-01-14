@@ -36,4 +36,10 @@ public class EmailOtpSenderServiceSettings
     /// Number of minutes until the OTP code expires.
     /// </summary>
     public int ExpiryMinutes { get; set; } = 10;
+
+    /// <summary>
+    /// The language code for the email (e.g., "en", "es").
+    /// Used for the HTML lang attribute for accessibility.
+    /// </summary>
+    public string Language { get; set; } = "en";
 }

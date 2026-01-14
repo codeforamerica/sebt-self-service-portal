@@ -70,6 +70,7 @@ public class EmailOtpSenderService(
             .Replace("{{StateName}}", _settings.StateName)
             .Replace("{{ProgramName}}", _settings.ProgramName)
             .Replace("{{ExpiryMinutes}}", _settings.ExpiryMinutes.ToString())
+            .Replace("{{Language}}", _settings.Language)
             .Replace("{{LogoHtml}}", logoHtml);
     }
 

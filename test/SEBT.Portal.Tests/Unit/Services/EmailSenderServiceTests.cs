@@ -26,7 +26,8 @@ public class EmailSenderServiceTests
             Subject = "Test Subject",
             ProgramName = "Test Program",
             StateName = "Test State",
-            ExpiryMinutes = 10
+            ExpiryMinutes = 10,
+            Language = "en"
         };
         _optionsMonitor.CurrentValue.Returns(emailSettings);
 
@@ -57,7 +58,8 @@ public class EmailSenderServiceTests
             Subject = "Test Subject",
             ProgramName = "Test Program",
             StateName = "Test State",
-            ExpiryMinutes = 10
+            ExpiryMinutes = 10,
+            Language = "es"
         };
         _optionsMonitor.CurrentValue.Returns(emailSettings);
         _smtpClientService.SendEmailAsync(
@@ -81,6 +83,7 @@ public class EmailSenderServiceTests
                 body.Contains(emailSettings.StateName) &&
                 body.Contains(emailSettings.ProgramName) &&
                 body.Contains(emailSettings.ExpiryMinutes.ToString()) &&
+                body.Contains($"lang=\"{emailSettings.Language}\"") &&
                 body.Contains("cid:logo")),
             Arg.Is<IEnumerable<EmailLinkedResource>>(resources =>
                 resources.Any(r => r.ContentId == "logo" && r.ContentType == "image/png")));
