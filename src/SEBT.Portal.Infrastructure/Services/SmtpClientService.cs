@@ -37,17 +37,25 @@ public class SmtpClientService(IOptionsMonitor<SmtpClientSettings> optionsMonito
         message.To.Add(new MailAddress(to));
 
         var htmlView = AlternateView.CreateAlternateViewFromString(body, null, MediaTypeNames.Text.Html);
-
-        foreach (var resource in linkedResources)
+        try
         {
-            var linkedResource = new LinkedResource(new MemoryStream(resource.Data), resource.ContentType)
+            foreach (var resource in linkedResources)
             {
-                ContentId = resource.ContentId
-            };
-            htmlView.LinkedResources.Add(linkedResource);
-        }
+                var stream = new MemoryStream(resource.Data);
+                var linkedResource = new LinkedResource(stream, resource.ContentType)
+                {
+                    ContentId = resource.ContentId
+                };
+                htmlView.LinkedResources.Add(linkedResource);
+            }
 
-        message.AlternateViews.Add(htmlView);
+            message.AlternateViews.Add(htmlView);
+        }
+        catch
+        {
+            htmlView.Dispose();
+            throw;
+        }
 
         using var smtpClient = new SmtpClient(_smtpClientSettings.SmtpServer, _smtpClientSettings.SmtpPort)
         {

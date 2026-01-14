@@ -16,7 +16,7 @@ public class MailKitClientService(IOptionsMonitor<SmtpClientSettings> optionsMon
 
     public Task SendEmailAsync(string to, string from, string subject, string body, IEnumerable<EmailLinkedResource> linkedResources)
     {
-        var message = new MimeMessage();
+        using var message = new MimeMessage();
         message.From.Add(new MailboxAddress(from, from));
         message.To.Add(new MailboxAddress(to, to));
         message.Subject = subject;
