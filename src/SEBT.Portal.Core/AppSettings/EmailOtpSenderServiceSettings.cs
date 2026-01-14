@@ -28,7 +28,7 @@ public class EmailOtpSenderServiceSettings
     public required string ProgramName { get; set; }
 
     /// <summary>
-    /// The state name for display purposes (e.g., "DC SUN Bucks").
+    /// The state and program name for display purposes (e.g., "DC SUN Bucks").
     /// </summary>
     public required string StateName { get; set; }
 
