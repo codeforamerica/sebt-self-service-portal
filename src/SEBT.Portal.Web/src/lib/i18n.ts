@@ -41,6 +41,7 @@ import enDCOptionalId from '@/content/locales/en/dc/optionalId.json'
 import enDCPersonalInfo from '@/content/locales/en/dc/personalInfo.json'
 import enDCProto from '@/content/locales/en/dc/proto.json'
 import enDCResult from '@/content/locales/en/dc/result.json'
+import enDCValidation from '@/content/locales/en/dc/validation.json'
 
 // English - CO
 import enCOCommon from '@/content/locales/en/co/common.json'
@@ -58,6 +59,7 @@ import enCOOptionalId from '@/content/locales/en/co/optionalId.json'
 import enCOPersonalInfo from '@/content/locales/en/co/personalInfo.json'
 import enCOProto from '@/content/locales/en/co/proto.json'
 import enCOResult from '@/content/locales/en/co/result.json'
+import enCOValidation from '@/content/locales/en/co/validation.json'
 
 // Spanish - DC
 import esDCCommon from '@/content/locales/es/dc/common.json'
@@ -75,6 +77,7 @@ import esDCOptionalId from '@/content/locales/es/dc/optionalId.json'
 import esDCPersonalInfo from '@/content/locales/es/dc/personalInfo.json'
 import esDCProto from '@/content/locales/es/dc/proto.json'
 import esDCResult from '@/content/locales/es/dc/result.json'
+import esDCValidation from '@/content/locales/es/dc/validation.json'
 
 // Spanish - CO
 import esCOCommon from '@/content/locales/es/co/common.json'
@@ -92,6 +95,7 @@ import esCOOptionalId from '@/content/locales/es/co/optionalId.json'
 import esCOPersonalInfo from '@/content/locales/es/co/personalInfo.json'
 import esCOProto from '@/content/locales/es/co/proto.json'
 import esCOResult from '@/content/locales/es/co/result.json'
+import esCOValidation from '@/content/locales/es/co/validation.json'
 
 // Get state from environment
 const state = (process.env.NEXT_PUBLIC_STATE || process.env.STATE || 'dc').toLowerCase() as
@@ -116,7 +120,8 @@ const stateResources = {
       optionalId: enDCOptionalId,
       personalInfo: enDCPersonalInfo,
       proto: enDCProto,
-      result: enDCResult
+      result: enDCResult,
+      validation: enDCValidation
     },
     es: {
       common: esDCCommon,
@@ -133,7 +138,8 @@ const stateResources = {
       optionalId: esDCOptionalId,
       personalInfo: esDCPersonalInfo,
       proto: esDCProto,
-      result: esDCResult
+      result: esDCResult,
+      validation: esDCValidation
     }
   },
   co: {
@@ -152,7 +158,8 @@ const stateResources = {
       optionalId: enCOOptionalId,
       personalInfo: enCOPersonalInfo,
       proto: enCOProto,
-      result: enCOResult
+      result: enCOResult,
+      validation: enCOValidation
     },
     es: {
       common: esCOCommon,
@@ -169,7 +176,8 @@ const stateResources = {
       optionalId: esCOOptionalId,
       personalInfo: esCOPersonalInfo,
       proto: esCOProto,
-      result: esCOResult
+      result: esCOResult,
+      validation: esCOValidation
     }
   }
 }
@@ -209,7 +217,8 @@ i18n.use(initReactI18next).init({
     'optionalId',
     'personalInfo',
     'proto',
-    'result'
+    'result',
+    'validation'
   ],
 
   interpolation: {

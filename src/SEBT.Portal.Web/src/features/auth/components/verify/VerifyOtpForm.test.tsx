@@ -212,7 +212,7 @@ describe('VerifyOtpForm', () => {
       await waitFor(() => {
         const errorMessage = document.querySelector('.usa-error-message')
         expect(errorMessage).toBeInTheDocument()
-        expect(errorMessage).toHaveTextContent(/enter.*6 digit confirmation code/i)
+        expect(errorMessage).toHaveTextContent(/this is required/i)
       })
     })
 
@@ -237,7 +237,7 @@ describe('VerifyOtpForm', () => {
       await user.tab()
 
       await waitFor(() => {
-        expect(screen.getByText(/enter a valid code.*6.*digits/i)).toBeInTheDocument()
+        expect(screen.getByText(/enter a valid.*6.*digit code/i)).toBeInTheDocument()
       })
     })
   })

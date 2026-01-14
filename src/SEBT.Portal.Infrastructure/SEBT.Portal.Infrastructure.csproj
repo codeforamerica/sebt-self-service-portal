@@ -26,4 +26,9 @@
       <PackageReference Include="System.IdentityModel.Tokens.Jwt" Version="8.2.1" />
     </ItemGroup>
 
+    <ItemGroup>
+      <EmbeddedResource Include="Templates\Email\OtpEmail.html" />
+      <EmbeddedResource Include="Templates\Email\logo.png" />
+    </ItemGroup>
+
 </Project>

@@ -9,7 +9,6 @@ export default function LoginPage() {
   const state = getState()
   const links = getStateLinks(state)
   const t = getTranslations('login')
-  const tDisclaimer = getTranslations('disclaimer')
 
   return (
     <>
@@ -32,7 +31,7 @@ export default function LoginPage() {
                 target="_blank"
                 rel="noopener noreferrer"
               >
-                {tDisclaimer('logInDisclaimerBody2')}
+                {t('logInDisclaimerBody2')}
               </TextLink>
             </p>
           </section>
