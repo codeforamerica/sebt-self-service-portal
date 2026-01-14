@@ -8,15 +8,15 @@ Accepted
 
 ## Context
 
-The Summer EBT Self-Service Portal app requires a flexible feature flag system that supports multi-state deployment where each state (DC, CO, etc.) may have different feature requirements, the ability to enable/disable features without code deployments, clear precedence when multiple configuration sources exist, support for future cloud-based feature flag management via `AWS AppConfig`, and API exposure for frontend applications to query feature flag states. Without a structured feature flag system, state-specific feature rollouts would require separate code branches or deployments.
+The Summer EBT Self-Service Portal app requires a flexible feature flag system that supports multi-state deployment where each state (DC, CO, etc.) may have different feature requirements, the ability to enable/disable features without code deployments, clear precedence when multiple configuration sources exist, support for future cloud-based feature flag management via `AWS AppConfig`, and API exposure for frontend applications to query feature flag states. Without a structured feature flag system, state-specific feature rollouts would require separate code branches, deployments and/or manual tweaking of each feature flag.
 
 ## Decision
 
 We will use **Microsoft.FeatureManagement** (https://learn.microsoft.com/en-us/dotnet/api/microsoft.featuremanagement.featuremanager?view=azure-dotnet) with a custom query wrapper service (`FeatureFlagQueryService`) that merges flags from multiple sources in a defined priority order. The system exposes flags via the `GET /api/features` REST API endpoint and dynamically loads state-specific configuration from `appsettings.{State}.json` files based on the `STATE` or `NEXT_PUBLIC_STATE` environment variable. 
 
 The priority order from lowest to highest: 
-   - Default flags in `appsettings.json` (to represent features unique to core features that all states share, but might need to be toggled later to fit within a deployment cadence), 
-   - AWS AppConfig (if enabled; some states will not be on a cloud environment.  This will allow features to be flipped on or off without re-deployment), 
+   - Default flags in `appsettings.json` (to represent features unique to core features that all states share, but might need to be toggled later to fit within a deployment cadence)
+   - AWS AppConfig (if enabled; some states will not be on a cloud environment.  This will allow features to be flipped on or off without re-deployment)
    - State-specific JSON appsetting files, which includes FeatureManagement options (in the format of appsettings.xx.json)
    - Programmatic FF toggling with `FeatureManager` itself (Not recommended, but it would temporarily overwrite the Feature Flag until settings are changed again)
 
