@@ -54,7 +54,35 @@ public static class Dependencies
         {
             options.UseSqlServer(connectionString)
                 // These are called automatically during migrations, EnsureCreated, and `dotnet ef database update`
+                // Both `UseSeeding` and `UseAsyncSeeding` are recommended to be called for compatibility
+                // reasons (some EF Core versions may not support the async version, for example).  
                 // See: https://learn.microsoft.com/en-us/ef/core/modeling/data-seeding
+                .UseSeeding((context, _) =>
+                {
+                    // Only seed in Development environment
+                    var environment = Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT");
+                    if (environment != "Development")
+                    {
+                        return;
+                    }
+
+                    // Cast to PortalDbContext to access models DbSet
+                    if (context is not PortalDbContext portalContext)
+                    {
+                        return;
+                    }
+
+                    // Check if records already exist to avoid re-seeding
+                    if (portalContext.Users.Any())
+                    {
+                        return;
+                    }
+
+                    var userRepository = new Repositories.DatabaseUserRepository(portalContext);
+                    var seeder = new DatabaseSeeder(userRepository, portalContext);
+                    // Call async method synchronously for UseSeeding callback
+                    seeder.SeedTestUsersAsync(CancellationToken.None).GetAwaiter().GetResult();
+                })
                 .UseAsyncSeeding(async (context, _, cancellationToken) =>
                 {
                     // Only seed in Development environment
