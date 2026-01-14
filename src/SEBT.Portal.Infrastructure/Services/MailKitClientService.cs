@@ -14,7 +14,7 @@ public class MailKitClientService(IOptionsMonitor<SmtpClientSettings> optionsMon
         return SendEmailAsync(to, from, subject, body, []);
     }
 
-    public Task SendEmailAsync(string to, string from, string subject, string body, IEnumerable<EmailLinkedResource> linkedResources)
+    public async Task SendEmailAsync(string to, string from, string subject, string body, IEnumerable<EmailLinkedResource> linkedResources)
     {
         using var message = new MimeMessage();
         message.From.Add(new MailboxAddress(from, from));
@@ -33,10 +33,14 @@ public class MailKitClientService(IOptionsMonitor<SmtpClientSettings> optionsMon
         message.Body = builder.ToMessageBody();
 
         using var client = new MailKit.Net.Smtp.SmtpClient();
-        client.Connect(_smtpSettings.SmtpServer, _smtpSettings.SmtpPort, _smtpSettings.EnableSsl);
-        client.Send(message);
-        client.Disconnect(true);
-
-        return Task.CompletedTask;
+        try
+        {
+            await client.ConnectAsync(_smtpSettings.SmtpServer, _smtpSettings.SmtpPort, _smtpSettings.EnableSsl);
+            await client.SendAsync(message);
+        }
+        finally
+        {
+            await client.DisconnectAsync(true);
+        }
     }
 }
