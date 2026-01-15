@@ -29,6 +29,7 @@ public static class Dependencies
     {
         services.AddTransient<IOtpRepository, InMemoryOtpRepository>();
         services.AddTransient<IUserRepository, DatabaseUserRepository>();
+        services.AddTransient<IHouseholdRepository, DatabaseHouseholdRepository>();
         services.AddMemoryCache();
 
         return services;
