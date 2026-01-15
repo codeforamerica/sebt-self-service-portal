@@ -1,9 +1,11 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 using SEBT.Portal.Core.AppSettings;
 using SEBT.Portal.Core.Repositories;
 using SEBT.Portal.Core.Services;
+using SEBT.Portal.Infrastructure.Configuration;
 using SEBT.Portal.Infrastructure.Data;
 using SEBT.Portal.Infrastructure.Repositories;
 using SEBT.Portal.Infrastructure.Services;
@@ -86,6 +88,20 @@ public static class Dependencies
             .BindConfiguration(JwtSettings.SectionName);
         services.AddOptionsWithValidateOnStart<Core.AppSettings.DefaultFeatureFlagSettings>()
             .BindConfiguration(Core.AppSettings.DefaultFeatureFlagSettings.SectionName);
+
+        services.AddOptions<FeatureManagementSettings>()
+            .PostConfigure<IConfiguration>((options, configuration) =>
+            {
+                var config = new FeatureManagementOptionsConfiguration(configuration);
+                config.PostConfigure(null, options);
+            });
+
+        services.AddOptions<AppConfigFeatureFlagSettings>()
+            .PostConfigure<IConfiguration, ILogger<AppConfigFeatureFlagOptionsConfiguration>>((options, configuration, logger) =>
+            {
+                var config = new AppConfigFeatureFlagOptionsConfiguration(configuration, logger);
+                config.PostConfigure(null, options);
+            });
 
         return services;
     }

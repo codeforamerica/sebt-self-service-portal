@@ -7,6 +7,7 @@ using Microsoft.FeatureManagement;
 using NSubstitute;
 using NSubstitute.Core;
 using SEBT.Portal.Core.AppSettings;
+using SEBT.Portal.Infrastructure.Configuration;
 using SEBT.Portal.Infrastructure.Services;
 
 namespace SEBT.Portal.Tests.Unit.Services;
@@ -33,9 +34,14 @@ public class FeatureFlagServicePriorityTests
             Flags = new Dictionary<string, bool> { { "test_feature", false } }
         };
         var defaultFlagsOptions = Options.Create(defaultFlags);
+
+        // Create options from configuration
+        var featureManagementOptions = CreateFeatureManagementOptions(configuration);
+        var appConfigOptions = CreateAppConfigOptions(configuration);
+
         _featureManager.GetFeatureNamesAsync().Returns(AsyncEnumerable.Empty<string>());
 
-        var service = new FeatureFlagQueryService(_featureManager, configuration, defaultFlagsOptions, _logger);
+        var service = new FeatureFlagQueryService(_featureManager, defaultFlagsOptions, featureManagementOptions, appConfigOptions, _logger);
 
         // Act
         var result = await service.GetFeatureFlagsAsync();
@@ -55,9 +61,14 @@ public class FeatureFlagServicePriorityTests
             Flags = new Dictionary<string, bool> { { "test_feature", false } }
         };
         var defaultFlagsOptions = Options.Create(defaultFlags);
+
+        // Create options from configuration
+        var featureManagementOptions = CreateFeatureManagementOptions(configuration);
+        var appConfigOptions = CreateAppConfigOptions(configuration);
+
         _featureManager.GetFeatureNamesAsync().Returns(AsyncEnumerable.Empty<string>());
 
-        var service = new FeatureFlagQueryService(_featureManager, configuration, defaultFlagsOptions, _logger);
+        var service = new FeatureFlagQueryService(_featureManager, defaultFlagsOptions, featureManagementOptions, appConfigOptions, _logger);
 
         // Act
         var result = await service.GetFeatureFlagsAsync();
@@ -79,9 +90,14 @@ public class FeatureFlagServicePriorityTests
             Flags = new Dictionary<string, bool> { { "test_feature", true } }
         };
         var defaultFlagsOptions = Options.Create(defaultFlags);
+
+        // Create empty options
+        var featureManagementOptions = CreateFeatureManagementOptions(configuration);
+        var appConfigOptions = CreateAppConfigOptions(configuration);
+
         _featureManager.GetFeatureNamesAsync().Returns(AsyncEnumerable.Empty<string>());
 
-        var service = new FeatureFlagQueryService(_featureManager, configuration, defaultFlagsOptions, _logger);
+        var service = new FeatureFlagQueryService(_featureManager, defaultFlagsOptions, featureManagementOptions, appConfigOptions, _logger);
 
         // Act
         var result = await service.GetFeatureFlagsAsync();
@@ -105,9 +121,14 @@ public class FeatureFlagServicePriorityTests
             }
         };
         var defaultFlagsOptions = Options.Create(defaultFlags);
+
+        // Create options from configuration
+        var featureManagementOptions = CreateFeatureManagementOptions(configuration);
+        var appConfigOptions = CreateAppConfigOptions(configuration);
+
         _featureManager.GetFeatureNamesAsync().Returns(AsyncEnumerable.Empty<string>());
 
-        var service = new FeatureFlagQueryService(_featureManager, configuration, defaultFlagsOptions, _logger);
+        var service = new FeatureFlagQueryService(_featureManager, defaultFlagsOptions, featureManagementOptions, appConfigOptions, _logger);
 
         // Act
         var result = await service.GetFeatureFlagsAsync();
@@ -128,12 +149,17 @@ public class FeatureFlagServicePriorityTests
             Flags = new Dictionary<string, bool> { { "default_feature", true } }
         };
         var defaultFlagsOptions = Options.Create(defaultFlags);
+
+        // Create empty options
+        var featureManagementOptions = CreateFeatureManagementOptions(configuration);
+        var appConfigOptions = CreateAppConfigOptions(configuration);
+
         var featureNames = new[] { "default_feature", "manager_feature" };
         _featureManager.GetFeatureNamesAsync().Returns(featureNames.ToAsyncEnumerable());
         _featureManager.IsEnabledAsync("default_feature").Returns(true);
         _featureManager.IsEnabledAsync("manager_feature").Returns(false);
 
-        var service = new FeatureFlagQueryService(_featureManager, configuration, defaultFlagsOptions, _logger);
+        var service = new FeatureFlagQueryService(_featureManager, defaultFlagsOptions, featureManagementOptions, appConfigOptions, _logger);
 
         // Act
         var result = await service.GetFeatureFlagsAsync();
@@ -159,9 +185,14 @@ public class FeatureFlagServicePriorityTests
             }
         };
         var defaultFlagsOptions = Options.Create(defaultFlags);
+
+        // Create empty options
+        var featureManagementOptions = CreateFeatureManagementOptions(configuration);
+        var appConfigOptions = CreateAppConfigOptions(configuration);
+
         _featureManager.GetFeatureNamesAsync().Returns(AsyncEnumerable.Empty<string>());
 
-        var service = new FeatureFlagQueryService(_featureManager, configuration, defaultFlagsOptions, _logger);
+        var service = new FeatureFlagQueryService(_featureManager, defaultFlagsOptions, featureManagementOptions, appConfigOptions, _logger);
 
         // Act
         var result = await service.GetFeatureFlagsAsync();
@@ -180,12 +211,17 @@ public class FeatureFlagServicePriorityTests
         var configuration = new ConfigurationBuilder().Build();
         var defaultFlags = new DefaultFeatureFlagSettings();
         var defaultFlagsOptions = Options.Create(defaultFlags);
+
+        // Create empty options
+        var featureManagementOptions = CreateFeatureManagementOptions(configuration);
+        var appConfigOptions = CreateAppConfigOptions(configuration);
+
         var featureNames = new[] { "feature1", "feature2" };
         _featureManager.GetFeatureNamesAsync().Returns(featureNames.ToAsyncEnumerable());
         _featureManager.IsEnabledAsync("feature1").Returns(true);
         _featureManager.When(x => x.IsEnabledAsync("feature2")).Do(_ => throw new Exception("Test exception"));
 
-        var service = new FeatureFlagQueryService(_featureManager, configuration, defaultFlagsOptions, _logger);
+        var service = new FeatureFlagQueryService(_featureManager, defaultFlagsOptions, featureManagementOptions, appConfigOptions, _logger);
 
         // Act
         var result = await service.GetFeatureFlagsAsync();
@@ -203,6 +239,11 @@ public class FeatureFlagServicePriorityTests
         var configuration = new ConfigurationBuilder().Build();
         var defaultFlags = new DefaultFeatureFlagSettings();
         var defaultFlagsOptions = Options.Create(defaultFlags);
+
+        // Create empty options
+        var featureManagementOptions = CreateFeatureManagementOptions(configuration);
+        var appConfigOptions = CreateAppConfigOptions(configuration);
+
         var cts = new CancellationTokenSource();
         cts.Cancel();
 
@@ -214,11 +255,28 @@ public class FeatureFlagServicePriorityTests
         }
         _featureManager.GetFeatureNamesAsync().Returns(CancelledEnumerable());
 
-        var service = new FeatureFlagQueryService(_featureManager, configuration, defaultFlagsOptions, _logger);
+        var service = new FeatureFlagQueryService(_featureManager, defaultFlagsOptions, featureManagementOptions, appConfigOptions, _logger);
 
         // Act & Assert
         await Assert.ThrowsAsync<OperationCanceledException>(() =>
             service.GetFeatureFlagsAsync(cts.Token));
+    }
+
+    private IOptions<FeatureManagementSettings> CreateFeatureManagementOptions(IConfiguration configuration)
+    {
+        var settings = new FeatureManagementSettings();
+        var config = new FeatureManagementOptionsConfiguration(configuration);
+        config.PostConfigure(null, settings);
+        return Options.Create(settings);
+    }
+
+    private IOptions<AppConfigFeatureFlagSettings> CreateAppConfigOptions(IConfiguration configuration)
+    {
+        var settings = new AppConfigFeatureFlagSettings();
+        var logger = NullLogger<AppConfigFeatureFlagOptionsConfiguration>.Instance;
+        var config = new AppConfigFeatureFlagOptionsConfiguration(configuration, logger);
+        config.PostConfigure(null, settings);
+        return Options.Create(settings);
     }
 
     private IConfiguration CreateConfigurationWithStateJsonAndAppConfig()

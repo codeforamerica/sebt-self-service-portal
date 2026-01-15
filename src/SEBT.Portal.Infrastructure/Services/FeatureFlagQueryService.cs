@@ -1,4 +1,3 @@
-using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Microsoft.FeatureManagement;
@@ -17,26 +16,30 @@ namespace SEBT.Portal.Infrastructure.Services;
 public class FeatureFlagQueryService : IFeatureFlagQueryService
 {
     private readonly IFeatureManager _featureManager;
-    private readonly IConfiguration _configuration;
     private readonly DefaultFeatureFlagSettings _defaultFlags;
+    private readonly FeatureManagementSettings _featureManagementFlags;
+    private readonly AppConfigFeatureFlagSettings _appConfigFlags;
     private readonly ILogger<FeatureFlagQueryService> _logger;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="FeatureFlagQueryService"/> class.
     /// </summary>
     /// <param name="featureManager">The feature manager from Microsoft.FeatureManagement.</param>
-    /// <param name="configuration">The application configuration.</param>
     /// <param name="defaultFlags">The default feature flag settings.</param>
+    /// <param name="featureManagementFlags">The feature management settings from FeatureManagement section.</param>
+    /// <param name="appConfigFlags">The AWS AppConfig feature flag settings.</param>
     /// <param name="logger">The logger.</param>
     public FeatureFlagQueryService(
         IFeatureManager featureManager,
-        IConfiguration configuration,
         IOptions<DefaultFeatureFlagSettings> defaultFlags,
+        IOptions<FeatureManagementSettings> featureManagementFlags,
+        IOptions<AppConfigFeatureFlagSettings> appConfigFlags,
         ILogger<FeatureFlagQueryService> logger)
     {
         _featureManager = featureManager;
-        _configuration = configuration;
         _defaultFlags = defaultFlags.Value;
+        _featureManagementFlags = featureManagementFlags.Value;
+        _appConfigFlags = appConfigFlags.Value;
         _logger = logger;
     }
 
@@ -75,33 +78,37 @@ public class FeatureFlagQueryService : IFeatureFlagQueryService
             }
 
             // Priority 2: Override with AWS AppConfig if configured
-            var appConfigFlags = GetAppConfigFeatureFlags();
-            foreach (var (key, value) in appConfigFlags)
+            if (_appConfigFlags.Enabled && _appConfigFlags.Features != null)
             {
-                if (IsValidFeatureFlagName(key))
+                foreach (var (key, value) in _appConfigFlags.Features)
                 {
-                    flags[key] = value;
-                    _logger.LogDebug("Feature flag {FeatureName} set from AWS AppConfig: {Value}", key, value);
-                }
-                else
-                {
-                    _logger.LogWarning("Invalid feature flag name '{FeatureName}' in AppConfig, skipping", key);
+                    if (IsValidFeatureFlagName(key))
+                    {
+                        flags[key] = value;
+                        _logger.LogDebug("Feature flag {FeatureName} set from AWS AppConfig: {Value}", key, value);
+                    }
+                    else
+                    {
+                        _logger.LogWarning("Invalid feature flag name '{FeatureName}' in AppConfig, skipping", key);
+                    }
                 }
             }
 
             // Priority 3: Override with state-specific JSON configuration (highest priority - applied last)
             // State JSON has the highest priority and will override all other sources
-            var stateJsonFlags = GetStateJsonFeatureFlags();
-            foreach (var (key, value) in stateJsonFlags)
+            if (_featureManagementFlags.Flags != null)
             {
-                if (IsValidFeatureFlagName(key))
+                foreach (var (key, value) in _featureManagementFlags.Flags)
                 {
-                    flags[key] = value;
-                    _logger.LogDebug("Feature flag {FeatureName} set from state JSON: {Value}", key, value);
-                }
-                else
-                {
-                    _logger.LogWarning("Invalid feature flag name '{FeatureName}' in state JSON, skipping", key);
+                    if (IsValidFeatureFlagName(key))
+                    {
+                        flags[key] = value;
+                        _logger.LogDebug("Feature flag {FeatureName} set from state JSON: {Value}", key, value);
+                    }
+                    else
+                    {
+                        _logger.LogWarning("Invalid feature flag name '{FeatureName}' in state JSON, skipping", key);
+                    }
                 }
             }
 
@@ -141,116 +148,6 @@ public class FeatureFlagQueryService : IFeatureFlagQueryService
         {
             _logger.LogError(ex, "Failed to retrieve feature flags");
             throw;
-        }
-
-        return flags;
-    }
-
-    /// <summary>
-    /// Gets feature flags from state-specific JSON files (appsettings.{State}.json).
-    /// Skips the AppConfig section to avoid reading configuration metadata.
-    /// </summary>
-    private Dictionary<string, bool> GetStateJsonFeatureFlags()
-    {
-        var flags = new Dictionary<string, bool>();
-        var featureManagementSection = _configuration.GetSection("FeatureManagement");
-
-        if (featureManagementSection.Exists())
-        {
-            foreach (var child in featureManagementSection.GetChildren())
-            {
-                // Skip AppConfig configuration section itself
-                if (child.Key.Equals("AppConfig", StringComparison.OrdinalIgnoreCase))
-                {
-                    continue;
-                }
-
-                if (child.Value != null && bool.TryParse(child.Value, out var boolValue))
-                {
-                    flags[child.Key] = boolValue;
-                }
-            }
-        }
-
-        return flags;
-    }
-
-    /// <summary>
-    /// Gets feature flags from AWS AppConfig if configured.
-    /// Checks for AWS AppConfig configuration in the FeatureManagement section.
-    /// </summary>
-    private Dictionary<string, bool> GetAppConfigFeatureFlags()
-    {
-        var flags = new Dictionary<string, bool>();
-
-        // Check if AWS AppConfig is configured
-        var appConfigSection = _configuration.GetSection("FeatureManagement:AppConfig");
-
-        if (appConfigSection.Exists())
-        {
-            // Check if AppConfig is enabled
-            try
-            {
-                var enabled = appConfigSection.GetValue<bool>("Enabled", false);
-                if (!enabled)
-                {
-                    return flags;
-                }
-            }
-            catch (Exception ex)
-            {
-                _logger.LogWarning(ex, "Failed to read AppConfig Enabled setting, assuming disabled");
-                return flags;
-            }
-
-            // Try to read feature flags from AppConfig configuration source
-            // This assumes AWS AppConfig Agent is running locally or direct API calls are configured
-            var appConfigFeatureSection = _configuration.GetSection("FeatureManagement:AppConfig:Features");
-
-            if (appConfigFeatureSection.Exists())
-            {
-                foreach (var child in appConfigFeatureSection.GetChildren())
-                {
-                    if (child.Value != null && bool.TryParse(child.Value, out var boolValue))
-                    {
-                        flags[child.Key] = boolValue;
-                    }
-                    else
-                    {
-                        try
-                        {
-                            var enabledValue = child.GetValue<bool?>("Enabled");
-                            if (enabledValue.HasValue)
-                            {
-                                flags[child.Key] = enabledValue.Value;
-                            }
-                        }
-                        catch (Exception ex)
-                        {
-                            _logger.LogDebug(ex, "Failed to parse AppConfig feature flag {FeatureName}", child.Key);
-                        }
-                    }
-                }
-            }
-            else
-            {
-                // If AppConfig is enabled but no features section exists,
-                // try to read from the main FeatureManagement section which might be populated by AppConfig Agent
-                var featureManagementSection = _configuration.GetSection("FeatureManagement");
-                foreach (var child in featureManagementSection.GetChildren())
-                {
-                    // Skip AppConfig configuration section itself
-                    if (child.Key.Equals("AppConfig", StringComparison.OrdinalIgnoreCase))
-                    {
-                        continue;
-                    }
-
-                    if (child.Value != null && bool.TryParse(child.Value, out var boolValue))
-                    {
-                        flags[child.Key] = boolValue;
-                    }
-                }
-            }
         }
 
         return flags;
