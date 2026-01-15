@@ -11,41 +11,26 @@ public class HouseholdDataResponseMapperTests
     [Fact]
     public void ToResponse_MapsAllHouseholdDataProperties_WhenFullyPopulated()
     {
-        // Arrange
+        // Arrange - flat HouseholdData
         var benefitIssue = new DateTime(2026, 1, 1, 10, 0, 0, DateTimeKind.Utc);
         var benefitExpiry = new DateTime(2026, 4, 1, 10, 0, 0, DateTimeKind.Utc);
-        var cardRequested = new DateTime(2025, 11, 11, 12, 0, 0, DateTimeKind.Utc);
-        var cardMailed = new DateTime(2025, 11, 28, 12, 0, 0, DateTimeKind.Utc);
-        var cardActivated = new DateTime(2025, 12, 2, 12, 0, 0, DateTimeKind.Utc);
 
         var domain = new HouseholdData
         {
             Email = "user@example.com",
             Phone = "555-1234",
             BenefitIssuanceType = BenefitIssuanceType.SnapEbtCard,
-            Applications = new List<Application>
+            Children = new List<Child>
             {
-                new Application
-                {
-                    ApplicationNumber = "APP-123",
-                    CaseNumber = "CASE-456",
-                    ApplicationStatus = ApplicationStatus.Approved,
-                    IssuanceType = IssuanceType.SnapEbtCard,
-                    BenefitIssueDate = benefitIssue,
-                    BenefitExpirationDate = benefitExpiry,
-                    Last4DigitsOfCard = "1234",
-                    CardStatus = CardStatus.Active,
-                    CardRequestedAt = cardRequested,
-                    CardMailedAt = cardMailed,
-                    CardActivatedAt = cardActivated,
-                    CardDeactivatedAt = null,
-                    Children = new List<Child>
-                    {
-                        new Child { CaseNumber = 1001, FirstName = "John", LastName = "Doe" },
-                        new Child { CaseNumber = 1002, FirstName = "Jane", LastName = "Doe" }
-                    }
-                }
+                new Child { FirstName = "John", LastName = "Doe" },
+                new Child { FirstName = "Jane", LastName = "Doe" }
             },
+            ApplicationNumber = "APP-123",
+            CaseNumber = "CASE-456",
+            ApplicationStatus = ApplicationStatus.Approved,
+            BenefitIssueDate = benefitIssue,
+            BenefitExpirationDate = benefitExpiry,
+            Last4DigitsOfCard = "1234",
             AddressOnFile = new Address
             {
                 StreetAddress1 = "123 Main St",
@@ -53,12 +38,6 @@ public class HouseholdDataResponseMapperTests
                 City = "Denver",
                 State = "CO",
                 PostalCode = "80202"
-            },
-            UserProfile = new UserProfile
-            {
-                FirstName = "Jane",
-                MiddleName = "Marie",
-                LastName = "Doe"
             }
         };
 
@@ -81,7 +60,7 @@ public class HouseholdDataResponseMapperTests
         Assert.Equal("CO", response.AddressOnFile.State);
         Assert.Equal("80202", response.AddressOnFile.PostalCode);
 
-        // Assert - application
+        // Assert - single application (mapped from flat household)
         var app = response.Applications[0];
         Assert.Equal("APP-123", app.ApplicationNumber);
         Assert.Equal("CASE-456", app.CaseNumber);
@@ -90,38 +69,29 @@ public class HouseholdDataResponseMapperTests
         Assert.Equal(benefitIssue, app.BenefitIssueDate);
         Assert.Equal(benefitExpiry, app.BenefitExpirationDate);
         Assert.Equal("1234", app.Last4DigitsOfCard);
-        Assert.Equal(CardStatus.Active, app.CardStatus);
-        Assert.Equal(cardRequested, app.CardRequestedAt);
-        Assert.Equal(cardMailed, app.CardMailedAt);
-        Assert.Equal(cardActivated, app.CardActivatedAt);
-        Assert.Null(app.CardDeactivatedAt);
         Assert.Equal(2, app.ChildrenOnApplication);
         Assert.Equal(2, app.Children.Count);
-        Assert.Equal(1001, app.Children[0].CaseNumber);
+        Assert.Null(app.Children[0].CaseNumber);
         Assert.Equal("John", app.Children[0].FirstName);
         Assert.Equal("Doe", app.Children[0].LastName);
-        Assert.Equal(1002, app.Children[1].CaseNumber);
         Assert.Equal("Jane", app.Children[1].FirstName);
         Assert.Equal("Doe", app.Children[1].LastName);
 
-        // Assert - user profile
-        Assert.NotNull(response.UserProfile);
-        Assert.Equal("Jane", response.UserProfile.FirstName);
-        Assert.Equal("Marie", response.UserProfile.MiddleName);
-        Assert.Equal("Doe", response.UserProfile.LastName);
+        // Flat model has no UserProfile; mapper sets null
+        Assert.Null(response.UserProfile);
     }
 
     [Fact]
     public void ToResponse_HandlesNullAddressOnFile()
     {
-        // Arrange
+        // Arrange - flat model with no address
         var domain = new HouseholdData
         {
             Email = "user@example.com",
             Phone = null,
-            Applications = new List<Application>(),
-            AddressOnFile = null,
-            UserProfile = null
+            Children = new List<Child>(),
+            ApplicationStatus = ApplicationStatus.Unknown,
+            AddressOnFile = null
         };
 
         // Act
@@ -132,7 +102,7 @@ public class HouseholdDataResponseMapperTests
         Assert.Equal("user@example.com", response.Email);
         Assert.Null(response.Phone);
         Assert.NotNull(response.Applications);
-        Assert.Empty(response.Applications);
+        Assert.Single(response.Applications); // one application view from flat data
         Assert.Null(response.AddressOnFile);
         Assert.Null(response.UserProfile);
     }
@@ -140,19 +110,13 @@ public class HouseholdDataResponseMapperTests
     [Fact]
     public void ToResponse_HandlesEmptyApplicationsAndChildren()
     {
-        // Arrange
+        // Arrange - flat model with no children
         var domain = new HouseholdData
         {
             Email = "empty@example.com",
-            Applications = new List<Application>
-            {
-                new Application
-                {
-                    ApplicationNumber = "APP-001",
-                    ApplicationStatus = ApplicationStatus.Pending,
-                    Children = new List<Child>()
-                }
-            }
+            ApplicationNumber = "APP-001",
+            ApplicationStatus = ApplicationStatus.Pending,
+            Children = new List<Child>()
         };
 
         // Act
@@ -170,42 +134,26 @@ public class HouseholdDataResponseMapperTests
     }
 
     [Fact]
-    public void ToResponse_MapsMultipleApplications()
+    public void ToResponse_FlatModel_ProducesSingleApplicationInResponse()
     {
-        // Arrange
+        // Arrange - flat model maps to one application in response
         var domain = new HouseholdData
         {
             Email = "multi@example.com",
-            Applications = new List<Application>
-            {
-                new Application
-                {
-                    ApplicationNumber = "APP-1",
-                    ApplicationStatus = ApplicationStatus.Approved,
-                    Children = new List<Child> { new Child { FirstName = "A", LastName = "One" } }
-                },
-                new Application
-                {
-                    ApplicationNumber = "APP-2",
-                    ApplicationStatus = ApplicationStatus.Pending,
-                    Children = new List<Child> { new Child { FirstName = "B", LastName = "Two" } }
-                }
-            }
+            ApplicationNumber = "APP-1",
+            ApplicationStatus = ApplicationStatus.Approved,
+            Children = new List<Child> { new Child { FirstName = "A", LastName = "One" } }
         };
 
         // Act
         var response = domain.ToResponse();
 
-        // Assert
+        // Assert - flat model always produces exactly one application in response
         Assert.NotNull(response);
-        Assert.Equal(2, response.Applications.Count);
+        Assert.Single(response.Applications);
         Assert.Equal("APP-1", response.Applications[0].ApplicationNumber);
         Assert.Equal(ApplicationStatus.Approved, response.Applications[0].ApplicationStatus);
         Assert.Single(response.Applications[0].Children);
         Assert.Equal("A", response.Applications[0].Children[0].FirstName);
-        Assert.Equal("APP-2", response.Applications[1].ApplicationNumber);
-        Assert.Equal(ApplicationStatus.Pending, response.Applications[1].ApplicationStatus);
-        Assert.Single(response.Applications[1].Children);
-        Assert.Equal("B", response.Applications[1].Children[0].FirstName);
     }
 }

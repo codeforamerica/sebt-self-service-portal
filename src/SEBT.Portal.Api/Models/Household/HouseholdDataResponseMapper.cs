@@ -8,7 +8,7 @@ namespace SEBT.Portal.Api.Models.Household;
 public static class HouseholdDataResponseMapper
 {
     /// <summary>
-    /// Maps domain HouseholdData to the API response model.
+    /// Maps domain HouseholdData (flat model) to the API response model.
     /// </summary>
     public static HouseholdDataResponse ToResponse(this HouseholdData domain)
     {
@@ -16,14 +16,14 @@ public static class HouseholdDataResponseMapper
         {
             Email = domain.Email,
             Phone = domain.Phone,
-            Applications = domain.Applications.Select(ToResponse).ToList(),
+            Applications = new[] { MapToApplicationResponse(domain) },
             AddressOnFile = domain.AddressOnFile?.ToResponse(),
             UserProfile = domain.UserProfile?.ToResponse(),
             BenefitIssuanceType = domain.BenefitIssuanceType
         };
     }
 
-    private static ApplicationResponse ToResponse(this Application domain)
+    private static ApplicationResponse MapToApplicationResponse(HouseholdData domain)
     {
         return new ApplicationResponse
         {
@@ -33,14 +33,14 @@ public static class HouseholdDataResponseMapper
             BenefitIssueDate = domain.BenefitIssueDate,
             BenefitExpirationDate = domain.BenefitExpirationDate,
             Last4DigitsOfCard = domain.Last4DigitsOfCard,
-            CardStatus = domain.CardStatus,
-            CardRequestedAt = domain.CardRequestedAt,
-            CardMailedAt = domain.CardMailedAt,
-            CardActivatedAt = domain.CardActivatedAt,
-            CardDeactivatedAt = domain.CardDeactivatedAt,
+            CardStatus = CardStatus.Requested,
+            CardRequestedAt = null,
+            CardMailedAt = null,
+            CardActivatedAt = null,
+            CardDeactivatedAt = null,
             Children = domain.Children.Select(ToResponse).ToList(),
             ChildrenOnApplication = domain.ChildrenOnApplication,
-            IssuanceType = domain.IssuanceType
+            IssuanceType = (IssuanceType)domain.BenefitIssuanceType
         };
     }
 
@@ -48,7 +48,7 @@ public static class HouseholdDataResponseMapper
     {
         return new ChildResponse
         {
-            CaseNumber = domain.CaseNumber,
+            CaseNumber = null,
             FirstName = domain.FirstName,
             LastName = domain.LastName
         };

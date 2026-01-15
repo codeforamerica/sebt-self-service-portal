@@ -32,17 +32,12 @@ public class HouseholdFactoryTests
         var household = HouseholdFactory.CreateHouseholdData(h =>
         {
             h.Email = customEmail;
-            if (h.Applications.Any())
-            {
-                h.Applications.First().ApplicationStatus = customStatus;
-            }
+            h.ApplicationStatus = customStatus;
         });
 
-        // Assert
+        // Assert (flat model)
         Assert.Equal(customEmail, household.Email);
-        Assert.NotNull(household.Applications);
-        Assert.NotEmpty(household.Applications);
-        Assert.Equal(customStatus, household.Applications.First().ApplicationStatus);
+        Assert.Equal(customStatus, household.ApplicationStatus);
     }
 
     [Fact]
@@ -95,10 +90,8 @@ public class HouseholdFactoryTests
         // Act
         var household = HouseholdFactory.CreateHouseholdDataWithStatus(ApplicationStatus.Approved);
 
-        // Assert
-        Assert.NotNull(household.Applications);
-        Assert.NotEmpty(household.Applications);
-        Assert.Equal(ApplicationStatus.Approved, household.Applications.First().ApplicationStatus);
+        // Assert (flat model)
+        Assert.Equal(ApplicationStatus.Approved, household.ApplicationStatus);
     }
 
     [Fact]
@@ -107,16 +100,13 @@ public class HouseholdFactoryTests
         // Act
         var household = HouseholdFactory.CreateHouseholdDataWithStatus(ApplicationStatus.Approved);
 
-        // Assert
-        Assert.NotNull(household.Applications);
-        Assert.NotEmpty(household.Applications);
-        var app = household.Applications.First();
-        Assert.Equal(ApplicationStatus.Approved, app.ApplicationStatus);
-        Assert.NotNull(app.BenefitIssueDate);
-        Assert.NotNull(app.BenefitExpirationDate);
-        Assert.NotNull(app.Last4DigitsOfCard);
-        Assert.NotNull(app.CaseNumber);
-        Assert.True(app.BenefitExpirationDate > app.BenefitIssueDate);
+        // Assert (flat model)
+        Assert.Equal(ApplicationStatus.Approved, household.ApplicationStatus);
+        Assert.NotNull(household.BenefitIssueDate);
+        Assert.NotNull(household.BenefitExpirationDate);
+        Assert.NotNull(household.Last4DigitsOfCard);
+        Assert.NotNull(household.CaseNumber);
+        Assert.True(household.BenefitExpirationDate > household.BenefitIssueDate);
     }
 
     [Fact]
@@ -125,16 +115,13 @@ public class HouseholdFactoryTests
         // Act
         var household = HouseholdFactory.CreateHouseholdDataWithStatus(ApplicationStatus.Unknown);
 
-        // Assert
-        Assert.NotNull(household.Applications);
-        Assert.NotEmpty(household.Applications);
-        var app = household.Applications.First();
-        Assert.Equal(ApplicationStatus.Unknown, app.ApplicationStatus);
-        Assert.Null(app.BenefitIssueDate);
-        Assert.Null(app.BenefitExpirationDate);
-        Assert.Null(app.Last4DigitsOfCard);
-        Assert.Null(app.CaseNumber);
-        Assert.Null(app.ApplicationNumber);
+        // Assert (flat model)
+        Assert.Equal(ApplicationStatus.Unknown, household.ApplicationStatus);
+        Assert.Null(household.BenefitIssueDate);
+        Assert.Null(household.BenefitExpirationDate);
+        Assert.Null(household.Last4DigitsOfCard);
+        Assert.Null(household.CaseNumber);
+        Assert.Null(household.ApplicationNumber);
     }
 
     [Fact]
@@ -161,13 +148,10 @@ public class HouseholdFactoryTests
         // Act
         var household = HouseholdFactory.CreateHouseholdData();
 
-        // Assert
-        Assert.NotNull(household.Applications);
-        Assert.NotEmpty(household.Applications);
-        var totalChildren = household.Applications.SelectMany(a => a.Children).ToList();
-        Assert.NotNull(totalChildren);
-        Assert.True(totalChildren.Count >= 0);
-        Assert.True(totalChildren.Count <= 8); // Up to 2 applications * 4 children each
+        // Assert (flat model)
+        Assert.NotNull(household.Children);
+        Assert.True(household.Children.Count >= 0);
+        Assert.True(household.Children.Count <= 4); // Up to 4 children per flat model
     }
 
     [Fact]
@@ -176,9 +160,8 @@ public class HouseholdFactoryTests
         // Act
         var household = HouseholdFactory.CreateHouseholdData();
 
-        // Assert
-        var allChildren = household.Applications.SelectMany(a => a.Children).ToList();
-        foreach (var child in allChildren)
+        // Assert (flat model)
+        foreach (var child in household.Children)
         {
             Assert.NotEmpty(child.FirstName);
             Assert.NotEmpty(child.LastName);
@@ -235,12 +218,9 @@ public class HouseholdFactoryTests
         // Act
         var household = HouseholdFactory.CreateHouseholdDataWithStatus(ApplicationStatus.Approved);
 
-        // Assert
-        Assert.NotNull(household.Applications);
-        Assert.NotEmpty(household.Applications);
-        var app = household.Applications.First();
-        Assert.NotNull(app.ApplicationNumber);
-        Assert.StartsWith("APP-", app.ApplicationNumber);
+        // Assert (flat model)
+        Assert.NotNull(household.ApplicationNumber);
+        Assert.StartsWith("APP-", household.ApplicationNumber);
     }
 
     [Fact]
@@ -263,24 +243,19 @@ public class HouseholdFactoryTests
         // Act
         var household = HouseholdFactory.CreateHouseholdDataWithStatus(ApplicationStatus.Denied);
 
-        // Assert
-        Assert.NotNull(household.Applications);
-        Assert.NotEmpty(household.Applications);
-        var app = household.Applications.First();
-        Assert.NotNull(app.CaseNumber);
-        Assert.StartsWith("CASE-", app.CaseNumber);
+        // Assert (flat model)
+        Assert.NotNull(household.CaseNumber);
+        Assert.StartsWith("CASE-", household.CaseNumber);
     }
 
     [Fact]
-    public void CreateHouseholdDataWithStatus_Pending_ShouldNotHaveCaseNumber()
+    public void CreateHouseholdDataWithStatus_Unknown_ShouldNotHaveCaseNumber()
     {
         // Act
-        var household = HouseholdFactory.CreateHouseholdDataWithStatus(ApplicationStatus.Pending);
+        var household = HouseholdFactory.CreateHouseholdDataWithStatus(ApplicationStatus.Unknown);
 
-        // Assert
-        Assert.NotNull(household.Applications);
-        Assert.NotEmpty(household.Applications);
-        var app = household.Applications.First();
-        Assert.Null(app.CaseNumber);
+        // Assert (flat model: CaseNumber on household root)
+        Assert.Null(household.CaseNumber);
+        Assert.Null(household.ApplicationNumber);
     }
 }
