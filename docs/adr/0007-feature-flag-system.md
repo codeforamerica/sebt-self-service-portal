@@ -12,7 +12,7 @@ The Summer EBT Self-Service Portal app requires a flexible feature flag system t
 
 ## Decision
 
-We will use **Microsoft.FeatureManagement** (https://learn.microsoft.com/en-us/dotnet/api/microsoft.featuremanagement.featuremanager?view=azure-dotnet) with a custom query wrapper service (`FeatureFlagQueryService`) that merges flags from multiple sources in a defined priority order. The system exposes flags via the `GET /api/features` REST API endpoint and dynamically loads state-specific configuration from `appsettings.{State}.json` files based on the `STATE` or `NEXT_PUBLIC_STATE` environment variable. 
+We will use **Microsoft.FeatureManagement** (https://learn.microsoft.com/en-us/dotnet/api/microsoft.featuremanagement.featuremanager?view=azure-dotnet) with a custom query wrapper service (`FeatureFlagQueryService`) that merges flags from multiple sources in a defined priority order. The system exposes flags via the `GET /api/features` REST API endpoint. State-specific configuration is loaded from `appsettings.{State}.json` files (e.g., `appsettings.dc.json`, `appsettings.co.json`) based on the `STATE` or `NEXT_PUBLIC_STATE` environment variable. These files are loaded using ASP.NET Core's configuration builder, which integrates with the default configuration sources and respects the priority order where environment variables override JSON file values. 
 
 The priority order from lowest to highest: 
    - Default flags in `appsettings.json` (to represent features unique to core features that all states share, but might need to be toggled later to fit within a deployment cadence)
@@ -37,11 +37,12 @@ If the app is relying on using AWS AppConfig, flag names must follow alphanumeri
 ## References
 
 **Implementation Details**: 
+- Service interface: `src/SEBT.Portal.Kernel/Services/IFeatureFlagQueryService.cs` (follows Clean Architecture)
 - Priority merge logic: `src/SEBT.Portal.Infrastructure/Services/FeatureFlagQueryService.cs`
 - REST API endpoint: `src/SEBT.Portal.Api/Controllers/FeaturesController.cs`
 - Default flag settings: `src/SEBT.Portal.Core/AppSettings/DefaultFeatureFlagSettings.cs`
-- State-specific configuration loading: `src/SEBT.Portal.Api/Program.cs` (lines 17-23)
-- Configuration files: `src/SEBT.Portal.Api/appsettings.json` and `appsettings.{State}.json`
+- State-specific configuration loading: `src/SEBT.Portal.Api/Program.cs` (loads `appsettings.{State}.json` based on `STATE` or `NEXT_PUBLIC_STATE` environment variable)
+- Configuration files: `src/SEBT.Portal.Api/appsettings.json` and `appsettings.{State}.json` (e.g., `appsettings.dc.json`, `appsettings.co.json`)
 
 **Key Documentation**:
 - [Microsoft.FeatureManagement Documentation](https://github.com/microsoft/FeatureManagement-Dotnet)

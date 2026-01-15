@@ -1,4 +1,4 @@
-namespace SEBT.Portal.Core.Services;
+namespace SEBT.Portal.Kernel.Services;
 
 /// <summary>
 /// Service for querying feature flags with priority order.

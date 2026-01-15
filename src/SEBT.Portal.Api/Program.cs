@@ -19,6 +19,15 @@ using SEBT.Portal.Infrastructure;
 
 var builder = WebApplication.CreateBuilder(args);
 
+// Load state-specific configuration if STATE environment variable is set
+// This loads appsettings.{State}.json files (e.g., appsettings.dc.json, appsettings.co.json)
+var state = Environment.GetEnvironmentVariable("STATE") ?? Environment.GetEnvironmentVariable("NEXT_PUBLIC_STATE");
+if (!string.IsNullOrEmpty(state))
+{
+    var stateConfigFile = $"appsettings.{state.ToLowerInvariant()}.json";
+    builder.Configuration.AddJsonFile(stateConfigFile, optional: true, reloadOnChange: true);
+}
+
 var jwtSecretKey = Environment.GetEnvironmentVariable("JWT_SECRET_KEY");
 if (!string.IsNullOrEmpty(jwtSecretKey))
 {

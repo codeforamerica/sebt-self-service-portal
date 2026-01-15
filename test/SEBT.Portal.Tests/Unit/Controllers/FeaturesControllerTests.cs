@@ -2,7 +2,7 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using NSubstitute;
 using SEBT.Portal.Api.Controllers;
-using SEBT.Portal.Core.Services;
+using SEBT.Portal.Kernel.Services;
 
 namespace SEBT.Portal.Tests.Unit.Controllers;
 
