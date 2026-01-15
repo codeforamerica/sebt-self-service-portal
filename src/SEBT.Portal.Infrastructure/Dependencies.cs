@@ -76,7 +76,7 @@ public static class Dependencies
         return services;
     }
 
-    public static IServiceCollection AddPortalInfrastructureAppSettings(this IServiceCollection services)
+    public static IServiceCollection AddPortalInfrastructureAppSettings(this IServiceCollection services, IConfiguration configuration)
     {
 
         services.AddOptionsWithValidateOnStart<EmailOtpSenderServiceSettings>()
@@ -91,17 +91,19 @@ public static class Dependencies
             .BindConfiguration(Core.AppSettings.DefaultFeatureFlagSettings.SectionName);
 
         services.AddOptions<FeatureManagementSettings>()
-            .PostConfigure<IConfiguration>((options, configuration) =>
+            .Bind(configuration.GetSection(FeatureManagementSettings.SectionName))
+            .PostConfigure<IConfiguration>((options, config) =>
             {
-                var config = new FeatureManagementOptionsConfiguration(configuration);
-                config.PostConfigure(null, options);
+                var postConfig = new FeatureManagementOptionsConfiguration(config);
+                postConfig.PostConfigure(null, options);
             });
 
         services.AddOptions<AppConfigFeatureFlagSettings>()
-            .PostConfigure<IConfiguration, ILogger<AppConfigFeatureFlagOptionsConfiguration>>((options, configuration, logger) =>
+            .Bind(configuration.GetSection(AppConfigFeatureFlagSettings.SectionName))
+            .PostConfigure<IConfiguration, ILogger<AppConfigFeatureFlagOptionsConfiguration>>((options, config, logger) =>
             {
-                var config = new AppConfigFeatureFlagOptionsConfiguration(configuration, logger);
-                config.PostConfigure(null, options);
+                var postConfig = new AppConfigFeatureFlagOptionsConfiguration(config, logger);
+                postConfig.PostConfigure(null, options);
             });
 
         return services;

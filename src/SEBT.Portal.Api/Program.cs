@@ -92,7 +92,7 @@ builder.Services.AddUseCases();
 builder.Services.AddPortalInfrastructureServices();
 builder.Services.AddPortalDbContext(builder.Configuration, options => options.ConfigureDevelopmentSeeding());
 builder.Services.AddPortalInfrastructureRepositories();
-builder.Services.AddPortalInfrastructureAppSettings();
+builder.Services.AddPortalInfrastructureAppSettings(builder.Configuration);
 
 // Register IDatabaseSeeder for development utilities (e.g., ClearSeededData script)
 builder.Services.AddScoped<IDatabaseSeeder>(sp =>
