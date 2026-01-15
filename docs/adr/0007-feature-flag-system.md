@@ -30,7 +30,7 @@ The priority order from lowest to highest:
 
 The priority-based system enables state-specific configuration where each state can enable/disable features independently via JSON files, provides clear priority hierarchy with predictable override behavior when multiple sources exist, supports future `AWS AppConfig` integration for cloud-based feature flag management, exposes flags via REST API for frontend consumption, includes diagnostic logging to show which source provided each flag value, and maintains version-controlled state-specific JSON files in Git. 
 
-Downsides: Multiple configuration sources require understanding of priority order, each new state requires a new vvcv`appsettings.{State}.json` file, JSON file changes require application restart (`AWS AppConfig` addresses this for runtime updates if this is deployed on AWS though), and flags must be explicitly configured in at least one source (this would require good practice to make sure the default option is always present). 
+Downsides: Multiple configuration sources require understanding of priority order, each new state requires a new `appsettings.{State}.json` file, JSON file changes require application restart (`AWS AppConfig` addresses this for runtime updates if this is deployed on AWS though), and flags must be explicitly configured in at least one source (this would require good practice to make sure the default option is always present). 
 
 If the app is relying on using AWS AppConfig, flag names must follow alphanumeric and underscore conventions to match `AWS AppConfig` requirements. [See More](https://docs.aws.amazon.com/appconfig/latest/userguide/appconfig-feature-flags.html) about this at the link 
 

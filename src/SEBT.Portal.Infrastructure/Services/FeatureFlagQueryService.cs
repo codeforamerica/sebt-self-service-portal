@@ -11,7 +11,7 @@ namespace SEBT.Portal.Infrastructure.Services;
 /// 1. Default feature flags (lowest priority - base)
 /// 2. AWS AppConfig (if configured)
 /// 3. State-specific JSON files (appsettings.{State}.json) - highest priority
-/// 4. FeatureManager flags (for any flags not in the above sources)
+/// FeatureManager provides any additional flags not defined in the above sources
 /// </summary>
 public class FeatureFlagQueryService
 {
@@ -45,7 +45,7 @@ public class FeatureFlagQueryService
     /// 1. Default feature flags (lowest priority - base)
     /// 2. AWS AppConfig (if configured)
     /// 3. State-specific JSON files (appsettings.{State}.json) - highest priority
-    /// 4. FeatureManager flags (for any flags not in the above sources)
+    /// FeatureManager provides any additional flags not defined in the above sources
     /// Only flags that are explicitly configured (enabled or disabled) are returned.
     /// Unknown flags are not included in the response.
     /// </summary>
@@ -104,7 +104,7 @@ public class FeatureFlagQueryService
                 }
             }
 
-            // Priority 4: Also include any flags from FeatureManager that aren't in our dictionary
+            // FeatureManager provides any additional flags not defined in the above sources
             // These are flags that might be configured directly in FeatureManagement but not in our priority sources
             await foreach (var featureName in _featureManager.GetFeatureNamesAsync().WithCancellation(cancellationToken))
             {

@@ -12,7 +12,7 @@ namespace SEBT.Portal.Infrastructure;
 
 public static class Dependencies
 {
-    public static IServiceCollection AddPortalInfrastructureServices(this IServiceCollection services, IConfiguration? configuration = null)
+    public static IServiceCollection AddPortalInfrastructureServices(this IServiceCollection services)
     {
         // Otp Services
         services.AddTransient<IOtpSenderService, EmailOtpSenderService>();
