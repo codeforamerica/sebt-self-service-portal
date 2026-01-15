@@ -23,7 +23,7 @@ public static class Dependencies
         services.AddTransient<IJwtTokenService, JwtTokenService>();
 
         // Feature Flag Services
-        services.AddScoped<Services.FeatureFlagQueryService>();
+        services.AddScoped<IFeatureFlagQueryService, Services.FeatureFlagQueryService>();
 
         return services;
     }

@@ -3,6 +3,7 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Microsoft.FeatureManagement;
 using SEBT.Portal.Core.AppSettings;
+using SEBT.Portal.Core.Services;
 
 namespace SEBT.Portal.Infrastructure.Services;
 
@@ -13,7 +14,7 @@ namespace SEBT.Portal.Infrastructure.Services;
 /// 3. State-specific JSON files (appsettings.{State}.json) - highest priority
 /// FeatureManager provides any additional flags not defined in the above sources
 /// </summary>
-public class FeatureFlagQueryService
+public class FeatureFlagQueryService : IFeatureFlagQueryService
 {
     private readonly IFeatureManager _featureManager;
     private readonly IConfiguration _configuration;

@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Mvc;
-using SEBT.Portal.Infrastructure.Services;
+using SEBT.Portal.Api.Models;
+using SEBT.Portal.Core.Services;
 
 namespace SEBT.Portal.Api.Controllers;
 
@@ -10,13 +11,13 @@ namespace SEBT.Portal.Api.Controllers;
 [Route("api/features")]
 public class FeaturesController : ControllerBase
 {
-    private readonly FeatureFlagQueryService _featureFlagQueryService;
+    private readonly IFeatureFlagQueryService _featureFlagQueryService;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="FeaturesController"/> class.
     /// </summary>
     /// <param name="featureFlagQueryService">The feature flag query service.</param>
-    public FeaturesController(FeatureFlagQueryService featureFlagQueryService)
+    public FeaturesController(IFeatureFlagQueryService featureFlagQueryService)
     {
         _featureFlagQueryService = featureFlagQueryService;
     }
@@ -47,11 +48,11 @@ public class FeaturesController : ControllerBase
         }
         catch (OperationCanceledException)
         {
-            return StatusCode(StatusCodes.Status499ClientClosedRequest, new { error = "Request was cancelled" });
+            return StatusCode(StatusCodes.Status499ClientClosedRequest, new ErrorResponse("Request was cancelled"));
         }
         catch (Exception)
         {
-            return StatusCode(StatusCodes.Status500InternalServerError, new { error = "Failed to retrieve feature flags" });
+            return StatusCode(StatusCodes.Status500InternalServerError, new ErrorResponse("Failed to retrieve feature flags"));
         }
     }
 }
