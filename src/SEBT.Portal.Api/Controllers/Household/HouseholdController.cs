@@ -64,7 +64,7 @@ public class HouseholdController(ILogger<HouseholdController> logger) : Controll
 
         if (householdData == null)
         {
-            logger.LogWarning("Household data not found for authenticated user");
+            logger.LogWarning("Household data not found for email {Email}", normalizedEmail);
             return NotFound(new ErrorResponse("Household data not found."));
         }
 

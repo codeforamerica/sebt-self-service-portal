@@ -151,7 +151,7 @@ public class HouseholdFactoryTests
         // Assert (flat model)
         Assert.NotNull(household.Children);
         Assert.True(household.Children.Count >= 0);
-        Assert.True(household.Children.Count <= 4); // Up to 4 children per flat model
+        Assert.True(household.Children.Count <= 4); // Up to 4 children per household
     }
 
     [Fact]
