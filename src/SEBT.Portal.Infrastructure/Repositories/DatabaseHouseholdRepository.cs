@@ -55,24 +55,33 @@ public class DatabaseHouseholdRepository(PortalDbContext dbContext) : IHousehold
         }
 
         var normalizedEmail = NormalizeEmail(householdData.Email);
-        var existingEntity = await dbContext.Households
-            .Include(h => h.Children)
-            .Include(h => h.Address)
-            .FirstOrDefaultAsync(h => h.Email == normalizedEmail, cancellationToken);
 
-        if (existingEntity == null)
+        await using var transaction = await dbContext.Database.BeginTransactionAsync(cancellationToken);
+        try
         {
-            // Create new household
-            var newEntity = MapToEntity(householdData, normalizedEmail);
-            dbContext.Households.Add(newEntity);
-        }
-        else
-        {
-            // Update existing household
-            UpdateEntity(existingEntity, householdData, normalizedEmail);
-        }
+            var existingEntity = await dbContext.Households
+                .Include(h => h.Children)
+                .Include(h => h.Address)
+                .FirstOrDefaultAsync(h => h.Email == normalizedEmail, cancellationToken);
 
-        await dbContext.SaveChangesAsync(cancellationToken);
+            if (existingEntity == null)
+            {
+                var newEntity = MapToEntity(householdData, normalizedEmail);
+                dbContext.Households.Add(newEntity);
+            }
+            else
+            {
+                UpdateEntity(existingEntity, householdData, normalizedEmail);
+            }
+
+            await dbContext.SaveChangesAsync(cancellationToken);
+            await transaction.CommitAsync(cancellationToken);
+        }
+        catch
+        {
+            await transaction.RollbackAsync(cancellationToken);
+            throw;
+        }
     }
 
     /// <summary>
@@ -87,6 +96,11 @@ public class DatabaseHouseholdRepository(PortalDbContext dbContext) : IHousehold
 
     private static HouseholdData MapToDomainModel(HouseholdEntity entity, bool includeAddress)
     {
+        if (entity == null)
+        {
+            throw new ArgumentNullException(nameof(entity));
+        }
+
         var householdData = new HouseholdData
         {
             Email = entity.Email,
@@ -97,11 +111,11 @@ public class DatabaseHouseholdRepository(PortalDbContext dbContext) : IHousehold
             ApplicationNumber = entity.ApplicationNumber,
             CaseNumber = entity.CaseNumber,
             ApplicationStatus = (ApplicationStatus)entity.ApplicationStatus,
-            Children = entity.Children.Select(c => new Child
+            Children = entity.Children?.Select(c => new Child
             {
-                FirstName = c.FirstName,
-                LastName = c.LastName
-            }).ToList()
+                FirstName = c?.FirstName ?? string.Empty,
+                LastName = c?.LastName ?? string.Empty
+            }).ToList() ?? new List<Child>()
         };
 
         // Only include address if explicitly requested (ID verification check)
@@ -122,6 +136,11 @@ public class DatabaseHouseholdRepository(PortalDbContext dbContext) : IHousehold
 
     private static HouseholdEntity MapToEntity(HouseholdData householdData, string normalizedEmail)
     {
+        if (householdData == null)
+        {
+            throw new ArgumentNullException(nameof(householdData));
+        }
+
         var entity = new HouseholdEntity
         {
             Email = normalizedEmail,
@@ -134,11 +153,11 @@ public class DatabaseHouseholdRepository(PortalDbContext dbContext) : IHousehold
             ApplicationStatus = (int)householdData.ApplicationStatus,
             CreatedAt = DateTime.UtcNow,
             UpdatedAt = DateTime.UtcNow,
-            Children = householdData.Children.Select(c => new ChildEntity
+            Children = householdData.Children?.Select(c => new ChildEntity
             {
-                FirstName = c.FirstName,
-                LastName = c.LastName
-            }).ToList()
+                FirstName = c?.FirstName ?? string.Empty,
+                LastName = c?.LastName ?? string.Empty
+            }).ToList() ?? new List<ChildEntity>()
         };
 
         // Add address if provided
@@ -162,6 +181,16 @@ public class DatabaseHouseholdRepository(PortalDbContext dbContext) : IHousehold
         HouseholdData householdData,
         string normalizedEmail)
     {
+        if (existingEntity == null)
+        {
+            throw new ArgumentNullException(nameof(existingEntity));
+        }
+
+        if (householdData == null)
+        {
+            throw new ArgumentNullException(nameof(householdData));
+        }
+
         // Update main household properties
         existingEntity.Phone = householdData.Phone;
         existingEntity.BenefitIssueDate = householdData.BenefitIssueDate;
@@ -173,13 +202,17 @@ public class DatabaseHouseholdRepository(PortalDbContext dbContext) : IHousehold
         existingEntity.UpdatedAt = DateTime.UtcNow;
 
         // Update children - remove existing and add new ones
-        dbContext.Children.RemoveRange(existingEntity.Children);
-        existingEntity.Children = householdData.Children.Select(c => new ChildEntity
+        if (existingEntity.Children != null)
+        {
+            dbContext.Children.RemoveRange(existingEntity.Children);
+        }
+
+        existingEntity.Children = householdData.Children?.Select(c => new ChildEntity
         {
             HouseholdId = existingEntity.Id,
-            FirstName = c.FirstName,
-            LastName = c.LastName
-        }).ToList();
+            FirstName = c?.FirstName ?? string.Empty,
+            LastName = c?.LastName ?? string.Empty
+        }).ToList() ?? new List<ChildEntity>();
 
         // Update address
         if (householdData.AddressOnFile != null)

@@ -16,11 +16,14 @@ namespace SEBT.Portal.Api.Controllers.Household;
 [Route("api/household")]
 public class HouseholdController(ILogger<HouseholdController> logger) : ControllerBase
 {
+    private const string IdProofingStatusClaim = "id_proofing_status";
+
     /// <summary>
     /// Retrieves household data for the authenticated user.
     /// Address information is only included if ID verification has been completed.
     /// </summary>
     /// <param name="repository">The household repository for retrieving data.</param>
+    /// <param name="cancellationToken">A token to monitor for cancellation requests.</param>
     /// <returns>An OK result with household data if found; otherwise, a NotFound result.</returns>
     /// <response code="200">Household data retrieved successfully.</response>
     /// <response code="401">User is not authorized (missing or invalid JWT token).</response>
@@ -31,7 +34,8 @@ public class HouseholdController(ILogger<HouseholdController> logger) : Controll
     [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status404NotFound)]
     public async Task<IActionResult> GetHouseholdData(
-        [FromServices] IHouseholdRepository repository)
+        [FromServices] IHouseholdRepository repository,
+        CancellationToken cancellationToken = default)
     {
         var email = GetUserEmail();
 
@@ -41,7 +45,9 @@ public class HouseholdController(ILogger<HouseholdController> logger) : Controll
             return Unauthorized(new ErrorResponse("Unable to identify user from token."));
         }
 
-        logger.LogInformation("Household data request received for email {Email}", email);
+        // Normalize email to ensure consistency with repository
+        var normalizedEmail = NormalizeEmail(email);
+        logger.LogInformation("Household data request received for email {Email}", normalizedEmail);
 
         // Check ID verification status from JWT claims
         var idProofingStatus = GetIdProofingStatus();
@@ -49,20 +55,21 @@ public class HouseholdController(ILogger<HouseholdController> logger) : Controll
 
         if (includeAddress)
         {
-            logger.LogInformation("Including address data for ID verified user {Email}", email);
+            logger.LogInformation("Including address data for ID verified user {Email}", normalizedEmail);
         }
 
         var householdData = await repository.GetHouseholdByEmailAsync(
-            email,
-            includeAddress: includeAddress);
+            normalizedEmail,
+            includeAddress: includeAddress,
+            cancellationToken);
 
         if (householdData == null)
         {
-            logger.LogWarning("Household data not found for email {Email}", email);
+            logger.LogWarning("Household data not found for email {Email}", normalizedEmail);
             return NotFound(new ErrorResponse("Household data not found."));
         }
 
-        logger.LogInformation("Household data retrieved successfully for email {Email}", email);
+        logger.LogInformation("Household data retrieved successfully for email {Email}", normalizedEmail);
         return Ok(householdData);
     }
 
@@ -87,7 +94,7 @@ public class HouseholdController(ILogger<HouseholdController> logger) : Controll
     /// <returns>The ID proofing status, or NotStarted if not found.</returns>
     private IdProofingStatus GetIdProofingStatus()
     {
-        var statusClaim = User.FindFirst("id_proofing_status")?.Value;
+        var statusClaim = User.FindFirst(IdProofingStatusClaim)?.Value;
 
         if (string.IsNullOrWhiteSpace(statusClaim))
         {
@@ -95,12 +102,23 @@ public class HouseholdController(ILogger<HouseholdController> logger) : Controll
             return IdProofingStatus.NotStarted;
         }
 
-        if (int.TryParse(statusClaim, out var statusValue))
+        if (int.TryParse(statusClaim, out var statusValue) &&
+            Enum.IsDefined(typeof(IdProofingStatus), statusValue))
         {
             return (IdProofingStatus)statusValue;
         }
 
         logger.LogWarning("Invalid ID proofing status claim value: {StatusClaim}, defaulting to NotStarted", statusClaim);
         return IdProofingStatus.NotStarted;
+    }
+
+    /// <summary>
+    /// Normalizes an email address to lowercase for consistent storage and comparison.
+    /// </summary>
+    /// <param name="email">The email address to normalize.</param>
+    /// <returns>The normalized (lowercase) email address.</returns>
+    private static string NormalizeEmail(string email)
+    {
+        return email.Trim().ToLowerInvariant();
     }
 }
