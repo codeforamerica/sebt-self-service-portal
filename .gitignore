@@ -433,3 +433,7 @@ CLAUDE.md
 
 # output files
 output
+
+# local plugin files
+plugins-dc
+plugins-co

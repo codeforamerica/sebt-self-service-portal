@@ -8,11 +8,32 @@
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
   </PropertyGroup>
 
+  <PropertyGroup>
+    <HomeDir Condition="'$(OS)' == 'Windows_NT'">$(USERPROFILE)</HomeDir>
+    <HomeDir Condition="'$(HomeDir)' == ''">$(HOME)</HomeDir>
+    <RestoreAdditionalProjectSources>$(HomeDir)/nuget-store</RestoreAdditionalProjectSources>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(Configuration)' == 'Debug'">
+    <RestoreNoCache>true</RestoreNoCache>
+    <RestoreForce>true</RestoreForce>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <None Include="plugins-dc\**\*.dll">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Include="plugins-co\**\*.dll">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+  </ItemGroup>
+
   <ItemGroup>
     <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="10.0.0">
       <PrivateAssets>all</PrivateAssets>
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
     </PackageReference>
+    <PackageReference Include="SEBT.Portal.StatesPlugins.Interfaces" Version="0.0.1-*" />
     <PackageReference Include="Serilog.AspNetCore" Version="8.0.3" />
     <PackageReference Include="Serilog.Sinks.Console" Version="6.0.0" />
     <PackageReference Include="Serilog.Sinks.File" Version="6.0.0" />
@@ -24,11 +45,14 @@
   <ItemGroup>
     <ProjectReference Include="..\SEBT.Portal.Infrastructure\SEBT.Portal.Infrastructure.csproj" />
     <ProjectReference Include="..\SEBT.Portal.Infrastructure.Seeding\SEBT.Portal.Infrastructure.Seeding.csproj" />
-    <ProjectReference
-      Include="..\SEBT.Portal.Kernel.AspNetCore\SEBT.Portal.Kernel.AspNetCore.csproj" />
+    <ProjectReference Include="..\SEBT.Portal.Kernel.AspNetCore\SEBT.Portal.Kernel.AspNetCore.csproj" />
     <ProjectReference Include="..\SEBT.Portal.Kernel\SEBT.Portal.Kernel.csproj" />
     <ProjectReference Include="..\SEBT.Portal.UseCases\SEBT.Portal.UseCases.csproj" />
     <ProjectReference Include="..\SEBT.Portal.Core\SEBT.Portal.Core.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Folder Include="plugins-dc\" />
   </ItemGroup>
 
 </Project>
