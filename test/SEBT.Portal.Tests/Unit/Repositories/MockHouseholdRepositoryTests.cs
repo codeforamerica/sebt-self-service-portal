@@ -134,6 +134,7 @@ public class MockHouseholdRepositoryTests
         // Arrange
         var testEmails = new[]
         {
+            "co-loaded@example.com",
             "verified@example.com",
             "pending@example.com",
             "denied@example.com",

@@ -1,6 +1,8 @@
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 using SEBT.Portal.Core.AppSettings;
 using SEBT.Portal.Core.Repositories;
 using SEBT.Portal.Core.Services;
@@ -56,6 +58,8 @@ public static class Dependencies
         var connectionString = configuration.GetConnectionString("DefaultConnection")
             ?? throw new InvalidOperationException("Connection string 'DefaultConnection' not found.");
 
+        var useMockHouseholdData = configuration.GetValue<bool>("UseMockHouseholdData", false);
+
         services.AddDbContext<PortalDbContext>(options =>
         {
             options.UseSqlServer(connectionString)
@@ -84,8 +88,17 @@ public static class Dependencies
                         return;
                     }
 
+                    var serviceProvider = portalContext.GetService<IServiceProvider>();
+                    var logger = serviceProvider?.GetService<ILogger<DatabaseSeeder>>();
+
                     var userRepository = new Repositories.DatabaseUserRepository(portalContext);
-                    var seeder = new DatabaseSeeder(userRepository, portalContext);
+                    var tempConfig = new ConfigurationBuilder()
+                        .AddInMemoryCollection(new Dictionary<string, string?>
+                        {
+                            { "UseMockHouseholdData", useMockHouseholdData.ToString() }
+                        })
+                        .Build();
+                    var seeder = new DatabaseSeeder(userRepository, portalContext, tempConfig, logger);
                     // Call async method synchronously for UseSeeding callback
                     seeder.SeedTestUsersAsync(CancellationToken.None).GetAwaiter().GetResult();
                 })
@@ -110,8 +123,17 @@ public static class Dependencies
                         return;
                     }
 
+                    var serviceProvider = portalContext.GetService<IServiceProvider>();
+                    var logger = serviceProvider?.GetService<ILogger<DatabaseSeeder>>();
+
                     var userRepository = new Repositories.DatabaseUserRepository(portalContext);
-                    var seeder = new DatabaseSeeder(userRepository, portalContext);
+                    var tempConfig = new ConfigurationBuilder()
+                        .AddInMemoryCollection(new Dictionary<string, string?>
+                        {
+                            { "UseMockHouseholdData", useMockHouseholdData.ToString() }
+                        })
+                        .Build();
+                    var seeder = new DatabaseSeeder(userRepository, portalContext, tempConfig, logger);
                     await seeder.SeedTestUsersAsync(cancellationToken);
                 });
 
