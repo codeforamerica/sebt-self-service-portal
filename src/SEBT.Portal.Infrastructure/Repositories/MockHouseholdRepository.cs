@@ -1,10 +1,9 @@
 using System.Collections.Concurrent;
-using Bogus;
 using Microsoft.Extensions.Logging;
 using SEBT.Portal.Core.Models.Household;
 using SEBT.Portal.Core.Repositories;
 using SEBT.Portal.Core.Utilities;
-using SEBT.Portal.TestUtilities.Helpers;
+using SEBT.Portal.Infrastructure.Helpers;
 
 namespace SEBT.Portal.Infrastructure.Repositories;
 
@@ -173,7 +172,7 @@ public class MockHouseholdRepository : IHouseholdRepository
         var review = HouseholdFactory.CreateHouseholdDataWithStatus(ApplicationStatus.UnderReview, h =>
         {
             h.BenefitIssuanceType = BenefitIssuanceType.SnapEbtCard;
-            var childFaker = new Faker<Child>()
+            var childFaker = new Bogus.Faker<Child>()
                 .RuleFor(c => c.FirstName, f => f.Name.FirstName())
                 .RuleFor(c => c.LastName, f => f.Name.LastName());
             h.Children = childFaker.Generate(1);
@@ -196,7 +195,7 @@ public class MockHouseholdRepository : IHouseholdRepository
             h.BenefitIssuanceType = BenefitIssuanceType.SummerEbt;
             h.BenefitIssueDate = now.AddDays(-15);
             h.BenefitExpirationDate = now.AddDays(75);
-            var childFaker = new Faker<Child>()
+            var childFaker = new Bogus.Faker<Child>()
                 .RuleFor(c => c.FirstName, f => f.Name.FirstName())
                 .RuleFor(c => c.LastName, f => f.Name.LastName());
             h.Children = childFaker.Generate(1);
@@ -237,7 +236,7 @@ public class MockHouseholdRepository : IHouseholdRepository
             h.BenefitIssuanceType = BenefitIssuanceType.SnapEbtCard;
             h.BenefitIssueDate = now.AddDays(-120);
             h.BenefitExpirationDate = now.AddDays(-10); // Expired
-            var childFaker = new Faker<Child>()
+            var childFaker = new Bogus.Faker<Child>()
                 .RuleFor(c => c.FirstName, f => f.Name.FirstName())
                 .RuleFor(c => c.LastName, f => f.Name.LastName());
             h.Children = childFaker.Generate(1);
@@ -258,7 +257,7 @@ public class MockHouseholdRepository : IHouseholdRepository
         var multipleApps = HouseholdFactory.CreateHouseholdDataWithStatus(ApplicationStatus.Approved, h =>
         {
             h.BenefitIssuanceType = BenefitIssuanceType.SnapEbtCard;
-            var faker = new Faker();
+            var faker = new Bogus.Faker();
             h.ApplicationNumber = $"APP-{now.AddDays(-30):yyyy-MM}-{faker.Random.Number(100000, 999999)}";
             h.CaseNumber = $"CASE-{faker.Random.Number(100000, 999999)}";
             h.BenefitIssueDate = now.AddDays(-30);
@@ -315,6 +314,7 @@ public class MockHouseholdRepository : IHouseholdRepository
             ApplicationNumber = source.ApplicationNumber,
             CaseNumber = source.CaseNumber,
             ApplicationStatus = source.ApplicationStatus,
+            // Only include address if requested (simulating ID verification check)
             AddressOnFile = includeAddress && source.AddressOnFile != null
                 ? new Address
                 {

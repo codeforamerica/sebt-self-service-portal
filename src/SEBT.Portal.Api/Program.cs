@@ -10,8 +10,6 @@ using SEBT.Portal.Api.Extensions;
 using SEBT.Portal.Api.Middleware;
 using SEBT.Portal.Api.Options;
 using SEBT.Portal.Core.AppSettings;
-using SEBT.Portal.Core.Repositories;
-using SEBT.Portal.Core.Services;
 using SEBT.Portal.Infrastructure.Data;
 using SEBT.Portal.Infrastructure.Configuration;
 using SEBT.Portal.Infrastructure.Services;
@@ -178,11 +176,20 @@ static FixedWindowRateLimiterOptions CreateOtpRateLimitOptions(OtpRateLimitSetti
 
 var app = builder.Build();
 
-// Apply database migrations (seeding happens automatically via UseSeeding if enabled)
+// Apply database migrations (seeding happens automatically via UseSeeding if enabled). Seed users when mock household data is enabled.
 await using (var scope = app.Services.CreateAsyncScope())
 {
     var databaseMigrator = scope.ServiceProvider.GetRequiredService<IDatabaseMigrator>();
     await databaseMigrator.MigrateAsync();
+
+    // Seed users that correspond to household mock data in development
+    var useMockData = builder.Configuration.GetValue<bool>("UseMockHouseholdData", false);
+    if (useMockData)
+    {
+        var dbContext = scope.ServiceProvider.GetRequiredService<PortalDbContext>();
+        var logger = scope.ServiceProvider.GetRequiredService<ILogger<Program>>();
+        await SEBT.Portal.Infrastructure.Services.UserSeeder.SeedUsersAsync(dbContext, logger);
+    }
 }
 
 // Configure the HTTP request pipeline.

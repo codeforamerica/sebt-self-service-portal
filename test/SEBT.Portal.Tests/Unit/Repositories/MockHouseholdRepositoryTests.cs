@@ -32,7 +32,7 @@ public class MockHouseholdRepositoryTests
         // Act
         var result = await _repository.GetHouseholdByEmailAsync(email);
 
-        // Assert (flat model)
+        // Assert
         Assert.NotNull(result);
         Assert.Equal(email, result.Email);
         Assert.Equal(ApplicationStatus.Approved, result.ApplicationStatus);
@@ -149,7 +149,8 @@ public class MockHouseholdRepositoryTests
             "largefamily@example.com",
             "minimal@example.com",
             "expired@example.com",
-            "unknown@example.com"
+            "unknown@example.com",
+            "multipleapps@example.com"
         };
 
         // Act & Assert
@@ -170,7 +171,7 @@ public class MockHouseholdRepositoryTests
         // Act
         var result = await _repository.GetHouseholdByEmailAsync(email, includeAddress: true);
 
-        // Assert (flat model)
+        // Assert
         Assert.NotNull(result);
         Assert.Equal(ApplicationStatus.Approved, result.ApplicationStatus);
         Assert.Equal(2, result.Children.Count);
@@ -192,7 +193,7 @@ public class MockHouseholdRepositoryTests
         // Act
         var result = await _repository.GetHouseholdByEmailAsync(email);
 
-        // Assert (flat model)
+        // Assert
         Assert.NotNull(result);
         Assert.Equal(ApplicationStatus.Pending, result.ApplicationStatus);
         Assert.Single(result.Children);
@@ -209,7 +210,7 @@ public class MockHouseholdRepositoryTests
         // Act
         var result = await _repository.GetHouseholdByEmailAsync(email, includeAddress: true);
 
-        // Assert (flat model)
+        // Assert
         Assert.NotNull(result);
         Assert.Equal(4, result.Children.Count);
         Assert.Equal("Michael", result.Children[0].FirstName);
@@ -254,7 +255,7 @@ public class MockHouseholdRepositoryTests
         // Act
         await _repository.UpsertHouseholdAsync(updatedHousehold);
 
-        // Assert (flat model)
+        // Assert
         var result = await _repository.GetHouseholdByEmailAsync(email);
         Assert.NotNull(result);
         Assert.Equal("555-9999", result.Phone);
@@ -329,7 +330,7 @@ public class MockHouseholdRepositoryTests
         // Act
         var result = await _repository.GetHouseholdByEmailAsync(email);
 
-        // Assert (flat model)
+        // Assert
         Assert.NotNull(result);
         Assert.Equal(ApplicationStatus.Pending, result.ApplicationStatus);
         Assert.Null(result.Phone);
@@ -345,7 +346,7 @@ public class MockHouseholdRepositoryTests
         // Act
         var result = await _repository.GetHouseholdByEmailAsync(email, includeAddress: true);
 
-        // Assert (flat model)
+        // Assert
         Assert.NotNull(result);
         Assert.NotNull(result.BenefitExpirationDate);
         Assert.True(result.BenefitExpirationDate < _timeProvider.GetUtcNow().UtcDateTime);

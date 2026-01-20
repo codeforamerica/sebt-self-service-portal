@@ -42,7 +42,9 @@ public static class Dependencies
         // For deterministic time in seeding/mock data
         services.AddSingleton(TimeProvider.System);
 
-        services.AddTransient<IHouseholdRepository, DatabaseHouseholdRepository>();
+        // Household data is stored in-memory (will be replaced with distributed store later)
+        services.AddTransient<IHouseholdRepository, MockHouseholdRepository>();
+
         services.AddMemoryCache();
 
         return services;

@@ -1,5 +1,5 @@
 using SEBT.Portal.Core.Models.Household;
-using SEBT.Portal.TestUtilities.Helpers;
+using SEBT.Portal.Infrastructure.Helpers;
 
 namespace SEBT.Portal.Tests.Unit.Helpers;
 
@@ -35,7 +35,7 @@ public class HouseholdFactoryTests
             h.ApplicationStatus = customStatus;
         });
 
-        // Assert (flat model)
+        // Assert
         Assert.Equal(customEmail, household.Email);
         Assert.Equal(customStatus, household.ApplicationStatus);
     }
@@ -90,7 +90,7 @@ public class HouseholdFactoryTests
         // Act
         var household = HouseholdFactory.CreateHouseholdDataWithStatus(ApplicationStatus.Approved);
 
-        // Assert (flat model)
+        // Assert
         Assert.Equal(ApplicationStatus.Approved, household.ApplicationStatus);
     }
 
@@ -100,7 +100,7 @@ public class HouseholdFactoryTests
         // Act
         var household = HouseholdFactory.CreateHouseholdDataWithStatus(ApplicationStatus.Approved);
 
-        // Assert (flat model)
+        // Assert
         Assert.Equal(ApplicationStatus.Approved, household.ApplicationStatus);
         Assert.NotNull(household.BenefitIssueDate);
         Assert.NotNull(household.BenefitExpirationDate);
@@ -115,7 +115,7 @@ public class HouseholdFactoryTests
         // Act
         var household = HouseholdFactory.CreateHouseholdDataWithStatus(ApplicationStatus.Unknown);
 
-        // Assert (flat model)
+        // Assert
         Assert.Equal(ApplicationStatus.Unknown, household.ApplicationStatus);
         Assert.Null(household.BenefitIssueDate);
         Assert.Null(household.BenefitExpirationDate);
@@ -148,10 +148,10 @@ public class HouseholdFactoryTests
         // Act
         var household = HouseholdFactory.CreateHouseholdData();
 
-        // Assert (flat model)
+        // Assert
         Assert.NotNull(household.Children);
         Assert.True(household.Children.Count >= 0);
-        Assert.True(household.Children.Count <= 4); // Up to 4 children per household
+        Assert.True(household.Children.Count <= 4); // Based on factory rules
     }
 
     [Fact]
@@ -160,7 +160,7 @@ public class HouseholdFactoryTests
         // Act
         var household = HouseholdFactory.CreateHouseholdData();
 
-        // Assert (flat model)
+        // Assert
         foreach (var child in household.Children)
         {
             Assert.NotEmpty(child.FirstName);
@@ -218,7 +218,7 @@ public class HouseholdFactoryTests
         // Act
         var household = HouseholdFactory.CreateHouseholdDataWithStatus(ApplicationStatus.Approved);
 
-        // Assert (flat model)
+        // Assert
         Assert.NotNull(household.ApplicationNumber);
         Assert.StartsWith("APP-", household.ApplicationNumber);
     }
@@ -243,7 +243,7 @@ public class HouseholdFactoryTests
         // Act
         var household = HouseholdFactory.CreateHouseholdDataWithStatus(ApplicationStatus.Denied);
 
-        // Assert (flat model)
+        // Assert
         Assert.NotNull(household.CaseNumber);
         Assert.StartsWith("CASE-", household.CaseNumber);
     }
@@ -254,8 +254,18 @@ public class HouseholdFactoryTests
         // Act
         var household = HouseholdFactory.CreateHouseholdDataWithStatus(ApplicationStatus.Unknown);
 
-        // Assert (flat model: CaseNumber on household root)
+        // Assert
         Assert.Null(household.CaseNumber);
         Assert.Null(household.ApplicationNumber);
+    }
+
+    [Fact]
+    public void CreateHouseholdDataWithStatus_Pending_ShouldNotHaveCaseNumber()
+    {
+        // Act
+        var household = HouseholdFactory.CreateHouseholdDataWithStatus(ApplicationStatus.Pending);
+
+        // Assert
+        Assert.Null(household.CaseNumber);
     }
 }
