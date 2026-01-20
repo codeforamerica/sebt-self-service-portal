@@ -1,3 +1,4 @@
+using Bogus;
 using Microsoft.Extensions.Logging;
 using SEBT.Portal.Core.Models.Household;
 using SEBT.Portal.Core.Repositories;
@@ -81,21 +82,46 @@ public class MockHouseholdRepository : IHouseholdRepository
 
     private void SeedMockData()
     {
-        // Scenario 1: Approved application with address (ID verified user)
-        _households["verified@example.com"] = HouseholdFactory.CreateHouseholdDataWithEmail("verified@example.com", h =>
+        // Use a fixed seed for deterministic data generation across runs
+        HouseholdFactory.SetSeed(12345);
+
+        // Scenario 1: Co-loaded user with approved application and address (ID verified)
+        var coLoaded = HouseholdFactory.CreateHouseholdDataWithStatus(ApplicationStatus.Approved, h =>
         {
-            h.Phone = "555-1234";
+            h.BenefitIssueDate = DateTime.UtcNow.AddDays(-20);
+            h.BenefitExpirationDate = DateTime.UtcNow.AddDays(70);
+            h.Last4DigitsOfCard = "0000";
+            // Set specific children names for test
+            h.Children = new List<Child>
+            {
+                new Child { FirstName = "Sophia", LastName = "Martinez" },
+                new Child { FirstName = "James", LastName = "Martinez" }
+            };
+            h.AddressOnFile = new Address
+            {
+                StreetAddress1 = "100 Co-Loaded Street",
+                StreetAddress2 = "Suite 100",
+                City = "Denver",
+                State = "CO",
+                PostalCode = "80201"
+            };
+        });
+        coLoaded.Email = "co-loaded@example.com";
+        _households["co-loaded@example.com"] = coLoaded;
+
+        // Scenario 2: Approved application with address (ID verified user)
+        var verified = HouseholdFactory.CreateHouseholdDataWithStatus(ApplicationStatus.Approved, h =>
+        {
+            h.BenefitIssueDate = DateTime.UtcNow.AddDays(-30);
+            h.BenefitExpirationDate = DateTime.UtcNow.AddDays(60);
+            h.Last4DigitsOfCard = "1234"; // Specific value for test
+            // Set specific children names for test
             h.Children = new List<Child>
             {
                 new Child { FirstName = "John", LastName = "Doe" },
                 new Child { FirstName = "Jane", LastName = "Doe" }
             };
-            h.BenefitIssueDate = DateTime.UtcNow.AddDays(-30);
-            h.BenefitExpirationDate = DateTime.UtcNow.AddDays(60);
-            h.Last4DigitsOfCard = "1234";
-            h.ApplicationNumber = "APP-2024-001234";
-            h.CaseNumber = "CASE-567890";
-            h.ApplicationStatus = ApplicationStatus.Approved;
+            // Set specific address for test
             h.AddressOnFile = new Address
             {
                 StreetAddress1 = "123 Main Street",
@@ -105,17 +131,20 @@ public class MockHouseholdRepository : IHouseholdRepository
                 PostalCode = "80202"
             };
         });
+        verified.Email = "verified@example.com";
+        _households["verified@example.com"] = verified;
 
-        // Scenario 2: Pending application without address (not ID verified)
-        _households["pending@example.com"] = HouseholdFactory.CreateHouseholdDataWithEmail("pending@example.com", h =>
+        // Scenario 3: Pending application without address (not ID verified)
+        // Note: Address should not be included for non-ID-verified users, but we set it here
+        // for testing purposes (it will be filtered by GetHouseholdByEmailAsync based on includeAddress)
+        var pending = HouseholdFactory.CreateHouseholdDataWithStatus(ApplicationStatus.Pending, h =>
         {
-            h.Phone = "555-5678";
+            // Set specific child name for test
             h.Children = new List<Child>
             {
                 new Child { FirstName = "Alice", LastName = "Smith" }
             };
-            h.ApplicationStatus = ApplicationStatus.Pending;
-            h.ApplicationNumber = "APP-2024-005678";
+            // Set address for testing (will be filtered based on ID verification status)
             h.AddressOnFile = new Address
             {
                 StreetAddress1 = "456 Oak Avenue",
@@ -124,65 +153,57 @@ public class MockHouseholdRepository : IHouseholdRepository
                 PostalCode = "80301"
             };
         });
+        pending.Email = "pending@example.com";
+        _households["pending@example.com"] = pending;
 
-        // Scenario 3: Denied application
-        _households["denied@example.com"] = HouseholdFactory.CreateHouseholdDataWithEmail("denied@example.com", h =>
+        // Scenario 4: Denied application
+        var denied = HouseholdFactory.CreateHouseholdDataWithStatus(ApplicationStatus.Denied, h =>
         {
-            h.Phone = "555-9999";
-            h.ApplicationStatus = ApplicationStatus.Denied;
-            h.ApplicationNumber = "APP-2024-009999";
-            h.CaseNumber = "CASE-999999";
-            h.Children = new List<Child>();
+            h.Children = new List<Child>(); // No children for denied
         });
+        denied.Email = "denied@example.com";
+        _households["denied@example.com"] = denied;
 
-        // Scenario 4: Under review
-        _households["review@example.com"] = HouseholdFactory.CreateHouseholdDataWithEmail("review@example.com", h =>
+        // Scenario 5: Under review
+        var review = HouseholdFactory.CreateHouseholdDataWithStatus(ApplicationStatus.UnderReview, h =>
         {
-            h.Phone = "555-1111";
-            h.ApplicationStatus = ApplicationStatus.UnderReview;
-            h.ApplicationNumber = "APP-2024-001111";
-            h.Children = new List<Child>
-            {
-                new Child { FirstName = "Bob", LastName = "Johnson" }
-            };
+            // Use Bogus to generate child name
+            var childFaker = new Faker<Child>()
+                .RuleFor(c => c.FirstName, f => f.Name.FirstName())
+                .RuleFor(c => c.LastName, f => f.Name.LastName());
+            h.Children = childFaker.Generate(1);
         });
+        review.Email = "review@example.com";
+        _households["review@example.com"] = review;
 
-        // Scenario 5: Cancelled application
-        _households["cancelled@example.com"] = HouseholdFactory.CreateHouseholdDataWithEmail("cancelled@example.com", h =>
+        // Scenario 6: Cancelled application
+        var cancelled = HouseholdFactory.CreateHouseholdDataWithStatus(ApplicationStatus.Cancelled, h =>
         {
-            h.Phone = "555-2222";
-            h.ApplicationStatus = ApplicationStatus.Cancelled;
-            h.ApplicationNumber = "APP-2024-002222";
-            h.Children = new List<Child>();
+            h.Children = new List<Child>(); // No children for cancelled
         });
+        cancelled.Email = "cancelled@example.com";
+        _households["cancelled@example.com"] = cancelled;
 
-        // Scenario 6: Approved with single child
-        _households["singlechild@example.com"] = HouseholdFactory.CreateHouseholdDataWithEmail("singlechild@example.com", h =>
+        // Scenario 7: Approved with single child
+        var singleChild = HouseholdFactory.CreateHouseholdDataWithStatus(ApplicationStatus.Approved, h =>
         {
-            h.Phone = "555-3333";
-            h.Children = new List<Child>
-            {
-                new Child { FirstName = "Emma", LastName = "Williams" }
-            };
             h.BenefitIssueDate = DateTime.UtcNow.AddDays(-15);
             h.BenefitExpirationDate = DateTime.UtcNow.AddDays(75);
-            h.Last4DigitsOfCard = "5678";
-            h.ApplicationNumber = "APP-2024-003333";
-            h.CaseNumber = "CASE-333333";
-            h.ApplicationStatus = ApplicationStatus.Approved;
-            h.AddressOnFile = new Address
-            {
-                StreetAddress1 = "789 Pine Street",
-                City = "Colorado Springs",
-                State = "CO",
-                PostalCode = "80901"
-            };
+            // Use Bogus to generate child name
+            var childFaker = new Faker<Child>()
+                .RuleFor(c => c.FirstName, f => f.Name.FirstName())
+                .RuleFor(c => c.LastName, f => f.Name.LastName());
+            h.Children = childFaker.Generate(1);
         });
+        singleChild.Email = "singlechild@example.com";
+        _households["singlechild@example.com"] = singleChild;
 
-        // Scenario 7: Large family (multiple children)
-        _households["largefamily@example.com"] = HouseholdFactory.CreateHouseholdDataWithEmail("largefamily@example.com", h =>
+        // Scenario 8: Large family (multiple children)
+        var largeFamily = HouseholdFactory.CreateHouseholdDataWithStatus(ApplicationStatus.Approved, h =>
         {
-            h.Phone = "555-4444";
+            h.BenefitIssueDate = DateTime.UtcNow.AddDays(-45);
+            h.BenefitExpirationDate = DateTime.UtcNow.AddDays(45);
+            // Set specific children names for test
             h.Children = new List<Child>
             {
                 new Child { FirstName = "Michael", LastName = "Brown" },
@@ -190,62 +211,42 @@ public class MockHouseholdRepository : IHouseholdRepository
                 new Child { FirstName = "David", LastName = "Brown" },
                 new Child { FirstName = "Emily", LastName = "Brown" }
             };
-            h.BenefitIssueDate = DateTime.UtcNow.AddDays(-45);
-            h.BenefitExpirationDate = DateTime.UtcNow.AddDays(45);
-            h.Last4DigitsOfCard = "9012";
-            h.ApplicationNumber = "APP-2024-004444";
-            h.CaseNumber = "CASE-444444";
-            h.ApplicationStatus = ApplicationStatus.Approved;
-            h.AddressOnFile = new Address
-            {
-                StreetAddress1 = "321 Elm Street",
-                StreetAddress2 = "Unit 2",
-                City = "Fort Collins",
-                State = "CO",
-                PostalCode = "80521"
-            };
         });
+        largeFamily.Email = "largefamily@example.com";
+        _households["largefamily@example.com"] = largeFamily;
 
-        // Scenario 8: Minimal data (no phone, no dates)
-        _households["minimal@example.com"] = HouseholdFactory.CreateHouseholdDataWithEmail("minimal@example.com", h =>
+        // Scenario 9: Minimal data (no phone, no dates)
+        var minimal = HouseholdFactory.CreateHouseholdDataWithStatus(ApplicationStatus.Pending, h =>
         {
             h.Phone = null;
-            h.ApplicationStatus = ApplicationStatus.Pending;
             h.Children = new List<Child>();
         });
+        minimal.Email = "minimal@example.com";
+        _households["minimal@example.com"] = minimal;
 
-        // Scenario 9: Expired benefits
-        _households["expired@example.com"] = HouseholdFactory.CreateHouseholdDataWithEmail("expired@example.com", h =>
+        // Scenario 10: Expired benefits
+        var expired = HouseholdFactory.CreateHouseholdDataWithStatus(ApplicationStatus.Approved, h =>
         {
-            h.Phone = "555-5555";
-            h.Children = new List<Child>
-            {
-                new Child { FirstName = "Olivia", LastName = "Davis" }
-            };
             h.BenefitIssueDate = DateTime.UtcNow.AddDays(-120);
             h.BenefitExpirationDate = DateTime.UtcNow.AddDays(-10); // Expired
-            h.Last4DigitsOfCard = "3456";
-            h.ApplicationNumber = "APP-2023-005555";
-            h.CaseNumber = "CASE-555555";
-            h.ApplicationStatus = ApplicationStatus.Approved;
-            h.AddressOnFile = new Address
-            {
-                StreetAddress1 = "654 Maple Drive",
-                City = "Aurora",
-                State = "CO",
-                PostalCode = "80012"
-            };
+            // Use Bogus to generate child name
+            var childFaker = new Faker<Child>()
+                .RuleFor(c => c.FirstName, f => f.Name.FirstName())
+                .RuleFor(c => c.LastName, f => f.Name.LastName());
+            h.Children = childFaker.Generate(1);
         });
+        expired.Email = "expired@example.com";
+        _households["expired@example.com"] = expired;
 
-        // Scenario 10: Unknown status
-        _households["unknown@example.com"] = HouseholdFactory.CreateHouseholdDataWithEmail("unknown@example.com", h =>
+        // Scenario 11: Unknown status
+        var unknown = HouseholdFactory.CreateHouseholdDataWithStatus(ApplicationStatus.Unknown, h =>
         {
-            h.Phone = "555-6666";
-            h.ApplicationStatus = ApplicationStatus.Unknown;
             h.Children = new List<Child>();
         });
+        unknown.Email = "unknown@example.com";
+        _households["unknown@example.com"] = unknown;
 
-        _logger.LogInformation("Seeded {Count} mock household records", _households.Count);
+        _logger.LogInformation("Seeded {Count} mock household records using Bogus", _households.Count);
     }
 
     /// <summary>
