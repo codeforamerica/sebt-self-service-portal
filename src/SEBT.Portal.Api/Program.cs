@@ -8,8 +8,7 @@ using Serilog;
 using SEBT.Portal.Api.Extensions;
 using SEBT.Portal.Api.Middleware;
 using SEBT.Portal.Core.AppSettings;
-using SEBT.Portal.Core.Services;
-using SEBT.Portal.Infrastructure.Seeding.Services;
+using SEBT.Portal.Infrastructure.Data;
 using SEBT.Portal.Infrastructure.Services;
 using SEBT.Portal.UseCases;
 using SEBT.Portal.Infrastructure;
@@ -75,8 +74,8 @@ builder.Services.AddSwaggerGen(options =>
 // Adds use cases (i.e., query and command handlers) for portal business logic
 builder.Services.AddUseCases();
 builder.Services.AddPortalInfrastructureServices();
-builder.Services.AddPortalDbContext(builder.Configuration, options => options.ConfigureDevelopmentSeeding());
-builder.Services.AddPortalInfrastructureRepositories();
+builder.Services.AddPortalDbContext(builder.Configuration);
+builder.Services.AddPortalInfrastructureRepositories(builder.Configuration);
 builder.Services.AddPortalInfrastructureAppSettings();
 
 // Register IDatabaseSeeder for development utilities (e.g., ClearSeededData script)
@@ -171,11 +170,20 @@ static FixedWindowRateLimiterOptions CreateOtpRateLimitOptions(OtpRateLimitSetti
 
 var app = builder.Build();
 
-// Apply database migrations
+// Apply database migrations and seed users (if mock data is enabled)
 await using (var scope = app.Services.CreateAsyncScope())
 {
     var databaseMigrator = scope.ServiceProvider.GetRequiredService<IDatabaseMigrator>();
     await databaseMigrator.MigrateAsync();
+
+    // Seed users that correspond to household mock data in development
+    var useMockData = builder.Configuration.GetValue<bool>("UseMockHouseholdData", false);
+    if (useMockData)
+    {
+        var dbContext = scope.ServiceProvider.GetRequiredService<PortalDbContext>();
+        var logger = scope.ServiceProvider.GetRequiredService<ILogger<Program>>();
+        await SEBT.Portal.Infrastructure.Services.UserSeeder.SeedUsersAsync(dbContext, logger);
+    }
 }
 
 // Configure the HTTP request pipeline.
