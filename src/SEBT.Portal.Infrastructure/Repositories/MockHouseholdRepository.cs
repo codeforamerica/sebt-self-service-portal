@@ -1,4 +1,5 @@
 using System.Collections.Concurrent;
+using Bogus;
 using Microsoft.Extensions.Logging;
 using SEBT.Portal.Core.Models.Household;
 using SEBT.Portal.Core.Repositories;
@@ -126,6 +127,7 @@ public class MockHouseholdRepository : IHouseholdRepository
                 new Child { FirstName = "John", LastName = "Doe" },
                 new Child { FirstName = "Jane", LastName = "Doe" }
             };
+            // Set specific address for test
             h.AddressOnFile = new Address
             {
                 StreetAddress1 = "123 Main Street",
@@ -148,6 +150,7 @@ public class MockHouseholdRepository : IHouseholdRepository
             {
                 new Child { FirstName = "Alice", LastName = "Smith" }
             };
+            // Set address for testing (will be filtered based on ID verification status)
             h.AddressOnFile = new Address
             {
                 StreetAddress1 = "456 Oak Avenue",
@@ -163,7 +166,7 @@ public class MockHouseholdRepository : IHouseholdRepository
         var denied = HouseholdFactory.CreateHouseholdDataWithStatus(ApplicationStatus.Denied, h =>
         {
             h.BenefitIssuanceType = BenefitIssuanceType.Unknown;
-            h.Children = new List<Child>();
+            h.Children = new List<Child>(); // No children for denied
         });
         denied.Email = "denied@example.com";
         _households["denied@example.com"] = denied;
@@ -172,7 +175,7 @@ public class MockHouseholdRepository : IHouseholdRepository
         var review = HouseholdFactory.CreateHouseholdDataWithStatus(ApplicationStatus.UnderReview, h =>
         {
             h.BenefitIssuanceType = BenefitIssuanceType.SnapEbtCard;
-            var childFaker = new Bogus.Faker<Child>()
+            var childFaker = new Faker<Child>()
                 .RuleFor(c => c.FirstName, f => f.Name.FirstName())
                 .RuleFor(c => c.LastName, f => f.Name.LastName());
             h.Children = childFaker.Generate(1);
@@ -184,7 +187,7 @@ public class MockHouseholdRepository : IHouseholdRepository
         var cancelled = HouseholdFactory.CreateHouseholdDataWithStatus(ApplicationStatus.Cancelled, h =>
         {
             h.BenefitIssuanceType = BenefitIssuanceType.Unknown;
-            h.Children = new List<Child>();
+            h.Children = new List<Child>(); // No children for cancelled
         });
         cancelled.Email = "cancelled@example.com";
         _households["cancelled@example.com"] = cancelled;
@@ -195,7 +198,8 @@ public class MockHouseholdRepository : IHouseholdRepository
             h.BenefitIssuanceType = BenefitIssuanceType.SummerEbt;
             h.BenefitIssueDate = now.AddDays(-15);
             h.BenefitExpirationDate = now.AddDays(75);
-            var childFaker = new Bogus.Faker<Child>()
+            // Use Bogus to generate child name
+            var childFaker = new Faker<Child>()
                 .RuleFor(c => c.FirstName, f => f.Name.FirstName())
                 .RuleFor(c => c.LastName, f => f.Name.LastName());
             h.Children = childFaker.Generate(1);
@@ -236,7 +240,8 @@ public class MockHouseholdRepository : IHouseholdRepository
             h.BenefitIssuanceType = BenefitIssuanceType.SnapEbtCard;
             h.BenefitIssueDate = now.AddDays(-120);
             h.BenefitExpirationDate = now.AddDays(-10); // Expired
-            var childFaker = new Bogus.Faker<Child>()
+            // Use Bogus to generate child name
+            var childFaker = new Faker<Child>()
                 .RuleFor(c => c.FirstName, f => f.Name.FirstName())
                 .RuleFor(c => c.LastName, f => f.Name.LastName());
             h.Children = childFaker.Generate(1);
@@ -257,7 +262,7 @@ public class MockHouseholdRepository : IHouseholdRepository
         var multipleApps = HouseholdFactory.CreateHouseholdDataWithStatus(ApplicationStatus.Approved, h =>
         {
             h.BenefitIssuanceType = BenefitIssuanceType.SnapEbtCard;
-            var faker = new Bogus.Faker();
+            var faker = new Faker();
             h.ApplicationNumber = $"APP-{now.AddDays(-30):yyyy-MM}-{faker.Random.Number(100000, 999999)}";
             h.CaseNumber = $"CASE-{faker.Random.Number(100000, 999999)}";
             h.BenefitIssueDate = now.AddDays(-30);
