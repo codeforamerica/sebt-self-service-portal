@@ -24,6 +24,13 @@ export const TEST_OTP = {
   invalid: '999999'
 } as const
 
+// Test feature flags (SUN Bucks portal features)
+export const TEST_FEATURE_FLAGS = {
+  enable_enrollment_status: true,
+  enable_card_replacement: false,
+  enable_spanish_support: true
+} as const
+
 export const handlers = [
   // Health check endpoint
   http.get('/api/health', () => {
@@ -100,5 +107,13 @@ export const handlers = [
     return HttpResponse.json({
       token: 'mock-jwt-token-for-testing'
     })
+  }),
+
+  // Feature flags endpoint
+  http.get('/api/features', async () => {
+    // Add small delay to allow loading state to be observable in tests
+    await delay(50)
+
+    return HttpResponse.json(TEST_FEATURE_FLAGS)
   })
 ]
