@@ -1,6 +1,7 @@
 name: Deploy (ECR)
 
 on:
+  push:
   workflow_dispatch:
     inputs:
       state:
