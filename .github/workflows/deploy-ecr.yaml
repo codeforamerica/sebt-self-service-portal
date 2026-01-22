@@ -2,6 +2,25 @@ name: Deploy (ECR)
 
 on:
   push:
+    inputs:
+      state:
+        description: "State to deploy (e.g. dc, co)"
+        required: true
+        type: string
+      stage:
+        description: "Environment/stage (e.g. dev, staging, prod)"
+        required: true
+        default: "dev"
+        type: string
+      aws_region:
+        description: "AWS region"
+        required: true
+        default: "us-east-1"
+        type: string
+      image_tag:
+        description: "Image tag to push/deploy (default: git sha)"
+        required: false
+        type: string
   workflow_dispatch:
     inputs:
       state:
