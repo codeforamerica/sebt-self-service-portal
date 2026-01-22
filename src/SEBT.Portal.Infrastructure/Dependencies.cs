@@ -75,8 +75,7 @@ public static class Dependencies
 
                     var userRepository = new Repositories.DatabaseUserRepository(portalContext);
                     var seeder = new DatabaseSeeder(userRepository, portalContext);
-                    // Call async method synchronously for UseSeeding callback
-                    seeder.SeedTestUsersAsync(CancellationToken.None).GetAwaiter().GetResult();
+                    seeder.SeedTestUsers();
                 })
                 .UseAsyncSeeding(async (context, _, cancellationToken) =>
                 {
