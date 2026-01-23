@@ -80,19 +80,24 @@ jobs:
           aws-region: ${{ env.AWS_REGION }}
 
       - name: Login to Amazon ECR
+        if: env.ACT != 'true'
         id: login-ecr
         uses: aws-actions/amazon-ecr-login@v2
 
       - name: Resolve ECR repository URLs
         id: ecr
         run: |
-          if [ -z "${{ secrets.ECR_API_REPOSITORY_URL }}" ] || [ -z "${{ secrets.ECR_WEB_REPOSITORY_URL }}" ]; then
-            echo "Missing secrets ECR_API_REPOSITORY_URL and/or ECR_WEB_REPOSITORY_URL" >&2
-            exit 1
+          if [ "$ACT" = "true" ]; then
+            echo "api_repo=sebt-portal-api" >> "$GITHUB_OUTPUT"
+            echo "web_repo=sebt-portal-web" >> "$GITHUB_OUTPUT"
+          else
+            if [ -z "${{ secrets.ECR_API_REPOSITORY_URL }}" ] || [ -z "${{ secrets.ECR_WEB_REPOSITORY_URL }}" ]; then
+              echo "Missing secrets ECR_API_REPOSITORY_URL and/or ECR_WEB_REPOSITORY_URL" >&2
+              exit 1
+            fi
+            echo "api_repo=${{ secrets.ECR_API_REPOSITORY_URL }}" >> "$GITHUB_OUTPUT"
+            echo "web_repo=${{ secrets.ECR_WEB_REPOSITORY_URL }}" >> "$GITHUB_OUTPUT"
           fi
-
-          echo "api_repo=${{ secrets.ECR_API_REPOSITORY_URL }}" >> "$GITHUB_OUTPUT"
-          echo "web_repo=${{ secrets.ECR_WEB_REPOSITORY_URL }}" >> "$GITHUB_OUTPUT"
 
       - name: Build + push API image
         run: |
@@ -101,7 +106,9 @@ jobs:
             -f src/SEBT.Portal.Api/Dockerfile \
             -t "${{ steps.ecr.outputs.api_repo }}:${{ steps.tag.outputs.tag }}" \
             .
-          docker push "${{ steps.ecr.outputs.api_repo }}:${{ steps.tag.outputs.tag }}"
+          if [ "$ACT" != "true" ]; then
+            docker push "${{ steps.ecr.outputs.api_repo }}:${{ steps.tag.outputs.tag }}"
+          fi
 
       - name: Build + push Web image
         run: |
@@ -111,4 +118,6 @@ jobs:
             --build-arg STATE="${STATE}" \
             -t "${{ steps.ecr.outputs.web_repo }}:${{ steps.tag.outputs.tag }}" \
             .
-          docker push "${{ steps.ecr.outputs.web_repo }}:${{ steps.tag.outputs.tag }}"
+          if [ "$ACT" != "true" ]; then
+            docker push "${{ steps.ecr.outputs.web_repo }}:${{ steps.tag.outputs.tag }}"
+          fi
