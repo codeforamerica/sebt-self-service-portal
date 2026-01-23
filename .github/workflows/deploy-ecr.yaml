@@ -53,6 +53,9 @@ concurrency:
 jobs:
   build-push-and-deploy:
     runs-on: ubuntu-latest
+    outputs:
+      image_tag: ${{ steps.tag.outputs.tag }}
+      run_apply: ${{ steps.meta.outputs.run_apply }}
 
     env:
       AWS_REGION: ${{ inputs.aws_region || 'us-east-1' }}
@@ -71,6 +74,11 @@ jobs:
           else
             echo "tag=${GITHUB_SHA}" >> "$GITHUB_OUTPUT"
           fi
+
+      - name: Set apply flag
+        id: meta
+        run: |
+          echo "run_apply=$([ \"$ACT\" = 'true' ] && echo 'false' || echo 'true')" >> "$GITHUB_OUTPUT"
 
       - name: Configure AWS credentials (OIDC)
         if: ${{ env.ACT != 'true' }}
@@ -121,3 +129,48 @@ jobs:
           if [ "$ACT" != "true" ]; then
             docker push "${{ steps.ecr.outputs.web_repo }}:${{ steps.tag.outputs.tag }}"
           fi
+
+  apply-infra:
+    needs: build-push-and-deploy
+    if: needs.build-push-and-deploy.outputs.run_apply == 'true'
+    runs-on: ubuntu-latest
+    env:
+      AWS_REGION: ${{ inputs.aws_region || 'us-east-1' }}
+      STAGE: ${{ inputs.stage || 'dev' }}
+      STATE: ${{ inputs.state || 'dc' }}
+      APP_NAME: ${{ vars.ECS_APP_NAME || 'sebt-portal' }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials (OIDC)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_TO_ASSUME }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Install OpenTofu
+        uses: opentofu/setup-opentofu@v1
+        with:
+          tofu_version: "1.9.0"
+
+      - name: OpenTofu Init (app)
+        working-directory: tofu/app
+        run: |
+          tofu init \
+            -backend-config="bucket=${{ secrets.TFSTATE_BUCKET }}" \
+            -backend-config="key=sebt-self-service-portal/${STAGE}/${STATE}.tfstate" \
+            -backend-config="dynamodb_table=${{ secrets.TFSTATE_TABLE }}" \
+            -backend-config="region=${{ env.AWS_REGION }}" \
+            -backend-config="encrypt=true"
+
+      - name: OpenTofu Apply (app)
+        working-directory: tofu/app
+        run: |
+          tofu apply -auto-approve \
+            -var="aws_region=${{ env.AWS_REGION }}" \
+            -var="name=${{ env.APP_NAME }}" \
+            -var="stage=${{ env.STAGE }}" \
+            -var="state=${{ env.STATE }}" \
+            -var="image_tag=${{ needs.build-push-and-deploy.outputs.image_tag }}"
