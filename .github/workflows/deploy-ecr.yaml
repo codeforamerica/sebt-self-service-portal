@@ -47,7 +47,7 @@ permissions:
   contents: read
 
 concurrency:
-  group: deploy-${{ inputs.stage }}-${{ inputs.state }}
+  group: deploy-${{ inputs.stage || 'dev' }}-${{ inputs.state || 'dc' }}
   cancel-in-progress: false
 
 jobs:
@@ -55,9 +55,9 @@ jobs:
     runs-on: ubuntu-latest
 
     env:
-      AWS_REGION: ${{ inputs.aws_region }}
-      STAGE: ${{ inputs.stage }}
-      STATE: ${{ inputs.state }}
+      AWS_REGION: ${{ inputs.aws_region || 'us-east-1' }}
+      STAGE: ${{ inputs.stage || 'dev' }}
+      STATE: ${{ inputs.state || 'dc' }}
 
     steps:
       - name: Checkout
