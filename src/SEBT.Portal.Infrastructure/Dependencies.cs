@@ -42,7 +42,7 @@ public static class Dependencies
     /// <param name="configureOptions">Optional action to configure DbContext options (e.g., for seeding).</param>
     /// <returns>The service collection for chaining.</returns>
     public static IServiceCollection AddPortalDbContext(
-        this IServiceCollection services, 
+        this IServiceCollection services,
         IConfiguration configuration,
         Action<DbContextOptionsBuilder>? configureOptions = null)
     {

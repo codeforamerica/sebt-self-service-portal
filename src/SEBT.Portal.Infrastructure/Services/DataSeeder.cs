@@ -38,7 +38,7 @@ public class DataSeeder : IDataSeeder
     {
         ArgumentNullException.ThrowIfNull(user);
         ArgumentNullException.ThrowIfNull(user.Email);
-        
+
         var normalizedEmail = NormalizeEmail(user.Email);
         return new UserEntity
         {
@@ -79,7 +79,7 @@ public class DataSeeder : IDataSeeder
     public async Task<HashSet<string>> GetExistingUserEmailsAsync(IEnumerable<string> emails, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(emails);
-        
+
         var normalizedEmails = emails.Select(NormalizeEmail).ToList();
         var existingEmails = await _dbContext.Users
             .Where(u => normalizedEmails.Contains(u.Email))
@@ -91,13 +91,13 @@ public class DataSeeder : IDataSeeder
     public async Task AddUsersAsync(IEnumerable<User> users, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(users);
-        
+
         var usersList = users.ToList();
         if (usersList.Count == 0)
         {
             return;
         }
-        
+
         var entities = usersList.Select(MapToEntity).ToList();
         _dbContext.Users.AddRange(entities);
 
@@ -117,7 +117,7 @@ public class DataSeeder : IDataSeeder
     public async Task<List<string>> GetUserEmailsByDomainAsync(string emailDomain, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(emailDomain);
-        
+
         return await _dbContext.Users
             .Where(u => u.Email.EndsWith(emailDomain))
             .Select(u => u.Email)
@@ -127,7 +127,7 @@ public class DataSeeder : IDataSeeder
     public async Task RemoveUsersByEmailAsync(IEnumerable<string> emails, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(emails);
-        
+
         var normalizedEmails = emails.Select(NormalizeEmail).ToList();
         var usersToRemove = await _dbContext.Users
             .Where(u => normalizedEmails.Contains(u.Email))
@@ -139,7 +139,7 @@ public class DataSeeder : IDataSeeder
     public async Task RemoveUserOptInsByEmailAsync(IEnumerable<string> emails, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(emails);
-        
+
         var normalizedEmails = emails.Select(NormalizeEmail).ToList();
         var optInsToRemove = await _dbContext.UserOptIns
             .Where(o => normalizedEmails.Contains(o.Email))
@@ -156,7 +156,7 @@ public class DataSeeder : IDataSeeder
     public HashSet<string> GetExistingUserEmails(IEnumerable<string> emails)
     {
         ArgumentNullException.ThrowIfNull(emails);
-        
+
         var normalizedEmails = emails.Select(NormalizeEmail).ToList();
         var existingEmails = _dbContext.Users
             .Where(u => normalizedEmails.Contains(u.Email))
@@ -173,13 +173,13 @@ public class DataSeeder : IDataSeeder
     public void AddUsers(IEnumerable<User> users)
     {
         ArgumentNullException.ThrowIfNull(users);
-        
+
         var usersList = users.ToList();
         if (usersList.Count == 0)
         {
             return;
         }
-        
+
         var entities = usersList.Select(MapToEntity).ToList();
         _dbContext.Users.AddRange(entities);
 
