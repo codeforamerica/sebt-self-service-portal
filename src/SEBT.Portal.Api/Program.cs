@@ -5,8 +5,11 @@ using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
 using Serilog;
+using SEBT.Portal.Api.Extensions;
 using SEBT.Portal.Api.Middleware;
 using SEBT.Portal.Core.AppSettings;
+using SEBT.Portal.Core.Services;
+using SEBT.Portal.Infrastructure.Seeding.Services;
 using SEBT.Portal.Infrastructure.Services;
 using SEBT.Portal.UseCases;
 using SEBT.Portal.Infrastructure;
@@ -72,9 +75,12 @@ builder.Services.AddSwaggerGen(options =>
 // Adds use cases (i.e., query and command handlers) for portal business logic
 builder.Services.AddUseCases();
 builder.Services.AddPortalInfrastructureServices();
-builder.Services.AddPortalDbContext(builder.Configuration);
+builder.Services.AddPortalDbContext(builder.Configuration, options => options.ConfigureDevelopmentSeeding());
 builder.Services.AddPortalInfrastructureRepositories();
 builder.Services.AddPortalInfrastructureAppSettings();
+
+// Register IDatabaseSeeder for development utilities (e.g., ClearSeededData script)
+builder.Services.AddScoped<IDatabaseSeeder, DatabaseSeeder>();
 
 // Configure JWT Authentication
 builder.Services.AddAuthentication(options =>

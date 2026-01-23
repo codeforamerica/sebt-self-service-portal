@@ -2,10 +2,13 @@ using Microsoft.EntityFrameworkCore;
 using SEBT.Portal.Core.Models.Auth;
 using SEBT.Portal.Infrastructure.Data;
 using SEBT.Portal.Infrastructure.Data.Entities;
-using SEBT.Portal.Infrastructure.Helpers;
 using SEBT.Portal.Infrastructure.Repositories;
+using SEBT.Portal.Infrastructure.Seeding.Helpers;
+using SEBT.Portal.Infrastructure.Seeding.Services;
 using SEBT.Portal.Infrastructure.Services;
+using SEBT.Portal.Tests.Helpers;
 using SEBT.Portal.Tests.Unit.Repositories;
+using UserFactory = SEBT.Portal.Infrastructure.Seeding.Helpers.UserFactory;
 
 namespace SEBT.Portal.Tests.Unit.Services;
 
@@ -26,8 +29,8 @@ public class DatabaseSeederTests : IClassFixture<SqlServerTestFixture>
 
     private DatabaseSeeder CreateSeeder(PortalDbContext context)
     {
-        var repository = new DatabaseUserRepository(context);
-        return new DatabaseSeeder(repository, context);
+        var dataSeeder = new DataSeeder(context);
+        return new DatabaseSeeder(dataSeeder);
     }
 
     /// <summary>
@@ -97,7 +100,7 @@ public class DatabaseSeederTests : IClassFixture<SqlServerTestFixture>
         var seeder = CreateSeeder(context);
 
         // Create an existing user
-        var existingUser = UserFactory.CreateUserEntity(e =>
+        var existingUser = UserEntityFactory.CreateUserEntity(e =>
         {
             e.Email = $"existing-{Guid.NewGuid()}@example.com";
         });
@@ -160,7 +163,7 @@ public class DatabaseSeederTests : IClassFixture<SqlServerTestFixture>
         await seeder.SeedUsersAsync(3);
 
         // Manually add a user to simulate a race condition
-        var conflictingUser = UserFactory.CreateUserEntity(e =>
+        var conflictingUser = UserEntityFactory.CreateUserEntity(e =>
         {
             e.Email = $"conflict-{Guid.NewGuid()}@example.com";
         });
@@ -246,7 +249,7 @@ public class DatabaseSeederTests : IClassFixture<SqlServerTestFixture>
         var seeder = CreateSeeder(context);
 
         // Create one of the test users manually
-        var existingUser = UserFactory.CreateUserEntity(e =>
+        var existingUser = UserEntityFactory.CreateUserEntity(e =>
         {
             e.Email = "co-loaded@example.com";
             e.IdProofingStatus = (int)IdProofingStatus.NotStarted;
@@ -281,7 +284,7 @@ public class DatabaseSeederTests : IClassFixture<SqlServerTestFixture>
         var testEmails = new[] { "co-loaded@example.com", "non-co-loaded@example.com", "not-started@example.com" };
         foreach (var email in testEmails)
         {
-            var user = UserFactory.CreateUserEntity(e =>
+            var user = UserEntityFactory.CreateUserEntity(e =>
             {
                 e.Email = email;
             });
@@ -351,7 +354,7 @@ public class DatabaseSeederTests : IClassFixture<SqlServerTestFixture>
         var seeder = CreateSeeder(context);
 
         // Create one of the test users manually
-        var existingUser = UserFactory.CreateUserEntity(e =>
+        var existingUser = UserEntityFactory.CreateUserEntity(e =>
         {
             e.Email = "co-loaded@example.com";
         });
@@ -402,7 +405,7 @@ public class DatabaseSeederTests : IClassFixture<SqlServerTestFixture>
         await seeder.SeedTestUsersAsync();
 
         // Add a production user (not @example.com)
-        var productionUser = UserFactory.CreateUserEntity(e =>
+        var productionUser = UserEntityFactory.CreateUserEntity(e =>
         {
             e.Email = "production@real-domain.com";
         });
@@ -427,7 +430,7 @@ public class DatabaseSeederTests : IClassFixture<SqlServerTestFixture>
         var seeder = CreateSeeder(context);
 
         // Add a production user
-        var productionUser = UserFactory.CreateUserEntity(e =>
+        var productionUser = UserEntityFactory.CreateUserEntity(e =>
         {
             e.Email = "production@real-domain.com";
         });
@@ -516,19 +519,19 @@ public class DatabaseSeederTests : IClassFixture<SqlServerTestFixture>
         var seeder = CreateSeeder(context);
 
         // Create various users
-        var seededUser1 = UserFactory.CreateUserEntity(e =>
+        var seededUser1 = UserEntityFactory.CreateUserEntity(e =>
         {
             e.Email = "test1@example.com";
         });
-        var seededUser2 = UserFactory.CreateUserEntity(e =>
+        var seededUser2 = UserEntityFactory.CreateUserEntity(e =>
         {
             e.Email = "test2@example.com";
         });
-        var productionUser1 = UserFactory.CreateUserEntity(e =>
+        var productionUser1 = UserEntityFactory.CreateUserEntity(e =>
         {
             e.Email = "user1@production.com";
         });
-        var productionUser2 = UserFactory.CreateUserEntity(e =>
+        var productionUser2 = UserEntityFactory.CreateUserEntity(e =>
         {
             e.Email = "user2@another-domain.org";
         });

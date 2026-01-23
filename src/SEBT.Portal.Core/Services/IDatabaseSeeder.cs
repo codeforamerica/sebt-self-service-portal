@@ -1,4 +1,4 @@
-namespace SEBT.Portal.Infrastructure.Services;
+namespace SEBT.Portal.Core.Services;
 
 /// <summary>
 /// Service for seeding the database with initial or test data.
