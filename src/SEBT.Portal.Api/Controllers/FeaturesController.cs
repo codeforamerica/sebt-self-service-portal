@@ -26,7 +26,7 @@ public class FeaturesController : ControllerBase
     /// Gets the current feature flag states.
     /// Returns flags from state-specific JSON files (appsettings.{State}.json), AWS AppConfig (if configured), or defaults.
     /// Flags are merged in priority order with state-specific JSON having the highest priority.
-    /// State-specific configuration is loaded from appsettings.{State}.json files based on the STATE or NEXT_PUBLIC_STATE environment variable.
+    /// State-specific configuration is loaded from appsettings.{State}.json files based on the STATE environment variable.
     /// Unknown flags are not included in the response.
     /// </summary>
     /// <param name="cancellationToken">A token to monitor for cancellation requests.</param>

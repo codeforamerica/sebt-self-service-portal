@@ -21,7 +21,7 @@ var builder = WebApplication.CreateBuilder(args);
 
 // Load state-specific configuration if STATE environment variable is set
 // This loads appsettings.{State}.json files (e.g., appsettings.dc.json, appsettings.co.json)
-var state = Environment.GetEnvironmentVariable("STATE") ?? Environment.GetEnvironmentVariable("NEXT_PUBLIC_STATE");
+var state = Environment.GetEnvironmentVariable("STATE");
 if (!string.IsNullOrEmpty(state))
 {
     var stateConfigFile = $"appsettings.{state.ToLowerInvariant()}.json";
