@@ -572,6 +572,85 @@ resource "aws_iam_role_policy" "github_actions_tfstate" {
   })
 }
 
+resource "aws_iam_role_policy" "github_actions_apply" {
+  count = var.enable_github_actions_ecr_push && var.tfstate_bucket != "" && var.tfstate_table != "" ? 1 : 0
+
+  name   = "${local.prefix}-github-actions-apply"
+  role   = aws_iam_role.github_actions_ecr_push[0].id
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect   = "Allow"
+        Action   = ["ec2:Describe*"]
+        Resource = "*"
+      },
+      {
+        Effect   = "Allow"
+        Action   = ["ec2:Create*", "ec2:Delete*", "ec2:Modify*", "ec2:Attach*", "ec2:Detach*", "ec2:Associate*", "ec2:Replace*", "ec2:Authorize*", "ec2:Revoke*", "ec2:AllocateAddress", "ec2:ReleaseAddress"]
+        Resource = "*"
+      },
+      {
+        Effect   = "Allow"
+        Action   = ["ecs:*"]
+        Resource = "*"
+      },
+      {
+        Effect   = "Allow"
+        Action   = ["elasticloadbalancing:*"]
+        Resource = "*"
+      },
+      {
+        Effect   = "Allow"
+        Action   = ["logs:CreateLogGroup", "logs:DeleteLogGroup", "logs:DescribeLogGroups", "logs:PutRetentionPolicy", "logs:TagLogGroup", "logs:UntagLogGroup", "logs:ListTagsLogGroup"]
+        Resource = "*"
+      },
+      {
+        Effect = "Allow"
+        Action = [
+          "iam:CreateRole",
+          "iam:DeleteRole",
+          "iam:GetRole",
+          "iam:PutRolePolicy",
+          "iam:DeleteRolePolicy",
+          "iam:AttachRolePolicy",
+          "iam:DetachRolePolicy",
+          "iam:ListRoles",
+          "iam:ListRolePolicies",
+          "iam:ListAttachedRolePolicies",
+          "iam:TagRole",
+          "iam:UntagRole"
+        ]
+        Resource = "arn:aws:iam::${data.aws_caller_identity.current.account_id}:role/${local.prefix}-*"
+      },
+      {
+        Effect   = "Allow"
+        Action   = ["iam:PassRole"]
+        Resource = "arn:aws:iam::${data.aws_caller_identity.current.account_id}:role/${local.prefix}-*"
+        Condition = {
+          StringEquals = {
+            "iam:PassedToService" = ["ecs-tasks.amazonaws.com"]
+          }
+        }
+      },
+      {
+        Effect   = "Allow"
+        Action   = ["iam:AttachRolePolicy", "iam:DetachRolePolicy"]
+        Resource = [
+          "arn:aws:iam::${data.aws_caller_identity.current.account_id}:role/${local.prefix}-*",
+          "arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy",
+          "arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore"
+        ]
+      },
+      {
+        Effect   = "Allow"
+        Action   = ["rds:Describe*", "rds:Create*", "rds:Delete*", "rds:Modify*", "rds:Add*", "rds:Remove*"]
+        Resource = "*"
+      }
+    ]
+  })
+}
+
 resource "aws_ecs_task_definition" "api" {
   family                   = "${local.prefix}-api"
   requires_compatibilities = ["FARGATE"]
