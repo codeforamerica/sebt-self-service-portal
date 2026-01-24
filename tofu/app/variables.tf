@@ -41,6 +41,18 @@ variable "github_repo" {
   default     = "codeforamerica/sebt-self-service-portal"
 }
 
+variable "tfstate_bucket" {
+  type        = string
+  description = "S3 bucket used for OpenTofu state. When set (with tfstate_table), the GitHub OIDC role gets read/write access so apply-infra can run in CI."
+  default     = ""
+}
+
+variable "tfstate_table" {
+  type        = string
+  description = "DynamoDB table used for state locking. Set with tfstate_bucket so the GitHub OIDC role can run apply-infra."
+  default     = ""
+}
+
 variable "desired_count" {
   type        = number
   description = "Desired number of tasks per service."
