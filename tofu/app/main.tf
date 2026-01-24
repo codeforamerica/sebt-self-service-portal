@@ -531,6 +531,47 @@ resource "aws_iam_role_policy" "github_actions_ecr_push" {
   })
 }
 
+resource "aws_iam_role_policy" "github_actions_tfstate" {
+  count = var.enable_github_actions_ecr_push && var.tfstate_bucket != "" && var.tfstate_table != "" ? 1 : 0
+
+  name   = "${local.prefix}-github-actions-tfstate"
+  role   = aws_iam_role.github_actions_ecr_push[0].id
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect = "Allow"
+        Action = [
+          "s3:GetObject",
+          "s3:PutObject",
+          "s3:DeleteObject"
+        ]
+        Resource = "arn:aws:s3:::${var.tfstate_bucket}/sebt-self-service-portal/*"
+      },
+      {
+        Effect   = "Allow"
+        Action   = ["s3:ListBucket"]
+        Resource = "arn:aws:s3:::${var.tfstate_bucket}"
+        Condition = {
+          StringLike = { "s3:prefix" = ["sebt-self-service-portal/*"] }
+        }
+      },
+      {
+        Effect = "Allow"
+        Action = [
+          "dynamodb:GetItem",
+          "dynamodb:PutItem",
+          "dynamodb:DeleteItem",
+          "dynamodb:BatchGetItem",
+          "dynamodb:BatchWriteItem",
+          "dynamodb:ConditionCheckItem"
+        ]
+        Resource = "arn:aws:dynamodb:${var.aws_region}:${data.aws_caller_identity.current.account_id}:table/${var.tfstate_table}"
+      }
+    ]
+  })
+}
+
 resource "aws_ecs_task_definition" "api" {
   family                   = "${local.prefix}-api"
   requires_compatibilities = ["FARGATE"]

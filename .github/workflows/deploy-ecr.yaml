@@ -173,4 +173,6 @@ jobs:
             -var="name=${{ env.APP_NAME }}" \
             -var="stage=${{ env.STAGE }}" \
             -var="state=${{ env.STATE }}" \
-            -var="image_tag=${{ needs.build-push-and-deploy.outputs.image_tag }}"
+            -var="image_tag=${{ needs.build-push-and-deploy.outputs.image_tag }}" \
+            -var="tfstate_bucket=${{ secrets.TFSTATE_BUCKET }}" \
+            -var="tfstate_table=${{ secrets.TFSTATE_TABLE }}"
