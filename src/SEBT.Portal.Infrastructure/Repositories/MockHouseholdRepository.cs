@@ -2,7 +2,7 @@ using Bogus;
 using Microsoft.Extensions.Logging;
 using SEBT.Portal.Core.Models.Household;
 using SEBT.Portal.Core.Repositories;
-using SEBT.Portal.Infrastructure.Helpers;
+using SEBT.Portal.Infrastructure.Seeding.Helpers;
 
 namespace SEBT.Portal.Infrastructure.Repositories;
 

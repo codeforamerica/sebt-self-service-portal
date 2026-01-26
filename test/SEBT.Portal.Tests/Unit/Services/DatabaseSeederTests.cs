@@ -6,9 +6,8 @@ using SEBT.Portal.Infrastructure.Repositories;
 using SEBT.Portal.Infrastructure.Seeding.Helpers;
 using SEBT.Portal.Infrastructure.Seeding.Services;
 using SEBT.Portal.Infrastructure.Services;
-using SEBT.Portal.Tests.Helpers;
 using SEBT.Portal.Tests.Unit.Repositories;
-using UserFactory = SEBT.Portal.Infrastructure.Seeding.Helpers.UserFactory;
+using UserEntityFactory = SEBT.Portal.Infrastructure.Helpers.UserFactory;
 
 namespace SEBT.Portal.Tests.Unit.Services;
 

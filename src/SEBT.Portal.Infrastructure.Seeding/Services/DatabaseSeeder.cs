@@ -1,3 +1,4 @@
+using Microsoft.Extensions.Logging;
 using SEBT.Portal.Core.Models.Auth;
 using SEBT.Portal.Core.Services;
 using SEBT.Portal.Infrastructure.Seeding.Helpers;
@@ -7,13 +8,21 @@ namespace SEBT.Portal.Infrastructure.Seeding.Services;
 /// <summary>
 /// Service for seeding the database with initial or test data.
 /// </summary>
-public class DatabaseSeeder : IDatabaseSeeder
+public class DatabaseSeeder : Core.Services.IDatabaseSeeder
 {
     private readonly IDataSeeder _dataSeeder;
+    private readonly ILogger<DatabaseSeeder>? _logger;
 
-    public DatabaseSeeder(IDataSeeder dataSeeder)
+    private const int DaysSinceIdProofingCompleted = -30;
+    private const int DaysUntilIdProofingExpires = 335;
+    private const int DaysSinceCoLoadedUpdate = -5;
+    private const int DaysSinceBasicIdProofingCompleted = -10;
+    private const int DaysUntilBasicIdProofingExpires = 355;
+
+    public DatabaseSeeder(IDataSeeder dataSeeder, ILogger<DatabaseSeeder>? logger = null)
     {
         _dataSeeder = dataSeeder ?? throw new ArgumentNullException(nameof(dataSeeder));
+        _logger = logger;
     }
 
     /// <summary>
@@ -68,24 +77,130 @@ public class DatabaseSeeder : IDatabaseSeeder
     }
 
     /// <summary>
+    /// Gets the list of user seeding data based on household scenarios.
+    /// Each entry maps a household email to the appropriate ID proofing status.
+    /// This mapping is based on the household data seeded in MockHouseholdRepository.
+    /// </summary>
+    private static Dictionary<string, IdProofingStatus> GetHouseholdUserMappings()
+    {
+        return new Dictionary<string, IdProofingStatus>
+        {
+            // Users with ID verification completed (have addresses in household data)
+            { "co-loaded@example.com", IdProofingStatus.Completed },
+            { "verified@example.com", IdProofingStatus.Completed },
+            { "singlechild@example.com", IdProofingStatus.Completed },
+            { "largefamily@example.com", IdProofingStatus.Completed },
+            { "expired@example.com", IdProofingStatus.Completed },
+
+            // Users without ID verification (addresses not shown unless explicitly requested)
+            { "pending@example.com", IdProofingStatus.NotStarted },
+            { "minimal@example.com", IdProofingStatus.NotStarted },
+            { "denied@example.com", IdProofingStatus.NotStarted },
+            { "review@example.com", IdProofingStatus.InProgress },
+            { "cancelled@example.com", IdProofingStatus.NotStarted },
+            { "unknown@example.com", IdProofingStatus.NotStarted }
+        };
+    }
+
+    /// <summary>
     /// Seeds the database with specific test users for development.
     /// </summary>
     /// <param name="cancellationToken">A token to cancel the operation.</param>
     public async Task SeedTestUsersAsync(CancellationToken cancellationToken = default)
     {
-        var testUsers = CreateTestUsers();
-        // Get raw emails - IDataSeeder will normalize them internally
-        var userEmails = testUsers.Select(u => u.Email).ToList();
-        var existingEmails = await _dataSeeder.GetExistingUserEmailsAsync(userEmails, cancellationToken);
+        await SeedTestUsersAsync(useMockHouseholdData: false, cancellationToken);
+    }
 
-        // Normalize for comparison since GetExistingUserEmailsAsync returns normalized emails
-        var usersToAdd = testUsers
-            .Where(user => !existingEmails.Contains(user.Email.Trim().ToLowerInvariant()))
-            .ToList();
+    /// <summary>
+    /// Seeds the database with specific test users for development.
+    /// If useMockHouseholdData is true, seeds users that correspond to household mock data.
+    /// </summary>
+    /// <param name="useMockHouseholdData">Whether to seed users corresponding to household mock data.</param>
+    /// <param name="cancellationToken">A token to cancel the operation.</param>
+    public async Task SeedTestUsersAsync(bool useMockHouseholdData, CancellationToken cancellationToken = default)
+    {
+        var now = DateTime.UtcNow;
+        var seededCount = 0;
 
-        if (usersToAdd.Count > 0)
+        if (useMockHouseholdData)
         {
-            await _dataSeeder.AddUsersAsync(usersToAdd, cancellationToken);
+            var mappings = GetHouseholdUserMappings();
+
+            foreach (var (email, idProofingStatus) in mappings)
+            {
+                var normalizedEmail = email?.ToLowerInvariant().Trim() ?? throw new ArgumentException("Email cannot be null", nameof(email));
+
+                var existingEmails = await _dataSeeder.GetExistingUserEmailsAsync(new[] { normalizedEmail }, cancellationToken);
+                if (existingEmails.Contains(normalizedEmail))
+                {
+                    _logger?.LogDebug("User with email {Email} already exists, skipping", normalizedEmail);
+                    continue;
+                }
+
+                try
+                {
+                    User user;
+                    if (normalizedEmail == "co-loaded@example.com")
+                    {
+                        user = UserFactory.CreateCoLoadedUser(u =>
+                        {
+                            u.Email = normalizedEmail;
+                            u.IdProofingStatus = idProofingStatus;
+                            u.IdProofingCompletedAt = now.AddDays(DaysSinceIdProofingCompleted);
+                            u.IdProofingExpiresAt = now.AddDays(DaysUntilIdProofingExpires);
+                            u.CoLoadedLastUpdated = now.AddDays(DaysSinceCoLoadedUpdate);
+                        });
+                    }
+                    else
+                    {
+                        user = UserFactory.CreateUserWithEmail(normalizedEmail, u =>
+                        {
+                            u.IdProofingStatus = idProofingStatus;
+                            if (idProofingStatus == IdProofingStatus.Completed)
+                            {
+                                u.IdProofingCompletedAt = now.AddDays(DaysSinceIdProofingCompleted);
+                                u.IdProofingExpiresAt = now.AddDays(DaysUntilIdProofingExpires);
+                            }
+                            u.IsCoLoaded = false;
+                            u.CoLoadedLastUpdated = null;
+                        });
+                    }
+
+                    await _dataSeeder.AddUsersAsync(new[] { user }, cancellationToken);
+                    seededCount++;
+                    _logger?.LogInformation("Successfully seeded user {Email} with ID proofing status {Status}", normalizedEmail, idProofingStatus);
+                }
+                catch (Exception ex)
+                {
+                    _logger?.LogWarning(ex, "Error seeding user {Email}, may already exist", normalizedEmail);
+                    // Continue with next user
+                }
+            }
+        }
+        else
+        {
+            var testUsers = CreateTestUsers();
+            var userEmails = testUsers.Select(u => u.Email).ToList();
+            var existingEmails = await _dataSeeder.GetExistingUserEmailsAsync(userEmails, cancellationToken);
+
+            var usersToAdd = testUsers
+                .Where(user => !existingEmails.Contains(user.Email.Trim().ToLowerInvariant()))
+                .ToList();
+
+            if (usersToAdd.Count > 0)
+            {
+                await _dataSeeder.AddUsersAsync(usersToAdd, cancellationToken);
+                seededCount = usersToAdd.Count;
+            }
+        }
+
+        if (seededCount > 0)
+        {
+            _logger?.LogInformation("Successfully seeded {Count} users", seededCount);
+        }
+        else
+        {
+            _logger?.LogInformation("All users already exist, no seeding needed");
         }
     }
 
@@ -94,20 +209,97 @@ public class DatabaseSeeder : IDatabaseSeeder
     /// </summary>
     public void SeedTestUsers()
     {
-        var testUsers = CreateTestUsers();
-        // Get raw emails - IDataSeeder will normalize them internally
-        var userEmails = testUsers.Select(u => u.Email).ToList();
-        var existingEmails = _dataSeeder.GetExistingUserEmails(userEmails);
+        SeedTestUsers(useMockHouseholdData: false);
+    }
 
-        // Normalize for comparison since GetExistingUserEmails returns normalized emails
-        var usersToAdd = testUsers
-            .Where(user => !existingEmails.Contains(user.Email.Trim().ToLowerInvariant()))
-            .ToList();
+    /// <summary>
+    /// Synchronous version of SeedTestUsersAsync for use in UseSeeding callback.
+    /// </summary>
+    /// <param name="useMockHouseholdData">Whether to seed users corresponding to household mock data.</param>
+    public void SeedTestUsers(bool useMockHouseholdData)
+    {
+        var now = DateTime.UtcNow;
+        var seededCount = 0;
 
-        if (usersToAdd.Count > 0)
+        if (useMockHouseholdData)
         {
-            _dataSeeder.AddUsers(usersToAdd);
-            // AddUsers already saves internally, so we don't need to call SaveChanges
+            var mappings = GetHouseholdUserMappings();
+
+            foreach (var (email, idProofingStatus) in mappings)
+            {
+                var normalizedEmail = email?.ToLowerInvariant().Trim() ?? throw new ArgumentException("Email cannot be null", nameof(email));
+
+                var existingEmails = _dataSeeder.GetExistingUserEmails(new[] { normalizedEmail });
+                if (existingEmails.Contains(normalizedEmail))
+                {
+                    _logger?.LogDebug("User with email {Email} already exists, skipping", normalizedEmail);
+                    continue;
+                }
+
+                try
+                {
+                    User user;
+                    if (normalizedEmail == "co-loaded@example.com")
+                    {
+                        user = UserFactory.CreateCoLoadedUser(u =>
+                        {
+                            u.Email = normalizedEmail;
+                            u.IdProofingStatus = idProofingStatus;
+                            u.IdProofingCompletedAt = now.AddDays(DaysSinceIdProofingCompleted);
+                            u.IdProofingExpiresAt = now.AddDays(DaysUntilIdProofingExpires);
+                            u.CoLoadedLastUpdated = now.AddDays(DaysSinceCoLoadedUpdate);
+                        });
+                    }
+                    else
+                    {
+                        user = UserFactory.CreateUserWithEmail(normalizedEmail, u =>
+                        {
+                            u.IdProofingStatus = idProofingStatus;
+                            if (idProofingStatus == IdProofingStatus.Completed)
+                            {
+                                u.IdProofingCompletedAt = now.AddDays(DaysSinceIdProofingCompleted);
+                                u.IdProofingExpiresAt = now.AddDays(DaysUntilIdProofingExpires);
+                            }
+                            u.IsCoLoaded = false;
+                            u.CoLoadedLastUpdated = null;
+                        });
+                    }
+
+                    _dataSeeder.AddUsers(new[] { user });
+                    seededCount++;
+                    _logger?.LogInformation("Successfully seeded user {Email} with ID proofing status {Status}", normalizedEmail, idProofingStatus);
+                }
+                catch (Exception ex)
+                {
+                    _logger?.LogWarning(ex, "Error seeding user {Email}, may already exist", normalizedEmail);
+                    // Continue with next user
+                }
+            }
+        }
+        else
+        {
+            var testUsers = CreateTestUsers();
+            var userEmails = testUsers.Select(u => u.Email).ToList();
+            var existingEmails = _dataSeeder.GetExistingUserEmails(userEmails);
+
+            var usersToAdd = testUsers
+                .Where(user => !existingEmails.Contains(user.Email.Trim().ToLowerInvariant()))
+                .ToList();
+
+            if (usersToAdd.Count > 0)
+            {
+                _dataSeeder.AddUsers(usersToAdd);
+                seededCount = usersToAdd.Count;
+            }
+        }
+
+        if (seededCount > 0)
+        {
+            _logger?.LogInformation("Successfully seeded {Count} users", seededCount);
+        }
+        else
+        {
+            _logger?.LogInformation("All users already exist, no seeding needed");
         }
     }
 

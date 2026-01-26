@@ -1,7 +1,7 @@
 using Bogus;
 using SEBT.Portal.Core.Models.Household;
 
-namespace SEBT.Portal.Infrastructure.Helpers;
+namespace SEBT.Portal.Infrastructure.Seeding.Helpers;
 
 /// <summary>
 /// Factory for creating HouseholdData instances using Bogus for generating fake data.
@@ -109,7 +109,7 @@ public static class HouseholdFactory
             }
             else
             {
-                // For other statuses (Pending, UnderReview, Cancelled), set application number but clear case number
+                // For other statuses (Pending, UnderReview, Cancelled), set application number but get rid of case number
                 h.ApplicationNumber = $"APP-{faker.Date.Recent(365):yyyy-MM}-{faker.Random.Number(100000, 999999)}";
                 h.CaseNumber = null;
             }
