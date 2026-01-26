@@ -54,7 +54,12 @@ public static class HouseholdFactory
 
     /// <summary>
     /// Creates a new HouseholdData instance with a specific email address.
+    /// Note: For testing purposes, this allows empty/null emails to test repository validation.
+    /// In production code, emails should be validated before calling this method.
     /// </summary>
+    /// <param name="email">The email address to use (may be empty/null for testing).</param>
+    /// <param name="customize">Optional action to further customize the household.</param>
+    /// <returns>A new HouseholdData instance with the specified email.</returns>
     public static HouseholdData CreateHouseholdDataWithEmail(string email, Action<HouseholdData>? customize = null)
     {
         var household = HouseholdDataFaker.Generate();

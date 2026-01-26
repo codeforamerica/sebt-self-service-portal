@@ -4,7 +4,7 @@ using Microsoft.Extensions.Logging;
 using SEBT.Portal.Core.Models.Household;
 using SEBT.Portal.Core.Repositories;
 using SEBT.Portal.Core.Utilities;
-using SEBT.Portal.Infrastructure.Seeding.Helpers;
+using SEBT.Portal.TestUtilities.Helpers;
 
 namespace SEBT.Portal.Infrastructure.Repositories;
 

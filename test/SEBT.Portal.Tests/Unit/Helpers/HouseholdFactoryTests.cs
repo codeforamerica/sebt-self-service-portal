@@ -1,5 +1,5 @@
 using SEBT.Portal.Core.Models.Household;
-using SEBT.Portal.Infrastructure.Seeding.Helpers;
+using SEBT.Portal.TestUtilities.Helpers;
 
 namespace SEBT.Portal.Tests.Unit.Helpers;
 
