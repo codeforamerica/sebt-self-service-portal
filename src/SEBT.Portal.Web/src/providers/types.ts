@@ -7,3 +7,7 @@ export interface I18nProviderProps {
 export interface QueryProviderProps {
   children: ReactNode
 }
+
+export interface FeatureFlagsProviderProps {
+  children: ReactNode
+}
