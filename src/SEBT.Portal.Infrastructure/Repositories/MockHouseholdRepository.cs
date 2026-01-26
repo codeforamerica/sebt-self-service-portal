@@ -1,3 +1,4 @@
+using System.Collections.Concurrent;
 using Bogus;
 using Microsoft.Extensions.Logging;
 using SEBT.Portal.Core.Models.Household;
@@ -12,13 +13,13 @@ namespace SEBT.Portal.Infrastructure.Repositories;
 /// </summary>
 public class MockHouseholdRepository : IHouseholdRepository
 {
-    private readonly Dictionary<string, HouseholdData> _households;
+    private readonly ConcurrentDictionary<string, HouseholdData> _households;
     private readonly ILogger<MockHouseholdRepository> _logger;
 
     public MockHouseholdRepository(ILogger<MockHouseholdRepository> logger)
     {
         _logger = logger;
-        _households = new Dictionary<string, HouseholdData>();
+        _households = new ConcurrentDictionary<string, HouseholdData>();
         SeedMockData();
     }
 
