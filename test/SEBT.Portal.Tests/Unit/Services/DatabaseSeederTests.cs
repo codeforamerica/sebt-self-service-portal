@@ -3,7 +3,6 @@ using SEBT.Portal.Core.Models.Auth;
 using SEBT.Portal.Infrastructure.Data;
 using SEBT.Portal.Infrastructure.Data.Entities;
 using SEBT.Portal.Infrastructure.Repositories;
-using SEBT.Portal.Infrastructure.Seeding.Helpers;
 using SEBT.Portal.Infrastructure.Seeding.Services;
 using SEBT.Portal.Infrastructure.Services;
 using SEBT.Portal.Tests.Unit.Repositories;

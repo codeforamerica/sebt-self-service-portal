@@ -1,7 +1,8 @@
 using Bogus;
 using SEBT.Portal.Core.Models.Household;
+using SEBT.Portal.Core.Utilities;
 
-namespace SEBT.Portal.Infrastructure.Seeding.Helpers;
+namespace SEBT.Portal.TestUtilities.Helpers;
 
 /// <summary>
 /// Factory for creating HouseholdData instances using Bogus for generating fake data.
@@ -54,14 +55,17 @@ public static class HouseholdFactory
 
     /// <summary>
     /// Creates a new HouseholdData instance with a specific email address.
+    /// Note: For testing purposes, this allows empty/null emails to test repository validation.
+    /// In production code, emails should be validated before calling this method.
     /// </summary>
-    /// <param name="email">The email address to use.</param>
+    /// <param name="email">The email address to use (may be empty/null for testing).</param>
     /// <param name="customize">Optional action to further customize the household.</param>
     /// <returns>A new HouseholdData instance with the specified email.</returns>
     public static HouseholdData CreateHouseholdDataWithEmail(string email, Action<HouseholdData>? customize = null)
     {
         var household = HouseholdDataFaker.Generate();
-        household.Email = email.ToLowerInvariant().Trim();
+        // Only normalize if email is not empty/null
+        household.Email = string.IsNullOrWhiteSpace(email) ? email : EmailNormalizer.Normalize(email);
         customize?.Invoke(household);
         return household;
     }

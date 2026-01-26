@@ -1,7 +1,8 @@
 using Bogus;
 using SEBT.Portal.Core.Models.Auth;
+using SEBT.Portal.Core.Utilities;
 
-namespace SEBT.Portal.Infrastructure.Seeding.Helpers;
+namespace SEBT.Portal.TestUtilities.Helpers;
 
 /// <summary>
 /// Factory for creating User instances using Bogus for generating fake data.
@@ -41,15 +42,17 @@ public static class UserFactory
 
     /// <summary>
     /// Creates a new User instance with a specific email address.
+    /// Note: For testing purposes, this allows empty/null emails to test repository validation.
+    /// In production code, emails should be validated before calling this method.
     /// </summary>
-    /// <param name="email">The email address to use.</param>
+    /// <param name="email">The email address to use (may be empty/null for testing).</param>
     /// <param name="customize">Optional action to further customize the user.</param>
     /// <returns>A new User instance with the specified email.</returns>
     public static User CreateUserWithEmail(string email, Action<User>? customize = null)
     {
         var user = UserFaker.Generate();
-        // Email is now settable, so we can set it directly
-        user.Email = email.ToLowerInvariant().Trim();
+        // Only normalize if email is not empty/null (allows testing repository validation)
+        user.Email = string.IsNullOrWhiteSpace(email) ? email : EmailNormalizer.Normalize(email);
         customize?.Invoke(user);
         return user;
     }

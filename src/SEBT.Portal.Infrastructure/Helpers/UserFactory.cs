@@ -1,36 +1,37 @@
 using SEBT.Portal.Core.Models.Auth;
+using SEBT.Portal.Core.Utilities;
 using SEBT.Portal.Infrastructure.Data.Entities;
-using SeedingUserFactory = SEBT.Portal.Infrastructure.Seeding.Helpers.UserFactory;
+using TestUtilitiesUserFactory = SEBT.Portal.TestUtilities.Helpers.UserFactory;
 
 namespace SEBT.Portal.Infrastructure.Helpers;
 
 /// <summary>
 /// Factory for creating UserEntity instances for testing.
-/// Uses the Seeding project's UserFactory to create domain models, then maps them to entities.
+/// Uses the TestUtilities project's UserFactory to create domain models, then maps them to entities.
 /// </summary>
 public static class UserFactory
 {
     /// <summary>
     /// Creates a new User instance with generated fake data.
-    /// Delegates to the Seeding project's UserFactory.
+    /// Delegates to the TestUtilities project's UserFactory.
     /// </summary>
     /// <param name="customize">Optional action to customize the generated user.</param>
     /// <returns>A new User instance.</returns>
     public static User CreateUser(Action<User>? customize = null)
     {
-        return SeedingUserFactory.CreateUser(customize);
+        return TestUtilitiesUserFactory.CreateUser(customize);
     }
 
     /// <summary>
     /// Creates a new User instance with a specific email address.
-    /// Delegates to the Seeding project's UserFactory.
+    /// Delegates to the TestUtilities project's UserFactory.
     /// </summary>
     /// <param name="email">The email address to use.</param>
     /// <param name="customize">Optional action to further customize the user.</param>
     /// <returns>A new User instance with the specified email.</returns>
     public static User CreateUserWithEmail(string email, Action<User>? customize = null)
     {
-        return SeedingUserFactory.CreateUserWithEmail(email, customize);
+        return TestUtilitiesUserFactory.CreateUserWithEmail(email, customize);
     }
 
     /// <summary>
@@ -40,7 +41,7 @@ public static class UserFactory
     /// <returns>A new UserEntity instance.</returns>
     public static UserEntity CreateUserEntity(Action<UserEntity>? customize = null)
     {
-        var user = SeedingUserFactory.CreateUser();
+        var user = TestUtilitiesUserFactory.CreateUser();
         var entity = MapToEntity(user);
         customize?.Invoke(entity);
         return entity;
@@ -53,7 +54,7 @@ public static class UserFactory
     /// <returns>A UserEntity instance with IsCoLoaded = true.</returns>
     public static UserEntity CreateCoLoadedUserEntity(Action<UserEntity>? customize = null)
     {
-        var user = SeedingUserFactory.CreateCoLoadedUser();
+        var user = TestUtilitiesUserFactory.CreateCoLoadedUser();
         var entity = MapToEntity(user);
         customize?.Invoke(entity);
         return entity;
@@ -66,7 +67,7 @@ public static class UserFactory
     /// <returns>A UserEntity instance with IsCoLoaded = false.</returns>
     public static UserEntity CreateNonCoLoadedUserEntity(Action<UserEntity>? customize = null)
     {
-        var user = SeedingUserFactory.CreateNonCoLoadedUser();
+        var user = TestUtilitiesUserFactory.CreateNonCoLoadedUser();
         var entity = MapToEntity(user);
         customize?.Invoke(entity);
         return entity;
@@ -77,7 +78,7 @@ public static class UserFactory
         return new UserEntity
         {
             Id = user.Id,
-            Email = user.Email.ToLowerInvariant().Trim(),
+            Email = EmailNormalizer.Normalize(user.Email),
             IdProofingStatus = (int)user.IdProofingStatus,
             IdProofingSessionId = user.IdProofingSessionId,
             IdProofingCompletedAt = user.IdProofingCompletedAt,

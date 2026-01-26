@@ -3,7 +3,7 @@ using Microsoft.Extensions.Logging;
 using SEBT.Portal.Core.Models.Auth;
 using SEBT.Portal.Core.Services;
 using SEBT.Portal.Core.Utilities;
-using SEBT.Portal.Infrastructure.Seeding.Helpers;
+using SEBT.Portal.TestUtilities.Helpers;
 
 namespace SEBT.Portal.Infrastructure.Seeding.Services;
 

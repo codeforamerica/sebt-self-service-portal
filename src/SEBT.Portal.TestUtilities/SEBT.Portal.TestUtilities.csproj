@@ -8,12 +8,10 @@
 
     <ItemGroup>
       <ProjectReference Include="..\SEBT.Portal.Core\SEBT.Portal.Core.csproj" />
-      <ProjectReference Include="..\SEBT.Portal.TestUtilities\SEBT.Portal.TestUtilities.csproj" />
     </ItemGroup>
 
     <ItemGroup>
       <PackageReference Include="Bogus" Version="35.6.5" />
-      <PackageReference Include="Microsoft.EntityFrameworkCore" Version="10.0.0" />
     </ItemGroup>
 
 </Project>
