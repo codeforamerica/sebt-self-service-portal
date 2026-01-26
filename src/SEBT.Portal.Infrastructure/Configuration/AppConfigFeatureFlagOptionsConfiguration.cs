@@ -23,24 +23,31 @@ public class AppConfigFeatureFlagOptionsConfiguration : IPostConfigureOptions<Ap
 
     public void PostConfigure(string? name, AppConfigFeatureFlagSettings options)
     {
+        // Check if AppConfig Agent is configured
+        var agentSection = _configuration.GetSection("AppConfig:Agent");
+        var hasAgentConfig = agentSection.Exists() &&
+            !string.IsNullOrEmpty(agentSection.GetValue<string>("ApplicationId")) &&
+            !string.IsNullOrEmpty(agentSection.GetValue<string>("EnvironmentId")) &&
+            !string.IsNullOrEmpty(agentSection.GetValue<string>("ProfileId"));
+
+        // Check legacy AppConfig section
         var appConfigSection = _configuration.GetSection(AppConfigFeatureFlagSettings.SectionName);
+        var legacyEnabled = false;
 
-        if (!appConfigSection.Exists())
+        if (appConfigSection.Exists())
         {
-            return;
+            try
+            {
+                legacyEnabled = appConfigSection.GetValue<bool>("Enabled", false);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Failed to read AppConfig Enabled setting, assuming disabled");
+            }
         }
 
-        // Check if AppConfig is enabled
-        try
-        {
-            options.Enabled = appConfigSection.GetValue<bool>("Enabled", false);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogWarning(ex, "Failed to read AppConfig Enabled setting, assuming disabled");
-            options.Enabled = false;
-            return;
-        }
+        // AppConfig is enabled if either agent is configured or legacy enabled flag is set
+        options.Enabled = hasAgentConfig || legacyEnabled;
 
         if (!options.Enabled)
         {

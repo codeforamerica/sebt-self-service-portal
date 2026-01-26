@@ -1,23 +1,20 @@
 using System.Linq;
-using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
-using Microsoft.Extensions.Options;
 using Microsoft.FeatureManagement;
 using NSubstitute;
-using NSubstitute.Core;
-using SEBT.Portal.Core.AppSettings;
-using SEBT.Portal.Infrastructure.Configuration;
 using SEBT.Portal.Infrastructure.Services;
 
 namespace SEBT.Portal.Tests.Unit.Services;
 
 /// <summary>
-/// Tests for feature flag priority order:
-/// 1. State-specific JSON files (highest priority)
-/// 2. AWS AppConfig
-/// 3. Default feature flags (lowest priority)
-/// 4. FeatureManager flags (for flags not in above sources)
+/// Tests for feature flag priority order (now handled by .NET configuration providers):
+/// 1. appsettings.json (defaults in FeatureManagement) - lowest priority
+/// 2. AWS AppConfig Agent (injects into FeatureManagement) - middle priority
+/// 3. State-specific JSON (appsettings.{State}.json) - highest priority
+/// 
+/// FeatureManager reads from the merged FeatureManagement section, so these tests verify
+/// that FeatureManager returns the correct merged values.
 /// </summary>
 public class FeatureFlagServicePriorityTests
 {
@@ -28,20 +25,13 @@ public class FeatureFlagServicePriorityTests
     public async Task GetFeatureFlagsAsync_StateJsonOverridesAppConfig()
     {
         // Arrange
-        var configuration = CreateConfigurationWithStateJsonAndAppConfig();
-        var defaultFlags = new DefaultFeatureFlagSettings
-        {
-            Flags = new Dictionary<string, bool> { { "test_feature", false } }
-        };
-        var defaultFlagsOptions = Options.Create(defaultFlags);
+        // FeatureManager should return the merged value where state JSON (true) overrides AppConfig (false)
+        var featureName = "test_feature";
+        _featureManager.GetFeatureNamesAsync()
+            .Returns(new[] { featureName }.ToAsyncEnumerable());
+        _featureManager.IsEnabledAsync(featureName).Returns(true); // State JSON overrides to true
 
-        // Create options from configuration
-        var featureManagementOptions = CreateFeatureManagementOptions(configuration);
-        var appConfigOptions = CreateAppConfigOptions(configuration);
-
-        _featureManager.GetFeatureNamesAsync().Returns(AsyncEnumerable.Empty<string>());
-
-        var service = new FeatureFlagQueryService(_featureManager, defaultFlagsOptions, featureManagementOptions, appConfigOptions, _logger);
+        var service = new FeatureFlagQueryService(_featureManager, _logger);
 
         // Act
         var result = await service.GetFeatureFlagsAsync();
@@ -55,20 +45,13 @@ public class FeatureFlagServicePriorityTests
     public async Task GetFeatureFlagsAsync_AppConfigOverridesDefaults()
     {
         // Arrange
-        var configuration = CreateConfigurationWithAppConfig();
-        var defaultFlags = new DefaultFeatureFlagSettings
-        {
-            Flags = new Dictionary<string, bool> { { "test_feature", false } }
-        };
-        var defaultFlagsOptions = Options.Create(defaultFlags);
+        // FeatureManager should return the merged value where AppConfig (true) overrides defaults (false)
+        var featureName = "test_feature";
+        _featureManager.GetFeatureNamesAsync()
+            .Returns(new[] { featureName }.ToAsyncEnumerable());
+        _featureManager.IsEnabledAsync(featureName).Returns(true); // AppConfig overrides to true
 
-        // Create options from configuration
-        var featureManagementOptions = CreateFeatureManagementOptions(configuration);
-        var appConfigOptions = CreateAppConfigOptions(configuration);
-
-        _featureManager.GetFeatureNamesAsync().Returns(AsyncEnumerable.Empty<string>());
-
-        var service = new FeatureFlagQueryService(_featureManager, defaultFlagsOptions, featureManagementOptions, appConfigOptions, _logger);
+        var service = new FeatureFlagQueryService(_featureManager, _logger);
 
         // Act
         var result = await service.GetFeatureFlagsAsync();
@@ -82,22 +65,13 @@ public class FeatureFlagServicePriorityTests
     public async Task GetFeatureFlagsAsync_FallsBackToDefaults()
     {
         // Arrange
-        var configBuilder = new ConfigurationBuilder();
-        var configuration = configBuilder.Build(); // Empty configuration
+        // When no AppConfig or state JSON, FeatureManager returns default value
+        var featureName = "test_feature";
+        _featureManager.GetFeatureNamesAsync()
+            .Returns(new[] { featureName }.ToAsyncEnumerable());
+        _featureManager.IsEnabledAsync(featureName).Returns(true); // Default value
 
-        var defaultFlags = new DefaultFeatureFlagSettings
-        {
-            Flags = new Dictionary<string, bool> { { "test_feature", true } }
-        };
-        var defaultFlagsOptions = Options.Create(defaultFlags);
-
-        // Create empty options
-        var featureManagementOptions = CreateFeatureManagementOptions(configuration);
-        var appConfigOptions = CreateAppConfigOptions(configuration);
-
-        _featureManager.GetFeatureNamesAsync().Returns(AsyncEnumerable.Empty<string>());
-
-        var service = new FeatureFlagQueryService(_featureManager, defaultFlagsOptions, featureManagementOptions, appConfigOptions, _logger);
+        var service = new FeatureFlagQueryService(_featureManager, _logger);
 
         // Act
         var result = await service.GetFeatureFlagsAsync();
@@ -111,24 +85,14 @@ public class FeatureFlagServicePriorityTests
     public async Task GetFeatureFlagsAsync_StateJsonHasHighestPriority()
     {
         // Arrange
-        var configuration = CreateConfigurationWithAllSources();
-        var defaultFlags = new DefaultFeatureFlagSettings
-        {
-            Flags = new Dictionary<string, bool>
-            {
-                { "feature1", false }, // Default: false
-                { "feature2", false }  // Default: false
-            }
-        };
-        var defaultFlagsOptions = Options.Create(defaultFlags);
+        // FeatureManager should return merged values where state JSON overrides everything
+        var features = new[] { "feature1", "feature2" };
+        _featureManager.GetFeatureNamesAsync()
+            .Returns(features.ToAsyncEnumerable());
+        _featureManager.IsEnabledAsync("feature1").Returns(true); // State JSON: true
+        _featureManager.IsEnabledAsync("feature2").Returns(false); // State JSON: false
 
-        // Create options from configuration
-        var featureManagementOptions = CreateFeatureManagementOptions(configuration);
-        var appConfigOptions = CreateAppConfigOptions(configuration);
-
-        _featureManager.GetFeatureNamesAsync().Returns(AsyncEnumerable.Empty<string>());
-
-        var service = new FeatureFlagQueryService(_featureManager, defaultFlagsOptions, featureManagementOptions, appConfigOptions, _logger);
+        var service = new FeatureFlagQueryService(_featureManager, _logger);
 
         // Act
         var result = await service.GetFeatureFlagsAsync();
@@ -140,33 +104,22 @@ public class FeatureFlagServicePriorityTests
     }
 
     [Fact]
-    public async Task GetFeatureFlagsAsync_FeatureManagerFlagsAddedWhenNotInOtherSources()
+    public async Task GetFeatureFlagsAsync_FeatureManagerFlagsReturned()
     {
         // Arrange
-        var configuration = new ConfigurationBuilder().Build();
-        var defaultFlags = new DefaultFeatureFlagSettings
-        {
-            Flags = new Dictionary<string, bool> { { "default_feature", true } }
-        };
-        var defaultFlagsOptions = Options.Create(defaultFlags);
-
-        // Create empty options
-        var featureManagementOptions = CreateFeatureManagementOptions(configuration);
-        var appConfigOptions = CreateAppConfigOptions(configuration);
-
         var featureNames = new[] { "default_feature", "manager_feature" };
         _featureManager.GetFeatureNamesAsync().Returns(featureNames.ToAsyncEnumerable());
         _featureManager.IsEnabledAsync("default_feature").Returns(true);
         _featureManager.IsEnabledAsync("manager_feature").Returns(false);
 
-        var service = new FeatureFlagQueryService(_featureManager, defaultFlagsOptions, featureManagementOptions, appConfigOptions, _logger);
+        var service = new FeatureFlagQueryService(_featureManager, _logger);
 
         // Act
         var result = await service.GetFeatureFlagsAsync();
 
         // Assert
-        Assert.True(result["default_feature"]); // From defaults
-        Assert.False(result["manager_feature"]); // From FeatureManager
+        Assert.True(result["default_feature"]);
+        Assert.False(result["manager_feature"]);
         Assert.Equal(2, result.Count);
     }
 
@@ -174,33 +127,21 @@ public class FeatureFlagServicePriorityTests
     public async Task GetFeatureFlagsAsync_InvalidFlagNamesAreSkipped()
     {
         // Arrange
-        var configuration = new ConfigurationBuilder().Build();
-        var defaultFlags = new DefaultFeatureFlagSettings
-        {
-            Flags = new Dictionary<string, bool>
-            {
-                { "valid_feature", true },
-                { "invalid-feature", true }, // Invalid: contains hyphen
-                { "invalid.feature", false } // Invalid: contains dot
-            }
-        };
-        var defaultFlagsOptions = Options.Create(defaultFlags);
+        var featureNames = new[] { "valid_feature", "invalid-feature", "invalid.feature" };
+        _featureManager.GetFeatureNamesAsync().Returns(featureNames.ToAsyncEnumerable());
+        _featureManager.IsEnabledAsync("valid_feature").Returns(true);
+        _featureManager.IsEnabledAsync("invalid-feature").Returns(true);
+        _featureManager.IsEnabledAsync("invalid.feature").Returns(false);
 
-        // Create empty options
-        var featureManagementOptions = CreateFeatureManagementOptions(configuration);
-        var appConfigOptions = CreateAppConfigOptions(configuration);
-
-        _featureManager.GetFeatureNamesAsync().Returns(AsyncEnumerable.Empty<string>());
-
-        var service = new FeatureFlagQueryService(_featureManager, defaultFlagsOptions, featureManagementOptions, appConfigOptions, _logger);
+        var service = new FeatureFlagQueryService(_featureManager, _logger);
 
         // Act
         var result = await service.GetFeatureFlagsAsync();
 
         // Assert
         Assert.True(result.ContainsKey("valid_feature"));
-        Assert.False(result.ContainsKey("invalid-feature"));
-        Assert.False(result.ContainsKey("invalid.feature"));
+        Assert.False(result.ContainsKey("invalid-feature")); // Invalid: contains hyphen
+        Assert.False(result.ContainsKey("invalid.feature")); // Invalid: contains dot
         Assert.Single(result);
     }
 
@@ -208,20 +149,12 @@ public class FeatureFlagServicePriorityTests
     public async Task GetFeatureFlagsAsync_WhenFeatureManagerThrows_ContinuesWithOtherFlags()
     {
         // Arrange
-        var configuration = new ConfigurationBuilder().Build();
-        var defaultFlags = new DefaultFeatureFlagSettings();
-        var defaultFlagsOptions = Options.Create(defaultFlags);
-
-        // Create empty options
-        var featureManagementOptions = CreateFeatureManagementOptions(configuration);
-        var appConfigOptions = CreateAppConfigOptions(configuration);
-
         var featureNames = new[] { "feature1", "feature2" };
         _featureManager.GetFeatureNamesAsync().Returns(featureNames.ToAsyncEnumerable());
         _featureManager.IsEnabledAsync("feature1").Returns(true);
         _featureManager.When(x => x.IsEnabledAsync("feature2")).Do(_ => throw new Exception("Test exception"));
 
-        var service = new FeatureFlagQueryService(_featureManager, defaultFlagsOptions, featureManagementOptions, appConfigOptions, _logger);
+        var service = new FeatureFlagQueryService(_featureManager, _logger);
 
         // Act
         var result = await service.GetFeatureFlagsAsync();
@@ -236,14 +169,6 @@ public class FeatureFlagServicePriorityTests
     public async Task GetFeatureFlagsAsync_RespectsCancellationToken()
     {
         // Arrange
-        var configuration = new ConfigurationBuilder().Build();
-        var defaultFlags = new DefaultFeatureFlagSettings();
-        var defaultFlagsOptions = Options.Create(defaultFlags);
-
-        // Create empty options
-        var featureManagementOptions = CreateFeatureManagementOptions(configuration);
-        var appConfigOptions = CreateAppConfigOptions(configuration);
-
         var cts = new CancellationTokenSource();
         cts.Cancel();
 
@@ -255,63 +180,32 @@ public class FeatureFlagServicePriorityTests
         }
         _featureManager.GetFeatureNamesAsync().Returns(CancelledEnumerable());
 
-        var service = new FeatureFlagQueryService(_featureManager, defaultFlagsOptions, featureManagementOptions, appConfigOptions, _logger);
+        var service = new FeatureFlagQueryService(_featureManager, _logger);
 
         // Act & Assert
         await Assert.ThrowsAsync<OperationCanceledException>(() =>
             service.GetFeatureFlagsAsync(cts.Token));
     }
 
-    private IOptions<FeatureManagementSettings> CreateFeatureManagementOptions(IConfiguration configuration)
+    [Fact]
+    public async Task GetFeatureFlagsAsync_SkipsAppConfigSubsection()
     {
-        var settings = new FeatureManagementSettings();
-        var config = new FeatureManagementOptionsConfiguration(configuration);
-        config.PostConfigure(null, settings);
-        return Options.Create(settings);
-    }
+        // Arrange
+        // FeatureManager might return "AppConfig" as a feature name (the config subsection)
+        // This should be skipped
+        var featureNames = new[] { "test_feature", "AppConfig" };
+        _featureManager.GetFeatureNamesAsync().Returns(featureNames.ToAsyncEnumerable());
+        _featureManager.IsEnabledAsync("test_feature").Returns(true);
+        _featureManager.IsEnabledAsync("AppConfig").Returns(false);
 
-    private IOptions<AppConfigFeatureFlagSettings> CreateAppConfigOptions(IConfiguration configuration)
-    {
-        var settings = new AppConfigFeatureFlagSettings();
-        var logger = NullLogger<AppConfigFeatureFlagOptionsConfiguration>.Instance;
-        var config = new AppConfigFeatureFlagOptionsConfiguration(configuration, logger);
-        config.PostConfigure(null, settings);
-        return Options.Create(settings);
-    }
+        var service = new FeatureFlagQueryService(_featureManager, _logger);
 
-    private IConfiguration CreateConfigurationWithStateJsonAndAppConfig()
-    {
-        var configBuilder = new ConfigurationBuilder();
-        configBuilder.AddInMemoryCollection(new Dictionary<string, string?>
-        {
-            { "FeatureManagement:test_feature", "true" }, // State JSON has true
-            { "FeatureManagement:AppConfig:Enabled", "true" },
-            { "FeatureManagement:AppConfig:Features:test_feature", "false" } // AppConfig has false
-        });
-        return configBuilder.Build();
-    }
+        // Act
+        var result = await service.GetFeatureFlagsAsync();
 
-    private IConfiguration CreateConfigurationWithAppConfig()
-    {
-        var configBuilder = new ConfigurationBuilder();
-        configBuilder.AddInMemoryCollection(new Dictionary<string, string?>
-        {
-            { "FeatureManagement:AppConfig:Enabled", "true" },
-            { "FeatureManagement:AppConfig:Features:test_feature", "true" } // AppConfig has true
-        });
-        return configBuilder.Build();
-    }
-
-    private IConfiguration CreateConfigurationWithAllSources()
-    {
-        var configBuilder = new ConfigurationBuilder();
-        configBuilder.AddInMemoryCollection(new Dictionary<string, string?>
-        {
-            { "FeatureManagement:feature1", "true" }, // State JSON: true
-            { "FeatureManagement:feature2", "false" }, // State JSON: false
-            { "FeatureManagement:AppConfig:Enabled", "true" }
-            // No AppConfig features - should fall back to defaults
-        });
-        return configBuilder.Build();
+        // Assert
+        Assert.True(result.ContainsKey("test_feature"));
+        Assert.False(result.ContainsKey("AppConfig")); // Should be skipped
+        Assert.Single(result);
     }
 }

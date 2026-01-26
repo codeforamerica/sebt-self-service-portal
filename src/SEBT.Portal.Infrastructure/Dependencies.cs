@@ -87,8 +87,6 @@ public static class Dependencies
             .BindConfiguration(OtpRateLimitSettings.SectionName);
         services.AddOptionsWithValidateOnStart<JwtSettings>()
             .BindConfiguration(JwtSettings.SectionName);
-        services.AddOptionsWithValidateOnStart<Core.AppSettings.DefaultFeatureFlagSettings>()
-            .BindConfiguration(Core.AppSettings.DefaultFeatureFlagSettings.SectionName);
 
         services.AddOptions<FeatureManagementSettings>()
             .Bind(configuration.GetSection(FeatureManagementSettings.SectionName))

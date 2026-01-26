@@ -1,10 +1,8 @@
 using System.Linq;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
-using Microsoft.Extensions.Options;
 using Microsoft.FeatureManagement;
 using NSubstitute;
-using SEBT.Portal.Core.AppSettings;
 using SEBT.Portal.Infrastructure.Services;
 
 namespace SEBT.Portal.Tests.Unit.Services;
@@ -13,16 +11,6 @@ public class FeatureFlagServiceTests
 {
     private readonly IFeatureManager _featureManager = Substitute.For<IFeatureManager>();
     private readonly ILogger<FeatureFlagQueryService> _logger = NullLogger<FeatureFlagQueryService>.Instance;
-
-    private IOptions<FeatureManagementSettings> CreateEmptyFeatureManagementOptions()
-    {
-        return Options.Create(new FeatureManagementSettings());
-    }
-
-    private IOptions<AppConfigFeatureFlagSettings> CreateEmptyAppConfigOptions()
-    {
-        return Options.Create(new AppConfigFeatureFlagSettings());
-    }
 
     [Fact]
     public async Task GetFeatureFlagsAsync_WhenFlagIsEnabled_ShouldReturnTrue()
@@ -33,11 +21,7 @@ public class FeatureFlagServiceTests
             .Returns(new[] { featureName }.ToAsyncEnumerable());
         _featureManager.IsEnabledAsync(featureName).Returns(true);
 
-        var defaultFlags = new DefaultFeatureFlagSettings();
-        var defaultFlagsOptions = Options.Create(defaultFlags);
-        var featureManagementOptions = CreateEmptyFeatureManagementOptions();
-        var appConfigOptions = CreateEmptyAppConfigOptions();
-        var service = new FeatureFlagQueryService(_featureManager, defaultFlagsOptions, featureManagementOptions, appConfigOptions, _logger);
+        var service = new FeatureFlagQueryService(_featureManager, _logger);
 
         // Act
         var result = await service.GetFeatureFlagsAsync();
@@ -56,11 +40,7 @@ public class FeatureFlagServiceTests
             .Returns(new[] { featureName }.ToAsyncEnumerable());
         _featureManager.IsEnabledAsync(featureName).Returns(false);
 
-        var defaultFlags = new DefaultFeatureFlagSettings();
-        var defaultFlagsOptions = Options.Create(defaultFlags);
-        var featureManagementOptions = CreateEmptyFeatureManagementOptions();
-        var appConfigOptions = CreateEmptyAppConfigOptions();
-        var service = new FeatureFlagQueryService(_featureManager, defaultFlagsOptions, featureManagementOptions, appConfigOptions, _logger);
+        var service = new FeatureFlagQueryService(_featureManager, _logger);
 
         // Act
         var result = await service.GetFeatureFlagsAsync();
@@ -77,18 +57,12 @@ public class FeatureFlagServiceTests
         _featureManager.GetFeatureNamesAsync()
             .Returns(AsyncEnumerable.Empty<string>());
 
-        // Empty default flags - no flags configured anywhere
-        var emptyDefaultFlags = new DefaultFeatureFlagSettings { Flags = new Dictionary<string, bool>() };
-        var emptyDefaultFlagsOptions = Options.Create(emptyDefaultFlags);
-        var featureManagementOptions = CreateEmptyFeatureManagementOptions();
-        var appConfigOptions = CreateEmptyAppConfigOptions();
-        var service = new FeatureFlagQueryService(_featureManager, emptyDefaultFlagsOptions, featureManagementOptions, appConfigOptions, _logger);
+        var service = new FeatureFlagQueryService(_featureManager, _logger);
 
         // Act
         var result = await service.GetFeatureFlagsAsync();
 
         // Assert
-        // Should return empty when no defaults, no state JSON, no AppConfig, and no FeatureManager flags
         Assert.Empty(result);
     }
 
@@ -103,11 +77,7 @@ public class FeatureFlagServiceTests
         _featureManager.IsEnabledAsync("feature2").Returns(false);
         _featureManager.IsEnabledAsync("feature3").Returns(true);
 
-        var defaultFlags = new DefaultFeatureFlagSettings();
-        var defaultFlagsOptions = Options.Create(defaultFlags);
-        var featureManagementOptions = CreateEmptyFeatureManagementOptions();
-        var appConfigOptions = CreateEmptyAppConfigOptions();
-        var service = new FeatureFlagQueryService(_featureManager, defaultFlagsOptions, featureManagementOptions, appConfigOptions, _logger);
+        var service = new FeatureFlagQueryService(_featureManager, _logger);
 
         // Act
         var result = await service.GetFeatureFlagsAsync();
@@ -128,11 +98,7 @@ public class FeatureFlagServiceTests
             .Returns(new[] { configuredFeature }.ToAsyncEnumerable());
         _featureManager.IsEnabledAsync(configuredFeature).Returns(true);
 
-        var defaultFlags = new DefaultFeatureFlagSettings();
-        var defaultFlagsOptions = Options.Create(defaultFlags);
-        var featureManagementOptions = CreateEmptyFeatureManagementOptions();
-        var appConfigOptions = CreateEmptyAppConfigOptions();
-        var service = new FeatureFlagQueryService(_featureManager, defaultFlagsOptions, featureManagementOptions, appConfigOptions, _logger);
+        var service = new FeatureFlagQueryService(_featureManager, _logger);
 
         // Act
         var result = await service.GetFeatureFlagsAsync();
