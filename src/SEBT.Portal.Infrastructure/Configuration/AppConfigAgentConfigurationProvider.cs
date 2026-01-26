@@ -82,7 +82,7 @@ public sealed class AppConfigAgentConfigurationProvider : ConfigurationProvider,
 
             await using var stream = await response.Content.ReadAsStreamAsync();
 
-            // Parse the configuration using the same parsers as CatConsult provider
+            // Parse the configuration from the AppConfig Agent response
             var parsedData = ParseConfig(stream, contentType);
 
             if (parsedData.Count > 0)
