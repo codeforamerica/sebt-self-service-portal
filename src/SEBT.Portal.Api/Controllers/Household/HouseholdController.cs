@@ -16,7 +16,6 @@ namespace SEBT.Portal.Api.Controllers.Household;
 [Route("api/household")]
 public class HouseholdController(ILogger<HouseholdController> logger) : ControllerBase
 {
-    private const string IdProofingStatusClaim = "id_proofing_status";
 
     /// <summary>
     /// Retrieves household data for the authenticated user.
@@ -94,7 +93,7 @@ public class HouseholdController(ILogger<HouseholdController> logger) : Controll
     /// <returns>The ID proofing status, or NotStarted if not found.</returns>
     private IdProofingStatus GetIdProofingStatus()
     {
-        var statusClaim = User.FindFirst(IdProofingStatusClaim)?.Value;
+        var statusClaim = User.FindFirst(JwtClaimTypes.IdProofingStatus)?.Value;
 
         if (string.IsNullOrWhiteSpace(statusClaim))
         {
