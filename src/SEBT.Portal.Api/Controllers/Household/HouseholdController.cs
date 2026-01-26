@@ -46,7 +46,7 @@ public class HouseholdController(ILogger<HouseholdController> logger) : Controll
 
         // Normalize email to ensure consistency with repository
         var normalizedEmail = EmailNormalizer.Normalize(email);
-        logger.LogDebug("Household data request received for email {Email}", normalizedEmail);
+        logger.LogInformation("Household data request received for email {Email}", normalizedEmail);
 
         // Check ID verification status from JWT claims
         var idProofingStatus = GetIdProofingStatus();
