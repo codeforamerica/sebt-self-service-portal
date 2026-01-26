@@ -1,3 +1,4 @@
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using SEBT.Portal.Core.Models.Auth;
 using SEBT.Portal.Core.Services;
@@ -170,10 +171,17 @@ public class DatabaseSeeder : Core.Services.IDatabaseSeeder
                     seededCount++;
                     _logger?.LogInformation("Successfully seeded user {Email} with ID proofing status {Status}", normalizedEmail, idProofingStatus);
                 }
+                catch (DbUpdateException ex) when (
+                    ex.InnerException?.Message.Contains("UNIQUE", StringComparison.OrdinalIgnoreCase) == true ||
+                    ex.InnerException?.Message.Contains("duplicate key", StringComparison.OrdinalIgnoreCase) == true ||
+                    ex.InnerException?.Message.Contains("IX_Users_Email", StringComparison.OrdinalIgnoreCase) == true)
+                {
+                    _logger?.LogWarning(ex, "User with email {Email} already exists (race condition), skipping", normalizedEmail);
+                }
                 catch (Exception ex)
                 {
-                    _logger?.LogWarning(ex, "Error seeding user {Email}, may already exist", normalizedEmail);
-                    // Continue with next user
+                    _logger?.LogError(ex, "Unexpected error seeding user {Email}", normalizedEmail);
+                    throw;
                 }
             }
         }
@@ -269,10 +277,17 @@ public class DatabaseSeeder : Core.Services.IDatabaseSeeder
                     seededCount++;
                     _logger?.LogInformation("Successfully seeded user {Email} with ID proofing status {Status}", normalizedEmail, idProofingStatus);
                 }
+                catch (DbUpdateException ex) when (
+                    ex.InnerException?.Message.Contains("UNIQUE", StringComparison.OrdinalIgnoreCase) == true ||
+                    ex.InnerException?.Message.Contains("duplicate key", StringComparison.OrdinalIgnoreCase) == true ||
+                    ex.InnerException?.Message.Contains("IX_Users_Email", StringComparison.OrdinalIgnoreCase) == true)
+                {
+                    _logger?.LogWarning(ex, "User with email {Email} already exists (race condition), skipping", normalizedEmail);
+                }
                 catch (Exception ex)
                 {
-                    _logger?.LogWarning(ex, "Error seeding user {Email}, may already exist", normalizedEmail);
-                    // Continue with next user
+                    _logger?.LogError(ex, "Unexpected error seeding user {Email}", normalizedEmail);
+                    throw;
                 }
             }
         }
