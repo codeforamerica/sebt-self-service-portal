@@ -50,8 +50,7 @@ public static class DatabaseSeedingExtensions
                 return;
             }
 
-            var serviceProvider = portalContext.GetInfrastructure().GetService<IServiceProvider>();
-            var logger = serviceProvider?.GetService<ILogger<DatabaseSeeder>>();
+            var logger = portalContext.GetService<ILogger<DatabaseSeeder>>();
 
             var dataSeeder = new DataSeeder(portalContext);
             var seeder = new DatabaseSeeder(dataSeeder, logger);
@@ -78,8 +77,7 @@ public static class DatabaseSeedingExtensions
                 return;
             }
 
-            var serviceProvider = portalContext.GetInfrastructure().GetService<IServiceProvider>();
-            var logger = serviceProvider?.GetService<ILogger<DatabaseSeeder>>();
+            var logger = portalContext.GetService<ILogger<DatabaseSeeder>>();
 
             var dataSeeder = new DataSeeder(portalContext);
             var seeder = new DatabaseSeeder(dataSeeder, logger);
