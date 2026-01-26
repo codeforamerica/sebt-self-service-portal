@@ -6,7 +6,7 @@ namespace SEBT.Portal.TestUtilities.Helpers;
 
 /// <summary>
 /// Factory for creating HouseholdData instances using Bogus for generating fake data.
-/// Used for seeding the MockHouseholdRepository with test scenarios.
+/// Used for testing. For seeding and MockHouseholdRepository, use Infrastructure.Seeding.Helpers.HouseholdFactory.
 /// See https://github.com/bchavez/Bogus for more information
 /// </summary>
 public static class HouseholdFactory
@@ -15,8 +15,28 @@ public static class HouseholdFactory
         .RuleFor(h => h.Email, f => f.Internet.Email().ToLowerInvariant())
         .RuleFor(h => h.Phone, f => f.Phone.PhoneNumber("###-####"))
         .RuleFor(h => h.BenefitIssuanceType, f => f.PickRandom<BenefitIssuanceType>())
-        .RuleFor(h => h.Children, f => GenerateChildren(f.Random.Int(0, 4)))
         .RuleFor(h => h.ApplicationStatus, f => f.PickRandom<ApplicationStatus>())
+        .RuleFor(h => h.ApplicationNumber, (f, h) =>
+            h.ApplicationStatus != ApplicationStatus.Unknown
+                ? $"APP-{f.Date.Recent(365):yyyy-MM}-{f.Random.Number(100000, 999999)}"
+                : null)
+        .RuleFor(h => h.CaseNumber, (f, h) =>
+            h.ApplicationStatus == ApplicationStatus.Approved || h.ApplicationStatus == ApplicationStatus.Denied
+                ? $"CASE-{f.Random.Number(100000, 999999)}"
+                : null)
+        .RuleFor(h => h.BenefitIssueDate, (f, h) =>
+            h.ApplicationStatus == ApplicationStatus.Approved
+                ? f.Date.Recent(120)
+                : null)
+        .RuleFor(h => h.BenefitExpirationDate, (f, h) =>
+            h.BenefitIssueDate.HasValue
+                ? h.BenefitIssueDate.Value.AddDays(f.Random.Int(30, 365))
+                : null)
+        .RuleFor(h => h.Last4DigitsOfCard, (f, h) =>
+            h.ApplicationStatus == ApplicationStatus.Approved
+                ? f.Random.Number(1000, 9999).ToString()
+                : null)
+        .RuleFor(h => h.Children, f => GenerateChildren(f.Random.Int(0, 4)))
         .RuleFor(h => h.AddressOnFile, (f, h) =>
             f.Random.Bool(0.6f) && h.ApplicationStatus == ApplicationStatus.Approved
                 ? GenerateAddress(f)
@@ -25,8 +45,6 @@ public static class HouseholdFactory
     /// <summary>
     /// Creates a new HouseholdData instance with generated fake data.
     /// </summary>
-    /// <param name="customize">Optional action to customize the generated household.</param>
-    /// <returns>A new HouseholdData instance.</returns>
     public static HouseholdData CreateHouseholdData(Action<HouseholdData>? customize = null)
     {
         var household = HouseholdDataFaker.Generate();
@@ -36,16 +54,10 @@ public static class HouseholdFactory
 
     /// <summary>
     /// Creates a new HouseholdData instance with a specific email address.
-    /// Note: For testing purposes, this allows empty/null emails to test repository validation.
-    /// In production code, emails should be validated before calling this method.
     /// </summary>
-    /// <param name="email">The email address to use (may be empty/null for testing).</param>
-    /// <param name="customize">Optional action to further customize the household.</param>
-    /// <returns>A new HouseholdData instance with the specified email.</returns>
     public static HouseholdData CreateHouseholdDataWithEmail(string email, Action<HouseholdData>? customize = null)
     {
         var household = HouseholdDataFaker.Generate();
-        // Only normalize if email is not empty/null
         household.Email = string.IsNullOrWhiteSpace(email) ? email : EmailNormalizer.Normalize(email);
         customize?.Invoke(household);
         return household;
@@ -54,9 +66,6 @@ public static class HouseholdFactory
     /// <summary>
     /// Creates a HouseholdData with a specific application status.
     /// </summary>
-    /// <param name="status">The application status to set.</param>
-    /// <param name="customize">Optional action to further customize the household.</param>
-    /// <returns>A HouseholdData instance with the specified application status.</returns>
     public static HouseholdData CreateHouseholdDataWithStatus(
         ApplicationStatus status,
         Action<HouseholdData>? customize = null)
@@ -64,7 +73,38 @@ public static class HouseholdFactory
         return CreateHouseholdData(h =>
         {
             var faker = new Faker();
-            ApplyStatusToHousehold(h, status, faker);
+            h.ApplicationStatus = status;
+
+            if (status == ApplicationStatus.Approved)
+            {
+                h.BenefitIssueDate = faker.Date.Recent(120);
+                h.BenefitExpirationDate = h.BenefitIssueDate.Value.AddDays(faker.Random.Int(30, 365));
+                h.Last4DigitsOfCard = faker.Random.Number(1000, 9999).ToString();
+                h.CaseNumber = $"CASE-{faker.Random.Number(100000, 999999)}";
+                h.ApplicationNumber = $"APP-{faker.Date.Recent(365):yyyy-MM}-{faker.Random.Number(100000, 999999)}";
+            }
+            else if (status == ApplicationStatus.Denied)
+            {
+                h.CaseNumber = $"CASE-{faker.Random.Number(100000, 999999)}";
+                h.ApplicationNumber = $"APP-{faker.Date.Recent(365):yyyy-MM}-{faker.Random.Number(100000, 999999)}";
+                h.BenefitIssueDate = null;
+                h.BenefitExpirationDate = null;
+                h.Last4DigitsOfCard = null;
+            }
+            else if (status == ApplicationStatus.Unknown)
+            {
+                h.BenefitIssueDate = null;
+                h.BenefitExpirationDate = null;
+                h.Last4DigitsOfCard = null;
+                h.CaseNumber = null;
+                h.ApplicationNumber = null;
+            }
+            else
+            {
+                h.ApplicationNumber = $"APP-{faker.Date.Recent(365):yyyy-MM}-{faker.Random.Number(100000, 999999)}";
+                h.CaseNumber = null;
+            }
+
             customize?.Invoke(h);
         });
     }
@@ -72,8 +112,6 @@ public static class HouseholdFactory
     /// <summary>
     /// Creates a HouseholdData with an address (simulating ID verified user).
     /// </summary>
-    /// <param name="customize">Optional action to further customize the household.</param>
-    /// <returns>A HouseholdData instance with an address.</returns>
     public static HouseholdData CreateHouseholdDataWithAddress(Action<HouseholdData>? customize = null)
     {
         return CreateHouseholdData(h =>
@@ -87,41 +125,9 @@ public static class HouseholdFactory
     /// <summary>
     /// Sets a seed for the random number generator to ensure deterministic test data.
     /// </summary>
-    /// <param name="seed">The seed value to use.</param>
     public static void SetSeed(int seed)
     {
         Randomizer.Seed = new Random(seed);
-    }
-
-    private static void ApplyStatusToHousehold(HouseholdData h, ApplicationStatus status, Faker faker)
-    {
-        h.ApplicationStatus = status;
-        h.Children = GenerateChildren(faker.Random.Int(0, 4));
-
-        if (status == ApplicationStatus.Approved)
-        {
-            h.ApplicationNumber = $"APP-{faker.Date.Recent(365):yyyy-MM}-{faker.Random.Number(100000, 999999)}";
-            h.CaseNumber = $"CASE-{faker.Random.Number(100000, 999999)}";
-            h.BenefitIssueDate = faker.Date.Recent(120);
-            h.BenefitExpirationDate = h.BenefitIssueDate.Value.AddDays(faker.Random.Int(30, 365));
-            h.Last4DigitsOfCard = faker.Random.Number(1000, 9999).ToString();
-        }
-        else if (status == ApplicationStatus.Denied)
-        {
-            h.ApplicationNumber = $"APP-{faker.Date.Recent(365):yyyy-MM}-{faker.Random.Number(100000, 999999)}";
-            h.CaseNumber = $"CASE-{faker.Random.Number(100000, 999999)}";
-        }
-        else if (status == ApplicationStatus.Unknown)
-        {
-            h.ApplicationNumber = null;
-            h.CaseNumber = null;
-        }
-        else
-        {
-            // For other statuses (Pending, UnderReview, Cancelled)
-            h.ApplicationNumber = $"APP-{faker.Date.Recent(365):yyyy-MM}-{faker.Random.Number(100000, 999999)}";
-            h.CaseNumber = $"CASE-{faker.Random.Number(100000, 999999)}";
-        }
     }
 
     private static List<Child> GenerateChildren(int count)

@@ -1,7 +1,10 @@
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Logging;
 using SEBT.Portal.Infrastructure.Data;
 using SEBT.Portal.Infrastructure.Repositories;
+using SEBT.Portal.Infrastructure.Seeding.Services;
 using SEBT.Portal.Infrastructure.Services;
 
 namespace SEBT.Portal.Api.Extensions;
@@ -15,9 +18,11 @@ public static class DatabaseSeedingExtensions
     /// Configures database seeding for Development environment.
     /// </summary>
     /// <param name="optionsBuilder">The DbContext options builder.</param>
-    /// <param name="configuration">The configuration instance to read settings from (unused; reserved for future use).</param>
+    /// <param name="configuration">The configuration instance to read settings from.</param>
     public static void ConfigureDevelopmentSeeding(this DbContextOptionsBuilder optionsBuilder, IConfiguration? configuration = null)
     {
+        var useMockHouseholdData = configuration?.GetValue<bool>("UseMockHouseholdData", false) ?? false;
+
         // These are called automatically during migrations, EnsureCreated, and `dotnet ef database update`
         // Both `UseSeeding` and `UseAsyncSeeding` are recommended for compatibility.
         // See: https://learn.microsoft.com/en-us/ef/core/modeling/data-seeding
@@ -43,9 +48,13 @@ public static class DatabaseSeedingExtensions
                 return;
             }
 
-            var userRepository = new DatabaseUserRepository(portalContext);
-            var seeder = new DatabaseSeeder(userRepository, portalContext);
-            await seeder.SeedTestUsersAsync(cancellationToken);
+            var serviceProvider = portalContext.GetInfrastructure().GetService<IServiceProvider>();
+            var logger = serviceProvider?.GetService<ILogger<DatabaseSeeder>>();
+            var timeProvider = serviceProvider?.GetService<TimeProvider>() ?? TimeProvider.System;
+
+            var dataSeeder = new DataSeeder(portalContext);
+            var seeder = new DatabaseSeeder(dataSeeder, logger, timeProvider);
+            await seeder.SeedTestUsersAsync(useMockHouseholdData, cancellationToken);
         });
     }
 }

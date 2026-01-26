@@ -1,16 +1,14 @@
 using Microsoft.EntityFrameworkCore;
-using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Logging;
 using SEBT.Portal.Core.AppSettings;
 using SEBT.Portal.Core.Repositories;
 using SEBT.Portal.Core.Services;
 using SEBT.Portal.Kernel.Services;
 using SEBT.Portal.Infrastructure.Configuration;
 using SEBT.Portal.Infrastructure.Data;
-using SEBT.Portal.Infrastructure.Helpers;
 using SEBT.Portal.Infrastructure.Repositories;
+using SEBT.Portal.Infrastructure.Seeding.Services;
 using SEBT.Portal.Infrastructure.Services;
 
 namespace SEBT.Portal.Infrastructure;
@@ -66,91 +64,15 @@ public static class Dependencies
         var connectionString = configuration.GetConnectionString("DefaultConnection")
             ?? throw new InvalidOperationException("Connection string 'DefaultConnection' not found.");
 
-        var useMockHouseholdData = configuration.GetValue<bool>("UseMockHouseholdData", false);
-
         services.AddDbContext<PortalDbContext>(options =>
         {
-            options.UseSqlServer(connectionString)
-                // These are called automatically during migrations, EnsureCreated, and `dotnet ef database update`
-                // Both `UseSeeding` and `UseAsyncSeeding` are recommended to be called for compatibility
-                // reasons (some EF Core versions may not support the async version, for example).  
-                // See: https://learn.microsoft.com/en-us/ef/core/modeling/data-seeding
-                .UseSeeding((context, _) =>
-                {
-                    // Only seed in Development environment
-                    var environment = Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT");
-                    if (environment != "Development")
-                    {
-                        return;
-                    }
-
-                    // Cast to PortalDbContext to access models DbSet
-                    if (context is not PortalDbContext portalContext)
-                    {
-                        return;
-                    }
-
-                    // Check if records already exist to avoid re-seeding
-                    if (portalContext.Users.Any())
-                    {
-                        return;
-                    }
-
-                    var serviceProvider = portalContext.GetService<IServiceProvider>();
-                    var logger = serviceProvider?.GetService<ILogger<DatabaseSeeder>>();
-
-                    var userRepository = new Repositories.DatabaseUserRepository(portalContext);
-                    var tempConfig = new ConfigurationBuilder()
-                        .AddInMemoryCollection(new Dictionary<string, string?>
-                        {
-                            { "UseMockHouseholdData", useMockHouseholdData.ToString() }
-                        })
-                        .Build();
-                    var seeder = new DatabaseSeeder(userRepository, portalContext, tempConfig, logger);
-                    // Call async method synchronously for UseSeeding callback
-                    seeder.SeedTestUsersAsync(CancellationToken.None).GetAwaiter().GetResult();
-                })
-                .UseAsyncSeeding(async (context, _, cancellationToken) =>
-                {
-                    // Only seed in Development environment
-                    var environment = Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT");
-                    if (environment != "Development")
-                    {
-                        return;
-                    }
-
-                    // Cast to PortalDbContext to access models DbSet
-                    if (context is not PortalDbContext portalContext)
-                    {
-                        return;
-                    }
-
-                    // Check if records already exist to avoid re-seeding
-                    if (await portalContext.Users.AnyAsync(cancellationToken))
-                    {
-                        return;
-                    }
-
-                    var serviceProvider = portalContext.GetService<IServiceProvider>();
-                    var logger = serviceProvider?.GetService<ILogger<DatabaseSeeder>>();
-
-                    var userRepository = new Repositories.DatabaseUserRepository(portalContext);
-                    var tempConfig = new ConfigurationBuilder()
-                        .AddInMemoryCollection(new Dictionary<string, string?>
-                        {
-                            { "UseMockHouseholdData", useMockHouseholdData.ToString() }
-                        })
-                        .Build();
-                    var seeder = new DatabaseSeeder(userRepository, portalContext, tempConfig, logger);
-                    await seeder.SeedTestUsersAsync(cancellationToken);
-                });
-
+            options.UseSqlServer(connectionString);
             configureOptions?.Invoke(options);
         });
 
         services.AddScoped<IDatabaseMigrator, DatabaseMigrator>();
         services.AddScoped<IDataSeeder, DataSeeder>();
-        services.AddScoped<Services.IDatabaseSeeder, DatabaseSeeder>();
+        services.AddScoped<IDatabaseSeeder, DatabaseSeeder>();
 
         return services;
     }
