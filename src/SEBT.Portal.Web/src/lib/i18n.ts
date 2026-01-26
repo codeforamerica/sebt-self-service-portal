@@ -50,16 +50,12 @@ import enCODashboard from '@/content/locales/en/co/dashboard.json'
 import enCODisclaimer from '@/content/locales/en/co/disclaimer.json'
 import enCOEditContactPreferences from '@/content/locales/en/co/editContactPreferences.json'
 import enCOEditMailingAddress from '@/content/locales/en/co/editMailingAddress.json'
-import enCOIdProofing from '@/content/locales/en/co/idProofing.json'
 import enCOLanding from '@/content/locales/en/co/landing.json'
 import enCOLogin from '@/content/locales/en/co/login.json'
-import enCOOffBoarding from '@/content/locales/en/co/offBoarding.json'
-import enCOOptIn from '@/content/locales/en/co/optIn.json'
 import enCOOptionalId from '@/content/locales/en/co/optionalId.json'
 import enCOPersonalInfo from '@/content/locales/en/co/personalInfo.json'
 import enCOProto from '@/content/locales/en/co/proto.json'
 import enCOResult from '@/content/locales/en/co/result.json'
-import enCOValidation from '@/content/locales/en/co/validation.json'
 
 // Spanish - DC
 import esDCCommon from '@/content/locales/es/dc/common.json'
@@ -86,16 +82,12 @@ import esCODashboard from '@/content/locales/es/co/dashboard.json'
 import esCODisclaimer from '@/content/locales/es/co/disclaimer.json'
 import esCOEditContactPreferences from '@/content/locales/es/co/editContactPreferences.json'
 import esCOEditMailingAddress from '@/content/locales/es/co/editMailingAddress.json'
-import esCOIdProofing from '@/content/locales/es/co/idProofing.json'
 import esCOLanding from '@/content/locales/es/co/landing.json'
 import esCOLogin from '@/content/locales/es/co/login.json'
-import esCOOffBoarding from '@/content/locales/es/co/offBoarding.json'
-import esCOOptIn from '@/content/locales/es/co/optIn.json'
 import esCOOptionalId from '@/content/locales/es/co/optionalId.json'
 import esCOPersonalInfo from '@/content/locales/es/co/personalInfo.json'
 import esCOProto from '@/content/locales/es/co/proto.json'
 import esCOResult from '@/content/locales/es/co/result.json'
-import esCOValidation from '@/content/locales/es/co/validation.json'
 
 // Get state from environment
 const state = (process.env.NEXT_PUBLIC_STATE || process.env.STATE || 'dc').toLowerCase() as
@@ -150,16 +142,12 @@ const stateResources = {
       disclaimer: enCODisclaimer,
       editContactPreferences: enCOEditContactPreferences,
       editMailingAddress: enCOEditMailingAddress,
-      idProofing: enCOIdProofing,
       landing: enCOLanding,
       login: enCOLogin,
-      offBoarding: enCOOffBoarding,
-      optIn: enCOOptIn,
       optionalId: enCOOptionalId,
       personalInfo: enCOPersonalInfo,
       proto: enCOProto,
-      result: enCOResult,
-      validation: enCOValidation
+      result: enCOResult
     },
     es: {
       common: esCOCommon,
@@ -168,16 +156,12 @@ const stateResources = {
       disclaimer: esCODisclaimer,
       editContactPreferences: esCOEditContactPreferences,
       editMailingAddress: esCOEditMailingAddress,
-      idProofing: esCOIdProofing,
       landing: esCOLanding,
       login: esCOLogin,
-      offBoarding: esCOOffBoarding,
-      optIn: esCOOptIn,
       optionalId: esCOOptionalId,
       personalInfo: esCOPersonalInfo,
       proto: esCOProto,
-      result: esCOResult,
-      validation: esCOValidation
+      result: esCOResult
     }
   }
 }

@@ -31,8 +31,8 @@ export function useFeatureFlag(flagName: string): boolean {
     return false
   }
 
-  const flagEntry = Object.entries(context.flags).find(([key]) => key === flagName)
-  return flagEntry ? flagEntry[1] : false
+  // eslint-disable-next-line security/detect-object-injection -- flagName is a controlled string key, not user input
+  return context.flags[flagName] ?? false
 }
 
 /**

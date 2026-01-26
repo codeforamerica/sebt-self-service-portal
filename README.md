@@ -171,6 +171,36 @@ Migrations are stored in `src/SEBT.Portal.Infrastructure/Migrations/`:
 - The `PortalDbContextModelSnapshot.cs` file tracks the current model state
 - Migration files should be committed to version control
 
+### Database Seeding
+
+#### Automatic Seeding
+
+The database is automatically seeded with test users when running in the **Development** environment. Seeding occurs automatically during:
+- Database migrations (`dotnet ef database update`)
+- Application startup (when migrations are applied)
+- `DbContext.EnsureCreated()` calls
+
+The automatic seeding uses EF Core's `UseSeeding` mechanism under the hood.  See https://learn.microsoft.com/en-us/ef/core/modeling/data-seeding
+
+To help test different workflows and users in different states, the seeder will create the following users unless instructed otherwise:
+- `co-loaded@example.com` - A co-loaded user with completed ID proofing
+- `non-co-loaded@example.com` - A non-co-loaded user with in-progress ID proofing
+- `not-started@example.com` - A user who hasn't started ID proofing
+
+Seeding only runs if no users exist in the database, preventing duplicate data on subsequent runs.
+
+#### Clearing Seeded Data
+
+There's occasionally going to be instances where you'd want have the auto-seeded data be not be created for certain types of testing.  For those instances, there's a small console app to help with this.
+
+To clear all seeded data from the database, use the `ClearSeededData` console application:
+
+```bash
+dotnet run --project scripts/ClearSeededData
+```
+
+This will prompt for confirmation before deleting all seeded records from the database. This is irreversable; once done, you'll have to reseed.
+
 **View database tables example:**
 ```bash
 docker exec -it sebt_mssql /opt/mssql-tools18/bin/sqlcmd \

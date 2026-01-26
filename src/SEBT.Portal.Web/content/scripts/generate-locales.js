@@ -2,16 +2,17 @@
 /**
  * Generate i18n Locale Files from CSV
  *
- * Transforms Google Sheet CSV export into namespaced JSON files for react-i18next.
- * Supports multi-state deployments with state-specific copy overrides.
+ * Transforms Google Sheet CSV exports into namespaced JSON files for react-i18next.
+ * Supports multi-state deployments with separate CSV files per state.
  *
  * Usage:
  *   node content/scripts/generate-locales.js           # Generate all locales
  *   node content/scripts/generate-locales.js --watch   # Watch mode (future)
  *
- * CSV File:
- *   content/[WORKING] DC CO Enrollment Checker & Self-Service Portal Content - 🟡 DC SUN Bucks [WORKING].csv
- *   (Downloaded from Google Sheets, committed to repository)
+ * CSV Files:
+ *   content/states/dc.csv  # DC-specific content (downloaded from DC tab)
+ *   content/states/co.csv  # CO-specific content (downloaded from CO tab)
+ *   content/states/ny.csv  # NY-specific content (future)
  *
  * CSV Format:
  *   🟡 Content,English,Español,
@@ -34,8 +35,8 @@
  *   ...
  *
  * Features:
- * - Smart caching: Only regenerates if CSV changed (SHA-256 hash)
- * - State-specific overrides: "all" state entries as base, specific state overrides
+ * - Multi-state CSVs: Each state has its own CSV file (content/states/{state}.csv)
+ * - Smart caching: Only regenerates if any CSV changed (SHA-256 hash)
  * - Namespace splitting: Organizes by page/component for lazy loading
  * - Variable interpolation: Preserves {state}, {year} placeholders for runtime
  */
@@ -58,15 +59,14 @@ const contentDir = join(__dirname, '..');
 
 // Configuration
 const CONFIG = {
-  // CSV file from Google Sheets
-  csvPath: join(contentDir, '[WORKING] DC CO Enrollment Checker & Self-Service Portal Content - 🟡 DC SUN Bucks [WORKING].csv'),
+  // State CSV files directory (content/states/{state}.csv)
+  statesDir: join(contentDir, 'states'),
   outputDir: join(contentDir, 'locales'),
   hashFile: join(contentDir, '.copy-hash'),
   locales: {
     en: 'English',
     es: 'Español',
   },
-  states: ['dc', 'co'],
   // Map CSV sections to namespaces (fallback when page not mapped)
   sectionToNamespace: {
     All: 'common', // Shared across all pages
@@ -265,10 +265,10 @@ function parseContentKey(contentKey) {
 }
 
 /**
- * Build locale data structure from CSV rows
- * Returns: { en: { dc: { common: { key: value }, landing: { key: value } } } }
+ * Build locale data structure from CSV rows for a single state
+ * Returns: { en: { common: { key: value }, landing: { key: value } }, es: { ... } }
  */
-function buildLocaleData(rows) {
+function buildStateLocaleData(rows, state) {
   const [headerRow, ...dataRows] = rows;
 
   // Find column indices (handle emoji prefixes like "🟡 Content")
@@ -281,25 +281,15 @@ function buildLocaleData(rows) {
   const spanishIdx = headerRow.findIndex((h) =>
     h.toLowerCase().includes('español')
   );
-  const stateIdx = headerRow.findIndex((h) => h.toLowerCase() === 'state');
 
   if (contentIdx === -1 || englishIdx === -1) {
-    throw new Error('CSV must have "Content" and "English" columns');
+    throw new Error(`CSV for ${state} must have "Content" and "English" columns`);
   }
 
-  // Log detected format
-  const hasStateColumn = stateIdx !== -1;
-  console.log(
-    `   Format: ${hasStateColumn ? 'Multi-state (with State column)' : 'Single-state (no State column)'}`
-  );
-
-  // Initialize data structure
+  // Initialize data structure for this state
   const data = {};
   for (const locale of Object.keys(CONFIG.locales)) {
     data[locale] = {};
-    for (const state of CONFIG.states) {
-      data[locale][state] = {};
-    }
   }
 
   // Process each row
@@ -311,50 +301,23 @@ function buildLocaleData(rows) {
     // Skip empty rows or rows without content keys
     if (!contentKey || !contentKey.trim()) continue;
 
-    // Determine state: from column, or 'all' if no State column
-    const stateValue = hasStateColumn
-      ? row[stateIdx]?.toLowerCase() || 'all'
-      : 'all';
-
     const parsed = parseContentKey(contentKey);
     if (!parsed) continue;
 
     const { namespace, key } = parsed;
 
-    // Determine which states this entry applies to
-    const targetStates =
-      stateValue === 'all' ? CONFIG.states : [stateValue];
+    // English
+    if (!data.en[namespace]) {
+      data.en[namespace] = {};
+    }
+    data.en[namespace][key] = englishValue;
 
-    // Add to each target state/locale
-    for (const state of targetStates) {
-      if (!CONFIG.states.includes(state)) continue;
-
-      // English
-      if (!data.en[state][namespace]) {
-        data.en[state][namespace] = {};
+    // Spanish
+    if (spanishIdx !== -1 && spanishValue) {
+      if (!data.es[namespace]) {
+        data.es[namespace] = {};
       }
-      // Only set if not already set by state-specific entry
-      if (
-        stateValue === 'all' &&
-        data.en[state][namespace][key] !== undefined
-      ) {
-        continue; // State-specific already set, skip "all"
-      }
-      data.en[state][namespace][key] = englishValue;
-
-      // Spanish
-      if (spanishIdx !== -1 && spanishValue) {
-        if (!data.es[state][namespace]) {
-          data.es[state][namespace] = {};
-        }
-        if (
-          stateValue === 'all' &&
-          data.es[state][namespace][key] !== undefined
-        ) {
-          continue;
-        }
-        data.es[state][namespace][key] = spanishValue;
-      }
+      data.es[namespace][key] = spanishValue;
     }
   }
 
@@ -362,25 +325,48 @@ function buildLocaleData(rows) {
 }
 
 /**
- * Calculate SHA-256 hash of file contents
+ * Discover state CSV files in the states directory
+ * Returns array of { state: string, csvPath: string }
  */
-function calculateHash(filePath) {
-  if (!existsSync(filePath)) return null;
-  const content = readFileSync(filePath, 'utf8');
-  return createHash('sha256').update(content).digest('hex');
+function discoverStateCsvFiles() {
+  if (!existsSync(CONFIG.statesDir)) {
+    return [];
+  }
+
+  const files = readdirSync(CONFIG.statesDir);
+  return files
+    .filter((f) => f.endsWith('.csv'))
+    .map((f) => ({
+      state: f.replace('.csv', '').toLowerCase(),
+      csvPath: join(CONFIG.statesDir, f),
+    }));
 }
 
 /**
- * Check if expected locale files exist
- * Returns false if any required locale file is missing
+ * Calculate combined SHA-256 hash of all state CSV files
  */
-function localeFilesExist() {
-  // Check for at least one expected locale file per state/language
+function calculateCombinedHash(stateFiles) {
+  const hash = createHash('sha256');
+
+  for (const { state, csvPath } of stateFiles) {
+    if (existsSync(csvPath)) {
+      const content = readFileSync(csvPath, 'utf8');
+      hash.update(`${state}:${content}`);
+    }
+  }
+
+  return hash.digest('hex');
+}
+
+/**
+ * Check if expected locale files exist for discovered states
+ */
+function localeFilesExist(states) {
   for (const locale of Object.keys(CONFIG.locales)) {
-    for (const state of CONFIG.states) {
-      // Check for login.json as a representative file (commonly needed)
-      const loginPath = join(CONFIG.outputDir, locale, state, 'login.json');
-      if (!existsSync(loginPath)) {
+    for (const state of states) {
+      // Check for landing.json as a representative file
+      const landingPath = join(CONFIG.outputDir, locale, state, 'landing.json');
+      if (!existsSync(landingPath)) {
         return false;
       }
     }
@@ -391,14 +377,14 @@ function localeFilesExist() {
 /**
  * Check if regeneration is needed based on hash
  */
-function needsRegeneration() {
-  const currentHash = calculateHash(CONFIG.csvPath);
-  if (!currentHash) return true;
+function needsRegeneration(stateFiles) {
+  if (stateFiles.length === 0) return false;
 
+  const currentHash = calculateCombinedHash(stateFiles);
   if (!existsSync(CONFIG.hashFile)) return true;
 
-  // Even if hash matches, regenerate if output files are missing
-  if (!localeFilesExist()) return true;
+  const states = stateFiles.map((f) => f.state);
+  if (!localeFilesExist(states)) return true;
 
   const storedHash = readFileSync(CONFIG.hashFile, 'utf8').trim();
   return currentHash !== storedHash;
@@ -407,66 +393,40 @@ function needsRegeneration() {
 /**
  * Save current hash for cache invalidation
  */
-function saveHash() {
-  const hash = calculateHash(CONFIG.csvPath);
-  if (hash) {
-    writeFileSync(CONFIG.hashFile, hash, 'utf8');
-  }
+function saveHash(stateFiles) {
+  const hash = calculateCombinedHash(stateFiles);
+  writeFileSync(CONFIG.hashFile, hash, 'utf8');
 }
 
 /**
- * Clean output directory (preserves common.json which is manually maintained)
+ * Clean output directory
  */
 function cleanOutputDir() {
-  if (!existsSync(CONFIG.outputDir)) return;
-
-  // Collect common.json files to preserve
-  const commonFiles = [];
-  for (const locale of Object.keys(CONFIG.locales)) {
-    for (const state of CONFIG.states) {
-      const commonPath = join(CONFIG.outputDir, locale, state, 'common.json');
-      if (existsSync(commonPath)) {
-        commonFiles.push({
-          path: commonPath,
-          content: readFileSync(commonPath, 'utf8'),
-        });
-      }
-    }
-  }
-
-  // Clean directory
-  rmSync(CONFIG.outputDir, { recursive: true });
-
-  // Restore common.json files
-  for (const file of commonFiles) {
-    const dir = dirname(file.path);
-    mkdirSync(dir, { recursive: true });
-    writeFileSync(file.path, file.content, 'utf8');
+  if (existsSync(CONFIG.outputDir)) {
+    rmSync(CONFIG.outputDir, { recursive: true });
   }
 }
 
 /**
- * Write locale files to disk
+ * Write locale files for a single state
  */
-function writeLocaleFiles(data) {
+function writeStateLocaleFiles(stateData, state) {
   let fileCount = 0;
 
-  for (const [locale, states] of Object.entries(data)) {
-    for (const [state, namespaces] of Object.entries(states)) {
-      for (const [namespace, translations] of Object.entries(namespaces)) {
-        if (Object.keys(translations).length === 0) continue;
+  for (const [locale, namespaces] of Object.entries(stateData)) {
+    for (const [namespace, translations] of Object.entries(namespaces)) {
+      if (Object.keys(translations).length === 0) continue;
 
-        const dir = join(CONFIG.outputDir, locale, state);
-        const filePath = join(dir, `${namespace}.json`);
+      const dir = join(CONFIG.outputDir, locale, state);
+      const filePath = join(dir, `${namespace}.json`);
 
-        mkdirSync(dir, { recursive: true });
-        writeFileSync(
-          filePath,
-          JSON.stringify(translations, null, 2) + '\n',
-          'utf8'
-        );
-        fileCount++;
-      }
+      mkdirSync(dir, { recursive: true });
+      writeFileSync(
+        filePath,
+        JSON.stringify(translations, null, 2) + '\n',
+        'utf8'
+      );
+      fileCount++;
     }
   }
 
@@ -474,46 +434,24 @@ function writeLocaleFiles(data) {
 }
 
 /**
- * Validate that all keys exist across all locales/states
+ * Validate that English and Spanish have matching keys for a state
  */
-function validateCompleteness(data) {
+function validateStateCompleteness(stateData, state) {
   const warnings = [];
-  const baseLocale = 'en';
-  const baseState = CONFIG.states[0];
 
-  // Collect all keys from base locale/state
-  const baseKeys = new Map();
-  for (const [namespace, translations] of Object.entries(
-    data[baseLocale][baseState]
-  )) {
+  // Collect all keys from English
+  const englishKeys = new Map();
+  for (const [namespace, translations] of Object.entries(stateData.en || {})) {
     for (const key of Object.keys(translations)) {
-      baseKeys.set(`${namespace}.${key}`, true);
+      englishKeys.set(`${namespace}.${key}`, true);
     }
   }
 
-  // Check other locales/states for missing keys
-  for (const [locale, states] of Object.entries(data)) {
-    for (const [state, namespaces] of Object.entries(states)) {
-      for (const [namespace, translations] of Object.entries(namespaces)) {
-        for (const key of Object.keys(translations)) {
-          const fullKey = `${namespace}.${key}`;
-          if (!baseKeys.has(fullKey)) {
-            warnings.push(
-              `Extra key in ${locale}/${state}: ${fullKey}`
-            );
-          }
-        }
-      }
-
-      // Check for missing keys
-      for (const [fullKey] of baseKeys) {
-        const [namespace, key] = fullKey.split('.');
-        if (!data[locale][state][namespace]?.[key]) {
-          warnings.push(
-            `Missing key in ${locale}/${state}: ${fullKey}`
-          );
-        }
-      }
+  // Check Spanish for missing keys
+  for (const [fullKey] of englishKeys) {
+    const [namespace, key] = fullKey.split('.');
+    if (!stateData.es?.[namespace]?.[key]) {
+      warnings.push(`Missing Spanish translation in ${state}: ${fullKey}`);
     }
   }
 
@@ -526,17 +464,25 @@ function validateCompleteness(data) {
 function main() {
   console.log('🌐 Generating i18n locale files...\n');
 
-  // Check if CSV exists
-  if (!existsSync(CONFIG.csvPath)) {
-    console.log('⚠️  No CSV file found at content/copy.csv');
-    console.log('   Download from Google Sheets when ready.\n');
+  // Discover state CSV files
+  const stateFiles = discoverStateCsvFiles();
+
+  if (stateFiles.length === 0) {
+    console.log('⚠️  No state CSV files found in content/states/');
+    console.log('   Expected: content/states/dc.csv, content/states/co.csv, etc.');
+    console.log('   Download from Google Sheets (each tab as separate CSV).\n');
     process.exit(0);
   }
 
+  console.log(`📁 Found ${stateFiles.length} state CSV file(s):`);
+  for (const { state, csvPath } of stateFiles) {
+    console.log(`   - ${state}: ${csvPath}`);
+  }
+  console.log();
+
   // Check if regeneration needed
-  if (!needsRegeneration()) {
-    console.log('⚡ Locales unchanged (cached)');
-    console.log(`   ${CONFIG.csvPath}\n`);
+  if (!needsRegeneration(stateFiles)) {
+    console.log('⚡ Locales unchanged (cached)\n');
 
     // List existing locale files
     if (existsSync(CONFIG.outputDir)) {
@@ -547,34 +493,48 @@ function main() {
   }
 
   try {
-    // Read and parse CSV
-    console.log(`📖 Reading: ${CONFIG.csvPath}`);
-    const csvContent = readFileSync(CONFIG.csvPath, 'utf8');
-    const rows = parseCSV(csvContent);
-    console.log(`   Found ${rows.length - 1} content entries\n`);
+    // Clean output directory
+    cleanOutputDir();
 
-    // Build locale data
-    const data = buildLocaleData(rows);
+    let totalFileCount = 0;
+    const allWarnings = [];
 
-    // Validate completeness
-    const warnings = validateCompleteness(data);
-    if (warnings.length > 0) {
+    // Process each state CSV
+    for (const { state, csvPath } of stateFiles) {
+      console.log(`📖 Processing ${state.toUpperCase()}:`);
+      console.log(`   Reading: ${csvPath}`);
+
+      const csvContent = readFileSync(csvPath, 'utf8');
+      const rows = parseCSV(csvContent);
+      console.log(`   Found ${rows.length - 1} content entries`);
+
+      // Build locale data for this state
+      const stateData = buildStateLocaleData(rows, state);
+
+      // Validate completeness
+      const warnings = validateStateCompleteness(stateData, state);
+      allWarnings.push(...warnings);
+
+      // Write locale files
+      const fileCount = writeStateLocaleFiles(stateData, state);
+      totalFileCount += fileCount;
+      console.log(`   Generated ${fileCount} files\n`);
+    }
+
+    // Show validation warnings
+    if (allWarnings.length > 0) {
       console.log('⚠️  Validation warnings:');
-      warnings.forEach((w) => console.log(`   - ${w}`));
+      allWarnings.forEach((w) => console.log(`   - ${w}`));
       console.log();
     }
 
-    // Clean and write
-    cleanOutputDir();
-    const fileCount = writeLocaleFiles(data);
-
     // Save hash for caching
-    saveHash();
+    saveHash(stateFiles);
 
     // Summary
-    console.log(`✅ Generated ${fileCount} locale files:`);
+    console.log(`✅ Generated ${totalFileCount} total locale files:`);
     for (const locale of Object.keys(CONFIG.locales)) {
-      for (const state of CONFIG.states) {
+      for (const { state } of stateFiles) {
         const dir = join(CONFIG.outputDir, locale, state);
         if (existsSync(dir)) {
           const files = readdirSync(dir);

@@ -53,18 +53,29 @@ public class DatabaseUserRepository(PortalDbContext dbContext) : IUserRepository
             throw new ArgumentNullException(nameof(user));
         }
 
+        if (user.Id <= 0)
+        {
+            throw new ArgumentException("User Id must be greater than zero for updates.", nameof(user));
+        }
+
         if (string.IsNullOrWhiteSpace(user.Email))
         {
             throw new ArgumentException("Email cannot be null or empty.", nameof(user));
         }
 
-        var normalizedEmail = NormalizeEmail(user.Email);
         var entity = await dbContext.Users
-            .FirstOrDefaultAsync(u => u.Email == normalizedEmail, cancellationToken);
+            .FirstOrDefaultAsync(u => u.Id == user.Id, cancellationToken);
 
         if (entity == null)
         {
-            throw new InvalidOperationException($"User with email {user.Email} not found.");
+            throw new InvalidOperationException($"User with Id {user.Id} not found.");
+        }
+
+        var normalizedEmail = NormalizeEmail(user.Email);
+
+        if (entity.Email != normalizedEmail)
+        {
+            entity.Email = normalizedEmail;
         }
 
         // Update properties
@@ -72,9 +83,27 @@ public class DatabaseUserRepository(PortalDbContext dbContext) : IUserRepository
         entity.IdProofingSessionId = user.IdProofingSessionId;
         entity.IdProofingCompletedAt = user.IdProofingCompletedAt;
         entity.IdProofingExpiresAt = user.IdProofingExpiresAt;
+        entity.IsCoLoaded = user.IsCoLoaded;
+        entity.CoLoadedLastUpdated = user.CoLoadedLastUpdated;
         entity.UpdatedAt = DateTime.UtcNow;
 
-        await dbContext.SaveChangesAsync(cancellationToken);
+        try
+        {
+            await dbContext.SaveChangesAsync(cancellationToken);
+        }
+        catch (DbUpdateException ex)
+        {
+            // Handle unique constraint violation for email (race condition or duplicate email)
+            if (ex.InnerException?.Message.Contains("UNIQUE") == true ||
+                ex.InnerException?.Message.Contains("duplicate key") == true ||
+                ex.InnerException?.Message.Contains("IX_Users_Email") == true)
+            {
+                throw new InvalidOperationException($"A user with email {user.Email} already exists.", ex);
+            }
+
+            // Re-throw if it's not a unique constraint violation
+            throw;
+        }
     }
 
     public async Task<(User user, bool isNewUser)> GetOrCreateUserAsync(string email, CancellationToken cancellationToken = default)
@@ -98,6 +127,7 @@ public class DatabaseUserRepository(PortalDbContext dbContext) : IUserRepository
         {
             Email = normalizedEmail,
             IdProofingStatus = (int)IdProofingStatus.NotStarted,
+            IsCoLoaded = false,
             CreatedAt = DateTime.UtcNow,
             UpdatedAt = DateTime.UtcNow
         };
@@ -161,11 +191,14 @@ public class DatabaseUserRepository(PortalDbContext dbContext) : IUserRepository
     {
         return new User
         {
+            Id = entity.Id,
             Email = entity.Email,
             IdProofingStatus = (IdProofingStatus)entity.IdProofingStatus,
             IdProofingSessionId = entity.IdProofingSessionId,
             IdProofingCompletedAt = entity.IdProofingCompletedAt,
             IdProofingExpiresAt = entity.IdProofingExpiresAt,
+            IsCoLoaded = entity.IsCoLoaded,
+            CoLoadedLastUpdated = entity.CoLoadedLastUpdated,
             CreatedAt = entity.CreatedAt,
             UpdatedAt = entity.UpdatedAt
         };
@@ -175,11 +208,14 @@ public class DatabaseUserRepository(PortalDbContext dbContext) : IUserRepository
     {
         return new UserEntity
         {
+            Id = user.Id, // Will be 0 for new users, set by database
             Email = user.Email, // Will be normalized in calling method
             IdProofingStatus = (int)user.IdProofingStatus,
             IdProofingSessionId = user.IdProofingSessionId,
             IdProofingCompletedAt = user.IdProofingCompletedAt,
             IdProofingExpiresAt = user.IdProofingExpiresAt,
+            IsCoLoaded = user.IsCoLoaded,
+            CoLoadedLastUpdated = user.CoLoadedLastUpdated,
             CreatedAt = user.CreatedAt,
             UpdatedAt = user.UpdatedAt
         };
