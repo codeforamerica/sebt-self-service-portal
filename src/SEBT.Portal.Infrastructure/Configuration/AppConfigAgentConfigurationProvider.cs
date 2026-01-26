@@ -17,17 +17,21 @@ public sealed class AppConfigAgentConfigurationProvider : ConfigurationProvider,
     private readonly AppConfigAgentProfile _profile;
     private readonly SemaphoreSlim _lock;
     private readonly ILogger<AppConfigAgentConfigurationProvider>? _logger;
+    private readonly bool _ownsHttpClient;
 
     private IDisposable? _reloadChangeToken;
+    private CancellationTokenSource? _reloadTokenSource;
 
     public AppConfigAgentConfigurationProvider(
         HttpClient httpClient,
         AppConfigAgentProfile profile,
-        ILogger<AppConfigAgentConfigurationProvider>? logger = null)
+        ILogger<AppConfigAgentConfigurationProvider>? logger = null,
+        bool ownsHttpClient = false)
     {
         _httpClient = httpClient ?? throw new ArgumentNullException(nameof(httpClient));
         _profile = profile ?? throw new ArgumentNullException(nameof(profile));
         _logger = logger;
+        _ownsHttpClient = ownsHttpClient;
         _lock = new SemaphoreSlim(1, 1);
     }
 
@@ -39,10 +43,12 @@ public sealed class AppConfigAgentConfigurationProvider : ConfigurationProvider,
         {
             var delay = TimeSpan.FromSeconds(_profile.ReloadAfterSeconds.Value);
 
+            // Dispose previous token source if it exists
+            _reloadTokenSource?.Dispose();
+            _reloadTokenSource = new CancellationTokenSource(delay);
+
             _reloadChangeToken = ChangeToken.OnChange(
-                () => new CancellationChangeToken(
-                    new CancellationTokenSource(delay).Token
-                ),
+                () => new CancellationChangeToken(_reloadTokenSource.Token),
                 Load
             );
         }
@@ -237,7 +243,14 @@ public sealed class AppConfigAgentConfigurationProvider : ConfigurationProvider,
     public void Dispose()
     {
         _reloadChangeToken?.Dispose();
+        _reloadTokenSource?.Dispose();
         _lock?.Dispose();
+
+        // Dispose HttpClient if we own it
+        if (_ownsHttpClient)
+        {
+            _httpClient?.Dispose();
+        }
     }
 
     public override string ToString()

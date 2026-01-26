@@ -51,7 +51,7 @@ public class AppConfigAgentConfigurationProviderTests : IDisposable
             .When("http://localhost:2772/applications/test-app/environments/test-env/configurations/test-profile")
             .Respond(HttpStatusCode.OK, "application/json", JsonSerializer.Serialize(featureFlagsJson));
 
-        var provider = new AppConfigAgentConfigurationProvider(_httpClient, profile, _logger);
+        var provider = new AppConfigAgentConfigurationProvider(_httpClient, profile, _logger, ownsHttpClient: false);
 
         // Act
         provider.Load();
@@ -89,7 +89,7 @@ public class AppConfigAgentConfigurationProviderTests : IDisposable
             .When("http://localhost:2772/applications/test-app/environments/test-env/configurations/test-profile")
             .Respond(HttpStatusCode.OK, "application/json", JsonSerializer.Serialize(featureFlagsJson));
 
-        var provider = new AppConfigAgentConfigurationProvider(_httpClient, profile, _logger);
+        var provider = new AppConfigAgentConfigurationProvider(_httpClient, profile, _logger, ownsHttpClient: false);
 
         // Act
         provider.Load();
@@ -137,7 +137,7 @@ public class AppConfigAgentConfigurationProviderTests : IDisposable
             .When("http://localhost:2772/applications/test-app/environments/test-env/configurations/test-profile")
             .Respond(HttpStatusCode.OK, "application/json", JsonSerializer.Serialize(configJson));
 
-        var provider = new AppConfigAgentConfigurationProvider(_httpClient, profile, _logger);
+        var provider = new AppConfigAgentConfigurationProvider(_httpClient, profile, _logger, ownsHttpClient: false);
 
         // Act
         provider.Load();
@@ -170,7 +170,7 @@ public class AppConfigAgentConfigurationProviderTests : IDisposable
             .When("http://localhost:2772/applications/test-app/environments/test-env/configurations/test-profile")
             .Respond(HttpStatusCode.NotFound);
 
-        var provider = new AppConfigAgentConfigurationProvider(_httpClient, profile, _logger);
+        var provider = new AppConfigAgentConfigurationProvider(_httpClient, profile, _logger, ownsHttpClient: false);
 
         // Act
         provider.Load();
@@ -197,7 +197,7 @@ public class AppConfigAgentConfigurationProviderTests : IDisposable
             .When("http://localhost:2772/applications/test-app/environments/test-env/configurations/test-profile")
             .Throw(new HttpRequestException("Network error"));
 
-        var provider = new AppConfigAgentConfigurationProvider(_httpClient, profile, _logger);
+        var provider = new AppConfigAgentConfigurationProvider(_httpClient, profile, _logger, ownsHttpClient: false);
 
         // Act & Assert
         // Should not throw - provider should handle errors gracefully
@@ -222,7 +222,7 @@ public class AppConfigAgentConfigurationProviderTests : IDisposable
             .When("http://localhost:2772/applications/test-app/environments/test-env/configurations/test-profile")
             .Respond(HttpStatusCode.OK, "application/json", "invalid json {");
 
-        var provider = new AppConfigAgentConfigurationProvider(_httpClient, profile, _logger);
+        var provider = new AppConfigAgentConfigurationProvider(_httpClient, profile, _logger, ownsHttpClient: false);
 
         // Act & Assert
         // Should not throw - provider should handle parsing errors gracefully
@@ -247,7 +247,7 @@ public class AppConfigAgentConfigurationProviderTests : IDisposable
             .When("http://localhost:2772/applications/test-app/environments/test-env/configurations/test-profile")
             .Respond(HttpStatusCode.OK, "text/xml", "<xml>data</xml>");
 
-        var provider = new AppConfigAgentConfigurationProvider(_httpClient, profile, _logger);
+        var provider = new AppConfigAgentConfigurationProvider(_httpClient, profile, _logger, ownsHttpClient: false);
 
         // Act
         // Provider catches FormatException and logs it, doesn't throw
@@ -276,7 +276,7 @@ public class AppConfigAgentConfigurationProviderTests : IDisposable
             .When("http://localhost:2772/applications/test-app/environments/test-env/configurations/test-profile")
             .Respond(HttpStatusCode.OK, "application/json", "{}");
 
-        var provider = new AppConfigAgentConfigurationProvider(_httpClient, profile, _logger);
+        var provider = new AppConfigAgentConfigurationProvider(_httpClient, profile, _logger, ownsHttpClient: false);
 
         // Act
         provider.Load();
@@ -308,7 +308,7 @@ public class AppConfigAgentConfigurationProviderTests : IDisposable
             .When("http://localhost:2772/applications/test-app/environments/test-env/configurations/test-profile")
             .Respond(HttpStatusCode.OK, "application/json", JsonSerializer.Serialize(configJson));
 
-        var provider = new AppConfigAgentConfigurationProvider(_httpClient, profile, _logger);
+        var provider = new AppConfigAgentConfigurationProvider(_httpClient, profile, _logger, ownsHttpClient: false);
 
         // Act
         provider.Load();
@@ -343,7 +343,7 @@ public class AppConfigAgentConfigurationProviderTests : IDisposable
             .When("http://localhost:2772/applications/test-app/environments/test-env/configurations/test-profile")
             .Respond(HttpStatusCode.OK, "application/json", JsonSerializer.Serialize(configJson));
 
-        var provider = new AppConfigAgentConfigurationProvider(_httpClient, profile, _logger);
+        var provider = new AppConfigAgentConfigurationProvider(_httpClient, profile, _logger, ownsHttpClient: false);
 
         // Act
         provider.Load();
@@ -383,7 +383,7 @@ public class AppConfigAgentConfigurationProviderTests : IDisposable
             .When("http://localhost:2772/applications/test-app/environments/test-env/configurations/test-profile")
             .Respond(HttpStatusCode.OK, content);
 
-        var provider = new AppConfigAgentConfigurationProvider(_httpClient, profile, _logger);
+        var provider = new AppConfigAgentConfigurationProvider(_httpClient, profile, _logger, ownsHttpClient: false);
 
         // Act
         provider.Load();
@@ -444,7 +444,7 @@ public class AppConfigAgentConfigurationProviderTests : IDisposable
             ReloadAfterSeconds = 90
         };
 
-        var provider = new AppConfigAgentConfigurationProvider(_httpClient, profile, _logger);
+        var provider = new AppConfigAgentConfigurationProvider(_httpClient, profile, _logger, ownsHttpClient: false);
         provider.Load();
 
         // Act & Assert
@@ -466,7 +466,7 @@ public class AppConfigAgentConfigurationProviderTests : IDisposable
             IsFeatureFlag = true
         };
 
-        var provider = new AppConfigAgentConfigurationProvider(_httpClient, profile, _logger);
+        var provider = new AppConfigAgentConfigurationProvider(_httpClient, profile, _logger, ownsHttpClient: false);
 
         // Act
         var result = provider.ToString();

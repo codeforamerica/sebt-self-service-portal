@@ -26,7 +26,7 @@ var builder = WebApplication.CreateBuilder(args);
 // 3. State-specific JSON (appsettings.{State}.json)
 
 // Register AWS AppConfig Agent configuration provider if configured
-// We'll be replacing this with a cloud-agnostic configuratino provider in the future
+// We'll be replacing this with a cloud-agnostic configuration provider in the future
 // --> NOTE: This must be registered BEFORE state-specific config so state config can override agent values <--
 var agentSection = builder.Configuration.GetSection("AppConfig:Agent");
 if (agentSection.Exists())

@@ -28,7 +28,8 @@ public class AppConfigAgentConfigurationSource : IConfigurationSource
     /// </summary>
     public IConfigurationProvider Build(IConfigurationBuilder builder)
     {
+        var ownsHttpClient = HttpClient == null;
         var httpClient = HttpClient ?? new HttpClient { Timeout = TimeSpan.FromSeconds(30) };
-        return new AppConfigAgentConfigurationProvider(httpClient, Profile, Logger);
+        return new AppConfigAgentConfigurationProvider(httpClient, Profile, Logger, ownsHttpClient);
     }
 }
