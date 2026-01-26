@@ -354,7 +354,7 @@ public class PortalDbContextTests
     }
 
     [Fact]
-    public void Users_ShouldHavePrimaryKeyOnEmail()
+    public void Users_ShouldHavePrimaryKeyOnId()
     {
         // Arrange
         var options = new DbContextOptionsBuilder<PortalDbContext>()
@@ -370,7 +370,7 @@ public class PortalDbContextTests
         // Assert
         Assert.NotNull(primaryKey);
         Assert.Single(primaryKey!.Properties);
-        Assert.Equal("Email", primaryKey.Properties[0].Name);
+        Assert.Equal("Id", primaryKey.Properties[0].Name);
     }
 
     [Fact]
