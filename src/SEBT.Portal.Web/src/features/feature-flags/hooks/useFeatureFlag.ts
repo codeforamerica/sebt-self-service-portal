@@ -31,8 +31,7 @@ export function useFeatureFlag(flagName: string): boolean {
     return false
   }
 
-  const flagEntry = Object.entries(context.flags).find(([key]) => key === flagName)
-  return flagEntry ? flagEntry[1] : false
+  return context.flags[flagName] ?? false
 }
 
 /**
