@@ -6,6 +6,7 @@ using SEBT.Portal.Api.Models;
 using SEBT.Portal.Core.Models.Auth;
 using SEBT.Portal.Core.Models.Household;
 using SEBT.Portal.Core.Repositories;
+using SEBT.Portal.Core.Utilities;
 
 namespace SEBT.Portal.Api.Controllers.Household;
 
@@ -45,7 +46,7 @@ public class HouseholdController(ILogger<HouseholdController> logger) : Controll
         }
 
         // Normalize email to ensure consistency with repository
-        var normalizedEmail = NormalizeEmail(email);
+        var normalizedEmail = EmailNormalizer.Normalize(email);
         logger.LogInformation("Household data request received for email {Email}", normalizedEmail);
 
         // Check ID verification status from JWT claims
@@ -109,15 +110,5 @@ public class HouseholdController(ILogger<HouseholdController> logger) : Controll
 
         logger.LogWarning("Invalid ID proofing status claim value: {StatusClaim}, defaulting to NotStarted", statusClaim);
         return IdProofingStatus.NotStarted;
-    }
-
-    /// <summary>
-    /// Normalizes an email address to lowercase for consistent storage and comparison.
-    /// </summary>
-    /// <param name="email">The email address to normalize.</param>
-    /// <returns>The normalized (lowercase) email address.</returns>
-    private static string NormalizeEmail(string email)
-    {
-        return email.Trim().ToLowerInvariant();
     }
 }

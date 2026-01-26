@@ -3,6 +3,7 @@ using Bogus;
 using Microsoft.Extensions.Logging;
 using SEBT.Portal.Core.Models.Household;
 using SEBT.Portal.Core.Repositories;
+using SEBT.Portal.Core.Utilities;
 using SEBT.Portal.Infrastructure.Seeding.Helpers;
 
 namespace SEBT.Portal.Infrastructure.Repositories;
@@ -35,7 +36,7 @@ public class MockHouseholdRepository : IHouseholdRepository
             return Task.FromResult<HouseholdData?>(null);
         }
 
-        var normalizedEmail = NormalizeEmail(email);
+        var normalizedEmail = EmailNormalizer.Normalize(email);
         _households.TryGetValue(normalizedEmail, out var household);
 
         if (household == null)
@@ -71,7 +72,7 @@ public class MockHouseholdRepository : IHouseholdRepository
             throw new ArgumentException("Email cannot be null or empty.", nameof(householdData));
         }
 
-        var normalizedEmail = NormalizeEmail(householdData.Email);
+        var normalizedEmail = EmailNormalizer.Normalize(householdData.Email);
 
         // Create a defensive copy to prevent external mutations
         var copy = CreateCopy(householdData, includeAddress: true);
@@ -285,10 +286,5 @@ public class MockHouseholdRepository : IHouseholdRepository
                 }
                 : null
         };
-    }
-
-    private static string NormalizeEmail(string email)
-    {
-        return email.Trim().ToLowerInvariant();
     }
 }

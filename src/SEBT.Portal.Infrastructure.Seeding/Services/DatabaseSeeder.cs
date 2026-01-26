@@ -2,6 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using SEBT.Portal.Core.Models.Auth;
 using SEBT.Portal.Core.Services;
+using SEBT.Portal.Core.Utilities;
 using SEBT.Portal.Infrastructure.Seeding.Helpers;
 
 namespace SEBT.Portal.Infrastructure.Seeding.Services;
@@ -129,7 +130,7 @@ public class DatabaseSeeder : Core.Services.IDatabaseSeeder
 
             foreach (var (email, idProofingStatus) in mappings)
             {
-                var normalizedEmail = email?.ToLowerInvariant().Trim() ?? throw new ArgumentException("Email cannot be null", nameof(email));
+                var normalizedEmail = EmailNormalizer.Normalize(email ?? throw new ArgumentException("Email cannot be null", nameof(email)));
 
                 var existingEmails = await _dataSeeder.GetExistingUserEmailsAsync(new[] { normalizedEmail }, cancellationToken);
                 if (existingEmails.Contains(normalizedEmail))
@@ -192,7 +193,7 @@ public class DatabaseSeeder : Core.Services.IDatabaseSeeder
             var existingEmails = await _dataSeeder.GetExistingUserEmailsAsync(userEmails, cancellationToken);
 
             var usersToAdd = testUsers
-                .Where(user => !existingEmails.Contains(user.Email.Trim().ToLowerInvariant()))
+                .Where(user => !existingEmails.Contains(EmailNormalizer.Normalize(user.Email)))
                 .ToList();
 
             if (usersToAdd.Count > 0)
@@ -235,7 +236,7 @@ public class DatabaseSeeder : Core.Services.IDatabaseSeeder
 
             foreach (var (email, idProofingStatus) in mappings)
             {
-                var normalizedEmail = email?.ToLowerInvariant().Trim() ?? throw new ArgumentException("Email cannot be null", nameof(email));
+                var normalizedEmail = EmailNormalizer.Normalize(email ?? throw new ArgumentException("Email cannot be null", nameof(email)));
 
                 var existingEmails = _dataSeeder.GetExistingUserEmails(new[] { normalizedEmail });
                 if (existingEmails.Contains(normalizedEmail))
@@ -298,7 +299,7 @@ public class DatabaseSeeder : Core.Services.IDatabaseSeeder
             var existingEmails = _dataSeeder.GetExistingUserEmails(userEmails);
 
             var usersToAdd = testUsers
-                .Where(user => !existingEmails.Contains(user.Email.Trim().ToLowerInvariant()))
+                .Where(user => !existingEmails.Contains(EmailNormalizer.Normalize(user.Email)))
                 .ToList();
 
             if (usersToAdd.Count > 0)
