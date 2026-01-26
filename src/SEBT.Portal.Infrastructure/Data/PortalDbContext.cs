@@ -52,15 +52,24 @@ public class PortalDbContext : DbContext
         modelBuilder.Entity<UserEntity>(entity =>
         {
             entity.ToTable("Users");
-            entity.HasKey(e => e.Email);
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.Id)
+                .ValueGeneratedOnAdd()
+                .UseIdentityColumn();
             entity.Property(e => e.Email)
                 .IsRequired()
                 .HasMaxLength(255);
+            entity.HasIndex(e => e.Email)
+                .IsUnique()
+                .HasDatabaseName("IX_Users_Email");
             entity.Property(e => e.IdProofingStatus)
                 .IsRequired()
                 .HasDefaultValue(0); // 0 = NotStarted
             entity.Property(e => e.IdProofingSessionId)
                 .HasMaxLength(255);
+            entity.Property(e => e.IsCoLoaded)
+                .IsRequired()
+                .HasDefaultValue(false);
             entity.Property(e => e.CreatedAt)
                 .IsRequired()
                 .HasDefaultValueSql("GETUTCDATE()")
