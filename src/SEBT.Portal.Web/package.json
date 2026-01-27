@@ -32,6 +32,7 @@
     "knip:production": "knip --production"
   },
   "dependencies": {
+    "@next/third-parties": "^16.1.4",
     "@t3-oss/env-nextjs": "^0.13.8",
     "@tanstack/react-query": "^5.90.12",
     "@uswds/uswds": "^3.13.0",

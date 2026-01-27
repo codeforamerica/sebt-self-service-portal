@@ -21,11 +21,11 @@ export function proxy(request: NextRequest) {
   // In dev, we skip style nonce to allow HMR style injection.
   const cspHeader = `
     default-src 'self';
-    script-src 'self' 'nonce-${nonce}' 'strict-dynamic' ${isDev ? "'unsafe-eval'" : ''};
+    script-src 'self' 'nonce-${nonce}' 'strict-dynamic' https://www.googletagmanager.com ${isDev ? "'unsafe-eval'" : ''};
     style-src 'self' ${isDev ? "'unsafe-inline'" : `'nonce-${nonce}'`} https://fonts.googleapis.com;
     font-src 'self' https://fonts.gstatic.com;
-    img-src 'self' data: https:;
-    connect-src 'self' ${isDev ? 'ws://localhost:* http://localhost:*' : ''};
+    img-src 'self' data: https: https://www.google-analytics.com;
+    connect-src 'self' https://www.google-analytics.com https://*.google-analytics.com https://www.googletagmanager.com ${isDev ? 'ws://localhost:* http://localhost:*' : ''};
     frame-src 'none';
     child-src 'none';
     worker-src 'self';

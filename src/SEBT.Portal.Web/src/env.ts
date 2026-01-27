@@ -26,7 +26,8 @@ export const env = createEnv({
    * Must be prefixed with NEXT_PUBLIC_
    */
   client: {
-    NEXT_PUBLIC_STATE: z.enum(['dc', 'co'])
+    NEXT_PUBLIC_STATE: z.enum(['dc', 'co']),
+    NEXT_PUBLIC_GA_ID: z.string().startsWith('G-').optional()
   },
 
   /**
@@ -36,7 +37,8 @@ export const env = createEnv({
   runtimeEnv: {
     NODE_ENV: process.env.NODE_ENV,
     BACKEND_URL: process.env.BACKEND_URL,
-    NEXT_PUBLIC_STATE: process.env.NEXT_PUBLIC_STATE
+    NEXT_PUBLIC_STATE: process.env.NEXT_PUBLIC_STATE,
+    NEXT_PUBLIC_GA_ID: process.env.NEXT_PUBLIC_GA_ID
   },
 
   /**

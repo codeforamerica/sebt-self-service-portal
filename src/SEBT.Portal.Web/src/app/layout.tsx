@@ -2,6 +2,7 @@ import { Footer, Header, SkipNav } from '@/components/layout'
 import { primaryFont } from '@/design/fonts'
 import { getState } from '@/lib/state'
 import { AxeProvider, FeatureFlagsProvider, I18nProvider, QueryProvider } from '@/providers'
+import { GoogleAnalytics } from '@next/third-parties/google'
 import type { Metadata, Viewport } from 'next'
 import { headers } from 'next/headers'
 import './globals.css'
@@ -10,6 +11,7 @@ import './styles.scss'
 const state = getState()
 const stateName = state === 'dc' ? 'District of Columbia' : state.toUpperCase()
 const baseUrl = process.env.NEXT_PUBLIC_BASE_URL ?? `https://sebt.${state}.gov`
+const gaId = process.env.NEXT_PUBLIC_GA_ID
 
 export const viewport: Viewport = {
   width: 'device-width',
@@ -101,6 +103,8 @@ export default async function RootLayout({
           suppressHydrationWarning
         />
       </body>
+      {/* Google Analytics - only rendered when GA_ID is configured */}
+      {gaId && <GoogleAnalytics gaId={gaId} />}
     </html>
   )
 }
