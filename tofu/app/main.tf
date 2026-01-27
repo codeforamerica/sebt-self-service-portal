@@ -735,7 +735,9 @@ resource "aws_ecs_task_definition" "web" {
       environment = [
         { name = "STATE", value = var.state },
         { name = "NEXT_PUBLIC_STATE", value = var.state },
-        { name = "NEXT_PUBLIC_API_BASE_URL", value = "/api" }
+        { name = "NEXT_PUBLIC_API_BASE_URL", value = "/api" },
+        { name = "BACKEND_URL", value = "http://${aws_lb.main.dns_name}" },
+        { name = "NEXT_PUBLIC_BASE_URL", value = "http://${aws_lb.main.dns_name}" }
       ]
       logConfiguration = {
         logDriver = "awslogs"

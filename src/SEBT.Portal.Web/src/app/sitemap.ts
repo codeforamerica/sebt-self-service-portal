@@ -1,50 +1,58 @@
 import { getState } from '@/lib/state'
 import type { MetadataRoute } from 'next'
+import { headers } from 'next/headers'
 
 const state = getState()
 
-const BASE_URL = process.env.NEXT_PUBLIC_BASE_URL ?? `https://sebt.${state}.gov`
+function getBaseUrl() {
+  return process.env.NEXT_PUBLIC_BASE_URL ?? `https://sebt.${state}.gov`
+}
 
-export default function sitemap(): MetadataRoute.Sitemap {
+export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
+  const h = await headers()
+  const host = h.get('host')
+  const proto = h.get('x-forwarded-proto') ?? 'http'
+  const baseUrl = host ? `${proto}://${host}` : getBaseUrl()
+
   return [
     {
-      url: BASE_URL,
+      url: baseUrl,
       lastModified: new Date(),
       changeFrequency: 'weekly',
       priority: 1
     },
     {
-      url: `${BASE_URL}/login`,
+      url: `${baseUrl}/login`,
       lastModified: new Date(),
       changeFrequency: 'monthly',
       priority: 0.8
     },
     {
-      url: `${BASE_URL}/faqs`,
+      url: `${baseUrl}/faqs`,
       lastModified: new Date(),
       changeFrequency: 'monthly',
       priority: 0.7
     },
     {
-      url: `${BASE_URL}/contact`,
+      url: `${baseUrl}/contact`,
       lastModified: new Date(),
       changeFrequency: 'monthly',
       priority: 0.6
     },
     {
-      url: `${BASE_URL}/accessibility`,
+      url: `${baseUrl}/accessibility`,
       lastModified: new Date(),
       changeFrequency: 'yearly',
       priority: 0.4
     },
     {
-      url: `${BASE_URL}/privacy`,
+      url: `${baseUrl}/privacy`,
       lastModified: new Date(),
       changeFrequency: 'yearly',
       priority: 0.4
     },
     {
-      url: `${BASE_URL}/terms`,
+      url: `${baseUrl}/terms`,
       lastModified: new Date(),
       changeFrequency: 'yearly',
       priority: 0.4
