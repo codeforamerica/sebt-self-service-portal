@@ -540,6 +540,7 @@ resource "aws_iam_role_policy" "github_actions_tfstate" {
   policy = jsonencode({
     Version = "2012-10-17"
     Statement = [
+      # Object ops for state key prefix (HeadObject fixes "Error refreshing state" 403)
       {
         Effect = "Allow"
         Action = [
@@ -550,12 +551,18 @@ resource "aws_iam_role_policy" "github_actions_tfstate" {
         ]
         Resource = "arn:aws:s3:::${var.tfstate_bucket}/sebt-self-service-portal/*"
       },
+      # Bucket-level ops required by Terraform/OpenTofu S3 backend (init, refresh)
+      {
+        Effect   = "Allow"
+        Action   = ["s3:GetBucketLocation", "s3:HeadBucket"]
+        Resource = "arn:aws:s3:::${var.tfstate_bucket}"
+      },
       {
         Effect   = "Allow"
         Action   = ["s3:ListBucket"]
         Resource = "arn:aws:s3:::${var.tfstate_bucket}"
         Condition = {
-          StringLike = { "s3:prefix" = ["sebt-self-service-portal/*"] }
+          StringLike = { "s3:prefix" = ["sebt-self-service-portal", "sebt-self-service-portal/*"] }
         }
       },
       {
