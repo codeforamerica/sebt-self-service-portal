@@ -40,7 +40,7 @@ If the app is relying on using AWS AppConfig, flag names must follow alphanumeri
 - Service interface: `src/SEBT.Portal.Kernel/Services/IFeatureFlagQueryService.cs` (follows Clean Architecture)
 - Priority merge logic: `src/SEBT.Portal.Infrastructure/Services/FeatureFlagQueryService.cs`
 - REST API endpoint: `src/SEBT.Portal.Api/Controllers/FeaturesController.cs`
-- Default flag settings: `src/SEBT.Portal.Core/AppSettings/DefaultFeatureFlagSettings.cs`
+- Default flags: defined in the `FeatureManagement` section of `appsettings.json`
 - State-specific configuration loading: `src/SEBT.Portal.Api/Program.cs` (loads `appsettings.{State}.json` based on `STATE` environment variable)
 - Configuration files: `src/SEBT.Portal.Api/appsettings.json` and `appsettings.{State}.json` (e.g., `appsettings.dc.json`, `appsettings.co.json`)
 
