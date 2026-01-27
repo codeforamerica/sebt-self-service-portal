@@ -21,6 +21,7 @@ public sealed class AppConfigAgentConfigurationProvider : ConfigurationProvider,
 
     private IDisposable? _reloadChangeToken;
     private CancellationTokenSource? _reloadTokenSource;
+    private int _isLoading; // 0 = not loading, 1 = loading
 
     public AppConfigAgentConfigurationProvider(
         HttpClient httpClient,
@@ -37,20 +38,31 @@ public sealed class AppConfigAgentConfigurationProvider : ConfigurationProvider,
 
     public override void Load()
     {
-        LoadAsync().GetAwaiter().GetResult();
+        // Prevent recursive Load when OnReload() causes ConfigurationRoot to call Load again
+        if (Interlocked.CompareExchange(ref _isLoading, 1, 0) != 0)
+            return;
 
-        if (_reloadChangeToken is null && _profile.ReloadAfterSeconds.HasValue)
+        try
         {
-            var delay = TimeSpan.FromSeconds(_profile.ReloadAfterSeconds.Value);
+            LoadAsync().GetAwaiter().GetResult();
 
-            // Dispose previous token source if it exists
-            _reloadTokenSource?.Dispose();
-            _reloadTokenSource = new CancellationTokenSource(delay);
+            if (_reloadChangeToken is null && _profile.ReloadAfterSeconds.HasValue)
+            {
+                var delay = TimeSpan.FromSeconds(_profile.ReloadAfterSeconds.Value);
 
-            _reloadChangeToken = ChangeToken.OnChange(
-                () => new CancellationChangeToken(_reloadTokenSource.Token),
-                Load
-            );
+                // Dispose previous token source if it exists
+                _reloadTokenSource?.Dispose();
+                _reloadTokenSource = new CancellationTokenSource(delay);
+
+                _reloadChangeToken = ChangeToken.OnChange(
+                    () => new CancellationChangeToken(_reloadTokenSource.Token),
+                    Load
+                );
+            }
+        }
+        finally
+        {
+            Interlocked.Exchange(ref _isLoading, 0);
         }
     }
 

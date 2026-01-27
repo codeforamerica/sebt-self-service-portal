@@ -511,6 +511,8 @@ public class AppConfigAgentConfigurationProviderTests : IDisposable
         // Calling Load() again should not throw 
         var exception = Record.Exception(() => provider.Load());
         Assert.Null(exception);
+
+        provider.Dispose();
     }
 
     [Fact]
@@ -588,6 +590,8 @@ public class AppConfigAgentConfigurationProviderTests : IDisposable
         // Configuration should still be accessible after multiple loads
         Assert.True(provider.TryGet("FeatureManagement:feature1", out var value));
         Assert.Equal("true", value);
+
+        provider.Dispose();
     }
 
     [Fact]
@@ -733,13 +737,13 @@ public class AppConfigAgentConfigurationProviderTests : IDisposable
 
         // Assert
         Assert.NotNull(provider);
-        
+
         provider.Dispose();
-        
+
         // HttpClient should still be usable (not disposed)
         var testResponse = await source.HttpClient!.GetAsync("http://localhost:2772/test");
         Assert.NotNull(testResponse);
-        
+
         // Clean up in case of test pollution/leakage
         source.HttpClient.Dispose();
     }
@@ -767,7 +771,7 @@ public class AppConfigAgentConfigurationProviderTests : IDisposable
 
         // Assert
         Assert.NotNull(provider);
-        
+
         // Provider should own the HttpClient since one was created
         var exception = Record.Exception(() => provider.Dispose());
         Assert.Null(exception);
