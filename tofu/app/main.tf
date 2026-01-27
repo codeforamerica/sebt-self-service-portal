@@ -517,10 +517,13 @@ resource "aws_iam_role_policy" "github_actions_ecr_push" {
           "ecr:DescribeImages",
           "ecr:DescribeRepositories",
           "ecr:GetDownloadUrlForLayer",
+          "ecr:DeleteLifecyclePolicy",
+          "ecr:GetLifecyclePolicy",
           "ecr:InitiateLayerUpload",
           "ecr:ListImages",
           "ecr:ListTagsForResource",
           "ecr:PutImage",
+          "ecr:PutLifecyclePolicy",
           "ecr:UploadLayerPart"
         ]
         Resource = [
@@ -540,7 +543,6 @@ resource "aws_iam_role_policy" "github_actions_tfstate" {
   policy = jsonencode({
     Version = "2012-10-17"
     Statement = [
-      # Object ops for state key prefix (HeadObject fixes "Error refreshing state" 403)
       {
         Effect = "Allow"
         Action = [
@@ -551,7 +553,6 @@ resource "aws_iam_role_policy" "github_actions_tfstate" {
         ]
         Resource = "arn:aws:s3:::${var.tfstate_bucket}/sebt-self-service-portal/*"
       },
-      # Bucket-level ops required by Terraform/OpenTofu S3 backend (init, refresh)
       {
         Effect   = "Allow"
         Action   = ["s3:GetBucketLocation", "s3:HeadBucket"]
@@ -620,6 +621,7 @@ resource "aws_iam_role_policy" "github_actions_apply" {
           "iam:CreateRole",
           "iam:DeleteRole",
           "iam:GetRole",
+          "iam:GetRolePolicy",
           "iam:PutRolePolicy",
           "iam:DeleteRolePolicy",
           "iam:AttachRolePolicy",
@@ -658,7 +660,7 @@ resource "aws_iam_role_policy" "github_actions_apply" {
       },
       {
         Effect   = "Allow"
-        Action   = ["iam:ListOpenIDConnectProviders"]
+        Action   = ["iam:GetOpenIDConnectProvider", "iam:ListOpenIDConnectProviders"]
         Resource = "*"
       }
     ]
