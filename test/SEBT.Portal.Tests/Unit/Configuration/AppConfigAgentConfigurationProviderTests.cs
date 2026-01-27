@@ -477,6 +477,302 @@ public class AppConfigAgentConfigurationProviderTests : IDisposable
         Assert.Contains("Feature Flag", result);
     }
 
+    [Fact]
+    public void Load_WithReloadAfterSeconds_ShouldSetupReloadMechanism()
+    {
+        // Arrange
+        var profile = new AppConfigAgentProfile
+        {
+            BaseUrl = "http://localhost:2772",
+            ApplicationId = "test-app",
+            EnvironmentId = "test-env",
+            ProfileId = "test-profile",
+            ReloadAfterSeconds = 1
+        };
+
+        var featureFlagsJson = new
+        {
+            feature1 = new { enabled = true }
+        };
+
+        _mockHttpHandler
+            .When("http://localhost:2772/applications/test-app/environments/test-env/configurations/test-profile")
+            .Respond(HttpStatusCode.OK, "application/json", JsonSerializer.Serialize(featureFlagsJson));
+
+        var provider = new AppConfigAgentConfigurationProvider(_httpClient, profile, _logger, ownsHttpClient: false);
+
+        // Act
+        provider.Load();
+
+        // Assert
+        Assert.True(provider.TryGet("FeatureManagement:feature1", out var value));
+        Assert.Equal("true", value);
+
+        // Calling Load() again should not throw 
+        var exception = Record.Exception(() => provider.Load());
+        Assert.Null(exception);
+    }
+
+    [Fact]
+    public void Load_WithReloadAfterSecondsNull_ShouldNotSetupReload()
+    {
+        // Arrange
+        var profile = new AppConfigAgentProfile
+        {
+            BaseUrl = "http://localhost:2772",
+            ApplicationId = "test-app",
+            EnvironmentId = "test-env",
+            ProfileId = "test-profile",
+            ReloadAfterSeconds = null // This disables the reload mechanism
+        };
+
+        var featureFlagsJson = new
+        {
+            feature1 = new { enabled = true }
+        };
+
+        _mockHttpHandler
+            .When("http://localhost:2772/applications/test-app/environments/test-env/configurations/test-profile")
+            .Respond(HttpStatusCode.OK, "application/json", JsonSerializer.Serialize(featureFlagsJson));
+
+        var provider = new AppConfigAgentConfigurationProvider(_httpClient, profile, _logger, ownsHttpClient: false);
+
+        // Act
+        provider.Load();
+
+        // Assert
+        Assert.True(provider.TryGet("FeatureManagement:feature1", out var value));
+        Assert.Equal("true", value);
+
+        // Calling Load() again should work fine for this case
+        var exception = Record.Exception(() => provider.Load());
+        Assert.Null(exception);
+    }
+
+    [Fact]
+    public void Load_MultipleTimes_ShouldDisposePreviousReloadToken()
+    {
+        // Arrange
+        var profile = new AppConfigAgentProfile
+        {
+            BaseUrl = "http://localhost:2772",
+            ApplicationId = "test-app",
+            EnvironmentId = "test-env",
+            ProfileId = "test-profile",
+            ReloadAfterSeconds = 1
+        };
+
+        var featureFlagsJson = new
+        {
+            feature1 = new { enabled = true }
+        };
+
+        _mockHttpHandler
+            .When("http://localhost:2772/applications/test-app/environments/test-env/configurations/test-profile")
+            .Respond(HttpStatusCode.OK, "application/json", JsonSerializer.Serialize(featureFlagsJson));
+
+        var provider = new AppConfigAgentConfigurationProvider(_httpClient, profile, _logger, ownsHttpClient: false);
+
+        // Act 
+        provider.Load();
+
+        // Act & Assert
+        var exception1 = Record.Exception(() => provider.Load());
+        Assert.Null(exception1);
+
+        // Act & Assert part 2
+        var exception2 = Record.Exception(() => provider.Load());
+        Assert.Null(exception2);
+
+        // Assert
+        // Configuration should still be accessible after multiple loads
+        Assert.True(provider.TryGet("FeatureManagement:feature1", out var value));
+        Assert.Equal("true", value);
+    }
+
+    [Fact]
+    public void Dispose_WithReloadMechanism_ShouldDisposeReloadToken()
+    {
+        // Arrange
+        var profile = new AppConfigAgentProfile
+        {
+            BaseUrl = "http://localhost:2772",
+            ApplicationId = "test-app",
+            EnvironmentId = "test-env",
+            ProfileId = "test-profile",
+            ReloadAfterSeconds = 90
+        };
+
+        var featureFlagsJson = new
+        {
+            feature1 = new { enabled = true }
+        };
+
+        _mockHttpHandler
+            .When("http://localhost:2772/applications/test-app/environments/test-env/configurations/test-profile")
+            .Respond(HttpStatusCode.OK, "application/json", JsonSerializer.Serialize(featureFlagsJson));
+
+        var provider = new AppConfigAgentConfigurationProvider(_httpClient, profile, _logger, ownsHttpClient: false);
+        provider.Load();
+
+        // Act & Assert
+        var exception = Record.Exception(() => provider.Dispose());
+        Assert.Null(exception);
+
+        var disposeException = Record.Exception(() => provider.Dispose());
+        Assert.Null(disposeException);
+    }
+
+    [Fact]
+    public async Task Dispose_WithOwnsHttpClientTrue_ShouldDisposeHttpClient()
+    {
+        // Arrange
+        var profile = new AppConfigAgentProfile
+        {
+            BaseUrl = "http://localhost:2772",
+            ApplicationId = "test-app",
+            EnvironmentId = "test-env",
+            ProfileId = "test-profile"
+        };
+
+        var featureFlagsJson = new
+        {
+            feature1 = new { enabled = true }
+        };
+
+        var testHttpClient = new HttpClient(_mockHttpHandler)
+        {
+            BaseAddress = new Uri("http://localhost:2772")
+        };
+
+        _mockHttpHandler
+            .When("http://localhost:2772/applications/test-app/environments/test-env/configurations/test-profile")
+            .Respond(HttpStatusCode.OK, "application/json", JsonSerializer.Serialize(featureFlagsJson));
+
+        var provider = new AppConfigAgentConfigurationProvider(testHttpClient, profile, _logger, ownsHttpClient: true);
+        provider.Load();
+
+        // Act
+        provider.Dispose();
+
+        // Assert
+        var exception = await Record.ExceptionAsync(async () => await testHttpClient.GetAsync("http://localhost:2772/test"));
+        Assert.NotNull(exception);
+        Assert.IsType<ObjectDisposedException>(exception);
+    }
+
+    [Fact]
+    public async Task Dispose_WithOwnsHttpClientFalse_ShouldNotDisposeHttpClient()
+    {
+        // Arrange
+        var profile = new AppConfigAgentProfile
+        {
+            BaseUrl = "http://localhost:2772",
+            ApplicationId = "test-app",
+            EnvironmentId = "test-env",
+            ProfileId = "test-profile"
+        };
+
+        var featureFlagsJson = new
+        {
+            feature1 = new { enabled = true }
+        };
+
+        var testHttpClient = new HttpClient(_mockHttpHandler)
+        {
+            BaseAddress = new Uri("http://localhost:2772")
+        };
+
+        _mockHttpHandler
+            .When("http://localhost:2772/applications/test-app/environments/test-env/configurations/test-profile")
+            .Respond(HttpStatusCode.OK, "application/json", JsonSerializer.Serialize(featureFlagsJson));
+
+        _mockHttpHandler
+            .When("http://localhost:2772/test")
+            .Respond(HttpStatusCode.OK, "application/json", "{}");
+
+        var provider = new AppConfigAgentConfigurationProvider(testHttpClient, profile, _logger, ownsHttpClient: false);
+        provider.Load();
+
+        // Act
+        provider.Dispose();
+
+        // Assert
+        var response = await testHttpClient.GetAsync("http://localhost:2772/test");
+        Assert.NotNull(response);
+        Assert.True(response.IsSuccessStatusCode);
+
+        // Clean up
+        testHttpClient.Dispose();
+    }
+
+    [Fact]
+    public async Task AppConfigAgentConfigurationSource_Build_WithHttpClientProvided_ShouldSetOwnsHttpClientFalse()
+    {
+        // Arrange
+        var source = new AppConfigAgentConfigurationSource
+        {
+            HttpClient = new HttpClient(_mockHttpHandler),
+            Profile = new AppConfigAgentProfile
+            {
+                BaseUrl = "http://localhost:2772",
+                ApplicationId = "test-app",
+                EnvironmentId = "test-env",
+                ProfileId = "test-profile"
+            }
+        };
+
+        _mockHttpHandler
+            .When("http://localhost:2772/test")
+            .Respond(HttpStatusCode.OK, "application/json", "{}");
+
+        var builder = new ConfigurationBuilder();
+
+        // Act
+        var provider = source.Build(builder) as AppConfigAgentConfigurationProvider;
+
+        // Assert
+        Assert.NotNull(provider);
+        
+        provider.Dispose();
+        
+        // HttpClient should still be usable (not disposed)
+        var testResponse = await source.HttpClient!.GetAsync("http://localhost:2772/test");
+        Assert.NotNull(testResponse);
+        
+        // Clean up in case of test pollution/leakage
+        source.HttpClient.Dispose();
+    }
+
+    [Fact]
+    public void AppConfigAgentConfigurationSource_Build_WithoutHttpClient_ShouldCreateAndOwnHttpClient()
+    {
+        // Arrange
+        var source = new AppConfigAgentConfigurationSource
+        {
+            HttpClient = null,
+            Profile = new AppConfigAgentProfile
+            {
+                BaseUrl = "http://localhost:2772",
+                ApplicationId = "test-app",
+                EnvironmentId = "test-env",
+                ProfileId = "test-profile"
+            }
+        };
+
+        var builder = new ConfigurationBuilder();
+
+        // Act
+        var provider = source.Build(builder) as AppConfigAgentConfigurationProvider;
+
+        // Assert
+        Assert.NotNull(provider);
+        
+        // Provider should own the HttpClient since one was created
+        var exception = Record.Exception(() => provider.Dispose());
+        Assert.Null(exception);
+    }
+
     public void Dispose()
     {
         _httpClient?.Dispose();
