@@ -507,7 +507,11 @@ resource "aws_iam_role_policy" "github_actions_ecr_push" {
         Action   = ["ecr:GetAuthorizationToken"]
         Resource = "*"
       },
-      # Push/pull within these repos
+      {
+        Effect   = "Allow"
+        Action   = ["iam:GetOpenIDConnectProvider", "iam:ListOpenIDConnectProviders"]
+        Resource = "*"
+      },
       {
         Effect = "Allow"
         Action = [
