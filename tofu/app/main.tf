@@ -519,6 +519,7 @@ resource "aws_iam_role_policy" "github_actions_ecr_push" {
           "ecr:GetDownloadUrlForLayer",
           "ecr:InitiateLayerUpload",
           "ecr:ListImages",
+          "ecr:ListTagsForResource",
           "ecr:PutImage",
           "ecr:UploadLayerPart"
         ]
@@ -543,6 +544,7 @@ resource "aws_iam_role_policy" "github_actions_tfstate" {
         Effect = "Allow"
         Action = [
           "s3:GetObject",
+          "s3:HeadObject",
           "s3:PutObject",
           "s3:DeleteObject"
         ]
@@ -602,7 +604,7 @@ resource "aws_iam_role_policy" "github_actions_apply" {
       },
       {
         Effect   = "Allow"
-        Action   = ["logs:CreateLogGroup", "logs:DeleteLogGroup", "logs:DescribeLogGroups", "logs:PutRetentionPolicy", "logs:TagLogGroup", "logs:UntagLogGroup", "logs:ListTagsLogGroup"]
+        Action   = ["logs:CreateLogGroup", "logs:DeleteLogGroup", "logs:DescribeLogGroups", "logs:ListTagsForResource", "logs:PutRetentionPolicy", "logs:TagLogGroup", "logs:UntagLogGroup", "logs:ListTagsLogGroup"]
         Resource = "*"
       },
       {
@@ -644,7 +646,12 @@ resource "aws_iam_role_policy" "github_actions_apply" {
       },
       {
         Effect   = "Allow"
-        Action   = ["rds:Describe*", "rds:Create*", "rds:Delete*", "rds:Modify*", "rds:Add*", "rds:Remove*"]
+        Action   = ["rds:Describe*", "rds:ListTagsForResource", "rds:Create*", "rds:Delete*", "rds:Modify*", "rds:Add*", "rds:Remove*"]
+        Resource = "*"
+      },
+      {
+        Effect   = "Allow"
+        Action   = ["iam:ListOpenIDConnectProviders"]
         Resource = "*"
       }
     ]
