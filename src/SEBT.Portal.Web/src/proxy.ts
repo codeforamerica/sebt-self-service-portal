@@ -12,6 +12,11 @@ import { NextRequest, NextResponse } from 'next/server'
 export function proxy(request: NextRequest) {
   const nonce = Buffer.from(crypto.randomUUID()).toString('base64')
   const isDev = process.env.NODE_ENV === 'development'
+  const proto =
+    request.headers.get('x-forwarded-proto') ?? request.nextUrl.protocol.replace(':', '')
+  const isHttps = proto === 'https'
+  // Only add upgrade-insecure-requests when actually served over HTTPS.
+  const upgradeInsecure = !isDev && isHttps ? 'upgrade-insecure-requests;' : ''
 
   // Build CSP header with nonce for script and style sources
   // Development: Allow unsafe-eval for Next.js hot reload, unsafe-inline for styles (no nonce for styles)
@@ -33,7 +38,7 @@ export function proxy(request: NextRequest) {
     base-uri 'self';
     form-action 'self';
     object-src 'none';
-    ${isDev ? '' : 'upgrade-insecure-requests;'}
+    ${upgradeInsecure}
   `
 
   const contentSecurityPolicyHeaderValue = cspHeader.replace(/\s{2,}/g, ' ').trim()
