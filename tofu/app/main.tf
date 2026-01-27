@@ -528,6 +528,8 @@ resource "aws_iam_role_policy" "github_actions_ecr_push" {
           "ecr:ListTagsForResource",
           "ecr:PutImage",
           "ecr:PutLifecyclePolicy",
+          "ecr:TagResource",
+          "ecr:UntagResource",
           "ecr:UploadLayerPart"
         ]
         Resource = [
@@ -616,7 +618,7 @@ resource "aws_iam_role_policy" "github_actions_apply" {
       },
       {
         Effect   = "Allow"
-        Action   = ["logs:CreateLogGroup", "logs:DeleteLogGroup", "logs:DescribeLogGroups", "logs:ListTagsForResource", "logs:PutRetentionPolicy", "logs:TagLogGroup", "logs:UntagLogGroup", "logs:ListTagsLogGroup"]
+        Action   = ["logs:CreateLogGroup", "logs:DeleteLogGroup", "logs:DescribeLogGroups", "logs:ListTagsForResource", "logs:PutRetentionPolicy", "logs:TagLogGroup", "logs:TagResource", "logs:UntagLogGroup", "logs:UntagResource", "logs:ListTagsLogGroup"]
         Resource = "*"
       },
       {
