@@ -292,6 +292,56 @@ public class MockHouseholdRepository : IHouseholdRepository
         unknown.Email = "unknown@example.com";
         _households["unknown@example.com"] = unknown;
 
+        // Scenario 12: Multiple applications (one approved, one pending)
+        var multipleApps = HouseholdFactory.CreateHouseholdData(h =>
+        {
+            var faker = new Faker();
+
+            // Approved application
+            var approvedApp = new Application
+            {
+                ApplicationNumber = $"APP-{DateTime.UtcNow.AddDays(-30):yyyy-MM}-{faker.Random.Number(100000, 999999)}",
+                CaseNumber = $"CASE-{faker.Random.Number(100000, 999999)}",
+                ApplicationStatus = ApplicationStatus.Approved,
+                BenefitIssueDate = DateTime.UtcNow.AddDays(-30),
+                BenefitExpirationDate = DateTime.UtcNow.AddDays(60),
+                Last4DigitsOfCard = "5678",
+                CardStatus = CardStatus.Active,
+                CardRequestedAt = DateTime.UtcNow.AddDays(-60),
+                CardMailedAt = DateTime.UtcNow.AddDays(-45),
+                CardActivatedAt = DateTime.UtcNow.AddDays(-40),
+                Children = new List<Child>
+                {
+                    new Child { FirstName = "Emma", LastName = "Wilson" },
+                    new Child { FirstName = "Lucas", LastName = "Wilson" }
+                }
+            };
+
+            // Pending application
+            var pendingApp = new Application
+            {
+                ApplicationNumber = $"APP-{DateTime.UtcNow.AddDays(-10):yyyy-MM}-{faker.Random.Number(100000, 999999)}",
+                ApplicationStatus = ApplicationStatus.Pending,
+                CardStatus = CardStatus.Requested,
+                CardRequestedAt = DateTime.UtcNow.AddDays(-10),
+                Children = new List<Child>
+                {
+                    new Child { FirstName = "Olivia", LastName = "Wilson" }
+                }
+            };
+
+            h.Applications = new List<Application> { approvedApp, pendingApp };
+            h.AddressOnFile = new Address
+            {
+                StreetAddress1 = "789 Multiple Apps Street",
+                City = "Denver",
+                State = "CO",
+                PostalCode = "80203"
+            };
+        });
+        multipleApps.Email = "multipleapps@example.com";
+        _households["multipleapps@example.com"] = multipleApps;
+
         _logger.LogInformation("Seeded {Count} mock household records using Bogus", _households.Count);
     }
 
