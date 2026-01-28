@@ -124,3 +124,15 @@ variable "database_master_password" {
   sensitive   = true
   default     = ""
 }
+
+variable "enable_ses" {
+  type        = bool
+  description = "If true, create SES identity, IAM SMTP user, and wire the API task to send OTP emails via Amazon SES."
+  default     = false
+}
+
+variable "ses_sender_email" {
+  type        = string
+  description = "Email address used as the 'from' for OTP emails. Must be verified in SES (or use a verified domain)."
+  default     = ""
+}
