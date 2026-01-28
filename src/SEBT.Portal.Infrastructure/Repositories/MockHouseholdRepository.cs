@@ -320,6 +320,10 @@ public class MockHouseholdRepository : IHouseholdRepository
             CaseNumber = source.CaseNumber,
             ApplicationStatus = source.ApplicationStatus,
             CardStatus = source.CardStatus,
+            CardRequestedAt = source.CardRequestedAt,
+            CardMailedAt = source.CardMailedAt,
+            CardActivatedAt = source.CardActivatedAt,
+            CardDeactivatedAt = source.CardDeactivatedAt,
             // Only include address if requested (simulating ID verification check)
             AddressOnFile = includeAddress && source.AddressOnFile != null
                 ? new Address
