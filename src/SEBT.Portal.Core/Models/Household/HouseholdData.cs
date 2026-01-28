@@ -51,6 +51,11 @@ public class HouseholdData
     public ApplicationStatus ApplicationStatus { get; set; } = ApplicationStatus.Unknown;
 
     /// <summary>
+    /// The status of the card.
+    /// </summary>
+    public CardStatus CardStatus { get; set; } = CardStatus.Requested;
+
+    /// <summary>
     /// The number of children on the application.
     /// </summary>
     public int ChildrenOnApplication => Children.Count;

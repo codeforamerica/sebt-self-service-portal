@@ -16,6 +16,7 @@ public static class HouseholdFactory
         .RuleFor(h => h.Phone, f => f.Phone.PhoneNumber("###-####"))
         .RuleFor(h => h.BenefitIssuanceType, f => f.PickRandom<BenefitIssuanceType>())
         .RuleFor(h => h.ApplicationStatus, f => f.PickRandom<ApplicationStatus>())
+        .RuleFor(h => h.CardStatus, f => f.PickRandom<CardStatus>())
         .RuleFor(h => h.ApplicationNumber, (f, h) =>
             h.ApplicationStatus != ApplicationStatus.Unknown
                 ? $"APP-{f.Date.Recent(365):yyyy-MM}-{f.Random.Number(100000, 999999)}"
@@ -87,6 +88,7 @@ public static class HouseholdFactory
                 h.Last4DigitsOfCard = faker.Random.Number(1000, 9999).ToString();
                 h.CaseNumber = $"CASE-{faker.Random.Number(100000, 999999)}";
                 h.ApplicationNumber = $"APP-{faker.Date.Recent(365):yyyy-MM}-{faker.Random.Number(100000, 999999)}";
+                h.CardStatus = CardStatus.Active;
             }
             else if (status == ApplicationStatus.Denied)
             {
@@ -95,6 +97,8 @@ public static class HouseholdFactory
                 h.BenefitIssueDate = null;
                 h.BenefitExpirationDate = null;
                 h.Last4DigitsOfCard = null;
+                // Denied applications typically have Requested or Deactivated cards
+                h.CardStatus = faker.Random.Bool(0.5f) ? CardStatus.Requested : CardStatus.Deactivated;
             }
             else if (status == ApplicationStatus.Unknown)
             {
@@ -103,11 +107,13 @@ public static class HouseholdFactory
                 h.Last4DigitsOfCard = null;
                 h.CaseNumber = null;
                 h.ApplicationNumber = null;
+                h.CardStatus = CardStatus.Requested;
             }
             else
             {
                 h.ApplicationNumber = $"APP-{faker.Date.Recent(365):yyyy-MM}-{faker.Random.Number(100000, 999999)}";
                 h.CaseNumber = null;
+                h.CardStatus = faker.Random.Bool(0.5f) ? CardStatus.Requested : CardStatus.Mailed;
             }
 
             customize?.Invoke(h);
