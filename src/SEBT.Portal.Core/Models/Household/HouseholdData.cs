@@ -56,6 +56,26 @@ public class HouseholdData
     public CardStatus CardStatus { get; set; } = CardStatus.Requested;
 
     /// <summary>
+    /// The date and time when the card status was set to Requested.
+    /// </summary>
+    public DateTime? CardRequestedAt { get; set; }
+
+    /// <summary>
+    /// The date and time when the card status was set to Mailed.
+    /// </summary>
+    public DateTime? CardMailedAt { get; set; }
+
+    /// <summary>
+    /// The date and time when the card status was set to Active.
+    /// </summary>
+    public DateTime? CardActivatedAt { get; set; }
+
+    /// <summary>
+    /// The date and time when the card status was set to Deactivated.
+    /// </summary>
+    public DateTime? CardDeactivatedAt { get; set; }
+
+    /// <summary>
     /// The number of children on the application.
     /// </summary>
     public int ChildrenOnApplication => Children.Count;

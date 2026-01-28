@@ -95,6 +95,12 @@ public static class HouseholdFactory
                 h.CaseNumber = $"CASE-{faker.Random.Number(100000, 999999)}";
                 h.ApplicationNumber = $"APP-{faker.Date.Recent(365):yyyy-MM}-{faker.Random.Number(100000, 999999)}";
                 h.CardStatus = CardStatus.Active;
+                var requestedDate = faker.Date.Recent(150);
+                var mailedDate = requestedDate.AddDays(faker.Random.Int(5, 30));
+                var activatedDate = mailedDate.AddDays(faker.Random.Int(1, 14));
+                h.CardRequestedAt = requestedDate;
+                h.CardMailedAt = mailedDate;
+                h.CardActivatedAt = activatedDate;
             }
             else if (status == ApplicationStatus.Denied)
             {
@@ -104,8 +110,25 @@ public static class HouseholdFactory
                 h.BenefitIssueDate = null;
                 h.BenefitExpirationDate = null;
                 h.Last4DigitsOfCard = null;
-                // Denied applications typically have Requested or Deactivated cards
-                h.CardStatus = faker.Random.Bool(0.5f) ? CardStatus.Requested : CardStatus.Deactivated;
+                // Denied applications are either Requested or Deactivated cards
+                if (faker.Random.Bool(0.5f))
+                {
+                    h.CardStatus = CardStatus.Requested;
+                    h.CardRequestedAt = faker.Date.Recent(90);
+                }
+                else
+                {
+                    h.CardStatus = CardStatus.Deactivated;
+                    // Set a realistic timeline: Requested -> Mailed -> Active -> Deactivated
+                    var requestedDate = faker.Date.Recent(120);
+                    var mailedDate = requestedDate.AddDays(faker.Random.Int(5, 30));
+                    var activatedDate = mailedDate.AddDays(faker.Random.Int(1, 14));
+                    var deactivatedDate = activatedDate.AddDays(faker.Random.Int(1, 60));
+                    h.CardRequestedAt = requestedDate;
+                    h.CardMailedAt = mailedDate;
+                    h.CardActivatedAt = activatedDate;
+                    h.CardDeactivatedAt = deactivatedDate;
+                }
             }
             else if (status == ApplicationStatus.Unknown)
             {
@@ -115,13 +138,26 @@ public static class HouseholdFactory
                 h.CaseNumber = null;
                 h.ApplicationNumber = null;
                 h.CardStatus = CardStatus.Requested;
+                h.CardRequestedAt = faker.Date.Recent(60);
             }
             else
             {
                 // For other statuses (Pending, UnderReview, Cancelled), set application number but get rid of case number
                 h.ApplicationNumber = $"APP-{faker.Date.Recent(365):yyyy-MM}-{faker.Random.Number(100000, 999999)}";
                 h.CaseNumber = null;
-                h.CardStatus = faker.Random.Bool(0.5f) ? CardStatus.Requested : CardStatus.Mailed;
+                if (faker.Random.Bool(0.5f))
+                {
+                    h.CardStatus = CardStatus.Requested;
+                    h.CardRequestedAt = faker.Date.Recent(90);
+                }
+                else
+                {
+                    h.CardStatus = CardStatus.Mailed;
+                    var requestedDate = faker.Date.Recent(90);
+                    var mailedDate = requestedDate.AddDays(faker.Random.Int(5, 30));
+                    h.CardRequestedAt = requestedDate;
+                    h.CardMailedAt = mailedDate;
+                }
             }
 
             customize?.Invoke(h);

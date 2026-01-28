@@ -56,6 +56,26 @@ public class HouseholdEntity
     public int CardStatus { get; set; } = 0; // 0 = Requested
 
     /// <summary>
+    /// The date and time when the card status was set to Requested.
+    /// </summary>
+    public DateTime? CardRequestedAt { get; set; }
+
+    /// <summary>
+    /// The date and time when the card status was set to Mailed.
+    /// </summary>
+    public DateTime? CardMailedAt { get; set; }
+
+    /// <summary>
+    /// The date and time when the card status was set to Active.
+    /// </summary>
+    public DateTime? CardActivatedAt { get; set; }
+
+    /// <summary>
+    /// The date and time when the card status was set to Deactivated.
+    /// </summary>
+    public DateTime? CardDeactivatedAt { get; set; }
+
+    /// <summary>
     /// The date and time when the household record was first created.
     /// </summary>
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
