@@ -51,6 +51,11 @@ public class HouseholdEntity
     public int ApplicationStatus { get; set; } = 0; // 0 = Unknown
 
     /// <summary>
+    /// The status of the card (0 = Requested, 1 = Mailed, 2 = Active, 3 = Deactivated).
+    /// </summary>
+    public int CardStatus { get; set; } = 0; // 0 = Requested
+
+    /// <summary>
     /// The date and time when the household record was first created.
     /// </summary>
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;

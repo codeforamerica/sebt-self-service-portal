@@ -269,6 +269,7 @@ public class MockHouseholdRepository : IHouseholdRepository
             ApplicationNumber = source.ApplicationNumber,
             CaseNumber = source.CaseNumber,
             ApplicationStatus = source.ApplicationStatus,
+            CardStatus = source.CardStatus,
             Children = source.Children.Select(c => new Child
             {
                 FirstName = c.FirstName,
