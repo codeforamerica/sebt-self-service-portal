@@ -747,6 +747,36 @@ resource "aws_iam_role_policy" "github_actions_apply" {
         Effect   = "Allow"
         Action   = ["iam:GetOpenIDConnectProvider", "iam:ListOpenIDConnectProviders"]
         Resource = "*"
+      },
+      {
+        Effect   = "Allow"
+        Action   = ["ses:GetIdentityVerificationAttributes", "ses:GetIdentityNotificationAttributes", "ses:ListIdentities", "ses:VerifyEmailIdentity", "ses:DeleteIdentity"]
+        Resource = "*"
+      },
+      {
+        Effect = "Allow"
+        Action = [
+          "iam:GetUser",
+          "iam:GetUserPolicy",
+          "iam:ListUsers",
+          "iam:ListGroupsForUser",
+          "iam:CreateUser",
+          "iam:DeleteUser",
+          "iam:CreateAccessKey",
+          "iam:DeleteAccessKey",
+          "iam:ListAccessKeys",
+          "iam:PutUserPolicy",
+          "iam:DeleteUserPolicy",
+          "iam:ListUserPolicies",
+          "iam:TagUser",
+          "iam:UntagUser"
+        ]
+        Resource = "arn:aws:iam::${data.aws_caller_identity.current.account_id}:user/system/${local.prefix}-*"
+      },
+      {
+        Effect   = "Allow"
+        Action   = ["secretsmanager:DescribeSecret", "secretsmanager:GetSecretValue", "secretsmanager:GetResourcePolicy", "secretsmanager:CreateSecret", "secretsmanager:PutSecretValue", "secretsmanager:DeleteSecret", "secretsmanager:TagResource"]
+        Resource = "arn:aws:secretsmanager:${var.aws_region}:${data.aws_caller_identity.current.account_id}:secret:${local.prefix}-*"
       }
     ]
   })
