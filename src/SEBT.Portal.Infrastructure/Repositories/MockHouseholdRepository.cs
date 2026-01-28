@@ -90,15 +90,19 @@ public class MockHouseholdRepository : IHouseholdRepository
         // Scenario 1: Co-loaded user with approved application and address (ID verified)
         var coLoaded = HouseholdFactory.CreateHouseholdDataWithStatus(ApplicationStatus.Approved, h =>
         {
-            h.BenefitIssueDate = DateTime.UtcNow.AddDays(-20);
-            h.BenefitExpirationDate = DateTime.UtcNow.AddDays(70);
-            h.Last4DigitsOfCard = "0000";
-            // Set specific children names for test
-            h.Children = new List<Child>
+            var app = h.Applications.FirstOrDefault();
+            if (app != null)
             {
-                new Child { FirstName = "Sophia", LastName = "Martinez" },
-                new Child { FirstName = "James", LastName = "Martinez" }
-            };
+                app.BenefitIssueDate = DateTime.UtcNow.AddDays(-20);
+                app.BenefitExpirationDate = DateTime.UtcNow.AddDays(70);
+                app.Last4DigitsOfCard = "0000";
+                // Set specific children names for test
+                app.Children = new List<Child>
+                {
+                    new Child { FirstName = "Sophia", LastName = "Martinez" },
+                    new Child { FirstName = "James", LastName = "Martinez" }
+                };
+            }
             h.AddressOnFile = new Address
             {
                 StreetAddress1 = "100 Co-Loaded Street",
@@ -114,15 +118,19 @@ public class MockHouseholdRepository : IHouseholdRepository
         // Scenario 2: Approved application with address (ID verified user)
         var verified = HouseholdFactory.CreateHouseholdDataWithStatus(ApplicationStatus.Approved, h =>
         {
-            h.BenefitIssueDate = DateTime.UtcNow.AddDays(-30);
-            h.BenefitExpirationDate = DateTime.UtcNow.AddDays(60);
-            h.Last4DigitsOfCard = "1234"; // Specific value for test
-            // Set specific children names for test
-            h.Children = new List<Child>
+            var app = h.Applications.FirstOrDefault();
+            if (app != null)
             {
-                new Child { FirstName = "John", LastName = "Doe" },
-                new Child { FirstName = "Jane", LastName = "Doe" }
-            };
+                app.BenefitIssueDate = DateTime.UtcNow.AddDays(-30);
+                app.BenefitExpirationDate = DateTime.UtcNow.AddDays(60);
+                app.Last4DigitsOfCard = "1234"; // Specific value for test
+                // Set specific children names for test
+                app.Children = new List<Child>
+                {
+                    new Child { FirstName = "John", LastName = "Doe" },
+                    new Child { FirstName = "Jane", LastName = "Doe" }
+                };
+            }
             // Set specific address for test
             h.AddressOnFile = new Address
             {
@@ -141,11 +149,15 @@ public class MockHouseholdRepository : IHouseholdRepository
         // for testing purposes (it will be filtered by GetHouseholdByEmailAsync based on includeAddress)
         var pending = HouseholdFactory.CreateHouseholdDataWithStatus(ApplicationStatus.Pending, h =>
         {
-            // Set specific child name for test
-            h.Children = new List<Child>
+            var app = h.Applications.FirstOrDefault();
+            if (app != null)
             {
-                new Child { FirstName = "Alice", LastName = "Smith" }
-            };
+                // Set specific child name for test
+                app.Children = new List<Child>
+                {
+                    new Child { FirstName = "Alice", LastName = "Smith" }
+                };
+            }
             // Set address for testing (will be filtered based on ID verification status)
             h.AddressOnFile = new Address
             {
@@ -161,7 +173,11 @@ public class MockHouseholdRepository : IHouseholdRepository
         // Scenario 4: Denied application
         var denied = HouseholdFactory.CreateHouseholdDataWithStatus(ApplicationStatus.Denied, h =>
         {
-            h.Children = new List<Child>(); // No children for denied
+            var app = h.Applications.FirstOrDefault();
+            if (app != null)
+            {
+                app.Children = new List<Child>(); // No children for denied
+            }
         });
         denied.Email = "denied@example.com";
         _households["denied@example.com"] = denied;
@@ -169,11 +185,15 @@ public class MockHouseholdRepository : IHouseholdRepository
         // Scenario 5: Under review
         var review = HouseholdFactory.CreateHouseholdDataWithStatus(ApplicationStatus.UnderReview, h =>
         {
-            // Use Bogus to generate child name
-            var childFaker = new Faker<Child>()
-                .RuleFor(c => c.FirstName, f => f.Name.FirstName())
-                .RuleFor(c => c.LastName, f => f.Name.LastName());
-            h.Children = childFaker.Generate(1);
+            var app = h.Applications.FirstOrDefault();
+            if (app != null)
+            {
+                // Use Bogus to generate child name
+                var childFaker = new Faker<Child>()
+                    .RuleFor(c => c.FirstName, f => f.Name.FirstName())
+                    .RuleFor(c => c.LastName, f => f.Name.LastName());
+                app.Children = childFaker.Generate(1);
+            }
         });
         review.Email = "review@example.com";
         _households["review@example.com"] = review;
@@ -181,7 +201,11 @@ public class MockHouseholdRepository : IHouseholdRepository
         // Scenario 6: Cancelled application
         var cancelled = HouseholdFactory.CreateHouseholdDataWithStatus(ApplicationStatus.Cancelled, h =>
         {
-            h.Children = new List<Child>(); // No children for cancelled
+            var app = h.Applications.FirstOrDefault();
+            if (app != null)
+            {
+                app.Children = new List<Child>(); // No children for cancelled
+            }
         });
         cancelled.Email = "cancelled@example.com";
         _households["cancelled@example.com"] = cancelled;
@@ -189,13 +213,17 @@ public class MockHouseholdRepository : IHouseholdRepository
         // Scenario 7: Approved with single child
         var singleChild = HouseholdFactory.CreateHouseholdDataWithStatus(ApplicationStatus.Approved, h =>
         {
-            h.BenefitIssueDate = DateTime.UtcNow.AddDays(-15);
-            h.BenefitExpirationDate = DateTime.UtcNow.AddDays(75);
-            // Use Bogus to generate child name
-            var childFaker = new Faker<Child>()
-                .RuleFor(c => c.FirstName, f => f.Name.FirstName())
-                .RuleFor(c => c.LastName, f => f.Name.LastName());
-            h.Children = childFaker.Generate(1);
+            var app = h.Applications.FirstOrDefault();
+            if (app != null)
+            {
+                app.BenefitIssueDate = DateTime.UtcNow.AddDays(-15);
+                app.BenefitExpirationDate = DateTime.UtcNow.AddDays(75);
+                // Use Bogus to generate child name
+                var childFaker = new Faker<Child>()
+                    .RuleFor(c => c.FirstName, f => f.Name.FirstName())
+                    .RuleFor(c => c.LastName, f => f.Name.LastName());
+                app.Children = childFaker.Generate(1);
+            }
         });
         singleChild.Email = "singlechild@example.com";
         _households["singlechild@example.com"] = singleChild;
@@ -203,16 +231,20 @@ public class MockHouseholdRepository : IHouseholdRepository
         // Scenario 8: Large family (multiple children)
         var largeFamily = HouseholdFactory.CreateHouseholdDataWithStatus(ApplicationStatus.Approved, h =>
         {
-            h.BenefitIssueDate = DateTime.UtcNow.AddDays(-45);
-            h.BenefitExpirationDate = DateTime.UtcNow.AddDays(45);
-            // Set specific children names for test
-            h.Children = new List<Child>
+            var app = h.Applications.FirstOrDefault();
+            if (app != null)
             {
-                new Child { FirstName = "Michael", LastName = "Brown" },
-                new Child { FirstName = "Sarah", LastName = "Brown" },
-                new Child { FirstName = "David", LastName = "Brown" },
-                new Child { FirstName = "Emily", LastName = "Brown" }
-            };
+                app.BenefitIssueDate = DateTime.UtcNow.AddDays(-45);
+                app.BenefitExpirationDate = DateTime.UtcNow.AddDays(45);
+                // Set specific children names for test
+                app.Children = new List<Child>
+                {
+                    new Child { FirstName = "Michael", LastName = "Brown" },
+                    new Child { FirstName = "Sarah", LastName = "Brown" },
+                    new Child { FirstName = "David", LastName = "Brown" },
+                    new Child { FirstName = "Emily", LastName = "Brown" }
+                };
+            }
         });
         largeFamily.Email = "largefamily@example.com";
         _households["largefamily@example.com"] = largeFamily;
@@ -221,7 +253,11 @@ public class MockHouseholdRepository : IHouseholdRepository
         var minimal = HouseholdFactory.CreateHouseholdDataWithStatus(ApplicationStatus.Pending, h =>
         {
             h.Phone = null;
-            h.Children = new List<Child>();
+            var app = h.Applications.FirstOrDefault();
+            if (app != null)
+            {
+                app.Children = new List<Child>();
+            }
         });
         minimal.Email = "minimal@example.com";
         _households["minimal@example.com"] = minimal;
@@ -229,13 +265,17 @@ public class MockHouseholdRepository : IHouseholdRepository
         // Scenario 10: Expired benefits
         var expired = HouseholdFactory.CreateHouseholdDataWithStatus(ApplicationStatus.Approved, h =>
         {
-            h.BenefitIssueDate = DateTime.UtcNow.AddDays(-120);
-            h.BenefitExpirationDate = DateTime.UtcNow.AddDays(-10); // Expired
-            // Use Bogus to generate child name
-            var childFaker = new Faker<Child>()
-                .RuleFor(c => c.FirstName, f => f.Name.FirstName())
-                .RuleFor(c => c.LastName, f => f.Name.LastName());
-            h.Children = childFaker.Generate(1);
+            var app = h.Applications.FirstOrDefault();
+            if (app != null)
+            {
+                app.BenefitIssueDate = DateTime.UtcNow.AddDays(-120);
+                app.BenefitExpirationDate = DateTime.UtcNow.AddDays(-10); // Expired
+                // Use Bogus to generate child name
+                var childFaker = new Faker<Child>()
+                    .RuleFor(c => c.FirstName, f => f.Name.FirstName())
+                    .RuleFor(c => c.LastName, f => f.Name.LastName());
+                app.Children = childFaker.Generate(1);
+            }
         });
         expired.Email = "expired@example.com";
         _households["expired@example.com"] = expired;
@@ -243,7 +283,11 @@ public class MockHouseholdRepository : IHouseholdRepository
         // Scenario 11: Unknown status
         var unknown = HouseholdFactory.CreateHouseholdDataWithStatus(ApplicationStatus.Unknown, h =>
         {
-            h.Children = new List<Child>();
+            var app = h.Applications.FirstOrDefault();
+            if (app != null)
+            {
+                app.Children = new List<Child>();
+            }
         });
         unknown.Email = "unknown@example.com";
         _households["unknown@example.com"] = unknown;
@@ -263,21 +307,24 @@ public class MockHouseholdRepository : IHouseholdRepository
         {
             Email = source.Email,
             Phone = source.Phone,
-            BenefitIssueDate = source.BenefitIssueDate,
-            BenefitExpirationDate = source.BenefitExpirationDate,
-            Last4DigitsOfCard = source.Last4DigitsOfCard,
-            ApplicationNumber = source.ApplicationNumber,
-            CaseNumber = source.CaseNumber,
-            ApplicationStatus = source.ApplicationStatus,
-            CardStatus = source.CardStatus,
-            CardRequestedAt = source.CardRequestedAt,
-            CardMailedAt = source.CardMailedAt,
-            CardActivatedAt = source.CardActivatedAt,
-            CardDeactivatedAt = source.CardDeactivatedAt,
-            Children = source.Children.Select(c => new Child
+            Applications = source.Applications.Select(a => new Application
             {
-                FirstName = c.FirstName,
-                LastName = c.LastName
+                ApplicationNumber = a.ApplicationNumber,
+                CaseNumber = a.CaseNumber,
+                ApplicationStatus = a.ApplicationStatus,
+                BenefitIssueDate = a.BenefitIssueDate,
+                BenefitExpirationDate = a.BenefitExpirationDate,
+                Last4DigitsOfCard = a.Last4DigitsOfCard,
+                CardStatus = a.CardStatus,
+                CardRequestedAt = a.CardRequestedAt,
+                CardMailedAt = a.CardMailedAt,
+                CardActivatedAt = a.CardActivatedAt,
+                CardDeactivatedAt = a.CardDeactivatedAt,
+                Children = a.Children.Select(c => new Child
+                {
+                    FirstName = c.FirstName,
+                    LastName = c.LastName
+                }).ToList()
             }).ToList(),
             // Only include address if requested (simulating ID verification check)
             AddressOnFile = includeAddress && source.AddressOnFile != null
