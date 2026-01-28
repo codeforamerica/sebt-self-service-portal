@@ -22,6 +22,9 @@ locals {
   azs = slice(data.aws_availability_zones.available.names, 0, 2)
   # We just want one NAT for now for development environments
   nat_az = local.azs[0]
+
+  # SES SMTP secret ARN when enable_ses; null otherwise
+  ses_smtp_secret_arn = try(one(aws_secretsmanager_secret.ses_smtp[*].arn), null)
 }
 
 # --- Container registry (ECR) ---
@@ -250,7 +253,7 @@ resource "aws_db_instance" "main" {
 
   allocated_storage     = var.database_allocated_storage
   max_allocated_storage = var.database_allocated_storage * 2
-  storage_type         = "gp3"
+  storage_type          = "gp3"
   storage_encrypted     = true
 
   # SQL Server Express Edition doesn't allow db_name at creation time
@@ -263,8 +266,8 @@ resource "aws_db_instance" "main" {
   publicly_accessible    = false
 
   backup_retention_period = 7
-  backup_window          = "03:00-04:00"
-  maintenance_window     = "sun:04:00-sun:05:00"
+  backup_window           = "03:00-04:00"
+  maintenance_window      = "sun:04:00-sun:05:00"
 
   skip_final_snapshot       = var.stage == "dev" ? true : false
   final_snapshot_identifier = var.stage == "dev" ? null : "${local.prefix}-db-final-snapshot-${formatdate("YYYY-MM-DD-hhmm", timestamp())}"
@@ -455,6 +458,82 @@ resource "aws_iam_role_policy_attachment" "task_ssm" {
   policy_arn = "arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore"
 }
 
+# --- SES (OTP email) ---
+
+resource "aws_ses_email_identity" "otp_sender" {
+  count = var.enable_ses && var.ses_sender_email != "" ? 1 : 0
+  email = var.ses_sender_email
+}
+
+resource "aws_iam_user" "ses_smtp" {
+  count = var.enable_ses ? 1 : 0
+  name  = "${local.prefix}-ses-smtp"
+  path  = "/system/"
+  tags  = local.tags
+}
+
+resource "aws_iam_user_policy" "ses_smtp" {
+  count = var.enable_ses ? 1 : 0
+  name  = "ses-send"
+  user  = aws_iam_user.ses_smtp[0].name
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect   = "Allow"
+        Action   = ["ses:SendEmail", "ses:SendRawEmail"]
+        Resource = "*"
+      }
+    ]
+  })
+}
+
+resource "aws_iam_access_key" "ses_smtp" {
+  count = var.enable_ses ? 1 : 0
+  user  = aws_iam_user.ses_smtp[0].name
+}
+
+data "external" "ses_smtp_password" {
+  count   = var.enable_ses ? 1 : 0
+  program = ["python3", "${path.module}/scripts/ses_smtp_password.py"]
+  query = {
+    secret_key = aws_iam_access_key.ses_smtp[0].secret
+    region     = var.aws_region
+  }
+}
+
+resource "aws_secretsmanager_secret" "ses_smtp" {
+  count       = var.enable_ses ? 1 : 0
+  name        = "${local.prefix}-ses-smtp-credentials"
+  description = "SES SMTP credentials for OTP email (API task)"
+  tags        = local.tags
+}
+
+resource "aws_secretsmanager_secret_version" "ses_smtp" {
+  count     = var.enable_ses ? 1 : 0
+  secret_id = aws_secretsmanager_secret.ses_smtp[0].id
+  secret_string = jsonencode({
+    SmtpClientSettings__UserName = aws_iam_access_key.ses_smtp[0].id
+    SmtpClientSettings__Password = data.external.ses_smtp_password[0].result.smtp_password
+  })
+}
+
+resource "aws_iam_role_policy" "task_execution_ses_secret" {
+  count = var.enable_ses ? 1 : 0
+  name  = "${local.prefix}-task-exec-ses-secret"
+  role  = aws_iam_role.task_execution.id
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect   = "Allow"
+        Action   = ["secretsmanager:GetSecretValue"]
+        Resource = [aws_secretsmanager_secret.ses_smtp[0].arn]
+      }
+    ]
+  })
+}
+
 # --- CI: GitHub Actions -> ECR push (OIDC) ---
 
 # OIDC provider is account-level, so use data source if it already exists
@@ -544,8 +623,8 @@ resource "aws_iam_role_policy" "github_actions_ecr_push" {
 resource "aws_iam_role_policy" "github_actions_tfstate" {
   count = var.enable_github_actions_ecr_push && var.tfstate_bucket != "" && var.tfstate_table != "" ? 1 : 0
 
-  name   = "${local.prefix}-github-actions-tfstate"
-  role   = aws_iam_role.github_actions_ecr_push[0].id
+  name = "${local.prefix}-github-actions-tfstate"
+  role = aws_iam_role.github_actions_ecr_push[0].id
   policy = jsonencode({
     Version = "2012-10-17"
     Statement = [
@@ -591,8 +670,8 @@ resource "aws_iam_role_policy" "github_actions_tfstate" {
 resource "aws_iam_role_policy" "github_actions_apply" {
   count = var.enable_github_actions_ecr_push && var.tfstate_bucket != "" && var.tfstate_table != "" ? 1 : 0
 
-  name   = "${local.prefix}-github-actions-apply"
-  role   = aws_iam_role.github_actions_ecr_push[0].id
+  name = "${local.prefix}-github-actions-apply"
+  role = aws_iam_role.github_actions_ecr_push[0].id
   policy = jsonencode({
     Version = "2012-10-17"
     Statement = [
@@ -651,8 +730,8 @@ resource "aws_iam_role_policy" "github_actions_apply" {
         }
       },
       {
-        Effect   = "Allow"
-        Action   = ["iam:AttachRolePolicy", "iam:DetachRolePolicy"]
+        Effect = "Allow"
+        Action = ["iam:AttachRolePolicy", "iam:DetachRolePolicy"]
         Resource = [
           "arn:aws:iam::${data.aws_caller_identity.current.account_id}:role/${local.prefix}-*",
           "arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy",
@@ -683,33 +762,47 @@ resource "aws_ecs_task_definition" "api" {
   task_role_arn            = aws_iam_role.task.arn
 
   container_definitions = jsonencode([
-    {
-      name      = "api"
-      image     = local.api_image
-      essential = true
-      portMappings = [
-        { containerPort = 8080, hostPort = 8080, protocol = "tcp" }
-      ]
-      environment = concat(
-        [
-          { name = "ASPNETCORE_ENVIRONMENT", value = var.stage }
-        ],
-        var.enable_database ? [
-          { 
-            name  = "ConnectionStrings__DefaultConnection", 
-            value = "Server=${replace(aws_db_instance.main[0].endpoint, ":", ",")};Database=${var.database_name};User Id=${var.database_master_username};Password=${var.database_master_password};Encrypt=True;TrustServerCertificate=True;" 
+    merge(
+      {
+        name      = "api"
+        image     = local.api_image
+        essential = true
+        portMappings = [
+          { containerPort = 8080, hostPort = 8080, protocol = "tcp" }
+        ]
+        environment = concat(
+          [
+            { name = "ASPNETCORE_ENVIRONMENT", value = var.stage }
+          ],
+          var.enable_database ? [
+            {
+              name  = "ConnectionStrings__DefaultConnection"
+              value = "Server=${replace(aws_db_instance.main[0].endpoint, ":", ",")};Database=${var.database_name};User Id=${var.database_master_username};Password=${var.database_master_password};Encrypt=True;TrustServerCertificate=True;"
+            }
+          ] : [],
+          var.enable_ses ? [
+            { name = "SmtpClientSettings__SmtpServer", value = "email-smtp.${var.aws_region}.amazonaws.com" },
+            { name = "SmtpClientSettings__SmtpPort", value = "587" },
+            { name = "SmtpClientSettings__EnableSsl", value = "true" },
+            { name = "EmailOtpSenderServiceSettings__SenderEmail", value = var.ses_sender_email }
+          ] : []
+        )
+        logConfiguration = {
+          logDriver = "awslogs"
+          options = {
+            awslogs-group         = aws_cloudwatch_log_group.api.name
+            awslogs-region        = var.aws_region
+            awslogs-stream-prefix = "ecs"
           }
-        ] : []
-      )
-      logConfiguration = {
-        logDriver = "awslogs"
-        options = {
-          awslogs-group         = aws_cloudwatch_log_group.api.name
-          awslogs-region        = var.aws_region
-          awslogs-stream-prefix = "ecs"
         }
-      }
-    }
+      },
+      local.ses_smtp_secret_arn != null ? {
+        secrets = [
+          { name = "SmtpClientSettings__UserName", valueFrom = "${local.ses_smtp_secret_arn}:SmtpClientSettings__UserName::" },
+          { name = "SmtpClientSettings__Password", valueFrom = "${local.ses_smtp_secret_arn}:SmtpClientSettings__Password::" }
+        ]
+      } : {}
+    )
   ])
 
   tags = local.tags
