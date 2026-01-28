@@ -136,3 +136,10 @@ variable "ses_sender_email" {
   description = "Email address used as the 'from' for OTP emails. Must be verified in SES (or use a verified domain)."
   default     = ""
 }
+
+variable "jwt_secret_key" {
+  type        = string
+  description = "Secret key for JWT signing (min 32 characters). Required for the API to start; set via TF_VAR_jwt_secret_key or a -var file."
+  sensitive   = true
+  default     = ""
+}

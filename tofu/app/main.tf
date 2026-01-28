@@ -801,9 +801,10 @@ resource "aws_ecs_task_definition" "api" {
           { containerPort = 8080, hostPort = 8080, protocol = "tcp" }
         ]
         environment = concat(
-          [
-            { name = "ASPNETCORE_ENVIRONMENT", value = var.stage }
-          ],
+          concat(
+            [{ name = "ASPNETCORE_ENVIRONMENT", value = var.stage }],
+            var.jwt_secret_key != "" ? [{ name = "JWT_SECRET_KEY", value = var.jwt_secret_key }] : []
+          ),
           var.enable_database ? [
             {
               name  = "ConnectionStrings__DefaultConnection"
