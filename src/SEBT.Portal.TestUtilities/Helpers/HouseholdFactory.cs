@@ -15,31 +15,9 @@ public static class HouseholdFactory
         .RuleFor(h => h.Email, f => f.Internet.Email().ToLowerInvariant())
         .RuleFor(h => h.Phone, f => f.Phone.PhoneNumber("###-####"))
         .RuleFor(h => h.BenefitIssuanceType, f => f.PickRandom<BenefitIssuanceType>())
-        .RuleFor(h => h.ApplicationStatus, f => f.PickRandom<ApplicationStatus>())
-        .RuleFor(h => h.CardStatus, f => f.PickRandom<CardStatus>())
-        .RuleFor(h => h.ApplicationNumber, (f, h) =>
-            h.ApplicationStatus != ApplicationStatus.Unknown
-                ? $"APP-{f.Date.Recent(365):yyyy-MM}-{f.Random.Number(100000, 999999)}"
-                : null)
-        .RuleFor(h => h.CaseNumber, (f, h) =>
-            h.ApplicationStatus == ApplicationStatus.Approved || h.ApplicationStatus == ApplicationStatus.Denied
-                ? $"CASE-{f.Random.Number(100000, 999999)}"
-                : null)
-        .RuleFor(h => h.BenefitIssueDate, (f, h) =>
-            h.ApplicationStatus == ApplicationStatus.Approved
-                ? f.Date.Recent(120)
-                : null)
-        .RuleFor(h => h.BenefitExpirationDate, (f, h) =>
-            h.BenefitIssueDate.HasValue
-                ? h.BenefitIssueDate.Value.AddDays(f.Random.Int(30, 365))
-                : null)
-        .RuleFor(h => h.Last4DigitsOfCard, (f, h) =>
-            h.ApplicationStatus == ApplicationStatus.Approved
-                ? f.Random.Number(1000, 9999).ToString()
-                : null)
-        .RuleFor(h => h.Children, f => GenerateChildren(f.Random.Int(0, 4)))
+        .RuleFor(h => h.Applications, f => GenerateApplications(f))
         .RuleFor(h => h.AddressOnFile, (f, h) =>
-            f.Random.Bool(0.6f) && h.ApplicationStatus == ApplicationStatus.Approved
+            f.Random.Bool(0.6f) && h.Applications.Any(a => a.ApplicationStatus == ApplicationStatus.Approved)
                 ? GenerateAddress(f)
                 : null);
 
@@ -79,78 +57,8 @@ public static class HouseholdFactory
         return CreateHouseholdData(h =>
         {
             var faker = new Faker();
-            h.ApplicationStatus = status;
-
-            if (status == ApplicationStatus.Approved)
-            {
-                h.BenefitIssueDate = faker.Date.Recent(120);
-                h.BenefitExpirationDate = h.BenefitIssueDate.Value.AddDays(faker.Random.Int(30, 365));
-                h.Last4DigitsOfCard = faker.Random.Number(1000, 9999).ToString();
-                h.CaseNumber = $"CASE-{faker.Random.Number(100000, 999999)}";
-                h.ApplicationNumber = $"APP-{faker.Date.Recent(365):yyyy-MM}-{faker.Random.Number(100000, 999999)}";
-                h.CardStatus = CardStatus.Active;
-                var requestedDate = faker.Date.Recent(150);
-                var mailedDate = requestedDate.AddDays(faker.Random.Int(5, 30));
-                var activatedDate = mailedDate.AddDays(faker.Random.Int(1, 14));
-                h.CardRequestedAt = requestedDate;
-                h.CardMailedAt = mailedDate;
-                h.CardActivatedAt = activatedDate;
-            }
-            else if (status == ApplicationStatus.Denied)
-            {
-                h.CaseNumber = $"CASE-{faker.Random.Number(100000, 999999)}";
-                h.ApplicationNumber = $"APP-{faker.Date.Recent(365):yyyy-MM}-{faker.Random.Number(100000, 999999)}";
-                h.BenefitIssueDate = null;
-                h.BenefitExpirationDate = null;
-                h.Last4DigitsOfCard = null;
-                // Denied applications are either Requested or Deactivated cards
-                if (faker.Random.Bool(0.5f))
-                {
-                    h.CardStatus = CardStatus.Requested;
-                    h.CardRequestedAt = faker.Date.Recent(90);
-                }
-                else
-                {
-                    h.CardStatus = CardStatus.Deactivated;
-                    // Set a realistic timeline: Requested -> Mailed -> Active -> Deactivated
-                    var requestedDate = faker.Date.Recent(120);
-                    var mailedDate = requestedDate.AddDays(faker.Random.Int(5, 30));
-                    var activatedDate = mailedDate.AddDays(faker.Random.Int(1, 14));
-                    var deactivatedDate = activatedDate.AddDays(faker.Random.Int(1, 60));
-                    h.CardRequestedAt = requestedDate;
-                    h.CardMailedAt = mailedDate;
-                    h.CardActivatedAt = activatedDate;
-                    h.CardDeactivatedAt = deactivatedDate;
-                }
-            }
-            else if (status == ApplicationStatus.Unknown)
-            {
-                h.BenefitIssueDate = null;
-                h.BenefitExpirationDate = null;
-                h.Last4DigitsOfCard = null;
-                h.CaseNumber = null;
-                h.ApplicationNumber = null;
-                h.CardStatus = CardStatus.Requested;
-                h.CardRequestedAt = faker.Date.Recent(60);
-            }
-            else
-            {
-                h.ApplicationNumber = $"APP-{faker.Date.Recent(365):yyyy-MM}-{faker.Random.Number(100000, 999999)}";
-                h.CaseNumber = null;
-                if (faker.Random.Bool(0.5f))
-                {
-                    h.CardStatus = CardStatus.Requested;
-                    h.CardRequestedAt = faker.Date.Recent(90);
-                }
-                else
-                {
-                    h.CardStatus = CardStatus.Mailed;
-                    var requestedDate = faker.Date.Recent(90);
-                    var mailedDate = requestedDate.AddDays(faker.Random.Int(5, 30));
-                    h.CardRequestedAt = requestedDate;
-                    h.CardMailedAt = mailedDate;
-                }
-            }
+            var application = CreateApplicationWithStatus(status, faker);
+            h.Applications = new List<Application> { application };
 
             customize?.Invoke(h);
         });
@@ -175,6 +83,94 @@ public static class HouseholdFactory
     public static void SetSeed(int seed)
     {
         Randomizer.Seed = new Random(seed);
+    }
+
+    private static List<Application> GenerateApplications(Faker faker)
+    {
+        // Generate 1-2 applications per household
+        var applicationCount = faker.Random.Int(1, 2);
+        var applications = new List<Application>();
+
+        for (int i = 0; i < applicationCount; i++)
+        {
+            var status = faker.PickRandom<ApplicationStatus>();
+            applications.Add(CreateApplicationWithStatus(status, faker));
+        }
+
+        return applications;
+    }
+
+    private static Application CreateApplicationWithStatus(ApplicationStatus status, Faker faker)
+    {
+        var application = new Application
+        {
+            ApplicationStatus = status,
+            Children = GenerateChildren(faker.Random.Int(0, 4))
+        };
+
+        if (status == ApplicationStatus.Approved)
+        {
+            application.ApplicationNumber = $"APP-{faker.Date.Recent(365):yyyy-MM}-{faker.Random.Number(100000, 999999)}";
+            application.CaseNumber = $"CASE-{faker.Random.Number(100000, 999999)}";
+            application.BenefitIssueDate = faker.Date.Recent(120);
+            application.BenefitExpirationDate = application.BenefitIssueDate.Value.AddDays(faker.Random.Int(30, 365));
+            application.Last4DigitsOfCard = faker.Random.Number(1000, 9999).ToString();
+            application.CardStatus = CardStatus.Active;
+            var requestedDate = faker.Date.Recent(150);
+            var mailedDate = requestedDate.AddDays(faker.Random.Int(5, 30));
+            var activatedDate = mailedDate.AddDays(faker.Random.Int(1, 14));
+            application.CardRequestedAt = requestedDate;
+            application.CardMailedAt = mailedDate;
+            application.CardActivatedAt = activatedDate;
+        }
+        else if (status == ApplicationStatus.Denied)
+        {
+            application.ApplicationNumber = $"APP-{faker.Date.Recent(365):yyyy-MM}-{faker.Random.Number(100000, 999999)}";
+            application.CaseNumber = $"CASE-{faker.Random.Number(100000, 999999)}";
+            if (faker.Random.Bool(0.5f))
+            {
+                application.CardStatus = CardStatus.Requested;
+                application.CardRequestedAt = faker.Date.Recent(90);
+            }
+            else
+            {
+                application.CardStatus = CardStatus.Deactivated;
+                var requestedDate = faker.Date.Recent(120);
+                var mailedDate = requestedDate.AddDays(faker.Random.Int(5, 30));
+                var activatedDate = mailedDate.AddDays(faker.Random.Int(1, 14));
+                var deactivatedDate = activatedDate.AddDays(faker.Random.Int(1, 60));
+                application.CardRequestedAt = requestedDate;
+                application.CardMailedAt = mailedDate;
+                application.CardActivatedAt = activatedDate;
+                application.CardDeactivatedAt = deactivatedDate;
+            }
+        }
+        else if (status == ApplicationStatus.Unknown)
+        {
+            application.ApplicationNumber = null; // Explicitly null for Unknown status
+            application.CardStatus = CardStatus.Requested;
+            application.CardRequestedAt = faker.Date.Recent(60);
+        }
+        else
+        {
+            // For other statuses (Pending, UnderReview, Cancelled)
+            application.ApplicationNumber = $"APP-{faker.Date.Recent(365):yyyy-MM}-{faker.Random.Number(100000, 999999)}";
+            if (faker.Random.Bool(0.5f))
+            {
+                application.CardStatus = CardStatus.Requested;
+                application.CardRequestedAt = faker.Date.Recent(90);
+            }
+            else
+            {
+                application.CardStatus = CardStatus.Mailed;
+                var requestedDate = faker.Date.Recent(90);
+                var mailedDate = requestedDate.AddDays(faker.Random.Int(5, 30));
+                application.CardRequestedAt = requestedDate;
+                application.CardMailedAt = mailedDate;
+            }
+        }
+
+        return application;
     }
 
     private static List<Child> GenerateChildren(int count)

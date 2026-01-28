@@ -47,16 +47,22 @@ public class HouseholdControllerTests
         {
             Email = email,
             Phone = "555-1234",
-            Children = new List<Child>
+            Applications = new List<Application>
             {
-                new Child { FirstName = "John", LastName = "Doe" }
+                new Application
+                {
+                    ApplicationNumber = "APP-123",
+                    CaseNumber = "CASE-456",
+                    ApplicationStatus = ApplicationStatus.Approved,
+                    BenefitIssueDate = DateTime.UtcNow.AddDays(-30),
+                    BenefitExpirationDate = DateTime.UtcNow.AddDays(60),
+                    Last4DigitsOfCard = "1234",
+                    Children = new List<Child>
+                    {
+                        new Child { FirstName = "John", LastName = "Doe" }
+                    }
+                }
             },
-            BenefitIssueDate = DateTime.UtcNow.AddDays(-30),
-            BenefitExpirationDate = DateTime.UtcNow.AddDays(60),
-            Last4DigitsOfCard = "1234",
-            ApplicationNumber = "APP-123",
-            CaseNumber = "CASE-456",
-            ApplicationStatus = ApplicationStatus.Approved,
             AddressOnFile = new Address
             {
                 StreetAddress1 = "123 Main St",
@@ -94,11 +100,17 @@ public class HouseholdControllerTests
         {
             Email = email,
             Phone = "555-1234",
-            Children = new List<Child>
+            Applications = new List<Application>
             {
-                new Child { FirstName = "John", LastName = "Doe" }
-            },
-            ApplicationStatus = ApplicationStatus.Approved
+                new Application
+                {
+                    ApplicationStatus = ApplicationStatus.Approved,
+                    Children = new List<Child>
+                    {
+                        new Child { FirstName = "John", LastName = "Doe" }
+                    }
+                }
+            }
         };
 
         var repositoryMock = Substitute.For<IHouseholdRepository>();
@@ -175,7 +187,10 @@ public class HouseholdControllerTests
         {
             Email = email,
             Phone = "555-1234",
-            ApplicationStatus = ApplicationStatus.Pending
+            Applications = new List<Application>
+            {
+                new Application { ApplicationStatus = ApplicationStatus.Pending }
+            }
         };
 
         var repositoryMock = Substitute.For<IHouseholdRepository>();
@@ -201,7 +216,10 @@ public class HouseholdControllerTests
         var householdData = new HouseholdData
         {
             Email = email,
-            ApplicationStatus = ApplicationStatus.Pending
+            Applications = new List<Application>
+            {
+                new Application { ApplicationStatus = ApplicationStatus.Pending }
+            }
         };
 
         var repositoryMock = Substitute.For<IHouseholdRepository>();
@@ -236,7 +254,10 @@ public class HouseholdControllerTests
         var householdData = new HouseholdData
         {
             Email = email,
-            ApplicationStatus = ApplicationStatus.Pending
+            Applications = new List<Application>
+            {
+                new Application { ApplicationStatus = ApplicationStatus.Pending }
+            }
         };
 
         var repositoryMock = Substitute.For<IHouseholdRepository>();
@@ -272,7 +293,10 @@ public class HouseholdControllerTests
         var householdData = new HouseholdData
         {
             Email = email,
-            ApplicationStatus = ApplicationStatus.Pending
+            Applications = new List<Application>
+            {
+                new Application { ApplicationStatus = ApplicationStatus.Pending }
+            }
         };
 
         var repositoryMock = Substitute.For<IHouseholdRepository>();
@@ -365,7 +389,10 @@ public class HouseholdControllerTests
         var householdData = new HouseholdData
         {
             Email = email,
-            ApplicationStatus = ApplicationStatus.Pending
+            Applications = new List<Application>
+            {
+                new Application { ApplicationStatus = ApplicationStatus.Pending }
+            }
         };
 
         var repositoryMock = Substitute.For<IHouseholdRepository>();
@@ -391,17 +418,23 @@ public class HouseholdControllerTests
         {
             Email = email,
             Phone = "555-1234",
-            Children = new List<Child>
+            Applications = new List<Application>
             {
-                new Child { FirstName = "John", LastName = "Doe" },
-                new Child { FirstName = "Jane", LastName = "Doe" }
+                new Application
+                {
+                    ApplicationNumber = "APP-123",
+                    CaseNumber = "CASE-456",
+                    ApplicationStatus = ApplicationStatus.Approved,
+                    BenefitIssueDate = DateTime.UtcNow.AddDays(-30),
+                    BenefitExpirationDate = DateTime.UtcNow.AddDays(60),
+                    Last4DigitsOfCard = "1234",
+                    Children = new List<Child>
+                    {
+                        new Child { FirstName = "John", LastName = "Doe" },
+                        new Child { FirstName = "Jane", LastName = "Doe" }
+                    }
+                }
             },
-            BenefitIssueDate = DateTime.UtcNow.AddDays(-30),
-            BenefitExpirationDate = DateTime.UtcNow.AddDays(60),
-            Last4DigitsOfCard = "1234",
-            ApplicationNumber = "APP-123",
-            CaseNumber = "CASE-456",
-            ApplicationStatus = ApplicationStatus.Approved,
             AddressOnFile = new Address
             {
                 StreetAddress1 = "123 Main St",
@@ -425,11 +458,14 @@ public class HouseholdControllerTests
         var response = Assert.IsType<HouseholdData>(okResult.Value);
         Assert.Equal(email, response.Email);
         Assert.Equal("555-1234", response.Phone);
-        Assert.Equal(2, response.Children.Count);
-        Assert.Equal("APP-123", response.ApplicationNumber);
-        Assert.Equal("CASE-456", response.CaseNumber);
-        Assert.Equal(ApplicationStatus.Approved, response.ApplicationStatus);
-        Assert.Equal(2, response.ChildrenOnApplication);
+        Assert.NotNull(response.Applications);
+        Assert.NotEmpty(response.Applications);
+        var app = response.Applications.First();
+        Assert.Equal(2, app.Children.Count);
+        Assert.Equal("APP-123", app.ApplicationNumber);
+        Assert.Equal("CASE-456", app.CaseNumber);
+        Assert.Equal(ApplicationStatus.Approved, app.ApplicationStatus);
+        Assert.Equal(2, app.ChildrenOnApplication);
         Assert.NotNull(response.AddressOnFile);
         Assert.Equal("123 Main St", response.AddressOnFile.StreetAddress1);
         Assert.Equal("Apt 4B", response.AddressOnFile.StreetAddress2);

@@ -35,7 +35,9 @@ public class MockHouseholdRepositoryTests
         // Assert
         Assert.NotNull(result);
         Assert.Equal(email, result.Email);
-        Assert.Equal(ApplicationStatus.Approved, result.ApplicationStatus);
+        Assert.NotNull(result.Applications);
+        Assert.NotEmpty(result.Applications);
+        Assert.Equal(ApplicationStatus.Approved, result.Applications.First().ApplicationStatus);
     }
 
     [Fact]
@@ -173,13 +175,16 @@ public class MockHouseholdRepositoryTests
 
         // Assert
         Assert.NotNull(result);
-        Assert.Equal(ApplicationStatus.Approved, result.ApplicationStatus);
-        Assert.Equal(2, result.Children.Count);
-        Assert.Equal("John", result.Children[0].FirstName);
-        Assert.Equal("Doe", result.Children[0].LastName);
-        Assert.NotNull(result.BenefitIssueDate);
-        Assert.NotNull(result.BenefitExpirationDate);
-        Assert.Equal("1234", result.Last4DigitsOfCard);
+        Assert.NotNull(result.Applications);
+        Assert.NotEmpty(result.Applications);
+        var app = result.Applications.First();
+        Assert.Equal(ApplicationStatus.Approved, app.ApplicationStatus);
+        Assert.Equal(2, app.Children.Count);
+        Assert.Equal("John", app.Children[0].FirstName);
+        Assert.Equal("Doe", app.Children[0].LastName);
+        Assert.NotNull(app.BenefitIssueDate);
+        Assert.NotNull(app.BenefitExpirationDate);
+        Assert.Equal("1234", app.Last4DigitsOfCard);
         Assert.NotNull(result.AddressOnFile);
         Assert.Equal("123 Main Street", result.AddressOnFile.StreetAddress1);
     }
@@ -195,10 +200,13 @@ public class MockHouseholdRepositoryTests
 
         // Assert
         Assert.NotNull(result);
-        Assert.Equal(ApplicationStatus.Pending, result.ApplicationStatus);
-        Assert.Single(result.Children);
-        Assert.Equal("Alice", result.Children[0].FirstName);
-        Assert.Equal("Smith", result.Children[0].LastName);
+        Assert.NotNull(result.Applications);
+        Assert.NotEmpty(result.Applications);
+        var app = result.Applications.First();
+        Assert.Equal(ApplicationStatus.Pending, app.ApplicationStatus);
+        Assert.Single(app.Children);
+        Assert.Equal("Alice", app.Children[0].FirstName);
+        Assert.Equal("Smith", app.Children[0].LastName);
     }
 
     [Fact]
@@ -212,9 +220,12 @@ public class MockHouseholdRepositoryTests
 
         // Assert
         Assert.NotNull(result);
-        Assert.Equal(4, result.Children.Count);
-        Assert.Equal("Michael", result.Children[0].FirstName);
-        Assert.Equal("Brown", result.Children[0].LastName);
+        Assert.NotNull(result.Applications);
+        Assert.NotEmpty(result.Applications);
+        var allChildren = result.Applications.SelectMany(a => a.Children).ToList();
+        Assert.Equal(4, allChildren.Count);
+        Assert.Equal("Michael", allChildren[0].FirstName);
+        Assert.Equal("Brown", allChildren[0].LastName);
     }
 
     [Fact]
@@ -225,8 +236,10 @@ public class MockHouseholdRepositoryTests
         {
             Email = "new@example.com",
             Phone = "555-0000",
-            ApplicationStatus = ApplicationStatus.Pending,
-            Children = new List<Child>()
+            Applications = new List<Application>
+            {
+                new Application { ApplicationStatus = ApplicationStatus.Pending }
+            }
         };
 
         // Act
@@ -248,8 +261,10 @@ public class MockHouseholdRepositoryTests
         {
             Email = email,
             Phone = "555-9999",
-            ApplicationStatus = ApplicationStatus.Denied,
-            Children = new List<Child>()
+            Applications = new List<Application>
+            {
+                new Application { ApplicationStatus = ApplicationStatus.Denied }
+            }
         };
 
         // Act
@@ -259,7 +274,9 @@ public class MockHouseholdRepositoryTests
         var result = await _repository.GetHouseholdByEmailAsync(email);
         Assert.NotNull(result);
         Assert.Equal("555-9999", result.Phone);
-        Assert.Equal(ApplicationStatus.Denied, result.ApplicationStatus);
+        Assert.NotNull(result.Applications);
+        Assert.NotEmpty(result.Applications);
+        Assert.Equal(ApplicationStatus.Denied, result.Applications.First().ApplicationStatus);
     }
 
     [Fact]
@@ -269,8 +286,10 @@ public class MockHouseholdRepositoryTests
         var household = new HouseholdData
         {
             Email = "  NEW@EXAMPLE.COM  ",
-            ApplicationStatus = ApplicationStatus.Pending,
-            Children = new List<Child>()
+            Applications = new List<Application>
+            {
+                new Application { ApplicationStatus = ApplicationStatus.Pending }
+            }
         };
 
         // Act
@@ -296,8 +315,10 @@ public class MockHouseholdRepositoryTests
         var household = new HouseholdData
         {
             Email = null!,
-            ApplicationStatus = ApplicationStatus.Pending,
-            Children = new List<Child>()
+            Applications = new List<Application>
+            {
+                new Application { ApplicationStatus = ApplicationStatus.Pending }
+            }
         };
 
         // Act & Assert
@@ -312,8 +333,10 @@ public class MockHouseholdRepositoryTests
         var household = new HouseholdData
         {
             Email = string.Empty,
-            ApplicationStatus = ApplicationStatus.Pending,
-            Children = new List<Child>()
+            Applications = new List<Application>
+            {
+                new Application { ApplicationStatus = ApplicationStatus.Pending }
+            }
         };
 
         // Act & Assert
@@ -332,9 +355,12 @@ public class MockHouseholdRepositoryTests
 
         // Assert
         Assert.NotNull(result);
-        Assert.Equal(ApplicationStatus.Pending, result.ApplicationStatus);
+        Assert.NotNull(result.Applications);
+        Assert.NotEmpty(result.Applications);
+        Assert.Equal(ApplicationStatus.Pending, result.Applications.First().ApplicationStatus);
         Assert.Null(result.Phone);
-        Assert.Empty(result.Children);
+        var allChildren = result.Applications.SelectMany(a => a.Children).ToList();
+        Assert.Empty(allChildren);
     }
 
     [Fact]
@@ -348,8 +374,11 @@ public class MockHouseholdRepositoryTests
 
         // Assert
         Assert.NotNull(result);
-        Assert.NotNull(result.BenefitExpirationDate);
-        Assert.True(result.BenefitExpirationDate < _timeProvider.GetUtcNow().UtcDateTime);
-        Assert.Equal(ApplicationStatus.Approved, result.ApplicationStatus);
+        Assert.NotNull(result.Applications);
+        Assert.NotEmpty(result.Applications);
+        var app = result.Applications.First();
+        Assert.NotNull(app.BenefitExpirationDate);
+        Assert.True(app.BenefitExpirationDate < _timeProvider.GetUtcNow().UtcDateTime);
+        Assert.Equal(ApplicationStatus.Approved, app.ApplicationStatus);
     }
 }

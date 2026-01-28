@@ -1,6 +1,7 @@
 using SEBT.Portal.Core.Models.Auth;
 using SEBT.Portal.Core.Utilities;
 using SEBT.Portal.Infrastructure.Data.Entities;
+using SeedingUserFactory = SEBT.Portal.Infrastructure.Seeding.Helpers.UserFactory;
 using TestUtilitiesUserFactory = SEBT.Portal.TestUtilities.Helpers.UserFactory;
 
 namespace SEBT.Portal.Infrastructure.Helpers;

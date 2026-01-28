@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using SEBT.Portal.Core.Models.Auth;
+using SEBT.Portal.Core.Services;
 using SEBT.Portal.Infrastructure.Data;
 using SEBT.Portal.Infrastructure.Data.Entities;
 using SEBT.Portal.Infrastructure.Repositories;
@@ -27,8 +28,8 @@ public class DatabaseSeederTests : IClassFixture<SqlServerTestFixture>
 
     private static DatabaseSeeder CreateSeeder(PortalDbContext context)
     {
-        var userRepository = new DatabaseUserRepository(context);
-        return new DatabaseSeeder(userRepository, context);
+        IDataSeeder dataSeeder = new DataSeeder(context);
+        return new DatabaseSeeder(dataSeeder);
     }
 
     /// <summary>

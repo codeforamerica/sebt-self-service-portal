@@ -32,12 +32,17 @@ public class HouseholdFactoryTests
         var household = HouseholdFactory.CreateHouseholdData(h =>
         {
             h.Email = customEmail;
-            h.ApplicationStatus = customStatus;
+            if (h.Applications.Any())
+            {
+                h.Applications.First().ApplicationStatus = customStatus;
+            }
         });
 
         // Assert
         Assert.Equal(customEmail, household.Email);
-        Assert.Equal(customStatus, household.ApplicationStatus);
+        Assert.NotNull(household.Applications);
+        Assert.NotEmpty(household.Applications);
+        Assert.Equal(customStatus, household.Applications.First().ApplicationStatus);
     }
 
     [Fact]
@@ -91,7 +96,9 @@ public class HouseholdFactoryTests
         var household = HouseholdFactory.CreateHouseholdDataWithStatus(ApplicationStatus.Approved);
 
         // Assert
-        Assert.Equal(ApplicationStatus.Approved, household.ApplicationStatus);
+        Assert.NotNull(household.Applications);
+        Assert.NotEmpty(household.Applications);
+        Assert.Equal(ApplicationStatus.Approved, household.Applications.First().ApplicationStatus);
     }
 
     [Fact]
@@ -101,12 +108,15 @@ public class HouseholdFactoryTests
         var household = HouseholdFactory.CreateHouseholdDataWithStatus(ApplicationStatus.Approved);
 
         // Assert
-        Assert.Equal(ApplicationStatus.Approved, household.ApplicationStatus);
-        Assert.NotNull(household.BenefitIssueDate);
-        Assert.NotNull(household.BenefitExpirationDate);
-        Assert.NotNull(household.Last4DigitsOfCard);
-        Assert.NotNull(household.CaseNumber);
-        Assert.True(household.BenefitExpirationDate > household.BenefitIssueDate);
+        Assert.NotNull(household.Applications);
+        Assert.NotEmpty(household.Applications);
+        var app = household.Applications.First();
+        Assert.Equal(ApplicationStatus.Approved, app.ApplicationStatus);
+        Assert.NotNull(app.BenefitIssueDate);
+        Assert.NotNull(app.BenefitExpirationDate);
+        Assert.NotNull(app.Last4DigitsOfCard);
+        Assert.NotNull(app.CaseNumber);
+        Assert.True(app.BenefitExpirationDate > app.BenefitIssueDate);
     }
 
     [Fact]
@@ -116,12 +126,15 @@ public class HouseholdFactoryTests
         var household = HouseholdFactory.CreateHouseholdDataWithStatus(ApplicationStatus.Unknown);
 
         // Assert
-        Assert.Equal(ApplicationStatus.Unknown, household.ApplicationStatus);
-        Assert.Null(household.BenefitIssueDate);
-        Assert.Null(household.BenefitExpirationDate);
-        Assert.Null(household.Last4DigitsOfCard);
-        Assert.Null(household.CaseNumber);
-        Assert.Null(household.ApplicationNumber);
+        Assert.NotNull(household.Applications);
+        Assert.NotEmpty(household.Applications);
+        var app = household.Applications.First();
+        Assert.Equal(ApplicationStatus.Unknown, app.ApplicationStatus);
+        Assert.Null(app.BenefitIssueDate);
+        Assert.Null(app.BenefitExpirationDate);
+        Assert.Null(app.Last4DigitsOfCard);
+        Assert.Null(app.CaseNumber);
+        Assert.Null(app.ApplicationNumber);
     }
 
     [Fact]
@@ -149,9 +162,12 @@ public class HouseholdFactoryTests
         var household = HouseholdFactory.CreateHouseholdData();
 
         // Assert
-        Assert.NotNull(household.Children);
-        Assert.True(household.Children.Count >= 0);
-        Assert.True(household.Children.Count <= 4); // Based on factory rules
+        Assert.NotNull(household.Applications);
+        Assert.NotEmpty(household.Applications);
+        var totalChildren = household.Applications.SelectMany(a => a.Children).ToList();
+        Assert.NotNull(totalChildren);
+        Assert.True(totalChildren.Count >= 0);
+        Assert.True(totalChildren.Count <= 8); // Up to 2 applications * 4 children each
     }
 
     [Fact]
@@ -161,7 +177,8 @@ public class HouseholdFactoryTests
         var household = HouseholdFactory.CreateHouseholdData();
 
         // Assert
-        foreach (var child in household.Children)
+        var allChildren = household.Applications.SelectMany(a => a.Children).ToList();
+        foreach (var child in allChildren)
         {
             Assert.NotEmpty(child.FirstName);
             Assert.NotEmpty(child.LastName);
@@ -219,8 +236,11 @@ public class HouseholdFactoryTests
         var household = HouseholdFactory.CreateHouseholdDataWithStatus(ApplicationStatus.Approved);
 
         // Assert
-        Assert.NotNull(household.ApplicationNumber);
-        Assert.StartsWith("APP-", household.ApplicationNumber);
+        Assert.NotNull(household.Applications);
+        Assert.NotEmpty(household.Applications);
+        var app = household.Applications.First();
+        Assert.NotNull(app.ApplicationNumber);
+        Assert.StartsWith("APP-", app.ApplicationNumber);
     }
 
     [Fact]
@@ -244,8 +264,11 @@ public class HouseholdFactoryTests
         var household = HouseholdFactory.CreateHouseholdDataWithStatus(ApplicationStatus.Denied);
 
         // Assert
-        Assert.NotNull(household.CaseNumber);
-        Assert.StartsWith("CASE-", household.CaseNumber);
+        Assert.NotNull(household.Applications);
+        Assert.NotEmpty(household.Applications);
+        var app = household.Applications.First();
+        Assert.NotNull(app.CaseNumber);
+        Assert.StartsWith("CASE-", app.CaseNumber);
     }
 
     [Fact]
@@ -255,8 +278,9 @@ public class HouseholdFactoryTests
         var household = HouseholdFactory.CreateHouseholdDataWithStatus(ApplicationStatus.Unknown);
 
         // Assert
-        Assert.Null(household.CaseNumber);
-        Assert.Null(household.ApplicationNumber);
+        var app = household.Applications.First();
+        Assert.Null(app.CaseNumber);
+        Assert.Null(app.ApplicationNumber);
     }
 
     [Fact]
@@ -266,6 +290,9 @@ public class HouseholdFactoryTests
         var household = HouseholdFactory.CreateHouseholdDataWithStatus(ApplicationStatus.Pending);
 
         // Assert
-        Assert.Null(household.CaseNumber);
+        Assert.NotNull(household.Applications);
+        Assert.NotEmpty(household.Applications);
+        var app = household.Applications.First();
+        Assert.Null(app.CaseNumber);
     }
 }

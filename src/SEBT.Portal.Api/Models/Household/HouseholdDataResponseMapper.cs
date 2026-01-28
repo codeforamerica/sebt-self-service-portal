@@ -8,7 +8,7 @@ namespace SEBT.Portal.Api.Models.Household;
 public static class HouseholdDataResponseMapper
 {
     /// <summary>
-    /// Maps domain HouseholdData (flat model) to the API response model.
+    /// Maps domain HouseholdData to the API response model.
     /// </summary>
     public static HouseholdDataResponse ToResponse(this HouseholdData domain)
     {
@@ -16,14 +16,14 @@ public static class HouseholdDataResponseMapper
         {
             Email = domain.Email,
             Phone = domain.Phone,
-            Applications = new[] { MapToApplicationResponse(domain) },
+            Applications = domain.Applications.Select(MapToApplicationResponse).ToList(),
             AddressOnFile = domain.AddressOnFile?.ToResponse(),
             UserProfile = domain.UserProfile?.ToResponse(),
             BenefitIssuanceType = domain.BenefitIssuanceType
         };
     }
 
-    private static ApplicationResponse MapToApplicationResponse(HouseholdData domain)
+    private static ApplicationResponse MapToApplicationResponse(Application domain)
     {
         return new ApplicationResponse
         {
@@ -33,14 +33,14 @@ public static class HouseholdDataResponseMapper
             BenefitIssueDate = domain.BenefitIssueDate,
             BenefitExpirationDate = domain.BenefitExpirationDate,
             Last4DigitsOfCard = domain.Last4DigitsOfCard,
-            CardStatus = CardStatus.Requested,
-            CardRequestedAt = null,
-            CardMailedAt = null,
-            CardActivatedAt = null,
-            CardDeactivatedAt = null,
+            CardStatus = domain.CardStatus,
+            CardRequestedAt = domain.CardRequestedAt,
+            CardMailedAt = domain.CardMailedAt,
+            CardActivatedAt = domain.CardActivatedAt,
+            CardDeactivatedAt = domain.CardDeactivatedAt,
             Children = domain.Children.Select(ToResponse).ToList(),
             ChildrenOnApplication = domain.ChildrenOnApplication,
-            IssuanceType = (IssuanceType)domain.BenefitIssuanceType
+            IssuanceType = domain.IssuanceType
         };
     }
 
