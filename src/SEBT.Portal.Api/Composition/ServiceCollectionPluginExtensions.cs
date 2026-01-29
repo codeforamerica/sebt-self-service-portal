@@ -6,6 +6,8 @@ using SEBT.Portal.StatesPlugins.Interfaces;
 
 namespace SEBT.Portal.Api.Composition;
 
+using Serilog;
+
 internal static class ServiceCollectionPluginExtensions
 {
     public static IServiceCollection AddPlugins(this IServiceCollection services)
@@ -17,9 +19,30 @@ internal static class ServiceCollectionPluginExtensions
                 .GetSection("PluginAssemblyPaths")
                 .Get<string[]>()
                 ?? throw new InvalidOperationException("PluginAssemblyPaths missing from configuration.");
+            Log.Information("Loading plugins from: {PluginAssemblyPaths}", pluginAssemblyPaths);
             var containerConfiguration = CreateContainerConfiguration(pluginAssemblyPaths);
             var container = containerConfiguration.CreateContainer();
             return container;
+        });
+
+        // Register plugin services with DI so they can be constructor-injected
+        // These factories resolve from MEF at runtime
+        services.AddSingleton<IStateAuthenticationService>(sp =>
+        {
+            var context = sp.GetRequiredService<CompositionContext>();
+            return context.GetExport<IStateAuthenticationService>();
+        });
+
+        services.AddSingleton<IStateMetadataService>(sp =>
+        {
+            var context = sp.GetRequiredService<CompositionContext>();
+            return context.GetExport<IStateMetadataService>();
+        });
+
+        services.AddSingleton<ISummerEbtCaseService>(sp =>
+        {
+            var context = sp.GetRequiredService<CompositionContext>();
+            return context.GetExport<ISummerEbtCaseService>();
         });
 
         var defaultControllerActivatorDescriptor = services
