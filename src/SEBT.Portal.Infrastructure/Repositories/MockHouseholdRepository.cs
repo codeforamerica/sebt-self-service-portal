@@ -307,25 +307,43 @@ public class MockHouseholdRepository : IHouseholdRepository
         unknown.Email = "unknown@example.com";
         _households["unknown@example.com"] = unknown;
 
-        // Scenario 12: Single household (flat model has one application view)
+        // Scenario 12: Household with multiple applications (approved and pending)
         var multipleApps = HouseholdFactory.CreateHouseholdDataWithStatus(ApplicationStatus.Approved, h =>
         {
             h.BenefitIssuanceType = BenefitIssuanceType.SnapEbtCard;
             var faker = new Faker();
-            var app = h.Applications.FirstOrDefault();
-            if (app != null)
+            var approvedApp = new Application
             {
-                app.ApplicationNumber = $"APP-{now.AddDays(-30):yyyy-MM}-{faker.Random.Number(100000, 999999)}";
-                app.CaseNumber = $"CASE-{faker.Random.Number(100000, 999999)}";
-                app.BenefitIssueDate = now.AddDays(-30);
-                app.BenefitExpirationDate = now.AddDays(60);
-                app.Last4DigitsOfCard = "5678";
-                app.Children = new List<Child>
+                ApplicationNumber = $"APP-{now.AddDays(-30):yyyy-MM}-{faker.Random.Number(100000, 999999)}",
+                CaseNumber = $"CASE-{faker.Random.Number(100000, 999999)}",
+                ApplicationStatus = ApplicationStatus.Approved,
+                BenefitIssueDate = now.AddDays(-30),
+                BenefitExpirationDate = now.AddDays(60),
+                Last4DigitsOfCard = "5678",
+                CardStatus = CardStatus.Active,
+                CardRequestedAt = now.AddDays(-60),
+                CardMailedAt = now.AddDays(-45),
+                CardActivatedAt = now.AddDays(-40),
+                Children = new List<Child>
                 {
                     new Child { FirstName = "Emma", LastName = "Wilson" },
                     new Child { FirstName = "Lucas", LastName = "Wilson" }
-                };
-            }
+                }
+            };
+
+            var pendingApp = new Application
+            {
+                ApplicationNumber = $"APP-{now.AddDays(-10):yyyy-MM}-{faker.Random.Number(100000, 999999)}",
+                ApplicationStatus = ApplicationStatus.Pending,
+                CardStatus = CardStatus.Requested,
+                CardRequestedAt = now.AddDays(-10),
+                Children = new List<Child>
+                {
+                    new Child { FirstName = "Olivia", LastName = "Wilson" }
+                }
+            };
+
+            h.Applications = new List<Application> { approvedApp, pendingApp };
             h.AddressOnFile = new Address
             {
                 StreetAddress1 = "789 Multiple Apps Street",

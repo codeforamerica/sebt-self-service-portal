@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Time.Testing;
 using SEBT.Portal.Core.Models.Auth;
 using SEBT.Portal.Core.Services;
 using SEBT.Portal.Infrastructure.Data;
@@ -26,10 +27,13 @@ public class DatabaseSeederTests : IClassFixture<SqlServerTestFixture>
         return _fixture.CreateContext();
     }
 
-    private static DatabaseSeeder CreateSeeder(PortalDbContext context)
+    private static readonly DateTimeOffset FixedSeedTime = new(2026, 1, 15, 12, 0, 0, TimeSpan.Zero);
+
+    private DatabaseSeeder CreateSeeder(PortalDbContext context)
     {
-        IDataSeeder dataSeeder = new DataSeeder(context);
-        return new DatabaseSeeder(dataSeeder);
+        var dataSeeder = new DataSeeder(context);
+        var timeProvider = new FakeTimeProvider(FixedSeedTime);
+        return new DatabaseSeeder(dataSeeder, timeProvider: timeProvider);
     }
 
     /// <summary>
@@ -373,7 +377,7 @@ public class DatabaseSeederTests : IClassFixture<SqlServerTestFixture>
     }
 
     [Fact]
-    public async Task ClearSeededDataAsync_WhenSeededUsersExist_ShouldDeleteAllUsers()
+    public async Task ClearSeededDataAsync_WhenSeededUsersExist_ShouldDeleteOnlySeededUsers()
     {
         // Arrange
         using var context = CreateContext();
@@ -394,9 +398,10 @@ public class DatabaseSeederTests : IClassFixture<SqlServerTestFixture>
         // Act
         await seeder.ClearSeededDataAsync();
 
-        // Assert - All users are deleted (seeded and production)
+        // Assert - Only production user should remain
         var users = await context.Users.ToListAsync();
-        Assert.Empty(users);
+        Assert.Single(users);
+        Assert.Equal("production@real-domain.com", users[0].Email);
     }
 
     [Fact]
@@ -418,9 +423,10 @@ public class DatabaseSeederTests : IClassFixture<SqlServerTestFixture>
         // Act
         await seeder.ClearSeededDataAsync();
 
-        // Assert - All users are deleted
+        // Assert - Production user should still exist
         var users = await context.Users.ToListAsync();
-        Assert.Empty(users);
+        Assert.Single(users);
+        Assert.Equal("production@real-domain.com", users[0].Email);
     }
 
     [Fact]
@@ -462,12 +468,15 @@ public class DatabaseSeederTests : IClassFixture<SqlServerTestFixture>
         // Act
         await seeder.ClearSeededDataAsync();
 
-        // Assert - All opt-ins and users are deleted
+        // Assert - Only production opt-in should remain
         var optIns = await context.UserOptIns.ToListAsync();
-        Assert.Empty(optIns);
+        Assert.Single(optIns);
+        Assert.Equal("production@real-domain.com", optIns[0].Email);
 
+        // Verify seeded users were deleted
         var users = await context.Users.ToListAsync();
-        Assert.Empty(users);
+        Assert.Single(users);
+        Assert.Equal("production@real-domain.com", users[0].Email);
     }
 
     [Fact]
@@ -486,7 +495,7 @@ public class DatabaseSeederTests : IClassFixture<SqlServerTestFixture>
     }
 
     [Fact]
-    public async Task ClearSeededDataAsync_ShouldDeleteAllUsers()
+    public async Task ClearSeededDataAsync_ShouldOnlyDeleteUsersWithExampleComDomain()
     {
         // Arrange
         using var context = CreateContext();
@@ -516,9 +525,14 @@ public class DatabaseSeederTests : IClassFixture<SqlServerTestFixture>
         // Act
         await seeder.ClearSeededDataAsync();
 
-        // Assert - All users are deleted
+        // Assert - Only production users should remain
         var users = await context.Users.ToListAsync();
-        Assert.Empty(users);
+        Assert.Equal(2, users.Count);
+        var emails = users.Select(u => u.Email).ToHashSet();
+        Assert.Contains("user1@production.com", emails);
+        Assert.Contains("user2@another-domain.org", emails);
+        Assert.DoesNotContain("test1@example.com", emails);
+        Assert.DoesNotContain("test2@example.com", emails);
     }
 
     [Fact]
