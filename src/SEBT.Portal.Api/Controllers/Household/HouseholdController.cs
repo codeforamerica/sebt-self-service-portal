@@ -48,7 +48,7 @@ public class HouseholdController(ILogger<HouseholdController> logger) : Controll
 
         // Normalize email to ensure consistency with repository
         var normalizedEmail = EmailNormalizer.Normalize(email);
-        logger.LogInformation("Household data request received for email {Email}", normalizedEmail);
+        logger.LogDebug("Household data request received for email {Email}", normalizedEmail);
 
         // Check ID verification status from JWT claims
         var idProofingStatus = GetIdProofingStatus();
@@ -56,7 +56,7 @@ public class HouseholdController(ILogger<HouseholdController> logger) : Controll
 
         if (includeAddress)
         {
-            logger.LogInformation("Including address data for ID verified user {Email}", normalizedEmail);
+            logger.LogDebug("Including address data for ID verified user {Email}", normalizedEmail);
         }
 
         var householdData = await repository.GetHouseholdByEmailAsync(
@@ -66,11 +66,11 @@ public class HouseholdController(ILogger<HouseholdController> logger) : Controll
 
         if (householdData == null)
         {
-            logger.LogWarning("Household data not found for email {Email}", normalizedEmail);
+            logger.LogWarning("Household data not found for authenticated user");
             return NotFound(new ErrorResponse("Household data not found."));
         }
 
-        logger.LogInformation("Household data retrieved successfully for email {Email}", normalizedEmail);
+        logger.LogDebug("Household data retrieved successfully for email {Email}", normalizedEmail);
         return Ok(householdData.ToResponse());
     }
 
