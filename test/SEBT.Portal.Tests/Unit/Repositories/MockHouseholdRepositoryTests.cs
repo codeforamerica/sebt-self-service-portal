@@ -1,4 +1,5 @@
 using Microsoft.Extensions.Logging.Abstractions;
+using Microsoft.Extensions.Time.Testing;
 using SEBT.Portal.Core.Models.Household;
 using SEBT.Portal.Core.Repositories;
 using SEBT.Portal.Infrastructure.Repositories;
@@ -10,12 +11,16 @@ namespace SEBT.Portal.Tests.Unit.Repositories;
 /// </summary>
 public class MockHouseholdRepositoryTests
 {
+    private static readonly DateTimeOffset FixedSeedTime = new(2026, 1, 15, 12, 0, 0, TimeSpan.Zero);
+
     private readonly MockHouseholdRepository _repository;
+    private readonly FakeTimeProvider _timeProvider;
 
     public MockHouseholdRepositoryTests()
     {
         var logger = NullLogger<MockHouseholdRepository>.Instance;
-        _repository = new MockHouseholdRepository(logger);
+        _timeProvider = new FakeTimeProvider(FixedSeedTime);
+        _repository = new MockHouseholdRepository(logger, _timeProvider);
     }
 
     [Fact]
@@ -372,7 +377,7 @@ public class MockHouseholdRepositoryTests
         Assert.NotEmpty(result.Applications);
         var app = result.Applications.First();
         Assert.NotNull(app.BenefitExpirationDate);
-        Assert.True(app.BenefitExpirationDate < DateTime.UtcNow);
+        Assert.True(app.BenefitExpirationDate < _timeProvider.GetUtcNow().UtcDateTime);
         Assert.Equal(ApplicationStatus.Approved, app.ApplicationStatus);
     }
 }

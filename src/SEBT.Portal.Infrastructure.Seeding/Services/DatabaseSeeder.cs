@@ -14,6 +14,7 @@ public class DatabaseSeeder : Core.Services.IDatabaseSeeder
 {
     private readonly IDataSeeder _dataSeeder;
     private readonly ILogger<DatabaseSeeder>? _logger;
+    private readonly TimeProvider _timeProvider;
 
     private const int DaysSinceIdProofingCompleted = -30;
     private const int DaysUntilIdProofingExpires = 335;
@@ -21,10 +22,11 @@ public class DatabaseSeeder : Core.Services.IDatabaseSeeder
     private const int DaysSinceBasicIdProofingCompleted = -10;
     private const int DaysUntilBasicIdProofingExpires = 355;
 
-    public DatabaseSeeder(IDataSeeder dataSeeder, ILogger<DatabaseSeeder>? logger = null)
+    public DatabaseSeeder(IDataSeeder dataSeeder, ILogger<DatabaseSeeder>? logger = null, TimeProvider? timeProvider = null)
     {
         _dataSeeder = dataSeeder ?? throw new ArgumentNullException(nameof(dataSeeder));
         _logger = logger;
+        _timeProvider = timeProvider ?? TimeProvider.System;
     }
 
     /// <summary>
@@ -52,8 +54,9 @@ public class DatabaseSeeder : Core.Services.IDatabaseSeeder
     /// <summary>
     /// Creates the standard set of test users for seeding.
     /// </summary>
+    /// <param name="now">The current time (from TimeProvider) for computing relative dates.</param>
     /// <returns>An array of User instances configured for testing.</returns>
-    private static User[] CreateTestUsers()
+    private static User[] CreateTestUsers(DateTime now)
     {
         return new[]
         {
@@ -61,9 +64,9 @@ public class DatabaseSeeder : Core.Services.IDatabaseSeeder
             {
                 u.Email = "co-loaded@example.com";
                 u.IdProofingStatus = IdProofingStatus.Completed;
-                u.CoLoadedLastUpdated = DateTime.UtcNow.AddDays(-5);
-                u.IdProofingCompletedAt = DateTime.UtcNow.AddDays(-10);
-                u.IdProofingExpiresAt = DateTime.UtcNow.AddDays(355);
+                u.CoLoadedLastUpdated = now.AddDays(-5);
+                u.IdProofingCompletedAt = now.AddDays(-10);
+                u.IdProofingExpiresAt = now.AddDays(355);
             }),
             UserFactory.CreateNonCoLoadedUser(u =>
             {
@@ -121,7 +124,7 @@ public class DatabaseSeeder : Core.Services.IDatabaseSeeder
     /// <param name="cancellationToken">A token to cancel the operation.</param>
     public async Task SeedTestUsersAsync(bool useMockHouseholdData, CancellationToken cancellationToken = default)
     {
-        var now = DateTime.UtcNow;
+        var now = _timeProvider.GetUtcNow().UtcDateTime;
         var seededCount = 0;
 
         if (useMockHouseholdData)
@@ -188,7 +191,7 @@ public class DatabaseSeeder : Core.Services.IDatabaseSeeder
         }
         else
         {
-            var testUsers = CreateTestUsers();
+            var testUsers = CreateTestUsers(now);
             var userEmails = testUsers.Select(u => u.Email).ToList();
             var existingEmails = await _dataSeeder.GetExistingUserEmailsAsync(userEmails, cancellationToken);
 
@@ -227,7 +230,7 @@ public class DatabaseSeeder : Core.Services.IDatabaseSeeder
     /// <param name="useMockHouseholdData">Whether to seed users corresponding to household mock data.</param>
     public void SeedTestUsers(bool useMockHouseholdData)
     {
-        var now = DateTime.UtcNow;
+        var now = _timeProvider.GetUtcNow().UtcDateTime;
         var seededCount = 0;
 
         if (useMockHouseholdData)
@@ -294,7 +297,7 @@ public class DatabaseSeeder : Core.Services.IDatabaseSeeder
         }
         else
         {
-            var testUsers = CreateTestUsers();
+            var testUsers = CreateTestUsers(now);
             var userEmails = testUsers.Select(u => u.Email).ToList();
             var existingEmails = _dataSeeder.GetExistingUserEmails(userEmails);
 

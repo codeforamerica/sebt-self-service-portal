@@ -16,10 +16,12 @@ public class MockHouseholdRepository : IHouseholdRepository
 {
     private readonly ConcurrentDictionary<string, HouseholdData> _households;
     private readonly ILogger<MockHouseholdRepository> _logger;
+    private readonly TimeProvider _timeProvider;
 
-    public MockHouseholdRepository(ILogger<MockHouseholdRepository> logger)
+    public MockHouseholdRepository(ILogger<MockHouseholdRepository> logger, TimeProvider? timeProvider = null)
     {
         _logger = logger;
+        _timeProvider = timeProvider ?? TimeProvider.System;
         _households = new ConcurrentDictionary<string, HouseholdData>();
         SeedMockData();
     }
@@ -84,6 +86,8 @@ public class MockHouseholdRepository : IHouseholdRepository
 
     private void SeedMockData()
     {
+        var now = _timeProvider.GetUtcNow().UtcDateTime;
+
         // Use a fixed seed for deterministic data generation across runs
         HouseholdFactory.SetSeed(12345);
 
@@ -93,8 +97,8 @@ public class MockHouseholdRepository : IHouseholdRepository
             var app = h.Applications.FirstOrDefault();
             if (app != null)
             {
-                app.BenefitIssueDate = DateTime.UtcNow.AddDays(-20);
-                app.BenefitExpirationDate = DateTime.UtcNow.AddDays(70);
+                app.BenefitIssueDate = now.AddDays(-20);
+                app.BenefitExpirationDate = now.AddDays(70);
                 app.Last4DigitsOfCard = "0000";
                 // Set specific children names for test
                 app.Children = new List<Child>
@@ -121,8 +125,8 @@ public class MockHouseholdRepository : IHouseholdRepository
             var app = h.Applications.FirstOrDefault();
             if (app != null)
             {
-                app.BenefitIssueDate = DateTime.UtcNow.AddDays(-30);
-                app.BenefitExpirationDate = DateTime.UtcNow.AddDays(60);
+                app.BenefitIssueDate = now.AddDays(-30);
+                app.BenefitExpirationDate = now.AddDays(60);
                 app.Last4DigitsOfCard = "1234"; // Specific value for test
                 // Set specific children names for test
                 app.Children = new List<Child>
@@ -216,8 +220,8 @@ public class MockHouseholdRepository : IHouseholdRepository
             var app = h.Applications.FirstOrDefault();
             if (app != null)
             {
-                app.BenefitIssueDate = DateTime.UtcNow.AddDays(-15);
-                app.BenefitExpirationDate = DateTime.UtcNow.AddDays(75);
+                app.BenefitIssueDate = now.AddDays(-15);
+                app.BenefitExpirationDate = now.AddDays(75);
                 // Use Bogus to generate child name
                 var childFaker = new Faker<Child>()
                     .RuleFor(c => c.FirstName, f => f.Name.FirstName())
@@ -234,8 +238,8 @@ public class MockHouseholdRepository : IHouseholdRepository
             var app = h.Applications.FirstOrDefault();
             if (app != null)
             {
-                app.BenefitIssueDate = DateTime.UtcNow.AddDays(-45);
-                app.BenefitExpirationDate = DateTime.UtcNow.AddDays(45);
+                app.BenefitIssueDate = now.AddDays(-45);
+                app.BenefitExpirationDate = now.AddDays(45);
                 // Set specific children names for test
                 app.Children = new List<Child>
                 {
@@ -268,8 +272,8 @@ public class MockHouseholdRepository : IHouseholdRepository
             var app = h.Applications.FirstOrDefault();
             if (app != null)
             {
-                app.BenefitIssueDate = DateTime.UtcNow.AddDays(-120);
-                app.BenefitExpirationDate = DateTime.UtcNow.AddDays(-10); // Expired
+                app.BenefitIssueDate = now.AddDays(-120);
+                app.BenefitExpirationDate = now.AddDays(-10); // Expired
                 // Use Bogus to generate child name
                 var childFaker = new Faker<Child>()
                     .RuleFor(c => c.FirstName, f => f.Name.FirstName())
@@ -300,16 +304,16 @@ public class MockHouseholdRepository : IHouseholdRepository
             // Approved application
             var approvedApp = new Application
             {
-                ApplicationNumber = $"APP-{DateTime.UtcNow.AddDays(-30):yyyy-MM}-{faker.Random.Number(100000, 999999)}",
+                ApplicationNumber = $"APP-{now.AddDays(-30):yyyy-MM}-{faker.Random.Number(100000, 999999)}",
                 CaseNumber = $"CASE-{faker.Random.Number(100000, 999999)}",
                 ApplicationStatus = ApplicationStatus.Approved,
-                BenefitIssueDate = DateTime.UtcNow.AddDays(-30),
-                BenefitExpirationDate = DateTime.UtcNow.AddDays(60),
+                BenefitIssueDate = now.AddDays(-30),
+                BenefitExpirationDate = now.AddDays(60),
                 Last4DigitsOfCard = "5678",
                 CardStatus = CardStatus.Active,
-                CardRequestedAt = DateTime.UtcNow.AddDays(-60),
-                CardMailedAt = DateTime.UtcNow.AddDays(-45),
-                CardActivatedAt = DateTime.UtcNow.AddDays(-40),
+                CardRequestedAt = now.AddDays(-60),
+                CardMailedAt = now.AddDays(-45),
+                CardActivatedAt = now.AddDays(-40),
                 Children = new List<Child>
                 {
                     new Child { FirstName = "Emma", LastName = "Wilson" },
@@ -320,10 +324,10 @@ public class MockHouseholdRepository : IHouseholdRepository
             // Pending application
             var pendingApp = new Application
             {
-                ApplicationNumber = $"APP-{DateTime.UtcNow.AddDays(-10):yyyy-MM}-{faker.Random.Number(100000, 999999)}",
+                ApplicationNumber = $"APP-{now.AddDays(-10):yyyy-MM}-{faker.Random.Number(100000, 999999)}",
                 ApplicationStatus = ApplicationStatus.Pending,
                 CardStatus = CardStatus.Requested,
-                CardRequestedAt = DateTime.UtcNow.AddDays(-10),
+                CardRequestedAt = now.AddDays(-10),
                 Children = new List<Child>
                 {
                     new Child { FirstName = "Olivia", LastName = "Wilson" }

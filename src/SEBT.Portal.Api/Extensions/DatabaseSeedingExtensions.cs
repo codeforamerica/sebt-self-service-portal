@@ -53,7 +53,7 @@ public static class DatabaseSeedingExtensions
             var logger = portalContext.GetService<ILogger<DatabaseSeeder>>();
 
             var dataSeeder = new DataSeeder(portalContext);
-            var seeder = new DatabaseSeeder(dataSeeder, logger);
+            var seeder = new DatabaseSeeder(dataSeeder, logger, TimeProvider.System);
             seeder.SeedTestUsers(useMockHouseholdData);
         })
         .UseAsyncSeeding(async (context, _, cancellationToken) =>
@@ -80,7 +80,7 @@ public static class DatabaseSeedingExtensions
             var logger = portalContext.GetService<ILogger<DatabaseSeeder>>();
 
             var dataSeeder = new DataSeeder(portalContext);
-            var seeder = new DatabaseSeeder(dataSeeder, logger);
+            var seeder = new DatabaseSeeder(dataSeeder, logger, TimeProvider.System);
             await seeder.SeedTestUsersAsync(useMockHouseholdData, cancellationToken);
         });
     }

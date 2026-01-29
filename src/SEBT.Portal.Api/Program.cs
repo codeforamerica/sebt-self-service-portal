@@ -86,7 +86,8 @@ builder.Services.AddScoped<IDatabaseSeeder>(sp =>
 {
     var dataSeeder = sp.GetRequiredService<IDataSeeder>();
     var logger = sp.GetService<ILogger<DatabaseSeeder>>();
-    return new DatabaseSeeder(dataSeeder, logger);
+    var timeProvider = sp.GetRequiredService<TimeProvider>();
+    return new DatabaseSeeder(dataSeeder, logger, timeProvider);
 });
 
 // Configure JWT Authentication
