@@ -175,4 +175,10 @@ jobs:
             -var="state=${{ env.STATE }}" \
             -var="image_tag=${{ needs.build-push-and-deploy.outputs.image_tag }}" \
             -var="tfstate_bucket=${{ secrets.TFSTATE_BUCKET }}" \
-            -var="tfstate_table=${{ secrets.TFSTATE_TABLE }}"
+            -var="tfstate_table=${{ secrets.TFSTATE_TABLE }}" \
+            -var="jwt_secret_key=${{ secrets.JWT_SECRET_KEY }}" \
+            -var="enable_ses=${{ vars.ENABLE_SES || 'true' }}" \
+            -var="ses_sender_email=${{ vars.SES_SENDER_EMAIL }}" \
+            -var="enable_database=${{ vars.ENABLE_DATABASE || 'true' }}" \
+            -var="database_master_username=${{ vars.DATABASE_MASTER_USERNAME || 'admin' }}" \
+            -var="database_master_password=${{ secrets.DATABASE_MASTER_PASSWORD }}"
