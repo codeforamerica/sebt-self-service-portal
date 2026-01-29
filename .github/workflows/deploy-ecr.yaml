@@ -166,31 +166,6 @@ jobs:
             -backend-config="region=${{ env.AWS_REGION }}" \
             -backend-config="encrypt=true"
 
-      - name: Restore SES secret if scheduled for deletion
-        if: vars.ENABLE_SES != 'false'
-        run: |
-          SECRET_NAME="${{ env.APP_NAME }}-${{ env.STAGE }}-${{ env.STATE }}-ses-smtp-credentials"
-          DESC=$(aws secretsmanager describe-secret --secret-id "$SECRET_NAME" 2>/dev/null) || true
-          if echo "$DESC" | grep -q "DeletedDate"; then
-            echo "Restoring secret $SECRET_NAME (was scheduled for deletion)"
-            aws secretsmanager restore-secret --secret-id "$SECRET_NAME"
-          fi
-
-      - name: Import SES secret into state (if not already present)
-        if: vars.ENABLE_SES != 'false'
-        working-directory: tofu/app
-        continue-on-error: true
-        run: |
-          SECRET_NAME="${{ env.APP_NAME }}-${{ env.STAGE }}-${{ env.STATE }}-ses-smtp-credentials"
-          tofu import \
-            -var="aws_region=${{ env.AWS_REGION }}" \
-            -var="name=${{ env.APP_NAME }}" \
-            -var="stage=${{ env.STAGE }}" \
-            -var="state=${{ env.STATE }}" \
-            -var="enable_ses=true" \
-            'aws_secretsmanager_secret.ses_smtp[0]' \
-            "$SECRET_NAME"
-
       - name: OpenTofu Apply (app)
         working-directory: tofu/app
         run: |
