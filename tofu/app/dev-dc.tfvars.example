@@ -14,14 +14,21 @@ desired_count = 1
 
 # Database Configuration
 
-# enable_database = true
-# database_engine = "sqlserver-ex" # Options: "sqlserver-ex" (supports db.t3.micro+) or "sqlserver-se" (requires db.t3.xlarge+)
-# database_engine_version = "16.00.4215.2.v1" # SQL Server 2022
-# database_instance_class = "db.t3.micro" # For Express: db.t3.micro/small. For Standard: db.t3.xlarge+
-# database_allocated_storage = 20
-# database_name = "SebtPortal"
-# database_master_username = "admin"
-# database_master_password = "YourSecurePassword123!" # This is just for reference only.  Use a secrets managers for this
+enable_database = true
+database_engine = "sqlserver-ex" # Options: "sqlserver-ex" (supports db.t3.micro+) or "sqlserver-se" (requires db.t3.xlarge+)
+database_engine_version = "16.00.4215.2.v1" # SQL Server 2022
+database_instance_class = "db.t3.micro" # For Express: db.t3.micro/small. For Standard: db.t3.xlarge+
+database_allocated_storage = 20
+database_name = "SebtPortal"
+database_master_username = "admin"
+database_master_password = "YourSecurePassword123!" # This is just for reference only.  Use a secrets managers for this
+
+# JWT (min 32 characters)
+jwt_secret_key = "YourJwtSecretKeyAtLeast32CharactersLongForValidToken"
+
+# AWS Simple Email Service
+enable_ses       = true
+ses_sender_email = "noreply@your-verified-domain.gov" # Must be verified in SES first
 
 tags = {
   Owner = "sebt"
