@@ -84,9 +84,27 @@ public class HouseholdController(ILogger<HouseholdController> logger) : Controll
     /// <returns>The user's email address, or null if not found.</returns>
     private string? GetUserEmail()
     {
-        return User.FindFirst(ClaimTypes.Email)?.Value
-            ?? User.FindFirst(ClaimTypes.NameIdentifier)?.Value
-            ?? User.Identity?.Name;
+        var email = User.FindFirst(ClaimTypes.Email)?.Value;
+        if (!string.IsNullOrWhiteSpace(email))
+        {
+            return email;
+        }
+
+        var nameIdentifier = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+        if (!string.IsNullOrWhiteSpace(nameIdentifier))
+        {
+            logger.LogWarning("Using NameIdentifier claim as email fallback; NameIdentifier may not be an email address");
+            return nameIdentifier;
+        }
+
+        var identityName = User.Identity?.Name;
+        if (!string.IsNullOrWhiteSpace(identityName))
+        {
+            logger.LogWarning("Using User.Identity.Name as email fallback; this value may not be an email address");
+            return identityName;
+        }
+
+        return null;
     }
 
     /// <summary>
