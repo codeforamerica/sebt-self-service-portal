@@ -204,6 +204,7 @@ jobs:
 
   create-deployment-record:
     needs: apply-infra
+    if: needs.apply-infra.result == 'success'
     runs-on: ubuntu-latest
     permissions:
       deployments: write
