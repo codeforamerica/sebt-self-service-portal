@@ -117,6 +117,7 @@ public class MockHouseholdRepository : IHouseholdRepository
             };
         });
         coLoaded.Email = "co-loaded@example.com";
+        coLoaded.UserProfile = new UserProfile { FirstName = "Maria", MiddleName = "Elena", LastName = "Martinez" };
         _households["co-loaded@example.com"] = coLoaded;
 
         // Scenario 2: Approved application with address (ID verified user)
@@ -146,6 +147,7 @@ public class MockHouseholdRepository : IHouseholdRepository
             };
         });
         verified.Email = "verified@example.com";
+        verified.UserProfile = new UserProfile { FirstName = "John", MiddleName = "Robert", LastName = "Doe" };
         _households["verified@example.com"] = verified;
 
         // Scenario 3: Pending application without address (not ID verified)
@@ -172,6 +174,7 @@ public class MockHouseholdRepository : IHouseholdRepository
             };
         });
         pending.Email = "pending@example.com";
+        pending.UserProfile = new UserProfile { FirstName = "Jane", MiddleName = "Marie", LastName = "Smith" };
         _households["pending@example.com"] = pending;
 
         // Scenario 4: Denied application
@@ -184,6 +187,7 @@ public class MockHouseholdRepository : IHouseholdRepository
             }
         });
         denied.Email = "denied@example.com";
+        denied.UserProfile = new UserProfile { FirstName = "Robert", MiddleName = null, LastName = "Johnson" };
         _households["denied@example.com"] = denied;
 
         // Scenario 5: Under review
@@ -200,6 +204,7 @@ public class MockHouseholdRepository : IHouseholdRepository
             }
         });
         review.Email = "review@example.com";
+        review.UserProfile = new UserProfile { FirstName = "Susan", MiddleName = "Lee", LastName = "Williams" };
         _households["review@example.com"] = review;
 
         // Scenario 6: Cancelled application
@@ -212,6 +217,7 @@ public class MockHouseholdRepository : IHouseholdRepository
             }
         });
         cancelled.Email = "cancelled@example.com";
+        cancelled.UserProfile = new UserProfile { FirstName = "David", MiddleName = "James", LastName = "Davis" };
         _households["cancelled@example.com"] = cancelled;
 
         // Scenario 7: Approved with single child
@@ -230,6 +236,7 @@ public class MockHouseholdRepository : IHouseholdRepository
             }
         });
         singleChild.Email = "singlechild@example.com";
+        singleChild.UserProfile = new UserProfile { FirstName = "Amanda", MiddleName = "Rose", LastName = "Taylor" };
         _households["singlechild@example.com"] = singleChild;
 
         // Scenario 8: Large family (multiple children)
@@ -251,6 +258,7 @@ public class MockHouseholdRepository : IHouseholdRepository
             }
         });
         largeFamily.Email = "largefamily@example.com";
+        largeFamily.UserProfile = new UserProfile { FirstName = "Christopher", MiddleName = "Michael", LastName = "Brown" };
         _households["largefamily@example.com"] = largeFamily;
 
         // Scenario 9: Minimal data (no phone, no dates)
@@ -264,6 +272,7 @@ public class MockHouseholdRepository : IHouseholdRepository
             }
         });
         minimal.Email = "minimal@example.com";
+        minimal.UserProfile = new UserProfile { FirstName = "Alex", MiddleName = null, LastName = "Jones" };
         _households["minimal@example.com"] = minimal;
 
         // Scenario 10: Expired benefits
@@ -282,6 +291,7 @@ public class MockHouseholdRepository : IHouseholdRepository
             }
         });
         expired.Email = "expired@example.com";
+        expired.UserProfile = new UserProfile { FirstName = "Patricia", MiddleName = "Ann", LastName = "Garcia" };
         _households["expired@example.com"] = expired;
 
         // Scenario 11: Unknown status
@@ -294,6 +304,7 @@ public class MockHouseholdRepository : IHouseholdRepository
             }
         });
         unknown.Email = "unknown@example.com";
+        unknown.UserProfile = new UserProfile { FirstName = "Unknown", MiddleName = null, LastName = "User" };
         _households["unknown@example.com"] = unknown;
 
         // Scenario 12: Multiple applications (one approved, one pending)
@@ -344,6 +355,7 @@ public class MockHouseholdRepository : IHouseholdRepository
             };
         });
         multipleApps.Email = "multipleapps@example.com";
+        multipleApps.UserProfile = new UserProfile { FirstName = "Jennifer", MiddleName = "Lynn", LastName = "Wilson" };
         _households["multipleapps@example.com"] = multipleApps;
 
         _logger.LogInformation("Seeded {Count} mock household records using Bogus", _households.Count);
@@ -361,6 +373,14 @@ public class MockHouseholdRepository : IHouseholdRepository
         {
             Email = source.Email,
             Phone = source.Phone,
+            UserProfile = source.UserProfile != null
+                ? new UserProfile
+                {
+                    FirstName = source.UserProfile.FirstName,
+                    MiddleName = source.UserProfile.MiddleName,
+                    LastName = source.UserProfile.LastName
+                }
+                : null,
             Applications = source.Applications.Select(a => new Application
             {
                 ApplicationNumber = a.ApplicationNumber,

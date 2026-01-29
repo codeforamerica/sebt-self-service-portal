@@ -17,7 +17,8 @@ public static class HouseholdDataResponseMapper
             Email = domain.Email,
             Phone = domain.Phone,
             Applications = domain.Applications.Select(ToResponse).ToList(),
-            AddressOnFile = domain.AddressOnFile?.ToResponse()
+            AddressOnFile = domain.AddressOnFile?.ToResponse(),
+            UserProfile = domain.UserProfile?.ToResponse()
         };
     }
 
@@ -59,6 +60,16 @@ public static class HouseholdDataResponseMapper
             City = domain.City,
             State = domain.State,
             PostalCode = domain.PostalCode
+        };
+    }
+
+    private static UserProfileResponse ToResponse(this UserProfile domain)
+    {
+        return new UserProfileResponse
+        {
+            FirstName = domain.FirstName,
+            MiddleName = domain.MiddleName,
+            LastName = domain.LastName
         };
     }
 }

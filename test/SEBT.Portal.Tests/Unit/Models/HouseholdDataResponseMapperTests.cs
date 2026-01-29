@@ -51,6 +51,12 @@ public class HouseholdDataResponseMapperTests
                 City = "Denver",
                 State = "CO",
                 PostalCode = "80202"
+            },
+            UserProfile = new UserProfile
+            {
+                FirstName = "Jane",
+                MiddleName = "Marie",
+                LastName = "Doe"
             }
         };
 
@@ -91,6 +97,12 @@ public class HouseholdDataResponseMapperTests
         Assert.Equal("Doe", app.Children[0].LastName);
         Assert.Equal("Jane", app.Children[1].FirstName);
         Assert.Equal("Doe", app.Children[1].LastName);
+
+        // Assert - user profile
+        Assert.NotNull(response.UserProfile);
+        Assert.Equal("Jane", response.UserProfile.FirstName);
+        Assert.Equal("Marie", response.UserProfile.MiddleName);
+        Assert.Equal("Doe", response.UserProfile.LastName);
     }
 
     [Fact]
@@ -102,7 +114,8 @@ public class HouseholdDataResponseMapperTests
             Email = "user@example.com",
             Phone = null,
             Applications = new List<Application>(),
-            AddressOnFile = null
+            AddressOnFile = null,
+            UserProfile = null
         };
 
         // Act
@@ -115,6 +128,7 @@ public class HouseholdDataResponseMapperTests
         Assert.NotNull(response.Applications);
         Assert.Empty(response.Applications);
         Assert.Null(response.AddressOnFile);
+        Assert.Null(response.UserProfile);
     }
 
     [Fact]

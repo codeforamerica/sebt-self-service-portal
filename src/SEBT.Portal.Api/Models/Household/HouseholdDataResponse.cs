@@ -24,4 +24,9 @@ public record HouseholdDataResponse
     /// The address on file. Only populated when ID verification is completed.
     /// </summary>
     public AddressResponse? AddressOnFile { get; init; }
+
+    /// <summary>
+    /// The logged-in user's profile (first, middle, last name) for display.
+    /// </summary>
+    public UserProfileResponse? UserProfile { get; init; }
 }

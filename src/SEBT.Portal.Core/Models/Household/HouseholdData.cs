@@ -27,4 +27,9 @@ public class HouseholdData
     /// The address on file. This should only be populated if ID verification is completed.
     /// </summary>
     public Address? AddressOnFile { get; set; }
+
+    /// <summary>
+    /// The logged-in user's profile (first, middle, last name)
+    /// </summary>
+    public UserProfile? UserProfile { get; set; }
 }

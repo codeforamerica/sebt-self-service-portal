@@ -443,7 +443,8 @@ public class HouseholdControllerTests
                 City = "Denver",
                 State = "CO",
                 PostalCode = "80202"
-            }
+            },
+            UserProfile = new UserProfile { FirstName = "Jane", MiddleName = "Marie", LastName = "Doe" }
         };
 
         var repositoryMock = Substitute.For<IHouseholdRepository>();
@@ -473,5 +474,9 @@ public class HouseholdControllerTests
         Assert.Equal("Denver", response.AddressOnFile.City);
         Assert.Equal("CO", response.AddressOnFile.State);
         Assert.Equal("80202", response.AddressOnFile.PostalCode);
+        Assert.NotNull(response.UserProfile);
+        Assert.Equal("Jane", response.UserProfile.FirstName);
+        Assert.Equal("Marie", response.UserProfile.MiddleName);
+        Assert.Equal("Doe", response.UserProfile.LastName);
     }
 }
