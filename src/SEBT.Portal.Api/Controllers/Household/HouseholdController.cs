@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
 using SEBT.Portal.Api.Models;
+using SEBT.Portal.Api.Models.Household;
 using SEBT.Portal.Core.Models.Auth;
 using SEBT.Portal.Core.Models.Household;
 using SEBT.Portal.Core.Repositories;
@@ -30,7 +31,7 @@ public class HouseholdController(ILogger<HouseholdController> logger) : Controll
     /// <response code="404">Household data not found for the authenticated user.</response>
     [HttpGet("data")]
     [Authorize]
-    [ProducesResponseType(typeof(HouseholdData), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(HouseholdDataResponse), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status404NotFound)]
     public async Task<IActionResult> GetHouseholdData(
@@ -70,7 +71,7 @@ public class HouseholdController(ILogger<HouseholdController> logger) : Controll
         }
 
         logger.LogInformation("Household data retrieved successfully for email {Email}", normalizedEmail);
-        return Ok(householdData);
+        return Ok(householdData.ToResponse());
     }
 
     /// <summary>

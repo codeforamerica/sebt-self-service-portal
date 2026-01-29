@@ -5,6 +5,7 @@ using Microsoft.Extensions.Logging.Abstractions;
 using NSubstitute;
 using SEBT.Portal.Api.Controllers.Household;
 using SEBT.Portal.Api.Models;
+using SEBT.Portal.Api.Models.Household;
 using SEBT.Portal.Core.Models.Auth;
 using SEBT.Portal.Core.Models.Household;
 using SEBT.Portal.Core.Repositories;
@@ -82,7 +83,7 @@ public class HouseholdControllerTests
         // Assert
         Assert.NotNull(result);
         var okResult = Assert.IsType<OkObjectResult>(result);
-        var response = Assert.IsType<HouseholdData>(okResult.Value);
+        var response = Assert.IsType<HouseholdDataResponse>(okResult.Value);
         Assert.Equal(email, response.Email);
         Assert.NotNull(response.AddressOnFile);
         Assert.Equal("123 Main St", response.AddressOnFile.StreetAddress1);
@@ -123,7 +124,7 @@ public class HouseholdControllerTests
         // Assert
         Assert.NotNull(result);
         var okResult = Assert.IsType<OkObjectResult>(result);
-        var response = Assert.IsType<HouseholdData>(okResult.Value);
+        var response = Assert.IsType<HouseholdDataResponse>(okResult.Value);
         Assert.Equal(email, response.Email);
         Assert.Null(response.AddressOnFile);
         await repositoryMock.Received(1).GetHouseholdByEmailAsync(email, includeAddress: false, Arg.Any<CancellationToken>());
@@ -455,7 +456,7 @@ public class HouseholdControllerTests
         // Assert
         Assert.NotNull(result);
         var okResult = Assert.IsType<OkObjectResult>(result);
-        var response = Assert.IsType<HouseholdData>(okResult.Value);
+        var response = Assert.IsType<HouseholdDataResponse>(okResult.Value);
         Assert.Equal(email, response.Email);
         Assert.Equal("555-1234", response.Phone);
         Assert.NotNull(response.Applications);
