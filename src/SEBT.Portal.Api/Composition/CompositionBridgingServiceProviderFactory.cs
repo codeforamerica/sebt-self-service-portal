@@ -1,5 +1,4 @@
 using System.Composition;
-using System.Diagnostics;
 
 namespace SEBT.Portal.Api.Composition;
 
