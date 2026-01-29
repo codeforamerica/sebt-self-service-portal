@@ -135,6 +135,10 @@ jobs:
     needs: build-push-and-deploy
     if: needs.build-push-and-deploy.outputs.run_apply == 'true'
     runs-on: ubuntu-latest
+    outputs:
+      web_url: ${{ steps.deploy-url.outputs.url }}
+      stage: ${{ steps.meta.outputs.stage }}
+      state: ${{ steps.meta.outputs.state }}
     env:
       AWS_REGION: ${{ inputs.aws_region || 'us-east-1' }}
       STAGE: ${{ inputs.stage || 'dev' }}
@@ -142,6 +146,12 @@ jobs:
       APP_NAME: ${{ vars.ECS_APP_NAME || 'sebt-portal' }}
 
     steps:
+      - name: Set stage and state
+        id: meta
+        run: |
+          echo "stage=${{ env.STAGE }}" >> "$GITHUB_OUTPUT"
+          echo "state=${{ env.STATE }}" >> "$GITHUB_OUTPUT"
+
       - name: Checkout
         uses: actions/checkout@v4
 
@@ -192,15 +202,20 @@ jobs:
           echo "url=$WEB_URL" >> "$GITHUB_OUTPUT"
           echo "Deployment URL: $WEB_URL"
 
+  create-deployment-record:
+    needs: apply-infra
+    runs-on: ubuntu-latest
+    permissions:
+      deployments: write
+      contents: read
+    steps:
       - name: Create GitHub deployment and link URL
         uses: actions/github-script@v7
-        env:
-          DEPLOYMENT_URL: ${{ steps.deploy-url.outputs.url }}
         with:
           script: |
-            const environment = '${{ env.STAGE }}-${{ env.STATE }}';
-            const webUrl = process.env.DEPLOYMENT_URL || '';
-            const ref = context.payload.pull_request?.head?.sha || context.sha;
+            const environment = '${{ needs.apply-infra.outputs.stage }}-${{ needs.apply-infra.outputs.state }}';
+            const webUrl = '${{ needs.apply-infra.outputs.web_url }}';
+            const ref = context.sha;
 
             const deployment = await github.rest.repos.createDeployment({
               owner: context.repo.owner,
@@ -208,7 +223,8 @@ jobs:
               ref,
               environment,
               auto_merge: false,
-              description: `Deploy ${{ env.STAGE }} / ${{ env.STATE }} (${ref.slice(0, 7)})`
+              required_contexts: [],
+              description: `Deploy ${{ needs.apply-infra.outputs.stage }} / ${{ needs.apply-infra.outputs.state }} (${ref.slice(0, 7)})`
             });
 
             const deploymentId = deployment.data.id;
