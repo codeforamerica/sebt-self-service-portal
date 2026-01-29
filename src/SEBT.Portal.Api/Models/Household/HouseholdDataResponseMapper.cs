@@ -16,14 +16,14 @@ public static class HouseholdDataResponseMapper
         {
             Email = domain.Email,
             Phone = domain.Phone,
-            Applications = domain.Applications.Select(MapToApplicationResponse).ToList(),
+            Applications = domain.Applications.Select(ToResponse).ToList(),
             AddressOnFile = domain.AddressOnFile?.ToResponse(),
             UserProfile = domain.UserProfile?.ToResponse(),
             BenefitIssuanceType = domain.BenefitIssuanceType
         };
     }
 
-    private static ApplicationResponse MapToApplicationResponse(Application domain)
+    private static ApplicationResponse ToResponse(this Application domain)
     {
         return new ApplicationResponse
         {
