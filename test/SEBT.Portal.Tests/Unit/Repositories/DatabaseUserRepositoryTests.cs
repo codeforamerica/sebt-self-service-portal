@@ -2,10 +2,8 @@ using Microsoft.EntityFrameworkCore;
 using SEBT.Portal.Core.Models.Auth;
 using SEBT.Portal.Infrastructure.Data;
 using SEBT.Portal.Infrastructure.Data.Entities;
+using SEBT.Portal.Infrastructure.Helpers;
 using SEBT.Portal.Infrastructure.Repositories;
-using SEBT.Portal.Infrastructure.Seeding.Helpers;
-using SEBT.Portal.Tests.Helpers;
-using UserFactory = SEBT.Portal.Infrastructure.Seeding.Helpers.UserFactory;
 
 namespace SEBT.Portal.Tests.Unit.Repositories;
 
@@ -31,7 +29,7 @@ public class DatabaseUserRepositoryTests : IClassFixture<SqlServerTestFixture>
         using var context = CreateContext();
         var repository = new DatabaseUserRepository(context);
 
-        var entity = UserEntityFactory.CreateUserEntity(e =>
+        var entity = UserFactory.CreateUserEntity(e =>
         {
             e.Email = $"test-{Guid.NewGuid()}@example.com";
             e.IdProofingStatus = (int)IdProofingStatus.Completed;
@@ -70,7 +68,7 @@ public class DatabaseUserRepositoryTests : IClassFixture<SqlServerTestFixture>
         var repository = new DatabaseUserRepository(context);
 
         var testEmail = $"test-{Guid.NewGuid()}@example.com";
-        var entity = UserEntityFactory.CreateUserEntity(e =>
+        var entity = UserFactory.CreateUserEntity(e =>
         {
             e.Email = testEmail.ToLowerInvariant(); // lowercase
             e.IdProofingStatus = (int)IdProofingStatus.NotStarted;
@@ -210,7 +208,7 @@ public class DatabaseUserRepositoryTests : IClassFixture<SqlServerTestFixture>
         var repository = new DatabaseUserRepository(context);
 
         var uniqueEmail = $"update-{Guid.NewGuid()}@example.com";
-        var entity = UserEntityFactory.CreateUserEntity(e =>
+        var entity = UserFactory.CreateUserEntity(e =>
         {
             e.Email = uniqueEmail;
             e.IdProofingStatus = (int)IdProofingStatus.NotStarted;
@@ -252,7 +250,7 @@ public class DatabaseUserRepositoryTests : IClassFixture<SqlServerTestFixture>
 
         var uniqueEmail = $"timestamp-{Guid.NewGuid()}@example.com";
         var originalTime = DateTime.UtcNow.AddMinutes(-5);
-        var entity = UserEntityFactory.CreateUserEntity(e =>
+        var entity = UserFactory.CreateUserEntity(e =>
         {
             e.Email = uniqueEmail;
             e.IdProofingStatus = (int)IdProofingStatus.NotStarted;
@@ -322,7 +320,7 @@ public class DatabaseUserRepositoryTests : IClassFixture<SqlServerTestFixture>
 
         var uniqueId = Guid.NewGuid();
         var baseEmail = $"case-{uniqueId}@example.com";
-        var entity = UserEntityFactory.CreateUserEntity(e =>
+        var entity = UserFactory.CreateUserEntity(e =>
         {
             e.Email = baseEmail;
             e.IdProofingStatus = (int)IdProofingStatus.NotStarted;
@@ -358,7 +356,7 @@ public class DatabaseUserRepositoryTests : IClassFixture<SqlServerTestFixture>
 
         var originalEmail = $"original-{Guid.NewGuid()}@example.com";
         var newEmail = $"new-{Guid.NewGuid()}@example.com";
-        var entity = UserEntityFactory.CreateUserEntity(e =>
+        var entity = UserFactory.CreateUserEntity(e =>
         {
             e.Email = originalEmail;
             e.IdProofingStatus = (int)IdProofingStatus.NotStarted;
@@ -394,7 +392,7 @@ public class DatabaseUserRepositoryTests : IClassFixture<SqlServerTestFixture>
         var repository = new DatabaseUserRepository(context);
 
         var existingEmail = $"existing-{Guid.NewGuid()}@example.com";
-        var entity1 = UserEntityFactory.CreateUserEntity(e =>
+        var entity1 = UserFactory.CreateUserEntity(e =>
         {
             e.Email = existingEmail;
             e.IdProofingStatus = (int)IdProofingStatus.NotStarted;
@@ -402,7 +400,7 @@ public class DatabaseUserRepositoryTests : IClassFixture<SqlServerTestFixture>
         context.Users.Add(entity1);
 
         var originalEmail = $"original-{Guid.NewGuid()}@example.com";
-        var entity2 = UserEntityFactory.CreateUserEntity(e =>
+        var entity2 = UserFactory.CreateUserEntity(e =>
         {
             e.Email = originalEmail;
             e.IdProofingStatus = (int)IdProofingStatus.NotStarted;
@@ -432,7 +430,7 @@ public class DatabaseUserRepositoryTests : IClassFixture<SqlServerTestFixture>
         var repository = new DatabaseUserRepository(context);
 
         var uniqueEmail = $"existing-{Guid.NewGuid()}@example.com";
-        var entity = UserEntityFactory.CreateUserEntity(e =>
+        var entity = UserFactory.CreateUserEntity(e =>
         {
             e.Email = uniqueEmail;
             e.IdProofingStatus = (int)IdProofingStatus.Completed;
@@ -537,7 +535,7 @@ public class DatabaseUserRepositoryTests : IClassFixture<SqlServerTestFixture>
 
         var uniqueEmail = $"session-{Guid.NewGuid()}@example.com";
         var sessionId = $"session-{Guid.NewGuid()}";
-        var entity = UserEntityFactory.CreateUserEntity(e =>
+        var entity = UserFactory.CreateUserEntity(e =>
         {
             e.Email = uniqueEmail;
             e.IdProofingStatus = (int)IdProofingStatus.InProgress;
@@ -612,13 +610,13 @@ public class DatabaseUserRepositoryTests : IClassFixture<SqlServerTestFixture>
         var session1 = $"session-{uniqueId1}";
         var session2 = $"session-{uniqueId2}";
 
-        var entity1 = UserEntityFactory.CreateUserEntity(e =>
+        var entity1 = UserFactory.CreateUserEntity(e =>
         {
             e.Email = email1;
             e.IdProofingStatus = (int)IdProofingStatus.InProgress;
             e.IdProofingSessionId = session1;
         });
-        var entity2 = UserEntityFactory.CreateUserEntity(e =>
+        var entity2 = UserFactory.CreateUserEntity(e =>
         {
             e.Email = email2;
             e.IdProofingStatus = (int)IdProofingStatus.InProgress;
@@ -646,7 +644,7 @@ public class DatabaseUserRepositoryTests : IClassFixture<SqlServerTestFixture>
         var repository = new DatabaseUserRepository(context);
 
         var uniqueEmail = $"nosession-{Guid.NewGuid()}@example.com";
-        var entity = UserEntityFactory.CreateUserEntity(e =>
+        var entity = UserFactory.CreateUserEntity(e =>
         {
             e.Email = uniqueEmail;
             e.IdProofingStatus = (int)IdProofingStatus.NotStarted;
@@ -676,7 +674,7 @@ public class DatabaseUserRepositoryTests : IClassFixture<SqlServerTestFixture>
         var updatedAt = DateTime.UtcNow.AddDays(-2);
 
         var coLoadedUpdated = DateTime.UtcNow.AddDays(-3);
-        var entity = UserEntityFactory.CreateCoLoadedUserEntity(e =>
+        var entity = UserFactory.CreateCoLoadedUserEntity(e =>
         {
             e.Email = uniqueEmail;
             e.IdProofingStatus = (int)IdProofingStatus.Completed;

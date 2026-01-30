@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using SEBT.Portal.Core.Models.Auth;
 using SEBT.Portal.Core.Services;
+using SEBT.Portal.Core.Utilities;
 using SEBT.Portal.Infrastructure.Data;
 using SEBT.Portal.Infrastructure.Data.Entities;
 
@@ -20,18 +21,6 @@ public class DataSeeder : IDataSeeder
     }
 
     /// <summary>
-    /// Normalizes an email address to lowercase for consistent storage and comparison.
-    /// </summary>
-    private static string NormalizeEmail(string email)
-    {
-        if (string.IsNullOrWhiteSpace(email))
-        {
-            throw new ArgumentException("Email cannot be null or whitespace.", nameof(email));
-        }
-        return email.Trim().ToLowerInvariant();
-    }
-
-    /// <summary>
     /// Maps a User domain model to a UserEntity for database persistence.
     /// </summary>
     private static UserEntity MapToEntity(User user)
@@ -39,7 +28,7 @@ public class DataSeeder : IDataSeeder
         ArgumentNullException.ThrowIfNull(user);
         ArgumentNullException.ThrowIfNull(user.Email);
 
-        var normalizedEmail = NormalizeEmail(user.Email);
+        var normalizedEmail = EmailNormalizer.Normalize(user.Email);
         return new UserEntity
         {
             Id = user.Id, // Will be 0 for new users, set by database
@@ -80,7 +69,7 @@ public class DataSeeder : IDataSeeder
     {
         ArgumentNullException.ThrowIfNull(emails);
 
-        var normalizedEmails = emails.Select(NormalizeEmail).ToList();
+        var normalizedEmails = emails.Select(EmailNormalizer.Normalize).ToList();
         var existingEmails = await _dbContext.Users
             .Where(u => normalizedEmails.Contains(u.Email))
             .Select(u => u.Email)
@@ -128,7 +117,7 @@ public class DataSeeder : IDataSeeder
     {
         ArgumentNullException.ThrowIfNull(emails);
 
-        var normalizedEmails = emails.Select(NormalizeEmail).ToList();
+        var normalizedEmails = emails.Select(EmailNormalizer.Normalize).ToList();
         var usersToRemove = await _dbContext.Users
             .Where(u => normalizedEmails.Contains(u.Email))
             .ToListAsync(cancellationToken);
@@ -140,7 +129,7 @@ public class DataSeeder : IDataSeeder
     {
         ArgumentNullException.ThrowIfNull(emails);
 
-        var normalizedEmails = emails.Select(NormalizeEmail).ToList();
+        var normalizedEmails = emails.Select(EmailNormalizer.Normalize).ToList();
         var optInsToRemove = await _dbContext.UserOptIns
             .Where(o => normalizedEmails.Contains(o.Email))
             .ToListAsync(cancellationToken);
@@ -157,7 +146,7 @@ public class DataSeeder : IDataSeeder
     {
         ArgumentNullException.ThrowIfNull(emails);
 
-        var normalizedEmails = emails.Select(NormalizeEmail).ToList();
+        var normalizedEmails = emails.Select(EmailNormalizer.Normalize).ToList();
         var existingEmails = _dbContext.Users
             .Where(u => normalizedEmails.Contains(u.Email))
             .Select(u => u.Email)

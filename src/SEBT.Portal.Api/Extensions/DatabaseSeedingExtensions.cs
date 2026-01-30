@@ -1,4 +1,7 @@
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Logging;
 using SEBT.Portal.Core.Services;
 using SEBT.Portal.Infrastructure.Data;
 using SEBT.Portal.Infrastructure.Seeding.Services;
@@ -16,8 +19,12 @@ public static class DatabaseSeedingExtensions
     /// Configures database seeding for Development environment.
     /// This is called separately from Infrastructure to avoid Infrastructure depending on Seeding project.
     /// </summary>
-    public static void ConfigureDevelopmentSeeding(this DbContextOptionsBuilder optionsBuilder)
+    /// <param name="optionsBuilder">The DbContext options builder.</param>
+    /// <param name="configuration">The configuration instance to read settings from.</param>
+    public static void ConfigureDevelopmentSeeding(this DbContextOptionsBuilder optionsBuilder, IConfiguration? configuration = null)
     {
+        var useMockHouseholdData = configuration?.GetValue<bool>("UseMockHouseholdData", false) ?? false;
+
         // These are called automatically during migrations, EnsureCreated, and `dotnet ef database update`
         // Both `UseSeeding` and `UseAsyncSeeding` are recommended to be called for compatibility
         // reasons (some EF Core versions may not support the async version, for example).  
@@ -43,9 +50,11 @@ public static class DatabaseSeedingExtensions
                 return;
             }
 
+            var logger = portalContext.GetService<ILogger<DatabaseSeeder>>();
+
             var dataSeeder = new DataSeeder(portalContext);
-            var seeder = new DatabaseSeeder(dataSeeder);
-            seeder.SeedTestUsers();
+            var seeder = new DatabaseSeeder(dataSeeder, logger, TimeProvider.System);
+            seeder.SeedTestUsers(useMockHouseholdData);
         })
         .UseAsyncSeeding(async (context, _, cancellationToken) =>
         {
@@ -68,9 +77,11 @@ public static class DatabaseSeedingExtensions
                 return;
             }
 
+            var logger = portalContext.GetService<ILogger<DatabaseSeeder>>();
+
             var dataSeeder = new DataSeeder(portalContext);
-            var seeder = new DatabaseSeeder(dataSeeder);
-            await seeder.SeedTestUsersAsync(cancellationToken);
+            var seeder = new DatabaseSeeder(dataSeeder, logger, TimeProvider.System);
+            await seeder.SeedTestUsersAsync(useMockHouseholdData, cancellationToken);
         });
     }
 }
