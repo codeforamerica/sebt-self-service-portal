@@ -26,36 +26,51 @@ public class MockHouseholdRepository : IHouseholdRepository
         SeedMockData();
     }
 
-    public Task<HouseholdData?> GetHouseholdByEmailAsync(
-        string email,
+    public Task<HouseholdData?> GetHouseholdByIdentifierAsync(
+        HouseholdIdentifier identifier,
         bool includeAddress = false,
         CancellationToken cancellationToken = default)
     {
         cancellationToken.ThrowIfCancellationRequested();
 
-        if (string.IsNullOrWhiteSpace(email))
+        if (string.IsNullOrWhiteSpace(identifier.Value))
         {
             return Task.FromResult<HouseholdData?>(null);
         }
 
-        var normalizedEmail = EmailNormalizer.Normalize(email);
+        // Mock data is keyed by email only; other ID types (Phone, SNAP ID, etc.) can be supported when backend data is available
+        if (identifier.Type != PreferredHouseholdIdType.Email)
+        {
+            _logger.LogInformation(
+                "Mock household lookup by {Type} not supported; only Email is keyed in mock data",
+                identifier.Type);
+            return Task.FromResult<HouseholdData?>(null);
+        }
+
+        var normalizedEmail = EmailNormalizer.Normalize(identifier.Value);
         _households.TryGetValue(normalizedEmail, out var household);
 
         if (household == null)
         {
-            _logger.LogInformation("Mock household not found for email {Email}", normalizedEmail);
+            _logger.LogInformation("Mock household not found for identifier {Type}={Value}", identifier.Type, normalizedEmail);
             return Task.FromResult<HouseholdData?>(null);
         }
 
-        // Create a copy to avoid modifying the original
         var result = CreateCopy(household, includeAddress);
-
         _logger.LogInformation(
-            "Returning mock household data for email {Email}, includeAddress: {IncludeAddress}",
+            "Returning mock household data for identifier {Type}={Value}, includeAddress: {IncludeAddress}",
+            identifier.Type,
             normalizedEmail,
             includeAddress);
-
         return Task.FromResult<HouseholdData?>(result);
+    }
+
+    public Task<HouseholdData?> GetHouseholdByEmailAsync(
+        string email,
+        bool includeAddress = false,
+        CancellationToken cancellationToken = default)
+    {
+        return GetHouseholdByIdentifierAsync(HouseholdIdentifier.Email(email), includeAddress, cancellationToken);
     }
 
     public Task UpsertHouseholdAsync(

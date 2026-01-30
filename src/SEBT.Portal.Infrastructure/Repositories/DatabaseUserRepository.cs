@@ -85,6 +85,10 @@ public class DatabaseUserRepository(PortalDbContext dbContext) : IUserRepository
         entity.IdProofingExpiresAt = user.IdProofingExpiresAt;
         entity.IsCoLoaded = user.IsCoLoaded;
         entity.CoLoadedLastUpdated = user.CoLoadedLastUpdated;
+        entity.Phone = user.Phone;
+        entity.SnapId = user.SnapId;
+        entity.TanfId = user.TanfId;
+        entity.Ssn = user.Ssn;
         entity.UpdatedAt = DateTime.UtcNow;
 
         try
@@ -199,6 +203,10 @@ public class DatabaseUserRepository(PortalDbContext dbContext) : IUserRepository
             IdProofingExpiresAt = entity.IdProofingExpiresAt,
             IsCoLoaded = entity.IsCoLoaded,
             CoLoadedLastUpdated = entity.CoLoadedLastUpdated,
+            Phone = entity.Phone,
+            SnapId = entity.SnapId,
+            TanfId = entity.TanfId,
+            Ssn = entity.Ssn,
             CreatedAt = entity.CreatedAt,
             UpdatedAt = entity.UpdatedAt
         };
@@ -216,6 +224,10 @@ public class DatabaseUserRepository(PortalDbContext dbContext) : IUserRepository
             IdProofingExpiresAt = user.IdProofingExpiresAt,
             IsCoLoaded = user.IsCoLoaded,
             CoLoadedLastUpdated = user.CoLoadedLastUpdated,
+            Phone = user.Phone,
+            SnapId = user.SnapId,
+            TanfId = user.TanfId,
+            Ssn = user.Ssn,
             CreatedAt = user.CreatedAt,
             UpdatedAt = user.UpdatedAt
         };

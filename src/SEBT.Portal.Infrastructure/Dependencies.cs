@@ -22,6 +22,9 @@ public static class Dependencies
         // JWT Services
         services.AddTransient<IJwtTokenService, JwtTokenService>();
 
+        // Household identifier resolution (state-configurable preferred household ID type)
+        services.AddTransient<IHouseholdIdentifierResolver, HouseholdIdentifierResolver>();
+
         return services;
     }
 
@@ -81,6 +84,8 @@ public static class Dependencies
             .BindConfiguration(OtpRateLimitSettings.SectionName);
         services.AddOptionsWithValidateOnStart<JwtSettings>()
             .BindConfiguration(JwtSettings.SectionName);
+        services.AddOptions<StateHouseholdIdSettings>()
+            .BindConfiguration(StateHouseholdIdSettings.SectionName);
 
         return services;
     }

@@ -82,6 +82,12 @@ public class PortalDbContext : DbContext
             // Create index on session ID for faster lookups
             entity.HasIndex(e => e.IdProofingSessionId)
                 .HasDatabaseName("IX_Users_IdProofingSessionId");
+
+            // Household identifier fields
+            entity.Property(e => e.Phone).HasMaxLength(20);
+            entity.Property(e => e.SnapId).HasMaxLength(50);
+            entity.Property(e => e.TanfId).HasMaxLength(50);
+            entity.Property(e => e.Ssn).HasMaxLength(20);
         });
     }
 }
