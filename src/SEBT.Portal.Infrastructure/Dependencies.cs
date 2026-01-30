@@ -28,6 +28,9 @@ public static class Dependencies
         // Feature Flag Services
         services.AddScoped<IFeatureFlagQueryService, Services.FeatureFlagQueryService>();
 
+        // Household identifier resolution (state-configurable preferred household ID type)
+        services.AddTransient<IHouseholdIdentifierResolver, HouseholdIdentifierResolver>();
+
         return services;
     }
 
@@ -88,6 +91,8 @@ public static class Dependencies
             .BindConfiguration(OtpRateLimitSettings.SectionName);
         services.AddOptionsWithValidateOnStart<JwtSettings>()
             .BindConfiguration(JwtSettings.SectionName);
+        services.AddOptions<StateHouseholdIdSettings>()
+            .BindConfiguration(StateHouseholdIdSettings.SectionName);
 
         services.AddOptions<FeatureManagementSettings>()
             .Bind(configuration.GetSection(FeatureManagementSettings.SectionName))
