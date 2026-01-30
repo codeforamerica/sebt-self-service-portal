@@ -440,6 +440,13 @@ public class DatabaseSeederTests : IClassFixture<SqlServerTestFixture>
         // Seed test users
         await seeder.SeedTestUsersAsync();
 
+        // Add production user (should not be deleted by ClearSeededDataAsync)
+        var productionUser = UserEntityFactory.CreateUserEntity(e =>
+        {
+            e.Email = "production@real-domain.com";
+        });
+        context.Users.Add(productionUser);
+
         // Add opt-ins for seeded users
         var optIn1 = new UserOptInEntity
         {
@@ -473,7 +480,7 @@ public class DatabaseSeederTests : IClassFixture<SqlServerTestFixture>
         Assert.Single(optIns);
         Assert.Equal("production@real-domain.com", optIns[0].Email);
 
-        // Verify seeded users were deleted
+        // Verify seeded users were deleted, production user remains
         var users = await context.Users.ToListAsync();
         Assert.Single(users);
         Assert.Equal("production@real-domain.com", users[0].Email);

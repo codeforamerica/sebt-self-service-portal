@@ -8,7 +8,6 @@ using SEBT.Portal.Kernel.Services;
 using SEBT.Portal.Infrastructure.Configuration;
 using SEBT.Portal.Infrastructure.Data;
 using SEBT.Portal.Infrastructure.Repositories;
-using SEBT.Portal.Infrastructure.Seeding.Services;
 using SEBT.Portal.Infrastructure.Services;
 
 namespace SEBT.Portal.Infrastructure;
@@ -75,7 +74,6 @@ public static class Dependencies
 
         services.AddScoped<IDatabaseMigrator, DatabaseMigrator>();
         services.AddScoped<IDataSeeder, DataSeeder>();
-        services.AddScoped<IDatabaseSeeder, DatabaseSeeder>();
 
         return services;
     }

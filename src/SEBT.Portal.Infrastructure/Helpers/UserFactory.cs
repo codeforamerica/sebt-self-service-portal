@@ -1,7 +1,6 @@
 using SEBT.Portal.Core.Models.Auth;
 using SEBT.Portal.Core.Utilities;
 using SEBT.Portal.Infrastructure.Data.Entities;
-using SeedingUserFactory = SEBT.Portal.Infrastructure.Seeding.Helpers.UserFactory;
 using TestUtilitiesUserFactory = SEBT.Portal.TestUtilities.Helpers.UserFactory;
 
 namespace SEBT.Portal.Infrastructure.Helpers;
@@ -49,16 +48,16 @@ public static class UserFactory
     }
 
     /// <summary>
-    /// Creates a User with co-loaded status set to true. Delegates to the Seeding project's UserFactory.
+    /// Creates a User with co-loaded status set to true. Delegates to the TestUtilities project's UserFactory.
     /// </summary>
     public static User CreateCoLoadedUser(Action<User>? customize = null) =>
-        SeedingUserFactory.CreateCoLoadedUser(customize);
+        TestUtilitiesUserFactory.CreateCoLoadedUser(customize);
 
     /// <summary>
-    /// Creates a User with co-loaded status set to false. Delegates to the Seeding project's UserFactory.
+    /// Creates a User with non-co-loaded status (IsCoLoaded = false). Delegates to the TestUtilities project's UserFactory.
     /// </summary>
     public static User CreateNonCoLoadedUser(Action<User>? customize = null) =>
-        SeedingUserFactory.CreateNonCoLoadedUser(customize);
+        TestUtilitiesUserFactory.CreateNonCoLoadedUser(customize);
 
     /// <summary>
     /// Creates a UserEntity with co-loaded status set to true.
