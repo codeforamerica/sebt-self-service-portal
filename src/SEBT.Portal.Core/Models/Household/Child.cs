@@ -6,6 +6,11 @@ namespace SEBT.Portal.Core.Models.Household;
 public class Child
 {
     /// <summary>
+    /// The case number associated with this child (this is distinct from application case number)
+    /// </summary>
+    public int? CaseNumber { get; set; }
+
+    /// <summary>
     /// The child's first name.
     /// </summary>
     public string FirstName { get; set; } = string.Empty;

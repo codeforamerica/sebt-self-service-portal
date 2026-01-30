@@ -46,6 +46,7 @@ public static class HouseholdDataResponseMapper
     {
         return new ChildResponse
         {
+            CaseNumber = domain.CaseNumber,
             FirstName = domain.FirstName,
             LastName = domain.LastName
         };

@@ -39,8 +39,8 @@ public class HouseholdDataResponseMapperTests
                     CardDeactivatedAt = null,
                     Children = new List<Child>
                     {
-                        new Child { FirstName = "John", LastName = "Doe" },
-                        new Child { FirstName = "Jane", LastName = "Doe" }
+                        new Child { CaseNumber = 1001, FirstName = "John", LastName = "Doe" },
+                        new Child { CaseNumber = 1002, FirstName = "Jane", LastName = "Doe" }
                     }
                 }
             },
@@ -93,8 +93,10 @@ public class HouseholdDataResponseMapperTests
         Assert.Null(app.CardDeactivatedAt);
         Assert.Equal(2, app.ChildrenOnApplication);
         Assert.Equal(2, app.Children.Count);
+        Assert.Equal(1001, app.Children[0].CaseNumber);
         Assert.Equal("John", app.Children[0].FirstName);
         Assert.Equal("Doe", app.Children[0].LastName);
+        Assert.Equal(1002, app.Children[1].CaseNumber);
         Assert.Equal("Jane", app.Children[1].FirstName);
         Assert.Equal("Doe", app.Children[1].LastName);
 
