@@ -49,7 +49,12 @@ try
         {
             services.AddPortalDbContext(configuration);
             services.AddPortalInfrastructureRepositories();
-            services.AddScoped<IDatabaseSeeder, DatabaseSeeder>();
+            // Register IDatabaseSeeder from Seeding project
+            services.AddScoped<IDatabaseSeeder>(sp =>
+            {
+                var dataSeeder = sp.GetRequiredService<IDataSeeder>();
+                return new DatabaseSeeder(dataSeeder);
+            });
         })
         .Build();
 

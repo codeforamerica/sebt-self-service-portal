@@ -1,14 +1,13 @@
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Time.Testing;
 using SEBT.Portal.Core.Models.Auth;
 using SEBT.Portal.Infrastructure.Data;
 using SEBT.Portal.Infrastructure.Data.Entities;
 using SEBT.Portal.Infrastructure.Repositories;
-using SEBT.Portal.Infrastructure.Seeding.Helpers;
 using SEBT.Portal.Infrastructure.Seeding.Services;
 using SEBT.Portal.Infrastructure.Services;
-using SEBT.Portal.Tests.Helpers;
 using SEBT.Portal.Tests.Unit.Repositories;
-using UserFactory = SEBT.Portal.Infrastructure.Seeding.Helpers.UserFactory;
+using UserEntityFactory = SEBT.Portal.Infrastructure.Helpers.UserFactory;
 
 namespace SEBT.Portal.Tests.Unit.Services;
 
@@ -27,10 +26,13 @@ public class DatabaseSeederTests : IClassFixture<SqlServerTestFixture>
         return _fixture.CreateContext();
     }
 
+    private static readonly DateTimeOffset FixedSeedTime = new(2026, 1, 15, 12, 0, 0, TimeSpan.Zero);
+
     private DatabaseSeeder CreateSeeder(PortalDbContext context)
     {
         var dataSeeder = new DataSeeder(context);
-        return new DatabaseSeeder(dataSeeder);
+        var timeProvider = new FakeTimeProvider(FixedSeedTime);
+        return new DatabaseSeeder(dataSeeder, timeProvider: timeProvider);
     }
 
     /// <summary>

@@ -42,19 +42,19 @@ public class JwtTokenService : IJwtTokenService
             new Claim(JwtRegisteredClaimNames.Iat, unixTimeSeconds.ToString(), ClaimValueTypes.Integer64),
             new Claim(JwtRegisteredClaimNames.Nbf, unixTimeSeconds.ToString(), ClaimValueTypes.Integer64),
             // ID proofing claims
-            new Claim("id_proofing_status", ((int)user.IdProofingStatus).ToString(), ClaimValueTypes.Integer32)
+            new Claim(JwtClaimTypes.IdProofingStatus, ((int)user.IdProofingStatus).ToString(), ClaimValueTypes.Integer32)
         };
 
         // Add optional ID proofing claims if available
         if (!string.IsNullOrWhiteSpace(user.IdProofingSessionId))
         {
-            claims.Add(new Claim("id_proofing_session_id", user.IdProofingSessionId));
+            claims.Add(new Claim(JwtClaimTypes.IdProofingSessionId, user.IdProofingSessionId));
         }
 
         if (user.IdProofingCompletedAt.HasValue)
         {
             var completedAtOffset = new DateTimeOffset(user.IdProofingCompletedAt.Value, TimeSpan.Zero);
-            claims.Add(new Claim("id_proofing_completed_at",
+            claims.Add(new Claim(JwtClaimTypes.IdProofingCompletedAt,
                 completedAtOffset.ToUnixTimeSeconds().ToString(),
                 ClaimValueTypes.Integer64));
         }
@@ -62,7 +62,7 @@ public class JwtTokenService : IJwtTokenService
         if (user.IdProofingExpiresAt.HasValue)
         {
             var expiresAtOffset = new DateTimeOffset(user.IdProofingExpiresAt.Value, TimeSpan.Zero);
-            claims.Add(new Claim("id_proofing_expires_at",
+            claims.Add(new Claim(JwtClaimTypes.IdProofingExpiresAt,
                 expiresAtOffset.ToUnixTimeSeconds().ToString(),
                 ClaimValueTypes.Integer64));
         }

@@ -9,6 +9,7 @@
     <ItemGroup>
       <ProjectReference Include="../SEBT.Portal.Kernel/SEBT.Portal.Kernel.csproj" />
       <ProjectReference Include="..\SEBT.Portal.Core\SEBT.Portal.Core.csproj" />
+      <ProjectReference Include="..\SEBT.Portal.TestUtilities\SEBT.Portal.TestUtilities.csproj" />
     </ItemGroup>
 
     <ItemGroup>
@@ -20,6 +21,7 @@
       </PackageReference>
       <PackageReference Include="Microsoft.EntityFrameworkCore.Tools" Version="10.0.0" />
       <PackageReference Include="Microsoft.Extensions.Caching.Memory" Version="10.0.0" />
+      <PackageReference Include="Bogus" Version="35.6.5" />
       <PackageReference Include="Microsoft.Extensions.Logging" Version="10.0.0" />
       <PackageReference Include="Microsoft.Extensions.Options" Version="10.0.0" />
       <PackageReference Include="Microsoft.Extensions.Options.ConfigurationExtensions" Version="10.0.0" />

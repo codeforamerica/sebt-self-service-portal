@@ -25,10 +25,19 @@ public static class Dependencies
         return services;
     }
 
-    public static IServiceCollection AddPortalInfrastructureRepositories(this IServiceCollection services)
+    public static IServiceCollection AddPortalInfrastructureRepositories(
+        this IServiceCollection services,
+        IConfiguration? configuration = null)
     {
         services.AddTransient<IOtpRepository, InMemoryOtpRepository>();
         services.AddTransient<IUserRepository, DatabaseUserRepository>();
+
+        // For deterministic time in seeding/mock data
+        services.AddSingleton(TimeProvider.System);
+
+        // Household data is stored in-memory (will be replaced with distributed store later)
+        services.AddTransient<IHouseholdRepository, MockHouseholdRepository>();
+
         services.AddMemoryCache();
 
         return services;
@@ -56,7 +65,7 @@ public static class Dependencies
         });
 
         services.AddScoped<IDatabaseMigrator, DatabaseMigrator>();
-        services.AddScoped<IDataSeeder, Services.DataSeeder>();
+        services.AddScoped<IDataSeeder, DataSeeder>();
 
         return services;
     }
