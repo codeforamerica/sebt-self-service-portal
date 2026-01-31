@@ -61,12 +61,11 @@ Log.Logger = new LoggerConfiguration()
 // Use Serilog instead of default logger
 builder.Host.UseSerilog();
 
+// Registers plugins and allows them to be constructor injected into ASP.NET controllers
+builder.Services.AddPlugins(builder.Configuration);
+
 // Add services to the container.
 builder.Services.AddControllers();
-
-// Registers plugins and allows them to be constructor injected into ASP.NET controllers
-builder.Host.UseServiceProviderFactory(new CompositionBridgingServiceProviderFactory());
-builder.Services.AddPlugins();
 
 builder.Services.Configure<RouteOptions>(options =>
 {

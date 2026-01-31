@@ -1,7 +1,5 @@
-using System.Composition;
 using System.Composition.Convention;
 using System.Composition.Hosting;
-using Microsoft.AspNetCore.Mvc.Controllers;
 using SEBT.Portal.StatesPlugins.Interfaces;
 
 namespace SEBT.Portal.Api.Composition;
@@ -10,58 +8,26 @@ using Serilog;
 
 internal static class ServiceCollectionPluginExtensions
 {
-    public static IServiceCollection AddPlugins(this IServiceCollection services)
+    public static IServiceCollection AddPlugins(this IServiceCollection services, IConfiguration configuration)
     {
-        services.AddSingleton<CompositionContext>(sp =>
+        var pluginAssemblyPaths = configuration
+                                      .GetSection("PluginAssemblyPaths")
+                                      .Get<string[]>()
+                                  ?? throw new InvalidOperationException("PluginAssemblyPaths missing from configuration.");
+        Log.Information("Loading plugins from: {PluginAssemblyPaths}", pluginAssemblyPaths);
+        var containerConfiguration = CreateContainerConfiguration(pluginAssemblyPaths);
+        using var container = containerConfiguration.CreateContainer();
+
+        var plugins = container.GetExports<IStatePlugin>();
+
+        foreach (var plugin in plugins)
         {
-            var configuration = sp.GetRequiredService<IConfiguration>();
-            var pluginAssemblyPaths = configuration
-                .GetSection("PluginAssemblyPaths")
-                .Get<string[]>()
-                ?? throw new InvalidOperationException("PluginAssemblyPaths missing from configuration.");
-            Log.Information("Loading plugins from: {PluginAssemblyPaths}", pluginAssemblyPaths);
-            var containerConfiguration = CreateContainerConfiguration(pluginAssemblyPaths);
-            var container = containerConfiguration.CreateContainer();
-            return container;
-        });
+            Log.Information("Configuring services for plugin: {PluginType}", plugin.GetType().FullName);
+            var @interface = plugin.GetType().GetInterfaces().Single(i => i != typeof(IStatePlugin));
+            services.AddSingleton(@interface, plugin);
+        }
 
-        // Register plugin services with DI so they can be constructor-injected
-        // These factories resolve from MEF at runtime
-        services.AddSingleton<IStateAuthenticationService>(sp =>
-        {
-            var context = sp.GetRequiredService<CompositionContext>();
-            return context.GetExport<IStateAuthenticationService>();
-        });
-
-        services.AddSingleton<IStateMetadataService>(sp =>
-        {
-            var context = sp.GetRequiredService<CompositionContext>();
-            return context.GetExport<IStateMetadataService>();
-        });
-
-        services.AddSingleton<ISummerEbtCaseService>(sp =>
-        {
-            var context = sp.GetRequiredService<CompositionContext>();
-            return context.GetExport<ISummerEbtCaseService>();
-        });
-
-        var defaultControllerActivatorDescriptor = services
-            .Single(sd => sd.ServiceType == typeof(IControllerActivator));
-        var defaultControllerActivatorCtor = defaultControllerActivatorDescriptor.ImplementationType!
-            .GetConstructors()
-            .Single();
-        services.Remove(defaultControllerActivatorDescriptor);
-
-        return services.AddSingleton<IControllerActivator>(sp =>
-        {
-            var parameters = defaultControllerActivatorCtor.GetParameters()
-                .Select(parameter => parameter.ParameterType)
-                .Select(sp.GetRequiredService)
-                .ToArray();
-            var defaultControllerActivator = (IControllerActivator)defaultControllerActivatorCtor.Invoke(parameters);
-
-            return new CompositionBridgingControllerActivator(defaultControllerActivator);
-        });
+        return services;
     }
 
     private static ContainerConfiguration CreateContainerConfiguration(string[] assemblyPaths)
