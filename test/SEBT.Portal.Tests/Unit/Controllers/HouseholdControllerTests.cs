@@ -11,6 +11,8 @@ using SEBT.Portal.Core.Models.Household;
 using SEBT.Portal.Core.Repositories;
 using SEBT.Portal.Core.Services;
 using SEBT.Portal.Core.Utilities;
+using SEBT.Portal.Kernel;
+using SEBT.Portal.UseCases.Household;
 
 namespace SEBT.Portal.Tests.Unit.Controllers;
 
@@ -20,8 +22,15 @@ public class HouseholdControllerTests
 
     public HouseholdControllerTests()
     {
-        var logger = NullLogger<HouseholdController>.Instance;
-        _controller = new HouseholdController(logger);
+        _controller = new HouseholdController();
+    }
+
+    private static IQueryHandler<GetHouseholdDataQuery, HouseholdData> CreateQueryHandler(
+        IHouseholdIdentifierResolver resolver,
+        IHouseholdRepository repository)
+    {
+        var logger = NullLogger<GetHouseholdDataQueryHandler>.Instance;
+        return new GetHouseholdDataQueryHandler(resolver, repository, logger);
     }
 
     private void SetupAuthenticatedUser(string email, IdProofingStatus idProofingStatus = IdProofingStatus.NotStarted, string claimType = ClaimTypes.Email)
@@ -96,7 +105,7 @@ public class HouseholdControllerTests
             .Returns(householdData);
 
         // Act
-        var result = await _controller.GetHouseholdData(resolverMock, repositoryMock);
+        var result = await _controller.GetHouseholdData(CreateQueryHandler(resolverMock, repositoryMock));
 
         // Assert
         Assert.NotNull(result);
@@ -138,7 +147,7 @@ public class HouseholdControllerTests
             .Returns(householdData);
 
         // Act
-        var result = await _controller.GetHouseholdData(resolverMock, repositoryMock);
+        var result = await _controller.GetHouseholdData(CreateQueryHandler(resolverMock, repositoryMock));
 
         // Assert
         Assert.NotNull(result);
@@ -162,7 +171,7 @@ public class HouseholdControllerTests
             .Returns((HouseholdData?)null);
 
         // Act
-        var result = await _controller.GetHouseholdData(resolverMock, repositoryMock);
+        var result = await _controller.GetHouseholdData(CreateQueryHandler(resolverMock, repositoryMock));
 
         // Assert
         Assert.NotNull(result);
@@ -188,7 +197,7 @@ public class HouseholdControllerTests
         var repositoryMock = Substitute.For<IHouseholdRepository>();
 
         // Act
-        var result = await _controller.GetHouseholdData(resolverMock, repositoryMock);
+        var result = await _controller.GetHouseholdData(CreateQueryHandler(resolverMock, repositoryMock));
 
         // Assert
         Assert.NotNull(result);
@@ -221,7 +230,7 @@ public class HouseholdControllerTests
             .Returns(householdData);
 
         // Act
-        var result = await _controller.GetHouseholdData(resolverMock, repositoryMock);
+        var result = await _controller.GetHouseholdData(CreateQueryHandler(resolverMock, repositoryMock));
 
         // Assert
         Assert.NotNull(result);
@@ -251,7 +260,7 @@ public class HouseholdControllerTests
             .Returns(householdData);
 
         // Act
-        var result = await _controller.GetHouseholdData(resolverMock, repositoryMock);
+        var result = await _controller.GetHouseholdData(CreateQueryHandler(resolverMock, repositoryMock));
 
         // Assert
         Assert.NotNull(result);
@@ -290,7 +299,7 @@ public class HouseholdControllerTests
             .Returns(householdData);
 
         // Act
-        var result = await _controller.GetHouseholdData(resolverMock, repositoryMock);
+        var result = await _controller.GetHouseholdData(CreateQueryHandler(resolverMock, repositoryMock));
 
         // Assert
         Assert.NotNull(result);
@@ -330,7 +339,7 @@ public class HouseholdControllerTests
             .Returns(householdData);
 
         // Act
-        var result = await _controller.GetHouseholdData(resolverMock, repositoryMock);
+        var result = await _controller.GetHouseholdData(CreateQueryHandler(resolverMock, repositoryMock));
 
         // Assert
         Assert.NotNull(result);
@@ -352,7 +361,7 @@ public class HouseholdControllerTests
             .Returns(householdData);
 
         // Act
-        var result = await _controller.GetHouseholdData(resolverMock, repositoryMock);
+        var result = await _controller.GetHouseholdData(CreateQueryHandler(resolverMock, repositoryMock));
 
         // Assert
         Assert.NotNull(result);
@@ -373,7 +382,7 @@ public class HouseholdControllerTests
             .Returns(householdData);
 
         // Act
-        var result = await _controller.GetHouseholdData(resolverMock, repositoryMock);
+        var result = await _controller.GetHouseholdData(CreateQueryHandler(resolverMock, repositoryMock));
 
         // Assert
         Assert.NotNull(result);
@@ -401,7 +410,7 @@ public class HouseholdControllerTests
             .Returns(householdData);
 
         // Act
-        var result = await _controller.GetHouseholdData(resolverMock, repositoryMock);
+        var result = await _controller.GetHouseholdData(CreateQueryHandler(resolverMock, repositoryMock));
 
         // Assert
         Assert.NotNull(result);
@@ -430,7 +439,7 @@ public class HouseholdControllerTests
             .Returns(householdData);
 
         // Act
-        var result = await _controller.GetHouseholdData(resolverMock, repositoryMock);
+        var result = await _controller.GetHouseholdData(CreateQueryHandler(resolverMock, repositoryMock));
 
         // Assert
         Assert.NotNull(result);
@@ -482,7 +491,7 @@ public class HouseholdControllerTests
             .Returns(householdData);
 
         // Act
-        var result = await _controller.GetHouseholdData(resolverMock, repositoryMock);
+        var result = await _controller.GetHouseholdData(CreateQueryHandler(resolverMock, repositoryMock));
 
         // Assert
         Assert.NotNull(result);
