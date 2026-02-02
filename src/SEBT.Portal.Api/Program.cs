@@ -6,7 +6,6 @@ using Microsoft.IdentityModel.Tokens;
 using SEBT.Portal.Api.Composition;
 using Serilog;
 using Microsoft.FeatureManagement;
-using SEBT.Portal.Api.Extensions;
 using SEBT.Portal.Api.Middleware;
 using SEBT.Portal.Api.Options;
 using SEBT.Portal.Core.AppSettings;
@@ -88,8 +87,8 @@ builder.Services.AddFeatureManagement(builder.Configuration.GetSection("FeatureM
 // Adds use cases (i.e., query and command handlers) for portal business logic
 builder.Services.AddUseCases();
 builder.Services.AddPortalInfrastructureServices();
-builder.Services.AddPortalDbContext(builder.Configuration, options => options.ConfigureDevelopmentSeeding());
-builder.Services.AddPortalInfrastructureRepositories();
+builder.Services.AddPortalDbContext(builder.Configuration);
+builder.Services.AddPortalInfrastructureRepositories(builder.Configuration);
 builder.Services.AddPortalInfrastructureAppSettings(builder.Configuration);
 
 // Register IDatabaseSeeder for development utilities (e.g., ClearSeededData script)
@@ -190,11 +189,18 @@ static FixedWindowRateLimiterOptions CreateOtpRateLimitOptions(OtpRateLimitSetti
 
 var app = builder.Build();
 
-// Apply database migrations (seeding happens automatically via UseSeeding if enabled). Seed users when mock household data is enabled.
+// Apply database migrations
 await using (var scope = app.Services.CreateAsyncScope())
 {
     var databaseMigrator = scope.ServiceProvider.GetRequiredService<IDatabaseMigrator>();
     await databaseMigrator.MigrateAsync();
+
+    if (app.Environment.IsDevelopment())
+    {
+        var useMockHouseholdData = app.Configuration.GetValue<bool>("UseMockHouseholdData", false);
+        var databaseSeeder = scope.ServiceProvider.GetRequiredService<IDatabaseSeeder>();
+        await databaseSeeder.SeedTestUsersAsync(useMockHouseholdData, CancellationToken.None);
+    }
 }
 
 // Configure the HTTP request pipeline.

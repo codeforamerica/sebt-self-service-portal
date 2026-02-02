@@ -19,6 +19,13 @@ public interface IDatabaseSeeder
     Task SeedTestUsersAsync(CancellationToken cancellationToken = default);
 
     /// <summary>
+    /// Seeds the database with specific test users for development.
+    /// </summary>
+    /// <param name="useMockHouseholdData">Whether to seed users corresponding to household mock data.</param>
+    /// <param name="cancellationToken">A token to cancel the operation.</param>
+    Task SeedTestUsersAsync(bool useMockHouseholdData, CancellationToken cancellationToken = default);
+
+    /// <summary>
     /// Clears all seeded data from the database.
     /// WARNING: This will delete all users and opt-ins. Use with caution.
     /// </summary>
