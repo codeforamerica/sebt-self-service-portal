@@ -7,11 +7,10 @@ using SEBT.Portal.Infrastructure.Data;
 using SEBT.Portal.Infrastructure.Seeding.Services;
 using SEBT.Portal.Infrastructure.Services;
 
-namespace SEBT.Portal.Infrastructure.Extensions;
+namespace SEBT.Portal.Api.Extensions;
 
 /// <summary>
 /// Extension methods for configuring database seeding in Development environment.
-/// Seeding is an Infrastructure concern (EF Core + database); this extension lives here to follow Clean Architecture.
 /// </summary>
 public static class DatabaseSeedingExtensions
 {
@@ -25,11 +24,32 @@ public static class DatabaseSeedingExtensions
         var useMockHouseholdData = configuration?.GetValue<bool>("UseMockHouseholdData", false) ?? false;
 
         // These are called automatically during migrations, EnsureCreated, and `dotnet ef database update`
-        // Both `UseSeeding` and `UseAsyncSeeding` are recommended for compatibility.
+        // Both UseSeeding and UseAsyncSeeding must implement similar logic; EF Core tooling relies on the sync version.
         // See: https://learn.microsoft.com/en-us/ef/core/modeling/data-seeding
         optionsBuilder.UseSeeding((context, _) =>
         {
-            // Sync callback is a no-op; seeding runs in UseAsyncSeeding below.
+            if (Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT") != "Development")
+            {
+                return;
+            }
+
+            if (context is not PortalDbContext portalContext)
+            {
+                return;
+            }
+
+            if (portalContext.Users.Any())
+            {
+                return;
+            }
+
+            var serviceProvider = portalContext.GetInfrastructure().GetService<IServiceProvider>();
+            var logger = serviceProvider?.GetService<ILogger<DatabaseSeeder>>();
+            var timeProvider = serviceProvider?.GetService<TimeProvider>() ?? TimeProvider.System;
+
+            var dataSeeder = new DataSeeder(portalContext);
+            var seeder = new DatabaseSeeder(dataSeeder, logger, timeProvider);
+            seeder.SeedTestUsers(useMockHouseholdData);
         })
         .UseAsyncSeeding(async (context, _, cancellationToken) =>
         {

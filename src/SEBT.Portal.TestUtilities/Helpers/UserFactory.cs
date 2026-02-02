@@ -45,7 +45,7 @@ public static class UserFactory
     /// Note: For testing purposes, this allows empty/null emails to test repository validation.
     /// In production code, emails should be validated before calling this method.
     /// </summary>
-    /// <param name="email">The email address to use (may be empty/null for testing).</param>
+    /// <param name="email">The email address to use.</param>
     /// <param name="customize">Optional action to further customize the user.</param>
     /// <returns>A new User instance with the specified email.</returns>
     public static User CreateUserWithEmail(string email, Action<User>? customize = null)
