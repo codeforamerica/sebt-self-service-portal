@@ -422,6 +422,7 @@ public class MockHouseholdRepository : IHouseholdRepository
                 IssuanceType = a.IssuanceType,
                 Children = a.Children.Select(c => new Child
                 {
+                    CaseNumber = c.CaseNumber,
                     FirstName = c.FirstName,
                     LastName = c.LastName
                 }).ToList()
