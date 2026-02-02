@@ -431,6 +431,44 @@ public class DatabaseUserRepositoryTests : IClassFixture<SqlServerTestFixture>
     }
 
     [Fact]
+    public async Task UpdateUserAsync_WhenUserHasSsn_ShouldStoreSsnAsHash()
+    {
+        // Arrange
+        using var context = CreateContext();
+        var repository = CreateRepository(context);
+
+        var uniqueEmail = $"ssn-update-{Guid.NewGuid()}@example.com";
+        var entity = UserFactory.CreateUserEntity(e =>
+        {
+            e.Email = uniqueEmail;
+            e.IdProofingStatus = (int)IdProofingStatus.NotStarted;
+        });
+        context.Users.Add(entity);
+        await context.SaveChangesAsync();
+
+        var user = UserFactory.CreateUserWithEmail(uniqueEmail, u =>
+        {
+            u.IdProofingStatus = IdProofingStatus.Completed;
+            u.Ssn = "123-45-6789";
+        });
+        var idProperty = typeof(User).GetProperty(nameof(User.Id));
+        var createdAtProperty = typeof(User).GetProperty(nameof(User.CreatedAt));
+        idProperty?.SetValue(user, entity.Id);
+        createdAtProperty?.SetValue(user, entity.CreatedAt);
+
+        // Act
+        await repository.UpdateUserAsync(user, CancellationToken.None);
+
+        // Assert - SSN stored as HMAC-SHA256 hash, not plaintext
+        var updated = await context.Users.FirstOrDefaultAsync(u => u.Email == uniqueEmail);
+        Assert.NotNull(updated);
+        Assert.NotNull(updated!.Ssn);
+        Assert.Equal(64, updated.Ssn.Length);
+        Assert.NotEqual("123-45-6789", updated.Ssn);
+        Assert.NotEqual("123456789", updated.Ssn);
+    }
+
+    [Fact]
     public async Task GetOrCreateUserAsync_WhenUserExists_ShouldReturnExistingUser()
     {
         // Arrange
