@@ -1,6 +1,5 @@
 using Microsoft.EntityFrameworkCore;
 using SEBT.Portal.Core.Models.Auth;
-using SEBT.Portal.Core.Models.Household;
 using SEBT.Portal.Core.Services;
 using SEBT.Portal.Core.Utilities;
 using SEBT.Portal.Infrastructure.Data;
@@ -42,10 +41,10 @@ public class DataSeeder : IDataSeeder
             IdProofingExpiresAt = user.IdProofingExpiresAt,
             IsCoLoaded = user.IsCoLoaded,
             CoLoadedLastUpdated = user.CoLoadedLastUpdated,
-            Phone = _identifierHasher.HashForStorage(PreferredHouseholdIdType.Phone, user.Phone),
-            SnapId = _identifierHasher.HashForStorage(PreferredHouseholdIdType.SnapId, user.SnapId),
-            TanfId = _identifierHasher.HashForStorage(PreferredHouseholdIdType.TanfId, user.TanfId),
-            Ssn = _identifierHasher.HashForStorage(PreferredHouseholdIdType.Ssn, user.Ssn),
+            Phone = user.Phone,
+            SnapId = user.SnapId,
+            TanfId = user.TanfId,
+            Ssn = _identifierHasher.HashForStorage(user.Ssn),
             CreatedAt = user.CreatedAt,
             UpdatedAt = user.UpdatedAt
         };

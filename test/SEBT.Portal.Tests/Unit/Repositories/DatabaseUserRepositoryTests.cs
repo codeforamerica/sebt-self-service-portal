@@ -713,7 +713,7 @@ public class DatabaseUserRepositoryTests : IClassFixture<SqlServerTestFixture>
     }
 
     [Fact]
-    public async Task CreateUserAsync_WhenUserHasIdentifierFields_ShouldStoreHashesNotPlaintext()
+    public async Task CreateUserAsync_WhenUserHasIdentifierFields_ShouldStoreSsnAsHashAndOthersAsPlaintext()
     {
         // Arrange
         using var context = CreateContext();
@@ -731,15 +731,15 @@ public class DatabaseUserRepositoryTests : IClassFixture<SqlServerTestFixture>
         // Act
         await repository.CreateUserAsync(user, CancellationToken.None);
 
-        // Assert - stored values should be HMAC-SHA256 hashes, not plaintext
+        // Assert - Phone, SnapId, TanfId stored as plaintext; SSN stored as HMAC-SHA256 hash
         var stored = await context.Users.FirstOrDefaultAsync(u => u.Email == uniqueEmail);
         Assert.NotNull(stored);
-        Assert.NotNull(stored!.Phone);
-        Assert.Equal(64, stored.Phone.Length);
-        Assert.NotEqual("5551234567", stored.Phone);
-        Assert.NotNull(stored.SnapId);
-        Assert.Equal(64, stored.SnapId.Length);
-        Assert.NotEqual("SNAP123", stored.SnapId);
+        Assert.Equal("5551234567", stored!.Phone);
+        Assert.Equal("SNAP123", stored.SnapId);
+        Assert.Equal("TANF456", stored.TanfId);
+        Assert.NotNull(stored.Ssn);
+        Assert.Equal(64, stored.Ssn.Length);
+        Assert.NotEqual("123456789", stored.Ssn);
     }
 
     [Fact]

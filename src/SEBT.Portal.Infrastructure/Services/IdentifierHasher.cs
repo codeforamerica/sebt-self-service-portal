@@ -3,14 +3,12 @@ using System.Security.Cryptography;
 using System.Text;
 using Microsoft.Extensions.Options;
 using SEBT.Portal.Core.AppSettings;
-using SEBT.Portal.Core.Models.Household;
 using SEBT.Portal.Core.Services;
-using SEBT.Portal.Core.Utilities;
 
 namespace SEBT.Portal.Infrastructure.Services;
 
 /// <summary>
-/// HMAC-SHA256 implementation of <see cref="IIdentifierHasher"/>.
+/// HMAC-SHA256 implementation of <see cref="IIdentifierHasher"/> for SSN hashing.
 /// </summary>
 public class IdentifierHasher : IIdentifierHasher
 {
@@ -29,9 +27,9 @@ public class IdentifierHasher : IIdentifierHasher
     }
 
     /// <inheritdoc />
-    public string? Hash(PreferredHouseholdIdType type, string? plaintext)
+    public string? Hash(string? plaintext)
     {
-        var normalized = Normalize(type, plaintext);
+        var normalized = NormalizeSsn(plaintext);
         if (string.IsNullOrWhiteSpace(normalized))
         {
             return null;
@@ -42,19 +40,19 @@ public class IdentifierHasher : IIdentifierHasher
     }
 
     /// <inheritdoc />
-    public bool Matches(PreferredHouseholdIdType type, string? plaintext, string? storedHash)
+    public bool Matches(string? plaintext, string? storedHash)
     {
         if (string.IsNullOrWhiteSpace(storedHash) || storedHash.Length != HashLengthHex)
         {
             return false;
         }
 
-        var computed = Hash(type, plaintext);
+        var computed = Hash(plaintext);
         return computed != null && string.Equals(computed, storedHash, StringComparison.OrdinalIgnoreCase);
     }
 
     /// <inheritdoc />
-    public string? HashForStorage(PreferredHouseholdIdType type, string? value)
+    public string? HashForStorage(string? value)
     {
         if (string.IsNullOrWhiteSpace(value))
         {
@@ -67,30 +65,19 @@ public class IdentifierHasher : IIdentifierHasher
             return value;
         }
 
-        return Hash(type, value);
+        return Hash(value);
     }
 
     private static bool IsHexChar(char c) =>
         c is (>= '0' and <= '9') or (>= 'a' and <= 'f') or (>= 'A' and <= 'F');
 
-    /// <summary>
-    /// Normalizes the value using the same rules as <see cref="HouseholdIdentifierResolver"/>.
-    /// </summary>
-    private static string? Normalize(PreferredHouseholdIdType type, string? value)
+    private static string? NormalizeSsn(string? value)
     {
         if (string.IsNullOrWhiteSpace(value))
         {
             return null;
         }
 
-        return type switch
-        {
-            PreferredHouseholdIdType.Email => EmailNormalizer.NormalizeOrNull(value),
-            PreferredHouseholdIdType.Phone => value.Trim(),
-            PreferredHouseholdIdType.SnapId => value.Trim(),
-            PreferredHouseholdIdType.TanfId => value.Trim(),
-            PreferredHouseholdIdType.Ssn => value.Trim().Replace("-", "").Replace(" ", ""),
-            _ => value.Trim()
-        };
+        return value.Trim().Replace("-", "").Replace(" ", "");
     }
 }

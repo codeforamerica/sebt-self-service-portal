@@ -1,6 +1,5 @@
 using Microsoft.EntityFrameworkCore;
 using SEBT.Portal.Core.Models.Auth;
-using SEBT.Portal.Core.Models.Household;
 using SEBT.Portal.Core.Repositories;
 using SEBT.Portal.Core.Services;
 using SEBT.Portal.Infrastructure.Data;
@@ -86,10 +85,10 @@ public class DatabaseUserRepository(PortalDbContext dbContext, IIdentifierHasher
         entity.IdProofingExpiresAt = user.IdProofingExpiresAt;
         entity.IsCoLoaded = user.IsCoLoaded;
         entity.CoLoadedLastUpdated = user.CoLoadedLastUpdated;
-        entity.Phone = identifierHasher.HashForStorage(PreferredHouseholdIdType.Phone, user.Phone);
-        entity.SnapId = identifierHasher.HashForStorage(PreferredHouseholdIdType.SnapId, user.SnapId);
-        entity.TanfId = identifierHasher.HashForStorage(PreferredHouseholdIdType.TanfId, user.TanfId);
-        entity.Ssn = identifierHasher.HashForStorage(PreferredHouseholdIdType.Ssn, user.Ssn);
+        entity.Phone = user.Phone;
+        entity.SnapId = user.SnapId;
+        entity.TanfId = user.TanfId;
+        entity.Ssn = identifierHasher.HashForStorage(user.Ssn);
         entity.UpdatedAt = DateTime.UtcNow;
 
         try
@@ -225,10 +224,10 @@ public class DatabaseUserRepository(PortalDbContext dbContext, IIdentifierHasher
             IdProofingExpiresAt = user.IdProofingExpiresAt,
             IsCoLoaded = user.IsCoLoaded,
             CoLoadedLastUpdated = user.CoLoadedLastUpdated,
-            Phone = identifierHasher.HashForStorage(PreferredHouseholdIdType.Phone, user.Phone),
-            SnapId = identifierHasher.HashForStorage(PreferredHouseholdIdType.SnapId, user.SnapId),
-            TanfId = identifierHasher.HashForStorage(PreferredHouseholdIdType.TanfId, user.TanfId),
-            Ssn = identifierHasher.HashForStorage(PreferredHouseholdIdType.Ssn, user.Ssn),
+            Phone = user.Phone,
+            SnapId = user.SnapId,
+            TanfId = user.TanfId,
+            Ssn = identifierHasher.HashForStorage(user.Ssn),
             CreatedAt = user.CreatedAt,
             UpdatedAt = user.UpdatedAt
         };
