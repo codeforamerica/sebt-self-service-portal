@@ -24,6 +24,8 @@ public static class HouseholdFactory
     /// <summary>
     /// Creates a new HouseholdData instance with generated fake data.
     /// </summary>
+    /// <param name="customize">Optional action to customize the generated household.</param>
+    /// <returns>A new HouseholdData instance.</returns>
     public static HouseholdData CreateHouseholdData(Action<HouseholdData>? customize = null)
     {
         var household = HouseholdDataFaker.Generate();
@@ -42,6 +44,7 @@ public static class HouseholdFactory
     public static HouseholdData CreateHouseholdDataWithEmail(string email, Action<HouseholdData>? customize = null)
     {
         var household = HouseholdDataFaker.Generate();
+        // Only normalize if email is not empty/null
         household.Email = string.IsNullOrWhiteSpace(email) ? email : EmailNormalizer.Normalize(email);
         customize?.Invoke(household);
         return household;
@@ -50,6 +53,9 @@ public static class HouseholdFactory
     /// <summary>
     /// Creates a HouseholdData with a specific application status.
     /// </summary>
+    /// <param name="status">The application status to set.</param>
+    /// <param name="customize">Optional action to further customize the household.</param>
+    /// <returns>A HouseholdData instance with the specified application status.</returns>
     public static HouseholdData CreateHouseholdDataWithStatus(
         ApplicationStatus status,
         Action<HouseholdData>? customize = null)
@@ -67,6 +73,8 @@ public static class HouseholdFactory
     /// <summary>
     /// Creates a HouseholdData with an address (simulating ID verified user).
     /// </summary>
+    /// <param name="customize">Optional action to further customize the household.</param>
+    /// <returns>A HouseholdData instance with an address.</returns>
     public static HouseholdData CreateHouseholdDataWithAddress(Action<HouseholdData>? customize = null)
     {
         return CreateHouseholdData(h =>
@@ -80,6 +88,7 @@ public static class HouseholdFactory
     /// <summary>
     /// Sets a seed for the random number generator to ensure deterministic test data.
     /// </summary>
+    /// <param name="seed">The seed value to use.</param>
     public static void SetSeed(int seed)
     {
         Randomizer.Seed = new Random(seed);
