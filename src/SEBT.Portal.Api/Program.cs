@@ -6,7 +6,7 @@ using Microsoft.IdentityModel.Tokens;
 using SEBT.Portal.Api.Composition;
 using Serilog;
 using Microsoft.FeatureManagement;
-using SEBT.Portal.Api.Extensions;
+using SEBT.Portal.Infrastructure.Extensions;
 using SEBT.Portal.Api.Middleware;
 using SEBT.Portal.Api.Options;
 using SEBT.Portal.Core.AppSettings;

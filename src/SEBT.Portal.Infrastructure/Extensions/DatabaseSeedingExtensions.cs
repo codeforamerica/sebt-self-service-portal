@@ -1,16 +1,17 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using SEBT.Portal.Infrastructure.Data;
-using SEBT.Portal.Infrastructure.Repositories;
 using SEBT.Portal.Infrastructure.Seeding.Services;
 using SEBT.Portal.Infrastructure.Services;
 
-namespace SEBT.Portal.Api.Extensions;
+namespace SEBT.Portal.Infrastructure.Extensions;
 
 /// <summary>
 /// Extension methods for configuring database seeding in Development environment.
+/// Seeding is an Infrastructure concern (EF Core + database); this extension lives here to follow Clean Architecture.
 /// </summary>
 public static class DatabaseSeedingExtensions
 {
