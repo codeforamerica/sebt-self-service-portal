@@ -29,6 +29,7 @@ public static class Dependencies
 
         // Household identifier resolution (state-configurable preferred household ID type)
         services.AddTransient<IHouseholdIdentifierResolver, HouseholdIdentifierResolver>();
+        services.AddSingleton<IIdentifierHasher, IdentifierHasher>();
 
         return services;
     }
@@ -91,6 +92,8 @@ public static class Dependencies
             .BindConfiguration(JwtSettings.SectionName);
         services.AddOptions<StateHouseholdIdSettings>()
             .BindConfiguration(StateHouseholdIdSettings.SectionName);
+        services.AddOptionsWithValidateOnStart<IdentifierHasherSettings>()
+            .BindConfiguration(IdentifierHasherSettings.SectionName);
 
         services.AddOptions<FeatureManagementSettings>()
             .Bind(configuration.GetSection(FeatureManagementSettings.SectionName))

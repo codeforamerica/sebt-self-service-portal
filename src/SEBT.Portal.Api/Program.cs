@@ -50,6 +50,12 @@ if (!string.IsNullOrEmpty(jwtSecretKey))
     builder.Configuration["JwtSettings:SecretKey"] = jwtSecretKey;
 }
 
+var identifierHasherKey = Environment.GetEnvironmentVariable("IDENTIFIER_HASHER_SECRET_KEY");
+if (!string.IsNullOrEmpty(identifierHasherKey))
+{
+    builder.Configuration["IdentifierHasher:SecretKey"] = identifierHasherKey;
+}
+
 // Configure Serilog
 Log.Logger = new LoggerConfiguration()
     .ReadFrom.Configuration(builder.Configuration)

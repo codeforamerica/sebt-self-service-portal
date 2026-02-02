@@ -44,8 +44,15 @@ try
         .Build();
 
     var host = Host.CreateDefaultBuilder()
+        .ConfigureAppConfiguration((_, config) =>
+        {
+            config.Sources.Clear();
+            config.AddConfiguration(configuration);
+        })
         .ConfigureServices((context, services) =>
         {
+            services.AddPortalInfrastructureServices();
+            services.AddPortalInfrastructureAppSettings();
             services.AddPortalDbContext(configuration);
             services.AddPortalInfrastructureRepositories();
             services.AddScoped<IDatabaseSeeder>(sp =>

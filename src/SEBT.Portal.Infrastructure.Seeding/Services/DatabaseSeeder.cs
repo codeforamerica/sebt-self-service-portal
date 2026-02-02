@@ -67,11 +67,13 @@ public class DatabaseSeeder : Core.Services.IDatabaseSeeder
                 u.CoLoadedLastUpdated = now.AddDays(-5);
                 u.IdProofingCompletedAt = now.AddDays(-10);
                 u.IdProofingExpiresAt = now.AddDays(355);
+                u.Phone = "5551234567";
             }),
             UserFactory.CreateNonCoLoadedUser(u =>
             {
                 u.Email = "non-co-loaded@example.com";
                 u.IdProofingStatus = IdProofingStatus.InProgress;
+                u.Phone = "5555551234";
             }),
             UserFactory.CreateNonCoLoadedUser(u =>
             {
@@ -154,6 +156,21 @@ public class DatabaseSeeder : Core.Services.IDatabaseSeeder
                             u.IdProofingCompletedAt = now.AddDays(DaysSinceIdProofingCompleted);
                             u.IdProofingExpiresAt = now.AddDays(DaysUntilIdProofingExpires);
                             u.CoLoadedLastUpdated = now.AddDays(DaysSinceCoLoadedUpdate);
+                            u.Phone = "5551234567";
+                            u.SnapId = "SNAP-CO-001";
+                        });
+                    }
+                    else if (normalizedEmail == "verified@example.com")
+                    {
+                        user = UserFactory.CreateUserWithEmail(normalizedEmail, u =>
+                        {
+                            u.IdProofingStatus = idProofingStatus;
+                            u.IdProofingCompletedAt = now.AddDays(DaysSinceIdProofingCompleted);
+                            u.IdProofingExpiresAt = now.AddDays(DaysUntilIdProofingExpires);
+                            u.IsCoLoaded = false;
+                            u.CoLoadedLastUpdated = null;
+                            u.Phone = "5559876543";
+                            u.Ssn = "123456789";
                         });
                     }
                     else
@@ -260,6 +277,21 @@ public class DatabaseSeeder : Core.Services.IDatabaseSeeder
                             u.IdProofingCompletedAt = now.AddDays(DaysSinceIdProofingCompleted);
                             u.IdProofingExpiresAt = now.AddDays(DaysUntilIdProofingExpires);
                             u.CoLoadedLastUpdated = now.AddDays(DaysSinceCoLoadedUpdate);
+                            u.Phone = "5551234567";
+                            u.SnapId = "SNAP-CO-001";
+                        });
+                    }
+                    else if (normalizedEmail == "verified@example.com")
+                    {
+                        user = UserFactory.CreateUserWithEmail(normalizedEmail, u =>
+                        {
+                            u.IdProofingStatus = idProofingStatus;
+                            u.IdProofingCompletedAt = now.AddDays(DaysSinceIdProofingCompleted);
+                            u.IdProofingExpiresAt = now.AddDays(DaysUntilIdProofingExpires);
+                            u.IsCoLoaded = false;
+                            u.CoLoadedLastUpdated = null;
+                            u.Phone = "5559876543";
+                            u.Ssn = "123456789";
                         });
                     }
                     else

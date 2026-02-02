@@ -3,6 +3,7 @@ using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using SEBT.Portal.Core.Services;
 using SEBT.Portal.Infrastructure.Data;
 using SEBT.Portal.Infrastructure.Seeding.Services;
 using SEBT.Portal.Infrastructure.Services;
@@ -46,8 +47,10 @@ public static class DatabaseSeedingExtensions
             var serviceProvider = portalContext.GetInfrastructure().GetService<IServiceProvider>();
             var logger = serviceProvider?.GetService<ILogger<DatabaseSeeder>>();
             var timeProvider = serviceProvider?.GetService<TimeProvider>() ?? TimeProvider.System;
+            var identifierHasher = serviceProvider?.GetService<IIdentifierHasher>()
+                ?? throw new InvalidOperationException("IIdentifierHasher must be registered for database seeding.");
 
-            var dataSeeder = new DataSeeder(portalContext);
+            var dataSeeder = new DataSeeder(portalContext, identifierHasher);
             var seeder = new DatabaseSeeder(dataSeeder, logger, timeProvider);
             seeder.SeedTestUsers(useMockHouseholdData);
         })
@@ -72,8 +75,10 @@ public static class DatabaseSeedingExtensions
             var serviceProvider = portalContext.GetInfrastructure().GetService<IServiceProvider>();
             var logger = serviceProvider?.GetService<ILogger<DatabaseSeeder>>();
             var timeProvider = serviceProvider?.GetService<TimeProvider>() ?? TimeProvider.System;
+            var identifierHasher = serviceProvider?.GetService<IIdentifierHasher>()
+                ?? throw new InvalidOperationException("IIdentifierHasher must be registered for database seeding.");
 
-            var dataSeeder = new DataSeeder(portalContext);
+            var dataSeeder = new DataSeeder(portalContext, identifierHasher);
             var seeder = new DatabaseSeeder(dataSeeder, logger, timeProvider);
             await seeder.SeedTestUsersAsync(useMockHouseholdData, cancellationToken);
         });

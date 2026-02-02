@@ -1,5 +1,7 @@
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Options;
 using Microsoft.Extensions.Time.Testing;
+using SEBT.Portal.Core.AppSettings;
 using SEBT.Portal.Core.Models.Auth;
 using SEBT.Portal.Core.Services;
 using SEBT.Portal.Infrastructure.Data;
@@ -29,9 +31,12 @@ public class DatabaseSeederTests : IClassFixture<SqlServerTestFixture>
 
     private static readonly DateTimeOffset FixedSeedTime = new(2026, 1, 15, 12, 0, 0, TimeSpan.Zero);
 
+    private static readonly IIdentifierHasher TestHasher = new IdentifierHasher(
+        Options.Create(new IdentifierHasherSettings { SecretKey = "TestKeyMustBeAtLeast32CharactersLong!!" }));
+
     private DatabaseSeeder CreateSeeder(PortalDbContext context)
     {
-        var dataSeeder = new DataSeeder(context);
+        var dataSeeder = new DataSeeder(context, TestHasher);
         var timeProvider = new FakeTimeProvider(FixedSeedTime);
         return new DatabaseSeeder(dataSeeder, timeProvider: timeProvider);
     }
@@ -326,6 +331,17 @@ public class DatabaseSeederTests : IClassFixture<SqlServerTestFixture>
         Assert.Contains("co-loaded@example.com", emails);
         Assert.Contains("non-co-loaded@example.com", emails);
         Assert.Contains("not-started@example.com", emails);
+
+        // Verify identifier fields are stored as hashes (64-char hex), not plaintext
+        var coLoaded = users.First(u => u.Email == "co-loaded@example.com");
+        Assert.NotNull(coLoaded.Phone);
+        Assert.Equal(64, coLoaded.Phone!.Length);
+        Assert.True(coLoaded.Phone.All(c => "0123456789ABCDEFabcdef".Contains(c)));
+        Assert.NotEqual("5551234567", coLoaded.Phone);
+
+        var nonCoLoaded = users.First(u => u.Email == "non-co-loaded@example.com");
+        Assert.NotNull(nonCoLoaded.Phone);
+        Assert.Equal(64, nonCoLoaded.Phone!.Length);
     }
 
     [Fact]

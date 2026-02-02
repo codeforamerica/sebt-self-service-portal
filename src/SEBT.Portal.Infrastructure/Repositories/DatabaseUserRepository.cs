@@ -1,6 +1,8 @@
 using Microsoft.EntityFrameworkCore;
 using SEBT.Portal.Core.Models.Auth;
+using SEBT.Portal.Core.Models.Household;
 using SEBT.Portal.Core.Repositories;
+using SEBT.Portal.Core.Services;
 using SEBT.Portal.Infrastructure.Data;
 using SEBT.Portal.Infrastructure.Data.Entities;
 
@@ -9,8 +11,7 @@ namespace SEBT.Portal.Infrastructure.Repositories;
 /// <summary>
 /// Database-backed implementation of <see cref="IUserRepository"/> using Entity Framework Core.
 /// </summary>
-/// <param name="dbContext">The database context for accessing user data.</param>
-public class DatabaseUserRepository(PortalDbContext dbContext) : IUserRepository
+public class DatabaseUserRepository(PortalDbContext dbContext, IIdentifierHasher identifierHasher) : IUserRepository
 {
     public async Task<User?> GetUserByEmailAsync(string email, CancellationToken cancellationToken = default)
     {
@@ -85,10 +86,10 @@ public class DatabaseUserRepository(PortalDbContext dbContext) : IUserRepository
         entity.IdProofingExpiresAt = user.IdProofingExpiresAt;
         entity.IsCoLoaded = user.IsCoLoaded;
         entity.CoLoadedLastUpdated = user.CoLoadedLastUpdated;
-        entity.Phone = user.Phone;
-        entity.SnapId = user.SnapId;
-        entity.TanfId = user.TanfId;
-        entity.Ssn = user.Ssn;
+        entity.Phone = identifierHasher.HashForStorage(PreferredHouseholdIdType.Phone, user.Phone);
+        entity.SnapId = identifierHasher.HashForStorage(PreferredHouseholdIdType.SnapId, user.SnapId);
+        entity.TanfId = identifierHasher.HashForStorage(PreferredHouseholdIdType.TanfId, user.TanfId);
+        entity.Ssn = identifierHasher.HashForStorage(PreferredHouseholdIdType.Ssn, user.Ssn);
         entity.UpdatedAt = DateTime.UtcNow;
 
         try
@@ -212,7 +213,7 @@ public class DatabaseUserRepository(PortalDbContext dbContext) : IUserRepository
         };
     }
 
-    private static UserEntity MapToEntity(User user)
+    private UserEntity MapToEntity(User user)
     {
         return new UserEntity
         {
@@ -224,10 +225,10 @@ public class DatabaseUserRepository(PortalDbContext dbContext) : IUserRepository
             IdProofingExpiresAt = user.IdProofingExpiresAt,
             IsCoLoaded = user.IsCoLoaded,
             CoLoadedLastUpdated = user.CoLoadedLastUpdated,
-            Phone = user.Phone,
-            SnapId = user.SnapId,
-            TanfId = user.TanfId,
-            Ssn = user.Ssn,
+            Phone = identifierHasher.HashForStorage(PreferredHouseholdIdType.Phone, user.Phone),
+            SnapId = identifierHasher.HashForStorage(PreferredHouseholdIdType.SnapId, user.SnapId),
+            TanfId = identifierHasher.HashForStorage(PreferredHouseholdIdType.TanfId, user.TanfId),
+            Ssn = identifierHasher.HashForStorage(PreferredHouseholdIdType.Ssn, user.Ssn),
             CreatedAt = user.CreatedAt,
             UpdatedAt = user.UpdatedAt
         };
