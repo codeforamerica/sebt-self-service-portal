@@ -332,12 +332,18 @@ public class DatabaseSeederTests : IClassFixture<SqlServerTestFixture>
         Assert.Contains("non-co-loaded@example.com", emails);
         Assert.Contains("not-started@example.com", emails);
 
-        // Verify Phone/SnapId/TanfId stored as plaintext (not hashed)
+        // Verify Phone/SnapId/TanfId stored as plaintext; SSN stored as hash
         var coLoaded = users.First(u => u.Email == "co-loaded@example.com");
         Assert.Equal("5551234567", coLoaded.Phone);
+        Assert.Equal("SNAP-CO-001", coLoaded.SnapId);
+        Assert.Equal("TANF-CO-001", coLoaded.TanfId);
+        Assert.NotNull(coLoaded.Ssn);
+        Assert.Equal(64, coLoaded.Ssn!.Length);
+        Assert.NotEqual("123456789", coLoaded.Ssn);
 
         var nonCoLoaded = users.First(u => u.Email == "non-co-loaded@example.com");
         Assert.Equal("5555551234", nonCoLoaded.Phone);
+        Assert.Equal("SNAP-NCO-001", nonCoLoaded.SnapId);
     }
 
     [Fact]
