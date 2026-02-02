@@ -1,6 +1,7 @@
 using System.Composition.Convention;
 using System.Composition.Hosting;
 using SEBT.Portal.StatesPlugins.Interfaces;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 
 namespace SEBT.Portal.Api.Composition;
 
@@ -10,6 +11,8 @@ internal static class ServiceCollectionPluginExtensions
 {
     public static IServiceCollection AddPlugins(this IServiceCollection services, IConfiguration configuration)
     {
+        services.TryAddSingleton<IStateAuthenticationService, Defaults.DefaultIStateAuthenticationService>();
+
         var pluginAssemblyPaths = configuration
                                       .GetSection("PluginAssemblyPaths")
                                       .Get<string[]>()
