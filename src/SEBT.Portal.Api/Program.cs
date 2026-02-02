@@ -10,13 +10,10 @@ using SEBT.Portal.Api.Extensions;
 using SEBT.Portal.Api.Middleware;
 using SEBT.Portal.Api.Options;
 using SEBT.Portal.Core.AppSettings;
-using SEBT.Portal.Core.Repositories;
 using SEBT.Portal.Core.Services;
-using SEBT.Portal.Infrastructure.Data;
 using SEBT.Portal.Infrastructure.Configuration;
 using SEBT.Portal.Infrastructure.Services;
 using SEBT.Portal.Infrastructure.Seeding.Services;
-using Microsoft.Extensions.Logging;
 using SEBT.Portal.UseCases;
 using SEBT.Portal.Infrastructure;
 
