@@ -128,13 +128,13 @@ build_state_connector_package() {
   cd "$GITHUB_WORKSPACE/state-connector/src/"
 
   if [ -f /.dockerenv ]; then
-    PACKAGE_OUTPUT = "/root/nuget-store"
+    PACKAGE_OUTPUT="/root/nuget-store"
   elif [ -n "${DOCKER_HOST:-}" ]; then
-    PACKAGE_OUTPUT = "/root/nuget-store"
+    PACKAGE_OUTPUT="/root/nuget-store"
   elif [ -n "${GITHUB_ACTIONS:-}" ]; then
-    PACKAGE_OUTPUT = "$GITHUB_WORKSPACE/../../../../nuget-store"
+    PACKAGE_OUTPUT="$GITHUB_WORKSPACE/../../../../nuget-store"
   else
-    PACKAGE_OUTPUT = "./nuget-store"
+    PACKAGE_OUTPUT="./nuget-store"
   fi
 
   dotnet pack SEBT.Portal.StatesPlugins.Interfaces.csproj \
