@@ -66,6 +66,8 @@ RUN dotnet publish SEBT.Portal.Api/SEBT.Portal.Api.csproj \
 # Stage 3: Final Runtime Image
 # ============================================
 FROM mcr.microsoft.com/dotnet/aspnet:10.0 AS final
+ARG STATE=dc
+ENV STATE=${STATE}
 USER $APP_UID
 WORKDIR /app
 EXPOSE 8080

@@ -1,9 +1,12 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 using SEBT.Portal.Core.AppSettings;
 using SEBT.Portal.Core.Repositories;
 using SEBT.Portal.Core.Services;
+using SEBT.Portal.Kernel.Services;
+using SEBT.Portal.Infrastructure.Configuration;
 using SEBT.Portal.Infrastructure.Data;
 using SEBT.Portal.Infrastructure.Repositories;
 using SEBT.Portal.Infrastructure.Services;
@@ -21,6 +24,9 @@ public static class Dependencies
 
         // JWT Services
         services.AddTransient<IJwtTokenService, JwtTokenService>();
+
+        // Feature Flag Services
+        services.AddScoped<IFeatureFlagQueryService, Services.FeatureFlagQueryService>();
 
         return services;
     }
@@ -70,7 +76,7 @@ public static class Dependencies
         return services;
     }
 
-    public static IServiceCollection AddPortalInfrastructureAppSettings(this IServiceCollection services)
+    public static IServiceCollection AddPortalInfrastructureAppSettings(this IServiceCollection services, IConfiguration configuration)
     {
 
         services.AddOptionsWithValidateOnStart<EmailOtpSenderServiceSettings>()
@@ -81,6 +87,22 @@ public static class Dependencies
             .BindConfiguration(OtpRateLimitSettings.SectionName);
         services.AddOptionsWithValidateOnStart<JwtSettings>()
             .BindConfiguration(JwtSettings.SectionName);
+
+        services.AddOptions<FeatureManagementSettings>()
+            .Bind(configuration.GetSection(FeatureManagementSettings.SectionName))
+            .PostConfigure<IConfiguration>((options, config) =>
+            {
+                var postConfig = new FeatureManagementOptionsConfiguration(config);
+                postConfig.PostConfigure(null, options);
+            });
+
+        services.AddOptions<AppConfigFeatureFlagSettings>()
+            .Bind(configuration.GetSection(AppConfigFeatureFlagSettings.SectionName))
+            .PostConfigure<IConfiguration, ILogger<AppConfigFeatureFlagOptionsConfiguration>>((options, config, logger) =>
+            {
+                var postConfig = new AppConfigFeatureFlagOptionsConfiguration(config, logger);
+                postConfig.PostConfigure(null, options);
+            });
 
         return services;
     }

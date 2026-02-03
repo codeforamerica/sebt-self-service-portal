@@ -8,4 +8,3 @@ namespace SEBT.Portal.Api.Models;
 /// <param name="Error">The error message.</param>
 /// <param name="Errors">Optional collection of validation errors, if applicable.</param>
 public record ErrorResponse(string Error, IReadOnlyCollection<ValidationError>? Errors = null);
-
