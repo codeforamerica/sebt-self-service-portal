@@ -125,14 +125,14 @@ restore_dependencies() {
 # Build state connector package
 build_state_connector_package() {
   log_info "Building state connector package..."
-  cd "$GITHUB_WORKSPACE/state-connector/src/SEBT.Portal.StatesPlugins.Interfaces"
+  cd "$PROJECT_ROOT/state-connector/src/SEBT.Portal.StatesPlugins.Interfaces"
 
   if [ -f /.dockerenv ]; then
     PACKAGE_OUTPUT="/root/nuget-store"
   elif [ -n "${DOCKER_HOST:-}" ]; then
     PACKAGE_OUTPUT="/root/nuget-store"
   elif [ -n "${GITHUB_ACTIONS:-}" ]; then
-    PACKAGE_OUTPUT="$GITHUB_WORKSPACE/../../../nuget-store"
+    PACKAGE_OUTPUT="$PROJECT_ROOT/../../../nuget-store"
   else
     PACKAGE_OUTPUT="./nuget-store"
   fi
