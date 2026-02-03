@@ -1,5 +1,5 @@
+using SEBT.Portal.Core.Models;
 using SEBT.Portal.Core.Models.Household;
-using SEBT.Portal.Core.Services;
 
 namespace SEBT.Portal.Core.Repositories;
 

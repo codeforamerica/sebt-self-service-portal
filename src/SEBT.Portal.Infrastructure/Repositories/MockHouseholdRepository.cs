@@ -1,9 +1,9 @@
 using System.Collections.Concurrent;
 using Bogus;
 using Microsoft.Extensions.Logging;
+using SEBT.Portal.Core.Models;
 using SEBT.Portal.Core.Models.Household;
 using SEBT.Portal.Core.Repositories;
-using SEBT.Portal.Core.Services;
 using SEBT.Portal.Core.Utilities;
 using SEBT.Portal.TestUtilities.Helpers;
 

@@ -1,5 +1,6 @@
 using Microsoft.Extensions.Options;
 using SEBT.Portal.Core.AppSettings;
+using SEBT.Portal.Core.Models;
 using SEBT.Portal.Core.Models.Auth;
 using SEBT.Portal.Core.Services;
 
