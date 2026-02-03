@@ -22,6 +22,7 @@ public class HouseholdDataResponseMapperTests
         {
             Email = "user@example.com",
             Phone = "555-1234",
+            BenefitIssuanceType = BenefitIssuanceType.SnapEbtCard,
             Applications = new List<Application>
             {
                 new Application
@@ -29,6 +30,7 @@ public class HouseholdDataResponseMapperTests
                     ApplicationNumber = "APP-123",
                     CaseNumber = "CASE-456",
                     ApplicationStatus = ApplicationStatus.Approved,
+                    IssuanceType = IssuanceType.SnapEbtCard,
                     BenefitIssueDate = benefitIssue,
                     BenefitExpirationDate = benefitExpiry,
                     Last4DigitsOfCard = "1234",
@@ -67,6 +69,7 @@ public class HouseholdDataResponseMapperTests
         Assert.NotNull(response);
         Assert.Equal("user@example.com", response.Email);
         Assert.Equal("555-1234", response.Phone);
+        Assert.Equal(BenefitIssuanceType.SnapEbtCard, response.BenefitIssuanceType);
         Assert.NotNull(response.Applications);
         Assert.Single(response.Applications);
 
@@ -83,6 +86,7 @@ public class HouseholdDataResponseMapperTests
         Assert.Equal("APP-123", app.ApplicationNumber);
         Assert.Equal("CASE-456", app.CaseNumber);
         Assert.Equal(ApplicationStatus.Approved, app.ApplicationStatus);
+        Assert.Equal(IssuanceType.SnapEbtCard, app.IssuanceType);
         Assert.Equal(benefitIssue, app.BenefitIssueDate);
         Assert.Equal(benefitExpiry, app.BenefitExpirationDate);
         Assert.Equal("1234", app.Last4DigitsOfCard);

@@ -14,6 +14,7 @@ public static class HouseholdFactory
     private static readonly Faker<HouseholdData> HouseholdDataFaker = new Faker<HouseholdData>()
         .RuleFor(h => h.Email, f => f.Internet.Email().ToLowerInvariant())
         .RuleFor(h => h.Phone, f => f.Phone.PhoneNumber("###-####"))
+        .RuleFor(h => h.BenefitIssuanceType, f => f.PickRandom<BenefitIssuanceType>())
         .RuleFor(h => h.Applications, f => GenerateApplications(f))
         .RuleFor(h => h.AddressOnFile, (f, h) =>
             f.Random.Bool(0.6f) && h.Applications.Any(a => a.ApplicationStatus == ApplicationStatus.Approved)
@@ -113,6 +114,7 @@ public static class HouseholdFactory
         var application = new Application
         {
             ApplicationStatus = status,
+            IssuanceType = faker.PickRandom<IssuanceType>(),
             Children = GenerateChildren(faker.Random.Int(0, 4))
         };
 

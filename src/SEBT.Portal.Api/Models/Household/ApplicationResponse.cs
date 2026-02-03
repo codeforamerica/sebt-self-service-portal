@@ -71,4 +71,9 @@ public record ApplicationResponse
     /// The number of children on this application.
     /// </summary>
     public int ChildrenOnApplication { get; init; }
+
+    /// <summary>
+    /// The type of issuance for this application.
+    /// </summary>
+    public IssuanceType IssuanceType { get; init; }
 }

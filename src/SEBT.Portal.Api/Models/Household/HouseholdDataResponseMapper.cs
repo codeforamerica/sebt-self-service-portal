@@ -18,7 +18,8 @@ public static class HouseholdDataResponseMapper
             Phone = domain.Phone,
             Applications = domain.Applications.Select(ToResponse).ToList(),
             AddressOnFile = domain.AddressOnFile?.ToResponse(),
-            UserProfile = domain.UserProfile?.ToResponse()
+            UserProfile = domain.UserProfile?.ToResponse(),
+            BenefitIssuanceType = domain.BenefitIssuanceType
         };
     }
 
@@ -38,7 +39,8 @@ public static class HouseholdDataResponseMapper
             CardActivatedAt = domain.CardActivatedAt,
             CardDeactivatedAt = domain.CardDeactivatedAt,
             Children = domain.Children.Select(ToResponse).ToList(),
-            ChildrenOnApplication = domain.ChildrenOnApplication
+            ChildrenOnApplication = domain.ChildrenOnApplication,
+            IssuanceType = domain.IssuanceType
         };
     }
 
