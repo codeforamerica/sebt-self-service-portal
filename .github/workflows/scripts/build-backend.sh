@@ -132,7 +132,7 @@ build_state_connector_package() {
   elif [ -n "${DOCKER_HOST:-}" ]; then
     PACKAGE_OUTPUT="/root/nuget-store"
   elif [ -n "${GITHUB_ACTIONS:-}" ]; then
-    PACKAGE_OUTPUT="$GITHUB_WORKSPACE/../../../../nuget-store"
+    PACKAGE_OUTPUT="$GITHUB_WORKSPACE/../../../nuget-store"
   else
     PACKAGE_OUTPUT="./nuget-store"
   fi
@@ -143,6 +143,7 @@ build_state_connector_package() {
     --verbosity minimal
 
   dotnet pack SEBT.Portal.StatesPlugins.Interfaces.csproj \
+    --no-build \
     --configuration "$CONFIGURATION" \
     --output $PACKAGE_OUTPUT \
     --verbosity minimal
