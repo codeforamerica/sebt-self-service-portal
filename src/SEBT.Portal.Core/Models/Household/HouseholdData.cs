@@ -32,4 +32,9 @@ public class HouseholdData
     /// The logged-in user's profile (first, middle, last name)
     /// </summary>
     public UserProfile? UserProfile { get; set; }
+
+    /// <summary>
+    /// The type of benefit issuance for this household.
+    /// </summary>
+    public BenefitIssuanceType BenefitIssuanceType { get; set; } = BenefitIssuanceType.Unknown;
 }

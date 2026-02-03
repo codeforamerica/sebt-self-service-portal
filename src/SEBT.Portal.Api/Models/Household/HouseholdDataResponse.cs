@@ -1,3 +1,5 @@
+using SEBT.Portal.Core.Models.Household;
+
 namespace SEBT.Portal.Api.Models.Household;
 
 /// <summary>
@@ -29,4 +31,9 @@ public record HouseholdDataResponse
     /// The logged-in user's profile (first, middle, last name) for display.
     /// </summary>
     public UserProfileResponse? UserProfile { get; init; }
+
+    /// <summary>
+    /// The type of benefit issuance for this household.
+    /// </summary>
+    public BenefitIssuanceType BenefitIssuanceType { get; init; }
 }
