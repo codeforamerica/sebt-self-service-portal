@@ -122,6 +122,29 @@ restore_dependencies() {
   log_success "Dependencies restored"
 }
 
+# Build state connector package
+build_state_connector_package() {
+  log_info "Building state connector package..."
+  cd "$PROJECT_ROOT/../state-connector/src/"
+
+  if [ -f /.dockerenv ]; then
+    $PACKAGE_OUTPUT = "/root/nuget-store"
+  elif [ -n "${DOCKER_HOST:-}" ]; then
+    $PACKAGE_OUTPUT = "/root/nuget-store"
+  elif [ -n "${GITHUB_ACTIONS:-}" ]; then
+    $PACKAGE_OUTPUT = "$GITHUB_WORKSPACE/../../../nuget-store"
+  else
+    $PACKAGE_OUTPUT = "./nuget-store"
+  fi
+
+  dotnet pack SEBT.Portal.StatesPlugins.Interfaces.csproj \
+    --configuration "$CONFIGURATION" \
+    --output $PACKAGE_OUTPUT \
+    --verbosity minimal
+
+  log_success "State connector package built"
+}
+
 # Build backend
 build_backend() {
   log_info "Building backend (Configuration: $CONFIGURATION)..."
