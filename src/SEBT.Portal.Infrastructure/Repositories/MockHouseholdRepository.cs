@@ -52,7 +52,7 @@ public class MockHouseholdRepository : IHouseholdRepository
         // Create a copy to avoid modifying the original
         var result = CreateCopy(household, piiVisibility);
 
-        _logger.LogInformation(
+        _logger.LogDebug(
             "Returning mock household data for email {Email}, PII visibility: Address={IncludeAddress}, Email={IncludeEmail}, Phone={IncludePhone}",
             normalizedEmail,
             piiVisibility.IncludeAddress,
