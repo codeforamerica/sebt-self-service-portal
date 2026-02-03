@@ -104,7 +104,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           repository: codeforamerica/sebt-self-service-portal-state-connector
-          path: state-connector # /home/runner/work/sebt-self-service-portal/state-connector
+          path: state-connector # /home/runner/work/sebt-self-service-portal/sebt-self-service-portal/state-connector
       
       # Docker Build Path
       - name: Build Backend (Docker)

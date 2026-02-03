@@ -125,14 +125,14 @@ restore_dependencies() {
 # Build state connector package
 build_state_connector_package() {
   log_info "Building state connector package..."
-  cd "$PROJECT_ROOT/../state-connector/src/"
+  cd "$GITHUB_WORKSPACE/state-connector/src/"
 
   if [ -f /.dockerenv ]; then
     $PACKAGE_OUTPUT = "/root/nuget-store"
   elif [ -n "${DOCKER_HOST:-}" ]; then
     $PACKAGE_OUTPUT = "/root/nuget-store"
   elif [ -n "${GITHUB_ACTIONS:-}" ]; then
-    $PACKAGE_OUTPUT = "$GITHUB_WORKSPACE/../../../nuget-store"
+    $PACKAGE_OUTPUT = "$GITHUB_WORKSPACE/../../../../nuget-store"
   else
     $PACKAGE_OUTPUT = "./nuget-store"
   fi
@@ -184,6 +184,7 @@ main() {
   detect_environment
   check_prerequisites
   restore_dependencies
+  build_state_connector_package
   build_backend
 
   echo ""
