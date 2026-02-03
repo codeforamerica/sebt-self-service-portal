@@ -1,4 +1,5 @@
 using SEBT.Portal.Core.Models.Household;
+using SEBT.Portal.Core.Services;
 
 namespace SEBT.Portal.Core.Repositories;
 
@@ -11,14 +12,16 @@ public interface IHouseholdRepository
 {
     /// <summary>
     /// Retrieves household data by email address.
+    /// PII fields (Address, Email, Phone etc.) are filtered based on the visibility flags,
+    /// which are determined by the user's ID proofing status and state configuration.
     /// </summary>
     /// <param name="email">The email address of the household.</param>
-    /// <param name="includeAddress">Whether to include address information. Should only be true if ID verification is completed.</param>
+    /// <param name="piiVisibility">Which PII elements to include. Determined by IIdProofingRequirementsService.</param>
     /// <param name="cancellationToken">A token to monitor for cancellation requests.</param>
     /// <returns>The household data if found; otherwise, <c>null</c>.</returns>
     Task<HouseholdData?> GetHouseholdByEmailAsync(
         string email,
-        bool includeAddress = false,
+        PiiVisibility piiVisibility,
         CancellationToken cancellationToken = default);
 
     /// <summary>

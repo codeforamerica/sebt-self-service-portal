@@ -25,6 +25,9 @@ public static class Dependencies
         // JWT Services
         services.AddTransient<IJwtTokenService, JwtTokenService>();
 
+        // ID Proofing Requirements (state-specific PII visibility)
+        services.AddSingleton<IIdProofingRequirementsService, IdProofingRequirementsService>();
+
         // Feature Flag Services
         services.AddScoped<IFeatureFlagQueryService, Services.FeatureFlagQueryService>();
 
@@ -87,6 +90,8 @@ public static class Dependencies
             .BindConfiguration(OtpRateLimitSettings.SectionName);
         services.AddOptionsWithValidateOnStart<JwtSettings>()
             .BindConfiguration(JwtSettings.SectionName);
+        services.AddOptions<IdProofingRequirementsSettings>()
+            .BindConfiguration(IdProofingRequirementsSettings.SectionName);
 
         services.AddOptions<FeatureManagementSettings>()
             .Bind(configuration.GetSection(FeatureManagementSettings.SectionName))

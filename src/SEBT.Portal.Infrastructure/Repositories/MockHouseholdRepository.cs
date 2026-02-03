@@ -3,6 +3,7 @@ using Bogus;
 using Microsoft.Extensions.Logging;
 using SEBT.Portal.Core.Models.Household;
 using SEBT.Portal.Core.Repositories;
+using SEBT.Portal.Core.Services;
 using SEBT.Portal.Core.Utilities;
 using SEBT.Portal.TestUtilities.Helpers;
 
@@ -28,9 +29,10 @@ public class MockHouseholdRepository : IHouseholdRepository
 
     public Task<HouseholdData?> GetHouseholdByEmailAsync(
         string email,
-        bool includeAddress = false,
+        PiiVisibility piiVisibility,
         CancellationToken cancellationToken = default)
     {
+        ArgumentNullException.ThrowIfNull(piiVisibility);
         cancellationToken.ThrowIfCancellationRequested();
 
         if (string.IsNullOrWhiteSpace(email))
@@ -48,12 +50,14 @@ public class MockHouseholdRepository : IHouseholdRepository
         }
 
         // Create a copy to avoid modifying the original
-        var result = CreateCopy(household, includeAddress);
+        var result = CreateCopy(household, piiVisibility);
 
         _logger.LogInformation(
-            "Returning mock household data for email {Email}, includeAddress: {IncludeAddress}",
+            "Returning mock household data for email {Email}, PII visibility: Address={IncludeAddress}, Email={IncludeEmail}, Phone={IncludePhone}",
             normalizedEmail,
-            includeAddress);
+            piiVisibility.IncludeAddress,
+            piiVisibility.IncludeEmail,
+            piiVisibility.IncludePhone);
 
         return Task.FromResult<HouseholdData?>(result);
     }
@@ -77,7 +81,8 @@ public class MockHouseholdRepository : IHouseholdRepository
         var normalizedEmail = EmailNormalizer.Normalize(householdData.Email);
 
         // Create a defensive copy to prevent external mutations
-        var copy = CreateCopy(householdData, includeAddress: true);
+        var fullVisibility = new PiiVisibility(IncludeAddress: true, IncludeEmail: true, IncludePhone: true);
+        var copy = CreateCopy(householdData, fullVisibility);
         _households[normalizedEmail] = copy;
 
         _logger.LogInformation("Mock household data updated for email {Email}", normalizedEmail);
@@ -388,16 +393,17 @@ public class MockHouseholdRepository : IHouseholdRepository
 
     /// <summary>
     /// Creates a defensive copy of household data to prevent external mutations.
+    /// PII fields are filtered based on the visibility flags.
     /// </summary>
     /// <param name="source">The source household data to copy.</param>
-    /// <param name="includeAddress">Whether to include address information in the copy.</param>
+    /// <param name="piiVisibility">Which PII elements to include in the copy.</param>
     /// <returns>A new instance of HouseholdData with copied values.</returns>
-    private static HouseholdData CreateCopy(HouseholdData source, bool includeAddress)
+    private static HouseholdData CreateCopy(HouseholdData source, PiiVisibility piiVisibility)
     {
         return new HouseholdData
         {
-            Email = source.Email,
-            Phone = source.Phone,
+            Email = piiVisibility.IncludeEmail ? source.Email : string.Empty,
+            Phone = piiVisibility.IncludePhone ? source.Phone : null,
             BenefitIssuanceType = source.BenefitIssuanceType,
             UserProfile = source.UserProfile != null
                 ? new UserProfile
@@ -428,8 +434,8 @@ public class MockHouseholdRepository : IHouseholdRepository
                     LastName = c.LastName
                 }).ToList()
             }).ToList(),
-            // Only include address if requested (simulating ID verification check)
-            AddressOnFile = includeAddress && source.AddressOnFile != null
+            // Only include address if requested (based on ID proofing requirements)
+            AddressOnFile = piiVisibility.IncludeAddress && source.AddressOnFile != null
                 ? new Address
                 {
                     StreetAddress1 = source.AddressOnFile.StreetAddress1,

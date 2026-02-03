@@ -7,6 +7,7 @@ using SEBT.Portal.Api.Models.Household;
 using SEBT.Portal.Core.Models.Auth;
 using SEBT.Portal.Core.Models.Household;
 using SEBT.Portal.Core.Repositories;
+using SEBT.Portal.Core.Services;
 using SEBT.Portal.Core.Utilities;
 
 namespace SEBT.Portal.Api.Controllers.Household;
@@ -16,12 +17,14 @@ namespace SEBT.Portal.Api.Controllers.Household;
 /// </summary>
 [ApiController]
 [Route("api/household")]
-public class HouseholdController(ILogger<HouseholdController> logger) : ControllerBase
+public class HouseholdController(
+    ILogger<HouseholdController> logger,
+    IIdProofingRequirementsService idProofingRequirementsService) : ControllerBase
 {
-
     /// <summary>
     /// Retrieves household data for the authenticated user.
-    /// Address information is only included if ID verification has been completed.
+    /// PII data is only included when the user meets the
+    /// ID proofing requirements configured for the state.
     /// </summary>
     /// <param name="repository">The household repository for retrieving data.</param>
     /// <param name="cancellationToken">A token to monitor for cancellation requests.</param>
@@ -50,18 +53,23 @@ public class HouseholdController(ILogger<HouseholdController> logger) : Controll
         var normalizedEmail = EmailNormalizer.Normalize(email);
         logger.LogDebug("Household data request received for email {Email}", normalizedEmail);
 
-        // Check ID verification status from JWT claims
+        // Determine PII visibility based on user's ID proofing status and state configuration
         var idProofingStatus = GetIdProofingStatus();
-        var includeAddress = idProofingStatus == IdProofingStatus.Completed;
+        var piiVisibility = idProofingRequirementsService.GetPiiVisibility(idProofingStatus);
 
-        if (includeAddress)
+        if (piiVisibility.IncludeAddress || piiVisibility.IncludeEmail || piiVisibility.IncludePhone)
         {
-            logger.LogDebug("Including address data for ID verified user {Email}", normalizedEmail);
+            logger.LogDebug(
+                "PII visibility for user {Email}: Address={IncludeAddress}, Email={IncludeEmail}, Phone={IncludePhone}",
+                normalizedEmail,
+                piiVisibility.IncludeAddress,
+                piiVisibility.IncludeEmail,
+                piiVisibility.IncludePhone);
         }
 
         var householdData = await repository.GetHouseholdByEmailAsync(
             normalizedEmail,
-            includeAddress: includeAddress,
+            piiVisibility,
             cancellationToken);
 
         if (householdData == null)
