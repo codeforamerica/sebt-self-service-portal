@@ -31,7 +31,7 @@ public class HouseholdControllerTests
         var claims = new List<Claim>
         {
             new Claim(claimType, email),
-            new Claim("id_proofing_status", ((int)idProofingStatus).ToString())
+            new Claim(JwtClaimTypes.IdProofingStatus, ((int)idProofingStatus).ToString())
         };
         var identity = new ClaimsIdentity(claims, "Test");
         var principal = new ClaimsPrincipal(identity);
@@ -261,7 +261,7 @@ public class HouseholdControllerTests
         var claims = new List<Claim>
         {
             new Claim(ClaimTypes.Email, email)
-            // No id_proofing_status claim
+            // No IdProofingStatus claim
         };
         var identity = new ClaimsIdentity(claims, "Test");
         var principal = new ClaimsPrincipal(identity);
@@ -303,7 +303,7 @@ public class HouseholdControllerTests
         var claims = new List<Claim>
         {
             new Claim(ClaimTypes.Email, email),
-            new Claim("id_proofing_status", "invalid") // Invalid value
+            new Claim(JwtClaimTypes.IdProofingStatus, "invalid") // Invalid value
         };
         var identity = new ClaimsIdentity(claims, "Test");
         var principal = new ClaimsPrincipal(identity);
@@ -388,7 +388,7 @@ public class HouseholdControllerTests
         var email = "user@example.com";
         var identity = new ClaimsIdentity("Test");
         identity.AddClaim(new Claim(ClaimTypes.Name, email));
-        identity.AddClaim(new Claim("id_proofing_status", ((int)IdProofingStatus.Completed).ToString()));
+        identity.AddClaim(new Claim(JwtClaimTypes.IdProofingStatus, ((int)IdProofingStatus.Completed).ToString()));
         var principal = new ClaimsPrincipal(identity);
         _controller.ControllerContext = new ControllerContext
         {
