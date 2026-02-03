@@ -125,7 +125,7 @@ restore_dependencies() {
 # Build state connector package
 build_state_connector_package() {
   log_info "Building state connector package..."
-  cd "$GITHUB_WORKSPACE/state-connector/src/"
+  cd "$GITHUB_WORKSPACE/state-connector/src/SEBT.Portal.StatesPlugins.Interfaces"
 
   if [ -f /.dockerenv ]; then
     PACKAGE_OUTPUT="/root/nuget-store"
