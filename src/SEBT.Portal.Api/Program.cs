@@ -5,6 +5,7 @@ using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
 using Serilog;
+using Microsoft.FeatureManagement;
 using SEBT.Portal.Api.Extensions;
 using SEBT.Portal.Api.Middleware;
 using SEBT.Portal.Core.AppSettings;
@@ -12,11 +13,37 @@ using SEBT.Portal.Core.Repositories;
 using SEBT.Portal.Core.Services;
 using SEBT.Portal.Infrastructure.Data;
 using SEBT.Portal.Infrastructure.Services;
+using SEBT.Portal.Infrastructure.Configuration;
 using SEBT.Portal.Infrastructure.Seeding.Services;
 using SEBT.Portal.UseCases;
 using SEBT.Portal.Infrastructure;
 
 var builder = WebApplication.CreateBuilder(args);
+
+// Configuration provider priority order (later providers override earlier ones):
+// 1. appsettings.json (defaults in FeatureManagement)
+// 2. AWS AppConfig Agent (if configured, injects into FeatureManagement)
+// 3. State-specific JSON (appsettings.{State}.json)
+
+// Register AWS AppConfig Agent configuration provider if configured
+// We'll be replacing this with a cloud-agnostic configuration provider in the future
+// --> NOTE: This must be registered BEFORE state-specific config so state config can override agent values <--
+var agentSection = builder.Configuration.GetSection("AppConfig:Agent");
+if (agentSection.Exists())
+{
+    // Logger will be created after Serilog is configured, so pass null for now
+    // The provider will work without logging
+    builder.Configuration.AddAppConfigAgent("AppConfig:Agent", logger: null);
+}
+
+// This loads appsettings.{State}.json files (e.g., appsettings.dc.json, appsettings.co.json)
+// State config loads LAST and is the final word on feature flag values if present
+var state = Environment.GetEnvironmentVariable("STATE");
+if (!string.IsNullOrEmpty(state))
+{
+    var stateConfigFile = $"appsettings.{state.ToLowerInvariant()}.json";
+    builder.Configuration.AddJsonFile(stateConfigFile, optional: true, reloadOnChange: true);
+}
 
 var jwtSecretKey = Environment.GetEnvironmentVariable("JWT_SECRET_KEY");
 if (!string.IsNullOrEmpty(jwtSecretKey))
@@ -74,12 +101,15 @@ builder.Services.AddSwaggerGen(options =>
     });
 });
 
+// Add Feature Management
+builder.Services.AddFeatureManagement(builder.Configuration.GetSection("FeatureManagement"));
+
 // Adds use cases (i.e., query and command handlers) for portal business logic
 builder.Services.AddUseCases();
 builder.Services.AddPortalInfrastructureServices();
-builder.Services.AddPortalDbContext(builder.Configuration, options => options.ConfigureDevelopmentSeeding(builder.Configuration));
-builder.Services.AddPortalInfrastructureRepositories(builder.Configuration);
-builder.Services.AddPortalInfrastructureAppSettings();
+builder.Services.AddPortalDbContext(builder.Configuration, options => options.ConfigureDevelopmentSeeding());
+builder.Services.AddPortalInfrastructureRepositories();
+builder.Services.AddPortalInfrastructureAppSettings(builder.Configuration);
 
 // Register IDatabaseSeeder for development utilities (e.g., ClearSeededData script)
 builder.Services.AddScoped<IDatabaseSeeder>(sp =>
