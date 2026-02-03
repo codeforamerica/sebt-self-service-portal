@@ -137,6 +137,11 @@ build_state_connector_package() {
     PACKAGE_OUTPUT="./nuget-store"
   fi
 
+  dotnet build SEBT.Portal.StatesPlugins.Interfaces.csproj \
+    -p:GeneratePackageOnBuild=false \
+    --configuration "$CONFIGURATION" \
+    --verbosity minimal
+
   dotnet pack SEBT.Portal.StatesPlugins.Interfaces.csproj \
     --configuration "$CONFIGURATION" \
     --output $PACKAGE_OUTPUT \
