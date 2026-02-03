@@ -8,6 +8,12 @@
         <IsTestProject>true</IsTestProject>
     </PropertyGroup>
 
+    <PropertyGroup>
+      <HomeDir Condition="'$(OS)' == 'Windows_NT'">$(USERPROFILE)</HomeDir>
+      <HomeDir Condition="'$(HomeDir)' == ''">$(HOME)</HomeDir>
+      <RestoreAdditionalProjectSources>$(HomeDir)/nuget-store</RestoreAdditionalProjectSources>
+    </PropertyGroup>
+
     <ItemGroup>
         <PackageReference Include="Bogus" Version="35.6.5" />
         <PackageReference Include="coverlet.collector" Version="6.0.0" />
