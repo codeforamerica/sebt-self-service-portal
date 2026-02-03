@@ -94,9 +94,11 @@ public class MockHouseholdRepository : IHouseholdRepository
         // Scenario 1: Co-loaded user with approved application and address (ID verified)
         var coLoaded = HouseholdFactory.CreateHouseholdDataWithStatus(ApplicationStatus.Approved, h =>
         {
+            h.BenefitIssuanceType = BenefitIssuanceType.SnapEbtCard;
             var app = h.Applications.FirstOrDefault();
             if (app != null)
             {
+                app.IssuanceType = IssuanceType.SnapEbtCard;
                 app.BenefitIssueDate = now.AddDays(-20);
                 app.BenefitExpirationDate = now.AddDays(70);
                 app.Last4DigitsOfCard = "0000";
@@ -123,9 +125,11 @@ public class MockHouseholdRepository : IHouseholdRepository
         // Scenario 2: Approved application with address (ID verified user)
         var verified = HouseholdFactory.CreateHouseholdDataWithStatus(ApplicationStatus.Approved, h =>
         {
+            h.BenefitIssuanceType = BenefitIssuanceType.SnapEbtCard;
             var app = h.Applications.FirstOrDefault();
             if (app != null)
             {
+                app.IssuanceType = IssuanceType.SnapEbtCard;
                 app.BenefitIssueDate = now.AddDays(-30);
                 app.BenefitExpirationDate = now.AddDays(60);
                 app.Last4DigitsOfCard = "1234"; // Specific value for test
@@ -155,9 +159,11 @@ public class MockHouseholdRepository : IHouseholdRepository
         // for testing purposes (it will be filtered by GetHouseholdByEmailAsync based on includeAddress)
         var pending = HouseholdFactory.CreateHouseholdDataWithStatus(ApplicationStatus.Pending, h =>
         {
+            h.BenefitIssuanceType = BenefitIssuanceType.Unknown;
             var app = h.Applications.FirstOrDefault();
             if (app != null)
             {
+                app.IssuanceType = IssuanceType.SnapEbtCard;
                 // Set specific child name for test
                 app.Children = new List<Child>
                 {
@@ -180,9 +186,11 @@ public class MockHouseholdRepository : IHouseholdRepository
         // Scenario 4: Denied application
         var denied = HouseholdFactory.CreateHouseholdDataWithStatus(ApplicationStatus.Denied, h =>
         {
+            h.BenefitIssuanceType = BenefitIssuanceType.Unknown;
             var app = h.Applications.FirstOrDefault();
             if (app != null)
             {
+                app.IssuanceType = IssuanceType.Unknown;
                 app.Children = new List<Child>(); // No children for denied
             }
         });
@@ -193,9 +201,11 @@ public class MockHouseholdRepository : IHouseholdRepository
         // Scenario 5: Under review
         var review = HouseholdFactory.CreateHouseholdDataWithStatus(ApplicationStatus.UnderReview, h =>
         {
+            h.BenefitIssuanceType = BenefitIssuanceType.SnapEbtCard;
             var app = h.Applications.FirstOrDefault();
             if (app != null)
             {
+                app.IssuanceType = IssuanceType.SnapEbtCard;
                 // Use Bogus to generate child name
                 var childFaker = new Faker<Child>()
                     .RuleFor(c => c.FirstName, f => f.Name.FirstName())
@@ -210,9 +220,11 @@ public class MockHouseholdRepository : IHouseholdRepository
         // Scenario 6: Cancelled application
         var cancelled = HouseholdFactory.CreateHouseholdDataWithStatus(ApplicationStatus.Cancelled, h =>
         {
+            h.BenefitIssuanceType = BenefitIssuanceType.Unknown;
             var app = h.Applications.FirstOrDefault();
             if (app != null)
             {
+                app.IssuanceType = IssuanceType.Unknown;
                 app.Children = new List<Child>(); // No children for cancelled
             }
         });
@@ -223,9 +235,11 @@ public class MockHouseholdRepository : IHouseholdRepository
         // Scenario 7: Approved with single child
         var singleChild = HouseholdFactory.CreateHouseholdDataWithStatus(ApplicationStatus.Approved, h =>
         {
+            h.BenefitIssuanceType = BenefitIssuanceType.SummerEbt;
             var app = h.Applications.FirstOrDefault();
             if (app != null)
             {
+                app.IssuanceType = IssuanceType.SummerEbt;
                 app.BenefitIssueDate = now.AddDays(-15);
                 app.BenefitExpirationDate = now.AddDays(75);
                 // Use Bogus to generate child name
@@ -242,9 +256,11 @@ public class MockHouseholdRepository : IHouseholdRepository
         // Scenario 8: Large family (multiple children)
         var largeFamily = HouseholdFactory.CreateHouseholdDataWithStatus(ApplicationStatus.Approved, h =>
         {
+            h.BenefitIssuanceType = BenefitIssuanceType.TanfEbtCard;
             var app = h.Applications.FirstOrDefault();
             if (app != null)
             {
+                app.IssuanceType = IssuanceType.TanfEbtCard;
                 app.BenefitIssueDate = now.AddDays(-45);
                 app.BenefitExpirationDate = now.AddDays(45);
                 // Set specific children names for test
@@ -264,10 +280,12 @@ public class MockHouseholdRepository : IHouseholdRepository
         // Scenario 9: Minimal data (no phone, no dates)
         var minimal = HouseholdFactory.CreateHouseholdDataWithStatus(ApplicationStatus.Pending, h =>
         {
+            h.BenefitIssuanceType = BenefitIssuanceType.Unknown;
             h.Phone = null;
             var app = h.Applications.FirstOrDefault();
             if (app != null)
             {
+                app.IssuanceType = IssuanceType.SnapEbtCard;
                 app.Children = new List<Child>();
             }
         });
@@ -278,9 +296,11 @@ public class MockHouseholdRepository : IHouseholdRepository
         // Scenario 10: Expired benefits
         var expired = HouseholdFactory.CreateHouseholdDataWithStatus(ApplicationStatus.Approved, h =>
         {
+            h.BenefitIssuanceType = BenefitIssuanceType.SnapEbtCard;
             var app = h.Applications.FirstOrDefault();
             if (app != null)
             {
+                app.IssuanceType = IssuanceType.SnapEbtCard;
                 app.BenefitIssueDate = now.AddDays(-120);
                 app.BenefitExpirationDate = now.AddDays(-10); // Expired
                 // Use Bogus to generate child name
@@ -297,9 +317,11 @@ public class MockHouseholdRepository : IHouseholdRepository
         // Scenario 11: Unknown status
         var unknown = HouseholdFactory.CreateHouseholdDataWithStatus(ApplicationStatus.Unknown, h =>
         {
+            h.BenefitIssuanceType = BenefitIssuanceType.Unknown;
             var app = h.Applications.FirstOrDefault();
             if (app != null)
             {
+                app.IssuanceType = IssuanceType.Unknown;
                 app.Children = new List<Child>();
             }
         });
@@ -310,6 +332,7 @@ public class MockHouseholdRepository : IHouseholdRepository
         // Scenario 12: Multiple applications (one approved, one pending)
         var multipleApps = HouseholdFactory.CreateHouseholdData(h =>
         {
+            h.BenefitIssuanceType = BenefitIssuanceType.SnapEbtCard;
             var faker = new Faker();
 
             // Approved application
@@ -318,6 +341,7 @@ public class MockHouseholdRepository : IHouseholdRepository
                 ApplicationNumber = $"APP-{now.AddDays(-30):yyyy-MM}-{faker.Random.Number(100000, 999999)}",
                 CaseNumber = $"CASE-{faker.Random.Number(100000, 999999)}",
                 ApplicationStatus = ApplicationStatus.Approved,
+                IssuanceType = IssuanceType.SnapEbtCard,
                 BenefitIssueDate = now.AddDays(-30),
                 BenefitExpirationDate = now.AddDays(60),
                 Last4DigitsOfCard = "5678",
@@ -337,6 +361,7 @@ public class MockHouseholdRepository : IHouseholdRepository
             {
                 ApplicationNumber = $"APP-{now.AddDays(-10):yyyy-MM}-{faker.Random.Number(100000, 999999)}",
                 ApplicationStatus = ApplicationStatus.Pending,
+                IssuanceType = IssuanceType.SnapEbtCard,
                 CardStatus = CardStatus.Requested,
                 CardRequestedAt = now.AddDays(-10),
                 Children = new List<Child>
@@ -373,6 +398,7 @@ public class MockHouseholdRepository : IHouseholdRepository
         {
             Email = source.Email,
             Phone = source.Phone,
+            BenefitIssuanceType = source.BenefitIssuanceType,
             UserProfile = source.UserProfile != null
                 ? new UserProfile
                 {
@@ -386,6 +412,7 @@ public class MockHouseholdRepository : IHouseholdRepository
                 ApplicationNumber = a.ApplicationNumber,
                 CaseNumber = a.CaseNumber,
                 ApplicationStatus = a.ApplicationStatus,
+                IssuanceType = a.IssuanceType,
                 BenefitIssueDate = a.BenefitIssueDate,
                 BenefitExpirationDate = a.BenefitExpirationDate,
                 Last4DigitsOfCard = a.Last4DigitsOfCard,

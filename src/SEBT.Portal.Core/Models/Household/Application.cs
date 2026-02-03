@@ -71,4 +71,9 @@ public class Application
     /// The number of children on this application.
     /// </summary>
     public int ChildrenOnApplication => Children.Count;
+
+    /// <summary>
+    /// The type of issuance for this application.
+    /// </summary>
+    public IssuanceType IssuanceType { get; set; } = IssuanceType.Unknown;
 }
