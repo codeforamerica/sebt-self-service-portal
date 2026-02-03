@@ -386,7 +386,7 @@ public class MockHouseholdRepositoryTests
 
         // Assert
         Assert.NotNull(result);
-        Assert.Equal(string.Empty, result.Email);
+        Assert.Null(result.Email);
         Assert.NotNull(result.Phone);
     }
 

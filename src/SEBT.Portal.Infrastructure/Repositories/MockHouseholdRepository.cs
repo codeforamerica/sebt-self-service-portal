@@ -402,7 +402,7 @@ public class MockHouseholdRepository : IHouseholdRepository
     {
         return new HouseholdData
         {
-            Email = piiVisibility.IncludeEmail ? source.Email : string.Empty,
+            Email = piiVisibility.IncludeEmail ? source.Email : null,
             Phone = piiVisibility.IncludePhone ? source.Phone : null,
             BenefitIssuanceType = source.BenefitIssuanceType,
             UserProfile = source.UserProfile != null

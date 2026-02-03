@@ -9,8 +9,9 @@ public record HouseholdDataResponse
 {
     /// <summary>
     /// The email address on file for the household.
+    /// Null when excluded due to ID proofing requirements.
     /// </summary>
-    public string Email { get; init; } = string.Empty;
+    public string? Email { get; init; }
 
     /// <summary>
     /// The phone number on file for the household.

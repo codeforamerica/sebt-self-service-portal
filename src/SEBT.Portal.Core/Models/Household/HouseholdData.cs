@@ -9,8 +9,9 @@ public class HouseholdData
 {
     /// <summary>
     /// The email address on file for the household.
+    /// Null when excluded due to ID proofing requirements.
     /// </summary>
-    public string Email { get; set; } = string.Empty;
+    public string? Email { get; set; }
 
     /// <summary>
     /// The phone number on file for the household.
