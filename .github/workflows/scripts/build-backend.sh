@@ -183,8 +183,8 @@ main() {
 
   detect_environment
   check_prerequisites
-  restore_dependencies
   build_state_connector_package
+  restore_dependencies
   build_backend
 
   echo ""
