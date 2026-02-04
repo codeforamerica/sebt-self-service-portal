@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 using SEBT.Portal.Core.AppSettings;
 using SEBT.Portal.Core.Repositories;
 using SEBT.Portal.Core.Services;

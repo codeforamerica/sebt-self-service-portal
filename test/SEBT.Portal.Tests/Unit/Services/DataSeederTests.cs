@@ -1,5 +1,7 @@
 using Microsoft.EntityFrameworkCore;
+using NSubstitute;
 using SEBT.Portal.Core.Models.Auth;
+using SEBT.Portal.Core.Services;
 using SEBT.Portal.Infrastructure.Data;
 using SEBT.Portal.Infrastructure.Data.Entities;
 using SEBT.Portal.Infrastructure.Services;
@@ -21,8 +23,12 @@ public class DataSeederTests : IClassFixture<SqlServerTestFixture>
 
     private PortalDbContext CreateContext() => _fixture.CreateContext();
 
-    private static DataSeeder CreateDataSeeder(PortalDbContext context) =>
-        new(context);
+    private static DataSeeder CreateDataSeeder(PortalDbContext context)
+    {
+        var identifierHasher = Substitute.For<IIdentifierHasher>();
+        identifierHasher.HashForStorage(Arg.Any<string?>()).Returns(c => c.Arg<string?>());
+        return new DataSeeder(context, identifierHasher);
+    }
 
     private async Task CleanupDatabaseAsync(PortalDbContext context)
     {
@@ -429,7 +435,8 @@ public class DataSeederTests : IClassFixture<SqlServerTestFixture>
     [Fact]
     public void Constructor_WhenDbContextNull_ThrowsArgumentNullException()
     {
+        var identifierHasher = Substitute.For<IIdentifierHasher>();
         Assert.Throws<ArgumentNullException>(() =>
-            new DataSeeder(null!));
+            new DataSeeder(null!, identifierHasher));
     }
 }
