@@ -55,11 +55,7 @@ public class HouseholdIdentifierResolverTests
     {
         var settings = new StateHouseholdIdSettings
         {
-            CurrentState = "dc",
-            States = new Dictionary<string, StatePreferredHouseholdIdEntry>
-            {
-                ["dc"] = new() { PreferredHouseholdIdTypes = [PreferredHouseholdIdType.Email] }
-            }
+            PreferredHouseholdIdTypes = [PreferredHouseholdIdType.Email]
         };
         var resolver = CreateResolver(_userRepository, settings);
 
@@ -76,11 +72,7 @@ public class HouseholdIdentifierResolverTests
     {
         var settings = new StateHouseholdIdSettings
         {
-            CurrentState = "dc",
-            States = new Dictionary<string, StatePreferredHouseholdIdEntry>
-            {
-                ["dc"] = new() { PreferredHouseholdIdTypes = [PreferredHouseholdIdType.Email] }
-            }
+            PreferredHouseholdIdTypes = [PreferredHouseholdIdType.Email]
         };
         var resolver = CreateResolver(_userRepository, settings);
 
@@ -96,11 +88,7 @@ public class HouseholdIdentifierResolverTests
     {
         var settings = new StateHouseholdIdSettings
         {
-            CurrentState = "dc",
-            States = new Dictionary<string, StatePreferredHouseholdIdEntry>
-            {
-                ["dc"] = new() { PreferredHouseholdIdTypes = [PreferredHouseholdIdType.Email] }
-            }
+            PreferredHouseholdIdTypes = [PreferredHouseholdIdType.Email]
         };
         _userRepository.GetUserByEmailAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
             .Returns((User?)null);
@@ -115,17 +103,13 @@ public class HouseholdIdentifierResolverTests
     }
 
     [Fact]
-    public async Task ResolveAsync_WhenStatePrefersEmailAndUserHasEmail_ReturnsEmailIdentifier()
+    public async Task ResolveAsync_WhenPrefersEmailAndUserHasEmail_ReturnsEmailIdentifier()
     {
         var email = "user@example.com";
         var user = UserFactory.CreateUserWithEmail(email);
         var settings = new StateHouseholdIdSettings
         {
-            CurrentState = "dc",
-            States = new Dictionary<string, StatePreferredHouseholdIdEntry>
-            {
-                ["dc"] = new() { PreferredHouseholdIdTypes = [PreferredHouseholdIdType.Email] }
-            }
+            PreferredHouseholdIdTypes = [PreferredHouseholdIdType.Email]
         };
         _userRepository.GetUserByEmailAsync(EmailNormalizer.Normalize(email), Arg.Any<CancellationToken>())
             .Returns(user);
@@ -141,17 +125,13 @@ public class HouseholdIdentifierResolverTests
     }
 
     [Fact]
-    public async Task ResolveAsync_WhenStatePrefersPhoneAndUserHasPhone_ReturnsPhoneIdentifier()
+    public async Task ResolveAsync_WhenPrefersPhoneAndUserHasPhone_ReturnsPhoneIdentifier()
     {
         var email = "user@example.com";
         var user = UserFactory.CreateUserWithEmail(email, u => u.Phone = "5551234567");
         var settings = new StateHouseholdIdSettings
         {
-            CurrentState = "dc",
-            States = new Dictionary<string, StatePreferredHouseholdIdEntry>
-            {
-                ["dc"] = new() { PreferredHouseholdIdTypes = [PreferredHouseholdIdType.Phone, PreferredHouseholdIdType.Email] }
-            }
+            PreferredHouseholdIdTypes = [PreferredHouseholdIdType.Phone, PreferredHouseholdIdType.Email]
         };
         _userRepository.GetUserByEmailAsync(EmailNormalizer.Normalize(email), Arg.Any<CancellationToken>())
             .Returns(user);
@@ -167,17 +147,13 @@ public class HouseholdIdentifierResolverTests
     }
 
     [Fact]
-    public async Task ResolveAsync_WhenStatePrefersSnapIdAndUserHasSnapId_ReturnsSnapIdIdentifier()
+    public async Task ResolveAsync_WhenPrefersSnapIdAndUserHasSnapId_ReturnsSnapIdIdentifier()
     {
         var email = "user@example.com";
         var user = UserFactory.CreateUserWithEmail(email, u => u.SnapId = "SNAP-001");
         var settings = new StateHouseholdIdSettings
         {
-            CurrentState = "dc",
-            States = new Dictionary<string, StatePreferredHouseholdIdEntry>
-            {
-                ["dc"] = new() { PreferredHouseholdIdTypes = [PreferredHouseholdIdType.SnapId, PreferredHouseholdIdType.Email] }
-            }
+            PreferredHouseholdIdTypes = [PreferredHouseholdIdType.SnapId, PreferredHouseholdIdType.Email]
         };
         _userRepository.GetUserByEmailAsync(EmailNormalizer.Normalize(email), Arg.Any<CancellationToken>())
             .Returns(user);
@@ -193,17 +169,13 @@ public class HouseholdIdentifierResolverTests
     }
 
     [Fact]
-    public async Task ResolveAsync_WhenStatePrefersTanfIdAndUserHasTanfId_ReturnsTanfIdIdentifier()
+    public async Task ResolveAsync_WhenPrefersTanfIdAndUserHasTanfId_ReturnsTanfIdIdentifier()
     {
         var email = "user@example.com";
         var user = UserFactory.CreateUserWithEmail(email, u => u.TanfId = "TANF-001");
         var settings = new StateHouseholdIdSettings
         {
-            CurrentState = "dc",
-            States = new Dictionary<string, StatePreferredHouseholdIdEntry>
-            {
-                ["dc"] = new() { PreferredHouseholdIdTypes = [PreferredHouseholdIdType.TanfId, PreferredHouseholdIdType.Email] }
-            }
+            PreferredHouseholdIdTypes = [PreferredHouseholdIdType.TanfId, PreferredHouseholdIdType.Email]
         };
         _userRepository.GetUserByEmailAsync(EmailNormalizer.Normalize(email), Arg.Any<CancellationToken>())
             .Returns(user);
@@ -219,18 +191,14 @@ public class HouseholdIdentifierResolverTests
     }
 
     [Fact]
-    public async Task ResolveAsync_WhenStatePrefersSsnAndUserHasSsn_ReturnsSsnHashAsIs()
+    public async Task ResolveAsync_WhenPrefersSsnAndUserHasSsn_ReturnsSsnHashAsIs()
     {
         var hashedSsn = "A1B2C3D4E5F6789012345678901234567890ABCDEF1234567890ABCDEF123456";
         var email = "user@example.com";
         var user = UserFactory.CreateUserWithEmail(email, u => u.Ssn = hashedSsn);
         var settings = new StateHouseholdIdSettings
         {
-            CurrentState = "dc",
-            States = new Dictionary<string, StatePreferredHouseholdIdEntry>
-            {
-                ["dc"] = new() { PreferredHouseholdIdTypes = [PreferredHouseholdIdType.Ssn, PreferredHouseholdIdType.Email] }
-            }
+            PreferredHouseholdIdTypes = [PreferredHouseholdIdType.Ssn, PreferredHouseholdIdType.Email]
         };
         _userRepository.GetUserByEmailAsync(EmailNormalizer.Normalize(email), Arg.Any<CancellationToken>())
             .Returns(user);
@@ -256,11 +224,7 @@ public class HouseholdIdentifierResolverTests
         });
         var settings = new StateHouseholdIdSettings
         {
-            CurrentState = "dc",
-            States = new Dictionary<string, StatePreferredHouseholdIdEntry>
-            {
-                ["dc"] = new() { PreferredHouseholdIdTypes = [PreferredHouseholdIdType.Phone, PreferredHouseholdIdType.SnapId, PreferredHouseholdIdType.Email] }
-            }
+            PreferredHouseholdIdTypes = [PreferredHouseholdIdType.Phone, PreferredHouseholdIdType.SnapId, PreferredHouseholdIdType.Email]
         };
         _userRepository.GetUserByEmailAsync(EmailNormalizer.Normalize(email), Arg.Any<CancellationToken>())
             .Returns(user);
@@ -276,14 +240,13 @@ public class HouseholdIdentifierResolverTests
     }
 
     [Fact]
-    public async Task ResolveAsync_WhenStateNotConfigured_DefaultsToEmail()
+    public async Task ResolveAsync_WhenPreferredHouseholdIdTypesNotSet_DefaultsToEmail()
     {
         var email = "user@example.com";
         var user = UserFactory.CreateUserWithEmail(email);
         var settings = new StateHouseholdIdSettings
         {
-            CurrentState = "unknown",
-            States = new Dictionary<string, StatePreferredHouseholdIdEntry>()
+            PreferredHouseholdIdTypes = []
         };
         _userRepository.GetUserByEmailAsync(EmailNormalizer.Normalize(email), Arg.Any<CancellationToken>())
             .Returns(user);
@@ -299,44 +262,13 @@ public class HouseholdIdentifierResolverTests
     }
 
     [Fact]
-    public async Task ResolveAsync_WhenStateIsCo_UsesCoConfiguration()
-    {
-        var email = "user@example.com";
-        var user = UserFactory.CreateUserWithEmail(email, u => u.SnapId = "CO-SNAP-001");
-        var settings = new StateHouseholdIdSettings
-        {
-            CurrentState = "co",
-            States = new Dictionary<string, StatePreferredHouseholdIdEntry>
-            {
-                ["dc"] = new() { PreferredHouseholdIdTypes = [PreferredHouseholdIdType.Email] },
-                ["co"] = new() { PreferredHouseholdIdTypes = [PreferredHouseholdIdType.SnapId, PreferredHouseholdIdType.Email] }
-            }
-        };
-        _userRepository.GetUserByEmailAsync(EmailNormalizer.Normalize(email), Arg.Any<CancellationToken>())
-            .Returns(user);
-        var resolver = CreateResolver(_userRepository, settings);
-
-        var principal = CreatePrincipal(email);
-
-        var result = await resolver.ResolveAsync(principal);
-
-        Assert.NotNull(result);
-        Assert.Equal(PreferredHouseholdIdType.SnapId, result!.Type);
-        Assert.Equal("CO-SNAP-001", result.Value);
-    }
-
-    [Fact]
-    public async Task ResolveAsync_WhenStateHasEmptyPreferredTypes_DefaultsToEmail()
+    public async Task ResolveAsync_WhenPreferredHouseholdIdTypesIsEmpty_DefaultsToEmail()
     {
         var email = "user@example.com";
         var user = UserFactory.CreateUserWithEmail(email);
         var settings = new StateHouseholdIdSettings
         {
-            CurrentState = "dc",
-            States = new Dictionary<string, StatePreferredHouseholdIdEntry>
-            {
-                ["dc"] = new() { PreferredHouseholdIdTypes = [] }
-            }
+            PreferredHouseholdIdTypes = []
         };
         _userRepository.GetUserByEmailAsync(EmailNormalizer.Normalize(email), Arg.Any<CancellationToken>())
             .Returns(user);
@@ -363,11 +295,7 @@ public class HouseholdIdentifierResolverTests
         });
         var settings = new StateHouseholdIdSettings
         {
-            CurrentState = "dc",
-            States = new Dictionary<string, StatePreferredHouseholdIdEntry>
-            {
-                ["dc"] = new() { PreferredHouseholdIdTypes = [PreferredHouseholdIdType.Phone, PreferredHouseholdIdType.SnapId] }
-            }
+            PreferredHouseholdIdTypes = [PreferredHouseholdIdType.Phone, PreferredHouseholdIdType.SnapId]
         };
         _userRepository.GetUserByEmailAsync(EmailNormalizer.Normalize(email), Arg.Any<CancellationToken>())
             .Returns(user);
@@ -387,11 +315,7 @@ public class HouseholdIdentifierResolverTests
         var user = UserFactory.CreateUserWithEmail(email);
         var settings = new StateHouseholdIdSettings
         {
-            CurrentState = "dc",
-            States = new Dictionary<string, StatePreferredHouseholdIdEntry>
-            {
-                ["dc"] = new() { PreferredHouseholdIdTypes = [PreferredHouseholdIdType.Email] }
-            }
+            PreferredHouseholdIdTypes = [PreferredHouseholdIdType.Email]
         };
         _userRepository.GetUserByEmailAsync(EmailNormalizer.Normalize(email), Arg.Any<CancellationToken>())
             .Returns(user);
@@ -413,11 +337,7 @@ public class HouseholdIdentifierResolverTests
         var user = UserFactory.CreateUserWithEmail(email);
         var settings = new StateHouseholdIdSettings
         {
-            CurrentState = "dc",
-            States = new Dictionary<string, StatePreferredHouseholdIdEntry>
-            {
-                ["dc"] = new() { PreferredHouseholdIdTypes = [PreferredHouseholdIdType.Email] }
-            }
+            PreferredHouseholdIdTypes = [PreferredHouseholdIdType.Email]
         };
         _userRepository.GetUserByEmailAsync(EmailNormalizer.Normalize(email), Arg.Any<CancellationToken>())
             .Returns(user);
@@ -439,11 +359,7 @@ public class HouseholdIdentifierResolverTests
         var user = UserFactory.CreateUserWithEmail(EmailNormalizer.Normalize(email));
         var settings = new StateHouseholdIdSettings
         {
-            CurrentState = "dc",
-            States = new Dictionary<string, StatePreferredHouseholdIdEntry>
-            {
-                ["dc"] = new() { PreferredHouseholdIdTypes = [PreferredHouseholdIdType.Email] }
-            }
+            PreferredHouseholdIdTypes = [PreferredHouseholdIdType.Email]
         };
         _userRepository.GetUserByEmailAsync(EmailNormalizer.Normalize(email), Arg.Any<CancellationToken>())
             .Returns(user);
@@ -458,66 +374,11 @@ public class HouseholdIdentifierResolverTests
     }
 
     [Fact]
-    public async Task ResolveAsync_WhenStateKeyIsUppercase_FindsEntryCaseInsensitively()
-    {
-        var email = "user@example.com";
-        var user = UserFactory.CreateUserWithEmail(email);
-        var settings = new StateHouseholdIdSettings
-        {
-            CurrentState = "dc",
-            States = new Dictionary<string, StatePreferredHouseholdIdEntry>
-            {
-                ["DC"] = new() { PreferredHouseholdIdTypes = [PreferredHouseholdIdType.Email] }
-            }
-        };
-        _userRepository.GetUserByEmailAsync(EmailNormalizer.Normalize(email), Arg.Any<CancellationToken>())
-            .Returns(user);
-        var resolver = CreateResolver(_userRepository, settings);
-
-        var principal = CreatePrincipal(email);
-
-        var result = await resolver.ResolveAsync(principal);
-
-        Assert.NotNull(result);
-        Assert.Equal(PreferredHouseholdIdType.Email, result!.Type);
-        Assert.Equal(EmailNormalizer.Normalize(email), result.Value);
-    }
-
-    [Fact]
-    public async Task ResolveAsync_WhenCurrentStateIsNull_DefaultsToDc()
-    {
-        var email = "user@example.com";
-        var user = UserFactory.CreateUserWithEmail(email);
-        var settings = new StateHouseholdIdSettings
-        {
-            CurrentState = null!,
-            States = new Dictionary<string, StatePreferredHouseholdIdEntry>
-            {
-                ["dc"] = new() { PreferredHouseholdIdTypes = [PreferredHouseholdIdType.Email] }
-            }
-        };
-        _userRepository.GetUserByEmailAsync(EmailNormalizer.Normalize(email), Arg.Any<CancellationToken>())
-            .Returns(user);
-        var resolver = CreateResolver(_userRepository, settings);
-
-        var principal = CreatePrincipal(email);
-
-        var result = await resolver.ResolveAsync(principal);
-
-        Assert.NotNull(result);
-        Assert.Equal(PreferredHouseholdIdType.Email, result!.Type);
-    }
-
-    [Fact]
     public async Task ResolveAsync_WhenCancellationRequested_Throws()
     {
         var settings = new StateHouseholdIdSettings
         {
-            CurrentState = "dc",
-            States = new Dictionary<string, StatePreferredHouseholdIdEntry>
-            {
-                ["dc"] = new() { PreferredHouseholdIdTypes = [PreferredHouseholdIdType.Email] }
-            }
+            PreferredHouseholdIdTypes = [PreferredHouseholdIdType.Email]
         };
         var resolver = CreateResolver(settings);
         var principal = CreatePrincipal("user@example.com");

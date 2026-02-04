@@ -48,14 +48,13 @@ public class HouseholdIdentifierResolver : IHouseholdIdentifierResolver
             return null;
         }
 
-        var stateCode = (_settings.CurrentState ?? "dc").Trim().ToLowerInvariant();
-        var stateEntry = GetStateEntry(stateCode);
-        if (stateEntry == null || stateEntry.PreferredHouseholdIdTypes.Count == 0)
+        var preferredTypes = _settings.PreferredHouseholdIdTypes;
+        if (preferredTypes == null || preferredTypes.Count == 0)
         {
-            stateEntry = new StatePreferredHouseholdIdEntry { PreferredHouseholdIdTypes = [PreferredHouseholdIdType.Email] };
+            preferredTypes = [PreferredHouseholdIdType.Email];
         }
 
-        foreach (var preferredType in stateEntry.PreferredHouseholdIdTypes)
+        foreach (var preferredType in preferredTypes)
         {
             var value = GetValueFromUser(user, preferredType);
             if (!string.IsNullOrWhiteSpace(value))
@@ -69,21 +68,6 @@ public class HouseholdIdentifierResolver : IHouseholdIdentifierResolver
         }
 
         return null;
-    }
-
-    /// <summary>
-    /// Gets the state entry for the given state code using case-insensitive lookup.
-    /// </summary>
-    private StatePreferredHouseholdIdEntry? GetStateEntry(string stateCode)
-    {
-        if (_settings.States.TryGetValue(stateCode, out var entry))
-        {
-            return entry;
-        }
-
-        var match = _settings.States.FirstOrDefault(kvp =>
-            string.Equals(kvp.Key, stateCode, StringComparison.OrdinalIgnoreCase));
-        return match.Value;
     }
 
     /// <summary>
