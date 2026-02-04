@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Mvc;
 using SEBT.Portal.Api.Models;
 using SEBT.Portal.Api.Models.Household;
 using SEBT.Portal.Kernel;
+using SEBT.Portal.Kernel.AspNetCore;
 using SEBT.Portal.Kernel.Results;
 using SEBT.Portal.UseCases.Household;
 
@@ -39,12 +40,13 @@ public class HouseholdController : ControllerBase
         var query = new GetHouseholdDataQuery { User = User };
         var result = await queryHandler.Handle(query, cancellationToken);
 
-        return result switch
-        {
-            SuccessResult<Core.Models.Household.HouseholdData> success => Ok(success.Value.ToResponse()),
-            UnauthorizedResult<Core.Models.Household.HouseholdData> unauthorized => Unauthorized(new ErrorResponse(unauthorized.Message)),
-            PreconditionFailedResult<Core.Models.Household.HouseholdData> preconditionFailed => NotFound(new ErrorResponse(preconditionFailed.Message)),
-            _ => StatusCode(StatusCodes.Status500InternalServerError, new ErrorResponse("An unexpected error occurred."))
-        };
+        return result.ToActionResult(
+            successMap: data => Ok(data.ToResponse()),
+            failureMap: r => r switch
+            {
+                UnauthorizedResult<Core.Models.Household.HouseholdData> unauthorized => Unauthorized(new ErrorResponse(unauthorized.Message)),
+                PreconditionFailedResult<Core.Models.Household.HouseholdData> preconditionFailed => NotFound(new ErrorResponse(preconditionFailed.Message)),
+                _ => StatusCode(StatusCodes.Status500InternalServerError, new ErrorResponse("An unexpected error occurred."))
+            });
     }
 }
