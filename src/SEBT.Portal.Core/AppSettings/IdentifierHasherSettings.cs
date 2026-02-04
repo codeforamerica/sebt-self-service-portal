@@ -12,7 +12,6 @@ public class IdentifierHasherSettings
 
     /// <summary>
     /// The secret key for HMAC-SHA256 hasing. Must be at least 32 bytes.
-    /// Can be overridden by environment variable `IDENTIFIER_HASHER_SECRET_KEY`.
     /// </summary>
     [Required(ErrorMessage = "IdentifierHasher:SecretKey is required for secure identifier storage.")]
     [MinLength(32, ErrorMessage = "IdentifierHasher:SecretKey must be at least 32 characters.")]

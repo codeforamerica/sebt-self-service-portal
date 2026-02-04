@@ -128,7 +128,7 @@ Available environment variables:
 
 **API (These will override appsettings when set):**
 - `JWT_SECRET_KEY` - Secret key for JWT token signing. Overrides `JwtSettings:SecretKey`. Required for production.
-- `IDENTIFIER_HASHER_SECRET_KEY` - Secret key for HMAC-SHA256 hashing of Household Identifiers as needed. Overrides `IdentifierHasher:SecretKey`. Must be at least 32 characters. Required for production.
+- `IDENTIFIERHASHER__SECRETKEY` - Secret key for HMAC-SHA256 hashing of Household Identifiers as needed.
 
 ### Database Migrations
 
