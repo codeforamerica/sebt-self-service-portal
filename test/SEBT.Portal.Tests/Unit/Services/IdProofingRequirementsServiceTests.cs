@@ -1,3 +1,4 @@
+using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using SEBT.Portal.Core.AppSettings;
 using SEBT.Portal.Core.Models.Auth;
@@ -8,11 +9,14 @@ namespace SEBT.Portal.Tests.Unit.Services;
 
 public class IdProofingRequirementsServiceTests
 {
+    private static IdProofingRequirementsService CreateService(IdProofingRequirementsSettings settings) =>
+        new(Options.Create(settings), NullLogger<IdProofingRequirementsService>.Instance);
+
     [Fact]
     public void GetPiiVisibility_WhenCompleted_AndAddressRequiresIal1_ReturnsIncludeAddressTrue()
     {
         var settings = new IdProofingRequirementsSettings { Address = "IAL1", Email = "None", Phone = "None" };
-        var service = new IdProofingRequirementsService(Options.Create(settings));
+        var service = CreateService(settings);
 
         var result = service.GetPiiVisibility(IdProofingStatus.Completed);
 
@@ -25,7 +29,7 @@ public class IdProofingRequirementsServiceTests
     public void GetPiiVisibility_WhenNotStarted_AndAddressRequiresIal1_ReturnsIncludeAddressFalse()
     {
         var settings = new IdProofingRequirementsSettings { Address = "IAL1", Email = "None", Phone = "None" };
-        var service = new IdProofingRequirementsService(Options.Create(settings));
+        var service = CreateService(settings);
 
         var result = service.GetPiiVisibility(IdProofingStatus.NotStarted);
 
@@ -38,7 +42,7 @@ public class IdProofingRequirementsServiceTests
     public void GetPiiVisibility_WhenAllRequireIal1_AndUserNotVerified_ReturnsAllFalse()
     {
         var settings = new IdProofingRequirementsSettings { Address = "IAL1", Email = "IAL1", Phone = "IAL1" };
-        var service = new IdProofingRequirementsService(Options.Create(settings));
+        var service = CreateService(settings);
 
         var result = service.GetPiiVisibility(IdProofingStatus.NotStarted);
 
@@ -51,7 +55,7 @@ public class IdProofingRequirementsServiceTests
     public void GetPiiVisibility_WhenAllRequireIal1_AndUserCompleted_ReturnsAllTrue()
     {
         var settings = new IdProofingRequirementsSettings { Address = "IAL1", Email = "IAL1", Phone = "IAL1" };
-        var service = new IdProofingRequirementsService(Options.Create(settings));
+        var service = CreateService(settings);
 
         var result = service.GetPiiVisibility(IdProofingStatus.Completed);
 
@@ -64,7 +68,7 @@ public class IdProofingRequirementsServiceTests
     public void GetPiiVisibility_WhenAllNone_AndUserNotVerified_ReturnsAllTrue()
     {
         var settings = new IdProofingRequirementsSettings { Address = "None", Email = "None", Phone = "None" };
-        var service = new IdProofingRequirementsService(Options.Create(settings));
+        var service = CreateService(settings);
 
         var result = service.GetPiiVisibility(IdProofingStatus.NotStarted);
 
@@ -80,10 +84,23 @@ public class IdProofingRequirementsServiceTests
     public void GetPiiVisibility_WhenAddressRequiresIal1_AndUserNotCompleted_ReturnsIncludeAddressFalse(IdProofingStatus status)
     {
         var settings = new IdProofingRequirementsSettings { Address = "IAL1", Email = "None", Phone = "None" };
-        var service = new IdProofingRequirementsService(Options.Create(settings));
+        var service = CreateService(settings);
 
         var result = service.GetPiiVisibility(status);
 
         Assert.False(result.IncludeAddress);
+    }
+
+    [Fact]
+    public void GetPiiVisibility_WhenUnknownRequirementValue_FailsSafe_ReturnsPiiHidden()
+    {
+        var settings = new IdProofingRequirementsSettings { Address = "IAL2", Email = "IALl", Phone = "invalid" };
+        var service = CreateService(settings);
+
+        var result = service.GetPiiVisibility(IdProofingStatus.Completed);
+
+        Assert.False(result.IncludeAddress);
+        Assert.False(result.IncludeEmail);
+        Assert.False(result.IncludePhone);
     }
 }

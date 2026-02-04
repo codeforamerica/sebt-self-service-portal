@@ -1,3 +1,4 @@
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using SEBT.Portal.Core.AppSettings;
 using SEBT.Portal.Core.Models;
@@ -14,10 +15,14 @@ namespace SEBT.Portal.Infrastructure.Services;
 public class IdProofingRequirementsService : IIdProofingRequirementsService
 {
     private readonly IdProofingRequirementsSettings _settings;
+    private readonly ILogger<IdProofingRequirementsService> _logger;
 
-    public IdProofingRequirementsService(IOptions<IdProofingRequirementsSettings> settings)
+    public IdProofingRequirementsService(
+        IOptions<IdProofingRequirementsSettings> settings,
+        ILogger<IdProofingRequirementsService> logger)
     {
         _settings = settings.Value;
+        _logger = logger;
     }
 
     /// <inheritdoc />
@@ -26,12 +31,12 @@ public class IdProofingRequirementsService : IIdProofingRequirementsService
         var meetsIal1 = idProofingStatus == IdProofingStatus.Completed;
 
         return new PiiVisibility(
-            IncludeAddress: MeetsRequirement(_settings.Address, meetsIal1),
-            IncludeEmail: MeetsRequirement(_settings.Email, meetsIal1),
-            IncludePhone: MeetsRequirement(_settings.Phone, meetsIal1));
+            IncludeAddress: MeetsRequirement("Address", _settings.Address, meetsIal1),
+            IncludeEmail: MeetsRequirement("Email", _settings.Email, meetsIal1),
+            IncludePhone: MeetsRequirement("Phone", _settings.Phone, meetsIal1));
     }
 
-    private static bool MeetsRequirement(string requirement, bool meetsIal1)
+    private bool MeetsRequirement(string fieldName, string requirement, bool meetsIal1)
     {
         if (string.IsNullOrWhiteSpace(requirement) ||
             requirement.Equals("None", StringComparison.OrdinalIgnoreCase))
@@ -44,7 +49,10 @@ public class IdProofingRequirementsService : IIdProofingRequirementsService
             return meetsIal1;
         }
 
-        // We can add more IAL levels here in the future if needed
-        return meetsIal1;
+        _logger.LogWarning(
+            "Unknown IdProofing requirement value '{Requirement}' for {FieldName}. Defaulting to fail-safe (PII hidden). Valid values: None, IAL1.",
+            requirement,
+            fieldName);
+        return false;
     }
 }
