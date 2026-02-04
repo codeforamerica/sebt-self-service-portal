@@ -105,7 +105,23 @@ See [docs/development/state-ci.md](docs/development/state-ci.md) for detailed CI
 
 ## State-Specific Configuration
 
-The API loads state-specific configuration from `appsettings.{state}.json` when the `STATE` environment variable is set (e.g., `STATE=dc` loads `appsettings.dc.json`). State config overrides defaults in `appsettings.json`.
+The API loads state-specific configuration based on the `STATE` environment variable:
+
+1. **`appsettings.json`**: Base configuration (always loaded)
+2. **`appsettings.{STATE}.json`**: State overrides (loaded when `STATE` is set)
+
+When `STATE` is set, the API looks for `appsettings.{state}.json` in the application directory. Values in the state file override those in `appsettings.json` if present.
+
+**Example:** With `STATE=dc`, the API loads `appsettings.dc.json`. With `STATE=co`, it loads `appsettings.co.json`.
+
+```bash
+# Build and run for DC (loads appsettings.dc.json (if present))
+STATE=dc dotnet run --project src/SEBT.Portal.Api
+
+# Docker Compose uses STATE from .env
+docker compose up
+```
+Only include sections you want to override; other settings fall back to `appsettings.json`!
 
 ### ID Proofing Requirements
 
