@@ -103,6 +103,25 @@ main           # Production source for all states
 
 See [docs/development/state-ci.md](docs/development/state-ci.md) for detailed CI documentation.
 
+## State-Specific Configuration
+
+The API loads state-specific configuration from `appsettings.{state}.json` when the `STATE` environment variable is set (e.g., `STATE=dc` loads `appsettings.dc.json`). State config overrides defaults in `appsettings.json`.
+
+### ID Proofing Requirements
+
+PII data is only shown to users who meet the ID proofing requirements configured within "IdProofingRequirements". Configure this in `appsettings.json` or override with `appsettings.{state}.json`:
+
+Example (`appsettings.json`):
+```json
+{
+  "IdProofingRequirements": {
+    "address": "IAL1",
+    "email": "IAL1",
+    "phone": "IAL1"
+  }
+}
+```
+
 ## Database Setup
 
 ### MSSQL Server
