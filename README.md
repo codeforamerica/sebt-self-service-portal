@@ -126,9 +126,9 @@ Available environment variables:
 - `MSSQL_SERVER` - Server hostname (for local)
 - `MSSQL_PORT` - Server port
 
-**API (These will override appsettings when set):**
-- `JWT_SECRET_KEY` - Secret key for JWT token signing. Overrides `JwtSettings:SecretKey`. Required for production.
-- `IDENTIFIERHASHER__SECRETKEY` - Secret key for HMAC-SHA256 hashing of Household Identifiers as needed.
+**API**
+- `JWTSETTINGS__SECRETKEY` - Secret key for JWT token signing. Must be at least 32 characters.
+- `IDENTIFIERHASHER__SECRETKEY` - Secret key for HMAC-SHA256 hashing of Household Identifiers as needed. Must be at least 32 characters.
 
 ### Database Migrations
 
