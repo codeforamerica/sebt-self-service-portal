@@ -48,7 +48,14 @@ public class IdentifierHasher : IIdentifierHasher
         }
 
         var computed = Hash(plaintext);
-        return computed != null && string.Equals(computed, storedHash, StringComparison.OrdinalIgnoreCase);
+        if (computed == null)
+        {
+            return false;
+        }
+
+        var computedBytes = Convert.FromHexString(computed);
+        var storedBytes = Convert.FromHexString(storedHash);
+        return CryptographicOperations.FixedTimeEquals(computedBytes, storedBytes);
     }
 
     /// <inheritdoc />
