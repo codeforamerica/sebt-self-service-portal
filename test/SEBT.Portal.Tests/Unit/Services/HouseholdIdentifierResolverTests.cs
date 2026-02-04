@@ -219,10 +219,11 @@ public class HouseholdIdentifierResolverTests
     }
 
     [Fact]
-    public async Task ResolveAsync_WhenStatePrefersSsnAndUserHasSsn_ReturnsSsnIdentifierNormalized()
+    public async Task ResolveAsync_WhenStatePrefersSsnAndUserHasSsn_ReturnsSsnHashAsIs()
     {
+        var hashedSsn = "A1B2C3D4E5F6789012345678901234567890ABCDEF1234567890ABCDEF123456";
         var email = "user@example.com";
-        var user = UserFactory.CreateUserWithEmail(email, u => u.Ssn = "123-45-6789");
+        var user = UserFactory.CreateUserWithEmail(email, u => u.Ssn = hashedSsn);
         var settings = new StateHouseholdIdSettings
         {
             CurrentState = "dc",
@@ -241,7 +242,7 @@ public class HouseholdIdentifierResolverTests
 
         Assert.NotNull(result);
         Assert.Equal(PreferredHouseholdIdType.Ssn, result!.Type);
-        Assert.Equal("123456789", result.Value);
+        Assert.Equal(hashedSsn, result.Value);
     }
 
     [Fact]

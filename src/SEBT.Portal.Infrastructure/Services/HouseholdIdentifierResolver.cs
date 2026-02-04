@@ -110,7 +110,7 @@ public class HouseholdIdentifierResolver : IHouseholdIdentifierResolver
             PreferredHouseholdIdType.Phone => value.Trim(),
             PreferredHouseholdIdType.SnapId => value.Trim(),
             PreferredHouseholdIdType.TanfId => value.Trim(),
-            PreferredHouseholdIdType.Ssn => value.Trim().Replace("-", "").Replace(" ", ""),
+            PreferredHouseholdIdType.Ssn => value.Trim(),
             _ => value.Trim()
         };
     }
