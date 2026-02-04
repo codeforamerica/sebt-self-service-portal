@@ -41,16 +41,19 @@ WORKDIR /src
 COPY src/SEBT.Portal.Api/SEBT.Portal.Api.csproj SEBT.Portal.Api/
 COPY src/SEBT.Portal.Core/SEBT.Portal.Core.csproj SEBT.Portal.Core/
 COPY src/SEBT.Portal.Infrastructure/SEBT.Portal.Infrastructure.csproj SEBT.Portal.Infrastructure/
+COPY src/SEBT.Portal.Infrastructure.Seeding/SEBT.Portal.Infrastructure.Seeding.csproj SEBT.Portal.Infrastructure.Seeding/
 COPY src/SEBT.Portal.Kernel/SEBT.Portal.Kernel.csproj SEBT.Portal.Kernel/
 COPY src/SEBT.Portal.Kernel.AspNetCore/SEBT.Portal.Kernel.AspNetCore.csproj SEBT.Portal.Kernel.AspNetCore/
 COPY src/SEBT.Portal.UseCases/SEBT.Portal.UseCases.csproj SEBT.Portal.UseCases/
 
+# RUN dotnet restore SEBT.Portal.Infrastructure.Seeding/SEBT.Portal.Infrastructure.Seeding.csproj
 RUN dotnet restore SEBT.Portal.Api/SEBT.Portal.Api.csproj
 
 # Copy source and publish (--no-restore uses cached restore)
 COPY src/SEBT.Portal.Api/ SEBT.Portal.Api/
 COPY src/SEBT.Portal.Core/ SEBT.Portal.Core/
 COPY src/SEBT.Portal.Infrastructure/ SEBT.Portal.Infrastructure/
+COPY src/SEBT.Portal.Infrastructure.Seeding/ SEBT.Portal.Infrastructure.Seeding/
 COPY src/SEBT.Portal.Kernel/ SEBT.Portal.Kernel/
 COPY src/SEBT.Portal.Kernel.AspNetCore/ SEBT.Portal.Kernel.AspNetCore/
 COPY src/SEBT.Portal.UseCases/ SEBT.Portal.UseCases/

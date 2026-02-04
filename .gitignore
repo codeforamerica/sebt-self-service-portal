@@ -433,3 +433,10 @@ CLAUDE.md
 
 # output files
 output
+
+# local plugin files
+plugins-dc
+plugins-co
+
+# Idea specific configuration files
+.idea/.idea.SEBT.Portal/Docker/compose.generated.override.yml
