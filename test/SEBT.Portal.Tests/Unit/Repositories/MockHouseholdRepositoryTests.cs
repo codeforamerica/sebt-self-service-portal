@@ -44,6 +44,33 @@ public class MockHouseholdRepositoryTests
         Assert.Equal(ApplicationStatus.Approved, result.Applications.First().ApplicationStatus);
     }
 
+    [Theory]
+    [InlineData("non-co-loaded@example.com", "Carlos", "Garcia", "Emma", ApplicationStatus.Pending)]
+    [InlineData("not-started@example.com", "Jordan", "Anderson", "Liam", ApplicationStatus.Pending)]
+    public async Task GetHouseholdByEmailAsync_DefaultSeededUsers_HaveAssociatedHouseholdData(
+        string email,
+        string expectedFirstName,
+        string expectedLastName,
+        string expectedChildFirstName,
+        ApplicationStatus expectedApplicationStatus)
+    {
+        // Arrange & Act - Default seeded users must have household data for end-to-end testing
+        var result = await _repository.GetHouseholdByEmailAsync(email, FullPiiVisibility);
+
+        // Assert
+        Assert.NotNull(result);
+        Assert.Equal(email, result.Email);
+        Assert.NotNull(result.UserProfile);
+        Assert.Equal(expectedFirstName, result.UserProfile.FirstName);
+        Assert.Equal(expectedLastName, result.UserProfile.LastName);
+        Assert.NotNull(result.Applications);
+        Assert.NotEmpty(result.Applications);
+        Assert.Equal(expectedApplicationStatus, result.Applications.First().ApplicationStatus);
+        Assert.NotNull(result.Applications.First().Children);
+        Assert.NotEmpty(result.Applications.First().Children);
+        Assert.Equal(expectedChildFirstName, result.Applications.First().Children.First().FirstName);
+    }
+
     [Fact]
     public async Task GetHouseholdByEmailAsync_WhenHouseholdDoesNotExist_ReturnsNull()
     {

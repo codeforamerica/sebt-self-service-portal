@@ -222,6 +222,54 @@ public class MockHouseholdRepository : IHouseholdRepository
         review.UserProfile = new UserProfile { FirstName = "Susan", MiddleName = "Lee", LastName = "Williams" };
         _households["review@example.com"] = review;
 
+        // Scenario 5b: Non-co-loaded user (ID proofing in progress)
+        var nonCoLoaded = HouseholdFactory.CreateHouseholdDataWithStatus(ApplicationStatus.Pending, h =>
+        {
+            var app = h.Applications.FirstOrDefault();
+            if (app != null)
+            {
+                app.Children = new List<Child>
+                {
+                    new Child { CaseNumber = 555001, FirstName = "Emma", LastName = "Garcia" }
+                };
+            }
+            h.AddressOnFile = new Address
+            {
+                StreetAddress1 = "789 In-Progress Lane",
+                City = "Denver",
+                State = "CO",
+                PostalCode = "80204"
+            };
+        });
+        nonCoLoaded.Email = "non-co-loaded@example.com";
+        nonCoLoaded.Phone = "555-123-4567";
+        nonCoLoaded.UserProfile = new UserProfile { FirstName = "Carlos", MiddleName = "Miguel", LastName = "Garcia" };
+        _households["non-co-loaded@example.com"] = nonCoLoaded;
+
+        // Scenario 5c: Not-started user (ID proofing not started)
+        var notStarted = HouseholdFactory.CreateHouseholdDataWithStatus(ApplicationStatus.Pending, h =>
+        {
+            var app = h.Applications.FirstOrDefault();
+            if (app != null)
+            {
+                app.Children = new List<Child>
+                {
+                    new Child { CaseNumber = 666001, FirstName = "Liam", LastName = "Anderson" }
+                };
+            }
+            h.AddressOnFile = new Address
+            {
+                StreetAddress1 = "321 Not Started Drive",
+                City = "Denver",
+                State = "CO",
+                PostalCode = "80205"
+            };
+        });
+        notStarted.Email = "not-started@example.com";
+        notStarted.Phone = "555-987-6543";
+        notStarted.UserProfile = new UserProfile { FirstName = "Jordan", MiddleName = "Lee", LastName = "Anderson" };
+        _households["not-started@example.com"] = notStarted;
+
         // Scenario 6: Cancelled application
         var cancelled = HouseholdFactory.CreateHouseholdDataWithStatus(ApplicationStatus.Cancelled, h =>
         {

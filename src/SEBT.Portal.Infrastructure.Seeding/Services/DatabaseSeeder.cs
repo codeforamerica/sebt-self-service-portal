@@ -98,6 +98,8 @@ public class DatabaseSeeder : Core.Services.IDatabaseSeeder
             { "expired@example.com", IdProofingStatus.Completed },
 
             // Users without ID verification (addresses not shown unless explicitly requested)
+            { "non-co-loaded@example.com", IdProofingStatus.InProgress },
+            { "not-started@example.com", IdProofingStatus.NotStarted },
             { "pending@example.com", IdProofingStatus.NotStarted },
             { "minimal@example.com", IdProofingStatus.NotStarted },
             { "denied@example.com", IdProofingStatus.NotStarted },
