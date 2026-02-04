@@ -58,15 +58,13 @@ public class HouseholdController(
         var idProofingStatus = GetIdProofingStatus();
         var piiVisibility = idProofingRequirementsService.GetPiiVisibility(idProofingStatus);
 
-        if (piiVisibility.IncludeAddress || piiVisibility.IncludeEmail || piiVisibility.IncludePhone)
-        {
-            logger.LogDebug(
-                "PII visibility for user {Email}: Address={IncludeAddress}, Email={IncludeEmail}, Phone={IncludePhone}",
-                normalizedEmail,
-                piiVisibility.IncludeAddress,
-                piiVisibility.IncludeEmail,
-                piiVisibility.IncludePhone);
-        }
+        logger.LogDebug(
+            "PII visibility for user {Email} (IdProofingStatus={IdProofingStatus}): Address={IncludeAddress}, Email={IncludeEmail}, Phone={IncludePhone}",
+            normalizedEmail,
+            idProofingStatus,
+            piiVisibility.IncludeAddress,
+            piiVisibility.IncludeEmail,
+            piiVisibility.IncludePhone);
 
         var householdData = await repository.GetHouseholdByEmailAsync(
             normalizedEmail,
