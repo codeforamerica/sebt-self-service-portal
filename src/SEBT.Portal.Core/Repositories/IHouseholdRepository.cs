@@ -1,5 +1,6 @@
 using SEBT.Portal.Core.Models;
 using SEBT.Portal.Core.Models.Household;
+using SEBT.Portal.Core.Services;
 
 namespace SEBT.Portal.Core.Repositories;
 
@@ -16,7 +17,7 @@ public interface IHouseholdRepository
     /// which are determined by the user's ID proofing status and state configuration.
     /// </summary>
     /// <param name="email">The email address of the household.</param>
-    /// <param name="piiVisibility">Which PII elements to include. Determined by IIdProofingRequirementsService.</param>
+    /// <param name="piiVisibility">Which PII elements to include. Required; no default. Callers must obtain this from <see cref="IIdProofingRequirementsService.GetPiiVisibility"/> based on the user's ID proofing status.</param>
     /// <param name="cancellationToken">A token to monitor for cancellation requests.</param>
     /// <returns>The household data if found; otherwise, <c>null</c>.</returns>
     Task<HouseholdData?> GetHouseholdByEmailAsync(
