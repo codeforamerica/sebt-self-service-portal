@@ -4,6 +4,7 @@ using System.Text;
 using Microsoft.Extensions.Options;
 using SEBT.Portal.Core.AppSettings;
 using SEBT.Portal.Core.Services;
+using SEBT.Portal.Core.Utilities;
 
 namespace SEBT.Portal.Infrastructure.Services;
 
@@ -29,7 +30,7 @@ public class IdentifierHasher : IIdentifierHasher
     /// <inheritdoc />
     public string? Hash(string? plaintext)
     {
-        var normalized = NormalizeSsn(plaintext);
+        var normalized = SsnNormalizer.NormalizeOrNull(plaintext);
         if (string.IsNullOrWhiteSpace(normalized))
         {
             return null;
@@ -77,14 +78,4 @@ public class IdentifierHasher : IIdentifierHasher
 
     private static bool IsHexChar(char c) =>
         c is (>= '0' and <= '9') or (>= 'a' and <= 'f') or (>= 'A' and <= 'F');
-
-    private static string? NormalizeSsn(string? value)
-    {
-        if (string.IsNullOrWhiteSpace(value))
-        {
-            return null;
-        }
-
-        return value.Trim().Replace("-", "").Replace(" ", "");
-    }
 }
