@@ -458,6 +458,32 @@ public class HouseholdIdentifierResolverTests
     }
 
     [Fact]
+    public async Task ResolveAsync_WhenStateKeyIsUppercase_FindsEntryCaseInsensitively()
+    {
+        var email = "user@example.com";
+        var user = UserFactory.CreateUserWithEmail(email);
+        var settings = new StateHouseholdIdSettings
+        {
+            CurrentState = "dc",
+            States = new Dictionary<string, StatePreferredHouseholdIdEntry>
+            {
+                ["DC"] = new() { PreferredHouseholdIdTypes = [PreferredHouseholdIdType.Email] }
+            }
+        };
+        _userRepository.GetUserByEmailAsync(EmailNormalizer.Normalize(email), Arg.Any<CancellationToken>())
+            .Returns(user);
+        var resolver = CreateResolver(_userRepository, settings);
+
+        var principal = CreatePrincipal(email);
+
+        var result = await resolver.ResolveAsync(principal);
+
+        Assert.NotNull(result);
+        Assert.Equal(PreferredHouseholdIdType.Email, result!.Type);
+        Assert.Equal(EmailNormalizer.Normalize(email), result.Value);
+    }
+
+    [Fact]
     public async Task ResolveAsync_WhenCurrentStateIsNull_DefaultsToDc()
     {
         var email = "user@example.com";
