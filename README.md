@@ -109,13 +109,13 @@ The API loads state-specific configuration from `appsettings.{state}.json` when 
 
 ### ID Proofing Requirements
 
-PII data is only shown to users who meet the ID proofing requirements configured within "IdProofingRequirements". Configure this in `appsettings.json` or override with `appsettings.{state}.json`:
+PII data is only shown to users who meet the ID proofing requirements configured within "IdProofingRequirements". Configure this in `appsettings.json` or override with `appsettings.{state}.json`.
 
 Example (`appsettings.json`):
 ```json
 {
   "IdProofingRequirements": {
-    "address": "IAL1",
+    "address": "IAL1plus",
     "email": "IAL1",
     "phone": "IAL1"
   }

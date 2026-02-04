@@ -10,7 +10,6 @@ namespace SEBT.Portal.Infrastructure.Services;
 /// <summary>
 /// Determines which PII data elements a user can view based on their ID proofing status
 /// and the state-specific configuration.
-/// IdProofingStatus.Completed is treated as meeting IAL1+ requirements
 /// </summary>
 public class IdProofingRequirementsService : IIdProofingRequirementsService
 {
@@ -38,10 +37,9 @@ public class IdProofingRequirementsService : IIdProofingRequirementsService
 
     private bool MeetsRequirement(string fieldName, string requirement, bool meetsIal1)
     {
-        if (string.IsNullOrWhiteSpace(requirement) ||
-            requirement.Equals("None", StringComparison.OrdinalIgnoreCase))
+        if (string.IsNullOrWhiteSpace(requirement))
         {
-            return true;
+            return false;
         }
 
         if (requirement.Equals("IAL1", StringComparison.OrdinalIgnoreCase))
@@ -49,8 +47,18 @@ public class IdProofingRequirementsService : IIdProofingRequirementsService
             return meetsIal1;
         }
 
+        if (requirement.Equals("IAL1plus", StringComparison.OrdinalIgnoreCase))
+        {
+            return meetsIal1; // IdProofingStatus.Completed is treated as IAL1+
+        }
+
+        if (requirement.Equals("IAL2", StringComparison.OrdinalIgnoreCase))
+        {
+            return false; // IAL2 not yet supported; fail-safe
+        }
+
         _logger.LogWarning(
-            "Unknown IdProofing requirement value '{Requirement}' for {FieldName}. Defaulting to fail-safe (PII hidden). Valid values: None, IAL1.",
+            "Unknown IdProofing requirement value '{Requirement}' for {FieldName}. Defaulting to fail-safe (PII hidden). Valid values: IAL1, IAL1plus, IAL2.",
             requirement,
             fieldName);
         return false;

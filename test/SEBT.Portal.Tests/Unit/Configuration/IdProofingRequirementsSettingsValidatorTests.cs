@@ -12,9 +12,9 @@ public class IdProofingRequirementsSettingsValidatorTests
     {
         var options = new IdProofingRequirementsSettings
         {
-            Address = "IAL1",
-            Email = "None",
-            Phone = "None"
+            Address = "IAL1plus",
+            Email = "IAL1",
+            Phone = "IAL1"
         };
 
         var result = _validator.Validate(null, options);
@@ -27,9 +27,9 @@ public class IdProofingRequirementsSettingsValidatorTests
     {
         var options = new IdProofingRequirementsSettings
         {
-            Address = "ial1",
-            Email = "none",
-            Phone = "IAL1"
+            Address = "ial1plus",
+            Email = "ial1",
+            Phone = "IAL2"
         };
 
         var result = _validator.Validate(null, options);
@@ -42,9 +42,9 @@ public class IdProofingRequirementsSettingsValidatorTests
     {
         var options = new IdProofingRequirementsSettings
         {
-            Address = "IAL2",
-            Email = "None",
-            Phone = "None"
+            Address = "Invalid",
+            Email = "IAL1",
+            Phone = "IAL1"
         };
 
         var result = _validator.Validate(null, options);
@@ -52,7 +52,7 @@ public class IdProofingRequirementsSettingsValidatorTests
         Assert.False(result.Succeeded);
         var failure = result.Failures!.Single();
         Assert.Contains("Address", failure);
-        Assert.Contains("IAL2", failure);
+        Assert.Contains("Invalid", failure);
     }
 
     [Fact]
@@ -62,7 +62,7 @@ public class IdProofingRequirementsSettingsValidatorTests
         {
             Address = "IAL1",
             Email = "iall", // to represent common typos
-            Phone = "None"
+            Phone = "IAL1"
         };
 
         var result = _validator.Validate(null, options);
@@ -77,7 +77,7 @@ public class IdProofingRequirementsSettingsValidatorTests
         var options = new IdProofingRequirementsSettings
         {
             Address = "IAL1",
-            Email = "None",
+            Email = "IAL1",
             Phone = ""
         };
 

@@ -5,11 +5,12 @@ namespace SEBT.Portal.Infrastructure.Configuration;
 
 /// <summary>
 /// Validates IdProofingRequirementsSettings at startup.
-/// Valid values for each PII type are "None" or "IAL1" (case-insensitive).
+/// Valid values for each PII type are "IAL1", "IAL1plus", "IAL2" (case-insensitive).
 /// </summary>
 public class IdProofingRequirementsSettingsValidator : IValidateOptions<IdProofingRequirementsSettings>
 {
-    private static readonly string[] ValidValues = ["None", "IAL1"];
+    private static readonly string[] ValidValues = ["IAL1", "IAL1plus", "IAL2"];
+    private static readonly string ValidValuesList = string.Join(", ", ValidValues);
 
     /// <inheritdoc />
     public ValidateOptionsResult Validate(string? name, IdProofingRequirementsSettings options)
@@ -34,13 +35,13 @@ public class IdProofingRequirementsSettingsValidator : IValidateOptions<IdProofi
     {
         if (string.IsNullOrWhiteSpace(value))
         {
-            failures.Add($"{propertyName} must be specified. Valid values: None, IAL1.");
+            failures.Add($"{propertyName} must be specified. Valid values: {ValidValuesList}.");
             return;
         }
 
         if (!ValidValues.Contains(value, StringComparer.OrdinalIgnoreCase))
         {
-            failures.Add($"{propertyName} has invalid value '{value}'. Valid values: None, IAL1.");
+            failures.Add($"{propertyName} has invalid value '{value}'. Valid values: {ValidValuesList}.");
         }
     }
 }
