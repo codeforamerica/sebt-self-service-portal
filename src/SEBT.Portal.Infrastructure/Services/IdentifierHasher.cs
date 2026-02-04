@@ -8,7 +8,7 @@ using SEBT.Portal.Core.Services;
 namespace SEBT.Portal.Infrastructure.Services;
 
 /// <summary>
-/// HMAC-SHA256 implementation of <see cref="IIdentifierHasher"/> for SSN hashing.
+/// HMAC-SHA256 implementation of <see cref="IIdentifierHasher"/> for hashing sensitive identifiers.
 /// </summary>
 public class IdentifierHasher : IIdentifierHasher
 {
