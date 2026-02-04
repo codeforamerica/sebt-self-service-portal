@@ -11,7 +11,7 @@ public class IdentifierHasherSettings
     public static readonly string SectionName = "IdentifierHasher";
 
     /// <summary>
-    /// The secret key for HMAC-SHA256 hasing. Must be at least 32 bytes.
+    /// The secret key for HMAC-SHA256 hashing. Must be at least 32 bytes.
     /// </summary>
     [Required(ErrorMessage = "IdentifierHasher:SecretKey is required for secure identifier storage.")]
     [MinLength(32, ErrorMessage = "IdentifierHasher:SecretKey must be at least 32 characters.")]

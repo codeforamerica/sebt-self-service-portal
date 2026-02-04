@@ -15,6 +15,7 @@ using SEBT.Portal.Infrastructure.Services;
 using SEBT.Portal.Infrastructure.Seeding.Services;
 using SEBT.Portal.UseCases;
 using SEBT.Portal.Infrastructure;
+using SEBT.Portal.Api.Startup;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -182,6 +183,12 @@ static FixedWindowRateLimiterOptions CreateOtpRateLimitOptions(OtpRateLimitSetti
 };
 
 var app = builder.Build();
+
+// Guard against default/placeholder IdentifierHasher key in production
+if (app.Environment.IsProduction())
+{
+    IdentifierHasherGuard.ValidateForProduction(app.Configuration["IdentifierHasher:SecretKey"]);
+}
 
 // Apply database migrations
 await using (var scope = app.Services.CreateAsyncScope())
