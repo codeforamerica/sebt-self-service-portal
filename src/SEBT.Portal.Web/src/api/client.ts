@@ -1,5 +1,7 @@
 import type { ZodType } from 'zod'
 
+import { clearAuthToken, getAuthToken } from '@/features/auth/context'
+
 import type { ApiErrorResponse } from './schemas'
 
 const API_ROUTE_PREFIX = '/api'
@@ -52,14 +54,21 @@ export async function apiFetch<T>(endpoint: string, options: ApiFetchOptions<T> 
   const controller = new AbortController()
   const timeoutId = setTimeout(() => controller.abort(), timeout)
 
+  // Build headers with auth token if available
+  const authToken = getAuthToken()
+  const requestHeaders: HeadersInit = {
+    'Content-Type': 'application/json',
+    ...headers
+  }
+  if (authToken) {
+    ;(requestHeaders as Record<string, string>)['Authorization'] = `Bearer ${authToken}`
+  }
+
   let response: Response
   try {
     response = await fetch(`${API_ROUTE_PREFIX}${endpoint}`, {
       method,
-      headers: {
-        'Content-Type': 'application/json',
-        ...headers
-      },
+      headers: requestHeaders,
       body: body !== undefined ? JSON.stringify(body) : null,
       signal: controller.signal
     })
@@ -83,6 +92,14 @@ export async function apiFetch<T>(endpoint: string, options: ApiFetchOptions<T> 
   }
 
   if (!response.ok) {
+    // Handle 401 Unauthorized - clear invalid token and redirect to login
+    if (response.status === 401) {
+      clearAuthToken()
+      if (typeof window !== 'undefined') {
+        window.location.href = '/login'
+      }
+    }
+
     const errorData = data as ApiErrorResponse | undefined
     const message =
       errorData?.error ?? errorData?.message ?? `Request failed with status ${response.status}`

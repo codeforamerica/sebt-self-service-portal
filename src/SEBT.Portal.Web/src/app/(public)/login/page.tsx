@@ -1,4 +1,3 @@
-import { HelpSection } from '@/components/layout'
 import { TextLink } from '@/components/ui'
 import { LoginForm } from '@/features/auth'
 import { getStateLinks } from '@/lib/links'
@@ -37,8 +36,6 @@ export default function LoginPage() {
           </section>
         </div>
       </div>
-
-      <HelpSection state={state} />
     </>
   )
 }
