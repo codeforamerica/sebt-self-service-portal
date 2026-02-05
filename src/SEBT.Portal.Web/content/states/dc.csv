@@ -178,14 +178,25 @@ S2 - Portal Dashboard - Card Table - Heading Card Status,Card status,Card status
 S2 - Portal Dashboard - Card Table - Heading Mailing address,Mailing address,Mailing address,Dirección de correspondencia,Dirección de correspondencia,
 S2 - Portal Dashboard - Card Table - Status Requested,Requested on [MM/DD/YYYY],Requested on [MM/DD/YYYY],Solicitada el [MM/DD/YYYY],Solicitada el [MM/DD/YYYY],
 S2 - Portal Dashboard - Card Table - Status Issued,Issued on [MM/DD/YYYY],Issued on [MM/DD/YYYY],,,
-S2 - Portal Dashboard - Card Table - Status Mailed,Mailed on [MM/DD/YYYY],Mailed on [MM/DD/YYYY],Enviado por correo el [MM/DD/YYYY],Enviado por correo el [MM/DD/YYYY],
-S2 - Portal Dashboard - Card Table - Status Active,Active,Active,Activa,Activa,
-S2 - Portal Dashboard - Card Table - Status Deactivated,Deactivated,Deactivated,Desactivada,Desactivada,
-S2 - Portal Dashboard - Card Table - Status Message Requested 1,We've requested a new DC Sun Bucks card that will arrive in the mail within 2–3 weeks. Check back here to see when the card has been mailed.,We've requested a new Summer EBT card that will arrive in the mail within 2–3 weeks. Check back here to see when the card has been mailed.,Hemos solicitado una nueva tarjeta de DC SUN Bucks que llegará por correo en un plazo de 2 a 3 semanas. Regrese aquí para ver cuándo se ha enviado la tarjeta.,Hemos solicitado una nueva tarjeta de DC SUN Bucks que llegará por correo en un plazo de 2 a 3 semanas. Regrese aquí para ver cuándo se ha enviado la tarjeta.,
-S2 - Portal Dashboard - Card Table - Status Message Requested 2,A replacement card will arrive in the mail in around 5–7 business days. The card should be mailed within 2 days. Check back here to see when the replacement card has been mailed.,A replacement card will arrive in the mail in around 5–7 days. The card should be mailed within 2 days. Check back here to see when the replacement card has been mailed.,Una tarjeta de reemplazo llegará por correo en aproximadamente 5 a 7 días. La tarjeta debería ser enviada dentro de 2 días. Regrese  aquí para ver cuándo se ha enviado la tarjeta de reemplazo.,Una tarjeta de reemplazo llegará por correo en aproximadamente 5 a 7 días. La tarjeta debería ser enviada dentro de 2 días. Regrese  aquí para ver cuándo se ha enviado la tarjeta de reemplazo.,
-S2 - Portal Dashboard - Card Table - Status Message Mailed,"After the new card is mailed, it should arrive in around 5–7 days. If it doesn't arrive after two weeks, you can request a replacement card.","After the new card is mailed, it should arrive in around 5–7 days. If it doesn't arrive after two weeks, you can request a replacement card.","Una vez que se envíe por correo la nueva tarjeta, debería llegar en un plazo de 5 a 7 días. Si no llega después de dos semanas, puede solicitar una tarjeta de reemplazo.","Una vez que se envíe por correo la nueva tarjeta, debería llegar en un plazo de 5 a 7 días. Si no llega después de dos semanas, puede solicitar una tarjeta de reemplazo.",
+S2 - Portal Dashboard - Card Table - Status Mailed,,Mailed on [MM/DD/YYYY],,Enviado por correo el [MM/DD/YYYY],
+S2 - Portal Dashboard - Card Table - Status Active,,Active,,Activa,
+S2 - Portal Dashboard - Card Table - Status Deactivated,,Deactivated,,Desactivada,
+S2 - Portal Dashboard - Card Table - Status Frozen,,Frozen,,,
+S2 - Portal Dashboard - Card Table - Status Undeliverable,,Undeliverable,,,
+S2 - Portal Dashboard - Card Table - Status Message Requested 1,,We've requested a new Summer EBT card that will arrive in the mail within 2–3 weeks. Check back here to see when the card has been mailed.,,Hemos solicitado una nueva tarjeta de DC SUN Bucks que llegará por correo en un plazo de 2 a 3 semanas. Regrese aquí para ver cuándo se ha enviado la tarjeta.,
+S2 - Portal Dashboard - Card Table - Status Message Requested 2,,A replacement card will arrive in the mail in around 5–7 days. The card should be mailed within 2 days. Check back here to see when the replacement card has been mailed.,,Una tarjeta de reemplazo llegará por correo en aproximadamente 5 a 7 días. La tarjeta debería ser enviada dentro de 2 días. Regrese  aquí para ver cuándo se ha enviado la tarjeta de reemplazo.,
+S2 - Portal Dashboard - Card Table - Status Message Mailed,,"After the new card is mailed, it should arrive in around 5–7 days. If it doesn't arrive after two weeks, you can request a replacement card.",,"Una vez que se envíe por correo la nueva tarjeta, debería llegar en un plazo de 5 a 7 días. Si no llega después de dos semanas, puede solicitar una tarjeta de reemplazo.",
+S2 - Portal Dashboard - Card Table - Status Message Active,,"This card has been sent to you. It is ready to make purchases as soon as you set the PIN number. Call EBT Customer Service at (888) 328-2656 to set the card's PIN. 
+
+When asked to enter the child's birthdate, use the format MONTH-DAY-YEAR.
+
+When asked to ""enter the primary cardholder's"" ZIP Code, enter the ZIP Code of the address it was mailed to.",,,
+S2 - Portal Dashboard - Card Table - Status Message Deactivated,,"This card was reported as lost, stolen, damaged, or otherwise inactive. Contact EBT Customer Service at (888) 328-2656 to learn more or report a change.",,,
+S2 - Portal Dashboard - Card Table - Status Message Frozen,,"You won’t be able to use your benefits while this card is frozen. Unfreeze the card to keep using your benefits. This can be done with the ebtEDGE, MyCoBenefits, or Propel apps.",,,
+S2 - Portal Dashboard - Card Table - Status Message Undeliverable,,The card could not be delivered to the address on file. ,,,
 S2 - Portal Dashboard - Card Table - Action Update Mailing Address,Update this card's mailing address,Update this card's mailing address,Actualizar la dirección de correspondencia de esta tarjeta,Actualizar la dirección de correspondencia de esta tarjeta,
 S2 - Portal Dashboard - Card Table - Action Request Replacement,Request a replacement card,Request a replacement card,Solicitar una tarjeta de reemplazo,Solicitar una tarjeta de reemplazo,
+S2 - Portal Dashboard - Card Table - Action Update Request,,Update your address and order a replacement card,,,
 S2 - Portal Dashboard - Alert EBT Edge - Title,Check balance or change PIN number,Check balance or change PIN number,Revisar balance o cambiar número de PIN,Revisar balance o cambiar número de PIN,
 S2 - Portal Dashboard - Alert EBT Edge - Body,If you need to,"When you add your cards to an ebtEDGE account, you can","Cuando agregue sus tarjetas a una cuenta de ebtEDGE, usted podrá","Cuando agregue sus tarjetas a una cuenta de ebtEDGE, usted podrá",
 S2 - Portal Dashboard - Alert EBT Edge - Features,"Check the card balance and transactions, 
@@ -215,8 +226,10 @@ S2 - Portal Dashboard - Alert Applications Title,"Currently, you have no childre
 S2 - Portal Dashboard - Alert Applications Body,Come back to this dashboard tomorrow if you've just recently applied and your application is not displayed.,Come back to this dashboard tomorrow if you've just recently applied and your application is not displayed.,Vuelva a este portal mañana si acaba de presentar una solicitud y su solicitud aún no aparece.,Vuelva a este portal mañana si acaba de presentar una solicitud y su solicitud aún no aparece.,
 S2 - Portal Dashboard - Alert Applications Action,Apply for DC SUN Bucks now,Apply for Summer EBT now,Aplique ahora para DC Sun Bucks,Aplique ahora para Summer EBT,
 S3 - Contact Preferences Update - Title,Your contact preferences,Your contact preferences,Actualizar su perfil e información de contacto,Actualizar su perfil e información de contacto,
-S3 - Contact Preferences Update - Label Language,Your preferred language,Your preferred language,El idioma que prefiere,El idioma que prefiere,
-S3 - Contact Preferences Update - Label Contact Preference,How do you prefer to be contacted?,How do you prefer to be contacted?,¿Cómo prefiere que nos pongamos en contacto con usted?,¿Cómo prefiere que nos pongamos en contacto con usted?,
+S3 - Contact Preferences Update - Label Language,Which language do you prefer to be contacted in?,Which language do you prefer to be contacted in?,,El idioma que prefiere,
+S3 - Contact Preferences Update - Label Contact Preference,Would you like to get DC SUN Bucks notices by email [at [email]@[domain]] instead of by physical mail?,How do you prefer to be contacted?,,¿Cómo prefiere que nos pongamos en contacto con usted?,
+S3 - Contact Preferences Update - Label Phone,What's the best phone number to text you?,What's the best phone number to text you?,,,
+S3 - Contact Preferences Update - Description Phone,This phone number needs to be able to receive text messages.,This phone number needs to be able to receive text messages.,,,
 S3 - Contact Preferences Update - Action Update Contact,Update contact preferences,Update contact preferences,Actualizar las preferencias de contacto,Actualizar las preferencias de contacto,
 S3 - Parent Profile Update - Alert Profile Update,Your profile has been updated,Your profile has been updated,Su perfil ha sido actualizado,Su perfil ha sido actualizado,
 S3 - Parent Profile Update - Title,Your DC SUN Bucks Profile,Your Summer EBT Profile,Su perfil de DC SUN Bucks,Su perfil de Summer EBT,
@@ -340,8 +353,6 @@ S8 - ID Proofing Optional ID Info - Label ITIN,Enter your Individual Taxpayer ID
 S8 - ID Proofing Optional ID Info - Label Medicaid ID,Enter your Medicaid ID,Enter your Medicaid ID,Ingresa tu Medicaid ID,Ingresa tu Medicaid ID,
 S8 - ID Proofing Optional ID Info - Label Account ID,Enter your SNAP or TANF account ID,Enter your SNAP or TANF account ID,Ingresa tu número de cuenta de SNAP o TANF,Ingresa tu número de cuenta de SNAP o TANF,I'm not sure if Spanish speakers will understand the difference between account ID and person ID. Do we have these terms translated elsewhere Devon Hirth - Code for America
 S8 - ID Proofing Optional ID Info - Label Person ID,Enter your SNAP or TANF person ID,Enter your SNAP or TANF person ID,Ingresa tu número de ID de persona de SNAP o TANF,Ingresa tu número de ID de persona de SNAP o TANF,
-S8 - Opt-in - Title,Thank you. How can we reach you?,Thank you. How can we reach you?,Gracias. ¿Cómo podemos contactarte?,Gracias. ¿Cómo podemos contactarte?,
-S8 - Opt-in - Body,Select how you want to hear from us about important DC SUN Bucks information.,Select how you want to hear from us about important DC SUN Bucks information.,Seleccione cómo desea recibir información importante sobre los DC SUN Bucks.,Seleccione cómo desea recibir información importante sobre los DC SUN Bucks.,
 S8 - Opt-in - Label Email,May we save your email ([email]@[domain.com]) to send you information about your DC SUN Bucks account?,May we save your email ([email]@[domain.com]) to send you information about your DC SUN Bucks account?,¿Podemos guardar tu correo electrónico ([email]@[domain.com]) para enviarte información sobre tu cuenta de DC SUN Bucks?,¿Podemos guardar tu correo electrónico ([email]@[domain.com]) para enviarte información sobre tu cuenta de DC SUN Bucks?,
 S8 - Opt-in - Helper Email,This will help us communicate important information about your benefits.,This will help us communicate important information about your benefits.,Esto nos ayudará a enviarte información importante sobre tus beneficios.,Esto nos ayudará a enviarte información importante sobre tus beneficios.,
 S8 - Opt-in - Label DOB,May we store your date of birth?,May we store your date of birth?,¿Podemos guardar tu fecha de nacimiento?,¿Podemos guardar tu fecha de nacimiento?,
@@ -350,8 +361,6 @@ S8 - Opt-in - Label Contact Preference,Select at least one option,Select at leas
 S8 - Opt-in - Option Helper Phone,"If this is your preference, messaging and data rates will apply.","If this is your preference, messaging and data rates will apply.","Si esta es tu preferencia, se aplicarán tarifas de mensajes y datos.","Si esta es tu preferencia, se aplicarán tarifas de mensajes y datos.",
 S8 - Opt-in - Label Enter Phone,Enter your phone number,Enter your phone number,Ingresa tu número de telefono,Ingresa tu número de telefono,
 S8 - Opt-in - Label Text,May we text this phone number?,May we text this phone number?,¿Podemos enviarte mensajes de texto a este número?,¿Podemos enviarte mensajes de texto a este número?,
-S8 - Opt-in - Label Language,Which language do you prefer to be contacted in?,Which language do you prefer to be contacted in?,¿En qué idioma prefieres que te contactemos?,¿En qué idioma prefieres que te contactemos?,
-S8 - Opt-in - Action,Continue to my account,Continue to my account,Continuar a mi cuenta,Continuar a mi cuenta,
 S8 - Off-boarding - Title,We want to keep your account safe,We want to keep your account safe,"Para confirmar tu identidad, necesitamos pedirte documentación adicional.","Para confirmar tu identidad, necesitamos pedirte documentación adicional.",
 S8 - Off-boarding - Body 1,"In order to confirm your identity we need to ask for additional documentation. On the next screen, we’ll ask you to upload a photo of your ","In order to confirm your identity we need to ask for additional documentation. On the next screen, we’ll ask you to upload a photo of your ","En la siguiente pantalla te pediremos que subas una foto de tu licencia de conducir u otra identificación con foto.
 
@@ -364,10 +373,27 @@ or another photo ID","driver’s license
 foreign passport
 or another photo ID",,,
 S8 - Off-boarding - Body 3,You can skip this step by going back and typing in your ID number instead.,You can skip this step by going back and typing in your ID number instead.,,,
-S8 - Off-boarding - Action,Go back and enter an ID number,Go back and enter an ID number,,,
+S8 - Off-boarding - Action,Go back and enter an ID number,Enter an ID number,,,
 S8 - Co-loaded Off-boarding - Title,"We're sorry, we aren't able to show your DC SUN Bucks information ","We're sorry, we aren't able to show your DC SUN Bucks information ","Lo sentimos, no podemos mostrar tu información de DC SUN Bucks","Lo sentimos, no podemos mostrar tu información de DC SUN Bucks",
-S8 - Co-loaded Off-boarding - Body,You can go back and enter an additional ID number or contact us if you need further assistance.,You can go back and enter an additional ID number or contact us if you need further assistance.,Puedes volver e ingresar un número de identificación adicional o contactarnos si necesitas más ayuda,Puedes volver e ingresar un número de identificación adicional o contactarnos si necesitas más ayuda,
-S8 - Co-loaded Off-boarding - Action,Contact us,Contact us,Contáctanos,Contáctanos,
+S8 - Co-loaded Off-boarding - Body 1,"You can go back to enter an ID number, or contact us if you need more help.","You can go back to enter an ID number, or contact us if you need more help.",Puedes volver e ingresar un número de identificación adicional o contactarnos si necesitas más ayuda,Puedes volver e ingresar un número de identificación adicional o contactarnos si necesitas más ayuda,
+S8 - Co-loaded Off-boarding - Action 1,Contact us,Contact us,Contáctanos,Contáctanos,
+S8 - Co-loaded Off-boarding - Body 2,"If you’re not sure what to do, or you want to apply for DC SUN Bucks, we can help you find out if you need to apply for your child. Tap “Apply now” and enter your child’s information.","If you’re not sure what to do, or you want to apply for DC SUN Bucks, we can help you find out if you need to apply for your child. Tap “Apply now” and enter your child’s information.",,,
+S8 - Co-loaded Off-boarding - Action 2,Apply now,Apply now,,,
+S9 - Opt-in - Title,,Would you like to receive Summer EBT communication through email or SMS text?,,Gracias. ¿Cómo podemos contactarte?,
+S9 - Opt-in - Body,,If you choose email or text we’ll continue to also mail notices to your physical address.,,Seleccione cómo desea recibir información importante sobre los DC SUN Bucks.,
+S9 - Opt-in - Text Description,,Select this option if you want to be messaged at ([999]) [999]-[9999]. This phone number needs to be able to receive text messages and can’t be changed.,,,
+S9 - Email - Title,Would you like to get DC SUN Bucks notices by email [at [email]@[domain]] instead of by physical mail?,Would you like to get DC SUN Bucks notices by email [at [email]@[domain]] instead of by physical mail?,,,
+S9 - Email - Body,[We’ll ask about your phone number next.],[We’ll ask about your phone number next.],,,
+S9 - Enter Email - Enter Label,Enter the best email address to use,Enter the best email address to use,,,
+S9 - Enter Email - Confirm Label,Confirm email address,Confirm email address,,,
+S9 - Text - Title,Would you like to receive text messages about your DC SUN Bucks account?,Would you like to receive text messages about your DC SUN Bucks account?,,,
+S9 - Text - Which Phone Label,Is ([999]) [999]-[9999] the best phone number to text you?,Is ([999]) [999]-[9999] the best phone number to text you?,,,
+S9 - Text - Enter Label,Enter the best phone number to text you,Enter the best phone number to text you,,,
+S9 - Text - Enter Helper,This phone number needs to be able to receive text messages.,This phone number needs to be able to receive text messages.,,,
+S9 - Text - Confirm Label,Confirm phone number,Confirm phone number,,,
+S9 - Language - Title,Which language do you prefer to be contacted in?,Which language do you prefer to be contacted in?,¿En qué idioma prefieres que te contactemos?,¿En qué idioma prefieres que te contactemos?,
+S9 - Language - Label Select Language,Select a language,Select a language,,,
+S9 - Language - Action,Continue to my account,Continue to my account,Continuar a mi cuenta,Continuar a mi cuenta,
 GLOBAL - Label - Languages,Languages,Languages,Idiomas,Idiomas,
 GLOBAL - Options - Languages,"English
 Español (Spanish)
@@ -392,10 +418,10 @@ GLOBAL - Helper Text - Legally as it appears,"Legally as it appears on official 
 GLOBAL - Label Middle name,Middle name,Middle name,Segundo nombre,Segundo nombre,
 GLOBAL - Helper Text - Optional,Optional. If they have one.,Optional. If they have one.,Opcional. Si tiene uno.,Opcional. Si tiene uno.,
 GLOBAL - Label Last name,Last name,Last name,Apellido,Apellido,
-GLOBAL - Action - Continue,Continue,Continue,Continuar,Continuar,
-GLOBAL - Action - Submit,Submit,Submit,Enviar,Enviar,
-GLOBAL - Placeholder - Select one,- Select one -,- Select one -,- Seleccione una op...,- Seleccione una op...,
-GLOBAL - Options - January - February,"January
+GLOBAL - Action - Continue,Continue to my account,Continue,Continuar a mi cuenta,Continuar,
+GLOBAL - Action - Submit,Continue,Submit,Continuar,Enviar,
+GLOBAL - Placeholder - Select one,Submit,- Select one -,Enviar,- Seleccione una op...,
+GLOBAL - Options - January - February,- Select one -,"January
 
 February
 
@@ -417,51 +443,7 @@ October
 
 November
 
-December","January
-
-February
-
-March
-
-April
-
-May
-
-June
-
-July
-
-August
-
-September
-
-October
-
-November
-
-December","enero
-
-febrero
-
-marzo
-
-abril
-
-mayo
-
-junio
-
-julio
-
-agosto
-
-septiembre
-
-octubre
-
-noviembre
-
-diciembre","enero
+December",- Seleccione una op...,"enero
 
 febrero
 
@@ -484,86 +466,133 @@ octubre
 noviembre
 
 diciembre",
-GLOBAL - Options - January,January,January,enero,enero,
-GLOBAL - Options - August,August,August,agosto,agosto,
-GLOBAL - Option - None of the above,None of the above,None of the above,Ninguna de las anteriores,Ninguna de las anteriores,
-GLOBAL - Required Fields,Asterisks (*) indicate a required field.,Asterisks (*) indicate a required field.,Los asteriscos (*) indican que es un campo requerido.,Los asteriscos (*) indican que es un campo requerido.,
-GLOBAL - Helper Select at least one,Select at least one option.,Select at least one option.,Seleccione por lo menos una opción.,Seleccione por lo menos una opción.,
-GLOBAL - Email,Email,Email,Correo electrónico,Correo electrónico,
-GLOBAL - Phone,Phone,Phone,Teléfono,Teléfono,
-GLOBAL - Physical mail,Physical mail,Physical mail,Correo físico,Correo físico,
-GLOBAL - Email address,Email address,Email address,Correo electrónico,Correo electrónico,
-GLOBAL - Phone number,Phone number,Phone number,Número de teléfono,Número de teléfono,
-GLOBAL - Label Send Cards to Preferred Address,Do you want us to send DC SUN Bucks cards for all of your enrolled children to your preferred address?,Do you want us to send Summer EBT cards for all of your enrolled children to your preferred address?,¿Quiere que enviemos las tarjetas DC SUN Bucks para todos sus hijos inscritos a la dirección de preferencia?,¿Quiere que enviemos las tarjetas Summer EBT para todos sus hijos inscritos a la dirección de preferencia?,
-GLOBAL - Co-loaded Card Helper,"If your child is eligible for DC SUN Bucks through SNAP or TANF participation, they will not receive a DC SUN Bucks card.","If your child is eligible for Summer EBT through SNAP or Colorado Works (TANF) participation, they will not receive a Summer EBT card.","Si su hijo es elegible para DC SUN Bucks a través de la participación en SNAP o TANF, no recibirá una tarjeta DC SUN Bucks.","Si su hijo es elegible para Summer EBT a través de la participación en SNAP o Colorado Works (TANF), no recibirá una tarjeta Summer EBT.",
-GLOBAL - Yes,Yes,Yes,Sí,Sí,
-GLOBAL - No,No,No,No,No,
-GLOBAL - Action - Back,Back,Back,Regresar,Regresar,
-GLOBAL - Label - Select One,Select one,Select one,Seleccione una opción,Seleccione una opción,
-GLOBAL - Street Address,Street address,Street address,Dirección,Dirección,
-GLOBAL - Helper Street Address,"Include direction, NW, NE, SE, or SW.","Include direction, NW, NE, SE, or SW.","Incluya la dirección: NO, NE, SE o SO.","Incluya la dirección: NO, NE, SE o SO.",
-GLOBAL - Street Address 2,Street address line 2,Street address line 2,"Dirección, línea 2","Dirección, línea 2",
-GLOBAL - Helper Street Address 2,"For example, an apartment number, unit number, floor, or PO Box.","For example, an apartment number, unit number, floor, or PO Box.","Por ejemplo, número de suite, número de unidad, piso o apartado postal","Por ejemplo, número de suite, número de unidad, piso o apartado postal",
-GLOBAL - City,City,City,Ciudad,Ciudad,
-GLOBAL - Default City,Washington,   ,Washington,   ,
-GLOBAL - State or Territory,State or territory,State or territory,Estado o territorio,Estado o territorio,
-GLOBAL - Default State or Territory,District of Columbia,Colorado,District of Columbia,Colorado,
-GLOBAL - ZIP Code,ZIP Code,ZIP Code,Código postal,Código postal,
-GLOBAL - Label Make Preferred Mailing Address,Do you want to make this your preferred mailing address?,Do you want to make this your preferred mailing address?,¿Quiere que esta sea su dirección de correspondencia de preferencia?,¿Quiere que esta sea su dirección de correspondencia de preferencia?,
-GLOBAL - Apply Online,Apply online,Apply online,Solicitar en línea,Solicitar en línea,
-GLOBAL - Download Application,Download Application,Download Application,Descargar la solicitud,Descargar la solicitud,
-GLOBAL - Action - Log In,Log in,Log in,Iniciar sesión,Iniciar sesión,
-GLOBAL - Action - Log In Esp,Iniciar sesión,Iniciar sesión,Log in,Log in,
-GLOBAL - Label - Suggested Address,Suggested address,Suggested address,Dirección sugerida,Dirección sugerida,
-GLOBAL - Label - Address Entered,Address you entered,Address you entered,La dirección que ingresó,La dirección que ingresó,
-VALIDATION - Summary,"We're sorry. Some required questions aren't filled or we can't accept some of the answers. We'll be able to continue your application once these issues are fixed.
+GLOBAL - Options - January,"January
 
-If you need additional support (especially in a language other than English or español), please contact us.","We're sorry. Some required questions aren't filled or we can't accept some of the answers. We'll be able to continue your application once these issues are fixed.
+February
 
-If you need additional support (especially in a language other than English or español), please contact us.","Lo sentimos. Algunas preguntas requeridas no están completas o no podemos aceptar algunas de las respuestas. Podremos continuar con su solicitud una vez que se solucionen estos problemas.
+March
 
-Si necesita apoyo adicional (especialmente en un idioma diferente al inglés o español), comuníquese con nosotros.","Lo sentimos. Algunas preguntas requeridas no están completas o no podemos aceptar algunas de las respuestas. Podremos continuar con su solicitud una vez que se solucionen estos problemas.
+April
+
+May
+
+June
+
+July
+
+August
+
+September
+
+October
+
+November
+
+December",January,"enero
+
+febrero
+
+marzo
+
+abril
+
+mayo
+
+junio
+
+julio
+
+agosto
+
+septiembre
+
+octubre
+
+noviembre
+
+diciembre",enero,
+GLOBAL - Options - August,January,August,enero,agosto,
+GLOBAL - Option - None of the above,August,None of the above,agosto,Ninguna de las anteriores,
+GLOBAL - Required Fields,None of the above,Asterisks (*) indicate a required field.,Ninguna de las anteriores,Los asteriscos (*) indican que es un campo requerido.,
+GLOBAL - Helper Select at least one,Asterisks (*) indicate a required field.,Select at least one option.,Los asteriscos (*) indican que es un campo requerido.,Seleccione por lo menos una opción.,
+GLOBAL - Email,Select at least one option.,Email,Seleccione por lo menos una opción.,Correo electrónico,
+GLOBAL - Phone,Email,Phone,Correo electrónico,Teléfono,
+GLOBAL - Physical mail,Phone,Physical mail,Teléfono,Correo físico,
+GLOBAL - Email address,Physical mail,Email address,Correo físico,Correo electrónico,
+GLOBAL - Phone number,Email address,Phone number,Correo electrónico,Número de teléfono,
+GLOBAL - Label Send Cards to Preferred Address,Phone number,Do you want us to send Summer EBT cards for all of your enrolled children to your preferred address?,Número de teléfono,¿Quiere que enviemos las tarjetas Summer EBT para todos sus hijos inscritos a la dirección de preferencia?,
+GLOBAL - Co-loaded Card Helper,Do you want us to send DC SUN Bucks cards for all of your enrolled children to your preferred address?,"If your child is eligible for Summer EBT through SNAP or Colorado Works (TANF) participation, they will not receive a Summer EBT card.",¿Quiere que enviemos las tarjetas DC SUN Bucks para todos sus hijos inscritos a la dirección de preferencia?,"Si su hijo es elegible para Summer EBT a través de la participación en SNAP o Colorado Works (TANF), no recibirá una tarjeta Summer EBT.",
+GLOBAL - Yes,"If your child is eligible for DC SUN Bucks through SNAP or TANF participation, they will not receive a DC SUN Bucks card.",Yes,"Si su hijo es elegible para DC SUN Bucks a través de la participación en SNAP o TANF, no recibirá una tarjeta DC SUN Bucks.",Sí,
+GLOBAL - No,Yes,No,Sí,No,
+GLOBAL - Action - Back,No,Back,No,Regresar,
+GLOBAL - Label - Select One,Back,Select one,Regresar,Seleccione una opción,
+GLOBAL - Street Address,Select one,Street address,Seleccione una opción,Dirección,
+GLOBAL - Helper Street Address,Street address,"Include direction, NW, NE, SE, or SW.",Dirección,"Incluya la dirección: NO, NE, SE o SO.",
+GLOBAL - Street Address 2,"Include direction, NW, NE, SE, or SW.",Street address line 2,"Incluya la dirección: NO, NE, SE o SO.","Dirección, línea 2",
+GLOBAL - Helper Street Address 2,Street address line 2,"For example, an apartment number, unit number, floor, or PO Box.","Dirección, línea 2","Por ejemplo, número de suite, número de unidad, piso o apartado postal",
+GLOBAL - City,"For example, an apartment number, unit number, floor, or PO Box.",City,"Por ejemplo, número de suite, número de unidad, piso o apartado postal",Ciudad,
+GLOBAL - Default City,City,   ,Ciudad,   ,
+GLOBAL - State or Territory,Washington,State or territory,Washington,Estado o territorio,
+GLOBAL - Default State or Territory,State or territory,Colorado,Estado o territorio,Colorado,
+GLOBAL - ZIP Code,District of Columbia,ZIP Code,District of Columbia,Código postal,
+GLOBAL - Label Make Preferred Mailing Address,ZIP Code,Do you want to make this your preferred mailing address?,Código postal,¿Quiere que esta sea su dirección de correspondencia de preferencia?,
+GLOBAL - Apply Online,Do you want to make this your preferred mailing address?,Apply online,¿Quiere que esta sea su dirección de correspondencia de preferencia?,Solicitar en línea,
+GLOBAL - Download Application,Apply online,Download Application,Solicitar en línea,Descargar la solicitud,
+GLOBAL - Action - Log In,Download Application,Log in,Descargar la solicitud,Iniciar sesión,
+GLOBAL - Action - Log In Esp,Log in,Iniciar sesión,Iniciar sesión,Log in,
+GLOBAL - Label - Suggested Address,Iniciar sesión,Suggested address,Log in,Dirección sugerida,
+GLOBAL - Label - Address Entered,Suggested address,Address you entered,Dirección sugerida,La dirección que ingresó,
+GLOBAL - Label - Select All,Select all that apply,Select all that apply,,,
+GLOBAL - Text,,Text,,,
+VALIDATION - Summary,Address you entered,"We're sorry. Some required questions aren't filled or we can't accept some of the answers. We'll be able to continue your application once these issues are fixed.
+
+If you need additional support (especially in a language other than English or español), please contact us.",La dirección que ingresó,"Lo sentimos. Algunas preguntas requeridas no están completas o no podemos aceptar algunas de las respuestas. Podremos continuar con su solicitud una vez que se solucionen estos problemas.
 
 Si necesita apoyo adicional (especialmente en un idioma diferente al inglés o español), comuníquese con nosotros.",
-VALIDATION - Required,This is required,This is required,Esto es requerido,Esto es requerido,
-VALIDATION - Select Option,Select an option,Select an option,Seleccione una opción,Seleccione una opción,
-VALIDATION - Enter Phone,"Provide a valid phone number, including the area code","Provide a valid phone number, including the area code","Ingrese un número de teléfono válido, incluyendo el código de área","Ingrese un número de teléfono válido, incluyendo el código de área",
-VALIDATION - Enter ZIP,Provide a valid ZIP Code with at least five numbers,Provide a valid ZIP Code with at least five numbers,Ingrese un código de área válido con por lo menos cinco números,Ingrese un código de área válido con por lo menos cinco números,
-VALIDATION - Select Month,Select a month,Select a month,Seleccione un mes,Seleccione un mes,
-VALIDATION - Enter Day,Provide a day using one or two numbers,Provide a day using one or two numbers,Ingrese uno o dos números para escribir día,Ingrese uno o dos números para escribir día,
-VALIDATION - Enter Year,Provide a year using four numbers,Provide a year using four numbers,Escriba el año con cuatro números,Escriba el año con cuatro números,
-VALIDATION - Select Year,Select a year,Select a year,Seleccione un año,Seleccione un año,
-VALIDATION - Enter Email,Provide a valid email address,Provide a valid email address,Ingrese un correo electrónico válido,Ingrese un correo electrónico válido,
-VALIDATION - OTP Invalid,Enter a valid [6] digit code. Tap here to send a new code.,Enter a valid [6] digit code. Tap here to send a new code.,,,
-VALIDATION - Global Internal Error,An error occurred on our end. Please try again.,An error occurred on our end. Please try again.,,,
-PROTO - S1 - Optional ID Information - Title 2,We checked our records and need more information to see if Kalai F. Curtis can get DC SUN Bucks,We checked our records and need more information to see if Kalai F. Curtis can get Summer EBT,Revisamos nuestros registros y necesitamos más información para ver si Kalai F. Curtis puede recibir DC SUN Bucks,Revisamos nuestros registros y necesitamos más información para ver si Kalai F. Curtis puede recibir Summer EBT,
-PROTO - S2 - Portal Dashboard - Card Table - Kalai Frances Curtis' card,Kalai Frances Curtis' card,Kalai Frances Curtis' card,Tarjeta de Kalai Frances Curtis,Tarjeta de Kalai Frances Curtis,
-PROTO - S2 - Portal Dashboard - Card Table - Caleb David Curtis' card,Caleb David Curtis' card,Caleb David Curtis' card,Tarjeta de Caleb David Curtis,Tarjeta de Caleb David Curtis,
-PROTO - S2 - Portal Dashboard - Card Table - 1234 (last 4 digits),1234 (last 4 digits),1234 (last 4 digits),1234 (últimos 4 dígitos),1234 (últimos 4 dígitos),
-PROTO - S2 - Portal Dashboard - Card Table - 5678 (last 4 digits),5678 (last 4 digits),5678 (last 4 digits),5678 (últimos 4 dígitos),5678 (últimos 4 dígitos),
-PROTO - S2 - Portal Dashboard - Card Table - Status Requested On 1,Requested on 04/01/2024,Requested on 04/01/2024,Solicitada el 04/01/2024,Solicitada el 04/01/2024,
-PROTO - S2 - Portal Dashboard - Card Table - Status Requested On 2,Requested on 05/05/2024,Requested on 05/05/2024,Solicitada el 05/05/2024,Solicitada el 05/05/2024,
-PROTO - S4 - Mailing Address Update - Title Caleb David Curtis,Tell us where to safely send Caleb David Curtis' mail,Tell us where to safely send Caleb David Curtis' mail,Compártanos dónde enviarle a Caleb David Curtis correo de manera segura,Compártanos dónde enviarle a Caleb David Curtis correo de manera segura,
-PROTO - S5 - Bulk Order New Cards Who - Card Number Kalai,Card number: 1234 (last 4 digits),Card number: 1234 (last 4 digits),Número de tarjeta: 1234 (últimos 4 dígitos),Número de tarjeta: 1234 (últimos 4 dígitos),
-PROTO - S5 - Bulk Order New Cards Who - Card Number Caleb,Card number: 6789 (last 4 digits),Card number: 5678 (last 4 digits),Número de tarjeta: 6789 (últimos 4 dígitos),Número de tarjeta: 5678 (últimos 4 dígitos),
-PROTO - First Name 1,Kalai,Kalai,Kalai,Kalai,
-PROTO - Middle Name 1,Frances,Frances,Frances,Frances,
-PROTO - Last Name 1,Curtis,Curtis,Curtis,Curtis,
-PROTO - Birthdate Month 1,August,August,August,August,
-PROTO - Birthdate Day 1,13,13,13,13,
-PROTO - Birthdate Year 1,2017,2017,2017,2017,
-PROTO - Name 1,Kalai Frances Curtis,Kalai Frances Curtis,Kalai F. Curtis,Kalai F. Curtis,
-PROTO - Birthdate 1,"August 13, 2017",42960,"August, 13 2017",42960,
-PROTO - Name 2,Caleb David Curtis,Caleb David Curtis,Caleb David Curtis,Caleb David Curtis,
-PROTO - First Name 2,Caleb,Caleb,Caleb,Caleb,
-PROTO - Middle Name 2,David,David,David,David,
-PROTO - Last Name 2,Curtis,Curtis,Curtis,Curtis,
-PROTO - Birthdate 2,"January 7, 2009",39820,"January 7, 2009",39820,
-PROTO - Birthdate Month 2,January,January,January,January,
-PROTO - Birthdate Day 2,7,7,7,7,
-PROTO - Birthdate Year 2,2009,2009,2009,2009,
-PROTO - LOGIN EMAIL,frances.curtis@gmail.com,frances.curtis@gmail.com,frances.curtis@gmail.com,frances.curtis@gmail.com,
-PROTO - S2 - Portal Dashboard - Alert Address Title,A replacement for the card ending in 1234 will be sent to the following address,A replacement for the card ending in 1234 will be sent to the following address,Las tarjeta terminada en 1234 será remplazadas y enviada a la siguiente dirección,Las tarjeta terminada en 1234 será remplazadas y enviada a la siguiente dirección,
+VALIDATION - Required,"We're sorry. Some required questions aren't filled or we can't accept some of the answers. We'll be able to continue your application once these issues are fixed.
+
+If you need additional support (especially in a language other than English or español), please contact us.",This is required,"Lo sentimos. Algunas preguntas requeridas no están completas o no podemos aceptar algunas de las respuestas. Podremos continuar con su solicitud una vez que se solucionen estos problemas.
+
+Si necesita apoyo adicional (especialmente en un idioma diferente al inglés o español), comuníquese con nosotros.",Esto es requerido,
+VALIDATION - Select Option,This is required,Select an option,Esto es requerido,Seleccione una opción,
+VALIDATION - Enter Phone,Select an option,"Provide a valid phone number, including the area code",Seleccione una opción,"Ingrese un número de teléfono válido, incluyendo el código de área",
+VALIDATION - Enter ZIP,"Provide a valid phone number, including the area code",Provide a valid ZIP Code with at least five numbers,"Ingrese un número de teléfono válido, incluyendo el código de área",Ingrese un código de área válido con por lo menos cinco números,
+VALIDATION - Select Month,Provide a valid ZIP Code with at least five numbers,Select a month,Ingrese un código de área válido con por lo menos cinco números,Seleccione un mes,
+VALIDATION - Enter Day,Select a month,Provide a day using one or two numbers,Seleccione un mes,Ingrese uno o dos números para escribir día,
+VALIDATION - Enter Year,Provide a day using one or two numbers,Provide a year using four numbers,Ingrese uno o dos números para escribir día,Escriba el año con cuatro números,
+VALIDATION - Select Year,Provide a year using four numbers,Select a year,Escriba el año con cuatro números,Seleccione un año,
+VALIDATION - Enter Email,Select a year,Provide a valid email address,Seleccione un año,Ingrese un correo electrónico válido,
+VALIDATION - OTP Invalid,Provide a valid email address,Enter a valid [6] digit code. Tap here to send a new code.,Ingrese un correo electrónico válido,,
+VALIDATION - Global Internal Error,Enter a valid [6] digit code. Tap here to send a new code.,An error occurred on our end. Please try again.,,,
+PROTO - S1 - Optional ID Information - Title 2,An error occurred on our end. Please try again.,We checked our records and need more information to see if Kalai F. Curtis can get Summer EBT,,Revisamos nuestros registros y necesitamos más información para ver si Kalai F. Curtis puede recibir Summer EBT,
+PROTO - S2 - Portal Dashboard - Card Table - Kalai Frances Curtis' card,We checked our records and need more information to see if Kalai F. Curtis can get DC SUN Bucks,Kalai Frances Curtis' card,Revisamos nuestros registros y necesitamos más información para ver si Kalai F. Curtis puede recibir DC SUN Bucks,Tarjeta de Kalai Frances Curtis,
+PROTO - S2 - Portal Dashboard - Card Table - Caleb David Curtis' card,Kalai Frances Curtis' card,Caleb David Curtis' card,Tarjeta de Kalai Frances Curtis,Tarjeta de Caleb David Curtis,
+PROTO - S2 - Portal Dashboard - Card Table - 1234 (last 4 digits),Caleb David Curtis' card,1234 (last 4 digits),Tarjeta de Caleb David Curtis,1234 (últimos 4 dígitos),
+PROTO - S2 - Portal Dashboard - Card Table - 5678 (last 4 digits),1234 (last 4 digits),5678 (last 4 digits),1234 (últimos 4 dígitos),5678 (últimos 4 dígitos),
+PROTO - S2 - Portal Dashboard - Card Table - Status Requested On 1,5678 (last 4 digits),Requested on 04/01/2024,5678 (últimos 4 dígitos),Solicitada el 04/01/2024,
+PROTO - S2 - Portal Dashboard - Card Table - Status Requested On 2,Requested on 04/01/2024,Requested on 05/05/2024,Solicitada el 04/01/2024,Solicitada el 05/05/2024,
+PROTO - S4 - Mailing Address Update - Title Caleb David Curtis,Requested on 05/05/2024,Tell us where to safely send Caleb David Curtis' mail,Solicitada el 05/05/2024,Compártanos dónde enviarle a Caleb David Curtis correo de manera segura,
+PROTO - S5 - Bulk Order New Cards Who - Card Number Kalai,Tell us where to safely send Caleb David Curtis' mail,Card number: 1234 (last 4 digits),Compártanos dónde enviarle a Caleb David Curtis correo de manera segura,Número de tarjeta: 1234 (últimos 4 dígitos),
+PROTO - S5 - Bulk Order New Cards Who - Card Number Caleb,Card number: 1234 (last 4 digits),Card number: 5678 (last 4 digits),Número de tarjeta: 1234 (últimos 4 dígitos),Número de tarjeta: 5678 (últimos 4 dígitos),
+PROTO - First Name 1,Card number: 6789 (last 4 digits),Kalai,Número de tarjeta: 6789 (últimos 4 dígitos),Kalai,
+PROTO - Middle Name 1,Kalai,Frances,Kalai,Frances,
+PROTO - Last Name 1,Frances,Curtis,Frances,Curtis,
+PROTO - Birthdate Month 1,Curtis,August,Curtis,August,
+PROTO - Birthdate Day 1,August,13,August,13,
+PROTO - Birthdate Year 1,13,2017,13,2017,
+PROTO - Name 1,2017,Kalai Frances Curtis,2017,Kalai F. Curtis,
+PROTO - Birthdate 1,Kalai Frances Curtis,42960,Kalai F. Curtis,42960,
+PROTO - Name 2,"August 13, 2017",Caleb David Curtis,"August, 13 2017",Caleb David Curtis,
+PROTO - First Name 2,Caleb David Curtis,Caleb,Caleb David Curtis,Caleb,
+PROTO - Middle Name 2,Caleb,David,Caleb,David,
+PROTO - Last Name 2,David,Curtis,David,Curtis,
+PROTO - Birthdate 2,Curtis,39820,Curtis,39820,
+PROTO - Birthdate Month 2,"January 7, 2009",January,"January 7, 2009",January,
+PROTO - Birthdate Day 2,January,7,January,7,
+PROTO - Birthdate Year 2,7,2009,7,2009,
+PROTO - LOGIN EMAIL,2009,frances.curtis@gmail.com,2009,frances.curtis@gmail.com,
+PROTO - S2 - Portal Dashboard - Alert Address Title,frances.curtis@gmail.com,A replacement for the card ending in 1234 will be sent to the following address,frances.curtis@gmail.com,Las tarjeta terminada en 1234 será remplazadas y enviada a la siguiente dirección,
+,A replacement for the card ending in 1234 will be sent to the following address,,Las tarjeta terminada en 1234 será remplazadas y enviada a la siguiente dirección,,
 ,አማርኛ (Amharic),,አማርኛ (amarico),,
 ,DC SUN Bucks,,,,
 ,Language,,,,
