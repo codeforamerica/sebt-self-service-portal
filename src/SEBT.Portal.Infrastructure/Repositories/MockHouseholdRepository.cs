@@ -448,10 +448,20 @@ public class MockHouseholdRepository : IHouseholdRepository
     /// <returns>A new instance of HouseholdData with copied values.</returns>
     private static HouseholdData CreateCopy(HouseholdData source, PiiVisibility piiVisibility)
     {
-        return new HouseholdData
+        return source with
         {
             Email = piiVisibility.IncludeEmail ? source.Email : null,
             Phone = piiVisibility.IncludePhone ? source.Phone : null,
+            AddressOnFile = piiVisibility.IncludeAddress && source.AddressOnFile != null
+                ? new Address
+                {
+                    StreetAddress1 = source.AddressOnFile.StreetAddress1,
+                    StreetAddress2 = source.AddressOnFile.StreetAddress2,
+                    City = source.AddressOnFile.City,
+                    State = source.AddressOnFile.State,
+                    PostalCode = source.AddressOnFile.PostalCode
+                }
+                : null,
             BenefitIssuanceType = source.BenefitIssuanceType,
             UserProfile = source.UserProfile != null
                 ? new UserProfile
@@ -481,18 +491,7 @@ public class MockHouseholdRepository : IHouseholdRepository
                     FirstName = c.FirstName,
                     LastName = c.LastName
                 }).ToList()
-            }).ToList(),
-            // Only include address if requested (based on ID proofing requirements)
-            AddressOnFile = piiVisibility.IncludeAddress && source.AddressOnFile != null
-                ? new Address
-                {
-                    StreetAddress1 = source.AddressOnFile.StreetAddress1,
-                    StreetAddress2 = source.AddressOnFile.StreetAddress2,
-                    City = source.AddressOnFile.City,
-                    State = source.AddressOnFile.State,
-                    PostalCode = source.AddressOnFile.PostalCode
-                }
-                : null
+            }).ToList()
         };
     }
 }
