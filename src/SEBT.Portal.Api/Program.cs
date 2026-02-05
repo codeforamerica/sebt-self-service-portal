@@ -1,13 +1,14 @@
 using System.Text;
 using System.Threading.RateLimiting;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
-using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
+using SEBT.Portal.Api.Composition;
 using Serilog;
 using Microsoft.FeatureManagement;
 using SEBT.Portal.Api.Extensions;
 using SEBT.Portal.Api.Middleware;
+using SEBT.Portal.Api.Options;
 using SEBT.Portal.Core.AppSettings;
 using SEBT.Portal.Core.Repositories;
 using SEBT.Portal.Core.Services;
@@ -60,8 +61,12 @@ Log.Logger = new LoggerConfiguration()
 // Use Serilog instead of default logger
 builder.Host.UseSerilog();
 
+// Registers plugins and allows them to be constructor injected into ASP.NET controllers
+builder.Services.AddPlugins(builder.Configuration);
+
 // Add services to the container.
 builder.Services.AddControllers();
+
 builder.Services.Configure<RouteOptions>(options =>
 {
     options.LowercaseUrls = true;
@@ -70,36 +75,8 @@ builder.Services.Configure<RouteOptions>(options =>
 
 // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
 builder.Services.AddEndpointsApiExplorer();
-builder.Services.AddSwaggerGen(options =>
-{
-    var xmlFilename = $"{System.Reflection.Assembly.GetExecutingAssembly().GetName().Name}.xml";
-    options.IncludeXmlComments(Path.Combine(AppContext.BaseDirectory, xmlFilename));
-
-    // Add JWT Bearer authentication to Swagger
-    options.AddSecurityDefinition("Bearer", new Microsoft.OpenApi.Models.OpenApiSecurityScheme
-    {
-        Description = "JWT Authorization header using the Bearer scheme. Enter 'Bearer' [space] and then your token in the text input below.",
-        Name = "Authorization",
-        In = Microsoft.OpenApi.Models.ParameterLocation.Header,
-        Type = Microsoft.OpenApi.Models.SecuritySchemeType.ApiKey,
-        Scheme = "Bearer"
-    });
-
-    options.AddSecurityRequirement(new Microsoft.OpenApi.Models.OpenApiSecurityRequirement
-    {
-        {
-            new Microsoft.OpenApi.Models.OpenApiSecurityScheme
-            {
-                Reference = new Microsoft.OpenApi.Models.OpenApiReference
-                {
-                    Type = Microsoft.OpenApi.Models.ReferenceType.SecurityScheme,
-                    Id = "Bearer"
-                }
-            },
-            Array.Empty<string>()
-        }
-    });
-});
+builder.Services.ConfigureOptions<ConfigureSwaggerGenOptions>();
+builder.Services.AddSwaggerGen(); // Configured by ConfigureSwaggerGenOptions, which delegates to the state plugin
 
 // Add Feature Management
 builder.Services.AddFeatureManagement(builder.Configuration.GetSection("FeatureManagement"));

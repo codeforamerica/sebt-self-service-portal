@@ -98,7 +98,14 @@ jobs:
           echo "pnpm: ${{ steps.config.outputs.pnpm_version }}"
           echo ".NET: ${{ steps.config.outputs.dotnet_version }}"
           echo "Build Config: ${{ steps.config.outputs.build_config }}"
-
+      
+      
+      - name: Checkout interfaces repo
+        uses: actions/checkout@v4
+        with:
+          repository: codeforamerica/sebt-self-service-portal-state-connector
+          path: state-connector # /home/runner/work/sebt-self-service-portal/sebt-self-service-portal/state-connector
+      
       # Docker Build Path
       - name: Build Backend (Docker)
         if: steps.config.outputs.use_docker == 'true'
