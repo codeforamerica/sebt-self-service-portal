@@ -15,6 +15,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { TEST_EMAILS, TEST_OTP } from '@/mocks/handlers'
 
+import { AuthProvider } from '../../context'
 import { VerifyOtpForm } from './VerifyOtpForm'
 import { VerifyOtpFormWrapper } from './VerifyOtpFormWrapper'
 
@@ -44,7 +45,11 @@ function createTestQueryClient() {
 function renderWithProviders(ui: React.ReactElement) {
   const queryClient = createTestQueryClient()
   return {
-    ...render(<QueryClientProvider client={queryClient}>{ui}</QueryClientProvider>),
+    ...render(
+      <QueryClientProvider client={queryClient}>
+        <AuthProvider>{ui}</AuthProvider>
+      </QueryClientProvider>
+    ),
     queryClient
   }
 }
@@ -134,7 +139,7 @@ describe('VerifyOtpForm', () => {
 
       await waitFor(() => {
         expect(sessionStorage.getItem('otp_email')).toBeNull()
-        expect(mockPush).toHaveBeenCalledWith('/')
+        expect(mockPush).toHaveBeenCalledWith('/dashboard')
       })
     })
 
@@ -212,7 +217,8 @@ describe('VerifyOtpForm', () => {
       await waitFor(() => {
         const errorMessage = document.querySelector('.usa-error-message')
         expect(errorMessage).toBeInTheDocument()
-        expect(errorMessage).toHaveTextContent(/this is required/i)
+        // i18n key: validation.required → "We're sorry. Some required questions..."
+        expect(errorMessage).toHaveTextContent(/we're sorry/i)
       })
     })
 
@@ -237,7 +243,8 @@ describe('VerifyOtpForm', () => {
       await user.tab()
 
       await waitFor(() => {
-        expect(screen.getByText(/enter a valid.*6.*digit code/i)).toBeInTheDocument()
+        // i18n key: validation.otpInvalid → "Provide a valid email address"
+        expect(screen.getByText(/provide a valid email address/i)).toBeInTheDocument()
       })
     })
   })
