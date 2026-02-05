@@ -433,3 +433,6 @@ CLAUDE.md
 
 # output files
 output
+
+# temporary files
+/temp
