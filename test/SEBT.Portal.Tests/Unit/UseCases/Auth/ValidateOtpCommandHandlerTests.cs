@@ -39,7 +39,7 @@ public class ValidateOtpCommandHandlerTests
         var user = new User
         {
             Email = command.Email,
-            IdProofingStatus = IdProofingStatus.NotStarted
+            IalLevel = UserIalLevel.None
         };
 
         otpRepository.GetOtpCodeByEmailAsync(Arg.Is<string>(email => email == command.Email))
@@ -111,7 +111,7 @@ public class ValidateOtpCommandHandlerTests
         var user = new User
         {
             Email = command.Email,
-            IdProofingStatus = IdProofingStatus.NotStarted
+            IalLevel = UserIalLevel.None
         };
         otpRepository.GetOtpCodeByEmailAsync(Arg.Any<string>())
             .Returns(new OtpCode(command.Otp, command.Email));
@@ -294,7 +294,7 @@ public class ValidateOtpCommandHandlerTests
         var user = new User
         {
             Email = command.Email,
-            IdProofingStatus = IdProofingStatus.NotStarted
+            IalLevel = UserIalLevel.None
         };
 
         otpRepository.GetOtpCodeByEmailAsync(Arg.Is<string>(email => email == command.Email))
@@ -331,7 +331,7 @@ public class ValidateOtpCommandHandlerTests
         var user = new User
         {
             Email = command.Email,
-            IdProofingStatus = IdProofingStatus.NotStarted
+            IalLevel = UserIalLevel.None
         };
 
         otpRepository.GetOtpCodeByEmailAsync(Arg.Is<string>(email => email == command.Email))
@@ -372,7 +372,7 @@ public class ValidateOtpCommandHandlerTests
         var user = new User
         {
             Email = command.Email,
-            IdProofingStatus = IdProofingStatus.NotStarted
+            IalLevel = UserIalLevel.None
         };
 
         otpRepository.GetOtpCodeByEmailAsync(Arg.Is<string>(email => email == command.Email))
@@ -411,14 +411,14 @@ public class ValidateOtpCommandHandlerTests
         var user = new User
         {
             Email = command.Email,
-            IdProofingStatus = IdProofingStatus.Completed
+            IalLevel = UserIalLevel.IAL1plus
         };
 
         otpRepository.GetOtpCodeByEmailAsync(Arg.Is<string>(email => email == command.Email))
             .Returns(new OtpCode(command.Otp, command.Email));
         userRepository.GetOrCreateUserAsync(Arg.Is<string>(email => email == command.Email), Arg.Any<CancellationToken>())
             .Returns((user, false));
-        jwtTokenService.GenerateToken(Arg.Is<User>(u => u.Email == command.Email && u.IdProofingStatus == IdProofingStatus.Completed))
+        jwtTokenService.GenerateToken(Arg.Is<User>(u => u.Email == command.Email && u.IalLevel == UserIalLevel.IAL1plus))
             .Returns("test.jwt.token");
 
         // Act
@@ -427,11 +427,11 @@ public class ValidateOtpCommandHandlerTests
         // Assert
         Assert.True(result.IsSuccess);
         await userRepository.Received(1).GetOrCreateUserAsync(command.Email, Arg.Any<CancellationToken>());
-        jwtTokenService.Received(1).GenerateToken(Arg.Is<User>(u => u.Email == command.Email && u.IdProofingStatus == IdProofingStatus.Completed));
+        jwtTokenService.Received(1).GenerateToken(Arg.Is<User>(u => u.Email == command.Email && u.IalLevel == UserIalLevel.IAL1plus));
     }
 
     [Fact]
-    public async Task Handle_ShouldPassUserWithIdProofingStatus_ToJwtTokenService()
+    public async Task Handle_ShouldPassUserWithIalLevel_ToJwtTokenService()
     {
         // Arrange
         var handler = new ValidateOtpCommandHandler(
@@ -449,7 +449,7 @@ public class ValidateOtpCommandHandlerTests
         var user = new User
         {
             Email = command.Email,
-            IdProofingStatus = IdProofingStatus.InProgress,
+            IalLevel = UserIalLevel.IAL1,
             IdProofingSessionId = "session-123",
             IdProofingCompletedAt = null,
             IdProofingExpiresAt = DateTime.UtcNow.AddYears(1)
@@ -469,7 +469,7 @@ public class ValidateOtpCommandHandlerTests
         Assert.True(result.IsSuccess);
         jwtTokenService.Received(1).GenerateToken(Arg.Is<User>(u =>
             u.Email == command.Email &&
-            u.IdProofingStatus == IdProofingStatus.InProgress &&
+            u.IalLevel == UserIalLevel.IAL1 &&
             u.IdProofingSessionId == "session-123"));
     }
 
@@ -493,7 +493,7 @@ public class ValidateOtpCommandHandlerTests
         var newUser = new User
         {
             Email = command.Email,
-            IdProofingStatus = IdProofingStatus.NotStarted
+            IalLevel = UserIalLevel.None
         };
 
         otpRepository.GetOtpCodeByEmailAsync(Arg.Is<string>(email => email == command.Email))
@@ -536,7 +536,7 @@ public class ValidateOtpCommandHandlerTests
         var existingUser = new User
         {
             Email = command.Email,
-            IdProofingStatus = IdProofingStatus.Completed
+            IalLevel = UserIalLevel.IAL1plus
         };
 
         otpRepository.GetOtpCodeByEmailAsync(Arg.Is<string>(email => email == command.Email))
@@ -560,7 +560,7 @@ public class ValidateOtpCommandHandlerTests
     }
 
     [Fact]
-    public async Task Handle_ShouldLogIdProofingStatus_ForNewUser()
+    public async Task Handle_ShouldLogIalLevel_ForNewUser()
     {
         // Arrange
         var mockLogger = Substitute.For<ILogger<ValidateOtpCommandHandler>>();
@@ -579,7 +579,7 @@ public class ValidateOtpCommandHandlerTests
         var newUser = new User
         {
             Email = command.Email,
-            IdProofingStatus = IdProofingStatus.NotStarted
+            IalLevel = UserIalLevel.None
         };
 
         otpRepository.GetOtpCodeByEmailAsync(Arg.Is<string>(email => email == command.Email))
@@ -599,7 +599,7 @@ public class ValidateOtpCommandHandlerTests
             Arg.Any<EventId>(),
             Arg.Is<object>(o => o.ToString()!.Contains("New user authenticated via OTP") &&
                                o.ToString()!.Contains(command.Email) &&
-                               o.ToString()!.Contains("NotStarted")),
+                               o.ToString()!.Contains("None")),
             Arg.Any<Exception>(),
             Arg.Any<Func<object, Exception?, string>>());
     }
@@ -624,7 +624,7 @@ public class ValidateOtpCommandHandlerTests
         var existingUser = new User
         {
             Email = command.Email,
-            IdProofingStatus = IdProofingStatus.InProgress
+            IalLevel = UserIalLevel.IAL1
         };
 
         otpRepository.GetOtpCodeByEmailAsync(Arg.Is<string>(email => email == command.Email))
@@ -644,7 +644,7 @@ public class ValidateOtpCommandHandlerTests
             Arg.Any<EventId>(),
             Arg.Is<object>(o => o.ToString()!.Contains("Returning user authenticated via OTP") &&
                                o.ToString()!.Contains(command.Email) &&
-                               o.ToString()!.Contains("InProgress")),
+                               o.ToString()!.Contains("IAL1")),
             Arg.Any<Exception>(),
             Arg.Any<Func<object, Exception?, string>>());
     }
@@ -669,7 +669,7 @@ public class ValidateOtpCommandHandlerTests
         var user = new User
         {
             Email = command.Email,
-            IdProofingStatus = IdProofingStatus.NotStarted
+            IalLevel = UserIalLevel.None
         };
 
         otpRepository.GetOtpCodeByEmailAsync(Arg.Is<string>(email => email == command.Email))

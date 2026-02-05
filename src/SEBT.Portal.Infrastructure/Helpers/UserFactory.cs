@@ -80,6 +80,7 @@ public static class UserFactory
             Id = user.Id,
             Email = EmailNormalizer.Normalize(user.Email),
             IdProofingStatus = (int)user.IdProofingStatus,
+            IalLevel = (int)user.IalLevel,
             IdProofingSessionId = user.IdProofingSessionId,
             IdProofingCompletedAt = user.IdProofingCompletedAt,
             IdProofingExpiresAt = user.IdProofingExpiresAt,

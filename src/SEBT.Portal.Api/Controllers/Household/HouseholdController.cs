@@ -54,14 +54,14 @@ public class HouseholdController(
         var normalizedEmail = EmailNormalizer.Normalize(email);
         logger.LogDebug("Household data request received for email {Email}", normalizedEmail);
 
-        // Determine PII visibility based on user's ID proofing status and state configuration
-        var idProofingStatus = GetIdProofingStatus();
-        var piiVisibility = idProofingRequirementsService.GetPiiVisibility(idProofingStatus);
+        // Determine PII visibility based on user's IAL level and state configuration
+        var userIalLevel = GetUserIalLevel();
+        var piiVisibility = idProofingRequirementsService.GetPiiVisibility(userIalLevel);
 
         logger.LogDebug(
-            "PII visibility for user {Email} (IdProofingStatus={IdProofingStatus}): Address={IncludeAddress}, Email={IncludeEmail}, Phone={IncludePhone}",
+            "PII visibility for user {Email} (IalLevel={IalLevel}): Address={IncludeAddress}, Email={IncludeEmail}, Phone={IncludePhone}",
             normalizedEmail,
-            idProofingStatus,
+            userIalLevel,
             piiVisibility.IncludeAddress,
             piiVisibility.IncludeEmail,
             piiVisibility.IncludePhone);
@@ -115,26 +115,27 @@ public class HouseholdController(
     }
 
     /// <summary>
-    /// Extracts the ID proofing status from the authenticated user's claims.
+    /// Extracts the user's IAL level from the authenticated user's claims.
+    /// Uses "ial" claim only (values: "0", "1", "1plus", "2"). Id proofing status is a separate concern.
     /// </summary>
-    /// <returns>The ID proofing status, or NotStarted if not found.</returns>
-    private IdProofingStatus GetIdProofingStatus()
+    /// <returns>The user's IAL level, or None if not found or invalid.</returns>
+    private UserIalLevel GetUserIalLevel()
     {
-        var statusClaim = User.FindFirst(JwtClaimTypes.IdProofingStatus)?.Value;
-
-        if (string.IsNullOrWhiteSpace(statusClaim))
+        var ialClaim = User.FindFirst(JwtClaimTypes.Ial)?.Value;
+        if (!string.IsNullOrWhiteSpace(ialClaim))
         {
-            logger.LogWarning("ID proofing status claim not found in token, defaulting to NotStarted");
-            return IdProofingStatus.NotStarted;
+            var normalized = ialClaim.Trim().ToLowerInvariant();
+            if (normalized == "1") return UserIalLevel.IAL1;
+            if (normalized == "1plus") return UserIalLevel.IAL1plus;
+            if (normalized == "2") return UserIalLevel.IAL2;
+            if (normalized == "0") return UserIalLevel.None;
+            logger.LogWarning("Invalid IAL claim value: {IalClaim}, defaulting to None", ialClaim);
+        }
+        else
+        {
+            logger.LogWarning("IAL claim not found in token, defaulting to None");
         }
 
-        if (int.TryParse(statusClaim, out var statusValue) &&
-            Enum.IsDefined(typeof(IdProofingStatus), statusValue))
-        {
-            return (IdProofingStatus)statusValue;
-        }
-
-        logger.LogWarning("Invalid ID proofing status claim value: {StatusClaim}, defaulting to NotStarted", statusClaim);
-        return IdProofingStatus.NotStarted;
+        return UserIalLevel.None;
     }
 }

@@ -33,7 +33,7 @@ public class JwtTokenServiceTests
         var user = new User
         {
             Email = "user@example.com",
-            IdProofingStatus = IdProofingStatus.NotStarted
+            IalLevel = UserIalLevel.None
         };
 
         // Act
@@ -55,7 +55,7 @@ public class JwtTokenServiceTests
         var user = new User
         {
             Email = "user@example.com",
-            IdProofingStatus = IdProofingStatus.NotStarted
+            IalLevel = UserIalLevel.None
         };
 
         // Act
@@ -77,7 +77,7 @@ public class JwtTokenServiceTests
         var user = new User
         {
             Email = "user@example.com",
-            IdProofingStatus = IdProofingStatus.NotStarted
+            IalLevel = UserIalLevel.None
         };
 
         // Act
@@ -99,7 +99,7 @@ public class JwtTokenServiceTests
         var user = new User
         {
             Email = "user@example.com",
-            IdProofingStatus = IdProofingStatus.NotStarted
+            IalLevel = UserIalLevel.None
         };
 
         // Act
@@ -121,7 +121,7 @@ public class JwtTokenServiceTests
         var user = new User
         {
             Email = "user@example.com",
-            IdProofingStatus = IdProofingStatus.NotStarted
+            IalLevel = UserIalLevel.None
         };
 
         // Act
@@ -141,7 +141,7 @@ public class JwtTokenServiceTests
         var user = new User
         {
             Email = "user@example.com",
-            IdProofingStatus = IdProofingStatus.NotStarted
+            IalLevel = UserIalLevel.None
         };
 
         // Act
@@ -161,7 +161,7 @@ public class JwtTokenServiceTests
         var user = new User
         {
             Email = "user@example.com",
-            IdProofingStatus = IdProofingStatus.NotStarted
+            IalLevel = UserIalLevel.None
         };
 
         // Act
@@ -182,7 +182,7 @@ public class JwtTokenServiceTests
         var user = new User
         {
             Email = "user@example.com",
-            IdProofingStatus = IdProofingStatus.NotStarted
+            IalLevel = UserIalLevel.None
         };
 
         // Act
@@ -222,7 +222,7 @@ public class JwtTokenServiceTests
         var user = new User
         {
             Email = "user@example.com",
-            IdProofingStatus = IdProofingStatus.NotStarted
+            IalLevel = UserIalLevel.None
         };
 
         // Act
@@ -245,7 +245,7 @@ public class JwtTokenServiceTests
         var user = new User
         {
             Email = "user@example.com",
-            IdProofingStatus = IdProofingStatus.NotStarted
+            IalLevel = UserIalLevel.None
         };
         var beforeGeneration = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
 
@@ -273,7 +273,7 @@ public class JwtTokenServiceTests
         var user = new User
         {
             Email = "user@example.com",
-            IdProofingStatus = IdProofingStatus.NotStarted
+            IalLevel = UserIalLevel.None
         };
         var beforeGeneration = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
 
@@ -301,7 +301,7 @@ public class JwtTokenServiceTests
         var user = new User
         {
             Email = "user@example.com",
-            IdProofingStatus = IdProofingStatus.NotStarted
+            IalLevel = UserIalLevel.None
         };
 
         // Act
@@ -320,13 +320,14 @@ public class JwtTokenServiceTests
     }
 
     [Fact]
-    public void GenerateToken_ShouldContainIdProofingStatusClaim()
+    public void GenerateToken_ShouldContainBothIdProofingStatusAndIalClaims()
     {
         // Arrange
         var user = new User
         {
             Email = "user@example.com",
-            IdProofingStatus = IdProofingStatus.Completed
+            IdProofingStatus = IdProofingStatus.Completed,
+            IalLevel = UserIalLevel.IAL1plus
         };
 
         // Act
@@ -335,11 +336,13 @@ public class JwtTokenServiceTests
         // Assert
         var handler = new JwtSecurityTokenHandler();
         var jsonToken = handler.ReadJwtToken(token);
-        var statusClaim = jsonToken.Claims.FirstOrDefault(c => c.Type == "id_proofing_status");
+        var statusClaim = jsonToken.Claims.FirstOrDefault(c => c.Type == JwtClaimTypes.IdProofingStatus);
+        var ialClaim = jsonToken.Claims.FirstOrDefault(c => c.Type == JwtClaimTypes.Ial);
 
         Assert.NotNull(statusClaim);
-        Assert.Equal("2", statusClaim.Value); // 2 = Completed
-        Assert.Equal(ClaimValueTypes.Integer32, statusClaim.ValueType);
+        Assert.Equal("2", statusClaim.Value); // Completed
+        Assert.NotNull(ialClaim);
+        Assert.Equal("1plus", ialClaim.Value); // IAL1plus
     }
 
     [Fact]
@@ -349,7 +352,7 @@ public class JwtTokenServiceTests
         var user = new User
         {
             Email = "user@example.com",
-            IdProofingStatus = IdProofingStatus.InProgress,
+            IalLevel = UserIalLevel.IAL1,
             IdProofingSessionId = "session-123-abc"
         };
 
@@ -372,7 +375,7 @@ public class JwtTokenServiceTests
         var user = new User
         {
             Email = "user@example.com",
-            IdProofingStatus = IdProofingStatus.NotStarted,
+            IalLevel = UserIalLevel.None,
             IdProofingSessionId = null
         };
 
@@ -395,7 +398,7 @@ public class JwtTokenServiceTests
         var user = new User
         {
             Email = "user@example.com",
-            IdProofingStatus = IdProofingStatus.Completed,
+            IalLevel = UserIalLevel.IAL1plus,
             IdProofingCompletedAt = completedAt
         };
 
@@ -422,7 +425,7 @@ public class JwtTokenServiceTests
         var user = new User
         {
             Email = "user@example.com",
-            IdProofingStatus = IdProofingStatus.Completed,
+            IalLevel = UserIalLevel.IAL1plus,
             IdProofingExpiresAt = expiresAt
         };
 
@@ -450,7 +453,7 @@ public class JwtTokenServiceTests
         var user = new User
         {
             Email = "user@example.com",
-            IdProofingStatus = IdProofingStatus.Completed,
+            IalLevel = UserIalLevel.IAL1plus,
             IdProofingSessionId = "session-xyz-789",
             IdProofingCompletedAt = completedAt,
             IdProofingExpiresAt = expiresAt
@@ -463,7 +466,8 @@ public class JwtTokenServiceTests
         var handler = new JwtSecurityTokenHandler();
         var jsonToken = handler.ReadJwtToken(token);
 
-        Assert.NotNull(jsonToken.Claims.FirstOrDefault(c => c.Type == "id_proofing_status"));
+        Assert.NotNull(jsonToken.Claims.FirstOrDefault(c => c.Type == JwtClaimTypes.IdProofingStatus));
+        Assert.NotNull(jsonToken.Claims.FirstOrDefault(c => c.Type == JwtClaimTypes.Ial));
         Assert.NotNull(jsonToken.Claims.FirstOrDefault(c => c.Type == "id_proofing_session_id"));
         Assert.NotNull(jsonToken.Claims.FirstOrDefault(c => c.Type == "id_proofing_completed_at"));
         Assert.NotNull(jsonToken.Claims.FirstOrDefault(c => c.Type == "id_proofing_expires_at"));

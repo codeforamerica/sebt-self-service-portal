@@ -1,4 +1,6 @@
+using Microsoft.Extensions.Configuration;
 using SEBT.Portal.Core.AppSettings;
+using SEBT.Portal.Core.Models.Auth;
 using SEBT.Portal.Infrastructure.Configuration;
 
 namespace SEBT.Portal.Tests.Unit.Configuration;
@@ -8,83 +10,18 @@ public class IdProofingRequirementsSettingsValidatorTests
     private readonly IdProofingRequirementsSettingsValidator _validator = new();
 
     [Fact]
-    public void Validate_WhenAllValuesValid_ReturnsSuccess()
+    public void Validate_WhenOptionsValid_ReturnsSuccess()
     {
         var options = new IdProofingRequirementsSettings
         {
-            Address = "IAL1plus",
-            Email = "IAL1",
-            Phone = "IAL1"
+            AddressView = IalLevel.IAL1plus,
+            EmailView = IalLevel.IAL1,
+            PhoneView = IalLevel.IAL1
         };
 
         var result = _validator.Validate(null, options);
 
         Assert.True(result.Succeeded);
-    }
-
-    [Fact]
-    public void Validate_WhenValuesValidCaseInsensitive_ReturnsSuccess()
-    {
-        var options = new IdProofingRequirementsSettings
-        {
-            Address = "ial1plus",
-            Email = "ial1",
-            Phone = "IAL2"
-        };
-
-        var result = _validator.Validate(null, options);
-
-        Assert.True(result.Succeeded);
-    }
-
-    [Fact]
-    public void Validate_WhenAddressInvalid_ReturnsFailure()
-    {
-        var options = new IdProofingRequirementsSettings
-        {
-            Address = "Invalid",
-            Email = "IAL1",
-            Phone = "IAL1"
-        };
-
-        var result = _validator.Validate(null, options);
-
-        Assert.False(result.Succeeded);
-        var failure = result.Failures!.Single();
-        Assert.Contains("Address", failure);
-        Assert.Contains("Invalid", failure);
-    }
-
-    [Fact]
-    public void Validate_WhenEmailInvalid_ReturnsFailure()
-    {
-        var options = new IdProofingRequirementsSettings
-        {
-            Address = "IAL1",
-            Email = "iall", // to represent common typos
-            Phone = "IAL1"
-        };
-
-        var result = _validator.Validate(null, options);
-
-        Assert.False(result.Succeeded);
-        Assert.Contains("Email", result.Failures!.Single());
-    }
-
-    [Fact]
-    public void Validate_WhenPhoneEmpty_ReturnsFailure()
-    {
-        var options = new IdProofingRequirementsSettings
-        {
-            Address = "IAL1",
-            Email = "IAL1",
-            Phone = ""
-        };
-
-        var result = _validator.Validate(null, options);
-
-        Assert.False(result.Succeeded);
-        Assert.Contains("Phone", result.Failures!.Single());
     }
 
     [Fact]
@@ -97,18 +34,24 @@ public class IdProofingRequirementsSettingsValidatorTests
     }
 
     [Fact]
-    public void Validate_WhenMultipleInvalid_ReturnsAllFailures()
+    public void BindConfiguration_WhenFeatureBasedKeysProvided_BindsCorrectly()
     {
-        var options = new IdProofingRequirementsSettings
-        {
-            Address = "Invalid",
-            Email = "Bad",
-            Phone = "Whatevenisthis!!1"
-        };
+        // Arrange
+        var config = new ConfigurationBuilder()
+            .AddInMemoryCollection(new Dictionary<string, string?>
+            {
+                { "IdProofingRequirements:address+view", "IAL1plus" },
+                { "IdProofingRequirements:email+view", "IAL1" },
+                { "IdProofingRequirements:phone+view", "IAL2" }
+            })
+            .Build();
 
-        var result = _validator.Validate(null, options);
+        var settings = new IdProofingRequirementsSettings();
+        config.GetSection(IdProofingRequirementsSettings.SectionName).Bind(settings);
 
-        Assert.False(result.Succeeded);
-        Assert.Equal(3, result.Failures!.Count());
+        // Assert
+        Assert.Equal(IalLevel.IAL1plus, settings.AddressView);
+        Assert.Equal(IalLevel.IAL1, settings.EmailView);
+        Assert.Equal(IalLevel.IAL2, settings.PhoneView);
     }
 }

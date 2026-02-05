@@ -125,15 +125,15 @@ Only include sections you want to override; other settings fall back to `appsett
 
 ### ID Proofing Requirements
 
-PII data is only shown to users who meet the ID proofing requirements configured within "IdProofingRequirements". Configure this in `appsettings.json` or override with `appsettings.{state}.json`.
+PII data is only shown and editable to users who meet the ID proofing requirements configured within "IdProofingRequirements" and their current IAL status (for example, `address+view`, `email+view`, `phone+view`). Configure in `appsettings.json` or override with `appsettings.{state}.json`.
 
 Example (`appsettings.json`):
 ```json
 {
   "IdProofingRequirements": {
-    "address": "IAL1plus",
-    "email": "IAL1",
-    "phone": "IAL1"
+    "address+view": "IAL1plus",
+    "email+view": "IAL1",
+    "phone+view": "IAL1"
   }
 }
 ```

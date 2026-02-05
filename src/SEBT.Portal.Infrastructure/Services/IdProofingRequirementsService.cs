@@ -25,38 +25,27 @@ public class IdProofingRequirementsService : IIdProofingRequirementsService
     }
 
     /// <inheritdoc />
-    public PiiVisibility GetPiiVisibility(IdProofingStatus idProofingStatus)
+    public PiiVisibility GetPiiVisibility(UserIalLevel userIalLevel)
     {
-        var meetsIal1 = idProofingStatus == IdProofingStatus.Completed;
-
         return new PiiVisibility(
-            IncludeAddress: MeetsRequirement("Address", _settings.Address, meetsIal1),
-            IncludeEmail: MeetsRequirement("Email", _settings.Email, meetsIal1),
-            IncludePhone: MeetsRequirement("Phone", _settings.Phone, meetsIal1));
+            IncludeAddress: MeetsRequirement("Address", _settings.AddressView, userIalLevel),
+            IncludeEmail: MeetsRequirement("Email", _settings.EmailView, userIalLevel),
+            IncludePhone: MeetsRequirement("Phone", _settings.PhoneView, userIalLevel));
     }
 
-    private bool MeetsRequirement(string fieldName, string requirement, bool meetsIal1)
+    private bool MeetsRequirement(string fieldName, IalLevel requirement, UserIalLevel userIalLevel)
     {
-        if (string.IsNullOrWhiteSpace(requirement))
+        return requirement switch
         {
-            return false;
-        }
+            IalLevel.IAL1 => userIalLevel is UserIalLevel.IAL1 or UserIalLevel.IAL1plus or UserIalLevel.IAL2,
+            IalLevel.IAL1plus => userIalLevel is UserIalLevel.IAL1plus or UserIalLevel.IAL2,
+            IalLevel.IAL2 => userIalLevel == UserIalLevel.IAL2, // IAL2 not yet supported for users; fail-safe
+            _ => FailSafeUnknown(fieldName, requirement)
+        };
+    }
 
-        if (requirement.Equals("IAL1", StringComparison.OrdinalIgnoreCase))
-        {
-            return meetsIal1;
-        }
-
-        if (requirement.Equals("IAL1plus", StringComparison.OrdinalIgnoreCase))
-        {
-            return meetsIal1; // IdProofingStatus.Completed is treated as IAL1+
-        }
-
-        if (requirement.Equals("IAL2", StringComparison.OrdinalIgnoreCase))
-        {
-            return false; // IAL2 not yet supported; fail-safe
-        }
-
+    private bool FailSafeUnknown(string fieldName, IalLevel requirement)
+    {
         _logger.LogWarning(
             "Unknown IdProofing requirement value '{Requirement}' for {FieldName}. Defaulting to fail-safe (PII hidden). Valid values: IAL1, IAL1plus, IAL2.",
             requirement,

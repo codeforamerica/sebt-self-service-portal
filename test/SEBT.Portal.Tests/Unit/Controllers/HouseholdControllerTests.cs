@@ -26,13 +26,25 @@ public class HouseholdControllerTests
         _controller = new HouseholdController(logger, _idProofingRequirementsService);
     }
 
-    private void SetupAuthenticatedUser(string email, IdProofingStatus idProofingStatus = IdProofingStatus.NotStarted, string claimType = ClaimTypes.Email)
+    private void SetupAuthenticatedUser(string email, UserIalLevel userIalLevel = UserIalLevel.None, string claimType = ClaimTypes.Email)
     {
-        var claims = new List<Claim>
+        var ial = userIalLevel switch
         {
-            new Claim(claimType, email),
-            new Claim(JwtClaimTypes.IdProofingStatus, ((int)idProofingStatus).ToString())
+            UserIalLevel.IAL1 => "1",
+            UserIalLevel.IAL1plus => "1plus",
+            UserIalLevel.IAL2 => "2",
+            _ => "0"
         };
+        SetupAuthenticatedUser(email, ial: ial, claimType: claimType);
+    }
+
+    private void SetupAuthenticatedUser(string email, string? ial, string claimType = ClaimTypes.Email)
+    {
+        var claims = new List<Claim> { new Claim(claimType, email) };
+        if (!string.IsNullOrEmpty(ial))
+        {
+            claims.Add(new Claim(JwtClaimTypes.Ial, ial));
+        }
         var identity = new ClaimsIdentity(claims, "Test");
         var principal = new ClaimsPrincipal(identity);
         _controller.ControllerContext = new ControllerContext
@@ -46,8 +58,8 @@ public class HouseholdControllerTests
     {
         // Arrange
         var email = "user@example.com";
-        SetupAuthenticatedUser(email, IdProofingStatus.Completed);
-        _idProofingRequirementsService.GetPiiVisibility(IdProofingStatus.Completed)
+        SetupAuthenticatedUser(email, ial: "1plus");
+        _idProofingRequirementsService.GetPiiVisibility(UserIalLevel.IAL1plus)
             .Returns(new PiiVisibility(IncludeAddress: true, IncludeEmail: true, IncludePhone: true));
 
         var householdData = new HouseholdData
@@ -102,8 +114,8 @@ public class HouseholdControllerTests
     {
         // Arrange
         var email = "user@example.com";
-        SetupAuthenticatedUser(email, IdProofingStatus.NotStarted);
-        _idProofingRequirementsService.GetPiiVisibility(IdProofingStatus.NotStarted)
+        SetupAuthenticatedUser(email, UserIalLevel.None);
+        _idProofingRequirementsService.GetPiiVisibility(UserIalLevel.None)
             .Returns(new PiiVisibility(IncludeAddress: false, IncludeEmail: true, IncludePhone: true));
 
         var householdData = new HouseholdData
@@ -145,8 +157,8 @@ public class HouseholdControllerTests
     {
         // Arrange
         var email = "nonexistent@example.com";
-        SetupAuthenticatedUser(email, IdProofingStatus.Completed);
-        _idProofingRequirementsService.GetPiiVisibility(IdProofingStatus.Completed)
+        SetupAuthenticatedUser(email, ial: "1plus");
+        _idProofingRequirementsService.GetPiiVisibility(UserIalLevel.IAL1plus)
             .Returns(new PiiVisibility(IncludeAddress: true, IncludeEmail: true, IncludePhone: true));
 
         var repositoryMock = Substitute.For<IHouseholdRepository>();
@@ -194,8 +206,8 @@ public class HouseholdControllerTests
     {
         // Arrange
         var email = "user@example.com";
-        SetupAuthenticatedUser(email, IdProofingStatus.InProgress);
-        _idProofingRequirementsService.GetPiiVisibility(IdProofingStatus.InProgress)
+        SetupAuthenticatedUser(email, UserIalLevel.None);
+        _idProofingRequirementsService.GetPiiVisibility(UserIalLevel.None)
             .Returns(new PiiVisibility(IncludeAddress: false, IncludeEmail: true, IncludePhone: true));
 
         var householdData = new HouseholdData
@@ -227,8 +239,8 @@ public class HouseholdControllerTests
     {
         // Arrange
         var email = "user@example.com";
-        SetupAuthenticatedUser(email, IdProofingStatus.Failed);
-        _idProofingRequirementsService.GetPiiVisibility(IdProofingStatus.Failed)
+        SetupAuthenticatedUser(email, UserIalLevel.None);
+        _idProofingRequirementsService.GetPiiVisibility(UserIalLevel.None)
             .Returns(new PiiVisibility(IncludeAddress: false, IncludeEmail: true, IncludePhone: true));
 
         var householdData = new HouseholdData
@@ -269,7 +281,7 @@ public class HouseholdControllerTests
         {
             HttpContext = new DefaultHttpContext { User = principal }
         };
-        _idProofingRequirementsService.GetPiiVisibility(IdProofingStatus.NotStarted)
+        _idProofingRequirementsService.GetPiiVisibility(UserIalLevel.None)
             .Returns(new PiiVisibility(IncludeAddress: false, IncludeEmail: true, IncludePhone: true));
 
         var householdData = new HouseholdData
@@ -311,7 +323,7 @@ public class HouseholdControllerTests
         {
             HttpContext = new DefaultHttpContext { User = principal }
         };
-        _idProofingRequirementsService.GetPiiVisibility(IdProofingStatus.NotStarted)
+        _idProofingRequirementsService.GetPiiVisibility(UserIalLevel.None)
             .Returns(new PiiVisibility(IncludeAddress: false, IncludeEmail: true, IncludePhone: true));
 
         var householdData = new HouseholdData
@@ -342,8 +354,8 @@ public class HouseholdControllerTests
     {
         // Arrange
         var email = "user@example.com";
-        SetupAuthenticatedUser(email, IdProofingStatus.Completed, ClaimTypes.Email);
-        _idProofingRequirementsService.GetPiiVisibility(IdProofingStatus.Completed)
+        SetupAuthenticatedUser(email, ial: "1plus", claimType: ClaimTypes.Email);
+        _idProofingRequirementsService.GetPiiVisibility(UserIalLevel.IAL1plus)
             .Returns(new PiiVisibility(IncludeAddress: true, IncludeEmail: true, IncludePhone: true));
 
         var householdData = new HouseholdData { Email = email };
@@ -364,8 +376,8 @@ public class HouseholdControllerTests
     {
         // Arrange
         var email = "user@example.com";
-        SetupAuthenticatedUser(email, IdProofingStatus.Completed, ClaimTypes.NameIdentifier);
-        _idProofingRequirementsService.GetPiiVisibility(IdProofingStatus.Completed)
+        SetupAuthenticatedUser(email, ial: "1plus", claimType: ClaimTypes.NameIdentifier);
+        _idProofingRequirementsService.GetPiiVisibility(UserIalLevel.IAL1plus)
             .Returns(new PiiVisibility(IncludeAddress: true, IncludeEmail: true, IncludePhone: true));
 
         var householdData = new HouseholdData { Email = email };
@@ -388,13 +400,13 @@ public class HouseholdControllerTests
         var email = "user@example.com";
         var identity = new ClaimsIdentity("Test");
         identity.AddClaim(new Claim(ClaimTypes.Name, email));
-        identity.AddClaim(new Claim(JwtClaimTypes.IdProofingStatus, ((int)IdProofingStatus.Completed).ToString()));
+        identity.AddClaim(new Claim(JwtClaimTypes.Ial, "1plus"));
         var principal = new ClaimsPrincipal(identity);
         _controller.ControllerContext = new ControllerContext
         {
             HttpContext = new DefaultHttpContext { User = principal }
         };
-        _idProofingRequirementsService.GetPiiVisibility(IdProofingStatus.Completed)
+        _idProofingRequirementsService.GetPiiVisibility(Arg.Any<UserIalLevel>())
             .Returns(new PiiVisibility(IncludeAddress: true, IncludeEmail: true, IncludePhone: true));
 
         var householdData = new HouseholdData { Email = email };
@@ -415,8 +427,8 @@ public class HouseholdControllerTests
     {
         // Arrange
         var email = "user@example.com";
-        SetupAuthenticatedUser(email, IdProofingStatus.Expired);
-        _idProofingRequirementsService.GetPiiVisibility(IdProofingStatus.Expired)
+        SetupAuthenticatedUser(email, UserIalLevel.None);
+        _idProofingRequirementsService.GetPiiVisibility(UserIalLevel.None)
             .Returns(new PiiVisibility(IncludeAddress: false, IncludeEmail: true, IncludePhone: true));
 
         var householdData = new HouseholdData
@@ -446,8 +458,8 @@ public class HouseholdControllerTests
     {
         // Arrange
         var email = "user@example.com";
-        SetupAuthenticatedUser(email, IdProofingStatus.Completed);
-        _idProofingRequirementsService.GetPiiVisibility(IdProofingStatus.Completed)
+        SetupAuthenticatedUser(email, ial: "1plus");
+        _idProofingRequirementsService.GetPiiVisibility(Arg.Any<UserIalLevel>())
             .Returns(new PiiVisibility(IncludeAddress: true, IncludeEmail: true, IncludePhone: true));
 
         var householdData = new HouseholdData

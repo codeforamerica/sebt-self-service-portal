@@ -16,9 +16,14 @@ public class User
     public string Email { get; set; } = string.Empty;
 
     /// <summary>
-    /// The current ID proofing status for this user.
+    /// Workflow state of the ID proofing process (NotStarted, InProgress, Completed, Failed, Expired).
     /// </summary>
     public IdProofingStatus IdProofingStatus { get; set; } = IdProofingStatus.NotStarted;
+
+    /// <summary>
+    /// The Identity Assurance Level (IAL) this user has achieved through ID proofing.
+    /// </summary>
+    public UserIalLevel IalLevel { get; set; } = UserIalLevel.None;
 
     /// <summary>
     /// The session ID from the ID proofing provider (e.g., Socure).

@@ -13,7 +13,7 @@ public class UserEntityTests
 
         // Assert
         Assert.Equal(string.Empty, entity.Email);
-        Assert.Equal(0, entity.IdProofingStatus); // NotStarted
+        Assert.Equal(0, entity.IalLevel); // UserIalLevel.None
         Assert.Null(entity.IdProofingSessionId);
         Assert.Null(entity.IdProofingCompletedAt);
         Assert.Null(entity.IdProofingExpiresAt);
@@ -35,7 +35,7 @@ public class UserEntityTests
 
         // Act
         entity.Email = testEmail;
-        entity.IdProofingStatus = (int)IdProofingStatus.Completed;
+        entity.IalLevel = (int)UserIalLevel.IAL1plus;
         entity.IdProofingSessionId = testSessionId;
         entity.IdProofingCompletedAt = testCompletedAt;
         entity.IdProofingExpiresAt = testExpiresAt;
@@ -44,7 +44,7 @@ public class UserEntityTests
 
         // Assert
         Assert.Equal(testEmail, entity.Email);
-        Assert.Equal((int)IdProofingStatus.Completed, entity.IdProofingStatus);
+        Assert.Equal((int)UserIalLevel.IAL1plus, entity.IalLevel);
         Assert.Equal(testSessionId, entity.IdProofingSessionId);
         Assert.Equal(testCompletedAt, entity.IdProofingCompletedAt);
         Assert.Equal(testExpiresAt, entity.IdProofingExpiresAt);
@@ -53,21 +53,19 @@ public class UserEntityTests
     }
 
     [Fact]
-    public void UserEntity_ShouldAllowAllIdProofingStatuses()
+    public void UserEntity_ShouldAllowAllIalLevels()
     {
         // Arrange & Act
-        var notStarted = new UserEntity { IdProofingStatus = (int)IdProofingStatus.NotStarted };
-        var inProgress = new UserEntity { IdProofingStatus = (int)IdProofingStatus.InProgress };
-        var completed = new UserEntity { IdProofingStatus = (int)IdProofingStatus.Completed };
-        var failed = new UserEntity { IdProofingStatus = (int)IdProofingStatus.Failed };
-        var expired = new UserEntity { IdProofingStatus = (int)IdProofingStatus.Expired };
+        var none = new UserEntity { IalLevel = (int)UserIalLevel.None };
+        var ial1 = new UserEntity { IalLevel = (int)UserIalLevel.IAL1 };
+        var ial1plus = new UserEntity { IalLevel = (int)UserIalLevel.IAL1plus };
+        var ial2 = new UserEntity { IalLevel = (int)UserIalLevel.IAL2 };
 
         // Assert
-        Assert.Equal((int)IdProofingStatus.NotStarted, notStarted.IdProofingStatus);
-        Assert.Equal((int)IdProofingStatus.InProgress, inProgress.IdProofingStatus);
-        Assert.Equal((int)IdProofingStatus.Completed, completed.IdProofingStatus);
-        Assert.Equal((int)IdProofingStatus.Failed, failed.IdProofingStatus);
-        Assert.Equal((int)IdProofingStatus.Expired, expired.IdProofingStatus);
+        Assert.Equal((int)UserIalLevel.None, none.IalLevel);
+        Assert.Equal((int)UserIalLevel.IAL1, ial1.IalLevel);
+        Assert.Equal((int)UserIalLevel.IAL1plus, ial1plus.IalLevel);
+        Assert.Equal((int)UserIalLevel.IAL2, ial2.IalLevel);
     }
 
     [Fact]
