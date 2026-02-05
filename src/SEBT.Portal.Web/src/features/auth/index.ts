@@ -2,6 +2,7 @@ export {
   RequestOtpRequestSchema,
   ValidateOtpRequestSchema,
   ValidateOtpResponseSchema,
+  useRefreshToken,
   useRequestOtp,
   useValidateOtp,
   type RequestOtpRequest,
@@ -9,4 +10,12 @@ export {
   type ValidateOtpResponse
 } from './api'
 
-export { LoginForm, VerifyOtpForm, VerifyOtpFormWrapper } from './components'
+export {
+  AuthGuard,
+  LoginForm,
+  TokenRefresher,
+  VerifyOtpForm,
+  VerifyOtpFormWrapper
+} from './components'
+
+export { AuthProvider, clearAuthToken, getAuthToken, useAuth } from './context'
