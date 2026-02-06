@@ -1,12 +1,25 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { render, screen, waitFor } from '@testing-library/react'
 import { http, HttpResponse } from 'msw'
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 
 import { TEST_HOUSEHOLD_DATA } from '@/mocks/handlers'
 import { server } from '@/mocks/server'
 
 import { DashboardContent } from './DashboardContent'
+
+// Mock router and auth for UserProfileCard
+vi.mock('next/navigation', () => ({
+  useRouter: () => ({
+    push: vi.fn()
+  })
+}))
+
+vi.mock('@/features/auth', () => ({
+  useAuth: () => ({
+    logout: vi.fn()
+  })
+}))
 
 function createTestQueryClient() {
   return new QueryClient({

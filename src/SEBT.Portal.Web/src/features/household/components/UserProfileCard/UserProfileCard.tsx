@@ -1,6 +1,9 @@
 'use client'
 
+import { useRouter } from 'next/navigation'
 import { useTranslation } from 'react-i18next'
+
+import { useAuth } from '@/features/auth'
 
 import type { HouseholdData } from '../../api'
 
@@ -27,6 +30,13 @@ function formatFullName(
 
 export function UserProfileCard({ data }: UserProfileCardProps) {
   const { t } = useTranslation('dashboard')
+  const { logout } = useAuth()
+  const router = useRouter()
+
+  const handleLogout = () => {
+    logout()
+    router.push('/login')
+  }
 
   if (!data.userProfile) {
     return null
@@ -54,12 +64,13 @@ export function UserProfileCard({ data }: UserProfileCardProps) {
       {/* Name and Logout */}
       <div className="margin-left-105">
         <h2 className="margin-0 font-heading-lg">{fullName}</h2>
-        <a
-          href="/logout"
-          className="usa-link text-bold"
+        <button
+          type="button"
+          onClick={handleLogout}
+          className="usa-button usa-button--unstyled text-bold"
         >
           {t('logout')}
-        </a>
+        </button>
       </div>
     </div>
   )

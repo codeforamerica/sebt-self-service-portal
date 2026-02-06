@@ -1,9 +1,25 @@
 import { render, screen } from '@testing-library/react'
-import { describe, expect, it } from 'vitest'
+import userEvent from '@testing-library/user-event'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 import type { Application, HouseholdData } from '../../api'
 
 import { UserProfileCard } from './UserProfileCard'
+
+const mockPush = vi.fn()
+const mockLogout = vi.fn()
+
+vi.mock('next/navigation', () => ({
+  useRouter: () => ({
+    push: mockPush
+  })
+}))
+
+vi.mock('@/features/auth', () => ({
+  useAuth: () => ({
+    logout: mockLogout
+  })
+}))
 
 const mockApplication: Application = {
   applicationNumber: 'APP-2026-001',
@@ -34,6 +50,11 @@ const mockData: HouseholdData = {
 }
 
 describe('UserProfileCard', () => {
+  beforeEach(() => {
+    mockPush.mockClear()
+    mockLogout.mockClear()
+  })
+
   it('renders user initials in avatar', () => {
     render(<UserProfileCard data={mockData} />)
 
@@ -61,11 +82,22 @@ describe('UserProfileCard', () => {
     expect(screen.getByText('Maria Martinez')).toBeInTheDocument()
   })
 
-  it('renders logout link', () => {
+  it('renders logout button', () => {
     render(<UserProfileCard data={mockData} />)
 
-    const logoutLink = screen.getByRole('link')
-    expect(logoutLink).toHaveAttribute('href', '/logout')
+    const logoutButton = screen.getByRole('button')
+    expect(logoutButton).toBeInTheDocument()
+  })
+
+  it('calls logout and redirects to /login when logout button is clicked', async () => {
+    const user = userEvent.setup()
+    render(<UserProfileCard data={mockData} />)
+
+    const logoutButton = screen.getByRole('button')
+    await user.click(logoutButton)
+
+    expect(mockLogout).toHaveBeenCalledTimes(1)
+    expect(mockPush).toHaveBeenCalledWith('/login')
   })
 
   it('renders nothing when no userProfile', () => {
