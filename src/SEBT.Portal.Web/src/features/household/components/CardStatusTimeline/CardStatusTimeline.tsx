@@ -81,7 +81,8 @@ function getStepClass(step: TimelineStep): string {
 export function CardStatusTimeline({ application }: CardStatusTimelineProps) {
   const { t } = useTranslation('dashboard')
 
-  if (!application.cardStatus) {
+  // Don't render timeline if no cardStatus or if status is Unknown
+  if (!application.cardStatus || application.cardStatus === 'Unknown') {
     return null
   }
 
@@ -89,6 +90,7 @@ export function CardStatusTimeline({ application }: CardStatusTimelineProps) {
 
   // Status label mapping to available locale keys
   const statusLabels: Record<CardStatus, string> = {
+    Unknown: 'Unknown',
     Requested: 'Requested',
     Mailed: 'Mailed',
     Active: t('cardTableStatusActive'),

@@ -11,10 +11,11 @@ const APPLICATION_STATUS_MAP: Record<number, string> = {
 }
 
 const CARD_STATUS_MAP: Record<number, string> = {
-  0: 'Requested',
-  1: 'Mailed',
-  2: 'Active',
-  3: 'Deactivated'
+  0: 'Unknown',
+  1: 'Requested',
+  2: 'Mailed',
+  3: 'Active',
+  4: 'Deactivated'
 }
 
 const ISSUANCE_TYPE_MAP: Record<number, string> = {
@@ -25,22 +26,24 @@ const ISSUANCE_TYPE_MAP: Record<number, string> = {
 }
 
 // Preprocess to convert integer enum values from backend to string enum values
+// Unknown numeric values are mapped to 'Unknown' to handle future backend additions gracefully
 export const IssuanceTypeSchema = z.preprocess(
-  (val) => (typeof val === 'number' ? (ISSUANCE_TYPE_MAP[val] ?? val) : val),
+  (val) => (typeof val === 'number' ? (ISSUANCE_TYPE_MAP[val] ?? 'Unknown') : val),
   z.enum(['Unknown', 'SummerEbt', 'TanfEbtCard', 'SnapEbtCard'])
 )
 
 export type IssuanceType = z.infer<typeof IssuanceTypeSchema>
+
 export const ApplicationStatusSchema = z.preprocess(
-  (val) => (typeof val === 'number' ? (APPLICATION_STATUS_MAP[val] ?? val) : val),
+  (val) => (typeof val === 'number' ? (APPLICATION_STATUS_MAP[val] ?? 'Unknown') : val),
   z.enum(['Unknown', 'Pending', 'Approved', 'Denied', 'UnderReview', 'Cancelled'])
 )
 
 export type ApplicationStatus = z.infer<typeof ApplicationStatusSchema>
 
 export const CardStatusSchema = z.preprocess(
-  (val) => (typeof val === 'number' ? (CARD_STATUS_MAP[val] ?? val) : val),
-  z.enum(['Requested', 'Mailed', 'Active', 'Deactivated'])
+  (val) => (typeof val === 'number' ? (CARD_STATUS_MAP[val] ?? 'Unknown') : val),
+  z.enum(['Unknown', 'Requested', 'Mailed', 'Active', 'Deactivated'])
 )
 
 export type CardStatus = z.infer<typeof CardStatusSchema>

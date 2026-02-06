@@ -105,6 +105,41 @@ describe('useHouseholdData', () => {
       expect(result.current.data?.applications?.[0]?.issuanceType).toBe('SummerEbt')
       expect(result.current.data?.benefitIssuanceType).toBe('SummerEbt')
     })
+
+    it('should map unknown enum values to Unknown instead of failing validation', async () => {
+      const dataWithUnknownEnums = {
+        ...TEST_HOUSEHOLD_DATA,
+        benefitIssuanceType: 99, // Unknown future enum value
+        applications: [
+          {
+            ...TEST_HOUSEHOLD_DATA.applications[0],
+            issuanceType: 99, // Unknown future enum value
+            applicationStatus: 99, // Unknown future enum value
+            cardStatus: 99 // Unknown future enum value
+          }
+        ]
+      }
+
+      server.use(
+        http.get('/api/household/data', () => {
+          return HttpResponse.json(dataWithUnknownEnums)
+        })
+      )
+
+      const { result } = renderHook(() => useHouseholdData(), {
+        wrapper: createWrapper()
+      })
+
+      await waitFor(() => {
+        expect(result.current.isSuccess).toBe(true)
+      })
+
+      // Unknown values should map to 'Unknown' string
+      expect(result.current.data?.benefitIssuanceType).toBe('Unknown')
+      expect(result.current.data?.applications?.[0]?.issuanceType).toBe('Unknown')
+      expect(result.current.data?.applications?.[0]?.applicationStatus).toBe('Unknown')
+      expect(result.current.data?.applications?.[0]?.cardStatus).toBe('Unknown')
+    })
   })
 
   describe('Retry Logic', () => {
