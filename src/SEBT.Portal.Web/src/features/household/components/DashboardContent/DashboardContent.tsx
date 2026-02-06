@@ -14,8 +14,7 @@ import { EnrolledChildren } from '../EnrolledChildren'
 import { HouseholdSummary } from '../HouseholdSummary'
 import { UserProfileCard } from '../UserProfileCard'
 
-// TODO: Add to CSV: "S2 - Portal Dashboard - Error Heading" for error heading
-// TODO: Add to CSV: "S2 - Portal Dashboard - Error Description" for error description
+// TODO: Add to CSV: "S2 - Portal Dashboard - Error Heading" and "S2 - Portal Dashboard - Error Description"
 export function DashboardContent() {
   const { t } = useTranslation('dashboard')
   const { data, isLoading, isError, error } = useHouseholdData()
@@ -41,9 +40,12 @@ export function DashboardContent() {
         {pageHeading}
         <Alert
           variant="error"
-          heading="Error loading dashboard"
+          heading={t('errorHeading', 'Error loading dashboard')}
         >
-          There was an error loading your dashboard. Please try again later.
+          {t(
+            'errorDescription',
+            'There was an error loading your dashboard. Please try again later.'
+          )}
         </Alert>
       </>
     )
