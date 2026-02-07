@@ -68,6 +68,7 @@ export function ChildCard({ child, application, id, defaultExpanded = true }: Ch
         id={`child-${id}`}
         className="usa-accordion__content usa-prose"
         hidden={!isExpanded}
+        data-testid="accordion-content"
       >
         <dl className="margin-0">
           {cardTypeKey && (

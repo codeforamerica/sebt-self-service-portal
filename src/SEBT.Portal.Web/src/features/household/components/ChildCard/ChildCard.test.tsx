@@ -176,7 +176,7 @@ describe('ChildCard', () => {
   it('toggles accordion when button is clicked', async () => {
     const user = userEvent.setup()
 
-    const { container } = render(
+    render(
       <ChildCard
         child={mockChild}
         application={mockApplication}
@@ -186,7 +186,7 @@ describe('ChildCard', () => {
     )
 
     const button = screen.getByRole('button')
-    const content = container.querySelector('#child-0')!
+    const content = screen.getByTestId('accordion-content')
 
     // Initially expanded
     expect(button).toHaveAttribute('aria-expanded', 'true')
