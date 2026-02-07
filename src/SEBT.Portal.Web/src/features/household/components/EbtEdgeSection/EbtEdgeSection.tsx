@@ -21,11 +21,12 @@ export function EbtEdgeSection() {
       className="margin-top-4"
       aria-labelledby="help-section-heading"
     >
+      {/* TODO: Add to CSV: "S2 - Portal Dashboard - Alert EBT Edge - Section Heading" */}
       <h2
         id="help-section-heading"
         className="usa-sr-only"
       >
-        EBT Card Help
+        {t('alertEbtEdgeSectionHeading', 'EBT Card Help')}
       </h2>
       <div className="usa-accordion">
         <h3 className="usa-accordion__heading">
