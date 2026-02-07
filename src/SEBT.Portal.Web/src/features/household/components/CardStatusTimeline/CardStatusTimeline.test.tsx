@@ -2,24 +2,16 @@ import { render, screen } from '@testing-library/react'
 import { describe, expect, it } from 'vitest'
 
 import type { Application } from '../../api'
+import { createMockApplication } from '../../testing'
 
 import { CardStatusTimeline } from './CardStatusTimeline'
 
-const mockApplication: Application = {
-  applicationNumber: 'APP-2026-001',
-  caseNumber: 'CASE-DC-2026-001',
-  applicationStatus: 'Approved',
-  benefitIssueDate: '2026-01-08T00:00:00Z',
-  benefitExpirationDate: '2026-03-19T00:00:00Z',
-  last4DigitsOfCard: '1234',
-  cardStatus: 'Active',
+// Only override fields relevant to this test - card status timeline dates
+const mockApplication = createMockApplication({
   cardRequestedAt: '2026-01-01T00:00:00Z',
   cardMailedAt: '2026-01-03T00:00:00Z',
-  cardActivatedAt: '2026-01-08T00:00:00Z',
-  cardDeactivatedAt: null,
-  children: [{ caseNumber: 456001, firstName: 'Sophia', lastName: 'Martinez' }],
-  childrenOnApplication: 1
-}
+  cardActivatedAt: '2026-01-08T00:00:00Z'
+})
 
 describe('CardStatusTimeline', () => {
   it('renders timeline heading', () => {
