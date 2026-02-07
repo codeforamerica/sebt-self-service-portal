@@ -147,4 +147,23 @@ describe('HouseholdSummary', () => {
     expect(screen.getByText(/test@example.com/)).toBeInTheDocument()
     expect(screen.queryByText(/\(303\) 555-0100/)).not.toBeInTheDocument()
   })
+
+  it('renders preferred contact with only phone when email not provided', () => {
+    const dataWithoutEmail: HouseholdData = { ...mockData, email: null }
+    render(<HouseholdSummary data={dataWithoutEmail} />)
+
+    expect(screen.getByText('Your preferred contact')).toBeInTheDocument()
+    expect(screen.getByText(/\(303\) 555-0100/)).toBeInTheDocument()
+    expect(screen.queryByText(/test@example.com/)).not.toBeInTheDocument()
+  })
+
+  it('hides contact section when neither email nor phone provided', () => {
+    const dataWithoutContact: HouseholdData = { ...mockData, email: null, phone: null }
+    render(<HouseholdSummary data={dataWithoutContact} />)
+
+    expect(screen.queryByText('Your preferred contact')).not.toBeInTheDocument()
+    expect(
+      screen.queryByRole('link', { name: 'Change my contact information' })
+    ).not.toBeInTheDocument()
+  })
 })

@@ -93,23 +93,27 @@ export function HouseholdSummary({ data }: HouseholdSummaryProps) {
           )}
 
           {/* Your preferred contact */}
-          <dt className="text-bold">{t('profileTableHeadingContact')}</dt>
-          <dd className="margin-left-0 margin-bottom-2">
-            {data.email}
-            {data.phone && (
-              <>
+          {(data.email || data.phone) && (
+            <>
+              <dt className="text-bold">{t('profileTableHeadingContact')}</dt>
+              <dd className="margin-left-0 margin-bottom-2">
+                {data.email}
+                {data.phone && (
+                  <>
+                    {data.email && <br />}
+                    {data.phone}
+                  </>
+                )}
                 <br />
-                {data.phone}
-              </>
-            )}
-            <br />
-            <a
-              href="/contact"
-              className="usa-link"
-            >
-              {t('profileTableActionChangeContact')}
-            </a>
-          </dd>
+                <a
+                  href="/contact"
+                  className="usa-link"
+                >
+                  {t('profileTableActionChangeContact')}
+                </a>
+              </dd>
+            </>
+          )}
         </dl>
       </div>
     </div>

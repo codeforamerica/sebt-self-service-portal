@@ -94,7 +94,8 @@ export const UserProfileSchema = z.object({
 export type UserProfile = z.infer<typeof UserProfileSchema>
 
 export const HouseholdDataSchema = z.object({
-  email: z.string(),
+  // email is optional to support IAL authorization where user may not have access to PII
+  email: z.string().nullable().optional(),
   phone: z.string().nullable().optional(),
   applications: z.array(ApplicationSchema),
   addressOnFile: AddressSchema.nullable().optional(),
