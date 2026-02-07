@@ -25,12 +25,15 @@ function formatFullName(
   middleName: string | null | undefined,
   lastName: string | null | undefined
 ): string {
+  // Extract middle initial (first character) to handle both initials and full middle names
+  const middleInitial = middleName ? middleName.charAt(0).toUpperCase() : null
+
   // Handle mononyms (users with only a first name)
   if (!lastName) {
-    return middleName ? `${firstName} ${middleName}.` : firstName
+    return middleInitial ? `${firstName} ${middleInitial}.` : firstName
   }
-  if (middleName) {
-    return `${firstName} ${middleName}. ${lastName}`
+  if (middleInitial) {
+    return `${firstName} ${middleInitial}. ${lastName}`
   }
   return `${firstName} ${lastName}`
 }
