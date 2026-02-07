@@ -1,5 +1,6 @@
 'use client'
 
+import Link from 'next/link'
 import { useTranslation } from 'react-i18next'
 
 interface ActionButton {
@@ -32,7 +33,7 @@ export function ActionButtons() {
             key={action.labelKey}
             className="margin-bottom-2"
           >
-            <a
+            <Link
               href={action.href}
               className="display-inline-flex flex-align-center padding-y-1 padding-x-205 text-no-underline text-ink bg-secondary radius-pill font-sans-md text-semibold"
             >
@@ -47,7 +48,7 @@ export function ActionButtons() {
               >
                 <path d="M10 6 8.59 7.41 13.17 12l-4.58 4.59L10 18l6-6z" />
               </svg>
-            </a>
+            </Link>
           </li>
         ))}
       </ul>

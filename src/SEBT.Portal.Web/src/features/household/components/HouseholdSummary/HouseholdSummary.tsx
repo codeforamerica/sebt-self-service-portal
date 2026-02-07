@@ -1,5 +1,6 @@
 'use client'
 
+import Link from 'next/link'
 import { useTranslation } from 'react-i18next'
 
 import type { Address, HouseholdData } from '../../api'
@@ -82,12 +83,12 @@ export function HouseholdSummary({ data }: HouseholdSummaryProps) {
               <dd className="margin-left-0 margin-bottom-2">
                 <span style={{ whiteSpace: 'pre-line' }}>{formatAddress(data.addressOnFile)}</span>
                 <br />
-                <a
+                <Link
                   href="/address"
                   className="usa-link"
                 >
                   {t('profileTableActionChangeAddress')}
-                </a>
+                </Link>
               </dd>
             </>
           )}
@@ -105,12 +106,12 @@ export function HouseholdSummary({ data }: HouseholdSummaryProps) {
                   </>
                 )}
                 <br />
-                <a
+                <Link
                   href="/contact"
                   className="usa-link"
                 >
                   {t('profileTableActionChangeContact')}
-                </a>
+                </Link>
               </dd>
             </>
           )}
