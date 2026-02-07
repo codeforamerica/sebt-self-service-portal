@@ -55,9 +55,9 @@ public class SsnNormalizerTests
     [Fact]
     public void Normalize_WhenNull_Throws()
     {
-        var ex = Assert.Throws<ArgumentException>(() => SsnNormalizer.Normalize(null!));
+        var ex = Assert.Throws<ArgumentNullException>(() => SsnNormalizer.Normalize(null!));
 
-        Assert.Contains("SSN", ex.Message);
+        Assert.Equal("ssn", ex.ParamName);
     }
 
     [Fact]

@@ -14,10 +14,7 @@ public static class SsnNormalizer
     /// <exception cref="ArgumentException">Thrown when the SSN is null or whitespace.</exception>
     public static string Normalize(string ssn)
     {
-        if (string.IsNullOrWhiteSpace(ssn))
-        {
-            throw new ArgumentException("SSN cannot be null or whitespace.", nameof(ssn));
-        }
+        ArgumentException.ThrowIfNullOrWhiteSpace(ssn, nameof(ssn));
 
         return NormalizeCore(ssn);
     }
