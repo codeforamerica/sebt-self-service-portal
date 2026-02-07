@@ -103,6 +103,41 @@ main           # Production source for all states
 
 See [docs/development/state-ci.md](docs/development/state-ci.md) for detailed CI documentation.
 
+## State-Specific Configuration
+
+The API loads state-specific configuration based on the `STATE` environment variable:
+
+1. **`appsettings.json`**: Base configuration (always loaded)
+2. **`appsettings.{STATE}.json`**: State overrides (loaded when `STATE` is set)
+
+When `STATE` is set, the API looks for `appsettings.{state}.json` in the application directory. Values in the state file override those in `appsettings.json` if present.
+
+**Example:** With `STATE=dc`, the API loads `appsettings.dc.json`. With `STATE=co`, it loads `appsettings.co.json`.
+
+```bash
+# Build and run for DC (loads appsettings.dc.json (if present))
+STATE=dc dotnet run --project src/SEBT.Portal.Api
+
+# Docker Compose uses STATE from .env
+docker compose up
+```
+Only include sections you want to override; other settings fall back to `appsettings.json`!
+
+### ID Proofing Requirements
+
+PII data is only shown and editable to users who meet the ID proofing requirements configured within "IdProofingRequirements" and their current IAL status (for example, `address+view`, `email+view`, `phone+view`). Configure in `appsettings.json` or override with `appsettings.{state}.json`.
+
+Example (`appsettings.json`):
+```json
+{
+  "IdProofingRequirements": {
+    "address+view": "IAL1plus",
+    "email+view": "IAL1",
+    "phone+view": "IAL1"
+  }
+}
+```
+
 ## Database Setup
 
 ### MSSQL Server

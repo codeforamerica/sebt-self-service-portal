@@ -1,6 +1,7 @@
 using System.Collections.Concurrent;
 using Bogus;
 using Microsoft.Extensions.Logging;
+using SEBT.Portal.Core.Models;
 using SEBT.Portal.Core.Models.Household;
 using SEBT.Portal.Core.Repositories;
 using SEBT.Portal.Core.Utilities;
@@ -28,9 +29,10 @@ public class MockHouseholdRepository : IHouseholdRepository
 
     public Task<HouseholdData?> GetHouseholdByEmailAsync(
         string email,
-        bool includeAddress = false,
+        PiiVisibility piiVisibility,
         CancellationToken cancellationToken = default)
     {
+        ArgumentNullException.ThrowIfNull(piiVisibility);
         cancellationToken.ThrowIfCancellationRequested();
 
         if (string.IsNullOrWhiteSpace(email))
@@ -48,12 +50,14 @@ public class MockHouseholdRepository : IHouseholdRepository
         }
 
         // Create a copy to avoid modifying the original
-        var result = CreateCopy(household, includeAddress);
+        var result = CreateCopy(household, piiVisibility);
 
-        _logger.LogInformation(
-            "Returning mock household data for email {Email}, includeAddress: {IncludeAddress}",
+        _logger.LogDebug(
+            "Returning mock household data for email {Email}, PII visibility: Address={IncludeAddress}, Email={IncludeEmail}, Phone={IncludePhone}",
             normalizedEmail,
-            includeAddress);
+            piiVisibility.IncludeAddress,
+            piiVisibility.IncludeEmail,
+            piiVisibility.IncludePhone);
 
         return Task.FromResult<HouseholdData?>(result);
     }
@@ -77,7 +81,8 @@ public class MockHouseholdRepository : IHouseholdRepository
         var normalizedEmail = EmailNormalizer.Normalize(householdData.Email);
 
         // Create a defensive copy to prevent external mutations
-        var copy = CreateCopy(householdData, includeAddress: true);
+        var fullVisibility = new PiiVisibility(IncludeAddress: true, IncludeEmail: true, IncludePhone: true);
+        var copy = CreateCopy(householdData, fullVisibility);
         _households[normalizedEmail] = copy;
 
         _logger.LogInformation("Mock household data updated for email {Email}", normalizedEmail);
@@ -216,6 +221,54 @@ public class MockHouseholdRepository : IHouseholdRepository
         review.Email = "review@example.com";
         review.UserProfile = new UserProfile { FirstName = "Susan", MiddleName = "Lee", LastName = "Williams" };
         _households["review@example.com"] = review;
+
+        // Scenario 5b: Non-co-loaded user (ID proofing in progress)
+        var nonCoLoaded = HouseholdFactory.CreateHouseholdDataWithStatus(ApplicationStatus.Pending, h =>
+        {
+            var app = h.Applications.FirstOrDefault();
+            if (app != null)
+            {
+                app.Children = new List<Child>
+                {
+                    new Child { CaseNumber = 555001, FirstName = "Emma", LastName = "Garcia" }
+                };
+            }
+            h.AddressOnFile = new Address
+            {
+                StreetAddress1 = "789 In-Progress Lane",
+                City = "Denver",
+                State = "CO",
+                PostalCode = "80204"
+            };
+        });
+        nonCoLoaded.Email = "non-co-loaded@example.com";
+        nonCoLoaded.Phone = "555-123-4567";
+        nonCoLoaded.UserProfile = new UserProfile { FirstName = "Carlos", MiddleName = "Miguel", LastName = "Garcia" };
+        _households["non-co-loaded@example.com"] = nonCoLoaded;
+
+        // Scenario 5c: Not-started user (ID proofing not started)
+        var notStarted = HouseholdFactory.CreateHouseholdDataWithStatus(ApplicationStatus.Pending, h =>
+        {
+            var app = h.Applications.FirstOrDefault();
+            if (app != null)
+            {
+                app.Children = new List<Child>
+                {
+                    new Child { CaseNumber = 666001, FirstName = "Liam", LastName = "Anderson" }
+                };
+            }
+            h.AddressOnFile = new Address
+            {
+                StreetAddress1 = "321 Not Started Drive",
+                City = "Denver",
+                State = "CO",
+                PostalCode = "80205"
+            };
+        });
+        notStarted.Email = "not-started@example.com";
+        notStarted.Phone = "555-987-6543";
+        notStarted.UserProfile = new UserProfile { FirstName = "Jordan", MiddleName = "Lee", LastName = "Anderson" };
+        _households["not-started@example.com"] = notStarted;
 
         // Scenario 6: Cancelled application
         var cancelled = HouseholdFactory.CreateHouseholdDataWithStatus(ApplicationStatus.Cancelled, h =>
@@ -388,16 +441,27 @@ public class MockHouseholdRepository : IHouseholdRepository
 
     /// <summary>
     /// Creates a defensive copy of household data to prevent external mutations.
+    /// PII fields are filtered based on the visibility flags.
     /// </summary>
     /// <param name="source">The source household data to copy.</param>
-    /// <param name="includeAddress">Whether to include address information in the copy.</param>
+    /// <param name="piiVisibility">Which PII elements to include in the copy.</param>
     /// <returns>A new instance of HouseholdData with copied values.</returns>
-    private static HouseholdData CreateCopy(HouseholdData source, bool includeAddress)
+    private static HouseholdData CreateCopy(HouseholdData source, PiiVisibility piiVisibility)
     {
-        return new HouseholdData
+        return source with
         {
-            Email = source.Email,
-            Phone = source.Phone,
+            Email = piiVisibility.IncludeEmail ? source.Email : null,
+            Phone = piiVisibility.IncludePhone ? source.Phone : null,
+            AddressOnFile = piiVisibility.IncludeAddress && source.AddressOnFile != null
+                ? new Address
+                {
+                    StreetAddress1 = source.AddressOnFile.StreetAddress1,
+                    StreetAddress2 = source.AddressOnFile.StreetAddress2,
+                    City = source.AddressOnFile.City,
+                    State = source.AddressOnFile.State,
+                    PostalCode = source.AddressOnFile.PostalCode
+                }
+                : null,
             BenefitIssuanceType = source.BenefitIssuanceType,
             UserProfile = source.UserProfile != null
                 ? new UserProfile
@@ -427,18 +491,7 @@ public class MockHouseholdRepository : IHouseholdRepository
                     FirstName = c.FirstName,
                     LastName = c.LastName
                 }).ToList()
-            }).ToList(),
-            // Only include address if requested (simulating ID verification check)
-            AddressOnFile = includeAddress && source.AddressOnFile != null
-                ? new Address
-                {
-                    StreetAddress1 = source.AddressOnFile.StreetAddress1,
-                    StreetAddress2 = source.AddressOnFile.StreetAddress2,
-                    City = source.AddressOnFile.City,
-                    State = source.AddressOnFile.State,
-                    PostalCode = source.AddressOnFile.PostalCode
-                }
-                : null
+            }).ToList()
         };
     }
 }

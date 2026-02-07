@@ -64,6 +64,7 @@ public class DatabaseSeeder : Core.Services.IDatabaseSeeder
             {
                 u.Email = "co-loaded@example.com";
                 u.IdProofingStatus = IdProofingStatus.Completed;
+                u.IalLevel = UserIalLevel.IAL1plus;
                 u.CoLoadedLastUpdated = now.AddDays(-5);
                 u.IdProofingCompletedAt = now.AddDays(-10);
                 u.IdProofingExpiresAt = now.AddDays(355);
@@ -72,11 +73,13 @@ public class DatabaseSeeder : Core.Services.IDatabaseSeeder
             {
                 u.Email = "non-co-loaded@example.com";
                 u.IdProofingStatus = IdProofingStatus.InProgress;
+                u.IalLevel = UserIalLevel.None;
             }),
             UserFactory.CreateNonCoLoadedUser(u =>
             {
                 u.Email = "not-started@example.com";
                 u.IdProofingStatus = IdProofingStatus.NotStarted;
+                u.IalLevel = UserIalLevel.None;
             })
         };
     }
@@ -86,24 +89,26 @@ public class DatabaseSeeder : Core.Services.IDatabaseSeeder
     /// Each entry maps a household email to the appropriate ID proofing status.
     /// This mapping is based on the household data seeded in MockHouseholdRepository.
     /// </summary>
-    private static Dictionary<string, IdProofingStatus> GetHouseholdUserMappings()
+    private static Dictionary<string, UserIalLevel> GetHouseholdUserMappings()
     {
-        return new Dictionary<string, IdProofingStatus>
+        return new Dictionary<string, UserIalLevel>
         {
-            // Users with ID verification completed (have addresses in household data)
-            { "co-loaded@example.com", IdProofingStatus.Completed },
-            { "verified@example.com", IdProofingStatus.Completed },
-            { "singlechild@example.com", IdProofingStatus.Completed },
-            { "largefamily@example.com", IdProofingStatus.Completed },
-            { "expired@example.com", IdProofingStatus.Completed },
+            // Users with IAL1+ (have addresses in household data)
+            { "co-loaded@example.com", UserIalLevel.IAL1plus },
+            { "verified@example.com", UserIalLevel.IAL1plus },
+            { "singlechild@example.com", UserIalLevel.IAL1plus },
+            { "largefamily@example.com", UserIalLevel.IAL1plus },
+            { "expired@example.com", UserIalLevel.IAL1plus },
 
-            // Users without ID verification (addresses not shown unless explicitly requested)
-            { "pending@example.com", IdProofingStatus.NotStarted },
-            { "minimal@example.com", IdProofingStatus.NotStarted },
-            { "denied@example.com", IdProofingStatus.NotStarted },
-            { "review@example.com", IdProofingStatus.InProgress },
-            { "cancelled@example.com", IdProofingStatus.NotStarted },
-            { "unknown@example.com", IdProofingStatus.NotStarted }
+            // Users without IAL (addresses not shown)
+            { "non-co-loaded@example.com", UserIalLevel.None },
+            { "not-started@example.com", UserIalLevel.None },
+            { "pending@example.com", UserIalLevel.None },
+            { "minimal@example.com", UserIalLevel.None },
+            { "denied@example.com", UserIalLevel.None },
+            { "review@example.com", UserIalLevel.None },
+            { "cancelled@example.com", UserIalLevel.None },
+            { "unknown@example.com", UserIalLevel.None }
         };
     }
 
@@ -131,7 +136,7 @@ public class DatabaseSeeder : Core.Services.IDatabaseSeeder
         {
             var mappings = GetHouseholdUserMappings();
 
-            foreach (var (email, idProofingStatus) in mappings)
+            foreach (var (email, ialLevel) in mappings)
             {
                 var normalizedEmail = EmailNormalizer.Normalize(email ?? throw new ArgumentException("Email cannot be null", nameof(email)));
 
@@ -150,7 +155,8 @@ public class DatabaseSeeder : Core.Services.IDatabaseSeeder
                         user = UserFactory.CreateCoLoadedUser(u =>
                         {
                             u.Email = normalizedEmail;
-                            u.IdProofingStatus = idProofingStatus;
+                            u.IdProofingStatus = IdProofingStatus.Completed;
+                            u.IalLevel = ialLevel;
                             u.IdProofingCompletedAt = now.AddDays(DaysSinceIdProofingCompleted);
                             u.IdProofingExpiresAt = now.AddDays(DaysUntilIdProofingExpires);
                             u.CoLoadedLastUpdated = now.AddDays(DaysSinceCoLoadedUpdate);
@@ -160,8 +166,11 @@ public class DatabaseSeeder : Core.Services.IDatabaseSeeder
                     {
                         user = UserFactory.CreateUserWithEmail(normalizedEmail, u =>
                         {
-                            u.IdProofingStatus = idProofingStatus;
-                            if (idProofingStatus == IdProofingStatus.Completed)
+                            u.IdProofingStatus = ialLevel is UserIalLevel.IAL1 or UserIalLevel.IAL1plus or UserIalLevel.IAL2
+                                ? IdProofingStatus.Completed
+                                : IdProofingStatus.NotStarted;
+                            u.IalLevel = ialLevel;
+                            if (ialLevel is UserIalLevel.IAL1 or UserIalLevel.IAL1plus or UserIalLevel.IAL2)
                             {
                                 u.IdProofingCompletedAt = now.AddDays(DaysSinceIdProofingCompleted);
                                 u.IdProofingExpiresAt = now.AddDays(DaysUntilIdProofingExpires);
@@ -173,7 +182,7 @@ public class DatabaseSeeder : Core.Services.IDatabaseSeeder
 
                     await _dataSeeder.AddUsersAsync(new[] { user }, cancellationToken);
                     seededCount++;
-                    _logger?.LogInformation("Successfully seeded user {Email} with ID proofing status {Status}", normalizedEmail, idProofingStatus);
+                    _logger?.LogInformation("Successfully seeded user {Email} with IAL level {IalLevel}", normalizedEmail, ialLevel);
                 }
                 catch (DbUpdateException ex) when (
                     ex.InnerException?.Message.Contains("UNIQUE", StringComparison.OrdinalIgnoreCase) == true ||
@@ -237,7 +246,7 @@ public class DatabaseSeeder : Core.Services.IDatabaseSeeder
         {
             var mappings = GetHouseholdUserMappings();
 
-            foreach (var (email, idProofingStatus) in mappings)
+            foreach (var (email, ialLevel) in mappings)
             {
                 var normalizedEmail = EmailNormalizer.Normalize(email ?? throw new ArgumentException("Email cannot be null", nameof(email)));
 
@@ -256,7 +265,8 @@ public class DatabaseSeeder : Core.Services.IDatabaseSeeder
                         user = UserFactory.CreateCoLoadedUser(u =>
                         {
                             u.Email = normalizedEmail;
-                            u.IdProofingStatus = idProofingStatus;
+                            u.IdProofingStatus = IdProofingStatus.Completed;
+                            u.IalLevel = ialLevel;
                             u.IdProofingCompletedAt = now.AddDays(DaysSinceIdProofingCompleted);
                             u.IdProofingExpiresAt = now.AddDays(DaysUntilIdProofingExpires);
                             u.CoLoadedLastUpdated = now.AddDays(DaysSinceCoLoadedUpdate);
@@ -266,8 +276,11 @@ public class DatabaseSeeder : Core.Services.IDatabaseSeeder
                     {
                         user = UserFactory.CreateUserWithEmail(normalizedEmail, u =>
                         {
-                            u.IdProofingStatus = idProofingStatus;
-                            if (idProofingStatus == IdProofingStatus.Completed)
+                            u.IdProofingStatus = ialLevel is UserIalLevel.IAL1 or UserIalLevel.IAL1plus or UserIalLevel.IAL2
+                                ? IdProofingStatus.Completed
+                                : IdProofingStatus.NotStarted;
+                            u.IalLevel = ialLevel;
+                            if (ialLevel is UserIalLevel.IAL1 or UserIalLevel.IAL1plus or UserIalLevel.IAL2)
                             {
                                 u.IdProofingCompletedAt = now.AddDays(DaysSinceIdProofingCompleted);
                                 u.IdProofingExpiresAt = now.AddDays(DaysUntilIdProofingExpires);
@@ -279,7 +292,7 @@ public class DatabaseSeeder : Core.Services.IDatabaseSeeder
 
                     _dataSeeder.AddUsers(new[] { user });
                     seededCount++;
-                    _logger?.LogInformation("Successfully seeded user {Email} with ID proofing status {Status}", normalizedEmail, idProofingStatus);
+                    _logger?.LogInformation("Successfully seeded user {Email} with IAL level {IalLevel}", normalizedEmail, ialLevel);
                 }
                 catch (DbUpdateException ex) when (
                     ex.InnerException?.Message.Contains("UNIQUE", StringComparison.OrdinalIgnoreCase) == true ||

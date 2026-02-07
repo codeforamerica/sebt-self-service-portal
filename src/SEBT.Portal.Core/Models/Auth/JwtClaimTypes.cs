@@ -11,6 +11,12 @@ public static class JwtClaimTypes
     public const string IdProofingStatus = "id_proofing_status";
 
     /// <summary>
+    /// Claim name for Identity Assurance Level (IAL).
+    /// Values: "1", "1plus", "2"
+    /// </summary>
+    public const string Ial = "ial";
+
+    /// <summary>
     /// Claim name for the ID proofing session ID.
     /// </summary>
     public const string IdProofingSessionId = "id_proofing_session_id";

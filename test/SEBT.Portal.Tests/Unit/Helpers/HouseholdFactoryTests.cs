@@ -16,6 +16,7 @@ public class HouseholdFactoryTests
 
         // Assert
         Assert.NotNull(household);
+        Assert.NotNull(household.Email);
         Assert.NotEmpty(household.Email);
         Assert.Contains("@", household.Email);
         Assert.True(household.Email == household.Email.ToLowerInvariant()); // Should be lowercase

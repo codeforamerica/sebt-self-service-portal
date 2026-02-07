@@ -412,7 +412,7 @@ public class PortalDbContextTests
     }
 
     [Fact]
-    public void Users_IdProofingStatus_ShouldBeRequired()
+    public void Users_IalLevel_ShouldBeRequired()
     {
         // Arrange
         var options = new DbContextOptionsBuilder<PortalDbContext>()
@@ -423,7 +423,7 @@ public class PortalDbContextTests
 
         // Act
         var entityType = context.Model.FindEntityType(typeof(UserEntity));
-        var statusProperty = entityType!.FindProperty("IdProofingStatus");
+        var statusProperty = entityType!.FindProperty("IalLevel");
 
         // Assert
         Assert.NotNull(statusProperty);
@@ -431,7 +431,7 @@ public class PortalDbContextTests
     }
 
     [Fact]
-    public void Users_IdProofingStatus_ShouldHaveDefaultValueOfZero()
+    public void Users_IalLevel_ShouldHaveDefaultValueOfZero()
     {
         // Arrange
         var options = new DbContextOptionsBuilder<PortalDbContext>()
@@ -442,7 +442,7 @@ public class PortalDbContextTests
 
         // Act
         var entityType = context.Model.FindEntityType(typeof(UserEntity));
-        var statusProperty = entityType!.FindProperty("IdProofingStatus");
+        var statusProperty = entityType!.FindProperty("IalLevel");
         var defaultValue = statusProperty!.GetDefaultValue();
 
         // Assert
@@ -543,7 +543,7 @@ public class PortalDbContextTests
         var entity = new UserEntity
         {
             Email = "newuser@example.com",
-            IdProofingStatus = (int)IdProofingStatus.NotStarted
+            IalLevel = (int)UserIalLevel.None
         };
 
         // Act

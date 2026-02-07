@@ -4,9 +4,11 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
 using SEBT.Portal.Api.Models;
 using SEBT.Portal.Api.Models.Household;
+using SEBT.Portal.Core.Models;
 using SEBT.Portal.Core.Models.Auth;
 using SEBT.Portal.Core.Models.Household;
 using SEBT.Portal.Core.Repositories;
+using SEBT.Portal.Core.Services;
 using SEBT.Portal.Core.Utilities;
 
 namespace SEBT.Portal.Api.Controllers.Household;
@@ -16,12 +18,14 @@ namespace SEBT.Portal.Api.Controllers.Household;
 /// </summary>
 [ApiController]
 [Route("api/household")]
-public class HouseholdController(ILogger<HouseholdController> logger) : ControllerBase
+public class HouseholdController(
+    ILogger<HouseholdController> logger,
+    IIdProofingRequirementsService idProofingRequirementsService) : ControllerBase
 {
-
     /// <summary>
     /// Retrieves household data for the authenticated user.
-    /// Address information is only included if ID verification has been completed.
+    /// PII data is only included when the user meets the
+    /// ID proofing requirements configured for the state.
     /// </summary>
     /// <param name="repository">The household repository for retrieving data.</param>
     /// <param name="cancellationToken">A token to monitor for cancellation requests.</param>
@@ -50,18 +54,21 @@ public class HouseholdController(ILogger<HouseholdController> logger) : Controll
         var normalizedEmail = EmailNormalizer.Normalize(email);
         logger.LogDebug("Household data request received for email {Email}", normalizedEmail);
 
-        // Check ID verification status from JWT claims
-        var idProofingStatus = GetIdProofingStatus();
-        var includeAddress = idProofingStatus == IdProofingStatus.Completed;
+        // Determine PII visibility based on user's IAL level and state configuration
+        var userIalLevel = GetUserIalLevel();
+        var piiVisibility = idProofingRequirementsService.GetPiiVisibility(userIalLevel);
 
-        if (includeAddress)
-        {
-            logger.LogDebug("Including address data for ID verified user {Email}", normalizedEmail);
-        }
+        logger.LogDebug(
+            "PII visibility for user {Email} (IalLevel={IalLevel}): Address={IncludeAddress}, Email={IncludeEmail}, Phone={IncludePhone}",
+            normalizedEmail,
+            userIalLevel,
+            piiVisibility.IncludeAddress,
+            piiVisibility.IncludeEmail,
+            piiVisibility.IncludePhone);
 
         var householdData = await repository.GetHouseholdByEmailAsync(
             normalizedEmail,
-            includeAddress: includeAddress,
+            piiVisibility,
             cancellationToken);
 
         if (householdData == null)
@@ -108,26 +115,27 @@ public class HouseholdController(ILogger<HouseholdController> logger) : Controll
     }
 
     /// <summary>
-    /// Extracts the ID proofing status from the authenticated user's claims.
+    /// Extracts the user's IAL level from the authenticated user's claims.
+    /// Uses "ial" claim only (values: "0", "1", "1plus", "2"). Id proofing status is a separate concern.
     /// </summary>
-    /// <returns>The ID proofing status, or NotStarted if not found.</returns>
-    private IdProofingStatus GetIdProofingStatus()
+    /// <returns>The user's IAL level, or None if not found or invalid.</returns>
+    private UserIalLevel GetUserIalLevel()
     {
-        var statusClaim = User.FindFirst(JwtClaimTypes.IdProofingStatus)?.Value;
-
-        if (string.IsNullOrWhiteSpace(statusClaim))
+        var ialClaim = User.FindFirst(JwtClaimTypes.Ial)?.Value;
+        if (!string.IsNullOrWhiteSpace(ialClaim))
         {
-            logger.LogWarning("ID proofing status claim not found in token, defaulting to NotStarted");
-            return IdProofingStatus.NotStarted;
+            var normalized = ialClaim.Trim().ToLowerInvariant();
+            if (normalized == "1") return UserIalLevel.IAL1;
+            if (normalized == "1plus") return UserIalLevel.IAL1plus;
+            if (normalized == "2") return UserIalLevel.IAL2;
+            if (normalized == "0") return UserIalLevel.None;
+            logger.LogWarning("Invalid IAL claim value: {IalClaim}, defaulting to None", ialClaim);
+        }
+        else
+        {
+            logger.LogWarning("IAL claim not found in token, defaulting to None");
         }
 
-        if (int.TryParse(statusClaim, out var statusValue) &&
-            Enum.IsDefined(typeof(IdProofingStatus), statusValue))
-        {
-            return (IdProofingStatus)statusValue;
-        }
-
-        logger.LogWarning("Invalid ID proofing status claim value: {StatusClaim}, defaulting to NotStarted", statusClaim);
-        return IdProofingStatus.NotStarted;
+        return UserIalLevel.None;
     }
 }

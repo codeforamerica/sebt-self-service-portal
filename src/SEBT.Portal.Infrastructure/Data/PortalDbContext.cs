@@ -65,6 +65,9 @@ public class PortalDbContext : DbContext
             entity.Property(e => e.IdProofingStatus)
                 .IsRequired()
                 .HasDefaultValue(0); // 0 = NotStarted
+            entity.Property(e => e.IalLevel)
+                .IsRequired()
+                .HasDefaultValue(0); // 0 = UserIalLevel.None
             entity.Property(e => e.IdProofingSessionId)
                 .HasMaxLength(255);
             entity.Property(e => e.IsCoLoaded)
