@@ -103,7 +103,7 @@ export function CardStatusTimeline({ application }: CardStatusTimelineProps) {
       <dd className="margin-left-0 margin-top-1">
         <ol
           className="usa-step-indicator usa-step-indicator--counters-sm"
-          aria-label="Card status timeline"
+          aria-label={t('cardTableStatusAriaLabel', 'Card status timeline')}
         >
           {steps.map((step) => (
             <li
@@ -118,7 +118,11 @@ export function CardStatusTimeline({ application }: CardStatusTimelineProps) {
                     {formatDate(step.date)}
                   </span>
                 )}
-                {!step.isComplete && <span className="usa-sr-only">not complete</span>}
+                {!step.isComplete && (
+                  <span className="usa-sr-only">
+                    {t('cardTableStatusNotComplete', 'not complete')}
+                  </span>
+                )}
               </span>
             </li>
           ))}
