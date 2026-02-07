@@ -92,7 +92,10 @@ export function ChildCard({ child, application, id, defaultExpanded = true }: Ch
           {last4DigitsOfCard && (
             <>
               <dt className="text-bold margin-top-2">{t('cardTableHeadingCardNumber')}</dt>
-              <dd className="margin-left-0">{last4DigitsOfCard} (last 4 digits)</dd>
+              {/* TODO: Add to CSV: "S2 - Portal Dashboard - Card Table - Card Number Suffix" */}
+              <dd className="margin-left-0">
+                {last4DigitsOfCard} {t('cardTableCardNumberSuffix', '(last 4 digits)')}
+              </dd>
             </>
           )}
           <CardStatusTimeline application={application} />
