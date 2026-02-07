@@ -1,7 +1,9 @@
 'use client'
 
-import { Alert } from '@/components/ui'
+import Link from 'next/link'
 import { useTranslation } from 'react-i18next'
+
+import { Alert } from '@/components/ui'
 
 // Keys map to CSV: "S2 - Portal Dashboard - Alert Applications - {Key}"
 export function EmptyState() {
@@ -13,12 +15,12 @@ export function EmptyState() {
       heading={t('alertApplicationsTitle')}
     >
       <span>{t('alertApplicationsBody')}</span>{' '}
-      <a
+      <Link
         href="/apply"
         className="usa-link text-bold"
       >
         {t('alertApplicationsAction')}
-      </a>
+      </Link>
     </Alert>
   )
 }
