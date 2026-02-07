@@ -11,8 +11,11 @@ interface UserProfileCardProps {
   data: HouseholdData
 }
 
-function getInitials(firstName: string, lastName: string): string {
+function getInitials(firstName: string, lastName: string | null | undefined): string {
   const firstInitial = firstName.charAt(0).toUpperCase()
+  if (!lastName) {
+    return firstInitial
+  }
   const lastInitial = lastName.charAt(0).toUpperCase()
   return `${firstInitial}${lastInitial}`
 }
@@ -20,8 +23,12 @@ function getInitials(firstName: string, lastName: string): string {
 function formatFullName(
   firstName: string,
   middleName: string | null | undefined,
-  lastName: string
+  lastName: string | null | undefined
 ): string {
+  // Handle mononyms (users with only a first name)
+  if (!lastName) {
+    return middleName ? `${firstName} ${middleName}.` : firstName
+  }
   if (middleName) {
     return `${firstName} ${middleName}. ${lastName}`
   }

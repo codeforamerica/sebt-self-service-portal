@@ -88,7 +88,7 @@ export type Application = z.infer<typeof ApplicationSchema>
 export const UserProfileSchema = z.object({
   firstName: z.string(),
   middleName: z.string().nullable().optional(),
-  lastName: z.string()
+  lastName: z.string().nullable().optional()
 })
 
 export type UserProfile = z.infer<typeof UserProfileSchema>

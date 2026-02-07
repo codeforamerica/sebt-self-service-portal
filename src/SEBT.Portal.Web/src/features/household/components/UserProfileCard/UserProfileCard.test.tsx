@@ -110,4 +110,40 @@ describe('UserProfileCard', () => {
 
     expect(container).toBeEmptyDOMElement()
   })
+
+  it('renders mononym user with only first name', () => {
+    const dataWithMononym: HouseholdData = {
+      ...mockData,
+      userProfile: {
+        firstName: 'Prince',
+        middleName: null,
+        lastName: null
+      }
+    }
+
+    render(<UserProfileCard data={dataWithMononym} />)
+
+    // Should show just first name
+    expect(screen.getByText('Prince')).toBeInTheDocument()
+    // Should show single initial
+    expect(screen.getByText('P')).toBeInTheDocument()
+  })
+
+  it('renders mononym user with first name and middle name', () => {
+    const dataWithMononymAndMiddle: HouseholdData = {
+      ...mockData,
+      userProfile: {
+        firstName: 'Madonna',
+        middleName: 'L',
+        lastName: null
+      }
+    }
+
+    render(<UserProfileCard data={dataWithMononymAndMiddle} />)
+
+    // Should show first name with middle initial
+    expect(screen.getByText('Madonna L.')).toBeInTheDocument()
+    // Should show single initial (from first name only)
+    expect(screen.getByText('M')).toBeInTheDocument()
+  })
 })
