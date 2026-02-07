@@ -92,11 +92,17 @@ export async function apiFetch<T>(endpoint: string, options: ApiFetchOptions<T> 
   }
 
   if (!response.ok) {
-    // Handle 401 Unauthorized - clear invalid token and redirect to login
-    if (response.status === 401) {
+    // Handle 401 Unauthorized from auth endpoints - clear invalid token and redirect to login
+    // Only auto-redirect for auth endpoints where 401 means "session invalid"
+    // For other endpoints, 401 might mean "not authorized for this resource" (e.g., IAL/Id Proofing)
+    // and the user may still have a valid session for other resources
+    const isAuthEndpoint = endpoint.startsWith('/auth/')
+    if (response.status === 401 && isAuthEndpoint) {
       clearAuthToken()
+      // Use replace() to avoid polluting browser history
+      // Note: window.location is used because apiFetch is not a React component and cannot use useRouter
       if (typeof window !== 'undefined') {
-        window.location.href = '/login'
+        window.location.replace('/login')
       }
     }
 
