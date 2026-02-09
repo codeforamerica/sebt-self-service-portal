@@ -1,6 +1,9 @@
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Options;
 using Microsoft.Extensions.Time.Testing;
+using SEBT.Portal.Core.AppSettings;
 using SEBT.Portal.Core.Models.Auth;
+using SEBT.Portal.Core.Services;
 using SEBT.Portal.Infrastructure.Data;
 using SEBT.Portal.Infrastructure.Data.Entities;
 using SEBT.Portal.Infrastructure.Repositories;
@@ -28,9 +31,12 @@ public class DatabaseSeederTests : IClassFixture<SqlServerTestFixture>
 
     private static readonly DateTimeOffset FixedSeedTime = new(2026, 1, 15, 12, 0, 0, TimeSpan.Zero);
 
+    private static readonly IIdentifierHasher TestHasher = new IdentifierHasher(
+        Options.Create(new IdentifierHasherSettings { SecretKey = "TestKeyMustBeAtLeast32CharactersLong!!" }));
+
     private DatabaseSeeder CreateSeeder(PortalDbContext context)
     {
-        var dataSeeder = new DataSeeder(context);
+        var dataSeeder = new DataSeeder(context, TestHasher);
         var timeProvider = new FakeTimeProvider(FixedSeedTime);
         return new DatabaseSeeder(dataSeeder, timeProvider: timeProvider);
     }
@@ -50,26 +56,6 @@ public class DatabaseSeederTests : IClassFixture<SqlServerTestFixture>
         context.UserOptIns.RemoveRange(allOptIns);
         context.Users.RemoveRange(allUsers);
         await context.SaveChangesAsync();
-
-        // Clear change tracker again after save
-        context.ChangeTracker.Clear();
-    }
-
-    /// <summary>
-    /// Cleans up the database synchronously to ensure test isolation.
-    /// </summary>
-    private void CleanupDatabase(PortalDbContext context)
-    {
-        // Clear change tracker first
-        context.ChangeTracker.Clear();
-
-        // Remove all data
-        var allUsers = context.Users.ToList();
-        var allOptIns = context.UserOptIns.ToList();
-
-        context.UserOptIns.RemoveRange(allOptIns);
-        context.Users.RemoveRange(allUsers);
-        context.SaveChanges();
 
         // Clear change tracker again after save
         context.ChangeTracker.Clear();
@@ -330,32 +316,45 @@ public class DatabaseSeederTests : IClassFixture<SqlServerTestFixture>
     }
 
     [Fact]
-    public void SeedTestUsers_WhenDatabaseIsEmpty_ShouldCreateAllTestUsers()
+    public async Task SeedTestUsers_WhenDatabaseIsEmpty_ShouldCreateAllTestUsers()
     {
         // Arrange
         using var context = CreateContext();
-        CleanupDatabase(context);
+        await CleanupDatabaseAsync(context);
         var seeder = CreateSeeder(context);
 
         // Act
-        seeder.SeedTestUsers();
+        await seeder.SeedTestUsersAsync();
 
         // Assert
-        var users = context.Users.ToList();
+        var users = await context.Users.ToListAsync();
         Assert.Equal(3, users.Count);
 
         var emails = users.Select(u => u.Email).ToHashSet();
         Assert.Contains("co-loaded@example.com", emails);
         Assert.Contains("non-co-loaded@example.com", emails);
         Assert.Contains("not-started@example.com", emails);
+
+        // Verify Phone/SnapId/TanfId stored as plaintext; SSN stored as hash
+        var coLoaded = users.First(u => u.Email == "co-loaded@example.com");
+        Assert.Equal("5551234567", coLoaded.Phone);
+        Assert.Equal("SNAP-CO-001", coLoaded.SnapId);
+        Assert.Equal("TANF-CO-001", coLoaded.TanfId);
+        Assert.NotNull(coLoaded.Ssn);
+        Assert.Equal(64, coLoaded.Ssn!.Length);
+        Assert.NotEqual("123456789", coLoaded.Ssn);
+
+        var nonCoLoaded = users.First(u => u.Email == "non-co-loaded@example.com");
+        Assert.Equal("5555551234", nonCoLoaded.Phone);
+        Assert.Equal("SNAP-NCO-001", nonCoLoaded.SnapId);
     }
 
     [Fact]
-    public void SeedTestUsers_WhenUsersAlreadyExist_ShouldSkipExistingUsers()
+    public async Task SeedTestUsers_WhenUsersAlreadyExist_ShouldSkipExistingUsers()
     {
         // Arrange
         using var context = CreateContext();
-        CleanupDatabase(context);
+        await CleanupDatabaseAsync(context);
         var seeder = CreateSeeder(context);
 
         // Create one of the test users manually
@@ -364,26 +363,26 @@ public class DatabaseSeederTests : IClassFixture<SqlServerTestFixture>
             e.Email = "co-loaded@example.com";
         });
         context.Users.Add(existingUser);
-        context.SaveChanges();
+        await context.SaveChangesAsync();
 
         // Act
-        seeder.SeedTestUsers();
+        await seeder.SeedTestUsersAsync();
 
         // Assert - Should have 3 users total
-        var users = context.Users.ToList();
+        var users = await context.Users.ToListAsync();
         Assert.Equal(3, users.Count);
     }
 
     [Fact]
-    public void SeedTestUsers_WhenDuplicateKeyExceptionOccurs_ShouldHandleGracefully()
+    public async Task SeedTestUsers_WhenDuplicateKeyExceptionOccurs_ShouldHandleGracefully()
     {
         // Arrange
         using var context = CreateContext();
-        CleanupDatabase(context);
+        await CleanupDatabaseAsync(context);
         var seeder = CreateSeeder(context);
 
         // Seed once
-        seeder.SeedTestUsers();
+        await seeder.SeedTestUsersAsync();
 
         // Clear context and seed again
         context.Dispose();
@@ -391,10 +390,10 @@ public class DatabaseSeederTests : IClassFixture<SqlServerTestFixture>
         var newSeeder = CreateSeeder(newContext);
 
         // Act - Should not throw
-        newSeeder.SeedTestUsers();
+        await newSeeder.SeedTestUsersAsync();
 
         // Assert - Should still have 3 users
-        var users = newContext.Users.ToList();
+        var users = await newContext.Users.ToListAsync();
         Assert.Equal(3, users.Count);
     }
 
@@ -462,6 +461,13 @@ public class DatabaseSeederTests : IClassFixture<SqlServerTestFixture>
         // Seed test users
         await seeder.SeedTestUsersAsync();
 
+        // Add production user (should not be deleted by ClearSeededDataAsync)
+        var productionUser = UserEntityFactory.CreateUserEntity(e =>
+        {
+            e.Email = "production@real-domain.com";
+        });
+        context.Users.Add(productionUser);
+
         // Add opt-ins for seeded users
         var optIn1 = new UserOptInEntity
         {
@@ -477,7 +483,7 @@ public class DatabaseSeederTests : IClassFixture<SqlServerTestFixture>
         };
         context.UserOptIns.AddRange(optIn1, optIn2);
 
-        // Add opt-in for production user (should not be deleted)
+        // Add opt-in for production user
         var productionOptIn = new UserOptInEntity
         {
             Email = "production@real-domain.com",
@@ -495,9 +501,10 @@ public class DatabaseSeederTests : IClassFixture<SqlServerTestFixture>
         Assert.Single(optIns);
         Assert.Equal("production@real-domain.com", optIns[0].Email);
 
-        // Verify users were also deleted
+        // Verify seeded users were deleted, production user remains
         var users = await context.Users.ToListAsync();
-        Assert.Empty(users);
+        Assert.Single(users);
+        Assert.Equal("production@real-domain.com", users[0].Email);
     }
 
     [Fact]
@@ -599,18 +606,18 @@ public class DatabaseSeederTests : IClassFixture<SqlServerTestFixture>
     }
 
     [Fact]
-    public void SeedTestUsers_ShouldNormalizeEmailsToLowercase()
+    public async Task SeedTestUsers_ShouldNormalizeEmailsToLowercase()
     {
         // Arrange
         using var context = CreateContext();
-        CleanupDatabase(context);
+        await CleanupDatabaseAsync(context);
         var seeder = CreateSeeder(context);
 
         // Act
-        seeder.SeedTestUsers();
+        await seeder.SeedTestUsersAsync();
 
         // Assert - All emails should be lowercase
-        var users = context.Users.ToList();
+        var users = await context.Users.ToListAsync();
         Assert.All(users, user =>
             Assert.Equal(user.Email, user.Email.ToLowerInvariant()));
     }

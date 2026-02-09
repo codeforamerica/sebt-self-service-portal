@@ -6,7 +6,7 @@ namespace SEBT.Portal.TestUtilities.Helpers;
 
 /// <summary>
 /// Factory for creating User instances using Bogus for generating fake data.
-/// Used for both testing and database seeding.
+/// Used for testing. For UserEntity and database helpers, use Infrastructure.Helpers.UserFactory.
 /// See https://github.com/bchavez/Bogus for more information
 /// </summary>
 public static class UserFactory
@@ -46,13 +46,12 @@ public static class UserFactory
     /// Note: For testing purposes, this allows empty/null emails to test repository validation.
     /// In production code, emails should be validated before calling this method.
     /// </summary>
-    /// <param name="email">The email address to use (may be empty/null for testing).</param>
+    /// <param name="email">The email address to use.</param>
     /// <param name="customize">Optional action to further customize the user.</param>
     /// <returns>A new User instance with the specified email.</returns>
     public static User CreateUserWithEmail(string email, Action<User>? customize = null)
     {
         var user = UserFaker.Generate();
-        // Only normalize if email is not empty/null (allows testing repository validation)
         user.Email = string.IsNullOrWhiteSpace(email) ? email : EmailNormalizer.Normalize(email);
         customize?.Invoke(user);
         return user;
@@ -68,7 +67,6 @@ public static class UserFactory
         return CreateUser(u =>
         {
             u.IsCoLoaded = true;
-            // Create a temporary faker for date generation (acceptable for single date value)
             var faker = new Faker();
             u.CoLoadedLastUpdated = faker.Date.Recent(60);
             customize?.Invoke(u);
@@ -108,7 +106,6 @@ public static class UserFactory
             // Set related dates when user has achieved an IAL level
             if (ialLevel is UserIalLevel.IAL1 or UserIalLevel.IAL1plus or UserIalLevel.IAL2)
             {
-                // Create a temporary faker for date generation (acceptable for single date value)
                 var faker = new Faker();
                 u.IdProofingCompletedAt = faker.Date.Recent(30);
                 u.IdProofingExpiresAt = u.IdProofingCompletedAt.Value.AddYears(1);

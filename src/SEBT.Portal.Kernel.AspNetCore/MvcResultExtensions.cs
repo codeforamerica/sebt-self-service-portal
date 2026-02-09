@@ -80,13 +80,18 @@ public static class MvcResultExtensions
     /// An optional function to map a successful result to a custom <see cref="IActionResult"/>.
     /// If not provided, a default mapping is applied.
     /// </param>
+    /// <param name="failureMap">
+    /// An optional function to map a failed result to a custom <see cref="IActionResult"/>.
+    /// If provided, it is used for all non-success results instead of the default mappings.
+    /// </param>
     /// <param name="useProblemDetails">Whether to use a RFC7807 problem details body for a failure response. The default is <c>true</c>.</param>
     /// <returns>
     /// An <see cref="IActionResult"/> representing the HTTP response:
     /// <list type="bullet">
     /// <item>The result of <paramref name="successMap"/>, if specified, for a <see cref="SuccessResult{T}"/>.</item>
     /// <item><see cref="OkObjectResult"/> for a <see cref="SuccessResult{T}"/>, when <paramref name="successMap"/> is not specified.</item>
-    /// <item><see cref="ObjectResult"/> with <see cref="ProblemDetails"/> for any non-successful result if <paramref name="useProblemDetails"/> is <c>true</c>.</item>
+    /// <item>The result of <paramref name="failureMap"/> for any non-successful result, when <paramref name="failureMap"/> is specified.</item>
+    /// <item><see cref="ObjectResult"/> with <see cref="ProblemDetails"/> for any non-successful result if <paramref name="useProblemDetails"/> is <c>true</c> and <paramref name="failureMap"/> is not specified.</item>
     /// <item><see cref="NotFoundResult"/> for a <see cref="PreconditionFailedResult{T}"/> indicating <see cref="PreconditionFailedReason.NotFound"/> if <paramref name="useProblemDetails"/> is <c>false</c>.</item>
     /// <item><see cref="StatusCodeResult"/> with HTTP status code 412 for a <see cref="PreconditionFailedResult{T}"/> indicating <see cref="PreconditionFailedReason.ConcurrencyMismatch"/> if <paramref name="useProblemDetails"/> is <c>false</c>.</item>
     /// <item><see cref="ConflictResult"/> for a <see cref="PreconditionFailedResult{T}"/> indicating <see cref="PreconditionFailedReason.Conflict"/> if <paramref name="useProblemDetails"/> is <c>false</c>.</item>
@@ -97,13 +102,15 @@ public static class MvcResultExtensions
     /// <exception cref="ArgumentOutOfRangeException">
     /// Thrown when the <paramref name="result"/> does not match any known result types.
     /// </exception>
-    public static IActionResult ToActionResult<T>(this Result<T> result, Func<T, IActionResult>? successMap = null, bool useProblemDetails = true)
+    public static IActionResult ToActionResult<T>(this Result<T> result, Func<T, IActionResult>? successMap = null, Func<Result<T>, IActionResult>? failureMap = null, bool useProblemDetails = true)
         => result switch
         {
             SuccessResult<T> success when successMap != null
                 => successMap(success.Value),
             SuccessResult<T> success
                 => new OkObjectResult(success.Value),
+            _ when failureMap != null
+                => failureMap(result),
             PreconditionFailedResult<T> { Reason: PreconditionFailedReason.NotFound } when useProblemDetails
                 => result.ToProblemDetailsResult(HttpStatusCode.NotFound),
             PreconditionFailedResult<T> { Reason: PreconditionFailedReason.NotFound } when !useProblemDetails

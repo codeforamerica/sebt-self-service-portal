@@ -26,7 +26,7 @@ public static class UserFactory
     /// Creates a new User instance with a specific email address.
     /// Delegates to the TestUtilities project's UserFactory.
     /// </summary>
-    /// <param name="email">The email address to use.</param>
+    /// <param name="email">The email address to use (may be empty/null for testing).</param>
     /// <param name="customize">Optional action to further customize the user.</param>
     /// <returns>A new User instance with the specified email.</returns>
     public static User CreateUserWithEmail(string email, Action<User>? customize = null)
@@ -46,6 +46,18 @@ public static class UserFactory
         customize?.Invoke(entity);
         return entity;
     }
+
+    /// <summary>
+    /// Creates a User with co-loaded status set to true. Delegates to the TestUtilities project's UserFactory.
+    /// </summary>
+    public static User CreateCoLoadedUser(Action<User>? customize = null) =>
+        TestUtilitiesUserFactory.CreateCoLoadedUser(customize);
+
+    /// <summary>
+    /// Creates a User with non-co-loaded status (IsCoLoaded = false). Delegates to the TestUtilities project's UserFactory.
+    /// </summary>
+    public static User CreateNonCoLoadedUser(Action<User>? customize = null) =>
+        TestUtilitiesUserFactory.CreateNonCoLoadedUser(customize);
 
     /// <summary>
     /// Creates a UserEntity with co-loaded status set to true.

@@ -28,6 +28,34 @@ public class MockHouseholdRepositoryTests
     }
 
     [Fact]
+    public async Task GetHouseholdByIdentifierAsync_WhenEmailIdentifierAndHouseholdExists_ReturnsHouseholdData()
+    {
+        // Arrange
+        var identifier = HouseholdIdentifier.Email("verified@example.com");
+
+        // Act
+        var result = await _repository.GetHouseholdByIdentifierAsync(identifier, FullPiiVisibility);
+
+        // Assert
+        Assert.NotNull(result);
+        Assert.Equal("verified@example.com", result.Email);
+        Assert.NotNull(result.Applications);
+        Assert.NotEmpty(result.Applications);
+        Assert.Equal(ApplicationStatus.Approved, result.Applications.First().ApplicationStatus);
+    }
+
+    [Fact]
+    public async Task GetHouseholdByIdentifierAsync_WhenNonEmailIdentifier_ReturnsNull()
+    {
+        // Mock data is keyed by email only; Phone, SNAP ID, etc. return null until backend supports them
+        var identifier = HouseholdIdentifier.Phone("5551234567");
+
+        var result = await _repository.GetHouseholdByIdentifierAsync(identifier, FullPiiVisibility);
+
+        Assert.Null(result);
+    }
+
+    [Fact]
     public async Task GetHouseholdByEmailAsync_WhenHouseholdExists_ReturnsHouseholdData()
     {
         // Arrange
@@ -190,7 +218,8 @@ public class MockHouseholdRepositoryTests
             "largefamily@example.com",
             "minimal@example.com",
             "expired@example.com",
-            "unknown@example.com"
+            "unknown@example.com",
+            "multipleapps@example.com"
         };
 
         // Act & Assert
@@ -220,6 +249,8 @@ public class MockHouseholdRepositoryTests
         Assert.Equal(2, app.Children.Count);
         Assert.Equal("John", app.Children[0].FirstName);
         Assert.Equal("Doe", app.Children[0].LastName);
+        Assert.Equal(789001, app.Children[0].CaseNumber);
+        Assert.Equal(789002, app.Children[1].CaseNumber);
         Assert.NotNull(app.BenefitIssueDate);
         Assert.NotNull(app.BenefitExpirationDate);
         Assert.Equal("1234", app.Last4DigitsOfCard);

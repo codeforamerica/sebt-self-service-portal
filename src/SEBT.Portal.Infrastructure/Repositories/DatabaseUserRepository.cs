@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using SEBT.Portal.Core.Models.Auth;
 using SEBT.Portal.Core.Repositories;
+using SEBT.Portal.Core.Services;
 using SEBT.Portal.Infrastructure.Data;
 using SEBT.Portal.Infrastructure.Data.Entities;
 
@@ -9,8 +10,7 @@ namespace SEBT.Portal.Infrastructure.Repositories;
 /// <summary>
 /// Database-backed implementation of <see cref="IUserRepository"/> using Entity Framework Core.
 /// </summary>
-/// <param name="dbContext">The database context for accessing user data.</param>
-public class DatabaseUserRepository(PortalDbContext dbContext) : IUserRepository
+public class DatabaseUserRepository(PortalDbContext dbContext, IIdentifierHasher identifierHasher) : IUserRepository
 {
     public async Task<User?> GetUserByEmailAsync(string email, CancellationToken cancellationToken = default)
     {
@@ -86,6 +86,10 @@ public class DatabaseUserRepository(PortalDbContext dbContext) : IUserRepository
         entity.IdProofingExpiresAt = user.IdProofingExpiresAt;
         entity.IsCoLoaded = user.IsCoLoaded;
         entity.CoLoadedLastUpdated = user.CoLoadedLastUpdated;
+        entity.Phone = user.Phone;
+        entity.SnapId = user.SnapId;
+        entity.TanfId = user.TanfId;
+        entity.Ssn = identifierHasher.HashForStorage(user.Ssn);
         entity.UpdatedAt = DateTime.UtcNow;
 
         try
@@ -202,12 +206,16 @@ public class DatabaseUserRepository(PortalDbContext dbContext) : IUserRepository
             IdProofingExpiresAt = entity.IdProofingExpiresAt,
             IsCoLoaded = entity.IsCoLoaded,
             CoLoadedLastUpdated = entity.CoLoadedLastUpdated,
+            Phone = entity.Phone,
+            SnapId = entity.SnapId,
+            TanfId = entity.TanfId,
+            Ssn = entity.Ssn,
             CreatedAt = entity.CreatedAt,
             UpdatedAt = entity.UpdatedAt
         };
     }
 
-    private static UserEntity MapToEntity(User user)
+    private UserEntity MapToEntity(User user)
     {
         return new UserEntity
         {
@@ -220,6 +228,10 @@ public class DatabaseUserRepository(PortalDbContext dbContext) : IUserRepository
             IdProofingExpiresAt = user.IdProofingExpiresAt,
             IsCoLoaded = user.IsCoLoaded,
             CoLoadedLastUpdated = user.CoLoadedLastUpdated,
+            Phone = user.Phone,
+            SnapId = user.SnapId,
+            TanfId = user.TanfId,
+            Ssn = identifierHasher.HashForStorage(user.Ssn),
             CreatedAt = user.CreatedAt,
             UpdatedAt = user.UpdatedAt
         };

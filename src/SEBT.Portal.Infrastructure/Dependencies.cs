@@ -32,6 +32,10 @@ public static class Dependencies
         // Feature Flag Services
         services.AddScoped<IFeatureFlagQueryService, Services.FeatureFlagQueryService>();
 
+        // Household identifier resolution (state-configurable preferred household ID type)
+        services.AddTransient<IHouseholdIdentifierResolver, HouseholdIdentifierResolver>();
+        services.AddSingleton<IIdentifierHasher, IdentifierHasher>();
+
         return services;
     }
 
@@ -91,6 +95,10 @@ public static class Dependencies
             .BindConfiguration(OtpRateLimitSettings.SectionName);
         services.AddOptionsWithValidateOnStart<JwtSettings>()
             .BindConfiguration(JwtSettings.SectionName);
+        services.AddOptions<StateHouseholdIdSettings>()
+            .BindConfiguration(StateHouseholdIdSettings.SectionName);
+        services.AddOptionsWithValidateOnStart<IdentifierHasherSettings>()
+            .BindConfiguration(IdentifierHasherSettings.SectionName);
         services.AddSingleton<IValidateOptions<IdProofingRequirementsSettings>, IdProofingRequirementsSettingsValidator>();
         services.AddOptionsWithValidateOnStart<IdProofingRequirementsSettings>()
             .BindConfiguration(IdProofingRequirementsSettings.SectionName);

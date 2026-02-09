@@ -153,11 +153,17 @@ cp .env.example .env
 ```
 
 Available environment variables:
+
+**Database (for Docker Compose):**
 - `MSSQL_SA_PASSWORD` - SQL Server SA password
 - `MSSQL_DATABASE` - Database name
 - `MSSQL_USER` - Database user
 - `MSSQL_SERVER` - Server hostname (for local)
 - `MSSQL_PORT` - Server port
+
+**API**
+- `JWTSETTINGS__SECRETKEY` - Secret key for JWT token signing. Must be at least 32 characters.
+- `IDENTIFIERHASHER__SECRETKEY` - Secret key for HMAC-SHA256 hashing of Household Identifiers as needed. Must be at least 32 characters.
 
 ### Database Migrations
 

@@ -1,9 +1,12 @@
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Options;
+using SEBT.Portal.Core.AppSettings;
 using SEBT.Portal.Core.Models.Auth;
+using SEBT.Portal.Core.Services;
 using SEBT.Portal.Infrastructure.Data;
-using SEBT.Portal.Infrastructure.Data.Entities;
 using SEBT.Portal.Infrastructure.Helpers;
 using SEBT.Portal.Infrastructure.Repositories;
+using SEBT.Portal.Infrastructure.Services;
 
 namespace SEBT.Portal.Tests.Unit.Repositories;
 
@@ -11,6 +14,8 @@ namespace SEBT.Portal.Tests.Unit.Repositories;
 public class DatabaseUserRepositoryTests : IClassFixture<SqlServerTestFixture>
 {
     private readonly SqlServerTestFixture _fixture;
+    private static readonly IIdentifierHasher TestHasher = new IdentifierHasher(
+        Options.Create(new IdentifierHasherSettings { SecretKey = "TestKeyMustBeAtLeast32CharactersLong!!" }));
 
     public DatabaseUserRepositoryTests(SqlServerTestFixture fixture)
     {
@@ -22,12 +27,15 @@ public class DatabaseUserRepositoryTests : IClassFixture<SqlServerTestFixture>
         return _fixture.CreateContext();
     }
 
+    private static DatabaseUserRepository CreateRepository(PortalDbContext context) =>
+        new(context, TestHasher);
+
     [Fact]
     public async Task GetUserByEmailAsync_WhenUserExists_ShouldReturnUser()
     {
         // Arrange
         using var context = CreateContext();
-        var repository = new DatabaseUserRepository(context);
+        var repository = CreateRepository(context);
 
         var entity = UserFactory.CreateUserEntity(e =>
         {
@@ -51,7 +59,7 @@ public class DatabaseUserRepositoryTests : IClassFixture<SqlServerTestFixture>
     {
         // Arrange
         using var context = CreateContext();
-        var repository = new DatabaseUserRepository(context);
+        var repository = CreateRepository(context);
 
         // Act
         var result = await repository.GetUserByEmailAsync("nonexistent@example.com");
@@ -65,7 +73,7 @@ public class DatabaseUserRepositoryTests : IClassFixture<SqlServerTestFixture>
     {
         // Arrange
         using var context = CreateContext();
-        var repository = new DatabaseUserRepository(context);
+        var repository = CreateRepository(context);
 
         var testEmail = $"test-{Guid.NewGuid()}@example.com";
         var entity = UserFactory.CreateUserEntity(e =>
@@ -96,7 +104,7 @@ public class DatabaseUserRepositoryTests : IClassFixture<SqlServerTestFixture>
     {
         // Arrange
         using var context = CreateContext();
-        var repository = new DatabaseUserRepository(context);
+        var repository = CreateRepository(context);
 
         // Act
         var result = await repository.GetUserByEmailAsync(null!);
@@ -110,7 +118,7 @@ public class DatabaseUserRepositoryTests : IClassFixture<SqlServerTestFixture>
     {
         // Arrange
         using var context = CreateContext();
-        var repository = new DatabaseUserRepository(context);
+        var repository = CreateRepository(context);
 
         // Act
         var result = await repository.GetUserByEmailAsync("   ");
@@ -124,7 +132,7 @@ public class DatabaseUserRepositoryTests : IClassFixture<SqlServerTestFixture>
     {
         // Arrange
         using var context = CreateContext();
-        var repository = new DatabaseUserRepository(context);
+        var repository = CreateRepository(context);
 
         var uniqueEmail = $"newuser-{Guid.NewGuid()}@example.com";
         var user = new User
@@ -155,7 +163,7 @@ public class DatabaseUserRepositoryTests : IClassFixture<SqlServerTestFixture>
     {
         // Arrange
         using var context = CreateContext();
-        var repository = new DatabaseUserRepository(context);
+        var repository = CreateRepository(context);
 
         var uniqueId = Guid.NewGuid();
         var user = UserFactory.CreateUserWithEmail($"USER-{uniqueId}@EXAMPLE.COM", u =>
@@ -178,7 +186,7 @@ public class DatabaseUserRepositoryTests : IClassFixture<SqlServerTestFixture>
     {
         // Arrange
         using var context = CreateContext();
-        var repository = new DatabaseUserRepository(context);
+        var repository = CreateRepository(context);
 
         // Act & Assert
         await Assert.ThrowsAsync<ArgumentNullException>(() => repository.CreateUserAsync(null!, CancellationToken.None));
@@ -189,7 +197,7 @@ public class DatabaseUserRepositoryTests : IClassFixture<SqlServerTestFixture>
     {
         // Arrange
         using var context = CreateContext();
-        var repository = new DatabaseUserRepository(context);
+        var repository = CreateRepository(context);
 
         var user = UserFactory.CreateUserWithEmail("", u =>
         {
@@ -205,7 +213,7 @@ public class DatabaseUserRepositoryTests : IClassFixture<SqlServerTestFixture>
     {
         // Arrange
         using var context = CreateContext();
-        var repository = new DatabaseUserRepository(context);
+        var repository = CreateRepository(context);
 
         var uniqueEmail = $"update-{Guid.NewGuid()}@example.com";
         var entity = UserFactory.CreateUserEntity(e =>
@@ -246,7 +254,7 @@ public class DatabaseUserRepositoryTests : IClassFixture<SqlServerTestFixture>
     {
         // Arrange
         using var context = CreateContext();
-        var repository = new DatabaseUserRepository(context);
+        var repository = CreateRepository(context);
 
         var uniqueEmail = $"timestamp-{Guid.NewGuid()}@example.com";
         var originalTime = DateTime.UtcNow.AddMinutes(-5);
@@ -286,7 +294,7 @@ public class DatabaseUserRepositoryTests : IClassFixture<SqlServerTestFixture>
     {
         // Arrange
         using var context = CreateContext();
-        var repository = new DatabaseUserRepository(context);
+        var repository = CreateRepository(context);
 
         var user = UserFactory.CreateUserWithEmail("nonexistent@example.com", u =>
         {
@@ -305,7 +313,7 @@ public class DatabaseUserRepositoryTests : IClassFixture<SqlServerTestFixture>
     {
         // Arrange
         using var context = CreateContext();
-        var repository = new DatabaseUserRepository(context);
+        var repository = CreateRepository(context);
 
         // Act & Assert
         await Assert.ThrowsAsync<ArgumentNullException>(() => repository.UpdateUserAsync(null!, CancellationToken.None));
@@ -316,7 +324,7 @@ public class DatabaseUserRepositoryTests : IClassFixture<SqlServerTestFixture>
     {
         // Arrange
         using var context = CreateContext();
-        var repository = new DatabaseUserRepository(context);
+        var repository = CreateRepository(context);
 
         var uniqueId = Guid.NewGuid();
         var baseEmail = $"case-{uniqueId}@example.com";
@@ -352,7 +360,7 @@ public class DatabaseUserRepositoryTests : IClassFixture<SqlServerTestFixture>
     {
         // Arrange
         using var context = CreateContext();
-        var repository = new DatabaseUserRepository(context);
+        var repository = CreateRepository(context);
 
         var originalEmail = $"original-{Guid.NewGuid()}@example.com";
         var newEmail = $"new-{Guid.NewGuid()}@example.com";
@@ -389,7 +397,7 @@ public class DatabaseUserRepositoryTests : IClassFixture<SqlServerTestFixture>
     {
         // Arrange
         using var context = CreateContext();
-        var repository = new DatabaseUserRepository(context);
+        var repository = CreateRepository(context);
 
         var existingEmail = $"existing-{Guid.NewGuid()}@example.com";
         var entity1 = UserFactory.CreateUserEntity(e =>
@@ -423,11 +431,49 @@ public class DatabaseUserRepositoryTests : IClassFixture<SqlServerTestFixture>
     }
 
     [Fact]
+    public async Task UpdateUserAsync_WhenUserHasSsn_ShouldStoreSsnAsHash()
+    {
+        // Arrange
+        using var context = CreateContext();
+        var repository = CreateRepository(context);
+
+        var uniqueEmail = $"ssn-update-{Guid.NewGuid()}@example.com";
+        var entity = UserFactory.CreateUserEntity(e =>
+        {
+            e.Email = uniqueEmail;
+            e.IdProofingStatus = (int)IdProofingStatus.NotStarted;
+        });
+        context.Users.Add(entity);
+        await context.SaveChangesAsync();
+
+        var user = UserFactory.CreateUserWithEmail(uniqueEmail, u =>
+        {
+            u.IdProofingStatus = IdProofingStatus.Completed;
+            u.Ssn = "123-45-6789";
+        });
+        var idProperty = typeof(User).GetProperty(nameof(User.Id));
+        var createdAtProperty = typeof(User).GetProperty(nameof(User.CreatedAt));
+        idProperty?.SetValue(user, entity.Id);
+        createdAtProperty?.SetValue(user, entity.CreatedAt);
+
+        // Act
+        await repository.UpdateUserAsync(user, CancellationToken.None);
+
+        // Assert - SSN stored as HMAC-SHA256 hash, not plaintext
+        var updated = await context.Users.FirstOrDefaultAsync(u => u.Email == uniqueEmail);
+        Assert.NotNull(updated);
+        Assert.NotNull(updated!.Ssn);
+        Assert.Equal(64, updated.Ssn.Length);
+        Assert.NotEqual("123-45-6789", updated.Ssn);
+        Assert.NotEqual("123456789", updated.Ssn);
+    }
+
+    [Fact]
     public async Task GetOrCreateUserAsync_WhenUserExists_ShouldReturnExistingUser()
     {
         // Arrange
         using var context = CreateContext();
-        var repository = new DatabaseUserRepository(context);
+        var repository = CreateRepository(context);
 
         var uniqueEmail = $"existing-{Guid.NewGuid()}@example.com";
         var entity = UserFactory.CreateUserEntity(e =>
@@ -460,7 +506,7 @@ public class DatabaseUserRepositoryTests : IClassFixture<SqlServerTestFixture>
     {
         // Arrange
         using var context = CreateContext();
-        var repository = new DatabaseUserRepository(context);
+        var repository = CreateRepository(context);
 
         var uniqueEmail = $"newuser-{Guid.NewGuid()}@example.com";
 
@@ -485,7 +531,7 @@ public class DatabaseUserRepositoryTests : IClassFixture<SqlServerTestFixture>
     {
         // Arrange
         using var context = CreateContext();
-        var repository = new DatabaseUserRepository(context);
+        var repository = CreateRepository(context);
 
         var uniqueId = Guid.NewGuid();
         var mixedCaseEmail = $"MIXED-{uniqueId}@CASE.COM";
@@ -509,7 +555,7 @@ public class DatabaseUserRepositoryTests : IClassFixture<SqlServerTestFixture>
     {
         // Arrange
         using var context = CreateContext();
-        var repository = new DatabaseUserRepository(context);
+        var repository = CreateRepository(context);
 
         // Act & Assert
         await Assert.ThrowsAsync<ArgumentException>(() => repository.GetOrCreateUserAsync(null!, CancellationToken.None));
@@ -520,7 +566,7 @@ public class DatabaseUserRepositoryTests : IClassFixture<SqlServerTestFixture>
     {
         // Arrange
         using var context = CreateContext();
-        var repository = new DatabaseUserRepository(context);
+        var repository = CreateRepository(context);
 
         // Act & Assert
         await Assert.ThrowsAsync<ArgumentException>(() => repository.GetOrCreateUserAsync("   ", CancellationToken.None));
@@ -531,7 +577,7 @@ public class DatabaseUserRepositoryTests : IClassFixture<SqlServerTestFixture>
     {
         // Arrange
         using var context = CreateContext();
-        var repository = new DatabaseUserRepository(context);
+        var repository = CreateRepository(context);
 
         var uniqueEmail = $"session-{Guid.NewGuid()}@example.com";
         var sessionId = $"session-{Guid.NewGuid()}";
@@ -559,7 +605,7 @@ public class DatabaseUserRepositoryTests : IClassFixture<SqlServerTestFixture>
     {
         // Arrange
         using var context = CreateContext();
-        var repository = new DatabaseUserRepository(context);
+        var repository = CreateRepository(context);
 
         // Act
         var result = await repository.GetUserBySessionIdAsync("nonexistent-session");
@@ -573,7 +619,7 @@ public class DatabaseUserRepositoryTests : IClassFixture<SqlServerTestFixture>
     {
         // Arrange
         using var context = CreateContext();
-        var repository = new DatabaseUserRepository(context);
+        var repository = CreateRepository(context);
 
         // Act
         var result = await repository.GetUserBySessionIdAsync(null!);
@@ -587,7 +633,7 @@ public class DatabaseUserRepositoryTests : IClassFixture<SqlServerTestFixture>
     {
         // Arrange
         using var context = CreateContext();
-        var repository = new DatabaseUserRepository(context);
+        var repository = CreateRepository(context);
 
         // Act
         var result = await repository.GetUserBySessionIdAsync("   ");
@@ -601,7 +647,7 @@ public class DatabaseUserRepositoryTests : IClassFixture<SqlServerTestFixture>
     {
         // Arrange
         using var context = CreateContext();
-        var repository = new DatabaseUserRepository(context);
+        var repository = CreateRepository(context);
 
         var uniqueId1 = Guid.NewGuid();
         var uniqueId2 = Guid.NewGuid();
@@ -641,7 +687,7 @@ public class DatabaseUserRepositoryTests : IClassFixture<SqlServerTestFixture>
     {
         // Arrange
         using var context = CreateContext();
-        var repository = new DatabaseUserRepository(context);
+        var repository = CreateRepository(context);
 
         var uniqueEmail = $"nosession-{Guid.NewGuid()}@example.com";
         var entity = UserFactory.CreateUserEntity(e =>
@@ -665,7 +711,7 @@ public class DatabaseUserRepositoryTests : IClassFixture<SqlServerTestFixture>
     {
         // Arrange
         using var context = CreateContext();
-        var repository = new DatabaseUserRepository(context);
+        var repository = CreateRepository(context);
 
         var uniqueEmail = $"mapping-{Guid.NewGuid()}@example.com";
         var completedAt = DateTime.UtcNow.AddDays(-1);
@@ -705,11 +751,41 @@ public class DatabaseUserRepositoryTests : IClassFixture<SqlServerTestFixture>
     }
 
     [Fact]
+    public async Task CreateUserAsync_WhenUserHasIdentifierFields_ShouldStoreSsnAsHashAndOthersAsPlaintext()
+    {
+        // Arrange
+        using var context = CreateContext();
+        var repository = CreateRepository(context);
+
+        var uniqueEmail = $"hash-{Guid.NewGuid()}@example.com";
+        var user = UserFactory.CreateUserWithEmail(uniqueEmail, u =>
+        {
+            u.Phone = "5551234567";
+            u.SnapId = "SNAP123";
+            u.TanfId = "TANF456";
+            u.Ssn = "123456789";
+        });
+
+        // Act
+        await repository.CreateUserAsync(user, CancellationToken.None);
+
+        // Assert - Phone, SnapId, TanfId stored as plaintext; SSN stored as HMAC-SHA256 hash
+        var stored = await context.Users.FirstOrDefaultAsync(u => u.Email == uniqueEmail);
+        Assert.NotNull(stored);
+        Assert.Equal("5551234567", stored!.Phone);
+        Assert.Equal("SNAP123", stored.SnapId);
+        Assert.Equal("TANF456", stored.TanfId);
+        Assert.NotNull(stored.Ssn);
+        Assert.Equal(64, stored.Ssn.Length);
+        Assert.NotEqual("123456789", stored.Ssn);
+    }
+
+    [Fact]
     public async Task CreateUserAsync_ShouldPreserveAllUserProperties()
     {
         // Arrange
         using var context = CreateContext();
-        var repository = new DatabaseUserRepository(context);
+        var repository = CreateRepository(context);
 
         var uniqueEmail = $"fulluser-{Guid.NewGuid()}@example.com";
         var completedAt = DateTime.UtcNow.AddDays(-1);

@@ -61,4 +61,16 @@ public class UserEntity
     /// The date and time when the co-loaded status was last updated from the source system.
     /// </summary>
     public DateTime? CoLoadedLastUpdated { get; set; }
+
+    /// <summary>Phone number when used as household identifier.</summary>
+    public string? Phone { get; set; }
+
+    /// <summary>SNAP case/client ID when used as household identifier.</summary>
+    public string? SnapId { get; set; }
+
+    /// <summary>TANF case/client ID when used as household identifier.</summary>
+    public string? TanfId { get; set; }
+
+    /// <summary>SSN or last-4 when used as household identifier (per state policy).</summary>
+    public string? Ssn { get; set; }
 }

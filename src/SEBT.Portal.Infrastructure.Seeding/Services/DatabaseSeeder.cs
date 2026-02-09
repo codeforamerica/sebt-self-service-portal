@@ -68,12 +68,18 @@ public class DatabaseSeeder : Core.Services.IDatabaseSeeder
                 u.CoLoadedLastUpdated = now.AddDays(-5);
                 u.IdProofingCompletedAt = now.AddDays(-10);
                 u.IdProofingExpiresAt = now.AddDays(355);
+                u.Phone = "5551234567";
+                u.SnapId = "SNAP-CO-001";
+                u.TanfId = "TANF-CO-001";
+                u.Ssn = "123456789";
             }),
             UserFactory.CreateNonCoLoadedUser(u =>
             {
                 u.Email = "non-co-loaded@example.com";
                 u.IdProofingStatus = IdProofingStatus.InProgress;
                 u.IalLevel = UserIalLevel.None;
+                u.Phone = "5555551234";
+                u.SnapId = "SNAP-NCO-001";
             }),
             UserFactory.CreateNonCoLoadedUser(u =>
             {
@@ -160,6 +166,26 @@ public class DatabaseSeeder : Core.Services.IDatabaseSeeder
                             u.IdProofingCompletedAt = now.AddDays(DaysSinceIdProofingCompleted);
                             u.IdProofingExpiresAt = now.AddDays(DaysUntilIdProofingExpires);
                             u.CoLoadedLastUpdated = now.AddDays(DaysSinceCoLoadedUpdate);
+                            u.Phone = "5551234567";
+                            u.SnapId = "SNAP-CO-001";
+                            u.TanfId = "TANF-CO-001";
+                            u.Ssn = "123456789";
+                        });
+                    }
+                    else if (normalizedEmail == "verified@example.com")
+                    {
+                        user = UserFactory.CreateUserWithEmail(normalizedEmail, u =>
+                        {
+                            u.IdProofingStatus = IdProofingStatus.Completed;
+                            u.IalLevel = ialLevel;
+                            u.IdProofingCompletedAt = now.AddDays(DaysSinceIdProofingCompleted);
+                            u.IdProofingExpiresAt = now.AddDays(DaysUntilIdProofingExpires);
+                            u.IsCoLoaded = false;
+                            u.CoLoadedLastUpdated = null;
+                            u.Phone = "5559876543";
+                            u.SnapId = "SNAP-VER-001";
+                            u.TanfId = "TANF-VER-001";
+                            u.Ssn = "123456789";
                         });
                     }
                     else
@@ -270,6 +296,26 @@ public class DatabaseSeeder : Core.Services.IDatabaseSeeder
                             u.IdProofingCompletedAt = now.AddDays(DaysSinceIdProofingCompleted);
                             u.IdProofingExpiresAt = now.AddDays(DaysUntilIdProofingExpires);
                             u.CoLoadedLastUpdated = now.AddDays(DaysSinceCoLoadedUpdate);
+                            u.Phone = "5551234567";
+                            u.SnapId = "SNAP-CO-001";
+                            u.TanfId = "TANF-CO-001";
+                            u.Ssn = "123456789";
+                        });
+                    }
+                    else if (normalizedEmail == "verified@example.com")
+                    {
+                        user = UserFactory.CreateUserWithEmail(normalizedEmail, u =>
+                        {
+                            u.IdProofingStatus = IdProofingStatus.Completed;
+                            u.IalLevel = ialLevel;
+                            u.IdProofingCompletedAt = now.AddDays(DaysSinceIdProofingCompleted);
+                            u.IdProofingExpiresAt = now.AddDays(DaysUntilIdProofingExpires);
+                            u.IsCoLoaded = false;
+                            u.CoLoadedLastUpdated = null;
+                            u.Phone = "5559876543";
+                            u.SnapId = "SNAP-VER-001";
+                            u.TanfId = "TANF-VER-001";
+                            u.Ssn = "123456789";
                         });
                     }
                     else

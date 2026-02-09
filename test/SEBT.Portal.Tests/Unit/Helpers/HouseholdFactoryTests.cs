@@ -273,6 +273,18 @@ public class HouseholdFactoryTests
     }
 
     [Fact]
+    public void CreateHouseholdDataWithStatus_Unknown_ShouldNotHaveCaseNumber()
+    {
+        // Act
+        var household = HouseholdFactory.CreateHouseholdDataWithStatus(ApplicationStatus.Unknown);
+
+        // Assert
+        var app = household.Applications.First();
+        Assert.Null(app.CaseNumber);
+        Assert.Null(app.ApplicationNumber);
+    }
+
+    [Fact]
     public void CreateHouseholdDataWithStatus_Pending_ShouldNotHaveCaseNumber()
     {
         // Act

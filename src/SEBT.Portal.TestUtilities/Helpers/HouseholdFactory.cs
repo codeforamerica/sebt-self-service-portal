@@ -6,7 +6,7 @@ namespace SEBT.Portal.TestUtilities.Helpers;
 
 /// <summary>
 /// Factory for creating HouseholdData instances using Bogus for generating fake data.
-/// Used for seeding the MockHouseholdRepository with test scenarios.
+/// Used for unit tests and by MockHouseholdRepository for development mock data.
 /// See https://github.com/bchavez/Bogus for more information
 /// </summary>
 public static class HouseholdFactory
@@ -114,7 +114,6 @@ public static class HouseholdFactory
         var application = new Application
         {
             ApplicationStatus = status,
-            IssuanceType = faker.PickRandom<IssuanceType>(),
             Children = GenerateChildren(faker.Random.Int(0, 4))
         };
 

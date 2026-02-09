@@ -14,16 +14,18 @@ namespace SEBT.Portal.Infrastructure.Services;
 public class DataSeeder : IDataSeeder
 {
     private readonly PortalDbContext _dbContext;
+    private readonly IIdentifierHasher _identifierHasher;
 
-    public DataSeeder(PortalDbContext dbContext)
+    public DataSeeder(PortalDbContext dbContext, IIdentifierHasher identifierHasher)
     {
         _dbContext = dbContext ?? throw new ArgumentNullException(nameof(dbContext));
+        _identifierHasher = identifierHasher ?? throw new ArgumentNullException(nameof(identifierHasher));
     }
 
     /// <summary>
     /// Maps a User domain model to a UserEntity for database persistence.
     /// </summary>
-    private static UserEntity MapToEntity(User user)
+    private UserEntity MapToEntity(User user)
     {
         ArgumentNullException.ThrowIfNull(user);
         ArgumentNullException.ThrowIfNull(user.Email);
@@ -40,6 +42,10 @@ public class DataSeeder : IDataSeeder
             IdProofingExpiresAt = user.IdProofingExpiresAt,
             IsCoLoaded = user.IsCoLoaded,
             CoLoadedLastUpdated = user.CoLoadedLastUpdated,
+            Phone = user.Phone,
+            SnapId = user.SnapId,
+            TanfId = user.TanfId,
+            Ssn = _identifierHasher.HashForStorage(user.Ssn),
             CreatedAt = user.CreatedAt,
             UpdatedAt = user.UpdatedAt
         };
@@ -88,7 +94,7 @@ public class DataSeeder : IDataSeeder
             return;
         }
 
-        var entities = usersList.Select(MapToEntity).ToList();
+        var entities = usersList.Select(u => MapToEntity(u)).ToList();
         _dbContext.Users.AddRange(entities);
 
         try
@@ -170,7 +176,7 @@ public class DataSeeder : IDataSeeder
             return;
         }
 
-        var entities = usersList.Select(MapToEntity).ToList();
+        var entities = usersList.Select(u => MapToEntity(u)).ToList();
         _dbContext.Users.AddRange(entities);
 
         try

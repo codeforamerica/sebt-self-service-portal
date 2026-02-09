@@ -9,6 +9,7 @@
     <ItemGroup>
       <ProjectReference Include="../SEBT.Portal.Kernel/SEBT.Portal.Kernel.csproj" />
       <ProjectReference Include="..\SEBT.Portal.Core\SEBT.Portal.Core.csproj" />
+      <ProjectReference Include="..\SEBT.Portal.Infrastructure.Seeding\SEBT.Portal.Infrastructure.Seeding.csproj" />
       <ProjectReference Include="..\SEBT.Portal.TestUtilities\SEBT.Portal.TestUtilities.csproj" />
     </ItemGroup>
 

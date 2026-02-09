@@ -43,13 +43,18 @@ try
         .AddEnvironmentVariables()
         .Build();
 
-    // Build host with services
     var host = Host.CreateDefaultBuilder()
+        .ConfigureAppConfiguration((_, config) =>
+        {
+            config.Sources.Clear();
+            config.AddConfiguration(configuration);
+        })
         .ConfigureServices((context, services) =>
         {
+            services.AddPortalInfrastructureServices();
+            services.AddPortalInfrastructureAppSettings();
             services.AddPortalDbContext(configuration);
             services.AddPortalInfrastructureRepositories();
-            // Register IDatabaseSeeder from Seeding project
             services.AddScoped<IDatabaseSeeder>(sp =>
             {
                 var dataSeeder = sp.GetRequiredService<IDataSeeder>();

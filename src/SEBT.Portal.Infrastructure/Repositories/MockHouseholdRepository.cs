@@ -27,39 +27,55 @@ public class MockHouseholdRepository : IHouseholdRepository
         SeedMockData();
     }
 
-    public Task<HouseholdData?> GetHouseholdByEmailAsync(
-        string email,
+    public Task<HouseholdData?> GetHouseholdByIdentifierAsync(
+        HouseholdIdentifier identifier,
         PiiVisibility piiVisibility,
         CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(piiVisibility);
         cancellationToken.ThrowIfCancellationRequested();
 
-        if (string.IsNullOrWhiteSpace(email))
+        if (string.IsNullOrWhiteSpace(identifier.Value))
         {
             return Task.FromResult<HouseholdData?>(null);
         }
 
-        var normalizedEmail = EmailNormalizer.Normalize(email);
+        // Mock data is keyed by email only; other ID types (Phone, SNAP ID, etc.) can be supported when backend data is available
+        if (identifier.Type != PreferredHouseholdIdType.Email)
+        {
+            _logger.LogInformation(
+                "Mock household lookup by {Type} not supported; only Email is keyed in mock data",
+                identifier.Type);
+            return Task.FromResult<HouseholdData?>(null);
+        }
+
+        var normalizedEmail = EmailNormalizer.Normalize(identifier.Value);
         _households.TryGetValue(normalizedEmail, out var household);
 
         if (household == null)
         {
-            _logger.LogInformation("Mock household not found for email {Email}", normalizedEmail);
+            _logger.LogInformation("Mock household not found for identifier {Type}={Value}", identifier.Type, normalizedEmail);
             return Task.FromResult<HouseholdData?>(null);
         }
 
-        // Create a copy to avoid modifying the original
         var result = CreateCopy(household, piiVisibility);
-
         _logger.LogDebug(
-            "Returning mock household data for email {Email}, PII visibility: Address={IncludeAddress}, Email={IncludeEmail}, Phone={IncludePhone}",
+            "Returning mock household data for identifier {Type}={Value}, PII visibility: Address={IncludeAddress}, Email={IncludeEmail}, Phone={IncludePhone}",
+            identifier.Type,
             normalizedEmail,
             piiVisibility.IncludeAddress,
             piiVisibility.IncludeEmail,
             piiVisibility.IncludePhone);
 
         return Task.FromResult<HouseholdData?>(result);
+    }
+
+    public Task<HouseholdData?> GetHouseholdByEmailAsync(
+        string email,
+        PiiVisibility piiVisibility,
+        CancellationToken cancellationToken = default)
+    {
+        return GetHouseholdByIdentifierAsync(HouseholdIdentifier.Email(email), piiVisibility, cancellationToken);
     }
 
     public Task UpsertHouseholdAsync(
@@ -103,7 +119,6 @@ public class MockHouseholdRepository : IHouseholdRepository
             var app = h.Applications.FirstOrDefault();
             if (app != null)
             {
-                app.IssuanceType = IssuanceType.SnapEbtCard;
                 app.BenefitIssueDate = now.AddDays(-20);
                 app.BenefitExpirationDate = now.AddDays(70);
                 app.Last4DigitsOfCard = "0000";
@@ -134,7 +149,6 @@ public class MockHouseholdRepository : IHouseholdRepository
             var app = h.Applications.FirstOrDefault();
             if (app != null)
             {
-                app.IssuanceType = IssuanceType.SnapEbtCard;
                 app.BenefitIssueDate = now.AddDays(-30);
                 app.BenefitExpirationDate = now.AddDays(60);
                 app.Last4DigitsOfCard = "1234"; // Specific value for test
@@ -168,7 +182,6 @@ public class MockHouseholdRepository : IHouseholdRepository
             var app = h.Applications.FirstOrDefault();
             if (app != null)
             {
-                app.IssuanceType = IssuanceType.SnapEbtCard;
                 // Set specific child name for test
                 app.Children = new List<Child>
                 {
@@ -195,7 +208,6 @@ public class MockHouseholdRepository : IHouseholdRepository
             var app = h.Applications.FirstOrDefault();
             if (app != null)
             {
-                app.IssuanceType = IssuanceType.Unknown;
                 app.Children = new List<Child>(); // No children for denied
             }
         });
@@ -210,7 +222,6 @@ public class MockHouseholdRepository : IHouseholdRepository
             var app = h.Applications.FirstOrDefault();
             if (app != null)
             {
-                app.IssuanceType = IssuanceType.SnapEbtCard;
                 // Use Bogus to generate child name
                 var childFaker = new Faker<Child>()
                     .RuleFor(c => c.FirstName, f => f.Name.FirstName())
@@ -277,7 +288,6 @@ public class MockHouseholdRepository : IHouseholdRepository
             var app = h.Applications.FirstOrDefault();
             if (app != null)
             {
-                app.IssuanceType = IssuanceType.Unknown;
                 app.Children = new List<Child>(); // No children for cancelled
             }
         });
@@ -292,7 +302,6 @@ public class MockHouseholdRepository : IHouseholdRepository
             var app = h.Applications.FirstOrDefault();
             if (app != null)
             {
-                app.IssuanceType = IssuanceType.SummerEbt;
                 app.BenefitIssueDate = now.AddDays(-15);
                 app.BenefitExpirationDate = now.AddDays(75);
                 // Use Bogus to generate child name
@@ -313,7 +322,6 @@ public class MockHouseholdRepository : IHouseholdRepository
             var app = h.Applications.FirstOrDefault();
             if (app != null)
             {
-                app.IssuanceType = IssuanceType.TanfEbtCard;
                 app.BenefitIssueDate = now.AddDays(-45);
                 app.BenefitExpirationDate = now.AddDays(45);
                 // Set specific children names for test
@@ -338,7 +346,6 @@ public class MockHouseholdRepository : IHouseholdRepository
             var app = h.Applications.FirstOrDefault();
             if (app != null)
             {
-                app.IssuanceType = IssuanceType.SnapEbtCard;
                 app.Children = new List<Child>();
             }
         });
@@ -353,7 +360,6 @@ public class MockHouseholdRepository : IHouseholdRepository
             var app = h.Applications.FirstOrDefault();
             if (app != null)
             {
-                app.IssuanceType = IssuanceType.SnapEbtCard;
                 app.BenefitIssueDate = now.AddDays(-120);
                 app.BenefitExpirationDate = now.AddDays(-10); // Expired
                 // Use Bogus to generate child name
@@ -374,7 +380,6 @@ public class MockHouseholdRepository : IHouseholdRepository
             var app = h.Applications.FirstOrDefault();
             if (app != null)
             {
-                app.IssuanceType = IssuanceType.Unknown;
                 app.Children = new List<Child>();
             }
         });
@@ -382,19 +387,16 @@ public class MockHouseholdRepository : IHouseholdRepository
         unknown.UserProfile = new UserProfile { FirstName = "Unknown", MiddleName = null, LastName = "User" };
         _households["unknown@example.com"] = unknown;
 
-        // Scenario 12: Multiple applications (one approved, one pending)
-        var multipleApps = HouseholdFactory.CreateHouseholdData(h =>
+        // Scenario 12: Household with multiple applications (approved and pending)
+        var multipleApps = HouseholdFactory.CreateHouseholdDataWithStatus(ApplicationStatus.Approved, h =>
         {
             h.BenefitIssuanceType = BenefitIssuanceType.SnapEbtCard;
             var faker = new Faker();
-
-            // Approved application
             var approvedApp = new Application
             {
                 ApplicationNumber = $"APP-{now.AddDays(-30):yyyy-MM}-{faker.Random.Number(100000, 999999)}",
                 CaseNumber = $"CASE-{faker.Random.Number(100000, 999999)}",
                 ApplicationStatus = ApplicationStatus.Approved,
-                IssuanceType = IssuanceType.SnapEbtCard,
                 BenefitIssueDate = now.AddDays(-30),
                 BenefitExpirationDate = now.AddDays(60),
                 Last4DigitsOfCard = "5678",
@@ -409,12 +411,10 @@ public class MockHouseholdRepository : IHouseholdRepository
                 }
             };
 
-            // Pending application
             var pendingApp = new Application
             {
                 ApplicationNumber = $"APP-{now.AddDays(-10):yyyy-MM}-{faker.Random.Number(100000, 999999)}",
                 ApplicationStatus = ApplicationStatus.Pending,
-                IssuanceType = IssuanceType.SnapEbtCard,
                 CardStatus = CardStatus.Requested,
                 CardRequestedAt = now.AddDays(-10),
                 Children = new List<Child>
@@ -476,7 +476,6 @@ public class MockHouseholdRepository : IHouseholdRepository
                 ApplicationNumber = a.ApplicationNumber,
                 CaseNumber = a.CaseNumber,
                 ApplicationStatus = a.ApplicationStatus,
-                IssuanceType = a.IssuanceType,
                 BenefitIssueDate = a.BenefitIssueDate,
                 BenefitExpirationDate = a.BenefitExpirationDate,
                 Last4DigitsOfCard = a.Last4DigitsOfCard,
@@ -485,6 +484,7 @@ public class MockHouseholdRepository : IHouseholdRepository
                 CardMailedAt = a.CardMailedAt,
                 CardActivatedAt = a.CardActivatedAt,
                 CardDeactivatedAt = a.CardDeactivatedAt,
+                IssuanceType = a.IssuanceType,
                 Children = a.Children.Select(c => new Child
                 {
                     CaseNumber = c.CaseNumber,
