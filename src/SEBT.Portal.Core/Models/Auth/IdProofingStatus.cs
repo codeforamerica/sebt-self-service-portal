@@ -1,7 +1,8 @@
 namespace SEBT.Portal.Core.Models.Auth;
 
 /// <summary>
-/// Represents the status of ID proofing for a user.
+/// Workflow state of ID proofing for a user.
+/// Separate from IAL (Identity Assurance Level) - status tracks process state, IAL tracks assurance achieved.
 /// </summary>
 public enum IdProofingStatus
 {

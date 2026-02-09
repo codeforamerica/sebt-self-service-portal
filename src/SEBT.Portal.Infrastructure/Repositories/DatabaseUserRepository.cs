@@ -80,6 +80,7 @@ public class DatabaseUserRepository(PortalDbContext dbContext, IIdentifierHasher
 
         // Update properties
         entity.IdProofingStatus = (int)user.IdProofingStatus;
+        entity.IalLevel = (int)user.IalLevel;
         entity.IdProofingSessionId = user.IdProofingSessionId;
         entity.IdProofingCompletedAt = user.IdProofingCompletedAt;
         entity.IdProofingExpiresAt = user.IdProofingExpiresAt;
@@ -131,6 +132,7 @@ public class DatabaseUserRepository(PortalDbContext dbContext, IIdentifierHasher
         {
             Email = normalizedEmail,
             IdProofingStatus = (int)IdProofingStatus.NotStarted,
+            IalLevel = (int)UserIalLevel.None,
             IsCoLoaded = false,
             CreatedAt = DateTime.UtcNow,
             UpdatedAt = DateTime.UtcNow
@@ -198,6 +200,7 @@ public class DatabaseUserRepository(PortalDbContext dbContext, IIdentifierHasher
             Id = entity.Id,
             Email = entity.Email,
             IdProofingStatus = (IdProofingStatus)entity.IdProofingStatus,
+            IalLevel = (UserIalLevel)entity.IalLevel,
             IdProofingSessionId = entity.IdProofingSessionId,
             IdProofingCompletedAt = entity.IdProofingCompletedAt,
             IdProofingExpiresAt = entity.IdProofingExpiresAt,
@@ -219,6 +222,7 @@ public class DatabaseUserRepository(PortalDbContext dbContext, IIdentifierHasher
             Id = user.Id, // Will be 0 for new users, set by database
             Email = user.Email, // Will be normalized in calling method
             IdProofingStatus = (int)user.IdProofingStatus,
+            IalLevel = (int)user.IalLevel,
             IdProofingSessionId = user.IdProofingSessionId,
             IdProofingCompletedAt = user.IdProofingCompletedAt,
             IdProofingExpiresAt = user.IdProofingExpiresAt,

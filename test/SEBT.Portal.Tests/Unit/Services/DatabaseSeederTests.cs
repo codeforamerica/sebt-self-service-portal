@@ -209,6 +209,7 @@ public class DatabaseSeederTests : IClassFixture<SqlServerTestFixture>
         Assert.NotNull(coLoadedUser);
         Assert.True(coLoadedUser!.IsCoLoaded);
         Assert.Equal((int)IdProofingStatus.Completed, coLoadedUser.IdProofingStatus);
+        Assert.Equal((int)UserIalLevel.IAL1plus, coLoadedUser.IalLevel);
         Assert.NotNull(coLoadedUser.CoLoadedLastUpdated);
         Assert.NotNull(coLoadedUser.IdProofingCompletedAt);
         Assert.NotNull(coLoadedUser.IdProofingExpiresAt);
@@ -219,6 +220,7 @@ public class DatabaseSeederTests : IClassFixture<SqlServerTestFixture>
         Assert.NotNull(nonCoLoadedUser);
         Assert.False(nonCoLoadedUser!.IsCoLoaded);
         Assert.Equal((int)IdProofingStatus.InProgress, nonCoLoadedUser.IdProofingStatus);
+        Assert.Equal((int)UserIalLevel.None, nonCoLoadedUser.IalLevel);
 
         // Check not-started user
         var notStartedUser = await context.Users
@@ -226,6 +228,7 @@ public class DatabaseSeederTests : IClassFixture<SqlServerTestFixture>
         Assert.NotNull(notStartedUser);
         Assert.False(notStartedUser!.IsCoLoaded);
         Assert.Equal((int)IdProofingStatus.NotStarted, notStartedUser.IdProofingStatus);
+        Assert.Equal((int)UserIalLevel.None, notStartedUser.IalLevel);
     }
 
     [Fact]
@@ -240,7 +243,7 @@ public class DatabaseSeederTests : IClassFixture<SqlServerTestFixture>
         var existingUser = UserEntityFactory.CreateUserEntity(e =>
         {
             e.Email = "co-loaded@example.com";
-            e.IdProofingStatus = (int)IdProofingStatus.NotStarted;
+            e.IalLevel = (int)UserIalLevel.None;
             e.IsCoLoaded = false;
         });
         context.Users.Add(existingUser);
@@ -579,7 +582,7 @@ public class DatabaseSeederTests : IClassFixture<SqlServerTestFixture>
         {
             Assert.NotEmpty(user.Email);
             Assert.Contains("@", user.Email);
-            Assert.InRange(user.IdProofingStatus, 0, 4); // Valid enum range
+            Assert.InRange(user.IalLevel, 0, 3); // Valid UserIalLevel range
             Assert.NotEqual(default(DateTime), user.CreatedAt);
             Assert.NotEqual(default(DateTime), user.UpdatedAt);
         }

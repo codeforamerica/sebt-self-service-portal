@@ -41,8 +41,16 @@ public class JwtTokenService : IJwtTokenService
             new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString()),
             new Claim(JwtRegisteredClaimNames.Iat, unixTimeSeconds.ToString(), ClaimValueTypes.Integer64),
             new Claim(JwtRegisteredClaimNames.Nbf, unixTimeSeconds.ToString(), ClaimValueTypes.Integer64),
-            // ID proofing claims
-            new Claim(JwtClaimTypes.IdProofingStatus, ((int)user.IdProofingStatus).ToString(), ClaimValueTypes.Integer32)
+            // Workflow state of ID proofing process
+            new Claim(JwtClaimTypes.IdProofingStatus, ((int)user.IdProofingStatus).ToString(), ClaimValueTypes.Integer32),
+            // The Users's current Identity Assurance Level (IAL)
+            new Claim(JwtClaimTypes.Ial, user.IalLevel switch
+            {
+                UserIalLevel.IAL1 => "1",
+                UserIalLevel.IAL1plus => "1plus",
+                UserIalLevel.IAL2 => "2",
+                _ => "0" // None
+            })
         };
 
         // Add optional ID proofing claims if available

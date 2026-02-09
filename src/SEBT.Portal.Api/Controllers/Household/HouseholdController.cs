@@ -20,7 +20,7 @@ public class HouseholdController : ControllerBase
     /// <summary>
     /// Retrieves household data for the authenticated user.
     /// The household identifier used for lookup is determined by state configuration (e.g. email, SNAP ID).
-    /// Address information is only included if ID verification has been completed.
+    /// PII data is only included when the user meets the ID proofing requirements configured for the state.
     /// </summary>
     /// <param name="queryHandler">The use case handler for retrieving household data.</param>
     /// <param name="cancellationToken">A token to monitor for cancellation requests.</param>

@@ -1,7 +1,7 @@
 namespace SEBT.Portal.Infrastructure.Data.Entities;
 
 /// <summary>
-/// Entity model for tracking user ID proofing status.
+/// Entity model for tracking user IAL level.
 /// </summary>
 public class UserEntity
 {
@@ -16,9 +16,15 @@ public class UserEntity
     public string Email { get; set; } = string.Empty;
 
     /// <summary>
-    /// The current ID proofing status for this user.
+    /// Workflow state of ID proofing (NotStarted, InProgress, Completed, Failed, Expired)
     /// </summary>
     public int IdProofingStatus { get; set; } = 0; // 0 = NotStarted
+
+    /// <summary>
+    /// The Identity Assurance Level (IAL) this user has achieved. Stored as int for enum
+    /// valid values: 0 = None, 1 = IAL1, 2 = IAL1plus, 3 = IAL2
+    /// </summary>
+    public int IalLevel { get; set; } = 0; // 0 = UserIalLevel.None
 
     /// <summary>
     /// The session ID from the ID proofing provider (e.g., Socure).

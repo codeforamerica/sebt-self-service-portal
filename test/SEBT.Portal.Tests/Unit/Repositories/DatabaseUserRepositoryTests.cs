@@ -40,7 +40,7 @@ public class DatabaseUserRepositoryTests : IClassFixture<SqlServerTestFixture>
         var entity = UserFactory.CreateUserEntity(e =>
         {
             e.Email = $"test-{Guid.NewGuid()}@example.com";
-            e.IdProofingStatus = (int)IdProofingStatus.Completed;
+            e.IalLevel = (int)UserIalLevel.IAL1plus;
         });
         context.Users.Add(entity);
         await context.SaveChangesAsync();
@@ -51,7 +51,7 @@ public class DatabaseUserRepositoryTests : IClassFixture<SqlServerTestFixture>
         // Assert
         Assert.NotNull(result);
         Assert.Equal(entity.Email, result!.Email);
-        Assert.Equal(IdProofingStatus.Completed, result.IdProofingStatus);
+        Assert.Equal(UserIalLevel.IAL1plus, result.IalLevel);
     }
 
     [Fact]
@@ -79,7 +79,7 @@ public class DatabaseUserRepositoryTests : IClassFixture<SqlServerTestFixture>
         var entity = UserFactory.CreateUserEntity(e =>
         {
             e.Email = testEmail.ToLowerInvariant(); // lowercase
-            e.IdProofingStatus = (int)IdProofingStatus.NotStarted;
+            e.IalLevel = (int)UserIalLevel.None;
         });
         context.Users.Add(entity);
         await context.SaveChangesAsync();
@@ -138,7 +138,7 @@ public class DatabaseUserRepositoryTests : IClassFixture<SqlServerTestFixture>
         var user = new User
         {
             Email = uniqueEmail,
-            IdProofingStatus = IdProofingStatus.InProgress,
+            IalLevel = UserIalLevel.IAL1,
             IdProofingSessionId = "session-123",
             IdProofingCompletedAt = null,
             IdProofingExpiresAt = null,
@@ -154,7 +154,7 @@ public class DatabaseUserRepositoryTests : IClassFixture<SqlServerTestFixture>
         var stored = await context.Users.FirstOrDefaultAsync(u => u.Email == normalizedEmail);
         Assert.NotNull(stored);
         Assert.Equal(normalizedEmail, stored!.Email);
-        Assert.Equal((int)IdProofingStatus.InProgress, stored.IdProofingStatus);
+        Assert.Equal((int)UserIalLevel.IAL1, stored.IalLevel);
         Assert.Equal("session-123", stored.IdProofingSessionId);
     }
 
@@ -168,7 +168,7 @@ public class DatabaseUserRepositoryTests : IClassFixture<SqlServerTestFixture>
         var uniqueId = Guid.NewGuid();
         var user = UserFactory.CreateUserWithEmail($"USER-{uniqueId}@EXAMPLE.COM", u =>
         {
-            u.IdProofingStatus = IdProofingStatus.NotStarted;
+            u.IalLevel = UserIalLevel.None;
         });
 
         // Act
@@ -201,7 +201,7 @@ public class DatabaseUserRepositoryTests : IClassFixture<SqlServerTestFixture>
 
         var user = UserFactory.CreateUserWithEmail("", u =>
         {
-            u.IdProofingStatus = IdProofingStatus.NotStarted;
+            u.IalLevel = UserIalLevel.None;
         });
 
         // Act & Assert
@@ -219,14 +219,14 @@ public class DatabaseUserRepositoryTests : IClassFixture<SqlServerTestFixture>
         var entity = UserFactory.CreateUserEntity(e =>
         {
             e.Email = uniqueEmail;
-            e.IdProofingStatus = (int)IdProofingStatus.NotStarted;
+            e.IalLevel = (int)UserIalLevel.None;
         });
         context.Users.Add(entity);
         await context.SaveChangesAsync();
 
         var user = UserFactory.CreateUserWithEmail(uniqueEmail, u =>
         {
-            u.IdProofingStatus = IdProofingStatus.Completed;
+            u.IalLevel = UserIalLevel.IAL1plus;
             u.IdProofingSessionId = "new-session-456";
             u.IdProofingCompletedAt = DateTime.UtcNow;
             u.IdProofingExpiresAt = DateTime.UtcNow.AddYears(1);
@@ -243,7 +243,7 @@ public class DatabaseUserRepositoryTests : IClassFixture<SqlServerTestFixture>
         // Assert
         var updated = await context.Users.FirstOrDefaultAsync(u => u.Email == uniqueEmail);
         Assert.NotNull(updated);
-        Assert.Equal((int)IdProofingStatus.Completed, updated!.IdProofingStatus);
+        Assert.Equal((int)UserIalLevel.IAL1plus, updated!.IalLevel);
         Assert.Equal("new-session-456", updated.IdProofingSessionId);
         Assert.NotNull(updated.IdProofingCompletedAt);
         Assert.NotNull(updated.IdProofingExpiresAt);
@@ -261,7 +261,7 @@ public class DatabaseUserRepositoryTests : IClassFixture<SqlServerTestFixture>
         var entity = UserFactory.CreateUserEntity(e =>
         {
             e.Email = uniqueEmail;
-            e.IdProofingStatus = (int)IdProofingStatus.NotStarted;
+            e.IalLevel = (int)UserIalLevel.None;
             e.CreatedAt = originalTime;
             e.UpdatedAt = originalTime;
         });
@@ -272,7 +272,7 @@ public class DatabaseUserRepositoryTests : IClassFixture<SqlServerTestFixture>
 
         var user = UserFactory.CreateUserWithEmail(uniqueEmail, u =>
         {
-            u.IdProofingStatus = IdProofingStatus.InProgress;
+            u.IalLevel = UserIalLevel.IAL1;
         });
         // Set init-only properties using reflection
         var idProperty = typeof(User).GetProperty(nameof(User.Id));
@@ -298,7 +298,7 @@ public class DatabaseUserRepositoryTests : IClassFixture<SqlServerTestFixture>
 
         var user = UserFactory.CreateUserWithEmail("nonexistent@example.com", u =>
         {
-            u.IdProofingStatus = IdProofingStatus.Completed;
+            u.IalLevel = UserIalLevel.IAL1plus;
         });
         // Set Id to a non-existent value
         var idProperty = typeof(User).GetProperty(nameof(User.Id));
@@ -331,14 +331,14 @@ public class DatabaseUserRepositoryTests : IClassFixture<SqlServerTestFixture>
         var entity = UserFactory.CreateUserEntity(e =>
         {
             e.Email = baseEmail;
-            e.IdProofingStatus = (int)IdProofingStatus.NotStarted;
+            e.IalLevel = (int)UserIalLevel.None;
         });
         context.Users.Add(entity);
         await context.SaveChangesAsync();
 
         var user = UserFactory.CreateUserWithEmail(baseEmail.ToUpperInvariant(), u =>
         {
-            u.IdProofingStatus = IdProofingStatus.Completed;
+            u.IalLevel = UserIalLevel.IAL1plus;
         });
         // Set init-only properties using reflection
         var idProperty = typeof(User).GetProperty(nameof(User.Id));
@@ -352,7 +352,7 @@ public class DatabaseUserRepositoryTests : IClassFixture<SqlServerTestFixture>
         // Assert
         var updated = await context.Users.FirstOrDefaultAsync(u => u.Email == baseEmail);
         Assert.NotNull(updated);
-        Assert.Equal((int)IdProofingStatus.Completed, updated!.IdProofingStatus);
+        Assert.Equal((int)UserIalLevel.IAL1plus, updated!.IalLevel);
     }
 
     [Fact]
@@ -367,14 +367,14 @@ public class DatabaseUserRepositoryTests : IClassFixture<SqlServerTestFixture>
         var entity = UserFactory.CreateUserEntity(e =>
         {
             e.Email = originalEmail;
-            e.IdProofingStatus = (int)IdProofingStatus.NotStarted;
+            e.IalLevel = (int)UserIalLevel.None;
         });
         context.Users.Add(entity);
         await context.SaveChangesAsync();
 
         var user = UserFactory.CreateUserWithEmail(newEmail, u =>
         {
-            u.IdProofingStatus = IdProofingStatus.Completed;
+            u.IalLevel = UserIalLevel.IAL1plus;
         });
         // Set init-only properties using reflection
         var idProperty = typeof(User).GetProperty(nameof(User.Id));
@@ -389,7 +389,7 @@ public class DatabaseUserRepositoryTests : IClassFixture<SqlServerTestFixture>
         var updated = await context.Users.FirstOrDefaultAsync(u => u.Id == entity.Id);
         Assert.NotNull(updated);
         Assert.Equal(newEmail.ToLowerInvariant(), updated!.Email);
-        Assert.Equal((int)IdProofingStatus.Completed, updated.IdProofingStatus);
+        Assert.Equal((int)UserIalLevel.IAL1plus, updated.IalLevel);
     }
 
     [Fact]
@@ -403,7 +403,7 @@ public class DatabaseUserRepositoryTests : IClassFixture<SqlServerTestFixture>
         var entity1 = UserFactory.CreateUserEntity(e =>
         {
             e.Email = existingEmail;
-            e.IdProofingStatus = (int)IdProofingStatus.NotStarted;
+            e.IalLevel = (int)UserIalLevel.None;
         });
         context.Users.Add(entity1);
 
@@ -411,14 +411,14 @@ public class DatabaseUserRepositoryTests : IClassFixture<SqlServerTestFixture>
         var entity2 = UserFactory.CreateUserEntity(e =>
         {
             e.Email = originalEmail;
-            e.IdProofingStatus = (int)IdProofingStatus.NotStarted;
+            e.IalLevel = (int)UserIalLevel.None;
         });
         context.Users.Add(entity2);
         await context.SaveChangesAsync();
 
         var user = UserFactory.CreateUserWithEmail(existingEmail, u =>
         {
-            u.IdProofingStatus = IdProofingStatus.Completed;
+            u.IalLevel = UserIalLevel.IAL1plus;
         });
         // Set init-only properties using reflection
         var idProperty = typeof(User).GetProperty(nameof(User.Id));
@@ -479,7 +479,7 @@ public class DatabaseUserRepositoryTests : IClassFixture<SqlServerTestFixture>
         var entity = UserFactory.CreateUserEntity(e =>
         {
             e.Email = uniqueEmail;
-            e.IdProofingStatus = (int)IdProofingStatus.Completed;
+            e.IalLevel = (int)UserIalLevel.IAL1plus;
             e.CreatedAt = DateTime.UtcNow.AddDays(-1);
             e.UpdatedAt = DateTime.UtcNow.AddDays(-1);
         });
@@ -493,7 +493,7 @@ public class DatabaseUserRepositoryTests : IClassFixture<SqlServerTestFixture>
         Assert.NotNull(result);
         Assert.False(isNewUser);
         Assert.Equal(uniqueEmail, result.Email);
-        Assert.Equal(IdProofingStatus.Completed, result.IdProofingStatus);
+        Assert.Equal(UserIalLevel.IAL1plus, result.IalLevel);
         Assert.Equal(entity.CreatedAt, result.CreatedAt);
 
         // Verify only one user exists with this email
@@ -517,7 +517,7 @@ public class DatabaseUserRepositoryTests : IClassFixture<SqlServerTestFixture>
         Assert.NotNull(result);
         Assert.True(isNewUser);
         Assert.Equal(uniqueEmail, result.Email);
-        Assert.Equal(IdProofingStatus.NotStarted, result.IdProofingStatus);
+        Assert.Equal(UserIalLevel.None, result.IalLevel);
         Assert.NotEqual(default(DateTime), result.CreatedAt);
         Assert.NotEqual(default(DateTime), result.UpdatedAt);
 
@@ -584,7 +584,7 @@ public class DatabaseUserRepositoryTests : IClassFixture<SqlServerTestFixture>
         var entity = UserFactory.CreateUserEntity(e =>
         {
             e.Email = uniqueEmail;
-            e.IdProofingStatus = (int)IdProofingStatus.InProgress;
+            e.IalLevel = (int)UserIalLevel.IAL1;
             e.IdProofingSessionId = sessionId;
         });
         context.Users.Add(entity);
@@ -597,7 +597,7 @@ public class DatabaseUserRepositoryTests : IClassFixture<SqlServerTestFixture>
         Assert.NotNull(result);
         Assert.Equal(uniqueEmail, result!.Email);
         Assert.Equal(sessionId, result.IdProofingSessionId);
-        Assert.Equal(IdProofingStatus.InProgress, result.IdProofingStatus);
+        Assert.Equal(UserIalLevel.IAL1, result.IalLevel);
     }
 
     [Fact]
@@ -659,13 +659,13 @@ public class DatabaseUserRepositoryTests : IClassFixture<SqlServerTestFixture>
         var entity1 = UserFactory.CreateUserEntity(e =>
         {
             e.Email = email1;
-            e.IdProofingStatus = (int)IdProofingStatus.InProgress;
+            e.IalLevel = (int)UserIalLevel.IAL1;
             e.IdProofingSessionId = session1;
         });
         var entity2 = UserFactory.CreateUserEntity(e =>
         {
             e.Email = email2;
-            e.IdProofingStatus = (int)IdProofingStatus.InProgress;
+            e.IalLevel = (int)UserIalLevel.IAL1;
             e.IdProofingSessionId = session2;
         });
         context.Users.AddRange(entity1, entity2);
@@ -693,7 +693,7 @@ public class DatabaseUserRepositoryTests : IClassFixture<SqlServerTestFixture>
         var entity = UserFactory.CreateUserEntity(e =>
         {
             e.Email = uniqueEmail;
-            e.IdProofingStatus = (int)IdProofingStatus.NotStarted;
+            e.IalLevel = (int)UserIalLevel.None;
             e.IdProofingSessionId = null;
         });
         context.Users.Add(entity);
@@ -723,7 +723,7 @@ public class DatabaseUserRepositoryTests : IClassFixture<SqlServerTestFixture>
         var entity = UserFactory.CreateCoLoadedUserEntity(e =>
         {
             e.Email = uniqueEmail;
-            e.IdProofingStatus = (int)IdProofingStatus.Completed;
+            e.IalLevel = (int)UserIalLevel.IAL1plus;
             e.IdProofingSessionId = "test-session";
             e.IdProofingCompletedAt = completedAt;
             e.IdProofingExpiresAt = expiresAt;
@@ -740,7 +740,7 @@ public class DatabaseUserRepositoryTests : IClassFixture<SqlServerTestFixture>
         // Assert
         Assert.NotNull(result);
         Assert.Equal(uniqueEmail, result!.Email);
-        Assert.Equal(IdProofingStatus.Completed, result.IdProofingStatus);
+        Assert.Equal(UserIalLevel.IAL1plus, result.IalLevel);
         Assert.Equal("test-session", result.IdProofingSessionId);
         Assert.Equal(completedAt, result.IdProofingCompletedAt);
         Assert.Equal(expiresAt, result.IdProofingExpiresAt);
@@ -794,7 +794,7 @@ public class DatabaseUserRepositoryTests : IClassFixture<SqlServerTestFixture>
 
         var user = UserFactory.CreateUserWithEmail(uniqueEmail, u =>
         {
-            u.IdProofingStatus = IdProofingStatus.Failed;
+            u.IalLevel = UserIalLevel.None;
             u.IdProofingSessionId = "full-session";
             u.IdProofingCompletedAt = completedAt;
             u.IdProofingExpiresAt = expiresAt;
@@ -812,7 +812,7 @@ public class DatabaseUserRepositoryTests : IClassFixture<SqlServerTestFixture>
         // Assert
         var stored = await context.Users.FirstOrDefaultAsync(u => u.Email == uniqueEmail);
         Assert.NotNull(stored);
-        Assert.Equal((int)IdProofingStatus.Failed, stored!.IdProofingStatus);
+        Assert.Equal((int)UserIalLevel.None, stored!.IalLevel);
         Assert.Equal("full-session", stored.IdProofingSessionId);
         Assert.Equal(completedAt, stored.IdProofingCompletedAt);
         Assert.Equal(expiresAt, stored.IdProofingExpiresAt);

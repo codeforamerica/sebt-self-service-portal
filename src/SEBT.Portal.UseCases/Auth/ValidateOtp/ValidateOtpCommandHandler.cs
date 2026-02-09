@@ -63,17 +63,17 @@ namespace SEBT.Portal.UseCases.Auth
                 if (isNewUser)
                 {
                     logger.LogInformation(
-                        "New user authenticated via OTP for email {Email} with ID proofing status {Status} and co-loaded status {IsCoLoaded}",
+                        "New user authenticated via OTP for email {Email} with IAL level {IalLevel} and co-loaded status {IsCoLoaded}",
                         command.Email,
-                        user.IdProofingStatus,
+                        user.IalLevel,
                         user.IsCoLoaded);
                 }
                 else
                 {
                     logger.LogInformation(
-                        "Returning user authenticated via OTP for email {Email} with ID proofing status {Status} and co-loaded status {IsCoLoaded}",
+                        "Returning user authenticated via OTP for email {Email} with IAL level {IalLevel} and co-loaded status {IsCoLoaded}",
                         command.Email,
-                        user.IdProofingStatus,
+                        user.IalLevel,
                         user.IsCoLoaded);
                 }
 

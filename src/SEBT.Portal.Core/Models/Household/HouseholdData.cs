@@ -5,12 +5,13 @@ namespace SEBT.Portal.Core.Models.Household;
 /// This domain model is used for in-memory storage via MockHouseholdRepository.
 /// All household and application data is stored in-memory during development.
 /// </summary>
-public class HouseholdData
+public record HouseholdData
 {
     /// <summary>
     /// The email address on file for the household.
+    /// Null when excluded due to ID proofing requirements.
     /// </summary>
-    public string Email { get; set; } = string.Empty;
+    public string? Email { get; set; }
 
     /// <summary>
     /// The phone number on file for the household.

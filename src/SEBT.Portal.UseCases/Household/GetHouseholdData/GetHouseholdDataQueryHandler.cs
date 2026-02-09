@@ -11,11 +11,12 @@ namespace SEBT.Portal.UseCases.Household;
 
 /// <summary>
 /// Handles retrieval of household data for an authenticated user.
-/// Resolves the household identifier from claims (state-configurable), determines whether to include address based on ID proofing status, and fetches household data.
+/// Resolves the household identifier from claims (state-configurable), determines PII visibility from IAL level, and fetches household data.
 /// </summary>
 public class GetHouseholdDataQueryHandler(
     IHouseholdIdentifierResolver resolver,
     IHouseholdRepository repository,
+    IIdProofingRequirementsService idProofingRequirementsService,
     ILogger<GetHouseholdDataQueryHandler> logger)
     : IQueryHandler<GetHouseholdDataQuery, HouseholdData>
 {
@@ -31,17 +32,19 @@ public class GetHouseholdDataQueryHandler(
 
         logger.LogDebug("Household data request received for identifier type {Type}", identifier.Type);
 
-        var idProofingStatus = GetIdProofingStatus(query.User);
-        var includeAddress = idProofingStatus == IdProofingStatus.Completed;
+        var userIalLevel = GetUserIalLevel(query.User);
+        var piiVisibility = idProofingRequirementsService.GetPiiVisibility(userIalLevel);
 
-        if (includeAddress)
-        {
-            logger.LogDebug("Including address data for ID verified user");
-        }
+        logger.LogDebug(
+            "PII visibility for user (IalLevel={IalLevel}): Address={IncludeAddress}, Email={IncludeEmail}, Phone={IncludePhone}",
+            userIalLevel,
+            piiVisibility.IncludeAddress,
+            piiVisibility.IncludeEmail,
+            piiVisibility.IncludePhone);
 
         var householdData = await repository.GetHouseholdByIdentifierAsync(
             identifier,
-            includeAddress: includeAddress,
+            piiVisibility,
             cancellationToken);
 
         if (householdData == null)
@@ -54,21 +57,23 @@ public class GetHouseholdDataQueryHandler(
         return Result<HouseholdData>.Success(householdData);
     }
 
-    private static IdProofingStatus GetIdProofingStatus(ClaimsPrincipal user)
+    private static UserIalLevel GetUserIalLevel(ClaimsPrincipal user)
     {
-        var statusClaim = user.FindFirst(JwtClaimTypes.IdProofingStatus)?.Value;
+        var ialClaim = user.FindFirst(JwtClaimTypes.Ial)?.Value;
 
-        if (string.IsNullOrWhiteSpace(statusClaim))
+        if (string.IsNullOrWhiteSpace(ialClaim))
         {
-            return IdProofingStatus.NotStarted;
+            return UserIalLevel.None;
         }
 
-        if (int.TryParse(statusClaim, out var statusValue) &&
-            Enum.IsDefined(typeof(IdProofingStatus), statusValue))
+        var normalized = ialClaim.Trim().ToLowerInvariant();
+        return normalized switch
         {
-            return (IdProofingStatus)statusValue;
-        }
-
-        return IdProofingStatus.NotStarted;
+            "1" => UserIalLevel.IAL1,
+            "1plus" => UserIalLevel.IAL1plus,
+            "2" => UserIalLevel.IAL2,
+            "0" => UserIalLevel.None,
+            _ => UserIalLevel.None
+        };
     }
 }

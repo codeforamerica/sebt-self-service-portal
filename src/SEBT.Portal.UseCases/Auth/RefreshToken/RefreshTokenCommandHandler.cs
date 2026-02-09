@@ -52,9 +52,9 @@ public class RefreshTokenCommandHandler(
             var token = jwtTokenService.GenerateToken(user);
 
             logger.LogInformation(
-                "Token refreshed successfully for email {Email} with ID proofing status {Status}",
+                "Token refreshed successfully for email {Email} with IAL level {IalLevel}",
                 command.Email,
-                user.IdProofingStatus);
+                user.IalLevel);
 
             return Result<string>.Success(token);
         }
