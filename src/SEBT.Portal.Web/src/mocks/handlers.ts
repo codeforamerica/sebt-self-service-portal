@@ -31,6 +31,48 @@ export const TEST_FEATURE_FLAGS = {
   enable_spanish_support: true
 } as const
 
+// Test household data (mirrors MockHouseholdRepository seeded data)
+// Updated to match PR #33 nested applications[] structure
+// issuanceType values: 0=Unknown, 1=SummerEbt, 2=TanfEbtCard, 3=SnapEbtCard
+export const TEST_HOUSEHOLD_DATA = {
+  email: 'test@example.com',
+  phone: '(303) 555-0100',
+  benefitIssuanceType: 3, // SnapEbtCard
+  applications: [
+    {
+      applicationNumber: 'APP-2026-001',
+      caseNumber: 'CASE-DC-2026-001',
+      applicationStatus: 'Approved',
+      benefitIssueDate: '2026-01-08T00:00:00Z',
+      benefitExpirationDate: '2026-03-19T00:00:00Z',
+      last4DigitsOfCard: '1234',
+      cardStatus: 'Active',
+      cardRequestedAt: '2026-01-01T00:00:00Z',
+      cardMailedAt: '2026-01-03T00:00:00Z',
+      cardActivatedAt: '2026-01-08T00:00:00Z',
+      cardDeactivatedAt: null,
+      issuanceType: 3, // SnapEbtCard
+      children: [
+        { caseNumber: 456001, firstName: 'Sophia', lastName: 'Martinez' },
+        { caseNumber: 456002, firstName: 'James', lastName: 'Martinez' }
+      ],
+      childrenOnApplication: 2
+    }
+  ],
+  addressOnFile: {
+    streetAddress1: '123 Main Street',
+    streetAddress2: 'Apt 4B',
+    city: 'Washington',
+    state: 'DC',
+    postalCode: '20001'
+  },
+  userProfile: {
+    firstName: 'Maria',
+    middleName: 'L',
+    lastName: 'Martinez'
+  }
+} as const
+
 export const handlers = [
   // Health check endpoint
   http.get('/api/health', () => {
@@ -109,11 +151,34 @@ export const handlers = [
     })
   }),
 
+  // Refresh token endpoint
+  http.post('/api/auth/refresh', async ({ request }) => {
+    await delay(50)
+
+    // Check for Authorization header (requires valid token)
+    const authHeader = request.headers.get('Authorization')
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      return HttpResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
+    // Success - return new mock token
+    return HttpResponse.json({
+      token: 'mock-jwt-token-refreshed'
+    })
+  }),
+
   // Feature flags endpoint
   http.get('/api/features', async () => {
     // Add small delay to allow loading state to be observable in tests
     await delay(50)
 
     return HttpResponse.json(TEST_FEATURE_FLAGS)
+  }),
+
+  // Household data endpoint
+  http.get('/api/household/data', async () => {
+    await delay(50)
+
+    return HttpResponse.json(TEST_HOUSEHOLD_DATA)
   })
 ]

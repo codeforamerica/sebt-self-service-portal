@@ -178,14 +178,29 @@ S2 - Portal Dashboard - Card Table - Status Requested,Requested on [MM/DD/YYYY],
 S2 - Portal Dashboard - Card Table - Status Issued,Issued on [MM/DD/YYYY],Issued on [MM/DD/YYYY],,,
 S2 - Portal Dashboard - Card Table - Status Mailed,Mailed on [MM/DD/YYYY] to,Mailed on [MM/DD/YYYY],Enviado por correo el [MM/DD/YYYY],Enviado por correo el [MM/DD/YYYY],
 S2 - Portal Dashboard - Card Table - Status Active,Active,Active,Activa,Activa,
-S2 - Portal Dashboard - Card Table - Status Deactivated,Deactivated,Deactivated,Desactivada,Desactivada,
+S2 - Portal Dashboard - Card Table - Status Deactivated,Inactive,Deactivated,Desactivada,Desactivada,
+S2 - Portal Dashboard - Card Table - Status Frozen,Frozen,Frozen,,,
+S2 - Portal Dashboard - Card Table - Status Undeliverable,Undeliverable,Undeliverable,,,
 S2 - Portal Dashboard - Card Table - Status Message Requested 1,We've requested a new Summer EBT card that will arrive in the mail within 4–7 weeks. Check back here to see when the card has been mailed.,We've requested a new Summer EBT card that will arrive in the mail within 2–3 weeks. Check back here to see when the card has been mailed.,Hemos solicitado una nueva tarjeta de DC SUN Bucks que llegará por correo en un plazo de 4 a 7 semanas. Regrese aquí para ver cuándo se ha enviado la tarjeta.,Hemos solicitado una nueva tarjeta de DC SUN Bucks que llegará por correo en un plazo de 2 a 3 semanas. Regrese aquí para ver cuándo se ha enviado la tarjeta.,
 S2 - Portal Dashboard - Card Table - Status Message Requested 2,A replacement card will arrive in the mail in around 7–10 business days. Check back here to see when the replacement card has been mailed.,A replacement card will arrive in the mail in around 5–7 days. The card should be mailed within 2 days. Check back here to see when the replacement card has been mailed.,Una tarjeta de reemplazo llegará por correo en aproximadamente 5 a 7 días. La tarjeta debería ser enviada dentro de 2 días. Regrese  aquí para ver cuándo se ha enviado la tarjeta de reemplazo.,Una tarjeta de reemplazo llegará por correo en aproximadamente 5 a 7 días. La tarjeta debería ser enviada dentro de 2 días. Regrese  aquí para ver cuándo se ha enviado la tarjeta de reemplazo.,
 S2 - Portal Dashboard - Card Table - Status Message Mailed,"After the new card is mailed, it should arrive in around 7–10 business days. If it doesn't arrive after two weeks, you can request a replacement card.
 
 Once you receive the card, call EBT Customer Service at (888) 328-2656 to set the card's PIN and activate it. When asked to ""enter your date of birth,"" enter the child's birthdate, not your own.","After the new card is mailed, it should arrive in around 5–7 days. If it doesn't arrive after two weeks, you can request a replacement card.","Una vez que se envíe por correo la nueva tarjeta, debería llegar en un plazo de 5 a 7 días. Si no llega después de dos semanas, puede solicitar una tarjeta de reemplazo.","Una vez que se envíe por correo la nueva tarjeta, debería llegar en un plazo de 5 a 7 días. Si no llega después de dos semanas, puede solicitar una tarjeta de reemplazo.",
+S2 - Portal Dashboard - Card Table - Status Message Active,"This card has been sent to you. It is ready to make purchases as soon as you set the PIN number. Call EBT Customer Service at (888) 328-2656 to set the card's PIN. 
+
+When asked to enter the child's birthdate, use the format MONTH-DAY-YEAR.
+
+When asked to ""enter the primary cardholder's"" ZIP Code, enter the ZIP Code of the address it was mailed to.","This card has been sent to you. It is ready to make purchases as soon as you set the PIN number. Call EBT Customer Service at (888) 328-2656 to set the card's PIN. 
+
+When asked to enter the child's birthdate, use the format MONTH-DAY-YEAR.
+
+When asked to ""enter the primary cardholder's"" ZIP Code, enter the ZIP Code of the address it was mailed to.",,,
+S2 - Portal Dashboard - Card Table - Status Message Deactivated,"This card was reported as lost, stolen, damaged, or otherwise inactive. Contact EBT Customer Service at (888) 328-2656 to learn more or report a change.","This card was reported as lost, stolen, damaged, or otherwise inactive. Contact EBT Customer Service at (888) 328-2656 to learn more or report a change.",,,
+S2 - Portal Dashboard - Card Table - Status Message Frozen,"You won’t be able to use your benefits while this card is frozen. Unfreeze the card to keep using your benefits. This can be done with the ebtEDGE, MyCoBenefits, or Propel apps.","You won’t be able to use your benefits while this card is frozen. Unfreeze the card to keep using your benefits. This can be done with the ebtEDGE, MyCoBenefits, or Propel apps.",,,
+S2 - Portal Dashboard - Card Table - Status Message Undeliverable,The card could not be delivered to the address on file. ,The card could not be delivered to the address on file. ,,,
 S2 - Portal Dashboard - Card Table - Action Update Mailing Address,Update this card's mailing address,Update this card's mailing address,Actualizar la dirección de correspondencia de esta tarjeta,Actualizar la dirección de correspondencia de esta tarjeta,
 S2 - Portal Dashboard - Card Table - Action Request Replacement,Request a replacement card,Request a replacement card,Solicitar una tarjeta de reemplazo,Solicitar una tarjeta de reemplazo,
+S2 - Portal Dashboard - Card Table - Action Update Request,Update your address and order a replacement card,Update your address and order a replacement card,,,
 S2 - Portal Dashboard - Alert EBT Edge - Title,Check balance or change PIN number,Check balance or change PIN number,Revisar balance o cambiar número de PIN,Revisar balance o cambiar número de PIN,
 S2 - Portal Dashboard - Alert EBT Edge - Body,If you need to,"When you add your cards to an ebtEDGE account, you can","Cuando agregue sus tarjetas a una cuenta de ebtEDGE, usted podrá","Cuando agregue sus tarjetas a una cuenta de ebtEDGE, usted podrá",
 S2 - Portal Dashboard - Alert EBT Edge - Features,"Check a card balance and transactions, 
@@ -206,7 +221,7 @@ S2 - Portal Dashboard - Section - Enrolled Children Body 2,"If you would like to
 S2 - Portal Dashboard - Section - Enrolled Children Action,submit a Summer EBT application.,submit a Summer EBT application.,enviar una solicitud para Summer EBT.,enviar una solicitud para Summer EBT.,
 S2 - Portal Dashboard - Section - Applications Heading,Summer EBT Applications,Summer EBT Applications,Solicitudes de la Summer EBT,Solicitudes de la Summer EBT,
 S2 - Portal Dashboard - Section - Applications Body,Here are your Summer EBT applications for children who haven't been automatically enrolled.,Here are your Summer EBT applications for children who haven't been automatically enrolled.,Estas son sus solicitudes de la Summer EBT de los niños que no han sido registrados automáticamente.,Estas son sus solicitudes de la Summer EBT de los niños que no han sido registrados automáticamente.,
-S2 - Portal Dashboard - Applications Table - Heading Number,Application ID,Case number,Número de la solicitud,Número de la solicitud,
+S2 - Portal Dashboard - Applications Table - Heading Number,SEBT Application Tracking ID,Case number,Número de la solicitud,Número de la solicitud,
 S2 - Portal Dashboard - Applications Table - Heading Date Submitted,,Date submitted,,,
 S2 - Portal Dashboard - Applications Table - Heading Children Included,Children included in application,Children included in application,Niños incluídos en la solicitud,Niños incluídos en la solicitud,
 S2 - Portal Dashboard - Applications Table - Heading Status,Status,Status,Estado,Estado,
@@ -215,88 +230,90 @@ S2 - Portal Dashboard - Alert Applications Title,"Currently, you have no childre
 S2 - Portal Dashboard - Alert Applications Body,Come back to this dashboard tomorrow if you've just recently applied and your application is not displayed.,Come back to this dashboard tomorrow if you've just recently applied and your application is not displayed.,Vuelva a este portal mañana si acaba de presentar una solicitud y su solicitud aún no aparece.,Vuelva a este portal mañana si acaba de presentar una solicitud y su solicitud aún no aparece.,
 S2 - Portal Dashboard - Alert Applications Action,Apply for Summer EBT now,Apply for Summer EBT now,Aplique ahora para Summer EBT,Aplique ahora para Summer EBT,
 S3 - Contact Preferences Update - Title,Your contact preferences,Your contact preferences,Actualizar su perfil e información de contacto,Actualizar su perfil e información de contacto,
-S3 - Contact Preferences Update - Label Language,Your preferred language,Your preferred language,El idioma que prefiere,El idioma que prefiere,
+S3 - Contact Preferences Update - Label Language,Which language do you prefer to be contacted in?,Which language do you prefer to be contacted in?,,El idioma que prefiere,
 S3 - Contact Preferences Update - Label Contact Preference,How do you prefer to be contacted?,How do you prefer to be contacted?,¿Cómo prefiere que nos pongamos en contacto con usted?,¿Cómo prefiere que nos pongamos en contacto con usted?,
-S3 - Contact Preferences Update - Action Update Contact,Update contact preferences,Update contact preferences,Actualizar las preferencias de contacto,Actualizar las preferencias de contacto,
-S3 - Parent Profile Update - Alert Profile Update,Your profile has been updated,Your profile has been updated,Su perfil ha sido actualizado,Su perfil ha sido actualizado,
-S3 - Parent Profile Update - Title,Your Summer EBT Profile,Your Summer EBT Profile,Su perfil de Summer EBT,Su perfil de Summer EBT,
-S3 - Parent Profile Update - Back,Back to portal home,Back to portal home,Regresar a la página de inicio del portal,Regresar a la página de inicio del portal,
-S4 - Parent Profile Update - Heading Mailing Address,Your mailing address,Your mailing address,Su dirección de correspondencia,Su dirección de correspondencia,
-S3 - Parent Profile Update - Label Preferred Mailing Address,Select your preferred mailing address,Select your preferred mailing address,Seleccione la dirección de correspondencia que prefiera,Seleccione la dirección de correspondencia que prefiera,
-S3 - Parent Profile Update - Helper Preferred Mailing Address,You may add or edit addresses in this list using the links below.,You may add or edit addresses in this list using the links below.,Puede agregar o editar las direcciones en esta lista usando los enlaces de abajo.,Puede agregar o editar las direcciones en esta lista usando los enlaces de abajo.,
-S3 - Parent Profile Update - Action Add Mailing Address,Add a new mailing address,Add a new mailing address,Agregar una nueva dirección de correspondencia,Agregar una nueva dirección de correspondencia,
-S3 - Parent Profile Update - Edit Mailing Address,Edit mailing addresses,Edit mailing addresses,Editar la dirección de correspondencia,Editar la dirección de correspondencia,
-S3 - Mailing Address Edit - Title,Edit your mailing addresses,Edit your mailing addresses,Edite su dirección de correspondencia,Edite su dirección de correspondencia,
-S3 - Mailing Address Edit - Label Select Address,Select the address to edit,Select the address to edit,Seleccione la dirección que quiere editar,Seleccione la dirección que quiere editar,
-S3 - Mailing Address Edit - Label Update or Delete,Do you want to update or delete this address?,Do you want to update or delete this address?,¿Quiere actualizar o borrar esta dirección?,¿Quiere actualizar o borrar esta dirección?,
-S3 - Mailing Address Edit - Option Update,Update,Update,Actualizar,Actualizar,
-S3 - Mailing Address Edit - Option Delete,Delete,Delete,Borarr,Borarr,
-S3 - Confirm Delete Address - Title,Are you sure you want to delete this address?,Are you sure you want to delete this address?,¿Está seguro de querer borrar esta dirección?,¿Está seguro de querer borrar esta dirección?,
-S3 - Parent Profile Update - Action Update Address,Update address preferences,Update address preferences,Actualizar las preferencias de direcciones,Actualizar las preferencias de direcciones,
-S4 - Mailing Address Update - Title Your,Tell us where to safely send your mail,Tell us where to safely send your mail,Compártanos dónde enviarle correo de manera segura,Compártanos dónde enviarle correo de manera segura,
-S4 - Address Not Found - Title,Make sure the address is correct,Make sure the address is correct,Asegúrese de que la dirección sea correcta,Asegúrese de que la dirección sea correcta,
-S4 - Address Not Found - Body,"We couldn't find the address you entered. To make sure mail can be received at the provided address, check the address. If it is correct, tap ""Use this address"".
+S3 - Contact Preferences Update - Label Phone,Update contact preferences,What's the best phone number to text you?,Actualizar las preferencias de contacto,,
+S3 - Contact Preferences Update - Description Phone,Your profile has been updated,This phone number needs to be able to receive text messages.,Su perfil ha sido actualizado,,
+S3 - Contact Preferences Update - Action Update Contact,Your Summer EBT Profile,Update contact preferences,Su perfil de Summer EBT,Actualizar las preferencias de contacto,
+S3 - Parent Profile Update - Alert Profile Update,Back to portal home,Your profile has been updated,Regresar a la página de inicio del portal,Su perfil ha sido actualizado,
+S3 - Parent Profile Update - Title,Your mailing address,Your Summer EBT Profile,Su dirección de correspondencia,Su perfil de Summer EBT,
+S3 - Parent Profile Update - Back,Select your preferred mailing address,Back to portal home,Seleccione la dirección de correspondencia que prefiera,Regresar a la página de inicio del portal,
+S4 - Parent Profile Update - Heading Mailing Address,You may add or edit addresses in this list using the links below.,Your mailing address,Puede agregar o editar las direcciones en esta lista usando los enlaces de abajo.,Su dirección de correspondencia,
+S3 - Parent Profile Update - Label Preferred Mailing Address,Add a new mailing address,Select your preferred mailing address,Agregar una nueva dirección de correspondencia,Seleccione la dirección de correspondencia que prefiera,
+S3 - Parent Profile Update - Helper Preferred Mailing Address,Edit mailing addresses,You may add or edit addresses in this list using the links below.,Editar la dirección de correspondencia,Puede agregar o editar las direcciones en esta lista usando los enlaces de abajo.,
+S3 - Parent Profile Update - Action Add Mailing Address,Edit your mailing addresses,Add a new mailing address,Edite su dirección de correspondencia,Agregar una nueva dirección de correspondencia,
+S3 - Parent Profile Update - Edit Mailing Address,Select the address to edit,Edit mailing addresses,Seleccione la dirección que quiere editar,Editar la dirección de correspondencia,
+S3 - Mailing Address Edit - Title,Do you want to update or delete this address?,Edit your mailing addresses,¿Quiere actualizar o borrar esta dirección?,Edite su dirección de correspondencia,
+S3 - Mailing Address Edit - Label Select Address,Update,Select the address to edit,Actualizar,Seleccione la dirección que quiere editar,
+S3 - Mailing Address Edit - Label Update or Delete,Delete,Do you want to update or delete this address?,Borarr,¿Quiere actualizar o borrar esta dirección?,
+S3 - Mailing Address Edit - Option Update,Are you sure you want to delete this address?,Update,¿Está seguro de querer borrar esta dirección?,Actualizar,
+S3 - Mailing Address Edit - Option Delete,Update address preferences,Delete,Actualizar las preferencias de direcciones,Borarr,
+S3 - Confirm Delete Address - Title,Tell us where to safely send your mail,Are you sure you want to delete this address?,Compártanos dónde enviarle correo de manera segura,¿Está seguro de querer borrar esta dirección?,
+S3 - Parent Profile Update - Action Update Address,Make sure the address is correct,Update address preferences,Asegúrese de que la dirección sea correcta,Actualizar las preferencias de direcciones,
+S4 - Mailing Address Update - Title Your,"We couldn't find the address you entered. To make sure mail can be received at the provided address, check the address. If it is correct, tap ""Use this address"".
 
-If you need to make a change, tap ""Edit the address"".","We couldn't find the address you entered. To make sure mail can be received at the provided address, check the address. If it is correct, tap ""Use this address"".
+If you need to make a change, tap ""Edit the address"".",Tell us where to safely send your mail,"No pudimos encontrar la dirección que ingresó. Para asegurarse de que el correo pueda ser recibido en la dirección ingresada, verifique la dirección. Si es correcta, seleccione ""Usar esta dirección"".
 
-If you need to make a change, tap ""Edit the address"".","No pudimos encontrar la dirección que ingresó. Para asegurarse de que el correo pueda ser recibido en la dirección ingresada, verifique la dirección. Si es correcta, seleccione ""Usar esta dirección"".
+Si necesita hacer un cambio, seleccione ""Editar la dirección"".",Compártanos dónde enviarle correo de manera segura,
+S4 - Address Not Found - Title,Address you entered,Make sure the address is correct,Dirección que ingresó,Asegúrese de que la dirección sea correcta,
+S4 - Address Not Found - Body,Edit the address,"We couldn't find the address you entered. To make sure mail can be received at the provided address, check the address. If it is correct, tap ""Use this address"".
 
-Si necesita hacer un cambio, seleccione ""Editar la dirección"".","No pudimos encontrar la dirección que ingresó. Para asegurarse de que el correo pueda ser recibido en la dirección ingresada, verifique la dirección. Si es correcta, seleccione ""Usar esta dirección"".
+If you need to make a change, tap ""Edit the address"".",Editar esta dirección,"No pudimos encontrar la dirección que ingresó. Para asegurarse de que el correo pueda ser recibido en la dirección ingresada, verifique la dirección. Si es correcta, seleccione ""Usar esta dirección"".
 
 Si necesita hacer un cambio, seleccione ""Editar la dirección"".",
-S4 - Address Not Found - Alert Title,Address you entered,Address you entered,Dirección que ingresó,Dirección que ingresó,
-S4 - Address Not Found - Alert Action,Edit the address,Edit the address,Editar esta dirección,Editar esta dirección,
-S4 - Address Not Found - Continue,Use this address,Use this address,Usar esta dirección,Usar esta dirección,
-S4 - Suggested Address - Title,Check the address,Check the address,Confirme la dirección,Confirme la dirección,
-S4 - Suggested Address - Body,"We updated the address you entered. If correct, use the suggested address.","We updated the address you entered. If correct, use the suggested address.","Hemos actualizado la dirección que ingresó. Si es correcta, seleccione la dirección sugerida.","Hemos actualizado la dirección que ingresó. Si es correcta, seleccione la dirección sugerida.",
-S4 - Suggested Address - Label Select,Select the address to use,Select the address to use,Seleccione la dirección que quiere usar,Seleccione la dirección que quiere usar,
-S5 - Bulk Order New Cards - Title,Do you want to request replacement Summer EBT cards to be sent to this address?,Do you want to request replacement Summer EBT cards to be sent to this address?,¿Quiere solicitar que las tarjetas Summer EBT de reemplazo sean enviadas a esta dirección?,¿Quiere solicitar que las tarjetas Summer EBT de reemplazo sean enviadas a esta dirección?,
-S5 - Bulk Order New Cards - Body,"We can send replacement cards if
+S4 - Address Not Found - Alert Title,Use this address,Address you entered,Usar esta dirección,Dirección que ingresó,
+S4 - Address Not Found - Alert Action,Check the address,Edit the address,Confirme la dirección,Editar esta dirección,
+S4 - Address Not Found - Continue,"We updated the address you entered. If correct, use the suggested address.",Use this address,"Hemos actualizado la dirección que ingresó. Si es correcta, seleccione la dirección sugerida.",Usar esta dirección,
+S4 - Suggested Address - Title,Select the address to use,Check the address,Seleccione la dirección que quiere usar,Confirme la dirección,
+S4 - Suggested Address - Body,Do you want to request replacement Summer EBT cards to be sent to this address?,"We updated the address you entered. If correct, use the suggested address.",¿Quiere solicitar que las tarjetas Summer EBT de reemplazo sean enviadas a esta dirección?,"Hemos actualizado la dirección que ingresó. Si es correcta, seleccione la dirección sugerida.",
+S4 - Suggested Address - Label Select,"We can send replacement cards if
 
 • You haven't received them in the mail after two weeks
-• Or you no longer have them","We can send replacement cards if
-
-• You haven't received them in the mail after two weeks
-• Or you no longer have them","Podemos enviar tarjetas de reemplazo si
+• Or you no longer have them",Select the address to use,"Podemos enviar tarjetas de reemplazo si
 
 • No las ha recibido por correo después de dos semanas
-• O ya no las tiene","Podemos enviar tarjetas de reemplazo si
+• O ya no las tiene",Seleccione la dirección que quiere usar,
+S5 - Bulk Order New Cards - Title,A few things to know before replacing Summer EBT cards,Do you want to request replacement Summer EBT cards to be sent to this address?,Algunas cosas a tener en cuenta antes de reemplazar las tarjetas de Summer EBT,¿Quiere solicitar que las tarjetas Summer EBT de reemplazo sean enviadas a esta dirección?,
+S5 - Bulk Order New Cards - Body,"Once replacement cards are created, the previous cards will be permanently deactivated
+Cards will arrive by mail in around 5–7 days
+You can check here to see when the card has been mailed
+Any remaining balance on the previous card will automatically be rolled over to the replacement card","We can send replacement cards if
+
+• You haven't received them in the mail after two weeks
+• Or you no longer have them","Una vez que se creen las tarjetas de reemplazo, las tarjetas anteriores se desactivarán permanentemente.
+Las tarjetas llegarán por correo entre 5 y 7 días, aproximadamente.
+Puede verificar aquí cuándo se ha enviado la tarjeta.
+Cualquier saldo restante en la tarjeta anterior se transferirá automáticamente a la tarjeta de reemplazo","Podemos enviar tarjetas de reemplazo si
 
 • No las ha recibido por correo después de dos semanas
 • O ya no las tiene",
-S5 - Bulk Order New Cards Who - Title,A few things to know before replacing Summer EBT cards,A few things to know before replacing Summer EBT cards,Algunas cosas a tener en cuenta antes de reemplazar las tarjetas de Summer EBT,Algunas cosas a tener en cuenta antes de reemplazar las tarjetas de Summer EBT,
-S5 - Bulk Order New Cards Who - Body,"Once replacement cards are created, the previous cards will be permanently deactivated
+S5 - Bulk Order New Cards Who - Title,Select which cards you want to replace,A few things to know before replacing Summer EBT cards,Seleccione las tarjetas que desea reemplazar,Algunas cosas a tener en cuenta antes de reemplazar las tarjetas de Summer EBT,
+S5 - Bulk Order New Cards Who - Body,Do you want the replacement for the card ending in [9999] mailed to this address?,"Once replacement cards are created, the previous cards will be permanently deactivated
 Cards will arrive by mail in around 5–7 days
 You can check here to see when the card has been mailed
-Any remaining balance on the previous card will automatically be rolled over to the replacement card","Once replacement cards are created, the previous cards will be permanently deactivated
-Cards will arrive by mail in around 5–7 days
-You can check here to see when the card has been mailed
-Any remaining balance on the previous card will automatically be rolled over to the replacement card","Una vez que se creen las tarjetas de reemplazo, las tarjetas anteriores se desactivarán permanentemente.
-Las tarjetas llegarán por correo entre 5 y 7 días, aproximadamente.
-Puede verificar aquí cuándo se ha enviado la tarjeta.
-Cualquier saldo restante en la tarjeta anterior se transferirá automáticamente a la tarjeta de reemplazo","Una vez que se creen las tarjetas de reemplazo, las tarjetas anteriores se desactivarán permanentemente.
+Any remaining balance on the previous card will automatically be rolled over to the replacement card",¿Desea que el reemplazo de la tarjeta que termina en [9999] se envíe por correo a esta dirección?,"Una vez que se creen las tarjetas de reemplazo, las tarjetas anteriores se desactivarán permanentemente.
 Las tarjetas llegarán por correo entre 5 y 7 días, aproximadamente.
 Puede verificar aquí cuándo se ha enviado la tarjeta.
 Cualquier saldo restante en la tarjeta anterior se transferirá automáticamente a la tarjeta de reemplazo",
-S5 - Bulk Order New Cards Who - Label Select Cards,Select which cards you want to replace,Select which cards you want to replace,Seleccione las tarjetas que desea reemplazar,Seleccione las tarjetas que desea reemplazar,
-S6 - Replacement Card Address - Title,Do you want the replacement for the card ending in [9999] mailed to this address?,Do you want the replacement for the card ending in [9999] mailed to this address?,¿Desea que el reemplazo de la tarjeta que termina en [9999] se envíe por correo a esta dirección?,¿Desea que el reemplazo de la tarjeta que termina en [9999] se envíe por correo a esta dirección?,
-S6 - Confirm Request Replacement Card - Title,A few things to know before replacing cards,A few things to know before replacing cards,Cosas que saber antes de solicitar una tarjeta de reemplazo,Cosas que saber antes de solicitar una tarjeta de reemplazo,
-S6 - Confirm Request Replacement Card - Replace Card Body 1,Call EBT Customer Service at (888) 328-2656 to request a replacement card to be sent to your address listed here.,Call EBT Customer Service at (888) 328-2656 to request a replacement card to be sent to your address listed here.,Llame a EBT Customer Service al (888) 328-2656 para solicitar el envío de una tarjeta de reemplazo a la dirección que aparece aquí.,Llame a EBT Customer Service al (888) 328-2656 para solicitar el envío de una tarjeta de reemplazo a la dirección que aparece aquí.,
-S6 - Confirm Request Replacement Card - Replace Card Body 2,Hold on the line to select the lost card prompt and speak with an agent.,Hold on the line to select the lost card prompt and speak with an agent.,"Mantengase en la línea para seleccionar la opción de ""tarjeta perdida"" y hablar con un agente","Mantengase en la línea para seleccionar la opción de ""tarjeta perdida"" y hablar con un agente",
-S6 - Confirm Request Replacement Card - Keep Card,Keep your card for next year. Benefits will be added to your new card.,Keep your card for next year. Benefits will be added to your new card.,Guarde su tarjeta para el próximo año. Sus beneficios serán agregados a su nueva tarjeta.,Guarde su tarjeta para el próximo año. Sus beneficios serán agregados a su nueva tarjeta.,
-S6 - Confirm Request Replacement Card - Tap to Call,Tap to call EBT Customer Service,Tap to call EBT Customer Service,Toqué la pantalla para llamar a servicios al cliente de EBT,Toqué la pantalla para llamar a servicios al cliente de EBT,
-S6 - Confirm Request Replacement Card - Subtle Link,I want a replacement for the card ending in [9999] mailed to a different address,I want a replacement for the card ending in [9999] mailed to a different address,,,
-S7 - Pin Card - Title,Activate a card,Activate a card,,,
-S7 - Pin Card - Body,"Once you receive your child's card, call EBT Customer Service at (888) 328-2656. Follow the instructions to set the PIN number to activate the card.
+S5 - Bulk Order New Cards Who - Label Select Cards,A few things to know before replacing cards,Select which cards you want to replace,Cosas que saber antes de solicitar una tarjeta de reemplazo,Seleccione las tarjetas que desea reemplazar,
+S6 - Replacement Card Address - Title,Call EBT Customer Service at (888) 328-2656 to request a replacement card to be sent to your address listed here.,Do you want the replacement for the card ending in [9999] mailed to this address?,Llame a EBT Customer Service al (888) 328-2656 para solicitar el envío de una tarjeta de reemplazo a la dirección que aparece aquí.,¿Desea que el reemplazo de la tarjeta que termina en [9999] se envíe por correo a esta dirección?,
+S6 - Confirm Request Replacement Card - Title,Hold on the line to select the lost card prompt and speak with an agent.,A few things to know before replacing cards,"Mantengase en la línea para seleccionar la opción de ""tarjeta perdida"" y hablar con un agente",Cosas que saber antes de solicitar una tarjeta de reemplazo,
+S6 - Confirm Request Replacement Card - Replace Card Body 1,Keep your card for next year. Benefits will be added to your new card.,Call EBT Customer Service at (888) 328-2656 to request a replacement card to be sent to your address listed here.,Guarde su tarjeta para el próximo año. Sus beneficios serán agregados a su nueva tarjeta.,Llame a EBT Customer Service al (888) 328-2656 para solicitar el envío de una tarjeta de reemplazo a la dirección que aparece aquí.,
+S6 - Confirm Request Replacement Card - Replace Card Body 2,Tap to call EBT Customer Service,Hold on the line to select the lost card prompt and speak with an agent.,Toqué la pantalla para llamar a servicios al cliente de EBT,"Mantengase en la línea para seleccionar la opción de ""tarjeta perdida"" y hablar con un agente",
+S6 - Confirm Request Replacement Card - Keep Card,I want a replacement for the card ending in [9999] mailed to a different address,Keep your card for next year. Benefits will be added to your new card.,,Guarde su tarjeta para el próximo año. Sus beneficios serán agregados a su nueva tarjeta.,
+S6 - Confirm Request Replacement Card - Tap to Call,Activate a card,Tap to call EBT Customer Service,,Toqué la pantalla para llamar a servicios al cliente de EBT,
+S6 - Confirm Request Replacement Card - Subtle Link,"Your child's card is active when it's mailed to you. To make purchases, you will need to set the card's PIN number. You may call EBT Customer Service at (888) 328-2656 and follow the instructions to set the PIN number.
 
-When asked to ""enter your date of birth"" by the recording, do not enter your own birthday. Enter the child's birthdate in the format MONTH-DAY-YEAR.
+Enter the child's birthdate in the format MONTH-DAY-YEAR.
 
-When asked to ""enter the primary cardholder's"" ZIP Code, enter the ZIP Code of the address it was mailed to.","Once you receive your child's card, call EBT Customer Service at (888) 328-2656. Follow the instructions to set the PIN number to activate the card.
+When asked to ""enter the primary cardholder's"" ZIP Code, enter the ZIP Code of the address it was mailed to.",I want a replacement for the card ending in [9999] mailed to a different address,,,
+S7 - Pin Card - Title,Tap to call EBT Customer Service,Activate a card,Toqué la pantalla para llamar a servicios al cliente de EBT,,
+S7 - Pin Card - Body,,"Once you receive your child's card, call EBT Customer Service at (888) 328-2656. Follow the instructions to set the PIN number to activate the card.
 
 When asked to ""enter your date of birth"" by the recording, do not enter your own birthday. Enter the child's birthdate in the format MONTH-DAY-YEAR.
 
 When asked to ""enter the primary cardholder's"" ZIP Code, enter the ZIP Code of the address it was mailed to.",,,
-S7 - Pin Card - Action,Tap to call EBT Customer Service,Tap to call EBT Customer Service,Toqué la pantalla para llamar a servicios al cliente de EBT,Toqué la pantalla para llamar a servicios al cliente de EBT,
+S7 - Pin Card - Action,,Tap to call EBT Customer Service,,Toqué la pantalla para llamar a servicios al cliente de EBT,
 S8 - OTP Enter Email - Title,,Enter your email and we'll send you a code to log into your DC SUN Bucks account,,Ingresa tu correo electrónico y te enviaremos un código para entrar a tu cuenta de DC SUN Bucks,
 S8 - OTP Enter Email - Body,,If you are your child’s primary guardian enter your email to see their DC SUN Bucks information.,,"Si eres el cuidador principal de tu hijo, ingresa tu correo electrónico para ver su información de DC SUN Bucks.",
 S8 - OTP Enter Email - Label Email,,Enter your email address,,Ingresa tu correo electrónico,
@@ -337,8 +354,6 @@ S8 - ID Proofing Optional ID Info - Label ITIN,,Enter your Individual Taxpayer I
 S8 - ID Proofing Optional ID Info - Label Medicaid ID,,Enter your Medicaid ID,,Ingresa tu Medicaid ID,
 S8 - ID Proofing Optional ID Info - Label Account ID,,Enter your SNAP or TANF account ID,,Ingresa tu número de cuenta de SNAP o TANF,
 S8 - ID Proofing Optional ID Info - Label Person ID,,Enter your SNAP or TANF person ID,,Ingresa tu número de ID de persona de SNAP o TANF,
-S8 - Opt-in - Title,,Thank you. How can we reach you?,,Gracias. ¿Cómo podemos contactarte?,
-S8 - Opt-in - Body,,Select how you want to hear from us about important DC SUN Bucks information.,,Seleccione cómo desea recibir información importante sobre los DC SUN Bucks.,
 S8 - Opt-in - Label Email,,May we save your email ([email]@[domain.com]) to send you information about your DC SUN Bucks account?,,¿Podemos guardar tu correo electrónico ([email]@[domain.com]) para enviarte información sobre tu cuenta de DC SUN Bucks?,
 S8 - Opt-in - Helper Email,,This will help us communicate important information about your benefits.,,Esto nos ayudará a enviarte información importante sobre tus beneficios.,
 S8 - Opt-in - Label DOB,,May we store your date of birth?,,¿Podemos guardar tu fecha de nacimiento?,
@@ -347,8 +362,6 @@ S8 - Opt-in - Label Contact Preference,,Select at least one option,,Selecciona a
 S8 - Opt-in - Option Helper Phone,,"If this is your preference, messaging and data rates will apply.",,"Si esta es tu preferencia, se aplicarán tarifas de mensajes y datos.",
 S8 - Opt-in - Label Enter Phone,,Enter your phone number,,Ingresa tu número de telefono,
 S8 - Opt-in - Label Text,,May we text this phone number?,,¿Podemos enviarte mensajes de texto a este número?,
-S8 - Opt-in - Label Language,,Which language do you prefer to be contacted in?,,¿En qué idioma prefieres que te contactemos?,
-S8 - Opt-in - Action,,Continue to my account,,Continuar a mi cuenta,
 S8 - Off-boarding - Title,,We want to keep your account safe,,"Para confirmar tu identidad, necesitamos pedirte documentación adicional.",
 S8 - Off-boarding - Body 1,,"In order to confirm your identity we need to ask for additional documentation. On the next screen, we’ll ask you to upload a photo of your ",,"En la siguiente pantalla te pediremos que subas una foto de tu licencia de conducir u otra identificación con foto.
 
@@ -356,37 +369,52 @@ También puedes volver e ingresar un número de identificación adicional.",
 S8 - Off-boarding - Body 2,,"driver’s license
 foreign passport
 or another photo ID",,,
-S8 - Off-boarding - Body 3,,You can skip this step by going back and typing in your ID number instead.,,,
-S8 - Off-boarding - Action,,Go back and enter an ID number,,,
-S8 - Co-loaded Off-boarding - Title,,"We're sorry, we aren't able to show your DC SUN Bucks information ",,"Lo sentimos, no podemos mostrar tu información de DC SUN Bucks",
-S8 - Co-loaded Off-boarding - Body,,You can go back and enter an additional ID number or contact us if you need further assistance.,,Puedes volver e ingresar un número de identificación adicional o contactarnos si necesitas más ayuda,
-S8 - Co-loaded Off-boarding - Action,,Contact us,,Contáctanos,
-GLOBAL - Label - Languages,Languages,Languages,Idiomas,Idiomas,
-GLOBAL - Options - Languages,"English
-Español (Spanish)","English
-Español (Spanish)","English (Inglés)
-Español","English (Inglés)
+S8 - Off-boarding - Body 3,"We're sorry, we aren't able to show your Summer EBT information ",You can skip this step by going back and typing in your ID number instead.,,,
+S8 - Off-boarding - Action,You can contact us if you need more help.,Enter an ID number,,,
+S8 - Co-loaded Off-boarding - Title,Contact us,"We're sorry, we aren't able to show your DC SUN Bucks information ",,"Lo sentimos, no podemos mostrar tu información de DC SUN Bucks",
+S8 - Co-loaded Off-boarding - Body 1,"If you’re not sure what to do, or you want to apply for Summer EBT, we can help you find out if you need to apply for your child. Tap “Apply now” and enter your child’s information.","You can go back to enter an ID number, or contact us if you need more help.",,Puedes volver e ingresar un número de identificación adicional o contactarnos si necesitas más ayuda,
+S8 - Co-loaded Off-boarding - Action 1,Apply now,Contact us,,Contáctanos,
+S8 - Co-loaded Off-boarding - Body 2,Would you like to receive Summer EBT communication through email or SMS text?,"If you’re not sure what to do, or you want to apply for DC SUN Bucks, we can help you find out if you need to apply for your child. Tap “Apply now” and enter your child’s information.",,,
+S8 - Co-loaded Off-boarding - Action 2,If you choose email or text we’ll continue to also mail notices to your physical address.,Apply now,,,
+S9 - Opt-in - Title,Select this option if you want to be messaged at ([999]) [999]-[9999]. This phone number needs to be able to receive text messages and can’t be changed.,Would you like to receive Summer EBT communication through email or SMS text?,,Gracias. ¿Cómo podemos contactarte?,
+S9 - Opt-in - Body,Would you like to get Summer EBT notices by email [at [email]@[domain]] instead of by physical mail?,If you choose email or text we’ll continue to also mail notices to your physical address.,,Seleccione cómo desea recibir información importante sobre los DC SUN Bucks.,
+S9 - Opt-in - Text Description,[We’ll ask about your phone number next.],Select this option if you want to be messaged at ([999]) [999]-[9999]. This phone number needs to be able to receive text messages and can’t be changed.,,,
+S9 - Email - Title,Enter the best email address to use,Would you like to get DC SUN Bucks notices by email [at [email]@[domain]] instead of by physical mail?,,,
+S9 - Email - Body,Confirm email address,[We’ll ask about your phone number next.],,,
+S9 - Enter Email - Enter Label,Would you like to receive text messages about your Summer EBT account?,Enter the best email address to use,,,
+S9 - Enter Email - Confirm Label,Is ([999]) [999]-[9999] the best phone number to text you?,Confirm email address,,,
+S9 - Text - Title,Enter the best phone number to text you,Would you like to receive text messages about your DC SUN Bucks account?,,,
+S9 - Text - Which Phone Label,This phone number needs to be able to receive text messages.,Is ([999]) [999]-[9999] the best phone number to text you?,,,
+S9 - Text - Enter Label,Confirm phone number,Enter the best phone number to text you,,,
+S9 - Text - Enter Helper,Which language do you prefer to be contacted in?,This phone number needs to be able to receive text messages.,¿En qué idioma prefieres que te contactemos?,,
+S9 - Text - Confirm Label,Select a language,Confirm phone number,,,
+S9 - Language - Title,Continue to my account,Which language do you prefer to be contacted in?,Continuar a mi cuenta,¿En qué idioma prefieres que te contactemos?,
+S9 - Language - Label Select Language,Languages,Select a language,Idiomas,,
+S9 - Language - Action,"English
+Español (Spanish)",Continue to my account,"English (Inglés)
+Español",Continuar a mi cuenta,
+GLOBAL - Label - Languages,,Languages,,Idiomas,
+GLOBAL - Options - Languages,,"English
+Español (Spanish)",,"English (Inglés)
 Español",
-GLOBAL - Language - English,,English,,English (Inglés),
-GLOBAL - Language - Español,,Español (Spanish),,Español,
-GLOBAL - Address Format,"[Street address line 1]
+GLOBAL - Language - English,"[Street address line 1]
 [Street address line 2]
-[City], [State] [ZIP Code]","[Street address line 1]
+[City], [State] [ZIP Code]",English,"[Street address line 1]
 [Street address line 2]
-[City], [State] [ZIP Code]","[Street address line 1]
+[City], [State] [ZIP Code]",English (Inglés),
+GLOBAL - Language - Español,First name,Español (Spanish),Nombre,Español,
+GLOBAL - Address Format,"Legally as it appears on official documents, e.g. birth certificate","[Street address line 1]
 [Street address line 2]
-[City], [State] [ZIP Code]","[Street address line 1]
+[City], [State] [ZIP Code]","Legalmente como aparece en documentos oficiales, ej. partida de nacimiento.","[Street address line 1]
 [Street address line 2]
 [City], [State] [ZIP Code]",
-GLOBAL - Label First name,First name,First name,Nombre,Nombre,
-GLOBAL - Helper Text - Legally as it appears,"Legally as it appears on official documents, e.g. birth certificate","Legally as it appears on official documents, e.g. birth certificate","Legalmente como aparece en documentos oficiales, ej. partida de nacimiento.","Legalmente como aparece en documentos oficiales, ej. partida de nacimiento.",
-GLOBAL - Label Middle name,Middle name,Middle name,Segundo nombre,Segundo nombre,
-GLOBAL - Helper Text - Optional,Optional. If they have one.,Optional. If they have one.,Opcional. Si tiene uno.,Opcional. Si tiene uno.,
-GLOBAL - Label Last name,Last name,Last name,Apellido,Apellido,
-GLOBAL - Action - Continue,Continue,Continue,Continuar,Continuar,
-GLOBAL - Action - Submit,Submit,Submit,Enviar,Enviar,
-GLOBAL - Placeholder - Select one,- Select one -,- Select one -,- Seleccione una op...,- Seleccione una op...,
-GLOBAL - Options - January - February,"January
+GLOBAL - Label First name,Middle name,First name,Segundo nombre,Nombre,
+GLOBAL - Helper Text - Legally as it appears,Optional. If they have one.,"Legally as it appears on official documents, e.g. birth certificate",Opcional. Si tiene uno.,"Legalmente como aparece en documentos oficiales, ej. partida de nacimiento.",
+GLOBAL - Label Middle name,Last name,Middle name,Apellido,Segundo nombre,
+GLOBAL - Helper Text - Optional,Continue,Optional. If they have one.,Continuar,Opcional. Si tiene uno.,
+GLOBAL - Label Last name,Submit,Last name,Enviar,Apellido,
+GLOBAL - Action - Continue,- Select one -,Continue,- Seleccione una op...,Continuar,
+GLOBAL - Action - Submit,"January
 
 February
 
@@ -408,29 +436,7 @@ October
 
 November
 
-December","January
-
-February
-
-March
-
-April
-
-May
-
-June
-
-July
-
-August
-
-September
-
-October
-
-November
-
-December","enero
+December",Submit,"enero
 
 febrero
 
@@ -452,7 +458,31 @@ octubre
 
 noviembre
 
-diciembre","enero
+diciembre",Enviar,
+GLOBAL - Placeholder - Select one,January,- Select one -,enero,- Seleccione una op...,
+GLOBAL - Options - January - February,August,"January
+
+February
+
+March
+
+April
+
+May
+
+June
+
+July
+
+August
+
+September
+
+October
+
+November
+
+December",agosto,"enero
 
 febrero
 
@@ -475,38 +505,40 @@ octubre
 noviembre
 
 diciembre",
-GLOBAL - Options - January,January,January,enero,enero,
-GLOBAL - Options - August,August,August,agosto,agosto,
-GLOBAL - Option - None of the above,None of the above,None of the above,Ninguna de las anteriores,Ninguna de las anteriores,
-GLOBAL - Required Fields,Asterisks (*) indicate a required field.,Asterisks (*) indicate a required field.,Los asteriscos (*) indican que es un campo requerido.,Los asteriscos (*) indican que es un campo requerido.,
-GLOBAL - Helper Select at least one,Select at least one option.,Select at least one option.,Seleccione por lo menos una opción.,Seleccione por lo menos una opción.,
-GLOBAL - Email,Email,Email,Correo electrónico,Correo electrónico,
-GLOBAL - Phone,Phone,Phone,Teléfono,Teléfono,
-GLOBAL - Physical mail,Physical mail,Physical mail,Correo físico,Correo físico,
-GLOBAL - Email address,Email address,Email address,Correo electrónico,Correo electrónico,
-GLOBAL - Phone number,Phone number,Phone number,Número de teléfono,Número de teléfono,
-GLOBAL - Label Send Cards to Preferred Address,Do you want us to send Summer EBT cards for all of your enrolled children to your preferred address?,Do you want us to send Summer EBT cards for all of your enrolled children to your preferred address?,¿Quiere que enviemos las tarjetas Summer EBT para todos sus hijos inscritos a la dirección de preferencia?,¿Quiere que enviemos las tarjetas Summer EBT para todos sus hijos inscritos a la dirección de preferencia?,
-GLOBAL - Co-loaded Card Helper,"If your child is eligible for Summer EBT through SNAP or Colorado Works (TANF) participation, they will not receive a Summer EBT card.","If your child is eligible for Summer EBT through SNAP or Colorado Works (TANF) participation, they will not receive a Summer EBT card.","Si su hijo es elegible para Summer EBT a través de la participación en SNAP o Colorado Works (TANF), no recibirá una tarjeta Summer EBT.","Si su hijo es elegible para Summer EBT a través de la participación en SNAP o Colorado Works (TANF), no recibirá una tarjeta Summer EBT.",
-GLOBAL - Yes,Yes,Yes,Sí,Sí,
-GLOBAL - No,No,No,No,No,
-GLOBAL - Action - Back,Back,Back,Regresar,Regresar,
-GLOBAL - Label - Select One,Select one,Select one,Seleccione una opción,Seleccione una opción,
-GLOBAL - Street Address,Street address,Street address,Dirección,Dirección,
-GLOBAL - Helper Street Address,"Include direction, NW, NE, SE, or SW.","Include direction, NW, NE, SE, or SW.","Incluya la dirección: NO, NE, SE o SO.","Incluya la dirección: NO, NE, SE o SO.",
-GLOBAL - Street Address 2,Street address line 2,Street address line 2,"Dirección, línea 2","Dirección, línea 2",
-GLOBAL - Helper Street Address 2,"For example, an apartment number, unit number, floor, or PO Box.","For example, an apartment number, unit number, floor, or PO Box.","Por ejemplo, número de suite, número de unidad, piso o apartado postal","Por ejemplo, número de suite, número de unidad, piso o apartado postal",
-GLOBAL - City,City,City,Ciudad,Ciudad,
-GLOBAL - Default City,   ,   ,   ,   ,
-GLOBAL - State or Territory,State or territory,State or territory,Estado o territorio,Estado o territorio,
-GLOBAL - Default State or Territory,Colorado,Colorado,Colorado,Colorado,
-GLOBAL - ZIP Code,ZIP Code,ZIP Code,Código postal,Código postal,
-GLOBAL - Label Make Preferred Mailing Address,Do you want to make this your preferred mailing address?,Do you want to make this your preferred mailing address?,¿Quiere que esta sea su dirección de correspondencia de preferencia?,¿Quiere que esta sea su dirección de correspondencia de preferencia?,
-GLOBAL - Apply Online,Continue your application,Apply online,Solicitar en línea,Solicitar en línea,
-GLOBAL - Download Application,Download Application,Download Application,Descargar la solicitud,Descargar la solicitud,
-GLOBAL - Action - Log In,Log in,Log in,Iniciar sesión,Iniciar sesión,
-GLOBAL - Action - Log In Esp,Iniciar sesión,Iniciar sesión,Log in,Log in,
-GLOBAL - Label - Suggested Address,Suggested address,Suggested address,Dirección sugerida,Dirección sugerida,
-GLOBAL - Label - Address Entered,Address you entered,Address you entered,La dirección que ingresó,La dirección que ingresó,
+GLOBAL - Options - January,None of the above,January,Ninguna de las anteriores,enero,
+GLOBAL - Options - August,Asterisks (*) indicate a required field.,August,Los asteriscos (*) indican que es un campo requerido.,agosto,
+GLOBAL - Option - None of the above,Select at least one option.,None of the above,Seleccione por lo menos una opción.,Ninguna de las anteriores,
+GLOBAL - Required Fields,Email,Asterisks (*) indicate a required field.,Correo electrónico,Los asteriscos (*) indican que es un campo requerido.,
+GLOBAL - Helper Select at least one,Phone,Select at least one option.,Teléfono,Seleccione por lo menos una opción.,
+GLOBAL - Email,Physical mail,Email,Correo físico,Correo electrónico,
+GLOBAL - Phone,Email address,Phone,Correo electrónico,Teléfono,
+GLOBAL - Physical mail,Phone number,Physical mail,Número de teléfono,Correo físico,
+GLOBAL - Email address,Do you want us to send Summer EBT cards for all of your enrolled children to your preferred address?,Email address,¿Quiere que enviemos las tarjetas Summer EBT para todos sus hijos inscritos a la dirección de preferencia?,Correo electrónico,
+GLOBAL - Phone number,"If your child is eligible for Summer EBT through SNAP or Colorado Works (TANF) participation, they will not receive a Summer EBT card.",Phone number,"Si su hijo es elegible para Summer EBT a través de la participación en SNAP o Colorado Works (TANF), no recibirá una tarjeta Summer EBT.",Número de teléfono,
+GLOBAL - Label Send Cards to Preferred Address,Yes,Do you want us to send Summer EBT cards for all of your enrolled children to your preferred address?,Sí,¿Quiere que enviemos las tarjetas Summer EBT para todos sus hijos inscritos a la dirección de preferencia?,
+GLOBAL - Co-loaded Card Helper,No,"If your child is eligible for Summer EBT through SNAP or Colorado Works (TANF) participation, they will not receive a Summer EBT card.",No,"Si su hijo es elegible para Summer EBT a través de la participación en SNAP o Colorado Works (TANF), no recibirá una tarjeta Summer EBT.",
+GLOBAL - Yes,Back,Yes,Regresar,Sí,
+GLOBAL - No,Select one,No,Seleccione una opción,No,
+GLOBAL - Action - Back,Street address,Back,Dirección,Regresar,
+GLOBAL - Label - Select One,"Include direction, NW, NE, SE, or SW.",Select one,"Incluya la dirección: NO, NE, SE o SO.",Seleccione una opción,
+GLOBAL - Street Address,Street address line 2,Street address,"Dirección, línea 2",Dirección,
+GLOBAL - Helper Street Address,"For example, an apartment number, unit number, floor, or PO Box.","Include direction, NW, NE, SE, or SW.","Por ejemplo, número de suite, número de unidad, piso o apartado postal","Incluya la dirección: NO, NE, SE o SO.",
+GLOBAL - Street Address 2,City,Street address line 2,Ciudad,"Dirección, línea 2",
+GLOBAL - Helper Street Address 2,   ,"For example, an apartment number, unit number, floor, or PO Box.",   ,"Por ejemplo, número de suite, número de unidad, piso o apartado postal",
+GLOBAL - City,State or territory,City,Estado o territorio,Ciudad,
+GLOBAL - Default City,Colorado,   ,Colorado,   ,
+GLOBAL - State or Territory,ZIP Code,State or territory,Código postal,Estado o territorio,
+GLOBAL - Default State or Territory,Do you want to make this your preferred mailing address?,Colorado,¿Quiere que esta sea su dirección de correspondencia de preferencia?,Colorado,
+GLOBAL - ZIP Code,Continue your application,ZIP Code,Solicitar en línea,Código postal,
+GLOBAL - Label Make Preferred Mailing Address,Download Application,Do you want to make this your preferred mailing address?,Descargar la solicitud,¿Quiere que esta sea su dirección de correspondencia de preferencia?,
+GLOBAL - Apply Online,Log in,Apply online,Iniciar sesión,Solicitar en línea,
+GLOBAL - Download Application,Iniciar sesión,Download Application,Log in,Descargar la solicitud,
+GLOBAL - Action - Log In,Suggested address,Log in,Dirección sugerida,Iniciar sesión,
+GLOBAL - Action - Log In Esp,Address you entered,Iniciar sesión,La dirección que ingresó,Log in,
+GLOBAL - Label - Suggested Address,Select all that apply,Suggested address,,Dirección sugerida,
+GLOBAL - Label - Address Entered,Text,Address you entered,,La dirección que ingresó,
+GLOBAL - Label - Select All,,Select all that apply,,,
+GLOBAL - Text,,Text,,,
 VALIDATION - Summary,,"We're sorry. Some required questions aren't filled or we can't accept some of the answers. We'll be able to continue your application once these issues are fixed.
 
 If you need additional support (especially in a language other than English or español), please contact us.",,"Lo sentimos. Algunas preguntas requeridas no están completas o no podemos aceptar algunas de las respuestas. Podremos continuar con su solicitud una vez que se solucionen estos problemas.
@@ -521,33 +553,33 @@ VALIDATION - Enter Day,,Provide a day using one or two numbers,,Ingrese uno o do
 VALIDATION - Enter Year,,Provide a year using four numbers,,Escriba el año con cuatro números,
 VALIDATION - Select Year,,Select a year,,Seleccione un año,
 VALIDATION - Enter Email,,Provide a valid email address,,Ingrese un correo electrónico válido,
-VALIDATION - OTP Invalid,,Enter a valid [6] digit code. Tap here to send a new code.,,,
-VALIDATION - Global Internal Error,,An error occurred on our end. Please try again.,,,
-PROTO - S1 - Optional ID Information - Title 2,We checked our records and need more information to see if Kalai F. Curtis can get Summer EBT,We checked our records and need more information to see if Kalai F. Curtis can get Summer EBT,Revisamos nuestros registros y necesitamos más información para ver si Kalai F. Curtis puede recibir Summer EBT,Revisamos nuestros registros y necesitamos más información para ver si Kalai F. Curtis puede recibir Summer EBT,
-PROTO - S2 - Portal Dashboard - Card Table - Kalai Frances Curtis' card,Kalai Frances Curtis' card,Kalai Frances Curtis' card,Tarjeta de Kalai Frances Curtis,Tarjeta de Kalai Frances Curtis,
-PROTO - S2 - Portal Dashboard - Card Table - Caleb David Curtis' card,Caleb David Curtis' card,Caleb David Curtis' card,Tarjeta de Caleb David Curtis,Tarjeta de Caleb David Curtis,
-PROTO - S2 - Portal Dashboard - Card Table - 1234 (last 4 digits),1234 (last 4 digits),1234 (last 4 digits),1234 (últimos 4 dígitos),1234 (últimos 4 dígitos),
-PROTO - S2 - Portal Dashboard - Card Table - 5678 (last 4 digits),5678 (last 4 digits),5678 (last 4 digits),5678 (últimos 4 dígitos),5678 (últimos 4 dígitos),
-PROTO - S2 - Portal Dashboard - Card Table - Status Requested On 1,Requested on 04/01/2024,Requested on 04/01/2024,Solicitada el 04/01/2024,Solicitada el 04/01/2024,
-PROTO - S2 - Portal Dashboard - Card Table - Status Requested On 2,Requested on 05/05/2024,Requested on 05/05/2024,Solicitada el 05/05/2024,Solicitada el 05/05/2024,
-PROTO - S4 - Mailing Address Update - Title Caleb David Curtis,Tell us where to safely send Caleb David Curtis' mail,Tell us where to safely send Caleb David Curtis' mail,Compártanos dónde enviarle a Caleb David Curtis correo de manera segura,Compártanos dónde enviarle a Caleb David Curtis correo de manera segura,
-PROTO - S5 - Bulk Order New Cards Who - Card Number Kalai,Card number: 1234 (last 4 digits),Card number: 1234 (last 4 digits),Número de tarjeta: 1234 (últimos 4 dígitos),Número de tarjeta: 1234 (últimos 4 dígitos),
-PROTO - S5 - Bulk Order New Cards Who - Card Number Caleb,Card number: 5678 (last 4 digits),Card number: 5678 (last 4 digits),Número de tarjeta: 5678 (últimos 4 dígitos),Número de tarjeta: 5678 (últimos 4 dígitos),
-PROTO - First Name 1,Kalai,Kalai,Kalai,Kalai,
-PROTO - Middle Name 1,Frances,Frances,Frances,Frances,
-PROTO - Last Name 1,Curtis,Curtis,Curtis,Curtis,
-PROTO - Birthdate Month 1,August,August,August,August,
-PROTO - Birthdate Day 1,13,13,13,13,
-PROTO - Birthdate Year 1,2017,2017,2017,2017,
-PROTO - Name 1,Kalai Frances Curtis,Kalai Frances Curtis,Kalai F. Curtis,Kalai F. Curtis,
-PROTO - Birthdate 1,"August 13, 2017",42960,"August, 13 2017",42960,
-PROTO - Name 2,Caleb David Curtis,Caleb David Curtis,Caleb David Curtis,Caleb David Curtis,
-PROTO - First Name 2,Caleb,Caleb,Caleb,Caleb,
-PROTO - Middle Name 2,David,David,David,David,
-PROTO - Last Name 2,Curtis,Curtis,Curtis,Curtis,
-PROTO - Birthdate 2,"January 7, 2009",39820,"January 7, 2009",39820,
-PROTO - Birthdate Month 2,January,January,January,January,
-PROTO - Birthdate Day 2,7,7,7,7,
-PROTO - Birthdate Year 2,2009,2009,2009,2009,
-PROTO - LOGIN EMAIL,frances.curtis@gmail.com,frances.curtis@gmail.com,frances.curtis@gmail.com,frances.curtis@gmail.com,
-PROTO - S2 - Portal Dashboard - Alert Address Title,A replacement for the card ending in 1234 will be sent to the following address,A replacement for the card ending in 1234 will be sent to the following address,Las tarjeta terminada en 1234 será remplazadas y enviada a la siguiente dirección,Las tarjeta terminada en 1234 será remplazadas y enviada a la siguiente dirección,
+VALIDATION - OTP Invalid,We checked our records and need more information to see if Kalai F. Curtis can get Summer EBT,Enter a valid [6] digit code. Tap here to send a new code.,Revisamos nuestros registros y necesitamos más información para ver si Kalai F. Curtis puede recibir Summer EBT,,
+VALIDATION - Global Internal Error,Kalai Frances Curtis' card,An error occurred on our end. Please try again.,Tarjeta de Kalai Frances Curtis,,
+PROTO - S1 - Optional ID Information - Title 2,Caleb David Curtis' card,We checked our records and need more information to see if Kalai F. Curtis can get Summer EBT,Tarjeta de Caleb David Curtis,Revisamos nuestros registros y necesitamos más información para ver si Kalai F. Curtis puede recibir Summer EBT,
+PROTO - S2 - Portal Dashboard - Card Table - Kalai Frances Curtis' card,1234 (last 4 digits),Kalai Frances Curtis' card,1234 (últimos 4 dígitos),Tarjeta de Kalai Frances Curtis,
+PROTO - S2 - Portal Dashboard - Card Table - Caleb David Curtis' card,5678 (last 4 digits),Caleb David Curtis' card,5678 (últimos 4 dígitos),Tarjeta de Caleb David Curtis,
+PROTO - S2 - Portal Dashboard - Card Table - 1234 (last 4 digits),Requested on 04/01/2024,1234 (last 4 digits),Solicitada el 04/01/2024,1234 (últimos 4 dígitos),
+PROTO - S2 - Portal Dashboard - Card Table - 5678 (last 4 digits),Requested on 05/05/2024,5678 (last 4 digits),Solicitada el 05/05/2024,5678 (últimos 4 dígitos),
+PROTO - S2 - Portal Dashboard - Card Table - Status Requested On 1,Tell us where to safely send Caleb David Curtis' mail,Requested on 04/01/2024,Compártanos dónde enviarle a Caleb David Curtis correo de manera segura,Solicitada el 04/01/2024,
+PROTO - S2 - Portal Dashboard - Card Table - Status Requested On 2,Card number: 1234 (last 4 digits),Requested on 05/05/2024,Número de tarjeta: 1234 (últimos 4 dígitos),Solicitada el 05/05/2024,
+PROTO - S4 - Mailing Address Update - Title Caleb David Curtis,Card number: 5678 (last 4 digits),Tell us where to safely send Caleb David Curtis' mail,Número de tarjeta: 5678 (últimos 4 dígitos),Compártanos dónde enviarle a Caleb David Curtis correo de manera segura,
+PROTO - S5 - Bulk Order New Cards Who - Card Number Kalai,Kalai,Card number: 1234 (last 4 digits),Kalai,Número de tarjeta: 1234 (últimos 4 dígitos),
+PROTO - S5 - Bulk Order New Cards Who - Card Number Caleb,Frances,Card number: 5678 (last 4 digits),Frances,Número de tarjeta: 5678 (últimos 4 dígitos),
+PROTO - First Name 1,Curtis,Kalai,Curtis,Kalai,
+PROTO - Middle Name 1,August,Frances,August,Frances,
+PROTO - Last Name 1,13,Curtis,13,Curtis,
+PROTO - Birthdate Month 1,2017,August,2017,August,
+PROTO - Birthdate Day 1,Kalai Frances Curtis,13,Kalai F. Curtis,13,
+PROTO - Birthdate Year 1,"August 13, 2017",2017,"August, 13 2017",2017,
+PROTO - Name 1,Caleb David Curtis,Kalai Frances Curtis,Caleb David Curtis,Kalai F. Curtis,
+PROTO - Birthdate 1,Caleb,42960,Caleb,42960,
+PROTO - Name 2,David,Caleb David Curtis,David,Caleb David Curtis,
+PROTO - First Name 2,Curtis,Caleb,Curtis,Caleb,
+PROTO - Middle Name 2,"January 7, 2009",David,"January 7, 2009",David,
+PROTO - Last Name 2,January,Curtis,January,Curtis,
+PROTO - Birthdate 2,7,39820,7,39820,
+PROTO - Birthdate Month 2,2009,January,2009,January,
+PROTO - Birthdate Day 2,frances.curtis@gmail.com,7,frances.curtis@gmail.com,7,
+PROTO - Birthdate Year 2,A replacement for the card ending in 1234 will be sent to the following address,2009,Las tarjeta terminada en 1234 será remplazadas y enviada a la siguiente dirección,2009,
+PROTO - LOGIN EMAIL,,frances.curtis@gmail.com,,frances.curtis@gmail.com,
+PROTO - S2 - Portal Dashboard - Alert Address Title,,A replacement for the card ending in 1234 will be sent to the following address,,Las tarjeta terminada en 1234 será remplazadas y enviada a la siguiente dirección,

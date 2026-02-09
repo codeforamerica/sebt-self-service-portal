@@ -9,6 +9,7 @@ import { ApiError } from '@/api/client'
 import { Alert, Button, InputField, TextLink } from '@/components/ui'
 
 import { useRequestOtp, useValidateOtp, ValidateOtpRequestSchema } from '../../api'
+import { useAuth } from '../../context'
 
 const RESEND_COOLDOWN_SECONDS = 30
 
@@ -19,6 +20,7 @@ interface VerifyOtpFormProps {
 
 export function VerifyOtpForm({ email, contactLink }: VerifyOtpFormProps) {
   const router = useRouter()
+  const { login } = useAuth()
   const { t: tLogin } = useTranslation('login')
   const { t: tValidation } = useTranslation('validation')
 
@@ -63,11 +65,12 @@ export function VerifyOtpForm({ email, contactLink }: VerifyOtpFormProps) {
     setFieldError(null)
 
     try {
-      await validateOtp.mutateAsync({ email, otp })
+      const result = await validateOtp.mutateAsync({ email, otp })
+      // Store the JWT token for authenticated API requests
+      login(result.token)
       // Clear the stored email
       sessionStorage.removeItem('otp_email')
-      // TODO: Store token in auth context and redirect to dashboard
-      router.push('/')
+      router.push('/dashboard')
     } catch (err) {
       if (err instanceof ApiError) {
         setSubmitError(err.message)

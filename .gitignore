@@ -440,6 +440,8 @@ CLAUDE.md
 # output files
 output
 
+# temporary files
+/temp
 # local plugin files
 plugins-dc
 plugins-co

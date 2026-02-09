@@ -1,4 +1,3 @@
-import { HelpSection } from '@/components/layout'
 import { VerifyOtpFormWrapper } from '@/features/auth'
 import { getStateLinks } from '@/lib/links'
 import { getState } from '@/lib/state'
@@ -28,8 +27,6 @@ export default function VerifyPage() {
           </section>
         </div>
       </div>
-
-      <HelpSection state={state} />
     </>
   )
 }

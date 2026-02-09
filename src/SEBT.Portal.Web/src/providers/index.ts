@@ -1,3 +1,4 @@
+export { AuthProvider } from '@/features/auth'
 export { AxeProvider } from './AxeProvider'
 export { FeatureFlagsProvider } from './FeatureFlagsProvider'
 export { I18nProvider } from './I18nProvider'

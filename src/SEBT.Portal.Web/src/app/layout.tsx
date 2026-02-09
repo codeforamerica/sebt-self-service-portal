@@ -1,7 +1,13 @@
-import { Footer, Header, SkipNav } from '@/components/layout'
+import { Footer, Header, HelpSection, SkipNav } from '@/components/layout'
 import { primaryFont } from '@/design/fonts'
 import { getState } from '@/lib/state'
-import { AxeProvider, FeatureFlagsProvider, I18nProvider, QueryProvider } from '@/providers'
+import {
+  AuthProvider,
+  AxeProvider,
+  FeatureFlagsProvider,
+  I18nProvider,
+  QueryProvider
+} from '@/providers'
 import { GoogleAnalytics } from '@next/third-parties/google'
 import type { Metadata, Viewport } from 'next'
 import { headers } from 'next/headers'
@@ -83,16 +89,19 @@ export default async function RootLayout({
     >
       <body>
         <QueryProvider>
-          <FeatureFlagsProvider>
-            <I18nProvider>
-              <SkipNav />
-              <AxeProvider>
-                <Header state={state} />
-                <main id="main-content">{children}</main>
-                <Footer state={state} />
-              </AxeProvider>
-            </I18nProvider>
-          </FeatureFlagsProvider>
+          <AuthProvider>
+            <FeatureFlagsProvider>
+              <I18nProvider>
+                <SkipNav />
+                <AxeProvider>
+                  <Header state={state} />
+                  <main id="main-content">{children}</main>
+                  <HelpSection state={state} />
+                  <Footer state={state} />
+                </AxeProvider>
+              </I18nProvider>
+            </FeatureFlagsProvider>
+          </AuthProvider>
         </QueryProvider>
         {/* USWDS initialization script - uses nonce for CSP compliance */}
         {/* suppressHydrationWarning: nonce changes per request, mismatch is expected */}
