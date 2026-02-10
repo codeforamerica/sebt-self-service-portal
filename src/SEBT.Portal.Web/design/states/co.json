@@ -1966,7 +1966,7 @@
     },
     "theme-button-border-radius": {
       "$type": "borderRadius",
-      "$value": "{pill}"
+      "$value": "{md}"
     },
     "theme-font-type-sans": {
       "$type": "fontFamilies",
