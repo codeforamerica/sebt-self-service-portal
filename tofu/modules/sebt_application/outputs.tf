@@ -12,3 +12,13 @@ output "api_security_group_id" {
   description = "Security group ID of the API service."
   value       = module.api.security_group_id
 }
+
+output "web_endpoint_url" {
+  description = "URL of the Web service endpoint."
+  value       = module.web.endpoint_url
+}
+
+output "web_repository_url" {
+  description = "ECR repository URL for the Web service."
+  value       = module.web.repository_url
+}

@@ -54,6 +54,11 @@ variable "public_subnets" {
   description = "List of public subnet IDs."
 }
 
+variable "state" {
+  type        = string
+  description = "State abbreviation (e.g. DC, CO)."
+}
+
 variable "vpc_id" {
   type        = string
   description = "VPC ID where resources will be created."

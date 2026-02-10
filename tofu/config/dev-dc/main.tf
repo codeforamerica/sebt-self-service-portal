@@ -42,6 +42,7 @@ module "app" {
   logging_key_id  = module.logging.kms_key_arn
   private_subnets = module.vpc.private_subnets
   public_subnets  = module.vpc.public_subnets
+  state           = "DC"
   vpc_id          = module.vpc.vpc_id
 
   force_delete           = true
