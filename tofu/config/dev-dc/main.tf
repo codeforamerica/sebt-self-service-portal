@@ -31,3 +31,21 @@ module "vpc" {
   private_subnets = var.private_subnets
   public_subnets  = var.public_subnets
 }
+
+# Deploy the application services (API + Web) using the shared wrapper module.
+module "app" {
+  source = "../../modules/sebt_application"
+
+  domain          = var.domain
+  environment     = "dev"
+  image_tag       = var.image_tag
+  logging_key_id  = module.logging.kms_key_arn
+  private_subnets = module.vpc.private_subnets
+  public_subnets  = module.vpc.public_subnets
+  vpc_id          = module.vpc.vpc_id
+
+  force_delete           = true
+  image_tags_mutable     = true
+  enable_execute_command = true
+}
+

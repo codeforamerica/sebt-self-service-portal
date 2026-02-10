@@ -1,3 +1,14 @@
+variable "domain" {
+  type        = string
+  description = "Domain name for the application."
+}
+
+variable "image_tag" {
+  type        = string
+  description = "Docker image tag to deploy."
+  default     = "latest"
+} 
+
 variable "private_subnets" {
   type        = list(string)
   description = "List of private subnet CIDR blocks."
