@@ -1,0 +1,31 @@
+/*
+----------------------------------------
+Alert Overrides
+----------------------------------------
+Alert layout per Figma design.
+Icon: 24x24, Padding: 8px top/bottom, 22px left, 14px gap to text, 16px right
+----------------------------------------
+*/
+
+@use 'uswds-core' as *;
+
+.usa-alert .usa-alert__body {
+  padding: 8px 16px 8px 60px !important;
+
+  // Reset USWDS child margin-left (USWDS adds margin to clear the icon,
+  // but we handle all spacing through padding-left instead)
+  > * {
+    margin-left: 0 !important;
+  }
+}
+
+// Override icon position per Figma (22px from left edge, 8px from top)
+.usa-alert .usa-alert__body::before,
+.usa-alert--warning .usa-alert__body::before,
+.usa-alert--info .usa-alert__body::before,
+.usa-alert--success .usa-alert__body::before,
+.usa-alert--error .usa-alert__body::before,
+.usa-alert--emergency .usa-alert__body::before {
+  top: 8px !important;
+  left: 22px !important;
+}
