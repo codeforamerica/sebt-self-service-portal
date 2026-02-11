@@ -14,6 +14,8 @@ export type AlertVariant = 'info' | 'success' | 'warning' | 'error' | 'emergency
 export interface AlertProps {
   variant?: AlertVariant
   heading?: string
+  headingClassName?: string
+  textClassName?: string
   children: ReactNode
   slim?: boolean
   noIcon?: boolean

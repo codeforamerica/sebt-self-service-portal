@@ -11,6 +11,8 @@ const variantClasses: Record<AlertVariant, string> = {
 export function Alert({
   variant = 'info',
   heading,
+  headingClassName = '',
+  textClassName = '',
   children,
   slim = false,
   noIcon = false,
@@ -30,8 +32,8 @@ export function Alert({
       role="alert"
     >
       <div className="usa-alert__body">
-        {heading && <h4 className="usa-alert__heading">{heading}</h4>}
-        <p className="usa-alert__text">{children}</p>
+        {heading && <h4 className={`usa-alert__heading ${headingClassName}`.trim()}>{heading}</h4>}
+        <p className={`usa-alert__text ${textClassName}`.trim()}>{children}</p>
       </div>
     </div>
   )
