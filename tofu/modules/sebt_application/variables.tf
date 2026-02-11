@@ -1,3 +1,9 @@
+variable "apply_immediately" {
+  type        = bool
+  description = "Apply database changes immediately rather than during the next maintenance window."
+  default     = false
+}
+
 variable "desired_containers" {
   type        = number
   description = "Number of desired containers for each service."
@@ -52,6 +58,12 @@ variable "private_subnets" {
 variable "public_subnets" {
   type        = list(string)
   description = "List of public subnet IDs."
+}
+
+variable "skip_final_snapshot" {
+  type        = bool
+  description = "Skip final snapshot when destroying the database."
+  default     = false
 }
 
 variable "state" {

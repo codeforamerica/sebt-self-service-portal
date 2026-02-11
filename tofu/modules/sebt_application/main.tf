@@ -84,3 +84,20 @@ module "web" {
   }
 }
 
+# Create the RDS SQL Server database.
+module "database" {
+  source = "../sebt_database"
+
+  project         = "sebt-portal"
+  project_short   = "sebt"
+  environment     = var.environment
+  vpc_id          = var.vpc_id
+  subnets         = var.private_subnets
+  logging_key_arn = var.logging_key_id
+
+  ingress_security_groups = [module.api.security_group_id]
+
+  skip_final_snapshot = var.skip_final_snapshot
+  apply_immediately   = var.apply_immediately
+}
+
