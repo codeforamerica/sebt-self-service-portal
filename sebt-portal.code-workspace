@@ -1,0 +1,117 @@
+{
+  "folders": [
+    {
+      "path": ".",
+      "name": "Portal",
+    },
+    {
+      "path": "../sebt-self-service-portal-state-connector",
+      "name": "State Connector",
+    },
+    {
+      "path": "../sebt-self-service-portal-dc-connector",
+      "name": "DC Connector",
+    },
+    {
+      "path": "../sebt-self-service-portal-co-connector",
+      "name": "CO Connector",
+    },
+  ],
+  "settings": {
+    "search.exclude": {
+      "**/node_modules": true,
+      "**/bin": true,
+      "**/obj": true,
+      "**/.next": true,
+      "**/coverage": true,
+      "**/content/locales": true,
+      "**/Migrations": true,
+      "**/.pnpm-store": true,
+    },
+    "files.exclude": {
+      "**/.git": true,
+      "**/bin": true,
+      "**/obj": true,
+    },
+    "files.associations": {
+      "*.scss": "scss",
+      "*.json": "json",
+    },
+    "editor.defaultFormatter": "esbenp.prettier-vscode",
+    "editor.formatOnSave": true,
+    "typescript.preferences.importModuleSpecifier": "non-relative",
+    "css.validate": false,
+    "scss.validate": false,
+  },
+  "extensions": {
+    "recommendations": [
+      "dbaeumer.vscode-eslint",
+      "ms-dotnettools.csdevkit",
+      "ms-dotnettools.csharp",
+      "esbenp.prettier-vscode",
+      "ms-playwright.playwright",
+      "vitest.explorer",
+    ],
+  },
+  "tasks": {
+    "version": "2.0.0",
+    "tasks": [
+      {
+        "label": "Dev: Full Stack",
+        "type": "shell",
+        "command": "pnpm dev",
+        "group": "build",
+        "problemMatcher": [],
+      },
+      {
+        "label": "Dev: Frontend Only",
+        "type": "shell",
+        "command": "pnpm dev",
+        "options": { "cwd": "${workspaceFolder:Portal}/src/SEBT.Portal.Web" },
+        "group": "build",
+        "problemMatcher": [],
+      },
+      {
+        "label": "Test: Frontend",
+        "type": "shell",
+        "command": "pnpm test",
+        "options": { "cwd": "${workspaceFolder:Portal}/src/SEBT.Portal.Web" },
+        "group": "test",
+        "problemMatcher": [],
+      },
+      {
+        "label": "Test: Backend",
+        "type": "shell",
+        "command": "dotnet test",
+        "options": {
+          "cwd": "${workspaceFolder:Portal}/test/SEBT.Portal.Tests",
+        },
+        "group": "test",
+        "problemMatcher": "$msCompile",
+      },
+      {
+        "label": "Generate: Locales",
+        "type": "shell",
+        "command": "pnpm copy:generate",
+        "options": { "cwd": "${workspaceFolder:Portal}/src/SEBT.Portal.Web" },
+        "problemMatcher": [],
+      },
+      {
+        "label": "Generate: Design Tokens",
+        "type": "shell",
+        "command": "pnpm tokens",
+        "options": { "cwd": "${workspaceFolder:Portal}/src/SEBT.Portal.Web" },
+        "problemMatcher": [],
+      },
+      {
+        "label": "Build: State Connector Package",
+        "type": "shell",
+        "command": "dotnet build --verbosity minimal && dotnet pack --no-build -o ~/nuget-store --verbosity minimal",
+        "options": {
+          "cwd": "${workspaceFolder:State Connector}/src/SEBT.Portal.StatesPlugins.Interfaces",
+        },
+        "problemMatcher": "$msCompile",
+      },
+    ],
+  },
+}
