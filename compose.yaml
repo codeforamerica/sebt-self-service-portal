@@ -6,6 +6,8 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
+      additional_contexts:
+        nuget-store: ~/nuget-store
       args:
         STATE: ${STATE:-dc}
     ports:

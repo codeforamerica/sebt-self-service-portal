@@ -45,8 +45,10 @@ COPY src/SEBT.Portal.Infrastructure.Seeding/SEBT.Portal.Infrastructure.Seeding.c
 COPY src/SEBT.Portal.Kernel/SEBT.Portal.Kernel.csproj SEBT.Portal.Kernel/
 COPY src/SEBT.Portal.Kernel.AspNetCore/SEBT.Portal.Kernel.AspNetCore.csproj SEBT.Portal.Kernel.AspNetCore/
 COPY src/SEBT.Portal.UseCases/SEBT.Portal.UseCases.csproj SEBT.Portal.UseCases/
+COPY src/SEBT.Portal.TestUtilities/SEBT.Portal.TestUtilities.csproj SEBT.Portal.TestUtilities/
 
 # RUN dotnet restore SEBT.Portal.Infrastructure.Seeding/SEBT.Portal.Infrastructure.Seeding.csproj
+COPY --from=nuget-store . /root/nuget-store/
 RUN dotnet restore SEBT.Portal.Api/SEBT.Portal.Api.csproj
 
 # Copy source and publish (--no-restore uses cached restore)
@@ -57,6 +59,7 @@ COPY src/SEBT.Portal.Infrastructure.Seeding/ SEBT.Portal.Infrastructure.Seeding/
 COPY src/SEBT.Portal.Kernel/ SEBT.Portal.Kernel/
 COPY src/SEBT.Portal.Kernel.AspNetCore/ SEBT.Portal.Kernel.AspNetCore/
 COPY src/SEBT.Portal.UseCases/ SEBT.Portal.UseCases/
+COPY src/SEBT.Portal.TestUtilities/ SEBT.Portal.TestUtilities/
 
 RUN dotnet publish SEBT.Portal.Api/SEBT.Portal.Api.csproj \
     -c $BUILD_CONFIGURATION \
