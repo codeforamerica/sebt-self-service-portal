@@ -72,3 +72,21 @@ a {
 .usa-label {
   font-weight: 600;
 }
+
+// Reset native button chrome while preserving content styling.
+// Use on <button> elements that should look like links or plain text.
+.button-unstyled {
+  background: none;
+  border: 0;
+  border-radius: 0;
+  padding: 0;
+  cursor: pointer;
+  font: inherit;
+  text-align: left;
+}
+
+.avatar-circle {
+  width: 36px;
+  height: 36px;
+  flex-shrink: 0;
+}
