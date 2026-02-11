@@ -41,7 +41,7 @@ public class RefreshTokenCommandHandlerTests
         var user = new User
         {
             Email = command.Email,
-            IdProofingStatus = IdProofingStatus.Completed
+            IalLevel = UserIalLevel.IAL1plus
         };
 
         userRepository.GetUserByEmailAsync(Arg.Is<string>(email => email == command.Email), Arg.Any<CancellationToken>())
@@ -57,7 +57,7 @@ public class RefreshTokenCommandHandlerTests
         var successResult = Assert.IsType<SuccessResult<string>>(result);
         Assert.Equal("refreshed.jwt.token", successResult.Value);
         await userRepository.Received(1).GetUserByEmailAsync(command.Email, Arg.Any<CancellationToken>());
-        jwtTokenService.Received(1).GenerateToken(Arg.Is<User>(u => u.Email == command.Email && u.IdProofingStatus == IdProofingStatus.Completed));
+        jwtTokenService.Received(1).GenerateToken(Arg.Is<User>(u => u.Email == command.Email && u.IalLevel == UserIalLevel.IAL1plus));
     }
 
     [Fact]
@@ -135,7 +135,7 @@ public class RefreshTokenCommandHandlerTests
         var user = new User
         {
             Email = command.Email,
-            IdProofingStatus = IdProofingStatus.InProgress,
+            IalLevel = UserIalLevel.IAL1,
             IdProofingSessionId = "session-abc-123",
             IdProofingCompletedAt = null,
             IdProofingExpiresAt = DateTime.UtcNow.AddYears(1)
@@ -153,7 +153,7 @@ public class RefreshTokenCommandHandlerTests
         Assert.True(result.IsSuccess);
         jwtTokenService.Received(1).GenerateToken(Arg.Is<User>(u =>
             u.Email == command.Email &&
-            u.IdProofingStatus == IdProofingStatus.InProgress &&
+            u.IalLevel == UserIalLevel.IAL1 &&
             u.IdProofingSessionId == "session-abc-123"));
     }
 
@@ -192,7 +192,7 @@ public class RefreshTokenCommandHandlerTests
         var user = new User
         {
             Email = command.Email,
-            IdProofingStatus = IdProofingStatus.NotStarted
+            IalLevel = UserIalLevel.None
         };
 
         userRepository.GetUserByEmailAsync(Arg.Is<string>(email => email == command.Email), Arg.Any<CancellationToken>())
@@ -223,7 +223,7 @@ public class RefreshTokenCommandHandlerTests
         var user = new User
         {
             Email = command.Email,
-            IdProofingStatus = IdProofingStatus.Completed
+            IalLevel = UserIalLevel.IAL1plus
         };
 
         userRepository.GetUserByEmailAsync(Arg.Is<string>(email => email == command.Email), Arg.Any<CancellationToken>())
@@ -253,7 +253,7 @@ public class RefreshTokenCommandHandlerTests
         var user = new User
         {
             Email = command.Email,
-            IdProofingStatus = IdProofingStatus.Completed,
+            IalLevel = UserIalLevel.IAL1plus,
             IdProofingSessionId = "session-xyz",
             IdProofingCompletedAt = completedAt,
             IdProofingExpiresAt = expiresAt
@@ -271,7 +271,7 @@ public class RefreshTokenCommandHandlerTests
         Assert.True(result.IsSuccess);
         jwtTokenService.Received(1).GenerateToken(Arg.Is<User>(u =>
             u.Email == command.Email &&
-            u.IdProofingStatus == IdProofingStatus.Completed &&
+            u.IalLevel == UserIalLevel.IAL1plus &&
             u.IdProofingSessionId == "session-xyz" &&
             u.IdProofingCompletedAt == completedAt &&
             u.IdProofingExpiresAt == expiresAt));

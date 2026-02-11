@@ -6,29 +6,55 @@ using NSubstitute;
 using SEBT.Portal.Api.Controllers.Household;
 using SEBT.Portal.Api.Models;
 using SEBT.Portal.Api.Models.Household;
+using SEBT.Portal.Core.Models;
 using SEBT.Portal.Core.Models.Auth;
 using SEBT.Portal.Core.Models.Household;
 using SEBT.Portal.Core.Repositories;
+using SEBT.Portal.Core.Services;
+using SEBT.Portal.Core.Utilities;
+using SEBT.Portal.Kernel;
+using SEBT.Portal.UseCases.Household;
 
 namespace SEBT.Portal.Tests.Unit.Controllers;
 
 public class HouseholdControllerTests
 {
+    private readonly IIdProofingRequirementsService _idProofingRequirementsService;
     private readonly HouseholdController _controller;
 
     public HouseholdControllerTests()
     {
-        var logger = NullLogger<HouseholdController>.Instance;
-        _controller = new HouseholdController(logger);
+        _controller = new HouseholdController();
+        _idProofingRequirementsService = Substitute.For<IIdProofingRequirementsService>();
     }
 
-    private void SetupAuthenticatedUser(string email, IdProofingStatus idProofingStatus = IdProofingStatus.NotStarted, string claimType = ClaimTypes.Email)
+    private IQueryHandler<GetHouseholdDataQuery, HouseholdData> CreateQueryHandler(
+        IHouseholdIdentifierResolver resolver,
+        IHouseholdRepository repository)
     {
-        var claims = new List<Claim>
+        var logger = NullLogger<GetHouseholdDataQueryHandler>.Instance;
+        return new GetHouseholdDataQueryHandler(resolver, repository, _idProofingRequirementsService, logger);
+    }
+
+    private void SetupAuthenticatedUser(string email, UserIalLevel userIalLevel = UserIalLevel.None, string claimType = ClaimTypes.Email)
+    {
+        var ial = userIalLevel switch
         {
-            new Claim(claimType, email),
-            new Claim("id_proofing_status", ((int)idProofingStatus).ToString())
+            UserIalLevel.IAL1 => "1",
+            UserIalLevel.IAL1plus => "1plus",
+            UserIalLevel.IAL2 => "2",
+            _ => "0"
         };
+        SetupAuthenticatedUser(email, ial: ial, claimType: claimType);
+    }
+
+    private void SetupAuthenticatedUser(string email, string? ial, string claimType = ClaimTypes.Email)
+    {
+        var claims = new List<Claim> { new Claim(claimType, email) };
+        if (!string.IsNullOrEmpty(ial))
+        {
+            claims.Add(new Claim(JwtClaimTypes.Ial, ial));
+        }
         var identity = new ClaimsIdentity(claims, "Test");
         var principal = new ClaimsPrincipal(identity);
         _controller.ControllerContext = new ControllerContext
@@ -37,12 +63,29 @@ public class HouseholdControllerTests
         };
     }
 
+    private static IHouseholdIdentifierResolver CreateResolverMock(string? email)
+    {
+        var resolver = Substitute.For<IHouseholdIdentifierResolver>();
+        if (string.IsNullOrWhiteSpace(email))
+        {
+            resolver.ResolveAsync(Arg.Any<ClaimsPrincipal>(), Arg.Any<CancellationToken>()).Returns((HouseholdIdentifier?)null);
+        }
+        else
+        {
+            var normalized = EmailNormalizer.Normalize(email);
+            resolver.ResolveAsync(Arg.Any<ClaimsPrincipal>(), Arg.Any<CancellationToken>()).Returns(HouseholdIdentifier.Email(normalized));
+        }
+        return resolver;
+    }
+
     [Fact]
     public async Task GetHouseholdData_WhenHouseholdExistsAndIdVerified_ReturnsOkWithAddress()
     {
         // Arrange
         var email = "user@example.com";
-        SetupAuthenticatedUser(email, IdProofingStatus.Completed);
+        SetupAuthenticatedUser(email, ial: "1plus");
+        _idProofingRequirementsService.GetPiiVisibility(UserIalLevel.IAL1plus)
+            .Returns(new PiiVisibility(IncludeAddress: true, IncludeEmail: true, IncludePhone: true));
 
         var householdData = new HouseholdData
         {
@@ -73,12 +116,13 @@ public class HouseholdControllerTests
             }
         };
 
+        var resolverMock = CreateResolverMock(email);
         var repositoryMock = Substitute.For<IHouseholdRepository>();
-        repositoryMock.GetHouseholdByEmailAsync(email, includeAddress: true, Arg.Any<CancellationToken>())
+        repositoryMock.GetHouseholdByIdentifierAsync(Arg.Is<HouseholdIdentifier>(id => id.Type == PreferredHouseholdIdType.Email && id.Value == EmailNormalizer.Normalize(email)), Arg.Any<PiiVisibility>(), Arg.Any<CancellationToken>())
             .Returns(householdData);
 
         // Act
-        var result = await _controller.GetHouseholdData(repositoryMock);
+        var result = await _controller.GetHouseholdData(CreateQueryHandler(resolverMock, repositoryMock));
 
         // Assert
         Assert.NotNull(result);
@@ -87,7 +131,7 @@ public class HouseholdControllerTests
         Assert.Equal(email, response.Email);
         Assert.NotNull(response.AddressOnFile);
         Assert.Equal("123 Main St", response.AddressOnFile.StreetAddress1);
-        await repositoryMock.Received(1).GetHouseholdByEmailAsync(email, includeAddress: true, Arg.Any<CancellationToken>());
+        await repositoryMock.Received(1).GetHouseholdByIdentifierAsync(Arg.Is<HouseholdIdentifier>(id => id.Type == PreferredHouseholdIdType.Email && id.Value == EmailNormalizer.Normalize(email)), Arg.Any<PiiVisibility>(), Arg.Any<CancellationToken>());
     }
 
     [Fact]
@@ -95,7 +139,9 @@ public class HouseholdControllerTests
     {
         // Arrange
         var email = "user@example.com";
-        SetupAuthenticatedUser(email, IdProofingStatus.NotStarted);
+        SetupAuthenticatedUser(email, UserIalLevel.None);
+        _idProofingRequirementsService.GetPiiVisibility(UserIalLevel.None)
+            .Returns(new PiiVisibility(IncludeAddress: false, IncludeEmail: true, IncludePhone: true));
 
         var householdData = new HouseholdData
         {
@@ -114,12 +160,13 @@ public class HouseholdControllerTests
             }
         };
 
+        var resolverMock = CreateResolverMock(email);
         var repositoryMock = Substitute.For<IHouseholdRepository>();
-        repositoryMock.GetHouseholdByEmailAsync(email, includeAddress: false, Arg.Any<CancellationToken>())
+        repositoryMock.GetHouseholdByIdentifierAsync(Arg.Is<HouseholdIdentifier>(id => id.Type == PreferredHouseholdIdType.Email && id.Value == EmailNormalizer.Normalize(email)), Arg.Any<PiiVisibility>(), Arg.Any<CancellationToken>())
             .Returns(householdData);
 
         // Act
-        var result = await _controller.GetHouseholdData(repositoryMock);
+        var result = await _controller.GetHouseholdData(CreateQueryHandler(resolverMock, repositoryMock));
 
         // Assert
         Assert.NotNull(result);
@@ -127,7 +174,7 @@ public class HouseholdControllerTests
         var response = Assert.IsType<HouseholdDataResponse>(okResult.Value);
         Assert.Equal(email, response.Email);
         Assert.Null(response.AddressOnFile);
-        await repositoryMock.Received(1).GetHouseholdByEmailAsync(email, includeAddress: false, Arg.Any<CancellationToken>());
+        await repositoryMock.Received(1).GetHouseholdByIdentifierAsync(Arg.Is<HouseholdIdentifier>(id => id.Type == PreferredHouseholdIdType.Email && id.Value == EmailNormalizer.Normalize(email)), Arg.Any<PiiVisibility>(), Arg.Any<CancellationToken>());
     }
 
     [Fact]
@@ -135,21 +182,24 @@ public class HouseholdControllerTests
     {
         // Arrange
         var email = "nonexistent@example.com";
-        SetupAuthenticatedUser(email, IdProofingStatus.Completed);
+        SetupAuthenticatedUser(email, ial: "1plus");
+        _idProofingRequirementsService.GetPiiVisibility(UserIalLevel.IAL1plus)
+            .Returns(new PiiVisibility(IncludeAddress: true, IncludeEmail: true, IncludePhone: true));
 
+        var resolverMock = CreateResolverMock(email);
         var repositoryMock = Substitute.For<IHouseholdRepository>();
-        repositoryMock.GetHouseholdByEmailAsync(email, Arg.Any<bool>(), Arg.Any<CancellationToken>())
+        repositoryMock.GetHouseholdByIdentifierAsync(Arg.Is<HouseholdIdentifier>(id => id.Type == PreferredHouseholdIdType.Email && id.Value == EmailNormalizer.Normalize(email)), Arg.Any<PiiVisibility>(), Arg.Any<CancellationToken>())
             .Returns((HouseholdData?)null);
 
         // Act
-        var result = await _controller.GetHouseholdData(repositoryMock);
+        var result = await _controller.GetHouseholdData(CreateQueryHandler(resolverMock, repositoryMock));
 
         // Assert
         Assert.NotNull(result);
         var notFoundResult = Assert.IsType<NotFoundObjectResult>(result);
         var errorResponse = Assert.IsType<ErrorResponse>(notFoundResult.Value);
         Assert.Contains("Household data not found", errorResponse.Error, StringComparison.OrdinalIgnoreCase);
-        await repositoryMock.Received(1).GetHouseholdByEmailAsync(email, includeAddress: true, Arg.Any<CancellationToken>());
+        await repositoryMock.Received(1).GetHouseholdByIdentifierAsync(Arg.Is<HouseholdIdentifier>(id => id.Type == PreferredHouseholdIdType.Email && id.Value == EmailNormalizer.Normalize(email)), Arg.Any<PiiVisibility>(), Arg.Any<CancellationToken>());
     }
 
     [Fact]
@@ -164,17 +214,18 @@ public class HouseholdControllerTests
             HttpContext = new DefaultHttpContext { User = principal }
         };
 
+        var resolverMock = CreateResolverMock(null);
         var repositoryMock = Substitute.For<IHouseholdRepository>();
 
         // Act
-        var result = await _controller.GetHouseholdData(repositoryMock);
+        var result = await _controller.GetHouseholdData(CreateQueryHandler(resolverMock, repositoryMock));
 
         // Assert
         Assert.NotNull(result);
         var unauthorizedResult = Assert.IsType<UnauthorizedObjectResult>(result);
         var errorResponse = Assert.IsType<ErrorResponse>(unauthorizedResult.Value);
         Assert.Contains("Unable to identify user", errorResponse.Error, StringComparison.OrdinalIgnoreCase);
-        await repositoryMock.DidNotReceive().GetHouseholdByEmailAsync(Arg.Any<string>(), Arg.Any<bool>(), Arg.Any<CancellationToken>());
+        await repositoryMock.DidNotReceive().GetHouseholdByIdentifierAsync(Arg.Any<HouseholdIdentifier>(), Arg.Any<PiiVisibility>(), Arg.Any<CancellationToken>());
     }
 
     [Fact]
@@ -182,7 +233,9 @@ public class HouseholdControllerTests
     {
         // Arrange
         var email = "user@example.com";
-        SetupAuthenticatedUser(email, IdProofingStatus.InProgress);
+        SetupAuthenticatedUser(email, UserIalLevel.None);
+        _idProofingRequirementsService.GetPiiVisibility(UserIalLevel.None)
+            .Returns(new PiiVisibility(IncludeAddress: false, IncludeEmail: true, IncludePhone: true));
 
         var householdData = new HouseholdData
         {
@@ -194,17 +247,18 @@ public class HouseholdControllerTests
             }
         };
 
+        var resolverMock = CreateResolverMock(email);
         var repositoryMock = Substitute.For<IHouseholdRepository>();
-        repositoryMock.GetHouseholdByEmailAsync(email, includeAddress: false, Arg.Any<CancellationToken>())
+        repositoryMock.GetHouseholdByIdentifierAsync(Arg.Is<HouseholdIdentifier>(id => id.Type == PreferredHouseholdIdType.Email && id.Value == EmailNormalizer.Normalize(email)), Arg.Any<PiiVisibility>(), Arg.Any<CancellationToken>())
             .Returns(householdData);
 
         // Act
-        var result = await _controller.GetHouseholdData(repositoryMock);
+        var result = await _controller.GetHouseholdData(CreateQueryHandler(resolverMock, repositoryMock));
 
         // Assert
         Assert.NotNull(result);
         var okResult = Assert.IsType<OkObjectResult>(result);
-        await repositoryMock.Received(1).GetHouseholdByEmailAsync(email, includeAddress: false, Arg.Any<CancellationToken>());
+        await repositoryMock.Received(1).GetHouseholdByIdentifierAsync(Arg.Is<HouseholdIdentifier>(id => id.Type == PreferredHouseholdIdType.Email && id.Value == EmailNormalizer.Normalize(email)), Arg.Any<PiiVisibility>(), Arg.Any<CancellationToken>());
     }
 
     [Fact]
@@ -212,7 +266,9 @@ public class HouseholdControllerTests
     {
         // Arrange
         var email = "user@example.com";
-        SetupAuthenticatedUser(email, IdProofingStatus.Failed);
+        SetupAuthenticatedUser(email, UserIalLevel.None);
+        _idProofingRequirementsService.GetPiiVisibility(UserIalLevel.None)
+            .Returns(new PiiVisibility(IncludeAddress: false, IncludeEmail: true, IncludePhone: true));
 
         var householdData = new HouseholdData
         {
@@ -223,16 +279,17 @@ public class HouseholdControllerTests
             }
         };
 
+        var resolverMock = CreateResolverMock(email);
         var repositoryMock = Substitute.For<IHouseholdRepository>();
-        repositoryMock.GetHouseholdByEmailAsync(email, includeAddress: false, Arg.Any<CancellationToken>())
+        repositoryMock.GetHouseholdByIdentifierAsync(Arg.Is<HouseholdIdentifier>(id => id.Type == PreferredHouseholdIdType.Email && id.Value == EmailNormalizer.Normalize(email)), Arg.Any<PiiVisibility>(), Arg.Any<CancellationToken>())
             .Returns(householdData);
 
         // Act
-        var result = await _controller.GetHouseholdData(repositoryMock);
+        var result = await _controller.GetHouseholdData(CreateQueryHandler(resolverMock, repositoryMock));
 
         // Assert
         Assert.NotNull(result);
-        await repositoryMock.Received(1).GetHouseholdByEmailAsync(email, includeAddress: false, Arg.Any<CancellationToken>());
+        await repositoryMock.Received(1).GetHouseholdByIdentifierAsync(Arg.Is<HouseholdIdentifier>(id => id.Type == PreferredHouseholdIdType.Email && id.Value == EmailNormalizer.Normalize(email)), Arg.Any<PiiVisibility>(), Arg.Any<CancellationToken>());
     }
 
     [Fact]
@@ -243,7 +300,7 @@ public class HouseholdControllerTests
         var claims = new List<Claim>
         {
             new Claim(ClaimTypes.Email, email)
-            // No id_proofing_status claim
+            // No IdProofingStatus claim
         };
         var identity = new ClaimsIdentity(claims, "Test");
         var principal = new ClaimsPrincipal(identity);
@@ -251,6 +308,8 @@ public class HouseholdControllerTests
         {
             HttpContext = new DefaultHttpContext { User = principal }
         };
+        _idProofingRequirementsService.GetPiiVisibility(UserIalLevel.None)
+            .Returns(new PiiVisibility(IncludeAddress: false, IncludeEmail: true, IncludePhone: true));
 
         var householdData = new HouseholdData
         {
@@ -261,17 +320,18 @@ public class HouseholdControllerTests
             }
         };
 
+        var resolverMock = CreateResolverMock(email);
         var repositoryMock = Substitute.For<IHouseholdRepository>();
-        repositoryMock.GetHouseholdByEmailAsync(email, includeAddress: false, Arg.Any<CancellationToken>())
+        repositoryMock.GetHouseholdByIdentifierAsync(Arg.Is<HouseholdIdentifier>(id => id.Type == PreferredHouseholdIdType.Email && id.Value == EmailNormalizer.Normalize(email)), Arg.Any<PiiVisibility>(), Arg.Any<CancellationToken>())
             .Returns(householdData);
 
         // Act
-        var result = await _controller.GetHouseholdData(repositoryMock);
+        var result = await _controller.GetHouseholdData(CreateQueryHandler(resolverMock, repositoryMock));
 
         // Assert
         Assert.NotNull(result);
         var okResult = Assert.IsType<OkObjectResult>(result);
-        await repositoryMock.Received(1).GetHouseholdByEmailAsync(email, includeAddress: false, Arg.Any<CancellationToken>());
+        await repositoryMock.Received(1).GetHouseholdByIdentifierAsync(Arg.Is<HouseholdIdentifier>(id => id.Type == PreferredHouseholdIdType.Email && id.Value == EmailNormalizer.Normalize(email)), Arg.Any<PiiVisibility>(), Arg.Any<CancellationToken>());
     }
 
     [Fact]
@@ -282,7 +342,7 @@ public class HouseholdControllerTests
         var claims = new List<Claim>
         {
             new Claim(ClaimTypes.Email, email),
-            new Claim("id_proofing_status", "invalid") // Invalid value
+            new Claim(JwtClaimTypes.IdProofingStatus, "invalid") // Invalid value
         };
         var identity = new ClaimsIdentity(claims, "Test");
         var principal = new ClaimsPrincipal(identity);
@@ -290,6 +350,8 @@ public class HouseholdControllerTests
         {
             HttpContext = new DefaultHttpContext { User = principal }
         };
+        _idProofingRequirementsService.GetPiiVisibility(UserIalLevel.None)
+            .Returns(new PiiVisibility(IncludeAddress: false, IncludeEmail: true, IncludePhone: true));
 
         var householdData = new HouseholdData
         {
@@ -300,17 +362,18 @@ public class HouseholdControllerTests
             }
         };
 
+        var resolverMock = CreateResolverMock(email);
         var repositoryMock = Substitute.For<IHouseholdRepository>();
-        repositoryMock.GetHouseholdByEmailAsync(email, includeAddress: false, Arg.Any<CancellationToken>())
+        repositoryMock.GetHouseholdByIdentifierAsync(Arg.Is<HouseholdIdentifier>(id => id.Type == PreferredHouseholdIdType.Email && id.Value == EmailNormalizer.Normalize(email)), Arg.Any<PiiVisibility>(), Arg.Any<CancellationToken>())
             .Returns(householdData);
 
         // Act
-        var result = await _controller.GetHouseholdData(repositoryMock);
+        var result = await _controller.GetHouseholdData(CreateQueryHandler(resolverMock, repositoryMock));
 
         // Assert
         Assert.NotNull(result);
         var okResult = Assert.IsType<OkObjectResult>(result);
-        await repositoryMock.Received(1).GetHouseholdByEmailAsync(email, includeAddress: false, Arg.Any<CancellationToken>());
+        await repositoryMock.Received(1).GetHouseholdByIdentifierAsync(Arg.Is<HouseholdIdentifier>(id => id.Type == PreferredHouseholdIdType.Email && id.Value == EmailNormalizer.Normalize(email)), Arg.Any<PiiVisibility>(), Arg.Any<CancellationToken>());
     }
 
     [Fact]
@@ -318,19 +381,22 @@ public class HouseholdControllerTests
     {
         // Arrange
         var email = "user@example.com";
-        SetupAuthenticatedUser(email, IdProofingStatus.Completed, ClaimTypes.Email);
+        SetupAuthenticatedUser(email, ial: "1plus", claimType: ClaimTypes.Email);
+        _idProofingRequirementsService.GetPiiVisibility(UserIalLevel.IAL1plus)
+            .Returns(new PiiVisibility(IncludeAddress: true, IncludeEmail: true, IncludePhone: true));
 
         var householdData = new HouseholdData { Email = email };
+        var resolverMock = CreateResolverMock(email);
         var repositoryMock = Substitute.For<IHouseholdRepository>();
-        repositoryMock.GetHouseholdByEmailAsync(email, Arg.Any<bool>(), Arg.Any<CancellationToken>())
+        repositoryMock.GetHouseholdByIdentifierAsync(Arg.Is<HouseholdIdentifier>(id => id.Type == PreferredHouseholdIdType.Email && id.Value == EmailNormalizer.Normalize(email)), Arg.Any<PiiVisibility>(), Arg.Any<CancellationToken>())
             .Returns(householdData);
 
         // Act
-        var result = await _controller.GetHouseholdData(repositoryMock);
+        var result = await _controller.GetHouseholdData(CreateQueryHandler(resolverMock, repositoryMock));
 
         // Assert
         Assert.NotNull(result);
-        await repositoryMock.Received(1).GetHouseholdByEmailAsync(email, Arg.Any<bool>(), Arg.Any<CancellationToken>());
+        await repositoryMock.Received(1).GetHouseholdByIdentifierAsync(Arg.Is<HouseholdIdentifier>(id => id.Type == PreferredHouseholdIdType.Email && id.Value == EmailNormalizer.Normalize(email)), Arg.Any<PiiVisibility>(), Arg.Any<CancellationToken>());
     }
 
     [Fact]
@@ -338,19 +404,22 @@ public class HouseholdControllerTests
     {
         // Arrange
         var email = "user@example.com";
-        SetupAuthenticatedUser(email, IdProofingStatus.Completed, ClaimTypes.NameIdentifier);
+        SetupAuthenticatedUser(email, ial: "1plus", claimType: ClaimTypes.NameIdentifier);
+        _idProofingRequirementsService.GetPiiVisibility(UserIalLevel.IAL1plus)
+            .Returns(new PiiVisibility(IncludeAddress: true, IncludeEmail: true, IncludePhone: true));
 
         var householdData = new HouseholdData { Email = email };
+        var resolverMock = CreateResolverMock(email);
         var repositoryMock = Substitute.For<IHouseholdRepository>();
-        repositoryMock.GetHouseholdByEmailAsync(email, Arg.Any<bool>(), Arg.Any<CancellationToken>())
+        repositoryMock.GetHouseholdByIdentifierAsync(Arg.Is<HouseholdIdentifier>(id => id.Type == PreferredHouseholdIdType.Email && id.Value == EmailNormalizer.Normalize(email)), Arg.Any<PiiVisibility>(), Arg.Any<CancellationToken>())
             .Returns(householdData);
 
         // Act
-        var result = await _controller.GetHouseholdData(repositoryMock);
+        var result = await _controller.GetHouseholdData(CreateQueryHandler(resolverMock, repositoryMock));
 
         // Assert
         Assert.NotNull(result);
-        await repositoryMock.Received(1).GetHouseholdByEmailAsync(email, Arg.Any<bool>(), Arg.Any<CancellationToken>());
+        await repositoryMock.Received(1).GetHouseholdByIdentifierAsync(Arg.Is<HouseholdIdentifier>(id => id.Type == PreferredHouseholdIdType.Email && id.Value == EmailNormalizer.Normalize(email)), Arg.Any<PiiVisibility>(), Arg.Any<CancellationToken>());
     }
 
     [Fact]
@@ -360,24 +429,27 @@ public class HouseholdControllerTests
         var email = "user@example.com";
         var identity = new ClaimsIdentity("Test");
         identity.AddClaim(new Claim(ClaimTypes.Name, email));
-        identity.AddClaim(new Claim("id_proofing_status", ((int)IdProofingStatus.Completed).ToString()));
+        identity.AddClaim(new Claim(JwtClaimTypes.Ial, "1plus"));
         var principal = new ClaimsPrincipal(identity);
         _controller.ControllerContext = new ControllerContext
         {
             HttpContext = new DefaultHttpContext { User = principal }
         };
+        _idProofingRequirementsService.GetPiiVisibility(Arg.Any<UserIalLevel>())
+            .Returns(new PiiVisibility(IncludeAddress: true, IncludeEmail: true, IncludePhone: true));
 
         var householdData = new HouseholdData { Email = email };
+        var resolverMock = CreateResolverMock(email);
         var repositoryMock = Substitute.For<IHouseholdRepository>();
-        repositoryMock.GetHouseholdByEmailAsync(email, Arg.Any<bool>(), Arg.Any<CancellationToken>())
+        repositoryMock.GetHouseholdByIdentifierAsync(Arg.Is<HouseholdIdentifier>(id => id.Type == PreferredHouseholdIdType.Email && id.Value == EmailNormalizer.Normalize(email)), Arg.Any<PiiVisibility>(), Arg.Any<CancellationToken>())
             .Returns(householdData);
 
         // Act
-        var result = await _controller.GetHouseholdData(repositoryMock);
+        var result = await _controller.GetHouseholdData(CreateQueryHandler(resolverMock, repositoryMock));
 
         // Assert
         Assert.NotNull(result);
-        await repositoryMock.Received(1).GetHouseholdByEmailAsync(email, Arg.Any<bool>(), Arg.Any<CancellationToken>());
+        await repositoryMock.Received(1).GetHouseholdByIdentifierAsync(Arg.Is<HouseholdIdentifier>(id => id.Type == PreferredHouseholdIdType.Email && id.Value == EmailNormalizer.Normalize(email)), Arg.Any<PiiVisibility>(), Arg.Any<CancellationToken>());
     }
 
     [Fact]
@@ -385,7 +457,9 @@ public class HouseholdControllerTests
     {
         // Arrange
         var email = "user@example.com";
-        SetupAuthenticatedUser(email, IdProofingStatus.Expired);
+        SetupAuthenticatedUser(email, UserIalLevel.None);
+        _idProofingRequirementsService.GetPiiVisibility(UserIalLevel.None)
+            .Returns(new PiiVisibility(IncludeAddress: false, IncludeEmail: true, IncludePhone: true));
 
         var householdData = new HouseholdData
         {
@@ -396,16 +470,17 @@ public class HouseholdControllerTests
             }
         };
 
+        var resolverMock = CreateResolverMock(email);
         var repositoryMock = Substitute.For<IHouseholdRepository>();
-        repositoryMock.GetHouseholdByEmailAsync(email, includeAddress: false, Arg.Any<CancellationToken>())
+        repositoryMock.GetHouseholdByIdentifierAsync(Arg.Is<HouseholdIdentifier>(id => id.Type == PreferredHouseholdIdType.Email && id.Value == EmailNormalizer.Normalize(email)), Arg.Any<PiiVisibility>(), Arg.Any<CancellationToken>())
             .Returns(householdData);
 
         // Act
-        var result = await _controller.GetHouseholdData(repositoryMock);
+        var result = await _controller.GetHouseholdData(CreateQueryHandler(resolverMock, repositoryMock));
 
         // Assert
         Assert.NotNull(result);
-        await repositoryMock.Received(1).GetHouseholdByEmailAsync(email, includeAddress: false, Arg.Any<CancellationToken>());
+        await repositoryMock.Received(1).GetHouseholdByIdentifierAsync(Arg.Is<HouseholdIdentifier>(id => id.Type == PreferredHouseholdIdType.Email && id.Value == EmailNormalizer.Normalize(email)), Arg.Any<PiiVisibility>(), Arg.Any<CancellationToken>());
     }
 
     [Fact]
@@ -413,7 +488,9 @@ public class HouseholdControllerTests
     {
         // Arrange
         var email = "user@example.com";
-        SetupAuthenticatedUser(email, IdProofingStatus.Completed);
+        SetupAuthenticatedUser(email, ial: "1plus");
+        _idProofingRequirementsService.GetPiiVisibility(Arg.Any<UserIalLevel>())
+            .Returns(new PiiVisibility(IncludeAddress: true, IncludeEmail: true, IncludePhone: true));
 
         var householdData = new HouseholdData
         {
@@ -447,12 +524,13 @@ public class HouseholdControllerTests
             UserProfile = new UserProfile { FirstName = "Jane", MiddleName = "Marie", LastName = "Doe" }
         };
 
+        var resolverMock = CreateResolverMock(email);
         var repositoryMock = Substitute.For<IHouseholdRepository>();
-        repositoryMock.GetHouseholdByEmailAsync(email, includeAddress: true, Arg.Any<CancellationToken>())
+        repositoryMock.GetHouseholdByIdentifierAsync(Arg.Is<HouseholdIdentifier>(id => id.Type == PreferredHouseholdIdType.Email && id.Value == EmailNormalizer.Normalize(email)), Arg.Any<PiiVisibility>(), Arg.Any<CancellationToken>())
             .Returns(householdData);
 
         // Act
-        var result = await _controller.GetHouseholdData(repositoryMock);
+        var result = await _controller.GetHouseholdData(CreateQueryHandler(resolverMock, repositoryMock));
 
         // Assert
         Assert.NotNull(result);

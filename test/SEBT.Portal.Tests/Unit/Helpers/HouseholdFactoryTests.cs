@@ -16,6 +16,7 @@ public class HouseholdFactoryTests
 
         // Assert
         Assert.NotNull(household);
+        Assert.NotNull(household.Email);
         Assert.NotEmpty(household.Email);
         Assert.Contains("@", household.Email);
         Assert.True(household.Email == household.Email.ToLowerInvariant()); // Should be lowercase
@@ -269,6 +270,18 @@ public class HouseholdFactoryTests
         var app = household.Applications.First();
         Assert.NotNull(app.CaseNumber);
         Assert.StartsWith("CASE-", app.CaseNumber);
+    }
+
+    [Fact]
+    public void CreateHouseholdDataWithStatus_Unknown_ShouldNotHaveCaseNumber()
+    {
+        // Act
+        var household = HouseholdFactory.CreateHouseholdDataWithStatus(ApplicationStatus.Unknown);
+
+        // Assert
+        var app = household.Applications.First();
+        Assert.Null(app.CaseNumber);
+        Assert.Null(app.ApplicationNumber);
     }
 
     [Fact]

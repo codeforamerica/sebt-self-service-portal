@@ -1,3 +1,6 @@
+## VS Code
+.vscode/
+
 ## macOS Cruft
 .DS_Store
 
@@ -427,6 +430,9 @@ FodyWeavers.xsd
 *.msix
 *.msm
 *.msp
+
+# OpenTofu / Terraform
+tofu/
 
 # AI
 CLAUDE.md

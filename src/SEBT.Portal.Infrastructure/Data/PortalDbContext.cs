@@ -65,6 +65,9 @@ public class PortalDbContext : DbContext
             entity.Property(e => e.IdProofingStatus)
                 .IsRequired()
                 .HasDefaultValue(0); // 0 = NotStarted
+            entity.Property(e => e.IalLevel)
+                .IsRequired()
+                .HasDefaultValue(0); // 0 = UserIalLevel.None
             entity.Property(e => e.IdProofingSessionId)
                 .HasMaxLength(255);
             entity.Property(e => e.IsCoLoaded)
@@ -82,6 +85,12 @@ public class PortalDbContext : DbContext
             // Create index on session ID for faster lookups
             entity.HasIndex(e => e.IdProofingSessionId)
                 .HasDatabaseName("IX_Users_IdProofingSessionId");
+
+            // Household identifier fields
+            entity.Property(e => e.Phone).HasMaxLength(64);
+            entity.Property(e => e.SnapId).HasMaxLength(64);
+            entity.Property(e => e.TanfId).HasMaxLength(64);
+            entity.Property(e => e.Ssn).HasMaxLength(64);
         });
     }
 }

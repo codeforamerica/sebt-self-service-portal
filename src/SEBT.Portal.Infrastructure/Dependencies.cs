@@ -2,6 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 using SEBT.Portal.Core.AppSettings;
 using SEBT.Portal.Core.Repositories;
 using SEBT.Portal.Core.Services;
@@ -25,8 +26,15 @@ public static class Dependencies
         // JWT Services
         services.AddTransient<IJwtTokenService, JwtTokenService>();
 
+        // ID Proofing Requirements (state-specific PII visibility)
+        services.AddSingleton<IIdProofingRequirementsService, IdProofingRequirementsService>();
+
         // Feature Flag Services
         services.AddScoped<IFeatureFlagQueryService, Services.FeatureFlagQueryService>();
+
+        // Household identifier resolution (state-configurable preferred household ID type)
+        services.AddTransient<IHouseholdIdentifierResolver, HouseholdIdentifierResolver>();
+        services.AddSingleton<IIdentifierHasher, IdentifierHasher>();
 
         return services;
     }
@@ -87,6 +95,13 @@ public static class Dependencies
             .BindConfiguration(OtpRateLimitSettings.SectionName);
         services.AddOptionsWithValidateOnStart<JwtSettings>()
             .BindConfiguration(JwtSettings.SectionName);
+        services.AddOptions<StateHouseholdIdSettings>()
+            .BindConfiguration(StateHouseholdIdSettings.SectionName);
+        services.AddOptionsWithValidateOnStart<IdentifierHasherSettings>()
+            .BindConfiguration(IdentifierHasherSettings.SectionName);
+        services.AddSingleton<IValidateOptions<IdProofingRequirementsSettings>, IdProofingRequirementsSettingsValidator>();
+        services.AddOptionsWithValidateOnStart<IdProofingRequirementsSettings>()
+            .BindConfiguration(IdProofingRequirementsSettings.SectionName);
 
         services.AddOptions<FeatureManagementSettings>()
             .Bind(configuration.GetSection(FeatureManagementSettings.SectionName))
