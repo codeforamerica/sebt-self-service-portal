@@ -14,6 +14,7 @@ We're colleagues working together. Neither of us is afraid to admit we don't kno
 - Stay focused. Fix only what relates to your current task. Notice something else that needs work? Document it separately rather than fixing it now.
 - Preserve comments. They're documentation, not clutter.
 - Write evergreen code. Describe what code does, not when it was written. (i.e. avoid "newFunction")
+- All user-facing strings must go through i18next. Never hardcode display text in components — add keys to the content files in `src/SEBT.Portal.Web/content/` and reference them via the translation functions.
 
 ### Code style
 - C#: 4-space indent, Allman brace style (braces on own line), nullable reference types enabled (see `.editorconfig`)
@@ -48,11 +49,11 @@ We're colleagues working together. Neither of us is afraid to admit we don't kno
 - When proposing major new functionality, ask: "should this be a separate service?". Be pragmatic, but default to yes if the capability is clearly independently useful. Still, always request confirmation from a human, and if the human declines a separate service, build in a highly modular way that will allow for easy extraction of a composable service later.
 ### 2. API-first design
 - Services expose documented REST APIs.
-- Start new feature development by defining or updating an API contract in an openapi.yaml file in the OpenAPI 3.x standard.
+- This project uses Swashbuckle to auto-generate OpenAPI docs from controller attributes. When adding or changing API endpoints, ensure controller actions have appropriate route, HTTP method, and response type attributes so the generated spec stays accurate.
 ### 3. Design for deployment
 - Package services in containers with clear deployment documentation.
 - Use docker-compose.yml to define and run the complete application stack and manage services, networking, and dependencies.
-- Use multi-stage builds and slim images (like node:18-alpline, etc.) to create small, secure containers.
+- Use multi-stage builds and slim images (like node:24-alpine, etc.) to create small, secure containers.
 - Create a non-root user in your Dockerfile and run the container process as that user.
 - Docker Compose is to create a reliable, configurable, and secure environment for your multi-container application.
 - Externalize all configuration! Configure through environment variables, feature flags, etc.
@@ -72,6 +73,13 @@ We're colleagues working together. Neither of us is afraid to admit we don't kno
   - Package manager: pnpm
   - Design system: USWDS, with design tokens specified for each state
 - Containerization: Docker with docker-compose for local development
+
+## Testing
+We follow a test-driven development (TDD) approach: write tests first to fail, then write the implementation to make them pass.
+
+- **Backend**: xUnit for test framework, NSubstitute for mocking, Bogus for test data generation (see ADR-0007 on the factory pattern). Integration tests use Testcontainers with real MSSQL instances.
+- **Frontend**: Vitest with React Testing Library for unit tests, Playwright for E2E tests.
+- New functionality must include tests. Prefer writing the test before the implementation.
 
 ## Dependency Management
 - Manage all .NET dependencies with NuGet
@@ -139,6 +147,8 @@ This is a .NET 10 + Next.js 16 application following Clean Architecture. For det
 
 ### Multi-State Plugin System
 State-specific behavior uses MEF (System.Composition) plugins loaded at runtime from `plugins-{state}/` directories. Plugin contracts live in the separate `sebt-self-service-portal-state-connector` repo; implementations live in per-state repos (`-dc-connector`, `-co-connector`). The `STATE` env var controls which state config overlay loads. See ADR-0007 for the design rationale.
+
+**Plugin development inner loop:** The state-connector repo builds its interface package to `~/nuget-store/` as a local NuGet source. The API project and state connector repos (e.g., `-dc-connector`) reference that package and have post-build targets that copy compiled DLLs into this repo's `src/SEBT.Portal.Api/plugins-{state}/` directory. After building a connector, restart the API to pick up changes.
 
 ### Frontend
 Uses Next.js App Router with route groups: `(public)/` for login flows, `(authenticated)/` for protected pages. USWDS design tokens are generated via scripts before build. i18next handles internationalization with content files in `content/`.
