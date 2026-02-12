@@ -33,13 +33,14 @@
       <PrivateAssets>all</PrivateAssets>
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
     </PackageReference>
-    <PackageReference Include="SEBT.Portal.StatesPlugins.Interfaces" Version="0.0.1-*" />
+    <PackageReference Include="SEBT.Portal.StatesPlugins.Interfaces" Version="0.0.1-*" PrivateAssets="compile" />
     <PackageReference Include="Serilog.AspNetCore" Version="8.0.3" />
     <PackageReference Include="Serilog.Sinks.Console" Version="6.0.0" />
     <PackageReference Include="Serilog.Sinks.File" Version="6.0.0" />
     <PackageReference Include="Serilog.Settings.Configuration" Version="8.0.4" />
     <PackageReference Include="Swashbuckle.AspNetCore" Version="6.6.2" />
     <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="10.0.0" />
+    <PackageReference Include="Microsoft.Data.SqlClient" Version="6.1.1" />
   </ItemGroup>
 
   <ItemGroup>
@@ -48,7 +49,7 @@
     <ProjectReference Include="..\SEBT.Portal.Kernel.AspNetCore\SEBT.Portal.Kernel.AspNetCore.csproj" />
     <ProjectReference Include="..\SEBT.Portal.Kernel\SEBT.Portal.Kernel.csproj" />
     <ProjectReference Include="..\SEBT.Portal.UseCases\SEBT.Portal.UseCases.csproj" />
-    <ProjectReference Include="..\SEBT.Portal.Core\SEBT.Portal.Core.csproj" />
+    <ProjectReference Include="..\SEBT.Portal.Core\SEBT.Portal.Core.csproj" Aliases="Core,global" />
   </ItemGroup>
 
   <ItemGroup>

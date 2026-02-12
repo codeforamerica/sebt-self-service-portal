@@ -1,6 +1,8 @@
-using SEBT.Portal.Core.Models.Household;
+extern alias Core;
 
 namespace SEBT.Portal.Api.Models.Household;
+
+using BenefitIssuanceType = Core::SEBT.Portal.Core.Models.Household.BenefitIssuanceType;
 
 /// <summary>
 /// API response model for household data.

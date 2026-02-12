@@ -1,3 +1,5 @@
+extern alias statePlugin;
+
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -11,6 +13,7 @@ using SEBT.Portal.Infrastructure.Configuration;
 using SEBT.Portal.Infrastructure.Data;
 using SEBT.Portal.Infrastructure.Repositories;
 using SEBT.Portal.Infrastructure.Services;
+using ISummerEbtCaseService = statePlugin::SEBT.Portal.StatesPlugins.Interfaces.ISummerEbtCaseService;
 
 namespace SEBT.Portal.Infrastructure;
 
@@ -49,8 +52,29 @@ public static class Dependencies
         // For deterministic time in seeding/mock data
         services.AddSingleton(TimeProvider.System);
 
-        // Household data is stored in-memory (will be replaced with distributed store later)
-        services.AddTransient<IHouseholdRepository, MockHouseholdRepository>();
+        services.AddTransient<IHouseholdRepository>(sp =>
+        {
+            var config = sp.GetRequiredService<IConfiguration>();
+            var useMockHouseholdData = config.GetValue<bool>("UseMockHouseholdData", false);
+
+            if (useMockHouseholdData)
+            {
+                return sp.GetRequiredService<MockHouseholdRepository>();
+            }
+
+            var summerEbtCaseService = sp.GetService<ISummerEbtCaseService>();
+            if (summerEbtCaseService != null)
+            {
+                return sp.GetRequiredService<HouseholdRepository>();
+            }
+
+            var logger = sp.GetService<ILoggerFactory>()?.CreateLogger("SEBT.Portal.Infrastructure");
+            logger?.LogWarning(
+                "UseMockHouseholdData is false but no household plugin (ISummerEbtCaseService) is loaded. Falling back to MockHouseholdRepository.");
+            return sp.GetRequiredService<MockHouseholdRepository>();
+        });
+        services.AddTransient<MockHouseholdRepository>();
+        services.AddTransient<HouseholdRepository>();
 
         services.AddMemoryCache();
 
