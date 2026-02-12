@@ -44,6 +44,19 @@ if (!string.IsNullOrEmpty(state))
     builder.Configuration.AddJsonFile(stateConfigFile, optional: true, reloadOnChange: true);
 }
 
+// Build database connection string from environment variables when deployed
+// to ECS. Credentials are injected from Secrets Manager at container startup.
+var dbHost = Environment.GetEnvironmentVariable("DB_HOST");
+var dbPassword = Environment.GetEnvironmentVariable("DB_PASSWORD");
+if (!string.IsNullOrEmpty(dbHost) && !string.IsNullOrEmpty(dbPassword))
+{
+    var dbPort = Environment.GetEnvironmentVariable("DB_PORT") ?? "1433";
+    var dbName = Environment.GetEnvironmentVariable("DB_NAME") ?? "SebtPortal";
+    var dbUser = Environment.GetEnvironmentVariable("DB_USER") ?? "admin";
+    builder.Configuration["ConnectionStrings:DefaultConnection"] =
+        $"Server={dbHost},{dbPort};Database={dbName};User Id={dbUser};Password={dbPassword};Encrypt=True;TrustServerCertificate=True;";
+}
+
 // Configure Serilog
 Log.Logger = new LoggerConfiguration()
     .ReadFrom.Configuration(builder.Configuration)
