@@ -33,6 +33,26 @@ resource "aws_security_group_rule" "this" {
   security_group_id        = aws_security_group.database.id
 }
 
+resource "aws_cloudwatch_log_group" "error" {
+  name              = "/aws/rds/instance/${local.prefix}-db/error"
+  kms_key_id        = var.logging_key_arn
+  retention_in_days = 30
+
+  tags = {
+    Name = "${local.prefix}-db-error-logs"
+  }
+}
+
+resource "aws_cloudwatch_log_group" "agent" {
+  name              = "/aws/rds/instance/${local.prefix}-db/agent"
+  kms_key_id        = var.logging_key_arn
+  retention_in_days = 30
+
+  tags = {
+    Name = "${local.prefix}-db-agent-logs"
+  }
+}
+
 resource "aws_db_instance" "main" {
   identifier = "${local.prefix}-db"
 
