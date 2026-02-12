@@ -1,12 +1,14 @@
+extern alias statePlugin;
+
 using Microsoft.Extensions.Logging;
 using SEBT.Portal.Core.Models;
 using SEBT.Portal.Core.Models.Auth;
 using SEBT.Portal.Core.Models.Household;
 using SEBT.Portal.Core.Repositories;
 using SEBT.Portal.Core.Utilities;
-using ISummerEbtCaseService = SEBT.Portal.StatesPlugins.Interfaces.ISummerEbtCaseService;
-using PluginIdentityAssuranceLevel = SEBT.Portal.StatesPlugins.Interfaces.Models.IdentityAssuranceLevel;
-using PluginPiiVisibility = SEBT.Portal.StatesPlugins.Interfaces.Models.PiiVisibility;
+using ISummerEbtCaseService = statePlugin::SEBT.Portal.StatesPlugins.Interfaces.ISummerEbtCaseService;
+using PluginIdentityAssuranceLevel = statePlugin::SEBT.Portal.StatesPlugins.Interfaces.Models.IdentityAssuranceLevel;
+using PluginPiiVisibility = statePlugin::SEBT.Portal.StatesPlugins.Interfaces.Models.PiiVisibility;
 
 namespace SEBT.Portal.Infrastructure.Repositories;
 

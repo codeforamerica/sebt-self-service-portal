@@ -53,6 +53,7 @@
     <When Condition="'$(_StateConnectorInterfacesProject)' != ''">
       <ItemGroup>
         <ProjectReference Include="$(_StateConnectorInterfacesProject)">
+          <Aliases>statePlugin</Aliases>
           <PrivateAssets>all</PrivateAssets>
           <IncludeAssets>compile; runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
         </ProjectReference>
@@ -60,7 +61,7 @@
     </When>
     <Otherwise>
       <ItemGroup>
-        <PackageReference Include="SEBT.Portal.StatesPlugins.Interfaces" Version="0.0.1-*" PrivateAssets="compile" />
+        <PackageReference Include="SEBT.Portal.StatesPlugins.Interfaces" Version="0.0.1-*" Alias="statePlugin" PrivateAssets="compile" />
       </ItemGroup>
     </Otherwise>
   </Choose>
@@ -69,5 +70,13 @@
       <EmbeddedResource Include="Templates\Email\OtpEmail.html" />
       <EmbeddedResource Include="Templates\Email\logo.png" />
     </ItemGroup>
+
+    <Target Name="ApplyStatePluginAlias" BeforeTargets="FindReferenceAssembliesForReferences;CoreCompile">
+      <ItemGroup>
+        <ReferencePath Condition="'%(Filename)' == 'SEBT.Portal.StatesPlugins.Interfaces'">
+          <Aliases>statePlugin</Aliases>
+        </ReferencePath>
+      </ItemGroup>
+    </Target>
 
 </Project>

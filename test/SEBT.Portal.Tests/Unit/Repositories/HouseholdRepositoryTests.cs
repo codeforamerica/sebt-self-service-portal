@@ -1,19 +1,21 @@
+extern alias statePlugin;
+
 using Microsoft.Extensions.Logging.Abstractions;
 using NSubstitute;
 using SEBT.Portal.Core.Models;
 using SEBT.Portal.Core.Models.Auth;
 using SEBT.Portal.Core.Models.Household;
 using SEBT.Portal.Infrastructure.Repositories;
-using ISummerEbtCaseService = SEBT.Portal.StatesPlugins.Interfaces.ISummerEbtCaseService;
-using PluginIdentityAssuranceLevel = SEBT.Portal.StatesPlugins.Interfaces.Models.IdentityAssuranceLevel;
-using PluginPiiVisibility = SEBT.Portal.StatesPlugins.Interfaces.Models.PiiVisibility;
-using PluginHouseholdData = SEBT.Portal.StatesPlugins.Interfaces.Models.Household.HouseholdData;
-using PluginApplication = SEBT.Portal.StatesPlugins.Interfaces.Models.Household.Application;
-using PluginChild = SEBT.Portal.StatesPlugins.Interfaces.Models.Household.Child;
-using PluginApplicationStatus = SEBT.Portal.StatesPlugins.Interfaces.Models.Household.ApplicationStatus;
-using PluginCardStatus = SEBT.Portal.StatesPlugins.Interfaces.Models.Household.CardStatus;
-using PluginIssuanceType = SEBT.Portal.StatesPlugins.Interfaces.Models.Household.IssuanceType;
-using PluginBenefitIssuanceType = SEBT.Portal.StatesPlugins.Interfaces.Models.Household.BenefitIssuanceType;
+using ISummerEbtCaseService = statePlugin::SEBT.Portal.StatesPlugins.Interfaces.ISummerEbtCaseService;
+using PluginIdentityAssuranceLevel = statePlugin::SEBT.Portal.StatesPlugins.Interfaces.Models.IdentityAssuranceLevel;
+using PluginPiiVisibility = statePlugin::SEBT.Portal.StatesPlugins.Interfaces.Models.PiiVisibility;
+using PluginHouseholdData = statePlugin::SEBT.Portal.StatesPlugins.Interfaces.Models.Household.HouseholdData;
+using PluginApplication = statePlugin::SEBT.Portal.StatesPlugins.Interfaces.Models.Household.Application;
+using PluginChild = statePlugin::SEBT.Portal.StatesPlugins.Interfaces.Models.Household.Child;
+using PluginApplicationStatus = statePlugin::SEBT.Portal.StatesPlugins.Interfaces.Models.Household.ApplicationStatus;
+using PluginCardStatus = statePlugin::SEBT.Portal.StatesPlugins.Interfaces.Models.Household.CardStatus;
+using PluginIssuanceType = statePlugin::SEBT.Portal.StatesPlugins.Interfaces.Models.Household.IssuanceType;
+using PluginBenefitIssuanceType = statePlugin::SEBT.Portal.StatesPlugins.Interfaces.Models.Household.BenefitIssuanceType;
 
 namespace SEBT.Portal.Tests.Unit.Repositories;
 
