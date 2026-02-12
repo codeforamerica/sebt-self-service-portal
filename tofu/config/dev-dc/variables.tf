@@ -19,6 +19,11 @@ variable "public_subnets" {
   description = "List of public subnet CIDR blocks."
 }
 
+variable "sender_email" {
+  type        = string
+  description = "Email address used as the sender for OTP emails."
+}
+
 variable "vpc_cidr" {
   type        = string
   description = "IPv4 CIDR block for the VPC."

@@ -43,6 +43,7 @@ module "app" {
   logging_key_id      = module.logging.kms_key_arn
   private_subnets     = module.vpc.private_subnets
   public_subnets      = module.vpc.public_subnets
+  sender_email        = var.sender_email
   skip_final_snapshot = true
   state               = "DC"
   vpc_id              = module.vpc.vpc_id

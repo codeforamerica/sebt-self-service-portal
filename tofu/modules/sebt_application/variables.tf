@@ -60,6 +60,11 @@ variable "public_subnets" {
   description = "List of public subnet IDs."
 }
 
+variable "sender_email" {
+  type        = string
+  description = "Email address used as the sender for OTP emails."
+}
+
 variable "skip_final_snapshot" {
   type        = bool
   description = "Skip final snapshot when destroying the database."

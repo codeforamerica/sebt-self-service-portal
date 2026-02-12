@@ -35,15 +35,21 @@ module "api" {
   force_delete           = var.force_delete
 
   environment_variables = {
-    ASPNETCORE_ENVIRONMENT = var.environment
-    DB_HOST                = module.database.endpoint
-    DB_NAME                = "SebtPortal"
-    DB_PORT                = "1433"
+    ASPNETCORE_ENVIRONMENT                       = var.environment
+    DB_HOST                                      = module.database.endpoint
+    DB_NAME                                      = "SebtPortal"
+    DB_PORT                                      = "1433"
+    "SmtpClientSettings__SmtpServer"             = module.ses.smtp_server
+    "SmtpClientSettings__SmtpPort"               = "587"
+    "SmtpClientSettings__EnableSsl"              = "true"
+    "EmailOtpSenderServiceSettings__SenderEmail" = module.ses.sender_email
   }
 
   environment_secrets = {
-    DB_USER     = "${module.database.secret_arn}:username::"
-    DB_PASSWORD = "${module.database.secret_arn}:password::"
+    DB_USER                        = "${module.database.secret_arn}:username::"
+    DB_PASSWORD                    = "${module.database.secret_arn}:password::"
+    "SmtpClientSettings__UserName" = "${module.ses.secret_arn}:username::"
+    "SmtpClientSettings__Password" = "${module.ses.secret_arn}:password::"
   }
 }
 
@@ -107,5 +113,16 @@ module "database" {
 
   skip_final_snapshot = var.skip_final_snapshot
   apply_immediately   = var.apply_immediately
+}
+
+# Create the SES email identity and SMTP credentials.
+module "ses" {
+  source = "../sebt_ses"
+
+  project       = "sebt-portal"
+  project_short = "sebt"
+  environment   = var.environment
+
+  sender_email = var.sender_email
 }
 
