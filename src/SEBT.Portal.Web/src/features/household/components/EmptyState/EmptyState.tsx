@@ -16,7 +16,7 @@ export function EmptyState() {
       headingClassName="font-sans-md text-semibold line-height-sans-4"
       textClassName="font-sans-md line-height-sans-4"
     >
-      <span>{t('alertApplicationsBody')}</span>
+      <span>{t('alertApplicationsBody')}</span>{' '}
       <Link
         href="/apply"
         className="usa-link font-sans-md text-bold text-ink display-block margin-top-1"
