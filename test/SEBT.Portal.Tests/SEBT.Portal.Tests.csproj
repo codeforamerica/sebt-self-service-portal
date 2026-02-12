@@ -35,9 +35,35 @@
         <PackageReference Include="xunit.runner.visualstudio" Version="2.5.3" />
     </ItemGroup>
 
+  <!-- Prefer state connector interfaces project when sibling repo exists; otherwise use NuGet package -->
+  <Choose>
+    <When Condition="Exists('$(MSBuildThisFileDirectory)..\..\..\sebt-self-service-portal-state-connector\src\SEBT.Portal.StatesPlugins.Interfaces\SEBT.Portal.StatesPlugins.Interfaces.csproj')">
+      <ItemGroup>
+        <ProjectReference Include="$(MSBuildThisFileDirectory)..\..\..\sebt-self-service-portal-state-connector\src\SEBT.Portal.StatesPlugins.Interfaces\SEBT.Portal.StatesPlugins.Interfaces.csproj">
+          <Aliases>statePlugin</Aliases>
+          <PrivateAssets>all</PrivateAssets>
+          <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+        </ProjectReference>
+      </ItemGroup>
+    </When>
+    <Otherwise>
+      <ItemGroup>
+        <PackageReference Include="SEBT.Portal.StatesPlugins.Interfaces" Version="0.0.1-*" Alias="statePlugin" />
+      </ItemGroup>
+    </Otherwise>
+  </Choose>
+
     <ItemGroup>
         <Using Include="Xunit" />
     </ItemGroup>
+
+    <Target Name="ApplyStatePluginAlias" BeforeTargets="FindReferenceAssembliesForReferences;CoreCompile">
+      <ItemGroup>
+        <ReferencePath Condition="'%(Filename)' == 'SEBT.Portal.StatesPlugins.Interfaces'">
+          <Aliases>statePlugin</Aliases>
+        </ReferencePath>
+      </ItemGroup>
+    </Target>
 
     <ItemGroup>
       <ProjectReference Include="../../src/SEBT.Portal.Core/SEBT.Portal.Core.csproj" />

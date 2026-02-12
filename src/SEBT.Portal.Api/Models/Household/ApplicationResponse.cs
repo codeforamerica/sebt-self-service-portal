@@ -1,6 +1,10 @@
-using SEBT.Portal.Core.Models.Household;
+extern alias Core;
 
 namespace SEBT.Portal.Api.Models.Household;
+
+using ApplicationStatus = Core::SEBT.Portal.Core.Models.Household.ApplicationStatus;
+using CardStatus = Core::SEBT.Portal.Core.Models.Household.CardStatus;
+using IssuanceType = Core::SEBT.Portal.Core.Models.Household.IssuanceType;
 
 /// <summary>
 /// API response model for a benefit application.
