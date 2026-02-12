@@ -1,10 +1,12 @@
 extern alias statePlugin;
 
 using Microsoft.Extensions.Logging;
+using SEBT.Portal.Core.Models;
 using SEBT.Portal.Core.Models.Household;
 using SEBT.Portal.Core.Repositories;
 using SEBT.Portal.Core.Utilities;
 using ISummerEbtCaseService = statePlugin::SEBT.Portal.StatesPlugins.Interfaces.ISummerEbtCaseService;
+using PluginPiiVisibility = statePlugin::SEBT.Portal.StatesPlugins.Interfaces.Models.PiiVisibility;
 
 namespace SEBT.Portal.Infrastructure.Repositories;
 
@@ -26,11 +28,26 @@ public class HouseholdRepository : IHouseholdRepository
     }
 
     /// <inheritdoc />
-    public async Task<HouseholdData?> GetHouseholdByEmailAsync(
-        string email,
-        bool includeAddress = false,
+    public Task<HouseholdData?> GetHouseholdByIdentifierAsync(
+        HouseholdIdentifier identifier,
+        PiiVisibility piiVisibility,
         CancellationToken cancellationToken = default)
     {
+        if (identifier.Type != PreferredHouseholdIdType.Email)
+        {
+            _logger.LogDebug("State plugin lookup supports only email identifier; ignoring type {Type}", identifier.Type);
+            return Task.FromResult<HouseholdData?>(null);
+        }
+        return GetHouseholdByEmailAsync(identifier.Value, piiVisibility, cancellationToken);
+    }
+
+    /// <inheritdoc />
+    public async Task<HouseholdData?> GetHouseholdByEmailAsync(
+        string email,
+        PiiVisibility piiVisibility,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(piiVisibility);
         if (string.IsNullOrWhiteSpace(email))
         {
             return null;
@@ -40,9 +57,13 @@ public class HouseholdRepository : IHouseholdRepository
 
         _logger.LogDebug("Querying state plugin for household data by guardian email {Email}", normalizedEmail);
 
+        var pluginPii = new PluginPiiVisibility(
+            piiVisibility.IncludeAddress,
+            piiVisibility.IncludeEmail,
+            piiVisibility.IncludePhone);
         var pluginHousehold = await _summerEbtCaseService.GetHouseholdByGuardianEmailAsync(
             normalizedEmail,
-            includeAddress,
+            pluginPii,
             cancellationToken);
 
         if (pluginHousehold == null)
@@ -56,7 +77,31 @@ public class HouseholdRepository : IHouseholdRepository
             normalizedEmail,
             pluginHousehold.Applications.Count);
 
-        return PluginHouseholdDataMapper.ToCore(pluginHousehold);
+        var core = PluginHouseholdDataMapper.ToCore(pluginHousehold);
+        if (core == null)
+        {
+            return null;
+        }
+        return ApplyPiiVisibility(core, piiVisibility);
+    }
+
+    private static HouseholdData ApplyPiiVisibility(HouseholdData source, PiiVisibility piiVisibility)
+    {
+        return source with
+        {
+            Email = piiVisibility.IncludeEmail ? source.Email : null,
+            Phone = piiVisibility.IncludePhone ? source.Phone : null,
+            AddressOnFile = piiVisibility.IncludeAddress && source.AddressOnFile != null
+                ? new Address
+                {
+                    StreetAddress1 = source.AddressOnFile.StreetAddress1,
+                    StreetAddress2 = source.AddressOnFile.StreetAddress2,
+                    City = source.AddressOnFile.City,
+                    State = source.AddressOnFile.State,
+                    PostalCode = source.AddressOnFile.PostalCode
+                }
+                : null
+        };
     }
 
     /// <inheritdoc />
