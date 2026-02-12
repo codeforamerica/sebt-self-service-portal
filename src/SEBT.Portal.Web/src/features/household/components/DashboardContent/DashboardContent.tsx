@@ -55,6 +55,7 @@ export function DashboardContent() {
     return (
       <>
         {pageHeading}
+        {data?.userProfile && <UserProfileCard data={data} />}
         <EmptyState />
       </>
     )

@@ -13,11 +13,13 @@ export function EmptyState() {
     <Alert
       variant="warning"
       heading={t('alertApplicationsTitle')}
+      headingClassName="font-sans-md text-semibold line-height-sans-4"
+      textClassName="font-sans-md line-height-sans-4"
     >
       <span>{t('alertApplicationsBody')}</span>{' '}
       <Link
         href="/apply"
-        className="usa-link text-bold"
+        className="usa-link font-sans-md text-bold text-ink display-block margin-top-1"
       >
         {t('alertApplicationsAction')}
       </Link>

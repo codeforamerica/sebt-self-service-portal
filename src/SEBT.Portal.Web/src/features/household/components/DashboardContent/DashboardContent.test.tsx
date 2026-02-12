@@ -93,6 +93,26 @@ describe('DashboardContent', () => {
     expect(screen.getByRole('link')).toHaveAttribute('href', '/apply')
   })
 
+  it('renders UserProfileCard in empty state when userProfile available', async () => {
+    server.use(
+      http.get('/api/household/data', () => {
+        return HttpResponse.json({
+          ...TEST_HOUSEHOLD_DATA,
+          applications: []
+        })
+      })
+    )
+
+    renderWithProviders(<DashboardContent />)
+
+    await waitFor(() => {
+      expect(screen.getByRole('alert')).toBeInTheDocument()
+    })
+
+    // UserProfileCard shows user's name from the response
+    expect(screen.getByText('Maria L. Martinez')).toBeInTheDocument()
+  })
+
   it('renders empty state on 404', async () => {
     server.use(
       http.get('/api/household/data', () => {

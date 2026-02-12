@@ -57,31 +57,21 @@ export function UserProfileCard({ data }: UserProfileCardProps) {
   const fullName = formatFullName(firstName, middleName, lastName)
 
   return (
-    <div className="display-flex flex-align-start margin-bottom-4">
-      {/* Avatar with initials - sized to match heading text */}
+    <div className="user-profile-card margin-bottom-4">
       <div
-        className="display-flex flex-justify-center flex-align-center bg-primary text-white radius-pill font-sans-xs text-bold"
-        style={{
-          width: '2rem',
-          height: '2rem',
-          flexShrink: 0
-        }}
+        className="avatar-circle display-flex flex-justify-center flex-align-center bg-base-darkest text-white radius-pill font-sans-md text-bold"
         aria-hidden="true"
       >
         {initials}
       </div>
-
-      {/* Name and Logout */}
-      <div className="margin-left-105">
-        <h2 className="margin-0 font-heading-lg">{fullName}</h2>
-        <button
-          type="button"
-          onClick={handleLogout}
-          className="usa-button usa-button--unstyled text-bold"
-        >
-          {t('logout')}
-        </button>
-      </div>
+      <h2 className="margin-0 font-heading-lg">{fullName}</h2>
+      <button
+        type="button"
+        onClick={handleLogout}
+        className="button-unstyled usa-link font-sans-md text-bold line-height-sans-1"
+      >
+        {t('logout')}
+      </button>
     </div>
   )
 }
