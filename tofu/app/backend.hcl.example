@@ -1,5 +1,0 @@
-bucket         = "sebt-portal-dev-tfstate"
-dynamodb_table = "sebt-portal-dev-tflock"
-region         = "us-east-1"
-key            = "sebt-self-service-portal/dev/dc.tfstate"
-encrypt        = true

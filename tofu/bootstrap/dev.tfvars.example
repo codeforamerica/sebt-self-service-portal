@@ -1,7 +1,0 @@
-aws_region = "us-east-1"
-name       = "sebt-portal"
-stage      = "dev"
-
-tags = {
-  Owner = "sebt"
-}
