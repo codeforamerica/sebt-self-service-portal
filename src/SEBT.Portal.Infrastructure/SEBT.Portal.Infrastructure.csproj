@@ -40,11 +40,17 @@
       <PackageReference Include="System.IdentityModel.Tokens.Jwt" Version="8.2.1" />
     </ItemGroup>
 
-  <!-- Prefer state connector interfaces project when sibling repo exists; otherwise use NuGet package -->
+  <!-- Prefer state connector interfaces project when repo exists (sibling or CI path state-connector); otherwise use NuGet package -->
+  <PropertyGroup>
+    <_StateConnectorInterfacesProjectSibling Condition="Exists('$(MSBuildThisFileDirectory)..\..\..\sebt-self-service-portal-state-connector\src\SEBT.Portal.StatesPlugins.Interfaces\SEBT.Portal.StatesPlugins.Interfaces.csproj')">$(MSBuildThisFileDirectory)..\..\..\sebt-self-service-portal-state-connector\src\SEBT.Portal.StatesPlugins.Interfaces\SEBT.Portal.StatesPlugins.Interfaces.csproj</_StateConnectorInterfacesProjectSibling>
+    <_StateConnectorInterfacesProjectCi Condition="Exists('$(MSBuildThisFileDirectory)..\..\..\state-connector\src\SEBT.Portal.StatesPlugins.Interfaces\SEBT.Portal.StatesPlugins.Interfaces.csproj')">$(MSBuildThisFileDirectory)..\..\..\state-connector\src\SEBT.Portal.StatesPlugins.Interfaces\SEBT.Portal.StatesPlugins.Interfaces.csproj</_StateConnectorInterfacesProjectCi>
+    <_StateConnectorInterfacesProject Condition="'$(_StateConnectorInterfacesProjectSibling)' != ''">$(_StateConnectorInterfacesProjectSibling)</_StateConnectorInterfacesProject>
+    <_StateConnectorInterfacesProject Condition="'$(_StateConnectorInterfacesProject)' == '' and '$(_StateConnectorInterfacesProjectCi)' != ''">$(_StateConnectorInterfacesProjectCi)</_StateConnectorInterfacesProject>
+  </PropertyGroup>
   <Choose>
-    <When Condition="Exists('$(MSBuildThisFileDirectory)..\..\..\sebt-self-service-portal-state-connector\src\SEBT.Portal.StatesPlugins.Interfaces\SEBT.Portal.StatesPlugins.Interfaces.csproj')">
+    <When Condition="'$(_StateConnectorInterfacesProject)' != ''">
       <ItemGroup>
-        <ProjectReference Include="$(MSBuildThisFileDirectory)..\..\..\sebt-self-service-portal-state-connector\src\SEBT.Portal.StatesPlugins.Interfaces\SEBT.Portal.StatesPlugins.Interfaces.csproj">
+        <ProjectReference Include="$(_StateConnectorInterfacesProject)">
           <Aliases>statePlugin</Aliases>
           <PrivateAssets>all</PrivateAssets>
           <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
