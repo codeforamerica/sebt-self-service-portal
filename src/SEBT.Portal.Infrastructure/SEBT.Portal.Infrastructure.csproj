@@ -40,31 +40,20 @@
       <PackageReference Include="System.IdentityModel.Tokens.Jwt" Version="8.2.1" />
     </ItemGroup>
 
-  <!-- State connector as sibling repo only. Sibling under parent of portal, or CI path. -->
+  <!-- When state-connector repo is alongside this repo, use project reference (same pattern as DC-connector). Otherwise use package from nuget-store. -->
   <PropertyGroup>
-    <_StateConnectorInterfacesProjectSiblingPath>$([System.IO.Path]::GetFullPath('$(MSBuildThisFileDirectory)../../../sebt-self-service-portal-state-connector/src/SEBT.Portal.StatesPlugins.Interfaces/SEBT.Portal.StatesPlugins.Interfaces.csproj'))</_StateConnectorInterfacesProjectSiblingPath>
-    <_StateConnectorInterfacesProjectCiPath>$([System.IO.Path]::GetFullPath('$(MSBuildThisFileDirectory)../../../state-connector/src/SEBT.Portal.StatesPlugins.Interfaces/SEBT.Portal.StatesPlugins.Interfaces.csproj'))</_StateConnectorInterfacesProjectCiPath>
-    <_StateConnectorInterfacesProjectSibling Condition="Exists('$(_StateConnectorInterfacesProjectSiblingPath)')">$(_StateConnectorInterfacesProjectSiblingPath)</_StateConnectorInterfacesProjectSibling>
-    <_StateConnectorInterfacesProjectCi Condition="Exists('$(_StateConnectorInterfacesProjectCiPath)')">$(_StateConnectorInterfacesProjectCiPath)</_StateConnectorInterfacesProjectCi>
-    <_StateConnectorInterfacesProject Condition="'$(_StateConnectorInterfacesProjectSibling)' != ''">$(_StateConnectorInterfacesProjectSibling)</_StateConnectorInterfacesProject>
-    <_StateConnectorInterfacesProject Condition="'$(_StateConnectorInterfacesProject)' == '' and '$(_StateConnectorInterfacesProjectCi)' != ''">$(_StateConnectorInterfacesProjectCi)</_StateConnectorInterfacesProject>
+    <StateConnectorInterfacesProject Condition="'$(StateConnectorInterfacesProject)' == ''">$(MSBuildThisFileDirectory)../../../sebt-self-service-portal-state-connector/src/SEBT.Portal.StatesPlugins.Interfaces/SEBT.Portal.StatesPlugins.Interfaces.csproj</StateConnectorInterfacesProject>
   </PropertyGroup>
-  <Choose>
-    <When Condition="'$(_StateConnectorInterfacesProject)' != ''">
-      <ItemGroup>
-        <ProjectReference Include="$(_StateConnectorInterfacesProject)">
-          <Aliases>statePlugin</Aliases>
-          <PrivateAssets>all</PrivateAssets>
-          <IncludeAssets>compile; runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
-        </ProjectReference>
-      </ItemGroup>
-    </When>
-    <Otherwise>
-      <ItemGroup>
-        <PackageReference Include="SEBT.Portal.StatesPlugins.Interfaces" Version="0.0.1-*" Alias="statePlugin" PrivateAssets="compile" />
-      </ItemGroup>
-    </Otherwise>
-  </Choose>
+  <ItemGroup>
+    <PackageReference Include="SEBT.Portal.StatesPlugins.Interfaces" Version="0.0.1-dev-*" Alias="statePlugin" Condition="!Exists('$(StateConnectorInterfacesProject)')" />
+  </ItemGroup>
+  <ItemGroup Condition="Exists('$(StateConnectorInterfacesProject)')">
+    <ProjectReference Include="$(StateConnectorInterfacesProject)">
+      <Aliases>statePlugin</Aliases>
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+    </ProjectReference>
+  </ItemGroup>
 
     <ItemGroup>
       <EmbeddedResource Include="Templates\Email\OtpEmail.html" />
