@@ -15,6 +15,9 @@ COPY src/SEBT.Portal.Kernel/SEBT.Portal.Kernel.csproj SEBT.Portal.Kernel/
 COPY src/SEBT.Portal.Kernel.AspNetCore/SEBT.Portal.Kernel.AspNetCore.csproj SEBT.Portal.Kernel.AspNetCore/
 COPY src/SEBT.Portal.UseCases/SEBT.Portal.UseCases.csproj SEBT.Portal.UseCases/
 
+# Copy local NuGet packages (plugin interfaces built in CI)
+COPY nuget-store/ /root/nuget-store/
+
 RUN dotnet restore SEBT.Portal.Api/SEBT.Portal.Api.csproj
 
 # Copy source and publish
