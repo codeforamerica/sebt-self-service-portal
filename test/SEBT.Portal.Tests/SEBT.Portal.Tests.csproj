@@ -35,29 +35,20 @@
         <PackageReference Include="xunit.runner.visualstudio" Version="2.5.3" />
     </ItemGroup>
 
-  <!-- Prefer state connector interfaces project when repo exists (sibling or CI path state-connector); otherwise use NuGet package -->
+  <!-- Same as DC-connector: project reference when state-connector repo exists alongside; otherwise package from nuget-store -->
   <PropertyGroup>
-    <_StateConnectorInterfacesProjectSibling Condition="Exists('$(MSBuildThisFileDirectory)..\..\..\sebt-self-service-portal-state-connector\src\SEBT.Portal.StatesPlugins.Interfaces\SEBT.Portal.StatesPlugins.Interfaces.csproj')">$(MSBuildThisFileDirectory)..\..\..\sebt-self-service-portal-state-connector\src\SEBT.Portal.StatesPlugins.Interfaces\SEBT.Portal.StatesPlugins.Interfaces.csproj</_StateConnectorInterfacesProjectSibling>
-    <_StateConnectorInterfacesProjectCi Condition="Exists('$(MSBuildThisFileDirectory)..\..\..\state-connector\src\SEBT.Portal.StatesPlugins.Interfaces\SEBT.Portal.StatesPlugins.Interfaces.csproj')">$(MSBuildThisFileDirectory)..\..\..\state-connector\src\SEBT.Portal.StatesPlugins.Interfaces\SEBT.Portal.StatesPlugins.Interfaces.csproj</_StateConnectorInterfacesProjectCi>
-    <_StateConnectorInterfacesProject Condition="'$(_StateConnectorInterfacesProjectSibling)' != ''">$(_StateConnectorInterfacesProjectSibling)</_StateConnectorInterfacesProject>
-    <_StateConnectorInterfacesProject Condition="'$(_StateConnectorInterfacesProject)' == '' and '$(_StateConnectorInterfacesProjectCi)' != ''">$(_StateConnectorInterfacesProjectCi)</_StateConnectorInterfacesProject>
+    <StateConnectorInterfacesProject Condition="'$(StateConnectorInterfacesProject)' == ''">$(MSBuildThisFileDirectory)../../../sebt-self-service-portal-state-connector/src/SEBT.Portal.StatesPlugins.Interfaces/SEBT.Portal.StatesPlugins.Interfaces.csproj</StateConnectorInterfacesProject>
   </PropertyGroup>
-  <Choose>
-    <When Condition="'$(_StateConnectorInterfacesProject)' != ''">
-      <ItemGroup>
-        <ProjectReference Include="$(_StateConnectorInterfacesProject)">
-          <Aliases>statePlugin</Aliases>
-          <PrivateAssets>all</PrivateAssets>
-          <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
-        </ProjectReference>
-      </ItemGroup>
-    </When>
-    <Otherwise>
-      <ItemGroup>
-        <PackageReference Include="SEBT.Portal.StatesPlugins.Interfaces" Version="0.0.1-*" Alias="statePlugin" />
-      </ItemGroup>
-    </Otherwise>
-  </Choose>
+  <ItemGroup>
+    <PackageReference Include="SEBT.Portal.StatesPlugins.Interfaces" Version="0.0.1-dev-*" Alias="statePlugin" Condition="!Exists('$(StateConnectorInterfacesProject)')" />
+  </ItemGroup>
+  <ItemGroup Condition="Exists('$(StateConnectorInterfacesProject)')">
+    <ProjectReference Include="$(StateConnectorInterfacesProject)">
+      <Aliases>statePlugin</Aliases>
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+    </ProjectReference>
+  </ItemGroup>
 
     <ItemGroup>
         <Using Include="Xunit" />
