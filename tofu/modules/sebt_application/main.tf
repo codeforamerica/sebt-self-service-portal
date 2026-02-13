@@ -36,6 +36,7 @@ module "api" {
 
   environment_variables = {
     ASPNETCORE_ENVIRONMENT                       = var.environment
+    STATE                                        = var.state
     DB_HOST                                      = module.database.endpoint
     DB_NAME                                      = "SebtPortal"
     DB_PORT                                      = "1433"
