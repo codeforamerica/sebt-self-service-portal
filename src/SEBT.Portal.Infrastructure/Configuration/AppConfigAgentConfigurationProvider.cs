@@ -1,7 +1,6 @@
 using System.Text.Json;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.Primitives;
 
 namespace SEBT.Portal.Infrastructure.Configuration;
 
@@ -19,8 +18,7 @@ public sealed class AppConfigAgentConfigurationProvider : ConfigurationProvider,
     private readonly ILogger<AppConfigAgentConfigurationProvider>? _logger;
     private readonly bool _ownsHttpClient;
 
-    private IDisposable? _reloadChangeToken;
-    private CancellationTokenSource? _reloadTokenSource;
+    private Timer? _reloadTimer;
     private int _isLoading; // 0 = not loading, 1 = loading
     private volatile bool _disposed;
 
@@ -49,24 +47,23 @@ public sealed class AppConfigAgentConfigurationProvider : ConfigurationProvider,
         {
             LoadAsync().GetAwaiter().GetResult();
 
-            if (_reloadChangeToken is null && _profile.ReloadAfterSeconds.HasValue)
+            if (_profile.ReloadAfterSeconds.HasValue)
             {
                 var delay = TimeSpan.FromSeconds(_profile.ReloadAfterSeconds.Value);
-
-                // Dispose previous token source if it exists
-                _reloadTokenSource?.Dispose();
-                _reloadTokenSource = new CancellationTokenSource(delay);
-
-                _reloadChangeToken = ChangeToken.OnChange(
-                    () => new CancellationChangeToken(_reloadTokenSource.Token),
-                    Load
-                );
+                _reloadTimer?.Dispose();
+                _reloadTimer = new Timer(_ => OnReloadTimerFired(), null, delay, Timeout.InfiniteTimeSpan);
             }
         }
         finally
         {
             Interlocked.Exchange(ref _isLoading, 0);
         }
+    }
+
+    private void OnReloadTimerFired()
+    {
+        if (!_disposed)
+            Load();
     }
 
     private async Task LoadAsync()
@@ -262,19 +259,8 @@ public sealed class AppConfigAgentConfigurationProvider : ConfigurationProvider,
 
         _disposed = true;
 
-        // Cancel first so no further reload callbacks are triggered, then dispose
-        // the change token registration, then the token source.
-        try
-        {
-            _reloadTokenSource?.Cancel();
-        }
-        catch (ObjectDisposedException)
-        {
-            // Ignore if already disposed
-        }
-
-        _reloadChangeToken?.Dispose();
-        _reloadTokenSource?.Dispose();
+        _reloadTimer?.Dispose();
+        _reloadTimer = null;
         _lock?.Dispose();
 
         // Dispose HttpClient if we own it
