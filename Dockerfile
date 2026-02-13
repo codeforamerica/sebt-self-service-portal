@@ -27,6 +27,7 @@ COPY src/SEBT.Portal.Web/ ./src/SEBT.Portal.Web/
 # Build frontend with state-specific configuration
 ENV STATE=${STATE}
 ENV NODE_ENV=production
+ENV BUILD_STANDALONE=true
 RUN pnpm --filter @sebt/web build
 
 # ============================================

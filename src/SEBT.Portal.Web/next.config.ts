@@ -50,7 +50,9 @@ const nextConfig: NextConfig = {
       }
     }
   },
-  output: 'standalone', // For multi-state deployments
+  // Standalone output for Docker/CI deployments only (set BUILD_STANDALONE=true)
+  // Local dev uses standard output so `next start` serves public/ and static/ correctly
+  ...(process.env.BUILD_STANDALONE === 'true' && { output: 'standalone' as const }),
   poweredByHeader: false,
   reactStrictMode: true
 }
