@@ -1,6 +1,5 @@
 # State-based CI Workflow
-# Automatically discovers and builds for all configured states
-# Each state can specify Docker or native builds via config files
+# Builds state-connector Interfaces once (same pattern as DC-connector), then builds/tests per state
 
 name: State CI
 
@@ -16,7 +15,54 @@ on:
         required: false
         type: string
 
+env:
+  STATE_CONNECTOR_REPO: sebt-self-service-portal-state-connector
+  NUGET_STORE: ${{ github.workspace }}/nuget-store
+
 jobs:
+  build-interfaces:
+    name: Build state connector package
+    runs-on: ubuntu-latest
+    steps:
+      - name: Determine state connector ref
+        id: connector-ref
+        run: |
+          BRANCH="${{ github.event_name == 'pull_request' && github.head_ref || github.ref_name }}"
+          FALLBACK="${{ github.event_name == 'pull_request' && github.base_ref || 'main' }}"
+          REPO_URL="https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository_owner }}/${{ env.STATE_CONNECTOR_REPO }}.git"
+          if git ls-remote --exit-code --heads "$REPO_URL" "refs/heads/${BRANCH}" 1>/dev/null 2>&1; then
+            echo "ref=${BRANCH}" >> "$GITHUB_OUTPUT"
+            echo "Using state connector branch: ${BRANCH}"
+          else
+            echo "ref=${FALLBACK}" >> "$GITHUB_OUTPUT"
+            echo "Branch '${BRANCH}' not in state connector, using: ${FALLBACK}"
+          fi
+
+      - name: Checkout state connector
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ github.repository_owner }}/${{ env.STATE_CONNECTOR_REPO }}
+          ref: ${{ steps.connector-ref.outputs.ref }}
+          path: state-connector
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "10.0.x"
+
+      - name: Build and pack Interfaces
+        run: |
+          dotnet build state-connector/src/SEBT.Portal.StatesPlugins.Interfaces/SEBT.Portal.StatesPlugins.Interfaces.csproj -c Release
+          mkdir -p "$NUGET_STORE"
+          cp "$HOME/nuget-store"/*.nupkg "$NUGET_STORE/"
+
+      - name: Upload nuget-store
+        uses: actions/upload-artifact@v4
+        with:
+          name: nuget-store
+          path: ${{ env.NUGET_STORE }}
+
   discover-states:
     name: Discover States
     runs-on: ubuntu-latest
@@ -55,15 +101,26 @@ jobs:
 
   build-and-test:
     name: ${{ matrix.state }} - Build & Test
-    needs: discover-states
+    needs: [discover-states, build-interfaces]
     runs-on: ubuntu-latest
     strategy:
       matrix: ${{ fromJson(needs.discover-states.outputs.matrix) }}
-      fail-fast: false # Continue other states even if one fails
+      fail-fast: false
 
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+
+      - name: Download nuget-store
+        id: download-nuget-store
+        uses: actions/download-artifact@v4
+        with:
+          name: nuget-store
+
+      - name: Setup nuget-store for restore
+        run: |
+          mkdir -p "$HOME/nuget-store"
+          cp "${{ steps.download-nuget-store.outputs.download-path }}"/*.nupkg "$HOME/nuget-store/"
 
       - name: Install yq (YAML parser)
         run: |
@@ -80,7 +137,6 @@ jobs:
             exit 1
           fi
 
-          # Extract configuration values
           echo "use_docker=$(yq eval '.infrastructure.use_docker' $CONFIG_FILE)" >> $GITHUB_OUTPUT
           echo "node_version=$(yq eval '.versions.node' $CONFIG_FILE)" >> $GITHUB_OUTPUT
           echo "pnpm_version=$(yq eval '.versions.pnpm' $CONFIG_FILE)" >> $GITHUB_OUTPUT
@@ -95,40 +151,16 @@ jobs:
           echo "State: ${{ matrix.state }}"
           echo "Use Docker: ${{ steps.config.outputs.use_docker }}"
           echo "Node: ${{ steps.config.outputs.node_version }}"
-          echo "pnpm: ${{ steps.config.outputs.pnpm_version }}"
           echo ".NET: ${{ steps.config.outputs.dotnet_version }}"
           echo "Build Config: ${{ steps.config.outputs.build_config }}"
-      
-      
-      - name: Determine state connector ref
-        id: connector-ref
-        run: |
-          # Same-named branch as this run (PR head branch or push branch)
-          BRANCH="${{ github.event_name == 'pull_request' && github.head_ref || github.ref_name }}"
-          # Fallback when that branch does not exist in the state connector repo
-          FALLBACK="${{ github.event_name == 'pull_request' && github.base_ref || 'main' }}"
-          REPO_URL="https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository_owner }}/sebt-self-service-portal-state-connector.git"
-          if git ls-remote --exit-code --heads "$REPO_URL" "refs/heads/${BRANCH}" 1>/dev/null 2>&1; then
-            echo "ref=${BRANCH}" >> "$GITHUB_OUTPUT"
-            echo "Using state connector branch: ${BRANCH}"
-          else
-            echo "ref=${FALLBACK}" >> "$GITHUB_OUTPUT"
-            echo "Branch '${BRANCH}' not in state connector, using: ${FALLBACK}"
-          fi
 
-      - name: Checkout interfaces repo
-        uses: actions/checkout@v4
-        with:
-          repository: codeforamerica/sebt-self-service-portal-state-connector
-          ref: ${{ steps.connector-ref.outputs.ref }}
-          path: state-connector
-      
-      # Docker Build Path
+      # Docker build path (mount nuget-store so restore finds state-connector package)
       - name: Build Backend (Docker)
         if: steps.config.outputs.use_docker == 'true'
         run: |
           docker run --rm \
             -v ${{ github.workspace }}:/workspace \
+            -v $HOME/nuget-store:/root/nuget-store \
             -w /workspace \
             mcr.microsoft.com/dotnet/sdk:${{ steps.config.outputs.dotnet_version }} \
             bash -c "./.github/workflows/scripts/build-backend.sh --configuration ${{ steps.config.outputs.build_config }} ${{ steps.config.outputs.backend_flags }}"
@@ -139,6 +171,7 @@ jobs:
         run: |
           docker run --rm \
             -v ${{ github.workspace }}:/workspace \
+            -v $HOME/nuget-store:/root/nuget-store \
             -w /workspace \
             -e SKIP_SQLSERVER_TESTS=1 \
             mcr.microsoft.com/dotnet/sdk:${{ steps.config.outputs.dotnet_version }} \
@@ -162,7 +195,7 @@ jobs:
             node:${{ steps.config.outputs.node_version }}-alpine \
             sh -c "corepack enable && corepack prepare pnpm@${{ steps.config.outputs.pnpm_version }} --activate && sh .github/workflows/scripts/test-frontend.sh --skip-install"
 
-      # Native Build Path
+      # Native build path (same as DC-connector: restore uses $HOME/nuget-store from artifact)
       - name: Setup .NET (Native)
         if: steps.config.outputs.use_docker != 'true'
         uses: actions/setup-dotnet@v4
@@ -204,7 +237,6 @@ jobs:
         if: steps.config.outputs.use_docker != 'true' && steps.config.outputs.skip_tests != 'true'
         run: ./.github/workflows/scripts/test-frontend.sh --skip-install
 
-      # Upload artifacts
       - name: Upload build artifacts
         uses: actions/upload-artifact@v4
         with:
