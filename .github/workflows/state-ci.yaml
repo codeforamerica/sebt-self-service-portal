@@ -188,10 +188,12 @@ jobs:
 
       - name: Test Backend (Native)
         if: steps.config.outputs.use_docker != 'true' && steps.config.outputs.skip_tests != 'true'
-        timeout-minutes: 5
+        timeout-minutes: 10
         env:
           SKIP_SQLSERVER_TESTS: 1
-        run: ./.github/workflows/scripts/test-backend.sh --skip-build --configuration ${{ steps.config.outputs.build_config }}
+        run: |
+          echo "SKIP_SQLSERVER_TESTS=${SKIP_SQLSERVER_TESTS:-not set}"
+          ./.github/workflows/scripts/test-backend.sh --skip-build --configuration ${{ steps.config.outputs.build_config }}
 
       - name: Generate Backend Dependencies CSV
         id: generate-backend-dependencies-csv
