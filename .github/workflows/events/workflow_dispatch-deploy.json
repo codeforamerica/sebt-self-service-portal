@@ -1,8 +1,5 @@
 {
   "inputs": {
-    "state": "dc",
-    "stage": "dev",
-    "aws_region": "us-east-1",
     "image_tag": ""
   },
   "ref": "refs/heads/main",
