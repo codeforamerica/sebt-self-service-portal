@@ -260,6 +260,20 @@ public sealed class AppConfigAgentConfigurationProvider : ConfigurationProvider,
 
         _disposed = true;
 
+        // Cancel first so no further reload callbacks are triggered, then dispose
+        // the change token registration, then the token source.
+        try
+        {
+            _reloadTokenSource?.Cancel();
+        }
+        catch (ObjectDisposedException)
+        {
+            // Ignore if already disposed
+        }
+
+        _reloadChangeToken?.Dispose();
+        _reloadTokenSource?.Dispose();
+
         _reloadTimer?.Dispose();
         _reloadTimer = null;
         _lock?.Dispose();
