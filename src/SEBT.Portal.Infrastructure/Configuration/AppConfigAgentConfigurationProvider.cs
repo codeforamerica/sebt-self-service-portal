@@ -68,6 +68,7 @@ public sealed class AppConfigAgentConfigurationProvider : ConfigurationProvider,
 
     private async Task LoadAsync()
     {
+        // ConfigureAwait(false) throughout to avoid deadlock when Load() is called synchronously (e.g. from tests or config build).
         if (!await _lock.WaitAsync(LockReleaseTimeout).ConfigureAwait(false))
         {
             return;
