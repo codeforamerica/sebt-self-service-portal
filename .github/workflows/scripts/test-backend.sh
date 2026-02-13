@@ -113,12 +113,6 @@ run_tests() {
     "--verbosity" "normal"
   )
 
-  # Exclude SqlServer (Testcontainers) tests when Docker is unavailable (e.g. inside CI Docker run for CO)
-  if [ "${SKIP_SQLSERVER_TESTS:-0}" = "1" ] || [ "${SKIP_SQLSERVER_TESTS:-}" = "true" ]; then
-    log_info "Skipping SqlServer/Testcontainers tests (SKIP_SQLSERVER_TESTS is set)"
-    test_args+=(--filter "Category!=SqlServer")
-  fi
-
   # Add coverage collection if requested
   if [ "$COLLECT_COVERAGE" = true ]; then
     log_info "Code coverage collection enabled"
