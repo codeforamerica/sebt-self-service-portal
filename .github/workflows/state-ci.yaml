@@ -135,13 +135,14 @@ jobs:
 
       - name: Test Backend (Docker)
         if: steps.config.outputs.use_docker == 'true' && steps.config.outputs.skip_tests != 'true'
+        timeout-minutes: 5
         run: |
           docker run --rm \
             -v ${{ github.workspace }}:/workspace \
             -w /workspace \
             -e SKIP_SQLSERVER_TESTS=1 \
             mcr.microsoft.com/dotnet/sdk:${{ steps.config.outputs.dotnet_version }} \
-            bash -c "./.github/workflows/scripts/test-backend.sh --skip-build --configuration ${{ steps.config.outputs.build_config }}"
+            bash -c "echo SKIP_SQLSERVER_TESTS=\${SKIP_SQLSERVER_TESTS:-not set} && ./.github/workflows/scripts/test-backend.sh --skip-build --configuration ${{ steps.config.outputs.build_config }}"
 
       - name: Build Frontend (Docker)
         if: steps.config.outputs.use_docker == 'true'
