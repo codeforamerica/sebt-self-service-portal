@@ -68,7 +68,7 @@ public sealed class AppConfigAgentConfigurationProvider : ConfigurationProvider,
 
     private async Task LoadAsync()
     {
-        if (!await _lock.WaitAsync(LockReleaseTimeout))
+        if (!await _lock.WaitAsync(LockReleaseTimeout).ConfigureAwait(false))
         {
             return;
         }
@@ -78,7 +78,7 @@ public sealed class AppConfigAgentConfigurationProvider : ConfigurationProvider,
             var endpointUrl = _profile.GetEndpointUrl();
             _logger?.LogDebug("Fetching configuration from AppConfig Agent: {EndpointUrl}", endpointUrl);
 
-            using var response = await _httpClient.GetAsync(endpointUrl, HttpCompletionOption.ResponseHeadersRead);
+            using var response = await _httpClient.GetAsync(endpointUrl, HttpCompletionOption.ResponseHeadersRead).ConfigureAwait(false);
 
             if (!response.IsSuccessStatusCode)
             {
@@ -92,7 +92,7 @@ public sealed class AppConfigAgentConfigurationProvider : ConfigurationProvider,
             var contentType = response.Content.Headers.ContentType?.MediaType;
             _logger?.LogDebug("AppConfig Agent returned content type: {ContentType}", contentType);
 
-            await using var stream = await response.Content.ReadAsStreamAsync();
+            await using var stream = await response.Content.ReadAsStreamAsync().ConfigureAwait(false);
 
             // Parse the configuration from the AppConfig Agent response
             var parsedData = ParseConfig(stream, contentType);
