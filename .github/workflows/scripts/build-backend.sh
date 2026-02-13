@@ -107,7 +107,7 @@ check_prerequisites() {
   fi
 }
 
-# Restore dependencies (state-connector package comes from $HOME/nuget-store in CI / local)
+# Restore dependencies
 restore_dependencies() {
   if [ "$SKIP_RESTORE" = true ]; then
     log_info "Skipping dependency restoration (--skip-restore)"
@@ -120,6 +120,35 @@ restore_dependencies() {
   dotnet restore --verbosity minimal
 
   log_success "Dependencies restored"
+}
+
+# Build state connector package
+build_state_connector_package() {
+  log_info "Building state connector package..."
+  cd "$PROJECT_ROOT/state-connector/src/SEBT.Portal.StatesPlugins.Interfaces"
+
+  if [ -f /.dockerenv ]; then
+    PACKAGE_OUTPUT="/root/nuget-store"
+  elif [ -n "${DOCKER_HOST:-}" ]; then
+    PACKAGE_OUTPUT="/root/nuget-store"
+  elif [ -n "${GITHUB_ACTIONS:-}" ]; then
+    PACKAGE_OUTPUT="$PROJECT_ROOT/../../../nuget-store"
+  else
+    PACKAGE_OUTPUT="./nuget-store"
+  fi
+
+  dotnet build SEBT.Portal.StatesPlugins.Interfaces.csproj \
+    -p:GeneratePackageOnBuild=false \
+    --configuration "$CONFIGURATION" \
+    --verbosity minimal
+
+  dotnet pack SEBT.Portal.StatesPlugins.Interfaces.csproj \
+    --no-build \
+    --configuration "$CONFIGURATION" \
+    --output $PACKAGE_OUTPUT \
+    --verbosity minimal
+
+  log_success "State connector package built"
 }
 
 # Build backend
@@ -160,6 +189,7 @@ main() {
 
   detect_environment
   check_prerequisites
+  build_state_connector_package
   restore_dependencies
   build_backend
 
