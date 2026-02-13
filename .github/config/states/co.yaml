@@ -4,7 +4,7 @@ state: co
 version: "1.0.0"  # State-specific version for tracking deployments
 
 infrastructure:
-  use_docker: true
+  use_docker: false
   docker:
     registry: "ghcr.io/codeforamerica"
     network_mode: "bridge"
@@ -21,7 +21,7 @@ versions:
 build:
   configuration: "Release"
   frontend_flags: ""
-  backend_flags: "-p:BuildFrontend=false"  # Skip frontend build in Docker (frontend built separately)
+  backend_flags: "-p:BuildFrontend=false"  # Skip frontend build (frontend built separately in native build)
   skip_tests: false
 
 environment:
