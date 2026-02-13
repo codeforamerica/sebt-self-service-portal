@@ -113,7 +113,7 @@ run_tests() {
     "--verbosity" "normal"
   )
 
-  # Skip SqlServer (Testcontainers) tests when Docker is unavailable (e.g. CO: tests run inside a container with no Docker)
+  # Exclude SqlServer (Testcontainers) tests when Docker is unavailable (e.g. inside CI Docker run for CO)
   if [ "${SKIP_SQLSERVER_TESTS:-0}" = "1" ] || [ "${SKIP_SQLSERVER_TESTS:-}" = "true" ]; then
     log_info "Skipping SqlServer/Testcontainers tests (SKIP_SQLSERVER_TESTS is set)"
     test_args+=(--filter "Category!=SqlServer")
