@@ -22,6 +22,7 @@ public sealed class AppConfigAgentConfigurationProvider : ConfigurationProvider,
     private IDisposable? _reloadChangeToken;
     private CancellationTokenSource? _reloadTokenSource;
     private int _isLoading; // 0 = not loading, 1 = loading
+    private volatile bool _disposed;
 
     public AppConfigAgentConfigurationProvider(
         HttpClient httpClient,
@@ -38,7 +39,9 @@ public sealed class AppConfigAgentConfigurationProvider : ConfigurationProvider,
 
     public override void Load()
     {
-        // Prevent recursive Load when OnReload() causes ConfigurationRoot to call Load again
+        if (_disposed)
+            return;
+
         if (Interlocked.CompareExchange(ref _isLoading, 1, 0) != 0)
             return;
 
@@ -254,6 +257,22 @@ public sealed class AppConfigAgentConfigurationProvider : ConfigurationProvider,
 
     public void Dispose()
     {
+        if (_disposed)
+            return;
+
+        _disposed = true;
+
+        // Cancel first so no further reload callbacks are triggered, then dispose
+        // the change token registration, then the token source.
+        try
+        {
+            _reloadTokenSource?.Cancel();
+        }
+        catch (ObjectDisposedException)
+        {
+            // Ignore if already disposed
+        }
+
         _reloadChangeToken?.Dispose();
         _reloadTokenSource?.Dispose();
         _lock?.Dispose();
