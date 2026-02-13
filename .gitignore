@@ -456,6 +456,7 @@ output
 # local plugin files
 plugins-dc
 plugins-co
+nuget-store
 
 # Idea specific configuration files
 .idea/.idea.SEBT.Portal/Docker/compose.generated.override.yml

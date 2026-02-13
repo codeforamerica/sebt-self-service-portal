@@ -2,41 +2,9 @@ name: Deploy (ECR)
 
 on:
   push:
-    inputs:
-      state:
-        description: "State to deploy (e.g. dc, co)"
-        required: true
-        type: string
-      stage:
-        description: "Environment/stage (e.g. dev, staging, prod)"
-        required: true
-        default: "dev"
-        type: string
-      aws_region:
-        description: "AWS region"
-        required: true
-        default: "us-east-1"
-        type: string
-      image_tag:
-        description: "Image tag to push/deploy (default: git sha)"
-        required: false
-        type: string
+    branches: [main]
   workflow_dispatch:
     inputs:
-      state:
-        description: "State to deploy (e.g. dc, co)"
-        required: true
-        type: string
-      stage:
-        description: "Environment/stage (e.g. dev, staging, prod)"
-        required: true
-        default: "dev"
-        type: string
-      aws_region:
-        description: "AWS region"
-        required: true
-        default: "us-east-1"
-        type: string
       image_tag:
         description: "Image tag to push/deploy (default: git sha)"
         required: false
@@ -48,20 +16,14 @@ permissions:
   deployments: write
 
 concurrency:
-  group: deploy-${{ inputs.stage || 'dev' }}-${{ inputs.state || 'dc' }}
+  group: deploy
   cancel-in-progress: false
 
 jobs:
-  build-push-and-deploy:
+  build:
     runs-on: ubuntu-latest
     outputs:
       image_tag: ${{ steps.tag.outputs.tag }}
-      run_apply: ${{ steps.meta.outputs.run_apply }}
-
-    env:
-      AWS_REGION: ${{ inputs.aws_region || 'us-east-1' }}
-      STAGE: ${{ inputs.stage || 'dev' }}
-      STATE: ${{ inputs.state || 'dc' }}
 
     steps:
       - name: Checkout
@@ -76,156 +38,202 @@ jobs:
             echo "tag=${GITHUB_SHA}" >> "$GITHUB_OUTPUT"
           fi
 
-      - name: Set apply flag
-        id: meta
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "10.0"
+
+      - name: Checkout state-connector
+        uses: actions/checkout@v4
+        with:
+          repository: codeforamerica/sebt-self-service-portal-state-connector
+          path: state-connector
+
+      - name: Checkout dc-connector
+        uses: actions/checkout@v4
+        with:
+          repository: codeforamerica/sebt-self-service-portal-dc-connector
+          path: dc-connector
+
+      # - name: Checkout co-connector
+      #   uses: actions/checkout@v4
+      #   with:
+      #     repository: codeforamerica/sebt-self-service-portal-co-connector
+      #     path: co-connector
+
+      - name: Build plugin interfaces (NuGet package)
         run: |
-          echo "run_apply=$([ \"$ACT\" = 'true' ] && echo 'false' || echo 'true')" >> "$GITHUB_OUTPUT"
+          dotnet build state-connector/src/SEBT.Portal.StatesPlugins.Interfaces/SEBT.Portal.StatesPlugins.Interfaces.csproj \
+            -c Release
+
+      - name: Build DC plugin
+        run: |
+          dotnet build dc-connector/src/SEBT.Portal.StatePlugins.DC/SEBT.Portal.StatePlugins.DC.csproj \
+            -c Release \
+            -p:CopyPlugins=false
+
+      # - name: Build CO plugin
+      #   run: |
+      #     dotnet build co-connector/src/SEBT.Portal.StatePlugins.CO/SEBT.Portal.StatePlugins.CO.csproj \
+      #       -c Release \
+      #       -p:CopyPlugins=false
+
+      - name: Stage plugin artifacts for Docker build
+        run: |
+          mkdir -p nuget-store
+          cp -r ~/nuget-store/* nuget-store/
+          mkdir -p src/SEBT.Portal.Api/plugins-dc
+          cp dc-connector/src/SEBT.Portal.StatePlugins.DC/bin/Release/net10.0/*.dll \
+            src/SEBT.Portal.Api/plugins-dc/
+          # mkdir -p src/SEBT.Portal.Api/plugins-co
+          # cp co-connector/src/SEBT.Portal.StatePlugins.CO/bin/Release/net10.0/*.dll \
+          #   src/SEBT.Portal.Api/plugins-co/
+
+      - name: Build API image
+        run: |
+          docker build \
+            --platform linux/amd64 \
+            -f src/SEBT.Portal.Api/Dockerfile \
+            -t sebt-portal-api:${{ steps.tag.outputs.tag }} \
+            .
+
+      - name: Build Web DC image
+        run: |
+          docker build \
+            --platform linux/amd64 \
+            -f src/SEBT.Portal.Web/Dockerfile \
+            --build-arg STATE=dc \
+            -t sebt-portal-web-dc:${{ steps.tag.outputs.tag }} \
+            .
+
+      # - name: Build Web CO image
+      #   run: |
+      #     docker build \
+      #       --platform linux/amd64 \
+      #       -f src/SEBT.Portal.Web/Dockerfile \
+      #       --build-arg STATE=co \
+      #       -t sebt-portal-web-co:${{ steps.tag.outputs.tag }} \
+      #       .
+
+      - name: Save Docker images
+        run: |
+          docker save \
+            sebt-portal-api:${{ steps.tag.outputs.tag }} \
+            sebt-portal-web-dc:${{ steps.tag.outputs.tag }} \
+            -o /tmp/docker-images.tar
+
+      - name: Upload Docker images
+        uses: actions/upload-artifact@v4
+        with:
+          name: docker-images
+          path: /tmp/docker-images.tar
+          retention-days: 1
+
+  deploy-dc:
+    needs: build
+    runs-on: ubuntu-latest
+    environment: dev-dc
+    outputs:
+      web_url: ${{ steps.deploy-url.outputs.url }}
+    env:
+      AWS_REGION: us-east-1
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Download Docker images
+        uses: actions/download-artifact@v4
+        with:
+          name: docker-images
+          path: /tmp
+
+      - name: Load Docker images
+        run: docker load -i /tmp/docker-images.tar
 
       - name: Configure AWS credentials (OIDC)
-        if: ${{ env.ACT != 'true' }}
         uses: aws-actions/configure-aws-credentials@v4
         with:
           role-to-assume: ${{ secrets.AWS_ROLE_TO_ASSUME }}
           aws-region: ${{ env.AWS_REGION }}
 
       - name: Login to Amazon ECR
-        if: env.ACT != 'true'
         id: login-ecr
         uses: aws-actions/amazon-ecr-login@v2
 
-      - name: Resolve ECR repository URLs
-        id: ecr
+      - name: Push images to ECR
         run: |
-          if [ "$ACT" = "true" ]; then
-            echo "api_repo=sebt-portal-api" >> "$GITHUB_OUTPUT"
-            echo "web_repo=sebt-portal-web" >> "$GITHUB_OUTPUT"
-          else
-            if [ -z "${{ secrets.ECR_API_REPOSITORY_URL }}" ] || [ -z "${{ secrets.ECR_WEB_REPOSITORY_URL }}" ]; then
-              echo "Missing secrets ECR_API_REPOSITORY_URL and/or ECR_WEB_REPOSITORY_URL" >&2
-              exit 1
-            fi
-            echo "api_repo=${{ secrets.ECR_API_REPOSITORY_URL }}" >> "$GITHUB_OUTPUT"
-            echo "web_repo=${{ secrets.ECR_WEB_REPOSITORY_URL }}" >> "$GITHUB_OUTPUT"
-          fi
+          IMAGE_TAG="${{ needs.build.outputs.image_tag }}"
+          API_REPO="${{ secrets.ECR_API_REPOSITORY_URL }}"
+          WEB_REPO="${{ secrets.ECR_WEB_REPOSITORY_URL }}"
 
-      - name: Build + push API image
-        run: |
-          docker build \
-            --platform linux/amd64 \
-            -f src/SEBT.Portal.Api/Dockerfile \
-            -t "${{ steps.ecr.outputs.api_repo }}:${{ steps.tag.outputs.tag }}" \
-            .
-          if [ "$ACT" != "true" ]; then
-            docker push "${{ steps.ecr.outputs.api_repo }}:${{ steps.tag.outputs.tag }}"
-          fi
+          docker tag sebt-portal-api:${IMAGE_TAG} ${API_REPO}:${IMAGE_TAG}
+          docker tag sebt-portal-web-dc:${IMAGE_TAG} ${WEB_REPO}:${IMAGE_TAG}
 
-      - name: Build + push Web image
-        run: |
-          docker build \
-            --platform linux/amd64 \
-            -f src/SEBT.Portal.Web/Dockerfile \
-            --build-arg STATE="${STATE}" \
-            -t "${{ steps.ecr.outputs.web_repo }}:${{ steps.tag.outputs.tag }}" \
-            .
-          if [ "$ACT" != "true" ]; then
-            docker push "${{ steps.ecr.outputs.web_repo }}:${{ steps.tag.outputs.tag }}"
-          fi
-
-  apply-infra:
-    needs: build-push-and-deploy
-    if: needs.build-push-and-deploy.outputs.run_apply == 'true'
-    runs-on: ubuntu-latest
-    outputs:
-      web_url: ${{ steps.deploy-url.outputs.url }}
-      stage: ${{ steps.meta.outputs.stage }}
-      state: ${{ steps.meta.outputs.state }}
-    env:
-      AWS_REGION: ${{ inputs.aws_region || 'us-east-1' }}
-      STAGE: ${{ inputs.stage || 'dev' }}
-      STATE: ${{ inputs.state || 'dc' }}
-      APP_NAME: ${{ vars.ECS_APP_NAME || 'sebt-portal' }}
-
-    steps:
-      - name: Set stage and state
-        id: meta
-        run: |
-          echo "stage=${{ env.STAGE }}" >> "$GITHUB_OUTPUT"
-          echo "state=${{ env.STATE }}" >> "$GITHUB_OUTPUT"
-
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Configure AWS credentials (OIDC)
-        uses: aws-actions/configure-aws-credentials@v4
-        with:
-          role-to-assume: ${{ secrets.AWS_ROLE_TO_ASSUME }}
-          aws-region: ${{ env.AWS_REGION }}
+          docker push ${API_REPO}:${IMAGE_TAG}
+          docker push ${WEB_REPO}:${IMAGE_TAG}
 
       - name: Install OpenTofu
         uses: opentofu/setup-opentofu@v1
         with:
           tofu_version: "1.9.0"
 
-      - name: OpenTofu Init (app)
-        working-directory: tofu/app
-        run: |
-          tofu init \
-            -backend-config="bucket=${{ secrets.TFSTATE_BUCKET }}" \
-            -backend-config="key=sebt-self-service-portal/${STAGE}/${STATE}.tfstate" \
-            -backend-config="dynamodb_table=${{ secrets.TFSTATE_TABLE }}" \
-            -backend-config="region=${{ env.AWS_REGION }}" \
-            -backend-config="encrypt=true"
+      - name: OpenTofu Init
+        working-directory: tofu/config/dev-dc
+        run: tofu init
 
-      - name: OpenTofu Apply (app)
-        working-directory: tofu/app
+      - name: OpenTofu Apply
+        working-directory: tofu/config/dev-dc
         run: |
           tofu apply -auto-approve \
-            -var="aws_region=${{ env.AWS_REGION }}" \
-            -var="name=${{ env.APP_NAME }}" \
-            -var="stage=${{ env.STAGE }}" \
-            -var="state=${{ env.STATE }}" \
-            -var="image_tag=${{ needs.build-push-and-deploy.outputs.image_tag }}" \
-            -var="tfstate_bucket=${{ secrets.TFSTATE_BUCKET }}" \
-            -var="tfstate_table=${{ secrets.TFSTATE_TABLE }}" \
-            -var="jwt_secret_key=${{ secrets.JWT_SECRET_KEY }}" \
-            -var="enable_ses=${{ vars.ENABLE_SES || 'true' }}" \
-            -var="ses_sender_email=${{ vars.SES_SENDER_EMAIL }}" \
-            -var="enable_database=${{ vars.ENABLE_DATABASE || 'true' }}" \
-            -var="database_master_username=${{ vars.DATABASE_MASTER_USERNAME || 'admin' }}" \
-            -var="database_master_password=${{ secrets.DATABASE_MASTER_PASSWORD }}"
+            -var-file="dev-dc.tfvars" \
+            -var="image_tag=${{ needs.build.outputs.image_tag }}"
 
       - name: Get deployment URL
         id: deploy-url
-        working-directory: tofu/app
+        working-directory: tofu/config/dev-dc
         run: |
-          WEB_URL=$(tofu output -raw web_url 2>/dev/null || echo "")
+          WEB_URL=$(tofu output -raw web_endpoint_url 2>/dev/null || echo "")
           echo "url=$WEB_URL" >> "$GITHUB_OUTPUT"
           echo "Deployment URL: $WEB_URL"
 
+  # deploy-co:
+  #   needs: build
+  #   runs-on: ubuntu-latest
+  #   environment: dev-co
+  #   outputs:
+  #     web_url: ${{ steps.deploy-url.outputs.url }}
+  #   env:
+  #     AWS_REGION: us-east-1
+  #   steps:
+  #     Same pattern as deploy-dc but with:
+  #     - sebt-portal-web-co image tag
+  #     - tofu/config/dev-co working directory
+  #     - dev-co.tfvars
+
   create-deployment-record:
-    needs: apply-infra
-    if: needs.apply-infra.result == 'success'
+    needs: [deploy-dc]
+    if: needs.deploy-dc.result == 'success'
     runs-on: ubuntu-latest
     permissions:
       deployments: write
       contents: read
     steps:
-      - name: Create GitHub deployment and link URL
+      - name: Create GitHub deployment for DC
         uses: actions/github-script@v7
         with:
           script: |
-            const environment = '${{ needs.apply-infra.outputs.stage }}-${{ needs.apply-infra.outputs.state }}';
-            const webUrl = '${{ needs.apply-infra.outputs.web_url }}';
+            const webUrl = '${{ needs.deploy-dc.outputs.web_url }}';
             const ref = context.sha;
 
             const deployment = await github.rest.repos.createDeployment({
               owner: context.repo.owner,
               repo: context.repo.repo,
               ref,
-              environment,
+              environment: 'dev-dc',
               auto_merge: false,
               required_contexts: [],
-              description: `Deploy ${{ needs.apply-infra.outputs.stage }} / ${{ needs.apply-infra.outputs.state }} (${ref.slice(0, 7)})`
+              description: `Deploy dev-dc (${ref.slice(0, 7)})`
             });
 
             const deploymentId = deployment.data.id;
