@@ -1,6 +1,6 @@
 output "endpoint" {
-  description = "Database connection endpoint."
-  value       = aws_db_instance.main.endpoint
+  description = "Database connection hostname."
+  value       = aws_db_instance.main.address
 }
 
 output "secret_arn" {
