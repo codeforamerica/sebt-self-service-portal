@@ -126,9 +126,8 @@ module "database" {
 module "ses" {
   source = "../sebt_ses"
 
-  project       = "sebt-portal"
-  project_short = "sebt"
-  environment   = var.environment
+  project     = "sebt-portal"
+  environment = var.environment
 
   sender_email = var.sender_email
 }
