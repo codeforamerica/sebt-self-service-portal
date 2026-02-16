@@ -3,6 +3,8 @@ name: Deploy (ECR)
 on:
   push:
     branches: [main]
+  pull_request:
+    branches: [main]
   workflow_dispatch:
     inputs:
       image_tag:
@@ -11,16 +13,80 @@ on:
         type: string
 
 permissions:
-  id-token: write
   contents: read
   deployments: write
+  pull-requests: write
 
 concurrency:
-  group: deploy
-  cancel-in-progress: false
+  group: deploy-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
+  # --- PR path: plan only if tofu files changed ---
+  check-infra-changes:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    outputs:
+      changed: ${{ steps.changes.outputs.tofu }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Check for tofu changes
+        id: changes
+        uses: dorny/paths-filter@v3
+        with:
+          filters: |
+            tofu:
+              - 'tofu/**'
+
+  plan-dc:
+    needs: check-infra-changes
+    if: needs.check-infra-changes.outputs.changed == 'true'
+    uses: ./.github/workflows/plan.yaml
+    with:
+      environment: dev-dc
+      config: dev-dc
+      image_tag: ${{ github.sha }}
+
+  plan-comment:
+    needs: plan-dc
+    runs-on: ubuntu-latest
+    steps:
+      - name: Post plan to PR
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const { data: comments } = await github.rest.issues.listComments({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+            });
+            const botComment = comments.find(comment => {
+              return comment.user.type === 'Bot' && comment.body.includes('## Plan output — dev-dc');
+            });
+
+            const output = `## Plan output — dev-dc\n\n\`\`\`\n${{ needs.plan-dc.outputs.plan }}\n\`\`\``;
+
+            if (botComment) {
+              github.rest.issues.updateComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                comment_id: botComment.id,
+                body: output,
+              });
+            } else {
+              github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.issue.number,
+                body: output,
+              });
+            }
+
+  # --- Main/dispatch path: build and deploy ---
   build:
+    if: github.event_name != 'pull_request'
     runs-on: ubuntu-latest
     outputs:
       image_tag: ${{ steps.tag.outputs.tag }}
@@ -130,6 +196,7 @@ jobs:
           retention-days: 1
 
   deploy-dc:
+    if: github.event_name != 'pull_request'
     needs: build
     runs-on: ubuntu-latest
     environment: dev-dc
@@ -151,10 +218,11 @@ jobs:
       - name: Load Docker images
         run: docker load -i /tmp/docker-images.tar
 
-      - name: Configure AWS credentials (OIDC)
+      - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
         with:
-          role-to-assume: ${{ secrets.AWS_ROLE_TO_ASSUME }}
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: ${{ env.AWS_REGION }}
 
       - name: Login to Amazon ECR

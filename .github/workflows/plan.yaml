@@ -1,0 +1,60 @@
+name: Plan infrastructure changes
+
+on:
+  workflow_call:
+    inputs:
+      environment:
+        description: 'GitHub environment for secrets'
+        required: true
+        type: string
+      config:
+        description: 'The OpenTofu configuration to plan'
+        required: true
+        type: string
+      image_tag:
+        description: 'Image tag variable for the plan'
+        required: true
+        type: string
+    outputs:
+      plan:
+        description: "The plan output"
+        value: ${{ jobs.plan.outputs.plan }}
+
+permissions:
+  contents: read
+
+jobs:
+  plan:
+    runs-on: ubuntu-latest
+    environment: ${{ inputs.environment }}
+    env:
+      AWS_REGION: us-east-1
+    outputs:
+      plan: ${{ steps.plan.outputs.stdout }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Install OpenTofu
+        uses: opentofu/setup-opentofu@v1
+        with:
+          tofu_version: "1.9.0"
+
+      - name: OpenTofu Init
+        working-directory: tofu/config/${{ inputs.config }}
+        run: tofu init
+
+      - name: OpenTofu Plan
+        id: plan
+        working-directory: tofu/config/${{ inputs.config }}
+        run: |
+          tofu plan -no-color -input=false \
+            -var-file="${{ inputs.config }}.tfvars" \
+            -var="image_tag=${{ inputs.image_tag }}"
