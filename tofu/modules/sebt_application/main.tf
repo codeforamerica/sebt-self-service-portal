@@ -24,7 +24,10 @@ module "api" {
   container_port    = 8080
   health_check_path = "/health"
 
-  image_tag = var.image_tag
+  create_repository = false
+  image_url         = var.api_image_url
+  repository_arn    = var.api_repository_arn
+  image_tag         = var.image_tag
 
   cpu    = 512
   memory = 1024
@@ -81,7 +84,10 @@ module "web" {
   container_port    = 3000
   health_check_path = "/"
 
-  image_tag = var.image_tag
+  create_repository = false
+  image_url         = var.web_image_url
+  repository_arn    = var.web_repository_arn
+  image_tag         = var.image_tag
 
   cpu    = 512
   memory = 1024

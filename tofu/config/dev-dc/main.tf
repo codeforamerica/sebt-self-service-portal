@@ -32,6 +32,15 @@ module "vpc" {
   public_subnets  = var.public_subnets
 }
 
+# Look up ECR repositories created by bootstrap.
+data "aws_ecr_repository" "api" {
+  name = "sebt-portal-dev-api"
+}
+
+data "aws_ecr_repository" "web" {
+  name = "sebt-portal-dev-web"
+}
+
 # Deploy the application services (API + Web) using the shared wrapper module.
 module "app" {
   source = "../../modules/sebt_application"
@@ -47,6 +56,11 @@ module "app" {
   skip_final_snapshot = true
   state               = "DC"
   vpc_id              = module.vpc.vpc_id
+
+  api_image_url      = data.aws_ecr_repository.api.repository_url
+  api_repository_arn = data.aws_ecr_repository.api.arn
+  web_image_url      = data.aws_ecr_repository.web.repository_url
+  web_repository_arn = data.aws_ecr_repository.web.arn
 
   force_delete           = true
   image_tags_mutable     = true

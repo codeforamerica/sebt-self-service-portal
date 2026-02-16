@@ -1,3 +1,13 @@
+variable "api_image_url" {
+  type        = string
+  description = "ECR repository URL for the API image. When set, disables ECR repo creation in the fargate module."
+}
+
+variable "api_repository_arn" {
+  type        = string
+  description = "ARN of the ECR repository for the API image."
+}
+
 variable "apply_immediately" {
   type        = bool
   description = "Apply database changes immediately rather than during the next maintenance window."
@@ -79,5 +89,15 @@ variable "state" {
 variable "vpc_id" {
   type        = string
   description = "VPC ID where resources will be created."
+}
+
+variable "web_image_url" {
+  type        = string
+  description = "ECR repository URL for the web image. When set, disables ECR repo creation in the fargate module."
+}
+
+variable "web_repository_arn" {
+  type        = string
+  description = "ARN of the ECR repository for the web image."
 }
 
