@@ -48,6 +48,7 @@ jobs:
       environment: dev-dc
       config: dev-dc
       image_tag: ${{ github.sha }}
+    secrets: inherit
 
   plan-comment:
     needs: plan-dc
