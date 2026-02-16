@@ -4,12 +4,17 @@ import Image from 'next/image'
 import Link from 'next/link'
 import { useTranslation } from 'react-i18next'
 
-import { getHelpLinks } from '@/lib/links'
+import { getHelpLinks, getStateLinks } from '@/lib/links'
 
 import type { HelpSectionProps } from './types'
 
 export function HelpSection({ state = 'dc' }: HelpSectionProps) {
   const { t } = useTranslation('common')
+
+  if (state === 'co') {
+    return <COHelpSection state={state} />
+  }
+
   const helpLinks = getHelpLinks(state)
 
   return (
@@ -49,6 +54,61 @@ export function HelpSection({ state = 'dc' }: HelpSectionProps) {
             </span>
           </Link>
         ))}
+      </div>
+    </section>
+  )
+}
+
+function COHelpSection({ state }: { state: string }) {
+  const links = getStateLinks(state)
+
+  return (
+    <section
+      className="bg-base-lightest padding-x-3 padding-y-4"
+      aria-labelledby="help-section-title"
+    >
+      <div className="maxw-tablet margin-x-auto">
+        <h2
+          id="help-section-title"
+          className="font-sans-lg text-bold margin-top-0 margin-bottom-1"
+        >
+          {/* TODO: Use t('helpDeskTitle') once the key is added to co.csv */}
+          Summer EBT Help Desk
+        </h2>
+
+        <p className="font-sans-sm margin-top-0">
+          {/* TODO: Use t('helpDeskBody') once the key is added to co.csv */}
+          Email the Summer EBT Help Desk at{' '}
+          <Link
+            href={links.help.helpDeskEmail ?? ''}
+            className="usa-link text-ink"
+          >
+            {/* TODO: Use t('helpDeskEmail') once the key is added to co.csv */}
+            cdhs_sebt_supportcenter@state.co.us
+          </Link>
+        </p>
+
+        <h2 className="font-sans-lg text-bold margin-top-4 margin-bottom-1">
+          {/* TODO: Use t('accessibilityTitle') once the key is added to co.csv */}
+          Accessibility at CDHS
+        </h2>
+
+        <p className="font-sans-sm margin-top-0">
+          {/* TODO: Use t('accessibilityBody') once the key is added to co.csv */}
+          CDHS is committed to meeting members of our community where they are, and strives to
+          provide all Coloradans with access to our programs, services, resources, activities and
+          communication regardless of ability.
+        </p>
+
+        <Link
+          href={links.footer.digitalAccessibility ?? '#'}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="usa-button usa-button--outline border-primary text-primary"
+        >
+          {/* TODO: Use t('digitalAccessibilityStatement') once the key is added to co.csv */}
+          Digital accessibility statement
+        </Link>
       </div>
     </section>
   )

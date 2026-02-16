@@ -15,17 +15,20 @@
  * 3. Generate design/fonts.ts with proper next/font/google imports
  */
 
+import './load-env.js'
 import { readFileSync, writeFileSync, existsSync } from 'fs'
-import { join, dirname } from 'path'
+import { join, dirname, relative } from 'path'
 import { fileURLToPath } from 'url'
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
 const rootDir = join(__dirname, '..', '..')
+const rel = p => relative(rootDir, p)
 
 // Map of Google Fonts available via next/font/google
 // Key: lowercase font name, Value: import name from next/font/google
 const GOOGLE_FONTS_MAP = {
   urbanist: 'Urbanist',
+  'atkinson hyperlegible': 'Atkinson_Hyperlegible_Next',
   'public sans': 'Public_Sans',
   roboto: 'Roboto',
   'open sans': 'Open_Sans',
@@ -132,7 +135,7 @@ import { ${googleFontImport} } from 'next/font/google'
 export const ${variableName} = ${googleFontImport}({
   subsets: ['latin'],
   weight: [${DEFAULT_WEIGHTS.map(w => `'${w}'`).join(', ')}],
-  variable: '--font-${variableName.toLowerCase()}',
+  variable: '--font-primary',
   display: 'optional',
   preload: true,
   fallback: ['system-ui', 'sans-serif']
@@ -152,8 +155,8 @@ function main() {
     console.log(`🔤 Generating fonts.ts for ${state.toUpperCase()}...`)
 
     if (!existsSync(tokensPath)) {
-      console.log(`⚠️  No token file found at: ${tokensPath}`)
-      console.log('   Skipping font generation.\n')
+      console.log(`⚠️  No token file found at: ${rel(tokensPath)}`)
+      console.log('   Skipping font generation.')
       process.exit(0)
     }
 
@@ -166,7 +169,7 @@ function main() {
     writeFileSync(outputPath, fontsTs, 'utf8')
 
     console.log(`✅ Generated fonts.ts for ${state.toUpperCase()}`)
-    console.log(`   ${outputPath}\n`)
+    console.log(`   ${rel(outputPath)}`)
 
     process.exit(0)
   } catch (error) {

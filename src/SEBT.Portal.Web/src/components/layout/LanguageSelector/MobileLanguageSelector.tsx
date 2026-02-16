@@ -58,7 +58,7 @@ export function MobileLanguageSelector({
           <button
             ref={buttonRef}
             type="button"
-            className="usa-button usa-language__link"
+            className={`usa-button usa-language__link${state === 'co' ? ' border-primary radius-md text-primary' : ''}`}
             aria-expanded={isOpen}
             aria-controls="language-options"
             onClick={() => setIsOpen(!isOpen)}
@@ -73,7 +73,8 @@ export function MobileLanguageSelector({
                 aria-hidden="true"
                 className="margin-right-1"
               />
-              <span>{t('translate')}</span>
+              {/* TODO: Use t('translate') once common.translate is added to co.csv */}
+              <span>{state === 'co' ? 'Translate' : t('translate')}</span>
             </div>
             <div>
               {languageCodes.map((code, index) => (
@@ -88,7 +89,7 @@ export function MobileLanguageSelector({
           <ul
             ref={menuRef}
             id="language-options"
-            className="usa-language__submenu"
+            className={`usa-language__submenu${state === 'co' ? ' bg-primary-dark' : ''}`}
             hidden={!isOpen}
             aria-hidden={!isOpen}
             role="menu"

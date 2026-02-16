@@ -21,11 +21,19 @@ export interface StateLinks {
     googleTranslateDisclaimer: string
     about: string
     termsAndConditions: string
+    /** CO-specific: Colorado Transparency Online Project */
+    transparencyOnline?: string
+    /** CO-specific: Colorado General Notices page */
+    generalNotices?: string
+    /** CO-specific: Digital Accessibility Statement */
+    digitalAccessibility?: string
   }
   /** Help section links */
   help: {
     faqs: string
     contactUs: string
+    /** CO-specific: Help desk email (mailto: link) */
+    helpDeskEmail?: string
   }
   /** Other external links used throughout the app */
   external: {
@@ -53,13 +61,30 @@ const stateLinks: Record<string, StateLinks> = {
     external: {
       contactUsAssistance: 'https://sunbucks.dc.gov/page/contact-us'
     }
+  },
+  co: {
+    footer: {
+      // TODO: Add CO-specific footer URLs when available
+      publicNotifications: '#',
+      accessibility: '#',
+      privacyAndSecurity: '#',
+      googleTranslateDisclaimer: '#',
+      about: '#',
+      termsAndConditions: '#',
+      transparencyOnline: '#',
+      generalNotices: '#',
+      digitalAccessibility: '#'
+    },
+    help: {
+      faqs: '#',
+      contactUs: '#',
+      helpDeskEmail: 'mailto:cdhs_sebt_supportcenter@state.co.us'
+    },
+    external: {
+      // TODO: Add CO contact page URL when available
+      contactUsAssistance: '#'
+    }
   }
-  // Add more states as needed
-  // co: {
-  //   footer: { ... },
-  //   help: { ... },
-  //   external: { ... },
-  // },
 }
 
 /**

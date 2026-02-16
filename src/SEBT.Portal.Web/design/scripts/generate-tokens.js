@@ -22,13 +22,15 @@
  * 5. Output to design/tokens.css (imported in layout.tsx)
  */
 
+import './load-env.js';
 import { readFileSync, writeFileSync, existsSync, statSync } from 'fs';
-import { join, dirname } from 'path';
+import { join, dirname, relative } from 'path';
 import { fileURLToPath } from 'url';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 const rootDir = join(__dirname, '..', '..');
+const rel = p => relative(rootDir, p);
 
 const USWDS_PREFIXES = new Set([
   'color', 'font', 'link', 'focus', 'button',
@@ -141,19 +143,19 @@ function processState(state) {
   // Check if state token file exists
   if (!existsSync(paths.input)) {
     console.log(`⚠️  No token file found for ${state.toUpperCase()} at:`);
-    console.log(`   ${paths.input}`);
-    console.log('   Skipping token generation.\n');
+    console.log(`   ${rel(paths.input)}`);
+    console.log('   Skipping token generation.');
     return { state, skipped: true, success: true };
   }
 
   // Check if regeneration needed
   if (!needsRegeneration(paths.input, paths.output)) {
     console.log(`⚡ Tokens unchanged for ${state.toUpperCase()}`);
-    console.log(`   ${paths.input} → ${paths.output}\n`);
+    console.log(`   ${rel(paths.input)} → ${rel(paths.output)}`);
     return { state, cached: true, success: true };
   }
 
-  console.log(`Reading: ${paths.input}`);
+  console.log(`  Reading: ${rel(paths.input)}`);
   const stateJson = JSON.parse(readFileSync(paths.input, 'utf8'));
 
   if (!stateJson.theme) {
@@ -201,7 +203,7 @@ a {
   writeFileSync(paths.output, cssContent, 'utf8');
 
   console.log(`✅ Generated ${variables.length} CSS custom properties for ${state.toUpperCase()}`);
-  console.log(`   ${paths.output}\n`);
+  console.log(`   ${rel(paths.output)}`);
 
   return { state, cached: false, success: true, count: variables.length };
 }
@@ -210,7 +212,7 @@ function main() {
   try {
     const state = (process.env.STATE || process.env.NEXT_PUBLIC_STATE || 'dc').toLowerCase();
 
-    console.log(`🎨 Generating design tokens for ${state.toUpperCase()}...\n`);
+    console.log(`🎨 Generating design tokens for ${state.toUpperCase()}...`);
 
     const result = processState(state);
 
@@ -220,7 +222,7 @@ function main() {
     }
 
     if (result.success) {
-      console.log(`✅ ${state.toUpperCase()} tokens generated successfully\n`);
+      console.log(`✅ ${state.toUpperCase()} tokens generated successfully`);
       process.exit(0);
     }
   } catch (error) {
