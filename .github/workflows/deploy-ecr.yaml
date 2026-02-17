@@ -22,7 +22,7 @@ concurrency:
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
-  # --- PR path: plan only if tofu files changed ---
+  # In PRs plan only if tofu files changed
   check-infra-changes:
     if: github.event_name == 'pull_request'
     runs-on: ubuntu-latest
@@ -49,10 +49,20 @@ jobs:
       config: dev-dc
       image_tag: ${{ github.sha }}
     secrets: inherit
+  
+  plan-co:
+    needs: check-infra-changes
+    if: needs.check-infra-changes.outputs.changed == 'true'
+    uses: ./.github/workflows/plan.yaml
+    with:
+      environment: dev-co
+      config: dev-co
+      image_tag: ${{ github.sha }}
+    secrets: inherit
 
   plan-comment:
-    needs: plan-dc
-    if: always() && needs.plan-dc.outputs.plan
+    needs: [plan-dc, plan-co]
+    if: always() && (needs.plan-dc.outputs.plan || needs.plan-co.outputs.plan)
     runs-on: ubuntu-latest
     steps:
       - name: Post plan to PR
@@ -65,28 +75,37 @@ jobs:
               issue_number: context.issue.number,
             });
             const botComment = comments.find(comment => {
-              return comment.user.type === 'Bot' && comment.body.includes('## Plan output — dev-dc');
+              return comment.user.type === 'Bot' && comment.body.includes('## Plan output');
             });
 
-            const output = `## Plan output — dev-dc\n\n\`\`\`\n${{ needs.plan-dc.outputs.plan }}\n\`\`\``;
+            let output = '';
+              const dcPlan = `${{ needs.plan-dc.outputs.plan }}`;
+              const coPlan = `${{ needs.plan-co.outputs.plan }}`;
 
-            if (botComment) {
-              github.rest.issues.updateComment({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                comment_id: botComment.id,
-                body: output,
-              });
-            } else {
-              github.rest.issues.createComment({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                issue_number: context.issue.number,
-                body: output,
-              });
-            }
+              if (dcPlan) {
+                output += `## Plan output — dev-dc\n\n\`\`\`\n${dcPlan}\n\`\`\`\n\n`;
+              }
+              if (coPlan) {
+                output += `## Plan output — dev-co\n\n\`\`\`\n${coPlan}\n\`\`\``;
+              }
 
-  # --- Main/dispatch path: build and deploy ---
+              if (botComment) {
+                github.rest.issues.updateComment({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  comment_id: botComment.id,
+                  body: output,
+                });
+              } else {
+                github.rest.issues.createComment({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  issue_number: context.issue.number,
+                  body: output,
+                });
+              }
+
+  # Build and deploy only on push to main or manual trigger, not on PRs
   build:
     if: github.event_name != 'pull_request'
     runs-on: ubuntu-latest
