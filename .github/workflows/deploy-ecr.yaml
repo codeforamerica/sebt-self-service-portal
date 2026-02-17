@@ -295,7 +295,8 @@ jobs:
         uses: actions/github-script@v7
         with:
           script: |
-            const webUrl = '${{ needs.deploy-dc.outputs.web_url }}';
+            const rawUrl = '${{ needs.deploy-dc.outputs.web_url }}';
+            const webUrl = rawUrl && !rawUrl.startsWith('http') ? `https://${rawUrl}` : rawUrl;
             const ref = context.sha;
 
             const deployment = await github.rest.repos.createDeployment({
