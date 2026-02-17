@@ -52,6 +52,7 @@ jobs:
 
   plan-comment:
     needs: plan-dc
+    if: always() && needs.plan-dc.outputs.plan
     runs-on: ubuntu-latest
     steps:
       - name: Post plan to PR
