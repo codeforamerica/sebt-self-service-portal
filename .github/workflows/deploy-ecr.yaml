@@ -369,14 +369,15 @@ jobs:
           echo "Deployment URL: $WEB_URL"
 
   create-deployment-record:
-    needs: [deploy-dc]
-    if: needs.deploy-dc.result == 'success'
+    needs: [deploy-dc, deploy-co]
+    if: always() && (needs.deploy-dc.result == 'success' || needs.deploy-co.result == 'success')
     runs-on: ubuntu-latest
     permissions:
       deployments: write
       contents: read
     steps:
       - name: Create GitHub deployment for DC
+        if: needs.deploy-dc.result == 'success'
         uses: actions/github-script@v7
         with:
           script: |
@@ -392,6 +393,37 @@ jobs:
               auto_merge: false,
               required_contexts: [],
               description: `Deploy dev-dc (${ref.slice(0, 7)})`
+            });
+
+            const deploymentId = deployment.data.id;
+            if (deploymentId) {
+              await github.rest.repos.createDeploymentStatus({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                deployment_id: deploymentId,
+                state: 'success',
+                environment_url: webUrl || undefined,
+                description: 'Deployment finished successfully'
+              });
+            }
+
+      - name: Create GitHub deployment for CO
+        if: needs.deploy-co.result == 'success'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const rawUrl = '${{ needs.deploy-co.outputs.web_url }}';
+            const webUrl = rawUrl && !rawUrl.startsWith('http') ? `https://${rawUrl}` : rawUrl;
+            const ref = context.sha;
+
+            const deployment = await github.rest.repos.createDeployment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              ref,
+              environment: 'dev-co',
+              auto_merge: false,
+              required_contexts: [],
+              description: `Deploy dev-co (${ref.slice(0, 7)})`
             });
 
             const deploymentId = deployment.data.id;
