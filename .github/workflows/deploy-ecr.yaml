@@ -294,19 +294,79 @@ jobs:
           echo "url=$WEB_URL" >> "$GITHUB_OUTPUT"
           echo "Deployment URL: $WEB_URL"
 
-  # deploy-co:
-  #   needs: build
-  #   runs-on: ubuntu-latest
-  #   environment: dev-co
-  #   outputs:
-  #     web_url: ${{ steps.deploy-url.outputs.url }}
-  #   env:
-  #     AWS_REGION: us-east-1
-  #   steps:
-  #     Same pattern as deploy-dc but with:
-  #     - sebt-portal-web-co image tag
-  #     - tofu/config/dev-co working directory
-  #     - dev-co.tfvars
+  deploy-co:
+    if: github.event_name != 'pull_request'
+    needs: build
+    runs-on: ubuntu-latest
+    environment: dev-co
+    outputs:
+      web_url: ${{ steps.deploy-url.outputs.url }}
+    env:
+      AWS_REGION: us-east-1
+      TF_VAR_domain: ${{ vars.DOMAIN }}
+      TF_VAR_sender_email: ${{ vars.SENDER_EMAIL }}
+      TF_VAR_vpc_cidr: ${{ vars.VPC_CIDR }}
+      TF_VAR_private_subnets: ${{ vars.PRIVATE_SUBNETS }}
+      TF_VAR_public_subnets: ${{ vars.PUBLIC_SUBNETS }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Download Docker images
+        uses: actions/download-artifact@v4
+        with:
+          name: docker-images
+          path: /tmp
+
+      - name: Load Docker images
+        run: docker load -i /tmp/docker-images.tar
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Push images to ECR
+        run: |
+          IMAGE_TAG="${{ needs.build.outputs.image_tag }}"
+          API_REPO="${{ secrets.ECR_API_REPOSITORY_URL }}"
+          WEB_REPO="${{ secrets.ECR_WEB_REPOSITORY_URL }}"
+
+          docker tag sebt-portal-api:${IMAGE_TAG} ${API_REPO}:${IMAGE_TAG}
+          docker tag sebt-portal-web-co:${IMAGE_TAG} ${WEB_REPO}:${IMAGE_TAG}
+
+          docker push ${API_REPO}:${IMAGE_TAG}
+          docker push ${WEB_REPO}:${IMAGE_TAG}
+
+      - name: Install OpenTofu
+        uses: opentofu/setup-opentofu@v1
+        with:
+          tofu_version: "1.9.0"
+
+      - name: OpenTofu Init
+        working-directory: tofu/config/dev-co
+        run: tofu init
+
+      - name: OpenTofu Apply
+        working-directory: tofu/config/dev-co
+        run: |
+          tofu apply -auto-approve \
+            -var="image_tag=${{ needs.build.outputs.image_tag }}"
+
+      - name: Get deployment URL
+        id: deploy-url
+        working-directory: tofu/config/dev-co
+        run: |
+          WEB_URL=$(tofu output -raw web_endpoint_url 2>/dev/null || echo "")
+          echo "url=$WEB_URL" >> "$GITHUB_OUTPUT"
+          echo "Deployment URL: $WEB_URL"
 
   create-deployment-record:
     needs: [deploy-dc]
