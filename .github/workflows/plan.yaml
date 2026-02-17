@@ -30,7 +30,7 @@ jobs:
     env:
       AWS_REGION: us-east-1
     outputs:
-      plan: ${{ steps.plan.outputs.stdout }}
+      plan: ${{ steps.plan.outputs.stdout }}${{ steps.plan.outputs.stderr }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -53,6 +53,7 @@ jobs:
 
       - name: OpenTofu Plan
         id: plan
+        continue-on-error: true
         working-directory: tofu/config/${{ inputs.config }}
         run: |
           tofu plan -no-color -input=false \
