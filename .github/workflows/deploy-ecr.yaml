@@ -144,11 +144,12 @@ jobs:
           token: ${{ secrets.SEBT_CONNECTOR_REPOSITORY_PAT }}
           path: dc-connector
 
-      # - name: Checkout co-connector
-      #   uses: actions/checkout@v4
-      #   with:
-      #     repository: codeforamerica/sebt-self-service-portal-co-connector
-      #     path: co-connector
+      - name: Checkout co-connector
+        uses: actions/checkout@v4
+        with:
+          repository: codeforamerica/sebt-self-service-portal-co-connector
+          token: ${{ secrets.SEBT_CONNECTOR_REPOSITORY_PAT }}
+          path: co-connector
 
       - name: Build plugin interfaces (NuGet package)
         run: |
@@ -161,11 +162,11 @@ jobs:
             -c Release \
             -p:CopyPlugins=false
 
-      # - name: Build CO plugin
-      #   run: |
-      #     dotnet build co-connector/src/SEBT.Portal.StatePlugins.CO/SEBT.Portal.StatePlugins.CO.csproj \
-      #       -c Release \
-      #       -p:CopyPlugins=false
+      - name: Build CO plugin
+        run: |
+          dotnet build co-connector/src/SEBT.Portal.StatePlugins.CO/SEBT.Portal.StatePlugins.CO.csproj \
+            -c Release \
+            -p:CopyPlugins=false
 
       - name: Stage plugin artifacts for Docker build
         run: |
@@ -174,9 +175,9 @@ jobs:
           mkdir -p src/SEBT.Portal.Api/plugins-dc
           cp dc-connector/src/SEBT.Portal.StatePlugins.DC/bin/Release/net10.0/*.dll \
             src/SEBT.Portal.Api/plugins-dc/
-          # mkdir -p src/SEBT.Portal.Api/plugins-co
-          # cp co-connector/src/SEBT.Portal.StatePlugins.CO/bin/Release/net10.0/*.dll \
-          #   src/SEBT.Portal.Api/plugins-co/
+          mkdir -p src/SEBT.Portal.Api/plugins-co
+          cp co-connector/src/SEBT.Portal.StatePlugins.CO/bin/Release/net10.0/*.dll \
+            src/SEBT.Portal.Api/plugins-co/
 
       - name: Build API image
         run: |
@@ -195,20 +196,21 @@ jobs:
             -t sebt-portal-web-dc:${{ steps.tag.outputs.tag }} \
             .
 
-      # - name: Build Web CO image
-      #   run: |
-      #     docker build \
-      #       --platform linux/amd64 \
-      #       -f src/SEBT.Portal.Web/Dockerfile \
-      #       --build-arg STATE=co \
-      #       -t sebt-portal-web-co:${{ steps.tag.outputs.tag }} \
-      #       .
+      - name: Build Web CO image
+        run: |
+          docker build \
+            --platform linux/amd64 \
+            -f src/SEBT.Portal.Web/Dockerfile \
+            --build-arg STATE=co \
+            -t sebt-portal-web-co:${{ steps.tag.outputs.tag }} \
+            .
 
       - name: Save Docker images
         run: |
           docker save \
             sebt-portal-api:${{ steps.tag.outputs.tag }} \
             sebt-portal-web-dc:${{ steps.tag.outputs.tag }} \
+            sebt-portal-web-co:${{ steps.tag.outputs.tag }} \
             -o /tmp/docker-images.tar
 
       - name: Upload Docker images
