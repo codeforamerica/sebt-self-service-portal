@@ -444,6 +444,7 @@ output
 
 ## OpenTofu / Terraform
 **/.terraform/
+*.tfvars
 **/*.tfstate
 **/*.tfstate.*
 **/*.tfplan

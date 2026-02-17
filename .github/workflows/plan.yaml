@@ -29,6 +29,11 @@ jobs:
     environment: ${{ inputs.environment }}
     env:
       AWS_REGION: us-east-1
+      TF_VAR_domain: ${{ vars.DOMAIN }}
+      TF_VAR_sender_email: ${{ vars.SENDER_EMAIL }}
+      TF_VAR_vpc_cidr: ${{ vars.VPC_CIDR }}
+      TF_VAR_private_subnets: ${{ vars.PRIVATE_SUBNETS }}
+      TF_VAR_public_subnets: ${{ vars.PUBLIC_SUBNETS }}
     outputs:
       plan: ${{ steps.plan.outputs.stdout }}${{ steps.plan.outputs.stderr }}
     steps:
@@ -57,5 +62,4 @@ jobs:
         working-directory: tofu/config/${{ inputs.config }}
         run: |
           tofu plan -no-color -input=false \
-            -var-file="${{ inputs.config }}.tfvars" \
             -var="image_tag=${{ inputs.image_tag }}"

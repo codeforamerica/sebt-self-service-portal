@@ -227,6 +227,11 @@ jobs:
       web_url: ${{ steps.deploy-url.outputs.url }}
     env:
       AWS_REGION: us-east-1
+      TF_VAR_domain: ${{ vars.DOMAIN }}
+      TF_VAR_sender_email: ${{ vars.SENDER_EMAIL }}
+      TF_VAR_vpc_cidr: ${{ vars.VPC_CIDR }}
+      TF_VAR_private_subnets: ${{ vars.PRIVATE_SUBNETS }}
+      TF_VAR_public_subnets: ${{ vars.PUBLIC_SUBNETS }}
 
     steps:
       - name: Checkout
@@ -277,7 +282,6 @@ jobs:
         working-directory: tofu/config/dev-dc
         run: |
           tofu apply -auto-approve \
-            -var-file="dev-dc.tfvars" \
             -var="image_tag=${{ needs.build.outputs.image_tag }}"
 
       - name: Get deployment URL
