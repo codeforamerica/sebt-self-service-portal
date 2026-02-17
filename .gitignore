@@ -23,6 +23,9 @@
 *.sln.docstates
 *.env
 
+# Local development config (use appsettings.Development.example.json as template)
+src/SEBT.Portal.Api/appsettings.Development.json
+
 # User-specific files (MonoDevelop/Xamarin Studio)
 *.userprefs
 
