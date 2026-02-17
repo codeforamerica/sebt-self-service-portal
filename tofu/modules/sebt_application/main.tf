@@ -10,8 +10,9 @@ module "api" {
   service       = "api"
   service_short = "api"
 
-  domain    = var.domain
-  subdomain = "api"
+  domain         = var.domain
+  subdomain      = "api"
+  hosted_zone_id = var.hosted_zone_id
 
   public          = false
   create_endpoint = true
@@ -69,8 +70,9 @@ module "web" {
   service       = "web"
   service_short = "web"
 
-  domain    = var.domain
-  subdomain = ""
+  domain         = var.domain
+  subdomain      = ""
+  hosted_zone_id = var.hosted_zone_id
 
   public          = true
   create_endpoint = true

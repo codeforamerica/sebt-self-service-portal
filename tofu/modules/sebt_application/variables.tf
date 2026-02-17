@@ -101,3 +101,9 @@ variable "web_repository_arn" {
   description = "ARN of the ECR repository for the web image."
 }
 
+variable "hosted_zone_id" {
+  type        = string
+  description = "Route 53 hosted zone ID for DNS records. Required when the zone name doesn't exactly match the domain."
+  default     = ""
+}
+

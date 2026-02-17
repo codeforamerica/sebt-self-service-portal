@@ -41,12 +41,18 @@ data "aws_ecr_repository" "web" {
   name = "sebt-portal-dev-web"
 }
 
+# Look up the hosted zone for DNS records.
+data "aws_route53_zone" "main" {
+  name = "dc.sebt-portal.codeforamerica.app"
+}
+
 # Deploy the application services (API + Web) using the shared wrapper module.
 module "app" {
   source = "../../modules/sebt_application"
 
   apply_immediately   = true
   domain              = var.domain
+  hosted_zone_id      = data.aws_route53_zone.main.zone_id
   environment         = "dev"
   image_tag           = var.image_tag
   logging_key_id      = module.logging.kms_key_arn
