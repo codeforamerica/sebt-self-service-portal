@@ -9,7 +9,7 @@ terraform {
 
 # Create an S3 bucket and KMS key for logging.                                                                                                    
 module "logging" {
-  source = "github.com/codeforamerica/tofu-modules-aws-logging?ref=2.1.2"
+  source = "github.com/codeforamerica/tofu-modules-aws-logging?ref=2.1.0"
 
   project     = "sebt-portal"
   environment = "dev"
