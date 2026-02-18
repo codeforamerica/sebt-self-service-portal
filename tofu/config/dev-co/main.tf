@@ -11,7 +11,7 @@ terraform {
 module "logging" {
   source = "github.com/codeforamerica/tofu-modules-aws-logging?ref=2.1.0"
 
-  project     = "sebt-portal"
+  project     = "sebt-portal-co"
   environment = "dev"
 
   log_groups_to_datadog = false
@@ -22,7 +22,7 @@ module "logging" {
 module "vpc" {
   source = "github.com/codeforamerica/tofu-modules-aws-vpc?ref=1.1.2"
 
-  project            = "sebt-portal"
+  project            = "sebt-portal-co"
   environment        = "dev"
   single_nat_gateway = true
   logging_key_id     = module.logging.kms_key_arn
