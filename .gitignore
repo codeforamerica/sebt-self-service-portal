@@ -435,7 +435,7 @@ FodyWeavers.xsd
 tofu/
 
 # AI
-CLAUDE.md
+CLAUDE.local.md
 
 # output files
 output
