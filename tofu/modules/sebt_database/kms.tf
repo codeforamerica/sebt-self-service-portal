@@ -39,6 +39,24 @@ resource "aws_kms_key" "database" {
         }
       },
       {
+        Sid    = "AllowSecretsManagerAccess"
+        Effect = "Allow"
+        Principal = {
+          AWS = "*"
+        }
+        Action = [
+          "kms:Decrypt",
+          "kms:DescribeKey"
+        ]
+        Resource = "*"
+        Condition = {
+          StringEquals = {
+            "kms:ViaService"    = "secretsmanager.${data.aws_region.current.name}.${data.aws_partition.current.dns_suffix}"
+            "kms:CallerAccount" = data.aws_caller_identity.current.account_id
+          }
+        }
+      },
+      {
         Sid    = "AllowGrantManagement"
         Effect = "Allow"
         Principal = {
