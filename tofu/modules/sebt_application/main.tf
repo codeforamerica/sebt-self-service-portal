@@ -100,10 +100,10 @@ module "web" {
   force_delete           = var.force_delete
 
   environment_variables = {
-    STATE                    = var.state
-    NEXT_PUBLIC_STATE        = var.state
-    NEXT_PUBLIC_API_BASE_URL = module.api.endpoint_url
-    BACKEND_URL              = module.api.endpoint_url
+    STATE                    = lower(var.state)
+    NEXT_PUBLIC_STATE        = lower(var.state)
+    NEXT_PUBLIC_API_BASE_URL = "https://${module.api.endpoint_url}"
+    BACKEND_URL              = "https://${module.api.endpoint_url}"
   }
 }
 
