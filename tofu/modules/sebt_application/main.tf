@@ -51,10 +51,10 @@ module "api" {
   }
 
   environment_secrets = {
-    DB_USER                        = "${module.database.secret_arn}:username::"
-    DB_PASSWORD                    = "${module.database.secret_arn}:password::"
-    "SmtpClientSettings__UserName" = "${module.ses.secret_arn}:username::"
-    "SmtpClientSettings__Password" = "${module.ses.secret_arn}:password::"
+    DB_USER                        = "${module.database.secret_arn}:username"
+    DB_PASSWORD                    = "${module.database.secret_arn}:password"
+    "SmtpClientSettings__UserName" = "${module.ses.secret_arn}:username"
+    "SmtpClientSettings__Password" = "${module.ses.secret_arn}:password"
   }
 }
 
