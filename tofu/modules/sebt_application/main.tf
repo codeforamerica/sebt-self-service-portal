@@ -44,6 +44,9 @@ module "api" {
     DB_HOST                                      = module.database.endpoint
     DB_NAME                                      = "SebtPortal"
     DB_PORT                                      = "1433"
+    "PluginAssemblyPaths__0"                     = "plugins-${lower(var.state)}"
+    "JwtSettings__SecretKey"                     = var.jwt_secret_key
+    "IdentifierHasher__SecretKey"                = var.identifier_hasher_secret_key
     "SmtpClientSettings__SmtpServer"             = module.ses.smtp_server
     "SmtpClientSettings__SmtpPort"               = "587"
     "SmtpClientSettings__EnableSsl"              = "true"

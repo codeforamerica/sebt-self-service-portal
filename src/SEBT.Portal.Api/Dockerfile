@@ -44,7 +44,5 @@ EXPOSE 8080
 EXPOSE 8081
 
 COPY --from=build /app/publish .
-COPY --from=build /src/SEBT.Portal.Api/plugins-dc/ ./plugins-dc/
-COPY --from=build /src/SEBT.Portal.Api/plugins-co/ ./plugins-co/
 
 ENTRYPOINT ["dotnet", "SEBT.Portal.Api.dll"]

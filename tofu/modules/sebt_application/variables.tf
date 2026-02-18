@@ -101,6 +101,18 @@ variable "web_repository_arn" {
   description = "ARN of the ECR repository for the web image."
 }
 
+variable "identifier_hasher_secret_key" {
+  type        = string
+  description = "Secret key for identifier hashing. Must be at least 32 characters."
+  sensitive   = true
+}
+
+variable "jwt_secret_key" {
+  type        = string
+  description = "Secret key for signing JWT tokens. Must be at least 32 characters."
+  sensitive   = true
+}
+
 variable "hosted_zone_id" {
   type        = string
   description = "Route 53 hosted zone ID for DNS records. Required when the zone name doesn't exactly match the domain."
