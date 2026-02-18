@@ -31,7 +31,9 @@ if (existsSync(envLocalPath)) {
     const eqIdx = trimmed.indexOf('=')
     if (eqIdx === -1) continue
     const key = trimmed.slice(0, eqIdx)
-    const value = trimmed.slice(eqIdx + 1)
+    const raw = trimmed.slice(eqIdx + 1)
+    // Strip matching quotes — STATE="dc" and STATE='dc' should both yield dc
+    const value = raw.replace(/^(['"])(.*)\1$/, '$2')
     // Don't override — explicit CLI env vars take precedence
     if (!process.env[key]) {
       process.env[key] = value

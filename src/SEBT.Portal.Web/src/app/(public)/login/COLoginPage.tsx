@@ -1,11 +1,9 @@
 import { TextLink } from '@/components/ui'
 import { getStateLinks } from '@/lib/links'
-import { getState } from '@/lib/state'
 import { getTranslations } from '@/lib/translations'
 import Link from 'next/link'
 
-export function COLoginPage() {
-  const state = getState()
+export function COLoginPage({ state }: { state: string }) {
   const links = getStateLinks(state)
   const t = getTranslations('login')
 

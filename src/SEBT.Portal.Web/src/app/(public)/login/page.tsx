@@ -9,7 +9,7 @@ export default function LoginPage() {
   const state = getState()
 
   if (state === 'co') {
-    return <COLoginPage />
+    return <COLoginPage state={state} />
   }
 
   const links = getStateLinks(state)
