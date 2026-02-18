@@ -14,12 +14,13 @@ of children eligible for [Summer EBT](https://www.fns.usda.gov/summer/sunbucks) 
 > **Note:** The following steps assume you are working on macOS. Steps may differ if you are working on a different operating system.
 
 ### Prerequisites 👷
-- The application backend is built with the .NET 10 SDK, which can be downloaded [here](https://dotnet.microsoft.com/en-us/download).
+- The application backend is built with the .NET 10 SDK, which can be downloaded [here](https://dotnet.microsoft.com/en-us/download)
+- Be sure you are running the latest version of [nodeJs](https://nodejs.org/en/download)
 - Frontend packages and local development scripts are managed with [pnpm](https://pnpm.io/).
 - [Docker](https://www.docker.com/) is required for packaging and running containers.
 
 ### .NET Tools 🛠️
-.NET tools are CLI utilities installed and managed using NuGet. Currently, we are using
+.NET tools are CLI utilities installed and managed using [NuGet](https://www.nuget.org/). Currently, we are using
 the `nuget-license` tool for auditing backend dependency license. To install .NET tools,
 run `dotnet tool restore` from the solution root. Needed tools are defined in the tools 
 manifest in `.config/dotnet-tools.json`.
