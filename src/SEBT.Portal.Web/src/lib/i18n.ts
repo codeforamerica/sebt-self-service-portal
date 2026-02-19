@@ -166,8 +166,9 @@ const stateResources = {
   }
 }
 
-// Get resources for current state using explicit conditional for security
-const resources = state === 'co' ? stateResources.co : stateResources.dc
+// Get resources for current state — bracket notation scales to any number of states
+// eslint-disable-next-line security/detect-object-injection -- state is typed 'dc' | 'co'
+const resources = stateResources[state]
 
 // State name mapping for interpolation
 const stateNames = {
@@ -210,7 +211,8 @@ i18n.use(initReactI18next).init({
     // Default values for common interpolation variables
     defaultVariables: {
       state: state.toUpperCase(),
-      stateName: state === 'co' ? stateNames.co : stateNames.dc,
+      // eslint-disable-next-line security/detect-object-injection -- state is typed 'dc' | 'co'
+      stateName: stateNames[state],
       year: new Date().getFullYear().toString()
     }
   },

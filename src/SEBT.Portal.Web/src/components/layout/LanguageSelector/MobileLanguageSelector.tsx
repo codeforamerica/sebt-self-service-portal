@@ -1,6 +1,7 @@
 'use client'
 
 import { languageNames, type SupportedLanguage } from '@/lib/i18n'
+import { getStateConfig } from '@/lib/state'
 import Image from 'next/image'
 import { useEffect, useRef, useState } from 'react'
 
@@ -15,6 +16,7 @@ export function MobileLanguageSelector({
   t,
   state
 }: MobileLanguageSelectorProps) {
+  const config = getStateConfig(state)
   const [isOpen, setIsOpen] = useState(false)
   const menuRef = useRef<HTMLUListElement>(null)
   const buttonRef = useRef<HTMLButtonElement>(null)
@@ -58,7 +60,7 @@ export function MobileLanguageSelector({
           <button
             ref={buttonRef}
             type="button"
-            className={`usa-button usa-language__link${state === 'co' ? ' border-primary radius-md text-primary' : ''}`}
+            className={`usa-button usa-language__link${config.languageSelectorClass ? ` ${config.languageSelectorClass}` : ''}`}
             aria-expanded={isOpen}
             aria-controls="language-options"
             onClick={() => setIsOpen(!isOpen)}
@@ -88,7 +90,7 @@ export function MobileLanguageSelector({
           <ul
             ref={menuRef}
             id="language-options"
-            className={`usa-language__submenu${state === 'co' ? ' bg-primary-dark' : ''}`}
+            className={`usa-language__submenu${config.languageSubmenuClass ? ` ${config.languageSubmenuClass}` : ''}`}
             hidden={!isOpen}
             aria-hidden={!isOpen}
             role="menu"
