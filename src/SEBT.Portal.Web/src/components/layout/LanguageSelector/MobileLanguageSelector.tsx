@@ -73,8 +73,7 @@ export function MobileLanguageSelector({
                 aria-hidden="true"
                 className="margin-right-1"
               />
-              {/* TODO: Use t('translate') once common.translate is added to co.csv */}
-              <span>{state === 'co' ? 'Translate' : t('translate')}</span>
+              <span>{t('translate')}</span>
             </div>
             <div>
               {languageCodes.map((code, index) => (
