@@ -3,9 +3,15 @@ import { LoginForm } from '@/features/auth'
 import { getStateLinks } from '@/lib/links'
 import { getState } from '@/lib/state'
 import { getTranslations } from '@/lib/translations'
+import { COLoginPage } from './COLoginPage'
 
 export default function LoginPage() {
   const state = getState()
+
+  if (state === 'co') {
+    return <COLoginPage state={state} />
+  }
+
   const links = getStateLinks(state)
   const t = getTranslations('login')
 

@@ -41,6 +41,7 @@
  * - Variable interpolation: Preserves {state}, {year} placeholders for runtime
  */
 
+import '../../design/scripts/load-env.js';
 import { createHash } from 'crypto';
 import {
   existsSync,
@@ -50,12 +51,14 @@ import {
   rmSync,
   writeFileSync,
 } from 'fs';
-import { dirname, join } from 'path';
+import { dirname, join, relative } from 'path';
 import { fileURLToPath } from 'url';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 const contentDir = join(__dirname, '..');
+const rootDir = join(contentDir, '..');
+const rel = p => relative(rootDir, p);
 
 // Configuration
 const CONFIG = {
@@ -462,7 +465,7 @@ function validateStateCompleteness(stateData, state) {
  * Main entry point
  */
 function main() {
-  console.log('🌐 Generating i18n locale files...\n');
+  console.log('🌐 Generating i18n locale files...');
 
   // Discover state CSV files
   const stateFiles = discoverStateCsvFiles();
@@ -470,24 +473,24 @@ function main() {
   if (stateFiles.length === 0) {
     console.log('⚠️  No state CSV files found in content/states/');
     console.log('   Expected: content/states/dc.csv, content/states/co.csv, etc.');
-    console.log('   Download from Google Sheets (each tab as separate CSV).\n');
+    console.log('   Download from Google Sheets (each tab as separate CSV).');
     process.exit(0);
   }
 
   console.log(`📁 Found ${stateFiles.length} state CSV file(s):`);
   for (const { state, csvPath } of stateFiles) {
-    console.log(`   - ${state}: ${csvPath}`);
+    console.log(`   - ${state}: ${rel(csvPath)}`);
   }
   console.log();
 
   // Check if regeneration needed
   if (!needsRegeneration(stateFiles)) {
-    console.log('⚡ Locales unchanged (cached)\n');
+    console.log('⚡ Locales unchanged (cached)');
 
     // List existing locale files
     if (existsSync(CONFIG.outputDir)) {
       const locales = readdirSync(CONFIG.outputDir);
-      console.log(`   Existing: ${locales.join(', ')}\n`);
+      console.log(`   Existing: ${locales.join(', ')}`);
     }
     process.exit(0);
   }
@@ -502,7 +505,7 @@ function main() {
     // Process each state CSV
     for (const { state, csvPath } of stateFiles) {
       console.log(`📖 Processing ${state.toUpperCase()}:`);
-      console.log(`   Reading: ${csvPath}`);
+      console.log(`   Reading: ${rel(csvPath)}`);
 
       const csvContent = readFileSync(csvPath, 'utf8');
       const rows = parseCSV(csvContent);
