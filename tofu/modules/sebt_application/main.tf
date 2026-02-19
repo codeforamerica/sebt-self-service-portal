@@ -127,12 +127,14 @@ module "database" {
   apply_immediately   = var.apply_immediately
 }
 
-# Create the SES email identity and SMTP credentials.
+# Create the SES domain identity, DNS records, and SMTP credentials.
 module "ses" {
   source = "../sebt_ses"
 
-  project     = "sebt-portal"
-  environment = var.environment
+  project        = "sebt-portal"
+  environment    = var.environment
+  domain         = var.domain
+  hosted_zone_id = var.hosted_zone_id
 
   sender_email       = var.sender_email
   allowed_recipients = var.ses_allowed_recipients
