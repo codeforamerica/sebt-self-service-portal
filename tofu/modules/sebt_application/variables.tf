@@ -75,6 +75,12 @@ variable "sender_email" {
   description = "Email address used as the sender for OTP emails."
 }
 
+variable "ses_allowed_recipients" {
+  type        = list(string)
+  description = "Email addresses to verify as SES recipients for sandbox testing."
+  default     = []
+}
+
 variable "skip_final_snapshot" {
   type        = bool
   description = "Skip final snapshot when destroying the database."

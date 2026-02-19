@@ -1,3 +1,9 @@
+variable "allowed_recipients" {
+  type        = list(string)
+  description = "Email addresses to verify as recipients for SES sandbox mode."
+  default     = []
+}
+
 variable "domain" {
   type        = string
   description = "The domain to register with SES."

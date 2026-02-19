@@ -134,6 +134,7 @@ module "ses" {
   project     = "sebt-portal"
   environment = var.environment
 
-  sender_email = var.sender_email
+  sender_email       = var.sender_email
+  allowed_recipients = var.ses_allowed_recipients
 }
 

@@ -56,6 +56,12 @@ resource "aws_route53_record" "dmarc" {
   records = ["v=DMARC1; p=quarantine; rua=mailto:dmarc@${var.domain};"]
 }
 
+# Sandbox recipient identities.
+resource "aws_ses_email_identity" "recipients" {
+  for_each = toset(var.allowed_recipients)
+  email    = each.value
+}
+
 # SMTP credentials for application email sending.
 resource "aws_iam_user" "smtp" {
   name = "${local.prefix}-ses-smtp"
