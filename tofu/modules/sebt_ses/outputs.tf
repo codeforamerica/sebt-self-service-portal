@@ -4,8 +4,8 @@ output "secret_arn" {
 }
 
 output "sender_email" {
-  description = "Verified sender email address."
-  value       = aws_ses_email_identity.sender.email
+  description = "Sender email address."
+  value       = var.sender_email
 }
 
 output "smtp_server" {

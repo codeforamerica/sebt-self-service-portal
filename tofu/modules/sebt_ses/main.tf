@@ -1,7 +1,62 @@
-resource "aws_ses_email_identity" "sender" {
-  email = var.sender_email
+# Domain identity and verification.
+resource "aws_ses_domain_identity" "main" {
+  domain = var.domain
 }
 
+resource "aws_route53_record" "ses_verification" {
+  zone_id = var.hosted_zone_id
+  name    = "_amazonses.${var.domain}"
+  type    = "TXT"
+  ttl     = 1800
+  records = [aws_ses_domain_identity.main.verification_token]
+}
+
+# DKIM verification.
+resource "aws_ses_domain_dkim" "main" {
+  domain = aws_ses_domain_identity.main.domain
+}
+
+resource "aws_route53_record" "dkim" {
+  count   = 3
+  zone_id = var.hosted_zone_id
+  name    = "${aws_ses_domain_dkim.main.dkim_tokens[count.index]}._domainkey.${var.domain}"
+  type    = "CNAME"
+  ttl     = 1800
+  records = ["${aws_ses_domain_dkim.main.dkim_tokens[count.index]}.dkim.amazonses.com"]
+}
+
+# Custom MAIL FROM domain for SPF alignment.
+resource "aws_ses_domain_mail_from" "main" {
+  domain           = aws_ses_domain_identity.main.domain
+  mail_from_domain = "bounce.${var.domain}"
+}
+
+resource "aws_route53_record" "spf_mail_from" {
+  zone_id = var.hosted_zone_id
+  name    = aws_ses_domain_mail_from.main.mail_from_domain
+  type    = "TXT"
+  ttl     = 3600
+  records = ["v=spf1 include:amazonses.com -all"]
+}
+
+resource "aws_route53_record" "mx_mail_from" {
+  zone_id = var.hosted_zone_id
+  name    = aws_ses_domain_mail_from.main.mail_from_domain
+  type    = "MX"
+  ttl     = 600
+  records = ["10 feedback-smtp.${data.aws_region.current.name}.amazonses.com"]
+}
+
+# DMARC policy.
+resource "aws_route53_record" "dmarc" {
+  zone_id = var.hosted_zone_id
+  name    = "_dmarc.${var.domain}"
+  type    = "TXT"
+  ttl     = 3600
+  records = ["v=DMARC1; p=quarantine; rua=mailto:dmarc@${var.domain};"]
+}
+
+# SMTP credentials for application email sending.
 resource "aws_iam_user" "smtp" {
   name = "${local.prefix}-ses-smtp"
   path = "/system/"
@@ -21,7 +76,7 @@ resource "aws_iam_user_policy" "smtp" {
       {
         Effect   = "Allow"
         Action   = ["ses:SendEmail", "ses:SendRawEmail"]
-        Resource = "*"
+        Resource = aws_ses_domain_identity.main.arn
       }
     ]
   })
@@ -48,4 +103,3 @@ resource "aws_secretsmanager_secret_version" "smtp" {
     password = aws_iam_access_key.smtp.ses_smtp_password_v4
   })
 }
-
