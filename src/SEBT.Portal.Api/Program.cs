@@ -1,6 +1,7 @@
 using System.Text;
 using System.Threading.RateLimiting;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
 using SEBT.Portal.Api.Composition;
@@ -16,6 +17,7 @@ using SEBT.Portal.Infrastructure.Seeding.Services;
 using SEBT.Portal.UseCases;
 using SEBT.Portal.Infrastructure;
 using SEBT.Portal.Api.Startup;
+using SEBT.Portal.StatesPlugins.Interfaces;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -219,6 +221,41 @@ app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapControllers();
+
+// Map OIDC login/callback routes only for states that provide an IStateOidcLoginService plugin
+var oidcStateCodes = app.Services.GetRequiredService<StateOidcStateCodes>();
+foreach (var stateCode in oidcStateCodes.StateCodes)
+{
+    var code = stateCode;
+    app.MapGet($"/api/auth/oidc/{code}/login", async (HttpContext context) =>
+    {
+        var oidc = context.RequestServices.GetKeyedService<IStateOidcLoginService>(code);
+        if (oidc == null)
+            return Results.NotFound();
+        var redirectUri = $"{context.Request.Scheme}://{context.Request.Host}/api/auth/oidc/{code}/callback";
+        var (authorizationUrl, _) = await oidc.PrepareAuthorizationAsync(redirectUri, context.RequestAborted);
+        return Results.Redirect(authorizationUrl);
+    });
+
+    app.MapGet($"/api/auth/oidc/{code}/callback", async (HttpContext context, [FromQuery(Name = "code")] string? authorizationCode, [FromQuery(Name = "state")] string? stateValue) =>
+    {
+        var oidc = context.RequestServices.GetKeyedService<IStateOidcLoginService>(code);
+        if (oidc == null)
+            return Results.NotFound();
+        if (string.IsNullOrEmpty(authorizationCode) || string.IsNullOrEmpty(stateValue))
+            return Results.BadRequest(new { error = "Missing code or state." });
+        try
+        {
+            var authContext = await oidc.ExchangeCodeForTokensAsync(authorizationCode, stateValue, context.RequestAborted);
+            return Results.Ok(new { success = true, hasIdToken = !string.IsNullOrEmpty(authContext.IdToken), hasAccessToken = !string.IsNullOrEmpty(authContext.AccessToken) });
+        }
+        catch (Exception ex)
+        {
+            Log.Warning(ex, "OIDC callback failed for state {StateCode}", code);
+            return Results.BadRequest(new { error = "Authentication failed." });
+        }
+    });
+}
 
 try
 {
