@@ -140,6 +140,9 @@ public static class Dependencies
                 postConfig.PostConfigure(null, options);
             });
 
+        services.AddOptions<SeedingSettings>()
+            .BindConfiguration(SeedingSettings.SectionName);
+
         return services;
     }
 }
