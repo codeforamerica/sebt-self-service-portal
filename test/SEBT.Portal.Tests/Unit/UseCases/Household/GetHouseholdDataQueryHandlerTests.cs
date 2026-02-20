@@ -61,7 +61,7 @@ public class GetHouseholdDataQueryHandlerTests
         _resolver.ResolveAsync(Arg.Any<ClaimsPrincipal>(), Arg.Any<CancellationToken>())
             .Returns(identifier);
         _idProofingRequirementsService.GetPiiVisibility(UserIalLevel.IAL1plus).Returns(piiVisibility);
-        _repository.GetHouseholdByIdentifierAsync(identifier, Arg.Any<PiiVisibility>(), Arg.Any<CancellationToken>())
+        _repository.GetHouseholdByIdentifierAsync(identifier, Arg.Any<PiiVisibility>(), Arg.Any<UserIalLevel>(), Arg.Any<CancellationToken>())
             .Returns(householdData);
 
         var handler = new GetHouseholdDataQueryHandler(_resolver, _repository, _idProofingRequirementsService, _logger);
@@ -78,6 +78,7 @@ public class GetHouseholdDataQueryHandlerTests
         await _repository.Received(1).GetHouseholdByIdentifierAsync(
             Arg.Is<HouseholdIdentifier>(id => id.Type == PreferredHouseholdIdType.Email && id.Value == EmailNormalizer.Normalize(email)),
             Arg.Any<PiiVisibility>(),
+            Arg.Any<UserIalLevel>(),
             Arg.Any<CancellationToken>());
     }
 
@@ -94,7 +95,7 @@ public class GetHouseholdDataQueryHandlerTests
         _resolver.ResolveAsync(Arg.Any<ClaimsPrincipal>(), Arg.Any<CancellationToken>())
             .Returns(identifier);
         _idProofingRequirementsService.GetPiiVisibility(UserIalLevel.None).Returns(piiVisibility);
-        _repository.GetHouseholdByIdentifierAsync(identifier, Arg.Any<PiiVisibility>(), Arg.Any<CancellationToken>())
+        _repository.GetHouseholdByIdentifierAsync(identifier, Arg.Any<PiiVisibility>(), Arg.Any<UserIalLevel>(), Arg.Any<CancellationToken>())
             .Returns(householdData);
 
         var handler = new GetHouseholdDataQueryHandler(_resolver, _repository, _idProofingRequirementsService, _logger);
@@ -110,6 +111,7 @@ public class GetHouseholdDataQueryHandlerTests
         await _repository.Received(1).GetHouseholdByIdentifierAsync(
             Arg.Any<HouseholdIdentifier>(),
             Arg.Any<PiiVisibility>(),
+            Arg.Any<UserIalLevel>(),
             Arg.Any<CancellationToken>());
     }
 
@@ -131,7 +133,7 @@ public class GetHouseholdDataQueryHandlerTests
         Assert.False(result.IsSuccess);
         var unauthorizedResult = Assert.IsType<UnauthorizedResult<HouseholdData>>(result);
         Assert.Contains("Unable to identify user", unauthorizedResult.Message, StringComparison.OrdinalIgnoreCase);
-        await _repository.DidNotReceive().GetHouseholdByIdentifierAsync(Arg.Any<HouseholdIdentifier>(), Arg.Any<PiiVisibility>(), Arg.Any<CancellationToken>());
+        await _repository.DidNotReceive().GetHouseholdByIdentifierAsync(Arg.Any<HouseholdIdentifier>(), Arg.Any<PiiVisibility>(), Arg.Any<UserIalLevel>(), Arg.Any<CancellationToken>());
     }
 
     [Fact]
@@ -146,7 +148,7 @@ public class GetHouseholdDataQueryHandlerTests
             .Returns(identifier);
         _idProofingRequirementsService.GetPiiVisibility(UserIalLevel.IAL1plus)
             .Returns(new PiiVisibility(IncludeAddress: true, IncludeEmail: true, IncludePhone: true));
-        _repository.GetHouseholdByIdentifierAsync(Arg.Any<HouseholdIdentifier>(), Arg.Any<PiiVisibility>(), Arg.Any<CancellationToken>())
+        _repository.GetHouseholdByIdentifierAsync(Arg.Any<HouseholdIdentifier>(), Arg.Any<PiiVisibility>(), Arg.Any<UserIalLevel>(), Arg.Any<CancellationToken>())
             .Returns((HouseholdData?)null);
 
         var handler = new GetHouseholdDataQueryHandler(_resolver, _repository, _idProofingRequirementsService, _logger);
@@ -175,7 +177,7 @@ public class GetHouseholdDataQueryHandlerTests
         _resolver.ResolveAsync(Arg.Any<ClaimsPrincipal>(), Arg.Any<CancellationToken>())
             .Returns(identifier);
         _idProofingRequirementsService.GetPiiVisibility(UserIalLevel.None).Returns(piiVisibility);
-        _repository.GetHouseholdByIdentifierAsync(Arg.Any<HouseholdIdentifier>(), Arg.Any<PiiVisibility>(), Arg.Any<CancellationToken>())
+        _repository.GetHouseholdByIdentifierAsync(Arg.Any<HouseholdIdentifier>(), Arg.Any<PiiVisibility>(), Arg.Any<UserIalLevel>(), Arg.Any<CancellationToken>())
             .Returns(householdData);
 
         var handler = new GetHouseholdDataQueryHandler(_resolver, _repository, _idProofingRequirementsService, _logger);
@@ -189,6 +191,7 @@ public class GetHouseholdDataQueryHandlerTests
         await _repository.Received(1).GetHouseholdByIdentifierAsync(
             Arg.Any<HouseholdIdentifier>(),
             Arg.Any<PiiVisibility>(),
+            Arg.Any<UserIalLevel>(),
             Arg.Any<CancellationToken>());
     }
 
@@ -205,7 +208,7 @@ public class GetHouseholdDataQueryHandlerTests
         _resolver.ResolveAsync(Arg.Any<ClaimsPrincipal>(), Arg.Any<CancellationToken>())
             .Returns(identifier);
         _idProofingRequirementsService.GetPiiVisibility(UserIalLevel.None).Returns(piiVisibility);
-        _repository.GetHouseholdByIdentifierAsync(Arg.Any<HouseholdIdentifier>(), Arg.Any<PiiVisibility>(), Arg.Any<CancellationToken>())
+        _repository.GetHouseholdByIdentifierAsync(Arg.Any<HouseholdIdentifier>(), Arg.Any<PiiVisibility>(), Arg.Any<UserIalLevel>(), Arg.Any<CancellationToken>())
             .Returns(householdData);
 
         var handler = new GetHouseholdDataQueryHandler(_resolver, _repository, _idProofingRequirementsService, _logger);
@@ -219,6 +222,7 @@ public class GetHouseholdDataQueryHandlerTests
         await _repository.Received(1).GetHouseholdByIdentifierAsync(
             Arg.Any<HouseholdIdentifier>(),
             Arg.Any<PiiVisibility>(),
+            Arg.Any<UserIalLevel>(),
             Arg.Any<CancellationToken>());
     }
 
@@ -236,7 +240,7 @@ public class GetHouseholdDataQueryHandlerTests
         _resolver.ResolveAsync(Arg.Any<ClaimsPrincipal>(), token).Returns(identifier);
         _idProofingRequirementsService.GetPiiVisibility(UserIalLevel.IAL1plus)
             .Returns(new PiiVisibility(IncludeAddress: true, IncludeEmail: true, IncludePhone: true));
-        _repository.GetHouseholdByIdentifierAsync(Arg.Any<HouseholdIdentifier>(), Arg.Any<PiiVisibility>(), token)
+        _repository.GetHouseholdByIdentifierAsync(Arg.Any<HouseholdIdentifier>(), Arg.Any<PiiVisibility>(), Arg.Any<UserIalLevel>(), token)
             .Returns(householdData);
 
         var handler = new GetHouseholdDataQueryHandler(_resolver, _repository, _idProofingRequirementsService, _logger);
@@ -251,6 +255,7 @@ public class GetHouseholdDataQueryHandlerTests
         await _repository.Received(1).GetHouseholdByIdentifierAsync(
             Arg.Any<HouseholdIdentifier>(),
             Arg.Any<PiiVisibility>(),
+            Arg.Any<UserIalLevel>(),
             token);
     }
 }
