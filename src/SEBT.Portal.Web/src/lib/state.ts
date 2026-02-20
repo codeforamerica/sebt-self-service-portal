@@ -51,7 +51,7 @@ export function getStateConfig(state: StateCode): StateConfig {
  * @returns Two-letter state code (e.g., 'dc', 'co')
  */
 export function getState(): StateCode {
-  return (process.env.NEXT_PUBLIC_STATE as StateCode) || 'dc'
+  return (process.env.NEXT_PUBLIC_STATE || 'dc').toLowerCase() as StateCode
 }
 
 /**
