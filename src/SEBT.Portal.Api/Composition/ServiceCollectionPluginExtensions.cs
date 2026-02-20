@@ -1,7 +1,8 @@
 using System.Composition.Convention;
 using System.Composition.Hosting;
-using SEBT.Portal.StatesPlugins.Interfaces;
 using Microsoft.Extensions.DependencyInjection.Extensions;
+using SEBT.Portal.Api.Options;
+using SEBT.Portal.StatesPlugins.Interfaces;
 
 namespace SEBT.Portal.Api.Composition;
 
@@ -23,20 +24,42 @@ internal static class ServiceCollectionPluginExtensions
 
         var plugins = container.GetExports<IStatePlugin>();
 
+        var oidcStateCodes = new List<string>();
+        var oidcExports = container.GetExports<IStateOidcLoginService>();
+
+        foreach (var oidcService in oidcExports)
+        {
+            var stateCode = oidcService.StateCode;
+            if (string.IsNullOrEmpty(stateCode))
+            {
+                Log.Warning("OIDC login plugin {Type} has empty StateCode; skipping", oidcService.GetType().FullName);
+                continue;
+            }
+            services.AddKeyedSingleton<IStateOidcLoginService>(stateCode, oidcService);
+            oidcStateCodes.Add(stateCode);
+            Log.Information("Registered OIDC login for state: {StateCode}", stateCode);
+        }
+
+        services.AddSingleton(new StateOidcStateCodes(oidcStateCodes));
+
         foreach (var plugin in plugins)
         {
-            Log.Information("Configuring services for plugin: {PluginType}", plugin.GetType().FullName);
-            var pluginInterfaces = plugin.GetType().GetInterfaces()
+            var pluginType = plugin.GetType();
+            if (plugin is IStateOidcLoginService)
+                continue;
+
+            Log.Information("Configuring services for plugin: {PluginType}", pluginType.FullName);
+            var pluginInterfaces = pluginType.GetInterfaces()
                 .Where(i => i != typeof(IStatePlugin))
                 .ToList();
 
             switch (pluginInterfaces.Count)
             {
                 case 0:
-                    throw new InvalidOperationException($"Plugin '{plugin.GetType().FullName}' does not implement any interface besides IStatePlugin. " +
+                    throw new InvalidOperationException($"Plugin '{pluginType.FullName}' does not implement any interface besides IStatePlugin. " +
                                                         "Each plugin must implement exactly one service interface in addition to IStatePlugin.");
                 case > 1:
-                    throw new InvalidOperationException($"Plugin '{plugin.GetType().FullName}' implements multiple interfaces: " +
+                    throw new InvalidOperationException($"Plugin '{pluginType.FullName}' implements multiple interfaces: " +
                                                         $"{string.Join(", ", pluginInterfaces.Select(i => i.FullName))}. " +
                                                         "Each plugin must implement exactly one service interface in addition to IStatePlugin.");
                 default:
@@ -65,6 +88,11 @@ internal static class ServiceCollectionPluginExtensions
         conventions
             .ForTypesDerivedFrom<ISummerEbtCaseService>()
             .Export<ISummerEbtCaseService>()
+            .Shared();
+
+        conventions
+            .ForTypesDerivedFrom<IStateOidcLoginService>()
+            .Export<IStateOidcLoginService>()
             .Shared();
 
         return new ContainerConfiguration()
