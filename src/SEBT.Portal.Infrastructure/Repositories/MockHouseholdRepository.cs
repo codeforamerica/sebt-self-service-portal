@@ -1,6 +1,8 @@
 using System.Collections.Concurrent;
 using Bogus;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
+using SEBT.Portal.Core.AppSettings;
 using SEBT.Portal.Core.Models;
 using SEBT.Portal.Core.Models.Auth;
 using SEBT.Portal.Core.Models.Household;
@@ -17,12 +19,17 @@ namespace SEBT.Portal.Infrastructure.Repositories;
 public class MockHouseholdRepository : IHouseholdRepository
 {
     private readonly ConcurrentDictionary<string, HouseholdData> _households;
+    private readonly SeedingSettings _settings;
     private readonly ILogger<MockHouseholdRepository> _logger;
     private readonly TimeProvider _timeProvider;
 
-    public MockHouseholdRepository(ILogger<MockHouseholdRepository> logger, TimeProvider? timeProvider = null)
+    public MockHouseholdRepository(
+        ILogger<MockHouseholdRepository> logger,
+        IOptions<SeedingSettings>? settings = null,
+        TimeProvider? timeProvider = null)
     {
         _logger = logger;
+        _settings = settings?.Value ?? new SeedingSettings();
         _timeProvider = timeProvider ?? TimeProvider.System;
         _households = new ConcurrentDictionary<string, HouseholdData>();
         SeedMockData();
@@ -116,6 +123,7 @@ public class MockHouseholdRepository : IHouseholdRepository
         HouseholdFactory.SetSeed(12345);
 
         // Scenario 1: Co-loaded user with approved application and address (ID verified)
+        var coLoadedEmail = _settings.BuildEmail("co-loaded");
         var coLoaded = HouseholdFactory.CreateHouseholdDataWithStatus(ApplicationStatus.Approved, h =>
         {
             h.BenefitIssuanceType = BenefitIssuanceType.SnapEbtCard;
@@ -141,11 +149,12 @@ public class MockHouseholdRepository : IHouseholdRepository
                 PostalCode = "80201"
             };
         });
-        coLoaded.Email = "co-loaded@example.com";
+        coLoaded.Email = coLoadedEmail;
         coLoaded.UserProfile = new UserProfile { FirstName = "Maria", MiddleName = "Elena", LastName = "Martinez" };
-        _households["co-loaded@example.com"] = coLoaded;
+        _households[coLoadedEmail] = coLoaded;
 
         // Scenario 2: Approved application with address (ID verified user)
+        var verifiedEmail = _settings.BuildEmail("verified");
         var verified = HouseholdFactory.CreateHouseholdDataWithStatus(ApplicationStatus.Approved, h =>
         {
             h.BenefitIssuanceType = BenefitIssuanceType.SnapEbtCard;
@@ -172,13 +181,14 @@ public class MockHouseholdRepository : IHouseholdRepository
                 PostalCode = "80202"
             };
         });
-        verified.Email = "verified@example.com";
+        verified.Email = verifiedEmail;
         verified.UserProfile = new UserProfile { FirstName = "John", MiddleName = "Robert", LastName = "Doe" };
-        _households["verified@example.com"] = verified;
+        _households[verifiedEmail] = verified;
 
         // Scenario 3: Pending application without address (not ID verified)
         // Note: Address should not be included for non-ID-verified users, but we set it here
         // for testing purposes (it will be filtered by GetHouseholdByEmailAsync based on includeAddress)
+        var pendingEmail = _settings.BuildEmail("pending");
         var pending = HouseholdFactory.CreateHouseholdDataWithStatus(ApplicationStatus.Pending, h =>
         {
             h.BenefitIssuanceType = BenefitIssuanceType.Unknown;
@@ -200,11 +210,12 @@ public class MockHouseholdRepository : IHouseholdRepository
                 PostalCode = "80301"
             };
         });
-        pending.Email = "pending@example.com";
+        pending.Email = pendingEmail;
         pending.UserProfile = new UserProfile { FirstName = "Jane", MiddleName = "Marie", LastName = "Smith" };
-        _households["pending@example.com"] = pending;
+        _households[pendingEmail] = pending;
 
         // Scenario 4: Denied application
+        var deniedEmail = _settings.BuildEmail("denied");
         var denied = HouseholdFactory.CreateHouseholdDataWithStatus(ApplicationStatus.Denied, h =>
         {
             h.BenefitIssuanceType = BenefitIssuanceType.Unknown;
@@ -214,11 +225,12 @@ public class MockHouseholdRepository : IHouseholdRepository
                 app.Children = new List<Child>(); // No children for denied
             }
         });
-        denied.Email = "denied@example.com";
+        denied.Email = deniedEmail;
         denied.UserProfile = new UserProfile { FirstName = "Robert", MiddleName = null, LastName = "Johnson" };
-        _households["denied@example.com"] = denied;
+        _households[deniedEmail] = denied;
 
         // Scenario 5: Under review
+        var reviewEmail = _settings.BuildEmail("review");
         var review = HouseholdFactory.CreateHouseholdDataWithStatus(ApplicationStatus.UnderReview, h =>
         {
             h.BenefitIssuanceType = BenefitIssuanceType.SnapEbtCard;
@@ -232,11 +244,12 @@ public class MockHouseholdRepository : IHouseholdRepository
                 app.Children = childFaker.Generate(1);
             }
         });
-        review.Email = "review@example.com";
+        review.Email = reviewEmail;
         review.UserProfile = new UserProfile { FirstName = "Susan", MiddleName = "Lee", LastName = "Williams" };
-        _households["review@example.com"] = review;
+        _households[reviewEmail] = review;
 
         // Scenario 5b: Non-co-loaded user (ID proofing in progress)
+        var nonCoLoadedEmail = _settings.BuildEmail("non-co-loaded");
         var nonCoLoaded = HouseholdFactory.CreateHouseholdDataWithStatus(ApplicationStatus.Pending, h =>
         {
             var app = h.Applications.FirstOrDefault();
@@ -255,12 +268,13 @@ public class MockHouseholdRepository : IHouseholdRepository
                 PostalCode = "80204"
             };
         });
-        nonCoLoaded.Email = "non-co-loaded@example.com";
+        nonCoLoaded.Email = nonCoLoadedEmail;
         nonCoLoaded.Phone = "555-123-4567";
         nonCoLoaded.UserProfile = new UserProfile { FirstName = "Carlos", MiddleName = "Miguel", LastName = "Garcia" };
-        _households["non-co-loaded@example.com"] = nonCoLoaded;
+        _households[nonCoLoadedEmail] = nonCoLoaded;
 
         // Scenario 5c: Not-started user (ID proofing not started)
+        var notStartedEmail = _settings.BuildEmail("not-started");
         var notStarted = HouseholdFactory.CreateHouseholdDataWithStatus(ApplicationStatus.Pending, h =>
         {
             var app = h.Applications.FirstOrDefault();
@@ -279,12 +293,13 @@ public class MockHouseholdRepository : IHouseholdRepository
                 PostalCode = "80205"
             };
         });
-        notStarted.Email = "not-started@example.com";
+        notStarted.Email = notStartedEmail;
         notStarted.Phone = "555-987-6543";
         notStarted.UserProfile = new UserProfile { FirstName = "Jordan", MiddleName = "Lee", LastName = "Anderson" };
-        _households["not-started@example.com"] = notStarted;
+        _households[notStartedEmail] = notStarted;
 
         // Scenario 6: Cancelled application
+        var cancelledEmail = _settings.BuildEmail("cancelled");
         var cancelled = HouseholdFactory.CreateHouseholdDataWithStatus(ApplicationStatus.Cancelled, h =>
         {
             h.BenefitIssuanceType = BenefitIssuanceType.Unknown;
@@ -294,11 +309,12 @@ public class MockHouseholdRepository : IHouseholdRepository
                 app.Children = new List<Child>(); // No children for cancelled
             }
         });
-        cancelled.Email = "cancelled@example.com";
+        cancelled.Email = cancelledEmail;
         cancelled.UserProfile = new UserProfile { FirstName = "David", MiddleName = "James", LastName = "Davis" };
-        _households["cancelled@example.com"] = cancelled;
+        _households[cancelledEmail] = cancelled;
 
         // Scenario 7: Approved with single child
+        var singleChildEmail = _settings.BuildEmail("singlechild");
         var singleChild = HouseholdFactory.CreateHouseholdDataWithStatus(ApplicationStatus.Approved, h =>
         {
             h.BenefitIssuanceType = BenefitIssuanceType.SummerEbt;
@@ -314,11 +330,12 @@ public class MockHouseholdRepository : IHouseholdRepository
                 app.Children = childFaker.Generate(1);
             }
         });
-        singleChild.Email = "singlechild@example.com";
+        singleChild.Email = singleChildEmail;
         singleChild.UserProfile = new UserProfile { FirstName = "Amanda", MiddleName = "Rose", LastName = "Taylor" };
-        _households["singlechild@example.com"] = singleChild;
+        _households[singleChildEmail] = singleChild;
 
         // Scenario 8: Large family (multiple children)
+        var largeFamilyEmail = _settings.BuildEmail("largefamily");
         var largeFamily = HouseholdFactory.CreateHouseholdDataWithStatus(ApplicationStatus.Approved, h =>
         {
             h.BenefitIssuanceType = BenefitIssuanceType.TanfEbtCard;
@@ -337,11 +354,12 @@ public class MockHouseholdRepository : IHouseholdRepository
                 };
             }
         });
-        largeFamily.Email = "largefamily@example.com";
+        largeFamily.Email = largeFamilyEmail;
         largeFamily.UserProfile = new UserProfile { FirstName = "Christopher", MiddleName = "Michael", LastName = "Brown" };
-        _households["largefamily@example.com"] = largeFamily;
+        _households[largeFamilyEmail] = largeFamily;
 
         // Scenario 9: Minimal data (no phone, no dates)
+        var minimalEmail = _settings.BuildEmail("minimal");
         var minimal = HouseholdFactory.CreateHouseholdDataWithStatus(ApplicationStatus.Pending, h =>
         {
             h.BenefitIssuanceType = BenefitIssuanceType.Unknown;
@@ -352,11 +370,12 @@ public class MockHouseholdRepository : IHouseholdRepository
                 app.Children = new List<Child>();
             }
         });
-        minimal.Email = "minimal@example.com";
+        minimal.Email = minimalEmail;
         minimal.UserProfile = new UserProfile { FirstName = "Alex", MiddleName = null, LastName = "Jones" };
-        _households["minimal@example.com"] = minimal;
+        _households[minimalEmail] = minimal;
 
         // Scenario 10: Expired benefits
+        var expiredEmail = _settings.BuildEmail("expired");
         var expired = HouseholdFactory.CreateHouseholdDataWithStatus(ApplicationStatus.Approved, h =>
         {
             h.BenefitIssuanceType = BenefitIssuanceType.SnapEbtCard;
@@ -372,11 +391,12 @@ public class MockHouseholdRepository : IHouseholdRepository
                 app.Children = childFaker.Generate(1);
             }
         });
-        expired.Email = "expired@example.com";
+        expired.Email = expiredEmail;
         expired.UserProfile = new UserProfile { FirstName = "Patricia", MiddleName = "Ann", LastName = "Garcia" };
-        _households["expired@example.com"] = expired;
+        _households[expiredEmail] = expired;
 
         // Scenario 11: Unknown status
+        var unknownEmail = _settings.BuildEmail("unknown");
         var unknown = HouseholdFactory.CreateHouseholdDataWithStatus(ApplicationStatus.Unknown, h =>
         {
             h.BenefitIssuanceType = BenefitIssuanceType.Unknown;
@@ -386,11 +406,12 @@ public class MockHouseholdRepository : IHouseholdRepository
                 app.Children = new List<Child>();
             }
         });
-        unknown.Email = "unknown@example.com";
+        unknown.Email = unknownEmail;
         unknown.UserProfile = new UserProfile { FirstName = "Unknown", MiddleName = null, LastName = "User" };
-        _households["unknown@example.com"] = unknown;
+        _households[unknownEmail] = unknown;
 
         // Scenario 12: Household with multiple applications (approved and pending)
+        var multipleAppsEmail = _settings.BuildEmail("multipleapps");
         var multipleApps = HouseholdFactory.CreateHouseholdDataWithStatus(ApplicationStatus.Approved, h =>
         {
             h.BenefitIssuanceType = BenefitIssuanceType.SnapEbtCard;
@@ -435,9 +456,9 @@ public class MockHouseholdRepository : IHouseholdRepository
                 PostalCode = "80203"
             };
         });
-        multipleApps.Email = "multipleapps@example.com";
+        multipleApps.Email = multipleAppsEmail;
         multipleApps.UserProfile = new UserProfile { FirstName = "Jennifer", MiddleName = "Lynn", LastName = "Wilson" };
-        _households["multipleapps@example.com"] = multipleApps;
+        _households[multipleAppsEmail] = multipleApps;
 
         _logger.LogInformation("Seeded {Count} mock household records using Bogus", _households.Count);
     }
