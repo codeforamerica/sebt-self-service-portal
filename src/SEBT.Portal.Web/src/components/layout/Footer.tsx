@@ -87,7 +87,7 @@ export function Footer({ state = 'dc' }: FooterProps) {
   )
 }
 
-function COFooter({ state = 'dc' }: FooterProps) {
+function COFooter({ state = 'co' }: FooterProps) {
   const config = getStateConfig(state)
   const links = getStateLinks(state)
 
