@@ -25,7 +25,7 @@ public class MockHouseholdRepositoryTests
     {
         var logger = NullLogger<MockHouseholdRepository>.Instance;
         _timeProvider = new FakeTimeProvider(FixedSeedTime);
-        _repository = new MockHouseholdRepository(logger, _timeProvider);
+        _repository = new MockHouseholdRepository(logger, timeProvider: _timeProvider);
     }
 
     [Fact]
