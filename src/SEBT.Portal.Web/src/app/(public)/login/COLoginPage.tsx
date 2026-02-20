@@ -3,7 +3,9 @@ import { getStateLinks } from '@/lib/links'
 import { getTranslations } from '@/lib/translations'
 import Link from 'next/link'
 
-export function COLoginPage({ state }: { state: string }) {
+import type { StateCode } from '@/lib/state'
+
+export function COLoginPage({ state }: { state: StateCode }) {
   const links = getStateLinks(state)
   const t = getTranslations('login')
 

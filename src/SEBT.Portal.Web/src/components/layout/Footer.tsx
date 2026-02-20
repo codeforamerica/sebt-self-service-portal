@@ -9,15 +9,17 @@ import { getStateConfig } from '@/lib/state'
 
 import type { FooterProps } from './types'
 
-const footerOverrides: Record<string, React.ComponentType<FooterProps>> = {
+import type { StateCode } from '@/lib/state'
+
+const footerOverrides: Partial<Record<StateCode, React.ComponentType<FooterProps>>> = {
   co: COFooter
 }
 
 export function Footer({ state = 'dc' }: FooterProps) {
   const { t } = useTranslation('common')
 
-  // eslint-disable-next-line security/detect-object-injection -- state is a trusted env value
-  const Override = footerOverrides[state]
+  // eslint-disable-next-line security/detect-object-injection -- state is typed StateCode
+  const Override = state ? footerOverrides[state] : undefined
   if (Override) return <Override state={state} />
 
   const config = getStateConfig(state)

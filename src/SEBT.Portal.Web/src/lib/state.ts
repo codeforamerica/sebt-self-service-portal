@@ -6,6 +6,9 @@
  * to `stateConfigs`. No inline conditionals needed in components.
  */
 
+/** Supported state codes — add new states here */
+export type StateCode = 'dc' | 'co'
+
 export interface StateConfig {
   /** Full display name (e.g., 'District of Columbia') */
   name: string
@@ -21,7 +24,7 @@ export interface StateConfig {
  * State configuration registry — add new states here.
  * Components use getStateConfig() to access state-specific values.
  */
-const stateConfigs: Record<string, StateConfig> = {
+const stateConfigs: Record<StateCode, StateConfig> = {
   dc: {
     name: 'District of Columbia',
     sealAlt: 'Government of the District of Columbia - Muriel Bowser, Mayor'
@@ -39,28 +42,28 @@ const defaultConfig: StateConfig = stateConfigs.dc as StateConfig
 /**
  * Get the full configuration for a state
  */
-export function getStateConfig(state: string): StateConfig {
-  return stateConfigs[state.toLowerCase()] || defaultConfig
+export function getStateConfig(state: StateCode): StateConfig {
+  return stateConfigs[state] ?? defaultConfig
 }
 
 /**
  * Get the current state code from environment
  * @returns Two-letter state code (e.g., 'dc', 'co')
  */
-export function getState(): string {
-  return process.env.NEXT_PUBLIC_STATE || 'dc'
+export function getState(): StateCode {
+  return (process.env.NEXT_PUBLIC_STATE as StateCode) || 'dc'
 }
 
 /**
  * Get state display name
  */
-export function getStateName(state: string): string {
+export function getStateName(state: StateCode): string {
   return getStateConfig(state).name
 }
 
 /**
  * Get state-specific asset path
  */
-export function getStateAssetPath(state: string, assetPath: string): string {
+export function getStateAssetPath(state: StateCode, assetPath: string): string {
   return `/images/states/${state}/${assetPath}`
 }

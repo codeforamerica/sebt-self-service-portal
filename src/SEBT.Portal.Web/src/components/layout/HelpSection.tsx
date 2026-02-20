@@ -8,15 +8,17 @@ import { getHelpLinks, getStateLinks } from '@/lib/links'
 
 import type { HelpSectionProps } from './types'
 
-const helpSectionOverrides: Record<string, React.ComponentType<HelpSectionProps>> = {
+import type { StateCode } from '@/lib/state'
+
+const helpSectionOverrides: Partial<Record<StateCode, React.ComponentType<HelpSectionProps>>> = {
   co: COHelpSection
 }
 
 export function HelpSection({ state = 'dc' }: HelpSectionProps) {
   const { t } = useTranslation('common')
 
-  // eslint-disable-next-line security/detect-object-injection -- state is a trusted env value
-  const Override = helpSectionOverrides[state]
+  // eslint-disable-next-line security/detect-object-injection -- state is typed StateCode
+  const Override = state ? helpSectionOverrides[state] : undefined
   if (Override) return <Override state={state} />
 
   const helpLinks = getHelpLinks(state)

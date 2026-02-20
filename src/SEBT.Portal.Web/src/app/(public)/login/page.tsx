@@ -1,18 +1,18 @@
 import { TextLink } from '@/components/ui'
 import { LoginForm } from '@/features/auth'
 import { getStateLinks } from '@/lib/links'
-import { getState } from '@/lib/state'
+import { getState, type StateCode } from '@/lib/state'
 import { getTranslations } from '@/lib/translations'
 import { COLoginPage } from './COLoginPage'
 
-const loginPageOverrides: Record<string, React.ComponentType<{ state: string }>> = {
+const loginPageOverrides: Partial<Record<StateCode, React.ComponentType<{ state: StateCode }>>> = {
   co: COLoginPage
 }
 
 export default function LoginPage() {
   const state = getState()
 
-  // eslint-disable-next-line security/detect-object-injection -- state is a trusted env value
+  // eslint-disable-next-line security/detect-object-injection -- state is typed StateCode
   const Override = loginPageOverrides[state]
   if (Override) return <Override state={state} />
 
