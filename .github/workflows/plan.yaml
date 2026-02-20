@@ -56,7 +56,7 @@ jobs:
 
       - name: OpenTofu Init
         working-directory: tofu/config/${{ inputs.config }}
-        run: tofu init
+        run: tofu init -upgrade
 
       - name: OpenTofu Plan
         id: plan
