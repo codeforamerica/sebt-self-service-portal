@@ -68,10 +68,9 @@ public static class Dependencies
                 return sp.GetRequiredService<HouseholdRepository>();
             }
 
-            var logger = sp.GetService<ILoggerFactory>()?.CreateLogger("SEBT.Portal.Infrastructure");
-            logger?.LogWarning(
-                "UseMockHouseholdData is false but no household plugin (ISummerEbtCaseService) is loaded. Falling back to MockHouseholdRepository.");
-            return sp.GetRequiredService<MockHouseholdRepository>();
+            throw new InvalidOperationException(
+                "UseMockHouseholdData is false but no household plugin (ISummerEbtCaseService) is loaded. " +
+                "Either set UseMockHouseholdData to true in configuration or ensure a state plugin is loaded (e.g. PluginAssemblyPaths and the plugin DLL).");
         });
         services.AddTransient<MockHouseholdRepository>();
         services.AddTransient<HouseholdRepository>();
