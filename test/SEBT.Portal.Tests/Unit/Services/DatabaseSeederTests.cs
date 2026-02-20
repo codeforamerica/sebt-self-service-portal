@@ -35,11 +35,11 @@ public class DatabaseSeederTests : IClassFixture<SqlServerTestFixture>
     private static readonly IIdentifierHasher TestHasher = new IdentifierHasher(
         Options.Create(new IdentifierHasherSettings { SecretKey = "TestKeyMustBeAtLeast32CharactersLong!!" }));
 
-    private DatabaseSeeder CreateSeeder(PortalDbContext context)
+    private DatabaseSeeder CreateSeeder(PortalDbContext context, SeedingSettings? settings = null)
     {
         var dataSeeder = new DataSeeder(context, TestHasher);
         var timeProvider = new FakeTimeProvider(FixedSeedTime);
-        return new DatabaseSeeder(dataSeeder, timeProvider: timeProvider);
+        return new DatabaseSeeder(dataSeeder, settings, timeProvider: timeProvider);
     }
 
     /// <summary>
@@ -622,5 +622,87 @@ public class DatabaseSeederTests : IClassFixture<SqlServerTestFixture>
         var users = await context.Users.ToListAsync();
         Assert.All(users, user =>
             Assert.Equal(user.Email, user.Email.ToLowerInvariant()));
+    }
+
+    [Fact]
+    public async Task SeedTestUsersAsync_WithCustomEmailPattern_ShouldCreateUsersWithConfiguredEmails()
+    {
+        // Arrange
+        using var context = CreateContext();
+        await CleanupDatabaseAsync(context);
+        var settings = new SeedingSettings { EmailPattern = "sebt.dc+{0}@codeforamerica.org" };
+        var seeder = CreateSeeder(context, settings);
+
+        // Act
+        await seeder.SeedTestUsersAsync();
+
+        // Assert
+        var users = await context.Users.ToListAsync();
+        Assert.Equal(3, users.Count);
+
+        var emails = users.Select(u => u.Email).ToHashSet();
+        Assert.Contains("sebt.dc+co-loaded@codeforamerica.org", emails);
+        Assert.Contains("sebt.dc+non-co-loaded@codeforamerica.org", emails);
+        Assert.Contains("sebt.dc+not-started@codeforamerica.org", emails);
+
+        // Verify co-loaded user still has correct properties
+        var coLoadedUser = await context.Users
+            .FirstOrDefaultAsync(u => u.Email == "sebt.dc+co-loaded@codeforamerica.org");
+        Assert.NotNull(coLoadedUser);
+        Assert.True(coLoadedUser!.IsCoLoaded);
+        Assert.Equal((int)IdProofingStatus.Completed, coLoadedUser.IdProofingStatus);
+        Assert.Equal((int)UserIalLevel.IAL1plus, coLoadedUser.IalLevel);
+    }
+
+    [Fact]
+    public async Task SeedTestUsersAsync_WithCustomEmailPattern_MockHouseholdData_ShouldCreateUsersWithConfiguredEmails()
+    {
+        // Arrange
+        using var context = CreateContext();
+        await CleanupDatabaseAsync(context);
+        var settings = new SeedingSettings { EmailPattern = "sebt.co+{0}@codeforamerica.org" };
+        var seeder = CreateSeeder(context, settings);
+
+        // Act
+        await seeder.SeedTestUsersAsync(useMockHouseholdData: true);
+
+        // Assert
+        var users = await context.Users.ToListAsync();
+        Assert.Equal(13, users.Count);
+
+        var emails = users.Select(u => u.Email).ToHashSet();
+        Assert.Contains("sebt.co+co-loaded@codeforamerica.org", emails);
+        Assert.Contains("sebt.co+verified@codeforamerica.org", emails);
+        Assert.Contains("sebt.co+singlechild@codeforamerica.org", emails);
+        Assert.Contains("sebt.co+pending@codeforamerica.org", emails);
+    }
+
+    [Fact]
+    public async Task ClearSeededDataAsync_WithCustomEmailPattern_ShouldDeleteConfiguredEmails()
+    {
+        // Arrange
+        using var context = CreateContext();
+        await CleanupDatabaseAsync(context);
+        var settings = new SeedingSettings { EmailPattern = "sebt.dc+{0}@codeforamerica.org" };
+        var seeder = CreateSeeder(context, settings);
+
+        // Seed with custom pattern
+        await seeder.SeedTestUsersAsync();
+
+        // Add a user that doesn't match the pattern
+        var otherUser = UserEntityFactory.CreateUserEntity(e =>
+        {
+            e.Email = "real-user@codeforamerica.org";
+        });
+        context.Users.Add(otherUser);
+        await context.SaveChangesAsync();
+
+        // Act
+        await seeder.ClearSeededDataAsync();
+
+        // Assert - Only the non-scenario user should remain
+        var users = await context.Users.ToListAsync();
+        Assert.Single(users);
+        Assert.Equal("real-user@codeforamerica.org", users[0].Email);
     }
 }

@@ -1,5 +1,7 @@
 using Microsoft.Extensions.Logging.Abstractions;
+using Microsoft.Extensions.Options;
 using Microsoft.Extensions.Time.Testing;
+using SEBT.Portal.Core.AppSettings;
 using SEBT.Portal.Core.Models;
 using SEBT.Portal.Core.Models.Auth;
 using SEBT.Portal.Core.Models.Household;
@@ -482,5 +484,70 @@ public class MockHouseholdRepositoryTests
         Assert.NotNull(app.BenefitExpirationDate);
         Assert.True(app.BenefitExpirationDate < _timeProvider.GetUtcNow().UtcDateTime);
         Assert.Equal(ApplicationStatus.Approved, app.ApplicationStatus);
+    }
+
+    [Fact]
+    public async Task GetHouseholdByEmailAsync_WithDcEmailPattern_ReturnsAllSeededScenarios()
+    {
+        var logger = NullLogger<MockHouseholdRepository>.Instance;
+        var settings = Options.Create(new SeedingSettings { EmailPattern = "sebt.dc+{0}@codeforamerica.org" });
+        var timeProvider = new FakeTimeProvider(FixedSeedTime);
+        var repo = new MockHouseholdRepository(logger, settings, timeProvider);
+
+        var scenarioNames = new[]
+        {
+            "co-loaded", "verified", "pending", "denied", "review", "cancelled",
+            "singlechild", "largefamily", "minimal", "expired", "unknown", "multipleapps"
+        };
+        
+        foreach (var name in scenarioNames)
+        {
+            var email = $"sebt.dc+{name}@codeforamerica.org";
+            var result = await repo.GetHouseholdByEmailAsync(email, FullPiiVisibility);
+            Assert.NotNull(result);
+            Assert.Equal(email, result.Email);
+        }
+    }
+
+    [Fact]
+    public async Task GetHouseholdByEmailAsync_WithCoEmailPattern_VerifiedScenarioHasCorrectData()
+    {
+        var logger = NullLogger<MockHouseholdRepository>.Instance;
+        var settings = Options.Create(new SeedingSettings { EmailPattern = "sebt.co+{0}@codeforamerica.org" });
+        var timeProvider = new FakeTimeProvider(FixedSeedTime);
+        var repo = new MockHouseholdRepository(logger, settings, timeProvider);
+        var email = "sebt.co+verified@codeforamerica.org";
+        
+        var result = await repo.GetHouseholdByEmailAsync(email, FullPiiVisibility);
+
+        // Assert - Same scenario data, different email
+        Assert.NotNull(result);
+        Assert.Equal(email, result.Email);
+        Assert.NotNull(result.Applications);
+        Assert.NotEmpty(result.Applications);
+        var app = result.Applications.First();
+        Assert.Equal(ApplicationStatus.Approved, app.ApplicationStatus);
+        Assert.Equal(2, app.Children.Count);
+        Assert.Equal("John", app.Children[0].FirstName);
+        Assert.Equal("Doe", app.Children[0].LastName);
+        Assert.Equal("1234", app.Last4DigitsOfCard);
+        Assert.NotNull(result.AddressOnFile);
+        Assert.Equal("123 Main Street", result.AddressOnFile.StreetAddress1);
+    }
+
+    [Fact]
+    public async Task GetHouseholdByEmailAsync_WithCustomPattern_DefaultEmailsReturnNull()
+    {
+        
+        var logger = NullLogger<MockHouseholdRepository>.Instance;
+        var settings = Options.Create(new SeedingSettings { EmailPattern = "sebt.dc+{0}@codeforamerica.org" });
+        var timeProvider = new FakeTimeProvider(FixedSeedTime);
+        var repo = new MockHouseholdRepository(logger, settings, timeProvider);
+
+        // Try looking up with default @example.com emails
+        var result = await repo.GetHouseholdByEmailAsync("verified@example.com", FullPiiVisibility);
+
+        // Assert - Should not find anything since data is keyed by the custom pattern
+        Assert.Null(result);
     }
 }
