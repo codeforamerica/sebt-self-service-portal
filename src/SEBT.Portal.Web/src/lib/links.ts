@@ -5,6 +5,8 @@
  * Each state can have its own set of URLs for footer, help section, and other links.
  */
 
+import type { StateCode } from './state'
+
 export interface LinkItem {
   key: string
   href: string
@@ -97,14 +99,15 @@ const defaultLinks: StateLinks = stateLinks.dc as StateLinks
  * @param state - Two-letter state code (e.g., 'dc', 'co')
  * @returns State-specific links or default links if state not configured
  */
-export function getStateLinks(state: string): StateLinks {
-  return stateLinks[state.toLowerCase()] || defaultLinks
+export function getStateLinks(state: StateCode): StateLinks {
+  // eslint-disable-next-line security/detect-object-injection -- state is typed StateCode
+  return stateLinks[state] ?? defaultLinks
 }
 
 /**
  * Footer links with translation keys for iteration
  */
-export function getFooterLinks(state: string): LinkItem[] {
+export function getFooterLinks(state: StateCode): LinkItem[] {
   const links = getStateLinks(state)
   return [
     { key: 'accessibility', href: links.footer.accessibility, translationKey: 'accessibility' },
@@ -130,7 +133,7 @@ export function getFooterLinks(state: string): LinkItem[] {
 /**
  * Help section links with icons for iteration
  */
-export function getHelpLinks(state: string): LinkItem[] {
+export function getHelpLinks(state: StateCode): LinkItem[] {
   const links = getStateLinks(state)
   return [
     { key: 'faqs', href: links.help.faqs, translationKey: 'faqs', icon: 'faqs-icon.svg' },

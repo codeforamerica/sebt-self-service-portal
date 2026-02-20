@@ -99,7 +99,8 @@ const stateResources: Record<'dc' | 'co', Record<Namespace, Record<string, strin
   }
 }
 
-const resources = state === 'co' ? stateResources.co : stateResources.dc
+// eslint-disable-next-line security/detect-object-injection -- state is validated at build time, fallback guards against misconfiguration
+const resources = stateResources[state] ?? stateResources.dc
 
 /**
  * Get a translation function for a specific namespace

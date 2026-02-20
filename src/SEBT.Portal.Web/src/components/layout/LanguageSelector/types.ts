@@ -1,4 +1,5 @@
 import type { SupportedLanguage } from '@/lib/i18n'
+import type { StateCode } from '@/lib/state'
 
 export interface LanguageSelectorSubProps {
   languages: Array<{ code: SupportedLanguage; key: string }>
@@ -8,6 +9,6 @@ export interface LanguageSelectorSubProps {
 }
 
 export interface MobileLanguageSelectorProps extends LanguageSelectorSubProps {
-  state: string
+  state: StateCode
   languageCodes: readonly SupportedLanguage[]
 }

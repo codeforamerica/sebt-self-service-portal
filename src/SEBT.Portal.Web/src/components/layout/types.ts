@@ -1,7 +1,8 @@
 import type { SupportedLanguage } from '@/lib/i18n'
+import type { StateCode } from '@/lib/state'
 
 export interface StateProps {
-  state?: string
+  state?: StateCode
 }
 
 export type HeaderProps = StateProps

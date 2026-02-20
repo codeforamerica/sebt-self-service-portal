@@ -1,6 +1,6 @@
 import { Footer, Header, HelpSection, SkipNav } from '@/components/layout'
 import { primaryFont } from '@/design/fonts'
-import { getState } from '@/lib/state'
+import { getState, getStateName } from '@/lib/state'
 import {
   AuthProvider,
   AxeProvider,
@@ -15,7 +15,7 @@ import './globals.css'
 import './styles.scss'
 
 const state = getState()
-const stateName = state === 'dc' ? 'District of Columbia' : state.toUpperCase()
+const stateName = getStateName(state)
 const baseUrl = process.env.NEXT_PUBLIC_BASE_URL ?? `https://sebt.${state}.gov`
 const gaId = process.env.NEXT_PUBLIC_GA_ID
 

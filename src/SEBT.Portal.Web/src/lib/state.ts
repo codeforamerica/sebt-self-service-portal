@@ -1,40 +1,69 @@
 /**
- * State Configuration Utility
+ * State Configuration Registry
  *
- * Centralized state resolution for multi-state deployment.
- * Use this instead of duplicating process.env.NEXT_PUBLIC_STATE checks.
+ * Centralized state resolution and configuration for multi-state deployment.
+ * All state-specific metadata lives here — add a new state by adding an entry
+ * to `stateConfigs`. No inline conditionals needed in components.
  */
+
+/** Supported state codes — add new states here */
+export type StateCode = 'dc' | 'co'
+
+export interface StateConfig {
+  /** Full display name (e.g., 'District of Columbia') */
+  name: string
+  /** Alt text for the state seal image in the footer */
+  sealAlt: string
+  /** Extra CSS classes appended to the mobile language selector button */
+  languageSelectorClass?: string
+  /** Extra CSS classes appended to the mobile language submenu */
+  languageSubmenuClass?: string
+}
+
+/**
+ * State configuration registry — add new states here.
+ * Components use getStateConfig() to access state-specific values.
+ */
+const stateConfigs: Record<StateCode, StateConfig> = {
+  dc: {
+    name: 'District of Columbia',
+    sealAlt: 'Government of the District of Columbia - Muriel Bowser, Mayor'
+  },
+  co: {
+    name: 'Colorado',
+    sealAlt: 'Colorado Official State Web Portal',
+    languageSelectorClass: 'border-primary radius-md text-primary',
+    languageSubmenuClass: 'bg-primary-dark'
+  }
+}
+
+const defaultConfig: StateConfig = stateConfigs.dc as StateConfig
+
+/**
+ * Get the full configuration for a state
+ */
+export function getStateConfig(state: StateCode): StateConfig {
+  return stateConfigs[state] ?? defaultConfig
+}
 
 /**
  * Get the current state code from environment
  * @returns Two-letter state code (e.g., 'dc', 'co')
  */
-export function getState(): string {
-  return process.env.NEXT_PUBLIC_STATE || 'dc'
+export function getState(): StateCode {
+  return (process.env.NEXT_PUBLIC_STATE || 'dc').toLowerCase() as StateCode
 }
 
 /**
  * Get state display name
- * @param state - Two-letter state code
- * @returns Full state name or formatted code
  */
-export function getStateName(state: string): string {
-  switch (state) {
-    case 'dc':
-      return 'District of Columbia'
-    case 'co':
-      return 'Colorado'
-    default:
-      return `State of ${state.toUpperCase()}`
-  }
+export function getStateName(state: StateCode): string {
+  return getStateConfig(state).name
 }
 
 /**
  * Get state-specific asset path
- * @param state - Two-letter state code
- * @param assetPath - Path within state folder (e.g., 'icons/logo.svg')
- * @returns Full path to state-specific asset
  */
-export function getStateAssetPath(state: string, assetPath: string): string {
+export function getStateAssetPath(state: StateCode, assetPath: string): string {
   return `/images/states/${state}/${assetPath}`
 }

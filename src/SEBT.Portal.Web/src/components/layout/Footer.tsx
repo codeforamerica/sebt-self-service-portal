@@ -5,16 +5,24 @@ import Link from 'next/link'
 import { useTranslation } from 'react-i18next'
 
 import { getFooterLinks, getStateLinks } from '@/lib/links'
+import { getStateConfig } from '@/lib/state'
 
 import type { FooterProps } from './types'
+
+import type { StateCode } from '@/lib/state'
+
+const footerOverrides: Partial<Record<StateCode, React.ComponentType<FooterProps>>> = {
+  co: COFooter
+}
 
 export function Footer({ state = 'dc' }: FooterProps) {
   const { t } = useTranslation('common')
 
-  if (state === 'co') {
-    return <COFooter state={state} />
-  }
+  // eslint-disable-next-line security/detect-object-injection -- state is typed StateCode
+  const Override = state ? footerOverrides[state] : undefined
+  if (Override) return <Override state={state} />
 
+  const config = getStateConfig(state)
   const links = getStateLinks(state)
   const footerLinks = getFooterLinks(state)
 
@@ -27,7 +35,7 @@ export function Footer({ state = 'dc' }: FooterProps) {
         <div className="grid-container display-flex flex-justify-center">
           <Image
             src={`/images/states/${state}/seal.svg`}
-            alt="Government of the District of Columbia - Muriel Bowser, Mayor"
+            alt={config.sealAlt}
             width={121}
             height={51}
             className="footer-logo"
@@ -81,7 +89,8 @@ export function Footer({ state = 'dc' }: FooterProps) {
   )
 }
 
-function COFooter({ state }: { state: string }) {
+function COFooter({ state = 'co' }: FooterProps) {
+  const config = getStateConfig(state)
   const links = getStateLinks(state)
 
   return (
@@ -121,7 +130,7 @@ function COFooter({ state }: { state: string }) {
         <div className="grid-container display-flex flex-justify-center">
           <Image
             src={`/images/states/${state}/seal.svg`}
-            alt="Colorado Official State Web Portal"
+            alt={config.sealAlt}
             width={136}
             height={28}
             className="footer-logo"
