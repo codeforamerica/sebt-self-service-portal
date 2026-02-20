@@ -2,6 +2,7 @@ using System.Composition.Convention;
 using System.Composition.Hosting;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
+using SEBT.Portal.Api.Options;
 using SEBT.Portal.StatesPlugins.Interfaces;
 
 namespace SEBT.Portal.Api.Composition;
@@ -26,9 +27,30 @@ internal static class ServiceCollectionPluginExtensions
 
         var plugins = container.GetExports<IStatePlugin>();
 
+        var oidcStateCodes = new List<string>();
+        var oidcExports = container.GetExports<IStateOidcLoginService>();
+
+        foreach (var oidcService in oidcExports)
+        {
+            var stateCode = oidcService.StateCode;
+            if (string.IsNullOrEmpty(stateCode))
+            {
+                Log.Warning("OIDC login plugin {Type} has empty StateCode; skipping", oidcService.GetType().FullName);
+                continue;
+            }
+            services.AddKeyedSingleton<IStateOidcLoginService>(stateCode, oidcService);
+            oidcStateCodes.Add(stateCode);
+            Log.Information("Registered OIDC login for state: {StateCode}", stateCode);
+        }
+
+        services.AddSingleton(new StateOidcStateCodes(oidcStateCodes));
+
         foreach (var plugin in plugins)
         {
             var pluginType = plugin.GetType();
+            if (plugin is IStateOidcLoginService)
+                continue;
+
             Log.Information("Configuring services for plugin: {PluginType}", pluginType.FullName);
             var pluginInterfaces = pluginType.GetInterfaces()
                 .Where(i => i != typeof(IStatePlugin))
@@ -69,6 +91,11 @@ internal static class ServiceCollectionPluginExtensions
         conventions
             .ForTypesDerivedFrom<ISummerEbtCaseService>()
             .Export<ISummerEbtCaseService>()
+            .Shared();
+
+        conventions
+            .ForTypesDerivedFrom<IStateOidcLoginService>()
+            .Export<IStateOidcLoginService>()
             .Shared();
 
         return new ContainerConfiguration()
