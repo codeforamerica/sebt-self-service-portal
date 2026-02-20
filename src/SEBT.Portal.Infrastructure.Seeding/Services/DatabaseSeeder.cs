@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
+using SEBT.Portal.Core.AppSettings;
 using SEBT.Portal.Core.Models.Auth;
 using SEBT.Portal.Core.Services;
 using SEBT.Portal.Core.Utilities;
@@ -13,6 +14,7 @@ namespace SEBT.Portal.Infrastructure.Seeding.Services;
 public class DatabaseSeeder : Core.Services.IDatabaseSeeder
 {
     private readonly IDataSeeder _dataSeeder;
+    private readonly SeedingSettings _settings;
     private readonly ILogger<DatabaseSeeder>? _logger;
     private readonly TimeProvider _timeProvider;
 
@@ -22,9 +24,24 @@ public class DatabaseSeeder : Core.Services.IDatabaseSeeder
     private const int DaysSinceBasicIdProofingCompleted = -10;
     private const int DaysUntilBasicIdProofingExpires = 355;
 
-    public DatabaseSeeder(IDataSeeder dataSeeder, ILogger<DatabaseSeeder>? logger = null, TimeProvider? timeProvider = null)
+    /// <summary>
+    /// All known seed scenario names. Used to construct emails via SeedingSettings.BuildEmail().
+    /// </summary>
+    private static readonly string[] AllScenarioNames =
+    [
+        "co-loaded", "verified", "singlechild", "largefamily", "expired",
+        "non-co-loaded", "not-started", "pending", "minimal", "denied",
+        "review", "cancelled", "unknown"
+    ];
+
+    public DatabaseSeeder(
+        IDataSeeder dataSeeder,
+        SeedingSettings? settings = null,
+        ILogger<DatabaseSeeder>? logger = null,
+        TimeProvider? timeProvider = null)
     {
         _dataSeeder = dataSeeder ?? throw new ArgumentNullException(nameof(dataSeeder));
+        _settings = settings ?? new SeedingSettings();
         _logger = logger;
         _timeProvider = timeProvider ?? TimeProvider.System;
     }
@@ -56,13 +73,13 @@ public class DatabaseSeeder : Core.Services.IDatabaseSeeder
     /// </summary>
     /// <param name="now">The current time (from TimeProvider) for computing relative dates.</param>
     /// <returns>An array of User instances configured for testing.</returns>
-    private static User[] CreateTestUsers(DateTime now)
+    private User[] CreateTestUsers(DateTime now)
     {
         return new[]
         {
             UserFactory.CreateCoLoadedUser(u =>
             {
-                u.Email = "co-loaded@example.com";
+                u.Email = _settings.BuildEmail("co-loaded");
                 u.IdProofingStatus = IdProofingStatus.Completed;
                 u.IalLevel = UserIalLevel.IAL1plus;
                 u.CoLoadedLastUpdated = now.AddDays(-5);
@@ -75,7 +92,7 @@ public class DatabaseSeeder : Core.Services.IDatabaseSeeder
             }),
             UserFactory.CreateNonCoLoadedUser(u =>
             {
-                u.Email = "non-co-loaded@example.com";
+                u.Email = _settings.BuildEmail("non-co-loaded");
                 u.IdProofingStatus = IdProofingStatus.InProgress;
                 u.IalLevel = UserIalLevel.None;
                 u.Phone = "5555551234";
@@ -83,7 +100,7 @@ public class DatabaseSeeder : Core.Services.IDatabaseSeeder
             }),
             UserFactory.CreateNonCoLoadedUser(u =>
             {
-                u.Email = "not-started@example.com";
+                u.Email = _settings.BuildEmail("not-started");
                 u.IdProofingStatus = IdProofingStatus.NotStarted;
                 u.IalLevel = UserIalLevel.None;
             })
@@ -95,26 +112,26 @@ public class DatabaseSeeder : Core.Services.IDatabaseSeeder
     /// Each entry maps a household email to the appropriate ID proofing status.
     /// This mapping is based on the household data seeded in MockHouseholdRepository.
     /// </summary>
-    private static Dictionary<string, UserIalLevel> GetHouseholdUserMappings()
+    private Dictionary<string, UserIalLevel> GetHouseholdUserMappings()
     {
         return new Dictionary<string, UserIalLevel>
         {
             // Users with IAL1+ (have addresses in household data)
-            { "co-loaded@example.com", UserIalLevel.IAL1plus },
-            { "verified@example.com", UserIalLevel.IAL1plus },
-            { "singlechild@example.com", UserIalLevel.IAL1plus },
-            { "largefamily@example.com", UserIalLevel.IAL1plus },
-            { "expired@example.com", UserIalLevel.IAL1plus },
+            { _settings.BuildEmail("co-loaded"), UserIalLevel.IAL1plus },
+            { _settings.BuildEmail("verified"), UserIalLevel.IAL1plus },
+            { _settings.BuildEmail("singlechild"), UserIalLevel.IAL1plus },
+            { _settings.BuildEmail("largefamily"), UserIalLevel.IAL1plus },
+            { _settings.BuildEmail("expired"), UserIalLevel.IAL1plus },
 
             // Users without IAL (addresses not shown)
-            { "non-co-loaded@example.com", UserIalLevel.None },
-            { "not-started@example.com", UserIalLevel.None },
-            { "pending@example.com", UserIalLevel.None },
-            { "minimal@example.com", UserIalLevel.None },
-            { "denied@example.com", UserIalLevel.None },
-            { "review@example.com", UserIalLevel.None },
-            { "cancelled@example.com", UserIalLevel.None },
-            { "unknown@example.com", UserIalLevel.None }
+            { _settings.BuildEmail("non-co-loaded"), UserIalLevel.None },
+            { _settings.BuildEmail("not-started"), UserIalLevel.None },
+            { _settings.BuildEmail("pending"), UserIalLevel.None },
+            { _settings.BuildEmail("minimal"), UserIalLevel.None },
+            { _settings.BuildEmail("denied"), UserIalLevel.None },
+            { _settings.BuildEmail("review"), UserIalLevel.None },
+            { _settings.BuildEmail("cancelled"), UserIalLevel.None },
+            { _settings.BuildEmail("unknown"), UserIalLevel.None }
         };
     }
 
@@ -141,6 +158,8 @@ public class DatabaseSeeder : Core.Services.IDatabaseSeeder
         if (useMockHouseholdData)
         {
             var mappings = GetHouseholdUserMappings();
+            var coLoadedEmail = EmailNormalizer.Normalize(_settings.BuildEmail("co-loaded"));
+            var verifiedEmail = EmailNormalizer.Normalize(_settings.BuildEmail("verified"));
 
             foreach (var (email, ialLevel) in mappings)
             {
@@ -156,7 +175,7 @@ public class DatabaseSeeder : Core.Services.IDatabaseSeeder
                 try
                 {
                     User user;
-                    if (normalizedEmail == "co-loaded@example.com")
+                    if (normalizedEmail == coLoadedEmail)
                     {
                         user = UserFactory.CreateCoLoadedUser(u =>
                         {
@@ -172,7 +191,7 @@ public class DatabaseSeeder : Core.Services.IDatabaseSeeder
                             u.Ssn = "123456789";
                         });
                     }
-                    else if (normalizedEmail == "verified@example.com")
+                    else if (normalizedEmail == verifiedEmail)
                     {
                         user = UserFactory.CreateUserWithEmail(normalizedEmail, u =>
                         {
@@ -271,6 +290,8 @@ public class DatabaseSeeder : Core.Services.IDatabaseSeeder
         if (useMockHouseholdData)
         {
             var mappings = GetHouseholdUserMappings();
+            var coLoadedEmail = EmailNormalizer.Normalize(_settings.BuildEmail("co-loaded"));
+            var verifiedEmail = EmailNormalizer.Normalize(_settings.BuildEmail("verified"));
 
             foreach (var (email, ialLevel) in mappings)
             {
@@ -286,7 +307,7 @@ public class DatabaseSeeder : Core.Services.IDatabaseSeeder
                 try
                 {
                     User user;
-                    if (normalizedEmail == "co-loaded@example.com")
+                    if (normalizedEmail == coLoadedEmail)
                     {
                         user = UserFactory.CreateCoLoadedUser(u =>
                         {
@@ -302,7 +323,7 @@ public class DatabaseSeeder : Core.Services.IDatabaseSeeder
                             u.Ssn = "123456789";
                         });
                     }
-                    else if (normalizedEmail == "verified@example.com")
+                    else if (normalizedEmail == verifiedEmail)
                     {
                         user = UserFactory.CreateUserWithEmail(normalizedEmail, u =>
                         {
@@ -383,19 +404,21 @@ public class DatabaseSeeder : Core.Services.IDatabaseSeeder
 
     /// <summary>
     /// Clears seeded test data from the database.
-    /// Only deletes users with @example.com email addresses to avoid deleting production data.
+    /// Deletes users matching the configured email pattern to avoid deleting production data.
     /// </summary>
     /// <param name="cancellationToken">A token to cancel the operation.</param>
     public async Task ClearSeededDataAsync(CancellationToken cancellationToken = default)
     {
-        const string seededEmailDomain = "@example.com";
+        var seededEmails = AllScenarioNames
+            .Select(name => EmailNormalizer.Normalize(_settings.BuildEmail(name)))
+            .ToList();
 
-        var seededUserEmails = await _dataSeeder.GetUserEmailsByDomainAsync(seededEmailDomain, cancellationToken);
+        var existingSeededEmails = await _dataSeeder.GetExistingUserEmailsAsync(seededEmails, cancellationToken);
 
-        if (seededUserEmails.Count > 0)
+        if (existingSeededEmails.Count > 0)
         {
-            await _dataSeeder.RemoveUserOptInsByEmailAsync(seededUserEmails, cancellationToken);
-            await _dataSeeder.RemoveUsersByEmailAsync(seededUserEmails, cancellationToken);
+            await _dataSeeder.RemoveUserOptInsByEmailAsync(existingSeededEmails, cancellationToken);
+            await _dataSeeder.RemoveUsersByEmailAsync(existingSeededEmails, cancellationToken);
             await _dataSeeder.SaveChangesAsync(cancellationToken);
         }
     }

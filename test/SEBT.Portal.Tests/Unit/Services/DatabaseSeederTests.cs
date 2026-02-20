@@ -524,44 +524,45 @@ public class DatabaseSeederTests : IClassFixture<SqlServerTestFixture>
     }
 
     [Fact]
-    public async Task ClearSeededDataAsync_ShouldOnlyDeleteUsersWithExampleComDomain()
+    public async Task ClearSeededDataAsync_ShouldOnlyDeleteKnownScenarioEmails()
     {
         // Arrange
         using var context = CreateContext();
         await CleanupDatabaseAsync(context);
         var seeder = CreateSeeder(context);
 
-        // Create various users
+        // Create users matching known scenario names
         var seededUser1 = UserEntityFactory.CreateUserEntity(e =>
         {
-            e.Email = "test1@example.com";
+            e.Email = "co-loaded@example.com";
         });
         var seededUser2 = UserEntityFactory.CreateUserEntity(e =>
         {
-            e.Email = "test2@example.com";
+            e.Email = "verified@example.com";
         });
+        // Create users that don't match any scenario name
         var productionUser1 = UserEntityFactory.CreateUserEntity(e =>
         {
             e.Email = "user1@production.com";
         });
-        var productionUser2 = UserEntityFactory.CreateUserEntity(e =>
+        var nonScenarioUser = UserEntityFactory.CreateUserEntity(e =>
         {
-            e.Email = "user2@another-domain.org";
+            e.Email = "random@example.com";
         });
-        context.Users.AddRange(seededUser1, seededUser2, productionUser1, productionUser2);
+        context.Users.AddRange(seededUser1, seededUser2, productionUser1, nonScenarioUser);
         await context.SaveChangesAsync();
 
         // Act
         await seeder.ClearSeededDataAsync();
 
-        // Assert - Only production users should remain
+        // Assert - Only non-scenario users should remain
         var users = await context.Users.ToListAsync();
         Assert.Equal(2, users.Count);
         var emails = users.Select(u => u.Email).ToHashSet();
         Assert.Contains("user1@production.com", emails);
-        Assert.Contains("user2@another-domain.org", emails);
-        Assert.DoesNotContain("test1@example.com", emails);
-        Assert.DoesNotContain("test2@example.com", emails);
+        Assert.Contains("random@example.com", emails);
+        Assert.DoesNotContain("co-loaded@example.com", emails);
+        Assert.DoesNotContain("verified@example.com", emails);
     }
 
     [Fact]
