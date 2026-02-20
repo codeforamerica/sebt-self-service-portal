@@ -2,6 +2,7 @@ using System.Collections.Concurrent;
 using Bogus;
 using Microsoft.Extensions.Logging;
 using SEBT.Portal.Core.Models;
+using SEBT.Portal.Core.Models.Auth;
 using SEBT.Portal.Core.Models.Household;
 using SEBT.Portal.Core.Repositories;
 using SEBT.Portal.Core.Utilities;
@@ -30,6 +31,7 @@ public class MockHouseholdRepository : IHouseholdRepository
     public Task<HouseholdData?> GetHouseholdByIdentifierAsync(
         HouseholdIdentifier identifier,
         PiiVisibility piiVisibility,
+        UserIalLevel userIalLevel,
         CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(piiVisibility);
@@ -73,9 +75,10 @@ public class MockHouseholdRepository : IHouseholdRepository
     public Task<HouseholdData?> GetHouseholdByEmailAsync(
         string email,
         PiiVisibility piiVisibility,
+        UserIalLevel userIalLevel,
         CancellationToken cancellationToken = default)
     {
-        return GetHouseholdByIdentifierAsync(HouseholdIdentifier.Email(email), piiVisibility, cancellationToken);
+        return GetHouseholdByIdentifierAsync(HouseholdIdentifier.Email(email), piiVisibility, userIalLevel, cancellationToken);
     }
 
     public Task UpsertHouseholdAsync(

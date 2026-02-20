@@ -2,10 +2,12 @@ extern alias statePlugin;
 
 using Microsoft.Extensions.Logging;
 using SEBT.Portal.Core.Models;
+using SEBT.Portal.Core.Models.Auth;
 using SEBT.Portal.Core.Models.Household;
 using SEBT.Portal.Core.Repositories;
 using SEBT.Portal.Core.Utilities;
 using ISummerEbtCaseService = statePlugin::SEBT.Portal.StatesPlugins.Interfaces.ISummerEbtCaseService;
+using PluginIdentityAssuranceLevel = statePlugin::SEBT.Portal.StatesPlugins.Interfaces.Models.IdentityAssuranceLevel;
 using PluginPiiVisibility = statePlugin::SEBT.Portal.StatesPlugins.Interfaces.Models.PiiVisibility;
 
 namespace SEBT.Portal.Infrastructure.Repositories;
@@ -31,6 +33,7 @@ public class HouseholdRepository : IHouseholdRepository
     public Task<HouseholdData?> GetHouseholdByIdentifierAsync(
         HouseholdIdentifier identifier,
         PiiVisibility piiVisibility,
+        UserIalLevel userIalLevel,
         CancellationToken cancellationToken = default)
     {
         if (identifier.Type != PreferredHouseholdIdType.Email)
@@ -38,13 +41,14 @@ public class HouseholdRepository : IHouseholdRepository
             _logger.LogDebug("State plugin lookup supports only email identifier; ignoring type {Type}", identifier.Type);
             return Task.FromResult<HouseholdData?>(null);
         }
-        return GetHouseholdByEmailAsync(identifier.Value, piiVisibility, cancellationToken);
+        return GetHouseholdByEmailAsync(identifier.Value, piiVisibility, userIalLevel, cancellationToken);
     }
 
     /// <inheritdoc />
     public async Task<HouseholdData?> GetHouseholdByEmailAsync(
         string email,
         PiiVisibility piiVisibility,
+        UserIalLevel userIalLevel,
         CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(piiVisibility);
@@ -61,9 +65,11 @@ public class HouseholdRepository : IHouseholdRepository
             piiVisibility.IncludeAddress,
             piiVisibility.IncludeEmail,
             piiVisibility.IncludePhone);
+        var pluginIal = (PluginIdentityAssuranceLevel)(int)userIalLevel;
         var pluginHousehold = await _summerEbtCaseService.GetHouseholdByGuardianEmailAsync(
             normalizedEmail,
             pluginPii,
+            pluginIal,
             cancellationToken);
 
         if (pluginHousehold == null)

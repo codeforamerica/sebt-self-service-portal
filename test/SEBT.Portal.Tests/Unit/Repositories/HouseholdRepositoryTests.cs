@@ -3,9 +3,11 @@ extern alias statePlugin;
 using Microsoft.Extensions.Logging.Abstractions;
 using NSubstitute;
 using SEBT.Portal.Core.Models;
+using SEBT.Portal.Core.Models.Auth;
 using SEBT.Portal.Core.Models.Household;
 using SEBT.Portal.Infrastructure.Repositories;
 using ISummerEbtCaseService = statePlugin::SEBT.Portal.StatesPlugins.Interfaces.ISummerEbtCaseService;
+using PluginIdentityAssuranceLevel = statePlugin::SEBT.Portal.StatesPlugins.Interfaces.Models.IdentityAssuranceLevel;
 using PluginPiiVisibility = statePlugin::SEBT.Portal.StatesPlugins.Interfaces.Models.PiiVisibility;
 using PluginHouseholdData = statePlugin::SEBT.Portal.StatesPlugins.Interfaces.Models.Household.HouseholdData;
 using PluginApplication = statePlugin::SEBT.Portal.StatesPlugins.Interfaces.Models.Household.Application;
@@ -64,10 +66,10 @@ public class HouseholdRepositoryTests
         };
 
         _summerEbtCaseService
-            .GetHouseholdByGuardianEmailAsync(email, Arg.Any<PluginPiiVisibility>(), Arg.Any<CancellationToken>())
+            .GetHouseholdByGuardianEmailAsync(email, Arg.Any<PluginPiiVisibility>(), Arg.Any<PluginIdentityAssuranceLevel>(), Arg.Any<CancellationToken>())
             .Returns(pluginData);
 
-        var result = await _repository.GetHouseholdByEmailAsync(email, FullPii);
+        var result = await _repository.GetHouseholdByEmailAsync(email, FullPii, UserIalLevel.IAL1plus);
 
         Assert.NotNull(result);
         Assert.Equal(email, result.Email);
@@ -83,10 +85,10 @@ public class HouseholdRepositoryTests
     public async Task GetHouseholdByEmailAsync_WhenPluginReturnsNull_ReturnsNull()
     {
         _summerEbtCaseService
-            .GetHouseholdByGuardianEmailAsync(Arg.Any<string>(), Arg.Any<PluginPiiVisibility>(), Arg.Any<CancellationToken>())
+            .GetHouseholdByGuardianEmailAsync(Arg.Any<string>(), Arg.Any<PluginPiiVisibility>(), Arg.Any<PluginIdentityAssuranceLevel>(), Arg.Any<CancellationToken>())
             .Returns((PluginHouseholdData?)null);
 
-        var result = await _repository.GetHouseholdByEmailAsync("ishouldnotexist@example.com", FullPii);
+        var result = await _repository.GetHouseholdByEmailAsync("ishouldnotexist@example.com", FullPii, UserIalLevel.IAL1plus);
 
         Assert.Null(result);
     }
@@ -94,58 +96,58 @@ public class HouseholdRepositoryTests
     [Fact]
     public async Task GetHouseholdByEmailAsync_WhenEmailIsNull_ReturnsNull()
     {
-        var result = await _repository.GetHouseholdByEmailAsync(null!, FullPii);
+        var result = await _repository.GetHouseholdByEmailAsync(null!, FullPii, UserIalLevel.IAL1plus);
 
         Assert.Null(result);
         await _summerEbtCaseService.DidNotReceive()
-            .GetHouseholdByGuardianEmailAsync(Arg.Any<string>(), Arg.Any<PluginPiiVisibility>(), Arg.Any<CancellationToken>());
+            .GetHouseholdByGuardianEmailAsync(Arg.Any<string>(), Arg.Any<PluginPiiVisibility>(), Arg.Any<PluginIdentityAssuranceLevel>(), Arg.Any<CancellationToken>());
     }
 
     [Fact]
     public async Task GetHouseholdByEmailAsync_WhenEmailIsWhitespace_ReturnsNull()
     {
-        var result = await _repository.GetHouseholdByEmailAsync("   ", FullPii);
+        var result = await _repository.GetHouseholdByEmailAsync("   ", FullPii, UserIalLevel.IAL1plus);
 
         Assert.Null(result);
         await _summerEbtCaseService.DidNotReceive()
-            .GetHouseholdByGuardianEmailAsync(Arg.Any<string>(), Arg.Any<PluginPiiVisibility>(), Arg.Any<CancellationToken>());
+            .GetHouseholdByGuardianEmailAsync(Arg.Any<string>(), Arg.Any<PluginPiiVisibility>(), Arg.Any<PluginIdentityAssuranceLevel>(), Arg.Any<CancellationToken>());
     }
 
     [Fact]
     public async Task GetHouseholdByEmailAsync_NormalizesEmail()
     {
         _summerEbtCaseService
-            .GetHouseholdByGuardianEmailAsync(Arg.Any<string>(), Arg.Any<PluginPiiVisibility>(), Arg.Any<CancellationToken>())
+            .GetHouseholdByGuardianEmailAsync(Arg.Any<string>(), Arg.Any<PluginPiiVisibility>(), Arg.Any<PluginIdentityAssuranceLevel>(), Arg.Any<CancellationToken>())
             .Returns(new PluginHouseholdData { Email = "user@example.com", Applications = new List<PluginApplication>() });
 
-        await _repository.GetHouseholdByEmailAsync("  USER@EXAMPLE.COM  ", FullPii);
+        await _repository.GetHouseholdByEmailAsync("  USER@EXAMPLE.COM  ", FullPii, UserIalLevel.IAL1plus);
 
         await _summerEbtCaseService.Received(1)
-            .GetHouseholdByGuardianEmailAsync("user@example.com", Arg.Any<PluginPiiVisibility>(), Arg.Any<CancellationToken>());
+            .GetHouseholdByGuardianEmailAsync("user@example.com", Arg.Any<PluginPiiVisibility>(), Arg.Any<PluginIdentityAssuranceLevel>(), Arg.Any<CancellationToken>());
     }
 
     [Fact]
     public async Task GetHouseholdByEmailAsync_PassesPiiVisibilityToPlugin()
     {
         _summerEbtCaseService
-            .GetHouseholdByGuardianEmailAsync(Arg.Any<string>(), Arg.Any<PluginPiiVisibility>(), Arg.Any<CancellationToken>())
+            .GetHouseholdByGuardianEmailAsync(Arg.Any<string>(), Arg.Any<PluginPiiVisibility>(), Arg.Any<PluginIdentityAssuranceLevel>(), Arg.Any<CancellationToken>())
             .Returns(new PluginHouseholdData { Email = "u@e.com", Applications = new List<PluginApplication>() });
 
-        await _repository.GetHouseholdByEmailAsync("u@e.com", new PiiVisibility(IncludeAddress: true, IncludeEmail: true, IncludePhone: true));
+        await _repository.GetHouseholdByEmailAsync("u@e.com", new PiiVisibility(IncludeAddress: true, IncludeEmail: true, IncludePhone: true), UserIalLevel.IAL1plus);
 
         await _summerEbtCaseService.Received(1)
-            .GetHouseholdByGuardianEmailAsync("u@e.com", Arg.Is<PluginPiiVisibility>(p => p.IncludeAddress && p.IncludeEmail && p.IncludePhone), Arg.Any<CancellationToken>());
+            .GetHouseholdByGuardianEmailAsync("u@e.com", Arg.Is<PluginPiiVisibility>(p => p.IncludeAddress && p.IncludeEmail && p.IncludePhone), Arg.Any<PluginIdentityAssuranceLevel>(), Arg.Any<CancellationToken>());
     }
 
     [Fact]
     public async Task GetHouseholdByEmailAsync_WhenPiiVisibilityExcludesEmail_ReturnsNullEmail()
     {
         _summerEbtCaseService
-            .GetHouseholdByGuardianEmailAsync(Arg.Any<string>(), Arg.Any<PluginPiiVisibility>(), Arg.Any<CancellationToken>())
+            .GetHouseholdByGuardianEmailAsync(Arg.Any<string>(), Arg.Any<PluginPiiVisibility>(), Arg.Any<PluginIdentityAssuranceLevel>(), Arg.Any<CancellationToken>())
             .Returns(new PluginHouseholdData { Email = "u@e.com", Phone = "555", Applications = new List<PluginApplication>() });
 
         var noEmailPii = new PiiVisibility(IncludeAddress: true, IncludeEmail: false, IncludePhone: true);
-        var result = await _repository.GetHouseholdByEmailAsync("u@e.com", noEmailPii);
+        var result = await _repository.GetHouseholdByEmailAsync("u@e.com", noEmailPii, UserIalLevel.IAL1plus);
 
         Assert.NotNull(result);
         Assert.Null(result.Email);
@@ -158,33 +160,33 @@ public class HouseholdRepositoryTests
         var email = "guardian@example.com";
         var pluginData = new PluginHouseholdData { Email = email, Applications = new List<PluginApplication>() };
         _summerEbtCaseService
-            .GetHouseholdByGuardianEmailAsync(email, Arg.Any<PluginPiiVisibility>(), Arg.Any<CancellationToken>())
+            .GetHouseholdByGuardianEmailAsync(email, Arg.Any<PluginPiiVisibility>(), Arg.Any<PluginIdentityAssuranceLevel>(), Arg.Any<CancellationToken>())
             .Returns(pluginData);
 
         var result = await _repository.GetHouseholdByIdentifierAsync(
-            HouseholdIdentifier.Email(email), NoAddressPii);
+            HouseholdIdentifier.Email(email), NoAddressPii, UserIalLevel.None);
 
         Assert.NotNull(result);
         await _summerEbtCaseService.Received(1)
-            .GetHouseholdByGuardianEmailAsync(email, Arg.Is<PluginPiiVisibility>(p => !p.IncludeAddress), Arg.Any<CancellationToken>());
+            .GetHouseholdByGuardianEmailAsync(email, Arg.Is<PluginPiiVisibility>(p => !p.IncludeAddress), Arg.Any<PluginIdentityAssuranceLevel>(), Arg.Any<CancellationToken>());
     }
 
     [Fact]
     public async Task GetHouseholdByIdentifierAsync_WhenNonEmailIdentifier_ReturnsNullWithoutCallingPlugin()
     {
         var result = await _repository.GetHouseholdByIdentifierAsync(
-            HouseholdIdentifier.SnapId("SNAP123"), FullPii);
+            HouseholdIdentifier.SnapId("SNAP123"), FullPii, UserIalLevel.IAL1plus);
 
         Assert.Null(result);
         await _summerEbtCaseService.DidNotReceive()
-            .GetHouseholdByGuardianEmailAsync(Arg.Any<string>(), Arg.Any<PluginPiiVisibility>(), Arg.Any<CancellationToken>());
+            .GetHouseholdByGuardianEmailAsync(Arg.Any<string>(), Arg.Any<PluginPiiVisibility>(), Arg.Any<PluginIdentityAssuranceLevel>(), Arg.Any<CancellationToken>());
     }
 
     [Fact]
     public async Task GetHouseholdByEmailAsync_WhenPiiVisibilityNull_ThrowsArgumentNullException()
     {
         await Assert.ThrowsAsync<ArgumentNullException>(
-            async () => await _repository.GetHouseholdByEmailAsync("u@e.com", null!));
+            async () => await _repository.GetHouseholdByEmailAsync("u@e.com", null!, UserIalLevel.None));
     }
 
     [Fact]
