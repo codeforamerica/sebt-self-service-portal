@@ -5,6 +5,7 @@ using Microsoft.Extensions.Options;
 using SEBT.Portal.Core.AppSettings;
 using SEBT.Portal.Core.Models;
 using SEBT.Portal.Core.Models.Auth;
+using SEBT.Portal.Core.Seeding;
 using SEBT.Portal.Core.Models.Household;
 using SEBT.Portal.Core.Repositories;
 using SEBT.Portal.Core.Utilities;
@@ -123,7 +124,7 @@ public class MockHouseholdRepository : IHouseholdRepository
         HouseholdFactory.SetSeed(12345);
 
         // Scenario 1: Co-loaded user with approved application and address (ID verified)
-        var coLoadedEmail = _settings.BuildEmail("co-loaded");
+        var coLoadedEmail = _settings.BuildEmail(SeedScenarios.CoLoaded.Name);
         var coLoaded = HouseholdFactory.CreateHouseholdDataWithStatus(ApplicationStatus.Approved, h =>
         {
             h.BenefitIssuanceType = BenefitIssuanceType.SnapEbtCard;
@@ -154,7 +155,7 @@ public class MockHouseholdRepository : IHouseholdRepository
         _households[coLoadedEmail] = coLoaded;
 
         // Scenario 2: Approved application with address (ID verified user)
-        var verifiedEmail = _settings.BuildEmail("verified");
+        var verifiedEmail = _settings.BuildEmail(SeedScenarios.Verified.Name);
         var verified = HouseholdFactory.CreateHouseholdDataWithStatus(ApplicationStatus.Approved, h =>
         {
             h.BenefitIssuanceType = BenefitIssuanceType.SnapEbtCard;
@@ -188,7 +189,7 @@ public class MockHouseholdRepository : IHouseholdRepository
         // Scenario 3: Pending application without address (not ID verified)
         // Note: Address should not be included for non-ID-verified users, but we set it here
         // for testing purposes (it will be filtered by GetHouseholdByEmailAsync based on includeAddress)
-        var pendingEmail = _settings.BuildEmail("pending");
+        var pendingEmail = _settings.BuildEmail(SeedScenarios.Pending.Name);
         var pending = HouseholdFactory.CreateHouseholdDataWithStatus(ApplicationStatus.Pending, h =>
         {
             h.BenefitIssuanceType = BenefitIssuanceType.Unknown;
@@ -215,7 +216,7 @@ public class MockHouseholdRepository : IHouseholdRepository
         _households[pendingEmail] = pending;
 
         // Scenario 4: Denied application
-        var deniedEmail = _settings.BuildEmail("denied");
+        var deniedEmail = _settings.BuildEmail(SeedScenarios.Denied.Name);
         var denied = HouseholdFactory.CreateHouseholdDataWithStatus(ApplicationStatus.Denied, h =>
         {
             h.BenefitIssuanceType = BenefitIssuanceType.Unknown;
@@ -230,7 +231,7 @@ public class MockHouseholdRepository : IHouseholdRepository
         _households[deniedEmail] = denied;
 
         // Scenario 5: Under review
-        var reviewEmail = _settings.BuildEmail("review");
+        var reviewEmail = _settings.BuildEmail(SeedScenarios.Review.Name);
         var review = HouseholdFactory.CreateHouseholdDataWithStatus(ApplicationStatus.UnderReview, h =>
         {
             h.BenefitIssuanceType = BenefitIssuanceType.SnapEbtCard;
@@ -249,7 +250,7 @@ public class MockHouseholdRepository : IHouseholdRepository
         _households[reviewEmail] = review;
 
         // Scenario 5b: Non-co-loaded user (ID proofing in progress)
-        var nonCoLoadedEmail = _settings.BuildEmail("non-co-loaded");
+        var nonCoLoadedEmail = _settings.BuildEmail(SeedScenarios.NonCoLoaded.Name);
         var nonCoLoaded = HouseholdFactory.CreateHouseholdDataWithStatus(ApplicationStatus.Pending, h =>
         {
             var app = h.Applications.FirstOrDefault();
@@ -274,7 +275,7 @@ public class MockHouseholdRepository : IHouseholdRepository
         _households[nonCoLoadedEmail] = nonCoLoaded;
 
         // Scenario 5c: Not-started user (ID proofing not started)
-        var notStartedEmail = _settings.BuildEmail("not-started");
+        var notStartedEmail = _settings.BuildEmail(SeedScenarios.NotStarted.Name);
         var notStarted = HouseholdFactory.CreateHouseholdDataWithStatus(ApplicationStatus.Pending, h =>
         {
             var app = h.Applications.FirstOrDefault();
@@ -299,7 +300,7 @@ public class MockHouseholdRepository : IHouseholdRepository
         _households[notStartedEmail] = notStarted;
 
         // Scenario 6: Cancelled application
-        var cancelledEmail = _settings.BuildEmail("cancelled");
+        var cancelledEmail = _settings.BuildEmail(SeedScenarios.Cancelled.Name);
         var cancelled = HouseholdFactory.CreateHouseholdDataWithStatus(ApplicationStatus.Cancelled, h =>
         {
             h.BenefitIssuanceType = BenefitIssuanceType.Unknown;
@@ -314,7 +315,7 @@ public class MockHouseholdRepository : IHouseholdRepository
         _households[cancelledEmail] = cancelled;
 
         // Scenario 7: Approved with single child
-        var singleChildEmail = _settings.BuildEmail("singlechild");
+        var singleChildEmail = _settings.BuildEmail(SeedScenarios.SingleChild.Name);
         var singleChild = HouseholdFactory.CreateHouseholdDataWithStatus(ApplicationStatus.Approved, h =>
         {
             h.BenefitIssuanceType = BenefitIssuanceType.SummerEbt;
@@ -335,7 +336,7 @@ public class MockHouseholdRepository : IHouseholdRepository
         _households[singleChildEmail] = singleChild;
 
         // Scenario 8: Large family (multiple children)
-        var largeFamilyEmail = _settings.BuildEmail("largefamily");
+        var largeFamilyEmail = _settings.BuildEmail(SeedScenarios.LargeFamily.Name);
         var largeFamily = HouseholdFactory.CreateHouseholdDataWithStatus(ApplicationStatus.Approved, h =>
         {
             h.BenefitIssuanceType = BenefitIssuanceType.TanfEbtCard;
@@ -359,7 +360,7 @@ public class MockHouseholdRepository : IHouseholdRepository
         _households[largeFamilyEmail] = largeFamily;
 
         // Scenario 9: Minimal data (no phone, no dates)
-        var minimalEmail = _settings.BuildEmail("minimal");
+        var minimalEmail = _settings.BuildEmail(SeedScenarios.Minimal.Name);
         var minimal = HouseholdFactory.CreateHouseholdDataWithStatus(ApplicationStatus.Pending, h =>
         {
             h.BenefitIssuanceType = BenefitIssuanceType.Unknown;
@@ -375,7 +376,7 @@ public class MockHouseholdRepository : IHouseholdRepository
         _households[minimalEmail] = minimal;
 
         // Scenario 10: Expired benefits
-        var expiredEmail = _settings.BuildEmail("expired");
+        var expiredEmail = _settings.BuildEmail(SeedScenarios.Expired.Name);
         var expired = HouseholdFactory.CreateHouseholdDataWithStatus(ApplicationStatus.Approved, h =>
         {
             h.BenefitIssuanceType = BenefitIssuanceType.SnapEbtCard;
@@ -396,7 +397,7 @@ public class MockHouseholdRepository : IHouseholdRepository
         _households[expiredEmail] = expired;
 
         // Scenario 11: Unknown status
-        var unknownEmail = _settings.BuildEmail("unknown");
+        var unknownEmail = _settings.BuildEmail(SeedScenarios.Unknown.Name);
         var unknown = HouseholdFactory.CreateHouseholdDataWithStatus(ApplicationStatus.Unknown, h =>
         {
             h.BenefitIssuanceType = BenefitIssuanceType.Unknown;
@@ -411,7 +412,7 @@ public class MockHouseholdRepository : IHouseholdRepository
         _households[unknownEmail] = unknown;
 
         // Scenario 12: Household with multiple applications (approved and pending)
-        var multipleAppsEmail = _settings.BuildEmail("multipleapps");
+        var multipleAppsEmail = _settings.BuildEmail(SeedScenarios.MultipleApps.Name);
         var multipleApps = HouseholdFactory.CreateHouseholdDataWithStatus(ApplicationStatus.Approved, h =>
         {
             h.BenefitIssuanceType = BenefitIssuanceType.SnapEbtCard;
