@@ -4,11 +4,11 @@
 
 We need  a **robust, application-level data layer** that:
 
--   Acts as the **single source of truth** for page, user, and event
-    metadata
--   Supports **privacy-aware, scoped access** to data
--   Emits **DOM events** when data changes for analytics / tag managers
--   Is **framework-agnostic** and works in plain browser environments
+- Acts as the **single source of truth** for page, user, and event
+  metadata
+- Supports **privacy-aware, scoped access** to data
+- Emits **DOM events** when data changes for analytics / tag managers
+- Is **framework-agnostic** and works in plain browser environments
 
 This implementation is intended to support web analytics (i.e. Google
 Analytics, Amplitude), and downstream consumers without coupling the
@@ -21,12 +21,12 @@ application to any specific vendor SDK.
 
 The Data Layer object **must**:
 
--   Own the data structure and expose a corresponding API
--   Enforce read access rules
--   Emit events when data mutates
--   Store privacy / scope metadata separately from data
--   Emit `CustomEvent`s on `document` allowing loose coupling to
-    tooling
+- Own the data structure and expose a corresponding API
+- Enforce read access rules
+- Emit events when data mutates
+- Store privacy / scope metadata separately from data
+- Emit `CustomEvent`s on `document` allowing loose coupling to tooling
+
 
 The Data Layer API **must** be bound to the root data structure and
 *should be* exposed via a window object named `digitalData`.
@@ -38,22 +38,22 @@ contained within the [W3C Customer Experience Digital Data Report](https://www.w
 
 ## Data Structure
 The root data structure is detailed below:
-``` json
-	{
-	  page: {
-	    category: {},
-	    attribute: {}
-	  },
-	  user: {
-	    profile: {}
-	  },
-	  event: [],
-	  privacy: {
-	    accessCategories: [...]
-	  },
-	  initialized: true
-	}
-```
+
+		{
+		  page: {
+		    category: {},
+		    attribute: {}
+		  },
+		  user: {
+		    profile: {}
+		  },
+		  event: [],
+		  privacy: {
+		    accessCategories: [...]
+		  },
+		  initialized: true
+		}
+
 
 ### Data Elements
 
@@ -90,14 +90,14 @@ the data layer and are captured as a collection of event objects
 within the  `<root>.event[]` array. Each event object has the
 following structure:
 
-``` json
-{
-  eventName: string,
-  eventData: object,
-  timeStamp: number,
-  scope: string[]
-}
-```
+
+		{
+		  eventName: string,
+		  eventData: object,
+		  timeStamp: number,
+		  scope: string[]
+		}
+
 
 ### Data Scoping
 
@@ -112,53 +112,46 @@ is assigned that scope. If no scope is defined on an element, the
 scope of its parent element is checked; if no scope is found the
 element is publicly readable.
 
-
 Scopes are strings such as:
-    -   `default`
-    -   `analytics`
 
-The `default` scope is reserved for the application itself.
+- default
+- analytics
+
+The default scope is reserved for the application itself.
 ## Data Layer API
-   The interface for the data layer object itself consists of a set of
-   functions for reading/writing data elements and for tracking
-   events. These functions should be bound to the root data structure
-   to produce the public API.
+The interface for the data layer object itself consists of a set of
+functions for reading/writing data elements and for tracking
+events. These functions should be bound to the root data structure to
+produce the public API.
+
 
 ### Constructor
-
-``` ts
-constructor(root: string, bootstrap?: { text?: string })
-```
-
-Initializes the data layer and binds it to `window[root]`. If
+The constructor initializes the data layer and binds it to `window[root]`. If
 `bootstrap` is provided it should be parsed as JSON to populate the
 initial state. Upon success it must emit `DataLayer:Initialized`.
+
+		constructor(root: string, bootstrap?: { text?: string })
 
 ### Event Tracking
 
 All events are tracked via the singular trackEvent method:
-``` ts
-trackEvent(name: string, data?: Record<string, unknown>): void
-```
+
+		trackEvent(name: string, data?: Record<string, unknown>): void
 
 Passing in an event name will append an event object to the
 `<root>.event` array. Optionally, event data (of any type) can be
 included along with the event. This event should be exposed publicly on
 the root data structure:
-``` js
-<root>.trackEvent(eventName, eventData?)
-```
 
+		<root>.trackEvent(eventName, eventData?)
 
 ### Interacting with Data Elements
 
 #### Reading Data
-    All data elements can be read using the the public `getElement`
-    method with the following signature:
+All data elements can be read using the the public `getElement` method
+with the following signature:
 
-``` ts
-    getElement(path: string, scope?: string, defaultValue?: unknown): unknown
-```
+		getElement(path: string, scope?: string, defaultValue?: unknown): unknown
 
 This method should return the value of the element at the given
 path (relative to the root object i.e. `page.name` or
@@ -171,10 +164,8 @@ granted, the method should return the `defaultValue`, if provided.
 The public API consists of multiple convenience functions that
 obey the same contract and share the same signature:
 
-``` ts
-    _setElement(path: string, value: unknown, scope?: string | string[]): void
+		_setElement(path: string, value: unknown, scope?: string | string[]): void
 
-```
 
 This functions stores `value` at a specified `path` relative to the
 data layer `<root>`. One or more `scope`s may be
@@ -187,29 +178,26 @@ when storing data, even if no scope is provided.
 
 The functions that comprise the public write API are:
 
-- `DataLayer#setUserData(path: string, value: unknown, scope?: string | string[]): void`
-- `DataLayer#setUserProfile(path: string, value: unknown, scope?: string | string[]): void`
-- `DataLayer#setPageData(path: string, value: unknown, scope?: string | string[]): void`
-- `DataLayer#setPageCategory(path: string, value: unknown, scope?: string | string[]): void`
-- `DataLayer#setPageAttribute(path: string, value: unknown, scope?: string | string[]): void`
+		DataLayer#setUserData(path: string, value: unknown, scope?: string | string[]): void
+		DataLayer#setUserProfile(path: string, value: unknown, scope?: string | string[]): void
+		DataLayer#setPageData(path: string, value: unknown, scope?: string | string[]): void
+		DataLayer#setPageCategory(path: string, value: unknown, scope?: string | string[]): void
+		DataLayer#setPageAttribute(path: string, value: unknown, scope?: string | string[]): void
 
 Along with `getElement` these functions should be exposed via the root
 data structure.
 
 *Read*
 
-``` js
-<root>.get(path, scope, defaultValue?)
-```
+		<root>.get(path, scope, defaultValue?)
+
 *Write*
 
-``` js
-    <root>.user.set(path, value, scope?)
-    <root>.user.profile.set(path, value, scope?)
-    <root>.page.set(path, value, scope?)
-    <root>.page.category.set(path, value, scope?)
-    <root>.page.attribute.set(path, value, scope?)
-```
+		<root>.user.set(path, value, scope?)
+        <root>.user.profile.set(path, value, scope?)
+        <root>.page.set(path, value, scope?)
+        <root>.page.category.set(path, value, scope?)
+        <root>.page.attribute.set(path, value, scope?)
 
 ## DOM Events
 The Data Layer object should emit DOM `CustomEvents` on `document` to
