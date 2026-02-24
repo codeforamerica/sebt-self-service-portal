@@ -30,7 +30,7 @@ jobs:
       changed: ${{ steps.changes.outputs.tofu }}
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Check for tofu changes
         id: changes
@@ -66,7 +66,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Post plan to PR
-        uses: actions/github-script@v7
+        uses: actions/github-script@v8
         with:
           script: |
             const { data: comments } = await github.rest.issues.listComments({
@@ -114,7 +114,7 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Compute image tag
         id: tag
@@ -126,26 +126,26 @@ jobs:
           fi
 
       - name: Setup .NET
-        uses: actions/setup-dotnet@v4
+        uses: actions/setup-dotnet@v5
         with:
           dotnet-version: "10.0"
 
       - name: Checkout state-connector
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           repository: codeforamerica/sebt-self-service-portal-state-connector
           token: ${{ secrets.SEBT_CONNECTOR_REPOSITORY_PAT }}
           path: state-connector
 
       - name: Checkout dc-connector
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           repository: codeforamerica/sebt-self-service-portal-dc-connector
           token: ${{ secrets.SEBT_CONNECTOR_REPOSITORY_PAT }}
           path: dc-connector
 
       - name: Checkout co-connector
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           repository: codeforamerica/sebt-self-service-portal-co-connector
           token: ${{ secrets.SEBT_CONNECTOR_REPOSITORY_PAT }}
@@ -214,7 +214,7 @@ jobs:
             -o /tmp/docker-images.tar
 
       - name: Upload Docker images
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: docker-images
           path: /tmp/docker-images.tar
@@ -239,10 +239,10 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Download Docker images
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v7
         with:
           name: docker-images
           path: /tmp
@@ -251,7 +251,7 @@ jobs:
         run: docker load -i /tmp/docker-images.tar
 
       - name: Configure AWS credentials
-        uses: aws-actions/configure-aws-credentials@v4
+        uses: aws-actions/configure-aws-credentials@v6
         with:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
@@ -315,10 +315,10 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Download Docker images
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v7
         with:
           name: docker-images
           path: /tmp
@@ -327,7 +327,7 @@ jobs:
         run: docker load -i /tmp/docker-images.tar
 
       - name: Configure AWS credentials
-        uses: aws-actions/configure-aws-credentials@v4
+        uses: aws-actions/configure-aws-credentials@v6
         with:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
@@ -382,7 +382,7 @@ jobs:
     steps:
       - name: Create GitHub deployment for DC
         if: needs.deploy-dc.result == 'success'
-        uses: actions/github-script@v7
+        uses: actions/github-script@v8
         with:
           script: |
             const rawUrl = '${{ needs.deploy-dc.outputs.web_url }}';
@@ -413,7 +413,7 @@ jobs:
 
       - name: Create GitHub deployment for CO
         if: needs.deploy-co.result == 'success'
-        uses: actions/github-script@v7
+        uses: actions/github-script@v8
         with:
           script: |
             const rawUrl = '${{ needs.deploy-co.outputs.web_url }}';
