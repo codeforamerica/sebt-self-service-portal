@@ -3,8 +3,8 @@ provider "aws" {
 
   default_tags {
     tags = {
-      project     = "sebt-portal"
-      environment = "dev"
+      project     = var.project
+      environment = var.environment
       state       = "dc"
       tofu        = "true"
     }

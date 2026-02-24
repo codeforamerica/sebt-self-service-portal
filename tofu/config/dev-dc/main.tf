@@ -11,10 +11,10 @@ terraform {
 module "logging" {
   source = "github.com/codeforamerica/tofu-modules-aws-logging?ref=2.1.0"
 
-  project     = "sebt-portal"
-  environment = "dev"
+  project     = var.project
+  environment = var.environment
 
-  log_groups_to_datadog = false
+  log_groups_to_datadog = true
 }
 
 # Create a VPC with public and private subnets. Since this is a dev
@@ -22,8 +22,8 @@ module "logging" {
 module "vpc" {
   source = "github.com/codeforamerica/tofu-modules-aws-vpc?ref=1.1.2"
 
-  project            = "sebt-portal"
-  environment        = "dev"
+  project            = var.project
+  environment        = var.environment
   single_nat_gateway = true
   logging_key_id     = module.logging.kms_key_arn
 
@@ -34,11 +34,11 @@ module "vpc" {
 
 # Look up ECR repositories created by bootstrap.
 data "aws_ecr_repository" "api" {
-  name = "sebt-portal-dev-api"
+  name = "${var.project}-${var.environment}-api"
 }
 
 data "aws_ecr_repository" "web" {
-  name = "sebt-portal-dev-web"
+  name = "${var.project}-${var.environment}-web"
 }
 
 # Look up the hosted zone for DNS records.
@@ -53,7 +53,7 @@ module "app" {
   apply_immediately            = true
   domain                       = var.domain
   hosted_zone_id               = data.aws_route53_zone.main.zone_id
-  environment                  = "dev"
+  environment                  = var.environment
   identifier_hasher_secret_key = var.identifier_hasher_secret_key
   image_tag                    = var.image_tag
   jwt_secret_key               = var.jwt_secret_key

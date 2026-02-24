@@ -1,13 +1,19 @@
+variable "environment" {
+  type        = string
+  description = "Environment for the deployment."
+  default     = "development"
+}
+
 variable "identifier_hasher_secret_key" {
   type        = string
   description = "Secret key for identifier hashing."
-  sensitive   = true
+  ephemeral   = true
 }
 
 variable "jwt_secret_key" {
   type        = string
   description = "Secret key for signing JWT tokens."
-  sensitive   = true
+  ephemeral   = true
 }
 
 variable "domain" {
@@ -34,6 +40,12 @@ variable "public_subnets" {
 variable "sender_email" {
   type        = string
   description = "Email address used as the sender for OTP emails."
+}
+
+variable "project" {
+  type        = string
+  description = "Project name used for resource naming."
+  default     = "sebt-portal"
 }
 
 variable "vpc_cidr" {
