@@ -119,6 +119,12 @@ variable "jwt_secret_key" {
   sensitive   = true
 }
 
+variable "secret_recovery_period" {
+  type        = number
+  description = "Number of days to retain a secret before permanent deletion."
+  default     = 7
+}
+
 variable "hosted_zone_id" {
   type        = string
   description = "Route 53 hosted zone ID for DNS records. Required when the zone name doesn't exactly match the domain."

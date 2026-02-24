@@ -45,8 +45,6 @@ module "api" {
     DB_NAME                                      = "SebtPortal"
     DB_PORT                                      = "1433"
     "PluginAssemblyPaths__0"                     = "plugins-${lower(var.state)}"
-    "JwtSettings__SecretKey"                     = var.jwt_secret_key
-    "IdentifierHasher__SecretKey"                = var.identifier_hasher_secret_key
     "SmtpClientSettings__SmtpServer"             = module.ses.smtp_server
     "SmtpClientSettings__SmtpPort"               = "587"
     "SmtpClientSettings__EnableSsl"              = "true"
@@ -58,6 +56,8 @@ module "api" {
     DB_PASSWORD                    = "${module.database.secret_arn}:password"
     "SmtpClientSettings__UserName" = "${module.ses.secret_arn}:username"
     "SmtpClientSettings__Password" = "${module.ses.secret_arn}:password"
+    "JwtSettings__SecretKey"       = "${module.secrets.secrets["app"].secret_arn}:jwt_secret_key"
+    "IdentifierHasher__SecretKey"  = "${module.secrets.secrets["app"].secret_arn}:identifier_hasher_secret_key"
   }
 }
 
@@ -107,6 +107,26 @@ module "web" {
     NEXT_PUBLIC_STATE        = lower(var.state)
     NEXT_PUBLIC_API_BASE_URL = "https://${module.api.endpoint_url}"
     BACKEND_URL              = "https://${module.api.endpoint_url}"
+  }
+}
+
+# Store application secrets in Secrets Manager.
+module "secrets" {
+  source = "github.com/codeforamerica/tofu-modules-aws-secrets?ref=2.0.0"
+
+  project     = "sebt-portal"
+  environment = var.environment
+  service     = "api"
+
+  secrets = {
+    "app" = {
+      description     = "Application secrets for the SEBT Portal API."
+      recovery_window = var.secret_recovery_period
+      start_value = jsonencode({
+        jwt_secret_key               = var.jwt_secret_key
+        identifier_hasher_secret_key = var.identifier_hasher_secret_key
+      })
+    }
   }
 }
 
