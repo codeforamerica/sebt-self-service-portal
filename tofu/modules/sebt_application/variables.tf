@@ -1,6 +1,18 @@
+variable "api_cpu" {
+  type        = number
+  description = "CPU units for the API service container."
+  default     = 512
+}
+
 variable "api_image_url" {
   type        = string
   description = "ECR repository URL for the API image. When set, disables ECR repo creation in the fargate module."
+}
+
+variable "api_memory" {
+  type        = number
+  description = "Memory (in MiB) for the API service container."
+  default     = 1024
 }
 
 variable "api_repository_arn" {
@@ -97,9 +109,21 @@ variable "vpc_id" {
   description = "VPC ID where resources will be created."
 }
 
+variable "web_cpu" {
+  type        = number
+  description = "CPU units for the web service container."
+  default     = 512
+}
+
 variable "web_image_url" {
   type        = string
   description = "ECR repository URL for the web image. When set, disables ECR repo creation in the fargate module."
+}
+
+variable "web_memory" {
+  type        = number
+  description = "Memory (in MiB) for the web service container."
+  default     = 1024
 }
 
 variable "web_repository_arn" {

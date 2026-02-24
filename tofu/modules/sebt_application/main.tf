@@ -30,8 +30,8 @@ module "api" {
   repository_arn    = var.api_repository_arn
   image_tag         = var.image_tag
 
-  cpu    = 512
-  memory = 1024
+  cpu    = var.api_cpu
+  memory = var.api_memory
 
   desired_containers     = var.desired_containers
   enable_execute_command = var.enable_execute_command
@@ -94,8 +94,8 @@ module "web" {
   repository_arn    = var.web_repository_arn
   image_tag         = var.image_tag
 
-  cpu    = 512
-  memory = 1024
+  cpu    = var.web_cpu
+  memory = var.web_memory
 
   desired_containers     = var.desired_containers
   enable_execute_command = var.enable_execute_command
