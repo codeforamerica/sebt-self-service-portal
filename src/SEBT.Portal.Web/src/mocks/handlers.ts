@@ -6,7 +6,11 @@
  */
 import { delay, http, HttpResponse } from 'msw'
 
-import type { RequestOtpRequest, ValidateOtpRequest } from '@/features/auth'
+import type {
+  RequestOtpRequest,
+  SubmitIdProofingRequest,
+  ValidateOtpRequest
+} from '@/features/auth'
 
 // Test email addresses for different scenarios
 export const TEST_EMAILS = {
@@ -173,6 +177,19 @@ export const handlers = [
     await delay(50)
 
     return HttpResponse.json(TEST_FEATURE_FLAGS)
+  }),
+
+  // ID proofing endpoint (stub — backend endpoint TBD)
+  http.post('/api/auth/id-proofing', async ({ request }) => {
+    const body = (await request.json()) as SubmitIdProofingRequest
+
+    await delay(50)
+
+    if (!body.dateOfBirth?.month || !body.dateOfBirth?.day || !body.dateOfBirth?.year) {
+      return HttpResponse.json({ error: 'Date of birth is required' }, { status: 400 })
+    }
+
+    return HttpResponse.json(null, { status: 204 })
   }),
 
   // Household data endpoint

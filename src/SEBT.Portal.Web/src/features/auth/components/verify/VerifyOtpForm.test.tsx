@@ -139,7 +139,7 @@ describe('VerifyOtpForm', () => {
 
       await waitFor(() => {
         expect(sessionStorage.getItem('otp_email')).toBeNull()
-        expect(mockPush).toHaveBeenCalledWith('/dashboard')
+        expect(mockPush).toHaveBeenCalledWith('/login/id-proofing')
       })
     })
 
