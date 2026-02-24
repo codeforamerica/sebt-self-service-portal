@@ -2,11 +2,8 @@
 
 import { useTranslation } from 'react-i18next'
 
-import type { Application, HouseholdData } from '../../api'
-
-interface ApplicationsSectionProps {
-  data: HouseholdData
-}
+import type { Application } from '../../api'
+import { useRequiredHouseholdData } from '../../api'
 
 function getStatusTextClass(status: string): string {
   switch (status) {
@@ -72,8 +69,9 @@ function ApplicationCard({ application }: { application: Application }) {
 }
 
 // Keys map to CSV: "S2 - Portal Dashboard - Section Applications - {Key}"
-export function ApplicationsSection({ data }: ApplicationsSectionProps) {
+export function ApplicationsSection() {
   const { t } = useTranslation('dashboard')
+  const data = useRequiredHouseholdData()
 
   if (data.applications.length === 0) {
     return null
