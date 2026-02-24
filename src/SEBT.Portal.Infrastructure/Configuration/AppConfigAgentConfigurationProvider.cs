@@ -1,7 +1,6 @@
 using System.Text.Json;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.Primitives;
 
 namespace SEBT.Portal.Infrastructure.Configuration;
 
@@ -19,9 +18,9 @@ public sealed class AppConfigAgentConfigurationProvider : ConfigurationProvider,
     private readonly ILogger<AppConfigAgentConfigurationProvider>? _logger;
     private readonly bool _ownsHttpClient;
 
-    private IDisposable? _reloadChangeToken;
-    private CancellationTokenSource? _reloadTokenSource;
+    private Timer? _reloadTimer;
     private int _isLoading; // 0 = not loading, 1 = loading
+    private volatile bool _disposed;
 
     public AppConfigAgentConfigurationProvider(
         HttpClient httpClient,
@@ -38,7 +37,9 @@ public sealed class AppConfigAgentConfigurationProvider : ConfigurationProvider,
 
     public override void Load()
     {
-        // Prevent recursive Load when OnReload() causes ConfigurationRoot to call Load again
+        if (_disposed)
+            return;
+
         if (Interlocked.CompareExchange(ref _isLoading, 1, 0) != 0)
             return;
 
@@ -46,18 +47,11 @@ public sealed class AppConfigAgentConfigurationProvider : ConfigurationProvider,
         {
             LoadAsync().GetAwaiter().GetResult();
 
-            if (_reloadChangeToken is null && _profile.ReloadAfterSeconds.HasValue)
+            if (_profile.ReloadAfterSeconds.HasValue)
             {
                 var delay = TimeSpan.FromSeconds(_profile.ReloadAfterSeconds.Value);
-
-                // Dispose previous token source if it exists
-                _reloadTokenSource?.Dispose();
-                _reloadTokenSource = new CancellationTokenSource(delay);
-
-                _reloadChangeToken = ChangeToken.OnChange(
-                    () => new CancellationChangeToken(_reloadTokenSource.Token),
-                    Load
-                );
+                _reloadTimer?.Dispose();
+                _reloadTimer = new Timer(_ => OnReloadTimerFired(), null, delay, Timeout.InfiniteTimeSpan);
             }
         }
         finally
@@ -66,9 +60,16 @@ public sealed class AppConfigAgentConfigurationProvider : ConfigurationProvider,
         }
     }
 
+    private void OnReloadTimerFired()
+    {
+        if (!_disposed)
+            Load();
+    }
+
     private async Task LoadAsync()
     {
-        if (!await _lock.WaitAsync(LockReleaseTimeout))
+        // ConfigureAwait(false) throughout to avoid deadlock when Load() is called synchronously (e.g. from tests or config build).
+        if (!await _lock.WaitAsync(LockReleaseTimeout).ConfigureAwait(false))
         {
             return;
         }
@@ -78,7 +79,7 @@ public sealed class AppConfigAgentConfigurationProvider : ConfigurationProvider,
             var endpointUrl = _profile.GetEndpointUrl();
             _logger?.LogDebug("Fetching configuration from AppConfig Agent: {EndpointUrl}", endpointUrl);
 
-            using var response = await _httpClient.GetAsync(endpointUrl, HttpCompletionOption.ResponseHeadersRead);
+            using var response = await _httpClient.GetAsync(endpointUrl, HttpCompletionOption.ResponseHeadersRead).ConfigureAwait(false);
 
             if (!response.IsSuccessStatusCode)
             {
@@ -92,7 +93,7 @@ public sealed class AppConfigAgentConfigurationProvider : ConfigurationProvider,
             var contentType = response.Content.Headers.ContentType?.MediaType;
             _logger?.LogDebug("AppConfig Agent returned content type: {ContentType}", contentType);
 
-            await using var stream = await response.Content.ReadAsStreamAsync();
+            await using var stream = await response.Content.ReadAsStreamAsync().ConfigureAwait(false);
 
             // Parse the configuration from the AppConfig Agent response
             var parsedData = ParseConfig(stream, contentType);
@@ -254,8 +255,13 @@ public sealed class AppConfigAgentConfigurationProvider : ConfigurationProvider,
 
     public void Dispose()
     {
-        _reloadChangeToken?.Dispose();
-        _reloadTokenSource?.Dispose();
+        if (_disposed)
+            return;
+
+        _disposed = true;
+
+        _reloadTimer?.Dispose();
+        _reloadTimer = null;
         _lock?.Dispose();
 
         // Dispose HttpClient if we own it

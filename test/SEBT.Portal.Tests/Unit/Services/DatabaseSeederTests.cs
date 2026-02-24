@@ -15,6 +15,7 @@ using UserEntityFactory = SEBT.Portal.Infrastructure.Helpers.UserFactory;
 namespace SEBT.Portal.Tests.Unit.Services;
 
 [Collection("SqlServer")]
+[Trait("Category", "SqlServer")]
 public class DatabaseSeederTests : IClassFixture<SqlServerTestFixture>
 {
     private readonly SqlServerTestFixture _fixture;

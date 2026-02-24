@@ -45,6 +45,7 @@ public class GetHouseholdDataQueryHandler(
         var householdData = await repository.GetHouseholdByIdentifierAsync(
             identifier,
             piiVisibility,
+            userIalLevel,
             cancellationToken);
 
         if (householdData == null)

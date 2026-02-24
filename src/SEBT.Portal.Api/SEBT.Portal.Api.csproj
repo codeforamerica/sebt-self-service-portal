@@ -28,18 +28,40 @@
     </None>
   </ItemGroup>
 
+  <!-- State connector as sibling repo only. Sibling under parent of portal, or CI path. -->
+  <PropertyGroup>
+    <_StateConnectorInterfacesProjectSiblingPath>$([System.IO.Path]::GetFullPath('$(MSBuildThisFileDirectory)../../../sebt-self-service-portal-state-connector/src/SEBT.Portal.StatesPlugins.Interfaces/SEBT.Portal.StatesPlugins.Interfaces.csproj'))</_StateConnectorInterfacesProjectSiblingPath>
+    <_StateConnectorInterfacesProjectCiPath>$([System.IO.Path]::GetFullPath('$(MSBuildThisFileDirectory)../../../state-connector/src/SEBT.Portal.StatesPlugins.Interfaces/SEBT.Portal.StatesPlugins.Interfaces.csproj'))</_StateConnectorInterfacesProjectCiPath>
+    <_StateConnectorInterfacesProjectSibling Condition="Exists('$(_StateConnectorInterfacesProjectSiblingPath)')">$(_StateConnectorInterfacesProjectSiblingPath)</_StateConnectorInterfacesProjectSibling>
+    <_StateConnectorInterfacesProjectCi Condition="Exists('$(_StateConnectorInterfacesProjectCiPath)')">$(_StateConnectorInterfacesProjectCiPath)</_StateConnectorInterfacesProjectCi>
+    <_StateConnectorInterfacesProject Condition="'$(_StateConnectorInterfacesProjectSibling)' != ''">$(_StateConnectorInterfacesProjectSibling)</_StateConnectorInterfacesProject>
+    <_StateConnectorInterfacesProject Condition="'$(_StateConnectorInterfacesProject)' == '' and '$(_StateConnectorInterfacesProjectCi)' != ''">$(_StateConnectorInterfacesProjectCi)</_StateConnectorInterfacesProject>
+  </PropertyGroup>
+  <Choose>
+    <When Condition="'$(_StateConnectorInterfacesProject)' != ''">
+      <ItemGroup>
+        <ProjectReference Include="$(_StateConnectorInterfacesProject)" PrivateAssets="compile" />
+      </ItemGroup>
+    </When>
+    <Otherwise>
+      <ItemGroup>
+        <PackageReference Include="SEBT.Portal.StatesPlugins.Interfaces" Version="0.0.1-*" PrivateAssets="compile" />
+      </ItemGroup>
+    </Otherwise>
+  </Choose>
+
   <ItemGroup>
     <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="10.0.0">
       <PrivateAssets>all</PrivateAssets>
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
     </PackageReference>
-    <PackageReference Include="SEBT.Portal.StatesPlugins.Interfaces" Version="0.0.1-*" />
     <PackageReference Include="Serilog.AspNetCore" Version="8.0.3" />
     <PackageReference Include="Serilog.Sinks.Console" Version="6.0.0" />
     <PackageReference Include="Serilog.Sinks.File" Version="6.0.0" />
     <PackageReference Include="Serilog.Settings.Configuration" Version="8.0.4" />
     <PackageReference Include="Swashbuckle.AspNetCore" Version="6.6.2" />
     <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="10.0.0" />
+    <PackageReference Include="Microsoft.Data.SqlClient" Version="6.1.1" />
   </ItemGroup>
 
   <ItemGroup>
@@ -48,7 +70,7 @@
     <ProjectReference Include="..\SEBT.Portal.Kernel.AspNetCore\SEBT.Portal.Kernel.AspNetCore.csproj" />
     <ProjectReference Include="..\SEBT.Portal.Kernel\SEBT.Portal.Kernel.csproj" />
     <ProjectReference Include="..\SEBT.Portal.UseCases\SEBT.Portal.UseCases.csproj" />
-    <ProjectReference Include="..\SEBT.Portal.Core\SEBT.Portal.Core.csproj" />
+    <ProjectReference Include="..\SEBT.Portal.Core\SEBT.Portal.Core.csproj" Aliases="Core,global" />
   </ItemGroup>
 
   <ItemGroup>

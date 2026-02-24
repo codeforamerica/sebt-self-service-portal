@@ -100,11 +100,28 @@ jobs:
           echo "Build Config: ${{ steps.config.outputs.build_config }}"
       
       
+      - name: Determine state connector ref
+        id: connector-ref
+        run: |
+          # Same-named branch as this run (PR head branch or push branch)
+          BRANCH="${{ github.event_name == 'pull_request' && github.head_ref || github.ref_name }}"
+          # Fallback when that branch does not exist in the state connector repo
+          FALLBACK="${{ github.event_name == 'pull_request' && github.base_ref || 'main' }}"
+          REPO_URL="https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository_owner }}/sebt-self-service-portal-state-connector.git"
+          if git ls-remote --exit-code --heads "$REPO_URL" "refs/heads/${BRANCH}" 1>/dev/null 2>&1; then
+            echo "ref=${BRANCH}" >> "$GITHUB_OUTPUT"
+            echo "Using state connector branch: ${BRANCH}"
+          else
+            echo "ref=${FALLBACK}" >> "$GITHUB_OUTPUT"
+            echo "Branch '${BRANCH}' not in state connector, using: ${FALLBACK}"
+          fi
+
       - name: Checkout interfaces repo
         uses: actions/checkout@v4
         with:
           repository: codeforamerica/sebt-self-service-portal-state-connector
-          path: state-connector # /home/runner/work/sebt-self-service-portal/sebt-self-service-portal/state-connector
+          ref: ${{ steps.connector-ref.outputs.ref }}
+          path: state-connector
       
       # Docker Build Path
       - name: Build Backend (Docker)
@@ -118,10 +135,12 @@ jobs:
 
       - name: Test Backend (Docker)
         if: steps.config.outputs.use_docker == 'true' && steps.config.outputs.skip_tests != 'true'
+        timeout-minutes: 5
         run: |
           docker run --rm \
             -v ${{ github.workspace }}:/workspace \
             -w /workspace \
+            -e SKIP_SQLSERVER_TESTS=1 \
             mcr.microsoft.com/dotnet/sdk:${{ steps.config.outputs.dotnet_version }} \
             bash -c "./.github/workflows/scripts/test-backend.sh --skip-build --configuration ${{ steps.config.outputs.build_config }}"
 
@@ -169,6 +188,7 @@ jobs:
 
       - name: Test Backend (Native)
         if: steps.config.outputs.use_docker != 'true' && steps.config.outputs.skip_tests != 'true'
+        timeout-minutes: 5
         run: ./.github/workflows/scripts/test-backend.sh --skip-build --configuration ${{ steps.config.outputs.build_config }}
 
       - name: Generate Backend Dependencies CSV

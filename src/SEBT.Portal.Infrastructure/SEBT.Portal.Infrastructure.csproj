@@ -1,12 +1,22 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
-    <PropertyGroup>
-        <TargetFramework>net10.0</TargetFramework>
-        <ImplicitUsings>enable</ImplicitUsings>
-        <Nullable>enable</Nullable>
-    </PropertyGroup>
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
 
-    <ItemGroup>
+  <ItemGroup>
+    <InternalsVisibleTo Include="SEBT.Portal.Tests" />
+  </ItemGroup>
+
+  <PropertyGroup>
+    <HomeDir Condition="'$(OS)' == 'Windows_NT'">$(USERPROFILE)</HomeDir>
+    <HomeDir Condition="'$(HomeDir)' == ''">$(HOME)</HomeDir>
+    <RestoreAdditionalProjectSources>$(HomeDir)/nuget-store</RestoreAdditionalProjectSources>
+  </PropertyGroup>
+
+  <ItemGroup>
       <ProjectReference Include="../SEBT.Portal.Kernel/SEBT.Portal.Kernel.csproj" />
       <ProjectReference Include="..\SEBT.Portal.Core\SEBT.Portal.Core.csproj" />
       <ProjectReference Include="..\SEBT.Portal.Infrastructure.Seeding\SEBT.Portal.Infrastructure.Seeding.csproj" />
@@ -29,6 +39,31 @@
       <PackageReference Include="Microsoft.FeatureManagement" Version="3.3.0" />
       <PackageReference Include="System.IdentityModel.Tokens.Jwt" Version="8.2.1" />
     </ItemGroup>
+
+  <!-- State connector as sibling repo only. Sibling under parent of portal, or CI path. -->
+  <PropertyGroup>
+    <_StateConnectorInterfacesProjectSiblingPath>$([System.IO.Path]::GetFullPath('$(MSBuildThisFileDirectory)../../../sebt-self-service-portal-state-connector/src/SEBT.Portal.StatesPlugins.Interfaces/SEBT.Portal.StatesPlugins.Interfaces.csproj'))</_StateConnectorInterfacesProjectSiblingPath>
+    <_StateConnectorInterfacesProjectCiPath>$([System.IO.Path]::GetFullPath('$(MSBuildThisFileDirectory)../../../state-connector/src/SEBT.Portal.StatesPlugins.Interfaces/SEBT.Portal.StatesPlugins.Interfaces.csproj'))</_StateConnectorInterfacesProjectCiPath>
+    <_StateConnectorInterfacesProjectSibling Condition="Exists('$(_StateConnectorInterfacesProjectSiblingPath)')">$(_StateConnectorInterfacesProjectSiblingPath)</_StateConnectorInterfacesProjectSibling>
+    <_StateConnectorInterfacesProjectCi Condition="Exists('$(_StateConnectorInterfacesProjectCiPath)')">$(_StateConnectorInterfacesProjectCiPath)</_StateConnectorInterfacesProjectCi>
+    <_StateConnectorInterfacesProject Condition="'$(_StateConnectorInterfacesProjectSibling)' != ''">$(_StateConnectorInterfacesProjectSibling)</_StateConnectorInterfacesProject>
+    <_StateConnectorInterfacesProject Condition="'$(_StateConnectorInterfacesProject)' == '' and '$(_StateConnectorInterfacesProjectCi)' != ''">$(_StateConnectorInterfacesProjectCi)</_StateConnectorInterfacesProject>
+  </PropertyGroup>
+  <Choose>
+    <When Condition="'$(_StateConnectorInterfacesProject)' != ''">
+      <ItemGroup>
+        <ProjectReference Include="$(_StateConnectorInterfacesProject)">
+          <PrivateAssets>all</PrivateAssets>
+          <IncludeAssets>compile; runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+        </ProjectReference>
+      </ItemGroup>
+    </When>
+    <Otherwise>
+      <ItemGroup>
+        <PackageReference Include="SEBT.Portal.StatesPlugins.Interfaces" Version="0.0.1-*" PrivateAssets="compile" />
+      </ItemGroup>
+    </Otherwise>
+  </Choose>
 
     <ItemGroup>
       <EmbeddedResource Include="Templates\Email\OtpEmail.html" />
