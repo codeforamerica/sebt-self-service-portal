@@ -19,152 +19,22 @@
  * 1. SSR requires synchronous access to translations
  * 2. Total locale size (~50-60KB compressed per state) is acceptable
  * 3. Build-time state isolation ensures only one state's translations are bundled
+ *
+ * Import Management:
+ * All locale imports are auto-generated in generated-locale-resources.ts
+ * by content/scripts/generate-locales.js. Adding a new namespace JSON file
+ * only requires running `pnpm copy:generate` — no manual import edits needed.
  */
 
 import i18n from 'i18next'
 import { initReactI18next } from 'react-i18next'
 
-// Import locale files statically for SSR support
-// English - DC
-import enDCCommon from '@/content/locales/en/dc/common.json'
-import enDCConfirmInfo from '@/content/locales/en/dc/confirmInfo.json'
-import enDCDashboard from '@/content/locales/en/dc/dashboard.json'
-import enDCDisclaimer from '@/content/locales/en/dc/disclaimer.json'
-import enDCEditContactPreferences from '@/content/locales/en/dc/editContactPreferences.json'
-import enDCEditMailingAddress from '@/content/locales/en/dc/editMailingAddress.json'
-import enDCIdProofing from '@/content/locales/en/dc/idProofing.json'
-import enDCLanding from '@/content/locales/en/dc/landing.json'
-import enDCLogin from '@/content/locales/en/dc/login.json'
-import enDCOffBoarding from '@/content/locales/en/dc/offBoarding.json'
-import enDCOptIn from '@/content/locales/en/dc/optIn.json'
-import enDCOptionalId from '@/content/locales/en/dc/optionalId.json'
-import enDCPersonalInfo from '@/content/locales/en/dc/personalInfo.json'
-import enDCProto from '@/content/locales/en/dc/proto.json'
-import enDCResult from '@/content/locales/en/dc/result.json'
-import enDCValidation from '@/content/locales/en/dc/validation.json'
-
-// English - CO
-import enCOCommon from '@/content/locales/en/co/common.json'
-import enCOConfirmInfo from '@/content/locales/en/co/confirmInfo.json'
-import enCODashboard from '@/content/locales/en/co/dashboard.json'
-import enCODisclaimer from '@/content/locales/en/co/disclaimer.json'
-import enCOEditContactPreferences from '@/content/locales/en/co/editContactPreferences.json'
-import enCOEditMailingAddress from '@/content/locales/en/co/editMailingAddress.json'
-import enCOLanding from '@/content/locales/en/co/landing.json'
-import enCOLogin from '@/content/locales/en/co/login.json'
-import enCOOptionalId from '@/content/locales/en/co/optionalId.json'
-import enCOPersonalInfo from '@/content/locales/en/co/personalInfo.json'
-import enCOProto from '@/content/locales/en/co/proto.json'
-import enCOResult from '@/content/locales/en/co/result.json'
-
-// Spanish - DC
-import esDCCommon from '@/content/locales/es/dc/common.json'
-import esDCConfirmInfo from '@/content/locales/es/dc/confirmInfo.json'
-import esDCDashboard from '@/content/locales/es/dc/dashboard.json'
-import esDCDisclaimer from '@/content/locales/es/dc/disclaimer.json'
-import esDCEditContactPreferences from '@/content/locales/es/dc/editContactPreferences.json'
-import esDCEditMailingAddress from '@/content/locales/es/dc/editMailingAddress.json'
-import esDCIdProofing from '@/content/locales/es/dc/idProofing.json'
-import esDCLanding from '@/content/locales/es/dc/landing.json'
-import esDCLogin from '@/content/locales/es/dc/login.json'
-import esDCOffBoarding from '@/content/locales/es/dc/offBoarding.json'
-import esDCOptIn from '@/content/locales/es/dc/optIn.json'
-import esDCOptionalId from '@/content/locales/es/dc/optionalId.json'
-import esDCPersonalInfo from '@/content/locales/es/dc/personalInfo.json'
-import esDCProto from '@/content/locales/es/dc/proto.json'
-import esDCResult from '@/content/locales/es/dc/result.json'
-import esDCValidation from '@/content/locales/es/dc/validation.json'
-
-// Spanish - CO
-import esCOCommon from '@/content/locales/es/co/common.json'
-import esCOConfirmInfo from '@/content/locales/es/co/confirmInfo.json'
-import esCODashboard from '@/content/locales/es/co/dashboard.json'
-import esCODisclaimer from '@/content/locales/es/co/disclaimer.json'
-import esCOEditContactPreferences from '@/content/locales/es/co/editContactPreferences.json'
-import esCOEditMailingAddress from '@/content/locales/es/co/editMailingAddress.json'
-import esCOLanding from '@/content/locales/es/co/landing.json'
-import esCOLogin from '@/content/locales/es/co/login.json'
-import esCOOptionalId from '@/content/locales/es/co/optionalId.json'
-import esCOPersonalInfo from '@/content/locales/es/co/personalInfo.json'
-import esCOProto from '@/content/locales/es/co/proto.json'
-import esCOResult from '@/content/locales/es/co/result.json'
+import { namespaces, stateResources } from './generated-locale-resources'
 
 // Get state from environment
 const state = (process.env.NEXT_PUBLIC_STATE || process.env.STATE || 'dc').toLowerCase() as
   | 'dc'
   | 'co'
-
-// Map state to resources
-const stateResources = {
-  dc: {
-    en: {
-      common: enDCCommon,
-      confirmInfo: enDCConfirmInfo,
-      dashboard: enDCDashboard,
-      disclaimer: enDCDisclaimer,
-      editContactPreferences: enDCEditContactPreferences,
-      editMailingAddress: enDCEditMailingAddress,
-      idProofing: enDCIdProofing,
-      landing: enDCLanding,
-      login: enDCLogin,
-      offBoarding: enDCOffBoarding,
-      optIn: enDCOptIn,
-      optionalId: enDCOptionalId,
-      personalInfo: enDCPersonalInfo,
-      proto: enDCProto,
-      result: enDCResult,
-      validation: enDCValidation
-    },
-    es: {
-      common: esDCCommon,
-      confirmInfo: esDCConfirmInfo,
-      dashboard: esDCDashboard,
-      disclaimer: esDCDisclaimer,
-      editContactPreferences: esDCEditContactPreferences,
-      editMailingAddress: esDCEditMailingAddress,
-      idProofing: esDCIdProofing,
-      landing: esDCLanding,
-      login: esDCLogin,
-      offBoarding: esDCOffBoarding,
-      optIn: esDCOptIn,
-      optionalId: esDCOptionalId,
-      personalInfo: esDCPersonalInfo,
-      proto: esDCProto,
-      result: esDCResult,
-      validation: esDCValidation
-    }
-  },
-  co: {
-    en: {
-      common: enCOCommon,
-      confirmInfo: enCOConfirmInfo,
-      dashboard: enCODashboard,
-      disclaimer: enCODisclaimer,
-      editContactPreferences: enCOEditContactPreferences,
-      editMailingAddress: enCOEditMailingAddress,
-      landing: enCOLanding,
-      login: enCOLogin,
-      optionalId: enCOOptionalId,
-      personalInfo: enCOPersonalInfo,
-      proto: enCOProto,
-      result: enCOResult
-    },
-    es: {
-      common: esCOCommon,
-      confirmInfo: esCOConfirmInfo,
-      dashboard: esCODashboard,
-      disclaimer: esCODisclaimer,
-      editContactPreferences: esCOEditContactPreferences,
-      editMailingAddress: esCOEditMailingAddress,
-      landing: esCOLanding,
-      login: esCOLogin,
-      optionalId: esCOOptionalId,
-      personalInfo: esCOPersonalInfo,
-      proto: esCOProto,
-      result: esCOResult
-    }
-  }
-}
 
 // Get resources for current state — bracket notation scales to any number of states
 // eslint-disable-next-line security/detect-object-injection -- state is validated at build time, fallback guards against misconfiguration
@@ -187,24 +57,7 @@ i18n.use(initReactI18next).init({
   lng: 'en',
   fallbackLng: 'en',
   defaultNS: 'common',
-  ns: [
-    'common',
-    'confirmInfo',
-    'dashboard',
-    'disclaimer',
-    'editContactPreferences',
-    'editMailingAddress',
-    'idProofing',
-    'landing',
-    'login',
-    'offBoarding',
-    'optIn',
-    'optionalId',
-    'personalInfo',
-    'proto',
-    'result',
-    'validation'
-  ],
+  ns: [...namespaces],
 
   interpolation: {
     escapeValue: false, // React already escapes values
