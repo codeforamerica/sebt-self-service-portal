@@ -7,11 +7,7 @@ export type { HeaderProps } from './types'
 export { HelpSection } from './HelpSection'
 export type { HelpSectionProps } from './types'
 
-export {
-  DesktopLanguageSelector,
-  LanguageSelector,
-  MobileLanguageSelector
-} from './LanguageSelector/index'
+export { LanguageSelector } from './LanguageSelector/index'
 export type { LanguageSelectorProps } from './types'
 
 export { SkipNav } from './SkipNav'
