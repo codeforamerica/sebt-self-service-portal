@@ -11,6 +11,7 @@ using SEBT.Portal.Infrastructure.Configuration;
 using SEBT.Portal.Infrastructure.Data;
 using SEBT.Portal.Infrastructure.Repositories;
 using SEBT.Portal.Infrastructure.Services;
+using ISummerEbtCaseService = SEBT.Portal.StatesPlugins.Interfaces.ISummerEbtCaseService;
 
 namespace SEBT.Portal.Infrastructure;
 
@@ -49,8 +50,28 @@ public static class Dependencies
         // For deterministic time in seeding/mock data
         services.AddSingleton(TimeProvider.System);
 
-        // Household data is stored in-memory (will be replaced with distributed store later)
-        services.AddTransient<IHouseholdRepository, MockHouseholdRepository>();
+        services.AddTransient<IHouseholdRepository>(sp =>
+        {
+            var config = sp.GetRequiredService<IConfiguration>();
+            var useMockHouseholdData = config.GetValue<bool>("UseMockHouseholdData", false);
+
+            if (useMockHouseholdData)
+            {
+                return sp.GetRequiredService<MockHouseholdRepository>();
+            }
+
+            var summerEbtCaseService = sp.GetService<ISummerEbtCaseService>();
+            if (summerEbtCaseService != null)
+            {
+                return sp.GetRequiredService<HouseholdRepository>();
+            }
+
+            throw new InvalidOperationException(
+                "UseMockHouseholdData is false but no household plugin (ISummerEbtCaseService) is loaded. " +
+                "Either set UseMockHouseholdData to true in configuration or ensure a state plugin is loaded (e.g. PluginAssemblyPaths and the plugin DLL).");
+        });
+        services.AddTransient<MockHouseholdRepository>();
+        services.AddTransient<HouseholdRepository>();
 
         services.AddMemoryCache();
 

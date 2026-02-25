@@ -11,6 +11,7 @@ using SEBT.Portal.Infrastructure.Services;
 namespace SEBT.Portal.Tests.Unit.Repositories;
 
 [Collection("SqlServer")]
+[Trait("Category", "SqlServer")]
 public class DatabaseUserRepositoryTests : IClassFixture<SqlServerTestFixture>
 {
     private readonly SqlServerTestFixture _fixture;
