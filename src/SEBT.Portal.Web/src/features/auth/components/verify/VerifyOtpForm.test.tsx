@@ -143,6 +143,62 @@ describe('VerifyOtpForm', () => {
       })
     })
 
+    it('should navigate to /dashboard when requiresIdProofing is false', async () => {
+      const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime })
+      sessionStorage.setItem('otp_email', TEST_EMAILS.idProofingNotRequired)
+      renderWithProviders(
+        <VerifyOtpForm
+          email={TEST_EMAILS.idProofingNotRequired}
+          contactLink={TEST_CONTACT_LINK}
+        />
+      )
+
+      await waitFor(() => {
+        expect(
+          screen.getByRole('textbox', { name: /enter.*confirmation code/i })
+        ).toBeInTheDocument()
+      })
+
+      const otpInput = screen.getByRole('textbox', { name: /enter.*confirmation code/i })
+      const confirmButton = screen.getByRole('button', { name: /confirm/i })
+
+      await user.type(otpInput, TEST_OTP.valid)
+      await user.click(confirmButton)
+
+      await waitFor(() => {
+        expect(sessionStorage.getItem('otp_email')).toBeNull()
+        expect(mockPush).toHaveBeenCalledWith('/dashboard')
+      })
+    })
+
+    it('should navigate to /dashboard when requiresIdProofing is absent from response', async () => {
+      const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime })
+      sessionStorage.setItem('otp_email', TEST_EMAILS.idProofingAbsent)
+      renderWithProviders(
+        <VerifyOtpForm
+          email={TEST_EMAILS.idProofingAbsent}
+          contactLink={TEST_CONTACT_LINK}
+        />
+      )
+
+      await waitFor(() => {
+        expect(
+          screen.getByRole('textbox', { name: /enter.*confirmation code/i })
+        ).toBeInTheDocument()
+      })
+
+      const otpInput = screen.getByRole('textbox', { name: /enter.*confirmation code/i })
+      const confirmButton = screen.getByRole('button', { name: /confirm/i })
+
+      await user.type(otpInput, TEST_OTP.valid)
+      await user.click(confirmButton)
+
+      await waitFor(() => {
+        expect(sessionStorage.getItem('otp_email')).toBeNull()
+        expect(mockPush).toHaveBeenCalledWith('/dashboard')
+      })
+    })
+
     it('should show loading state during submission', async () => {
       const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime })
       renderWithProviders(

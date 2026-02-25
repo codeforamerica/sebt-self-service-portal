@@ -18,7 +18,11 @@ export const TEST_EMAILS = {
   rateLimit: 'ratelimit@example.com',
   notFound: 'notfound@example.com',
   serverError: 'error@example.com',
-  badRequest: 'badrequest@example.com'
+  badRequest: 'badrequest@example.com',
+  // OTP validation returns requiresIdProofing: false
+  idProofingNotRequired: 'noidproofing@example.com',
+  // OTP validation returns token only (no requiresIdProofing field)
+  idProofingAbsent: 'noflag@example.com'
 } as const
 
 // Test OTP codes
@@ -149,7 +153,13 @@ export const handlers = [
       return HttpResponse.json({ error: 'Invalid OTP. Please try again.' }, { status: 401 })
     }
 
-    // Success - return mock token
+    // Success - return mock token, with requiresIdProofing routed by email address
+    if (body.email === TEST_EMAILS.idProofingAbsent) {
+      return HttpResponse.json({ token: 'mock-jwt-token-for-testing' })
+    }
+    if (body.email === TEST_EMAILS.idProofingNotRequired) {
+      return HttpResponse.json({ token: 'mock-jwt-token-for-testing', requiresIdProofing: false })
+    }
     return HttpResponse.json({
       token: 'mock-jwt-token-for-testing',
       requiresIdProofing: true
