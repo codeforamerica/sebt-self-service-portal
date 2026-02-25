@@ -165,7 +165,7 @@ describe('IdProofingForm', () => {
 
       await user.click(screen.getByRole('radio', { name: LABEL_SSN }))
       const ssnInput = await screen.findByRole('textbox', { name: INPUT_LABEL_SSN })
-      await user.type(ssnInput, '123456789')
+      await user.type(ssnInput, '999999999')
 
       await user.click(screen.getByRole('radio', { name: LABEL_ITIN }))
       const itinInput = await screen.findByRole('textbox', { name: INPUT_LABEL_ITIN })
@@ -300,7 +300,7 @@ describe('IdProofingForm', () => {
       await user.type(screen.getByRole('textbox', { name: INPUT_LABEL_YEAR }), '1990')
 
       await user.click(screen.getByRole('radio', { name: LABEL_SSN }))
-      await user.type(await screen.findByRole('textbox', { name: INPUT_LABEL_SSN }), '123456789')
+      await user.type(await screen.findByRole('textbox', { name: INPUT_LABEL_SSN }), '999999999')
 
       await user.click(screen.getByRole('button', { name: /continue/i }))
 
@@ -324,7 +324,7 @@ describe('IdProofingForm', () => {
       // Using 400 (not 500) because the mutation retries 5xx errors with exponential backoff,
       // which would cause the test to time out. The mutation's retry logic short-circuits on 4xx.
       server.use(
-        http.post('/api/auth/id-proofing', () => {
+        http.post('/api/id-proofing', () => {
           return HttpResponse.json({ error: 'Test API error' }, { status: 400 })
         })
       )

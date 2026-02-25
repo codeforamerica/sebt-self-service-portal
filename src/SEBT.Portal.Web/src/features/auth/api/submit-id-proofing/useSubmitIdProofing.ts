@@ -4,8 +4,12 @@ import { ApiError, apiFetch } from '@/api'
 
 import type { SubmitIdProofingRequest } from './schema'
 
-// TODO: Replace with actual endpoint path once confirmed with backend team
-const ID_PROOFING_ENDPOINT = '/auth/id-proofing'
+// TODO: Replace with actual endpoint path once confirmed with backend team.
+// The confirmed path should NOT start with '/auth/' — apiFetch auto-clears the
+// auth token and redirects to /login on 401 for any '/auth/' endpoint (see
+// client.ts). For id-proofing, a 401 means "not authorized for this resource,"
+// not "session expired," so it must live outside that prefix.
+const ID_PROOFING_ENDPOINT = '/id-proofing'
 
 async function submitIdProofing(data: SubmitIdProofingRequest): Promise<void> {
   return apiFetch<void>(ID_PROOFING_ENDPOINT, {

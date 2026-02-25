@@ -31,6 +31,7 @@ interface IdProofingFormProps {
 }
 
 // Month options for the DOB select field
+// TODO: Localize month names via i18n or Intl.DateTimeFormat once translation keys are available
 const MONTHS = [
   { value: '01', label: 'January' },
   { value: '02', label: 'February' },
@@ -68,27 +69,27 @@ export function IdProofingForm({ idOptions, contactLink }: IdProofingFormProps) 
   const selectedOption = idOptions.find((opt) => opt.value === selectedIdType)
   const showIdValueInput = selectedIdType !== null && selectedIdType !== NONE_VALUE
 
+  // TODO: Use t('validation.required') once shared validation namespace is set up
+  const REQUIRED_FIELD_ERROR = "We're sorry. Some required questions aren't answered."
+
   function validateFields(): boolean {
     const newDobErrors: { month?: string; day?: string; year?: string } = {}
 
-    // TODO: Use t('validation.required') once shared validation namespace is set up
-    if (!dobMonth) newDobErrors.month = "We're sorry. Some required questions aren't answered."
-    if (!dobDay) newDobErrors.day = "We're sorry. Some required questions aren't answered."
-    if (!dobYear) newDobErrors.year = "We're sorry. Some required questions aren't answered."
+    if (!dobMonth) newDobErrors.month = REQUIRED_FIELD_ERROR
+    if (!dobDay) newDobErrors.day = REQUIRED_FIELD_ERROR
+    if (!dobYear) newDobErrors.year = REQUIRED_FIELD_ERROR
 
     setDobErrors(newDobErrors)
 
     let idTypeErr: string | null = null
     if (selectedIdType === null) {
-      // TODO: Use t('validation.required') once shared validation namespace is set up
-      idTypeErr = "We're sorry. Some required questions aren't answered."
+      idTypeErr = REQUIRED_FIELD_ERROR
     }
     setIdTypeError(idTypeErr)
 
     let idError: string | null = null
     if (showIdValueInput && !idValue.trim()) {
-      // TODO: Use t('validation.required') once shared validation namespace is set up
-      idError = "We're sorry. Some required questions aren't answered."
+      idError = REQUIRED_FIELD_ERROR
     }
     setIdValueError(idError)
 
@@ -169,6 +170,7 @@ export function IdProofingForm({ idOptions, contactLink }: IdProofingFormProps) 
                 className={`usa-select${dobErrors.month ? ' usa-input--error' : ''}`}
                 value={dobMonth}
                 onChange={(e) => setDobMonth(e.target.value)}
+                autoComplete="bday-month"
                 aria-required="true"
                 aria-invalid={!!dobErrors.month}
               >
@@ -198,6 +200,7 @@ export function IdProofingForm({ idOptions, contactLink }: IdProofingFormProps) 
               maxLength={2}
               value={dobDay}
               onChange={(e) => setDobDay(e.target.value)}
+              autoComplete="bday-day"
               isRequired
               {...(dobErrors.day ? { error: dobErrors.day } : {})}
             />
@@ -216,6 +219,7 @@ export function IdProofingForm({ idOptions, contactLink }: IdProofingFormProps) 
               maxLength={4}
               value={dobYear}
               onChange={(e) => setDobYear(e.target.value)}
+              autoComplete="bday-year"
               isRequired
               {...(dobErrors.year ? { error: dobErrors.year } : {})}
             />
@@ -225,7 +229,10 @@ export function IdProofingForm({ idOptions, contactLink }: IdProofingFormProps) 
 
       {/* ID type selection */}
       <fieldset className="usa-fieldset margin-top-3">
-        <legend className="usa-legend">{t('labelId')}</legend>
+        <legend className="usa-legend">
+          {t('labelId')}
+          <span className="text-secondary-dark"> *</span>
+        </legend>
 
         {idTypeError && (
           <span
@@ -277,6 +284,7 @@ export function IdProofingForm({ idOptions, contactLink }: IdProofingFormProps) 
             name="idValue"
             value={idValue}
             onChange={(e) => setIdValue(e.target.value)}
+            autoComplete="off"
             isRequired
             {...(idValueError ? { error: idValueError } : {})}
           />

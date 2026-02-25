@@ -191,7 +191,7 @@ export const handlers = [
   }),
 
   // ID proofing endpoint (stub — backend endpoint TBD)
-  http.post('/api/auth/id-proofing', async ({ request }) => {
+  http.post('/api/id-proofing', async ({ request }) => {
     const body = (await request.json()) as SubmitIdProofingRequest
 
     await delay(50)

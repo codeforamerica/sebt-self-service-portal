@@ -3,7 +3,10 @@ import { getStateLinks } from '@/lib/links'
 import { getState } from '@/lib/state'
 import { getTranslations } from '@/lib/translations'
 
-// Standard DC id-proofing options list.
+// DC-only: CO uses external auth and never reaches this route.
+// If a future state adopts OTP auth with id-proofing, add a state-based options
+// map or guard here.
+//
 // The full set shown here is for non-co-loaded users. Once the backend confirms
 // which options are available for co-loaded users (via JWT claim), this list can
 // be made dynamic at the page level.
