@@ -4,7 +4,7 @@
 module "api" {
   source = "github.com/codeforamerica/tofu-modules-aws-fargate-service?ref=1.10.0"
 
-  project       = "sebt-portal"
+  project       = "${var.project}-${var.state}"
   project_short = "sebt"
   environment   = var.environment
   service       = "api"
@@ -66,8 +66,7 @@ module "api" {
 # API service internally through the VPC.                                                                                                         
 module "web" {
   source = "github.com/codeforamerica/tofu-modules-aws-fargate-service?ref=1.10.0"
-
-  project       = "sebt-portal"
+  project       = "${var.project}-${var.state}"
   project_short = "sebt"
   environment   = var.environment
   service       = "web"
@@ -114,7 +113,7 @@ module "web" {
 module "secrets" {
   source = "github.com/codeforamerica/tofu-modules-aws-secrets?ref=2.0.0"
 
-  project     = "sebt-portal"
+  project     = "${var.project}-${var.state}"
   environment = var.environment
   service     = "api"
 
@@ -134,7 +133,7 @@ module "secrets" {
 module "database" {
   source = "../sebt_database"
 
-  project         = "sebt-portal"
+  project         = "${var.project}-${var.state}"
   project_short   = "sebt"
   environment     = var.environment
   vpc_id          = var.vpc_id
@@ -151,7 +150,7 @@ module "database" {
 module "ses" {
   source = "../sebt_ses"
 
-  project        = "sebt-portal"
+  project        = "${var.project}-${var.state}"
   environment    = var.environment
   domain         = var.domain
   hosted_zone_id = var.hosted_zone_id
@@ -159,4 +158,3 @@ module "ses" {
   sender_email       = var.sender_email
   allowed_recipients = var.ses_allowed_recipients
 }
-

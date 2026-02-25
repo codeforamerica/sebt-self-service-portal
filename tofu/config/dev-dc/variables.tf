@@ -48,6 +48,12 @@ variable "project" {
   default     = "sebt-portal"
 }
 
+variable "state" {
+  type        = string
+  description = "State abbreviation (e.g. co, dc)."
+  default     = "dc"
+}
+
 variable "vpc_cidr" {
   type        = string
   description = "IPv4 CIDR block for the VPC."

@@ -7,7 +7,7 @@ module "backend" {
 
 # IAM user for GitHub Actions CI/CD.
 resource "aws_iam_user" "github_actions" {
-  name = "${var.project}-${var.environment}-github-actions"
+  name = "${var.project}-${var.state}-${var.environment}-github-actions"
 }
 
 resource "aws_iam_user_policy_attachment" "github_actions" {
@@ -21,7 +21,7 @@ resource "aws_iam_access_key" "github_actions" {
 
 # ECR repositories for container images.
 resource "aws_ecr_repository" "api" {
-  name                 = "${var.project}-${var.environment}-api"
+  name                 = "${var.project}-${var.state}-${var.environment}-api"
   image_tag_mutability = "MUTABLE"
 
   image_scanning_configuration {
@@ -30,7 +30,7 @@ resource "aws_ecr_repository" "api" {
 }
 
 resource "aws_ecr_repository" "web" {
-  name                 = "${var.project}-${var.environment}-web"
+  name                 = "${var.project}-${var.state}-${var.environment}-web"
   image_tag_mutability = "MUTABLE"
 
   image_scanning_configuration {

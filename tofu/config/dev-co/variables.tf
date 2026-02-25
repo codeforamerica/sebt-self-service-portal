@@ -45,7 +45,13 @@ variable "sender_email" {
 variable "project" {
   type        = string
   description = "Project name used for resource naming."
-  default     = "sebt-portal-co"
+  default     = "sebt-portal"
+}
+
+variable "state" {
+  type        = string
+  description = "State abbreviation (e.g. co, dc)."
+  default     = "co"
 }
 
 variable "vpc_cidr" {

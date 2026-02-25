@@ -5,7 +5,7 @@ provider "aws" {
     tags = {
       project     = var.project
       environment = var.environment
-      state       = "co"
+      state       = var.state
       tofu        = "true"
     }
   }

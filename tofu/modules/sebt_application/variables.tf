@@ -77,6 +77,12 @@ variable "private_subnets" {
   description = "List of private subnet IDs."
 }
 
+variable "project" {
+  type        = string
+  description = "Base project name used for resource naming."
+  default     = "sebt-portal"
+}
+
 variable "public_subnets" {
   type        = list(string)
   description = "List of public subnet IDs."

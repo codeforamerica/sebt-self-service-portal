@@ -11,7 +11,7 @@ terraform {
 module "logging" {
   source = "github.com/codeforamerica/tofu-modules-aws-logging?ref=2.1.0"
 
-  project     = var.project
+  project     = "${var.project}-${var.state}"
   environment = var.environment
 
   log_groups_to_datadog = true
@@ -22,7 +22,7 @@ module "logging" {
 module "vpc" {
   source = "github.com/codeforamerica/tofu-modules-aws-vpc?ref=1.1.2"
 
-  project            = var.project
+  project            = "${var.project}-${var.state}"
   environment        = var.environment
   single_nat_gateway = true
   logging_key_id     = module.logging.kms_key_arn
@@ -34,11 +34,11 @@ module "vpc" {
 
 # Look up ECR repositories created by bootstrap.
 data "aws_ecr_repository" "api" {
-  name = "${var.project}-${var.environment}-api"
+  name = "${var.project}-${var.state}-${var.environment}-api"
 }
 
 data "aws_ecr_repository" "web" {
-  name = "${var.project}-${var.environment}-web"
+  name = "${var.project}-${var.state}-${var.environment}-web"
 }
 
 # Look up the hosted zone for DNS records.
@@ -59,10 +59,11 @@ module "app" {
   jwt_secret_key               = var.jwt_secret_key
   logging_key_id               = module.logging.kms_key_arn
   private_subnets              = module.vpc.private_subnets
+  project                      = var.project
   public_subnets               = module.vpc.public_subnets
   sender_email                 = var.sender_email
   skip_final_snapshot          = true
-  state                        = "CO"
+  state                        = upper(var.state)
   vpc_id                       = module.vpc.vpc_id
 
   api_image_url      = data.aws_ecr_repository.api.repository_url
