@@ -4,10 +4,7 @@ import Link from 'next/link'
 import { useTranslation } from 'react-i18next'
 
 import type { Address, HouseholdData } from '../../api'
-
-interface HouseholdSummaryProps {
-  data: HouseholdData
-}
+import { useRequiredHouseholdData } from '../../api'
 
 function formatAddress(address: Address): string {
   const parts = [
@@ -55,8 +52,9 @@ function getStatusTextClass(variant: string): string {
 }
 
 // Keys map to CSV: "S2 - Portal Dashboard - Profile Table - {Key}"
-export function HouseholdSummary({ data }: HouseholdSummaryProps) {
+export function HouseholdSummary() {
   const { t } = useTranslation('dashboard')
+  const data = useRequiredHouseholdData()
   const status = getOverallStatus(data)
 
   return (

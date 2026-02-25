@@ -37,7 +37,7 @@ const mockApplication: Application = {
   childrenOnApplication: 1
 }
 
-const mockData: HouseholdData = {
+const defaultMockData: HouseholdData = {
   email: 'test@example.com',
   phone: '(303) 555-0100',
   applications: [mockApplication],
@@ -49,27 +49,34 @@ const mockData: HouseholdData = {
   }
 }
 
+let mockReturnData: HouseholdData
+
+vi.mock('../../api', () => ({
+  useRequiredHouseholdData: () => mockReturnData
+}))
+
 describe('UserProfileCard', () => {
   beforeEach(() => {
     mockPush.mockClear()
     mockLogout.mockClear()
+    mockReturnData = defaultMockData
   })
 
   it('renders user initials in avatar', () => {
-    render(<UserProfileCard data={mockData} />)
+    render(<UserProfileCard />)
 
     expect(screen.getByText('MM')).toBeInTheDocument()
   })
 
   it('renders full name with middle initial', () => {
-    render(<UserProfileCard data={mockData} />)
+    render(<UserProfileCard />)
 
     expect(screen.getByText('Maria L. Martinez')).toBeInTheDocument()
   })
 
   it('renders full name without middle initial when not provided', () => {
-    const dataWithoutMiddle: HouseholdData = {
-      ...mockData,
+    mockReturnData = {
+      ...defaultMockData,
       userProfile: {
         firstName: 'Maria',
         middleName: null,
@@ -77,13 +84,13 @@ describe('UserProfileCard', () => {
       }
     }
 
-    render(<UserProfileCard data={dataWithoutMiddle} />)
+    render(<UserProfileCard />)
 
     expect(screen.getByText('Maria Martinez')).toBeInTheDocument()
   })
 
   it('renders logout button', () => {
-    render(<UserProfileCard data={mockData} />)
+    render(<UserProfileCard />)
 
     const logoutButton = screen.getByRole('button')
     expect(logoutButton).toBeInTheDocument()
@@ -91,7 +98,7 @@ describe('UserProfileCard', () => {
 
   it('calls logout and redirects to /login when logout button is clicked', async () => {
     const user = userEvent.setup()
-    render(<UserProfileCard data={mockData} />)
+    render(<UserProfileCard />)
 
     const logoutButton = screen.getByRole('button')
     await user.click(logoutButton)
@@ -101,19 +108,19 @@ describe('UserProfileCard', () => {
   })
 
   it('renders nothing when no userProfile', () => {
-    const dataWithoutProfile: HouseholdData = {
-      ...mockData,
+    mockReturnData = {
+      ...defaultMockData,
       userProfile: null
     }
 
-    const { container } = render(<UserProfileCard data={dataWithoutProfile} />)
+    const { container } = render(<UserProfileCard />)
 
     expect(container).toBeEmptyDOMElement()
   })
 
   it('renders mononym user with only first name', () => {
-    const dataWithMononym: HouseholdData = {
-      ...mockData,
+    mockReturnData = {
+      ...defaultMockData,
       userProfile: {
         firstName: 'Prince',
         middleName: null,
@@ -121,7 +128,7 @@ describe('UserProfileCard', () => {
       }
     }
 
-    render(<UserProfileCard data={dataWithMononym} />)
+    render(<UserProfileCard />)
 
     // Should show just first name
     expect(screen.getByText('Prince')).toBeInTheDocument()
@@ -130,8 +137,8 @@ describe('UserProfileCard', () => {
   })
 
   it('renders mononym user with first name and middle name', () => {
-    const dataWithMononymAndMiddle: HouseholdData = {
-      ...mockData,
+    mockReturnData = {
+      ...defaultMockData,
       userProfile: {
         firstName: 'Madonna',
         middleName: 'L',
@@ -139,7 +146,7 @@ describe('UserProfileCard', () => {
       }
     }
 
-    render(<UserProfileCard data={dataWithMononymAndMiddle} />)
+    render(<UserProfileCard />)
 
     // Should show first name with middle initial
     expect(screen.getByText('Madonna L.')).toBeInTheDocument()

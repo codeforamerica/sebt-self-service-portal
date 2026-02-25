@@ -50,8 +50,8 @@ export function LoginForm() {
       if (err instanceof ApiError) {
         setSubmitError(err.message)
       } else {
-        // TODO: Add translation key for unexpected error (e.g., GLOBAL - Error Unexpected)
-        setSubmitError('Something went wrong. Please try again.')
+        // TODO: Add translation key for unexpected error (e.g., GLOBAL — Error Unexpected)
+        setSubmitError(tLogin('errorUnexpected', 'Something went wrong. Please try again.'))
       }
     }
   }

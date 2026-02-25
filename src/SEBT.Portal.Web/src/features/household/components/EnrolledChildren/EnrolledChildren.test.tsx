@@ -1,5 +1,5 @@
 import { render, screen } from '@testing-library/react'
-import { describe, expect, it } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 import type { Application, HouseholdData } from '../../api'
 
@@ -24,29 +24,39 @@ const mockApplication: Application = {
   childrenOnApplication: 2
 }
 
-const mockData: HouseholdData = {
+const defaultMockData: HouseholdData = {
   email: 'test@example.com',
   phone: '(303) 555-0100',
   applications: [mockApplication],
   addressOnFile: null
 }
 
+let mockReturnData: HouseholdData
+
+vi.mock('../../api', () => ({
+  useRequiredHouseholdData: () => mockReturnData
+}))
+
 describe('EnrolledChildren', () => {
+  beforeEach(() => {
+    mockReturnData = defaultMockData
+  })
+
   it('renders section heading', () => {
-    render(<EnrolledChildren data={mockData} />)
+    render(<EnrolledChildren />)
 
     expect(screen.getByRole('heading', { level: 2 })).toBeInTheDocument()
   })
 
   it('renders a child card for each child', () => {
-    render(<EnrolledChildren data={mockData} />)
+    render(<EnrolledChildren />)
 
     expect(screen.getByText('Sophia Martinez')).toBeInTheDocument()
     expect(screen.getByText('James Martinez')).toBeInTheDocument()
   })
 
   it('expands only the first child by default', () => {
-    render(<EnrolledChildren data={mockData} />)
+    render(<EnrolledChildren />)
 
     const buttons = screen.getAllByRole('button')
     expect(buttons[0]).toHaveAttribute('aria-expanded', 'true')
@@ -54,7 +64,7 @@ describe('EnrolledChildren', () => {
   })
 
   it('renders accordion with bordered variant', () => {
-    const { container } = render(<EnrolledChildren data={mockData} />)
+    const { container } = render(<EnrolledChildren />)
 
     const accordion = container.querySelector('.usa-accordion--bordered')
     expect(accordion).toBeInTheDocument()
@@ -72,12 +82,12 @@ describe('EnrolledChildren', () => {
       children: [{ caseNumber: 456003, firstName: 'Emily', lastName: 'Brown' }],
       childrenOnApplication: 1
     }
-    const multiAppData: HouseholdData = {
-      ...mockData,
+    mockReturnData = {
+      ...defaultMockData,
       applications: [firstApp, secondApp]
     }
 
-    render(<EnrolledChildren data={multiAppData} />)
+    render(<EnrolledChildren />)
 
     expect(screen.getByText('Sophia Martinez')).toBeInTheDocument()
     expect(screen.getByText('Emily Brown')).toBeInTheDocument()
