@@ -13,6 +13,16 @@ module "logging" {
 
   project     = "${var.project}-${var.state}"
   environment = var.environment
+  log_groups = {
+    "waf" = {
+      name = "aws-waf-logs-cfa/${var.project}-${var.state}/${var.environment}"
+      tags = {
+        source = "waf"
+        webacl = "${var.project}-${var.state}-${var.environment}"
+        domain = var.domain
+      }
+    }
+  }
 
   log_groups_to_datadog = true
 }
@@ -58,6 +68,7 @@ module "app" {
   image_tag                    = var.image_tag
   jwt_secret_key               = var.jwt_secret_key
   logging_key_id               = module.logging.kms_key_arn
+  logging_bucket_domain_name   = module.logging.bucket_domain_name
   private_subnets              = module.vpc.private_subnets
   project                      = var.project
   public_subnets               = module.vpc.public_subnets
@@ -65,6 +76,7 @@ module "app" {
   skip_final_snapshot          = true
   state                        = upper(var.state)
   vpc_id                       = module.vpc.vpc_id
+  waf_log_group                = "aws-waf-logs-cfa/${var.project}-${var.state}/${var.environment}"
 
   api_image_url      = data.aws_ecr_repository.api.repository_url
   api_repository_arn = data.aws_ecr_repository.api.arn

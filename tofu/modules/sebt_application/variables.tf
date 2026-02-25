@@ -67,9 +67,20 @@ variable "image_tags_mutable" {
   default     = false
 }
 
+variable "logging_bucket_domain_name" {
+  type        = string
+  description = "Domain name of the S3 bucket for logging (e.g. my-bucket.s3.amazonaws.com)."
+}
+
 variable "logging_key_id" {
   type        = string
   description = "KMS key ARN for encrypting logs."
+}
+
+variable "passive_waf" {
+  type        = bool
+  description = "Enable passive mode for the WAF, counting all requests rather than blocking."
+  default     = false
 }
 
 variable "private_subnets" {
@@ -86,6 +97,18 @@ variable "project" {
 variable "public_subnets" {
   type        = list(string)
   description = "List of public subnet IDs."
+}
+
+variable "rate_limit_requests" {
+  type        = number
+  description = "Number of requests allowed in the rate limit window. Minimum of 10, or set to 0 to disable rate limiting."
+  default     = 100
+}
+
+variable "rate_limit_window" {
+  type        = number
+  description = "Time window, in seconds, for the rate limit. Options are: 60, 120, 300, 600"
+  default     = 60
 }
 
 variable "sender_email" {
@@ -113,6 +136,11 @@ variable "state" {
 variable "vpc_id" {
   type        = string
   description = "VPC ID where resources will be created."
+}
+
+variable "waf_log_group" {
+  type        = string
+  description = "Name of the CloudWatch log group for WAF logs."
 }
 
 variable "web_cpu" {

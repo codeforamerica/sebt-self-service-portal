@@ -67,16 +67,18 @@ module "api" {
 module "web" {
   source = "github.com/codeforamerica/tofu-modules-aws-fargate-service?ref=1.10.0"
   project       = "${var.project}-${var.state}"
+  # TODO Make project_short a variable
   project_short = "sebt"
   environment   = var.environment
   service       = "web"
   service_short = "web"
 
   domain         = var.domain
-  subdomain      = ""
+  subdomain      = "origin"
   hosted_zone_id = var.hosted_zone_id
+  ingress_prefix_list_ids      = [data.aws_ec2_managed_prefix_list.cloudfront.id]
 
-  public          = true
+  public          = false
   create_endpoint = true
 
   vpc_id          = var.vpc_id
@@ -157,4 +159,28 @@ module "ses" {
 
   sender_email       = var.sender_email
   allowed_recipients = var.ses_allowed_recipients
+}
+
+module "cloudfront_waf" {
+  source     = "github.com/codeforamerica/tofu-modules-aws-cloudfront-waf?ref=2.1.0"
+  depends_on = [module.web.load_balancer_arn]
+
+  project        = "${var.project}-${var.state}"
+  environment    = var.environment
+  domain         = var.domain
+  subdomain      = ""
+  origin_alb_arn = module.web.load_balancer_arn
+  log_bucket     = var.logging_bucket_domain_name
+  log_group      = var.waf_log_group
+  passive        = var.passive_waf
+  hosted_zone_id = var.hosted_zone_id
+
+  rate_limit_rules = var.rate_limit_requests > 0 ? {
+    base = {
+      action   = var.passive_waf ? "count" : "block"
+      priority = 100
+      limit    = var.rate_limit_requests
+      window   = var.rate_limit_window
+    }
+  } : {}
 }
