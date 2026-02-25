@@ -1,5 +1,5 @@
 import { render, screen } from '@testing-library/react'
-import { describe, expect, it } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 import type { Application, HouseholdData } from '../../api'
 
@@ -24,34 +24,44 @@ const mockApplication: Application = {
   childrenOnApplication: 2
 }
 
-const mockData: HouseholdData = {
+const defaultMockData: HouseholdData = {
   email: 'test@example.com',
   phone: '(303) 555-0100',
   applications: [mockApplication],
   addressOnFile: null
 }
 
+let mockReturnData: HouseholdData
+
+vi.mock('../../api', () => ({
+  useRequiredHouseholdData: () => mockReturnData
+}))
+
 describe('ApplicationsSection', () => {
+  beforeEach(() => {
+    mockReturnData = defaultMockData
+  })
+
   it('renders section heading', () => {
-    render(<ApplicationsSection data={mockData} />)
+    render(<ApplicationsSection />)
 
     expect(screen.getByRole('heading', { level: 2 })).toBeInTheDocument()
   })
 
   it('renders case number', () => {
-    render(<ApplicationsSection data={mockData} />)
+    render(<ApplicationsSection />)
 
     expect(screen.getByText('CASE-DC-2026-001')).toBeInTheDocument()
   })
 
   it('renders children names', () => {
-    render(<ApplicationsSection data={mockData} />)
+    render(<ApplicationsSection />)
 
     expect(screen.getByText('Sophia Martinez, James Martinez')).toBeInTheDocument()
   })
 
   it('renders application status with green text for approved', () => {
-    render(<ApplicationsSection data={mockData} />)
+    render(<ApplicationsSection />)
 
     const statusText = screen.getByText('Approved')
     expect(statusText).toHaveClass('text-bold')
@@ -60,12 +70,12 @@ describe('ApplicationsSection', () => {
 
   it('renders denied status with red text', () => {
     const deniedApp: Application = { ...mockApplication, applicationStatus: 'Denied' }
-    const deniedData: HouseholdData = {
-      ...mockData,
+    mockReturnData = {
+      ...defaultMockData,
       applications: [deniedApp]
     }
 
-    render(<ApplicationsSection data={deniedData} />)
+    render(<ApplicationsSection />)
 
     const statusText = screen.getByText('Denied')
     expect(statusText).toHaveClass('text-bold')
@@ -74,12 +84,12 @@ describe('ApplicationsSection', () => {
 
   it('renders pending status with gold text', () => {
     const pendingApp: Application = { ...mockApplication, applicationStatus: 'Pending' }
-    const pendingData: HouseholdData = {
-      ...mockData,
+    mockReturnData = {
+      ...defaultMockData,
       applications: [pendingApp]
     }
 
-    render(<ApplicationsSection data={pendingData} />)
+    render(<ApplicationsSection />)
 
     const statusText = screen.getByText('Pending')
     expect(statusText).toHaveClass('text-bold')
@@ -87,12 +97,12 @@ describe('ApplicationsSection', () => {
   })
 
   it('renders nothing when no applications', () => {
-    const emptyData: HouseholdData = {
-      ...mockData,
+    mockReturnData = {
+      ...defaultMockData,
       applications: []
     }
 
-    const { container } = render(<ApplicationsSection data={emptyData} />)
+    const { container } = render(<ApplicationsSection />)
 
     expect(container).toBeEmptyDOMElement()
   })
@@ -106,12 +116,12 @@ describe('ApplicationsSection', () => {
       children: [{ caseNumber: 456003, firstName: 'Emily', lastName: 'Brown' }],
       childrenOnApplication: 1
     }
-    const multiAppData: HouseholdData = {
-      ...mockData,
+    mockReturnData = {
+      ...defaultMockData,
       applications: [mockApplication, secondApp]
     }
 
-    render(<ApplicationsSection data={multiAppData} />)
+    render(<ApplicationsSection />)
 
     // Verify both case numbers are shown
     expect(screen.getByText('CASE-DC-2026-001')).toBeInTheDocument()

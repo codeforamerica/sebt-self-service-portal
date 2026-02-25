@@ -5,11 +5,7 @@ import { useTranslation } from 'react-i18next'
 
 import { useAuth } from '@/features/auth'
 
-import type { HouseholdData } from '../../api'
-
-interface UserProfileCardProps {
-  data: HouseholdData
-}
+import { useRequiredHouseholdData } from '../../api'
 
 function getInitials(firstName: string, lastName: string | null | undefined): string {
   const firstInitial = firstName.charAt(0).toUpperCase()
@@ -38,10 +34,11 @@ function formatFullName(
   return `${firstName} ${lastName}`
 }
 
-export function UserProfileCard({ data }: UserProfileCardProps) {
+export function UserProfileCard() {
   const { t } = useTranslation('dashboard')
   const { logout } = useAuth()
   const router = useRouter()
+  const data = useRequiredHouseholdData()
 
   const handleLogout = () => {
     logout()

@@ -2,10 +2,13 @@
 
 import { Alert, Button } from '@/components/ui'
 import { useEffect } from 'react'
+import { useTranslation } from 'react-i18next'
 
 import type { ErrorProps } from '../types'
 
 export default function AuthenticatedError({ error, reset }: ErrorProps) {
+  const { t } = useTranslation('common')
+
   useEffect(() => {
     // TODO: Log error to monitoring service in production
     console.error('Authenticated page error:', error)
@@ -25,15 +28,28 @@ export default function AuthenticatedError({ error, reset }: ErrorProps) {
       <div className="grid-container">
         <Alert
           variant="error"
-          heading={isAuthError ? 'Session expired' : 'Something went wrong'}
+          heading={
+            isAuthError
+              ? t('errorSessionExpired', 'Session expired')
+              : t('errorSomethingWentWrong', 'Something went wrong')
+          }
         >
           <p>
             {isAuthError
-              ? 'Your session has expired. Please log in again to continue.'
-              : 'We encountered an error loading this page. Please try again or log in again if the problem persists.'}
+              ? t(
+                  'errorSessionExpiredBody',
+                  'Your session has expired. Please log in again to continue.'
+                )
+              : t(
+                  'errorPageBody',
+                  'We encountered an error loading this page. Please try again or log in again if the problem persists.'
+                )}
           </p>
           {error.digest && (
-            <p className="font-mono text-base-dark margin-top-1">Error ID: {error.digest}</p>
+            <p className="font-mono text-base-dark margin-top-1">
+              {t('errorId', 'Error ID: ')}
+              {error.digest}
+            </p>
           )}
           <div className="margin-top-2">
             {isAuthError ? (
@@ -41,7 +57,7 @@ export default function AuthenticatedError({ error, reset }: ErrorProps) {
                 type="button"
                 onClick={() => (window.location.href = '/login')}
               >
-                Log in again
+                {t('errorLogInAgain', 'Log in again')}
               </Button>
             ) : (
               <>
@@ -50,14 +66,14 @@ export default function AuthenticatedError({ error, reset }: ErrorProps) {
                   onClick={reset}
                   className="margin-right-2"
                 >
-                  Try again
+                  {t('errorTryAgain', 'Try again')}
                 </Button>
                 <Button
                   type="button"
                   variant="outline"
                   onClick={() => (window.location.href = '/login')}
                 >
-                  Log in again
+                  {t('errorLogInAgain', 'Log in again')}
                 </Button>
               </>
             )}

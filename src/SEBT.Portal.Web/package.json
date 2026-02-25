@@ -56,7 +56,6 @@
     "@types/node": "^24",
     "@types/react": "^19",
     "@types/react-dom": "^19",
-    "@vitejs/plugin-react": "^5.1.1",
     "@vitest/coverage-v8": "^4.0.15",
     "axe-core": "^4.11.0",
     "babel-plugin-react-compiler": "1.0.0",
