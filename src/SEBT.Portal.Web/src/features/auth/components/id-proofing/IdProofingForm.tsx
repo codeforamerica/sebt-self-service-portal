@@ -58,6 +58,7 @@ export function IdProofingForm({ idOptions, contactLink }: IdProofingFormProps) 
   const [idValue, setIdValue] = useState('')
 
   const [dobErrors, setDobErrors] = useState<{ month?: string; day?: string; year?: string }>({})
+  const [idTypeError, setIdTypeError] = useState<string | null>(null)
   const [idValueError, setIdValueError] = useState<string | null>(null)
   const [submitError, setSubmitError] = useState<string | null>(null)
 
@@ -77,6 +78,13 @@ export function IdProofingForm({ idOptions, contactLink }: IdProofingFormProps) 
 
     setDobErrors(newDobErrors)
 
+    let idTypeErr: string | null = null
+    if (selectedIdType === null) {
+      // TODO: Use t('validation.required') once shared validation namespace is set up
+      idTypeErr = "We're sorry. Some required questions aren't answered."
+    }
+    setIdTypeError(idTypeErr)
+
     let idError: string | null = null
     if (showIdValueInput && !idValue.trim()) {
       // TODO: Use t('validation.required') once shared validation namespace is set up
@@ -84,7 +92,7 @@ export function IdProofingForm({ idOptions, contactLink }: IdProofingFormProps) 
     }
     setIdValueError(idError)
 
-    return Object.keys(newDobErrors).length === 0 && idError === null
+    return Object.keys(newDobErrors).length === 0 && idTypeErr === null && idError === null
   }
 
   async function handleSubmit(e: FormEvent<HTMLFormElement>) {
@@ -98,7 +106,7 @@ export function IdProofingForm({ idOptions, contactLink }: IdProofingFormProps) 
         dateOfBirth: { month: dobMonth, day: dobDay, year: dobYear },
         // Map the UI "none" sentinel to null for the API
         idType: selectedIdType === NONE_VALUE || selectedIdType === null ? null : selectedIdType,
-        idValue: showIdValueInput ? idValue : null
+        idValue: showIdValueInput ? idValue.trim() : null
       })
       router.push('/dashboard')
     } catch (err) {
@@ -219,6 +227,15 @@ export function IdProofingForm({ idOptions, contactLink }: IdProofingFormProps) 
       <fieldset className="usa-fieldset margin-top-3">
         <legend className="usa-legend">{t('labelId')}</legend>
 
+        {idTypeError && (
+          <span
+            className="usa-error-message"
+            role="alert"
+          >
+            {idTypeError}
+          </span>
+        )}
+
         {idOptions.map((option) => (
           <div
             key={option.value}
@@ -234,6 +251,7 @@ export function IdProofingForm({ idOptions, contactLink }: IdProofingFormProps) 
               onChange={() => {
                 setSelectedIdType(option.value)
                 setIdValue('')
+                setIdTypeError(null)
                 setIdValueError(null)
               }}
             />

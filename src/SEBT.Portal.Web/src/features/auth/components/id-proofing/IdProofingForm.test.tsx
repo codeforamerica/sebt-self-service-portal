@@ -15,7 +15,10 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { http, HttpResponse } from 'msw'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+
+import { server } from '@/mocks/server'
 
 import { AuthProvider } from '../../context'
 import { IdProofingForm, type IdOption } from './IdProofingForm'
@@ -184,8 +187,9 @@ describe('IdProofingForm', () => {
 
       await waitFor(() => {
         // month error is a <span role="alert">, day/year errors are inside InputField's role="alert"
+        // id type error is also a <span role="alert"> since no radio is selected
         const errors = screen.getAllByRole('alert')
-        expect(errors).toHaveLength(3)
+        expect(errors).toHaveLength(4)
       })
     })
 
@@ -202,8 +206,9 @@ describe('IdProofingForm', () => {
       await user.click(screen.getByRole('button', { name: /continue/i }))
 
       await waitFor(() => {
+        // day/year errors plus id type error (no radio selected)
         const errors = screen.getAllByRole('alert')
-        expect(errors).toHaveLength(2)
+        expect(errors).toHaveLength(3)
       })
     })
   })
@@ -231,6 +236,31 @@ describe('IdProofingForm', () => {
         const errors = screen.getAllByRole('alert')
         expect(errors.length).toBeGreaterThanOrEqual(1)
       })
+    })
+  })
+
+  describe('ID type validation', () => {
+    it('shows an error when the user submits without selecting an ID option', async () => {
+      const user = userEvent.setup()
+      renderWithProviders(
+        <IdProofingForm
+          idOptions={TEST_ID_OPTIONS}
+          contactLink={TEST_CONTACT_LINK}
+        />
+      )
+
+      // Fill valid DOB so only the radio error fires
+      await user.selectOptions(screen.getByRole('combobox', { name: /month/i }), '01')
+      await user.type(screen.getByRole('textbox', { name: INPUT_LABEL_DAY }), '15')
+      await user.type(screen.getByRole('textbox', { name: INPUT_LABEL_YEAR }), '1990')
+
+      await user.click(screen.getByRole('button', { name: /continue/i }))
+
+      await waitFor(() => {
+        const errors = screen.getAllByRole('alert')
+        expect(errors.length).toBeGreaterThanOrEqual(1)
+      })
+      expect(mockPush).not.toHaveBeenCalled()
     })
   })
 
@@ -290,13 +320,28 @@ describe('IdProofingForm', () => {
         />
       )
 
-      // Submit with DOB fields empty to trigger validation alerts (pre-API)
+      // Override the MSW handler to simulate an API error.
+      // Using 400 (not 500) because the mutation retries 5xx errors with exponential backoff,
+      // which would cause the test to time out. The mutation's retry logic short-circuits on 4xx.
+      server.use(
+        http.post('/api/auth/id-proofing', () => {
+          return HttpResponse.json({ error: 'Test API error' }, { status: 400 })
+        })
+      )
+
+      // Fill valid DOB
+      await user.selectOptions(screen.getByRole('combobox', { name: /month/i }), '01')
+      await user.type(screen.getByRole('textbox', { name: INPUT_LABEL_DAY }), '15')
+      await user.type(screen.getByRole('textbox', { name: INPUT_LABEL_YEAR }), '1990')
+
+      // Select "none" — no ID value required
+      await user.click(screen.getByRole('radio', { name: LABEL_NONE }))
       await user.click(screen.getByRole('button', { name: /continue/i }))
 
       await waitFor(() => {
-        const alerts = screen.getAllByRole('alert')
-        expect(alerts.length).toBeGreaterThanOrEqual(1)
+        expect(screen.getByRole('alert')).toHaveTextContent('Test API error')
       })
+      expect(mockPush).not.toHaveBeenCalled()
     })
   })
 })

@@ -151,7 +151,8 @@ export const handlers = [
 
     // Success - return mock token
     return HttpResponse.json({
-      token: 'mock-jwt-token-for-testing'
+      token: 'mock-jwt-token-for-testing',
+      requiresIdProofing: true
     })
   }),
 

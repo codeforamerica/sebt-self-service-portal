@@ -6,7 +6,8 @@ export const ValidateOtpRequestSchema = z.object({
 })
 
 export const ValidateOtpResponseSchema = z.object({
-  token: z.string()
+  token: z.string(),
+  requiresIdProofing: z.boolean().optional()
 })
 
 export type ValidateOtpRequest = z.infer<typeof ValidateOtpRequestSchema>
