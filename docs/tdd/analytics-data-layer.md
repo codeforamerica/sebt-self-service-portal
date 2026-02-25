@@ -130,13 +130,13 @@ The constructor initializes the data layer and binds it to `window[root]`. If
 `bootstrap` is provided it should be parsed as JSON to populate the
 initial state. Upon success it must emit `DataLayer:Initialized`.
 
-		constructor(root: string, bootstrap?: { text?: string })
+		DataLayer(root: string, bootstrap?: { text?: string })
 
 ### Event Tracking
 
 All events are tracked via the singular trackEvent method:
 
-		trackEvent(name: string, data?: Record<string, unknown>): void
+		DataLayer#trackEvent(name: string, data?: Record<string, unknown>): void
 
 Passing in an event name will append an event object to the
 `<root>.event` array. Optionally, event data (of any type) can be
@@ -151,7 +151,7 @@ the root data structure:
 All data elements can be read using the the public `getElement` method
 with the following signature:
 
-		getElement(path: string, scope?: string, defaultValue?: unknown): unknown
+		DataLayer#getElement(path: string, scope?: string, defaultValue?: unknown): unknown
 
 This method should return the value of the element at the given
 path (relative to the root object i.e. `page.name` or
@@ -208,7 +208,7 @@ fully-decoupled manner. With the exception of the global
 data structure.
 
 | Event Name                | Fired When                                      |
-|:--------------------------|:------------------------------------------------|
+|---------------------------|-------------------------------------------------|
 | `DataLayer:Initialized`   | Data Layer is ready (`<root>.initialized=true`) |
 | `<root>:PageElementSet`   | Page data set                                   |
 | `<root>:PageAttributeSet` | Page attribute set                              |
