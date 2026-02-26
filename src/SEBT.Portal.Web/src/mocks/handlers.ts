@@ -167,6 +167,25 @@ export const handlers = [
     })
   }),
 
+  // OIDC CO config (public; for frontend PKCE flow)
+  http.get('/api/auth/oidc/co/config', () => {
+    return HttpResponse.json({
+      authorizationEndpoint: 'https://auth.example.com/authorize',
+      tokenEndpoint: 'https://auth.example.com/token',
+      clientId: 'test-client',
+      redirectUri: 'http://localhost:3000/callback'
+    })
+  }),
+
+  // OIDC CO exchange-code (frontend sends code + code_verifier; backend exchanges with IdP)
+  http.post('/api/auth/oidc/co/exchange-code', async ({ request }) => {
+    const body = (await request.json()) as { code?: string; code_verifier?: string }
+    if (!body?.code || !body?.code_verifier) {
+      return HttpResponse.json({ error: 'Missing code or code_verifier.' }, { status: 400 })
+    }
+    return HttpResponse.json({ token: 'mock-jwt-token-for-testing' })
+  }),
+
   // Feature flags endpoint
   http.get('/api/features', async () => {
     // Add small delay to allow loading state to be observable in tests

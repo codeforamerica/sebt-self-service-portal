@@ -14,7 +14,7 @@ internal static class ContainerConfigurationExtensions
     {
         foreach (var path in paths)
         {
-            var combinedPath = Path.Combine(AppContext.BaseDirectory, path);
+            var combinedPath = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, path));
 
             if (!Directory.Exists(combinedPath))
             {
@@ -23,7 +23,8 @@ internal static class ContainerConfigurationExtensions
 
             var assemblies = Directory
                 .GetFiles(combinedPath, "*.dll", searchOption)
-                .Select(AssemblyLoadContext.Default.LoadFromAssemblyPath);
+                .Select(AssemblyLoadContext.Default.LoadFromAssemblyPath)
+                .ToList();
 
             containerConfiguration.WithAssemblies(assemblies, conventions);
         }
