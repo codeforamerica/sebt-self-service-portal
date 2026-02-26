@@ -129,4 +129,15 @@
     <Folder Include="plugins-dc\" />
   </ItemGroup>
 
+  <!-- Copy plugin dependency DLLs to app base so Default ALC can resolve them (e.g. Microsoft.Kiota.Abstractions). Copy from source plugins-co so we do not depend on copy order. -->
+  <Target Name="CopyPluginDependenciesToAppBase" AfterTargets="Build">
+    <PropertyGroup>
+      <_PluginCoSourcePath>$([System.IO.Path]::Combine('$(MSBuildProjectDirectory)', 'plugins-co'))</_PluginCoSourcePath>
+    </PropertyGroup>
+    <ItemGroup>
+      <_PluginCoDlls Include="$(_PluginCoSourcePath)/*.dll" Condition="Exists('$(_PluginCoSourcePath)')" />
+    </ItemGroup>
+    <Copy SourceFiles="@(_PluginCoDlls)" DestinationFolder="$(OutputPath)" SkipUnchangedFiles="true" Condition="'@(_PluginCoDlls)' != ''" />
+  </Target>
+
 </Project>

@@ -1,28 +1,25 @@
 'use client'
 
-import { apiFetch } from '@/api'
 import { Alert } from '@/components/ui'
-import {
-  OidcCallbackTokenResponseSchema,
-  OidcCompleteLoginResponseSchema,
-  setAuthToken,
-  useAuth
-} from '@/features/auth'
+import { useAuth } from '@/features/auth'
 import { clearPkceStorage, getPkceFromStorage } from '@/lib/oidc-pkce'
 import { getState } from '@/lib/state'
 import { getTranslations } from '@/lib/translations'
 import { useRouter } from 'next/navigation'
 import { useEffect, useState } from 'react'
 
+type CallbackStep = 'loading' | 'have_code_state' | 'have_pkce' | 'exchanging' | 'error'
+
 /**
  * OIDC callback: state IdP redirects here with ?code=...&state=...
- * We then send callbackToken to the .NET complete-login endpoint to create session and get the portal JWT.
+ * We send code + code_verifier to the backend; backend exchanges with IdP (using client secret) and returns the portal JWT.
  */
 export default function CallbackPage() {
   const router = useRouter()
   const { login } = useAuth()
   const t = getTranslations('login')
   const [status, setStatus] = useState<'loading' | 'error'>('loading')
+  const [step, setStep] = useState<CallbackStep>('loading')
   const [errorDetail, setErrorDetail] = useState<string | null>(null)
 
   useEffect(() => {
@@ -34,63 +31,78 @@ export default function CallbackPage() {
     if (!code || !state) {
       queueMicrotask(() => {
         setErrorDetail(t('callbackErrorMissingParams'))
+        setStep('error')
         setStatus('error')
       })
       return
     }
+    queueMicrotask(() => setStep('have_code_state'))
 
     let cancelled = false
     async function run() {
       const stored = getPkceFromStorage()
       if (!stored) {
+        setErrorDetail(t('callbackErrorSessionExpired'))
         clearPkceStorage()
         if (!cancelled) {
-          setErrorDetail(t('callbackErrorSessionExpired'))
+          setStep('error')
           setStatus('error')
         }
         return
       }
       if (stored.state !== state) {
+        setErrorDetail(t('callbackErrorStateMismatch'))
         clearPkceStorage()
         if (!cancelled) {
-          setErrorDetail(t('callbackErrorStateMismatch'))
+          setStep('error')
           setStatus('error')
         }
         return
       }
+      setStep('have_pkce')
       clearPkceStorage()
 
       try {
-        // Exchange authorization code for a short-lived callback token (via Next.js server)
-        const { callbackToken } = await apiFetch('/auth/oidc/callback', {
+        setStep('exchanging')
+        const stateCode = getState()
+        const res = await fetch(`/api/auth/oidc/${stateCode}/exchange-code`, {
           method: 'POST',
-          body: {
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
             code,
-            code_verifier: stored.code_verifier,
-            state,
-            stateCode: getState()
-          },
-          schema: OidcCallbackTokenResponseSchema
+            code_verifier: stored.code_verifier
+          }),
+          credentials: 'include'
         })
         if (cancelled) return
-
-        // Complete login with .NET backend — validates callback token, creates portal JWT
-        const { token } = await apiFetch('/auth/oidc/complete-login', {
-          method: 'POST',
-          body: { stateCode: getState(), callbackToken },
-          schema: OidcCompleteLoginResponseSchema
-        })
-        if (cancelled) return
-
-        // Persist to sessionStorage and notify auth context
-        setAuthToken(token)
-        login(token)
-        // Ensure token is stored and listeners have run before navigating
-        await new Promise((resolve) => setTimeout(resolve, 0))
+        if (!res.ok) {
+          const text = await res.text()
+          let data: { error?: string; hint?: string } = {}
+          try {
+            data = JSON.parse(text) as { error?: string; hint?: string }
+          } catch {
+            // not JSON
+          }
+          const msg = data.error ?? text.slice(0, 150)
+          const hint = data.hint ? ` ${data.hint}` : ''
+          const fallback = `Request failed (${res.status})`
+          setErrorDetail((msg || fallback) + hint)
+          if (!cancelled) {
+            setStep('error')
+            setStatus('error')
+          }
+          return
+        }
+        const data = (await res.json()) as { token?: string }
+        if (data.token) {
+          login(data.token)
+        }
         router.replace('/dashboard')
-      } catch {
+      } catch (e) {
+        const errMsg = e instanceof Error ? e.message : typeof e === 'string' ? e : 'Unknown error'
+        setErrorDetail(errMsg || t('callbackErrorGeneric'))
         if (!cancelled) {
-          setErrorDetail(t('callbackErrorGeneric'))
+          setStep('error')
           setStatus('error')
         }
       }
@@ -99,7 +111,7 @@ export default function CallbackPage() {
     return () => {
       cancelled = true
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- t (getTranslations) is a static lookup, not a reactive dependency
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- t (getTranslations) is a static lookup
   }, [login, router])
 
   useEffect(() => {
@@ -110,6 +122,14 @@ export default function CallbackPage() {
     }
     return undefined
   }, [status, router])
+
+  const stepMessage: Record<CallbackStep, string> = {
+    loading: t('callbackSigningIn'),
+    have_code_state: t('callbackSigningIn'),
+    have_pkce: t('callbackSigningIn'),
+    exchanging: t('callbackSigningIn'),
+    error: errorDetail ?? t('callbackErrorGeneric')
+  }
 
   return (
     <div className="usa-section">
@@ -126,7 +146,7 @@ export default function CallbackPage() {
             {errorDetail}
           </Alert>
         ) : (
-          <p className="font-sans-md">{t('callbackSigningIn')}</p>
+          <p className="font-sans-md">{stepMessage[step]}</p>
         )}
       </div>
     </div>

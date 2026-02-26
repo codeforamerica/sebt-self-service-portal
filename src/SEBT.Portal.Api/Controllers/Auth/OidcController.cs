@@ -1,17 +1,17 @@
-using System.IdentityModel.Tokens.Jwt;
-using System.Security.Claims;
 using System.Text;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.IdentityModel.Tokens;
 using SEBT.Portal.Api.Models;
+using SEBT.Portal.Api.Services.StateAuth;
 using SEBT.Portal.Core.Repositories;
 using SEBT.Portal.Core.Services;
 using SEBT.Portal.Core.Utilities;
+using SEBT.Portal.StatesPlugins.Interfaces;
+using SEBT.Portal.StatesPlugins.Interfaces.Models;
 
 namespace SEBT.Portal.Api.Controllers.Auth;
 
 /// <summary>
-/// OIDC endpoints for state IdP login. Config is under Oidc.
+/// OIDC endpoints for state-specific login. Config is under Oidc:{stateCode} (e.g. Oidc:co:DiscoveryEndpoint).
 /// </summary>
 [ApiController]
 [Route("api/auth/oidc")]
@@ -19,22 +19,13 @@ public class OidcController(
     IConfiguration config,
     IHttpClientFactory httpFactory,
     ILogger<OidcController> logger,
+    IStateAuthStore store,
     IUserRepository userRepository,
     IJwtTokenService jwtService) : ControllerBase
 {
     /// <summary>
-    /// Standard OIDC/JWT and IdP-infrastructure claim names to exclude when copying IdP claims into the portal JWT.
-    /// All other claims (for example: phone, givenName, familyName, email, sub, userId) are added to the portal token.
-    /// </summary>
-    private static readonly HashSet<string> CommonIdpClaimNames = new(StringComparer.OrdinalIgnoreCase)
-    {
-        "iss", "aud", "iat", "exp", "nbf",
-        "acr", "amr", "auth_time", "at_hash", "sid",
-        "env", "org", "p1.region"
-    };
-    /// <summary>
     /// Public OIDC config for frontend PKCE flow (no secrets): authorization endpoint, token endpoint, client id, redirect URI.
-    /// Config keys: Oidc:DiscoveryEndpoint, Oidc:ClientId, Oidc:CallbackRedirectUri.
+    /// Config key: Oidc:{stateCode} (e.g. Oidc:co:DiscoveryEndpoint).
     /// </summary>
     [HttpGet("{code}/config")]
     [ProducesResponseType(StatusCodes.Status200OK)]
@@ -42,16 +33,18 @@ public class OidcController(
     [ProducesResponseType(StatusCodes.Status503ServiceUnavailable)]
     public async Task<IActionResult> GetConfig([FromRoute] string code, CancellationToken cancellationToken)
     {
-        var discoveryEndpoint = config["Oidc:DiscoveryEndpoint"];
-        var clientId = config["Oidc:ClientId"];
-        var redirectUri = config["Oidc:CallbackRedirectUri"];
+        var stateKey = code.ToLowerInvariant();
+        var discoveryEndpoint = config[$"Oidc:{stateKey}:DiscoveryEndpoint"];
+        var clientId = config[$"Oidc:{stateKey}:ClientId"];
+        var redirectUri = config[$"Oidc:{stateKey}:CallbackRedirectUri"];
         if (string.IsNullOrEmpty(discoveryEndpoint) || string.IsNullOrEmpty(clientId) || string.IsNullOrEmpty(redirectUri))
         {
-            logger.LogWarning("OIDC config missing (Oidc:DiscoveryEndpoint, ClientId, or CallbackRedirectUri)");
+            logger.LogWarning("OIDC config missing for state {StateCode} (Oidc:{StateKey}:DiscoveryEndpoint, ClientId, or CallbackRedirectUri)", code, stateKey);
             return StatusCode(StatusCodes.Status503ServiceUnavailable, new
             {
-                error = "OIDC not configured.",
-                hint = "Set Oidc:DiscoveryEndpoint, Oidc:ClientId, and Oidc:CallbackRedirectUri in appsettings."
+                error = $"OIDC not configured for {code}.",
+                hint =
+                    $"Set Oidc:{stateKey}:ClientId in appsettings (or env Oidc__{stateKey}__ClientId). DiscoveryEndpoint and CallbackRedirectUri must also be set."
             });
         }
 
@@ -65,93 +58,148 @@ public class OidcController(
             var tokenEndpoint = root.TryGetProperty("token_endpoint", out var te) ? te.GetString() : null;
             if (string.IsNullOrEmpty(authEndpoint) || string.IsNullOrEmpty(tokenEndpoint))
                 return StatusCode(StatusCodes.Status502BadGateway, new { error = "Invalid discovery document." });
-            var languageParam = config["Oidc:LanguageParam"] ?? "en";
-            return Ok(new { authorizationEndpoint = authEndpoint, tokenEndpoint, clientId, redirectUri, languageParam });
+            return Ok(new { authorizationEndpoint = authEndpoint, tokenEndpoint, clientId, redirectUri });
         }
         catch (Exception ex)
         {
-            logger.LogWarning(ex, "Failed to fetch OIDC discovery document");
+            logger.LogWarning(ex, "Failed to fetch OIDC discovery document for state {StateCode}", code);
             return StatusCode(StatusCodes.Status502BadGateway, new { error = "Unable to load OIDC config." });
         }
     }
 
     /// <summary>
-    /// Completes OIDC login when the Next.js server has already exchanged the code and validated the id_token.
-    /// Accepts a short-lived callbackToken (JWT signed with Oidc:CompleteLoginSigningKey) containing IdP claims;
-    /// copies non-common IdP claims into the portal JWT and returns it.
+    /// Backend code exchange: frontend sends code and code_verifier; we exchange with IdP, validate id_token, and return portal JWT.
+    /// Config key: Oidc:{stateCode} (e.g. Oidc:co:ClientSecret required for exchange).
     /// </summary>
-    [HttpPost("complete-login")]
+    [HttpPost("{code}/exchange-code")]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status502BadGateway)]
     [ProducesResponseType(StatusCodes.Status503ServiceUnavailable)]
-    public async Task<IActionResult> CompleteLogin(
-        [FromBody] CompleteLoginRequest? body,
+    public async Task<IActionResult> ExchangeCode(
+        [FromRoute] string code,
+        [FromBody] ExchangeCodeRequest? body,
         CancellationToken cancellationToken)
     {
-        if (body == null || string.IsNullOrEmpty(body.StateCode) || string.IsNullOrEmpty(body.CallbackToken))
-            return BadRequest(new { error = "Missing stateCode or callbackToken." });
+        if (body == null || string.IsNullOrEmpty(body.Code) || string.IsNullOrEmpty(body.CodeVerifier))
+            return BadRequest(new { error = "Missing code or code_verifier." });
 
-        var stateKey = body.StateCode.ToLowerInvariant();
-        var signingKey = config["Oidc:CompleteLoginSigningKey"];
-        if (string.IsNullOrEmpty(signingKey))
+        var stateKey = code.ToLowerInvariant();
+        var discoveryEndpoint = config[$"Oidc:{stateKey}:DiscoveryEndpoint"];
+        var clientId = config[$"Oidc:{stateKey}:ClientId"];
+        var clientSecret = config[$"Oidc:{stateKey}:ClientSecret"];
+        var redirectUri = config[$"Oidc:{stateKey}:CallbackRedirectUri"];
+        if (string.IsNullOrEmpty(discoveryEndpoint) || string.IsNullOrEmpty(clientId) ||
+            string.IsNullOrEmpty(redirectUri) || string.IsNullOrEmpty(clientSecret))
         {
-            logger.LogWarning("Oidc:CompleteLoginSigningKey is not configured.");
+            logger.LogWarning("OIDC config missing for state {StateCode} (Oidc:{StateKey}:DiscoveryEndpoint, ClientId, ClientSecret, or CallbackRedirectUri)", code, stateKey);
             return StatusCode(StatusCodes.Status503ServiceUnavailable, new
             {
-                error = "Complete-login not configured.",
-                hint = "Set Oidc:CompleteLoginSigningKey (same value as Next.js OIDC_COMPLETE_LOGIN_SIGNING_KEY)."
+                error = $"OIDC not configured for {code} (ClientSecret required for exchange-code).",
+                hint =
+                    $"Set Oidc:{stateKey}:ClientSecret in appsettings (or env Oidc__{stateKey}__ClientSecret)."
             });
         }
 
-        var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(signingKey));
-        var validationParams = new TokenValidationParameters
+        var oidc = HttpContext.RequestServices.GetKeyedService<IStateOidcLoginService>(stateKey);
+        if (oidc == null)
         {
-            ValidateIssuer = false,
-            ValidateAudience = false,
-            ValidateLifetime = true,
-            ClockSkew = TimeSpan.FromMinutes(1),
-            IssuerSigningKey = key
-        };
-        var handler = new JwtSecurityTokenHandler();
-        handler.MapInboundClaims = false; // Preserve original JWT claim names (sub, email)
-        ClaimsPrincipal principal;
+            logger.LogWarning("OIDC plugin not loaded for state {StateCode}; exchange-code requires the state connector.", code);
+            return StatusCode(StatusCodes.Status503ServiceUnavailable, new
+            {
+                error = $"OIDC plugin not available for {code}.",
+                hint = "Ensure the state connector is built and its DLLs are in the Api project's plugins folder, then restart the API."
+            });
+        }
+
         try
         {
-            principal = handler.ValidateToken(body.CallbackToken, validationParams, out _);
+            using var client = httpFactory.CreateClient();
+            var discoveryJson = await client.GetStringAsync(discoveryEndpoint, cancellationToken).ConfigureAwait(false);
+            using var doc = System.Text.Json.JsonDocument.Parse(discoveryJson);
+            var root = doc.RootElement;
+            var tokenEndpoint = root.TryGetProperty("token_endpoint", out var te) ? te.GetString() : null;
+            if (string.IsNullOrEmpty(tokenEndpoint))
+                return StatusCode(StatusCodes.Status502BadGateway,
+                    new { error = "Invalid discovery document (no token_endpoint)." });
+
+            var credentials = Convert.ToBase64String(Encoding.UTF8.GetBytes($"{clientId}:{clientSecret}"));
+            var form = new Dictionary<string, string>
+            {
+                ["grant_type"] = "authorization_code",
+                ["code"] = body.Code,
+                ["redirect_uri"] = redirectUri,
+                ["code_verifier"] = body.CodeVerifier!
+            };
+            using var formContent = new FormUrlEncodedContent(form);
+            using var request = new HttpRequestMessage(HttpMethod.Post, tokenEndpoint);
+            request.Headers.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Basic", credentials);
+            request.Content = formContent;
+            using var tokenResponse = await client.SendAsync(request, cancellationToken).ConfigureAwait(false);
+            var tokenJson = await tokenResponse.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false);
+            using var tokenDoc = System.Text.Json.JsonDocument.Parse(tokenJson);
+            var tokenRoot = tokenDoc.RootElement;
+
+            if (tokenRoot.TryGetProperty("error", out var errProp))
+            {
+                var errDesc = tokenRoot.TryGetProperty("error_description", out var ed)
+                    ? ed.GetString()
+                    : errProp.GetString();
+                logger.LogWarning("OIDC token exchange failed: {Error}", errDesc);
+                return BadRequest(new { error = errDesc ?? "Token exchange failed." });
+            }
+
+            if (!tokenRoot.TryGetProperty("id_token", out var idTokenProp))
+            {
+                logger.LogWarning("OIDC token response had no id_token");
+                return BadRequest(new { error = "No id_token in token response." });
+            }
+
+            var idToken = idTokenProp.GetString();
+            if (string.IsNullOrEmpty(idToken))
+                return BadRequest(new { error = "Empty id_token." });
+
+            var authContext = await oidc.ValidateIdTokenAsync(idToken, cancellationToken);
+            var sessionId = Guid.NewGuid().ToString("N");
+            var expiration = TimeSpan.FromHours(1);
+            await store.SetAsync(sessionId, authContext, expiration, cancellationToken);
+
+            var cookieOptions = new CookieOptions
+            {
+                HttpOnly = true,
+                Secure = !Request.Host.Host.Equals("localhost", StringComparison.OrdinalIgnoreCase),
+                SameSite = SameSiteMode.Lax,
+                Path = "/",
+                MaxAge = expiration
+            };
+            Response.Cookies.Append(CookieStateAuthSessionAccessor.CookieName, sessionId, cookieOptions);
+
+            var email = GetEmailFromClaims(authContext.IdTokenClaims);
+            if (string.IsNullOrWhiteSpace(email))
+            {
+                logger.LogWarning("OIDC id_token had no email or sub claim");
+                return BadRequest(new { error = "id_token must contain an email or sub claim." });
+            }
+
+            var normalizedEmail = EmailNormalizer.Normalize(email);
+            var (user, _) = await userRepository.GetOrCreateUserAsync(normalizedEmail, cancellationToken);
+            var token = jwtService.GenerateToken(user);
+            return Ok(new { token });
         }
         catch (Exception ex)
         {
-            logger.LogWarning(ex, "Invalid or expired callback token for state {StateCode}", body.StateCode);
-            return BadRequest(new { error = "Invalid or expired callback token." });
+            logger.LogWarning(ex, "OIDC exchange-code failed for state {StateCode}", code);
+            return BadRequest(new { error = "Code exchange or validation failed." });
         }
-
-        // Copy non-common IdP claims into the portal JWT (e.g. phone, givenName, familyName, userId, email, sub)
-        var additionalClaims = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
-        foreach (var claim in principal.Claims)
-        {
-            if (!CommonIdpClaimNames.Contains(claim.Type) && !string.IsNullOrEmpty(claim.Value))
-                additionalClaims[claim.Type] = claim.Value;
-        }
-
-        var email = GetEmailFromClaims(principal);
-        if (string.IsNullOrWhiteSpace(email))
-        {
-            logger.LogWarning("Callback token had no email claim");
-            return BadRequest(new { error = "Callback token must contain an email claim." });
-        }
-
-        var normalizedEmail = EmailNormalizer.Normalize(email);
-        var (user, _) = await userRepository.GetOrCreateUserAsync(normalizedEmail, cancellationToken);
-        var token = jwtService.GenerateToken(user, additionalClaims);
-        return Ok(new { token });
     }
 
-    /// <summary>
-    /// Gets the email from the callback token claims.
-    /// </summary>
-    private static string? GetEmailFromClaims(ClaimsPrincipal principal)
+    private static string? GetEmailFromClaims(IReadOnlyDictionary<string, object>? claims)
     {
-        var emailClaim = principal.FindFirst("email");
-        return !string.IsNullOrEmpty(emailClaim?.Value) ? emailClaim.Value : null;
+        if (claims == null) return null;
+        if (claims.TryGetValue("email", out var emailObj) && emailObj is string email)
+            return email;
+        if (claims.TryGetValue("sub", out var subObj) && subObj is string sub)
+            return sub;
+        return null;
     }
 }

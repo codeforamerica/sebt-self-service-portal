@@ -197,30 +197,11 @@ export const handlers = [
     })
   }),
 
-  // OIDC callback (Next.js: exchange + validate; returns callbackToken for complete-login)
-  http.post('/api/auth/oidc/callback', async ({ request }) => {
-    const body = (await request.json()) as {
-      code?: string
-      code_verifier?: string
-      stateCode?: string
-    }
-    const currentState = (process.env.NEXT_PUBLIC_STATE || process.env.STATE || 'dc').toLowerCase()
-    if (!body?.code || !body?.code_verifier || body?.stateCode !== currentState) {
-      return HttpResponse.json(
-        {
-          error: 'Missing or invalid code, code_verifier, or stateCode (must match current state).'
-        },
-        { status: 400 }
-      )
-    }
-    return HttpResponse.json({ callbackToken: 'mock-callback-token-for-testing' })
-  }),
-
-  // OIDC complete-login (.NET: validates callbackToken, creates session, returns portal JWT)
-  http.post('/api/auth/oidc/complete-login', async ({ request }) => {
-    const body = (await request.json()) as { stateCode?: string; callbackToken?: string }
-    if (!body?.stateCode || !body?.callbackToken) {
-      return HttpResponse.json({ error: 'Missing stateCode or callbackToken.' }, { status: 400 })
+  // OIDC exchange-code (frontend sends code + code_verifier; backend exchanges with IdP)
+  http.post('/api/auth/oidc/co/exchange-code', async ({ request }) => {
+    const body = (await request.json()) as { code?: string; code_verifier?: string }
+    if (!body?.code || !body?.code_verifier) {
+      return HttpResponse.json({ error: 'Missing code or code_verifier.' }, { status: 400 })
     }
     return HttpResponse.json({ token: 'mock-jwt-token-for-testing' })
   }),

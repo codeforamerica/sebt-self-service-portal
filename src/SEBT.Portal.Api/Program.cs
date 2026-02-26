@@ -18,15 +18,20 @@ using SEBT.Portal.Infrastructure.Seeding.Services;
 using SEBT.Portal.UseCases;
 using SEBT.Portal.Infrastructure;
 using SEBT.Portal.Api.Startup;
+using SEBT.Portal.Api.Services.StateAuth;
 using SEBT.Portal.Core.Models.Auth;
 using SEBT.Portal.Core.Repositories;
 using SEBT.Portal.Core.Utilities;
 using SEBT.Portal.StatesPlugins.Interfaces;
+using SEBT.Portal.StatesPlugins.Interfaces.Models;
 
 var builder = WebApplication.CreateBuilder(args);
 
+// State auth store and session accessor (required for OIDC callback and IStateAuthService plugins)
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddHttpClient();
+builder.Services.AddSingleton<IStateAuthStore, MemoryStateAuthStore>();
+builder.Services.AddSingleton<IStateAuthSessionAccessor, CookieStateAuthSessionAccessor>();
 
 // Configuration provider priority order (later providers override earlier ones):
 // 1. appsettings.json (defaults in FeatureManagement)
@@ -254,41 +259,6 @@ app.UseAuthorization();
 app.MapGet("/health", () => Results.Ok(new { Status = "ok" }));
 
 app.MapControllers();
-
-// Map OIDC login/callback routes only for states that provide an IStateOidcLoginService plugin
-var oidcStateCodes = app.Services.GetRequiredService<StateOidcStateCodes>();
-foreach (var stateCode in oidcStateCodes.StateCodes)
-{
-    var code = stateCode;
-    app.MapGet($"/api/auth/oidc/{code}/login", async (HttpContext context) =>
-    {
-        var oidc = context.RequestServices.GetKeyedService<IStateOidcLoginService>(code);
-        if (oidc == null)
-            return Results.NotFound();
-        var redirectUri = $"{context.Request.Scheme}://{context.Request.Host}/api/auth/oidc/{code}/callback";
-        var (authorizationUrl, _) = await oidc.PrepareAuthorizationAsync(redirectUri, context.RequestAborted);
-        return Results.Redirect(authorizationUrl);
-    });
-
-    app.MapGet($"/api/auth/oidc/{code}/callback", async (HttpContext context, [FromQuery(Name = "code")] string? authorizationCode, [FromQuery(Name = "state")] string? stateValue) =>
-    {
-        var oidc = context.RequestServices.GetKeyedService<IStateOidcLoginService>(code);
-        if (oidc == null)
-            return Results.NotFound();
-        if (string.IsNullOrEmpty(authorizationCode) || string.IsNullOrEmpty(stateValue))
-            return Results.BadRequest(new { error = "Missing code or state." });
-        try
-        {
-            var authContext = await oidc.ExchangeCodeForTokensAsync(authorizationCode, stateValue, context.RequestAborted);
-            return Results.Ok(new { success = true, hasIdToken = !string.IsNullOrEmpty(authContext.IdToken), hasAccessToken = !string.IsNullOrEmpty(authContext.AccessToken) });
-        }
-        catch (Exception ex)
-        {
-            Log.Warning(ex, "OIDC callback failed for state {StateCode}", code);
-            return Results.BadRequest(new { error = "Authentication failed." });
-        }
-    });
-}
 
 try
 {
