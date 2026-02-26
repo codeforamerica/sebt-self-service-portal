@@ -230,8 +230,6 @@ jobs:
     env:
       AWS_REGION: us-east-1
       TF_VAR_domain: ${{ vars.DOMAIN }}
-      TF_VAR_identifier_hasher_secret_key: ${{ secrets.IDENTIFIER_HASHER_SECRET_KEY }}
-      TF_VAR_jwt_secret_key: ${{ secrets.JWT_SECRET_KEY }}
       TF_VAR_sender_email: ${{ vars.SENDER_EMAIL }}
       TF_VAR_vpc_cidr: ${{ vars.VPC_CIDR }}
       TF_VAR_private_subnets: ${{ vars.PRIVATE_SUBNETS }}
@@ -306,8 +304,6 @@ jobs:
     env:
       AWS_REGION: us-east-1
       TF_VAR_domain: ${{ vars.DOMAIN }}
-      TF_VAR_identifier_hasher_secret_key: ${{ secrets.IDENTIFIER_HASHER_SECRET_KEY }}
-      TF_VAR_jwt_secret_key: ${{ secrets.JWT_SECRET_KEY }}
       TF_VAR_sender_email: ${{ vars.SENDER_EMAIL }}
       TF_VAR_vpc_cidr: ${{ vars.VPC_CIDR }}
       TF_VAR_private_subnets: ${{ vars.PRIVATE_SUBNETS }}

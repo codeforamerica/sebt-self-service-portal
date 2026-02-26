@@ -123,10 +123,6 @@ module "secrets" {
     "app" = {
       description     = "Application secrets for the SEBT Portal API."
       recovery_window = var.secret_recovery_period
-      start_value = jsonencode({
-        jwt_secret_key               = var.jwt_secret_key
-        identifier_hasher_secret_key = var.identifier_hasher_secret_key
-      })
     }
   }
 }

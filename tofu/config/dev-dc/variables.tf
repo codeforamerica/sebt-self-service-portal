@@ -4,18 +4,6 @@ variable "environment" {
   default     = "development"
 }
 
-variable "identifier_hasher_secret_key" {
-  type        = string
-  description = "Secret key for identifier hashing."
-  sensitive   = true
-}
-
-variable "jwt_secret_key" {
-  type        = string
-  description = "Secret key for signing JWT tokens."
-  sensitive   = true
-}
-
 variable "domain" {
   type        = string
   description = "Domain name for the application."

@@ -64,9 +64,7 @@ module "app" {
   domain                       = var.domain
   hosted_zone_id               = data.aws_route53_zone.main.zone_id
   environment                  = var.environment
-  identifier_hasher_secret_key = var.identifier_hasher_secret_key
   image_tag                    = var.image_tag
-  jwt_secret_key               = var.jwt_secret_key
   logging_key_id               = module.logging.kms_key_arn
   logging_bucket_domain_name   = module.logging.bucket_domain_name
   private_subnets              = module.vpc.private_subnets

@@ -165,18 +165,6 @@ variable "web_repository_arn" {
   description = "ARN of the ECR repository for the web image."
 }
 
-variable "identifier_hasher_secret_key" {
-  type        = string
-  description = "Secret key for identifier hashing. Must be at least 32 characters."
-  sensitive   = true
-}
-
-variable "jwt_secret_key" {
-  type        = string
-  description = "Secret key for signing JWT tokens. Must be at least 32 characters."
-  sensitive   = true
-}
-
 variable "secret_recovery_period" {
   type        = number
   description = "Number of days to retain a secret before permanent deletion."
