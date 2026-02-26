@@ -138,8 +138,8 @@ describe('HouseholdSummary', () => {
   it('renders change contact information link', () => {
     render(<HouseholdSummary />)
 
-    // i18n key: profileTableActionChangeContact → "Change my contact information"
-    const link = screen.getByRole('link', { name: 'Change my contact information' })
+    // i18n key: profileTableActionChangeContact → "Change my contact preferences"
+    const link = screen.getByRole('link', { name: 'Change my contact preferences' })
     expect(link).toHaveAttribute('href', '/contact')
   })
 

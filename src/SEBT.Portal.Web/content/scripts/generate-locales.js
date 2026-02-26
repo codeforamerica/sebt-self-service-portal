@@ -128,6 +128,8 @@ const CONFIG = {
   // This prevents key collisions (e.g., both OTP Enter Email and OTP Confirm have "title")
   pageKeyPrefix: {
     'otp confirm': 'verify',
+    'otp email message': 'email',
+    'co-loaded off-boarding': 'coLoaded',
   },
 };
 
@@ -309,18 +311,23 @@ function buildStateLocaleData(rows, state) {
 
     const { namespace, key } = parsed;
 
-    // English
+    // English — don't overwrite a non-empty value with an empty one
+    // (handles key collisions where multiple CSV rows map to the same namespace+key)
     if (!data.en[namespace]) {
       data.en[namespace] = {};
     }
-    data.en[namespace][key] = englishValue;
+    if (englishValue || !data.en[namespace][key]) {
+      data.en[namespace][key] = englishValue;
+    }
 
-    // Spanish
-    if (spanishIdx !== -1 && spanishValue) {
+    // Spanish — same collision protection
+    if (spanishIdx !== -1) {
       if (!data.es[namespace]) {
         data.es[namespace] = {};
       }
-      data.es[namespace][key] = spanishValue;
+      if (spanishValue || !data.es[namespace][key]) {
+        data.es[namespace][key] = spanishValue;
+      }
     }
   }
 
@@ -346,10 +353,13 @@ function discoverStateCsvFiles() {
 }
 
 /**
- * Calculate combined SHA-256 hash of all state CSV files
+ * Calculate combined SHA-256 hash of all state CSV files and this script
  */
 function calculateCombinedHash(stateFiles) {
   const hash = createHash('sha256');
+
+  // Include the script itself so logic changes invalidate the cache
+  hash.update(readFileSync(fileURLToPath(import.meta.url), 'utf8'));
 
   for (const { state, csvPath } of stateFiles) {
     if (existsSync(csvPath)) {

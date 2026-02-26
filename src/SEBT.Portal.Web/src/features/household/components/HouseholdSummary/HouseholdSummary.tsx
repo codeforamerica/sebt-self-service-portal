@@ -19,23 +19,34 @@ function formatAddress(address: Address): string {
 // Keys map to CSV: "S2 - Portal Dashboard - Profile Table - Status {Status}"
 function getOverallStatus(data: HouseholdData): {
   labelKey: string
+  fallback: string
   variant: 'success' | 'warning' | 'error' | 'info'
 } {
   const statuses = data.applications.map((app) => app.applicationStatus)
 
   if (statuses.includes('Approved')) {
-    return { labelKey: 'profileTableStatusEnrolled', variant: 'success' }
+    return { labelKey: 'profileTableStatusEnrolled', fallback: 'Enrolled', variant: 'success' }
   }
   if (statuses.includes('Denied')) {
-    return { labelKey: 'profileTableStatusApplicationDenied', variant: 'error' }
+    return {
+      labelKey: 'profileTableStatusApplicationDenied',
+      fallback: 'Application denied',
+      variant: 'error'
+    }
   }
   if (statuses.includes('Pending') || statuses.includes('UnderReview')) {
-    return { labelKey: 'profileTableStatusApplicationIn-progress', variant: 'warning' }
+    return {
+      labelKey: 'profileTableStatusApplicationIn-progress',
+      fallback: 'Application in-progress',
+      variant: 'warning'
+    }
   }
   if (statuses.includes('Cancelled')) {
-    return { labelKey: 'profileTableStatusCancelled', variant: 'info' }
+    // TODO: Add CSV row "S2 - Portal Dashboard - Profile Table - Status Cancelled"
+    return { labelKey: 'profileTableStatusCancelled', fallback: 'Cancelled', variant: 'info' }
   }
-  return { labelKey: 'profileTableStatusUnknown', variant: 'info' }
+  // TODO: Add CSV row "S2 - Portal Dashboard - Profile Table - Status Unknown"
+  return { labelKey: 'profileTableStatusUnknown', fallback: 'Unknown', variant: 'info' }
 }
 
 function getStatusTextClass(variant: string): string {
@@ -65,7 +76,7 @@ export function HouseholdSummary() {
           <dt className="text-bold">{t('profileTableHeadingStatus')}</dt>
           <dd className="margin-left-0 margin-bottom-2">
             <span className={`text-bold ${getStatusTextClass(status.variant)}`}>
-              {t(status.labelKey)}
+              {t(status.labelKey, status.fallback)}
             </span>
             {status.variant === 'success' && (
               <p className="margin-top-1 margin-bottom-0">
