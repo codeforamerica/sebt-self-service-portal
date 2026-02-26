@@ -1,8 +1,8 @@
 terraform {
   backend "s3" {
-    bucket         = "sebt-portal-dc-dev-tfstate"
+    bucket         = "sebt-portal-dc-development-tfstate"
     key            = "dev-dc/backend.tfstate"
-    dynamodb_table = "dev.tfstate"
+    dynamodb_table = "development.tfstate"
     region         = "us-east-1"
   }
 }
@@ -74,9 +74,9 @@ module "app" {
   public_subnets               = module.vpc.public_subnets
   sender_email                 = var.sender_email
   skip_final_snapshot          = true
-  state                        = upper(var.state)
+  state                        = var.state
   vpc_id                       = module.vpc.vpc_id
-  waf_log_group                = "aws-waf-logs-cfa/${var.project}-${var.state}/${var.environment}"
+  waf_log_group                = module.logging.log_groups["waf"]
 
   api_image_url      = data.aws_ecr_repository.api.repository_url
   api_repository_arn = data.aws_ecr_repository.api.arn

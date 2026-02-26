@@ -7,13 +7,13 @@ variable "environment" {
 variable "identifier_hasher_secret_key" {
   type        = string
   description = "Secret key for identifier hashing."
-  ephemeral   = true
+  sensitive   = true
 }
 
 variable "jwt_secret_key" {
   type        = string
   description = "Secret key for signing JWT tokens."
-  ephemeral   = true
+  sensitive   = true
 }
 
 variable "domain" {
