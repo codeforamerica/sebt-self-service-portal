@@ -11,7 +11,8 @@ internal static class ServiceCollectionPluginExtensions
 {
     public static IServiceCollection AddPlugins(this IServiceCollection services, IConfiguration configuration)
     {
-        services.TryAddSingleton<IStateAuthenticationService, Defaults.DefaultIStateAuthenticationService>();
+        services.TryAddSingleton<IStateAuthenticationService, Defaults.DefaultStateAuthenticationService>();
+        services.TryAddSingleton<IStateHealthCheckService, Defaults.DefaultStateHealthCheckService>();
 
         var pluginAssemblyPaths = configuration
                                       .GetSection("PluginAssemblyPaths")
@@ -65,6 +66,11 @@ internal static class ServiceCollectionPluginExtensions
         conventions
             .ForTypesDerivedFrom<ISummerEbtCaseService>()
             .Export<ISummerEbtCaseService>()
+            .Shared();
+
+        conventions
+            .ForTypesDerivedFrom<IStateHealthCheckService>()
+            .Export<IStateHealthCheckService>()
             .Shared();
 
         return new ContainerConfiguration().WithAssembliesInPath(assemblyPaths, conventions);
