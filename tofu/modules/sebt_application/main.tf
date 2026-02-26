@@ -65,18 +65,18 @@ module "api" {
 # via an internet facing Application Load Balancer. It communicates with the                                                                      
 # API service internally through the VPC.                                                                                                         
 module "web" {
-  source = "github.com/codeforamerica/tofu-modules-aws-fargate-service?ref=1.10.0"
-  project       = "${var.project}-${var.state}"
+  source  = "github.com/codeforamerica/tofu-modules-aws-fargate-service?ref=1.10.0"
+  project = "${var.project}-${var.state}"
   # TODO Make project_short a variable
   project_short = "sebt"
   environment   = var.environment
   service       = "web"
   service_short = "web"
 
-  domain         = var.domain
-  subdomain      = "origin"
-  hosted_zone_id = var.hosted_zone_id
-  ingress_prefix_list_ids      = [data.aws_ec2_managed_prefix_list.cloudfront.id]
+  domain                  = var.domain
+  subdomain               = "origin"
+  hosted_zone_id          = var.hosted_zone_id
+  ingress_prefix_list_ids = [data.aws_ec2_managed_prefix_list.cloudfront.id]
 
   public          = false
   create_endpoint = true

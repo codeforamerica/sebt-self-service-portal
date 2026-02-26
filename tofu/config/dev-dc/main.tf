@@ -60,21 +60,21 @@ data "aws_route53_zone" "main" {
 module "app" {
   source = "../../modules/sebt_application"
 
-  apply_immediately            = true
-  domain                       = var.domain
-  hosted_zone_id               = data.aws_route53_zone.main.zone_id
-  environment                  = var.environment
-  image_tag                    = var.image_tag
-  logging_key_id               = module.logging.kms_key_arn
-  logging_bucket_domain_name   = module.logging.bucket_domain_name
-  private_subnets              = module.vpc.private_subnets
-  project                      = var.project
-  public_subnets               = module.vpc.public_subnets
-  sender_email                 = var.sender_email
-  skip_final_snapshot          = true
-  state                        = var.state
-  vpc_id                       = module.vpc.vpc_id
-  waf_log_group                = module.logging.log_groups["waf"]
+  apply_immediately          = true
+  domain                     = var.domain
+  hosted_zone_id             = data.aws_route53_zone.main.zone_id
+  environment                = var.environment
+  image_tag                  = var.image_tag
+  logging_key_id             = module.logging.kms_key_arn
+  logging_bucket_domain_name = module.logging.bucket_domain_name
+  private_subnets            = module.vpc.private_subnets
+  project                    = var.project
+  public_subnets             = module.vpc.public_subnets
+  sender_email               = var.sender_email
+  skip_final_snapshot        = true
+  state                      = var.state
+  vpc_id                     = module.vpc.vpc_id
+  waf_log_group              = module.logging.log_groups["waf"]
 
   api_image_url      = data.aws_ecr_repository.api.repository_url
   api_repository_arn = data.aws_ecr_repository.api.arn
