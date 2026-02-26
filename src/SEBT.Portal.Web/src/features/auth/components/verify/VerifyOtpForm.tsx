@@ -70,7 +70,7 @@ export function VerifyOtpForm({ email, contactLink }: VerifyOtpFormProps) {
       login(result.token)
       // Clear the stored email
       sessionStorage.removeItem('otp_email')
-      router.push('/dashboard')
+      router.push(result.requiresIdProofing === true ? '/login/id-proofing' : '/dashboard')
     } catch (err) {
       if (err instanceof ApiError) {
         setSubmitError(err.message)

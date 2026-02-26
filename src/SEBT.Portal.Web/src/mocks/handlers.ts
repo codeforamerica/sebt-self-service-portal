@@ -6,7 +6,11 @@
  */
 import { delay, http, HttpResponse } from 'msw'
 
-import type { RequestOtpRequest, ValidateOtpRequest } from '@/features/auth'
+import type {
+  RequestOtpRequest,
+  SubmitIdProofingRequest,
+  ValidateOtpRequest
+} from '@/features/auth'
 
 // Test email addresses for different scenarios
 export const TEST_EMAILS = {
@@ -14,7 +18,11 @@ export const TEST_EMAILS = {
   rateLimit: 'ratelimit@example.com',
   notFound: 'notfound@example.com',
   serverError: 'error@example.com',
-  badRequest: 'badrequest@example.com'
+  badRequest: 'badrequest@example.com',
+  // OTP validation returns requiresIdProofing: false
+  idProofingNotRequired: 'noidproofing@example.com',
+  // OTP validation returns token only (no requiresIdProofing field)
+  idProofingAbsent: 'noflag@example.com'
 } as const
 
 // Test OTP codes
@@ -145,9 +153,16 @@ export const handlers = [
       return HttpResponse.json({ error: 'Invalid OTP. Please try again.' }, { status: 401 })
     }
 
-    // Success - return mock token
+    // Success - return mock token, with requiresIdProofing routed by email address
+    if (body.email === TEST_EMAILS.idProofingAbsent) {
+      return HttpResponse.json({ token: 'mock-jwt-token-for-testing' })
+    }
+    if (body.email === TEST_EMAILS.idProofingNotRequired) {
+      return HttpResponse.json({ token: 'mock-jwt-token-for-testing', requiresIdProofing: false })
+    }
     return HttpResponse.json({
-      token: 'mock-jwt-token-for-testing'
+      token: 'mock-jwt-token-for-testing',
+      requiresIdProofing: true
     })
   }),
 
@@ -173,6 +188,19 @@ export const handlers = [
     await delay(50)
 
     return HttpResponse.json(TEST_FEATURE_FLAGS)
+  }),
+
+  // ID proofing endpoint (stub — backend endpoint TBD)
+  http.post('/api/id-proofing', async ({ request }) => {
+    const body = (await request.json()) as SubmitIdProofingRequest
+
+    await delay(50)
+
+    if (!body.dateOfBirth?.month || !body.dateOfBirth?.day || !body.dateOfBirth?.year) {
+      return HttpResponse.json({ error: 'Date of birth is required' }, { status: 400 })
+    }
+
+    return HttpResponse.json(null, { status: 204 })
   }),
 
   // Household data endpoint

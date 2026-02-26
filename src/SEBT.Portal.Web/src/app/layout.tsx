@@ -113,7 +113,13 @@ export default async function RootLayout({
         />
       </body>
       {/* Google Analytics - only rendered when GA_ID is configured */}
-      {gaId && <GoogleAnalytics gaId={gaId} />}
+      {/* nonce is required for CSP compliance: proxy.ts enforces nonce-based strict-dynamic */}
+      {gaId && (
+        <GoogleAnalytics
+          gaId={gaId}
+          {...(nonce ? { nonce } : {})}
+        />
+      )}
     </html>
   )
 }
