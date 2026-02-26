@@ -12,18 +12,22 @@ internal static class ContainerConfigurationExtensions
         AttributedModelProvider conventions,
         SearchOption searchOption = SearchOption.TopDirectoryOnly)
     {
-        foreach (var path in paths)
+        var baseDir = AppContext.BaseDirectory;
+        var existingPaths = paths
+            .Select(p => Path.GetFullPath(Path.Combine(baseDir, p)))
+            .Where(Directory.Exists)
+            .ToArray();
+
+        if (existingPaths.Length == 0)
+            return containerConfiguration;
+
+        var alc = new PluginAssemblyLoadContext(existingPaths);
+
+        foreach (var combinedPath in existingPaths)
         {
-            var combinedPath = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, path));
-
-            if (!Directory.Exists(combinedPath))
-            {
-                continue;
-            }
-
             var assemblies = Directory
                 .GetFiles(combinedPath, "*.dll", searchOption)
-                .Select(AssemblyLoadContext.Default.LoadFromAssemblyPath)
+                .Select(p => alc.LoadFromAssemblyPath(Path.GetFullPath(p)))
                 .ToList();
 
             containerConfiguration.WithAssemblies(assemblies, conventions);
