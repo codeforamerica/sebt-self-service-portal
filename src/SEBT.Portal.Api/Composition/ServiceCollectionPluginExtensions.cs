@@ -1,7 +1,6 @@
 using System.Composition.Convention;
 using System.Composition.Hosting;
 using Microsoft.Extensions.DependencyInjection.Extensions;
-using SEBT.Portal.Api.Options;
 using SEBT.Portal.StatesPlugins.Interfaces;
 
 namespace SEBT.Portal.Api.Composition;
@@ -23,8 +22,6 @@ internal static class ServiceCollectionPluginExtensions
         using var container = containerConfiguration.CreateContainer();
 
         var plugins = container.GetExports<IStatePlugin>();
-
-        var oidcStateCodes = new List<string>();
         var oidcExports = container.GetExports<IStateOidcLoginService>();
 
         foreach (var oidcService in oidcExports)
@@ -35,12 +32,10 @@ internal static class ServiceCollectionPluginExtensions
                 Log.Warning("OIDC login plugin {Type} has empty StateCode; skipping", oidcService.GetType().FullName);
                 continue;
             }
-            services.AddKeyedSingleton<IStateOidcLoginService>(stateCode, oidcService);
-            oidcStateCodes.Add(stateCode);
+            var key = stateCode.ToLowerInvariant();
+            services.AddKeyedSingleton<IStateOidcLoginService>(key, oidcService);
             Log.Information("Registered OIDC login for state: {StateCode}", stateCode);
         }
-
-        services.AddSingleton(new StateOidcStateCodes(oidcStateCodes));
 
         foreach (var plugin in plugins)
         {
@@ -71,7 +66,9 @@ internal static class ServiceCollectionPluginExtensions
         return services;
     }
 
-    private static ContainerConfiguration CreateContainerConfiguration(string[] assemblyPaths, IConfiguration configuration)
+    private static ContainerConfiguration CreateContainerConfiguration(
+        string[] assemblyPaths,
+        IConfiguration configuration)
     {
         var conventions = new ConventionBuilder();
 
@@ -93,6 +90,11 @@ internal static class ServiceCollectionPluginExtensions
         conventions
             .ForTypesDerivedFrom<IStateOidcLoginService>()
             .Export<IStateOidcLoginService>()
+            .Shared();
+
+        conventions
+            .ForTypesDerivedFrom<IStateAuthService>()
+            .Export<IStateAuthService>()
             .Shared();
 
         return new ContainerConfiguration()
