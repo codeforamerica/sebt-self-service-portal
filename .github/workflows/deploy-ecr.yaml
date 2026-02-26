@@ -279,7 +279,7 @@ jobs:
       - name: Install OpenTofu
         uses: opentofu/setup-opentofu@v1
         with:
-          tofu_version: "1.9.0"
+          tofu_version: "1.10.0"
 
       - name: OpenTofu Init
         working-directory: tofu/config/dev-dc
