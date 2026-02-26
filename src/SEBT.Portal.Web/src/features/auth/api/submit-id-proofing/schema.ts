@@ -38,3 +38,17 @@ export const SubmitIdProofingRequestSchema = z
   })
 
 export type SubmitIdProofingRequest = z.infer<typeof SubmitIdProofingRequestSchema>
+
+// Response contract for the id-proofing endpoint.
+// The backend maps its internal IdProofingStatus to this frontend-friendly shape.
+export const IdProofingResultSchema = z.enum(['matched', 'failed'])
+export type IdProofingResult = z.infer<typeof IdProofingResultSchema>
+
+export const SubmitIdProofingResponseSchema = z.object({
+  /** Whether the user's identity was matched or the proofing failed */
+  result: IdProofingResultSchema,
+  /** Whether the "Apply now" option should be shown on the offboarding page.
+   *  Only meaningful when result is 'failed'. Defaults to true when absent. */
+  canApply: z.boolean().optional()
+})
+export type SubmitIdProofingResponse = z.infer<typeof SubmitIdProofingResponseSchema>

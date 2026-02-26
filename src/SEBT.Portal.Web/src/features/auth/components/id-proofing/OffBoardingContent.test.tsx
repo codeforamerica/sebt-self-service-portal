@@ -1,0 +1,123 @@
+/**
+ * OffBoardingContent Component Unit Tests
+ *
+ * Tests the offboarding page content including:
+ * - Title and body text rendering
+ * - "Back" link navigating to id-proofing form
+ * - "Contact us" link to external support page
+ * - Conditional "Apply now" section based on canApply prop
+ * - Optional body3 paragraph rendering (DC has it, CO does not)
+ */
+import { render, screen } from '@testing-library/react'
+import { describe, expect, it } from 'vitest'
+
+import { OffBoardingContent } from './OffBoardingContent'
+
+const DEFAULT_PROPS = {
+  title: 'We\u2019re sorry, we aren\u2019t able to show your DC SUN Bucks information',
+  body: 'You can go back to enter an ID number, or contact us if you need more help.',
+  backHref: '/login/id-proofing',
+  contactHref: 'https://sunbucks.dc.gov/page/contact-us',
+  contactLabel: 'Contact us',
+  canApply: true,
+  applyBody:
+    'If you\u2019re not sure what to do, tap "Apply now" and enter your child\u2019s information.',
+  applyLabel: 'Apply now',
+  applyHref: '#'
+}
+
+describe('OffBoardingContent', () => {
+  describe('Core content', () => {
+    it('renders the title as a heading', () => {
+      render(<OffBoardingContent {...DEFAULT_PROPS} />)
+
+      expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent(DEFAULT_PROPS.title)
+    })
+
+    it('renders the body text', () => {
+      render(<OffBoardingContent {...DEFAULT_PROPS} />)
+
+      expect(screen.getByText(DEFAULT_PROPS.body)).toBeInTheDocument()
+    })
+  })
+
+  describe('Navigation buttons', () => {
+    it('renders a "Back" link pointing to the id-proofing form', () => {
+      render(<OffBoardingContent {...DEFAULT_PROPS} />)
+
+      const backLink = screen.getByRole('link', { name: /back/i })
+      expect(backLink).toHaveAttribute('href', '/login/id-proofing')
+    })
+
+    it('renders a "Contact us" link pointing to the external support page', () => {
+      render(<OffBoardingContent {...DEFAULT_PROPS} />)
+
+      const contactLink = screen.getByRole('link', { name: DEFAULT_PROPS.contactLabel })
+      expect(contactLink).toHaveAttribute('href', DEFAULT_PROPS.contactHref)
+    })
+  })
+
+  describe('Apply section', () => {
+    it('renders the apply section when canApply is true', () => {
+      render(
+        <OffBoardingContent
+          {...DEFAULT_PROPS}
+          canApply={true}
+        />
+      )
+
+      expect(screen.getByText(DEFAULT_PROPS.applyBody)).toBeInTheDocument()
+      expect(screen.getByRole('link', { name: DEFAULT_PROPS.applyLabel })).toBeInTheDocument()
+    })
+
+    it('does not render the apply section when canApply is false', () => {
+      render(
+        <OffBoardingContent
+          {...DEFAULT_PROPS}
+          canApply={false}
+        />
+      )
+
+      expect(screen.queryByText(DEFAULT_PROPS.applyBody)).not.toBeInTheDocument()
+      expect(screen.queryByRole('link', { name: DEFAULT_PROPS.applyLabel })).not.toBeInTheDocument()
+    })
+
+    it('renders applySkipBody when provided and non-empty', () => {
+      const skipBody = 'You can skip this step by going back and typing in your ID number instead.'
+      render(
+        <OffBoardingContent
+          {...DEFAULT_PROPS}
+          applySkipBody={skipBody}
+        />
+      )
+
+      expect(screen.getByText(skipBody)).toBeInTheDocument()
+    })
+
+    it('does not render applySkipBody when it is an empty string', () => {
+      const { container } = render(
+        <OffBoardingContent
+          {...DEFAULT_PROPS}
+          applySkipBody=""
+        />
+      )
+
+      // The apply section should still be present (canApply is true) but body3 should not render
+      expect(screen.getByText(DEFAULT_PROPS.applyBody)).toBeInTheDocument()
+      // Ensure no extra empty paragraphs in the apply section
+      const applySection = container.querySelector('[data-testid="apply-section"]')
+      expect(applySection).toBeInTheDocument()
+      // Only applyBody paragraph + apply link should be inside
+      const paragraphs = applySection!.querySelectorAll('p')
+      expect(paragraphs).toHaveLength(1)
+    })
+
+    it('does not render applySkipBody when it is undefined', () => {
+      const { container } = render(<OffBoardingContent {...DEFAULT_PROPS} />)
+
+      const applySection = container.querySelector('[data-testid="apply-section"]')
+      const paragraphs = applySection!.querySelectorAll('p')
+      expect(paragraphs).toHaveLength(1)
+    })
+  })
+})

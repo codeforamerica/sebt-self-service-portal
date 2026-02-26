@@ -103,13 +103,23 @@ export function IdProofingForm({ idOptions, contactLink }: IdProofingFormProps) 
     if (!validateFields()) return
 
     try {
-      await submitIdProofing.mutateAsync({
+      const response = await submitIdProofing.mutateAsync({
         dateOfBirth: { month: dobMonth, day: dobDay, year: dobYear },
         // Map the UI "none" sentinel to null for the API
         idType: selectedIdType === NONE_VALUE || selectedIdType === null ? null : selectedIdType,
         idValue: showIdValueInput ? idValue.trim() : null
       })
-      router.push('/dashboard')
+
+      if (response.result === 'matched') {
+        router.push('/dashboard')
+      } else {
+        const params = new URLSearchParams()
+        if (response.canApply === false) {
+          params.set('canApply', 'false')
+        }
+        const query = params.toString()
+        router.push(`/login/id-proofing/off-boarding${query ? `?${query}` : ''}`)
+      }
     } catch (err) {
       if (err instanceof ApiError) {
         setSubmitError(err.message)
