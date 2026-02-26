@@ -144,12 +144,13 @@ jobs:
           token: ${{ secrets.SEBT_CONNECTOR_REPOSITORY_PAT }}
           path: dc-connector
 
-      - name: Checkout co-connector
-        uses: actions/checkout@v6
-        with:
-          repository: codeforamerica/sebt-self-service-portal-co-connector
-          token: ${{ secrets.SEBT_CONNECTOR_REPOSITORY_PAT }}
-          path: co-connector
+      # TODO: Uncomment when CO connector implements GetHouseholdByGuardianEmailAsync
+      # - name: Checkout co-connector
+      #   uses: actions/checkout@v6
+      #   with:
+      #     repository: codeforamerica/sebt-self-service-portal-co-connector
+      #     token: ${{ secrets.SEBT_CONNECTOR_REPOSITORY_PAT }}
+      #     path: co-connector
 
       - name: Build plugin interfaces (NuGet package)
         run: |
@@ -162,11 +163,12 @@ jobs:
             -c Release \
             -p:CopyPlugins=false
 
-      - name: Build CO plugin
-        run: |
-          dotnet build co-connector/src/SEBT.Portal.StatePlugins.CO/SEBT.Portal.StatePlugins.CO.csproj \
-            -c Release \
-            -p:CopyPlugins=false
+      # TODO: Uncomment when CO connector implements GetHouseholdByGuardianEmailAsync
+      # - name: Build CO plugin
+      #   run: |
+      #     dotnet build co-connector/src/SEBT.Portal.StatePlugins.CO/SEBT.Portal.StatePlugins.CO.csproj \
+      #       -c Release \
+      #       -p:CopyPlugins=false
 
       - name: Stage plugin artifacts for Docker build
         run: |
@@ -175,9 +177,10 @@ jobs:
           mkdir -p src/SEBT.Portal.Api/plugins-dc
           cp dc-connector/src/SEBT.Portal.StatePlugins.DC/bin/Release/net10.0/*.dll \
             src/SEBT.Portal.Api/plugins-dc/
-          mkdir -p src/SEBT.Portal.Api/plugins-co
-          cp co-connector/src/SEBT.Portal.StatePlugins.CO/bin/Release/net10.0/*.dll \
-            src/SEBT.Portal.Api/plugins-co/
+          # TODO: Uncomment when CO connector implements GetHouseholdByGuardianEmailAsync
+          # mkdir -p src/SEBT.Portal.Api/plugins-co
+          # cp co-connector/src/SEBT.Portal.StatePlugins.CO/bin/Release/net10.0/*.dll \
+          #   src/SEBT.Portal.Api/plugins-co/
 
       - name: Build API image
         run: |
@@ -196,21 +199,21 @@ jobs:
             -t sebt-portal-web-dc:${{ steps.tag.outputs.tag }} \
             .
 
-      - name: Build Web CO image
-        run: |
-          docker build \
-            --platform linux/amd64 \
-            -f src/SEBT.Portal.Web/Dockerfile \
-            --build-arg STATE=co \
-            -t sebt-portal-web-co:${{ steps.tag.outputs.tag }} \
-            .
+      # TODO: Uncomment when CO connector implements GetHouseholdByGuardianEmailAsync
+      # - name: Build Web CO image
+      #   run: |
+      #     docker build \
+      #       --platform linux/amd64 \
+      #       -f src/SEBT.Portal.Web/Dockerfile \
+      #       --build-arg STATE=co \
+      #       -t sebt-portal-web-co:${{ steps.tag.outputs.tag }} \
+      #       .
 
       - name: Save Docker images
         run: |
           docker save \
             sebt-portal-api:${{ steps.tag.outputs.tag }} \
             sebt-portal-web-dc:${{ steps.tag.outputs.tag }} \
-            sebt-portal-web-co:${{ steps.tag.outputs.tag }} \
             -o /tmp/docker-images.tar
 
       - name: Upload Docker images
@@ -296,85 +299,86 @@ jobs:
           echo "url=$WEB_URL" >> "$GITHUB_OUTPUT"
           echo "Deployment URL: $WEB_URL"
 
-  deploy-co:
-    if: github.event_name != 'pull_request'
-    needs: build
-    runs-on: ubuntu-latest
-    environment: dev-co
-    outputs:
-      web_url: ${{ steps.deploy-url.outputs.url }}
-    env:
-      AWS_REGION: us-east-1
-      TF_VAR_domain: ${{ vars.DOMAIN }}
-      TF_VAR_identifier_hasher_secret_key: ${{ secrets.IDENTIFIER_HASHER_SECRET_KEY }}
-      TF_VAR_jwt_secret_key: ${{ secrets.JWT_SECRET_KEY }}
-      TF_VAR_sender_email: ${{ vars.SENDER_EMAIL }}
-      TF_VAR_vpc_cidr: ${{ vars.VPC_CIDR }}
-      TF_VAR_private_subnets: ${{ vars.PRIVATE_SUBNETS }}
-      TF_VAR_public_subnets: ${{ vars.PUBLIC_SUBNETS }}
-
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v6
-
-      - name: Download Docker images
-        uses: actions/download-artifact@v7
-        with:
-          name: docker-images
-          path: /tmp
-
-      - name: Load Docker images
-        run: docker load -i /tmp/docker-images.tar
-
-      - name: Configure AWS credentials
-        uses: aws-actions/configure-aws-credentials@v6
-        with:
-          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: ${{ env.AWS_REGION }}
-
-      - name: Login to Amazon ECR
-        id: login-ecr
-        uses: aws-actions/amazon-ecr-login@v2
-
-      - name: Push images to ECR
-        run: |
-          IMAGE_TAG="${{ needs.build.outputs.image_tag }}"
-          API_REPO="${{ secrets.ECR_API_REPOSITORY_URL }}"
-          WEB_REPO="${{ secrets.ECR_WEB_REPOSITORY_URL }}"
-
-          docker tag sebt-portal-api:${IMAGE_TAG} ${API_REPO}:${IMAGE_TAG}
-          docker tag sebt-portal-web-co:${IMAGE_TAG} ${WEB_REPO}:${IMAGE_TAG}
-
-          docker push ${API_REPO}:${IMAGE_TAG}
-          docker push ${WEB_REPO}:${IMAGE_TAG}
-
-      - name: Install OpenTofu
-        uses: opentofu/setup-opentofu@v1
-        with:
-          tofu_version: "1.9.0"
-
-      - name: OpenTofu Init
-        working-directory: tofu/config/dev-co
-        run: tofu init -upgrade
-
-      - name: OpenTofu Apply
-        working-directory: tofu/config/dev-co
-        run: |
-          tofu apply -auto-approve \
-            -var="image_tag=${{ needs.build.outputs.image_tag }}"
-
-      - name: Get deployment URL
-        id: deploy-url
-        working-directory: tofu/config/dev-co
-        run: |
-          WEB_URL=$(tofu output -raw web_endpoint_url 2>/dev/null || echo "")
-          echo "url=$WEB_URL" >> "$GITHUB_OUTPUT"
-          echo "Deployment URL: $WEB_URL"
+  # TODO: Uncomment when CO connector implements GetHouseholdByGuardianEmailAsync
+  # deploy-co:
+  #   if: github.event_name != 'pull_request'
+  #   needs: build
+  #   runs-on: ubuntu-latest
+  #   environment: dev-co
+  #   outputs:
+  #     web_url: ${{ steps.deploy-url.outputs.url }}
+  #   env:
+  #     AWS_REGION: us-east-1
+  #     TF_VAR_domain: ${{ vars.DOMAIN }}
+  #     TF_VAR_identifier_hasher_secret_key: ${{ secrets.IDENTIFIER_HASHER_SECRET_KEY }}
+  #     TF_VAR_jwt_secret_key: ${{ secrets.JWT_SECRET_KEY }}
+  #     TF_VAR_sender_email: ${{ vars.SENDER_EMAIL }}
+  #     TF_VAR_vpc_cidr: ${{ vars.VPC_CIDR }}
+  #     TF_VAR_private_subnets: ${{ vars.PRIVATE_SUBNETS }}
+  #     TF_VAR_public_subnets: ${{ vars.PUBLIC_SUBNETS }}
+  #
+  #   steps:
+  #     - name: Checkout
+  #       uses: actions/checkout@v6
+  #
+  #     - name: Download Docker images
+  #       uses: actions/download-artifact@v7
+  #       with:
+  #         name: docker-images
+  #         path: /tmp
+  #
+  #     - name: Load Docker images
+  #       run: docker load -i /tmp/docker-images.tar
+  #
+  #     - name: Configure AWS credentials
+  #       uses: aws-actions/configure-aws-credentials@v6
+  #       with:
+  #         aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+  #         aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+  #         aws-region: ${{ env.AWS_REGION }}
+  #
+  #     - name: Login to Amazon ECR
+  #       id: login-ecr
+  #       uses: aws-actions/amazon-ecr-login@v2
+  #
+  #     - name: Push images to ECR
+  #       run: |
+  #         IMAGE_TAG="${{ needs.build.outputs.image_tag }}"
+  #         API_REPO="${{ secrets.ECR_API_REPOSITORY_URL }}"
+  #         WEB_REPO="${{ secrets.ECR_WEB_REPOSITORY_URL }}"
+  #
+  #         docker tag sebt-portal-api:${IMAGE_TAG} ${API_REPO}:${IMAGE_TAG}
+  #         docker tag sebt-portal-web-co:${IMAGE_TAG} ${WEB_REPO}:${IMAGE_TAG}
+  #
+  #         docker push ${API_REPO}:${IMAGE_TAG}
+  #         docker push ${WEB_REPO}:${IMAGE_TAG}
+  #
+  #     - name: Install OpenTofu
+  #       uses: opentofu/setup-opentofu@v1
+  #       with:
+  #         tofu_version: "1.9.0"
+  #
+  #     - name: OpenTofu Init
+  #       working-directory: tofu/config/dev-co
+  #       run: tofu init -upgrade
+  #
+  #     - name: OpenTofu Apply
+  #       working-directory: tofu/config/dev-co
+  #       run: |
+  #         tofu apply -auto-approve \
+  #           -var="image_tag=${{ needs.build.outputs.image_tag }}"
+  #
+  #     - name: Get deployment URL
+  #       id: deploy-url
+  #       working-directory: tofu/config/dev-co
+  #       run: |
+  #         WEB_URL=$(tofu output -raw web_endpoint_url 2>/dev/null || echo "")
+  #         echo "url=$WEB_URL" >> "$GITHUB_OUTPUT"
+  #         echo "Deployment URL: $WEB_URL"
 
   create-deployment-record:
-    needs: [deploy-dc, deploy-co]
-    if: always() && (needs.deploy-dc.result == 'success' || needs.deploy-co.result == 'success')
+    needs: [deploy-dc]
+    if: always() && needs.deploy-dc.result == 'success'
     runs-on: ubuntu-latest
     permissions:
       deployments: write
@@ -411,33 +415,34 @@ jobs:
               });
             }
 
-      - name: Create GitHub deployment for CO
-        if: needs.deploy-co.result == 'success'
-        uses: actions/github-script@v8
-        with:
-          script: |
-            const rawUrl = '${{ needs.deploy-co.outputs.web_url }}';
-            const webUrl = rawUrl && !rawUrl.startsWith('http') ? `https://${rawUrl}` : rawUrl;
-            const ref = context.sha;
-
-            const deployment = await github.rest.repos.createDeployment({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              ref,
-              environment: 'dev-co',
-              auto_merge: false,
-              required_contexts: [],
-              description: `Deploy dev-co (${ref.slice(0, 7)})`
-            });
-
-            const deploymentId = deployment.data.id;
-            if (deploymentId) {
-              await github.rest.repos.createDeploymentStatus({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                deployment_id: deploymentId,
-                state: 'success',
-                environment_url: webUrl || undefined,
-                description: 'Deployment finished successfully'
-              });
-            }
+      # TODO: Uncomment when CO connector implements GetHouseholdByGuardianEmailAsync
+      # - name: Create GitHub deployment for CO
+      #   if: needs.deploy-co.result == 'success'
+      #   uses: actions/github-script@v8
+      #   with:
+      #     script: |
+      #       const rawUrl = '${{ needs.deploy-co.outputs.web_url }}';
+      #       const webUrl = rawUrl && !rawUrl.startsWith('http') ? `https://${rawUrl}` : rawUrl;
+      #       const ref = context.sha;
+      #
+      #       const deployment = await github.rest.repos.createDeployment({
+      #         owner: context.repo.owner,
+      #         repo: context.repo.repo,
+      #         ref,
+      #         environment: 'dev-co',
+      #         auto_merge: false,
+      #         required_contexts: [],
+      #         description: `Deploy dev-co (${ref.slice(0, 7)})`
+      #       });
+      #
+      #       const deploymentId = deployment.data.id;
+      #       if (deploymentId) {
+      #         await github.rest.repos.createDeploymentStatus({
+      #           owner: context.repo.owner,
+      #           repo: context.repo.repo,
+      #           deployment_id: deploymentId,
+      #           state: 'success',
+      #           environment_url: webUrl || undefined,
+      #           description: 'Deployment finished successfully'
+      #         });
+      #       }
