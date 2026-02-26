@@ -140,7 +140,7 @@ All events are tracked via the singular trackEvent method:
 
 Passing in an event name will append an event object to the
 `<root>.event` array. Optionally, event data (of any type) can be
-included along with the event. This event should be exposed publicly on
+included along with the event. This method must be exposed publicly on
 the root data structure:
 
 		<root>.trackEvent(eventName, eventData?)
@@ -168,12 +168,12 @@ obey the same contract and share the same signature:
 
 
 This functions stores `value` at a specified `path` relative to the
-data layer `<root>`. One or more `scope`s may be
-optionally specified and so the function should an accept a string or
-an array of strings.
+data layer `<root>`. One or more `scope`s may be optionally specified
+and so the function should accept a string or an array of strings.
 
-NOTE: The convience methods that operate on user data elements
-(`setUserData` and `setUserProfile`) MUST include the `default` scope
+
+**NOTE**: The convience methods that operate on user data elements
+(`setUserData` and `setUserProfile`) **must** include the `default` scope
 when storing data, even if no scope is provided.
 
 The functions that comprise the public write API are:
@@ -184,8 +184,8 @@ The functions that comprise the public write API are:
 		DataLayer#setPageCategory(path: string, value: unknown, scope?: string | string[]): void
 		DataLayer#setPageAttribute(path: string, value: unknown, scope?: string | string[]): void
 
-Along with `getElement` these functions should be exposed via the root
-data structure.
+Along with `getElement` these functions must be exposed via the root
+data structure:
 
 *Read*
 
@@ -201,17 +201,17 @@ data structure.
 
 ## Integrations
 In order to facilite integration with other 1st and 3rd party tools,
-the datalayer emits DOM events that tools can listen for and respond
-accordingly. All mutations of the data layer fire a corresponding
-event with additional context, where relevant.
+the datalayer must emit DOM events that others tools can listen for
+and respond to accordingly. All mutations of the data layer should
+fire a corresponding event, with additional context, where relevant.
 
 ### DOM Events
 The Data Layer object should emit DOM `CustomEvents` on `document` to
 ensure other 1st and 3rd party tooling (i.e. analytics integrations)
 can interact with the data layer in an asynchronous and
 fully-decoupled manner. With the exception of the global
-`DataLayer:Initialized`, events should be "namespaced" to the root
-data structure.
+`DataLayer:Initialized` event, data layer events should be
+"namespaced" to the root data structure.
 
 	| Event Name                | Fired When                                      |
 	|---------------------------|-------------------------------------------------|
@@ -223,7 +223,7 @@ data structure.
 	| `<root>:UserProfileSet`   | User profile set                                |
 	| `<root>:EventTracked`     | Event tracked                                   |
 
-All events bubble and may include a `detail` payload.
+All events bubble and may include a `detail` payload with additional context.
 
 ### DOM Bridge & Sample Integration
 For most i.e. web analytics tools, the integration is as simple as
