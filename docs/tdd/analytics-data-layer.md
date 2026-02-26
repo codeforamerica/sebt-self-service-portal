@@ -148,7 +148,7 @@ the root data structure:
 ### Interacting with Data Elements
 
 #### Reading Data
-All data elements can be read using the the public `getElement` method
+All data elements can be read using the public `getElement` method
 with the following signature:
 
 		DataLayer#getElement(path: string, scope?: string, defaultValue?: unknown): unknown
@@ -199,7 +199,13 @@ data structure.
         <root>.page.category.set(path, value, scope?)
         <root>.page.attribute.set(path, value, scope?)
 
-## DOM Events
+## Integrations
+In order to facilite integration with other 1st and 3rd party tools,
+the datalayer emits DOM events that tools can listen for and respond
+accordingly. All mutations of the data layer fire a corresponding
+event with additional context, where relevant.
+
+### DOM Events
 The Data Layer object should emit DOM `CustomEvents` on `document` to
 ensure other 1st and 3rd party tooling (i.e. analytics integrations)
 can interact with the data layer in an asynchronous and
@@ -207,14 +213,61 @@ fully-decoupled manner. With the exception of the global
 `DataLayer:Initialized`, events should be "namespaced" to the root
 data structure.
 
-| Event Name                | Fired When                                      |
-|---------------------------|-------------------------------------------------|
-| `DataLayer:Initialized`   | Data Layer is ready (`<root>.initialized=true`) |
-| `<root>:PageElementSet`   | Page data set                                   |
-| `<root>:PageAttributeSet` | Page attribute set                              |
-| `<root>:PageCategorySet`  | Page category set                               |
-| `<root>:UserElementSet`   | User data set                                   |
-| `<root>:UserProfileSet`   | User profile set                                |
-| `<root>:EventTracked`     | Event tracked                                   |
+	| Event Name                | Fired When                                      |
+	|---------------------------|-------------------------------------------------|
+	| `DataLayer:Initialized`   | Data Layer is ready (`<root>.initialized=true`) |
+	| `<root>:PageElementSet`   | Page data set                                   |
+	| `<root>:PageAttributeSet` | Page attribute set                              |
+	| `<root>:PageCategorySet`  | Page category set                               |
+	| `<root>:UserElementSet`   | User data set                                   |
+	| `<root>:UserProfileSet`   | User profile set                                |
+	| `<root>:EventTracked`     | Event tracked                                   |
 
 All events bubble and may include a `detail` payload.
+
+### DOM Bridge & Sample Integration
+For most i.e. web analytics tools, the integration is as simple as
+following the vendor instructions and adding a bridge to listen for
+the DOM events and pass the data along accordingly. For example below
+represents a basic integration with Mixpanel. Assuming the Mixpanel
+library was loaded, this function would execute at the end of the
+`<HEAD>` of the document, per their recommendations.
+
+		function initMixpanelBridge() {
+		  if (mixpanel && mixpanel.init && mixpanel.track) {
+			// Initialize mixpanel tracking
+			mixpanel.init("PROJECT_TOKEN", {
+			  autocapture: true,
+			  track_pageview: true,
+			  record_sessions_percent: 100
+			});
+
+			// Listen for EVENT_TRACKED events and pass
+			// to mixpanel (precision tracking)
+			function attachEventListener(dataLayer) {
+			  window.addEventListener(
+				dataLayer.eventTypes.EVENT_TRACKED,
+				(event) => {
+				  if (
+					event.scope.includes("analytics") &&
+					  window.mixpanel
+				  ) {
+					mixpanel.track(event.eventName, event.eventData);
+				  }
+				}
+			  );
+			}
+
+			// If the data layer is initialized, attach the event listener
+			// otherwise wait for the DataLayer:Initialized event
+			if (window.digitalData && window.digitalData.initialized) {
+			  attachEventListener(window.digitalData);
+			} else {
+			  window.addEventListener("DataLayer:Initialized", (event) => {
+				if (event.detail?.rootElement) {
+				  attachEventListener(window[event.detail.rootElement]);
+				}
+			  });
+			}
+		  }
+		}
