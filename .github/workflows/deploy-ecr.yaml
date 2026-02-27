@@ -1,0 +1,439 @@
+name: Deploy (ECR)
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      image_tag:
+        description: "Image tag to push/deploy (default: git sha)"
+        required: false
+        type: string
+
+permissions:
+  contents: read
+  deployments: write
+  pull-requests: write
+
+concurrency:
+  group: deploy-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  # In PRs plan only if tofu files changed
+  check-infra-changes:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    outputs:
+      changed: ${{ steps.changes.outputs.tofu }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Check for tofu changes
+        id: changes
+        uses: dorny/paths-filter@v3
+        with:
+          filters: |
+            tofu:
+              - 'tofu/**'
+
+  plan-dc:
+    needs: check-infra-changes
+    if: needs.check-infra-changes.outputs.changed == 'true'
+    uses: ./.github/workflows/plan.yaml
+    with:
+      environment: dev-dc
+      config: dev-dc
+      image_tag: ${{ github.sha }}
+    secrets: inherit
+  
+  plan-co:
+    needs: check-infra-changes
+    if: needs.check-infra-changes.outputs.changed == 'true'
+    uses: ./.github/workflows/plan.yaml
+    with:
+      environment: dev-co
+      config: dev-co
+      image_tag: ${{ github.sha }}
+    secrets: inherit
+
+  plan-comment:
+    needs: [plan-dc, plan-co]
+    if: always() && (needs.plan-dc.outputs.plan || needs.plan-co.outputs.plan)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Post plan to PR
+        uses: actions/github-script@v8
+        with:
+          script: |
+            const { data: comments } = await github.rest.issues.listComments({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+            });
+            const botComment = comments.find(comment => {
+              return comment.user.type === 'Bot' && comment.body.includes('## Plan output');
+            });
+
+            let output = '';
+              const dcPlan = `${{ needs.plan-dc.outputs.plan }}`;
+              const coPlan = `${{ needs.plan-co.outputs.plan }}`;
+
+              if (dcPlan) {
+                output += `## Plan output — dev-dc\n\n\`\`\`\n${dcPlan}\n\`\`\`\n\n`;
+              }
+              if (coPlan) {
+                output += `## Plan output — dev-co\n\n\`\`\`\n${coPlan}\n\`\`\``;
+              }
+
+              if (botComment) {
+                github.rest.issues.updateComment({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  comment_id: botComment.id,
+                  body: output,
+                });
+              } else {
+                github.rest.issues.createComment({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  issue_number: context.issue.number,
+                  body: output,
+                });
+              }
+
+  # Build and deploy only on push to main or manual trigger, not on PRs
+  build:
+    if: github.event_name != 'pull_request'
+    runs-on: ubuntu-latest
+    outputs:
+      image_tag: ${{ steps.tag.outputs.tag }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Compute image tag
+        id: tag
+        run: |
+          if [ -n "${{ inputs.image_tag }}" ]; then
+            echo "tag=${{ inputs.image_tag }}" >> "$GITHUB_OUTPUT"
+          else
+            echo "tag=${GITHUB_SHA}" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: "10.0"
+
+      - name: Checkout state-connector
+        uses: actions/checkout@v6
+        with:
+          repository: codeforamerica/sebt-self-service-portal-state-connector
+          token: ${{ secrets.SEBT_CONNECTOR_REPOSITORY_PAT }}
+          path: state-connector
+
+      - name: Checkout dc-connector
+        uses: actions/checkout@v6
+        with:
+          repository: codeforamerica/sebt-self-service-portal-dc-connector
+          token: ${{ secrets.SEBT_CONNECTOR_REPOSITORY_PAT }}
+          path: dc-connector
+
+      - name: Checkout co-connector
+        uses: actions/checkout@v6
+        with:
+          repository: codeforamerica/sebt-self-service-portal-co-connector
+          token: ${{ secrets.SEBT_CONNECTOR_REPOSITORY_PAT }}
+          path: co-connector
+
+      - name: Build plugin interfaces (NuGet package)
+        run: |
+          dotnet build state-connector/src/SEBT.Portal.StatesPlugins.Interfaces/SEBT.Portal.StatesPlugins.Interfaces.csproj \
+            -c Release
+
+      - name: Build DC plugin
+        run: |
+          dotnet build dc-connector/src/SEBT.Portal.StatePlugins.DC/SEBT.Portal.StatePlugins.DC.csproj \
+            -c Release \
+            -p:CopyPlugins=false
+
+      - name: Build CO plugin
+        run: |
+          dotnet build co-connector/src/SEBT.Portal.StatePlugins.CO/SEBT.Portal.StatePlugins.CO.csproj \
+            -c Release \
+            -p:CopyPlugins=false
+
+      - name: Stage plugin artifacts for Docker build
+        run: |
+          mkdir -p nuget-store
+          cp -r ~/nuget-store/* nuget-store/
+          mkdir -p src/SEBT.Portal.Api/plugins-dc
+          cp dc-connector/src/SEBT.Portal.StatePlugins.DC/bin/Release/net10.0/*.dll \
+            src/SEBT.Portal.Api/plugins-dc/
+          mkdir -p src/SEBT.Portal.Api/plugins-co
+          cp co-connector/src/SEBT.Portal.StatePlugins.CO/bin/Release/net10.0/*.dll \
+            src/SEBT.Portal.Api/plugins-co/
+
+      - name: Build API image
+        run: |
+          docker build \
+            --platform linux/amd64 \
+            -f src/SEBT.Portal.Api/Dockerfile \
+            -t sebt-portal-api:${{ steps.tag.outputs.tag }} \
+            .
+
+      - name: Build Web DC image
+        run: |
+          docker build \
+            --platform linux/amd64 \
+            -f src/SEBT.Portal.Web/Dockerfile \
+            --build-arg STATE=dc \
+            -t sebt-portal-web-dc:${{ steps.tag.outputs.tag }} \
+            .
+
+      - name: Build Web CO image
+        run: |
+          docker build \
+            --platform linux/amd64 \
+            -f src/SEBT.Portal.Web/Dockerfile \
+            --build-arg STATE=co \
+            -t sebt-portal-web-co:${{ steps.tag.outputs.tag }} \
+            .
+
+      - name: Save Docker images
+        run: |
+          docker save \
+            sebt-portal-api:${{ steps.tag.outputs.tag }} \
+            sebt-portal-web-dc:${{ steps.tag.outputs.tag }} \
+            sebt-portal-web-co:${{ steps.tag.outputs.tag }} \
+            -o /tmp/docker-images.tar
+
+      - name: Upload Docker images
+        uses: actions/upload-artifact@v6
+        with:
+          name: docker-images
+          path: /tmp/docker-images.tar
+          retention-days: 1
+
+  deploy-dc:
+    if: github.event_name != 'pull_request'
+    needs: build
+    runs-on: ubuntu-latest
+    environment: dev-dc
+    outputs:
+      web_url: ${{ steps.deploy-url.outputs.url }}
+    env:
+      AWS_REGION: us-east-1
+      TF_VAR_domain: ${{ vars.DOMAIN }}
+      TF_VAR_sender_email: ${{ vars.SENDER_EMAIL }}
+      TF_VAR_vpc_cidr: ${{ vars.VPC_CIDR }}
+      TF_VAR_private_subnets: ${{ vars.PRIVATE_SUBNETS }}
+      TF_VAR_public_subnets: ${{ vars.PUBLIC_SUBNETS }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Download Docker images
+        uses: actions/download-artifact@v7
+        with:
+          name: docker-images
+          path: /tmp
+
+      - name: Load Docker images
+        run: docker load -i /tmp/docker-images.tar
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v6
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Push images to ECR
+        run: |
+          IMAGE_TAG="${{ needs.build.outputs.image_tag }}"
+          API_REPO="${{ secrets.ECR_API_REPOSITORY_URL }}"
+          WEB_REPO="${{ secrets.ECR_WEB_REPOSITORY_URL }}"
+
+          docker tag sebt-portal-api:${IMAGE_TAG} ${API_REPO}:${IMAGE_TAG}
+          docker tag sebt-portal-web-dc:${IMAGE_TAG} ${WEB_REPO}:${IMAGE_TAG}
+
+          docker push ${API_REPO}:${IMAGE_TAG}
+          docker push ${WEB_REPO}:${IMAGE_TAG}
+
+      - name: Install OpenTofu
+        uses: opentofu/setup-opentofu@v1
+        with:
+          tofu_version: "1.10.0"
+
+      - name: OpenTofu Init
+        working-directory: tofu/config/dev-dc
+        run: tofu init -upgrade
+
+      - name: OpenTofu Apply
+        working-directory: tofu/config/dev-dc
+        run: |
+          tofu apply -auto-approve \
+            -var="image_tag=${{ needs.build.outputs.image_tag }}"
+
+      - name: Get deployment URL
+        id: deploy-url
+        working-directory: tofu/config/dev-dc
+        run: |
+          WEB_URL=$(tofu output -raw web_endpoint_url 2>/dev/null || echo "")
+          echo "url=$WEB_URL" >> "$GITHUB_OUTPUT"
+          echo "Deployment URL: $WEB_URL"
+
+  deploy-co:
+    if: github.event_name != 'pull_request'
+    needs: build
+    runs-on: ubuntu-latest
+    environment: dev-co
+    outputs:
+      web_url: ${{ steps.deploy-url.outputs.url }}
+    env:
+      AWS_REGION: us-east-1
+      TF_VAR_domain: ${{ vars.DOMAIN }}
+      TF_VAR_sender_email: ${{ vars.SENDER_EMAIL }}
+      TF_VAR_vpc_cidr: ${{ vars.VPC_CIDR }}
+      TF_VAR_private_subnets: ${{ vars.PRIVATE_SUBNETS }}
+      TF_VAR_public_subnets: ${{ vars.PUBLIC_SUBNETS }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Download Docker images
+        uses: actions/download-artifact@v7
+        with:
+          name: docker-images
+          path: /tmp
+
+      - name: Load Docker images
+        run: docker load -i /tmp/docker-images.tar
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v6
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Push images to ECR
+        run: |
+          IMAGE_TAG="${{ needs.build.outputs.image_tag }}"
+          API_REPO="${{ secrets.ECR_API_REPOSITORY_URL }}"
+          WEB_REPO="${{ secrets.ECR_WEB_REPOSITORY_URL }}"
+
+          docker tag sebt-portal-api:${IMAGE_TAG} ${API_REPO}:${IMAGE_TAG}
+          docker tag sebt-portal-web-co:${IMAGE_TAG} ${WEB_REPO}:${IMAGE_TAG}
+
+          docker push ${API_REPO}:${IMAGE_TAG}
+          docker push ${WEB_REPO}:${IMAGE_TAG}
+
+      - name: Install OpenTofu
+        uses: opentofu/setup-opentofu@v1
+        with:
+          tofu_version: "1.10.0"
+
+      - name: OpenTofu Init
+        working-directory: tofu/config/dev-co
+        run: tofu init -upgrade
+
+      - name: OpenTofu Apply
+        working-directory: tofu/config/dev-co
+        run: |
+          tofu apply -auto-approve \
+            -var="image_tag=${{ needs.build.outputs.image_tag }}"
+
+      - name: Get deployment URL
+        id: deploy-url
+        working-directory: tofu/config/dev-co
+        run: |
+          WEB_URL=$(tofu output -raw web_endpoint_url 2>/dev/null || echo "")
+          echo "url=$WEB_URL" >> "$GITHUB_OUTPUT"
+          echo "Deployment URL: $WEB_URL"
+
+  create-deployment-record:
+    needs: [deploy-dc, deploy-co]
+    if: always() && (needs.deploy-dc.result == 'success' || needs.deploy-co.result == 'success')
+    runs-on: ubuntu-latest
+    permissions:
+      deployments: write
+      contents: read
+    steps:
+      - name: Create GitHub deployment for DC
+        if: needs.deploy-dc.result == 'success'
+        uses: actions/github-script@v8
+        with:
+          script: |
+            const rawUrl = '${{ needs.deploy-dc.outputs.web_url }}';
+            const webUrl = rawUrl && !rawUrl.startsWith('http') ? `https://${rawUrl}` : rawUrl;
+            const ref = context.sha;
+
+            const deployment = await github.rest.repos.createDeployment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              ref,
+              environment: 'dev-dc',
+              auto_merge: false,
+              required_contexts: [],
+              description: `Deploy dev-dc (${ref.slice(0, 7)})`
+            });
+
+            const deploymentId = deployment.data.id;
+            if (deploymentId) {
+              await github.rest.repos.createDeploymentStatus({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                deployment_id: deploymentId,
+                state: 'success',
+                environment_url: webUrl || undefined,
+                description: 'Deployment finished successfully'
+              });
+            }
+
+      - name: Create GitHub deployment for CO
+        if: needs.deploy-co.result == 'success'
+        uses: actions/github-script@v8
+        with:
+          script: |
+            const rawUrl = '${{ needs.deploy-co.outputs.web_url }}';
+            const webUrl = rawUrl && !rawUrl.startsWith('http') ? `https://${rawUrl}` : rawUrl;
+            const ref = context.sha;
+
+            const deployment = await github.rest.repos.createDeployment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              ref,
+              environment: 'dev-co',
+              auto_merge: false,
+              required_contexts: [],
+              description: `Deploy dev-co (${ref.slice(0, 7)})`
+            });
+
+            const deploymentId = deployment.data.id;
+            if (deploymentId) {
+              await github.rest.repos.createDeploymentStatus({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                deployment_id: deploymentId,
+                state: 'success',
+                environment_url: webUrl || undefined,
+                description: 'Deployment finished successfully'
+              });
+            }

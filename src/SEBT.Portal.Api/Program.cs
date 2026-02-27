@@ -44,6 +44,19 @@ if (!string.IsNullOrEmpty(state))
     builder.Configuration.AddJsonFile(stateConfigFile, optional: true, reloadOnChange: true);
 }
 
+// Build database connection string from environment variables when deployed
+// to ECS. Credentials are injected from Secrets Manager at container startup.
+var dbHost = Environment.GetEnvironmentVariable("DB_HOST");
+var dbPassword = Environment.GetEnvironmentVariable("DB_PASSWORD");
+if (!string.IsNullOrEmpty(dbHost) && !string.IsNullOrEmpty(dbPassword))
+{
+    var dbPort = Environment.GetEnvironmentVariable("DB_PORT") ?? "1433";
+    var dbName = Environment.GetEnvironmentVariable("DB_NAME") ?? "SebtPortal";
+    var dbUser = Environment.GetEnvironmentVariable("DB_USER") ?? "admin";
+    builder.Configuration["ConnectionStrings:DefaultConnection"] =
+        $"Server={dbHost},{dbPort};Database={dbName};User Id={dbUser};Password={dbPassword};Encrypt=True;TrustServerCertificate=True;";
+}
+
 // Configure Serilog
 Log.Logger = new LoggerConfiguration()
     .ReadFrom.Configuration(builder.Configuration)
@@ -184,9 +197,10 @@ if (app.Environment.IsProduction())
     IdentifierHasherGuard.ValidateForProduction(app.Configuration["IdentifierHasher:SecretKey"]);
 }
 
-// Apply database migrations
-await using (var scope = app.Services.CreateAsyncScope())
+// Apply database migrations (non-blocking: app will start even if DB is unavailable)
+try
 {
+    await using var scope = app.Services.CreateAsyncScope();
     var databaseMigrator = scope.ServiceProvider.GetRequiredService<IDatabaseMigrator>();
     await databaseMigrator.MigrateAsync();
 
@@ -196,6 +210,11 @@ await using (var scope = app.Services.CreateAsyncScope())
         var databaseSeeder = scope.ServiceProvider.GetRequiredService<IDatabaseSeeder>();
         await databaseSeeder.SeedTestUsersAsync(useMockHouseholdData, CancellationToken.None);
     }
+    Log.Information("Database migrations completed successfully");
+}
+catch (Exception ex)
+{
+    Log.Warning(ex, "Database migrations failed or database unavailable. App will continue to start.");
 }
 
 // Configure the HTTP request pipeline.
@@ -217,6 +236,8 @@ app.UseRateLimiter();
 
 app.UseAuthentication();
 app.UseAuthorization();
+
+app.MapGet("/health", () => Results.Ok(new { Status = "ok" }));
 
 app.MapControllers();
 
