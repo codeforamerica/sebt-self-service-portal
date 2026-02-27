@@ -21,11 +21,20 @@ internal static class ServiceCollectionPluginExtensions
                                   ?? throw new InvalidOperationException("PluginAssemblyPaths missing from configuration.");
         Log.Information("Loading plugins from: {PluginAssemblyPaths}", pluginAssemblyPaths);
 
-        var containerConfiguration = CreateContainerConfiguration(pluginAssemblyPaths, configuration);
+        // Resolve store and accessor so the CO plugin can satisfy its [Import] for IStateAuthStore (and accessor if needed).
+        IStateAuthStore store;
+        IStateAuthSessionAccessor accessor;
+        using (var tempProvider = services.BuildServiceProvider())
+        {
+            store = tempProvider.GetRequiredService<IStateAuthStore>();
+            accessor = tempProvider.GetRequiredService<IStateAuthSessionAccessor>();
+        }
+        var containerConfiguration = CreateContainerConfiguration(pluginAssemblyPaths, configuration, store, accessor);
         using var container = containerConfiguration.CreateContainer();
 
         var plugins = container.GetExports<IStatePlugin>();
-        var oidcExports = container.GetExports<IStateOidcLoginService>();
+        var oidcExports = container.GetExports<IStateOidcLoginService>().ToList();
+        Log.Information("Found {Count} OIDC login plugin(s)", oidcExports.Count);
 
         foreach (var oidcService in oidcExports)
         {
@@ -66,12 +75,18 @@ internal static class ServiceCollectionPluginExtensions
             }
         }
 
+        // Ensure the app uses the same store/accessor instances the plugins received (single shared store).
+        services.AddSingleton(store);
+        services.AddSingleton(accessor);
+
         return services;
     }
 
     private static ContainerConfiguration CreateContainerConfiguration(
         string[] assemblyPaths,
-        IConfiguration configuration)
+        IConfiguration configuration,
+        IStateAuthStore store,
+        IStateAuthSessionAccessor accessor)
     {
         var conventions = new ConventionBuilder();
 
@@ -102,6 +117,8 @@ internal static class ServiceCollectionPluginExtensions
 
         return new ContainerConfiguration()
             .WithExport(configuration)
+            .WithExport(store)
+            .WithExport(accessor)
             .WithAssembliesInPath(assemblyPaths, conventions);
     }
 }
