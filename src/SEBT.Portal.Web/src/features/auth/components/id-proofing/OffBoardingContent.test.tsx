@@ -22,8 +22,7 @@ const DEFAULT_PROPS = {
   canApply: true,
   applyBody:
     'If you\u2019re not sure what to do, tap "Apply now" and enter your child\u2019s information.',
-  applyLabel: 'Apply now',
-  applyHref: '#'
+  applyLabel: 'Apply now'
 }
 
 describe('OffBoardingContent', () => {
@@ -58,7 +57,7 @@ describe('OffBoardingContent', () => {
   })
 
   describe('Apply section', () => {
-    it('renders the apply section when canApply is true', () => {
+    it('renders the apply section body text when canApply is true', () => {
       render(
         <OffBoardingContent
           {...DEFAULT_PROPS}
@@ -67,7 +66,30 @@ describe('OffBoardingContent', () => {
       )
 
       expect(screen.getByText(DEFAULT_PROPS.applyBody)).toBeInTheDocument()
-      expect(screen.getByRole('link', { name: DEFAULT_PROPS.applyLabel })).toBeInTheDocument()
+    })
+
+    it('renders the apply link when both applyLabel and applyHref are provided', () => {
+      render(
+        <OffBoardingContent
+          {...DEFAULT_PROPS}
+          canApply={true}
+          applyHref="https://example.com/apply"
+        />
+      )
+
+      const applyLink = screen.getByRole('link', { name: DEFAULT_PROPS.applyLabel })
+      expect(applyLink).toHaveAttribute('href', 'https://example.com/apply')
+    })
+
+    it('does not render the apply link when applyHref is not provided', () => {
+      render(
+        <OffBoardingContent
+          {...DEFAULT_PROPS}
+          canApply={true}
+        />
+      )
+
+      expect(screen.queryByRole('link', { name: DEFAULT_PROPS.applyLabel })).not.toBeInTheDocument()
     })
 
     it('does not render the apply section when canApply is false', () => {
@@ -107,7 +129,7 @@ describe('OffBoardingContent', () => {
       // Ensure no extra empty paragraphs in the apply section
       const applySection = container.querySelector('[data-testid="apply-section"]')
       expect(applySection).toBeInTheDocument()
-      // Only applyBody paragraph + apply link should be inside
+      // Only applyBody paragraph should be inside (no applySkipBody)
       const paragraphs = applySection!.querySelectorAll('p')
       expect(paragraphs).toHaveLength(1)
     })

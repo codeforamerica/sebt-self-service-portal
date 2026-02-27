@@ -29,8 +29,7 @@ export default async function OffBoardingPage({ searchParams }: OffBoardingPageP
             applyBody={t('body2') || undefined}
             applySkipBody={t('body3') || undefined}
             applyLabel={t('action2') || undefined}
-            // TODO: Add state-specific apply URL to StateLinks once the application flow is finalized
-            applyHref="#"
+            // TODO: Pass applyHref once the state-specific apply URL is added to StateLinks
           />
         </section>
       </div>
