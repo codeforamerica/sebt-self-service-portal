@@ -137,29 +137,61 @@ public class OidcController(
             request.Content = formContent;
             using var tokenResponse = await client.SendAsync(request, cancellationToken).ConfigureAwait(false);
             var tokenJson = await tokenResponse.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false);
-            using var tokenDoc = System.Text.Json.JsonDocument.Parse(tokenJson);
-            var tokenRoot = tokenDoc.RootElement;
 
-            if (tokenRoot.TryGetProperty("error", out var errProp))
+            if (!tokenResponse.IsSuccessStatusCode)
             {
-                var errDesc = tokenRoot.TryGetProperty("error_description", out var ed)
-                    ? ed.GetString()
-                    : errProp.GetString();
-                logger.LogWarning("OIDC token exchange failed: {Error}", errDesc);
-                return BadRequest(new { error = errDesc ?? "Token exchange failed." });
+                logger.LogWarning("OIDC token endpoint returned {StatusCode}. Body: {Body}",
+                    (int)tokenResponse.StatusCode, tokenJson.Length > 500 ? tokenJson[..500] + "..." : tokenJson);
+                return BadRequest(new { error = "Token exchange failed (provider returned error)." });
             }
 
-            if (!tokenRoot.TryGetProperty("id_token", out var idTokenProp))
+            System.Text.Json.JsonDocument tokenDoc;
+            try
             {
-                logger.LogWarning("OIDC token response had no id_token");
-                return BadRequest(new { error = "No id_token in token response." });
+                tokenDoc = System.Text.Json.JsonDocument.Parse(tokenJson);
+            }
+            catch (System.Text.Json.JsonException ex)
+            {
+                logger.LogWarning(ex, "OIDC token response was not valid JSON. Body length: {Length}", tokenJson.Length);
+                return BadRequest(new { error = "Invalid token response from provider." });
             }
 
-            var idToken = idTokenProp.GetString();
-            if (string.IsNullOrEmpty(idToken))
-                return BadRequest(new { error = "Empty id_token." });
+            string idToken;
+            using (tokenDoc)
+            {
+                var tokenRoot = tokenDoc.RootElement;
 
-            var authContext = await oidc.ValidateIdTokenAsync(idToken, cancellationToken);
+                if (tokenRoot.TryGetProperty("error", out var errProp))
+                {
+                    var errDesc = tokenRoot.TryGetProperty("error_description", out var ed)
+                        ? ed.GetString()
+                        : errProp.GetString();
+                    logger.LogWarning("OIDC token exchange failed: {Error}", errDesc);
+                    return BadRequest(new { error = errDesc ?? "Token exchange failed." });
+                }
+
+                if (!tokenRoot.TryGetProperty("id_token", out var idTokenProp))
+                {
+                    logger.LogWarning("OIDC token response had no id_token");
+                    return BadRequest(new { error = "No id_token in token response." });
+                }
+
+                idToken = idTokenProp.GetString() ?? "";
+                if (string.IsNullOrEmpty(idToken))
+                    return BadRequest(new { error = "Empty id_token." });
+            }
+
+            StateAuthContext authContext;
+            try
+            {
+                authContext = await oidc.ValidateIdTokenAsync(idToken, cancellationToken);
+            }
+            catch (Exception ex)
+            {
+                logger.LogWarning(ex, "OIDC id_token validation failed for state {StateCode}", code);
+                return BadRequest(new { error = "Id token validation failed." });
+            }
+
             var sessionId = Guid.NewGuid().ToString("N");
             var expiration = TimeSpan.FromHours(1);
             await store.SetAsync(sessionId, authContext, expiration, cancellationToken);
