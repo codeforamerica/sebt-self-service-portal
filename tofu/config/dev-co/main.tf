@@ -84,4 +84,7 @@ module "app" {
   force_delete           = true
   image_tags_mutable     = true
   enable_execute_command = true
+
+  seeding_enabled       = "true"
+  seeding_email_pattern = "sebt.co+{0}@codeforamerica.org"
 }

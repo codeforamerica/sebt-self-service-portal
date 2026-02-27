@@ -165,6 +165,18 @@ variable "web_repository_arn" {
   description = "ARN of the ECR repository for the web image."
 }
 
+variable "seeding_enabled" {
+  type        = string
+  description = "Enable database seeding in non-development environments."
+  default     = "false"
+}
+
+variable "seeding_email_pattern" {
+  type        = string
+  description = "Format string for seed user emails, where {0} is the scenario name (e.g. sebt.dc+{0}@codeforamerica.org)."
+  default     = ""
+}
+
 variable "secret_recovery_period" {
   type        = number
   description = "Number of days to retain a secret before permanent deletion."
