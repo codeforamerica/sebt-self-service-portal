@@ -99,7 +99,8 @@ builder.Services.AddScoped<IDatabaseSeeder>(sp =>
     var dataSeeder = sp.GetRequiredService<IDataSeeder>();
     var logger = sp.GetService<ILogger<DatabaseSeeder>>();
     var timeProvider = sp.GetRequiredService<TimeProvider>();
-    return new DatabaseSeeder(dataSeeder, logger, timeProvider);
+    var seedingSettings = sp.GetService<IOptions<SeedingSettings>>()?.Value ?? new SeedingSettings();
+    return new DatabaseSeeder(dataSeeder, seedingSettings, logger, timeProvider);
 });
 
 // Configure JWT Authentication
@@ -204,7 +205,8 @@ try
     var databaseMigrator = scope.ServiceProvider.GetRequiredService<IDatabaseMigrator>();
     await databaseMigrator.MigrateAsync();
 
-    if (app.Environment.IsDevelopment())
+    var seedingSettings = app.Configuration.GetSection(SeedingSettings.SectionName).Get<SeedingSettings>();
+    if (app.Environment.IsDevelopment() || seedingSettings?.Enabled == true)
     {
         var useMockHouseholdData = app.Configuration.GetValue<bool>("UseMockHouseholdData", false);
         var databaseSeeder = scope.ServiceProvider.GetRequiredService<IDatabaseSeeder>();

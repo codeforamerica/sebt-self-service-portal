@@ -3,10 +3,10 @@ using Microsoft.Extensions.Options;
 using Microsoft.Extensions.Time.Testing;
 using SEBT.Portal.Core.AppSettings;
 using SEBT.Portal.Core.Models.Auth;
+using SEBT.Portal.Core.Seeding;
 using SEBT.Portal.Core.Services;
 using SEBT.Portal.Infrastructure.Data;
 using SEBT.Portal.Infrastructure.Data.Entities;
-using SEBT.Portal.Infrastructure.Repositories;
 using SEBT.Portal.Infrastructure.Seeding.Services;
 using SEBT.Portal.Infrastructure.Services;
 using SEBT.Portal.Tests.Unit.Repositories;
@@ -35,11 +35,11 @@ public class DatabaseSeederTests : IClassFixture<SqlServerTestFixture>
     private static readonly IIdentifierHasher TestHasher = new IdentifierHasher(
         Options.Create(new IdentifierHasherSettings { SecretKey = "TestKeyMustBeAtLeast32CharactersLong!!" }));
 
-    private DatabaseSeeder CreateSeeder(PortalDbContext context)
+    private DatabaseSeeder CreateSeeder(PortalDbContext context, SeedingSettings? settings = null)
     {
         var dataSeeder = new DataSeeder(context, TestHasher);
         var timeProvider = new FakeTimeProvider(FixedSeedTime);
-        return new DatabaseSeeder(dataSeeder, timeProvider: timeProvider);
+        return new DatabaseSeeder(dataSeeder, settings, timeProvider: timeProvider);
     }
 
     /// <summary>
@@ -524,44 +524,45 @@ public class DatabaseSeederTests : IClassFixture<SqlServerTestFixture>
     }
 
     [Fact]
-    public async Task ClearSeededDataAsync_ShouldOnlyDeleteUsersWithExampleComDomain()
+    public async Task ClearSeededDataAsync_ShouldOnlyDeleteKnownScenarioEmails()
     {
         // Arrange
         using var context = CreateContext();
         await CleanupDatabaseAsync(context);
         var seeder = CreateSeeder(context);
 
-        // Create various users
+        // Create users matching known scenario names
         var seededUser1 = UserEntityFactory.CreateUserEntity(e =>
         {
-            e.Email = "test1@example.com";
+            e.Email = "co-loaded@example.com";
         });
         var seededUser2 = UserEntityFactory.CreateUserEntity(e =>
         {
-            e.Email = "test2@example.com";
+            e.Email = "verified@example.com";
         });
+        // Create users that don't match any scenario name
         var productionUser1 = UserEntityFactory.CreateUserEntity(e =>
         {
             e.Email = "user1@production.com";
         });
-        var productionUser2 = UserEntityFactory.CreateUserEntity(e =>
+        var nonScenarioUser = UserEntityFactory.CreateUserEntity(e =>
         {
-            e.Email = "user2@another-domain.org";
+            e.Email = "random@example.com";
         });
-        context.Users.AddRange(seededUser1, seededUser2, productionUser1, productionUser2);
+        context.Users.AddRange(seededUser1, seededUser2, productionUser1, nonScenarioUser);
         await context.SaveChangesAsync();
 
         // Act
         await seeder.ClearSeededDataAsync();
 
-        // Assert - Only production users should remain
+        // Assert - Only non-scenario users should remain
         var users = await context.Users.ToListAsync();
         Assert.Equal(2, users.Count);
         var emails = users.Select(u => u.Email).ToHashSet();
         Assert.Contains("user1@production.com", emails);
-        Assert.Contains("user2@another-domain.org", emails);
-        Assert.DoesNotContain("test1@example.com", emails);
-        Assert.DoesNotContain("test2@example.com", emails);
+        Assert.Contains("random@example.com", emails);
+        Assert.DoesNotContain("co-loaded@example.com", emails);
+        Assert.DoesNotContain("verified@example.com", emails);
     }
 
     [Fact]
@@ -621,5 +622,87 @@ public class DatabaseSeederTests : IClassFixture<SqlServerTestFixture>
         var users = await context.Users.ToListAsync();
         Assert.All(users, user =>
             Assert.Equal(user.Email, user.Email.ToLowerInvariant()));
+    }
+
+    [Fact]
+    public async Task SeedTestUsersAsync_WithCustomEmailPattern_ShouldCreateUsersWithConfiguredEmails()
+    {
+        // Arrange
+        using var context = CreateContext();
+        await CleanupDatabaseAsync(context);
+        var settings = new SeedingSettings { EmailPattern = "sebt.dc+{0}@codeforamerica.org" };
+        var seeder = CreateSeeder(context, settings);
+
+        // Act
+        await seeder.SeedTestUsersAsync();
+
+        // Assert
+        var users = await context.Users.ToListAsync();
+        Assert.Equal(3, users.Count);
+
+        var emails = users.Select(u => u.Email).ToHashSet();
+        Assert.Contains("sebt.dc+co-loaded@codeforamerica.org", emails);
+        Assert.Contains("sebt.dc+non-co-loaded@codeforamerica.org", emails);
+        Assert.Contains("sebt.dc+not-started@codeforamerica.org", emails);
+
+        // Verify co-loaded user still has correct properties
+        var coLoadedUser = await context.Users
+            .FirstOrDefaultAsync(u => u.Email == "sebt.dc+co-loaded@codeforamerica.org");
+        Assert.NotNull(coLoadedUser);
+        Assert.True(coLoadedUser!.IsCoLoaded);
+        Assert.Equal((int)IdProofingStatus.Completed, coLoadedUser.IdProofingStatus);
+        Assert.Equal((int)UserIalLevel.IAL1plus, coLoadedUser.IalLevel);
+    }
+
+    [Fact]
+    public async Task SeedTestUsersAsync_WithCustomEmailPattern_MockHouseholdData_ShouldCreateUsersWithConfiguredEmails()
+    {
+        // Arrange
+        using var context = CreateContext();
+        await CleanupDatabaseAsync(context);
+        var settings = new SeedingSettings { EmailPattern = "sebt.co+{0}@codeforamerica.org" };
+        var seeder = CreateSeeder(context, settings);
+
+        // Act
+        await seeder.SeedTestUsersAsync(useMockHouseholdData: true);
+
+        // Assert
+        var users = await context.Users.ToListAsync();
+        Assert.Equal(13, users.Count);
+
+        var emails = users.Select(u => u.Email).ToHashSet();
+        Assert.Contains("sebt.co+co-loaded@codeforamerica.org", emails);
+        Assert.Contains("sebt.co+verified@codeforamerica.org", emails);
+        Assert.Contains("sebt.co+singlechild@codeforamerica.org", emails);
+        Assert.Contains("sebt.co+pending@codeforamerica.org", emails);
+    }
+
+    [Fact]
+    public async Task ClearSeededDataAsync_WithCustomEmailPattern_ShouldDeleteConfiguredEmails()
+    {
+        // Arrange
+        using var context = CreateContext();
+        await CleanupDatabaseAsync(context);
+        var settings = new SeedingSettings { EmailPattern = "sebt.dc+{0}@codeforamerica.org" };
+        var seeder = CreateSeeder(context, settings);
+
+        // Seed with custom pattern
+        await seeder.SeedTestUsersAsync();
+
+        // Add a user that doesn't match the pattern
+        var otherUser = UserEntityFactory.CreateUserEntity(e =>
+        {
+            e.Email = "real-user@codeforamerica.org";
+        });
+        context.Users.Add(otherUser);
+        await context.SaveChangesAsync();
+
+        // Act
+        await seeder.ClearSeededDataAsync();
+
+        // Assert - Only the non-scenario user should remain
+        var users = await context.Users.ToListAsync();
+        Assert.Single(users);
+        Assert.Equal("real-user@codeforamerica.org", users[0].Email);
     }
 }
