@@ -1,5 +1,3 @@
-extern alias statePlugin;
-
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -8,7 +6,7 @@ using SEBT.Portal.Api.Controllers.Auth;
 using SEBT.Portal.Api.Models;
 using SEBT.Portal.Core.Repositories;
 using SEBT.Portal.Core.Services;
-using IStateAuthStore = statePlugin::SEBT.Portal.StatesPlugins.Interfaces.IStateAuthStore;
+using IStateAuthStore = SEBT.Portal.StatesPlugins.Interfaces.IStateAuthStore;
 
 namespace SEBT.Portal.Tests.Unit.Controllers;
 
