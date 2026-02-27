@@ -49,6 +49,8 @@ module "api" {
     "SmtpClientSettings__SmtpPort"               = "587"
     "SmtpClientSettings__EnableSsl"              = "true"
     "EmailOtpSenderServiceSettings__SenderEmail" = module.ses.sender_email
+    "Seeding__Enabled"                           = var.seeding_enabled
+    "Seeding__EmailPattern"                      = var.seeding_email_pattern
   }
 
   environment_secrets = {
