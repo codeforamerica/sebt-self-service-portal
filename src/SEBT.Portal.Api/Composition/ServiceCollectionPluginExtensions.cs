@@ -14,6 +14,8 @@ internal static class ServiceCollectionPluginExtensions
         services.TryAddSingleton<IStateAuthenticationService, Defaults.DefaultStateAuthenticationService>();
         services.TryAddSingleton<IStateHealthCheckService, Defaults.DefaultStateHealthCheckService>();
 
+        var healthChecksBuilder = services.AddHealthChecks();
+
         var pluginAssemblyPaths = configuration
                                       .GetSection("PluginAssemblyPaths")
                                       .Get<string[]>()
@@ -43,6 +45,11 @@ internal static class ServiceCollectionPluginExtensions
                 default:
                     services.AddSingleton(pluginInterfaces[0], plugin);
                     break;
+            }
+
+            if (plugin is IStateHealthCheckService healthCheckPlugin)
+            {
+                healthCheckPlugin.ConfigureHealthChecks(healthChecksBuilder);
             }
         }
 
