@@ -436,6 +436,7 @@ tofu/
 
 # AI
 CLAUDE.local.md
+.claude/settings.local.json
 
 # output files
 output
