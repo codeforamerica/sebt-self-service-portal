@@ -29,24 +29,10 @@ public class HealthCheckEndpointTests : IClassFixture<WebApplicationFactory<Prog
         {
             builder.ConfigureServices(services =>
             {
-                // Replace database migrator with a no-op mock so startup
+                // Replace database services with no-op mocks so startup
                 // doesn't require a real SQL Server instance.
-                var migratorDescriptor = services.SingleOrDefault(
-                    d => d.ServiceType == typeof(IDatabaseMigrator));
-                if (migratorDescriptor != null)
-                {
-                    services.Remove(migratorDescriptor);
-                }
-                services.AddScoped(_ => Substitute.For<IDatabaseMigrator>());
-
-                // Replace database seeder with a no-op mock.
-                var seederDescriptor = services.SingleOrDefault(
-                    d => d.ServiceType == typeof(IDatabaseSeeder));
-                if (seederDescriptor != null)
-                {
-                    services.Remove(seederDescriptor);
-                }
-                services.AddScoped(_ => Substitute.For<IDatabaseSeeder>());
+                ReplaceWithMock<IDatabaseMigrator>(services);
+                ReplaceWithMock<IDatabaseSeeder>(services);
             });
         }).CreateClient();
     }
@@ -82,5 +68,19 @@ public class HealthCheckEndpointTests : IClassFixture<WebApplicationFactory<Prog
     {
         Environment.SetEnvironmentVariable("PluginAssemblyPaths__0", null);
         Environment.SetEnvironmentVariable("PluginAssemblyPaths__1", null);
+    }
+
+    /// <summary>
+    /// Replaces an existing service registration with a no-op NSubstitute mock.
+    /// </summary>
+    private static void ReplaceWithMock<TService>(IServiceCollection services) where TService : class
+    {
+        var descriptor = services.SingleOrDefault(d => d.ServiceType == typeof(TService));
+        if (descriptor != null)
+        {
+            services.Remove(descriptor);
+        }
+
+        services.AddScoped(_ => Substitute.For<TService>());
     }
 }
