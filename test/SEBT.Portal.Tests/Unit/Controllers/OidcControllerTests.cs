@@ -67,33 +67,45 @@ public class OidcControllerTests
     }
 
     [Fact]
-    public async Task ExchangeCode_WhenBodyNull_Returns400()
+    public async Task CompleteLogin_WhenBodyNull_Returns400()
     {
-        var result = await _controller.ExchangeCode(CoStateKey, null, CancellationToken.None);
+        var result = await _controller.CompleteLogin(null, CancellationToken.None);
 
         var badRequest = Assert.IsType<BadRequestObjectResult>(result);
         Assert.NotNull(badRequest.Value);
     }
 
     [Fact]
-    public async Task ExchangeCode_WhenCodeMissing_Returns400()
+    public async Task CompleteLogin_WhenStateCodeMissing_Returns400()
     {
-        var body = new ExchangeCodeRequest(Code: null!, "code_verifier_value");
+        var body = new CompleteLoginRequest(StateCode: null, "callback.jwt.here");
 
-        var result = await _controller.ExchangeCode(CoStateKey, body, CancellationToken.None);
+        var result = await _controller.CompleteLogin(body, CancellationToken.None);
 
         var badRequest = Assert.IsType<BadRequestObjectResult>(result);
         Assert.NotNull(badRequest.Value);
     }
 
     [Fact]
-    public async Task ExchangeCode_WhenCodeVerifierMissing_Returns400()
+    public async Task CompleteLogin_WhenCallbackTokenMissing_Returns400()
     {
-        var body = new ExchangeCodeRequest("code_value", null!);
+        var body = new CompleteLoginRequest(CoStateKey, CallbackToken: null);
 
-        var result = await _controller.ExchangeCode(CoStateKey, body, CancellationToken.None);
+        var result = await _controller.CompleteLogin(body, CancellationToken.None);
 
         var badRequest = Assert.IsType<BadRequestObjectResult>(result);
         Assert.NotNull(badRequest.Value);
+    }
+
+    [Fact]
+    public async Task CompleteLogin_WhenSigningKeyNotConfigured_Returns503()
+    {
+        _config["Oidc:CompleteLoginSigningKey"].Returns((string?)null);
+        var body = new CompleteLoginRequest(CoStateKey, "some.jwt.token");
+
+        var result = await _controller.CompleteLogin(body, CancellationToken.None);
+
+        var statusResult = Assert.IsType<ObjectResult>(result);
+        Assert.Equal(503, statusResult.StatusCode);
     }
 }
