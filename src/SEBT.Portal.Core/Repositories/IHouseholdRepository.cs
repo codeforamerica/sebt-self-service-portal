@@ -1,4 +1,5 @@
 using SEBT.Portal.Core.Models;
+using SEBT.Portal.Core.Models.Auth;
 using SEBT.Portal.Core.Models.Household;
 using SEBT.Portal.Core.Services;
 
@@ -17,11 +18,13 @@ public interface IHouseholdRepository
     /// </summary>
     /// <param name="identifier">The household identifier (type and value) to look up.</param>
     /// <param name="piiVisibility">Which PII elements to include. Required; no default. Callers must obtain this from <see cref="IIdProofingRequirementsService.GetPiiVisibility"/> based on the user's IAL level.</param>
+    /// <param name="userIalLevel">Identity Assurance Level the user has achieved. Passed to state plugins for backend policy (e.g. whether to return address).</param>
     /// <param name="cancellationToken">A token to monitor for cancellation requests.</param>
     /// <returns>The household data if found; otherwise, <c>null</c>.</returns>
     Task<HouseholdData?> GetHouseholdByIdentifierAsync(
         HouseholdIdentifier identifier,
         PiiVisibility piiVisibility,
+        UserIalLevel userIalLevel,
         CancellationToken cancellationToken = default);
 
     /// <summary>
@@ -30,11 +33,13 @@ public interface IHouseholdRepository
     /// </summary>
     /// <param name="email">The email address of the household.</param>
     /// <param name="piiVisibility">Which PII elements to include. Required; no default. Callers must obtain this from <see cref="IIdProofingRequirementsService.GetPiiVisibility"/> based on the user's ID proofing status.</param>
+    /// <param name="userIalLevel">Identity Assurance Level the user has achieved. Passed to state plugins for backend policy.</param>
     /// <param name="cancellationToken">A token to monitor for cancellation requests.</param>
     /// <returns>The household data if found; otherwise, <c>null</c>.</returns>
     Task<HouseholdData?> GetHouseholdByEmailAsync(
         string email,
         PiiVisibility piiVisibility,
+        UserIalLevel userIalLevel,
         CancellationToken cancellationToken = default);
 
     /// <summary>

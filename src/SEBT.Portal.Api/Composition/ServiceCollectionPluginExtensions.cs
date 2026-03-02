@@ -21,7 +21,7 @@ internal static class ServiceCollectionPluginExtensions
                                       .Get<string[]>()
                                   ?? throw new InvalidOperationException("PluginAssemblyPaths missing from configuration.");
         Log.Information("Loading plugins from: {PluginAssemblyPaths}", pluginAssemblyPaths);
-        var containerConfiguration = CreateContainerConfiguration(pluginAssemblyPaths);
+        var containerConfiguration = CreateContainerConfiguration(pluginAssemblyPaths, configuration);
         using var container = containerConfiguration.CreateContainer();
 
         var plugins = container.GetExports<IStatePlugin>();
@@ -56,7 +56,7 @@ internal static class ServiceCollectionPluginExtensions
         return services;
     }
 
-    private static ContainerConfiguration CreateContainerConfiguration(string[] assemblyPaths)
+    private static ContainerConfiguration CreateContainerConfiguration(string[] assemblyPaths, IConfiguration configuration)
     {
         var conventions = new ConventionBuilder();
 
@@ -80,6 +80,8 @@ internal static class ServiceCollectionPluginExtensions
             .Export<IStateHealthCheckService>()
             .Shared();
 
-        return new ContainerConfiguration().WithAssembliesInPath(assemblyPaths, conventions);
+        return new ContainerConfiguration()
+            .WithExport(configuration)
+            .WithAssembliesInPath(assemblyPaths, conventions);
     }
 }

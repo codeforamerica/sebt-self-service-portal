@@ -6,6 +6,9 @@
 /projectSettingsUpdater.xml
 /modules.xml
 /contentModel.xml
+/terraform.xml
+/copilot.data.migration.ask2agent.xml
+/aws.xml
 # Editor-based HTTP Client requests
 /httpRequests/
 # Datasource local storage ignored files

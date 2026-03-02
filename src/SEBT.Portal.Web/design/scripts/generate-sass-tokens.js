@@ -16,13 +16,15 @@
  * 4. Output to design/sass/_uswds-theme-{state}.scss
  */
 
+import './load-env.js'
 import { readFileSync, writeFileSync, existsSync, mkdirSync } from 'fs'
-import { join, dirname } from 'path'
+import { join, dirname, relative } from 'path'
 import { fileURLToPath } from 'url'
 
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = dirname(__filename)
 const rootDir = join(__dirname, '..', '..')
+const rel = p => relative(rootDir, p)
 
 /**
  * Map Figma token names to USWDS SASS variable names
@@ -46,6 +48,18 @@ const TOKEN_NAME_MAP = {
   'theme-secondary-vivid': 'theme-color-secondary-vivid',
   'theme-secondary-dark': 'theme-color-secondary-dark',
   'theme-secondary-darker': 'theme-color-secondary-darker',
+  'theme-accent-cool-lightest': 'theme-color-accent-cool-lightest',
+  'theme-accent-cool-lighter': 'theme-color-accent-cool-lighter',
+  'theme-accent-cool-light': 'theme-color-accent-cool-light',
+  'theme-accent-cool': 'theme-color-accent-cool',
+  'theme-accent-cool-dark': 'theme-color-accent-cool-dark',
+  'theme-accent-cool-darker': 'theme-color-accent-cool-darker',
+  'theme-accent-warm-lightest': 'theme-color-accent-warm-lightest',
+  'theme-accent-warm-lighter': 'theme-color-accent-warm-lighter',
+  'theme-accent-warm-light': 'theme-color-accent-warm-light',
+  'theme-accent-warm': 'theme-color-accent-warm',
+  'theme-accent-warm-dark': 'theme-color-accent-warm-dark',
+  'theme-accent-warm-darker': 'theme-color-accent-warm-darker',
   'theme-link-color': 'theme-link-color',
   'theme-focus-color': 'theme-focus-color',
   // Non-color tokens - keep as-is
@@ -287,7 +301,7 @@ function main() {
   const state = (process.env.STATE || process.env.NEXT_PUBLIC_STATE || 'dc').toLowerCase()
   const timestamp = new Date().toISOString()
 
-  console.log(`🎨 Generating USWDS SASS variables for ${state.toUpperCase()}...\n`)
+  console.log(`🎨 Generating USWDS SASS variables for ${state.toUpperCase()}...`)
 
   // Paths
   const inputPath = join(rootDir, 'design', 'states', `${state}.json`)
@@ -297,8 +311,8 @@ function main() {
 
   // Check input exists
   if (!existsSync(inputPath)) {
-    console.log(`⚠️  No token file found at: ${inputPath}`)
-    console.log('   Skipping SASS token generation.\n')
+    console.log(`⚠️  No token file found at: ${rel(inputPath)}`)
+    console.log('   Skipping SASS token generation.')
     process.exit(0)
   }
 
@@ -308,7 +322,7 @@ function main() {
   }
 
   // Read and parse tokens
-  console.log(`📖 Reading: ${inputPath}`)
+  console.log(`  Reading: ${rel(inputPath)}`)
   const stateJson = JSON.parse(readFileSync(inputPath, 'utf8'))
 
   if (!stateJson.theme) {
@@ -323,14 +337,14 @@ function main() {
   // Generate and write legacy SASS variables file (for backward compatibility)
   const sassContent = generateSassContent(state, variables)
   writeFileSync(themeOutputPath, sassContent, 'utf8')
-  console.log(`✅ Generated: ${themeOutputPath}`)
+  console.log(`✅ Generated: ${rel(themeOutputPath)}`)
 
   // Generate and write USWDS settings file (for SASS module system)
   const settingsContent = generateSettingsContent(state, variables, timestamp)
   writeFileSync(settingsOutputPath, settingsContent, 'utf8')
-  console.log(`✅ Generated: ${settingsOutputPath}`)
+  console.log(`✅ Generated: ${rel(settingsOutputPath)}`)
 
-  console.log(`\n✨ ${state.toUpperCase()} SASS theme files generated successfully!\n`)
+  console.log(`✅ ${state.toUpperCase()} SASS theme files generated successfully!`)
 }
 
 main()

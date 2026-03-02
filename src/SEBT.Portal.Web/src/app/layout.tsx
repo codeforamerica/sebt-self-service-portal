@@ -1,6 +1,6 @@
 import { Footer, Header, HelpSection, SkipNav } from '@/components/layout'
 import { primaryFont } from '@/design/fonts'
-import { getState } from '@/lib/state'
+import { getState, getStateName } from '@/lib/state'
 import {
   AuthProvider,
   AxeProvider,
@@ -15,8 +15,11 @@ import './globals.css'
 import './styles.scss'
 
 const state = getState()
-const stateName = state === 'dc' ? 'District of Columbia' : state.toUpperCase()
-const baseUrl = process.env.NEXT_PUBLIC_BASE_URL ?? `https://sebt.${state}.gov`
+const stateName = getStateName(state)
+
+function getDefaultBaseUrl() {
+  return process.env.NEXT_PUBLIC_BASE_URL ?? `https://sebt.${state}.gov`
+}
 const gaId = process.env.NEXT_PUBLIC_GA_ID
 
 export const viewport: Viewport = {
@@ -25,52 +28,59 @@ export const viewport: Viewport = {
   maximumScale: 5
 }
 
-export const metadata: Metadata = {
-  title: {
-    default: `${stateName} SUN Bucks Self-Service Portal`,
-    template: `%s | ${stateName} SUN Bucks`
-  },
-  description: `Apply for Summer EBT (SUN Bucks) benefits in ${stateName}. Check eligibility, track your application status, and manage your benefits online.`,
-  keywords: ['SUN Bucks', 'Summer EBT', 'SEBT', 'summer meals', 'food benefits', stateName],
-  authors: [{ name: `${stateName} Government` }],
-  robots: {
-    index: true,
-    follow: true,
-    googleBot: {
+export async function generateMetadata(): Promise<Metadata> {
+  const h = await headers()
+  const host = h.get('host')
+  const proto = h.get('x-forwarded-proto') ?? 'http'
+  const baseUrl = host ? `${proto}://${host}` : getDefaultBaseUrl()
+
+  return {
+    title: {
+      default: `${stateName} SUN Bucks Self-Service Portal`,
+      template: `%s | ${stateName} SUN Bucks`
+    },
+    description: `Apply for Summer EBT (SUN Bucks) benefits in ${stateName}. Check eligibility, track your application status, and manage your benefits online.`,
+    keywords: ['SUN Bucks', 'Summer EBT', 'SEBT', 'summer meals', 'food benefits', stateName],
+    authors: [{ name: `${stateName} Government` }],
+    robots: {
       index: true,
       follow: true,
-      'max-video-preview': -1,
-      'max-image-preview': 'large',
-      'max-snippet': -1
-    }
-  },
-  openGraph: {
-    type: 'website',
-    locale: 'en_US',
-    url: baseUrl,
-    siteName: `${stateName} SUN Bucks`,
-    title: `${stateName} SUN Bucks Self-Service Portal`,
-    description: `Apply for Summer EBT (SUN Bucks) benefits in ${stateName}. Check eligibility and manage your benefits online.`,
-    images: [
-      {
-        url: `${baseUrl}/images/states/${state}/og-image.png`,
-        width: 1200,
-        height: 630,
-        alt: `${stateName} SUN Bucks Portal`
+      googleBot: {
+        index: true,
+        follow: true,
+        'max-video-preview': -1,
+        'max-image-preview': 'large',
+        'max-snippet': -1
       }
-    ]
-  },
-  twitter: {
-    card: 'summary_large_image',
-    title: `${stateName} SUN Bucks Self-Service Portal`,
-    description: `Apply for Summer EBT (SUN Bucks) benefits in ${stateName}.`,
-    images: [`${baseUrl}/images/states/${state}/og-image.png`]
-  },
-  icons: {
-    icon: '/favicon.ico',
-    apple: '/apple-touch-icon.png'
-  },
-  metadataBase: new URL(baseUrl)
+    },
+    openGraph: {
+      type: 'website',
+      locale: 'en_US',
+      url: baseUrl,
+      siteName: `${stateName} SUN Bucks`,
+      title: `${stateName} SUN Bucks Self-Service Portal`,
+      description: `Apply for Summer EBT (SUN Bucks) benefits in ${stateName}. Check eligibility and manage your benefits online.`,
+      images: [
+        {
+          url: `${baseUrl}/images/states/${state}/og-image.png`,
+          width: 1200,
+          height: 630,
+          alt: `${stateName} SUN Bucks Portal`
+        }
+      ]
+    },
+    twitter: {
+      card: 'summary_large_image',
+      title: `${stateName} SUN Bucks Self-Service Portal`,
+      description: `Apply for Summer EBT (SUN Bucks) benefits in ${stateName}.`,
+      images: [`${baseUrl}/images/states/${state}/og-image.png`]
+    },
+    icons: {
+      icon: '/favicon.ico',
+      apple: '/apple-touch-icon.png'
+    },
+    metadataBase: new URL(baseUrl)
+  }
 }
 
 export default async function RootLayout({
@@ -113,7 +123,13 @@ export default async function RootLayout({
         />
       </body>
       {/* Google Analytics - only rendered when GA_ID is configured */}
-      {gaId && <GoogleAnalytics gaId={gaId} />}
+      {/* nonce is required for CSP compliance: proxy.ts enforces nonce-based strict-dynamic */}
+      {gaId && (
+        <GoogleAnalytics
+          gaId={gaId}
+          {...(nonce ? { nonce } : {})}
+        />
+      )}
     </html>
   )
 }

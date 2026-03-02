@@ -5,6 +5,8 @@
  * Each state can have its own set of URLs for footer, help section, and other links.
  */
 
+import type { StateCode } from './state'
+
 export interface LinkItem {
   key: string
   href: string
@@ -21,11 +23,19 @@ export interface StateLinks {
     googleTranslateDisclaimer: string
     about: string
     termsAndConditions: string
+    /** CO-specific: Colorado Transparency Online Project */
+    transparencyOnline?: string
+    /** CO-specific: Colorado General Notices page */
+    generalNotices?: string
+    /** CO-specific: Digital Accessibility Statement */
+    digitalAccessibility?: string
   }
   /** Help section links */
   help: {
     faqs: string
     contactUs: string
+    /** CO-specific: Help desk email (mailto: link) */
+    helpDeskEmail?: string
   }
   /** Other external links used throughout the app */
   external: {
@@ -53,13 +63,30 @@ const stateLinks: Record<string, StateLinks> = {
     external: {
       contactUsAssistance: 'https://sunbucks.dc.gov/page/contact-us'
     }
+  },
+  co: {
+    footer: {
+      // TODO: Add CO-specific footer URLs when available
+      publicNotifications: '#',
+      accessibility: '#',
+      privacyAndSecurity: '#',
+      googleTranslateDisclaimer: '#',
+      about: '#',
+      termsAndConditions: '#',
+      transparencyOnline: '#',
+      generalNotices: '#',
+      digitalAccessibility: '#'
+    },
+    help: {
+      faqs: '#',
+      contactUs: '#',
+      helpDeskEmail: 'mailto:cdhs_sebt_supportcenter@state.co.us'
+    },
+    external: {
+      // TODO: Add CO contact page URL when available
+      contactUsAssistance: '#'
+    }
   }
-  // Add more states as needed
-  // co: {
-  //   footer: { ... },
-  //   help: { ... },
-  //   external: { ... },
-  // },
 }
 
 /**
@@ -72,14 +99,15 @@ const defaultLinks: StateLinks = stateLinks.dc as StateLinks
  * @param state - Two-letter state code (e.g., 'dc', 'co')
  * @returns State-specific links or default links if state not configured
  */
-export function getStateLinks(state: string): StateLinks {
-  return stateLinks[state.toLowerCase()] || defaultLinks
+export function getStateLinks(state: StateCode): StateLinks {
+  // eslint-disable-next-line security/detect-object-injection -- state is typed StateCode
+  return stateLinks[state] ?? defaultLinks
 }
 
 /**
  * Footer links with translation keys for iteration
  */
-export function getFooterLinks(state: string): LinkItem[] {
+export function getFooterLinks(state: StateCode): LinkItem[] {
   const links = getStateLinks(state)
   return [
     { key: 'accessibility', href: links.footer.accessibility, translationKey: 'accessibility' },
@@ -105,7 +133,7 @@ export function getFooterLinks(state: string): LinkItem[] {
 /**
  * Help section links with icons for iteration
  */
-export function getHelpLinks(state: string): LinkItem[] {
+export function getHelpLinks(state: StateCode): LinkItem[] {
   const links = getStateLinks(state)
   return [
     { key: 'faqs', href: links.help.faqs, translationKey: 'faqs', icon: 'faqs-icon.svg' },

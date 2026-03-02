@@ -8,6 +8,54 @@
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
   </PropertyGroup>
 
+  <!-- Production Build: Build frontend before .NET build -->
+  <Target Name="BuildFrontend" BeforeTargets="Build"
+    Condition="'$(BuildFrontend)' != 'false' AND '$(Configuration)' == 'Release'">
+    <Message Importance="high" Text="Building frontend (pnpm workspace)..." />
+
+    <!-- Install dependencies if node_modules doesn't exist -->
+    <Exec Command="pnpm install" WorkingDirectory="$(WorkspaceRoot)"
+      Condition="!Exists('$(FrontendRoot)/node_modules')" />
+
+    <!-- Build frontend (Next.js) -->
+    <Exec Command="pnpm --filter @sebt/web build" WorkingDirectory="$(WorkspaceRoot)" />
+
+    <Message Importance="high" Text="Frontend build complete: $(FrontendDist)" />
+  </Target>
+
+  <!-- Development: Start frontend watch mode alongside dotnet watch -->
+  <Target Name="StartFrontendWatch" BeforeTargets="BeforeBuild"
+    Condition="'$(DOTNET_WATCH)' == '1' AND '$(Configuration)' == 'Debug'">
+    <Message Importance="high" Text="Starting frontend watch mode..." />
+
+    <!-- Check if frontend is already running (by checking if port 5173 is in use) -->
+    <!-- Unix-like systems: use lsof -->
+    <Exec Command="lsof -ti:5173" IgnoreExitCode="true" ConsoleToMSBuild="true"
+          Condition="'$(OS)' != 'Windows_NT'">
+      <Output TaskParameter="ConsoleOutput" PropertyName="FrontendPort" />
+    </Exec>
+    <!-- Windows: set FrontendPort to empty (always try to start frontend) -->
+    <PropertyGroup Condition="'$(OS)' == 'Windows_NT'">
+      <FrontendPort></FrontendPort>
+    </PropertyGroup>
+
+    <Message Importance="high" Text="Frontend already running on port 5173"
+      Condition="'$(FrontendPort)' != ''" />
+
+    <!-- Start frontend watch if not already running -->
+    <Exec Command="pnpm web:dev &amp;" WorkingDirectory="$(WorkspaceRoot)"
+      Condition="'$(FrontendPort)' == ''" ContinueOnError="true" />
+
+    <Message Importance="high" Text="Frontend watch mode started (http://localhost:5173)"
+      Condition="'$(FrontendPort)' == ''" />
+  </Target>
+
+  <!-- Clean frontend on dotnet clean -->
+  <Target Name="CleanFrontend" AfterTargets="Clean">
+    <Message Importance="high" Text="Cleaning frontend dist directory..." />
+    <RemoveDir Directories="$(FrontendDist)" Condition="Exists('$(FrontendDist)')" />
+  </Target>
+
   <PropertyGroup>
     <HomeDir Condition="'$(OS)' == 'Windows_NT'">$(USERPROFILE)</HomeDir>
     <HomeDir Condition="'$(HomeDir)' == ''">$(HOME)</HomeDir>
@@ -28,18 +76,40 @@
     </None>
   </ItemGroup>
 
+  <!-- State connector as sibling repo only. Sibling under parent of portal, or CI path. -->
+  <PropertyGroup>
+    <_StateConnectorInterfacesProjectSiblingPath>$([System.IO.Path]::GetFullPath('$(MSBuildThisFileDirectory)../../../sebt-self-service-portal-state-connector/src/SEBT.Portal.StatesPlugins.Interfaces/SEBT.Portal.StatesPlugins.Interfaces.csproj'))</_StateConnectorInterfacesProjectSiblingPath>
+    <_StateConnectorInterfacesProjectCiPath>$([System.IO.Path]::GetFullPath('$(MSBuildThisFileDirectory)../../../state-connector/src/SEBT.Portal.StatesPlugins.Interfaces/SEBT.Portal.StatesPlugins.Interfaces.csproj'))</_StateConnectorInterfacesProjectCiPath>
+    <_StateConnectorInterfacesProjectSibling Condition="Exists('$(_StateConnectorInterfacesProjectSiblingPath)')">$(_StateConnectorInterfacesProjectSiblingPath)</_StateConnectorInterfacesProjectSibling>
+    <_StateConnectorInterfacesProjectCi Condition="Exists('$(_StateConnectorInterfacesProjectCiPath)')">$(_StateConnectorInterfacesProjectCiPath)</_StateConnectorInterfacesProjectCi>
+    <_StateConnectorInterfacesProject Condition="'$(_StateConnectorInterfacesProjectSibling)' != ''">$(_StateConnectorInterfacesProjectSibling)</_StateConnectorInterfacesProject>
+    <_StateConnectorInterfacesProject Condition="'$(_StateConnectorInterfacesProject)' == '' and '$(_StateConnectorInterfacesProjectCi)' != ''">$(_StateConnectorInterfacesProjectCi)</_StateConnectorInterfacesProject>
+  </PropertyGroup>
+  <Choose>
+    <When Condition="'$(_StateConnectorInterfacesProject)' != ''">
+      <ItemGroup>
+        <ProjectReference Include="$(_StateConnectorInterfacesProject)" PrivateAssets="compile" />
+      </ItemGroup>
+    </When>
+    <Otherwise>
+      <ItemGroup>
+        <PackageReference Include="SEBT.Portal.StatesPlugins.Interfaces" Version="0.0.1-*" PrivateAssets="compile" />
+      </ItemGroup>
+    </Otherwise>
+  </Choose>
+
   <ItemGroup>
     <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="10.0.0">
       <PrivateAssets>all</PrivateAssets>
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
     </PackageReference>
-    <PackageReference Include="SEBT.Portal.StatesPlugins.Interfaces" Version="0.0.1-*" />
     <PackageReference Include="Serilog.AspNetCore" Version="8.0.3" />
     <PackageReference Include="Serilog.Sinks.Console" Version="6.0.0" />
     <PackageReference Include="Serilog.Sinks.File" Version="6.0.0" />
     <PackageReference Include="Serilog.Settings.Configuration" Version="8.0.4" />
     <PackageReference Include="Swashbuckle.AspNetCore" Version="6.6.2" />
     <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="10.0.0" />
+    <PackageReference Include="Microsoft.Data.SqlClient" Version="6.1.1" />
   </ItemGroup>
 
   <ItemGroup>
@@ -48,7 +118,7 @@
     <ProjectReference Include="..\SEBT.Portal.Kernel.AspNetCore\SEBT.Portal.Kernel.AspNetCore.csproj" />
     <ProjectReference Include="..\SEBT.Portal.Kernel\SEBT.Portal.Kernel.csproj" />
     <ProjectReference Include="..\SEBT.Portal.UseCases\SEBT.Portal.UseCases.csproj" />
-    <ProjectReference Include="..\SEBT.Portal.Core\SEBT.Portal.Core.csproj" />
+    <ProjectReference Include="..\SEBT.Portal.Core\SEBT.Portal.Core.csproj" Aliases="Core,global" />
   </ItemGroup>
 
   <ItemGroup>

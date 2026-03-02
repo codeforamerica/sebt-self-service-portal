@@ -55,7 +55,7 @@ export function DashboardContent() {
     return (
       <>
         {pageHeading}
-        {data?.userProfile && <UserProfileCard data={data} />}
+        {data?.userProfile && <UserProfileCard />}
         <EmptyState />
       </>
     )
@@ -65,11 +65,11 @@ export function DashboardContent() {
     <>
       {pageHeading}
       <ActionButtons />
-      <UserProfileCard data={data} />
-      <HouseholdSummary data={data} />
-      <EnrolledChildren data={data} />
+      <UserProfileCard />
+      <HouseholdSummary />
+      <EnrolledChildren />
       <EbtEdgeSection />
-      <ApplicationsSection data={data} />
+      <ApplicationsSection />
     </>
   )
 }

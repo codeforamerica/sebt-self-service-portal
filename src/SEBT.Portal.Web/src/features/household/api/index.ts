@@ -18,3 +18,4 @@ export {
 } from './schema'
 
 export { useHouseholdData } from './useHouseholdData'
+export { useRequiredHouseholdData } from './useRequiredHouseholdData'

@@ -45,6 +45,19 @@ if (!string.IsNullOrEmpty(state))
     builder.Configuration.AddJsonFile(stateConfigFile, optional: true, reloadOnChange: true);
 }
 
+// Build database connection string from environment variables when deployed
+// to ECS. Credentials are injected from Secrets Manager at container startup.
+var dbHost = Environment.GetEnvironmentVariable("DB_HOST");
+var dbPassword = Environment.GetEnvironmentVariable("DB_PASSWORD");
+if (!string.IsNullOrEmpty(dbHost) && !string.IsNullOrEmpty(dbPassword))
+{
+    var dbPort = Environment.GetEnvironmentVariable("DB_PORT") ?? "1433";
+    var dbName = Environment.GetEnvironmentVariable("DB_NAME") ?? "SebtPortal";
+    var dbUser = Environment.GetEnvironmentVariable("DB_USER") ?? "admin";
+    builder.Configuration["ConnectionStrings:DefaultConnection"] =
+        $"Server={dbHost},{dbPort};Database={dbName};User Id={dbUser};Password={dbPassword};Encrypt=True;TrustServerCertificate=True;";
+}
+
 // Configure Serilog
 Log.Logger = new LoggerConfiguration()
     .ReadFrom.Configuration(builder.Configuration)
@@ -77,7 +90,7 @@ builder.Services.AddFeatureManagement(builder.Configuration.GetSection("FeatureM
 // Adds use cases (i.e., query and command handlers) for portal business logic
 builder.Services.AddUseCases();
 builder.Services.AddPortalInfrastructureServices();
-builder.Services.AddPortalDbContext(builder.Configuration);
+builder.Services.AddPortalDbContext(builder.Configuration, options => options.ConfigureDevelopmentSeeding());
 builder.Services.AddPortalInfrastructureRepositories(builder.Configuration);
 builder.Services.AddPortalInfrastructureAppSettings(builder.Configuration);
 
@@ -87,7 +100,8 @@ builder.Services.AddScoped<IDatabaseSeeder>(sp =>
     var dataSeeder = sp.GetRequiredService<IDataSeeder>();
     var logger = sp.GetService<ILogger<DatabaseSeeder>>();
     var timeProvider = sp.GetRequiredService<TimeProvider>();
-    return new DatabaseSeeder(dataSeeder, logger, timeProvider);
+    var seedingSettings = sp.GetService<IOptions<SeedingSettings>>()?.Value ?? new SeedingSettings();
+    return new DatabaseSeeder(dataSeeder, seedingSettings, logger, timeProvider);
 });
 
 // Configure JWT Authentication
@@ -185,18 +199,25 @@ if (app.Environment.IsProduction())
     IdentifierHasherGuard.ValidateForProduction(app.Configuration["IdentifierHasher:SecretKey"]);
 }
 
-// Apply database migrations
-await using (var scope = app.Services.CreateAsyncScope())
+// Apply database migrations (non-blocking: app will start even if DB is unavailable)
+try
 {
+    await using var scope = app.Services.CreateAsyncScope();
     var databaseMigrator = scope.ServiceProvider.GetRequiredService<IDatabaseMigrator>();
     await databaseMigrator.MigrateAsync();
 
-    if (app.Environment.IsDevelopment())
+    var seedingSettings = app.Configuration.GetSection(SeedingSettings.SectionName).Get<SeedingSettings>();
+    if (app.Environment.IsDevelopment() || seedingSettings?.Enabled == true)
     {
         var useMockHouseholdData = app.Configuration.GetValue<bool>("UseMockHouseholdData", false);
         var databaseSeeder = scope.ServiceProvider.GetRequiredService<IDatabaseSeeder>();
         await databaseSeeder.SeedTestUsersAsync(useMockHouseholdData, CancellationToken.None);
     }
+    Log.Information("Database migrations completed successfully");
+}
+catch (Exception ex)
+{
+    Log.Warning(ex, "Database migrations failed or database unavailable. App will continue to start.");
 }
 
 // Configure the HTTP request pipeline.

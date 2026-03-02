@@ -1,9 +1,12 @@
 using Microsoft.Extensions.Logging.Abstractions;
+using Microsoft.Extensions.Options;
 using Microsoft.Extensions.Time.Testing;
+using SEBT.Portal.Core.AppSettings;
 using SEBT.Portal.Core.Models;
+using SEBT.Portal.Core.Models.Auth;
 using SEBT.Portal.Core.Models.Household;
 using SEBT.Portal.Core.Repositories;
-using SEBT.Portal.Core.Services;
+using SEBT.Portal.Core.Seeding;
 using SEBT.Portal.Infrastructure.Repositories;
 
 namespace SEBT.Portal.Tests.Unit.Repositories;
@@ -24,7 +27,14 @@ public class MockHouseholdRepositoryTests
     {
         var logger = NullLogger<MockHouseholdRepository>.Instance;
         _timeProvider = new FakeTimeProvider(FixedSeedTime);
-        _repository = new MockHouseholdRepository(logger, _timeProvider);
+        _repository = new MockHouseholdRepository(logger, timeProvider: _timeProvider);
+    }
+
+    private static MockHouseholdRepository CreateRepository(string emailPattern)
+    {
+        var logger = NullLogger<MockHouseholdRepository>.Instance;
+        var settings = Options.Create(new SeedingSettings { EmailPattern = emailPattern });
+        return new MockHouseholdRepository(logger, settings, new FakeTimeProvider(FixedSeedTime));
     }
 
     [Fact]
@@ -34,7 +44,7 @@ public class MockHouseholdRepositoryTests
         var identifier = HouseholdIdentifier.Email("verified@example.com");
 
         // Act
-        var result = await _repository.GetHouseholdByIdentifierAsync(identifier, FullPiiVisibility);
+        var result = await _repository.GetHouseholdByIdentifierAsync(identifier, FullPiiVisibility, UserIalLevel.IAL1plus);
 
         // Assert
         Assert.NotNull(result);
@@ -50,7 +60,7 @@ public class MockHouseholdRepositoryTests
         // Mock data is keyed by email only; Phone, SNAP ID, etc. return null until backend supports them
         var identifier = HouseholdIdentifier.Phone("5551234567");
 
-        var result = await _repository.GetHouseholdByIdentifierAsync(identifier, FullPiiVisibility);
+        var result = await _repository.GetHouseholdByIdentifierAsync(identifier, FullPiiVisibility, UserIalLevel.IAL1plus);
 
         Assert.Null(result);
     }
@@ -62,7 +72,7 @@ public class MockHouseholdRepositoryTests
         var email = "verified@example.com";
 
         // Act
-        var result = await _repository.GetHouseholdByEmailAsync(email, FullPiiVisibility);
+        var result = await _repository.GetHouseholdByEmailAsync(email, FullPiiVisibility, UserIalLevel.IAL1plus);
 
         // Assert
         Assert.NotNull(result);
@@ -83,7 +93,7 @@ public class MockHouseholdRepositoryTests
         ApplicationStatus expectedApplicationStatus)
     {
         // Arrange & Act - Default seeded users must have household data for end-to-end testing
-        var result = await _repository.GetHouseholdByEmailAsync(email, FullPiiVisibility);
+        var result = await _repository.GetHouseholdByEmailAsync(email, FullPiiVisibility, UserIalLevel.IAL1plus);
 
         // Assert
         Assert.NotNull(result);
@@ -106,7 +116,7 @@ public class MockHouseholdRepositoryTests
         var email = "nonexistent@example.com";
 
         // Act
-        var result = await _repository.GetHouseholdByEmailAsync(email, FullPiiVisibility);
+        var result = await _repository.GetHouseholdByEmailAsync(email, FullPiiVisibility, UserIalLevel.IAL1plus);
 
         // Assert
         Assert.Null(result);
@@ -117,14 +127,14 @@ public class MockHouseholdRepositoryTests
     {
         // Act & Assert
         await Assert.ThrowsAsync<ArgumentNullException>(() =>
-            _repository.GetHouseholdByEmailAsync("verified@example.com", null!));
+            _repository.GetHouseholdByEmailAsync("verified@example.com", null!, UserIalLevel.None));
     }
 
     [Fact]
     public async Task GetHouseholdByEmailAsync_WhenEmailIsNull_ReturnsNull()
     {
         // Act
-        var result = await _repository.GetHouseholdByEmailAsync(null!, FullPiiVisibility);
+        var result = await _repository.GetHouseholdByEmailAsync(null!, FullPiiVisibility, UserIalLevel.IAL1plus);
 
         // Assert
         Assert.Null(result);
@@ -134,7 +144,7 @@ public class MockHouseholdRepositoryTests
     public async Task GetHouseholdByEmailAsync_WhenEmailIsWhitespace_ReturnsNull()
     {
         // Act
-        var result = await _repository.GetHouseholdByEmailAsync("   ", FullPiiVisibility);
+        var result = await _repository.GetHouseholdByEmailAsync("   ", FullPiiVisibility, UserIalLevel.IAL1plus);
 
         // Assert
         Assert.Null(result);
@@ -147,7 +157,7 @@ public class MockHouseholdRepositoryTests
         var email = "VERIFIED@EXAMPLE.COM";
 
         // Act
-        var result = await _repository.GetHouseholdByEmailAsync(email, FullPiiVisibility);
+        var result = await _repository.GetHouseholdByEmailAsync(email, FullPiiVisibility, UserIalLevel.IAL1plus);
 
         // Assert
         Assert.NotNull(result);
@@ -161,7 +171,7 @@ public class MockHouseholdRepositoryTests
         var email = "verified@example.com";
 
         // Act
-        var result = await _repository.GetHouseholdByEmailAsync(email, FullPiiVisibility);
+        var result = await _repository.GetHouseholdByEmailAsync(email, FullPiiVisibility, UserIalLevel.IAL1plus);
 
         // Assert
         Assert.NotNull(result);
@@ -176,7 +186,7 @@ public class MockHouseholdRepositoryTests
         var email = "verified@example.com";
 
         // Act
-        var result = await _repository.GetHouseholdByEmailAsync(email, NoAddressPiiVisibility);
+        var result = await _repository.GetHouseholdByEmailAsync(email, NoAddressPiiVisibility, UserIalLevel.None);
 
         // Assert
         Assert.NotNull(result);
@@ -190,8 +200,8 @@ public class MockHouseholdRepositoryTests
         var email = "verified@example.com";
 
         // Act
-        var result1 = await _repository.GetHouseholdByEmailAsync(email, FullPiiVisibility);
-        var result2 = await _repository.GetHouseholdByEmailAsync(email, FullPiiVisibility);
+        var result1 = await _repository.GetHouseholdByEmailAsync(email, FullPiiVisibility, UserIalLevel.IAL1plus);
+        var result2 = await _repository.GetHouseholdByEmailAsync(email, FullPiiVisibility, UserIalLevel.IAL1plus);
 
         // Assert
         Assert.NotNull(result1);
@@ -205,27 +215,13 @@ public class MockHouseholdRepositoryTests
     [Fact]
     public async Task GetHouseholdByEmailAsync_ReturnsAllSeededScenarios()
     {
-        // Arrange
-        var testEmails = new[]
-        {
-            "co-loaded@example.com",
-            "verified@example.com",
-            "pending@example.com",
-            "denied@example.com",
-            "review@example.com",
-            "cancelled@example.com",
-            "singlechild@example.com",
-            "largefamily@example.com",
-            "minimal@example.com",
-            "expired@example.com",
-            "unknown@example.com",
-            "multipleapps@example.com"
-        };
+        // Derive emails from the default catalog
+        var defaultSettings = new SeedingSettings();
 
-        // Act & Assert
-        foreach (var email in testEmails)
+        foreach (var scenario in SeedScenarios.AllScenarios)
         {
-            var result = await _repository.GetHouseholdByEmailAsync(email, FullPiiVisibility);
+            var email = defaultSettings.BuildEmail(scenario.Name);
+            var result = await _repository.GetHouseholdByEmailAsync(email, FullPiiVisibility, UserIalLevel.IAL1plus);
             Assert.NotNull(result);
             Assert.Equal(email, result.Email);
         }
@@ -238,7 +234,7 @@ public class MockHouseholdRepositoryTests
         var email = "verified@example.com";
 
         // Act
-        var result = await _repository.GetHouseholdByEmailAsync(email, FullPiiVisibility);
+        var result = await _repository.GetHouseholdByEmailAsync(email, FullPiiVisibility, UserIalLevel.IAL1plus);
 
         // Assert
         Assert.NotNull(result);
@@ -265,7 +261,7 @@ public class MockHouseholdRepositoryTests
         var email = "pending@example.com";
 
         // Act
-        var result = await _repository.GetHouseholdByEmailAsync(email, FullPiiVisibility);
+        var result = await _repository.GetHouseholdByEmailAsync(email, FullPiiVisibility, UserIalLevel.IAL1plus);
 
         // Assert
         Assert.NotNull(result);
@@ -285,7 +281,7 @@ public class MockHouseholdRepositoryTests
         var email = "largefamily@example.com";
 
         // Act
-        var result = await _repository.GetHouseholdByEmailAsync(email, FullPiiVisibility);
+        var result = await _repository.GetHouseholdByEmailAsync(email, FullPiiVisibility, UserIalLevel.IAL1plus);
 
         // Assert
         Assert.NotNull(result);
@@ -315,7 +311,7 @@ public class MockHouseholdRepositoryTests
         await _repository.UpsertHouseholdAsync(newHousehold);
 
         // Assert
-        var result = await _repository.GetHouseholdByEmailAsync("new@example.com", FullPiiVisibility);
+        var result = await _repository.GetHouseholdByEmailAsync("new@example.com", FullPiiVisibility, UserIalLevel.IAL1plus);
         Assert.NotNull(result);
         Assert.Equal("new@example.com", result.Email);
         Assert.Equal("555-0000", result.Phone);
@@ -340,7 +336,7 @@ public class MockHouseholdRepositoryTests
         await _repository.UpsertHouseholdAsync(updatedHousehold);
 
         // Assert
-        var result = await _repository.GetHouseholdByEmailAsync(email, FullPiiVisibility);
+        var result = await _repository.GetHouseholdByEmailAsync(email, FullPiiVisibility, UserIalLevel.IAL1plus);
         Assert.NotNull(result);
         Assert.Equal("555-9999", result.Phone);
         Assert.NotNull(result.Applications);
@@ -365,7 +361,7 @@ public class MockHouseholdRepositoryTests
         await _repository.UpsertHouseholdAsync(household);
 
         // Assert
-        var result = await _repository.GetHouseholdByEmailAsync("new@example.com", FullPiiVisibility);
+        var result = await _repository.GetHouseholdByEmailAsync("new@example.com", FullPiiVisibility, UserIalLevel.IAL1plus);
         Assert.NotNull(result);
     }
 
@@ -420,7 +416,7 @@ public class MockHouseholdRepositoryTests
         var email = "minimal@example.com";
 
         // Act
-        var result = await _repository.GetHouseholdByEmailAsync(email, FullPiiVisibility);
+        var result = await _repository.GetHouseholdByEmailAsync(email, FullPiiVisibility, UserIalLevel.IAL1plus);
 
         // Assert
         Assert.NotNull(result);
@@ -440,7 +436,7 @@ public class MockHouseholdRepositoryTests
         var noEmailVisibility = new PiiVisibility(IncludeAddress: true, IncludeEmail: false, IncludePhone: true);
 
         // Act
-        var result = await _repository.GetHouseholdByEmailAsync(email, noEmailVisibility);
+        var result = await _repository.GetHouseholdByEmailAsync(email, noEmailVisibility, UserIalLevel.IAL1plus);
 
         // Assert
         Assert.NotNull(result);
@@ -456,7 +452,7 @@ public class MockHouseholdRepositoryTests
         var noPhoneVisibility = new PiiVisibility(IncludeAddress: true, IncludeEmail: true, IncludePhone: false);
 
         // Act
-        var result = await _repository.GetHouseholdByEmailAsync(email, noPhoneVisibility);
+        var result = await _repository.GetHouseholdByEmailAsync(email, noPhoneVisibility, UserIalLevel.IAL1plus);
 
         // Assert
         Assert.NotNull(result);
@@ -471,7 +467,7 @@ public class MockHouseholdRepositoryTests
         var email = "expired@example.com";
 
         // Act
-        var result = await _repository.GetHouseholdByEmailAsync(email, FullPiiVisibility);
+        var result = await _repository.GetHouseholdByEmailAsync(email, FullPiiVisibility, UserIalLevel.IAL1plus);
 
         // Assert
         Assert.NotNull(result);
@@ -481,5 +477,56 @@ public class MockHouseholdRepositoryTests
         Assert.NotNull(app.BenefitExpirationDate);
         Assert.True(app.BenefitExpirationDate < _timeProvider.GetUtcNow().UtcDateTime);
         Assert.Equal(ApplicationStatus.Approved, app.ApplicationStatus);
+    }
+
+    [Fact]
+    public async Task GetHouseholdByEmailAsync_WithDcEmailPattern_ReturnsAllSeededScenarios()
+    {
+        const string pattern = "sebt.dc+{0}@codeforamerica.org";
+        var repo = CreateRepository(pattern);
+        var settings = new SeedingSettings { EmailPattern = pattern };
+
+        foreach (var scenario in SeedScenarios.AllScenarios)
+        {
+            var email = settings.BuildEmail(scenario.Name);
+            var result = await repo.GetHouseholdByEmailAsync(email, FullPiiVisibility, UserIalLevel.IAL1plus);
+            Assert.NotNull(result);
+            Assert.Equal(email, result.Email);
+        }
+    }
+
+    [Fact]
+    public async Task GetHouseholdByEmailAsync_WithCoEmailPattern_VerifiedScenarioHasCorrectData()
+    {
+        var repo = CreateRepository("sebt.co+{0}@codeforamerica.org");
+        var email = "sebt.co+verified@codeforamerica.org";
+
+        var result = await repo.GetHouseholdByEmailAsync(email, FullPiiVisibility, UserIalLevel.IAL1plus);
+
+        // Same scenario data, different email for CO
+        Assert.NotNull(result);
+        Assert.Equal(email, result.Email);
+        Assert.NotNull(result.Applications);
+        Assert.NotEmpty(result.Applications);
+        var app = result.Applications.First();
+        Assert.Equal(ApplicationStatus.Approved, app.ApplicationStatus);
+        Assert.Equal(2, app.Children.Count);
+        Assert.Equal("John", app.Children[0].FirstName);
+        Assert.Equal("Doe", app.Children[0].LastName);
+        Assert.Equal("1234", app.Last4DigitsOfCard);
+        Assert.NotNull(result.AddressOnFile);
+        Assert.Equal("123 Main Street", result.AddressOnFile.StreetAddress1);
+    }
+
+    [Fact]
+    public async Task GetHouseholdByEmailAsync_WithCustomPattern_DefaultEmailsReturnNull()
+    {
+        var repo = CreateRepository("sebt.dc+{0}@codeforamerica.org");
+
+        // Try looking up with default @example.com emails
+        var result = await repo.GetHouseholdByEmailAsync("verified@example.com", FullPiiVisibility, UserIalLevel.IAL1plus);
+
+        // Should not find anything since data is keyed by the custom pattern
+        Assert.Null(result);
     }
 }

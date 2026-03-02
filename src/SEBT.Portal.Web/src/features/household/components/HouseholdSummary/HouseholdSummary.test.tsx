@@ -1,5 +1,5 @@
 import { render, screen } from '@testing-library/react'
-import { describe, expect, it } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 import type { Application, HouseholdData } from '../../api'
 
@@ -21,7 +21,7 @@ const mockApplication: Application = {
   childrenOnApplication: 1
 }
 
-const mockData: HouseholdData = {
+const defaultMockData: HouseholdData = {
   email: 'test@example.com',
   phone: '(303) 555-0100',
   applications: [mockApplication],
@@ -34,16 +34,26 @@ const mockData: HouseholdData = {
   }
 }
 
+let mockReturnData: HouseholdData
+
+vi.mock('../../api', () => ({
+  useRequiredHouseholdData: () => mockReturnData
+}))
+
 describe('HouseholdSummary', () => {
+  beforeEach(() => {
+    mockReturnData = defaultMockData
+  })
+
   it('renders status heading', () => {
-    render(<HouseholdSummary data={mockData} />)
+    render(<HouseholdSummary />)
 
     // i18n key: profileTableHeadingStatus → "Status"
     expect(screen.getByText('Status')).toBeInTheDocument()
   })
 
   it('renders enrolled status for approved application', () => {
-    render(<HouseholdSummary data={mockData} />)
+    render(<HouseholdSummary />)
 
     // i18n key: profileTableStatusEnrolled → "Enrolled"
     const statusText = screen.getByText('Enrolled')
@@ -52,7 +62,7 @@ describe('HouseholdSummary', () => {
   })
 
   it('renders enrolled status description for approved application', () => {
-    render(<HouseholdSummary data={mockData} />)
+    render(<HouseholdSummary />)
 
     // i18n key: profileTableStatusEnrolledDescription
     expect(
@@ -62,9 +72,9 @@ describe('HouseholdSummary', () => {
 
   it('renders in-progress status for pending application', () => {
     const pendingApp: Application = { ...mockApplication, applicationStatus: 'Pending' }
-    const pendingData: HouseholdData = { ...mockData, applications: [pendingApp] }
+    mockReturnData = { ...defaultMockData, applications: [pendingApp] }
 
-    render(<HouseholdSummary data={pendingData} />)
+    render(<HouseholdSummary />)
 
     // i18n key: profileTableStatusApplicationIn-progress → "Application in-progress"
     const statusText = screen.getByText('Application in-progress')
@@ -73,9 +83,9 @@ describe('HouseholdSummary', () => {
 
   it('does not render enrolled description for non-approved status', () => {
     const pendingApp: Application = { ...mockApplication, applicationStatus: 'Pending' }
-    const pendingData: HouseholdData = { ...mockData, applications: [pendingApp] }
+    mockReturnData = { ...defaultMockData, applications: [pendingApp] }
 
-    render(<HouseholdSummary data={pendingData} />)
+    render(<HouseholdSummary />)
 
     expect(
       screen.queryByText(/Your children are enrolled because we have enough information/)
@@ -84,9 +94,9 @@ describe('HouseholdSummary', () => {
 
   it('renders denied status for denied application', () => {
     const deniedApp: Application = { ...mockApplication, applicationStatus: 'Denied' }
-    const deniedData: HouseholdData = { ...mockData, applications: [deniedApp] }
+    mockReturnData = { ...defaultMockData, applications: [deniedApp] }
 
-    render(<HouseholdSummary data={deniedData} />)
+    render(<HouseholdSummary />)
 
     // i18n key: profileTableStatusApplicationDenied → "Application denied"
     const statusText = screen.getByText('Application denied')
@@ -94,7 +104,7 @@ describe('HouseholdSummary', () => {
   })
 
   it('renders mailing address when provided', () => {
-    render(<HouseholdSummary data={mockData} />)
+    render(<HouseholdSummary />)
 
     // i18n key: profileTableHeadingMailingAddress → "Your mailing address"
     expect(screen.getByText('Your mailing address')).toBeInTheDocument()
@@ -102,7 +112,7 @@ describe('HouseholdSummary', () => {
   })
 
   it('renders change mailing address link', () => {
-    render(<HouseholdSummary data={mockData} />)
+    render(<HouseholdSummary />)
 
     // i18n key: profileTableActionChangeAddress → "Change my mailing address"
     const link = screen.getByRole('link', { name: 'Change my mailing address' })
@@ -110,15 +120,15 @@ describe('HouseholdSummary', () => {
   })
 
   it('hides mailing address when not provided', () => {
-    const dataWithoutAddress: HouseholdData = { ...mockData, addressOnFile: null }
-    render(<HouseholdSummary data={dataWithoutAddress} />)
+    mockReturnData = { ...defaultMockData, addressOnFile: null }
+    render(<HouseholdSummary />)
 
     expect(screen.queryByText('Your mailing address')).not.toBeInTheDocument()
     expect(screen.queryByText(/123 Main Street/)).not.toBeInTheDocument()
   })
 
   it('renders preferred contact with email', () => {
-    render(<HouseholdSummary data={mockData} />)
+    render(<HouseholdSummary />)
 
     // i18n key: profileTableHeadingPreferredContact → "Your preferred contact"
     expect(screen.getByText('Your preferred contact')).toBeInTheDocument()
@@ -126,7 +136,7 @@ describe('HouseholdSummary', () => {
   })
 
   it('renders change contact information link', () => {
-    render(<HouseholdSummary data={mockData} />)
+    render(<HouseholdSummary />)
 
     // i18n key: profileTableActionChangeContact → "Change my contact information"
     const link = screen.getByRole('link', { name: 'Change my contact information' })
@@ -134,14 +144,14 @@ describe('HouseholdSummary', () => {
   })
 
   it('renders preferred contact with phone when provided', () => {
-    render(<HouseholdSummary data={mockData} />)
+    render(<HouseholdSummary />)
 
     expect(screen.getByText(/\(303\) 555-0100/)).toBeInTheDocument()
   })
 
   it('renders preferred contact without phone when not provided', () => {
-    const dataWithoutPhone: HouseholdData = { ...mockData, phone: null }
-    render(<HouseholdSummary data={dataWithoutPhone} />)
+    mockReturnData = { ...defaultMockData, phone: null }
+    render(<HouseholdSummary />)
 
     expect(screen.getByText('Your preferred contact')).toBeInTheDocument()
     expect(screen.getByText(/test@example.com/)).toBeInTheDocument()
@@ -149,8 +159,8 @@ describe('HouseholdSummary', () => {
   })
 
   it('renders preferred contact with only phone when email not provided', () => {
-    const dataWithoutEmail: HouseholdData = { ...mockData, email: null }
-    render(<HouseholdSummary data={dataWithoutEmail} />)
+    mockReturnData = { ...defaultMockData, email: null }
+    render(<HouseholdSummary />)
 
     expect(screen.getByText('Your preferred contact')).toBeInTheDocument()
     expect(screen.getByText(/\(303\) 555-0100/)).toBeInTheDocument()
@@ -158,8 +168,8 @@ describe('HouseholdSummary', () => {
   })
 
   it('hides contact section when neither email nor phone provided', () => {
-    const dataWithoutContact: HouseholdData = { ...mockData, email: null, phone: null }
-    render(<HouseholdSummary data={dataWithoutContact} />)
+    mockReturnData = { ...defaultMockData, email: null, phone: null }
+    render(<HouseholdSummary />)
 
     expect(screen.queryByText('Your preferred contact')).not.toBeInTheDocument()
     expect(

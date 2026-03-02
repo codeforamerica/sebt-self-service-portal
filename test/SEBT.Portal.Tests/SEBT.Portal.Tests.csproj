@@ -35,6 +35,33 @@
         <PackageReference Include="xunit.runner.visualstudio" Version="2.5.3" />
     </ItemGroup>
 
+  <!-- State connector as sibling repo only. Sibling under parent of portal, or CI path. -->
+  <PropertyGroup>
+    <_StateConnectorInterfacesProjectSiblingPath>$([System.IO.Path]::GetFullPath('$(MSBuildThisFileDirectory)../../../../sebt-self-service-portal-state-connector/src/SEBT.Portal.StatesPlugins.Interfaces/SEBT.Portal.StatesPlugins.Interfaces.csproj'))</_StateConnectorInterfacesProjectSiblingPath>
+    <_StateConnectorInterfacesProjectCiPath>$([System.IO.Path]::GetFullPath('$(MSBuildThisFileDirectory)../../../state-connector/src/SEBT.Portal.StatesPlugins.Interfaces/SEBT.Portal.StatesPlugins.Interfaces.csproj'))</_StateConnectorInterfacesProjectCiPath>
+    <_StateConnectorInterfacesProjectSibling Condition="Exists('$(_StateConnectorInterfacesProjectSiblingPath)')">$(_StateConnectorInterfacesProjectSiblingPath)</_StateConnectorInterfacesProjectSibling>
+    <_StateConnectorInterfacesProjectCi Condition="Exists('$(_StateConnectorInterfacesProjectCiPath)')">$(_StateConnectorInterfacesProjectCiPath)</_StateConnectorInterfacesProjectCi>
+    <_StateConnectorInterfacesProject Condition="'$(_StateConnectorInterfacesProjectSibling)' != ''">$(_StateConnectorInterfacesProjectSibling)</_StateConnectorInterfacesProject>
+    <_StateConnectorInterfacesProject Condition="'$(_StateConnectorInterfacesProject)' == '' and '$(_StateConnectorInterfacesProjectCi)' != ''">$(_StateConnectorInterfacesProjectCi)</_StateConnectorInterfacesProject>
+  </PropertyGroup>
+  <Choose>
+    <When Condition="'$(_StateConnectorInterfacesProject)' != ''">
+      <ItemGroup>
+        <ProjectReference Include="$(_StateConnectorInterfacesProject)">
+          <PrivateAssets>all</PrivateAssets>
+          <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+        </ProjectReference>
+      </ItemGroup>
+    </When>
+    <Otherwise>
+      <ItemGroup>
+        <PackageReference Include="SEBT.Portal.StatesPlugins.Interfaces" Version="0.0.1-*" />
+        <!-- HouseholdRepositoryTests requires plugin model types (Models.Household.*, etc.). When only the package is used (no state-connector project), the package may not expose those namespaces, so exclude the file to allow the project to build. -->
+        <Compile Remove="Unit/Repositories/HouseholdRepositoryTests.cs" />
+      </ItemGroup>
+    </Otherwise>
+  </Choose>
+
     <ItemGroup>
         <Using Include="Xunit" />
     </ItemGroup>

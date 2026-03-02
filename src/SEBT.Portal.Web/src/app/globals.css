@@ -15,8 +15,8 @@ body {
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   /* Use the primary font loaded by Next.js font loader */
-  /* The CSS variable is set via primaryFont.variable in layout.tsx */
-  font-family: var(--font-urbanist), system-ui, sans-serif;
+  /* The CSS variable --font-primary is set via primaryFont.variable in layout.tsx */
+  font-family: var(--font-primary), system-ui, sans-serif;
 }
 
 /* ========================================

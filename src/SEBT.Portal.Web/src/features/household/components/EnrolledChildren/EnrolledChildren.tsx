@@ -2,16 +2,13 @@
 
 import { useTranslation } from 'react-i18next'
 
-import type { HouseholdData } from '../../api'
+import { useRequiredHouseholdData } from '../../api'
 import { ChildCard } from '../ChildCard'
 
-interface EnrolledChildrenProps {
-  data: HouseholdData
-}
-
 // Keys map to CSV: "S2 - Portal Dashboard - Section Enrolled Children - {Key}"
-export function EnrolledChildren({ data }: EnrolledChildrenProps) {
+export function EnrolledChildren() {
   const { t } = useTranslation('dashboard')
+  const data = useRequiredHouseholdData()
 
   // Flatten children across all applications for display
   // Each child gets the application-level data it belongs to

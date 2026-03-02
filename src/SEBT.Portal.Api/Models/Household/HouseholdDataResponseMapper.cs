@@ -1,6 +1,12 @@
-using SEBT.Portal.Core.Models.Household;
+extern alias Core;
 
 namespace SEBT.Portal.Api.Models.Household;
+
+using Address = Core::SEBT.Portal.Core.Models.Household.Address;
+using Application = Core::SEBT.Portal.Core.Models.Household.Application;
+using Child = Core::SEBT.Portal.Core.Models.Household.Child;
+using HouseholdData = Core::SEBT.Portal.Core.Models.Household.HouseholdData;
+using UserProfile = Core::SEBT.Portal.Core.Models.Household.UserProfile;
 
 /// <summary>
 /// Maps domain household models to API response DTOs.
