@@ -12,7 +12,7 @@ type CallbackStep = 'loading' | 'have_code_state' | 'have_pkce' | 'exchanging' |
 
 /**
  * OIDC callback: state IdP redirects here with ?code=...&state=...
- * We send code + code_verifier to the backend; backend exchanges with IdP (using client secret) and returns the portal JWT.
+ * We send code + code_verifier to the backend; backend exchanges with the IdP (using client secret) and returns the portal JWT.
  */
 export default function CallbackPage() {
   const router = useRouter()
