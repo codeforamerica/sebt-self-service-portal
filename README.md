@@ -123,6 +123,14 @@ docker compose up
 ```
 Only include sections you want to override; other settings fall back to `appsettings.json`!
 
+### OIDC support
+
+States can use an external OpenID Connect (commonly referred to as OIDC) provider for external sign-ins. OIDC is configured per state under `Oidc:{stateCode}` (for example, `Oidc:co`). 
+
+ The client secret is used only on the API when exchanging the authorization code for tokens. If you need to test this in a local development, set `CallbackRedirectUri` to match your app (`http://localhost:3000/callback`) and provide credentials for your IdP.  Verify that the redirect_uri matches what's whitelisted on the ODIC provider side. 
+ 
+ Also check out `src/SEBT.Portal.Api/appsettings.Development.example.json` for an example and [ADR-0008](docs/adr/0008-co-oidc-mycolorado-authentication-and-state-auth-context.md) for the design.
+
 ### ID Proofing Requirements
 
 PII data is only shown and editable to users who meet the ID proofing requirements configured within "IdProofingRequirements" and their current IAL status (for example, `address+view`, `email+view`, `phone+view`). Configure in `appsettings.json` or override with `appsettings.{state}.json`.
@@ -164,6 +172,10 @@ Available environment variables:
 **API**
 - `JWTSETTINGS__SECRETKEY` - Secret key for JWT token signing. Must be at least 32 characters.
 - `IDENTIFIERHASHER__SECRETKEY` - Secret key for HMAC-SHA256 hashing of Household Identifiers as needed. Must be at least 32 characters.
+
+**OIDC (state IdP sign-in)**
+- `Oidc__{state}__ClientSecret` - Client secret for the state's OIDC provider. Set in `.env` or API appsettings.
+- Other OIDC values (`DiscoveryEndpoint`, `ClientId`, `CallbackRedirectUri`) are located in `appsettings.json` or `appsettings.Development.json`. See `appsettings.Development.example.json` and [ADR-0008](docs/adr/0008-co-oidc-mycolorado-authentication-and-state-auth-context.md). For local dev, use callback URI `http://localhost:3000/callback`.
 
 ### Database Migrations
 

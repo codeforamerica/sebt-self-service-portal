@@ -1,5 +1,5 @@
 /**
- * PKCE and OIDC helpers for the MyColorado frontend flow.
+ * PKCE and OIDC helpers for state IdP sign-in (frontend flow).
  */
 
 const CO_PKCE_STORAGE_KEY = 'oidc_co_pkce'

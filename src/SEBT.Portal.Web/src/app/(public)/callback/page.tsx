@@ -8,7 +8,7 @@ import { useEffect, useState } from 'react'
 type CallbackStep = 'loading' | 'have_code_state' | 'have_pkce' | 'exchanging' | 'error'
 
 /**
- * OIDC callback: MyColorado redirects here with ?code=...&state=...
+ * OIDC callback: state IdP redirects here with ?code=...&state=...
  * We send code + code_verifier to the backend; backend exchanges with PingOne (using client secret) and returns the portal JWT.
  */
 export default function CallbackPage() {
@@ -121,7 +121,7 @@ export default function CallbackPage() {
     loading: 'Loading…',
     have_code_state: 'Code and state found, checking PKCE…',
     have_pkce: 'PKCE found, sending code to backend…',
-    exchanging: 'Exchanging code with MyColorado (backend)…',
+    exchanging: 'Exchanging code with sign-in provider…',
     error: errorDetail ?? 'Something went wrong.'
   }
 
