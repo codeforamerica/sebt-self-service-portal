@@ -125,11 +125,11 @@ Only include sections you want to override; other settings fall back to `appsett
 
 ### OIDC support
 
-States can use an external OpenID Connect (commonly referred to as OIDC) provider for external sign-ins. OIDC is configured per state under `Oidc:{stateCode}` (for example, `Oidc:co`). 
+States can use an external OpenID Connect (commonly referred to as OIDC) provider for external sign-ins. OIDC is configured per state under `Oidc:{stateCode}` (for example, `Oidc:co`).
 
- The client secret is used only on the API when exchanging the authorization code for tokens. If you need to test this in a local development, set `CallbackRedirectUri` to match your app (`http://localhost:3000/callback`) and provide credentials for your IdP.  Verify that the redirect_uri matches what's whitelisted on the ODIC provider side. 
- 
- Also check out `src/SEBT.Portal.Api/appsettings.Development.example.json` for an example and [ADR-0008](docs/adr/0008-co-oidc-mycolorado-authentication-and-state-auth-context.md) for the design.
+**CO (MyColorado):** Code exchange and id_token validation run in the Next.js server; the .NET API only performs "complete-login" (validates a short-lived callback token, creates session, returns portal JWT). Set in the **Next.js** `.env.local`: `OIDC_CO_DISCOVERY_ENDPOINT`, `OIDC_CO_CLIENT_ID`, `OIDC_CO_CLIENT_SECRET`, `OIDC_CO_REDIRECT_URI`, `OIDC_COMPLETE_LOGIN_SIGNING_KEY` (at least 32 characters). Set the **same** value for `OIDC_COMPLETE_LOGIN_SIGNING_KEY` in the API as `Oidc:CompleteLoginSigningKey` (e.g. in `appsettings.Development.json`). The API serves public config via `GET /api/auth/oidc/co/config` (no secrets).
+
+See `src/SEBT.Portal.Api/appsettings.Development.example.json` and [ADR-0008](docs/adr/0008-co-oidc-mycolorado-authentication-and-state-auth-context.md) for the design.
 
 ### ID Proofing Requirements
 
@@ -173,9 +173,8 @@ Available environment variables:
 - `JWTSETTINGS__SECRETKEY` - Secret key for JWT token signing. Must be at least 32 characters.
 - `IDENTIFIERHASHER__SECRETKEY` - Secret key for HMAC-SHA256 hashing of Household Identifiers as needed. Must be at least 32 characters.
 
-**OIDC (state IdP sign-in)**
-- `Oidc__{state}__ClientSecret` - Client secret for the state's OIDC provider. Set in `.env` or API appsettings.
-- Other OIDC values (`DiscoveryEndpoint`, `ClientId`, `CallbackRedirectUri`) are located in `appsettings.json` or `appsettings.Development.json`. See `appsettings.Development.example.json` and [ADR-0008](docs/adr/0008-co-oidc-mycolorado-authentication-and-state-auth-context.md). For local dev, use callback URI `http://localhost:3000/callback`.
+**OIDC (state IdP sign-in)**  
+Set `OIDC_CO_*` and `OIDC_COMPLETE_LOGIN_SIGNING_KEY` in the Next.js `.env.local`; set `Oidc:CompleteLoginSigningKey` in the API to the same signing key. See `appsettings.Development.example.json` and [ADR-0008](docs/adr/0008-co-oidc-mycolorado-authentication-and-state-auth-context.md).
 
 ### Database Migrations
 

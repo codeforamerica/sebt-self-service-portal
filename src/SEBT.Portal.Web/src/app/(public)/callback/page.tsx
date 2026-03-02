@@ -9,7 +9,7 @@ type CallbackStep = 'loading' | 'have_code_state' | 'have_pkce' | 'exchanging' |
 
 /**
  * OIDC callback: state IdP redirects here with ?code=...&state=...
- * We send code + code_verifier to the backend; backend exchanges with the IdP (using client secret) and returns the portal JWT.
+ * We then send callbackToken to the .NET complete-login endpoint to create session and get the portal JWT.
  */
 export default function CallbackPage() {
   const router = useRouter()
@@ -60,18 +60,20 @@ export default function CallbackPage() {
 
       try {
         setStep('exchanging')
-        const res = await fetch('/api/auth/oidc/co/exchange-code', {
+        const callbackRes = await fetch('/api/auth/oidc/callback', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             code,
-            code_verifier: stored.code_verifier
+            code_verifier: stored.code_verifier,
+            state,
+            stateCode: 'co'
           }),
           credentials: 'include'
         })
         if (cancelled) return
-        if (!res.ok) {
-          const text = await res.text()
+        if (!callbackRes.ok) {
+          const text = await callbackRes.text()
           let data: { error?: string; hint?: string } = {}
           try {
             data = JSON.parse(text) as { error?: string; hint?: string }
@@ -80,15 +82,47 @@ export default function CallbackPage() {
           }
           const msg = data.error ?? text.slice(0, 150)
           const hint = data.hint ? ` ${data.hint}` : ''
-          const fallback = `Request failed (${res.status})`
-          setErrorDetail((msg || fallback) + hint)
+          setErrorDetail((msg || `Request failed (${callbackRes.status})`) + hint)
           if (!cancelled) {
             setStep('error')
             setStatus('error')
           }
           return
         }
-        const data = (await res.json()) as { token?: string }
+        const { callbackToken } = (await callbackRes.json()) as { callbackToken?: string }
+        if (!callbackToken) {
+          setErrorDetail('No callback token returned')
+          if (!cancelled) {
+            setStep('error')
+            setStatus('error')
+          }
+          return
+        }
+        const completeRes = await fetch('/api/auth/oidc/complete-login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ stateCode: 'co', callbackToken }),
+          credentials: 'include'
+        })
+        if (cancelled) return
+        if (!completeRes.ok) {
+          const text = await completeRes.text()
+          let data: { error?: string; hint?: string } = {}
+          try {
+            data = JSON.parse(text) as { error?: string; hint?: string }
+          } catch {
+            // not JSON
+          }
+          const msg = data.error ?? text.slice(0, 150)
+          const hint = data.hint ? ` ${data.hint}` : ''
+          setErrorDetail((msg || `Complete login failed (${completeRes.status})`) + hint)
+          if (!cancelled) {
+            setStep('error')
+            setStatus('error')
+          }
+          return
+        }
+        const data = (await completeRes.json()) as { token?: string }
         if (data.token) {
           login(data.token)
         }

@@ -29,28 +29,10 @@ internal static class ServiceCollectionPluginExtensions
         using var container = containerConfiguration.CreateContainer();
 
         var plugins = container.GetExports<IStatePlugin>();
-        var oidcExports = container.GetExports<IStateOidcLoginService>().ToList();
-        Log.Information("Found {Count} OIDC login plugin(s)", oidcExports.Count);
-
-        foreach (var oidcService in oidcExports)
-        {
-            var stateCode = oidcService.StateCode;
-            if (string.IsNullOrEmpty(stateCode))
-            {
-                Log.Warning("OIDC login plugin {Type} has empty StateCode; skipping", oidcService.GetType().FullName);
-                continue;
-            }
-            var key = stateCode.ToLowerInvariant();
-            services.AddKeyedSingleton<IStateOidcLoginService>(key, oidcService);
-            Log.Information("Registered OIDC login for state: {StateCode}", stateCode);
-        }
 
         foreach (var plugin in plugins)
         {
             var pluginType = plugin.GetType();
-            if (plugin is IStateOidcLoginService)
-                continue;
-
             Log.Information("Configuring services for plugin: {PluginType}", pluginType.FullName);
             var pluginInterfaces = pluginType.GetInterfaces()
                 .Where(i => i != typeof(IStatePlugin))
@@ -99,11 +81,6 @@ internal static class ServiceCollectionPluginExtensions
         conventions
             .ForTypesDerivedFrom<ISummerEbtCaseService>()
             .Export<ISummerEbtCaseService>()
-            .Shared();
-
-        conventions
-            .ForTypesDerivedFrom<IStateOidcLoginService>()
-            .Export<IStateOidcLoginService>()
             .Shared();
 
         conventions

@@ -40,6 +40,8 @@ export interface OidcConfig {
   tokenEndpoint: string
   clientId: string
   redirectUri: string
+  /** Optional params from config **/
+  languageParam?: string
 }
 
 export function buildAuthorizationUrl(
@@ -58,6 +60,9 @@ export function buildAuthorizationUrl(
     prompt: 'login',
     max_age: '0'
   })
+  if (config.languageParam) {
+    params.set('language', config.languageParam)
+  }
   return `${config.authorizationEndpoint}?${params.toString()}`
 }
 

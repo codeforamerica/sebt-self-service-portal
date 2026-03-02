@@ -12,27 +12,33 @@ Colorado uses MyColorado (PingOne) for CO resident authentication. The portal mu
 
 ## Decision
 
-We use a frontend-driven Authorization Code/PKCE flow: the frontend sends the authorization code and `code_verifier` to the backend; the backend exchanges them with the IdP (token endpoint, client secret), receives the `id_token`, validates it via the state plugin’s **ValidateIdTokenAsync**, stores **StateAuthContext** (IdToken, optional AccessToken, IdTokenClaims) in a session-keyed store, sets a cookie, and returns a portal JWT.
+We use a frontend-driven Authorization Code/PKCE flow: the **Next.js** server exchanges the authorization code with the IdP, validates the `id_token` using JWKS, issues a short-lived callback JWT, and returns it to the client. The client then POSTs the callback token to the .NET API's `complete-login` endpoint, which validates the token, builds **StateAuthContext** from claims, stores it in a session-keyed store, sets a cookie, and returns the portal JWT.
 
-- **State connector** — New interfaces: **IStateOidcLoginService**, **IStateAuthStore**, **IStateAuthSessionAccessor**, **IStateAuthService**, and **StateAuthContext**.
+- **State connector** — Interfaces: **IStateAuthStore**, **IStateAuthSessionAccessor**, **IStateAuthService**, and **StateAuthContext**.
 
-- **Portal** — `GET /api/auth/oidc/{code}/config` (public config, no secrets) and `POST /api/auth/oidc/{code}/exchange-code` (takes code/code_verifier, returns a JWT . **MemoryStateAuthStore** and **CookieStateAuthSessionAccessor** (`StateAuth.SessionId`) implement the store and session lookup; both are registered before plugin composition so the CO plugin can import them. MEF exports **IStateOidcLoginService** and **IStateAuthService**; OIDC login plugins are keyed singletons by state code.
+- **Portal (API)** - `GET /api/auth/oidc/{code}/config` (public config: authorization endpoint, token endpoint, client id, redirect URI and `POST /api/auth/oidc/complete-login` (accepts callback token, returns portal JWT). **MemoryStateAuthStore** and **CookieStateAuthSessionAccessor** (`StateAuth.SessionId`) implement the store and session lookup; both are registered before plugin composition so the CO plugin can import them. MEF exports **IStateAuthService**.
 
-In the frontend: CO login page fetches config (because we require a client_id/secret to be used), builds PKCE, redirects to MyColorado; callback page POSTs code/code_verifier to `exchange-code` and completes login.
+- **Portal (Next.js)** — `POST /api/auth/oidc/callback`: accepts code and code_verifier, exchanges code with IdP, validates id_token via JWKS, issues short-lived callback JWT signed with `OIDC_COMPLETE_LOGIN_SIGNING_KEY`, returns callback token to client. Client secret and signing key live only in Next.js env.
 
-- **CO connector** — **ColoradoOidcLoginService** (ValidateIdTokenAsync only; delegates to **MyColoradoOidcService** for validation and claims). **ColoradoStateAuthService**. Consuming state auth context via **IStateAuthService** (for example, using phone number from the claims for fetching hosuehold data) is future work. 
+- **Frontend** — CO login page fetches config from the API, builds PKCE, redirects to MyColorado; IdP redirects to `/callback`. Callback page POSTs code and code_verifier to the Next.js OIDC callback API, receives the callback token, then POSTs it with `stateCode` to the .NET `complete-login` endpoint and completes login.
 
-**MyColoradoOidc.TestHost** is a standalone dev app (localhost:8080, `TestHost:Enabled=true`) for testing the real MyColorado flow; this is defaulted to off in the settings, but can be used to test the endpoints in isolations.
+- **CO connector** — **ColoradoStateAuthService** (reads StateAuthContext from the store for the current session). Consuming state auth context via **IStateAuthService** (for example, using phone number from the claims for fetching household data) is future work.
+
+**Configuration:** 
+Next.js: `OIDC_CO_DISCOVERY_ENDPOINT`, `OIDC_CO_CLIENT_ID`, `OIDC_CO_CLIENT_SECRET`, `OIDC_CO_REDIRECT_URI`, `OIDC_COMPLETE_LOGIN_SIGNING_KEY` (min 32 chars). API: `Oidc:CompleteLoginSigningKey` (same value as Next.js); for the public config endpoint, `Oidc:{state}:DiscoveryEndpoint`, `Oidc:{state}:ClientId`, `Oidc:{state}:CallbackRedirectUri`, and optionally `Oidc:{state}:LanguageParam`. See `appsettings.Development.example.json` and `.env.example`.
 
 ## Consequences
 
-CO users can sign in with MyColorado; the portal stores IdP claims in **StateAuthContext** per session and plugins can read them via **IStateAuthService**. OIDC config is per-state and the client secret stays on the backend. Plugin contracts live in the state-connector repo
+Users can sign in with OIDC services (Such as MyColorado); the portal stores IdP claims in **StateAuthContext** per session and plugins can read them via **IStateAuthService**. OIDC config is per-state; the client secret lives only in the Next.js server (for code exchange and id_token validation). 
 
-Development requires real or test PingOne credentials and the correct redirect URI (e.g. `http://localhost:3000/callback`). **MemoryStateAuthStore** is in-memory only; production or multi-instance deployments need a distributed store or sticky sessions.
+Development requires real or test PingOne credentials and the correct redirect URI (`http://localhost:3000/callback`). **MemoryStateAuthStore** is in-memory only; production or multi-instance deployments need a distributed store or sticky sessions.
 
 ## References
 
-- ADR-0007: Multi-state plugin approach. Portal: `OidcController`, `ServiceCollectionPluginExtensions`, `MemoryStateAuthStore`, `CookieStateAuthSessionAccessor`; frontend `COLoginPage`, callback page, `oidc-pkce`. State-connector: `IStateOidcLoginService`, `IStateAuthService`, `IStateAuthStore`, `IStateAuthSessionAccessor`, `StateAuthContext`, `IdentityAssuranceLevel`. CO-connector: `ColoradoOidcLoginService`, `ColoradoStateAuthService`, `MyColoradoOidcService`, MyColoradoOidc.TestHost.
+- ADR-0007: Multi-state plugin approach.
+- Portal (API): `OidcController`, `ServiceCollectionPluginExtensions`, `MemoryStateAuthStore`, `CookieStateAuthSessionAccessor`.
+- Portal (Next.js): OIDC callback API route; frontend `COLoginPage`, callback page, `oidc-pkce`.
+- State-connector: `IStateAuthService`, `IStateAuthStore`, `IStateAuthSessionAccessor`, `StateAuthContext`, `IdentityAssuranceLevel`.
 
 ## Related ADRs
 
