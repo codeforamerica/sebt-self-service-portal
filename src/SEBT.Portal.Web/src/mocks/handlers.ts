@@ -204,9 +204,12 @@ export const handlers = [
       code_verifier?: string
       stateCode?: string
     }
-    if (!body?.code || !body?.code_verifier || body?.stateCode !== 'co') {
+    const currentState = (process.env.NEXT_PUBLIC_STATE || process.env.STATE || 'dc').toLowerCase()
+    if (!body?.code || !body?.code_verifier || body?.stateCode !== currentState) {
       return HttpResponse.json(
-        { error: 'Missing or invalid code, code_verifier, or stateCode (must be "co").' },
+        {
+          error: 'Missing or invalid code, code_verifier, or stateCode (must match current state).'
+        },
         { status: 400 }
       )
     }
