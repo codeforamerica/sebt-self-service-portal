@@ -12,6 +12,7 @@ using UserEntityFactory = SEBT.Portal.Infrastructure.Helpers.UserFactory;
 namespace SEBT.Portal.Tests.Unit.Services;
 
 [Collection("SqlServer")]
+[Trait("Category", "RequiresDocker")]
 public class DataSeederTests : IClassFixture<SqlServerTestFixture>
 {
     private readonly SqlServerTestFixture _fixture;
