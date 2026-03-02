@@ -2,6 +2,7 @@
 
 import { useAuth } from '@/features/auth'
 import { clearPkceStorage, getPkceFromStorage } from '@/lib/oidc-pkce'
+import { getState } from '@/lib/state'
 import { useRouter } from 'next/navigation'
 import { useEffect, useState } from 'react'
 
@@ -67,7 +68,7 @@ export default function CallbackPage() {
             code,
             code_verifier: stored.code_verifier,
             state,
-            stateCode: 'co'
+            stateCode: getState()
           }),
           credentials: 'include'
         })
@@ -101,7 +102,7 @@ export default function CallbackPage() {
         const completeRes = await fetch('/api/auth/oidc/complete-login', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ stateCode: 'co', callbackToken }),
+          body: JSON.stringify({ stateCode: getState(), callbackToken }),
           credentials: 'include'
         })
         if (cancelled) return

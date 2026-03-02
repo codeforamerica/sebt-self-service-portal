@@ -7,8 +7,11 @@ import { env } from '@/env'
 import { SignJWT, createRemoteJWKSet, jwtVerify } from 'jose'
 import { NextRequest, NextResponse } from 'next/server'
 
-const STATE_CODE_CO = 'co'
 const CALLBACK_TOKEN_EXPIRY_SEC = 300 // 5 minutes
+
+function getCurrentStateCode(): string {
+  return (process.env.NEXT_PUBLIC_STATE || process.env.STATE || 'dc').toLowerCase()
+}
 
 export async function POST(request: NextRequest) {
   let body: { code?: string; code_verifier?: string; state?: string; stateCode?: string }
@@ -18,25 +21,26 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Invalid JSON body.' }, { status: 400 })
   }
 
+  const currentState = getCurrentStateCode()
   const { code, code_verifier, stateCode } = body
-  if (!code || !code_verifier || stateCode !== STATE_CODE_CO) {
+  if (!code || !code_verifier || stateCode !== currentState) {
     return NextResponse.json(
-      { error: 'Missing or invalid code, code_verifier, or stateCode (must be "co").' },
+      { error: 'Missing or invalid code, code_verifier, or stateCode (must match current state).' },
       { status: 400 }
     )
   }
 
-  const discoveryEndpoint = env.OIDC_CO_DISCOVERY_ENDPOINT
-  const clientId = env.OIDC_CO_CLIENT_ID
-  const clientSecret = env.OIDC_CO_CLIENT_SECRET
-  const redirectUri = env.OIDC_CO_REDIRECT_URI
+  const discoveryEndpoint = env.OIDC_DISCOVERY_ENDPOINT
+  const clientId = env.OIDC_CLIENT_ID
+  const clientSecret = env.OIDC_CLIENT_SECRET
+  const redirectUri = env.OIDC_REDIRECT_URI
   const signingKey = env.OIDC_COMPLETE_LOGIN_SIGNING_KEY
 
   if (!discoveryEndpoint || !clientId || !clientSecret || !redirectUri || !signingKey) {
     return NextResponse.json(
       {
-        error: 'OIDC not configured for CO.',
-        hint: 'Set OIDC_CO_DISCOVERY_ENDPOINT, OIDC_CO_CLIENT_ID, OIDC_CO_CLIENT_SECRET, OIDC_CO_REDIRECT_URI, OIDC_COMPLETE_LOGIN_SIGNING_KEY.'
+        error: 'OIDC not configured.',
+        hint: 'Set OIDC_DISCOVERY_ENDPOINT, OIDC_CLIENT_ID, OIDC_CLIENT_SECRET, OIDC_REDIRECT_URI, OIDC_COMPLETE_LOGIN_SIGNING_KEY.'
       },
       { status: 503 }
     )

@@ -28,7 +28,7 @@ export function COLoginPage({ state }: { state: StateCode }) {
     setError(null)
     setLoading(true)
     try {
-      const res = await fetch('/api/auth/oidc/co/config', { credentials: 'include' })
+      const res = await fetch(`/api/auth/oidc/${state}/config`, { credentials: 'include' })
       if (!res.ok) {
         const data = (await res.json()) as { error?: string }
         setError(data.error ?? 'Unable to load login configuration.')
