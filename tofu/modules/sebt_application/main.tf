@@ -51,6 +51,7 @@ module "api" {
     "EmailOtpSenderServiceSettings__SenderEmail" = module.ses.sender_email
     "Seeding__Enabled"                           = var.seeding_enabled
     "Seeding__EmailPattern"                      = var.seeding_email_pattern
+    "UseMockHouseholdData"                       = var.use_mock_household_data
   }
 
   environment_secrets = {
