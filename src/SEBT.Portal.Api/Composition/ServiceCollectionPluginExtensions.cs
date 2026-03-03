@@ -21,15 +21,7 @@ internal static class ServiceCollectionPluginExtensions
                                   ?? throw new InvalidOperationException("PluginAssemblyPaths missing from configuration.");
         Log.Information("Loading plugins from: {PluginAssemblyPaths}", pluginAssemblyPaths);
 
-        // Resolve store and accessor so the CO plugin can satisfy its [Import] for IStateAuthStore (and accessor if needed).
-        IStateAuthStore store;
-        IStateAuthSessionAccessor accessor;
-        using (var tempProvider = services.BuildServiceProvider())
-        {
-            store = tempProvider.GetRequiredService<IStateAuthStore>();
-            accessor = tempProvider.GetRequiredService<IStateAuthSessionAccessor>();
-        }
-        var containerConfiguration = CreateContainerConfiguration(pluginAssemblyPaths, configuration, store, accessor);
+        var containerConfiguration = CreateContainerConfiguration(pluginAssemblyPaths, configuration);
         using var container = containerConfiguration.CreateContainer();
 
         var plugins = container.GetExports<IStatePlugin>();
@@ -57,18 +49,10 @@ internal static class ServiceCollectionPluginExtensions
             }
         }
 
-        // Ensure the app uses the same store/accessor instances the plugins received (single shared store).
-        services.AddSingleton(store);
-        services.AddSingleton(accessor);
-
         return services;
     }
 
-    private static ContainerConfiguration CreateContainerConfiguration(
-        string[] assemblyPaths,
-        IConfiguration configuration,
-        IStateAuthStore store,
-        IStateAuthSessionAccessor accessor)
+    private static ContainerConfiguration CreateContainerConfiguration(string[] assemblyPaths, IConfiguration configuration)
     {
         var conventions = new ConventionBuilder();
 
@@ -94,8 +78,6 @@ internal static class ServiceCollectionPluginExtensions
 
         return new ContainerConfiguration()
             .WithExport(configuration)
-            .WithExport(store)
-            .WithExport(accessor)
             .WithAssembliesInPath(assemblyPaths, conventions);
     }
 }

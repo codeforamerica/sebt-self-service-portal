@@ -4,12 +4,9 @@ using System.Text;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.IdentityModel.Tokens;
 using SEBT.Portal.Api.Models;
-using SEBT.Portal.Api.Services.StateAuth;
 using SEBT.Portal.Core.Repositories;
 using SEBT.Portal.Core.Services;
 using SEBT.Portal.Core.Utilities;
-using SEBT.Portal.StatesPlugins.Interfaces;
-using SEBT.Portal.StatesPlugins.Interfaces.Models;
 
 namespace SEBT.Portal.Api.Controllers.Auth;
 
@@ -22,10 +19,19 @@ public class OidcController(
     IConfiguration config,
     IHttpClientFactory httpFactory,
     ILogger<OidcController> logger,
-    IStateAuthStore store,
     IUserRepository userRepository,
     IJwtTokenService jwtService) : ControllerBase
 {
+    /// <summary>
+    /// Standard OIDC/JWT and IdP-infrastructure claim names to exclude when copying IdP claims into the portal JWT.
+    /// All other claims (for example: phone, givenName, familyName, email, sub, userId) are added to the portal token.
+    /// </summary>
+    private static readonly HashSet<string> CommonIdpClaimNames = new(StringComparer.OrdinalIgnoreCase)
+    {
+        "iss", "aud", "iat", "exp", "nbf",
+        "acr", "amr", "auth_time", "at_hash", "sid",
+        "env", "org", "p1.region"
+    };
     /// <summary>
     /// Public OIDC config for frontend PKCE flow (no secrets): authorization endpoint, token endpoint, client id, redirect URI.
     /// Config key: Oidc:{stateCode} (e.g. Oidc:co:DiscoveryEndpoint).
@@ -73,7 +79,8 @@ public class OidcController(
 
     /// <summary>
     /// Completes OIDC login when the Next.js server has already exchanged the code and validated the id_token.
-    /// Accepts a short-lived callbackToken (JWT signed with Oidc:CompleteLoginSigningKey) containing IdP claims; builds StateAuthContext, stores it, sets cookie, returns portal JWT.
+    /// Accepts a short-lived callbackToken (JWT signed with Oidc:CompleteLoginSigningKey) containing IdP claims;
+    /// copies non-common IdP claims into the portal JWT and returns it.
     /// </summary>
     [HttpPost("complete-login")]
     [ProducesResponseType(StatusCodes.Status200OK)]
@@ -108,7 +115,7 @@ public class OidcController(
             IssuerSigningKey = key
         };
         var handler = new JwtSecurityTokenHandler();
-        handler.MapInboundClaims = false; // Preserve original JWT claim names (sub, email) so GetEmailFromClaims finds them
+        handler.MapInboundClaims = false; // Preserve original JWT claim names (sub, email)
         ClaimsPrincipal principal;
         try
         {
@@ -120,27 +127,15 @@ public class OidcController(
             return BadRequest(new { error = "Invalid or expired callback token." });
         }
 
-        var claimsDict = new Dictionary<string, object>(StringComparer.OrdinalIgnoreCase);
+        // Copy non-common IdP claims into the portal JWT (e.g. phone, givenName, familyName, userId, email, sub)
+        var additionalClaims = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
         foreach (var claim in principal.Claims)
-            claimsDict[claim.Type] = claim.Value;
-
-        var authContext = new StateAuthContext(IdToken: string.Empty, AccessToken: string.Empty, IdTokenClaims: claimsDict);
-
-        var sessionId = Guid.NewGuid().ToString("N");
-        var expiration = TimeSpan.FromHours(1);
-        await store.SetAsync(sessionId, authContext, expiration, cancellationToken);
-
-        var cookieOptions = new CookieOptions
         {
-            HttpOnly = true,
-            Secure = !Request.Host.Host.Equals("localhost", StringComparison.OrdinalIgnoreCase),
-            SameSite = SameSiteMode.Lax,
-            Path = "/",
-            MaxAge = expiration
-        };
-        Response.Cookies.Append(CookieStateAuthSessionAccessor.CookieName, sessionId, cookieOptions);
+            if (!CommonIdpClaimNames.Contains(claim.Type) && !string.IsNullOrEmpty(claim.Value))
+                additionalClaims[claim.Type] = claim.Value;
+        }
 
-        var email = GetEmailFromClaims(authContext.IdTokenClaims);
+        var email = GetEmailFromClaims(principal);
         if (string.IsNullOrWhiteSpace(email))
         {
             logger.LogWarning("Callback token had no email or sub claim");
@@ -149,17 +144,16 @@ public class OidcController(
 
         var normalizedEmail = EmailNormalizer.Normalize(email);
         var (user, _) = await userRepository.GetOrCreateUserAsync(normalizedEmail, cancellationToken);
-        var token = jwtService.GenerateToken(user);
+        var token = jwtService.GenerateToken(user, additionalClaims);
         return Ok(new { token });
     }
 
-    private static string? GetEmailFromClaims(IReadOnlyDictionary<string, object>? claims)
+    private static string? GetEmailFromClaims(ClaimsPrincipal principal)
     {
-        if (claims == null) return null;
-        if (claims.TryGetValue("email", out var emailObj) && emailObj is string email)
-            return email;
-        if (claims.TryGetValue("sub", out var subObj) && subObj is string sub)
-            return sub;
-        return null;
+        var emailClaim = principal.FindFirst("email");
+        if (!string.IsNullOrEmpty(emailClaim?.Value))
+            return emailClaim.Value;
+        var subClaim = principal.FindFirst("sub");
+        return subClaim?.Value;
     }
 }

@@ -86,6 +86,7 @@ export async function POST(request: NextRequest) {
       error?: string
       error_description?: string
       id_token?: string
+      access_token?: string
     }
     if (!tokenRes.ok) {
       const msg = tokenJson.error_description ?? tokenJson.error ?? 'Token exchange failed.'
@@ -108,6 +109,66 @@ export async function POST(request: NextRequest) {
       } else if (typeof v === 'string') {
         claims[k] = v
       }
+    }
+
+    // Ensure complete-login can identify the user: need at least "sub" or "email"
+    const raw = payload as Record<string, unknown>
+    const subFromPayload =
+      typeof payload.sub === 'string'
+        ? payload.sub
+        : typeof payload.sub === 'number'
+          ? String(payload.sub)
+          : typeof raw.userId === 'string'
+            ? raw.userId
+            : null
+    const emailFromPayload =
+      typeof payload.email === 'string'
+        ? payload.email
+        : typeof raw.preferred_username === 'string'
+          ? raw.preferred_username
+          : null
+    if (subFromPayload) claims.sub = subFromPayload
+    if (emailFromPayload) claims.email = emailFromPayload
+
+    // Fetch userinfo when we have access_token: IdPs often put phone, given_name, family_name there
+    // (not in id_token). Merge into claims so complete-login gets them for the portal JWT.
+    const userinfoEndpoint = (discovery as { userinfo_endpoint?: string }).userinfo_endpoint
+    const accessToken = tokenJson.access_token
+    if (userinfoEndpoint && accessToken) {
+      const userinfoRes = await fetch(userinfoEndpoint, {
+        headers: { Authorization: `Bearer ${accessToken}` }
+      })
+      if (userinfoRes.ok) {
+        const userinfo = (await userinfoRes.json()) as Record<string, unknown>
+        if (typeof userinfo.sub === 'string' && !claims.sub) claims.sub = userinfo.sub
+        if (typeof userinfo.email === 'string' && !claims.email) claims.email = userinfo.email
+        if (
+          typeof userinfo.preferred_username === 'string' &&
+          !claims.email &&
+          (userinfo.preferred_username as string).includes('@')
+        )
+          claims.email = userinfo.preferred_username as string
+        // Profile claims (often only in userinfo, not id_token)
+        if (typeof userinfo.phone === 'string') claims.phone = userinfo.phone
+        if (typeof userinfo.phone_number === 'string') claims.phone_number = userinfo.phone_number
+        if (typeof userinfo.given_name === 'string') claims.givenName = userinfo.given_name
+        if (typeof userinfo.givenName === 'string') claims.givenName = userinfo.givenName
+        if (typeof userinfo.family_name === 'string') claims.familyName = userinfo.family_name
+        if (typeof userinfo.familyName === 'string') claims.familyName = userinfo.familyName
+        if (typeof userinfo.name === 'string') claims.name = userinfo.name
+      }
+    }
+    if (
+      (typeof claims.sub !== 'string' || !claims.sub) &&
+      (typeof claims.email !== 'string' || !claims.email)
+    ) {
+      return NextResponse.json(
+        {
+          error: 'Callback token must contain an email or sub claim.',
+          hint: 'IdP id_token (and optional userinfo) had no sub or email. Request scopes openid email profile and ensure the IdP returns sub or email.'
+        },
+        { status: 400 }
+      )
     }
 
     const secret = new TextEncoder().encode(signingKey)

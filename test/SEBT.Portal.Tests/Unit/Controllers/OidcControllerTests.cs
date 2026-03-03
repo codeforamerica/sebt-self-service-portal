@@ -1,12 +1,16 @@
+using System.IdentityModel.Tokens.Jwt;
+using System.Security.Claims;
+using System.Text;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging.Abstractions;
+using Microsoft.IdentityModel.Tokens;
 using NSubstitute;
 using SEBT.Portal.Api.Controllers.Auth;
 using SEBT.Portal.Api.Models;
+using SEBT.Portal.Core.Models.Auth;
 using SEBT.Portal.Core.Repositories;
 using SEBT.Portal.Core.Services;
-using IStateAuthStore = SEBT.Portal.StatesPlugins.Interfaces.IStateAuthStore;
 
 namespace SEBT.Portal.Tests.Unit.Controllers;
 
@@ -18,7 +22,6 @@ public class OidcControllerTests
     private const string CoStateKey = "co";
     private readonly IConfiguration _config;
     private readonly IHttpClientFactory _httpFactory;
-    private readonly IStateAuthStore _store;
     private readonly IUserRepository _userRepository;
     private readonly IJwtTokenService _jwtService;
     private readonly OidcController _controller;
@@ -27,7 +30,6 @@ public class OidcControllerTests
     {
         _config = Substitute.For<IConfiguration>();
         _httpFactory = Substitute.For<IHttpClientFactory>();
-        _store = Substitute.For<IStateAuthStore>();
         _userRepository = Substitute.For<IUserRepository>();
         _jwtService = Substitute.For<IJwtTokenService>();
 
@@ -35,7 +37,6 @@ public class OidcControllerTests
             _config,
             _httpFactory,
             NullLogger<OidcController>.Instance,
-            _store,
             _userRepository,
             _jwtService);
     }
@@ -107,5 +108,49 @@ public class OidcControllerTests
 
         var statusResult = Assert.IsType<ObjectResult>(result);
         Assert.Equal(503, statusResult.StatusCode);
+    }
+
+    /// <summary>
+    /// Success path: valid callback token returns 200 with a JSON body containing a "token" property (portal JWT).
+    /// Ensures the route returns the response shape the frontend expects.
+    /// </summary>
+    [Fact]
+    public async Task CompleteLogin_WhenValidCallbackToken_Returns200WithToken()
+    {
+        const string signingKey = "complete-login-signing-key-at-least-32-characters-long";
+        _config["Oidc:CompleteLoginSigningKey"].Returns(signingKey);
+
+        var callbackToken = CreateValidCallbackToken(signingKey, email: "user@example.com");
+        var body = new CompleteLoginRequest(CoStateKey, callbackToken);
+
+        var user = new User { Id = 1, Email = "user@example.com" };
+        _userRepository.GetOrCreateUserAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns((user, false));
+
+        const string portalJwt = "portal-jwt-returned-by-service";
+        _jwtService.GenerateToken(Arg.Any<User>(), Arg.Any<IReadOnlyDictionary<string, string>?>())
+            .Returns(portalJwt);
+
+        var result = await _controller.CompleteLogin(body, CancellationToken.None);
+
+        var okResult = Assert.IsType<OkObjectResult>(result);
+        Assert.NotNull(okResult.Value);
+        var valueType = okResult.Value.GetType();
+        var tokenProp = valueType.GetProperty("token");
+        Assert.NotNull(tokenProp);
+        var tokenValue = tokenProp.GetValue(okResult.Value) as string;
+        Assert.Equal(portalJwt, tokenValue);
+    }
+
+    private static string CreateValidCallbackToken(string signingKey, string email)
+    {
+        var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(signingKey));
+        var credentials = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
+        var claims = new List<Claim> { new("email", email) };
+        var token = new JwtSecurityToken(
+            claims: claims,
+            expires: DateTime.UtcNow.AddMinutes(5),
+            signingCredentials: credentials);
+        return new JwtSecurityTokenHandler().WriteToken(token);
     }
 }

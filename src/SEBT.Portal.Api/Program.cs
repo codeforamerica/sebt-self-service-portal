@@ -18,20 +18,14 @@ using SEBT.Portal.Infrastructure.Seeding.Services;
 using SEBT.Portal.UseCases;
 using SEBT.Portal.Infrastructure;
 using SEBT.Portal.Api.Startup;
-using SEBT.Portal.Api.Services.StateAuth;
 using SEBT.Portal.Core.Models.Auth;
 using SEBT.Portal.Core.Repositories;
 using SEBT.Portal.Core.Utilities;
-using SEBT.Portal.StatesPlugins.Interfaces;
-using SEBT.Portal.StatesPlugins.Interfaces.Models;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// State auth store and session accessor (required for OIDC callback and IStateAuthService plugins)
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddHttpClient();
-builder.Services.AddSingleton<IStateAuthStore, MemoryStateAuthStore>();
-builder.Services.AddSingleton<IStateAuthSessionAccessor, CookieStateAuthSessionAccessor>();
 
 // Configuration provider priority order (later providers override earlier ones):
 // 1. appsettings.json (defaults in FeatureManagement)

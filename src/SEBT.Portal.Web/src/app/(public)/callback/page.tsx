@@ -1,7 +1,7 @@
 'use client'
 
 import { Alert } from '@/components/ui'
-import { useAuth } from '@/features/auth'
+import { setAuthToken, useAuth } from '@/features/auth'
 import { clearPkceStorage, getPkceFromStorage } from '@/lib/oidc-pkce'
 import { getState } from '@/lib/state'
 import { getTranslations } from '@/lib/translations'
@@ -86,7 +86,14 @@ export default function CallbackPage() {
           } catch {
             // not JSON
           }
-          const msg = data.error ?? text.slice(0, 150)
+          const isHtml =
+            text.trimStart().startsWith('<!') ||
+            (callbackRes.headers.get('content-type') ?? '').toLowerCase().includes('text/html')
+          const msg =
+            data.error ??
+            (isHtml
+              ? `Sign-in provider returned an error page (${callbackRes.status}). Try again or check configuration.`
+              : text.slice(0, 150))
           const hint = data.hint ? ` ${data.hint}` : ''
           setErrorDetail((msg || `Request failed (${callbackRes.status})`) + hint)
           if (!cancelled) {
@@ -119,7 +126,14 @@ export default function CallbackPage() {
           } catch {
             // not JSON
           }
-          const msg = data.error ?? text.slice(0, 150)
+          const isHtml =
+            text.trimStart().startsWith('<!') ||
+            (completeRes.headers.get('content-type') ?? '').toLowerCase().includes('text/html')
+          const msg =
+            data.error ??
+            (isHtml
+              ? `Server returned an error page (${completeRes.status}). Check that the API is running and reachable.`
+              : text.slice(0, 150))
           const hint = data.hint ? ` ${data.hint}` : ''
           setErrorDetail((msg || `Complete login failed (${completeRes.status})`) + hint)
           if (!cancelled) {
@@ -130,7 +144,11 @@ export default function CallbackPage() {
         }
         const data = (await completeRes.json()) as { token?: string }
         if (data.token) {
+          // Persist to sessionStorage and notify auth context (setAuthToken ensures storage even if login context is stale)
+          setAuthToken(data.token)
           login(data.token)
+          // Ensure token is stored and listeners have run before navigating (avoids 401 on refresh when dashboard loads)
+          await new Promise((resolve) => setTimeout(resolve, 0))
         }
         router.replace('/dashboard')
       } catch (e) {
