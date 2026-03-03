@@ -343,6 +343,36 @@ describe('IdProofingForm', () => {
       expect(sessionStorage.getItem('docVerify_allowIdRetry')).toBe('true')
     })
 
+    it('shows error when documentVerificationRequired but challengeId is missing', async () => {
+      server.use(
+        http.post('/api/id-proofing', () => {
+          return HttpResponse.json({
+            result: 'documentVerificationRequired'
+            // challengeId deliberately omitted
+          })
+        })
+      )
+
+      const user = userEvent.setup()
+      renderWithProviders(
+        <IdProofingForm
+          idOptions={TEST_ID_OPTIONS}
+          contactLink={TEST_CONTACT_LINK}
+        />
+      )
+
+      await user.selectOptions(screen.getByRole('combobox', { name: /month/i }), '06')
+      await user.type(screen.getByRole('textbox', { name: INPUT_LABEL_DAY }), '20')
+      await user.type(screen.getByRole('textbox', { name: INPUT_LABEL_YEAR }), '1985')
+      await user.click(screen.getByRole('radio', { name: LABEL_NONE }))
+      await user.click(screen.getByRole('button', { name: /continue/i }))
+
+      await waitFor(() => {
+        expect(screen.getByText(/unable to start document verification/i)).toBeInTheDocument()
+      })
+      expect(mockPush).not.toHaveBeenCalled()
+    })
+
     it('navigates to off-boarding with reason when result is failed', async () => {
       server.use(
         http.post('/api/id-proofing', () => {

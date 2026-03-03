@@ -18,7 +18,6 @@ interface OffBoardingPageProps {
  * Minimal off-boarding page for users who fail ID proofing or document verification.
  *
  * Reads offboardingReason and canApply from sessionStorage (set by the referring page).
- * DC-133 will replace this with a full implementation when it merges.
  */
 export function OffBoardingPage({ contactLink, applyLink }: OffBoardingPageProps) {
   // Read sessionStorage once on initial render (lazy initializer avoids setState-in-effect)

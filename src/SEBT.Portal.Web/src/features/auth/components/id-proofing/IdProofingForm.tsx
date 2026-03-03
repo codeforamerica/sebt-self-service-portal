@@ -111,8 +111,13 @@ export function IdProofingForm({ idOptions, contactLink }: IdProofingFormProps) 
       })
 
       if (response.result === 'documentVerificationRequired') {
+        if (!response.challengeId) {
+          // TODO: Use t('idProofing.errorNoChallengeId') once key is available in dc.csv
+          setSubmitError('Unable to start document verification. Please try again.')
+          return
+        }
         // Store challenge context in sessionStorage for the doc-verify page (D2, D6)
-        sessionStorage.setItem('docVerify_challengeId', response.challengeId ?? '')
+        sessionStorage.setItem('docVerify_challengeId', response.challengeId)
         sessionStorage.setItem('docVerify_allowIdRetry', String(response.allowIdRetry ?? false))
         router.push('/login/id-proofing/doc-verify')
       } else if (response.result === 'failed') {
