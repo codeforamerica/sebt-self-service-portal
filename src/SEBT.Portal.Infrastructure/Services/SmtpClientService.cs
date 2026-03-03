@@ -1,3 +1,4 @@
+using System.Net;
 using System.Net.Mail;
 using System.Net.Mime;
 using Microsoft.Extensions.Logging;
@@ -61,6 +62,11 @@ public class SmtpClientService(IOptionsMonitor<SmtpClientSettings> optionsMonito
         {
             EnableSsl = _smtpClientSettings.EnableSsl
         };
+
+        if (!string.IsNullOrEmpty(_smtpClientSettings.UserName) && _smtpClientSettings.Password != null)
+        {
+            smtpClient.Credentials = new NetworkCredential(_smtpClientSettings.UserName, _smtpClientSettings.Password);
+        }
 
         try
         {

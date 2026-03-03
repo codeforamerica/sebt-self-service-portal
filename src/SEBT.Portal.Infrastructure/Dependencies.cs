@@ -22,7 +22,7 @@ public static class Dependencies
         // Otp Services
         services.AddTransient<IOtpSenderService, EmailOtpSenderService>();
         services.AddTransient<IOtpGeneratorService, OtpGeneratorService>();
-        services.AddTransient<ISmtpClientService, MailKitClientService>();
+        services.AddTransient<ISmtpClientService, SmtpClientService>();
 
         // JWT Services
         services.AddTransient<IJwtTokenService, JwtTokenService>();
@@ -139,6 +139,9 @@ public static class Dependencies
                 var postConfig = new AppConfigFeatureFlagOptionsConfiguration(config, logger);
                 postConfig.PostConfigure(null, options);
             });
+
+        services.AddOptions<SeedingSettings>()
+            .BindConfiguration(SeedingSettings.SectionName);
 
         return services;
     }
