@@ -4,9 +4,8 @@ using System.Runtime.Loader;
 namespace SEBT.Portal.Api.Composition;
 
 /// <summary>
-/// Loads plugin assemblies and resolves their dependencies from the plugin directories.
-/// Shared assemblies (e.g., plugin interfaces) are resolved from the default ALC
-/// to preserve type identity between the host and plugins.
+/// Loads plugin assemblies and resolves their dependencies
+/// from the plugin directories, so plugin DLLs do not need to be copied to the app base.
 /// </summary>
 internal sealed class PluginAssemblyLoadContext : AssemblyLoadContext
 {
@@ -16,17 +15,11 @@ internal sealed class PluginAssemblyLoadContext : AssemblyLoadContext
         : base(isCollectible: false)
     {
         _pluginPaths = pluginPaths;
+        Resolving += OnResolving;
     }
 
-    protected override Assembly? Load(AssemblyName assemblyName)
+    private Assembly? OnResolving(AssemblyLoadContext context, AssemblyName assemblyName)
     {
-        // If the default ALC already has this assembly, use it to preserve type identity
-        // for shared contracts (e.g., ISummerEbtCaseService, IStatePlugin).
-        var existing = Default.Assemblies.FirstOrDefault(a => a.GetName().Name == assemblyName.Name);
-        if (existing != null)
-            return existing;
-
-        // Otherwise resolve from plugin directories (e.g., Microsoft.Kiota.Abstractions).
         var fileName = assemblyName.Name + ".dll";
         foreach (var dir in _pluginPaths)
         {
@@ -34,9 +27,8 @@ internal sealed class PluginAssemblyLoadContext : AssemblyLoadContext
                 continue;
             var path = Path.Combine(dir, fileName);
             if (File.Exists(path))
-                return LoadFromAssemblyPath(Path.GetFullPath(path));
+                return context.LoadFromAssemblyPath(Path.GetFullPath(path));
         }
-
         return null;
     }
 }

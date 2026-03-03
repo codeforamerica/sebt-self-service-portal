@@ -23,10 +23,15 @@ internal static class ContainerConfigurationExtensions
 
         var alc = new PluginAssemblyLoadContext(existingPaths);
 
+        var defaultAssemblyNames = AssemblyLoadContext.Default.Assemblies
+            .Select(a => a.GetName().Name)
+            .ToHashSet();
+
         foreach (var combinedPath in existingPaths)
         {
             var assemblies = Directory
                 .GetFiles(combinedPath, "*.dll", searchOption)
+                .Where(p => !defaultAssemblyNames.Contains(Path.GetFileNameWithoutExtension(p)))
                 .Select(p => alc.LoadFromAssemblyPath(Path.GetFullPath(p)))
                 .ToList();
 
