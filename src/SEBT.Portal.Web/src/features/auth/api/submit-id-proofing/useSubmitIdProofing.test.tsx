@@ -115,6 +115,32 @@ describe('useSubmitIdProofing', () => {
     })
   })
 
+  describe('Contract enforcement', () => {
+    it('should error when backend returns 204 instead of JSON', async () => {
+      server.use(
+        http.post('/api/id-proofing', () => {
+          return new HttpResponse(null, { status: 204 })
+        })
+      )
+
+      const queryClient = new QueryClient()
+
+      const { result } = renderHook(() => useSubmitIdProofing(), {
+        wrapper: ({ children }) => (
+          <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
+        )
+      })
+
+      result.current.mutate(VALID_PAYLOAD)
+
+      await waitFor(() => {
+        expect(result.current.isError).toBe(true)
+      })
+
+      expect(result.current.error?.message).toMatch(/expected a json response/i)
+    })
+  })
+
   describe('Error Handling', () => {
     it('should NOT retry on 400 bad request', async () => {
       let requestCount = 0

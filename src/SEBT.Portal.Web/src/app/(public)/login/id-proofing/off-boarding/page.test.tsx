@@ -112,6 +112,34 @@ describe('OffBoardingPage', () => {
 
       expect(mockGetStateLinks).toHaveBeenCalledWith('co')
     })
+
+    it('falls back to helpDeskEmail when contactUs is a placeholder', async () => {
+      mockGetState.mockReturnValue('co')
+      mockGetStateLinks.mockReturnValue({
+        help: {
+          contactUs: '#',
+          faqs: '#',
+          helpDeskEmail: 'mailto:cdhs_sebt_supportcenter@state.co.us'
+        },
+        footer: {
+          publicNotifications: '',
+          accessibility: '',
+          privacyAndSecurity: '',
+          googleTranslateDisclaimer: '',
+          about: '',
+          termsAndConditions: ''
+        },
+        external: { contactUsAssistance: '' }
+      })
+
+      await renderPage()
+
+      const content = screen.getByTestId('off-boarding-content')
+      expect(content).toHaveAttribute(
+        'data-contact-href',
+        'mailto:cdhs_sebt_supportcenter@state.co.us'
+      )
+    })
   })
 
   describe('Translation key mapping', () => {

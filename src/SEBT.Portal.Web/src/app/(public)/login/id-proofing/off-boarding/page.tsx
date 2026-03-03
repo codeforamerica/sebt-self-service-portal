@@ -15,6 +15,11 @@ export default async function OffBoardingPage({ searchParams }: OffBoardingPageP
   const links = getStateLinks(state)
   const t = getTranslations('offBoarding')
 
+  // Prefer the web contact page; fall back to help desk email for states
+  // where the contact URL is not yet available (e.g., CO uses a mailto link).
+  const contactHref =
+    links.help.contactUs !== '#' ? links.help.contactUs : (links.help.helpDeskEmail ?? '#')
+
   return (
     <div className="usa-section">
       <div className="grid-container maxw-tablet">
@@ -23,7 +28,7 @@ export default async function OffBoardingPage({ searchParams }: OffBoardingPageP
             title={t('title')}
             body={t('body1')}
             backHref="/login/id-proofing"
-            contactHref={links.help.contactUs}
+            contactHref={contactHref}
             contactLabel={t('action1')}
             canApply={canApply}
             applyBody={t('body2') || undefined}
