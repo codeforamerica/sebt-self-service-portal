@@ -23,9 +23,18 @@ internal static class ContainerConfigurationExtensions
 
         var alc = new PluginAssemblyLoadContext(existingPaths);
 
+        // Host owned assemblies should not be loaded by the plugin context,
+        // so we exclude them in the filter below
         var defaultAssemblyNames = AssemblyLoadContext.Default.Assemblies
             .Select(a => a.GetName().Name)
             .ToHashSet();
+
+        // Catch for lazily loaded assemblies that are not yet loaded into the default context
+        // but are present in the base directory
+        foreach (var dll in Directory.GetFiles(baseDir, "*.dll"))
+        {
+            defaultAssemblyNames.Add(Path.GetFileNameWithoutExtension(dll));
+        }
 
         foreach (var combinedPath in existingPaths)
         {
