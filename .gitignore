@@ -439,6 +439,9 @@ FodyWeavers.xsd
 # AI
 CLAUDE.local.md
 
+# Developer-local docs (reviews, diagrams, design references)
+docs/.local/
+
 # output files
 output
 

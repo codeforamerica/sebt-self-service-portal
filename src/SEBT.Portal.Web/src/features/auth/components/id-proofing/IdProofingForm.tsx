@@ -103,13 +103,26 @@ export function IdProofingForm({ idOptions, contactLink }: IdProofingFormProps) 
     if (!validateFields()) return
 
     try {
-      await submitIdProofing.mutateAsync({
+      const response = await submitIdProofing.mutateAsync({
         dateOfBirth: { month: dobMonth, day: dobDay, year: dobYear },
         // Map the UI "none" sentinel to null for the API
         idType: selectedIdType === NONE_VALUE || selectedIdType === null ? null : selectedIdType,
         idValue: showIdValueInput ? idValue.trim() : null
       })
-      router.push('/dashboard')
+
+      if (response.result === 'documentVerificationRequired') {
+        // Store challenge context in sessionStorage for the doc-verify page (D2, D6)
+        sessionStorage.setItem('docVerify_challengeId', response.challengeId ?? '')
+        sessionStorage.setItem('docVerify_allowIdRetry', String(response.allowIdRetry ?? false))
+        router.push('/login/id-proofing/doc-verify')
+      } else if (response.result === 'failed') {
+        // Store off-boarding context for the off-boarding page (D7)
+        sessionStorage.setItem('offboarding_reason', response.offboardingReason ?? '')
+        sessionStorage.setItem('offboarding_canApply', String(response.canApply ?? false))
+        router.push('/login/id-proofing/off-boarding')
+      } else {
+        router.push('/dashboard')
+      }
     } catch (err) {
       if (err instanceof ApiError) {
         setSubmitError(err.message)
