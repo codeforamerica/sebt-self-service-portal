@@ -25,7 +25,7 @@ public class EnrollmentCheckController : ControllerBase
     /// </summary>
     [HttpPost("check")]
     [AllowAnonymous]
-    [EnableRateLimiting("enrollment-check-policy")]
+    [EnableRateLimiting(RateLimitPolicies.EnrollmentCheck)]
     [ProducesResponseType(typeof(EnrollmentCheckApiResponse), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status429TooManyRequests)]

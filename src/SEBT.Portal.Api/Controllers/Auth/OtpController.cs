@@ -26,7 +26,7 @@ public class OtpController(ILogger<OtpController> logger) : ControllerBase
     /// <response code="400">Invalid request.</response>
     /// <response code="429">Rate limit exceeded. Maximum 5 OTP requests per minute allowed.</response>
     [HttpPost("request")]
-    [EnableRateLimiting("otp-policy")]
+    [EnableRateLimiting(RateLimitPolicies.Otp)]
     [ProducesResponseType(StatusCodes.Status201Created)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status429TooManyRequests)]

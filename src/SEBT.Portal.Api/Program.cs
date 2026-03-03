@@ -3,6 +3,7 @@ using System.Threading.RateLimiting;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
+using SEBT.Portal.Api;
 using SEBT.Portal.Api.Composition;
 using Serilog;
 using Microsoft.FeatureManagement;
@@ -150,7 +151,7 @@ builder.Services.AddRateLimiter(options =>
             .OfType<Microsoft.AspNetCore.RateLimiting.EnableRateLimitingAttribute>()
             .FirstOrDefault();
 
-        if (rateLimitAttribute?.PolicyName == "enrollment-check-policy")
+        if (rateLimitAttribute?.PolicyName == RateLimitPolicies.EnrollmentCheck)
         {
             var enrollmentSettings = context.HttpContext.RequestServices
                 .GetRequiredService<IOptionsMonitor<EnrollmentCheckRateLimitSettings>>()
@@ -177,7 +178,7 @@ builder.Services.AddRateLimiter(options =>
     };
 
     // Add fixed window limiter policy for OTP requests with email-based partitioning
-    options.AddPolicy("otp-policy", httpContext =>
+    options.AddPolicy(RateLimitPolicies.Otp, httpContext =>
     {
         var rateLimitOptions = httpContext.RequestServices
             .GetRequiredService<IOptionsMonitor<OtpRateLimitSettings>>()
@@ -201,7 +202,7 @@ builder.Services.AddRateLimiter(options =>
     });
 
     // Add fixed window limiter policy for enrollment check requests with IP-based partitioning
-    options.AddPolicy("enrollment-check-policy", httpContext =>
+    options.AddPolicy(RateLimitPolicies.EnrollmentCheck, httpContext =>
     {
         var rateLimitOptions = httpContext.RequestServices
             .GetRequiredService<IOptionsMonitor<EnrollmentCheckRateLimitSettings>>()
