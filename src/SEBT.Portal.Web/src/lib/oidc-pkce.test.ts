@@ -26,7 +26,7 @@ describe('oidc-pkce', () => {
       expect(parsed.searchParams.get('response_type')).toBe('code')
       expect(parsed.searchParams.get('client_id')).toBe('my-client-id')
       expect(parsed.searchParams.get('redirect_uri')).toBe('https://app.example.com/callback')
-      expect(parsed.searchParams.get('scope')).toBe('openid')
+      expect(parsed.searchParams.get('scope')).toBe('openid email profile phone')
       expect(parsed.searchParams.get('state')).toBe(state)
       expect(parsed.searchParams.get('code_challenge')).toBe(codeChallenge)
       expect(parsed.searchParams.get('code_challenge_method')).toBe('S256')

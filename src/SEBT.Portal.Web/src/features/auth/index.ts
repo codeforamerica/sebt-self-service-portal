@@ -30,4 +30,4 @@ export {
   type IdOption
 } from './components'
 
-export { AuthProvider, clearAuthToken, getAuthToken, useAuth } from './context'
+export { AuthProvider, clearAuthToken, getAuthToken, setAuthToken, useAuth } from './context'

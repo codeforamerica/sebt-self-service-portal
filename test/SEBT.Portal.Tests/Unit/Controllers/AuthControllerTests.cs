@@ -248,5 +248,53 @@ public class AuthControllerTests
         // Assert
         await handlerMock.Received(1).Handle(Arg.Is<RefreshTokenCommand>(c => c.Email == email));
     }
+
+    [Fact]
+    public async Task RefreshToken_ExtractsEmailFromShortEmailClaim_WhenJwtHandlerMappedClaims()
+    {
+        // Arrange: JWT Bearer maps inbound claims to short names; principal may have "email" not ClaimTypes.Email
+        var email = "user@example.com";
+        var identity = new ClaimsIdentity("Test");
+        identity.AddClaim(new Claim("email", email));
+        var principal = new ClaimsPrincipal(identity);
+        _controller.ControllerContext = new ControllerContext
+        {
+            HttpContext = new DefaultHttpContext { User = principal }
+        };
+
+        var handlerMock = Substitute.For<ICommandHandler<RefreshTokenCommand, string>>();
+        handlerMock.Handle(Arg.Any<RefreshTokenCommand>())
+            .Returns(Result<string>.Success("token"));
+
+        // Act
+        var result = await _controller.RefreshToken(handlerMock);
+
+        // Assert
+        await handlerMock.Received(1).Handle(Arg.Is<RefreshTokenCommand>(c => c.Email == email));
+    }
+
+    [Fact]
+    public async Task RefreshToken_ExtractsEmailFromSubClaim_WhenJwtHandlerMappedClaims()
+    {
+        // Arrange: OIDC tokens often use "sub" as the user identifier; ensure we accept it for refresh
+        var email = "user@example.com";
+        var identity = new ClaimsIdentity("Test");
+        identity.AddClaim(new Claim("sub", email));
+        var principal = new ClaimsPrincipal(identity);
+        _controller.ControllerContext = new ControllerContext
+        {
+            HttpContext = new DefaultHttpContext { User = principal }
+        };
+
+        var handlerMock = Substitute.For<ICommandHandler<RefreshTokenCommand, string>>();
+        handlerMock.Handle(Arg.Any<RefreshTokenCommand>())
+            .Returns(Result<string>.Success("token"));
+
+        // Act
+        var result = await _controller.RefreshToken(handlerMock);
+
+        // Assert
+        await handlerMock.Received(1).Handle(Arg.Is<RefreshTokenCommand>(c => c.Email == email));
+    }
 }
 

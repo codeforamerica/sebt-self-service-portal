@@ -125,7 +125,7 @@ Only include sections you want to override; other settings fall back to `appsett
 
 ### OIDC support
 
-States can use an external OpenID Connect (OIDC) provider for sign-in. OIDC is configured per state under `Oidc:{stateCode}` in the API (e.g. `Oidc:co`). Code exchange and id_token validation run in the Next.js server; the .NET API only performs "complete-login" (validates a short-lived callback token, creates session, returns portal JWT).
+States can use an external OpenID Connect (OIDC) provider for sign-in. OIDC is configured per state under `Oidc:{stateCode}` in the API; the portal has no state-specific auth code—only generic endpoints and config. Code exchange and id_token validation run in the Next.js server; the .NET API performs "complete-login" (validates a short-lived callback token and returns a portal JWT that includes IdP claims such as phone and name).
 
 For a deployment where the current state uses OIDC, set in **Next.js** `.env.local`: `OIDC_DISCOVERY_ENDPOINT`, `OIDC_CLIENT_ID`, `OIDC_CLIENT_SECRET`, `OIDC_REDIRECT_URI`, `OIDC_COMPLETE_LOGIN_SIGNING_KEY` (at least 32 characters). Set the **same** value for `OIDC_COMPLETE_LOGIN_SIGNING_KEY` in the API as `Oidc:CompleteLoginSigningKey` (e.g. in `appsettings.Development.json`). The API serves public config via `GET /api/auth/oidc/{stateCode}/config` (no secrets).
 

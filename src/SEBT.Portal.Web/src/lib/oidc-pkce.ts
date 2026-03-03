@@ -53,7 +53,7 @@ export function buildAuthorizationUrl(
     response_type: 'code',
     client_id: config.clientId,
     redirect_uri: config.redirectUri,
-    scope: 'openid',
+    scope: 'openid email profile phone',
     state,
     code_challenge: codeChallenge,
     code_challenge_method: 'S256',
