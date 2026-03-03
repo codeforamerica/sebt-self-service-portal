@@ -369,7 +369,7 @@ describe('IdProofingForm', () => {
       await user.click(screen.getByRole('button', { name: /continue/i }))
 
       await waitFor(() => {
-        expect(screen.getByRole('alert')).toHaveTextContent('Test API error')
+        expect(screen.getByRole('alert')).toHaveTextContent('Something went wrong')
       })
       expect(mockPush).not.toHaveBeenCalled()
     })

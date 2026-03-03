@@ -4,7 +4,6 @@ import { useRouter } from 'next/navigation'
 import { useId, useState, type FormEvent } from 'react'
 import { useTranslation } from 'react-i18next'
 
-import { ApiError } from '@/api/client'
 import { Alert, Button, InputField } from '@/components/ui'
 
 import { useSubmitIdProofing, type IdType } from '../../api'
@@ -121,12 +120,11 @@ export function IdProofingForm({ idOptions, contactLink }: IdProofingFormProps) 
         router.push(`/login/id-proofing/off-boarding${query ? `?${query}` : ''}`)
       }
     } catch (err) {
-      if (err instanceof ApiError) {
-        setSubmitError(err.message)
-      } else {
-        // TODO: Use t('errorUnexpected') once key is available in dc.csv
-        setSubmitError('Something went wrong. Please try again.')
-      }
+      // TODO: Use t('errorUnexpected') once key is available in dc.csv
+      // All errors get the same user-facing message. Raw ApiError.message may contain
+      // backend wording not intended for end users — avoid displaying it directly.
+      void err
+      setSubmitError('Something went wrong. Please try again.')
     }
   }
 

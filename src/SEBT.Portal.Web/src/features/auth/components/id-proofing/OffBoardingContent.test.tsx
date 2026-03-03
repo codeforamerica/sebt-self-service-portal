@@ -51,8 +51,36 @@ describe('OffBoardingContent', () => {
     it('renders a "Contact us" link pointing to the external support page', () => {
       render(<OffBoardingContent {...DEFAULT_PROPS} />)
 
-      const contactLink = screen.getByRole('link', { name: DEFAULT_PROPS.contactLabel })
+      const contactLink = screen.getByRole('link', {
+        name: new RegExp(`${DEFAULT_PROPS.contactLabel}`)
+      })
       expect(contactLink).toHaveAttribute('href', DEFAULT_PROPS.contactHref)
+    })
+
+    it('opens http(s) contact links in a new tab with SR disclosure', () => {
+      render(<OffBoardingContent {...DEFAULT_PROPS} />)
+
+      const contactLink = screen.getByRole('link', {
+        name: /contact us/i
+      })
+      expect(contactLink).toHaveAttribute('target', '_blank')
+      expect(contactLink).toHaveAttribute('rel', 'noopener noreferrer')
+      expect(contactLink).toHaveTextContent(/opens in a new tab/i)
+    })
+
+    it('does not set target="_blank" for mailto: links', () => {
+      render(
+        <OffBoardingContent
+          {...DEFAULT_PROPS}
+          contactHref="mailto:help@example.com"
+        />
+      )
+
+      const contactLink = screen.getByRole('link', {
+        name: new RegExp(`${DEFAULT_PROPS.contactLabel}`)
+      })
+      expect(contactLink).not.toHaveAttribute('target')
+      expect(contactLink).not.toHaveTextContent(/opens in a new tab/i)
     })
   })
 

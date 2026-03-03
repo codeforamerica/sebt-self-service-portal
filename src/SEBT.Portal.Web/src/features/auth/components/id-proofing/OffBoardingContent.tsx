@@ -25,6 +25,8 @@ export function OffBoardingContent({
   applyLabel,
   applyHref
 }: OffBoardingContentProps) {
+  const isExternalLink = contactHref.startsWith('http')
+
   return (
     <>
       <h1
@@ -46,11 +48,11 @@ export function OffBoardingContent({
         </Link>
         <a
           href={contactHref}
-          target="_blank"
-          rel="noopener noreferrer"
+          {...(isExternalLink ? { target: '_blank', rel: 'noopener noreferrer' } : {})}
           className="usa-button usa-button--outline"
         >
           {contactLabel}
+          {isExternalLink && <span className="usa-sr-only"> (opens in a new tab)</span>}
         </a>
       </div>
 
