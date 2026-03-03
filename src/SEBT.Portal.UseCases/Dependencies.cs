@@ -1,7 +1,9 @@
 using Microsoft.Extensions.DependencyInjection;
 using SEBT.Portal.Core.Models.Household;
 using SEBT.Portal.Kernel;
+using SEBT.Portal.StatesPlugins.Interfaces.Models.EnrollmentCheck;
 using SEBT.Portal.UseCases.Auth;
+using SEBT.Portal.UseCases.EnrollmentCheck;
 using SEBT.Portal.UseCases.Household;
 
 namespace SEBT.Portal.UseCases;
@@ -14,6 +16,7 @@ public static class Dependencies
         services.RegisterCommandHandler<ValidateOtpCommand, string, ValidateOtpCommandHandler>();
         services.RegisterCommandHandler<RefreshTokenCommand, string, RefreshTokenCommandHandler>();
         services.RegisterQueryHandler<GetHouseholdDataQuery, HouseholdData, GetHouseholdDataQueryHandler>();
+        services.RegisterCommandHandler<CheckEnrollmentCommand, EnrollmentCheckResult, CheckEnrollmentCommandHandler>();
 
         return services;
     }

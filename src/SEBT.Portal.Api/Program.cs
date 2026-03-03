@@ -142,18 +142,38 @@ builder.Services.AddRateLimiter(options =>
                 ((int)retryAfter.TotalSeconds).ToString();
         }
 
-        var rateLimitSettings = context.HttpContext.RequestServices
-            .GetRequiredService<IOptionsMonitor<OtpRateLimitSettings>>()
-            .CurrentValue;
-
-        var windowDescription = rateLimitSettings.WindowMinutes == 1.0
-            ? "minute"
-            : $"{rateLimitSettings.WindowMinutes} minutes";
-
         context.HttpContext.Response.StatusCode = StatusCodes.Status429TooManyRequests;
-        await context.HttpContext.Response.WriteAsJsonAsync(
-            new { Error = $"Rate limit exceeded. Maximum {rateLimitSettings.PermitLimit} OTP requests per {windowDescription} allowed." },
-            cancellationToken);
+
+        // Determine which rate-limit policy rejected the request to show an appropriate message
+        var endpoint = context.HttpContext.GetEndpoint();
+        var rateLimitAttribute = endpoint?.Metadata
+            .OfType<Microsoft.AspNetCore.RateLimiting.EnableRateLimitingAttribute>()
+            .FirstOrDefault();
+
+        if (rateLimitAttribute?.PolicyName == "enrollment-check-policy")
+        {
+            var enrollmentSettings = context.HttpContext.RequestServices
+                .GetRequiredService<IOptionsMonitor<EnrollmentCheckRateLimitSettings>>()
+                .CurrentValue;
+            var windowDescription = enrollmentSettings.WindowMinutes == 1.0
+                ? "minute"
+                : $"{enrollmentSettings.WindowMinutes} minutes";
+            await context.HttpContext.Response.WriteAsJsonAsync(
+                new { Error = $"Rate limit exceeded. Maximum {enrollmentSettings.PermitLimit} enrollment checks per {windowDescription} allowed." },
+                cancellationToken);
+        }
+        else
+        {
+            var otpSettings = context.HttpContext.RequestServices
+                .GetRequiredService<IOptionsMonitor<OtpRateLimitSettings>>()
+                .CurrentValue;
+            var windowDescription = otpSettings.WindowMinutes == 1.0
+                ? "minute"
+                : $"{otpSettings.WindowMinutes} minutes";
+            await context.HttpContext.Response.WriteAsJsonAsync(
+                new { Error = $"Rate limit exceeded. Maximum {otpSettings.PermitLimit} OTP requests per {windowDescription} allowed." },
+                cancellationToken);
+        }
     };
 
     // Add fixed window limiter policy for OTP requests with email-based partitioning
@@ -178,6 +198,26 @@ builder.Services.AddRateLimiter(options =>
         return RateLimitPartition.GetFixedWindowLimiter(
             partitionKey: ipAddress,
             factory: _ => CreateOtpRateLimitOptions(rateLimitOptions));
+    });
+
+    // Add fixed window limiter policy for enrollment check requests with IP-based partitioning
+    options.AddPolicy("enrollment-check-policy", httpContext =>
+    {
+        var rateLimitOptions = httpContext.RequestServices
+            .GetRequiredService<IOptionsMonitor<EnrollmentCheckRateLimitSettings>>()
+            .CurrentValue;
+
+        var ipAddress = httpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown";
+        return RateLimitPartition.GetFixedWindowLimiter(
+            partitionKey: $"enrollment-check:{ipAddress}",
+            factory: _ => new FixedWindowRateLimiterOptions
+            {
+                PermitLimit = rateLimitOptions.PermitLimit,
+                Window = TimeSpan.FromMinutes(rateLimitOptions.WindowMinutes),
+                QueueProcessingOrder = QueueProcessingOrder.OldestFirst,
+                QueueLimit = 0,
+                AutoReplenishment = true
+            });
     });
 });
 
@@ -257,3 +297,10 @@ finally
 {
     Log.CloseAndFlush();
 }
+
+/// <summary>
+/// Required for WebApplicationFactory&lt;Program&gt; in integration tests.
+/// Top-level statements generate an implicit internal Program class;
+/// this partial declaration makes it public so the test assembly can reference it.
+/// </summary>
+public partial class Program { }
