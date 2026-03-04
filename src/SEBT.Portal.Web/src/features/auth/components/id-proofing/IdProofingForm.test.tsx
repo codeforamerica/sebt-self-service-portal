@@ -265,28 +265,7 @@ describe('IdProofingForm', () => {
   })
 
   describe('Successful submission', () => {
-    it('redirects to /dashboard after submitting with "none" selected', async () => {
-      const user = userEvent.setup()
-      renderWithProviders(
-        <IdProofingForm
-          idOptions={TEST_ID_OPTIONS}
-          contactLink={TEST_CONTACT_LINK}
-        />
-      )
-
-      await user.selectOptions(screen.getByRole('combobox', { name: /month/i }), '06')
-      await user.type(screen.getByRole('textbox', { name: INPUT_LABEL_DAY }), '20')
-      await user.type(screen.getByRole('textbox', { name: INPUT_LABEL_YEAR }), '1985')
-
-      await user.click(screen.getByRole('radio', { name: LABEL_NONE }))
-      await user.click(screen.getByRole('button', { name: /continue/i }))
-
-      await waitFor(() => {
-        expect(mockPush).toHaveBeenCalledWith('/dashboard')
-      })
-    })
-
-    it('redirects to /dashboard after submitting with an ID value', async () => {
+    it('redirects to /dashboard when identity is matched', async () => {
       const user = userEvent.setup()
       renderWithProviders(
         <IdProofingForm
@@ -306,6 +285,57 @@ describe('IdProofingForm', () => {
 
       await waitFor(() => {
         expect(mockPush).toHaveBeenCalledWith('/dashboard')
+      })
+    })
+  })
+
+  describe('Offboarding routing', () => {
+    it('redirects to off-boarding page when identity proofing fails', async () => {
+      const user = userEvent.setup()
+      renderWithProviders(
+        <IdProofingForm
+          idOptions={TEST_ID_OPTIONS}
+          contactLink={TEST_CONTACT_LINK}
+        />
+      )
+
+      await user.selectOptions(screen.getByRole('combobox', { name: /month/i }), '06')
+      await user.type(screen.getByRole('textbox', { name: INPUT_LABEL_DAY }), '20')
+      await user.type(screen.getByRole('textbox', { name: INPUT_LABEL_YEAR }), '1985')
+
+      // "None of the above" triggers a 'failed' result in the mock
+      await user.click(screen.getByRole('radio', { name: LABEL_NONE }))
+      await user.click(screen.getByRole('button', { name: /continue/i }))
+
+      await waitFor(() => {
+        expect(mockPush).toHaveBeenCalledWith('/login/id-proofing/off-boarding')
+      })
+    })
+
+    it('passes canApply=false query param when API indicates no apply option', async () => {
+      server.use(
+        http.post('/api/id-proofing', () => {
+          return HttpResponse.json({ result: 'failed', canApply: false })
+        })
+      )
+
+      const user = userEvent.setup()
+      renderWithProviders(
+        <IdProofingForm
+          idOptions={TEST_ID_OPTIONS}
+          contactLink={TEST_CONTACT_LINK}
+        />
+      )
+
+      await user.selectOptions(screen.getByRole('combobox', { name: /month/i }), '06')
+      await user.type(screen.getByRole('textbox', { name: INPUT_LABEL_DAY }), '20')
+      await user.type(screen.getByRole('textbox', { name: INPUT_LABEL_YEAR }), '1985')
+
+      await user.click(screen.getByRole('radio', { name: LABEL_NONE }))
+      await user.click(screen.getByRole('button', { name: /continue/i }))
+
+      await waitFor(() => {
+        expect(mockPush).toHaveBeenCalledWith('/login/id-proofing/off-boarding?canApply=false')
       })
     })
   })
@@ -339,7 +369,7 @@ describe('IdProofingForm', () => {
       await user.click(screen.getByRole('button', { name: /continue/i }))
 
       await waitFor(() => {
-        expect(screen.getByRole('alert')).toHaveTextContent('Test API error')
+        expect(screen.getByRole('alert')).toHaveTextContent('Something went wrong')
       })
       expect(mockPush).not.toHaveBeenCalled()
     })

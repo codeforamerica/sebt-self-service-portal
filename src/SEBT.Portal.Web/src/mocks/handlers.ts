@@ -190,7 +190,8 @@ export const handlers = [
     return HttpResponse.json(TEST_FEATURE_FLAGS)
   }),
 
-  // ID proofing endpoint (stub — backend endpoint TBD)
+  // ID proofing endpoint — returns result indicating whether the user was matched.
+  // Response shape: { result: 'matched' | 'failed', canApply?: boolean }
   http.post('/api/id-proofing', async ({ request }) => {
     const body = (await request.json()) as SubmitIdProofingRequest
 
@@ -200,7 +201,19 @@ export const handlers = [
       return HttpResponse.json({ error: 'Date of birth is required' }, { status: 400 })
     }
 
-    return HttpResponse.json(null, { status: 204 })
+    // Simulate failure when user selects "none of the above" for ID type
+    if (body.idType === null) {
+      return HttpResponse.json({ result: 'failed', canApply: true })
+    }
+
+    // Simulate step-up failure (canApply: false) with Medicaid ID for dev testing.
+    // In production, the backend determines canApply based on the user's enrollment pathway.
+    if (body.idType === 'medicaidId') {
+      return HttpResponse.json({ result: 'failed', canApply: false })
+    }
+
+    // Default: identity matched
+    return HttpResponse.json({ result: 'matched' })
   }),
 
   // Household data endpoint

@@ -2,7 +2,7 @@
  * useSubmitIdProofing Hook Unit Tests
  *
  * Tests the id-proofing mutation hook behavior including:
- * - Successful submission (204 No Content)
+ * - Successful submission returns typed response with result
  * - Correct payload sent to the endpoint
  * - Error handling for 4xx errors (no retry)
  * - Retry behavior for 5xx errors
@@ -63,7 +63,7 @@ describe('useSubmitIdProofing', () => {
       server.use(
         http.post('/api/id-proofing', async ({ request }) => {
           capturedBody = (await request.json()) as SubmitIdProofingRequest
-          return HttpResponse.json(null, { status: 204 })
+          return HttpResponse.json({ result: 'matched' })
         })
       )
 
@@ -78,6 +78,66 @@ describe('useSubmitIdProofing', () => {
       })
 
       expect(capturedBody).toEqual(VALID_PAYLOAD)
+    })
+
+    it('should return matched result on successful id proofing', async () => {
+      const { result } = renderHook(() => useSubmitIdProofing(), {
+        wrapper: createWrapper()
+      })
+
+      result.current.mutate(VALID_PAYLOAD)
+
+      await waitFor(() => {
+        expect(result.current.isSuccess).toBe(true)
+      })
+
+      expect(result.current.data).toEqual({ result: 'matched' })
+    })
+
+    it('should return failed result with canApply when id proofing fails', async () => {
+      const failedPayload: SubmitIdProofingRequest = {
+        dateOfBirth: { month: '01', day: '15', year: '1990' },
+        idType: null,
+        idValue: null
+      }
+
+      const { result } = renderHook(() => useSubmitIdProofing(), {
+        wrapper: createWrapper()
+      })
+
+      result.current.mutate(failedPayload)
+
+      await waitFor(() => {
+        expect(result.current.isSuccess).toBe(true)
+      })
+
+      expect(result.current.data).toEqual({ result: 'failed', canApply: true })
+    })
+  })
+
+  describe('Contract enforcement', () => {
+    it('should error when backend returns 204 instead of JSON', async () => {
+      server.use(
+        http.post('/api/id-proofing', () => {
+          return new HttpResponse(null, { status: 204 })
+        })
+      )
+
+      const queryClient = new QueryClient()
+
+      const { result } = renderHook(() => useSubmitIdProofing(), {
+        wrapper: ({ children }) => (
+          <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
+        )
+      })
+
+      result.current.mutate(VALID_PAYLOAD)
+
+      await waitFor(() => {
+        expect(result.current.isError).toBe(true)
+      })
+
+      expect(result.current.error?.message).toMatch(/expected a json response/i)
     })
   })
 
@@ -181,7 +241,7 @@ describe('useSubmitIdProofing', () => {
           if (requestCount === 1) {
             return HttpResponse.json({ error: 'Service Unavailable' }, { status: 503 })
           }
-          return HttpResponse.json(null, { status: 204 })
+          return HttpResponse.json({ result: 'matched' })
         })
       )
 
