@@ -56,7 +56,7 @@ export function OffBoardingContent({
         </a>
       </div>
 
-      {canApply && (
+      {canApply && (applyBody || applySkipBody || (applyLabel && applyHref)) && (
         <div
           className="margin-top-4"
           data-testid="apply-section"

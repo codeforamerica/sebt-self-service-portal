@@ -162,6 +162,21 @@ describe('OffBoardingContent', () => {
       expect(paragraphs).toHaveLength(1)
     })
 
+    it('does not render the apply section when canApply is true but all content props are empty', () => {
+      const { container } = render(
+        <OffBoardingContent
+          {...DEFAULT_PROPS}
+          canApply={true}
+          applyBody={undefined}
+          applySkipBody={undefined}
+          applyLabel={undefined}
+          applyHref={undefined}
+        />
+      )
+
+      expect(container.querySelector('[data-testid="apply-section"]')).not.toBeInTheDocument()
+    })
+
     it('does not render applySkipBody when it is undefined', () => {
       const { container } = render(<OffBoardingContent {...DEFAULT_PROPS} />)
 

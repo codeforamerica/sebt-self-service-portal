@@ -31,9 +31,9 @@ export default async function OffBoardingPage({ searchParams }: OffBoardingPageP
             contactHref={contactHref}
             contactLabel={t('action1')}
             canApply={canApply}
-            applyBody={t('body2') || undefined}
-            applySkipBody={t('body3') || undefined}
-            applyLabel={t('action2') || undefined}
+            applyBody={t('body2', '') || undefined}
+            applySkipBody={t('body3', '') || undefined}
+            applyLabel={t('action2', '') || undefined}
             // TODO: Pass applyHref once the state-specific apply URL is added to StateLinks
           />
         </section>
