@@ -85,7 +85,6 @@ module "app" {
   image_tags_mutable     = true
   enable_execute_command = true
 
-  seeding_enabled         = "true"
-  seeding_email_pattern   = "sebt.co+{0}@codeforamerica.org"
-  use_mock_household_data = "true"
+  seeding_enabled       = "true"
+  seeding_email_pattern = "sebt.co+{0}@codeforamerica.org"
 }
