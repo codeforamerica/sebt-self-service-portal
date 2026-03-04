@@ -177,6 +177,12 @@ variable "seeding_email_pattern" {
   default     = ""
 }
 
+variable "use_mock_household_data" {
+  type        = string
+  description = "Enable mock household data seeding to create all test user scenarios."
+  default     = "false"
+}
+
 variable "secret_recovery_period" {
   type        = number
   description = "Number of days to retain a secret before permanent deletion."
