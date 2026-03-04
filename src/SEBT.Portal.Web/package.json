@@ -14,7 +14,7 @@
     "postinstall": "pnpm copy-uswds-assets",
     "predev": "node design/scripts/state-banner.js && pnpm --silent tokens && pnpm --silent tokens:sass && pnpm --silent tokens:fonts && pnpm --silent copy:generate",
     "dev": "next dev --turbopack",
-    "prebuild": "node design/scripts/state-banner.js && pnpm --silent tokens:all && pnpm --silent copy:generate",
+    "prebuild": "node design/scripts/state-banner.js && pnpm --silent tokens && pnpm --silent tokens:sass && pnpm --silent tokens:fonts && pnpm --silent copy:generate",
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
