@@ -1,4 +1,5 @@
 export {
+  IdProofingResultSchema,
   IdTypeSchema,
   RequestOtpRequestSchema,
   StartChallengeResponseSchema,
@@ -13,6 +14,7 @@ export {
   useSubmitIdProofing,
   useValidateOtp,
   useVerificationStatus,
+  type IdProofingResult,
   type IdType,
   type RequestOtpRequest,
   type StartChallengeResponse,
@@ -28,6 +30,7 @@ export {
   DocVerifyPage,
   IdProofingForm,
   LoginForm,
+  OffBoardingContent,
   OffBoardingPage,
   TokenRefresher,
   VerifyOtpForm,

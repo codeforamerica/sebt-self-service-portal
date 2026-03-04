@@ -10,10 +10,12 @@ export {
 export { useRefreshToken } from './refresh-token'
 
 export {
+  IdProofingResultSchema,
   IdTypeSchema,
   SubmitIdProofingRequestSchema,
   SubmitIdProofingResponseSchema,
   useSubmitIdProofing,
+  type IdProofingResult,
   type IdType,
   type SubmitIdProofingRequest,
   type SubmitIdProofingResponse

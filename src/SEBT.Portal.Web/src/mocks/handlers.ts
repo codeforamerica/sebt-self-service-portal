@@ -205,6 +205,18 @@ export const handlers = [
       return HttpResponse.json({ error: 'Date of birth is required' }, { status: 400 })
     }
 
+    // Simulate failure when user selects "none of the above" for ID type
+    if (body.idType === null) {
+      return HttpResponse.json({ result: 'failed', canApply: true })
+    }
+
+    // Simulate step-up failure (canApply: false) with Medicaid ID for dev testing.
+    // In production, the backend determines canApply based on the user's enrollment pathway.
+    if (body.idType === 'medicaidId') {
+      return HttpResponse.json({ result: 'failed', canApply: false })
+    }
+
+    // Default: identity matched
     return HttpResponse.json({ result: 'matched' })
   }),
 

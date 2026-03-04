@@ -1,7 +1,9 @@
 export {
+  IdProofingResultSchema,
   IdTypeSchema,
   SubmitIdProofingRequestSchema,
   SubmitIdProofingResponseSchema,
+  type IdProofingResult,
   type IdType,
   type SubmitIdProofingRequest,
   type SubmitIdProofingResponse

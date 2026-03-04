@@ -16,11 +16,19 @@ import {
 const ID_PROOFING_ENDPOINT = '/id-proofing'
 
 async function submitIdProofing(data: SubmitIdProofingRequest): Promise<SubmitIdProofingResponse> {
-  return apiFetch<SubmitIdProofingResponse>(ID_PROOFING_ENDPOINT, {
+  const response = await apiFetch<SubmitIdProofingResponse>(ID_PROOFING_ENDPOINT, {
     method: 'POST',
     body: data,
     schema: SubmitIdProofingResponseSchema
   })
+
+  // apiFetch returns undefined for 204/201 responses, bypassing schema validation.
+  // This endpoint's contract requires a JSON body — guard against a backend mismatch.
+  if (!response) {
+    throw new ApiError('Expected a JSON response from id-proofing endpoint', 422)
+  }
+
+  return response
 }
 
 export function useSubmitIdProofing() {
