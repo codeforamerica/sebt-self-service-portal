@@ -147,6 +147,33 @@ public class HouseholdIdentifierResolverTests
     }
 
     [Fact]
+    public async Task ResolveAsync_WhenPrefersPhoneAndUserHasNoPhoneButClaimsHavePhone_ReturnsPhoneFromClaims()
+    {
+        var email = "user@example.com";
+        var user = UserFactory.CreateUserWithEmail(email, u => u.Phone = null);
+        var settings = new StateHouseholdIdSettings
+        {
+            PreferredHouseholdIdTypes = [PreferredHouseholdIdType.Phone, PreferredHouseholdIdType.Email]
+        };
+        _userRepository.GetUserByEmailAsync(EmailNormalizer.Normalize(email), Arg.Any<CancellationToken>())
+            .Returns(user);
+        var resolver = CreateResolver(_userRepository, settings);
+
+        var claims = new List<Claim>
+        {
+            new Claim(ClaimTypes.Email, email),
+            new Claim("phone", "5559876543")
+        };
+        var principal = new ClaimsPrincipal(new ClaimsIdentity(claims, "Test"));
+
+        var result = await resolver.ResolveAsync(principal);
+
+        Assert.NotNull(result);
+        Assert.Equal(PreferredHouseholdIdType.Phone, result!.Type);
+        Assert.Equal("5559876543", result.Value);
+    }
+
+    [Fact]
     public async Task ResolveAsync_WhenPrefersSnapIdAndUserHasSnapId_ReturnsSnapIdIdentifier()
     {
         var email = "user@example.com";

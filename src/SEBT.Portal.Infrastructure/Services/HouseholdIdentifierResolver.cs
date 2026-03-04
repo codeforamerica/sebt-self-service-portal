@@ -10,7 +10,8 @@ using SEBT.Portal.Core.Utilities;
 namespace SEBT.Portal.Infrastructure.Services;
 
 /// <summary>
-/// Resolves the preferred household identifier from the authenticated user's server-side record.
+/// Resolves the preferred household identifier from the authenticated user.
+/// For states that do not persist PII, phone can be resolved from the JWT only.
 /// </summary>
 public class HouseholdIdentifierResolver : IHouseholdIdentifierResolver
 {
@@ -56,7 +57,8 @@ public class HouseholdIdentifierResolver : IHouseholdIdentifierResolver
 
         foreach (var preferredType in preferredTypes)
         {
-            var value = GetValueFromUser(user, preferredType);
+            var value = GetValueFromUser(user, preferredType)
+                ?? GetValueFromClaims(principal, preferredType);
             if (!string.IsNullOrWhiteSpace(value))
             {
                 var normalized = Normalize(preferredType, value);
@@ -77,12 +79,29 @@ public class HouseholdIdentifierResolver : IHouseholdIdentifierResolver
     {
         var email = principal.FindFirst(ClaimTypes.Email)?.Value
             ?? principal.FindFirst(ClaimTypes.NameIdentifier)?.Value
+            ?? principal.FindFirst("email")?.Value
+            ?? principal.FindFirst("sub")?.Value
             ?? principal.Identity?.Name;
         return string.IsNullOrWhiteSpace(email) ? null : email.Trim();
     }
 
     /// <summary>
-    /// Gets the household identifier value from the user record (server-side only; never from JWT).
+    /// Gets the household identifier value from JWT claims when not persisted.
+    /// Only supports types that IdPs commonly put in the token.
+    /// </summary>
+    private static string? GetValueFromClaims(ClaimsPrincipal principal, PreferredHouseholdIdType type)
+    {
+        if (type == PreferredHouseholdIdType.Phone)
+        {
+            var phone = principal.FindFirst("phone")?.Value
+                ?? principal.FindFirst("phone_number")?.Value;
+            return string.IsNullOrWhiteSpace(phone) ? null : phone.Trim();
+        }
+        return null;
+    }
+
+    /// <summary>
+    /// Gets the household identifier value from the user record
     /// </summary>
     private static string? GetValueFromUser(Core.Models.Auth.User user, PreferredHouseholdIdType type)
     {

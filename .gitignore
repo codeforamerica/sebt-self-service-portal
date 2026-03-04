@@ -467,3 +467,5 @@ nuget-store
 
 # AI
 .claude/settings.local.json
+
+src/SEBT.Portal.Api/appsettings.co.json
