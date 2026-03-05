@@ -12,6 +12,7 @@ internal static class ServiceCollectionPluginExtensions
     public static IServiceCollection AddPlugins(this IServiceCollection services, IConfiguration configuration)
     {
         services.TryAddSingleton<IStateAuthenticationService, Defaults.DefaultIStateAuthenticationService>();
+        services.TryAddSingleton<IEnrollmentCheckService, Defaults.DefaultEnrollmentCheckService>();
 
         var pluginAssemblyPaths = configuration
                                       .GetSection("PluginAssemblyPaths")
