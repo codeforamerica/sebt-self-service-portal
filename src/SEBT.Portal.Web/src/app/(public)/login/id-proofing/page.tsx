@@ -51,6 +51,7 @@ export default function IdProofingPage() {
   const state = getState()
   const links = getStateLinks(state)
   const t = getTranslations('idProofing')
+  const tCommon = getTranslations('common')
 
   return (
     <div className="usa-section">
@@ -65,8 +66,7 @@ export default function IdProofingPage() {
 
           <p className="margin-top-0 font-sans-sm">{t('body')}</p>
 
-          {/* TODO: Use t('requiredDisclaimer') once key is available in dc.csv */}
-          <p className="margin-top-2 font-sans-sm">Asterisks (*) indicate a required field.</p>
+          <p className="margin-top-2 font-sans-sm">{tCommon('requiredFields')}</p>
 
           <IdProofingForm
             idOptions={DC_ID_OPTIONS}

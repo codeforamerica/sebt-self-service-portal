@@ -8,9 +8,9 @@ interface CardStatusTimelineProps {
   application: Application
 }
 
-function formatDate(isoDate: string): string {
+function formatDate(isoDate: string, locale: string): string {
   const date = new Date(isoDate)
-  return new Intl.DateTimeFormat('en-US', {
+  return new Intl.DateTimeFormat(locale, {
     month: '2-digit',
     day: '2-digit',
     year: 'numeric',
@@ -79,7 +79,7 @@ function getStepClass(step: TimelineStep): string {
 // TODO: Add to CSV: "S2 - Portal Dashboard - Card Table - Status Aria Label" for timeline aria-label
 // TODO: Add to CSV: "S2 - Portal Dashboard - Card Table - Status Not Complete" for sr-only text
 export function CardStatusTimeline({ application }: CardStatusTimelineProps) {
-  const { t } = useTranslation('dashboard')
+  const { t, i18n } = useTranslation('dashboard')
 
   // Don't render timeline if no cardStatus or if status is Unknown
   if (!application.cardStatus || application.cardStatus === 'Unknown') {
@@ -88,13 +88,16 @@ export function CardStatusTimeline({ application }: CardStatusTimelineProps) {
 
   const steps = getTimelineSteps(application)
 
-  // Status label mapping to available locale keys
+  // Status label mapping — Active/Deactivated have dedicated CSV keys;
+  // Requested/Mailed CSV keys contain date templates ("Requested on [MM/DD/YYYY]")
+  // so we use fallback bare labels here and display the date separately.
+  // TODO: Add CSV rows for bare "Requested" and "Mailed" labels
   const statusLabels: Record<CardStatus, string> = {
-    Unknown: 'Unknown',
-    Requested: 'Requested',
-    Mailed: 'Mailed',
-    Active: t('cardTableStatusActive'),
-    Deactivated: t('cardTableStatusDeactivated')
+    Unknown: t('cardTableStatusUnknown', 'Unknown'),
+    Requested: t('cardTableStatusLabelRequested', 'Requested'),
+    Mailed: t('cardTableStatusLabelMailed', 'Mailed'),
+    Active: t('cardTableStatusActive', 'Active'),
+    Deactivated: t('cardTableStatusDeactivated', 'Deactivated')
   }
 
   return (
@@ -115,7 +118,7 @@ export function CardStatusTimeline({ application }: CardStatusTimelineProps) {
                 {statusLabels[step.status]}
                 {step.date && (
                   <span className="display-block font-body-2xs text-base-dark">
-                    {formatDate(step.date)}
+                    {formatDate(step.date, i18n.language)}
                   </span>
                 )}
                 {!step.isComplete && (
