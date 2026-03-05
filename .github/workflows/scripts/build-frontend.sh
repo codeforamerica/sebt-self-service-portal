@@ -124,9 +124,9 @@ build_frontend() {
 
   # Build uses Next.js with automatic prebuild hook
   # prebuild runs: pnpm tokens:all (generates design tokens for all states)
-  # build runs: next build (outputs to .next/standalone)
+  # build runs: next build (standalone output for CI/Docker deployments)
   log_info "Running Next.js build (includes token generation via prebuild hook)..."
-  pnpm build
+  BUILD_STANDALONE=true pnpm build
 
   log_success "Frontend build complete"
 }
