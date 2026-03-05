@@ -4,7 +4,6 @@ import { useRouter } from 'next/navigation'
 import { useId, useState, type FormEvent } from 'react'
 import { useTranslation } from 'react-i18next'
 
-import { ApiError } from '@/api/client'
 import { Alert, Button, InputField } from '@/components/ui'
 
 import { useSubmitIdProofing, type IdType } from '../../api'
@@ -98,19 +97,29 @@ export function IdProofingForm({ idOptions, contactLink }: IdProofingFormProps) 
     if (!validateFields()) return
 
     try {
-      await submitIdProofing.mutateAsync({
+      const response = await submitIdProofing.mutateAsync({
         dateOfBirth: { month: dobMonth, day: dobDay, year: dobYear },
         // Map the UI "none" sentinel to null for the API
         idType: selectedIdType === NONE_VALUE || selectedIdType === null ? null : selectedIdType,
         idValue: showIdValueInput ? idValue.trim() : null
       })
-      router.push('/dashboard')
-    } catch (err) {
-      if (err instanceof ApiError) {
-        setSubmitError(err.message)
+
+      if (response.result === 'matched') {
+        router.push('/dashboard')
       } else {
-        setSubmitError(tValidation('globalInternalError'))
+        const params = new URLSearchParams()
+        if (response.canApply === false) {
+          params.set('canApply', 'false')
+        }
+        const query = params.toString()
+        router.push(`/login/id-proofing/off-boarding${query ? `?${query}` : ''}`)
       }
+    } catch (err) {
+      // TODO: Use t('errorUnexpected') once key is available in dc.csv
+      // All errors get the same user-facing message. Raw ApiError.message may contain
+      // backend wording not intended for end users — avoid displaying it directly.
+      void err
+      setSubmitError('Something went wrong. Please try again.')
     }
   }
 
