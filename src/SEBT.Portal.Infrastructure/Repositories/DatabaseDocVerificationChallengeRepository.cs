@@ -1,0 +1,202 @@
+using Microsoft.EntityFrameworkCore;
+using SEBT.Portal.Core.Models.DocVerification;
+using SEBT.Portal.Core.Repositories;
+using SEBT.Portal.Infrastructure.Data;
+using SEBT.Portal.Infrastructure.Data.Entities;
+
+namespace SEBT.Portal.Infrastructure.Repositories;
+
+/// <summary>
+/// Database-backed implementation of <see cref="IDocVerificationChallengeRepository"/> using Entity Framework Core.
+/// All read operations are scoped by userId to enforce ownership (D5).
+/// </summary>
+public class DatabaseDocVerificationChallengeRepository(PortalDbContext dbContext)
+    : IDocVerificationChallengeRepository
+{
+    public async Task<DocVerificationChallenge?> GetByPublicIdAsync(
+        Guid publicId,
+        int userId,
+        CancellationToken cancellationToken = default)
+    {
+        var entity = await dbContext.DocVerificationChallenges
+            .AsNoTracking()
+            .FirstOrDefaultAsync(
+                c => c.PublicId == publicId && c.UserId == userId,
+                cancellationToken);
+
+        return entity == null ? null : MapToDomainModel(entity);
+    }
+
+    public async Task<DocVerificationChallenge?> GetActiveByUserIdAsync(
+        int userId,
+        CancellationToken cancellationToken = default)
+    {
+        // Non-terminal statuses: Created (0) and Pending (1)
+        var entity = await dbContext.DocVerificationChallenges
+            .AsNoTracking()
+            .FirstOrDefaultAsync(
+                c => c.UserId == userId
+                     && (c.Status == (int)DocVerificationStatus.Created
+                         || c.Status == (int)DocVerificationStatus.Pending),
+                cancellationToken);
+
+        return entity == null ? null : MapToDomainModel(entity);
+    }
+
+    public async Task<DocVerificationChallenge?> GetBySocureReferenceIdAsync(
+        string referenceId,
+        CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrWhiteSpace(referenceId))
+        {
+            return null;
+        }
+
+        var entity = await dbContext.DocVerificationChallenges
+            .AsNoTracking()
+            .FirstOrDefaultAsync(c => c.SocureReferenceId == referenceId, cancellationToken);
+
+        return entity == null ? null : MapToDomainModel(entity);
+    }
+
+    public async Task<DocVerificationChallenge?> GetByEvalIdAsync(
+        string evalId,
+        CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrWhiteSpace(evalId))
+        {
+            return null;
+        }
+
+        var entity = await dbContext.DocVerificationChallenges
+            .AsNoTracking()
+            .FirstOrDefaultAsync(c => c.EvalId == evalId, cancellationToken);
+
+        return entity == null ? null : MapToDomainModel(entity);
+    }
+
+    public async Task CreateAsync(
+        DocVerificationChallenge challenge,
+        CancellationToken cancellationToken = default)
+    {
+        if (challenge == null)
+        {
+            throw new ArgumentNullException(nameof(challenge));
+        }
+
+        var entity = MapToEntity(challenge);
+        dbContext.DocVerificationChallenges.Add(entity);
+        await dbContext.SaveChangesAsync(cancellationToken);
+    }
+
+    public async Task UpdateAsync(
+        DocVerificationChallenge challenge,
+        CancellationToken cancellationToken = default)
+    {
+        if (challenge == null)
+        {
+            throw new ArgumentNullException(nameof(challenge));
+        }
+
+        var entity = await dbContext.DocVerificationChallenges
+            .FirstOrDefaultAsync(c => c.Id == challenge.Id, cancellationToken);
+
+        if (entity == null)
+        {
+            throw new InvalidOperationException(
+                $"DocVerificationChallenge with Id {challenge.Id} not found.");
+        }
+
+        entity.Status = (int)challenge.Status;
+        entity.SocureReferenceId = challenge.SocureReferenceId;
+        entity.EvalId = challenge.EvalId;
+        entity.SocureEventId = challenge.SocureEventId;
+        entity.DocvTransactionToken = challenge.DocvTransactionToken;
+        entity.DocvUrl = challenge.DocvUrl;
+        entity.OffboardingReason = challenge.OffboardingReason;
+        entity.AllowIdRetry = challenge.AllowIdRetry;
+        entity.ExpiresAt = challenge.ExpiresAt;
+        entity.UpdatedAt = DateTime.UtcNow;
+
+        await dbContext.SaveChangesAsync(cancellationToken);
+    }
+
+    private static DocVerificationChallenge MapToDomainModel(DocVerificationChallengeEntity entity)
+    {
+        // Use a factory approach to set the private Status property via TransitionTo
+        var challenge = new DocVerificationChallenge
+        {
+            Id = entity.Id,
+            PublicId = entity.PublicId,
+            UserId = entity.UserId,
+            SocureReferenceId = entity.SocureReferenceId,
+            EvalId = entity.EvalId,
+            SocureEventId = entity.SocureEventId,
+            DocvTransactionToken = entity.DocvTransactionToken,
+            DocvUrl = entity.DocvUrl,
+            OffboardingReason = entity.OffboardingReason,
+            AllowIdRetry = entity.AllowIdRetry,
+            CreatedAt = entity.CreatedAt,
+            UpdatedAt = entity.UpdatedAt,
+            ExpiresAt = entity.ExpiresAt
+        };
+
+        // Restore the persisted status. We need to walk the state machine from Created
+        // to reach the stored status, since Status has a private setter.
+        var targetStatus = (DocVerificationStatus)entity.Status;
+        if (targetStatus != DocVerificationStatus.Created)
+        {
+            RestoreStatus(challenge, targetStatus);
+        }
+
+        return challenge;
+    }
+
+    /// <summary>
+    /// Walks the state machine to restore a persisted status.
+    /// This respects the domain model's transition rules while allowing
+    /// deserialization of any valid persisted state.
+    /// </summary>
+    private static void RestoreStatus(DocVerificationChallenge challenge, DocVerificationStatus target)
+    {
+        switch (target)
+        {
+            case DocVerificationStatus.Pending:
+                challenge.TransitionTo(DocVerificationStatus.Pending);
+                break;
+            case DocVerificationStatus.Verified:
+                challenge.TransitionTo(DocVerificationStatus.Pending);
+                challenge.TransitionTo(DocVerificationStatus.Verified);
+                break;
+            case DocVerificationStatus.Rejected:
+                challenge.TransitionTo(DocVerificationStatus.Pending);
+                challenge.TransitionTo(DocVerificationStatus.Rejected);
+                break;
+            case DocVerificationStatus.Expired:
+                // Expired can come from Created or Pending
+                challenge.TransitionTo(DocVerificationStatus.Expired);
+                break;
+        }
+    }
+
+    private static DocVerificationChallengeEntity MapToEntity(DocVerificationChallenge challenge)
+    {
+        return new DocVerificationChallengeEntity
+        {
+            Id = challenge.Id,
+            PublicId = challenge.PublicId,
+            UserId = challenge.UserId,
+            Status = (int)challenge.Status,
+            SocureReferenceId = challenge.SocureReferenceId,
+            EvalId = challenge.EvalId,
+            SocureEventId = challenge.SocureEventId,
+            DocvTransactionToken = challenge.DocvTransactionToken,
+            DocvUrl = challenge.DocvUrl,
+            OffboardingReason = challenge.OffboardingReason,
+            AllowIdRetry = challenge.AllowIdRetry,
+            CreatedAt = challenge.CreatedAt,
+            UpdatedAt = challenge.UpdatedAt,
+            ExpiresAt = challenge.ExpiresAt
+        };
+    }
+}

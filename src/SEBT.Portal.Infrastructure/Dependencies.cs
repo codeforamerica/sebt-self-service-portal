@@ -37,6 +37,25 @@ public static class Dependencies
         services.AddTransient<IHouseholdIdentifierResolver, HouseholdIdentifierResolver>();
         services.AddSingleton<IIdentifierHasher, IdentifierHasher>();
 
+        // Expose SocureSettings directly for use case injection (avoids IOptions dependency in UseCases layer)
+        services.AddSingleton(sp => sp.GetRequiredService<IOptions<SocureSettings>>().Value);
+
+        // Socure client — stub or real based on SocureSettings.UseStub (D3)
+        services.AddTransient<StubSocureClient>();
+        services.AddTransient<ISocureClient>(sp =>
+        {
+            var settings = sp.GetRequiredService<IOptions<SocureSettings>>().Value;
+            if (settings.UseStub)
+            {
+                return sp.GetRequiredService<StubSocureClient>();
+            }
+
+            // Real HTTP client will be registered here when credentials are available
+            throw new InvalidOperationException(
+                "Socure:UseStub is false but no real SocureClient is implemented yet. " +
+                "Set Socure:UseStub to true or implement the real client.");
+        });
+
         return services;
     }
 
@@ -46,6 +65,7 @@ public static class Dependencies
     {
         services.AddTransient<IOtpRepository, InMemoryOtpRepository>();
         services.AddTransient<IUserRepository, DatabaseUserRepository>();
+        services.AddTransient<IDocVerificationChallengeRepository, DatabaseDocVerificationChallengeRepository>();
 
         // For deterministic time in seeding/mock data
         services.AddSingleton(TimeProvider.System);
@@ -142,6 +162,10 @@ public static class Dependencies
 
         services.AddOptions<SeedingSettings>()
             .BindConfiguration(SeedingSettings.SectionName);
+
+        services.AddSingleton<IValidateOptions<SocureSettings>, SocureSettingsValidator>();
+        services.AddOptionsWithValidateOnStart<SocureSettings>()
+            .BindConfiguration(SocureSettings.SectionName);
 
         return services;
     }
