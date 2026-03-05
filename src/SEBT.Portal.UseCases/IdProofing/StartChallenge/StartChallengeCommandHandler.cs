@@ -1,0 +1,106 @@
+using Microsoft.Extensions.Logging;
+using SEBT.Portal.Core.Models.DocVerification;
+using SEBT.Portal.Core.Repositories;
+using SEBT.Portal.Core.Services;
+using SEBT.Portal.Kernel;
+using SEBT.Portal.Kernel.Results;
+
+namespace SEBT.Portal.UseCases.IdProofing;
+
+/// <summary>
+/// Handles starting a document verification challenge.
+/// Loads the challenge by (publicId, userId) for IDOR prevention (D5),
+/// validates the state transition (must be Created → Pending, D7),
+/// calls Socure to generate a DocV session token, and updates the challenge.
+/// </summary>
+public class StartChallengeCommandHandler(
+    IDocVerificationChallengeRepository challengeRepository,
+    IUserRepository userRepository,
+    ISocureClient socureClient,
+    IValidator<StartChallengeCommand> validator,
+    ILogger<StartChallengeCommandHandler> logger)
+    : ICommandHandler<StartChallengeCommand, StartChallengeResponse>
+{
+    public async Task<Result<StartChallengeResponse>> Handle(
+        StartChallengeCommand command,
+        CancellationToken cancellationToken = default)
+    {
+        var validationResult = await validator.Validate(command, cancellationToken);
+        if (validationResult is ValidationFailedResult validationFailed)
+        {
+            logger.LogWarning("StartChallenge validation failed for user {UserId}", command.UserId);
+            return Result<StartChallengeResponse>.ValidationFailed(validationFailed.Errors);
+        }
+
+        // Load challenge scoped by ownership — returns null for wrong user (IDOR prevention, D5)
+        var challenge = await challengeRepository.GetByPublicIdAsync(
+            command.ChallengeId, command.UserId, cancellationToken);
+
+        if (challenge == null)
+        {
+            logger.LogWarning(
+                "Challenge {ChallengeId} not found for user {UserId}",
+                command.ChallengeId, command.UserId);
+            return Result<StartChallengeResponse>.PreconditionFailed(
+                PreconditionFailedReason.NotFound, "Challenge not found.");
+        }
+
+        // Must be in Created state to start (D7)
+        if (challenge.Status != DocVerificationStatus.Created)
+        {
+            logger.LogWarning(
+                "Challenge {ChallengeId} is in {Status} state, cannot start",
+                command.ChallengeId, challenge.Status);
+
+            // If already Pending, return the existing token (idempotent for repeated start, Codex test 6)
+            if (challenge.Status == DocVerificationStatus.Pending
+                && challenge.DocvTransactionToken != null
+                && challenge.DocvUrl != null)
+            {
+                return Result<StartChallengeResponse>.Success(
+                    new StartChallengeResponse(challenge.DocvTransactionToken, challenge.DocvUrl));
+            }
+
+            return Result<StartChallengeResponse>.PreconditionFailed(
+                PreconditionFailedReason.Conflict,
+                $"Challenge is in {challenge.Status} state and cannot be started.");
+        }
+
+        // Load user for Socure call (needs email)
+        var user = await userRepository.GetUserByIdAsync(command.UserId, cancellationToken);
+        if (user == null)
+        {
+            return Result<StartChallengeResponse>.PreconditionFailed(
+                PreconditionFailedReason.NotFound, "User not found.");
+        }
+
+        // Call Socure to generate a DocV session token
+        var sessionResult = await socureClient.StartDocvSessionAsync(
+            command.UserId, user.Email, cancellationToken);
+
+        if (!sessionResult.IsSuccess)
+        {
+            logger.LogWarning("Socure DocV session creation failed for user {UserId}", command.UserId);
+            return Result<StartChallengeResponse>.DependencyFailed(
+                DependencyFailedReason.ConnectionFailed, "Failed to create document verification session.");
+        }
+
+        var session = sessionResult.Value;
+
+        // Update challenge with Socure correlation fields and transition to Pending (D6, D7)
+        challenge.SocureReferenceId = session.ReferenceId;
+        challenge.EvalId = session.EvalId;
+        challenge.DocvTransactionToken = session.DocvTransactionToken;
+        challenge.DocvUrl = session.DocvUrl;
+        challenge.TransitionTo(DocVerificationStatus.Pending);
+
+        await challengeRepository.UpdateAsync(challenge, cancellationToken);
+
+        logger.LogInformation(
+            "Started DocV session for challenge {ChallengeId}, user {UserId}",
+            command.ChallengeId, command.UserId);
+
+        return Result<StartChallengeResponse>.Success(
+            new StartChallengeResponse(session.DocvTransactionToken, session.DocvUrl));
+    }
+}
