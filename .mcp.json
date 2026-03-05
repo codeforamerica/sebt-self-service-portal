@@ -1,0 +1,15 @@
+{
+  "mcpServers": {
+    "next-devtools": {
+      "command": "npx",
+      "args": ["-y", "next-devtools-mcp@latest"]
+    },
+    "docker": {
+      "command": "npx",
+      "args": ["-y", "mcp-server-docker"]
+    },
+    "figma-remote-mcp": {
+      "url": "https://mcp.figma.com/mcp"
+    }
+  }
+}
