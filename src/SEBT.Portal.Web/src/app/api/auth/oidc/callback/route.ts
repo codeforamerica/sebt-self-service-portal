@@ -98,8 +98,11 @@ export async function POST(request: NextRequest) {
     }
 
     const JWKS = createRemoteJWKSet(new URL(jwksUri))
-    const verifyOptions: { maxTokenAge: string; issuer?: string } = { maxTokenAge: '1 hour' }
-    if (discovery.issuer) verifyOptions.issuer = discovery.issuer
+    const verifyOptions = {
+      maxTokenAge: '1 hour',
+      audience: clientId,
+      ...(discovery.issuer && { issuer: discovery.issuer })
+    }
     const { payload } = await jwtVerify(idToken, JWKS, verifyOptions)
 
     const claims: Record<string, string | number | boolean> = {}
