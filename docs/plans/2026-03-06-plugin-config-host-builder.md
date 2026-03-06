@@ -1,14 +1,15 @@
-# Move Plugin Loading to Host Builder Pipeline
+# Deferred Plugin Loading for Testable Configuration
 
 ## Problem
 
-`AddPlugins` runs inline in Program.cs (line 71), reading `builder.Configuration`
-directly. `WebApplicationFactory`'s `ConfigureWebHost` fires *after* Program.cs
-top-level statements execute, so tests cannot use the standard
-`ConfigureAppConfiguration` hook to override plugin paths or connection strings.
+`AddPlugins` runs inline in Program.cs, eagerly reading `builder.Configuration`
+and loading assemblies via MEF during service registration. In ASP.NET Core's
+minimal hosting model, `ConfigureHostBuilder.ConfigureServices` executes
+callbacks immediately (not during `Build()`), so `WebApplicationFactory`'s
+`ConfigureAppConfiguration` hook fires too late to influence plugin config.
 
-Instead, test factories set process-global environment variables in their
-constructors and restore them in `Dispose`. This approach is fragile:
+Test factories work around this by setting process-global environment variables
+in their constructors and restoring them in `Dispose`. This approach is fragile:
 
 - **Global state mutation** — env vars are process-global. Even with
   save/restore and `[Collection]` serialization, one missed restore or parallel
@@ -20,70 +21,126 @@ constructors and restore them in `Dispose`. This approach is fragile:
   Our tests cannot follow that pattern, making them unfamiliar to .NET
   developers joining the project.
 
-## Solution
+### Why `IHostBuilder.ConfigureServices` doesn't help
 
-Change `AddPlugins` from an `IServiceCollection` extension method (called inline
-in Program.cs) to an `IHostBuilder` extension method that registers a
-`ConfigureServices` callback. The callback executes during `Build()`, *after*
-WAF's `ConfigureAppConfiguration` has already modified the configuration.
+The initial approach was to move `AddPlugins` from inline execution to a
+`builder.Host.ConfigureServices` callback, expecting it to run during `Build()`
+after WAF's `ConfigureAppConfiguration`. However, in the minimal hosting model,
+`builder.Host` returns a `ConfigureHostBuilder` that runs callbacks immediately
+("Run these immediately so that they are observable by the imperative code" —
+ASP.NET Core source). This means the timing is identical to inline execution.
 
-### Host builder pipeline order during `Build()`
+## Solution: Deferred plugin loading via factory delegates
 
-1. `ConfigureAppConfiguration` callbacks — WAF test overrides go here
-2. `ConfigureServices` callbacks — `AddPlugins` logic runs here, reads the
-   fully-assembled configuration
+Instead of loading assemblies eagerly during service registration, register
+factory delegates that load assemblies lazily at DI resolution time. At that
+point, `IConfiguration` from the service provider is fully assembled and
+includes WAF's `ConfigureAppConfiguration` additions.
 
-This means tests use the standard in-memory collection pattern with zero
-environment variables and zero save/restore lifecycle.
+### Current flow (eager)
+
+```
+AddPlugins called → reads IConfiguration → loads assemblies →
+creates MEF exports → registers instances in DI
+```
+
+### Proposed flow (deferred)
+
+```
+AddPlugins called → registers PluginLoader + factory delegates in DI
+                    (no config reading, no assembly loading)
+
+First service resolution → factory calls PluginLoader.GetExport<T>()
+                         → PluginLoader reads IConfiguration (now complete)
+                         → loads assemblies, creates MEF container
+                         → returns export (or default fallback)
+```
 
 ## Production code changes
 
-### `ServiceCollectionPluginExtensions.cs`
+### New class: `PluginLoader`
 
-The public API changes from extending `IServiceCollection` to extending
-`IHostBuilder`. This encapsulates the callback timing so callers cannot
-accidentally call plugin loading at the wrong point in the pipeline.
+A singleton that lazily loads assemblies and discovers MEF exports on first
+access. Takes `IConfiguration` via constructor injection from DI — at
+resolution time, this includes all registered config sources.
 
 ```csharp
-// New public API
-public static IHostBuilder AddPlugins(this IHostBuilder hostBuilder)
+internal sealed class PluginLoader
 {
-    hostBuilder.ConfigureServices((context, services) =>
-        services.RegisterPlugins(context.Configuration));
-    return hostBuilder;
-}
+    private readonly Lazy<IReadOnlyDictionary<Type, object>> _exports;
 
-// Existing logic, renamed to private
-private static void RegisterPlugins(
-    this IServiceCollection services, IConfiguration configuration)
-{
-    // All existing AddPlugins code unchanged:
-    // TryAddSingleton defaults, MEF assembly loading,
-    // plugin discovery, service registration
+    public PluginLoader(IConfiguration configuration)
+    {
+        _exports = new Lazy<IReadOnlyDictionary<Type, object>>(
+            () => LoadExports(configuration));
+    }
+
+    public T? GetExport<T>() where T : class
+    {
+        _exports.Value.TryGetValue(typeof(T), out var export);
+        return export as T;
+    }
+
+    private static IReadOnlyDictionary<Type, object> LoadExports(
+        IConfiguration configuration)
+    {
+        // Existing MEF logic from current RegisterPlugins:
+        // read PluginAssemblyPaths, build conventions, load assemblies,
+        // discover exports, map each to its service interface
+    }
 }
 ```
+
+### Modified `AddPlugins`
+
+Changes from `IHostBuilder` extension back to `IServiceCollection` extension.
+No longer takes `IConfiguration` — config is read at resolution time by
+`PluginLoader`. Registers factory delegates for each known plugin interface.
+
+```csharp
+public static IServiceCollection AddPlugins(this IServiceCollection services)
+{
+    services.AddSingleton<PluginLoader>();
+
+    services.AddSingleton<IStateAuthenticationService>(sp =>
+        sp.GetRequiredService<PluginLoader>()
+            .GetExport<IStateAuthenticationService>()
+        ?? new DefaultIStateAuthenticationService());
+
+    services.AddSingleton<IEnrollmentCheckService>(sp =>
+        sp.GetRequiredService<PluginLoader>()
+            .GetExport<IEnrollmentCheckService>()
+        ?? new DefaultEnrollmentCheckService());
+
+    return services;
+}
+```
+
+Notes:
+- `IStateMetadataService` is only referenced in MEF conventions, never resolved
+  from DI. No factory delegate needed.
+- `ISummerEbtCaseService` has no default. Its factory delegate returns null or
+  the plugin implementation. Tests that need it mock it via `ConfigureServices`.
+- `TryAddSingleton` is no longer needed — the factory delegate itself handles
+  the fallback logic.
 
 ### `Program.cs`
 
-One-line call site change:
-
 ```csharp
 // Before:
-builder.Services.AddPlugins(builder.Configuration);
+builder.Host.AddPlugins();
 
 // After:
-builder.Host.AddPlugins();
+builder.Services.AddPlugins();
 ```
-
-No other production files change.
 
 ## Test factory changes
 
 ### `PortalWebApplicationFactory`
 
-All env var machinery (`_originalEnvVars`, `SetEnvVar`, constructor env var
-calls, `Dispose` restore logic) is deleted. Configuration moves entirely to
-`ConfigureAppConfiguration`:
+All env var machinery deleted. Config via `ConfigureAppConfiguration`, mock
+plugin stubs via `ConfigureServices` (last registration wins over factory
+delegates from `AddPlugins`):
 
 ```csharp
 protected override void ConfigureWebHost(IWebHostBuilder builder)
@@ -100,7 +157,10 @@ protected override void ConfigureWebHost(IWebHostBuilder builder)
 
     builder.ConfigureServices(services =>
     {
-        // Replace DB, migrator, seeder, mock plugin stubs — unchanged
+        // Replace DB, migrator, seeder (same as today)
+        // Mock plugin stubs override factory delegates from AddPlugins
+        services.AddSingleton(Substitute.For<ISummerEbtCaseService>());
+        services.AddSingleton(Substitute.For<IEnrollmentCheckService>());
     });
 }
 ```
@@ -110,17 +170,10 @@ No constructor. No `Dispose` override.
 ### `PluginIntegrationWebApplicationFactory`
 
 Same pattern. Constructor stores parameters; `ConfigureAppConfiguration`
-applies them:
+applies them. Real plugins load via factory delegates — no mock overrides
+needed for plugin interfaces.
 
 ```csharp
-public PluginIntegrationWebApplicationFactory(
-    string? pluginDir = null,
-    Dictionary<string, string>? configOverrides = null)
-{
-    _pluginDir = pluginDir;
-    _configOverrides = configOverrides;
-}
-
 protected override void ConfigureWebHost(IWebHostBuilder builder)
 {
     builder.UseEnvironment("Development");
@@ -145,52 +198,30 @@ protected override void ConfigureWebHost(IWebHostBuilder builder)
 
     builder.ConfigureServices(services =>
     {
-        // Replace DB, migrator, seeder,
-        // TryAddSingleton ISummerEbtCaseService — unchanged
+        // Replace DB, migrator, seeder
+        // ISummerEbtCaseService mock (TryAddSingleton — no-op if real plugin
+        // registered it via factory delegate)
     });
 }
 ```
 
 No `Dispose` override. No env var save/restore.
 
-Config keys use `:` separator (standard .NET hierarchical config) instead of
-`__` (env var convention).
-
 ## Test class changes
 
-### Config key format
-
-Test classes that pass `configOverrides` switch from `__` to `:` separator:
-
-```csharp
-// Before:
-["DCConnector__ConnectionString"] = dcDatabase.ConnectionString
-
-// After:
-["DCConnector:ConnectionString"] = dcDatabase.ConnectionString
-```
-
-### Remove `[Collection("PluginIntegration")]`
-
-The collection existed solely to serialize tests that mutated process-global
-env vars. With no global state mutation, each WAF creates its own isolated
-test server and DI container. Tests are safe to run in parallel.
-
-Remove `[Collection("PluginIntegration")]` from:
-- `DcEnrollmentCheckIntegrationTests`
-- `CoEnrollmentCheckIntegrationTests`
-- `DefaultEnrollmentCheckIntegrationTests`
-
-Delete `PluginIntegrationCollection.cs` entirely.
+Config keys switch from `__` (env var convention) to `:` (standard .NET).
+`[Collection("PluginIntegration")]` removed — no global state mutation means
+parallel execution is safe. `PluginIntegrationCollection.cs` deleted.
 
 ## Files summary
 
 | File | Action |
 |------|--------|
-| `src/.../Composition/ServiceCollectionPluginExtensions.cs` | Modify |
-| `src/.../Program.cs` | Modify (one line) |
-| `test/.../Integration/PortalWebApplicationFactory.cs` | Modify |
-| `test/.../PluginIntegration/PluginIntegrationWebApplicationFactory.cs` | Modify |
+| `src/.../Composition/PluginLoader.cs` | Create |
+| `src/.../Composition/ServiceCollectionPluginExtensions.cs` | Rewrite |
+| `src/.../Program.cs` | Modify |
+| `test/.../Integration/PortalWebApplicationFactory.cs` | Rewrite |
+| `test/.../PluginIntegration/PluginIntegrationWebApplicationFactory.cs` | Rewrite |
 | `test/.../PluginIntegration/DcEnrollmentCheckIntegrationTests.cs` | Modify |
 | `test/.../PluginIntegration/CoEnrollmentCheckIntegrationTests.cs` | Modify |
 | `test/.../PluginIntegration/DefaultEnrollmentCheckIntegrationTests.cs` | Modify |
@@ -198,11 +229,16 @@ Delete `PluginIntegrationCollection.cs` entirely.
 
 ## Risks and verification
 
-**Primary risk:** The design assumes `ConfigureAppConfiguration` callbacks fire
-before `ConfigureServices` callbacks during `Build()`. This is the documented
-.NET host builder pipeline order, but should be verified with a spike test:
-add a temporary log in `RegisterPlugins` that prints the value of
-`PluginAssemblyPaths:0` and confirm it reflects the test factory's override.
+**Startup validation:** Assembly load failures currently crash at startup. With
+deferred loading, they surface on first service resolution. This is acceptable
+since the app still fails before serving requests (DI resolves singletons
+eagerly during the first request pipeline). If fail-fast at startup is required
+later, an `IHostedService` can eagerly resolve `PluginLoader`.
 
-**Unchanged:** `PluginPathResolver`, `DcSourceDatabaseFixture`, all plugin
-connector repos, `HasPluginDlls` skip logic.
+**IConfiguration identity:** The design assumes `IConfiguration` from DI at
+resolution time includes WAF's `ConfigureAppConfiguration` additions. This
+should be verified with a spike test in Task 1.
+
+**Task 1 revert:** The prior commit (f703121) moved `AddPlugins` to an
+`IHostBuilder` extension based on incorrect timing assumptions about
+`ConfigureHostBuilder`. It should be reverted as the first task.
