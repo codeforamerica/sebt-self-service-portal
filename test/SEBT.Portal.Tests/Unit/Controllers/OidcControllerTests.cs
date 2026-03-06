@@ -111,6 +111,26 @@ public class OidcControllerTests
     }
 
     /// <summary>
+    /// Callback token must contain an explicit email claim
+    /// </summary>
+    [Fact]
+    public async Task CompleteLogin_WhenCallbackTokenHasNoEmailClaim_Returns400()
+    {
+        const string signingKey = "complete-login-signing-key-at-least-32-characters-long";
+        _config["Oidc:CompleteLoginSigningKey"].Returns(signingKey);
+
+        var callbackToken = CreateCallbackTokenWithClaims(signingKey, new Claim("sub", "24400320"));
+        var body = new CompleteLoginRequest(CoStateKey, callbackToken);
+
+        var result = await _controller.CompleteLogin(body, CancellationToken.None);
+
+        var badRequest = Assert.IsType<BadRequestObjectResult>(result);
+        var value = badRequest.Value;
+        var errorProp = value?.GetType().GetProperty("error")?.GetValue(value) as string;
+        Assert.Equal("Callback token must contain an email claim.", errorProp);
+    }
+
+    /// <summary>
     /// Success path: valid callback token returns 200 with a JSON body containing a "token" property (portal JWT).
     /// Ensures the route returns the response shape the frontend expects.
     /// </summary>
@@ -144,9 +164,13 @@ public class OidcControllerTests
 
     private static string CreateValidCallbackToken(string signingKey, string email)
     {
+        return CreateCallbackTokenWithClaims(signingKey, new Claim("email", email));
+    }
+
+    private static string CreateCallbackTokenWithClaims(string signingKey, params Claim[] claims)
+    {
         var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(signingKey));
         var credentials = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
-        var claims = new List<Claim> { new("email", email) };
         var token = new JwtSecurityToken(
             claims: claims,
             expires: DateTime.UtcNow.AddMinutes(5),

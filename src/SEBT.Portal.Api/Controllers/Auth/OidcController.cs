@@ -138,8 +138,8 @@ public class OidcController(
         var email = GetEmailFromClaims(principal);
         if (string.IsNullOrWhiteSpace(email))
         {
-            logger.LogWarning("Callback token had no email or sub claim");
-            return BadRequest(new { error = "Callback token must contain an email or sub claim." });
+            logger.LogWarning("Callback token had no email claim");
+            return BadRequest(new { error = "Callback token must contain an email claim." });
         }
 
         var normalizedEmail = EmailNormalizer.Normalize(email);
@@ -148,12 +148,12 @@ public class OidcController(
         return Ok(new { token });
     }
 
+    /// <summary>
+    /// Gets the email from the callback token claims.
+    /// </summary>
     private static string? GetEmailFromClaims(ClaimsPrincipal principal)
     {
         var emailClaim = principal.FindFirst("email");
-        if (!string.IsNullOrEmpty(emailClaim?.Value))
-            return emailClaim.Value;
-        var subClaim = principal.FindFirst("sub");
-        return subClaim?.Value;
+        return !string.IsNullOrEmpty(emailClaim?.Value) ? emailClaim.Value : null;
     }
 }

@@ -111,7 +111,7 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // Ensure complete-login can identify the user: need at least "sub" or "email"
+    // Ensure complete-login can identify the user: "email" is required
     const raw = payload as Record<string, unknown>
     const subFromPayload =
       typeof payload.sub === 'string'
@@ -158,14 +158,11 @@ export async function POST(request: NextRequest) {
         if (typeof userinfo.name === 'string') claims.name = userinfo.name
       }
     }
-    if (
-      (typeof claims.sub !== 'string' || !claims.sub) &&
-      (typeof claims.email !== 'string' || !claims.email)
-    ) {
+    if (typeof claims.email !== 'string' || !claims.email) {
       return NextResponse.json(
         {
-          error: 'Callback token must contain an email or sub claim.',
-          hint: 'IdP id_token (and optional userinfo) had no sub or email. Request scopes openid email profile and ensure the IdP returns sub or email.'
+          error: 'Callback token must contain an email claim.',
+          hint: 'IdP id_token (and optional userinfo) had no email. Request scopes openid email profile and ensure the IdP returns email.'
         },
         { status: 400 }
       )

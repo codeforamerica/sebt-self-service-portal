@@ -6,6 +6,7 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <DockerDefaultTargetOS>Linux</DockerDefaultTargetOS>
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <UserSecretsId>sebt-portal-api</UserSecretsId>
   </PropertyGroup>
 
   <!-- Production Build: Build frontend before .NET build -->
