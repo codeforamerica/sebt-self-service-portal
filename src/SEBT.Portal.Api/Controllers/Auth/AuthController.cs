@@ -100,15 +100,12 @@ public class AuthController(ILogger<AuthController> logger) : ControllerBase
 
     /// <summary>
     /// Extracts the user's email address from the authenticated user's claims.
-    /// Tries both long (.NET) and short (JWT) claim names so it works whether or not
-    /// the JWT handler has mapped inbound claims.
+    /// With MapInboundClaims = false, JWT claims use short names ("email", "sub").
     /// </summary>
     /// <returns>The user's email address, or null if not found.</returns>
     private string? GetUserEmail()
     {
-        return User.FindFirst(ClaimTypes.Email)?.Value
-            ?? User.FindFirst(ClaimTypes.NameIdentifier)?.Value
-            ?? User.FindFirst("email")?.Value
+        return User.FindFirst("email")?.Value
             ?? User.FindFirst("sub")?.Value
             ?? User.Identity?.Name;
     }

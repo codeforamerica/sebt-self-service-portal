@@ -21,7 +21,7 @@ public class AuthControllerTests
         _controller = new AuthController(logger);
     }
 
-    private void SetupAuthenticatedUser(string email, string claimType = ClaimTypes.Email)
+    private void SetupAuthenticatedUser(string email, string claimType = "email")
     {
         var claims = new List<Claim> { new Claim(claimType, email) };
         var identity = new ClaimsIdentity(claims, "Test");
@@ -51,11 +51,11 @@ public class AuthControllerTests
     }
 
     [Fact]
-    public void GetAuthorizationStatus_WhenEmailClaimIsMissing_UsesNameIdentifier()
+    public void GetAuthorizationStatus_WhenEmailClaimIsMissing_UsesSubClaim()
     {
         // Arrange
         var email = "user@example.com";
-        SetupAuthenticatedUser(email, ClaimTypes.NameIdentifier);
+        SetupAuthenticatedUser(email, "sub");
 
         // Act
         var result = _controller.GetAuthorizationStatus();
@@ -208,11 +208,11 @@ public class AuthControllerTests
     }
 
     [Fact]
-    public async Task RefreshToken_ExtractsEmailFromNameIdentifier_WhenEmailClaimMissing()
+    public async Task RefreshToken_ExtractsEmailFromSubClaim_WhenEmailClaimMissing()
     {
         // Arrange
         var email = "user@example.com";
-        SetupAuthenticatedUser(email, ClaimTypes.NameIdentifier);
+        SetupAuthenticatedUser(email, "sub");
 
         var handlerMock = Substitute.For<ICommandHandler<RefreshTokenCommand, string>>();
         handlerMock.Handle(Arg.Any<RefreshTokenCommand>())
