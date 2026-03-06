@@ -9,21 +9,7 @@ using Serilog;
 
 internal static class ServiceCollectionPluginExtensions
 {
-    /// <summary>
-    /// Registers MEF plugins from the configured assembly paths. Extends IHostBuilder
-    /// (rather than IServiceCollection) so that plugin loading runs during Build(),
-    /// after all ConfigureAppConfiguration callbacks have fired. This allows
-    /// WebApplicationFactory tests to override plugin paths and connection strings
-    /// via ConfigureAppConfiguration instead of process-global environment variables.
-    /// </summary>
-    public static IHostBuilder AddPlugins(this IHostBuilder hostBuilder)
-    {
-        hostBuilder.ConfigureServices((context, services) =>
-            services.RegisterPlugins(context.Configuration));
-        return hostBuilder;
-    }
-
-    private static void RegisterPlugins(this IServiceCollection services, IConfiguration configuration)
+    public static IServiceCollection AddPlugins(this IServiceCollection services, IConfiguration configuration)
     {
         services.TryAddSingleton<IStateAuthenticationService, Defaults.DefaultIStateAuthenticationService>();
         services.TryAddSingleton<IEnrollmentCheckService, Defaults.DefaultEnrollmentCheckService>();
@@ -59,6 +45,8 @@ internal static class ServiceCollectionPluginExtensions
                     break;
             }
         }
+
+        return services;
     }
 
     private static ContainerConfiguration CreateContainerConfiguration(string[] assemblyPaths, IConfiguration configuration)
