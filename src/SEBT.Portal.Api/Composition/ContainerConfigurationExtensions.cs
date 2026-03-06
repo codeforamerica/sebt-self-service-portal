@@ -1,5 +1,6 @@
 using System.Composition.Convention;
 using System.Composition.Hosting;
+using System.Reflection;
 using System.Runtime.Loader;
 
 namespace SEBT.Portal.Api.Composition;
@@ -21,7 +22,25 @@ internal static class ContainerConfigurationExtensions
         if (existingPaths.Length == 0)
             return containerConfiguration;
 
-        var alc = new PluginAssemblyLoadContext(existingPaths);
+        // Resolve plugin dependencies (e.g. Kiota) from plugin paths so we can load into Default ALC.
+        // Loading into Default ensures plugin types share the same interface types as the host (MEF can discover them).
+        Assembly? DefaultResolving(AssemblyLoadContext context, AssemblyName assemblyName)
+        {
+            var fileName = assemblyName.Name + ".dll";
+            foreach (var dir in existingPaths)
+            {
+                if (string.IsNullOrEmpty(dir) || !Directory.Exists(dir)) continue;
+                var path = Path.Combine(dir, fileName);
+                if (File.Exists(path))
+                    return context.LoadFromAssemblyPath(Path.GetFullPath(path));
+            }
+            return null;
+        }
+
+        // Keep handler registered so plugin types can load dependencies (e.g. Kiota) when first used.
+        AssemblyLoadContext.Default.Resolving += DefaultResolving;
+
+        var loadedNames = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
 
         // Host owned assemblies should not be loaded by the plugin context,
         // so we exclude them in the filter below
@@ -38,13 +57,29 @@ internal static class ContainerConfigurationExtensions
 
         foreach (var combinedPath in existingPaths)
         {
-            var assemblies = Directory
-                .GetFiles(combinedPath, "*.dll", searchOption)
-                .Where(p => !defaultAssemblyNames.Contains(Path.GetFileNameWithoutExtension(p)))
-                .Select(p => alc.LoadFromAssemblyPath(Path.GetFullPath(p)))
-                .ToList();
-
-            containerConfiguration.WithAssemblies(assemblies, conventions);
+            var dllPaths = Directory.GetFiles(combinedPath, "*.dll", searchOption);
+            var assemblies = new List<Assembly>();
+            foreach (var dllPath in dllPaths)
+            {
+                var fullPath = Path.GetFullPath(dllPath);
+                var name = Path.GetFileNameWithoutExtension(fullPath);
+                if (defaultAssemblyNames.Contains(name) || loadedNames.Contains(name))
+                    continue;
+                try
+                {
+                    var assembly = AssemblyLoadContext.Default.LoadFromAssemblyPath(fullPath);
+                    loadedNames.Add(assembly.GetName().Name ?? name);
+                    assemblies.Add(assembly);
+                }
+                catch (Exception ex) when (ex is FileLoadException or BadImageFormatException)
+                {
+                    if (ex.Message.Contains("already loaded", StringComparison.OrdinalIgnoreCase))
+                        continue;
+                    throw;
+                }
+            }
+            if (assemblies.Count > 0)
+                containerConfiguration.WithAssemblies(assemblies, conventions);
         }
 
         return containerConfiguration;

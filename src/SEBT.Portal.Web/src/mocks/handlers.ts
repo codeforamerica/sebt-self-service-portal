@@ -182,6 +182,45 @@ export const handlers = [
     })
   }),
 
+  // OIDC CO config (public; for frontend PKCE flow)
+  http.get('/api/auth/oidc/co/config', () => {
+    return HttpResponse.json({
+      authorizationEndpoint: 'https://auth.example.com/authorize',
+      tokenEndpoint: 'https://auth.example.com/token',
+      clientId: 'test-client',
+      redirectUri: 'http://localhost:3000/callback',
+      languageParam: 'en'
+    })
+  }),
+
+  // OIDC callback (Next.js: exchange + validate; returns callbackToken for complete-login)
+  http.post('/api/auth/oidc/callback', async ({ request }) => {
+    const body = (await request.json()) as {
+      code?: string
+      code_verifier?: string
+      stateCode?: string
+    }
+    const currentState = (process.env.NEXT_PUBLIC_STATE || process.env.STATE || 'dc').toLowerCase()
+    if (!body?.code || !body?.code_verifier || body?.stateCode !== currentState) {
+      return HttpResponse.json(
+        {
+          error: 'Missing or invalid code, code_verifier, or stateCode (must match current state).'
+        },
+        { status: 400 }
+      )
+    }
+    return HttpResponse.json({ callbackToken: 'mock-callback-token-for-testing' })
+  }),
+
+  // OIDC complete-login (.NET: validates callbackToken, creates session, returns portal JWT)
+  http.post('/api/auth/oidc/complete-login', async ({ request }) => {
+    const body = (await request.json()) as { stateCode?: string; callbackToken?: string }
+    if (!body?.stateCode || !body?.callbackToken) {
+      return HttpResponse.json({ error: 'Missing stateCode or callbackToken.' }, { status: 400 })
+    }
+    return HttpResponse.json({ token: 'mock-jwt-token-for-testing' })
+  }),
+
   // Feature flags endpoint
   http.get('/api/features', async () => {
     // Add small delay to allow loading state to be observable in tests

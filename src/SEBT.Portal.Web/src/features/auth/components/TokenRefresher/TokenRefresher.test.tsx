@@ -35,7 +35,7 @@ describe('TokenRefresher', () => {
     vi.useRealTimers()
   })
 
-  it('should call refresh immediately on mount when authenticated', () => {
+  it('should call refresh when authenticated', () => {
     render(<TokenRefresher />)
 
     expect(mockMutate).toHaveBeenCalledTimes(1)
@@ -61,38 +61,31 @@ describe('TokenRefresher', () => {
   it('should set up periodic refresh interval', () => {
     render(<TokenRefresher />)
 
-    // Initial call on mount
     expect(mockMutate).toHaveBeenCalledTimes(1)
 
-    // Advance time by 10 minutes (600000ms)
+    // Advance time by 10 minutes
     act(() => {
       vi.advanceTimersByTime(10 * 60 * 1000)
     })
-
     expect(mockMutate).toHaveBeenCalledTimes(2)
 
-    // Advance another 10 minutes
     act(() => {
       vi.advanceTimersByTime(10 * 60 * 1000)
     })
-
     expect(mockMutate).toHaveBeenCalledTimes(3)
   })
 
   it('should clear interval on unmount', () => {
     const { unmount } = render(<TokenRefresher />)
 
-    // Initial call
     expect(mockMutate).toHaveBeenCalledTimes(1)
 
     unmount()
 
-    // Advance time - should NOT trigger another refresh
     act(() => {
       vi.advanceTimersByTime(10 * 60 * 1000)
     })
 
-    // Still only the initial call
     expect(mockMutate).toHaveBeenCalledTimes(1)
   })
 
@@ -117,10 +110,7 @@ describe('TokenRefresher', () => {
   it('should clear interval when authentication state changes to false', () => {
     const { rerender } = render(<TokenRefresher />)
 
-    // Initial call when authenticated
     expect(mockMutate).toHaveBeenCalledTimes(1)
-
-    // Change to unauthenticated
     ;(useAuth as Mock).mockReturnValue({
       isAuthenticated: false,
       login: mockLogin
@@ -128,12 +118,10 @@ describe('TokenRefresher', () => {
 
     rerender(<TokenRefresher />)
 
-    // Advance time - should NOT trigger refresh since unauthenticated
     act(() => {
       vi.advanceTimersByTime(10 * 60 * 1000)
     })
 
-    // Still only the initial call
     expect(mockMutate).toHaveBeenCalledTimes(1)
   })
 
