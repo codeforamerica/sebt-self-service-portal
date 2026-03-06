@@ -71,11 +71,6 @@ internal static class ServiceCollectionPluginExtensions
             .Export<ISummerEbtCaseService>()
             .Shared();
 
-        conventions
-            .ForTypesDerivedFrom<IStateAuthService>()
-            .Export<IStateAuthService>()
-            .Shared();
-
         return new ContainerConfiguration()
             .WithExport(configuration)
             .WithAssembliesInPath(assemblyPaths, conventions);
