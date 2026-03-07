@@ -30,7 +30,7 @@ export function proxy(request: NextRequest) {
     style-src 'self' ${isDev ? "'unsafe-inline'" : `'nonce-${nonce}'`} https://fonts.googleapis.com;
     font-src 'self' https://fonts.gstatic.com;
     img-src 'self' data: https: https://www.google-analytics.com;
-    connect-src 'self' https://www.google-analytics.com https://*.google-analytics.com https://www.googletagmanager.com ${isDev ? 'ws://localhost:* http://localhost:*' : ''};
+    connect-src 'self' https://www.google-analytics.com https://*.google-analytics.com https://www.googletagmanager.com https://auth.pingone.com ${isDev ? 'ws://localhost:* http://localhost:*' : ''};
     frame-src 'none';
     child-src 'none';
     worker-src 'self';
