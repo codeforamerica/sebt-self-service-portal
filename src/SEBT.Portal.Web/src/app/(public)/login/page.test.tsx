@@ -28,8 +28,10 @@ vi.mock('@/lib/translations', () => ({
         logInEsp: 'Iniciar sesión con myColorado™'
       }
     }
+    /* eslint-disable security/detect-object-injection -- test mock; namespace and key are controlled */
     const translations = namespaces[namespace] ?? {}
     return (key: string) => translations[key] ?? key
+    /* eslint-enable security/detect-object-injection */
   })
 }))
 

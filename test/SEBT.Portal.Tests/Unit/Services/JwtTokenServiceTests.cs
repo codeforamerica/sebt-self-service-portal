@@ -472,5 +472,77 @@ public class JwtTokenServiceTests
         Assert.NotNull(jsonToken.Claims.FirstOrDefault(c => c.Type == "id_proofing_completed_at"));
         Assert.NotNull(jsonToken.Claims.FirstOrDefault(c => c.Type == "id_proofing_expires_at"));
     }
+
+    [Fact]
+    public void GenerateToken_WithAdditionalClaims_AddsIdpClaimsToToken()
+    {
+        // Arrange: OIDC complete-login passes IdP claims (phone, givenName, familyName) as additionalClaims
+        var user = new User
+        {
+            Email = "user@example.com",
+            IalLevel = UserIalLevel.None
+        };
+        var additionalClaims = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+        {
+            ["phone"] = "+13035551234",
+            ["givenName"] = "Jane",
+            ["familyName"] = "Doe"
+        };
+
+        // Act
+        var token = _jwtTokenService.GenerateToken(user, additionalClaims);
+
+        // Assert
+        var handler = new JwtSecurityTokenHandler();
+        var jsonToken = handler.ReadJwtToken(token);
+        Assert.Equal("+13035551234", jsonToken.Claims.FirstOrDefault(c => c.Type == "phone")?.Value);
+        Assert.Equal("Jane", jsonToken.Claims.FirstOrDefault(c => c.Type == "givenName")?.Value);
+        Assert.Equal("Doe", jsonToken.Claims.FirstOrDefault(c => c.Type == "familyName")?.Value);
+    }
+
+    [Fact]
+    public void GenerateToken_WithAdditionalClaims_DoesNotDuplicateReservedClaims()
+    {
+        // Arrange: Callback token may include "sub" and "email"; we must not add them again or JWT payload
+        // would have "sub": [a, b] which .NET's reader rejects
+        var user = new User
+        {
+            Email = "user@example.com",
+            IalLevel = UserIalLevel.None
+        };
+        var additionalClaims = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+        {
+            ["sub"] = "idp-sub-123",
+            ["email"] = "other@example.com",
+            ["phone"] = "+13035551234"
+        };
+
+        // Act
+        var token = _jwtTokenService.GenerateToken(user, additionalClaims);
+
+        // Assert: sub and email remain the portal values (from user); phone is added
+        var handler = new JwtSecurityTokenHandler();
+        var jsonToken = handler.ReadJwtToken(token);
+        var subClaims = jsonToken.Claims.Where(c => c.Type == JwtRegisteredClaimNames.Sub).ToList();
+        var emailClaims = jsonToken.Claims.Where(c => c.Type == ClaimTypes.Email || c.Type == "email").ToList();
+        Assert.Single(subClaims);
+        Assert.Equal(user.Email, subClaims[0].Value);
+        Assert.Single(emailClaims);
+        Assert.Equal(user.Email, emailClaims[0].Value);
+        Assert.Equal("+13035551234", jsonToken.Claims.FirstOrDefault(c => c.Type == "phone")?.Value);
+    }
+
+    [Fact]
+    public void GenerateToken_WithNullAdditionalClaims_BehavesAsSingleArgumentOverload()
+    {
+        var user = new User { Email = "user@example.com", IalLevel = UserIalLevel.None };
+
+        var token = _jwtTokenService.GenerateToken(user, null);
+
+        Assert.NotNull(token);
+        var handler = new JwtSecurityTokenHandler();
+        var jsonToken = handler.ReadJwtToken(token);
+        Assert.Equal(user.Email, jsonToken.Claims.First(c => c.Type == JwtRegisteredClaimNames.Sub).Value);
+    }
 }
 
