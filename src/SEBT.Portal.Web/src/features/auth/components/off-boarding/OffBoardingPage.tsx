@@ -1,5 +1,6 @@
 'use client'
 
+import { useRouter } from 'next/navigation'
 import { useEffect, useState } from 'react'
 
 import { Button } from '@/components/ui'
@@ -20,11 +21,20 @@ interface OffBoardingPageProps {
  * Reads offboardingReason and canApply from sessionStorage (set by the referring page).
  */
 export function OffBoardingPage({ contactLink, applyLink }: OffBoardingPageProps) {
+  const router = useRouter()
+
   // Read sessionStorage once on initial render (lazy initializer avoids setState-in-effect)
+  const [reason] = useState(() => {
+    if (typeof window === 'undefined') return null
+    return sessionStorage.getItem(SK_REASON)
+  })
   const [canApply] = useState(() => {
     if (typeof window === 'undefined') return false
     return sessionStorage.getItem(SK_CAN_APPLY) === 'true'
   })
+
+  // reason is available for future copy differentiation by offboarding scenario
+  void reason
 
   // Clean up sessionStorage on unmount — the values have been read
   useEffect(() => {
@@ -56,8 +66,7 @@ export function OffBoardingPage({ contactLink, applyLink }: OffBoardingPageProps
               type="button"
               className="usa-button--outline margin-right-2"
               onClick={() => {
-                // Navigate back to id-proofing form
-                window.location.href = '/login/id-proofing'
+                router.push('/login/id-proofing')
               }}
             >
               {/* TODO: Use t('offboarding.actionBack') once key is available in dc.csv */}

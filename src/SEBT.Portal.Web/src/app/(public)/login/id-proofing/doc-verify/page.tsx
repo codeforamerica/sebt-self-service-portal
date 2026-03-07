@@ -2,8 +2,15 @@ import { DocVerifyPage } from '@/features/auth/components/doc-verify'
 import { getStateLinks } from '@/lib/links'
 import { getState } from '@/lib/state'
 
-// TODO: Replace with actual SDK key from environment variable once Socure sandbox is available
-const SOCURE_SDK_KEY = process.env.NEXT_PUBLIC_SOCURE_SDK_KEY ?? 'mock-sdk-key'
+function requireSdkKey(): string {
+  const key = process.env.NEXT_PUBLIC_SOCURE_SDK_KEY
+  if (!key) {
+    throw new Error('NEXT_PUBLIC_SOCURE_SDK_KEY environment variable is required')
+  }
+  return key
+}
+
+const SOCURE_SDK_KEY = requireSdkKey()
 
 export default function DocVerifyRoute() {
   const state = getState()

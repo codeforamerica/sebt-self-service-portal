@@ -27,6 +27,12 @@ declare global {
 let scriptLoadPromise: Promise<void> | null = null
 
 function loadSocureScript(): Promise<void> {
+  // If the cached promise resolved but the SDK global disappeared (e.g., script removed),
+  // invalidate the cache so we re-load the script.
+  if (scriptLoadPromise && !window.SocureDocVSDK) {
+    scriptLoadPromise = null
+  }
+
   if (scriptLoadPromise) {
     return scriptLoadPromise
   }

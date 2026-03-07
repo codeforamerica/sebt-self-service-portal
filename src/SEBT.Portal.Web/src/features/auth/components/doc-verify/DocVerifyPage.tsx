@@ -88,7 +88,7 @@ export function DocVerifyPage({ contactLink, sdkKey }: DocVerifyPageProps) {
 
   // "Continue" click handler — JIT token fetch, then transition to capture sub-state.
   // The actual adapter.launch() happens inside DocVerifyCapture after its container mounts.
-  const handleContinue = useCallback(async () => {
+  const handleContinue = async () => {
     if (!challengeId) return
     setError(null)
 
@@ -118,7 +118,7 @@ export function DocVerifyPage({ contactLink, sdkKey }: DocVerifyPageProps) {
       // TODO: Use t('docVerify.errorStartChallenge') once key is available in dc.csv
       setError('Something went wrong starting document verification. Please try again.')
     }
-  }, [challengeId, startChallenge, sdkKey, router])
+  }
 
   const handleEnterIdNumber = useCallback(() => {
     clearChallengeContext()

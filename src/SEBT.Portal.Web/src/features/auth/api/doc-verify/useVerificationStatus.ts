@@ -17,7 +17,11 @@ async function fetchVerificationStatus(challengeId: string): Promise<Verificatio
 }
 
 // Exponential backoff: 1s → 2s → 4s → 8s → 10s (capped)
+const BASE_INTERVAL_MS = 1000
 const MAX_INTERVAL_MS = 10000
+
+// Stop automatic polling after this many fetches (~5 min at max interval)
+const MAX_POLL_COUNT = 30
 
 export function useVerificationStatus(challengeId: string | undefined) {
   return useQuery({
@@ -30,9 +34,16 @@ export function useVerificationStatus(challengeId: string | undefined) {
       if (status === 'verified' || status === 'rejected') {
         return false
       }
-      // Exponential backoff using TanStack Query's built-in fetch counter
+
       const count = query.state.dataUpdateCount
-      const interval = Math.min(1000 * 2 ** Math.max(0, count - 1), MAX_INTERVAL_MS)
+
+      // Stop automatic polling after MAX_POLL_COUNT — manual "Check status" still works
+      if (count >= MAX_POLL_COUNT) {
+        return false
+      }
+
+      // Exponential backoff using TanStack Query's built-in fetch counter
+      const interval = Math.min(BASE_INTERVAL_MS * 2 ** Math.max(0, count - 1), MAX_INTERVAL_MS)
       return interval
     },
     retry: (failureCount, error) => {
@@ -41,6 +52,6 @@ export function useVerificationStatus(challengeId: string | undefined) {
       }
       return failureCount < 2
     },
-    retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 10000)
+    retryDelay: (attemptIndex) => Math.min(BASE_INTERVAL_MS * 2 ** attemptIndex, MAX_INTERVAL_MS)
   })
 }
