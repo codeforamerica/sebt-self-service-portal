@@ -1,7 +1,15 @@
 import { render, screen } from '@testing-library/react'
-import { beforeEach, describe, expect, it } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { OffBoardingPage } from './OffBoardingPage'
+
+const mockPush = vi.fn()
+
+vi.mock('next/navigation', () => ({
+  useRouter: () => ({
+    push: mockPush
+  })
+}))
 
 const TEST_CONTACT_LINK = 'https://example.com/contact'
 const TEST_APPLY_LINK = 'https://example.com/apply'

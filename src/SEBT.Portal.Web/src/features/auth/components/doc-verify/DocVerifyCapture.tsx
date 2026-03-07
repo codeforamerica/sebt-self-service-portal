@@ -34,10 +34,14 @@ export function DocVerifyCapture({ adapter, launchConfig }: DocVerifyCaptureProp
     const currentAdapter = adapterRef.current
     const config = configRef.current
 
-    currentAdapter.launch({
-      ...config,
-      containerId: SDK_CONTAINER_ID
-    })
+    currentAdapter
+      .launch({
+        ...config,
+        containerId: SDK_CONTAINER_ID
+      })
+      .catch((error: unknown) => {
+        config.onError?.(error)
+      })
 
     return () => {
       currentAdapter.reset()
