@@ -33,7 +33,8 @@ export const env = createEnv({
    */
   client: {
     NEXT_PUBLIC_STATE: z.enum(['dc', 'co']),
-    NEXT_PUBLIC_GA_ID: z.string().startsWith('G-').optional()
+    NEXT_PUBLIC_GA_ID: z.string().startsWith('G-').optional(),
+    NEXT_PUBLIC_SOCURE_SDK_KEY: z.string().min(1).optional()
   },
 
   /**
@@ -50,7 +51,8 @@ export const env = createEnv({
     OIDC_LANGUAGE_PARAM: process.env.OIDC_LANGUAGE_PARAM,
     OIDC_COMPLETE_LOGIN_SIGNING_KEY: process.env.OIDC_COMPLETE_LOGIN_SIGNING_KEY,
     NEXT_PUBLIC_STATE: process.env.NEXT_PUBLIC_STATE,
-    NEXT_PUBLIC_GA_ID: process.env.NEXT_PUBLIC_GA_ID
+    NEXT_PUBLIC_GA_ID: process.env.NEXT_PUBLIC_GA_ID,
+    NEXT_PUBLIC_SOCURE_SDK_KEY: process.env.NEXT_PUBLIC_SOCURE_SDK_KEY
   },
 
   /**

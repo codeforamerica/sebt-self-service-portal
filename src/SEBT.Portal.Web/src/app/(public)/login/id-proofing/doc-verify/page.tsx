@@ -10,16 +10,15 @@ function requireSdkKey(): string {
   return key
 }
 
-const SOCURE_SDK_KEY = requireSdkKey()
-
 export default function DocVerifyRoute() {
+  const sdkKey = requireSdkKey()
   const state = getState()
   const links = getStateLinks(state)
 
   return (
     <DocVerifyPage
       contactLink={links.external.contactUsAssistance}
-      sdkKey={SOCURE_SDK_KEY}
+      sdkKey={sdkKey}
     />
   )
 }
