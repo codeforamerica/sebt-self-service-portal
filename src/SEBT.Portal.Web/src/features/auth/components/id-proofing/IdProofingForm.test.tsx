@@ -290,7 +290,7 @@ describe('IdProofingForm', () => {
   })
 
   describe('Response routing', () => {
-    it('navigates to doc-verify and stores challengeId when documentVerificationRequired', async () => {
+    it('navigates to doc-verify with challengeId in URL when documentVerificationRequired', async () => {
       server.use(
         http.post('/api/id-proofing', () => {
           return HttpResponse.json({
@@ -315,11 +315,14 @@ describe('IdProofingForm', () => {
       await user.click(screen.getByRole('radio', { name: LABEL_NONE }))
       await user.click(screen.getByRole('button', { name: /continue/i }))
 
+      // challengeId is passed via URL query param (D4, D5)
       await waitFor(() => {
-        expect(mockPush).toHaveBeenCalledWith('/login/id-proofing/doc-verify')
+        expect(mockPush).toHaveBeenCalledWith(
+          '/login/id-proofing/doc-verify?challengeId=challenge-abc'
+        )
       })
+      // sessionStorage stores challengeId as mobile recovery fallback (D6)
       expect(sessionStorage.getItem('docVerify_challengeId')).toBe('challenge-abc')
-      expect(sessionStorage.getItem('docVerify_allowIdRetry')).toBe('true')
     })
 
     it('shows error when documentVerificationRequired but challengeId is missing', async () => {

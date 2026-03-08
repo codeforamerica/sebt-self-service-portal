@@ -110,12 +110,12 @@ export function IdProofingForm({ idOptions, contactLink }: IdProofingFormProps) 
           setSubmitError('Unable to start document verification. Please try again.')
           return
         }
-        // Store challenge context in sessionStorage for the doc-verify page (D2, D6)
+        // Store challengeId in sessionStorage as fallback for mobile recovery (D6)
         // Clear any stale sub-state from a previous attempt so DocVerifyPage starts fresh
         sessionStorage.removeItem('docVerify_subState')
         sessionStorage.setItem('docVerify_challengeId', response.challengeId)
-        sessionStorage.setItem('docVerify_allowIdRetry', String(response.allowIdRetry ?? false))
-        router.push('/login/id-proofing/doc-verify')
+        // challengeId in URL is the primary source; sessionStorage is the mobile recovery fallback (D4, D5)
+        router.push(`/login/id-proofing/doc-verify?challengeId=${response.challengeId}`)
       } else if (response.result === 'failed') {
         const params = new URLSearchParams()
         if (response.canApply === false) {
