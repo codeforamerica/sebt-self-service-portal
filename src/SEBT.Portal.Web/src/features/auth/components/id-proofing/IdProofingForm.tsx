@@ -111,6 +111,8 @@ export function IdProofingForm({ idOptions, contactLink }: IdProofingFormProps) 
           return
         }
         // Store challenge context in sessionStorage for the doc-verify page (D2, D6)
+        // Clear any stale sub-state from a previous attempt so DocVerifyPage starts fresh
+        sessionStorage.removeItem('docVerify_subState')
         sessionStorage.setItem('docVerify_challengeId', response.challengeId)
         sessionStorage.setItem('docVerify_allowIdRetry', String(response.allowIdRetry ?? false))
         router.push('/login/id-proofing/doc-verify')

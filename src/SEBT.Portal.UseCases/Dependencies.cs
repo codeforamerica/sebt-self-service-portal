@@ -18,6 +18,7 @@ public static class Dependencies
         services.RegisterCommandHandler<SubmitIdProofingCommand, SubmitIdProofingResponse, SubmitIdProofingCommandHandler>();
         services.RegisterCommandHandler<StartChallengeCommand, StartChallengeResponse, StartChallengeCommandHandler>();
         services.RegisterQueryHandler<GetVerificationStatusQuery, VerificationStatusResponse, GetVerificationStatusQueryHandler>();
+        services.RegisterCommandHandler<ProcessWebhookCommand, ProcessWebhookCommandHandler>();
 
         return services;
     }
