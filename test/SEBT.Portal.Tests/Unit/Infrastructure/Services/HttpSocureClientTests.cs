@@ -18,7 +18,7 @@ public class HttpSocureClientTests
     {
         UseStub = false,
         ApiKey = "test-api-key",
-        BaseUrl = "https://riskos.socure.com",
+        BaseUrl = "https://riskos.sandbox.socure.com",
         ApiVersion = "2025-01-01.orion",
         Workflow = "consumer_onboarding",
         DocvEnrichmentName = "SocureDocRequest"
@@ -220,9 +220,10 @@ public class HttpSocureClientTests
         var root = doc.RootElement;
         Assert.Equal("42", root.GetProperty("id").GetString());
         Assert.Equal("consumer_onboarding", root.GetProperty("workflow").GetString());
+        Assert.True(root.TryGetProperty("timestamp", out _), "Request should include timestamp");
         var individual = root.GetProperty("data").GetProperty("individual");
         Assert.Equal("user@example.com", individual.GetProperty("email").GetString());
-        Assert.Equal("1990-06-15", individual.GetProperty("dob").GetString());
+        Assert.Equal("1990-06-15", individual.GetProperty("date_of_birth").GetString());
         Assert.Equal("123-45-6789", individual.GetProperty("national_id").GetString());
     }
 

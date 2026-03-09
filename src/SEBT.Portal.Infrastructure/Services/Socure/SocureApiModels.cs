@@ -13,6 +13,9 @@ internal class SocureEvaluationRequest
     [JsonPropertyName("workflow")]
     public string Workflow { get; init; } = string.Empty;
 
+    [JsonPropertyName("timestamp")]
+    public string Timestamp { get; init; } = string.Empty;
+
     [JsonPropertyName("data")]
     public SocureEvaluationRequestData Data { get; init; } = new();
 }
@@ -28,8 +31,8 @@ internal class SocureIndividual
     [JsonPropertyName("email")]
     public string? Email { get; init; }
 
-    [JsonPropertyName("dob")]
-    public string? Dob { get; init; }
+    [JsonPropertyName("date_of_birth")]
+    public string? DateOfBirth { get; init; }
 
     [JsonPropertyName("national_id")]
     public string? NationalId { get; init; }

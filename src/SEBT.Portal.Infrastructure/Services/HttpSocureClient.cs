@@ -114,7 +114,7 @@ public class HttpSocureClient(
         var individual = new SocureIndividual
         {
             Email = email,
-            Dob = dateOfBirth,
+            DateOfBirth = dateOfBirth,
             NationalId = !string.IsNullOrWhiteSpace(idType) && !string.IsNullOrWhiteSpace(idValue)
                 ? idValue
                 : null,
@@ -125,6 +125,7 @@ public class HttpSocureClient(
         {
             Id = userId.ToString(),
             Workflow = settings.Workflow,
+            Timestamp = DateTime.UtcNow.ToString("o"),
             Data = new SocureEvaluationRequestData { Individual = individual }
         };
     }

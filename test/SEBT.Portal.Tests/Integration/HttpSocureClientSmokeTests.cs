@@ -28,7 +28,7 @@ public class HttpSocureClientSmokeTests(ITestOutputHelper output)
         {
             UseStub = false,
             ApiKey = ApiKey!,
-            BaseUrl = "https://riskos.socure.com",
+            BaseUrl = "https://riskos.sandbox.socure.com",
             ApiVersion = "2025-01-01.orion",
             Workflow = "consumer_onboarding",
             DocvEnrichmentName = "SocureDocRequest"
@@ -145,15 +145,16 @@ public class HttpSocureClientSmokeTests(ITestOutputHelper output)
 
         var requestBody = JsonSerializer.Serialize(new
         {
-            id = "smoke-test-diag",
+            id = $"smoke-test-diag-{Guid.NewGuid():N}",
+            timestamp = DateTime.UtcNow.ToString("o"),
             workflow = "consumer_onboarding",
             data = new
             {
                 individual = new
                 {
                     email = "smoketest@example.com",
-                    dob = "1990-01-15",
-                    national_id = "999-99-9999",
+                    date_of_birth = "1990-01-15",
+                    national_id = "999999999",
                     docv = new { config = new { } }
                 }
             }
@@ -161,7 +162,7 @@ public class HttpSocureClientSmokeTests(ITestOutputHelper output)
 
         output.WriteLine($"Request body: {requestBody}");
 
-        var request = new HttpRequestMessage(HttpMethod.Post, "https://riskos.socure.com/api/evaluation")
+        var request = new HttpRequestMessage(HttpMethod.Post, "https://riskos.sandbox.socure.com/api/evaluation")
         {
             Content = new StringContent(requestBody, Encoding.UTF8, "application/json")
         };

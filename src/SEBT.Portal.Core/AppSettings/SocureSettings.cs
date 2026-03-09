@@ -26,7 +26,7 @@ public class SocureSettings
     /// <summary>
     /// Base URL for the Socure API (sandbox or production).
     /// </summary>
-    public string BaseUrl { get; set; } = "https://riskos.socure.com";
+    public string BaseUrl { get; set; } = "https://riskos.sandbox.socure.com";
 
     /// <summary>
     /// Secret used to validate incoming webhook signatures.
