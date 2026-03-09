@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using NSubstitute;
@@ -15,53 +16,52 @@ namespace SEBT.Portal.Tests.Integration.PluginIntegration;
 /// WebApplicationFactory for plugin integration tests.
 /// Loads real MEF plugins from specified directories instead of registering mocks.
 /// Uses InMemory EF and mock migrator/seeder (same as PortalWebApplicationFactory)
-/// but does NOT register mock plugin stubs — real plugins or DefaultEnrollmentCheckService
-/// provide the implementations.
+/// but does NOT register mock plugin stubs — real plugins or default fallbacks
+/// provide the implementations via PluginLoader factory delegates.
 /// </summary>
 /// <remarks>
-/// Environment variables must be set in the constructor because plugin loading
-/// (AddPlugins) runs in Program.cs inline code before ConfigureWebHost callbacks fire.
-/// All env vars are saved and restored on Dispose to avoid cross-test contamination.
+/// Plugin paths and connection strings are injected via ConfigureAppConfiguration.
+/// PluginLoader reads IConfiguration at DI resolution time, so it sees these
+/// overrides without needing process-global environment variables.
 /// </remarks>
 public class PluginIntegrationWebApplicationFactory : WebApplicationFactory<Program>
 {
-    private readonly Dictionary<string, string?> _originalEnvVars = new();
+    private readonly string? _pluginDir;
+    private readonly Dictionary<string, string>? _configOverrides;
 
     public PluginIntegrationWebApplicationFactory(
         string? pluginDir = null,
         Dictionary<string, string>? configOverrides = null)
     {
-        // Resolve plugin path to an absolute path that WithAssembliesInPath can use.
-        // Path.Combine(AppContext.BaseDirectory, absolutePath) returns absolutePath
-        // because Path.Combine ignores the first arg when the second is absolute.
-        if (pluginDir != null)
-        {
-            SetEnvVar("PluginAssemblyPaths__0", PluginPathResolver.Resolve(pluginDir));
-        }
-        else
-        {
-            // Point at a non-existent directory so AddPlugins doesn't throw
-            // on missing config. WithAssembliesInPath silently skips it.
-            SetEnvVar("PluginAssemblyPaths__0", "plugins-none");
-        }
-
-        SetEnvVar("JwtSettings__SecretKey",
-            "integration-test-key-must-be-at-least-32-bytes-long");
-
-        // Apply config overrides as env vars (e.g., DCConnector__ConnectionString).
-        // The __ separator maps to : in .NET's configuration system.
-        if (configOverrides != null)
-        {
-            foreach (var (key, value) in configOverrides)
-            {
-                SetEnvVar(key.Replace(":", "__"), value);
-            }
-        }
+        _pluginDir = pluginDir;
+        _configOverrides = configOverrides;
     }
 
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
         builder.UseEnvironment("Development");
+
+        builder.ConfigureAppConfiguration((_, config) =>
+        {
+            var overrides = new Dictionary<string, string?>
+            {
+                ["PluginAssemblyPaths:0"] = _pluginDir != null
+                    ? PluginPathResolver.Resolve(_pluginDir)
+                    : "plugins-none",
+                ["JwtSettings:SecretKey"] =
+                    "integration-test-key-must-be-at-least-32-bytes-long",
+            };
+
+            if (_configOverrides != null)
+            {
+                foreach (var (key, value) in _configOverrides)
+                {
+                    overrides[key] = value;
+                }
+            }
+
+            config.AddInMemoryCollection(overrides);
+        });
 
         builder.ConfigureServices(services =>
         {
@@ -100,31 +100,5 @@ public class PluginIntegrationWebApplicationFactory : WebApplicationFactory<Prog
             // passes. TryAddSingleton is a no-op if a real plugin already registered it.
             services.TryAddSingleton(Substitute.For<ISummerEbtCaseService>());
         });
-    }
-
-    protected override void Dispose(bool disposing)
-    {
-        base.Dispose(disposing);
-        if (disposing)
-        {
-            // Restore all original env var values to avoid cross-test contamination
-            foreach (var (key, originalValue) in _originalEnvVars)
-            {
-                Environment.SetEnvironmentVariable(key, originalValue);
-            }
-        }
-    }
-
-    /// <summary>
-    /// Saves the current value and sets the new one.
-    /// </summary>
-    private void SetEnvVar(string key, string? value)
-    {
-        if (!_originalEnvVars.ContainsKey(key))
-        {
-            _originalEnvVars[key] = Environment.GetEnvironmentVariable(key);
-        }
-
-        Environment.SetEnvironmentVariable(key, value);
     }
 }
