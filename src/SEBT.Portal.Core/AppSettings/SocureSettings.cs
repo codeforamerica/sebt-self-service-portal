@@ -45,4 +45,16 @@ public class SocureSettings
     /// Socure API version header value.
     /// </summary>
     public string ApiVersion { get; set; } = "2025-01-01.orion";
+
+    /// <summary>
+    /// Socure workflow name for evaluation requests.
+    /// Configurable per environment — may differ between sandbox and production.
+    /// </summary>
+    public string Workflow { get; set; } = "consumer_onboarding";
+
+    /// <summary>
+    /// Name of the data enrichment that contains DocV session data in the evaluation response.
+    /// May vary by workflow — defaults to the sandbox onboarding workflow enrichment name.
+    /// </summary>
+    public string DocvEnrichmentName { get; set; } = "SocureDocRequest";
 }
