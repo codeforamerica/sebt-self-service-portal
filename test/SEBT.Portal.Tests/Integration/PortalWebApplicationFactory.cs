@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using NSubstitute;
 using SEBT.Portal.Core.Services;
@@ -18,25 +19,17 @@ namespace SEBT.Portal.Tests.Integration;
 /// </summary>
 public class PortalWebApplicationFactory : WebApplicationFactory<Program>
 {
-    private readonly Dictionary<string, string?> _originalEnvVars = new();
-
-    public PortalWebApplicationFactory()
-    {
-        // These environment variables must be available *before* the host builder
-        // runs inline code in Program.cs. Environment variables are the earliest
-        // configuration source — ConfigureWebHost callbacks fire too late.
-        // Save and restore originals to avoid race conditions with other factories.
-        SetEnvVar("PluginAssemblyPaths__0", "plugins-test");
-
-        // JWT auth middleware requires a non-empty secret key even for AllowAnonymous endpoints,
-        // because the middleware always runs (it authenticates but doesn't require auth).
-        SetEnvVar("JwtSettings__SecretKey",
-            "integration-test-key-must-be-at-least-32-bytes-long");
-    }
-
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
         builder.UseEnvironment("Development");
+
+        builder.ConfigureAppConfiguration((_, config) =>
+            config.AddInMemoryCollection(new Dictionary<string, string?>
+            {
+                ["PluginAssemblyPaths:0"] = "plugins-test",
+                ["JwtSettings:SecretKey"] =
+                    "integration-test-key-must-be-at-least-32-bytes-long",
+            }));
 
         builder.ConfigureServices(services =>
         {
@@ -69,34 +62,11 @@ public class PortalWebApplicationFactory : WebApplicationFactory<Program>
             }
             services.AddScoped(_ => Substitute.For<IDatabaseSeeder>());
 
-            // Register mock stubs for plugin interfaces that other services depend on.
-            // Without plugins loaded, these are missing and DI validation fails.
+            // Override plugin factory delegates with mocks.
+            // These AddSingleton calls come after AddPlugins' factory registrations
+            // (which ran during Program.cs), so they win — last registration wins in DI.
             services.AddSingleton(Substitute.For<ISummerEbtCaseService>());
             services.AddSingleton(Substitute.For<IEnrollmentCheckService>());
         });
-    }
-
-    protected override void Dispose(bool disposing)
-    {
-        base.Dispose(disposing);
-        if (disposing)
-        {
-            // Restore original env var values (not null them out) to avoid
-            // race conditions with other WebApplicationFactory instances.
-            foreach (var (key, originalValue) in _originalEnvVars)
-            {
-                Environment.SetEnvironmentVariable(key, originalValue);
-            }
-        }
-    }
-
-    private void SetEnvVar(string key, string? value)
-    {
-        if (!_originalEnvVars.ContainsKey(key))
-        {
-            _originalEnvVars[key] = Environment.GetEnvironmentVariable(key);
-        }
-
-        Environment.SetEnvironmentVariable(key, value);
     }
 }
