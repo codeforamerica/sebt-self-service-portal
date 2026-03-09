@@ -1,3 +1,5 @@
+using System.Security.Cryptography;
+using System.Text;
 using Microsoft.Extensions.Logging;
 using SEBT.Portal.Core.AppSettings;
 using SEBT.Portal.Core.Models.Auth;
@@ -113,22 +115,23 @@ public class ProcessWebhookCommandHandler(
         return Result.Success();
     }
 
-    private bool ValidateWebhookSignature(string? signature)
+    private bool ValidateWebhookSignature(string? bearerToken)
     {
-        // In dev/stub mode, skip signature validation (D11)
+        // In dev/stub mode, skip validation (D11)
         if (socureSettings.UseStub)
         {
             return true;
         }
 
-        // Placeholder: real validation will be implemented when Socure webhook signing is documented
-        if (string.IsNullOrWhiteSpace(signature) || string.IsNullOrWhiteSpace(socureSettings.WebhookSecret))
+        if (string.IsNullOrWhiteSpace(bearerToken) || string.IsNullOrWhiteSpace(socureSettings.WebhookSecret))
         {
             return false;
         }
 
-        // TODO: Implement actual HMAC signature validation when Socure docs are available
-        return true;
+        // Constant-time comparison to prevent timing attacks
+        return CryptographicOperations.FixedTimeEquals(
+            Encoding.UTF8.GetBytes(bearerToken),
+            Encoding.UTF8.GetBytes(socureSettings.WebhookSecret));
     }
 
     private async Task<DocVerificationChallenge?> FindChallengeByCorrelation(

@@ -63,6 +63,54 @@ public class ProcessWebhookCommandHandlerTests
             .UpdateAsync(Arg.Any<DocVerificationChallenge>(), Arg.Any<CancellationToken>());
     }
 
+    [Fact]
+    public async Task Handle_ShouldAcceptWebhook_WhenBearerTokenMatchesSecret()
+    {
+        var settings = new SocureSettings { UseStub = false, WebhookSecret = "my-webhook-secret" };
+        var handler = new ProcessWebhookCommandHandler(
+            challengeRepository, userRepository, settings, validator, logger);
+        var challenge = DocVerificationChallengeFactory.CreatePendingChallenge();
+        var user = new User { Id = challenge.UserId, Email = "test@example.com" };
+
+        challengeRepository.GetBySocureReferenceIdAsync("ref-456", Arg.Any<CancellationToken>())
+            .Returns(challenge);
+        userRepository.GetUserByIdAsync(challenge.UserId, Arg.Any<CancellationToken>())
+            .Returns(user);
+
+        var command = new ProcessWebhookCommand
+        {
+            EventId = "evt-123",
+            ReferenceId = "ref-456",
+            DocumentDecision = "accept",
+            WebhookSignature = "my-webhook-secret" // Matches the configured secret
+        };
+
+        var result = await handler.Handle(command, CancellationToken.None);
+
+        Assert.True(result.IsSuccess);
+    }
+
+    [Fact]
+    public async Task Handle_ShouldRejectWebhook_WhenBearerTokenDoesNotMatchSecret()
+    {
+        var settings = new SocureSettings { UseStub = false, WebhookSecret = "correct-secret" };
+        var handler = new ProcessWebhookCommandHandler(
+            challengeRepository, userRepository, settings, validator, logger);
+
+        var command = new ProcessWebhookCommand
+        {
+            EventId = "evt-123",
+            ReferenceId = "ref-456",
+            DocumentDecision = "accept",
+            WebhookSignature = "wrong-secret" // Does NOT match
+        };
+
+        var result = await handler.Handle(command, CancellationToken.None);
+
+        Assert.False(result.IsSuccess);
+        Assert.IsType<UnauthorizedResult>(result);
+    }
+
     // --- Idempotency (Codex test 3) ---
 
     [Fact]

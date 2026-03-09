@@ -1,3 +1,4 @@
+using System.Text.Json;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using SEBT.Portal.Api.Models.IdProofing;
@@ -32,15 +33,19 @@ public class WebhookController(ILogger<WebhookController> logger) : ControllerBa
         [FromServices] ICommandHandler<ProcessWebhookCommand> handler,
         CancellationToken cancellationToken)
     {
-        var signature = Request.Headers["X-Socure-Signature"].FirstOrDefault();
+        var signature = Request.Headers["Authorization"].FirstOrDefault();
+        // Strip "Bearer " prefix if present
+        var bearerToken = signature?.StartsWith("Bearer ", StringComparison.OrdinalIgnoreCase) == true
+            ? signature["Bearer ".Length..]
+            : signature;
 
         var command = new ProcessWebhookCommand
         {
             EventId = payload.EventId ?? string.Empty,
-            ReferenceId = payload.ReferenceId,
-            EvalId = payload.EvalId,
-            DocumentDecision = payload.DataEnrichments?.DocumentVerification?.Decision?.Value,
-            WebhookSignature = signature
+            EvalId = payload.Data?.EvalId,
+            ReferenceId = ExtractReferenceId(payload),
+            DocumentDecision = ExtractDocumentDecision(payload),
+            WebhookSignature = bearerToken
         };
 
         var result = await handler.Handle(command, cancellationToken);
@@ -52,5 +57,52 @@ public class WebhookController(ILogger<WebhookController> logger) : ControllerBa
         }
 
         return Ok();
+    }
+
+    private static string? ExtractReferenceId(WebhookPayload payload)
+    {
+        var docRequest = payload.Data?.DataEnrichments?
+            .FirstOrDefault(e => string.Equals(
+                e.EnrichmentProvider, "SocureDocRequest", StringComparison.OrdinalIgnoreCase));
+
+        if (docRequest?.Response == null)
+            return null;
+
+        try
+        {
+            return docRequest.Response.Value.GetProperty("referenceId").GetString();
+        }
+        catch (KeyNotFoundException)
+        {
+            return null;
+        }
+    }
+
+    private static string? ExtractDocumentDecision(WebhookPayload payload)
+    {
+        // The DocV decision is in the enrichment that has a documentVerification property
+        var docvEnrichment = payload.Data?.DataEnrichments?
+            .FirstOrDefault(e => e.Response != null && HasDocumentVerification(e.Response.Value));
+
+        if (docvEnrichment?.Response == null)
+            return null;
+
+        try
+        {
+            return docvEnrichment.Response.Value
+                .GetProperty("documentVerification")
+                .GetProperty("decision")
+                .GetProperty("value")
+                .GetString();
+        }
+        catch (KeyNotFoundException)
+        {
+            return null;
+        }
+    }
+
+    private static bool HasDocumentVerification(JsonElement response)
+    {
+        return response.TryGetProperty("documentVerification", out _);
     }
 }
