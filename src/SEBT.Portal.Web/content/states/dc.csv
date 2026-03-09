@@ -643,4 +643,18 @@ GLOBAL - Link Google Translate,Google Translate Disclaimer,Google Translate Disc
 GLOBAL - Link About,About DC.GOV,About DC.GOV,,,
 GLOBAL - Link Terms,Terms and Conditions,Terms and Conditions,,,
 GLOBAL - Copyrite,© 2026 District of Columbia,© 2026 District of Columbia,,,
-VALIDATION - ,A new code has been sent to your email.,A new code has been sent to your email.,,,
+GLOBAL - Title Contact Us,,Summer EBT Help Desk,,Línea de ayuda de Summer EBT,
+GLOBAL - Title Accessibility,,Accessibility at CDHS,,Accesibilidad en CDHS,
+GLOBAL - Body Accessibility,,"CDHS is committed to meeting members
+of our community where they are, and
+strives to provide all Coloradans with
+access to our programs, services,
+resources, activities and communication
+regardless of ability.",,"CDHS está comprometido a encontrarse con las personas de nuestra comunidad donde estén y se esfuerza por brindar a todas las personas de Colorado acceso a nuestros programas, servicios, recursos, actividades y comunicaciones, independientemente de su capacidad.",
+VALIDATION - ,A new code has been sent to your email.,A new code has been sent to your email.,,,VALIDATION - New Code,A new code has been sent to your email.,A new code has been sent to your email.,Se ha enviado un nuevo código a tu correo electrónico.,Se ha enviado un nuevo código a tu correo electrónico.,
+
+S10 - Step-up Disclaimer - Title,,Please wait...,,,
+S10 - Step-up Disclaimer - Body,,Do not exit the page. Checking to see if we have enough information.,,,
+S10 - Step-up Failure - Title,,"We're sorry, we aren't able to show your Summer EBT information",,,
+S10 - Step-up Failure - Body,,You can contact us if you need more help.,,,
+S10 - Step-up Failure - Action,,Contact us,,Contáctanos,

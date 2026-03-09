@@ -1,3 +1,12 @@
+export {
+  StartChallengeResponseSchema,
+  VerificationStatusResponseSchema,
+  useStartChallenge,
+  useVerificationStatus,
+  type StartChallengeResponse,
+  type VerificationStatusResponse
+} from './doc-verify'
+
 export { useRefreshToken } from './refresh-token'
 
 export {
