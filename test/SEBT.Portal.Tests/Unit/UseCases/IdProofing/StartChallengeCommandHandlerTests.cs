@@ -119,13 +119,58 @@ public class StartChallengeCommandHandlerTests
             .StartDocvSessionAsync(Arg.Any<int>(), Arg.Any<string>(), Arg.Any<CancellationToken>());
     }
 
-    // --- Successful start ---
+    // --- Stored DocV data path (single-call design) ---
 
     [Fact]
-    public async Task Handle_ShouldCreateDocvSession_WhenChallengeIsCreated()
+    public async Task Handle_ShouldUseStoredDocvData_WhenChallengeAlreadyHasToken()
     {
         var handler = CreateHandler();
         var challenge = DocVerificationChallengeFactory.CreateChallengeForUser(userId: 1);
+        var expectedToken = challenge.DocvTransactionToken!;
+        var expectedUrl = challenge.DocvUrl!;
+
+        var command = new StartChallengeCommand
+        {
+            ChallengeId = challenge.PublicId,
+            UserId = 1
+        };
+
+        challengeRepository.GetByPublicIdAsync(command.ChallengeId, command.UserId, Arg.Any<CancellationToken>())
+            .Returns(challenge);
+
+        var result = await handler.Handle(command, CancellationToken.None);
+
+        Assert.True(result.IsSuccess);
+        var response = result.Value;
+        Assert.Equal(expectedToken, response.DocvTransactionToken);
+        Assert.Equal(expectedUrl, response.DocvUrl);
+
+        // Should NOT call Socure — data was already stored
+        await socureClient.DidNotReceive()
+            .StartDocvSessionAsync(Arg.Any<int>(), Arg.Any<string>(), Arg.Any<CancellationToken>());
+        // Should NOT need to look up the user
+        await userRepository.DidNotReceive()
+            .GetUserByIdAsync(Arg.Any<int>(), Arg.Any<CancellationToken>());
+        // Should update challenge to Pending
+        await challengeRepository.Received(1)
+            .UpdateAsync(Arg.Is<DocVerificationChallenge>(c =>
+                c.Status == DocVerificationStatus.Pending),
+                Arg.Any<CancellationToken>());
+    }
+
+    // --- Fallback: Socure call when no stored data ---
+
+    [Fact]
+    public async Task Handle_ShouldCallSocure_WhenChallengeHasNoStoredDocvData()
+    {
+        var handler = CreateHandler();
+        var challenge = DocVerificationChallengeFactory.CreateChallengeForUser(userId: 1, c =>
+        {
+            c.DocvTransactionToken = null;
+            c.DocvUrl = null;
+            c.SocureReferenceId = null;
+            c.EvalId = null;
+        });
         var command = new StartChallengeCommand
         {
             ChallengeId = challenge.PublicId,
@@ -158,13 +203,17 @@ public class StartChallengeCommandHandlerTests
                 Arg.Any<CancellationToken>());
     }
 
-    // --- Socure failure ---
+    // --- Socure failure (fallback path) ---
 
     [Fact]
     public async Task Handle_ShouldReturnDependencyFailed_WhenSocureSessionFails()
     {
         var handler = CreateHandler();
-        var challenge = DocVerificationChallengeFactory.CreateChallengeForUser(userId: 1);
+        var challenge = DocVerificationChallengeFactory.CreateChallengeForUser(userId: 1, c =>
+        {
+            c.DocvTransactionToken = null;
+            c.DocvUrl = null;
+        });
         var command = new StartChallengeCommand
         {
             ChallengeId = challenge.PublicId,

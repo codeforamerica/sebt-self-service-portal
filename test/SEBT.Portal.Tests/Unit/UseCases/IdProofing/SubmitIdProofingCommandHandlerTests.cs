@@ -221,6 +221,42 @@ public class SubmitIdProofingCommandHandlerTests
                 c.UserId == command.UserId && c.AllowIdRetry), Arg.Any<CancellationToken>());
     }
 
+    // --- DocV session stored on challenge ---
+
+    [Fact]
+    public async Task Handle_ShouldStoreDocvSessionOnChallenge_WhenAssessmentIncludesDocvSession()
+    {
+        var handler = CreateHandler();
+        var command = CreateValidCommand();
+        var docvSession = new SocureDocvSession("token-abc", "https://verify.socure.com/#/dv/token-abc", "ref-456", "eval-789");
+
+        userRepository.GetUserByIdAsync(command.UserId, Arg.Any<CancellationToken>())
+            .Returns(new User { Id = command.UserId, Email = "test@example.com" });
+        challengeRepository.GetActiveByUserIdAsync(command.UserId, Arg.Any<CancellationToken>())
+            .Returns((DocVerificationChallenge?)null);
+        socureClient.RunIdProofingAssessmentAsync(
+                command.UserId, "test@example.com", command.DateOfBirth,
+                command.IdType, command.IdValue, Arg.Any<CancellationToken>())
+            .Returns(Result<IdProofingAssessmentResult>.Success(
+                new IdProofingAssessmentResult(
+                    IdProofingOutcome.DocumentVerificationRequired,
+                    AllowIdRetry: true,
+                    DocvSession: docvSession)));
+
+        var result = await handler.Handle(command, CancellationToken.None);
+
+        Assert.True(result.IsSuccess);
+
+        // Verify the challenge was created with DocV data from the assessment
+        await challengeRepository.Received(1)
+            .CreateAsync(Arg.Is<DocVerificationChallenge>(c =>
+                c.DocvTransactionToken == "token-abc"
+                && c.DocvUrl == "https://verify.socure.com/#/dv/token-abc"
+                && c.SocureReferenceId == "ref-456"
+                && c.EvalId == "eval-789"),
+                Arg.Any<CancellationToken>());
+    }
+
     // --- Socure client failure ---
 
     [Fact]

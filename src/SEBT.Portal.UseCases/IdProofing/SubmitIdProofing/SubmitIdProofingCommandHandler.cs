@@ -114,7 +114,11 @@ public class SubmitIdProofingCommandHandler(
         {
             UserId = userId,
             AllowIdRetry = assessment.AllowIdRetry,
-            ExpiresAt = DateTime.UtcNow.AddMinutes(socureSettings.ChallengeExpirationMinutes)
+            ExpiresAt = DateTime.UtcNow.AddMinutes(socureSettings.ChallengeExpirationMinutes),
+            DocvTransactionToken = assessment.DocvSession?.DocvTransactionToken,
+            DocvUrl = assessment.DocvSession?.DocvUrl,
+            SocureReferenceId = assessment.DocvSession?.ReferenceId,
+            EvalId = assessment.DocvSession?.EvalId
         };
 
         await challengeRepository.CreateAsync(challenge, cancellationToken);

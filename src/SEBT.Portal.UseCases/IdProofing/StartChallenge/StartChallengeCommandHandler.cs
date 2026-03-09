@@ -66,7 +66,21 @@ public class StartChallengeCommandHandler(
                 $"Challenge is in {challenge.Status} state and cannot be started.");
         }
 
-        // Load user for Socure call (needs email)
+        // If DocV data was stored during assessment (single-call design), use it directly
+        if (challenge.DocvTransactionToken != null && challenge.DocvUrl != null)
+        {
+            challenge.TransitionTo(DocVerificationStatus.Pending);
+            await challengeRepository.UpdateAsync(challenge, cancellationToken);
+
+            logger.LogInformation(
+                "Started DocV session for challenge {ChallengeId} using stored token, user {UserId}",
+                command.ChallengeId, command.UserId);
+
+            return Result<StartChallengeResponse>.Success(
+                new StartChallengeResponse(challenge.DocvTransactionToken, challenge.DocvUrl));
+        }
+
+        // Fallback: call Socure if no stored data (e.g., stub client or legacy challenges)
         var user = await userRepository.GetUserByIdAsync(command.UserId, cancellationToken);
         if (user == null)
         {
@@ -74,7 +88,6 @@ public class StartChallengeCommandHandler(
                 PreconditionFailedReason.NotFound, "User not found.");
         }
 
-        // Call Socure to generate a DocV session token
         var sessionResult = await socureClient.StartDocvSessionAsync(
             command.UserId, user.Email, cancellationToken);
 
