@@ -68,7 +68,7 @@ Log.Logger = new LoggerConfiguration()
 builder.Host.UseSerilog();
 
 // Registers plugins and allows them to be constructor injected into ASP.NET controllers
-builder.Services.AddPlugins(builder.Configuration);
+builder.Services.AddPlugins();
 
 // Add services to the container.
 builder.Services.AddControllers();
