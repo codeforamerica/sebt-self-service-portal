@@ -9,7 +9,6 @@ namespace SEBT.Portal.Tests.Integration.PluginIntegration;
 /// when no state-specific plugin is loaded. Exercises the full HTTP pipeline:
 /// POST /api/enrollment/check → controller → handler → DefaultEnrollmentCheckService.
 /// </summary>
-[Collection("PluginIntegration")]
 public class DefaultEnrollmentCheckIntegrationTests : IDisposable
 {
     private readonly PluginIntegrationWebApplicationFactory _factory;

@@ -14,7 +14,6 @@ namespace SEBT.Portal.Tests.Integration.PluginIntegration;
 ///
 /// Tests skip gracefully when either condition is not met.
 /// </summary>
-[Collection("PluginIntegration")]
 public class CoEnrollmentCheckIntegrationTests : IDisposable
 {
     private readonly PluginIntegrationWebApplicationFactory? _factory;
@@ -47,8 +46,8 @@ public class CoEnrollmentCheckIntegrationTests : IDisposable
                 pluginDir: "plugins-co",
                 configOverrides: new Dictionary<string, string>
                 {
-                    ["COConnector__CbmsApiBaseUrl"] = apiBaseUrl,
-                    ["COConnector__CbmsApiKey"] = apiKey
+                    ["COConnector:CbmsApiBaseUrl"] = apiBaseUrl,
+                    ["COConnector:CbmsApiKey"] = apiKey
                 });
             _client = _factory.CreateClient();
         }

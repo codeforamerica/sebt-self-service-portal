@@ -15,7 +15,6 @@ namespace SEBT.Portal.Tests.Integration.PluginIntegration;
 ///
 /// Tests skip gracefully when plugin DLLs are not present or can't be loaded.
 /// </summary>
-[Collection("PluginIntegration")]
 public class DcEnrollmentCheckIntegrationTests : IClassFixture<DcSourceDatabaseFixture>, IDisposable
 {
     private readonly PluginIntegrationWebApplicationFactory? _factory;
@@ -40,7 +39,7 @@ public class DcEnrollmentCheckIntegrationTests : IClassFixture<DcSourceDatabaseF
                 pluginDir: "plugins-dc",
                 configOverrides: new Dictionary<string, string>
                 {
-                    ["DCConnector__ConnectionString"] = dcDatabase.ConnectionString
+                    ["DCConnector:ConnectionString"] = dcDatabase.ConnectionString
                 });
             _client = _factory.CreateClient();
             _canRun = true;
