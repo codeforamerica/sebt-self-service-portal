@@ -1,6 +1,7 @@
 using System.Net;
 using System.Net.Http.Json;
 using System.Text.Json;
+using Microsoft.Extensions.Configuration;
 
 namespace SEBT.Portal.Tests.Integration.PluginIntegration;
 
@@ -10,7 +11,8 @@ namespace SEBT.Portal.Tests.Integration.PluginIntegration;
 ///
 /// These tests require:
 /// - CO plugin DLLs built into plugins-co/
-/// - COConnector__CbmsApiBaseUrl and COConnector__CbmsApiKey environment variables set
+/// - COConnector:CbmsApiBaseUrl and COConnector:CbmsApiKey configured via
+///   .NET User Secrets (local dev) or environment variables (CI)
 ///
 /// Tests skip gracefully when either condition is not met.
 /// </summary>
@@ -24,8 +26,14 @@ public class CoEnrollmentCheckIntegrationTests : IDisposable
     public CoEnrollmentCheckIntegrationTests()
     {
         var pluginsAvailable = PluginPathResolver.HasPluginDlls("plugins-co");
-        var apiBaseUrl = Environment.GetEnvironmentVariable("COConnector__CbmsApiBaseUrl");
-        var apiKey = Environment.GetEnvironmentVariable("COConnector__CbmsApiKey");
+
+        var config = new ConfigurationBuilder()
+            .AddEnvironmentVariables()
+            .AddUserSecrets<CoEnrollmentCheckIntegrationTests>(optional: true)
+            .Build();
+
+        var apiBaseUrl = config["COConnector:CbmsApiBaseUrl"];
+        var apiKey = config["COConnector:CbmsApiKey"];
 
         if (!pluginsAvailable)
         {
@@ -35,7 +43,7 @@ public class CoEnrollmentCheckIntegrationTests : IDisposable
         else if (string.IsNullOrEmpty(apiBaseUrl) || string.IsNullOrEmpty(apiKey))
         {
             _canRun = false;
-            _skipReason = "COConnector__CbmsApiBaseUrl and/or COConnector__CbmsApiKey not set";
+            _skipReason = "COConnector:CbmsApiBaseUrl and/or COConnector:CbmsApiKey not configured";
         }
         else
         {
