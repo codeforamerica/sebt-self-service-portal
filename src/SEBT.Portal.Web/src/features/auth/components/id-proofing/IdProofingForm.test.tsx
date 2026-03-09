@@ -20,6 +20,10 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { server } from '@/mocks/server'
 
+import {
+  SK_ALLOW_ID_RETRY,
+  SK_CHALLENGE_ID
+} from '@/features/auth/components/doc-verify/sessionKeys'
 import { AuthProvider } from '../../context'
 import { IdProofingForm, type IdOption } from './IdProofingForm'
 
@@ -318,8 +322,8 @@ describe('IdProofingForm', () => {
       await waitFor(() => {
         expect(mockPush).toHaveBeenCalledWith('/login/id-proofing/doc-verify')
       })
-      expect(sessionStorage.getItem('docVerify_challengeId')).toBe('challenge-abc')
-      expect(sessionStorage.getItem('docVerify_allowIdRetry')).toBe('true')
+      expect(sessionStorage.getItem(SK_CHALLENGE_ID)).toBe('challenge-abc')
+      expect(sessionStorage.getItem(SK_ALLOW_ID_RETRY)).toBe('true')
     })
 
     it('shows error when documentVerificationRequired but challengeId is missing', async () => {

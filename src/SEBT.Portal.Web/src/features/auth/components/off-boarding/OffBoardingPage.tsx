@@ -94,13 +94,15 @@ export function OffBoardingPage({ contactLink, applyLink }: OffBoardingPageProps
                 enter your child&apos;s information.
               </p>
 
-              <a
-                href={applyLink ?? '#'}
-                className="usa-button margin-top-2"
-              >
-                {/* TODO: Use t('offboarding.actionApply') once key is available in dc.csv */}
-                Apply now
-              </a>
+              {applyLink && (
+                <a
+                  href={applyLink}
+                  className="usa-button margin-top-2"
+                >
+                  {/* TODO: Use t('offboarding.actionApply') once key is available in dc.csv */}
+                  Apply now
+                </a>
+              )}
             </div>
           )}
 

@@ -5,18 +5,17 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 
 import { Alert } from '@/components/ui'
 
+import {
+  SK_ALLOW_ID_RETRY,
+  SK_CHALLENGE_ID,
+  SK_SUB_STATE,
+  SubState
+} from '@/features/auth/components/doc-verify/sessionKeys'
 import { useStartChallenge } from '../../api'
 import { createDocVAdapter, type DocVAdapter, type DocVAdapterConfig } from './adapters'
 import { DocVerifyCapture } from './DocVerifyCapture'
 import { DocVerifyInterstitial } from './DocVerifyInterstitial'
 import { VerificationPending } from './VerificationPending'
-
-// SessionStorage keys for challenge state persistence (D6)
-const SK_CHALLENGE_ID = 'docVerify_challengeId'
-const SK_ALLOW_ID_RETRY = 'docVerify_allowIdRetry'
-const SK_SUB_STATE = 'docVerify_subState'
-
-type SubState = 'interstitial' | 'capture' | 'pending'
 
 interface DocVerifyPageProps {
   contactLink: string
