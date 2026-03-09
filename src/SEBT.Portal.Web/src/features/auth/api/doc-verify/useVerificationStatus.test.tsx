@@ -94,22 +94,6 @@ describe('useVerificationStatus', () => {
     })
   })
 
-  it('parses allowIdRetry from status response', async () => {
-    server.use(
-      http.get('/api/id-proofing/status', () => {
-        return HttpResponse.json({ status: 'pending', allowIdRetry: true })
-      })
-    )
-
-    const { result } = renderHook(() => useVerificationStatus('challenge-123'), {
-      wrapper: createWrapper()
-    })
-
-    await waitFor(() => {
-      expect(result.current.data?.allowIdRetry).toBe(true)
-    })
-  })
-
   it('reports error on 401', async () => {
     server.use(
       http.get('/api/id-proofing/status', () => {

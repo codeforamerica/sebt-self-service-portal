@@ -1,39 +1,52 @@
 'use client'
 
-import { useRouter, useSearchParams } from 'next/navigation'
+import { useRouter } from 'next/navigation'
 import { useCallback, useEffect, useRef, useState } from 'react'
 
 import { Alert } from '@/components/ui'
 
-import { useStartChallenge, useVerificationStatus } from '../../api'
+import {
+  SK_ALLOW_ID_RETRY,
+  SK_CHALLENGE_ID,
+  SK_SUB_STATE,
+  SubState
+} from '@/features/auth/components/doc-verify/sessionKeys'
+import { useStartChallenge } from '../../api'
 import { createDocVAdapter, type DocVAdapter, type DocVAdapterConfig } from './adapters'
 import { DocVerifyCapture } from './DocVerifyCapture'
 import { DocVerifyInterstitial } from './DocVerifyInterstitial'
 import { VerificationPending } from './VerificationPending'
-
-// SessionStorage keys for challenge state persistence (D6)
-const SK_CHALLENGE_ID = 'docVerify_challengeId'
-const SK_SUB_STATE = 'docVerify_subState'
-
-type SubState = 'interstitial' | 'capture' | 'pending'
 
 interface DocVerifyPageProps {
   contactLink: string
   sdkKey: string
 }
 
+function readChallengeContext(): {
+  challengeId: string | null
+  allowIdRetry: boolean
+  subState: SubState | null
+} {
+  const challengeId = sessionStorage.getItem(SK_CHALLENGE_ID)
+  const allowIdRetry = sessionStorage.getItem(SK_ALLOW_ID_RETRY) === 'true'
+  const persisted = sessionStorage.getItem(SK_SUB_STATE)
+  const subState = persisted === 'capture' || persisted === 'pending' ? persisted : null
+  return { challengeId, allowIdRetry, subState }
+}
+
 function clearChallengeContext(): void {
   sessionStorage.removeItem(SK_CHALLENGE_ID)
+  sessionStorage.removeItem(SK_ALLOW_ID_RETRY)
   sessionStorage.removeItem(SK_SUB_STATE)
 }
 
 export function DocVerifyPage({ contactLink, sdkKey }: DocVerifyPageProps) {
   const router = useRouter()
-  const searchParams = useSearchParams()
   const startChallenge = useStartChallenge()
 
   const [subState, setSubState] = useState<SubState>('interstitial')
   const [challengeId, setChallengeId] = useState<string | null>(null)
+  const [allowIdRetry, setAllowIdRetry] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
   // Capture launch config — set by handleContinue, consumed by DocVerifyCapture on mount
@@ -51,40 +64,26 @@ export function DocVerifyPage({ contactLink, sdkKey }: DocVerifyPageProps) {
   const adapter = adapterRef.current
   /* eslint-enable react-hooks/refs */
 
-  // Read challengeId from URL query param (primary) or sessionStorage (fallback for mobile recovery)
+  // Read persisted challenge context on mount (D6)
   useEffect(() => {
-    const urlChallengeId = searchParams.get('challengeId')
-    const storedChallengeId = sessionStorage.getItem(SK_CHALLENGE_ID)
-    const resolvedId = urlChallengeId || storedChallengeId
+    const ctx = readChallengeContext()
 
-    if (!resolvedId) {
+    if (!ctx.challengeId) {
       // No challenge context — redirect to id-proofing form
       router.replace('/login/id-proofing')
       return
     }
 
-    setChallengeId(resolvedId)
-
-    // Persist to sessionStorage if resolved from URL (mobile recovery needs it)
-    if (urlChallengeId && !storedChallengeId) {
-      sessionStorage.setItem(SK_CHALLENGE_ID, urlChallengeId)
-    }
+    setChallengeId(ctx.challengeId)
+    setAllowIdRetry(ctx.allowIdRetry)
 
     // If the user was in capture (e.g., mobile tab recovery), skip to pending (D6)
-    const persisted = sessionStorage.getItem(SK_SUB_STATE)
-    if (persisted === 'capture' || persisted === 'pending') {
+    if (ctx.subState === 'capture' || ctx.subState === 'pending') {
       adapter.reset()
       setSubState('pending')
       sessionStorage.setItem(SK_SUB_STATE, 'pending')
     }
-  }, [searchParams, router, adapter])
-
-  // Fetch verification status during interstitial to get allowIdRetry (D9: server-derived)
-  // VerificationPending handles its own polling when in the pending sub-state
-  const { data: statusData } = useVerificationStatus(
-    subState === 'interstitial' && challengeId ? challengeId : undefined
-  )
-  const allowIdRetry = statusData?.allowIdRetry ?? false
+  }, [router, adapter])
 
   // "Continue" click handler — JIT token fetch, then transition to capture sub-state.
   // The actual adapter.launch() happens inside DocVerifyCapture after its container mounts.

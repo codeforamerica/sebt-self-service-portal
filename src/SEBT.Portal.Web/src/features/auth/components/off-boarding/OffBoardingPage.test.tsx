@@ -66,6 +66,15 @@ describe('OffBoardingPage', () => {
     )
   })
 
+  it('does not render "Apply now" link when canApply is true but applyLink is omitted', () => {
+    sessionStorage.setItem('offboarding_canApply', 'true')
+
+    render(<OffBoardingPage contactLink={TEST_CONTACT_LINK} />)
+
+    // The apply body text still renders (canApply is true), but no link appears
+    expect(screen.queryByRole('link', { name: /apply now/i })).not.toBeInTheDocument()
+  })
+
   it('reads offboarding context from sessionStorage', () => {
     sessionStorage.setItem('offboarding_reason', 'docVerificationFailed')
     sessionStorage.setItem('offboarding_canApply', 'true')

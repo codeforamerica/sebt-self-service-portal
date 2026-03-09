@@ -6,6 +6,10 @@ import { useTranslation } from 'react-i18next'
 
 import { Alert, Button, InputField } from '@/components/ui'
 
+import {
+  SK_ALLOW_ID_RETRY,
+  SK_CHALLENGE_ID
+} from '@/features/auth/components/doc-verify/sessionKeys'
 import { useSubmitIdProofing, type IdType } from '../../api'
 
 // UI-only sentinel value for the "none" radio option.
@@ -110,12 +114,9 @@ export function IdProofingForm({ idOptions, contactLink }: IdProofingFormProps) 
           setSubmitError('Unable to start document verification. Please try again.')
           return
         }
-        // Store challengeId in sessionStorage as fallback for mobile recovery (D6)
-        // Clear any stale sub-state from a previous attempt so DocVerifyPage starts fresh
-        sessionStorage.removeItem('docVerify_subState')
-        sessionStorage.setItem('docVerify_challengeId', response.challengeId)
-        // challengeId in URL is the primary source; sessionStorage is the mobile recovery fallback (D4, D5)
-        router.push(`/login/id-proofing/doc-verify?challengeId=${response.challengeId}`)
+        sessionStorage.setItem(SK_CHALLENGE_ID, response.challengeId)
+        sessionStorage.setItem(SK_ALLOW_ID_RETRY, String(response.allowIdRetry ?? false))
+        router.push('/login/id-proofing/doc-verify')
       } else if (response.result === 'failed') {
         const params = new URLSearchParams()
         if (response.canApply === false) {
