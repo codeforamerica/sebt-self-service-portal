@@ -53,7 +53,7 @@ public class HttpSocureClientTests
             {
                 new
                 {
-                    enrichment_name = "SocureDocRequest",
+                    enrichment_name = "Socure Document Request - Default Flow",
                     enrichment_provider = "SocureDocRequest",
                     status_code = 200,
                     response = new

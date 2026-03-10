@@ -53,8 +53,9 @@ public class SocureSettings
     public string Workflow { get; set; } = "consumer_onboarding";
 
     /// <summary>
-    /// Name of the data enrichment that contains DocV session data in the evaluation response.
-    /// May vary by workflow — defaults to the sandbox onboarding workflow enrichment name.
+    /// Identifier used to locate the DocV enrichment in the evaluation response.
+    /// Matched against the <c>enrichment_provider</c> field (D16) — not <c>enrichment_name</c>,
+    /// which varies by workflow (e.g. "Socure Document Request - Default Flow" in sandbox).
     /// </summary>
     public string DocvEnrichmentName { get; set; } = "SocureDocRequest";
 }

@@ -169,7 +169,7 @@ public class HttpSocureClient(
 
         var docRequestEnrichment = response.DataEnrichments
             .FirstOrDefault(e => string.Equals(
-                e.EnrichmentName, docvEnrichmentName, StringComparison.OrdinalIgnoreCase));
+                e.EnrichmentProvider, docvEnrichmentName, StringComparison.OrdinalIgnoreCase));
 
         if (docRequestEnrichment?.Response == null)
             return null;
