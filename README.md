@@ -3,45 +3,94 @@
 [![State CI](https://github.com/codeforamerica/sebt-self-service-portal/actions/workflows/state-ci.yaml/badge.svg)](https://github.com/codeforamerica/sebt-self-service-portal/actions/workflows/state-ci.yaml)
 
 ## Background
+
 The Summer EBT (SUN Bucks) Self-Service Portal is an application that allows parents/guardians
 of children eligible for [Summer EBT](https://www.fns.usda.gov/summer/sunbucks) manage their benefit, including the following core features:
+
 - Verifying a child's eligibility
 - Verifying when and how the benefit will be received (which EBT card)
 - Changing mailing address on file
 - Requesting a replacement EBT card
 
-## Quick start 🧰
+## Local Environment Set Up 🧰
+
 > **Note:** The following steps assume you are working on macOS. Steps may differ if you are working on a different operating system.
 
-### Prerequisites 👷
-- The application backend is built with the .NET 10 SDK, which can be downloaded [here](https://dotnet.microsoft.com/en-us/download)
-- Be sure you are running the latest version of [nodeJs](https://nodejs.org/en/download)
-- Frontend packages and local development scripts are managed with [pnpm](https://pnpm.io/).
-- [Docker](https://www.docker.com/) is required for packaging and running containers.
+### 1. Make sure you have downloaded and installed prequisite software 👷
 
-### .NET Tools 🛠️
-.NET tools are CLI utilities installed and managed using [NuGet](https://www.nuget.org/). Currently, we are using
-the `nuget-license` tool for auditing backend dependency license. To install .NET tools,
-run `dotnet tool restore` from the solution root. Needed tools are defined in the tools 
-manifest in `.config/dotnet-tools.json`.
+- [.NET 10 SDK](https://dotnet.microsoft.com/en-us/download) for running the back end
+- The latest version of [nodeJS](https://nodejs.org/en)
+- [pnpm](https://pnpm.io/installation/) for managing front end packages and development scripts
+- [Docker](https://www.docker.com/) Desktop for running and managing containers (includes MSSQL database)
 
-### Development 💻
+### 2. Clone repositories
+
+Clone this repository on your local machine, alongside the [state connector repository](https://github.com/codeforamerica/sebt-self-service-portal-state-connector/) and any revelant state backend connector(s) - for example [DC](https://github.com/codeforamerica/sebt-self-service-portal-dc-connector) or [Colorado](https://github.com/codeforamerica/sebt-self-service-portal-co-connector) - as siblings (within the same parent folder)
+
+  ```bash
+  git clone git@github.com:codeforamerica/sebt-self-service-portal.git
+  git clone git@github.com:codeforamerica/sebt-self-service-portal-state-connector.git
+
+  # Colorado:
+  git clone git@github.com:codeforamerica/sebt-self-service-portal-co-connector.git
+
+  # Washington, DC:
+  git clone git@github.com:codeforamerica/sebt-self-service-portal-dc-connector.git
+  
+  ```
+
+### 3. Create local environment variables
+
+`.env` files are used in this project to set environment variables (eg, database configs). This is a preferred pattern for [12-factor Apps](https://www.12factor.net/config). You'll want to create '.env' files in your local environment, based on the example file.
+
+From the root of this repository, run:
+
 ```bash
-pnpm install          # Install dependencies
+cp .env.example .env
 ```
-***
+
+You'll also want do the same from within /src/SEBT.Portal.Web:
+
+```bash
+cp .env.example .env.local
+```
+
+###  4. Install dependencies
+
+- To install all javascript package dependencies, run `pnpm install` from the root of this repository
+- dotnet tool install --global dotnet-ef
+- .NET tools are CLI utilities installed and managed using [NuGet](https://www.nuget.org/). Currently, we are using the
+  [`nuget-license`](https://www.nuget.org/packages/nuget-license) tool for auditing backend dependency license.  Needed tools are defined in the tools 
+manifest in `.config/dotnet-tools.json`. To install .NET tools, run `dotnet tool restore` from each solution root (ie, each top-level directory containing a `.sln` or `.slnx` file):
+  - /src/SEBT.Portal.Infrastructure
+  - /src/SEBT.Portal.Api
+  
+- The first time you start up the application, you'll also want to run `dotnet build` from within the root of each repository
+
+### 5. Start Services 💻
+
+Make sure the docker daemon is running and you are logged in via your dockerhub account.
+
+```bash
+docker compose up -d # Start MSSQL Database and Mailpit
+```
+
+
 ```bash
 pnpm dev              # Start both API and frontend
 ```
 
-```bash
-pnpm web:dev          # Start frontend only
-```
 
-### Docker Compose
+To open the app, navigate to https://localhost:3000
+
+
+## Development
+
+### Other helpful commands
+
 ```bash
-# Start all services (MSSQL, Mailpit)
-docker compose up -d
+# Start frontend only
+pnpm web:dev  
 
 # View logs
 docker compose logs -f
@@ -53,16 +102,19 @@ docker compose down
 docker compose down -v
 ```
 
-#### Mailpit (Local Email Testing)
+### Mailpit (Local Email Testing)
+
 Mailpit captures all outgoing emails in development. Access the web UI at http://localhost:8025
 
 ### Local Build & Test (Debug mode)
+
 ```bash
 pnpm api:build        # Build backend only (Debug)
 pnpm api:test         # Test backend only
 ```
 
 ### CI Build & Test (Release mode)
+
 ```bash
 pnpm ci:build         # Build frontend + backend (Release)
 pnpm ci:test          # Test frontend + backend
@@ -75,6 +127,7 @@ pnpm ci:test:backend     # Test backend only
 ```
 
 ### CI Testing (Local)
+
 ```bash
 # State-based CI testing
 pnpm ci:test:states   # Test all states
@@ -89,12 +142,14 @@ pnpm ci:validate      # Validate workflows (dry-run)
 ## Branch Strategy 🌿
 
 **State-Specific Development:**
+
 ```bash
 deploy/dc-*    # DC-only changes (only DC builds in CI)
 deploy/co-*    # CO-only changes (only CO builds in CI)
 ```
 
 **Shared Development:**
+
 ```bash
 feature/*      # Changes for all states (all states build in CI)
 main           # Production source for all states
@@ -122,6 +177,7 @@ STATE=dc dotnet run --project src/SEBT.Portal.Api
 # Docker Compose uses STATE from .env
 docker compose up
 ```
+
 Only include sections you want to override; other settings fall back to `appsettings.json`!
 
 ### OIDC support
@@ -137,6 +193,7 @@ See `src/SEBT.Portal.Api/appsettings.Development.example.json` and [ADR-0008](do
 PII data is only shown and editable to users who meet the ID proofing requirements configured within "IdProofingRequirements" and their current IAL status (for example, `address+view`, `email+view`, `phone+view`). Configure in `appsettings.json` or override with `appsettings.{state}.json`.
 
 Example (`appsettings.json`):
+
 ```json
 {
   "IdProofingRequirements": {
@@ -164,6 +221,7 @@ cp .env.example .env
 Available environment variables:
 
 **Database (for Docker Compose):**
+
 - `MSSQL_SA_PASSWORD` - SQL Server SA password
 - `MSSQL_DATABASE` - Database name
 - `MSSQL_USER` - Database user
@@ -171,6 +229,7 @@ Available environment variables:
 - `MSSQL_PORT` - Server port
 
 **API**
+
 - `JWTSETTINGS__SECRETKEY` - Secret key for JWT token signing. Must be at least 32 characters.
 - `IDENTIFIERHASHER__SECRETKEY` - Secret key for HMAC-SHA256 hashing of Household Identifiers as needed. Must be at least 32 characters.
 
@@ -190,6 +249,7 @@ The application uses [Entity Framework Core migrations](https://learn.microsoft.
 While migrations run automatically, you can also manage them manually:
 
 **List all migrations:**
+
 ```bash
 dotnet ef migrations list \
   --project src/SEBT.Portal.Infrastructure/SEBT.Portal.Infrastructure.csproj \
@@ -197,6 +257,7 @@ dotnet ef migrations list \
 ```
 
 **Apply pending migrations:**
+
 ```bash
 dotnet ef database update \
   --project src/SEBT.Portal.Infrastructure/SEBT.Portal.Infrastructure.csproj \
@@ -204,6 +265,7 @@ dotnet ef database update \
 ```
 
 **Create a new migration:**
+
 ```bash
 dotnet ef migrations add MigrationName \
   --project src/SEBT.Portal.Infrastructure/SEBT.Portal.Infrastructure.csproj \
@@ -211,6 +273,7 @@ dotnet ef migrations add MigrationName \
 ```
 
 **Remove the last migration (if not applied):**
+
 ```bash
 dotnet ef migrations remove \
   --project src/SEBT.Portal.Infrastructure/SEBT.Portal.Infrastructure.csproj \
@@ -220,6 +283,7 @@ dotnet ef migrations remove \
 #### Migration Files
 
 Migrations are stored in `src/SEBT.Portal.Infrastructure/Migrations/`:
+
 - Each migration has a timestamp prefix (e.g., `20251212171249_AddUserOptInTable.cs`)
 - The `PortalDbContextModelSnapshot.cs` file tracks the current model state
 - Migration files should be committed to version control
@@ -229,6 +293,7 @@ Migrations are stored in `src/SEBT.Portal.Infrastructure/Migrations/`:
 #### Automatic Seeding
 
 The database is automatically seeded with test users when running in the **Development** environment. Seeding occurs automatically during:
+
 - Database migrations (`dotnet ef database update`)
 - Application startup (when migrations are applied)
 - `DbContext.EnsureCreated()` calls
@@ -236,6 +301,7 @@ The database is automatically seeded with test users when running in the **Devel
 The automatic seeding uses EF Core's `UseSeeding` mechanism under the hood.  See https://learn.microsoft.com/en-us/ef/core/modeling/data-seeding
 
 To help test different workflows and users in different states, the seeder will create the following users unless instructed otherwise:
+
 - `co-loaded@example.com` - A co-loaded user with completed ID proofing
 - `non-co-loaded@example.com` - A non-co-loaded user with in-progress ID proofing
 - `not-started@example.com` - A user who hasn't started ID proofing
@@ -255,6 +321,7 @@ dotnet run --project scripts/ClearSeededData
 This will prompt for confirmation before deleting all seeded records from the database. This is irreversable; once done, you'll have to reseed.
 
 **View database tables example:**
+
 ```bash
 docker exec -it sebt_mssql /opt/mssql-tools18/bin/sqlcmd \
   -S localhost -U sa -P YourStrong@Passw0rd -d SebtPortal -C \
@@ -264,6 +331,7 @@ docker exec -it sebt_mssql /opt/mssql-tools18/bin/sqlcmd \
 Alternatively, I'd highly recommend a tool like [LINQPad](https://www.linqpad.net/) to help with DB-related tasks.
 
 ## Documentation 📚
+
 More documentation can be found in the [docs](./docs) folder.
 
 We use [Lightweight Architecture Decision Records](https://cognitect.com/blog/2011/11/15/documenting-architecture-decisions)
