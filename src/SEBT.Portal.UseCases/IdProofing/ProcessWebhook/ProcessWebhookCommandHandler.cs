@@ -47,7 +47,9 @@ public class ProcessWebhookCommandHandler(
 
         if (challenge == null)
         {
-            logger.LogWarning(
+            // Log at Error — if this starts happening consistently it means the correlation
+            // contract with Socure has changed and all webhooks are being silently dropped.
+            logger.LogError(
                 "Webhook received but no challenge found for ReferenceId={ReferenceId}, EvalId={EvalId}",
                 command.ReferenceId, command.EvalId);
             // Return success to prevent Socure retries — challenge may have been cleaned up
