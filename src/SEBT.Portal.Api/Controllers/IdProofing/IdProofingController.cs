@@ -47,7 +47,7 @@ public class IdProofingController(ILogger<IdProofingController> logger) : Contro
         var command = new SubmitIdProofingCommand
         {
             UserId = userId.Value,
-            DateOfBirth = request.DateOfBirth,
+            DateOfBirth = $"{request.DateOfBirth.Year}-{request.DateOfBirth.Month}-{request.DateOfBirth.Day}",
             IdType = request.IdType,
             IdValue = request.IdValue
         };
