@@ -80,7 +80,11 @@ public class StartChallengeCommandHandler(
                 new StartChallengeResponse(challenge.DocvTransactionToken, challenge.DocvUrl));
         }
 
-        // Fallback: call Socure if no stored data (e.g., stub client or legacy challenges)
+        // Fallback: call Socure if no stored data (e.g., stub client in dev mode).
+        // The real HttpSocureClient generates DocV tokens during the assessment call and does
+        // not support StartDocvSessionAsync. If we reach here with the real client, it means the
+        // challenge was created without DocV data — return a clear error so the frontend can
+        // redirect the user to re-submit ID proofing.
         var user = await userRepository.GetUserByIdAsync(command.UserId, cancellationToken);
         if (user == null)
         {
@@ -88,8 +92,22 @@ public class StartChallengeCommandHandler(
                 PreconditionFailedReason.NotFound, "User not found.");
         }
 
-        var sessionResult = await socureClient.StartDocvSessionAsync(
-            command.UserId, user.Email, cancellationToken);
+        Result<SocureDocvSession> sessionResult;
+        try
+        {
+            sessionResult = await socureClient.StartDocvSessionAsync(
+                command.UserId, user.Email, cancellationToken);
+        }
+        catch (NotSupportedException)
+        {
+            logger.LogWarning(
+                "Challenge {ChallengeId} has no stored DocV data and the Socure client does not " +
+                "support on-demand session creation. User {UserId} must re-submit ID proofing.",
+                command.ChallengeId, command.UserId);
+            return Result<StartChallengeResponse>.DependencyFailed(
+                DependencyFailedReason.ConnectionFailed,
+                "Document verification session expired. Please re-submit your information.");
+        }
 
         if (!sessionResult.IsSuccess)
         {

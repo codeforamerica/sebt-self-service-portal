@@ -238,6 +238,41 @@ public class StartChallengeCommandHandlerTests
             .UpdateAsync(Arg.Any<DocVerificationChallenge>(), Arg.Any<CancellationToken>());
     }
 
+    // --- NotSupportedException from real client (token expiration dead end) ---
+
+    [Fact]
+    public async Task Handle_ShouldReturnDependencyFailed_WhenSocureClientDoesNotSupportOnDemandSessions()
+    {
+        var handler = CreateHandler();
+        var challenge = DocVerificationChallengeFactory.CreateChallengeForUser(userId: 1, c =>
+        {
+            c.DocvTransactionToken = null;
+            c.DocvUrl = null;
+        });
+        var command = new StartChallengeCommand
+        {
+            ChallengeId = challenge.PublicId,
+            UserId = 1
+        };
+
+        challengeRepository.GetByPublicIdAsync(command.ChallengeId, command.UserId, Arg.Any<CancellationToken>())
+            .Returns(challenge);
+        userRepository.GetUserByIdAsync(command.UserId, Arg.Any<CancellationToken>())
+            .Returns(new User { Id = command.UserId, Email = "test@example.com" });
+        socureClient.StartDocvSessionAsync(command.UserId, "test@example.com", Arg.Any<CancellationToken>())
+            .Returns<Result<SocureDocvSession>>(_ => throw new NotSupportedException(
+                "DocV tokens are generated during the evaluation call."));
+
+        var result = await handler.Handle(command, CancellationToken.None);
+
+        Assert.False(result.IsSuccess);
+        Assert.IsType<DependencyFailedResult<StartChallengeResponse>>(result);
+
+        // Should NOT update challenge state
+        await challengeRepository.DidNotReceive()
+            .UpdateAsync(Arg.Any<DocVerificationChallenge>(), Arg.Any<CancellationToken>());
+    }
+
     // --- Guid.Empty treated as not found ---
 
     [Fact]
