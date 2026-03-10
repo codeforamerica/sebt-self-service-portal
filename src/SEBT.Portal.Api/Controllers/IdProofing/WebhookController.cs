@@ -2,6 +2,7 @@ using System.Text.Json;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using SEBT.Portal.Api.Models.IdProofing;
+using SEBT.Portal.Core.AppSettings;
 using SEBT.Portal.Kernel;
 using SEBT.Portal.Kernel.AspNetCore;
 using SEBT.Portal.UseCases.IdProofing;
@@ -16,7 +17,9 @@ namespace SEBT.Portal.Api.Controllers.IdProofing;
 [ApiController]
 [Route("api/socure")]
 [AllowAnonymous]
-public class WebhookController(ILogger<WebhookController> logger) : ControllerBase
+public class WebhookController(
+    SocureSettings socureSettings,
+    ILogger<WebhookController> logger) : ControllerBase
 {
     /// <summary>
     /// Receives a Socure evaluation_completed webhook.
@@ -59,11 +62,11 @@ public class WebhookController(ILogger<WebhookController> logger) : ControllerBa
         return Ok();
     }
 
-    private static string? ExtractReferenceId(WebhookPayload payload)
+    private string? ExtractReferenceId(WebhookPayload payload)
     {
         var docRequest = payload.Data?.DataEnrichments?
             .FirstOrDefault(e => string.Equals(
-                e.EnrichmentProvider, "SocureDocRequest", StringComparison.OrdinalIgnoreCase));
+                e.EnrichmentProvider, socureSettings.DocvEnrichmentName, StringComparison.OrdinalIgnoreCase));
 
         if (docRequest?.Response == null)
             return null;
