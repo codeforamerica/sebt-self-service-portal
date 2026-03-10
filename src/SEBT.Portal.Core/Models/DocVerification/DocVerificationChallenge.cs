@@ -115,4 +115,49 @@ public class DocVerificationChallenge
             (DocVerificationStatus.Created, DocVerificationStatus.Expired) => true,
             _ => false
         };
+
+    /// <summary>
+    /// Reconstitutes a challenge from persisted data without replaying state transitions.
+    /// Used by the repository layer during deserialization. Business logic should use
+    /// <see cref="TransitionTo"/> instead.
+    /// </summary>
+    public static DocVerificationChallenge Reconstitute(
+        int id,
+        Guid publicId,
+        int userId,
+        DocVerificationStatus status,
+        string? socureReferenceId,
+        string? evalId,
+        string? socureEventId,
+        string? docvTransactionToken,
+        string? docvUrl,
+        string? offboardingReason,
+        bool allowIdRetry,
+        DateTime createdAt,
+        DateTime updatedAt,
+        DateTime? expiresAt)
+    {
+        var challenge = new DocVerificationChallenge
+        {
+            Id = id,
+            PublicId = publicId,
+            UserId = userId,
+            SocureReferenceId = socureReferenceId,
+            EvalId = evalId,
+            SocureEventId = socureEventId,
+            DocvTransactionToken = docvTransactionToken,
+            DocvUrl = docvUrl,
+            OffboardingReason = offboardingReason,
+            AllowIdRetry = allowIdRetry,
+            CreatedAt = createdAt,
+            UpdatedAt = updatedAt,
+            ExpiresAt = expiresAt
+        };
+
+        // Set status directly — bypasses TransitionTo because this is reconstitution,
+        // not a business state change. The data was validated when it was originally written.
+        challenge.Status = status;
+
+        return challenge;
+    }
 }

@@ -123,60 +123,21 @@ public class DatabaseDocVerificationChallengeRepository(PortalDbContext dbContex
 
     private static DocVerificationChallenge MapToDomainModel(DocVerificationChallengeEntity entity)
     {
-        // Use a factory approach to set the private Status property via TransitionTo
-        var challenge = new DocVerificationChallenge
-        {
-            Id = entity.Id,
-            PublicId = entity.PublicId,
-            UserId = entity.UserId,
-            SocureReferenceId = entity.SocureReferenceId,
-            EvalId = entity.EvalId,
-            SocureEventId = entity.SocureEventId,
-            DocvTransactionToken = entity.DocvTransactionToken,
-            DocvUrl = entity.DocvUrl,
-            OffboardingReason = entity.OffboardingReason,
-            AllowIdRetry = entity.AllowIdRetry,
-            CreatedAt = entity.CreatedAt,
-            UpdatedAt = entity.UpdatedAt,
-            ExpiresAt = entity.ExpiresAt
-        };
-
-        // Restore the persisted status. We need to walk the state machine from Created
-        // to reach the stored status, since Status has a private setter.
-        var targetStatus = (DocVerificationStatus)entity.Status;
-        if (targetStatus != DocVerificationStatus.Created)
-        {
-            RestoreStatus(challenge, targetStatus);
-        }
-
-        return challenge;
-    }
-
-    /// <summary>
-    /// Walks the state machine to restore a persisted status.
-    /// This respects the domain model's transition rules while allowing
-    /// deserialization of any valid persisted state.
-    /// </summary>
-    private static void RestoreStatus(DocVerificationChallenge challenge, DocVerificationStatus target)
-    {
-        switch (target)
-        {
-            case DocVerificationStatus.Pending:
-                challenge.TransitionTo(DocVerificationStatus.Pending);
-                break;
-            case DocVerificationStatus.Verified:
-                challenge.TransitionTo(DocVerificationStatus.Pending);
-                challenge.TransitionTo(DocVerificationStatus.Verified);
-                break;
-            case DocVerificationStatus.Rejected:
-                challenge.TransitionTo(DocVerificationStatus.Pending);
-                challenge.TransitionTo(DocVerificationStatus.Rejected);
-                break;
-            case DocVerificationStatus.Expired:
-                // Expired can come from Created or Pending
-                challenge.TransitionTo(DocVerificationStatus.Expired);
-                break;
-        }
+        return DocVerificationChallenge.Reconstitute(
+            id: entity.Id,
+            publicId: entity.PublicId,
+            userId: entity.UserId,
+            status: (DocVerificationStatus)entity.Status,
+            socureReferenceId: entity.SocureReferenceId,
+            evalId: entity.EvalId,
+            socureEventId: entity.SocureEventId,
+            docvTransactionToken: entity.DocvTransactionToken,
+            docvUrl: entity.DocvUrl,
+            offboardingReason: entity.OffboardingReason,
+            allowIdRetry: entity.AllowIdRetry,
+            createdAt: entity.CreatedAt,
+            updatedAt: entity.UpdatedAt,
+            expiresAt: entity.ExpiresAt);
     }
 
     private static DocVerificationChallengeEntity MapToEntity(DocVerificationChallenge challenge)
