@@ -198,3 +198,4 @@ public class HouseholdRepositoryTests
         Assert.Contains("read-only", ex.Message, StringComparison.OrdinalIgnoreCase);
     }
 }
+

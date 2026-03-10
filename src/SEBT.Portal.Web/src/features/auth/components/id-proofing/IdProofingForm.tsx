@@ -4,9 +4,12 @@ import { useRouter } from 'next/navigation'
 import { useId, useState, type FormEvent } from 'react'
 import { useTranslation } from 'react-i18next'
 
-import { ApiError } from '@/api/client'
 import { Alert, Button, InputField } from '@/components/ui'
 
+import {
+  SK_ALLOW_ID_RETRY,
+  SK_CHALLENGE_ID
+} from '@/features/auth/components/doc-verify/sessionKeys'
 import { useSubmitIdProofing, type IdType } from '../../api'
 
 // UI-only sentinel value for the "none" radio option.
@@ -30,27 +33,23 @@ interface IdProofingFormProps {
   contactLink: string
 }
 
-// Month options for the DOB select field
-// TODO: Localize month names via i18n or Intl.DateTimeFormat once translation keys are available
-const MONTHS = [
-  { value: '01', label: 'January' },
-  { value: '02', label: 'February' },
-  { value: '03', label: 'March' },
-  { value: '04', label: 'April' },
-  { value: '05', label: 'May' },
-  { value: '06', label: 'June' },
-  { value: '07', label: 'July' },
-  { value: '08', label: 'August' },
-  { value: '09', label: 'September' },
-  { value: '10', label: 'October' },
-  { value: '11', label: 'November' },
-  { value: '12', label: 'December' }
-] as const
+// Generate localized month names using Intl.DateTimeFormat
+function getLocalizedMonths(locale: string) {
+  const formatter = new Intl.DateTimeFormat(locale, { month: 'long' })
+  return Array.from({ length: 12 }, (_, i) => ({
+    value: String(i + 1).padStart(2, '0'),
+    label: formatter.format(new Date(2024, i, 1))
+  }))
+}
 
 export function IdProofingForm({ idOptions, contactLink }: IdProofingFormProps) {
   const router = useRouter()
-  const { t } = useTranslation('idProofing')
+  const { t, i18n } = useTranslation('idProofing')
+  const { t: tCommon } = useTranslation('common')
+  const { t: tPersonalInfo } = useTranslation('personalInfo')
+  const { t: tValidation } = useTranslation('validation')
   const formId = useId()
+  const months = getLocalizedMonths(i18n.language)
 
   const [dobMonth, setDobMonth] = useState('')
   const [dobDay, setDobDay] = useState('')
@@ -69,8 +68,7 @@ export function IdProofingForm({ idOptions, contactLink }: IdProofingFormProps) 
   const selectedOption = idOptions.find((opt) => opt.value === selectedIdType)
   const showIdValueInput = selectedIdType !== null && selectedIdType !== NONE_VALUE
 
-  // TODO: Use t('validation.required') once shared validation namespace is set up
-  const REQUIRED_FIELD_ERROR = "We're sorry. Some required questions aren't answered."
+  const REQUIRED_FIELD_ERROR = tValidation('required')
 
   function validateFields(): boolean {
     const newDobErrors: { month?: string; day?: string; year?: string } = {}
@@ -103,20 +101,38 @@ export function IdProofingForm({ idOptions, contactLink }: IdProofingFormProps) 
     if (!validateFields()) return
 
     try {
-      await submitIdProofing.mutateAsync({
+      const response = await submitIdProofing.mutateAsync({
         dateOfBirth: { month: dobMonth, day: dobDay, year: dobYear },
         // Map the UI "none" sentinel to null for the API
         idType: selectedIdType === NONE_VALUE || selectedIdType === null ? null : selectedIdType,
         idValue: showIdValueInput ? idValue.trim() : null
       })
-      router.push('/dashboard')
-    } catch (err) {
-      if (err instanceof ApiError) {
-        setSubmitError(err.message)
+
+      if (response.result === 'documentVerificationRequired') {
+        if (!response.challengeId) {
+          // TODO: Use t('idProofing.errorNoChallengeId') once key is available in dc.csv
+          setSubmitError('Unable to start document verification. Please try again.')
+          return
+        }
+        sessionStorage.setItem(SK_CHALLENGE_ID, response.challengeId)
+        sessionStorage.setItem(SK_ALLOW_ID_RETRY, String(response.allowIdRetry ?? false))
+        router.push('/login/id-proofing/doc-verify')
+      } else if (response.result === 'failed') {
+        const params = new URLSearchParams()
+        if (response.canApply === false) {
+          params.set('canApply', 'false')
+        }
+        const query = params.toString()
+        router.push(`/login/id-proofing/off-boarding${query ? `?${query}` : ''}`)
       } else {
-        // TODO: Use t('errorUnexpected') once key is available in dc.csv
-        setSubmitError('Something went wrong. Please try again.')
+        router.push('/dashboard')
       }
+    } catch (err) {
+      // TODO: Use t('errorUnexpected') once key is available in dc.csv
+      // All errors get the same user-facing message. Raw ApiError.message may contain
+      // backend wording not intended for end users — avoid displaying it directly.
+      void err
+      setSubmitError('Something went wrong. Please try again.')
     }
   }
 
@@ -150,12 +166,11 @@ export function IdProofingForm({ idOptions, contactLink }: IdProofingFormProps) 
                 dobErrors.month ? 'usa-form-group usa-form-group--error' : 'usa-form-group'
               }
             >
-              {/* TODO: Use t('labelDobMonth') once key is available in dc.csv */}
               <label
                 className="usa-label"
                 htmlFor={`${formId}-dob-month`}
               >
-                Month
+                {tPersonalInfo('labelMonth')}
               </label>
               {dobErrors.month && (
                 <span
@@ -175,7 +190,7 @@ export function IdProofingForm({ idOptions, contactLink }: IdProofingFormProps) 
                 aria-invalid={!!dobErrors.month}
               >
                 <option value=""></option>
-                {MONTHS.map((m) => (
+                {months.map((m) => (
                   <option
                     key={m.value}
                     value={m.value}
@@ -190,10 +205,7 @@ export function IdProofingForm({ idOptions, contactLink }: IdProofingFormProps) 
           {/* Day */}
           <div className="mobile-lg:grid-col-4">
             <InputField
-              label={
-                // TODO: Use t('labelDobDay') once key is available in dc.csv
-                'Day'
-              }
+              label={tPersonalInfo('labelDay')}
               type="text"
               inputMode="numeric"
               name="dobDay"
@@ -209,10 +221,7 @@ export function IdProofingForm({ idOptions, contactLink }: IdProofingFormProps) 
           {/* Year */}
           <div className="mobile-lg:grid-col-4">
             <InputField
-              label={
-                // TODO: Use t('labelDobYear') once key is available in dc.csv
-                'Year'
-              }
+              label={tPersonalInfo('labelYear')}
               type="text"
               inputMode="numeric"
               name="dobYear"
@@ -291,15 +300,14 @@ export function IdProofingForm({ idOptions, contactLink }: IdProofingFormProps) 
         </div>
       )}
 
-      {/* TODO: Use t('actionContinue') once key is available in dc.csv */}
       <Button
         type="submit"
         isLoading={isSubmitting}
-        loadingText="Continue..."
+        loadingText={`${tCommon('continue')}...`}
         className="margin-top-3 display-block"
         disabled={isSubmitting}
       >
-        Continue
+        {tCommon('continue')}
       </Button>
 
       <p className="margin-top-4 font-sans-sm">
@@ -309,8 +317,7 @@ export function IdProofingForm({ idOptions, contactLink }: IdProofingFormProps) 
           rel="noopener noreferrer"
           className="usa-link"
         >
-          {/* TODO: Use a help/contact translation key here */}
-          Need help? Contact us.
+          {tCommon('linkContactUs')}
         </a>
       </p>
     </form>

@@ -17,14 +17,21 @@ vi.mock('@/lib/translations', () => ({
   getTranslations: vi.fn().mockImplementation((namespace: string) => {
     const namespaces: Record<string, Record<string, string>> = {
       login: {
-        title: 'Log in to your account',
+        title: 'Access your Summer EBT account',
         body: 'Enter your email to receive a one-time code.',
-        logInDisclaimerBody1: 'You can use the same login you use to access PEAK.',
+        logInDisclaimerBody1:
+          'After tapping "Log in" you\'ll be redirected to log in using your myColorado™ account.',
         logInDisclaimerBody2: 'Contact us if you need assistance logging into your account.'
+      },
+      common: {
+        logIn: 'Log in with myColorado™',
+        logInEsp: 'Iniciar sesión con myColorado™'
       }
     }
+    /* eslint-disable security/detect-object-injection -- test mock; namespace and key are controlled */
     const translations = namespaces[namespace] ?? {}
     return (key: string) => translations[key] ?? key
+    /* eslint-enable security/detect-object-injection */
   })
 }))
 
@@ -49,7 +56,7 @@ describe('LoginPage', () => {
       render(<LoginPage />)
       expect(
         screen.getByRole('heading', {
-          name: /Log in to your Summer EBT account/i
+          name: /Access your Summer EBT account/i
         })
       ).toBeInTheDocument()
     })
@@ -57,28 +64,28 @@ describe('LoginPage', () => {
     it('applies text-primary-dark class to the title', () => {
       render(<LoginPage />)
       const heading = screen.getByRole('heading', {
-        name: /Log in to your Summer EBT account/i
+        name: /Access your Summer EBT account/i
       })
       expect(heading).toHaveClass('text-primary-dark')
     })
 
-    it('renders the PEAK body text', () => {
+    it('renders the disclaimer body text', () => {
       render(<LoginPage />)
       expect(
-        screen.getByText(/You can use the same login you use to access PEAK/i)
+        screen.getByText(/you'll be redirected to log in using your myColorado/i)
       ).toBeInTheDocument()
     })
 
     it('renders the Log in button with primary-dark styling', () => {
       render(<LoginPage />)
-      const logInButton = screen.getByRole('link', { name: 'Log in' })
+      const logInButton = screen.getByRole('link', { name: /Log in with myColorado/i })
       expect(logInButton).toHaveClass('usa-button')
       expect(logInButton).toHaveClass('bg-primary-dark')
     })
 
     it('renders the Iniciar sesión outline button', () => {
       render(<LoginPage />)
-      const espButton = screen.getByRole('link', { name: 'Iniciar sesión' })
+      const espButton = screen.getByRole('link', { name: /Iniciar sesión con myColorado/i })
       expect(espButton).toHaveAttribute('lang', 'es')
       expect(espButton).toHaveClass('usa-button--outline')
       expect(espButton).toHaveClass('border-primary')

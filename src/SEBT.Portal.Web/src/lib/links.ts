@@ -110,22 +110,22 @@ export function getStateLinks(state: StateCode): StateLinks {
 export function getFooterLinks(state: StateCode): LinkItem[] {
   const links = getStateLinks(state)
   return [
-    { key: 'accessibility', href: links.footer.accessibility, translationKey: 'accessibility' },
+    { key: 'accessibility', href: links.footer.accessibility, translationKey: 'linkAccessibility' },
     {
       key: 'privacyAndSecurity',
       href: links.footer.privacyAndSecurity,
-      translationKey: 'privacyAndSecurity'
+      translationKey: 'linkPrivacyPolicy'
     },
     {
       key: 'googleTranslateDisclaimer',
       href: links.footer.googleTranslateDisclaimer,
-      translationKey: 'googleTranslateDisclaimer'
+      translationKey: 'linkGoogleTranslate'
     },
-    { key: 'about', href: links.footer.about, translationKey: 'about' },
+    { key: 'about', href: links.footer.about, translationKey: 'linkAbout' },
     {
       key: 'termsAndConditions',
       href: links.footer.termsAndConditions,
-      translationKey: 'termsAndConditions'
+      translationKey: 'linkTerms'
     }
   ]
 }
@@ -136,11 +136,11 @@ export function getFooterLinks(state: StateCode): LinkItem[] {
 export function getHelpLinks(state: StateCode): LinkItem[] {
   const links = getStateLinks(state)
   return [
-    { key: 'faqs', href: links.help.faqs, translationKey: 'faqs', icon: 'faqs-icon.svg' },
+    { key: 'faqs', href: links.help.faqs, translationKey: 'linkFaqs', icon: 'faqs-icon.svg' },
     {
       key: 'contactUs',
       href: links.help.contactUs,
-      translationKey: 'contactUs',
+      translationKey: 'linkContactUs',
       icon: 'contact-icon.svg'
     }
   ]

@@ -27,6 +27,12 @@ public class PortalWebApplicationFactory : WebApplicationFactory<Program>
         Environment.SetEnvironmentVariable("PluginAssemblyPaths__0", "plugins-none");
         Environment.SetEnvironmentVariable("PluginAssemblyPaths__1", "plugins-none");
 
+        // Provide a dummy JWT secret so the JwtBearer handler can initialize.
+        // The auth middleware runs on every request (including /health), and
+        // PostConfigure reads JwtSettings:SecretKey to create a SymmetricSecurityKey.
+        Environment.SetEnvironmentVariable("JwtSettings__SecretKey",
+            "integration-test-secret-key-at-least-32-chars!");
+
         builder.ConfigureServices(services =>
         {
             // Replace database services with no-op mocks so startup
@@ -54,6 +60,7 @@ public class PortalWebApplicationFactory : WebApplicationFactory<Program>
     {
         Environment.SetEnvironmentVariable("PluginAssemblyPaths__0", null);
         Environment.SetEnvironmentVariable("PluginAssemblyPaths__1", null);
+        Environment.SetEnvironmentVariable("JwtSettings__SecretKey", null);
         base.Dispose(disposing);
     }
 }

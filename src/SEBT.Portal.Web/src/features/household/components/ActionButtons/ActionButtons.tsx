@@ -20,11 +20,10 @@ const ACTIONS: ActionButton[] = [
 export function ActionButtons() {
   const { t } = useTranslation('dashboard')
 
-  // TODO: Add aria-label key to CSV: "S2 - Portal Dashboard - Action Navigation - Nav Label"
   return (
     <nav
       className="margin-bottom-4"
-      aria-label="Quick actions"
+      aria-label={t('actionNavigationNavLabel', 'Quick actions')}
     >
       <p className="margin-top-0 margin-bottom-2 text-base-dark">{t('actionNavigationLead')}</p>
       <ul className="usa-list usa-list--unstyled">

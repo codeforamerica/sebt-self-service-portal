@@ -13,9 +13,9 @@ interface ChildCardProps {
   defaultExpanded?: boolean
 }
 
-function formatDate(isoDate: string): string {
+function formatDate(isoDate: string, locale: string): string {
   const date = new Date(isoDate)
-  return new Intl.DateTimeFormat('en-US', {
+  return new Intl.DateTimeFormat(locale, {
     month: '2-digit',
     day: '2-digit',
     year: 'numeric',
@@ -25,7 +25,7 @@ function formatDate(isoDate: string): string {
 
 // Keys map to CSV: "S2 - Portal Dashboard - Card Table - {Key}"
 export function ChildCard({ child, application, id, defaultExpanded = true }: ChildCardProps) {
-  const { t } = useTranslation('dashboard')
+  const { t, i18n } = useTranslation('dashboard')
   const [isExpanded, setIsExpanded] = useState(defaultExpanded)
   const childName = `${child.firstName} ${child.lastName}`
 
@@ -80,21 +80,20 @@ export function ChildCard({ child, application, id, defaultExpanded = true }: Ch
           {benefitIssueDate && (
             <>
               <dt className="text-bold margin-top-2">{t('cardTableHeadingIssued')}</dt>
-              <dd className="margin-left-0">{formatDate(benefitIssueDate)}</dd>
+              <dd className="margin-left-0">{formatDate(benefitIssueDate, i18n.language)}</dd>
             </>
           )}
           {benefitExpirationDate && (
             <>
               <dt className="text-bold margin-top-2">{t('cardTableHeadingExpDate')}</dt>
-              <dd className="margin-left-0">{formatDate(benefitExpirationDate)}</dd>
+              <dd className="margin-left-0">{formatDate(benefitExpirationDate, i18n.language)}</dd>
             </>
           )}
           {last4DigitsOfCard && (
             <>
               <dt className="text-bold margin-top-2">{t('cardTableHeadingCardNumber')}</dt>
-              {/* TODO: Add to CSV: "S2 - Portal Dashboard - Card Table - Card Number Suffix" */}
               <dd className="margin-left-0">
-                {last4DigitsOfCard} {t('cardTableCardNumberSuffix', '(last 4 digits)')}
+                {t('cardTableLastFourDigits').replace('[9999]', last4DigitsOfCard)}
               </dd>
             </>
           )}

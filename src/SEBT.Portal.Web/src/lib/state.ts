@@ -43,6 +43,7 @@ const defaultConfig: StateConfig = stateConfigs.dc as StateConfig
  * Get the full configuration for a state
  */
 export function getStateConfig(state: StateCode): StateConfig {
+  // eslint-disable-next-line security/detect-object-injection -- state is StateCode union
   return stateConfigs[state] ?? defaultConfig
 }
 

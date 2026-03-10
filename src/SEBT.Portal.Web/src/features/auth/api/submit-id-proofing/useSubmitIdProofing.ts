@@ -2,7 +2,11 @@ import { useMutation } from '@tanstack/react-query'
 
 import { ApiError, apiFetch } from '@/api'
 
-import type { SubmitIdProofingRequest } from './schema'
+import {
+  SubmitIdProofingResponseSchema,
+  type SubmitIdProofingRequest,
+  type SubmitIdProofingResponse
+} from './schema'
 
 // TODO: Replace with actual endpoint path once confirmed with backend team.
 // The confirmed path should NOT start with '/auth/' — apiFetch auto-clears the
@@ -11,11 +15,20 @@ import type { SubmitIdProofingRequest } from './schema'
 // not "session expired," so it must live outside that prefix.
 const ID_PROOFING_ENDPOINT = '/id-proofing'
 
-async function submitIdProofing(data: SubmitIdProofingRequest): Promise<void> {
-  return apiFetch<void>(ID_PROOFING_ENDPOINT, {
+async function submitIdProofing(data: SubmitIdProofingRequest): Promise<SubmitIdProofingResponse> {
+  const response = await apiFetch<SubmitIdProofingResponse>(ID_PROOFING_ENDPOINT, {
     method: 'POST',
-    body: data
+    body: data,
+    schema: SubmitIdProofingResponseSchema
   })
+
+  // apiFetch returns undefined for 204/201 responses, bypassing schema validation.
+  // This endpoint's contract requires a JSON body — guard against a backend mismatch.
+  if (!response) {
+    throw new ApiError('Expected a JSON response from id-proofing endpoint', 422)
+  }
+
+  return response
 }
 
 export function useSubmitIdProofing() {

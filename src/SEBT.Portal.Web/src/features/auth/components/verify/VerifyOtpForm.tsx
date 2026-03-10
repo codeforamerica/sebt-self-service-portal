@@ -75,8 +75,7 @@ export function VerifyOtpForm({ email, contactLink }: VerifyOtpFormProps) {
       if (err instanceof ApiError) {
         setSubmitError(err.message)
       } else {
-        // TODO: Add translation key for unexpected error (e.g., GLOBAL — Error Unexpected)
-        setSubmitError(tLogin('errorUnexpected', 'Something went wrong. Please try again.'))
+        setSubmitError(tValidation('globalInternalError'))
       }
     }
   }
@@ -93,7 +92,7 @@ export function VerifyOtpForm({ email, contactLink }: VerifyOtpFormProps) {
 
     try {
       await requestOtp.mutateAsync({ email })
-      // TODO: Add translation key for code sent success (e.g., S8 — OTP Confirm — Code Sent Success)
+      // TODO: "codeSentSuccess" value exists in CSV but under a broken row key ("VALIDATION -" with no key name) — needs CSV fix
       setSuccessMessage(tLogin('codeSentSuccess', 'A new code has been sent to your email.'))
       resetCountdown()
       startCountdown()
@@ -102,8 +101,7 @@ export function VerifyOtpForm({ email, contactLink }: VerifyOtpFormProps) {
       if (err instanceof ApiError) {
         setSubmitError(err.message)
       } else {
-        // TODO: Add translation key for unexpected error (e.g., GLOBAL — Error Unexpected)
-        setSubmitError(tLogin('errorUnexpected', 'Something went wrong. Please try again.'))
+        setSubmitError(tValidation('globalInternalError'))
       }
     }
   }

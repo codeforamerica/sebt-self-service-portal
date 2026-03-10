@@ -16,7 +16,7 @@ const REFRESH_INTERVAL_MS = 10 * 60 * 1000
 export function TokenRefresher() {
   const { isAuthenticated, login } = useAuth()
   const { mutate } = useRefreshToken()
-  const intervalRef = useRef<NodeJS.Timeout | null>(null)
+  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
 
   const doRefresh = useCallback(() => {
     mutate(undefined, {
@@ -31,7 +31,6 @@ export function TokenRefresher() {
 
   useEffect(() => {
     if (!isAuthenticated) {
-      // Clear interval if not authenticated
       if (intervalRef.current) {
         clearInterval(intervalRef.current)
         intervalRef.current = null
@@ -39,10 +38,7 @@ export function TokenRefresher() {
       return
     }
 
-    // Initial refresh on mount (when entering authenticated area)
     doRefresh()
-
-    // Set up periodic refresh
     intervalRef.current = setInterval(doRefresh, REFRESH_INTERVAL_MS)
 
     return () => {

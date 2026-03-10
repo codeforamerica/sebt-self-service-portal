@@ -9,7 +9,7 @@ import {
   type ReactNode
 } from 'react'
 
-const AUTH_TOKEN_KEY = 'auth_token'
+export const AUTH_TOKEN_KEY = 'auth_token'
 
 interface AuthContextValue {
   token: string | null
@@ -33,6 +33,13 @@ function getTokenSnapshot(): string | null {
     return null
   }
   return sessionStorage.getItem(AUTH_TOKEN_KEY)
+}
+
+/**
+ * Persist token to sessionStorage and notify listeners. Called by login() and by OIDC callback.
+ */
+export function setAuthToken(newToken: string | null): void {
+  setTokenExternal(newToken)
 }
 
 function getServerSnapshot(): string | null {

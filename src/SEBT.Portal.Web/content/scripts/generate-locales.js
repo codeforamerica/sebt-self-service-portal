@@ -116,6 +116,9 @@ const CONFIG = {
     // S8 - Edit screens
     'contact preferences update': 'editContactPreferences',
     'mailing address edit': 'editMailingAddress',
+    // S10 - Step-up verification screens
+    'step-up disclaimer': 'stepUpDisclaimer',
+    'step-up failure': 'stepUpFailure',
     // Global/Common
     'header': 'common',
     'footer': 'common',
@@ -128,6 +131,8 @@ const CONFIG = {
   // This prevents key collisions (e.g., both OTP Enter Email and OTP Confirm have "title")
   pageKeyPrefix: {
     'otp confirm': 'verify',
+    'otp email message': 'email',
+    'co-loaded off-boarding': 'coLoaded',
   },
 };
 
@@ -309,18 +314,23 @@ function buildStateLocaleData(rows, state) {
 
     const { namespace, key } = parsed;
 
-    // English
+    // English — don't overwrite a non-empty value with an empty one
+    // (handles key collisions where multiple CSV rows map to the same namespace+key)
     if (!data.en[namespace]) {
       data.en[namespace] = {};
     }
-    data.en[namespace][key] = englishValue;
+    if (englishValue || !data.en[namespace][key]) {
+      data.en[namespace][key] = englishValue;
+    }
 
-    // Spanish
-    if (spanishIdx !== -1 && spanishValue) {
+    // Spanish — same collision protection
+    if (spanishIdx !== -1) {
       if (!data.es[namespace]) {
         data.es[namespace] = {};
       }
-      data.es[namespace][key] = spanishValue;
+      if (spanishValue || !data.es[namespace][key]) {
+        data.es[namespace][key] = spanishValue;
+      }
     }
   }
 
@@ -346,10 +356,13 @@ function discoverStateCsvFiles() {
 }
 
 /**
- * Calculate combined SHA-256 hash of all state CSV files
+ * Calculate combined SHA-256 hash of all state CSV files and this script
  */
 function calculateCombinedHash(stateFiles) {
   const hash = createHash('sha256');
+
+  // Include the script itself so logic changes invalidate the cache
+  hash.update(readFileSync(fileURLToPath(import.meta.url), 'utf8'));
 
   for (const { state, csvPath } of stateFiles) {
     if (existsSync(csvPath)) {
@@ -513,7 +526,9 @@ function generateResourceFile() {
 
       for (const file of files) {
         const namespace = file.replace('.json', '');
-        const varName = `${lang}${state.toUpperCase()}${namespace.charAt(0).toUpperCase()}${namespace.slice(1)}`;
+        // Sanitize namespace for use as a JS identifier (handle hyphens → camelCase)
+        const safeNs = namespace.replace(/-([a-z])/g, (_, c) => c.toUpperCase());
+        const varName = `${lang}${state.toUpperCase()}${safeNs.charAt(0).toUpperCase()}${safeNs.slice(1)}`;
         const importPath = `@/content/locales/${lang}/${state}/${namespace}.json`;
 
         imports.push({ varName, importPath });
@@ -549,7 +564,9 @@ function generateResourceFile() {
       lines.push(`    ${lang}: {`);
       const sortedNs = Object.keys(stateMap[state][lang]).sort();
       for (const ns of sortedNs) {
-        lines.push(`      ${ns}: ${stateMap[state][lang][ns]},`);
+        // Quote keys that aren't valid JS identifiers (e.g., contain hyphens)
+        const key = /^[a-zA-Z_$][a-zA-Z0-9_$]*$/.test(ns) ? ns : `'${ns}'`;
+        lines.push(`      ${key}: ${stateMap[state][lang][ns]},`);
       }
       lines.push('    },');
     }

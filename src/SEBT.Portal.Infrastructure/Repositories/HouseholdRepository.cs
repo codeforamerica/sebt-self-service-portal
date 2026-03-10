@@ -39,6 +39,7 @@ public class HouseholdRepository : IHouseholdRepository
             _logger.LogDebug("State plugin lookup supports only email identifier; ignoring type {Type}", identifier.Type);
             return Task.FromResult<HouseholdData?>(null);
         }
+
         return GetHouseholdByEmailAsync(identifier.Value, piiVisibility, userIalLevel, cancellationToken);
     }
 

@@ -22,7 +22,11 @@ export const TEST_EMAILS = {
   // OTP validation returns requiresIdProofing: false
   idProofingNotRequired: 'noidproofing@example.com',
   // OTP validation returns token only (no requiresIdProofing field)
-  idProofingAbsent: 'noflag@example.com'
+  idProofingAbsent: 'noflag@example.com',
+  // ID proofing result: documentVerificationRequired with challengeId
+  docVerifyRequired: 'docverify@example.com',
+  // ID proofing result: failed with offboarding reason
+  docVerifyFailed: 'docverifyfail@example.com'
 } as const
 
 // Test OTP codes
@@ -182,6 +186,45 @@ export const handlers = [
     })
   }),
 
+  // OIDC CO config (public; for frontend PKCE flow)
+  http.get('/api/auth/oidc/co/config', () => {
+    return HttpResponse.json({
+      authorizationEndpoint: 'https://auth.example.com/authorize',
+      tokenEndpoint: 'https://auth.example.com/token',
+      clientId: 'test-client',
+      redirectUri: 'http://localhost:3000/callback',
+      languageParam: 'en'
+    })
+  }),
+
+  // OIDC callback (Next.js: exchange + validate; returns callbackToken for complete-login)
+  http.post('/api/auth/oidc/callback', async ({ request }) => {
+    const body = (await request.json()) as {
+      code?: string
+      code_verifier?: string
+      stateCode?: string
+    }
+    const currentState = (process.env.NEXT_PUBLIC_STATE || process.env.STATE || 'dc').toLowerCase()
+    if (!body?.code || !body?.code_verifier || body?.stateCode !== currentState) {
+      return HttpResponse.json(
+        {
+          error: 'Missing or invalid code, code_verifier, or stateCode (must match current state).'
+        },
+        { status: 400 }
+      )
+    }
+    return HttpResponse.json({ callbackToken: 'mock-callback-token-for-testing' })
+  }),
+
+  // OIDC complete-login (.NET: validates callbackToken, creates session, returns portal JWT)
+  http.post('/api/auth/oidc/complete-login', async ({ request }) => {
+    const body = (await request.json()) as { stateCode?: string; callbackToken?: string }
+    if (!body?.stateCode || !body?.callbackToken) {
+      return HttpResponse.json({ error: 'Missing stateCode or callbackToken.' }, { status: 400 })
+    }
+    return HttpResponse.json({ token: 'mock-jwt-token-for-testing' })
+  }),
+
   // Feature flags endpoint
   http.get('/api/features', async () => {
     // Add small delay to allow loading state to be observable in tests
@@ -190,7 +233,8 @@ export const handlers = [
     return HttpResponse.json(TEST_FEATURE_FLAGS)
   }),
 
-  // ID proofing endpoint (stub — backend endpoint TBD)
+  // ID proofing endpoint — returns result with optional challenge context.
+  // Default returns 'matched'. Tests override via server.use() for other scenarios.
   http.post('/api/id-proofing', async ({ request }) => {
     const body = (await request.json()) as SubmitIdProofingRequest
 
@@ -200,8 +244,45 @@ export const handlers = [
       return HttpResponse.json({ error: 'Date of birth is required' }, { status: 400 })
     }
 
-    return HttpResponse.json(null, { status: 204 })
+    // Simulate failure when user selects "none of the above" for ID type
+    if (body.idType === null) {
+      return HttpResponse.json({ result: 'failed', canApply: true })
+    }
+
+    // Simulate step-up failure (canApply: false) with Medicaid ID for dev testing.
+    // In production, the backend determines canApply based on the user's enrollment pathway.
+    if (body.idType === 'medicaidId') {
+      return HttpResponse.json({ result: 'failed', canApply: false })
+    }
+
+    // Default: identity matched
+    return HttpResponse.json({ result: 'matched' })
   }),
+
+  // Challenge start endpoint — returns JIT Socure token (D2)
+  http.get('/api/challenges/:id/start', async () => {
+    await delay(50)
+
+    return HttpResponse.json({
+      docvTransactionToken: 'mock-token-for-testing',
+      docvUrl: 'https://websdk.socure.com'
+    })
+  }),
+
+  // Verification status endpoint — first call returns pending, subsequent returns verified.
+  // Uses a closure counter to simulate async verification (D3).
+  (() => {
+    let callCount = 0
+    return http.get('/api/id-proofing/status', async () => {
+      await delay(50)
+      callCount++
+      if (callCount <= 1) {
+        return HttpResponse.json({ status: 'pending' })
+      }
+      callCount = 0 // Reset for next test
+      return HttpResponse.json({ status: 'verified' })
+    })
+  })(),
 
   // Household data endpoint
   http.get('/api/household/data', async () => {
