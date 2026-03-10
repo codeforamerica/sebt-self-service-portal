@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "concurrently -n \"API,Web\" -c \"blue,green\" \"pnpm api:dev\" \"pnpm web:dev\"",
     "web:dev": "pnpm --filter @sebt/web dev",
-    "api:dev": "dotnet watch --project src/SEBT.Portal.Api",
+    "api:dev": "ASPNETCORE_ENVIRONMENT=Development dotnet watch --project src/SEBT.Portal.Api",
     "api:build": "dotnet build",
     "api:test": "dotnet test",
     "api:restore": "dotnet restore",

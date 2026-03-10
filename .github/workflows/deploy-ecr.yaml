@@ -156,15 +156,15 @@ jobs:
           dotnet build state-connector/src/SEBT.Portal.StatesPlugins.Interfaces/SEBT.Portal.StatesPlugins.Interfaces.csproj \
             -c Release
 
-      - name: Build DC plugin
+      - name: Publish DC plugin
         run: |
-          dotnet build dc-connector/src/SEBT.Portal.StatePlugins.DC/SEBT.Portal.StatePlugins.DC.csproj \
+          dotnet publish dc-connector/src/SEBT.Portal.StatePlugins.DC/SEBT.Portal.StatePlugins.DC.csproj \
             -c Release \
             -p:CopyPlugins=false
 
-      - name: Build CO plugin
+      - name: Publish CO plugin
         run: |
-          dotnet build co-connector/src/SEBT.Portal.StatePlugins.CO/SEBT.Portal.StatePlugins.CO.csproj \
+          dotnet publish co-connector/src/SEBT.Portal.StatePlugins.CO/SEBT.Portal.StatePlugins.CO.csproj \
             -c Release \
             -p:CopyPlugins=false
 
@@ -173,10 +173,10 @@ jobs:
           mkdir -p nuget-store
           cp -r ~/nuget-store/* nuget-store/
           mkdir -p src/SEBT.Portal.Api/plugins-dc
-          cp dc-connector/src/SEBT.Portal.StatePlugins.DC/bin/Release/net10.0/*.dll \
+          cp dc-connector/src/SEBT.Portal.StatePlugins.DC/bin/Release/net10.0/publish/*.dll \
             src/SEBT.Portal.Api/plugins-dc/
           mkdir -p src/SEBT.Portal.Api/plugins-co
-          cp co-connector/src/SEBT.Portal.StatePlugins.CO/bin/Release/net10.0/*.dll \
+          cp co-connector/src/SEBT.Portal.StatePlugins.CO/bin/Release/net10.0/publish/*.dll \
             src/SEBT.Portal.Api/plugins-co/
 
       - name: Build API image

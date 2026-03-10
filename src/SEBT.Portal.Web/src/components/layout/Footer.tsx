@@ -51,14 +51,14 @@ export function Footer({ state = 'dc' }: FooterProps) {
             rel="noopener noreferrer"
             className="usa-link text-ink font-ui-md text-semibold"
           >
-            {t('publicNotifications')}
+            {t('linkPublicNotices')}
           </Link>
         </div>
       </div>
 
       <div className="usa-footer__secondary-section padding-y-2">
         <div className="grid-container">
-          <nav aria-label="Footer navigation">
+          <nav aria-label={t('footerNavLabel', 'Footer navigation')}>
             <ul className="usa-list usa-list--unstyled display-flex flex-column flex-align-center add-list-reset">
               {footerLinks.map((link) => (
                 <li
@@ -82,7 +82,7 @@ export function Footer({ state = 'dc' }: FooterProps) {
 
       <div className="usa-footer__secondary-section text-center">
         <div className="grid-container">
-          <p className="margin-0 text-ink footer-copyright">{t('copyright')}</p>
+          <p className="margin-0 text-ink footer-copyright">{t('copyrite')}</p>
         </div>
       </div>
     </footer>
@@ -90,6 +90,7 @@ export function Footer({ state = 'dc' }: FooterProps) {
 }
 
 function COFooter({ state = 'co' }: FooterProps) {
+  const { t } = useTranslation('common')
   const config = getStateConfig(state)
   const links = getStateLinks(state)
 
@@ -101,7 +102,7 @@ function COFooter({ state = 'co' }: FooterProps) {
       <div className="usa-footer__primary-section padding-y-2">
         <div className="grid-container text-center">
           <p className="margin-0 text-white font-sans-xs">
-            {/* TODO: Use t('copyright') once the key is added to co.csv */}© 2026 State of Colorado
+            {t('copyrite', '© 2026 State of Colorado')}
             {' | '}
             <Link
               href={links.footer.transparencyOnline ?? '#'}
@@ -109,8 +110,7 @@ function COFooter({ state = 'co' }: FooterProps) {
               rel="noopener noreferrer"
               className="usa-link text-white text-underline"
             >
-              {/* TODO: Use t('transparencyOnline') once the key is added to co.csv */}
-              Transparency Online
+              {t('transparencyOnline', 'Transparency Online')}
             </Link>
             {' | '}
             <Link
@@ -119,8 +119,7 @@ function COFooter({ state = 'co' }: FooterProps) {
               rel="noopener noreferrer"
               className="usa-link text-white text-underline"
             >
-              {/* TODO: Use t('generalNotices') once the key is added to co.csv */}
-              General Notices
+              {t('generalNotices', 'General Notices')}
             </Link>
           </p>
         </div>

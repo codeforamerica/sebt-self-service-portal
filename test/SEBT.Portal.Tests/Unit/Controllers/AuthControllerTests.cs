@@ -21,7 +21,7 @@ public class AuthControllerTests
         _controller = new AuthController(logger);
     }
 
-    private void SetupAuthenticatedUser(string email, string claimType = ClaimTypes.Email)
+    private void SetupAuthenticatedUser(string email, string claimType = "email")
     {
         var claims = new List<Claim> { new Claim(claimType, email) };
         var identity = new ClaimsIdentity(claims, "Test");
@@ -51,11 +51,11 @@ public class AuthControllerTests
     }
 
     [Fact]
-    public void GetAuthorizationStatus_WhenEmailClaimIsMissing_UsesNameIdentifier()
+    public void GetAuthorizationStatus_WhenEmailClaimIsMissing_UsesSubClaim()
     {
         // Arrange
         var email = "user@example.com";
-        SetupAuthenticatedUser(email, ClaimTypes.NameIdentifier);
+        SetupAuthenticatedUser(email, "sub");
 
         // Act
         var result = _controller.GetAuthorizationStatus();
@@ -208,11 +208,11 @@ public class AuthControllerTests
     }
 
     [Fact]
-    public async Task RefreshToken_ExtractsEmailFromNameIdentifier_WhenEmailClaimMissing()
+    public async Task RefreshToken_ExtractsEmailFromSubClaim_WhenEmailClaimMissing()
     {
         // Arrange
         var email = "user@example.com";
-        SetupAuthenticatedUser(email, ClaimTypes.NameIdentifier);
+        SetupAuthenticatedUser(email, "sub");
 
         var handlerMock = Substitute.For<ICommandHandler<RefreshTokenCommand, string>>();
         handlerMock.Handle(Arg.Any<RefreshTokenCommand>())
@@ -232,6 +232,54 @@ public class AuthControllerTests
         var email = "user@example.com";
         var identity = new ClaimsIdentity("Test");
         identity.AddClaim(new Claim(ClaimTypes.Name, email));
+        var principal = new ClaimsPrincipal(identity);
+        _controller.ControllerContext = new ControllerContext
+        {
+            HttpContext = new DefaultHttpContext { User = principal }
+        };
+
+        var handlerMock = Substitute.For<ICommandHandler<RefreshTokenCommand, string>>();
+        handlerMock.Handle(Arg.Any<RefreshTokenCommand>())
+            .Returns(Result<string>.Success("token"));
+
+        // Act
+        var result = await _controller.RefreshToken(handlerMock);
+
+        // Assert
+        await handlerMock.Received(1).Handle(Arg.Is<RefreshTokenCommand>(c => c.Email == email));
+    }
+
+    [Fact]
+    public async Task RefreshToken_ExtractsEmailFromShortEmailClaim_WhenJwtHandlerMappedClaims()
+    {
+        // Arrange: JWT Bearer maps inbound claims to short names; principal may have "email" not ClaimTypes.Email
+        var email = "user@example.com";
+        var identity = new ClaimsIdentity("Test");
+        identity.AddClaim(new Claim("email", email));
+        var principal = new ClaimsPrincipal(identity);
+        _controller.ControllerContext = new ControllerContext
+        {
+            HttpContext = new DefaultHttpContext { User = principal }
+        };
+
+        var handlerMock = Substitute.For<ICommandHandler<RefreshTokenCommand, string>>();
+        handlerMock.Handle(Arg.Any<RefreshTokenCommand>())
+            .Returns(Result<string>.Success("token"));
+
+        // Act
+        var result = await _controller.RefreshToken(handlerMock);
+
+        // Assert
+        await handlerMock.Received(1).Handle(Arg.Is<RefreshTokenCommand>(c => c.Email == email));
+    }
+
+    [Fact]
+    public async Task RefreshToken_ExtractsEmailFromSubClaim_WhenJwtHandlerMappedClaims()
+    {
+        // Arrange: OIDC tokens often use "sub" as the user identifier; ensure we accept it for refresh
+        var email = "user@example.com";
+        var identity = new ClaimsIdentity("Test");
+        identity.AddClaim(new Claim("sub", email));
         var principal = new ClaimsPrincipal(identity);
         _controller.ControllerContext = new ControllerContext
         {

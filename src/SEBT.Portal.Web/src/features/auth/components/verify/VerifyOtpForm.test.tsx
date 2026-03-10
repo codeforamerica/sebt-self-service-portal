@@ -273,8 +273,8 @@ describe('VerifyOtpForm', () => {
       await waitFor(() => {
         const errorMessage = document.querySelector('.usa-error-message')
         expect(errorMessage).toBeInTheDocument()
-        // i18n key: validation.required → "We're sorry. Some required questions..."
-        expect(errorMessage).toHaveTextContent(/we're sorry/i)
+        // i18n key: validation.required → "This is required"
+        expect(errorMessage).toHaveTextContent(/this is required/i)
       })
     })
 
@@ -299,8 +299,8 @@ describe('VerifyOtpForm', () => {
       await user.tab()
 
       await waitFor(() => {
-        // i18n key: validation.otpInvalid → "Provide a valid email address"
-        expect(screen.getByText(/provide a valid email address/i)).toBeInTheDocument()
+        // i18n key: validation.otpInvalid → "Enter a valid [6] digit code..."
+        expect(screen.getByText(/enter a valid.*digit code/i)).toBeInTheDocument()
       })
     })
   })

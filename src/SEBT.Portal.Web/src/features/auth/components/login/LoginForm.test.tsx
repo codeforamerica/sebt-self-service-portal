@@ -98,11 +98,9 @@ describe('LoginForm', () => {
       await user.type(emailInput, TEST_EMAILS.success)
       await user.click(submitButton)
 
-      // Button should show loading state (Continue to my account...)
-      // i18n key: common.continue → "Continue to my account"
-      expect(
-        screen.getByRole('button', { name: /continue to my account\.\.\./i })
-      ).toBeInTheDocument()
+      // Button should show loading state (Continue...)
+      // i18n key: common.continue → "Continue"
+      expect(screen.getByRole('button', { name: /continue\.\.\./i })).toBeInTheDocument()
     })
 
     it('should disable input during submission', async () => {

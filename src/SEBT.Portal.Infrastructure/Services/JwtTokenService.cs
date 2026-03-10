@@ -22,11 +22,12 @@ public class JwtTokenService : IJwtTokenService
     }
 
     /// <summary>
-    /// Generates a JWT token for the specified user
+    /// Generates a JWT token for the specified user.
     /// </summary>
     /// <param name="user">The authenticated user.</param>
+    /// <param name="additionalClaims">Optional claims to add</param>
     /// <returns>A JWT token string.</returns>
-    public string GenerateToken(User user)
+    public string GenerateToken(User user, IReadOnlyDictionary<string, string>? additionalClaims = null)
     {
         var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_settings.SecretKey));
         var credentials = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
@@ -73,6 +74,27 @@ public class JwtTokenService : IJwtTokenService
             claims.Add(new Claim(JwtClaimTypes.IdProofingExpiresAt,
                 expiresAtOffset.ToUnixTimeSeconds().ToString(),
                 ClaimValueTypes.Integer64));
+        }
+
+        // Portal-defined claim names we already set above; do not add again from additionalClaims
+        // or the JWT payload would have e.g. "sub": [a, b], which .NET's reader rejects (expects string).
+        var reservedNames = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+        {
+            JwtRegisteredClaimNames.Sub,
+            ClaimTypes.Email,
+            "email",
+            JwtRegisteredClaimNames.Jti,
+            JwtRegisteredClaimNames.Iat,
+            JwtRegisteredClaimNames.Nbf
+        };
+
+        if (additionalClaims != null)
+        {
+            foreach (var (name, value) in additionalClaims)
+            {
+                if (!string.IsNullOrEmpty(name) && value != null && !reservedNames.Contains(name))
+                    claims.Add(new Claim(name, value));
+            }
         }
 
         var token = new JwtSecurityToken(

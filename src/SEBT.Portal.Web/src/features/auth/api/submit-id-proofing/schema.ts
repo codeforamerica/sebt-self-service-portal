@@ -38,3 +38,18 @@ export const SubmitIdProofingRequestSchema = z
   })
 
 export type SubmitIdProofingRequest = z.infer<typeof SubmitIdProofingRequestSchema>
+
+// Response contract for the id-proofing endpoint.
+// The backend maps its internal IdProofingStatus to this frontend-friendly shape.
+// 'documentVerificationRequired' triggers the Socure DocV flow (DC-137).
+export const IdProofingResultSchema = z.enum(['matched', 'failed', 'documentVerificationRequired'])
+export type IdProofingResult = z.infer<typeof IdProofingResultSchema>
+
+export const SubmitIdProofingResponseSchema = z.object({
+  result: IdProofingResultSchema,
+  challengeId: z.string().optional(),
+  allowIdRetry: z.boolean().optional(),
+  canApply: z.boolean().optional(),
+  offboardingReason: z.string().optional()
+})
+export type SubmitIdProofingResponse = z.infer<typeof SubmitIdProofingResponseSchema>

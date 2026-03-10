@@ -1,10 +1,12 @@
 using System.Text;
 using System.Threading.RateLimiting;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
 using SEBT.Portal.Api;
 using SEBT.Portal.Api.Composition;
+using SEBT.Portal.Api.Models;
 using Serilog;
 using Microsoft.FeatureManagement;
 using SEBT.Portal.Api.Middleware;
@@ -17,8 +19,14 @@ using SEBT.Portal.Infrastructure.Seeding.Services;
 using SEBT.Portal.UseCases;
 using SEBT.Portal.Infrastructure;
 using SEBT.Portal.Api.Startup;
+using SEBT.Portal.Core.Models.Auth;
+using SEBT.Portal.Core.Repositories;
+using SEBT.Portal.Core.Utilities;
 
 var builder = WebApplication.CreateBuilder(args);
+
+builder.Services.AddHttpContextAccessor();
+builder.Services.AddHttpClient();
 
 // Configuration provider priority order (later providers override earlier ones):
 // 1. appsettings.json (defaults in FeatureManagement)
@@ -68,7 +76,7 @@ Log.Logger = new LoggerConfiguration()
 builder.Host.UseSerilog();
 
 // Registers plugins and allows them to be constructor injected into ASP.NET controllers
-builder.Services.AddPlugins();
+builder.Services.AddPlugins(builder.Configuration);
 
 // Add services to the container.
 builder.Services.AddControllers();
@@ -127,8 +135,11 @@ builder.Services.AddOptions<JwtBearerOptions>(JwtBearerDefaults.AuthenticationSc
             ValidIssuer = jwtSettings.Issuer,
             ValidAudience = jwtSettings.Audience,
             IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtSettings.SecretKey)),
-            ClockSkew = TimeSpan.FromMinutes(2)
+            ClockSkew = TimeSpan.FromMinutes(2),
+            NameClaimType = "sub"
         };
+        // Preserve JWT claim names (sub, email) so we can read them regardless of handler mapping.
+        options.MapInboundClaims = false;
     });
 
 builder.Services.AddAuthorization();

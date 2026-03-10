@@ -1,11 +1,24 @@
+export {
+  StartChallengeResponseSchema,
+  VerificationStatusResponseSchema,
+  useStartChallenge,
+  useVerificationStatus,
+  type StartChallengeResponse,
+  type VerificationStatusResponse
+} from './doc-verify'
+
 export { useRefreshToken } from './refresh-token'
 
 export {
+  IdProofingResultSchema,
   IdTypeSchema,
   SubmitIdProofingRequestSchema,
+  SubmitIdProofingResponseSchema,
   useSubmitIdProofing,
+  type IdProofingResult,
   type IdType,
-  type SubmitIdProofingRequest
+  type SubmitIdProofingRequest,
+  type SubmitIdProofingResponse
 } from './submit-id-proofing'
 
 export { RequestOtpRequestSchema, useRequestOtp, type RequestOtpRequest } from './request-otp'

@@ -18,17 +18,14 @@ function getStatusTextClass(status: string): string {
   }
 }
 
-// Keys map to CSV: "S2 - Portal Dashboard - Applications Table - {Key}"
-// TODO: Add to CSV: "S2 - Portal Dashboard - Applications Table - Status Denied" for denied status
-// TODO: Add to CSV: "S2 - Portal Dashboard - Applications Table - Status Pending" for pending status
-// TODO: Add to CSV: "S2 - Portal Dashboard - Applications Table - Status Under Review" for under review status
-// TODO: Add to CSV: "S2 - Portal Dashboard - Applications Table - Status Cancelled" for cancelled status
-
-// Map application statuses to their display labels
-// Only Approved is in the locale file currently
-function getStatusLabel(status: string): string {
-  // Return the status as-is - translations will be added to CSV later
-  return status
+// Keys map to CSV: "S2 - Portal Dashboard - Applications Table - Status {Status}"
+// TODO: Add CSV rows for: Status Denied, Status Pending, Status Under Review, Status Cancelled
+const APPLICATION_STATUS_KEYS: Record<string, { key: string; fallback: string }> = {
+  Approved: { key: 'applicationsTableStatusApproved', fallback: 'Approved' },
+  Denied: { key: 'applicationsTableStatusDenied', fallback: 'Denied' },
+  Pending: { key: 'applicationsTableStatusPending', fallback: 'Pending' },
+  UnderReview: { key: 'applicationsTableStatusUnderReview', fallback: 'Under Review' },
+  Cancelled: { key: 'applicationsTableStatusCancelled', fallback: 'Cancelled' }
 }
 
 function ApplicationCard({ application }: { application: Application }) {
@@ -59,7 +56,10 @@ function ApplicationCard({ application }: { application: Application }) {
           <dt className="text-bold">{t('applicationsTableHeadingStatus')}</dt>
           <dd className="margin-left-0">
             <span className={`text-bold ${getStatusTextClass(application.applicationStatus)}`}>
-              {getStatusLabel(application.applicationStatus)}
+              {(() => {
+                const entry = APPLICATION_STATUS_KEYS[application.applicationStatus]
+                return entry ? t(entry.key, entry.fallback) : application.applicationStatus
+              })()}
             </span>
           </dd>
         </dl>
