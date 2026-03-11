@@ -150,6 +150,7 @@ jobs:
           docker run --rm \
             -v ${{ github.workspace }}:/workspace \
             -w /workspace \
+            -e CI=true \
             node:${{ steps.config.outputs.node_version }}-alpine \
             sh -c "corepack enable && corepack prepare pnpm@${{ steps.config.outputs.pnpm_version }} --activate && sh .github/workflows/scripts/build-frontend.sh --production ${{ steps.config.outputs.frontend_flags }}"
 
@@ -159,6 +160,7 @@ jobs:
           docker run --rm \
             -v ${{ github.workspace }}:/workspace \
             -w /workspace \
+            -e CI=true \
             node:${{ steps.config.outputs.node_version }}-alpine \
             sh -c "corepack enable && corepack prepare pnpm@${{ steps.config.outputs.pnpm_version }} --activate && sh .github/workflows/scripts/test-frontend.sh --skip-install"
 
@@ -204,8 +206,9 @@ jobs:
         if: steps.config.outputs.use_docker != 'true' && steps.config.outputs.skip_tests != 'true'
         run: ./.github/workflows/scripts/test-frontend.sh --skip-install
 
-      # Upload artifacts
+      # Upload artifacts (skipped under act - ACTIONS_RUNTIME_TOKEN not available)
       - name: Upload build artifacts
+        if: env.ACT != 'true'
         uses: actions/upload-artifact@v4
         with:
           name: ${{ matrix.state }}-build-artifacts

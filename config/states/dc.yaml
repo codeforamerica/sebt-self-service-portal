@@ -4,7 +4,7 @@ state: dc
 version: "1.0.0"  # State-specific version for tracking deployments
 
 infrastructure:
-  use_docker: false
+  use_docker: true
   docker:
     registry: "ghcr.io/codeforamerica"
     network_mode: "bridge"
