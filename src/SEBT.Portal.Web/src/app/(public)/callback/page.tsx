@@ -99,7 +99,8 @@ export default function CallbackPage() {
     return () => {
       cancelled = true
     }
-  }, [login, router, t])
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- t (getTranslations) is a static lookup, not a reactive dependency
+  }, [login, router])
 
   useEffect(() => {
     if (status === 'error') {
