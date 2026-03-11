@@ -226,6 +226,9 @@ describe('CallbackPage', () => {
 
     it('shows error when complete-login endpoint fails', async () => {
       server.use(
+        http.post('/api/auth/oidc/callback', () => {
+          return HttpResponse.json({ callbackToken: 'mock-callback-token' })
+        }),
         http.post('/api/auth/oidc/complete-login', () => {
           return HttpResponse.json({ error: 'Invalid token' }, { status: 400 })
         })
