@@ -464,3 +464,6 @@ nuget-store
 
 # Idea specific configuration files
 .idea/.idea.SEBT.Portal/Docker/compose.generated.override.yml
+
+# AI
+.claude/settings.local.json
