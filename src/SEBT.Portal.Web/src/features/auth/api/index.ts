@@ -7,6 +7,21 @@ export {
   type VerificationStatusResponse
 } from './doc-verify'
 
+export {
+  OidcCallbackRequestSchema,
+  OidcCallbackTokenResponseSchema,
+  OidcCompleteLoginResponseSchema,
+  OidcConfigResponseSchema,
+  OidcDiscoveryResponseSchema,
+  OidcTokenResponseSchema,
+  type OidcCallbackRequest,
+  type OidcCallbackTokenResponse,
+  type OidcCompleteLoginResponse,
+  type OidcConfigResponse,
+  type OidcDiscoveryResponse,
+  type OidcTokenResponse
+} from './oidc'
+
 export { useRefreshToken } from './refresh-token'
 
 export {

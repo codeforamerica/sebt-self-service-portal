@@ -6,11 +6,9 @@ const CO_PKCE_STORAGE_KEY = 'oidc_co_pkce'
 
 function randomBase64Url(length: number): string {
   const bytes = new Uint8Array(length)
-  if (typeof crypto !== 'undefined' && crypto.getRandomValues) {
-    crypto.getRandomValues(bytes)
-  } else {
-    for (let i = 0; i < length; i++) bytes[i] = Math.floor(Math.random() * 256)
-  }
+  // crypto.getRandomValues is required for PKCE security — Math.random is not cryptographically secure.
+  // All modern browsers support this (since 2013), and generateCodeChallenge already requires crypto.subtle.
+  crypto.getRandomValues(bytes)
   return btoa(String.fromCharCode(...bytes))
     .replace(/\+/g, '-')
     .replace(/\//g, '_')
@@ -41,7 +39,7 @@ export interface OidcConfig {
   clientId: string
   redirectUri: string
   /** Optional params from config **/
-  languageParam?: string
+  languageParam?: string | undefined
 }
 
 export function buildAuthorizationUrl(
@@ -87,25 +85,14 @@ export function savePkceForCallback(
     token_endpoint: config.tokenEndpoint,
     client_id: config.clientId
   }
-  const raw = JSON.stringify(payload)
-  sessionStorage.setItem(CO_PKCE_STORAGE_KEY, raw)
-  try {
-    localStorage.setItem(CO_PKCE_STORAGE_KEY, raw)
-  } catch {
-    // ignore quota / private mode
-  }
+  // PKCE data is stored in sessionStorage only — not localStorage.
+  // localStorage would persist across tabs/sessions, which could allow stale PKCE to be accepted.
+  sessionStorage.setItem(CO_PKCE_STORAGE_KEY, JSON.stringify(payload))
 }
 
 export function getPkceFromStorage(): StoredPkce | null {
   if (typeof window === 'undefined') return null
-  let raw = sessionStorage.getItem(CO_PKCE_STORAGE_KEY)
-  if (!raw) {
-    try {
-      raw = localStorage.getItem(CO_PKCE_STORAGE_KEY)
-    } catch {
-      // ignore
-    }
-  }
+  const raw = sessionStorage.getItem(CO_PKCE_STORAGE_KEY)
   if (!raw) return null
   try {
     const payload = JSON.parse(raw) as StoredPkce
@@ -126,9 +113,4 @@ export function getPkceFromStorage(): StoredPkce | null {
 export function clearPkceStorage(): void {
   if (typeof window === 'undefined') return
   sessionStorage.removeItem(CO_PKCE_STORAGE_KEY)
-  try {
-    localStorage.removeItem(CO_PKCE_STORAGE_KEY)
-  } catch {
-    // ignore
-  }
 }

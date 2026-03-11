@@ -66,7 +66,7 @@ const stateLinks: Record<string, StateLinks> = {
   },
   co: {
     footer: {
-      // TODO: Add CO-specific footer URLs when available
+      // CO footer URLs are placeholders — real URLs needed from the CO state team before launch
       publicNotifications: '#',
       accessibility: '#',
       privacyAndSecurity: '#',
@@ -83,7 +83,7 @@ const stateLinks: Record<string, StateLinks> = {
       helpDeskEmail: 'mailto:cdhs_sebt_supportcenter@state.co.us'
     },
     external: {
-      // TODO: Add CO contact page URL when available
+      // CO contact URL is a placeholder — real URL needed from the CO state team before launch
       contactUsAssistance: '#'
     }
   }
