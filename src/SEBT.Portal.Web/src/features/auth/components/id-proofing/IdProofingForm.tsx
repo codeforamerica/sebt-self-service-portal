@@ -6,6 +6,10 @@ import { useTranslation } from 'react-i18next'
 
 import { Alert, Button, InputField } from '@/components/ui'
 
+import {
+  SK_ALLOW_ID_RETRY,
+  SK_CHALLENGE_ID
+} from '@/features/auth/components/doc-verify/sessionKeys'
 import { useSubmitIdProofing, type IdType } from '../../api'
 
 // UI-only sentinel value for the "none" radio option.
@@ -104,15 +108,24 @@ export function IdProofingForm({ idOptions, contactLink }: IdProofingFormProps) 
         idValue: showIdValueInput ? idValue.trim() : null
       })
 
-      if (response.result === 'matched') {
-        router.push('/dashboard')
-      } else {
+      if (response.result === 'documentVerificationRequired') {
+        if (!response.challengeId) {
+          // TODO: Use t('idProofing.errorNoChallengeId') once key is available in dc.csv
+          setSubmitError('Unable to start document verification. Please try again.')
+          return
+        }
+        sessionStorage.setItem(SK_CHALLENGE_ID, response.challengeId)
+        sessionStorage.setItem(SK_ALLOW_ID_RETRY, String(response.allowIdRetry ?? false))
+        router.push('/login/id-proofing/doc-verify')
+      } else if (response.result === 'failed') {
         const params = new URLSearchParams()
         if (response.canApply === false) {
           params.set('canApply', 'false')
         }
         const query = params.toString()
         router.push(`/login/id-proofing/off-boarding${query ? `?${query}` : ''}`)
+      } else {
+        router.push('/dashboard')
       }
     } catch (err) {
       // TODO: Use t('errorUnexpected') once key is available in dc.csv

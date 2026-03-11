@@ -116,6 +116,9 @@ const CONFIG = {
     // S8 - Edit screens
     'contact preferences update': 'editContactPreferences',
     'mailing address edit': 'editMailingAddress',
+    // S10 - Step-up verification screens
+    'step-up disclaimer': 'stepUpDisclaimer',
+    'step-up failure': 'stepUpFailure',
     // Global/Common
     'header': 'common',
     'footer': 'common',
@@ -523,7 +526,9 @@ function generateResourceFile() {
 
       for (const file of files) {
         const namespace = file.replace('.json', '');
-        const varName = `${lang}${state.toUpperCase()}${namespace.charAt(0).toUpperCase()}${namespace.slice(1)}`;
+        // Sanitize namespace for use as a JS identifier (handle hyphens → camelCase)
+        const safeNs = namespace.replace(/-([a-z])/g, (_, c) => c.toUpperCase());
+        const varName = `${lang}${state.toUpperCase()}${safeNs.charAt(0).toUpperCase()}${safeNs.slice(1)}`;
         const importPath = `@/content/locales/${lang}/${state}/${namespace}.json`;
 
         imports.push({ varName, importPath });
@@ -559,7 +564,9 @@ function generateResourceFile() {
       lines.push(`    ${lang}: {`);
       const sortedNs = Object.keys(stateMap[state][lang]).sort();
       for (const ns of sortedNs) {
-        lines.push(`      ${ns}: ${stateMap[state][lang][ns]},`);
+        // Quote keys that aren't valid JS identifiers (e.g., contain hyphens)
+        const key = /^[a-zA-Z_$][a-zA-Z0-9_$]*$/.test(ns) ? ns : `'${ns}'`;
+        lines.push(`      ${key}: ${stateMap[state][lang][ns]},`);
       }
       lines.push('    },');
     }

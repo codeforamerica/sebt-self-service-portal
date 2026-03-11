@@ -1,4 +1,13 @@
 export {
+  StartChallengeResponseSchema,
+  VerificationStatusResponseSchema,
+  useStartChallenge,
+  useVerificationStatus,
+  type StartChallengeResponse,
+  type VerificationStatusResponse
+} from './doc-verify'
+
+export {
   OidcCallbackRequestSchema,
   OidcCallbackTokenResponseSchema,
   OidcCompleteLoginResponseSchema,

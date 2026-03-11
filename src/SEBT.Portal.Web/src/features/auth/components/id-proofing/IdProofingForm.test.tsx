@@ -20,6 +20,10 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { server } from '@/mocks/server'
 
+import {
+  SK_ALLOW_ID_RETRY,
+  SK_CHALLENGE_ID
+} from '@/features/auth/components/doc-verify/sessionKeys'
 import { AuthProvider } from '../../context'
 import { IdProofingForm, type IdOption } from './IdProofingForm'
 
@@ -289,7 +293,69 @@ describe('IdProofingForm', () => {
     })
   })
 
-  describe('Offboarding routing', () => {
+  describe('Response routing', () => {
+    it('navigates to doc-verify and stores challengeId when documentVerificationRequired', async () => {
+      server.use(
+        http.post('/api/id-proofing', () => {
+          return HttpResponse.json({
+            result: 'documentVerificationRequired',
+            challengeId: 'challenge-abc',
+            allowIdRetry: true
+          })
+        })
+      )
+
+      const user = userEvent.setup()
+      renderWithProviders(
+        <IdProofingForm
+          idOptions={TEST_ID_OPTIONS}
+          contactLink={TEST_CONTACT_LINK}
+        />
+      )
+
+      await user.selectOptions(screen.getByRole('combobox', { name: /month/i }), '06')
+      await user.type(screen.getByRole('textbox', { name: INPUT_LABEL_DAY }), '20')
+      await user.type(screen.getByRole('textbox', { name: INPUT_LABEL_YEAR }), '1985')
+      await user.click(screen.getByRole('radio', { name: LABEL_NONE }))
+      await user.click(screen.getByRole('button', { name: /continue/i }))
+
+      await waitFor(() => {
+        expect(mockPush).toHaveBeenCalledWith('/login/id-proofing/doc-verify')
+      })
+      expect(sessionStorage.getItem(SK_CHALLENGE_ID)).toBe('challenge-abc')
+      expect(sessionStorage.getItem(SK_ALLOW_ID_RETRY)).toBe('true')
+    })
+
+    it('shows error when documentVerificationRequired but challengeId is missing', async () => {
+      server.use(
+        http.post('/api/id-proofing', () => {
+          return HttpResponse.json({
+            result: 'documentVerificationRequired'
+            // challengeId deliberately omitted
+          })
+        })
+      )
+
+      const user = userEvent.setup()
+      renderWithProviders(
+        <IdProofingForm
+          idOptions={TEST_ID_OPTIONS}
+          contactLink={TEST_CONTACT_LINK}
+        />
+      )
+
+      await user.selectOptions(screen.getByRole('combobox', { name: /month/i }), '06')
+      await user.type(screen.getByRole('textbox', { name: INPUT_LABEL_DAY }), '20')
+      await user.type(screen.getByRole('textbox', { name: INPUT_LABEL_YEAR }), '1985')
+      await user.click(screen.getByRole('radio', { name: LABEL_NONE }))
+      await user.click(screen.getByRole('button', { name: /continue/i }))
+
+      await waitFor(() => {
+        expect(screen.getByText(/unable to start document verification/i)).toBeInTheDocument()
+      })
+      expect(mockPush).not.toHaveBeenCalled()
+    })
+
     it('redirects to off-boarding page when identity proofing fails', async () => {
       const user = userEvent.setup()
       renderWithProviders(

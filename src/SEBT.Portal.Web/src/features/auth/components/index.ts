@@ -1,5 +1,7 @@
 export { AuthGuard } from './AuthGuard'
+export { DocVerifyPage } from './doc-verify'
 export { IdProofingForm, OffBoardingContent, type IdOption } from './id-proofing'
 export { LoginForm } from './login'
+export { OffBoardingPage } from './off-boarding'
 export { TokenRefresher } from './TokenRefresher'
 export { VerifyOtpForm, VerifyOtpFormWrapper } from './verify'

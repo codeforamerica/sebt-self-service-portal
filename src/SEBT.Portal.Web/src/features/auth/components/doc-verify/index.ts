@@ -1,0 +1,1 @@
+export { DocVerifyPage } from './DocVerifyPage'

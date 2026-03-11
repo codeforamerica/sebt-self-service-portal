@@ -173,7 +173,7 @@ describe('HouseholdSummary', () => {
 
     expect(screen.queryByText('Your preferred contact')).not.toBeInTheDocument()
     expect(
-      screen.queryByRole('link', { name: 'Change my contact information' })
+      screen.queryByRole('link', { name: 'Change my contact preferences' })
     ).not.toBeInTheDocument()
   })
 })
