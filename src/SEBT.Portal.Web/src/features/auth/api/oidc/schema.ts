@@ -35,6 +35,7 @@ export type OidcCompleteLoginResponse = z.infer<typeof OidcCompleteLoginResponse
 export const OidcCallbackRequestSchema = z.object({
   code: z.string(),
   code_verifier: z.string(),
+  // state is validated client-side (PKCE flow) before this request — accepted here for passthrough but not used by the route handler
   state: z.string().optional(),
   stateCode: z.string()
 })
