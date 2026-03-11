@@ -10,6 +10,7 @@ WORKDIR /workspace
 # Build arg controls which state is embedded at build-time.
 ARG STATE=dc
 ENV STATE=$STATE
+ENV BUILD_STANDALONE=true
 
 # Install dependencies (root workspace)
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
