@@ -166,44 +166,40 @@ jobs:
 
       # Native Build Path
       - name: Setup .NET (Native)
-        if: steps.config.outputs.use_docker != 'true'
         uses: actions/setup-dotnet@v5
         with:
           dotnet-version: ${{ steps.config.outputs.dotnet_version }}
 
       - name: Setup pnpm (Native)
-        if: steps.config.outputs.use_docker != 'true'
         uses: pnpm/action-setup@v4
         with:
           version: ${{ steps.config.outputs.pnpm_version }}
 
       - name: Setup Node.js (Native)
-        if: steps.config.outputs.use_docker != 'true'
         uses: actions/setup-node@v4
         with:
           node-version: ${{ steps.config.outputs.node_version }}
           cache: "pnpm"
 
       - name: Build Backend (Native)
-        if: steps.config.outputs.use_docker != 'true'
         run: ./.github/workflows/scripts/build-backend.sh --configuration ${{ steps.config.outputs.build_config }} ${{ steps.config.outputs.backend_flags }}
 
       - name: Test Backend (Native)
-        if: steps.config.outputs.use_docker != 'true' && steps.config.outputs.skip_tests != 'true'
+        if: steps.config.outputs.skip_tests != 'true'
         timeout-minutes: 5
+        env:
+          SKIP_SQLSERVER_TESTS: ${{ env.ACT == 'true' && '1' || '' }}
         run: ./.github/workflows/scripts/test-backend.sh --skip-build --configuration ${{ steps.config.outputs.build_config }}
 
       - name: Generate Backend Dependencies CSV
         id: generate-backend-dependencies-csv
-        if: steps.config.outputs.use_docker != 'true'
         run: ./.github/workflows/scripts/license-audit.sh
 
       - name: Build Frontend (Native)
-        if: steps.config.outputs.use_docker != 'true'
         run: ./.github/workflows/scripts/build-frontend.sh --production ${{ steps.config.outputs.frontend_flags }}
 
       - name: Test Frontend (Native)
-        if: steps.config.outputs.use_docker != 'true' && steps.config.outputs.skip_tests != 'true'
+        if: steps.config.outputs.skip_tests != 'true'
         run: ./.github/workflows/scripts/test-frontend.sh --skip-install
 
       # Upload artifacts (skipped under act - ACTIONS_RUNTIME_TOKEN not available)
