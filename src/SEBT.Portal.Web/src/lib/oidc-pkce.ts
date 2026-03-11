@@ -6,11 +6,9 @@ const CO_PKCE_STORAGE_KEY = 'oidc_co_pkce'
 
 function randomBase64Url(length: number): string {
   const bytes = new Uint8Array(length)
-  if (typeof crypto !== 'undefined' && crypto.getRandomValues) {
-    crypto.getRandomValues(bytes)
-  } else {
-    for (let i = 0; i < length; i++) bytes[i] = Math.floor(Math.random() * 256)
-  }
+  // crypto.getRandomValues is required for PKCE security — Math.random is not cryptographically secure.
+  // All modern browsers support this (since 2013), and generateCodeChallenge already requires crypto.subtle.
+  crypto.getRandomValues(bytes)
   return btoa(String.fromCharCode(...bytes))
     .replace(/\+/g, '-')
     .replace(/\//g, '_')
