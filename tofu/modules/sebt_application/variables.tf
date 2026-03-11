@@ -1,3 +1,9 @@
+variable "app_settings" {
+  type        = map(string)
+  description = "Non-flag configuration values managed via AppConfig freeform profile."
+  default     = {}
+}
+
 variable "api_cpu" {
   type        = number
   description = "CPU units for the API service container."
@@ -26,6 +32,16 @@ variable "apply_immediately" {
   default     = false
 }
 
+variable "deployment_strategy" {
+  type        = string
+  description = <<-EOT
+    AppConfig deployment strategy. Controls how quickly configuration
+    changes roll out. See:
+    https://docs.aws.amazon.com/appconfig/latest/userguide/appconfig-creating-deployment-strategy-predefined.html
+    EOT
+  default     = "AppConfig.AllAtOnce"
+}
+
 variable "desired_containers" {
   type        = number
   description = "Number of desired containers for each service."
@@ -35,6 +51,16 @@ variable "desired_containers" {
 variable "domain" {
   type        = string
   description = "Domain name for the application (e.g. dc.sebt-client-portal.dev.codeforamerica.app)."
+}
+
+variable "enable_appconfig" {
+  type        = bool
+  description = <<-EOT
+    Enable AWS AppConfig for managing feature flags and application
+    settings. When enabled, creates an AppConfig application and deploys
+    an AppConfig Agent sidecar alongside the API container.
+    EOT
+  default     = false
 }
 
 variable "enable_execute_command" {
@@ -47,6 +73,17 @@ variable "environment" {
   type        = string
   description = "Environment for the deployment."
   default     = "dev"
+}
+
+variable "feature_flags" {
+  type = map(object({
+    enabled = bool
+  }))
+  description = <<-EOT
+    Feature flags managed via AppConfig. Each key is the flag name and the
+    value specifies whether the flag is enabled.
+    EOT
+  default = {}
 }
 
 variable "force_delete" {
