@@ -40,12 +40,32 @@ if (!string.IsNullOrEmpty(state))
     builder.Configuration.AddJsonFile(stateConfigFile, optional: true, reloadOnChange: true);
 }
 
-// Register AWS AppConfig Agent configuration provider if configured.
+// Register AWS AppConfig Agent configuration providers if configured.
 // Registered last so AppConfig values take highest priority.
 var agentSection = builder.Configuration.GetSection("AppConfig:Agent");
-if (agentSection.Exists())
+var applicationId = agentSection["ApplicationId"];
+var environmentId = agentSection["EnvironmentId"];
+
+if (!string.IsNullOrEmpty(applicationId) && !string.IsNullOrEmpty(environmentId))
 {
-    builder.Configuration.AddAppConfigAgent("AppConfig:Agent", logger: null);
+    var baseUrl = agentSection["BaseUrl"] ?? "http://localhost:2772";
+    var reloadAfterSeconds = agentSection.GetValue<int?>("ReloadAfterSeconds") ?? 90;
+
+    var featureFlagsProfileId = builder.Configuration["AppConfig:FeatureFlags:ProfileId"];
+    if (!string.IsNullOrEmpty(featureFlagsProfileId))
+    {
+        builder.Configuration.AddAppConfigAgent(
+            baseUrl, applicationId, environmentId, featureFlagsProfileId,
+            reloadAfterSeconds, isFeatureFlag: true);
+    }
+
+    var appSettingsProfileId = builder.Configuration["AppConfig:AppSettings:ProfileId"];
+    if (!string.IsNullOrEmpty(appSettingsProfileId))
+    {
+        builder.Configuration.AddAppConfigAgent(
+            baseUrl, applicationId, environmentId, appSettingsProfileId,
+            reloadAfterSeconds, isFeatureFlag: false);
+    }
 }
 
 // Build database connection string from environment variables when deployed
