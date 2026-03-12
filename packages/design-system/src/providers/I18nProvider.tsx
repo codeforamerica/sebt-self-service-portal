@@ -3,8 +3,7 @@
 import { useEffect } from 'react'
 import { I18nextProvider } from 'react-i18next'
 
-import '@/lib/i18n-init'
-import { i18n, supportedLanguages, type SupportedLanguage } from '@sebt/design-system'
+import i18n, { supportedLanguages, type SupportedLanguage } from '../lib/i18n'
 
 import type { I18nProviderProps } from './types'
 
