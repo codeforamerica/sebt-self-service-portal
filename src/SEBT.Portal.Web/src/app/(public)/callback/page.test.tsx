@@ -172,9 +172,12 @@ describe('CallbackPage', () => {
         token_endpoint: 'https://auth.example.com/token',
         client_id: 'test-client'
       })
-      // getState returns 'co', so callback uses /api/auth/oidc/co/exchange-code
+      // getState returns 'co'; flow is callback (returns callbackToken) then complete-login (returns token)
       server.use(
-        http.post('/api/auth/oidc/co/exchange-code', () => {
+        http.post('/api/auth/oidc/callback', () => {
+          return HttpResponse.json({ callbackToken: 'mock-callback-token-for-testing' })
+        }),
+        http.post('/api/auth/oidc/complete-login', () => {
           return HttpResponse.json({ token: 'mock-jwt-token-for-testing' })
         })
       )
@@ -208,7 +211,7 @@ describe('CallbackPage', () => {
 
     it('shows error when exchange-code endpoint fails', async () => {
       server.use(
-        http.post('/api/auth/oidc/co/exchange-code', () => {
+        http.post('/api/auth/oidc/callback', () => {
           return HttpResponse.json({ error: 'Token exchange failed' }, { status: 400 })
         })
       )

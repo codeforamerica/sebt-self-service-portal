@@ -4,6 +4,10 @@ import { defineConfig } from 'vitest/config'
 export default defineConfig({
   test: {
     environment: 'jsdom',
+    env: {
+      SKIP_ENV_VALIDATION: '1',
+      NEXT_PUBLIC_STATE: 'dc'
+    },
     setupFiles: ['./src/test-setup.ts'],
     globals: true,
     css: true,

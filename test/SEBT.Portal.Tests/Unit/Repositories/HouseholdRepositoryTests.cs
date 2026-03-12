@@ -11,6 +11,8 @@ using PluginPiiVisibility = SEBT.Portal.StatesPlugins.Interfaces.Models.PiiVisib
 using PluginHouseholdData = SEBT.Portal.StatesPlugins.Interfaces.Models.Household.HouseholdData;
 using PluginApplication = SEBT.Portal.StatesPlugins.Interfaces.Models.Household.Application;
 using PluginChild = SEBT.Portal.StatesPlugins.Interfaces.Models.Household.Child;
+using PluginSummerEbtCase = SEBT.Portal.StatesPlugins.Interfaces.Data.Cases.SummerEbtCase;
+using PluginAddress = SEBT.Portal.StatesPlugins.Interfaces.Models.Household.Address;
 using PluginApplicationStatus = SEBT.Portal.StatesPlugins.Interfaces.Models.Household.ApplicationStatus;
 using PluginCardStatus = SEBT.Portal.StatesPlugins.Interfaces.Models.Household.CardStatus;
 using PluginIssuanceType = SEBT.Portal.StatesPlugins.Interfaces.Models.Household.IssuanceType;
@@ -78,6 +80,66 @@ public class HouseholdRepositoryTests
         Assert.Equal("APP-001", result.Applications[0].ApplicationNumber);
         Assert.Single(result.Applications[0].Children);
         Assert.Equal("Maria", result.Applications[0].Children[0].FirstName);
+    }
+
+    [Fact]
+    public async Task GetHouseholdByEmailAsync_WhenPluginReturnsSummerEbtCases_MapsToCore()
+    {
+        var email = "guardian@example.com";
+        var pluginData = new PluginHouseholdData
+        {
+            Email = email,
+            Phone = "555-123-4567",
+            Applications = new List<PluginApplication>(),
+            SummerEbtCases = new List<PluginSummerEbtCase>
+            {
+                new PluginSummerEbtCase
+                {
+                    SummerEBTCaseID = "CASE-001",
+                    ApplicationId = "APP-001",
+                    ChildFirstName = "Maria",
+                    ChildLastName = "Garcia",
+                    ChildDateOfBirth = new DateOnly(2015, 5, 15),
+                    HouseholdType = "DirectCert",
+                    EligibilityType = "SNAP",
+                    ApplicationStatus = PluginApplicationStatus.Approved,
+                    EbtCardLastFour = "1234",
+                    EbtCardBalance = 120.50m,
+                    MailingAddress = new PluginAddress
+                    {
+                        StreetAddress1 = "123 Main St",
+                        City = "Denver",
+                        State = "CO",
+                        PostalCode = "80202"
+                    }
+                }
+            }
+        };
+
+        _summerEbtCaseService
+            .GetHouseholdByIdentifierAsync(PluginHouseholdIdentifierType.Email, email, Arg.Any<PluginPiiVisibility>(), Arg.Any<PluginIdentityAssuranceLevel>(), Arg.Any<CancellationToken>())
+            .Returns(pluginData);
+
+        var result = await _repository.GetHouseholdByEmailAsync(email, FullPii, UserIalLevel.IAL1plus);
+
+        Assert.NotNull(result);
+        Assert.Single(result.SummerEbtCases);
+        var sec = result.SummerEbtCases[0];
+        Assert.Equal("CASE-001", sec.SummerEBTCaseID);
+        Assert.Equal("APP-001", sec.ApplicationId);
+        Assert.Equal("Maria", sec.ChildFirstName);
+        Assert.Equal("Garcia", sec.ChildLastName);
+        Assert.Equal(new DateTime(2015, 5, 15), sec.ChildDateOfBirth);
+        Assert.Equal("DirectCert", sec.HouseholdType);
+        Assert.Equal("SNAP", sec.EligibilityType);
+        Assert.Equal(ApplicationStatus.Approved, sec.ApplicationStatus);
+        Assert.Equal("1234", sec.EbtCardLastFour);
+        Assert.Equal(120.50m, sec.EbtCardBalance);
+        Assert.NotNull(sec.MailingAddress);
+        Assert.Equal("123 Main St", sec.MailingAddress.StreetAddress1);
+        Assert.Equal("Denver", sec.MailingAddress.City);
+        Assert.Equal("CO", sec.MailingAddress.State);
+        Assert.Equal("80202", sec.MailingAddress.PostalCode);
     }
 
     [Fact]
@@ -154,6 +216,31 @@ public class HouseholdRepositoryTests
     }
 
     [Fact]
+    public async Task GetHouseholdByEmailAsync_WhenPiiVisibilityExcludesAddress_ReturnsNullAddress()
+    {
+        _summerEbtCaseService
+            .GetHouseholdByIdentifierAsync(Arg.Any<PluginHouseholdIdentifierType>(), Arg.Any<string>(), Arg.Any<PluginPiiVisibility>(), Arg.Any<PluginIdentityAssuranceLevel>(), Arg.Any<CancellationToken>())
+            .Returns(new PluginHouseholdData
+            {
+                Email = "u@e.com",
+                Applications = new List<PluginApplication>(),
+                AddressOnFile = new PluginAddress
+                {
+                    StreetAddress1 = "123 Main St",
+                    City = "Denver",
+                    State = "CO",
+                    PostalCode = "80202"
+                }
+            });
+
+        var noAddressPii = new PiiVisibility(IncludeAddress: false, IncludeEmail: true, IncludePhone: true);
+        var result = await _repository.GetHouseholdByEmailAsync("u@e.com", noAddressPii, UserIalLevel.IAL1plus);
+
+        Assert.NotNull(result);
+        Assert.Null(result.AddressOnFile);
+    }
+
+    [Fact]
     public async Task GetHouseholdByIdentifierAsync_WhenEmailIdentifier_DelegatesToPlugin()
     {
         var email = "guardian@example.com";
@@ -186,6 +273,39 @@ public class HouseholdRepositoryTests
         Assert.Equal(phone, result.Phone);
         await _summerEbtCaseService.Received(1)
             .GetHouseholdByIdentifierAsync(PluginHouseholdIdentifierType.Phone, phone, Arg.Any<PluginPiiVisibility>(), Arg.Any<PluginIdentityAssuranceLevel>(), Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task GetHouseholdByIdentifierAsync_WhenPhoneIdentifier_TrimsWhitespaceBeforePluginCall()
+    {
+        var pluginData = new PluginHouseholdData { Phone = "5551234567", Applications = new List<PluginApplication>() };
+        _summerEbtCaseService
+            .GetHouseholdByIdentifierAsync(PluginHouseholdIdentifierType.Phone, "5551234567", Arg.Any<PluginPiiVisibility>(), Arg.Any<PluginIdentityAssuranceLevel>(), Arg.Any<CancellationToken>())
+            .Returns(pluginData);
+
+        await _repository.GetHouseholdByIdentifierAsync(
+            HouseholdIdentifier.Phone("  5551234567  "), FullPii, UserIalLevel.IAL1plus);
+
+        await _summerEbtCaseService.Received(1)
+            .GetHouseholdByIdentifierAsync(PluginHouseholdIdentifierType.Phone, "5551234567", Arg.Any<PluginPiiVisibility>(), Arg.Any<PluginIdentityAssuranceLevel>(), Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task GetHouseholdByIdentifierAsync_WhenIdentifierValueIsWhitespace_ReturnsNullWithoutCallingPlugin()
+    {
+        var result = await _repository.GetHouseholdByIdentifierAsync(
+            HouseholdIdentifier.Email("   "), FullPii, UserIalLevel.IAL1plus);
+
+        Assert.Null(result);
+        await _summerEbtCaseService.DidNotReceive()
+            .GetHouseholdByIdentifierAsync(Arg.Any<PluginHouseholdIdentifierType>(), Arg.Any<string>(), Arg.Any<PluginPiiVisibility>(), Arg.Any<PluginIdentityAssuranceLevel>(), Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task GetHouseholdByIdentifierAsync_WhenPiiVisibilityNull_ThrowsArgumentNullException()
+    {
+        await Assert.ThrowsAsync<ArgumentNullException>(
+            async () => await _repository.GetHouseholdByIdentifierAsync(HouseholdIdentifier.Email("u@e.com"), null!, UserIalLevel.None));
     }
 
     [Fact]

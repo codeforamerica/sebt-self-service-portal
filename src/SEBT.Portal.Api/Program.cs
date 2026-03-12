@@ -10,6 +10,7 @@ using Serilog;
 using Microsoft.FeatureManagement;
 using SEBT.Portal.Api.Middleware;
 using SEBT.Portal.Api.Options;
+using SEBT.Portal.Api.Services;
 using SEBT.Portal.Core.AppSettings;
 using SEBT.Portal.Core.Services;
 using SEBT.Portal.Infrastructure.Configuration;
@@ -142,6 +143,21 @@ builder.Services.AddOptions<JwtBearerOptions>(JwtBearerDefaults.AuthenticationSc
     });
 
 builder.Services.AddAuthorization();
+
+// Development-only phone override: when set, overrides JWT phone for household lookup
+builder.Services.AddOptions<DevelopmentPhoneOverrideOptions>()
+    .BindConfiguration(DevelopmentPhoneOverrideOptions.SectionName);
+builder.Services.AddSingleton<IPhoneOverrideProvider>(sp =>
+{
+    var env = sp.GetRequiredService<IWebHostEnvironment>();
+    var options = sp.GetRequiredService<IOptions<DevelopmentPhoneOverrideOptions>>().Value;
+    if (env.IsDevelopment() && !string.IsNullOrWhiteSpace(options.Phone))
+    {
+        return sp.GetRequiredService<DevelopmentPhoneOverrideProvider>();
+    }
+    return NullPhoneOverrideProvider.Instance;
+});
+builder.Services.AddSingleton<DevelopmentPhoneOverrideProvider>();
 
 builder.Services.AddRateLimiter(options =>
 {

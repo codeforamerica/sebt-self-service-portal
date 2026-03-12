@@ -11,7 +11,8 @@ using SEBT.Portal.Core.Utilities;
 namespace SEBT.Portal.Api.Controllers.Auth;
 
 /// <summary>
-/// OIDC endpoints for state-specific login. Config is under Oidc:{stateCode} (e.g. Oidc:co:DiscoveryEndpoint).
+/// OIDC endpoints for state-specific login. Config uses Oidc keys (DiscoveryEndpoint, ClientId, CallbackRedirectUri)
+/// or per-state overrides under Oidc:{stateCode}.
 /// </summary>
 [ApiController]
 [Route("api/auth/oidc")]
@@ -33,8 +34,8 @@ public class OidcController(
         "env", "org", "p1.region"
     };
     /// <summary>
-    /// Public OIDC config for frontend PKCE flow (no secrets): authorization endpoint, token endpoint, client id, redirect URI.
-    /// Config key: Oidc:{stateCode} (e.g. Oidc:co:DiscoveryEndpoint).
+    /// Public OIDC config for frontend PKCE flow: authorization endpoint, token endpoint, client id, redirect URI.
+    /// Config: Oidc:DiscoveryEndpoint, Oidc:ClientId, Oidc:CallbackRedirectUri.
     /// </summary>
     [HttpGet("{code}/config")]
     [ProducesResponseType(StatusCodes.Status200OK)]
@@ -43,17 +44,16 @@ public class OidcController(
     public async Task<IActionResult> GetConfig([FromRoute] string code, CancellationToken cancellationToken)
     {
         var stateKey = code.ToLowerInvariant();
-        var discoveryEndpoint = config[$"Oidc:{stateKey}:DiscoveryEndpoint"];
-        var clientId = config[$"Oidc:{stateKey}:ClientId"];
-        var redirectUri = config[$"Oidc:{stateKey}:CallbackRedirectUri"];
+        var discoveryEndpoint = config[$"Oidc:{stateKey}:DiscoveryEndpoint"] ?? config["Oidc:DiscoveryEndpoint"];
+        var clientId = config[$"Oidc:{stateKey}:ClientId"] ?? config["Oidc:ClientId"];
+        var redirectUri = config[$"Oidc:{stateKey}:CallbackRedirectUri"] ?? config["Oidc:CallbackRedirectUri"];
         if (string.IsNullOrEmpty(discoveryEndpoint) || string.IsNullOrEmpty(clientId) || string.IsNullOrEmpty(redirectUri))
         {
-            logger.LogWarning("OIDC config missing for state {StateCode} (Oidc:{StateKey}:DiscoveryEndpoint, ClientId, or CallbackRedirectUri)", code, stateKey);
+            logger.LogWarning("OIDC config missing for state {StateCode} (Oidc:DiscoveryEndpoint, Oidc:ClientId, or Oidc:CallbackRedirectUri)", code);
             return StatusCode(StatusCodes.Status503ServiceUnavailable, new
             {
                 error = $"OIDC not configured for {code}.",
-                hint =
-                    $"Set Oidc:{stateKey}:ClientId in appsettings (or env Oidc__{stateKey}__ClientId). DiscoveryEndpoint and CallbackRedirectUri must also be set."
+                hint = "Set Oidc:DiscoveryEndpoint, Oidc:ClientId, and Oidc:CallbackRedirectUri in appsettings."
             });
         }
 
@@ -67,7 +67,7 @@ public class OidcController(
             var tokenEndpoint = root.TryGetProperty("token_endpoint", out var te) ? te.GetString() : null;
             if (string.IsNullOrEmpty(authEndpoint) || string.IsNullOrEmpty(tokenEndpoint))
                 return StatusCode(StatusCodes.Status502BadGateway, new { error = "Invalid discovery document." });
-            var languageParam = config[$"Oidc:{stateKey}:LanguageParam"] ?? "en";
+            var languageParam = config[$"Oidc:{stateKey}:LanguageParam"] ?? config["Oidc:LanguageParam"] ?? "en";
             return Ok(new { authorizationEndpoint = authEndpoint, tokenEndpoint, clientId, redirectUri, languageParam });
         }
         catch (Exception ex)

@@ -68,8 +68,13 @@ public class HouseholdRepository : IHouseholdRepository
             : identifierValue.Trim();
 
         _logger.LogDebug(
-            "Querying state plugin for household data by identifier type {Type}",
-            identifierType);
+            "Querying state plugin for household data by identifier type {Type} value {Value}",
+            identifierType,
+            normalizedValue);
+        if (identifierType == PluginHouseholdIdentifierType.Phone)
+        {
+            _logger.LogDebug("HouseholdRepository: Passing phone identifier to plugin, value={Phone}", normalizedValue);
+        }
 
         var pluginPii = new PluginPiiVisibility(
             piiVisibility.IncludeAddress,
@@ -86,8 +91,9 @@ public class HouseholdRepository : IHouseholdRepository
         if (pluginHousehold == null)
         {
             _logger.LogInformation(
-                "No household data found for identifier type {Type}",
-                identifierType);
+                "No household data found for identifier type {Type} value {Value}",
+                identifierType,
+                normalizedValue);
             return null;
         }
 

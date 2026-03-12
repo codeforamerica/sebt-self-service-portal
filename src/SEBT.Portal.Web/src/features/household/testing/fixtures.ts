@@ -58,6 +58,7 @@ export function createMockHouseholdData(overrides?: Partial<HouseholdData>): Hou
   return {
     email: 'test@example.com',
     phone: '(303) 555-0100',
+    summerEbtCases: [],
     applications: [createMockApplication()],
     addressOnFile: createMockAddress(),
     userProfile: createMockUserProfile(),

@@ -131,6 +131,20 @@ For a deployment where the current state uses OIDC, set in **Next.js** `.env.loc
 
 See `src/SEBT.Portal.Api/appsettings.Development.example.json` and [ADR-0008](docs/adr/0008-co-oidc-mycolorado-authentication-and-state-auth-context.md) for the design.
 
+### Development Phone Override (Local dev only)
+
+For states that use phone number as their primary Household ID and OIDC, there's instances where we need a bypass to get around MFA while doing local development. You can override that phone number so Household info lookups uses a different number in `appsettings.development.json`.
+
+**Only active when `ASPNETCORE_ENVIRONMENT=Development`.** Set in `appsettings.Development.json`:
+
+```json
+"DevelopmentPhoneOverride": {
+  "Phone": "8185558437"
+}
+```
+
+The resolver then uses this phone for household lookup instead of the one from the JWT or user record. You can still go through the OIDC flow (if enabled) like normally, but the phone number used to validate MFA will not be the one used within the portal app.
+
 ### ID Proofing Requirements
 
 PII data is only shown and editable to users who meet the ID proofing requirements configured within "IdProofingRequirements" and their current IAL status (for example, `address+view`, `email+view`, `phone+view`). Configure in `appsettings.json` or override with `appsettings.{state}.json`.

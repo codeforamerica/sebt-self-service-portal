@@ -55,10 +55,35 @@ public class MockHouseholdRepositoryTests
     }
 
     [Fact]
-    public async Task GetHouseholdByIdentifierAsync_WhenNonEmailIdentifier_ReturnsNull()
+    public async Task GetHouseholdByIdentifierAsync_WhenPhoneIdentifierAndHouseholdExists_ReturnsHouseholdData()
     {
-        // Mock data is keyed by email only; Phone, SNAP ID, etc. return null until backend supports them
-        var identifier = HouseholdIdentifier.Phone("5551234567");
+        // Mock supports phone lookup for DevelopmentPhoneOverride; co-loaded uses default override phone
+        var identifier = HouseholdIdentifier.Phone("8185558437");
+
+        var result = await _repository.GetHouseholdByIdentifierAsync(identifier, FullPiiVisibility, UserIalLevel.IAL1plus);
+
+        Assert.NotNull(result);
+        Assert.Equal("co-loaded@example.com", result.Email);
+        Assert.Equal(ApplicationStatus.Approved, result.Applications?.First().ApplicationStatus);
+    }
+
+    [Fact]
+    public async Task GetHouseholdByIdentifierAsync_WhenPhoneIdentifierWithFormatting_NormalizesAndFindsHousehold()
+    {
+        // Phone normalization strips non-digits; 555-123-4567 -> 5551234567
+        var identifier = HouseholdIdentifier.Phone("555-123-4567");
+
+        var result = await _repository.GetHouseholdByIdentifierAsync(identifier, FullPiiVisibility, UserIalLevel.IAL1plus);
+
+        Assert.NotNull(result);
+        Assert.Equal("non-co-loaded@example.com", result.Email);
+    }
+
+    [Fact]
+    public async Task GetHouseholdByIdentifierAsync_WhenUnsupportedIdentifierType_ReturnsNull()
+    {
+        // SNAP ID, TANF ID, SSN, etc. are not keyed in mock data
+        var identifier = HouseholdIdentifier.SnapId("SNAP123");
 
         var result = await _repository.GetHouseholdByIdentifierAsync(identifier, FullPiiVisibility, UserIalLevel.IAL1plus);
 

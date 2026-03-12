@@ -39,7 +39,7 @@ export interface OidcConfig {
   clientId: string
   redirectUri: string
   /** Optional params from config **/
-  languageParam?: string
+  languageParam?: string | undefined
 }
 
 export function buildAuthorizationUrl(

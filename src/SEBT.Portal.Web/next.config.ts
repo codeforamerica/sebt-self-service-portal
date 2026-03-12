@@ -19,9 +19,10 @@ const nextConfig: NextConfig = {
     turbopackUseBuiltinSass: false
   },
   /* SASS Configuration for USWDS */
+  /* sass-loader v16 uses modern Sass API which expects loadPaths (not includePaths) */
   sassOptions: {
     implementation: 'sass-embedded',
-    includePaths: [
+    loadPaths: [
       path.join(__dirname, 'design/sass'),
       path.join(__dirname, 'node_modules/@uswds/uswds/packages'),
       path.join(__dirname, 'node_modules')
