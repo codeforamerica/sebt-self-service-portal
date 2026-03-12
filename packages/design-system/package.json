@@ -1,0 +1,12 @@
+{
+  "name": "@sebt/design-system",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    "./src/*": "./src/*",
+    "./design/sass/*": "./design/sass/*",
+    "./design/states/*": "./design/states/*",
+    "./content/states/*": "./content/states/*"
+  }
+}
