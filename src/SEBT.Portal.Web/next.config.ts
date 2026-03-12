@@ -4,6 +4,10 @@ import path from 'path'
 
 const state = process.env.STATE || 'dc'
 
+// @sebt/design-system is a workspace dependency installed into this package's node_modules.
+// __dirname here is src/SEBT.Portal.Web/.
+const designSystemPath = path.resolve(__dirname, 'node_modules/@sebt/design-system')
+
 // Bundle analyzer configuration
 const withBundleAnalyzer = bundleAnalyzer({
   enabled: process.env.ANALYZE === 'true'
@@ -22,7 +26,7 @@ const nextConfig: NextConfig = {
   sassOptions: {
     implementation: 'sass-embedded',
     includePaths: [
-      path.join(__dirname, 'design/sass'),
+      path.join(designSystemPath, 'design/sass'),
       path.join(__dirname, 'node_modules/@uswds/uswds/packages'),
       path.join(__dirname, 'node_modules')
     ]
@@ -38,7 +42,7 @@ const nextConfig: NextConfig = {
               implementation: 'sass-embedded',
               sassOptions: {
                 loadPaths: [
-                  path.join(__dirname, 'design/sass'),
+                  path.join(designSystemPath, 'design/sass'),
                   path.join(__dirname, 'node_modules/@uswds/uswds/packages'),
                   path.join(__dirname, 'node_modules')
                 ]
