@@ -1,9 +1,3 @@
-variable "app_settings" {
-  type        = map(string)
-  description = "Non-flag configuration values managed via AppConfig freeform profile."
-  default     = {}
-}
-
 variable "api_cpu" {
   type        = number
   description = "CPU units for the API service container."
@@ -30,16 +24,6 @@ variable "apply_immediately" {
   type        = bool
   description = "Apply database changes immediately rather than during the next maintenance window."
   default     = false
-}
-
-variable "deployment_strategy" {
-  type        = string
-  description = <<-EOT
-    AppConfig deployment strategy. Controls how quickly configuration
-    changes roll out. See:
-    https://docs.aws.amazon.com/appconfig/latest/userguide/appconfig-creating-deployment-strategy-predefined.html
-    EOT
-  default     = "AppConfig.AllAtOnce"
 }
 
 variable "desired_containers" {
@@ -73,17 +57,6 @@ variable "environment" {
   type        = string
   description = "Environment for the deployment."
   default     = "dev"
-}
-
-variable "feature_flags" {
-  type = map(object({
-    enabled = bool
-  }))
-  description = <<-EOT
-    Feature flags managed via AppConfig. Each key is the flag name and the
-    value specifies whether the flag is enabled.
-    EOT
-  default = {}
 }
 
 variable "force_delete" {

@@ -5,10 +5,6 @@ module "appconfig" {
 
   project     = "${var.project}-${var.state}"
   environment = var.environment
-
-  feature_flags       = var.feature_flags
-  app_settings        = var.app_settings
-  deployment_strategy = var.deployment_strategy
 }
 
 # Create the API service. This is an internal service that is only accessible
