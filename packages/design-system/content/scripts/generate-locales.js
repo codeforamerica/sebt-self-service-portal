@@ -41,7 +41,8 @@
  * - Variable interpolation: Preserves {state}, {year} placeholders for runtime
  */
 
-import '../../design/scripts/load-env.js';
+// load-env.js is portal-specific and not needed in the shared package.
+// The script does not use any process.env variables.
 import { createHash } from 'crypto';
 import {
   existsSync,
@@ -51,8 +52,20 @@ import {
   rmSync,
   writeFileSync,
 } from 'fs';
+import * as path from 'path';
 import { dirname, join, relative } from 'path';
 import { fileURLToPath } from 'url';
+
+// Parse CLI arguments
+const cliArgs = process.argv.slice(2)
+function getCliArg(name) {
+  const idx = cliArgs.indexOf(name)
+  return idx !== -1 ? cliArgs[idx + 1] : null
+}
+const csvDirOverride = getCliArg('--csv-dir')
+const outDirOverride = getCliArg('--out-dir')
+const tsOutOverride  = getCliArg('--ts-out')
+const appFilter      = getCliArg('--app')   // 'portal' | 'enrollment' | null (all)
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -63,8 +76,12 @@ const rel = p => relative(rootDir, p);
 // Configuration
 const CONFIG = {
   // State CSV files directory (content/states/{state}.csv)
-  statesDir: join(contentDir, 'states'),
-  outputDir: join(contentDir, 'locales'),
+  statesDir: csvDirOverride
+    ? path.resolve(process.cwd(), csvDirOverride)
+    : join(contentDir, 'states'),
+  outputDir: outDirOverride
+    ? path.resolve(process.cwd(), outDirOverride)
+    : join(contentDir, 'locales'),
   hashFile: join(contentDir, '.copy-hash'),
   locales: {
     en: 'English',
@@ -474,6 +491,36 @@ function validateStateCompleteness(stateData, state) {
   return warnings;
 }
 
+// Which namespaces belong to which app.
+// 'all' = shared, included in every app's barrel file.
+const NAMESPACE_APP = {
+  common:                 'all',
+  landing:                'all',
+  disclaimer:             'all',
+  personalInfo:           'all',
+  confirmInfo:            'all',
+  result:                 'all',
+  // Portal-specific
+  login:                  'portal',
+  idProofing:             'portal',
+  optIn:                  'portal',
+  offBoarding:            'portal',
+  dashboard:              'portal',
+  edit:                   'portal',
+  editContactPreferences: 'portal',
+  editMailingAddress:     'portal',
+  stepUpDisclaimer:       'portal',
+  stepUpFailure:          'portal',
+  proto:                  'portal',
+}
+
+function isNamespaceForApp(namespace, app) {
+  if (!app) return true
+  // eslint-disable-next-line security/detect-object-injection -- namespace comes from JSON filenames, not user input
+  const mapped = NAMESPACE_APP[namespace] ?? 'all'
+  return mapped === 'all' || mapped === app
+}
+
 /**
  * Generate TypeScript resource file from locale directory
  *
@@ -484,7 +531,9 @@ function validateStateCompleteness(stateData, state) {
  * Output: src/lib/generated-locale-resources.ts
  */
 function generateResourceFile() {
-  const outputPath = join(rootDir, 'src', 'lib', 'generated-locale-resources.ts');
+  const outputPath = tsOutOverride
+    ? path.resolve(process.cwd(), tsOutOverride)
+    : join(rootDir, 'src', 'lib', 'generated-locale-resources.ts');
 
   if (!existsSync(CONFIG.outputDir)) {
     console.log(
@@ -525,7 +574,8 @@ function generateResourceFile() {
         .sort();
 
       for (const file of files) {
-        const namespace = file.replace('.json', '');
+        const namespace = file.replace('.json', '')
+        if (!isNamespaceForApp(namespace, appFilter)) continue
         // Sanitize namespace for use as a JS identifier (handle hyphens → camelCase)
         const safeNs = namespace.replace(/-([a-z])/g, (_, c) => c.toUpperCase());
         const varName = `${lang}${state.toUpperCase()}${safeNs.charAt(0).toUpperCase()}${safeNs.slice(1)}`;
