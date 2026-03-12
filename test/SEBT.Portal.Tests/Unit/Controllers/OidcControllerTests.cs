@@ -46,10 +46,9 @@ public class OidcControllerTests
     [Fact]
     public async Task GetConfig_WhenDiscoveryEndpointMissing_Returns503()
     {
-        _config[$"Oidc:{CoStateKey}:DiscoveryEndpoint"].Returns((string?)null);
         _config["Oidc:DiscoveryEndpoint"].Returns((string?)null);
-        _config[$"Oidc:{CoStateKey}:ClientId"].Returns("client-id");
-        _config[$"Oidc:{CoStateKey}:CallbackRedirectUri"].Returns("http://localhost:3000/callback");
+        _config["Oidc:ClientId"].Returns("client-id");
+        _config["Oidc:CallbackRedirectUri"].Returns("http://localhost:3000/callback");
 
         var result = await _controller.GetConfig(CoStateKey, CancellationToken.None);
 
@@ -60,10 +59,9 @@ public class OidcControllerTests
     [Fact]
     public async Task GetConfig_WhenClientIdMissing_Returns503()
     {
-        _config[$"Oidc:{CoStateKey}:DiscoveryEndpoint"].Returns("https://auth.example.com/.well-known/openid-configuration");
-        _config[$"Oidc:{CoStateKey}:ClientId"].Returns((string?)null);
+        _config["Oidc:DiscoveryEndpoint"].Returns("https://auth.example.com/.well-known/openid-configuration");
         _config["Oidc:ClientId"].Returns((string?)null);
-        _config[$"Oidc:{CoStateKey}:CallbackRedirectUri"].Returns("http://localhost:3000/callback");
+        _config["Oidc:CallbackRedirectUri"].Returns("http://localhost:3000/callback");
 
         var result = await _controller.GetConfig(CoStateKey, CancellationToken.None);
 
@@ -72,16 +70,13 @@ public class OidcControllerTests
     }
 
     [Fact]
-    public async Task GetConfig_WhenFlatConfigSet_Returns200()
+    public async Task GetConfig_WhenConfigSet_Returns200()
     {
         const string discoveryUrl = "https://auth.example.com/.well-known/openid-configuration";
         const string discoveryJson = """{"authorization_endpoint":"https://auth.example.com/authorize","token_endpoint":"https://auth.example.com/token"}""";
 
-        _config[$"Oidc:{CoStateKey}:DiscoveryEndpoint"].Returns((string?)null);
         _config["Oidc:DiscoveryEndpoint"].Returns(discoveryUrl);
-        _config[$"Oidc:{CoStateKey}:ClientId"].Returns((string?)null);
         _config["Oidc:ClientId"].Returns("client-id");
-        _config[$"Oidc:{CoStateKey}:CallbackRedirectUri"].Returns((string?)null);
         _config["Oidc:CallbackRedirectUri"].Returns("http://localhost:3000/callback");
 
         var mockHttp = new MockHttpMessageHandler();

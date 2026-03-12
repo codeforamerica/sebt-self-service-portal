@@ -23,11 +23,11 @@ We'll use a frontend-driven Authorization Code/PKCE flow: the **Next.js** server
 - **Plugins** — Code that needs IdP-derived data (e.g. phone for household lookup) reads from the request's `ClaimsPrincipal`; the portal JWT issued at complete-login includes those claims.
 
 **Configuration:**  
-Next.js (when the current deployment state uses OIDC): `OIDC_DISCOVERY_ENDPOINT`, `OIDC_CLIENT_ID`, `OIDC_CLIENT_SECRET`, `OIDC_REDIRECT_URI`, `OIDC_COMPLETE_LOGIN_SIGNING_KEY`. API: `Oidc:CompleteLoginSigningKey` (it should match the same value as the Next.js one); for the public config endpoint, `Oidc:{state}:DiscoveryEndpoint`, `Oidc:{state}:ClientId`, `Oidc:{state}:CallbackRedirectUri`, and optionally `Oidc:{state}:LanguageParam`. See `appsettings.Development.example.json` and `.env.example`.
+Next.js (when the current deployment state uses OIDC): `OIDC_DISCOVERY_ENDPOINT`, `OIDC_CLIENT_ID`, `OIDC_CLIENT_SECRET`, `OIDC_REDIRECT_URI`, `OIDC_COMPLETE_LOGIN_SIGNING_KEY`. API: `Oidc:CompleteLoginSigningKey` (it should match the same value as the Next.js one); for the public config endpoint, `Oidc:DiscoveryEndpoint`, `Oidc:ClientId`, `Oidc:CallbackRedirectUri`, and optionally `Oidc:LanguageParam`. See `appsettings.Development.example.json` and `.env.example`.
 
 ## Consequences
 
-Users can sign in with OIDC services (like Colorado's MyColorado). IdP claims such as phone, givenName, and familyName are available in the portal JWT and thus on `User.Claims` for the duration of the session. OIDC config is per-state; the client secret lives only in the Next.js server.
+Users can sign in with OIDC services (like Colorado's MyColorado). IdP claims such as phone, givenName, and familyName are available in the portal JWT and thus on `User.Claims` for the duration of the session. OIDC config is flat (one IdP per deployment); the client secret lives only in the Next.js server.
 
 Development requires real or test IdP credentials and the correct redirect URI (`http://localhost:3000/callback`).
 

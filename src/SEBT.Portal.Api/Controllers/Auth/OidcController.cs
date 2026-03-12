@@ -11,8 +11,7 @@ using SEBT.Portal.Core.Utilities;
 namespace SEBT.Portal.Api.Controllers.Auth;
 
 /// <summary>
-/// OIDC endpoints for state-specific login. Config uses Oidc keys (DiscoveryEndpoint, ClientId, CallbackRedirectUri)
-/// or per-state overrides under Oidc:{stateCode}.
+/// OIDC endpoints for state IdP login. Config uses flat Oidc keys: DiscoveryEndpoint, ClientId, CallbackRedirectUri.
 /// </summary>
 [ApiController]
 [Route("api/auth/oidc")]
@@ -43,16 +42,15 @@ public class OidcController(
     [ProducesResponseType(StatusCodes.Status503ServiceUnavailable)]
     public async Task<IActionResult> GetConfig([FromRoute] string code, CancellationToken cancellationToken)
     {
-        var stateKey = code.ToLowerInvariant();
-        var discoveryEndpoint = config[$"Oidc:{stateKey}:DiscoveryEndpoint"] ?? config["Oidc:DiscoveryEndpoint"];
-        var clientId = config[$"Oidc:{stateKey}:ClientId"] ?? config["Oidc:ClientId"];
-        var redirectUri = config[$"Oidc:{stateKey}:CallbackRedirectUri"] ?? config["Oidc:CallbackRedirectUri"];
+        var discoveryEndpoint = config["Oidc:DiscoveryEndpoint"];
+        var clientId = config["Oidc:ClientId"];
+        var redirectUri = config["Oidc:CallbackRedirectUri"];
         if (string.IsNullOrEmpty(discoveryEndpoint) || string.IsNullOrEmpty(clientId) || string.IsNullOrEmpty(redirectUri))
         {
-            logger.LogWarning("OIDC config missing for state {StateCode} (Oidc:DiscoveryEndpoint, Oidc:ClientId, or Oidc:CallbackRedirectUri)", code);
+            logger.LogWarning("OIDC config missing (Oidc:DiscoveryEndpoint, Oidc:ClientId, or Oidc:CallbackRedirectUri)");
             return StatusCode(StatusCodes.Status503ServiceUnavailable, new
             {
-                error = $"OIDC not configured for {code}.",
+                error = "OIDC not configured.",
                 hint = "Set Oidc:DiscoveryEndpoint, Oidc:ClientId, and Oidc:CallbackRedirectUri in appsettings."
             });
         }
@@ -67,12 +65,12 @@ public class OidcController(
             var tokenEndpoint = root.TryGetProperty("token_endpoint", out var te) ? te.GetString() : null;
             if (string.IsNullOrEmpty(authEndpoint) || string.IsNullOrEmpty(tokenEndpoint))
                 return StatusCode(StatusCodes.Status502BadGateway, new { error = "Invalid discovery document." });
-            var languageParam = config[$"Oidc:{stateKey}:LanguageParam"] ?? config["Oidc:LanguageParam"] ?? "en";
+            var languageParam = config["Oidc:LanguageParam"] ?? "en";
             return Ok(new { authorizationEndpoint = authEndpoint, tokenEndpoint, clientId, redirectUri, languageParam });
         }
         catch (Exception ex)
         {
-            logger.LogWarning(ex, "Failed to fetch OIDC discovery document for state {StateCode}", code);
+            logger.LogWarning(ex, "Failed to fetch OIDC discovery document");
             return StatusCode(StatusCodes.Status502BadGateway, new { error = "Unable to load OIDC config." });
         }
     }

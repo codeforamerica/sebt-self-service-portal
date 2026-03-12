@@ -79,7 +79,7 @@ public class HouseholdIdentifierResolver : IHouseholdIdentifierResolver
             var overridePhone = _phoneOverrideProvider.GetOverridePhone();
             if (!string.IsNullOrWhiteSpace(overridePhone))
             {
-                _logger?.LogDebug("Using development phone override for household lookup");
+                _logger?.LogDebug("Using development phone override for household lookup ");
                 return new HouseholdIdentifier(PreferredHouseholdIdType.Phone, overridePhone);
             }
 
