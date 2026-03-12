@@ -68,12 +68,11 @@ public class HouseholdRepository : IHouseholdRepository
             : identifierValue.Trim();
 
         _logger.LogDebug(
-            "Querying state plugin for household data by identifier type {Type} value {Value}",
-            identifierType,
-            normalizedValue);
+            "Querying state plugin for household data by identifier type {Type}",
+            identifierType);
         if (identifierType == PluginHouseholdIdentifierType.Phone)
         {
-            _logger.LogDebug("HouseholdRepository: Passing phone identifier to plugin, value={Phone}", normalizedValue);
+            _logger.LogDebug("HouseholdRepository: Passing phone identifier to plugin");
         }
 
         var pluginPii = new PluginPiiVisibility(
