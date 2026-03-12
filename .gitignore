@@ -455,6 +455,9 @@ output
 **/crash.*.log
 
 
+# Superpowers brainstorm artifacts
+.superpowers/
+
 # temporary files
 /temp
 # local plugin files
