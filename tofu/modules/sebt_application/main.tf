@@ -11,8 +11,7 @@ module "appconfig" {
 # within the VPC. It runs the .NET backend API on Fargate behind an internal
 # Application Load Balancer.
 module "api" {
-  # TODO: Replace with release tag after AppConfig Agent sidecar PR merges.
-  source = "github.com/codeforamerica/tofu-modules-aws-fargate-service?ref=appconfig-sidecar"
+  source = "github.com/codeforamerica/tofu-modules-aws-fargate-service?ref=1.13.0"
 
   project       = "${var.project}-${var.state}"
   project_short = "sebt"
