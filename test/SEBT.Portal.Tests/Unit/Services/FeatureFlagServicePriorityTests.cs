@@ -187,25 +187,4 @@ public class FeatureFlagServicePriorityTests
             service.GetFeatureFlagsAsync(cts.Token));
     }
 
-    [Fact]
-    public async Task GetFeatureFlagsAsync_SkipsAppConfigSubsection()
-    {
-        // Arrange
-        // FeatureManager might return "AppConfig" as a feature name (the config subsection)
-        // This should be skipped
-        var featureNames = new[] { "test_feature", "AppConfig" };
-        _featureManager.GetFeatureNamesAsync().Returns(featureNames.ToAsyncEnumerable());
-        _featureManager.IsEnabledAsync("test_feature").Returns(true);
-        _featureManager.IsEnabledAsync("AppConfig").Returns(false);
-
-        var service = new FeatureFlagQueryService(_featureManager, _logger);
-
-        // Act
-        var result = await service.GetFeatureFlagsAsync();
-
-        // Assert
-        Assert.True(result.ContainsKey("test_feature"));
-        Assert.False(result.ContainsKey("AppConfig")); // Should be skipped
-        Assert.Single(result);
-    }
 }

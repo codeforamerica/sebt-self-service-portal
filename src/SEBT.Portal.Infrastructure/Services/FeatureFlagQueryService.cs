@@ -46,12 +46,6 @@ public class FeatureFlagQueryService : IFeatureFlagQueryService
         {
             await foreach (var featureName in _featureManager.GetFeatureNamesAsync().WithCancellation(cancellationToken))
             {
-                // Skip the AppConfig configuration subsection
-                if (featureName.Equals("AppConfig", StringComparison.OrdinalIgnoreCase))
-                {
-                    continue;
-                }
-
                 if (IsValidFeatureFlagName(featureName))
                 {
                     try
