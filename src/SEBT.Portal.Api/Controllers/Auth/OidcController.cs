@@ -121,7 +121,8 @@ public class OidcController(
         }
         catch (Exception ex)
         {
-            logger.LogWarning(ex, "Invalid or expired callback token for state {StateCode}", body.StateCode);
+            var safeStateCode = (body.StateCode ?? string.Empty).Replace("\r", string.Empty).Replace("\n", string.Empty);
+            logger.LogWarning(ex, "Invalid or expired callback token for state {StateCode}", safeStateCode);
             return BadRequest(new { error = "Invalid or expired callback token." });
         }
 

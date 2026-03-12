@@ -38,7 +38,7 @@ public class HouseholdRepository : IHouseholdRepository
         var pluginType = MapToPluginIdentifierType(identifier.Type);
         if (pluginType == null)
         {
-            _logger.LogDebug("State plugin does not support identifier type {Type}", identifier.Type);
+            _logger.LogDebug("State plugin does not support the provided identifier type.");
             return Task.FromResult<HouseholdData?>(null);
         }
 
@@ -91,9 +91,8 @@ public class HouseholdRepository : IHouseholdRepository
         if (pluginHousehold == null)
         {
             _logger.LogInformation(
-                "No household data found for identifier type {Type} value {Value}",
-                identifierType,
-                normalizedValue);
+                "No household data found for identifier type {Type}",
+                identifierType);
             return null;
         }
 

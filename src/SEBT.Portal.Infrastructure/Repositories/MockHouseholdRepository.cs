@@ -80,15 +80,14 @@ public class MockHouseholdRepository : IHouseholdRepository
 
         if (household == null)
         {
-            _logger.LogInformation("Mock household not found for identifier {Type}={Value}", identifier.Type, lookupValue ?? identifier.Value);
+            _logger.LogInformation("Mock household not found for identifier type {Type}", identifier.Type);
             return Task.FromResult<HouseholdData?>(null);
         }
 
         var result = CreateCopy(household, piiVisibility);
         _logger.LogDebug(
-            "Returning mock household data for identifier {Type}={Value}, PII visibility: Address={IncludeAddress}, Email={IncludeEmail}, Phone={IncludePhone}",
+            "Returning mock household data for identifier type {Type}, PII visibility: Address={IncludeAddress}, Email={IncludeEmail}, Phone={IncludePhone}",
             identifier.Type,
-            lookupValue,
             piiVisibility.IncludeAddress,
             piiVisibility.IncludeEmail,
             piiVisibility.IncludePhone);
