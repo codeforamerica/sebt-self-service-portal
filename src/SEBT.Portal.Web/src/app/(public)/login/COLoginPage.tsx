@@ -1,7 +1,5 @@
 'use client'
 
-import { TextLink } from '@/components/ui'
-import { getStateLinks } from '@/lib/links'
 import {
   buildAuthorizationUrl,
   generateCodeChallenge,
@@ -11,10 +9,9 @@ import {
   type OidcConfig
 } from '@/lib/oidc-pkce'
 import { getTranslations } from '@/lib/translations'
+import { TextLink, getStateLinks, type StateCode } from '@sebt/design-system'
 import Link from 'next/link'
 import { useState } from 'react'
-
-import type { StateCode } from '@/lib/state'
 
 export function COLoginPage({ state }: { state: StateCode }) {
   const links = getStateLinks(state)

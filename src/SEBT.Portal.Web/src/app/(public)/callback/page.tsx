@@ -2,7 +2,7 @@
 
 import { setAuthToken, useAuth } from '@/features/auth'
 import { clearPkceStorage, getPkceFromStorage } from '@/lib/oidc-pkce'
-import { getState } from '@/lib/state'
+import { getState } from '@sebt/design-system'
 import { useRouter } from 'next/navigation'
 import { useEffect, useState } from 'react'
 

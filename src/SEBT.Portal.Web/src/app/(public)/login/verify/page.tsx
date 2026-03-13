@@ -1,7 +1,6 @@
 import { VerifyOtpFormWrapper } from '@/features/auth'
-import { getStateLinks } from '@/lib/links'
-import { getState } from '@/lib/state'
 import { getTranslations } from '@/lib/translations'
+import { getState, getStateLinks } from '@sebt/design-system'
 
 export default function VerifyPage() {
   const state = getState()

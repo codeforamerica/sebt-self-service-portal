@@ -1,6 +1,4 @@
-import { Footer, Header, HelpSection, SkipNav } from '@/components/layout'
 import { primaryFont } from '@/design/fonts'
-import { getState, getStateName } from '@/lib/state'
 import {
   AuthProvider,
   AxeProvider,
@@ -9,6 +7,7 @@ import {
   QueryProvider
 } from '@/providers'
 import { GoogleAnalytics } from '@next/third-parties/google'
+import { Footer, getState, getStateName, Header, HelpSection, SkipNav } from '@sebt/design-system'
 import type { Metadata, Viewport } from 'next'
 import { headers } from 'next/headers'
 import './globals.css'

@@ -4,7 +4,7 @@ import { useRouter } from 'next/navigation'
 import { useId, useState, type FormEvent } from 'react'
 import { useTranslation } from 'react-i18next'
 
-import { Alert, Button, InputField } from '@/components/ui'
+import { Alert, Button, InputField } from '@sebt/design-system'
 
 import {
   SK_ALLOW_ID_RETRY,

@@ -3,7 +3,7 @@
 import { useRouter } from 'next/navigation'
 import { useCallback, useEffect, useRef, useState } from 'react'
 
-import { Alert } from '@/components/ui'
+import { Alert } from '@sebt/design-system'
 
 import {
   SK_ALLOW_ID_RETRY,

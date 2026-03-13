@@ -1,5 +1,5 @@
 export { AuthProvider } from '@/features/auth'
+export { I18nProvider } from '@sebt/design-system/src/providers/I18nProvider'
 export { AxeProvider } from './AxeProvider'
 export { FeatureFlagsProvider } from './FeatureFlagsProvider'
-export { I18nProvider } from './I18nProvider'
 export { QueryProvider } from './QueryProvider'

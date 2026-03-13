@@ -1,6 +1,5 @@
 import { DocVerifyPage } from '@/features/auth/components/doc-verify'
-import { getStateLinks } from '@/lib/links'
-import { getState } from '@/lib/state'
+import { getState, getStateLinks } from '@sebt/design-system'
 
 function requireSdkKey(): string {
   const key = process.env.NEXT_PUBLIC_SOCURE_SDK_KEY

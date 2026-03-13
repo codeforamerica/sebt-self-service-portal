@@ -9,8 +9,12 @@ import { render, screen } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import LoginPage from './page'
 
-vi.mock('@/lib/state', () => ({
-  getState: vi.fn()
+vi.mock('@sebt/design-system', () => ({
+  getState: vi.fn(),
+  getStateLinks: vi.fn().mockReturnValue({ external: { contactUsAssistance: '' } }),
+  TextLink: ({ href, children }: { href: string; children: React.ReactNode }) => (
+    <a href={href}>{children}</a>
+  )
 }))
 
 vi.mock('@/lib/translations', () => ({
@@ -39,7 +43,7 @@ vi.mock('@/features/auth', () => ({
   LoginForm: () => <div data-testid="login-form">LoginForm</div>
 }))
 
-import { getState } from '@/lib/state'
+import { getState } from '@sebt/design-system'
 const mockGetState = vi.mocked(getState)
 
 describe('LoginPage', () => {
