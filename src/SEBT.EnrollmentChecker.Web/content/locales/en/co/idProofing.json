@@ -1,0 +1,20 @@
+{
+  "title": "",
+  "body": "",
+  "labelDob": "",
+  "labelId": "",
+  "helperId": "",
+  "optionLabelSsn": "",
+  "optionLabelItin": "",
+  "optionLabelMedicaidId": "",
+  "optionHelperMedicaidId": "",
+  "optionAccountId": "",
+  "optionHelperAccountId": "",
+  "optionPersonId": "",
+  "optionHelperPersonId": "",
+  "labelSsn": "",
+  "labelItin": "",
+  "labelMedicaidId": "",
+  "labelAccountId": "",
+  "labelPersonId": ""
+}

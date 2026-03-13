@@ -8,4 +8,5 @@
 
 packages:
   - 'src/SEBT.Portal.Web'
+  - 'src/SEBT.EnrollmentChecker.Web'
   - 'packages/*'
