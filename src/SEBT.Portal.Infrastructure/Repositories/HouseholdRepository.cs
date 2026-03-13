@@ -94,17 +94,28 @@ public class HouseholdRepository : IHouseholdRepository
     {
         return source with
         {
-            Email = piiVisibility.IncludeEmail ? source.Email : null,
-            Phone = piiVisibility.IncludePhone ? source.Phone : null,
-            AddressOnFile = piiVisibility.IncludeAddress && source.AddressOnFile != null
-                ? new Address
-                {
-                    StreetAddress1 = source.AddressOnFile.StreetAddress1,
-                    StreetAddress2 = source.AddressOnFile.StreetAddress2,
-                    City = source.AddressOnFile.City,
-                    State = source.AddressOnFile.State,
-                    PostalCode = source.AddressOnFile.PostalCode
-                }
+            Email = piiVisibility.IncludeEmail ? source.Email : PiiMasker.MaskEmail(source.Email),
+            Phone = piiVisibility.IncludePhone ? source.Phone : PiiMasker.MaskPhone(source.Phone),
+            AddressOnFile = source.AddressOnFile != null
+                ? piiVisibility.IncludeAddress
+                    ? new Address
+                    {
+                        StreetAddress1 = source.AddressOnFile.StreetAddress1,
+                        StreetAddress2 = source.AddressOnFile.StreetAddress2,
+                        City = source.AddressOnFile.City,
+                        State = source.AddressOnFile.State,
+                        PostalCode = source.AddressOnFile.PostalCode
+                    }
+                    : new Address
+                    {
+                        StreetAddress1 = PiiMasker.MaskStreetAddress(
+                            source.AddressOnFile.StreetAddress1,
+                            source.AddressOnFile.StreetAddress2),
+                        StreetAddress2 = null,
+                        City = source.AddressOnFile.City,
+                        State = source.AddressOnFile.State,
+                        PostalCode = source.AddressOnFile.PostalCode
+                    }
                 : null
         };
     }
