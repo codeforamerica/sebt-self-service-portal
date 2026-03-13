@@ -70,7 +70,7 @@ public class PiiMaskerTests
     // ── Address masking ──
 
     [Fact]
-    public void MaskStreetAddress_MasksStreetLines_PreservesCityStateZip()
+    public void MaskStreetAddress_MasksStreetLines()
     {
         var result = PiiMasker.MaskStreetAddress("123 Main St", "Apt 4B");
 
