@@ -47,7 +47,7 @@ public static partial class PiiMasker
         }
 
         // Extract only the digits
-        var digits = DigitsOnly().Replace(phone, "");
+        var digits = NonDigits().Replace(phone, "");
 
         if (digits.Length < 4)
         {
@@ -83,5 +83,5 @@ public static partial class PiiMasker
     }
 
     [GeneratedRegex(@"\D")]
-    private static partial Regex DigitsOnly();
+    private static partial Regex NonDigits();
 }
