@@ -62,5 +62,9 @@
   "copyrite": "",
   "titleContactUs": "",
   "titleAccessibility": "",
-  "bodyAccessibility": ""
+  "bodyAccessibility": "",
+  "cancel": "Cancelar",
+  "addAnotherChild": "Agregar otro niño(a)",
+  "schoolLoading": "Cargando escuelas...",
+  "schoolError": "Unable to load schools. Please try again."
 }

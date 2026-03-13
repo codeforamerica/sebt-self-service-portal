@@ -1,4 +1,6 @@
 {
+  "heading": "Check results",
+  "errorHeading": "Results unavailable",
   "enrolledHeading": "Children enrolled in DC SUN Bucks",
   "notEnrolledHeading": "Children not enrolled in DC SUN Bucks",
   "notEnrolledCta": "These children may still be eligible.",

@@ -1,4 +1,6 @@
 {
+  "heading": "Resultados de la verificación",
+  "errorHeading": "Resultados no disponibles",
   "enrolledHeading": "Niños inscritos en Summer EBT",
   "notEnrolledHeading": "Niños no inscritos en Summer EBT",
   "notEnrolledCta": "Estos niños podrían ser elegibles.",

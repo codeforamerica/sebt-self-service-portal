@@ -62,5 +62,9 @@
   "copyrite": "© 2026 District of Columbia",
   "titleContactUs": "",
   "titleAccessibility": "",
-  "bodyAccessibility": ""
+  "bodyAccessibility": "",
+  "cancel": "Cancel",
+  "addAnotherChild": "Add another child",
+  "schoolLoading": "Loading schools...",
+  "schoolError": "Unable to load schools. Please try again."
 }

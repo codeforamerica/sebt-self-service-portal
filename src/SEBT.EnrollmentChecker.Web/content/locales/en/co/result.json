@@ -1,4 +1,6 @@
 {
+  "heading": "Check results",
+  "errorHeading": "Results unavailable",
   "enrolledHeading": "Children enrolled in Summer EBT",
   "notEnrolledHeading": "Children not enrolled in Summer EBT",
   "notEnrolledCta": "These children may still be eligible.",

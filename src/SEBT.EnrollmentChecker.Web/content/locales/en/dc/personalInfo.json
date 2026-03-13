@@ -1,4 +1,13 @@
 {
+  "firstNameLabel": "First name",
+  "middleNameLabel": "Middle name (optional)",
+  "lastNameLabel": "Last name",
+  "dobLabel": "Date of birth",
+  "dobHint": "Format: YYYY-MM-DD",
+  "schoolLabel": "School",
+  "schoolSelectPlaceholder": "Select a school",
+  "heading": "Add a child",
+  "editHeading": "Edit child information",
   "title": "Are you sure you want to delete this address?",
   "body": "Please provide your student's information in the required fields below. This tool will check if your child is automatically enrolled to receive benefits.",
   "labelBirthdate": "Birthdate",

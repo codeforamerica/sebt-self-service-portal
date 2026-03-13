@@ -1,4 +1,13 @@
 {
+  "firstNameLabel": "Nombre",
+  "middleNameLabel": "Segundo nombre (opcional)",
+  "lastNameLabel": "Apellido",
+  "dobLabel": "Fecha de nacimiento",
+  "dobHint": "Formato: AAAA-MM-DD",
+  "schoolLabel": "Escuela",
+  "schoolSelectPlaceholder": "Selecciona una escuela",
+  "heading": "Agregar un niño(a)",
+  "editHeading": "Editar información del niño(a)",
   "title": "¿Estás seguro de que quieres borrar esta dirección?",
   "body": "Proporciona la información de su estudiante en los campos obligatorios a continuación. Esta herramienta comprobará si su hijo(a) queda inscrito de forma automática para recibir beneficios.",
   "labelBirthdate": "Fecha de nacimiento",
