@@ -1,4 +1,23 @@
-import type { RequestHandler } from 'msw'
+import { http, HttpResponse } from 'msw'
 
-// Handlers are populated in Chunk 2 after schemas are defined.
-export const handlers: RequestHandler[] = []
+export const handlers = [
+  http.post('/api/enrollment/check', () =>
+    HttpResponse.json({
+      results: [
+        {
+          checkId: 'test-1',
+          firstName: 'Jane',
+          lastName: 'Doe',
+          dateOfBirth: '2015-04-12',
+          status: 'Match'
+        }
+      ]
+    })
+  ),
+  http.get('/api/enrollment/schools', () =>
+    HttpResponse.json([
+      { name: 'Adams Elementary', code: 'AES' },
+      { name: 'Baker Middle School', code: 'BMS' }
+    ])
+  )
+]

@@ -12,8 +12,9 @@ export default defineConfig({
   },
   resolve: {
     alias: {
-      '@': path.resolve(__dirname, './src'),
+      // More-specific aliases must come before '@' so they are matched first
       '@/content': path.resolve(__dirname, './content'),
+      '@': path.resolve(__dirname, './src'),
       '@sebt/design-system': path.resolve(__dirname, '../../packages/design-system/src/index.ts')
     }
   }
