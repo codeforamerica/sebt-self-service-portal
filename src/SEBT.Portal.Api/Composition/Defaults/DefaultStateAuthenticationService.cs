@@ -6,7 +6,7 @@ namespace SEBT.Portal.Api.Composition.Defaults;
 /// Default implementation when no state-specific IStateAuthenticationService is provided.
 /// Provides minimal Swagger configuration without state-specific auth.                                                                           
 /// </summary>
-internal class DefaultIStateAuthenticationService : IStateAuthenticationService
+internal class DefaultStateAuthenticationService : IStateAuthenticationService
 {
     public void ConfigureSwaggerGenSecurityOptions(Swashbuckle.AspNetCore.SwaggerGen.SwaggerGenOptions options)
     {
