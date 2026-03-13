@@ -66,12 +66,12 @@ public static partial class PiiMasker
     }
 
     /// <summary>
-    /// Masks street address lines while preserving city/state/zip.
-    /// Returns a generic masked indicator for the street portion.
+    /// Masks street address lines by returning a generic masked indicator.
+    /// Callers should handle city, state, and ZIP code values separately if needed.
     /// </summary>
     /// <param name="streetAddress1">The primary street address line.</param>
     /// <param name="streetAddress2">The secondary street address line (apt, suite, etc.).</param>
-    /// <returns>A masked address string, or null if street address is null or whitespace.</returns>
+    /// <returns>A masked street indicator, or null if both street address lines are null or whitespace.</returns>
     public static string? MaskStreetAddress(string? streetAddress1, string? streetAddress2)
     {
         if (string.IsNullOrWhiteSpace(streetAddress1) && string.IsNullOrWhiteSpace(streetAddress2))
