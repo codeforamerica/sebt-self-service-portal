@@ -19,6 +19,9 @@ export const env = createEnv({
   server: {
     NODE_ENV: z.enum(['development', 'test', 'production']).optional(),
     BACKEND_URL: z.url().default('http://localhost:5280'),
+    // OIDC vars are required for CO (MyColorado login) but unused by DC.
+    // Marked optional here because createEnv cannot cross-reference NEXT_PUBLIC_STATE.
+    // Runtime validation in /api/auth/oidc/callback/route.ts returns 503 if missing.
     OIDC_DISCOVERY_ENDPOINT: z.string().url().optional(),
     OIDC_CLIENT_ID: z.string().optional(),
     OIDC_CLIENT_SECRET: z.string().optional(),
