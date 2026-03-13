@@ -168,7 +168,7 @@ public class HouseholdRepositoryTests
     }
 
     [Fact]
-    public async Task GetHouseholdByEmailAsync_WhenPiiExcludesAddress_ReturnsMaskedStreetPreservesCityStateZip()
+    public async Task GetHouseholdByEmailAsync_WhenPiiExcludesAddress_ReturnsNullAddress()
     {
         _summerEbtCaseService
             .GetHouseholdByGuardianEmailAsync(Arg.Any<string>(), Arg.Any<PluginPiiVisibility>(), Arg.Any<PluginIdentityAssuranceLevel>(), Arg.Any<CancellationToken>())
@@ -191,14 +191,7 @@ public class HouseholdRepositoryTests
         var result = await _repository.GetHouseholdByEmailAsync("u@e.com", noAddressPii, UserIalLevel.IAL1plus);
 
         Assert.NotNull(result);
-        Assert.NotNull(result.AddressOnFile);
-        // Street lines are masked
-        Assert.DoesNotContain("123 Main St", result.AddressOnFile.StreetAddress1);
-        Assert.Null(result.AddressOnFile.StreetAddress2);
-        // City, state, zip are preserved
-        Assert.Equal("Denver", result.AddressOnFile.City);
-        Assert.Equal("CO", result.AddressOnFile.State);
-        Assert.Equal("80202", result.AddressOnFile.PostalCode);
+        Assert.Null(result.AddressOnFile);
     }
 
     [Fact]
