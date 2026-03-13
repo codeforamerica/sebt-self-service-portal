@@ -31,7 +31,7 @@ Users can sign in with OIDC services (like Colorado's MyColorado). IdP claims su
 
 Development requires real or test IdP credentials and the correct redirect URI (`http://localhost:3000/callback`).
 
-**Why auth is in the main portal:** The portal is the single application for all states. It must expose login endpoints, issue the portal JWT, and discover state plugins. OIDC is the generic mechanism; each state supplies configuration.
+**Why auth is in the main portal:** The portal is the single application for all states. It must expose login endpoints, issue the portal JWT, and discover state plugins.
 
 ## References
 
