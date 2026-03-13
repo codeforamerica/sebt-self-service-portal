@@ -1,4 +1,8 @@
 {
+  "enrolledHeading": "Niños inscritos en DC SUN Bucks",
+  "notEnrolledHeading": "Niños no inscritos en DC SUN Bucks",
+  "notEnrolledCta": "Estos niños podrían ser elegibles.",
+  "applyLink": "Solicitar DC SUN Bucks",
   "title": "Cosas que saber antes de solicitar una tarjeta de reemplazo",
   "applyForSebtTitle": "Para ayudarnos a decidir, te recomendamos que completes una solicitud para este menor",
   "applyForSebtBody": "A veces los niños no se inscriben automáticamente porque no tenemos toda la información necesaria para ver si pueden participar. Sin embargo, igual podrían calificar.",
@@ -41,5 +45,10 @@
   "replaceCardBody2": "Mantente en la línea para elegir la opción de tarjeta perdida y hablar con un representante.",
   "keepCard": "Guarda tu tarjeta para el próximo año. Tus beneficios serán agregados a tu nueva tarjeta",
   "tapToCall": "Toca la pantalla para llamar a servicios al cliente de EBT",
-  "subtleLink": "Quiero que la tarjeta que termina en [9999] me la reemplacen y la envíen por correo a una dirección diferente."
+  "subtleLink": "Quiero que la tarjeta que termina en [9999] me la reemplacen y la envíen por correo a una dirección diferente.",
+  "status": {
+    "enrolled": "Enrolled",
+    "notEnrolled": "Not enrolled",
+    "error": "Check unavailable"
+  }
 }

@@ -28,6 +28,8 @@
   "yes": "Yes",
   "no": "No",
   "back": "Back",
+  "editChild": "Edit",
+  "removeChild": "Remove",
   "streetAddress": "Street address",
   "helperStreetAddress": "Include direction, NW, NE, SE, or SW.",
   "streetAddress2": "Street address line 2",

@@ -1,4 +1,8 @@
 {
+  "enrolledHeading": "Children enrolled in Summer EBT",
+  "notEnrolledHeading": "Children not enrolled in Summer EBT",
+  "notEnrolledCta": "These children may still be eligible.",
+  "applyLink": "Apply for Summer EBT",
   "title": "A few things to know before replacing cards",
   "applyForSebtTitle": "We recommend that you fill out an application for this child",
   "applyForSebtBody": "Children may not be automatically enrolled because we do not have enough information to confirm their eligibility. But, they may still be eligible.",
@@ -41,5 +45,10 @@
   "replaceCardBody2": "Hold on the line to select the lost card prompt and speak with an agent.",
   "keepCard": "Keep your card for next year. Benefits will be added to your new card.",
   "tapToCall": "Tap to call EBT Customer Service",
-  "subtleLink": "I want a replacement for the card ending in [9999] mailed to a different address"
+  "subtleLink": "I want a replacement for the card ending in [9999] mailed to a different address",
+  "status": {
+    "enrolled": "Enrolled",
+    "notEnrolled": "Not enrolled",
+    "error": "Check unavailable"
+  }
 }
