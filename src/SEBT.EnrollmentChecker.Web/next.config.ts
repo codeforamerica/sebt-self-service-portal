@@ -7,6 +7,10 @@ const state = process.env.STATE ?? 'co'
 // __dirname is src/SEBT.EnrollmentChecker.Web/
 const designSystemPath = path.resolve(__dirname, 'node_modules/@sebt/design-system')
 
+if (process.env.BUILD_STANDALONE === 'true' && process.env.BUILD_STATIC === 'true') {
+  throw new Error('BUILD_STANDALONE and BUILD_STATIC are mutually exclusive')
+}
+
 const nextConfig: NextConfig = {
   reactCompiler: true,
   transpilePackages: ['@sebt/design-system'],
