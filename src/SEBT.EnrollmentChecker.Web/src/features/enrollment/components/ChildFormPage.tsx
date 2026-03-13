@@ -48,7 +48,7 @@ export function ChildFormPage({ showSchoolField, apiBaseUrl }: ChildFormPageProp
         >
           {t('back', { ns: 'common' })}
         </button>
-        <h1>{isEditMode ? t('editHeading') : t('heading')}</h1>
+        <h1>{isEditMode ? t('editHeading') : t('title')}</h1>
         <ChildForm
           initialValues={editingChild}
           onSubmit={handleSubmit}

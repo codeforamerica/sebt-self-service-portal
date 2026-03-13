@@ -14,7 +14,7 @@ describe('ChildForm', () => {
     // Use getByRole to avoid "multiple elements found" due to aria-labelledby on the InputField wrapper
     expect(screen.getByRole('textbox', { name: /first name/i })).toBeInTheDocument()
     expect(screen.getByRole('textbox', { name: /last name/i })).toBeInTheDocument()
-    expect(screen.getByRole('textbox', { name: /date of birth/i })).toBeInTheDocument()
+    expect(screen.getByRole('textbox', { name: /birthdate/i })).toBeInTheDocument()
   })
 
   it('does not render school field when showSchoolField is false', () => {
@@ -33,7 +33,7 @@ describe('ChildForm', () => {
     render(<ChildForm onSubmit={onSubmit} showSchoolField={false} apiBaseUrl="" />, { wrapper })
     await userEvent.type(screen.getByRole('textbox', { name: /first name/i }), 'Jane')
     await userEvent.type(screen.getByRole('textbox', { name: /last name/i }), 'Doe')
-    await userEvent.type(screen.getByRole('textbox', { name: /date of birth/i }), '2015-04-12')
+    await userEvent.type(screen.getByRole('textbox', { name: /birthdate/i }), '2015-04-12')
     await userEvent.click(screen.getByRole('button', { name: /continue/i }))
     expect(onSubmit).toHaveBeenCalledWith(
       expect.objectContaining({ firstName: 'Jane', lastName: 'Doe', dateOfBirth: '2015-04-12' })

@@ -76,7 +76,7 @@ export function ChildForm({
         isRequired
       />
       <InputField
-        label={t('dobLabel')}
+        label={t('labelBirthdate')}
         value={values.dateOfBirth ?? ''}
         onChange={e => set('dateOfBirth', e.target.value)}
         error={errors.dateOfBirth}

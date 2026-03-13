@@ -11,7 +11,7 @@ export function DisclaimerPage() {
   return (
     <div className="usa-section">
       <div className="grid-container">
-        <h1>{t('heading')}</h1>
+        <h1>{t('title')}</h1>
         <div className="usa-prose">
           <p>{t('body')}</p>
         </div>

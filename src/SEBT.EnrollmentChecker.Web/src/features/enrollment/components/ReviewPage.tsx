@@ -30,7 +30,7 @@ export function ReviewPage({ onSubmit }: ReviewPageProps) {
         >
           {t('back', { ns: 'common' })}
         </button>
-        <h1>{t('heading')}</h1>
+        <h1>{t('title')}</h1>
         {state.children.map(child => (
           <ChildReviewCard
             key={child.id}
@@ -41,7 +41,7 @@ export function ReviewPage({ onSubmit }: ReviewPageProps) {
         ))}
         <div className="usa-button-group margin-top-4">
           <Button variant="outline" onClick={() => router.push('/check')}>
-            {t('addAnotherChild')}
+            {t('actionAdd')}
           </Button>
           <Button onClick={onSubmit}>
             {t('submit', { ns: 'common' })}

@@ -11,7 +11,7 @@ export function LandingPage() {
   return (
     <div className="usa-section">
       <div className="grid-container">
-        <h1>{t('heading')}</h1>
+        <h1>{t('title')}</h1>
         <p className="usa-intro">{t('body')}</p>
         <Button onClick={() => router.push('/disclaimer')}>
           {t('cta')}
