@@ -23,5 +23,7 @@
   "alertTitle": "Dirección que ingresaste",
   "continue": "Usar esta dirección",
   "actionHelp": "",
-  "labelSelect": "Selecciona la dirección que quieres usar"
+  "labelSelect": "Selecciona la dirección que quieres usar",
+  "rateLimitError": "Demasiadas solicitudes. Por favor espera un momento e inténtalo de nuevo.",
+  "submitError": "Algo salió mal. Por favor inténtalo de nuevo."
 }

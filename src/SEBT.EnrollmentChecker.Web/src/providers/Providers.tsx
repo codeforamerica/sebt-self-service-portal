@@ -1,9 +1,8 @@
 'use client'
 
-// i18n must be initialized before any component that uses useTranslation renders.
-// This side-effect import runs when the client module loads in the browser.
 import '@/lib/i18n-init'
 
+import { EnrollmentProvider } from '@/features/enrollment/context/EnrollmentContext'
 import { I18nProvider } from '@sebt/design-system'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { useState, type ReactNode } from 'react'
@@ -18,7 +17,9 @@ export function Providers({ children }: { children: ReactNode }) {
   return (
     <QueryClientProvider client={queryClient}>
       <I18nProvider>
-        {children}
+        <EnrollmentProvider>
+          {children}
+        </EnrollmentProvider>
       </I18nProvider>
     </QueryClientProvider>
   )

@@ -23,5 +23,7 @@
   "alertTitle": "Address you entered",
   "continue": "Use this address",
   "actionHelp": "",
-  "labelSelect": "Select the address to use"
+  "labelSelect": "Select the address to use",
+  "rateLimitError": "Too many requests. Please wait a moment and try again.",
+  "submitError": "Something went wrong. Please try again."
 }
