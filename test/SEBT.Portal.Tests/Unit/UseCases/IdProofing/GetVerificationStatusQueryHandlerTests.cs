@@ -140,6 +140,36 @@ public class GetVerificationStatusQueryHandlerTests
                 c.Status == DocVerificationStatus.Expired), Arg.Any<CancellationToken>());
     }
 
+    // --- Check-on-read expiration for Created challenges (F11) ---
+
+    [Fact]
+    public async Task Handle_ShouldExpireChallenge_WhenCreatedAndPastExpiresAt()
+    {
+        var handler = CreateHandler();
+        var challenge = DocVerificationChallengeFactory.CreateChallenge(c =>
+        {
+            c.ExpiresAt = DateTime.UtcNow.AddMinutes(-10); // Created but expired
+        });
+        var query = new GetVerificationStatusQuery
+        {
+            ChallengeId = challenge.PublicId,
+            UserId = challenge.UserId
+        };
+
+        challengeRepository.GetByPublicIdAsync(query.ChallengeId, query.UserId, Arg.Any<CancellationToken>())
+            .Returns(challenge);
+
+        var result = await handler.Handle(query, CancellationToken.None);
+
+        Assert.True(result.IsSuccess);
+        Assert.Equal("rejected", result.Value.Status);
+
+        // Should persist the expiration
+        await challengeRepository.Received(1)
+            .UpdateAsync(Arg.Is<DocVerificationChallenge>(c =>
+                c.Status == DocVerificationStatus.Expired), Arg.Any<CancellationToken>());
+    }
+
     // --- AllowIdRetry is included in response (D9) ---
 
     [Fact]

@@ -10,7 +10,7 @@ namespace SEBT.Portal.UseCases.IdProofing;
 public class StartChallengeCommand : ICommand<StartChallengeResponse>
 {
     /// <summary>
-    /// The public GUID of the challenge to start (D5).
+    /// The public GUID of the challenge to start.
     /// </summary>
     [Required(ErrorMessage = "ChallengeId is required.")]
     public Guid ChallengeId { get; init; }

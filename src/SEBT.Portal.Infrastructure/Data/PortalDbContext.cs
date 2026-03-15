@@ -106,7 +106,7 @@ public class PortalDbContext : DbContext
                 .ValueGeneratedOnAdd()
                 .UseIdentityColumn();
 
-            // Opaque public ID for API consumers (D5)
+            // Opaque public ID for API consumers
             entity.Property(e => e.PublicId)
                 .IsRequired();
             entity.HasIndex(e => e.PublicId)
@@ -127,7 +127,7 @@ public class PortalDbContext : DbContext
                 .IsRequired()
                 .HasDefaultValue(0); // Created
 
-            // Socure correlation fields (D6)
+            // Socure correlation fields
             entity.Property(e => e.SocureReferenceId)
                 .HasMaxLength(255);
             entity.HasIndex(e => e.SocureReferenceId)
@@ -160,6 +160,14 @@ public class PortalDbContext : DbContext
                 .IsRequired()
                 .HasDefaultValueSql("GETUTCDATE()")
                 .ValueGeneratedOnAdd();
+
+            // Optimistic concurrency token
+            entity.Property(e => e.RowVersion)
+                .IsRowVersion();
+
+            // One active challenge per user — enforced by a filtered unique
+            // index on UserId WHERE Status IN (0, 1). Managed via raw SQL migration
+            // because EF merges HasIndex calls on the same column.
         });
     }
 }

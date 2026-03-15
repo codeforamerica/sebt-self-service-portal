@@ -40,7 +40,7 @@ public static class Dependencies
         // Expose SocureSettings directly for use case injection (avoids IOptions dependency in UseCases layer)
         services.AddSingleton(sp => sp.GetRequiredService<IOptions<SocureSettings>>().Value);
 
-        // Socure client — stub or real based on SocureSettings.UseStub (D3)
+        // Socure client — stub or real based on SocureSettings.UseStub
         services.AddTransient<StubSocureClient>();
         services.AddTransient<HttpSocureClient>();
         services.AddTransient<ISocureClient>(sp =>

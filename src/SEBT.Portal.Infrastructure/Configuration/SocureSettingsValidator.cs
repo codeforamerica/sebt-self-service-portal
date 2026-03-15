@@ -6,7 +6,7 @@ namespace SEBT.Portal.Infrastructure.Configuration;
 
 /// <summary>
 /// Validates SocureSettings at startup.
-/// When UseStub is false (real Socure integration), ApiKey and WebhookSecret are required (D11).
+/// When UseStub is false (real Socure integration), ApiKey and WebhookSecret are required.
 /// UseStub is only permitted in Development to prevent accidental bypass in deployed environments.
 /// </summary>
 public class SocureSettingsValidator(IHostEnvironment environment) : IValidateOptions<SocureSettings>
@@ -25,7 +25,7 @@ public class SocureSettingsValidator(IHostEnvironment environment) : IValidateOp
                 "Socure:ChallengeExpirationMinutes must be between 1 and 1440.");
         }
 
-        // UseStub bypasses webhook signature validation — only safe in Development (F7)
+        // UseStub bypasses webhook signature validation — only safe in Development
         if (options.UseStub && !environment.IsDevelopment())
         {
             return ValidateOptionsResult.Fail(
@@ -45,7 +45,7 @@ public class SocureSettingsValidator(IHostEnvironment environment) : IValidateOp
             if (string.IsNullOrWhiteSpace(options.WebhookSecret))
             {
                 return ValidateOptionsResult.Fail(
-                    "Socure:WebhookSecret is required when UseStub is false (D11).");
+                    "Socure:WebhookSecret is required when UseStub is false.");
             }
         }
 

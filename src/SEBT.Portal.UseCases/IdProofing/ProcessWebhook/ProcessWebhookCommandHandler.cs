@@ -2,6 +2,7 @@ using System.Security.Cryptography;
 using System.Text;
 using Microsoft.Extensions.Logging;
 using SEBT.Portal.Core.AppSettings;
+using SEBT.Portal.Core.Exceptions;
 using SEBT.Portal.Core.Models.Auth;
 using SEBT.Portal.Core.Models.DocVerification;
 using SEBT.Portal.Core.Repositories;
@@ -12,8 +13,8 @@ namespace SEBT.Portal.UseCases.IdProofing;
 
 /// <summary>
 /// Handles an incoming Socure webhook. Validates the signature (placeholder in dev),
-/// checks idempotency via event_id (D8), correlates to a challenge via ReferenceId/EvalId (D6),
-/// validates state transition (D7), and updates both challenge and user state on verification.
+/// checks idempotency via event_id, correlates to a challenge via ReferenceId/EvalId,
+/// validates state transition, and updates both challenge and user state on verification.
 /// </summary>
 // TODO: Register webhook URLs in the Socure dashboard (https://help.socure.com/riskos/docs/webhooks)
 // for each environment (sandbox, staging, production) before go-live.
@@ -36,14 +37,14 @@ public class ProcessWebhookCommandHandler(
             return Result.ValidationFailed(validationFailed.Errors);
         }
 
-        // Validate webhook signature (D11)
+        // Validate webhook signature
         if (!ValidateWebhookSignature(command.WebhookSignature))
         {
             logger.LogWarning("Webhook signature validation failed");
             return Result.Unauthorized("Invalid webhook signature.");
         }
 
-        // Find the challenge by correlation keys (D6: ReferenceId primary, EvalId fallback)
+        // Find the challenge by correlation keys (ReferenceId primary, EvalId fallback)
         var challenge = await FindChallengeByCorrelation(
             command.ReferenceId, command.EvalId, cancellationToken);
 
@@ -58,7 +59,7 @@ public class ProcessWebhookCommandHandler(
             return Result.Success();
         }
 
-        // Idempotency check (D8): if this event was already processed, return success
+        // Idempotency check: if this event was already processed, return success
         if (challenge.SocureEventId == command.EventId)
         {
             logger.LogInformation(
@@ -67,7 +68,7 @@ public class ProcessWebhookCommandHandler(
             return Result.Success();
         }
 
-        // Terminal state protection (D7): cannot modify a challenge that has already resolved
+        // Terminal state protection: cannot modify a challenge that has already resolved
         if (challenge.IsTerminal)
         {
             logger.LogWarning(
@@ -77,6 +78,14 @@ public class ProcessWebhookCommandHandler(
         }
 
         // Determine the new status from the document decision
+        if (IsIntermediateDecision(command.DocumentDecision))
+        {
+            logger.LogInformation(
+                "Webhook event {EventId}: intermediate decision {Decision}, challenge {ChallengeId} stays Pending",
+                command.EventId, command.DocumentDecision, challenge.PublicId);
+            return Result.Success();
+        }
+
         var newStatus = MapDecisionToStatus(command.DocumentDecision);
         if (newStatus == null)
         {
@@ -86,7 +95,7 @@ public class ProcessWebhookCommandHandler(
             return Result.Success();
         }
 
-        // Validate state transition (D7)
+        // Validate state transition
         if (challenge.Status != DocVerificationStatus.Pending)
         {
             logger.LogWarning(
@@ -104,7 +113,20 @@ public class ProcessWebhookCommandHandler(
             challenge.OffboardingReason = "docVerificationFailed";
         }
 
-        await challengeRepository.UpdateAsync(challenge, cancellationToken);
+        try
+        {
+            await challengeRepository.UpdateAsync(challenge, cancellationToken);
+        }
+        catch (ConcurrencyConflictException)
+        {
+            // Another thread already processed this challenge — our update lost the race.
+            // Return success since the work was done by the winning thread.
+            logger.LogInformation(
+                "Webhook event {EventId}: concurrency conflict on challenge {ChallengeId}, " +
+                "another thread already processed it",
+                command.EventId, challenge.PublicId);
+            return Result.Success();
+        }
 
         logger.LogInformation(
             "Webhook event {EventId}: challenge {ChallengeId} transitioned to {Status}",
@@ -121,7 +143,7 @@ public class ProcessWebhookCommandHandler(
 
     private bool ValidateWebhookSignature(string? bearerToken)
     {
-        // In dev/stub mode, skip validation (D11)
+        // In dev/stub mode, skip validation
         if (socureSettings.UseStub)
         {
             return true;
@@ -143,7 +165,7 @@ public class ProcessWebhookCommandHandler(
         string? evalId,
         CancellationToken cancellationToken)
     {
-        // Primary lookup by ReferenceId (D6)
+        // Primary lookup by ReferenceId
         if (!string.IsNullOrWhiteSpace(referenceId))
         {
             var challenge = await challengeRepository.GetBySocureReferenceIdAsync(
@@ -154,13 +176,23 @@ public class ProcessWebhookCommandHandler(
             }
         }
 
-        // Fallback lookup by EvalId (D6)
+        // Fallback lookup by EvalId
         if (!string.IsNullOrWhiteSpace(evalId))
         {
             return await challengeRepository.GetByEvalIdAsync(evalId, cancellationToken);
         }
 
         return null;
+    }
+
+    /// <summary>
+    /// Returns true for Socure decisions that mean "not done yet" — the challenge stays Pending.
+    /// review: escalated to manual human review, follow-up webhook will arrive.
+    /// resubmit: document quality insufficient, user can retry within the existing session.
+    /// </summary>
+    private static bool IsIntermediateDecision(string? decision)
+    {
+        return decision?.ToLowerInvariant() is "review" or "resubmit";
     }
 
     private static DocVerificationStatus? MapDecisionToStatus(string? decision)

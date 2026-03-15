@@ -9,8 +9,8 @@ namespace SEBT.Portal.UseCases.IdProofing;
 
 /// <summary>
 /// Handles starting a document verification challenge.
-/// Loads the challenge by (publicId, userId) for IDOR prevention (D5),
-/// validates the state transition (must be Created → Pending, D7),
+/// Loads the challenge by (publicId, userId) for IDOR prevention,
+/// validates the state transition (must be Created → Pending),
 /// calls Socure to generate a DocV session token, and updates the challenge.
 /// </summary>
 public class StartChallengeCommandHandler(
@@ -32,7 +32,7 @@ public class StartChallengeCommandHandler(
             return Result<StartChallengeResponse>.ValidationFailed(validationFailed.Errors);
         }
 
-        // Load challenge scoped by ownership — returns null for wrong user (IDOR prevention, D5)
+        // Load challenge scoped by ownership — returns null for wrong user (IDOR prevention)
         var challenge = await challengeRepository.GetByPublicIdAsync(
             command.ChallengeId, command.UserId, cancellationToken);
 
@@ -45,7 +45,7 @@ public class StartChallengeCommandHandler(
                 PreconditionFailedReason.NotFound, "Challenge not found.");
         }
 
-        // Must be in Created state to start (D7)
+        // Must be in Created state to start
         if (challenge.Status != DocVerificationStatus.Created)
         {
             // If already Pending, return the existing token (idempotent for repeated start, Codex test 6)
@@ -120,7 +120,7 @@ public class StartChallengeCommandHandler(
 
         var session = sessionResult.Value;
 
-        // Update challenge with Socure correlation fields and transition to Pending (D6, D7)
+        // Update challenge with Socure correlation fields and transition to Pending
         challenge.SocureReferenceId = session.ReferenceId;
         challenge.EvalId = session.EvalId;
         challenge.DocvTransactionToken = session.DocvTransactionToken;

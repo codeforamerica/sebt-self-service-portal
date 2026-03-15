@@ -10,7 +10,7 @@ namespace SEBT.Portal.UseCases.IdProofing;
 public class GetVerificationStatusQuery : IQuery<VerificationStatusResponse>
 {
     /// <summary>
-    /// The public GUID of the challenge to check (D5).
+    /// The public GUID of the challenge to check.
     /// </summary>
     [Required(ErrorMessage = "ChallengeId is required.")]
     public Guid ChallengeId { get; init; }

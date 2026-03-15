@@ -1,3 +1,5 @@
+using System.ComponentModel.DataAnnotations;
+
 namespace SEBT.Portal.Infrastructure.Data.Entities;
 
 /// <summary>
@@ -68,6 +70,13 @@ public class DocVerificationChallengeEntity
     /// When this challenge expires.
     /// </summary>
     public DateTime? ExpiresAt { get; set; }
+
+    /// <summary>
+    /// Optimistic concurrency token. SQL Server auto-increments this on every UPDATE.
+    /// EF Core uses it to detect concurrent modifications.
+    /// </summary>
+    [Timestamp]
+    public byte[]? RowVersion { get; set; }
 
     /// <summary>
     /// Navigation property to the owning user.

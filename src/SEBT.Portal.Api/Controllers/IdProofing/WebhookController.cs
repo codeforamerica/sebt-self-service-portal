@@ -12,7 +12,7 @@ namespace SEBT.Portal.Api.Controllers.IdProofing;
 /// <summary>
 /// Controller for receiving Socure webhook notifications.
 /// Anonymous — Socure calls this endpoint, not an authenticated user.
-/// Protected by webhook signature validation (D11).
+/// Protected by webhook signature validation.
 /// </summary>
 [ApiController]
 [Route("api/socure")]

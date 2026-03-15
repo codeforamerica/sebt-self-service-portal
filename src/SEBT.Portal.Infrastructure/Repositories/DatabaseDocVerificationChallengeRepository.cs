@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using SEBT.Portal.Core.Exceptions;
 using SEBT.Portal.Core.Models.DocVerification;
 using SEBT.Portal.Core.Repositories;
 using SEBT.Portal.Infrastructure.Data;
@@ -8,7 +9,7 @@ namespace SEBT.Portal.Infrastructure.Repositories;
 
 /// <summary>
 /// Database-backed implementation of <see cref="IDocVerificationChallengeRepository"/> using Entity Framework Core.
-/// All read operations are scoped by userId to enforce ownership (D5).
+/// All read operations are scoped by userId to enforce ownership.
 /// </summary>
 public class DatabaseDocVerificationChallengeRepository(PortalDbContext dbContext)
     : IDocVerificationChallengeRepository
@@ -119,7 +120,15 @@ public class DatabaseDocVerificationChallengeRepository(PortalDbContext dbContex
         entity.ExpiresAt = challenge.ExpiresAt;
         entity.UpdatedAt = DateTime.UtcNow;
 
-        await dbContext.SaveChangesAsync(cancellationToken);
+        try
+        {
+            await dbContext.SaveChangesAsync(cancellationToken);
+        }
+        catch (DbUpdateConcurrencyException ex)
+        {
+            throw new ConcurrencyConflictException(
+                $"DocVerificationChallenge {challenge.Id} was modified by another writer.", ex);
+        }
     }
 
     private static DocVerificationChallenge MapToDomainModel(DocVerificationChallengeEntity entity)

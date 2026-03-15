@@ -1,6 +1,8 @@
 using Microsoft.Extensions.Logging.Abstractions;
 using NSubstitute;
+using NSubstitute.ExceptionExtensions;
 using SEBT.Portal.Core.AppSettings;
+using SEBT.Portal.Core.Exceptions;
 using SEBT.Portal.Core.Models.Auth;
 using SEBT.Portal.Core.Models.DocVerification;
 using SEBT.Portal.Core.Repositories;
@@ -282,6 +284,35 @@ public class ProcessWebhookCommandHandlerTests
 
         // Returns success to prevent Socure retries
         Assert.True(result.IsSuccess);
+    }
+
+    // --- Concurrency conflict (F1) ---
+
+    [Fact]
+    public async Task Handle_ShouldReturnSuccess_WhenConcurrencyConflictOnUpdate()
+    {
+        var handler = CreateHandler();
+        var challenge = DocVerificationChallengeFactory.CreatePendingChallenge();
+        var user = new User { Id = challenge.UserId, Email = "test@example.com" };
+
+        challengeRepository.GetBySocureReferenceIdAsync("ref-456", Arg.Any<CancellationToken>())
+            .Returns(challenge);
+        userRepository.GetUserByIdAsync(challenge.UserId, Arg.Any<CancellationToken>())
+            .Returns(user);
+
+        // Simulate another thread updating the row first
+        challengeRepository.UpdateAsync(Arg.Any<DocVerificationChallenge>(), Arg.Any<CancellationToken>())
+            .ThrowsAsync(new ConcurrencyConflictException("Row was updated by another thread"));
+
+        var command = CreateValidCommand(decision: "accept");
+        var result = await handler.Handle(command, CancellationToken.None);
+
+        // Should return success — the other thread handled it
+        Assert.True(result.IsSuccess);
+
+        // Should NOT attempt to update the user since the challenge save failed
+        await userRepository.DidNotReceive()
+            .UpdateUserAsync(Arg.Any<User>(), Arg.Any<CancellationToken>());
     }
 
     // --- Stub mode allows missing signature ---

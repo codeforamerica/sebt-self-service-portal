@@ -4,7 +4,7 @@ namespace SEBT.Portal.Core.Repositories;
 
 /// <summary>
 /// Repository for managing document verification challenge records.
-/// All read operations are scoped by userId to enforce ownership (D5).
+/// All read operations are scoped by userId to enforce ownership.
 /// </summary>
 public interface IDocVerificationChallengeRepository
 {
@@ -19,7 +19,7 @@ public interface IDocVerificationChallengeRepository
 
     /// <summary>
     /// Retrieves the active (non-terminal) challenge for a user, if one exists.
-    /// Used to enforce the one-active-challenge-per-user constraint (D10).
+    /// Used to enforce the one-active-challenge-per-user constraint.
     /// </summary>
     Task<DocVerificationChallenge?> GetActiveByUserIdAsync(
         int userId,
@@ -27,7 +27,7 @@ public interface IDocVerificationChallengeRepository
 
     /// <summary>
     /// Retrieves a challenge by its Socure reference ID for webhook correlation.
-    /// Falls back to EvalId if referenceId lookup returns null (D6).
+    /// Falls back to EvalId if referenceId lookup returns null.
     /// </summary>
     Task<DocVerificationChallenge?> GetBySocureReferenceIdAsync(
         string referenceId,

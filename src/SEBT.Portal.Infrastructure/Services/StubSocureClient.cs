@@ -8,7 +8,7 @@ namespace SEBT.Portal.Infrastructure.Services;
 /// <summary>
 /// Stub implementation of <see cref="ISocureClient"/> for development and testing.
 /// Returns deterministic data without making HTTP calls.
-/// Swapped for the real HTTP client when Socure credentials are available (D3).
+/// Swapped for the real HTTP client when Socure credentials are available.
 /// </summary>
 public class StubSocureClient(ILogger<StubSocureClient> logger) : ISocureClient
 {

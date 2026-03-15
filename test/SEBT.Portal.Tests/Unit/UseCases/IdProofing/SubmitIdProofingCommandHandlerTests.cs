@@ -280,4 +280,30 @@ public class SubmitIdProofingCommandHandlerTests
         Assert.False(result.IsSuccess);
         Assert.IsType<DependencyFailedResult<SubmitIdProofingResponse>>(result);
     }
+
+    // --- Socure failure reason propagation (F6) ---
+
+    [Fact]
+    public async Task Handle_ShouldPropagateTimeoutReason_WhenSocureClientTimesOut()
+    {
+        var handler = CreateHandler();
+        var command = CreateValidCommand();
+
+        userRepository.GetUserByIdAsync(command.UserId, Arg.Any<CancellationToken>())
+            .Returns(new User { Id = command.UserId, Email = "test@example.com" });
+        challengeRepository.GetActiveByUserIdAsync(command.UserId, Arg.Any<CancellationToken>())
+            .Returns((DocVerificationChallenge?)null);
+        socureClient.RunIdProofingAssessmentAsync(
+                command.UserId, "test@example.com", command.DateOfBirth,
+                command.IdType, command.IdValue, Arg.Any<CancellationToken>())
+            .Returns(Result<IdProofingAssessmentResult>.DependencyFailed(
+                DependencyFailedReason.Timeout, "Socure API request timed out."));
+
+        var result = await handler.Handle(command, CancellationToken.None);
+
+        Assert.False(result.IsSuccess);
+        var depFailed = Assert.IsType<DependencyFailedResult<SubmitIdProofingResponse>>(result);
+        Assert.Equal(DependencyFailedReason.Timeout, depFailed.Reason);
+        Assert.Equal("Socure API request timed out.", depFailed.Message);
+    }
 }

@@ -9,7 +9,7 @@ namespace SEBT.Portal.UseCases.IdProofing;
 /// <summary>
 /// Handles querying the verification status of a challenge.
 /// Performs check-on-read expiration: if a Pending challenge is past its ExpiresAt,
-/// it is transitioned to Expired before responding (D7).
+/// it is transitioned to Expired before responding.
 /// </summary>
 public class GetVerificationStatusQueryHandler(
     IDocVerificationChallengeRepository challengeRepository,
@@ -32,8 +32,9 @@ public class GetVerificationStatusQueryHandler(
                 PreconditionFailedReason.NotFound, "Challenge not found.");
         }
 
-        // Check-on-read expiration (D7): if Pending and past ExpiresAt, transition to Expired
-        if (challenge.Status == DocVerificationStatus.Pending
+        // Check-on-read expiration: if Created or Pending and past ExpiresAt, transition to Expired
+        if ((challenge.Status == DocVerificationStatus.Created
+             || challenge.Status == DocVerificationStatus.Pending)
             && challenge.ExpiresAt.HasValue
             && DateTime.UtcNow > challenge.ExpiresAt.Value)
         {

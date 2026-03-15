@@ -12,7 +12,7 @@ namespace SEBT.Portal.UseCases.IdProofing;
 /// Handles ID proofing submission. Orchestrates the flow:
 /// 1. Validate input
 /// 2. Early exit if no ID provided (noIdProvided off-boarding)
-/// 3. Reuse existing active challenge if one exists (D10)
+/// 3. Reuse existing active challenge if one exists
 /// 4. Call Socure for risk assessment
 /// 5. Create a new challenge if document verification is required
 /// </summary>
@@ -53,7 +53,7 @@ public class SubmitIdProofingCommandHandler(
                 new SubmitIdProofingResponse("failed", OffboardingReason: "noIdProvided"));
         }
 
-        // Check for an existing active challenge → reuse instead of creating a duplicate (D10)
+        // Check for an existing active challenge → reuse instead of creating a duplicate
         var activeChallenge = await challengeRepository.GetActiveByUserIdAsync(
             command.UserId, cancellationToken);
         if (activeChallenge != null)
@@ -80,6 +80,13 @@ public class SubmitIdProofingCommandHandler(
         if (!assessmentResult.IsSuccess)
         {
             logger.LogWarning("Socure assessment failed for user {UserId}", command.UserId);
+
+            if (assessmentResult is DependencyFailedResult<IdProofingAssessmentResult> depFailed)
+            {
+                return Result<SubmitIdProofingResponse>.DependencyFailed(
+                    depFailed.Reason, depFailed.Message);
+            }
+
             return Result<SubmitIdProofingResponse>.DependencyFailed(
                 DependencyFailedReason.ConnectionFailed, "Socure risk assessment failed.");
         }

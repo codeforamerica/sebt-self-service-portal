@@ -6,7 +6,7 @@ namespace SEBT.Portal.Core.Services;
 /// <summary>
 /// Abstraction over the Socure identity verification API.
 /// Workflow-oriented methods that avoid leaking Socure-specific payload shapes into use cases.
-/// Backed by StubSocureClient in development, real HTTP client when credentials are available (D3).
+/// Backed by StubSocureClient in development, real HTTP client when credentials are available.
 /// </summary>
 public interface ISocureClient
 {

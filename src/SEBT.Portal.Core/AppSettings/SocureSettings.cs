@@ -5,7 +5,7 @@ namespace SEBT.Portal.Core.AppSettings;
 
 /// <summary>
 /// Configuration for the Socure identity verification integration.
-/// In non-Development environments, WebhookSecret is required at startup (D11).
+/// In non-Development environments, WebhookSecret is required at startup.
 /// </summary>
 public class SocureSettings
 {
@@ -30,7 +30,7 @@ public class SocureSettings
 
     /// <summary>
     /// Secret used to validate incoming webhook signatures.
-    /// Required in non-Development environments (D11).
+    /// Required in non-Development environments.
     /// </summary>
     public string? WebhookSecret { get; set; }
 
@@ -54,7 +54,7 @@ public class SocureSettings
 
     /// <summary>
     /// Identifier used to locate the DocV enrichment in the evaluation response.
-    /// Matched against the <c>enrichment_provider</c> field (D16) — not <c>enrichment_name</c>,
+    /// Matched against the <c>enrichment_provider</c> field — not <c>enrichment_name</c>,
     /// which varies by workflow (e.g. "Socure Document Request - Default Flow" in sandbox).
     /// </summary>
     public string DocvEnrichmentName { get; set; } = "SocureDocRequest";

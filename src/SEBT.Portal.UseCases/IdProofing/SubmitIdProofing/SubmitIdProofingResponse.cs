@@ -9,11 +9,11 @@ namespace SEBT.Portal.UseCases.IdProofing;
 /// </param>
 /// <param name="ChallengeId">
 /// Present when Result is "documentVerificationRequired".
-/// Opaque GUID used to start the document capture flow (D5).
+/// Opaque GUID used to start the document capture flow.
 /// </param>
 /// <param name="AllowIdRetry">
 /// Whether the user can retry with a different ID number.
-/// Derived server-side, never from URL params (D9).
+/// Derived server-side, never from URL params.
 /// </param>
 /// <param name="CanApply">
 /// Whether the user can still apply despite failing verification.
