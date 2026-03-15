@@ -341,4 +341,186 @@ public class ProcessWebhookCommandHandlerTests
 
         Assert.True(result.IsSuccess);
     }
+
+    // --- Terminal state protection: Rejected ---
+
+    [Fact]
+    public async Task Handle_ShouldNotDowngrade_WhenChallengeAlreadyRejected()
+    {
+        var handler = CreateHandler();
+        var challenge = DocVerificationChallengeFactory.CreateRejectedChallenge();
+        challenge.SocureEventId = "evt-old";
+
+        challengeRepository.GetBySocureReferenceIdAsync("ref-456", Arg.Any<CancellationToken>())
+            .Returns(challenge);
+
+        var command = CreateValidCommand(
+            eventId: "evt-late-accept",
+            referenceId: "ref-456",
+            decision: "accept");
+
+        var result = await handler.Handle(command, CancellationToken.None);
+
+        Assert.True(result.IsSuccess);
+        await challengeRepository.DidNotReceive()
+            .UpdateAsync(Arg.Any<DocVerificationChallenge>(), Arg.Any<CancellationToken>());
+    }
+
+    // --- Terminal state protection: Expired ---
+
+    [Fact]
+    public async Task Handle_ShouldNotDowngrade_WhenChallengeAlreadyExpired()
+    {
+        var handler = CreateHandler();
+        var challenge = DocVerificationChallengeFactory.CreatePendingChallenge();
+        challenge.TransitionTo(DocVerificationStatus.Expired);
+        challenge.SocureEventId = "evt-old";
+
+        challengeRepository.GetBySocureReferenceIdAsync("ref-456", Arg.Any<CancellationToken>())
+            .Returns(challenge);
+
+        var command = CreateValidCommand(
+            eventId: "evt-late-accept",
+            referenceId: "ref-456",
+            decision: "accept");
+
+        var result = await handler.Handle(command, CancellationToken.None);
+
+        Assert.True(result.IsSuccess);
+        await challengeRepository.DidNotReceive()
+            .UpdateAsync(Arg.Any<DocVerificationChallenge>(), Arg.Any<CancellationToken>());
+    }
+
+    // --- Intermediate decisions stay Pending ---
+
+    [Fact]
+    public async Task Handle_ShouldReturnSuccess_WhenDecisionIsReview()
+    {
+        var handler = CreateHandler();
+        var challenge = DocVerificationChallengeFactory.CreatePendingChallenge();
+
+        challengeRepository.GetBySocureReferenceIdAsync("ref-456", Arg.Any<CancellationToken>())
+            .Returns(challenge);
+
+        var command = CreateValidCommand(decision: "review");
+        var result = await handler.Handle(command, CancellationToken.None);
+
+        Assert.True(result.IsSuccess);
+        Assert.Equal(DocVerificationStatus.Pending, challenge.Status);
+        await challengeRepository.DidNotReceive()
+            .UpdateAsync(Arg.Any<DocVerificationChallenge>(), Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task Handle_ShouldReturnSuccess_WhenDecisionIsResubmit()
+    {
+        var handler = CreateHandler();
+        var challenge = DocVerificationChallengeFactory.CreatePendingChallenge();
+
+        challengeRepository.GetBySocureReferenceIdAsync("ref-456", Arg.Any<CancellationToken>())
+            .Returns(challenge);
+
+        var command = CreateValidCommand(decision: "resubmit");
+        var result = await handler.Handle(command, CancellationToken.None);
+
+        Assert.True(result.IsSuccess);
+        Assert.Equal(DocVerificationStatus.Pending, challenge.Status);
+        await challengeRepository.DidNotReceive()
+            .UpdateAsync(Arg.Any<DocVerificationChallenge>(), Arg.Any<CancellationToken>());
+    }
+
+    // --- Unrecognized decision ---
+
+    [Fact]
+    public async Task Handle_ShouldReturnSuccess_WhenDecisionIsUnrecognized()
+    {
+        var handler = CreateHandler();
+        var challenge = DocVerificationChallengeFactory.CreatePendingChallenge();
+
+        challengeRepository.GetBySocureReferenceIdAsync("ref-456", Arg.Any<CancellationToken>())
+            .Returns(challenge);
+
+        var command = CreateValidCommand(decision: "unknown");
+        var result = await handler.Handle(command, CancellationToken.None);
+
+        Assert.True(result.IsSuccess);
+        Assert.Equal(DocVerificationStatus.Pending, challenge.Status);
+        await challengeRepository.DidNotReceive()
+            .UpdateAsync(Arg.Any<DocVerificationChallenge>(), Arg.Any<CancellationToken>());
+    }
+
+    // --- Webhook for Created (not Pending) challenge ---
+
+    [Fact]
+    public async Task Handle_ShouldReturnSuccess_WhenChallengeIsCreatedNotPending()
+    {
+        var handler = CreateHandler();
+        var challenge = DocVerificationChallengeFactory.CreateChallenge(); // Created state
+
+        challengeRepository.GetBySocureReferenceIdAsync("ref-456", Arg.Any<CancellationToken>())
+            .Returns(challenge);
+
+        var command = CreateValidCommand(decision: "accept");
+        var result = await handler.Handle(command, CancellationToken.None);
+
+        Assert.True(result.IsSuccess);
+        // Line 99: challenge.Status != Pending blocks the transition
+        await challengeRepository.DidNotReceive()
+            .UpdateAsync(Arg.Any<DocVerificationChallenge>(), Arg.Any<CancellationToken>());
+    }
+
+    // --- User not found after verification ---
+
+    [Fact]
+    public async Task Handle_ShouldUpdateChallengeButNotUser_WhenUserNotFoundAfterVerification()
+    {
+        var handler = CreateHandler();
+        var challenge = DocVerificationChallengeFactory.CreatePendingChallenge();
+
+        challengeRepository.GetBySocureReferenceIdAsync("ref-456", Arg.Any<CancellationToken>())
+            .Returns(challenge);
+        userRepository.GetUserByIdAsync(challenge.UserId, Arg.Any<CancellationToken>())
+            .Returns((User?)null);
+
+        var command = CreateValidCommand(decision: "accept");
+        var result = await handler.Handle(command, CancellationToken.None);
+
+        Assert.True(result.IsSuccess);
+
+        // Challenge should still be updated to Verified
+        await challengeRepository.Received(1)
+            .UpdateAsync(Arg.Is<DocVerificationChallenge>(c =>
+                c.Status == DocVerificationStatus.Verified),
+                Arg.Any<CancellationToken>());
+
+        // User update should NOT be called — user was deleted
+        await userRepository.DidNotReceive()
+            .UpdateUserAsync(Arg.Any<User>(), Arg.Any<CancellationToken>());
+    }
+
+    // --- Both correlation keys null ---
+
+    [Fact]
+    public async Task Handle_ShouldReturnSuccess_WhenBothCorrelationKeysAreNull()
+    {
+        var handler = CreateHandler();
+
+        var command = new ProcessWebhookCommand
+        {
+            EventId = "evt-123",
+            ReferenceId = null,
+            EvalId = null,
+            DocumentDecision = "accept"
+        };
+
+        var result = await handler.Handle(command, CancellationToken.None);
+
+        Assert.True(result.IsSuccess);
+
+        // No repository calls should have been made
+        await challengeRepository.DidNotReceive()
+            .GetBySocureReferenceIdAsync(Arg.Any<string>(), Arg.Any<CancellationToken>());
+        await challengeRepository.DidNotReceive()
+            .GetByEvalIdAsync(Arg.Any<string>(), Arg.Any<CancellationToken>());
+    }
 }
