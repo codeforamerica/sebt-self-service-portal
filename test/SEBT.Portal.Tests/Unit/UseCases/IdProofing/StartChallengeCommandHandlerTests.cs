@@ -125,7 +125,10 @@ public class StartChallengeCommandHandlerTests
     public async Task Handle_ShouldUseStoredDocvData_WhenChallengeAlreadyHasToken()
     {
         var handler = CreateHandler();
-        var challenge = DocVerificationChallengeFactory.CreateChallengeForUser(userId: 1);
+        var challenge = DocVerificationChallengeFactory.CreateChallengeForUser(userId: 1, c =>
+        {
+            c.ExpiresAt = DateTime.UtcNow.AddMinutes(30);
+        });
         var expectedToken = challenge.DocvTransactionToken!;
         var expectedUrl = challenge.DocvUrl!;
 
@@ -170,6 +173,7 @@ public class StartChallengeCommandHandlerTests
             c.DocvUrl = null;
             c.SocureReferenceId = null;
             c.EvalId = null;
+            c.ExpiresAt = DateTime.UtcNow.AddMinutes(30);
         });
         var command = new StartChallengeCommand
         {
@@ -213,6 +217,7 @@ public class StartChallengeCommandHandlerTests
         {
             c.DocvTransactionToken = null;
             c.DocvUrl = null;
+            c.ExpiresAt = DateTime.UtcNow.AddMinutes(30);
         });
         var command = new StartChallengeCommand
         {
@@ -248,6 +253,7 @@ public class StartChallengeCommandHandlerTests
         {
             c.DocvTransactionToken = null;
             c.DocvUrl = null;
+            c.ExpiresAt = DateTime.UtcNow.AddMinutes(30);
         });
         var command = new StartChallengeCommand
         {
@@ -293,5 +299,86 @@ public class StartChallengeCommandHandlerTests
         Assert.False(result.IsSuccess);
         var preconditionFailed = Assert.IsType<PreconditionFailedResult<StartChallengeResponse>>(result);
         Assert.Equal(PreconditionFailedReason.NotFound, preconditionFailed.Reason);
+    }
+
+    // --- Expiration check on start ---
+
+    [Fact]
+    public async Task Handle_ShouldReturnConflict_WhenCreatedChallengeHasExpired()
+    {
+        var handler = CreateHandler();
+        var challenge = DocVerificationChallengeFactory.CreateChallengeForUser(userId: 1, c =>
+        {
+            c.ExpiresAt = DateTime.UtcNow.AddMinutes(-5); // Expired 5 minutes ago
+        });
+        var command = new StartChallengeCommand
+        {
+            ChallengeId = challenge.PublicId,
+            UserId = 1
+        };
+
+        challengeRepository.GetByPublicIdAsync(command.ChallengeId, command.UserId, Arg.Any<CancellationToken>())
+            .Returns(challenge);
+
+        var result = await handler.Handle(command, CancellationToken.None);
+
+        Assert.False(result.IsSuccess);
+        var preconditionFailed = Assert.IsType<PreconditionFailedResult<StartChallengeResponse>>(result);
+        Assert.Equal(PreconditionFailedReason.Conflict, preconditionFailed.Reason);
+        Assert.Contains("expired", preconditionFailed.Message, StringComparison.OrdinalIgnoreCase);
+
+        // Should transition to Expired and persist
+        await challengeRepository.Received(1)
+            .UpdateAsync(Arg.Is<DocVerificationChallenge>(c =>
+                c.Status == DocVerificationStatus.Expired),
+                Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task Handle_ShouldSucceed_WhenCreatedChallengeHasNotExpired()
+    {
+        var handler = CreateHandler();
+        var challenge = DocVerificationChallengeFactory.CreateChallengeForUser(userId: 1, c =>
+        {
+            c.ExpiresAt = DateTime.UtcNow.AddMinutes(30); // Still valid
+        });
+        var command = new StartChallengeCommand
+        {
+            ChallengeId = challenge.PublicId,
+            UserId = 1
+        };
+
+        challengeRepository.GetByPublicIdAsync(command.ChallengeId, command.UserId, Arg.Any<CancellationToken>())
+            .Returns(challenge);
+
+        var result = await handler.Handle(command, CancellationToken.None);
+
+        Assert.True(result.IsSuccess);
+        var response = result.Value;
+        Assert.NotNull(response.DocvTransactionToken);
+    }
+
+    [Fact]
+    public async Task Handle_ShouldSucceed_WhenCreatedChallengeHasNullExpiresAt()
+    {
+        var handler = CreateHandler();
+        var challenge = DocVerificationChallengeFactory.CreateChallengeForUser(userId: 1, c =>
+        {
+            c.ExpiresAt = null; // No expiration
+        });
+        var command = new StartChallengeCommand
+        {
+            ChallengeId = challenge.PublicId,
+            UserId = 1
+        };
+
+        challengeRepository.GetByPublicIdAsync(command.ChallengeId, command.UserId, Arg.Any<CancellationToken>())
+            .Returns(challenge);
+
+        var result = await handler.Handle(command, CancellationToken.None);
+
+        Assert.True(result.IsSuccess);
+        var response = result.Value;
+        Assert.NotNull(response.DocvTransactionToken);
     }
 }

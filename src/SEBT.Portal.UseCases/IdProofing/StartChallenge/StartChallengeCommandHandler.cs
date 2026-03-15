@@ -45,6 +45,23 @@ public class StartChallengeCommandHandler(
                 PreconditionFailedReason.NotFound, "Challenge not found.");
         }
 
+        // Check-on-read expiration: if Created and past ExpiresAt, transition to Expired
+        if (challenge.Status == DocVerificationStatus.Created
+            && challenge.ExpiresAt.HasValue
+            && DateTime.UtcNow > challenge.ExpiresAt.Value)
+        {
+            challenge.TransitionTo(DocVerificationStatus.Expired);
+            await challengeRepository.UpdateAsync(challenge, cancellationToken);
+
+            logger.LogInformation(
+                "Challenge {ChallengeId} expired on start attempt (ExpiresAt: {ExpiresAt})",
+                command.ChallengeId, challenge.ExpiresAt);
+
+            return Result<StartChallengeResponse>.PreconditionFailed(
+                PreconditionFailedReason.Conflict,
+                "Challenge has expired. Please re-submit your information.");
+        }
+
         // Must be in Created state to start
         if (challenge.Status != DocVerificationStatus.Created)
         {
