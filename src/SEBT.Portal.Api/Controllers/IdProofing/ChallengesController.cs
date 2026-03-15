@@ -53,7 +53,7 @@ public class ChallengesController(ILogger<ChallengesController> logger) : Contro
         var user = await userRepository.GetUserByEmailAsync(email, cancellationToken);
         if (user == null)
         {
-            logger.LogWarning("Challenge start request for email {Email} but user not found", email);
+            logger.LogWarning("Challenge start request but authenticated user not found in database");
             return Unauthorized(new ErrorResponse("Unable to identify user from token."));
         }
 

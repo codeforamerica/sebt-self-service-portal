@@ -48,19 +48,21 @@ public class StartChallengeCommandHandler(
         // Must be in Created state to start (D7)
         if (challenge.Status != DocVerificationStatus.Created)
         {
-            logger.LogWarning(
-                "Challenge {ChallengeId} is in {Status} state, cannot start",
-                command.ChallengeId, challenge.Status);
-
             // If already Pending, return the existing token (idempotent for repeated start, Codex test 6)
             if (challenge.Status == DocVerificationStatus.Pending
                 && challenge.DocvTransactionToken != null
                 && challenge.DocvUrl != null)
             {
+                logger.LogInformation(
+                    "Challenge {ChallengeId} already Pending, returning existing token for user {UserId}",
+                    command.ChallengeId, command.UserId);
                 return Result<StartChallengeResponse>.Success(
                     new StartChallengeResponse(challenge.DocvTransactionToken, challenge.DocvUrl));
             }
 
+            logger.LogWarning(
+                "Challenge {ChallengeId} is in {Status} state, cannot start",
+                command.ChallengeId, challenge.Status);
             return Result<StartChallengeResponse>.PreconditionFailed(
                 PreconditionFailedReason.Conflict,
                 $"Challenge is in {challenge.Status} state and cannot be started.");

@@ -15,6 +15,8 @@ namespace SEBT.Portal.UseCases.IdProofing;
 /// checks idempotency via event_id (D8), correlates to a challenge via ReferenceId/EvalId (D6),
 /// validates state transition (D7), and updates both challenge and user state on verification.
 /// </summary>
+// TODO: Register webhook URLs in the Socure dashboard (https://help.socure.com/riskos/docs/webhooks)
+// for each environment (sandbox, staging, production) before go-live.
 public class ProcessWebhookCommandHandler(
     IDocVerificationChallengeRepository challengeRepository,
     IUserRepository userRepository,

@@ -47,7 +47,7 @@ public class IdProofingController(ILogger<IdProofingController> logger) : Contro
         var command = new SubmitIdProofingCommand
         {
             UserId = userId.Value,
-            DateOfBirth = $"{request.DateOfBirth.Year}-{request.DateOfBirth.Month}-{request.DateOfBirth.Day}",
+            DateOfBirth = $"{request.DateOfBirth.Year}-{request.DateOfBirth.Month.PadLeft(2, '0')}-{request.DateOfBirth.Day.PadLeft(2, '0')}",
             IdType = request.IdType,
             IdValue = request.IdValue
         };
@@ -111,7 +111,7 @@ public class IdProofingController(ILogger<IdProofingController> logger) : Contro
         var user = await userRepository.GetUserByEmailAsync(email, cancellationToken);
         if (user == null)
         {
-            logger.LogWarning("ID proofing request for email {Email} but user not found", email);
+            logger.LogWarning("ID proofing request but authenticated user not found in database");
             return null;
         }
 

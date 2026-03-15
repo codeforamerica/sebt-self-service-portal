@@ -37,7 +37,8 @@ public class DatabaseDocVerificationChallengeRepository(PortalDbContext dbContex
             .FirstOrDefaultAsync(
                 c => c.UserId == userId
                      && (c.Status == (int)DocVerificationStatus.Created
-                         || c.Status == (int)DocVerificationStatus.Pending),
+                         || c.Status == (int)DocVerificationStatus.Pending)
+                     && (c.ExpiresAt == null || c.ExpiresAt > DateTime.UtcNow),
                 cancellationToken);
 
         return entity == null ? null : MapToDomainModel(entity);

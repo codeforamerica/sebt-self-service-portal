@@ -1,3 +1,4 @@
+using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Options;
 using SEBT.Portal.Core.AppSettings;
 
@@ -6,8 +7,9 @@ namespace SEBT.Portal.Infrastructure.Configuration;
 /// <summary>
 /// Validates SocureSettings at startup.
 /// When UseStub is false (real Socure integration), ApiKey and WebhookSecret are required (D11).
+/// UseStub is only permitted in Development to prevent accidental bypass in deployed environments.
 /// </summary>
-public class SocureSettingsValidator : IValidateOptions<SocureSettings>
+public class SocureSettingsValidator(IHostEnvironment environment) : IValidateOptions<SocureSettings>
 {
     /// <inheritdoc />
     public ValidateOptionsResult Validate(string? name, SocureSettings options)
@@ -21,6 +23,14 @@ public class SocureSettingsValidator : IValidateOptions<SocureSettings>
         {
             return ValidateOptionsResult.Fail(
                 "Socure:ChallengeExpirationMinutes must be between 1 and 1440.");
+        }
+
+        // UseStub bypasses webhook signature validation — only safe in Development (F7)
+        if (options.UseStub && !environment.IsDevelopment())
+        {
+            return ValidateOptionsResult.Fail(
+                "Socure:UseStub cannot be enabled outside of Development. " +
+                "It bypasses webhook signature validation on an anonymous endpoint.");
         }
 
         // When using the real client, API key and webhook secret are required
