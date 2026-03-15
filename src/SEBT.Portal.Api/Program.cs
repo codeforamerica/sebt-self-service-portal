@@ -1,6 +1,7 @@
 using System.Text;
 using System.Threading.RateLimiting;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
@@ -250,9 +251,11 @@ app.UseRateLimiter();
 app.UseAuthentication();
 app.UseAuthorization();
 
-app.MapGet("/health", () => Results.Ok(new { Status = "ok" }));
-
 app.MapControllers();
+app.MapHealthChecks("/health", new HealthCheckOptions
+{
+    ResponseWriter = HealthCheckResponseWriter.WriteAsync
+});
 
 try
 {
@@ -268,3 +271,8 @@ finally
 {
     Log.CloseAndFlush();
 }
+
+// Makes the implicit Program class public so WebApplicationFactory<Program> can reference it from test projects.
+#pragma warning disable CS1591
+public partial class Program { }
+#pragma warning restore CS1591

@@ -21,7 +21,7 @@ cd "$PROJECT_ROOT"
 
 # Check if there are backend changes in staged files
 has_backend_changes() {
-  git diff --cached --name-only | grep -vE '^src/SEBT\.Portal\.Web' | grep -qE '^SEBT\.Portal\.sln$|^src/SEBT\.Portal\.|\.(csproj|sln)$' || return 1
+  git diff --cached --name-only | grep -vE '^src/SEBT\.Portal\.Web' | grep -qE '^SEBT\.Portal\.sln$|^src/SEBT\.Portal\.|\.(csproj|sln)$|^test/' || return 1
 }
 
 # Check if there are frontend changes in staged files
@@ -159,7 +159,10 @@ if [ "$BACKEND_CHANGES" = "true" ]; then
   cd "$PROJECT_ROOT"
 
   if command -v dotnet &> /dev/null; then
-    dotnet test --configuration Debug --verbosity quiet || {
+    # Exclude SqlServer tests (Testcontainers/SQL Server) from pre-commit.
+    # They run in CI but cause stack overflows locally when combined with
+    # the rest of the suite due to Docker resource pressure under parallelism.
+    dotnet test --configuration Debug --verbosity quiet --filter "Category!=SqlServer" || {
       log_error "Backend tests failed"
       exit 1
     }
