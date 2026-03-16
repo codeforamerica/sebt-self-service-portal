@@ -51,7 +51,7 @@ export function ReviewPage({ onSubmit }: ReviewPageProps) {
               router.push('/check')
             }}
           >
-            {tCommon('addAnotherChild')}
+            {t('actionAdd')}
           </button>
         </div>
       </div>
