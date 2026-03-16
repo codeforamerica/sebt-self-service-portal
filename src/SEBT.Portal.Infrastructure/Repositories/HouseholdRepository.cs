@@ -4,7 +4,6 @@ using SEBT.Portal.Core.Models.Auth;
 using SEBT.Portal.Core.Models.Household;
 using SEBT.Portal.Core.Repositories;
 using SEBT.Portal.Core.Utilities;
-using SEBT.Portal.StatesPlugins.Interfaces.Utilities;
 using ISummerEbtCaseService = SEBT.Portal.StatesPlugins.Interfaces.ISummerEbtCaseService;
 using PluginIdentityAssuranceLevel = SEBT.Portal.StatesPlugins.Interfaces.Models.IdentityAssuranceLevel;
 using PluginPiiVisibility = SEBT.Portal.StatesPlugins.Interfaces.Models.PiiVisibility;
@@ -95,8 +94,8 @@ public class HouseholdRepository : IHouseholdRepository
     {
         return source with
         {
-            Email = piiVisibility.IncludeEmail ? source.Email : PiiMasker.MaskEmail(source.Email),
-            Phone = piiVisibility.IncludePhone ? source.Phone : PiiMasker.MaskPhone(source.Phone),
+            Email = piiVisibility.IncludeEmail ? source.Email : null,
+            Phone = piiVisibility.IncludePhone ? source.Phone : null,
             AddressOnFile = piiVisibility.IncludeAddress && source.AddressOnFile != null
                 ? new Address
                 {

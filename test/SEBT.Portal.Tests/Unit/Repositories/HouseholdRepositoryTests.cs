@@ -138,7 +138,7 @@ public class HouseholdRepositoryTests
     }
 
     [Fact]
-    public async Task GetHouseholdByEmailAsync_WhenPiiVisibilityExcludesEmail_ReturnsMaskedEmail()
+    public async Task GetHouseholdByEmailAsync_WhenPiiVisibilityExcludesEmail_ReturnsNullEmail()
     {
         _summerEbtCaseService
             .GetHouseholdByGuardianEmailAsync(Arg.Any<string>(), Arg.Any<PluginPiiVisibility>(), Arg.Any<PluginIdentityAssuranceLevel>(), Arg.Any<CancellationToken>())
@@ -148,12 +148,12 @@ public class HouseholdRepositoryTests
         var result = await _repository.GetHouseholdByEmailAsync("user@example.com", noEmailPii, UserIalLevel.IAL1plus);
 
         Assert.NotNull(result);
-        Assert.Equal("u***@example.com", result.Email);
+        Assert.Null(result.Email);
         Assert.Equal("303-555-0100", result.Phone);
     }
 
     [Fact]
-    public async Task GetHouseholdByEmailAsync_WhenPiiExcludesPhone_ReturnsMaskedPhone()
+    public async Task GetHouseholdByEmailAsync_WhenPiiExcludesPhone_ReturnsNullPhone()
     {
         _summerEbtCaseService
             .GetHouseholdByGuardianEmailAsync(Arg.Any<string>(), Arg.Any<PluginPiiVisibility>(), Arg.Any<PluginIdentityAssuranceLevel>(), Arg.Any<CancellationToken>())
@@ -164,7 +164,7 @@ public class HouseholdRepositoryTests
 
         Assert.NotNull(result);
         Assert.Equal("u@e.com", result.Email);
-        Assert.Equal("***-***-0100", result.Phone);
+        Assert.Null(result.Phone);
     }
 
     [Fact]
