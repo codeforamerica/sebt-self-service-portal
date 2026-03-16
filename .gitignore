@@ -26,8 +26,8 @@ scripts/scratch/
 *.env
 
 # Local development config (use appsettings.Development.example.json as template)
-src/SEBT.Portal.Api/appsettings.Development.json
-src/SEBT.Portal.Api/appsettings.json
+appsettings.*.json 
+!appsettings.*.example.json
 
 # User-specific files (MonoDevelop/Xamarin Studio)
 *.userprefs
