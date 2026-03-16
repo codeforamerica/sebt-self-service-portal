@@ -1,6 +1,7 @@
 'use client'
 
 import { Button, RichText } from '@sebt/design-system'
+import Image from 'next/image'
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { useTranslation } from 'react-i18next'
@@ -16,6 +17,14 @@ export function LandingPage() {
   return (
     <div className="usa-section">
       <div className="grid-container">
+        <Image
+          src="/img/logo-summer-ebt.png"
+          alt="Summer EBT"
+          width={287}
+          height={33}
+          className="margin-bottom-2"
+          priority
+        />
         <h1>{t('title')}</h1>
         <div className="usa-prose">
           <RichText>{t('body')}</RichText>

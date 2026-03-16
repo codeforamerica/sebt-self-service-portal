@@ -1,5 +1,6 @@
 'use client'
 
+import Image from 'next/image'
 import { useRouter } from 'next/navigation'
 import { useTranslation } from 'react-i18next'
 import { useEnrollment } from '../context/EnrollmentContext'
@@ -48,6 +49,14 @@ export function ChildFormPage({ showSchoolField, apiBaseUrl }: ChildFormPageProp
         >
           {t('back', { ns: 'common' })}
         </button>
+        <Image
+          src="/img/icon-form-card.svg"
+          alt=""
+          width={100}
+          height={75}
+          className="margin-bottom-1"
+          aria-hidden="true"
+        />
         <h1>{isEditMode ? t('editHeading') : t('title')}</h1>
         <p className="usa-prose">{t('body')}</p>
         <p className="usa-hint">{t('requiredFields', { ns: 'common' })}</p>
