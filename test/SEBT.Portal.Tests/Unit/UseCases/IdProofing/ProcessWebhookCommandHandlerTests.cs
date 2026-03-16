@@ -523,4 +523,50 @@ public class ProcessWebhookCommandHandlerTests
         await challengeRepository.DidNotReceive()
             .GetByEvalIdAsync(Arg.Any<string>(), Arg.Any<CancellationToken>());
     }
+
+    // --- Input sanitization: control characters rejected ---
+
+    [Theory]
+    [InlineData("evt-123\nevt-fake")]
+    [InlineData("evt-123\revt-fake")]
+    [InlineData("evt-123\tevt-fake")]
+    [InlineData("evt\0null")]
+    public async Task Handle_ShouldRejectValidation_WhenEventIdContainsControlCharacters(string eventId)
+    {
+        var handler = CreateHandler();
+
+        var command = new ProcessWebhookCommand
+        {
+            EventId = eventId,
+            ReferenceId = "ref-456",
+            DocumentDecision = "accept"
+        };
+
+        var result = await handler.Handle(command, CancellationToken.None);
+
+        Assert.False(result.IsSuccess);
+        Assert.IsType<ValidationFailedResult>(result);
+    }
+
+    [Theory]
+    [InlineData("ref-456\nref-fake")]
+    [InlineData("eval-789\r\nfake")]
+    [InlineData("accept\nreject")]
+    public async Task Handle_ShouldRejectValidation_WhenAnyFieldContainsControlCharacters(string injected)
+    {
+        var handler = CreateHandler();
+
+        var command = new ProcessWebhookCommand
+        {
+            EventId = "evt-valid",
+            ReferenceId = injected,
+            EvalId = injected,
+            DocumentDecision = injected
+        };
+
+        var result = await handler.Handle(command, CancellationToken.None);
+
+        Assert.False(result.IsSuccess);
+        Assert.IsType<ValidationFailedResult>(result);
+    }
 }
