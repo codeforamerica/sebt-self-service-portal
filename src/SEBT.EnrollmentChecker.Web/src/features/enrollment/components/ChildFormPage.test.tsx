@@ -21,7 +21,7 @@ function ChildFormPageInEditMode() {
 
   // Seed one child on mount
   useEffect(() => {
-    addChild({ firstName: 'Jane', lastName: 'Doe', dateOfBirth: '2015-04-12' })
+    addChild({ firstName: 'Jane', lastName: 'Doe', month: '4', day: '12', year: '2015' })
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
@@ -46,9 +46,12 @@ describe('ChildFormPage', () => {
     expect(screen.getByRole('heading', { level: 1 })).toBeInTheDocument()
   })
 
-  it('shows back-to-home button when no children yet', () => {
+  it('shows back navigation when no children yet', () => {
     render(<ChildFormPage showSchoolField={false} apiBaseUrl="" />, { wrapper })
-    expect(screen.getByRole('button', { name: /back/i })).toBeInTheDocument()
+    // The page renders back navigation (both an unstyled top-level back button
+    // and a back button inside the form's button group)
+    const backButtons = screen.getAllByRole('button', { name: /back/i })
+    expect(backButtons.length).toBeGreaterThan(0)
   })
 
   it('renders edit heading when a child is being edited', async () => {

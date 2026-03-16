@@ -41,7 +41,7 @@ describe('ReviewPage', () => {
   it('navigates to /check when Add Another is clicked', async () => {
     render(<ReviewPageWithChild onSubmit={vi.fn()} />)
     await screen.findByText(/Jane Doe/i)
-    await userEvent.click(screen.getByRole('button', { name: /add another/i }))
+    await userEvent.click(screen.getByRole('button', { name: /addAnotherChild/i }))
     expect(mockPush).toHaveBeenCalledWith('/check')
   })
 })

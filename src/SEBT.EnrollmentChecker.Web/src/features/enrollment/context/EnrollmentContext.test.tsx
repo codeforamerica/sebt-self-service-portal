@@ -9,7 +9,9 @@ const wrapper = ({ children }: { children: React.ReactNode }) => (
 const child = {
   firstName: 'Jane',
   lastName: 'Doe',
-  dateOfBirth: '2015-04-12'
+  month: '4',
+  day: '12',
+  year: '2015'
 }
 
 describe('EnrollmentContext', () => {

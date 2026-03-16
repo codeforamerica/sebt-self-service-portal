@@ -26,6 +26,7 @@ describe('ChildResultCard', () => {
   it('shows no error message when errorMessage is null', () => {
     render(<ChildResultCard firstName="Jane" lastName="Doe" displayStatus="error" errorMessage={null} />)
     // error paragraph should not exist when errorMessage is null
-    expect(screen.queryByText(/error/i)).not.toBeInTheDocument()
+    expect(screen.queryByRole('paragraph', { name: /error/i })).not.toBeInTheDocument()
+    expect(document.querySelector('p.text-error')).not.toBeInTheDocument()
   })
 })
