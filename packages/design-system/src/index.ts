@@ -17,6 +17,10 @@ export { TextLink } from './components/ui/TextLink'
 // TextLinkProps is defined in TextLink.tsx itself (not in ui/types.ts)
 export type { TextLinkProps } from './components/ui/TextLink'
 
+// Rich text rendering (markdown-to-jsx)
+export { RichText } from './components/RichText/RichText'
+export type { RichTextProps } from './components/RichText/RichText'
+
 // Layout chrome
 export { Header } from './components/layout/Header'
 export { Footer } from './components/layout/Footer'
