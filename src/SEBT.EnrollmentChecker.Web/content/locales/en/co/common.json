@@ -28,8 +28,6 @@
   "yes": "Yes",
   "no": "No",
   "back": "Back",
-  "editChild": "Edit",
-  "removeChild": "Remove",
   "streetAddress": "Street address",
   "helperStreetAddress": "Include direction, NW, NE, SE, or SW.",
   "streetAddress2": "Street address line 2",
@@ -62,9 +60,5 @@
   "copyrite": "",
   "titleContactUs": "Summer EBT Help Desk",
   "titleAccessibility": "Accessibility at CDHS",
-  "bodyAccessibility": "CDHS is committed to meeting members\nof our community where they are, and\nstrives to provide all Coloradans with\naccess to our programs, services,\nresources, activities and communication\nregardless of ability.",
-  "cancel": "Cancel",
-  "addAnotherChild": "Add another child",
-  "schoolLoading": "Loading schools...",
-  "schoolError": "Unable to load schools. Please try again."
+  "bodyAccessibility": "CDHS is committed to meeting members\nof our community where they are, and\nstrives to provide all Coloradans with\naccess to our programs, services,\nresources, activities and communication\nregardless of ability."
 }

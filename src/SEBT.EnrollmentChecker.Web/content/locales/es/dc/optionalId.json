@@ -1,6 +1,6 @@
 {
-  "title": "Algunas cosas a tener en cuenta antes de reemplazar las tarjetas de DC SUN Bucks",
-  "body": "Una vez que se creen las tarjetas de reemplazo, las tarjetas anteriores se desactivarán permanentemente.\nLas tarjetas llegarán por correo entre 5 y 7 días, aproximadamente.\nPuedes verificar aquí cuándo se ha enviado la tarjeta.\nCualquier saldo restante en la tarjeta anterior se transferirá automáticamente a la tarjeta de reemplazo",
+  "title": "Revisamos nuestros registros y necesitamos más información para ver si este niño puede recibir DC SUN Bucks",
+  "body": "Sugerimos que proporciones el número de identificación estudiantil, SNAP, TANF o Medicaid del niño, si los tienes. Así podemos darte una mejor respuesta sobre si ya están preaprobados.",
   "labelWhichId": "¿Cuál número de identificación puedes proporcionar? *",
   "optionStudentId": "Identificación de estudiante única",
   "optionHelperStudentId": "Este es el número de identificación universal de estudiante de su hijo(a).",
@@ -14,6 +14,5 @@
   "labelEnterMedicaidId": "Ingresa su número de identificación de Medicaid (CIN / I-CIN)",
   "labelEnterSnapCaseNumber": "Ingresa su número de caso SNAP",
   "labelEnterTanfId": "Ingresa su número de identificación TANF",
-  "alertActionLogIntoPortal": "Contáctanos si no puedes proporcionar ninguno de los números de identificación sugeridos.",
-  "labelSelectCards": "Selecciona las tarjetas que deseas reemplazar"
+  "alertActionLogIntoPortal": "Contáctanos si no puedes proporcionar ninguno de los números de identificación sugeridos."
 }

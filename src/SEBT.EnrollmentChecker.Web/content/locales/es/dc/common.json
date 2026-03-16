@@ -28,8 +28,6 @@
   "yes": "Sí",
   "no": "No",
   "back": "Regresar",
-  "editChild": "Editar",
-  "removeChild": "Eliminar",
   "streetAddress": "Dirección",
   "helperStreetAddress": "Incluya la dirección: NO, NE, SE o SO.",
   "streetAddress2": "Dirección, línea 2",
@@ -62,9 +60,5 @@
   "copyrite": "",
   "titleContactUs": "",
   "titleAccessibility": "",
-  "bodyAccessibility": "",
-  "cancel": "Cancelar",
-  "addAnotherChild": "Agregar otro niño(a)",
-  "schoolLoading": "Cargando escuelas...",
-  "schoolError": "Unable to load schools. Please try again."
+  "bodyAccessibility": ""
 }

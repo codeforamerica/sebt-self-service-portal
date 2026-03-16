@@ -66,6 +66,8 @@ const csvDirOverride = getCliArg('--csv-dir')
 const outDirOverride = getCliArg('--out-dir')
 const tsOutOverride  = getCliArg('--ts-out')
 const appFilter      = getCliArg('--app')   // 'portal' | 'enrollment' | null (all)
+const sectionsFilter = getCliArg('--sections')  // comma-separated, e.g., 'S1,GLOBAL'
+const allowedSections = sectionsFilter ? sectionsFilter.split(',').map(s => s.trim()) : null
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -328,6 +330,9 @@ function buildStateLocaleData(rows, state) {
 
     const parsed = parseContentKey(contentKey);
     if (!parsed) continue;
+
+    // Section-level filter: skip rows from sections not in the allowed list
+    if (allowedSections && !allowedSections.includes(parsed.section)) continue;
 
     const { namespace, key } = parsed;
 

@@ -1,11 +1,5 @@
 {
-  "heading": "Resultados de la verificación",
-  "errorHeading": "Resultados no disponibles",
-  "enrolledHeading": "Niños inscritos en Summer EBT",
-  "notEnrolledHeading": "Niños no inscritos en Summer EBT",
-  "notEnrolledCta": "Estos niños podrían ser elegibles.",
-  "applyLink": "Solicitar Summer EBT",
-  "title": "Cosas que saber antes de solicitar una tarjeta de reemplazo",
+  "title": "Aquí está la información que encontramos",
   "applyForSebtTitle": "Para ayudarnos a decidir, le recomendamos que complete una solicitud para este menor",
   "applyForSebtBody": "A veces los niños no se inscriben automáticamente porque no tenemos toda la información necesaria para ver si pueden participar. Sin embargo, igual podrían calificar.",
   "applyForSebtBody1": "Es posible que los siguientes menores **no estén inscritos automáticamente**.",
@@ -42,15 +36,5 @@
   "streamlinedEnrolledCard2Action": "Revisar otro(a) niño(a)",
   "streamlinedEnrolledStepsHeading": "próximos pasos",
   "noneBody1": "No tenemos suficiente información para los siguientes niños",
-  "noneBody2": "Recomendamos iniciar sesión en el portal de Summer EBT para confirmar si estan automaticamente inscritos.",
-  "replaceCardBody1": "Llama a servicios al cliente de EBT al (888) 328-2656 para solicitar el envío de una tarjeta de reemplazo a la dirección que aparece aquí.",
-  "replaceCardBody2": "Mantente en la línea para elegir la opción de tarjeta perdida y hablar con un representante.",
-  "keepCard": "Guarda tu tarjeta para el próximo año. Tus beneficios serán agregados a tu nueva tarjeta.",
-  "tapToCall": "Toca la pantalla para llamar a servicios al cliente de EBT",
-  "subtleLink": "Quiero que la tarjeta que termina en [9999] me la reemplacen y la envíen por correo a una dirección diferente.",
-  "status": {
-    "enrolled": "Enrolled",
-    "notEnrolled": "Not enrolled",
-    "error": "Check unavailable"
-  }
+  "noneBody2": "Recomendamos iniciar sesión en el portal de Summer EBT para confirmar si estan automaticamente inscritos."
 }

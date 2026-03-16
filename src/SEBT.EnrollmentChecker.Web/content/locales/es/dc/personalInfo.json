@@ -1,25 +1,8 @@
 {
-  "firstNameLabel": "Nombre",
-  "middleNameLabel": "Segundo nombre (opcional)",
-  "lastNameLabel": "Apellido",
-  "dobLabel": "Fecha de nacimiento",
-  "dobHint": "Formato: AAAA-MM-DD",
-  "schoolLabel": "Escuela",
-  "schoolSelectPlaceholder": "Selecciona una escuela",
-  "heading": "Agregar un niño(a)",
-  "editHeading": "Editar información del niño(a)",
-  "title": "¿Estás seguro de que quieres borrar esta dirección?",
+  "title": "Compruebe si su hijo(a) necesita solicitar beneficios de DC SUN Bucks",
   "body": "Proporciona la información de su estudiante en los campos obligatorios a continuación. Esta herramienta comprobará si su hijo(a) queda inscrito de forma automática para recibir beneficios.",
   "labelBirthdate": "Fecha de nacimiento",
   "labelMonth": "Mes",
   "labelDay": "Día",
-  "labelYear": "Año",
-  "alertProfileUpdate": "Tu perfil ha sido actualizado",
-  "back": "Regresar a la página de inicio del portal",
-  "headingMailingAddress": "Tu dirección de correspondencia",
-  "labelPreferredMailingAddress": "Selecciona tu dirección de correspondencia preferida",
-  "helperPreferredMailingAddress": "Puedes agregar o editar las direcciones en esta lista usando los enlaces de abajo.",
-  "actionAddMailingAddress": "Agregar una nueva dirección de correspondencia",
-  "editMailingAddress": "Editar la dirección de correspondencia",
-  "actionUpdateAddress": "Actualizar las preferencias de direcciones"
+  "labelYear": "Año"
 }

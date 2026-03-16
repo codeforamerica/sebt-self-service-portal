@@ -1,11 +1,5 @@
 {
-  "heading": "Check results",
-  "errorHeading": "Results unavailable",
-  "enrolledHeading": "Children enrolled in DC SUN Bucks",
-  "notEnrolledHeading": "Children not enrolled in DC SUN Bucks",
-  "notEnrolledCta": "These children may still be eligible.",
-  "applyLink": "Apply for DC SUN Bucks",
-  "title": "A few things to know before replacing cards",
+  "title": "Here's the information we found",
   "applyForSebtTitle": "We recommend that you fill out an application for this child",
   "applyForSebtBody": "Children may not be automatically enrolled because we do not have enough information to confirm their eligibility. But, they may still be eligible.",
   "applyForSebtBody1": "The following children *may not be automatically enrolled*.",
@@ -42,15 +36,5 @@
   "streamlinedEnrolledCard2Action": "Check another child",
   "streamlinedEnrolledStepsHeading": "Next steps",
   "noneBody1": "We don't have enough information for the following children.",
-  "noneBody2": "We recommend logging into the DC Sun Bucks portal to confirm if they are automatically enrolled.",
-  "replaceCardBody1": "Call Fidelity Information Services (FIS) at (888) 304-9167 to request a replacement card to be sent to your address listed here.",
-  "replaceCardBody2": "If FIS has your current, correct address, they will process your request directly.",
-  "keepCard": "Keep your card for next year. Benefits will be added to your new card.",
-  "tapToCall": "Tap to call Fidelity Information Services (FIS)",
-  "subtleLink": "I want a replacement for the card ending in [9999] mailed to a different address",
-  "status": {
-    "enrolled": "Enrolled",
-    "notEnrolled": "Not enrolled",
-    "error": "Check unavailable"
-  }
+  "noneBody2": "We recommend logging into the DC Sun Bucks portal to confirm if they are automatically enrolled."
 }

@@ -1,6 +1,6 @@
 {
-  "title": "A few things to know before replacing Summer EBT cards",
-  "body": "Once replacement cards are created, the previous cards will be permanently deactivated\nCards will arrive by mail in around 5–7 days\nYou can check here to see when the card has been mailed\nAny remaining balance on the previous card will automatically be rolled over to the replacement card",
+  "title": "We checked our records and need more information to see if [First name] [M.] [Last name] is enrolled",
+  "body": "We suggest providing any of the child's State Assigned Student ID (SASID), SNAP, Colorado Works (TANF), or Medicaid number if you have them. We can give you a better answer about whether they are pre-approved.",
   "labelWhichId": "Which ID number can you provide? *",
   "optionStudentId": "State Assigned Student ID (SASID)",
   "optionHelperStudentId": "This is a unique 10-digit number assigned to your child. Their school may be able to provide it if you do not know it.",
@@ -14,6 +14,5 @@
   "labelEnterMedicaidId": "Enter their Medicaid identification number (CIN / I-CIN)",
   "labelEnterSnapCaseNumber": "Enter their SNAP case number",
   "labelEnterTanfId": "Enter their Colorado Works (TANF) identification number",
-  "alertActionLogIntoPortal": "Contact us if you can't provide any of the suggested ID numbers.",
-  "labelSelectCards": "Select which cards you want to replace"
+  "alertActionLogIntoPortal": "Contact us if you can't provide any of the suggested ID numbers."
 }

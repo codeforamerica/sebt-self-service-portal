@@ -28,8 +28,6 @@
   "yes": "Sí",
   "no": "No",
   "back": "Regresar",
-  "editChild": "Editar",
-  "removeChild": "Eliminar",
   "streetAddress": "Dirección",
   "helperStreetAddress": "Incluya la dirección: NO, NE, SE o SO.",
   "streetAddress2": "Dirección, línea 2",
@@ -62,9 +60,5 @@
   "copyrite": "",
   "titleContactUs": "Línea de ayuda de Summer EBT",
   "titleAccessibility": "Accesibilidad en CDHS",
-  "bodyAccessibility": "CDHS está comprometido a encontrarse con las personas de nuestra comunidad donde estén y se esfuerza por brindar a todas las personas de Colorado acceso a nuestros programas, servicios, recursos, actividades y comunicaciones, independientemente de su capacidad.",
-  "cancel": "Cancelar",
-  "addAnotherChild": "Agregar otro niño(a)",
-  "schoolLoading": "Cargando escuelas...",
-  "schoolError": "Unable to load schools. Please try again."
+  "bodyAccessibility": "CDHS está comprometido a encontrarse con las personas de nuestra comunidad donde estén y se esfuerza por brindar a todas las personas de Colorado acceso a nuestros programas, servicios, recursos, actividades y comunicaciones, independientemente de su capacidad."
 }
