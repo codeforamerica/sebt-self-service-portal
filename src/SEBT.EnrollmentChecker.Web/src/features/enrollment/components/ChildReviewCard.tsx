@@ -29,24 +29,22 @@ export function ChildReviewCard({ child, onEdit }: ChildReviewCardProps) {
   const fullName = `${child.firstName}${middleInitial} ${child.lastName}`
 
   return (
-    <div className="usa-card">
-      <div className="usa-card__body">
-        <p className="usa-prose margin-bottom-05">
-          <strong>{t('tableNameHeading')}</strong>
-        </p>
-        <p className="usa-prose margin-top-0">{fullName}</p>
-        <p className="usa-prose margin-bottom-05">
-          <strong>{t('tableBirthdateHeading')}</strong>
-        </p>
-        <p className="usa-prose margin-top-0">{formatBirthdate(child.dateOfBirth)}</p>
-        <button
-          type="button"
-          className="usa-button usa-button--unstyled"
-          onClick={() => onEdit(child.id)}
-        >
-          {t('tableAction')}
-        </button>
-      </div>
+    <div className="child-review-card">
+      <p className="usa-prose margin-bottom-05">
+        <strong>{t('tableNameHeading')}</strong>
+      </p>
+      <p className="usa-prose margin-top-0">{fullName}</p>
+      <p className="usa-prose margin-bottom-05">
+        <strong>{t('tableBirthdateHeading')}</strong>
+      </p>
+      <p className="usa-prose margin-top-0">{formatBirthdate(child.dateOfBirth)}</p>
+      <button
+        type="button"
+        className="usa-button usa-button--unstyled"
+        onClick={() => onEdit(child.id)}
+      >
+        {t('tableAction')}
+      </button>
     </div>
   )
 }

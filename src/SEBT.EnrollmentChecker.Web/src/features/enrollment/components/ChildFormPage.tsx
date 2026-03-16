@@ -54,10 +54,9 @@ export function ChildFormPage({ showSchoolField, apiBaseUrl }: ChildFormPageProp
           alt=""
           width={100}
           height={75}
-          className="margin-bottom-1"
           aria-hidden="true"
         />
-        <h1>{isEditMode ? t('editHeading') : t('title')}</h1>
+        <h1 className="font-family-sans margin-top-1">{isEditMode ? t('editHeading') : t('title')}</h1>
         <p className="usa-prose">{t('body')}</p>
         <p className="usa-hint">{t('requiredFields', { ns: 'common' })}</p>
         <ChildForm

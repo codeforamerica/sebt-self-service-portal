@@ -1,7 +1,7 @@
 ---
 name: figma-verify
 description: Compare running app screens against Figma designs — captures screenshots from both sources and produces a structured gap report
-allowed-tools: mcp__plugin_figma_figma__get_screenshot, mcp__plugin_figma_figma__get_design_context, mcp__plugin_playwright_playwright__browser_navigate, mcp__plugin_playwright_playwright__browser_take_screenshot, mcp__plugin_playwright_playwright__browser_resize, mcp__plugin_playwright_playwright__browser_snapshot, mcp__plugin_playwright_playwright__browser_close, mcp__plugin_playwright_playwright__browser_click, mcp__plugin_playwright_playwright__browser_fill_form, mcp__plugin_playwright_playwright__browser_select_option, mcp__plugin_playwright_playwright__browser_type, Read, Bash(mkdir:*), Bash(ls:*), Bash(rm:*), WebFetch
+allowed-tools: mcp__plugin_figma_figma__get_screenshot, mcp__plugin_figma_figma__get_design_context, mcp__plugin_playwright_playwright__browser_navigate, mcp__plugin_playwright_playwright__browser_take_screenshot, mcp__plugin_playwright_playwright__browser_resize, mcp__plugin_playwright_playwright__browser_snapshot, mcp__plugin_playwright_playwright__browser_close, mcp__plugin_playwright_playwright__browser_click, mcp__plugin_playwright_playwright__browser_fill_form, mcp__plugin_playwright_playwright__browser_select_option, mcp__plugin_playwright_playwright__browser_type, mcp__plugin_playwright_playwright__browser_wait_for, Read, Bash(mkdir:*), Bash(ls:*), Bash(rm:*)
 argument-hint: <figma-file-key> <app-base-url> <screen-mappings...>
 ---
 
@@ -51,7 +51,10 @@ Validate that at least one screen mapping is provided.
 mkdir -p .claude-figma-verify/figma .claude-figma-verify/app
 ```
 
-This directory is gitignored. Clean up any previous run's files.
+This directory is gitignored. Clean up any previous run's files:
+```bash
+rm -f .claude-figma-verify/figma/*.png .claude-figma-verify/app/*.png
+```
 
 ### 3. Set Browser Viewport
 
@@ -60,15 +63,33 @@ Resize the Playwright browser to mobile width to match the Figma mobile designs:
 - **Width:** 375
 - **Height:** 812
 
-### 4. Capture Figma Screenshots
+### 4. Capture Figma Screenshots (Prototype URL Pass)
 
-For each screen mapping, capture the Figma design:
+Save Figma design screenshots to disk using Figma's prototype presentation view in Playwright. This renders the design frame cleanly with minimal UI chrome.
 
-Use `mcp__plugin_figma_figma__get_screenshot` with the file key and node ID. The Figma MCP returns the screenshot as an inline image in the response — it is NOT automatically saved to disk.
+**For each screen mapping:**
 
-**Saving Figma screenshots to disk:** After receiving the Figma screenshot, use `mcp__plugin_figma_figma__get_design_context` to get the asset download URL, then use `WebFetch` to download the image and save it to `.claude-figma-verify/figma/<name>.png`. If this fails (e.g., no download URL available), note it in the report — the inline image is still available for visual comparison during the session.
+1. Navigate Playwright to the prototype URL:
+   ```
+   https://www.figma.com/proto/{fileKey}/?node-id={nodeId}&scaling=min-zoom
+   ```
+   Replace `:` with `-` in the node ID for the URL (e.g., `6034:16454` → `6034-16454`).
+
+2. Wait 5 seconds for the canvas to render (Figma uses WebGL):
+   ```
+   browser_wait_for(time: 5)
+   ```
+
+3. Take a viewport screenshot (NOT full-page — the prototype view fits the frame to the viewport):
+   ```
+   browser_take_screenshot(filename: ".claude-figma-verify/figma/<name>.png")
+   ```
+
+4. After saving to disk, also call `mcp__plugin_figma_figma__get_screenshot` with the file key and node ID. This gives you a higher-fidelity inline image for the visual comparison analysis — the MCP renders at native Figma resolution without browser chrome. Use this inline image as the primary source for your gap analysis.
 
 **IMPORTANT:** The Figma MCP is READ-ONLY. Never use write/modify tools.
+
+**Note:** The prototype URL requires the Figma file to have link sharing enabled. If the page fails to load or shows a login wall, note it in the report and fall back to MCP-only screenshots (inline comparison without disk files).
 
 ### 5. Navigate the Full Flow and Capture App Screenshots
 
@@ -93,7 +114,7 @@ Use `mcp__plugin_playwright_playwright__browser_take_screenshot` with:
 
 ### 6. Visual Comparison
 
-For each screen, compare the Figma screenshot against the app screenshot. Evaluate these dimensions:
+For each screen, compare the Figma screenshot (inline MCP image) against the app screenshot. Evaluate these dimensions:
 
 | Dimension | What to Check |
 |-----------|--------------|
@@ -174,6 +195,6 @@ Close the Playwright browser when done.
 
 - **App not running:** If navigation fails, report the error and skip that screen. Continue with remaining screens.
 - **Figma node not found:** If the Figma screenshot fails, report it and skip that screen.
+- **Figma login wall:** If the prototype URL redirects to a login page instead of rendering the design, fall back to MCP-only inline screenshots. Note in the report that Figma screenshots could not be saved to disk because the file requires authentication. The user may need to enable link sharing on the Figma file.
 - **Interactive states:** If a screen requires interaction beyond simple form filling (e.g., API responses, error states), note it as "requires manual setup" and describe what state is needed.
 - **No arguments provided:** Show the usage format and example invocation, then ask the user to provide arguments.
-- **Figma screenshot save fails:** Note in the report that the Figma screenshot is available as an inline image but could not be saved to disk. The comparison can still proceed.

@@ -31,12 +31,12 @@ export function ResultsPage({ results, applicationUrl }: ResultsPageProps) {
         >
           {t('back', { ns: 'common' })}
         </button>
-        <h1>{t('heading')}</h1>
+        <h1 className="font-family-sans">{t('heading')}</h1>
         <EnrolledSection children={enrolled} />
         <NotEnrolledSection children={notEnrolled} applicationUrl={applicationUrl} />
         {errors.length > 0 && (
           <section>
-            <h2>{t('errorHeading')}</h2>
+            <h2 className="font-family-sans">{t('errorHeading')}</h2>
             {errors.map(child => (
               <ChildResultCard
                 key={child.checkId}

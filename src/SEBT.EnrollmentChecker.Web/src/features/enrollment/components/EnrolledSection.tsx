@@ -10,7 +10,7 @@ export function EnrolledSection({ children }: { children: ChildCheckApiResponse[
 
   return (
     <section>
-      <h2>{t('enrolledHeading')}</h2>
+      <h2 className="font-family-sans">{t('enrolledHeading')}</h2>
       {children.map(child => (
         <ChildResultCard
           key={child.checkId}

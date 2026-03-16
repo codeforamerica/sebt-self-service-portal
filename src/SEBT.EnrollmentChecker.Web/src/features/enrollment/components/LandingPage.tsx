@@ -25,7 +25,7 @@ export function LandingPage() {
           className="margin-bottom-2"
           priority
         />
-        <h1>{t('title')}</h1>
+        <h1 className="font-family-sans">{t('title')}</h1>
         <div className="usa-prose">
           <RichText>{t('body')}</RichText>
         </div>

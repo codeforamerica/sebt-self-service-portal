@@ -9,7 +9,7 @@ export function ClosedPage() {
   return (
     <div className="usa-section">
       <div className="grid-container">
-        <h1>{t('closed.title')}</h1>
+        <h1 className="font-family-sans">{t('closed.title')}</h1>
         <p>{t('closed.body')}</p>
       </div>
     </div>

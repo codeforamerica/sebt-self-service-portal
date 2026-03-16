@@ -30,18 +30,16 @@ export function ReviewPage({ onSubmit }: ReviewPageProps) {
           alt=""
           width={100}
           height={75}
-          className="margin-bottom-1"
           aria-hidden="true"
         />
-        <h1>{t('title')}</h1>
+        <h1 className="font-family-sans margin-top-1">{t('title')}</h1>
         <p className="usa-prose">{t('body')}</p>
 
-        {state.children.map((child, index) => (
-          <div key={child.id}>
-            {index > 0 && <hr className="margin-y-3" />}
-            <ChildReviewCard child={child} onEdit={handleEdit} />
-          </div>
-        ))}
+        <div className="margin-top-3">
+          {state.children.map((child) => (
+            <ChildReviewCard key={child.id} child={child} onEdit={handleEdit} />
+          ))}
+        </div>
 
         <div className="display-flex flex-row flex-align-center margin-top-4">
           <Button variant="outline" className="margin-right-1" onClick={() => router.push('/check')}>

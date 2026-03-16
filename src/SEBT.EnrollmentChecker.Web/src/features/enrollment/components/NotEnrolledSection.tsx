@@ -16,7 +16,7 @@ export function NotEnrolledSection({ children, applicationUrl }: NotEnrolledSect
 
   return (
     <section>
-      <h2>{t('notEnrolledHeading')}</h2>
+      <h2 className="font-family-sans">{t('notEnrolledHeading')}</h2>
       {children.map(child => (
         <ChildResultCard
           key={child.checkId}
