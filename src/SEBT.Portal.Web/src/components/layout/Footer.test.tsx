@@ -162,20 +162,20 @@ describe('Footer', () => {
       expect(screen.getByText('General Notices')).toBeInTheDocument()
     })
 
-    it('should apply light gray background to the copyright bar', () => {
+    it('should apply overlay background to the copyright bar', () => {
       render(<Footer state="co" />)
 
       const copyright = screen.getByText('© 2026 State of Colorado', { exact: false })
       const section = copyright.closest('.usa-footer__primary-section')
-      expect(section).toHaveClass('bg-base-lighter')
+      expect(section).toHaveClass('bg-overlay-10')
     })
 
-    it('should apply white background to the seal section', () => {
+    it('should apply overlay background to the seal section', () => {
       render(<Footer state="co" />)
 
       const seal = screen.getByAltText('Colorado Official State Web Portal')
       const section = seal.closest('.usa-footer__secondary-section')
-      expect(section).toHaveClass('bg-white')
+      expect(section).toHaveClass('bg-overlay-10')
     })
   })
 })

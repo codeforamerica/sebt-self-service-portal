@@ -8,3 +8,7 @@ This file is reserved for any future component-level footer styles.
 */
 
 @use 'uswds-core' as *;
+
+.bg-overlay-10 {
+  background: rgba(0, 0, 0, 0.1);
+}

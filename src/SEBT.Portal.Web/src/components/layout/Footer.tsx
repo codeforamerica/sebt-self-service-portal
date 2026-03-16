@@ -99,7 +99,7 @@ function COFooter({ state = 'co' }: FooterProps) {
       className="usa-footer usa-footer--slim"
       role="contentinfo"
     >
-      <div className="usa-footer__primary-section padding-y-2 bg-base-lighter">
+      <div className="usa-footer__primary-section padding-y-2 bg-overlay-10">
         <div className="grid-container text-center">
           <p className="margin-0 text-ink font-sans-xs">
             {t('copyrite', '© 2026 State of Colorado')}
@@ -125,7 +125,7 @@ function COFooter({ state = 'co' }: FooterProps) {
         </div>
       </div>
 
-      <div className="usa-footer__secondary-section padding-y-4 bg-white">
+      <div className="usa-footer__secondary-section padding-y-4 bg-overlay-10">
         <div className="grid-container display-flex flex-justify-center">
           <Image
             src={`/images/states/${state}/seal.svg`}
