@@ -1,9 +1,8 @@
-using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using SEBT.Portal.Api.Filters;
 using SEBT.Portal.Api.Models;
 using SEBT.Portal.Api.Models.IdProofing;
-using SEBT.Portal.Core.Repositories;
 using SEBT.Portal.Kernel;
 using SEBT.Portal.Kernel.AspNetCore;
 using SEBT.Portal.UseCases.IdProofing;
@@ -17,7 +16,8 @@ namespace SEBT.Portal.Api.Controllers.IdProofing;
 [ApiController]
 [Route("api/id-proofing")]
 [Authorize]
-public class IdProofingController(ILogger<IdProofingController> logger) : ControllerBase
+[ServiceFilter(typeof(ResolveUserFilter))]
+public class IdProofingController : ControllerBase
 {
     /// <summary>
     /// Submits ID proofing data for risk assessment.
@@ -35,18 +35,13 @@ public class IdProofingController(ILogger<IdProofingController> logger) : Contro
     public async Task<IActionResult> Submit(
         [FromBody] SubmitIdProofingRequest request,
         [FromServices] ICommandHandler<SubmitIdProofingCommand, SubmitIdProofingResponse> handler,
-        [FromServices] IUserRepository userRepository,
         CancellationToken cancellationToken)
     {
-        var userId = await ResolveUserId(userRepository, cancellationToken);
-        if (userId == null)
-        {
-            return Unauthorized(new ErrorResponse("Unable to identify user from token."));
-        }
+        var userId = (int)HttpContext.Items[ResolveUserFilter.UserIdKey]!;
 
         var command = new SubmitIdProofingCommand
         {
-            UserId = userId.Value,
+            UserId = userId,
             DateOfBirth = $"{request.DateOfBirth.Year}-{request.DateOfBirth.Month.PadLeft(2, '0')}-{request.DateOfBirth.Day.PadLeft(2, '0')}",
             IdType = request.IdType,
             IdValue = request.IdValue
@@ -62,7 +57,6 @@ public class IdProofingController(ILogger<IdProofingController> logger) : Contro
     /// </summary>
     /// <param name="challengeId">The challenge's public GUID.</param>
     /// <param name="handler">The query handler.</param>
-    /// <param name="userRepository">User repository for resolving user ID.</param>
     /// <param name="cancellationToken">Cancellation token.</param>
     /// <response code="200">Status retrieved.</response>
     /// <response code="401">User is not authenticated.</response>
@@ -74,47 +68,17 @@ public class IdProofingController(ILogger<IdProofingController> logger) : Contro
     public async Task<IActionResult> GetStatus(
         [FromQuery] Guid challengeId,
         [FromServices] IQueryHandler<GetVerificationStatusQuery, VerificationStatusResponse> handler,
-        [FromServices] IUserRepository userRepository,
         CancellationToken cancellationToken)
     {
-        var userId = await ResolveUserId(userRepository, cancellationToken);
-        if (userId == null)
-        {
-            return Unauthorized(new ErrorResponse("Unable to identify user from token."));
-        }
+        var userId = (int)HttpContext.Items[ResolveUserFilter.UserIdKey]!;
 
         var query = new GetVerificationStatusQuery
         {
             ChallengeId = challengeId,
-            UserId = userId.Value
+            UserId = userId
         };
 
         var result = await handler.Handle(query, cancellationToken);
         return result.ToActionResult();
-    }
-
-    /// <summary>
-    /// Resolves the authenticated user's numeric ID from their email claim.
-    /// </summary>
-    private async Task<int?> ResolveUserId(IUserRepository userRepository, CancellationToken cancellationToken)
-    {
-        var email = User.FindFirst(ClaimTypes.Email)?.Value
-            ?? User.FindFirst(ClaimTypes.NameIdentifier)?.Value
-            ?? User.Identity?.Name;
-
-        if (string.IsNullOrWhiteSpace(email))
-        {
-            logger.LogWarning("ID proofing request but email could not be extracted from claims");
-            return null;
-        }
-
-        var user = await userRepository.GetUserByEmailAsync(email, cancellationToken);
-        if (user == null)
-        {
-            logger.LogWarning("ID proofing request but authenticated user not found in database");
-            return null;
-        }
-
-        return user.Id;
     }
 }
