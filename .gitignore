@@ -444,6 +444,8 @@ CLAUDE.local.md
 
 # Developer-local workflow artifacts (branch context, PR reviews, screenshots)
 docs/.local/
+.claude-figma-verify/
+screenshots/
 
 # output files
 output

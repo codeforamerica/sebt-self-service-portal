@@ -96,6 +96,14 @@ remove the manually-written JSON files from version control.
 
 ---
 
+## Content Mismatches (fix in spreadsheet, not code)
+
+| State | Namespace | Issue |
+|---|---|---|
+| CO | `landing.body` | Body text references "Do I need to apply?" but the CO `landing.action` button label is "Apply now". Either update the body text to say "Apply now" or change the button label to "Do I need to apply?" (DC already uses "Do I need to apply?" for both). |
+
+---
+
 ## Summary
 
 - **20 keys** need to be added to both `co.csv` and `dc.csv`

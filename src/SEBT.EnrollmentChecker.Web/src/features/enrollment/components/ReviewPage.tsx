@@ -1,6 +1,7 @@
 'use client'
 
 import { Button } from '@sebt/design-system'
+import Image from 'next/image'
 import { useRouter } from 'next/navigation'
 import { useTranslation } from 'react-i18next'
 import { useEnrollment } from '../context/EnrollmentContext'
@@ -24,6 +25,14 @@ export function ReviewPage({ onSubmit }: ReviewPageProps) {
   return (
     <div className="usa-section">
       <div className="grid-container">
+        <Image
+          src="/img/icon-review-card.svg"
+          alt=""
+          width={100}
+          height={75}
+          className="margin-bottom-1"
+          aria-hidden="true"
+        />
         <h1>{t('title')}</h1>
         <p className="usa-prose">{t('body')}</p>
 
@@ -34,8 +43,8 @@ export function ReviewPage({ onSubmit }: ReviewPageProps) {
           </div>
         ))}
 
-        <div className="usa-button-group margin-top-4">
-          <Button variant="outline" onClick={() => router.push('/check')}>
+        <div className="display-flex flex-row flex-align-center margin-top-4">
+          <Button variant="outline" className="margin-right-1" onClick={() => router.push('/check')}>
             {tCommon('back')}
           </Button>
           <Button onClick={onSubmit}>

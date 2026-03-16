@@ -170,9 +170,9 @@ export function ChildForm({
           set('schoolName', name)
         }}
       />
-      <div className="usa-button-group margin-top-4">
+      <div className="display-flex flex-row flex-align-center margin-top-4">
         {onCancel && (
-          <button type="button" className="usa-button usa-button--outline" onClick={onCancel}>
+          <button type="button" className="usa-button usa-button--outline margin-right-1" onClick={onCancel}>
             {tCommon('back')}
           </button>
         )}
