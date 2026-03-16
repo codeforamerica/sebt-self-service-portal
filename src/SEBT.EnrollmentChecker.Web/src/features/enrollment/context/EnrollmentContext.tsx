@@ -3,13 +3,19 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from 'react'
 import { v4 as uuidv4 } from 'uuid'
 import { z } from 'zod'
-import { childSchema } from '../schemas/childSchema'
+import { toDateOfBirth } from '../schemas/childSchema'
 import type { ChildFormValues } from '../schemas/childSchema'
 
 // ── Types ──────────────────────────────────────────────────────────────────
 
-export interface Child extends ChildFormValues {
+export interface Child {
   id: string
+  firstName: string
+  middleName?: string
+  lastName: string
+  dateOfBirth: string  // ISO date: YYYY-MM-DD
+  schoolName?: string
+  schoolCode?: string
 }
 
 interface EnrollmentState {
@@ -41,7 +47,15 @@ const EnrollmentContext = createContext<EnrollmentContextValue | null>(null)
 
 const STORAGE_KEY = 'enrollmentState'
 
-const childStorageSchema = childSchema.extend({ id: z.string() })
+const childStorageSchema = z.object({
+  id: z.string(),
+  firstName: z.string(),
+  middleName: z.string().optional(),
+  lastName: z.string(),
+  dateOfBirth: z.string(),
+  schoolName: z.string().optional(),
+  schoolCode: z.string().optional()
+})
 const enrollmentStorageSchema = z.object({
   children: z.array(childStorageSchema),
   editingChildId: z.string().nullable()
@@ -89,11 +103,27 @@ export function EnrollmentProvider({ children }: { children: ReactNode }) {
   const actions: EnrollmentActions = {
     addChild: (values) => update(s => ({
       ...s,
-      children: [...s.children, { id: uuidv4(), ...values }]
+      children: [...s.children, {
+        id: uuidv4(),
+        firstName: values.firstName,
+        middleName: values.middleName,
+        lastName: values.lastName,
+        dateOfBirth: toDateOfBirth(values),
+        schoolName: values.schoolName,
+        schoolCode: values.schoolCode
+      }]
     })),
     updateChild: (id, values) => update(s => ({
       ...s,
-      children: s.children.map(c => c.id === id ? { id, ...values } : c)
+      children: s.children.map(c => c.id === id ? {
+        id,
+        firstName: values.firstName,
+        middleName: values.middleName,
+        lastName: values.lastName,
+        dateOfBirth: toDateOfBirth(values),
+        schoolName: values.schoolName,
+        schoolCode: values.schoolCode
+      } : c)
     })),
     removeChild: (id) => update(s => ({
       ...s,

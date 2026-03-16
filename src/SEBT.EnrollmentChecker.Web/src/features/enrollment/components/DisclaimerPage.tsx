@@ -13,7 +13,14 @@ export function DisclaimerPage() {
       <div className="grid-container">
         <h1>{t('title')}</h1>
         <div className="usa-prose">
-          <p>{t('body')}</p>
+          <p>
+            <strong>{t('body1')}</strong>{' '}
+            {t('body2')}
+          </p>
+          <p>
+            <strong>{t('body3')}</strong>{' '}
+            {t('body4')}
+          </p>
         </div>
         <div className="margin-top-4">
           <Button variant="outline" onClick={() => router.push('/')}>
