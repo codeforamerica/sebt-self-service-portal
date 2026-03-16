@@ -29,14 +29,14 @@ public class SqlServerTestFixture : IAsyncLifetime
         {
             await _container.StartAsync();
 
-            // Create the database schema for the test database.  This is a test
-            // environment, so this should be fine.
+            // Apply migrations to create the schema. Using MigrateAsync instead of
+            // EnsureCreatedAsync so that raw SQL migrations (e.g., filtered indexes) are applied.
             var options = new DbContextOptionsBuilder<PortalDbContext>()
                 .UseSqlServer(ConnectionString)
                 .Options;
 
             using var context = new PortalDbContext(options);
-            await context.Database.EnsureCreatedAsync();
+            await context.Database.MigrateAsync();
         }
         catch (Exception ex)
         {
