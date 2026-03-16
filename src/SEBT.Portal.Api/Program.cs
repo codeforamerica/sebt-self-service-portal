@@ -6,6 +6,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
 using SEBT.Portal.Api.Composition;
+using SEBT.Portal.Api.Filters;
 using SEBT.Portal.Api.Models;
 using Serilog;
 using Microsoft.FeatureManagement;
@@ -101,6 +102,9 @@ builder.Services.AddPortalInfrastructureServices();
 builder.Services.AddPortalDbContext(builder.Configuration, options => options.ConfigureDevelopmentSeeding());
 builder.Services.AddPortalInfrastructureRepositories(builder.Configuration);
 builder.Services.AddPortalInfrastructureAppSettings(builder.Configuration);
+
+// Action filters
+builder.Services.AddScoped<ResolveUserFilter>();
 
 // Register IDatabaseSeeder for development utilities (e.g., ClearSeededData script)
 builder.Services.AddScoped<IDatabaseSeeder>(sp =>

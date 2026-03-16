@@ -6,10 +6,7 @@ import { useTranslation } from 'react-i18next'
 
 import { Alert, Button, InputField } from '@/components/ui'
 
-import {
-  SK_ALLOW_ID_RETRY,
-  SK_CHALLENGE_ID
-} from '@/features/auth/components/doc-verify/sessionKeys'
+import { SK_CHALLENGE_ID } from '@/features/auth/components/doc-verify/sessionKeys'
 import { useSubmitIdProofing, type IdType } from '../../api'
 
 // UI-only sentinel value for the "none" radio option.
@@ -115,8 +112,7 @@ export function IdProofingForm({ idOptions, contactLink }: IdProofingFormProps) 
           return
         }
         sessionStorage.setItem(SK_CHALLENGE_ID, response.challengeId)
-        sessionStorage.setItem(SK_ALLOW_ID_RETRY, String(response.allowIdRetry ?? false))
-        router.push('/login/id-proofing/doc-verify')
+        router.push(`/login/id-proofing/doc-verify?challengeId=${response.challengeId}`)
       } else if (response.result === 'failed') {
         const params = new URLSearchParams()
         if (response.canApply === false) {
