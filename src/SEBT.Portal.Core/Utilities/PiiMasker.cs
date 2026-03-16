@@ -71,7 +71,9 @@ public static partial class PiiMasker
     /// </summary>
     /// <param name="streetAddress1">The primary street address line.</param>
     /// <param name="streetAddress2">The secondary street address line (apt, suite, etc.).</param>
-    /// <returns>A masked street indicator, or null if both street address lines are null or whitespace.</returns>
+    /// <returns>A masked street indicator, or null if both street address lines are null or whitespace.
+    /// Callers should log a warning when this returns null — a missing address likely indicates
+    /// an upstream data issue that warrants investigation.</returns>
     public static string? MaskStreetAddress(string? streetAddress1, string? streetAddress2)
     {
         if (string.IsNullOrWhiteSpace(streetAddress1) && string.IsNullOrWhiteSpace(streetAddress2))
