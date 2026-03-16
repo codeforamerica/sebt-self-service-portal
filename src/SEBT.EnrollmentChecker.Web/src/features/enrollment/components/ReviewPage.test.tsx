@@ -19,7 +19,7 @@ function ReviewPageWithChild({ onSubmit }: { onSubmit: () => void }) {
 function Seeder() {
   const { addChild } = useEnrollment()
   act(() => {
-    addChild({ firstName: 'Jane', lastName: 'Doe', dateOfBirth: '2015-04-12' })
+    addChild({ firstName: 'Jane', lastName: 'Doe', month: '4', day: '12', year: '2015' })
   })
   return null
 }

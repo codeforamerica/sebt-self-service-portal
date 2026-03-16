@@ -12,8 +12,9 @@ interface ReviewPageProps {
 
 export function ReviewPage({ onSubmit }: ReviewPageProps) {
   const { t } = useTranslation('confirmInfo')
+  const { t: tCommon } = useTranslation('common')
   const router = useRouter()
-  const { state, removeChild, setEditingChildId } = useEnrollment()
+  const { state, setEditingChildId } = useEnrollment()
 
   function handleEdit(id: string) {
     setEditingChildId(id)
@@ -23,29 +24,35 @@ export function ReviewPage({ onSubmit }: ReviewPageProps) {
   return (
     <div className="usa-section">
       <div className="grid-container">
-        <button
-          type="button"
-          className="usa-button usa-button--unstyled margin-bottom-2"
-          onClick={() => router.push('/check')}
-        >
-          {t('back', { ns: 'common' })}
-        </button>
         <h1>{t('title')}</h1>
-        {state.children.map(child => (
-          <ChildReviewCard
-            key={child.id}
-            child={child}
-            onEdit={handleEdit}
-            onRemove={removeChild}
-          />
+        <p className="usa-prose">{t('body')}</p>
+
+        {state.children.map((child, index) => (
+          <div key={child.id}>
+            {index > 0 && <hr className="margin-y-3" />}
+            <ChildReviewCard child={child} onEdit={handleEdit} />
+          </div>
         ))}
+
         <div className="usa-button-group margin-top-4">
           <Button variant="outline" onClick={() => router.push('/check')}>
-            {t('actionAdd')}
+            {tCommon('back')}
           </Button>
           <Button onClick={onSubmit}>
-            {t('submit', { ns: 'common' })}
+            {tCommon('submit')}
           </Button>
+        </div>
+        <div className="margin-top-2">
+          <button
+            type="button"
+            className="usa-button usa-button--unstyled"
+            onClick={() => {
+              setEditingChildId(null)
+              router.push('/check')
+            }}
+          >
+            {tCommon('addAnotherChild')}
+          </button>
         </div>
       </div>
     </div>
