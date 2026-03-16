@@ -94,6 +94,7 @@ export function ChildForm({
         label={tCommon('labelMiddleName')}
         value={values.middleName ?? ''}
         onChange={e => set('middleName', e.target.value)}
+        hint={tCommon('optional')}
       />
       <InputField
         label={tCommon('labelLastName')}
