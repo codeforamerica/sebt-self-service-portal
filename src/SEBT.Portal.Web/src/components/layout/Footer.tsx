@@ -31,7 +31,7 @@ export function Footer({ state = 'dc' }: FooterProps) {
       className="usa-footer usa-footer--slim"
       role="contentinfo"
     >
-      <div className="usa-footer__primary-section padding-top-4">
+      <div className="usa-footer__primary-section padding-top-4 bg-primary">
         <div className="grid-container display-flex flex-justify-center">
           <Image
             src={`/images/states/${state}/seal.svg`}
@@ -43,20 +43,20 @@ export function Footer({ state = 'dc' }: FooterProps) {
         </div>
       </div>
 
-      <div className="usa-footer__secondary-section padding-y-2 text-center border-bottom border-ink">
+      <div className="usa-footer__secondary-section padding-y-2 text-center border-bottom border-ink bg-primary">
         <div className="grid-container">
           <Link
             href={links.footer.publicNotifications}
             target="_blank"
             rel="noopener noreferrer"
-            className="usa-link text-ink font-ui-md text-semibold"
+            className="usa-link text-white font-ui-md text-semibold"
           >
             {t('linkPublicNotices')}
           </Link>
         </div>
       </div>
 
-      <div className="usa-footer__secondary-section padding-y-2">
+      <div className="usa-footer__secondary-section padding-y-2 bg-white">
         <div className="grid-container">
           <nav aria-label={t('footerNavLabel', 'Footer navigation')}>
             <ul className="usa-list usa-list--unstyled display-flex flex-column flex-align-center add-list-reset">
@@ -80,7 +80,7 @@ export function Footer({ state = 'dc' }: FooterProps) {
         </div>
       </div>
 
-      <div className="usa-footer__secondary-section text-center">
+      <div className="usa-footer__secondary-section text-center bg-white">
         <div className="grid-container">
           <p className="margin-0 text-ink footer-copyright">{t('copyrite')}</p>
         </div>
@@ -99,16 +99,16 @@ function COFooter({ state = 'co' }: FooterProps) {
       className="usa-footer usa-footer--slim"
       role="contentinfo"
     >
-      <div className="usa-footer__primary-section padding-y-2">
+      <div className="usa-footer__primary-section padding-y-2 bg-base-lighter">
         <div className="grid-container text-center">
-          <p className="margin-0 text-white font-sans-xs">
+          <p className="margin-0 text-ink font-sans-xs">
             {t('copyrite', '© 2026 State of Colorado')}
             {' | '}
             <Link
               href={links.footer.transparencyOnline ?? '#'}
               target="_blank"
               rel="noopener noreferrer"
-              className="usa-link text-white text-underline"
+              className="usa-link text-ink text-underline"
             >
               {t('transparencyOnline', 'Transparency Online')}
             </Link>
@@ -117,7 +117,7 @@ function COFooter({ state = 'co' }: FooterProps) {
               href={links.footer.generalNotices ?? '#'}
               target="_blank"
               rel="noopener noreferrer"
-              className="usa-link text-white text-underline"
+              className="usa-link text-ink text-underline"
             >
               {t('generalNotices', 'General Notices')}
             </Link>
@@ -125,7 +125,7 @@ function COFooter({ state = 'co' }: FooterProps) {
         </div>
       </div>
 
-      <div className="usa-footer__secondary-section padding-y-4">
+      <div className="usa-footer__secondary-section padding-y-4 bg-white">
         <div className="grid-container display-flex flex-justify-center">
           <Image
             src={`/images/states/${state}/seal.svg`}

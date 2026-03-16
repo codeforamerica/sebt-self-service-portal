@@ -66,6 +66,7 @@ export function HelpSection({ state = 'dc' }: HelpSectionProps) {
 }
 
 function COHelpSection({ state = 'co' }: HelpSectionProps) {
+  const { t } = useTranslation('common')
   const links = getStateLinks(state)
 
   return (
@@ -78,8 +79,7 @@ function COHelpSection({ state = 'co' }: HelpSectionProps) {
           id="help-section-title"
           className="font-sans-lg text-bold margin-top-0 margin-bottom-1"
         >
-          {/* TODO: Use t('helpDeskTitle') once the key is added to co.csv */}
-          Summer EBT Help Desk
+          {t('titleContactUs')}
         </h2>
 
         <p className="font-sans-sm margin-top-0">
@@ -95,16 +95,10 @@ function COHelpSection({ state = 'co' }: HelpSectionProps) {
         </p>
 
         <h2 className="font-sans-lg text-bold margin-top-4 margin-bottom-1">
-          {/* TODO: Use t('accessibilityTitle') once the key is added to co.csv */}
-          Accessibility at CDHS
+          {t('titleAccessibility')}
         </h2>
 
-        <p className="font-sans-sm margin-top-0">
-          {/* TODO: Use t('accessibilityBody') once the key is added to co.csv */}
-          CDHS is committed to meeting members of our community where they are, and strives to
-          provide all Coloradans with access to our programs, services, resources, activities and
-          communication regardless of ability.
-        </p>
+        <p className="font-sans-sm margin-top-0">{t('bodyAccessibility')}</p>
 
         <Link
           href={links.footer.digitalAccessibility ?? '#'}
