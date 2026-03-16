@@ -26,6 +26,9 @@ public class ProcessWebhookCommandHandler(
     ILogger<ProcessWebhookCommandHandler> logger)
     : ICommandHandler<ProcessWebhookCommand>
 {
+    private static string SanitizeForLogging(string? value) =>
+        value?.Replace("\r", string.Empty).Replace("\n", string.Empty) ?? string.Empty;
+
     public async Task<Result> Handle(
         ProcessWebhookCommand command,
         CancellationToken cancellationToken = default)
@@ -54,7 +57,7 @@ public class ProcessWebhookCommandHandler(
             // contract with Socure has changed and all webhooks are being silently dropped.
             logger.LogError(
                 "Webhook received but no challenge found for ReferenceId={ReferenceId}, EvalId={EvalId}",
-                command.ReferenceId, command.EvalId);
+                SanitizeForLogging(command.ReferenceId), SanitizeForLogging(command.EvalId));
             // Return success to prevent Socure retries — challenge may have been cleaned up
             return Result.Success();
         }
@@ -64,7 +67,7 @@ public class ProcessWebhookCommandHandler(
         {
             logger.LogInformation(
                 "Webhook event {EventId} already processed for challenge {ChallengeId}",
-                command.EventId, challenge.PublicId);
+                SanitizeForLogging(command.EventId), challenge.PublicId);
             return Result.Success();
         }
 
@@ -73,7 +76,7 @@ public class ProcessWebhookCommandHandler(
         {
             logger.LogWarning(
                 "Webhook event {EventId} arrived for terminal challenge {ChallengeId} (status: {Status})",
-                command.EventId, challenge.PublicId, challenge.Status);
+                SanitizeForLogging(command.EventId), challenge.PublicId, challenge.Status);
             return Result.Success();
         }
 
@@ -82,7 +85,7 @@ public class ProcessWebhookCommandHandler(
         {
             logger.LogInformation(
                 "Webhook event {EventId}: intermediate decision {Decision}, challenge {ChallengeId} stays Pending",
-                command.EventId, command.DocumentDecision, challenge.PublicId);
+                SanitizeForLogging(command.EventId), SanitizeForLogging(command.DocumentDecision), challenge.PublicId);
             return Result.Success();
         }
 
@@ -91,7 +94,7 @@ public class ProcessWebhookCommandHandler(
         {
             logger.LogWarning(
                 "Webhook event {EventId} has unrecognized document decision: {Decision}",
-                command.EventId, command.DocumentDecision);
+                SanitizeForLogging(command.EventId), SanitizeForLogging(command.DocumentDecision));
             return Result.Success();
         }
 
@@ -124,13 +127,13 @@ public class ProcessWebhookCommandHandler(
             logger.LogInformation(
                 "Webhook event {EventId}: concurrency conflict on challenge {ChallengeId}, " +
                 "another thread already processed it",
-                command.EventId, challenge.PublicId);
+                SanitizeForLogging(command.EventId), challenge.PublicId);
             return Result.Success();
         }
 
         logger.LogInformation(
             "Webhook event {EventId}: challenge {ChallengeId} transitioned to {Status}",
-            command.EventId, challenge.PublicId, newStatus);
+            SanitizeForLogging(command.EventId), challenge.PublicId, newStatus);
 
         // If verified: update user's proofing status and IAL level
         if (newStatus == DocVerificationStatus.Verified)
