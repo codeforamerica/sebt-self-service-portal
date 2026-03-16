@@ -103,45 +103,45 @@ describe('Footer', () => {
       expect(screen.getByText('copyrite')).toBeInTheDocument()
     })
 
-    it('should apply teal background to the seal section', () => {
+    it('should apply light teal background to the seal section', () => {
       render(<Footer state="dc" />)
 
       const seal = screen.getByAltText(
         'Government of the District of Columbia - Muriel Bowser, Mayor'
       )
       const sealSection = seal.closest('.usa-footer__primary-section')
-      expect(sealSection).toHaveClass('bg-primary')
+      expect(sealSection).toHaveClass('bg-primary-light')
     })
 
-    it('should apply teal background to the public notifications section', () => {
+    it('should apply light teal background to the public notifications section', () => {
       render(<Footer state="dc" />)
 
       const notificationsLink = screen.getByText('linkPublicNotices')
       const section = notificationsLink.closest('.usa-footer__secondary-section')
-      expect(section).toHaveClass('bg-primary')
+      expect(section).toHaveClass('bg-primary-light')
     })
 
-    it('should use white text for the public notifications link on dark background', () => {
+    it('should use dark text for the public notifications link', () => {
       render(<Footer state="dc" />)
 
       const notificationsLink = screen.getByText('linkPublicNotices')
-      expect(notificationsLink).toHaveClass('text-white')
+      expect(notificationsLink).toHaveClass('text-ink')
     })
 
-    it('should apply white background to the links navigation section', () => {
+    it('should apply light teal background to the links navigation section', () => {
       render(<Footer state="dc" />)
 
       const nav = screen.getByRole('navigation', { name: 'Footer navigation' })
       const section = nav.closest('.usa-footer__secondary-section')
-      expect(section).toHaveClass('bg-white')
+      expect(section).toHaveClass('bg-primary-light')
     })
 
-    it('should apply white background to the copyright section', () => {
+    it('should apply light teal background to the copyright section', () => {
       render(<Footer state="dc" />)
 
       const copyright = screen.getByText('copyrite')
       const section = copyright.closest('.usa-footer__secondary-section')
-      expect(section).toHaveClass('bg-white')
+      expect(section).toHaveClass('bg-primary-light')
     })
   })
 
