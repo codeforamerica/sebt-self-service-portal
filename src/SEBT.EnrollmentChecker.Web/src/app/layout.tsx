@@ -1,4 +1,11 @@
-import { Footer, Header, HelpSection, SkipNav, getState, getStateName } from '@sebt/design-system'
+// Direct subpath imports avoid the @sebt/design-system barrel export, which
+// re-exports react-i18next-dependent modules. Importing from the barrel in a
+// Server Component would pull react-i18next into the RSC bundle and crash.
+import { Footer } from '@sebt/design-system/src/components/layout/Footer'
+import { Header } from '@sebt/design-system/src/components/layout/Header'
+import { HelpSection } from '@sebt/design-system/src/components/layout/HelpSection'
+import { SkipNav } from '@sebt/design-system/src/components/layout/SkipNav'
+import { getState, getStateName } from '@sebt/design-system/src/lib/state'
 import type { Metadata, Viewport } from 'next'
 import './globals.css'
 import './styles.scss'

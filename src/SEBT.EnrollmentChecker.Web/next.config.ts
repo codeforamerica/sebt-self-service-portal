@@ -14,11 +14,9 @@ if (process.env.BUILD_STANDALONE === 'true' && process.env.BUILD_STATIC === 'tru
 const nextConfig: NextConfig = {
   reactCompiler: true,
   transpilePackages: ['@sebt/design-system'],
-  // Treat react-i18next as an external server package so it's not bundled into
-  // the server bundle. This prevents react-i18next's module-level createContext()
-  // call from being evaluated in the React Server Components context (which does
-  // not have createContext). The package is still available for client components.
-  serverExternalPackages: ['react-i18next'],
+  // Note: react-i18next is NOT in serverExternalPackages here (unlike the portal).
+  // Instead, layout.tsx uses direct imports from @sebt/design-system subpaths to
+  // avoid pulling react-i18next into the RSC server bundle via the barrel export.
   env: {
     NEXT_PUBLIC_STATE: state
   },
