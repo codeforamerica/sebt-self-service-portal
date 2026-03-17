@@ -479,5 +479,5 @@ packages/design-system/design/fonts.ts
 packages/design-system/design/sass/_uswds-theme-*.scss
 packages/design-system/design/sass/_uswds-settings.scss
 
-# Idea specific configuration files
-.idea/.idea.SEBT.Portal/Docker/compose.generated.override.yml
+# JetBrains IDE configuration
+.idea/
