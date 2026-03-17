@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useRef, type ReactNode } from 'react'
+import { useEffect, type ReactNode } from 'react'
 
 import { DataLayer } from '@/lib/data-layer'
 
@@ -13,11 +13,9 @@ interface DataLayerProviderProps {
  * Must be rendered client-side. Initializes once and persists across navigations.
  */
 export function DataLayerProvider({ children }: DataLayerProviderProps) {
-  const initialized = useRef(false)
-
   useEffect(() => {
-    if (initialized.current) return
-    initialized.current = true
+    if (typeof window === 'undefined') return
+    if (window.digitalData?.initialized) return
 
     new DataLayer('digitalData')
   }, [])

@@ -52,10 +52,18 @@ function getPath(obj: Record<string, unknown>, path: string, defaultValue?: unkn
   return current === undefined ? defaultValue : current
 }
 
+const FORBIDDEN_KEYS = new Set(['__proto__', 'constructor', 'prototype'])
+
 function setPath(obj: Record<string, unknown>, path: string, value: unknown): void {
   if (!obj || !path) return
 
   const parts = path.split('.')
+
+  // Prevent prototype pollution via dangerous path segments
+  if (parts.some((segment) => FORBIDDEN_KEYS.has(segment))) {
+    return
+  }
+
   let current: Record<string, unknown> = obj
 
   for (let i = 0; i < parts.length - 1; i++) {
@@ -98,6 +106,10 @@ export class DataLayer {
         // Malformed bootstrap JSON should not prevent initialization
       }
     }
+
+    // Re-enforce canonical shape in case bootstrap overwrote structural nodes
+    // with incompatible types (e.g., page: "oops" instead of an object)
+    this._ensureCanonicalShape()
 
     // Bind public API onto the data structure
     this._bindApi()
@@ -258,6 +270,26 @@ export class DataLayer {
     )
   }
 
+  private _ensureCanonicalShape(): void {
+    const ensureObject = (parent: Record<string, unknown>, key: string): void => {
+      if (!parent[key] || typeof parent[key] !== 'object' || Array.isArray(parent[key])) {
+        parent[key] = {}
+      }
+    }
+
+    ensureObject(this._data, 'page')
+    const page = this._data.page as Record<string, unknown>
+    ensureObject(page, 'category')
+    ensureObject(page, 'attribute')
+    ensureObject(this._data, 'user')
+    const user = this._data.user as Record<string, unknown>
+    ensureObject(user, 'profile')
+
+    if (!Array.isArray(this._data.event)) {
+      this._data.event = []
+    }
+  }
+
   private _deepMerge(target: Record<string, unknown>, source: Record<string, unknown>): void {
     for (const key of Object.keys(source)) {
       if (key === '__proto__' || key === 'constructor') continue
@@ -282,6 +314,6 @@ export class DataLayer {
 
 declare global {
   interface Window {
-    digitalData: DataLayerRoot
+    digitalData?: DataLayerRoot
   }
 }
