@@ -78,9 +78,10 @@ jobs:
       - name: Install Playwright browsers
         run: cd src/SEBT.Portal.Web && pnpm exec playwright install --with-deps chromium
 
-      - name: Run Playwright tests
+      - name: Run Pa11y and Playwright E2E tests
         env:
           CI: true
+          SKIP_WEB_SERVER: "1"
           STATE: dc
           NEXT_PUBLIC_STATE: dc
           ASPNETCORE_ENVIRONMENT: Development
@@ -89,7 +90,18 @@ jobs:
           IdentifierHasher__SecretKey: "ci-e2e-identifier-hasher-key-32chars"
           Oidc__CompleteLoginSigningKey: "ci-e2e-oidc-signing-key-at-least-32-chars"
           UseMockHouseholdData: "true"
-        run: pnpm ci:test:e2e:ci
+        run: |
+          pnpm dev &
+          echo "Waiting for server at http://localhost:3000..."
+          for i in $(seq 1 90); do
+            curl -sf http://localhost:3000 > /dev/null && echo "Server ready" && break
+            sleep 2
+          done
+          curl -sf http://localhost:3000 > /dev/null || (echo "Server failed to start" && exit 1)
+          echo "Running Pa11y accessibility tests..."
+          cd src/SEBT.Portal.Web && pnpm test:a11y
+          echo "Running Playwright E2E tests..."
+          cd ../.. && pnpm ci:test:e2e:ci
 
       - name: Upload Playwright report
         uses: actions/upload-artifact@v4
