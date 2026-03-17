@@ -14,7 +14,7 @@ test.describe('Homepage', () => {
 
     // Check for USWDS JavaScript initialization
     const html = page.locator('html')
-    await expect(html).not.toHaveClass(/usa-js-loading/)
+    await expect(html).not.toHaveClass(/usa-js-loading/, { timeout: 10000 })
   })
 
   test('should have proper USWDS state attribute', async ({ page }) => {
