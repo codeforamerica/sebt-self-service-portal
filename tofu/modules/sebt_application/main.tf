@@ -1,8 +1,17 @@
+# Manage feature flags and application settings via AWS AppConfig.
+module "appconfig" {
+  source = "../sebt_appconfig"
+  count  = var.enable_appconfig ? 1 : 0
+
+  project     = "${var.project}-${var.state}"
+  environment = var.environment
+}
+
 # Create the API service. This is an internal service that is only accessible
 # within the VPC. It runs the .NET backend API on Fargate behind an internal
 # Application Load Balancer.
 module "api" {
-  source = "github.com/codeforamerica/tofu-modules-aws-fargate-service?ref=1.10.0"
+  source = "github.com/codeforamerica/tofu-modules-aws-fargate-service?ref=1.13.0"
 
   project       = "${var.project}-${var.state}"
   project_short = "sebt"
@@ -38,7 +47,16 @@ module "api" {
   image_tags_mutable     = var.image_tags_mutable
   force_delete           = var.force_delete
 
-  environment_variables = {
+  enable_appconfig_agent         = var.enable_appconfig
+  appconfig_agent_application_id = var.enable_appconfig ? module.appconfig[0].application_id : ""
+  appconfig_agent_environment_variables = var.enable_appconfig ? {
+    PREFETCH_LIST = join(",", [
+      "/applications/${module.appconfig[0].application_id}/environments/${module.appconfig[0].environment_id}/configurations/${module.appconfig[0].feature_flags_profile_id}",
+      "/applications/${module.appconfig[0].application_id}/environments/${module.appconfig[0].environment_id}/configurations/${module.appconfig[0].app_settings_profile_id}",
+    ])
+  } : {}
+
+  environment_variables = merge({
     ASPNETCORE_ENVIRONMENT                       = var.environment
     STATE                                        = var.state
     DB_HOST                                      = module.database.endpoint
@@ -52,7 +70,13 @@ module "api" {
     "Seeding__Enabled"                           = var.seeding_enabled
     "Seeding__EmailPattern"                      = var.seeding_email_pattern
     "UseMockHouseholdData"                       = var.use_mock_household_data
-  }
+  }, var.enable_appconfig ? {
+    "AppConfig__Agent__BaseUrl"          = "http://localhost:2772"
+    "AppConfig__Agent__ApplicationId"    = module.appconfig[0].application_id
+    "AppConfig__Agent__EnvironmentId"    = module.appconfig[0].environment_id
+    "AppConfig__FeatureFlags__ProfileId" = module.appconfig[0].feature_flags_profile_id
+    "AppConfig__AppSettings__ProfileId"  = module.appconfig[0].app_settings_profile_id
+  } : {})
 
   environment_secrets = {
     DB_USER                        = "${module.database.secret_arn}:username"
