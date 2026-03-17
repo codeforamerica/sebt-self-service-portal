@@ -10,7 +10,7 @@ test.describe('Homepage', () => {
     await page.goto('/')
 
     // Check that the page loaded
-    await expect(page).toHaveTitle(/SEBT Portal/i)
+    await expect(page).toHaveTitle(/SUN Bucks/i)
 
     // Check for USWDS JavaScript initialization
     const html = page.locator('html')

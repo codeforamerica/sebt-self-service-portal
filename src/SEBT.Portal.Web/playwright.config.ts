@@ -1,4 +1,8 @@
 import { defineConfig, devices } from '@playwright/test'
+import path from 'node:path'
+import { fileURLToPath } from 'node:url'
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url))
 
 /**
  * Playwright E2E Testing Configuration
@@ -44,6 +48,7 @@ export default defineConfig({
   webServer: {
     command: 'pnpm dev',
     url: process.env.BASE_URL || 'http://localhost:3000',
+    cwd: path.resolve(__dirname, '../..'),
     reuseExistingServer: !process.env.CI
   }
 })
