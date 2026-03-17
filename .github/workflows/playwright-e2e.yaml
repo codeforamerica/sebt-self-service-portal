@@ -104,7 +104,7 @@ jobs:
           echo "Running Pa11y accessibility tests..."
           pnpm ci:test:a11y
           echo "Running Playwright E2E tests..."
-          pnpm ci:test:e2e:ci
+          pnpm ci:test:e2e
 
       - name: Upload Playwright report
         uses: actions/upload-artifact@v4
