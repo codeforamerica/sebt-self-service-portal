@@ -1,10 +1,12 @@
 using System.Text;
 using System.Threading.RateLimiting;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
 using SEBT.Portal.Api.Composition;
+using SEBT.Portal.Api.Filters;
 using SEBT.Portal.Api.Models;
 using Serilog;
 using Microsoft.FeatureManagement;
@@ -100,6 +102,9 @@ builder.Services.AddPortalInfrastructureServices();
 builder.Services.AddPortalDbContext(builder.Configuration, options => options.ConfigureDevelopmentSeeding());
 builder.Services.AddPortalInfrastructureRepositories(builder.Configuration);
 builder.Services.AddPortalInfrastructureAppSettings(builder.Configuration);
+
+// Action filters
+builder.Services.AddScoped<ResolveUserFilter>();
 
 // Register IDatabaseSeeder for development utilities (e.g., ClearSeededData script)
 builder.Services.AddScoped<IDatabaseSeeder>(sp =>
@@ -250,9 +255,11 @@ app.UseRateLimiter();
 app.UseAuthentication();
 app.UseAuthorization();
 
-app.MapGet("/health", () => Results.Ok(new { Status = "ok" }));
-
 app.MapControllers();
+app.MapHealthChecks("/health", new HealthCheckOptions
+{
+    ResponseWriter = HealthCheckResponseWriter.WriteAsync
+});
 
 try
 {
@@ -268,3 +275,8 @@ finally
 {
     Log.CloseAndFlush();
 }
+
+// Makes the implicit Program class public so WebApplicationFactory<Program> can reference it from test projects.
+#pragma warning disable CS1591
+public partial class Program { }
+#pragma warning restore CS1591
