@@ -271,16 +271,17 @@ export const handlers = [
 
   // Verification status endpoint — first call returns pending, subsequent returns verified.
   // Uses a closure counter to simulate async verification (D3).
+  // allowIdRetry is included so the interstitial can show/hide the "Enter an ID number" button (D9).
   (() => {
     let callCount = 0
     return http.get('/api/id-proofing/status', async () => {
       await delay(50)
       callCount++
       if (callCount <= 1) {
-        return HttpResponse.json({ status: 'pending' })
+        return HttpResponse.json({ status: 'pending', allowIdRetry: false })
       }
       callCount = 0 // Reset for next test
-      return HttpResponse.json({ status: 'verified' })
+      return HttpResponse.json({ status: 'verified', allowIdRetry: false })
     })
   })(),
 
