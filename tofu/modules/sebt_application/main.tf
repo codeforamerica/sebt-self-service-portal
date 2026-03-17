@@ -76,16 +76,16 @@ module "api" {
     "AppConfig__Agent__EnvironmentId"    = module.appconfig[0].environment_id
     "AppConfig__FeatureFlags__ProfileId" = module.appconfig[0].feature_flags_profile_id
     "AppConfig__AppSettings__ProfileId"  = module.appconfig[0].app_settings_profile_id
-  } : {})
+  } : {}, var.state_api_environment_variables)
 
-  environment_secrets = {
+  environment_secrets = merge({
     DB_USER                        = "${module.database.secret_arn}:username"
     DB_PASSWORD                    = "${module.database.secret_arn}:password"
     "SmtpClientSettings__UserName" = "${module.ses.secret_arn}:username"
     "SmtpClientSettings__Password" = "${module.ses.secret_arn}:password"
     "JwtSettings__SecretKey"       = "${module.secrets.secrets["app"].secret_arn}:jwt_secret_key"
     "IdentifierHasher__SecretKey"  = "${module.secrets.secrets["app"].secret_arn}:identifier_hasher_secret_key"
-  }
+  }, var.state_api_environment_secrets)
 }
 
 # Create the Web service. This is a public-facing Next.js application served                                                                      
@@ -130,12 +130,13 @@ module "web" {
   image_tags_mutable     = var.image_tags_mutable
   force_delete           = var.force_delete
 
-  environment_variables = {
+  environment_variables = merge({
     STATE                    = lower(var.state)
     NEXT_PUBLIC_STATE        = lower(var.state)
-    NEXT_PUBLIC_API_BASE_URL = "https://${module.api.endpoint_url}"
     BACKEND_URL              = "https://${module.api.endpoint_url}"
-  }
+  }, var.state_web_environment_variables)
+
+  environment_secrets = var.state_web_environment_secrets
 }
 
 # Store application secrets in Secrets Manager.
