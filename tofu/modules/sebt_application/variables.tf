@@ -193,13 +193,13 @@ variable "use_mock_household_data" {
   default     = "false"
 }
 
-variable "state_environment_variables" {
+variable "state_api_environment_variables" {
   type        = map(string)
   description = "State-specific environment variables to inject into the API container."
   default     = {}
 }
 
-variable "state_environment_secrets" {
+variable "state_api_environment_secrets" {
   type        = map(string)
   description = "State-specific secrets to inject into the API container environment."
   default     = {}

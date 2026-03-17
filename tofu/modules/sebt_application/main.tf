@@ -76,7 +76,7 @@ module "api" {
     "AppConfig__Agent__EnvironmentId"    = module.appconfig[0].environment_id
     "AppConfig__FeatureFlags__ProfileId" = module.appconfig[0].feature_flags_profile_id
     "AppConfig__AppSettings__ProfileId"  = module.appconfig[0].app_settings_profile_id
-  } : {}, var.state_environment_variables)
+  } : {}, var.state_api_environment_variables)
 
   environment_secrets = merge({
     DB_USER                        = "${module.database.secret_arn}:username"
@@ -85,7 +85,7 @@ module "api" {
     "SmtpClientSettings__Password" = "${module.ses.secret_arn}:password"
     "JwtSettings__SecretKey"       = "${module.secrets.secrets["app"].secret_arn}:jwt_secret_key"
     "IdentifierHasher__SecretKey"  = "${module.secrets.secrets["app"].secret_arn}:identifier_hasher_secret_key"
-  }, var.state_environment_secrets)
+  }, var.state_api_environment_secrets)
 }
 
 # Create the Web service. This is a public-facing Next.js application served                                                                      

@@ -111,13 +111,13 @@ module "app" {
   seeding_email_pattern   = "sebt.co+{0}@codeforamerica.org"
   use_mock_household_data = "true"
 
-  state_environment_variables = {
+  state_api_environment_variables = {
     "Oidc__DiscoveryEndpoint"  = var.oidc_discovery_endpoint
     "Oidc__CallbackRedirectUri" = "https://${var.domain}/callback"
     "Oidc__LanguageParam"      = "en"
   }
 
-  state_environment_secrets = {
+  state_api_environment_secrets = {
     "Cbms__ClientId"               = "${module.state_secrets.secrets["cbms"].secret_arn}:client_id"
     "Cbms__ClientSecret"           = "${module.state_secrets.secrets["cbms"].secret_arn}:client_secret"
     "Oidc__ClientId"               = "${module.state_secrets.secrets["oidc"].secret_arn}:client_id"
