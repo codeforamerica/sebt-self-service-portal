@@ -117,7 +117,7 @@ run_tests() {
   # Check if test script exists
   if grep -q '"test"' package.json 2>/dev/null; then
     pnpm run test
-    log_success "Tests passed"
+    log_success "Front end tests passed"
   else
     log_warning "No test script found in package.json, skipping"
   fi
@@ -132,6 +132,36 @@ run_type_check() {
   log_success "Type checking passed"
 }
 
+# Run e2e playwright tests
+run_e2e_tests() {
+  log_info "Running e2e playwright tests..."
+  cd "$FRONTEND_DIR"
+
+  # Check if test script exists
+  if grep -q '"test:e2e"' package.json 2>/dev/null; then
+    pnpm run test:e2e
+    log_success "E2E playwright tests passed"
+  else
+    log_warning "No E2E test script found in package.json, skipping"
+  fi
+}
+
+# Run pa11y accessibility tests
+run_pa11y_tests() {
+  log_info "Running pa11y playwright tests..."
+  cd "$FRONTEND_DIR"
+
+  # Check if test script exists
+  if grep -q '"test:pa11y"' package.json 2>/dev/null; then
+    pnpm run test:pa11y
+    log_success "pa11y tests passed"
+  else
+    log_warning "No pa11y test script found in package.json, skipping"
+  fi
+}
+
+
+
 # Main execution
 main() {
   log_info "=== Frontend Test Script ==="
@@ -145,6 +175,8 @@ main() {
   run_type_check
   run_lint
   run_tests
+  run_e2e_tests
+  run_pa11y_tests
 
   echo ""
   log_success "=== All frontend tests passed ==="
