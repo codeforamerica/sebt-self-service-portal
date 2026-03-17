@@ -99,6 +99,7 @@ jobs:
           done
           curl -sf http://localhost:3000 > /dev/null || (echo "Server failed to start" && exit 1)
           echo "Running Pa11y accessibility tests..."
+          export PUPPETEER_EXECUTABLE_PATH=$(find "$HOME/.cache/ms-playwright" -path "*/chrome-linux/chrome" -type f 2>/dev/null | head -1)
           cd src/SEBT.Portal.Web && pnpm test:a11y
           echo "Running Playwright E2E tests..."
           cd ../.. && pnpm ci:test:e2e:ci
