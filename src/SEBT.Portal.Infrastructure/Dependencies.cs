@@ -1,7 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using SEBT.Portal.Core.AppSettings;
 using SEBT.Portal.Core.Repositories;
@@ -145,14 +144,6 @@ public static class Dependencies
             .PostConfigure<IConfiguration>((options, config) =>
             {
                 var postConfig = new FeatureManagementOptionsConfiguration(config);
-                postConfig.PostConfigure(null, options);
-            });
-
-        services.AddOptions<AppConfigFeatureFlagSettings>()
-            .Bind(configuration.GetSection(AppConfigFeatureFlagSettings.SectionName))
-            .PostConfigure<IConfiguration, ILogger<AppConfigFeatureFlagOptionsConfiguration>>((options, config, logger) =>
-            {
-                var postConfig = new AppConfigFeatureFlagOptionsConfiguration(config, logger);
                 postConfig.PostConfigure(null, options);
             });
 

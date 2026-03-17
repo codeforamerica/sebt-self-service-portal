@@ -1,3 +1,8 @@
+output "appconfig_application_id" {
+  description = "ID of the AppConfig application."
+  value       = var.enable_appconfig ? module.appconfig[0].application_id : null
+}
+
 output "api_endpoint_url" {
   description = "URL of the API service endpoint."
   value       = module.api.endpoint_url

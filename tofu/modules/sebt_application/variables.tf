@@ -37,6 +37,16 @@ variable "domain" {
   description = "Domain name for the application (e.g. dc.sebt-client-portal.dev.codeforamerica.app)."
 }
 
+variable "enable_appconfig" {
+  type        = bool
+  description = <<-EOT
+    Enable AWS AppConfig for managing feature flags and application
+    settings. When enabled, creates an AppConfig application and deploys
+    an AppConfig Agent sidecar alongside the API container.
+    EOT
+  default     = false
+}
+
 variable "enable_execute_command" {
   type        = bool
   description = "Enable ECS Exec for debugging containers."
