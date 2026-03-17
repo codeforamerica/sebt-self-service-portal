@@ -89,7 +89,7 @@ jobs:
           IdentifierHasher__SecretKey: "ci-e2e-identifier-hasher-key-32chars"
           Oidc__CompleteLoginSigningKey: "ci-e2e-oidc-signing-key-at-least-32-chars"
           UseMockHouseholdData: "true"
-        run: pnpm ci:test:e2e -- --project=chromium
+        run: pnpm ci:test:e2e:ci
 
       - name: Upload Playwright report
         uses: actions/upload-artifact@v4
