@@ -102,9 +102,9 @@ jobs:
           done
           curl -sf --max-time 15 http://localhost:3000 > /dev/null || (echo "Server failed to start" && exit 1)
           echo "Running Pa11y accessibility tests..."
-          cd src/SEBT.Portal.Web && pnpm test:a11y
+          pnpm ci:test:a11y
           echo "Running Playwright E2E tests..."
-          cd ../.. && pnpm ci:test:e2e:ci
+          pnpm ci:test:e2e:ci
 
       - name: Upload Playwright report
         uses: actions/upload-artifact@v4
