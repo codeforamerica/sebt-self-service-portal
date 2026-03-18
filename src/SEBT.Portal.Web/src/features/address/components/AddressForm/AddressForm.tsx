@@ -1,0 +1,240 @@
+'use client'
+
+import { useRouter } from 'next/navigation'
+import { useEffect, useRef, useState, type FormEvent } from 'react'
+import { useTranslation } from 'react-i18next'
+
+import { Alert, Button, InputField } from '@/components/ui'
+import { getState } from '@/lib/state'
+
+import { useUpdateAddress } from '../../api'
+import { useAddressFlow } from '../../context'
+import { US_STATES } from './usStates'
+
+interface FieldErrors {
+  streetAddress1?: string
+  city?: string
+  state?: string
+  postalCode?: string
+}
+
+const STATE_DEFAULTS: Record<string, { city: string; state: string }> = {
+  dc: { city: 'Washington', state: 'District of Columbia' },
+  co: { city: '', state: 'Colorado' }
+}
+
+export function AddressForm() {
+  const { t } = useTranslation('confirmInfo')
+  const { t: tValidation } = useTranslation('validation')
+  const { t: tCommon } = useTranslation('common')
+  const router = useRouter()
+  const updateAddress = useUpdateAddress()
+  const { setAddress } = useAddressFlow()
+  const errorSummaryRef = useRef<HTMLDivElement>(null)
+
+  const currentState = getState()
+  // eslint-disable-next-line security/detect-object-injection -- currentState is typed StateCode
+  const defaults = STATE_DEFAULTS[currentState] ?? { city: '', state: '' }
+
+  const [streetAddress1, setStreetAddress1] = useState('')
+  const [streetAddress2, setStreetAddress2] = useState('')
+  const [city, setCity] = useState(defaults.city)
+  const [stateValue, setStateValue] = useState(defaults.state)
+  const [postalCode, setPostalCode] = useState('')
+
+  const [fieldErrors, setFieldErrors] = useState<FieldErrors>({})
+  const [submitError, setSubmitError] = useState<string | null>(null)
+
+  const isSubmitting = updateAddress.isPending
+  const hasErrors = Object.keys(fieldErrors).length > 0
+
+  useEffect(() => {
+    if (hasErrors) {
+      errorSummaryRef.current?.focus()
+    }
+  }, [hasErrors])
+
+  function validate(): FieldErrors {
+    const errors: FieldErrors = {}
+    const required = tValidation('required', 'This field is required.')
+
+    if (!streetAddress1.trim()) errors.streetAddress1 = required
+    if (!city.trim()) errors.city = required
+    if (!stateValue.trim()) errors.state = required
+    if (!postalCode.trim()) {
+      errors.postalCode = required
+    } else if (!/^\d{5}(-\d{4})?$/.test(postalCode.trim())) {
+      errors.postalCode = t('postalCodeInvalid', 'Enter a valid 5- or 9-digit ZIP code.')
+    }
+
+    return errors
+  }
+
+  async function handleSubmit(e: FormEvent<HTMLFormElement>) {
+    e.preventDefault()
+    setSubmitError(null)
+
+    const errors = validate()
+    setFieldErrors(errors)
+
+    if (Object.keys(errors).length > 0) {
+      return
+    }
+
+    const addressData = {
+      streetAddress1: streetAddress1.trim(),
+      streetAddress2: streetAddress2.trim() || undefined,
+      city: city.trim(),
+      state: stateValue.trim(),
+      postalCode: postalCode.trim()
+    }
+
+    try {
+      await updateAddress.mutateAsync(addressData)
+      setAddress(addressData)
+      router.push('/profile/address/replacement-cards')
+    } catch (err) {
+      void err
+      setSubmitError(t('addressUpdateError', 'Something went wrong. Please try again.'))
+    }
+  }
+
+  return (
+    <form
+      className="usa-form maxw-full"
+      onSubmit={handleSubmit}
+      noValidate
+    >
+      {submitError && (
+        <Alert
+          variant="error"
+          slim
+          className="margin-bottom-2"
+        >
+          {submitError}
+        </Alert>
+      )}
+
+      {hasErrors && (
+        <div
+          ref={errorSummaryRef}
+          className="usa-alert usa-alert--error usa-alert--slim margin-bottom-2"
+          role="alert"
+          tabIndex={-1}
+        >
+          <div className="usa-alert__body">
+            <p className="usa-alert__text">
+              {t('formErrorSummary', 'Please correct the errors below.')}
+            </p>
+          </div>
+        </div>
+      )}
+
+      <InputField
+        label={t('labelStreetAddress', 'Street address')}
+        {...(currentState === 'dc'
+          ? { hint: t('hintStreetAddressDc', 'Include direction. NW, NE, SE, or SW.') }
+          : {})}
+        name="streetAddress1"
+        value={streetAddress1}
+        onChange={(e) => setStreetAddress1(e.target.value)}
+        autoComplete="address-line1"
+        isRequired
+        {...(fieldErrors.streetAddress1 ? { error: fieldErrors.streetAddress1 } : {})}
+      />
+
+      <InputField
+        label={t('labelStreetAddress2', 'Street address line 2')}
+        hint={t(
+          'hintStreetAddress2',
+          'For example, an apartment number, unit number, floor, or PO Box.'
+        )}
+        name="streetAddress2"
+        value={streetAddress2}
+        onChange={(e) => setStreetAddress2(e.target.value)}
+        autoComplete="address-line2"
+      />
+
+      <InputField
+        label={t('labelCity', 'City')}
+        name="city"
+        value={city}
+        onChange={(e) => setCity(e.target.value)}
+        autoComplete="address-level2"
+        isRequired
+        {...(fieldErrors.city ? { error: fieldErrors.city } : {})}
+      />
+
+      <div
+        className={fieldErrors.state ? 'usa-form-group usa-form-group--error' : 'usa-form-group'}
+      >
+        <label
+          className="usa-label"
+          htmlFor="address-state"
+        >
+          {t('labelState', 'State or territory')}
+          <span className="text-secondary-dark"> *</span>
+        </label>
+        {fieldErrors.state && (
+          <span
+            className="usa-error-message"
+            id="address-state-error"
+            role="alert"
+          >
+            {fieldErrors.state}
+          </span>
+        )}
+        <select
+          id="address-state"
+          className={`usa-select${fieldErrors.state ? ' usa-input--error' : ''}`}
+          name="state"
+          value={stateValue}
+          onChange={(e) => setStateValue(e.target.value)}
+          autoComplete="address-level1"
+          aria-required="true"
+          aria-invalid={!!fieldErrors.state}
+          aria-describedby={fieldErrors.state ? 'address-state-error' : undefined}
+        >
+          <option value="">- Select -</option>
+          {US_STATES.map((s) => (
+            <option
+              key={s}
+              value={s}
+            >
+              {s}
+            </option>
+          ))}
+        </select>
+      </div>
+
+      <InputField
+        label={t('labelPostalCode', 'ZIP Code')}
+        name="postalCode"
+        value={postalCode}
+        onChange={(e) => setPostalCode(e.target.value)}
+        inputMode="numeric"
+        autoComplete="postal-code"
+        isRequired
+        {...(fieldErrors.postalCode ? { error: fieldErrors.postalCode } : {})}
+      />
+
+      <div className="margin-top-3 display-flex flex-row gap-2">
+        <Button
+          variant="outline"
+          type="button"
+          onClick={() => router.back()}
+        >
+          {tCommon('back', 'Back')}
+        </Button>
+        <Button
+          type="submit"
+          isLoading={isSubmitting}
+          loadingText={`${tCommon('continue', 'Continue')}...`}
+          disabled={isSubmitting}
+        >
+          {tCommon('continue', 'Continue')}
+        </Button>
+      </div>
+    </form>
+  )
+}
