@@ -168,7 +168,7 @@ public class HouseholdRepositoryTests
     }
 
     [Fact]
-    public async Task GetHouseholdByEmailAsync_WhenPiiExcludesAddress_ReturnsNullAddress()
+    public async Task GetHouseholdByEmailAsync_WhenPiiExcludesAddress_ReturnsMaskedAddress()
     {
         _summerEbtCaseService
             .GetHouseholdByGuardianEmailAsync(Arg.Any<string>(), Arg.Any<PluginPiiVisibility>(), Arg.Any<PluginIdentityAssuranceLevel>(), Arg.Any<CancellationToken>())
@@ -191,7 +191,12 @@ public class HouseholdRepositoryTests
         var result = await _repository.GetHouseholdByEmailAsync("u@e.com", noAddressPii, UserIalLevel.IAL1plus);
 
         Assert.NotNull(result);
-        Assert.Null(result.AddressOnFile);
+        Assert.NotNull(result.AddressOnFile);
+        Assert.Equal("****", result.AddressOnFile.StreetAddress1);
+        Assert.Null(result.AddressOnFile.StreetAddress2);
+        Assert.Equal("Denver", result.AddressOnFile.City);
+        Assert.Equal("CO", result.AddressOnFile.State);
+        Assert.Equal("80202", result.AddressOnFile.PostalCode);
     }
 
     [Fact]

@@ -105,7 +105,15 @@ public class HouseholdRepository : IHouseholdRepository
                     State = source.AddressOnFile.State,
                     PostalCode = source.AddressOnFile.PostalCode
                 }
-                : null
+                : source.AddressOnFile != null
+                    ? new Address
+                    {
+                        StreetAddress1 = PiiMasker.MaskStreetAddress(source.AddressOnFile.StreetAddress1, source.AddressOnFile.StreetAddress2),
+                        City = source.AddressOnFile.City,
+                        State = source.AddressOnFile.State,
+                        PostalCode = source.AddressOnFile.PostalCode
+                    }
+                    : null
         };
     }
 
