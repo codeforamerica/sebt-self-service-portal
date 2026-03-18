@@ -2,6 +2,8 @@
 
 import { useTranslation } from 'react-i18next'
 
+import { useFeatureFlag } from '@/features/feature-flags'
+
 import type { Application } from '../../api'
 import { useRequiredHouseholdData } from '../../api'
 
@@ -30,6 +32,7 @@ const APPLICATION_STATUS_KEYS: Record<string, { key: string; fallback: string }>
 
 function ApplicationCard({ application }: { application: Application }) {
   const { t } = useTranslation('dashboard')
+  const showCaseNumber = useFeatureFlag('show_case_number')
 
   const childrenNames = application.children
     .map((child) => `${child.firstName} ${child.lastName}`)
@@ -39,7 +42,7 @@ function ApplicationCard({ application }: { application: Application }) {
     <div className="usa-card__container margin-bottom-2">
       <div className="usa-card__body">
         <dl className="margin-0">
-          {application.caseNumber && (
+          {showCaseNumber && application.caseNumber && (
             <>
               <dt className="text-bold">{t('applicationsTableHeadingNumber')}</dt>
               <dd className="margin-left-0 margin-bottom-2">{application.caseNumber}</dd>

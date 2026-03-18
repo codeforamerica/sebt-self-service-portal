@@ -3,6 +3,8 @@
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
+import { useFeatureFlag } from '@/features/feature-flags'
+
 import type { Application, Child } from '../../api'
 import { CardStatusTimeline } from '../CardStatusTimeline'
 
@@ -26,6 +28,7 @@ function formatDate(isoDate: string, locale: string): string {
 // Keys map to CSV: "S2 - Portal Dashboard - Card Table - {Key}"
 export function ChildCard({ child, application, id, defaultExpanded = true }: ChildCardProps) {
   const { t, i18n } = useTranslation('dashboard')
+  const showCardLast4 = useFeatureFlag('show_card_last4')
   const [isExpanded, setIsExpanded] = useState(defaultExpanded)
   const childName = `${child.firstName} ${child.lastName}`
 
@@ -89,7 +92,7 @@ export function ChildCard({ child, application, id, defaultExpanded = true }: Ch
               <dd className="margin-left-0">{formatDate(benefitExpirationDate, i18n.language)}</dd>
             </>
           )}
-          {last4DigitsOfCard && (
+          {showCardLast4 && last4DigitsOfCard && (
             <>
               <dt className="text-bold margin-top-2">{t('cardTableHeadingCardNumber')}</dt>
               <dd className="margin-left-0">
