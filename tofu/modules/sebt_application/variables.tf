@@ -193,6 +193,30 @@ variable "use_mock_household_data" {
   default     = "false"
 }
 
+variable "state_api_environment_variables" {
+  type        = map(string)
+  description = "State-specific environment variables to inject into the API container."
+  default     = {}
+}
+
+variable "state_api_environment_secrets" {
+  type        = map(string)
+  description = "State-specific secrets to inject into the API container environment."
+  default     = {}
+}
+
+variable "state_web_environment_variables" {
+  type        = map(string)
+  description = "State-specific environment variables to inject into the Web container."
+  default     = {}
+}
+
+variable "state_web_environment_secrets" {
+  type        = map(string)
+  description = "State-specific secrets to inject into the Web container environment."
+  default     = {}
+}
+
 variable "secret_recovery_period" {
   type        = number
   description = "Number of days to retain a secret before permanent deletion."
