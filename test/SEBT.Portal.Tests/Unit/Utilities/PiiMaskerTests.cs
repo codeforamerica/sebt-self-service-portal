@@ -7,8 +7,6 @@ namespace SEBT.Portal.Tests.Unit.Utilities;
 /// </summary>
 public class PiiMaskerTests
 {
-    private readonly PiiMasker _masker = new();
-
     // ── Email masking ──
 
     [Theory]
@@ -18,7 +16,7 @@ public class PiiMaskerTests
     [InlineData("longname@gmail.com", "l***@gmail.com")]
     public void MaskEmail_MasksLocalPart_PreservesDomain(string input, string expected)
     {
-        Assert.Equal(expected, _masker.MaskEmail(input));
+        Assert.Equal(expected, PiiMasker.MaskEmail(input));
     }
 
     [Theory]
@@ -27,14 +25,14 @@ public class PiiMaskerTests
     [InlineData("   ")]
     public void MaskEmail_NullOrWhitespace_ReturnsNull(string? input)
     {
-        Assert.Null(_masker.MaskEmail(input));
+        Assert.Null(PiiMasker.MaskEmail(input));
     }
 
     [Fact]
     public void MaskEmail_NoAtSign_ReturnsMaskedFully()
     {
         // Malformed email — mask it anyway rather than exposing
-        var result = _masker.MaskEmail("notanemail");
+        var result = PiiMasker.MaskEmail("notanemail");
         Assert.NotNull(result);
         Assert.DoesNotContain("notanemail", result);
     }
@@ -48,7 +46,7 @@ public class PiiMaskerTests
     [InlineData("555-0100", "***-0100")]
     public void MaskPhone_ShowsLast4_MasksRest(string input, string expected)
     {
-        Assert.Equal(expected, _masker.MaskPhone(input));
+        Assert.Equal(expected, PiiMasker.MaskPhone(input));
     }
 
     [Theory]
@@ -57,14 +55,14 @@ public class PiiMaskerTests
     [InlineData("   ")]
     public void MaskPhone_NullOrWhitespace_ReturnsNull(string? input)
     {
-        Assert.Null(_masker.MaskPhone(input));
+        Assert.Null(PiiMasker.MaskPhone(input));
     }
 
     [Fact]
     public void MaskPhone_TooFewDigits_ReturnsMasked()
     {
         // Less than 4 digits — still mask, don't expose partial
-        var result = _masker.MaskPhone("123");
+        var result = PiiMasker.MaskPhone("123");
         Assert.NotNull(result);
         Assert.Equal("***", result);
     }
@@ -74,7 +72,7 @@ public class PiiMaskerTests
     [Fact]
     public void MaskStreetAddress_MasksStreetLines()
     {
-        var result = _masker.MaskStreetAddress("123 Main St", "Apt 4B");
+        var result = PiiMasker.MaskStreetAddress("123 Main St", "Apt 4B");
 
         Assert.NotNull(result);
         Assert.DoesNotContain("123 Main St", result);
@@ -84,6 +82,6 @@ public class PiiMaskerTests
     [Fact]
     public void MaskStreetAddress_NullStreet_ReturnsNull()
     {
-        Assert.Null(_masker.MaskStreetAddress(null, null));
+        Assert.Null(PiiMasker.MaskStreetAddress(null, null));
     }
 }

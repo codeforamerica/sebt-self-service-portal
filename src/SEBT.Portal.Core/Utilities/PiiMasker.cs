@@ -3,11 +3,10 @@ using System.Text.RegularExpressions;
 namespace SEBT.Portal.Core.Utilities;
 
 /// <summary>
-/// Default PII masking for the portal's MockHouseholdRepository.
-/// State connectors implement their own masking via the IPiiMasker interface
-/// in the state-connector shared package.
+/// Utility class for partially masking PII fields (email, phone, address)
+/// so users can recognize their data without exposing full details.
 /// </summary>
-public partial class PiiMasker
+public static partial class PiiMasker
 {
     /// <summary>
     /// Masks an email address, preserving the first character of the local part and the full domain.
@@ -15,7 +14,7 @@ public partial class PiiMasker
     /// </summary>
     /// <param name="email">The email address to mask.</param>
     /// <returns>The masked email, or null if the input is null or whitespace.</returns>
-    public string? MaskEmail(string? email)
+    public static string? MaskEmail(string? email)
     {
         if (string.IsNullOrWhiteSpace(email))
         {
@@ -40,7 +39,7 @@ public partial class PiiMasker
     /// </summary>
     /// <param name="phone">The phone number to mask.</param>
     /// <returns>The masked phone, or null if the input is null or whitespace.</returns>
-    public string? MaskPhone(string? phone)
+    public static string? MaskPhone(string? phone)
     {
         if (string.IsNullOrWhiteSpace(phone))
         {
@@ -75,7 +74,7 @@ public partial class PiiMasker
     /// <returns>A masked street indicator, or null if both street address lines are null or whitespace.
     /// Callers should log a warning when this returns null — a missing address likely indicates
     /// an upstream data issue that warrants investigation.</returns>
-    public string? MaskStreetAddress(string? streetAddress1, string? streetAddress2)
+    public static string? MaskStreetAddress(string? streetAddress1, string? streetAddress2)
     {
         if (string.IsNullOrWhiteSpace(streetAddress1) && string.IsNullOrWhiteSpace(streetAddress2))
         {

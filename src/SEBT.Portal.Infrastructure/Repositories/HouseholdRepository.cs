@@ -94,8 +94,8 @@ public class HouseholdRepository : IHouseholdRepository
     {
         return source with
         {
-            Email = piiVisibility.IncludeEmail ? source.Email : null,
-            Phone = piiVisibility.IncludePhone ? source.Phone : null,
+            Email = piiVisibility.IncludeEmail ? source.Email : PiiMasker.MaskEmail(source.Email),
+            Phone = piiVisibility.IncludePhone ? source.Phone : PiiMasker.MaskPhone(source.Phone),
             AddressOnFile = piiVisibility.IncludeAddress && source.AddressOnFile != null
                 ? new Address
                 {
