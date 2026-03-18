@@ -8,11 +8,14 @@ import { server } from '@/mocks/server'
 
 import { DashboardContent } from './DashboardContent'
 
-// Mock router and auth for UserProfileCard
+// Mock router, searchParams, and auth for UserProfileCard + DashboardAlerts
 vi.mock('next/navigation', () => ({
   useRouter: () => ({
-    push: vi.fn()
-  })
+    push: vi.fn(),
+    replace: vi.fn()
+  }),
+  useSearchParams: () => new URLSearchParams(),
+  usePathname: () => '/dashboard'
 }))
 
 vi.mock('@/features/auth', () => ({
