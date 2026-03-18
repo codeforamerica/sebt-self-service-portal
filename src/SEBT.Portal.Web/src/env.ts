@@ -19,6 +19,9 @@ export const env = createEnv({
   server: {
     NODE_ENV: z.enum(['development', 'test', 'production']).optional(),
     BACKEND_URL: z.url().default('http://localhost:5280'),
+    // OIDC vars are required for CO (MyColorado login) but unused by DC.
+    // Marked optional here because createEnv cannot cross-reference NEXT_PUBLIC_STATE.
+    // Runtime validation in /api/auth/oidc/callback/route.ts returns 503 if missing.
     OIDC_DISCOVERY_ENDPOINT: z.string().url().optional(),
     OIDC_CLIENT_ID: z.string().optional(),
     OIDC_CLIENT_SECRET: z.string().optional(),
@@ -33,7 +36,8 @@ export const env = createEnv({
    */
   client: {
     NEXT_PUBLIC_STATE: z.enum(['dc', 'co']),
-    NEXT_PUBLIC_GA_ID: z.string().startsWith('G-').optional()
+    NEXT_PUBLIC_GA_ID: z.string().startsWith('G-').optional(),
+    NEXT_PUBLIC_SOCURE_SDK_KEY: z.string().min(1).optional()
   },
 
   /**
@@ -50,7 +54,8 @@ export const env = createEnv({
     OIDC_LANGUAGE_PARAM: process.env.OIDC_LANGUAGE_PARAM,
     OIDC_COMPLETE_LOGIN_SIGNING_KEY: process.env.OIDC_COMPLETE_LOGIN_SIGNING_KEY,
     NEXT_PUBLIC_STATE: process.env.NEXT_PUBLIC_STATE,
-    NEXT_PUBLIC_GA_ID: process.env.NEXT_PUBLIC_GA_ID
+    NEXT_PUBLIC_GA_ID: process.env.NEXT_PUBLIC_GA_ID,
+    NEXT_PUBLIC_SOCURE_SDK_KEY: process.env.NEXT_PUBLIC_SOCURE_SDK_KEY
   },
 
   /**

@@ -4,6 +4,7 @@ import { getState, getStateName } from '@/lib/state'
 import {
   AuthProvider,
   AxeProvider,
+  DataLayerProvider,
   FeatureFlagsProvider,
   I18nProvider,
   QueryProvider
@@ -98,21 +99,23 @@ export default async function RootLayout({
       className={`usa-js-loading ${primaryFont.variable}`}
     >
       <body>
-        <QueryProvider>
-          <AuthProvider>
-            <FeatureFlagsProvider>
-              <I18nProvider>
-                <SkipNav />
-                <AxeProvider>
-                  <Header state={state} />
-                  <main id="main-content">{children}</main>
-                  <HelpSection state={state} />
-                  <Footer state={state} />
-                </AxeProvider>
-              </I18nProvider>
-            </FeatureFlagsProvider>
-          </AuthProvider>
-        </QueryProvider>
+        <DataLayerProvider>
+          <QueryProvider>
+            <AuthProvider>
+              <FeatureFlagsProvider>
+                <I18nProvider>
+                  <SkipNav />
+                  <AxeProvider>
+                    <Header state={state} />
+                    <main id="main-content">{children}</main>
+                    <HelpSection state={state} />
+                    <Footer state={state} />
+                  </AxeProvider>
+                </I18nProvider>
+              </FeatureFlagsProvider>
+            </AuthProvider>
+          </QueryProvider>
+        </DataLayerProvider>
         {/* USWDS initialization script - uses nonce for CSP compliance */}
         {/* suppressHydrationWarning: nonce changes per request, mismatch is expected */}
         <script

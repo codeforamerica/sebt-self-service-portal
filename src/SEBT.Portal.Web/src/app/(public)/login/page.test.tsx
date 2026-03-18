@@ -5,6 +5,7 @@
  * CO renders the external auth landing page (COLoginPage).
  * DC renders the OTP email form (LoginForm).
  */
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { render, screen } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import LoginPage from './page'
@@ -21,7 +22,8 @@ vi.mock('@/lib/translations', () => ({
         body: 'Enter your email to receive a one-time code.',
         logInDisclaimerBody1:
           'After tapping "Log in" you\'ll be redirected to log in using your myColorado™ account.',
-        logInDisclaimerBody2: 'Contact us if you need assistance logging into your account.'
+        logInDisclaimerBody2: 'Contact us if you need assistance logging into your account.',
+        oidcErrorConfigLoad: 'Unable to load login configuration.'
       },
       common: {
         logIn: 'Log in with myColorado™',
@@ -30,17 +32,31 @@ vi.mock('@/lib/translations', () => ({
     }
     /* eslint-disable security/detect-object-injection -- test mock; namespace and key are controlled */
     const translations = namespaces[namespace] ?? {}
-    return (key: string) => translations[key] ?? key
+    return (key: string, defaultValue?: string) => translations[key] ?? defaultValue ?? key
     /* eslint-enable security/detect-object-injection */
   })
 }))
 
 vi.mock('@/features/auth', () => ({
-  LoginForm: () => <div data-testid="login-form">LoginForm</div>
+  LoginForm: () => <div data-testid="login-form">LoginForm</div>,
+  OidcConfigResponseSchema: {},
+  OidcCallbackTokenResponseSchema: {},
+  OidcCompleteLoginResponseSchema: {}
+}))
+
+vi.mock('@/api', () => ({
+  apiFetch: vi.fn()
 }))
 
 import { getState } from '@/lib/state'
 const mockGetState = vi.mocked(getState)
+
+function renderWithQueryClient(ui: React.ReactElement) {
+  const queryClient = new QueryClient({
+    defaultOptions: { queries: { retry: false }, mutations: { retry: false } }
+  })
+  return render(<QueryClientProvider client={queryClient}>{ui}</QueryClientProvider>)
+}
 
 describe('LoginPage', () => {
   beforeEach(() => {
@@ -53,7 +69,7 @@ describe('LoginPage', () => {
     })
 
     it('renders the login title', () => {
-      render(<LoginPage />)
+      renderWithQueryClient(<LoginPage />)
       expect(
         screen.getByRole('heading', {
           name: /Access your Summer EBT account/i
@@ -62,7 +78,7 @@ describe('LoginPage', () => {
     })
 
     it('applies text-primary-dark class to the title', () => {
-      render(<LoginPage />)
+      renderWithQueryClient(<LoginPage />)
       const heading = screen.getByRole('heading', {
         name: /Access your Summer EBT account/i
       })
@@ -70,36 +86,36 @@ describe('LoginPage', () => {
     })
 
     it('renders the disclaimer body text', () => {
-      render(<LoginPage />)
+      renderWithQueryClient(<LoginPage />)
       expect(
         screen.getByText(/you'll be redirected to log in using your myColorado/i)
       ).toBeInTheDocument()
     })
 
     it('renders the Log in button with primary-dark styling', () => {
-      render(<LoginPage />)
-      const logInButton = screen.getByRole('link', { name: /Log in with myColorado/i })
+      renderWithQueryClient(<LoginPage />)
+      const logInButton = screen.getByRole('button', { name: /Log in with myColorado/i })
       expect(logInButton).toHaveClass('usa-button')
       expect(logInButton).toHaveClass('bg-primary-dark')
     })
 
     it('renders the Iniciar sesión outline button', () => {
-      render(<LoginPage />)
-      const espButton = screen.getByRole('link', { name: /Iniciar sesión con myColorado/i })
+      renderWithQueryClient(<LoginPage />)
+      const espButton = screen.getByRole('button', { name: /Iniciar sesión con myColorado/i })
       expect(espButton).toHaveAttribute('lang', 'es')
       expect(espButton).toHaveClass('usa-button--outline')
       expect(espButton).toHaveClass('border-primary')
     })
 
     it('renders the contact assistance link', () => {
-      render(<LoginPage />)
+      renderWithQueryClient(<LoginPage />)
       expect(
         screen.getByText('Contact us if you need assistance logging into your account.')
       ).toBeInTheDocument()
     })
 
     it('does not render LoginForm', () => {
-      render(<LoginPage />)
+      renderWithQueryClient(<LoginPage />)
       expect(screen.queryByTestId('login-form')).not.toBeInTheDocument()
     })
   })

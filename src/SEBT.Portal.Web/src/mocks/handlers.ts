@@ -22,7 +22,11 @@ export const TEST_EMAILS = {
   // OTP validation returns requiresIdProofing: false
   idProofingNotRequired: 'noidproofing@example.com',
   // OTP validation returns token only (no requiresIdProofing field)
-  idProofingAbsent: 'noflag@example.com'
+  idProofingAbsent: 'noflag@example.com',
+  // ID proofing result: documentVerificationRequired with challengeId
+  docVerifyRequired: 'docverify@example.com',
+  // ID proofing result: failed with offboarding reason
+  docVerifyFailed: 'docverifyfail@example.com'
 } as const
 
 // Test OTP codes
@@ -232,8 +236,8 @@ export const handlers = [
     return HttpResponse.json(TEST_FEATURE_FLAGS)
   }),
 
-  // ID proofing endpoint — returns result indicating whether the user was matched.
-  // Response shape: { result: 'matched' | 'failed', canApply?: boolean }
+  // ID proofing endpoint — returns result with optional challenge context.
+  // Default returns 'matched'. Tests override via server.use() for other scenarios.
   http.post('/api/id-proofing', async ({ request }) => {
     const body = (await request.json()) as SubmitIdProofingRequest
 
@@ -257,6 +261,32 @@ export const handlers = [
     // Default: identity matched
     return HttpResponse.json({ result: 'matched' })
   }),
+
+  // Challenge start endpoint — returns JIT Socure token (D2)
+  http.get('/api/challenges/:id/start', async () => {
+    await delay(50)
+
+    return HttpResponse.json({
+      docvTransactionToken: 'mock-token-for-testing',
+      docvUrl: 'https://websdk.socure.com'
+    })
+  }),
+
+  // Verification status endpoint — first call returns pending, subsequent returns verified.
+  // Uses a closure counter to simulate async verification (D3).
+  // allowIdRetry is included so the interstitial can show/hide the "Enter an ID number" button (D9).
+  (() => {
+    let callCount = 0
+    return http.get('/api/id-proofing/status', async () => {
+      await delay(50)
+      callCount++
+      if (callCount <= 1) {
+        return HttpResponse.json({ status: 'pending', allowIdRetry: false })
+      }
+      callCount = 0 // Reset for next test
+      return HttpResponse.json({ status: 'verified', allowIdRetry: false })
+    })
+  })(),
 
   // Household data endpoint
   http.get('/api/household/data', async () => {

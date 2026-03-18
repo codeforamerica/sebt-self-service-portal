@@ -1,40 +1,39 @@
 'use client'
 
-import { TextLink } from '@/components/ui'
+import { apiFetch } from '@/api'
+import { Alert, TextLink } from '@/components/ui'
+import { OidcConfigResponseSchema, type OidcConfigResponse } from '@/features/auth'
 import { getStateLinks } from '@/lib/links'
 import {
   buildAuthorizationUrl,
   generateCodeChallenge,
   generateCodeVerifier,
   generateState,
-  savePkceForCallback,
-  type OidcConfig
+  savePkceForCallback
 } from '@/lib/oidc-pkce'
-import { getTranslations } from '@/lib/translations'
-import Link from 'next/link'
-import { useState } from 'react'
-
 import type { StateCode } from '@/lib/state'
+import { getTranslations } from '@/lib/translations'
+import { useMutation } from '@tanstack/react-query'
+
+async function fetchOidcConfig(state: StateCode): Promise<OidcConfigResponse> {
+  return apiFetch<OidcConfigResponse>(`/auth/oidc/${state}/config`, {
+    schema: OidcConfigResponseSchema
+  })
+}
 
 export function COLoginPage({ state }: { state: StateCode }) {
   const links = getStateLinks(state)
   const t = getTranslations('login')
   const tCommon = getTranslations('common')
-  const [loading, setLoading] = useState(false)
-  const [error, setError] = useState<string | null>(null)
 
-  async function startOidcLogin(e: React.MouseEvent) {
-    e.preventDefault()
-    setError(null)
-    setLoading(true)
+  const oidcConfig = useMutation({
+    mutationFn: () => fetchOidcConfig(state),
+    retry: false
+  })
+
+  async function startOidcLogin() {
     try {
-      const res = await fetch(`/api/auth/oidc/${state}/config`, { credentials: 'include' })
-      if (!res.ok) {
-        const data = (await res.json()) as { error?: string }
-        setError(data.error ?? 'Unable to load login configuration.')
-        return
-      }
-      const config = (await res.json()) as OidcConfig
+      const config = await oidcConfig.mutateAsync()
       const codeVerifier = generateCodeVerifier()
       const codeChallenge = await generateCodeChallenge(codeVerifier)
       const stateValue = generateState()
@@ -45,12 +44,12 @@ export function COLoginPage({ state }: { state: StateCode }) {
       })
       const authUrl = buildAuthorizationUrl(config, codeChallenge, stateValue)
       window.location.href = authUrl
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Something went wrong.')
-    } finally {
-      setLoading(false)
+    } catch {
+      // Error state is managed by useMutation — no additional handling needed
     }
   }
+
+  const errorMessage = oidcConfig.isError ? t('oidcErrorConfigLoad') : null
 
   return (
     <div className="usa-section">
@@ -65,36 +64,39 @@ export function COLoginPage({ state }: { state: StateCode }) {
 
           <p className="margin-top-4 font-sans-sm">{t('logInDisclaimerBody1')}</p>
 
-          {error && (
-            <p
-              className="margin-top-2 font-sans-sm text-red"
-              role="alert"
+          {errorMessage && (
+            <Alert
+              variant="error"
+              slim
+              className="margin-top-2"
             >
-              {error}
-            </p>
+              {errorMessage}
+            </Alert>
           )}
 
           <div className="margin-top-4">
-            <Link
-              href="#"
+            <button
+              type="button"
               onClick={startOidcLogin}
               className="usa-button bg-primary-dark text-white border-primary-dark"
-              aria-busy={loading}
+              aria-busy={oidcConfig.isPending}
+              disabled={oidcConfig.isPending}
             >
               {tCommon('logIn')}
-            </Link>
+            </button>
           </div>
 
           <div className="margin-top-2">
-            <Link
-              href="#"
+            <button
+              type="button"
               onClick={startOidcLogin}
               className="usa-button usa-button--outline border-primary text-primary"
               lang="es"
-              aria-busy={loading}
+              aria-busy={oidcConfig.isPending}
+              disabled={oidcConfig.isPending}
             >
               {tCommon('logInEsp')}
-            </Link>
+            </button>
           </div>
 
           <p className="margin-top-4 font-sans-sm">

@@ -1,12 +1,18 @@
 'use client'
 
-import { setAuthToken, useAuth } from '@/features/auth'
+import { apiFetch } from '@/api'
+import { Alert } from '@/components/ui'
+import {
+  OidcCallbackTokenResponseSchema,
+  OidcCompleteLoginResponseSchema,
+  setAuthToken,
+  useAuth
+} from '@/features/auth'
 import { clearPkceStorage, getPkceFromStorage } from '@/lib/oidc-pkce'
 import { getState } from '@/lib/state'
+import { getTranslations } from '@/lib/translations'
 import { useRouter } from 'next/navigation'
 import { useEffect, useState } from 'react'
-
-type CallbackStep = 'loading' | 'have_code_state' | 'have_pkce' | 'exchanging' | 'error'
 
 /**
  * OIDC callback: state IdP redirects here with ?code=...&state=...
@@ -15,8 +21,8 @@ type CallbackStep = 'loading' | 'have_code_state' | 'have_pkce' | 'exchanging' |
 export default function CallbackPage() {
   const router = useRouter()
   const { login } = useAuth()
+  const t = getTranslations('login')
   const [status, setStatus] = useState<'loading' | 'error'>('loading')
-  const [step, setStep] = useState<CallbackStep>('loading')
   const [errorDetail, setErrorDetail] = useState<string | null>(null)
 
   useEffect(() => {
@@ -27,130 +33,64 @@ export default function CallbackPage() {
 
     if (!code || !state) {
       queueMicrotask(() => {
-        setErrorDetail('Missing code or state in URL')
-        setStep('error')
+        setErrorDetail(t('callbackErrorMissingParams'))
         setStatus('error')
       })
       return
     }
-    queueMicrotask(() => setStep('have_code_state'))
 
     let cancelled = false
     async function run() {
       const stored = getPkceFromStorage()
       if (!stored) {
-        setErrorDetail('No PKCE data (same-tab flow required)')
         clearPkceStorage()
         if (!cancelled) {
-          setStep('error')
+          setErrorDetail(t('callbackErrorSessionExpired'))
           setStatus('error')
         }
         return
       }
       if (stored.state !== state) {
-        setErrorDetail('State mismatch')
         clearPkceStorage()
         if (!cancelled) {
-          setStep('error')
+          setErrorDetail(t('callbackErrorStateMismatch'))
           setStatus('error')
         }
         return
       }
-      setStep('have_pkce')
       clearPkceStorage()
 
       try {
-        setStep('exchanging')
-        const callbackRes = await fetch('/api/auth/oidc/callback', {
+        // Exchange authorization code for a short-lived callback token (via Next.js server)
+        const { callbackToken } = await apiFetch('/auth/oidc/callback', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
+          body: {
             code,
             code_verifier: stored.code_verifier,
             state,
             stateCode: getState()
-          }),
-          credentials: 'include'
+          },
+          schema: OidcCallbackTokenResponseSchema
         })
         if (cancelled) return
-        if (!callbackRes.ok) {
-          const text = await callbackRes.text()
-          let data: { error?: string; hint?: string } = {}
-          try {
-            data = JSON.parse(text) as { error?: string; hint?: string }
-          } catch {
-            // not JSON
-          }
-          const isHtml =
-            text.trimStart().startsWith('<!') ||
-            (callbackRes.headers.get('content-type') ?? '').toLowerCase().includes('text/html')
-          const msg =
-            data.error ??
-            (isHtml
-              ? `Sign-in provider returned an error page (${callbackRes.status}). Try again or check configuration.`
-              : text.slice(0, 150))
-          const hint = data.hint ? ` ${data.hint}` : ''
-          setErrorDetail((msg || `Request failed (${callbackRes.status})`) + hint)
-          if (!cancelled) {
-            setStep('error')
-            setStatus('error')
-          }
-          return
-        }
-        const { callbackToken } = (await callbackRes.json()) as { callbackToken?: string }
-        if (!callbackToken) {
-          setErrorDetail('No callback token returned')
-          if (!cancelled) {
-            setStep('error')
-            setStatus('error')
-          }
-          return
-        }
-        const completeRes = await fetch('/api/auth/oidc/complete-login', {
+
+        // Complete login with .NET backend — validates callback token, creates portal JWT
+        const { token } = await apiFetch('/auth/oidc/complete-login', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ stateCode: getState(), callbackToken }),
-          credentials: 'include'
+          body: { stateCode: getState(), callbackToken },
+          schema: OidcCompleteLoginResponseSchema
         })
         if (cancelled) return
-        if (!completeRes.ok) {
-          const text = await completeRes.text()
-          let data: { error?: string; hint?: string } = {}
-          try {
-            data = JSON.parse(text) as { error?: string; hint?: string }
-          } catch {
-            // not JSON
-          }
-          const isHtml =
-            text.trimStart().startsWith('<!') ||
-            (completeRes.headers.get('content-type') ?? '').toLowerCase().includes('text/html')
-          const msg =
-            data.error ??
-            (isHtml
-              ? `Server returned an error page (${completeRes.status}). Check that the API is running and reachable.`
-              : text.slice(0, 150))
-          const hint = data.hint ? ` ${data.hint}` : ''
-          setErrorDetail((msg || `Complete login failed (${completeRes.status})`) + hint)
-          if (!cancelled) {
-            setStep('error')
-            setStatus('error')
-          }
-          return
-        }
-        const data = (await completeRes.json()) as { token?: string }
-        if (data.token) {
-          // Persist to sessionStorage and notify auth context (setAuthToken ensures storage even if login context is stale)
-          setAuthToken(data.token)
-          login(data.token)
-          // Ensure token is stored and listeners have run before navigating (avoids 401 on refresh when dashboard loads)
-          await new Promise((resolve) => setTimeout(resolve, 0))
-        }
+
+        // Persist to sessionStorage and notify auth context
+        setAuthToken(token)
+        login(token)
+        // Ensure token is stored and listeners have run before navigating
+        await new Promise((resolve) => setTimeout(resolve, 0))
         router.replace('/dashboard')
-      } catch (e) {
-        const errMsg = e instanceof Error ? e.message : typeof e === 'string' ? e : 'Unknown error'
-        setErrorDetail(errMsg || 'Something went wrong')
+      } catch {
         if (!cancelled) {
-          setStep('error')
+          setErrorDetail(t('callbackErrorGeneric'))
           setStatus('error')
         }
       }
@@ -159,38 +99,35 @@ export default function CallbackPage() {
     return () => {
       cancelled = true
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- t (getTranslations) is a static lookup, not a reactive dependency
   }, [login, router])
 
   useEffect(() => {
     if (status === 'error') {
       // Give user a moment to read the error before redirecting to login
-      const t = setTimeout(() => router.replace('/login'), 5000)
-      return () => clearTimeout(t)
+      const timeout = setTimeout(() => router.replace('/login'), 5000)
+      return () => clearTimeout(timeout)
     }
     return undefined
   }, [status, router])
 
-  const stepMessage: Record<CallbackStep, string> = {
-    loading: 'Loading…',
-    have_code_state: 'Code and state found, checking PKCE…',
-    have_pkce: 'PKCE found, sending code to backend…',
-    exchanging: 'Exchanging code with sign-in provider…',
-    error: errorDetail ?? 'Something went wrong.'
-  }
-
   return (
     <div className="usa-section">
-      <div className="grid-container maxw-tablet">
-        <p className="font-sans-md">
-          {status === 'error' ? (
-            <>
-              <strong>Sign-in issue:</strong> {errorDetail}
-            </>
-          ) : (
-            // eslint-disable-next-line security/detect-object-injection -- step is CallbackStep union
-            <>Signing you in… ({stepMessage[step]})</>
-          )}
-        </p>
+      <div
+        className="grid-container maxw-tablet"
+        aria-live="polite"
+        role="status"
+      >
+        {status === 'error' ? (
+          <Alert
+            variant="error"
+            heading={t('callbackSignInIssue')}
+          >
+            {errorDetail}
+          </Alert>
+        ) : (
+          <p className="font-sans-md">{t('callbackSigningIn')}</p>
+        )}
       </div>
     </div>
   )

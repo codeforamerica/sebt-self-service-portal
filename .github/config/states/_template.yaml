@@ -28,7 +28,7 @@ infrastructure:
 versions:
   node: "24"            # Node.js (Docker: node:24, Native: 24.x)
   pnpm: "10"            # pnpm (Docker: pnpm@10, Native: 10.x)
-  dotnet: "10.0"        # .NET SDK (Docker: sdk:10.0, Native: 10.0.x)
+  dotnet: "10.0.200"    # .NET SDK (Docker: sdk:10.0.200, Native: 10.0.200)
 
 # Build configuration
 build:
