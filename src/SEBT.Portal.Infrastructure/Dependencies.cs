@@ -16,7 +16,7 @@ namespace SEBT.Portal.Infrastructure;
 
 public static class Dependencies
 {
-    public static IServiceCollection AddPortalInfrastructureServices(this IServiceCollection services)
+    public static IServiceCollection AddPortalInfrastructureServices(this IServiceCollection services, IConfiguration configuration)
     {
         // Otp Services
         services.AddTransient<IOtpSenderService, EmailOtpSenderService>();
@@ -39,17 +39,25 @@ public static class Dependencies
         // Expose SocureSettings directly for use case injection (avoids IOptions dependency in UseCases layer)
         services.AddSingleton(sp => sp.GetRequiredService<IOptions<SocureSettings>>().Value);
 
-        // Socure client — stub or real based on SocureSettings.UseStub
-        services.AddTransient<StubSocureClient>();
-        services.AddTransient<HttpSocureClient>();
-        services.AddTransient<ISocureClient>(sp =>
+        // Socure client — disabled, stub, or real based on configuration
+        var socureEnabled = configuration.GetValue<bool>("Socure:Enabled");
+        if (socureEnabled)
         {
-            var settings = sp.GetRequiredService<IOptions<SocureSettings>>().Value;
-            if (settings.UseStub)
-                return sp.GetRequiredService<StubSocureClient>();
+            services.AddTransient<StubSocureClient>();
+            services.AddTransient<HttpSocureClient>();
+            services.AddTransient<ISocureClient>(sp =>
+            {
+                var settings = sp.GetRequiredService<IOptions<SocureSettings>>().Value;
+                if (settings.UseStub)
+                    return sp.GetRequiredService<StubSocureClient>();
 
-            return sp.GetRequiredService<HttpSocureClient>();
-        });
+                return sp.GetRequiredService<HttpSocureClient>();
+            });
+        }
+        else
+        {
+            services.AddTransient<ISocureClient, DisabledSocureClient>();
+        }
 
         return services;
     }
