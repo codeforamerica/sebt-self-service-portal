@@ -67,6 +67,7 @@
     "msw": "^2.12.13",
     "pa11y-ci": "^4.1.0",
     "prettier": "^3.8.1",
+    "puppeteer": "24.39.1",
     "prettier-plugin-organize-imports": "^4.3.0",
     "sass": "^1.98.0",
     "sass-embedded": "^1.98.0",
