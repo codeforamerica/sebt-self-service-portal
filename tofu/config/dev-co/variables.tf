@@ -50,5 +50,5 @@ variable "vpc_cidr" {
 variable "oidc_discovery_endpoint" {
   type        = string
   description = "MyColorado OIDC discovery endpoint URL."
-  default     = "https://auth.pingone.com/bf29dbf3-8912-4685-a28f-bb1637f925eb/as/.well-known/openid-configuration"
+  default     = "https://auth.pingone.com/e8e64475-39e1-43de-964b-3bc2e835a2f5/as/.well-known/openid-configuration"
 }
