@@ -138,18 +138,65 @@ public class HouseholdRepositoryTests
     }
 
     [Fact]
-    public async Task GetHouseholdByEmailAsync_WhenPiiVisibilityExcludesEmail_ReturnsNullEmail()
+    public async Task GetHouseholdByEmailAsync_WhenPiiVisibilityExcludesEmail_ReturnsMaskedEmail()
     {
         _summerEbtCaseService
             .GetHouseholdByGuardianEmailAsync(Arg.Any<string>(), Arg.Any<PluginPiiVisibility>(), Arg.Any<PluginIdentityAssuranceLevel>(), Arg.Any<CancellationToken>())
-            .Returns(new PluginHouseholdData { Email = "u@e.com", Phone = "555", Applications = new List<PluginApplication>() });
+            .Returns(new PluginHouseholdData { Email = "user@example.com", Phone = "303-555-0100", Applications = new List<PluginApplication>() });
 
         var noEmailPii = new PiiVisibility(IncludeAddress: true, IncludeEmail: false, IncludePhone: true);
-        var result = await _repository.GetHouseholdByEmailAsync("u@e.com", noEmailPii, UserIalLevel.IAL1plus);
+        var result = await _repository.GetHouseholdByEmailAsync("user@example.com", noEmailPii, UserIalLevel.IAL1plus);
 
         Assert.NotNull(result);
-        Assert.Null(result.Email);
-        Assert.Equal("555", result.Phone);
+        Assert.Equal("u***@example.com", result.Email);
+        Assert.Equal("303-555-0100", result.Phone);
+    }
+
+    [Fact]
+    public async Task GetHouseholdByEmailAsync_WhenPiiExcludesPhone_ReturnsMaskedPhone()
+    {
+        _summerEbtCaseService
+            .GetHouseholdByGuardianEmailAsync(Arg.Any<string>(), Arg.Any<PluginPiiVisibility>(), Arg.Any<PluginIdentityAssuranceLevel>(), Arg.Any<CancellationToken>())
+            .Returns(new PluginHouseholdData { Email = "u@e.com", Phone = "303-555-0100", Applications = new List<PluginApplication>() });
+
+        var noPhonePii = new PiiVisibility(IncludeAddress: true, IncludeEmail: true, IncludePhone: false);
+        var result = await _repository.GetHouseholdByEmailAsync("u@e.com", noPhonePii, UserIalLevel.IAL1plus);
+
+        Assert.NotNull(result);
+        Assert.Equal("u@e.com", result.Email);
+        Assert.Equal("***-***-0100", result.Phone);
+    }
+
+    [Fact]
+    public async Task GetHouseholdByEmailAsync_WhenPiiExcludesAddress_ReturnsMaskedAddress()
+    {
+        _summerEbtCaseService
+            .GetHouseholdByGuardianEmailAsync(Arg.Any<string>(), Arg.Any<PluginPiiVisibility>(), Arg.Any<PluginIdentityAssuranceLevel>(), Arg.Any<CancellationToken>())
+            .Returns(new PluginHouseholdData
+            {
+                Email = "u@e.com",
+                Phone = "555",
+                AddressOnFile = new StatesPlugins.Interfaces.Models.Household.Address
+                {
+                    StreetAddress1 = "123 Main St",
+                    StreetAddress2 = "Apt 4B",
+                    City = "Denver",
+                    State = "CO",
+                    PostalCode = "80202"
+                },
+                Applications = new List<PluginApplication>()
+            });
+
+        var noAddressPii = new PiiVisibility(IncludeAddress: false, IncludeEmail: true, IncludePhone: true);
+        var result = await _repository.GetHouseholdByEmailAsync("u@e.com", noAddressPii, UserIalLevel.IAL1plus);
+
+        Assert.NotNull(result);
+        Assert.NotNull(result.AddressOnFile);
+        Assert.Equal("****", result.AddressOnFile.StreetAddress1);
+        Assert.Null(result.AddressOnFile.StreetAddress2);
+        Assert.Equal("Denver", result.AddressOnFile.City);
+        Assert.Equal("CO", result.AddressOnFile.State);
+        Assert.Equal("80202", result.AddressOnFile.PostalCode);
     }
 
     [Fact]
