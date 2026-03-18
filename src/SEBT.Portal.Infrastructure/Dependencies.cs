@@ -1,7 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using SEBT.Portal.Core.AppSettings;
 using SEBT.Portal.Core.Repositories;
@@ -37,6 +36,21 @@ public static class Dependencies
         services.AddTransient<IHouseholdIdentifierResolver, HouseholdIdentifierResolver>();
         services.AddSingleton<IIdentifierHasher, IdentifierHasher>();
 
+        // Expose SocureSettings directly for use case injection (avoids IOptions dependency in UseCases layer)
+        services.AddSingleton(sp => sp.GetRequiredService<IOptions<SocureSettings>>().Value);
+
+        // Socure client — stub or real based on SocureSettings.UseStub
+        services.AddTransient<StubSocureClient>();
+        services.AddTransient<HttpSocureClient>();
+        services.AddTransient<ISocureClient>(sp =>
+        {
+            var settings = sp.GetRequiredService<IOptions<SocureSettings>>().Value;
+            if (settings.UseStub)
+                return sp.GetRequiredService<StubSocureClient>();
+
+            return sp.GetRequiredService<HttpSocureClient>();
+        });
+
         return services;
     }
 
@@ -46,6 +60,7 @@ public static class Dependencies
     {
         services.AddTransient<IOtpRepository, InMemoryOtpRepository>();
         services.AddTransient<IUserRepository, DatabaseUserRepository>();
+        services.AddTransient<IDocVerificationChallengeRepository, DatabaseDocVerificationChallengeRepository>();
 
         // For deterministic time in seeding/mock data
         services.AddSingleton(TimeProvider.System);
@@ -132,16 +147,12 @@ public static class Dependencies
                 postConfig.PostConfigure(null, options);
             });
 
-        services.AddOptions<AppConfigFeatureFlagSettings>()
-            .Bind(configuration.GetSection(AppConfigFeatureFlagSettings.SectionName))
-            .PostConfigure<IConfiguration, ILogger<AppConfigFeatureFlagOptionsConfiguration>>((options, config, logger) =>
-            {
-                var postConfig = new AppConfigFeatureFlagOptionsConfiguration(config, logger);
-                postConfig.PostConfigure(null, options);
-            });
-
         services.AddOptions<SeedingSettings>()
             .BindConfiguration(SeedingSettings.SectionName);
+
+        services.AddSingleton<IValidateOptions<SocureSettings>, SocureSettingsValidator>();
+        services.AddOptionsWithValidateOnStart<SocureSettings>()
+            .BindConfiguration(SocureSettings.SectionName);
 
         return services;
     }

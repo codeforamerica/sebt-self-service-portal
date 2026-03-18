@@ -46,4 +46,12 @@ public interface IUserRepository
     /// <param name="cancellationToken">A token to monitor for cancellation requests.</param>
     /// <returns>The user if found; otherwise, <c>null</c>.</returns>
     Task<User?> GetUserBySessionIdAsync(string sessionId, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Retrieves a user by their database primary key.
+    /// </summary>
+    /// <param name="id">The user's ID.</param>
+    /// <param name="cancellationToken">A token to monitor for cancellation requests.</param>
+    /// <returns>The user if found; otherwise, <c>null</c>.</returns>
+    Task<User?> GetUserByIdAsync(int id, CancellationToken cancellationToken = default);
 }

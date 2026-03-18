@@ -1,3 +1,5 @@
+import { Suspense } from 'react'
+
 import { DocVerifyPage } from '@/features/auth/components/doc-verify'
 import { getStateLinks } from '@/lib/links'
 import { getState } from '@/lib/state'
@@ -16,9 +18,11 @@ export default function DocVerifyRoute() {
   const links = getStateLinks(state)
 
   return (
-    <DocVerifyPage
-      contactLink={links.external.contactUsAssistance}
-      sdkKey={sdkKey}
-    />
+    <Suspense>
+      <DocVerifyPage
+        contactLink={links.external.contactUsAssistance}
+        sdkKey={sdkKey}
+      />
+    </Suspense>
   )
 }
