@@ -63,7 +63,7 @@ module "state_secrets" {
 
   project     = "${var.project}-${var.state}"
   environment = var.environment
-  service     = "api"
+  service     = "state-secrets"
 
   secrets = {
     "cbms" = {
