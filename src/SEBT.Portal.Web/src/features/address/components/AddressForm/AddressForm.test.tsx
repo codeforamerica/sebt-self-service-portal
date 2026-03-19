@@ -4,6 +4,7 @@ import userEvent from '@testing-library/user-event'
 import { http, HttpResponse } from 'msw'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
+import type { Address } from '@/features/household/api'
 import { server } from '@/mocks/server'
 
 import { AddressFlowProvider } from '../../context'
@@ -33,7 +34,7 @@ function createTestQueryClient() {
   })
 }
 
-function renderForm() {
+function renderForm(initialAddress: Address | null = null) {
   const queryClient = createTestQueryClient()
   const user = userEvent.setup()
   return {
@@ -41,7 +42,7 @@ function renderForm() {
     ...render(
       <QueryClientProvider client={queryClient}>
         <AddressFlowProvider>
-          <AddressForm />
+          <AddressForm initialAddress={initialAddress} />
         </AddressFlowProvider>
       </QueryClientProvider>
     )
@@ -133,6 +134,70 @@ describe('AddressForm', () => {
     renderForm()
 
     expect(getStateSelect()).toHaveValue('Colorado')
+  })
+
+  // --- Pre-population from addressOnFile ---
+
+  it('pre-populates all fields from initialAddress', () => {
+    const address: Address = {
+      streetAddress1: '456 K St NW',
+      streetAddress2: 'Suite 200',
+      city: 'Arlington',
+      state: 'Virginia',
+      postalCode: '22201'
+    }
+    renderForm(address)
+
+    expect(getStreetInput()).toHaveValue('456 K St NW')
+    expect(getLine2Input()).toHaveValue('Suite 200')
+    expect(getCityInput()).toHaveValue('Arlington')
+    expect(getStateSelect()).toHaveValue('Virginia')
+    expect(getPostalInput()).toHaveValue('22201')
+  })
+
+  it('falls back to state defaults when initialAddress is null', () => {
+    mockState = 'dc'
+    renderForm(null)
+
+    expect(getStreetInput()).toHaveValue('')
+    expect(getCityInput()).toHaveValue('Washington')
+    expect(getStateSelect()).toHaveValue('District of Columbia')
+    expect(getPostalInput()).toHaveValue('')
+  })
+
+  it('falls back to state default for state field when initialAddress.state does not match dropdown', () => {
+    mockState = 'dc'
+    const address: Address = {
+      streetAddress1: '123 Main St NW',
+      city: 'Washington',
+      state: 'DC',
+      postalCode: '20001'
+    }
+    renderForm(address)
+
+    expect(getStreetInput()).toHaveValue('123 Main St NW')
+    expect(getCityInput()).toHaveValue('Washington')
+    // "DC" doesn't match any dropdown option → falls back to state default
+    expect(getStateSelect()).toHaveValue('District of Columbia')
+    expect(getPostalInput()).toHaveValue('20001')
+  })
+
+  it('uses state defaults for individual null fields in initialAddress', () => {
+    mockState = 'dc'
+    const address: Address = {
+      streetAddress1: '789 H St NE',
+      streetAddress2: null,
+      city: null,
+      state: null,
+      postalCode: '20002'
+    }
+    renderForm(address)
+
+    expect(getStreetInput()).toHaveValue('789 H St NE')
+    expect(getLine2Input()).toHaveValue('')
+    expect(getCityInput()).toHaveValue('Washington')
+    expect(getStateSelect()).toHaveValue('District of Columbia')
+    expect(getPostalInput()).toHaveValue('20002')
   })
 
   // --- Validation ---

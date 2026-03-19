@@ -7,9 +7,15 @@ import { useTranslation } from 'react-i18next'
 import { Alert, Button, InputField } from '@/components/ui'
 import { getState } from '@/lib/state'
 
+import type { Address } from '@/features/household/api'
+
 import { useUpdateAddress } from '../../api'
 import { useAddressFlow } from '../../context'
 import { US_STATES } from './usStates'
+
+interface AddressFormProps {
+  initialAddress: Address | null
+}
 
 interface FieldErrors {
   streetAddress1?: string
@@ -23,7 +29,13 @@ const STATE_DEFAULTS: Record<string, { city: string; state: string }> = {
   co: { city: '', state: 'Colorado' }
 }
 
-export function AddressForm() {
+/** Returns the state value if it matches a dropdown option, otherwise the default. */
+function resolveStateValue(value: string | null | undefined, fallback: string): string {
+  if (value && (US_STATES as readonly string[]).includes(value)) return value
+  return fallback
+}
+
+export function AddressForm({ initialAddress }: AddressFormProps) {
   const { t } = useTranslation('confirmInfo')
   const { t: tValidation } = useTranslation('validation')
   const { t: tCommon } = useTranslation('common')
@@ -36,11 +48,13 @@ export function AddressForm() {
   // eslint-disable-next-line security/detect-object-injection -- currentState is typed StateCode
   const defaults = STATE_DEFAULTS[currentState] ?? { city: '', state: '' }
 
-  const [streetAddress1, setStreetAddress1] = useState('')
-  const [streetAddress2, setStreetAddress2] = useState('')
-  const [city, setCity] = useState(defaults.city)
-  const [stateValue, setStateValue] = useState(defaults.state)
-  const [postalCode, setPostalCode] = useState('')
+  const [streetAddress1, setStreetAddress1] = useState(initialAddress?.streetAddress1 ?? '')
+  const [streetAddress2, setStreetAddress2] = useState(initialAddress?.streetAddress2 ?? '')
+  const [city, setCity] = useState(initialAddress?.city ?? defaults.city)
+  const [stateValue, setStateValue] = useState(
+    resolveStateValue(initialAddress?.state, defaults.state)
+  )
+  const [postalCode, setPostalCode] = useState(initialAddress?.postalCode ?? '')
 
   const [fieldErrors, setFieldErrors] = useState<FieldErrors>({})
   const [submitError, setSubmitError] = useState<string | null>(null)

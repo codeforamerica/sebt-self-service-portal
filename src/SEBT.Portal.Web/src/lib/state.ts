@@ -20,6 +20,10 @@ export interface StateConfig {
   languageSelectorClass?: string
   /** Extra CSS classes appended to the mobile language submenu */
   languageSubmenuClass?: string
+  /** USWDS background utility class for action buttons */
+  actionButtonBg: string
+  /** USWDS text color utility class for action buttons */
+  actionButtonText: string
 }
 
 /**
@@ -30,14 +34,18 @@ const stateConfigs: Record<StateCode, StateConfig> = {
   dc: {
     name: 'District of Columbia',
     programName: 'DC SUN Bucks',
-    sealAlt: 'Government of the District of Columbia - Muriel Bowser, Mayor'
+    sealAlt: 'Government of the District of Columbia - Muriel Bowser, Mayor',
+    actionButtonBg: 'bg-secondary',
+    actionButtonText: 'text-ink'
   },
   co: {
     name: 'Colorado',
     programName: 'Summer EBT',
     sealAlt: 'Colorado Official State Web Portal',
     languageSelectorClass: 'border-primary radius-md text-primary',
-    languageSubmenuClass: 'bg-primary-dark'
+    languageSubmenuClass: 'bg-primary-dark',
+    actionButtonBg: 'bg-primary',
+    actionButtonText: 'text-white'
   }
 }
 

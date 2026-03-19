@@ -60,7 +60,7 @@ describe('AddressForm integration', () => {
     render(
       <QueryClientProvider client={queryClient}>
         <AddressFlowProvider>
-          <AddressForm />
+          <AddressForm initialAddress={null} />
           <ContextSpy />
         </AddressFlowProvider>
       </QueryClientProvider>

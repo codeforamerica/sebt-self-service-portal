@@ -3,6 +3,8 @@
 import Link from 'next/link'
 import { useTranslation } from 'react-i18next'
 
+import { getState, getStateConfig } from '@/lib/state'
+
 interface ActionButton {
   labelKey: string
   href: string
@@ -19,6 +21,7 @@ const ACTIONS: ActionButton[] = [
 
 export function ActionButtons() {
   const { t } = useTranslation('dashboard')
+  const { actionButtonBg, actionButtonText } = getStateConfig(getState())
 
   return (
     <nav
@@ -34,7 +37,7 @@ export function ActionButtons() {
           >
             <Link
               href={action.href}
-              className="display-inline-flex flex-align-center padding-y-1 padding-x-205 text-no-underline text-ink bg-secondary radius-pill font-sans-md text-semibold"
+              className={`display-inline-flex flex-align-center padding-y-1 padding-x-205 text-no-underline ${actionButtonText} ${actionButtonBg} radius-pill font-sans-md text-semibold`}
             >
               {t(action.labelKey)}
               <svg
