@@ -9,10 +9,7 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { http, HttpResponse } from 'msw'
 import { describe, expect, it, vi } from 'vitest'
-
-import { server } from '@/mocks/server'
 
 import { AddressFlowProvider, useAddressFlow } from '../../context'
 import { AddressForm } from './AddressForm'
@@ -48,12 +45,6 @@ function createTestQueryClient() {
 
 describe('AddressForm integration', () => {
   it('submits address, populates flow context, and navigates to replacement cards', async () => {
-    server.use(
-      http.put('/api/household/address', () => {
-        return new HttpResponse(null, { status: 204 })
-      })
-    )
-
     const queryClient = createTestQueryClient()
     const user = userEvent.setup()
 

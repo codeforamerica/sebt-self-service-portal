@@ -8,6 +8,8 @@ import type { UpdateAddressRequest } from './schema'
 
 const ADDRESS_ENDPOINT = '/household/address'
 
+// TODO: When state connector persistence is wired up, this may return a response
+// body (e.g., canonical address). Update return type and MSW handler to match.
 async function updateAddress(data: UpdateAddressRequest): Promise<void> {
   await apiFetch<void>(ADDRESS_ENDPOINT, {
     method: 'PUT',

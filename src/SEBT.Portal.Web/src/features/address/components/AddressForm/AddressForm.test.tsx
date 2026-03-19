@@ -252,12 +252,6 @@ describe('AddressForm', () => {
   // --- Successful submission ---
 
   it('calls API and navigates on successful submission', async () => {
-    server.use(
-      http.put('/api/household/address', () => {
-        return new HttpResponse(null, { status: 204 })
-      })
-    )
-
     const { user } = renderForm()
 
     await user.type(getStreetInput(), '123 Main St NW')
