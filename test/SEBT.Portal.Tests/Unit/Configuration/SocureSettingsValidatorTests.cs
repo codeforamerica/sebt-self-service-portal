@@ -16,19 +16,50 @@ public class SocureSettingsValidatorTests
 
     private static SocureSettings CreateValidStubSettings() => new()
     {
+        Enabled = true,
         UseStub = true,
         ChallengeExpirationMinutes = 30
     };
 
     private static SocureSettings CreateValidRealSettings() => new()
     {
+        Enabled = true,
         UseStub = false,
         ApiKey = "test-api-key",
         WebhookSecret = "test-webhook-secret",
         ChallengeExpirationMinutes = 30
     };
 
-    // --- UseStub environment guard (F7) ---
+    // --- Enabled flag (short-circuit when Socure is disabled) ---
+
+    [Fact]
+    public void Validate_ShouldSucceed_WhenNotEnabled()
+    {
+        var validator = CreateValidator("Production");
+        var settings = new SocureSettings { Enabled = false };
+
+        var result = validator.Validate(null, settings);
+
+        Assert.True(result.Succeeded);
+    }
+
+    [Fact]
+    public void Validate_ShouldSucceed_WhenNotEnabled_EvenWithInvalidSettings()
+    {
+        var validator = CreateValidator("Production");
+        var settings = new SocureSettings
+        {
+            Enabled = false,
+            UseStub = true, // would normally fail in Production
+            ChallengeExpirationMinutes = 0 // would normally fail range check
+        };
+
+        var result = validator.Validate(null, settings);
+
+        Assert.True(result.Succeeded);
+    }
+
+    // --- UseStub environment guard ---
 
     [Fact]
     public void Validate_ShouldFail_WhenUseStubTrueOutsideDevelopment()
@@ -105,6 +136,7 @@ public class SocureSettingsValidatorTests
         var validator = CreateValidator("Production");
         var settings = new SocureSettings
         {
+            Enabled = true,
             UseStub = false,
             WebhookSecret = "secret",
             ChallengeExpirationMinutes = 30
@@ -122,6 +154,7 @@ public class SocureSettingsValidatorTests
         var validator = CreateValidator("Production");
         var settings = new SocureSettings
         {
+            Enabled = true,
             UseStub = false,
             ApiKey = "key",
             ChallengeExpirationMinutes = 30

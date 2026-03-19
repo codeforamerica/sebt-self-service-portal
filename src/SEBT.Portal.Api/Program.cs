@@ -114,7 +114,7 @@ builder.Services.AddFeatureManagement(builder.Configuration.GetSection("FeatureM
 
 // Adds use cases (i.e., query and command handlers) for portal business logic
 builder.Services.AddUseCases();
-builder.Services.AddPortalInfrastructureServices();
+builder.Services.AddPortalInfrastructureServices(builder.Configuration);
 builder.Services.AddPortalDbContext(builder.Configuration, options => options.ConfigureDevelopmentSeeding());
 builder.Services.AddPortalInfrastructureRepositories(builder.Configuration);
 builder.Services.AddPortalInfrastructureAppSettings(builder.Configuration);
