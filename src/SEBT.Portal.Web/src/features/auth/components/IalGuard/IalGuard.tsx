@@ -1,6 +1,7 @@
 'use client'
 
 import { apiFetch } from '@/api'
+import { env } from '@/env'
 import { OidcConfigResponseSchema } from '@/features/auth/api/oidc/schema'
 import { getAuthToken } from '@/features/auth/context'
 import { hasIal1Plus } from '@/lib/jwt'
@@ -25,14 +26,19 @@ interface IalGuardProps {
 }
 
 /**
- * For CO users, redirects to MyColorado step-up when IAL is below required.
+ * Redirects to OIDC step-up when IAL is below required.
  * DC users are not affected (they use OTP + Socure).
  * After a successful step-up, the portal JWT includes ial `1plus` or `2`, so hasIal1Plus is true and the redirect does not run again.
+ * In development, set NEXT_PUBLIC_DEBUG_REPEAT_OIDC_STEP_UP=true to ignore that IAL check and repeat step-up on each gated load.
  */
 export function IalGuard({ children, requiredIal = STEP_UP_REQUIRED_IAL }: IalGuardProps) {
   const isCo = getState() === 'co'
   const token = getAuthToken()
-  const passesWithoutStepUp = !isCo || !token || (requiredIal === 'IAL1plus' && hasIal1Plus(token))
+  const debugRepeatOidcStepUp =
+    process.env.NODE_ENV === 'development' && env.NEXT_PUBLIC_DEBUG_REPEAT_OIDC_STEP_UP === 'true'
+  const ialAlreadySufficient =
+    requiredIal === 'IAL1plus' && hasIal1Plus(token) && !debugRepeatOidcStepUp
+  const passesWithoutStepUp = !isCo || !token || ialAlreadySufficient
 
   const [stepUpError, setStepUpError] = useState(false)
 

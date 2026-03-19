@@ -29,12 +29,12 @@ vi.mock('next/navigation', () => ({
   })
 }))
 
-// Mock auth context
-const mockLogin = vi.fn()
-vi.mock('@/features/auth', async (importOriginal) => {
-  const actual = (await importOriginal()) as Record<string, unknown>
+// Mock @/features/auth without loading the barrel (barrel pulls IalGuard → @/env and breaks Vitest).
+const { mockLogin } = vi.hoisted(() => ({ mockLogin: vi.fn() }))
+vi.mock('@/features/auth', async () => {
+  const api = await vi.importActual<typeof import('@/features/auth/api')>('@/features/auth/api')
   return {
-    ...actual,
+    ...api,
     useAuth: () => ({
       login: mockLogin,
       isAuthenticated: false,

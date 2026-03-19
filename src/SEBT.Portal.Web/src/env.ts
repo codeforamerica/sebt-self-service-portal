@@ -43,7 +43,12 @@ export const env = createEnv({
   client: {
     NEXT_PUBLIC_STATE: z.enum(['dc', 'co']),
     NEXT_PUBLIC_GA_ID: z.string().startsWith('G-').optional(),
-    NEXT_PUBLIC_SOCURE_SDK_KEY: z.string().min(1).optional()
+    NEXT_PUBLIC_SOCURE_SDK_KEY: z.string().min(1).optional(),
+    /**
+     * Development only: when `true`, IalGuard still sends users to OIDC step-up even if the portal JWT already has IAL1+.
+     * No effect unless NODE_ENV is `development`.
+     */
+    NEXT_PUBLIC_DEBUG_REPEAT_OIDC_STEP_UP: z.enum(['true', 'false']).optional()
   },
 
   /**
@@ -66,7 +71,8 @@ export const env = createEnv({
     OIDC_STEP_UP_ACR_VALUES: process.env.OIDC_STEP_UP_ACR_VALUES,
     NEXT_PUBLIC_STATE: process.env.NEXT_PUBLIC_STATE,
     NEXT_PUBLIC_GA_ID: process.env.NEXT_PUBLIC_GA_ID,
-    NEXT_PUBLIC_SOCURE_SDK_KEY: process.env.NEXT_PUBLIC_SOCURE_SDK_KEY
+    NEXT_PUBLIC_SOCURE_SDK_KEY: process.env.NEXT_PUBLIC_SOCURE_SDK_KEY,
+    NEXT_PUBLIC_DEBUG_REPEAT_OIDC_STEP_UP: process.env.NEXT_PUBLIC_DEBUG_REPEAT_OIDC_STEP_UP
   },
 
   /**
