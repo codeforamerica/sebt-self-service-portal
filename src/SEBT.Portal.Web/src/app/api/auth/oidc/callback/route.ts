@@ -33,24 +33,6 @@ export async function POST(request: NextRequest) {
   }
   const { code, code_verifier, redirectUri, stateCode, isStepUp = false } = bodyResult.data
 
-  const logStepUp = (
-    message: string,
-    extra?: Record<string, string | number | boolean>,
-    level: 'info' | 'error' = 'info'
-  ) => {
-    if (!isStepUp) {
-      return
-    }
-    const payload = { flow: 'oidc_step_up', stateCode, ...extra }
-    const prefix = `[OIDC] ${message}`
-    const detail = JSON.stringify(payload)
-    if (level === 'error') {
-      console.error(prefix, detail)
-    } else {
-      console.info(prefix, detail)
-    }
-  }
-
   const currentState = env.NEXT_PUBLIC_STATE
   if (stateCode !== currentState) {
     return NextResponse.json({ error: 'stateCode must match current state.' }, { status: 400 })
@@ -121,18 +103,7 @@ export async function POST(request: NextRequest) {
     if (!tokenRes.ok) {
       const errBody = tokenJson as { error_description?: string; error?: string }
       const msg = errBody?.error_description ?? errBody?.error ?? 'Token exchange failed.'
-      if (isStepUp) {
-        logStepUp(
-          'token_exchange_failed',
-          {
-            idpError: String(errBody?.error ?? 'unknown'),
-            tokenStatus: tokenRes.status
-          },
-          'error'
-        )
-      } else {
-        console.error('[OIDC] Token exchange failed:', msg)
-      }
+      console.error('[OIDC] Token exchange failed:', msg)
       return NextResponse.json({ error: msg }, { status: 400 })
     }
     const parsed = OidcTokenResponseSchema.safeParse(tokenJson)
@@ -160,37 +131,21 @@ export async function POST(request: NextRequest) {
     payload = result.payload as Record<string, unknown>
   } catch (err) {
     if (err instanceof joseErrors.JWTExpired) {
-      if (isStepUp) {
-        logStepUp('id_token_validation_failed', { reason: 'expired' }, 'error')
-      } else {
-        console.error('[OIDC] id_token expired')
-      }
+      console.error('[OIDC] id_token expired')
       return NextResponse.json({ error: 'Id token has expired.' }, { status: 400 })
     }
     if (err instanceof joseErrors.JWSSignatureVerificationFailed) {
-      if (isStepUp) {
-        logStepUp('id_token_validation_failed', { reason: 'signature' }, 'error')
-      } else {
-        console.error('[OIDC] id_token signature verification failed')
-      }
+      console.error('[OIDC] id_token signature verification failed')
       return NextResponse.json(
         { error: 'Id token signature verification failed.' },
         { status: 400 }
       )
     }
     if (err instanceof joseErrors.JWTClaimValidationFailed) {
-      if (isStepUp) {
-        logStepUp('id_token_validation_failed', { reason: 'claims' }, 'error')
-      } else {
-        console.error('[OIDC] id_token claim validation failed:', (err as Error).message)
-      }
+      console.error('[OIDC] id_token claim validation failed:', (err as Error).message)
       return NextResponse.json({ error: 'Id token validation failed.' }, { status: 400 })
     }
-    if (isStepUp) {
-      logStepUp('id_token_validation_failed', { reason: 'unknown' }, 'error')
-    } else {
-      console.error('[OIDC] id_token verification failed:', err)
-    }
+    console.error('[OIDC] id_token verification failed:', err)
     return NextResponse.json({ error: 'Id token validation failed.' }, { status: 400 })
   }
 
@@ -231,7 +186,7 @@ export async function POST(request: NextRequest) {
   }
 
   if (typeof claims.email !== 'string' || !claims.email) {
-    logStepUp('callback_token_skipped', { reason: 'missing_email_claim' }, 'error')
+    console.error('[OIDC] Callback token skipped: missing email claim')
     return NextResponse.json(
       {
         error: 'Callback token must contain an email claim.',
@@ -248,11 +203,6 @@ export async function POST(request: NextRequest) {
     .setIssuedAt()
     .setExpirationTime(`${CALLBACK_TOKEN_EXPIRY_SEC}s`)
     .sign(secret)
-
-  logStepUp('callback_exchange_ok', {
-    outcome: 'id_token_verified_callback_token_issued',
-    hasSub: typeof claims.sub === 'string' && claims.sub.length > 0
-  })
 
   return NextResponse.json({ callbackToken })
 }

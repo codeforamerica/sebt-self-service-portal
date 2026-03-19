@@ -23,9 +23,17 @@ export const OidcCallbackTokenResponseSchema = z.object({
 
 export type OidcCallbackTokenResponse = z.infer<typeof OidcCallbackTokenResponseSchema>
 
+/** Step-up echoes `returnUrl` from PKCE: same-origin path or absolute URL; not always `z.string().url()`. */
+const returnUrlAfterOidcSchema = z
+  .string()
+  .optional()
+  .refine((v) => v == null || v === '' || v.startsWith('/') || /^https?:\/\//i.test(v), {
+    message: 'returnUrl must be a path or http(s) URL'
+  })
+
 export const OidcCompleteLoginResponseSchema = z.object({
   token: z.string(),
-  returnUrl: z.string().url().optional()
+  returnUrl: returnUrlAfterOidcSchema
 })
 
 export type OidcCompleteLoginResponse = z.infer<typeof OidcCompleteLoginResponseSchema>

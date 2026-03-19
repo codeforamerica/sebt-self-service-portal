@@ -36,16 +36,6 @@ export default function CallbackPage() {
     if (errorParam) {
       const storedPkce = getPkceFromStorage()
       const stepUpFromIdpError = storedPkce?.isStepUp === true
-      if (stepUpFromIdpError && process.env.NODE_ENV === 'development') {
-        console.info(
-          '[OIDC] step-up IdP redirect with error',
-          JSON.stringify({
-            flow: 'oidc_step_up',
-            error: errorParam,
-            hasDescription: Boolean(errorDescription)
-          })
-        )
-      }
       const idpDetail = errorDescription?.trim() ?? ''
       const portalLine = t(
         stepUpFromIdpError ? 'callbackErrorStepUpFailed' : 'callbackErrorIdpRedirect',
@@ -134,14 +124,8 @@ export default function CallbackPage() {
         await new Promise((resolve) => setTimeout(resolve, 0))
         const destination = isStepUp && resolvedReturnUrl ? resolvedReturnUrl : '/dashboard'
         router.replace(destination)
-        if (isStepUp && process.env.NODE_ENV === 'development') {
-          console.info('[OIDC] step-up callback flow finished', { returnUrl: destination })
-        }
       } catch {
         if (!cancelled) {
-          if (isStepUp && process.env.NODE_ENV === 'development') {
-            console.warn('[OIDC] step-up callback flow failed before redirect')
-          }
           setErrorDetail(t('callbackErrorGeneric'))
           setStatus('error')
         }
