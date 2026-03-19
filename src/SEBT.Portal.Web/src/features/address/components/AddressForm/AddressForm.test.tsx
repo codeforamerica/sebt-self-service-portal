@@ -71,6 +71,15 @@ describe('AddressForm', () => {
     mockPush.mockClear()
     mockBack.mockClear()
     mockState = 'dc'
+
+    // Portal target for site-level alerts
+    let siteAlerts = document.getElementById('site-alerts')
+    if (!siteAlerts) {
+      siteAlerts = document.createElement('div')
+      siteAlerts.id = 'site-alerts'
+      document.body.appendChild(siteAlerts)
+    }
+    siteAlerts.innerHTML = ''
   })
 
   // --- Field rendering ---
@@ -221,6 +230,59 @@ describe('AddressForm', () => {
 
     const errorMessages = screen.getAllByRole('alert')
     expect(errorMessages.length).toBeGreaterThanOrEqual(1)
+  })
+
+  it('shows inline error when street address exceeds 30 characters', async () => {
+    const { user } = renderForm()
+
+    await user.type(getStreetInput(), '1234567890 Northeast Pennsylvania Ave NW')
+    await user.type(getPostalInput(), '20001')
+
+    const submitButton = screen.getByRole('button', { name: /continue/i })
+    await user.click(submitButton)
+
+    const inlineError = document.querySelector('.usa-error-message')
+    expect(inlineError).toBeInTheDocument()
+    expect(inlineError).toHaveTextContent(/shorter than 30 characters/i)
+  })
+
+  it('shows page-level error alert with contact link when street address exceeds 30 characters', async () => {
+    const { user } = renderForm()
+
+    await user.type(getStreetInput(), '1234567890 Northeast Pennsylvania Ave NW')
+    await user.type(getPostalInput(), '20001')
+
+    const submitButton = screen.getByRole('button', { name: /continue/i })
+    await user.click(submitButton)
+
+    const siteAlerts = document.getElementById('site-alerts')!
+    expect(siteAlerts.textContent).toContain('issue with the address')
+
+    const contactLink = siteAlerts.querySelector('a.usa-link')
+    expect(contactLink).toBeInTheDocument()
+    expect(contactLink).toHaveTextContent(/contact us/i)
+    expect(contactLink).toHaveAttribute('href', expect.stringContaining('contact'))
+  })
+
+  it('allows street address of exactly 30 characters', async () => {
+    server.use(
+      http.put('/api/household/address', () => {
+        return new HttpResponse(null, { status: 204 })
+      })
+    )
+
+    const { user } = renderForm()
+
+    // Exactly 30 characters
+    await user.type(getStreetInput(), '123456789012345678901234567890')
+    await user.type(getPostalInput(), '20001')
+
+    const submitButton = screen.getByRole('button', { name: /continue/i })
+    await user.click(submitButton)
+
+    await waitFor(() => {
+      expect(mockPush).toHaveBeenCalledWith('/profile/address/replacement-cards')
+    })
   })
 
   it('shows ZIP format error for invalid postal code', async () => {

@@ -102,6 +102,34 @@ describe('CardSelection', () => {
     expect(screen.getByText(/select at least one/i)).toBeInTheDocument()
   })
 
+  it('focuses error message on validation failure', async () => {
+    const { user } = renderCardSelection()
+
+    await waitFor(() => {
+      expect(screen.getByText(/Sophia Martinez/)).toBeInTheDocument()
+    })
+
+    const submitButton = screen.getByRole('button', { name: /continue/i })
+    await user.click(submitButton)
+
+    const errorMessage = screen.getByText(/select at least one/i)
+    expect(errorMessage.closest('[tabindex="-1"]')).toHaveFocus()
+  })
+
+  it('links error message to fieldset via aria-describedby', async () => {
+    const { user } = renderCardSelection()
+
+    await waitFor(() => {
+      expect(screen.getByText(/Sophia Martinez/)).toBeInTheDocument()
+    })
+
+    const submitButton = screen.getByRole('button', { name: /continue/i })
+    await user.click(submitButton)
+
+    const fieldset = screen.getByRole('group', { name: /select which cards/i })
+    expect(fieldset).toHaveAttribute('aria-describedby', expect.stringContaining('error'))
+  })
+
   // --- Successful submission ---
 
   it('redirects to dashboard with both params when cards selected', async () => {
@@ -149,6 +177,55 @@ describe('CardSelection', () => {
     await user.click(backButton)
 
     expect(mockBack).toHaveBeenCalled()
+  })
+
+  // --- Key uniqueness ---
+
+  it('renders distinct checkboxes when multiple applications have null applicationNumber', async () => {
+    server.use(
+      http.get('/api/household/data', () => {
+        return HttpResponse.json({
+          email: 'test@example.com',
+          phone: '(303) 555-0100',
+          benefitIssuanceType: 1,
+          applications: [
+            {
+              applicationNumber: null,
+              applicationStatus: 'Approved',
+              children: [{ firstName: 'Alice', lastName: 'Smith' }],
+              childrenOnApplication: 1
+            },
+            {
+              applicationNumber: null,
+              applicationStatus: 'Approved',
+              children: [{ firstName: 'Bob', lastName: 'Smith' }],
+              childrenOnApplication: 1
+            }
+          ],
+          addressOnFile: {
+            streetAddress1: '123 Main St',
+            city: 'Washington',
+            state: 'DC',
+            postalCode: '20001'
+          }
+        })
+      })
+    )
+
+    const { user } = renderCardSelection()
+
+    await waitFor(() => {
+      expect(screen.getByText(/Alice Smith/)).toBeInTheDocument()
+      expect(screen.getByText(/Bob Smith/)).toBeInTheDocument()
+    })
+
+    const checkboxes = screen.getAllByRole('checkbox')
+    expect(checkboxes).toHaveLength(2)
+
+    // Select only the first child — second should remain unchecked
+    await user.click(checkboxes[0]!)
+    expect(checkboxes[0]).toBeChecked()
+    expect(checkboxes[1]).not.toBeChecked()
   })
 
   // --- Accessibility ---

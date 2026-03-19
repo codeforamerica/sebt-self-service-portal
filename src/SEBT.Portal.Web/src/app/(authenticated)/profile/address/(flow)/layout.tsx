@@ -29,7 +29,14 @@ function FlowGuard({ children }: { children: ReactNode }) {
   }, [needsRedirect, router])
 
   if (needsRedirect) {
-    return <div aria-busy="true" />
+    return (
+      <div
+        aria-busy="true"
+        role="status"
+      >
+        <span className="usa-sr-only">Loading…</span>
+      </div>
+    )
   }
 
   return <>{children}</>

@@ -1,7 +1,7 @@
 'use client'
 
 import { useRouter } from 'next/navigation'
-import { useState, type FormEvent } from 'react'
+import { useEffect, useRef, useState, type FormEvent } from 'react'
 import { useTranslation } from 'react-i18next'
 
 import { Alert, Button } from '@/components/ui'
@@ -16,9 +16,9 @@ interface ChildWithCard {
 }
 
 function flattenChildren(applications: Application[]): ChildWithCard[] {
-  return applications.flatMap((app) =>
+  return applications.flatMap((app, appIndex) =>
     app.children.map((child, i) => ({
-      key: `${app.applicationNumber ?? 'app'}-${i}`,
+      key: `${app.applicationNumber ?? `app-${appIndex}`}-${i}`,
       child,
       last4DigitsOfCard: app.last4DigitsOfCard
     }))
@@ -34,6 +34,13 @@ export function CardSelection() {
 
   const [selectedKeys, setSelectedKeys] = useState<Set<string>>(new Set())
   const [error, setError] = useState<string | null>(null)
+  const errorRef = useRef<HTMLSpanElement>(null)
+
+  useEffect(() => {
+    if (error) {
+      errorRef.current?.focus()
+    }
+  }, [error])
 
   if (isLoading) {
     return <p>{tCommon('loading', 'Loading...')}</p>
@@ -96,6 +103,7 @@ export function CardSelection() {
       <fieldset
         className="usa-fieldset"
         aria-label={t('cardSelectionLabel', 'Select which cards you want to replace')}
+        aria-describedby={error ? 'card-selection-error' : undefined}
       >
         <legend className="usa-legend">
           {t('cardSelectionLabel', 'Select which cards you want to replace')}
@@ -104,8 +112,11 @@ export function CardSelection() {
 
         {error && (
           <span
+            ref={errorRef}
+            id="card-selection-error"
             className="usa-error-message"
             role="alert"
+            tabIndex={-1}
           >
             {error}
           </span>
@@ -129,9 +140,11 @@ export function CardSelection() {
               className="usa-checkbox__label"
               htmlFor={`card-${key}`}
             >
+              {/* TODO: Use t('childCardLabel', { firstName, lastName }) once key is available in CSV */}
               {child.firstName} {child.lastName}&apos;s card
               {currentState === 'co' && last4DigitsOfCard && (
                 <span className="usa-checkbox__label-description">
+                  {/* TODO: Use t('cardNumberLabel', { last4 }) once key is available in CSV */}
                   Card number: {last4DigitsOfCard} (last 4 digits)
                 </span>
               )}

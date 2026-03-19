@@ -18,7 +18,14 @@ export default function AddressFormPage() {
   const { data, isLoading } = useHouseholdData()
 
   if (isLoading) {
-    return <div aria-busy="true" />
+    return (
+      <div
+        aria-busy="true"
+        role="status"
+      >
+        <span className="usa-sr-only">Loading…</span>
+      </div>
+    )
   }
 
   return (

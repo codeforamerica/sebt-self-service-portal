@@ -82,6 +82,28 @@ describe('ReplacementCardPrompt', () => {
     expect(screen.getByText(/select an option/i)).toBeInTheDocument()
   })
 
+  it('focuses error message on validation failure', async () => {
+    const user = userEvent.setup()
+    render(<ReplacementCardPrompt address={TEST_ADDRESS} />)
+
+    const submitButton = screen.getByRole('button', { name: /continue/i })
+    await user.click(submitButton)
+
+    const errorMessage = screen.getByText(/select an option/i)
+    expect(errorMessage.closest('[tabindex="-1"]')).toHaveFocus()
+  })
+
+  it('links error message to fieldset via aria-describedby', async () => {
+    const user = userEvent.setup()
+    render(<ReplacementCardPrompt address={TEST_ADDRESS} />)
+
+    const submitButton = screen.getByRole('button', { name: /continue/i })
+    await user.click(submitButton)
+
+    const fieldset = screen.getByRole('group', { name: /select one/i })
+    expect(fieldset).toHaveAttribute('aria-describedby', expect.stringContaining('error'))
+  })
+
   // --- Navigation ---
 
   it('navigates to dashboard with addressUpdated param when No is selected', async () => {

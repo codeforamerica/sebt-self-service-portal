@@ -1,7 +1,7 @@
 'use client'
 
 import { useRouter } from 'next/navigation'
-import { useState, type FormEvent } from 'react'
+import { useEffect, useRef, useState, type FormEvent } from 'react'
 import { useTranslation } from 'react-i18next'
 
 import { Alert, Button } from '@/components/ui'
@@ -21,6 +21,13 @@ export function ReplacementCardPrompt({ address }: ReplacementCardPromptProps) {
 
   const [selection, setSelection] = useState<'yes' | 'no' | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const errorRef = useRef<HTMLSpanElement>(null)
+
+  useEffect(() => {
+    if (error) {
+      errorRef.current?.focus()
+    }
+  }, [error])
 
   function handleSubmit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault()
@@ -84,6 +91,7 @@ export function ReplacementCardPrompt({ address }: ReplacementCardPromptProps) {
       <fieldset
         className="usa-fieldset"
         aria-label={t('selectOneLabel', 'Select one')}
+        aria-describedby={error ? 'replacement-choice-error' : undefined}
       >
         <legend className="usa-legend">
           {t('selectOneLabel', 'Select one')}
@@ -92,8 +100,11 @@ export function ReplacementCardPrompt({ address }: ReplacementCardPromptProps) {
 
         {error && (
           <span
+            ref={errorRef}
+            id="replacement-choice-error"
             className="usa-error-message"
             role="alert"
+            tabIndex={-1}
           >
             {error}
           </span>

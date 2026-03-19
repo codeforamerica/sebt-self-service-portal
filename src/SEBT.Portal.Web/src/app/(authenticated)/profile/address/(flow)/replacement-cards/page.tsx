@@ -13,7 +13,14 @@ export default function ReplacementCardsPage() {
 
   // Flow layout guards against missing address and redirects to the form (D4).
   if (!address) {
-    return <div aria-busy="true" />
+    return (
+      <div
+        aria-busy="true"
+        role="status"
+      >
+        <span className="usa-sr-only">Loading…</span>
+      </div>
+    )
   }
 
   return (

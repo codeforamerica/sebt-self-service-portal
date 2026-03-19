@@ -79,5 +79,7 @@ describe('AddressFlowLayout / FlowGuard', () => {
 
     // Should NOT be an empty container — must have some content for UX
     expect(container.querySelector('[aria-busy="true"]')).toBeInTheDocument()
+    // Screen reader users should hear a loading announcement
+    expect(screen.getByText(/loading/i)).toBeInTheDocument()
   })
 })

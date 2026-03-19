@@ -19,7 +19,14 @@ export default function CoLoadedInfoPage() {
   }, [isDC, router])
 
   if (!isDC) {
-    return <div aria-busy="true" />
+    return (
+      <div
+        aria-busy="true"
+        role="status"
+      >
+        <span className="usa-sr-only">Loading…</span>
+      </div>
+    )
   }
 
   return (
