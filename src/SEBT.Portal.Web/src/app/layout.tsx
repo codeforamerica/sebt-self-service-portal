@@ -15,6 +15,11 @@ import { headers } from 'next/headers'
 import './globals.css'
 import './styles.scss'
 
+// CSP nonces are generated per-request in `src/proxy.ts` (via `x-nonce`).
+// Force dynamic rendering so Next can correctly attach the nonce to
+// inline styles/scripts generated during rendering (e.g. `next/font`).
+export const dynamic = 'force-dynamic'
+
 const state = getState()
 const stateName = getStateName(state)
 

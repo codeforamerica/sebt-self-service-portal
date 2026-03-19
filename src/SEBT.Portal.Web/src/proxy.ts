@@ -11,12 +11,16 @@ import { NextRequest, NextResponse } from 'next/server'
  */
 export function proxy(request: NextRequest) {
   const nonce = Buffer.from(crypto.randomUUID()).toString('base64')
-  const isDev = process.env.NODE_ENV === 'development'
+  // Some Next.js runtimes (or local dev setups) may not provide NODE_ENV reliably.
+  // Treat anything that's not explicitly production as "dev-like" so local debugging
+  // doesn't break CSP for inline styles.
+  const isProduction = process.env.NODE_ENV === 'production'
+  const isDevLike = !isProduction
   const proto =
     request.headers.get('x-forwarded-proto') ?? request.nextUrl.protocol.replace(':', '')
   const isHttps = proto === 'https'
   // Only add upgrade-insecure-requests when actually served over HTTPS.
-  const upgradeInsecure = !isDev && isHttps ? 'upgrade-insecure-requests;' : ''
+  const upgradeInsecure = !isDevLike && isHttps ? 'upgrade-insecure-requests;' : ''
 
   // Build CSP header with nonce for script and style sources
   // Development: Allow unsafe-eval for Next.js hot reload, unsafe-inline for styles (no nonce for styles)
@@ -26,11 +30,15 @@ export function proxy(request: NextRequest) {
   // In dev, we skip style nonce to allow HMR style injection.
   const cspHeader = `
     default-src 'self';
-    script-src 'self' 'nonce-${nonce}' 'strict-dynamic' https://www.googletagmanager.com ${isDev ? "'unsafe-eval'" : ''};
-    style-src 'self' ${isDev ? "'unsafe-inline'" : `'nonce-${nonce}'`} https://fonts.googleapis.com;
+    script-src 'self' 'nonce-${nonce}' 'strict-dynamic' https://www.googletagmanager.com ${
+      isDevLike ? "'unsafe-eval'" : ''
+    };
+    style-src 'self' ${isDevLike ? "'unsafe-inline'" : `'nonce-${nonce}'`} https://fonts.googleapis.com;
     font-src 'self' https://fonts.gstatic.com;
     img-src 'self' data: https: https://www.google-analytics.com;
-    connect-src 'self' https://www.google-analytics.com https://*.google-analytics.com https://www.googletagmanager.com https://auth.pingone.com ${isDev ? 'ws://localhost:* http://localhost:*' : ''};
+    connect-src 'self' https://www.google-analytics.com https://*.google-analytics.com https://www.googletagmanager.com https://auth.pingone.com ${
+      isDevLike ? 'ws://localhost:* http://localhost:*' : ''
+    };
     frame-src 'none';
     child-src 'none';
     worker-src 'self';
