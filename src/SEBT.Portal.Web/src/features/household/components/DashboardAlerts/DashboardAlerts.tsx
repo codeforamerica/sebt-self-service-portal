@@ -1,14 +1,15 @@
 'use client'
 
 import { usePathname, useRouter, useSearchParams } from 'next/navigation'
-import { useEffect, useRef } from 'react'
+import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
 import { Alert } from '@/components/ui'
 
 /**
  * Displays success alerts on the dashboard triggered by URL search params.
- * Cleans the params after rendering so a page refresh doesn't re-show alerts.
+ * Captures alert state on first read, then cleans the params from the URL.
+ * The alert persists because rendering is driven by captured state, not live params.
  * Extensible: add new param checks for future alert types (e.g., DC-153 card ordering).
  */
 export function DashboardAlerts() {
@@ -16,26 +17,29 @@ export function DashboardAlerts() {
   const searchParams = useSearchParams()
   const router = useRouter()
   const pathname = usePathname()
-  const cleanedRef = useRef(false)
 
-  const addressUpdated = searchParams.get('addressUpdated') === 'true'
-  const cardsRequested = searchParams.get('cardsRequested') === 'true'
-  const hasAlertParams = addressUpdated || cardsRequested
+  // Capture alert state from URL params on first read so the alert
+  // survives the URL cleanup that follows.
+  const [alerts] = useState(() => ({
+    addressUpdated: searchParams.get('addressUpdated') === 'true',
+    cardsRequested: searchParams.get('cardsRequested') === 'true'
+  }))
+
+  const hasAlerts = alerts.addressUpdated || alerts.cardsRequested
 
   useEffect(() => {
-    if (hasAlertParams && !cleanedRef.current) {
-      cleanedRef.current = true
+    if (hasAlerts) {
       router.replace(pathname, { scroll: false })
     }
-  }, [hasAlertParams, router, pathname])
+  }, [hasAlerts, router, pathname])
 
-  if (!hasAlertParams) {
+  if (!hasAlerts) {
     return null
   }
 
   return (
     <div className="margin-bottom-3">
-      {addressUpdated && !cardsRequested && (
+      {alerts.addressUpdated && !alerts.cardsRequested && (
         <Alert
           variant="success"
           heading={t('addressUpdatedHeading', 'Mailing address updated')}
@@ -47,7 +51,7 @@ export function DashboardAlerts() {
         </Alert>
       )}
 
-      {addressUpdated && cardsRequested && (
+      {alerts.addressUpdated && alerts.cardsRequested && (
         <Alert
           variant="success"
           heading={t('cardsRequestedHeading', 'Mailing address updated and cards requested')}

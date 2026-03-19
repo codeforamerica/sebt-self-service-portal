@@ -56,4 +56,33 @@ describe('DashboardAlerts', () => {
 
     expect(mockReplace).not.toHaveBeenCalled()
   })
+
+  it('alert persists after URL params are cleaned', () => {
+    mockSearchParams = new URLSearchParams('addressUpdated=true')
+    const { rerender } = render(<DashboardAlerts />)
+
+    expect(screen.getByRole('alert')).toBeInTheDocument()
+    expect(mockReplace).toHaveBeenCalledWith('/dashboard', { scroll: false })
+
+    // Simulate the re-render triggered by useSearchParams reacting to cleaned URL
+    mockSearchParams = new URLSearchParams()
+    rerender(<DashboardAlerts />)
+
+    // Alert should still be visible even though params are gone
+    expect(screen.getByRole('alert')).toBeInTheDocument()
+    expect(screen.getByText(/mailing address has been updated/i)).toBeInTheDocument()
+  })
+
+  it('combined alert persists after URL params are cleaned', () => {
+    mockSearchParams = new URLSearchParams('addressUpdated=true&cardsRequested=true')
+    const { rerender } = render(<DashboardAlerts />)
+
+    expect(screen.getByText(/7.10 business days/i)).toBeInTheDocument()
+
+    // Simulate URL cleanup re-render
+    mockSearchParams = new URLSearchParams()
+    rerender(<DashboardAlerts />)
+
+    expect(screen.getByText(/7.10 business days/i)).toBeInTheDocument()
+  })
 })
