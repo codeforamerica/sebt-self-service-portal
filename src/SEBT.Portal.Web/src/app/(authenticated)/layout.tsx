@@ -1,4 +1,4 @@
-import { AuthGuard, TokenRefresher } from '@/features/auth'
+import { AuthGuard, IalGuard, TokenRefresher } from '@/features/auth'
 import type { ReactNode } from 'react'
 
 interface AuthenticatedLayoutProps {
@@ -9,7 +9,7 @@ export default function AuthenticatedLayout({ children }: AuthenticatedLayoutPro
   return (
     <AuthGuard>
       <TokenRefresher />
-      {children}
+      <IalGuard>{children}</IalGuard>
     </AuthGuard>
   )
 }

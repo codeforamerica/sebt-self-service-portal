@@ -27,7 +27,13 @@ export const env = createEnv({
     OIDC_CLIENT_SECRET: z.string().optional(),
     OIDC_REDIRECT_URI: z.string().url().optional(),
     OIDC_LANGUAGE_PARAM: z.string().optional(),
-    OIDC_COMPLETE_LOGIN_SIGNING_KEY: z.string().min(32).optional()
+    OIDC_COMPLETE_LOGIN_SIGNING_KEY: z.string().min(32).optional(),
+    // Step-up (Socure app) — used when isStepUp=true in callback
+    OIDC_STEP_UP_DISCOVERY_ENDPOINT: z.string().url().optional(),
+    OIDC_STEP_UP_CLIENT_ID: z.string().optional(),
+    OIDC_STEP_UP_CLIENT_SECRET: z.string().optional(),
+    OIDC_STEP_UP_REDIRECT_URI: z.string().url().optional(),
+    OIDC_STEP_UP_ACR_VALUES: z.string().optional()
   },
 
   /**
@@ -53,6 +59,11 @@ export const env = createEnv({
     OIDC_REDIRECT_URI: process.env.OIDC_REDIRECT_URI,
     OIDC_LANGUAGE_PARAM: process.env.OIDC_LANGUAGE_PARAM,
     OIDC_COMPLETE_LOGIN_SIGNING_KEY: process.env.OIDC_COMPLETE_LOGIN_SIGNING_KEY,
+    OIDC_STEP_UP_DISCOVERY_ENDPOINT: process.env.OIDC_STEP_UP_DISCOVERY_ENDPOINT,
+    OIDC_STEP_UP_CLIENT_ID: process.env.OIDC_STEP_UP_CLIENT_ID,
+    OIDC_STEP_UP_CLIENT_SECRET: process.env.OIDC_STEP_UP_CLIENT_SECRET,
+    OIDC_STEP_UP_REDIRECT_URI: process.env.OIDC_STEP_UP_REDIRECT_URI,
+    OIDC_STEP_UP_ACR_VALUES: process.env.OIDC_STEP_UP_ACR_VALUES,
     NEXT_PUBLIC_STATE: process.env.NEXT_PUBLIC_STATE,
     NEXT_PUBLIC_GA_ID: process.env.NEXT_PUBLIC_GA_ID,
     NEXT_PUBLIC_SOCURE_SDK_KEY: process.env.NEXT_PUBLIC_SOCURE_SDK_KEY

@@ -42,6 +42,23 @@ export interface OidcConfig {
   languageParam?: string | undefined
 }
 
+/**
+ * OIDC redirect_uri sent to PingOne must match a value registered on the client.
+ * Use the current browser origin so dev on :3001 vs :3000 (or 127.0.0.1) matches
+ * the callback page URL; config from the API may still say localhost:3000 only.
+ */
+export function getOidcRedirectUriForCurrentOrigin(): string {
+  if (typeof window === 'undefined') {
+    throw new Error('getOidcRedirectUriForCurrentOrigin is client-only')
+  }
+  return `${window.location.origin}/callback`
+}
+
+/** Step-up config extends OidcConfig with optional acr_values for higher assurance */
+export interface OidcStepUpConfig extends OidcConfig {
+  acrValues?: string
+}
+
 export function buildAuthorizationUrl(
   config: OidcConfig,
   codeChallenge: string,
@@ -64,18 +81,57 @@ export function buildAuthorizationUrl(
   return `${config.authorizationEndpoint}?${params.toString()}`
 }
 
+/**
+ * Builds the authorization URL for step-up authentication.
+ * Adds acr_values when configured; otherwise same as buildAuthorizationUrl.
+ */
+export function buildStepUpAuthorizationUrl(
+  config: OidcStepUpConfig,
+  codeChallenge: string,
+  state: string
+): string {
+  const params = new URLSearchParams({
+    response_type: 'code',
+    client_id: config.clientId,
+    redirect_uri: config.redirectUri,
+    scope: 'openid email profile phone',
+    state,
+    code_challenge: codeChallenge,
+    code_challenge_method: 'S256',
+    prompt: 'login',
+    max_age: '0'
+  })
+  if (config.languageParam) {
+    params.set('language', config.languageParam)
+  }
+  if (config.acrValues?.trim()) {
+    params.set('acr_values', config.acrValues.trim())
+  }
+  return `${config.authorizationEndpoint}?${params.toString()}`
+}
+
 export interface StoredPkce {
   state: string
   code_verifier: string
   redirect_uri: string
   token_endpoint: string
   client_id: string
+  /** True when this is a step-up flow (IAL1+ verification). */
+  isStepUp?: boolean
+  /** URL to redirect to after step-up completes. */
+  returnUrl?: string
 }
 
 export function savePkceForCallback(
   state: string,
   codeVerifier: string,
-  config: { redirectUri: string; tokenEndpoint: string; clientId: string }
+  config: {
+    redirectUri: string
+    tokenEndpoint: string
+    clientId: string
+    isStepUp?: boolean
+    returnUrl?: string
+  }
 ): void {
   if (typeof window === 'undefined') return
   const payload: StoredPkce = {
@@ -83,7 +139,10 @@ export function savePkceForCallback(
     code_verifier: codeVerifier,
     redirect_uri: config.redirectUri,
     token_endpoint: config.tokenEndpoint,
-    client_id: config.clientId
+    client_id: config.clientId,
+    ...(config.isStepUp !== undefined && { isStepUp: config.isStepUp }),
+    ...(config.returnUrl !== undefined &&
+      config.returnUrl !== '' && { returnUrl: config.returnUrl })
   }
   // PKCE data is stored in sessionStorage only — not localStorage.
   // localStorage would persist across tabs/sessions, which could allow stale PKCE to be accepted.
@@ -102,8 +161,9 @@ export function getPkceFromStorage(): StoredPkce | null {
       payload?.redirect_uri &&
       payload?.token_endpoint &&
       payload?.client_id
-    )
+    ) {
       return payload
+    }
   } catch {
     // ignore
   }

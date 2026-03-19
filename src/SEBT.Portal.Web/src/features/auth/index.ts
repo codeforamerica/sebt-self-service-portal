@@ -34,6 +34,7 @@ export {
 export {
   AuthGuard,
   DocVerifyPage,
+  IalGuard,
   IdProofingForm,
   LoginForm,
   OffBoardingContent,

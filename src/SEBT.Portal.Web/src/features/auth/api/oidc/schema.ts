@@ -10,7 +10,9 @@ export const OidcConfigResponseSchema = z.object({
   tokenEndpoint: z.string().url(),
   clientId: z.string(),
   redirectUri: z.string().url(),
-  languageParam: z.string().optional()
+  languageParam: z.string().optional(),
+  /** API serializes null for non-step-up login; optional() alone rejects JSON null */
+  acrValues: z.string().nullable().optional()
 })
 
 export type OidcConfigResponse = z.infer<typeof OidcConfigResponseSchema>
@@ -22,7 +24,8 @@ export const OidcCallbackTokenResponseSchema = z.object({
 export type OidcCallbackTokenResponse = z.infer<typeof OidcCallbackTokenResponseSchema>
 
 export const OidcCompleteLoginResponseSchema = z.object({
-  token: z.string()
+  token: z.string(),
+  returnUrl: z.string().url().optional()
 })
 
 export type OidcCompleteLoginResponse = z.infer<typeof OidcCompleteLoginResponseSchema>
@@ -35,9 +38,12 @@ export type OidcCompleteLoginResponse = z.infer<typeof OidcCompleteLoginResponse
 export const OidcCallbackRequestSchema = z.object({
   code: z.string(),
   code_verifier: z.string(),
+  /** redirect_uri used in the auth request — must match exactly for token exchange. Passed from PKCE storage. */
+  redirectUri: z.string().url(),
   // state is validated client-side (PKCE flow) before this request — accepted here for passthrough but not used by the route handler
   state: z.string().optional(),
-  stateCode: z.string()
+  stateCode: z.string(),
+  isStepUp: z.boolean().optional()
 })
 
 export type OidcCallbackRequest = z.infer<typeof OidcCallbackRequestSchema>

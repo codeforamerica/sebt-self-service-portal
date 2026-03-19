@@ -54,7 +54,9 @@ vi.mock('@/lib/translations', () => ({
         callbackErrorMissingParams: 'Missing sign-in information.',
         callbackErrorSessionExpired: 'Session expired.',
         callbackErrorStateMismatch: 'State mismatch.',
-        callbackErrorGeneric: 'Something went wrong.'
+        callbackErrorGeneric: 'Something went wrong.',
+        callbackErrorStepUpFailed: 'Step-up verification did not finish.',
+        callbackErrorIdpRedirect: 'Primary MyColorado sign-in did not finish.'
       }
     }
     /* eslint-disable security/detect-object-injection -- test mock */
@@ -238,6 +240,63 @@ describe('CallbackPage', () => {
 
       await waitFor(() => {
         expect(screen.getByText('Something went wrong.')).toBeInTheDocument()
+      })
+    })
+  })
+
+  describe('IdP error redirect (?error=)', () => {
+    it('shows step-up message when PKCE marks isStepUp', async () => {
+      mockGetPkce.mockReturnValue({ isStepUp: true })
+      Object.defineProperty(window, 'location', {
+        value: {
+          search: '?error=access_denied&error_description=User+cancelled',
+          href: 'http://localhost:3000/callback?error=access_denied'
+        },
+        writable: true
+      })
+
+      renderCallbackPage()
+
+      await waitFor(() => {
+        expect(
+          screen.getByText('Step-up verification did not finish. User cancelled')
+        ).toBeInTheDocument()
+      })
+    })
+
+    it('shows primary sign-in message when not step-up', async () => {
+      mockGetPkce.mockReturnValue({ isStepUp: false })
+      Object.defineProperty(window, 'location', {
+        value: {
+          search: '?error=access_denied&error_description=User+cancelled',
+          href: 'http://localhost:3000/callback?error=access_denied'
+        },
+        writable: true
+      })
+
+      renderCallbackPage()
+
+      await waitFor(() => {
+        expect(
+          screen.getByText('Primary MyColorado sign-in did not finish. User cancelled')
+        ).toBeInTheDocument()
+      })
+    })
+
+    it('treats missing PKCE as primary sign-in for IdP error copy', async () => {
+      mockGetPkce.mockReturnValue(null)
+      Object.defineProperty(window, 'location', {
+        value: {
+          search: '?error=server_error',
+          href: 'http://localhost:3000/callback?error=server_error'
+        },
+        writable: true
+      })
+
+      renderCallbackPage()
+
+      await waitFor(() => {
+        expect(screen.getByText('Primary MyColorado sign-in did not finish.')).toBeInTheDocument()
       })
     })
   })

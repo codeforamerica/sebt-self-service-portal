@@ -4,6 +4,7 @@ using System.Text;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.IdentityModel.Tokens;
 using SEBT.Portal.Api.Models;
+using SEBT.Portal.Core.Models.Auth;
 using SEBT.Portal.Core.Repositories;
 using SEBT.Portal.Core.Services;
 using SEBT.Portal.Core.Utilities;
@@ -35,16 +36,24 @@ public class OidcController(
     /// <summary>
     /// Public OIDC config for frontend PKCE flow (no secrets): authorization endpoint, token endpoint, client id, redirect URI.
     /// Config keys: Oidc:DiscoveryEndpoint, Oidc:ClientId, Oidc:CallbackRedirectUri.
+    /// When stepUp=true, uses Oidc:StepUp:* for the Socure (step-up) app.
     /// </summary>
     [HttpGet("{code}/config")]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status502BadGateway)]
     [ProducesResponseType(StatusCodes.Status503ServiceUnavailable)]
-    public async Task<IActionResult> GetConfig([FromRoute] string code, CancellationToken cancellationToken)
+    public async Task<IActionResult> GetConfig(
+        [FromRoute] string code,
+        [FromQuery] bool stepUp = false,
+        CancellationToken cancellationToken = default)
     {
-        var discoveryEndpoint = config["Oidc:DiscoveryEndpoint"];
-        var clientId = config["Oidc:ClientId"];
-        var redirectUri = config["Oidc:CallbackRedirectUri"];
+        var discoveryEndpoint = stepUp
+            ? config["Oidc:StepUp:DiscoveryEndpoint"]
+            : config["Oidc:DiscoveryEndpoint"];
+        var clientId = stepUp ? config["Oidc:StepUp:ClientId"] : config["Oidc:ClientId"];
+        var redirectUri = stepUp
+            ? (config["Oidc:StepUp:RedirectUri"] ?? config["Oidc:CallbackRedirectUri"])
+            : config["Oidc:CallbackRedirectUri"];
         if (string.IsNullOrEmpty(discoveryEndpoint) || string.IsNullOrEmpty(clientId) || string.IsNullOrEmpty(redirectUri))
         {
             logger.LogWarning("OIDC config missing (Oidc:DiscoveryEndpoint, ClientId, or CallbackRedirectUri)");
@@ -66,7 +75,8 @@ public class OidcController(
             if (string.IsNullOrEmpty(authEndpoint) || string.IsNullOrEmpty(tokenEndpoint))
                 return StatusCode(StatusCodes.Status502BadGateway, new { error = "Invalid discovery document." });
             var languageParam = config["Oidc:LanguageParam"] ?? "en";
-            return Ok(new { authorizationEndpoint = authEndpoint, tokenEndpoint, clientId, redirectUri, languageParam });
+            var acrValues = stepUp ? config["Oidc:StepUp:AcrValues"] : null;
+            return Ok(new { authorizationEndpoint = authEndpoint, tokenEndpoint, clientId, redirectUri, languageParam, acrValues });
         }
         catch (Exception ex)
         {
@@ -141,9 +151,42 @@ public class OidcController(
         }
 
         var normalizedEmail = EmailNormalizer.Normalize(email);
-        var (user, _) = await userRepository.GetOrCreateUserAsync(normalizedEmail, cancellationToken);
+        User user;
+
+        if (body.IsStepUp)
+        {
+            var existingUser = await userRepository.GetUserByEmailAsync(normalizedEmail, cancellationToken);
+            if (existingUser == null)
+            {
+                logger.LogWarning("Step-up requested but user not found: {Email}", normalizedEmail);
+                return BadRequest(new { error = "Step-up requires an existing session. Please sign in again." });
+            }
+
+            user = existingUser;
+            user.IalLevel = UserIalLevel.IAL1plus;
+            user.IdProofingStatus = IdProofingStatus.Completed;
+            user.IdProofingCompletedAt = DateTime.UtcNow;
+            user.UpdatedAt = DateTime.UtcNow;
+            await userRepository.UpdateUserAsync(user, cancellationToken);
+
+            // Message/template differs from earlier builds (email removed for PII); refresh any log alerts that matched the old text.
+            logger.LogInformation(
+                "OIDC step-up complete-login succeeded: UserId {UserId}, StateCode {StateCode}, IalLevel {IalLevel}, IdProofingStatus {IdProofingStatus}",
+                user.Id,
+                stateKey,
+                user.IalLevel,
+                user.IdProofingStatus);
+        }
+        else
+        {
+            var (createdUser, _) = await userRepository.GetOrCreateUserAsync(normalizedEmail, cancellationToken);
+            user = createdUser;
+        }
+
         var token = jwtService.GenerateToken(user, additionalClaims);
-        return Ok(new { token });
+        return body.IsStepUp && !string.IsNullOrEmpty(body.ReturnUrl)
+            ? Ok(new { token, returnUrl = body.ReturnUrl })
+            : Ok(new { token });
     }
 
     /// <summary>

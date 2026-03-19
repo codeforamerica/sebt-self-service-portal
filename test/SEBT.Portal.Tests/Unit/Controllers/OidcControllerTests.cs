@@ -48,7 +48,7 @@ public class OidcControllerTests
         _config["Oidc:ClientId"].Returns("client-id");
         _config["Oidc:CallbackRedirectUri"].Returns("http://localhost:3000/callback");
 
-        var result = await _controller.GetConfig(CoStateKey, CancellationToken.None);
+        var result = await _controller.GetConfig(CoStateKey, cancellationToken: CancellationToken.None);
 
         var statusResult = Assert.IsType<ObjectResult>(result);
         Assert.Equal(503, statusResult.StatusCode);
@@ -61,7 +61,7 @@ public class OidcControllerTests
         _config["Oidc:ClientId"].Returns((string?)null);
         _config["Oidc:CallbackRedirectUri"].Returns("http://localhost:3000/callback");
 
-        var result = await _controller.GetConfig(CoStateKey, CancellationToken.None);
+        var result = await _controller.GetConfig(CoStateKey, cancellationToken: CancellationToken.None);
 
         var statusResult = Assert.IsType<ObjectResult>(result);
         Assert.Equal(503, statusResult.StatusCode);
