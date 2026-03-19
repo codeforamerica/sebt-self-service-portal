@@ -19,6 +19,11 @@ public class SocureSettingsValidator(IHostEnvironment environment) : IValidateOp
             return ValidateOptionsResult.Fail("Socure configuration section is not present.");
         }
 
+        if (!options.Enabled)
+        {
+            return ValidateOptionsResult.Success;
+        }
+
         if (options.ChallengeExpirationMinutes < 1 || options.ChallengeExpirationMinutes > 1440)
         {
             return ValidateOptionsResult.Fail(
