@@ -31,7 +31,7 @@ describe('DashboardAlerts', () => {
     render(<DashboardAlerts />)
 
     expect(screen.getByRole('alert')).toBeInTheDocument()
-    expect(screen.getByText(/mailing address has been updated/i)).toBeInTheDocument()
+    expect(screen.getByText(/address update recorded/i)).toBeInTheDocument()
   })
 
   it('renders card request alert when both addressUpdated and cardsRequested params are present', () => {
@@ -40,7 +40,7 @@ describe('DashboardAlerts', () => {
 
     const alerts = screen.getAllByRole('alert')
     expect(alerts.length).toBeGreaterThanOrEqual(1)
-    expect(screen.getByText(/7.10 business days/i)).toBeInTheDocument()
+    expect(screen.getByText(/card replacement recorded/i)).toBeInTheDocument()
   })
 
   it('cleans URL params after displaying alerts', () => {
@@ -70,19 +70,19 @@ describe('DashboardAlerts', () => {
 
     // Alert should still be visible even though params are gone
     expect(screen.getByRole('alert')).toBeInTheDocument()
-    expect(screen.getByText(/mailing address has been updated/i)).toBeInTheDocument()
+    expect(screen.getByText(/address update recorded/i)).toBeInTheDocument()
   })
 
   it('combined alert persists after URL params are cleaned', () => {
     mockSearchParams = new URLSearchParams('addressUpdated=true&cardsRequested=true')
     const { rerender } = render(<DashboardAlerts />)
 
-    expect(screen.getByText(/7.10 business days/i)).toBeInTheDocument()
+    expect(screen.getByText(/card replacement recorded/i)).toBeInTheDocument()
 
     // Simulate URL cleanup re-render
     mockSearchParams = new URLSearchParams()
     rerender(<DashboardAlerts />)
 
-    expect(screen.getByText(/7.10 business days/i)).toBeInTheDocument()
+    expect(screen.getByText(/card replacement recorded/i)).toBeInTheDocument()
   })
 })

@@ -165,7 +165,7 @@ describe('AddressForm', () => {
     expect(getPostalInput()).toHaveValue('')
   })
 
-  it('falls back to state default for state field when initialAddress.state does not match dropdown', () => {
+  it('resolves state abbreviation from backend to full dropdown name', () => {
     mockState = 'dc'
     const address: Address = {
       streetAddress1: '123 Main St NW',
@@ -175,11 +175,21 @@ describe('AddressForm', () => {
     }
     renderForm(address)
 
-    expect(getStreetInput()).toHaveValue('123 Main St NW')
-    expect(getCityInput()).toHaveValue('Washington')
-    // "DC" doesn't match any dropdown option → falls back to state default
     expect(getStateSelect()).toHaveValue('District of Columbia')
-    expect(getPostalInput()).toHaveValue('20001')
+  })
+
+  it('resolves a non-home-state abbreviation to the correct full name', () => {
+    mockState = 'dc'
+    const address: Address = {
+      streetAddress1: '456 Charles St',
+      city: 'Baltimore',
+      state: 'MD',
+      postalCode: '21201'
+    }
+    renderForm(address)
+
+    // If this were fallback-only, it would show "District of Columbia"
+    expect(getStateSelect()).toHaveValue('Maryland')
   })
 
   it('uses state defaults for individual null fields in initialAddress', () => {

@@ -1,10 +1,8 @@
 'use client'
 
+import { Alert } from '@/components/ui'
 import { usePathname, useRouter, useSearchParams } from 'next/navigation'
 import { useEffect, useState } from 'react'
-import { useTranslation } from 'react-i18next'
-
-import { Alert } from '@/components/ui'
 
 /**
  * Displays success alerts on the dashboard triggered by URL search params.
@@ -13,7 +11,6 @@ import { Alert } from '@/components/ui'
  * Extensible: add new param checks for future alert types (e.g., DC-153 card ordering).
  */
 export function DashboardAlerts() {
-  const { t } = useTranslation('dashboard')
   const searchParams = useSearchParams()
   const router = useRouter()
   const pathname = usePathname()
@@ -42,24 +39,24 @@ export function DashboardAlerts() {
       {alerts.addressUpdated && !alerts.cardsRequested && (
         <Alert
           variant="success"
-          heading={t('addressUpdatedHeading', 'Mailing address updated')}
+          // TODO: Use t('addressUpdatedHeading') once real persistence is wired up
+          heading="Address update recorded"
         >
-          {t(
-            'addressUpdatedBody',
-            'Your mailing address has been updated. Future correspondence will be sent to your new address.'
-          )}
+          {/* TODO: Use t('addressUpdatedBody') once real persistence is wired up */}
+          Your address update has been recorded. State system integration is pending — changes are
+          not yet reflected in the benefits system.
         </Alert>
       )}
 
       {alerts.addressUpdated && alerts.cardsRequested && (
         <Alert
           variant="success"
-          heading={t('cardsRequestedHeading', 'Mailing address updated and cards requested')}
+          // TODO: Use t('cardsRequestedHeading') once real persistence is wired up
+          heading="Address update and card replacement recorded"
         >
-          {t(
-            'cardsRequestedBody',
-            'Your mailing address has been updated and replacement cards have been requested. New cards should arrive in 7–10 business days.'
-          )}
+          {/* TODO: Use t('cardsRequestedBody') once real persistence is wired up */}
+          Your address update and card replacement request have been recorded. State system
+          integration is pending — changes are not yet reflected in the benefits system.
         </Alert>
       )}
     </div>

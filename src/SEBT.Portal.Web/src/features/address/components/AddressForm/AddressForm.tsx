@@ -9,9 +9,9 @@ import { getState } from '@/lib/state'
 
 import type { Address } from '@/features/household/api'
 
-import { useUpdateAddress } from '../../api'
+import { isValidZip, useUpdateAddress } from '../../api'
 import { useAddressFlow } from '../../context'
-import { US_STATES } from './usStates'
+import { STATE_ABBREVIATIONS, US_STATES } from './usStates'
 
 interface AddressFormProps {
   initialAddress: Address | null
@@ -29,9 +29,12 @@ const STATE_DEFAULTS: Record<string, { city: string; state: string }> = {
   co: { city: '', state: 'Colorado' }
 }
 
-/** Returns the state value if it matches a dropdown option, otherwise the default. */
+/** Resolves a state value to a dropdown option: tries exact match, then abbreviation lookup, then fallback. */
 function resolveStateValue(value: string | null | undefined, fallback: string): string {
-  if (value && (US_STATES as readonly string[]).includes(value)) return value
+  if (!value) return fallback
+  if ((US_STATES as readonly string[]).includes(value)) return value
+  const fromAbbreviation = STATE_ABBREVIATIONS[value.toUpperCase()]
+  if (fromAbbreviation) return fromAbbreviation
   return fallback
 }
 
@@ -77,7 +80,7 @@ export function AddressForm({ initialAddress }: AddressFormProps) {
     if (!stateValue.trim()) errors.state = required
     if (!postalCode.trim()) {
       errors.postalCode = required
-    } else if (!/^\d{5}(-\d{4})?$/.test(postalCode.trim())) {
+    } else if (!isValidZip(postalCode.trim())) {
       errors.postalCode = t('postalCodeInvalid', 'Enter a valid 5- or 9-digit ZIP code.')
     }
 

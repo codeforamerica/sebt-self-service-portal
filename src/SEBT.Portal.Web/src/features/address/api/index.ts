@@ -1,5 +1,6 @@
 export {
   UpdateAddressRequestSchema,
+  isValidZip,
   type AddressValidationResult,
   type UpdateAddressRequest
 } from './schema'
