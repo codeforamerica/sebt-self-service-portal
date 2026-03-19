@@ -23,6 +23,11 @@ public class PortalDbContext : DbContext
     /// </summary>
     public DbSet<UserEntity> Users { get; set; }
 
+    /// <summary>
+    /// Document verification challenge records tracking individual verification attempts.
+    /// </summary>
+    public DbSet<DocVerificationChallengeEntity> DocVerificationChallenges { get; set; }
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
@@ -91,6 +96,78 @@ public class PortalDbContext : DbContext
             entity.Property(e => e.SnapId).HasMaxLength(64);
             entity.Property(e => e.TanfId).HasMaxLength(64);
             entity.Property(e => e.Ssn).HasMaxLength(64);
+        });
+
+        modelBuilder.Entity<DocVerificationChallengeEntity>(entity =>
+        {
+            entity.ToTable("DocVerificationChallenges");
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.Id)
+                .ValueGeneratedOnAdd()
+                .UseIdentityColumn();
+
+            // Opaque public ID for API consumers
+            entity.Property(e => e.PublicId)
+                .IsRequired();
+            entity.HasIndex(e => e.PublicId)
+                .IsUnique()
+                .HasDatabaseName("IX_DocVerificationChallenges_PublicId");
+
+            // User foreign key
+            entity.Property(e => e.UserId)
+                .IsRequired();
+            entity.HasIndex(e => e.UserId)
+                .HasDatabaseName("IX_DocVerificationChallenges_UserId");
+            entity.HasOne(e => e.User)
+                .WithMany()
+                .HasForeignKey(e => e.UserId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            entity.Property(e => e.Status)
+                .IsRequired()
+                .HasDefaultValue(0); // Created
+
+            // Socure correlation fields
+            entity.Property(e => e.SocureReferenceId)
+                .HasMaxLength(255);
+            entity.HasIndex(e => e.SocureReferenceId)
+                .HasDatabaseName("IX_DocVerificationChallenges_SocureReferenceId");
+
+            entity.Property(e => e.EvalId)
+                .HasMaxLength(255);
+            entity.HasIndex(e => e.EvalId)
+                .HasDatabaseName("IX_DocVerificationChallenges_EvalId");
+
+            entity.Property(e => e.SocureEventId)
+                .HasMaxLength(255);
+
+            entity.Property(e => e.DocvTransactionToken)
+                .HasMaxLength(255);
+            entity.Property(e => e.DocvUrl)
+                .HasMaxLength(1024);
+            entity.Property(e => e.OffboardingReason)
+                .HasMaxLength(255);
+
+            entity.Property(e => e.AllowIdRetry)
+                .IsRequired()
+                .HasDefaultValue(true);
+
+            entity.Property(e => e.CreatedAt)
+                .IsRequired()
+                .HasDefaultValueSql("GETUTCDATE()")
+                .ValueGeneratedOnAdd();
+            entity.Property(e => e.UpdatedAt)
+                .IsRequired()
+                .HasDefaultValueSql("GETUTCDATE()")
+                .ValueGeneratedOnAdd();
+
+            // Optimistic concurrency token
+            entity.Property(e => e.RowVersion)
+                .IsRowVersion();
+
+            // One active challenge per user — enforced by a filtered unique
+            // index on UserId WHERE Status IN (0, 1). Managed via raw SQL migration
+            // because EF merges HasIndex calls on the same column.
         });
     }
 }

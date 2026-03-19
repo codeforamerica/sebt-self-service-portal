@@ -94,8 +94,8 @@ public class HouseholdRepository : IHouseholdRepository
     {
         return source with
         {
-            Email = piiVisibility.IncludeEmail ? source.Email : null,
-            Phone = piiVisibility.IncludePhone ? source.Phone : null,
+            Email = piiVisibility.IncludeEmail ? source.Email : PiiMasker.MaskEmail(source.Email),
+            Phone = piiVisibility.IncludePhone ? source.Phone : PiiMasker.MaskPhone(source.Phone),
             AddressOnFile = piiVisibility.IncludeAddress && source.AddressOnFile != null
                 ? new Address
                 {
@@ -105,7 +105,15 @@ public class HouseholdRepository : IHouseholdRepository
                     State = source.AddressOnFile.State,
                     PostalCode = source.AddressOnFile.PostalCode
                 }
-                : null
+                : source.AddressOnFile != null
+                    ? new Address
+                    {
+                        StreetAddress1 = PiiMasker.MaskStreetAddress(source.AddressOnFile.StreetAddress1, source.AddressOnFile.StreetAddress2),
+                        City = source.AddressOnFile.City,
+                        State = source.AddressOnFile.State,
+                        PostalCode = source.AddressOnFile.PostalCode
+                    }
+                    : null
         };
     }
 

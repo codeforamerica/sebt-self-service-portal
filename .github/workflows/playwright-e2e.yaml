@@ -1,0 +1,115 @@
+name: Playwright E2E
+
+permissions:
+  contents: read
+
+on:
+  push:
+    branches: ["main"]
+  pull_request:
+    branches: ["main"]
+
+jobs:
+  e2e:
+    name: E2E Tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    services:
+      mssql:
+        image: mcr.microsoft.com/mssql/server:2022-latest
+        env:
+          ACCEPT_EULA: Y
+          MSSQL_SA_PASSWORD: YourStrong@Passw0rd
+        ports:
+          - 1433:1433
+        options: >-
+          --health-cmd="/opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -P YourStrong@Passw0rd -Q 'SELECT 1' -C -b -o /dev/null || exit 1"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=10
+          --health-start-period=10s
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Determine state connector ref
+        id: connector-ref
+        run: |
+          BRANCH="${{ github.event_name == 'pull_request' && github.head_ref || github.ref_name }}"
+          FALLBACK="${{ github.event_name == 'pull_request' && github.base_ref || 'main' }}"
+          REPO_URL="https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository_owner }}/sebt-self-service-portal-state-connector.git"
+          if git ls-remote --exit-code --heads "$REPO_URL" "refs/heads/${BRANCH}" 1>/dev/null 2>&1; then
+            echo "ref=${BRANCH}" >> "$GITHUB_OUTPUT"
+          else
+            echo "ref=${FALLBACK}" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Checkout state connector
+        uses: actions/checkout@v4
+        with:
+          repository: codeforamerica/sebt-self-service-portal-state-connector
+          ref: ${{ steps.connector-ref.outputs.ref }}
+          path: state-connector
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: "10.0.200"
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: "10"
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+          cache: "pnpm"
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile --prefer-offline
+
+      - name: Build backend
+        run: ./.github/workflows/scripts/build-backend.sh --configuration Release
+
+      - name: Install Playwright browsers
+        run: cd src/SEBT.Portal.Web && pnpm exec playwright install --with-deps chromium
+
+      - name: Install Chrome for Pa11y
+        run: cd src/SEBT.Portal.Web && pnpm exec puppeteer browsers install chrome
+
+      - name: Run Pa11y and Playwright E2E tests
+        env:
+          CI: true
+          SKIP_WEB_SERVER: "1"
+          STATE: dc
+          NEXT_PUBLIC_STATE: dc
+          ASPNETCORE_ENVIRONMENT: Development
+          ConnectionStrings__DefaultConnection: "Server=localhost,1433;Database=SebtPortal;User Id=sa;Password=YourStrong@Passw0rd;TrustServerCertificate=True;"
+          JwtSettings__SecretKey: "ci-e2e-jwt-secret-at-least-32-characters-long"
+          IdentifierHasher__SecretKey: "ci-e2e-identifier-hasher-key-32chars"
+          Oidc__CompleteLoginSigningKey: "ci-e2e-oidc-signing-key-at-least-32-chars"
+          UseMockHouseholdData: "true"
+        run: |
+          pnpm dev &
+          echo "Waiting for server at http://localhost:3000..."
+          for i in $(seq 1 90); do
+            curl -sf --max-time 15 http://localhost:3000 > /dev/null && echo "Server ready" && break
+            sleep 2
+          done
+          curl -sf --max-time 15 http://localhost:3000 > /dev/null || (echo "Server failed to start" && exit 1)
+          echo "Running Pa11y accessibility tests..."
+          pnpm ci:test:a11y
+          echo "Running Playwright E2E tests..."
+          pnpm ci:test:e2e
+
+      - name: Upload Playwright report
+        uses: actions/upload-artifact@v4
+        if: ${{ !cancelled() }}
+        with:
+          name: playwright-report
+          path: src/SEBT.Portal.Web/playwright-report/
+          retention-days: 7

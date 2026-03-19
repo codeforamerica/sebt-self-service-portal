@@ -15,11 +15,13 @@ const TEST_SDK_KEY = 'test-sdk-key'
 // Mock next/navigation
 const mockPush = vi.fn()
 const mockReplace = vi.fn()
+let mockSearchParams = new URLSearchParams()
 vi.mock('next/navigation', () => ({
   useRouter: () => ({
     push: mockPush,
     replace: mockReplace
-  })
+  }),
+  useSearchParams: () => mockSearchParams
 }))
 
 // Use the mock adapter in tests
@@ -46,9 +48,10 @@ function renderWithProviders(ui: React.ReactElement) {
   }
 }
 
-function setChallengeContext(challengeId: string, allowIdRetry = false, subState?: string) {
+function setChallengeContext(challengeId: string, subState?: string) {
+  // Primary source is URL search params; sessionStorage is fallback for tab recovery
+  mockSearchParams = new URLSearchParams({ challengeId })
   sessionStorage.setItem('docVerify_challengeId', challengeId)
-  sessionStorage.setItem('docVerify_allowIdRetry', String(allowIdRetry))
   if (subState) {
     sessionStorage.setItem('docVerify_subState', subState)
   }
@@ -58,6 +61,7 @@ describe('DocVerifyPage', () => {
   beforeEach(() => {
     mockPush.mockClear()
     mockReplace.mockClear()
+    mockSearchParams = new URLSearchParams()
     sessionStorage.clear()
   })
 
@@ -93,8 +97,15 @@ describe('DocVerifyPage', () => {
       expect(screen.getByRole('button', { name: /continue/i })).toBeInTheDocument()
     })
 
-    it('shows "Enter an ID number" button when allowIdRetry is true', async () => {
-      setChallengeContext('challenge-abc', true)
+    it('shows "Enter an ID number" button when status API returns allowIdRetry: true', async () => {
+      setChallengeContext('challenge-abc')
+
+      // Override status API to return allowIdRetry: true (D9)
+      server.use(
+        http.get('/api/id-proofing/status', () => {
+          return HttpResponse.json({ status: 'pending', allowIdRetry: true })
+        })
+      )
 
       renderWithProviders(
         <DocVerifyPage
@@ -106,8 +117,14 @@ describe('DocVerifyPage', () => {
       expect(await screen.findByRole('button', { name: /enter an id number/i })).toBeInTheDocument()
     })
 
-    it('hides "Enter an ID number" button when allowIdRetry is false', async () => {
-      setChallengeContext('challenge-abc', false)
+    it('hides "Enter an ID number" button when status API returns allowIdRetry: false', async () => {
+      setChallengeContext('challenge-abc')
+
+      server.use(
+        http.get('/api/id-proofing/status', () => {
+          return HttpResponse.json({ status: 'pending', allowIdRetry: false })
+        })
+      )
 
       renderWithProviders(
         <DocVerifyPage
@@ -123,7 +140,14 @@ describe('DocVerifyPage', () => {
     })
 
     it('"Enter an ID number" clears challenge context and navigates to id-proofing', async () => {
-      setChallengeContext('challenge-abc', true)
+      setChallengeContext('challenge-abc')
+
+      server.use(
+        http.get('/api/id-proofing/status', () => {
+          return HttpResponse.json({ status: 'pending', allowIdRetry: true })
+        })
+      )
+
       const user = userEvent.setup()
 
       renderWithProviders(
@@ -141,6 +165,18 @@ describe('DocVerifyPage', () => {
   })
 
   describe('Continue → capture → pending flow', () => {
+    // Override the default status handler to ensure a stable 'pending' response.
+    // The default handler uses a closure counter shared across tests; the new
+    // interstitial-level status query can consume counts and return 'verified'
+    // before the Continue click happens.
+    beforeEach(() => {
+      server.use(
+        http.get('/api/id-proofing/status', () => {
+          return HttpResponse.json({ status: 'pending', allowIdRetry: false })
+        })
+      )
+    })
+
     it('"Continue" triggers challenge start and persists capture sub-state', async () => {
       setChallengeContext('mock-challenge-123')
       const user = userEvent.setup()
@@ -190,7 +226,7 @@ describe('DocVerifyPage', () => {
 
   describe('SessionStorage recovery (D6)', () => {
     it('resumes at pending when persisted sub-state was capture', async () => {
-      setChallengeContext('challenge-abc', false, 'capture')
+      setChallengeContext('challenge-abc', 'capture')
 
       // Override verification status to return verified immediately
       server.use(
@@ -214,7 +250,7 @@ describe('DocVerifyPage', () => {
 
   describe('Pending → result routing', () => {
     it('navigates to dashboard when verification succeeds', async () => {
-      setChallengeContext('challenge-abc', false, 'pending')
+      setChallengeContext('challenge-abc', 'pending')
 
       server.use(
         http.get('/api/id-proofing/status', () => {
@@ -238,7 +274,7 @@ describe('DocVerifyPage', () => {
     })
 
     it('navigates to off-boarding when verification is rejected', async () => {
-      setChallengeContext('challenge-abc', false, 'pending')
+      setChallengeContext('challenge-abc', 'pending')
 
       server.use(
         http.get('/api/id-proofing/status', () => {

@@ -14,3 +14,5 @@
 # Datasource local storage ignored files
 /dataSources/
 /dataSources.local.xml
+# AWS toolkit user-specific state
+/aws.xml

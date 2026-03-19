@@ -21,7 +21,7 @@ cd "$PROJECT_ROOT"
 
 # Check if there are backend changes in staged files
 has_backend_changes() {
-  git diff --cached --name-only | grep -vE '^src/SEBT\.Portal\.Web' | grep -qE '^SEBT\.Portal\.sln$|^src/SEBT\.Portal\.|\.(csproj|sln)$' || return 1
+  git diff --cached --name-only | grep -vE '^src/SEBT\.Portal\.Web' | grep -qE '^SEBT\.Portal\.sln$|^src/SEBT\.Portal\.|\.(csproj|sln)$|^test/' || return 1
 }
 
 # Check if there are frontend changes in staged files
@@ -93,12 +93,20 @@ if [ "$BACKEND_CHANGES" = "true" ]; then
 
   if command -v dotnet &> /dev/null; then
     # Verify code formatting matches .editorconfig (fails if changes needed)
-    dotnet format SEBT.Portal.sln --verify-no-changes --verbosity quiet || {
+    # Exclude sibling repos (state-connector, dc-connector, co-connector) that get
+    # pulled in via conditional ProjectReference but live outside this repository.
+    dotnet format SEBT.Portal.sln --verify-no-changes --verbosity quiet \
+      --exclude ../sebt-self-service-portal-state-connector/ \
+      --exclude ../sebt-self-service-portal-dc-connector/ \
+      --exclude ../sebt-self-service-portal-co-connector/ || {
       log_error ".NET code formatting check failed - run 'dotnet format SEBT.Portal.sln' to fix"
       exit 1
     }
-    
-    dotnet format SEBT.Portal.sln analyzers --verify-no-changes --verbosity quiet || {
+
+    dotnet format SEBT.Portal.sln analyzers --verify-no-changes --verbosity quiet \
+      --exclude ../sebt-self-service-portal-state-connector/ \
+      --exclude ../sebt-self-service-portal-dc-connector/ \
+      --exclude ../sebt-self-service-portal-co-connector/ || {
       log_error ".NET analyzer checks failed - fix the reported issues"
       exit 1
     }
@@ -159,7 +167,10 @@ if [ "$BACKEND_CHANGES" = "true" ]; then
   cd "$PROJECT_ROOT"
 
   if command -v dotnet &> /dev/null; then
-    dotnet test --configuration Debug --verbosity quiet || {
+    # Exclude SqlServer tests (Testcontainers/SQL Server) from pre-commit.
+    # They run in CI but cause stack overflows locally when combined with
+    # the rest of the suite due to Docker resource pressure under parallelism.
+    dotnet test --configuration Debug --verbosity quiet --filter "Category!=SqlServer" || {
       log_error "Backend tests failed"
       exit 1
     }

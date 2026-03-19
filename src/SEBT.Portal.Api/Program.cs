@@ -1,10 +1,12 @@
 using System.Text;
 using System.Threading.RateLimiting;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
 using SEBT.Portal.Api.Composition;
+using SEBT.Portal.Api.Filters;
 using SEBT.Portal.Api.Models;
 using Serilog;
 using Microsoft.FeatureManagement;
@@ -28,28 +30,44 @@ builder.Services.AddHttpContextAccessor();
 builder.Services.AddHttpClient();
 
 // Configuration provider priority order (later providers override earlier ones):
-// 1. appsettings.json (defaults in FeatureManagement)
-// 2. AWS AppConfig Agent (if configured, injects into FeatureManagement)
-// 3. State-specific JSON (appsettings.{State}.json)
-
-// Register AWS AppConfig Agent configuration provider if configured
-// We'll be replacing this with a cloud-agnostic configuration provider in the future
-// --> NOTE: This must be registered BEFORE state-specific config so state config can override agent values <--
-var agentSection = builder.Configuration.GetSection("AppConfig:Agent");
-if (agentSection.Exists())
-{
-    // Logger will be created after Serilog is configured, so pass null for now
-    // The provider will work without logging
-    builder.Configuration.AddAppConfigAgent("AppConfig:Agent", logger: null);
-}
+// 1. appsettings.json (defaults)
+// 2. State-specific JSON (appsettings.{State}.json)
+// 3. AWS AppConfig Agent (if configured — highest priority, overrides all)
 
 // This loads appsettings.{State}.json files (e.g., appsettings.dc.json, appsettings.co.json)
-// State config loads LAST and is the final word on feature flag values if present
 var state = Environment.GetEnvironmentVariable("STATE");
 if (!string.IsNullOrEmpty(state))
 {
     var stateConfigFile = $"appsettings.{state.ToLowerInvariant()}.json";
     builder.Configuration.AddJsonFile(stateConfigFile, optional: true, reloadOnChange: true);
+}
+
+// Register AWS AppConfig Agent configuration providers if configured.
+// Registered last so AppConfig values take highest priority.
+var agentSection = builder.Configuration.GetSection("AppConfig:Agent");
+var applicationId = agentSection["ApplicationId"];
+var environmentId = agentSection["EnvironmentId"];
+
+if (!string.IsNullOrEmpty(applicationId) && !string.IsNullOrEmpty(environmentId))
+{
+    var baseUrl = agentSection["BaseUrl"] ?? "http://localhost:2772";
+    var reloadAfterSeconds = agentSection.GetValue<int?>("ReloadAfterSeconds") ?? 90;
+
+    var featureFlagsProfileId = builder.Configuration["AppConfig:FeatureFlags:ProfileId"];
+    if (!string.IsNullOrEmpty(featureFlagsProfileId))
+    {
+        builder.Configuration.AddAppConfigAgent(
+            baseUrl, applicationId, environmentId, featureFlagsProfileId,
+            reloadAfterSeconds, isFeatureFlag: true);
+    }
+
+    var appSettingsProfileId = builder.Configuration["AppConfig:AppSettings:ProfileId"];
+    if (!string.IsNullOrEmpty(appSettingsProfileId))
+    {
+        builder.Configuration.AddAppConfigAgent(
+            baseUrl, applicationId, environmentId, appSettingsProfileId,
+            reloadAfterSeconds, isFeatureFlag: false);
+    }
 }
 
 // Build database connection string from environment variables when deployed
@@ -100,6 +118,9 @@ builder.Services.AddPortalInfrastructureServices();
 builder.Services.AddPortalDbContext(builder.Configuration, options => options.ConfigureDevelopmentSeeding());
 builder.Services.AddPortalInfrastructureRepositories(builder.Configuration);
 builder.Services.AddPortalInfrastructureAppSettings(builder.Configuration);
+
+// Action filters
+builder.Services.AddScoped<ResolveUserFilter>();
 
 // Register IDatabaseSeeder for development utilities (e.g., ClearSeededData script)
 builder.Services.AddScoped<IDatabaseSeeder>(sp =>
@@ -250,9 +271,11 @@ app.UseRateLimiter();
 app.UseAuthentication();
 app.UseAuthorization();
 
-app.MapGet("/health", () => Results.Ok(new { Status = "ok" }));
-
 app.MapControllers();
+app.MapHealthChecks("/health", new HealthCheckOptions
+{
+    ResponseWriter = HealthCheckResponseWriter.WriteAsync
+});
 
 try
 {
@@ -268,3 +291,8 @@ finally
 {
     Log.CloseAndFlush();
 }
+
+// Makes the implicit Program class public so WebApplicationFactory<Program> can reference it from test projects.
+#pragma warning disable CS1591
+public partial class Program { }
+#pragma warning restore CS1591

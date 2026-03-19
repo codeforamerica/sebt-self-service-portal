@@ -438,6 +438,7 @@ FodyWeavers.xsd
 
 # AI
 CLAUDE.local.md
+.claude/settings.local.json
 
 # Developer-local workflow artifacts (branch context, PR reviews, screenshots)
 docs/.local/
