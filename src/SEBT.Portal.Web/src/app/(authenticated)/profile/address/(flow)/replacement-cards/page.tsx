@@ -4,15 +4,16 @@ import { useTranslation } from 'react-i18next'
 
 import { useAddressFlow } from '@/features/address'
 import { ReplacementCardPrompt } from '@/features/address/components/ReplacementCardPrompt'
+import { getState, getStateConfig } from '@/lib/state'
 
 export default function ReplacementCardsPage() {
   const { t } = useTranslation('confirmInfo')
   const { address } = useAddressFlow()
+  const { programName } = getStateConfig(getState())
 
-  // Context-loss guard is handled by the flow layout (D4).
-  // If address is null here, the layout will redirect to /profile/address.
+  // Flow layout guards against missing address and redirects to the form (D4).
   if (!address) {
-    return null
+    return <div aria-busy="true" />
   }
 
   return (
@@ -20,7 +21,7 @@ export default function ReplacementCardsPage() {
       <h1>
         {t(
           'replacementCardsTitle',
-          'Do you want to request replacement cards to be sent to this address?'
+          `Do you want to request replacement ${programName} cards to be sent to this address?`
         )}
       </h1>
       <ReplacementCardPrompt address={address} />
