@@ -131,7 +131,8 @@ public class OidcController(
         }
         catch (Exception ex)
         {
-            logger.LogWarning(ex, "Invalid or expired callback token for state {StateCode}", body.StateCode);
+            logger.LogWarning(ex, "Invalid or expired callback token for state {StateCode}",
+                SanitizeForLog(body.StateCode));
             return BadRequest(new { error = "Invalid or expired callback token." });
         }
 
@@ -158,7 +159,7 @@ public class OidcController(
             var existingUser = await userRepository.GetUserByEmailAsync(normalizedEmail, cancellationToken);
             if (existingUser == null)
             {
-                logger.LogWarning("Step-up requested but user not found: {Email}", normalizedEmail);
+                logger.LogWarning("Step-up complete-login: no existing portal user for callback token; sign-in required first.");
                 return BadRequest(new { error = "Step-up requires an existing session. Please sign in again." });
             }
 
@@ -169,11 +170,11 @@ public class OidcController(
             user.UpdatedAt = DateTime.UtcNow;
             await userRepository.UpdateUserAsync(user, cancellationToken);
 
-            // Message/template differs from earlier builds (email removed for PII); refresh any log alerts that matched the old text.
+            var safeStateKey = SanitizeForLog(stateKey);
             logger.LogInformation(
                 "OIDC step-up complete-login succeeded: UserId {UserId}, StateCode {StateCode}, IalLevel {IalLevel}, IdProofingStatus {IdProofingStatus}",
                 user.Id,
-                stateKey,
+                safeStateKey,
                 user.IalLevel,
                 user.IdProofingStatus);
         }
@@ -187,6 +188,18 @@ public class OidcController(
         return body.IsStepUp && !string.IsNullOrEmpty(body.ReturnUrl)
             ? Ok(new { token, returnUrl = body.ReturnUrl })
             : Ok(new { token });
+    }
+
+    /// <summary>
+    /// Removes newline/control-friendly breaks from values logged from user input.
+    /// </summary>
+    private static string SanitizeForLog(string? value)
+    {
+        if (string.IsNullOrEmpty(value))
+            return string.Empty;
+        return value
+            .Replace("\r", string.Empty, StringComparison.Ordinal)
+            .Replace("\n", string.Empty, StringComparison.Ordinal);
     }
 
     /// <summary>
