@@ -1,5 +1,5 @@
-import { Alert } from '@/components/ui'
 import { getTranslations } from '@/lib/translations'
+import { Alert } from '@sebt/design-system'
 import Link from 'next/link'
 
 export default function NotFound() {

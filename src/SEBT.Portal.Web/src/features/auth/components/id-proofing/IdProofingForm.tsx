@@ -4,7 +4,7 @@ import { useRouter } from 'next/navigation'
 import { useId, useState, type FormEvent } from 'react'
 import { useTranslation } from 'react-i18next'
 
-import { Alert, Button, InputField } from '@/components/ui'
+import { Alert, Button, InputField } from '@sebt/design-system'
 
 import { SK_CHALLENGE_ID } from '@/features/auth/components/doc-verify/sessionKeys'
 import { useSubmitIdProofing, type IdType } from '../../api'
