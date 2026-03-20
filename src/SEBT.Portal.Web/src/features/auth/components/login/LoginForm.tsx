@@ -5,7 +5,7 @@ import { useState, type FormEvent } from 'react'
 import { useTranslation } from 'react-i18next'
 
 import { ApiError } from '@/api/client'
-import { Alert, Button, InputField } from '@/components/ui'
+import { Alert, Button, InputField } from '@sebt/design-system'
 
 import { RequestOtpRequestSchema, useRequestOtp } from '../../api'
 

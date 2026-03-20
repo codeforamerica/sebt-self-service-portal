@@ -1,7 +1,6 @@
 import { OffBoardingContent } from '@/features/auth'
-import { getStateLinks } from '@/lib/links'
-import { getState } from '@/lib/state'
 import { getTranslations } from '@/lib/translations'
+import { getState, getStateLinks } from '@sebt/design-system'
 
 interface OffBoardingPageProps {
   searchParams: Promise<{ canApply?: string }>

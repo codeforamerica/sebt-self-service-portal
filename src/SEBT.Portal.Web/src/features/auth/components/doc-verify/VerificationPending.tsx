@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 
-import { Button } from '@/components/ui'
+import { Button } from '@sebt/design-system'
 
 import { useVerificationStatus } from '../../api'
 
