@@ -68,3 +68,44 @@ Typography: 16px, Bold (700), Line height 24px
     }
   }
 }
+
+// Temporary CO override: DC uses secondary (gold) for buttons, but CO's secondary
+// is red — intended for error/validation states, not interactive controls.
+// CO mockups show buttons in the primary teal range.
+// TODO: Resolve with a proper per-state button token mapping so this override
+// is unnecessary. See design token discussion re: semantic color roles.
+html[data-state='co'] {
+  .usa-button:not(.usa-language__link):not(.usa-button--unstyled):not(.usa-button--outline) {
+    background-color: color('primary');
+    border-color: color('primary');
+    color: color('white');
+
+    &:hover {
+      background-color: color('primary-dark');
+      border-color: color('primary-dark');
+    }
+
+    &:active {
+      background-color: color('primary-darker');
+      border-color: color('primary-darker');
+    }
+  }
+
+  .usa-button--outline:not(.usa-language__link) {
+    background-color: color('white');
+    border: 2px solid color('primary');
+    color: color('primary');
+
+    &:hover {
+      background-color: color('primary-lightest');
+      border-color: color('primary-dark');
+      color: color('primary-dark');
+    }
+
+    &:active {
+      background-color: color('primary-lighter');
+      border-color: color('primary-darker');
+      color: color('primary-darker');
+    }
+  }
+}

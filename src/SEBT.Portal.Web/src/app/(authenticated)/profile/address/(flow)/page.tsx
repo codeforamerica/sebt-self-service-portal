@@ -29,8 +29,10 @@ export default function AddressFormPage() {
   }
 
   return (
-    <div className="grid-container maxw-tablet">
-      <h1>{t('pageTitle', 'Tell us where to safely send your mail')}</h1>
+    <div className="grid-container maxw-tablet padding-top-4 padding-bottom-4">
+      <h1 className="font-sans-xl text-primary">
+        {t('pageTitle', 'Tell us where to safely send your mail')}
+      </h1>
       <p className="usa-hint">
         {t('requiredFieldsNote', 'Asterisks (*) indicate a required field')}
       </p>

@@ -84,7 +84,7 @@ export function ReplacementCardPrompt({ address }: ReplacementCardPromptProps) {
         </Alert>
       )}
 
-      <p className="usa-hint">
+      <p className="usa-hint margin-bottom-3">
         {t('requiredFieldsNote', 'Asterisks (*) indicate a required field')}
       </p>
 
@@ -93,7 +93,7 @@ export function ReplacementCardPrompt({ address }: ReplacementCardPromptProps) {
         aria-label={t('selectOneLabel', 'Select one')}
         aria-describedby={error ? 'replacement-choice-error' : undefined}
       >
-        <legend className="usa-legend">
+        <legend className="usa-legend text-bold">
           {t('selectOneLabel', 'Select one')}
           <span className="text-secondary-dark"> *</span>
         </legend>
@@ -112,7 +112,7 @@ export function ReplacementCardPrompt({ address }: ReplacementCardPromptProps) {
 
         <div className="usa-radio">
           <input
-            className="usa-radio__input"
+            className="usa-radio__input usa-radio__input--tile"
             type="radio"
             id="replacement-yes"
             name="replacementChoice"
@@ -124,7 +124,7 @@ export function ReplacementCardPrompt({ address }: ReplacementCardPromptProps) {
             }}
           />
           <label
-            className="usa-radio__label"
+            className="usa-radio__label text-bold"
             htmlFor="replacement-yes"
           >
             {tCommon('yes', 'Yes')}
@@ -133,7 +133,7 @@ export function ReplacementCardPrompt({ address }: ReplacementCardPromptProps) {
 
         <div className="usa-radio">
           <input
-            className="usa-radio__input"
+            className="usa-radio__input usa-radio__input--tile"
             type="radio"
             id="replacement-no"
             name="replacementChoice"
@@ -145,7 +145,7 @@ export function ReplacementCardPrompt({ address }: ReplacementCardPromptProps) {
             }}
           />
           <label
-            className="usa-radio__label"
+            className="usa-radio__label text-bold"
             htmlFor="replacement-no"
           >
             {tCommon('no', 'No')}

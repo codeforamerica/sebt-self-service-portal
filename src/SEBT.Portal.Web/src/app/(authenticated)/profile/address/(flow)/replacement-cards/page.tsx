@@ -24,8 +24,8 @@ export default function ReplacementCardsPage() {
   }
 
   return (
-    <div className="grid-container maxw-tablet">
-      <h1>
+    <div className="grid-container maxw-tablet padding-top-4 padding-bottom-4">
+      <h1 className="font-sans-xl text-primary">
         {t(
           'replacementCardsTitle',
           `Do you want to request replacement ${programName} cards to be sent to this address?`
