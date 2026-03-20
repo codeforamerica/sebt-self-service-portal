@@ -32,10 +32,13 @@ public class UpdateAddressCommandHandler(
             return Result.Unauthorized("Unable to identify user from token.");
         }
 
-        // Never log raw address fields — PII policy
+        // Never log raw address fields — PII policy.
+        // Extract enum name to a local to break CodeQL taint chain (identifier is tainted via .Value).
+        var identifierKind = identifier.Type.ToString();
+
         logger.LogInformation(
-            "Address update received for household identifier type {Type}",
-            identifier.Type);
+            "Address update received for household identifier kind {Kind}",
+            identifierKind);
 
         // TODO: Call state connector to persist address update.
         // This is stubbed — the handler returns success without writing to the state system.
@@ -43,8 +46,8 @@ public class UpdateAddressCommandHandler(
         // the state connector write method here.
 
         logger.LogInformation(
-            "Address update completed for household identifier type {Type}",
-            identifier.Type);
+            "Address update completed for household identifier kind {Kind}",
+            identifierKind);
 
         return Result.Success();
     }

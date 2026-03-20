@@ -269,7 +269,6 @@ export function AddressForm({ initialAddress }: AddressFormProps) {
           name="postalCode"
           value={postalCode}
           onChange={(e) => setPostalCode(e.target.value)}
-          inputMode="numeric"
           autoComplete="postal-code"
           isRequired
           {...(fieldErrors.postalCode ? { error: fieldErrors.postalCode } : {})}

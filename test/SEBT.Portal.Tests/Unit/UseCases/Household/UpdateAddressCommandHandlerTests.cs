@@ -80,6 +80,63 @@ public class UpdateAddressCommandHandlerTests
     }
 
     [Fact]
+    public async Task Handle_ReturnsValidationFailed_WhenStreetAddressIsWhitespaceOnly()
+    {
+        var handler = CreateHandler();
+        var command = new UpdateAddressCommand
+        {
+            User = CreateUser("user@example.com"),
+            StreetAddress1 = "   ",
+            City = "Washington",
+            State = "District of Columbia",
+            PostalCode = "20001"
+        };
+
+        var result = await handler.Handle(command, CancellationToken.None);
+
+        Assert.False(result.IsSuccess);
+        Assert.IsType<ValidationFailedResult>(result);
+    }
+
+    [Fact]
+    public async Task Handle_ReturnsValidationFailed_WhenCityIsWhitespaceOnly()
+    {
+        var handler = CreateHandler();
+        var command = new UpdateAddressCommand
+        {
+            User = CreateUser("user@example.com"),
+            StreetAddress1 = "123 Main St NW",
+            City = "   ",
+            State = "District of Columbia",
+            PostalCode = "20001"
+        };
+
+        var result = await handler.Handle(command, CancellationToken.None);
+
+        Assert.False(result.IsSuccess);
+        Assert.IsType<ValidationFailedResult>(result);
+    }
+
+    [Fact]
+    public async Task Handle_ReturnsValidationFailed_WhenStateIsWhitespaceOnly()
+    {
+        var handler = CreateHandler();
+        var command = new UpdateAddressCommand
+        {
+            User = CreateUser("user@example.com"),
+            StreetAddress1 = "123 Main St NW",
+            City = "Washington",
+            State = "   ",
+            PostalCode = "20001"
+        };
+
+        var result = await handler.Handle(command, CancellationToken.None);
+
+        Assert.False(result.IsSuccess);
+        Assert.IsType<ValidationFailedResult>(result);
+    }
+
+    [Fact]
     public async Task Handle_ReturnsValidationFailed_WhenPostalCodeIsInvalid()
     {
         var handler = CreateHandler();
@@ -155,7 +212,8 @@ public class UpdateAddressCommandHandlerTests
     }
 
     [Fact]
-    public async Task Handle_IncludesOptionalStreetAddress2_WhenProvided()
+    // TODO: Assert StreetAddress2 persisted when DC-160 lands
+    public async Task Handle_ReturnsSuccess_WhenOptionalStreetAddress2IsProvided()
     {
         var handler = CreateHandler();
         var user = CreateUser("user@example.com");

@@ -16,14 +16,17 @@ public class UpdateAddressCommand : ICommand
     public required ClaimsPrincipal User { get; init; }
 
     [Required(ErrorMessage = "Street address is required.")]
+    [RegularExpression(@"\S.*", ErrorMessage = "Street address cannot be whitespace only.")]
     public required string StreetAddress1 { get; init; }
 
     public string? StreetAddress2 { get; init; }
 
     [Required(ErrorMessage = "City is required.")]
+    [RegularExpression(@"\S.*", ErrorMessage = "City cannot be whitespace only.")]
     public required string City { get; init; }
 
     [Required(ErrorMessage = "State is required.")]
+    [RegularExpression(@"\S.*", ErrorMessage = "State cannot be whitespace only.")]
     public required string State { get; init; }
 
     [Required(ErrorMessage = "Postal code is required.")]
