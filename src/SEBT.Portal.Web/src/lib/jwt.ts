@@ -46,3 +46,43 @@ export function hasIal1Plus(token: string | null): boolean {
   const ial = getIalFromToken(token)
   return ial === '1plus' || ial === '2'
 }
+
+/** Portal JWT claim: ID proofing completion time as Unix seconds (see JwtTokenService). */
+export const ID_PROOFING_COMPLETED_AT_CLAIM = 'id_proofing_completed_at'
+
+const MS_PER_YEAR = 365.25 * 24 * 60 * 60 * 1000
+
+function parseUnixSecondsClaim(value: unknown): number | null {
+  if (typeof value === 'number' && Number.isFinite(value)) return value
+  if (typeof value === 'string' && value !== '') {
+    const n = Number(value)
+    if (Number.isFinite(n)) return n
+  }
+  return null
+}
+
+/**
+ * Parses the public max-age env for ID proofing staleness (default 5 years). Caps absurd values.
+ * Wired from build env by IalGuard for OIDC step-up flows.
+ */
+export function parseIdProofingMaxAgeYears(raw: string | undefined): number {
+  if (raw === undefined || raw === '') return 5
+  const n = Number(raw)
+  if (!Number.isFinite(n) || n <= 0) return 5
+  return Math.min(n, 100)
+}
+
+/**
+ * True if the portal JWT's {@link ID_PROOFING_COMPLETED_AT_CLAIM} is within the last `maxAgeYears` years.
+ * Used to decide whether OIDC step-up is required before IAL1+ features. Missing or unparseable claim is not fresh.
+ */
+export function isIdProofingCompletionFresh(token: string | null, maxAgeYears: number): boolean {
+  if (!token) return false
+  const payload = decodeJwtPayload(token)
+  if (!payload) return false
+  const unixSec = parseUnixSecondsClaim(payload[ID_PROOFING_COMPLETED_AT_CLAIM])
+  if (unixSec === null) return false
+  const completedAtMs = unixSec * 1000
+  const maxMs = maxAgeYears * MS_PER_YEAR
+  return Date.now() - completedAtMs <= maxMs
+}

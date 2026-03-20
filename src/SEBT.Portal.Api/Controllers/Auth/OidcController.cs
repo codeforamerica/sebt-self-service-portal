@@ -12,7 +12,7 @@ using SEBT.Portal.Core.Utilities;
 namespace SEBT.Portal.Api.Controllers.Auth;
 
 /// <summary>
-/// OIDC endpoints for state IdP login. Config is under Oidc.
+/// OIDC endpoints for external IdP login and step-up. Config is under Oidc.
 /// </summary>
 [ApiController]
 [Route("api/auth/oidc")]
@@ -36,7 +36,7 @@ public class OidcController(
     /// <summary>
     /// Public OIDC config for frontend PKCE flow (no secrets): authorization endpoint, token endpoint, client id, redirect URI.
     /// Config keys: Oidc:DiscoveryEndpoint, Oidc:ClientId, Oidc:CallbackRedirectUri.
-    /// When stepUp=true, uses Oidc:StepUp:* for the Socure (step-up) app.
+    /// When stepUp=true, uses Oidc:StepUp:* (second client / discovery for elevated verification).
     /// </summary>
     [HttpGet("{code}/config")]
     [ProducesResponseType(StatusCodes.Status200OK)]

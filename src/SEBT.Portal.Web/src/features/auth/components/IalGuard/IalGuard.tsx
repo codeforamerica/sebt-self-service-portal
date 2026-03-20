@@ -4,7 +4,7 @@ import { apiFetch } from '@/api'
 import { env } from '@/env'
 import { OidcConfigResponseSchema } from '@/features/auth/api/oidc/schema'
 import { getAuthToken } from '@/features/auth/context'
-import { hasIal1Plus } from '@/lib/jwt'
+import { hasIal1Plus, isIdProofingCompletionFresh, parseIdProofingMaxAgeYears } from '@/lib/jwt'
 import {
   buildStepUpAuthorizationUrl,
   generateCodeChallenge,
@@ -21,24 +21,30 @@ const STEP_UP_REQUIRED_IAL = 'IAL1plus' as const
 
 interface IalGuardProps {
   children: ReactNode
-  /** Minimum IAL required (default IAL1plus). Only enforced for CO. */
+  /** Minimum IAL required (default IAL1plus). Enforced when this layout applies OIDC step-up gating (see implementation). */
   requiredIal?: typeof STEP_UP_REQUIRED_IAL
 }
 
 /**
- * Redirects to OIDC step-up when IAL is below required.
- * DC users are not affected (they use OTP + Socure).
- * After a successful step-up, the portal JWT includes ial `1plus` or `2`, so hasIal1Plus is true and the redirect does not run again.
- * In development, set NEXT_PUBLIC_DEBUG_REPEAT_OIDC_STEP_UP=true to ignore that IAL check and repeat step-up on each gated load.
+ * Redirects to OIDC step-up when IAL is below required or ID proofing completion (`id_proofing_completed_at`) is older than configured.
+ * No-op for deployments that do not use this OIDC + step-up pattern for the authenticated layout.
+ * After a successful step-up, the portal JWT includes ial `1plus` or `2` and `id_proofing_completed_at` from the API.
+ * Max age defaults to 5 years (public env; see env schema). In development, NEXT_PUBLIC_DEBUG_REPEAT_OIDC_STEP_UP can force step-up for testing.
  */
 export function IalGuard({ children, requiredIal = STEP_UP_REQUIRED_IAL }: IalGuardProps) {
-  const isCo = getState() === 'co'
+  const useOidcStepUpGate = getState() === 'co'
   const token = getAuthToken()
   const debugRepeatOidcStepUp =
     process.env.NODE_ENV === 'development' && env.NEXT_PUBLIC_DEBUG_REPEAT_OIDC_STEP_UP === 'true'
-  const ialAlreadySufficient =
-    requiredIal === 'IAL1plus' && hasIal1Plus(token) && !debugRepeatOidcStepUp
-  const passesWithoutStepUp = !isCo || !token || ialAlreadySufficient
+  const maxIdProofingAgeYears = parseIdProofingMaxAgeYears(
+    env.NEXT_PUBLIC_CO_ID_PROOFING_MAX_AGE_YEARS
+  )
+  const ialAndIdProofingSufficient =
+    requiredIal === 'IAL1plus' &&
+    hasIal1Plus(token) &&
+    isIdProofingCompletionFresh(token, maxIdProofingAgeYears) &&
+    !debugRepeatOidcStepUp
+  const passesWithoutStepUp = !useOidcStepUpGate || !token || ialAndIdProofingSufficient
 
   const [stepUpError, setStepUpError] = useState(false)
 
