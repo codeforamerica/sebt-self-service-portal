@@ -40,7 +40,10 @@ export const TEST_OTP = {
 export const TEST_FEATURE_FLAGS = {
   enable_enrollment_status: true,
   enable_card_replacement: false,
-  enable_spanish_support: true
+  enable_spanish_support: true,
+  show_application_number: true,
+  show_case_number: true,
+  show_card_last4: true
 } as const
 
 // Test household data (mirrors MockHouseholdRepository seeded data)

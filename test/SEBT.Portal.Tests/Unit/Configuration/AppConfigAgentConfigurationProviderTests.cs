@@ -143,13 +143,13 @@ public class AppConfigAgentConfigurationProviderTests : IDisposable
         provider.Load();
 
         // Assert
-        Assert.True(provider.TryGet("FeatureManagement:Section1:Key1", out var key1));
+        Assert.True(provider.TryGet("Section1:Key1", out var key1));
         Assert.Equal("value1", key1);
-        Assert.True(provider.TryGet("FeatureManagement:Section1:Key2", out var key2));
+        Assert.True(provider.TryGet("Section1:Key2", out var key2));
         Assert.Equal("42", key2);
-        Assert.True(provider.TryGet("FeatureManagement:Section1:Key3", out var key3));
+        Assert.True(provider.TryGet("Section1:Key3", out var key3));
         Assert.Equal("true", key3);
-        Assert.True(provider.TryGet("FeatureManagement:Section2:Nested:Key", out var nestedKey));
+        Assert.True(provider.TryGet("Section2:Nested:Key", out var nestedKey));
         Assert.Equal("nested-value", nestedKey);
     }
 
@@ -314,9 +314,9 @@ public class AppConfigAgentConfigurationProviderTests : IDisposable
         provider.Load();
 
         // Assert
-        Assert.True(provider.TryGet("FeatureManagement:Key1", out var value1));
+        Assert.True(provider.TryGet("Key1", out var value1));
         Assert.Null(value1);
-        Assert.True(provider.TryGet("FeatureManagement:Key2", out var value2));
+        Assert.True(provider.TryGet("Key2", out var value2));
         Assert.Equal("value2", value2);
     }
 
@@ -349,10 +349,10 @@ public class AppConfigAgentConfigurationProviderTests : IDisposable
         provider.Load();
 
         // Assert
-        Assert.True(provider.TryGet("FeatureManagement:Key1", out var key1));
+        Assert.True(provider.TryGet("Key1", out var key1));
         Assert.Equal("value1", key1);
         // arrays should be skipped
-        Assert.False(provider.TryGet("FeatureManagement:ArrayKey", out _));
+        Assert.False(provider.TryGet("ArrayKey", out _));
     }
 
     [Fact]

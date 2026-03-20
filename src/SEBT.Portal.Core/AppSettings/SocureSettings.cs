@@ -12,6 +12,12 @@ public class SocureSettings
     public static readonly string SectionName = "Socure";
 
     /// <summary>
+    /// When false, Socure integration is disabled entirely — validation is skipped
+    /// and a no-op client is registered. States that don't use Socure leave this false.
+    /// </summary>
+    public bool Enabled { get; set; }
+
+    /// <summary>
     /// When true, uses the StubSocureClient instead of the real HTTP client.
     /// Automatically true in Development when no API key is configured.
     /// </summary>
