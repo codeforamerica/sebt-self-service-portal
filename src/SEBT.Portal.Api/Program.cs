@@ -5,6 +5,7 @@ using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
+using SEBT.Portal.Api;
 using SEBT.Portal.Api.Composition;
 using SEBT.Portal.Api.Filters;
 using SEBT.Portal.Api.Models;
@@ -77,7 +78,7 @@ Log.Logger = new LoggerConfiguration()
 builder.Host.UseSerilog();
 
 // Registers plugins and allows them to be constructor injected into ASP.NET controllers
-builder.Services.AddPlugins(builder.Configuration);
+builder.Services.AddPlugins();
 
 // Add services to the container.
 builder.Services.AddControllers();
@@ -158,22 +159,42 @@ builder.Services.AddRateLimiter(options =>
                 ((int)retryAfter.TotalSeconds).ToString();
         }
 
-        var rateLimitSettings = context.HttpContext.RequestServices
-            .GetRequiredService<IOptionsMonitor<OtpRateLimitSettings>>()
-            .CurrentValue;
-
-        var windowDescription = rateLimitSettings.WindowMinutes == 1.0
-            ? "minute"
-            : $"{rateLimitSettings.WindowMinutes} minutes";
-
         context.HttpContext.Response.StatusCode = StatusCodes.Status429TooManyRequests;
-        await context.HttpContext.Response.WriteAsJsonAsync(
-            new { Error = $"Rate limit exceeded. Maximum {rateLimitSettings.PermitLimit} OTP requests per {windowDescription} allowed." },
-            cancellationToken);
+
+        // Determine which rate-limit policy rejected the request to show an appropriate message
+        var endpoint = context.HttpContext.GetEndpoint();
+        var rateLimitAttribute = endpoint?.Metadata
+            .OfType<Microsoft.AspNetCore.RateLimiting.EnableRateLimitingAttribute>()
+            .FirstOrDefault();
+
+        if (rateLimitAttribute?.PolicyName == RateLimitPolicies.EnrollmentCheck)
+        {
+            var enrollmentSettings = context.HttpContext.RequestServices
+                .GetRequiredService<IOptionsMonitor<EnrollmentCheckRateLimitSettings>>()
+                .CurrentValue;
+            var windowDescription = enrollmentSettings.WindowMinutes == 1.0
+                ? "minute"
+                : $"{enrollmentSettings.WindowMinutes} minutes";
+            await context.HttpContext.Response.WriteAsJsonAsync(
+                new { Error = $"Rate limit exceeded. Maximum {enrollmentSettings.PermitLimit} enrollment checks per {windowDescription} allowed." },
+                cancellationToken);
+        }
+        else
+        {
+            var otpSettings = context.HttpContext.RequestServices
+                .GetRequiredService<IOptionsMonitor<OtpRateLimitSettings>>()
+                .CurrentValue;
+            var windowDescription = otpSettings.WindowMinutes == 1.0
+                ? "minute"
+                : $"{otpSettings.WindowMinutes} minutes";
+            await context.HttpContext.Response.WriteAsJsonAsync(
+                new { Error = $"Rate limit exceeded. Maximum {otpSettings.PermitLimit} OTP requests per {windowDescription} allowed." },
+                cancellationToken);
+        }
     };
 
     // Add fixed window limiter policy for OTP requests with email-based partitioning
-    options.AddPolicy("otp-policy", httpContext =>
+    options.AddPolicy(RateLimitPolicies.Otp, httpContext =>
     {
         var rateLimitOptions = httpContext.RequestServices
             .GetRequiredService<IOptionsMonitor<OtpRateLimitSettings>>()
@@ -194,6 +215,26 @@ builder.Services.AddRateLimiter(options =>
         return RateLimitPartition.GetFixedWindowLimiter(
             partitionKey: ipAddress,
             factory: _ => CreateOtpRateLimitOptions(rateLimitOptions));
+    });
+
+    // Add fixed window limiter policy for enrollment check requests with IP-based partitioning
+    options.AddPolicy(RateLimitPolicies.EnrollmentCheck, httpContext =>
+    {
+        var rateLimitOptions = httpContext.RequestServices
+            .GetRequiredService<IOptionsMonitor<EnrollmentCheckRateLimitSettings>>()
+            .CurrentValue;
+
+        var ipAddress = httpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown";
+        return RateLimitPartition.GetFixedWindowLimiter(
+            partitionKey: $"enrollment-check:{ipAddress}",
+            factory: _ => new FixedWindowRateLimiterOptions
+            {
+                PermitLimit = rateLimitOptions.PermitLimit,
+                Window = TimeSpan.FromMinutes(rateLimitOptions.WindowMinutes),
+                QueueProcessingOrder = QueueProcessingOrder.OldestFirst,
+                QueueLimit = 0,
+                AutoReplenishment = true
+            });
     });
 });
 
@@ -276,7 +317,9 @@ finally
     Log.CloseAndFlush();
 }
 
-// Makes the implicit Program class public so WebApplicationFactory<Program> can reference it from test projects.
-#pragma warning disable CS1591
+/// <summary>
+/// Required for WebApplicationFactory&lt;Program&gt; in integration tests.
+/// Top-level statements generate an implicit internal Program class;
+/// this partial declaration makes it public so the test assembly can reference it.
+/// </summary>
 public partial class Program { }
-#pragma warning restore CS1591

@@ -30,6 +30,9 @@ public static class Dependencies
         // ID Proofing Requirements (state-specific PII visibility)
         services.AddSingleton<IIdProofingRequirementsService, IdProofingRequirementsService>();
 
+        // Enrollment Check logging
+        services.AddScoped<IEnrollmentCheckSubmissionLogger, EnrollmentCheckSubmissionLogger>();
+
         // Feature Flag Services
         services.AddScoped<IFeatureFlagQueryService, Services.FeatureFlagQueryService>();
 
@@ -155,6 +158,9 @@ public static class Dependencies
                 var postConfig = new AppConfigFeatureFlagOptionsConfiguration(config, logger);
                 postConfig.PostConfigure(null, options);
             });
+
+        services.AddOptionsWithValidateOnStart<EnrollmentCheckRateLimitSettings>()
+            .BindConfiguration(EnrollmentCheckRateLimitSettings.SectionName);
 
         services.AddOptions<SeedingSettings>()
             .BindConfiguration(SeedingSettings.SectionName);
