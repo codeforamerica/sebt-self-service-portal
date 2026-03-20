@@ -456,6 +456,8 @@ output
 **/*.tfplan
 **/crash.log
 **/crash.*.log
+# Lambda zip artifacts created by the archive_file data source during tofu plan/apply
+tofu/modules/sebt_ses/lambda/*.zip
 
 
 # temporary files

@@ -183,6 +183,9 @@ module "ses" {
 
   sender_email       = var.sender_email
   allowed_recipients = var.ses_allowed_recipients
+
+  ecs_cluster_name = module.api.cluster_name
+  ecs_service_name = module.api.cluster_name
 }
 
 module "cloudfront_waf" {
