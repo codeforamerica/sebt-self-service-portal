@@ -1,9 +1,13 @@
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using NSubstitute;
 using SEBT.Portal.Core.Services;
+using SEBT.Portal.Infrastructure.Data;
 using SEBT.Portal.Infrastructure.Services;
+using SEBT.Portal.StatesPlugins.Interfaces;
 
 namespace SEBT.Portal.Tests.Integration;
 
@@ -11,56 +15,62 @@ namespace SEBT.Portal.Tests.Integration;
 /// Shared test factory for integration tests that spin up the real HTTP pipeline.
 /// Handles common concerns so individual test classes can focus on endpoint behavior:
 /// <list type="bullet">
-///   <item>Redirects plugin assembly paths to prevent loading DLLs with missing transitive dependencies</item>
-///   <item>Replaces database services with no-op mocks (no SQL Server required)</item>
+///   <item>Configures plugin assembly paths to a non-existent directory so no plugins load</item>
+///   <item>Replaces SQL Server with InMemory EF provider</item>
+///   <item>Replaces database migration/seeding with no-op mocks</item>
+///   <item>Mocks plugin service interfaces so tests don't depend on state plugins</item>
 /// </list>
 /// </summary>
 public class PortalWebApplicationFactory : WebApplicationFactory<Program>
 {
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
-        // Override plugin assembly paths via environment variables BEFORE the server starts.
-        // WebApplicationFactory lazily starts the server, so env vars set here are visible
-        // when Program.cs reads builder.Configuration during startup.
-        // This prevents loading plugin DLLs (copied to test output by the API csproj)
-        // that have unresolvable transitive dependencies in the test environment.
-        Environment.SetEnvironmentVariable("PluginAssemblyPaths__0", "plugins-none");
-        Environment.SetEnvironmentVariable("PluginAssemblyPaths__1", "plugins-none");
+        builder.UseEnvironment("Development");
 
-        // Provide a dummy JWT secret so the JwtBearer handler can initialize.
-        // The auth middleware runs on every request (including /health), and
-        // PostConfigure reads JwtSettings:SecretKey to create a SymmetricSecurityKey.
-        Environment.SetEnvironmentVariable("JwtSettings__SecretKey",
-            "integration-test-secret-key-at-least-32-chars!");
+        builder.ConfigureAppConfiguration((_, config) =>
+            config.AddInMemoryCollection(new Dictionary<string, string?>
+            {
+                ["PluginAssemblyPaths:0"] = "plugins-test",
+                ["JwtSettings:SecretKey"] =
+                    "integration-test-key-must-be-at-least-32-bytes-long",
+            }));
 
         builder.ConfigureServices(services =>
         {
-            // Replace database services with no-op mocks so startup
-            // doesn't require a real SQL Server instance.
-            ReplaceWithMock<IDatabaseMigrator>(services);
-            ReplaceWithMock<IDatabaseSeeder>(services);
+            // Remove the real SQL Server DbContext registration
+            var dbContextDescriptor = services.SingleOrDefault(
+                d => d.ServiceType == typeof(DbContextOptions<PortalDbContext>));
+            if (dbContextDescriptor != null)
+            {
+                services.Remove(dbContextDescriptor);
+            }
+
+            // Add InMemory EF provider instead
+            services.AddDbContext<PortalDbContext>(options =>
+                options.UseInMemoryDatabase("IntegrationTests"));
+
+            // Replace database migrator and seeder with no-ops
+            var migratorDescriptor = services.SingleOrDefault(
+                d => d.ServiceType == typeof(IDatabaseMigrator));
+            if (migratorDescriptor != null)
+            {
+                services.Remove(migratorDescriptor);
+            }
+            services.AddScoped(_ => Substitute.For<IDatabaseMigrator>());
+
+            var seederDescriptor = services.SingleOrDefault(
+                d => d.ServiceType == typeof(IDatabaseSeeder));
+            if (seederDescriptor != null)
+            {
+                services.Remove(seederDescriptor);
+            }
+            services.AddScoped(_ => Substitute.For<IDatabaseSeeder>());
+
+            // Override plugin service registrations with mocks.
+            // These AddSingleton calls come after AddPlugins' TryAddSingleton defaults
+            // and any MEF-loaded plugins, so they win — last registration wins in DI.
+            services.AddSingleton(Substitute.For<ISummerEbtCaseService>());
+            services.AddSingleton(Substitute.For<IEnrollmentCheckService>());
         });
-    }
-
-    /// <summary>
-    /// Replaces an existing service registration with a no-op NSubstitute mock.
-    /// </summary>
-    private static void ReplaceWithMock<TService>(IServiceCollection services) where TService : class
-    {
-        var descriptor = services.SingleOrDefault(d => d.ServiceType == typeof(TService));
-        if (descriptor != null)
-        {
-            services.Remove(descriptor);
-        }
-
-        services.AddScoped(_ => Substitute.For<TService>());
-    }
-
-    protected override void Dispose(bool disposing)
-    {
-        Environment.SetEnvironmentVariable("PluginAssemblyPaths__0", null);
-        Environment.SetEnvironmentVariable("PluginAssemblyPaths__1", null);
-        Environment.SetEnvironmentVariable("JwtSettings__SecretKey", null);
-        base.Dispose(disposing);
     }
 }
