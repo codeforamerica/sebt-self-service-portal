@@ -1,0 +1,69 @@
+# Logs
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+node_modules
+dist
+dist-ssr
+*.local
+
+# Next.js Build Outputs
+.next/
+out/
+
+# Test Coverage Reports
+coverage/
+
+# USWDS assets (copied from node_modules during postinstall)
+public/css/
+public/img/
+public/js/
+public/fonts/
+
+# Keep only manually created public assets
+!public/.gitkeep
+
+# Editor directories and files
+.vscode/*
+!.vscode/extensions.json
+.idea
+.DS_Store
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# Environment files
+.env
+.env.local
+.env.production
+
+# Next.js Type Definitions
+next-env.d.ts
+
+# TypeScript Build Cache
+*.tsbuildinfo
+
+# Playwright Test Output
+playwright-report/
+test-results/
+
+# Lighthouse CI Reports
+.lighthouseci/
+
+# Pa11y Accessibility Test Screenshots
+pa11y-screenshots/
+
+# Generated i18n Locale Files
+content/locales/
+!content/locales/**/common.json
+content/.copy-hash
+
+# Generated i18n Resource Registry
+src/lib/generated-locale-resources.ts
