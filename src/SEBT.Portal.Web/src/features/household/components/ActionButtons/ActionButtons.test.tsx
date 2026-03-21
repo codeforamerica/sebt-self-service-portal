@@ -1,9 +1,25 @@
 import { render, screen } from '@testing-library/react'
-import { describe, expect, it } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { ActionButtons } from './ActionButtons'
 
+vi.mock('@/lib/state', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/lib/state')>()
+  return {
+    ...actual,
+    getState: vi.fn().mockReturnValue('dc')
+  }
+})
+
+const { getState } = await import('@/lib/state')
+const mockGetState = vi.mocked(getState)
+
 describe('ActionButtons', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    mockGetState.mockReturnValue('dc')
+  })
+
   it('renders navigation element with aria-label', () => {
     render(<ActionButtons />)
 
@@ -65,13 +81,12 @@ describe('ActionButtons', () => {
     expect(screen.getByText('I want to')).toBeInTheDocument()
   })
 
-  it('uses pill-shaped solid gold button styling', () => {
+  it('renders pill-shaped buttons', () => {
     render(<ActionButtons />)
 
     const links = screen.getAllByRole('link')
     links.forEach((link) => {
       expect(link).toHaveClass('radius-pill')
-      expect(link).toHaveClass('bg-secondary')
     })
   })
 
@@ -83,6 +98,38 @@ describe('ActionButtons', () => {
       const svg = link.querySelector('svg')
       expect(svg).toBeInTheDocument()
       expect(svg).toHaveAttribute('aria-hidden', 'true')
+    })
+  })
+
+  describe('DC state styling', () => {
+    beforeEach(() => {
+      mockGetState.mockReturnValue('dc')
+    })
+
+    it('renders buttons with secondary background and ink text', () => {
+      render(<ActionButtons />)
+
+      const links = screen.getAllByRole('link')
+      links.forEach((link) => {
+        expect(link).toHaveClass('bg-secondary')
+        expect(link).toHaveClass('text-ink')
+      })
+    })
+  })
+
+  describe('CO state styling', () => {
+    beforeEach(() => {
+      mockGetState.mockReturnValue('co')
+    })
+
+    it('renders buttons with primary background and white text', () => {
+      render(<ActionButtons />)
+
+      const links = screen.getAllByRole('link')
+      links.forEach((link) => {
+        expect(link).toHaveClass('bg-primary')
+        expect(link).toHaveClass('text-white')
+      })
     })
   })
 })
