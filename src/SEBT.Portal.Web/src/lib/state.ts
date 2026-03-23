@@ -12,12 +12,18 @@ export type StateCode = 'dc' | 'co'
 export interface StateConfig {
   /** Full display name (e.g., 'District of Columbia') */
   name: string
+  /** State-specific program name (e.g., 'DC SUN Bucks', 'Summer EBT') */
+  programName: string
   /** Alt text for the state seal image in the footer */
   sealAlt: string
   /** Extra CSS classes appended to the mobile language selector button */
   languageSelectorClass?: string
   /** Extra CSS classes appended to the mobile language submenu */
   languageSubmenuClass?: string
+  /** USWDS background utility class for action buttons */
+  actionButtonBg: string
+  /** USWDS text color utility class for action buttons */
+  actionButtonText: string
 }
 
 /**
@@ -27,13 +33,19 @@ export interface StateConfig {
 const stateConfigs: Record<StateCode, StateConfig> = {
   dc: {
     name: 'District of Columbia',
-    sealAlt: 'Government of the District of Columbia - Muriel Bowser, Mayor'
+    programName: 'DC SUN Bucks',
+    sealAlt: 'Government of the District of Columbia - Muriel Bowser, Mayor',
+    actionButtonBg: 'bg-secondary',
+    actionButtonText: 'text-ink'
   },
   co: {
     name: 'Colorado',
+    programName: 'Summer EBT',
     sealAlt: 'Colorado Official State Web Portal',
     languageSelectorClass: 'border-primary radius-md text-primary',
-    languageSubmenuClass: 'bg-primary-dark'
+    languageSubmenuClass: 'bg-primary-dark',
+    actionButtonBg: 'bg-primary',
+    actionButtonText: 'text-white'
   }
 }
 

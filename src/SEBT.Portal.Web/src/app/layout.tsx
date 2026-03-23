@@ -106,6 +106,11 @@ export default async function RootLayout({
                 <I18nProvider>
                   <SkipNav />
                   <AxeProvider>
+                    {/* Portal target for page-level alerts rendered above the header.
+                        Currently used by AddressForm (30-char street address error).
+                        If a second consumer appears, refactor to a SiteAlertContext so
+                        child components call setSiteAlert() instead of using createPortal directly. */}
+                    <div id="site-alerts" />
                     <Header state={state} />
                     <main id="main-content">{children}</main>
                     <HelpSection state={state} />

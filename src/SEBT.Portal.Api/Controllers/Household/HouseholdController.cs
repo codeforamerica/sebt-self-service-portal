@@ -10,7 +10,7 @@ using SEBT.Portal.UseCases.Household;
 namespace SEBT.Portal.Api.Controllers.Household;
 
 /// <summary>
-/// Controller for handling household data retrieval.
+/// Controller for household data retrieval and management.
 /// Household lookup uses state-configurable preferred household ID type (e.g. email, SNAP ID) resolved from the authenticated user.
 /// </summary>
 [ApiController]
@@ -48,5 +48,39 @@ public class HouseholdController : ControllerBase
                 PreconditionFailedResult<Core.Models.Household.HouseholdData> preconditionFailed => NotFound(new ErrorResponse(preconditionFailed.Message)),
                 _ => StatusCode(StatusCodes.Status500InternalServerError, new ErrorResponse("An unexpected error occurred."))
             });
+    }
+
+    /// <summary>
+    /// Updates the mailing address for the authenticated user's household.
+    /// </summary>
+    /// <param name="request">The new mailing address.</param>
+    /// <param name="commandHandler">The use case handler for updating the address.</param>
+    /// <param name="cancellationToken">A token to monitor for cancellation requests.</param>
+    /// <returns>No content on success; otherwise, BadRequest or Unauthorized.</returns>
+    /// <response code="204">Address updated successfully.</response>
+    /// <response code="400">Validation failed (missing fields or invalid format).</response>
+    /// <response code="403">User is not authorized or no household identifier could be resolved from token.</response>
+    [HttpPut("address")]
+    [Authorize]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
+    public async Task<IActionResult> UpdateAddress(
+        [FromBody] UpdateAddressRequest request,
+        [FromServices] ICommandHandler<UpdateAddressCommand> commandHandler,
+        CancellationToken cancellationToken = default)
+    {
+        var command = new UpdateAddressCommand
+        {
+            User = User,
+            StreetAddress1 = request.StreetAddress1,
+            StreetAddress2 = request.StreetAddress2,
+            City = request.City,
+            State = request.State,
+            PostalCode = request.PostalCode
+        };
+
+        var result = await commandHandler.Handle(command, cancellationToken);
+        return result.ToActionResult();
     }
 }
