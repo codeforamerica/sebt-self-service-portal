@@ -17,3 +17,8 @@ output "rotation_lambda_arn" {
   description = "ARN of the credential rotation Lambda function."
   value       = aws_lambda_function.rotation.arn
 }
+
+output "log_group_name" {
+  description = "CloudWatch log group name for the rotation Lambda."
+  value       = aws_cloudwatch_log_group.rotation_lambda.name
+}
