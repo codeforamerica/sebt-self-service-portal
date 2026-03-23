@@ -7,6 +7,7 @@ import { useTranslation } from 'react-i18next'
 import { useHouseholdData } from '../../api'
 import { ActionButtons } from '../ActionButtons'
 import { ApplicationsSection } from '../ApplicationsSection'
+import { DashboardAlerts } from '../DashboardAlerts'
 import { DashboardSkeleton } from '../DashboardSkeleton'
 import { EbtEdgeSection } from '../EbtEdgeSection'
 import { EmptyState } from '../EmptyState'
@@ -64,6 +65,7 @@ export function DashboardContent() {
   return (
     <>
       {pageHeading}
+      <DashboardAlerts />
       <ActionButtons />
       <UserProfileCard />
       <HouseholdSummary />

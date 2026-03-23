@@ -37,6 +37,16 @@ variable "domain" {
   description = "Domain name for the application (e.g. dc.sebt-client-portal.dev.codeforamerica.app)."
 }
 
+variable "enable_appconfig" {
+  type        = bool
+  description = <<-EOT
+    Enable AWS AppConfig for managing feature flags and application
+    settings. When enabled, creates an AppConfig application and deploys
+    an AppConfig Agent sidecar alongside the API container.
+    EOT
+  default     = false
+}
+
 variable "enable_execute_command" {
   type        = bool
   description = "Enable ECS Exec for debugging containers."
@@ -181,6 +191,30 @@ variable "use_mock_household_data" {
   type        = string
   description = "Enable mock household data seeding to create all test user scenarios."
   default     = "false"
+}
+
+variable "state_api_environment_variables" {
+  type        = map(string)
+  description = "State-specific environment variables to inject into the API container."
+  default     = {}
+}
+
+variable "state_api_environment_secrets" {
+  type        = map(string)
+  description = "State-specific secrets to inject into the API container environment."
+  default     = {}
+}
+
+variable "state_web_environment_variables" {
+  type        = map(string)
+  description = "State-specific environment variables to inject into the Web container."
+  default     = {}
+}
+
+variable "state_web_environment_secrets" {
+  type        = map(string)
+  description = "State-specific secrets to inject into the Web container environment."
+  default     = {}
 }
 
 variable "secret_recovery_period" {

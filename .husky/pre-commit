@@ -93,12 +93,20 @@ if [ "$BACKEND_CHANGES" = "true" ]; then
 
   if command -v dotnet &> /dev/null; then
     # Verify code formatting matches .editorconfig (fails if changes needed)
-    dotnet format SEBT.Portal.sln --verify-no-changes --verbosity quiet || {
+    # Exclude sibling repos (state-connector, dc-connector, co-connector) that get
+    # pulled in via conditional ProjectReference but live outside this repository.
+    dotnet format SEBT.Portal.sln --verify-no-changes --verbosity quiet \
+      --exclude ../sebt-self-service-portal-state-connector/ \
+      --exclude ../sebt-self-service-portal-dc-connector/ \
+      --exclude ../sebt-self-service-portal-co-connector/ || {
       log_error ".NET code formatting check failed - run 'dotnet format SEBT.Portal.sln' to fix"
       exit 1
     }
-    
-    dotnet format SEBT.Portal.sln analyzers --verify-no-changes --verbosity quiet || {
+
+    dotnet format SEBT.Portal.sln analyzers --verify-no-changes --verbosity quiet \
+      --exclude ../sebt-self-service-portal-state-connector/ \
+      --exclude ../sebt-self-service-portal-dc-connector/ \
+      --exclude ../sebt-self-service-portal-co-connector/ || {
       log_error ".NET analyzer checks failed - fix the reported issues"
       exit 1
     }

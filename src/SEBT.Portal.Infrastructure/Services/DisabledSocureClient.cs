@@ -1,0 +1,38 @@
+using SEBT.Portal.Core.Models.DocVerification;
+using SEBT.Portal.Core.Services;
+using SEBT.Portal.Kernel;
+using SEBT.Portal.Kernel.Results;
+
+namespace SEBT.Portal.Infrastructure.Services;
+
+/// <summary>
+/// No-op implementation of <see cref="ISocureClient"/> used when Socure integration is disabled.
+/// Returns a <see cref="DependencyFailedReason.NotConfigured"/> result for all operations.
+/// </summary>
+public class DisabledSocureClient : ISocureClient
+{
+    private const string DisabledMessage = "Socure integration is not enabled for this deployment.";
+
+    public Task<Result<IdProofingAssessmentResult>> RunIdProofingAssessmentAsync(
+        int userId,
+        string email,
+        string dateOfBirth,
+        string? idType,
+        string? idValue,
+        CancellationToken cancellationToken = default)
+    {
+        return Task.FromResult(
+            Result<IdProofingAssessmentResult>.DependencyFailed(
+                DependencyFailedReason.NotConfigured, DisabledMessage));
+    }
+
+    public Task<Result<SocureDocvSession>> StartDocvSessionAsync(
+        int userId,
+        string email,
+        CancellationToken cancellationToken = default)
+    {
+        return Task.FromResult(
+            Result<SocureDocvSession>.DependencyFailed(
+                DependencyFailedReason.NotConfigured, DisabledMessage));
+    }
+}

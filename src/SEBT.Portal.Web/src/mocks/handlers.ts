@@ -40,7 +40,10 @@ export const TEST_OTP = {
 export const TEST_FEATURE_FLAGS = {
   enable_enrollment_status: true,
   enable_card_replacement: false,
-  enable_spanish_support: true
+  enable_spanish_support: true,
+  show_application_number: true,
+  show_case_number: true,
+  show_card_last4: true
 } as const
 
 // Test household data (mirrors MockHouseholdRepository seeded data)
@@ -290,5 +293,12 @@ export const handlers = [
     await delay(50)
 
     return HttpResponse.json(TEST_HOUSEHOLD_DATA)
+  }),
+
+  // Address update endpoint (stub — no real persistence yet)
+  // TODO: When state connector persistence is wired up, update this handler to
+  // reflect the real contract (validation errors, response body if not 204, etc.)
+  http.put('/api/household/address', () => {
+    return new HttpResponse(null, { status: 204 })
   })
 ]

@@ -200,7 +200,7 @@ public sealed class AppConfigAgentConfigurationProvider : ConfigurationProvider,
         try
         {
             using var doc = JsonDocument.Parse(stream);
-            FlattenJsonObject(doc.RootElement, result, "FeatureManagement");
+            FlattenJsonObject(doc.RootElement, result, "");
         }
         catch (JsonException ex)
         {
