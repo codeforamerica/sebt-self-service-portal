@@ -21,12 +21,13 @@ const STEP_UP_REQUIRED_IAL = 'IAL1plus' as const
 
 interface IalGuardProps {
   children: ReactNode
-  /** Minimum IAL required (default IAL1plus). Enforced when this layout applies OIDC step-up gating (see implementation). */
+  /** Minimum IAL required (default IAL1plus). Enforced for routes that mount this guard. */
   requiredIal?: typeof STEP_UP_REQUIRED_IAL
 }
 
 /**
  * Redirects to OIDC step-up when IAL is below required or ID proofing completion (`id_proofing_completed_at`) is older than configured.
+ * Mount only on routes that need this gate; the authenticated layout does not wrap the whole app.
  * After a successful step-up, the portal JWT includes ial `1plus` or `2` and `id_proofing_completed_at` from the API.
  * `NEXT_PUBLIC_DEBUG_REPEAT_OIDC_STEP_UP=true` forces step-up on every load for testing.
  */
