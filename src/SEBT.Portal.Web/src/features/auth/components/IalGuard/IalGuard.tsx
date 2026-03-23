@@ -1,9 +1,10 @@
 'use client'
 
 import { apiFetch } from '@/api'
+import { Alert, Button } from '@/components/ui'
 import { env } from '@/env'
 import { OidcConfigResponseSchema } from '@/features/auth/api/oidc/schema'
-import { getAuthToken } from '@/features/auth/context'
+import { useAuth } from '@/features/auth/context'
 import { hasIal1Plus, isIdProofingCompletionFresh, parseIdProofingMaxAgeYears } from '@/lib/jwt'
 import {
   buildStepUpAuthorizationUrl,
@@ -14,10 +15,16 @@ import {
   savePkceForCallback
 } from '@/lib/oidc-pkce'
 import { getState } from '@/lib/state'
-import { getTranslations } from '@/lib/translations'
-import { useEffect, useState, type ReactNode } from 'react'
+import { useRouter } from 'next/navigation'
+import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react'
+import { useTranslation } from 'react-i18next'
 
 const STEP_UP_REQUIRED_IAL = 'IAL1plus' as const
+
+/** Minimum time to show the “checking” screen so the flow never flashes straight to the challenge. */
+const MIN_CHECKING_MS = 500
+
+type GuardPhase = 'challenge' | 'redirecting' | 'error'
 
 interface IalGuardProps {
   children: ReactNode
@@ -25,104 +32,236 @@ interface IalGuardProps {
   requiredIal?: typeof STEP_UP_REQUIRED_IAL
 }
 
+async function startOidcStepUpRedirect(): Promise<void> {
+  const stateCode = getState()
+  const config = await apiFetch(`/auth/oidc/${stateCode}/config?stepUp=true`, {
+    schema: OidcConfigResponseSchema
+  })
+
+  const codeVerifier = generateCodeVerifier()
+  const codeChallenge = await generateCodeChallenge(codeVerifier)
+  const stateValue = generateState()
+  const returnUrl =
+    typeof window !== 'undefined' ? window.location.pathname + window.location.search : '/dashboard'
+
+  const redirectUri = getOidcRedirectUriForCurrentOrigin()
+  savePkceForCallback(stateValue, codeVerifier, {
+    redirectUri,
+    tokenEndpoint: config.tokenEndpoint,
+    clientId: config.clientId,
+    isStepUp: true,
+    returnUrl
+  })
+
+  const { acrValues: rawAcr, ...configRest } = config
+  const authUrl = buildStepUpAuthorizationUrl(
+    {
+      ...configRest,
+      redirectUri,
+      ...(rawAcr != null && rawAcr !== '' ? { acrValues: rawAcr } : {})
+    },
+    codeChallenge,
+    stateValue
+  )
+  window.location.href = authUrl
+}
+
 /**
- * Redirects to OIDC step-up when IAL is below required or ID proofing completion (`id_proofing_completed_at`) is older than configured.
+ * Colorado OIDC step-up gate: brief “checking” UI, then an explicit challenge screen before redirect.
  * Mount only on routes that need this gate; the authenticated layout does not wrap the whole app.
- * After a successful step-up, the portal JWT includes ial `1plus` or `2` and `id_proofing_completed_at` from the API.
- * `NEXT_PUBLIC_DEBUG_REPEAT_OIDC_STEP_UP=true` forces step-up on every load for testing.
+ * `NEXT_PUBLIC_DEBUG_REPEAT_OIDC_STEP_UP=true` forces the challenge path in development even when the JWT already has IAL1+.
  */
 export function IalGuard({ children, requiredIal = STEP_UP_REQUIRED_IAL }: IalGuardProps) {
+  const { token } = useAuth()
+  const router = useRouter()
+  const { t } = useTranslation('common')
+  const { t: tStepUpFailure } = useTranslation('stepUpFailure')
+
   const useOidcStepUpGate = getState() === 'co'
-  const token = getAuthToken()
   const debugRepeatOidcStepUp =
     process.env.NODE_ENV === 'development' && env.NEXT_PUBLIC_DEBUG_REPEAT_OIDC_STEP_UP === 'true'
   const maxIdProofingAgeYears = parseIdProofingMaxAgeYears(
     env.NEXT_PUBLIC_CO_ID_PROOFING_MAX_AGE_YEARS
   )
+
   const ialAndIdProofingSufficient =
     requiredIal === 'IAL1plus' &&
     hasIal1Plus(token) &&
     isIdProofingCompletionFresh(token, maxIdProofingAgeYears) &&
     !debugRepeatOidcStepUp
+
   const passesWithoutStepUp = !useOidcStepUpGate || !token || ialAndIdProofingSufficient
 
-  const [stepUpError, setStepUpError] = useState(false)
+  const needsChallengeFlow = useOidcStepUpGate && !!token && !ialAndIdProofingSufficient
+
+  const [phase, setPhase] = useState<GuardPhase | null>(null)
 
   useEffect(() => {
-    if (passesWithoutStepUp) {
+    if (!needsChallengeFlow) {
       return
     }
 
-    let cancelled = false
-    async function startStepUp() {
-      try {
-        const stateCode = getState()
-        const config = await apiFetch(`/auth/oidc/${stateCode}/config?stepUp=true`, {
-          schema: OidcConfigResponseSchema
-        })
-        if (cancelled) return
+    const id = window.setTimeout(() => {
+      setPhase('challenge')
+    }, MIN_CHECKING_MS)
 
-        const codeVerifier = generateCodeVerifier()
-        const codeChallenge = await generateCodeChallenge(codeVerifier)
-        const stateValue = generateState()
-        const returnUrl =
-          typeof window !== 'undefined'
-            ? window.location.pathname + window.location.search
-            : '/dashboard'
-
-        const redirectUri = getOidcRedirectUriForCurrentOrigin()
-        savePkceForCallback(stateValue, codeVerifier, {
-          redirectUri,
-          tokenEndpoint: config.tokenEndpoint,
-          clientId: config.clientId,
-          isStepUp: true,
-          returnUrl
-        })
-
-        const { acrValues: rawAcr, ...configRest } = config
-        const authUrl = buildStepUpAuthorizationUrl(
-          {
-            ...configRest,
-            redirectUri,
-            ...(rawAcr != null && rawAcr !== '' ? { acrValues: rawAcr } : {})
-          },
-          codeChallenge,
-          stateValue
-        )
-        window.location.href = authUrl
-      } catch {
-        if (!cancelled) {
-          setStepUpError(true)
-        }
-      }
-    }
-
-    void startStepUp()
     return () => {
-      cancelled = true
+      window.clearTimeout(id)
     }
-  }, [passesWithoutStepUp, requiredIal])
+  }, [needsChallengeFlow])
+
+  const handleBack = useCallback(() => {
+    if (typeof window !== 'undefined' && window.history.length > 1) {
+      router.back()
+    } else {
+      router.push('/dashboard')
+    }
+  }, [router])
+
+  const handleVerify = useCallback(async () => {
+    setPhase('redirecting')
+    try {
+      await startOidcStepUpRedirect()
+    } catch {
+      setPhase('error')
+    }
+  }, [])
+
+  const checkingCopy = useMemo(
+    () => ({
+      title: t('ialGuardCheckingTitle', 'Please wait…'),
+      body: t(
+        'ialGuardCheckingBody',
+        'Do not exit the page. Checking to see if we have enough information.'
+      )
+    }),
+    [t]
+  )
 
   if (passesWithoutStepUp) {
     return <>{children}</>
   }
 
-  if (stepUpError) {
-    const t = getTranslations('login')
+  if (phase === 'error') {
     return (
       <div className="usa-section">
         <div className="grid-container maxw-tablet">
-          <p className="font-sans-md">
-            {t(
-              'stepUpVerificationRequired',
-              'Additional verification is required to view this page. Please try again or contact support if the problem persists.'
-            )}
-          </p>
+          <section aria-labelledby="ial-guard-error-title">
+            <h1
+              id="ial-guard-error-title"
+              className="font-heading-lg text-primary margin-bottom-3 line-height-sans-1"
+            >
+              {tStepUpFailure(
+                'title',
+                "We're sorry, we aren't able to show your Summer EBT information"
+              )}
+            </h1>
+            <p className="font-sans-sm margin-bottom-3">
+              {tStepUpFailure('body', 'You can contact us if you need more help.')}
+            </p>
+            <div className="display-flex flex-row flex-wrap flex-gap-2 margin-top-3">
+              <Button
+                type="button"
+                variant="outline"
+                className="border-primary text-primary"
+                onClick={handleBack}
+              >
+                {t('ialGuardBack', 'Back')}
+              </Button>
+              <Button
+                type="button"
+                variant="primary"
+                className="bg-primary-dark text-white border-primary-dark"
+                onClick={handleBack}
+              >
+                {tStepUpFailure('continue', 'Continue')}
+              </Button>
+            </div>
+          </section>
         </div>
       </div>
     )
   }
 
-  /* step-up in progress: redirect imminent or awaiting config */
+  const showChecking = phase === null || phase === 'redirecting'
+  const showChallenge = phase === 'challenge'
+
+  if (showChecking) {
+    return (
+      <div className="usa-section">
+        <div className="grid-container maxw-tablet">
+          <section
+            aria-busy="true"
+            aria-labelledby="ial-guard-checking-title"
+          >
+            <h1
+              id="ial-guard-checking-title"
+              className="font-heading-lg text-primary margin-bottom-3 line-height-sans-1"
+            >
+              {checkingCopy.title}
+            </h1>
+            <div
+              role="status"
+              aria-live="polite"
+            >
+              <Alert
+                variant="info"
+                textClassName="font-sans-sm"
+              >
+                {checkingCopy.body}
+              </Alert>
+            </div>
+          </section>
+        </div>
+      </div>
+    )
+  }
+
+  if (showChallenge) {
+    return (
+      <div className="usa-section">
+        <div className="grid-container maxw-tablet">
+          <section aria-labelledby="ial-guard-challenge-title">
+            <h1
+              id="ial-guard-challenge-title"
+              className="font-heading-lg text-primary margin-bottom-3 line-height-sans-1"
+            >
+              {t(
+                'ialGuardChallengeTitle',
+                'To keep your account safe, we need to confirm it’s really you'
+              )}
+            </h1>
+            <p className="font-sans-sm margin-bottom-3">
+              {t(
+                'ialGuardChallengeBody',
+                'We need to share some information with our third-party vendor to verify your identity. We will do this only once and will not share or save anything without your permission.'
+              )}
+            </p>
+            <div className="display-flex flex-row flex-wrap flex-gap-2 margin-top-3">
+              <Button
+                type="button"
+                variant="outline"
+                className="border-primary text-primary"
+                onClick={handleBack}
+              >
+                {t('ialGuardBack', 'Back')}
+              </Button>
+              <Button
+                type="button"
+                variant="primary"
+                className="bg-primary-dark text-white border-primary-dark"
+                onClick={() => {
+                  void handleVerify()
+                }}
+              >
+                {t('ialGuardVerify', 'Verify')}
+              </Button>
+            </div>
+          </section>
+        </div>
+      </div>
+    )
+  }
+
   return null
 }

@@ -444,6 +444,12 @@ S9 - Language - Action,Continue to my account,Continue to my account,Continuar a
 GLOBAL - Profile Address Stub Title,Mailing address,Mailing address,Dirección postal,Dirección postal,
 GLOBAL - Profile Address Stub Body,"We're still building this page. Check back soon.","We're still building this page. Check back soon.","Todavía estamos trabajando en esta página. Vuelva pronto.","Todavía estamos trabajando en esta página. Vuelva pronto.",
 GLOBAL - Profile Address Back To Dashboard,Back to dashboard,Back to dashboard,Volver al panel,Volver al panel,
+GLOBAL - Ial Guard Checking Title,Please wait…,Please wait…,Espere…,Espere…,
+GLOBAL - Ial Guard Checking Body,Do not exit the page. Checking to see if we have enough information.,Do not exit the page. Checking to see if we have enough information.,"No salga de la página. Estamos comprobando si tenemos suficiente información.","No salga de la página. Estamos comprobando si tenemos suficiente información.",
+GLOBAL - Ial Guard Challenge Title,"To keep your account safe, we need to confirm it’s really you","To keep your account safe, we need to confirm it’s really you","Para mantener su cuenta segura, necesitamos confirmar que realmente es usted","Para mantener su cuenta segura, necesitamos confirmar que realmente es usted",
+GLOBAL - Ial Guard Challenge Body,"We need to share some information with our third-party vendor to verify your identity. We will do this only once and will not share or save anything without your permission.","We need to share some information with our third-party vendor to verify your identity. We will do this only once and will not share or save anything without your permission.","Necesitamos compartir cierta información con nuestro proveedor externo para verificar su identidad. Solo haremos esto una vez y no compartiremos ni guardaremos nada sin su permiso.","Necesitamos compartir cierta información con nuestro proveedor externo para verificar su identidad. Solo haremos esto una vez y no compartiremos ni guardaremos nada sin su permiso.",
+GLOBAL - Ial Guard Back,Back,Back,Atrás,Atrás,
+GLOBAL - Ial Guard Verify,Verify,Verify,Verificar,Verificar,
 GLOBAL - Label - Languages,Languages,Languages,Idiomas,Idiomas,
 GLOBAL - Label - Translate,Translate,Translate,Traducir,Traducir ,
 GLOBAL - Options - Languages,"English
@@ -667,6 +673,7 @@ VALIDATION - ,A new code has been sent to your email.,A new code has been sent t
 
 S10 - Step-up Disclaimer - Title,,Please wait...,,,
 S10 - Step-up Disclaimer - Body,,Do not exit the page. Checking to see if we have enough information.,,,
-S10 - Step-up Failure - Title,,"We're sorry, we aren't able to show your Summer EBT information",,,
-S10 - Step-up Failure - Body,,You can contact us if you need more help.,,,
-S10 - Step-up Failure - Action,,Contact us,,Contáctanos,
+S10 - Step-up Failure - Title,"We're sorry, we aren't able to show your DC SUN Bucks information","We're sorry, we aren't able to show your DC SUN Bucks information","Lo sentimos, no podemos mostrar tu información de DC SUN Bucks","Lo sentimos, no podemos mostrar tu información de DC SUN Bucks",
+S10 - Step-up Failure - Body,You can contact us if you need more help.,You can contact us if you need more help.,Puede contactarnos si necesita más ayuda.,Puede contactarnos si necesita más ayuda.,
+S10 - Step-up Failure - Action,Contact us,Contact us,Contáctanos,Contáctanos,
+S10 - Step-up Failure - Continue,Continue,Continue,Continuar,Continuar,
