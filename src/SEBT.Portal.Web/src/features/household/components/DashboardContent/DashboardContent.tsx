@@ -64,7 +64,7 @@ export function DashboardContent() {
   return (
     <>
       {pageHeading}
-      <ActionButtons />
+      <ActionButtons issuanceType={data.benefitIssuanceType} />
       <UserProfileCard />
       <HouseholdSummary />
       <EnrolledChildren />
