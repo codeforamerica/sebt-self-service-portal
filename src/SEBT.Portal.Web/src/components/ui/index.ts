@@ -1,6 +1,9 @@
 export { Alert } from './Alert'
 export type { AlertProps, AlertVariant } from './types'
 
+export { SummaryBox } from './SummaryBox'
+export type { SummaryBoxProps } from './SummaryBox'
+
 export { Button } from './Button'
 export type { ButtonProps, ButtonVariant } from './types'
 

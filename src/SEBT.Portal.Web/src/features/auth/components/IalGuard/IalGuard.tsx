@@ -1,7 +1,7 @@
 'use client'
 
 import { apiFetch } from '@/api'
-import { Alert, Button } from '@/components/ui'
+import { Button, SummaryBox } from '@/components/ui'
 import { env } from '@/env'
 import { OidcConfigResponseSchema } from '@/features/auth/api/oidc/schema'
 import { useAuth } from '@/features/auth/context'
@@ -204,12 +204,9 @@ export function IalGuard({ children, requiredIal = STEP_UP_REQUIRED_IAL }: IalGu
               role="status"
               aria-live="polite"
             >
-              <Alert
-                variant="info"
-                textClassName="font-sans-sm"
-              >
-                {checkingCopy.body}
-              </Alert>
+              <SummaryBox>
+                <p className="font-sans-sm margin-0">{checkingCopy.body}</p>
+              </SummaryBox>
             </div>
           </section>
         </div>
