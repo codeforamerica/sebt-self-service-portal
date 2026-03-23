@@ -11,7 +11,8 @@ Manage git operations across the SEBT portal's four repositories in parallel.
 ## Repositories
 
 ```
-SEBT_BASE="~/Projects/SEBT"
+# Assumes all four SEBT repos are sibling directories under a common parent
+SEBT_BASE="$(dirname "$(git rev-parse --show-toplevel)")"
 
 portal="$SEBT_BASE/sebt-self-service-portal"
 state_connector="$SEBT_BASE/sebt-self-service-portal-state-connector"
