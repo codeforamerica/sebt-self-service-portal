@@ -33,6 +33,7 @@
       <PackageReference Include="Microsoft.EntityFrameworkCore.Tools" Version="10.0.0" />
       <PackageReference Include="Microsoft.Extensions.Caching.Memory" Version="10.0.0" />
       <PackageReference Include="Bogus" Version="35.6.5" />
+      <PackageReference Include="Microsoft.Extensions.Http" Version="10.0.0" />
       <PackageReference Include="Microsoft.Extensions.Logging" Version="10.0.0" />
       <PackageReference Include="Microsoft.Extensions.Options" Version="10.0.0" />
       <PackageReference Include="Microsoft.Extensions.Options.ConfigurationExtensions" Version="10.0.0" />
