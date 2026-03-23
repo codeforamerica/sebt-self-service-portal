@@ -27,9 +27,8 @@ interface IalGuardProps {
 
 /**
  * Redirects to OIDC step-up when IAL is below required or ID proofing completion (`id_proofing_completed_at`) is older than configured.
- * No-op for deployments that do not use this OIDC + step-up pattern for the authenticated layout.
  * After a successful step-up, the portal JWT includes ial `1plus` or `2` and `id_proofing_completed_at` from the API.
- * Max age defaults to 5 years (public env; see env schema). In development, NEXT_PUBLIC_DEBUG_REPEAT_OIDC_STEP_UP can force step-up for testing.
+ * `NEXT_PUBLIC_DEBUG_REPEAT_OIDC_STEP_UP=true` forces step-up on every load for testing.
  */
 export function IalGuard({ children, requiredIal = STEP_UP_REQUIRED_IAL }: IalGuardProps) {
   const useOidcStepUpGate = getState() === 'co'
@@ -56,7 +55,8 @@ export function IalGuard({ children, requiredIal = STEP_UP_REQUIRED_IAL }: IalGu
     let cancelled = false
     async function startStepUp() {
       try {
-        const config = await apiFetch(`/auth/oidc/co/config?stepUp=true`, {
+        const stateCode = getState()
+        const config = await apiFetch(`/auth/oidc/${stateCode}/config?stepUp=true`, {
           schema: OidcConfigResponseSchema
         })
         if (cancelled) return
