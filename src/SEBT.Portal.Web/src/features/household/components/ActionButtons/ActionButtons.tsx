@@ -13,7 +13,7 @@ interface ActionButton {
 // Keys map to CSV: "S2 - Portal Dashboard - Action Navigation - {Key}"
 const ACTIONS: ActionButton[] = [
   { labelKey: 'actionNavigationCheckExistingCards', href: '/cards' },
-  { labelKey: 'actionNavigationOrderReplacementCards', href: '/cards/request' },
+  { labelKey: 'actionNavigationOrderReplacementCards', href: '#enrolled-children' },
   { labelKey: 'actionNavigationChangeMyMailingAddress', href: '/profile/address' },
   { labelKey: 'actionNavigationChangeMyContactInformation', href: '/profile/contact' },
   { labelKey: 'actionNavigationCheckExistingApplications', href: '/applications' }

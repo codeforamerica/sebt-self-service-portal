@@ -47,7 +47,7 @@ describe('ActionButtons', () => {
 
     // i18n key: actionNavigationOrderReplacementCards
     const link = screen.getByText('Request new cards')
-    expect(link).toHaveAttribute('href', '/cards/request')
+    expect(link).toHaveAttribute('href', '#enrolled-children')
   })
 
   it('renders change mailing address button', () => {

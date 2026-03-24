@@ -1,9 +1,11 @@
 'use client'
 
+import Link from 'next/link'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
 import { useFeatureFlag } from '@/features/feature-flags'
+import { getState } from '@/lib/state'
 
 import type { Application, Child } from '../../api'
 import { CardStatusTimeline } from '../CardStatusTimeline'
@@ -26,6 +28,22 @@ function formatDate(isoDate: string, locale: string): string {
 }
 
 // Keys map to CSV: "S2 - Portal Dashboard - Card Table - {Key}"
+function getReplacementLink(application: Application): string | null {
+  const { applicationNumber, issuanceType } = application
+  if (!applicationNumber) return null
+
+  const currentState = getState()
+  const isCoLoaded = issuanceType === 'TanfEbtCard' || issuanceType === 'SnapEbtCard'
+
+  if (isCoLoaded && currentState === 'dc') {
+    return '/cards/info'
+  }
+
+  if (isCoLoaded) return null
+
+  return `/cards/replace?app=${encodeURIComponent(applicationNumber)}`
+}
+
 export function ChildCard({ child, application, id, defaultExpanded = true }: ChildCardProps) {
   const { t, i18n } = useTranslation('dashboard')
   const showCardLast4 = useFeatureFlag('show_card_last4')
@@ -33,6 +51,7 @@ export function ChildCard({ child, application, id, defaultExpanded = true }: Ch
   const childName = `${child.firstName} ${child.lastName}`
 
   const { benefitIssueDate, benefitExpirationDate, last4DigitsOfCard, issuanceType } = application
+  const replacementLink = getReplacementLink(application)
 
   // Map issuance type to i18n key (keys from CSV: cardTableType{Sebt|Snap|Tanf})
   const getCardTypeKey = (type: string | null | undefined): string | null => {
@@ -102,6 +121,14 @@ export function ChildCard({ child, application, id, defaultExpanded = true }: Ch
           )}
           <CardStatusTimeline application={application} />
         </dl>
+        {replacementLink && (
+          <Link
+            href={replacementLink}
+            className="usa-link display-inline-block margin-top-2"
+          >
+            {t('cardTableRequestReplacement', 'Request a replacement card')}
+          </Link>
+        )}
       </div>
     </div>
   )
