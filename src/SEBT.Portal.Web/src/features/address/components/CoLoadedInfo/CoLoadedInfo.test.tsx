@@ -26,14 +26,14 @@ function createTestQueryClient() {
   })
 }
 
-function renderCoLoadedInfo() {
+function renderCoLoadedInfo({ showContinue }: { showContinue?: boolean } = {}) {
   const queryClient = createTestQueryClient()
   const user = userEvent.setup()
   return {
     user,
     ...render(
       <QueryClientProvider client={queryClient}>
-        <CoLoadedInfo />
+        <CoLoadedInfo {...(showContinue != null ? { showContinue } : {})} />
       </QueryClientProvider>
     )
   }
@@ -117,8 +117,18 @@ describe('CoLoadedInfo', () => {
     expect(mockBack).toHaveBeenCalled()
   })
 
-  it('navigates to dashboard when continue button is clicked', async () => {
-    const { user } = renderCoLoadedInfo()
+  it('does not render continue button by default', async () => {
+    renderCoLoadedInfo()
+
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: /back/i })).toBeInTheDocument()
+    })
+
+    expect(screen.queryByRole('button', { name: /continue/i })).not.toBeInTheDocument()
+  })
+
+  it('renders continue button when showContinue is true', async () => {
+    const { user } = renderCoLoadedInfo({ showContinue: true })
 
     await waitFor(() => {
       expect(screen.getByRole('button', { name: /continue/i })).toBeInTheDocument()

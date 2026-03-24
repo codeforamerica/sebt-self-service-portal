@@ -16,12 +16,20 @@ const FIS_PHONE_HREF = 'tel:+18883049167'
 // TODO: Integration with card flow — DC-153 may route co-loaded users here
 // from the card replacement flow as well.
 
+interface CoLoadedInfoProps {
+  /**
+   * Whether to show the Continue button. Defaults to false.
+   * The standalone /cards/info page is a dead-end per DC-01 and shows only Back.
+   */
+  showContinue?: boolean
+}
+
 /**
  * DC-01: Informational screen for co-loaded DC users.
  * Tells them to call FIS to request a replacement card.
  * This screen is DC-only and lives outside the address update flow layout.
  */
-export function CoLoadedInfo() {
+export function CoLoadedInfo({ showContinue = false }: CoLoadedInfoProps) {
   const { t } = useTranslation('confirmInfo')
   const { t: tCommon } = useTranslation('common')
   const router = useRouter()
@@ -83,12 +91,14 @@ export function CoLoadedInfo() {
         >
           {tCommon('back', 'Back')}
         </Button>
-        <Button
-          type="button"
-          onClick={() => router.push('/dashboard')}
-        >
-          {tCommon('continue', 'Continue')}
-        </Button>
+        {showContinue && (
+          <Button
+            type="button"
+            onClick={() => router.push('/dashboard')}
+          >
+            {tCommon('continue', 'Continue')}
+          </Button>
+        )}
       </div>
     </div>
   )
