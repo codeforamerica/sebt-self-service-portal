@@ -162,6 +162,8 @@ public class MockHouseholdRepository : IHouseholdRepository
             var app = h.Applications.FirstOrDefault();
             if (app != null)
             {
+                app.ApplicationNumber = "APP-2025-01-100001";
+                app.CaseNumber = "CASE-100001";
                 app.BenefitIssueDate = now.AddDays(-30);
                 app.BenefitExpirationDate = now.AddDays(60);
                 app.Last4DigitsOfCard = "1234"; // Specific value for test
@@ -416,7 +418,7 @@ public class MockHouseholdRepository : IHouseholdRepository
         var multipleApps = HouseholdFactory.CreateHouseholdDataWithStatus(ApplicationStatus.Approved, h =>
         {
             h.BenefitIssuanceType = BenefitIssuanceType.SnapEbtCard;
-            var faker = new Faker();
+            var faker = new Faker { Random = new Randomizer(42) };
             var approvedApp = new Application
             {
                 ApplicationNumber = $"APP-{now.AddDays(-30):yyyy-MM}-{faker.Random.Number(100000, 999999)}",
