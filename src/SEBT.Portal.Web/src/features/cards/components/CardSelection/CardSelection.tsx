@@ -5,6 +5,7 @@ import { useEffect, useRef, useState, type FormEvent } from 'react'
 import { useTranslation } from 'react-i18next'
 
 import { Alert, Button } from '@/components/ui'
+import { isWithinCooldownPeriod } from '@/features/cards/utils/cooldown'
 import { useHouseholdData, type Child } from '@/features/household'
 import type { Application } from '@/features/household/api/schema'
 import { getState } from '@/lib/state'
@@ -18,7 +19,8 @@ interface ApplicationGroup {
 function buildApplicationGroups(applications: Application[]): ApplicationGroup[] {
   return applications
     .filter(
-      (app): app is Application & { applicationNumber: string } => app.applicationNumber != null
+      (app): app is Application & { applicationNumber: string } =>
+        app.applicationNumber != null && !isWithinCooldownPeriod(app.cardRequestedAt)
     )
     .map((app) => ({
       applicationNumber: app.applicationNumber,

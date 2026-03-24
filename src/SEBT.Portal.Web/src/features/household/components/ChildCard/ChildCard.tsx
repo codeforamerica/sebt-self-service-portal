@@ -4,6 +4,7 @@ import Link from 'next/link'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
+import { isWithinCooldownPeriod } from '@/features/cards/utils/cooldown'
 import { useFeatureFlag } from '@/features/feature-flags'
 import { getState } from '@/lib/state'
 
@@ -29,8 +30,10 @@ function formatDate(isoDate: string, locale: string): string {
 
 // Keys map to CSV: "S2 - Portal Dashboard - Card Table - {Key}"
 function getReplacementLink(application: Application): string | null {
-  const { applicationNumber, issuanceType } = application
+  const { applicationNumber, issuanceType, cardRequestedAt } = application
   if (!applicationNumber) return null
+
+  if (isWithinCooldownPeriod(cardRequestedAt)) return null
 
   const currentState = getState()
   const isCoLoaded = issuanceType === 'TanfEbtCard' || issuanceType === 'SnapEbtCard'
