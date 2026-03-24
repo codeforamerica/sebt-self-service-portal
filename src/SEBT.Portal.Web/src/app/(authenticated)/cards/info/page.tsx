@@ -4,6 +4,8 @@ import { useRouter } from 'next/navigation'
 import { useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 
+import Link from 'next/link'
+
 import { Alert } from '@/components/ui'
 import { CoLoadedInfo } from '@/features/address/components/CoLoadedInfo'
 import { getState } from '@/lib/state'
@@ -44,7 +46,13 @@ export default function CardInfoPage() {
         {/* TODO: Use t('coLoadedSunBucksNote') once key is available in CSV */}
         You can get a new DC SUN Bucks card if you need one. Go to the portal dashboard and tap
         &quot;Request a replacement card&quot; under the child&apos;s name that has benefits issued
-        to a DC SUN Bucks card.
+        to a DC SUN Bucks card.{' '}
+        <Link
+          href="/dashboard"
+          className="usa-link"
+        >
+          Go to the dashboard
+        </Link>
       </Alert>
 
       <CoLoadedInfo />
