@@ -135,6 +135,7 @@ public class MockHouseholdRepository : IHouseholdRepository
                 app.BenefitIssueDate = now.AddDays(-20);
                 app.BenefitExpirationDate = now.AddDays(70);
                 app.Last4DigitsOfCard = "0000";
+                app.CardRequestedAt = now.AddDays(-60);
                 // Set specific children names for test
                 app.Children = new List<Child>
                 {
@@ -330,6 +331,7 @@ public class MockHouseholdRepository : IHouseholdRepository
                 app.BenefitIssueDate = now.AddDays(-15);
                 app.BenefitExpirationDate = now.AddDays(75);
                 app.Last4DigitsOfCard = "4321";
+                app.CardRequestedAt = now.AddDays(-45);
                 // Use Bogus to generate child name
                 var childFaker = new Faker<Child>()
                     .RuleFor(c => c.FirstName, f => f.Name.FirstName())
@@ -353,6 +355,7 @@ public class MockHouseholdRepository : IHouseholdRepository
                 app.BenefitIssueDate = now.AddDays(-45);
                 app.BenefitExpirationDate = now.AddDays(45);
                 app.Last4DigitsOfCard = "8765";
+                app.CardRequestedAt = now.AddDays(-30);
                 // Set specific children names for test
                 app.Children = new List<Child>
                 {
@@ -394,6 +397,7 @@ public class MockHouseholdRepository : IHouseholdRepository
                 app.BenefitIssueDate = now.AddDays(-120);
                 app.BenefitExpirationDate = now.AddDays(-10); // Expired
                 app.Last4DigitsOfCard = "9012";
+                app.CardRequestedAt = now.AddDays(-90);
                 // Use Bogus to generate child name
                 var childFaker = new Faker<Child>()
                     .RuleFor(c => c.FirstName, f => f.Name.FirstName())
