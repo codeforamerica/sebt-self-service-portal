@@ -90,7 +90,7 @@ export function CardSelection() {
     }
 
     const apps = Array.from(selectedApps).join(',')
-    router.push(`./confirm?apps=${encodeURIComponent(apps)}`)
+    router.push(`select/confirm?apps=${encodeURIComponent(apps)}`)
   }
 
   return (

@@ -244,7 +244,7 @@ describe('CardSelection', () => {
     const submitButton = screen.getByRole('button', { name: /continue/i })
     await user.click(submitButton)
 
-    expect(mockPush).toHaveBeenCalledWith(expect.stringContaining('./confirm?apps='))
+    expect(mockPush).toHaveBeenCalledWith(expect.stringContaining('select/confirm?apps='))
   })
 
   // --- Error handling ---
