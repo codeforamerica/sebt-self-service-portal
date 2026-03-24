@@ -1,6 +1,7 @@
 'use client'
 
 import { Alert } from '@/components/ui'
+import { useHouseholdData } from '@/features/household'
 import { usePathname, useRouter, useSearchParams } from 'next/navigation'
 import { useEffect, useState } from 'react'
 
@@ -8,18 +9,22 @@ import { useEffect, useState } from 'react'
  * Displays success and warning alerts on the dashboard triggered by URL search params.
  * Captures alert state on first read, then cleans the params from the URL.
  * The alert persists because rendering is driven by captured state, not live params.
- * Extensible: add new param checks for future alert types (e.g., DC-153 card ordering).
+ *
+ * Card replacement success (flash=card_replaced) sources dynamic details (card last-4,
+ * address) from the household data cache rather than URL params to avoid PII in URLs (D4).
  */
 export function DashboardAlerts() {
   const searchParams = useSearchParams()
   const router = useRouter()
   const pathname = usePathname()
+  const { data: householdData } = useHouseholdData()
 
   // Capture alert state from URL params on first read so the alert
   // survives the URL cleanup that follows.
   const [alerts] = useState(() => ({
     addressUpdated: searchParams.get('addressUpdated') === 'true',
     cardsRequested: searchParams.get('cardsRequested') === 'true',
+    cardReplaced: searchParams.get('flash') === 'card_replaced',
     addressUpdateFailed: searchParams.get('addressUpdateFailed') === 'true',
     contactUpdateFailed: searchParams.get('contactUpdateFailed') === 'true',
     // TODO: Determine trigger logic — possibly driven by household data (e.g., address
@@ -30,6 +35,7 @@ export function DashboardAlerts() {
   const hasAlerts =
     alerts.addressUpdated ||
     alerts.cardsRequested ||
+    alerts.cardReplaced ||
     alerts.addressUpdateFailed ||
     alerts.contactUpdateFailed ||
     alerts.addressVerification
@@ -67,6 +73,24 @@ export function DashboardAlerts() {
           {/* TODO: Use t('cardsRequestedBody') once real persistence is wired up */}
           Your address update and card replacement request have been recorded. State system
           integration is pending — changes are not yet reflected in the benefits system.
+        </Alert>
+      )}
+
+      {alerts.cardReplaced && (
+        <Alert
+          variant="success"
+          // TODO: Use t('cardReplacedHeading') once key is in CSV
+          heading="Your replacement card request has been recorded"
+        >
+          {/* TODO: Use t('cardReplacedBody') once key is in CSV */}
+          {householdData?.addressOnFile ? (
+            <>
+              New cards usually arrive in your mailbox within 7-10 business days. Check back here in
+              1-2 business days to see your updated card details.
+            </>
+          ) : (
+            <>New cards usually arrive in your mailbox within 7-10 business days.</>
+          )}
         </Alert>
       )}
 
