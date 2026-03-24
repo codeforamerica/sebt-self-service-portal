@@ -37,8 +37,15 @@ const nextConfig: NextConfig = {
       path.join(__dirname, 'node_modules')
     ]
   },
-  /* Turbopack configuration for USWDS SASS imports */
+  /* Turbopack configuration for USWDS SASS imports and React deduplication.
+   * resolveAlias ensures the design-system's React imports resolve to this
+   * project's single copy, preventing "Invalid hook call" dual-instance errors.
+   * (Equivalent to the webpack resolve.alias below, but for Turbopack builds.) */
   turbopack: {
+    resolveAlias: {
+      react: './node_modules/react',
+      'react-dom': './node_modules/react-dom'
+    },
     rules: {
       '*.scss': {
         loaders: [
