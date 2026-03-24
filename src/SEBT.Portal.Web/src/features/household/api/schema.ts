@@ -10,12 +10,13 @@ const APPLICATION_STATUS_MAP: Record<number, string> = {
   5: 'Cancelled'
 }
 
+// Backend CardStatus enum: Requested=0, Mailed=1, Active=2, Deactivated=3
+// (no Unknown value; unrecognized integers fall through to ?? 'Unknown' below)
 const CARD_STATUS_MAP: Record<number, string> = {
-  0: 'Unknown',
-  1: 'Requested',
-  2: 'Mailed',
-  3: 'Active',
-  4: 'Deactivated'
+  0: 'Requested',
+  1: 'Mailed',
+  2: 'Active',
+  3: 'Deactivated'
 }
 
 const ISSUANCE_TYPE_MAP: Record<number, string> = {
