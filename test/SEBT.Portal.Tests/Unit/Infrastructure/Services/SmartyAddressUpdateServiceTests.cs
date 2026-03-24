@@ -89,6 +89,44 @@ public class SmartyAddressUpdateServiceTests
     }
 
     [Fact]
+    public async Task ValidateAndNormalizeAsync_SetsWasCorrectedTrue_WhenSmartyNormalizesAddress()
+    {
+        var json =
+            """
+            [{
+              "input_index": 0,
+              "candidate_index": 0,
+              "delivery_line_1": "123 Main St NW",
+              "delivery_line_2": null,
+              "components": {
+                "city_name": "Washington",
+                "state_abbreviation": "DC",
+                "zipcode": "20001",
+                "plus4_code": "1234"
+              },
+              "metadata": { "record_type": "S" },
+              "analysis": { "dpv_match_code": "Y" }
+            }]
+            """;
+
+        var request = new AddressUpdateOperationRequest
+        {
+            StreetAddress1 = "123 main st nw",
+            City = "washington",
+            State = "DC",
+            PostalCode = "20001"
+        };
+
+        var service = CreateService(new MockHttpHandler(HttpStatusCode.OK, json));
+        var result = await service.ValidateAndNormalizeAsync(request);
+
+        var success = Assert.IsType<SuccessResult<AddressUpdateSuccess>>(result);
+        Assert.True(success.Value.WasCorrected);
+        Assert.Equal("123 Main St NW", success.Value.NormalizedAddress.StreetAddress1);
+        Assert.Equal("20001-1234", success.Value.NormalizedAddress.PostalCode);
+    }
+
+    [Fact]
     public async Task ValidateAndNormalizeAsync_ReturnsValidationFailed_WhenSmartyReturnsNoCandidates()
     {
         var service = CreateService(new MockHttpHandler(HttpStatusCode.OK, "[]"));
