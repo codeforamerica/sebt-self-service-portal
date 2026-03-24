@@ -49,11 +49,13 @@ function getReplacementLink(application: Application): string | null {
 
 export function ChildCard({ child, application, id, defaultExpanded = true }: ChildCardProps) {
   const { t, i18n } = useTranslation('dashboard')
+  const showCaseNumber = useFeatureFlag('show_case_number')
   const showCardLast4 = useFeatureFlag('show_card_last4')
   const [isExpanded, setIsExpanded] = useState(defaultExpanded)
   const childName = `${child.firstName} ${child.lastName}`
 
-  const { benefitIssueDate, benefitExpirationDate, last4DigitsOfCard, issuanceType } = application
+  const { caseNumber, benefitIssueDate, benefitExpirationDate, last4DigitsOfCard, issuanceType } =
+    application
   const replacementLink = getReplacementLink(application)
 
   // Map issuance type to i18n key (keys from CSV: cardTableType{Sebt|Snap|Tanf})
@@ -96,6 +98,12 @@ export function ChildCard({ child, application, id, defaultExpanded = true }: Ch
         data-testid="accordion-content"
       >
         <dl className="margin-0">
+          {showCaseNumber && caseNumber && (
+            <>
+              <dt className="text-bold margin-top-2">{t('cardTableHeadingSebtId')}</dt>
+              <dd className="margin-left-0">{caseNumber}</dd>
+            </>
+          )}
           {cardTypeKey && (
             <>
               <dt className="text-bold margin-top-2">{t('cardTableHeadingCardType')}</dt>
@@ -129,7 +137,7 @@ export function ChildCard({ child, application, id, defaultExpanded = true }: Ch
             href={replacementLink}
             className="usa-link display-inline-block margin-top-2"
           >
-            {t('cardTableRequestReplacement', 'Request a replacement card')}
+            {t('cardTableActionRequestReplacement', 'Request a replacement card')}
           </Link>
         )}
       </div>
