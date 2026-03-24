@@ -2,9 +2,9 @@
 
 import { apiFetch } from '@/api'
 import { Button, SummaryBox } from '@/components/ui'
-import { env } from '@/env'
 import { OidcConfigResponseSchema } from '@/features/auth/api/oidc/schema'
 import { useAuth } from '@/features/auth/context'
+import { getCoIdProofingMaxAgeYearsRaw, isDebugRepeatOidcStepUp } from '@/lib/ial-guard-config'
 import { hasIal1Plus, isIdProofingCompletionFresh, parseIdProofingMaxAgeYears } from '@/lib/jwt'
 import {
   buildStepUpAuthorizationUrl,
@@ -78,11 +78,8 @@ export function IalGuard({ children, requiredIal = STEP_UP_REQUIRED_IAL }: IalGu
   const { t: tStepUpFailure } = useTranslation('stepUpFailure')
 
   const useOidcStepUpGate = getState() === 'co'
-  const debugRepeatOidcStepUp =
-    process.env.NODE_ENV === 'development' && env.NEXT_PUBLIC_DEBUG_REPEAT_OIDC_STEP_UP === 'true'
-  const maxIdProofingAgeYears = parseIdProofingMaxAgeYears(
-    env.NEXT_PUBLIC_CO_ID_PROOFING_MAX_AGE_YEARS
-  )
+  const debugRepeatOidcStepUp = isDebugRepeatOidcStepUp()
+  const maxIdProofingAgeYears = parseIdProofingMaxAgeYears(getCoIdProofingMaxAgeYearsRaw())
 
   const ialAndIdProofingSufficient =
     requiredIal === 'IAL1plus' &&

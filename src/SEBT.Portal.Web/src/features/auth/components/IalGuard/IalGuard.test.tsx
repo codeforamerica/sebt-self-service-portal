@@ -24,13 +24,6 @@ vi.mock('@/lib/state', () => ({
   getState: () => 'co'
 }))
 
-vi.mock('@/env', () => ({
-  env: {
-    NEXT_PUBLIC_DEBUG_REPEAT_OIDC_STEP_UP: undefined,
-    NEXT_PUBLIC_CO_ID_PROOFING_MAX_AGE_YEARS: undefined
-  }
-}))
-
 const apiFetchMock = vi.fn()
 vi.mock('@/api', () => ({
   apiFetch: (...args: unknown[]) => apiFetchMock(...args)

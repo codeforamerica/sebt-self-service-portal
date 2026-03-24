@@ -3,8 +3,12 @@ import { defineConfig } from 'vitest/config'
 
 export default defineConfig({
   test: {
+    // @/env createEnv() requires NEXT_PUBLIC_STATE before modules that import it load (auth barrel → IalGuard).
+    env: {
+      NEXT_PUBLIC_STATE: 'dc'
+    },
     environment: 'jsdom',
-    setupFiles: ['./src/test-setup.ts'],
+    setupFiles: ['./src/test-env-preload.ts', './src/test-setup.ts'],
     globals: true,
     css: true,
     // Support co-located tests: tests next to components in src/
