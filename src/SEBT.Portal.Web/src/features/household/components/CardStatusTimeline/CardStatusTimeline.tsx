@@ -105,7 +105,7 @@ export function CardStatusTimeline({ application }: CardStatusTimelineProps) {
       <dt className="text-bold">{t('cardTableHeadingCardStatus')}</dt>
       <dd className="margin-left-0 margin-top-1">
         <ol
-          className="usa-step-indicator usa-step-indicator--counters-sm"
+          className="usa-step-indicator"
           aria-label={t('cardTableStatusAriaLabel', 'Card status timeline')}
         >
           {steps.map((step) => (
