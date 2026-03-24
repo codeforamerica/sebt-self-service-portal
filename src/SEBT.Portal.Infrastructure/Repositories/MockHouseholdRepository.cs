@@ -329,6 +329,7 @@ public class MockHouseholdRepository : IHouseholdRepository
                 app.IssuanceType = IssuanceType.SummerEbt;
                 app.BenefitIssueDate = now.AddDays(-15);
                 app.BenefitExpirationDate = now.AddDays(75);
+                app.Last4DigitsOfCard = "4321";
                 // Use Bogus to generate child name
                 var childFaker = new Faker<Child>()
                     .RuleFor(c => c.FirstName, f => f.Name.FirstName())
@@ -351,6 +352,7 @@ public class MockHouseholdRepository : IHouseholdRepository
                 app.IssuanceType = IssuanceType.TanfEbtCard;
                 app.BenefitIssueDate = now.AddDays(-45);
                 app.BenefitExpirationDate = now.AddDays(45);
+                app.Last4DigitsOfCard = "8765";
                 // Set specific children names for test
                 app.Children = new List<Child>
                 {
@@ -391,6 +393,7 @@ public class MockHouseholdRepository : IHouseholdRepository
             {
                 app.BenefitIssueDate = now.AddDays(-120);
                 app.BenefitExpirationDate = now.AddDays(-10); // Expired
+                app.Last4DigitsOfCard = "9012";
                 // Use Bogus to generate child name
                 var childFaker = new Faker<Child>()
                     .RuleFor(c => c.FirstName, f => f.Name.FirstName())
