@@ -23,14 +23,14 @@ References:
 Custom Font Override
 ----------------------------------------
 Override USWDS default fonts with our custom font from Next.js font loader.
-The --font-urbanist CSS variable is set by Next.js in layout.tsx.
+The --font-primary CSS variable is set by Next.js in layout.tsx.
 This ensures all USWDS components use our design token font.
 ----------------------------------------
 */
 
 // Override all USWDS font-family declarations to use our custom font
 // This is necessary because USWDS sets font-family on many utility classes
-// TODO: Register Urbanist as a custom USWDS typeface to remove !important hack
+// TODO: Register the design token font as a custom USWDS typeface to remove !important hack
 // See: https://designsystem.digital.gov/documentation/settings/#typography-settings
 body,
 .usa-prose,
@@ -38,7 +38,7 @@ body,
 [class*='text-'],
 [class*='usa-'] {
   font-family:
-    var(--font-urbanist),
+    var(--font-primary),
     system-ui,
     -apple-system,
     BlinkMacSystemFont,

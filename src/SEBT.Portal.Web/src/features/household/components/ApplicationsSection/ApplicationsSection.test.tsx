@@ -1,6 +1,9 @@
 import { render, screen } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
+import { FeatureFlagsContext, type FeatureFlagsContextValue } from '@/features/feature-flags'
+import { TEST_FEATURE_FLAGS } from '@/mocks/handlers'
+
 import type { Application, HouseholdData } from '../../api'
 
 import { ApplicationsSection } from './ApplicationsSection'
@@ -37,31 +40,45 @@ vi.mock('../../api', () => ({
   useRequiredHouseholdData: () => mockReturnData
 }))
 
+const defaultFlags: FeatureFlagsContextValue = {
+  flags: TEST_FEATURE_FLAGS,
+  isLoading: false,
+  isError: false
+}
+
+function renderWithFlags(flags: FeatureFlagsContextValue = defaultFlags) {
+  return render(
+    <FeatureFlagsContext.Provider value={flags}>
+      <ApplicationsSection />
+    </FeatureFlagsContext.Provider>
+  )
+}
+
 describe('ApplicationsSection', () => {
   beforeEach(() => {
     mockReturnData = defaultMockData
   })
 
   it('renders section heading', () => {
-    render(<ApplicationsSection />)
+    renderWithFlags()
 
     expect(screen.getByRole('heading', { level: 2 })).toBeInTheDocument()
   })
 
   it('renders case number', () => {
-    render(<ApplicationsSection />)
+    renderWithFlags()
 
     expect(screen.getByText('CASE-DC-2026-001')).toBeInTheDocument()
   })
 
   it('renders children names', () => {
-    render(<ApplicationsSection />)
+    renderWithFlags()
 
     expect(screen.getByText('Sophia Martinez, James Martinez')).toBeInTheDocument()
   })
 
   it('renders application status with green text for approved', () => {
-    render(<ApplicationsSection />)
+    renderWithFlags()
 
     const statusText = screen.getByText('Approved')
     expect(statusText).toHaveClass('text-bold')
@@ -75,7 +92,7 @@ describe('ApplicationsSection', () => {
       applications: [deniedApp]
     }
 
-    render(<ApplicationsSection />)
+    renderWithFlags()
 
     const statusText = screen.getByText('Denied')
     expect(statusText).toHaveClass('text-bold')
@@ -89,7 +106,7 @@ describe('ApplicationsSection', () => {
       applications: [pendingApp]
     }
 
-    render(<ApplicationsSection />)
+    renderWithFlags()
 
     const statusText = screen.getByText('Pending')
     expect(statusText).toHaveClass('text-bold')
@@ -102,7 +119,7 @@ describe('ApplicationsSection', () => {
       applications: []
     }
 
-    const { container } = render(<ApplicationsSection />)
+    const { container } = renderWithFlags()
 
     expect(container).toBeEmptyDOMElement()
   })
@@ -121,11 +138,21 @@ describe('ApplicationsSection', () => {
       applications: [mockApplication, secondApp]
     }
 
-    render(<ApplicationsSection />)
+    renderWithFlags()
 
     // Verify both case numbers are shown
     expect(screen.getByText('CASE-DC-2026-001')).toBeInTheDocument()
     expect(screen.getByText('CASE-DC-2026-002')).toBeInTheDocument()
     expect(screen.getByText('Emily Brown')).toBeInTheDocument()
+  })
+
+  it('hides case number when show_case_number flag is off', () => {
+    renderWithFlags({
+      flags: { ...TEST_FEATURE_FLAGS, show_case_number: false },
+      isLoading: false,
+      isError: false
+    })
+
+    expect(screen.queryByText('CASE-DC-2026-001')).not.toBeInTheDocument()
   })
 })

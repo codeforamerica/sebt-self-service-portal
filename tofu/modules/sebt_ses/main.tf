@@ -88,10 +88,6 @@ resource "aws_iam_user_policy" "smtp" {
   })
 }
 
-resource "aws_iam_access_key" "smtp" {
-  user = aws_iam_user.smtp.name
-}
-
 resource "aws_secretsmanager_secret" "smtp" {
   name        = "${local.prefix}-ses-smtp-credentials"
   description = "SES SMTP credentials for ${local.prefix}."
@@ -101,11 +97,132 @@ resource "aws_secretsmanager_secret" "smtp" {
   }
 }
 
-resource "aws_secretsmanager_secret_version" "smtp" {
-  secret_id = aws_secretsmanager_secret.smtp.id
+# Credential rotation Lambda and supporting resources.
+# Based on the AWS sample at:
+# https://github.com/aws-samples/serverless-mail/tree/ses-credential-rotation/ses-credential-rotation
 
-  secret_string = jsonencode({
-    username = aws_iam_access_key.smtp.id
-    password = aws_iam_access_key.smtp.ses_smtp_password_v4
+resource "aws_iam_role" "rotation_lambda" {
+  name = "${local.prefix}-ses-smtp-rotation"
+  path = "/system/"
+
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect = "Allow"
+        Principal = {
+          Service = "lambda.amazonaws.com"
+        }
+        Action = "sts:AssumeRole"
+      }
+    ]
   })
+
+  tags = {
+    Name = "${local.prefix}-ses-smtp-rotation"
+  }
+}
+
+resource "aws_iam_role_policy" "rotation_lambda" {
+  name = "ses-smtp-rotation"
+  role = aws_iam_role.rotation_lambda.id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Sid    = "ManageIamKeys"
+        Effect = "Allow"
+        Action = [
+          "iam:CreateAccessKey",
+          "iam:DeleteAccessKey",
+          "iam:ListAccessKeys",
+        ]
+        Resource = aws_iam_user.smtp.arn
+      },
+      {
+        Sid    = "ManageSecret"
+        Effect = "Allow"
+        Action = [
+          "secretsmanager:DescribeSecret",
+          "secretsmanager:GetSecretValue",
+          "secretsmanager:PutSecretValue",
+          "secretsmanager:UpdateSecretVersionStage",
+        ]
+        Resource = aws_secretsmanager_secret.smtp.arn
+      },
+      {
+        Sid    = "RedeployEcsService"
+        Effect = "Allow"
+        Action = "ecs:UpdateService"
+        Resource = "arn:${data.aws_partition.current.partition}:ecs:${data.aws_region.current.name}:${data.aws_caller_identity.current.account_id}:service/${var.ecs_cluster_name}/${var.ecs_service_name}"
+      },
+      {
+        Sid    = "WriteLogs"
+        Effect = "Allow"
+        Action = [
+          "logs:CreateLogStream",
+          "logs:PutLogEvents",
+        ]
+        Resource = "${aws_cloudwatch_log_group.rotation_lambda.arn}:*"
+      },
+    ]
+  })
+}
+
+resource "aws_cloudwatch_log_group" "rotation_lambda" {
+  name              = "/aws/lambda/${local.prefix}-ses-smtp-rotation"
+  retention_in_days = 30
+
+  tags = {
+    Name = "${local.prefix}-ses-smtp-rotation"
+  }
+}
+
+resource "aws_lambda_function" "rotation" {
+  function_name    = "${local.prefix}-ses-smtp-rotation"
+  description      = "Rotates SES SMTP credentials for ${local.prefix}."
+  role             = aws_iam_role.rotation_lambda.arn
+  handler          = "rotate_smtp_credentials.handler"
+  runtime          = "python3.12"
+  timeout          = 75
+  architectures    = ["arm64"]
+  filename         = data.archive_file.rotation_lambda.output_path
+  source_code_hash = data.archive_file.rotation_lambda.output_base64sha256
+
+  environment {
+    variables = {
+      IAM_USERNAME  = aws_iam_user.smtp.name
+      SMTP_ENDPOINT = local.smtp_server
+      ECS_CLUSTER   = var.ecs_cluster_name
+      ECS_SERVICE   = var.ecs_service_name
+    }
+  }
+
+  depends_on = [aws_cloudwatch_log_group.rotation_lambda]
+
+  tags = {
+    Name = "${local.prefix}-ses-smtp-rotation"
+  }
+}
+
+resource "aws_lambda_permission" "secrets_manager" {
+  statement_id  = "AllowSecretsManagerInvocation"
+  action        = "lambda:InvokeFunction"
+  function_name = aws_lambda_function.rotation.function_name
+  principal     = "secretsmanager.amazonaws.com"
+  source_arn    = aws_secretsmanager_secret.smtp.arn
+}
+
+resource "aws_secretsmanager_secret_rotation" "smtp" {
+  secret_id           = aws_secretsmanager_secret.smtp.id
+  rotation_lambda_arn = aws_lambda_function.rotation.arn
+
+  rotation_rules {
+    automatically_after_days = var.rotation_interval_days
+  }
+
+  # The existing SMTP credentials are still valid — just enable the schedule
+  # without forcing an immediate rotation on first deploy.
+  rotate_immediately = false
 }
