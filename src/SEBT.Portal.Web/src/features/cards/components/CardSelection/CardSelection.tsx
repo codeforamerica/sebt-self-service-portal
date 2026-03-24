@@ -9,20 +9,22 @@ import { useHouseholdData, type Child } from '@/features/household'
 import type { Application } from '@/features/household/api/schema'
 import { getState } from '@/lib/state'
 
-interface ChildWithCard {
-  key: string
-  child: Child
+interface ApplicationGroup {
+  applicationNumber: string
+  children: Child[]
   last4DigitsOfCard?: string | null | undefined
 }
 
-function flattenChildren(applications: Application[]): ChildWithCard[] {
-  return applications.flatMap((app, appIndex) =>
-    app.children.map((child, i) => ({
-      key: `${app.applicationNumber ?? `app-${appIndex}`}-${i}`,
-      child,
+function buildApplicationGroups(applications: Application[]): ApplicationGroup[] {
+  return applications
+    .filter(
+      (app): app is Application & { applicationNumber: string } => app.applicationNumber != null
+    )
+    .map((app) => ({
+      applicationNumber: app.applicationNumber,
+      children: app.children,
       last4DigitsOfCard: app.last4DigitsOfCard
     }))
-  )
 }
 
 export function CardSelection() {
@@ -32,7 +34,7 @@ export function CardSelection() {
   const currentState = getState()
   const { data, isLoading, isError } = useHouseholdData()
 
-  const [selectedKeys, setSelectedKeys] = useState<Set<string>>(new Set())
+  const [selectedApps, setSelectedApps] = useState<Set<string>>(new Set())
   const [error, setError] = useState<string | null>(null)
   const errorRef = useRef<HTMLSpanElement>(null)
 
@@ -54,9 +56,9 @@ export function CardSelection() {
     )
   }
 
-  const children = flattenChildren(data.applications)
+  const groups = buildApplicationGroups(data.applications)
 
-  if (children.length === 0) {
+  if (groups.length === 0) {
     return (
       <Alert variant="info">
         {t('cardSelectionNoChildren', 'No children found in your household.')}
@@ -64,13 +66,13 @@ export function CardSelection() {
     )
   }
 
-  function toggleChild(key: string) {
-    setSelectedKeys((prev) => {
+  function toggleApplication(appNumber: string) {
+    setSelectedApps((prev) => {
       const next = new Set(prev)
-      if (next.has(key)) {
-        next.delete(key)
+      if (next.has(appNumber)) {
+        next.delete(appNumber)
       } else {
-        next.add(key)
+        next.add(appNumber)
       }
       return next
     })
@@ -80,14 +82,13 @@ export function CardSelection() {
   function handleSubmit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault()
 
-    if (selectedKeys.size === 0) {
+    if (selectedApps.size === 0) {
       setError(t('cardSelectionRequired', 'Please select at least one card.'))
       return
     }
 
-    // TODO (DC-153): Call card replacement API with selected children.
-    // For now, redirect to dashboard with success params.
-    router.push('/dashboard?addressUpdated=true&cardsRequested=true')
+    const apps = Array.from(selectedApps).join(',')
+    router.push(`./confirm?apps=${encodeURIComponent(apps)}`)
   }
 
   return (
@@ -122,35 +123,49 @@ export function CardSelection() {
           </span>
         )}
 
-        {children.map(({ key, child, last4DigitsOfCard }) => (
-          <div
-            key={key}
-            className="usa-checkbox"
-          >
-            <input
-              className="usa-checkbox__input usa-checkbox__input--tile"
-              type="checkbox"
-              id={`card-${key}`}
-              name="selectedCards"
-              value={key}
-              checked={selectedKeys.has(key)}
-              onChange={() => toggleChild(key)}
-            />
-            <label
-              className="usa-checkbox__label"
-              htmlFor={`card-${key}`}
-            >
-              {/* TODO: Use t('childCardLabel', { firstName, lastName }) once key is available in CSV */}
-              {child.firstName} {child.lastName}&apos;s card
-              {currentState === 'co' && last4DigitsOfCard && (
-                <span className="usa-checkbox__label-description">
-                  {/* TODO: Use t('cardNumberLabel', { last4 }) once key is available in CSV */}
-                  Card number: {last4DigitsOfCard} (last 4 digits)
-                </span>
-              )}
-            </label>
-          </div>
-        ))}
+        {groups.map((group) => {
+          const isSelected = selectedApps.has(group.applicationNumber)
+          const isMultiChild = group.children.length > 1
+
+          return group.children.map((child, childIndex) => {
+            const isFirstChild = childIndex === 0
+            const isSiblingOfSelected = isSelected && !isFirstChild
+
+            return (
+              <div
+                key={`${group.applicationNumber}-${childIndex}`}
+                className="usa-checkbox"
+              >
+                <input
+                  className="usa-checkbox__input usa-checkbox__input--tile"
+                  type="checkbox"
+                  id={`card-${group.applicationNumber}-${childIndex}`}
+                  name="selectedCards"
+                  value={group.applicationNumber}
+                  checked={isSelected}
+                  disabled={isSiblingOfSelected}
+                  onChange={() => toggleApplication(group.applicationNumber)}
+                />
+                <label
+                  className="usa-checkbox__label"
+                  htmlFor={`card-${group.applicationNumber}-${childIndex}`}
+                >
+                  {child.firstName} {child.lastName}&apos;s card
+                  {currentState === 'co' && group.last4DigitsOfCard && (
+                    <span className="usa-checkbox__label-description">
+                      Card number: {group.last4DigitsOfCard} (last 4 digits)
+                    </span>
+                  )}
+                  {isSiblingOfSelected && isMultiChild && (
+                    <span className="usa-checkbox__label-description text-base-dark">
+                      These children share a card
+                    </span>
+                  )}
+                </label>
+              </div>
+            )
+          })
+        })}
       </fieldset>
 
       <div className="margin-top-3 display-flex flex-row gap-2">
