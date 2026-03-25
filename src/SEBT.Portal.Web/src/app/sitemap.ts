@@ -1,4 +1,4 @@
-import { getState } from '@/lib/state'
+import { getState } from '@sebt/design-system'
 import type { MetadataRoute } from 'next'
 import { headers } from 'next/headers'
 

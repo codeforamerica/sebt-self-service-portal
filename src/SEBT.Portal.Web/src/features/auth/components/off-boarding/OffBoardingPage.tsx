@@ -3,7 +3,7 @@
 import { useRouter } from 'next/navigation'
 import { useEffect, useState } from 'react'
 
-import { Button } from '@/components/ui'
+import { Button } from '@sebt/design-system'
 
 // SessionStorage keys — set by IdProofingForm or DocVerifyPage before navigating here
 const SK_REASON = 'offboarding_reason'

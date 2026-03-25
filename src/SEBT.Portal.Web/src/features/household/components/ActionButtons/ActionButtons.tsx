@@ -3,7 +3,7 @@
 import Link from 'next/link'
 import { useTranslation } from 'react-i18next'
 
-import { getState, getStateConfig } from '@/lib/state'
+import { getState, getStateConfig } from '@sebt/design-system'
 
 interface ActionButton {
   labelKey: string

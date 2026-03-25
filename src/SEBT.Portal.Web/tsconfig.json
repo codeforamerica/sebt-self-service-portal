@@ -32,7 +32,9 @@
     "paths": {
       "@/*": ["./src/*"],
       "@/design/*": ["./design/*"],
-      "@/content/*": ["./content/*"]
+      "@/content/*": ["./content/*"],
+      "@sebt/design-system": ["../../packages/design-system/src/index.ts"],
+      "@sebt/design-system/*": ["../../packages/design-system/*"]
     }
   },
   "include": [
