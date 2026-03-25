@@ -14,19 +14,21 @@ const withBundleAnalyzer = bundleAnalyzer({
 })
 
 const nextConfig: NextConfig = {
-  transpilePackages: ['@sebt/design-system'],
-  // Treat react-i18next as an external server package so it's not bundled into
-  // the server bundle. This prevents react-i18next's module-level createContext()
-  // call from being evaluated in the React Server Components context (which does
-  // not have createContext). The package is still available for client components.
-  serverExternalPackages: ['react-i18next'],
+  // NOTE: @sebt/design-system is NOT in transpilePackages. Turbopack handles
+  // TypeScript natively. Using transpilePackages caused the entire barrel to
+  // be processed in the RSC layer, pulling in react-i18next's module-level
+  // createContext() where it doesn't exist. The design-system barrel is split
+  // into server-safe (index.ts) and client (client.ts) entry points instead.
   reactCompiler: true,
   env: {
     NEXT_PUBLIC_STATE: state
   },
   experimental: {
     // Use our custom sass-loader configuration instead of built-in
-    turbopackUseBuiltinSass: false
+    turbopackUseBuiltinSass: false,
+    // Tree-shake the design-system barrel so importing a single export
+    // doesn't pull in unrelated modules
+    optimizePackageImports: ['@sebt/design-system']
   },
   /* SASS Configuration for USWDS */
   sassOptions: {
@@ -37,15 +39,8 @@ const nextConfig: NextConfig = {
       path.join(__dirname, 'node_modules')
     ]
   },
-  /* Turbopack configuration for USWDS SASS imports and React deduplication.
-   * resolveAlias ensures the design-system's React imports resolve to this
-   * project's single copy, preventing "Invalid hook call" dual-instance errors.
-   * (Equivalent to the webpack resolve.alias below, but for Turbopack builds.) */
+  /* Turbopack configuration for USWDS SASS imports */
   turbopack: {
-    resolveAlias: {
-      react: './node_modules/react',
-      'react-dom': './node_modules/react-dom'
-    },
     rules: {
       '*.scss': {
         loaders: [
@@ -66,17 +61,6 @@ const nextConfig: NextConfig = {
         as: '*.css'
       }
     }
-  },
-  /* Webpack configuration — ensures a single React instance when @sebt/design-system
-   * is processed via transpilePackages (avoids "createContext is not a function" errors
-   * caused by duplicate React copies from the design-system's own node_modules). */
-  webpack: (config) => {
-    config.resolve.alias = {
-      ...config.resolve.alias,
-      react: path.resolve(__dirname, 'node_modules/react'),
-      'react-dom': path.resolve(__dirname, 'node_modules/react-dom')
-    }
-    return config
   },
   // Standalone output for Docker/CI deployments only (set BUILD_STANDALONE=true)
   // Local dev uses standard output so `next start` serves public/ and static/ correctly

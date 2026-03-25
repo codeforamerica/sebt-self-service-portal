@@ -98,6 +98,7 @@ jobs:
           JwtSettings__SecretKey: "ci-e2e-jwt-secret-at-least-32-characters-long"
           IdentifierHasher__SecretKey: "ci-e2e-identifier-hasher-key-32chars"
           Oidc__CompleteLoginSigningKey: "ci-e2e-oidc-signing-key-at-least-32-chars"
+          PluginAssemblyPaths__0: "plugins-dc"
           UseMockHouseholdData: "true"
         run: |
           # Start API in dev mode + frontend from production build

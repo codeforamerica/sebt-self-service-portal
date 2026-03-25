@@ -8,7 +8,8 @@ import {
   QueryProvider
 } from '@/providers'
 import { GoogleAnalytics } from '@next/third-parties/google'
-import { Footer, getState, getStateName, Header, HelpSection, SkipNav } from '@sebt/design-system'
+import { getState, getStateName, SkipNav } from '@sebt/design-system'
+import { Footer, Header, HelpSection } from '@sebt/design-system/client'
 import type { Metadata, Viewport } from 'next'
 import { headers } from 'next/headers'
 import './globals.css'

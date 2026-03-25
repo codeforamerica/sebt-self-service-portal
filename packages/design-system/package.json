@@ -5,6 +5,7 @@
   "type": "module",
   "exports": {
     ".": "./src/index.ts",
+    "./client": "./src/client.ts",
     "./src/*": "./src/*",
     "./design/sass/*": "./design/sass/*",
     "./design/states/*": "./design/states/*",
