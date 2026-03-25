@@ -103,8 +103,7 @@ jobs:
         run: |
           # Start API in dev mode + frontend from production build
           pnpm api:dev &
-          cd src/SEBT.Portal.Web && pnpm start &
-          cd ..
+          (cd src/SEBT.Portal.Web && pnpm start) &
           echo "Waiting for server at http://localhost:3000..."
           for i in $(seq 1 90); do
             curl -sf --max-time 15 http://localhost:3000 > /dev/null && echo "Server ready" && break
