@@ -1,7 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using SEBT.Portal.Core.AppSettings;
 using SEBT.Portal.Core.Repositories;
@@ -17,7 +16,7 @@ namespace SEBT.Portal.Infrastructure;
 
 public static class Dependencies
 {
-    public static IServiceCollection AddPortalInfrastructureServices(this IServiceCollection services)
+    public static IServiceCollection AddPortalInfrastructureServices(this IServiceCollection services, IConfiguration configuration)
     {
         // Otp Services
         services.AddTransient<IOtpSenderService, EmailOtpSenderService>();
@@ -38,22 +37,33 @@ public static class Dependencies
 
         // Household identifier resolution (state-configurable preferred household ID type)
         services.AddTransient<IHouseholdIdentifierResolver, HouseholdIdentifierResolver>();
+
+        // Address validation — stub for now, swap with Smarty integration in DC-160
+        services.AddTransient<IAddressValidationService, AlwaysValidAddressValidator>();
         services.AddSingleton<IIdentifierHasher, IdentifierHasher>();
 
         // Expose SocureSettings directly for use case injection (avoids IOptions dependency in UseCases layer)
         services.AddSingleton(sp => sp.GetRequiredService<IOptions<SocureSettings>>().Value);
 
-        // Socure client — stub or real based on SocureSettings.UseStub
-        services.AddTransient<StubSocureClient>();
-        services.AddTransient<HttpSocureClient>();
-        services.AddTransient<ISocureClient>(sp =>
+        // Socure client — disabled, stub, or real based on configuration
+        var socureEnabled = configuration.GetValue<bool>("Socure:Enabled");
+        if (socureEnabled)
         {
-            var settings = sp.GetRequiredService<IOptions<SocureSettings>>().Value;
-            if (settings.UseStub)
-                return sp.GetRequiredService<StubSocureClient>();
+            services.AddTransient<StubSocureClient>();
+            services.AddTransient<HttpSocureClient>();
+            services.AddTransient<ISocureClient>(sp =>
+            {
+                var settings = sp.GetRequiredService<IOptions<SocureSettings>>().Value;
+                if (settings.UseStub)
+                    return sp.GetRequiredService<StubSocureClient>();
 
-            return sp.GetRequiredService<HttpSocureClient>();
-        });
+                return sp.GetRequiredService<HttpSocureClient>();
+            });
+        }
+        else
+        {
+            services.AddTransient<ISocureClient, DisabledSocureClient>();
+        }
 
         return services;
     }
@@ -151,6 +161,7 @@ public static class Dependencies
                 postConfig.PostConfigure(null, options);
             });
 
+<<<<<<< feature/DC-172-backend-enrollment
         services.AddOptions<AppConfigFeatureFlagSettings>()
             .Bind(configuration.GetSection(AppConfigFeatureFlagSettings.SectionName))
             .PostConfigure<IConfiguration, ILogger<AppConfigFeatureFlagOptionsConfiguration>>((options, config, logger) =>
@@ -162,6 +173,8 @@ public static class Dependencies
         services.AddOptionsWithValidateOnStart<EnrollmentCheckRateLimitSettings>()
             .BindConfiguration(EnrollmentCheckRateLimitSettings.SectionName);
 
+=======
+>>>>>>> feature/DC-172-design-system
         services.AddOptions<SeedingSettings>()
             .BindConfiguration(SeedingSettings.SectionName);
 

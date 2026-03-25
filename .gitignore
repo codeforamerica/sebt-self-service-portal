@@ -25,8 +25,10 @@ scripts/scratch/
 *.sln.docstates
 *.env
 
-# Local development config (use appsettings.Development.example.json as template)
+# Local/deployed config (use matching .example.json as template)
 src/SEBT.Portal.Api/appsettings.Development.json
+src/SEBT.Portal.Api/appsettings.dc.json
+src/SEBT.Portal.Api/appsettings.co.json
 
 # User-specific files (MonoDevelop/Xamarin Studio)
 *.userprefs
@@ -459,6 +461,8 @@ output
 **/*.tfplan
 **/crash.log
 **/crash.*.log
+# Lambda zip artifacts created by the archive_file data source during tofu plan/apply
+tofu/modules/sebt_ses/lambda/*.zip
 
 
 # Superpowers brainstorm artifacts

@@ -8,7 +8,8 @@ import {
   QueryProvider
 } from '@/providers'
 import { GoogleAnalytics } from '@next/third-parties/google'
-import { Footer, getState, getStateName, Header, HelpSection, SkipNav } from '@sebt/design-system'
+import { getState, getStateName, SkipNav } from '@sebt/design-system'
+import { Footer, Header, HelpSection } from '@sebt/design-system/client'
 import type { Metadata, Viewport } from 'next'
 import { headers } from 'next/headers'
 import './globals.css'
@@ -105,6 +106,11 @@ export default async function RootLayout({
                 <I18nProvider>
                   <SkipNav />
                   <AxeProvider>
+                    {/* Portal target for page-level alerts rendered above the header.
+                        Currently used by AddressForm (30-char street address error).
+                        If a second consumer appears, refactor to a SiteAlertContext so
+                        child components call setSiteAlert() instead of using createPortal directly. */}
+                    <div id="site-alerts" />
                     <Header state={state} />
                     <main id="main-content">{children}</main>
                     <HelpSection state={state} />

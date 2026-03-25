@@ -12,3 +12,8 @@ output "smtp_server" {
   description = "SES SMTP server endpoint."
   value       = local.smtp_server
 }
+
+output "rotation_lambda_arn" {
+  description = "ARN of the credential rotation Lambda function."
+  value       = aws_lambda_function.rotation.arn
+}

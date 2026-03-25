@@ -110,7 +110,7 @@ function COHelpSection({ state = 'co' }: HelpSectionProps) {
           href={links.footer.digitalAccessibility ?? '#'}
           target="_blank"
           rel="noopener noreferrer"
-          className="usa-button usa-button--outline border-primary text-primary"
+          className="usa-button usa-button--outline border-primary text-primary display-block text-center"
         >
           {/* TODO: Use t('digitalAccessibilityStatement') once the key is added to co.csv */}
           Digital accessibility statement

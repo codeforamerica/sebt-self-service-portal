@@ -1,5 +1,5 @@
 export { AuthProvider } from '@/features/auth'
-export { I18nProvider } from '@sebt/design-system/src/providers/I18nProvider'
+export { I18nProvider } from '@sebt/design-system/client'
 export { AxeProvider } from './AxeProvider'
 export { DataLayerProvider } from './DataLayerProvider'
 export { FeatureFlagsProvider } from './FeatureFlagsProvider'

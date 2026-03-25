@@ -1,4 +1,9 @@
 // @sebt/design-system — public API
+//
+// This barrel is intentionally split: server-safe exports live here,
+// while client-only exports that depend on react-i18next live in ./client.
+// Mixing them in a single barrel causes react-i18next's module-level
+// createContext() to be evaluated in the RSC layer (where it doesn't exist).
 
 // UI primitive types (defined in types.ts, not in the component files themselves)
 export type { ButtonProps, ButtonVariant, AlertProps, AlertVariant, InputFieldProps } from './components/ui/types'
@@ -21,15 +26,8 @@ export type { TextLinkProps } from './components/ui/TextLink'
 export { RichText } from './components/RichText/RichText'
 export type { RichTextProps } from './components/RichText/RichText'
 
-// Layout chrome
-export { Header } from './components/layout/Header'
-export { Footer } from './components/layout/Footer'
-export { HelpSection } from './components/layout/HelpSection'
+// Layout chrome (server-safe — no react-i18next dependency)
 export { SkipNav } from './components/layout/SkipNav'
-export { LanguageSelector } from './components/layout/LanguageSelector/LanguageSelector'
-
-// Providers
-export { I18nProvider } from './providers/I18nProvider'
 
 // State configuration
 export type { StateCode, StateConfig } from './lib/state'
@@ -39,9 +37,5 @@ export { getState, getStateConfig, getStateName, getStateAssetPath } from './lib
 export type { StateLinks, LinkItem } from './lib/links'
 export { getStateLinks, getFooterLinks, getHelpLinks } from './lib/links'
 
-// i18n helpers
-export { initI18n } from './lib/i18n'
+// i18n types only (no runtime dependency on react-i18next)
 export type { StateResources, SupportedLanguage } from './lib/i18n'
-export { changeLanguage, getCurrentLanguage, languageNames, supportedLanguages } from './lib/i18n'
-// i18next instance — shared singleton used by I18nProvider and app code
-export { default as i18n } from './lib/i18n'

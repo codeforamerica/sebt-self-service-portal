@@ -1,8 +1,13 @@
 import { defineConfig, devices } from '@playwright/test'
+import path from 'node:path'
+import { fileURLToPath } from 'node:url'
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url))
 
 /**
  * Playwright E2E Testing Configuration
  * Cross-browser testing with mobile viewport support
+ * Set SKIP_WEB_SERVER=1 in CI when the server is already running (for Pa11y)
  */
 export default defineConfig({
   testDir: './e2e',
@@ -41,9 +46,15 @@ export default defineConfig({
     }
   ],
 
-  webServer: {
-    command: 'pnpm dev',
-    url: process.env.BASE_URL || 'http://localhost:3000',
-    reuseExistingServer: !process.env.CI
-  }
+  // Omit webServer when SKIP_WEB_SERVER is set
+  ...(process.env.SKIP_WEB_SERVER
+    ? {}
+    : {
+        webServer: {
+          command: 'pnpm dev',
+          url: process.env.BASE_URL || 'http://localhost:3000',
+          cwd: path.resolve(__dirname, '../..'),
+          reuseExistingServer: !process.env.CI
+        }
+      })
 })
