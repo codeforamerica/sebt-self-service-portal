@@ -6,7 +6,7 @@
  *
  * IssuanceType: 0=Unknown, 1=SummerEbt, 2=TanfEbtCard, 3=SnapEbtCard
  * ApplicationStatus: 0=Unknown, 1=Pending, 2=Approved, 3=Denied, 4=UnderReview, 5=Cancelled
- * CardStatus: 0=Unknown, 1=Requested, 2=Mailed, 3=Active, 4=Deactivated
+ * CardStatus: 0=Requested, 1=Mailed, 2=Active, 3=Deactivated
  */
 
 /**
@@ -21,7 +21,7 @@ export const MOCK_JWT =
 
 export type IssuanceTypeInt = 0 | 1 | 2 | 3
 export type ApplicationStatusInt = 0 | 1 | 2 | 3 | 4 | 5
-export type CardStatusInt = 0 | 1 | 2 | 3 | 4
+export type CardStatusInt = 0 | 1 | 2 | 3
 
 export interface MockApplication {
   applicationNumber: string
@@ -83,7 +83,7 @@ export function makeApplication(overrides: ApplicationOptions = {}): MockApplica
     benefitIssueDate: '2026-01-08T00:00:00Z',
     benefitExpirationDate: '2026-09-30T00:00:00Z',
     last4DigitsOfCard: '1234',
-    cardStatus: 3, // Active
+    cardStatus: 2, // Active
     cardRequestedAt: OLD_CARD_DATE,
     cardMailedAt: '2025-01-15T00:00:00Z',
     cardActivatedAt: '2025-01-20T00:00:00Z',

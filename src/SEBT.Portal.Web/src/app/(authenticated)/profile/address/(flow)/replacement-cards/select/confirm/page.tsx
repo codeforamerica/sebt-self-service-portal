@@ -16,7 +16,7 @@ export default function ConfirmCardReplacementPage() {
   const { data, isLoading, isError } = useHouseholdData()
 
   const appsParam = searchParams.get('apps')
-  const selectedAppNumbers = appsParam ? decodeURIComponent(appsParam).split(',') : []
+  const selectedAppNumbers = appsParam ? appsParam.split(',') : []
 
   if (isLoading) {
     return <p>{tCommon('loading', 'Loading...')}</p>
