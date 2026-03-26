@@ -345,6 +345,7 @@ public class MockHouseholdRepository : IHouseholdRepository
             {
                 app.BenefitIssueDate = now.AddDays(-45);
                 app.BenefitExpirationDate = now.AddDays(45);
+                app.Last4DigitsOfCard = "4321";
                 // Set specific children names for test
                 app.Children = new List<Child>
                 {
@@ -354,6 +355,14 @@ public class MockHouseholdRepository : IHouseholdRepository
                     new Child { CaseNumber = 222004, FirstName = "Emily", LastName = "Brown" }
                 };
             }
+            h.AddressOnFile = new Address
+            {
+                StreetAddress1 = "456 Large Family Lane",
+                StreetAddress2 = "Unit 8",
+                City = "Aurora",
+                State = "CO",
+                PostalCode = "80010"
+            };
         });
         largeFamily.Email = largeFamilyEmail;
         largeFamily.UserProfile = new UserProfile { FirstName = "Christopher", MiddleName = "Michael", LastName = "Brown" };
