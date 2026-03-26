@@ -15,6 +15,7 @@ namespace SEBT.Portal.Tests.Integration;
 /// controller, use case handler, and response serialization — with a
 /// mock IEnrollmentCheckService standing in for the real state plugin.
 /// </summary>
+[Collection("Integration")]
 public class EnrollmentCheckEndpointTests : IClassFixture<PortalWebApplicationFactory>
 {
     private readonly PortalWebApplicationFactory _factory;
