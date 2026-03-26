@@ -2,7 +2,7 @@ import { render, screen } from '@testing-library/react'
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 
 import enCODashboard from '@/content/locales/en/co/dashboard.json'
-import i18n from '@/lib/i18n'
+import { i18n } from '@sebt/design-system/client'
 
 import type { Application } from '../../api'
 import { CardStatusDisplay } from './CardStatusDisplay'

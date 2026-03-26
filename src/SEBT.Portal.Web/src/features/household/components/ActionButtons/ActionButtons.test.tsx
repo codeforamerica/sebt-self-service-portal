@@ -3,15 +3,15 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { ActionButtons } from './ActionButtons'
 
-vi.mock('@/lib/state', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@/lib/state')>()
+vi.mock('@sebt/design-system', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@sebt/design-system')>()
   return {
     ...actual,
     getState: vi.fn().mockReturnValue('dc')
   }
 })
 
-const { getState } = await import('@/lib/state')
+const { getState } = await import('@sebt/design-system')
 const mockGetState = vi.mocked(getState)
 
 describe('ActionButtons', () => {

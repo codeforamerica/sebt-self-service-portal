@@ -1,6 +1,6 @@
 'use client'
 
-import { Alert } from '@/components/ui'
+import { Alert } from '@sebt/design-system'
 import { usePathname, useRouter, useSearchParams } from 'next/navigation'
 import { useEffect, useState } from 'react'
 

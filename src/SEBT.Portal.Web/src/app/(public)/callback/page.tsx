@@ -1,7 +1,6 @@
 'use client'
 
 import { apiFetch } from '@/api'
-import { Alert } from '@/components/ui'
 import {
   OidcCallbackTokenResponseSchema,
   OidcCompleteLoginResponseSchema,
@@ -9,8 +8,8 @@ import {
   useAuth
 } from '@/features/auth'
 import { clearPkceStorage, getPkceFromStorage } from '@/lib/oidc-pkce'
-import { getState } from '@/lib/state'
 import { getTranslations } from '@/lib/translations'
+import { Alert, getState } from '@sebt/design-system'
 import { useRouter } from 'next/navigation'
 import { useEffect, useState } from 'react'
 

@@ -9,11 +9,13 @@ The Summer EBT (SUN Bucks) Self-Service Portal allows parents/guardians to manag
 We're colleagues working together. Neither of us is afraid to admit we don't know something or are in over our head. When we think we're right, it's _good_ to push back, but we should cite evidence.
 
 ## Code-Authoring norms
-See [CONVENTIONS.md](./CONVENTIONS.md) for coding principles, patterns, and examples. Key behavioral rules:
+- We prefer simple, clean, maintainable solutions over clever or complex ones, even if the latter are more concise or performant. Readability and maintainability are primary concerns.
 - Doing it right is better than doing it fast. You are not in a rush. NEVER skip steps or take shortcuts.
 - Stay focused. Fix only what relates to your current task. Notice something else that needs work? Document it separately rather than fixing it now.
 - Preserve comments. They're documentation, not clutter.
 - Write evergreen code. Describe what code does, not when it was written. (i.e. avoid "newFunction")
+- All user-facing strings must go through i18next. Never hardcode display text in components — reference keys via the translation functions.
+- **Locale JSON files are generated — NEVER hand-edit them.** They are produced by `packages/design-system/content/scripts/generate-locales.js` from CSV exports in `packages/design-system/content/states/`. To add or change content: update the source Google Sheet, re-export the CSV, and re-run the generator (`pnpm copy:generate`). If a key is missing, note it as a content gap to resolve in the spreadsheet — do not add it directly to the JSON.
 
 ### Code style
 - C#: 4-space indent, Allman brace style (braces on own line), nullable reference types enabled (see `.editorconfig`)
@@ -74,7 +76,7 @@ See [CONVENTIONS.md](./CONVENTIONS.md) for coding principles, patterns, and exam
 - Containerization: Docker with docker-compose for local development
 
 ## Testing
-We follow a test-driven development (TDD) approach: write tests first to fail, then write the implementation to make them pass. — see [CONVENTIONS.md](./CONVENTIONS.md) for patterns and examples.
+We follow a test-driven development (TDD) approach: write tests first to fail, then write the implementation to make them pass.
 
 - **Backend**: xUnit for test framework, NSubstitute for mocking, Bogus for test data generation (see ADR-0007 on the factory pattern). Integration tests use Testcontainers with real MSSQL instances.
 - **Frontend**: Vitest with React Testing Library for unit tests, Playwright for E2E tests.

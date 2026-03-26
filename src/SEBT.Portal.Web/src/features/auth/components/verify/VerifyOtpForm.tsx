@@ -6,7 +6,7 @@ import { useTranslation } from 'react-i18next'
 import { useCountdown } from 'usehooks-ts'
 
 import { ApiError } from '@/api/client'
-import { Alert, Button, InputField, TextLink } from '@/components/ui'
+import { Alert, Button, InputField, TextLink } from '@sebt/design-system'
 
 import { useRequestOtp, useValidateOtp, ValidateOtpRequestSchema } from '../../api'
 import { useAuth } from '../../context'

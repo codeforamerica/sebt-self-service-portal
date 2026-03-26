@@ -1,5 +1,7 @@
 packages:
   - src/SEBT.Portal.Web
+  - src/SEBT.EnrollmentChecker.Web
+  - packages/*
 
 overrides:
   tmp@<=0.2.3: '>=0.2.4'

@@ -1,0 +1,24 @@
+# ── Stage 1: Build static export ───────────────────────────────────────────
+FROM node:24-alpine AS builder
+WORKDIR /app
+
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
+COPY packages/ ./packages/
+COPY src/SEBT.EnrollmentChecker.Web/ ./src/SEBT.EnrollmentChecker.Web/
+
+RUN corepack enable && pnpm install --frozen-lockfile
+
+# Static export — all env vars baked in at build time
+ARG STATE=co
+ARG NEXT_PUBLIC_API_BASE_URL
+ARG NEXT_PUBLIC_PORTAL_URL
+ARG NEXT_PUBLIC_APPLICATION_URL
+ENV STATE=$STATE \
+    NEXT_PUBLIC_API_BASE_URL=$NEXT_PUBLIC_API_BASE_URL \
+    NEXT_PUBLIC_PORTAL_URL=$NEXT_PUBLIC_PORTAL_URL \
+    NEXT_PUBLIC_APPLICATION_URL=$NEXT_PUBLIC_APPLICATION_URL
+
+RUN BUILD_STATIC=true pnpm --filter @sebt/enrollment-checker build
+# Output is in src/SEBT.EnrollmentChecker.Web/out/
+# Upload to S3: aws s3 sync src/SEBT.EnrollmentChecker.Web/out/ s3://your-bucket/
+# CloudFront: configure error page 404 → /index.html (200 status) for SPA routing

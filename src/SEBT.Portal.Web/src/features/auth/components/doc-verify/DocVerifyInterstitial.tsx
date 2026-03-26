@@ -1,6 +1,6 @@
 'use client'
 
-import { Button } from '@/components/ui'
+import { Button } from '@sebt/design-system'
 
 interface DocVerifyInterstitialProps {
   allowIdRetry: boolean
