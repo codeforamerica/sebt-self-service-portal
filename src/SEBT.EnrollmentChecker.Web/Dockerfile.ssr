@@ -1,0 +1,36 @@
+# ── Stage 1: Build ──────────────────────────────────────────────────────────
+FROM node:24-alpine AS builder
+WORKDIR /app
+
+# Copy workspace config and all workspace packages
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
+COPY packages/ ./packages/
+COPY src/SEBT.EnrollmentChecker.Web/ ./src/SEBT.EnrollmentChecker.Web/
+
+# Install dependencies (workspace-aware)
+RUN corepack enable && pnpm install --frozen-lockfile
+
+# Build SSR standalone output
+ARG STATE=co
+ARG NEXT_PUBLIC_PORTAL_URL
+ARG NEXT_PUBLIC_APPLICATION_URL
+ENV STATE=$STATE \
+    NEXT_PUBLIC_PORTAL_URL=$NEXT_PUBLIC_PORTAL_URL \
+    NEXT_PUBLIC_APPLICATION_URL=$NEXT_PUBLIC_APPLICATION_URL
+RUN BUILD_STANDALONE=true pnpm --filter @sebt/enrollment-checker build
+
+# ── Stage 2: Runtime ────────────────────────────────────────────────────────
+FROM node:24-alpine AS runner
+WORKDIR /app
+
+# Non-root user for security
+RUN addgroup -S app && adduser -S app -G app
+
+COPY --from=builder /app/src/SEBT.EnrollmentChecker.Web/.next/standalone ./
+COPY --from=builder /app/src/SEBT.EnrollmentChecker.Web/.next/static ./src/SEBT.EnrollmentChecker.Web/.next/static
+COPY --from=builder /app/src/SEBT.EnrollmentChecker.Web/public ./src/SEBT.EnrollmentChecker.Web/public
+
+USER app
+EXPOSE 3000
+ENV PORT=3000 HOSTNAME="0.0.0.0"
+CMD ["node", "src/SEBT.EnrollmentChecker.Web/server.js"]

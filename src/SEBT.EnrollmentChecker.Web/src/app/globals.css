@@ -1,0 +1,62 @@
+/* App-level overrides beyond USWDS defaults.
+   Add enrollment-checker-specific layout rules here. */
+
+/* -----------------------------------------------
+   Font override
+   -----------------------------------------------
+   The shared design-system sets font-family to var(--font-urbanist) for all
+   USWDS components. The Portal.Web populates that variable via Next.js font
+   loader (Urbanist from Google Fonts). The Enrollment Checker uses the USWDS
+   default sans-serif typeface (Public Sans) instead, so we define the variable
+   here so the design-system's rule resolves correctly.
+   ----------------------------------------------- */
+:root {
+  --font-urbanist: 'Public Sans', 'Source Sans Pro', 'Helvetica Neue',
+    Helvetica, Roboto, Arial, sans-serif;
+}
+
+/* -----------------------------------------------
+   Memorable date — fit Month/Day/Year on one row
+   -----------------------------------------------
+   At 375px the USWDS default month <select> is 15rem (240px), pushing
+   Day + Year onto a second line. Shrink Month to fit all three inline.
+   ----------------------------------------------- */
+@media (max-width: 30em) {
+  .usa-memorable-date .usa-form-group--month {
+    width: auto;
+    max-width: 10rem;
+  }
+
+  .usa-memorable-date .usa-form-group--month .usa-select {
+    width: auto;
+    max-width: 10rem;
+  }
+}
+
+/* -----------------------------------------------
+   Review page — child card outline
+   -----------------------------------------------
+   Figma shows each child card with a faint border outline and
+   a heavy horizontal divider between cards.
+   ----------------------------------------------- */
+.child-review-card {
+  border: 1px solid #dfe1e2;
+  border-radius: 4px;
+  padding: 1rem;
+}
+
+.child-review-card + .child-review-card {
+  margin-top: 1rem;
+  border-top: 3px solid #1b1b1b;
+}
+
+/* -----------------------------------------------
+   Section spacing — tighter top padding
+   -----------------------------------------------
+   USWDS usa-section defaults to generous padding (4rem desktop,
+   2rem mobile). The Figma designs show tighter top spacing on
+   the enrollment checker screens.
+   ----------------------------------------------- */
+.usa-section {
+  padding-top: 1.5rem;
+}
