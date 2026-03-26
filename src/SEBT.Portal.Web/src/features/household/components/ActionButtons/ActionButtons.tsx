@@ -5,23 +5,52 @@ import { useTranslation } from 'react-i18next'
 
 import { getState, getStateConfig } from '@sebt/design-system'
 
+import type { IssuanceType } from '../../api'
+
 interface ActionButton {
   labelKey: string
   href: string
+  /** When true, this CTA is hidden for SNAP/TANF issuance types. */
+  selfServiceOnly?: boolean
+}
+
+interface ActionButtonsProps {
+  /** The benefit issuance type determines which self-service actions are available. */
+  issuanceType?: IssuanceType | null | undefined
 }
 
 // Keys map to CSV: "S2 - Portal Dashboard - Action Navigation - {Key}"
 const ACTIONS: ActionButton[] = [
+  {
+    labelKey: 'actionNavigationChangeMyMailingAddress',
+    href: '/profile/address',
+    selfServiceOnly: true
+  },
+  {
+    labelKey: 'actionNavigationOrderReplacementCards',
+    href: '/cards/request',
+    selfServiceOnly: true
+  },
   { labelKey: 'actionNavigationCheckExistingCards', href: '/cards' },
-  { labelKey: 'actionNavigationOrderReplacementCards', href: '/cards/request' },
-  { labelKey: 'actionNavigationChangeMyMailingAddress', href: '/profile/address' },
-  { labelKey: 'actionNavigationChangeMyContactInformation', href: '/profile/contact' },
   { labelKey: 'actionNavigationCheckExistingApplications', href: '/applications' }
 ]
 
-export function ActionButtons() {
+/**
+ * SNAP and TANF benefit holders cannot use portal self-service features
+ * (address update, replacement card) — those actions must go through
+ * their case worker.
+ */
+function isSelfServiceAvailable(issuanceType?: IssuanceType | null): boolean {
+  if (!issuanceType) return true
+  return issuanceType !== 'SnapEbtCard' && issuanceType !== 'TanfEbtCard'
+}
+
+export function ActionButtons({ issuanceType }: ActionButtonsProps) {
   const { t } = useTranslation('dashboard')
   const { actionButtonBg, actionButtonText } = getStateConfig(getState())
+  const selfServiceEnabled = isSelfServiceAvailable(issuanceType)
+
+  const visibleActions = ACTIONS.filter((action) => !action.selfServiceOnly || selfServiceEnabled)
 
   return (
     <nav
@@ -29,8 +58,20 @@ export function ActionButtons() {
       aria-label={t('actionNavigationNavLabel', 'Quick actions')}
     >
       <p className="margin-top-0 margin-bottom-2 text-base-dark">{t('actionNavigationLead')}</p>
+
+      {!selfServiceEnabled && (
+        <div
+          className="usa-alert usa-alert--info usa-alert--slim margin-bottom-2"
+          role="status"
+        >
+          <div className="usa-alert__body">
+            <p className="usa-alert__text">{t('actionNavigationSelfServiceUnavailable')}</p>
+          </div>
+        </div>
+      )}
+
       <ul className="usa-list usa-list--unstyled">
-        {ACTIONS.map((action) => (
+        {visibleActions.map((action) => (
           <li
             key={action.labelKey}
             className="margin-bottom-2"

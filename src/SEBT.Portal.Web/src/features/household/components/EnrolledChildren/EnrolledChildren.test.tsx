@@ -33,7 +33,8 @@ const defaultMockData: HouseholdData = {
 
 let mockReturnData: HouseholdData
 
-vi.mock('../../api', () => ({
+vi.mock('../../api', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('../../api')>()),
   useRequiredHouseholdData: () => mockReturnData
 }))
 

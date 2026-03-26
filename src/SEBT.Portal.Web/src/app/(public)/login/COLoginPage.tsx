@@ -1,7 +1,6 @@
 'use client'
 
 import { apiFetch } from '@/api'
-import { Alert, TextLink, getStateLinks } from '@sebt/design-system'
 import { OidcConfigResponseSchema, type OidcConfigResponse } from '@/features/auth'
 import {
   buildAuthorizationUrl,
@@ -10,8 +9,9 @@ import {
   generateState,
   savePkceForCallback
 } from '@/lib/oidc-pkce'
-import type { StateCode } from '@sebt/design-system'
 import { getTranslations } from '@/lib/translations'
+import type { StateCode } from '@sebt/design-system'
+import { Alert, TextLink, getStateLinks } from '@sebt/design-system'
 import { useMutation } from '@tanstack/react-query'
 
 async function fetchOidcConfig(state: StateCode): Promise<OidcConfigResponse> {

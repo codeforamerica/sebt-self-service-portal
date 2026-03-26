@@ -164,9 +164,6 @@ public static class Dependencies
         services.AddOptionsWithValidateOnStart<EnrollmentCheckRateLimitSettings>()
             .BindConfiguration(EnrollmentCheckRateLimitSettings.SectionName);
 
-        services.AddOptionsWithValidateOnStart<EnrollmentCheckRateLimitSettings>()
-            .BindConfiguration(EnrollmentCheckRateLimitSettings.SectionName);
-
         services.AddOptions<SeedingSettings>()
             .BindConfiguration(SeedingSettings.SectionName);
 

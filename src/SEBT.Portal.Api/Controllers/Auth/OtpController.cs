@@ -36,7 +36,7 @@ public class OtpController(ILogger<OtpController> logger) : ControllerBase
     {
         if (command == null)
         {
-            return BadRequest(new { Error = "Request body is required." });
+            return BadRequest(new ErrorResponse("Request body is required."));
         }
 
         logger.LogInformation("OTP request received for email {Email}", command.Email);
@@ -49,7 +49,7 @@ public class OtpController(ILogger<OtpController> logger) : ControllerBase
         }
         else
         {
-            return BadRequest(new { Error = result.Message });
+            return BadRequest(new ErrorResponse(result.Message));
         }
 
     }
@@ -64,8 +64,10 @@ public class OtpController(ILogger<OtpController> logger) : ControllerBase
     /// <response code="400">Invalid OTP or request.</response>
     /// <response code="500">An error occurred while generating the authentication token.</response>
     [HttpPost("validate")]
+    [EnableRateLimiting(RateLimitPolicies.Otp)]
     [ProducesResponseType(typeof(ValidateOtpResponse), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status429TooManyRequests)]
     [ProducesResponseType(StatusCodes.Status500InternalServerError)]
     public async Task<IActionResult> ValidateOtp(
         [FromBody] ValidateOtpCommand command,
@@ -73,7 +75,7 @@ public class OtpController(ILogger<OtpController> logger) : ControllerBase
     {
         if (command == null)
         {
-            return BadRequest(new { Error = "Request body is required." });
+            return BadRequest(new ErrorResponse("Request body is required."));
         }
 
         logger.LogInformation("OTP validation request received for email {Email}", command.Email);
@@ -88,7 +90,7 @@ public class OtpController(ILogger<OtpController> logger) : ControllerBase
         else
         {
             logger.LogWarning("OTP validation failed for email {Email}: {Message}", command.Email, result.Message);
-            return BadRequest(new { Error = result.Message });
+            return BadRequest(new ErrorResponse(result.Message));
         }
     }
 }

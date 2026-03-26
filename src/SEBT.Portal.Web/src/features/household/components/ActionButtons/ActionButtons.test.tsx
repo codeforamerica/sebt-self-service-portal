@@ -27,25 +27,23 @@ describe('ActionButtons', () => {
     expect(nav).toHaveAttribute('aria-label', 'Quick actions')
   })
 
-  it('renders all action buttons', () => {
-    render(<ActionButtons />)
+  it('renders all action buttons for SummerEbt', () => {
+    render(<ActionButtons issuanceType="SummerEbt" />)
 
     const links = screen.getAllByRole('link')
-    expect(links).toHaveLength(5)
+    expect(links).toHaveLength(4)
   })
 
   it('renders check existing cards button', () => {
     render(<ActionButtons />)
 
-    // i18n key: actionNavigationCheckExistingCards
     const link = screen.getByText('Check existing cards')
     expect(link).toHaveAttribute('href', '/cards')
   })
 
-  it('renders request new cards button', () => {
+  it('renders request replacement cards button', () => {
     render(<ActionButtons />)
 
-    // i18n key: actionNavigationOrderReplacementCards
     const link = screen.getByText('Request new cards')
     expect(link).toHaveAttribute('href', '/cards/request')
   })
@@ -53,23 +51,13 @@ describe('ActionButtons', () => {
   it('renders change mailing address button', () => {
     render(<ActionButtons />)
 
-    // i18n key: actionNavigationChangeMyMailingAddress
     const link = screen.getByText('Change my mailing address')
     expect(link).toHaveAttribute('href', '/profile/address')
-  })
-
-  it('renders change contact info button', () => {
-    render(<ActionButtons />)
-
-    // i18n key: actionNavigationChangeMyContactInformation
-    const link = screen.getByText('Change my contact information')
-    expect(link).toHaveAttribute('href', '/profile/contact')
   })
 
   it('renders check applications button', () => {
     render(<ActionButtons />)
 
-    // i18n key: actionNavigationCheckExistingApplications
     const link = screen.getByText('Check existing applications')
     expect(link).toHaveAttribute('href', '/applications')
   })
@@ -77,7 +65,6 @@ describe('ActionButtons', () => {
   it('renders "I want to" heading', () => {
     render(<ActionButtons />)
 
-    // i18n key: actionNavigationLead
     expect(screen.getByText('I want to')).toBeInTheDocument()
   })
 
@@ -90,15 +77,34 @@ describe('ActionButtons', () => {
     })
   })
 
-  it('renders chevron icon after each button text', () => {
-    render(<ActionButtons />)
+  // ── Self-service eligibility ──
+
+  it('hides self-service CTAs for SNAP issuance type', () => {
+    render(<ActionButtons issuanceType="SnapEbtCard" />)
 
     const links = screen.getAllByRole('link')
-    links.forEach((link) => {
-      const svg = link.querySelector('svg')
-      expect(svg).toBeInTheDocument()
-      expect(svg).toHaveAttribute('aria-hidden', 'true')
-    })
+    expect(links).toHaveLength(2)
+    expect(screen.queryByText('Change my mailing address')).toBeNull()
+    expect(screen.queryByText('Request new cards')).toBeNull()
+  })
+
+  it('hides self-service CTAs for TANF issuance type', () => {
+    render(<ActionButtons issuanceType="TanfEbtCard" />)
+
+    const links = screen.getAllByRole('link')
+    expect(links).toHaveLength(2)
+  })
+
+  it('shows info alert when self-service is unavailable', () => {
+    render(<ActionButtons issuanceType="SnapEbtCard" />)
+
+    expect(screen.getByRole('status')).toBeInTheDocument()
+  })
+
+  it('does not show info alert for SummerEbt', () => {
+    render(<ActionButtons issuanceType="SummerEbt" />)
+
+    expect(screen.queryByRole('status')).toBeNull()
   })
 
   describe('DC state styling', () => {

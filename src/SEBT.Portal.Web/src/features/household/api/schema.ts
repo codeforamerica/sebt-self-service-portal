@@ -11,11 +11,19 @@ const APPLICATION_STATUS_MAP: Record<number, string> = {
 }
 
 const CARD_STATUS_MAP: Record<number, string> = {
-  0: 'Unknown',
-  1: 'Requested',
-  2: 'Mailed',
-  3: 'Active',
-  4: 'Deactivated'
+  0: 'Requested',
+  1: 'Mailed',
+  2: 'Active',
+  3: 'Deactivated',
+  4: 'Unknown',
+  5: 'Processed',
+  6: 'Lost',
+  7: 'Stolen',
+  8: 'Damaged',
+  9: 'DeactivatedByState',
+  10: 'NotActivated',
+  11: 'Frozen',
+  12: 'Undeliverable'
 }
 
 const ISSUANCE_TYPE_MAP: Record<number, string> = {
@@ -52,10 +60,69 @@ export const CardStatusSchema = z.preprocess(
     typeof val === 'number'
       ? (CARD_STATUS_MAP[val as keyof typeof CARD_STATUS_MAP] ?? 'Unknown')
       : val,
-  z.enum(['Unknown', 'Requested', 'Mailed', 'Active', 'Deactivated'])
+  z.enum([
+    'Unknown',
+    'Requested',
+    'Mailed',
+    'Active',
+    'Deactivated',
+    'Processed',
+    'Lost',
+    'Stolen',
+    'Damaged',
+    'DeactivatedByState',
+    'NotActivated',
+    'Frozen',
+    'Undeliverable'
+  ])
 )
 
 export type CardStatus = z.infer<typeof CardStatusSchema>
+
+/**
+ * UI-facing card statuses displayed to the user.
+ * Multiple backend statuses map to a single UI status
+ * (e.g., Lost/Stolen/Damaged all show as "Inactive").
+ */
+export type UiCardStatus = 'Processed' | 'Active' | 'Inactive' | 'Frozen' | 'Undeliverable'
+
+/**
+ * Maps a backend CardStatus to the user-facing UI status.
+ * The mapping follows the status table in the DC-130 ticket.
+ */
+export function toUiCardStatus(cardStatus: CardStatus): UiCardStatus {
+  switch (cardStatus) {
+    case 'Processed':
+      return 'Processed'
+    case 'Active':
+      return 'Active'
+    case 'Lost':
+    case 'Stolen':
+    case 'Damaged':
+    case 'Deactivated':
+    case 'DeactivatedByState':
+    case 'NotActivated':
+      return 'Inactive'
+    case 'Frozen':
+      return 'Frozen'
+    case 'Undeliverable':
+      return 'Undeliverable'
+    case 'Requested':
+    case 'Mailed':
+    default:
+      // Requested and Mailed are not in the status display spec (DC-95);
+      // CardStatusDisplay returns null for these before this value is used.
+      return 'Active'
+  }
+}
+
+/**
+ * Determines whether a card with this status is eligible for replacement.
+ * Only cards reported as Lost, Stolen, or Damaged can be replaced.
+ */
+export function isReplacementEligible(cardStatus: CardStatus): boolean {
+  return cardStatus === 'Lost' || cardStatus === 'Stolen' || cardStatus === 'Damaged'
+}
 
 export const ChildSchema = z.object({
   caseNumber: z.number().nullable().optional(),
@@ -113,3 +180,12 @@ export const HouseholdDataSchema = z.object({
 })
 
 export type HouseholdData = z.infer<typeof HouseholdDataSchema>
+
+export function formatDate(isoDate: string, locale: string): string {
+  return new Intl.DateTimeFormat(locale, {
+    month: '2-digit',
+    day: '2-digit',
+    year: 'numeric',
+    timeZone: 'UTC'
+  }).format(new Date(isoDate))
+}
