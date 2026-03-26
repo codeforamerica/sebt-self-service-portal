@@ -26,6 +26,13 @@ public class CheckEnrollmentCommandHandler(
                 "Children", "At least one child is required.");
         }
 
+        const int maxChildren = 20;
+        if (command.Children.Count > maxChildren)
+        {
+            return Result<EnrollmentCheckResult>.ValidationFailed(
+                "Children", $"A maximum of {maxChildren} children can be checked per request.");
+        }
+
         var request = new EnrollmentCheckRequest
         {
             Children = command.Children.Select(c => new ChildCheckRequest

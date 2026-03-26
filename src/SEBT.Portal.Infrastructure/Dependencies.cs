@@ -161,20 +161,9 @@ public static class Dependencies
                 postConfig.PostConfigure(null, options);
             });
 
-<<<<<<< feature/DC-172-backend-enrollment
-        services.AddOptions<AppConfigFeatureFlagSettings>()
-            .Bind(configuration.GetSection(AppConfigFeatureFlagSettings.SectionName))
-            .PostConfigure<IConfiguration, ILogger<AppConfigFeatureFlagOptionsConfiguration>>((options, config, logger) =>
-            {
-                var postConfig = new AppConfigFeatureFlagOptionsConfiguration(config, logger);
-                postConfig.PostConfigure(null, options);
-            });
-
         services.AddOptionsWithValidateOnStart<EnrollmentCheckRateLimitSettings>()
             .BindConfiguration(EnrollmentCheckRateLimitSettings.SectionName);
 
-=======
->>>>>>> feature/DC-172-design-system
         services.AddOptions<SeedingSettings>()
             .BindConfiguration(SeedingSettings.SectionName);
 
