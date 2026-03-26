@@ -7,12 +7,14 @@ namespace SEBT.Portal.UseCases.Household;
 
 /// <summary>
 /// Handles mailing address updates for an authenticated user's household.
-/// Validates input, resolves household identity, and returns success.
+/// Validates input, resolves household identity, validates the address against
+/// blocked lists and state-specific rules, and returns success.
 /// State connector call is stubbed — actual address persistence is a future integration.
 /// </summary>
 public class UpdateAddressCommandHandler(
     IValidator<UpdateAddressCommand> validator,
     IHouseholdIdentifierResolver resolver,
+    IAddressValidationService addressValidator,
     ILogger<UpdateAddressCommandHandler> logger)
     : ICommandHandler<UpdateAddressCommand>
 {
@@ -40,10 +42,27 @@ public class UpdateAddressCommandHandler(
             "Address update received for household identifier kind {Kind}",
             identifierKind);
 
+        var address = new Core.Models.Household.Address
+        {
+            StreetAddress1 = command.StreetAddress1,
+            StreetAddress2 = command.StreetAddress2,
+            City = command.City,
+            State = command.State,
+            PostalCode = command.PostalCode
+        };
+
+        var addressValidation = await addressValidator.ValidateAsync(address, cancellationToken);
+        if (!addressValidation.IsValid)
+        {
+            logger.LogInformation(
+                "Address validation failed for household identifier kind {Kind}",
+                identifierKind);
+            return Result.ValidationFailed(
+                "StreetAddress1", addressValidation.ErrorMessage ?? "Address validation failed.");
+        }
+
         // TODO: Call state connector to persist address update.
         // This is stubbed — the handler returns success without writing to the state system.
-        // When DC-160 / state connector work lands, wire up IAddressValidationService and
-        // the state connector write method here.
 
         logger.LogInformation(
             "Address update completed for household identifier kind {Kind}",

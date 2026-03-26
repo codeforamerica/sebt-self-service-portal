@@ -16,11 +16,20 @@ public class UpdateAddressCommandHandlerTests
         new DataAnnotationsValidator<UpdateAddressCommand>(null!);
     private readonly IHouseholdIdentifierResolver _resolver =
         Substitute.For<IHouseholdIdentifierResolver>();
+    private readonly IAddressValidationService _addressValidator =
+        Substitute.For<IAddressValidationService>();
     private readonly NullLogger<UpdateAddressCommandHandler> _logger =
         NullLogger<UpdateAddressCommandHandler>.Instance;
 
+    public UpdateAddressCommandHandlerTests()
+    {
+        // Default: address validation passes so existing tests aren't affected
+        _addressValidator.ValidateAsync(Arg.Any<Address>(), Arg.Any<CancellationToken>())
+            .Returns(AddressValidationResult.Valid());
+    }
+
     private UpdateAddressCommandHandler CreateHandler() =>
-        new(_validator, _resolver, _logger);
+        new(_validator, _resolver, _addressValidator, _logger);
 
     private static ClaimsPrincipal CreateUser(string email)
     {
@@ -272,5 +281,87 @@ public class UpdateAddressCommandHandlerTests
 
         await _resolver.DidNotReceive()
             .ResolveAsync(Arg.Any<ClaimsPrincipal>(), Arg.Any<CancellationToken>());
+    }
+
+    // --- Address validation integration ---
+
+    [Fact]
+    public async Task Handle_CallsAddressValidator_AfterIdentifierResolved()
+    {
+        var handler = CreateHandler();
+        var command = CreateValidCommand();
+
+        _resolver.ResolveAsync(Arg.Any<ClaimsPrincipal>(), Arg.Any<CancellationToken>())
+            .Returns(HouseholdIdentifier.Email(EmailNormalizer.Normalize("user@example.com")));
+
+        await handler.Handle(command, CancellationToken.None);
+
+        await _addressValidator.Received(1)
+            .ValidateAsync(Arg.Any<Address>(), Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task Handle_DoesNotCallAddressValidator_WhenInputValidationFails()
+    {
+        var handler = CreateHandler();
+        var command = new UpdateAddressCommand
+        {
+            User = CreateUser("user@example.com"),
+            StreetAddress1 = "",
+            City = "",
+            State = "",
+            PostalCode = ""
+        };
+
+        await handler.Handle(command, CancellationToken.None);
+
+        await _addressValidator.DidNotReceive()
+            .ValidateAsync(Arg.Any<Address>(), Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task Handle_ReturnsValidationFailed_WhenAddressIsBlocked()
+    {
+        var handler = CreateHandler();
+        var command = CreateValidCommand();
+
+        _resolver.ResolveAsync(Arg.Any<ClaimsPrincipal>(), Arg.Any<CancellationToken>())
+            .Returns(HouseholdIdentifier.Email(EmailNormalizer.Normalize("user@example.com")));
+
+        _addressValidator.ValidateAsync(Arg.Any<Address>(), Arg.Any<CancellationToken>())
+            .Returns(AddressValidationResult.Invalid("This address cannot be used for mail delivery."));
+
+        var result = await handler.Handle(command, CancellationToken.None);
+
+        Assert.False(result.IsSuccess);
+    }
+
+    [Fact]
+    public async Task Handle_PassesCommandFieldsToAddressValidator()
+    {
+        var handler = CreateHandler();
+        var command = new UpdateAddressCommand
+        {
+            User = CreateUser("user@example.com"),
+            StreetAddress1 = "456 Oak Ave NE",
+            StreetAddress2 = "Suite 100",
+            City = "Washington",
+            State = "District of Columbia",
+            PostalCode = "20002"
+        };
+
+        _resolver.ResolveAsync(Arg.Any<ClaimsPrincipal>(), Arg.Any<CancellationToken>())
+            .Returns(HouseholdIdentifier.Email(EmailNormalizer.Normalize("user@example.com")));
+
+        await handler.Handle(command, CancellationToken.None);
+
+        await _addressValidator.Received(1).ValidateAsync(
+            Arg.Is<Address>(a =>
+                a.StreetAddress1 == "456 Oak Ave NE" &&
+                a.StreetAddress2 == "Suite 100" &&
+                a.City == "Washington" &&
+                a.State == "District of Columbia" &&
+                a.PostalCode == "20002"),
+            Arg.Any<CancellationToken>());
     }
 }

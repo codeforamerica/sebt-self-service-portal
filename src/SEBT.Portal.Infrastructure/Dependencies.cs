@@ -38,8 +38,10 @@ public static class Dependencies
         // Household identifier resolution (state-configurable preferred household ID type)
         services.AddTransient<IHouseholdIdentifierResolver, HouseholdIdentifierResolver>();
 
-        // Address validation — stub for now, swap with Smarty integration in DC-160
-        services.AddTransient<IAddressValidationService, AlwaysValidAddressValidator>();
+        // Address validation — checks blocked addresses and DC street abbreviations.
+        // Smarty API integration is stubbed pending credentials.
+        var state = Environment.GetEnvironmentVariable("STATE") ?? "";
+        services.AddSingleton<IAddressValidationService>(new AddressValidationService(state));
         services.AddSingleton<IIdentifierHasher, IdentifierHasher>();
 
         // Expose SocureSettings directly for use case injection (avoids IOptions dependency in UseCases layer)
