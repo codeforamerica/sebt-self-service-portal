@@ -63,12 +63,6 @@ export function ChildCard({ child, application, id, defaultExpanded = true }: Ch
         data-testid="accordion-content"
       >
         <dl className="margin-0">
-          {cardTypeKey && (
-            <>
-              <dt className="text-bold margin-top-2">{t('cardTableHeadingCardType')}</dt>
-              <dd className="margin-left-0">{t(cardTypeKey)}</dd>
-            </>
-          )}
           {benefitIssueDate && (
             <>
               <dt className="text-bold margin-top-2">{t('cardTableHeadingIssued')}</dt>
@@ -79,6 +73,12 @@ export function ChildCard({ child, application, id, defaultExpanded = true }: Ch
             <>
               <dt className="text-bold margin-top-2">{t('cardTableHeadingExpDate')}</dt>
               <dd className="margin-left-0">{formatDate(benefitExpirationDate, i18n.language)}</dd>
+            </>
+          )}
+          {cardTypeKey && (
+            <>
+              <dt className="text-bold margin-top-2">{t('cardTableHeadingCardType')}</dt>
+              <dd className="margin-left-0">{t(cardTypeKey)}</dd>
             </>
           )}
           {showCardLast4 && last4DigitsOfCard && (

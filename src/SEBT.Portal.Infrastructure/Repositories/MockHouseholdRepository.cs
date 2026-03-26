@@ -517,7 +517,11 @@ public class MockHouseholdRepository : IHouseholdRepository
                 CardMailedAt = a.CardMailedAt,
                 CardActivatedAt = a.CardActivatedAt,
                 CardDeactivatedAt = a.CardDeactivatedAt,
-                IssuanceType = a.IssuanceType,
+                // If application-level issuance type isn't set, inherit from the
+                // household-level BenefitIssuanceType (both enums share the same values)
+                IssuanceType = a.IssuanceType != IssuanceType.Unknown
+                    ? a.IssuanceType
+                    : (IssuanceType)(int)source.BenefitIssuanceType,
                 Children = a.Children.Select(c => new Child
                 {
                     CaseNumber = c.CaseNumber,
