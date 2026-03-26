@@ -3,10 +3,10 @@
 import { useSearchParams } from 'next/navigation'
 import { useTranslation } from 'react-i18next'
 
-import { Alert } from '@/components/ui'
 import { AddressFlowProvider } from '@/features/address'
 import { AddressForm } from '@/features/address/components/AddressForm'
 import { useHouseholdData } from '@/features/household'
+import { Alert } from '@sebt/design-system'
 
 export default function CardReplaceAddressPage() {
   const { t } = useTranslation('confirmInfo')

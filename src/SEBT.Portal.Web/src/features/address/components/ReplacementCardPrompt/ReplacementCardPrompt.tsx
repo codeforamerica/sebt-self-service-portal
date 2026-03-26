@@ -4,8 +4,7 @@ import { useRouter } from 'next/navigation'
 import { useEffect, useRef, useState, type FormEvent } from 'react'
 import { useTranslation } from 'react-i18next'
 
-import { Alert, Button } from '@/components/ui'
-import { getState } from '@/lib/state'
+import { Alert, Button, getState } from '@sebt/design-system'
 
 import type { UpdateAddressRequest } from '../../api/schema'
 

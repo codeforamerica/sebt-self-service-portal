@@ -4,7 +4,7 @@ import { useTranslation } from 'react-i18next'
 
 import { useAddressFlow } from '@/features/address'
 import { ReplacementCardPrompt } from '@/features/address/components/ReplacementCardPrompt'
-import { getState, getStateConfig } from '@/lib/state'
+import { getState, getStateConfig } from '@sebt/design-system'
 
 export default function ReplacementCardsPage() {
   const { t } = useTranslation('confirmInfo')

@@ -6,9 +6,8 @@ import { useTranslation } from 'react-i18next'
 
 import Link from 'next/link'
 
-import { Alert } from '@/components/ui'
 import { CoLoadedInfo } from '@/features/address/components/CoLoadedInfo'
-import { getState } from '@/lib/state'
+import { Alert, getState } from '@sebt/design-system'
 
 export default function CardInfoPage() {
   const { t } = useTranslation('confirmInfo')

@@ -5,7 +5,7 @@ import { useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 
 import { CoLoadedInfo } from '@/features/address/components/CoLoadedInfo'
-import { getState } from '@/lib/state'
+import { getState } from '@sebt/design-system'
 
 export default function CoLoadedInfoPage() {
   const { t } = useTranslation('confirmInfo')

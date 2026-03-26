@@ -4,9 +4,8 @@ import { useRouter } from 'next/navigation'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
-import { Alert, Button } from '@/components/ui'
 import type { Address, Application } from '@/features/household/api/schema'
-import { getState } from '@/lib/state'
+import { Alert, Button, getState } from '@sebt/design-system'
 
 import { useRequestCardReplacement } from '../../api/client'
 

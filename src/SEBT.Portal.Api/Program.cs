@@ -2,9 +2,11 @@ using System.Text;
 using System.Threading.RateLimiting;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
+using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
+using SEBT.Portal.Api;
 using SEBT.Portal.Api.Composition;
 using SEBT.Portal.Api.Filters;
 using SEBT.Portal.Api.Models;
@@ -174,22 +176,42 @@ builder.Services.AddRateLimiter(options =>
                 ((int)retryAfter.TotalSeconds).ToString();
         }
 
-        var rateLimitSettings = context.HttpContext.RequestServices
-            .GetRequiredService<IOptionsMonitor<OtpRateLimitSettings>>()
-            .CurrentValue;
-
-        var windowDescription = rateLimitSettings.WindowMinutes == 1.0
-            ? "minute"
-            : $"{rateLimitSettings.WindowMinutes} minutes";
-
         context.HttpContext.Response.StatusCode = StatusCodes.Status429TooManyRequests;
-        await context.HttpContext.Response.WriteAsJsonAsync(
-            new { Error = $"Rate limit exceeded. Maximum {rateLimitSettings.PermitLimit} OTP requests per {windowDescription} allowed." },
-            cancellationToken);
+
+        // Determine which rate-limit policy rejected the request to show an appropriate message
+        var endpoint = context.HttpContext.GetEndpoint();
+        var rateLimitAttribute = endpoint?.Metadata
+            .OfType<Microsoft.AspNetCore.RateLimiting.EnableRateLimitingAttribute>()
+            .FirstOrDefault();
+
+        if (rateLimitAttribute?.PolicyName == RateLimitPolicies.EnrollmentCheck)
+        {
+            var enrollmentSettings = context.HttpContext.RequestServices
+                .GetRequiredService<IOptionsMonitor<EnrollmentCheckRateLimitSettings>>()
+                .CurrentValue;
+            var windowDescription = enrollmentSettings.WindowMinutes == 1.0
+                ? "minute"
+                : $"{enrollmentSettings.WindowMinutes} minutes";
+            await context.HttpContext.Response.WriteAsJsonAsync(
+                new { Error = $"Rate limit exceeded. Maximum {enrollmentSettings.PermitLimit} enrollment checks per {windowDescription} allowed." },
+                cancellationToken);
+        }
+        else
+        {
+            var otpSettings = context.HttpContext.RequestServices
+                .GetRequiredService<IOptionsMonitor<OtpRateLimitSettings>>()
+                .CurrentValue;
+            var windowDescription = otpSettings.WindowMinutes == 1.0
+                ? "minute"
+                : $"{otpSettings.WindowMinutes} minutes";
+            await context.HttpContext.Response.WriteAsJsonAsync(
+                new { Error = $"Rate limit exceeded. Maximum {otpSettings.PermitLimit} OTP requests per {windowDescription} allowed." },
+                cancellationToken);
+        }
     };
 
     // Add fixed window limiter policy for OTP requests with email-based partitioning
-    options.AddPolicy("otp-policy", httpContext =>
+    options.AddPolicy(RateLimitPolicies.Otp, httpContext =>
     {
         var rateLimitOptions = httpContext.RequestServices
             .GetRequiredService<IOptionsMonitor<OtpRateLimitSettings>>()
@@ -210,6 +232,26 @@ builder.Services.AddRateLimiter(options =>
         return RateLimitPartition.GetFixedWindowLimiter(
             partitionKey: ipAddress,
             factory: _ => CreateOtpRateLimitOptions(rateLimitOptions));
+    });
+
+    // Add fixed window limiter policy for enrollment check requests with IP-based partitioning
+    options.AddPolicy(RateLimitPolicies.EnrollmentCheck, httpContext =>
+    {
+        var rateLimitOptions = httpContext.RequestServices
+            .GetRequiredService<IOptionsMonitor<EnrollmentCheckRateLimitSettings>>()
+            .CurrentValue;
+
+        var ipAddress = httpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown";
+        return RateLimitPartition.GetFixedWindowLimiter(
+            partitionKey: $"enrollment-check:{ipAddress}",
+            factory: _ => new FixedWindowRateLimiterOptions
+            {
+                PermitLimit = rateLimitOptions.PermitLimit,
+                Window = TimeSpan.FromMinutes(rateLimitOptions.WindowMinutes),
+                QueueProcessingOrder = QueueProcessingOrder.OldestFirst,
+                QueueLimit = 0,
+                AutoReplenishment = true
+            });
     });
 });
 
@@ -262,6 +304,36 @@ else
     app.UseHttpsRedirection();
 }
 
+// Map X-Forwarded-For to HttpContext.Connection.RemoteIpAddress so that
+// IP-based rate limiting identifies distinct clients correctly.
+//
+// In production the .NET API runs on a private network behind the Next.js
+// server, which proxies all requests and forwards the real client IP via
+// X-Forwarded-For. Without this middleware every request appears to come
+// from the Next.js server's single private IP, collapsing all clients into
+// one rate-limit bucket.
+//
+// Current configuration uses open trust (cleared KnownProxies/KnownNetworks)
+// which is acceptable because the API is not directly reachable from the
+// public internet. ForwardLimit = 1 ensures only the last proxy hop is read,
+// preventing clients from prepending fake entries.
+//
+// TODO: For defense-in-depth, consider restricting trust to the VPC CIDR:
+//   options.KnownNetworks.Add(new IPNetwork(IPAddress.Parse("10.0.0.0"), 8));
+// This would reject forwarded headers from any source outside the private
+// network, guarding against future topology changes that might expose the API.
+var forwardedHeadersOptions = new ForwardedHeadersOptions
+{
+    ForwardedHeaders = ForwardedHeaders.XForwardedFor,
+    ForwardLimit = 1,
+};
+// Open trust: accept X-Forwarded-For from any source. Safe here because
+// the API is on a private network with no public ingress. Clear the defaults
+// (loopback) so the middleware processes headers from all sources.
+forwardedHeadersOptions.KnownProxies.Clear();
+forwardedHeadersOptions.KnownNetworks.Clear();
+app.UseForwardedHeaders(forwardedHeadersOptions);
+
 app.UseRouting();
 
 app.UseMiddleware<OtpRateLimitMiddleware>();
@@ -292,7 +364,9 @@ finally
     Log.CloseAndFlush();
 }
 
-// Makes the implicit Program class public so WebApplicationFactory<Program> can reference it from test projects.
-#pragma warning disable CS1591
+/// <summary>
+/// Required for WebApplicationFactory&lt;Program&gt; in integration tests.
+/// Top-level statements generate an implicit internal Program class;
+/// this partial declaration makes it public so the test assembly can reference it.
+/// </summary>
 public partial class Program { }
-#pragma warning restore CS1591

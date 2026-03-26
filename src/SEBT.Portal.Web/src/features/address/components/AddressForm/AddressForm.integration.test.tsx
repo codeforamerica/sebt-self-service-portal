@@ -23,9 +23,13 @@ vi.mock('next/navigation', () => ({
   })
 }))
 
-vi.mock('@/lib/state', () => ({
-  getState: () => 'dc'
-}))
+vi.mock('@sebt/design-system', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@sebt/design-system')>()
+  return {
+    ...actual,
+    getState: () => 'dc'
+  }
+})
 
 /** Test helper that reads context value after form submission. */
 function ContextSpy() {

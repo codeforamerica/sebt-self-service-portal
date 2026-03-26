@@ -12,9 +12,13 @@ vi.mock('next/navigation', () => ({
 }))
 
 let mockState = 'dc'
-vi.mock('@/lib/state', () => ({
-  getState: () => mockState
-}))
+vi.mock('@sebt/design-system', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@sebt/design-system')>()
+  return {
+    ...actual,
+    getState: () => mockState
+  }
+})
 
 vi.mock('@/features/address/components/CoLoadedInfo', () => ({
   CoLoadedInfo: () => <div data-testid="co-loaded-info">CoLoadedInfo content</div>

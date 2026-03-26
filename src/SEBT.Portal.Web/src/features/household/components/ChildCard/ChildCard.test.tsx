@@ -100,8 +100,7 @@ describe('ChildCard', () => {
       id: '0'
     })
 
-    // benefitIssueDate may appear in both ChildCard and CardStatusTimeline (when same as cardActivatedAt)
-    expect(screen.getAllByText('01/08/2026').length).toBeGreaterThanOrEqual(1)
+    expect(screen.getByText('01/08/2026')).toBeInTheDocument()
     expect(screen.getByText('03/19/2026')).toBeInTheDocument()
   })
 
@@ -115,18 +114,49 @@ describe('ChildCard', () => {
     expect(screen.getByText(/1234/)).toBeInTheDocument()
   })
 
-  it('renders card status timeline when card status is provided', () => {
-    renderWithFlags({
-      child: mockChild,
-      application: mockApplication,
-      id: '0'
-    })
+  it('renders card status badge for CO-style cards (no cardRequestedAt)', () => {
+    const coApplication: Application = {
+      ...mockApplication,
+      cardStatus: 'Active',
+      cardRequestedAt: null
+    }
 
-    // CardStatusTimeline renders with heading and steps
-    // i18n key: cardTableHeadingCardStatus → "Card status"
+    renderWithFlags({ child: mockChild, application: coApplication, id: '0' })
+
+    expect(screen.getByTestId('card-status-badge')).toBeInTheDocument()
+    expect(screen.queryByRole('list')).toBeNull()
+  })
+
+  it('renders card status timeline for DC-style cards (has cardRequestedAt)', () => {
+    const dcApplication: Application = {
+      ...mockApplication,
+      cardStatus: 'Requested',
+      cardRequestedAt: '2026-01-01T00:00:00Z',
+      cardMailedAt: null,
+      cardActivatedAt: null
+    }
+
+    renderWithFlags({ child: mockChild, application: dcApplication, id: '0' })
+
+    // DC-style: shows a single current-status row, not the CO badge
+    expect(screen.queryByTestId('card-status-badge')).toBeNull()
     expect(screen.getByText('Card status')).toBeInTheDocument()
-    // Timeline step indicator list should be present
-    expect(screen.getByRole('list', { name: 'Card status timeline' })).toBeInTheDocument()
+  })
+
+  it('renders timeline for DC Active card (cardRequestedAt present)', () => {
+    // DC Active cards have gone through Requested → Mailed → Active lifecycle
+    const dcActiveApplication: Application = {
+      ...mockApplication,
+      cardStatus: 'Active',
+      cardRequestedAt: '2026-01-01T00:00:00Z',
+      cardMailedAt: '2026-01-03T00:00:00Z',
+      cardActivatedAt: '2026-01-08T00:00:00Z'
+    }
+
+    renderWithFlags({ child: mockChild, application: dcActiveApplication, id: '0' })
+
+    expect(screen.queryByTestId('card-status-badge')).toBeNull()
+    expect(screen.getByText('Card status')).toBeInTheDocument()
   })
 
   it('hides optional fields when not provided', () => {

@@ -9,11 +9,8 @@
 import { render, screen } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
-vi.mock('@/lib/state', () => ({
-  getState: vi.fn().mockReturnValue('dc')
-}))
-
-vi.mock('@/lib/links', () => ({
+vi.mock('@sebt/design-system', () => ({
+  getState: vi.fn().mockReturnValue('dc'),
   getStateLinks: vi.fn().mockReturnValue({
     help: { contactUs: 'https://sunbucks.dc.gov/page/contact-us' }
   })
@@ -39,8 +36,7 @@ vi.mock('@/features/auth', () => ({
   )
 }))
 
-import { getStateLinks } from '@/lib/links'
-import { getState } from '@/lib/state'
+import { getState, getStateLinks } from '@sebt/design-system'
 import OffBoardingPage from './page'
 
 const mockGetState = vi.mocked(getState)

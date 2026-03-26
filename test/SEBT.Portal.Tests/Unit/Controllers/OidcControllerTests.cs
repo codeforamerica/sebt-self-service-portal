@@ -125,9 +125,8 @@ public class OidcControllerTests
         var result = await _controller.CompleteLogin(body, CancellationToken.None);
 
         var badRequest = Assert.IsType<BadRequestObjectResult>(result);
-        var value = badRequest.Value;
-        var errorProp = value?.GetType().GetProperty("error")?.GetValue(value) as string;
-        Assert.Equal("Callback token must contain an email claim.", errorProp);
+        var errorResponse = Assert.IsType<ErrorResponse>(badRequest.Value);
+        Assert.Equal("Callback token must contain an email claim.", errorResponse.Error);
     }
 
     /// <summary>

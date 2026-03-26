@@ -7,6 +7,9 @@ export {
   HouseholdDataSchema,
   IssuanceTypeSchema,
   UserProfileSchema,
+  formatDate,
+  isReplacementEligible,
+  toUiCardStatus,
   type Address,
   type Application,
   type ApplicationStatus,
@@ -14,6 +17,7 @@ export {
   type Child,
   type HouseholdData,
   type IssuanceType,
+  type UiCardStatus,
   type UserProfile
 } from './schema'
 

@@ -4,8 +4,8 @@ import { useRouter } from 'next/navigation'
 import { useEffect, useRef, useState, type FormEvent } from 'react'
 import { useTranslation } from 'react-i18next'
 
-import { Button } from '@/components/ui'
 import type { Address, Application } from '@/features/household/api/schema'
+import { Button } from '@sebt/design-system'
 
 interface ConfirmAddressProps {
   application: Application

@@ -15,9 +15,13 @@ vi.mock('next/navigation', () => ({
 }))
 
 let mockState = 'dc'
-vi.mock('@/lib/state', () => ({
-  getState: () => mockState
-}))
+vi.mock('@sebt/design-system', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@sebt/design-system')>()
+  return {
+    ...actual,
+    getState: () => mockState
+  }
+})
 
 const TEST_ADDRESS = {
   streetAddress1: '123 Main St NW',

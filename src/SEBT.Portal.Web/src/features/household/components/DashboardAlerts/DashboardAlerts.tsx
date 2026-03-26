@@ -1,19 +1,21 @@
 'use client'
 
-import { Alert } from '@/components/ui'
-import { useHouseholdData } from '@/features/household'
+import { Alert } from '@sebt/design-system'
 import { usePathname, useRouter, useSearchParams } from 'next/navigation'
 import { useEffect, useState } from 'react'
+import { useTranslation } from 'react-i18next'
+
+import { useHouseholdData } from '@/features/household'
 
 /**
  * Displays success and warning alerts on the dashboard triggered by URL search params.
  * Captures alert state on first read, then cleans the params from the URL.
  * The alert persists because rendering is driven by captured state, not live params.
- *
- * Card replacement success (flash=card_replaced) sources dynamic details (card last-4,
- * address) from the household data cache rather than URL params to avoid PII in URLs (D4).
+ * Card replacement success (flash=card_replaced) sources dynamic details from the
+ * household data cache rather than URL params to avoid PII in URLs.
  */
 export function DashboardAlerts() {
+  const { t } = useTranslation('dashboard')
   const searchParams = useSearchParams()
   const router = useRouter()
   const pathname = usePathname()
@@ -55,42 +57,41 @@ export function DashboardAlerts() {
       {alerts.addressUpdated && !alerts.cardsRequested && (
         <Alert
           variant="success"
-          // TODO: Use t('addressUpdatedHeading') once real persistence is wired up
-          heading="Address update recorded"
+          heading={t('alertAddressUpdatedHeading', 'Address update recorded')}
         >
-          {/* TODO: Use t('addressUpdatedBody') once real persistence is wired up */}
-          Your address update has been recorded. State system integration is pending — changes are
-          not yet reflected in the benefits system.
+          {t(
+            'alertAddressUpdatedBody',
+            'Your address update has been recorded. State system integration is pending — changes are not yet reflected in the benefits system.'
+          )}
         </Alert>
       )}
 
       {alerts.addressUpdated && alerts.cardsRequested && (
         <Alert
           variant="success"
-          // TODO: Use t('cardsRequestedHeading') once real persistence is wired up
-          heading="Address update and card replacement recorded"
+          heading={t('alertCardsRequestedHeading', 'Address update and card replacement recorded')}
         >
-          {/* TODO: Use t('cardsRequestedBody') once real persistence is wired up */}
-          Your address update and card replacement request have been recorded. State system
-          integration is pending — changes are not yet reflected in the benefits system.
+          {t(
+            'alertCardsRequestedBody',
+            'Your address update and card replacement request have been recorded. State system integration is pending — changes are not yet reflected in the benefits system.'
+          )}
         </Alert>
       )}
 
       {alerts.cardReplaced && (
         <Alert
           variant="success"
-          // TODO: Use t('cardReplacedHeading') once key is in CSV
-          heading="Your replacement card request has been recorded"
+          heading={t('alertCardReplacedHeading', 'Your replacement card request has been recorded')}
         >
-          {/* TODO: Use t('cardReplacedBody') once key is in CSV */}
-          {householdData?.addressOnFile ? (
-            <>
-              New cards usually arrive in your mailbox within 7-10 business days. Check back here in
-              1-2 business days to see your updated card details.
-            </>
-          ) : (
-            <>New cards usually arrive in your mailbox within 7-10 business days.</>
-          )}
+          {householdData?.addressOnFile
+            ? t(
+                'alertCardReplacedBodyWithAddress',
+                'New cards usually arrive in your mailbox within 7-10 business days. Check back here in 1-2 business days to see your updated card details.'
+              )
+            : t(
+                'alertCardReplacedBody',
+                'New cards usually arrive in your mailbox within 7-10 business days.'
+              )}
         </Alert>
       )}
 
@@ -101,33 +102,39 @@ export function DashboardAlerts() {
       {alerts.addressUpdateFailed && (
         <Alert
           variant="warning"
-          // TODO: Use t('addressUpdateFailedHeading') once key is in CSV
-          heading="There was an issue updating your mailing address."
+          heading={t(
+            'alertAddressUpdateFailedHeading',
+            'There was an issue updating your mailing address.'
+          )}
         >
-          {/* TODO: Use t('addressUpdateFailedBody') once key is in CSV */}
-          Please try again later or contact the Summer EBT Help Desk for assistance.
+          {t(
+            'alertAddressUpdateFailedBody',
+            'Please try again later or contact the Summer EBT Help Desk for assistance.'
+          )}
         </Alert>
       )}
 
       {alerts.contactUpdateFailed && (
         <Alert
           variant="warning"
-          // TODO: Use t('contactUpdateFailedHeading') once key is in CSV
-          heading="There was an issue updating your contact preferences."
+          heading={t(
+            'alertContactUpdateFailedHeading',
+            'There was an issue updating your contact preferences.'
+          )}
         >
-          {/* TODO: Use t('contactUpdateFailedBody') once key is in CSV */}
-          Please try again later.
+          {t('alertContactUpdateFailedBody', 'Please try again later.')}
         </Alert>
       )}
 
       {alerts.addressVerification && (
         <Alert
           variant="warning"
-          // TODO: Use t('addressVerificationHeading') once key is in CSV
-          heading="Is your address correct?"
+          heading={t('alertAddressVerificationHeading', 'Is your address correct?')}
         >
-          {/* TODO: Use t('addressVerificationBody') once key is in CSV */}
-          Please verify your mailing address is up to date so you can receive your Summer EBT cards.
+          {t(
+            'alertAddressVerificationBody',
+            'Please verify your mailing address is up to date so you can receive your Summer EBT cards.'
+          )}
         </Alert>
       )}
     </div>

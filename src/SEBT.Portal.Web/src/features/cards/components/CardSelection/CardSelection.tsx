@@ -4,11 +4,10 @@ import { useRouter } from 'next/navigation'
 import { useEffect, useRef, useState, type FormEvent } from 'react'
 import { useTranslation } from 'react-i18next'
 
-import { Alert, Button } from '@/components/ui'
 import { isWithinCooldownPeriod } from '@/features/cards/utils/cooldown'
 import { useHouseholdData, type Child } from '@/features/household'
 import type { Application } from '@/features/household/api/schema'
-import { getState } from '@/lib/state'
+import { Alert, Button, getState } from '@sebt/design-system'
 
 interface ApplicationGroup {
   applicationNumber: string

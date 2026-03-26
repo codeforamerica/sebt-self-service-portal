@@ -3,9 +3,9 @@
 import { useSearchParams } from 'next/navigation'
 import { useTranslation } from 'react-i18next'
 
-import { Alert } from '@/components/ui'
 import { ConfirmAddress } from '@/features/cards/components/ConfirmAddress'
 import { useHouseholdData } from '@/features/household'
+import { Alert } from '@sebt/design-system'
 
 export default function CardReplacePage() {
   const { t: tCommon } = useTranslation('common')
