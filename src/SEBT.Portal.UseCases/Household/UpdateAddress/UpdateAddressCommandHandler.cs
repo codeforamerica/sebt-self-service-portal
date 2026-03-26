@@ -8,7 +8,7 @@ namespace SEBT.Portal.UseCases.Household;
 /// <summary>
 /// Handles mailing address updates for an authenticated user's household.
 /// Validates input, resolves household identity, validates the address against
-/// blocked lists and state-specific rules, and returns success.
+/// blocked lists and state-specific rules, and returns the validation result.
 /// State connector call is stubbed — actual address persistence is a future integration.
 /// </summary>
 public class UpdateAddressCommandHandler(
@@ -16,22 +16,22 @@ public class UpdateAddressCommandHandler(
     IHouseholdIdentifierResolver resolver,
     IAddressValidationService addressValidator,
     ILogger<UpdateAddressCommandHandler> logger)
-    : ICommandHandler<UpdateAddressCommand>
+    : ICommandHandler<UpdateAddressCommand, AddressValidationResult>
 {
-    public async Task<Result> Handle(UpdateAddressCommand command, CancellationToken cancellationToken = default)
+    public async Task<Result<AddressValidationResult>> Handle(UpdateAddressCommand command, CancellationToken cancellationToken = default)
     {
         var validationResult = await validator.Validate(command, cancellationToken);
         if (validationResult is ValidationFailedResult validationFailed)
         {
             logger.LogWarning("Address update validation failed");
-            return Result.ValidationFailed(validationFailed.Errors);
+            return Result<AddressValidationResult>.ValidationFailed(validationFailed.Errors);
         }
 
         var identifier = await resolver.ResolveAsync(command.User, cancellationToken);
         if (identifier == null)
         {
             logger.LogWarning("Address update attempted but no household identifier could be resolved from claims");
-            return Result.Unauthorized("Unable to identify user from token.");
+            return Result<AddressValidationResult>.Unauthorized("Unable to identify user from token.");
         }
 
         // Never log raw address fields — PII policy.
@@ -57,8 +57,7 @@ public class UpdateAddressCommandHandler(
             logger.LogInformation(
                 "Address validation failed for household identifier kind {Kind}",
                 identifierKind);
-            return Result.ValidationFailed(
-                "StreetAddress1", addressValidation.ErrorMessage ?? "Address validation failed.");
+            return Result<AddressValidationResult>.Success(addressValidation);
         }
 
         // TODO: Call state connector to persist address update.
@@ -68,6 +67,6 @@ public class UpdateAddressCommandHandler(
             "Address update completed for household identifier kind {Kind}",
             identifierKind);
 
-        return Result.Success();
+        return Result<AddressValidationResult>.Success(addressValidation);
     }
 }

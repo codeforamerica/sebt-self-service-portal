@@ -66,7 +66,7 @@ public class UpdateAddressCommandHandlerTests
         var result = await handler.Handle(command, CancellationToken.None);
 
         Assert.False(result.IsSuccess);
-        Assert.IsType<ValidationFailedResult>(result);
+        Assert.IsType<ValidationFailedResult<AddressValidationResult>>(result);
     }
 
     [Fact]
@@ -85,7 +85,7 @@ public class UpdateAddressCommandHandlerTests
         var result = await handler.Handle(command, CancellationToken.None);
 
         Assert.False(result.IsSuccess);
-        Assert.IsType<ValidationFailedResult>(result);
+        Assert.IsType<ValidationFailedResult<AddressValidationResult>>(result);
     }
 
     [Fact]
@@ -104,7 +104,7 @@ public class UpdateAddressCommandHandlerTests
         var result = await handler.Handle(command, CancellationToken.None);
 
         Assert.False(result.IsSuccess);
-        Assert.IsType<ValidationFailedResult>(result);
+        Assert.IsType<ValidationFailedResult<AddressValidationResult>>(result);
     }
 
     [Fact]
@@ -123,7 +123,7 @@ public class UpdateAddressCommandHandlerTests
         var result = await handler.Handle(command, CancellationToken.None);
 
         Assert.False(result.IsSuccess);
-        Assert.IsType<ValidationFailedResult>(result);
+        Assert.IsType<ValidationFailedResult<AddressValidationResult>>(result);
     }
 
     [Fact]
@@ -142,7 +142,7 @@ public class UpdateAddressCommandHandlerTests
         var result = await handler.Handle(command, CancellationToken.None);
 
         Assert.False(result.IsSuccess);
-        Assert.IsType<ValidationFailedResult>(result);
+        Assert.IsType<ValidationFailedResult<AddressValidationResult>>(result);
     }
 
     [Fact]
@@ -161,7 +161,7 @@ public class UpdateAddressCommandHandlerTests
         var result = await handler.Handle(command, CancellationToken.None);
 
         Assert.False(result.IsSuccess);
-        Assert.IsType<ValidationFailedResult>(result);
+        Assert.IsType<ValidationFailedResult<AddressValidationResult>>(result);
     }
 
     [Fact]
@@ -200,7 +200,7 @@ public class UpdateAddressCommandHandlerTests
         var result = await handler.Handle(command, CancellationToken.None);
 
         Assert.False(result.IsSuccess);
-        Assert.IsType<UnauthorizedResult>(result);
+        Assert.IsType<UnauthorizedResult<AddressValidationResult>>(result);
     }
 
     // --- Success tests ---
@@ -217,11 +217,11 @@ public class UpdateAddressCommandHandlerTests
         var result = await handler.Handle(command, CancellationToken.None);
 
         Assert.True(result.IsSuccess);
-        Assert.IsType<SuccessResult>(result);
+        var success = Assert.IsType<SuccessResult<AddressValidationResult>>(result);
+        Assert.True(success.Value.IsValid);
     }
 
     [Fact]
-    // TODO: Assert StreetAddress2 persisted when DC-160 lands
     public async Task Handle_ReturnsSuccess_WhenOptionalStreetAddress2IsProvided()
     {
         var handler = CreateHandler();
@@ -320,7 +320,7 @@ public class UpdateAddressCommandHandlerTests
     }
 
     [Fact]
-    public async Task Handle_ReturnsValidationFailed_WhenAddressIsBlocked()
+    public async Task Handle_ReturnsSuccessWithInvalidResult_WhenAddressIsBlocked()
     {
         var handler = CreateHandler();
         var command = CreateValidCommand();
@@ -333,7 +333,38 @@ public class UpdateAddressCommandHandlerTests
 
         var result = await handler.Handle(command, CancellationToken.None);
 
-        Assert.False(result.IsSuccess);
+        Assert.True(result.IsSuccess);
+        var success = Assert.IsType<SuccessResult<AddressValidationResult>>(result);
+        Assert.False(success.Value.IsValid);
+        Assert.Equal("This address cannot be used for mail delivery.", success.Value.ErrorMessage);
+    }
+
+    [Fact]
+    public async Task Handle_ReturnsSuccessWithSuggestion_WhenAddressHasSuggestion()
+    {
+        var handler = CreateHandler();
+        var command = CreateValidCommand();
+        var suggested = new Address
+        {
+            StreetAddress1 = "123 MLK Jr Ave NW",
+            City = "Washington",
+            State = "District of Columbia",
+            PostalCode = "20001"
+        };
+
+        _resolver.ResolveAsync(Arg.Any<ClaimsPrincipal>(), Arg.Any<CancellationToken>())
+            .Returns(HouseholdIdentifier.Email(EmailNormalizer.Normalize("user@example.com")));
+
+        _addressValidator.ValidateAsync(Arg.Any<Address>(), Arg.Any<CancellationToken>())
+            .Returns(AddressValidationResult.Suggestion(suggested));
+
+        var result = await handler.Handle(command, CancellationToken.None);
+
+        Assert.True(result.IsSuccess);
+        var success = Assert.IsType<SuccessResult<AddressValidationResult>>(result);
+        Assert.False(success.Value.IsValid);
+        Assert.NotNull(success.Value.SuggestedAddress);
+        Assert.Equal("123 MLK Jr Ave NW", success.Value.SuggestedAddress!.StreetAddress1);
     }
 
     [Fact]
