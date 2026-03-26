@@ -13,7 +13,7 @@ interface CardStatusDisplayProps {
 // Keys map to CSV: "S2 - Portal Dashboard - Card Table - Status {Status}"
 const STATUS_CONFIG: Record<UiCardStatus, { colorClass: string; labelKey: string }> = {
   Active: { colorClass: 'bg-success-dark text-white', labelKey: 'cardTableStatusActive' },
-  Processed: { colorClass: 'bg-info-dark text-white', labelKey: 'cardTableStatusInactive' },
+  Processed: { colorClass: 'bg-info-dark text-white', labelKey: 'cardTableStatusProcessed' },
   Inactive: { colorClass: 'bg-error-dark text-white', labelKey: 'cardTableStatusInactive' },
   Frozen: { colorClass: 'bg-warning-dark text-white', labelKey: 'cardTableStatusFrozen' },
   Undeliverable: {
@@ -24,6 +24,7 @@ const STATUS_CONFIG: Record<UiCardStatus, { colorClass: string; labelKey: string
 
 const DESCRIPTION_KEY: Partial<Record<CardStatus, string>> = {
   Active: 'cardTableStatusMessageActive',
+  Processed: 'cardTableStatusMessageProcessed',
   Lost: 'cardTableStatusMessageInactive',
   Stolen: 'cardTableStatusMessageInactive',
   Damaged: 'cardTableStatusMessageInactive',
