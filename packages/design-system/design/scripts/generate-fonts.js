@@ -150,7 +150,9 @@ function main() {
   try {
     const state = (process.env.STATE || process.env.NEXT_PUBLIC_STATE || 'dc').toLowerCase()
     const tokensPath = join(rootDir, 'design', 'states', `${state}.json`)
-    const outputPath = join(rootDir, 'design', 'fonts.ts')
+    // Write to caller's working directory (e.g. src/SEBT.Portal.Web/design/fonts.ts)
+    // so the Next.js @/ path alias resolves correctly at build time
+    const outputPath = join(process.cwd(), 'design', 'fonts.ts')
 
     console.log(`🔤 Generating fonts.ts for ${state.toUpperCase()}...`)
 

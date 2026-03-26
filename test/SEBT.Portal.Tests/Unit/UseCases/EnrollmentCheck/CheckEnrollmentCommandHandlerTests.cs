@@ -34,6 +34,28 @@ public class CheckEnrollmentCommandHandlerTests
     }
 
     [Fact]
+    public async Task Handle_WhenTooManyChildren_ReturnsValidationFailed()
+    {
+        var handler = CreateHandler();
+        var children = Enumerable.Range(0, 21).Select(i => new CheckEnrollmentCommand.ChildInput
+        {
+            FirstName = $"Child{i}",
+            LastName = "Doe",
+            DateOfBirth = new DateOnly(2015, 1, 1)
+        }).ToList();
+        var command = new CheckEnrollmentCommand
+        {
+            Children = children,
+            IpAddress = "127.0.0.1"
+        };
+
+        var result = await handler.Handle(command);
+
+        Assert.False(result.IsSuccess);
+        Assert.IsType<Kernel.Results.ValidationFailedResult<EnrollmentCheckResult>>(result);
+    }
+
+    [Fact]
     public async Task Handle_WithValidChild_CallsPluginAndReturnsResults()
     {
         var handler = CreateHandler();

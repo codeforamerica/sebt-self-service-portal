@@ -1,7 +1,6 @@
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using NSubstitute;
@@ -19,49 +18,40 @@ namespace SEBT.Portal.Tests.Integration.PluginIntegration;
 /// but does NOT register mock plugin stubs — real plugins or default fallbacks
 /// provide the implementations via PluginLoader factory delegates.
 /// </summary>
-/// <remarks>
-/// Plugin paths and connection strings are injected via ConfigureAppConfiguration.
-/// PluginLoader reads IConfiguration at DI resolution time, so it sees these
-/// overrides without needing process-global environment variables.
-/// </remarks>
 public class PluginIntegrationWebApplicationFactory : WebApplicationFactory<Program>
 {
     private readonly string? _pluginDir;
-    private readonly Dictionary<string, string>? _configOverrides;
+    private readonly List<string> _envKeysToClean = new();
 
     public PluginIntegrationWebApplicationFactory(
         string? pluginDir = null,
         Dictionary<string, string>? configOverrides = null)
     {
         _pluginDir = pluginDir;
-        _configOverrides = configOverrides;
+
+        // Set config overrides as environment variables so they're visible
+        // when Program.cs reads configuration during startup.
+        if (configOverrides != null)
+        {
+            foreach (var (key, value) in configOverrides)
+            {
+                var envKey = key.Replace(":", "__");
+                Environment.SetEnvironmentVariable(envKey, value);
+                _envKeysToClean.Add(envKey);
+            }
+        }
     }
 
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
-        builder.UseEnvironment("Development");
-
-        builder.ConfigureAppConfiguration((_, config) =>
-        {
-            var overrides = new Dictionary<string, string?>
-            {
-                ["PluginAssemblyPaths:0"] = _pluginDir != null
-                    ? PluginPathResolver.Resolve(_pluginDir)
-                    : "plugins-none",
-                ["JwtSettings:SecretKey"] =
-                    "integration-test-key-must-be-at-least-32-bytes-long",
-            };
-
-            if (_configOverrides != null)
-            {
-                foreach (var (key, value) in _configOverrides)
-                {
-                    overrides[key] = value;
-                }
-            }
-
-            config.AddInMemoryCollection(overrides);
-        });
+        // Override plugin assembly paths via environment variables BEFORE the server starts.
+        // Environment variables are visible immediately when Program.cs reads configuration,
+        // unlike AddInMemoryCollection which can be applied too late.
+        Environment.SetEnvironmentVariable("PluginAssemblyPaths__0",
+            _pluginDir != null ? PluginPathResolver.Resolve(_pluginDir) : "plugins-none");
+        Environment.SetEnvironmentVariable("PluginAssemblyPaths__1", "plugins-none");
+        Environment.SetEnvironmentVariable("JwtSettings__SecretKey",
+            "integration-test-key-must-be-at-least-32-bytes-long");
 
         builder.ConfigureServices(services =>
         {
@@ -100,5 +90,18 @@ public class PluginIntegrationWebApplicationFactory : WebApplicationFactory<Prog
             // passes. TryAddSingleton is a no-op if a real plugin already registered it.
             services.TryAddSingleton(Substitute.For<ISummerEbtCaseService>());
         });
+    }
+
+    protected override void Dispose(bool disposing)
+    {
+        Environment.SetEnvironmentVariable("PluginAssemblyPaths__0", null);
+        Environment.SetEnvironmentVariable("PluginAssemblyPaths__1", null);
+        Environment.SetEnvironmentVariable("JwtSettings__SecretKey", null);
+        foreach (var key in _envKeysToClean)
+        {
+            Environment.SetEnvironmentVariable(key, null);
+        }
+
+        base.Dispose(disposing);
     }
 }

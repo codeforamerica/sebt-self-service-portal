@@ -1,3 +1,5 @@
+using System.ComponentModel.DataAnnotations;
+
 namespace SEBT.Portal.Api.Models.EnrollmentCheck;
 
 /// <summary>
@@ -6,8 +8,14 @@ namespace SEBT.Portal.Api.Models.EnrollmentCheck;
 public class EnrollmentCheckApiRequest
 {
     /// <summary>
+    /// Maximum number of children that can be checked in a single request.
+    /// </summary>
+    public const int MaxChildren = 20;
+
+    /// <summary>
     /// The children to check enrollment for.
     /// </summary>
+    [MaxLength(MaxChildren)]
     public IList<ChildCheckApiRequest> Children { get; set; } = new List<ChildCheckApiRequest>();
 }
 
