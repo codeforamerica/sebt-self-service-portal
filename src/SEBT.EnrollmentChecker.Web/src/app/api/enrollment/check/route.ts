@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from 'next/server'
 
 const BACKEND_URL = env.BACKEND_URL
 const TIMEOUT_MS = 30_000
+const MAX_BODY_BYTES = 50_000
 
 export async function POST(request: NextRequest): Promise<NextResponse> {
   const controller = new AbortController()
@@ -10,6 +11,9 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
 
   try {
     const body = await request.text()
+    if (body.length > MAX_BODY_BYTES) {
+      return NextResponse.json({ error: 'Request too large' }, { status: 413 })
+    }
     const response = await fetch(`${BACKEND_URL}/api/enrollment/check`, {
       method: 'POST',
       headers: {

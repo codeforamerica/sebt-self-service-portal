@@ -16,20 +16,10 @@ interface ChildFormProps {
   apiBaseUrl: string
 }
 
-const MONTHS = [
-  { value: '1', label: 'January' },
-  { value: '2', label: 'February' },
-  { value: '3', label: 'March' },
-  { value: '4', label: 'April' },
-  { value: '5', label: 'May' },
-  { value: '6', label: 'June' },
-  { value: '7', label: 'July' },
-  { value: '8', label: 'August' },
-  { value: '9', label: 'September' },
-  { value: '10', label: 'October' },
-  { value: '11', label: 'November' },
-  { value: '12', label: 'December' },
-]
+const MONTH_KEYS = [
+  'january', 'february', 'march', 'april', 'may', 'june',
+  'july', 'august', 'september', 'october', 'november', 'december'
+] as const
 
 export function ChildForm({
   initialValues,
@@ -69,7 +59,8 @@ export function ChildForm({
       const fieldErrors: Partial<Record<keyof ChildFormValues, string>> = {}
       for (const issue of result.error.issues) {
         const key = issue.path[0] as keyof ChildFormValues
-        if (!fieldErrors[key]) fieldErrors[key] = issue.message
+        // Zod messages are i18n keys — resolve them to translated strings
+        if (!fieldErrors[key]) fieldErrors[key] = tCommon(issue.message)
       }
       setErrors(fieldErrors)
       return
@@ -113,24 +104,26 @@ export function ChildForm({
         <div className="usa-memorable-date">
           <div className="usa-form-group usa-form-group--month">
             <label className="usa-label" htmlFor="date-month">{t('labelMonth')}</label>
-            {errors.month && <span className="usa-error-message">{errors.month}</span>}
+            {errors.month && <span id="date-month-error" className="usa-error-message" role="alert">{errors.month}</span>}
             <select
               className={`usa-select${errors.month ? ' usa-input--error' : ''}`}
               id="date-month"
               name="month"
               aria-label={t('labelMonth')}
+              aria-invalid={!!errors.month}
+              aria-describedby={errors.month ? 'date-month-error' : undefined}
               value={values.month ?? ''}
               onChange={e => set('month', e.target.value)}
             >
               <option value="">{tCommon('selectOne')}</option>
-              {MONTHS.map(m => (
-                <option key={m.value} value={m.value}>{m.label}</option>
+              {MONTH_KEYS.map((key, i) => (
+                <option key={i + 1} value={String(i + 1)}>{tCommon(`months.${key}`)}</option>
               ))}
             </select>
           </div>
           <div className="usa-form-group usa-form-group--day">
             <label className="usa-label" htmlFor="date-day">{t('labelDay')}</label>
-            {errors.day && <span className="usa-error-message">{errors.day}</span>}
+            {errors.day && <span id="date-day-error" className="usa-error-message" role="alert">{errors.day}</span>}
             <input
               className={`usa-input usa-input--inline${errors.day ? ' usa-input--error' : ''}`}
               id="date-day"
@@ -139,13 +132,15 @@ export function ChildForm({
               inputMode="numeric"
               maxLength={2}
               aria-label={t('labelDay')}
+              aria-invalid={!!errors.day}
+              aria-describedby={errors.day ? 'date-day-error' : undefined}
               value={values.day ?? ''}
               onChange={e => set('day', e.target.value)}
             />
           </div>
           <div className="usa-form-group usa-form-group--year">
             <label className="usa-label" htmlFor="date-year">{t('labelYear')}</label>
-            {errors.year && <span className="usa-error-message">{errors.year}</span>}
+            {errors.year && <span id="date-year-error" className="usa-error-message" role="alert">{errors.year}</span>}
             <input
               className={`usa-input usa-input--inline${errors.year ? ' usa-input--error' : ''}`}
               id="date-year"
@@ -154,6 +149,8 @@ export function ChildForm({
               inputMode="numeric"
               maxLength={4}
               aria-label={t('labelYear')}
+              aria-invalid={!!errors.year}
+              aria-describedby={errors.year ? 'date-year-error' : undefined}
               value={values.year ?? ''}
               onChange={e => set('year', e.target.value)}
             />

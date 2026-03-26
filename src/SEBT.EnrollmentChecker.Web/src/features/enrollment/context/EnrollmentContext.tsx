@@ -6,6 +6,9 @@ import { z } from 'zod'
 import { toDateOfBirth } from '../schemas/childSchema'
 import type { ChildFormValues } from '../schemas/childSchema'
 
+// Must match the backend's EnrollmentCheckApiRequest.MaxChildren
+export const MAX_CHILDREN = 20
+
 // ── Types ──────────────────────────────────────────────────────────────────
 
 export interface Child {
@@ -101,7 +104,9 @@ export function EnrollmentProvider({ children }: { children: ReactNode }) {
   }
 
   const actions: EnrollmentActions = {
-    addChild: (values) => update(s => ({
+    addChild: (values) => update(s => {
+      if (s.children.length >= MAX_CHILDREN) return s
+      return {
       ...s,
       children: [...s.children, {
         id: uuidv4(),
@@ -112,7 +117,7 @@ export function EnrollmentProvider({ children }: { children: ReactNode }) {
         schoolName: values.schoolName,
         schoolCode: values.schoolCode
       }]
-    })),
+    }}),
     updateChild: (id, values) => update(s => ({
       ...s,
       children: s.children.map(c => c.id === id ? {

@@ -37,12 +37,13 @@ public class EnrollmentCheckController : ControllerBase
     {
         // Parse and validate date formats
         var children = new List<CheckEnrollmentCommand.ChildInput>();
-        foreach (var child in request.Children)
+        for (var i = 0; i < request.Children.Count; i++)
         {
+            var child = request.Children[i];
             if (!DateOnly.TryParse(child.DateOfBirth, out var dob))
             {
                 return BadRequest(new ErrorResponse(
-                    $"Invalid date format for child '{child.FirstName} {child.LastName}': '{child.DateOfBirth}'"));
+                    $"Invalid date format for child at position {i + 1}. Expected yyyy-MM-dd."));
             }
 
             children.Add(new CheckEnrollmentCommand.ChildInput

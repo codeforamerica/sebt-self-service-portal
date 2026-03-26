@@ -9,12 +9,12 @@ const enrolled: ChildCheckApiResponse[] = [
 
 describe('EnrolledSection', () => {
   it('renders enrolled children', () => {
-    render(<EnrolledSection children={enrolled} />)
+    render(<EnrolledSection results={enrolled} />)
     expect(screen.getByText(/Jane Doe/i)).toBeInTheDocument()
   })
 
   it('renders nothing when empty', () => {
-    const { container } = render(<EnrolledSection children={[]} />)
+    const { container } = render(<EnrolledSection results={[]} />)
     expect(container.firstChild).toBeNull()
   })
 })

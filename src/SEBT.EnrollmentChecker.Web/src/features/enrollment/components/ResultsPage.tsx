@@ -32,8 +32,8 @@ export function ResultsPage({ results, applicationUrl }: ResultsPageProps) {
           {t('back', { ns: 'common' })}
         </button>
         <h1 className="font-family-sans">{t('heading')}</h1>
-        <EnrolledSection children={enrolled} />
-        <NotEnrolledSection children={notEnrolled} applicationUrl={applicationUrl} />
+        <EnrolledSection results={enrolled} />
+        <NotEnrolledSection results={notEnrolled} applicationUrl={applicationUrl} />
         {errors.length > 0 && (
           <section>
             <h2 className="font-family-sans">{t('errorHeading')}</h2>

@@ -4,13 +4,15 @@ import { z } from 'zod'
  * Form-level schema: the shape of data as it lives in the ChildForm UI.
  * Month/day/year are separate fields for the USWDS memorable-date pattern.
  */
+// Validation error keys are i18n translation keys resolved at display time.
+// The ChildForm component maps these keys via t() before showing to the user.
 export const childFormSchema = z.object({
-  firstName: z.string().min(1, 'First name is required').max(100),
+  firstName: z.string().min(1, 'validation.firstNameRequired').max(100),
   middleName: z.string().max(100).optional(),
-  lastName: z.string().min(1, 'Last name is required').max(100),
-  month: z.string().min(1, 'Month is required'),
-  day: z.string().regex(/^\d{1,2}$/, 'Day must be 1-2 digits'),
-  year: z.string().regex(/^\d{4}$/, 'Year must be 4 digits'),
+  lastName: z.string().min(1, 'validation.lastNameRequired').max(100),
+  month: z.string().min(1, 'validation.monthRequired'),
+  day: z.string().regex(/^\d{1,2}$/, 'validation.dayFormat'),
+  year: z.string().regex(/^\d{4}$/, 'validation.yearFormat'),
   schoolName: z.string().max(200).optional(),
   schoolCode: z.string().max(50).optional()
 })

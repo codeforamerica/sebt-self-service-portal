@@ -8,22 +8,15 @@ interface ChildReviewCardProps {
   onEdit: (id: string) => void
 }
 
-/** Format ISO date (YYYY-MM-DD) as "Month, Day Year" (e.g., "April, 12 2015"). */
-function formatBirthdate(dateOfBirth: string): string {
-  const parts = dateOfBirth.split('-')
-  const year = parts[0] ?? ''
-  const month = parts[1] ?? ''
-  const day = parts[2] ?? ''
-  const monthNames = [
-    'January', 'February', 'March', 'April', 'May', 'June',
-    'July', 'August', 'September', 'October', 'November', 'December'
-  ]
-  const monthName = monthNames[parseInt(month, 10) - 1] ?? month
-  return `${monthName}, ${parseInt(day, 10)} ${year}`
+/** Format ISO date (YYYY-MM-DD) as a locale-aware date string (e.g., "April 12, 2015"). */
+function formatBirthdate(dateOfBirth: string, locale: string): string {
+  const [year, month, day] = dateOfBirth.split('-').map(Number)
+  const date = new Date(year, month - 1, day)
+  return date.toLocaleDateString(locale, { year: 'numeric', month: 'long', day: 'numeric' })
 }
 
 export function ChildReviewCard({ child, onEdit }: ChildReviewCardProps) {
-  const { t } = useTranslation('confirmInfo')
+  const { t, i18n } = useTranslation('confirmInfo')
 
   const middleInitial = child.middleName ? ` ${child.middleName.charAt(0)}.` : ''
   const fullName = `${child.firstName}${middleInitial} ${child.lastName}`
@@ -37,7 +30,7 @@ export function ChildReviewCard({ child, onEdit }: ChildReviewCardProps) {
       <p className="usa-prose margin-bottom-05">
         <strong>{t('tableBirthdateHeading')}</strong>
       </p>
-      <p className="usa-prose margin-top-0">{formatBirthdate(child.dateOfBirth)}</p>
+      <p className="usa-prose margin-top-0">{formatBirthdate(child.dateOfBirth, i18n.language)}</p>
       <button
         type="button"
         className="usa-button usa-button--unstyled"

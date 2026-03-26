@@ -11,9 +11,10 @@ describe('ChildReviewCard', () => {
     expect(screen.getByText('Jane Doe')).toBeInTheDocument()
   })
 
-  it('formats the birthdate as "Month, Day Year"', () => {
+  it('formats the birthdate using locale-aware formatting', () => {
     render(<ChildReviewCard child={child} onEdit={vi.fn()} />)
-    expect(screen.getByText('April, 12 2015')).toBeInTheDocument()
+    // Intl.DateTimeFormat with 'en' locale produces "April 12, 2015"
+    expect(screen.getByText('April 12, 2015')).toBeInTheDocument()
   })
 
   it('includes middle initial when middleName is present', () => {

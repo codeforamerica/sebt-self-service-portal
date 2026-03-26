@@ -6,18 +6,18 @@ import type { ChildCheckApiResponse } from '../schemas/enrollmentSchema'
 import { ChildResultCard } from './ChildResultCard'
 
 interface NotEnrolledSectionProps {
-  children: ChildCheckApiResponse[]
+  results: ChildCheckApiResponse[]
   applicationUrl: string
 }
 
-export function NotEnrolledSection({ children, applicationUrl }: NotEnrolledSectionProps) {
+export function NotEnrolledSection({ results, applicationUrl }: NotEnrolledSectionProps) {
   const { t } = useTranslation('result')
-  if (children.length === 0) return null
+  if (results.length === 0) return null
 
   return (
     <section>
       <h2 className="font-family-sans">{t('notEnrolledHeading')}</h2>
-      {children.map(child => (
+      {results.map(child => (
         <ChildResultCard
           key={child.checkId}
           firstName={child.firstName}

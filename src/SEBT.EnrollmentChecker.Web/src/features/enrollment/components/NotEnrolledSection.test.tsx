@@ -9,13 +9,13 @@ const notEnrolled: ChildCheckApiResponse[] = [
 
 describe('NotEnrolledSection', () => {
   it('renders not-enrolled children and application link', () => {
-    render(<NotEnrolledSection children={notEnrolled} applicationUrl="https://apply.example.gov" />)
+    render(<NotEnrolledSection results={notEnrolled} applicationUrl="https://apply.example.gov" />)
     expect(screen.getByText(/John Smith/i)).toBeInTheDocument()
     expect(screen.getByRole('link')).toHaveAttribute('href', 'https://apply.example.gov')
   })
 
   it('renders nothing when empty', () => {
-    const { container } = render(<NotEnrolledSection children={[]} applicationUrl="" />)
+    const { container } = render(<NotEnrolledSection results={[]} applicationUrl="" />)
     expect(container.firstChild).toBeNull()
   })
 })

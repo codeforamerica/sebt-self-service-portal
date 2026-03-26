@@ -35,7 +35,7 @@ describe('ChildForm', () => {
   it('shows validation error on submit when firstName is empty', async () => {
     render(<ChildForm onSubmit={vi.fn()} showSchoolField={false} apiBaseUrl="" />, { wrapper })
     await userEvent.click(screen.getByRole('button', { name: /continue/i }))
-    expect(await screen.findByText(/first name is required/i)).toBeInTheDocument()
+    expect(await screen.findByText(/validation\.firstNameRequired/i)).toBeInTheDocument()
   })
 
   it('calls onSubmit with valid values including separate date fields', async () => {
