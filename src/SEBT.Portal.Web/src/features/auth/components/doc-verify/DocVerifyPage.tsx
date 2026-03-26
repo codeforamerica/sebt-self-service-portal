@@ -2,6 +2,7 @@
 
 import { useRouter, useSearchParams } from 'next/navigation'
 import { useCallback, useEffect, useRef, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 
 import { Alert } from '@sebt/design-system'
 
@@ -40,6 +41,7 @@ function clearChallengeContext(): void {
 export function DocVerifyPage({ contactLink, sdkKey }: DocVerifyPageProps) {
   const router = useRouter()
   const searchParams = useSearchParams()
+  const { t } = useTranslation('idProofing')
   const startChallenge = useStartChallenge()
 
   const [subState, setSubState] = useState<SubState>('interstitial')
@@ -118,8 +120,12 @@ export function DocVerifyPage({ contactLink, sdkKey }: DocVerifyPageProps) {
       sessionStorage.setItem(SK_SUB_STATE, 'capture')
       setSubState('capture')
     } catch {
-      // TODO: Use t('docVerify.errorStartChallenge') once key is available in dc.csv
-      setError('Something went wrong starting document verification. Please try again.')
+      setError(
+        t(
+          'docVerifyStartError',
+          'Something went wrong starting document verification. Please try again.'
+        )
+      )
     }
   }
 

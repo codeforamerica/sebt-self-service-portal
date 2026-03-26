@@ -107,8 +107,9 @@ export function IdProofingForm({ idOptions, contactLink }: IdProofingFormProps) 
 
       if (response.result === 'documentVerificationRequired') {
         if (!response.challengeId) {
-          // TODO: Use t('idProofing.errorNoChallengeId') once key is available in dc.csv
-          setSubmitError('Unable to start document verification. Please try again.')
+          setSubmitError(
+            t('idProofingStartError', 'Unable to start document verification. Please try again.')
+          )
           return
         }
         sessionStorage.setItem(SK_CHALLENGE_ID, response.challengeId)
@@ -124,11 +125,10 @@ export function IdProofingForm({ idOptions, contactLink }: IdProofingFormProps) 
         router.push('/dashboard')
       }
     } catch (err) {
-      // TODO: Use t('errorUnexpected') once key is available in dc.csv
       // All errors get the same user-facing message. Raw ApiError.message may contain
       // backend wording not intended for end users — avoid displaying it directly.
       void err
-      setSubmitError('Something went wrong. Please try again.')
+      setSubmitError(t('idProofingGenericError', 'Something went wrong. Please try again.'))
     }
   }
 

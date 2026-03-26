@@ -2,6 +2,7 @@
 
 import { useRouter } from 'next/navigation'
 import { useEffect, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 
 import { Button } from '@sebt/design-system'
 
@@ -22,6 +23,7 @@ interface OffBoardingPageProps {
  */
 export function OffBoardingPage({ contactLink, applyLink }: OffBoardingPageProps) {
   const router = useRouter()
+  const { t } = useTranslation('idProofing')
 
   // Read sessionStorage once on initial render (lazy initializer avoids setState-in-effect)
   const [reason] = useState(() => {
@@ -48,17 +50,21 @@ export function OffBoardingPage({ contactLink, applyLink }: OffBoardingPageProps
     <div className="usa-section">
       <div className="grid-container maxw-tablet">
         <section aria-labelledby="offboarding-title">
-          {/* TODO: Use t('offboarding.title') once key is available in dc.csv */}
           <h1
             id="offboarding-title"
             className="font-sans-xl text-bold line-height-sans-1 margin-bottom-3"
           >
-            We&apos;re sorry, we aren&apos;t able to show your DC SUN Bucks information
+            {t(
+              'offboardingHeading',
+              "We're sorry, we aren't able to show your DC SUN Bucks information"
+            )}
           </h1>
 
-          {/* TODO: Use t('offboarding.body') once key is available in dc.csv */}
           <p className="font-sans-sm">
-            You can go back to enter an ID number, or contact us if you need more help.
+            {t(
+              'offboardingBody',
+              'You can go back to enter an ID number, or contact us if you need more help.'
+            )}
           </p>
 
           <div className="margin-top-3">
@@ -69,8 +75,7 @@ export function OffBoardingPage({ contactLink, applyLink }: OffBoardingPageProps
                 router.push('/login/id-proofing')
               }}
             >
-              {/* TODO: Use t('offboarding.actionBack') once key is available in dc.csv */}
-              Back
+              {t('offboardingActionBack', 'Back')}
             </Button>
 
             <a
@@ -79,19 +84,18 @@ export function OffBoardingPage({ contactLink, applyLink }: OffBoardingPageProps
               rel="noopener noreferrer"
               className="usa-button usa-button--outline"
             >
-              {/* TODO: Use t('offboarding.actionContact') once key is available in dc.csv */}
-              Contact us
+              {t('offboardingActionContact', 'Contact us')}
             </a>
           </div>
 
           {/* Conditional "Apply now" section (D7) — shown when canApply is true */}
           {canApply && (
             <div className="margin-top-4">
-              {/* TODO: Use t('offboarding.applyBody') once key is available in dc.csv */}
               <p className="font-sans-sm">
-                If you&apos;re not sure what to do, or you want to apply for DC SUN Bucks, we can
-                help you find out if you need to apply for your child. Tap &quot;Apply now&quot; and
-                enter your child&apos;s information.
+                {t(
+                  'offboardingApplyBody',
+                  'If you\'re not sure what to do, or you want to apply for DC SUN Bucks, we can help you find out if you need to apply for your child. Tap "Apply now" and enter your child\'s information.'
+                )}
               </p>
 
               {applyLink && (
@@ -99,8 +103,7 @@ export function OffBoardingPage({ contactLink, applyLink }: OffBoardingPageProps
                   href={applyLink}
                   className="usa-button margin-top-2"
                 >
-                  {/* TODO: Use t('offboarding.actionApply') once key is available in dc.csv */}
-                  Apply now
+                  {t('offboardingActionApply', 'Apply now')}
                 </a>
               )}
             </div>
@@ -108,14 +111,14 @@ export function OffBoardingPage({ contactLink, applyLink }: OffBoardingPageProps
 
           {/* FAQs placeholder */}
           <div className="margin-top-6">
-            {/* TODO: Use t('offboarding.faqs') once key is available in dc.csv */}
-            <h2 className="font-sans-lg text-bold">FAQs</h2>
+            <h2 className="font-sans-lg text-bold">{t('offboardingFaqsHeading', 'FAQs')}</h2>
           </div>
 
           {/* Contact Us */}
           <div className="margin-top-4">
-            {/* TODO: Use t('offboarding.contactUs') once key is available in dc.csv */}
-            <h2 className="font-sans-lg text-bold">Contact Us</h2>
+            <h2 className="font-sans-lg text-bold">
+              {t('offboardingContactUsHeading', 'Contact Us')}
+            </h2>
             <p className="font-sans-sm">
               <a
                 href={contactLink}
@@ -123,8 +126,7 @@ export function OffBoardingPage({ contactLink, applyLink }: OffBoardingPageProps
                 rel="noopener noreferrer"
                 className="usa-link"
               >
-                {/* TODO: Use t('offboarding.contactUsLink') once key is available in dc.csv */}
-                Need help? Contact us.
+                {t('offboardingContactUsLink', 'Need help? Contact us.')}
               </a>
             </p>
           </div>
