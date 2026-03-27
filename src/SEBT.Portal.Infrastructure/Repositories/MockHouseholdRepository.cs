@@ -190,6 +190,8 @@ public class MockHouseholdRepository : IHouseholdRepository
         verified.Email = verifiedEmail;
         verified.UserProfile = new UserProfile { FirstName = "John", MiddleName = "Robert", LastName = "Doe" };
         _households[verifiedEmail] = verified;
+        // To test CO OIDC login locally, uncomment and replace with your PingOne sandbox user email:
+        // _households["sebt.co+YOUR_PHONE@codeforamerica.org"] = verified;
 
         // Scenario 3: Pending application without address (not ID verified)
         // Note: Address should not be included for non-ID-verified users, but we set it here
