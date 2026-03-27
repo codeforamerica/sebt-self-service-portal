@@ -251,9 +251,29 @@ public class MockHouseholdRepositoryTests
         Assert.Equal(789002, app.Children[1].CaseNumber);
         Assert.NotNull(app.BenefitIssueDate);
         Assert.NotNull(app.BenefitExpirationDate);
+        Assert.Equal("APP-2025-01-100001", app.ApplicationNumber);
+        Assert.Equal("CASE-100001", app.CaseNumber);
         Assert.Equal("1234", app.Last4DigitsOfCard);
+        Assert.Equal(IssuanceType.SummerEbt, app.IssuanceType);
         Assert.NotNull(result.AddressOnFile);
         Assert.Equal("123 Main Street", result.AddressOnFile.StreetAddress1);
+    }
+
+    [Fact]
+    public async Task GetHouseholdByEmailAsync_VerifiedScenario_HasStableApplicationNumbers()
+    {
+        // Application numbers must be stable across multiple reads to ensure
+        // dashboard replacement links match ConfirmAddress guard lookups
+        var email = "verified@example.com";
+
+        var result1 = await _repository.GetHouseholdByEmailAsync(email, FullPiiVisibility, UserIalLevel.IAL1plus);
+        var result2 = await _repository.GetHouseholdByEmailAsync(email, FullPiiVisibility, UserIalLevel.IAL1plus);
+
+        Assert.NotNull(result1);
+        Assert.NotNull(result2);
+        Assert.Equal(
+            result1!.Applications.First().ApplicationNumber,
+            result2!.Applications.First().ApplicationNumber);
     }
 
     [Fact]
@@ -515,6 +535,7 @@ public class MockHouseholdRepositoryTests
         Assert.Equal(2, app.Children.Count);
         Assert.Equal("John", app.Children[0].FirstName);
         Assert.Equal("Doe", app.Children[0].LastName);
+        Assert.Equal("APP-2025-01-100001", app.ApplicationNumber);
         Assert.Equal("1234", app.Last4DigitsOfCard);
         Assert.NotNull(result.AddressOnFile);
         Assert.Equal("123 Main Street", result.AddressOnFile.StreetAddress1);
