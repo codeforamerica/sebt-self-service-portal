@@ -99,7 +99,7 @@ public static class Dependencies
                 "UseMockHouseholdData is false but no household plugin (ISummerEbtCaseService) is loaded. " +
                 "Either set UseMockHouseholdData to true in configuration or ensure a state plugin is loaded (e.g. PluginAssemblyPaths and the plugin DLL).");
         });
-        services.AddTransient<MockHouseholdRepository>();
+        services.AddSingleton<MockHouseholdRepository>();
         services.AddTransient<HouseholdRepository>();
 
         services.AddMemoryCache();
