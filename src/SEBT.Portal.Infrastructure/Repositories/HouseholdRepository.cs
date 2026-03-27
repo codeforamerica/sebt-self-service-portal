@@ -34,13 +34,18 @@ public class HouseholdRepository : IHouseholdRepository
         UserIalLevel userIalLevel,
         CancellationToken cancellationToken = default)
     {
-        if (identifier.Type != PreferredHouseholdIdType.Email)
+        if (identifier.Type == PreferredHouseholdIdType.Email)
         {
-            _logger.LogDebug("State plugin lookup supports only email identifier; ignoring type {Type}", identifier.Type);
-            return Task.FromResult<HouseholdData?>(null);
+            return GetHouseholdByEmailAsync(identifier.Value, piiVisibility, userIalLevel, cancellationToken);
         }
 
-        return GetHouseholdByEmailAsync(identifier.Value, piiVisibility, userIalLevel, cancellationToken);
+        if (identifier.Type == PreferredHouseholdIdType.Phone)
+        {
+            return GetHouseholdByPhoneAsync(identifier.Value, piiVisibility, userIalLevel, cancellationToken);
+        }
+
+        _logger.LogDebug("State plugin lookup does not support identifier type {Type}", identifier.Type);
+        return Task.FromResult<HouseholdData?>(null);
     }
 
     /// <inheritdoc />
@@ -115,6 +120,49 @@ public class HouseholdRepository : IHouseholdRepository
                     }
                     : null
         };
+    }
+
+    private async Task<HouseholdData?> GetHouseholdByPhoneAsync(
+        string phone,
+        PiiVisibility piiVisibility,
+        UserIalLevel userIalLevel,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(piiVisibility);
+        if (string.IsNullOrWhiteSpace(phone))
+        {
+            return null;
+        }
+
+        _logger.LogDebug("Querying state plugin for household data by guardian phone");
+
+        var pluginPii = new PluginPiiVisibility(
+            piiVisibility.IncludeAddress,
+            piiVisibility.IncludeEmail,
+            piiVisibility.IncludePhone);
+        var pluginIal = (PluginIdentityAssuranceLevel)(int)userIalLevel;
+        var pluginHousehold = await _summerEbtCaseService.GetHouseholdByGuardianPhoneAsync(
+            phone,
+            pluginPii,
+            pluginIal,
+            cancellationToken);
+
+        if (pluginHousehold == null)
+        {
+            _logger.LogInformation("No household data found for guardian phone");
+            return null;
+        }
+
+        _logger.LogInformation(
+            "Retrieved household data for guardian by phone with {ApplicationCount} application(s)",
+            pluginHousehold.Applications.Count);
+
+        var core = PluginHouseholdDataMapper.ToCore(pluginHousehold);
+        if (core == null)
+        {
+            return null;
+        }
+        return ApplyPiiVisibility(core, piiVisibility);
     }
 
     /// <inheritdoc />

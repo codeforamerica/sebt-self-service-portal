@@ -20,4 +20,14 @@ internal sealed class DefaultSummerEbtCaseService : ISummerEbtCaseService
     {
         return Task.FromResult<HouseholdData?>(null);
     }
+
+    /// <inheritdoc />
+    public Task<HouseholdData?> GetHouseholdByGuardianPhoneAsync(
+        string guardianPhone,
+        PiiVisibility piiVisibility,
+        IdentityAssuranceLevel identityAssuranceLevel,
+        CancellationToken cancellationToken = default)
+    {
+        return Task.FromResult<HouseholdData?>(null);
+    }
 }
