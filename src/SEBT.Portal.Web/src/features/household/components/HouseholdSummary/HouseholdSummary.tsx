@@ -93,7 +93,7 @@ export function HouseholdSummary() {
                 <span style={{ whiteSpace: 'pre-line' }}>{formatAddress(data.addressOnFile)}</span>
                 <br />
                 <Link
-                  href="/address"
+                  href="/profile/address"
                   className="usa-link"
                 >
                   {t('profileTableActionChangeAddress')}
