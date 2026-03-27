@@ -65,5 +65,28 @@ assert.ok(!enrollmentContent.includes('dashboard'), 'enrollment barrel must NOT 
 // Test: locale JSON was written to --out-dir (not to script's own directory)
 assert.ok(existsSync(join(tmpDir, 'locales', 'en', 'co', 'landing.json')), 'locale JSON must be written to --out-dir')
 
+// Test: new CSV column headers ("Variable Name/Key", "🟢 CO English", "🟢 CO Español")
+setup()
+const csvNewHeaders = [
+  'Variable Name/Key,🟢 CO English,⚪ SOURCE English,🟢 CO Español,⚪ SOURCE Español,Notes',
+  'GLOBAL - Button Continue,Continue,,Continuar,,',
+  'S1 - Landing Page - Title,New Header Landing,,New Header Landing ES,,',
+].join('\n')
+writeFileSync(join(tmpDir, 'states', 'co.csv'), csvNewHeaders)
+
+execFileSync('node', [
+  script,
+  '--csv-dir', join(tmpDir, 'states'),
+  '--out-dir', join(tmpDir, 'locales'),
+  '--ts-out',  join(tmpDir, 'ts-out', 'new-header-resources.ts'),
+  '--app',     'portal',
+], { stdio: 'inherit' })
+
+const newHeaderLanding = JSON.parse(readFileSync(join(tmpDir, 'locales', 'en', 'co', 'landing.json'), 'utf8'))
+assert.equal(newHeaderLanding.title, 'New Header Landing', 'must parse content from "Variable Name/Key" column header')
+
+const newHeaderCommon = JSON.parse(readFileSync(join(tmpDir, 'locales', 'es', 'co', 'common.json'), 'utf8'))
+assert.equal(newHeaderCommon.buttonContinue, 'Continuar', 'must parse Spanish from state-prefixed Español column')
+
 console.log('✅ All generate-locales CLI arg tests passed')
 teardown()

@@ -16,6 +16,15 @@ vi.mock('next/navigation', () => ({
   })
 }))
 
+let mockState = 'dc'
+vi.mock('@sebt/design-system', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@sebt/design-system')>()
+  return {
+    ...actual,
+    getState: () => mockState
+  }
+})
+
 const TEST_ADDRESS: Address = {
   streetAddress1: '123 Main St',
   streetAddress2: 'Apt 4B',
@@ -60,11 +69,18 @@ describe('ConfirmAddress', () => {
   beforeEach(() => {
     mockPush.mockClear()
     mockBack.mockClear()
+    mockState = 'dc'
   })
 
-  it('renders the child name', () => {
+  it('renders child name subtitle for DC', () => {
     renderConfirmAddress()
-    expect(screen.getByText(/Sophia Martinez/)).toBeInTheDocument()
+    expect(screen.getByText(/Replace Sophia Martinez/)).toBeInTheDocument()
+  })
+
+  it('renders card number subtitle for CO', () => {
+    mockState = 'co'
+    renderConfirmAddress()
+    expect(screen.getByText(/Replace card ending in 1234/)).toBeInTheDocument()
   })
 
   it('renders the address', () => {

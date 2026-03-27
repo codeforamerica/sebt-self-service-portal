@@ -5,7 +5,7 @@ import { useEffect, useRef, useState, type FormEvent } from 'react'
 import { useTranslation } from 'react-i18next'
 
 import type { Address, Application } from '@/features/household/api/schema'
-import { Button } from '@sebt/design-system'
+import { Button, getState } from '@sebt/design-system'
 
 interface ConfirmAddressProps {
   application: Application
@@ -36,9 +36,16 @@ export function ConfirmAddress({
     }
   }, [error])
 
+  const currentState = getState()
   const childName = application.children[0]
     ? `${application.children[0].firstName} ${application.children[0].lastName}`
     : ''
+  const subtitle =
+    currentState === 'co' && application.last4DigitsOfCard
+      ? `Replace card ending in ${application.last4DigitsOfCard}`
+      : childName
+        ? `Replace ${childName}'s card`
+        : null
 
   function handleSubmit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault()
@@ -61,10 +68,10 @@ export function ConfirmAddress({
       onSubmit={handleSubmit}
       noValidate
     >
-      {childName && (
+      {subtitle && (
         <p className="text-base-dark margin-bottom-1">
           {/* TODO: Use t('replaceCardFor') once key is available in CSV */}
-          Replace {childName}&apos;s card
+          {subtitle}
         </p>
       )}
 
