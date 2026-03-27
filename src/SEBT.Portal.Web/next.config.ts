@@ -33,6 +33,7 @@ const nextConfig: NextConfig = {
   /* SASS Configuration for USWDS */
   sassOptions: {
     implementation: 'sass-embedded',
+    quietDeps: true,
     includePaths: [
       path.join(designSystemPath, 'design/sass'),
       path.join(__dirname, 'node_modules/@uswds/uswds/packages'),
@@ -49,6 +50,7 @@ const nextConfig: NextConfig = {
             options: {
               implementation: 'sass-embedded',
               sassOptions: {
+                quietDeps: true,
                 loadPaths: [
                   path.join(designSystemPath, 'design/sass'),
                   path.join(__dirname, 'node_modules/@uswds/uswds/packages'),

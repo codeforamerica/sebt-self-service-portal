@@ -110,7 +110,10 @@ public class OidcController(
             ValidateAudience = false,
             ValidateLifetime = true,
             ClockSkew = TimeSpan.FromMinutes(1),
-            IssuerSigningKey = key
+            // Use resolver instead of IssuerSigningKey to bypass kid-matching;
+            // jose (Next.js) signs without a kid header, which causes IDX10517
+            // when JwtSecurityTokenHandler tries to match by kid.
+            IssuerSigningKeyResolver = (token, securityToken, kid, parameters) => [key]
         };
         var handler = new JwtSecurityTokenHandler();
         handler.MapInboundClaims = false; // Preserve original JWT claim names (sub, email)
