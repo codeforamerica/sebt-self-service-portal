@@ -94,6 +94,69 @@ public class AddressValidationServiceTests
         Assert.True(result.IsValid);
     }
 
+    // --- Street type normalization ---
+
+    [Theory]
+    [InlineData("645 H St NE")]
+    [InlineData("645 H st NE")]
+    [InlineData("645 H ST NE")]
+    public async Task ValidateAsync_BlocksAbbreviatedStreetType_WhenFullFormIsInBlockedList(string streetAddress)
+    {
+        // "645 H Street NE" is in the DC blocked list; abbreviated forms should also match
+        var service = new AddressValidationService("dc");
+        var address = new Address
+        {
+            StreetAddress1 = streetAddress,
+            City = "Washington",
+            State = "District of Columbia",
+            PostalCode = "20002"
+        };
+
+        var result = await service.ValidateAsync(address);
+
+        Assert.False(result.IsValid);
+        Assert.Equal("blocked", result.Reason);
+    }
+
+    [Fact]
+    public async Task ValidateAsync_CoAbbreviatedBlockedEntry_StillMatchesAfterNormalization()
+    {
+        // CO blocked list stores "1575 Sherman St" (abbreviated form).
+        // After normalization expands to "1575 Sherman Street", it should still match.
+        var service = new AddressValidationService("co");
+        var address = new Address
+        {
+            StreetAddress1 = "1575 Sherman Street",
+            City = "Denver",
+            State = "Colorado",
+            PostalCode = "80203"
+        };
+
+        var result = await service.ValidateAsync(address);
+
+        Assert.False(result.IsValid);
+        Assert.Equal("blocked", result.Reason);
+    }
+
+    [Fact]
+    public async Task ValidateAsync_DoesNotMangleStreetNamesContainingAbbreviationSubstrings()
+    {
+        // "Stanton" contains "St" but should NOT be expanded to "Streetanton"
+        var service = new AddressValidationService("dc");
+        var address = new Address
+        {
+            StreetAddress1 = "100 Stanton Pl NE",
+            City = "Washington",
+            State = "District of Columbia",
+            PostalCode = "20002"
+        };
+
+        var result = await service.ValidateAsync(address);
+
+        // This address is not blocked, so it should be valid
+        Assert.True(result.IsValid);
+    }
+
     // --- DC street abbreviation ---
 
     [Fact]

@@ -36,6 +36,29 @@ public class AddressValidationService : IAddressValidationService
     };
 
     /// <summary>
+    /// Common USPS street type abbreviations mapped to their canonical full forms.
+    /// Used by NormalizeStreet to ensure consistent comparison regardless of whether
+    /// the user enters "St" or "Street", "Ave" or "Avenue", etc.
+    /// Note: "St" is treated as "Street" (not "Saint"). No current blocked address
+    /// contains a "Saint" street name, so this does not cause false positives.
+    /// </summary>
+    private static readonly Dictionary<string, string> StreetTypeExpansions = new(StringComparer.OrdinalIgnoreCase)
+    {
+        ["St"] = "Street",
+        ["Ave"] = "Avenue",
+        ["Blvd"] = "Boulevard",
+        ["Dr"] = "Drive",
+        ["Ln"] = "Lane",
+        ["Ct"] = "Court",
+        ["Pl"] = "Place",
+        ["Rd"] = "Road",
+        ["Cir"] = "Circle",
+        ["Ter"] = "Terrace",
+        ["Pkwy"] = "Parkway",
+        ["Hwy"] = "Highway"
+    };
+
+    /// <summary>
     /// DC street name abbreviations for addresses that exceed 30 characters.
     /// The card vendor (FIS) has a 30-character limit on address line 1.
     /// These mappings come from the state's known long street names.
@@ -130,7 +153,10 @@ public class AddressValidationService : IAddressValidationService
     }
 
     /// <summary>
-    /// Strips punctuation, collapses whitespace, and trims for comparison.
+    /// Strips punctuation, expands street type abbreviations, collapses whitespace,
+    /// and trims for consistent comparison. Both blocked list entries and user input
+    /// pass through this method, so expanding abbreviations makes "645 H St NE"
+    /// match "645 H Street NE" regardless of which form was entered.
     /// </summary>
     private static string NormalizeStreet(string street)
     {
@@ -138,12 +164,17 @@ public class AddressValidationService : IAddressValidationService
             .Replace(",", "")
             .Replace(".", "");
 
-        // Collapse multiple spaces into one
-        while (cleaned.Contains("  "))
+        // Expand street type abbreviations word by word to avoid partial-word
+        // mangling (e.g., "Stanton" must NOT become "Streetanton")
+        var words = cleaned.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+        for (var i = 0; i < words.Length; i++)
         {
-            cleaned = cleaned.Replace("  ", " ");
+            if (StreetTypeExpansions.TryGetValue(words[i], out var expanded))
+            {
+                words[i] = expanded;
+            }
         }
 
-        return cleaned.Trim();
+        return string.Join(' ', words);
     }
 }
