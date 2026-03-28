@@ -2,10 +2,9 @@
 
 import { useRouter } from 'next/navigation'
 import { useEffect, useRef, useState, type FormEvent } from 'react'
-import { createPortal } from 'react-dom'
 import { useTranslation } from 'react-i18next'
 
-import { Alert, Button, getState, getStateLinks, InputField } from '@sebt/design-system'
+import { Alert, Button, getState, InputField } from '@sebt/design-system'
 
 import type { Address } from '@/features/household/api'
 
@@ -48,7 +47,7 @@ export function AddressForm({ initialAddress, redirectPath }: AddressFormProps) 
   const { t: tCommon } = useTranslation('common')
   const router = useRouter()
   const updateAddress = useUpdateAddress()
-  const { setAddress } = useAddressFlow()
+  const { setAddress, setValidationResult } = useAddressFlow()
   const errorSummaryRef = useRef<HTMLDivElement>(null)
 
   const currentState = getState()
@@ -81,12 +80,6 @@ export function AddressForm({ initialAddress, redirectPath }: AddressFormProps) 
 
     if (!streetAddress1.trim()) {
       errors.streetAddress1 = required
-    } else if (streetAddress1.trim().length > 30) {
-      // TODO: Backend does not yet enforce this limit — add [MaxLength(30)] when confirmed
-      errors.streetAddress1 = t(
-        'streetAddressTooLong',
-        'Enter a street address shorter than 30 characters.'
-      )
     }
     if (!city.trim()) errors.city = required
     if (!stateValue.trim()) errors.state = required
@@ -119,46 +112,33 @@ export function AddressForm({ initialAddress, redirectPath }: AddressFormProps) 
     }
 
     try {
-      await updateAddress.mutateAsync(addressData)
-      setAddress(addressData)
-      router.push(redirectPath ?? DEFAULT_REDIRECT)
+      const result = await updateAddress.mutateAsync(addressData)
+
+      if (result.status === 'valid') {
+        setAddress(addressData)
+        router.push(redirectPath ?? DEFAULT_REDIRECT)
+        return
+      }
+
+      setValidationResult(result, addressData)
+
+      if (result.status === 'suggestion') {
+        router.push('/profile/address/suggested-address')
+      } else if (result.reason === 'too_long') {
+        setSubmitError(
+          t('streetAddressTooLong', 'Enter a street address shorter than 30 characters.')
+        )
+      } else {
+        router.push('/profile/address/address-not-found')
+      }
     } catch (err) {
       void err
       setSubmitError(t('addressUpdateError', 'Something went wrong. Please try again.'))
     }
   }
 
-  const showStreetLengthAlert = hasErrors && streetAddress1.trim().length > 30
-  // Portal renders this alert above the header via #site-alerts in root layout.
-  // If a second feature needs this pattern, refactor to a shared SiteAlertContext.
-  const siteAlertsEl =
-    typeof document !== 'undefined' ? document.getElementById('site-alerts') : null
-
   return (
     <>
-      {showStreetLengthAlert &&
-        siteAlertsEl &&
-        createPortal(
-          <Alert
-            variant="error"
-            className="margin-bottom-0"
-            textClassName="text-bold"
-          >
-            {t(
-              'streetAddressWarning',
-              'There was an issue with the address provided. If you can, please, enter a street address shorter than 30 characters.'
-            )}
-            <br />
-            <a
-              href={getStateLinks(currentState).help.contactUs}
-              className="usa-link"
-            >
-              {t('contactUsHelp', 'Contact us if you need more help.')}
-            </a>
-          </Alert>,
-          siteAlertsEl
-        )}
-
       <form
         className="usa-form maxw-full"
         onSubmit={handleSubmit}

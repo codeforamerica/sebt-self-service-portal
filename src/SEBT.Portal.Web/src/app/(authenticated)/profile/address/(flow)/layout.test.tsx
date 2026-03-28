@@ -13,15 +13,20 @@ vi.mock('next/navigation', () => ({
   })
 }))
 
-// Mock AddressFlowContext with controllable address state
+// Mock AddressFlowContext with controllable address and validationResult state
 let mockAddress: null | { streetAddress1: string } = null
+let mockValidationResult: null | { status: string } = null
 
 vi.mock('@/features/address', () => ({
   AddressFlowProvider: ({ children }: { children: React.ReactNode }) => <>{children}</>,
   useAddressFlow: () => ({
     address: mockAddress,
     setAddress: vi.fn(),
-    clearAddress: vi.fn()
+    clearAddress: vi.fn(),
+    validationResult: mockValidationResult,
+    enteredAddress: null,
+    setValidationResult: vi.fn(),
+    clearValidationResult: vi.fn()
   })
 }))
 
@@ -29,6 +34,7 @@ describe('AddressFlowLayout / FlowGuard', () => {
   beforeEach(() => {
     mockReplace.mockClear()
     mockAddress = null
+    mockValidationResult = null
     mockPathname = '/profile/address/replacement-cards'
   })
 
@@ -41,6 +47,19 @@ describe('AddressFlowLayout / FlowGuard', () => {
     )
 
     expect(screen.getByText('Flow content')).toBeInTheDocument()
+    expect(mockReplace).not.toHaveBeenCalled()
+  })
+
+  it('renders children when validationResult exists but address is null', () => {
+    mockValidationResult = { status: 'suggestion' }
+    mockPathname = '/profile/address/suggested-address'
+    render(
+      <AddressFlowLayout>
+        <p>Validation page</p>
+      </AddressFlowLayout>
+    )
+
+    expect(screen.getByText('Validation page')).toBeInTheDocument()
     expect(mockReplace).not.toHaveBeenCalled()
   })
 
