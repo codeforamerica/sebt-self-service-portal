@@ -41,10 +41,12 @@ public class RequestCardReplacementCommandHandler(
             return Result.Unauthorized("Unable to identify user from token.");
         }
 
+        var userIalLevel = command.User.GetIalLevel();
+
         var household = await repository.GetHouseholdByIdentifierAsync(
             identifier,
             new PiiVisibility(IncludeAddress: false, IncludeEmail: false, IncludePhone: false),
-            UserIalLevel.None,
+            userIalLevel,
             cancellationToken);
 
         if (household == null)
@@ -72,7 +74,7 @@ public class RequestCardReplacementCommandHandler(
         // Stubbed — returns success without calling the state system.
 
         logger.LogInformation(
-            "Card replacement completed for household identifier kind {Kind}",
+            "Card replacement request recorded for household identifier kind {Kind}",
             identifierKind);
 
         return Result.Success();
