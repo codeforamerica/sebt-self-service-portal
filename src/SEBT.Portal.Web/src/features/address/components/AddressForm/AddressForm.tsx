@@ -2,6 +2,7 @@
 
 import { useRouter } from 'next/navigation'
 import { useEffect, useRef, useState, type FormEvent } from 'react'
+import { flushSync } from 'react-dom'
 import { useTranslation } from 'react-i18next'
 
 import { Alert, Button, getState, getStateLinks, InputField } from '@sebt/design-system'
@@ -117,7 +118,7 @@ export function AddressForm({ initialAddress, redirectPath }: AddressFormProps) 
       const result = await updateAddress.mutateAsync(addressData)
 
       if (result.status === 'valid') {
-        setAddress(addressData)
+        flushSync(() => setAddress(addressData))
         router.push(redirectPath ?? DEFAULT_REDIRECT)
         return
       }

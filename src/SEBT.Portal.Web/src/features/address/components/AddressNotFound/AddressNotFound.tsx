@@ -1,6 +1,7 @@
 'use client'
 
 import { useRouter } from 'next/navigation'
+import { flushSync } from 'react-dom'
 import { useTranslation } from 'react-i18next'
 
 import { Alert, Button, getState, getStateLinks } from '@sebt/design-system'
@@ -22,7 +23,7 @@ export function AddressNotFound() {
 
   function handleUseThisAddress() {
     if (enteredAddress) {
-      setAddress(enteredAddress)
+      flushSync(() => setAddress(enteredAddress))
       router.push(DEFAULT_REDIRECT)
     }
   }

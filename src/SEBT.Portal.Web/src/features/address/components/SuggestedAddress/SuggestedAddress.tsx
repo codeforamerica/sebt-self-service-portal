@@ -2,6 +2,7 @@
 
 import { useRouter } from 'next/navigation'
 import { useState } from 'react'
+import { flushSync } from 'react-dom'
 import { useTranslation } from 'react-i18next'
 
 import { Button, getState } from '@sebt/design-system'
@@ -36,7 +37,7 @@ export function SuggestedAddress() {
   function handleContinue() {
     const selectedAddress = selection === 'suggested' ? suggestedAddr : enteredAddress
     if (selectedAddress) {
-      setAddress(selectedAddress)
+      flushSync(() => setAddress(selectedAddress))
       router.push(DEFAULT_REDIRECT)
     }
   }
