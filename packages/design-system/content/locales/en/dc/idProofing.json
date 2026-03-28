@@ -1,0 +1,20 @@
+{
+  "title": "Thank you for confirming your email. To keep your account safe, we need check your identity",
+  "body": "By providing your date of birth and one ID number, you consent to sharing this information with our third-party vendor. We will only use these once and not share or save them without your permission.",
+  "labelDob": "What's your date of birth?",
+  "labelId": "Which ID number can you provide?",
+  "helperId": "!!!",
+  "optionLabelSsn": "Social Security Number (SSN)",
+  "optionLabelItin": "Individual Taxpayer ID Number (ITIN)",
+  "optionLabelMedicaidId": "Medicaid ID",
+  "optionHelperMedicaidId": "This number can be found on your Medicaid letters and is typically 7 or 8 digits long.",
+  "optionAccountId": "SNAP or TANF account ID",
+  "optionHelperAccountId": "This number can be found on your SNAP or TANF letters and is typically 7 or 8 digits long.",
+  "optionPersonId": "SNAP or TANF person ID",
+  "optionHelperPersonId": "This number can be found on your SNAP or TANF letters and is typically 7 or 8 digits long.",
+  "labelSsn": "Enter your Social Security Number (SSN)",
+  "labelItin": "Enter your Individual Taxpayer ID Number (ITIN)",
+  "labelMedicaidId": "Enter your Medicaid ID",
+  "labelAccountId": "Enter your SNAP or TANF account ID",
+  "labelPersonId": "Enter your SNAP or TANF person ID"
+}
