@@ -33,11 +33,27 @@ export const UpdateAddressRequestSchema = z.object({
 export type UpdateAddressRequest = z.infer<typeof UpdateAddressRequestSchema>
 
 /**
- * Stub interface for address validation service (frontend side).
- * Replace with real Smarty integration when DC-160 is implemented.
+ * Zod schema for the address fields returned by the backend.
+ * Mirrors the backend AddressResponse DTO.
  */
-export interface AddressValidationResult {
-  isValid: boolean
-  suggestedAddress?: UpdateAddressRequest
-  errorMessage?: string
-}
+export const AddressResponseSchema = z.object({
+  streetAddress1: z.string().nullable(),
+  streetAddress2: z.string().nullable(),
+  city: z.string().nullable(),
+  state: z.string().nullable(),
+  postalCode: z.string().nullable()
+})
+
+/**
+ * Zod schema for the address update response from the backend.
+ * Mirrors the backend AddressUpdateResponse DTO.
+ */
+export const AddressUpdateResponseSchema = z.object({
+  status: z.enum(['valid', 'invalid', 'suggestion']),
+  reason: z.string().nullable().optional(),
+  message: z.string().nullable().optional(),
+  suggestedAddress: AddressResponseSchema.nullable().optional()
+})
+
+export type AddressUpdateResponse = z.infer<typeof AddressUpdateResponseSchema>
+export type AddressResponse = z.infer<typeof AddressResponseSchema>

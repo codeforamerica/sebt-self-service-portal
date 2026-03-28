@@ -1,7 +1,7 @@
 export {
   UpdateAddressRequestSchema,
   useUpdateAddress,
-  type AddressValidationResult,
+  type AddressUpdateResponse,
   type UpdateAddressRequest
 } from './api'
 
