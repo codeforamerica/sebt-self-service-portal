@@ -52,10 +52,12 @@ const TEST_VALIDATION_RESULT: AddressUpdateResponse = {
  */
 function ContextSeeder({
   enteredAddress,
-  validationResult
+  validationResult,
+  includeInspector = false
 }: {
   enteredAddress: UpdateAddressRequest
   validationResult: AddressUpdateResponse
+  includeInspector?: boolean
 }) {
   const { setValidationResult } = useAddressFlow()
 
@@ -63,12 +65,31 @@ function ContextSeeder({
     setValidationResult(validationResult, enteredAddress)
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
-  return <AddressNotFound />
+  return (
+    <>
+      <AddressNotFound />
+      {includeInspector && <ContextInspector />}
+    </>
+  )
+}
+
+/**
+ * Renders current context state for test assertions.
+ */
+function ContextInspector() {
+  const { validationResult, address } = useAddressFlow()
+  return (
+    <div data-testid="context-inspector">
+      <span data-testid="has-validation-result">{validationResult ? 'yes' : 'no'}</span>
+      <span data-testid="has-address">{address ? 'yes' : 'no'}</span>
+    </div>
+  )
 }
 
 function renderComponent(
   enteredAddress: UpdateAddressRequest = TEST_ADDRESS,
-  validationResult: AddressUpdateResponse = TEST_VALIDATION_RESULT
+  validationResult: AddressUpdateResponse = TEST_VALIDATION_RESULT,
+  { includeInspector = false }: { includeInspector?: boolean } = {}
 ) {
   const user = userEvent.setup()
   return {
@@ -78,6 +99,7 @@ function renderComponent(
         <ContextSeeder
           enteredAddress={enteredAddress}
           validationResult={validationResult}
+          includeInspector={includeInspector}
         />
       </AddressFlowProvider>
     )
@@ -170,7 +192,7 @@ describe('AddressNotFound', () => {
     expect(mockPush).toHaveBeenCalledWith('/profile/address')
   })
 
-  it('CO: "Use this address" sets address, clears validation, and navigates to replacement cards', async () => {
+  it('CO: "Use this address" sets address and navigates to replacement cards', async () => {
     mockState = 'co'
     const { user } = renderComponent()
 
@@ -178,6 +200,20 @@ describe('AddressNotFound', () => {
     await user.click(useButton)
 
     expect(mockPush).toHaveBeenCalledWith('/profile/address/replacement-cards')
+  })
+
+  it('CO: "Use this address" preserves validationResult in context (prevents FlowGuard race)', async () => {
+    mockState = 'co'
+    const { user } = renderComponent(TEST_ADDRESS, TEST_VALIDATION_RESULT, {
+      includeInspector: true
+    })
+
+    const useButton = screen.getByRole('button', { name: /use this address/i })
+    await user.click(useButton)
+
+    // validationResult should still be present (not cleared before navigation)
+    expect(screen.getByTestId('has-validation-result')).toHaveTextContent('yes')
+    expect(screen.getByTestId('has-address')).toHaveTextContent('yes')
   })
 
   // --- Edge case ---

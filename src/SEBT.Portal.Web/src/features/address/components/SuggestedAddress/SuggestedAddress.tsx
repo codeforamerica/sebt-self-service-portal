@@ -37,7 +37,6 @@ export function SuggestedAddress() {
     const selectedAddress = selection === 'suggested' ? suggestedAddr : enteredAddress
     if (selectedAddress) {
       setAddress(selectedAddress)
-      clearValidationResult()
       router.push(DEFAULT_REDIRECT)
     }
   }

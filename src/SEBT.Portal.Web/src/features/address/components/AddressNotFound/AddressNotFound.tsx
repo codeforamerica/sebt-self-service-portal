@@ -23,7 +23,6 @@ export function AddressNotFound() {
   function handleUseThisAddress() {
     if (enteredAddress) {
       setAddress(enteredAddress)
-      clearValidationResult()
       router.push(DEFAULT_REDIRECT)
     }
   }

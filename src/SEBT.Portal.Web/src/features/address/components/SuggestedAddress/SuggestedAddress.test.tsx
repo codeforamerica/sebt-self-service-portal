@@ -78,9 +78,24 @@ function ContextSetter({
   return <>{children}</>
 }
 
+/**
+ * Renders current context state for test assertions. Allows tests to verify
+ * whether validationResult was cleared or preserved after button clicks.
+ */
+function ContextInspector() {
+  const { validationResult, address } = useAddressFlow()
+  return (
+    <div data-testid="context-inspector">
+      <span data-testid="has-validation-result">{validationResult ? 'yes' : 'no'}</span>
+      <span data-testid="has-address">{address ? 'yes' : 'no'}</span>
+    </div>
+  )
+}
+
 function renderSuggestedAddress(
   result: AddressUpdateResponse = mockSuggestionResult,
-  entered: UpdateAddressRequest = mockEntered
+  entered: UpdateAddressRequest = mockEntered,
+  { includeInspector = false }: { includeInspector?: boolean } = {}
 ) {
   const user = userEvent.setup()
   return {
@@ -92,6 +107,7 @@ function renderSuggestedAddress(
           entered={entered}
         >
           <SuggestedAddress />
+          {includeInspector && <ContextInspector />}
         </ContextSetter>
       </AddressFlowProvider>
     )
@@ -168,6 +184,20 @@ describe('SuggestedAddress', () => {
     await user.click(continueButton)
 
     expect(mockPush).toHaveBeenCalledWith('/profile/address/replacement-cards')
+  })
+
+  it('preserves validationResult in context when Continue is clicked (prevents FlowGuard race)', async () => {
+    const { user } = renderSuggestedAddress(mockSuggestionResult, mockEntered, {
+      includeInspector: true
+    })
+
+    const continueButton = screen.getByRole('button', { name: /continue/i })
+    await user.click(continueButton)
+
+    // validationResult should still be present after Continue (not cleared)
+    expect(screen.getByTestId('has-validation-result')).toHaveTextContent('yes')
+    // address should now be set
+    expect(screen.getByTestId('has-address')).toHaveTextContent('yes')
   })
 
   // --- Back button ---
