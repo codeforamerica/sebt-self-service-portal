@@ -13,6 +13,12 @@ public record AddressUpdateResponse
     public required string Status { get; init; }
 
     /// <summary>
+    /// The specific reason for the validation outcome (e.g., "blocked", "too_long", "abbreviated").
+    /// </summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public string? Reason { get; init; }
+
+    /// <summary>
     /// A user-facing error message when the address is invalid.
     /// </summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]

@@ -329,7 +329,7 @@ public class UpdateAddressCommandHandlerTests
             .Returns(HouseholdIdentifier.Email(EmailNormalizer.Normalize("user@example.com")));
 
         _addressValidator.ValidateAsync(Arg.Any<Address>(), Arg.Any<CancellationToken>())
-            .Returns(AddressValidationResult.Invalid("This address cannot be used for mail delivery."));
+            .Returns(AddressValidationResult.Invalid("This address cannot be used for mail delivery.", "blocked"));
 
         var result = await handler.Handle(command, CancellationToken.None);
 
@@ -356,7 +356,7 @@ public class UpdateAddressCommandHandlerTests
             .Returns(HouseholdIdentifier.Email(EmailNormalizer.Normalize("user@example.com")));
 
         _addressValidator.ValidateAsync(Arg.Any<Address>(), Arg.Any<CancellationToken>())
-            .Returns(AddressValidationResult.Suggestion(suggested));
+            .Returns(AddressValidationResult.Suggestion(suggested, "abbreviated"));
 
         var result = await handler.Handle(command, CancellationToken.None);
 

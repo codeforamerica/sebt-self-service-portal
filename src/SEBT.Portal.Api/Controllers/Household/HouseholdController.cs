@@ -97,6 +97,7 @@ public class HouseholdController : ControllerBase
                 var response = new AddressUpdateResponse
                 {
                     Status = validationResult.SuggestedAddress != null ? "suggestion" : "invalid",
+                    Reason = validationResult.Reason,
                     Message = validationResult.ErrorMessage,
                     SuggestedAddress = validationResult.SuggestedAddress != null
                         ? new AddressResponse
