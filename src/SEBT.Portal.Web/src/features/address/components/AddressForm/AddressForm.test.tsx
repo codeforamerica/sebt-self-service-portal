@@ -292,7 +292,8 @@ describe('AddressForm', () => {
     })
   })
 
-  it('shows form error when backend returns invalid+too_long', async () => {
+  it('shows full error banner with "Contact us" link when backend returns too_long (DC)', async () => {
+    mockState = 'dc'
     server.use(
       http.put('/api/household/address', () => {
         return HttpResponse.json(
@@ -315,9 +316,73 @@ describe('AddressForm', () => {
     await user.click(submitButton)
 
     await waitFor(() => {
-      expect(screen.getByText(/shorter than 30 characters/i)).toBeInTheDocument()
+      expect(screen.getByText(/there was an issue with the address/i)).toBeInTheDocument()
     })
+    // Banner contains the full message with "Contact us" link
+    const alert = screen.getByText(/there was an issue with the address/i).closest('.usa-alert')
+    expect(alert).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: /contact us/i })).toHaveAttribute(
+      'href',
+      'https://sunbucks.dc.gov/page/contact-us'
+    )
     expect(mockPush).not.toHaveBeenCalled()
+  })
+
+  it('shows inline field error on street address when backend returns too_long', async () => {
+    server.use(
+      http.put('/api/household/address', () => {
+        return HttpResponse.json(
+          {
+            status: 'invalid',
+            reason: 'too_long',
+            message: 'Enter a street address shorter than 30 characters.'
+          },
+          { status: 422 }
+        )
+      })
+    )
+
+    const { user } = renderForm()
+
+    await user.type(getStreetInput(), '1234567890 Northeast Pennsylvania Ave NW')
+    await user.type(getPostalInput(), '20001')
+
+    const submitButton = screen.getByRole('button', { name: /continue/i })
+    await user.click(submitButton)
+
+    await waitFor(() => {
+      const streetInput = getStreetInput()
+      expect(streetInput).toHaveAttribute('aria-invalid', 'true')
+    })
+  })
+
+  it('renders too_long error banner with usa-alert--error class', async () => {
+    server.use(
+      http.put('/api/household/address', () => {
+        return HttpResponse.json(
+          {
+            status: 'invalid',
+            reason: 'too_long',
+            message: 'Enter a street address shorter than 30 characters.'
+          },
+          { status: 422 }
+        )
+      })
+    )
+
+    const { user } = renderForm()
+
+    await user.type(getStreetInput(), '1234567890 Northeast Pennsylvania Ave NW')
+    await user.type(getPostalInput(), '20001')
+
+    const submitButton = screen.getByRole('button', { name: /continue/i })
+    await user.click(submitButton)
+
+    await waitFor(() => {
+      expect(screen.getByText(/there was an issue with the address/i)).toBeInTheDocument()
+    })
+    const alert = screen.getByText(/there was an issue with the address/i).closest('.usa-alert')
+    expect(alert).toHaveClass('usa-alert--error')
   })
 
   it('shows ZIP format error for invalid postal code', async () => {

@@ -4,7 +4,7 @@ import { useRouter } from 'next/navigation'
 import { useEffect, useRef, useState, type FormEvent } from 'react'
 import { useTranslation } from 'react-i18next'
 
-import { Alert, Button, getState, InputField } from '@sebt/design-system'
+import { Alert, Button, getState, getStateLinks, InputField } from '@sebt/design-system'
 
 import type { Address } from '@/features/household/api'
 
@@ -64,6 +64,7 @@ export function AddressForm({ initialAddress, redirectPath }: AddressFormProps) 
 
   const [fieldErrors, setFieldErrors] = useState<FieldErrors>({})
   const [submitError, setSubmitError] = useState<string | null>(null)
+  const [tooLongError, setTooLongError] = useState(false)
 
   const isSubmitting = updateAddress.isPending
   const hasErrors = Object.keys(fieldErrors).length > 0
@@ -95,6 +96,7 @@ export function AddressForm({ initialAddress, redirectPath }: AddressFormProps) 
   async function handleSubmit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault()
     setSubmitError(null)
+    setTooLongError(false)
 
     const errors = validate()
     setFieldErrors(errors)
@@ -120,14 +122,23 @@ export function AddressForm({ initialAddress, redirectPath }: AddressFormProps) 
         return
       }
 
+      if (result.reason === 'too_long') {
+        setTooLongError(true)
+        setFieldErrors((prev) => ({
+          ...prev,
+          streetAddress1: t(
+            'streetAddressTooLongInline',
+            'Enter a street address shorter than 30 characters.'
+          )
+        }))
+        return
+      }
+
+      // Only store validation context for flows that navigate to other pages
       setValidationResult(result, addressData)
 
       if (result.status === 'suggestion') {
         router.push('/profile/address/suggested-address')
-      } else if (result.reason === 'too_long') {
-        setSubmitError(
-          t('streetAddressTooLong', 'Enter a street address shorter than 30 characters.')
-        )
       } else {
         router.push('/profile/address/address-not-found')
       }
@@ -151,6 +162,32 @@ export function AddressForm({ initialAddress, redirectPath }: AddressFormProps) 
             className="margin-bottom-2"
           >
             {submitError}
+          </Alert>
+        )}
+
+        {tooLongError && (
+          <Alert
+            variant="error"
+            slim
+            className="margin-bottom-2"
+          >
+            <p className="margin-y-0">
+              {t(
+                'tooLongBannerMessage',
+                'There was an issue with the address provided. If you can, please enter a street address shorter than 30 characters.'
+              )}
+            </p>
+            {currentState === 'dc' && (
+              <p className="margin-top-05 margin-bottom-0">
+                <a
+                  href={getStateLinks(currentState).help.contactUs}
+                  className="usa-link"
+                >
+                  {t('contactUs', 'Contact us')}
+                </a>{' '}
+                {t('tooLongBannerSuffix', 'if you need more help.')}
+              </p>
+            )}
           </Alert>
         )}
 
