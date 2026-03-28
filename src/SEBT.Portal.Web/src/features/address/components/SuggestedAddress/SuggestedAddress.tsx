@@ -95,6 +95,10 @@ export function SuggestedAddress() {
       <p>{body}</p>
       {bodyDetail && <p>{bodyDetail}</p>}
 
+      <p className="font-sans-3xs text-base margin-bottom-0">
+        {t('requiredFieldNote', 'Asterisks (*) indicate a required field.')}
+      </p>
+
       <fieldset className="usa-fieldset margin-top-3">
         <legend className="usa-legend">
           {t('suggestedLabelSelect', 'Select the address to use')}

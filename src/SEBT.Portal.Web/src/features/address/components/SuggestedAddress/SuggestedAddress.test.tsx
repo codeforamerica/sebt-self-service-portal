@@ -238,4 +238,10 @@ describe('SuggestedAddress', () => {
 
     expect(screen.getByText(/select the address to use/i)).toBeInTheDocument()
   })
+
+  it('renders "Asterisks (*) indicate a required field" note', () => {
+    renderSuggestedAddress()
+
+    expect(screen.getByText(/asterisks .* indicate a required field/i)).toBeInTheDocument()
+  })
 })
