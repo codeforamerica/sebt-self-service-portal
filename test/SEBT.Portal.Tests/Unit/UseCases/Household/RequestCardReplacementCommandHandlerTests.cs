@@ -27,9 +27,11 @@ public class RequestCardReplacementCommandHandlerTests
     private RequestCardReplacementCommandHandler CreateHandler() =>
         new(_validator, _resolver, _repository, _logger);
 
-    private static ClaimsPrincipal CreateUser(string email)
+    private static ClaimsPrincipal CreateUser(string email, string? ialClaim = null)
     {
         var claims = new List<Claim> { new(ClaimTypes.Email, email) };
+        if (ialClaim != null)
+            claims.Add(new Claim(JwtClaimTypes.Ial, ialClaim));
         var identity = new ClaimsIdentity(claims, "Test");
         return new ClaimsPrincipal(identity);
     }
@@ -246,5 +248,54 @@ public class RequestCardReplacementCommandHandlerTests
         await handler.Handle(command, token);
 
         await _resolver.Received(1).ResolveAsync(Arg.Any<ClaimsPrincipal>(), token);
+    }
+
+    // --- IAL propagation tests ---
+
+    [Fact]
+    public async Task Handle_PassesUserIalLevelToRepository()
+    {
+        var handler = CreateHandler();
+        var user = CreateUser("user@example.com", ialClaim: "1plus");
+        var command = CreateValidCommand(user: user);
+        SetupResolverSuccess();
+        SetupRepositoryReturns(CreateHouseholdWithApplications(
+            new Application
+            {
+                ApplicationNumber = "APP-2026-001",
+                CardRequestedAt = DateTime.UtcNow.AddDays(-30)
+            }
+        ));
+
+        await handler.Handle(command, CancellationToken.None);
+
+        await _repository.Received(1).GetHouseholdByIdentifierAsync(
+            Arg.Any<HouseholdIdentifier>(),
+            Arg.Any<PiiVisibility>(),
+            UserIalLevel.IAL1plus,
+            Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task Handle_PassesIalNone_WhenNoIalClaim()
+    {
+        var handler = CreateHandler();
+        var command = CreateValidCommand();
+        SetupResolverSuccess();
+        SetupRepositoryReturns(CreateHouseholdWithApplications(
+            new Application
+            {
+                ApplicationNumber = "APP-2026-001",
+                CardRequestedAt = DateTime.UtcNow.AddDays(-30)
+            }
+        ));
+
+        await handler.Handle(command, CancellationToken.None);
+
+        await _repository.Received(1).GetHouseholdByIdentifierAsync(
+            Arg.Any<HouseholdIdentifier>(),
+            Arg.Any<PiiVisibility>(),
+            UserIalLevel.None,
+            Arg.Any<CancellationToken>());
     }
 }

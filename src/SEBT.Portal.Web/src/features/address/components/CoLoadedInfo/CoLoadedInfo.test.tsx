@@ -48,7 +48,7 @@ describe('CoLoadedInfo', () => {
     renderCoLoadedInfo()
 
     expect(screen.getByText(/645 H Street NE/)).toBeInTheDocument()
-    expect(screen.getByText(/1849 Marion Barry Avenue SE/)).toBeInTheDocument()
+    expect(screen.getByText(/1649 Marion Barry Avenue SE/)).toBeInTheDocument()
   })
 
   // --- Navigation ---

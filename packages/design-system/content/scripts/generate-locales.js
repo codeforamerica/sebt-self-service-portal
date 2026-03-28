@@ -301,10 +301,11 @@ function parseContentKey(contentKey) {
 function buildStateLocaleData(rows, state) {
   const [headerRow, ...dataRows] = rows;
 
-  // Find column indices (handle emoji prefixes like "🟡 Content")
-  const contentIdx = headerRow.findIndex((h) =>
-    h.toLowerCase().includes('content')
-  );
+  // Find column indices (handle emoji prefixes like "🟡 Content" and renamed headers like "Variable Name/Key")
+  const contentIdx = headerRow.findIndex((h) => {
+    const lower = h.toLowerCase()
+    return lower.includes('content') || lower.includes('variable name')
+  });
   const englishIdx = headerRow.findIndex((h) =>
     h.toLowerCase().includes('english')
   );

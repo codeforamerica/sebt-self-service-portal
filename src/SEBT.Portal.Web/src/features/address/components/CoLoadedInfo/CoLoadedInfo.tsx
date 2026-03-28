@@ -46,7 +46,7 @@ export function CoLoadedInfo({ showContinue = false }: CoLoadedInfoProps) {
 
       <ul className="usa-list margin-top-05">
         <li>645 H Street NE, 2nd Floor</li>
-        <li>1849 Marion Barry Avenue SE</li>
+        <li>1649 Marion Barry Avenue SE</li>
       </ul>
 
       <div className="margin-top-3 display-flex flex-row gap-2">

@@ -138,33 +138,16 @@ describe('CardStatusDisplay', () => {
     expect(screen.getByTestId('card-status-badge')).toHaveTextContent('Undeliverable')
   })
 
-  // ── Replacement eligibility ──
+  // ── Replacement link ──
+  // CardStatusDisplay does not render replacement links (ChildCard handles this)
 
-  it('shows replacement card link for Lost status', () => {
+  it('does not render replacement link for Lost status', () => {
     renderWithStatus('Lost')
-
-    expect(screen.getByRole('link')).toHaveTextContent('Request a replacement card')
-  })
-
-  it('shows replacement card link for Stolen status', () => {
-    renderWithStatus('Stolen')
-
-    expect(screen.getByRole('link')).toHaveTextContent('Request a replacement card')
-  })
-
-  it('shows replacement card link for Damaged status', () => {
-    renderWithStatus('Damaged')
-
-    expect(screen.getByRole('link')).toHaveTextContent('Request a replacement card')
-  })
-
-  it('does not show replacement card link for DeactivatedByState', () => {
-    renderWithStatus('DeactivatedByState')
 
     expect(screen.queryByRole('link')).toBeNull()
   })
 
-  it('does not show replacement card link for Active status', () => {
+  it('does not render replacement link for Active status', () => {
     renderWithStatus('Active')
 
     expect(screen.queryByRole('link')).toBeNull()
