@@ -28,8 +28,10 @@ export function useUpdateAddress() {
 
   return useMutation({
     mutationFn: updateAddress,
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['householdData'] })
+    onSuccess: (result) => {
+      if (result?.status === 'valid') {
+        queryClient.invalidateQueries({ queryKey: ['householdData'] })
+      }
     },
     retry: (failureCount, error) => {
       if (error instanceof ApiError && error.status >= 400 && error.status < 500) {
