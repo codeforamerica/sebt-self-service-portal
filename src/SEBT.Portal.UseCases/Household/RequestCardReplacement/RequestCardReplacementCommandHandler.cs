@@ -92,7 +92,15 @@ public class RequestCardReplacementCommandHandler(
             var application = household.Applications
                 .FirstOrDefault(a => a.ApplicationNumber == appNumber);
 
-            if (application?.CardRequestedAt == null)
+            if (application == null)
+            {
+                errors.Add(new ValidationError(
+                    "ApplicationNumbers",
+                    $"Application {appNumber} does not belong to this household."));
+                continue;
+            }
+
+            if (application.CardRequestedAt == null)
                 continue;
 
             var elapsed = now - application.CardRequestedAt.Value;

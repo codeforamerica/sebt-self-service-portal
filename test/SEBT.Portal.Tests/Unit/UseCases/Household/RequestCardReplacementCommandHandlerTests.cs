@@ -195,6 +195,27 @@ public class RequestCardReplacementCommandHandlerTests
         Assert.True(result.IsSuccess);
     }
 
+    [Fact]
+    public async Task Handle_ReturnsValidationFailed_WhenApplicationNumberNotInHousehold()
+    {
+        var handler = CreateHandler();
+        var command = CreateValidCommand(applicationNumbers: new List<string> { "APP-UNKNOWN" });
+        SetupResolverSuccess();
+        SetupRepositoryReturns(CreateHouseholdWithApplications(
+            new Application
+            {
+                ApplicationNumber = "APP-2026-001",
+                CardStatus = CardStatus.Active,
+                CardRequestedAt = DateTime.UtcNow.AddDays(-30)
+            }
+        ));
+
+        var result = await handler.Handle(command, CancellationToken.None);
+
+        Assert.False(result.IsSuccess);
+        Assert.IsType<ValidationFailedResult>(result);
+    }
+
     // --- Success tests ---
 
     [Fact]
