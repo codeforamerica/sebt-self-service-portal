@@ -83,4 +83,34 @@ public class HouseholdController : ControllerBase
         var result = await commandHandler.Handle(command, cancellationToken);
         return result.ToActionResult();
     }
+
+    /// <summary>
+    /// Requests a replacement card for the authenticated user's application.
+    /// </summary>
+    /// <param name="request">The replacement card request.</param>
+    /// <param name="commandHandler">The use case handler for requesting a replacement card.</param>
+    /// <param name="cancellationToken">A token to monitor for cancellation requests.</param>
+    /// <returns>No content on success; otherwise, BadRequest, Forbidden, or Unauthorized.</returns>
+    /// <response code="204">Card replacement request submitted successfully.</response>
+    /// <response code="400">Validation failed (missing application number).</response>
+    /// <response code="403">Card replacement is not permitted for this account.</response>
+    [HttpPost("cards/replace")]
+    [Authorize]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
+    public async Task<IActionResult> RequestCardReplacement(
+        [FromBody] RequestCardReplacementRequest request,
+        [FromServices] ICommandHandler<RequestCardReplacementCommand> commandHandler,
+        CancellationToken cancellationToken = default)
+    {
+        var command = new RequestCardReplacementCommand
+        {
+            User = User,
+            ApplicationNumber = request.ApplicationNumber
+        };
+
+        var result = await commandHandler.Handle(command, cancellationToken);
+        return result.ToActionResult();
+    }
 }
