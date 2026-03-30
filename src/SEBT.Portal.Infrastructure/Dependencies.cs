@@ -40,6 +40,7 @@ public static class Dependencies
 
         // Address validation — stub for now, swap with Smarty integration in DC-160
         services.AddTransient<IAddressValidationService, AlwaysValidAddressValidator>();
+        services.AddTransient<ISelfServiceEvaluator, SelfServiceEvaluator>();
         services.AddSingleton<IIdentifierHasher, IdentifierHasher>();
 
         // Expose SocureSettings directly for use case injection (avoids IOptions dependency in UseCases layer)
