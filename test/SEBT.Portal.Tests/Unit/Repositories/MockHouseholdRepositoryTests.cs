@@ -205,7 +205,7 @@ public class MockHouseholdRepositoryTests
     }
 
     [Fact]
-    public async Task GetHouseholdByEmailAsync_WhenIncludeAddressIsFalse_DoesNotReturnAddress()
+    public async Task GetHouseholdByEmailAsync_WhenIncludeAddressIsFalse_ReturnsMaskedAddress()
     {
         // Arrange
         var email = "verified@example.com";
@@ -215,7 +215,9 @@ public class MockHouseholdRepositoryTests
 
         // Assert
         Assert.NotNull(result);
-        Assert.Null(result.AddressOnFile);
+        Assert.NotNull(result.AddressOnFile);
+        Assert.Equal("****", result.AddressOnFile.StreetAddress1);
+        Assert.Equal("Denver", result.AddressOnFile.City);
     }
 
     [Fact]
@@ -454,7 +456,7 @@ public class MockHouseholdRepositoryTests
     }
 
     [Fact]
-    public async Task GetHouseholdByEmailAsync_WhenIncludeEmailFalse_ReturnsEmptyEmail()
+    public async Task GetHouseholdByEmailAsync_WhenIncludeEmailFalse_ReturnsMaskedEmail()
     {
         // Arrange
         var email = "verified@example.com";
@@ -465,15 +467,15 @@ public class MockHouseholdRepositoryTests
 
         // Assert
         Assert.NotNull(result);
-        Assert.Null(result.Email);
+        Assert.Equal("v***@example.com", result.Email);
         Assert.NotNull(result.Phone);
     }
 
     [Fact]
-    public async Task GetHouseholdByEmailAsync_WhenIncludePhoneFalse_ReturnsNullPhone()
+    public async Task GetHouseholdByEmailAsync_WhenIncludePhoneFalse_ReturnsMaskedPhone()
     {
-        // Arrange
-        var email = "verified@example.com";
+        // Arrange — non-co-loaded scenario has an explicit phone number
+        var email = "non-co-loaded@example.com";
         var noPhoneVisibility = new PiiVisibility(IncludeAddress: true, IncludeEmail: true, IncludePhone: false);
 
         // Act
@@ -482,7 +484,7 @@ public class MockHouseholdRepositoryTests
         // Assert
         Assert.NotNull(result);
         Assert.Equal(email, result.Email);
-        Assert.Null(result.Phone);
+        Assert.Equal("***-***-4567", result.Phone);
     }
 
     [Fact]
@@ -501,7 +503,7 @@ public class MockHouseholdRepositoryTests
         var app = result.Applications.First();
         Assert.NotNull(app.BenefitExpirationDate);
         Assert.True(app.BenefitExpirationDate < _timeProvider.GetUtcNow().UtcDateTime);
-        Assert.Equal(ApplicationStatus.Approved, app.ApplicationStatus);
+        Assert.Equal(ApplicationStatus.Unknown, app.ApplicationStatus);
     }
 
     [Fact]

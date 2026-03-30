@@ -136,6 +136,25 @@ public class OidcControllerTests
     }
 
     /// <summary>
+    /// Callback token must contain an email or sub claim usable as login identifier.
+    /// </summary>
+    [Fact]
+    public async Task CompleteLogin_WhenCallbackTokenHasNoEmailOrSub_Returns400()
+    {
+        const string signingKey = "complete-login-signing-key-at-least-32-characters-long";
+        _config["Oidc:CompleteLoginSigningKey"].Returns(signingKey);
+
+        var callbackToken = CreateCallbackTokenWithClaims(signingKey, new Claim("given_name", "Pat"));
+        var body = new CompleteLoginRequest(CoStateKey, callbackToken);
+
+        var result = await _controller.CompleteLogin(body, CancellationToken.None);
+
+        var badRequest = Assert.IsType<BadRequestObjectResult>(result);
+        var errorResponse = Assert.IsType<ErrorResponse>(badRequest.Value);
+        Assert.Equal("Callback token must contain an email or sub claim.", errorResponse.Error);
+    }
+
+    /// <summary>
     /// Success path: valid callback token returns 200 with a JSON body containing a "token" property (portal JWT).
     /// Ensures the route returns the response shape the frontend expects.
     /// </summary>
@@ -172,6 +191,17 @@ public class OidcControllerTests
         var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(signingKey));
         var credentials = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
         var claims = new List<Claim> { new("email", email) };
+        var token = new JwtSecurityToken(
+            claims: claims,
+            expires: DateTime.UtcNow.AddMinutes(5),
+            signingCredentials: credentials);
+        return new JwtSecurityTokenHandler().WriteToken(token);
+    }
+
+    private static string CreateCallbackTokenWithClaims(string signingKey, params Claim[] claims)
+    {
+        var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(signingKey));
+        var credentials = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
         var token = new JwtSecurityToken(
             claims: claims,
             expires: DateTime.UtcNow.AddMinutes(5),

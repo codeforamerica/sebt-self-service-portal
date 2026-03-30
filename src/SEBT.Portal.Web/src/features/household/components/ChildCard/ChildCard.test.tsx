@@ -2,6 +2,9 @@ import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { describe, expect, it } from 'vitest'
 
+import { FeatureFlagsContext, type FeatureFlagsContextValue } from '@/features/feature-flags'
+import { TEST_FEATURE_FLAGS } from '@/mocks/handlers'
+
 import type { Application, Child } from '../../api'
 
 import { ChildCard } from './ChildCard'
@@ -28,6 +31,23 @@ const mockApplication: Application = {
   childrenOnApplication: 1
 }
 
+const defaultFlags: FeatureFlagsContextValue = {
+  flags: TEST_FEATURE_FLAGS,
+  isLoading: false,
+  isError: false
+}
+
+function renderWithFlags(
+  props: { child: Child; application: Application; id: string; defaultExpanded?: boolean },
+  flags: FeatureFlagsContextValue = defaultFlags
+) {
+  return render(
+    <FeatureFlagsContext.Provider value={flags}>
+      <ChildCard {...props} />
+    </FeatureFlagsContext.Provider>
+  )
+}
+
 describe('ChildCard', () => {
   it('renders card type when issuanceType is provided', () => {
     const applicationWithIssuanceType: Application = {
@@ -35,13 +55,11 @@ describe('ChildCard', () => {
       issuanceType: 'SnapEbtCard'
     }
 
-    render(
-      <ChildCard
-        child={mockChild}
-        application={applicationWithIssuanceType}
-        id="0"
-      />
-    )
+    renderWithFlags({
+      child: mockChild,
+      application: applicationWithIssuanceType,
+      id: '0'
+    })
 
     // Check for the card type heading (i18n key: cardTableHeadingCardType → "Benefit issued to")
     expect(screen.getByText('Benefit issued to')).toBeInTheDocument()
@@ -55,70 +73,90 @@ describe('ChildCard', () => {
       issuanceType: null
     }
 
-    render(
-      <ChildCard
-        child={mockChild}
-        application={applicationWithoutIssuanceType}
-        id="0"
-      />
-    )
+    renderWithFlags({
+      child: mockChild,
+      application: applicationWithoutIssuanceType,
+      id: '0'
+    })
 
     // Card type heading should not be present (i18n key: cardTableHeadingCardType → "Benefit issued to")
     expect(screen.queryByText('Benefit issued to')).not.toBeInTheDocument()
   })
 
   it('renders child name in accordion header', () => {
-    render(
-      <ChildCard
-        child={mockChild}
-        application={mockApplication}
-        id="0"
-      />
-    )
+    renderWithFlags({
+      child: mockChild,
+      application: mockApplication,
+      id: '0'
+    })
 
     expect(screen.getByText('Sophia Martinez')).toBeInTheDocument()
   })
 
   it('renders benefit dates when provided', () => {
-    render(
-      <ChildCard
-        child={mockChild}
-        application={mockApplication}
-        id="0"
-      />
-    )
+    renderWithFlags({
+      child: mockChild,
+      application: mockApplication,
+      id: '0'
+    })
 
-    // benefitIssueDate may appear in both ChildCard and CardStatusTimeline (when same as cardActivatedAt)
-    expect(screen.getAllByText('01/08/2026').length).toBeGreaterThanOrEqual(1)
+    expect(screen.getByText('01/08/2026')).toBeInTheDocument()
     expect(screen.getByText('03/19/2026')).toBeInTheDocument()
   })
 
   it('renders card number when provided', () => {
-    render(
-      <ChildCard
-        child={mockChild}
-        application={mockApplication}
-        id="0"
-      />
-    )
+    renderWithFlags({
+      child: mockChild,
+      application: mockApplication,
+      id: '0'
+    })
 
     expect(screen.getByText(/1234/)).toBeInTheDocument()
   })
 
-  it('renders card status timeline when card status is provided', () => {
-    render(
-      <ChildCard
-        child={mockChild}
-        application={mockApplication}
-        id="0"
-      />
-    )
+  it('renders card status badge for CO-style cards (no cardRequestedAt)', () => {
+    const coApplication: Application = {
+      ...mockApplication,
+      cardStatus: 'Active',
+      cardRequestedAt: null
+    }
 
-    // CardStatusTimeline renders with heading and steps
-    // i18n key: cardTableHeadingCardStatus → "Card status"
+    renderWithFlags({ child: mockChild, application: coApplication, id: '0' })
+
+    expect(screen.getByTestId('card-status-badge')).toBeInTheDocument()
+    expect(screen.queryByRole('list')).toBeNull()
+  })
+
+  it('renders card status timeline for DC-style cards (has cardRequestedAt)', () => {
+    const dcApplication: Application = {
+      ...mockApplication,
+      cardStatus: 'Requested',
+      cardRequestedAt: '2026-01-01T00:00:00Z',
+      cardMailedAt: null,
+      cardActivatedAt: null
+    }
+
+    renderWithFlags({ child: mockChild, application: dcApplication, id: '0' })
+
+    // DC-style: shows a single current-status row, not the CO badge
+    expect(screen.queryByTestId('card-status-badge')).toBeNull()
     expect(screen.getByText('Card status')).toBeInTheDocument()
-    // Timeline step indicator list should be present
-    expect(screen.getByRole('list', { name: 'Card status timeline' })).toBeInTheDocument()
+  })
+
+  it('renders timeline for DC Active card (cardRequestedAt present)', () => {
+    // DC Active cards have gone through Requested → Mailed → Active lifecycle
+    const dcActiveApplication: Application = {
+      ...mockApplication,
+      cardStatus: 'Active',
+      cardRequestedAt: '2026-01-01T00:00:00Z',
+      cardMailedAt: '2026-01-03T00:00:00Z',
+      cardActivatedAt: '2026-01-08T00:00:00Z'
+    }
+
+    renderWithFlags({ child: mockChild, application: dcActiveApplication, id: '0' })
+
+    expect(screen.queryByTestId('card-status-badge')).toBeNull()
+    expect(screen.getByText('Card status')).toBeInTheDocument()
   })
 
   it('hides optional fields when not provided', () => {
@@ -134,13 +172,11 @@ describe('ChildCard', () => {
       cardDeactivatedAt: null
     }
 
-    render(
-      <ChildCard
-        child={mockChild}
-        application={minimalApplication}
-        id="0"
-      />
-    )
+    renderWithFlags({
+      child: mockChild,
+      application: minimalApplication,
+      id: '0'
+    })
 
     // Should not show dates, card number, or card status timeline when not provided
     const definitionTerms = screen.queryAllByRole('term')
@@ -148,27 +184,23 @@ describe('ChildCard', () => {
   })
 
   it('sets aria-expanded to true when defaultExpanded is true', () => {
-    render(
-      <ChildCard
-        child={mockChild}
-        application={mockApplication}
-        id="0"
-        defaultExpanded={true}
-      />
-    )
+    renderWithFlags({
+      child: mockChild,
+      application: mockApplication,
+      id: '0',
+      defaultExpanded: true
+    })
 
     expect(screen.getByRole('button')).toHaveAttribute('aria-expanded', 'true')
   })
 
   it('sets aria-expanded to false when defaultExpanded is false', () => {
-    render(
-      <ChildCard
-        child={mockChild}
-        application={mockApplication}
-        id="1"
-        defaultExpanded={false}
-      />
-    )
+    renderWithFlags({
+      child: mockChild,
+      application: mockApplication,
+      id: '1',
+      defaultExpanded: false
+    })
 
     expect(screen.getByRole('button')).toHaveAttribute('aria-expanded', 'false')
   })
@@ -176,14 +208,12 @@ describe('ChildCard', () => {
   it('toggles accordion when button is clicked', async () => {
     const user = userEvent.setup()
 
-    render(
-      <ChildCard
-        child={mockChild}
-        application={mockApplication}
-        id="0"
-        defaultExpanded={true}
-      />
-    )
+    renderWithFlags({
+      child: mockChild,
+      application: mockApplication,
+      id: '0',
+      defaultExpanded: true
+    })
 
     const button = screen.getByRole('button')
     const content = screen.getByTestId('accordion-content')
@@ -201,5 +231,22 @@ describe('ChildCard', () => {
     await user.click(button)
     expect(button).toHaveAttribute('aria-expanded', 'true')
     expect(content).not.toHaveAttribute('hidden')
+  })
+
+  it('hides card number when show_card_last4 flag is off', () => {
+    renderWithFlags(
+      {
+        child: mockChild,
+        application: mockApplication,
+        id: '0'
+      },
+      {
+        flags: { ...TEST_FEATURE_FLAGS, show_card_last4: false },
+        isLoading: false,
+        isError: false
+      }
+    )
+
+    expect(screen.queryByText(/1234/)).not.toBeInTheDocument()
   })
 })

@@ -183,6 +183,20 @@ public class DatabaseUserRepository(PortalDbContext dbContext, IIdentifierHasher
         return entity == null ? null : MapToDomainModel(entity);
     }
 
+    public async Task<User?> GetUserByIdAsync(int id, CancellationToken cancellationToken = default)
+    {
+        if (id <= 0)
+        {
+            return null;
+        }
+
+        var entity = await dbContext.Users
+            .AsNoTracking()
+            .FirstOrDefaultAsync(u => u.Id == id, cancellationToken);
+
+        return entity == null ? null : MapToDomainModel(entity);
+    }
+
     /// <summary>
     /// Normalizes an email address to lowercase for consistent storage and comparison.
     /// </summary>

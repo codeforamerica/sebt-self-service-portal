@@ -75,6 +75,7 @@ module "app" {
   state                      = var.state
   vpc_id                     = module.vpc.vpc_id
   waf_log_group              = module.logging.log_groups["waf"]
+  passive_waf                = true
 
   api_image_url      = data.aws_ecr_repository.api.repository_url
   api_repository_arn = data.aws_ecr_repository.api.arn

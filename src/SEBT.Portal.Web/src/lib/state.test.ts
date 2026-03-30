@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it } from 'vitest'
 
-import { getState, getStateAssetPath, getStateConfig, getStateName } from './state'
+import { getState, getStateAssetPath, getStateConfig, getStateName } from '@sebt/design-system'
 
 describe('state', () => {
   const originalEnv = process.env.NEXT_PUBLIC_STATE

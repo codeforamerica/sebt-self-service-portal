@@ -4,12 +4,9 @@ import { useRouter } from 'next/navigation'
 import { useId, useState, type FormEvent } from 'react'
 import { useTranslation } from 'react-i18next'
 
-import { Alert, Button, InputField } from '@/components/ui'
+import { Alert, Button, InputField } from '@sebt/design-system'
 
-import {
-  SK_ALLOW_ID_RETRY,
-  SK_CHALLENGE_ID
-} from '@/features/auth/components/doc-verify/sessionKeys'
+import { SK_CHALLENGE_ID } from '@/features/auth/components/doc-verify/sessionKeys'
 import { useSubmitIdProofing, type IdType } from '../../api'
 
 // UI-only sentinel value for the "none" radio option.
@@ -110,13 +107,13 @@ export function IdProofingForm({ idOptions, contactLink }: IdProofingFormProps) 
 
       if (response.result === 'documentVerificationRequired') {
         if (!response.challengeId) {
-          // TODO: Use t('idProofing.errorNoChallengeId') once key is available in dc.csv
-          setSubmitError('Unable to start document verification. Please try again.')
+          setSubmitError(
+            t('idProofingStartError', 'Unable to start document verification. Please try again.')
+          )
           return
         }
         sessionStorage.setItem(SK_CHALLENGE_ID, response.challengeId)
-        sessionStorage.setItem(SK_ALLOW_ID_RETRY, String(response.allowIdRetry ?? false))
-        router.push('/login/id-proofing/doc-verify')
+        router.push(`/login/id-proofing/doc-verify?challengeId=${response.challengeId}`)
       } else if (response.result === 'failed') {
         const params = new URLSearchParams()
         if (response.canApply === false) {
@@ -128,11 +125,10 @@ export function IdProofingForm({ idOptions, contactLink }: IdProofingFormProps) 
         router.push('/dashboard')
       }
     } catch (err) {
-      // TODO: Use t('errorUnexpected') once key is available in dc.csv
       // All errors get the same user-facing message. Raw ApiError.message may contain
       // backend wording not intended for end users — avoid displaying it directly.
       void err
-      setSubmitError('Something went wrong. Please try again.')
+      setSubmitError(t('idProofingGenericError', 'Something went wrong. Please try again.'))
     }
   }
 

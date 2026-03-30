@@ -3,8 +3,21 @@
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
-import type { Application, Child } from '../../api'
+import { useFeatureFlag } from '@/features/feature-flags'
+
+import type { Application, Child, IssuanceType } from '../../api'
+import { formatDate } from '../../api'
+import { CardStatusDisplay } from '../CardStatusDisplay'
 import { CardStatusTimeline } from '../CardStatusTimeline'
+
+/**
+ * DC cards always originate as 'Requested' and carry a cardRequestedAt timestamp.
+ * CO cards are issued directly without a Requested stage, so cardRequestedAt is absent.
+ * This is the data-driven discriminator between the two card lifecycle models.
+ */
+function hasDcCardLifecycle(application: Application): boolean {
+  return application.cardRequestedAt != null
+}
 
 interface ChildCardProps {
   child: Child
@@ -13,43 +26,22 @@ interface ChildCardProps {
   defaultExpanded?: boolean
 }
 
-function formatDate(isoDate: string, locale: string): string {
-  const date = new Date(isoDate)
-  return new Intl.DateTimeFormat(locale, {
-    month: '2-digit',
-    day: '2-digit',
-    year: 'numeric',
-    timeZone: 'UTC'
-  }).format(date)
+// Keys map to CSV: "S2 - Portal Dashboard - Card Table - cardTableType{Sebt|Snap|Tanf}"
+const CARD_TYPE_KEYS: Partial<Record<IssuanceType, string>> = {
+  SnapEbtCard: 'cardTableTypeSnap',
+  TanfEbtCard: 'cardTableTypeTanf',
+  SummerEbt: 'cardTableTypeSebt'
 }
 
 // Keys map to CSV: "S2 - Portal Dashboard - Card Table - {Key}"
 export function ChildCard({ child, application, id, defaultExpanded = true }: ChildCardProps) {
   const { t, i18n } = useTranslation('dashboard')
+  const showCardLast4 = useFeatureFlag('show_card_last4')
   const [isExpanded, setIsExpanded] = useState(defaultExpanded)
   const childName = `${child.firstName} ${child.lastName}`
 
   const { benefitIssueDate, benefitExpirationDate, last4DigitsOfCard, issuanceType } = application
-
-  // Map issuance type to i18n key (keys from CSV: cardTableType{Sebt|Snap|Tanf})
-  const getCardTypeKey = (type: string | null | undefined): string | null => {
-    switch (type) {
-      case 'SnapEbtCard':
-        return 'cardTableTypeSnap'
-      case 'TanfEbtCard':
-        return 'cardTableTypeTanf'
-      case 'SummerEbt':
-        return 'cardTableTypeSebt'
-      default:
-        return null
-    }
-  }
-
-  const cardTypeKey = getCardTypeKey(issuanceType)
-
-  const handleToggle = () => {
-    setIsExpanded((prev) => !prev)
-  }
+  const cardTypeKey = issuanceType ? (CARD_TYPE_KEYS[issuanceType] ?? null) : null
 
   return (
     <div className="usa-accordion__item">
@@ -59,7 +51,7 @@ export function ChildCard({ child, application, id, defaultExpanded = true }: Ch
           className="usa-accordion__button"
           aria-expanded={isExpanded}
           aria-controls={`child-${id}`}
-          onClick={handleToggle}
+          onClick={() => setIsExpanded((prev) => !prev)}
         >
           {childName}
         </button>
@@ -71,12 +63,6 @@ export function ChildCard({ child, application, id, defaultExpanded = true }: Ch
         data-testid="accordion-content"
       >
         <dl className="margin-0">
-          {cardTypeKey && (
-            <>
-              <dt className="text-bold margin-top-2">{t('cardTableHeadingCardType')}</dt>
-              <dd className="margin-left-0">{t(cardTypeKey)}</dd>
-            </>
-          )}
           {benefitIssueDate && (
             <>
               <dt className="text-bold margin-top-2">{t('cardTableHeadingIssued')}</dt>
@@ -89,7 +75,13 @@ export function ChildCard({ child, application, id, defaultExpanded = true }: Ch
               <dd className="margin-left-0">{formatDate(benefitExpirationDate, i18n.language)}</dd>
             </>
           )}
-          {last4DigitsOfCard && (
+          {cardTypeKey && (
+            <>
+              <dt className="text-bold margin-top-2">{t('cardTableHeadingCardType')}</dt>
+              <dd className="margin-left-0">{t(cardTypeKey)}</dd>
+            </>
+          )}
+          {showCardLast4 && last4DigitsOfCard && (
             <>
               <dt className="text-bold margin-top-2">{t('cardTableHeadingCardNumber')}</dt>
               <dd className="margin-left-0">
@@ -97,7 +89,11 @@ export function ChildCard({ child, application, id, defaultExpanded = true }: Ch
               </dd>
             </>
           )}
-          <CardStatusTimeline application={application} />
+          {hasDcCardLifecycle(application) ? (
+            <CardStatusTimeline application={application} />
+          ) : (
+            <CardStatusDisplay application={application} />
+          )}
         </dl>
       </div>
     </div>

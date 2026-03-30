@@ -14,7 +14,8 @@ We're colleagues working together. Neither of us is afraid to admit we don't kno
 - Stay focused. Fix only what relates to your current task. Notice something else that needs work? Document it separately rather than fixing it now.
 - Preserve comments. They're documentation, not clutter.
 - Write evergreen code. Describe what code does, not when it was written. (i.e. avoid "newFunction")
-- All user-facing strings must go through i18next. Never hardcode display text in components — add keys to the content files in `src/SEBT.Portal.Web/content/` and reference them via the translation functions.
+- All user-facing strings must go through i18next. Never hardcode display text in components — reference keys via the translation functions.
+- **Locale JSON files are generated — NEVER hand-edit them.** They are produced by `packages/design-system/content/scripts/generate-locales.js` from CSV exports in `packages/design-system/content/states/`. To add or change content: update the source Google Sheet, re-export the CSV, and re-run the generator (`pnpm copy:generate`). If a key is missing, note it as a content gap to resolve in the spreadsheet — do not add it directly to the JSON.
 
 ### Code style
 - C#: 4-space indent, Allman brace style (braces on own line), nullable reference types enabled (see `.editorconfig`)

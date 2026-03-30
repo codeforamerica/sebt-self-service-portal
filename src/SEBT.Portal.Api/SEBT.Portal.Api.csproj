@@ -114,6 +114,8 @@
     <PackageReference Include="Microsoft.IdentityModel.JsonWebTokens" Version="8.2.1" />
     <PackageReference Include="Microsoft.IdentityModel.Protocols.OpenIdConnect" Version="8.2.1" />
     <PackageReference Include="Microsoft.IdentityModel.Tokens" Version="8.2.1" />
+    <!-- Required by state connector plugins that use Kiota-generated API clients -->
+    <PackageReference Include="Microsoft.Kiota.Abstractions" Version="1.21.2" />
   </ItemGroup>
 
   <ItemGroup>

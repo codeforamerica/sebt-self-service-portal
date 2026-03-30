@@ -67,6 +67,10 @@ public static class MvcResultExtensions
                 => result.ToProblemDetailsResult(HttpStatusCode.Forbidden),
             UnauthorizedResult when !useProblemDetails
                 => new ForbidResult(),
+            DependencyFailedResult when useProblemDetails
+                => result.ToProblemDetailsResult(HttpStatusCode.BadGateway),
+            DependencyFailedResult when !useProblemDetails
+                => new StatusCodeResult((int)HttpStatusCode.BadGateway),
             _ => throw new ArgumentOutOfRangeException(nameof(result))
         };
 
@@ -138,6 +142,10 @@ public static class MvcResultExtensions
                 => result.ToProblemDetailsResult(HttpStatusCode.Forbidden),
             UnauthorizedResult<T> when !useProblemDetails
                 => new ForbidResult(),
+            DependencyFailedResult<T> when useProblemDetails
+                => result.ToProblemDetailsResult(HttpStatusCode.BadGateway),
+            DependencyFailedResult<T> when !useProblemDetails
+                => new StatusCodeResult((int)HttpStatusCode.BadGateway),
             _ => throw new ArgumentOutOfRangeException(nameof(result))
         };
 

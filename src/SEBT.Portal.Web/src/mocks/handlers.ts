@@ -40,7 +40,10 @@ export const TEST_OTP = {
 export const TEST_FEATURE_FLAGS = {
   enable_enrollment_status: true,
   enable_card_replacement: false,
-  enable_spanish_support: true
+  enable_spanish_support: true,
+  show_application_number: true,
+  show_case_number: true,
+  show_card_last4: true
 } as const
 
 // Test household data (mirrors MockHouseholdRepository seeded data)
@@ -271,16 +274,17 @@ export const handlers = [
 
   // Verification status endpoint — first call returns pending, subsequent returns verified.
   // Uses a closure counter to simulate async verification (D3).
+  // allowIdRetry is included so the interstitial can show/hide the "Enter an ID number" button (D9).
   (() => {
     let callCount = 0
     return http.get('/api/id-proofing/status', async () => {
       await delay(50)
       callCount++
       if (callCount <= 1) {
-        return HttpResponse.json({ status: 'pending' })
+        return HttpResponse.json({ status: 'pending', allowIdRetry: false })
       }
       callCount = 0 // Reset for next test
-      return HttpResponse.json({ status: 'verified' })
+      return HttpResponse.json({ status: 'verified', allowIdRetry: false })
     })
   })(),
 
@@ -289,5 +293,12 @@ export const handlers = [
     await delay(50)
 
     return HttpResponse.json(TEST_HOUSEHOLD_DATA)
+  }),
+
+  // Address update endpoint (stub — no real persistence yet)
+  // TODO: When state connector persistence is wired up, update this handler to
+  // reflect the real contract (validation errors, response body if not 204, etc.)
+  http.put('/api/household/address', () => {
+    return new HttpResponse(null, { status: 204 })
   })
 ]

@@ -1,7 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using SEBT.Portal.Core.AppSettings;
 using SEBT.Portal.Core.Repositories;
@@ -17,7 +16,7 @@ namespace SEBT.Portal.Infrastructure;
 
 public static class Dependencies
 {
-    public static IServiceCollection AddPortalInfrastructureServices(this IServiceCollection services)
+    public static IServiceCollection AddPortalInfrastructureServices(this IServiceCollection services, IConfiguration configuration)
     {
         // Otp Services
         services.AddTransient<IOtpSenderService, EmailOtpSenderService>();
@@ -30,12 +29,41 @@ public static class Dependencies
         // ID Proofing Requirements (state-specific PII visibility)
         services.AddSingleton<IIdProofingRequirementsService, IdProofingRequirementsService>();
 
+        // Enrollment Check logging
+        services.AddScoped<IEnrollmentCheckSubmissionLogger, EnrollmentCheckSubmissionLogger>();
+
         // Feature Flag Services
         services.AddScoped<IFeatureFlagQueryService, Services.FeatureFlagQueryService>();
 
         // Household identifier resolution (state-configurable preferred household ID type)
         services.AddTransient<IHouseholdIdentifierResolver, HouseholdIdentifierResolver>();
+
+        // Address validation — stub for now, swap with Smarty integration in DC-160
+        services.AddTransient<IAddressValidationService, AlwaysValidAddressValidator>();
         services.AddSingleton<IIdentifierHasher, IdentifierHasher>();
+
+        // Expose SocureSettings directly for use case injection (avoids IOptions dependency in UseCases layer)
+        services.AddSingleton(sp => sp.GetRequiredService<IOptions<SocureSettings>>().Value);
+
+        // Socure client — disabled, stub, or real based on configuration
+        var socureEnabled = configuration.GetValue<bool>("Socure:Enabled");
+        if (socureEnabled)
+        {
+            services.AddTransient<StubSocureClient>();
+            services.AddTransient<HttpSocureClient>();
+            services.AddTransient<ISocureClient>(sp =>
+            {
+                var settings = sp.GetRequiredService<IOptions<SocureSettings>>().Value;
+                if (settings.UseStub)
+                    return sp.GetRequiredService<StubSocureClient>();
+
+                return sp.GetRequiredService<HttpSocureClient>();
+            });
+        }
+        else
+        {
+            services.AddTransient<ISocureClient, DisabledSocureClient>();
+        }
 
         return services;
     }
@@ -46,6 +74,7 @@ public static class Dependencies
     {
         services.AddTransient<IOtpRepository, InMemoryOtpRepository>();
         services.AddTransient<IUserRepository, DatabaseUserRepository>();
+        services.AddTransient<IDocVerificationChallengeRepository, DatabaseDocVerificationChallengeRepository>();
 
         // For deterministic time in seeding/mock data
         services.AddSingleton(TimeProvider.System);
@@ -70,7 +99,7 @@ public static class Dependencies
                 "UseMockHouseholdData is false but no household plugin (ISummerEbtCaseService) is loaded. " +
                 "Either set UseMockHouseholdData to true in configuration or ensure a state plugin is loaded (e.g. PluginAssemblyPaths and the plugin DLL).");
         });
-        services.AddTransient<MockHouseholdRepository>();
+        services.AddSingleton<MockHouseholdRepository>();
         services.AddTransient<HouseholdRepository>();
 
         services.AddMemoryCache();
@@ -132,16 +161,15 @@ public static class Dependencies
                 postConfig.PostConfigure(null, options);
             });
 
-        services.AddOptions<AppConfigFeatureFlagSettings>()
-            .Bind(configuration.GetSection(AppConfigFeatureFlagSettings.SectionName))
-            .PostConfigure<IConfiguration, ILogger<AppConfigFeatureFlagOptionsConfiguration>>((options, config, logger) =>
-            {
-                var postConfig = new AppConfigFeatureFlagOptionsConfiguration(config, logger);
-                postConfig.PostConfigure(null, options);
-            });
+        services.AddOptionsWithValidateOnStart<EnrollmentCheckRateLimitSettings>()
+            .BindConfiguration(EnrollmentCheckRateLimitSettings.SectionName);
 
         services.AddOptions<SeedingSettings>()
             .BindConfiguration(SeedingSettings.SectionName);
+
+        services.AddSingleton<IValidateOptions<SocureSettings>, SocureSettingsValidator>();
+        services.AddOptionsWithValidateOnStart<SocureSettings>()
+            .BindConfiguration(SocureSettings.SectionName);
 
         return services;
     }

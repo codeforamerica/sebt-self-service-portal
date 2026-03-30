@@ -64,14 +64,14 @@ public class OidcController(
             var authEndpoint = root.TryGetProperty("authorization_endpoint", out var ae) ? ae.GetString() : null;
             var tokenEndpoint = root.TryGetProperty("token_endpoint", out var te) ? te.GetString() : null;
             if (string.IsNullOrEmpty(authEndpoint) || string.IsNullOrEmpty(tokenEndpoint))
-                return StatusCode(StatusCodes.Status502BadGateway, new { error = "Invalid discovery document." });
+                return StatusCode(StatusCodes.Status502BadGateway, new ErrorResponse("Invalid discovery document."));
             var languageParam = config["Oidc:LanguageParam"] ?? "en";
             return Ok(new { authorizationEndpoint = authEndpoint, tokenEndpoint, clientId, redirectUri, languageParam });
         }
         catch (Exception ex)
         {
             logger.LogWarning(ex, "Failed to fetch OIDC discovery document");
-            return StatusCode(StatusCodes.Status502BadGateway, new { error = "Unable to load OIDC config." });
+            return StatusCode(StatusCodes.Status502BadGateway, new ErrorResponse("Unable to load OIDC config."));
         }
     }
 
@@ -89,7 +89,7 @@ public class OidcController(
         CancellationToken cancellationToken)
     {
         if (body == null || string.IsNullOrEmpty(body.StateCode) || string.IsNullOrEmpty(body.CallbackToken))
-            return BadRequest(new { error = "Missing stateCode or callbackToken." });
+            return BadRequest(new ErrorResponse("Missing stateCode or callbackToken."));
 
         var stateKey = body.StateCode.ToLowerInvariant();
         var signingKey = config["Oidc:CompleteLoginSigningKey"];
@@ -123,7 +123,7 @@ public class OidcController(
         {
             var safeStateCode = (body.StateCode ?? string.Empty).Replace("\r", string.Empty).Replace("\n", string.Empty);
             logger.LogWarning(ex, "Invalid or expired callback token for state {StateCode}", safeStateCode);
-            return BadRequest(new { error = "Invalid or expired callback token." });
+            return BadRequest(new ErrorResponse("Invalid or expired callback token."));
         }
 
         // Copy non-common IdP claims into the portal JWT (e.g. phone, givenName, familyName, userId, email, sub)
@@ -138,7 +138,7 @@ public class OidcController(
         if (string.IsNullOrWhiteSpace(email))
         {
             logger.LogWarning("Callback token had no email or sub claim");
-            return BadRequest(new { error = "Callback token must contain an email or sub claim." });
+            return BadRequest(new ErrorResponse("Callback token must contain an email or sub claim."));
         }
 
         var normalizedEmail = EmailNormalizer.Normalize(email);

@@ -1,17 +1,17 @@
 'use client'
 
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { useCallback, useEffect, useRef, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 
-import { Alert } from '@/components/ui'
+import { Alert } from '@sebt/design-system'
 
 import {
-  SK_ALLOW_ID_RETRY,
   SK_CHALLENGE_ID,
   SK_SUB_STATE,
   SubState
 } from '@/features/auth/components/doc-verify/sessionKeys'
-import { useStartChallenge } from '../../api'
+import { useStartChallenge, useVerificationStatus } from '../../api'
 import { createDocVAdapter, type DocVAdapter, type DocVAdapterConfig } from './adapters'
 import { DocVerifyCapture } from './DocVerifyCapture'
 import { DocVerifyInterstitial } from './DocVerifyInterstitial'
@@ -22,31 +22,30 @@ interface DocVerifyPageProps {
   sdkKey: string
 }
 
-function readChallengeContext(): {
+function readChallengeContext(searchParams: URLSearchParams): {
   challengeId: string | null
-  allowIdRetry: boolean
   subState: SubState | null
 } {
-  const challengeId = sessionStorage.getItem(SK_CHALLENGE_ID)
-  const allowIdRetry = sessionStorage.getItem(SK_ALLOW_ID_RETRY) === 'true'
+  // URL query param is primary source for challengeId, sessionStorage is fallback
+  const challengeId = searchParams.get('challengeId') || sessionStorage.getItem(SK_CHALLENGE_ID)
   const persisted = sessionStorage.getItem(SK_SUB_STATE)
   const subState = persisted === 'capture' || persisted === 'pending' ? persisted : null
-  return { challengeId, allowIdRetry, subState }
+  return { challengeId, subState }
 }
 
 function clearChallengeContext(): void {
   sessionStorage.removeItem(SK_CHALLENGE_ID)
-  sessionStorage.removeItem(SK_ALLOW_ID_RETRY)
   sessionStorage.removeItem(SK_SUB_STATE)
 }
 
 export function DocVerifyPage({ contactLink, sdkKey }: DocVerifyPageProps) {
   const router = useRouter()
+  const searchParams = useSearchParams()
+  const { t } = useTranslation('idProofing')
   const startChallenge = useStartChallenge()
 
   const [subState, setSubState] = useState<SubState>('interstitial')
   const [challengeId, setChallengeId] = useState<string | null>(null)
-  const [allowIdRetry, setAllowIdRetry] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
   // Capture launch config — set by handleContinue, consumed by DocVerifyCapture on mount
@@ -64,9 +63,9 @@ export function DocVerifyPage({ contactLink, sdkKey }: DocVerifyPageProps) {
   const adapter = adapterRef.current
   /* eslint-enable react-hooks/refs */
 
-  // Read persisted challenge context on mount (D6)
+  // Read challenge context on mount — URL query param is primary, sessionStorage is fallback (D6, D9)
   useEffect(() => {
-    const ctx = readChallengeContext()
+    const ctx = readChallengeContext(searchParams)
 
     if (!ctx.challengeId) {
       // No challenge context — redirect to id-proofing form
@@ -75,7 +74,8 @@ export function DocVerifyPage({ contactLink, sdkKey }: DocVerifyPageProps) {
     }
 
     setChallengeId(ctx.challengeId)
-    setAllowIdRetry(ctx.allowIdRetry)
+    // Persist to sessionStorage for mobile tab recovery
+    sessionStorage.setItem(SK_CHALLENGE_ID, ctx.challengeId)
 
     // If the user was in capture (e.g., mobile tab recovery), skip to pending (D6)
     if (ctx.subState === 'capture' || ctx.subState === 'pending') {
@@ -83,7 +83,13 @@ export function DocVerifyPage({ contactLink, sdkKey }: DocVerifyPageProps) {
       setSubState('pending')
       sessionStorage.setItem(SK_SUB_STATE, 'pending')
     }
-  }, [router, adapter])
+  }, [router, adapter, searchParams])
+
+  // Derive allowIdRetry from status API (D9) — server is the authority
+  const statusQuery = useVerificationStatus(
+    subState === 'interstitial' && challengeId ? challengeId : undefined
+  )
+  const allowIdRetry = statusQuery.data?.allowIdRetry ?? false
 
   // "Continue" click handler — JIT token fetch, then transition to capture sub-state.
   // The actual adapter.launch() happens inside DocVerifyCapture after its container mounts.
@@ -114,8 +120,12 @@ export function DocVerifyPage({ contactLink, sdkKey }: DocVerifyPageProps) {
       sessionStorage.setItem(SK_SUB_STATE, 'capture')
       setSubState('capture')
     } catch {
-      // TODO: Use t('docVerify.errorStartChallenge') once key is available in dc.csv
-      setError('Something went wrong starting document verification. Please try again.')
+      setError(
+        t(
+          'docVerifyStartError',
+          'Something went wrong starting document verification. Please try again.'
+        )
+      )
     }
   }
 

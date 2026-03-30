@@ -253,9 +253,9 @@ public class MockHouseholdRepository : IHouseholdRepository
 
         // Scenario 5: Under review
         var reviewEmail = _settings.BuildEmail(SeedScenarios.Review.Name);
-        var review = HouseholdFactory.CreateHouseholdDataWithStatus(ApplicationStatus.UnderReview, h =>
+        var review = HouseholdFactory.CreateHouseholdDataWithStatus(ApplicationStatus.Unknown, h =>
         {
-            h.BenefitIssuanceType = BenefitIssuanceType.SnapEbtCard;
+            h.BenefitIssuanceType = BenefitIssuanceType.SummerEbt;
             var app = h.Applications.FirstOrDefault();
             if (app != null)
             {
@@ -264,6 +264,7 @@ public class MockHouseholdRepository : IHouseholdRepository
                     .RuleFor(c => c.FirstName, f => f.Name.FirstName())
                     .RuleFor(c => c.LastName, f => f.Name.LastName());
                 app.Children = childFaker.Generate(1);
+                app.CardRequestedAt = now.AddDays(-7);
             }
         });
         review.Email = reviewEmail;
@@ -275,6 +276,7 @@ public class MockHouseholdRepository : IHouseholdRepository
         var nonCoLoadedEmail = _settings.BuildEmail(SeedScenarios.NonCoLoaded.Name);
         var nonCoLoaded = HouseholdFactory.CreateHouseholdDataWithStatus(ApplicationStatus.Pending, h =>
         {
+            h.BenefitIssuanceType = BenefitIssuanceType.SummerEbt;
             var app = h.Applications.FirstOrDefault();
             if (app != null)
             {
@@ -283,13 +285,7 @@ public class MockHouseholdRepository : IHouseholdRepository
                     new Child { CaseNumber = 555001, FirstName = "Emma", LastName = "Garcia" }
                 };
             }
-            h.AddressOnFile = new Address
-            {
-                StreetAddress1 = "789 In-Progress Lane",
-                City = "Denver",
-                State = "CO",
-                PostalCode = "80204"
-            };
+            h.AddressOnFile = null;
         });
         nonCoLoaded.Email = nonCoLoadedEmail;
         nonCoLoaded.Phone = "5551234567";
@@ -301,6 +297,7 @@ public class MockHouseholdRepository : IHouseholdRepository
         var notStartedEmail = _settings.BuildEmail(SeedScenarios.NotStarted.Name);
         var notStarted = HouseholdFactory.CreateHouseholdDataWithStatus(ApplicationStatus.Pending, h =>
         {
+            h.BenefitIssuanceType = BenefitIssuanceType.TanfEbtCard;
             var app = h.Applications.FirstOrDefault();
             if (app != null)
             {
@@ -341,7 +338,7 @@ public class MockHouseholdRepository : IHouseholdRepository
 
         // Scenario 7: Approved with single child
         var singleChildEmail = _settings.BuildEmail(SeedScenarios.SingleChild.Name);
-        var singleChild = HouseholdFactory.CreateHouseholdDataWithStatus(ApplicationStatus.Approved, h =>
+        var singleChild = HouseholdFactory.CreateHouseholdDataWithStatus(ApplicationStatus.Pending, h =>
         {
             h.BenefitIssuanceType = BenefitIssuanceType.SummerEbt;
             var app = h.Applications.FirstOrDefault();
@@ -363,14 +360,15 @@ public class MockHouseholdRepository : IHouseholdRepository
 
         // Scenario 8: Large family (multiple children)
         var largeFamilyEmail = _settings.BuildEmail(SeedScenarios.LargeFamily.Name);
-        var largeFamily = HouseholdFactory.CreateHouseholdDataWithStatus(ApplicationStatus.Approved, h =>
+        var largeFamily = HouseholdFactory.CreateHouseholdDataWithStatus(ApplicationStatus.Unknown, h =>
         {
-            h.BenefitIssuanceType = BenefitIssuanceType.TanfEbtCard;
+            h.BenefitIssuanceType = BenefitIssuanceType.SummerEbt;
             var app = h.Applications.FirstOrDefault();
             if (app != null)
             {
                 app.BenefitIssueDate = now.AddDays(-45);
                 app.BenefitExpirationDate = now.AddDays(45);
+                app.Last4DigitsOfCard = "4321";
                 // Set specific children names for test
                 app.Children = new List<Child>
                 {
@@ -380,6 +378,14 @@ public class MockHouseholdRepository : IHouseholdRepository
                     new Child { CaseNumber = 222004, FirstName = "Emily", LastName = "Brown" }
                 };
             }
+            h.AddressOnFile = new Address
+            {
+                StreetAddress1 = "456 Large Family Lane",
+                StreetAddress2 = "Unit 8",
+                City = "Aurora",
+                State = "CO",
+                PostalCode = "80010"
+            };
         });
         largeFamily.Email = largeFamilyEmail;
         largeFamily.UserProfile = new UserProfile { FirstName = "Christopher", MiddleName = "Michael", LastName = "Brown" };
@@ -405,9 +411,9 @@ public class MockHouseholdRepository : IHouseholdRepository
 
         // Scenario 10: Expired benefits
         var expiredEmail = _settings.BuildEmail(SeedScenarios.Expired.Name);
-        var expired = HouseholdFactory.CreateHouseholdDataWithStatus(ApplicationStatus.Approved, h =>
+        var expired = HouseholdFactory.CreateHouseholdDataWithStatus(ApplicationStatus.Unknown, h =>
         {
-            h.BenefitIssuanceType = BenefitIssuanceType.SnapEbtCard;
+            h.BenefitIssuanceType = BenefitIssuanceType.SummerEbt;
             var app = h.Applications.FirstOrDefault();
             if (app != null)
             {
@@ -526,8 +532,8 @@ public class MockHouseholdRepository : IHouseholdRepository
     {
         return source with
         {
-            Email = piiVisibility.IncludeEmail ? source.Email : null,
-            Phone = piiVisibility.IncludePhone ? source.Phone : null,
+            Email = piiVisibility.IncludeEmail ? source.Email : PiiMasker.MaskEmail(source.Email),
+            Phone = piiVisibility.IncludePhone ? source.Phone : PiiMasker.MaskPhone(source.Phone),
             AddressOnFile = piiVisibility.IncludeAddress && source.AddressOnFile != null
                 ? new Address
                 {
@@ -537,7 +543,15 @@ public class MockHouseholdRepository : IHouseholdRepository
                     State = source.AddressOnFile.State,
                     PostalCode = source.AddressOnFile.PostalCode
                 }
-                : null,
+                : source.AddressOnFile != null
+                    ? new Address
+                    {
+                        StreetAddress1 = PiiMasker.MaskStreetAddress(source.AddressOnFile.StreetAddress1, source.AddressOnFile.StreetAddress2),
+                        City = source.AddressOnFile.City,
+                        State = source.AddressOnFile.State,
+                        PostalCode = source.AddressOnFile.PostalCode
+                    }
+                    : null,
             BenefitIssuanceType = source.BenefitIssuanceType,
             SummerEbtCases = source.SummerEbtCases.Select(sec => new SummerEbtCase
             {
@@ -590,7 +604,11 @@ public class MockHouseholdRepository : IHouseholdRepository
                 CardMailedAt = a.CardMailedAt,
                 CardActivatedAt = a.CardActivatedAt,
                 CardDeactivatedAt = a.CardDeactivatedAt,
-                IssuanceType = a.IssuanceType,
+                // If application-level issuance type isn't set, inherit from the
+                // household-level BenefitIssuanceType (both enums share the same values)
+                IssuanceType = a.IssuanceType != IssuanceType.Unknown
+                    ? a.IssuanceType
+                    : (IssuanceType)(int)source.BenefitIssuanceType,
                 Children = a.Children.Select(c => new Child
                 {
                     CaseNumber = c.CaseNumber,

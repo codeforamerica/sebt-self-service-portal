@@ -1,14 +1,15 @@
-import { Footer, Header, HelpSection, SkipNav } from '@/components/layout'
 import { primaryFont } from '@/design/fonts'
-import { getState, getStateName } from '@/lib/state'
 import {
   AuthProvider,
   AxeProvider,
+  DataLayerProvider,
   FeatureFlagsProvider,
   I18nProvider,
   QueryProvider
 } from '@/providers'
 import { GoogleAnalytics } from '@next/third-parties/google'
+import { getState, getStateName, SkipNav } from '@sebt/design-system'
+import { Footer, Header, HelpSection } from '@sebt/design-system/client'
 import type { Metadata, Viewport } from 'next'
 import { headers } from 'next/headers'
 import './globals.css'
@@ -98,21 +99,28 @@ export default async function RootLayout({
       className={`usa-js-loading ${primaryFont.variable}`}
     >
       <body>
-        <QueryProvider>
-          <AuthProvider>
-            <FeatureFlagsProvider>
-              <I18nProvider>
-                <SkipNav />
-                <AxeProvider>
-                  <Header state={state} />
-                  <main id="main-content">{children}</main>
-                  <HelpSection state={state} />
-                  <Footer state={state} />
-                </AxeProvider>
-              </I18nProvider>
-            </FeatureFlagsProvider>
-          </AuthProvider>
-        </QueryProvider>
+        <DataLayerProvider>
+          <QueryProvider>
+            <AuthProvider>
+              <FeatureFlagsProvider>
+                <I18nProvider>
+                  <SkipNav />
+                  <AxeProvider>
+                    {/* Portal target for page-level alerts rendered above the header.
+                        Currently used by AddressForm (30-char street address error).
+                        If a second consumer appears, refactor to a SiteAlertContext so
+                        child components call setSiteAlert() instead of using createPortal directly. */}
+                    <div id="site-alerts" />
+                    <Header state={state} />
+                    <main id="main-content">{children}</main>
+                    <HelpSection state={state} />
+                    <Footer state={state} />
+                  </AxeProvider>
+                </I18nProvider>
+              </FeatureFlagsProvider>
+            </AuthProvider>
+          </QueryProvider>
+        </DataLayerProvider>
         {/* USWDS initialization script - uses nonce for CSP compliance */}
         {/* suppressHydrationWarning: nonce changes per request, mismatch is expected */}
         <script

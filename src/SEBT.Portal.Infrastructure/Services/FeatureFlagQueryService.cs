@@ -7,9 +7,9 @@ namespace SEBT.Portal.Infrastructure.Services;
 /// <summary>
 /// Service for querying feature flags.
 /// Priority order is as follows, with latest being high priority:
-/// 1. appsettings.json (defaults in FeatureManagement)
-/// 2. AWS AppConfig Agent (if configured, injects into FeatureManagement)
-/// 3. State-specific JSON (appsettings.{State}.json)
+/// 1. appsettings.json (defaults)
+/// 2. State-specific JSON (appsettings.{State}.json)
+/// 3. AWS AppConfig Agent (if configured — highest priority)
 /// </summary>
 public class FeatureFlagQueryService : IFeatureFlagQueryService
 {
@@ -46,12 +46,6 @@ public class FeatureFlagQueryService : IFeatureFlagQueryService
         {
             await foreach (var featureName in _featureManager.GetFeatureNamesAsync().WithCancellation(cancellationToken))
             {
-                // Skip the AppConfig configuration subsection
-                if (featureName.Equals("AppConfig", StringComparison.OrdinalIgnoreCase))
-                {
-                    continue;
-                }
-
                 if (IsValidFeatureFlagName(featureName))
                 {
                     try
