@@ -1,4 +1,7 @@
 using Microsoft.Extensions.Logging;
+using SEBT.Portal.Core.Models;
+using SEBT.Portal.Core.Models.Auth;
+using SEBT.Portal.Core.Repositories;
 using SEBT.Portal.Core.Services;
 using SEBT.Portal.Kernel;
 using SEBT.Portal.Kernel.Results;
@@ -13,6 +16,8 @@ namespace SEBT.Portal.UseCases.Household;
 public class UpdateAddressCommandHandler(
     IValidator<UpdateAddressCommand> validator,
     IHouseholdIdentifierResolver resolver,
+    IHouseholdRepository repository,
+    ISelfServiceEvaluator selfServiceEvaluator,
     ILogger<UpdateAddressCommandHandler> logger)
     : ICommandHandler<UpdateAddressCommand>
 {
@@ -30,6 +35,27 @@ public class UpdateAddressCommandHandler(
         {
             logger.LogWarning("Address update attempted but no household identifier could be resolved from claims");
             return Result.Unauthorized("Unable to identify user from token.");
+        }
+
+        // Check self-service rules before proceeding
+        var householdData = await repository.GetHouseholdByIdentifierAsync(
+            identifier,
+            new PiiVisibility(IncludeAddress: false, IncludeEmail: false, IncludePhone: false),
+            UserIalLevel.None,
+            cancellationToken);
+
+        if (householdData == null)
+        {
+            logger.LogWarning("Address update denied: household not found for identifier");
+            return Result.PreconditionFailed(PreconditionFailedReason.NotAllowed, "Address update is not available.");
+        }
+
+        var allowedActions = selfServiceEvaluator.Evaluate(householdData.BenefitIssuanceType, householdData.Applications);
+        if (!allowedActions.CanUpdateAddress)
+        {
+            logger.LogInformation("Address update denied by self-service rules for household");
+            return Result.PreconditionFailed(PreconditionFailedReason.NotAllowed,
+                allowedActions.AddressUpdateDeniedMessageKey ?? "Address update is not available for this account.");
         }
 
         // Never log raw address fields — PII policy.

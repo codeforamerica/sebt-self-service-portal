@@ -1,7 +1,10 @@
 using System.Security.Claims;
 using Microsoft.Extensions.Logging.Abstractions;
 using NSubstitute;
+using SEBT.Portal.Core.Models;
+using SEBT.Portal.Core.Models.Auth;
 using SEBT.Portal.Core.Models.Household;
+using SEBT.Portal.Core.Repositories;
 using SEBT.Portal.Core.Services;
 using SEBT.Portal.Core.Utilities;
 using SEBT.Portal.Kernel;
@@ -16,11 +19,27 @@ public class UpdateAddressCommandHandlerTests
         new DataAnnotationsValidator<UpdateAddressCommand>(null!);
     private readonly IHouseholdIdentifierResolver _resolver =
         Substitute.For<IHouseholdIdentifierResolver>();
+    private readonly IHouseholdRepository _repository =
+        Substitute.For<IHouseholdRepository>();
+    private readonly ISelfServiceEvaluator _evaluator =
+        Substitute.For<ISelfServiceEvaluator>();
     private readonly NullLogger<UpdateAddressCommandHandler> _logger =
         NullLogger<UpdateAddressCommandHandler>.Instance;
 
+    public UpdateAddressCommandHandlerTests()
+    {
+        // Default: allow all actions so existing tests pass
+        _evaluator.Evaluate(Arg.Any<BenefitIssuanceType>(), Arg.Any<IReadOnlyList<Application>>())
+            .Returns(new AllowedActions { CanUpdateAddress = true, CanRequestReplacementCard = true });
+
+        // Default: return a household with SummerEbt issuance type
+        _repository.GetHouseholdByIdentifierAsync(
+                Arg.Any<HouseholdIdentifier>(), Arg.Any<PiiVisibility>(), Arg.Any<UserIalLevel>(), Arg.Any<CancellationToken>())
+            .Returns(new HouseholdData { BenefitIssuanceType = BenefitIssuanceType.SummerEbt });
+    }
+
     private UpdateAddressCommandHandler CreateHandler() =>
-        new(_validator, _resolver, _logger);
+        new(_validator, _resolver, _repository, _evaluator, _logger);
 
     private static ClaimsPrincipal CreateUser(string email)
     {
@@ -233,6 +252,62 @@ public class UpdateAddressCommandHandlerTests
         var result = await handler.Handle(command, CancellationToken.None);
 
         Assert.True(result.IsSuccess);
+    }
+
+    // --- Self-service rules enforcement ---
+
+    [Fact]
+    public async Task Handle_ReturnsNotAllowed_WhenEvaluatorDeniesAddressUpdate()
+    {
+        var handler = CreateHandler();
+        var command = CreateValidCommand();
+
+        _resolver.ResolveAsync(Arg.Any<ClaimsPrincipal>(), Arg.Any<CancellationToken>())
+            .Returns(HouseholdIdentifier.Email(EmailNormalizer.Normalize("user@example.com")));
+
+        _repository.GetHouseholdByIdentifierAsync(
+                Arg.Any<HouseholdIdentifier>(), Arg.Any<PiiVisibility>(), Arg.Any<UserIalLevel>(), Arg.Any<CancellationToken>())
+            .Returns(new HouseholdData
+            {
+                BenefitIssuanceType = BenefitIssuanceType.SnapEbtCard,
+                Applications = new List<Application>
+                {
+                    new() { IssuanceType = IssuanceType.SnapEbtCard, CardStatus = CardStatus.Active }
+                }
+            });
+
+        _evaluator.Evaluate(BenefitIssuanceType.SnapEbtCard, Arg.Any<IReadOnlyList<Application>>())
+            .Returns(new AllowedActions
+            {
+                CanUpdateAddress = false,
+                AddressUpdateDeniedMessageKey = "selfServiceUnavailable"
+            });
+
+        var result = await handler.Handle(command, CancellationToken.None);
+
+        Assert.False(result.IsSuccess);
+        var preconditionFailed = Assert.IsType<PreconditionFailedResult>(result);
+        Assert.Equal(PreconditionFailedReason.NotAllowed, preconditionFailed.Reason);
+    }
+
+    [Fact]
+    public async Task Handle_ReturnsNotAllowed_WhenHouseholdNotFound()
+    {
+        var handler = CreateHandler();
+        var command = CreateValidCommand();
+
+        _resolver.ResolveAsync(Arg.Any<ClaimsPrincipal>(), Arg.Any<CancellationToken>())
+            .Returns(HouseholdIdentifier.Email(EmailNormalizer.Normalize("user@example.com")));
+
+        _repository.GetHouseholdByIdentifierAsync(
+                Arg.Any<HouseholdIdentifier>(), Arg.Any<PiiVisibility>(), Arg.Any<UserIalLevel>(), Arg.Any<CancellationToken>())
+            .Returns((HouseholdData?)null);
+
+        var result = await handler.Handle(command, CancellationToken.None);
+
+        Assert.False(result.IsSuccess);
+        var preconditionFailed = Assert.IsType<PreconditionFailedResult>(result);
+        Assert.Equal(PreconditionFailedReason.NotAllowed, preconditionFailed.Reason);
     }
 
     // --- Cancellation token propagation ---
