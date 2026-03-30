@@ -1,8 +1,6 @@
-import { TextLink } from '@/components/ui'
 import { LoginForm } from '@/features/auth'
-import { getStateLinks } from '@/lib/links'
-import { getState, type StateCode } from '@/lib/state'
 import { getTranslations } from '@/lib/translations'
+import { TextLink, getState, getStateLinks, type StateCode } from '@sebt/design-system'
 import { COLoginPage } from './COLoginPage'
 
 const loginPageOverrides: Partial<Record<StateCode, React.ComponentType<{ state: StateCode }>>> = {

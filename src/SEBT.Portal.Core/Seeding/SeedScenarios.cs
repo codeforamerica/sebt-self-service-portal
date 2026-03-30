@@ -11,17 +11,19 @@ public static class SeedScenarios
     // IAL1+ scenarios
     public static readonly SeedScenario CoLoaded = new("co-loaded", UserIalLevel.IAL1plus);
     public static readonly SeedScenario Verified = new("verified", UserIalLevel.IAL1plus);
-    public static readonly SeedScenario SingleChild = new("singlechild", UserIalLevel.IAL1plus);
-    public static readonly SeedScenario LargeFamily = new("largefamily", UserIalLevel.IAL1plus);
     public static readonly SeedScenario Expired = new("expired", UserIalLevel.IAL1plus);
+    public static readonly SeedScenario Review = new("review", UserIalLevel.IAL1plus);
+
+    // IAL1 scenarios
+    public static readonly SeedScenario SingleChild = new("singlechild", UserIalLevel.IAL1);
+    public static readonly SeedScenario NonCoLoaded = new("non-co-loaded", UserIalLevel.IAL1);
 
     // Non-IAL scenarios
-    public static readonly SeedScenario NonCoLoaded = new("non-co-loaded", UserIalLevel.None);
+    public static readonly SeedScenario LargeFamily = new("largefamily", UserIalLevel.None);
     public static readonly SeedScenario NotStarted = new("not-started", UserIalLevel.None);
     public static readonly SeedScenario Pending = new("pending", UserIalLevel.None);
     public static readonly SeedScenario Minimal = new("minimal", UserIalLevel.None);
     public static readonly SeedScenario Denied = new("denied", UserIalLevel.None);
-    public static readonly SeedScenario Review = new("review", UserIalLevel.None);
     public static readonly SeedScenario Cancelled = new("cancelled", UserIalLevel.None);
     public static readonly SeedScenario Unknown = new("unknown", UserIalLevel.None);
 

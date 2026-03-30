@@ -1,21 +1,8 @@
 'use client'
 
-import { useEffect } from 'react'
-import { I18nextProvider } from 'react-i18next'
+// Initialize i18next before rendering. This side-effect import must run
+// inside a 'use client' boundary because it transitively imports
+// react-i18next (which calls createContext() at module scope).
+import '@/lib/i18n-init'
 
-import i18n, { supportedLanguages, type SupportedLanguage } from '@/lib/i18n'
-
-import type { I18nProviderProps } from './types'
-
-export function I18nProvider({ children }: I18nProviderProps) {
-  // Sync language from localStorage after hydration to prevent SSR mismatch
-  useEffect(() => {
-    const stored = localStorage.getItem('i18nextLng')
-    if (stored && supportedLanguages.includes(stored as SupportedLanguage)) {
-      i18n.changeLanguage(stored)
-      document.documentElement.lang = stored
-    }
-  }, [])
-
-  return <I18nextProvider i18n={i18n}>{children}</I18nextProvider>
-}
+export { I18nProvider } from '@sebt/design-system/client'

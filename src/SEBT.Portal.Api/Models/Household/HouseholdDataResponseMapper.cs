@@ -22,15 +22,23 @@ public static class HouseholdDataResponseMapper
         {
             Email = domain.Email,
             Phone = domain.Phone,
-            Applications = domain.Applications.Select(ToResponse).ToList(),
+            Applications = domain.Applications.Select(a => ToResponse(a, domain.BenefitIssuanceType)).ToList(),
             AddressOnFile = domain.AddressOnFile?.ToResponse(),
             UserProfile = domain.UserProfile?.ToResponse(),
             BenefitIssuanceType = domain.BenefitIssuanceType
         };
     }
 
-    private static ApplicationResponse ToResponse(this Application domain)
+    private static ApplicationResponse ToResponse(
+        this Application domain,
+        Core::SEBT.Portal.Core.Models.Household.BenefitIssuanceType householdIssuanceType)
     {
+        // If application-level IssuanceType isn't set, inherit from the
+        // household-level BenefitIssuanceType (both enums share the same int values)
+        var issuanceType = domain.IssuanceType != Core::SEBT.Portal.Core.Models.Household.IssuanceType.Unknown
+            ? domain.IssuanceType
+            : (Core::SEBT.Portal.Core.Models.Household.IssuanceType)(int)householdIssuanceType;
+
         return new ApplicationResponse
         {
             ApplicationNumber = domain.ApplicationNumber,
@@ -46,7 +54,7 @@ public static class HouseholdDataResponseMapper
             CardDeactivatedAt = domain.CardDeactivatedAt,
             Children = domain.Children.Select(ToResponse).ToList(),
             ChildrenOnApplication = domain.ChildrenOnApplication,
-            IssuanceType = domain.IssuanceType
+            IssuanceType = issuanceType
         };
     }
 

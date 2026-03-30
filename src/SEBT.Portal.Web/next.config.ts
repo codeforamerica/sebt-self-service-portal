@@ -4,25 +4,37 @@ import path from 'path'
 
 const state = process.env.STATE || 'dc'
 
+// @sebt/design-system is a workspace dependency installed into this package's node_modules.
+// __dirname here is src/SEBT.Portal.Web/.
+const designSystemPath = path.resolve(__dirname, 'node_modules/@sebt/design-system')
+
 // Bundle analyzer configuration
 const withBundleAnalyzer = bundleAnalyzer({
   enabled: process.env.ANALYZE === 'true'
 })
 
 const nextConfig: NextConfig = {
+  // NOTE: @sebt/design-system is NOT in transpilePackages. Turbopack handles
+  // TypeScript natively. Using transpilePackages caused the entire barrel to
+  // be processed in the RSC layer, pulling in react-i18next's module-level
+  // createContext() where it doesn't exist. The design-system barrel is split
+  // into server-safe (index.ts) and client (client.ts) entry points instead.
   reactCompiler: true,
   env: {
     NEXT_PUBLIC_STATE: state
   },
   experimental: {
     // Use our custom sass-loader configuration instead of built-in
-    turbopackUseBuiltinSass: false
+    turbopackUseBuiltinSass: false,
+    // Tree-shake the design-system barrel so importing a single export
+    // doesn't pull in unrelated modules
+    optimizePackageImports: ['@sebt/design-system']
   },
   /* SASS Configuration for USWDS */
   sassOptions: {
     implementation: 'sass-embedded',
     includePaths: [
-      path.join(__dirname, 'design/sass'),
+      path.join(designSystemPath, 'design/sass'),
       path.join(__dirname, 'node_modules/@uswds/uswds/packages'),
       path.join(__dirname, 'node_modules')
     ]
@@ -38,7 +50,7 @@ const nextConfig: NextConfig = {
               implementation: 'sass-embedded',
               sassOptions: {
                 loadPaths: [
-                  path.join(__dirname, 'design/sass'),
+                  path.join(designSystemPath, 'design/sass'),
                   path.join(__dirname, 'node_modules/@uswds/uswds/packages'),
                   path.join(__dirname, 'node_modules')
                 ]

@@ -1,7 +1,6 @@
 import { IdProofingForm, type IdOption } from '@/features/auth'
-import { getStateLinks } from '@/lib/links'
-import { getState } from '@/lib/state'
 import { getTranslations } from '@/lib/translations'
+import { getState, getStateLinks } from '@sebt/design-system'
 
 // DC-only: CO uses external auth and never reaches this route.
 // If a future state adopts OTP auth with id-proofing, add a state-based options
