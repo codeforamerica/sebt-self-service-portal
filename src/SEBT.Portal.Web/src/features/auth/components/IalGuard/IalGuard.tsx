@@ -6,7 +6,7 @@ import { useAuth } from '@/features/auth/context'
 import { getCoIdProofingMaxAgeYearsRaw, isDebugRepeatOidcStepUp } from '@/lib/ial-guard-config'
 import { hasIal1Plus, isIdProofingCompletionFresh, parseIdProofingMaxAgeYears } from '@/lib/jwt'
 import {
-  buildStepUpAuthorizationUrl,
+  buildAuthorizationUrl,
   generateCodeChallenge,
   generateCodeVerifier,
   generateState,
@@ -52,16 +52,7 @@ async function startOidcStepUpRedirect(): Promise<void> {
     returnUrl
   })
 
-  const { acrValues: rawAcr, ...configRest } = config
-  const authUrl = buildStepUpAuthorizationUrl(
-    {
-      ...configRest,
-      redirectUri,
-      ...(rawAcr != null && rawAcr !== '' ? { acrValues: rawAcr } : {})
-    },
-    codeChallenge,
-    stateValue
-  )
+  const authUrl = buildAuthorizationUrl({ ...config, redirectUri }, codeChallenge, stateValue)
   window.location.href = authUrl
 }
 

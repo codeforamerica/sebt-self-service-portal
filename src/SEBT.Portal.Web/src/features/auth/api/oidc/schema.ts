@@ -10,9 +10,7 @@ export const OidcConfigResponseSchema = z.object({
   tokenEndpoint: z.string().url(),
   clientId: z.string(),
   redirectUri: z.string().url(),
-  languageParam: z.string().optional(),
-  /** API serializes null for non-step-up login; optional() alone rejects JSON null */
-  acrValues: z.string().nullable().optional()
+  languageParam: z.string().optional()
 })
 
 export type OidcConfigResponse = z.infer<typeof OidcConfigResponseSchema>

@@ -54,11 +54,6 @@ export function getOidcRedirectUriForCurrentOrigin(): string {
   return `${window.location.origin}/callback`
 }
 
-/** Step-up config extends OidcConfig with optional acr_values for higher assurance */
-export interface OidcStepUpConfig extends OidcConfig {
-  acrValues?: string
-}
-
 export function buildAuthorizationUrl(
   config: OidcConfig,
   codeChallenge: string,
@@ -77,35 +72,6 @@ export function buildAuthorizationUrl(
   })
   if (config.languageParam) {
     params.set('language', config.languageParam)
-  }
-  return `${config.authorizationEndpoint}?${params.toString()}`
-}
-
-/**
- * Builds the authorization URL for step-up authentication.
- * Adds acr_values when configured; otherwise same as buildAuthorizationUrl.
- */
-export function buildStepUpAuthorizationUrl(
-  config: OidcStepUpConfig,
-  codeChallenge: string,
-  state: string
-): string {
-  const params = new URLSearchParams({
-    response_type: 'code',
-    client_id: config.clientId,
-    redirect_uri: config.redirectUri,
-    scope: 'openid email profile phone',
-    state,
-    code_challenge: codeChallenge,
-    code_challenge_method: 'S256',
-    prompt: 'login',
-    max_age: '0'
-  })
-  if (config.languageParam) {
-    params.set('language', config.languageParam)
-  }
-  if (config.acrValues?.trim()) {
-    params.set('acr_values', config.acrValues.trim())
   }
   return `${config.authorizationEndpoint}?${params.toString()}`
 }

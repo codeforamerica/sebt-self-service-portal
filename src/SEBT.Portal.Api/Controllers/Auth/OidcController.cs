@@ -75,8 +75,7 @@ public class OidcController(
             if (string.IsNullOrEmpty(authEndpoint) || string.IsNullOrEmpty(tokenEndpoint))
                 return StatusCode(StatusCodes.Status502BadGateway, new ErrorResponse("Invalid discovery document."));
             var languageParam = config["Oidc:LanguageParam"] ?? "en";
-            var acrValues = stepUp ? config["Oidc:StepUp:AcrValues"] : null;
-            return Ok(new { authorizationEndpoint = authEndpoint, tokenEndpoint, clientId, redirectUri, languageParam, acrValues });
+            return Ok(new { authorizationEndpoint = authEndpoint, tokenEndpoint, clientId, redirectUri, languageParam });
         }
         catch (Exception ex)
         {

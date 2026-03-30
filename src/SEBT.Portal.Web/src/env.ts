@@ -32,8 +32,7 @@ export const env = createEnv({
     OIDC_STEP_UP_DISCOVERY_ENDPOINT: z.string().url().optional(),
     OIDC_STEP_UP_CLIENT_ID: z.string().optional(),
     OIDC_STEP_UP_CLIENT_SECRET: z.string().optional(),
-    OIDC_STEP_UP_REDIRECT_URI: z.string().url().optional(),
-    OIDC_STEP_UP_ACR_VALUES: z.string().optional()
+    OIDC_STEP_UP_REDIRECT_URI: z.string().url().optional()
   },
 
   /**
@@ -74,7 +73,6 @@ export const env = createEnv({
     OIDC_STEP_UP_CLIENT_ID: process.env.OIDC_STEP_UP_CLIENT_ID,
     OIDC_STEP_UP_CLIENT_SECRET: process.env.OIDC_STEP_UP_CLIENT_SECRET,
     OIDC_STEP_UP_REDIRECT_URI: process.env.OIDC_STEP_UP_REDIRECT_URI,
-    OIDC_STEP_UP_ACR_VALUES: process.env.OIDC_STEP_UP_ACR_VALUES,
     NEXT_PUBLIC_STATE: process.env.NEXT_PUBLIC_STATE,
     NEXT_PUBLIC_GA_ID: process.env.NEXT_PUBLIC_GA_ID,
     NEXT_PUBLIC_SOCURE_SDK_KEY: process.env.NEXT_PUBLIC_SOCURE_SDK_KEY,

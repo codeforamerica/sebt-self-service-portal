@@ -26,7 +26,7 @@ vi.mock('@/api', () => ({
 }))
 
 vi.mock('@/lib/oidc-pkce', () => ({
-  buildStepUpAuthorizationUrl: () => 'https://idp.example/authorize',
+  buildAuthorizationUrl: () => 'https://idp.example/authorize',
   generateCodeChallenge: async () => 'challenge',
   generateCodeVerifier: () => 'verifier',
   generateState: () => 'state',
@@ -106,8 +106,7 @@ describe('IalGuard', () => {
       authorizationEndpoint: 'https://idp.example/auth',
       tokenEndpoint: 'https://idp.example/token',
       clientId: 'cid',
-      redirectUri: 'http://localhost:3000/callback',
-      acrValues: ''
+      redirectUri: 'http://localhost:3000/callback'
     })
 
     const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTimeAsync })
