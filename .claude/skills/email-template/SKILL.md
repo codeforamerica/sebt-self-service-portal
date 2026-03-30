@@ -1,7 +1,7 @@
 ---
 name: email-template
 description: Convert markdown email notice content into email-client-safe HTML matching DC SUN Bucks branding. Generates HTML, runs structural lint, and captures verification screenshots.
-allowed-tools: Read, Write, Bash(node:*), Bash(mkdir:*), Bash(ls:*), Bash(rm:*), mcp__plugin_playwright_playwright__browser_navigate, mcp__plugin_playwright_playwright__browser_take_screenshot, mcp__plugin_playwright_playwright__browser_resize, mcp__plugin_playwright_playwright__browser_close
+allowed-tools: Read, Write, Bash(node email-templates/verify.mjs*), Bash(mkdir -p email-templates/_snapshots), Bash(ls email-templates*), Bash(rm email-templates/_snapshots/*), mcp__plugin_playwright_playwright__browser_navigate, mcp__plugin_playwright_playwright__browser_take_screenshot, mcp__plugin_playwright_playwright__browser_resize, mcp__plugin_playwright_playwright__browser_close
 argument-hint: <template-name>
 ---
 
