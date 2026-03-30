@@ -5,6 +5,7 @@ namespace SEBT.Portal.Api.Models.Household;
 using Address = Core::SEBT.Portal.Core.Models.Household.Address;
 using Application = Core::SEBT.Portal.Core.Models.Household.Application;
 using Child = Core::SEBT.Portal.Core.Models.Household.Child;
+using AllowedActions = Core::SEBT.Portal.Core.Models.Household.AllowedActions;
 using HouseholdData = Core::SEBT.Portal.Core.Models.Household.HouseholdData;
 using UserProfile = Core::SEBT.Portal.Core.Models.Household.UserProfile;
 
@@ -25,7 +26,8 @@ public static class HouseholdDataResponseMapper
             Applications = domain.Applications.Select(a => ToResponse(a, domain.BenefitIssuanceType)).ToList(),
             AddressOnFile = domain.AddressOnFile?.ToResponse(),
             UserProfile = domain.UserProfile?.ToResponse(),
-            BenefitIssuanceType = domain.BenefitIssuanceType
+            BenefitIssuanceType = domain.BenefitIssuanceType,
+            AllowedActions = domain.AllowedActions?.ToResponse()
         };
     }
 
@@ -87,6 +89,17 @@ public static class HouseholdDataResponseMapper
             FirstName = domain.FirstName,
             MiddleName = domain.MiddleName,
             LastName = domain.LastName
+        };
+    }
+
+    private static AllowedActionsResponse ToResponse(this AllowedActions domain)
+    {
+        return new AllowedActionsResponse
+        {
+            CanUpdateAddress = domain.CanUpdateAddress,
+            CanRequestReplacementCard = domain.CanRequestReplacementCard,
+            AddressUpdateDeniedMessageKey = domain.AddressUpdateDeniedMessageKey,
+            CardReplacementDeniedMessageKey = domain.CardReplacementDeniedMessageKey
         };
     }
 }

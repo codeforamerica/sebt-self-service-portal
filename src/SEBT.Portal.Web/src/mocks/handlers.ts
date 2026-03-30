@@ -85,6 +85,12 @@ export const TEST_HOUSEHOLD_DATA = {
     firstName: 'Maria',
     middleName: 'L',
     lastName: 'Martinez'
+  },
+  allowedActions: {
+    canUpdateAddress: false,
+    canRequestReplacementCard: false,
+    addressUpdateDeniedMessageKey: 'actionNavigationSelfServiceUnavailable',
+    cardReplacementDeniedMessageKey: 'actionNavigationSelfServiceUnavailable'
   }
 } as const
 

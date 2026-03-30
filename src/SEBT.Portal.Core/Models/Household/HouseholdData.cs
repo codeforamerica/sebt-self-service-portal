@@ -38,4 +38,10 @@ public record HouseholdData
     /// The type of benefit issuance for this household.
     /// </summary>
     public BenefitIssuanceType BenefitIssuanceType { get; set; } = BenefitIssuanceType.Unknown;
+
+    /// <summary>
+    /// Computed permissions for self-service portal actions.
+    /// Set by the query handler after evaluating config rules against household data.
+    /// </summary>
+    public AllowedActions? AllowedActions { get; set; }
 }

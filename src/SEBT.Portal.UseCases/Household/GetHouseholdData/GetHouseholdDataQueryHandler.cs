@@ -17,6 +17,7 @@ public class GetHouseholdDataQueryHandler(
     IHouseholdIdentifierResolver resolver,
     IHouseholdRepository repository,
     IIdProofingRequirementsService idProofingRequirementsService,
+    ISelfServiceEvaluator selfServiceEvaluator,
     ILogger<GetHouseholdDataQueryHandler> logger)
     : IQueryHandler<GetHouseholdDataQuery, HouseholdData>
 {
@@ -53,6 +54,10 @@ public class GetHouseholdDataQueryHandler(
             logger.LogWarning("Household data not found for authenticated user");
             return Result<HouseholdData>.PreconditionFailed(PreconditionFailedReason.NotFound, "Household data not found.");
         }
+
+        householdData.AllowedActions = selfServiceEvaluator.Evaluate(
+            householdData.BenefitIssuanceType,
+            householdData.Applications);
 
         logger.LogDebug("Household data retrieved successfully for identifier type {Type}", identifier.Type);
         return Result<HouseholdData>.Success(householdData);

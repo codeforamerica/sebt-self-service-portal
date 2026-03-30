@@ -20,12 +20,16 @@ namespace SEBT.Portal.Tests.Unit.Controllers;
 public class HouseholdControllerTests
 {
     private readonly IIdProofingRequirementsService _idProofingRequirementsService;
+    private readonly ISelfServiceEvaluator _selfServiceEvaluator;
     private readonly HouseholdController _controller;
 
     public HouseholdControllerTests()
     {
         _controller = new HouseholdController();
         _idProofingRequirementsService = Substitute.For<IIdProofingRequirementsService>();
+        _selfServiceEvaluator = Substitute.For<ISelfServiceEvaluator>();
+        _selfServiceEvaluator.Evaluate(Arg.Any<BenefitIssuanceType>(), Arg.Any<IReadOnlyList<Application>>())
+            .Returns(new AllowedActions { CanUpdateAddress = true, CanRequestReplacementCard = true });
     }
 
     private IQueryHandler<GetHouseholdDataQuery, HouseholdData> CreateQueryHandler(
@@ -33,7 +37,7 @@ public class HouseholdControllerTests
         IHouseholdRepository repository)
     {
         var logger = NullLogger<GetHouseholdDataQueryHandler>.Instance;
-        return new GetHouseholdDataQueryHandler(resolver, repository, _idProofingRequirementsService, logger);
+        return new GetHouseholdDataQueryHandler(resolver, repository, _idProofingRequirementsService, _selfServiceEvaluator, logger);
     }
 
     private void SetupAuthenticatedUser(string email, UserIalLevel userIalLevel = UserIalLevel.None, string claimType = ClaimTypes.Email)
