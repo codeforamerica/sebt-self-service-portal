@@ -28,6 +28,16 @@ public class PortalDbContext : DbContext
     /// </summary>
     public DbSet<DocVerificationChallengeEntity> DocVerificationChallenges { get; set; }
 
+    /// <summary>
+    /// De-identified enrollment check submission records for analytics.
+    /// </summary>
+    public DbSet<EnrollmentCheckSubmissionEntity> EnrollmentCheckSubmissions { get; set; }
+
+    /// <summary>
+    /// De-identified child result records associated with enrollment check submissions.
+    /// </summary>
+    public DbSet<DeidentifiedChildResultEntity> DeidentifiedChildResults { get; set; }
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
@@ -168,6 +178,27 @@ public class PortalDbContext : DbContext
             // One active challenge per user — enforced by a filtered unique
             // index on UserId WHERE Status IN (0, 1). Managed via raw SQL migration
             // because EF merges HasIndex calls on the same column.
+        });
+
+        modelBuilder.Entity<EnrollmentCheckSubmissionEntity>(entity =>
+        {
+            entity.ToTable("EnrollmentCheckSubmissions");
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.CheckedAtUtc).IsRequired();
+            entity.Property(e => e.IpAddressHash).HasMaxLength(128);
+            entity.HasMany(e => e.ChildResults)
+                .WithOne(e => e.Submission)
+                .HasForeignKey(e => e.SubmissionId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<DeidentifiedChildResultEntity>(entity =>
+        {
+            entity.ToTable("DeidentifiedChildResults");
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.Status).IsRequired().HasMaxLength(50);
+            entity.Property(e => e.EligibilityType).HasMaxLength(50);
+            entity.Property(e => e.SchoolName).HasMaxLength(255);
         });
     }
 }

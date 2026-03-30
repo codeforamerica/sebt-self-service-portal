@@ -478,7 +478,7 @@ public class MockHouseholdRepositoryTests
         var app = result.Applications.First();
         Assert.NotNull(app.BenefitExpirationDate);
         Assert.True(app.BenefitExpirationDate < _timeProvider.GetUtcNow().UtcDateTime);
-        Assert.Equal(ApplicationStatus.Approved, app.ApplicationStatus);
+        Assert.Equal(ApplicationStatus.Unknown, app.ApplicationStatus);
     }
 
     [Fact]

@@ -3,7 +3,7 @@
 import Link from 'next/link'
 import { useTranslation } from 'react-i18next'
 
-import { Alert } from '@/components/ui'
+import { Alert } from '@sebt/design-system'
 
 // Keys map to CSV: "S2 - Portal Dashboard - Alert Applications - {Key}"
 export function EmptyState() {

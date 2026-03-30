@@ -82,7 +82,9 @@ export async function apiFetch<T>(endpoint: string, options: ApiFetchOptions<T> 
   }
 
   if (response.status === 201 || response.status === 204) {
-    return undefined as T
+    // 201/204 responses have no body. Callers for these endpoints
+    // should expect void or ignore the return value.
+    return undefined as unknown as T
   }
 
   let data: T | ApiErrorResponse | undefined

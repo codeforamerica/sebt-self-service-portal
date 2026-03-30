@@ -29,11 +29,17 @@ public static class Dependencies
         // ID Proofing Requirements (state-specific PII visibility)
         services.AddSingleton<IIdProofingRequirementsService, IdProofingRequirementsService>();
 
+        // Enrollment Check logging
+        services.AddScoped<IEnrollmentCheckSubmissionLogger, EnrollmentCheckSubmissionLogger>();
+
         // Feature Flag Services
         services.AddScoped<IFeatureFlagQueryService, Services.FeatureFlagQueryService>();
 
         // Household identifier resolution (state-configurable preferred household ID type)
         services.AddTransient<IHouseholdIdentifierResolver, HouseholdIdentifierResolver>();
+
+        // Address validation — stub for now, swap with Smarty integration in DC-160
+        services.AddTransient<IAddressValidationService, AlwaysValidAddressValidator>();
         services.AddSingleton<IIdentifierHasher, IdentifierHasher>();
 
         // Expose SocureSettings directly for use case injection (avoids IOptions dependency in UseCases layer)
@@ -93,7 +99,7 @@ public static class Dependencies
                 "UseMockHouseholdData is false but no household plugin (ISummerEbtCaseService) is loaded. " +
                 "Either set UseMockHouseholdData to true in configuration or ensure a state plugin is loaded (e.g. PluginAssemblyPaths and the plugin DLL).");
         });
-        services.AddTransient<MockHouseholdRepository>();
+        services.AddSingleton<MockHouseholdRepository>();
         services.AddTransient<HouseholdRepository>();
 
         services.AddMemoryCache();
@@ -154,6 +160,9 @@ public static class Dependencies
                 var postConfig = new FeatureManagementOptionsConfiguration(config);
                 postConfig.PostConfigure(null, options);
             });
+
+        services.AddOptionsWithValidateOnStart<EnrollmentCheckRateLimitSettings>()
+            .BindConfiguration(EnrollmentCheckRateLimitSettings.SectionName);
 
         services.AddOptions<SeedingSettings>()
             .BindConfiguration(SeedingSettings.SectionName);
