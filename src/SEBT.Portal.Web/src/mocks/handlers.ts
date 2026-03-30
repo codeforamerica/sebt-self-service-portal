@@ -37,9 +37,9 @@ export const TEST_OTP = {
 } as const
 
 // Test feature flags (SUN Bucks portal features)
+// Card replacement gating is now handled by SelfServiceRules config, not feature flags.
 export const TEST_FEATURE_FLAGS = {
   enable_enrollment_status: true,
-  enable_card_replacement: false,
   enable_spanish_support: true,
   show_application_number: true,
   show_case_number: true,
