@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import {
   ID_PROOFING_COMPLETED_AT_CLAIM,
+  ID_PROOFING_EXPIRES_AT_CLAIM,
   isIdProofingCompletionFresh,
   parseIdProofingMaxAgeYears
 } from './jwt'
@@ -77,5 +78,38 @@ describe('isIdProofingCompletionFresh', () => {
       [ID_PROOFING_COMPLETED_AT_CLAIM]: String(unix)
     })
     expect(isIdProofingCompletionFresh(`x.${payload}.x`, 5)).toBe(true)
+  })
+
+  it('returns false when id_proofing_expires_at is in the past even if completion is within max age', () => {
+    const completed = Math.floor(new Date('2025-06-01T00:00:00.000Z').getTime() / 1000)
+    const expiredAt = Math.floor(new Date('2026-01-10T00:00:00.000Z').getTime() / 1000)
+    const payload = base64UrlEncodeJson({
+      ial: '1plus',
+      [ID_PROOFING_COMPLETED_AT_CLAIM]: completed,
+      [ID_PROOFING_EXPIRES_AT_CLAIM]: expiredAt
+    })
+    expect(isIdProofingCompletionFresh(`x.${payload}.x`, 5)).toBe(false)
+  })
+
+  it('returns true when id_proofing_expires_at is in the future and completion is within max age', () => {
+    const completed = Math.floor(new Date('2025-06-01T00:00:00.000Z').getTime() / 1000)
+    const expiresAt = Math.floor(new Date('2027-01-01T00:00:00.000Z').getTime() / 1000)
+    const payload = base64UrlEncodeJson({
+      ial: '1plus',
+      [ID_PROOFING_COMPLETED_AT_CLAIM]: completed,
+      [ID_PROOFING_EXPIRES_AT_CLAIM]: expiresAt
+    })
+    expect(isIdProofingCompletionFresh(`x.${payload}.x`, 5)).toBe(true)
+  })
+
+  it('returns false at exact id_proofing_expires_at second (not fresh on or after expiry)', () => {
+    const completed = Math.floor(new Date('2025-06-01T00:00:00.000Z').getTime() / 1000)
+    const expiresAt = Math.floor(new Date('2026-01-15T12:00:00.000Z').getTime() / 1000)
+    const payload = base64UrlEncodeJson({
+      ial: '1plus',
+      [ID_PROOFING_COMPLETED_AT_CLAIM]: completed,
+      [ID_PROOFING_EXPIRES_AT_CLAIM]: expiresAt
+    })
+    expect(isIdProofingCompletionFresh(`x.${payload}.x`, 5)).toBe(false)
   })
 })

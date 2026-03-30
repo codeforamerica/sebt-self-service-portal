@@ -28,7 +28,7 @@ export const env = createEnv({
     OIDC_REDIRECT_URI: z.string().url().optional(),
     OIDC_LANGUAGE_PARAM: z.string().optional(),
     OIDC_COMPLETE_LOGIN_SIGNING_KEY: z.string().min(32).optional(),
-    // Step-up (Socure app) — used when isStepUp=true in callback
+    // Step-up (Socure app): used when isStepUp=true in callback
     OIDC_STEP_UP_DISCOVERY_ENDPOINT: z.string().url().optional(),
     OIDC_STEP_UP_CLIENT_ID: z.string().optional(),
     OIDC_STEP_UP_CLIENT_SECRET: z.string().optional(),
@@ -51,6 +51,7 @@ export const env = createEnv({
     NEXT_PUBLIC_DEBUG_REPEAT_OIDC_STEP_UP: z.enum(['true', 'false']).optional(),
     /**
      * Max age (years) for portal JWT `id_proofing_completed_at` before IalGuard sends the user through OIDC step-up again.
+     * When `id_proofing_expires_at` is on the JWT, it is enforced as well (must be before that instant).
      * Default 5 when unset (see parseIdProofingMaxAgeYears).
      */
     NEXT_PUBLIC_CO_ID_PROOFING_MAX_AGE_YEARS: z.string().optional()

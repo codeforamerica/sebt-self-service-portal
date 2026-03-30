@@ -1,6 +1,6 @@
 /**
  * Client-side JWT payload decoding for reading claims without verification.
- * The API validates tokens; we only decode to make UI decisions (e.g. IAL-based redirects).
+ * The API validates tokens; we only decode to make UI decisions such as IAL-based redirects.
  */
 
 /** IAL claim values in the portal JWT */
@@ -50,6 +50,9 @@ export function hasIal1Plus(token: string | null): boolean {
 /** Portal JWT claim: ID proofing completion time as Unix seconds (see JwtTokenService). */
 export const ID_PROOFING_COMPLETED_AT_CLAIM = 'id_proofing_completed_at'
 
+/** Portal JWT claim: when IdP-bounded proofing expires (Unix seconds; omitted if unknown). */
+export const ID_PROOFING_EXPIRES_AT_CLAIM = 'id_proofing_expires_at'
+
 const MS_PER_YEAR = 365.25 * 24 * 60 * 60 * 1000
 
 function parseUnixSecondsClaim(value: unknown): number | null {
@@ -73,8 +76,9 @@ export function parseIdProofingMaxAgeYears(raw: string | undefined): number {
 }
 
 /**
- * True if the portal JWT's {@link ID_PROOFING_COMPLETED_AT_CLAIM} is within the last `maxAgeYears` years.
- * Used to decide whether OIDC step-up is required before IAL1+ features. Missing or unparseable claim is not fresh.
+ * True if ID proofing is still valid for IAL gating: {@link ID_PROOFING_COMPLETED_AT_CLAIM} is within
+ * the last `maxAgeYears` years, and when {@link ID_PROOFING_EXPIRES_AT_CLAIM} is present, `now` is
+ * strictly before that instant (IdP time-bounded credential).
  */
 export function isIdProofingCompletionFresh(token: string | null, maxAgeYears: number): boolean {
   if (!token) return false
@@ -84,5 +88,13 @@ export function isIdProofingCompletionFresh(token: string | null, maxAgeYears: n
   if (unixSec === null) return false
   const completedAtMs = unixSec * 1000
   const maxMs = maxAgeYears * MS_PER_YEAR
-  return Date.now() - completedAtMs <= maxMs
+  if (Date.now() - completedAtMs > maxMs) return false
+
+  const expiresSec = parseUnixSecondsClaim(payload[ID_PROOFING_EXPIRES_AT_CLAIM])
+  if (expiresSec !== null) {
+    const expiresAtMs = expiresSec * 1000
+    if (Date.now() >= expiresAtMs) return false
+  }
+
+  return true
 }
