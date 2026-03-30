@@ -58,17 +58,19 @@ public class HouseholdController : ControllerBase
     /// <param name="request">The new mailing address.</param>
     /// <param name="commandHandler">The use case handler for updating the address.</param>
     /// <param name="cancellationToken">A token to monitor for cancellation requests.</param>
-    /// <returns>The address validation result on success; otherwise, BadRequest or Forbidden.</returns>
+    /// <returns>The address validation result on success; otherwise, BadRequest, Forbidden, or UnprocessableEntity.</returns>
     /// <response code="200">Address validated and accepted.</response>
-    /// <response code="400">Input validation failed (missing fields or invalid format).</response>
+    /// <response code="400">Input validation failed (missing fields, invalid format, or address could not be verified).</response>
     /// <response code="403">User is not authorized or no household identifier could be resolved from token.</response>
     /// <response code="422">Address validation failed (blocked, too long, or has a suggested alternative).</response>
+    /// <response code="502">Address verification provider error or timeout.</response>
     [HttpPut("address")]
     [Authorize]
     [ProducesResponseType(typeof(AddressUpdateResponse), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
     [ProducesResponseType(typeof(AddressUpdateResponse), StatusCodes.Status422UnprocessableEntity)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status502BadGateway)]
     public async Task<IActionResult> UpdateAddress(
         [FromBody] UpdateAddressRequest request,
         [FromServices] ICommandHandler<UpdateAddressCommand, Core.Services.AddressValidationResult> commandHandler,

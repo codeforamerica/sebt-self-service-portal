@@ -57,3 +57,13 @@ export const AddressUpdateResponseSchema = z.object({
 
 export type AddressUpdateResponse = z.infer<typeof AddressUpdateResponseSchema>
 export type AddressResponse = z.infer<typeof AddressResponseSchema>
+
+/**
+ * Mirrors backend address validation outcomes when exposed to the client.
+ * Server-side verification uses Smarty when enabled (see API AddressValidationPolicy / Smarty config).
+ */
+export interface AddressValidationResult {
+  isValid: boolean
+  suggestedAddress?: UpdateAddressRequest
+  errorMessage?: string
+}

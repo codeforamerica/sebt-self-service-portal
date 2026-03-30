@@ -1,6 +1,7 @@
 using System.Security.Claims;
 using Microsoft.Extensions.Logging.Abstractions;
 using NSubstitute;
+using SEBT.Portal.Core.Models.AddressUpdate;
 using SEBT.Portal.Core.Models.Household;
 using SEBT.Portal.Core.Services;
 using SEBT.Portal.Core.Utilities;
@@ -16,6 +17,7 @@ public class UpdateAddressCommandHandlerTests
         new DataAnnotationsValidator<UpdateAddressCommand>(null!);
     private readonly IHouseholdIdentifierResolver _resolver =
         Substitute.For<IHouseholdIdentifierResolver>();
+    private readonly IAddressUpdateService _addressUpdate = Substitute.For<IAddressUpdateService>();
     private readonly IAddressValidationService _addressValidator =
         Substitute.For<IAddressValidationService>();
     private readonly NullLogger<UpdateAddressCommandHandler> _logger =
@@ -23,13 +25,31 @@ public class UpdateAddressCommandHandlerTests
 
     public UpdateAddressCommandHandlerTests()
     {
+        // Default: address update service passes so existing tests aren't affected
+        _addressUpdate
+            .ValidateAndNormalizeAsync(Arg.Any<AddressUpdateOperationRequest>(), Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult(
+                Result<AddressUpdateSuccess>.Success(
+                    new AddressUpdateSuccess
+                    {
+                        NormalizedAddress = new Address
+                        {
+                            StreetAddress1 = "123 Main St NW",
+                            City = "Washington",
+                            State = "DC",
+                            PostalCode = "20001"
+                        },
+                        WasCorrected = false,
+                        IsGeneralDelivery = false
+                    })));
+
         // Default: address validation passes so existing tests aren't affected
         _addressValidator.ValidateAsync(Arg.Any<Address>(), Arg.Any<CancellationToken>())
             .Returns(AddressValidationResult.Valid());
     }
 
     private UpdateAddressCommandHandler CreateHandler() =>
-        new(_validator, _resolver, _addressValidator, _logger);
+        new(_validator, _addressUpdate, _resolver, _addressValidator, _logger);
 
     private static ClaimsPrincipal CreateUser(string email)
     {
@@ -262,10 +282,27 @@ public class UpdateAddressCommandHandlerTests
         await _resolver.Received(1).ResolveAsync(Arg.Any<ClaimsPrincipal>(), token);
     }
 
-    // --- Resolver not called when validation fails ---
+    [Fact]
+    public async Task Handle_PassesCancellationTokenToAddressService()
+    {
+        var handler = CreateHandler();
+        var command = CreateValidCommand();
+        var cts = new CancellationTokenSource();
+        var token = cts.Token;
+
+        _resolver.ResolveAsync(Arg.Any<ClaimsPrincipal>(), token)
+            .Returns(HouseholdIdentifier.Email(EmailNormalizer.Normalize("user@example.com")));
+
+        await handler.Handle(command, token);
+
+        await _addressUpdate.Received(1).ValidateAndNormalizeAsync(
+            Arg.Any<AddressUpdateOperationRequest>(), token);
+    }
+
+    // --- Short-circuit when input validation fails ---
 
     [Fact]
-    public async Task Handle_DoesNotCallResolver_WhenValidationFails()
+    public async Task Handle_DoesNotCallResolver_WhenInputValidationFails()
     {
         var handler = CreateHandler();
         var command = new UpdateAddressCommand
@@ -317,6 +354,25 @@ public class UpdateAddressCommandHandlerTests
 
         await _addressValidator.DidNotReceive()
             .ValidateAsync(Arg.Any<Address>(), Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task Handle_DoesNotCallAddressService_WhenInputValidationFails()
+    {
+        var handler = CreateHandler();
+        var command = new UpdateAddressCommand
+        {
+            User = CreateUser("user@example.com"),
+            StreetAddress1 = "",
+            City = "",
+            State = "",
+            PostalCode = ""
+        };
+
+        await handler.Handle(command, CancellationToken.None);
+
+        await _addressUpdate.DidNotReceive()
+            .ValidateAndNormalizeAsync(Arg.Any<AddressUpdateOperationRequest>(), Arg.Any<CancellationToken>());
     }
 
     [Fact]
@@ -394,5 +450,47 @@ public class UpdateAddressCommandHandlerTests
                 a.State == "District of Columbia" &&
                 a.PostalCode == "20002"),
             Arg.Any<CancellationToken>());
+    }
+
+    // --- Address update service (Smarty) integration ---
+
+    [Fact]
+    public async Task Handle_ReturnsValidationFailed_WhenAddressServiceReturnsValidationFailed()
+    {
+        _addressUpdate
+            .ValidateAndNormalizeAsync(Arg.Any<AddressUpdateOperationRequest>(), Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult(
+                Result<AddressUpdateSuccess>.ValidationFailed("address", "Could not verify address.")));
+
+        var handler = CreateHandler();
+        var command = CreateValidCommand();
+
+        var result = await handler.Handle(command, CancellationToken.None);
+
+        Assert.False(result.IsSuccess);
+        Assert.IsType<ValidationFailedResult<AddressValidationResult>>(result);
+        await _resolver.DidNotReceive()
+            .ResolveAsync(Arg.Any<ClaimsPrincipal>(), Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task Handle_ReturnsDependencyFailed_WhenAddressServiceReturnsDependencyFailed()
+    {
+        _addressUpdate
+            .ValidateAndNormalizeAsync(Arg.Any<AddressUpdateOperationRequest>(), Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult(
+                Result<AddressUpdateSuccess>.DependencyFailed(
+                    DependencyFailedReason.Timeout,
+                    "Address verification timed out.")));
+
+        var handler = CreateHandler();
+        var command = CreateValidCommand();
+
+        var result = await handler.Handle(command, CancellationToken.None);
+
+        Assert.False(result.IsSuccess);
+        Assert.IsType<DependencyFailedResult<AddressValidationResult>>(result);
+        await _resolver.DidNotReceive()
+            .ResolveAsync(Arg.Any<ClaimsPrincipal>(), Arg.Any<CancellationToken>());
     }
 }
