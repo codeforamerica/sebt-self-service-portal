@@ -171,6 +171,10 @@ public static class Dependencies
         services.AddOptionsWithValidateOnStart<SocureSettings>()
             .BindConfiguration(SocureSettings.SectionName);
 
+        services.AddSingleton<IValidateOptions<SelfServiceRulesSettings>, SelfServiceRulesSettingsValidator>();
+        services.AddOptionsWithValidateOnStart<SelfServiceRulesSettings>()
+            .BindConfiguration(SelfServiceRulesSettings.SectionName);
+
         return services;
     }
 }
