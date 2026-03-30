@@ -490,3 +490,6 @@ packages/design-system/design/sass/_uswds-settings.scss
 
 # AI
 .claude/settings.local.json
+
+# Email template verification screenshots
+email-templates/_snapshots/
