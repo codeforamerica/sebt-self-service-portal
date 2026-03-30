@@ -1,7 +1,7 @@
 'use client'
 
 import { ApiError } from '@/api'
-import { Alert } from '@/components/ui'
+import { Alert } from '@sebt/design-system'
 import { useTranslation } from 'react-i18next'
 
 import { useHouseholdData } from '../../api'
@@ -66,7 +66,7 @@ export function DashboardContent() {
     <>
       {pageHeading}
       <DashboardAlerts />
-      <ActionButtons />
+      <ActionButtons issuanceType={data.benefitIssuanceType} />
       <UserProfileCard />
       <HouseholdSummary />
       <EnrolledChildren />

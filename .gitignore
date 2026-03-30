@@ -482,6 +482,7 @@ packages/design-system/content/.copy-hash
 packages/design-system/design/tokens.css
 packages/design-system/design/fonts.ts
 packages/design-system/design/sass/_uswds-theme-*.scss
+!packages/design-system/design/sass/_uswds-theme-custom-styles.scss
 packages/design-system/design/sass/_uswds-settings.scss
 
 # JetBrains IDE configuration

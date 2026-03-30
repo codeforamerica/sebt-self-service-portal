@@ -1,7 +1,6 @@
 'use client'
 
 import { apiFetch } from '@/api'
-import { Button, SummaryBox } from '@/components/ui'
 import { OidcConfigResponseSchema } from '@/features/auth/api/oidc/schema'
 import { useAuth } from '@/features/auth/context'
 import { getCoIdProofingMaxAgeYearsRaw, isDebugRepeatOidcStepUp } from '@/lib/ial-guard-config'
@@ -14,7 +13,7 @@ import {
   getOidcRedirectUriForCurrentOrigin,
   savePkceForCallback
 } from '@/lib/oidc-pkce'
-import { getState } from '@/lib/state'
+import { Button, getState, SummaryBox } from '@sebt/design-system'
 import { useRouter } from 'next/navigation'
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'

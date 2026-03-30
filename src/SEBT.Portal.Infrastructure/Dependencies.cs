@@ -29,6 +29,9 @@ public static class Dependencies
         // ID Proofing Requirements (state-specific PII visibility)
         services.AddSingleton<IIdProofingRequirementsService, IdProofingRequirementsService>();
 
+        // Enrollment Check logging
+        services.AddScoped<IEnrollmentCheckSubmissionLogger, EnrollmentCheckSubmissionLogger>();
+
         // Feature Flag Services
         services.AddScoped<IFeatureFlagQueryService, Services.FeatureFlagQueryService>();
 
@@ -96,7 +99,7 @@ public static class Dependencies
                 "UseMockHouseholdData is false but no household plugin (ISummerEbtCaseService) is loaded. " +
                 "Either set UseMockHouseholdData to true in configuration or ensure a state plugin is loaded (e.g. PluginAssemblyPaths and the plugin DLL).");
         });
-        services.AddTransient<MockHouseholdRepository>();
+        services.AddSingleton<MockHouseholdRepository>();
         services.AddTransient<HouseholdRepository>();
 
         services.AddMemoryCache();
@@ -157,6 +160,9 @@ public static class Dependencies
                 var postConfig = new FeatureManagementOptionsConfiguration(config);
                 postConfig.PostConfigure(null, options);
             });
+
+        services.AddOptionsWithValidateOnStart<EnrollmentCheckRateLimitSettings>()
+            .BindConfiguration(EnrollmentCheckRateLimitSettings.SectionName);
 
         services.AddOptions<SeedingSettings>()
             .BindConfiguration(SeedingSettings.SectionName);

@@ -20,10 +20,6 @@ vi.mock('next/navigation', () => ({
   })
 }))
 
-vi.mock('@/lib/state', () => ({
-  getState: () => 'co'
-}))
-
 const apiFetchMock = vi.fn()
 vi.mock('@/api', () => ({
   apiFetch: (...args: unknown[]) => apiFetchMock(...args)
@@ -63,7 +59,11 @@ function buildPassingToken(): string {
 }
 
 describe('IalGuard', () => {
+  let prevNextPublicState: string | undefined
+
   beforeEach(() => {
+    prevNextPublicState = process.env.NEXT_PUBLIC_STATE
+    process.env.NEXT_PUBLIC_STATE = 'co'
     vi.useFakeTimers({ shouldAdvanceTime: true })
     sessionStorage.clear()
     apiFetchMock.mockReset()
@@ -78,6 +78,11 @@ describe('IalGuard', () => {
   afterEach(() => {
     vi.useRealTimers()
     sessionStorage.clear()
+    if (prevNextPublicState === undefined) {
+      delete process.env.NEXT_PUBLIC_STATE
+    } else {
+      process.env.NEXT_PUBLIC_STATE = prevNextPublicState
+    }
   })
 
   it('renders children when JWT already satisfies IAL gate', async () => {
@@ -214,7 +219,7 @@ describe('IalGuard', () => {
     expect(screen.getByText(/contact us if you need more help/i)).toBeInTheDocument()
 
     mockBack.mockClear()
-    await user.click(screen.getByRole('button', { name: 'Continue' }))
+    await user.click(screen.getByRole('button', { name: /Return to dashboard|Continue/i }))
     expect(mockBack).toHaveBeenCalledTimes(1)
   })
 })

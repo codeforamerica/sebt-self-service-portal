@@ -1,0 +1,12 @@
+/* Info summary callout — uses CSS variables from USWDS/theme with fallbacks when unset. */
+.summaryBox {
+  display: flex;
+  padding: var(--usa-spacing-3, 24px);
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
+  align-self: stretch;
+  border-radius: 4px;
+  border: 1px solid var(--Theme-Info-info, #00bde3);
+  background: var(--Theme-Info-info-lighter, #e7f6f8);
+}
