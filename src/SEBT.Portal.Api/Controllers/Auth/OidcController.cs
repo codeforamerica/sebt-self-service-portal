@@ -88,6 +88,7 @@ public class OidcController(
     /// Completes OIDC login when the Next.js server has already exchanged the code and validated the id_token.
     /// Accepts a short-lived callbackToken (JWT signed with Oidc:CompleteLoginSigningKey) containing IdP claims;
     /// copies non-common IdP claims into the portal JWT and returns it.
+    /// Step-up may echo <c>returnUrl</c> only when it is a safe relative path (see <see cref="TrySanitizeStepUpReturnUrl"/>).
     /// </summary>
     [HttpPost("complete-login")]
     [ProducesResponseType(StatusCodes.Status200OK)]
@@ -184,9 +185,48 @@ public class OidcController(
         }
 
         var token = jwtService.GenerateToken(user, additionalClaims);
-        return body.IsStepUp && !string.IsNullOrEmpty(body.ReturnUrl)
-            ? Ok(new { token, returnUrl = body.ReturnUrl })
-            : Ok(new { token });
+        if (!body.IsStepUp)
+            return Ok(new { token });
+
+        var safeReturnUrl = TrySanitizeStepUpReturnUrl(body.ReturnUrl);
+        if (safeReturnUrl != null)
+            return Ok(new { token, returnUrl = safeReturnUrl });
+
+        if (!string.IsNullOrWhiteSpace(body.ReturnUrl))
+            logger.LogWarning("Step-up complete-login: returnUrl rejected (must be a safe relative path).");
+
+        return Ok(new { token });
+    }
+
+    private const int MaxStepUpReturnUrlLength = 4096;
+
+    /// <summary>
+    /// Step-up post-login navigation: only same-document relative paths (for example <c>/profile/address</c>).
+    /// Rejects absolute URLs and scheme-relative paths so the API never echoes an open redirect.
+    /// </summary>
+    private static string? TrySanitizeStepUpReturnUrl(string? returnUrl)
+    {
+        if (string.IsNullOrWhiteSpace(returnUrl))
+            return null;
+        var t = returnUrl.Trim();
+        if (t.Length > MaxStepUpReturnUrlLength)
+            return null;
+        if (!t.StartsWith("/", StringComparison.Ordinal))
+            return null;
+        if (t.StartsWith("//", StringComparison.Ordinal))
+            return null;
+        var pathPart = t;
+        var qIdx = t.IndexOf('?', StringComparison.Ordinal);
+        if (qIdx >= 0)
+            pathPart = t[..qIdx];
+        if (pathPart.Contains("://", StringComparison.Ordinal))
+            return null;
+        if (t.Contains("\\", StringComparison.Ordinal))
+            return null;
+        if (t.Contains("\r", StringComparison.Ordinal) || t.Contains("\n", StringComparison.Ordinal)
+            || t.Contains("\0", StringComparison.Ordinal))
+            return null;
+        return t;
     }
 
     /// <summary>
