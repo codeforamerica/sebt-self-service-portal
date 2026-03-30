@@ -66,7 +66,7 @@ export function DashboardContent() {
     <>
       {pageHeading}
       <DashboardAlerts />
-      <ActionButtons issuanceType={data.benefitIssuanceType} />
+      <ActionButtons allowedActions={data.allowedActions} />
       <UserProfileCard />
       <HouseholdSummary />
       <EnrolledChildren />

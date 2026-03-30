@@ -5,18 +5,18 @@ import { useTranslation } from 'react-i18next'
 
 import { getState, getStateConfig } from '@sebt/design-system'
 
-import type { IssuanceType } from '../../api'
+import type { AllowedActions } from '../../api'
 
 interface ActionButton {
   labelKey: string
   href: string
-  /** When true, this CTA is hidden for SNAP/TANF issuance types. */
-  selfServiceOnly?: boolean
+  /** Which allowedActions field gates this CTA. When set, the CTA is hidden if the field is false. */
+  gatedBy?: keyof Pick<AllowedActions, 'canUpdateAddress' | 'canRequestReplacementCard'>
 }
 
 interface ActionButtonsProps {
-  /** The benefit issuance type determines which self-service actions are available. */
-  issuanceType?: IssuanceType | null | undefined
+  /** Server-computed action permissions from the household data response. */
+  allowedActions?: AllowedActions | null | undefined
 }
 
 // Keys map to CSV: "S2 - Portal Dashboard - Action Navigation - {Key}"
@@ -24,33 +24,30 @@ const ACTIONS: ActionButton[] = [
   {
     labelKey: 'actionNavigationChangeMyMailingAddress',
     href: '/profile/address',
-    selfServiceOnly: true
+    gatedBy: 'canUpdateAddress'
   },
   {
     labelKey: 'actionNavigationOrderReplacementCards',
     href: '/cards/request',
-    selfServiceOnly: true
+    gatedBy: 'canRequestReplacementCard'
   },
   { labelKey: 'actionNavigationCheckExistingCards', href: '/cards' },
   { labelKey: 'actionNavigationCheckExistingApplications', href: '/applications' }
 ]
 
-/**
- * SNAP and TANF benefit holders cannot use portal self-service features
- * (address update, replacement card) — those actions must go through
- * their case worker.
- */
-function isSelfServiceAvailable(issuanceType?: IssuanceType | null): boolean {
-  if (!issuanceType) return true
-  return issuanceType !== 'SnapEbtCard' && issuanceType !== 'TanfEbtCard'
-}
-
-export function ActionButtons({ issuanceType }: ActionButtonsProps) {
+export function ActionButtons({ allowedActions }: ActionButtonsProps) {
   const { t } = useTranslation('dashboard')
   const { actionButtonBg, actionButtonText } = getStateConfig(getState())
-  const selfServiceEnabled = isSelfServiceAvailable(issuanceType)
 
-  const visibleActions = ACTIONS.filter((action) => !action.selfServiceOnly || selfServiceEnabled)
+  const hasDeniedAction =
+    allowedActions &&
+    (!allowedActions.canUpdateAddress || !allowedActions.canRequestReplacementCard)
+
+  const visibleActions = ACTIONS.filter((action) => {
+    if (!action.gatedBy) return true
+    if (!allowedActions) return true
+    return allowedActions[action.gatedBy]
+  })
 
   return (
     <nav
@@ -59,7 +56,7 @@ export function ActionButtons({ issuanceType }: ActionButtonsProps) {
     >
       <p className="margin-top-0 margin-bottom-2 text-base-dark">{t('actionNavigationLead')}</p>
 
-      {!selfServiceEnabled && (
+      {hasDeniedAction && (
         <div
           className="usa-alert usa-alert--info usa-alert--slim margin-bottom-2"
           role="status"

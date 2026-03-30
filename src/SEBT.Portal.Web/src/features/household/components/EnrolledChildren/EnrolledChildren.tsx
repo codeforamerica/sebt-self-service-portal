@@ -50,6 +50,7 @@ export function EnrolledChildren() {
             application={application}
             id={`${index}`}
             defaultExpanded={index === 0}
+            canRequestReplacementCard={data.allowedActions?.canRequestReplacementCard}
           />
         ))}
       </div>

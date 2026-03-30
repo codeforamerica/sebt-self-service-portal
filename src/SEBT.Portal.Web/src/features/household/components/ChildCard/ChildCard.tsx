@@ -24,6 +24,7 @@ interface ChildCardProps {
   application: Application
   id: string
   defaultExpanded?: boolean
+  canRequestReplacementCard?: boolean | undefined
 }
 
 // Keys map to CSV: "S2 - Portal Dashboard - Card Table - cardTableType{Sebt|Snap|Tanf}"
@@ -34,7 +35,13 @@ const CARD_TYPE_KEYS: Partial<Record<IssuanceType, string>> = {
 }
 
 // Keys map to CSV: "S2 - Portal Dashboard - Card Table - {Key}"
-export function ChildCard({ child, application, id, defaultExpanded = true }: ChildCardProps) {
+export function ChildCard({
+  child,
+  application,
+  id,
+  defaultExpanded = true,
+  canRequestReplacementCard
+}: ChildCardProps) {
   const { t, i18n } = useTranslation('dashboard')
   const showCardLast4 = useFeatureFlag('show_card_last4')
   const [isExpanded, setIsExpanded] = useState(defaultExpanded)
@@ -90,9 +97,15 @@ export function ChildCard({ child, application, id, defaultExpanded = true }: Ch
             </>
           )}
           {hasDcCardLifecycle(application) ? (
-            <CardStatusTimeline application={application} />
+            <CardStatusTimeline
+              application={application}
+              canRequestReplacementCard={canRequestReplacementCard}
+            />
           ) : (
-            <CardStatusDisplay application={application} />
+            <CardStatusDisplay
+              application={application}
+              canRequestReplacementCard={canRequestReplacementCard}
+            />
           )}
         </dl>
       </div>

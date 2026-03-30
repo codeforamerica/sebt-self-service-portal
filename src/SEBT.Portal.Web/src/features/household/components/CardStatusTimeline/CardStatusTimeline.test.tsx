@@ -83,10 +83,11 @@ describe('CardStatusTimeline', () => {
     expect(screen.getByText('Deactivated')).toBeInTheDocument()
   })
 
-  it('shows replacement card link when card is Processed', () => {
+  it('shows replacement card link when card is Processed and replacement allowed', () => {
     render(
       <CardStatusTimeline
         application={{ ...mockApplication, cardStatus: 'Processed', cardActivatedAt: null }}
+        canRequestReplacementCard={true}
       />
     )
     expect(screen.getByRole('link')).toHaveTextContent('Request a replacement card')

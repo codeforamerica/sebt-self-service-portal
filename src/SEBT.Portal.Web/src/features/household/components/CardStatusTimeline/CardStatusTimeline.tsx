@@ -9,6 +9,7 @@ import { formatDate } from '../../api'
 
 interface CardStatusTimelineProps {
   application: Application
+  canRequestReplacementCard?: boolean | undefined
 }
 
 type StepConfig = {
@@ -31,7 +32,10 @@ const STATUS_CONFIG: Partial<Record<CardStatus, StepConfig>> = {
 }
 
 // Keys map to CSV: "S2 - Portal Dashboard - Card Table - {Key}"
-export function CardStatusTimeline({ application }: CardStatusTimelineProps) {
+export function CardStatusTimeline({
+  application,
+  canRequestReplacementCard
+}: CardStatusTimelineProps) {
   const { t, i18n } = useTranslation('dashboard')
 
   const { cardStatus } = application
@@ -102,14 +106,15 @@ export function CardStatusTimeline({ application }: CardStatusTimelineProps) {
               "After the new card is mailed, it should arrive in around 5–7 days. If it doesn't arrive after two weeks, you can request a replacement card."}
           </p>
         )}
-        {(cardStatus === 'Requested' || cardStatus === 'Processed') && (
-          <Link
-            href="/cards/request"
-            className="usa-link text-bold font-sans-md display-inline-block margin-top-1"
-          >
-            {t('cardTableActionRequestReplacement')}
-          </Link>
-        )}
+        {canRequestReplacementCard &&
+          (cardStatus === 'Requested' || cardStatus === 'Processed') && (
+            <Link
+              href="/cards/request"
+              className="usa-link text-bold font-sans-md display-inline-block margin-top-1"
+            >
+              {t('cardTableActionRequestReplacement')}
+            </Link>
+          )}
         {/* TODO: Active and Deactivated status message fallbacks are placeholders —
             replace with real DC copy once content team updates the Google Sheet. */}
         {cardStatus === 'Active' && (

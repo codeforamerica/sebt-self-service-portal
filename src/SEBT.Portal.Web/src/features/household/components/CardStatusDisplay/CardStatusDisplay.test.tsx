@@ -27,9 +27,16 @@ const baseApplication: Application = {
   cardStatus: 'Active'
 }
 
-function renderWithStatus(cardStatus: Application['cardStatus'], overrides?: Partial<Application>) {
+function renderWithStatus(
+  cardStatus: Application['cardStatus'],
+  overrides?: Partial<Application>,
+  canRequestReplacementCard = true
+) {
   return render(
-    <CardStatusDisplay application={{ ...baseApplication, cardStatus, ...overrides }} />
+    <CardStatusDisplay
+      application={{ ...baseApplication, cardStatus, ...overrides }}
+      canRequestReplacementCard={canRequestReplacementCard}
+    />
   )
 }
 
@@ -118,8 +125,8 @@ describe('CardStatusDisplay', () => {
     expect(screen.getByText(/reported as lost, stolen, damaged/)).toBeInTheDocument()
   })
 
-  it('does not show replacement card link for Processed status', () => {
-    renderWithStatus('Processed')
+  it('does not show replacement card link when canRequestReplacementCard is false', () => {
+    renderWithStatus('Processed', undefined, false)
 
     expect(screen.queryByRole('link')).toBeNull()
   })
@@ -158,14 +165,14 @@ describe('CardStatusDisplay', () => {
     expect(screen.getByRole('link')).toHaveTextContent('Request a replacement card')
   })
 
-  it('does not show replacement card link for DeactivatedByState', () => {
-    renderWithStatus('DeactivatedByState')
+  it('does not show replacement card link for DeactivatedByState when denied', () => {
+    renderWithStatus('DeactivatedByState', undefined, false)
 
     expect(screen.queryByRole('link')).toBeNull()
   })
 
-  it('does not show replacement card link for Active status', () => {
-    renderWithStatus('Active')
+  it('does not show replacement card link for Active when denied', () => {
+    renderWithStatus('Active', undefined, false)
 
     expect(screen.queryByRole('link')).toBeNull()
   })

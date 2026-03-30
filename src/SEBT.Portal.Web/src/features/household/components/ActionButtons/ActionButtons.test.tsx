@@ -1,6 +1,7 @@
 import { render, screen } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
+import type { AllowedActions } from '../../api'
 import { ActionButtons } from './ActionButtons'
 
 vi.mock('@sebt/design-system', async (importOriginal) => {
@@ -13,6 +14,18 @@ vi.mock('@sebt/design-system', async (importOriginal) => {
 
 const { getState } = await import('@sebt/design-system')
 const mockGetState = vi.mocked(getState)
+
+const allAllowed: AllowedActions = {
+  canUpdateAddress: true,
+  canRequestReplacementCard: true
+}
+
+const allDenied: AllowedActions = {
+  canUpdateAddress: false,
+  canRequestReplacementCard: false,
+  addressUpdateDeniedMessageKey: 'actionNavigationSelfServiceUnavailable',
+  cardReplacementDeniedMessageKey: 'actionNavigationSelfServiceUnavailable'
+}
 
 describe('ActionButtons', () => {
   beforeEach(() => {
@@ -27,8 +40,8 @@ describe('ActionButtons', () => {
     expect(nav).toHaveAttribute('aria-label', 'Quick actions')
   })
 
-  it('renders all action buttons for SummerEbt', () => {
-    render(<ActionButtons issuanceType="SummerEbt" />)
+  it('renders all action buttons when all actions allowed', () => {
+    render(<ActionButtons allowedActions={allAllowed} />)
 
     const links = screen.getAllByRole('link')
     expect(links).toHaveLength(4)
@@ -41,15 +54,15 @@ describe('ActionButtons', () => {
     expect(link).toHaveAttribute('href', '/cards')
   })
 
-  it('renders request replacement cards button', () => {
-    render(<ActionButtons />)
+  it('renders request replacement cards button when allowed', () => {
+    render(<ActionButtons allowedActions={allAllowed} />)
 
     const link = screen.getByText('Request new cards')
     expect(link).toHaveAttribute('href', '/cards/request')
   })
 
-  it('renders change mailing address button', () => {
-    render(<ActionButtons />)
+  it('renders change mailing address button when allowed', () => {
+    render(<ActionButtons allowedActions={allAllowed} />)
 
     const link = screen.getByText('Change my mailing address')
     expect(link).toHaveAttribute('href', '/profile/address')
@@ -77,10 +90,10 @@ describe('ActionButtons', () => {
     })
   })
 
-  // ── Self-service eligibility ──
+  // ── Self-service eligibility (driven by allowedActions) ──
 
-  it('hides self-service CTAs for SNAP issuance type', () => {
-    render(<ActionButtons issuanceType="SnapEbtCard" />)
+  it('hides gated CTAs when both actions denied', () => {
+    render(<ActionButtons allowedActions={allDenied} />)
 
     const links = screen.getAllByRole('link')
     expect(links).toHaveLength(2)
@@ -88,23 +101,36 @@ describe('ActionButtons', () => {
     expect(screen.queryByText('Request new cards')).toBeNull()
   })
 
-  it('hides self-service CTAs for TANF issuance type', () => {
-    render(<ActionButtons issuanceType="TanfEbtCard" />)
+  it('hides only address CTA when address update denied', () => {
+    render(
+      <ActionButtons
+        allowedActions={{ canUpdateAddress: false, canRequestReplacementCard: true }}
+      />
+    )
 
     const links = screen.getAllByRole('link')
-    expect(links).toHaveLength(2)
+    expect(links).toHaveLength(3)
+    expect(screen.queryByText('Change my mailing address')).toBeNull()
+    expect(screen.getByText('Request new cards')).toBeInTheDocument()
   })
 
-  it('shows info alert when self-service is unavailable', () => {
-    render(<ActionButtons issuanceType="SnapEbtCard" />)
+  it('shows info alert when any action is denied', () => {
+    render(<ActionButtons allowedActions={allDenied} />)
 
     expect(screen.getByRole('status')).toBeInTheDocument()
   })
 
-  it('does not show info alert for SummerEbt', () => {
-    render(<ActionButtons issuanceType="SummerEbt" />)
+  it('does not show info alert when all actions allowed', () => {
+    render(<ActionButtons allowedActions={allAllowed} />)
 
     expect(screen.queryByRole('status')).toBeNull()
+  })
+
+  it('shows all CTAs when no allowedActions provided', () => {
+    render(<ActionButtons />)
+
+    const links = screen.getAllByRole('link')
+    expect(links).toHaveLength(4)
   })
 
   describe('DC state styling', () => {
