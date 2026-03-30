@@ -161,6 +161,35 @@ public class OidcControllerTests
         Assert.Equal(portalJwt, tokenValue);
     }
 
+    /// <summary>
+    /// Step-up must not create a user; IdP email must already match a portal account from primary sign-in.
+    /// </summary>
+    [Fact]
+    public async Task CompleteLogin_WhenStepUpAndNoExistingUser_Returns400()
+    {
+        const string signingKey = "complete-login-signing-key-at-least-32-characters-long";
+        _config["Oidc:CompleteLoginSigningKey"].Returns(signingKey);
+
+        var callbackToken = CreateValidCallbackToken(signingKey, email: "new-user@example.com");
+        var body = new CompleteLoginRequest(CoStateKey, callbackToken, IsStepUp: true);
+
+        _userRepository.GetUserByEmailAsync("new-user@example.com", Arg.Any<CancellationToken>())
+            .Returns((User?)null);
+
+        var result = await _controller.CompleteLogin(body, CancellationToken.None);
+
+        var badRequest = Assert.IsType<BadRequestObjectResult>(result);
+        Assert.NotNull(badRequest.Value);
+        var errorProp = badRequest.Value.GetType().GetProperty("error");
+        Assert.NotNull(errorProp);
+        Assert.Equal(
+            "Step-up requires an existing session. Please sign in again.",
+            errorProp.GetValue(badRequest.Value) as string);
+
+        await _userRepository.DidNotReceive().GetOrCreateUserAsync(Arg.Any<string>(), Arg.Any<CancellationToken>());
+        await _userRepository.DidNotReceive().UpdateUserAsync(Arg.Any<User>(), Arg.Any<CancellationToken>());
+    }
+
     private static string CreateValidCallbackToken(string signingKey, string email)
     {
         return CreateCallbackTokenWithClaims(signingKey, new Claim("email", email));
