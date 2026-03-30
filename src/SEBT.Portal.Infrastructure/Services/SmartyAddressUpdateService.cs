@@ -93,6 +93,16 @@ public sealed class SmartyAddressUpdateService(
                     "Address verification is temporarily unavailable. Please try again later.");
             }
 
+            if (string.IsNullOrWhiteSpace(body))
+            {
+                logger.LogWarning(
+                    "Smarty US Street API returned empty body for correlation {CorrelationId}",
+                    request.CorrelationId ?? "(none)");
+                return Result<AddressUpdateSuccess>.DependencyFailed(
+                    DependencyFailedReason.ConnectionFailed,
+                    "Address verification returned an unexpected response.");
+            }
+
             List<SmartyCandidateDto>? candidates;
             try
             {

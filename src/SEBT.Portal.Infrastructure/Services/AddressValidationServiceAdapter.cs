@@ -22,6 +22,9 @@ public sealed class AddressValidationServiceAdapter(IAddressUpdateService addres
                 AddressValidationResult.Valid(ok.Value.NormalizedAddress),
             ValidationFailedResult<AddressUpdateSuccess> vf =>
                 AddressValidationResult.Invalid(string.Join(" ", vf.Errors.Select(e => e.Message))),
+            // NOTE: DependencyFailed (timeout, non-2xx, network error) maps to Invalid here,
+            // which obscures whether failure was an infrastructure issue or an actual bad address.
+            // The legacy IAddressValidationService interface doesn't distinguish these cases.
             DependencyFailedResult<AddressUpdateSuccess> df =>
                 AddressValidationResult.Invalid(df.Message),
             _ => AddressValidationResult.Invalid("Address verification failed.")

@@ -226,4 +226,43 @@ public class SmartyAddressUpdateServiceTests
         var vf = Assert.IsType<ValidationFailedResult<AddressUpdateSuccess>>(result);
         Assert.Contains(vf.Errors, e => e.Key == "streetAddress1");
     }
+
+    [Fact]
+    public async Task ValidateAndNormalizeAsync_ReturnsDependencyFailed_WhenSmartyReturnsNon2xx()
+    {
+        var service = CreateService(new MockHttpHandler(HttpStatusCode.InternalServerError, "{}"));
+        var result = await service.ValidateAndNormalizeAsync(BaseRequest());
+
+        var df = Assert.IsType<DependencyFailedResult<AddressUpdateSuccess>>(result);
+        Assert.Equal(DependencyFailedReason.ConnectionFailed, df.Reason);
+    }
+
+    [Fact]
+    public async Task ValidateAndNormalizeAsync_ReturnsDependencyFailed_OnTimeout()
+    {
+        var service = CreateService(new TimeoutHandler());
+        var result = await service.ValidateAndNormalizeAsync(BaseRequest());
+
+        var df = Assert.IsType<DependencyFailedResult<AddressUpdateSuccess>>(result);
+        Assert.Equal(DependencyFailedReason.Timeout, df.Reason);
+    }
+
+    [Fact]
+    public async Task ValidateAndNormalizeAsync_ReturnsDependencyFailed_OnHttpRequestException()
+    {
+        var service = CreateService(new HttpRequestExceptionHandler());
+        var result = await service.ValidateAndNormalizeAsync(BaseRequest());
+
+        var df = Assert.IsType<DependencyFailedResult<AddressUpdateSuccess>>(result);
+        Assert.Equal(DependencyFailedReason.ConnectionFailed, df.Reason);
+    }
+}
+
+internal class HttpRequestExceptionHandler : HttpMessageHandler
+{
+    protected override Task<HttpResponseMessage> SendAsync(
+        HttpRequestMessage request, CancellationToken cancellationToken)
+    {
+        throw new HttpRequestException("Simulated network failure");
+    }
 }

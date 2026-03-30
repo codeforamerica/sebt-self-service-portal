@@ -11,11 +11,6 @@ public sealed class SmartySettingsValidator : IValidateOptions<SmartySettings>
     /// <inheritdoc />
     public ValidateOptionsResult Validate(string? name, SmartySettings options)
     {
-        if (options == null)
-        {
-            return ValidateOptionsResult.Fail("Smarty configuration section is not present.");
-        }
-
         if (!options.Enabled)
         {
             return ValidateOptionsResult.Success;
