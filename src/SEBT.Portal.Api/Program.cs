@@ -329,13 +329,13 @@ else
 // from the Next.js server's single private IP, collapsing all clients into
 // one rate-limit bucket.
 //
-// Current configuration uses open trust (cleared KnownProxies/KnownNetworks)
+// Current configuration uses open trust (cleared KnownProxies/KnownIPNetworks)
 // which is acceptable because the API is not directly reachable from the
 // public internet. ForwardLimit = 1 ensures only the last proxy hop is read,
 // preventing clients from prepending fake entries.
 //
 // TODO: For defense-in-depth, consider restricting trust to the VPC CIDR:
-//   options.KnownNetworks.Add(new IPNetwork(IPAddress.Parse("10.0.0.0"), 8));
+//   options.KnownIPNetworks.Add(IPNetwork.Parse("10.0.0.0/8"));
 // This would reject forwarded headers from any source outside the private
 // network, guarding against future topology changes that might expose the API.
 var forwardedHeadersOptions = new ForwardedHeadersOptions
@@ -347,7 +347,7 @@ var forwardedHeadersOptions = new ForwardedHeadersOptions
 // the API is on a private network with no public ingress. Clear the defaults
 // (loopback) so the middleware processes headers from all sources.
 forwardedHeadersOptions.KnownProxies.Clear();
-forwardedHeadersOptions.KnownNetworks.Clear();
+forwardedHeadersOptions.KnownIPNetworks.Clear();
 app.UseForwardedHeaders(forwardedHeadersOptions);
 
 app.UseRouting();
