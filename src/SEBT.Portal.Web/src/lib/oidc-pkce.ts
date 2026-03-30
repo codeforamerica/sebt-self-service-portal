@@ -4,9 +4,15 @@
 
 const CO_PKCE_STORAGE_KEY = 'oidc_co_pkce'
 
+/**
+ * Discard PKCE blobs older than this so a long-lived tab cannot complete a flow with stale state.
+ * Aligned with typical authorization-code lifetime plus a small buffer.
+ */
+export const PKCE_STORAGE_MAX_AGE_MS = 15 * 60 * 1000
+
 function randomBase64Url(length: number): string {
   const bytes = new Uint8Array(length)
-  // crypto.getRandomValues is required for PKCE security — Math.random is not cryptographically secure.
+  // crypto.getRandomValues is required for PKCE security; Math.random is not cryptographically secure.
   // All modern browsers support this (since 2013), and generateCodeChallenge already requires crypto.subtle.
   crypto.getRandomValues(bytes)
   return btoa(String.fromCharCode(...bytes))
@@ -86,6 +92,8 @@ export interface StoredPkce {
   isStepUp?: boolean
   /** URL to redirect to after step-up completes. */
   returnUrl?: string
+  /** When this blob was written (`Date.now()`), for max-age checks. */
+  storedAtMs: number
 }
 
 export function savePkceForCallback(
@@ -106,13 +114,19 @@ export function savePkceForCallback(
     redirect_uri: config.redirectUri,
     token_endpoint: config.tokenEndpoint,
     client_id: config.clientId,
+    storedAtMs: Date.now(),
     ...(config.isStepUp !== undefined && { isStepUp: config.isStepUp }),
     ...(config.returnUrl !== undefined &&
       config.returnUrl !== '' && { returnUrl: config.returnUrl })
   }
-  // PKCE data is stored in sessionStorage only — not localStorage.
-  // localStorage would persist across tabs/sessions, which could allow stale PKCE to be accepted.
+  // PKCE data is stored in sessionStorage only, not localStorage:
+  // localStorage would persist across tabs/sessions and could allow stale PKCE to be accepted.
   sessionStorage.setItem(CO_PKCE_STORAGE_KEY, JSON.stringify(payload))
+}
+
+function parseStoredAtMs(value: unknown): number | null {
+  if (typeof value !== 'number' || !Number.isFinite(value) || value <= 0) return null
+  return value
 }
 
 export function getPkceFromStorage(): StoredPkce | null {
@@ -122,16 +136,23 @@ export function getPkceFromStorage(): StoredPkce | null {
   try {
     const payload = JSON.parse(raw) as StoredPkce
     if (
-      payload?.state &&
-      payload?.code_verifier &&
-      payload?.redirect_uri &&
-      payload?.token_endpoint &&
-      payload?.client_id
+      !payload?.state ||
+      !payload?.code_verifier ||
+      !payload?.redirect_uri ||
+      !payload?.token_endpoint ||
+      !payload?.client_id
     ) {
-      return payload
+      sessionStorage.removeItem(CO_PKCE_STORAGE_KEY)
+      return null
     }
+    const storedAtMs = parseStoredAtMs(payload.storedAtMs)
+    if (storedAtMs === null || Date.now() - storedAtMs > PKCE_STORAGE_MAX_AGE_MS) {
+      sessionStorage.removeItem(CO_PKCE_STORAGE_KEY)
+      return null
+    }
+    return { ...payload, storedAtMs }
   } catch {
-    // ignore
+    sessionStorage.removeItem(CO_PKCE_STORAGE_KEY)
   }
   return null
 }
