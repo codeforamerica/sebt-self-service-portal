@@ -42,6 +42,23 @@ internal static class ContainerConfigurationExtensions
 
         var loadedNames = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
 
+        // Connector post-builds often copy transitive dependencies (contracts, Kiota, etc.) into
+        // plugins-* alongside the implementation. Those DLLs are already in the app base or default
+        // context — loading them again from the plugin path causes duplicate loads and type/MEF issues.
+        var hostAssemblySimpleNames = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        foreach (var assemblyName in AssemblyLoadContext.Default.Assemblies.Select(a => a.GetName().Name))
+        {
+            if (!string.IsNullOrEmpty(assemblyName))
+                hostAssemblySimpleNames.Add(assemblyName);
+        }
+
+        foreach (var dllPath in Directory.GetFiles(baseDir, "*.dll"))
+        {
+            var simpleName = Path.GetFileNameWithoutExtension(dllPath);
+            if (!string.IsNullOrEmpty(simpleName))
+                hostAssemblySimpleNames.Add(simpleName);
+        }
+
         foreach (var combinedPath in existingPaths)
         {
             var dllPaths = Directory.GetFiles(combinedPath, "*.dll", searchOption);
@@ -50,7 +67,9 @@ internal static class ContainerConfigurationExtensions
             {
                 var fullPath = Path.GetFullPath(dllPath);
                 var name = Path.GetFileNameWithoutExtension(fullPath);
-                if (loadedNames.Contains(name))
+                if (string.IsNullOrEmpty(name)
+                    || hostAssemblySimpleNames.Contains(name)
+                    || loadedNames.Contains(name))
                     continue;
                 try
                 {
