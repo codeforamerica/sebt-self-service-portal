@@ -1,11 +1,16 @@
 'use client'
 
+import { apiFetch } from '@/api'
 import { setAuthToken, useAuth } from '@/features/auth'
+import {
+  OidcCallbackTokenResponseSchema,
+  OidcCompleteLoginResponseSchema
+} from '@/features/auth/api/oidc/schema'
 import { clearPkceStorage, getPkceFromStorage } from '@/lib/oidc-pkce'
 import { getTranslations } from '@/lib/translations'
 import { Alert, getState } from '@sebt/design-system'
 import { useRouter } from 'next/navigation'
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 
 type CallbackStep = 'loading' | 'have_code_state' | 'have_pkce' | 'exchanging' | 'error'
 
@@ -21,12 +26,30 @@ export default function CallbackPage() {
   const [status, setStatus] = useState<'loading' | 'error'>('loading')
   const [step, setStep] = useState<CallbackStep>('loading')
   const [errorDetail, setErrorDetail] = useState<string | null>(null)
+  const exchangeStartedRef = useRef(false)
 
   useEffect(() => {
-    // Read from the actual URL; useSearchParams() can be empty on first run (hydration)
     const params = new URLSearchParams(typeof window !== 'undefined' ? window.location.search : '')
     const code = params.get('code')
     const state = params.get('state')
+    const errorParam = params.get('error')
+    const errorDescription = params.get('error_description')
+
+    if (errorParam) {
+      const storedPkce = getPkceFromStorage()
+      const stepUpFromIdpError = storedPkce?.isStepUp === true
+      const idpDetail = errorDescription?.trim() ?? ''
+      const portalLine = t(
+        stepUpFromIdpError ? 'callbackErrorStepUpFailed' : 'callbackErrorIdpRedirect',
+        t('callbackErrorGeneric')
+      )
+      const message = idpDetail ? `${portalLine} ${idpDetail}` : portalLine
+      queueMicrotask(() => {
+        setErrorDetail(message)
+        setStatus('error')
+      })
+      return
+    }
 
     if (!code || !state) {
       queueMicrotask(() => {
@@ -37,6 +60,9 @@ export default function CallbackPage() {
       return
     }
     queueMicrotask(() => setStep('have_code_state'))
+
+    if (exchangeStartedRef.current) return
+    exchangeStartedRef.current = true
 
     let cancelled = false
     async function run() {
@@ -60,98 +86,50 @@ export default function CallbackPage() {
         return
       }
       setStep('have_pkce')
+      const isStepUp = stored.isStepUp === true
+      const returnUrl = stored.returnUrl ?? ''
       clearPkceStorage()
 
       try {
         setStep('exchanging')
         const stateCode = getState()
-        const callbackRes = await fetch('/api/auth/oidc/callback', {
+
+        const { callbackToken } = await apiFetch('/auth/oidc/callback', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
+          body: {
             code,
             code_verifier: stored.code_verifier,
+            redirectUri: stored.redirect_uri,
             state,
-            stateCode
-          }),
-          credentials: 'include'
+            stateCode,
+            isStepUp
+          },
+          schema: OidcCallbackTokenResponseSchema
         })
         if (cancelled) return
-        if (!callbackRes.ok) {
-          const text = await callbackRes.text()
-          let data: { error?: string; hint?: string } = {}
-          try {
-            data = JSON.parse(text) as { error?: string; hint?: string }
-          } catch {
-            // not JSON
-          }
-          const isHtml =
-            text.trimStart().startsWith('<!') ||
-            (callbackRes.headers.get('content-type') ?? '').toLowerCase().includes('text/html')
-          const msg =
-            data.error ??
-            (isHtml
-              ? `Sign-in provider returned an error page (${callbackRes.status}). Try again or check configuration.`
-              : text.slice(0, 150))
-          const hint = data.hint ? ` ${data.hint}` : ''
-          setErrorDetail((msg || `Request failed (${callbackRes.status})`) + hint)
-          if (!cancelled) {
-            setStep('error')
-            setStatus('error')
-          }
-          return
-        }
-        const { callbackToken } = (await callbackRes.json()) as { callbackToken?: string }
-        if (!callbackToken) {
-          setErrorDetail('No callback token returned')
-          if (!cancelled) {
-            setStep('error')
-            setStatus('error')
-          }
-          return
-        }
-        const completeRes = await fetch('/api/auth/oidc/complete-login', {
+
+        const response = await apiFetch('/auth/oidc/complete-login', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ stateCode, callbackToken }),
-          credentials: 'include'
+          body: {
+            stateCode,
+            callbackToken,
+            isStepUp,
+            returnUrl: returnUrl || undefined
+          },
+          schema: OidcCompleteLoginResponseSchema
         })
         if (cancelled) return
-        if (!completeRes.ok) {
-          const text = await completeRes.text()
-          let data: { error?: string; hint?: string } = {}
-          try {
-            data = JSON.parse(text) as { error?: string; hint?: string }
-          } catch {
-            // not JSON
-          }
-          const isHtml =
-            text.trimStart().startsWith('<!') ||
-            (completeRes.headers.get('content-type') ?? '').toLowerCase().includes('text/html')
-          const msg =
-            data.error ??
-            (isHtml
-              ? `Server returned an error page (${completeRes.status}). Check that the API is running and reachable.`
-              : text.slice(0, 150))
-          const hint = data.hint ? ` ${data.hint}` : ''
-          setErrorDetail((msg || `Complete login failed (${completeRes.status})`) + hint)
-          if (!cancelled) {
-            setStep('error')
-            setStatus('error')
-          }
-          return
-        }
-        const data = (await completeRes.json()) as { token?: string }
-        if (data.token) {
-          // Persist to sessionStorage and notify auth context (setAuthToken ensures storage even if login context is stale)
-          setAuthToken(data.token)
-          login(data.token)
-          // Ensure token is stored and listeners have run before navigating (avoids 401 on refresh when dashboard loads)
-          await new Promise((resolve) => setTimeout(resolve, 0))
-        }
-        router.replace('/dashboard')
+
+        const { token, returnUrl: resolvedReturnUrl } = response
+
+        setAuthToken(token)
+        login(token)
+        await new Promise((resolve) => setTimeout(resolve, 0))
+        const destination = isStepUp && resolvedReturnUrl ? resolvedReturnUrl : '/dashboard'
+        router.replace(destination)
       } catch (e) {
-        const errMsg = e instanceof Error ? e.message : typeof e === 'string' ? e : 'Unknown error'
+        const errMsg =
+          e instanceof Error ? e.message : typeof e === 'string' ? e : t('callbackErrorGeneric')
         setErrorDetail(errMsg || t('callbackErrorGeneric'))
         if (!cancelled) {
           setStep('error')
@@ -162,6 +140,9 @@ export default function CallbackPage() {
     run()
     return () => {
       cancelled = true
+      // React Strict Mode remounts effects: allow the next mount to run the exchange;
+      // otherwise ref stays true and the retried effect bails while the aborted run skipped navigation.
+      exchangeStartedRef.current = false
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps -- t (getTranslations) is a static lookup
   }, [login, router])

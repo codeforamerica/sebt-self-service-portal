@@ -3,12 +3,13 @@ import { defineConfig } from 'vitest/config'
 
 export default defineConfig({
   test: {
-    environment: 'jsdom',
+    // @/env createEnv() requires NEXT_PUBLIC_STATE; SKIP_ENV_VALIDATION skips strict OIDC checks during tests.
     env: {
       SKIP_ENV_VALIDATION: '1',
       NEXT_PUBLIC_STATE: 'dc'
     },
-    setupFiles: ['./src/test-setup.ts'],
+    environment: 'jsdom',
+    setupFiles: ['./src/test-env-preload.ts', './src/test-setup.ts'],
     globals: true,
     css: true,
     // Support co-located tests: tests next to components in src/

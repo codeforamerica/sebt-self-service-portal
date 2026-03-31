@@ -4,43 +4,49 @@
  */
 
 import { env } from '@/env'
+import { OidcCallbackRequestSchema } from '@/features/auth/api/oidc/schema'
 import { SignJWT, createRemoteJWKSet, jwtVerify } from 'jose'
 import { NextRequest, NextResponse } from 'next/server'
 
 const CALLBACK_TOKEN_EXPIRY_SEC = 300 // 5 minutes
 
-function getCurrentStateCode(): string {
-  return (process.env.NEXT_PUBLIC_STATE || process.env.STATE || 'dc').toLowerCase()
-}
-
 export async function POST(request: NextRequest) {
-  let body: { code?: string; code_verifier?: string; state?: string; stateCode?: string }
+  let json: unknown
   try {
-    body = (await request.json()) as typeof body
+    json = await request.json()
   } catch {
     return NextResponse.json({ error: 'Invalid JSON body.' }, { status: 400 })
   }
 
-  const currentState = getCurrentStateCode()
-  const { code, code_verifier, stateCode } = body
-  if (!code || !code_verifier || stateCode !== currentState) {
+  const parsed = OidcCallbackRequestSchema.safeParse(json)
+  if (!parsed.success) {
     return NextResponse.json(
-      { error: 'Missing or invalid code, code_verifier, or stateCode (must match current state).' },
+      {
+        error: 'Invalid request body.',
+        hint: 'Expected code, code_verifier, redirectUri, stateCode, optional state and isStepUp.'
+      },
       { status: 400 }
     )
   }
 
-  const discoveryEndpoint = env.OIDC_DISCOVERY_ENDPOINT
-  const clientId = env.OIDC_CLIENT_ID
-  const clientSecret = env.OIDC_CLIENT_SECRET
-  const redirectUri = env.OIDC_REDIRECT_URI
+  const { code, code_verifier, redirectUri, stateCode, isStepUp = false } = parsed.data
+
+  if (stateCode !== env.NEXT_PUBLIC_STATE) {
+    return NextResponse.json({ error: 'stateCode must match current state.' }, { status: 400 })
+  }
+
+  const discoveryEndpoint = isStepUp
+    ? env.OIDC_STEP_UP_DISCOVERY_ENDPOINT
+    : env.OIDC_DISCOVERY_ENDPOINT
+  const clientId = isStepUp ? env.OIDC_STEP_UP_CLIENT_ID : env.OIDC_CLIENT_ID
+  const clientSecret = isStepUp ? env.OIDC_STEP_UP_CLIENT_SECRET : env.OIDC_CLIENT_SECRET
   const signingKey = env.OIDC_COMPLETE_LOGIN_SIGNING_KEY
 
-  if (!discoveryEndpoint || !clientId || !clientSecret || !redirectUri || !signingKey) {
+  if (!discoveryEndpoint || !clientId || !clientSecret || !signingKey) {
     return NextResponse.json(
       {
         error: 'OIDC not configured.',
-        hint: 'Set OIDC_DISCOVERY_ENDPOINT, OIDC_CLIENT_ID, OIDC_CLIENT_SECRET, OIDC_REDIRECT_URI, OIDC_COMPLETE_LOGIN_SIGNING_KEY.'
+        hint: 'Set OIDC_DISCOVERY_ENDPOINT, OIDC_CLIENT_ID, OIDC_CLIENT_SECRET, OIDC_COMPLETE_LOGIN_SIGNING_KEY (and step-up equivalents when using isStepUp).'
       },
       { status: 503 }
     )
