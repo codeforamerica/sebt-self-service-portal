@@ -21,6 +21,7 @@ resource "aws_iam_policy" "github_actions" {
         Sid    = "AllowDeploymentServices"
         Effect = "Allow"
         Action = [
+          "appconfig:*",
           "acm:*",
           "cloudfront:*",
           "dynamodb:*",
