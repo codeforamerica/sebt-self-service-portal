@@ -11,7 +11,7 @@ import { clearPkceStorage, getPkceFromStorage } from '@/lib/oidc-pkce'
 import { getTranslations } from '@/lib/translations'
 import { Alert, getState } from '@sebt/design-system'
 import { useRouter } from 'next/navigation'
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 
 /**
  * OIDC callback: state IdP redirects here with ?code=...&state=...
@@ -23,12 +23,30 @@ export default function CallbackPage() {
   const t = getTranslations('login')
   const [status, setStatus] = useState<'loading' | 'error'>('loading')
   const [errorDetail, setErrorDetail] = useState<string | null>(null)
+  const exchangeStartedRef = useRef(false)
 
   useEffect(() => {
-    // Read from the actual URL; useSearchParams() can be empty on first run (hydration)
     const params = new URLSearchParams(typeof window !== 'undefined' ? window.location.search : '')
     const code = params.get('code')
     const state = params.get('state')
+    const errorParam = params.get('error')
+    const errorDescription = params.get('error_description')
+
+    if (errorParam) {
+      const storedPkce = getPkceFromStorage()
+      const stepUpFromIdpError = storedPkce?.isStepUp === true
+      const idpDetail = errorDescription?.trim() ?? ''
+      const portalLine = t(
+        stepUpFromIdpError ? 'callbackErrorStepUpFailed' : 'callbackErrorIdpRedirect',
+        t('callbackErrorGeneric')
+      )
+      const message = idpDetail ? `${portalLine} ${idpDetail}` : portalLine
+      queueMicrotask(() => {
+        setErrorDetail(message)
+        setStatus('error')
+      })
+      return
+    }
 
     if (!code || !state) {
       queueMicrotask(() => {
@@ -37,6 +55,9 @@ export default function CallbackPage() {
       })
       return
     }
+
+    if (exchangeStartedRef.current) return
+    exchangeStartedRef.current = true
 
     let cancelled = false
     async function run() {
@@ -57,36 +78,51 @@ export default function CallbackPage() {
         }
         return
       }
+
+      const isStepUp = stored.isStepUp === true
       clearPkceStorage()
 
       try {
-        // Exchange authorization code for a short-lived callback token (via Next.js server)
+        const returnUrl = stored.returnUrl ?? ''
+
+        // Exchange authorization code for a short-lived callback token (via Next.js server).
+        // Pass redirect_uri from PKCE storage — must match exactly what was sent in the auth request.
         const { callbackToken } = await apiFetch('/auth/oidc/callback', {
           method: 'POST',
           body: {
             code,
             code_verifier: stored.code_verifier,
+            redirectUri: stored.redirect_uri,
             state,
-            stateCode: getState()
+            stateCode: getState(),
+            isStepUp
           },
           schema: OidcCallbackTokenResponseSchema
         })
         if (cancelled) return
 
         // Complete login with .NET backend — validates callback token, creates portal JWT
-        const { token } = await apiFetch('/auth/oidc/complete-login', {
+        const response = await apiFetch('/auth/oidc/complete-login', {
           method: 'POST',
-          body: { stateCode: getState(), callbackToken },
+          body: {
+            stateCode: getState(),
+            callbackToken,
+            isStepUp,
+            returnUrl: returnUrl || undefined
+          },
           schema: OidcCompleteLoginResponseSchema
         })
         if (cancelled) return
+
+        const { token, returnUrl: resolvedReturnUrl } = response
 
         // Persist to sessionStorage and notify auth context
         setAuthToken(token)
         login(token)
         // Ensure token is stored and listeners have run before navigating
         await new Promise((resolve) => setTimeout(resolve, 0))
-        router.replace('/dashboard')
+        const destination = isStepUp && resolvedReturnUrl ? resolvedReturnUrl : '/dashboard'
+        router.replace(destination)
       } catch {
         if (!cancelled) {
           setErrorDetail(t('callbackErrorGeneric'))

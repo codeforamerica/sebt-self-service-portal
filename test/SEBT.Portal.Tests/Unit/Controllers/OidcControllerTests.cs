@@ -48,7 +48,7 @@ public class OidcControllerTests
         _config["Oidc:ClientId"].Returns("client-id");
         _config["Oidc:CallbackRedirectUri"].Returns("http://localhost:3000/callback");
 
-        var result = await _controller.GetConfig(CoStateKey, CancellationToken.None);
+        var result = await _controller.GetConfig(CoStateKey, cancellationToken: CancellationToken.None);
 
         var statusResult = Assert.IsType<ObjectResult>(result);
         Assert.Equal(503, statusResult.StatusCode);
@@ -61,7 +61,7 @@ public class OidcControllerTests
         _config["Oidc:ClientId"].Returns((string?)null);
         _config["Oidc:CallbackRedirectUri"].Returns("http://localhost:3000/callback");
 
-        var result = await _controller.GetConfig(CoStateKey, CancellationToken.None);
+        var result = await _controller.GetConfig(CoStateKey, cancellationToken: CancellationToken.None);
 
         var statusResult = Assert.IsType<ObjectResult>(result);
         Assert.Equal(503, statusResult.StatusCode);
@@ -159,6 +159,94 @@ public class OidcControllerTests
         Assert.NotNull(tokenProp);
         var tokenValue = tokenProp.GetValue(okResult.Value) as string;
         Assert.Equal(portalJwt, tokenValue);
+    }
+
+    /// <summary>
+    /// Step-up must not create a user; IdP email must already match a portal account from primary sign-in.
+    /// </summary>
+    [Fact]
+    public async Task CompleteLogin_WhenStepUpAndNoExistingUser_Returns400()
+    {
+        const string signingKey = "complete-login-signing-key-at-least-32-characters-long";
+        _config["Oidc:CompleteLoginSigningKey"].Returns(signingKey);
+
+        var callbackToken = CreateValidCallbackToken(signingKey, email: "new-user@example.com");
+        var body = new CompleteLoginRequest(CoStateKey, callbackToken, IsStepUp: true);
+
+        _userRepository.GetUserByEmailAsync("new-user@example.com", Arg.Any<CancellationToken>())
+            .Returns((User?)null);
+
+        var result = await _controller.CompleteLogin(body, CancellationToken.None);
+
+        var badRequest = Assert.IsType<BadRequestObjectResult>(result);
+        Assert.NotNull(badRequest.Value);
+        var errorProp = badRequest.Value.GetType().GetProperty("error");
+        Assert.NotNull(errorProp);
+        Assert.Equal(
+            "Step-up requires an existing session. Please sign in again.",
+            errorProp.GetValue(badRequest.Value) as string);
+
+        await _userRepository.DidNotReceive().GetOrCreateUserAsync(Arg.Any<string>(), Arg.Any<CancellationToken>());
+        await _userRepository.DidNotReceive().UpdateUserAsync(Arg.Any<User>(), Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task CompleteLogin_WhenStepUpAndSafeReturnUrl_Returns200WithReturnUrl()
+    {
+        const string signingKey = "complete-login-signing-key-at-least-32-characters-long";
+        _config["Oidc:CompleteLoginSigningKey"].Returns(signingKey);
+
+        var callbackToken = CreateValidCallbackToken(signingKey, email: "user@example.com");
+        var body = new CompleteLoginRequest(
+            CoStateKey,
+            callbackToken,
+            IsStepUp: true,
+            ReturnUrl: "/profile/address?q=1");
+
+        var user = new User { Id = 1, Email = "user@example.com" };
+        _userRepository.GetUserByEmailAsync("user@example.com", Arg.Any<CancellationToken>())
+            .Returns(user);
+        _userRepository.UpdateUserAsync(Arg.Any<User>(), Arg.Any<CancellationToken>())
+            .Returns(Task.CompletedTask);
+
+        const string portalJwt = "portal-jwt-returned-by-service";
+        _jwtService.GenerateToken(Arg.Any<User>(), Arg.Any<IReadOnlyDictionary<string, string>?>())
+            .Returns(portalJwt);
+
+        var result = await _controller.CompleteLogin(body, CancellationToken.None);
+
+        var okResult = Assert.IsType<OkObjectResult>(result);
+        var valueType = okResult.Value!.GetType();
+        Assert.Equal("/profile/address?q=1", valueType.GetProperty("returnUrl")!.GetValue(okResult.Value) as string);
+        Assert.Equal(portalJwt, valueType.GetProperty("token")!.GetValue(okResult.Value) as string);
+    }
+
+    [Fact]
+    public async Task CompleteLogin_WhenStepUpAndExternalReturnUrl_OmitsReturnUrlFromResponse()
+    {
+        const string signingKey = "complete-login-signing-key-at-least-32-characters-long";
+        _config["Oidc:CompleteLoginSigningKey"].Returns(signingKey);
+
+        var callbackToken = CreateValidCallbackToken(signingKey, email: "user@example.com");
+        var body = new CompleteLoginRequest(
+            CoStateKey,
+            callbackToken,
+            IsStepUp: true,
+            ReturnUrl: "https://evil.example/phish");
+
+        var user = new User { Id = 1, Email = "user@example.com" };
+        _userRepository.GetUserByEmailAsync("user@example.com", Arg.Any<CancellationToken>())
+            .Returns(user);
+        _userRepository.UpdateUserAsync(Arg.Any<User>(), Arg.Any<CancellationToken>())
+            .Returns(Task.CompletedTask);
+
+        _jwtService.GenerateToken(Arg.Any<User>(), Arg.Any<IReadOnlyDictionary<string, string>?>())
+            .Returns("portal-jwt");
+
+        var result = await _controller.CompleteLogin(body, CancellationToken.None);
+
+        var okResult = Assert.IsType<OkObjectResult>(result);
+        Assert.Null(okResult.Value!.GetType().GetProperty("returnUrl"));
     }
 
     private static string CreateValidCallbackToken(string signingKey, string email)

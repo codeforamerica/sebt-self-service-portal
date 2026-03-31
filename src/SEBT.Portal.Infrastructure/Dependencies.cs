@@ -171,6 +171,10 @@ public static class Dependencies
         services.AddOptionsWithValidateOnStart<IdProofingRequirementsSettings>()
             .BindConfiguration(IdProofingRequirementsSettings.SectionName);
 
+        services.AddSingleton<IValidateOptions<OidcStepUpSettings>, OidcStepUpSettingsValidator>();
+        services.AddOptionsWithValidateOnStart<OidcStepUpSettings>()
+            .BindConfiguration(OidcStepUpSettings.SectionName);
+
         services.AddOptions<FeatureManagementSettings>()
             .Bind(configuration.GetSection(FeatureManagementSettings.SectionName))
             .PostConfigure<IConfiguration>((options, config) =>

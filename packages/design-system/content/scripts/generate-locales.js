@@ -125,6 +125,8 @@ const CONFIG = {
     'otp email message': 'login',
     // S2 - Log In Disclaimer (maps to login namespace)
     'log in disclaimer': 'login',
+    // S8 - OIDC/MyColorado callback
+    'callback': 'login',
     // S8 - Identity proofing
     'id proofing optional id info': 'idProofing',
     // S8 - Opt-in preferences
@@ -152,6 +154,7 @@ const CONFIG = {
     'otp confirm': 'verify',
     'otp email message': 'email',
     'co-loaded off-boarding': 'coLoaded',
+    'callback': 'callback',
   },
 };
 

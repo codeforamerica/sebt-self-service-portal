@@ -94,6 +94,8 @@ jobs:
           STATE: dc
           NEXT_PUBLIC_STATE: dc
           ASPNETCORE_ENVIRONMENT: Development
+          # Required at startup (AddPlugins); paths may be absent — MEF skips missing dirs and defaults apply.
+          PluginAssemblyPaths__0: plugins-dc
           ConnectionStrings__DefaultConnection: "Server=localhost,1433;Database=SebtPortal;User Id=sa;Password=YourStrong@Passw0rd;TrustServerCertificate=True;"
           JwtSettings__SecretKey: "ci-e2e-jwt-secret-at-least-32-characters-long"
           IdentifierHasher__SecretKey: "ci-e2e-identifier-hasher-key-32chars"

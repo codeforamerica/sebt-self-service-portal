@@ -12,6 +12,7 @@
   "urls": [
     {
       "url": "http://localhost:3000",
+      "actions": ["wait for path to be /login"],
       "screenCapture": "./pa11y-screenshots/home.png"
     },
     {

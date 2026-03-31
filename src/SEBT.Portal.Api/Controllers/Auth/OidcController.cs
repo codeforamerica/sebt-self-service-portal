@@ -4,6 +4,7 @@ using System.Text;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.IdentityModel.Tokens;
 using SEBT.Portal.Api.Models;
+using SEBT.Portal.Core.Models.Auth;
 using SEBT.Portal.Core.Repositories;
 using SEBT.Portal.Core.Services;
 using SEBT.Portal.Core.Utilities;
@@ -11,7 +12,7 @@ using SEBT.Portal.Core.Utilities;
 namespace SEBT.Portal.Api.Controllers.Auth;
 
 /// <summary>
-/// OIDC endpoints for state IdP login. Config is under Oidc.
+/// OIDC endpoints for external IdP login and step-up. Config is under Oidc.
 /// </summary>
 [ApiController]
 [Route("api/auth/oidc")]
@@ -35,16 +36,24 @@ public class OidcController(
     /// <summary>
     /// Public OIDC config for frontend PKCE flow (no secrets): authorization endpoint, token endpoint, client id, redirect URI.
     /// Config keys: Oidc:DiscoveryEndpoint, Oidc:ClientId, Oidc:CallbackRedirectUri.
+    /// When stepUp=true, uses Oidc:StepUp:* (second client / discovery for elevated verification).
     /// </summary>
     [HttpGet("{code}/config")]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status502BadGateway)]
     [ProducesResponseType(StatusCodes.Status503ServiceUnavailable)]
-    public async Task<IActionResult> GetConfig([FromRoute] string code, CancellationToken cancellationToken)
+    public async Task<IActionResult> GetConfig(
+        [FromRoute] string code,
+        [FromQuery] bool stepUp = false,
+        CancellationToken cancellationToken = default)
     {
-        var discoveryEndpoint = config["Oidc:DiscoveryEndpoint"];
-        var clientId = config["Oidc:ClientId"];
-        var redirectUri = config["Oidc:CallbackRedirectUri"];
+        var discoveryEndpoint = stepUp
+            ? config["Oidc:StepUp:DiscoveryEndpoint"]
+            : config["Oidc:DiscoveryEndpoint"];
+        var clientId = stepUp ? config["Oidc:StepUp:ClientId"] : config["Oidc:ClientId"];
+        var redirectUri = stepUp
+            ? (config["Oidc:StepUp:RedirectUri"] ?? config["Oidc:CallbackRedirectUri"])
+            : config["Oidc:CallbackRedirectUri"];
         if (string.IsNullOrEmpty(discoveryEndpoint) || string.IsNullOrEmpty(clientId) || string.IsNullOrEmpty(redirectUri))
         {
             logger.LogWarning("OIDC config missing (Oidc:DiscoveryEndpoint, ClientId, or CallbackRedirectUri)");
@@ -79,6 +88,7 @@ public class OidcController(
     /// Completes OIDC login when the Next.js server has already exchanged the code and validated the id_token.
     /// Accepts a short-lived callbackToken (JWT signed with Oidc:CompleteLoginSigningKey) containing IdP claims;
     /// copies non-common IdP claims into the portal JWT and returns it.
+    /// Step-up may echo <c>returnUrl</c> only when it is a safe relative path (see <see cref="TrySanitizeStepUpReturnUrl"/>).
     /// </summary>
     [HttpPost("complete-login")]
     [ProducesResponseType(StatusCodes.Status200OK)]
@@ -121,7 +131,8 @@ public class OidcController(
         }
         catch (Exception ex)
         {
-            logger.LogWarning(ex, "Invalid or expired callback token for state {StateCode}", body.StateCode);
+            logger.LogWarning(ex, "Invalid or expired callback token for state {StateCode}",
+                SanitizeForLog(body.StateCode));
             return BadRequest(new ErrorResponse("Invalid or expired callback token."));
         }
 
@@ -141,9 +152,93 @@ public class OidcController(
         }
 
         var normalizedEmail = EmailNormalizer.Normalize(email);
-        var (user, _) = await userRepository.GetOrCreateUserAsync(normalizedEmail, cancellationToken);
+        User user;
+
+        if (body.IsStepUp)
+        {
+            var existingUser = await userRepository.GetUserByEmailAsync(normalizedEmail, cancellationToken);
+            if (existingUser == null)
+            {
+                logger.LogWarning("Step-up complete-login: no existing portal user for callback token; sign-in required first.");
+                return BadRequest(new { error = "Step-up requires an existing session. Please sign in again." });
+            }
+
+            user = existingUser;
+            user.IalLevel = UserIalLevel.IAL1plus;
+            user.IdProofingStatus = IdProofingStatus.Completed;
+            user.IdProofingCompletedAt = DateTime.UtcNow;
+            user.UpdatedAt = DateTime.UtcNow;
+            await userRepository.UpdateUserAsync(user, cancellationToken);
+
+            var safeStateKey = SanitizeForLog(stateKey);
+            logger.LogInformation(
+                "OIDC step-up complete-login succeeded: UserId {UserId}, StateCode {StateCode}, IalLevel {IalLevel}, IdProofingStatus {IdProofingStatus}",
+                user.Id,
+                safeStateKey,
+                user.IalLevel,
+                user.IdProofingStatus);
+        }
+        else
+        {
+            var (createdUser, _) = await userRepository.GetOrCreateUserAsync(normalizedEmail, cancellationToken);
+            user = createdUser;
+        }
+
         var token = jwtService.GenerateToken(user, additionalClaims);
+        if (!body.IsStepUp)
+            return Ok(new { token });
+
+        var safeReturnUrl = TrySanitizeStepUpReturnUrl(body.ReturnUrl);
+        if (safeReturnUrl != null)
+            return Ok(new { token, returnUrl = safeReturnUrl });
+
+        if (!string.IsNullOrWhiteSpace(body.ReturnUrl))
+            logger.LogWarning("Step-up complete-login: returnUrl rejected (must be a safe relative path).");
+
         return Ok(new { token });
+    }
+
+    private const int MaxStepUpReturnUrlLength = 4096;
+
+    /// <summary>
+    /// Step-up post-login navigation: only same-document relative paths (for example <c>/profile/address</c>).
+    /// Rejects absolute URLs and scheme-relative paths so the API never echoes an open redirect.
+    /// </summary>
+    private static string? TrySanitizeStepUpReturnUrl(string? returnUrl)
+    {
+        if (string.IsNullOrWhiteSpace(returnUrl))
+            return null;
+        var t = returnUrl.Trim();
+        if (t.Length > MaxStepUpReturnUrlLength)
+            return null;
+        if (!t.StartsWith("/", StringComparison.Ordinal))
+            return null;
+        if (t.StartsWith("//", StringComparison.Ordinal))
+            return null;
+        var pathPart = t;
+        var qIdx = t.IndexOf('?', StringComparison.Ordinal);
+        if (qIdx >= 0)
+            pathPart = t[..qIdx];
+        if (pathPart.Contains("://", StringComparison.Ordinal))
+            return null;
+        if (t.Contains("\\", StringComparison.Ordinal))
+            return null;
+        if (t.Contains("\r", StringComparison.Ordinal) || t.Contains("\n", StringComparison.Ordinal)
+            || t.Contains("\0", StringComparison.Ordinal))
+            return null;
+        return t;
+    }
+
+    /// <summary>
+    /// Removes newline/control-friendly breaks from values logged from user input.
+    /// </summary>
+    private static string SanitizeForLog(string? value)
+    {
+        if (string.IsNullOrEmpty(value))
+            return string.Empty;
+        return value
+            .Replace("\r", string.Empty, StringComparison.Ordinal)
+            .Replace("\n", string.Empty, StringComparison.Ordinal);
     }
 
     /// <summary>
