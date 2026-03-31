@@ -38,18 +38,26 @@ public class UpdateAddressCommandHandler(
             PostalCode = command.PostalCode
         };
 
+        // Phase 1: Smarty normalization. Capture the outcome but only bail early for
+        // infrastructure failures. Validation results (not_found, corrected) are deferred
+        // until after the state-specific checks in Phase 2.
+        AddressUpdateSuccess? smartySuccess = null;
+        string? smartyNotFoundMessage = null;
+
         var addressOutcome = await addressUpdateService.ValidateAndNormalizeAsync(addressRequest, cancellationToken);
         switch (addressOutcome)
         {
             case ValidationFailedResult<AddressUpdateSuccess> addressValidationFailed:
                 logger.LogWarning("Address update failed verification or policy checks");
-                return Result<AddressValidationResult>.ValidationFailed(addressValidationFailed.Errors);
+                smartyNotFoundMessage = string.Join(" ", addressValidationFailed.Errors.Select(e => e.Message));
+                break;
             case DependencyFailedResult<AddressUpdateSuccess> addressDependencyFailed:
                 logger.LogWarning(
                     "Address verification dependency failed: {Reason}",
                     addressDependencyFailed.Reason);
                 return Result<AddressValidationResult>.DependencyFailed(addressDependencyFailed.Reason, addressDependencyFailed.Message);
-            case SuccessResult<AddressUpdateSuccess>:
+            case SuccessResult<AddressUpdateSuccess> addressSuccess:
+                smartySuccess = addressSuccess.Value;
                 break;
             default:
                 return Result<AddressValidationResult>.DependencyFailed(
@@ -81,6 +89,9 @@ public class UpdateAddressCommandHandler(
             PostalCode = command.PostalCode
         };
 
+        // Phase 2: State-specific validation (blocked addresses, DC abbreviations, 30-char).
+        // Runs on the original address regardless of Smarty's outcome. If this layer
+        // rejects, its result takes priority over Smarty's.
         var addressValidation = await addressValidator.ValidateAsync(address, cancellationToken);
         if (!addressValidation.IsValid)
         {
@@ -90,7 +101,21 @@ public class UpdateAddressCommandHandler(
             return Result<AddressValidationResult>.Success(addressValidation);
         }
 
-        // TODO: Call state connector to persist normalized address from addressOutcome (SuccessResult).
+        // Phase 3: Combine results. DC-160 checks passed, so fall back to Smarty's outcome.
+        if (smartyNotFoundMessage != null)
+        {
+            return Result<AddressValidationResult>.Success(
+                AddressValidationResult.Invalid(smartyNotFoundMessage, "not_found"));
+        }
+
+        if (smartySuccess?.WasCorrected == true)
+        {
+            logger.LogInformation("Address verification returned a corrected address");
+            return Result<AddressValidationResult>.Success(
+                AddressValidationResult.Suggestion(smartySuccess.NormalizedAddress, "corrected"));
+        }
+
+        // TODO: Call state connector to persist normalized address.
 
         logger.LogInformation(
             "Address update completed for household identifier kind {Kind}",

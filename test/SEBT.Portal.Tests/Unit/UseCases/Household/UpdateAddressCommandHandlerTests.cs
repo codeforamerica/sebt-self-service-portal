@@ -455,22 +455,98 @@ public class UpdateAddressCommandHandlerTests
     // --- Address update service (Smarty) integration ---
 
     [Fact]
-    public async Task Handle_ReturnsValidationFailed_WhenAddressServiceReturnsValidationFailed()
+    public async Task Handle_ReturnsNotFound_WhenSmartyRejectsAndValidatorPasses()
     {
         _addressUpdate
             .ValidateAndNormalizeAsync(Arg.Any<AddressUpdateOperationRequest>(), Arg.Any<CancellationToken>())
             .Returns(Task.FromResult(
                 Result<AddressUpdateSuccess>.ValidationFailed("address", "Could not verify address.")));
 
+        _resolver.ResolveAsync(Arg.Any<ClaimsPrincipal>(), Arg.Any<CancellationToken>())
+            .Returns(HouseholdIdentifier.Email(EmailNormalizer.Normalize("user@example.com")));
+
         var handler = CreateHandler();
         var command = CreateValidCommand();
 
         var result = await handler.Handle(command, CancellationToken.None);
 
-        Assert.False(result.IsSuccess);
-        Assert.IsType<ValidationFailedResult<AddressValidationResult>>(result);
-        await _resolver.DidNotReceive()
-            .ResolveAsync(Arg.Any<ClaimsPrincipal>(), Arg.Any<CancellationToken>());
+        var success = Assert.IsType<SuccessResult<AddressValidationResult>>(result);
+        Assert.False(success.Value.IsValid);
+        Assert.Equal("not_found", success.Value.Reason);
+        Assert.Contains("Could not verify address", success.Value.ErrorMessage);
+    }
+
+    [Fact]
+    public async Task Handle_ReturnsBlocked_WhenSmartyCorrectedButAddressIsBlocked()
+    {
+        _addressUpdate
+            .ValidateAndNormalizeAsync(Arg.Any<AddressUpdateOperationRequest>(), Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult(
+                Result<AddressUpdateSuccess>.Success(
+                    new AddressUpdateSuccess
+                    {
+                        NormalizedAddress = new Address
+                        {
+                            StreetAddress1 = "645 H St NE",
+                            City = "Washington",
+                            State = "DC",
+                            PostalCode = "20002-4347"
+                        },
+                        WasCorrected = true
+                    })));
+
+        _resolver.ResolveAsync(Arg.Any<ClaimsPrincipal>(), Arg.Any<CancellationToken>())
+            .Returns(HouseholdIdentifier.Email(EmailNormalizer.Normalize("user@example.com")));
+
+        _addressValidator.ValidateAsync(Arg.Any<Address>(), Arg.Any<CancellationToken>())
+            .Returns(AddressValidationResult.Invalid("This address cannot be used.", "blocked"));
+
+        var handler = CreateHandler();
+        var command = CreateValidCommand();
+
+        var result = await handler.Handle(command, CancellationToken.None);
+
+        var success = Assert.IsType<SuccessResult<AddressValidationResult>>(result);
+        Assert.False(success.Value.IsValid);
+        Assert.Equal("blocked", success.Value.Reason);
+    }
+
+    [Fact]
+    public async Task Handle_ReturnsSmartyCorrection_WhenSmartyCorrectedAndValidatorPasses()
+    {
+        var normalizedAddress = new Address
+        {
+            StreetAddress1 = "1600 Pennsylvania Ave NW",
+            City = "Washington",
+            State = "DC",
+            PostalCode = "20500-0005"
+        };
+
+        _addressUpdate
+            .ValidateAndNormalizeAsync(Arg.Any<AddressUpdateOperationRequest>(), Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult(
+                Result<AddressUpdateSuccess>.Success(
+                    new AddressUpdateSuccess
+                    {
+                        NormalizedAddress = normalizedAddress,
+                        WasCorrected = true
+                    })));
+
+        _resolver.ResolveAsync(Arg.Any<ClaimsPrincipal>(), Arg.Any<CancellationToken>())
+            .Returns(HouseholdIdentifier.Email(EmailNormalizer.Normalize("user@example.com")));
+
+        _addressValidator.ValidateAsync(Arg.Any<Address>(), Arg.Any<CancellationToken>())
+            .Returns(AddressValidationResult.Valid());
+
+        var handler = CreateHandler();
+        var command = CreateValidCommand();
+
+        var result = await handler.Handle(command, CancellationToken.None);
+
+        var success = Assert.IsType<SuccessResult<AddressValidationResult>>(result);
+        Assert.False(success.Value.IsValid);
+        Assert.Equal("corrected", success.Value.Reason);
+        Assert.Equal("20500-0005", success.Value.SuggestedAddress?.PostalCode);
     }
 
     [Fact]
