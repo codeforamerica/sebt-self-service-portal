@@ -1,10 +1,14 @@
-import { describe, expect, it } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import {
   buildAuthorizationUrl,
+  clearPkceStorage,
   generateCodeChallenge,
   generateCodeVerifier,
-  generateState
+  generateState,
+  getPkceFromStorage,
+  PKCE_STORAGE_MAX_AGE_MS,
+  savePkceForCallback
 } from './oidc-pkce'
 
 describe('oidc-pkce', () => {
@@ -88,6 +92,72 @@ describe('oidc-pkce', () => {
       expect(challenge).not.toContain('+')
       expect(challenge).not.toContain('/')
       expect(challenge).not.toContain('=')
+    })
+  })
+
+  describe('savePkceForCallback / getPkceFromStorage', () => {
+    beforeEach(() => {
+      sessionStorage.clear()
+      vi.useRealTimers()
+    })
+
+    afterEach(() => {
+      sessionStorage.clear()
+      vi.useRealTimers()
+    })
+
+    it('round-trips PKCE with storedAtMs and returns it while fresh', () => {
+      const before = Date.now()
+      savePkceForCallback('st', 'verifier', {
+        redirectUri: 'https://app/cb',
+        tokenEndpoint: 'https://auth/token',
+        clientId: 'cid'
+      })
+      const got = getPkceFromStorage()
+      expect(got).not.toBeNull()
+      expect(got!.state).toBe('st')
+      expect(got!.code_verifier).toBe('verifier')
+      expect(got!.storedAtMs).toBeGreaterThanOrEqual(before)
+      expect(got!.storedAtMs).toBeLessThanOrEqual(Date.now())
+    })
+
+    it('returns null and clears storage when older than max age', () => {
+      vi.useFakeTimers()
+      const t0 = Date.now()
+      vi.setSystemTime(t0)
+      savePkceForCallback('st', 'verifier', {
+        redirectUri: 'https://app/cb',
+        tokenEndpoint: 'https://auth/token',
+        clientId: 'cid'
+      })
+      vi.setSystemTime(t0 + PKCE_STORAGE_MAX_AGE_MS + 1)
+      expect(getPkceFromStorage()).toBeNull()
+      expect(sessionStorage.getItem('oidc_co_pkce')).toBeNull()
+    })
+
+    it('returns null and clears storage when storedAtMs is missing (legacy blob)', () => {
+      sessionStorage.setItem(
+        'oidc_co_pkce',
+        JSON.stringify({
+          state: 's',
+          code_verifier: 'v',
+          redirect_uri: 'https://r',
+          token_endpoint: 'https://t',
+          client_id: 'c'
+        })
+      )
+      expect(getPkceFromStorage()).toBeNull()
+      expect(sessionStorage.getItem('oidc_co_pkce')).toBeNull()
+    })
+
+    it('clearPkceStorage removes the key', () => {
+      savePkceForCallback('st', 'verifier', {
+        redirectUri: 'https://app/cb',
+        tokenEndpoint: 'https://auth/token',
+        clientId: 'cid'
+      })
+      clearPkceStorage()
+      expect(sessionStorage.getItem('oidc_co_pkce')).toBeNull()
     })
   })
 })

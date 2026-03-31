@@ -31,20 +31,21 @@ export async function POST(request: NextRequest) {
       { status: 400 }
     )
   }
-  const { code, code_verifier, stateCode } = bodyResult.data
+  const { code, code_verifier, redirectUri, stateCode, isStepUp = false } = bodyResult.data
 
   const currentState = env.NEXT_PUBLIC_STATE
   if (stateCode !== currentState) {
     return NextResponse.json({ error: 'stateCode must match current state.' }, { status: 400 })
   }
 
-  const discoveryEndpoint = env.OIDC_DISCOVERY_ENDPOINT
-  const clientId = env.OIDC_CLIENT_ID
-  const clientSecret = env.OIDC_CLIENT_SECRET
-  const redirectUri = env.OIDC_REDIRECT_URI
+  const discoveryEndpoint = isStepUp
+    ? env.OIDC_STEP_UP_DISCOVERY_ENDPOINT
+    : env.OIDC_DISCOVERY_ENDPOINT
+  const clientId = isStepUp ? env.OIDC_STEP_UP_CLIENT_ID : env.OIDC_CLIENT_ID
+  const clientSecret = isStepUp ? env.OIDC_STEP_UP_CLIENT_SECRET : env.OIDC_CLIENT_SECRET
   const signingKey = env.OIDC_COMPLETE_LOGIN_SIGNING_KEY
 
-  if (!discoveryEndpoint || !clientId || !clientSecret || !redirectUri || !signingKey) {
+  if (!discoveryEndpoint || !clientId || !clientSecret || !signingKey) {
     return NextResponse.json(
       {
         error: 'OIDC not configured.',
@@ -185,6 +186,7 @@ export async function POST(request: NextRequest) {
   }
 
   if (typeof claims.email !== 'string' || !claims.email) {
+    console.error('[OIDC] Callback token skipped: missing email claim')
     return NextResponse.json(
       {
         error: 'Callback token must contain an email claim.',
