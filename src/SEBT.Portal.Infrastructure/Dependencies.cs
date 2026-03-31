@@ -38,8 +38,26 @@ public static class Dependencies
         // Household identifier resolution (state-configurable preferred household ID type)
         services.AddTransient<IHouseholdIdentifierResolver, HouseholdIdentifierResolver>();
 
-        // Address validation — stub for now, swap with Smarty integration in DC-160
-        services.AddTransient<IAddressValidationService, AlwaysValidAddressValidator>();
+        services.AddHttpClient("Smarty", (sp, client) =>
+        {
+            var smarty = sp.GetRequiredService<IOptions<SmartySettings>>().Value;
+            var baseUrl = string.IsNullOrWhiteSpace(smarty.BaseUrl)
+                ? "https://us-street.api.smartystreets.com"
+                : smarty.BaseUrl.TrimEnd('/');
+            client.BaseAddress = new Uri(baseUrl + "/");
+            client.Timeout = TimeSpan.FromSeconds(Math.Clamp(smarty.TimeoutSeconds, 1, 120));
+        });
+
+        services.AddTransient<SmartyAddressUpdateService>();
+        services.AddTransient<PassThroughAddressUpdateService>();
+        services.AddTransient<IAddressUpdateService>(sp =>
+        {
+            var smarty = sp.GetRequiredService<IOptions<SmartySettings>>().Value;
+            return smarty.Enabled
+                ? sp.GetRequiredService<SmartyAddressUpdateService>()
+                : sp.GetRequiredService<PassThroughAddressUpdateService>();
+        });
+        services.AddTransient<IAddressValidationService, AddressValidationServiceAdapter>();
         services.AddSingleton<IIdentifierHasher, IdentifierHasher>();
 
         // Expose SocureSettings directly for use case injection (avoids IOptions dependency in UseCases layer)
@@ -170,6 +188,12 @@ public static class Dependencies
         services.AddSingleton<IValidateOptions<SocureSettings>, SocureSettingsValidator>();
         services.AddOptionsWithValidateOnStart<SocureSettings>()
             .BindConfiguration(SocureSettings.SectionName);
+
+        services.AddSingleton<IValidateOptions<SmartySettings>, SmartySettingsValidator>();
+        services.AddOptionsWithValidateOnStart<SmartySettings>()
+            .BindConfiguration(SmartySettings.SectionName);
+        services.AddOptions<AddressValidationPolicySettings>()
+            .BindConfiguration(AddressValidationPolicySettings.SectionName);
 
         return services;
     }
