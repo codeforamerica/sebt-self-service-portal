@@ -6,6 +6,7 @@ using Address = Core::SEBT.Portal.Core.Models.Household.Address;
 using Application = Core::SEBT.Portal.Core.Models.Household.Application;
 using Child = Core::SEBT.Portal.Core.Models.Household.Child;
 using HouseholdData = Core::SEBT.Portal.Core.Models.Household.HouseholdData;
+using SummerEbtCase = Core::SEBT.Portal.Core.Models.Household.SummerEbtCase;
 using UserProfile = Core::SEBT.Portal.Core.Models.Household.UserProfile;
 
 /// <summary>
@@ -22,10 +23,36 @@ public static class HouseholdDataResponseMapper
         {
             Email = domain.Email,
             Phone = domain.Phone,
+            SummerEbtCases = domain.SummerEbtCases.Select(ToResponse).ToList(),
             Applications = domain.Applications.Select(a => ToResponse(a, domain.BenefitIssuanceType)).ToList(),
             AddressOnFile = domain.AddressOnFile?.ToResponse(),
             UserProfile = domain.UserProfile?.ToResponse(),
             BenefitIssuanceType = domain.BenefitIssuanceType
+        };
+    }
+
+    private static SummerEbtCaseResponse ToResponse(this SummerEbtCase domain)
+    {
+        return new SummerEbtCaseResponse
+        {
+            SummerEBTCaseID = domain.SummerEBTCaseID,
+            ApplicationId = domain.ApplicationId,
+            ApplicationStudentId = domain.ApplicationStudentId,
+            ChildFirstName = domain.ChildFirstName,
+            ChildLastName = domain.ChildLastName,
+            ChildDateOfBirth = domain.ChildDateOfBirth,
+            HouseholdType = domain.HouseholdType,
+            EligibilityType = domain.EligibilityType,
+            ApplicationDate = domain.ApplicationDate,
+            ApplicationStatus = domain.ApplicationStatus,
+            MailingAddress = domain.MailingAddress?.ToResponse(),
+            EbtCaseNumber = domain.EbtCaseNumber,
+            EbtCardLastFour = domain.EbtCardLastFour,
+            EbtCardStatus = domain.EbtCardStatus,
+            EbtCardIssueDate = domain.EbtCardIssueDate,
+            EbtCardBalance = domain.EbtCardBalance,
+            BenefitAvailableDate = domain.BenefitAvailableDate,
+            BenefitExpirationDate = domain.BenefitExpirationDate
         };
     }
 

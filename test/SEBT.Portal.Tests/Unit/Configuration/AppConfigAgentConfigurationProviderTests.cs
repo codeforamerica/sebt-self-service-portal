@@ -321,7 +321,7 @@ public class AppConfigAgentConfigurationProviderTests : IDisposable
     }
 
     [Fact]
-    public void Load_WithArrays_ShouldSkipArrays()
+    public void Load_WithStringArray_ShouldFlattenWithIndexedKeys()
     {
         // Arrange
         var profile = new AppConfigAgentProfile
@@ -336,7 +336,7 @@ public class AppConfigAgentConfigurationProviderTests : IDisposable
         var configJson = new
         {
             Key1 = "value1",
-            ArrayKey = new[] { "item1", "item2" }
+            ArrayKey = new[] { "item1", "item2", "item3" }
         };
 
         _mockHttpHandler
@@ -351,8 +351,158 @@ public class AppConfigAgentConfigurationProviderTests : IDisposable
         // Assert
         Assert.True(provider.TryGet("Key1", out var key1));
         Assert.Equal("value1", key1);
-        // arrays should be skipped
-        Assert.False(provider.TryGet("ArrayKey", out _));
+        Assert.True(provider.TryGet("ArrayKey:0", out var item0));
+        Assert.Equal("item1", item0);
+        Assert.True(provider.TryGet("ArrayKey:1", out var item1));
+        Assert.Equal("item2", item1);
+        Assert.True(provider.TryGet("ArrayKey:2", out var item2));
+        Assert.Equal("item3", item2);
+    }
+
+    [Fact]
+    public void Load_WithNestedConfigArray_ShouldFlattenWithSectionAndIndex()
+    {
+        // Arrange — mirrors the real StateHouseholdId config structure
+        var profile = new AppConfigAgentProfile
+        {
+            BaseUrl = "http://localhost:2772",
+            ApplicationId = "test-app",
+            EnvironmentId = "test-env",
+            ProfileId = "test-profile",
+            IsFeatureFlag = false
+        };
+
+        var configJson = new
+        {
+            StateHouseholdId = new
+            {
+                PreferredHouseholdIdTypes = new[] { "Phone" }
+            }
+        };
+
+        _mockHttpHandler
+            .When("http://localhost:2772/applications/test-app/environments/test-env/configurations/test-profile")
+            .Respond(HttpStatusCode.OK, "application/json", JsonSerializer.Serialize(configJson));
+
+        var provider = new AppConfigAgentConfigurationProvider(_httpClient, profile, _logger, ownsHttpClient: false);
+
+        // Act
+        provider.Load();
+
+        // Assert
+        Assert.True(provider.TryGet("StateHouseholdId:PreferredHouseholdIdTypes:0", out var type0));
+        Assert.Equal("Phone", type0);
+    }
+
+    [Fact]
+    public void Load_WithArrayOfObjects_ShouldFlattenWithIndexAndPropertyKeys()
+    {
+        // Arrange
+        var profile = new AppConfigAgentProfile
+        {
+            BaseUrl = "http://localhost:2772",
+            ApplicationId = "test-app",
+            EnvironmentId = "test-env",
+            ProfileId = "test-profile",
+            IsFeatureFlag = false
+        };
+
+        var configJson = new
+        {
+            Items = new[]
+            {
+                new { Name = "first", Value = 1 },
+                new { Name = "second", Value = 2 }
+            }
+        };
+
+        _mockHttpHandler
+            .When("http://localhost:2772/applications/test-app/environments/test-env/configurations/test-profile")
+            .Respond(HttpStatusCode.OK, "application/json", JsonSerializer.Serialize(configJson));
+
+        var provider = new AppConfigAgentConfigurationProvider(_httpClient, profile, _logger, ownsHttpClient: false);
+
+        // Act
+        provider.Load();
+
+        // Assert
+        Assert.True(provider.TryGet("Items:0:Name", out var name0));
+        Assert.Equal("first", name0);
+        Assert.True(provider.TryGet("Items:0:Value", out var value0));
+        Assert.Equal("1", value0);
+        Assert.True(provider.TryGet("Items:1:Name", out var name1));
+        Assert.Equal("second", name1);
+        Assert.True(provider.TryGet("Items:1:Value", out var value1));
+        Assert.Equal("2", value1);
+    }
+
+    [Fact]
+    public void Load_WithEmptyArray_ShouldProduceNoKeys()
+    {
+        // Arrange
+        var profile = new AppConfigAgentProfile
+        {
+            BaseUrl = "http://localhost:2772",
+            ApplicationId = "test-app",
+            EnvironmentId = "test-env",
+            ProfileId = "test-profile",
+            IsFeatureFlag = false
+        };
+
+        // Use raw JSON since anonymous types can't express empty typed arrays cleanly
+        var configJson = """{"Key1": "value1", "EmptyArray": []}""";
+
+        _mockHttpHandler
+            .When("http://localhost:2772/applications/test-app/environments/test-env/configurations/test-profile")
+            .Respond(HttpStatusCode.OK, "application/json", configJson);
+
+        var provider = new AppConfigAgentConfigurationProvider(_httpClient, profile, _logger, ownsHttpClient: false);
+
+        // Act
+        provider.Load();
+
+        // Assert
+        Assert.True(provider.TryGet("Key1", out var key1));
+        Assert.Equal("value1", key1);
+        Assert.False(provider.TryGet("EmptyArray:0", out _));
+    }
+
+    [Fact]
+    public void Load_WithMixedTypeArray_ShouldFlattenAllElementTypes()
+    {
+        // Arrange
+        var profile = new AppConfigAgentProfile
+        {
+            BaseUrl = "http://localhost:2772",
+            ApplicationId = "test-app",
+            EnvironmentId = "test-env",
+            ProfileId = "test-profile",
+            IsFeatureFlag = false
+        };
+
+        // Mixed types require raw JSON
+        var configJson = """{"Mixed": ["text", 42, true, false, null]}""";
+
+        _mockHttpHandler
+            .When("http://localhost:2772/applications/test-app/environments/test-env/configurations/test-profile")
+            .Respond(HttpStatusCode.OK, "application/json", configJson);
+
+        var provider = new AppConfigAgentConfigurationProvider(_httpClient, profile, _logger, ownsHttpClient: false);
+
+        // Act
+        provider.Load();
+
+        // Assert
+        Assert.True(provider.TryGet("Mixed:0", out var v0));
+        Assert.Equal("text", v0);
+        Assert.True(provider.TryGet("Mixed:1", out var v1));
+        Assert.Equal("42", v1);
+        Assert.True(provider.TryGet("Mixed:2", out var v2));
+        Assert.Equal("true", v2);
+        Assert.True(provider.TryGet("Mixed:3", out var v3));
+        Assert.Equal("false", v3);
+        Assert.True(provider.TryGet("Mixed:4", out var v4));
+        Assert.Null(v4);
     }
 
     [Fact]

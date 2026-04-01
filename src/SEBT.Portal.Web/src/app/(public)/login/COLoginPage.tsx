@@ -7,6 +7,7 @@ import {
   generateCodeChallenge,
   generateCodeVerifier,
   generateState,
+  getOidcRedirectUriForCurrentOrigin,
   savePkceForCallback
 } from '@/lib/oidc-pkce'
 import { getTranslations } from '@/lib/translations'
@@ -36,12 +37,13 @@ export function COLoginPage({ state }: { state: StateCode }) {
       const codeVerifier = generateCodeVerifier()
       const codeChallenge = await generateCodeChallenge(codeVerifier)
       const stateValue = generateState()
+      const redirectUri = getOidcRedirectUriForCurrentOrigin()
       savePkceForCallback(stateValue, codeVerifier, {
-        redirectUri: config.redirectUri,
+        redirectUri,
         tokenEndpoint: config.tokenEndpoint,
         clientId: config.clientId
       })
-      const authUrl = buildAuthorizationUrl(config, codeChallenge, stateValue)
+      const authUrl = buildAuthorizationUrl({ ...config, redirectUri }, codeChallenge, stateValue)
       window.location.href = authUrl
     } catch {
       // Error state is managed by useMutation — no additional handling needed

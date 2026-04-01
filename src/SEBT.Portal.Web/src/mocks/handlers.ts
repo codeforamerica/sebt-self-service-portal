@@ -6,11 +6,9 @@
  */
 import { delay, http, HttpResponse } from 'msw'
 
-import type {
-  RequestOtpRequest,
-  SubmitIdProofingRequest,
-  ValidateOtpRequest
-} from '@/features/auth'
+import type { RequestOtpRequest } from '@/features/auth/api/request-otp/schema'
+import type { SubmitIdProofingRequest } from '@/features/auth/api/submit-id-proofing/schema'
+import type { ValidateOtpRequest } from '@/features/auth/api/validate-otp/schema'
 
 // Test email addresses for different scenarios
 export const TEST_EMAILS = {

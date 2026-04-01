@@ -6,8 +6,7 @@
  * - Missing code/state parameters
  * - PKCE session expired (no stored PKCE)
  * - PKCE state mismatch
- * - Token exchange failure
- * - Complete-login failure
+ * - Exchange-code failure
  */
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { render, screen, waitFor } from '@testing-library/react'
@@ -29,12 +28,12 @@ vi.mock('next/navigation', () => ({
   })
 }))
 
-// Mock auth context
-const mockLogin = vi.fn()
-vi.mock('@/features/auth', async (importOriginal) => {
-  const actual = (await importOriginal()) as Record<string, unknown>
+// Mock @/features/auth without loading the barrel (barrel pulls IalGuard → @/env and breaks Vitest).
+const { mockLogin } = vi.hoisted(() => ({ mockLogin: vi.fn() }))
+vi.mock('@/features/auth', async () => {
+  const api = await vi.importActual<typeof import('@/features/auth/api')>('@/features/auth/api')
   return {
-    ...actual,
+    ...api,
     useAuth: () => ({
       login: mockLogin,
       isAuthenticated: false,
@@ -54,7 +53,9 @@ vi.mock('@/lib/translations', () => ({
         callbackErrorMissingParams: 'Missing sign-in information.',
         callbackErrorSessionExpired: 'Session expired.',
         callbackErrorStateMismatch: 'State mismatch.',
-        callbackErrorGeneric: 'Something went wrong.'
+        callbackErrorGeneric: 'Something went wrong.',
+        callbackErrorStepUpFailed: 'Step-up verification did not finish.',
+        callbackErrorIdpRedirect: 'Primary MyColorado sign-in did not finish.'
       }
     }
     /* eslint-disable security/detect-object-injection -- test mock */
@@ -177,10 +178,10 @@ describe('CallbackPage', () => {
         token_endpoint: 'https://auth.example.com/token',
         client_id: 'test-client'
       })
-      // Override MSW handlers to accept stateCode 'co' (mock getState returns 'co')
+      // getState returns 'co'; flow is callback (returns callbackToken) then complete-login (returns token)
       server.use(
         http.post('/api/auth/oidc/callback', () => {
-          return HttpResponse.json({ callbackToken: 'mock-callback-token' })
+          return HttpResponse.json({ callbackToken: 'mock-callback-token-for-testing' })
         }),
         http.post('/api/auth/oidc/complete-login', () => {
           return HttpResponse.json({ token: 'mock-jwt-token-for-testing' })
@@ -214,7 +215,7 @@ describe('CallbackPage', () => {
       })
     })
 
-    it('shows error when callback endpoint fails', async () => {
+    it('shows error when exchange-code endpoint fails', async () => {
       server.use(
         http.post('/api/auth/oidc/callback', () => {
           return HttpResponse.json({ error: 'Token exchange failed' }, { status: 400 })
@@ -224,24 +225,64 @@ describe('CallbackPage', () => {
       renderCallbackPage()
 
       await waitFor(() => {
-        expect(screen.getByText('Something went wrong.')).toBeInTheDocument()
+        expect(screen.getByText('Token exchange failed')).toBeInTheDocument()
       })
     })
+  })
 
-    it('shows error when complete-login endpoint fails', async () => {
-      server.use(
-        http.post('/api/auth/oidc/callback', () => {
-          return HttpResponse.json({ callbackToken: 'mock-callback-token' })
-        }),
-        http.post('/api/auth/oidc/complete-login', () => {
-          return HttpResponse.json({ error: 'Invalid token' }, { status: 400 })
-        })
-      )
+  describe('IdP error redirect (?error=)', () => {
+    it('shows step-up message when PKCE marks isStepUp', async () => {
+      mockGetPkce.mockReturnValue({ isStepUp: true })
+      Object.defineProperty(window, 'location', {
+        value: {
+          search: '?error=access_denied&error_description=User+cancelled',
+          href: 'http://localhost:3000/callback?error=access_denied'
+        },
+        writable: true
+      })
 
       renderCallbackPage()
 
       await waitFor(() => {
-        expect(screen.getByText('Something went wrong.')).toBeInTheDocument()
+        expect(
+          screen.getByText('Step-up verification did not finish. User cancelled')
+        ).toBeInTheDocument()
+      })
+    })
+
+    it('shows primary sign-in message when not step-up', async () => {
+      mockGetPkce.mockReturnValue({ isStepUp: false })
+      Object.defineProperty(window, 'location', {
+        value: {
+          search: '?error=access_denied&error_description=User+cancelled',
+          href: 'http://localhost:3000/callback?error=access_denied'
+        },
+        writable: true
+      })
+
+      renderCallbackPage()
+
+      await waitFor(() => {
+        expect(
+          screen.getByText('Primary MyColorado sign-in did not finish. User cancelled')
+        ).toBeInTheDocument()
+      })
+    })
+
+    it('treats missing PKCE as primary sign-in for IdP error copy', async () => {
+      mockGetPkce.mockReturnValue(null)
+      Object.defineProperty(window, 'location', {
+        value: {
+          search: '?error=server_error',
+          href: 'http://localhost:3000/callback?error=server_error'
+        },
+        writable: true
+      })
+
+      renderCallbackPage()
+
+      await waitFor(() => {
+        expect(screen.getByText('Primary MyColorado sign-in did not finish.')).toBeInTheDocument()
       })
     })
   })

@@ -1,3 +1,5 @@
+using SEBT.Portal.Core.Seeding;
+
 namespace SEBT.Portal.Core.AppSettings;
 
 /// <summary>
@@ -15,6 +17,14 @@ public class SeedingSettings
     public string EmailPattern { get; set; } = "{0}@example.com";
 
     /// <summary>
+    /// When set (e.g. in appsettings.Development.json), the co-loaded seed user and mock household
+    /// keyed to that user use this email instead of <see cref="EmailPattern"/>.
+    /// Remove or leave empty to use the default pattern. If you already have <c>co-loaded@example.com</c>
+    /// in the database, delete that user or clear seeded data before re-seeding.
+    /// </summary>
+    public string? CoLoadedSeedEmailOverride { get; set; }
+
+    /// <summary>
     /// When true, database seeding runs even outside the Development environment.
     /// Default: false (seeding only runs when ASPNETCORE_ENVIRONMENT is Development).
     /// </summary>
@@ -25,6 +35,14 @@ public class SeedingSettings
     /// </summary>
     /// <param name="scenarioName">The scenario name (e.g., "co-loaded", "verified").</param>
     /// <returns>The full email address.</returns>
-    public string BuildEmail(string scenarioName) =>
-        string.Format(EmailPattern, scenarioName);
+    public string BuildEmail(string scenarioName)
+    {
+        if (!string.IsNullOrWhiteSpace(CoLoadedSeedEmailOverride)
+            && string.Equals(scenarioName, SeedScenarios.CoLoaded.Name, StringComparison.Ordinal))
+        {
+            return CoLoadedSeedEmailOverride.Trim();
+        }
+
+        return string.Format(EmailPattern, scenarioName);
+    }
 }
