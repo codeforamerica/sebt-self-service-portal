@@ -1,20 +1,22 @@
 'use client'
 
 import { apiFetch } from '@/api'
+import { setAuthToken, useAuth } from '@/features/auth'
 import {
   OidcCallbackTokenResponseSchema,
-  OidcCompleteLoginResponseSchema,
-  setAuthToken,
-  useAuth
-} from '@/features/auth'
+  OidcCompleteLoginResponseSchema
+} from '@/features/auth/api/oidc/schema'
 import { clearPkceStorage, getPkceFromStorage } from '@/lib/oidc-pkce'
 import { getTranslations } from '@/lib/translations'
 import { Alert, getState } from '@sebt/design-system'
 import { useRouter } from 'next/navigation'
 import { useEffect, useRef, useState } from 'react'
 
+type CallbackStep = 'loading' | 'have_code_state' | 'have_pkce' | 'exchanging' | 'error'
+
 /**
  * OIDC callback: state IdP redirects here with ?code=...&state=...
+ * We send code + code_verifier to Next.js /api/auth/oidc/callback; it exchanges with IdP, returns callbackToken.
  * We then send callbackToken to the .NET complete-login endpoint to create session and get the portal JWT.
  */
 export default function CallbackPage() {
@@ -22,6 +24,7 @@ export default function CallbackPage() {
   const { login } = useAuth()
   const t = getTranslations('login')
   const [status, setStatus] = useState<'loading' | 'error'>('loading')
+  const [step, setStep] = useState<CallbackStep>('loading')
   const [errorDetail, setErrorDetail] = useState<string | null>(null)
   const exchangeStartedRef = useRef(false)
 
@@ -51,10 +54,12 @@ export default function CallbackPage() {
     if (!code || !state) {
       queueMicrotask(() => {
         setErrorDetail(t('callbackErrorMissingParams'))
+        setStep('error')
         setStatus('error')
       })
       return
     }
+    queueMicrotask(() => setStep('have_code_state'))
 
     if (exchangeStartedRef.current) return
     exchangeStartedRef.current = true
@@ -63,30 +68,32 @@ export default function CallbackPage() {
     async function run() {
       const stored = getPkceFromStorage()
       if (!stored) {
+        setErrorDetail(t('callbackErrorSessionExpired'))
         clearPkceStorage()
         if (!cancelled) {
-          setErrorDetail(t('callbackErrorSessionExpired'))
+          setStep('error')
           setStatus('error')
         }
         return
       }
       if (stored.state !== state) {
+        setErrorDetail(t('callbackErrorStateMismatch'))
         clearPkceStorage()
         if (!cancelled) {
-          setErrorDetail(t('callbackErrorStateMismatch'))
+          setStep('error')
           setStatus('error')
         }
         return
       }
-
+      setStep('have_pkce')
       const isStepUp = stored.isStepUp === true
+      const returnUrl = stored.returnUrl ?? ''
       clearPkceStorage()
 
       try {
-        const returnUrl = stored.returnUrl ?? ''
+        setStep('exchanging')
+        const stateCode = getState()
 
-        // Exchange authorization code for a short-lived callback token (via Next.js server).
-        // Pass redirect_uri from PKCE storage — must match exactly what was sent in the auth request.
         const { callbackToken } = await apiFetch('/auth/oidc/callback', {
           method: 'POST',
           body: {
@@ -94,18 +101,17 @@ export default function CallbackPage() {
             code_verifier: stored.code_verifier,
             redirectUri: stored.redirect_uri,
             state,
-            stateCode: getState(),
+            stateCode,
             isStepUp
           },
           schema: OidcCallbackTokenResponseSchema
         })
         if (cancelled) return
 
-        // Complete login with .NET backend — validates callback token, creates portal JWT
         const response = await apiFetch('/auth/oidc/complete-login', {
           method: 'POST',
           body: {
-            stateCode: getState(),
+            stateCode,
             callbackToken,
             isStepUp,
             returnUrl: returnUrl || undefined
@@ -116,16 +122,17 @@ export default function CallbackPage() {
 
         const { token, returnUrl: resolvedReturnUrl } = response
 
-        // Persist to sessionStorage and notify auth context
         setAuthToken(token)
         login(token)
-        // Ensure token is stored and listeners have run before navigating
         await new Promise((resolve) => setTimeout(resolve, 0))
         const destination = isStepUp && resolvedReturnUrl ? resolvedReturnUrl : '/dashboard'
         router.replace(destination)
-      } catch {
+      } catch (e) {
+        const errMsg =
+          e instanceof Error ? e.message : typeof e === 'string' ? e : t('callbackErrorGeneric')
+        setErrorDetail(errMsg || t('callbackErrorGeneric'))
         if (!cancelled) {
-          setErrorDetail(t('callbackErrorGeneric'))
+          setStep('error')
           setStatus('error')
         }
       }
@@ -133,8 +140,11 @@ export default function CallbackPage() {
     run()
     return () => {
       cancelled = true
+      // React Strict Mode remounts effects: allow the next mount to run the exchange;
+      // otherwise ref stays true and the retried effect bails while the aborted run skipped navigation.
+      exchangeStartedRef.current = false
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- t (getTranslations) is a static lookup, not a reactive dependency
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- t (getTranslations) is a static lookup
   }, [login, router])
 
   useEffect(() => {
@@ -145,6 +155,14 @@ export default function CallbackPage() {
     }
     return undefined
   }, [status, router])
+
+  const stepMessage: Record<CallbackStep, string> = {
+    loading: t('callbackSigningIn'),
+    have_code_state: t('callbackSigningIn'),
+    have_pkce: t('callbackSigningIn'),
+    exchanging: t('callbackSigningIn'),
+    error: errorDetail ?? t('callbackErrorGeneric')
+  }
 
   return (
     <div className="usa-section">
@@ -161,7 +179,7 @@ export default function CallbackPage() {
             {errorDetail}
           </Alert>
         ) : (
-          <p className="font-sans-md">{t('callbackSigningIn')}</p>
+          <p className="font-sans-md">{stepMessage[step]}</p>
         )}
       </div>
     </div>

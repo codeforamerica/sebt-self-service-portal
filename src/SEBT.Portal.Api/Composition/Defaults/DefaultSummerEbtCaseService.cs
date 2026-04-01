@@ -12,6 +12,17 @@ namespace SEBT.Portal.Api.Composition.Defaults;
 internal sealed class DefaultSummerEbtCaseService : ISummerEbtCaseService
 {
     /// <inheritdoc />
+    public Task<HouseholdData?> GetHouseholdByIdentifierAsync(
+        HouseholdIdentifierType identifierType,
+        string identifierValue,
+        PiiVisibility piiVisibility,
+        IdentityAssuranceLevel identityAssuranceLevel,
+        CancellationToken cancellationToken = default)
+    {
+        return Task.FromResult<HouseholdData?>(null);
+    }
+
+    /// <inheritdoc />
     public Task<HouseholdData?> GetHouseholdByGuardianEmailAsync(
         string guardianEmail,
         PiiVisibility piiVisibility,

@@ -1,4 +1,6 @@
+using System.Linq;
 using System.Security.Claims;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using SEBT.Portal.Core.AppSettings;
 using SEBT.Portal.Core.Models.Auth;
@@ -10,19 +12,27 @@ using SEBT.Portal.Core.Utilities;
 namespace SEBT.Portal.Infrastructure.Services;
 
 /// <summary>
-/// Resolves the preferred household identifier from the authenticated user's server-side record.
+/// Resolves the preferred household identifier from the authenticated user.
+/// For states that do not persist PII, phone can be resolved from the JWT only.
+/// In Development, a configured phone override (DevelopmentPhoneOverride:Phone) takes precedence over JWT/user.
 /// </summary>
 public class HouseholdIdentifierResolver : IHouseholdIdentifierResolver
 {
     private readonly StateHouseholdIdSettings _settings;
     private readonly IUserRepository _userRepository;
+    private readonly IPhoneOverrideProvider _phoneOverrideProvider;
+    private readonly ILogger<HouseholdIdentifierResolver>? _logger;
 
     public HouseholdIdentifierResolver(
         IOptions<StateHouseholdIdSettings> settings,
-        IUserRepository userRepository)
+        IUserRepository userRepository,
+        IPhoneOverrideProvider phoneOverrideProvider,
+        ILogger<HouseholdIdentifierResolver>? logger = null)
     {
         _settings = settings.Value;
         _userRepository = userRepository;
+        _phoneOverrideProvider = phoneOverrideProvider;
+        _logger = logger;
     }
 
     /// <inheritdoc />
@@ -49,14 +59,46 @@ public class HouseholdIdentifierResolver : IHouseholdIdentifierResolver
         }
 
         var preferredTypes = _settings.PreferredHouseholdIdTypes;
-        if (preferredTypes == null || preferredTypes.Count == 0)
+        if (preferredTypes == null)
         {
-            preferredTypes = [PreferredHouseholdIdType.Email];
+            throw new InvalidOperationException(
+                "StateHouseholdId:PreferredHouseholdIdTypes is null. Configure StateHouseholdId:PreferredHouseholdIdTypes in appsettings.json");
+        }
+        if (preferredTypes.Count == 0)
+        {
+            throw new InvalidOperationException(
+                "StateHouseholdId:PreferredHouseholdIdTypes is empty. Configure at least one preferred type");
+        }
+
+        _logger?.LogDebug(
+            "Resolving household identifier; preferred types: [{Types}]",
+            string.Join(", ", preferredTypes.Select(t => t.ToString())));
+
+        if (preferredTypes.Contains(PreferredHouseholdIdType.Phone))
+        {
+            var overridePhone = _phoneOverrideProvider.GetOverridePhone();
+            if (!string.IsNullOrWhiteSpace(overridePhone))
+            {
+                _logger?.LogDebug("Using development phone override for household lookup ");
+                return new HouseholdIdentifier(PreferredHouseholdIdType.Phone, overridePhone);
+            }
+
+            var phoneFromClaims = GetValueFromClaims(principal, PreferredHouseholdIdType.Phone);
+            if (!string.IsNullOrWhiteSpace(phoneFromClaims))
+            {
+                var normalized = phoneFromClaims.Trim();
+                if (!string.IsNullOrWhiteSpace(normalized))
+                {
+                    _logger?.LogDebug("Using phone from JWT claims for household lookup");
+                    return new HouseholdIdentifier(PreferredHouseholdIdType.Phone, normalized);
+                }
+            }
         }
 
         foreach (var preferredType in preferredTypes)
         {
-            var value = GetValueFromUser(user, preferredType);
+            var value = GetValueFromUser(user, preferredType)
+                ?? GetValueFromClaims(principal, preferredType);
             if (!string.IsNullOrWhiteSpace(value))
             {
                 var normalized = Normalize(preferredType, value);
@@ -77,12 +119,29 @@ public class HouseholdIdentifierResolver : IHouseholdIdentifierResolver
     {
         var email = principal.FindFirst(ClaimTypes.Email)?.Value
             ?? principal.FindFirst(ClaimTypes.NameIdentifier)?.Value
+            ?? principal.FindFirst("email")?.Value
+            ?? principal.FindFirst("sub")?.Value
             ?? principal.Identity?.Name;
         return string.IsNullOrWhiteSpace(email) ? null : email.Trim();
     }
 
     /// <summary>
-    /// Gets the household identifier value from the user record (server-side only; never from JWT).
+    /// Gets the household identifier value from JWT claims when not persisted.
+    /// Only supports types that IdPs commonly put in the token.
+    /// </summary>
+    private static string? GetValueFromClaims(ClaimsPrincipal principal, PreferredHouseholdIdType type)
+    {
+        if (type == PreferredHouseholdIdType.Phone)
+        {
+            var phone = principal.FindFirst("phone")?.Value
+                ?? principal.FindFirst("phone_number")?.Value;
+            return string.IsNullOrWhiteSpace(phone) ? null : phone.Trim();
+        }
+        return null;
+    }
+
+    /// <summary>
+    /// Gets the household identifier value from the user record
     /// </summary>
     private static string? GetValueFromUser(Core.Models.Auth.User user, PreferredHouseholdIdType type)
     {

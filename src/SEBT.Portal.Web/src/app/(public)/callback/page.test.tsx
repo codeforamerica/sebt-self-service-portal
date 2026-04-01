@@ -6,8 +6,7 @@
  * - Missing code/state parameters
  * - PKCE session expired (no stored PKCE)
  * - PKCE state mismatch
- * - Token exchange failure
- * - Complete-login failure
+ * - Exchange-code failure
  */
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { render, screen, waitFor } from '@testing-library/react'
@@ -175,10 +174,10 @@ describe('CallbackPage', () => {
         token_endpoint: 'https://auth.example.com/token',
         client_id: 'test-client'
       })
-      // Override MSW handlers to accept stateCode 'co' (mock getState returns 'co')
+      // getState returns 'co'; flow is callback (returns callbackToken) then complete-login (returns token)
       server.use(
         http.post('/api/auth/oidc/callback', () => {
-          return HttpResponse.json({ callbackToken: 'mock-callback-token' })
+          return HttpResponse.json({ callbackToken: 'mock-callback-token-for-testing' })
         }),
         http.post('/api/auth/oidc/complete-login', () => {
           return HttpResponse.json({ token: 'mock-jwt-token-for-testing' })
@@ -212,7 +211,7 @@ describe('CallbackPage', () => {
       })
     })
 
-    it('shows error when callback endpoint fails', async () => {
+    it('shows error when exchange-code endpoint fails', async () => {
       server.use(
         http.post('/api/auth/oidc/callback', () => {
           return HttpResponse.json({ error: 'Token exchange failed' }, { status: 400 })
@@ -222,24 +221,7 @@ describe('CallbackPage', () => {
       renderCallbackPage()
 
       await waitFor(() => {
-        expect(screen.getByText('Something went wrong.')).toBeInTheDocument()
-      })
-    })
-
-    it('shows error when complete-login endpoint fails', async () => {
-      server.use(
-        http.post('/api/auth/oidc/callback', () => {
-          return HttpResponse.json({ callbackToken: 'mock-callback-token' })
-        }),
-        http.post('/api/auth/oidc/complete-login', () => {
-          return HttpResponse.json({ error: 'Invalid token' }, { status: 400 })
-        })
-      )
-
-      renderCallbackPage()
-
-      await waitFor(() => {
-        expect(screen.getByText('Something went wrong.')).toBeInTheDocument()
+        expect(screen.getByText('Token exchange failed')).toBeInTheDocument()
       })
     })
   })

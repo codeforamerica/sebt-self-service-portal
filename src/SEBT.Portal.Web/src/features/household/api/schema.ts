@@ -142,6 +142,29 @@ export const AddressSchema = z.object({
 
 export type Address = z.infer<typeof AddressSchema>
 
+export const SummerEbtCaseSchema = z.object({
+  summerEBTCaseID: z.string().nullable().optional(),
+  applicationId: z.string().nullable().optional(),
+  applicationStudentId: z.string().nullable().optional(),
+  childFirstName: z.string(),
+  childLastName: z.string(),
+  childDateOfBirth: z.string().nullable().optional(),
+  householdType: z.string(),
+  eligibilityType: z.string(),
+  applicationDate: z.string().nullable().optional(),
+  applicationStatus: ApplicationStatusSchema.nullable().optional(),
+  mailingAddress: AddressSchema.nullable().optional(),
+  ebtCaseNumber: z.string().nullable().optional(),
+  ebtCardLastFour: z.string().nullable().optional(),
+  ebtCardStatus: z.string().nullable().optional(),
+  ebtCardIssueDate: z.string().nullable().optional(),
+  ebtCardBalance: z.number().nullable().optional(),
+  benefitAvailableDate: z.string().nullable().optional(),
+  benefitExpirationDate: z.string().nullable().optional()
+})
+
+export type SummerEbtCase = z.infer<typeof SummerEbtCaseSchema>
+
 export const ApplicationSchema = z.object({
   applicationNumber: z.string().nullable().optional(),
   caseNumber: z.string().nullable().optional(),
@@ -173,6 +196,7 @@ export const HouseholdDataSchema = z.object({
   // email is optional to support IAL authorization where user may not have access to PII
   email: z.string().nullable().optional(),
   phone: z.string().nullable().optional(),
+  summerEbtCases: z.array(SummerEbtCaseSchema).optional().default([]),
   applications: z.array(ApplicationSchema),
   addressOnFile: AddressSchema.nullable().optional(),
   userProfile: UserProfileSchema.nullable().optional(),

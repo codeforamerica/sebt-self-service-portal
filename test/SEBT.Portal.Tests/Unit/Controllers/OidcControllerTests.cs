@@ -1,4 +1,5 @@
 using System.IdentityModel.Tokens.Jwt;
+using System.Net.Http;
 using System.Security.Claims;
 using System.Text;
 using Microsoft.AspNetCore.Mvc;
@@ -6,6 +7,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.IdentityModel.Tokens;
 using NSubstitute;
+using RichardSzalay.MockHttp;
 using SEBT.Portal.Api.Controllers.Auth;
 using SEBT.Portal.Api.Models;
 using SEBT.Portal.Core.Models.Auth;
@@ -15,7 +17,7 @@ using SEBT.Portal.Core.Services;
 namespace SEBT.Portal.Tests.Unit.Controllers;
 
 /// <summary>
-/// Unit tests for <see cref="OidcController"/> (OIDC endpoints; flat config under Oidc).
+/// Unit tests for <see cref="OidcController"/> (OIDC endpoints; Oidc config
 /// </summary>
 public class OidcControllerTests
 {
@@ -68,6 +70,29 @@ public class OidcControllerTests
     }
 
     [Fact]
+    public async Task GetConfig_WhenConfigSet_Returns200()
+    {
+        const string discoveryUrl = "https://auth.example.com/.well-known/openid-configuration";
+        const string discoveryJson = """{"authorization_endpoint":"https://auth.example.com/authorize","token_endpoint":"https://auth.example.com/token"}""";
+
+        _config["Oidc:DiscoveryEndpoint"].Returns(discoveryUrl);
+        _config["Oidc:ClientId"].Returns("client-id");
+        _config["Oidc:CallbackRedirectUri"].Returns("http://localhost:3000/callback");
+
+        var mockHttp = new MockHttpMessageHandler();
+        mockHttp.When(HttpMethod.Get, discoveryUrl).Respond("application/json", discoveryJson);
+        var client = new HttpClient(mockHttp);
+        _httpFactory.CreateClient().Returns(client);
+
+        var result = await _controller.GetConfig(CoStateKey, cancellationToken: CancellationToken.None);
+
+        var okResult = Assert.IsType<OkObjectResult>(result);
+        Assert.NotNull(okResult.Value);
+        var valueType = okResult.Value.GetType();
+        Assert.Equal("client-id", valueType.GetProperty("clientId")?.GetValue(okResult.Value));
+    }
+
+    [Fact]
     public async Task CompleteLogin_WhenBodyNull_Returns400()
     {
         var result = await _controller.CompleteLogin(null, CancellationToken.None);
@@ -111,22 +136,22 @@ public class OidcControllerTests
     }
 
     /// <summary>
-    /// Callback token must contain an explicit email claim
+    /// Callback token must contain an email or sub claim usable as login identifier.
     /// </summary>
     [Fact]
-    public async Task CompleteLogin_WhenCallbackTokenHasNoEmailClaim_Returns400()
+    public async Task CompleteLogin_WhenCallbackTokenHasNoEmailOrSub_Returns400()
     {
         const string signingKey = "complete-login-signing-key-at-least-32-characters-long";
         _config["Oidc:CompleteLoginSigningKey"].Returns(signingKey);
 
-        var callbackToken = CreateCallbackTokenWithClaims(signingKey, new Claim("sub", "24400320"));
+        var callbackToken = CreateCallbackTokenWithClaims(signingKey, new Claim("given_name", "Pat"));
         var body = new CompleteLoginRequest(CoStateKey, callbackToken);
 
         var result = await _controller.CompleteLogin(body, CancellationToken.None);
 
         var badRequest = Assert.IsType<BadRequestObjectResult>(result);
         var errorResponse = Assert.IsType<ErrorResponse>(badRequest.Value);
-        Assert.Equal("Callback token must contain an email claim.", errorResponse.Error);
+        Assert.Equal("Callback token must contain an email or sub claim.", errorResponse.Error);
     }
 
     /// <summary>
@@ -251,7 +276,14 @@ public class OidcControllerTests
 
     private static string CreateValidCallbackToken(string signingKey, string email)
     {
-        return CreateCallbackTokenWithClaims(signingKey, new Claim("email", email));
+        var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(signingKey));
+        var credentials = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
+        var claims = new List<Claim> { new("email", email) };
+        var token = new JwtSecurityToken(
+            claims: claims,
+            expires: DateTime.UtcNow.AddMinutes(5),
+            signingCredentials: credentials);
+        return new JwtSecurityTokenHandler().WriteToken(token);
     }
 
     private static string CreateCallbackTokenWithClaims(string signingKey, params Claim[] claims)

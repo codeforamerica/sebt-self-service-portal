@@ -10,6 +10,10 @@ import { render, screen } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import LoginPage from './page'
 
+vi.mock('next/navigation', () => ({
+  useRouter: () => ({ replace: vi.fn(), push: vi.fn() })
+}))
+
 vi.mock('@sebt/design-system', () => ({
   getState: vi.fn(),
   getStateLinks: vi.fn().mockReturnValue({ external: { contactUsAssistance: '' } }),
@@ -43,6 +47,7 @@ vi.mock('@/lib/translations', () => ({
 
 vi.mock('@/features/auth', () => ({
   LoginForm: () => <div data-testid="login-form">LoginForm</div>,
+  useAuth: () => ({ isAuthenticated: false }),
   OidcConfigResponseSchema: {},
   OidcCallbackTokenResponseSchema: {},
   OidcCompleteLoginResponseSchema: {}

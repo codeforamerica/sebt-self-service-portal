@@ -369,7 +369,7 @@ public class DatabaseSeederTests : IClassFixture<SqlServerTestFixture>
         // Act
         await seeder.SeedTestUsersAsync();
 
-        // Assert - Should have 3 users total
+        // Assert - Should have 3 users total (1 existing + 2 new)
         var users = await context.Users.ToListAsync();
         Assert.Equal(3, users.Count);
     }
@@ -636,7 +636,7 @@ public class DatabaseSeederTests : IClassFixture<SqlServerTestFixture>
         // Act
         await seeder.SeedTestUsersAsync();
 
-        // Assert
+        // Assert - 3 from custom pattern
         var users = await context.Users.ToListAsync();
         Assert.Equal(3, users.Count);
 
