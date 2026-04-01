@@ -109,9 +109,10 @@ module "app" {
   enable_appconfig       = true
 
   state_api_environment_variables = {
-    "Oidc__DiscoveryEndpoint"               = var.oidc_discovery_endpoint
-    "Oidc__CallbackRedirectUri"             = "https://${var.domain}/callback"
-    "Oidc__LanguageParam"                   = "en"
+    "Oidc__DiscoveryEndpoint"                          = var.oidc_discovery_endpoint
+    "Oidc__CallbackRedirectUri"                        = "https://${var.domain}/callback"
+    "Oidc__LanguageParam"                              = "en"
+    "StateHouseholdId__PreferredHouseholdIdTypes__0"   = "Phone"
   }
 
   state_api_environment_secrets = {
