@@ -286,7 +286,7 @@ library was loaded, this function would execute at the end of the
 					event.scope.includes("analytics") &&
 					  window.mixpanel
 				  ) {
-					mixpanel.track(event.eventName, event.eventData);
+					mixpanel.track(event.detail?.name, event.detail?.data);
 				  }
 				}
 			  );
