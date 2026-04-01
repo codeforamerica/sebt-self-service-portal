@@ -45,11 +45,13 @@ export type SubmitIdProofingRequest = z.infer<typeof SubmitIdProofingRequestSche
 export const IdProofingResultSchema = z.enum(['matched', 'failed', 'documentVerificationRequired'])
 export type IdProofingResult = z.infer<typeof IdProofingResultSchema>
 
+// ASP.NET serializes C# nullable reference/value types as JSON null; `.optional()` only
+// allows undefined/missing keys, so use `.nullish()` for fields the API may emit as null.
 export const SubmitIdProofingResponseSchema = z.object({
   result: IdProofingResultSchema,
-  challengeId: z.string().optional(),
-  allowIdRetry: z.boolean().optional(),
-  canApply: z.boolean().optional(),
-  offboardingReason: z.string().optional()
+  challengeId: z.string().nullish(),
+  allowIdRetry: z.boolean().nullish(),
+  canApply: z.boolean().nullish(),
+  offboardingReason: z.string().nullish()
 })
 export type SubmitIdProofingResponse = z.infer<typeof SubmitIdProofingResponseSchema>

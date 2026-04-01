@@ -94,6 +94,32 @@ describe('useSubmitIdProofing', () => {
       expect(result.current.data).toEqual({ result: 'matched' })
     })
 
+    it('should accept JSON null for optional fields (ASP.NET nullable props) in a single request', async () => {
+      let requestCount = 0
+      server.use(
+        http.post('/api/id-proofing', async () => {
+          requestCount++
+          return HttpResponse.json({
+            result: 'documentVerificationRequired',
+            challengeId: '02bf1090-7b53-48fc-aa85-ce870cde5859',
+            allowIdRetry: true,
+            canApply: null,
+            offboardingReason: null
+          })
+        })
+      )
+
+      const { result } = renderHook(() => useSubmitIdProofing(), {
+        wrapper: createWrapper()
+      })
+
+      const data = await result.current.mutateAsync(VALID_PAYLOAD)
+
+      expect(requestCount).toBe(1)
+      expect(data.result).toBe('documentVerificationRequired')
+      expect(data.challengeId).toBe('02bf1090-7b53-48fc-aa85-ce870cde5859')
+    })
+
     it('should return failed result with canApply when id proofing fails', async () => {
       const failedPayload: SubmitIdProofingRequest = {
         dateOfBirth: { month: '01', day: '15', year: '1990' },

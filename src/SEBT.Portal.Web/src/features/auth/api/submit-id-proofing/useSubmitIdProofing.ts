@@ -1,6 +1,6 @@
 import { useMutation } from '@tanstack/react-query'
 
-import { ApiError, apiFetch } from '@/api'
+import { ApiError, ApiValidationError, apiFetch } from '@/api'
 
 import {
   SubmitIdProofingResponseSchema,
@@ -35,6 +35,10 @@ export function useSubmitIdProofing() {
   return useMutation({
     mutationFn: submitIdProofing,
     retry: (failureCount, error) => {
+      // Response/schema mismatch — retrying the same POST will not fix contract drift
+      if (error instanceof ApiValidationError) {
+        return false
+      }
       // Don't retry client errors (4xx) — these are validation/auth issues
       if (error instanceof ApiError && error.status >= 400 && error.status < 500) {
         return false
