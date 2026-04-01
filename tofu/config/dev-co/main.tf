@@ -108,20 +108,16 @@ module "app" {
   enable_execute_command = true
   enable_appconfig       = true
 
-  seeding_enabled         = "true"
-  seeding_email_pattern   = "sebt.co+{0}@codeforamerica.org"
-  use_mock_household_data = "true"
-
   state_api_environment_variables = {
-    "Oidc__DiscoveryEndpoint"  = var.oidc_discovery_endpoint
-    "Oidc__CallbackRedirectUri" = "https://${var.domain}/callback"
-    "Oidc__LanguageParam"      = "en"
+    "Oidc__DiscoveryEndpoint"               = var.oidc_discovery_endpoint
+    "Oidc__CallbackRedirectUri"             = "https://${var.domain}/callback"
+    "Oidc__LanguageParam"                   = "en"
   }
 
   state_api_environment_secrets = {
-    "Cbms__ClientId"               = "${module.state_secrets.secrets["cbms"].secret_arn}:client_id"
-    "Cbms__ClientSecret"           = "${module.state_secrets.secrets["cbms"].secret_arn}:client_secret"
-    "Oidc__ClientId"               = "${module.state_secrets.secrets["oidc"].secret_arn}:client_id"
+    "Cbms__ClientId"                = "${module.state_secrets.secrets["cbms"].secret_arn}:client_id"
+    "Cbms__ClientSecret"            = "${module.state_secrets.secrets["cbms"].secret_arn}:client_secret"
+    "Oidc__ClientId"                = "${module.state_secrets.secrets["oidc"].secret_arn}:client_id"
     "Oidc__CompleteLoginSigningKey" = "${module.state_secrets.secrets["oidc"].secret_arn}:complete_login_signing_key"
   }
 
@@ -132,8 +128,8 @@ module "app" {
   }
 
   state_web_environment_secrets = {
-    OIDC_CLIENT_ID                 = "${module.state_secrets.secrets["oidc"].secret_arn}:client_id"
-    OIDC_CLIENT_SECRET             = "${module.state_secrets.secrets["oidc"].secret_arn}:client_secret"
+    OIDC_CLIENT_ID                  = "${module.state_secrets.secrets["oidc"].secret_arn}:client_id"
+    OIDC_CLIENT_SECRET              = "${module.state_secrets.secrets["oidc"].secret_arn}:client_secret"
     OIDC_COMPLETE_LOGIN_SIGNING_KEY = "${module.state_secrets.secrets["oidc"].secret_arn}:complete_login_signing_key"
   }
 }
