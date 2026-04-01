@@ -42,7 +42,7 @@ public class RequestCardReplacementCommandHandler(
             return Result.Unauthorized("Unable to identify user from token.");
         }
 
-        var userIalLevel = command.User.GetIalLevel();
+        var userIalLevel = UserIalLevelExtensions.FromClaimsPrincipal(command.User);
 
         var household = await repository.GetHouseholdByIdentifierAsync(
             identifier,

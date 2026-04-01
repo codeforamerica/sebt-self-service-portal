@@ -32,7 +32,7 @@ public class GetHouseholdDataQueryHandler(
 
         logger.LogDebug("Household data request received for identifier type {Type}", identifier.Type);
 
-        var userIalLevel = query.User.GetIalLevel();
+        var userIalLevel = UserIalLevelExtensions.FromClaimsPrincipal(query.User);
         var piiVisibility = idProofingRequirementsService.GetPiiVisibility(userIalLevel);
 
         logger.LogDebug(
