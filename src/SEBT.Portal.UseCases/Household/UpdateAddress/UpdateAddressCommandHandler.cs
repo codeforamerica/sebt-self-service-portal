@@ -42,14 +42,16 @@ public class UpdateAddressCommandHandler(
         // infrastructure failures. Validation results (not_found, corrected) are deferred
         // until after the state-specific checks in Phase 2.
         AddressUpdateSuccess? smartySuccess = null;
-        string? smartyNotFoundMessage = null;
+        string? smartyFailureMessage = null;
+        IReadOnlyCollection<ValidationError>? smartyErrors = null;
 
         var addressOutcome = await addressUpdateService.ValidateAndNormalizeAsync(addressRequest, cancellationToken);
         switch (addressOutcome)
         {
             case ValidationFailedResult<AddressUpdateSuccess> addressValidationFailed:
                 logger.LogWarning("Address update failed verification or policy checks");
-                smartyNotFoundMessage = string.Join(" ", addressValidationFailed.Errors.Select(e => e.Message));
+                smartyErrors = addressValidationFailed.Errors;
+                smartyFailureMessage = string.Join(" ", smartyErrors.Select(e => e.Message));
                 break;
             case DependencyFailedResult<AddressUpdateSuccess> addressDependencyFailed:
                 logger.LogWarning(
@@ -101,11 +103,14 @@ public class UpdateAddressCommandHandler(
             return Result<AddressValidationResult>.Success(addressValidation);
         }
 
-        // Phase 3: Combine results. DC-160 checks passed, so fall back to Smarty's outcome.
-        if (smartyNotFoundMessage != null)
+        // Phase 3: Combine results. State-specific checks passed, so fall back to Smarty's outcome.
+        // Distinguish verification failures ("not_found") from policy rejections ("policy_violation").
+        // Verification errors use key "address"; policy errors (e.g. General Delivery) use field-specific keys.
+        if (smartyFailureMessage != null)
         {
+            var reason = smartyErrors!.All(e => e.Key == "address") ? "not_found" : "policy_violation";
             return Result<AddressValidationResult>.Success(
-                AddressValidationResult.Invalid(smartyNotFoundMessage, "not_found"));
+                AddressValidationResult.Invalid(smartyFailureMessage, reason));
         }
 
         if (smartySuccess?.WasCorrected == true)

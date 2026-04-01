@@ -477,6 +477,29 @@ public class UpdateAddressCommandHandlerTests
     }
 
     [Fact]
+    public async Task Handle_ReturnsPolicyViolation_WhenSmartyRejectsGeneralDelivery()
+    {
+        _addressUpdate
+            .ValidateAndNormalizeAsync(Arg.Any<AddressUpdateOperationRequest>(), Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult(
+                Result<AddressUpdateSuccess>.ValidationFailed(
+                    "streetAddress1", "General Delivery addresses are not accepted for this state.")));
+
+        _resolver.ResolveAsync(Arg.Any<ClaimsPrincipal>(), Arg.Any<CancellationToken>())
+            .Returns(HouseholdIdentifier.Email(EmailNormalizer.Normalize("user@example.com")));
+
+        var handler = CreateHandler();
+        var command = CreateValidCommand();
+
+        var result = await handler.Handle(command, CancellationToken.None);
+
+        var success = Assert.IsType<SuccessResult<AddressValidationResult>>(result);
+        Assert.False(success.Value.IsValid);
+        Assert.Equal("policy_violation", success.Value.Reason);
+        Assert.Contains("General Delivery", success.Value.ErrorMessage);
+    }
+
+    [Fact]
     public async Task Handle_ReturnsBlocked_WhenSmartyCorrectedButAddressIsBlocked()
     {
         _addressUpdate

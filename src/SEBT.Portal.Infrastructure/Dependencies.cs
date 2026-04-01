@@ -59,9 +59,8 @@ public static class Dependencies
                 : sp.GetRequiredService<PassThroughAddressUpdateService>();
         });
 
-        // Address validation — checks blocked addresses and DC street abbreviations
-        var state = Environment.GetEnvironmentVariable("STATE") ?? "";
-        services.AddSingleton<IAddressValidationService>(new AddressValidationService(state));
+        // Address validation — checks blocked addresses and street abbreviations per state config
+        services.AddSingleton<IAddressValidationService, AddressValidationService>();
         services.AddSingleton<IIdentifierHasher, IdentifierHasher>();
 
         // Expose SocureSettings directly for use case injection (avoids IOptions dependency in UseCases layer)
@@ -202,6 +201,8 @@ public static class Dependencies
             .BindConfiguration(SmartySettings.SectionName);
         services.AddOptions<AddressValidationPolicySettings>()
             .BindConfiguration(AddressValidationPolicySettings.SectionName);
+        services.AddOptions<AddressValidationDataSettings>()
+            .BindConfiguration(AddressValidationDataSettings.SectionName);
 
         return services;
     }

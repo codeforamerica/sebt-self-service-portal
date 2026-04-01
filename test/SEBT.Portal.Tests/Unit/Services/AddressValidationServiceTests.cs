@@ -1,3 +1,5 @@
+using Microsoft.Extensions.Options;
+using SEBT.Portal.Core.AppSettings;
 using SEBT.Portal.Core.Models.Household;
 using SEBT.Portal.Infrastructure.Services;
 
@@ -5,12 +7,53 @@ namespace SEBT.Portal.Tests.Unit.Services;
 
 public class AddressValidationServiceTests
 {
+    /// <summary>
+    /// DC settings: 5 blocked addresses, 6 street abbreviation mappings, 30-char limit.
+    /// Mirrors the data that would be in appsettings.dc.json.
+    /// </summary>
+    private static AddressValidationDataSettings DcSettings => new()
+    {
+        BlockedAddresses =
+        [
+            "2100 Martin Luther King Jr Avenue SE",
+            "3851 Alabama Avenue SE",
+            "4049 South Capitol Street SW",
+            "645 H Street NE",
+            "1207 Taylor Street NW"
+        ],
+        StreetAbbreviations = new Dictionary<string, string>
+        {
+            ["ALBERT IRVIN CASSELL"] = "ALBERT IRVIN CASS",
+            ["COMMODORE JOSHUA BARNEY"] = "COMMODORE JOSH BARN",
+            ["MARTIN LUTHER KING JR"] = "MLK JR",
+            ["NANNIE HELEN BURROUGHS"] = "N H BURROUGHS",
+            ["PATRICIA ROBERTS HARRIS"] = "PATRICIA RBRTS HARR",
+            ["ROBERT CLIFTON WEAVER"] = "ROBRT CLIFTN WEAVR"
+        },
+        MaxStreetAddressLength = 30
+    };
+
+    /// <summary>
+    /// CO settings: 1 blocked address, no abbreviations, no length limit.
+    /// Mirrors the data that would be in appsettings.co.json.
+    /// </summary>
+    private static AddressValidationDataSettings CoSettings => new()
+    {
+        BlockedAddresses =
+        [
+            "1575 Sherman St"
+        ]
+    };
+
+    private static AddressValidationService CreateService(AddressValidationDataSettings settings) =>
+        new(Options.Create(settings));
+
     // --- Blocked address detection ---
 
     [Fact]
     public async Task ValidateAsync_ReturnsInvalid_WhenAddressIsBlockedForDc()
     {
-        var service = new AddressValidationService("dc");
+        var service = CreateService(DcSettings);
         var address = new Address
         {
             StreetAddress1 = "2100 Martin Luther King Jr Avenue SE",
@@ -28,7 +71,7 @@ public class AddressValidationServiceTests
     [Fact]
     public async Task ValidateAsync_ReturnsInvalid_WhenAddressIsBlockedForCo()
     {
-        var service = new AddressValidationService("co");
+        var service = CreateService(CoSettings);
         var address = new Address
         {
             StreetAddress1 = "1575 Sherman St",
@@ -46,7 +89,7 @@ public class AddressValidationServiceTests
     [Fact]
     public async Task ValidateAsync_BlockedAddressCheck_IsCaseInsensitive()
     {
-        var service = new AddressValidationService("dc");
+        var service = CreateService(DcSettings);
         var address = new Address
         {
             StreetAddress1 = "645 h street ne",
@@ -63,7 +106,7 @@ public class AddressValidationServiceTests
     [Fact]
     public async Task ValidateAsync_ReturnsValid_WhenAddressIsNotBlocked()
     {
-        var service = new AddressValidationService("dc");
+        var service = CreateService(DcSettings);
         var address = new Address
         {
             StreetAddress1 = "123 Main St NW",
@@ -80,7 +123,8 @@ public class AddressValidationServiceTests
     [Fact]
     public async Task ValidateAsync_DcBlockedAddresses_DoNotApplyToCo()
     {
-        var service = new AddressValidationService("co");
+        // CO settings don't include DC blocked addresses, so a DC address should pass
+        var service = CreateService(CoSettings);
         var address = new Address
         {
             StreetAddress1 = "2100 Martin Luther King Jr Avenue SE",
@@ -103,7 +147,7 @@ public class AddressValidationServiceTests
     public async Task ValidateAsync_BlocksAbbreviatedStreetType_WhenFullFormIsInBlockedList(string streetAddress)
     {
         // "645 H Street NE" is in the DC blocked list; abbreviated forms should also match
-        var service = new AddressValidationService("dc");
+        var service = CreateService(DcSettings);
         var address = new Address
         {
             StreetAddress1 = streetAddress,
@@ -123,7 +167,7 @@ public class AddressValidationServiceTests
     {
         // CO blocked list stores "1575 Sherman St" (abbreviated form).
         // After normalization expands to "1575 Sherman Street", it should still match.
-        var service = new AddressValidationService("co");
+        var service = CreateService(CoSettings);
         var address = new Address
         {
             StreetAddress1 = "1575 Sherman Street",
@@ -142,7 +186,7 @@ public class AddressValidationServiceTests
     public async Task ValidateAsync_DoesNotMangleStreetNamesContainingAbbreviationSubstrings()
     {
         // "Stanton" contains "St" but should NOT be expanded to "Streetanton"
-        var service = new AddressValidationService("dc");
+        var service = CreateService(DcSettings);
         var address = new Address
         {
             StreetAddress1 = "100 Stanton Pl NE",
@@ -157,12 +201,12 @@ public class AddressValidationServiceTests
         Assert.True(result.IsValid);
     }
 
-    // --- DC street abbreviation ---
+    // --- Street abbreviation (length limit) ---
 
     [Fact]
-    public async Task ValidateAsync_ReturnsSuggestion_WhenDcStreetCanBeAbbreviated()
+    public async Task ValidateAsync_ReturnsSuggestion_WhenStreetCanBeAbbreviated()
     {
-        var service = new AddressValidationService("dc");
+        var service = CreateService(DcSettings);
         var address = new Address
         {
             StreetAddress1 = "1234 Martin Luther King Jr Ave NW",
@@ -179,9 +223,9 @@ public class AddressValidationServiceTests
     }
 
     [Fact]
-    public async Task ValidateAsync_ReturnsSuggestion_WhenDcStreetNannieHelenBurroughsCanBeAbbreviated()
+    public async Task ValidateAsync_ReturnsSuggestion_WhenNannieHelenBurroughsCanBeAbbreviated()
     {
-        var service = new AddressValidationService("dc");
+        var service = CreateService(DcSettings);
         var address = new Address
         {
             StreetAddress1 = "1400 Nannie Helen Burroughs Ave NE",
@@ -200,7 +244,7 @@ public class AddressValidationServiceTests
     [Fact]
     public async Task ValidateAsync_PreservesOtherAddressFields_WhenAbbreviating()
     {
-        var service = new AddressValidationService("dc");
+        var service = CreateService(DcSettings);
         var address = new Address
         {
             StreetAddress1 = "1234 Martin Luther King Jr Ave NW",
@@ -220,9 +264,9 @@ public class AddressValidationServiceTests
     }
 
     [Fact]
-    public async Task ValidateAsync_DoesNotAbbreviate_WhenStreetIsUnder30Chars()
+    public async Task ValidateAsync_DoesNotAbbreviate_WhenStreetIsUnderMaxLength()
     {
-        var service = new AddressValidationService("dc");
+        var service = CreateService(DcSettings);
         var address = new Address
         {
             // "123 MLK Jr Ave NW" is under 30 chars, even though it contains a known street
@@ -239,9 +283,10 @@ public class AddressValidationServiceTests
     }
 
     [Fact]
-    public async Task ValidateAsync_DoesNotAbbreviate_ForCoAddresses()
+    public async Task ValidateAsync_DoesNotAbbreviate_WhenNoLengthLimitConfigured()
     {
-        var service = new AddressValidationService("co");
+        // CO has no MaxStreetAddressLength (defaults to 0), so even a long street stays valid
+        var service = CreateService(CoSettings);
         var address = new Address
         {
             StreetAddress1 = "1234 Martin Luther King Jr Blvd",
@@ -252,14 +297,13 @@ public class AddressValidationServiceTests
 
         var result = await service.ValidateAsync(address);
 
-        // CO has no abbreviation rules, so even a long street with a known name stays valid
         Assert.True(result.IsValid);
     }
 
     [Fact]
-    public async Task ValidateAsync_ReturnsInvalid_WhenDcStreetExceeds30CharsAndCannotBeAbbreviated()
+    public async Task ValidateAsync_ReturnsInvalid_WhenStreetExceedsMaxLengthAndCannotBeAbbreviated()
     {
-        var service = new AddressValidationService("dc");
+        var service = CreateService(DcSettings);
         var address = new Address
         {
             StreetAddress1 = "12345 Some Very Long Unknown Street Name NW",
@@ -273,5 +317,24 @@ public class AddressValidationServiceTests
         Assert.False(result.IsValid);
         Assert.NotNull(result.ErrorMessage);
         Assert.Null(result.SuggestedAddress);
+    }
+
+    // --- Empty settings (no blocked addresses, no abbreviations, no limit) ---
+
+    [Fact]
+    public async Task ValidateAsync_AcceptsAnyAddress_WhenSettingsAreEmpty()
+    {
+        var service = CreateService(new AddressValidationDataSettings());
+        var address = new Address
+        {
+            StreetAddress1 = "2100 Martin Luther King Jr Avenue SE",
+            City = "Washington",
+            State = "District of Columbia",
+            PostalCode = "20020"
+        };
+
+        var result = await service.ValidateAsync(address);
+
+        Assert.True(result.IsValid);
     }
 }

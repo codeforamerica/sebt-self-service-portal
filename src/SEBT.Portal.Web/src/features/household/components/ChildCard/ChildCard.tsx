@@ -35,7 +35,9 @@ function getReplacementLink(application: Application): string | null {
     return '/cards/info'
   }
 
-  if (isCoLoaded) return null
+  // Only SummerEbt cards get the standalone replacement flow.
+  // Co-loaded, null, Unknown, or unrecognized types do not.
+  if (issuanceType !== 'SummerEbt') return null
 
   return `/cards/replace?app=${encodeURIComponent(applicationNumber)}`
 }
@@ -59,6 +61,7 @@ export function ChildCard({ child, application, id, defaultExpanded = true }: Ch
   const { t, i18n } = useTranslation('dashboard')
   const showCaseNumber = useFeatureFlag('show_case_number')
   const showCardLast4 = useFeatureFlag('show_card_last4')
+  const enableCardReplacement = useFeatureFlag('enable_card_replacement')
   const [isExpanded, setIsExpanded] = useState(defaultExpanded)
   const childName = `${child.firstName} ${child.lastName}`
 
@@ -125,7 +128,7 @@ export function ChildCard({ child, application, id, defaultExpanded = true }: Ch
             <CardStatusDisplay application={application} />
           )}
         </dl>
-        {replacementLink && (
+        {enableCardReplacement && replacementLink && (
           <Link
             href={replacementLink}
             className="usa-link display-inline-block margin-top-2"

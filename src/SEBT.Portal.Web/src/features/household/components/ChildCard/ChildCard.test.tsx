@@ -280,4 +280,78 @@ describe('ChildCard', () => {
 
     expect(screen.queryByText(/1234/)).not.toBeInTheDocument()
   })
+
+  it('does not show replacement link when issuanceType is null', () => {
+    const application: Application = {
+      ...mockApplication,
+      issuanceType: null
+    }
+
+    renderWithFlags(
+      { child: mockChild, application, id: '0' },
+      {
+        flags: { ...TEST_FEATURE_FLAGS, enable_card_replacement: true },
+        isLoading: false,
+        isError: false
+      }
+    )
+
+    expect(screen.queryByText('Request a replacement card')).not.toBeInTheDocument()
+  })
+
+  it('does not show replacement link when issuanceType is Unknown', () => {
+    const application: Application = {
+      ...mockApplication,
+      issuanceType: 'Unknown'
+    }
+
+    renderWithFlags(
+      { child: mockChild, application, id: '0' },
+      {
+        flags: { ...TEST_FEATURE_FLAGS, enable_card_replacement: true },
+        isLoading: false,
+        isError: false
+      }
+    )
+
+    expect(screen.queryByText('Request a replacement card')).not.toBeInTheDocument()
+  })
+
+  it('shows replacement link for SummerEbt when feature flag is enabled', () => {
+    const application: Application = {
+      ...mockApplication,
+      issuanceType: 'SummerEbt',
+      cardRequestedAt: '2025-01-01T00:00:00Z'
+    }
+
+    renderWithFlags(
+      { child: mockChild, application, id: '0' },
+      {
+        flags: { ...TEST_FEATURE_FLAGS, enable_card_replacement: true },
+        isLoading: false,
+        isError: false
+      }
+    )
+
+    expect(screen.getByText('Request a replacement card')).toBeInTheDocument()
+  })
+
+  it('hides replacement link when enable_card_replacement flag is off', () => {
+    const application: Application = {
+      ...mockApplication,
+      issuanceType: 'SummerEbt',
+      cardRequestedAt: '2025-01-01T00:00:00Z'
+    }
+
+    renderWithFlags(
+      { child: mockChild, application, id: '0' },
+      {
+        flags: { ...TEST_FEATURE_FLAGS, enable_card_replacement: false },
+        isLoading: false,
+        isError: false
+      }
+    )
+
+    expect(screen.queryByText('Request a replacement card')).not.toBeInTheDocument()
+  })
 })

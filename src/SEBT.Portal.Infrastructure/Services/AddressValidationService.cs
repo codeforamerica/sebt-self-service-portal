@@ -1,39 +1,23 @@
+using Microsoft.Extensions.Options;
+using SEBT.Portal.Core.AppSettings;
 using SEBT.Portal.Core.Models.Household;
 using SEBT.Portal.Core.Services;
 
 namespace SEBT.Portal.Infrastructure.Services;
 
 /// <summary>
-/// Validates addresses against per-state blocked address lists, applies DC street
-/// abbreviations for addresses exceeding 30 characters, and delegates to an external
-/// validation service (e.g., Smarty) when available.
+/// Validates addresses against configurable blocked address lists, applies street name
+/// abbreviations for addresses exceeding a configurable length limit, and delegates to
+/// an external validation service (e.g., Smarty) when available.
+///
+/// All state-specific data (blocked addresses, abbreviation mappings, length limits)
+/// is loaded from <see cref="AddressValidationDataSettings"/> via appsettings configuration.
 /// </summary>
 public class AddressValidationService : IAddressValidationService
 {
-    private const int MaxStreetAddressLength = 30;
-
-    private readonly string _state;
     private readonly HashSet<string> _blockedAddresses;
-
-    /// <summary>
-    /// Per-state blocked address lists. These are addresses where the state cannot
-    /// deliver mail (e.g., government office buildings used as default addresses).
-    /// </summary>
-    private static readonly Dictionary<string, string[]> BlockedAddressesByState = new(StringComparer.OrdinalIgnoreCase)
-    {
-        ["dc"] =
-        [
-            "2100 Martin Luther King Jr Avenue SE",
-            "3851 Alabama Avenue SE",
-            "4049 South Capitol Street SW",
-            "645 H Street NE",
-            "1207 Taylor Street NW"
-        ],
-        ["co"] =
-        [
-            "1575 Sherman St"
-        ]
-    };
+    private readonly Dictionary<string, string> _streetAbbreviations;
+    private readonly int _maxStreetAddressLength;
 
     /// <summary>
     /// Common USPS street type abbreviations mapped to their canonical full forms.
@@ -58,28 +42,19 @@ public class AddressValidationService : IAddressValidationService
         ["Hwy"] = "Highway"
     };
 
-    /// <summary>
-    /// DC street name abbreviations for addresses that exceed 30 characters.
-    /// The card vendor (FIS) has a 30-character limit on address line 1.
-    /// These mappings come from the state's known long street names.
-    /// </summary>
-    private static readonly Dictionary<string, string> DcStreetAbbreviations = new(StringComparer.OrdinalIgnoreCase)
+    public AddressValidationService(IOptions<AddressValidationDataSettings> options)
     {
-        ["ALBERT IRVIN CASSELL"] = "ALBERT IRVIN CASS",
-        ["COMMODORE JOSHUA BARNEY"] = "COMMODORE JOSH BARN",
-        ["MARTIN LUTHER KING JR"] = "MLK JR",
-        ["NANNIE HELEN BURROUGHS"] = "N H BURROUGHS",
-        ["PATRICIA ROBERTS HARRIS"] = "PATRICIA RBRTS HARR",
-        ["ROBERT CLIFTON WEAVER"] = "ROBRT CLIFTN WEAVR"
-    };
+        var settings = options.Value;
 
-    public AddressValidationService(string state)
-    {
-        _state = state;
-        var addresses = BlockedAddressesByState.GetValueOrDefault(state, []);
         _blockedAddresses = new HashSet<string>(
-            addresses.Select(NormalizeStreet),
+            settings.BlockedAddresses.Select(NormalizeStreet),
             StringComparer.OrdinalIgnoreCase);
+
+        _streetAbbreviations = new Dictionary<string, string>(
+            settings.StreetAbbreviations,
+            StringComparer.OrdinalIgnoreCase);
+
+        _maxStreetAddressLength = settings.MaxStreetAddressLength;
     }
 
     public Task<AddressValidationResult> ValidateAsync(Address address, CancellationToken cancellationToken = default)
@@ -90,7 +65,7 @@ public class AddressValidationService : IAddressValidationService
                 AddressValidationResult.Invalid("This address cannot be used for mail delivery.", "blocked"));
         }
 
-        if (IsDc && address.StreetAddress1?.Length > MaxStreetAddressLength)
+        if (_maxStreetAddressLength > 0 && address.StreetAddress1?.Length > _maxStreetAddressLength)
         {
             var abbreviated = TryAbbreviateStreet(address.StreetAddress1);
             if (abbreviated != null)
@@ -113,8 +88,6 @@ public class AddressValidationService : IAddressValidationService
         return Task.FromResult(AddressValidationResult.Valid());
     }
 
-    private bool IsDc => string.Equals(_state, "dc", StringComparison.OrdinalIgnoreCase);
-
     private bool IsBlocked(Address address)
     {
         if (string.IsNullOrWhiteSpace(address.StreetAddress1))
@@ -127,13 +100,13 @@ public class AddressValidationService : IAddressValidationService
     }
 
     /// <summary>
-    /// Attempts to shorten a DC street address by replacing a known long street name
+    /// Attempts to shorten a street address by replacing a known long street name
     /// with its abbreviated form. Returns null if no abbreviation applies or if the
     /// result still exceeds the character limit.
     /// </summary>
-    private static string? TryAbbreviateStreet(string streetAddress)
+    private string? TryAbbreviateStreet(string streetAddress)
     {
-        foreach (var (full, abbreviated) in DcStreetAbbreviations)
+        foreach (var (full, abbreviated) in _streetAbbreviations)
         {
             var index = streetAddress.IndexOf(full, StringComparison.OrdinalIgnoreCase);
             if (index < 0) continue;
@@ -143,7 +116,7 @@ public class AddressValidationService : IAddressValidationService
                 abbreviated,
                 streetAddress.AsSpan(index + full.Length));
 
-            if (result.Length <= MaxStreetAddressLength)
+            if (result.Length <= _maxStreetAddressLength)
             {
                 return result;
             }
