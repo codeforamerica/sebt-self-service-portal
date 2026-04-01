@@ -231,8 +231,12 @@ public sealed class AppConfigAgentConfigurationProvider : ConfigurationProvider,
                 FlattenJsonObject(element, result, key);
                 break;
             case JsonValueKind.Array:
-                // Arrays are not supported in configuration
-                _logger?.LogWarning("JSON arrays are not supported in configuration. Skipping key: {Key}", key);
+                var index = 0;
+                foreach (var item in element.EnumerateArray())
+                {
+                    FlattenJsonElement(item, result, $"{key}:{index}");
+                    index++;
+                }
                 break;
             case JsonValueKind.String:
                 result[key] = element.GetString();
