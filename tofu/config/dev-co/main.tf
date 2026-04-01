@@ -108,10 +108,6 @@ module "app" {
   enable_execute_command = true
   enable_appconfig       = true
 
-  seeding_enabled         = "true"
-  seeding_email_pattern   = "sebt.co+{0}@codeforamerica.org"
-  use_mock_household_data = "true"
-
   state_api_environment_variables = {
     "Oidc__DiscoveryEndpoint"               = var.oidc_discovery_endpoint
     "Oidc__CallbackRedirectUri"             = "https://${var.domain}/callback"
