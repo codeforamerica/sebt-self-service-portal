@@ -45,6 +45,35 @@ public class DatabaseDocVerificationChallengeRepository(PortalDbContext dbContex
         return entity == null ? null : MapToDomainModel(entity);
     }
 
+    public async Task ExpireStaleChallengesForUserAsync(
+        int userId,
+        CancellationToken cancellationToken = default)
+    {
+        var now = DateTime.UtcNow;
+
+        var stale = await dbContext.DocVerificationChallenges
+            .Where(
+                c => c.UserId == userId
+                     && (c.Status == (int)DocVerificationStatus.Created
+                         || c.Status == (int)DocVerificationStatus.Pending)
+                     && c.ExpiresAt != null
+                     && c.ExpiresAt <= now)
+            .ToListAsync(cancellationToken);
+
+        if (stale.Count == 0)
+        {
+            return;
+        }
+
+        foreach (var entity in stale)
+        {
+            entity.Status = (int)DocVerificationStatus.Expired;
+            entity.UpdatedAt = now;
+        }
+
+        await dbContext.SaveChangesAsync(cancellationToken);
+    }
+
     public async Task<DocVerificationChallenge?> GetBySocureReferenceIdAsync(
         string referenceId,
         CancellationToken cancellationToken = default)

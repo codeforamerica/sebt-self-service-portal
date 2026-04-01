@@ -1,5 +1,7 @@
 using System.Linq;
 using Microsoft.Extensions.Logging;
+using SEBT.Portal.Core.AppSettings;
+using SEBT.Portal.Core.Models.Auth;
 using SEBT.Portal.Core.Repositories;
 using SEBT.Portal.Core.Services;
 using SEBT.Portal.Kernel;
@@ -16,16 +18,18 @@ namespace SEBT.Portal.UseCases.Auth;
 /// </remarks>
 /// <param name="userRepository">Repository for user data and ID proofing status.</param>
 /// <param name="jwtTokenService">Service for generating JWT tokens.</param>
+/// <param name="socureSettings">Socure configuration; when disabled, clients are not sent to ID proofing.</param>
 /// <param name="validator">Validator for the <see cref="RefreshTokenCommand"/>.</param>
 /// <param name="logger">Logger for tracking token refresh attempts and results.</param>
 public class RefreshTokenCommandHandler(
     IUserRepository userRepository,
     IJwtTokenService jwtTokenService,
+    SocureSettings socureSettings,
     IValidator<RefreshTokenCommand> validator,
     ILogger<RefreshTokenCommandHandler> logger)
-    : ICommandHandler<RefreshTokenCommand, string>
+    : ICommandHandler<RefreshTokenCommand, PortalAuthTokenResult>
 {
-    public async Task<Result<string>> Handle(RefreshTokenCommand command, CancellationToken cancellationToken = default)
+    public async Task<Result<PortalAuthTokenResult>> Handle(RefreshTokenCommand command, CancellationToken cancellationToken = default)
     {
         var validationResult = await validator.Validate(command, cancellationToken);
 
@@ -34,7 +38,7 @@ public class RefreshTokenCommandHandler(
             logger.LogWarning("Token refresh validation failed for email {Email}: {Errors}",
                 command.Email,
                 string.Join(", ", validationFailedResult.Errors.Select(e => $"{e.Key}: {e.Message}")));
-            return Result<string>.ValidationFailed(validationFailedResult.Errors);
+            return Result<PortalAuthTokenResult>.ValidationFailed(validationFailedResult.Errors);
         }
 
         try
@@ -44,27 +48,28 @@ public class RefreshTokenCommandHandler(
             if (user == null)
             {
                 logger.LogWarning("Token refresh attempted for non-existent user {Email}", command.Email);
-                return Result<string>.PreconditionFailed(
+                return Result<PortalAuthTokenResult>.PreconditionFailed(
                     PreconditionFailedReason.NotFound,
                     "User not found.");
             }
 
             var token = jwtTokenService.GenerateToken(user);
+            var requiresIdProofing = IdProofingRedirectPolicy.RequiresIdProofingForUser(user, socureSettings);
 
             logger.LogInformation(
-                "Token refreshed successfully for email {Email} with IAL level {IalLevel}",
+                "Token refreshed successfully for email {Email} with IAL level {IalLevel}, RequiresIdProofing {RequiresIdProofing}",
                 command.Email,
-                user.IalLevel);
+                user.IalLevel,
+                requiresIdProofing);
 
-            return Result<string>.Success(token);
+            return Result<PortalAuthTokenResult>.Success(new PortalAuthTokenResult(token, requiresIdProofing));
         }
         catch (Exception ex)
         {
             logger.LogError(ex, "Error refreshing token for email {Email}", command.Email);
-            return Result<string>.DependencyFailed(
+            return Result<PortalAuthTokenResult>.DependencyFailed(
                 DependencyFailedReason.ConnectionFailed,
                 "An error occurred while refreshing the authentication token.");
         }
     }
 }
-

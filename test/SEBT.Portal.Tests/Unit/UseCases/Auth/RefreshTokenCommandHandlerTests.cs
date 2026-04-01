@@ -2,6 +2,7 @@ using System.Linq;
 using Microsoft.Extensions.Logging.Abstractions;
 using NSubstitute;
 using NSubstitute.ReceivedExtensions;
+using SEBT.Portal.Core.AppSettings;
 using SEBT.Portal.Core.Models.Auth;
 using SEBT.Portal.Core.Repositories;
 using SEBT.Portal.Core.Services;
@@ -15,6 +16,7 @@ public class RefreshTokenCommandHandlerTests
 {
     private readonly IUserRepository userRepository = Substitute.For<IUserRepository>();
     private readonly IJwtTokenService jwtTokenService = Substitute.For<IJwtTokenService>();
+    private readonly SocureSettings _socureEnabled = new() { Enabled = true };
     private readonly NullLogger<RefreshTokenCommandHandler> logger = NullLogger<RefreshTokenCommandHandler>.Instance;
     private readonly IValidator<RefreshTokenCommand> validator = new DataAnnotationsValidator<RefreshTokenCommand>(null!);
     private readonly RefreshTokenCommandHandler handler;
@@ -24,6 +26,7 @@ public class RefreshTokenCommandHandlerTests
         handler = new RefreshTokenCommandHandler(
             userRepository,
             jwtTokenService,
+            _socureEnabled,
             validator,
             logger);
     }
@@ -41,7 +44,8 @@ public class RefreshTokenCommandHandlerTests
         var user = new User
         {
             Email = command.Email,
-            IalLevel = UserIalLevel.IAL1plus
+            IalLevel = UserIalLevel.IAL1plus,
+            IdProofingStatus = IdProofingStatus.Completed
         };
 
         userRepository.GetUserByEmailAsync(Arg.Is<string>(email => email == command.Email), Arg.Any<CancellationToken>())
@@ -54,8 +58,9 @@ public class RefreshTokenCommandHandlerTests
 
         // Assert
         Assert.True(result.IsSuccess);
-        var successResult = Assert.IsType<SuccessResult<string>>(result);
-        Assert.Equal("refreshed.jwt.token", successResult.Value);
+        var successResult = Assert.IsType<SuccessResult<PortalAuthTokenResult>>(result);
+        Assert.Equal("refreshed.jwt.token", successResult.Value.Token);
+        Assert.False(successResult.Value.RequiresIdProofing);
         await userRepository.Received(1).GetUserByEmailAsync(command.Email, Arg.Any<CancellationToken>());
         jwtTokenService.Received(1).GenerateToken(Arg.Is<User>(u => u.Email == command.Email && u.IalLevel == UserIalLevel.IAL1plus));
     }
@@ -74,7 +79,7 @@ public class RefreshTokenCommandHandlerTests
 
         // Assert
         Assert.False(result.IsSuccess);
-        var failedResult = Assert.IsType<ValidationFailedResult<string>>(result);
+        var failedResult = Assert.IsType<ValidationFailedResult<PortalAuthTokenResult>>(result);
         Assert.Contains("Email", failedResult.Errors.Select(e => e.Key));
         await userRepository.DidNotReceive().GetUserByEmailAsync(Arg.Any<string>(), Arg.Any<CancellationToken>());
         jwtTokenService.DidNotReceive().GenerateToken(Arg.Any<User>());
@@ -94,7 +99,7 @@ public class RefreshTokenCommandHandlerTests
 
         // Assert
         Assert.False(result.IsSuccess);
-        var failedResult = Assert.IsType<ValidationFailedResult<string>>(result);
+        var failedResult = Assert.IsType<ValidationFailedResult<PortalAuthTokenResult>>(result);
         Assert.Contains("Email", failedResult.Errors.Select(e => e.Key));
         await userRepository.DidNotReceive().GetUserByEmailAsync(Arg.Any<string>(), Arg.Any<CancellationToken>());
         jwtTokenService.DidNotReceive().GenerateToken(Arg.Any<User>());
@@ -117,7 +122,7 @@ public class RefreshTokenCommandHandlerTests
 
         // Assert
         Assert.False(result.IsSuccess);
-        var failedResult = Assert.IsType<PreconditionFailedResult<string>>(result);
+        var failedResult = Assert.IsType<PreconditionFailedResult<PortalAuthTokenResult>>(result);
         Assert.Equal(PreconditionFailedReason.NotFound, failedResult.Reason);
         Assert.Contains("User not found", failedResult.Message, StringComparison.OrdinalIgnoreCase);
         jwtTokenService.DidNotReceive().GenerateToken(Arg.Any<User>());
@@ -151,6 +156,8 @@ public class RefreshTokenCommandHandlerTests
 
         // Assert
         Assert.True(result.IsSuccess);
+        var success = Assert.IsType<SuccessResult<PortalAuthTokenResult>>(result);
+        Assert.True(success.Value.RequiresIdProofing);
         jwtTokenService.Received(1).GenerateToken(Arg.Is<User>(u =>
             u.Email == command.Email &&
             u.IalLevel == UserIalLevel.IAL1 &&
@@ -174,7 +181,7 @@ public class RefreshTokenCommandHandlerTests
 
         // Assert
         Assert.False(result.IsSuccess);
-        var failedResult = Assert.IsType<DependencyFailedResult<string>>(result);
+        var failedResult = Assert.IsType<DependencyFailedResult<PortalAuthTokenResult>>(result);
         Assert.Equal(DependencyFailedReason.ConnectionFailed, failedResult.Reason);
         Assert.Contains("error occurred while refreshing", failedResult.Message, StringComparison.OrdinalIgnoreCase);
         jwtTokenService.DidNotReceive().GenerateToken(Arg.Any<User>());
@@ -206,7 +213,7 @@ public class RefreshTokenCommandHandlerTests
 
         // Assert
         Assert.False(result.IsSuccess);
-        var failedResult = Assert.IsType<DependencyFailedResult<string>>(result);
+        var failedResult = Assert.IsType<DependencyFailedResult<PortalAuthTokenResult>>(result);
         Assert.Equal(DependencyFailedReason.ConnectionFailed, failedResult.Reason);
         Assert.Contains("error occurred while refreshing", failedResult.Message, StringComparison.OrdinalIgnoreCase);
     }
@@ -223,7 +230,8 @@ public class RefreshTokenCommandHandlerTests
         var user = new User
         {
             Email = command.Email,
-            IalLevel = UserIalLevel.IAL1plus
+            IalLevel = UserIalLevel.IAL1plus,
+            IdProofingStatus = IdProofingStatus.Completed
         };
 
         userRepository.GetUserByEmailAsync(Arg.Is<string>(email => email == command.Email), Arg.Any<CancellationToken>())
@@ -254,6 +262,7 @@ public class RefreshTokenCommandHandlerTests
         {
             Email = command.Email,
             IalLevel = UserIalLevel.IAL1plus,
+            IdProofingStatus = IdProofingStatus.Completed,
             IdProofingSessionId = "session-xyz",
             IdProofingCompletedAt = completedAt,
             IdProofingExpiresAt = expiresAt
@@ -269,6 +278,8 @@ public class RefreshTokenCommandHandlerTests
 
         // Assert
         Assert.True(result.IsSuccess);
+        var success = Assert.IsType<SuccessResult<PortalAuthTokenResult>>(result);
+        Assert.False(success.Value.RequiresIdProofing);
         jwtTokenService.Received(1).GenerateToken(Arg.Is<User>(u =>
             u.Email == command.Email &&
             u.IalLevel == UserIalLevel.IAL1plus &&

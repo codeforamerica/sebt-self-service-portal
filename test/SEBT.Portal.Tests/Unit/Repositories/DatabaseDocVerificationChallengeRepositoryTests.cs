@@ -131,6 +131,32 @@ public class DatabaseDocVerificationChallengeRepositoryTests : IClassFixture<Sql
     }
 
     [Fact]
+    public async Task ExpireStaleChallengesForUserAsync_ShouldClearUniqueIndexConflict_ForExpiredByTime()
+    {
+        using var context = _fixture.CreateContext();
+        var userId = await SeedChallengeAsync(context,
+            status: (int)DocVerificationStatus.Created,
+            expiresAt: DateTime.UtcNow.AddMinutes(-30));
+
+        var repo = new DatabaseDocVerificationChallengeRepository(context);
+        await repo.ExpireStaleChallengesForUserAsync(userId);
+
+        Assert.Null(await repo.GetActiveByUserIdAsync(userId));
+
+        var newChallenge = new DocVerificationChallengeEntity
+        {
+            PublicId = Guid.NewGuid(),
+            UserId = userId,
+            Status = (int)DocVerificationStatus.Created,
+            ExpiresAt = DateTime.UtcNow.AddMinutes(30),
+            CreatedAt = DateTime.UtcNow,
+            UpdatedAt = DateTime.UtcNow
+        };
+        context.DocVerificationChallenges.Add(newChallenge);
+        await context.SaveChangesAsync();
+    }
+
+    [Fact]
     public async Task CreateAsync_ShouldAllowNewChallenge_WhenExistingIsTerminal()
     {
         using var context = _fixture.CreateContext();

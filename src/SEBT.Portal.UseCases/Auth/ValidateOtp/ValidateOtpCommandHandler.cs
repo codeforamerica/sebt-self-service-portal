@@ -1,5 +1,7 @@
 using System.Linq;
 using Microsoft.Extensions.Logging;
+using SEBT.Portal.Core.AppSettings;
+using SEBT.Portal.Core.Models.Auth;
 using SEBT.Portal.Core.Repositories;
 using SEBT.Portal.Core.Services;
 using SEBT.Portal.Kernel;
@@ -18,17 +20,19 @@ namespace SEBT.Portal.UseCases.Auth
     /// <param name="otpRepository">Repository for OTP storage and retrieval operations.</param>
     /// <param name="userRepository">Repository for user data and ID proofing status.</param>
     /// <param name="jwtTokenService">Service for generating JWT tokens for authenticated users.</param>
+    /// <param name="socureSettings">Socure configuration; when disabled, clients are not sent to ID proofing.</param>
     /// <param name="validator">Validator for the <see cref="ValidateOtpCommand"/>.</param>
     /// <param name="logger">Logger for tracking OTP validation attempts and results.</param>
     public class ValidateOtpCommandHandler(
         IOtpRepository otpRepository,
         IUserRepository userRepository,
         IJwtTokenService jwtTokenService,
+        SocureSettings socureSettings,
         IValidator<ValidateOtpCommand> validator,
         ILogger<ValidateOtpCommandHandler> logger)
-        : ICommandHandler<ValidateOtpCommand, string>
+        : ICommandHandler<ValidateOtpCommand, PortalAuthTokenResult>
     {
-        public async Task<Result<string>> Handle(ValidateOtpCommand command, CancellationToken cancellationToken = default)
+        public async Task<Result<PortalAuthTokenResult>> Handle(ValidateOtpCommand command, CancellationToken cancellationToken = default)
         {
             var validationResult = await validator.Validate(command, cancellationToken);
 
@@ -37,7 +41,7 @@ namespace SEBT.Portal.UseCases.Auth
                 logger.LogWarning("OTP validation failed for email {Email}: {Errors}",
                     command.Email,
                     string.Join(", ", validationFailedResult.Errors.Select(e => $"{e.Key}: {e.Message}")));
-                return Result<string>.ValidationFailed(validationFailedResult.Errors);
+                return Result<PortalAuthTokenResult>.ValidationFailed(validationFailedResult.Errors);
             }
 
             var otp = await otpRepository.GetOtpCodeByEmailAsync(command.Email);
@@ -45,7 +49,7 @@ namespace SEBT.Portal.UseCases.Auth
             if (otp is null || otp.IsCodeValid(command.Otp) == false)
             {
                 logger.LogWarning("Invalid or expired OTP attempt for email {Email}", command.Email);
-                return Result<string>.ValidationFailed(new[]
+                return Result<PortalAuthTokenResult>.ValidationFailed(new[]
                 {
                     new ValidationError("Otp", "The provided OTP is invalid or has expired.")
                 });
@@ -56,6 +60,7 @@ namespace SEBT.Portal.UseCases.Auth
                 var (user, isNewUser) = await userRepository.GetOrCreateUserAsync(command.Email, cancellationToken);
 
                 var token = jwtTokenService.GenerateToken(user);
+                var requiresIdProofing = IdProofingRedirectPolicy.RequiresIdProofingForUser(user, socureSettings);
 
                 // Delete OTP after successful validation
                 await otpRepository.DeleteOtpCodeByEmailAsync(command.Email);
@@ -78,15 +83,16 @@ namespace SEBT.Portal.UseCases.Auth
                 }
 
                 logger.LogInformation(
-                    "OTP validated successfully and JWT token generated for email {Email} with co-loaded status {IsCoLoaded}",
+                    "OTP validated successfully and JWT token generated for email {Email} with co-loaded status {IsCoLoaded}, RequiresIdProofing {RequiresIdProofing}",
                     command.Email,
-                    user.IsCoLoaded);
-                return Result<string>.Success(token);
+                    user.IsCoLoaded,
+                    requiresIdProofing);
+                return Result<PortalAuthTokenResult>.Success(new PortalAuthTokenResult(token, requiresIdProofing));
             }
             catch (Exception ex)
             {
                 logger.LogError(ex, "Error processing OTP validation for email {Email}", command.Email);
-                return Result<string>.DependencyFailed(
+                return Result<PortalAuthTokenResult>.DependencyFailed(
                     DependencyFailedReason.ConnectionFailed,
                     "An error occurred while processing the authentication request.");
             }

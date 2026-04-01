@@ -3,6 +3,7 @@ using Microsoft.Extensions.Logging.Abstractions;
 using NSubstitute;
 using SEBT.Portal.Api.Controllers;
 using SEBT.Portal.Api.Models;
+using SEBT.Portal.Core.Models.Auth;
 using SEBT.Portal.Kernel;
 using SEBT.Portal.Kernel.Results;
 using SEBT.Portal.UseCases.Auth;
@@ -75,9 +76,9 @@ public class OtpControllerTests
     {
         // Arrange
         var command = new ValidateOtpCommand { Email = "user@example.com", Otp = "123456" };
-        var handlerMock = Substitute.For<ICommandHandler<ValidateOtpCommand, string>>();
+        var handlerMock = Substitute.For<ICommandHandler<ValidateOtpCommand, PortalAuthTokenResult>>();
         handlerMock.Handle(command)
-            .Returns(Result<string>.Success("test.token"));
+            .Returns(Result<PortalAuthTokenResult>.Success(new PortalAuthTokenResult("test.token", false)));
 
         // Act
         var result = await _controller.ValidateOtp(command, handlerMock);
@@ -92,10 +93,10 @@ public class OtpControllerTests
     {
         // Arrange
         var command = new ValidateOtpCommand { Email = "user@example.com", Otp = "123456" };
-        var handlerMock = Substitute.For<ICommandHandler<ValidateOtpCommand, string>>();
+        var handlerMock = Substitute.For<ICommandHandler<ValidateOtpCommand, PortalAuthTokenResult>>();
         var expectedToken = "test.jwt.token";
         handlerMock.Handle(command)
-            .Returns(Result<string>.Success(expectedToken));
+            .Returns(Result<PortalAuthTokenResult>.Success(new PortalAuthTokenResult(expectedToken, false)));
 
         // Act
         var result = await _controller.ValidateOtp(command, handlerMock);
@@ -107,6 +108,7 @@ public class OtpControllerTests
 
         var response = Assert.IsType<ValidateOtpResponse>(okResult.Value);
         Assert.Equal(expectedToken, response.Token);
+        Assert.False(response.RequiresIdProofing);
 
         await handlerMock.Received(1).Handle(command);
     }
@@ -116,9 +118,9 @@ public class OtpControllerTests
     {
         // Arrange
         var command = new ValidateOtpCommand { Email = "user@example.com", Otp = "123456" };
-        var handlerMock = Substitute.For<ICommandHandler<ValidateOtpCommand, string>>();
+        var handlerMock = Substitute.For<ICommandHandler<ValidateOtpCommand, PortalAuthTokenResult>>();
         handlerMock.Handle(command)
-            .Returns(Result<string>.ValidationFailed("message", "Invalid OTP"));
+            .Returns(Result<PortalAuthTokenResult>.ValidationFailed("message", "Invalid OTP"));
 
         // Act
         var result = await _controller.ValidateOtp(command, handlerMock);
@@ -134,9 +136,9 @@ public class OtpControllerTests
     {
         // Arrange
         var command = new ValidateOtpCommand { Email = "user@example.com", Otp = "123456" };
-        var handlerMock = Substitute.For<ICommandHandler<ValidateOtpCommand, string>>();
+        var handlerMock = Substitute.For<ICommandHandler<ValidateOtpCommand, PortalAuthTokenResult>>();
         handlerMock.Handle(command)
-            .Returns(Result<string>.ValidationFailed("Otp", "Invalid OTP"));
+            .Returns(Result<PortalAuthTokenResult>.ValidationFailed("Otp", "Invalid OTP"));
 
         // Act
         var result = await _controller.ValidateOtp(command, handlerMock);
@@ -151,7 +153,7 @@ public class OtpControllerTests
     {
         // Arrange
         ValidateOtpCommand? command = null;
-        var handlerMock = Substitute.For<ICommandHandler<ValidateOtpCommand, string>>();
+        var handlerMock = Substitute.For<ICommandHandler<ValidateOtpCommand, PortalAuthTokenResult>>();
 
         // Act
         var result = await _controller.ValidateOtp(command!, handlerMock);
@@ -169,9 +171,9 @@ public class OtpControllerTests
     {
         // Arrange
         var command = new ValidateOtpCommand { Email = "user@example.com", Otp = "123456" };
-        var handlerMock = Substitute.For<ICommandHandler<ValidateOtpCommand, string>>();
+        var handlerMock = Substitute.For<ICommandHandler<ValidateOtpCommand, PortalAuthTokenResult>>();
         handlerMock.Handle(command)
-            .Returns(Result<string>.DependencyFailed(
+            .Returns(Result<PortalAuthTokenResult>.DependencyFailed(
                 DependencyFailedReason.ConnectionFailed,
                 "An error occurred while generating the authentication token."));
 
@@ -190,9 +192,9 @@ public class OtpControllerTests
     {
         // Arrange
         var command = new ValidateOtpCommand { Email = "user@example.com", Otp = "123456" };
-        var handlerMock = Substitute.For<ICommandHandler<ValidateOtpCommand, string>>();
+        var handlerMock = Substitute.For<ICommandHandler<ValidateOtpCommand, PortalAuthTokenResult>>();
         handlerMock.Handle(command)
-            .Returns(Result<string>.ValidationFailed("Otp", "Invalid OTP"));
+            .Returns(Result<PortalAuthTokenResult>.ValidationFailed("Otp", "Invalid OTP"));
 
         // Act
         var result = await _controller.ValidateOtp(command, handlerMock);
@@ -215,10 +217,10 @@ public class OtpControllerTests
     {
         // Arrange
         var command = new ValidateOtpCommand { Email = "user@example.com", Otp = "123456" };
-        var handlerMock = Substitute.For<ICommandHandler<ValidateOtpCommand, string>>();
+        var handlerMock = Substitute.For<ICommandHandler<ValidateOtpCommand, PortalAuthTokenResult>>();
         var expectedToken = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.test.token";
         handlerMock.Handle(command)
-            .Returns(Result<string>.Success(expectedToken));
+            .Returns(Result<PortalAuthTokenResult>.Success(new PortalAuthTokenResult(expectedToken, false)));
 
         // Act
         var result = await _controller.ValidateOtp(command, handlerMock);
@@ -232,5 +234,21 @@ public class OtpControllerTests
         Assert.Equal(expectedToken, response.Token);
         Assert.NotNull(response.Token);
         Assert.NotEmpty(response.Token);
+        Assert.False(response.RequiresIdProofing);
+    }
+
+    [Fact]
+    public async Task ValidateOtp_WhenSuccess_IncludesRequiresIdProofingTrue_FromHandler()
+    {
+        var command = new ValidateOtpCommand { Email = "user@example.com", Otp = "123456" };
+        var handlerMock = Substitute.For<ICommandHandler<ValidateOtpCommand, PortalAuthTokenResult>>();
+        handlerMock.Handle(command)
+            .Returns(Result<PortalAuthTokenResult>.Success(new PortalAuthTokenResult("tok", true)));
+
+        var result = await _controller.ValidateOtp(command, handlerMock);
+
+        var okResult = Assert.IsType<OkObjectResult>(result);
+        var response = Assert.IsType<ValidateOtpResponse>(okResult.Value);
+        Assert.True(response.RequiresIdProofing);
     }
 }

@@ -26,6 +26,14 @@ public interface IDocVerificationChallengeRepository
         CancellationToken cancellationToken = default);
 
     /// <summary>
+    /// Transitions Created/Pending challenges to Expired when their <see cref="DocVerificationChallenge.ExpiresAt"/>
+    /// is in the past. Aligns persisted state with the filtered unique index (which keys only on status, not time).
+    /// </summary>
+    Task ExpireStaleChallengesForUserAsync(
+        int userId,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
     /// Retrieves a challenge by its Socure reference ID for webhook correlation.
     /// Falls back to EvalId if referenceId lookup returns null.
     /// </summary>

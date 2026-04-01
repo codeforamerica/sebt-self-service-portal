@@ -12,9 +12,10 @@ namespace SEBT.Portal.UseCases.IdProofing;
 /// Handles ID proofing submission. Orchestrates the flow:
 /// 1. Validate input
 /// 2. Early exit if no ID provided (noIdProvided off-boarding)
-/// 3. Reuse existing active challenge if one exists
-/// 4. Call Socure for risk assessment
-/// 5. Create a new challenge if document verification is required
+/// 3. Expire stale Created/Pending challenges so DB unique index matches "active" semantics
+/// 4. Reuse existing active challenge if one exists
+/// 5. Call Socure for risk assessment
+/// 6. Create a new challenge if document verification is required
 /// </summary>
 public class SubmitIdProofingCommandHandler(
     IUserRepository userRepository,
@@ -52,6 +53,8 @@ public class SubmitIdProofingCommandHandler(
             return Result<SubmitIdProofingResponse>.Success(
                 new SubmitIdProofingResponse("failed", OffboardingReason: "noIdProvided"));
         }
+
+        await challengeRepository.ExpireStaleChallengesForUserAsync(command.UserId, cancellationToken);
 
         // Check for an existing active challenge → reuse instead of creating a duplicate
         var activeChallenge = await challengeRepository.GetActiveByUserIdAsync(

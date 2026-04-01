@@ -1,4 +1,5 @@
 using Microsoft.Extensions.DependencyInjection;
+using SEBT.Portal.Core.Models.Auth;
 using SEBT.Portal.Core.Models.Household;
 using SEBT.Portal.Kernel;
 using SEBT.Portal.StatesPlugins.Interfaces.Models.EnrollmentCheck;
@@ -14,8 +15,8 @@ public static class Dependencies
     public static IServiceCollection AddUseCases(this IServiceCollection services)
     {
         services.RegisterCommandHandler<RequestOtpCommand, RequestOtpCommandHandler>();
-        services.RegisterCommandHandler<ValidateOtpCommand, string, ValidateOtpCommandHandler>();
-        services.RegisterCommandHandler<RefreshTokenCommand, string, RefreshTokenCommandHandler>();
+        services.RegisterCommandHandler<ValidateOtpCommand, PortalAuthTokenResult, ValidateOtpCommandHandler>();
+        services.RegisterCommandHandler<RefreshTokenCommand, PortalAuthTokenResult, RefreshTokenCommandHandler>();
         services.RegisterQueryHandler<GetHouseholdDataQuery, HouseholdData, GetHouseholdDataQueryHandler>();
         services.RegisterCommandHandler<SubmitIdProofingCommand, SubmitIdProofingResponse, SubmitIdProofingCommandHandler>();
         services.RegisterCommandHandler<StartChallengeCommand, StartChallengeResponse, StartChallengeCommandHandler>();

@@ -2,6 +2,7 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using NSubstitute;
 using NSubstitute.ReceivedExtensions;
+using SEBT.Portal.Core.AppSettings;
 using SEBT.Portal.Core.Models.Auth;
 using SEBT.Portal.Core.Repositories;
 using SEBT.Portal.Core.Services;
@@ -16,6 +17,7 @@ public class ValidateOtpCommandHandlerTests
     private readonly IOtpRepository otpRepository = Substitute.For<IOtpRepository>();
     private readonly IUserRepository userRepository = Substitute.For<IUserRepository>();
     private readonly IJwtTokenService jwtTokenService = Substitute.For<IJwtTokenService>();
+    private readonly SocureSettings _socureEnabled = new() { Enabled = true };
     private readonly NullLogger<ValidateOtpCommandHandler> logger = NullLogger<ValidateOtpCommandHandler>.Instance;
     private readonly IValidator<ValidateOtpCommand> validator = new DataAnnotationsValidator<ValidateOtpCommand>(null!);
 
@@ -27,6 +29,7 @@ public class ValidateOtpCommandHandlerTests
             otpRepository,
             userRepository,
             jwtTokenService,
+            _socureEnabled,
             validator,
             logger);
 
@@ -54,8 +57,9 @@ public class ValidateOtpCommandHandlerTests
 
         // Assert
         Assert.True(result.IsSuccess);
-        var successResult = Assert.IsType<SuccessResult<string>>(result);
-        Assert.Equal("test.jwt.token", successResult.Value);
+        var successResult = Assert.IsType<SuccessResult<PortalAuthTokenResult>>(result);
+        Assert.Equal("test.jwt.token", successResult.Value.Token);
+        Assert.True(successResult.Value.RequiresIdProofing);
         await userRepository.Received(1).GetOrCreateUserAsync(command.Email, Arg.Any<CancellationToken>());
         jwtTokenService.Received(1).GenerateToken(Arg.Is<User>(u => u.Email == command.Email));
     }
@@ -68,6 +72,7 @@ public class ValidateOtpCommandHandlerTests
             otpRepository,
             userRepository,
             jwtTokenService,
+            _socureEnabled,
             validator,
             logger);
         var command = new ValidateOtpCommand
@@ -87,7 +92,7 @@ public class ValidateOtpCommandHandlerTests
 
         // Assert
         Assert.False(result.IsSuccess);
-        var failedResult = Assert.IsType<ValidationFailedResult<string>>(result);
+        var failedResult = Assert.IsType<ValidationFailedResult<PortalAuthTokenResult>>(result);
         Assert.Contains("Otp", failedResult.Errors.Select(e => e.Key));
         await userRepository.DidNotReceive().GetOrCreateUserAsync(Arg.Any<string>(), Arg.Any<CancellationToken>());
         jwtTokenService.DidNotReceive().GenerateToken(Arg.Any<User>());
@@ -101,6 +106,7 @@ public class ValidateOtpCommandHandlerTests
             otpRepository,
             userRepository,
             jwtTokenService,
+            _socureEnabled,
             validator,
             logger);
         var command = new ValidateOtpCommand
@@ -136,6 +142,7 @@ public class ValidateOtpCommandHandlerTests
             otpRepository,
             userRepository,
             jwtTokenService,
+            _socureEnabled,
             validator,
             logger);
         var command = new ValidateOtpCommand
@@ -152,7 +159,7 @@ public class ValidateOtpCommandHandlerTests
 
         // Assert
         Assert.False(result.IsSuccess);
-        var failedResult = Assert.IsType<ValidationFailedResult<string>>(result);
+        var failedResult = Assert.IsType<ValidationFailedResult<PortalAuthTokenResult>>(result);
         await userRepository.DidNotReceive().GetOrCreateUserAsync(Arg.Any<string>(), Arg.Any<CancellationToken>());
         jwtTokenService.DidNotReceive().GenerateToken(Arg.Any<User>());
     }
@@ -165,6 +172,7 @@ public class ValidateOtpCommandHandlerTests
             otpRepository,
             userRepository,
             jwtTokenService,
+            _socureEnabled,
             validator,
             logger);
         var command = new ValidateOtpCommand
@@ -181,7 +189,7 @@ public class ValidateOtpCommandHandlerTests
 
         // Assert
         Assert.False(result.IsSuccess);
-        var failedResult = Assert.IsType<ValidationFailedResult<string>>(result);
+        var failedResult = Assert.IsType<ValidationFailedResult<PortalAuthTokenResult>>(result);
         await userRepository.DidNotReceive().GetOrCreateUserAsync(Arg.Any<string>(), Arg.Any<CancellationToken>());
         jwtTokenService.DidNotReceive().GenerateToken(Arg.Any<User>());
     }
@@ -193,6 +201,7 @@ public class ValidateOtpCommandHandlerTests
             otpRepository,
             userRepository,
             jwtTokenService,
+            _socureEnabled,
             validator,
             logger);
         var command = new ValidateOtpCommand
@@ -209,7 +218,7 @@ public class ValidateOtpCommandHandlerTests
 
         // Assert
         Assert.False(result.IsSuccess);
-        var failedResult = Assert.IsType<ValidationFailedResult<string>>(result);
+        var failedResult = Assert.IsType<ValidationFailedResult<PortalAuthTokenResult>>(result);
         await userRepository.DidNotReceive().GetOrCreateUserAsync(Arg.Any<string>(), Arg.Any<CancellationToken>());
         jwtTokenService.DidNotReceive().GenerateToken(Arg.Any<User>());
     }
@@ -222,6 +231,7 @@ public class ValidateOtpCommandHandlerTests
             otpRepository,
             userRepository,
             jwtTokenService,
+            _socureEnabled,
             validator,
             logger);
         var command = new ValidateOtpCommand
@@ -238,7 +248,7 @@ public class ValidateOtpCommandHandlerTests
 
         // Assert
         Assert.False(result.IsSuccess);
-        var failedResult = Assert.IsType<ValidationFailedResult<string>>(result);
+        var failedResult = Assert.IsType<ValidationFailedResult<PortalAuthTokenResult>>(result);
         Assert.Contains("Otp", failedResult.Errors.Select(e => e.Key));
         await userRepository.DidNotReceive().GetOrCreateUserAsync(Arg.Any<string>(), Arg.Any<CancellationToken>());
         jwtTokenService.DidNotReceive().GenerateToken(Arg.Any<User>());
@@ -252,6 +262,7 @@ public class ValidateOtpCommandHandlerTests
             otpRepository,
             userRepository,
             jwtTokenService,
+            _socureEnabled,
             validator,
             logger);
         var command = new ValidateOtpCommand
@@ -268,7 +279,7 @@ public class ValidateOtpCommandHandlerTests
 
         // Assert
         Assert.False(result.IsSuccess);
-        var failedResult = Assert.IsType<ValidationFailedResult<string>>(result);
+        var failedResult = Assert.IsType<ValidationFailedResult<PortalAuthTokenResult>>(result);
         Assert.Contains("Otp", failedResult.Errors.Select(e => e.Key));
         await userRepository.DidNotReceive().GetOrCreateUserAsync(Arg.Any<string>(), Arg.Any<CancellationToken>());
         jwtTokenService.DidNotReceive().GenerateToken(Arg.Any<User>());
@@ -283,6 +294,7 @@ public class ValidateOtpCommandHandlerTests
             otpRepository,
             userRepository,
             jwtTokenService,
+            _socureEnabled,
             validator,
             logger);
         var command = new ValidateOtpCommand
@@ -320,6 +332,7 @@ public class ValidateOtpCommandHandlerTests
             otpRepository,
             userRepository,
             jwtTokenService,
+            _socureEnabled,
             validator,
             logger);
         var command = new ValidateOtpCommand
@@ -347,7 +360,7 @@ public class ValidateOtpCommandHandlerTests
 
         // Assert
         Assert.False(result.IsSuccess);
-        var failedResult = Assert.IsType<DependencyFailedResult<string>>(result);
+        var failedResult = Assert.IsType<DependencyFailedResult<PortalAuthTokenResult>>(result);
         Assert.Equal(DependencyFailedReason.ConnectionFailed, failedResult.Reason);
         Assert.Contains("error occurred while processing", failedResult.Message, StringComparison.OrdinalIgnoreCase);
         await otpRepository.DidNotReceive().DeleteOtpCodeByEmailAsync(Arg.Any<string>());
@@ -361,6 +374,7 @@ public class ValidateOtpCommandHandlerTests
             otpRepository,
             userRepository,
             jwtTokenService,
+            _socureEnabled,
             validator,
             logger);
         var command = new ValidateOtpCommand
@@ -400,6 +414,7 @@ public class ValidateOtpCommandHandlerTests
             otpRepository,
             userRepository,
             jwtTokenService,
+            _socureEnabled,
             validator,
             logger);
         var command = new ValidateOtpCommand
@@ -438,6 +453,7 @@ public class ValidateOtpCommandHandlerTests
             otpRepository,
             userRepository,
             jwtTokenService,
+            _socureEnabled,
             validator,
             logger);
         var command = new ValidateOtpCommand
@@ -482,6 +498,7 @@ public class ValidateOtpCommandHandlerTests
             otpRepository,
             userRepository,
             jwtTokenService,
+            _socureEnabled,
             validator,
             mockLogger);
         var command = new ValidateOtpCommand
@@ -525,6 +542,7 @@ public class ValidateOtpCommandHandlerTests
             otpRepository,
             userRepository,
             jwtTokenService,
+            _socureEnabled,
             validator,
             mockLogger);
         var command = new ValidateOtpCommand
@@ -568,6 +586,7 @@ public class ValidateOtpCommandHandlerTests
             otpRepository,
             userRepository,
             jwtTokenService,
+            _socureEnabled,
             validator,
             mockLogger);
         var command = new ValidateOtpCommand
@@ -613,6 +632,7 @@ public class ValidateOtpCommandHandlerTests
             otpRepository,
             userRepository,
             jwtTokenService,
+            _socureEnabled,
             validator,
             mockLogger);
         var command = new ValidateOtpCommand
@@ -658,6 +678,7 @@ public class ValidateOtpCommandHandlerTests
             otpRepository,
             userRepository,
             jwtTokenService,
+            _socureEnabled,
             validator,
             mockLogger);
         var command = new ValidateOtpCommand
@@ -691,5 +712,84 @@ public class ValidateOtpCommandHandlerTests
                                o.ToString()!.Contains(command.Email)),
             Arg.Any<Exception>(),
             Arg.Any<Func<object, Exception?, string>>());
+    }
+
+    [Fact]
+    public async Task Handle_SetsRequiresIdProofingFalse_WhenSocureDisabled()
+    {
+        var socureOff = new SocureSettings { Enabled = false };
+        var handler = new ValidateOtpCommandHandler(
+            otpRepository,
+            userRepository,
+            jwtTokenService,
+            socureOff,
+            validator,
+            logger);
+        var command = new ValidateOtpCommand { Email = "socure-off@example.com", Otp = "123456" };
+        var user = new User { Email = command.Email, IalLevel = UserIalLevel.None };
+        otpRepository.GetOtpCodeByEmailAsync(command.Email).Returns(new OtpCode(command.Otp, command.Email));
+        userRepository.GetOrCreateUserAsync(command.Email, Arg.Any<CancellationToken>()).Returns((user, false));
+        jwtTokenService.GenerateToken(Arg.Any<User>()).Returns("t");
+
+        var result = await handler.Handle(command, CancellationToken.None);
+
+        var success = Assert.IsType<SuccessResult<PortalAuthTokenResult>>(result);
+        Assert.False(success.Value.RequiresIdProofing);
+    }
+
+    [Fact]
+    public async Task Handle_SetsRequiresIdProofingFalse_WhenCoLoaded()
+    {
+        var handler = new ValidateOtpCommandHandler(
+            otpRepository,
+            userRepository,
+            jwtTokenService,
+            _socureEnabled,
+            validator,
+            logger);
+        var command = new ValidateOtpCommand { Email = "coloaded@example.com", Otp = "123456" };
+        var user = new User
+        {
+            Email = command.Email,
+            IalLevel = UserIalLevel.None,
+            IsCoLoaded = true,
+            IdProofingStatus = IdProofingStatus.NotStarted
+        };
+        otpRepository.GetOtpCodeByEmailAsync(command.Email).Returns(new OtpCode(command.Otp, command.Email));
+        userRepository.GetOrCreateUserAsync(command.Email, Arg.Any<CancellationToken>()).Returns((user, false));
+        jwtTokenService.GenerateToken(Arg.Any<User>()).Returns("t");
+
+        var result = await handler.Handle(command, CancellationToken.None);
+
+        var success = Assert.IsType<SuccessResult<PortalAuthTokenResult>>(result);
+        Assert.False(success.Value.RequiresIdProofing);
+    }
+
+    [Fact]
+    public async Task Handle_SetsRequiresIdProofingFalse_WhenIdProofingCompleted()
+    {
+        var handler = new ValidateOtpCommandHandler(
+            otpRepository,
+            userRepository,
+            jwtTokenService,
+            _socureEnabled,
+            validator,
+            logger);
+        var command = new ValidateOtpCommand { Email = "proofed@example.com", Otp = "123456" };
+        var user = new User
+        {
+            Email = command.Email,
+            IsCoLoaded = false,
+            IdProofingStatus = IdProofingStatus.Completed,
+            IalLevel = UserIalLevel.IAL1plus
+        };
+        otpRepository.GetOtpCodeByEmailAsync(command.Email).Returns(new OtpCode(command.Otp, command.Email));
+        userRepository.GetOrCreateUserAsync(command.Email, Arg.Any<CancellationToken>()).Returns((user, false));
+        jwtTokenService.GenerateToken(Arg.Any<User>()).Returns("t");
+
+        var result = await handler.Handle(command, CancellationToken.None);
+
+        var success = Assert.IsType<SuccessResult<PortalAuthTokenResult>>(result);
+        Assert.False(success.Value.RequiresIdProofing);
     }
 }

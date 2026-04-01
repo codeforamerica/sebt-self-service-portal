@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
 using SEBT.Portal.Api.Models;
+using SEBT.Portal.Core.Models.Auth;
 using SEBT.Portal.Kernel;
 using SEBT.Portal.Kernel.AspNetCore;
 using SEBT.Portal.Kernel.Results;
@@ -57,7 +58,7 @@ public class AuthController(ILogger<AuthController> logger) : ControllerBase
     [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status404NotFound)]
     [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status500InternalServerError)]
     public async Task<IActionResult> RefreshToken(
-        [FromServices] ICommandHandler<RefreshTokenCommand, string> handler)
+        [FromServices] ICommandHandler<RefreshTokenCommand, PortalAuthTokenResult> handler)
     {
         var email = GetUserEmail();
 
@@ -75,18 +76,18 @@ public class AuthController(ILogger<AuthController> logger) : ControllerBase
         if (result.IsSuccess)
         {
             logger.LogInformation("Token refreshed successfully for email {Email}", email);
-            return Ok(new ValidateOtpResponse(result.Value));
+            return Ok(new ValidateOtpResponse(result.Value.Token, result.Value.RequiresIdProofing));
         }
         else
         {
             logger.LogWarning("Token refresh failed for email {Email}: {Message}", email, result.Message);
 
-            if (result is ValidationFailedResult<string> validationFailed)
+            if (result is ValidationFailedResult<PortalAuthTokenResult> validationFailed)
             {
                 return BadRequest(new ErrorResponse(result.Message, validationFailed.Errors));
             }
 
-            if (result is PreconditionFailedResult<string> preconditionFailed)
+            if (result is PreconditionFailedResult<PortalAuthTokenResult> preconditionFailed)
             {
                 // Return 404 for NotFound, 409 for Conflict, etc.
                 return preconditionFailed.Reason == PreconditionFailedReason.NotFound

@@ -5,6 +5,7 @@ using Microsoft.Extensions.Logging.Abstractions;
 using NSubstitute;
 using SEBT.Portal.Api.Controllers.Auth;
 using SEBT.Portal.Api.Models;
+using SEBT.Portal.Core.Models.Auth;
 using SEBT.Portal.Kernel;
 using SEBT.Portal.Kernel.Results;
 using SEBT.Portal.UseCases.Auth;
@@ -76,9 +77,9 @@ public class AuthControllerTests
         var expectedToken = "refreshed.jwt.token";
         SetupAuthenticatedUser(email);
 
-        var handlerMock = Substitute.For<ICommandHandler<RefreshTokenCommand, string>>();
+        var handlerMock = Substitute.For<ICommandHandler<RefreshTokenCommand, PortalAuthTokenResult>>();
         handlerMock.Handle(Arg.Is<RefreshTokenCommand>(c => c.Email == email))
-            .Returns(Result<string>.Success(expectedToken));
+            .Returns(Result<PortalAuthTokenResult>.Success(new PortalAuthTokenResult(expectedToken, false)));
 
         // Act
         var result = await _controller.RefreshToken(handlerMock);
@@ -88,6 +89,7 @@ public class AuthControllerTests
         var okResult = Assert.IsType<OkObjectResult>(result);
         var response = Assert.IsType<ValidateOtpResponse>(okResult.Value);
         Assert.Equal(expectedToken, response.Token);
+        Assert.False(response.RequiresIdProofing);
         await handlerMock.Received(1).Handle(Arg.Is<RefreshTokenCommand>(c => c.Email == email));
     }
 
@@ -103,7 +105,7 @@ public class AuthControllerTests
             HttpContext = new DefaultHttpContext { User = principal }
         };
 
-        var handlerMock = Substitute.For<ICommandHandler<RefreshTokenCommand, string>>();
+        var handlerMock = Substitute.For<ICommandHandler<RefreshTokenCommand, PortalAuthTokenResult>>();
 
         // Act
         var result = await _controller.RefreshToken(handlerMock);
@@ -122,9 +124,9 @@ public class AuthControllerTests
         var email = "nonexistent@example.com";
         SetupAuthenticatedUser(email);
 
-        var handlerMock = Substitute.For<ICommandHandler<RefreshTokenCommand, string>>();
+        var handlerMock = Substitute.For<ICommandHandler<RefreshTokenCommand, PortalAuthTokenResult>>();
         handlerMock.Handle(Arg.Is<RefreshTokenCommand>(c => c.Email == email))
-            .Returns(Result<string>.PreconditionFailed(
+            .Returns(Result<PortalAuthTokenResult>.PreconditionFailed(
                 PreconditionFailedReason.NotFound,
                 "User not found."));
 
@@ -145,13 +147,13 @@ public class AuthControllerTests
         var email = "invalid-email";
         SetupAuthenticatedUser(email);
 
-        var handlerMock = Substitute.For<ICommandHandler<RefreshTokenCommand, string>>();
+        var handlerMock = Substitute.For<ICommandHandler<RefreshTokenCommand, PortalAuthTokenResult>>();
         var validationErrors = new[]
         {
             new ValidationError("Email", "Invalid email format.")
         };
         handlerMock.Handle(Arg.Is<RefreshTokenCommand>(c => c.Email == email))
-            .Returns(Result<string>.ValidationFailed(validationErrors));
+            .Returns(Result<PortalAuthTokenResult>.ValidationFailed(validationErrors));
 
         // Act
         var result = await _controller.RefreshToken(handlerMock);
@@ -173,9 +175,9 @@ public class AuthControllerTests
         var email = "user@example.com";
         SetupAuthenticatedUser(email);
 
-        var handlerMock = Substitute.For<ICommandHandler<RefreshTokenCommand, string>>();
+        var handlerMock = Substitute.For<ICommandHandler<RefreshTokenCommand, PortalAuthTokenResult>>();
         handlerMock.Handle(Arg.Is<RefreshTokenCommand>(c => c.Email == email))
-            .Returns(Result<string>.DependencyFailed(
+            .Returns(Result<PortalAuthTokenResult>.DependencyFailed(
                 DependencyFailedReason.ConnectionFailed,
                 "An error occurred while refreshing the authentication token."));
 
@@ -196,9 +198,9 @@ public class AuthControllerTests
         var email = "user@example.com";
         SetupAuthenticatedUser(email);
 
-        var handlerMock = Substitute.For<ICommandHandler<RefreshTokenCommand, string>>();
+        var handlerMock = Substitute.For<ICommandHandler<RefreshTokenCommand, PortalAuthTokenResult>>();
         handlerMock.Handle(Arg.Any<RefreshTokenCommand>())
-            .Returns(Result<string>.Success("token"));
+            .Returns(Result<PortalAuthTokenResult>.Success(new PortalAuthTokenResult("token", false)));
 
         // Act
         var result = await _controller.RefreshToken(handlerMock);
@@ -214,9 +216,9 @@ public class AuthControllerTests
         var email = "user@example.com";
         SetupAuthenticatedUser(email, "sub");
 
-        var handlerMock = Substitute.For<ICommandHandler<RefreshTokenCommand, string>>();
+        var handlerMock = Substitute.For<ICommandHandler<RefreshTokenCommand, PortalAuthTokenResult>>();
         handlerMock.Handle(Arg.Any<RefreshTokenCommand>())
-            .Returns(Result<string>.Success("token"));
+            .Returns(Result<PortalAuthTokenResult>.Success(new PortalAuthTokenResult("token", false)));
 
         // Act
         var result = await _controller.RefreshToken(handlerMock);
@@ -238,9 +240,9 @@ public class AuthControllerTests
             HttpContext = new DefaultHttpContext { User = principal }
         };
 
-        var handlerMock = Substitute.For<ICommandHandler<RefreshTokenCommand, string>>();
+        var handlerMock = Substitute.For<ICommandHandler<RefreshTokenCommand, PortalAuthTokenResult>>();
         handlerMock.Handle(Arg.Any<RefreshTokenCommand>())
-            .Returns(Result<string>.Success("token"));
+            .Returns(Result<PortalAuthTokenResult>.Success(new PortalAuthTokenResult("token", false)));
 
         // Act
         var result = await _controller.RefreshToken(handlerMock);
@@ -262,9 +264,9 @@ public class AuthControllerTests
             HttpContext = new DefaultHttpContext { User = principal }
         };
 
-        var handlerMock = Substitute.For<ICommandHandler<RefreshTokenCommand, string>>();
+        var handlerMock = Substitute.For<ICommandHandler<RefreshTokenCommand, PortalAuthTokenResult>>();
         handlerMock.Handle(Arg.Any<RefreshTokenCommand>())
-            .Returns(Result<string>.Success("token"));
+            .Returns(Result<PortalAuthTokenResult>.Success(new PortalAuthTokenResult("token", false)));
 
         // Act
         var result = await _controller.RefreshToken(handlerMock);
@@ -286,9 +288,9 @@ public class AuthControllerTests
             HttpContext = new DefaultHttpContext { User = principal }
         };
 
-        var handlerMock = Substitute.For<ICommandHandler<RefreshTokenCommand, string>>();
+        var handlerMock = Substitute.For<ICommandHandler<RefreshTokenCommand, PortalAuthTokenResult>>();
         handlerMock.Handle(Arg.Any<RefreshTokenCommand>())
-            .Returns(Result<string>.Success("token"));
+            .Returns(Result<PortalAuthTokenResult>.Success(new PortalAuthTokenResult("token", false)));
 
         // Act
         var result = await _controller.RefreshToken(handlerMock);

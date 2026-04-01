@@ -1,4 +1,5 @@
 using System.ComponentModel.DataAnnotations;
+using SEBT.Portal.Core.Models.Auth;
 using SEBT.Portal.Kernel;
 
 namespace SEBT.Portal.UseCases.Auth;
@@ -6,7 +7,7 @@ namespace SEBT.Portal.UseCases.Auth;
 /// <summary>
 /// Command for refreshing a JWT token with updated user information.
 /// </summary>
-public class RefreshTokenCommand : ICommand<string>
+public class RefreshTokenCommand : ICommand<PortalAuthTokenResult>
 {
     /// <summary>
     /// The email address of the user requesting the token refresh.

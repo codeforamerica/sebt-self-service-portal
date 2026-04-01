@@ -17,6 +17,13 @@ public class SubmitIdProofingCommandHandlerTests
     private readonly IUserRepository userRepository = Substitute.For<IUserRepository>();
     private readonly IDocVerificationChallengeRepository challengeRepository =
         Substitute.For<IDocVerificationChallengeRepository>();
+
+    public SubmitIdProofingCommandHandlerTests()
+    {
+        challengeRepository
+            .ExpireStaleChallengesForUserAsync(Arg.Any<int>(), Arg.Any<CancellationToken>())
+            .Returns(Task.CompletedTask);
+    }
     private readonly ISocureClient socureClient = Substitute.For<ISocureClient>();
     private readonly SocureSettings socureSettings =
         new() { ChallengeExpirationMinutes = 30 };

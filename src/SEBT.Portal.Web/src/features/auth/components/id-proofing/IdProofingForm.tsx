@@ -104,7 +104,7 @@ export function IdProofingForm({ idOptions, contactLink }: IdProofingFormProps) 
         idType: selectedIdType === NONE_VALUE || selectedIdType === null ? null : selectedIdType,
         idValue: showIdValueInput ? idValue.trim() : null
       })
-
+      console.log('response', response)
       if (response.result === 'documentVerificationRequired') {
         if (!response.challengeId) {
           setSubmitError(
@@ -125,6 +125,7 @@ export function IdProofingForm({ idOptions, contactLink }: IdProofingFormProps) 
         router.push('/dashboard')
       }
     } catch (err) {
+      console.log('err', err)
       // All errors get the same user-facing message. Raw ApiError.message may contain
       // backend wording not intended for end users — avoid displaying it directly.
       void err
