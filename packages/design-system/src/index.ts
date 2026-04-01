@@ -21,6 +21,8 @@ export { Alert } from './components/ui/Alert'
 export { TextLink } from './components/ui/TextLink'
 // TextLinkProps is defined in TextLink.tsx itself (not in ui/types.ts)
 export type { TextLinkProps } from './components/ui/TextLink'
+export { SummaryBox } from './components/ui/SummaryBox'
+export type { SummaryBoxProps } from './components/ui/SummaryBox'
 
 // Rich text rendering (markdown-to-jsx)
 export { RichText } from './components/RichText/RichText'

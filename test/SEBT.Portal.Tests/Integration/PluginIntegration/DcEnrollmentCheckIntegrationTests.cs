@@ -1,6 +1,8 @@
 using System.Net;
 using System.Net.Http.Json;
 using System.Text.Json;
+using Microsoft.Extensions.DependencyInjection;
+using SEBT.Portal.StatesPlugins.Interfaces;
 
 namespace SEBT.Portal.Tests.Integration.PluginIntegration;
 
@@ -25,32 +27,58 @@ public class DcEnrollmentCheckIntegrationTests : IClassFixture<DcSourceDatabaseF
 
     public DcEnrollmentCheckIntegrationTests(DcSourceDatabaseFixture dcDatabase)
     {
+        PluginIntegrationWebApplicationFactory? factory = null;
+        HttpClient? client = null;
+        var canRun = false;
+        var skipReason = string.Empty;
+
         if (!PluginPathResolver.HasPluginDlls("plugins-dc"))
         {
-            _canRun = false;
-            _skipReason = "DC plugin DLLs not found in plugins-dc/";
-            return;
+            skipReason = "DC plugin DLLs not found in plugins-dc/";
+        }
+        else
+        {
+            try
+            {
+                factory = new PluginIntegrationWebApplicationFactory(
+                    pluginDir: "plugins-dc",
+                    configOverrides: new Dictionary<string, string>
+                    {
+                        ["DCConnector:ConnectionString"] = dcDatabase.ConnectionString
+                    });
+
+                using (var scope = factory.Services.CreateScope())
+                {
+                    var enrollment = scope.ServiceProvider.GetRequiredService<IEnrollmentCheckService>();
+                    if (enrollment.GetType().Name == "DefaultEnrollmentCheckService")
+                    {
+                        factory.Dispose();
+                        factory = null;
+                        skipReason =
+                            "plugins-dc has no IEnrollmentCheckService export; only the API default stub is registered. Rebuild dc-connector and copy DLLs to plugins-dc.";
+                    }
+                }
+
+                if (factory != null)
+                {
+                    client = factory.CreateClient();
+                    canRun = true;
+                }
+            }
+            catch (Exception ex)
+            {
+                factory?.Dispose();
+                factory = null;
+                client?.Dispose();
+                client = null;
+                skipReason = $"DC plugin DLLs could not be loaded: {ex.GetBaseException().Message}";
+            }
         }
 
-        // Plugin DLLs exist, but they may fail to load if transitive dependencies
-        // (e.g., Microsoft.Kiota.Abstractions) aren't in the directory. Catch and skip.
-        try
-        {
-            _factory = new PluginIntegrationWebApplicationFactory(
-                pluginDir: "plugins-dc",
-                configOverrides: new Dictionary<string, string>
-                {
-                    ["DCConnector:ConnectionString"] = dcDatabase.ConnectionString
-                });
-            _client = _factory.CreateClient();
-            _canRun = true;
-            _skipReason = string.Empty;
-        }
-        catch (Exception ex)
-        {
-            _canRun = false;
-            _skipReason = $"DC plugin DLLs could not be loaded: {ex.GetBaseException().Message}";
-        }
+        _factory = factory;
+        _client = client;
+        _canRun = canRun;
+        _skipReason = skipReason;
     }
 
     [SkippableFact]

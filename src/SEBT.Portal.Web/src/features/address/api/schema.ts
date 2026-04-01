@@ -33,8 +33,8 @@ export const UpdateAddressRequestSchema = z.object({
 export type UpdateAddressRequest = z.infer<typeof UpdateAddressRequestSchema>
 
 /**
- * Stub interface for address validation service (frontend side).
- * Replace with real Smarty integration when DC-160 is implemented.
+ * Mirrors backend address validation outcomes when exposed to the client.
+ * Server-side verification uses Smarty when enabled (see API AddressValidationPolicy / Smarty config).
  */
 export interface AddressValidationResult {
   isValid: boolean

@@ -52,7 +52,7 @@ try
         .ConfigureServices((context, services) =>
         {
             services.AddPortalInfrastructureServices();
-            services.AddPortalInfrastructureAppSettings();
+            services.AddPortalInfrastructureAppSettings(configuration);
             services.AddPortalDbContext(configuration);
             services.AddPortalInfrastructureRepositories();
             services.AddScoped<IDatabaseSeeder>(sp =>
