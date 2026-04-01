@@ -112,7 +112,6 @@ module "app" {
     "Oidc__DiscoveryEndpoint"               = var.oidc_discovery_endpoint
     "Oidc__CallbackRedirectUri"             = "https://${var.domain}/callback"
     "Oidc__LanguageParam"                   = "en"
-    "FeatureManagement__AppConfig__Enabled" = true
   }
 
   state_api_environment_secrets = {
