@@ -69,7 +69,7 @@ public class AuthController(ILogger<AuthController> logger) : ControllerBase
 
         logger.LogInformation("Token refresh request received for email {Email}", email);
 
-        var command = new RefreshTokenCommand { Email = email };
+        var command = new RefreshTokenCommand { Email = email, CurrentPrincipal = User };
         var result = await handler.Handle(command);
 
         if (result.IsSuccess)
