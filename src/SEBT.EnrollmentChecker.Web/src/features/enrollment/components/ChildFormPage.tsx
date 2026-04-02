@@ -1,7 +1,9 @@
 'use client'
 
+import { AnalyticsEvents, useDataLayer } from '@sebt/analytics'
 import Image from 'next/image'
 import { useRouter } from 'next/navigation'
+import { useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useEnrollment } from '../context/EnrollmentContext'
 import type { ChildFormValues } from '../schemas/childSchema'
@@ -16,6 +18,13 @@ export function ChildFormPage({ showSchoolField, apiBaseUrl }: ChildFormPageProp
   const { t } = useTranslation('personalInfo')
   const router = useRouter()
   const { state, addChild, updateChild, setEditingChildId } = useEnrollment()
+  const { setPageData, trackEvent } = useDataLayer()
+
+  useEffect(() => {
+    setPageData('flow', 'enrollment_check')
+    setPageData('step', 'check')
+    trackEvent(AnalyticsEvents.ENROLLMENT_CHECK_START)
+  }, [setPageData, trackEvent])
 
   const editingChild = state.editingChildId
     ? state.children.find(c => c.id === state.editingChildId)
