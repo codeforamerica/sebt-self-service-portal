@@ -19,6 +19,11 @@ public record HouseholdData
     public string? Phone { get; set; }
 
     /// <summary>
+    /// The list of Summer EBT cases (per-child) for this household.
+    /// </summary>
+    public List<SummerEbtCase> SummerEbtCases { get; set; } = new();
+
+    /// <summary>
     /// The list of applications for this household.
     /// Each application can have its own children, status, and card information.
     /// </summary>

@@ -21,6 +21,11 @@ public record HouseholdDataResponse
     public string? Phone { get; init; }
 
     /// <summary>
+    /// The list of Summer EBT cases (per-child) for this household.
+    /// </summary>
+    public IReadOnlyList<SummerEbtCaseResponse> SummerEbtCases { get; init; } = Array.Empty<SummerEbtCaseResponse>();
+
+    /// <summary>
     /// The list of applications for this household.
     /// </summary>
     public IReadOnlyList<ApplicationResponse> Applications { get; init; } = Array.Empty<ApplicationResponse>();

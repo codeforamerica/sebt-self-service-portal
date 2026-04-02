@@ -25,6 +25,7 @@ internal static class PluginHouseholdDataMapper
             BenefitIssuanceType = (BenefitIssuanceType)(GetProp(t, source, nameof(HouseholdData.BenefitIssuanceType)) ?? (int)BenefitIssuanceType.Unknown),
             AddressOnFile = ToCoreAddress(GetProp(t, source, nameof(HouseholdData.AddressOnFile))),
             UserProfile = ToCoreUserProfile(GetProp(t, source, nameof(HouseholdData.UserProfile))),
+            SummerEbtCases = ToCoreSummerEbtCaseList(GetProp(t, source, nameof(HouseholdData.SummerEbtCases))),
             Applications = ToCoreApplicationList(GetProp(t, source, nameof(HouseholdData.Applications)))
         };
     }
@@ -53,6 +54,54 @@ internal static class PluginHouseholdDataMapper
             MiddleName = GetProp<string>(t, source, nameof(UserProfile.MiddleName)),
             LastName = GetProp<string>(t, source, nameof(UserProfile.LastName)) ?? string.Empty
         };
+    }
+
+    private static List<SummerEbtCase> ToCoreSummerEbtCaseList(object? source)
+    {
+        if (source is not IEnumerable list) return new List<SummerEbtCase>();
+        var result = new List<SummerEbtCase>();
+        foreach (var item in list)
+        {
+            if (item != null)
+            {
+                result.Add(ToCoreSummerEbtCase(item));
+            }
+        }
+        return result;
+    }
+
+    private static SummerEbtCase ToCoreSummerEbtCase(object source)
+    {
+        var t = source.GetType();
+        return new SummerEbtCase
+        {
+            SummerEBTCaseID = GetProp<string>(t, source, "SummerEBTCaseID"),
+            ApplicationId = GetProp<string>(t, source, "ApplicationId"),
+            ApplicationStudentId = GetProp<string>(t, source, "ApplicationStudentId"),
+            ChildFirstName = GetProp<string>(t, source, "ChildFirstName") ?? string.Empty,
+            ChildLastName = GetProp<string>(t, source, "ChildLastName") ?? string.Empty,
+            ChildDateOfBirth = ToDateTimeOrNull(GetProp(t, source, "ChildDateOfBirth")),
+            HouseholdType = GetProp<string>(t, source, "HouseholdType") ?? string.Empty,
+            EligibilityType = GetProp<string>(t, source, "EligibilityType") ?? string.Empty,
+            ApplicationDate = ToDateTimeOrNull(GetProp(t, source, "ApplicationDate")),
+            ApplicationStatus = (ApplicationStatus)(GetProp(t, source, "ApplicationStatus") ?? (int)ApplicationStatus.Unknown),
+            MailingAddress = ToCoreAddress(GetProp(t, source, "MailingAddress")),
+            EbtCaseNumber = GetProp<string>(t, source, "EbtCaseNumber"),
+            EbtCardLastFour = GetProp<string>(t, source, "EbtCardLastFour"),
+            EbtCardStatus = GetProp<string>(t, source, "EbtCardStatus"),
+            EbtCardIssueDate = ToDateTimeOrNull(GetProp(t, source, "EbtCardIssueDate")),
+            EbtCardBalance = GetProp<decimal?>(t, source, "EbtCardBalance"),
+            BenefitAvailableDate = ToDateTimeOrNull(GetProp(t, source, "BenefitAvailableDate")),
+            BenefitExpirationDate = ToDateTimeOrNull(GetProp(t, source, "BenefitExpirationDate"))
+        };
+    }
+
+    private static DateTime? ToDateTimeOrNull(object? value)
+    {
+        if (value == null) return null;
+        if (value is DateTime dt) return dt;
+        if (value is DateOnly d) return d.ToDateTime(TimeOnly.MinValue);
+        return null;
     }
 
     private static List<Application> ToCoreApplicationList(object? source)

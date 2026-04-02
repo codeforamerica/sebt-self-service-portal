@@ -7,6 +7,7 @@ import { useRequiredHouseholdData } from './useRequiredHouseholdData'
 const mockHouseholdData: HouseholdData = {
   email: 'test@example.com',
   phone: '(202) 555-0100',
+  summerEbtCases: [],
   applications: [],
   addressOnFile: null
 }

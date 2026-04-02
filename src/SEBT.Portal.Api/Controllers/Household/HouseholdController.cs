@@ -58,13 +58,15 @@ public class HouseholdController : ControllerBase
     /// <param name="cancellationToken">A token to monitor for cancellation requests.</param>
     /// <returns>No content on success; otherwise, BadRequest or Unauthorized.</returns>
     /// <response code="204">Address updated successfully.</response>
-    /// <response code="400">Validation failed (missing fields or invalid format).</response>
+    /// <response code="400">Validation failed (missing fields, invalid format, or address could not be verified).</response>
     /// <response code="403">User is not authorized or no household identifier could be resolved from token.</response>
+    /// <response code="502">Address verification provider error or timeout.</response>
     [HttpPut("address")]
     [Authorize]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status502BadGateway)]
     public async Task<IActionResult> UpdateAddress(
         [FromBody] UpdateAddressRequest request,
         [FromServices] ICommandHandler<UpdateAddressCommand> commandHandler,

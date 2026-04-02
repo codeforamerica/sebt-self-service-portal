@@ -452,11 +452,22 @@ S9 - Text - Confirm Label,Confirm phone number,Confirm phone number,Confirma el 
 S9 - Language - Title,Which language do you prefer to be contacted in?,Which language do you prefer to be contacted in?,¿En qué idioma prefieres que te contactemos?,¿En qué idioma prefieres que te contactemos?,
 S9 - Language - Label Select Language,Select a language,Select a language,Selecciona un idioma,Selecciona un idioma,
 S9 - Language - Action,Continue to my account,Continue to my account,Continuar a mi cuenta,Continuar a mi cuenta,
-S10 - Step-up Disclaimer - Title,,Please wait...,,,
-S10 - Step-up Disclaimer - Body,,Do not exit the page. Checking to see if we have enough information.,,,
-S10 - Step-up Failure - Title,,"We're sorry, we aren't able to show your Summer EBT information",,,
-S10 - Step-up Failure - Body,,You can contact us if you need more help.,,,
-S10 - Step-up Failure - Action,,Contact us,,Contáctanos,
+GLOBAL - Profile Address Stub,"Your mailing address
+123 Example Street
+City, ST 12345","Your mailing address
+123 Example Street
+City, ST 12345","","",""
+GLOBAL - Profile Address Back To Dashboard,Return to dashboard,Return to dashboard,,,
+GLOBAL - Ial Guard Title,Action needed before continuing,Action needed before continuing,,,
+GLOBAL - Ial Guard Body,To continue, you need to verify your identity.,To continue, you need to verify your identity.,,,
+GLOBAL - Ial Guard Action Verify,Verify my identity,Verify my identity,,,
+GLOBAL - Ial Guard Action Continue,Continue with limited access,Continue with limited access,,,
+S10 - Step-up Disclaimer - Title,Please wait...,Please wait...,,,
+S10 - Step-up Disclaimer - Body,Do not exit the page. Checking to see if we have enough information.,Do not exit the page. Checking to see if we have enough information.,,,
+S10 - Step-up Failure - Title,"We're sorry, we aren't able to show your DC SUN Bucks information","We're sorry, we aren't able to show your DC SUN Bucks information",,,
+S10 - Step-up Failure - Body,You can contact us if you need more help.,You can contact us if you need more help.,,,
+S10 - Step-up Failure - Action,Contact us,Contact us,,Contáctanos,
+S10 - Step-up Failure - Continue,Return to dashboard,Return to dashboard,,,
 GLOBAL - Program Name,DC SUN Bucks,Summer EBT,DC SUN Bucks,Summer EBT,
 GLOBAL - Language,Language,Language,Idioma,Idioma,
 GLOBAL - Label - Languages,Languages,Languages,Idiomas,Idiomas,

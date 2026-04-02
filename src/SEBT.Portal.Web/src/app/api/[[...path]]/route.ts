@@ -8,10 +8,19 @@ type RouteContext = {
   params: Promise<{ path?: string[] }>
 }
 
+/** Paths handled by Next.js API routes; proxy delegates to them instead of the backend */
+const NEXTJS_API_PATHS = ['auth/oidc/callback'] as const
+
 async function proxyRequest(request: NextRequest, context: RouteContext): Promise<NextResponse> {
   const { path } = await context.params
-  const pathname = path ? `/api/${path.join('/')}` : '/api'
+  const pathStr = path?.join('/') ?? ''
 
+  if (pathStr === NEXTJS_API_PATHS[0] && request.method === 'POST') {
+    const { POST: oidcCallbackPost } = await import('../auth/oidc/callback/route')
+    return oidcCallbackPost(request)
+  }
+
+  const pathname = path ? `/api/${path.join('/')}` : '/api'
   const url = new URL(pathname, BACKEND_URL)
   url.search = request.nextUrl.search
 

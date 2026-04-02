@@ -30,10 +30,12 @@ const nextConfig: NextConfig = {
     // doesn't pull in unrelated modules
     optimizePackageImports: ['@sebt/design-system']
   },
-  /* SASS Configuration for USWDS */
+  /* SASS Configuration for USWDS
+   * sass-loader 16 + sass-embedded uses the modern Sass API, which honors `loadPaths` only.
+   * `includePaths` is legacy-API-only and is ignored — without loadPaths, `@use "uswds-core"` fails under webpack. */
   sassOptions: {
     implementation: 'sass-embedded',
-    includePaths: [
+    loadPaths: [
       path.join(designSystemPath, 'design/sass'),
       path.join(__dirname, 'node_modules/@uswds/uswds/packages'),
       path.join(__dirname, 'node_modules')
