@@ -16,6 +16,7 @@ internal static class ServiceCollectionPluginExtensions
         services.TryAddSingleton<IStateHealthCheckService, Defaults.DefaultStateHealthCheckService>();
         services.TryAddSingleton<ISummerEbtCaseService, Defaults.DefaultSummerEbtCaseService>();
         services.TryAddSingleton<IEnrollmentCheckService, Defaults.DefaultEnrollmentCheckService>();
+        services.TryAddSingleton<IAddressUpdateService, Defaults.DefaultAddressUpdateService>();
 
         var healthChecksBuilder = services.AddHealthChecks();
 
@@ -88,6 +89,11 @@ internal static class ServiceCollectionPluginExtensions
         conventions
             .ForTypesDerivedFrom<IEnrollmentCheckService>()
             .Export<IEnrollmentCheckService>()
+            .Shared();
+
+        conventions
+            .ForTypesDerivedFrom<IAddressUpdateService>()
+            .Export<IAddressUpdateService>()
             .Shared();
 
         return new ContainerConfiguration()

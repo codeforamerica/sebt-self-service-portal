@@ -1,4 +1,3 @@
-using System.Security.Claims;
 using Microsoft.Extensions.Logging;
 using SEBT.Portal.Core.Models.Auth;
 using SEBT.Portal.Core.Models.Household;
@@ -32,7 +31,7 @@ public class GetHouseholdDataQueryHandler(
 
         logger.LogDebug("Household data request received for identifier type {Type}", identifier.Type);
 
-        var userIalLevel = GetUserIalLevel(query.User);
+        var userIalLevel = UserIalLevelExtensions.FromClaimsPrincipal(query.User);
         var piiVisibility = idProofingRequirementsService.GetPiiVisibility(userIalLevel);
 
         logger.LogDebug(
@@ -56,25 +55,5 @@ public class GetHouseholdDataQueryHandler(
 
         logger.LogDebug("Household data retrieved successfully for identifier type {Type}", identifier.Type);
         return Result<HouseholdData>.Success(householdData);
-    }
-
-    private static UserIalLevel GetUserIalLevel(ClaimsPrincipal user)
-    {
-        var ialClaim = user.FindFirst(JwtClaimTypes.Ial)?.Value;
-
-        if (string.IsNullOrWhiteSpace(ialClaim))
-        {
-            return UserIalLevel.None;
-        }
-
-        var normalized = ialClaim.Trim().ToLowerInvariant();
-        return normalized switch
-        {
-            "1" => UserIalLevel.IAL1,
-            "1plus" => UserIalLevel.IAL1plus,
-            "2" => UserIalLevel.IAL2,
-            "0" => UserIalLevel.None,
-            _ => UserIalLevel.None
-        };
     }
 }
