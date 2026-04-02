@@ -143,7 +143,16 @@ public class OidcController(
         foreach (var claim in principal.Claims)
         {
             if (!CommonIdpClaimNames.Contains(claim.Type) && !string.IsNullOrEmpty(claim.Value))
+            {
                 additionalClaims[claim.Type] = claim.Value;
+            }
+        }
+
+        logger.LogInformation("Additional OIDC claim types: {Claims}", string.Join(", ", additionalClaims.Select(c => c.Key).ToArray()));
+
+        if (!additionalClaims.Select(c => c.Key).Contains("phone"))
+        {
+            logger.LogWarning("OIDC incoming claims missing 'phone'");
         }
 
         var email = GetEmailFromClaims(principal);

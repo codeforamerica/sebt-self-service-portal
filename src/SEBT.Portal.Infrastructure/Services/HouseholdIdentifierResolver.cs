@@ -79,7 +79,7 @@ public class HouseholdIdentifierResolver : IHouseholdIdentifierResolver
             var overridePhone = _phoneOverrideProvider.GetOverridePhone();
             if (!string.IsNullOrWhiteSpace(overridePhone))
             {
-                _logger?.LogDebug("Using development phone override for household lookup ");
+                _logger?.LogInformation("Using development phone override for household lookup ");
                 return new HouseholdIdentifier(PreferredHouseholdIdType.Phone, overridePhone);
             }
 
@@ -89,10 +89,12 @@ public class HouseholdIdentifierResolver : IHouseholdIdentifierResolver
                 var normalized = phoneFromClaims.Trim();
                 if (!string.IsNullOrWhiteSpace(normalized))
                 {
-                    _logger?.LogDebug("Using phone from JWT claims for household lookup");
+                    _logger?.LogInformation("Using phone from JWT claims for household lookup");
                     return new HouseholdIdentifier(PreferredHouseholdIdType.Phone, normalized);
                 }
             }
+
+            _logger?.LogWarning("Failed to resolve phone number from JWT claims for household lookup");
         }
 
         foreach (var preferredType in preferredTypes)
