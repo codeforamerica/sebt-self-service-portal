@@ -18,6 +18,7 @@ namespace SEBT.Portal.Tests.Integration.PluginIntegration;
 /// Tests skip gracefully when plugin DLLs are not present or can't be loaded.
 /// </summary>
 [Collection("Integration")]
+[Trait("Category", "Integration")]
 public class DcEnrollmentCheckIntegrationTests : IClassFixture<DcSourceDatabaseFixture>, IDisposable
 {
     private readonly PluginIntegrationWebApplicationFactory? _factory;
