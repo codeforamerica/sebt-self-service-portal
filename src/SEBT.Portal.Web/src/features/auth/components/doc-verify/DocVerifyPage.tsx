@@ -4,6 +4,7 @@ import { useRouter, useSearchParams } from 'next/navigation'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
+import { AnalyticsEvents, useDataLayer } from '@sebt/analytics'
 import { Alert } from '@sebt/design-system'
 
 import {
@@ -47,6 +48,7 @@ export function DocVerifyPage({ contactLink, sdkKey }: DocVerifyPageProps) {
   const [subState, setSubState] = useState<SubState>('interstitial')
   const [challengeId, setChallengeId] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const { setPageData, trackEvent } = useDataLayer()
 
   // Capture launch config — set by handleContinue, consumed by DocVerifyCapture on mount
   const [captureLaunchConfig, setCaptureLaunchConfig] = useState<Omit<
@@ -97,6 +99,10 @@ export function DocVerifyPage({ contactLink, sdkKey }: DocVerifyPageProps) {
     if (!challengeId) return
     setError(null)
 
+    setPageData('flow', 'auth')
+    setPageData('step', 'doc_verify')
+    trackEvent(AnalyticsEvents.DOCV_START)
+
     try {
       const { docvTransactionToken } = await startChallenge.mutateAsync(challengeId)
 
@@ -135,18 +141,26 @@ export function DocVerifyPage({ contactLink, sdkKey }: DocVerifyPageProps) {
   }, [router])
 
   const handleVerified = useCallback(() => {
+    setPageData('docv_status', 'success')
+    trackEvent(AnalyticsEvents.DOCV_RESULT)
+    setPageData('idv_final_status', 'success')
+    trackEvent(AnalyticsEvents.IDV_FINAL_RESULT)
     clearChallengeContext()
     router.push('/dashboard')
-  }, [router])
+  }, [router, setPageData, trackEvent])
 
   const handleRejected = useCallback(
     (offboardingReason?: string) => {
+      setPageData('docv_status', 'fail')
+      trackEvent(AnalyticsEvents.DOCV_RESULT)
+      setPageData('idv_final_status', 'fail')
+      trackEvent(AnalyticsEvents.IDV_FINAL_RESULT)
       sessionStorage.setItem('offboarding_reason', offboardingReason ?? '')
       sessionStorage.setItem('offboarding_canApply', 'false')
       clearChallengeContext()
       router.push('/login/id-proofing/off-boarding')
     },
-    [router]
+    [router, setPageData, trackEvent]
   )
 
   return (
