@@ -70,7 +70,7 @@ export function DashboardContent() {
     )
   }
 
-  if (!data || data.applications.length === 0 || isNotFound) {
+  if (!data || isNotFound || (data.summerEbtCases.length === 0 && data.applications.length === 0)) {
     return (
       <>
         {pageHeading}

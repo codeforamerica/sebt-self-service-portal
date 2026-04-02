@@ -125,7 +125,7 @@ export function isReplacementEligible(cardStatus: CardStatus): boolean {
 }
 
 export const ChildSchema = z.object({
-  caseNumber: z.number().nullable().optional(),
+  caseNumber: z.string().nullable().optional(),
   firstName: z.string(),
   lastName: z.string()
 })
