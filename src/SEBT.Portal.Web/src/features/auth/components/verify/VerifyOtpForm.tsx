@@ -6,6 +6,7 @@ import { useTranslation } from 'react-i18next'
 import { useCountdown } from 'usehooks-ts'
 
 import { ApiError } from '@/api/client'
+import { AnalyticsEvents, useDataLayer } from '@sebt/analytics'
 import { Alert, Button, InputField, TextLink } from '@sebt/design-system'
 
 import { useRequestOtp, useValidateOtp, ValidateOtpRequestSchema } from '../../api'
@@ -37,6 +38,7 @@ export function VerifyOtpForm({ email, contactLink }: VerifyOtpFormProps) {
 
   const validateOtp = useValidateOtp()
   const requestOtp = useRequestOtp()
+  const { setPageData, setUserData, trackEvent } = useDataLayer()
 
   const validateCode = useCallback(
     (value: string): string | null => {
@@ -64,14 +66,21 @@ export function VerifyOtpForm({ email, contactLink }: VerifyOtpFormProps) {
     }
     setFieldError(null)
 
+    trackEvent(AnalyticsEvents.OTP_CHALLENGE)
+
     try {
       const result = await validateOtp.mutateAsync({ email, otp })
+      setPageData('otp_status', 'success')
+      setUserData('authenticated', true, ['default', 'analytics'])
+      trackEvent(AnalyticsEvents.OTP_RESULT)
       // Store the JWT token for authenticated API requests
       login(result.token)
       // Clear the stored email
       sessionStorage.removeItem('otp_email')
       router.push(result.requiresIdProofing === true ? '/login/id-proofing' : '/dashboard')
     } catch (err) {
+      setPageData('otp_status', 'error')
+      trackEvent(AnalyticsEvents.OTP_RESULT)
       if (err instanceof ApiError) {
         setSubmitError(err.message)
       } else {
@@ -89,6 +98,8 @@ export function VerifyOtpForm({ email, contactLink }: VerifyOtpFormProps) {
 
     setSubmitError(null)
     setSuccessMessage(null)
+
+    trackEvent(AnalyticsEvents.OTP_REQUEST)
 
     try {
       await requestOtp.mutateAsync({ email })

@@ -4,6 +4,7 @@ import { useRouter } from 'next/navigation'
 import { useId, useState, type FormEvent } from 'react'
 import { useTranslation } from 'react-i18next'
 
+import { AnalyticsEvents, useDataLayer } from '@sebt/analytics'
 import { Alert, Button, InputField } from '@sebt/design-system'
 
 import { SK_CHALLENGE_ID } from '@/features/auth/components/doc-verify/sessionKeys'
@@ -61,6 +62,7 @@ export function IdProofingForm({ idOptions, contactLink }: IdProofingFormProps) 
 
   const submitIdProofing = useSubmitIdProofing()
   const isSubmitting = submitIdProofing.isPending
+  const { setPageData, setUserData, trackEvent } = useDataLayer()
 
   const selectedOption = idOptions.find((opt) => opt.value === selectedIdType)
   const showIdValueInput = selectedIdType !== null && selectedIdType !== NONE_VALUE
@@ -97,6 +99,10 @@ export function IdProofingForm({ idOptions, contactLink }: IdProofingFormProps) 
 
     if (!validateFields()) return
 
+    setPageData('flow', 'auth')
+    setPageData('step', 'id_proofing')
+    trackEvent(AnalyticsEvents.IDV_PRIMARY_START)
+
     try {
       const response = await submitIdProofing.mutateAsync({
         dateOfBirth: { month: dobMonth, day: dobDay, year: dobYear },
@@ -106,6 +112,9 @@ export function IdProofingForm({ idOptions, contactLink }: IdProofingFormProps) 
       })
 
       if (response.result === 'documentVerificationRequired') {
+        setPageData('idv_primary_status', 'docv_required')
+        setUserData('docv_required', true, ['default', 'analytics'])
+        trackEvent(AnalyticsEvents.IDV_PRIMARY_RESULT)
         if (!response.challengeId) {
           setSubmitError(
             t('idProofingStartError', 'Unable to start document verification. Please try again.')
@@ -115,6 +124,8 @@ export function IdProofingForm({ idOptions, contactLink }: IdProofingFormProps) 
         sessionStorage.setItem(SK_CHALLENGE_ID, response.challengeId)
         router.push(`/login/id-proofing/doc-verify?challengeId=${response.challengeId}`)
       } else if (response.result === 'failed') {
+        setPageData('idv_primary_status', 'fail')
+        trackEvent(AnalyticsEvents.IDV_PRIMARY_RESULT)
         const params = new URLSearchParams()
         if (response.canApply === false) {
           params.set('canApply', 'false')
@@ -122,6 +133,8 @@ export function IdProofingForm({ idOptions, contactLink }: IdProofingFormProps) 
         const query = params.toString()
         router.push(`/login/id-proofing/off-boarding${query ? `?${query}` : ''}`)
       } else {
+        setPageData('idv_primary_status', 'success')
+        trackEvent(AnalyticsEvents.IDV_PRIMARY_RESULT)
         router.push('/dashboard')
       }
     } catch (err) {
