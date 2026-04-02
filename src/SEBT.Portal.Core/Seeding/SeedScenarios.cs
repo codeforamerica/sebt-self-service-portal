@@ -13,6 +13,8 @@ public static class SeedScenarios
     public static readonly SeedScenario Verified = new("verified", UserIalLevel.IAL1plus);
     public static readonly SeedScenario Expired = new("expired", UserIalLevel.IAL1plus);
     public static readonly SeedScenario Review = new("review", UserIalLevel.IAL1plus);
+    public static readonly SeedScenario SummerActive = new("summer-active", UserIalLevel.IAL1plus);
+    public static readonly SeedScenario SummerLost = new("summer-lost", UserIalLevel.IAL1plus);
 
     // IAL1 scenarios
     public static readonly SeedScenario SingleChild = new("singlechild", UserIalLevel.IAL1);
@@ -37,7 +39,7 @@ public static class SeedScenarios
     [
         CoLoaded, Verified, SingleChild, LargeFamily, Expired,
         NonCoLoaded, NotStarted, Pending, Minimal, Denied,
-        Review, Cancelled, Unknown
+        Review, Cancelled, Unknown, SummerActive, SummerLost
     ];
 
     /// <summary>

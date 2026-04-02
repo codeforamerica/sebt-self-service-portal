@@ -498,6 +498,76 @@ public class MockHouseholdRepository : IHouseholdRepository
         _households[multipleAppsEmail] = multipleApps;
         IndexByPhone(multipleApps);
 
+        // Scenario 13: SummerEbt user with Active card (eligible for address update per DC self-service rules)
+        var summerActiveEmail = _settings.BuildEmail(SeedScenarios.SummerActive.Name);
+        var summerActive = HouseholdFactory.CreateHouseholdDataWithStatus(ApplicationStatus.Approved, h =>
+        {
+            h.BenefitIssuanceType = BenefitIssuanceType.SummerEbt;
+            var app = h.Applications.FirstOrDefault();
+            if (app != null)
+            {
+                app.IssuanceType = IssuanceType.SummerEbt;
+                app.CardStatus = CardStatus.Active;
+                app.BenefitIssueDate = now.AddDays(-25);
+                app.BenefitExpirationDate = now.AddDays(65);
+                app.Last4DigitsOfCard = "7777";
+                app.CardRequestedAt = now.AddDays(-40);
+                app.CardMailedAt = now.AddDays(-35);
+                app.CardActivatedAt = now.AddDays(-25);
+                app.Children = new List<Child>
+                {
+                    new Child { CaseNumber = 770001, FirstName = "Noah", LastName = "Reyes" },
+                    new Child { CaseNumber = 770002, FirstName = "Mia", LastName = "Reyes" }
+                };
+            }
+            h.AddressOnFile = new Address
+            {
+                StreetAddress1 = "200 Summer Avenue NW",
+                City = "Washington",
+                State = "DC",
+                PostalCode = "20001"
+            };
+        });
+        summerActive.Email = summerActiveEmail;
+        summerActive.UserProfile = new UserProfile { FirstName = "Elena", MiddleName = "Rosa", LastName = "Reyes" };
+        _households[summerActiveEmail] = summerActive;
+        IndexByPhone(summerActive);
+
+        // Scenario 14: SummerEbt user with Lost card (eligible for card replacement per DC self-service rules)
+        var summerLostEmail = _settings.BuildEmail(SeedScenarios.SummerLost.Name);
+        var summerLost = HouseholdFactory.CreateHouseholdDataWithStatus(ApplicationStatus.Approved, h =>
+        {
+            h.BenefitIssuanceType = BenefitIssuanceType.SummerEbt;
+            var app = h.Applications.FirstOrDefault();
+            if (app != null)
+            {
+                app.IssuanceType = IssuanceType.SummerEbt;
+                app.CardStatus = CardStatus.Lost;
+                app.BenefitIssueDate = now.AddDays(-30);
+                app.BenefitExpirationDate = now.AddDays(60);
+                app.Last4DigitsOfCard = "8888";
+                app.CardRequestedAt = now.AddDays(-50);
+                app.CardMailedAt = now.AddDays(-45);
+                app.CardActivatedAt = now.AddDays(-30);
+                app.Children = new List<Child>
+                {
+                    new Child { CaseNumber = 880001, FirstName = "Ethan", LastName = "Park" }
+                };
+            }
+            h.AddressOnFile = new Address
+            {
+                StreetAddress1 = "450 Elm Street NW",
+                StreetAddress2 = "Apt 2C",
+                City = "Washington",
+                State = "DC",
+                PostalCode = "20002"
+            };
+        });
+        summerLost.Email = summerLostEmail;
+        summerLost.UserProfile = new UserProfile { FirstName = "Daniel", MiddleName = "Jin", LastName = "Park" };
+        _households[summerLostEmail] = summerLost;
+        IndexByPhone(summerLost);
+
         _logger.LogInformation("Seeded {Count} mock household records using Bogus", _households.Count);
     }
 
