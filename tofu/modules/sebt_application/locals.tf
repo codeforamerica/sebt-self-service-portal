@@ -5,14 +5,11 @@ locals {
     lambda if length(regexall("^DatadogIntegration-ForwarderStack-", lambda)) > 0
   ]
 
-  # CloudWatch log groups to subscribe to the Datadog Forwarder. Each entry
-  # maps a descriptive key to the log group name. The key encodes the service
-  # for easier identification in Datadog.
+  # CloudWatch log groups to subscribe to the Datadog Forwarder. Only RDS log
+  # groups are listed here — the Datadog AWS integration auto-subscribes to
+  # ECS and Lambda log groups, but not RDS instance logs.
   datadog_log_groups = {
-    api            = module.api.log_group_names[0]
-    web            = module.web.log_group_names[0]
     database-error = module.database.log_group_names["error"]
     database-agent = module.database.log_group_names["agent"]
-    ses-rotation   = module.ses.log_group_name
   }
 }

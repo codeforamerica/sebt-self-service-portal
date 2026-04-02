@@ -7,10 +7,10 @@ data "aws_ec2_managed_prefix_list" "cloudfront" {
   name = "com.amazonaws.global.cloudfront.origin-facing"
 }
 
-# Find the Datadog Forwarder Lambda so we can subscribe CloudWatch log groups
-# to it. The forwarder is deployed separately (via Datadog's CloudFormation
-# stack) and discovered here by its naming convention. If it doesn't exist yet,
-# no subscription filters will be created.
+# Find the Datadog Forwarder Lambda so we can subscribe RDS CloudWatch log
+# groups to it. The forwarder is deployed separately (via Datadog's
+# CloudFormation stack) and discovered here by its naming convention. If it
+# doesn't exist yet, no subscription filters will be created.
 data "aws_lambda_functions" "all" {}
 
 data "aws_lambda_function" "datadog" {

@@ -1,5 +1,7 @@
-# Subscribe application log groups to the Datadog Forwarder Lambda. If the
-# forwarder hasn't been deployed yet, no subscriptions are created.
+# Subscribe RDS log groups to the Datadog Forwarder Lambda. The Datadog AWS
+# integration auto-subscribes ECS and Lambda log groups but not RDS instance
+# logs, so we handle those explicitly. If the forwarder hasn't been deployed
+# yet, no subscriptions are created.
 resource "aws_cloudwatch_log_subscription_filter" "datadog" {
   for_each = length(local.datadog_lambda) > 0 ? local.datadog_log_groups : {}
 
