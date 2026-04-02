@@ -367,6 +367,15 @@ app.MapHealthChecks("/health", new HealthCheckOptions
 
 try
 {
+    var resolvedHouseholdIdTypes = app.Configuration
+        .GetSection("StateHouseholdId:PreferredHouseholdIdTypes")
+        .GetChildren()
+        .Select(c => c.Value)
+        .ToList();
+    Log.Information(
+        "Resolved StateHouseholdId:PreferredHouseholdIdTypes: [{Types}]",
+        string.Join(", ", resolvedHouseholdIdTypes));
+
     Log.Information("SEBT Portal API started successfully");
     app.Run();
 }

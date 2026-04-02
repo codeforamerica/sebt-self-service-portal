@@ -70,7 +70,7 @@ public class HouseholdIdentifierResolver : IHouseholdIdentifierResolver
                 "StateHouseholdId:PreferredHouseholdIdTypes is empty. Configure at least one preferred type");
         }
 
-        _logger?.LogDebug(
+        _logger?.LogInformation(
             "Resolving household identifier; preferred types: [{Types}]",
             string.Join(", ", preferredTypes.Select(t => t.ToString())));
 
