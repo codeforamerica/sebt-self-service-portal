@@ -8,7 +8,8 @@ import { decodeJwtPayload, getIalFromToken } from '@/lib/jwt'
 
 const ANALYTICS_SCOPE: string[] = ['default', 'analytics']
 
-// Mirrors SEBT.Portal.Core.Models.Auth.IdProofingStatus enum values from the JWT claim
+// Mirrors SEBT.Portal.Core.Models.Auth.IdProofingStatus enum values from the JWT claim.
+// JWT serializes as Integer32 (JSON number), but we parse defensively via Number() in case of string.
 const ID_PROOFING_NOT_STARTED = 0
 const ID_PROOFING_COMPLETED = 2
 
@@ -32,10 +33,11 @@ export function useUserDataSync() {
       setUserData('identity_assurance_level', ialNumeric, ANALYTICS_SCOPE)
     }
 
-    // ID proofing status
+    // ID proofing status — parse via Number() to handle both string and numeric JWT values
     const payload = decodeJwtPayload(token)
     if (payload) {
-      const idProofingStatus = payload.id_proofing_status
+      const rawStatus = payload.id_proofing_status
+      const idProofingStatus = rawStatus != null ? Number(rawStatus) : undefined
       const completedAt = payload.id_proofing_completed_at
       setUserData(
         'id_proofed',

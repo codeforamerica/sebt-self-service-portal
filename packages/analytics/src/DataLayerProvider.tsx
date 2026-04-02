@@ -78,7 +78,8 @@ function CtaTracker() {
     if (typeof window === 'undefined') return
 
     function handleClick(event: MouseEvent) {
-      const target = (event.target as HTMLElement).closest('[data-analytics-cta]')
+      if (!(event.target instanceof Element)) return
+      const target = event.target.closest('[data-analytics-cta]')
       if (!target || !window.digitalData?.initialized) return
 
       const ctaId = target.getAttribute('data-analytics-cta') || target.id || undefined

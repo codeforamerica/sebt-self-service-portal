@@ -29,6 +29,9 @@ importers:
 
   packages/analytics:
     devDependencies:
+      '@testing-library/react':
+        specifier: ^16.3.0
+        version: 16.3.2(@testing-library/dom@10.4.1)(@types/react-dom@19.2.3(@types/react@19.2.14))(@types/react@19.2.14)(react-dom@19.2.1(react@19.2.1))(react@19.2.1)
       '@types/react':
         specifier: ^19
         version: 19.2.14
@@ -41,6 +44,9 @@ importers:
       react:
         specifier: 19.2.1
         version: 19.2.1
+      react-dom:
+        specifier: 19.2.1
+        version: 19.2.1(react@19.2.1)
       vitest:
         specifier: ^4.0.15
         version: 4.1.0(@types/node@24.12.0)(jsdom@27.4.0)(msw@2.12.13(@types/node@24.12.0)(typescript@5.9.3))(vite@7.2.6(@types/node@24.12.0)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(tsx@4.21.0)(yaml@2.8.2))
