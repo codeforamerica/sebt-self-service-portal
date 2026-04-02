@@ -24,15 +24,19 @@ export function proxy(request: NextRequest) {
   //
   // Note: When nonce is present, 'unsafe-inline' is ignored by browsers.
   // In dev, we skip style nonce to allow HMR style injection.
+  // Socure DocV Web SDK: loads from websdk.socure.com, fetches source maps and APIs under *.socure.com,
+  // and may host capture UI in a frame (verify / verify-v2 hosts).
+  const socureOrigins = 'https://websdk.socure.com https://*.socure.com'
+
   const cspHeader = `
     default-src 'self';
-    script-src 'self' 'nonce-${nonce}' 'strict-dynamic' https://www.googletagmanager.com ${isDev ? "'unsafe-eval'" : ''};
+    script-src 'self' 'nonce-${nonce}' 'strict-dynamic' https://www.googletagmanager.com ${socureOrigins} ${isDev ? "'unsafe-eval'" : ''};
     style-src 'self' ${isDev ? "'unsafe-inline'" : `'nonce-${nonce}'`} https://fonts.googleapis.com;
     font-src 'self' https://fonts.gstatic.com;
     img-src 'self' data: https: https://www.google-analytics.com;
-    connect-src 'self' https://www.google-analytics.com https://*.google-analytics.com https://www.googletagmanager.com https://auth.pingone.com ${isDev ? 'ws://localhost:* http://localhost:*' : ''};
-    frame-src 'none';
-    child-src 'none';
+    connect-src 'self' https://www.google-analytics.com https://*.google-analytics.com https://www.googletagmanager.com https://auth.pingone.com ${socureOrigins} ${isDev ? 'ws://localhost:* http://localhost:*' : ''};
+    frame-src 'self' ${socureOrigins};
+    child-src 'self' ${socureOrigins};
     worker-src 'self';
     frame-ancestors 'none';
     base-uri 'self';
