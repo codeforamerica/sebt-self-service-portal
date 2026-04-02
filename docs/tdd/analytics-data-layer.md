@@ -132,9 +132,30 @@ initial state. Upon success it must emit `DataLayer:Initialized`.
 
 		DataLayer(root: string, bootstrap?: { text?: string })
 
+### Page Load Tracking
+
+Page load/view events are distinct from general events and must be
+tracked via a dedicated method:
+
+		DataLayer#pageLoad(data?: Record<string, unknown>): void
+
+Calling this method signals that a page view has occurred. Optionally,
+a map of data elements (key-value pairs of any type) can be passed to
+annotate the page view with additional context (e.g. page name, section).
+This method must be exposed publicly on the root data structure:
+
+		<root>.pageLoad(data?)
+
+At the DOM bridge level, a `<root>:PageViewed` DOM event is emitted
+(distinct from `<root>:EventTracked`), which the bridge maps to the
+vendor's dedicated page view tracking mechanism — allowing vendors to
+apply their own page view enrichment, session stitching, and default
+property decoration. See [DOM Bridge & Sample Integration](#dom-bridge--sample-integration)
+for an example.
+
 ### Event Tracking
 
-All events are tracked via the singular trackEvent method:
+All non-page-load events are tracked via `trackEvent`:
 
 		DataLayer#trackEvent(name: string, data?: Record<string, unknown>): void
 
@@ -216,6 +237,7 @@ fully-decoupled manner. With the exception of the global
 	| Event Name                | Fired When                                      |
 	|---------------------------|-------------------------------------------------|
 	| `DataLayer:Initialized`   | Data Layer is ready (`<root>.initialized=true`) |
+	| `<root>:PageViewed`       | Page load tracked (`pageLoad()` called)         |
 	| `<root>:PageElementSet`   | Page data set                                   |
 	| `<root>:PageAttributeSet` | Page attribute set                              |
 	| `<root>:PageCategorySet`  | Page category set                               |
@@ -235,16 +257,28 @@ library was loaded, this function would execute at the end of the
 
 		function initMixpanelBridge() {
 		  if (mixpanel && mixpanel.init && mixpanel.track) {
-			// Initialize mixpanel tracking
+			// Initialize mixpanel — disable auto page view tracking
+			// since we drive it explicitly via the data layer
 			mixpanel.init("PROJECT_TOKEN", {
 			  autocapture: true,
-			  track_pageview: true,
+			  track_pageview: false,
 			  record_sessions_percent: 100
 			});
 
-			// Listen for EVENT_TRACKED events and pass
-			// to mixpanel (precision tracking)
-			function attachEventListener(dataLayer) {
+			function attachBridge(dataLayer) {
+			  // Listen for PAGE_VIEWED and delegate to mixpanel's dedicated
+			  // page view method, passing along any additional data elements
+			  window.addEventListener(
+				dataLayer.eventTypes.PAGE_VIEWED,
+				(event) => {
+				  if (window.mixpanel) {
+					mixpanel.track_pageview(event.detail?.data);
+				  }
+				}
+			  );
+
+			  // Listen for EVENT_TRACKED and pass analytics-scoped
+			  // events to mixpanel (precision tracking)
 			  window.addEventListener(
 				dataLayer.eventTypes.EVENT_TRACKED,
 				(event) => {
@@ -252,20 +286,20 @@ library was loaded, this function would execute at the end of the
 					event.scope.includes("analytics") &&
 					  window.mixpanel
 				  ) {
-					mixpanel.track(event.eventName, event.eventData);
+					mixpanel.track(event.detail?.name, event.detail?.data);
 				  }
 				}
 			  );
 			}
 
-			// If the data layer is initialized, attach the event listener
+			// If the data layer is initialized, attach the bridge immediately;
 			// otherwise wait for the DataLayer:Initialized event
 			if (window.digitalData && window.digitalData.initialized) {
-			  attachEventListener(window.digitalData);
+			  attachBridge(window.digitalData);
 			} else {
 			  window.addEventListener("DataLayer:Initialized", (event) => {
 				if (event.detail?.rootElement) {
-				  attachEventListener(window[event.detail.rootElement]);
+				  attachBridge(window[event.detail.rootElement]);
 				}
 			  });
 			}

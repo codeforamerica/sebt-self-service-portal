@@ -490,3 +490,5 @@ packages/design-system/design/sass/_uswds-settings.scss
 
 # AI
 .claude/settings.local.json
+
+src/SEBT.Portal.Api/appsettings.co.json

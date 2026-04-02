@@ -208,7 +208,7 @@ Only include sections you want to override; other settings fall back to `appsett
 
 ### OIDC support
 
-States can use an external [OpenID Connect (OIDC)](https://openid.net/developers/how-connect-works/) provider for sign-in. Code exchange and id_token validation run in the Next.js server; the .NET API performs "complete-login" (validates a short-lived callback token and returns a portal JWT that includes IdP claims such as phone and name).
+States can use an external [OpenID Connect (OIDC)](https://openid.net/developers/how-connect-works/) provider for sign-in. OIDC is configured in the API under flat `Oidc` keys (`DiscoveryEndpoint`, `ClientId`, `CallbackRedirectUri`); the portal uses generic endpoints and config rather than state-specific auth code paths. Code exchange and id_token validation run in the Next.js server; the .NET API performs "complete-login" (validates a short-lived callback token and returns a portal JWT that includes IdP claims such as phone and name).
 
 For a deployment that uses OIDC, in `.env.local` under `SEBT.Portal.Web`, set:
 
@@ -226,9 +226,23 @@ In `appsettings` under `SEBT.Portal.Api`, set:
 - `Oidc:CallbackRedirectUri`
 - `Oidc:LanguageParam` (optional)
 
-The API serves public config via `GET /api/auth/oidc/{stateCode}/config`.
+The API serves public config via `GET /api/auth/oidc/{stateCode}/config` (no secrets in that response).
 
-See `appsettings.Development.example.json` and [ADR-0008](docs/adr/0008-oidc-mycolorado-authentication-and-state-auth-context.md).
+See `src/SEBT.Portal.Api/appsettings.Development.example.json` and [ADR-0008](docs/adr/0008-oidc-mycolorado-authentication-and-state-auth-context.md).
+
+### Development Phone Override (Local dev only)
+
+For states that use phone number as their primary Household ID and OIDC, local development sometimes requires bypassing MFA. You can override the phone number used for household lookup in `appsettings.Development.json`.
+
+**Only active when `ASPNETCORE_ENVIRONMENT=Development`.** Example:
+
+```json
+"DevelopmentPhoneOverride": {
+  "Phone": "8185558437"
+}
+```
+
+The resolver then uses this phone for household lookup instead of the one from the JWT or user record. You can still complete the OIDC flow as usual; the phone number used to satisfy MFA may differ from the one the portal uses for lookups.
 
 ### ID Proofing Requirements
 
