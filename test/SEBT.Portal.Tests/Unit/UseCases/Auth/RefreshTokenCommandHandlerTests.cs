@@ -1,4 +1,5 @@
 using System.Linq;
+using System.Security.Claims;
 using Microsoft.Extensions.Logging.Abstractions;
 using NSubstitute;
 using NSubstitute.ReceivedExtensions;
@@ -35,7 +36,8 @@ public class RefreshTokenCommandHandlerTests
 
         var command = new RefreshTokenCommand
         {
-            Email = "user@example.com"
+            Email = "user@example.com",
+            CurrentPrincipal = new ClaimsPrincipal()
         };
 
         var user = new User
@@ -66,7 +68,8 @@ public class RefreshTokenCommandHandlerTests
         // Arrange
         var command = new RefreshTokenCommand
         {
-            Email = string.Empty
+            Email = string.Empty,
+            CurrentPrincipal = new ClaimsPrincipal()
         };
 
         // Act
@@ -86,7 +89,8 @@ public class RefreshTokenCommandHandlerTests
         // Arrange
         var command = new RefreshTokenCommand
         {
-            Email = "invalid-email"
+            Email = "invalid-email",
+            CurrentPrincipal = new ClaimsPrincipal()
         };
 
         // Act
@@ -106,7 +110,8 @@ public class RefreshTokenCommandHandlerTests
         // Arrange
         var command = new RefreshTokenCommand
         {
-            Email = "nonexistent@example.com"
+            Email = "nonexistent@example.com",
+            CurrentPrincipal = new ClaimsPrincipal()
         };
 
         userRepository.GetUserByEmailAsync(Arg.Is<string>(email => email == command.Email), Arg.Any<CancellationToken>())
@@ -129,7 +134,8 @@ public class RefreshTokenCommandHandlerTests
         // Arrange
         var command = new RefreshTokenCommand
         {
-            Email = "user@example.com"
+            Email = "user@example.com",
+            CurrentPrincipal = new ClaimsPrincipal()
         };
 
         var user = new User
@@ -163,7 +169,8 @@ public class RefreshTokenCommandHandlerTests
         // Arrange
         var command = new RefreshTokenCommand
         {
-            Email = "user@example.com"
+            Email = "user@example.com",
+            CurrentPrincipal = new ClaimsPrincipal()
         };
 
         userRepository.GetUserByEmailAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
@@ -186,7 +193,8 @@ public class RefreshTokenCommandHandlerTests
         // Arrange
         var command = new RefreshTokenCommand
         {
-            Email = "user@example.com"
+            Email = "user@example.com",
+            CurrentPrincipal = new ClaimsPrincipal()
         };
 
         var user = new User
@@ -217,7 +225,8 @@ public class RefreshTokenCommandHandlerTests
         // Arrange
         var command = new RefreshTokenCommand
         {
-            Email = "user@example.com"
+            Email = "user@example.com",
+            CurrentPrincipal = new ClaimsPrincipal()
         };
 
         var user = new User
@@ -245,7 +254,8 @@ public class RefreshTokenCommandHandlerTests
         // Arrange
         var command = new RefreshTokenCommand
         {
-            Email = "user@example.com"
+            Email = "user@example.com",
+            CurrentPrincipal = new ClaimsPrincipal()
         };
 
         var completedAt = DateTime.UtcNow.AddDays(-5);
