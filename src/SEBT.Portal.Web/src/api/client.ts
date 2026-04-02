@@ -54,7 +54,6 @@ export async function apiFetch<T>(endpoint: string, options: ApiFetchOptions<T> 
   const controller = new AbortController()
   const timeoutId = setTimeout(() => controller.abort(), timeout)
 
-  // Build headers with auth token if available
   const authToken = getAuthToken()
   const requestHeaders: HeadersInit = {
     'Content-Type': 'application/json',

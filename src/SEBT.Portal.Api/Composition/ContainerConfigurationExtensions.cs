@@ -42,17 +42,21 @@ internal static class ContainerConfigurationExtensions
 
         var loadedNames = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
 
-        // Host owned assemblies should not be loaded by the plugin context,
-        // so we exclude them in the filter below
-        var defaultAssemblyNames = AssemblyLoadContext.Default.Assemblies
-            .Select(a => a.GetName().Name)
-            .ToHashSet();
-
-        // Catch for lazily loaded assemblies that are not yet loaded into the default context
-        // but are present in the base directory
-        foreach (var dll in Directory.GetFiles(baseDir, "*.dll"))
+        // Connector post-builds often copy transitive dependencies (contracts, Kiota, etc.) into
+        // plugins-* alongside the implementation. Those DLLs are already in the app base or default
+        // context — loading them again from the plugin path causes duplicate loads and type/MEF issues.
+        var hostAssemblySimpleNames = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        foreach (var assemblyName in AssemblyLoadContext.Default.Assemblies.Select(a => a.GetName().Name))
         {
-            defaultAssemblyNames.Add(Path.GetFileNameWithoutExtension(dll));
+            if (!string.IsNullOrEmpty(assemblyName))
+                hostAssemblySimpleNames.Add(assemblyName);
+        }
+
+        foreach (var dllPath in Directory.GetFiles(baseDir, "*.dll"))
+        {
+            var simpleName = Path.GetFileNameWithoutExtension(dllPath);
+            if (!string.IsNullOrEmpty(simpleName))
+                hostAssemblySimpleNames.Add(simpleName);
         }
 
         foreach (var combinedPath in existingPaths)
@@ -63,7 +67,9 @@ internal static class ContainerConfigurationExtensions
             {
                 var fullPath = Path.GetFullPath(dllPath);
                 var name = Path.GetFileNameWithoutExtension(fullPath);
-                if (defaultAssemblyNames.Contains(name) || loadedNames.Contains(name))
+                if (string.IsNullOrEmpty(name)
+                    || hostAssemblySimpleNames.Contains(name)
+                    || loadedNames.Contains(name))
                     continue;
                 try
                 {

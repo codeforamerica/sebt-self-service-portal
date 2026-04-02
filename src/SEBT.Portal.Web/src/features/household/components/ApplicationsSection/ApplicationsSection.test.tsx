@@ -30,6 +30,7 @@ const mockApplication: Application = {
 const defaultMockData: HouseholdData = {
   email: 'test@example.com',
   phone: '(303) 555-0100',
+  summerEbtCases: [],
   applications: [mockApplication],
   addressOnFile: null
 }

@@ -23,15 +23,15 @@ We'll use a frontend-driven Authorization Code/PKCE flow: the **Next.js** server
 - **Plugins** — Code that needs IdP-derived data (e.g. phone for household lookup) reads from the request's `ClaimsPrincipal`; the portal JWT issued at complete-login includes those claims.
 
 **Configuration:**  
-Next.js (when the deployment uses OIDC): `OIDC_DISCOVERY_ENDPOINT`, `OIDC_CLIENT_ID`, `OIDC_CLIENT_SECRET`, `OIDC_REDIRECT_URI`, `OIDC_COMPLETE_LOGIN_SIGNING_KEY`. API: `Oidc:CompleteLoginSigningKey`; for the public config endpoint, `Oidc:DiscoveryEndpoint`, `Oidc:ClientId`, `Oidc:CallbackRedirectUri`, and optionally `Oidc:LanguageParam`. See `appsettings.Development.example.json` and `.env.example`.
+Next.js (when the current deployment state uses OIDC): `OIDC_DISCOVERY_ENDPOINT`, `OIDC_CLIENT_ID`, `OIDC_CLIENT_SECRET`, `OIDC_REDIRECT_URI`, `OIDC_COMPLETE_LOGIN_SIGNING_KEY`. API: `Oidc:CompleteLoginSigningKey` (it should match the same value as the Next.js one); for the public config endpoint, `Oidc:DiscoveryEndpoint`, `Oidc:ClientId`, `Oidc:CallbackRedirectUri`, and optionally `Oidc:LanguageParam`. See `appsettings.Development.example.json` and `.env.example`.
 
 ## Consequences
 
-Users can sign in with OIDC services (like Colorado's MyColorado). IdP claims such as phone, givenName, and familyName are available in the portal JWT and thus on `User.Claims` for the duration of the session.
+Users can sign in with OIDC services (like Colorado's MyColorado). IdP claims such as phone, givenName, and familyName are available in the portal JWT and thus on `User.Claims` for the duration of the session. OIDC config is flat (one IdP per deployment); the client secret lives only in the Next.js server.
 
 Development requires real or test IdP credentials and the correct redirect URI (`http://localhost:3000/callback`).
 
-**Why auth is in the main portal:** The portal is the single application for all states. It must expose login endpoints, issue the portal JWT, and discover state plugins. OIDC configuration is the generic mechanism; each state supplies configuration (and optionally additional plugins as needed).
+**Why auth is in the main portal:** The portal is the single application for all states. It must expose login endpoints, issue the portal JWT, and discover state plugins.
 
 ## References
 

@@ -12,7 +12,9 @@ using SEBT.Portal.Core.Utilities;
 namespace SEBT.Portal.Api.Controllers.Auth;
 
 /// <summary>
-/// OIDC endpoints for external IdP login and step-up. Config is under Oidc.
+/// OIDC endpoints for external IdP login and step-up. Primary config uses flat <c>Oidc</c> keys
+/// (<c>DiscoveryEndpoint</c>, <c>ClientId</c>, <c>CallbackRedirectUri</c>); optional <c>Oidc:StepUp:*</c>
+/// selects a second client for elevated verification when <c>stepUp=true</c> on the config endpoint.
 /// </summary>
 [ApiController]
 [Route("api/auth/oidc")]
@@ -35,8 +37,8 @@ public class OidcController(
     };
     /// <summary>
     /// Public OIDC config for frontend PKCE flow (no secrets): authorization endpoint, token endpoint, client id, redirect URI.
-    /// Config keys: Oidc:DiscoveryEndpoint, Oidc:ClientId, Oidc:CallbackRedirectUri.
-    /// When stepUp=true, uses Oidc:StepUp:* (second client / discovery for elevated verification).
+    /// Config keys: <c>Oidc:DiscoveryEndpoint</c>, <c>Oidc:ClientId</c>, <c>Oidc:CallbackRedirectUri</c>.
+    /// When <c>stepUp=true</c>, uses <c>Oidc:StepUp:*</c> (second client / discovery for elevated verification).
     /// </summary>
     [HttpGet("{code}/config")]
     [ProducesResponseType(StatusCodes.Status200OK)]
@@ -56,7 +58,7 @@ public class OidcController(
             : config["Oidc:CallbackRedirectUri"];
         if (string.IsNullOrEmpty(discoveryEndpoint) || string.IsNullOrEmpty(clientId) || string.IsNullOrEmpty(redirectUri))
         {
-            logger.LogWarning("OIDC config missing (Oidc:DiscoveryEndpoint, ClientId, or CallbackRedirectUri)");
+            logger.LogWarning("OIDC config missing (Oidc:DiscoveryEndpoint, Oidc:ClientId, or Oidc:CallbackRedirectUri)");
             return StatusCode(StatusCodes.Status503ServiceUnavailable, new
             {
                 error = "OIDC not configured.",
@@ -147,8 +149,8 @@ public class OidcController(
         var email = GetEmailFromClaims(principal);
         if (string.IsNullOrWhiteSpace(email))
         {
-            logger.LogWarning("Callback token had no email claim");
-            return BadRequest(new ErrorResponse("Callback token must contain an email claim."));
+            logger.LogWarning("Callback token had no email or sub claim");
+            return BadRequest(new ErrorResponse("Callback token must contain an email or sub claim."));
         }
 
         var normalizedEmail = EmailNormalizer.Normalize(email);
@@ -242,11 +244,14 @@ public class OidcController(
     }
 
     /// <summary>
-    /// Gets the email from the callback token claims.
+    /// Gets the email (or subject) from the callback token claims for portal user lookup.
     /// </summary>
     private static string? GetEmailFromClaims(ClaimsPrincipal principal)
     {
         var emailClaim = principal.FindFirst("email");
-        return !string.IsNullOrEmpty(emailClaim?.Value) ? emailClaim.Value : null;
+        if (!string.IsNullOrEmpty(emailClaim?.Value))
+            return emailClaim.Value;
+        var subClaim = principal.FindFirst("sub");
+        return subClaim?.Value;
     }
 }

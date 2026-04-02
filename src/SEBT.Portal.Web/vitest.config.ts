@@ -3,8 +3,9 @@ import { defineConfig } from 'vitest/config'
 
 export default defineConfig({
   test: {
-    // @/env createEnv() requires NEXT_PUBLIC_STATE before modules that import it load (auth barrel → IalGuard).
+    // @/env createEnv() requires NEXT_PUBLIC_STATE; SKIP_ENV_VALIDATION skips strict OIDC checks during tests.
     env: {
+      SKIP_ENV_VALIDATION: '1',
       NEXT_PUBLIC_STATE: 'dc'
     },
     environment: 'jsdom',

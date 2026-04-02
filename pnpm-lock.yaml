@@ -290,6 +290,9 @@ importers:
       babel-plugin-react-compiler:
         specifier: 1.0.0
         version: 1.0.0
+      baseline-browser-mapping:
+        specifier: ^2.10.0
+        version: 2.10.8
       eslint:
         specifier: ^9.39.4
         version: 9.39.4(jiti@2.6.1)

@@ -70,6 +70,8 @@ public class HouseholdDataResponseMapperTests
         Assert.Equal("user@example.com", response.Email);
         Assert.Equal("555-1234", response.Phone);
         Assert.Equal(BenefitIssuanceType.SnapEbtCard, response.BenefitIssuanceType);
+        Assert.NotNull(response.SummerEbtCases);
+        Assert.Empty(response.SummerEbtCases);
         Assert.NotNull(response.Applications);
         Assert.Single(response.Applications);
 
@@ -207,5 +209,41 @@ public class HouseholdDataResponseMapperTests
         Assert.Equal(ApplicationStatus.Pending, response.Applications[1].ApplicationStatus);
         Assert.Single(response.Applications[1].Children);
         Assert.Equal("B", response.Applications[1].Children[0].FirstName);
+    }
+
+    [Fact]
+    public void ToResponse_MapsSummerEbtCases()
+    {
+        var domain = new HouseholdData
+        {
+            Email = "user@example.com",
+            Applications = new List<Application>(),
+            SummerEbtCases = new List<SummerEbtCase>
+            {
+                new SummerEbtCase
+                {
+                    SummerEBTCaseID = "CASE-001",
+                    ChildFirstName = "Maria",
+                    ChildLastName = "Garcia",
+                    ChildDateOfBirth = new DateTime(2015, 5, 15),
+                    ApplicationStatus = ApplicationStatus.Approved,
+                    EbtCardLastFour = "1234",
+                    EbtCardBalance = 120.50m
+                }
+            }
+        };
+
+        var response = domain.ToResponse();
+
+        Assert.NotNull(response);
+        Assert.Single(response.SummerEbtCases);
+        var sec = response.SummerEbtCases[0];
+        Assert.Equal("CASE-001", sec.SummerEBTCaseID);
+        Assert.Equal("Maria", sec.ChildFirstName);
+        Assert.Equal("Garcia", sec.ChildLastName);
+        Assert.Equal(new DateTime(2015, 5, 15), sec.ChildDateOfBirth);
+        Assert.Equal(ApplicationStatus.Approved, sec.ApplicationStatus);
+        Assert.Equal("1234", sec.EbtCardLastFour);
+        Assert.Equal(120.50m, sec.EbtCardBalance);
     }
 }

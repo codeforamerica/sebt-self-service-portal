@@ -5,6 +5,7 @@ using SEBT.Portal.Core.Models.Household;
 using SEBT.Portal.Core.Repositories;
 using SEBT.Portal.Core.Utilities;
 using ISummerEbtCaseService = SEBT.Portal.StatesPlugins.Interfaces.ISummerEbtCaseService;
+using PluginHouseholdIdentifierType = SEBT.Portal.StatesPlugins.Interfaces.Models.Household.HouseholdIdentifierType;
 using PluginIdentityAssuranceLevel = SEBT.Portal.StatesPlugins.Interfaces.Models.IdentityAssuranceLevel;
 using PluginPiiVisibility = SEBT.Portal.StatesPlugins.Interfaces.Models.PiiVisibility;
 
@@ -34,52 +35,65 @@ public class HouseholdRepository : IHouseholdRepository
         UserIalLevel userIalLevel,
         CancellationToken cancellationToken = default)
     {
-        if (identifier.Type != PreferredHouseholdIdType.Email)
+        var pluginType = MapToPluginIdentifierType(identifier.Type);
+        if (pluginType == null)
         {
-            _logger.LogDebug("State plugin lookup supports only email identifier; ignoring type {Type}", identifier.Type);
+            _logger.LogDebug("State plugin does not support the provided identifier type.");
             return Task.FromResult<HouseholdData?>(null);
         }
 
-        return GetHouseholdByEmailAsync(identifier.Value, piiVisibility, userIalLevel, cancellationToken);
+        return GetHouseholdByIdentifierInternalAsync(
+            pluginType.Value,
+            identifier.Value,
+            piiVisibility,
+            userIalLevel,
+            cancellationToken);
     }
 
-    /// <inheritdoc />
-    public async Task<HouseholdData?> GetHouseholdByEmailAsync(
-        string email,
+    private async Task<HouseholdData?> GetHouseholdByIdentifierInternalAsync(
+        PluginHouseholdIdentifierType identifierType,
+        string identifierValue,
         PiiVisibility piiVisibility,
         UserIalLevel userIalLevel,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(piiVisibility);
-        if (string.IsNullOrWhiteSpace(email))
+        if (string.IsNullOrWhiteSpace(identifierValue))
         {
             return null;
         }
 
-        var normalizedEmail = EmailNormalizer.Normalize(email);
+        var normalizedValue = identifierType == PluginHouseholdIdentifierType.Email
+            ? EmailNormalizer.Normalize(identifierValue)
+            : identifierValue.Trim();
 
-        _logger.LogDebug("Querying state plugin for household data by guardian email {Email}", normalizedEmail);
+        _logger.LogDebug(
+            "Querying state plugin for household data by identifier type {Type}",
+            identifierType);
 
         var pluginPii = new PluginPiiVisibility(
             piiVisibility.IncludeAddress,
             piiVisibility.IncludeEmail,
             piiVisibility.IncludePhone);
         var pluginIal = (PluginIdentityAssuranceLevel)(int)userIalLevel;
-        var pluginHousehold = await _summerEbtCaseService.GetHouseholdByGuardianEmailAsync(
-            normalizedEmail,
+        var pluginHousehold = await _summerEbtCaseService.GetHouseholdByIdentifierAsync(
+            identifierType,
+            normalizedValue,
             pluginPii,
             pluginIal,
             cancellationToken);
 
         if (pluginHousehold == null)
         {
-            _logger.LogInformation("No household data found for guardian email {Email}", normalizedEmail);
+            _logger.LogInformation(
+                "No household data found for identifier type {Type}",
+                identifierType);
             return null;
         }
 
         _logger.LogInformation(
-            "Retrieved household data for guardian {Email} with {ApplicationCount} application(s)",
-            normalizedEmail,
+            "Retrieved household data for identifier type {Type} with {ApplicationCount} application(s)",
+            identifierType,
             pluginHousehold.Applications.Count);
 
         var core = PluginHouseholdDataMapper.ToCore(pluginHousehold);
@@ -88,6 +102,34 @@ public class HouseholdRepository : IHouseholdRepository
             return null;
         }
         return ApplyPiiVisibility(core, piiVisibility);
+    }
+
+    private static PluginHouseholdIdentifierType? MapToPluginIdentifierType(PreferredHouseholdIdType type)
+    {
+        return type switch
+        {
+            PreferredHouseholdIdType.Email => PluginHouseholdIdentifierType.Email,
+            PreferredHouseholdIdType.Phone => PluginHouseholdIdentifierType.Phone,
+            PreferredHouseholdIdType.SnapId => PluginHouseholdIdentifierType.SnapId,
+            PreferredHouseholdIdType.TanfId => PluginHouseholdIdentifierType.TanfId,
+            PreferredHouseholdIdType.Ssn => PluginHouseholdIdentifierType.Ssn,
+            _ => null
+        };
+    }
+
+    /// <inheritdoc />
+    public Task<HouseholdData?> GetHouseholdByEmailAsync(
+        string email,
+        PiiVisibility piiVisibility,
+        UserIalLevel userIalLevel,
+        CancellationToken cancellationToken = default)
+    {
+        return GetHouseholdByIdentifierInternalAsync(
+            PluginHouseholdIdentifierType.Email,
+            email ?? string.Empty,
+            piiVisibility,
+            userIalLevel,
+            cancellationToken);
     }
 
     private static HouseholdData ApplyPiiVisibility(HouseholdData source, PiiVisibility piiVisibility)
