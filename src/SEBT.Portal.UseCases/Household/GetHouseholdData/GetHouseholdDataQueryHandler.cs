@@ -1,4 +1,3 @@
-using System.Security.Claims;
 using Microsoft.Extensions.Logging;
 using SEBT.Portal.Core.Models.Auth;
 using SEBT.Portal.Core.Models.Household;
@@ -57,5 +56,4 @@ public class GetHouseholdDataQueryHandler(
         logger.LogDebug("Household data retrieved successfully for identifier type {Type}", identifier.Type);
         return Result<HouseholdData>.Success(householdData);
     }
-
 }
