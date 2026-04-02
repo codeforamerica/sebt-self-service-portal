@@ -1,4 +1,5 @@
 using System.ComponentModel.DataAnnotations;
+using System.Security.Claims;
 using SEBT.Portal.Kernel;
 
 namespace SEBT.Portal.UseCases.Auth;
@@ -13,6 +14,12 @@ public class RefreshTokenCommand : ICommand<string>
     /// </summary>
     [Required(ErrorMessage = "Email address is required.")]
     [EmailAddress(ErrorMessage = "Invalid email format.")]
-    public string Email { get; init; } = string.Empty;
+    public required string Email { get; init; } = string.Empty;
+
+    /// <summary>
+    /// The current ClaimsPrincipal for the request. IMPORTANT: Used to preserve existing claims.
+    /// </summary>
+    [Required(ErrorMessage = "CurrentPrincipal is required.")]
+    public required ClaimsPrincipal CurrentPrincipal { get; init; }
 }
 
