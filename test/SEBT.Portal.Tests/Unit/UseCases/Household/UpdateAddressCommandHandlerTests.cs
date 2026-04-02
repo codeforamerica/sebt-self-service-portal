@@ -13,6 +13,7 @@ using SEBT.Portal.Kernel;
 using SEBT.Portal.Kernel.Results;
 using SEBT.Portal.StatesPlugins.Interfaces;
 using SEBT.Portal.UseCases.Household;
+using ICoreAddressUpdateService = SEBT.Portal.Core.Services.IAddressUpdateService;
 using IStateAddressUpdateService = SEBT.Portal.StatesPlugins.Interfaces.IAddressUpdateService;
 using AddressUpdateRequest = SEBT.Portal.StatesPlugins.Interfaces.Models.Household.AddressUpdateRequest;
 using AddressUpdateResult = SEBT.Portal.StatesPlugins.Interfaces.Models.Household.AddressUpdateResult;
@@ -27,7 +28,7 @@ public class UpdateAddressCommandHandlerTests
         new DataAnnotationsValidator<UpdateAddressCommand>(null!);
     private readonly IHouseholdIdentifierResolver _resolver =
         Substitute.For<IHouseholdIdentifierResolver>();
-    private readonly IAddressUpdateService _addressUpdateService = Substitute.For<IAddressUpdateService>();
+    private readonly ICoreAddressUpdateService _addressUpdateService = Substitute.For<ICoreAddressUpdateService>();
     private readonly IHouseholdRepository _householdRepository =
         Substitute.For<IHouseholdRepository>();
     private readonly IIdProofingRequirementsService _idProofingRequirementsService =

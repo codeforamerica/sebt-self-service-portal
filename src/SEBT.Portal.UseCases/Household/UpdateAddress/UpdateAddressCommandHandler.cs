@@ -9,18 +9,19 @@ using SEBT.Portal.Kernel.Results;
 using SEBT.Portal.StatesPlugins.Interfaces;
 using PluginAddress = SEBT.Portal.StatesPlugins.Interfaces.Models.Household.Address;
 using PluginAddressUpdateRequest = SEBT.Portal.StatesPlugins.Interfaces.Models.Household.AddressUpdateRequest;
+using ICoreAddressUpdateService = SEBT.Portal.Core.Services.IAddressUpdateService;
 using IStateAddressUpdateService = SEBT.Portal.StatesPlugins.Interfaces.IAddressUpdateService;
 
 namespace SEBT.Portal.UseCases.Household;
 
 /// <summary>
 /// Handles mailing address updates for an authenticated user's household.
-/// Validates input, normalizes the address via <see cref="IAddressUpdateService"/>,
+/// Validates input, normalizes the address via <see cref="ICoreAddressUpdateService"/>,
 /// enforces benefit-type policy, and persists via state connector.
 /// </summary>
 public class UpdateAddressCommandHandler(
     IValidator<UpdateAddressCommand> validator,
-    IAddressUpdateService addressUpdateService,
+    ICoreAddressUpdateService addressUpdateService,
     IHouseholdIdentifierResolver resolver,
     IHouseholdRepository householdRepository,
     IIdProofingRequirementsService idProofingRequirementsService,
