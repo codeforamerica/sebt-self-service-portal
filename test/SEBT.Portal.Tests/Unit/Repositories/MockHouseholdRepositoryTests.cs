@@ -201,7 +201,7 @@ public class MockHouseholdRepositoryTests
         // Assert
         Assert.NotNull(result);
         Assert.NotNull(result.AddressOnFile);
-        Assert.Equal("123 Main Street", result.AddressOnFile.StreetAddress1);
+        Assert.Equal("1437 Bannock St", result.AddressOnFile.StreetAddress1);
     }
 
     [Fact]
@@ -281,7 +281,7 @@ public class MockHouseholdRepositoryTests
         Assert.Equal("1234", app.Last4DigitsOfCard);
         Assert.Equal(IssuanceType.SummerEbt, app.IssuanceType);
         Assert.NotNull(result.AddressOnFile);
-        Assert.Equal("123 Main Street", result.AddressOnFile.StreetAddress1);
+        Assert.Equal("1437 Bannock St", result.AddressOnFile.StreetAddress1);
     }
 
     [Fact]
@@ -563,7 +563,7 @@ public class MockHouseholdRepositoryTests
         Assert.Equal("APP-2025-01-100001", app.ApplicationNumber);
         Assert.Equal("1234", app.Last4DigitsOfCard);
         Assert.NotNull(result.AddressOnFile);
-        Assert.Equal("123 Main Street", result.AddressOnFile.StreetAddress1);
+        Assert.Equal("1437 Bannock St", result.AddressOnFile.StreetAddress1);
     }
 
     [Fact]

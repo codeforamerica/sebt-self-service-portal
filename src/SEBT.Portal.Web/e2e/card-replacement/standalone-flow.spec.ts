@@ -25,7 +25,7 @@ test.describe('Standalone replacement flow', () => {
       await expect(page.locator('h1')).toContainText(
         'Do you want the new card mailed to this address?'
       )
-      await expect(page.getByText('123 Main Street')).toBeVisible()
+      await expect(page.getByText('1350 Pennsylvania Ave NW')).toBeVisible()
     })
 
     test('shows validation error when submitted without a selection', async ({ page }) => {
@@ -77,7 +77,7 @@ test.describe('Standalone replacement flow', () => {
     test('renders confirm request page with child name and address', async ({ page }) => {
       await page.goto(`/cards/replace/confirm?app=${ENCODED_APP}`)
       await expect(page.getByText("John Doe's card")).toBeVisible()
-      await expect(page.locator('address')).toContainText('123 Main Street')
+      await expect(page.locator('address')).toContainText('1350 Pennsylvania Ave NW')
     })
 
     test('"Order card" posts to replace endpoint and redirects to dashboard with success alert', async ({

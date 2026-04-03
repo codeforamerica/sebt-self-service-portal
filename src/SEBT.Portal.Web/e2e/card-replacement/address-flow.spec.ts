@@ -29,9 +29,9 @@ test.describe('Address update flow', () => {
 
   test('address form renders with pre-filled data from household API', async ({ page }) => {
     await page.goto('/profile/address')
-    await expect(page.locator('[name="streetAddress1"]')).toHaveValue('123 Main Street')
+    await expect(page.locator('[name="streetAddress1"]')).toHaveValue('1350 Pennsylvania Ave NW')
     await expect(page.locator('[name="city"]')).toHaveValue('Washington')
-    await expect(page.locator('[name="postalCode"]')).toHaveValue('20001')
+    await expect(page.locator('[name="postalCode"]')).toHaveValue('20004')
   })
 
   test('address form submission navigates to replacement card prompt', async ({ page }) => {

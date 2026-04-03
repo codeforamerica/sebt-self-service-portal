@@ -106,11 +106,11 @@ export function makeHouseholdData(overrides: HouseholdDataOptions = {}): MockHou
     phone: '(202) 555-0100',
     applications: overrides.applications ?? [makeApplication()],
     addressOnFile: {
-      streetAddress1: '123 Main Street',
-      streetAddress2: 'Apt 4B',
+      streetAddress1: '1350 Pennsylvania Ave NW',
+      streetAddress2: 'Suite 400',
       city: 'Washington',
       state: 'DC',
-      postalCode: '20001'
+      postalCode: '20004'
     },
     userProfile: { firstName: 'Jane', middleName: 'M', lastName: 'Doe' },
     benefitIssuanceType: overrides.benefitIssuanceType ?? 1

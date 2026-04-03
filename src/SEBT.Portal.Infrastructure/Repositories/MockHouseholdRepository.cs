@@ -161,11 +161,11 @@ public class MockHouseholdRepository : IHouseholdRepository
             }
             h.AddressOnFile = new Address
             {
-                StreetAddress1 = "100 Co-Loaded Street",
+                StreetAddress1 = "200 E Colfax Ave",
                 StreetAddress2 = "Suite 100",
                 City = "Denver",
                 State = "CO",
-                PostalCode = "80201"
+                PostalCode = "80203"
             };
         });
         coLoaded.Email = coLoadedEmail;
@@ -198,8 +198,7 @@ public class MockHouseholdRepository : IHouseholdRepository
             // Set specific address for test
             h.AddressOnFile = new Address
             {
-                StreetAddress1 = "123 Main Street",
-                StreetAddress2 = "Apt 4B",
+                StreetAddress1 = "1437 Bannock St",
                 City = "Denver",
                 State = "CO",
                 PostalCode = "80202"
@@ -231,10 +230,10 @@ public class MockHouseholdRepository : IHouseholdRepository
             // Set address for testing (will be filtered based on ID verification status)
             h.AddressOnFile = new Address
             {
-                StreetAddress1 = "456 Oak Avenue",
+                StreetAddress1 = "1777 Broadway",
                 City = "Boulder",
                 State = "CO",
-                PostalCode = "80301"
+                PostalCode = "80302"
             };
         });
         pending.Email = pendingEmail;
@@ -315,7 +314,7 @@ public class MockHouseholdRepository : IHouseholdRepository
             }
             h.AddressOnFile = new Address
             {
-                StreetAddress1 = "321 Not Started Drive",
+                StreetAddress1 = "2001 Blake St",
                 City = "Denver",
                 State = "CO",
                 PostalCode = "80205"
@@ -392,11 +391,11 @@ public class MockHouseholdRepository : IHouseholdRepository
             }
             h.AddressOnFile = new Address
             {
-                StreetAddress1 = "456 Large Family Lane",
+                StreetAddress1 = "15151 E Alameda Pkwy",
                 StreetAddress2 = "Unit 8",
                 City = "Aurora",
                 State = "CO",
-                PostalCode = "80010"
+                PostalCode = "80012"
             };
         });
         largeFamily.Email = largeFamilyEmail;
@@ -502,10 +501,10 @@ public class MockHouseholdRepository : IHouseholdRepository
             h.Applications = new List<Application> { approvedApp, pendingApp };
             h.AddressOnFile = new Address
             {
-                StreetAddress1 = "789 Multiple Apps Street",
+                StreetAddress1 = "1560 Broadway",
                 City = "Denver",
                 State = "CO",
-                PostalCode = "80203"
+                PostalCode = "80202"
             };
         });
         multipleApps.Email = multipleAppsEmail;

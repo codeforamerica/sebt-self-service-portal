@@ -73,11 +73,11 @@ export const TEST_HOUSEHOLD_DATA = {
     }
   ],
   addressOnFile: {
-    streetAddress1: '123 Main Street',
-    streetAddress2: 'Apt 4B',
+    streetAddress1: '1350 Pennsylvania Ave NW',
+    streetAddress2: 'Suite 400',
     city: 'Washington',
     state: 'DC',
-    postalCode: '20001'
+    postalCode: '20004'
   },
   userProfile: {
     firstName: 'Maria',
