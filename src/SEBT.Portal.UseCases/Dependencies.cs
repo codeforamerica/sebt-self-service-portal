@@ -1,6 +1,5 @@
 using Microsoft.Extensions.DependencyInjection;
 using SEBT.Portal.Core.Models.Household;
-using SEBT.Portal.Core.Services;
 using SEBT.Portal.Kernel;
 using SEBT.Portal.StatesPlugins.Interfaces.Models.EnrollmentCheck;
 using SEBT.Portal.UseCases.Auth;
@@ -23,7 +22,7 @@ public static class Dependencies
         services.RegisterQueryHandler<GetVerificationStatusQuery, VerificationStatusResponse, GetVerificationStatusQueryHandler>();
         services.RegisterCommandHandler<ProcessWebhookCommand, ProcessWebhookCommandHandler>();
         services.RegisterCommandHandler<CheckEnrollmentCommand, EnrollmentCheckResult, CheckEnrollmentCommandHandler>();
-        services.RegisterCommandHandler<UpdateAddressCommand, AddressValidationResult, UpdateAddressCommandHandler>();
+        services.RegisterCommandHandler<UpdateAddressCommand, UpdateAddressCommandHandler>();
         services.RegisterCommandHandler<RequestCardReplacementCommand, RequestCardReplacementCommandHandler>();
 
         return services;

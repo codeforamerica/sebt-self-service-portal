@@ -99,7 +99,7 @@ export default async function RootLayout({
       className={`usa-js-loading ${primaryFont.variable}`}
     >
       <body>
-        <DataLayerProvider>
+        <DataLayerProvider application="sebt-portal">
           <QueryProvider>
             <AuthProvider>
               <FeatureFlagsProvider>

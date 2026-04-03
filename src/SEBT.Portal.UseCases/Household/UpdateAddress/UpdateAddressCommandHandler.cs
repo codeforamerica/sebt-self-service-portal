@@ -1,34 +1,44 @@
 using Microsoft.Extensions.Logging;
 using SEBT.Portal.Core.Models.AddressUpdate;
+using SEBT.Portal.Core.Models.Auth;
+using SEBT.Portal.Core.Models.Household;
+using SEBT.Portal.Core.Repositories;
 using SEBT.Portal.Core.Services;
 using SEBT.Portal.Kernel;
 using SEBT.Portal.Kernel.Results;
+using SEBT.Portal.StatesPlugins.Interfaces;
+using PluginAddress = SEBT.Portal.StatesPlugins.Interfaces.Models.Household.Address;
+using PluginAddressUpdateRequest = SEBT.Portal.StatesPlugins.Interfaces.Models.Household.AddressUpdateRequest;
+using ICoreAddressUpdateService = SEBT.Portal.Core.Services.IAddressUpdateService;
+using IStateAddressUpdateService = SEBT.Portal.StatesPlugins.Interfaces.IAddressUpdateService;
 
 namespace SEBT.Portal.UseCases.Household;
 
 /// <summary>
 /// Handles mailing address updates for an authenticated user's household.
-/// Validates input, normalizes via <see cref="IAddressUpdateService"/>, resolves household identity,
-/// validates against blocked lists and state-specific rules, and returns the validation result.
-/// State connector persistence is stubbed — actual address write to the state system is a future integration.
+/// Validates input, normalizes the address via <see cref="ICoreAddressUpdateService"/>,
+/// enforces benefit-type policy, and persists via state connector.
 /// </summary>
 public class UpdateAddressCommandHandler(
     IValidator<UpdateAddressCommand> validator,
-    IAddressUpdateService addressUpdateService,
+    ICoreAddressUpdateService addressUpdateService,
     IHouseholdIdentifierResolver resolver,
-    IAddressValidationService addressValidator,
+    IHouseholdRepository householdRepository,
+    IIdProofingRequirementsService idProofingRequirementsService,
+    IStateAddressUpdateService stateAddressUpdateService,
     ILogger<UpdateAddressCommandHandler> logger)
-    : ICommandHandler<UpdateAddressCommand, AddressValidationResult>
+    : ICommandHandler<UpdateAddressCommand>
 {
-    public async Task<Result<AddressValidationResult>> Handle(UpdateAddressCommand command, CancellationToken cancellationToken = default)
+    public async Task<Result> Handle(UpdateAddressCommand command, CancellationToken cancellationToken = default)
     {
         var validationResult = await validator.Validate(command, cancellationToken);
         if (validationResult is ValidationFailedResult validationFailed)
         {
             logger.LogWarning("Address update validation failed");
-            return Result<AddressValidationResult>.ValidationFailed(validationFailed.Errors);
+            return Result.ValidationFailed(validationFailed.Errors);
         }
 
+        // Validate and normalize address via Smarty (or pass-through when disabled).
         var addressRequest = new AddressUpdateOperationRequest
         {
             StreetAddress1 = command.StreetAddress1,
@@ -38,31 +48,23 @@ public class UpdateAddressCommandHandler(
             PostalCode = command.PostalCode
         };
 
-        // Phase 1: Smarty normalization. Capture the outcome but only bail early for
-        // infrastructure failures. Validation results (not_found, corrected) are deferred
-        // until after the state-specific checks in Phase 2.
-        AddressUpdateSuccess? smartySuccess = null;
-        string? smartyFailureMessage = null;
-        IReadOnlyCollection<ValidationError>? smartyErrors = null;
-
         var addressOutcome = await addressUpdateService.ValidateAndNormalizeAsync(addressRequest, cancellationToken);
+        Address? normalizedAddress = null;
         switch (addressOutcome)
         {
             case ValidationFailedResult<AddressUpdateSuccess> addressValidationFailed:
                 logger.LogWarning("Address update failed verification or policy checks");
-                smartyErrors = addressValidationFailed.Errors;
-                smartyFailureMessage = string.Join(" ", smartyErrors.Select(e => e.Message));
-                break;
+                return Result.ValidationFailed(addressValidationFailed.Errors);
             case DependencyFailedResult<AddressUpdateSuccess> addressDependencyFailed:
                 logger.LogWarning(
                     "Address verification dependency failed: {Reason}",
                     addressDependencyFailed.Reason);
-                return Result<AddressValidationResult>.DependencyFailed(addressDependencyFailed.Reason, addressDependencyFailed.Message);
-            case SuccessResult<AddressUpdateSuccess> addressSuccess:
-                smartySuccess = addressSuccess.Value;
+                return Result.DependencyFailed(addressDependencyFailed.Reason, addressDependencyFailed.Message);
+            case SuccessResult<AddressUpdateSuccess> success:
+                normalizedAddress = success.Value.NormalizedAddress;
                 break;
             default:
-                return Result<AddressValidationResult>.DependencyFailed(
+                return Result.DependencyFailed(
                     DependencyFailedReason.NotConfigured,
                     "Address verification failed.");
         }
@@ -71,7 +73,7 @@ public class UpdateAddressCommandHandler(
         if (identifier == null)
         {
             logger.LogWarning("Address update attempted but no household identifier could be resolved from claims");
-            return Result<AddressValidationResult>.Unauthorized("Unable to identify user from token.");
+            return Result.Unauthorized("Unable to identify user from token.");
         }
 
         // Never log raw address fields — PII policy.
@@ -82,50 +84,70 @@ public class UpdateAddressCommandHandler(
             "Address update received for household identifier kind {Kind}",
             identifierKind);
 
-        var address = new Core.Models.Household.Address
+        // Policy enforcement: SNAP and TANF households must update via case worker, not the portal.
+        var userIalLevel = UserIalLevelExtensions.FromClaimsPrincipal(command.User);
+        var piiVisibility = idProofingRequirementsService.GetPiiVisibility(userIalLevel);
+        var household = await householdRepository.GetHouseholdByIdentifierAsync(
+            identifier, piiVisibility, userIalLevel, cancellationToken);
+
+        if (household is { BenefitIssuanceType: BenefitIssuanceType.SnapEbtCard or BenefitIssuanceType.TanfEbtCard })
         {
-            StreetAddress1 = command.StreetAddress1,
-            StreetAddress2 = command.StreetAddress2,
-            City = command.City,
-            State = command.State,
-            PostalCode = command.PostalCode
+            logger.LogWarning(
+                "Address update rejected for household identifier kind {Kind}: benefit type {BenefitType} is not eligible for portal self-service",
+                identifierKind,
+                household.BenefitIssuanceType);
+            return Result.PreconditionFailed(
+                PreconditionFailedReason.Conflict,
+                "Address updates are not available for this benefit type. Please contact your case worker.");
+        }
+
+        // Use the normalized address from validation for the state connector call.
+        var pluginAddress = new PluginAddress
+        {
+            StreetAddress1 = normalizedAddress!.StreetAddress1,
+            StreetAddress2 = normalizedAddress.StreetAddress2,
+            City = normalizedAddress.City,
+            State = normalizedAddress.State,
+            PostalCode = normalizedAddress.PostalCode
         };
 
-        // Phase 2: State-specific validation (blocked addresses, DC abbreviations, 30-char).
-        // Runs on the original address regardless of Smarty's outcome. If this layer
-        // rejects, its result takes priority over Smarty's.
-        var addressValidation = await addressValidator.ValidateAsync(address, cancellationToken);
-        if (!addressValidation.IsValid)
+        var updateRequest = new PluginAddressUpdateRequest
         {
-            logger.LogInformation(
-                "Address validation failed for household identifier kind {Kind}",
-                identifierKind);
-            return Result<AddressValidationResult>.Success(addressValidation);
-        }
+            HouseholdIdentifierValue = identifier.Value,
+            Address = pluginAddress
+        };
 
-        // Phase 3: Combine results. State-specific checks passed, so fall back to Smarty's outcome.
-        // Distinguish verification failures ("not_found") from policy rejections ("policy_violation").
-        // Verification errors use key "address"; policy errors (e.g. General Delivery) use field-specific keys.
-        if (smartyFailureMessage != null)
+        try
         {
-            var reason = smartyErrors!.All(e => e.Key == "address") ? "not_found" : "policy_violation";
-            return Result<AddressValidationResult>.Success(
-                AddressValidationResult.Invalid(smartyFailureMessage, reason));
-        }
+            var updateResult = await stateAddressUpdateService.UpdateAddressAsync(updateRequest, cancellationToken);
 
-        if (smartySuccess?.WasCorrected == true)
+            if (updateResult.IsSuccess)
+            {
+                logger.LogInformation("Address update completed for household identifier kind {Kind}", identifierKind);
+                return Result.Success();
+            }
+
+            if (updateResult.IsPolicyRejection)
+            {
+                logger.LogWarning(
+                    "Address update policy rejection for household identifier kind {Kind}: {ErrorCode}",
+                    identifierKind,
+                    updateResult.ErrorCode);
+                return Result.PreconditionFailed(PreconditionFailedReason.Conflict, updateResult.ErrorMessage);
+            }
+
+            logger.LogError(
+                "Address update backend error for household identifier kind {Kind}: {ErrorCode}",
+                identifierKind,
+                updateResult.ErrorCode);
+            return Result.DependencyFailed(DependencyFailedReason.ConnectionFailed, updateResult.ErrorMessage);
+        }
+        catch (Exception ex)
         {
-            logger.LogInformation("Address verification returned a corrected address");
-            return Result<AddressValidationResult>.Success(
-                AddressValidationResult.Suggestion(smartySuccess.NormalizedAddress, "corrected"));
+            logger.LogError(ex, "Address update plugin failed for household identifier kind {Kind}", identifierKind);
+            return Result.DependencyFailed(
+                DependencyFailedReason.ConnectionFailed,
+                "Address update service is temporarily unavailable.");
         }
-
-        // TODO: Call state connector to persist normalized address.
-
-        logger.LogInformation(
-            "Address update completed for household identifier kind {Kind}",
-            identifierKind);
-
-        return Result<AddressValidationResult>.Success(AddressValidationResult.Valid());
     }
 }

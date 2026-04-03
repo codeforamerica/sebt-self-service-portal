@@ -1,13 +1,24 @@
 using System.Security.Claims;
 using Microsoft.Extensions.Logging.Abstractions;
 using NSubstitute;
+using NSubstitute.ExceptionExtensions;
+using SEBT.Portal.Core.Models;
 using SEBT.Portal.Core.Models.AddressUpdate;
+using SEBT.Portal.Core.Models.Auth;
 using SEBT.Portal.Core.Models.Household;
+using SEBT.Portal.Core.Repositories;
 using SEBT.Portal.Core.Services;
 using SEBT.Portal.Core.Utilities;
 using SEBT.Portal.Kernel;
 using SEBT.Portal.Kernel.Results;
+using SEBT.Portal.StatesPlugins.Interfaces;
 using SEBT.Portal.UseCases.Household;
+using ICoreAddressUpdateService = SEBT.Portal.Core.Services.IAddressUpdateService;
+using IStateAddressUpdateService = SEBT.Portal.StatesPlugins.Interfaces.IAddressUpdateService;
+using AddressUpdateRequest = SEBT.Portal.StatesPlugins.Interfaces.Models.Household.AddressUpdateRequest;
+using AddressUpdateResult = SEBT.Portal.StatesPlugins.Interfaces.Models.Household.AddressUpdateResult;
+using BenefitIssuanceType = SEBT.Portal.Core.Models.Household.BenefitIssuanceType;
+using HouseholdData = SEBT.Portal.Core.Models.Household.HouseholdData;
 
 namespace SEBT.Portal.Tests.Unit.UseCases.Household;
 
@@ -17,16 +28,20 @@ public class UpdateAddressCommandHandlerTests
         new DataAnnotationsValidator<UpdateAddressCommand>(null!);
     private readonly IHouseholdIdentifierResolver _resolver =
         Substitute.For<IHouseholdIdentifierResolver>();
-    private readonly IAddressUpdateService _addressUpdate = Substitute.For<IAddressUpdateService>();
-    private readonly IAddressValidationService _addressValidator =
-        Substitute.For<IAddressValidationService>();
+    private readonly ICoreAddressUpdateService _addressUpdateService = Substitute.For<ICoreAddressUpdateService>();
+    private readonly IHouseholdRepository _householdRepository =
+        Substitute.For<IHouseholdRepository>();
+    private readonly IIdProofingRequirementsService _idProofingRequirementsService =
+        Substitute.For<IIdProofingRequirementsService>();
+    private readonly IStateAddressUpdateService _stateAddressUpdateService =
+        Substitute.For<IStateAddressUpdateService>();
     private readonly NullLogger<UpdateAddressCommandHandler> _logger =
         NullLogger<UpdateAddressCommandHandler>.Instance;
 
     public UpdateAddressCommandHandlerTests()
     {
-        // Default: address update service passes so existing tests aren't affected
-        _addressUpdate
+        // Default: address validation passes, state connector succeeds, PII visibility minimal
+        _addressUpdateService
             .ValidateAndNormalizeAsync(Arg.Any<AddressUpdateOperationRequest>(), Arg.Any<CancellationToken>())
             .Returns(Task.FromResult(
                 Result<AddressUpdateSuccess>.Success(
@@ -42,14 +57,15 @@ public class UpdateAddressCommandHandlerTests
                         WasCorrected = false,
                         IsGeneralDelivery = false
                     })));
-
-        // Default: address validation passes so existing tests aren't affected
-        _addressValidator.ValidateAsync(Arg.Any<Address>(), Arg.Any<CancellationToken>())
-            .Returns(AddressValidationResult.Valid());
+        _stateAddressUpdateService.UpdateAddressAsync(Arg.Any<AddressUpdateRequest>(), Arg.Any<CancellationToken>())
+            .Returns(AddressUpdateResult.Success());
+        _idProofingRequirementsService.GetPiiVisibility(Arg.Any<UserIalLevel>())
+            .Returns(new PiiVisibility(false, false, false));
     }
 
     private UpdateAddressCommandHandler CreateHandler() =>
-        new(_validator, _addressUpdate, _resolver, _addressValidator, _logger);
+        new(_validator, _addressUpdateService, _resolver, _householdRepository,
+            _idProofingRequirementsService, _stateAddressUpdateService, _logger);
 
     private static ClaimsPrincipal CreateUser(string email)
     {
@@ -68,7 +84,19 @@ public class UpdateAddressCommandHandlerTests
             PostalCode = "20001"
         };
 
-    // --- Validation tests ---
+    private void SetupResolverReturnsEmail(string email = "user@example.com")
+    {
+        _resolver.ResolveAsync(Arg.Any<ClaimsPrincipal>(), Arg.Any<CancellationToken>())
+            .Returns(HouseholdIdentifier.Email(EmailNormalizer.Normalize(email)));
+    }
+
+    private void SetupHouseholdWithBenefitType(BenefitIssuanceType benefitType)
+    {
+        _householdRepository.GetHouseholdByIdentifierAsync(
+                Arg.Any<HouseholdIdentifier>(), Arg.Any<PiiVisibility>(),
+                Arg.Any<UserIalLevel>(), Arg.Any<CancellationToken>())
+            .Returns(new HouseholdData { BenefitIssuanceType = benefitType });
+    }
 
     [Fact]
     public async Task Handle_ReturnsValidationFailed_WhenStreetAddressIsMissing()
@@ -86,7 +114,7 @@ public class UpdateAddressCommandHandlerTests
         var result = await handler.Handle(command, CancellationToken.None);
 
         Assert.False(result.IsSuccess);
-        Assert.IsType<ValidationFailedResult<AddressValidationResult>>(result);
+        Assert.IsType<ValidationFailedResult>(result);
     }
 
     [Fact]
@@ -105,7 +133,7 @@ public class UpdateAddressCommandHandlerTests
         var result = await handler.Handle(command, CancellationToken.None);
 
         Assert.False(result.IsSuccess);
-        Assert.IsType<ValidationFailedResult<AddressValidationResult>>(result);
+        Assert.IsType<ValidationFailedResult>(result);
     }
 
     [Fact]
@@ -124,7 +152,7 @@ public class UpdateAddressCommandHandlerTests
         var result = await handler.Handle(command, CancellationToken.None);
 
         Assert.False(result.IsSuccess);
-        Assert.IsType<ValidationFailedResult<AddressValidationResult>>(result);
+        Assert.IsType<ValidationFailedResult>(result);
     }
 
     [Fact]
@@ -143,7 +171,7 @@ public class UpdateAddressCommandHandlerTests
         var result = await handler.Handle(command, CancellationToken.None);
 
         Assert.False(result.IsSuccess);
-        Assert.IsType<ValidationFailedResult<AddressValidationResult>>(result);
+        Assert.IsType<ValidationFailedResult>(result);
     }
 
     [Fact]
@@ -162,7 +190,7 @@ public class UpdateAddressCommandHandlerTests
         var result = await handler.Handle(command, CancellationToken.None);
 
         Assert.False(result.IsSuccess);
-        Assert.IsType<ValidationFailedResult<AddressValidationResult>>(result);
+        Assert.IsType<ValidationFailedResult>(result);
     }
 
     [Fact]
@@ -181,32 +209,29 @@ public class UpdateAddressCommandHandlerTests
         var result = await handler.Handle(command, CancellationToken.None);
 
         Assert.False(result.IsSuccess);
-        Assert.IsType<ValidationFailedResult<AddressValidationResult>>(result);
+        Assert.IsType<ValidationFailedResult>(result);
     }
 
     [Fact]
     public async Task Handle_AcceptsNineDigitZipCode()
     {
         var handler = CreateHandler();
-        var user = CreateUser("user@example.com");
         var command = new UpdateAddressCommand
         {
-            User = user,
+            User = CreateUser("user@example.com"),
             StreetAddress1 = "123 Main St NW",
             City = "Washington",
             State = "District of Columbia",
             PostalCode = "20001-1234"
         };
 
-        _resolver.ResolveAsync(Arg.Any<ClaimsPrincipal>(), Arg.Any<CancellationToken>())
-            .Returns(HouseholdIdentifier.Email(EmailNormalizer.Normalize("user@example.com")));
+        SetupResolverReturnsEmail();
+        SetupHouseholdWithBenefitType(BenefitIssuanceType.SummerEbt);
 
         var result = await handler.Handle(command, CancellationToken.None);
 
         Assert.True(result.IsSuccess);
     }
-
-    // --- Authorization tests ---
 
     [Fact]
     public async Task Handle_ReturnsUnauthorized_WhenHouseholdIdentifierCannotBeResolved()
@@ -220,51 +245,243 @@ public class UpdateAddressCommandHandlerTests
         var result = await handler.Handle(command, CancellationToken.None);
 
         Assert.False(result.IsSuccess);
-        Assert.IsType<UnauthorizedResult<AddressValidationResult>>(result);
+        Assert.IsType<UnauthorizedResult>(result);
     }
 
-    // --- Success tests ---
-
     [Fact]
-    public async Task Handle_ReturnsSuccess_WhenValidCommandAndIdentifierResolved()
+    public async Task Handle_ReturnsPreconditionFailed_WhenHouseholdIsSnapBenefitType()
     {
         var handler = CreateHandler();
         var command = CreateValidCommand();
 
-        _resolver.ResolveAsync(Arg.Any<ClaimsPrincipal>(), Arg.Any<CancellationToken>())
-            .Returns(HouseholdIdentifier.Email(EmailNormalizer.Normalize("user@example.com")));
+        SetupResolverReturnsEmail();
+        SetupHouseholdWithBenefitType(BenefitIssuanceType.SnapEbtCard);
 
         var result = await handler.Handle(command, CancellationToken.None);
 
-        Assert.True(result.IsSuccess);
-        var success = Assert.IsType<SuccessResult<AddressValidationResult>>(result);
-        Assert.True(success.Value.IsValid);
+        Assert.False(result.IsSuccess);
+        var preconditionFailed = Assert.IsType<PreconditionFailedResult>(result);
+        Assert.Equal(PreconditionFailedReason.Conflict, preconditionFailed.Reason);
     }
 
     [Fact]
-    public async Task Handle_ReturnsSuccess_WhenOptionalStreetAddress2IsProvided()
+    public async Task Handle_ReturnsPreconditionFailed_WhenHouseholdIsTanfBenefitType()
     {
         var handler = CreateHandler();
-        var user = CreateUser("user@example.com");
-        var command = new UpdateAddressCommand
-        {
-            User = user,
-            StreetAddress1 = "123 Main St NW",
-            StreetAddress2 = "Apt 4B",
-            City = "Washington",
-            State = "District of Columbia",
-            PostalCode = "20001"
-        };
+        var command = CreateValidCommand();
 
-        _resolver.ResolveAsync(Arg.Any<ClaimsPrincipal>(), Arg.Any<CancellationToken>())
-            .Returns(HouseholdIdentifier.Email(EmailNormalizer.Normalize("user@example.com")));
+        SetupResolverReturnsEmail();
+        SetupHouseholdWithBenefitType(BenefitIssuanceType.TanfEbtCard);
+
+        var result = await handler.Handle(command, CancellationToken.None);
+
+        Assert.False(result.IsSuccess);
+        var preconditionFailed = Assert.IsType<PreconditionFailedResult>(result);
+        Assert.Equal(PreconditionFailedReason.Conflict, preconditionFailed.Reason);
+    }
+
+    [Fact]
+    public async Task Handle_AllowsUpdate_WhenHouseholdIsSummerEbtBenefitType()
+    {
+        var handler = CreateHandler();
+        var command = CreateValidCommand();
+
+        SetupResolverReturnsEmail();
+        SetupHouseholdWithBenefitType(BenefitIssuanceType.SummerEbt);
 
         var result = await handler.Handle(command, CancellationToken.None);
 
         Assert.True(result.IsSuccess);
     }
 
-    // --- Cancellation token propagation ---
+    [Fact]
+    public async Task Handle_AllowsUpdate_WhenHouseholdIsUnknownBenefitType()
+    {
+        var handler = CreateHandler();
+        var command = CreateValidCommand();
+
+        SetupResolverReturnsEmail();
+        SetupHouseholdWithBenefitType(BenefitIssuanceType.Unknown);
+
+        var result = await handler.Handle(command, CancellationToken.None);
+
+        Assert.True(result.IsSuccess);
+    }
+
+    [Fact]
+    public async Task Handle_AllowsUpdate_WhenHouseholdNotFound()
+    {
+        var handler = CreateHandler();
+        var command = CreateValidCommand();
+
+        SetupResolverReturnsEmail();
+        _householdRepository.GetHouseholdByIdentifierAsync(
+                Arg.Any<HouseholdIdentifier>(), Arg.Any<PiiVisibility>(),
+                Arg.Any<UserIalLevel>(), Arg.Any<CancellationToken>())
+            .Returns((HouseholdData?)null);
+
+        var result = await handler.Handle(command, CancellationToken.None);
+
+        Assert.True(result.IsSuccess);
+    }
+
+    [Fact]
+    public async Task Handle_ReturnsValidationFailed_WhenAddressServiceReturnsValidationFailed()
+    {
+        _addressUpdateService
+            .ValidateAndNormalizeAsync(Arg.Any<AddressUpdateOperationRequest>(), Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult(
+                Result<AddressUpdateSuccess>.ValidationFailed("address", "Could not verify address.")));
+
+        var handler = CreateHandler();
+        var command = CreateValidCommand();
+
+        var result = await handler.Handle(command, CancellationToken.None);
+
+        Assert.False(result.IsSuccess);
+        Assert.IsType<ValidationFailedResult>(result);
+        await _resolver.DidNotReceive()
+            .ResolveAsync(Arg.Any<ClaimsPrincipal>(), Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task Handle_ReturnsDependencyFailed_WhenAddressServiceReturnsDependencyFailed()
+    {
+        _addressUpdateService
+            .ValidateAndNormalizeAsync(Arg.Any<AddressUpdateOperationRequest>(), Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult(
+                Result<AddressUpdateSuccess>.DependencyFailed(
+                    DependencyFailedReason.Timeout,
+                    "Address verification timed out.")));
+
+        var handler = CreateHandler();
+        var command = CreateValidCommand();
+
+        var result = await handler.Handle(command, CancellationToken.None);
+
+        Assert.False(result.IsSuccess);
+        Assert.IsType<DependencyFailedResult>(result);
+        await _resolver.DidNotReceive()
+            .ResolveAsync(Arg.Any<ClaimsPrincipal>(), Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task Handle_DoesNotCallAddressValidation_WhenInputValidationFails()
+    {
+        var handler = CreateHandler();
+        var command = new UpdateAddressCommand
+        {
+            User = CreateUser("user@example.com"),
+            StreetAddress1 = "",
+            City = "",
+            State = "",
+            PostalCode = ""
+        };
+
+        await handler.Handle(command, CancellationToken.None);
+
+        await _addressUpdateService.DidNotReceive()
+            .ValidateAndNormalizeAsync(Arg.Any<AddressUpdateOperationRequest>(), Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task Handle_DoesNotCallStateConnector_WhenPolicyCheckRejects()
+    {
+        var handler = CreateHandler();
+        var command = CreateValidCommand();
+
+        SetupResolverReturnsEmail();
+        SetupHouseholdWithBenefitType(BenefitIssuanceType.SnapEbtCard);
+
+        await handler.Handle(command, CancellationToken.None);
+
+        await _stateAddressUpdateService.DidNotReceive()
+            .UpdateAddressAsync(Arg.Any<AddressUpdateRequest>(), Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task Handle_ReturnsSuccess_WhenStateConnectorSucceeds()
+    {
+        var handler = CreateHandler();
+        var command = CreateValidCommand();
+
+        SetupResolverReturnsEmail();
+        SetupHouseholdWithBenefitType(BenefitIssuanceType.SummerEbt);
+
+        var result = await handler.Handle(command, CancellationToken.None);
+
+        Assert.True(result.IsSuccess);
+        Assert.IsType<SuccessResult>(result);
+    }
+
+    [Fact]
+    public async Task Handle_ReturnsPreconditionFailed_WhenStateConnectorReturnsPolicyRejection()
+    {
+        var handler = CreateHandler();
+        var command = CreateValidCommand();
+
+        SetupResolverReturnsEmail();
+        SetupHouseholdWithBenefitType(BenefitIssuanceType.SummerEbt);
+        _stateAddressUpdateService.UpdateAddressAsync(Arg.Any<AddressUpdateRequest>(), Arg.Any<CancellationToken>())
+            .Returns(AddressUpdateResult.PolicyRejected("HOUSEHOLD_NOT_ELIGIBLE", "Not eligible."));
+
+        var result = await handler.Handle(command, CancellationToken.None);
+
+        Assert.False(result.IsSuccess);
+        var preconditionFailed = Assert.IsType<PreconditionFailedResult>(result);
+        Assert.Equal(PreconditionFailedReason.Conflict, preconditionFailed.Reason);
+    }
+
+    [Fact]
+    public async Task Handle_ReturnsDependencyFailed_WhenStateConnectorReturnsBackendError()
+    {
+        var handler = CreateHandler();
+        var command = CreateValidCommand();
+
+        SetupResolverReturnsEmail();
+        SetupHouseholdWithBenefitType(BenefitIssuanceType.SummerEbt);
+        _stateAddressUpdateService.UpdateAddressAsync(Arg.Any<AddressUpdateRequest>(), Arg.Any<CancellationToken>())
+            .Returns(AddressUpdateResult.BackendError("BACKEND_ERROR", "Something went wrong."));
+
+        var result = await handler.Handle(command, CancellationToken.None);
+
+        Assert.False(result.IsSuccess);
+        Assert.IsType<DependencyFailedResult>(result);
+    }
+
+    [Fact]
+    public async Task Handle_ReturnsDependencyFailed_WhenStateConnectorThrowsException()
+    {
+        var handler = CreateHandler();
+        var command = CreateValidCommand();
+
+        SetupResolverReturnsEmail();
+        SetupHouseholdWithBenefitType(BenefitIssuanceType.SummerEbt);
+        _stateAddressUpdateService.UpdateAddressAsync(Arg.Any<AddressUpdateRequest>(), Arg.Any<CancellationToken>())
+            .Throws(new InvalidOperationException("Connection failed"));
+
+        var result = await handler.Handle(command, CancellationToken.None);
+
+        Assert.False(result.IsSuccess);
+        Assert.IsType<DependencyFailedResult>(result);
+    }
+
+    [Fact]
+    public async Task Handle_DoesNotCallStateConnector_WhenAddressValidationFails()
+    {
+        var handler = CreateHandler();
+        var command = CreateValidCommand();
+
+        _addressUpdateService
+            .ValidateAndNormalizeAsync(Arg.Any<AddressUpdateOperationRequest>(), Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult(
+                Result<AddressUpdateSuccess>.ValidationFailed("address", "Bad address")));
+
+        await handler.Handle(command, CancellationToken.None);
+
+        await _stateAddressUpdateService.DidNotReceive()
+            .UpdateAddressAsync(Arg.Any<AddressUpdateRequest>(), Arg.Any<CancellationToken>());
+    }
 
     [Fact]
     public async Task Handle_PassesCancellationTokenToResolver()
@@ -274,8 +491,8 @@ public class UpdateAddressCommandHandlerTests
         var cts = new CancellationTokenSource();
         var token = cts.Token;
 
-        _resolver.ResolveAsync(Arg.Any<ClaimsPrincipal>(), token)
-            .Returns(HouseholdIdentifier.Email(EmailNormalizer.Normalize("user@example.com")));
+        SetupResolverReturnsEmail();
+        SetupHouseholdWithBenefitType(BenefitIssuanceType.SummerEbt);
 
         await handler.Handle(command, token);
 
@@ -290,16 +507,31 @@ public class UpdateAddressCommandHandlerTests
         var cts = new CancellationTokenSource();
         var token = cts.Token;
 
-        _resolver.ResolveAsync(Arg.Any<ClaimsPrincipal>(), token)
-            .Returns(HouseholdIdentifier.Email(EmailNormalizer.Normalize("user@example.com")));
+        SetupResolverReturnsEmail();
+        SetupHouseholdWithBenefitType(BenefitIssuanceType.SummerEbt);
 
         await handler.Handle(command, token);
 
-        await _addressUpdate.Received(1).ValidateAndNormalizeAsync(
+        await _addressUpdateService.Received(1).ValidateAndNormalizeAsync(
             Arg.Any<AddressUpdateOperationRequest>(), token);
     }
 
-    // --- Short-circuit when input validation fails ---
+    [Fact]
+    public async Task Handle_PassesCancellationTokenToStateConnector()
+    {
+        var handler = CreateHandler();
+        var command = CreateValidCommand();
+        var cts = new CancellationTokenSource();
+        var token = cts.Token;
+
+        SetupResolverReturnsEmail();
+        SetupHouseholdWithBenefitType(BenefitIssuanceType.SummerEbt);
+
+        await handler.Handle(command, token);
+
+        await _stateAddressUpdateService.Received(1)
+            .UpdateAddressAsync(Arg.Any<AddressUpdateRequest>(), token);
+    }
 
     [Fact]
     public async Task Handle_DoesNotCallResolver_WhenInputValidationFails()
@@ -320,42 +552,6 @@ public class UpdateAddressCommandHandlerTests
             .ResolveAsync(Arg.Any<ClaimsPrincipal>(), Arg.Any<CancellationToken>());
     }
 
-    // --- Address validation integration ---
-
-    [Fact]
-    public async Task Handle_CallsAddressValidator_AfterIdentifierResolved()
-    {
-        var handler = CreateHandler();
-        var command = CreateValidCommand();
-
-        _resolver.ResolveAsync(Arg.Any<ClaimsPrincipal>(), Arg.Any<CancellationToken>())
-            .Returns(HouseholdIdentifier.Email(EmailNormalizer.Normalize("user@example.com")));
-
-        await handler.Handle(command, CancellationToken.None);
-
-        await _addressValidator.Received(1)
-            .ValidateAsync(Arg.Any<Address>(), Arg.Any<CancellationToken>());
-    }
-
-    [Fact]
-    public async Task Handle_DoesNotCallAddressValidator_WhenInputValidationFails()
-    {
-        var handler = CreateHandler();
-        var command = new UpdateAddressCommand
-        {
-            User = CreateUser("user@example.com"),
-            StreetAddress1 = "",
-            City = "",
-            State = "",
-            PostalCode = ""
-        };
-
-        await handler.Handle(command, CancellationToken.None);
-
-        await _addressValidator.DidNotReceive()
-            .ValidateAsync(Arg.Any<Address>(), Arg.Any<CancellationToken>());
-    }
-
     [Fact]
     public async Task Handle_DoesNotCallAddressService_WhenInputValidationFails()
     {
@@ -371,225 +567,68 @@ public class UpdateAddressCommandHandlerTests
 
         await handler.Handle(command, CancellationToken.None);
 
-        await _addressUpdate.DidNotReceive()
+        await _addressUpdateService.DidNotReceive()
             .ValidateAndNormalizeAsync(Arg.Any<AddressUpdateOperationRequest>(), Arg.Any<CancellationToken>());
     }
 
     [Fact]
-    public async Task Handle_ReturnsSuccessWithInvalidResult_WhenAddressIsBlocked()
-    {
-        var handler = CreateHandler();
-        var command = CreateValidCommand();
-
-        _resolver.ResolveAsync(Arg.Any<ClaimsPrincipal>(), Arg.Any<CancellationToken>())
-            .Returns(HouseholdIdentifier.Email(EmailNormalizer.Normalize("user@example.com")));
-
-        _addressValidator.ValidateAsync(Arg.Any<Address>(), Arg.Any<CancellationToken>())
-            .Returns(AddressValidationResult.Invalid("This address cannot be used for mail delivery.", "blocked"));
-
-        var result = await handler.Handle(command, CancellationToken.None);
-
-        Assert.True(result.IsSuccess);
-        var success = Assert.IsType<SuccessResult<AddressValidationResult>>(result);
-        Assert.False(success.Value.IsValid);
-        Assert.Equal("This address cannot be used for mail delivery.", success.Value.ErrorMessage);
-    }
-
-    [Fact]
-    public async Task Handle_ReturnsSuccessWithSuggestion_WhenAddressHasSuggestion()
-    {
-        var handler = CreateHandler();
-        var command = CreateValidCommand();
-        var suggested = new Address
-        {
-            StreetAddress1 = "123 MLK Jr Ave NW",
-            City = "Washington",
-            State = "District of Columbia",
-            PostalCode = "20001"
-        };
-
-        _resolver.ResolveAsync(Arg.Any<ClaimsPrincipal>(), Arg.Any<CancellationToken>())
-            .Returns(HouseholdIdentifier.Email(EmailNormalizer.Normalize("user@example.com")));
-
-        _addressValidator.ValidateAsync(Arg.Any<Address>(), Arg.Any<CancellationToken>())
-            .Returns(AddressValidationResult.Suggestion(suggested, "abbreviated"));
-
-        var result = await handler.Handle(command, CancellationToken.None);
-
-        Assert.True(result.IsSuccess);
-        var success = Assert.IsType<SuccessResult<AddressValidationResult>>(result);
-        Assert.False(success.Value.IsValid);
-        Assert.NotNull(success.Value.SuggestedAddress);
-        Assert.Equal("123 MLK Jr Ave NW", success.Value.SuggestedAddress!.StreetAddress1);
-    }
-
-    [Fact]
-    public async Task Handle_PassesCommandFieldsToAddressValidator()
+    public async Task Handle_ReturnsSuccess_WhenOptionalStreetAddress2IsProvided()
     {
         var handler = CreateHandler();
         var command = new UpdateAddressCommand
         {
             User = CreateUser("user@example.com"),
-            StreetAddress1 = "456 Oak Ave NE",
-            StreetAddress2 = "Suite 100",
+            StreetAddress1 = "123 Main St NW",
+            StreetAddress2 = "Apt 4B",
             City = "Washington",
             State = "District of Columbia",
-            PostalCode = "20002"
+            PostalCode = "20001"
         };
 
-        _resolver.ResolveAsync(Arg.Any<ClaimsPrincipal>(), Arg.Any<CancellationToken>())
-            .Returns(HouseholdIdentifier.Email(EmailNormalizer.Normalize("user@example.com")));
-
-        await handler.Handle(command, CancellationToken.None);
-
-        await _addressValidator.Received(1).ValidateAsync(
-            Arg.Is<Address>(a =>
-                a.StreetAddress1 == "456 Oak Ave NE" &&
-                a.StreetAddress2 == "Suite 100" &&
-                a.City == "Washington" &&
-                a.State == "District of Columbia" &&
-                a.PostalCode == "20002"),
-            Arg.Any<CancellationToken>());
-    }
-
-    // --- Address update service (Smarty) integration ---
-
-    [Fact]
-    public async Task Handle_ReturnsNotFound_WhenSmartyRejectsAndValidatorPasses()
-    {
-        _addressUpdate
-            .ValidateAndNormalizeAsync(Arg.Any<AddressUpdateOperationRequest>(), Arg.Any<CancellationToken>())
-            .Returns(Task.FromResult(
-                Result<AddressUpdateSuccess>.ValidationFailed("address", "Could not verify address.")));
-
-        _resolver.ResolveAsync(Arg.Any<ClaimsPrincipal>(), Arg.Any<CancellationToken>())
-            .Returns(HouseholdIdentifier.Email(EmailNormalizer.Normalize("user@example.com")));
-
-        var handler = CreateHandler();
-        var command = CreateValidCommand();
+        SetupResolverReturnsEmail();
+        SetupHouseholdWithBenefitType(BenefitIssuanceType.SummerEbt);
 
         var result = await handler.Handle(command, CancellationToken.None);
 
-        var success = Assert.IsType<SuccessResult<AddressValidationResult>>(result);
-        Assert.False(success.Value.IsValid);
-        Assert.Equal("not_found", success.Value.Reason);
-        Assert.Contains("Could not verify address", success.Value.ErrorMessage);
+        Assert.True(result.IsSuccess);
     }
 
     [Fact]
-    public async Task Handle_ReturnsPolicyViolation_WhenSmartyRejectsGeneralDelivery()
-    {
-        _addressUpdate
-            .ValidateAndNormalizeAsync(Arg.Any<AddressUpdateOperationRequest>(), Arg.Any<CancellationToken>())
-            .Returns(Task.FromResult(
-                Result<AddressUpdateSuccess>.ValidationFailed(
-                    "streetAddress1", "General Delivery addresses are not accepted for this state.")));
-
-        _resolver.ResolveAsync(Arg.Any<ClaimsPrincipal>(), Arg.Any<CancellationToken>())
-            .Returns(HouseholdIdentifier.Email(EmailNormalizer.Normalize("user@example.com")));
-
-        var handler = CreateHandler();
-        var command = CreateValidCommand();
-
-        var result = await handler.Handle(command, CancellationToken.None);
-
-        var success = Assert.IsType<SuccessResult<AddressValidationResult>>(result);
-        Assert.False(success.Value.IsValid);
-        Assert.Equal("policy_violation", success.Value.Reason);
-        Assert.Contains("General Delivery", success.Value.ErrorMessage);
-    }
-
-    [Fact]
-    public async Task Handle_ReturnsBlocked_WhenSmartyCorrectedButAddressIsBlocked()
-    {
-        _addressUpdate
-            .ValidateAndNormalizeAsync(Arg.Any<AddressUpdateOperationRequest>(), Arg.Any<CancellationToken>())
-            .Returns(Task.FromResult(
-                Result<AddressUpdateSuccess>.Success(
-                    new AddressUpdateSuccess
-                    {
-                        NormalizedAddress = new Address
-                        {
-                            StreetAddress1 = "645 H St NE",
-                            City = "Washington",
-                            State = "DC",
-                            PostalCode = "20002-4347"
-                        },
-                        WasCorrected = true
-                    })));
-
-        _resolver.ResolveAsync(Arg.Any<ClaimsPrincipal>(), Arg.Any<CancellationToken>())
-            .Returns(HouseholdIdentifier.Email(EmailNormalizer.Normalize("user@example.com")));
-
-        _addressValidator.ValidateAsync(Arg.Any<Address>(), Arg.Any<CancellationToken>())
-            .Returns(AddressValidationResult.Invalid("This address cannot be used.", "blocked"));
-
-        var handler = CreateHandler();
-        var command = CreateValidCommand();
-
-        var result = await handler.Handle(command, CancellationToken.None);
-
-        var success = Assert.IsType<SuccessResult<AddressValidationResult>>(result);
-        Assert.False(success.Value.IsValid);
-        Assert.Equal("blocked", success.Value.Reason);
-    }
-
-    [Fact]
-    public async Task Handle_ReturnsSmartyCorrection_WhenSmartyCorrectedAndValidatorPasses()
+    public async Task Handle_UsesNormalizedAddressForStateConnector()
     {
         var normalizedAddress = new Address
         {
-            StreetAddress1 = "1600 Pennsylvania Ave NW",
-            City = "Washington",
+            StreetAddress1 = "123 MAIN ST NW",
+            City = "WASHINGTON",
             State = "DC",
-            PostalCode = "20500-0005"
+            PostalCode = "20001-0001"
         };
 
-        _addressUpdate
+        _addressUpdateService
             .ValidateAndNormalizeAsync(Arg.Any<AddressUpdateOperationRequest>(), Arg.Any<CancellationToken>())
             .Returns(Task.FromResult(
                 Result<AddressUpdateSuccess>.Success(
                     new AddressUpdateSuccess
                     {
                         NormalizedAddress = normalizedAddress,
-                        WasCorrected = true
+                        WasCorrected = true,
+                        IsGeneralDelivery = false
                     })));
 
-        _resolver.ResolveAsync(Arg.Any<ClaimsPrincipal>(), Arg.Any<CancellationToken>())
-            .Returns(HouseholdIdentifier.Email(EmailNormalizer.Normalize("user@example.com")));
-
-        _addressValidator.ValidateAsync(Arg.Any<Address>(), Arg.Any<CancellationToken>())
-            .Returns(AddressValidationResult.Valid());
-
         var handler = CreateHandler();
         var command = CreateValidCommand();
 
-        var result = await handler.Handle(command, CancellationToken.None);
+        SetupResolverReturnsEmail();
+        SetupHouseholdWithBenefitType(BenefitIssuanceType.SummerEbt);
 
-        var success = Assert.IsType<SuccessResult<AddressValidationResult>>(result);
-        Assert.False(success.Value.IsValid);
-        Assert.Equal("corrected", success.Value.Reason);
-        Assert.Equal("20500-0005", success.Value.SuggestedAddress?.PostalCode);
-    }
+        await handler.Handle(command, CancellationToken.None);
 
-    [Fact]
-    public async Task Handle_ReturnsDependencyFailed_WhenAddressServiceReturnsDependencyFailed()
-    {
-        _addressUpdate
-            .ValidateAndNormalizeAsync(Arg.Any<AddressUpdateOperationRequest>(), Arg.Any<CancellationToken>())
-            .Returns(Task.FromResult(
-                Result<AddressUpdateSuccess>.DependencyFailed(
-                    DependencyFailedReason.Timeout,
-                    "Address verification timed out.")));
-
-        var handler = CreateHandler();
-        var command = CreateValidCommand();
-
-        var result = await handler.Handle(command, CancellationToken.None);
-
-        Assert.False(result.IsSuccess);
-        Assert.IsType<DependencyFailedResult<AddressValidationResult>>(result);
-        await _resolver.DidNotReceive()
-            .ResolveAsync(Arg.Any<ClaimsPrincipal>(), Arg.Any<CancellationToken>());
+        await _stateAddressUpdateService.Received(1).UpdateAddressAsync(
+            Arg.Is<AddressUpdateRequest>(r =>
+                r.Address.StreetAddress1 == "123 MAIN ST NW" &&
+                r.Address.City == "WASHINGTON" &&
+                r.Address.State == "DC" &&
+                r.Address.PostalCode == "20001-0001"),
+            Arg.Any<CancellationToken>());
     }
 }

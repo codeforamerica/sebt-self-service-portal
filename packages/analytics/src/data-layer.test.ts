@@ -5,7 +5,7 @@ import { DataLayer } from './data-layer'
 describe('DataLayer', () => {
   beforeEach(() => {
     // Clean up any previous instance from window
-    delete (window as Record<string, unknown>).digitalData
+    delete (window as unknown as Record<string, unknown>).digitalData
   })
 
   // ── Constructor ──
@@ -386,9 +386,9 @@ describe('DataLayer', () => {
     it('supports a custom root name', () => {
       new DataLayer('myData')
 
-      expect((window as Record<string, unknown>).myData).toBeDefined()
+      expect((window as unknown as Record<string, unknown>).myData).toBeDefined()
 
-      delete (window as Record<string, unknown>).myData
+      delete (window as unknown as Record<string, unknown>).myData
     })
 
     it('namespaces events to the root name', () => {
@@ -396,7 +396,7 @@ describe('DataLayer', () => {
       document.addEventListener('myData:EventTracked', handler)
 
       new DataLayer('myData')
-      const root = (window as Record<string, unknown>).myData as NonNullable<
+      const root = (window as unknown as Record<string, unknown>).myData as NonNullable<
         typeof window.digitalData
       >
       root.trackEvent('test')
@@ -404,7 +404,7 @@ describe('DataLayer', () => {
       expect(handler).toHaveBeenCalledTimes(1)
 
       document.removeEventListener('myData:EventTracked', handler)
-      delete (window as Record<string, unknown>).myData
+      delete (window as unknown as Record<string, unknown>).myData
     })
   })
 })

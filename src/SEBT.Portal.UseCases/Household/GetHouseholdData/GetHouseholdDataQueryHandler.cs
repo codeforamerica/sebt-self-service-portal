@@ -1,4 +1,3 @@
-using System.Security.Claims;
 using Microsoft.Extensions.Logging;
 using SEBT.Portal.Core.Models.Auth;
 using SEBT.Portal.Core.Models.Household;
@@ -32,7 +31,7 @@ public class GetHouseholdDataQueryHandler(
 
         logger.LogDebug("Household data request received for identifier type {Type}", identifier.Type);
 
-        var userIalLevel = query.User.GetIalLevel();
+        var userIalLevel = UserIalLevelExtensions.FromClaimsPrincipal(query.User);
         var piiVisibility = idProofingRequirementsService.GetPiiVisibility(userIalLevel);
 
         logger.LogDebug(
@@ -57,5 +56,4 @@ public class GetHouseholdDataQueryHandler(
         logger.LogDebug("Household data retrieved successfully for identifier type {Type}", identifier.Type);
         return Result<HouseholdData>.Success(householdData);
     }
-
 }

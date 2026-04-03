@@ -115,7 +115,7 @@ export class DataLayer {
     this._bindApi()
 
     // Expose on window
-    ;(window as Record<string, unknown>)[root] = this._data
+    ;(window as unknown as Record<string, unknown>)[root] = this._data
 
     // Mark initialized and emit event
     this._data.initialized = true
