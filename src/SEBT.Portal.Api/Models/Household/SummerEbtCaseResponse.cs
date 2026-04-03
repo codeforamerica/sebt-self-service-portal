@@ -50,6 +50,16 @@ public record SummerEbtCaseResponse
     public string EligibilityType { get; init; } = string.Empty;
 
     /// <summary>
+    /// The source of eligibility (e.g. school, SNAP, TANF).
+    /// </summary>
+    public string? EligibilitySource { get; init; }
+
+    /// <summary>
+    /// The type of issuance for this case (e.g. auto-issuance vs application-based).
+    /// </summary>
+    public Core::SEBT.Portal.Core.Models.Household.IssuanceType IssuanceType { get; init; }
+
+    /// <summary>
     /// The application date.
     /// </summary>
     public DateTime? ApplicationDate { get; init; }
