@@ -30,10 +30,10 @@ public class MockHouseholdRepositoryTests
         _repository = new MockHouseholdRepository(logger, timeProvider: _timeProvider);
     }
 
-    private static MockHouseholdRepository CreateRepository(string emailPattern)
+    private static MockHouseholdRepository CreateRepository(string emailPattern, string? state = null)
     {
         var logger = NullLogger<MockHouseholdRepository>.Instance;
-        var settings = Options.Create(new SeedingSettings { EmailPattern = emailPattern });
+        var settings = Options.Create(new SeedingSettings { EmailPattern = emailPattern, State = state });
         return new MockHouseholdRepository(logger, settings, new FakeTimeProvider(FixedSeedTime));
     }
 
@@ -242,10 +242,12 @@ public class MockHouseholdRepositoryTests
     [Fact]
     public async Task GetHouseholdByEmailAsync_ReturnsAllSeededScenarios()
     {
-        // Derive emails from the default catalog
+        // Derive emails from the default catalog (no state set, so DC-only scenarios are excluded)
         var defaultSettings = new SeedingSettings();
+        var expectedScenarios = SeedScenarios.AllScenarios
+            .Where(s => !SeedScenarios.DcOnlyScenarios.Contains(s));
 
-        foreach (var scenario in SeedScenarios.AllScenarios)
+        foreach (var scenario in expectedScenarios)
         {
             var email = defaultSettings.BuildEmail(scenario.Name);
             var result = await _repository.GetHouseholdByEmailAsync(email, FullPiiVisibility, UserIalLevel.IAL1plus);
@@ -510,8 +512,8 @@ public class MockHouseholdRepositoryTests
     public async Task GetHouseholdByEmailAsync_WithDcEmailPattern_ReturnsAllSeededScenarios()
     {
         const string pattern = "sebt.dc+{0}@codeforamerica.org";
-        var repo = CreateRepository(pattern);
-        var settings = new SeedingSettings { EmailPattern = pattern };
+        var repo = CreateRepository(pattern, state: "dc");
+        var settings = new SeedingSettings { EmailPattern = pattern, State = "dc" };
 
         foreach (var scenario in SeedScenarios.AllScenarios)
         {
