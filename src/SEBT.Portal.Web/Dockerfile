@@ -18,6 +18,9 @@ COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
 # Copy shared design system (required by Portal Web postinstall and build scripts)
 COPY packages/design-system/ ./packages/design-system/
 
+# Copy analytics workspace package (required by web imports of @sebt/analytics)
+COPY packages/analytics/ ./packages/analytics/
+
 # Copy web workspace
 COPY src/SEBT.Portal.Web/ ./src/SEBT.Portal.Web/
 

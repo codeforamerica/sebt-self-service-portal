@@ -70,6 +70,12 @@
     </ItemGroup>
 
     <ItemGroup>
+        <Content Include="Integration\Fixtures\*.json">
+            <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+        </Content>
+    </ItemGroup>
+
+    <ItemGroup>
       <ProjectReference Include="../../src/SEBT.Portal.Core/SEBT.Portal.Core.csproj" />
       <ProjectReference Include="../../src/SEBT.Portal.Infrastructure/SEBT.Portal.Infrastructure.csproj" />
       <ProjectReference Include="../../src/SEBT.Portal.Infrastructure.Seeding/SEBT.Portal.Infrastructure.Seeding.csproj" />

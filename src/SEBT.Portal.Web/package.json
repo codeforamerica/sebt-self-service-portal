@@ -31,6 +31,7 @@
     "knip:production": "knip --production"
   },
   "dependencies": {
+    "@sebt/analytics": "workspace:*",
     "@sebt/design-system": "workspace:*",
     "@next/third-parties": "^16.1.7",
     "@t3-oss/env-nextjs": "^0.13.10",
@@ -60,6 +61,7 @@
     "@vitest/coverage-v8": "^4.1.0",
     "axe-core": "^4.11.1",
     "babel-plugin-react-compiler": "1.0.0",
+    "baseline-browser-mapping": "^2.10.0",
     "eslint": "^9.39.4",
     "eslint-config-next": "16.0.8",
     "eslint-plugin-security": "^3.0.1",

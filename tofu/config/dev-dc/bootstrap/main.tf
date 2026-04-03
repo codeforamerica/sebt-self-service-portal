@@ -22,6 +22,7 @@ resource "aws_iam_policy" "github_actions" {
         Effect = "Allow"
         Action = [
           "acm:*",
+          "appconfig:*",
           "cloudfront:*",
           "dynamodb:*",
           "ec2:*",

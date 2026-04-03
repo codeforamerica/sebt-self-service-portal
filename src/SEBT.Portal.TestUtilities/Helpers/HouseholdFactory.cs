@@ -15,6 +15,7 @@ public static class HouseholdFactory
         .RuleFor(h => h.Email, f => f.Internet.Email().ToLowerInvariant())
         .RuleFor(h => h.Phone, f => f.Phone.PhoneNumber("###-####"))
         .RuleFor(h => h.BenefitIssuanceType, f => f.PickRandom<BenefitIssuanceType>())
+        .RuleFor(h => h.SummerEbtCases, _ => new List<SummerEbtCase>())
         .RuleFor(h => h.Applications, f => GenerateApplications(f))
         .RuleFor(h => h.AddressOnFile, (f, h) =>
             f.Random.Bool(0.6f) && h.Applications.Any(a => a.ApplicationStatus == ApplicationStatus.Approved)
