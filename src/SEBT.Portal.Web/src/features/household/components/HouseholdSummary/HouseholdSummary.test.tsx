@@ -117,7 +117,7 @@ describe('HouseholdSummary', () => {
 
     // i18n key: profileTableActionChangeAddress → "Change my mailing address"
     const link = screen.getByRole('link', { name: 'Change my mailing address' })
-    expect(link).toHaveAttribute('href', '/address')
+    expect(link).toHaveAttribute('href', '/profile/address')
   })
 
   it('hides mailing address when not provided', () => {
