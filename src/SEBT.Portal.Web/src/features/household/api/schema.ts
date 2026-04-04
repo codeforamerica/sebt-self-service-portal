@@ -171,6 +171,7 @@ export const ApplicationSchema = z.object({
   applicationNumber: z.string().nullable().optional(),
   caseNumber: z.string().nullable().optional(),
   applicationStatus: ApplicationStatusSchema,
+  applicationDate: z.string().nullable().optional(),
   benefitIssueDate: z.string().nullable().optional(),
   benefitExpirationDate: z.string().nullable().optional(),
   last4DigitsOfCard: z.string().nullable().optional(),
