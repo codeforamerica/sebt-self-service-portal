@@ -599,7 +599,7 @@ public class ValidateOtpCommandHandlerTests
             Arg.Any<EventId>(),
             Arg.Is<object>(o => o.ToString()!.Contains("New user authenticated via OTP") &&
                                o.ToString()!.Contains(command.Email) &&
-                               o.ToString()!.Contains("None")),
+                               o.ToString()!.Contains("IAL1")),
             Arg.Any<Exception>(),
             Arg.Any<Func<object, Exception?, string>>());
     }
