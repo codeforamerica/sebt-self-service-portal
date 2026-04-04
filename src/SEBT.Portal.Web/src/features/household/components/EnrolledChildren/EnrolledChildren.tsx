@@ -43,19 +43,21 @@ export function EnrolledChildren() {
         className="usa-accordion usa-accordion--bordered"
         data-allow-multiple
       >
-        {data.summerEbtCases.map((c, index)=> (
+        {data.summerEbtCases.map((c, index) => (
           <>
             {/* <pre>{JSON.stringify(c, null, 4)}</pre> */}
             <ChildCard
               key={`${c.childFirstName}-${c.childLastName}-${c.childDateOfBirth}-${c.summerEBTCaseID}`}
-              child={{ 
-                firstName: c.childFirstName, 
-                lastName: c.childLastName, 
-                caseNumber: c.summerEBTCaseID }}
-              application={{ 
-                applicationStatus: 'Approved' as ApplicationStatus, 
+              child={{
+                firstName: c.childFirstName,
+                lastName: c.childLastName
+              }}
+              application={{
+                ...c,
+                applicationStatus: 'Approved' as ApplicationStatus,
                 benefitIssueDate: c.benefitAvailableDate,
-                ...c 
+                children: [{ firstName: c.childFirstName, lastName: c.childLastName }],
+                childrenOnApplication: 1
               }}
               id={`${c.summerEBTCaseID}`}
               defaultExpanded={index === 0}

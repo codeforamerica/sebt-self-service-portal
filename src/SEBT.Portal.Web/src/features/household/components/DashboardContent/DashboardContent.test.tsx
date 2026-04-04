@@ -82,6 +82,7 @@ describe('DashboardContent', () => {
       http.get('/api/household/data', () => {
         return HttpResponse.json({
           ...TEST_HOUSEHOLD_DATA,
+          summerEbtCases: [],
           applications: []
         })
       })
@@ -101,6 +102,7 @@ describe('DashboardContent', () => {
       http.get('/api/household/data', () => {
         return HttpResponse.json({
           ...TEST_HOUSEHOLD_DATA,
+          summerEbtCases: [],
           applications: []
         })
       })
