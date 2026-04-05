@@ -123,7 +123,7 @@ describe('HouseholdSummary', () => {
   it('renders change mailing address link', () => {
     render(<HouseholdSummary />)
     const link = screen.getByRole('link', { name: 'Change my mailing address' })
-    expect(link).toHaveAttribute('href', '/address')
+    expect(link).toHaveAttribute('href', '/profile/address')
   })
 
   it('hides mailing address when not provided', () => {
