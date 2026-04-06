@@ -18,13 +18,11 @@ export function ChildFormPage({ showSchoolField, apiBaseUrl }: ChildFormPageProp
   const { t } = useTranslation('personalInfo')
   const router = useRouter()
   const { state, addChild, updateChild, setEditingChildId } = useEnrollment()
-  const { setPageData, trackEvent } = useDataLayer()
+  const { trackEvent } = useDataLayer()
 
   useEffect(() => {
-    setPageData('flow', 'enrollment_check')
-    setPageData('step', 'check')
     trackEvent(AnalyticsEvents.ENROLLMENT_CHECK_START)
-  }, [setPageData, trackEvent])
+  }, [trackEvent])
 
   const editingChild = state.editingChildId
     ? state.children.find(c => c.id === state.editingChildId)

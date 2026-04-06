@@ -1,4 +1,5 @@
 import { primaryFont } from '@/design/fonts'
+import { portalRoutes } from '@/lib/analytics-routes'
 import {
   AuthProvider,
   AxeProvider,
@@ -99,7 +100,10 @@ export default async function RootLayout({
       className={`usa-js-loading ${primaryFont.variable}`}
     >
       <body>
-        <DataLayerProvider application="sebt-portal">
+        <DataLayerProvider
+          application="sebt-portal"
+          routes={portalRoutes}
+        >
           <QueryProvider>
             <AuthProvider>
               <FeatureFlagsProvider>
