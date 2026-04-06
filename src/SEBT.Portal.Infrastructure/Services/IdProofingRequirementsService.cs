@@ -13,24 +13,25 @@ namespace SEBT.Portal.Infrastructure.Services;
 /// </summary>
 public class IdProofingRequirementsService : IIdProofingRequirementsService
 {
-    private readonly IdProofingRequirementsSettings _settings;
+    private readonly IOptionsMonitor<IdProofingRequirementsSettings> _optionsMonitor;
     private readonly ILogger<IdProofingRequirementsService> _logger;
 
     public IdProofingRequirementsService(
-        IOptions<IdProofingRequirementsSettings> settings,
+        IOptionsMonitor<IdProofingRequirementsSettings> optionsMonitor,
         ILogger<IdProofingRequirementsService> logger)
     {
-        _settings = settings.Value;
+        _optionsMonitor = optionsMonitor;
         _logger = logger;
     }
 
     /// <inheritdoc />
     public PiiVisibility GetPiiVisibility(UserIalLevel userIalLevel)
     {
+        var settings = _optionsMonitor.CurrentValue;
         return new PiiVisibility(
-            IncludeAddress: MeetsRequirement("Address", _settings.AddressView, userIalLevel),
-            IncludeEmail: MeetsRequirement("Email", _settings.EmailView, userIalLevel),
-            IncludePhone: MeetsRequirement("Phone", _settings.PhoneView, userIalLevel));
+            IncludeAddress: MeetsRequirement("Address", settings.AddressView, userIalLevel),
+            IncludeEmail: MeetsRequirement("Email", settings.EmailView, userIalLevel),
+            IncludePhone: MeetsRequirement("Phone", settings.PhoneView, userIalLevel));
     }
 
     private bool MeetsRequirement(string fieldName, IalLevel requirement, UserIalLevel userIalLevel)

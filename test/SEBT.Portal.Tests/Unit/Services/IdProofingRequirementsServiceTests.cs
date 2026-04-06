@@ -1,5 +1,6 @@
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
+using NSubstitute;
 using SEBT.Portal.Core.AppSettings;
 using SEBT.Portal.Core.Models.Auth;
 using SEBT.Portal.Infrastructure.Services;
@@ -9,8 +10,12 @@ namespace SEBT.Portal.Tests.Unit.Services;
 
 public class IdProofingRequirementsServiceTests
 {
-    private static IdProofingRequirementsService CreateService(IdProofingRequirementsSettings settings) =>
-        new(Options.Create(settings), NullLogger<IdProofingRequirementsService>.Instance);
+    private static IdProofingRequirementsService CreateService(IdProofingRequirementsSettings settings)
+    {
+        var monitor = Substitute.For<IOptionsMonitor<IdProofingRequirementsSettings>>();
+        monitor.CurrentValue.Returns(settings);
+        return new(monitor, NullLogger<IdProofingRequirementsService>.Instance);
+    }
 
     [Fact]
     public void GetPiiVisibility_WhenCompleted_AndAllRequireIal1_ReturnsAllTrue()

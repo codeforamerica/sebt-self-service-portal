@@ -30,9 +30,12 @@ public class HttpSocureClientTests
         var factory = Substitute.For<IHttpClientFactory>();
         factory.CreateClient("Socure").Returns(httpClient);
 
+        var monitor = Substitute.For<IOptionsMonitor<SocureSettings>>();
+        monitor.CurrentValue.Returns(settings);
+
         return new HttpSocureClient(
             factory,
-            Options.Create(settings),
+            monitor,
             NullLogger<HttpSocureClient>.Instance);
     }
 

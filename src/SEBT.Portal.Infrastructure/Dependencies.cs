@@ -40,7 +40,7 @@ public static class Dependencies
 
         services.AddHttpClient("Smarty", (sp, client) =>
         {
-            var smarty = sp.GetRequiredService<IOptions<SmartySettings>>().Value;
+            var smarty = sp.GetRequiredService<IOptionsMonitor<SmartySettings>>().CurrentValue;
             var baseUrl = string.IsNullOrWhiteSpace(smarty.BaseUrl)
                 ? "https://us-street.api.smartystreets.com"
                 : smarty.BaseUrl.TrimEnd('/');
@@ -52,7 +52,7 @@ public static class Dependencies
         services.AddTransient<PassThroughAddressUpdateService>();
         services.AddTransient<IAddressUpdateService>(sp =>
         {
-            var smarty = sp.GetRequiredService<IOptions<SmartySettings>>().Value;
+            var smarty = sp.GetRequiredService<IOptionsMonitor<SmartySettings>>().CurrentValue;
             return smarty.Enabled
                 ? sp.GetRequiredService<SmartyAddressUpdateService>()
                 : sp.GetRequiredService<PassThroughAddressUpdateService>();
@@ -60,8 +60,9 @@ public static class Dependencies
         services.AddTransient<IAddressValidationService, AddressValidationServiceAdapter>();
         services.AddSingleton<IIdentifierHasher, IdentifierHasher>();
 
-        // Expose SocureSettings directly for use case injection (avoids IOptions dependency in UseCases layer)
-        services.AddSingleton(sp => sp.GetRequiredService<IOptions<SocureSettings>>().Value);
+        // Expose SocureSettings directly for use case injection (avoids IOptions dependency in UseCases layer).
+        // Transient so each request gets the current value from IOptionsMonitor, supporting live AppConfig reload.
+        services.AddTransient(sp => sp.GetRequiredService<IOptionsMonitor<SocureSettings>>().CurrentValue);
 
         // Socure client — disabled, stub, or real based on configuration
         var socureEnabled = configuration.GetValue<bool>("Socure:Enabled");
@@ -71,7 +72,7 @@ public static class Dependencies
             services.AddTransient<HttpSocureClient>();
             services.AddTransient<ISocureClient>(sp =>
             {
-                var settings = sp.GetRequiredService<IOptions<SocureSettings>>().Value;
+                var settings = sp.GetRequiredService<IOptionsMonitor<SocureSettings>>().CurrentValue;
                 if (settings.UseStub)
                     return sp.GetRequiredService<StubSocureClient>();
 

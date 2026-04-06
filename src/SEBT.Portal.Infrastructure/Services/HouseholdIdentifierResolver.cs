@@ -24,12 +24,12 @@ public class HouseholdIdentifierResolver : IHouseholdIdentifierResolver
     private readonly ILogger<HouseholdIdentifierResolver>? _logger;
 
     public HouseholdIdentifierResolver(
-        IOptions<StateHouseholdIdSettings> settings,
+        IOptionsMonitor<StateHouseholdIdSettings> optionsMonitor,
         IUserRepository userRepository,
         IPhoneOverrideProvider phoneOverrideProvider,
         ILogger<HouseholdIdentifierResolver>? logger = null)
     {
-        _settings = settings.Value;
+        _settings = optionsMonitor.CurrentValue;
         _userRepository = userRepository;
         _phoneOverrideProvider = phoneOverrideProvider;
         _logger = logger;

@@ -18,17 +18,24 @@ public class HouseholdIdentifierResolverTests
     private readonly IUserRepository _userRepository = Substitute.For<IUserRepository>();
     private static readonly IPhoneOverrideProvider NoOverride = NullPhoneOverrideProvider.Instance;
 
+    private static IOptionsMonitor<StateHouseholdIdSettings> MonitorFor(StateHouseholdIdSettings settings)
+    {
+        var monitor = Substitute.For<IOptionsMonitor<StateHouseholdIdSettings>>();
+        monitor.CurrentValue.Returns(settings);
+        return monitor;
+    }
+
     private static HouseholdIdentifierResolver CreateResolver(StateHouseholdIdSettings settings)
     {
         return new HouseholdIdentifierResolver(
-            Options.Create(settings),
+            MonitorFor(settings),
             Substitute.For<IUserRepository>(),
             NoOverride);
     }
 
     private static HouseholdIdentifierResolver CreateResolver(IUserRepository userRepository, StateHouseholdIdSettings settings)
     {
-        return new HouseholdIdentifierResolver(Options.Create(settings), userRepository, NoOverride);
+        return new HouseholdIdentifierResolver(MonitorFor(settings), userRepository, NoOverride);
     }
 
     private static HouseholdIdentifierResolver CreateResolver(
@@ -36,7 +43,7 @@ public class HouseholdIdentifierResolverTests
         StateHouseholdIdSettings settings,
         IPhoneOverrideProvider phoneOverride)
     {
-        return new HouseholdIdentifierResolver(Options.Create(settings), userRepository, phoneOverride);
+        return new HouseholdIdentifierResolver(MonitorFor(settings), userRepository, phoneOverride);
     }
 
     private static ClaimsPrincipal CreatePrincipal(string email, string claimType = ClaimTypes.Email)
