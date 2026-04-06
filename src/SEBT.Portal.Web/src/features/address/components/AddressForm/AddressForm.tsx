@@ -5,7 +5,7 @@ import { useEffect, useRef, useState, type FormEvent } from 'react'
 import { createPortal } from 'react-dom'
 import { useTranslation } from 'react-i18next'
 
-import { Alert, Button, getState, getStateLinks, InputField } from '@sebt/design-system'
+import { Alert, Button, InputField, getState, getStateLinks } from '@sebt/design-system'
 
 import type { Address } from '@/features/household/api'
 

@@ -25,7 +25,19 @@ vi.mock('@sebt/design-system', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@sebt/design-system')>()
   return {
     ...actual,
-    getState: () => mockState
+    getState: () => mockState,
+    getStateLinks: () => ({
+      help: { faqs: '#', contactUs: 'https://test.example/contact' },
+      footer: {
+        publicNotifications: '#',
+        accessibility: '#',
+        privacyAndSecurity: '#',
+        googleTranslateDisclaimer: '#',
+        about: '#',
+        termsAndConditions: '#'
+      },
+      external: { contactUsAssistance: '#' }
+    })
   }
 })
 
