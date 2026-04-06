@@ -29,7 +29,7 @@ const mockCase2: SummerEbtCase = {
 
 const defaultMockData: HouseholdData = {
   email: 'test@example.com',
-  phone: '(303) 555-0100',
+  phone: '3035550100',
   summerEbtCases: [mockCase1, mockCase2],
   applications: [],
   addressOnFile: null

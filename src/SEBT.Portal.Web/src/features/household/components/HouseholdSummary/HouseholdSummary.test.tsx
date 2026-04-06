@@ -32,7 +32,7 @@ const mockApplication: Application = {
 
 const defaultMockData: HouseholdData = {
   email: 'test@example.com',
-  phone: '(303) 555-0100',
+  phone: '3035550100',
   summerEbtCases: [mockCase],
   applications: [mockApplication],
   addressOnFile: {
@@ -46,7 +46,8 @@ const defaultMockData: HouseholdData = {
 
 let mockReturnData: HouseholdData
 
-vi.mock('../../api', () => ({
+vi.mock('../../api', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('../../api')>()),
   useRequiredHouseholdData: () => mockReturnData
 }))
 
@@ -146,21 +147,21 @@ describe('HouseholdSummary', () => {
 
   it('renders preferred contact with phone when provided', () => {
     render(<HouseholdSummary />)
-    expect(screen.getByText(/\(303\) 555-0100/)).toBeInTheDocument()
+    expect(screen.getByText(/303-555-0100/)).toBeInTheDocument()
   })
 
   it('renders preferred contact without phone when not provided', () => {
     mockReturnData = { ...defaultMockData, phone: null }
     render(<HouseholdSummary />)
     expect(screen.getByText('Your preferred contact')).toBeInTheDocument()
-    expect(screen.queryByText(/\(303\) 555-0100/)).not.toBeInTheDocument()
+    expect(screen.queryByText(/303-555-0100/)).not.toBeInTheDocument()
   })
 
   it('renders preferred contact with only phone when email not provided', () => {
     mockReturnData = { ...defaultMockData, email: null }
     render(<HouseholdSummary />)
     expect(screen.getByText('Your preferred contact')).toBeInTheDocument()
-    expect(screen.getByText(/\(303\) 555-0100/)).toBeInTheDocument()
+    expect(screen.getByText(/303-555-0100/)).toBeInTheDocument()
   })
 
   it('hides contact section when neither email nor phone provided', () => {
