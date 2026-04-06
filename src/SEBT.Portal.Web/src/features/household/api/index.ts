@@ -9,6 +9,7 @@ export {
   UserProfileSchema,
   formatDate,
   formatUsPhone,
+  interpolateDate,
   isReplacementEligible,
   toUiCardStatus,
   type Address,

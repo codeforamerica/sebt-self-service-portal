@@ -67,7 +67,7 @@ describe('CardStatusTimeline', () => {
         application={{ ...mockApplication, cardStatus: 'Processed', cardActivatedAt: null }}
       />
     )
-    expect(screen.queryByText(/\[MM\/DD\/YYYY\]/)).toBeNull()
+    expect(screen.queryByText(/\[(?:MM\/DD\/YYYY|DD\/MM\/YYYY)\]/)).toBeNull()
   })
 
   it('renders Deactivated label for Deactivated status', () => {
