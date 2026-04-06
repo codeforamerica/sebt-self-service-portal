@@ -8,6 +8,8 @@
  * @see https://www.w3.org/2013/12/ceddl-201312.pdf
  */
 
+import { PAGE_LOAD } from './events'
+
 export interface DataLayerEvent {
   eventName: string
   eventData: Record<string, unknown>
@@ -33,6 +35,7 @@ export interface DataLayerRoot {
   initialized: boolean
   get: (path: string, scope?: string, defaultValue?: unknown) => unknown
   trackEvent: (eventName: string, eventData?: Record<string, unknown>) => void
+  pageLoad: (data?: Record<string, unknown>) => void
   eventTypes: Record<string, string>
 }
 
@@ -141,8 +144,13 @@ export class DataLayer {
       this._trackEvent(eventName, eventData)
     }
 
+    data.pageLoad = (data?: Record<string, unknown>): void => {
+      this._pageLoad(data)
+    }
+
     data.eventTypes = {
       INITIALIZED: 'DataLayer:Initialized',
+      PAGE_VIEWED: `${this._root}:PageViewed`,
       PAGE_ELEMENT_SET: `${this._root}:PageElementSet`,
       PAGE_ATTRIBUTE_SET: `${this._root}:PageAttributeSet`,
       PAGE_CATEGORY_SET: `${this._root}:PageCategorySet`,
@@ -235,6 +243,38 @@ export class DataLayer {
     this._emit(`${this._root}:EventTracked`, {
       eventName,
       eventData: eventObj.eventData,
+      timeStamp: eventObj.timeStamp,
+      scope: eventObj.scope
+    })
+  }
+
+  // ── Page load tracking ──
+
+  private _pageLoad(data?: Record<string, unknown>): void {
+    // Collect current page context (skip functions and structural sub-objects)
+    const page = this._data.page as Record<string, unknown>
+    const pageContext: Record<string, unknown> = {}
+    for (const key of Object.keys(page)) {
+      const value = page[key]
+      if (typeof value === 'function' || (typeof value === 'object' && value !== null)) continue
+      pageContext[key] = value
+    }
+
+    const merged = { ...pageContext, ...(data ?? {}) }
+
+    const eventObj: DataLayerEvent = {
+      eventName: PAGE_LOAD,
+      eventData: merged,
+      timeStamp: Date.now(),
+      scope: ['analytics']
+    }
+    ;(this._data.event as DataLayerEvent[]).push(eventObj)
+
+    // Emit PageViewed (distinct from EventTracked)
+    this._emit(`${this._root}:PageViewed`, {
+      eventName: PAGE_LOAD,
+      eventData: merged,
+      data: merged,
       timeStamp: eventObj.timeStamp,
       scope: eventObj.scope
     })
