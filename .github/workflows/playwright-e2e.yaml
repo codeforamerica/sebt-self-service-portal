@@ -11,9 +11,13 @@ on:
 
 jobs:
   e2e:
-    name: Playwright E2E Tests
+    name: Playwright E2E Tests (${{ matrix.state }})
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    strategy:
+      matrix:
+        state: [dc, co]
+      fail-fast: false
 
     steps:
       - name: Checkout code
@@ -38,16 +42,16 @@ jobs:
 
       - name: Build frontend for E2E
         env:
-          STATE: dc
-          NEXT_PUBLIC_STATE: dc
+          STATE: ${{ matrix.state }}
+          NEXT_PUBLIC_STATE: ${{ matrix.state }}
         run: ./.github/workflows/scripts/build-frontend.sh --production
 
       - name: Run Playwright E2E tests
         env:
           CI: true
           SKIP_WEB_SERVER: "1"
-          STATE: dc
-          NEXT_PUBLIC_STATE: dc
+          STATE: ${{ matrix.state }}
+          NEXT_PUBLIC_STATE: ${{ matrix.state }}
         run: |
           (cd src/SEBT.Portal.Web && pnpm start) &
           echo "Waiting for server at http://localhost:3000..."
@@ -63,7 +67,7 @@ jobs:
         uses: actions/upload-artifact@v4
         if: ${{ always() }}
         with:
-          name: playwright-report
+          name: playwright-report-${{ matrix.state }}
           path: src/SEBT.Portal.Web/playwright-report/
           retention-days: 7
 

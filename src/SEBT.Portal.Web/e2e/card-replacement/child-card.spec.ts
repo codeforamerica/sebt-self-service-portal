@@ -8,6 +8,7 @@ import {
   OLD_CARD_DATE,
   recentCardDate
 } from '../fixtures/household-data'
+import { skipUnlessState } from '../fixtures/state'
 
 test.describe('ChildCard', () => {
   test.beforeEach(async ({ page }) => {
@@ -156,7 +157,9 @@ test.describe('ChildCard', () => {
       await expect(link).toHaveAttribute('href', /\/cards\/replace\?app=APP-2026-001/)
     })
 
-    test('SnapEbtCard co-loaded: DC shows /cards/info link, CO shows no link', async ({ page }) => {
+    test('DC: SnapEbtCard co-loaded shows /cards/info replacement link', async ({ page }) => {
+      skipUnlessState('dc')
+
       await setupApiRoutes(page, {
         householdData: makeHouseholdData({
           applications: [
@@ -169,25 +172,36 @@ test.describe('ChildCard', () => {
       })
       await page.goto('/dashboard')
 
-      // NEXT_PUBLIC_STATE is inlined at build time. Detect the active state by
-      // checking the page title, which is state-specific (DC says "DC SUN Bucks",
-      // CO says "SUN Bucks"). The co-loaded link behavior differs by state.
-      // Page title: "District of Columbia SUN Bucks ..." for DC, "Colorado SUN Bucks ..." for CO.
-      const isDC = (await page.title()).includes('District of Columbia')
+      const link = page.locator('[data-testid="accordion-content"] a', {
+        hasText: 'Request a replacement card'
+      })
+      await expect(link).toHaveAttribute('href', '/cards/info')
+    })
+
+    test('CO: SnapEbtCard co-loaded shows no replacement link', async ({ page }) => {
+      skipUnlessState('co')
+
+      await setupApiRoutes(page, {
+        householdData: makeHouseholdData({
+          applications: [
+            makeApplication({
+              issuanceType: 3,
+              cardRequestedAt: OLD_CARD_DATE
+            })
+          ]
+        })
+      })
+      await page.goto('/dashboard')
 
       const link = page.locator('[data-testid="accordion-content"] a', {
         hasText: 'Request a replacement card'
       })
-
-      if (isDC) {
-        await expect(link).toHaveAttribute('href', '/cards/info')
-      } else {
-        // CO: co-loaded cards produce no replacement link
-        await expect(link).toHaveCount(0)
-      }
+      await expect(link).toHaveCount(0)
     })
 
-    test('TanfEbtCard co-loaded: DC shows /cards/info link, CO shows no link', async ({ page }) => {
+    test('DC: TanfEbtCard co-loaded shows /cards/info replacement link', async ({ page }) => {
+      skipUnlessState('dc')
+
       await setupApiRoutes(page, {
         householdData: makeHouseholdData({
           applications: [
@@ -200,18 +214,31 @@ test.describe('ChildCard', () => {
       })
       await page.goto('/dashboard')
 
-      // Page title: "District of Columbia SUN Bucks ..." for DC, "Colorado SUN Bucks ..." for CO.
-      const isDC = (await page.title()).includes('District of Columbia')
+      const link = page.locator('[data-testid="accordion-content"] a', {
+        hasText: 'Request a replacement card'
+      })
+      await expect(link).toHaveAttribute('href', '/cards/info')
+    })
+
+    test('CO: TanfEbtCard co-loaded shows no replacement link', async ({ page }) => {
+      skipUnlessState('co')
+
+      await setupApiRoutes(page, {
+        householdData: makeHouseholdData({
+          applications: [
+            makeApplication({
+              issuanceType: 2,
+              cardRequestedAt: OLD_CARD_DATE
+            })
+          ]
+        })
+      })
+      await page.goto('/dashboard')
 
       const link = page.locator('[data-testid="accordion-content"] a', {
         hasText: 'Request a replacement card'
       })
-
-      if (isDC) {
-        await expect(link).toHaveAttribute('href', '/cards/info')
-      } else {
-        await expect(link).toHaveCount(0)
-      }
+      await expect(link).toHaveCount(0)
     })
   })
 })
