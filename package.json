@@ -12,6 +12,7 @@
     "api:dev": "ASPNETCORE_ENVIRONMENT=Development dotnet watch run --project src/SEBT.Portal.Api --launch-profile http",
     "api:build": "dotnet build",
     "api:test": "dotnet test",
+    "api:test:unit": "dotnet test --filter \"Category!=SqlServer&Category!=Socure&Category!=Integration\"",
     "api:restore": "dotnet restore",
     "api:build-co": "./scripts/dev/build-co.sh",
     "api:build-dc": "./scripts/dev/build-dc.sh",

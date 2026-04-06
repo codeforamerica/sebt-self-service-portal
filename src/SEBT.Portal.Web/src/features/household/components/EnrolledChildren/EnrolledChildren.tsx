@@ -2,7 +2,7 @@
 
 import { useTranslation } from 'react-i18next'
 
-import { useRequiredHouseholdData } from '../../api'
+import { ApplicationStatus, useRequiredHouseholdData } from '../../api'
 import { ChildCard } from '../ChildCard'
 
 // Keys map to CSV: "S2 - Portal Dashboard - Section Enrolled Children - {Key}"
@@ -12,14 +12,14 @@ export function EnrolledChildren() {
 
   // Flatten children across all applications for display
   // Each child gets the application-level data it belongs to
-  let childIndex = 0
-  const childrenWithApplicationData = data.applications.flatMap((application) =>
-    application.children.map((child) => ({
-      child,
-      application,
-      index: childIndex++
-    }))
-  )
+  // let childIndex = 0
+  // const childrenWithApplicationData = data.applications.flatMap((application) =>
+  //   application.children.map((child) => ({
+  //     child,
+  //     application,
+  //     index: childIndex++
+  //   }))
+  // )
 
   return (
     <section aria-labelledby="enrolled-children-heading">
@@ -43,6 +43,33 @@ export function EnrolledChildren() {
         className="usa-accordion usa-accordion--bordered"
         data-allow-multiple
       >
+        {data.summerEbtCases.map((c, index) => (
+          <>
+            {/* <pre>{JSON.stringify(c, null, 4)}</pre> */}
+            <ChildCard
+              key={`${c.childFirstName}-${c.childLastName}-${c.childDateOfBirth}-${c.summerEBTCaseID}`}
+              child={{
+                firstName: c.childFirstName,
+                lastName: c.childLastName
+              }}
+              application={{
+                ...c,
+                applicationStatus: 'Approved' as ApplicationStatus,
+                benefitIssueDate: c.benefitAvailableDate,
+                children: [{ firstName: c.childFirstName, lastName: c.childLastName }],
+                childrenOnApplication: 1
+              }}
+              id={`${c.summerEBTCaseID}`}
+              defaultExpanded={index === 0}
+            />
+          </>
+        ))}
+      </div>
+
+      {/* <div
+        className="usa-accordion usa-accordion--bordered"
+        data-allow-multiple
+      >
         {childrenWithApplicationData.map(({ child, application, index }) => (
           <ChildCard
             key={`${child.firstName}-${child.lastName}-${index}`}
@@ -52,7 +79,7 @@ export function EnrolledChildren() {
             defaultExpanded={index === 0}
           />
         ))}
-      </div>
+      </div> */}
     </section>
   )
 }

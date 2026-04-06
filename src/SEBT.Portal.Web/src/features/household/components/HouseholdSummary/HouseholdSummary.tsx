@@ -16,17 +16,20 @@ function formatAddress(address: Address): string {
   return parts.join('\n')
 }
 
-// Keys map to CSV: "S2 - Portal Dashboard - Profile Table - Status {Status}"
-function getOverallStatus(data: HouseholdData): {
+type StatusInfo = {
   labelKey: string
   fallback: string
   variant: 'success' | 'warning' | 'error' | 'info'
-} {
-  const statuses = data.applications.map((app) => app.applicationStatus)
+}
 
-  if (statuses.includes('Approved')) {
-    return { labelKey: 'profileTableStatusEnrolled', fallback: 'Enrolled', variant: 'success' }
-  }
+// Keys map to CSV: "S2 - Portal Dashboard - Profile Table - Status {Status}"
+function getApplicationStatus(data: HouseholdData): StatusInfo | null {
+  const statuses = data.applications.map((app) => app.applicationStatus)
+  if (statuses.length === 0) return null
+
+  // If all applications are approved, there's no distinct application status to show
+  if (statuses.every((s) => s === 'Approved')) return null
+
   if (statuses.includes('Denied')) {
     return {
       labelKey: 'profileTableStatusApplicationDenied',
@@ -49,6 +52,30 @@ function getOverallStatus(data: HouseholdData): {
   return { labelKey: 'profileTableStatusUnknown', fallback: 'Unknown', variant: 'info' }
 }
 
+function getOverallStatus(data: HouseholdData): {
+  primary: StatusInfo
+  secondary: StatusInfo | null
+} {
+  const hasEnrolledCases = data.summerEbtCases.length > 0
+  const appStatus = getApplicationStatus(data)
+
+  if (hasEnrolledCases) {
+    return {
+      primary: { labelKey: 'profileTableStatusEnrolled', fallback: 'Enrolled', variant: 'success' },
+      secondary: appStatus
+    }
+  }
+
+  if (appStatus) {
+    return { primary: appStatus, secondary: null }
+  }
+
+  return {
+    primary: { labelKey: 'profileTableStatusUnknown', fallback: 'Unknown', variant: 'info' },
+    secondary: null
+  }
+}
+
 function getStatusTextClass(variant: string): string {
   switch (variant) {
     case 'success':
@@ -66,7 +93,7 @@ function getStatusTextClass(variant: string): string {
 export function HouseholdSummary() {
   const { t } = useTranslation('dashboard')
   const data = useRequiredHouseholdData()
-  const status = getOverallStatus(data)
+  const { primary, secondary } = getOverallStatus(data)
 
   return (
     <div className="usa-card__container margin-bottom-4">
@@ -75,10 +102,18 @@ export function HouseholdSummary() {
           {/* Status */}
           <dt className="text-bold">{t('profileTableHeadingStatus')}</dt>
           <dd className="margin-left-0 margin-bottom-2">
-            <span className={`text-bold ${getStatusTextClass(status.variant)}`}>
-              {t(status.labelKey, status.fallback)}
+            <span className={`text-bold ${getStatusTextClass(primary.variant)}`}>
+              {t(primary.labelKey, primary.fallback)}
             </span>
-            {status.variant === 'success' && (
+            {secondary && (
+              <>
+                <span className="text-base-dark">{' / '}</span>
+                <span className={`text-bold ${getStatusTextClass(secondary.variant)}`}>
+                  {t(secondary.labelKey, secondary.fallback)}
+                </span>
+              </>
+            )}
+            {primary.variant === 'success' && (
               <p className="margin-top-1 margin-bottom-0">
                 {t('profileTableStatusEnrolledDescription')}
               </p>

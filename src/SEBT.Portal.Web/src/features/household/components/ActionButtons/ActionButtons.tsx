@@ -5,18 +5,18 @@ import { useTranslation } from 'react-i18next'
 
 import { getState, getStateConfig } from '@sebt/design-system'
 
-import type { IssuanceType } from '../../api'
+import type { SummerEbtCase } from '../../api'
 
 interface ActionButton {
   labelKey: string
   href: string
-  /** When true, this CTA is hidden for SNAP/TANF issuance types. */
+  /** When true, this CTA is hidden when no case has a dedicated Summer EBT card. */
   selfServiceOnly?: boolean
 }
 
 interface ActionButtonsProps {
-  /** The benefit issuance type determines which self-service actions are available. */
-  issuanceType?: IssuanceType | null | undefined
+  /** Enrolled cases — used to determine which self-service actions are available. */
+  cases: SummerEbtCase[]
 }
 
 // Keys map to CSV: "S2 - Portal Dashboard - Action Navigation - {Key}"
@@ -40,15 +40,17 @@ const ACTIONS: ActionButton[] = [
  * (address update, replacement card) — those actions must go through
  * their case worker.
  */
-function isSelfServiceAvailable(issuanceType?: IssuanceType | null): boolean {
-  if (!issuanceType) return true
-  return issuanceType !== 'SnapEbtCard' && issuanceType !== 'TanfEbtCard'
+function isSelfServiceAvailable(cases: SummerEbtCase[]): boolean {
+  if (cases.length === 0) return true
+  return cases.some(
+    (c) => !c.issuanceType || c.issuanceType === 'Unknown' || c.issuanceType === 'SummerEbt'
+  )
 }
 
-export function ActionButtons({ issuanceType }: ActionButtonsProps) {
+export function ActionButtons({ cases }: ActionButtonsProps) {
   const { t } = useTranslation('dashboard')
   const { actionButtonBg, actionButtonText } = getStateConfig(getState())
-  const selfServiceEnabled = isSelfServiceAvailable(issuanceType)
+  const selfServiceEnabled = isSelfServiceAvailable(cases)
 
   const visibleActions = ACTIONS.filter((action) => !action.selfServiceOnly || selfServiceEnabled)
 

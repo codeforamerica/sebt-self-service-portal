@@ -10,7 +10,6 @@ import type { Application, Child } from '../../api'
 import { ChildCard } from './ChildCard'
 
 const mockChild: Child = {
-  caseNumber: 456001,
   firstName: 'Sophia',
   lastName: 'Martinez'
 }

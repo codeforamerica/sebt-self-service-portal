@@ -59,8 +59,8 @@ const TEST_APPLICATIONS: Application[] = [
     cardActivatedAt: '2026-01-08T00:00:00Z',
     cardDeactivatedAt: null,
     children: [
-      { caseNumber: 456001, firstName: 'Sophia', lastName: 'Martinez' },
-      { caseNumber: 456002, firstName: 'James', lastName: 'Martinez' }
+      { firstName: 'Sophia', lastName: 'Martinez' },
+      { firstName: 'James', lastName: 'Martinez' }
     ],
     childrenOnApplication: 2,
     issuanceType: 'SummerEbt'
