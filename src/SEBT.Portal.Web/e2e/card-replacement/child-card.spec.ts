@@ -2,12 +2,7 @@ import { expect, test } from '@playwright/test'
 
 import { setupApiRoutes } from '../fixtures/api-routes'
 import { injectAuth } from '../fixtures/auth'
-import {
-  makeApplication,
-  makeHouseholdData,
-  OLD_CARD_DATE,
-  recentCardDate
-} from '../fixtures/household-data'
+import { makeHouseholdData, makeSummerEbtCase, recentCardDate } from '../fixtures/household-data'
 import { skipUnlessState } from '../fixtures/state'
 
 test.describe('ChildCard', () => {
@@ -21,7 +16,7 @@ test.describe('ChildCard', () => {
     }) => {
       await setupApiRoutes(page, {
         householdData: makeHouseholdData({
-          applications: [makeApplication({ issuanceType: 1 })]
+          summerEbtCases: [makeSummerEbtCase({ issuanceType: 1 })]
         })
       })
       await page.goto('/dashboard')
@@ -36,13 +31,7 @@ test.describe('ChildCard', () => {
     test('SnapEbtCard (issuanceType 3) shows SNAP card type label', async ({ page }) => {
       await setupApiRoutes(page, {
         householdData: makeHouseholdData({
-          applications: [
-            makeApplication({
-              issuanceType: 3,
-              applicationNumber: 'APP-SNAP-001',
-              cardRequestedAt: OLD_CARD_DATE
-            })
-          ]
+          summerEbtCases: [makeSummerEbtCase({ issuanceType: 3 })]
         })
       })
       await page.goto('/dashboard')
@@ -53,13 +42,7 @@ test.describe('ChildCard', () => {
     test('TanfEbtCard (issuanceType 2) shows TANF card type label', async ({ page }) => {
       await setupApiRoutes(page, {
         householdData: makeHouseholdData({
-          applications: [
-            makeApplication({
-              issuanceType: 2,
-              applicationNumber: 'APP-TANF-001',
-              cardRequestedAt: OLD_CARD_DATE
-            })
-          ]
+          summerEbtCases: [makeSummerEbtCase({ issuanceType: 2 })]
         })
       })
       await page.goto('/dashboard')
@@ -106,15 +89,15 @@ test.describe('ChildCard', () => {
   })
 
   test.describe('replacement link visibility', () => {
-    test('shows replacement link when card was requested more than 14 days ago', async ({
-      page
-    }) => {
+    test('shows replacement link when card is not within cooldown', async ({ page }) => {
       await setupApiRoutes(page, {
         householdData: makeHouseholdData({
-          applications: [makeApplication({ cardRequestedAt: OLD_CARD_DATE, issuanceType: 1 })]
+          summerEbtCases: [makeSummerEbtCase({ issuanceType: 1 })]
         })
       })
       await page.goto('/dashboard')
+      // SummerEbtCase has no cardRequestedAt, so cooldown does not apply.
+      // applicationId maps to applicationNumber, enabling the link.
       await expect(
         page.locator('[data-testid="accordion-content"] a', {
           hasText: 'Request a replacement card'
@@ -127,7 +110,9 @@ test.describe('ChildCard', () => {
     }) => {
       await setupApiRoutes(page, {
         householdData: makeHouseholdData({
-          applications: [makeApplication({ cardRequestedAt: recentCardDate(), issuanceType: 1 })]
+          summerEbtCases: [
+            makeSummerEbtCase({ issuanceType: 1, cardRequestedAt: recentCardDate() })
+          ]
         })
       })
       await page.goto('/dashboard')
@@ -141,10 +126,9 @@ test.describe('ChildCard', () => {
     test('replacement link points to /cards/replace for SummerEbt', async ({ page }) => {
       await setupApiRoutes(page, {
         householdData: makeHouseholdData({
-          applications: [
-            makeApplication({
-              applicationNumber: 'APP-2026-001',
-              cardRequestedAt: OLD_CARD_DATE,
+          summerEbtCases: [
+            makeSummerEbtCase({
+              applicationId: 'APP-2026-001',
               issuanceType: 1
             })
           ]
@@ -162,12 +146,7 @@ test.describe('ChildCard', () => {
 
       await setupApiRoutes(page, {
         householdData: makeHouseholdData({
-          applications: [
-            makeApplication({
-              issuanceType: 3,
-              cardRequestedAt: OLD_CARD_DATE
-            })
-          ]
+          summerEbtCases: [makeSummerEbtCase({ issuanceType: 3 })]
         })
       })
       await page.goto('/dashboard')
@@ -183,12 +162,7 @@ test.describe('ChildCard', () => {
 
       await setupApiRoutes(page, {
         householdData: makeHouseholdData({
-          applications: [
-            makeApplication({
-              issuanceType: 3,
-              cardRequestedAt: OLD_CARD_DATE
-            })
-          ]
+          summerEbtCases: [makeSummerEbtCase({ issuanceType: 3 })]
         })
       })
       await page.goto('/dashboard')
@@ -204,12 +178,7 @@ test.describe('ChildCard', () => {
 
       await setupApiRoutes(page, {
         householdData: makeHouseholdData({
-          applications: [
-            makeApplication({
-              issuanceType: 2,
-              cardRequestedAt: OLD_CARD_DATE
-            })
-          ]
+          summerEbtCases: [makeSummerEbtCase({ issuanceType: 2 })]
         })
       })
       await page.goto('/dashboard')
@@ -225,12 +194,7 @@ test.describe('ChildCard', () => {
 
       await setupApiRoutes(page, {
         householdData: makeHouseholdData({
-          applications: [
-            makeApplication({
-              issuanceType: 2,
-              cardRequestedAt: OLD_CARD_DATE
-            })
-          ]
+          summerEbtCases: [makeSummerEbtCase({ issuanceType: 2 })]
         })
       })
       await page.goto('/dashboard')

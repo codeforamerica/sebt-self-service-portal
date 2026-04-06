@@ -3,8 +3,10 @@ import { expect, test } from '@playwright/test'
 import { setupApiRoutes } from '../fixtures/api-routes'
 import { injectAuth } from '../fixtures/auth'
 import { makeApplication, makeHouseholdData, OLD_CARD_DATE } from '../fixtures/household-data'
+import { currentState } from '../fixtures/state'
 
 const APP_NUMBER = 'APP-2026-001'
+const EXPECTED_ADDRESS = currentState === 'co' ? '200 E Colfax Ave' : '1350 Pennsylvania Ave NW'
 const ENCODED_APP = encodeURIComponent(APP_NUMBER)
 
 test.describe('Standalone replacement flow', () => {
@@ -25,7 +27,7 @@ test.describe('Standalone replacement flow', () => {
       await expect(page.locator('h1')).toContainText(
         'Do you want the new card mailed to this address?'
       )
-      await expect(page.getByText('1350 Pennsylvania Ave NW')).toBeVisible()
+      await expect(page.getByText(EXPECTED_ADDRESS)).toBeVisible()
     })
 
     test('shows validation error when submitted without a selection', async ({ page }) => {
@@ -77,7 +79,7 @@ test.describe('Standalone replacement flow', () => {
     test('renders confirm request page with child name and address', async ({ page }) => {
       await page.goto(`/cards/replace/confirm?app=${ENCODED_APP}`)
       await expect(page.getByText("John Doe's card")).toBeVisible()
-      await expect(page.locator('address')).toContainText('1350 Pennsylvania Ave NW')
+      await expect(page.locator('address')).toContainText(EXPECTED_ADDRESS)
     })
 
     test('"Order card" posts to replace endpoint and redirects to dashboard with success alert', async ({
