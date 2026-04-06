@@ -349,6 +349,133 @@ describe('DataLayer', () => {
     })
   })
 
+  // ── pageLoad ──
+
+  describe('pageLoad', () => {
+    it('pushes a page_load event to event[] with analytics scope', () => {
+      new DataLayer('digitalData')
+      window.digitalData!.pageLoad()
+
+      expect(window.digitalData!.event).toHaveLength(1)
+      expect(window.digitalData!.event[0]).toEqual(
+        expect.objectContaining({
+          eventName: 'page_load',
+          scope: ['analytics']
+        })
+      )
+    })
+
+    it('includes a timestamp on the event', () => {
+      new DataLayer('digitalData')
+      const before = Date.now()
+      window.digitalData!.pageLoad()
+      const after = Date.now()
+
+      expect(window.digitalData!.event[0]!.timeStamp).toBeGreaterThanOrEqual(before)
+      expect(window.digitalData!.event[0]!.timeStamp).toBeLessThanOrEqual(after)
+    })
+
+    it('emits digitalData:PageViewed CustomEvent on document', () => {
+      new DataLayer('digitalData')
+      const handler = vi.fn()
+      document.addEventListener('digitalData:PageViewed', handler)
+
+      window.digitalData!.pageLoad()
+
+      expect(handler).toHaveBeenCalledTimes(1)
+      const event = handler.mock.calls[0]![0] as CustomEvent
+      expect(event.detail).toHaveProperty('eventData')
+      expect(event.detail).toHaveProperty('data')
+      expect(event.detail).toHaveProperty('timeStamp')
+      expect(event.detail).toHaveProperty('scope', ['analytics'])
+
+      document.removeEventListener('digitalData:PageViewed', handler)
+    })
+
+    it('does NOT emit digitalData:EventTracked', () => {
+      new DataLayer('digitalData')
+      const handler = vi.fn()
+      document.addEventListener('digitalData:EventTracked', handler)
+
+      window.digitalData!.pageLoad()
+
+      expect(handler).not.toHaveBeenCalled()
+
+      document.removeEventListener('digitalData:EventTracked', handler)
+    })
+
+    it('includes current page context in event data', () => {
+      new DataLayer('digitalData')
+      window.digitalData!.page.set('name', 'Dashboard')
+      window.digitalData!.page.set('flow', 'dashboard')
+
+      window.digitalData!.pageLoad()
+
+      const event = window.digitalData!.event[0]!
+      expect(event.eventData).toEqual(
+        expect.objectContaining({
+          name: 'Dashboard',
+          flow: 'dashboard'
+        })
+      )
+    })
+
+    it('merges provided data with current page context', () => {
+      new DataLayer('digitalData')
+      window.digitalData!.page.set('name', 'Login')
+      window.digitalData!.page.set('flow', 'auth')
+
+      window.digitalData!.pageLoad({ step: 'verify_otp', custom: 'value' })
+
+      const event = window.digitalData!.event[0]!
+      expect(event.eventData).toEqual(
+        expect.objectContaining({
+          name: 'Login',
+          flow: 'auth',
+          step: 'verify_otp',
+          custom: 'value'
+        })
+      )
+    })
+
+    it('provided data overrides existing page context', () => {
+      new DataLayer('digitalData')
+      window.digitalData!.page.set('name', 'Old Name')
+
+      window.digitalData!.pageLoad({ name: 'New Name' })
+
+      expect(window.digitalData!.event[0]!.eventData).toEqual(
+        expect.objectContaining({ name: 'New Name' })
+      )
+    })
+
+    it('PageViewed detail.data matches the event data', () => {
+      new DataLayer('digitalData')
+      window.digitalData!.page.set('name', 'Home')
+
+      const handler = vi.fn()
+      document.addEventListener('digitalData:PageViewed', handler)
+
+      window.digitalData!.pageLoad({ flow: 'dashboard' })
+
+      const customEvent = handler.mock.calls[0]![0] as CustomEvent
+      expect(customEvent.detail.data).toEqual(
+        expect.objectContaining({
+          name: 'Home',
+          flow: 'dashboard'
+        })
+      )
+
+      document.removeEventListener('digitalData:PageViewed', handler)
+    })
+
+    it('exposes PAGE_VIEWED in eventTypes', () => {
+      new DataLayer('digitalData')
+
+      expect(window.digitalData!.eventTypes.PAGE_VIEWED).toBe('digitalData:PageViewed')
+    })
+  })
+
   // ── Scope inheritance ──
 
   describe('scope inheritance', () => {

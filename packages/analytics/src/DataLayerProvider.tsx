@@ -4,13 +4,27 @@ import { usePathname } from 'next/navigation'
 import { useEffect, useRef, type ReactNode } from 'react'
 
 import { DataLayer } from './data-layer'
-import { CTA_CLICK, PAGE_LOAD } from './events'
+import { CTA_CLICK } from './events'
+
+export interface PageContext {
+  /** Logical page title */
+  name: string
+  /** High-level flow this page belongs to (e.g., "auth", "dashboard", "address_update") */
+  flow: string
+  /** Step index or logical step name within the flow */
+  step: string
+}
+
+/** Map of pathname to page context for automatic page load tracking. */
+export type RoutePageContextMap = Record<string, PageContext>
 
 interface DataLayerProviderProps {
   /** Application identifier set on page.application (e.g., "sebt-portal", "sebt-enrollment-checker") */
   application: string
   /** Environment name (e.g., "dev", "staging", "production"). Defaults to NEXT_PUBLIC_ENVIRONMENT or "production". */
   environment?: string
+  /** Map of pathname to page context. When navigation occurs, matching context is set and pageLoad() fires. */
+  routes?: RoutePageContextMap
   children: ReactNode
 }
 
@@ -19,7 +33,12 @@ interface DataLayerProviderProps {
  * Automatically tracks page views on navigation and CTA clicks via delegation.
  * Must be rendered client-side. Initializes once and persists across navigations.
  */
-export function DataLayerProvider({ application, environment, children }: DataLayerProviderProps) {
+export function DataLayerProvider({
+  application,
+  environment,
+  routes,
+  children
+}: DataLayerProviderProps) {
   const initialized = useRef(false)
 
   useEffect(() => {
@@ -32,6 +51,7 @@ export function DataLayerProvider({ application, environment, children }: DataLa
     }
 
     window.digitalData!.page.set('application', application)
+    window.digitalData!.page.set('entry_source', application.replace('sebt-', '').replace(/-/g, '_'))
     window.digitalData!.page.set(
       'environment',
       environment ?? process.env.NEXT_PUBLIC_ENVIRONMENT ?? 'production'
@@ -40,16 +60,18 @@ export function DataLayerProvider({ application, environment, children }: DataLa
 
   return (
     <>
-      <PageTracker />
+      <PageTracker routes={routes} />
       <CtaTracker />
       {children}
     </>
   )
 }
 
-/** Fires a page_load event on every client-side navigation. */
-function PageTracker() {
+/** Fires a page_load event on every client-side navigation via the dedicated pageLoad() API. */
+function PageTracker({ routes }: { routes: RoutePageContextMap | undefined }) {
   const pathname = usePathname()
+  const routesRef = useRef(routes)
+  routesRef.current = routes
 
   useEffect(() => {
     if (typeof window === 'undefined' || !window.digitalData?.initialized) return
@@ -59,11 +81,20 @@ function PageTracker() {
       const dl = window.digitalData!
       const lang = document.documentElement.lang || 'en'
 
-      dl.page.set('name', document.title)
       dl.page.set('language', lang)
       dl.page.set('locale', `${lang}_US`)
 
-      dl.trackEvent(PAGE_LOAD)
+      // Set route-specific context or fall back to document.title
+      const ctx = routesRef.current?.[pathname]
+      if (ctx) {
+        dl.page.set('name', ctx.name)
+        dl.page.set('flow', ctx.flow)
+        dl.page.set('step', ctx.step)
+      } else {
+        dl.page.set('name', document.title)
+      }
+
+      dl.pageLoad()
     })
 
     return () => cancelAnimationFrame(raf)
