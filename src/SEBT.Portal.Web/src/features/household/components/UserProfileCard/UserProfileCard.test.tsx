@@ -33,7 +33,7 @@ const mockApplication: Application = {
   cardMailedAt: null,
   cardActivatedAt: null,
   cardDeactivatedAt: null,
-  children: [{ caseNumber: 456001, firstName: 'Sophia', lastName: 'Martinez' }],
+  children: [{ firstName: 'Sophia', lastName: 'Martinez' }],
   childrenOnApplication: 1
 }
 

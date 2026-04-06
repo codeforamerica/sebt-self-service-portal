@@ -193,6 +193,13 @@ public class OidcController(
         {
             var (createdUser, _) = await userRepository.GetOrCreateUserAsync(normalizedEmail, cancellationToken);
             user = createdUser;
+
+            // A user who completed OIDC login is at least IAL1; don't downgrade if already higher
+            if (user.IalLevel < UserIalLevel.IAL1)
+            {
+                user.IalLevel = UserIalLevel.IAL1;
+                await userRepository.UpdateUserAsync(user, cancellationToken);
+            }
         }
 
         var token = jwtService.GenerateToken(user, additionalClaims);

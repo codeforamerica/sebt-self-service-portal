@@ -29,10 +29,7 @@ export function DashboardContent() {
       setPageData('household_status', 'error')
     } else if (data) {
       setPageData('household_status', 'success')
-      const childCount = data.applications.reduce(
-        (sum, app) => sum + (app.children?.length ?? 0),
-        0
-      )
+      const childCount = data.summerEbtCases.length
       setUserData('household_linked_children', childCount, ['default', 'analytics'])
     }
     trackEvent(AnalyticsEvents.HOUSEHOLD_RESULT)
@@ -70,7 +67,7 @@ export function DashboardContent() {
     )
   }
 
-  if (!data || data.applications.length === 0 || isNotFound) {
+  if (!data || isNotFound || (data.summerEbtCases.length === 0 && data.applications.length === 0)) {
     return (
       <>
         {pageHeading}
@@ -84,7 +81,7 @@ export function DashboardContent() {
     <>
       {pageHeading}
       <DashboardAlerts />
-      <ActionButtons issuanceType={data.benefitIssuanceType} />
+      <ActionButtons cases={data.summerEbtCases} />
       <UserProfileCard />
       <HouseholdSummary />
       <EnrolledChildren />
