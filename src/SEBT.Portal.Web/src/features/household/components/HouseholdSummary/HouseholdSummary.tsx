@@ -4,7 +4,7 @@ import Link from 'next/link'
 import { useTranslation } from 'react-i18next'
 
 import type { Address, HouseholdData } from '../../api'
-import { useRequiredHouseholdData } from '../../api'
+import { formatUsPhone, useRequiredHouseholdData } from '../../api'
 
 function formatAddress(address: Address): string {
   const parts = [
@@ -146,7 +146,7 @@ export function HouseholdSummary() {
                 {data.phone && (
                   <>
                     {data.email && <br />}
-                    {data.phone}
+                    {formatUsPhone(data.phone)}
                   </>
                 )}
                 <br />

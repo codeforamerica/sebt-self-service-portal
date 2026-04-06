@@ -208,6 +208,14 @@ export const HouseholdDataSchema = z.object({
 
 export type HouseholdData = z.infer<typeof HouseholdDataSchema>
 
+/**
+ * Formats a 10-digit US phone number as XXX-XXX-XXXX.
+ * Returns the input unchanged if it is not exactly 10 digits.
+ */
+export function formatUsPhone(phone: string): string {
+  return phone.replace(/^(\d{3})(\d{3})(\d{4})$/, '$1-$2-$3')
+}
+
 export function formatDate(isoDate: string, locale: string): string {
   return new Intl.DateTimeFormat(locale, {
     month: '2-digit',
