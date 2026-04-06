@@ -526,7 +526,7 @@ public class MockHouseholdRepository : IHouseholdRepository
                     if (app != null)
                     {
                         app.BenefitIssueDate = now.AddDays(-20);
-                        app.BenefitExpirationDate = now.AddDays(70);
+                        app.BenefitExpirationDate = now.AddDays(122);
                         app.CardStatus = CardStatus.Active;
                         app.Children = dcChildFaker.Generate(1);
                     }
