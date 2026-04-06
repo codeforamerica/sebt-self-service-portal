@@ -384,8 +384,10 @@ describe('DataLayer', () => {
 
       expect(handler).toHaveBeenCalledTimes(1)
       const event = handler.mock.calls[0]![0] as CustomEvent
+      expect(event.detail).toHaveProperty('eventData')
       expect(event.detail).toHaveProperty('data')
       expect(event.detail).toHaveProperty('timeStamp')
+      expect(event.detail).toHaveProperty('scope', ['analytics'])
 
       document.removeEventListener('digitalData:PageViewed', handler)
     })

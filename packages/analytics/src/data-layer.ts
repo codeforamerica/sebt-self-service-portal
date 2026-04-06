@@ -8,6 +8,8 @@
  * @see https://www.w3.org/2013/12/ceddl-201312.pdf
  */
 
+import { PAGE_LOAD } from './events'
+
 export interface DataLayerEvent {
   eventName: string
   eventData: Record<string, unknown>
@@ -261,7 +263,7 @@ export class DataLayer {
     const merged = { ...pageContext, ...(data ?? {}) }
 
     const eventObj: DataLayerEvent = {
-      eventName: 'page_load',
+      eventName: PAGE_LOAD,
       eventData: merged,
       timeStamp: Date.now(),
       scope: ['analytics']
@@ -270,9 +272,11 @@ export class DataLayer {
 
     // Emit PageViewed (distinct from EventTracked)
     this._emit(`${this._root}:PageViewed`, {
-      eventName: 'page_load',
+      eventName: PAGE_LOAD,
+      eventData: merged,
       data: merged,
-      timeStamp: eventObj.timeStamp
+      timeStamp: eventObj.timeStamp,
+      scope: eventObj.scope
     })
   }
 

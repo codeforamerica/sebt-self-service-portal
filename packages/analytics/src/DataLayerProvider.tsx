@@ -70,6 +70,8 @@ export function DataLayerProvider({
 /** Fires a page_load event on every client-side navigation via the dedicated pageLoad() API. */
 function PageTracker({ routes }: { routes: RoutePageContextMap | undefined }) {
   const pathname = usePathname()
+  const routesRef = useRef(routes)
+  routesRef.current = routes
 
   useEffect(() => {
     if (typeof window === 'undefined' || !window.digitalData?.initialized) return
@@ -83,7 +85,7 @@ function PageTracker({ routes }: { routes: RoutePageContextMap | undefined }) {
       dl.page.set('locale', `${lang}_US`)
 
       // Set route-specific context or fall back to document.title
-      const ctx = routes?.[pathname]
+      const ctx = routesRef.current?.[pathname]
       if (ctx) {
         dl.page.set('name', ctx.name)
         dl.page.set('flow', ctx.flow)
@@ -96,7 +98,7 @@ function PageTracker({ routes }: { routes: RoutePageContextMap | undefined }) {
     })
 
     return () => cancelAnimationFrame(raf)
-  }, [pathname, routes])
+  }, [pathname])
 
   return null
 }
