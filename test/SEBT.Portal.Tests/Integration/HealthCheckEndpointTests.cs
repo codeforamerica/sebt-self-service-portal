@@ -6,6 +6,7 @@ namespace SEBT.Portal.Tests.Integration;
 /// Integration tests for the /health endpoint using the real HTTP pipeline.
 /// </summary>
 [Collection("Integration")]
+[Trait("Category", "Integration")]
 public class HealthCheckEndpointTests : IClassFixture<PortalWebApplicationFactory>
 {
     private readonly HttpClient _client;

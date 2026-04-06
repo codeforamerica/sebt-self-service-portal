@@ -17,6 +17,7 @@ namespace SEBT.Portal.Tests.Integration.PluginIntegration;
 /// Tests skip gracefully when either condition is not met.
 /// </summary>
 [Collection("Integration")]
+[Trait("Category", "Integration")]
 public class CoEnrollmentCheckIntegrationTests : IDisposable
 {
     private readonly PluginIntegrationWebApplicationFactory? _factory;

@@ -10,6 +10,7 @@ namespace SEBT.Portal.Tests.Integration.PluginIntegration;
 /// POST /api/enrollment/check → controller → handler → DefaultEnrollmentCheckService.
 /// </summary>
 [Collection("Integration")]
+[Trait("Category", "Integration")]
 public class DefaultEnrollmentCheckIntegrationTests : IDisposable
 {
     private readonly PluginIntegrationWebApplicationFactory _factory;

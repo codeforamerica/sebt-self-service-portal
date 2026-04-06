@@ -159,9 +159,9 @@ internal static class PluginHouseholdDataMapper
         var t = source.GetType();
         return new Child
         {
-            CaseNumber = GetProp<int?>(t, source, nameof(Child.CaseNumber)),
             FirstName = GetProp<string>(t, source, nameof(Child.FirstName)) ?? string.Empty,
-            LastName = GetProp<string>(t, source, nameof(Child.LastName)) ?? string.Empty
+            LastName = GetProp<string>(t, source, nameof(Child.LastName)) ?? string.Empty,
+            Status = GetProp<ApplicationStatus>(t, source, nameof(Child.Status))
         };
     }
 

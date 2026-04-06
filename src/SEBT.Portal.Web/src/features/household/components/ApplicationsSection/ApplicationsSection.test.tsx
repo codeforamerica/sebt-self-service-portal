@@ -21,8 +21,8 @@ const mockApplication: Application = {
   cardActivatedAt: null,
   cardDeactivatedAt: null,
   children: [
-    { caseNumber: 456001, firstName: 'Sophia', lastName: 'Martinez' },
-    { caseNumber: 456002, firstName: 'James', lastName: 'Martinez' }
+    { firstName: 'Sophia', lastName: 'Martinez' },
+    { firstName: 'James', lastName: 'Martinez' }
   ],
   childrenOnApplication: 2
 }
@@ -131,7 +131,7 @@ describe('ApplicationsSection', () => {
       applicationNumber: 'APP-2026-002',
       caseNumber: 'CASE-DC-2026-002',
       applicationStatus: 'Pending',
-      children: [{ caseNumber: 456003, firstName: 'Emily', lastName: 'Brown' }],
+      children: [{ firstName: 'Emily', lastName: 'Brown' }],
       childrenOnApplication: 1
     }
     mockReturnData = {
