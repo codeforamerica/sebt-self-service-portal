@@ -153,8 +153,8 @@ public class MockHouseholdRepository : IHouseholdRepository
                 // Set specific children names for test
                 app.Children = new List<Child>
                 {
-                    new Child { CaseNumber = 456001, FirstName = "Sophia", LastName = "Martinez" },
-                    new Child { CaseNumber = 456002, FirstName = "James", LastName = "Martinez" }
+                    new Child { FirstName = "Sophia", LastName = "Martinez" },
+                    new Child { FirstName = "James", LastName = "Martinez" }
                 };
             }
             h.AddressOnFile = new Address
@@ -186,8 +186,8 @@ public class MockHouseholdRepository : IHouseholdRepository
                 // Set specific children names for test
                 app.Children = new List<Child>
                 {
-                    new Child { CaseNumber = 789001, FirstName = "John", LastName = "Doe" },
-                    new Child { CaseNumber = 789002, FirstName = "Jane", LastName = "Doe" }
+                    new Child { FirstName = "John", LastName = "Doe" },
+                    new Child { FirstName = "Jane", LastName = "Doe" }
                 };
             }
             // Set specific address for test
@@ -218,7 +218,7 @@ public class MockHouseholdRepository : IHouseholdRepository
                 // Set specific child name for test
                 app.Children = new List<Child>
                 {
-                    new Child { CaseNumber = 111001, FirstName = "Alice", LastName = "Smith" }
+                    new Child { FirstName = "Alice", LastName = "Smith" }
                 };
             }
             // Set address for testing (will be filtered based on ID verification status)
@@ -282,7 +282,7 @@ public class MockHouseholdRepository : IHouseholdRepository
             {
                 app.Children = new List<Child>
                 {
-                    new Child { CaseNumber = 555001, FirstName = "Emma", LastName = "Garcia" }
+                    new Child { FirstName = "Emma", LastName = "Garcia" }
                 };
             }
             h.AddressOnFile = null;
@@ -303,7 +303,7 @@ public class MockHouseholdRepository : IHouseholdRepository
             {
                 app.Children = new List<Child>
                 {
-                    new Child { CaseNumber = 666001, FirstName = "Liam", LastName = "Anderson" }
+                    new Child { FirstName = "Liam", LastName = "Anderson" }
                 };
             }
             h.AddressOnFile = new Address
@@ -372,10 +372,10 @@ public class MockHouseholdRepository : IHouseholdRepository
                 // Set specific children names for test
                 app.Children = new List<Child>
                 {
-                    new Child { CaseNumber = 222001, FirstName = "Michael", LastName = "Brown" },
-                    new Child { CaseNumber = 222002, FirstName = "Sarah", LastName = "Brown" },
-                    new Child { CaseNumber = 222003, FirstName = "David", LastName = "Brown" },
-                    new Child { CaseNumber = 222004, FirstName = "Emily", LastName = "Brown" }
+                    new Child { FirstName = "Michael", LastName = "Brown" },
+                    new Child { FirstName = "Sarah", LastName = "Brown" },
+                    new Child { FirstName = "David", LastName = "Brown" },
+                    new Child { FirstName = "Emily", LastName = "Brown" }
                 };
             }
             h.AddressOnFile = new Address
@@ -467,8 +467,8 @@ public class MockHouseholdRepository : IHouseholdRepository
                 CardActivatedAt = now.AddDays(-40),
                 Children = new List<Child>
                 {
-                    new Child { CaseNumber = 333001, FirstName = "Emma", LastName = "Wilson" },
-                    new Child { CaseNumber = 333002, FirstName = "Lucas", LastName = "Wilson" }
+                    new Child { FirstName = "Emma", LastName = "Wilson" },
+                    new Child { FirstName = "Lucas", LastName = "Wilson" }
                 }
             };
 
@@ -480,7 +480,7 @@ public class MockHouseholdRepository : IHouseholdRepository
                 CardRequestedAt = now.AddDays(-10),
                 Children = new List<Child>
                 {
-                    new Child { CaseNumber = 333003, FirstName = "Olivia", LastName = "Wilson" }
+                    new Child { FirstName = "Olivia", LastName = "Wilson" }
                 }
             };
 
@@ -611,9 +611,9 @@ public class MockHouseholdRepository : IHouseholdRepository
                     : (IssuanceType)(int)source.BenefitIssuanceType,
                 Children = a.Children.Select(c => new Child
                 {
-                    CaseNumber = c.CaseNumber,
                     FirstName = c.FirstName,
-                    LastName = c.LastName
+                    LastName = c.LastName,
+                    Status = c.Status
                 }).ToList()
             }).ToList()
         };

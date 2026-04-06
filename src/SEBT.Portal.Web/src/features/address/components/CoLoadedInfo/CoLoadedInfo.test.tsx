@@ -70,7 +70,7 @@ describe('CoLoadedInfo', () => {
       http.get('/api/household/data', () => {
         return HttpResponse.json({
           email: 'test@example.com',
-          phone: '(303) 555-0100',
+          phone: '3035550100',
           applications: [],
           addressOnFile: null,
           userProfile: { firstName: 'Maria', middleName: 'L', lastName: 'Martinez' }

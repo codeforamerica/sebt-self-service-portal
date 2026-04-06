@@ -49,8 +49,30 @@ export const TEST_FEATURE_FLAGS = {
 // issuanceType values: 0=Unknown, 1=SummerEbt, 2=TanfEbtCard, 3=SnapEbtCard
 export const TEST_HOUSEHOLD_DATA = {
   email: 'test@example.com',
-  phone: '(303) 555-0100',
+  phone: '3035550100',
   benefitIssuanceType: 3, // SnapEbtCard
+  summerEbtCases: [
+    {
+      summerEBTCaseID: 'SEBT-001',
+      childFirstName: 'Sophia',
+      childLastName: 'Martinez',
+      householdType: 'OSSE',
+      eligibilityType: 'NSLP',
+      issuanceType: 1,
+      ebtCardLastFour: '1234',
+      ebtCardStatus: 'ACTIVE',
+      benefitAvailableDate: '2026-06-01T00:00:00Z',
+      benefitExpirationDate: '2026-08-31T00:00:00Z'
+    },
+    {
+      summerEBTCaseID: 'SEBT-002',
+      childFirstName: 'James',
+      childLastName: 'Martinez',
+      householdType: 'OSSE',
+      eligibilityType: 'NSLP',
+      issuanceType: 1
+    }
+  ],
   applications: [
     {
       applicationNumber: 'APP-2026-001',

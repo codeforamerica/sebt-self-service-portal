@@ -49,7 +49,9 @@ public class RefreshTokenCommandHandler(
                     "User not found.");
             }
 
-            var additionalClaims = command.CurrentPrincipal.Claims.ToDictionary(c => c.Type, c => c.Value);
+            var additionalClaims = command.CurrentPrincipal.Claims
+                .DistinctBy(c => c.Type)
+                .ToDictionary(c => c.Type, c => c.Value);
             var token = jwtTokenService.GenerateToken(user, additionalClaims);
 
             logger.LogInformation(

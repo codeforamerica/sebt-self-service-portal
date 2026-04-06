@@ -272,8 +272,8 @@ public class MockHouseholdRepositoryTests
         Assert.Equal(2, app.Children.Count);
         Assert.Equal("John", app.Children[0].FirstName);
         Assert.Equal("Doe", app.Children[0].LastName);
-        Assert.Equal(789001, app.Children[0].CaseNumber);
-        Assert.Equal(789002, app.Children[1].CaseNumber);
+        Assert.Equal(ApplicationStatus.Unknown, app.Children[0].Status);
+        Assert.Equal(ApplicationStatus.Unknown, app.Children[1].Status);
         Assert.NotNull(app.BenefitIssueDate);
         Assert.NotNull(app.BenefitExpirationDate);
         Assert.Equal("1234", app.Last4DigitsOfCard);

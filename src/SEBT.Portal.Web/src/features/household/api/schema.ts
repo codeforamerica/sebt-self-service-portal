@@ -125,9 +125,9 @@ export function isReplacementEligible(cardStatus: CardStatus): boolean {
 }
 
 export const ChildSchema = z.object({
-  caseNumber: z.number().nullable().optional(),
   firstName: z.string(),
-  lastName: z.string()
+  lastName: z.string(),
+  status: ApplicationStatusSchema.nullable().optional()
 })
 
 export type Child = z.infer<typeof ChildSchema>
@@ -160,7 +160,9 @@ export const SummerEbtCaseSchema = z.object({
   ebtCardIssueDate: z.string().nullable().optional(),
   ebtCardBalance: z.number().nullable().optional(),
   benefitAvailableDate: z.string().nullable().optional(),
-  benefitExpirationDate: z.string().nullable().optional()
+  benefitExpirationDate: z.string().nullable().optional(),
+  eligibilitySource: z.string().nullable().optional(),
+  issuanceType: IssuanceTypeSchema.nullable().optional()
 })
 
 export type SummerEbtCase = z.infer<typeof SummerEbtCaseSchema>
@@ -169,6 +171,7 @@ export const ApplicationSchema = z.object({
   applicationNumber: z.string().nullable().optional(),
   caseNumber: z.string().nullable().optional(),
   applicationStatus: ApplicationStatusSchema,
+  applicationDate: z.string().nullable().optional(),
   benefitIssueDate: z.string().nullable().optional(),
   benefitExpirationDate: z.string().nullable().optional(),
   last4DigitsOfCard: z.string().nullable().optional(),
@@ -204,6 +207,20 @@ export const HouseholdDataSchema = z.object({
 })
 
 export type HouseholdData = z.infer<typeof HouseholdDataSchema>
+
+/**
+ * Formats a US phone number as XXX-XXX-XXXX.
+ * Strips non-digit characters and a leading country code (1) before formatting.
+ * Returns the input unchanged if it does not resolve to exactly 10 digits.
+ */
+export function formatUsPhone(phone: string): string {
+  let digits = phone.replace(/\D/g, '')
+  if (digits.length === 11 && digits.startsWith('1')) {
+    digits = digits.slice(1)
+  }
+  if (digits.length !== 10) return phone
+  return `${digits.slice(0, 3)}-${digits.slice(3, 6)}-${digits.slice(6)}`
+}
 
 export function formatDate(isoDate: string, locale: string): string {
   return new Intl.DateTimeFormat(locale, {
