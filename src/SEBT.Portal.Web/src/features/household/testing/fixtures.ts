@@ -72,7 +72,7 @@ export function createMockUserProfile(overrides?: Partial<UserProfile>): UserPro
 export function createMockHouseholdData(overrides?: Partial<HouseholdData>): HouseholdData {
   return {
     email: 'test@example.com',
-    phone: '(303) 555-0100',
+    phone: '3035550100',
     summerEbtCases: [createMockSummerEbtCase()],
     applications: [createMockApplication()],
     addressOnFile: createMockAddress(),
