@@ -58,4 +58,16 @@ describe('interpolateDate', () => {
     expect(interpolateDate('Active', null, 'en')).toBe('Active')
     expect(interpolateDate('Active', '2026-01-15T00:00:00Z', 'en')).toBe('Active')
   })
+
+  it('strips placeholder when there is no preceding connector word', () => {
+    expect(interpolateDate('Requested [MM/DD/YYYY]', null, 'en')).toBe('Requested')
+  })
+
+  it('strips a standalone placeholder', () => {
+    expect(interpolateDate('[MM/DD/YYYY]', null, 'en')).toBe('')
+  })
+
+  it('strips a placeholder at the start of a template', () => {
+    expect(interpolateDate('[MM/DD/YYYY] requested', null, 'en')).toBe('requested')
+  })
 })

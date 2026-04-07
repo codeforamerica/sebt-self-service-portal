@@ -240,5 +240,7 @@ export function interpolateDate(template: string, isoDate: string | null, locale
   if (isoDate) {
     return template.replace(DATE_PLACEHOLDER, formatDate(isoDate, locale))
   }
-  return template.replace(new RegExp(`\\s+\\S+\\s+${DATE_PLACEHOLDER.source}`), '')
+  // Strip optional preceding connector word (" on", " el") along with the placeholder
+  // eslint-disable-next-line security/detect-non-literal-regexp
+  return template.replace(new RegExp(`(?:\\s+\\S+)?\\s*${DATE_PLACEHOLDER.source}`), '').trim()
 }
