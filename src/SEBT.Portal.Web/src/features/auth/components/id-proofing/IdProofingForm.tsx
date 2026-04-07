@@ -99,8 +99,6 @@ export function IdProofingForm({ idOptions, contactLink }: IdProofingFormProps) 
 
     if (!validateFields()) return
 
-    setPageData('flow', 'auth')
-    setPageData('step', 'id_proofing')
     trackEvent(AnalyticsEvents.IDV_PRIMARY_START)
 
     try {

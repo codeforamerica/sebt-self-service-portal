@@ -8,6 +8,8 @@ export {
   IssuanceTypeSchema,
   UserProfileSchema,
   formatDate,
+  formatUsPhone,
+  interpolateDate,
   isReplacementEligible,
   toUiCardStatus,
   type Address,

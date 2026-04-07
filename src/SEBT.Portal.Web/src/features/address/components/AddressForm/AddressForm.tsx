@@ -15,6 +15,8 @@ import { STATE_ABBREVIATIONS, US_STATES } from './usStates'
 
 interface AddressFormProps {
   initialAddress: Address | null
+  /** Override the default redirect path after successful address update. */
+  redirectPath?: string
 }
 
 interface FieldErrors {
@@ -38,7 +40,9 @@ function resolveStateValue(value: string | null | undefined, fallback: string): 
   return fallback
 }
 
-export function AddressForm({ initialAddress }: AddressFormProps) {
+const DEFAULT_REDIRECT = '/profile/address/replacement-cards'
+
+export function AddressForm({ initialAddress, redirectPath }: AddressFormProps) {
   const { t } = useTranslation('confirmInfo')
   const { t: tValidation } = useTranslation('validation')
   const { t: tCommon } = useTranslation('common')
@@ -117,7 +121,7 @@ export function AddressForm({ initialAddress }: AddressFormProps) {
     try {
       await updateAddress.mutateAsync(addressData)
       setAddress(addressData)
-      router.push('/profile/address/replacement-cards')
+      router.push(redirectPath ?? DEFAULT_REDIRECT)
     } catch (err) {
       void err
       setSubmitError(t('addressUpdateError', 'Something went wrong. Please try again.'))

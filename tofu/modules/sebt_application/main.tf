@@ -69,6 +69,7 @@ module "api" {
     "EmailOtpSenderServiceSettings__SenderEmail" = module.ses.sender_email
     "Seeding__Enabled"                           = var.seeding_enabled
     "Seeding__EmailPattern"                      = var.seeding_email_pattern
+    "Seeding__State"                             = lower(var.state)
     "UseMockHouseholdData"                       = var.use_mock_household_data
   }, var.enable_appconfig ? {
     "AppConfig__Agent__BaseUrl"          = "http://localhost:2772"

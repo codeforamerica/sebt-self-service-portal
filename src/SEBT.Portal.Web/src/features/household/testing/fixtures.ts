@@ -51,11 +51,11 @@ export function createMockApplication(overrides?: Partial<Application>): Applica
 
 export function createMockAddress(overrides?: Partial<Address>): Address {
   return {
-    streetAddress1: '123 Main Street',
-    streetAddress2: 'Apt 4B',
+    streetAddress1: '1350 Pennsylvania Ave NW',
+    streetAddress2: 'Suite 400',
     city: 'Washington',
     state: 'DC',
-    postalCode: '20001',
+    postalCode: '20004',
     ...overrides
   }
 }
@@ -72,7 +72,7 @@ export function createMockUserProfile(overrides?: Partial<UserProfile>): UserPro
 export function createMockHouseholdData(overrides?: Partial<HouseholdData>): HouseholdData {
   return {
     email: 'test@example.com',
-    phone: '(303) 555-0100',
+    phone: '3035550100',
     summerEbtCases: [createMockSummerEbtCase()],
     applications: [createMockApplication()],
     addressOnFile: createMockAddress(),

@@ -67,7 +67,7 @@ describe('CardStatusTimeline', () => {
         application={{ ...mockApplication, cardStatus: 'Processed', cardActivatedAt: null }}
       />
     )
-    expect(screen.queryByText(/\[MM\/DD\/YYYY\]/)).toBeNull()
+    expect(screen.queryByText(/\[(?:MM\/DD\/YYYY|DD\/MM\/YYYY)\]/)).toBeNull()
   })
 
   it('renders Deactivated label for Deactivated status', () => {
@@ -83,17 +83,12 @@ describe('CardStatusTimeline', () => {
     expect(screen.getByText('Deactivated')).toBeInTheDocument()
   })
 
-  it('shows replacement card link when card is Processed', () => {
+  it('does not render replacement link (ChildCard handles replacement links)', () => {
     render(
       <CardStatusTimeline
         application={{ ...mockApplication, cardStatus: 'Processed', cardActivatedAt: null }}
       />
     )
-    expect(screen.getByRole('link')).toHaveTextContent('Request a replacement card')
-  })
-
-  it('does not show replacement card link when card is Active', () => {
-    render(<CardStatusTimeline application={mockApplication} />)
     expect(screen.queryByRole('link')).toBeNull()
   })
 })

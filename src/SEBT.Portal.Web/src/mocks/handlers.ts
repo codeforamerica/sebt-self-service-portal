@@ -49,7 +49,7 @@ export const TEST_FEATURE_FLAGS = {
 // issuanceType values: 0=Unknown, 1=SummerEbt, 2=TanfEbtCard, 3=SnapEbtCard
 export const TEST_HOUSEHOLD_DATA = {
   email: 'test@example.com',
-  phone: '(303) 555-0100',
+  phone: '3035550100',
   benefitIssuanceType: 3, // SnapEbtCard
   summerEbtCases: [
     {
@@ -95,11 +95,11 @@ export const TEST_HOUSEHOLD_DATA = {
     }
   ],
   addressOnFile: {
-    streetAddress1: '123 Main Street',
-    streetAddress2: 'Apt 4B',
+    streetAddress1: '1350 Pennsylvania Ave NW',
+    streetAddress2: 'Suite 400',
     city: 'Washington',
     state: 'DC',
-    postalCode: '20001'
+    postalCode: '20004'
   },
   userProfile: {
     firstName: 'Maria',
@@ -319,6 +319,13 @@ export const handlers = [
   // TODO: When state connector persistence is wired up, update this handler to
   // reflect the real contract (validation errors, response body if not 204, etc.)
   http.put('/api/household/address', () => {
+    return new HttpResponse(null, { status: 204 })
+  }),
+
+  // Card replacement endpoint (stub — no real persistence yet)
+  // TODO: When state connector persistence is wired up, update this handler to
+  // reflect the real contract (cooldown validation errors, etc.)
+  http.post('/api/household/cards/replace', () => {
     return new HttpResponse(null, { status: 204 })
   })
 ]

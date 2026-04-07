@@ -150,6 +150,7 @@ public class MockHouseholdRepository : IHouseholdRepository
                 app.BenefitIssueDate = now.AddDays(-20);
                 app.BenefitExpirationDate = now.AddDays(70);
                 app.Last4DigitsOfCard = "0000";
+                app.CardStatus = CardStatus.Active;
                 // Set specific children names for test
                 app.Children = new List<Child>
                 {
@@ -183,6 +184,7 @@ public class MockHouseholdRepository : IHouseholdRepository
                 app.BenefitIssueDate = now.AddDays(-30);
                 app.BenefitExpirationDate = now.AddDays(60);
                 app.Last4DigitsOfCard = "1234"; // Specific value for test
+                app.CardStatus = CardStatus.Active;
                 // Set specific children names for test
                 app.Children = new List<Child>
                 {
@@ -259,6 +261,7 @@ public class MockHouseholdRepository : IHouseholdRepository
             var app = h.Applications.FirstOrDefault();
             if (app != null)
             {
+                app.CardStatus = CardStatus.Active;
                 // Use Bogus to generate child name
                 var childFaker = new Faker<Child>()
                     .RuleFor(c => c.FirstName, f => f.Name.FirstName())
@@ -346,6 +349,7 @@ public class MockHouseholdRepository : IHouseholdRepository
             {
                 app.BenefitIssueDate = now.AddDays(-15);
                 app.BenefitExpirationDate = now.AddDays(75);
+                app.CardStatus = CardStatus.Active;
                 // Use Bogus to generate child name
                 var childFaker = new Faker<Child>()
                     .RuleFor(c => c.FirstName, f => f.Name.FirstName())
@@ -369,6 +373,7 @@ public class MockHouseholdRepository : IHouseholdRepository
                 app.BenefitIssueDate = now.AddDays(-45);
                 app.BenefitExpirationDate = now.AddDays(45);
                 app.Last4DigitsOfCard = "4321";
+                app.CardStatus = CardStatus.Active;
                 // Set specific children names for test
                 app.Children = new List<Child>
                 {
@@ -419,6 +424,7 @@ public class MockHouseholdRepository : IHouseholdRepository
             {
                 app.BenefitIssueDate = now.AddDays(-120);
                 app.BenefitExpirationDate = now.AddDays(-10); // Expired
+                app.CardStatus = CardStatus.Deactivated;
                 // Use Bogus to generate child name
                 var childFaker = new Faker<Child>()
                     .RuleFor(c => c.FirstName, f => f.Name.FirstName())
@@ -497,6 +503,52 @@ public class MockHouseholdRepository : IHouseholdRepository
         multipleApps.UserProfile = new UserProfile { FirstName = "Jennifer", MiddleName = "Lynn", LastName = "Wilson" };
         _households[multipleAppsEmail] = multipleApps;
         IndexByPhone(multipleApps);
+
+        // DC Scenarios 1-7: Simple non-co-loaded households with 1 child, Summer EBT, active benefits
+        if (string.Equals(_settings.State, "dc", StringComparison.OrdinalIgnoreCase))
+        {
+            var dcChildFaker = new Faker<Child>()
+                .RuleFor(c => c.FirstName, f => f.Name.FirstName())
+                .RuleFor(c => c.LastName, f => f.Name.LastName());
+
+            var dcUserFaker = new Faker();
+
+            SeedScenario[] dcScenarioList = [SeedScenarios.Simple1, SeedScenarios.Simple2, SeedScenarios.Simple3,
+                SeedScenarios.Simple4, SeedScenarios.Simple5, SeedScenarios.Simple6, SeedScenarios.Simple7];
+
+            foreach (var dcScenario in dcScenarioList)
+            {
+                var dcEmail = _settings.BuildEmail(dcScenario.Name);
+                var dcHousehold = HouseholdFactory.CreateHouseholdDataWithStatus(ApplicationStatus.Approved, h =>
+                {
+                    h.BenefitIssuanceType = BenefitIssuanceType.SummerEbt;
+                    var app = h.Applications.FirstOrDefault();
+                    if (app != null)
+                    {
+                        app.BenefitIssueDate = now.AddDays(-20);
+                        app.BenefitExpirationDate = now.AddDays(122);
+                        app.CardStatus = CardStatus.Active;
+                        app.Children = dcChildFaker.Generate(1);
+                    }
+                    h.AddressOnFile = new Address
+                    {
+                        StreetAddress1 = dcUserFaker.Address.StreetAddress(),
+                        City = "Washington",
+                        State = "DC",
+                        PostalCode = "20002"
+                    };
+                });
+                dcHousehold.Email = dcEmail;
+                dcHousehold.UserProfile = new UserProfile
+                {
+                    FirstName = dcUserFaker.Name.FirstName(),
+                    MiddleName = null,
+                    LastName = dcUserFaker.Name.LastName()
+                };
+                _households[dcEmail] = dcHousehold;
+                IndexByPhone(dcHousehold);
+            }
+        }
 
         _logger.LogInformation("Seeded {Count} mock household records using Bogus", _households.Count);
     }

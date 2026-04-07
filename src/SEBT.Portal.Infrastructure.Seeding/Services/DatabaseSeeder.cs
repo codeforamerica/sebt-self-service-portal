@@ -25,6 +25,8 @@ public class DatabaseSeeder : Core.Services.IDatabaseSeeder
     private const int DaysSinceBasicIdProofingCompleted = -10;
     private const int DaysUntilBasicIdProofingExpires = 355;
 
+    private bool IsDc => string.Equals(_settings.State, "dc", StringComparison.OrdinalIgnoreCase);
+
     public DatabaseSeeder(
         IDataSeeder dataSeeder,
         SeedingSettings? settings = null,
@@ -125,6 +127,12 @@ public class DatabaseSeeder : Core.Services.IDatabaseSeeder
 
             foreach (var scenario in SeedScenarios.UserScenarios)
             {
+                // Skip DC-only scenarios when not running as DC
+                if (!IsDc && SeedScenarios.DcOnlyScenarios.Contains(scenario))
+                {
+                    continue;
+                }
+
                 var normalizedEmail = EmailNormalizer.Normalize(_settings.BuildEmail(scenario.Name));
 
                 var existingEmails = await _dataSeeder.GetExistingUserEmailsAsync(new[] { normalizedEmail }, cancellationToken);
@@ -253,9 +261,14 @@ public class DatabaseSeeder : Core.Services.IDatabaseSeeder
         {
             var coLoadedEmail = EmailNormalizer.Normalize(_settings.BuildEmail(SeedScenarios.CoLoaded.Name));
             var verifiedEmail = EmailNormalizer.Normalize(_settings.BuildEmail(SeedScenarios.Verified.Name));
-
             foreach (var scenario in SeedScenarios.UserScenarios)
             {
+                // Skip DC-only scenarios when not running as DC
+                if (!IsDc && SeedScenarios.DcOnlyScenarios.Contains(scenario))
+                {
+                    continue;
+                }
+
                 var normalizedEmail = EmailNormalizer.Normalize(_settings.BuildEmail(scenario.Name));
 
                 var existingEmails = _dataSeeder.GetExistingUserEmails(new[] { normalizedEmail });

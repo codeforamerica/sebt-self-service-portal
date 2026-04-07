@@ -208,6 +208,20 @@ export const HouseholdDataSchema = z.object({
 
 export type HouseholdData = z.infer<typeof HouseholdDataSchema>
 
+/**
+ * Formats a US phone number as XXX-XXX-XXXX.
+ * Strips non-digit characters and a leading country code (1) before formatting.
+ * Returns the input unchanged if it does not resolve to exactly 10 digits.
+ */
+export function formatUsPhone(phone: string): string {
+  let digits = phone.replace(/\D/g, '')
+  if (digits.length === 11 && digits.startsWith('1')) {
+    digits = digits.slice(1)
+  }
+  if (digits.length !== 10) return phone
+  return `${digits.slice(0, 3)}-${digits.slice(3, 6)}-${digits.slice(6)}`
+}
+
 export function formatDate(isoDate: string, locale: string): string {
   return new Intl.DateTimeFormat(locale, {
     month: '2-digit',
@@ -215,4 +229,18 @@ export function formatDate(isoDate: string, locale: string): string {
     year: 'numeric',
     timeZone: 'UTC'
   }).format(new Date(isoDate))
+}
+
+// Matches date placeholders in locale strings: [MM/DD/YYYY] (English) or [DD/MM/YYYY] (Spanish)
+const DATE_PLACEHOLDER = /\[(?:MM\/DD\/YYYY|DD\/MM\/YYYY)\]/
+
+// "Requested on [MM/DD/YYYY]" → "Requested on 01/15/2026" or "Requested"
+// "Solicitada el [DD/MM/YYYY]" → "Solicitada el 15/01/2026" or "Solicitada"
+export function interpolateDate(template: string, isoDate: string | null, locale: string): string {
+  if (isoDate) {
+    return template.replace(DATE_PLACEHOLDER, formatDate(isoDate, locale))
+  }
+  // Strip optional preceding connector word (" on", " el") along with the placeholder
+  // eslint-disable-next-line security/detect-non-literal-regexp
+  return template.replace(new RegExp(`(?:\\s+\\S+)?\\s*${DATE_PLACEHOLDER.source}`), '').trim()
 }
