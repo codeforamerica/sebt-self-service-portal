@@ -4,7 +4,7 @@ import userEvent from '@testing-library/user-event'
 import { http, HttpResponse } from 'msw'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
-import type { Address, Application } from '@/features/household/api/schema'
+import type { Address, SummerEbtCase } from '@/features/household/api/schema'
 import { server } from '@/mocks/server'
 
 import { ConfirmRequest } from './ConfirmRequest'
@@ -45,30 +45,39 @@ const TEST_ADDRESS: Address = {
   postalCode: '20001'
 }
 
-const TEST_APPLICATIONS: Application[] = [
+const TEST_CASES: SummerEbtCase[] = [
   {
-    applicationNumber: 'APP-001',
-    caseNumber: 'CASE-001',
-    applicationStatus: 'Approved',
-    benefitIssueDate: '2026-01-08T00:00:00Z',
-    benefitExpirationDate: '2026-03-19T00:00:00Z',
-    last4DigitsOfCard: '1234',
-    cardStatus: 'Active',
+    summerEBTCaseID: 'SEBT-001',
+    childFirstName: 'Sophia',
+    childLastName: 'Martinez',
+    householdType: 'OSSE',
+    eligibilityType: 'NSLP',
+    issuanceType: 'SummerEbt',
+    ebtCardLastFour: '1234',
+    ebtCardStatus: 'Active',
     cardRequestedAt: '2026-01-01T00:00:00Z',
     cardMailedAt: '2026-01-03T00:00:00Z',
     cardActivatedAt: '2026-01-08T00:00:00Z',
-    cardDeactivatedAt: null,
-    children: [
-      { firstName: 'Sophia', lastName: 'Martinez' },
-      { firstName: 'James', lastName: 'Martinez' }
-    ],
-    childrenOnApplication: 2,
-    issuanceType: 'SummerEbt'
+    cardDeactivatedAt: null
+  },
+  {
+    summerEBTCaseID: 'SEBT-002',
+    childFirstName: 'James',
+    childLastName: 'Martinez',
+    householdType: 'OSSE',
+    eligibilityType: 'NSLP',
+    issuanceType: 'SummerEbt',
+    ebtCardLastFour: '1234',
+    ebtCardStatus: 'Active',
+    cardRequestedAt: '2026-01-01T00:00:00Z',
+    cardMailedAt: '2026-01-03T00:00:00Z',
+    cardActivatedAt: '2026-01-08T00:00:00Z',
+    cardDeactivatedAt: null
   }
 ]
 
 function renderConfirmRequest(props?: {
-  applications?: Application[]
+  cases?: SummerEbtCase[]
   address?: Address
   onBack?: () => void
 }) {
@@ -79,7 +88,7 @@ function renderConfirmRequest(props?: {
     ...render(
       <QueryClientProvider client={queryClient}>
         <ConfirmRequest
-          applications={props?.applications ?? TEST_APPLICATIONS}
+          cases={props?.cases ?? TEST_CASES}
           address={props?.address ?? TEST_ADDRESS}
           onBack={props?.onBack ?? mockBack}
         />

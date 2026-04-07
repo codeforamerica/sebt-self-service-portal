@@ -138,7 +138,7 @@ test.describe('ChildCard', () => {
       const link = page.locator('[data-testid="accordion-content"] a', {
         hasText: 'Request a replacement card'
       })
-      await expect(link).toHaveAttribute('href', /\/cards\/replace\?app=APP-2026-001/)
+      await expect(link).toHaveAttribute('href', /\/cards\/replace\?case=SEBT-001/)
     })
 
     test('DC: SnapEbtCard co-loaded shows /cards/info replacement link', async ({ page }) => {

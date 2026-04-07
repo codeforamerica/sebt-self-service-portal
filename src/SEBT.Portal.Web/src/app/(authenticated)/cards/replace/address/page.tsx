@@ -14,13 +14,13 @@ export default function CardReplaceAddressPage() {
   const searchParams = useSearchParams()
   const { data, isLoading, isError } = useHouseholdData()
 
-  const appNumber = searchParams.get('app')
+  const caseId = searchParams.get('case')
 
   if (isLoading) {
     return <p>{tCommon('loading', 'Loading...')}</p>
   }
 
-  if (isError || !data || !appNumber) {
+  if (isError || !data || !caseId) {
     return <Alert variant="error">Unable to load address information. Please try again.</Alert>
   }
 
@@ -32,7 +32,7 @@ export default function CardReplaceAddressPage() {
       <AddressFlowProvider>
         <AddressForm
           initialAddress={data.addressOnFile ?? null}
-          redirectPath={`/cards/replace/confirm?app=${encodeURIComponent(appNumber)}`}
+          redirectPath={`/cards/replace/confirm?case=${encodeURIComponent(caseId)}`}
         />
       </AddressFlowProvider>
     </div>

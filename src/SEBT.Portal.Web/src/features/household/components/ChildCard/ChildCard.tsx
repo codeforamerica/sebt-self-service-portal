@@ -23,8 +23,8 @@ function hasCardLifecycleTimeline(summerEbtCase: SummerEbtCase): boolean {
 }
 
 function getReplacementLink(summerEbtCase: SummerEbtCase): string | null {
-  const { applicationId, issuanceType, cardRequestedAt } = summerEbtCase
-  if (!applicationId) return null
+  const { summerEBTCaseID, issuanceType, cardRequestedAt } = summerEbtCase
+  if (!summerEBTCaseID) return null
 
   if (isWithinCooldownPeriod(cardRequestedAt)) return null
 
@@ -37,7 +37,7 @@ function getReplacementLink(summerEbtCase: SummerEbtCase): string | null {
 
   if (isCoLoaded) return null
 
-  return `/cards/replace?app=${encodeURIComponent(applicationId)}`
+  return `/cards/replace?case=${encodeURIComponent(summerEBTCaseID)}`
 }
 
 interface ChildCardProps {
