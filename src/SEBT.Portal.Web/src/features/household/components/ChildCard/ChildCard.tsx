@@ -57,6 +57,7 @@ const CARD_TYPE_KEYS: Partial<Record<IssuanceType, string>> = {
 // Keys map to CSV: "S2 - Portal Dashboard - Card Table - {Key}"
 export function ChildCard({ child, application, id, defaultExpanded = true }: ChildCardProps) {
   const { t, i18n } = useTranslation('dashboard')
+  const enableCardReplacement = useFeatureFlag('enable_card_replacement')
   const showCaseNumber = useFeatureFlag('show_case_number')
   const showCardLast4 = useFeatureFlag('show_card_last4')
   const [isExpanded, setIsExpanded] = useState(defaultExpanded)
@@ -65,7 +66,7 @@ export function ChildCard({ child, application, id, defaultExpanded = true }: Ch
   const { caseNumber, benefitIssueDate, benefitExpirationDate, last4DigitsOfCard, issuanceType } =
     application
   const cardTypeKey = issuanceType ? (CARD_TYPE_KEYS[issuanceType] ?? null) : null
-  const replacementLink = getReplacementLink(application)
+  const replacementLink = enableCardReplacement ? getReplacementLink(application) : null
 
   return (
     <div className="usa-accordion__item">

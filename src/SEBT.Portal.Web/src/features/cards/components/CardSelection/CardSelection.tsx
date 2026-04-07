@@ -60,9 +60,15 @@ export function CardSelection() {
   const groups = buildApplicationGroups(data.applications)
 
   if (groups.length === 0) {
+    const hasApplications = data.applications.length > 0
     return (
       <Alert variant="info">
-        {t('cardSelectionNoChildren', 'No children found in your household.')}
+        {hasApplications
+          ? t(
+              'cardSelectionAllInCooldown',
+              'All cards were recently replaced. Please try again later.'
+            )
+          : t('cardSelectionNoChildren', 'No children found in your household.')}
       </Alert>
     )
   }

@@ -118,6 +118,7 @@ public class OidcController(
         var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(signingKey));
         var validationParams = new TokenValidationParameters
         {
+            ValidateIssuerSigningKey = true,
             ValidateIssuer = false,
             ValidateAudience = false,
             ValidateLifetime = true,
