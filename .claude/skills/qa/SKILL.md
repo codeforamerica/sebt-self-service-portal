@@ -65,7 +65,7 @@ Environment Notes
 - Call out any data dependencies (specific campaigns, creatives, etc.)
 - If changes touch auth, API layer, or shared components, expand regression scope
 - Keep it concise — QA doesn't need to know about refactors or code style changes
-- Use checkboxes so QA can track completion
+- Use checkboxes only in the markdown version (`qa-summary.md`); the plain-text Jira version uses numbered lists per the formatting rules above
 
 ## Language Rules — CRITICAL
 - **NEVER reference file names, paths, components, stores, functions, or code concepts.** QA does not read code.
