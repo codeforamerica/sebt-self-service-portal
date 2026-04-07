@@ -1,6 +1,5 @@
 'use client'
 
-import { useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 
 import { useAddressFlow } from '@/features/address'
@@ -9,16 +8,8 @@ import { getState, getStateConfig } from '@sebt/design-system'
 
 export default function ReplacementCardsPage() {
   const { t } = useTranslation('confirmInfo')
-  const { address, clearValidationResult } = useAddressFlow()
+  const { address } = useAddressFlow()
   const { programName } = getStateConfig(getState())
-
-  // Clean up stale validation state from the previous flow step.
-  // The forward-navigation handlers intentionally keep validationResult alive
-  // during the transition to prevent FlowGuard from redirecting. Once we've
-  // landed here with a confirmed address, the validation data is no longer needed.
-  useEffect(() => {
-    clearValidationResult()
-  }, [clearValidationResult])
 
   // Flow layout guards against missing address and redirects to the form (D4).
   if (!address) {

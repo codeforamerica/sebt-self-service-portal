@@ -2,7 +2,28 @@ import { expect, test } from '@playwright/test'
 
 import { setupApiRoutes } from '../fixtures/api-routes'
 import { injectAuth } from '../fixtures/auth'
-import { makeApplication, makeHouseholdData, OLD_CARD_DATE } from '../fixtures/household-data'
+import {
+  makeApplication,
+  makeHouseholdData,
+  makeSummerEbtCase,
+  OLD_CARD_DATE
+} from '../fixtures/household-data'
+import { currentState } from '../fixtures/state'
+
+const ADDRESS_FORM_DATA =
+  currentState === 'co'
+    ? { street: '200 E Colfax Ave', city: 'Denver', state: 'Colorado', zip: '80203' }
+    : {
+        street: '456 Oak Avenue NW',
+        city: 'Washington',
+        state: 'District of Columbia',
+        zip: '20002'
+      }
+
+const EXPECTED_PREFILL =
+  currentState === 'co'
+    ? { street: '200 E Colfax Ave', city: 'Denver', zip: '80203' }
+    : { street: '1350 Pennsylvania Ave NW', city: 'Washington', zip: '20004' }
 
 /**
  * Fills and submits the address form with valid data.
@@ -10,10 +31,10 @@ import { makeApplication, makeHouseholdData, OLD_CARD_DATE } from '../fixtures/h
  * in AddressFlowContext (React state only) and navigates to the next step.
  */
 async function fillAndSubmitAddressForm(page: import('@playwright/test').Page) {
-  await page.fill('[name="streetAddress1"]', '456 Oak Avenue NW')
-  await page.fill('[name="city"]', 'Washington')
-  await page.selectOption('[name="state"]', 'District of Columbia')
-  await page.fill('[name="postalCode"]', '20002')
+  await page.fill('[name="streetAddress1"]', ADDRESS_FORM_DATA.street)
+  await page.fill('[name="city"]', ADDRESS_FORM_DATA.city)
+  await page.selectOption('[name="state"]', ADDRESS_FORM_DATA.state)
+  await page.fill('[name="postalCode"]', ADDRESS_FORM_DATA.zip)
   await page.getByRole('button', { name: 'Continue' }).click()
 }
 
@@ -22,6 +43,7 @@ test.describe('Address update flow', () => {
     await injectAuth(page)
     await setupApiRoutes(page, {
       householdData: makeHouseholdData({
+        summerEbtCases: [makeSummerEbtCase({ issuanceType: 1 })],
         applications: [makeApplication({ cardRequestedAt: OLD_CARD_DATE, issuanceType: 1 })]
       })
     })
@@ -29,9 +51,9 @@ test.describe('Address update flow', () => {
 
   test('address form renders with pre-filled data from household API', async ({ page }) => {
     await page.goto('/profile/address')
-    await expect(page.locator('[name="streetAddress1"]')).toHaveValue('123 Main Street')
-    await expect(page.locator('[name="city"]')).toHaveValue('Washington')
-    await expect(page.locator('[name="postalCode"]')).toHaveValue('20001')
+    await expect(page.locator('[name="streetAddress1"]')).toHaveValue(EXPECTED_PREFILL.street)
+    await expect(page.locator('[name="city"]')).toHaveValue(EXPECTED_PREFILL.city)
+    await expect(page.locator('[name="postalCode"]')).toHaveValue(EXPECTED_PREFILL.zip)
   })
 
   test('address form submission navigates to replacement card prompt', async ({ page }) => {
@@ -115,7 +137,7 @@ test.describe('Address update flow', () => {
 
     test('shows mailing address', async ({ page }) => {
       // The submitted address (from the form, not the household data address on file)
-      await expect(page.locator('address')).toContainText('456 Oak Avenue NW')
+      await expect(page.locator('address')).toContainText(ADDRESS_FORM_DATA.street)
     })
 
     test('"Order card" button posts to replace endpoint and shows success alert', async ({

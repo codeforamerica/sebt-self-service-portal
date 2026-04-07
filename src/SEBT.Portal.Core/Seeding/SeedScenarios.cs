@@ -30,6 +30,15 @@ public static class SeedScenarios
     // Household-only scenario (not seeded as a User in the database)
     public static readonly SeedScenario MultipleApps = new("multipleapps", UserIalLevel.None);
 
+    // Simple scenarios (non-co-loaded, Summer EBT, active benefits)
+    public static readonly SeedScenario Simple1 = new("simple1", UserIalLevel.None);
+    public static readonly SeedScenario Simple2 = new("simple2", UserIalLevel.None);
+    public static readonly SeedScenario Simple3 = new("simple3", UserIalLevel.None);
+    public static readonly SeedScenario Simple4 = new("simple4", UserIalLevel.None);
+    public static readonly SeedScenario Simple5 = new("simple5", UserIalLevel.None);
+    public static readonly SeedScenario Simple6 = new("simple6", UserIalLevel.None);
+    public static readonly SeedScenario Simple7 = new("simple7", UserIalLevel.None);
+
     /// <summary>
     /// Scenarios that are seeded as User entities in the database.
     /// </summary>
@@ -37,8 +46,15 @@ public static class SeedScenarios
     [
         CoLoaded, Verified, SingleChild, LargeFamily, Expired,
         NonCoLoaded, NotStarted, Pending, Minimal, Denied,
-        Review, Cancelled, Unknown
+        Review, Cancelled, Unknown,
+        Simple1, Simple2, Simple3, Simple4, Simple5, Simple6, Simple7
     ];
+
+    /// <summary>
+    /// Scenarios that should only be seeded when STATE=dc.
+    /// </summary>
+    public static readonly IReadOnlySet<SeedScenario> DcOnlyScenarios =
+        new HashSet<SeedScenario> { Simple1, Simple2, Simple3, Simple4, Simple5, Simple6, Simple7 };
 
     /// <summary>
     /// All scenarios including household-only entries (e.g., MultipleApps).

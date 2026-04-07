@@ -1,10 +1,7 @@
 export {
-  AddressResponseSchema,
-  AddressUpdateResponseSchema,
   UpdateAddressRequestSchema,
   isValidZip,
-  type AddressResponse,
-  type AddressUpdateResponse,
+  type AddressValidationResult,
   type UpdateAddressRequest
 } from './schema'
 

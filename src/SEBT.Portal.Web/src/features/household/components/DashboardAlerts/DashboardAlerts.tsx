@@ -11,8 +11,8 @@ import { useHouseholdData } from '@/features/household'
  * Displays success and warning alerts on the dashboard triggered by URL search params.
  * Captures alert state on first read, then cleans the params from the URL.
  * The alert persists because rendering is driven by captured state, not live params.
- * Card replacement success (flash=card_replaced) sources dynamic details from the
- * household data cache rather than URL params to avoid PII in URLs.
+ * Card replacement success (flash=card_replaced) checks the household data cache
+ * for address presence to tailor the alert body, avoiding PII in URL params.
  */
 export function DashboardAlerts() {
   const { t } = useTranslation('dashboard')

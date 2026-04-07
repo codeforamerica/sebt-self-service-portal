@@ -30,10 +30,10 @@ public class MockHouseholdRepositoryTests
         _repository = new MockHouseholdRepository(logger, timeProvider: _timeProvider);
     }
 
-    private static MockHouseholdRepository CreateRepository(string emailPattern)
+    private static MockHouseholdRepository CreateRepository(string emailPattern, string? state = null)
     {
         var logger = NullLogger<MockHouseholdRepository>.Instance;
-        var settings = Options.Create(new SeedingSettings { EmailPattern = emailPattern });
+        var settings = Options.Create(new SeedingSettings { EmailPattern = emailPattern, State = state });
         return new MockHouseholdRepository(logger, settings, new FakeTimeProvider(FixedSeedTime));
     }
 
@@ -242,10 +242,12 @@ public class MockHouseholdRepositoryTests
     [Fact]
     public async Task GetHouseholdByEmailAsync_ReturnsAllSeededScenarios()
     {
-        // Derive emails from the default catalog
+        // Derive emails from the default catalog (no state set, so DC-only scenarios are excluded)
         var defaultSettings = new SeedingSettings();
+        var expectedScenarios = SeedScenarios.AllScenarios
+            .Where(s => !SeedScenarios.DcOnlyScenarios.Contains(s));
 
-        foreach (var scenario in SeedScenarios.AllScenarios)
+        foreach (var scenario in expectedScenarios)
         {
             var email = defaultSettings.BuildEmail(scenario.Name);
             var result = await _repository.GetHouseholdByEmailAsync(email, FullPiiVisibility, UserIalLevel.IAL1plus);
@@ -272,8 +274,8 @@ public class MockHouseholdRepositoryTests
         Assert.Equal(2, app.Children.Count);
         Assert.Equal("John", app.Children[0].FirstName);
         Assert.Equal("Doe", app.Children[0].LastName);
-        Assert.Equal(789001, app.Children[0].CaseNumber);
-        Assert.Equal(789002, app.Children[1].CaseNumber);
+        Assert.Equal(ApplicationStatus.Unknown, app.Children[0].Status);
+        Assert.Equal(ApplicationStatus.Unknown, app.Children[1].Status);
         Assert.NotNull(app.BenefitIssueDate);
         Assert.NotNull(app.BenefitExpirationDate);
         Assert.Equal("APP-2025-01-100001", app.ApplicationNumber);
@@ -530,8 +532,8 @@ public class MockHouseholdRepositoryTests
     public async Task GetHouseholdByEmailAsync_WithDcEmailPattern_ReturnsAllSeededScenarios()
     {
         const string pattern = "sebt.dc+{0}@codeforamerica.org";
-        var repo = CreateRepository(pattern);
-        var settings = new SeedingSettings { EmailPattern = pattern };
+        var repo = CreateRepository(pattern, state: "dc");
+        var settings = new SeedingSettings { EmailPattern = pattern, State = "dc" };
 
         foreach (var scenario in SeedScenarios.AllScenarios)
         {

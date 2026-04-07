@@ -1,5 +1,6 @@
 using System.Security.Claims;
 using Microsoft.Extensions.Logging.Abstractions;
+using Microsoft.Extensions.Time.Testing;
 using NSubstitute;
 using SEBT.Portal.Core.Models;
 using SEBT.Portal.Core.Models.Auth;
@@ -24,8 +25,8 @@ public class RequestCardReplacementCommandHandlerTests
     private readonly NullLogger<RequestCardReplacementCommandHandler> _logger =
         NullLogger<RequestCardReplacementCommandHandler>.Instance;
 
-    private RequestCardReplacementCommandHandler CreateHandler() =>
-        new(_validator, _resolver, _repository, _logger);
+    private RequestCardReplacementCommandHandler CreateHandler(TimeProvider? timeProvider = null) =>
+        new(_validator, _resolver, _repository, timeProvider ?? TimeProvider.System, _logger);
 
     private static ClaimsPrincipal CreateUser(string email, string? ialClaim = null)
     {
@@ -108,6 +109,20 @@ public class RequestCardReplacementCommandHandlerTests
 
         await _resolver.DidNotReceive()
             .ResolveAsync(Arg.Any<ClaimsPrincipal>(), Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task Handle_ReturnsPreconditionFailed_WhenHouseholdDataNotFound()
+    {
+        var handler = CreateHandler();
+        var command = CreateValidCommand();
+        SetupResolverSuccess();
+        // Repository returns null by default (NSubstitute unconfigured)
+
+        var result = await handler.Handle(command, CancellationToken.None);
+
+        Assert.False(result.IsSuccess);
+        Assert.IsType<PreconditionFailedResult>(result);
     }
 
     // --- Cooldown tests ---
@@ -200,28 +215,6 @@ public class RequestCardReplacementCommandHandlerTests
     {
         var handler = CreateHandler();
         var command = CreateValidCommand(applicationNumbers: new List<string> { "APP-UNKNOWN" });
-        SetupResolverSuccess();
-        SetupRepositoryReturns(CreateHouseholdWithApplications(
-            new Application
-            {
-                ApplicationNumber = "APP-2026-001",
-                CardStatus = CardStatus.Active,
-                CardRequestedAt = DateTime.UtcNow.AddDays(-30)
-            }
-        ));
-
-        var result = await handler.Handle(command, CancellationToken.None);
-
-        Assert.False(result.IsSuccess);
-        Assert.IsType<ValidationFailedResult>(result);
-    }
-
-    [Fact]
-    public async Task Handle_ReturnsValidationFailed_WhenSomeApplicationNumbersNotInHousehold()
-    {
-        var handler = CreateHandler();
-        var command = CreateValidCommand(
-            applicationNumbers: new List<string> { "APP-2026-001", "APP-UNKNOWN" });
         SetupResolverSuccess();
         SetupRepositoryReturns(CreateHouseholdWithApplications(
             new Application
@@ -340,5 +333,51 @@ public class RequestCardReplacementCommandHandlerTests
             Arg.Any<PiiVisibility>(),
             UserIalLevel.None,
             Arg.Any<CancellationToken>());
+    }
+
+    // --- Cooldown boundary tests (using FakeTimeProvider) ---
+
+    [Fact]
+    public async Task Handle_ReturnsValidationFailed_WhenCardRequestedExactly13DaysAgo()
+    {
+        var fakeTime = new FakeTimeProvider(new DateTimeOffset(2026, 6, 15, 12, 0, 0, TimeSpan.Zero));
+        var handler = CreateHandler(fakeTime);
+        var command = CreateValidCommand();
+        SetupResolverSuccess();
+        SetupRepositoryReturns(CreateHouseholdWithApplications(
+            new Application
+            {
+                ApplicationNumber = "APP-2026-001",
+                CardStatus = CardStatus.Requested,
+                CardRequestedAt = new DateTime(2026, 6, 2, 12, 0, 0, DateTimeKind.Utc)
+            }
+        ));
+
+        var result = await handler.Handle(command, CancellationToken.None);
+
+        Assert.False(result.IsSuccess);
+        Assert.IsType<ValidationFailedResult>(result);
+    }
+
+    [Fact]
+    public async Task Handle_ReturnsSuccess_WhenCardRequestedExactly14DaysAgo()
+    {
+        var fakeTime = new FakeTimeProvider(new DateTimeOffset(2026, 6, 15, 12, 0, 0, TimeSpan.Zero));
+        var handler = CreateHandler(fakeTime);
+        var command = CreateValidCommand();
+        SetupResolverSuccess();
+        SetupRepositoryReturns(CreateHouseholdWithApplications(
+            new Application
+            {
+                ApplicationNumber = "APP-2026-001",
+                CardStatus = CardStatus.Active,
+                CardRequestedAt = new DateTime(2026, 6, 1, 12, 0, 0, DateTimeKind.Utc)
+            }
+        ));
+
+        var result = await handler.Handle(command, CancellationToken.None);
+
+        Assert.True(result.IsSuccess);
+        Assert.IsType<SuccessResult>(result);
     }
 }

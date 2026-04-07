@@ -25,7 +25,19 @@ vi.mock('@sebt/design-system', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@sebt/design-system')>()
   return {
     ...actual,
-    getState: () => mockState
+    getState: () => mockState,
+    getStateLinks: () => ({
+      help: { faqs: '#', contactUs: 'https://test.example/contact' },
+      footer: {
+        publicNotifications: '#',
+        accessibility: '#',
+        privacyAndSecurity: '#',
+        googleTranslateDisclaimer: '#',
+        about: '#',
+        termsAndConditions: '#'
+      },
+      external: { contactUsAssistance: '#' }
+    })
   }
 })
 
@@ -236,77 +248,7 @@ describe('AddressForm', () => {
     expect(errorMessages.length).toBeGreaterThanOrEqual(1)
   })
 
-  it('navigates to address-not-found when backend returns invalid+blocked', async () => {
-    server.use(
-      http.put('/api/household/address', () => {
-        return HttpResponse.json(
-          { status: 'invalid', reason: 'blocked', message: 'This address cannot be used.' },
-          { status: 422 }
-        )
-      })
-    )
-
-    const { user } = renderForm()
-
-    await user.type(getStreetInput(), '2100 Martin Luther King Jr Ave SE')
-    await user.type(getPostalInput(), '20020')
-
-    const submitButton = screen.getByRole('button', { name: /continue/i })
-    await user.click(submitButton)
-
-    await waitFor(() => {
-      expect(mockPush).toHaveBeenCalledWith('/profile/address/address-not-found')
-    })
-  })
-
-  it('navigates to suggested-address when backend returns suggestion', async () => {
-    server.use(
-      http.put('/api/household/address', () => {
-        return HttpResponse.json(
-          {
-            status: 'suggestion',
-            reason: 'abbreviated',
-            suggestedAddress: {
-              streetAddress1: '123 MLK Jr Ave NW',
-              streetAddress2: null,
-              city: 'Washington',
-              state: 'DC',
-              postalCode: '20001'
-            }
-          },
-          { status: 422 }
-        )
-      })
-    )
-
-    const { user } = renderForm()
-
-    await user.type(getStreetInput(), '123 Martin Luther King Jr Ave NW')
-    await user.type(getPostalInput(), '20001')
-
-    const submitButton = screen.getByRole('button', { name: /continue/i })
-    await user.click(submitButton)
-
-    await waitFor(() => {
-      expect(mockPush).toHaveBeenCalledWith('/profile/address/suggested-address')
-    })
-  })
-
-  it('shows full error banner with "Contact us" link when backend returns too_long (DC)', async () => {
-    mockState = 'dc'
-    server.use(
-      http.put('/api/household/address', () => {
-        return HttpResponse.json(
-          {
-            status: 'invalid',
-            reason: 'too_long',
-            message: 'Enter a street address shorter than 30 characters.'
-          },
-          { status: 422 }
-        )
-      })
-    )
-
+  it('shows inline error when street address exceeds 30 characters', async () => {
     const { user } = renderForm()
 
     await user.type(getStreetInput(), '1234567890 Northeast Pennsylvania Ave NW')
@@ -315,33 +257,12 @@ describe('AddressForm', () => {
     const submitButton = screen.getByRole('button', { name: /continue/i })
     await user.click(submitButton)
 
-    await waitFor(() => {
-      expect(screen.getByText(/there was an issue with the address/i)).toBeInTheDocument()
-    })
-    // Banner contains the full message with "Contact us" link
-    const alert = screen.getByText(/there was an issue with the address/i).closest('.usa-alert')
-    expect(alert).toBeInTheDocument()
-    expect(screen.getByRole('link', { name: /contact us/i })).toHaveAttribute(
-      'href',
-      'https://sunbucks.dc.gov/page/contact-us'
-    )
-    expect(mockPush).not.toHaveBeenCalled()
+    const inlineError = document.querySelector('.usa-error-message')
+    expect(inlineError).toBeInTheDocument()
+    expect(inlineError).toHaveTextContent(/shorter than 30 characters/i)
   })
 
-  it('shows inline field error on street address when backend returns too_long', async () => {
-    server.use(
-      http.put('/api/household/address', () => {
-        return HttpResponse.json(
-          {
-            status: 'invalid',
-            reason: 'too_long',
-            message: 'Enter a street address shorter than 30 characters.'
-          },
-          { status: 422 }
-        )
-      })
-    )
-
+  it('shows page-level error alert with contact link when street address exceeds 30 characters', async () => {
     const { user } = renderForm()
 
     await user.type(getStreetInput(), '1234567890 Northeast Pennsylvania Ave NW')
@@ -350,39 +271,34 @@ describe('AddressForm', () => {
     const submitButton = screen.getByRole('button', { name: /continue/i })
     await user.click(submitButton)
 
-    await waitFor(() => {
-      const streetInput = getStreetInput()
-      expect(streetInput).toHaveAttribute('aria-invalid', 'true')
-    })
+    const siteAlerts = document.getElementById('site-alerts')!
+    expect(siteAlerts.textContent).toContain('issue with the address')
+
+    const contactLink = siteAlerts.querySelector('a.usa-link')
+    expect(contactLink).toBeInTheDocument()
+    expect(contactLink).toHaveTextContent(/contact us/i)
+    expect(contactLink).toHaveAttribute('href', expect.stringContaining('contact'))
   })
 
-  it('renders too_long error banner with usa-alert--error class', async () => {
+  it('allows street address of exactly 30 characters', async () => {
     server.use(
       http.put('/api/household/address', () => {
-        return HttpResponse.json(
-          {
-            status: 'invalid',
-            reason: 'too_long',
-            message: 'Enter a street address shorter than 30 characters.'
-          },
-          { status: 422 }
-        )
+        return new HttpResponse(null, { status: 204 })
       })
     )
 
     const { user } = renderForm()
 
-    await user.type(getStreetInput(), '1234567890 Northeast Pennsylvania Ave NW')
+    // Exactly 30 characters
+    await user.type(getStreetInput(), '123456789012345678901234567890')
     await user.type(getPostalInput(), '20001')
 
     const submitButton = screen.getByRole('button', { name: /continue/i })
     await user.click(submitButton)
 
     await waitFor(() => {
-      expect(screen.getByText(/there was an issue with the address/i)).toBeInTheDocument()
+      expect(mockPush).toHaveBeenCalledWith('/profile/address/replacement-cards')
     })
-    const alert = screen.getByText(/there was an issue with the address/i).closest('.usa-alert')
-    expect(alert).toHaveClass('usa-alert--error')
   })
 
   it('shows ZIP format error for invalid postal code', async () => {

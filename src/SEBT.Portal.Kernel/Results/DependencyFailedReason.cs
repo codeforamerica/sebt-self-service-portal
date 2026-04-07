@@ -4,5 +4,8 @@ public enum DependencyFailedReason
 {
     ConnectionFailed,
     Timeout,
+    Authentication,
+    BadRequest,
+    ServiceUnavailable,
     NotConfigured
 }

@@ -4,23 +4,17 @@ import { useMutation, useQueryClient } from '@tanstack/react-query'
 
 import { ApiError, apiFetch } from '@/api/client'
 
-import type { AddressUpdateResponse, UpdateAddressRequest } from './schema'
+import type { UpdateAddressRequest } from './schema'
 
 const ADDRESS_ENDPOINT = '/household/address'
 
-async function updateAddress(data: UpdateAddressRequest): Promise<AddressUpdateResponse> {
-  try {
-    return await apiFetch<AddressUpdateResponse>(ADDRESS_ENDPOINT, {
-      method: 'PUT',
-      body: data
-    })
-  } catch (error) {
-    if (error instanceof ApiError && error.status === 422) {
-      // 422 is a validation result (invalid/suggestion), not a request failure
-      return error.data as unknown as AddressUpdateResponse
-    }
-    throw error
-  }
+// TODO: When state connector persistence is wired up, this may return a response
+// body (e.g., canonical address). Update return type and MSW handler to match.
+async function updateAddress(data: UpdateAddressRequest): Promise<void> {
+  await apiFetch<void>(ADDRESS_ENDPOINT, {
+    method: 'PUT',
+    body: data
+  })
 }
 
 export function useUpdateAddress() {
@@ -28,10 +22,8 @@ export function useUpdateAddress() {
 
   return useMutation({
     mutationFn: updateAddress,
-    onSuccess: (result) => {
-      if (result?.status === 'valid') {
-        queryClient.invalidateQueries({ queryKey: ['householdData'] })
-      }
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['householdData'] })
     },
     retry: (failureCount, error) => {
       if (error instanceof ApiError && error.status >= 400 && error.status < 500) {

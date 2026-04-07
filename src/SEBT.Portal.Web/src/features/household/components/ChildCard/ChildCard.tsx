@@ -35,9 +35,7 @@ function getReplacementLink(application: Application): string | null {
     return '/cards/info'
   }
 
-  // Only SummerEbt cards get the standalone replacement flow.
-  // Co-loaded, null, Unknown, or unrecognized types do not.
-  if (issuanceType !== 'SummerEbt') return null
+  if (isCoLoaded) return null
 
   return `/cards/replace?app=${encodeURIComponent(applicationNumber)}`
 }
@@ -59,6 +57,7 @@ const CARD_TYPE_KEYS: Partial<Record<IssuanceType, string>> = {
 // Keys map to CSV: "S2 - Portal Dashboard - Card Table - {Key}"
 export function ChildCard({ child, application, id, defaultExpanded = true }: ChildCardProps) {
   const { t, i18n } = useTranslation('dashboard')
+  const enableCardReplacement = useFeatureFlag('enable_card_replacement')
   const showCaseNumber = useFeatureFlag('show_case_number')
   const showCardLast4 = useFeatureFlag('show_card_last4')
   const enableCardReplacement = useFeatureFlag('enable_card_replacement')
@@ -68,7 +67,7 @@ export function ChildCard({ child, application, id, defaultExpanded = true }: Ch
   const { caseNumber, benefitIssueDate, benefitExpirationDate, last4DigitsOfCard, issuanceType } =
     application
   const cardTypeKey = issuanceType ? (CARD_TYPE_KEYS[issuanceType] ?? null) : null
-  const replacementLink = getReplacementLink(application)
+  const replacementLink = enableCardReplacement ? getReplacementLink(application) : null
 
   return (
     <div className="usa-accordion__item">
@@ -128,7 +127,7 @@ export function ChildCard({ child, application, id, defaultExpanded = true }: Ch
             <CardStatusDisplay application={application} />
           )}
         </dl>
-        {enableCardReplacement && replacementLink && (
+        {replacementLink && (
           <Link
             href={replacementLink}
             className="usa-link display-inline-block margin-top-2"

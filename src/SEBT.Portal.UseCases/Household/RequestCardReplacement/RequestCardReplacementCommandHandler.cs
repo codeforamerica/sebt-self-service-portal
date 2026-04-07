@@ -17,6 +17,7 @@ public class RequestCardReplacementCommandHandler(
     IValidator<RequestCardReplacementCommand> validator,
     IHouseholdIdentifierResolver resolver,
     IHouseholdRepository repository,
+    TimeProvider timeProvider,
     ILogger<RequestCardReplacementCommandHandler> logger)
     : ICommandHandler<RequestCardReplacementCommand>
 {
@@ -41,7 +42,7 @@ public class RequestCardReplacementCommandHandler(
             return Result.Unauthorized("Unable to identify user from token.");
         }
 
-        var userIalLevel = command.User.GetIalLevel();
+        var userIalLevel = UserIalLevelExtensions.FromClaimsPrincipal(command.User);
 
         var household = await repository.GetHouseholdByIdentifierAsync(
             identifier,
@@ -55,7 +56,7 @@ public class RequestCardReplacementCommandHandler(
             return Result.PreconditionFailed(PreconditionFailedReason.NotFound, "Household data not found.");
         }
 
-        var cooldownErrors = CheckCooldown(command.ApplicationNumbers, household);
+        var cooldownErrors = CheckCooldown(command.ApplicationNumbers, household, timeProvider);
         if (cooldownErrors.Count > 0)
         {
             logger.LogInformation(
@@ -82,10 +83,11 @@ public class RequestCardReplacementCommandHandler(
 
     private static List<ValidationError> CheckCooldown(
         List<string> requestedApplicationNumbers,
-        Core.Models.Household.HouseholdData household)
+        Core.Models.Household.HouseholdData household,
+        TimeProvider timeProvider)
     {
         var errors = new List<ValidationError>();
-        var now = DateTime.UtcNow;
+        var now = timeProvider.GetUtcNow().UtcDateTime;
 
         foreach (var appNumber in requestedApplicationNumbers)
         {

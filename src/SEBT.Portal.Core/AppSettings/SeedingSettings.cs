@@ -31,6 +31,12 @@ public class SeedingSettings
     public bool Enabled { get; set; }
 
     /// <summary>
+    /// The state code (e.g., "dc", "co") from the STATE environment variable.
+    /// Used to conditionally seed state-specific scenarios.
+    /// </summary>
+    public string? State { get; set; }
+
+    /// <summary>
     /// Constructs a full email address from a scenario name using the configured pattern.
     /// </summary>
     /// <param name="scenarioName">The scenario name (e.g., "co-loaded", "verified").</param>

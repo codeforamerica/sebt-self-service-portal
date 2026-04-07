@@ -1,6 +1,7 @@
 'use client'
 
 import { EnrollmentProvider } from '@/features/enrollment/context/EnrollmentContext'
+import { enrollmentCheckerRoutes } from '@/lib/analytics-routes'
 import { namespaces, stateResources } from '@/lib/generated-locale-resources'
 import { DataLayerProvider } from '@sebt/analytics'
 import { initI18n, type StateResources } from '@sebt/design-system/src/lib/i18n'
@@ -26,7 +27,7 @@ export function Providers({ children }: { children: ReactNode }) {
   }))
 
   return (
-    <DataLayerProvider application="sebt-enrollment-checker">
+    <DataLayerProvider application="sebt-enrollment-checker" routes={enrollmentCheckerRoutes}>
       <QueryClientProvider client={queryClient}>
         <I18nProvider>
           <EnrollmentProvider>

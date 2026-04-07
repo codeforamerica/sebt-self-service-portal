@@ -42,6 +42,8 @@ public class JwtTokenService : IJwtTokenService
             new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString()),
             new Claim(JwtRegisteredClaimNames.Iat, unixTimeSeconds.ToString(), ClaimValueTypes.Integer64),
             new Claim(JwtRegisteredClaimNames.Nbf, unixTimeSeconds.ToString(), ClaimValueTypes.Integer64),
+            new Claim(JwtRegisteredClaimNames.Aud, "SEBT.Portal.Web"),
+            new Claim(JwtRegisteredClaimNames.Iss, "SEBT.Portal.Api"),
             // Workflow state of ID proofing process
             new Claim(JwtClaimTypes.IdProofingStatus, ((int)user.IdProofingStatus).ToString(), ClaimValueTypes.Integer32),
             // The Users's current Identity Assurance Level (IAL)
@@ -82,18 +84,26 @@ public class JwtTokenService : IJwtTokenService
         {
             JwtRegisteredClaimNames.Sub,
             ClaimTypes.Email,
+            JwtRegisteredClaimNames.Email,
             "email",
             JwtRegisteredClaimNames.Jti,
             JwtRegisteredClaimNames.Iat,
-            JwtRegisteredClaimNames.Nbf
+            JwtRegisteredClaimNames.Nbf,
+            JwtRegisteredClaimNames.Aud,
+            JwtRegisteredClaimNames.Iss
         };
 
         if (additionalClaims != null)
         {
             foreach (var (name, value) in additionalClaims)
             {
-                if (!string.IsNullOrEmpty(name) && value != null && !reservedNames.Contains(name))
+                if (!string.IsNullOrEmpty(name) &&
+                    value != null &&
+                    !reservedNames.Contains(name) &&
+                    !claims.Select(c => c.Type).Contains(name))
+                {
                     claims.Add(new Claim(name, value));
+                }
             }
         }
 

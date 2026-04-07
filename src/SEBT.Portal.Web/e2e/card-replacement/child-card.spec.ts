@@ -2,12 +2,8 @@ import { expect, test } from '@playwright/test'
 
 import { setupApiRoutes } from '../fixtures/api-routes'
 import { injectAuth } from '../fixtures/auth'
-import {
-  makeApplication,
-  makeHouseholdData,
-  OLD_CARD_DATE,
-  recentCardDate
-} from '../fixtures/household-data'
+import { makeHouseholdData, makeSummerEbtCase, recentCardDate } from '../fixtures/household-data'
+import { skipUnlessState } from '../fixtures/state'
 
 test.describe('ChildCard', () => {
   test.beforeEach(async ({ page }) => {
@@ -20,7 +16,7 @@ test.describe('ChildCard', () => {
     }) => {
       await setupApiRoutes(page, {
         householdData: makeHouseholdData({
-          applications: [makeApplication({ issuanceType: 1 })]
+          summerEbtCases: [makeSummerEbtCase({ issuanceType: 1 })]
         })
       })
       await page.goto('/dashboard')
@@ -35,13 +31,7 @@ test.describe('ChildCard', () => {
     test('SnapEbtCard (issuanceType 3) shows SNAP card type label', async ({ page }) => {
       await setupApiRoutes(page, {
         householdData: makeHouseholdData({
-          applications: [
-            makeApplication({
-              issuanceType: 3,
-              applicationNumber: 'APP-SNAP-001',
-              cardRequestedAt: OLD_CARD_DATE
-            })
-          ]
+          summerEbtCases: [makeSummerEbtCase({ issuanceType: 3 })]
         })
       })
       await page.goto('/dashboard')
@@ -52,13 +42,7 @@ test.describe('ChildCard', () => {
     test('TanfEbtCard (issuanceType 2) shows TANF card type label', async ({ page }) => {
       await setupApiRoutes(page, {
         householdData: makeHouseholdData({
-          applications: [
-            makeApplication({
-              issuanceType: 2,
-              applicationNumber: 'APP-TANF-001',
-              cardRequestedAt: OLD_CARD_DATE
-            })
-          ]
+          summerEbtCases: [makeSummerEbtCase({ issuanceType: 2 })]
         })
       })
       await page.goto('/dashboard')
@@ -105,15 +89,15 @@ test.describe('ChildCard', () => {
   })
 
   test.describe('replacement link visibility', () => {
-    test('shows replacement link when card was requested more than 14 days ago', async ({
-      page
-    }) => {
+    test('shows replacement link when card is not within cooldown', async ({ page }) => {
       await setupApiRoutes(page, {
         householdData: makeHouseholdData({
-          applications: [makeApplication({ cardRequestedAt: OLD_CARD_DATE, issuanceType: 1 })]
+          summerEbtCases: [makeSummerEbtCase({ issuanceType: 1 })]
         })
       })
       await page.goto('/dashboard')
+      // SummerEbtCase has no cardRequestedAt, so cooldown does not apply.
+      // applicationId maps to applicationNumber, enabling the link.
       await expect(
         page.locator('[data-testid="accordion-content"] a', {
           hasText: 'Request a replacement card'
@@ -126,7 +110,9 @@ test.describe('ChildCard', () => {
     }) => {
       await setupApiRoutes(page, {
         householdData: makeHouseholdData({
-          applications: [makeApplication({ cardRequestedAt: recentCardDate(), issuanceType: 1 })]
+          summerEbtCases: [
+            makeSummerEbtCase({ issuanceType: 1, cardRequestedAt: recentCardDate() })
+          ]
         })
       })
       await page.goto('/dashboard')
@@ -140,10 +126,9 @@ test.describe('ChildCard', () => {
     test('replacement link points to /cards/replace for SummerEbt', async ({ page }) => {
       await setupApiRoutes(page, {
         householdData: makeHouseholdData({
-          applications: [
-            makeApplication({
-              applicationNumber: 'APP-2026-001',
-              cardRequestedAt: OLD_CARD_DATE,
+          summerEbtCases: [
+            makeSummerEbtCase({
+              applicationId: 'APP-2026-001',
               issuanceType: 1
             })
           ]
@@ -156,62 +141,68 @@ test.describe('ChildCard', () => {
       await expect(link).toHaveAttribute('href', /\/cards\/replace\?app=APP-2026-001/)
     })
 
-    test('SnapEbtCard co-loaded: DC shows /cards/info link, CO shows no link', async ({ page }) => {
+    test('DC: SnapEbtCard co-loaded shows /cards/info replacement link', async ({ page }) => {
+      skipUnlessState('dc')
+
       await setupApiRoutes(page, {
         householdData: makeHouseholdData({
-          applications: [
-            makeApplication({
-              issuanceType: 3,
-              cardRequestedAt: OLD_CARD_DATE
-            })
-          ]
+          summerEbtCases: [makeSummerEbtCase({ issuanceType: 3 })]
         })
       })
       await page.goto('/dashboard')
 
-      // NEXT_PUBLIC_STATE is inlined at build time. Detect the active state by
-      // checking the page title, which is state-specific (DC says "DC SUN Bucks",
-      // CO says "SUN Bucks"). The co-loaded link behavior differs by state.
-      // Page title: "District of Columbia SUN Bucks ..." for DC, "Colorado SUN Bucks ..." for CO.
-      const isDC = (await page.title()).includes('District of Columbia')
-
       const link = page.locator('[data-testid="accordion-content"] a', {
         hasText: 'Request a replacement card'
       })
-
-      if (isDC) {
-        await expect(link).toHaveAttribute('href', '/cards/info')
-      } else {
-        // CO: co-loaded cards produce no replacement link
-        await expect(link).toHaveCount(0)
-      }
+      await expect(link).toHaveAttribute('href', '/cards/info')
     })
 
-    test('TanfEbtCard co-loaded: DC shows /cards/info link, CO shows no link', async ({ page }) => {
+    test('CO: SnapEbtCard co-loaded shows no replacement link', async ({ page }) => {
+      skipUnlessState('co')
+
       await setupApiRoutes(page, {
         householdData: makeHouseholdData({
-          applications: [
-            makeApplication({
-              issuanceType: 2,
-              cardRequestedAt: OLD_CARD_DATE
-            })
-          ]
+          summerEbtCases: [makeSummerEbtCase({ issuanceType: 3 })]
         })
       })
       await page.goto('/dashboard')
 
-      // Page title: "District of Columbia SUN Bucks ..." for DC, "Colorado SUN Bucks ..." for CO.
-      const isDC = (await page.title()).includes('District of Columbia')
+      const link = page.locator('[data-testid="accordion-content"] a', {
+        hasText: 'Request a replacement card'
+      })
+      await expect(link).toHaveCount(0)
+    })
+
+    test('DC: TanfEbtCard co-loaded shows /cards/info replacement link', async ({ page }) => {
+      skipUnlessState('dc')
+
+      await setupApiRoutes(page, {
+        householdData: makeHouseholdData({
+          summerEbtCases: [makeSummerEbtCase({ issuanceType: 2 })]
+        })
+      })
+      await page.goto('/dashboard')
 
       const link = page.locator('[data-testid="accordion-content"] a', {
         hasText: 'Request a replacement card'
       })
+      await expect(link).toHaveAttribute('href', '/cards/info')
+    })
 
-      if (isDC) {
-        await expect(link).toHaveAttribute('href', '/cards/info')
-      } else {
-        await expect(link).toHaveCount(0)
-      }
+    test('CO: TanfEbtCard co-loaded shows no replacement link', async ({ page }) => {
+      skipUnlessState('co')
+
+      await setupApiRoutes(page, {
+        householdData: makeHouseholdData({
+          summerEbtCases: [makeSummerEbtCase({ issuanceType: 2 })]
+        })
+      })
+      await page.goto('/dashboard')
+
+      const link = page.locator('[data-testid="accordion-content"] a', {
+        hasText: 'Request a replacement card'
+      })
+      await expect(link).toHaveCount(0)
     })
   })
 })

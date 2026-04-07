@@ -8,6 +8,8 @@ export {
   IssuanceTypeSchema,
   UserProfileSchema,
   formatDate,
+  formatUsPhone,
+  interpolateDate,
   isReplacementEligible,
   toUiCardStatus,
   type Address,
@@ -17,6 +19,7 @@ export {
   type Child,
   type HouseholdData,
   type IssuanceType,
+  type SummerEbtCase,
   type UiCardStatus,
   type UserProfile
 } from './schema'

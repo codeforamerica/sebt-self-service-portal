@@ -27,6 +27,11 @@ public record ApplicationResponse
     public ApplicationStatus ApplicationStatus { get; init; }
 
     /// <summary>
+    /// The date the application was submitted.
+    /// </summary>
+    public DateTime? ApplicationDate { get; init; }
+
+    /// <summary>
     /// The date when the benefit was issued for this application.
     /// </summary>
     public DateTime? BenefitIssueDate { get; init; }
