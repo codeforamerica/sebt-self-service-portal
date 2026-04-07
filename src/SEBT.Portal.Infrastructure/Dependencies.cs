@@ -60,8 +60,6 @@ public static class Dependencies
         services.AddTransient<IAddressValidationService, AddressValidationServiceAdapter>();
         services.AddSingleton<IIdentifierHasher, IdentifierHasher>();
 
-        services.AddCaching(configuration);
-
         // Expose SocureSettings directly for use case injection (avoids IOptions dependency in UseCases layer)
         services.AddSingleton(sp => sp.GetRequiredService<IOptions<SocureSettings>>().Value);
 
@@ -129,8 +127,9 @@ public static class Dependencies
     /// Registers caching services. When a Redis connection string is configured,
     /// uses Redis as the distributed cache (L2) backing HybridCache.
     /// Otherwise, falls back to in-memory caching only.
+    /// Call this before AddPlugins — plugins may depend on HybridCache.
     /// </summary>
-    private static void AddCaching(this IServiceCollection services, IConfiguration? configuration)
+    public static IServiceCollection AddCaching(this IServiceCollection services, IConfiguration? configuration)
     {
         var redisConnectionString = configuration?.GetConnectionString("Redis");
 
@@ -147,6 +146,8 @@ public static class Dependencies
         // When Redis is not configured, HybridCache operates as in-memory only.
         services.AddHybridCache();
         services.AddMemoryCache();
+
+        return services;
     }
 
     /// <summary>
