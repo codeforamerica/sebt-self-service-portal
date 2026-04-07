@@ -2,11 +2,11 @@
 
 import { useTranslation } from 'react-i18next'
 
-import type { Application, CardStatus, UiCardStatus } from '../../api'
+import type { CardStatus, UiCardStatus } from '../../api'
 import { toUiCardStatus } from '../../api'
 
 interface CardStatusDisplayProps {
-  application: Application
+  cardStatus: CardStatus | null | undefined
 }
 
 // Keys map to CSV: "S2 - Portal Dashboard - Card Table - Status {Status}"
@@ -34,10 +34,8 @@ const DESCRIPTION_KEY: Partial<Record<CardStatus, string>> = {
   Undeliverable: 'cardTableStatusMessageUndeliverable'
 }
 
-export function CardStatusDisplay({ application }: CardStatusDisplayProps) {
+export function CardStatusDisplay({ cardStatus }: CardStatusDisplayProps) {
   const { t } = useTranslation('dashboard')
-
-  const { cardStatus } = application
 
   if (
     !cardStatus ||

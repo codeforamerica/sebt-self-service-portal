@@ -23,9 +23,13 @@ export function createMockSummerEbtCase(overrides?: Partial<SummerEbtCase>): Sum
     eligibilityType: 'NSLP',
     issuanceType: 'SummerEbt',
     ebtCardLastFour: '1234',
-    ebtCardStatus: 'ACTIVE',
+    ebtCardStatus: 'Active',
     benefitAvailableDate: '2026-06-01T00:00:00Z',
     benefitExpirationDate: '2026-08-31T00:00:00Z',
+    cardRequestedAt: null,
+    cardMailedAt: null,
+    cardActivatedAt: null,
+    cardDeactivatedAt: null,
     ...overrides
   }
 }
