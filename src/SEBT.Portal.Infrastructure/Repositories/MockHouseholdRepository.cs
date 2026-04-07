@@ -150,11 +150,12 @@ public class MockHouseholdRepository : IHouseholdRepository
                 app.BenefitIssueDate = now.AddDays(-20);
                 app.BenefitExpirationDate = now.AddDays(70);
                 app.Last4DigitsOfCard = "0000";
+                app.CardStatus = CardStatus.Active;
                 // Set specific children names for test
                 app.Children = new List<Child>
                 {
-                    new Child { CaseNumber = 456001, FirstName = "Sophia", LastName = "Martinez" },
-                    new Child { CaseNumber = 456002, FirstName = "James", LastName = "Martinez" }
+                    new Child { FirstName = "Sophia", LastName = "Martinez" },
+                    new Child { FirstName = "James", LastName = "Martinez" }
                 };
             }
             h.AddressOnFile = new Address
@@ -183,11 +184,12 @@ public class MockHouseholdRepository : IHouseholdRepository
                 app.BenefitIssueDate = now.AddDays(-30);
                 app.BenefitExpirationDate = now.AddDays(60);
                 app.Last4DigitsOfCard = "1234"; // Specific value for test
+                app.CardStatus = CardStatus.Active;
                 // Set specific children names for test
                 app.Children = new List<Child>
                 {
-                    new Child { CaseNumber = 789001, FirstName = "John", LastName = "Doe" },
-                    new Child { CaseNumber = 789002, FirstName = "Jane", LastName = "Doe" }
+                    new Child { FirstName = "John", LastName = "Doe" },
+                    new Child { FirstName = "Jane", LastName = "Doe" }
                 };
             }
             // Set specific address for test
@@ -218,7 +220,7 @@ public class MockHouseholdRepository : IHouseholdRepository
                 // Set specific child name for test
                 app.Children = new List<Child>
                 {
-                    new Child { CaseNumber = 111001, FirstName = "Alice", LastName = "Smith" }
+                    new Child { FirstName = "Alice", LastName = "Smith" }
                 };
             }
             // Set address for testing (will be filtered based on ID verification status)
@@ -259,6 +261,7 @@ public class MockHouseholdRepository : IHouseholdRepository
             var app = h.Applications.FirstOrDefault();
             if (app != null)
             {
+                app.CardStatus = CardStatus.Active;
                 // Use Bogus to generate child name
                 var childFaker = new Faker<Child>()
                     .RuleFor(c => c.FirstName, f => f.Name.FirstName())
@@ -282,7 +285,7 @@ public class MockHouseholdRepository : IHouseholdRepository
             {
                 app.Children = new List<Child>
                 {
-                    new Child { CaseNumber = 555001, FirstName = "Emma", LastName = "Garcia" }
+                    new Child { FirstName = "Emma", LastName = "Garcia" }
                 };
             }
             h.AddressOnFile = null;
@@ -303,7 +306,7 @@ public class MockHouseholdRepository : IHouseholdRepository
             {
                 app.Children = new List<Child>
                 {
-                    new Child { CaseNumber = 666001, FirstName = "Liam", LastName = "Anderson" }
+                    new Child { FirstName = "Liam", LastName = "Anderson" }
                 };
             }
             h.AddressOnFile = new Address
@@ -346,6 +349,7 @@ public class MockHouseholdRepository : IHouseholdRepository
             {
                 app.BenefitIssueDate = now.AddDays(-15);
                 app.BenefitExpirationDate = now.AddDays(75);
+                app.CardStatus = CardStatus.Active;
                 // Use Bogus to generate child name
                 var childFaker = new Faker<Child>()
                     .RuleFor(c => c.FirstName, f => f.Name.FirstName())
@@ -369,13 +373,14 @@ public class MockHouseholdRepository : IHouseholdRepository
                 app.BenefitIssueDate = now.AddDays(-45);
                 app.BenefitExpirationDate = now.AddDays(45);
                 app.Last4DigitsOfCard = "4321";
+                app.CardStatus = CardStatus.Active;
                 // Set specific children names for test
                 app.Children = new List<Child>
                 {
-                    new Child { CaseNumber = 222001, FirstName = "Michael", LastName = "Brown" },
-                    new Child { CaseNumber = 222002, FirstName = "Sarah", LastName = "Brown" },
-                    new Child { CaseNumber = 222003, FirstName = "David", LastName = "Brown" },
-                    new Child { CaseNumber = 222004, FirstName = "Emily", LastName = "Brown" }
+                    new Child { FirstName = "Michael", LastName = "Brown" },
+                    new Child { FirstName = "Sarah", LastName = "Brown" },
+                    new Child { FirstName = "David", LastName = "Brown" },
+                    new Child { FirstName = "Emily", LastName = "Brown" }
                 };
             }
             h.AddressOnFile = new Address
@@ -419,6 +424,7 @@ public class MockHouseholdRepository : IHouseholdRepository
             {
                 app.BenefitIssueDate = now.AddDays(-120);
                 app.BenefitExpirationDate = now.AddDays(-10); // Expired
+                app.CardStatus = CardStatus.Deactivated;
                 // Use Bogus to generate child name
                 var childFaker = new Faker<Child>()
                     .RuleFor(c => c.FirstName, f => f.Name.FirstName())
@@ -467,8 +473,8 @@ public class MockHouseholdRepository : IHouseholdRepository
                 CardActivatedAt = now.AddDays(-40),
                 Children = new List<Child>
                 {
-                    new Child { CaseNumber = 333001, FirstName = "Emma", LastName = "Wilson" },
-                    new Child { CaseNumber = 333002, FirstName = "Lucas", LastName = "Wilson" }
+                    new Child { FirstName = "Emma", LastName = "Wilson" },
+                    new Child { FirstName = "Lucas", LastName = "Wilson" }
                 }
             };
 
@@ -480,7 +486,7 @@ public class MockHouseholdRepository : IHouseholdRepository
                 CardRequestedAt = now.AddDays(-10),
                 Children = new List<Child>
                 {
-                    new Child { CaseNumber = 333003, FirstName = "Olivia", LastName = "Wilson" }
+                    new Child { FirstName = "Olivia", LastName = "Wilson" }
                 }
             };
 
@@ -497,6 +503,52 @@ public class MockHouseholdRepository : IHouseholdRepository
         multipleApps.UserProfile = new UserProfile { FirstName = "Jennifer", MiddleName = "Lynn", LastName = "Wilson" };
         _households[multipleAppsEmail] = multipleApps;
         IndexByPhone(multipleApps);
+
+        // DC Scenarios 1-7: Simple non-co-loaded households with 1 child, Summer EBT, active benefits
+        if (string.Equals(_settings.State, "dc", StringComparison.OrdinalIgnoreCase))
+        {
+            var dcChildFaker = new Faker<Child>()
+                .RuleFor(c => c.FirstName, f => f.Name.FirstName())
+                .RuleFor(c => c.LastName, f => f.Name.LastName());
+
+            var dcUserFaker = new Faker();
+
+            SeedScenario[] dcScenarioList = [SeedScenarios.Simple1, SeedScenarios.Simple2, SeedScenarios.Simple3,
+                SeedScenarios.Simple4, SeedScenarios.Simple5, SeedScenarios.Simple6, SeedScenarios.Simple7];
+
+            foreach (var dcScenario in dcScenarioList)
+            {
+                var dcEmail = _settings.BuildEmail(dcScenario.Name);
+                var dcHousehold = HouseholdFactory.CreateHouseholdDataWithStatus(ApplicationStatus.Approved, h =>
+                {
+                    h.BenefitIssuanceType = BenefitIssuanceType.SummerEbt;
+                    var app = h.Applications.FirstOrDefault();
+                    if (app != null)
+                    {
+                        app.BenefitIssueDate = now.AddDays(-20);
+                        app.BenefitExpirationDate = now.AddDays(122);
+                        app.CardStatus = CardStatus.Active;
+                        app.Children = dcChildFaker.Generate(1);
+                    }
+                    h.AddressOnFile = new Address
+                    {
+                        StreetAddress1 = dcUserFaker.Address.StreetAddress(),
+                        City = "Washington",
+                        State = "DC",
+                        PostalCode = "20002"
+                    };
+                });
+                dcHousehold.Email = dcEmail;
+                dcHousehold.UserProfile = new UserProfile
+                {
+                    FirstName = dcUserFaker.Name.FirstName(),
+                    MiddleName = null,
+                    LastName = dcUserFaker.Name.LastName()
+                };
+                _households[dcEmail] = dcHousehold;
+                IndexByPhone(dcHousehold);
+            }
+        }
 
         _logger.LogInformation("Seeded {Count} mock household records using Bogus", _households.Count);
     }
@@ -611,9 +663,9 @@ public class MockHouseholdRepository : IHouseholdRepository
                     : (IssuanceType)(int)source.BenefitIssuanceType,
                 Children = a.Children.Select(c => new Child
                 {
-                    CaseNumber = c.CaseNumber,
                     FirstName = c.FirstName,
-                    LastName = c.LastName
+                    LastName = c.LastName,
+                    Status = c.Status
                 }).ToList()
             }).ToList()
         };

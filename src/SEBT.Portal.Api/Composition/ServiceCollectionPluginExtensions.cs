@@ -1,3 +1,5 @@
+using Serilog;
+using Serilog.Extensions.Logging;
 using System.Composition.Convention;
 using System.Composition.Hosting;
 using Microsoft.Extensions.DependencyInjection;
@@ -5,8 +7,6 @@ using Microsoft.Extensions.DependencyInjection.Extensions;
 using SEBT.Portal.StatesPlugins.Interfaces;
 
 namespace SEBT.Portal.Api.Composition;
-
-using Serilog;
 
 internal static class ServiceCollectionPluginExtensions
 {
@@ -16,6 +16,7 @@ internal static class ServiceCollectionPluginExtensions
         services.TryAddSingleton<IStateHealthCheckService, Defaults.DefaultStateHealthCheckService>();
         services.TryAddSingleton<ISummerEbtCaseService, Defaults.DefaultSummerEbtCaseService>();
         services.TryAddSingleton<IEnrollmentCheckService, Defaults.DefaultEnrollmentCheckService>();
+        services.TryAddSingleton<IAddressUpdateService, Defaults.DefaultAddressUpdateService>();
 
         var healthChecksBuilder = services.AddHealthChecks();
 
@@ -90,8 +91,16 @@ internal static class ServiceCollectionPluginExtensions
             .Export<IEnrollmentCheckService>()
             .Shared();
 
+        conventions
+            .ForTypesDerivedFrom<IAddressUpdateService>()
+            .Export<IAddressUpdateService>()
+            .Shared();
+
+        var loggerFactory = new SerilogLoggerFactory(Log.Logger);
+
         return new ContainerConfiguration()
             .WithExport(configuration)
+            .WithExport<ILoggerFactory>(loggerFactory)
             .WithAssembliesInPath(assemblyPaths, conventions);
     }
 }

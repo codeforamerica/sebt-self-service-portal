@@ -53,7 +53,10 @@ public class RefreshTokenCommandHandler(
                     "User not found.");
             }
 
-            var token = jwtTokenService.GenerateToken(user);
+            var additionalClaims = command.CurrentPrincipal.Claims
+                .DistinctBy(c => c.Type)
+                .ToDictionary(c => c.Type, c => c.Value);
+            var token = jwtTokenService.GenerateToken(user, additionalClaims);
             var requiresIdProofing = IdProofingRedirectPolicy.RequiresIdProofingForUser(user, socureSettings);
 
             logger.LogInformation(

@@ -47,6 +47,16 @@ public class SummerEbtCase
     public string EligibilityType { get; set; } = string.Empty;
 
     /// <summary>
+    /// The source of eligibility (e.g. school, SNAP, TANF).
+    /// </summary>
+    public string? EligibilitySource { get; set; }
+
+    /// <summary>
+    /// The type of issuance for this case (e.g. auto-issuance vs application-based).
+    /// </summary>
+    public IssuanceType IssuanceType { get; set; } = IssuanceType.Unknown;
+
+    /// <summary>
     /// The application date.
     /// </summary>
     public DateTime? ApplicationDate { get; set; }

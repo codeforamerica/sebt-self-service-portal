@@ -118,11 +118,15 @@ public class OidcController(
         var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(signingKey));
         var validationParams = new TokenValidationParameters
         {
+            ValidateIssuerSigningKey = true,
             ValidateIssuer = false,
             ValidateAudience = false,
             ValidateLifetime = true,
             ClockSkew = TimeSpan.FromMinutes(1),
-            IssuerSigningKey = key
+            // Use resolver instead of IssuerSigningKey to bypass kid-matching;
+            // jose (Next.js) signs without a kid header, which causes IDX10517
+            // when JwtSecurityTokenHandler tries to match by kid.
+            IssuerSigningKeyResolver = (token, securityToken, kid, parameters) => [key]
         };
         var handler = new JwtSecurityTokenHandler();
         handler.MapInboundClaims = false; // Preserve original JWT claim names (sub, email)
@@ -143,7 +147,16 @@ public class OidcController(
         foreach (var claim in principal.Claims)
         {
             if (!CommonIdpClaimNames.Contains(claim.Type) && !string.IsNullOrEmpty(claim.Value))
+            {
                 additionalClaims[claim.Type] = claim.Value;
+            }
+        }
+
+        logger.LogInformation("Additional OIDC claim types: {Claims}", string.Join(", ", additionalClaims.Select(c => c.Key).ToArray()));
+
+        if (!additionalClaims.Select(c => c.Key).Contains("phone"))
+        {
+            logger.LogWarning("OIDC incoming claims missing 'phone'");
         }
 
         var email = GetEmailFromClaims(principal);
@@ -184,6 +197,13 @@ public class OidcController(
         {
             var (createdUser, _) = await userRepository.GetOrCreateUserAsync(normalizedEmail, cancellationToken);
             user = createdUser;
+
+            // A user who completed OIDC login is at least IAL1; don't downgrade if already higher
+            if (user.IalLevel < UserIalLevel.IAL1)
+            {
+                user.IalLevel = UserIalLevel.IAL1;
+                await userRepository.UpdateUserAsync(user, cancellationToken);
+            }
         }
 
         var token = jwtService.GenerateToken(user, additionalClaims);

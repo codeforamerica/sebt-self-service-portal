@@ -85,4 +85,36 @@ public class HouseholdController : ControllerBase
         var result = await commandHandler.Handle(command, cancellationToken);
         return result.ToActionResult();
     }
+
+    /// <summary>
+    /// Requests replacement cards for the authenticated user's household.
+    /// </summary>
+    /// <param name="request">The application numbers to request replacements for.</param>
+    /// <param name="commandHandler">The use case handler for requesting card replacements.</param>
+    /// <param name="cancellationToken">A token to monitor for cancellation requests.</param>
+    /// <returns>No content on success; otherwise, BadRequest, Forbidden, or NotFound.</returns>
+    /// <response code="204">Card replacement request recorded successfully.</response>
+    /// <response code="400">Validation failed (no applications selected or cooldown active).</response>
+    /// <response code="403">User is not authorized or no household identifier could be resolved from token.</response>
+    /// <response code="404">Household data not found for the authenticated user.</response>
+    [HttpPost("cards/replace")]
+    [Authorize]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> RequestCardReplacement(
+        [FromBody] RequestCardReplacementRequest request,
+        [FromServices] ICommandHandler<RequestCardReplacementCommand> commandHandler,
+        CancellationToken cancellationToken = default)
+    {
+        var command = new RequestCardReplacementCommand
+        {
+            User = User,
+            ApplicationNumbers = request.ApplicationNumbers
+        };
+
+        var result = await commandHandler.Handle(command, cancellationToken);
+        return result.ToActionResult();
+    }
 }

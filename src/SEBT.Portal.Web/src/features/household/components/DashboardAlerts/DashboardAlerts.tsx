@@ -5,23 +5,28 @@ import { usePathname, useRouter, useSearchParams } from 'next/navigation'
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
+import { useHouseholdData } from '@/features/household'
+
 /**
  * Displays success and warning alerts on the dashboard triggered by URL search params.
  * Captures alert state on first read, then cleans the params from the URL.
  * The alert persists because rendering is driven by captured state, not live params.
- * Extensible: add new param checks for future alert types (e.g., DC-153 card ordering).
+ * Card replacement success (flash=card_replaced) checks the household data cache
+ * for address presence to tailor the alert body, avoiding PII in URL params.
  */
 export function DashboardAlerts() {
   const { t } = useTranslation('dashboard')
   const searchParams = useSearchParams()
   const router = useRouter()
   const pathname = usePathname()
+  const { data: householdData } = useHouseholdData()
 
   // Capture alert state from URL params on first read so the alert
   // survives the URL cleanup that follows.
   const [alerts] = useState(() => ({
     addressUpdated: searchParams.get('addressUpdated') === 'true',
     cardsRequested: searchParams.get('cardsRequested') === 'true',
+    cardReplaced: searchParams.get('flash') === 'card_replaced',
     addressUpdateFailed: searchParams.get('addressUpdateFailed') === 'true',
     contactUpdateFailed: searchParams.get('contactUpdateFailed') === 'true',
     // TODO: Determine trigger logic — possibly driven by household data (e.g., address
@@ -32,6 +37,7 @@ export function DashboardAlerts() {
   const hasAlerts =
     alerts.addressUpdated ||
     alerts.cardsRequested ||
+    alerts.cardReplaced ||
     alerts.addressUpdateFailed ||
     alerts.contactUpdateFailed ||
     alerts.addressVerification
@@ -69,6 +75,23 @@ export function DashboardAlerts() {
             'alertCardsRequestedBody',
             'Your address update and card replacement request have been recorded. State system integration is pending — changes are not yet reflected in the benefits system.'
           )}
+        </Alert>
+      )}
+
+      {alerts.cardReplaced && (
+        <Alert
+          variant="success"
+          heading={t('alertCardReplacedHeading', 'Your replacement card request has been recorded')}
+        >
+          {householdData?.addressOnFile
+            ? t(
+                'alertCardReplacedBodyWithAddress',
+                'New cards usually arrive in your mailbox within 7-10 business days. Check back here in 1-2 business days to see your updated card details.'
+              )
+            : t(
+                'alertCardReplacedBody',
+                'New cards usually arrive in your mailbox within 7-10 business days.'
+              )}
         </Alert>
       )}
 

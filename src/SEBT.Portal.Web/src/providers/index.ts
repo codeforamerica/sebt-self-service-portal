@@ -1,6 +1,6 @@
 export { AuthProvider } from '@/features/auth'
+export { DataLayerProvider } from '@sebt/analytics'
 export { AxeProvider } from './AxeProvider'
-export { DataLayerProvider } from './DataLayerProvider'
 export { FeatureFlagsProvider } from './FeatureFlagsProvider'
 export { I18nProvider } from './I18nProvider'
 export { QueryProvider } from './QueryProvider'

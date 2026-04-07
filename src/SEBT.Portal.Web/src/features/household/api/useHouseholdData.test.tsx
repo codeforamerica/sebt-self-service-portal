@@ -18,7 +18,7 @@ import { useHouseholdData } from './useHouseholdData'
 
 const TEST_HOUSEHOLD_DATA = {
   email: 'test@example.com',
-  phone: '555-123-4567',
+  phone: '5551234567',
   benefitIssuanceType: 1,
   applications: [
     {
@@ -34,7 +34,7 @@ const TEST_HOUSEHOLD_DATA = {
       cardActivatedAt: '2026-01-15T00:00:00Z',
       cardDeactivatedAt: null,
       issuanceType: 1,
-      children: [{ caseNumber: 12345, firstName: 'Test', lastName: 'Child' }],
+      children: [{ firstName: 'Test', lastName: 'Child' }],
       childrenOnApplication: 1
     }
   ]

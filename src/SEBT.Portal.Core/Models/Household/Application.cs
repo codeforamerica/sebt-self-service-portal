@@ -23,6 +23,11 @@ public class Application
     public ApplicationStatus ApplicationStatus { get; set; } = ApplicationStatus.Unknown;
 
     /// <summary>
+    /// The date the application was submitted.
+    /// </summary>
+    public DateTime? ApplicationDate { get; set; }
+
+    /// <summary>
     /// The date when the benefit was issued for this application.
     /// </summary>
     public DateTime? BenefitIssueDate { get; set; }
