@@ -35,6 +35,7 @@ const nextConfig: NextConfig = {
    * `includePaths` is legacy-API-only and is ignored — without loadPaths, `@use "uswds-core"` fails under webpack. */
   sassOptions: {
     implementation: 'sass-embedded',
+    quietDeps: true,
     loadPaths: [
       path.join(designSystemPath, 'design/sass'),
       path.join(__dirname, 'node_modules/@uswds/uswds/packages'),
@@ -51,6 +52,7 @@ const nextConfig: NextConfig = {
             options: {
               implementation: 'sass-embedded',
               sassOptions: {
+                quietDeps: true,
                 loadPaths: [
                   path.join(designSystemPath, 'design/sass'),
                   path.join(__dirname, 'node_modules/@uswds/uswds/packages'),

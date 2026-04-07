@@ -161,6 +161,7 @@ describe('ChildCard', () => {
   it('hides optional fields when not provided', () => {
     const minimalApplication: Application = {
       ...mockApplication,
+      caseNumber: null,
       benefitIssueDate: null,
       benefitExpirationDate: null,
       last4DigitsOfCard: null,
@@ -230,6 +231,36 @@ describe('ChildCard', () => {
     await user.click(button)
     expect(button).toHaveAttribute('aria-expanded', 'true')
     expect(content).not.toHaveAttribute('hidden')
+  })
+
+  it('renders SEBT ID when caseNumber is provided', () => {
+    renderWithFlags({
+      child: mockChild,
+      application: mockApplication,
+      id: '0'
+    })
+
+    // i18n key: cardTableHeadingSebtId → "DC SUN Bucks ID" (DC) / "Summer EBT ID" (CO)
+    expect(screen.getByText('DC SUN Bucks ID')).toBeInTheDocument()
+    expect(screen.getByText('CASE-DC-2026-001')).toBeInTheDocument()
+  })
+
+  it('hides SEBT ID when show_case_number flag is off', () => {
+    renderWithFlags(
+      {
+        child: mockChild,
+        application: mockApplication,
+        id: '0'
+      },
+      {
+        flags: { ...TEST_FEATURE_FLAGS, show_case_number: false },
+        isLoading: false,
+        isError: false
+      }
+    )
+
+    expect(screen.queryByText('DC SUN Bucks ID')).not.toBeInTheDocument()
+    expect(screen.queryByText('CASE-DC-2026-001')).not.toBeInTheDocument()
   })
 
   it('hides card number when show_card_last4 flag is off', () => {

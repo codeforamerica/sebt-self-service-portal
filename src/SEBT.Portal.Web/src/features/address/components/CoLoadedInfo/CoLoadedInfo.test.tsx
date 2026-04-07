@@ -59,9 +59,9 @@ describe('CoLoadedInfo', () => {
     renderCoLoadedInfo()
 
     await waitFor(() => {
-      expect(screen.getByText('123 Main Street')).toBeInTheDocument()
-      expect(screen.getByText('Apt 4B')).toBeInTheDocument()
-      expect(screen.getByText(/Washington, DC 20001/)).toBeInTheDocument()
+      expect(screen.getByText('1350 Pennsylvania Ave NW')).toBeInTheDocument()
+      expect(screen.getByText('Suite 400')).toBeInTheDocument()
+      expect(screen.getByText(/Washington, DC 20004/)).toBeInTheDocument()
     })
   })
 
@@ -84,7 +84,7 @@ describe('CoLoadedInfo', () => {
       expect(screen.getByText(/\(888\) 304-9167/)).toBeInTheDocument()
     })
 
-    expect(screen.queryByText('123 Main Street')).not.toBeInTheDocument()
+    expect(screen.queryByText('1350 Pennsylvania Ave NW')).not.toBeInTheDocument()
   })
 
   it('renders keep-your-card message', async () => {

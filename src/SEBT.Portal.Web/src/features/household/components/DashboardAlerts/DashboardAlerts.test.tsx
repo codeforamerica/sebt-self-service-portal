@@ -3,6 +3,10 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { DashboardAlerts } from './DashboardAlerts'
 
+vi.mock('@/features/household', () => ({
+  useHouseholdData: () => ({ data: null, isLoading: false, isError: false })
+}))
+
 const mockReplace = vi.fn()
 let mockSearchParams = new URLSearchParams()
 
@@ -71,6 +75,14 @@ describe('DashboardAlerts', () => {
     // Alert should still be visible even though params are gone
     expect(screen.getByRole('alert')).toBeInTheDocument()
     expect(screen.getByText(/address update recorded/i)).toBeInTheDocument()
+  })
+
+  it('renders card replaced alert when flash=card_replaced param is present', () => {
+    mockSearchParams = new URLSearchParams('flash=card_replaced')
+    render(<DashboardAlerts />)
+
+    expect(screen.getByRole('alert')).toBeInTheDocument()
+    expect(screen.getByText(/replacement card request has been recorded/i)).toBeInTheDocument()
   })
 
   it('combined alert persists after URL params are cleaned', () => {

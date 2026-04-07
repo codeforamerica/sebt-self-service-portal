@@ -120,7 +120,7 @@ public static class HouseholdFactory
 
         if (status == ApplicationStatus.Approved)
         {
-            application.ApplicationNumber = $"APP-{faker.Date.Recent(365):yyyy-MM}-{faker.Random.Number(100000, 999999)}";
+            application.ApplicationNumber = $"APP-{faker.Random.Number(2024, 2026)}-{faker.Random.Number(1, 12):D2}-{faker.Random.Number(100000, 999999)}";
             application.CaseNumber = $"CASE-{faker.Random.Number(100000, 999999)}";
             application.BenefitIssueDate = faker.Date.Recent(120);
             application.BenefitExpirationDate = application.BenefitIssueDate.Value.AddDays(faker.Random.Int(30, 365));
@@ -135,7 +135,7 @@ public static class HouseholdFactory
         }
         else if (status == ApplicationStatus.Denied)
         {
-            application.ApplicationNumber = $"APP-{faker.Date.Recent(365):yyyy-MM}-{faker.Random.Number(100000, 999999)}";
+            application.ApplicationNumber = $"APP-{faker.Random.Number(2024, 2026)}-{faker.Random.Number(1, 12):D2}-{faker.Random.Number(100000, 999999)}";
             application.CaseNumber = $"CASE-{faker.Random.Number(100000, 999999)}";
             if (faker.Random.Bool(0.5f))
             {
@@ -164,7 +164,7 @@ public static class HouseholdFactory
         else
         {
             // For other statuses (Pending, UnderReview, Cancelled)
-            application.ApplicationNumber = $"APP-{faker.Date.Recent(365):yyyy-MM}-{faker.Random.Number(100000, 999999)}";
+            application.ApplicationNumber = $"APP-{faker.Random.Number(2024, 2026)}-{faker.Random.Number(1, 12):D2}-{faker.Random.Number(100000, 999999)}";
             if (faker.Random.Bool(0.5f))
             {
                 application.CardStatus = CardStatus.Requested;

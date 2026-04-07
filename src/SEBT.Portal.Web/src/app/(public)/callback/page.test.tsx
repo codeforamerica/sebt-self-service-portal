@@ -66,9 +66,13 @@ vi.mock('@/lib/translations', () => ({
 }))
 
 // Mock state
-vi.mock('@/lib/state', () => ({
-  getState: () => 'co'
-}))
+vi.mock('@sebt/design-system', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@sebt/design-system')>()
+  return {
+    ...actual,
+    getState: () => 'co'
+  }
+})
 
 // Mock PKCE storage
 const mockGetPkce = vi.fn()
