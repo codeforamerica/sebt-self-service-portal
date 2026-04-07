@@ -31,11 +31,13 @@
         <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
       </PackageReference>
       <PackageReference Include="Microsoft.EntityFrameworkCore.Tools" Version="10.0.0" />
-      <PackageReference Include="Microsoft.Extensions.Caching.Memory" Version="10.0.0" />
+      <PackageReference Include="Microsoft.Extensions.Caching.Hybrid" Version="10.4.0" />
+      <PackageReference Include="Microsoft.Extensions.Caching.Memory" Version="10.0.4" />
       <PackageReference Include="Bogus" Version="35.6.5" />
+      <PackageReference Include="Microsoft.Extensions.Caching.StackExchangeRedis" Version="10.0.5" />
       <PackageReference Include="Microsoft.Extensions.Http" Version="10.0.0" />
       <PackageReference Include="Microsoft.Extensions.Logging" Version="10.0.0" />
-      <PackageReference Include="Microsoft.Extensions.Options" Version="10.0.0" />
+      <PackageReference Include="Microsoft.Extensions.Options" Version="10.0.5" />
       <PackageReference Include="Microsoft.Extensions.Options.ConfigurationExtensions" Version="10.0.0" />
       <PackageReference Include="Microsoft.FeatureManagement" Version="3.3.0" />
       <PackageReference Include="System.IdentityModel.Tokens.Jwt" Version="8.2.1" />

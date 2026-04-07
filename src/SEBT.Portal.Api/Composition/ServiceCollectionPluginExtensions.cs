@@ -32,8 +32,6 @@ internal static class ServiceCollectionPluginExtensions
         services.TryAddSingleton<IEnrollmentCheckService, Defaults.DefaultEnrollmentCheckService>();
         services.TryAddSingleton<IAddressUpdateService, Defaults.DefaultAddressUpdateService>();
 
-        services.AddHybridCache();
-
         var healthChecksBuilder = services.AddHealthChecks();
 
         var pluginAssemblyPaths = configuration
