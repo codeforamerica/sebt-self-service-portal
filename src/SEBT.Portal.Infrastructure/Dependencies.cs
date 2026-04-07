@@ -60,6 +60,8 @@ public static class Dependencies
         services.AddTransient<IAddressValidationService, AddressValidationServiceAdapter>();
         services.AddSingleton<IIdentifierHasher, IdentifierHasher>();
 
+        services.AddCaching(configuration);
+
         // Expose SocureSettings directly for use case injection (avoids IOptions dependency in UseCases layer)
         services.AddSingleton(sp => sp.GetRequiredService<IOptions<SocureSettings>>().Value);
 
@@ -119,8 +121,6 @@ public static class Dependencies
         });
         services.AddSingleton<MockHouseholdRepository>();
         services.AddTransient<HouseholdRepository>();
-
-        services.AddCaching(configuration);
 
         return services;
     }
