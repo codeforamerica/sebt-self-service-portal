@@ -95,6 +95,7 @@ We follow a test-driven development (TDD) approach: write tests first to fail, t
 
 ## Security
 - NEVER commit secrets or API keys.
+- NEVER commit PII — this includes email addresses, even when embedded in file paths (e.g., `/Users/name@org/...`). Use relative paths or repo names in docs, plans, and specs.
 - Consider the OWASP Top Ten web application security risks
 - Apply CORS and rate-limiting where applicable; return safe error messages.
 - In React, avoid 'dangerouslySetInnerHtml'. If rendering HTML, sanitize it first.

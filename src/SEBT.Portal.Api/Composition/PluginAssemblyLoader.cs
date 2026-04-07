@@ -1,16 +1,22 @@
-using System.Composition.Convention;
-using System.Composition.Hosting;
 using System.Reflection;
 using System.Runtime.Loader;
 
 namespace SEBT.Portal.Api.Composition;
 
-internal static class ContainerConfigurationExtensions
+// Plugin Assembly Loader
+//
+// Loads plugin assemblies from disk into AssemblyLoadContext.Default.
+// This was originally part of the MEF (System.Composition) pipeline but MEF is
+// no longer used for composition — plugins are now instantiated by the DI container
+// via ActivatorUtilities. The [Export], [ExportMetadata], and [ImportingConstructor]
+// attributes on plugin classes are inert but harmless.
+//
+// TODO: Remove the System.Composition dependency entirely once this approach is stable.
+// The assembly loading logic here is standalone and does not depend on MEF.
+internal static class PluginAssemblyLoader
 {
-    public static ContainerConfiguration WithAssembliesInPath(
-        this ContainerConfiguration containerConfiguration,
+    public static List<Assembly> LoadAssembliesFromPaths(
         string[] paths,
-        AttributedModelProvider conventions,
         SearchOption searchOption = SearchOption.TopDirectoryOnly)
     {
         var baseDir = AppContext.BaseDirectory;
@@ -20,7 +26,7 @@ internal static class ContainerConfigurationExtensions
             .ToArray();
 
         if (existingPaths.Length == 0)
-            return containerConfiguration;
+            return [];
 
         // Resolve plugin dependencies (e.g. Kiota) from plugin paths so we can load into Default ALC.
         // Loading into Default ensures plugin types share the same interface types as the host (MEF can discover them).
@@ -59,10 +65,11 @@ internal static class ContainerConfigurationExtensions
                 hostAssemblySimpleNames.Add(simpleName);
         }
 
+        var allAssemblies = new List<Assembly>();
+
         foreach (var combinedPath in existingPaths)
         {
             var dllPaths = Directory.GetFiles(combinedPath, "*.dll", searchOption);
-            var assemblies = new List<Assembly>();
             foreach (var dllPath in dllPaths)
             {
                 var fullPath = Path.GetFullPath(dllPath);
@@ -75,7 +82,7 @@ internal static class ContainerConfigurationExtensions
                 {
                     var assembly = AssemblyLoadContext.Default.LoadFromAssemblyPath(fullPath);
                     loadedNames.Add(assembly.GetName().Name ?? name);
-                    assemblies.Add(assembly);
+                    allAssemblies.Add(assembly);
                 }
                 catch (Exception ex) when (ex is FileLoadException or BadImageFormatException)
                 {
@@ -84,10 +91,8 @@ internal static class ContainerConfigurationExtensions
                     throw;
                 }
             }
-            if (assemblies.Count > 0)
-                containerConfiguration.WithAssemblies(assemblies, conventions);
         }
 
-        return containerConfiguration;
+        return allAssemblies;
     }
 }
