@@ -474,6 +474,19 @@ describe('DataLayer', () => {
 
       expect(window.digitalData!.eventTypes.PAGE_VIEWED).toBe('digitalData:PageViewed')
     })
+
+    it('excludes page fields whose scope does not grant analytics access', () => {
+      new DataLayer('digitalData')
+      window.digitalData!.page.set('name', 'Home')
+      // Set a field with a non-analytics scope — must NOT leak into the page_load event
+      window.digitalData!.page.set('secret', 'hidden', 'internal')
+
+      window.digitalData!.pageLoad()
+
+      const event = window.digitalData!.event[0]!
+      expect(event.eventData).toEqual(expect.objectContaining({ name: 'Home' }))
+      expect(event.eventData).not.toHaveProperty('secret')
+    })
   })
 
   // ── Scope inheritance ──

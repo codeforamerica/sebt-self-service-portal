@@ -251,12 +251,13 @@ export class DataLayer {
   // ── Page load tracking ──
 
   private _pageLoad(data?: Record<string, unknown>): void {
-    // Collect current page context (skip functions and structural sub-objects)
+    // Collect analytics-scoped fields only — pageLoad emits an analytics event
     const page = this._data.page as Record<string, unknown>
     const pageContext: Record<string, unknown> = {}
     for (const key of Object.keys(page)) {
       const value = page[key]
       if (typeof value === 'function' || (typeof value === 'object' && value !== null)) continue
+      if (!this._hasAccess(`page.${key}`, 'analytics')) continue
       pageContext[key] = value
     }
 
