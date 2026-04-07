@@ -12,9 +12,9 @@ public class IdProofingRequirementsServiceTests
 {
     private static IdProofingRequirementsService CreateService(IdProofingRequirementsSettings settings)
     {
-        var monitor = Substitute.For<IOptionsMonitor<IdProofingRequirementsSettings>>();
-        monitor.CurrentValue.Returns(settings);
-        return new(monitor, NullLogger<IdProofingRequirementsService>.Instance);
+        var snapshot = Substitute.For<IOptionsSnapshot<IdProofingRequirementsSettings>>();
+        snapshot.Value.Returns(settings);
+        return new(snapshot, NullLogger<IdProofingRequirementsService>.Instance);
     }
 
     [Fact]

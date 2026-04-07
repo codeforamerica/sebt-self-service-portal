@@ -27,7 +27,7 @@ public static class Dependencies
         services.AddTransient<IJwtTokenService, JwtTokenService>();
 
         // ID Proofing Requirements (state-specific PII visibility)
-        services.AddSingleton<IIdProofingRequirementsService, IdProofingRequirementsService>();
+        services.AddScoped<IIdProofingRequirementsService, IdProofingRequirementsService>();
 
         // Enrollment Check logging
         services.AddScoped<IEnrollmentCheckSubmissionLogger, EnrollmentCheckSubmissionLogger>();
