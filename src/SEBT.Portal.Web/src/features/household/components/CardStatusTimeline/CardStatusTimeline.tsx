@@ -3,8 +3,7 @@
 import Image from 'next/image'
 import { useTranslation } from 'react-i18next'
 
-import type { Application, CardStatus } from '../../api'
-import { formatDate } from '../../api'
+import { interpolateDate, type Application, type CardStatus } from '../../api'
 
 interface CardStatusTimelineProps {
   application: Application
@@ -62,9 +61,7 @@ export function CardStatusTimeline({ application }: CardStatusTimelineProps) {
 
   const rawLabel = statusLabels[cardStatus] ?? cardStatus
   const date = statusDates[cardStatus]
-  const label = date
-    ? rawLabel.replace('[MM/DD/YYYY]', formatDate(date, i18n.language))
-    : rawLabel.replace(' on [MM/DD/YYYY]', '')
+  const label = interpolateDate(rawLabel, date ?? null, i18n.language)
 
   return (
     <div className="margin-top-2">
