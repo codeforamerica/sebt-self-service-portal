@@ -125,7 +125,94 @@ public class RequestCardReplacementCommandHandlerTests
         Assert.IsType<PreconditionFailedResult>(result);
     }
 
-    // --- Case validation tests ---
+    // --- Cooldown tests ---
+
+    [Fact]
+    public async Task Handle_ReturnsValidationFailed_WhenCaseIsWithinCooldownPeriod()
+    {
+        var handler = CreateHandler();
+        var command = CreateValidCommand();
+        SetupResolverSuccess();
+        SetupRepositoryReturns(CreateHouseholdWithCases(
+            new SummerEbtCase
+            {
+                SummerEBTCaseID = "SEBT-001",
+                ChildFirstName = "John",
+                ChildLastName = "Doe",
+                CardRequestedAt = DateTime.UtcNow.AddDays(-3)
+            }
+        ));
+
+        var result = await handler.Handle(command, CancellationToken.None);
+
+        Assert.False(result.IsSuccess);
+        Assert.IsType<ValidationFailedResult>(result);
+    }
+
+    [Fact]
+    public async Task Handle_ReturnsValidationFailed_WhenRecentlyMailedCardIsStillWithinCooldown()
+    {
+        var handler = CreateHandler();
+        var command = CreateValidCommand();
+        SetupResolverSuccess();
+        SetupRepositoryReturns(CreateHouseholdWithCases(
+            new SummerEbtCase
+            {
+                SummerEBTCaseID = "SEBT-001",
+                ChildFirstName = "John",
+                ChildLastName = "Doe",
+                CardRequestedAt = DateTime.UtcNow.AddDays(-10)
+            }
+        ));
+
+        var result = await handler.Handle(command, CancellationToken.None);
+
+        Assert.False(result.IsSuccess);
+        Assert.IsType<ValidationFailedResult>(result);
+    }
+
+    [Fact]
+    public async Task Handle_ReturnsSuccess_WhenCaseIsOutsideCooldownPeriod()
+    {
+        var handler = CreateHandler();
+        var command = CreateValidCommand();
+        SetupResolverSuccess();
+        SetupRepositoryReturns(CreateHouseholdWithCases(
+            new SummerEbtCase
+            {
+                SummerEBTCaseID = "SEBT-001",
+                ChildFirstName = "John",
+                ChildLastName = "Doe",
+                CardRequestedAt = DateTime.UtcNow.AddDays(-30)
+            }
+        ));
+
+        var result = await handler.Handle(command, CancellationToken.None);
+
+        Assert.True(result.IsSuccess);
+        Assert.IsType<SuccessResult>(result);
+    }
+
+    [Fact]
+    public async Task Handle_ReturnsSuccess_WhenCardRequestedAtIsNull()
+    {
+        var handler = CreateHandler();
+        var command = CreateValidCommand();
+        SetupResolverSuccess();
+        SetupRepositoryReturns(CreateHouseholdWithCases(
+            new SummerEbtCase
+            {
+                SummerEBTCaseID = "SEBT-001",
+                ChildFirstName = "John",
+                ChildLastName = "Doe",
+                CardRequestedAt = null
+            }
+        ));
+
+        var result = await handler.Handle(command, CancellationToken.None);
+
+        Assert.True(result.IsSuccess);
+    }
 
     [Fact]
     public async Task Handle_ReturnsValidationFailed_WhenCaseIdNotInHousehold()
@@ -138,7 +225,8 @@ public class RequestCardReplacementCommandHandlerTests
             {
                 SummerEBTCaseID = "SEBT-001",
                 ChildFirstName = "John",
-                ChildLastName = "Doe"
+                ChildLastName = "Doe",
+                CardRequestedAt = DateTime.UtcNow.AddDays(-30)
             }
         ));
 
@@ -151,28 +239,7 @@ public class RequestCardReplacementCommandHandlerTests
     // --- Success tests ---
 
     [Fact]
-    public async Task Handle_ReturnsSuccess_WhenValidCommandWithMatchingCase()
-    {
-        var handler = CreateHandler();
-        var command = CreateValidCommand();
-        SetupResolverSuccess();
-        SetupRepositoryReturns(CreateHouseholdWithCases(
-            new SummerEbtCase
-            {
-                SummerEBTCaseID = "SEBT-001",
-                ChildFirstName = "John",
-                ChildLastName = "Doe"
-            }
-        ));
-
-        var result = await handler.Handle(command, CancellationToken.None);
-
-        Assert.True(result.IsSuccess);
-        Assert.IsType<SuccessResult>(result);
-    }
-
-    [Fact]
-    public async Task Handle_ReturnsSuccess_WhenMultipleCasesMatch()
+    public async Task Handle_ReturnsSuccess_WhenValidCommandAndNoActiveCooldown()
     {
         var handler = CreateHandler();
         var command = CreateValidCommand(caseIds: new List<string> { "SEBT-001", "SEBT-002" });
@@ -182,13 +249,15 @@ public class RequestCardReplacementCommandHandlerTests
             {
                 SummerEBTCaseID = "SEBT-001",
                 ChildFirstName = "John",
-                ChildLastName = "Doe"
+                ChildLastName = "Doe",
+                CardRequestedAt = DateTime.UtcNow.AddDays(-30)
             },
             new SummerEbtCase
             {
                 SummerEBTCaseID = "SEBT-002",
                 ChildFirstName = "Jane",
-                ChildLastName = "Doe"
+                ChildLastName = "Doe",
+                CardRequestedAt = DateTime.UtcNow.AddDays(-20)
             }
         ));
 
@@ -216,7 +285,8 @@ public class RequestCardReplacementCommandHandlerTests
             {
                 SummerEBTCaseID = "SEBT-001",
                 ChildFirstName = "John",
-                ChildLastName = "Doe"
+                ChildLastName = "Doe",
+                CardRequestedAt = DateTime.UtcNow.AddDays(-30)
             }
         ));
 
@@ -239,7 +309,8 @@ public class RequestCardReplacementCommandHandlerTests
             {
                 SummerEBTCaseID = "SEBT-001",
                 ChildFirstName = "John",
-                ChildLastName = "Doe"
+                ChildLastName = "Doe",
+                CardRequestedAt = DateTime.UtcNow.AddDays(-30)
             }
         ));
 
@@ -263,7 +334,8 @@ public class RequestCardReplacementCommandHandlerTests
             {
                 SummerEBTCaseID = "SEBT-001",
                 ChildFirstName = "John",
-                ChildLastName = "Doe"
+                ChildLastName = "Doe",
+                CardRequestedAt = DateTime.UtcNow.AddDays(-30)
             }
         ));
 
@@ -274,5 +346,53 @@ public class RequestCardReplacementCommandHandlerTests
             Arg.Any<PiiVisibility>(),
             UserIalLevel.None,
             Arg.Any<CancellationToken>());
+    }
+
+    // --- Cooldown boundary tests (using FakeTimeProvider) ---
+
+    [Fact]
+    public async Task Handle_ReturnsValidationFailed_WhenCardRequestedExactly13DaysAgo()
+    {
+        var fakeTime = new FakeTimeProvider(new DateTimeOffset(2026, 6, 15, 12, 0, 0, TimeSpan.Zero));
+        var handler = CreateHandler(fakeTime);
+        var command = CreateValidCommand();
+        SetupResolverSuccess();
+        SetupRepositoryReturns(CreateHouseholdWithCases(
+            new SummerEbtCase
+            {
+                SummerEBTCaseID = "SEBT-001",
+                ChildFirstName = "John",
+                ChildLastName = "Doe",
+                CardRequestedAt = new DateTime(2026, 6, 2, 12, 0, 0, DateTimeKind.Utc)
+            }
+        ));
+
+        var result = await handler.Handle(command, CancellationToken.None);
+
+        Assert.False(result.IsSuccess);
+        Assert.IsType<ValidationFailedResult>(result);
+    }
+
+    [Fact]
+    public async Task Handle_ReturnsSuccess_WhenCardRequestedExactly14DaysAgo()
+    {
+        var fakeTime = new FakeTimeProvider(new DateTimeOffset(2026, 6, 15, 12, 0, 0, TimeSpan.Zero));
+        var handler = CreateHandler(fakeTime);
+        var command = CreateValidCommand();
+        SetupResolverSuccess();
+        SetupRepositoryReturns(CreateHouseholdWithCases(
+            new SummerEbtCase
+            {
+                SummerEBTCaseID = "SEBT-001",
+                ChildFirstName = "John",
+                ChildLastName = "Doe",
+                CardRequestedAt = new DateTime(2026, 6, 1, 12, 0, 0, DateTimeKind.Utc)
+            }
+        ));
+
+        var result = await handler.Handle(command, CancellationToken.None);
+
+        Assert.True(result.IsSuccess);
+        Assert.IsType<SuccessResult>(result);
     }
 }

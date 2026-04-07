@@ -102,9 +102,16 @@ public class RequestCardReplacementCommandHandler(
                 continue;
             }
 
-            // TODO: SummerEbtCase does not yet have a CardRequestedAt property.
-            // Once the backend model is updated with card lifecycle timestamps,
-            // add cooldown enforcement here similar to the previous Application-based check.
+            if (summerEbtCase.CardRequestedAt == null)
+                continue;
+
+            var elapsed = now - summerEbtCase.CardRequestedAt.Value;
+            if (elapsed < CooldownPeriod)
+            {
+                errors.Add(new ValidationError(
+                    "CaseIds",
+                    $"Case {caseId} was requested within the last 14 days."));
+            }
         }
 
         return errors;
