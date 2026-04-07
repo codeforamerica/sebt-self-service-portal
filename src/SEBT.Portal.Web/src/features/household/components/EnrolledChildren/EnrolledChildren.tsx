@@ -54,6 +54,9 @@ export function EnrolledChildren() {
               }}
               application={{
                 ...c,
+                applicationNumber: c.applicationId,
+                caseNumber: c.ebtCaseNumber,
+                last4DigitsOfCard: c.ebtCardLastFour,
                 applicationStatus: 'Approved' as ApplicationStatus,
                 benefitIssueDate: c.benefitAvailableDate,
                 children: [{ firstName: c.childFirstName, lastName: c.childLastName }],

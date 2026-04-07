@@ -1,11 +1,9 @@
 'use client'
 
 import Image from 'next/image'
-import Link from 'next/link'
 import { useTranslation } from 'react-i18next'
 
-import type { Application, CardStatus } from '../../api'
-import { formatDate } from '../../api'
+import { interpolateDate, type Application, type CardStatus } from '../../api'
 
 interface CardStatusTimelineProps {
   application: Application
@@ -63,9 +61,7 @@ export function CardStatusTimeline({ application }: CardStatusTimelineProps) {
 
   const rawLabel = statusLabels[cardStatus] ?? cardStatus
   const date = statusDates[cardStatus]
-  const label = date
-    ? rawLabel.replace('[MM/DD/YYYY]', formatDate(date, i18n.language))
-    : rawLabel.replace(' on [MM/DD/YYYY]', '')
+  const label = interpolateDate(rawLabel, date ?? null, i18n.language)
 
   return (
     <div className="margin-top-2">
@@ -102,14 +98,7 @@ export function CardStatusTimeline({ application }: CardStatusTimelineProps) {
               "After the new card is mailed, it should arrive in around 5–7 days. If it doesn't arrive after two weeks, you can request a replacement card."}
           </p>
         )}
-        {(cardStatus === 'Requested' || cardStatus === 'Processed') && (
-          <Link
-            href="/cards/request"
-            className="usa-link text-bold font-sans-md display-inline-block margin-top-1"
-          >
-            {t('cardTableActionRequestReplacement')}
-          </Link>
-        )}
+        {/* Replacement link is rendered by ChildCard, not here */}
         {/* TODO: Active and Deactivated status message fallbacks are placeholders —
             replace with real DC copy once content team updates the Google Sheet. */}
         {cardStatus === 'Active' && (

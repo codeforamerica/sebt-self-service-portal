@@ -230,3 +230,17 @@ export function formatDate(isoDate: string, locale: string): string {
     timeZone: 'UTC'
   }).format(new Date(isoDate))
 }
+
+// Matches date placeholders in locale strings: [MM/DD/YYYY] (English) or [DD/MM/YYYY] (Spanish)
+const DATE_PLACEHOLDER = /\[(?:MM\/DD\/YYYY|DD\/MM\/YYYY)\]/
+
+// "Requested on [MM/DD/YYYY]" → "Requested on 01/15/2026" or "Requested"
+// "Solicitada el [DD/MM/YYYY]" → "Solicitada el 15/01/2026" or "Solicitada"
+export function interpolateDate(template: string, isoDate: string | null, locale: string): string {
+  if (isoDate) {
+    return template.replace(DATE_PLACEHOLDER, formatDate(isoDate, locale))
+  }
+  // Strip optional preceding connector word (" on", " el") along with the placeholder
+  // eslint-disable-next-line security/detect-non-literal-regexp
+  return template.replace(new RegExp(`(?:\\s+\\S+)?\\s*${DATE_PLACEHOLDER.source}`), '').trim()
+}

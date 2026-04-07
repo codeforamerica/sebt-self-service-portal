@@ -11,9 +11,70 @@ on:
 
 jobs:
   e2e:
-    name: E2E Tests
+    name: Playwright E2E Tests (${{ matrix.state }})
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    strategy:
+      matrix:
+        state: [dc, co]
+      fail-fast: false
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: "10"
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+          cache: "pnpm"
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile --prefer-offline
+
+      - name: Install Playwright browsers
+        run: cd src/SEBT.Portal.Web && pnpm exec playwright install --with-deps chromium
+
+      - name: Build frontend for E2E
+        env:
+          STATE: ${{ matrix.state }}
+          NEXT_PUBLIC_STATE: ${{ matrix.state }}
+        run: ./.github/workflows/scripts/build-frontend.sh --production
+
+      - name: Run Playwright E2E tests
+        env:
+          CI: true
+          SKIP_WEB_SERVER: "1"
+          STATE: ${{ matrix.state }}
+          NEXT_PUBLIC_STATE: ${{ matrix.state }}
+        run: |
+          (cd src/SEBT.Portal.Web && pnpm start) &
+          echo "Waiting for server at http://localhost:3000..."
+          for i in $(seq 1 90); do
+            curl -sf --max-time 15 http://localhost:3000 > /dev/null && echo "Server ready" && break
+            sleep 2
+          done
+          curl -sf --max-time 15 http://localhost:3000 > /dev/null || (echo "Server failed to start" && exit 1)
+          echo "Running Playwright E2E tests..."
+          pnpm ci:test:e2e
+
+      - name: Upload Playwright report
+        uses: actions/upload-artifact@v4
+        if: ${{ always() }}
+        with:
+          name: playwright-report-${{ matrix.state }}
+          path: src/SEBT.Portal.Web/playwright-report/
+          retention-days: 7
+
+  a11y:
+    name: Pa11y Accessibility Tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
 
     services:
       mssql:
@@ -75,26 +136,22 @@ jobs:
       - name: Build backend
         run: ./.github/workflows/scripts/build-backend.sh --configuration Release
 
-      - name: Install Playwright browsers
-        run: cd src/SEBT.Portal.Web && pnpm exec playwright install --with-deps chromium
-
       - name: Install Chrome for Pa11y
         run: cd src/SEBT.Portal.Web && pnpm exec puppeteer browsers install chrome
 
-      - name: Build frontend for E2E
+      - name: Build frontend for Pa11y
         env:
           STATE: dc
           NEXT_PUBLIC_STATE: dc
         run: ./.github/workflows/scripts/build-frontend.sh --production
 
-      - name: Run Pa11y and Playwright E2E tests
+      - name: Run Pa11y accessibility tests
         env:
           CI: true
           SKIP_WEB_SERVER: "1"
           STATE: dc
           NEXT_PUBLIC_STATE: dc
           ASPNETCORE_ENVIRONMENT: Development
-          # Required at startup (AddPlugins); paths may be absent — MEF skips missing dirs and defaults apply.
           ConnectionStrings__DefaultConnection: "Server=localhost,1433;Database=SebtPortal;User Id=sa;Password=YourStrong@Passw0rd;TrustServerCertificate=True;"
           JwtSettings__SecretKey: "ci-e2e-jwt-secret-at-least-32-characters-long"
           IdentifierHasher__SecretKey: "ci-e2e-identifier-hasher-key-32chars"
@@ -102,8 +159,7 @@ jobs:
           PluginAssemblyPaths__0: "plugins-dc"
           UseMockHouseholdData: "true"
         run: |
-          # Start API in dev mode + frontend from production build
-          pnpm api:dev &
+          ASPNETCORE_ENVIRONMENT=Development dotnet run --project src/SEBT.Portal.Api --launch-profile http --configuration Release --no-build &
           (cd src/SEBT.Portal.Web && pnpm start) &
           echo "Waiting for server at http://localhost:3000..."
           for i in $(seq 1 90); do
@@ -113,13 +169,3 @@ jobs:
           curl -sf --max-time 15 http://localhost:3000 > /dev/null || (echo "Server failed to start" && exit 1)
           echo "Running Pa11y accessibility tests..."
           pnpm ci:test:a11y
-          echo "Running Playwright E2E tests..."
-          pnpm ci:test:e2e
-
-      - name: Upload Playwright report
-        uses: actions/upload-artifact@v4
-        if: ${{ !cancelled() }}
-        with:
-          name: playwright-report
-          path: src/SEBT.Portal.Web/playwright-report/
-          retention-days: 7

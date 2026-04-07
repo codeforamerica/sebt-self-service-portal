@@ -36,11 +36,11 @@ const defaultMockData: HouseholdData = {
   summerEbtCases: [mockCase],
   applications: [mockApplication],
   addressOnFile: {
-    streetAddress1: '123 Main Street',
-    streetAddress2: 'Apt 4B',
+    streetAddress1: '1350 Pennsylvania Ave NW',
+    streetAddress2: 'Suite 400',
     city: 'Washington',
     state: 'DC',
-    postalCode: '20001'
+    postalCode: '20004'
   }
 }
 
@@ -118,7 +118,7 @@ describe('HouseholdSummary', () => {
   it('renders mailing address when provided', () => {
     render(<HouseholdSummary />)
     expect(screen.getByText('Your mailing address')).toBeInTheDocument()
-    expect(screen.getByText(/123 Main Street/)).toBeInTheDocument()
+    expect(screen.getByText(/1350 Pennsylvania Ave NW/)).toBeInTheDocument()
   })
 
   it('renders change mailing address link', () => {
@@ -131,6 +131,7 @@ describe('HouseholdSummary', () => {
     mockReturnData = { ...defaultMockData, addressOnFile: null }
     render(<HouseholdSummary />)
     expect(screen.queryByText('Your mailing address')).not.toBeInTheDocument()
+    expect(screen.queryByText(/1350 Pennsylvania Ave NW/)).not.toBeInTheDocument()
   })
 
   it('renders preferred contact with email', () => {

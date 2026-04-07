@@ -127,4 +127,30 @@ describe('PageTracker (via DataLayerProvider)', () => {
 
     expect(countAfterRerender).toBe(countAfterMount)
   })
+
+  it('clears stale flow and step when navigating to an unmatched route', () => {
+    new DataLayer('digitalData')
+
+    const { rerender } = render(
+      <DataLayerProvider application="test" routes={routes}>
+        <div />
+      </DataLayerProvider>
+    )
+
+    expect(window.digitalData!.get('page.flow')).toBe('dashboard')
+    expect(window.digitalData!.get('page.step')).toBe('dashboard')
+
+    // Navigate to an unmatched route
+    mockPathname = '/unknown'
+    act(() => {
+      rerender(
+        <DataLayerProvider application="test" routes={routes}>
+          <div />
+        </DataLayerProvider>
+      )
+    })
+
+    expect(window.digitalData!.get('page.flow')).toBe('')
+    expect(window.digitalData!.get('page.step')).toBe('')
+  })
 })

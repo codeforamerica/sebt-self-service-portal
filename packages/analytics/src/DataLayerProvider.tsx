@@ -84,7 +84,9 @@ function PageTracker({ routes }: { routes: RoutePageContextMap | undefined }) {
       dl.page.set('language', lang)
       dl.page.set('locale', `${lang}_US`)
 
-      // Set route-specific context or fall back to document.title
+      // Set route-specific context or fall back to document.title.
+      // Always clear flow/step in the fallback so stale values from a prior
+      // matched route don't bleed into the next page_load event.
       const ctx = routesRef.current?.[pathname]
       if (ctx) {
         dl.page.set('name', ctx.name)
@@ -92,6 +94,8 @@ function PageTracker({ routes }: { routes: RoutePageContextMap | undefined }) {
         dl.page.set('step', ctx.step)
       } else {
         dl.page.set('name', document.title)
+        dl.page.set('flow', '')
+        dl.page.set('step', '')
       }
 
       dl.pageLoad()

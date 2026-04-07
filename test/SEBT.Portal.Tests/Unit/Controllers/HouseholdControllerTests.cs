@@ -13,6 +13,7 @@ using SEBT.Portal.Core.Repositories;
 using SEBT.Portal.Core.Services;
 using SEBT.Portal.Core.Utilities;
 using SEBT.Portal.Kernel;
+using SEBT.Portal.Kernel.Results;
 using SEBT.Portal.UseCases.Household;
 
 namespace SEBT.Portal.Tests.Unit.Controllers;
@@ -450,6 +451,75 @@ public class HouseholdControllerTests
         // Assert
         Assert.NotNull(result);
         await repositoryMock.Received(1).GetHouseholdByIdentifierAsync(Arg.Is<HouseholdIdentifier>(id => id.Type == PreferredHouseholdIdType.Email && id.Value == EmailNormalizer.Normalize(email)), Arg.Any<PiiVisibility>(), Arg.Any<UserIalLevel>(), Arg.Any<CancellationToken>());
+    }
+
+    // --- RequestCardReplacement tests ---
+
+    [Fact]
+    public async Task RequestCardReplacement_ReturnsNoContent_WhenHandlerSucceeds()
+    {
+        // Arrange
+        SetupAuthenticatedUser("user@example.com", ial: "1plus");
+        var request = new RequestCardReplacementRequest
+        {
+            ApplicationNumbers = new List<string> { "APP-001" }
+        };
+
+        var commandHandler = Substitute.For<ICommandHandler<RequestCardReplacementCommand>>();
+        commandHandler.Handle(Arg.Any<RequestCardReplacementCommand>(), Arg.Any<CancellationToken>())
+            .Returns(Result.Success());
+
+        // Act
+        var result = await _controller.RequestCardReplacement(request, commandHandler);
+
+        // Assert
+        Assert.IsType<NoContentResult>(result);
+    }
+
+    [Fact]
+    public async Task RequestCardReplacement_ReturnsBadRequest_WhenValidationFails()
+    {
+        // Arrange
+        SetupAuthenticatedUser("user@example.com", ial: "1plus");
+        var request = new RequestCardReplacementRequest
+        {
+            ApplicationNumbers = new List<string> { "APP-001" }
+        };
+
+        var commandHandler = Substitute.For<ICommandHandler<RequestCardReplacementCommand>>();
+        commandHandler.Handle(Arg.Any<RequestCardReplacementCommand>(), Arg.Any<CancellationToken>())
+            .Returns(Result.ValidationFailed("ApplicationNumbers", "Application was requested within the last 14 days."));
+
+        // Act
+        var result = await _controller.RequestCardReplacement(request, commandHandler);
+
+        // Assert
+        var objectResult = Assert.IsType<ObjectResult>(result);
+        Assert.Equal(400, objectResult.StatusCode);
+    }
+
+    [Fact]
+    public async Task RequestCardReplacement_MapsRequestToCommand()
+    {
+        // Arrange
+        SetupAuthenticatedUser("user@example.com", ial: "1plus");
+        var request = new RequestCardReplacementRequest
+        {
+            ApplicationNumbers = new List<string> { "APP-001", "APP-002" }
+        };
+
+        RequestCardReplacementCommand? capturedCommand = null;
+        var commandHandler = Substitute.For<ICommandHandler<RequestCardReplacementCommand>>();
+        commandHandler.Handle(Arg.Do<RequestCardReplacementCommand>(cmd => capturedCommand = cmd), Arg.Any<CancellationToken>())
+            .Returns(Result.Success());
+
+        // Act
+        await _controller.RequestCardReplacement(request, commandHandler);
+
+        // Assert
+        Assert.NotNull(capturedCommand);
+        Assert.Equal(new List<string> { "APP-001", "APP-002" }, capturedCommand.ApplicationNumbers);
+        Assert.NotNull(capturedCommand.User);
     }
 
     [Fact]

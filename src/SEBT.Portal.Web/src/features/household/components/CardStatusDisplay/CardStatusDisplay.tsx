@@ -1,10 +1,9 @@
 'use client'
 
-import Link from 'next/link'
 import { useTranslation } from 'react-i18next'
 
 import type { Application, CardStatus, UiCardStatus } from '../../api'
-import { isReplacementEligible, toUiCardStatus } from '../../api'
+import { toUiCardStatus } from '../../api'
 
 interface CardStatusDisplayProps {
   application: Application
@@ -69,14 +68,7 @@ export function CardStatusDisplay({ application }: CardStatusDisplayProps) {
             {statusDescription}
           </p>
 
-          {isReplacementEligible(cardStatus) && (
-            <Link
-              href="/cards/request"
-              className="usa-link display-inline-block margin-top-1 font-body-xs"
-            >
-              {t('cardTableActionRequestReplacement')}
-            </Link>
-          )}
+          {/* Replacement link is rendered by ChildCard, not here */}
         </div>
       </dd>
     </div>
