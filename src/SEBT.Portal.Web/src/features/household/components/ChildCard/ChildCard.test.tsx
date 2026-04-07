@@ -279,4 +279,28 @@ describe('ChildCard', () => {
 
     expect(screen.queryByText(/1234/)).not.toBeInTheDocument()
   })
+
+  it('exposes data-analytics-cta on the replacement card link for cta_click tracking', () => {
+    // Use an old cardRequestedAt to be outside the cooldown window so the link renders
+    const eligibleApplication: Application = {
+      ...mockApplication,
+      cardStatus: 'Active',
+      cardRequestedAt: '2020-01-01T00:00:00Z'
+    }
+
+    renderWithFlags(
+      { child: mockChild, application: eligibleApplication, id: '0' },
+      {
+        flags: { ...TEST_FEATURE_FLAGS, enable_card_replacement: true },
+        isLoading: false,
+        isError: false
+      }
+    )
+
+    const replacementLink = screen.getByText('Request a replacement card')
+    expect(replacementLink.closest('a')).toHaveAttribute(
+      'data-analytics-cta',
+      'replacement_card_cta'
+    )
+  })
 })

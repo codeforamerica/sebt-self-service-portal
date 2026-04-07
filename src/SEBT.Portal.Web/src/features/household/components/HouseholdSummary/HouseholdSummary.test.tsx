@@ -127,6 +127,12 @@ describe('HouseholdSummary', () => {
     expect(link).toHaveAttribute('href', '/profile/address')
   })
 
+  it('exposes data-analytics-cta on the change mailing address link', () => {
+    render(<HouseholdSummary />)
+    const link = screen.getByRole('link', { name: 'Change my mailing address' })
+    expect(link).toHaveAttribute('data-analytics-cta', 'update_address_cta')
+  })
+
   it('hides mailing address when not provided', () => {
     mockReturnData = { ...defaultMockData, addressOnFile: null }
     render(<HouseholdSummary />)

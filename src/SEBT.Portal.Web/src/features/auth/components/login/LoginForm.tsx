@@ -89,6 +89,7 @@ export function LoginForm() {
         isLoading={requestOtp.isPending}
         loadingText={`${t('continue')}...`}
         className="margin-top-3"
+        data-analytics-cta="login_cta"
       >
         {t('continue')}
       </Button>
