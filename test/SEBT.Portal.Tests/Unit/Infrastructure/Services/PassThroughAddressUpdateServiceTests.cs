@@ -11,9 +11,9 @@ public class PassThroughAddressUpdateServiceTests
 {
     private static PassThroughAddressUpdateService CreateService(AddressValidationPolicySettings policy)
     {
-        var monitor = Substitute.For<IOptionsMonitor<AddressValidationPolicySettings>>();
-        monitor.CurrentValue.Returns(policy);
-        return new PassThroughAddressUpdateService(monitor);
+        var snapshot = Substitute.For<IOptionsSnapshot<AddressValidationPolicySettings>>();
+        snapshot.Value.Returns(policy);
+        return new PassThroughAddressUpdateService(snapshot);
     }
 
     [Fact]

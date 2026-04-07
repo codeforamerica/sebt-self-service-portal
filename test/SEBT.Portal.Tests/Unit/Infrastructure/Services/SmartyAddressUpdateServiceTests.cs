@@ -41,15 +41,15 @@ public class SmartyAddressUpdateServiceTests
         var factory = Substitute.For<IHttpClientFactory>();
         factory.CreateClient("Smarty").Returns(httpClient);
 
-        var smartyMonitor = Substitute.For<IOptionsMonitor<SmartySettings>>();
-        smartyMonitor.CurrentValue.Returns(SmartySettings);
-        var policyMonitor = Substitute.For<IOptionsMonitor<AddressValidationPolicySettings>>();
-        policyMonitor.CurrentValue.Returns(policy ?? AllowGeneralDelivery);
+        var smartySnapshot = Substitute.For<IOptionsSnapshot<SmartySettings>>();
+        smartySnapshot.Value.Returns(SmartySettings);
+        var policySnapshot = Substitute.For<IOptionsSnapshot<AddressValidationPolicySettings>>();
+        policySnapshot.Value.Returns(policy ?? AllowGeneralDelivery);
 
         return new SmartyAddressUpdateService(
             factory,
-            smartyMonitor,
-            policyMonitor,
+            smartySnapshot,
+            policySnapshot,
             NullLogger<SmartyAddressUpdateService>.Instance);
     }
 

@@ -39,10 +39,10 @@ public class HttpSocureClientSmokeTests(ITestOutputHelper output)
         var factory = new SingleClientFactory(httpClient);
         var logger = new TestOutputLogger<HttpSocureClient>(output);
 
-        var monitor = Substitute.For<IOptionsMonitor<SocureSettings>>();
-        monitor.CurrentValue.Returns(settings);
+        var snapshot = Substitute.For<IOptionsSnapshot<SocureSettings>>();
+        snapshot.Value.Returns(settings);
 
-        return new HttpSocureClient(factory, monitor, logger);
+        return new HttpSocureClient(factory, snapshot, logger);
     }
 
     [Fact]
