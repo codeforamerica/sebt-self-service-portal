@@ -30,10 +30,10 @@ public class MockHouseholdRepositoryTests
         _repository = new MockHouseholdRepository(logger, timeProvider: _timeProvider);
     }
 
-    private static MockHouseholdRepository CreateRepository(string emailPattern)
+    private static MockHouseholdRepository CreateRepository(string emailPattern, string? state = null)
     {
         var logger = NullLogger<MockHouseholdRepository>.Instance;
-        var settings = Options.Create(new SeedingSettings { EmailPattern = emailPattern });
+        var settings = Options.Create(new SeedingSettings { EmailPattern = emailPattern, State = state });
         return new MockHouseholdRepository(logger, settings, new FakeTimeProvider(FixedSeedTime));
     }
 
@@ -201,7 +201,7 @@ public class MockHouseholdRepositoryTests
         // Assert
         Assert.NotNull(result);
         Assert.NotNull(result.AddressOnFile);
-        Assert.Equal("1437 Bannock St", result.AddressOnFile.StreetAddress1);
+        Assert.Equal("123 Main Street", result.AddressOnFile.StreetAddress1);
     }
 
     [Fact]
@@ -242,10 +242,12 @@ public class MockHouseholdRepositoryTests
     [Fact]
     public async Task GetHouseholdByEmailAsync_ReturnsAllSeededScenarios()
     {
-        // Derive emails from the default catalog
+        // Derive emails from the default catalog (no state set, so DC-only scenarios are excluded)
         var defaultSettings = new SeedingSettings();
+        var expectedScenarios = SeedScenarios.AllScenarios
+            .Where(s => !SeedScenarios.DcOnlyScenarios.Contains(s));
 
-        foreach (var scenario in SeedScenarios.AllScenarios)
+        foreach (var scenario in expectedScenarios)
         {
             var email = defaultSettings.BuildEmail(scenario.Name);
             var result = await _repository.GetHouseholdByEmailAsync(email, FullPiiVisibility, UserIalLevel.IAL1plus);
@@ -276,29 +278,9 @@ public class MockHouseholdRepositoryTests
         Assert.Equal(ApplicationStatus.Unknown, app.Children[1].Status);
         Assert.NotNull(app.BenefitIssueDate);
         Assert.NotNull(app.BenefitExpirationDate);
-        Assert.Equal("APP-2025-01-100001", app.ApplicationNumber);
-        Assert.Equal("CASE-100001", app.CaseNumber);
         Assert.Equal("1234", app.Last4DigitsOfCard);
-        Assert.Equal(IssuanceType.SummerEbt, app.IssuanceType);
         Assert.NotNull(result.AddressOnFile);
-        Assert.Equal("1437 Bannock St", result.AddressOnFile.StreetAddress1);
-    }
-
-    [Fact]
-    public async Task GetHouseholdByEmailAsync_VerifiedScenario_HasStableApplicationNumbers()
-    {
-        // Application numbers must be stable across multiple reads to ensure
-        // dashboard replacement links match ConfirmAddress guard lookups
-        var email = "verified@example.com";
-
-        var result1 = await _repository.GetHouseholdByEmailAsync(email, FullPiiVisibility, UserIalLevel.IAL1plus);
-        var result2 = await _repository.GetHouseholdByEmailAsync(email, FullPiiVisibility, UserIalLevel.IAL1plus);
-
-        Assert.NotNull(result1);
-        Assert.NotNull(result2);
-        Assert.Equal(
-            result1!.Applications.First().ApplicationNumber,
-            result2!.Applications.First().ApplicationNumber);
+        Assert.Equal("123 Main Street", result.AddressOnFile.StreetAddress1);
     }
 
     [Fact]
@@ -530,8 +512,8 @@ public class MockHouseholdRepositoryTests
     public async Task GetHouseholdByEmailAsync_WithDcEmailPattern_ReturnsAllSeededScenarios()
     {
         const string pattern = "sebt.dc+{0}@codeforamerica.org";
-        var repo = CreateRepository(pattern);
-        var settings = new SeedingSettings { EmailPattern = pattern };
+        var repo = CreateRepository(pattern, state: "dc");
+        var settings = new SeedingSettings { EmailPattern = pattern, State = "dc" };
 
         foreach (var scenario in SeedScenarios.AllScenarios)
         {
@@ -560,10 +542,9 @@ public class MockHouseholdRepositoryTests
         Assert.Equal(2, app.Children.Count);
         Assert.Equal("John", app.Children[0].FirstName);
         Assert.Equal("Doe", app.Children[0].LastName);
-        Assert.Equal("APP-2025-01-100001", app.ApplicationNumber);
         Assert.Equal("1234", app.Last4DigitsOfCard);
         Assert.NotNull(result.AddressOnFile);
-        Assert.Equal("1437 Bannock St", result.AddressOnFile.StreetAddress1);
+        Assert.Equal("123 Main Street", result.AddressOnFile.StreetAddress1);
     }
 
     [Fact]

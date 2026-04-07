@@ -49,7 +49,7 @@ export const TEST_FEATURE_FLAGS = {
 // issuanceType values: 0=Unknown, 1=SummerEbt, 2=TanfEbtCard, 3=SnapEbtCard
 export const TEST_HOUSEHOLD_DATA = {
   email: 'test@example.com',
-  phone: '(303) 555-0100',
+  phone: '3035550100',
   benefitIssuanceType: 3, // SnapEbtCard
   summerEbtCases: [
     {

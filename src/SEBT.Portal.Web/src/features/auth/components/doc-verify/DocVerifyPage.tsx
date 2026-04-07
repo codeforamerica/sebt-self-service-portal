@@ -99,8 +99,6 @@ export function DocVerifyPage({ contactLink, sdkKey }: DocVerifyPageProps) {
     if (!challengeId) return
     setError(null)
 
-    setPageData('flow', 'auth')
-    setPageData('step', 'doc_verify')
     trackEvent(AnalyticsEvents.DOCV_START)
 
     try {

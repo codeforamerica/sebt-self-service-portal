@@ -17,6 +17,7 @@ export function useDataLayer() {
   return useMemo(
     () => ({
       trackEvent: (name: string, data?: Record<string, unknown>) => dl()?.trackEvent(name, data),
+      pageLoad: (data?: Record<string, unknown>) => dl()?.pageLoad(data),
       setPageData: (path: string, value: unknown, scope?: string | string[]) =>
         dl()?.page.set(path, value, scope),
       setPageCategory: (path: string, value: unknown, scope?: string | string[]) =>

@@ -1,5 +1,6 @@
 export { DataLayer } from './data-layer'
 export type { DataLayerEvent, DataLayerRoot } from './data-layer'
 export { DataLayerProvider } from './DataLayerProvider'
+export type { PageContext, RoutePageContextMap } from './DataLayerProvider'
 export { useDataLayer } from './useDataLayer'
 export * as AnalyticsEvents from './events'

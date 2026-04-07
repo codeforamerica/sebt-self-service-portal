@@ -18,7 +18,7 @@ import { useHouseholdData } from './useHouseholdData'
 
 const TEST_HOUSEHOLD_DATA = {
   email: 'test@example.com',
-  phone: '555-123-4567',
+  phone: '5551234567',
   benefitIssuanceType: 1,
   applications: [
     {

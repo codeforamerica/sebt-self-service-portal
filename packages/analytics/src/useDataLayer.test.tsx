@@ -20,6 +20,7 @@ describe('useDataLayer', () => {
     expect(first.trackEvent).toBe(second.trackEvent)
     expect(first.setPageData).toBe(second.setPageData)
     expect(first.setUserData).toBe(second.setUserData)
+    expect(first.pageLoad).toBe(second.pageLoad)
     expect(first.get).toBe(second.get)
   })
 
@@ -63,6 +64,16 @@ describe('useDataLayer', () => {
     expect(value).toBe('Home')
   })
 
+  it('pageLoad delegates to window.digitalData.pageLoad', () => {
+    new DataLayer('digitalData')
+    const spy = vi.spyOn(window.digitalData!, 'pageLoad')
+
+    const { result } = renderHook(() => useDataLayer())
+    result.current.pageLoad({ flow: 'auth' })
+
+    expect(spy).toHaveBeenCalledWith({ flow: 'auth' })
+  })
+
   it('no-ops when data layer is not initialized', () => {
     const { result } = renderHook(() => useDataLayer())
 
@@ -70,6 +81,7 @@ describe('useDataLayer', () => {
     expect(() => result.current.trackEvent('test')).not.toThrow()
     expect(() => result.current.setPageData('name', 'x')).not.toThrow()
     expect(() => result.current.setUserData('auth', true)).not.toThrow()
+    expect(() => result.current.pageLoad()).not.toThrow()
     expect(result.current.get('page.name')).toBeUndefined()
   })
 })

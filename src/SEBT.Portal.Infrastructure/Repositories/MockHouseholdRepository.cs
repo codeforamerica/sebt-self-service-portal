@@ -147,11 +147,10 @@ public class MockHouseholdRepository : IHouseholdRepository
             var app = h.Applications.FirstOrDefault();
             if (app != null)
             {
-                app.IssuanceType = IssuanceType.SnapEbtCard;
                 app.BenefitIssueDate = now.AddDays(-20);
                 app.BenefitExpirationDate = now.AddDays(70);
                 app.Last4DigitsOfCard = "0000";
-                app.CardRequestedAt = now.AddDays(-60);
+                app.CardStatus = CardStatus.Active;
                 // Set specific children names for test
                 app.Children = new List<Child>
                 {
@@ -161,11 +160,11 @@ public class MockHouseholdRepository : IHouseholdRepository
             }
             h.AddressOnFile = new Address
             {
-                StreetAddress1 = "200 E Colfax Ave",
+                StreetAddress1 = "100 Co-Loaded Street",
                 StreetAddress2 = "Suite 100",
                 City = "Denver",
                 State = "CO",
-                PostalCode = "80203"
+                PostalCode = "80201"
             };
         });
         coLoaded.Email = coLoadedEmail;
@@ -182,12 +181,10 @@ public class MockHouseholdRepository : IHouseholdRepository
             var app = h.Applications.FirstOrDefault();
             if (app != null)
             {
-                app.ApplicationNumber = "APP-2025-01-100001";
-                app.CaseNumber = "CASE-100001";
-                app.IssuanceType = IssuanceType.SummerEbt;
                 app.BenefitIssueDate = now.AddDays(-30);
                 app.BenefitExpirationDate = now.AddDays(60);
                 app.Last4DigitsOfCard = "1234"; // Specific value for test
+                app.CardStatus = CardStatus.Active;
                 // Set specific children names for test
                 app.Children = new List<Child>
                 {
@@ -198,7 +195,8 @@ public class MockHouseholdRepository : IHouseholdRepository
             // Set specific address for test
             h.AddressOnFile = new Address
             {
-                StreetAddress1 = "1437 Bannock St",
+                StreetAddress1 = "123 Main Street",
+                StreetAddress2 = "Apt 4B",
                 City = "Denver",
                 State = "CO",
                 PostalCode = "80202"
@@ -208,8 +206,6 @@ public class MockHouseholdRepository : IHouseholdRepository
         verified.UserProfile = new UserProfile { FirstName = "John", MiddleName = "Robert", LastName = "Doe" };
         _households[verifiedEmail] = verified;
         IndexByPhone(verified);
-        // To test CO OIDC login locally, uncomment and replace with your PingOne sandbox user email:
-        // _households["sebt.co+YOUR_PHONE@codeforamerica.org"] = verified;
 
         // Scenario 3: Pending application without address (not ID verified)
         // Note: Address should not be included for non-ID-verified users, but we set it here
@@ -230,10 +226,10 @@ public class MockHouseholdRepository : IHouseholdRepository
             // Set address for testing (will be filtered based on ID verification status)
             h.AddressOnFile = new Address
             {
-                StreetAddress1 = "1777 Broadway",
+                StreetAddress1 = "456 Oak Avenue",
                 City = "Boulder",
                 State = "CO",
-                PostalCode = "80302"
+                PostalCode = "80301"
             };
         });
         pending.Email = pendingEmail;
@@ -265,6 +261,7 @@ public class MockHouseholdRepository : IHouseholdRepository
             var app = h.Applications.FirstOrDefault();
             if (app != null)
             {
+                app.CardStatus = CardStatus.Active;
                 // Use Bogus to generate child name
                 var childFaker = new Faker<Child>()
                     .RuleFor(c => c.FirstName, f => f.Name.FirstName())
@@ -314,7 +311,7 @@ public class MockHouseholdRepository : IHouseholdRepository
             }
             h.AddressOnFile = new Address
             {
-                StreetAddress1 = "2001 Blake St",
+                StreetAddress1 = "321 Not Started Drive",
                 City = "Denver",
                 State = "CO",
                 PostalCode = "80205"
@@ -350,11 +347,9 @@ public class MockHouseholdRepository : IHouseholdRepository
             var app = h.Applications.FirstOrDefault();
             if (app != null)
             {
-                app.IssuanceType = IssuanceType.SummerEbt;
                 app.BenefitIssueDate = now.AddDays(-15);
                 app.BenefitExpirationDate = now.AddDays(75);
-                app.Last4DigitsOfCard = "4321";
-                app.CardRequestedAt = now.AddDays(-45);
+                app.CardStatus = CardStatus.Active;
                 // Use Bogus to generate child name
                 var childFaker = new Faker<Child>()
                     .RuleFor(c => c.FirstName, f => f.Name.FirstName())
@@ -375,11 +370,10 @@ public class MockHouseholdRepository : IHouseholdRepository
             var app = h.Applications.FirstOrDefault();
             if (app != null)
             {
-                app.IssuanceType = IssuanceType.TanfEbtCard;
                 app.BenefitIssueDate = now.AddDays(-45);
                 app.BenefitExpirationDate = now.AddDays(45);
                 app.Last4DigitsOfCard = "4321";
-                app.CardRequestedAt = now.AddDays(-30);
+                app.CardStatus = CardStatus.Active;
                 // Set specific children names for test
                 app.Children = new List<Child>
                 {
@@ -391,11 +385,11 @@ public class MockHouseholdRepository : IHouseholdRepository
             }
             h.AddressOnFile = new Address
             {
-                StreetAddress1 = "15151 E Alameda Pkwy",
+                StreetAddress1 = "456 Large Family Lane",
                 StreetAddress2 = "Unit 8",
                 City = "Aurora",
                 State = "CO",
-                PostalCode = "80012"
+                PostalCode = "80010"
             };
         });
         largeFamily.Email = largeFamilyEmail;
@@ -430,8 +424,7 @@ public class MockHouseholdRepository : IHouseholdRepository
             {
                 app.BenefitIssueDate = now.AddDays(-120);
                 app.BenefitExpirationDate = now.AddDays(-10); // Expired
-                app.Last4DigitsOfCard = "9012";
-                app.CardRequestedAt = now.AddDays(-90);
+                app.CardStatus = CardStatus.Deactivated;
                 // Use Bogus to generate child name
                 var childFaker = new Faker<Child>()
                     .RuleFor(c => c.FirstName, f => f.Name.FirstName())
@@ -465,13 +458,12 @@ public class MockHouseholdRepository : IHouseholdRepository
         var multipleApps = HouseholdFactory.CreateHouseholdDataWithStatus(ApplicationStatus.Approved, h =>
         {
             h.BenefitIssuanceType = BenefitIssuanceType.SnapEbtCard;
-            var faker = new Faker { Random = new Randomizer(42) };
+            var faker = new Faker();
             var approvedApp = new Application
             {
                 ApplicationNumber = $"APP-{now.AddDays(-30):yyyy-MM}-{faker.Random.Number(100000, 999999)}",
                 CaseNumber = $"CASE-{faker.Random.Number(100000, 999999)}",
                 ApplicationStatus = ApplicationStatus.Approved,
-                IssuanceType = IssuanceType.SummerEbt,
                 BenefitIssueDate = now.AddDays(-30),
                 BenefitExpirationDate = now.AddDays(60),
                 Last4DigitsOfCard = "5678",
@@ -501,16 +493,62 @@ public class MockHouseholdRepository : IHouseholdRepository
             h.Applications = new List<Application> { approvedApp, pendingApp };
             h.AddressOnFile = new Address
             {
-                StreetAddress1 = "1560 Broadway",
+                StreetAddress1 = "789 Multiple Apps Street",
                 City = "Denver",
                 State = "CO",
-                PostalCode = "80202"
+                PostalCode = "80203"
             };
         });
         multipleApps.Email = multipleAppsEmail;
         multipleApps.UserProfile = new UserProfile { FirstName = "Jennifer", MiddleName = "Lynn", LastName = "Wilson" };
         _households[multipleAppsEmail] = multipleApps;
         IndexByPhone(multipleApps);
+
+        // DC Scenarios 1-7: Simple non-co-loaded households with 1 child, Summer EBT, active benefits
+        if (string.Equals(_settings.State, "dc", StringComparison.OrdinalIgnoreCase))
+        {
+            var dcChildFaker = new Faker<Child>()
+                .RuleFor(c => c.FirstName, f => f.Name.FirstName())
+                .RuleFor(c => c.LastName, f => f.Name.LastName());
+
+            var dcUserFaker = new Faker();
+
+            SeedScenario[] dcScenarioList = [SeedScenarios.Simple1, SeedScenarios.Simple2, SeedScenarios.Simple3,
+                SeedScenarios.Simple4, SeedScenarios.Simple5, SeedScenarios.Simple6, SeedScenarios.Simple7];
+
+            foreach (var dcScenario in dcScenarioList)
+            {
+                var dcEmail = _settings.BuildEmail(dcScenario.Name);
+                var dcHousehold = HouseholdFactory.CreateHouseholdDataWithStatus(ApplicationStatus.Approved, h =>
+                {
+                    h.BenefitIssuanceType = BenefitIssuanceType.SummerEbt;
+                    var app = h.Applications.FirstOrDefault();
+                    if (app != null)
+                    {
+                        app.BenefitIssueDate = now.AddDays(-20);
+                        app.BenefitExpirationDate = now.AddDays(122);
+                        app.CardStatus = CardStatus.Active;
+                        app.Children = dcChildFaker.Generate(1);
+                    }
+                    h.AddressOnFile = new Address
+                    {
+                        StreetAddress1 = dcUserFaker.Address.StreetAddress(),
+                        City = "Washington",
+                        State = "DC",
+                        PostalCode = "20002"
+                    };
+                });
+                dcHousehold.Email = dcEmail;
+                dcHousehold.UserProfile = new UserProfile
+                {
+                    FirstName = dcUserFaker.Name.FirstName(),
+                    MiddleName = null,
+                    LastName = dcUserFaker.Name.LastName()
+                };
+                _households[dcEmail] = dcHousehold;
+                IndexByPhone(dcHousehold);
+            }
+        }
 
         _logger.LogInformation("Seeded {Count} mock household records using Bogus", _households.Count);
     }
