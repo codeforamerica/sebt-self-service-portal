@@ -7,6 +7,8 @@ public enum PreconditionFailedReason
     ConcurrencyMismatch = 2,
 
     Conflict = 3,
+
+    NotAllowed = 4,
 }
 
 internal static class PreconditionFailedReasonExtensions
@@ -16,6 +18,7 @@ internal static class PreconditionFailedReasonExtensions
         PreconditionFailedReason.NotFound => "A requested resource was not found.",
         PreconditionFailedReason.ConcurrencyMismatch => "A concurrency mismatch occurred.",
         PreconditionFailedReason.Conflict => "A conflict occurred with the current state of the resource.",
+        PreconditionFailedReason.NotAllowed => "The requested operation is not allowed.",
         _ => throw new ArgumentOutOfRangeException(nameof(reason), reason, null)
     };
 }

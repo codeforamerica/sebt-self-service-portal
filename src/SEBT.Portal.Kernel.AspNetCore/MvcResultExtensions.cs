@@ -52,6 +52,10 @@ public static class MvcResultExtensions
                 => result.ToProblemDetailsResult(HttpStatusCode.Conflict),
             PreconditionFailedResult { Reason: PreconditionFailedReason.Conflict } when !useProblemDetails
                 => new ConflictResult(),
+            PreconditionFailedResult { Reason: PreconditionFailedReason.NotAllowed } when useProblemDetails
+                => result.ToProblemDetailsResult(HttpStatusCode.Forbidden),
+            PreconditionFailedResult { Reason: PreconditionFailedReason.NotAllowed } when !useProblemDetails
+                => new ForbidResult(),
             ValidationFailedResult validationFailed when useProblemDetails
                 => new ObjectResult(new ValidationProblemDetails(validationFailed.Errors.ToModelState())
                 {
@@ -127,6 +131,10 @@ public static class MvcResultExtensions
                 => result.ToProblemDetailsResult(HttpStatusCode.Conflict),
             PreconditionFailedResult<T> { Reason: PreconditionFailedReason.Conflict } when !useProblemDetails
                 => new ConflictResult(),
+            PreconditionFailedResult<T> { Reason: PreconditionFailedReason.NotAllowed } when useProblemDetails
+                => result.ToProblemDetailsResult(HttpStatusCode.Forbidden),
+            PreconditionFailedResult<T> { Reason: PreconditionFailedReason.NotAllowed } when !useProblemDetails
+                => new ForbidResult(),
             ValidationFailedResult<T> validationFailed when useProblemDetails
                 => new ObjectResult(new ValidationProblemDetails(validationFailed.Errors.ToModelState())
                 {

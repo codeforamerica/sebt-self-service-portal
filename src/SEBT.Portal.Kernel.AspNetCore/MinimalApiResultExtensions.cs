@@ -53,6 +53,10 @@ public static class MinimalApiResultExtensions
                 => result.ToProblemHttpResult(HttpStatusCode.Conflict),
             PreconditionFailedResult { Reason: PreconditionFailedReason.Conflict } when !useProblemDetails
                 => HttpResults.Conflict(),
+            PreconditionFailedResult { Reason: PreconditionFailedReason.NotAllowed } when useProblemDetails
+                => result.ToProblemHttpResult(HttpStatusCode.Forbidden),
+            PreconditionFailedResult { Reason: PreconditionFailedReason.NotAllowed } when !useProblemDetails
+                => HttpResults.Forbid(),
             ValidationFailedResult validationFailed when useProblemDetails
                 => HttpResults.ValidationProblem(errors: validationFailed.Errors.CreateErrorDictionary(), title: result.Message),
             ValidationFailedResult validationFailed when !useProblemDetails
@@ -109,6 +113,10 @@ public static class MinimalApiResultExtensions
                 => result.ToProblemHttpResult(HttpStatusCode.Conflict),
             PreconditionFailedResult<T> { Reason: PreconditionFailedReason.Conflict } when !useProblemDetails
                 => HttpResults.Conflict(),
+            PreconditionFailedResult<T> { Reason: PreconditionFailedReason.NotAllowed } when useProblemDetails
+                => result.ToProblemHttpResult(HttpStatusCode.Forbidden),
+            PreconditionFailedResult<T> { Reason: PreconditionFailedReason.NotAllowed } when !useProblemDetails
+                => HttpResults.Forbid(),
             ValidationFailedResult<T> validationFailed when useProblemDetails
                 => HttpResults.ValidationProblem(errors: validationFailed.Errors.CreateErrorDictionary(), title: result.Message),
             ValidationFailedResult<T> validationFailed when !useProblemDetails
