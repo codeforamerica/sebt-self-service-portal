@@ -10,13 +10,11 @@
   </PropertyGroup>
 
   <!-- Production Build: Build frontend before .NET build -->
-  <Target Name="BuildFrontend" BeforeTargets="Build"
-    Condition="'$(BuildFrontend)' != 'false' AND '$(Configuration)' == 'Release'">
+  <Target Name="BuildFrontend" BeforeTargets="Build" Condition="'$(BuildFrontend)' != 'false' AND '$(Configuration)' == 'Release'">
     <Message Importance="high" Text="Building frontend (pnpm workspace)..." />
 
     <!-- Install dependencies if node_modules doesn't exist -->
-    <Exec Command="pnpm install" WorkingDirectory="$(WorkspaceRoot)"
-      Condition="!Exists('$(FrontendRoot)/node_modules')" />
+    <Exec Command="pnpm install" WorkingDirectory="$(WorkspaceRoot)" Condition="!Exists('$(FrontendRoot)/node_modules')" />
 
     <!-- Build frontend (Next.js) -->
     <Exec Command="pnpm --filter @sebt/web build" WorkingDirectory="$(WorkspaceRoot)" />
@@ -25,14 +23,12 @@
   </Target>
 
   <!-- Development: Start frontend watch mode alongside dotnet watch -->
-  <Target Name="StartFrontendWatch" BeforeTargets="BeforeBuild"
-    Condition="'$(DOTNET_WATCH)' == '1' AND '$(Configuration)' == 'Debug'">
+  <Target Name="StartFrontendWatch" BeforeTargets="BeforeBuild" Condition="'$(DOTNET_WATCH)' == '1' AND '$(Configuration)' == 'Debug'">
     <Message Importance="high" Text="Starting frontend watch mode..." />
 
     <!-- Check if frontend is already running (by checking if port 5173 is in use) -->
     <!-- Unix-like systems: use lsof -->
-    <Exec Command="lsof -ti:5173" IgnoreExitCode="true" ConsoleToMSBuild="true"
-          Condition="'$(OS)' != 'Windows_NT'">
+    <Exec Command="lsof -ti:5173" IgnoreExitCode="true" ConsoleToMSBuild="true" Condition="'$(OS)' != 'Windows_NT'">
       <Output TaskParameter="ConsoleOutput" PropertyName="FrontendPort" />
     </Exec>
     <!-- Windows: set FrontendPort to empty (always try to start frontend) -->
@@ -40,15 +36,12 @@
       <FrontendPort></FrontendPort>
     </PropertyGroup>
 
-    <Message Importance="high" Text="Frontend already running on port 5173"
-      Condition="'$(FrontendPort)' != ''" />
+    <Message Importance="high" Text="Frontend already running on port 5173" Condition="'$(FrontendPort)' != ''" />
 
     <!-- Start frontend watch if not already running -->
-    <Exec Command="pnpm web:dev &amp;" WorkingDirectory="$(WorkspaceRoot)"
-      Condition="'$(FrontendPort)' == ''" ContinueOnError="true" />
+    <Exec Command="pnpm web:dev &amp;" WorkingDirectory="$(WorkspaceRoot)" Condition="'$(FrontendPort)' == ''" ContinueOnError="true" />
 
-    <Message Importance="high" Text="Frontend watch mode started (http://localhost:5173)"
-      Condition="'$(FrontendPort)' == ''" />
+    <Message Importance="high" Text="Frontend watch mode started (http://localhost:5173)" Condition="'$(FrontendPort)' == ''" />
   </Target>
 
   <!-- Clean frontend on dotnet clean -->
@@ -125,6 +118,10 @@
     <ProjectReference Include="..\SEBT.Portal.Kernel\SEBT.Portal.Kernel.csproj" />
     <ProjectReference Include="..\SEBT.Portal.UseCases\SEBT.Portal.UseCases.csproj" />
     <ProjectReference Include="..\SEBT.Portal.Core\SEBT.Portal.Core.csproj" Aliases="Core,global" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="SEBT.Portal.Tests" />
   </ItemGroup>
 
   <ItemGroup>
