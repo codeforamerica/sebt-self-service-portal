@@ -25,6 +25,7 @@ public class UpdateAddressCommandHandler(
     IHouseholdIdentifierResolver resolver,
     IHouseholdRepository householdRepository,
     IIdProofingRequirementsService idProofingRequirementsService,
+    ISelfServiceEvaluator selfServiceEvaluator,
     IStateAddressUpdateService stateAddressUpdateService,
     ILogger<UpdateAddressCommandHandler> logger)
     : ICommandHandler<UpdateAddressCommand>
@@ -84,21 +85,24 @@ public class UpdateAddressCommandHandler(
             "Address update received for household identifier kind {Kind}",
             identifierKind);
 
-        // Policy enforcement: SNAP and TANF households must update via case worker, not the portal.
+        // Policy enforcement: evaluate self-service rules before allowing the update.
         var userIalLevel = UserIalLevelExtensions.FromClaimsPrincipal(command.User);
         var piiVisibility = idProofingRequirementsService.GetPiiVisibility(userIalLevel);
         var household = await householdRepository.GetHouseholdByIdentifierAsync(
             identifier, piiVisibility, userIalLevel, cancellationToken);
 
-        if (household is { BenefitIssuanceType: BenefitIssuanceType.SnapEbtCard or BenefitIssuanceType.TanfEbtCard })
+        if (household == null)
         {
-            logger.LogWarning(
-                "Address update rejected for household identifier kind {Kind}: benefit type {BenefitType} is not eligible for portal self-service",
-                identifierKind,
-                household.BenefitIssuanceType);
-            return Result.PreconditionFailed(
-                PreconditionFailedReason.Conflict,
-                "Address updates are not available for this benefit type. Please contact your case worker.");
+            logger.LogWarning("Address update denied: household not found for identifier");
+            return Result.PreconditionFailed(PreconditionFailedReason.NotAllowed, "Address update is not available.");
+        }
+
+        var allowedActions = selfServiceEvaluator.EvaluateHousehold(household.SummerEbtCases);
+        if (!allowedActions.CanUpdateAddress)
+        {
+            logger.LogInformation("Address update denied by self-service rules for household");
+            return Result.PreconditionFailed(PreconditionFailedReason.NotAllowed,
+                allowedActions.AddressUpdateDeniedMessageKey ?? "Address update is not available for this account.");
         }
 
         // Use the normalized address from validation for the state connector call.
