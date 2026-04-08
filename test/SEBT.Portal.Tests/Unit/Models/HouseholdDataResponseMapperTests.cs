@@ -246,4 +246,46 @@ public class HouseholdDataResponseMapperTests
         Assert.Equal("1234", sec.EbtCardLastFour);
         Assert.Equal(120.50m, sec.EbtCardBalance);
     }
+
+    [Fact]
+    public void ToResponse_MapsHouseholdAllowedActions()
+    {
+        var data = new HouseholdData
+        {
+            AllowedActions = new HouseholdAllowedActions
+            {
+                CanUpdateAddress = false,
+                AddressUpdateDeniedMessageKey = "selfServiceUnavailable"
+            },
+            SummerEbtCases = new List<SummerEbtCase>()
+        };
+
+        var response = data.ToResponse();
+
+        Assert.NotNull(response.AllowedActions);
+        Assert.False(response.AllowedActions.CanUpdateAddress);
+        Assert.Equal("selfServiceUnavailable", response.AllowedActions.AddressUpdateDeniedMessageKey);
+    }
+
+    [Fact]
+    public void ToResponse_MapsPerCaseAllowedActions()
+    {
+        var data = new HouseholdData
+        {
+            SummerEbtCases = new List<SummerEbtCase>
+            {
+                new()
+                {
+                    SummerEBTCaseID = "SEBT-001",
+                    ChildFirstName = "Test",
+                    ChildLastName = "Child",
+                    AllowedActions = new CaseAllowedActions { CanRequestReplacementCard = true }
+                }
+            }
+        };
+
+        var response = data.ToResponse();
+
+        Assert.True(response.SummerEbtCases[0].CanRequestReplacementCard);
+    }
 }

@@ -113,4 +113,14 @@ public record SummerEbtCaseResponse
     /// The date benefits expire.
     /// </summary>
     public DateTime? BenefitExpirationDate { get; init; }
+
+    /// <summary>
+    /// Whether a replacement card can be requested for this case.
+    /// </summary>
+    public bool CanRequestReplacementCard { get; init; }
+
+    /// <summary>
+    /// i18n key for the message shown when card replacement is denied.
+    /// </summary>
+    public string? CardReplacementDeniedMessageKey { get; init; }
 }

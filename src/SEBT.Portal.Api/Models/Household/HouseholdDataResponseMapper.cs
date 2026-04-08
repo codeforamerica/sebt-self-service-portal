@@ -8,6 +8,7 @@ using Child = Core::SEBT.Portal.Core.Models.Household.Child;
 using HouseholdData = Core::SEBT.Portal.Core.Models.Household.HouseholdData;
 using SummerEbtCase = Core::SEBT.Portal.Core.Models.Household.SummerEbtCase;
 using UserProfile = Core::SEBT.Portal.Core.Models.Household.UserProfile;
+using HouseholdAllowedActions = Core::SEBT.Portal.Core.Models.Household.HouseholdAllowedActions;
 
 /// <summary>
 /// Maps domain household models to API response DTOs.
@@ -27,7 +28,12 @@ public static class HouseholdDataResponseMapper
             Applications = domain.Applications.Select(a => ToResponse(a, domain.BenefitIssuanceType)).ToList(),
             AddressOnFile = domain.AddressOnFile?.ToResponse(),
             UserProfile = domain.UserProfile?.ToResponse(),
-            BenefitIssuanceType = domain.BenefitIssuanceType
+            BenefitIssuanceType = domain.BenefitIssuanceType,
+            AllowedActions = domain.AllowedActions == null ? null : new HouseholdAllowedActionsResponse
+            {
+                CanUpdateAddress = domain.AllowedActions.CanUpdateAddress,
+                AddressUpdateDeniedMessageKey = domain.AllowedActions.AddressUpdateDeniedMessageKey
+            }
         };
     }
 
@@ -55,7 +61,9 @@ public static class HouseholdDataResponseMapper
             EbtCardBalance = domain.EbtCardBalance,
             CardRequestedAt = domain.CardRequestedAt,
             BenefitAvailableDate = domain.BenefitAvailableDate,
-            BenefitExpirationDate = domain.BenefitExpirationDate
+            BenefitExpirationDate = domain.BenefitExpirationDate,
+            CanRequestReplacementCard = domain.AllowedActions?.CanRequestReplacementCard ?? false,
+            CardReplacementDeniedMessageKey = domain.AllowedActions?.CardReplacementDeniedMessageKey
         };
     }
 
