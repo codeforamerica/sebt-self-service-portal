@@ -48,10 +48,42 @@ function renderCardSelection() {
   }
 }
 
-const MULTI_CHILD_HOUSEHOLD = {
+const TWO_CHILD_HOUSEHOLD = {
   email: 'test@example.com',
   phone: '(303) 555-0100',
   benefitIssuanceType: 1,
+  summerEbtCases: [
+    {
+      summerEBTCaseID: 'SEBT-001',
+      applicationId: 'APP-2026-001',
+      childFirstName: 'Sophia',
+      childLastName: 'Martinez',
+      childDateOfBirth: '2015-06-15T00:00:00Z',
+      householdType: 'SNAP',
+      eligibilityType: 'Direct',
+      ebtCaseNumber: 'CASE-100001',
+      ebtCardLastFour: '1234',
+      ebtCardStatus: 'Active',
+      issuanceType: 1,
+      benefitAvailableDate: '2026-01-08T00:00:00Z',
+      benefitExpirationDate: '2026-09-30T00:00:00Z'
+    },
+    {
+      summerEBTCaseID: 'SEBT-002',
+      applicationId: 'APP-2026-001',
+      childFirstName: 'James',
+      childLastName: 'Martinez',
+      childDateOfBirth: '2017-03-20T00:00:00Z',
+      householdType: 'SNAP',
+      eligibilityType: 'Direct',
+      ebtCaseNumber: 'CASE-100001',
+      ebtCardLastFour: '1234',
+      ebtCardStatus: 'Active',
+      issuanceType: 1,
+      benefitAvailableDate: '2026-01-08T00:00:00Z',
+      benefitExpirationDate: '2026-09-30T00:00:00Z'
+    }
+  ],
   applications: [
     {
       applicationNumber: 'APP-2026-001',
@@ -91,6 +123,8 @@ describe('CardSelection', () => {
   // --- Rendering children ---
 
   it('renders checkboxes for each child', async () => {
+    server.use(http.get('/api/household/data', () => HttpResponse.json(TWO_CHILD_HOUSEHOLD)))
+
     renderCardSelection()
 
     await waitFor(() => {
@@ -106,6 +140,8 @@ describe('CardSelection', () => {
 
   it('shows card number for CO', async () => {
     mockState = 'co'
+    server.use(http.get('/api/household/data', () => HttpResponse.json(TWO_CHILD_HOUSEHOLD)))
+
     renderCardSelection()
 
     await waitFor(() => {
@@ -115,6 +151,8 @@ describe('CardSelection', () => {
 
   it('does not show card number for DC', async () => {
     mockState = 'dc'
+    server.use(http.get('/api/household/data', () => HttpResponse.json(TWO_CHILD_HOUSEHOLD)))
+
     renderCardSelection()
 
     await waitFor(() => {
@@ -127,6 +165,8 @@ describe('CardSelection', () => {
   // --- Validation ---
 
   it('shows error when submitting without selection', async () => {
+    server.use(http.get('/api/household/data', () => HttpResponse.json(TWO_CHILD_HOUSEHOLD)))
+
     const { user } = renderCardSelection()
 
     await waitFor(() => {
@@ -140,6 +180,8 @@ describe('CardSelection', () => {
   })
 
   it('focuses error message on validation failure', async () => {
+    server.use(http.get('/api/household/data', () => HttpResponse.json(TWO_CHILD_HOUSEHOLD)))
+
     const { user } = renderCardSelection()
 
     await waitFor(() => {
@@ -154,6 +196,8 @@ describe('CardSelection', () => {
   })
 
   it('links error message to fieldset via aria-describedby', async () => {
+    server.use(http.get('/api/household/data', () => HttpResponse.json(TWO_CHILD_HOUSEHOLD)))
+
     const { user } = renderCardSelection()
 
     await waitFor(() => {
@@ -167,75 +211,11 @@ describe('CardSelection', () => {
     expect(fieldset).toHaveAttribute('aria-describedby', expect.stringContaining('error'))
   })
 
-  // --- Sibling auto-select (D6) ---
-
-  it('selects all siblings when any child on an application is checked', async () => {
-    server.use(http.get('/api/household/data', () => HttpResponse.json(MULTI_CHILD_HOUSEHOLD)))
-
-    const { user } = renderCardSelection()
-
-    await waitFor(() => {
-      expect(screen.getByText(/Sophia Martinez/)).toBeInTheDocument()
-    })
-
-    const checkboxes = screen.getAllByRole('checkbox')
-    await user.click(checkboxes[0]!)
-
-    expect(checkboxes[0]).toBeChecked()
-    expect(checkboxes[1]).toBeChecked()
-  })
-
-  it('disables sibling checkboxes when group is selected', async () => {
-    server.use(http.get('/api/household/data', () => HttpResponse.json(MULTI_CHILD_HOUSEHOLD)))
-
-    const { user } = renderCardSelection()
-
-    await waitFor(() => {
-      expect(screen.getByText(/Sophia Martinez/)).toBeInTheDocument()
-    })
-
-    const checkboxes = screen.getAllByRole('checkbox')
-    await user.click(checkboxes[0]!)
-
-    expect(checkboxes[0]).not.toBeDisabled()
-    expect(checkboxes[1]).toBeDisabled()
-  })
-
-  it('shows shared card note on sibling checkboxes', async () => {
-    server.use(http.get('/api/household/data', () => HttpResponse.json(MULTI_CHILD_HOUSEHOLD)))
-
-    const { user } = renderCardSelection()
-
-    await waitFor(() => {
-      expect(screen.getByText(/Sophia Martinez/)).toBeInTheDocument()
-    })
-
-    const checkboxes = screen.getAllByRole('checkbox')
-    await user.click(checkboxes[0]!)
-
-    expect(screen.getByText(/share a card/i)).toBeInTheDocument()
-  })
-
-  it('deselects all siblings when first child is unchecked', async () => {
-    server.use(http.get('/api/household/data', () => HttpResponse.json(MULTI_CHILD_HOUSEHOLD)))
-
-    const { user } = renderCardSelection()
-
-    await waitFor(() => {
-      expect(screen.getByText(/Sophia Martinez/)).toBeInTheDocument()
-    })
-
-    const checkboxes = screen.getAllByRole('checkbox')
-    await user.click(checkboxes[0]!)
-    await user.click(checkboxes[0]!)
-
-    expect(checkboxes[0]).not.toBeChecked()
-    expect(checkboxes[1]).not.toBeChecked()
-  })
-
   // --- Successful submission ---
 
-  it('navigates to confirm page with selected application numbers', async () => {
+  it('navigates to confirm page with selected case IDs', async () => {
+    server.use(http.get('/api/household/data', () => HttpResponse.json(TWO_CHILD_HOUSEHOLD)))
+
     const { user } = renderCardSelection()
 
     await waitFor(() => {
@@ -248,7 +228,7 @@ describe('CardSelection', () => {
     const submitButton = screen.getByRole('button', { name: /continue/i })
     await user.click(submitButton)
 
-    expect(mockPush).toHaveBeenCalledWith(expect.stringContaining('select/confirm?apps='))
+    expect(mockPush).toHaveBeenCalledWith(expect.stringContaining('select/confirm?cases='))
   })
 
   // --- Error handling ---
@@ -270,6 +250,8 @@ describe('CardSelection', () => {
   // --- Back button ---
 
   it('navigates back when back button is clicked', async () => {
+    server.use(http.get('/api/household/data', () => HttpResponse.json(TWO_CHILD_HOUSEHOLD)))
+
     const { user } = renderCardSelection()
 
     await waitFor(() => {
@@ -282,29 +264,38 @@ describe('CardSelection', () => {
     expect(mockBack).toHaveBeenCalled()
   })
 
-  // --- Null applicationNumber filtering ---
+  // --- Null summerEBTCaseID filtering ---
 
-  it('excludes applications without applicationNumber', async () => {
+  it('excludes cases without summerEBTCaseID', async () => {
     server.use(
       http.get('/api/household/data', () => {
         return HttpResponse.json({
           email: 'test@example.com',
           phone: '(303) 555-0100',
           benefitIssuanceType: 1,
-          applications: [
+          summerEbtCases: [
             {
-              applicationNumber: null,
-              applicationStatus: 'Approved',
-              children: [{ firstName: 'Alice', lastName: 'Smith' }],
-              childrenOnApplication: 1
+              summerEBTCaseID: null,
+              childFirstName: 'Alice',
+              childLastName: 'Smith',
+              householdType: 'SNAP',
+              eligibilityType: 'Direct',
+              issuanceType: 1,
+              benefitAvailableDate: '2026-01-08T00:00:00Z',
+              benefitExpirationDate: '2026-09-30T00:00:00Z'
             },
             {
-              applicationNumber: 'APP-002',
-              applicationStatus: 'Approved',
-              children: [{ firstName: 'Bob', lastName: 'Smith' }],
-              childrenOnApplication: 1
+              summerEBTCaseID: 'SEBT-002',
+              childFirstName: 'Bob',
+              childLastName: 'Smith',
+              householdType: 'SNAP',
+              eligibilityType: 'Direct',
+              issuanceType: 1,
+              benefitAvailableDate: '2026-01-08T00:00:00Z',
+              benefitExpirationDate: '2026-09-30T00:00:00Z'
             }
           ],
+          applications: [],
           addressOnFile: {
             streetAddress1: '123 Main St',
             city: 'Washington',
@@ -328,6 +319,8 @@ describe('CardSelection', () => {
   // --- Accessibility ---
 
   it('uses fieldset and legend for checkbox group', async () => {
+    server.use(http.get('/api/household/data', () => HttpResponse.json(TWO_CHILD_HOUSEHOLD)))
+
     renderCardSelection()
 
     await waitFor(() => {

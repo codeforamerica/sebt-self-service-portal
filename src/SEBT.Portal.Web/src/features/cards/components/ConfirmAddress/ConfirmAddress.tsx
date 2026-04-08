@@ -4,11 +4,11 @@ import { useRouter } from 'next/navigation'
 import { useEffect, useRef, useState, type FormEvent } from 'react'
 import { useTranslation } from 'react-i18next'
 
-import type { Address, Application } from '@/features/household/api/schema'
+import type { Address, SummerEbtCase } from '@/features/household/api/schema'
 import { Button, getState } from '@sebt/design-system'
 
 interface ConfirmAddressProps {
-  application: Application
+  summerEbtCase: SummerEbtCase
   address: Address
   /** URL to navigate to when user confirms the address. */
   confirmPath: string
@@ -17,7 +17,7 @@ interface ConfirmAddressProps {
 }
 
 export function ConfirmAddress({
-  application,
+  summerEbtCase,
   address,
   confirmPath,
   changePath
@@ -37,12 +37,13 @@ export function ConfirmAddress({
   }, [error])
 
   const currentState = getState()
-  const childName = application.children[0]
-    ? `${application.children[0].firstName} ${application.children[0].lastName}`
-    : ''
+  const childName =
+    summerEbtCase.childFirstName && summerEbtCase.childLastName
+      ? `${summerEbtCase.childFirstName} ${summerEbtCase.childLastName}`
+      : ''
   const subtitle =
-    currentState === 'co' && application.last4DigitsOfCard
-      ? `Replace card ending in ${application.last4DigitsOfCard}`
+    currentState === 'co' && summerEbtCase.ebtCardLastFour
+      ? `Replace card ending in ${summerEbtCase.ebtCardLastFour}`
       : childName
         ? `Replace ${childName}'s card`
         : null

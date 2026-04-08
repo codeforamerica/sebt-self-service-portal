@@ -55,11 +55,17 @@ export const ApplicationStatusSchema = z.preprocess(
 
 export type ApplicationStatus = z.infer<typeof ApplicationStatusSchema>
 
+const CARD_STATUS_STRING_MAP: Record<string, string> = Object.fromEntries(
+  Object.values(CARD_STATUS_MAP).map((v) => [v.toUpperCase(), v])
+)
+
 export const CardStatusSchema = z.preprocess(
   (val) =>
     typeof val === 'number'
       ? (CARD_STATUS_MAP[val as keyof typeof CARD_STATUS_MAP] ?? 'Unknown')
-      : val,
+      : typeof val === 'string'
+        ? (CARD_STATUS_STRING_MAP[val.toUpperCase()] ?? val)
+        : val,
   z.enum([
     'Unknown',
     'Requested',
@@ -156,13 +162,20 @@ export const SummerEbtCaseSchema = z.object({
   mailingAddress: AddressSchema.nullable().optional(),
   ebtCaseNumber: z.string().nullable().optional(),
   ebtCardLastFour: z.string().nullable().optional(),
-  ebtCardStatus: z.string().nullable().optional(),
+  ebtCardStatus: CardStatusSchema.nullable().optional(),
   ebtCardIssueDate: z.string().nullable().optional(),
   ebtCardBalance: z.number().nullable().optional(),
   benefitAvailableDate: z.string().nullable().optional(),
   benefitExpirationDate: z.string().nullable().optional(),
   eligibilitySource: z.string().nullable().optional(),
-  issuanceType: IssuanceTypeSchema.nullable().optional()
+  issuanceType: IssuanceTypeSchema.nullable().optional(),
+  // Card lifecycle timestamps — not yet populated by any state connector backend.
+  // TODO: Add these fields to the state-connector SummerEbtCase interface model
+  // so connectors can provide card fulfillment timeline data for enrolled children.
+  cardRequestedAt: z.string().nullable().optional(),
+  cardMailedAt: z.string().nullable().optional(),
+  cardActivatedAt: z.string().nullable().optional(),
+  cardDeactivatedAt: z.string().nullable().optional()
 })
 
 export type SummerEbtCase = z.infer<typeof SummerEbtCaseSchema>

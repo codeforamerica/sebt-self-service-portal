@@ -3,10 +3,13 @@
 import Image from 'next/image'
 import { useTranslation } from 'react-i18next'
 
-import { interpolateDate, type Application, type CardStatus } from '../../api'
+import { interpolateDate, type CardStatus } from '../../api'
 
 interface CardStatusTimelineProps {
-  application: Application
+  cardStatus: CardStatus | null | undefined
+  cardRequestedAt?: string | null | undefined
+  cardMailedAt?: string | null | undefined
+  cardDeactivatedAt?: string | null | undefined
 }
 
 type StepConfig = {
@@ -29,10 +32,13 @@ const STATUS_CONFIG: Partial<Record<CardStatus, StepConfig>> = {
 }
 
 // Keys map to CSV: "S2 - Portal Dashboard - Card Table - {Key}"
-export function CardStatusTimeline({ application }: CardStatusTimelineProps) {
+export function CardStatusTimeline({
+  cardStatus,
+  cardRequestedAt,
+  cardMailedAt,
+  cardDeactivatedAt
+}: CardStatusTimelineProps) {
   const { t, i18n } = useTranslation('dashboard')
-
-  const { cardStatus } = application
 
   if (!cardStatus || cardStatus === 'Unknown') return null
   const config = STATUS_CONFIG[cardStatus]
@@ -51,12 +57,12 @@ export function CardStatusTimeline({ application }: CardStatusTimelineProps) {
   }
 
   const statusDates: Partial<Record<CardStatus, string | null>> = {
-    Requested: application.cardRequestedAt ?? null,
-    Mailed: application.cardMailedAt ?? null,
+    Requested: cardRequestedAt ?? null,
+    Mailed: cardMailedAt ?? null,
     // TODO: No cardProcessedAt field in API — using cardMailedAt as best available date
-    Processed: application.cardMailedAt ?? null,
+    Processed: cardMailedAt ?? null,
     Active: null,
-    Deactivated: application.cardDeactivatedAt ?? null
+    Deactivated: cardDeactivatedAt ?? null
   }
 
   const rawLabel = statusLabels[cardStatus] ?? cardStatus
