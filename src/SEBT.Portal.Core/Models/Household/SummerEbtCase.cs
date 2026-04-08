@@ -111,4 +111,10 @@ public class SummerEbtCase
     /// The date benefits expire.
     /// </summary>
     public DateTime? BenefitExpirationDate { get; set; }
+
+    /// <summary>
+    /// Computed per-case self-service permissions.
+    /// Set by the query handler after evaluating rules, not persisted.
+    /// </summary>
+    public CaseAllowedActions? AllowedActions { get; set; }
 }
