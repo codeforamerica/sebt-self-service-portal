@@ -22,20 +22,21 @@ namespace SEBT.Portal.UseCases.Household;
 public class UpdateAddressCommandHandler(
     IValidator<UpdateAddressCommand> validator,
     ICoreAddressUpdateService addressUpdateService,
+    IAddressValidationService addressValidationService,
     IHouseholdIdentifierResolver resolver,
     IHouseholdRepository householdRepository,
     IIdProofingRequirementsService idProofingRequirementsService,
     IStateAddressUpdateService stateAddressUpdateService,
     ILogger<UpdateAddressCommandHandler> logger)
-    : ICommandHandler<UpdateAddressCommand>
+    : ICommandHandler<UpdateAddressCommand, AddressValidationResult>
 {
-    public async Task<Result> Handle(UpdateAddressCommand command, CancellationToken cancellationToken = default)
+    public async Task<Result<AddressValidationResult>> Handle(UpdateAddressCommand command, CancellationToken cancellationToken = default)
     {
         var validationResult = await validator.Validate(command, cancellationToken);
         if (validationResult is ValidationFailedResult validationFailed)
         {
             logger.LogWarning("Address update validation failed");
-            return Result.ValidationFailed(validationFailed.Errors);
+            return Result<AddressValidationResult>.ValidationFailed(validationFailed.Errors);
         }
 
         // Validate and normalize address via Smarty (or pass-through when disabled).
@@ -54,26 +55,38 @@ public class UpdateAddressCommandHandler(
         {
             case ValidationFailedResult<AddressUpdateSuccess> addressValidationFailed:
                 logger.LogWarning("Address update failed verification or policy checks");
-                return Result.ValidationFailed(addressValidationFailed.Errors);
+                return Result<AddressValidationResult>.ValidationFailed(addressValidationFailed.Errors);
             case DependencyFailedResult<AddressUpdateSuccess> addressDependencyFailed:
                 logger.LogWarning(
                     "Address verification dependency failed: {Reason}",
                     addressDependencyFailed.Reason);
-                return Result.DependencyFailed(addressDependencyFailed.Reason, addressDependencyFailed.Message);
+                return Result<AddressValidationResult>.DependencyFailed(addressDependencyFailed.Reason, addressDependencyFailed.Message);
             case SuccessResult<AddressUpdateSuccess> success:
                 normalizedAddress = success.Value.NormalizedAddress;
                 break;
             default:
-                return Result.DependencyFailed(
+                return Result<AddressValidationResult>.DependencyFailed(
                     DependencyFailedReason.NotConfigured,
                     "Address verification failed.");
+        }
+
+        // Run state-specific address checks (blocked addresses, DC abbreviations, 30-char limit)
+        // after Smarty normalization so we validate the canonical form.
+        var stateValidation = await addressValidationService.ValidateAsync(
+            normalizedAddress!, cancellationToken);
+        if (!stateValidation.IsValid)
+        {
+            logger.LogInformation(
+                "Address failed state-specific validation: {Reason}",
+                stateValidation.Reason);
+            return Result<AddressValidationResult>.Success(stateValidation);
         }
 
         var identifier = await resolver.ResolveAsync(command.User, cancellationToken);
         if (identifier == null)
         {
             logger.LogWarning("Address update attempted but no household identifier could be resolved from claims");
-            return Result.Unauthorized("Unable to identify user from token.");
+            return Result<AddressValidationResult>.Unauthorized("Unable to identify user from token.");
         }
 
         // Never log raw address fields — PII policy.
@@ -96,7 +109,7 @@ public class UpdateAddressCommandHandler(
                 "Address update rejected for household identifier kind {Kind}: benefit type {BenefitType} is not eligible for portal self-service",
                 identifierKind,
                 household.BenefitIssuanceType);
-            return Result.PreconditionFailed(
+            return Result<AddressValidationResult>.PreconditionFailed(
                 PreconditionFailedReason.Conflict,
                 "Address updates are not available for this benefit type. Please contact your case worker.");
         }
@@ -124,7 +137,8 @@ public class UpdateAddressCommandHandler(
             if (updateResult.IsSuccess)
             {
                 logger.LogInformation("Address update completed for household identifier kind {Kind}", identifierKind);
-                return Result.Success();
+                return Result<AddressValidationResult>.Success(
+                    AddressValidationResult.Valid(normalizedAddress));
             }
 
             if (updateResult.IsPolicyRejection)
@@ -133,19 +147,19 @@ public class UpdateAddressCommandHandler(
                     "Address update policy rejection for household identifier kind {Kind}: {ErrorCode}",
                     identifierKind,
                     updateResult.ErrorCode);
-                return Result.PreconditionFailed(PreconditionFailedReason.Conflict, updateResult.ErrorMessage);
+                return Result<AddressValidationResult>.PreconditionFailed(PreconditionFailedReason.Conflict, updateResult.ErrorMessage);
             }
 
             logger.LogError(
                 "Address update backend error for household identifier kind {Kind}: {ErrorCode}",
                 identifierKind,
                 updateResult.ErrorCode);
-            return Result.DependencyFailed(DependencyFailedReason.ConnectionFailed, updateResult.ErrorMessage);
+            return Result<AddressValidationResult>.DependencyFailed(DependencyFailedReason.ConnectionFailed, updateResult.ErrorMessage);
         }
         catch (Exception ex)
         {
             logger.LogError(ex, "Address update plugin failed for household identifier kind {Kind}", identifierKind);
-            return Result.DependencyFailed(
+            return Result<AddressValidationResult>.DependencyFailed(
                 DependencyFailedReason.ConnectionFailed,
                 "Address update service is temporarily unavailable.");
         }

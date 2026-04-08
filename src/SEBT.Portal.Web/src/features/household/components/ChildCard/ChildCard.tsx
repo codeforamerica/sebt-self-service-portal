@@ -25,6 +25,7 @@ function hasDcCardLifecycle(application: Application): boolean {
 function getReplacementLink(application: Application): string | null {
   const { applicationNumber, issuanceType, cardRequestedAt } = application
   if (!applicationNumber) return null
+  if (!issuanceType || issuanceType === 'Unknown') return null
 
   if (isWithinCooldownPeriod(cardRequestedAt)) return null
 
@@ -60,7 +61,6 @@ export function ChildCard({ child, application, id, defaultExpanded = true }: Ch
   const enableCardReplacement = useFeatureFlag('enable_card_replacement')
   const showCaseNumber = useFeatureFlag('show_case_number')
   const showCardLast4 = useFeatureFlag('show_card_last4')
-  const enableCardReplacement = useFeatureFlag('enable_card_replacement')
   const [isExpanded, setIsExpanded] = useState(defaultExpanded)
   const childName = `${child.firstName} ${child.lastName}`
 
