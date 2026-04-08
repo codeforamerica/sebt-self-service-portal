@@ -1,0 +1,65 @@
+using SEBT.Portal.Core.Models.Household;
+
+namespace SEBT.Portal.Core.AppSettings;
+
+/// <summary>
+/// Configuration for per-state self-service action rules.
+/// Controls which portal actions (address update, card replacement) are available
+/// based on the user's program type (issuance type) and card status.
+/// Per-state overrides go in appsettings.{State}.json under the SelfServiceRules section.
+/// </summary>
+public class SelfServiceRulesSettings
+{
+    public static readonly string SectionName = "SelfServiceRules";
+
+    /// <summary>
+    /// Rules for portal address update actions.
+    /// </summary>
+    public ActionRuleSettings AddressUpdate { get; set; } = new();
+
+    /// <summary>
+    /// Rules for portal card replacement request actions.
+    /// </summary>
+    public ActionRuleSettings CardReplacement { get; set; } = new();
+}
+
+/// <summary>
+/// Rules for a single self-service action (e.g., address update or card replacement).
+/// </summary>
+public class ActionRuleSettings
+{
+    /// <summary>
+    /// Top-level toggle for this action at the state level.
+    /// When false, the action is disabled regardless of issuance type or card status.
+    /// </summary>
+    public bool Enabled { get; set; } = true;
+
+    /// <summary>
+    /// Optional i18n key for the message shown when this action is denied.
+    /// The frontend maps this key to a localized string via the translation system.
+    /// </summary>
+    public string? DisabledMessageKey { get; set; }
+
+    /// <summary>
+    /// Per-issuance-type rules. Keys are IssuanceType enum names.
+    /// Issuance types not present in this dictionary are denied by default.
+    /// </summary>
+    public Dictionary<IssuanceType, IssuanceTypeRuleSettings> ByIssuanceType { get; set; } = new();
+}
+
+/// <summary>
+/// Rules for a specific issuance type within an action.
+/// </summary>
+public class IssuanceTypeRuleSettings
+{
+    /// <summary>
+    /// Whether this issuance type is permitted for the parent action.
+    /// </summary>
+    public bool Enabled { get; set; }
+
+    /// <summary>
+    /// Card statuses for which the action is allowed.
+    /// If empty and Enabled is true, the action is allowed regardless of card status.
+    /// </summary>
+    public List<CardStatus> AllowedCardStatuses { get; set; } = new();
+}

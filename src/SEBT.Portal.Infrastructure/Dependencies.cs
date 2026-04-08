@@ -224,6 +224,10 @@ public static class Dependencies
         services.AddOptions<AddressValidationPolicySettings>()
             .BindConfiguration(AddressValidationPolicySettings.SectionName);
 
+        services.AddSingleton<IValidateOptions<SelfServiceRulesSettings>, SelfServiceRulesSettingsValidator>();
+        services.AddOptionsWithValidateOnStart<SelfServiceRulesSettings>()
+            .BindConfiguration(SelfServiceRulesSettings.SectionName);
+
         return services;
     }
 }
