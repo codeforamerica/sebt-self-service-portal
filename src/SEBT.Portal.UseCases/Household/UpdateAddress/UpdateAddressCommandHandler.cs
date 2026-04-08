@@ -54,8 +54,15 @@ public class UpdateAddressCommandHandler(
         switch (addressOutcome)
         {
             case ValidationFailedResult<AddressUpdateSuccess> addressValidationFailed:
+                // Smarty couldn't verify the address. Return a structured "not-found"
+                // result so the frontend routes to the Address Not Found screen (422)
+                // instead of showing a generic validation error (400).
                 logger.LogWarning("Address update failed verification or policy checks");
-                return Result<AddressValidationResult>.ValidationFailed(addressValidationFailed.Errors);
+                var firstError = addressValidationFailed.Errors.FirstOrDefault();
+                return Result<AddressValidationResult>.Success(
+                    AddressValidationResult.Invalid(
+                        firstError?.Message ?? "Address could not be verified.",
+                        "not-found"));
             case DependencyFailedResult<AddressUpdateSuccess> addressDependencyFailed:
                 logger.LogWarning(
                     "Address verification dependency failed: {Reason}",

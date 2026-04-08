@@ -4,22 +4,25 @@ import { useRouter, useSearchParams } from 'next/navigation'
 import type { ReactNode } from 'react'
 import { useEffect } from 'react'
 
+import { IalGuard } from '@/features/auth'
+
 /**
  * Layout for the standalone card replacement flow.
- * Guards against missing `app` query param (required to identify which application to replace).
+ * Guards against missing `case` query param and enforces IAL1+ via OIDC step-up
+ * (required so the household address is available for mailing the replacement card).
  */
 export default function CardReplaceLayout({ children }: { children: ReactNode }) {
   const searchParams = useSearchParams()
   const router = useRouter()
-  const appParam = searchParams.get('app')
+  const caseParam = searchParams.get('case')
 
   useEffect(() => {
-    if (!appParam) {
+    if (!caseParam) {
       router.replace('/dashboard')
     }
-  }, [appParam, router])
+  }, [caseParam, router])
 
-  if (!appParam) {
+  if (!caseParam) {
     return (
       <div
         aria-busy="true"
@@ -30,5 +33,5 @@ export default function CardReplaceLayout({ children }: { children: ReactNode })
     )
   }
 
-  return <>{children}</>
+  return <IalGuard>{children}</IalGuard>
 }

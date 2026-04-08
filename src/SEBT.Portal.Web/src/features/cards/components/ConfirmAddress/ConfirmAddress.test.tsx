@@ -2,7 +2,7 @@ import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
-import type { Address, Application } from '@/features/household/api/schema'
+import type { Address, SummerEbtCase } from '@/features/household/api/schema'
 
 import { ConfirmAddress } from './ConfirmAddress'
 
@@ -33,21 +33,19 @@ const TEST_ADDRESS: Address = {
   postalCode: '20001'
 }
 
-const TEST_APPLICATION: Application = {
-  applicationNumber: 'APP-001',
-  caseNumber: 'CASE-001',
-  applicationStatus: 'Approved',
-  benefitIssueDate: null,
-  benefitExpirationDate: null,
-  last4DigitsOfCard: '1234',
-  cardStatus: 'Active',
+const TEST_CASE: SummerEbtCase = {
+  summerEBTCaseID: 'SEBT-001',
+  childFirstName: 'Sophia',
+  childLastName: 'Martinez',
+  householdType: 'OSSE',
+  eligibilityType: 'NSLP',
+  issuanceType: 'SummerEbt',
+  ebtCardLastFour: '1234',
+  ebtCardStatus: 'Active',
   cardRequestedAt: null,
   cardMailedAt: null,
   cardActivatedAt: null,
-  cardDeactivatedAt: null,
-  children: [{ firstName: 'Sophia', lastName: 'Martinez' }],
-  childrenOnApplication: 1,
-  issuanceType: 'SummerEbt'
+  cardDeactivatedAt: null
 }
 
 function renderConfirmAddress() {
@@ -56,10 +54,10 @@ function renderConfirmAddress() {
     user,
     ...render(
       <ConfirmAddress
-        application={TEST_APPLICATION}
+        summerEbtCase={TEST_CASE}
         address={TEST_ADDRESS}
-        confirmPath="/cards/replace/confirm?app=APP-001"
-        changePath="/cards/replace/address?app=APP-001"
+        confirmPath="/cards/replace/confirm?case=SEBT-001"
+        changePath="/cards/replace/address?case=SEBT-001"
       />
     )
   }
@@ -102,7 +100,7 @@ describe('ConfirmAddress', () => {
     await user.click(screen.getByLabelText(/yes/i))
     await user.click(screen.getByRole('button', { name: /continue/i }))
 
-    expect(mockPush).toHaveBeenCalledWith('/cards/replace/confirm?app=APP-001')
+    expect(mockPush).toHaveBeenCalledWith('/cards/replace/confirm?case=SEBT-001')
   })
 
   it('navigates to change path when no is selected', async () => {
@@ -111,7 +109,7 @@ describe('ConfirmAddress', () => {
     await user.click(screen.getByLabelText(/no/i))
     await user.click(screen.getByRole('button', { name: /continue/i }))
 
-    expect(mockPush).toHaveBeenCalledWith('/cards/replace/address?app=APP-001')
+    expect(mockPush).toHaveBeenCalledWith('/cards/replace/address?case=SEBT-001')
   })
 
   it('navigates back when back button is clicked', async () => {

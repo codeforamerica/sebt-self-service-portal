@@ -60,7 +60,7 @@ export const TEST_HOUSEHOLD_DATA = {
       eligibilityType: 'NSLP',
       issuanceType: 1,
       ebtCardLastFour: '1234',
-      ebtCardStatus: 'ACTIVE',
+      ebtCardStatus: 'Active',
       benefitAvailableDate: '2026-06-01T00:00:00Z',
       benefitExpirationDate: '2026-08-31T00:00:00Z'
     },

@@ -97,6 +97,12 @@ public class SummerEbtCase
     public decimal? EbtCardBalance { get; set; }
 
     /// <summary>
+    /// When a card replacement was last requested for this case.
+    /// Used to enforce a cooldown period between replacement requests.
+    /// </summary>
+    public DateTime? CardRequestedAt { get; set; }
+
+    /// <summary>
     /// The date benefits become available.
     /// </summary>
     public DateTime? BenefitAvailableDate { get; set; }

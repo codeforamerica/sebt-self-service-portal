@@ -100,6 +100,11 @@ public record SummerEbtCaseResponse
     public decimal? EbtCardBalance { get; init; }
 
     /// <summary>
+    /// When a card replacement was last requested for this case.
+    /// </summary>
+    public DateTime? CardRequestedAt { get; init; }
+
+    /// <summary>
     /// The date benefits become available.
     /// </summary>
     public DateTime? BenefitAvailableDate { get; init; }

@@ -329,7 +329,7 @@ public class UpdateAddressCommandHandlerTests
     }
 
     [Fact]
-    public async Task Handle_ReturnsValidationFailed_WhenAddressServiceReturnsValidationFailed()
+    public async Task Handle_ReturnsNotFoundResult_WhenAddressServiceReturnsValidationFailed()
     {
         _addressUpdateService
             .ValidateAndNormalizeAsync(Arg.Any<AddressUpdateOperationRequest>(), Arg.Any<CancellationToken>())
@@ -341,8 +341,12 @@ public class UpdateAddressCommandHandlerTests
 
         var result = await handler.Handle(command, CancellationToken.None);
 
-        Assert.False(result.IsSuccess);
-        Assert.IsType<ValidationFailedResult<AddressValidationResult>>(result);
+        // Smarty verification failures become structured "not-found" results (422)
+        // so the frontend routes to Address Not Found, not a generic 400.
+        Assert.True(result.IsSuccess);
+        var successResult = Assert.IsType<SuccessResult<AddressValidationResult>>(result);
+        Assert.False(successResult.Value.IsValid);
+        Assert.Equal("not-found", successResult.Value.Reason);
         await _resolver.DidNotReceive()
             .ResolveAsync(Arg.Any<ClaimsPrincipal>(), Arg.Any<CancellationToken>());
     }
