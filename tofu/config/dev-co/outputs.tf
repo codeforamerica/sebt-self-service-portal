@@ -17,3 +17,8 @@ output "web_repository_url" {
   description = "ECR repository URL for the Web service."
   value       = module.app.web_repository_url
 }
+
+output "enrollment_checker_nameservers" {
+  description = "NS records for the enrollment checker hosted zone."
+  value       = aws_route53_zone.enrollment_checker.name_servers
+}

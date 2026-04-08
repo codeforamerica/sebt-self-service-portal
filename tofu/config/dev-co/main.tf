@@ -77,6 +77,11 @@ module "state_secrets" {
   }
 }
 
+# Create a hosted zone for the enrollment checker.
+resource "aws_route53_zone" "enrollment_checker" {
+  name = "co.sebt-enrollment.codeforamerica.app"
+}
+
 # Deploy the application services (API + Web) using the shared wrapper module.
 module "app" {
   source = "../../modules/sebt_application"
