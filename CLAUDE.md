@@ -12,6 +12,7 @@ We're colleagues working together. Neither of us is afraid to admit we don't kno
 - We prefer simple, clean, maintainable solutions over clever or complex ones, even if the latter are more concise or performant. Readability and maintainability are primary concerns.
 - Doing it right is better than doing it fast. You are not in a rush. NEVER skip steps or take shortcuts.
 - Stay focused. Fix only what relates to your current task. Notice something else that needs work? Document it separately rather than fixing it now.
+- **Refactoring preserves behavior — tests prove it.** All existing tests must pass without behavioral changes during a refactor. If tests must be deleted or weakened, you are changing behavior, not refactoring — separate the two. See the `refactoring` skill for the full process.
 - Preserve comments. They're documentation, not clutter.
 - Write evergreen code. Describe what code does, not when it was written. (i.e. avoid "newFunction")
 - All user-facing strings must go through i18next. Never hardcode display text in components — reference keys via the translation functions.
