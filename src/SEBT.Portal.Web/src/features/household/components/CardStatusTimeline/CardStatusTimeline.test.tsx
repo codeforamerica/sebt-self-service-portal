@@ -1,52 +1,55 @@
 import { render, screen } from '@testing-library/react'
 import { describe, expect, it } from 'vitest'
 
-import { createMockApplication } from '../../testing'
+import type { CardStatus } from '../../api'
 
 import { CardStatusTimeline } from './CardStatusTimeline'
 
-const mockApplication = createMockApplication({
-  cardStatus: 'Active',
+const defaultProps = {
+  cardStatus: 'Active' as CardStatus,
   cardRequestedAt: '2026-01-01T00:00:00Z',
   cardMailedAt: '2026-01-03T00:00:00Z',
-  cardActivatedAt: '2026-01-08T00:00:00Z'
-})
+  cardDeactivatedAt: null
+}
 
 describe('CardStatusTimeline', () => {
   it('renders timeline heading', () => {
-    render(<CardStatusTimeline application={mockApplication} />)
+    render(<CardStatusTimeline {...defaultProps} />)
 
     expect(screen.getByText('Card status')).toBeInTheDocument()
   })
 
   it('renders nothing when cardStatus is null', () => {
     const { container } = render(
-      <CardStatusTimeline application={{ ...mockApplication, cardStatus: null }} />
+      <CardStatusTimeline
+        {...defaultProps}
+        cardStatus={null}
+      />
     )
     expect(container).toBeEmptyDOMElement()
   })
 
   it('renders nothing when cardStatus is Unknown', () => {
     const { container } = render(
-      <CardStatusTimeline application={{ ...mockApplication, cardStatus: 'Unknown' }} />
+      <CardStatusTimeline
+        {...defaultProps}
+        cardStatus={'Unknown'}
+      />
     )
     expect(container).toBeEmptyDOMElement()
   })
 
   it('renders Active label for Active status', () => {
-    render(<CardStatusTimeline application={mockApplication} />)
+    render(<CardStatusTimeline {...defaultProps} />)
     expect(screen.getByText('Active')).toBeInTheDocument()
   })
 
   it('renders Requested label with date', () => {
     render(
       <CardStatusTimeline
-        application={{
-          ...mockApplication,
-          cardStatus: 'Requested',
-          cardMailedAt: null,
-          cardActivatedAt: null
-        }}
+        {...defaultProps}
+        cardStatus={'Requested'}
+        cardMailedAt={null}
       />
     )
     expect(screen.getByText(/01\/01\/2026/)).toBeInTheDocument()
@@ -55,7 +58,8 @@ describe('CardStatusTimeline', () => {
   it('renders Issued label with date for Mailed status', () => {
     render(
       <CardStatusTimeline
-        application={{ ...mockApplication, cardStatus: 'Mailed', cardActivatedAt: null }}
+        {...defaultProps}
+        cardStatus={'Mailed'}
       />
     )
     expect(screen.getByText(/01\/03\/2026/)).toBeInTheDocument()
@@ -64,7 +68,8 @@ describe('CardStatusTimeline', () => {
   it('strips date placeholder when no date is available', () => {
     render(
       <CardStatusTimeline
-        application={{ ...mockApplication, cardStatus: 'Processed', cardActivatedAt: null }}
+        {...defaultProps}
+        cardStatus={'Processed'}
       />
     )
     expect(screen.queryByText(/\[(?:MM\/DD\/YYYY|DD\/MM\/YYYY)\]/)).toBeNull()
@@ -73,11 +78,9 @@ describe('CardStatusTimeline', () => {
   it('renders Deactivated label for Deactivated status', () => {
     render(
       <CardStatusTimeline
-        application={{
-          ...mockApplication,
-          cardStatus: 'Deactivated',
-          cardDeactivatedAt: '2026-02-15T00:00:00Z'
-        }}
+        {...defaultProps}
+        cardStatus={'Deactivated'}
+        cardDeactivatedAt={'2026-02-15T00:00:00Z'}
       />
     )
     expect(screen.getByText('Deactivated')).toBeInTheDocument()
@@ -86,7 +89,8 @@ describe('CardStatusTimeline', () => {
   it('does not render replacement link (ChildCard handles replacement links)', () => {
     render(
       <CardStatusTimeline
-        application={{ ...mockApplication, cardStatus: 'Processed', cardActivatedAt: null }}
+        {...defaultProps}
+        cardStatus={'Processed'}
       />
     )
     expect(screen.queryByRole('link')).toBeNull()
