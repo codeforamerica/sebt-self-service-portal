@@ -120,6 +120,31 @@ public static class Dependencies
         services.AddSingleton<MockHouseholdRepository>();
         services.AddTransient<HouseholdRepository>();
 
+        return services;
+    }
+
+    /// <summary>
+    /// Registers caching services. When a Redis connection string is configured,
+    /// uses Redis as the distributed cache (L2) backing HybridCache.
+    /// Otherwise, falls back to in-memory caching only.
+    /// Call this before AddPlugins — plugins may depend on HybridCache.
+    /// </summary>
+    public static IServiceCollection AddCaching(this IServiceCollection services, IConfiguration? configuration)
+    {
+        var redisConnectionString = configuration?.GetConnectionString("Redis");
+
+        if (!string.IsNullOrEmpty(redisConnectionString))
+        {
+            services.AddStackExchangeRedisCache(options =>
+            {
+                options.Configuration = redisConnectionString;
+            });
+        }
+
+        // HybridCache provides an L1 in-memory cache with optional L2 distributed backing.
+        // When Redis is registered above, HybridCache automatically uses it as L2.
+        // When Redis is not configured, HybridCache operates as in-memory only.
+        services.AddHybridCache();
         services.AddMemoryCache();
 
         return services;
