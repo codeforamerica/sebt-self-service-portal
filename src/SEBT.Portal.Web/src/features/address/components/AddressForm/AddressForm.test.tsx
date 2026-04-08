@@ -147,18 +147,18 @@ describe('AddressForm', () => {
     expect(getCityInput()).toHaveValue('')
   })
 
-  it('pre-fills state as District of Columbia for DC', () => {
+  it('pre-fills state as DC for DC', () => {
     mockState = 'dc'
     renderForm()
 
-    expect(getStateSelect()).toHaveValue('District of Columbia')
+    expect(getStateSelect()).toHaveValue('DC')
   })
 
-  it('pre-fills state as Colorado for CO', () => {
+  it('pre-fills state as CO for CO', () => {
     mockState = 'co'
     renderForm()
 
-    expect(getStateSelect()).toHaveValue('Colorado')
+    expect(getStateSelect()).toHaveValue('CO')
   })
 
   // --- Pre-population from addressOnFile ---
@@ -176,7 +176,7 @@ describe('AddressForm', () => {
     expect(getStreetInput()).toHaveValue('456 K St NW')
     expect(getLine2Input()).toHaveValue('Suite 200')
     expect(getCityInput()).toHaveValue('Arlington')
-    expect(getStateSelect()).toHaveValue('Virginia')
+    expect(getStateSelect()).toHaveValue('VA')
     expect(getPostalInput()).toHaveValue('22201')
   })
 
@@ -186,11 +186,11 @@ describe('AddressForm', () => {
 
     expect(getStreetInput()).toHaveValue('')
     expect(getCityInput()).toHaveValue('Washington')
-    expect(getStateSelect()).toHaveValue('District of Columbia')
+    expect(getStateSelect()).toHaveValue('DC')
     expect(getPostalInput()).toHaveValue('')
   })
 
-  it('resolves state abbreviation from backend to full dropdown name', () => {
+  it('resolves state abbreviation from backend to dropdown value', () => {
     mockState = 'dc'
     const address: Address = {
       streetAddress1: '123 Main St NW',
@@ -200,10 +200,10 @@ describe('AddressForm', () => {
     }
     renderForm(address)
 
-    expect(getStateSelect()).toHaveValue('District of Columbia')
+    expect(getStateSelect()).toHaveValue('DC')
   })
 
-  it('resolves a non-home-state abbreviation to the correct full name', () => {
+  it('resolves a non-home-state abbreviation to the correct code', () => {
     mockState = 'dc'
     const address: Address = {
       streetAddress1: '456 Charles St',
@@ -213,8 +213,8 @@ describe('AddressForm', () => {
     }
     renderForm(address)
 
-    // If this were fallback-only, it would show "District of Columbia"
-    expect(getStateSelect()).toHaveValue('Maryland')
+    // If this were fallback-only, it would show "DC" (DC portal default)
+    expect(getStateSelect()).toHaveValue('MD')
   })
 
   it('uses state defaults for individual null fields in initialAddress', () => {
@@ -231,7 +231,7 @@ describe('AddressForm', () => {
     expect(getStreetInput()).toHaveValue('789 H St NE')
     expect(getLine2Input()).toHaveValue('')
     expect(getCityInput()).toHaveValue('Washington')
-    expect(getStateSelect()).toHaveValue('District of Columbia')
+    expect(getStateSelect()).toHaveValue('DC')
     expect(getPostalInput()).toHaveValue('20002')
   })
 

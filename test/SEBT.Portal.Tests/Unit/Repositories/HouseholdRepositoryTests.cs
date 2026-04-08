@@ -1,4 +1,3 @@
-using Microsoft.Extensions.Logging.Abstractions;
 using NSubstitute;
 using SEBT.Portal.Core.Models;
 using SEBT.Portal.Core.Models.Auth;
@@ -34,9 +33,7 @@ public class HouseholdRepositoryTests
     public HouseholdRepositoryTests()
     {
         _summerEbtCaseService = Substitute.For<ISummerEbtCaseService>();
-        _repository = new HouseholdRepository(
-            _summerEbtCaseService,
-            NullLogger<HouseholdRepository>.Instance);
+        _repository = new HouseholdRepository(_summerEbtCaseService);
     }
 
     [Fact]

@@ -126,6 +126,7 @@
 
   <ItemGroup>
     <Folder Include="plugins-dc\" />
+    <Folder Include="plugins-co\" />
   </ItemGroup>
 
 </Project>

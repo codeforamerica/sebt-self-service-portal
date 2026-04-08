@@ -70,16 +70,11 @@ public class HouseholdIdentifierResolver : IHouseholdIdentifierResolver
                 "StateHouseholdId:PreferredHouseholdIdTypes is empty. Configure at least one preferred type");
         }
 
-        _logger?.LogInformation(
-            "Resolving household identifier; preferred types: [{Types}]",
-            string.Join(", ", preferredTypes.Select(t => t.ToString())));
-
         if (preferredTypes.Contains(PreferredHouseholdIdType.Phone))
         {
             var overridePhone = _phoneOverrideProvider.GetOverridePhone();
             if (!string.IsNullOrWhiteSpace(overridePhone))
             {
-                _logger?.LogInformation("Using development phone override for household lookup ");
                 return new HouseholdIdentifier(PreferredHouseholdIdType.Phone, overridePhone);
             }
 
@@ -89,7 +84,6 @@ public class HouseholdIdentifierResolver : IHouseholdIdentifierResolver
                 var normalized = phoneFromClaims.Trim();
                 if (!string.IsNullOrWhiteSpace(normalized))
                 {
-                    _logger?.LogInformation("Using phone from JWT claims for household lookup");
                     return new HouseholdIdentifier(PreferredHouseholdIdType.Phone, normalized);
                 }
             }

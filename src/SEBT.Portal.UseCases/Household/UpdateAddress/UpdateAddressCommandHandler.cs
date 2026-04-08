@@ -80,10 +80,6 @@ public class UpdateAddressCommandHandler(
         // Extract enum name to a local to break CodeQL taint chain (identifier is tainted via .Value).
         var identifierKind = identifier.Type.ToString();
 
-        logger.LogInformation(
-            "Address update received for household identifier kind {Kind}",
-            identifierKind);
-
         // Policy enforcement: SNAP and TANF households must update via case worker, not the portal.
         var userIalLevel = UserIalLevelExtensions.FromClaimsPrincipal(command.User);
         var piiVisibility = idProofingRequirementsService.GetPiiVisibility(userIalLevel);
@@ -123,7 +119,6 @@ public class UpdateAddressCommandHandler(
 
             if (updateResult.IsSuccess)
             {
-                logger.LogInformation("Address update completed for household identifier kind {Kind}", identifierKind);
                 return Result.Success();
             }
 
