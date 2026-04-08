@@ -56,20 +56,20 @@ public class RequestCardReplacementCommandHandler(
             return Result.PreconditionFailed(PreconditionFailedReason.NotFound, "Household data not found.");
         }
 
-        var cooldownErrors = CheckCooldown(command.ApplicationNumbers, household, timeProvider);
+        var cooldownErrors = CheckCooldown(command.CaseIds, household, timeProvider);
         if (cooldownErrors.Count > 0)
         {
             logger.LogInformation(
-                "Card replacement rejected: {Count} application(s) within cooldown period",
+                "Card replacement rejected: {Count} case(s) within cooldown period",
                 cooldownErrors.Count);
             return Result.ValidationFailed(cooldownErrors);
         }
 
         var identifierKind = identifier.Type.ToString();
         logger.LogInformation(
-            "Card replacement request received for household identifier kind {Kind}, {Count} application(s)",
+            "Card replacement request received for household identifier kind {Kind}, {Count} case(s)",
             identifierKind,
-            command.ApplicationNumbers.Count);
+            command.CaseIds.Count);
 
         // TODO: Call state connector to process card replacement.
         // Stubbed — returns success without calling the state system.
@@ -82,35 +82,35 @@ public class RequestCardReplacementCommandHandler(
     }
 
     private static List<ValidationError> CheckCooldown(
-        List<string> requestedApplicationNumbers,
+        List<string> requestedCaseIds,
         Core.Models.Household.HouseholdData household,
         TimeProvider timeProvider)
     {
         var errors = new List<ValidationError>();
         var now = timeProvider.GetUtcNow().UtcDateTime;
 
-        foreach (var appNumber in requestedApplicationNumbers)
+        foreach (var caseId in requestedCaseIds)
         {
-            var application = household.Applications
-                .FirstOrDefault(a => a.ApplicationNumber == appNumber);
+            var summerEbtCase = household.SummerEbtCases
+                .FirstOrDefault(c => c.SummerEBTCaseID == caseId);
 
-            if (application == null)
+            if (summerEbtCase == null)
             {
                 errors.Add(new ValidationError(
-                    "ApplicationNumbers",
-                    $"Application {appNumber} does not belong to this household."));
+                    "CaseIds",
+                    $"Case {caseId} does not belong to this household."));
                 continue;
             }
 
-            if (application.CardRequestedAt == null)
+            if (summerEbtCase.CardRequestedAt == null)
                 continue;
 
-            var elapsed = now - application.CardRequestedAt.Value;
+            var elapsed = now - summerEbtCase.CardRequestedAt.Value;
             if (elapsed < CooldownPeriod)
             {
                 errors.Add(new ValidationError(
-                    "ApplicationNumbers",
-                    $"Application {appNumber} was requested within the last 14 days."));
+                    "CaseIds",
+                    $"Case {caseId} was requested within the last 14 days."));
             }
         }
 

@@ -3,28 +3,28 @@ import { describe, expect, it } from 'vitest'
 import { RequestCardReplacementSchema } from './schema'
 
 describe('RequestCardReplacementSchema', () => {
-  it('accepts valid request with one application number', () => {
+  it('accepts valid request with one case ID', () => {
     const result = RequestCardReplacementSchema.safeParse({
-      applicationNumbers: ['APP-001']
+      caseIds: ['SEBT-001']
     })
     expect(result.success).toBe(true)
   })
 
-  it('accepts valid request with multiple application numbers', () => {
+  it('accepts valid request with multiple case IDs', () => {
     const result = RequestCardReplacementSchema.safeParse({
-      applicationNumbers: ['APP-001', 'APP-002', 'APP-003']
+      caseIds: ['SEBT-001', 'SEBT-002', 'SEBT-003']
     })
     expect(result.success).toBe(true)
   })
 
-  it('rejects empty application numbers array', () => {
+  it('rejects empty case IDs array', () => {
     const result = RequestCardReplacementSchema.safeParse({
-      applicationNumbers: []
+      caseIds: []
     })
     expect(result.success).toBe(false)
   })
 
-  it('rejects missing applicationNumbers field', () => {
+  it('rejects missing caseIds field', () => {
     const result = RequestCardReplacementSchema.safeParse({})
     expect(result.success).toBe(false)
   })
