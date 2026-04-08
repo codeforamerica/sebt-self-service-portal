@@ -19,17 +19,15 @@ export function MixpanelAnalytics({ token, nonce }: MixpanelAnalyticsProps) {
     }
   }, [token])
 
-  return (
-    <Script
-      // @ts-expect-error — Next.js 16 ScriptProps inherits src from ScriptHTMLAttributes
-      // but tsc with exactOptionalPropertyTypes doesn't resolve it. Works at runtime.
-      src="https://cdn.mxpnl.com/libs/mixpanel-2-latest.min.js"
-      strategy="afterInteractive"
-      nonce={nonce}
-      onLoad={() => {
-        if (teardownRef.current) return
-        teardownRef.current = initMixpanelBridge(token)
-      }}
-    />
-  )
+  const scriptProps = {
+    src: 'https://cdn.mxpnl.com/libs/mixpanel-2-latest.min.js',
+    strategy: 'afterInteractive' as const,
+    nonce,
+    onLoad: () => {
+      if (teardownRef.current) return
+      teardownRef.current = initMixpanelBridge(token)
+    }
+  }
+
+  return <Script {...scriptProps} />
 }
