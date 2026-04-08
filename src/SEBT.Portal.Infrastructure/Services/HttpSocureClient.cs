@@ -118,6 +118,9 @@ public class HttpSocureClient(
             NationalId = !string.IsNullOrWhiteSpace(idType) && !string.IsNullOrWhiteSpace(idValue)
                 ? idValue
                 : null,
+            DiSessionToken = !string.IsNullOrWhiteSpace(settings.DiSessionToken)
+                ? settings.DiSessionToken
+                : null,
             Docv = new SocureDocvConfig()
         };
 
