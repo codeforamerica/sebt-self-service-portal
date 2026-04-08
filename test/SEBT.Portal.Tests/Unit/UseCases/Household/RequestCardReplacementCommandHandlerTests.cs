@@ -22,11 +22,20 @@ public class RequestCardReplacementCommandHandlerTests
         Substitute.For<IHouseholdIdentifierResolver>();
     private readonly IHouseholdRepository _repository =
         Substitute.For<IHouseholdRepository>();
+    private readonly ISelfServiceEvaluator _evaluator =
+        Substitute.For<ISelfServiceEvaluator>();
     private readonly NullLogger<RequestCardReplacementCommandHandler> _logger =
         NullLogger<RequestCardReplacementCommandHandler>.Instance;
 
+    public RequestCardReplacementCommandHandlerTests()
+    {
+        // Default: evaluator allows card replacement for any case
+        _evaluator.EvaluateCase(Arg.Any<SummerEbtCase>())
+            .Returns(new CaseAllowedActions { CanRequestReplacementCard = true });
+    }
+
     private RequestCardReplacementCommandHandler CreateHandler(TimeProvider? timeProvider = null) =>
-        new(_validator, _resolver, _repository, timeProvider ?? TimeProvider.System, _logger);
+        new(_validator, _resolver, _repository, _evaluator, timeProvider ?? TimeProvider.System, _logger);
 
     private static ClaimsPrincipal CreateUser(string email, string? ialClaim = null)
     {
@@ -394,5 +403,30 @@ public class RequestCardReplacementCommandHandlerTests
 
         Assert.True(result.IsSuccess);
         Assert.IsType<SuccessResult>(result);
+    }
+
+    // --- Self-service rules tests ---
+
+    [Fact]
+    public async Task Handle_ReturnsNotAllowed_WhenEvaluatorDeniesCardReplacement()
+    {
+        var handler = CreateHandler();
+        var command = CreateValidCommand();
+        SetupResolverSuccess();
+        SetupRepositoryReturns(CreateHouseholdWithCases(
+            new SummerEbtCase
+            {
+                SummerEBTCaseID = "SEBT-001",
+                CardRequestedAt = null
+            }
+        ));
+        _evaluator.EvaluateCase(Arg.Any<SummerEbtCase>())
+            .Returns(new CaseAllowedActions { CanRequestReplacementCard = false, CardReplacementDeniedMessageKey = "selfServiceUnavailable" });
+
+        var result = await handler.Handle(command, CancellationToken.None);
+
+        Assert.False(result.IsSuccess);
+        var preconditionFailed = Assert.IsType<PreconditionFailedResult>(result);
+        Assert.Equal(PreconditionFailedReason.NotAllowed, preconditionFailed.Reason);
     }
 }

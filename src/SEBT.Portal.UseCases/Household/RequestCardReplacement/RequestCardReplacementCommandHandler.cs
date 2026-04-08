@@ -17,6 +17,7 @@ public class RequestCardReplacementCommandHandler(
     IValidator<RequestCardReplacementCommand> validator,
     IHouseholdIdentifierResolver resolver,
     IHouseholdRepository repository,
+    ISelfServiceEvaluator selfServiceEvaluator,
     TimeProvider timeProvider,
     ILogger<RequestCardReplacementCommandHandler> logger)
     : ICommandHandler<RequestCardReplacementCommand>
@@ -54,6 +55,24 @@ public class RequestCardReplacementCommandHandler(
         {
             logger.LogWarning("Card replacement attempted but household data not found");
             return Result.PreconditionFailed(PreconditionFailedReason.NotFound, "Household data not found.");
+        }
+
+        // Evaluate self-service rules per case before checking cooldown.
+        foreach (var caseId in command.CaseIds)
+        {
+            var summerEbtCase = household.SummerEbtCases
+                .FirstOrDefault(c => c.SummerEBTCaseID == caseId);
+
+            if (summerEbtCase == null)
+                continue; // CheckCooldown will catch unknown cases with a proper error
+
+            var caseActions = selfServiceEvaluator.EvaluateCase(summerEbtCase);
+            if (!caseActions.CanRequestReplacementCard)
+            {
+                logger.LogInformation("Card replacement denied by self-service rules for case {CaseId}", caseId);
+                return Result.PreconditionFailed(PreconditionFailedReason.NotAllowed,
+                    caseActions.CardReplacementDeniedMessageKey ?? "Card replacement is not available for this case.");
+            }
         }
 
         var cooldownErrors = CheckCooldown(command.CaseIds, household, timeProvider);
