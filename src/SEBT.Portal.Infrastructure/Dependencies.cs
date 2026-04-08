@@ -38,6 +38,9 @@ public static class Dependencies
         // Household identifier resolution (state-configurable preferred household ID type)
         services.AddTransient<IHouseholdIdentifierResolver, HouseholdIdentifierResolver>();
 
+        // Self-service action permission evaluation
+        services.AddTransient<ISelfServiceEvaluator, SelfServiceEvaluator>();
+
         services.AddHttpClient("Smarty", (sp, client) =>
         {
             var smarty = sp.GetRequiredService<IOptions<SmartySettings>>().Value;
