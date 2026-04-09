@@ -116,6 +116,7 @@ public class SubmitIdProofingCommandHandler(
             givenName: givenName,
             familyName: familyName,
             address: address,
+            diSessionToken: command.DiSessionToken,
             cancellationToken: cancellationToken);
 
         if (!assessmentResult.IsSuccess)

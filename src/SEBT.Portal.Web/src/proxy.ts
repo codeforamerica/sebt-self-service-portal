@@ -26,11 +26,11 @@ export function proxy(request: NextRequest) {
   // In dev, we skip style nonce to allow HMR style injection.
   const cspHeader = `
     default-src 'self';
-    script-src 'self' 'nonce-${nonce}' 'strict-dynamic' https://www.googletagmanager.com ${isDev ? "'unsafe-eval'" : ''};
+    script-src 'self' 'nonce-${nonce}' 'strict-dynamic' https://www.googletagmanager.com https://sdk.dv.socure.io ${isDev ? "'unsafe-eval'" : ''};
     style-src 'self' ${isDev ? "'unsafe-inline'" : `'nonce-${nonce}'`} https://fonts.googleapis.com https://verify-v2.socure.com;
     font-src 'self' https://fonts.gstatic.com https://verify-v2.socure.com;
     img-src 'self' data: https: https://www.google-analytics.com;
-    connect-src 'self' https://www.google-analytics.com https://*.google-analytics.com https://www.googletagmanager.com https://auth.pingone.com https://*.socure.com ${isDev ? 'ws://localhost:* http://localhost:*' : ''};
+    connect-src 'self' https://www.google-analytics.com https://*.google-analytics.com https://www.googletagmanager.com https://auth.pingone.com https://*.socure.com https://*.socure.io ${isDev ? 'ws://localhost:* http://localhost:*' : ''};
     frame-src https://verify-v2.socure.com;
     child-src https://verify-v2.socure.com;
     worker-src 'self';

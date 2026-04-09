@@ -25,6 +25,7 @@ public class DisabledSocureClient : ISocureClient
         string? givenName = null,
         string? familyName = null,
         Address? address = null,
+        string? diSessionToken = null,
         CancellationToken cancellationToken = default)
     {
         return Task.FromResult(

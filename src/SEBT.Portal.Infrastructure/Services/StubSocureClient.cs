@@ -24,6 +24,7 @@ public class StubSocureClient(ILogger<StubSocureClient> logger) : ISocureClient
         string? givenName = null,
         string? familyName = null,
         Address? address = null,
+        string? diSessionToken = null,
         CancellationToken cancellationToken = default)
     {
         logger.LogInformation(

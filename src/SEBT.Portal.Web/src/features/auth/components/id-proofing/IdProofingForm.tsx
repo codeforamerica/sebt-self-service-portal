@@ -29,6 +29,7 @@ export interface IdOption {
 interface IdProofingFormProps {
   idOptions: IdOption[]
   contactLink: string
+  getDiToken?: () => Promise<string | null>
 }
 
 // Generate localized month names using Intl.DateTimeFormat
@@ -40,7 +41,7 @@ function getLocalizedMonths(locale: string) {
   }))
 }
 
-export function IdProofingForm({ idOptions, contactLink }: IdProofingFormProps) {
+export function IdProofingForm({ idOptions, contactLink, getDiToken }: IdProofingFormProps) {
   const router = useRouter()
   const { t, i18n } = useTranslation('idProofing')
   const { t: tCommon } = useTranslation('common')
@@ -102,11 +103,15 @@ export function IdProofingForm({ idOptions, contactLink }: IdProofingFormProps) 
     trackEvent(AnalyticsEvents.IDV_PRIMARY_START)
 
     try {
+      // Best-effort: retrieve DI token if the SDK is ready
+      const diSessionToken = getDiToken ? await getDiToken() : null
+
       const response = await submitIdProofing.mutateAsync({
         dateOfBirth: { month: dobMonth, day: dobDay, year: dobYear },
         // Map the UI "none" sentinel to null for the API
         idType: selectedIdType === NONE_VALUE || selectedIdType === null ? null : selectedIdType,
-        idValue: showIdValueInput ? idValue.trim() : null
+        idValue: showIdValueInput ? idValue.trim() : null,
+        diSessionToken
       })
 
       if (response.result === 'documentVerificationRequired') {

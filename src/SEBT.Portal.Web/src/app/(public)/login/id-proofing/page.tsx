@@ -1,4 +1,5 @@
-import { IdProofingForm, type IdOption } from '@/features/auth'
+import { type IdOption } from '@/features/auth'
+import { IdProofingWithDi } from '@/features/auth/components/id-proofing/IdProofingWithDi'
 import { getTranslations } from '@/lib/translations'
 import { getState, getStateLinks } from '@sebt/design-system'
 
@@ -67,7 +68,7 @@ export default function IdProofingPage() {
 
           <p className="margin-top-2 font-sans-sm">{tCommon('requiredFields')}</p>
 
-          <IdProofingForm
+          <IdProofingWithDi
             idOptions={DC_ID_OPTIONS}
             contactLink={links.external.contactUsAssistance}
           />

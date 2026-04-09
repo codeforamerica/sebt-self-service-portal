@@ -40,11 +40,12 @@ public class HttpSocureClient(
         string? givenName = null,
         string? familyName = null,
         Address? address = null,
+        string? diSessionToken = null,
         CancellationToken cancellationToken = default)
     {
         var settings = socureSettings.Value;
 
-        var request = BuildEvaluationRequest(userId, email, dateOfBirth, idType, idValue, settings, ipAddress, phoneNumber, givenName, familyName, address);
+        var request = BuildEvaluationRequest(userId, email, dateOfBirth, idType, idValue, settings, ipAddress, phoneNumber, givenName, familyName, address, diSessionToken);
         var jsonContent = JsonSerializer.Serialize(request, JsonOptions);
 
         var httpClient = httpClientFactory.CreateClient("Socure");
@@ -120,8 +121,16 @@ public class HttpSocureClient(
         string? phoneNumber = null,
         string? givenName = null,
         string? familyName = null,
-        Address? address = null)
+        Address? address = null,
+        string? diSessionToken = null)
     {
+        // Frontend-provided DI token takes precedence over config fallback
+        var effectiveDiToken = !string.IsNullOrWhiteSpace(diSessionToken)
+            ? diSessionToken
+            : !string.IsNullOrWhiteSpace(settings.DiSessionToken)
+                ? settings.DiSessionToken
+                : null;
+
         var individual = new SocureIndividual
         {
             Email = email,
@@ -129,9 +138,7 @@ public class HttpSocureClient(
             NationalId = !string.IsNullOrWhiteSpace(idType) && !string.IsNullOrWhiteSpace(idValue)
                 ? idValue
                 : null,
-            DiSessionToken = !string.IsNullOrWhiteSpace(settings.DiSessionToken)
-                ? settings.DiSessionToken
-                : null,
+            DiSessionToken = effectiveDiToken,
             IpAddress = ipAddress,
             PhoneNumber = phoneNumber,
             GivenName = givenName,

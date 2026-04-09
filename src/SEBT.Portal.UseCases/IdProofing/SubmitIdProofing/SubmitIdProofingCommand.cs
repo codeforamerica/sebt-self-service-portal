@@ -36,4 +36,10 @@ public class SubmitIdProofingCommand : ICommand<SubmitIdProofingResponse>
     /// The user's IP address from the HTTP request, for Socure risk assessment.
     /// </summary>
     public string? IpAddress { get; init; }
+
+    /// <summary>
+    /// Device Intelligence session token from the Socure DI SDK running in the user's browser.
+    /// When present, overrides the config-level placeholder for real device fingerprinting.
+    /// </summary>
+    public string? DiSessionToken { get; init; }
 }

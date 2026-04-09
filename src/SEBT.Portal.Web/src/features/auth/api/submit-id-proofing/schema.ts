@@ -15,7 +15,9 @@ export const SubmitIdProofingRequestSchema = z
     // null when the user selects "none of the above"
     idType: IdTypeSchema.nullable(),
     // null when idType is null
-    idValue: z.string().nullable()
+    idValue: z.string().nullable(),
+    // Device Intelligence session token from the Socure DI SDK (optional, best-effort)
+    diSessionToken: z.string().nullable().optional()
   })
   .superRefine((data, ctx) => {
     if (data.idType === null && data.idValue !== null) {
