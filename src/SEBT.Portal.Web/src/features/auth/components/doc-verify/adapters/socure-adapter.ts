@@ -16,7 +16,12 @@ const SOCURE_BUNDLE_URL = 'https://websdk.socure.com/bundle.js'
 declare global {
   interface Window {
     SocureDocVSDK?: {
-      launch: (config: Record<string, unknown>) => void
+      launch: (
+        sdkKey: string,
+        token: string,
+        containerId: string,
+        config?: Record<string, unknown>
+      ) => void
       reset: () => void
     }
   }
@@ -74,11 +79,8 @@ export class SocureDocVAdapter implements DocVAdapter {
       throw new Error('SocureDocVSDK not available after script load')
     }
 
-    window.SocureDocVSDK.launch({
-      sdkKey: config.sdkKey,
-      token: config.token,
+    window.SocureDocVSDK.launch(config.sdkKey, config.token, `#${config.containerId}`, {
       type: 'docv',
-      containerId: config.containerId,
       autoOpenTabOnMobile: true,
       closeCaptureWindowOnComplete: true,
       onSuccess: config.onSuccess,

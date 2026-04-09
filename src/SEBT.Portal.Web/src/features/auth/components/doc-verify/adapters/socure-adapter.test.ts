@@ -56,11 +56,11 @@ describe('SocureDocVAdapter', () => {
     await adapter.launch(config)
 
     expect(window.SocureDocVSDK!.launch).toHaveBeenCalledWith(
+      'test-sdk-key',
+      'test-token',
+      '#websdk',
       expect.objectContaining({
-        sdkKey: 'test-sdk-key',
-        token: 'test-token',
         type: 'docv',
-        containerId: 'websdk',
         autoOpenTabOnMobile: true,
         closeCaptureWindowOnComplete: true
       })

@@ -150,8 +150,7 @@ public class SubmitIdProofingCommandHandler(
 
         return assessment.Outcome switch
         {
-            IdProofingOutcome.Matched => Result<SubmitIdProofingResponse>.Success(
-                new SubmitIdProofingResponse("matched")),
+            IdProofingOutcome.Matched => await CompleteProofingAndRespond(user, cancellationToken),
 
             IdProofingOutcome.Failed => Result<SubmitIdProofingResponse>.Success(
                 new SubmitIdProofingResponse(
@@ -165,6 +164,23 @@ public class SubmitIdProofingCommandHandler(
             _ => throw new InvalidOperationException(
                 $"Unexpected IdProofingOutcome: {assessment.Outcome}")
         };
+    }
+
+    private async Task<Result<SubmitIdProofingResponse>> CompleteProofingAndRespond(
+        User user,
+        CancellationToken cancellationToken)
+    {
+        user.IdProofingStatus = IdProofingStatus.Completed;
+        user.IalLevel = UserIalLevel.IAL2;
+        user.IdProofingCompletedAt = DateTime.UtcNow;
+        await userRepository.UpdateUserAsync(user, cancellationToken);
+
+        logger.LogInformation(
+            "User {UserId} proofing completed via Socure ACCEPT (no DocV required)",
+            user.Id);
+
+        return Result<SubmitIdProofingResponse>.Success(
+            new SubmitIdProofingResponse("matched"));
     }
 
     private async Task<Result<SubmitIdProofingResponse>> CreateChallengeAndRespond(

@@ -88,9 +88,10 @@ export function DocVerifyPage({ contactLink, sdkKey }: DocVerifyPageProps) {
     }
   }, [router, adapter, searchParams])
 
-  // Derive allowIdRetry from status API (D9) — server is the authority
+  // Poll status during interstitial (for allowIdRetry) and capture (safety net
+  // in case the SDK's onSuccess never fires after remote mobile capture).
   const statusQuery = useVerificationStatus(
-    subState === 'interstitial' && challengeId ? challengeId : undefined
+    (subState === 'interstitial' || subState === 'capture') && challengeId ? challengeId : undefined
   )
   const allowIdRetry = statusQuery.data?.allowIdRetry ?? false
 
@@ -161,6 +162,24 @@ export function DocVerifyPage({ contactLink, sdkKey }: DocVerifyPageProps) {
     },
     [router, setPageData, trackEvent]
   )
+
+  // Safety net: if the webhook resolves the challenge while the SDK capture is
+  // still active (e.g., SDK fails to detect remote completion), redirect based
+  // on the polled status rather than waiting for SDK onSuccess.
+  useEffect(() => {
+    if (subState !== 'capture') return
+    if (statusQuery.data?.status === 'verified') {
+      handleVerified()
+    } else if (statusQuery.data?.status === 'rejected') {
+      handleRejected(statusQuery.data.offboardingReason)
+    }
+  }, [
+    subState,
+    statusQuery.data?.status,
+    statusQuery.data?.offboardingReason,
+    handleVerified,
+    handleRejected
+  ])
 
   return (
     <div className="usa-section">

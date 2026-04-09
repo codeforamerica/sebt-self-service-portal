@@ -165,6 +165,30 @@ public class SubmitIdProofingCommandHandlerTests
         Assert.Null(response.OffboardingReason);
     }
 
+    [Fact]
+    public async Task Handle_ShouldUpdateProofingStatus_WhenSocureReturnsMatched()
+    {
+        var handler = CreateHandler();
+        var command = CreateValidCommand();
+        var user = new User { Id = command.UserId, Email = "test@example.com" };
+
+        userRepository.GetUserByIdAsync(command.UserId, Arg.Any<CancellationToken>())
+            .Returns(user);
+        challengeRepository.GetActiveByUserIdAsync(command.UserId, Arg.Any<CancellationToken>())
+            .Returns((DocVerificationChallenge?)null);
+        socureClient.RunIdProofingAssessmentAsync(
+                command.UserId, "test@example.com", command.DateOfBirth,
+                command.IdType, command.IdValue, Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<Address?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
+            .Returns(Result<IdProofingAssessmentResult>.Success(
+                new IdProofingAssessmentResult(IdProofingOutcome.Matched, AllowIdRetry: false)));
+
+        await handler.Handle(command, CancellationToken.None);
+
+        Assert.Equal(IdProofingStatus.Completed, user.IdProofingStatus);
+        Assert.Equal(UserIalLevel.IAL2, user.IalLevel);
+        Assert.NotNull(user.IdProofingCompletedAt);
+    }
+
     // --- Socure assessment: Failed ---
 
     [Fact]
@@ -449,7 +473,7 @@ public class SubmitIdProofingCommandHandlerTests
 
         await handler.Handle(command, CancellationToken.None);
 
-        await userRepository.Received(1).UpdateUserAsync(
+        await userRepository.Received().UpdateUserAsync(
             Arg.Is<User>(u => u.IdProofingAttemptCount == 1),
             Arg.Any<CancellationToken>());
     }

@@ -5,6 +5,7 @@ import { useTranslation } from 'react-i18next'
 
 import { Button } from '@sebt/design-system'
 
+import { ApiError } from '@/api'
 import { useVerificationStatus } from '../../api'
 
 // After this threshold, show the "still checking" message with a manual check button
@@ -51,6 +52,13 @@ export function VerificationPending({
       onRejected(data.offboardingReason)
     }
   }, [data?.status, data?.offboardingReason, onVerified, onRejected])
+
+  // Treat 404 as terminal — challenge doesn't exist for this user
+  useEffect(() => {
+    if (error instanceof ApiError && error.status === 404) {
+      onRejected('challengeNotFound')
+    }
+  }, [error, onRejected])
 
   return (
     <section aria-label={t('verificationPendingAriaLabel', 'Verification status')}>
