@@ -11,6 +11,7 @@ using SEBT.Portal.Api.Composition;
 using SEBT.Portal.Api.Filters;
 using SEBT.Portal.Api.Models;
 using Serilog;
+using Serilog.Templates;
 using Microsoft.FeatureManagement;
 using SEBT.Portal.Api.Middleware;
 using SEBT.Portal.Api.Options;
@@ -30,10 +31,30 @@ using SEBT.Portal.Core.Utilities;
 var builder = WebApplication.CreateBuilder(args);
 
 // Configure Serilog early so that configuration providers can log.
-Log.Logger = new LoggerConfiguration()
+// Console sink is configured in code (not appsettings) so we can use
+// human-readable text locally and structured JSON in deployed environments.
+// The JSON format uses field names that Datadog auto-recognizes (level,
+// message, timestamp) so log severity maps correctly without custom pipelines.
+// Set LOG_FORMAT=json in ECS task definitions to enable structured output.
+var useJsonLogs = string.Equals(
+    Environment.GetEnvironmentVariable("LOG_FORMAT"), "json", StringComparison.OrdinalIgnoreCase);
+
+var logConfig = new LoggerConfiguration()
     .ReadFrom.Configuration(builder.Configuration)
-    .Enrich.FromLogContext()
-    .CreateLogger();
+    .Enrich.FromLogContext();
+
+if (useJsonLogs)
+{
+    logConfig.WriteTo.Console(new ExpressionTemplate(
+        "{ {timestamp: @t, level: @l, message: @m, exception: @x, ..@p} }\n"));
+}
+else
+{
+    logConfig.WriteTo.Console(
+        outputTemplate: "[{Timestamp:HH:mm:ss} {Level:u3}] {Message:lj} {Properties:j}{NewLine}{Exception}");
+}
+
+Log.Logger = logConfig.CreateLogger();
 
 builder.Host.UseSerilog();
 
