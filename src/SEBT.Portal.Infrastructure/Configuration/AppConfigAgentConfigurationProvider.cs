@@ -50,6 +50,10 @@ public sealed class AppConfigAgentConfigurationProvider : ConfigurationProvider,
         {
             if (!_initialLoadCompleted)
             {
+                _logger?.LogInformation(
+                    "Initial load starting for profile {ProfileId} (will retry up to {MaxRetries} times if agent is not ready)",
+                    _profile.ProfileId,
+                    InitialLoadMaxRetries);
                 LoadWithRetryAsync().GetAwaiter().GetResult();
                 _initialLoadCompleted = true;
             }
