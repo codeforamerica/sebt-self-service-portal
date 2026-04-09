@@ -3,6 +3,7 @@ using NSubstitute;
 using SEBT.Portal.Core.AppSettings;
 using SEBT.Portal.Core.Models.Auth;
 using SEBT.Portal.Core.Models.DocVerification;
+using SEBT.Portal.Core.Models.Household;
 using SEBT.Portal.Core.Repositories;
 using SEBT.Portal.Core.Services;
 using SEBT.Portal.Kernel;
@@ -15,6 +16,7 @@ namespace SEBT.Portal.Tests.Unit.UseCases.IdProofing;
 public class SubmitIdProofingCommandHandlerTests
 {
     private readonly IUserRepository userRepository = Substitute.For<IUserRepository>();
+    private readonly IHouseholdRepository householdRepository = Substitute.For<IHouseholdRepository>();
     private readonly IDocVerificationChallengeRepository challengeRepository =
         Substitute.For<IDocVerificationChallengeRepository>();
     private readonly ISocureClient socureClient = Substitute.For<ISocureClient>();
@@ -26,7 +28,7 @@ public class SubmitIdProofingCommandHandlerTests
         NullLogger<SubmitIdProofingCommandHandler>.Instance;
 
     private SubmitIdProofingCommandHandler CreateHandler() =>
-        new(userRepository, challengeRepository, socureClient, socureSettings, validator, logger);
+        new(userRepository, householdRepository, challengeRepository, socureClient, socureSettings, validator, logger);
 
     private static SubmitIdProofingCommand CreateValidCommand(
         int userId = 1,
@@ -132,7 +134,7 @@ public class SubmitIdProofingCommandHandlerTests
         await socureClient.DidNotReceive()
             .RunIdProofingAssessmentAsync(
                 Arg.Any<int>(), Arg.Any<string>(), Arg.Any<string>(),
-                Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>());
+                Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>());
     }
 
     // --- Socure assessment: Matched ---
@@ -149,7 +151,7 @@ public class SubmitIdProofingCommandHandlerTests
             .Returns((DocVerificationChallenge?)null);
         socureClient.RunIdProofingAssessmentAsync(
                 command.UserId, "test@example.com", command.DateOfBirth,
-                command.IdType, command.IdValue, Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
+                command.IdType, command.IdValue, Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
             .Returns(Result<IdProofingAssessmentResult>.Success(
                 new IdProofingAssessmentResult(IdProofingOutcome.Matched, AllowIdRetry: false)));
 
@@ -176,7 +178,7 @@ public class SubmitIdProofingCommandHandlerTests
             .Returns((DocVerificationChallenge?)null);
         socureClient.RunIdProofingAssessmentAsync(
                 command.UserId, "test@example.com", command.DateOfBirth,
-                command.IdType, command.IdValue, Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
+                command.IdType, command.IdValue, Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
             .Returns(Result<IdProofingAssessmentResult>.Success(
                 new IdProofingAssessmentResult(IdProofingOutcome.Failed, AllowIdRetry: true)));
 
@@ -203,7 +205,7 @@ public class SubmitIdProofingCommandHandlerTests
             .Returns((DocVerificationChallenge?)null);
         socureClient.RunIdProofingAssessmentAsync(
                 command.UserId, "test@example.com", command.DateOfBirth,
-                command.IdType, command.IdValue, Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
+                command.IdType, command.IdValue, Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
             .Returns(Result<IdProofingAssessmentResult>.Success(
                 new IdProofingAssessmentResult(IdProofingOutcome.DocumentVerificationRequired, AllowIdRetry: true)));
 
@@ -236,7 +238,7 @@ public class SubmitIdProofingCommandHandlerTests
             .Returns((DocVerificationChallenge?)null);
         socureClient.RunIdProofingAssessmentAsync(
                 command.UserId, "test@example.com", command.DateOfBirth,
-                command.IdType, command.IdValue, Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
+                command.IdType, command.IdValue, Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
             .Returns(Result<IdProofingAssessmentResult>.Success(
                 new IdProofingAssessmentResult(
                     IdProofingOutcome.DocumentVerificationRequired,
@@ -271,7 +273,7 @@ public class SubmitIdProofingCommandHandlerTests
             .Returns((DocVerificationChallenge?)null);
         socureClient.RunIdProofingAssessmentAsync(
                 command.UserId, "test@example.com", command.DateOfBirth,
-                command.IdType, command.IdValue, Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
+                command.IdType, command.IdValue, Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
             .Returns(Result<IdProofingAssessmentResult>.DependencyFailed(
                 DependencyFailedReason.ConnectionFailed, "Socure API returned an error"));
 
@@ -295,7 +297,7 @@ public class SubmitIdProofingCommandHandlerTests
             .Returns((DocVerificationChallenge?)null);
         socureClient.RunIdProofingAssessmentAsync(
                 command.UserId, "test@example.com", command.DateOfBirth,
-                command.IdType, command.IdValue, Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
+                command.IdType, command.IdValue, Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
             .Returns(Result<IdProofingAssessmentResult>.DependencyFailed(
                 DependencyFailedReason.Timeout, "Socure API request timed out."));
 

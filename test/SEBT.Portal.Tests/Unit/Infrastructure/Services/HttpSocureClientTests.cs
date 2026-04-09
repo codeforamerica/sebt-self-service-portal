@@ -393,6 +393,36 @@ public class HttpSocureClientTests
     }
 
     [Fact]
+    public async Task RunIdProofingAssessment_ShouldIncludeNames_WhenProvided()
+    {
+        string? capturedBody = null;
+        var handler = new CaptureRequestHandler(body =>
+        {
+            capturedBody = body;
+            return new HttpResponseMessage(HttpStatusCode.OK)
+            {
+                Content = new StringContent(JsonSerializer.Serialize(new
+                {
+                    eval_id = "eval-123",
+                    decision = "ACCEPT",
+                    data_enrichments = Array.Empty<object>()
+                }), System.Text.Encoding.UTF8, "application/json")
+            };
+        });
+
+        var client = CreateClient(handler);
+        await client.RunIdProofingAssessmentAsync(
+            42, "user@example.com", "1990-06-15", "ssn", "123-45-6789",
+            givenName: "Maria", familyName: "Martinez");
+
+        Assert.NotNull(capturedBody);
+        using var doc = JsonDocument.Parse(capturedBody);
+        var individual = doc.RootElement.GetProperty("data").GetProperty("individual");
+        Assert.Equal("Maria", individual.GetProperty("given_name").GetString());
+        Assert.Equal("Martinez", individual.GetProperty("family_name").GetString());
+    }
+
+    [Fact]
     public async Task RunIdProofingAssessment_ShouldOmitIpAndPhone_WhenNotProvided()
     {
         string? capturedBody = null;

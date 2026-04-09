@@ -1,5 +1,7 @@
 using Microsoft.Extensions.Logging;
 using SEBT.Portal.Core.AppSettings;
+using SEBT.Portal.Core.Models;
+using SEBT.Portal.Core.Models.Auth;
 using SEBT.Portal.Core.Models.DocVerification;
 using SEBT.Portal.Core.Repositories;
 using SEBT.Portal.Core.Services;
@@ -18,6 +20,7 @@ namespace SEBT.Portal.UseCases.IdProofing;
 /// </summary>
 public class SubmitIdProofingCommandHandler(
     IUserRepository userRepository,
+    IHouseholdRepository householdRepository,
     IDocVerificationChallengeRepository challengeRepository,
     ISocureClient socureClient,
     SocureSettings socureSettings,
@@ -68,6 +71,20 @@ public class SubmitIdProofingCommandHandler(
                     AllowIdRetry: activeChallenge.AllowIdRetry));
         }
 
+        // Fetch household data for user's name (best-effort, names are optional for Socure)
+        string? givenName = null;
+        string? familyName = null;
+        var household = await householdRepository.GetHouseholdByEmailAsync(
+            user.Email,
+            new PiiVisibility(IncludeAddress: false, IncludeEmail: false, IncludePhone: false),
+            user.IalLevel,
+            cancellationToken);
+        if (household?.UserProfile != null)
+        {
+            givenName = household.UserProfile.FirstName;
+            familyName = household.UserProfile.LastName;
+        }
+
         // Call Socure for risk assessment
         var assessmentResult = await socureClient.RunIdProofingAssessmentAsync(
             command.UserId,
@@ -77,6 +94,8 @@ public class SubmitIdProofingCommandHandler(
             command.IdValue,
             ipAddress: command.IpAddress,
             phoneNumber: user.Phone,
+            givenName: givenName,
+            familyName: familyName,
             cancellationToken: cancellationToken);
 
         if (!assessmentResult.IsSuccess)
