@@ -558,4 +558,126 @@ public class MockHouseholdRepositoryTests
         // Should not find anything since data is keyed by the custom pattern
         Assert.Null(result);
     }
+
+    [Fact]
+    public async Task GetHouseholdByEmailAsync_LargeFamilyScenario_HasSummerEbtCases()
+    {
+        var email = "largefamily@example.com";
+        var result = await _repository.GetHouseholdByEmailAsync(email, FullPiiVisibility, UserIalLevel.IAL1plus);
+
+        Assert.NotNull(result);
+        Assert.Equal(4, result.SummerEbtCases.Count);
+        Assert.Equal("Michael", result.SummerEbtCases[0].ChildFirstName);
+        Assert.Equal("Brown", result.SummerEbtCases[0].ChildLastName);
+        Assert.Equal("Sarah", result.SummerEbtCases[1].ChildFirstName);
+        Assert.Equal("David", result.SummerEbtCases[2].ChildFirstName);
+        Assert.Equal("Emily", result.SummerEbtCases[3].ChildFirstName);
+        Assert.All(result.SummerEbtCases, c =>
+        {
+            Assert.Equal("NSLP", c.EligibilityType);
+            Assert.Equal(IssuanceType.SummerEbt, c.IssuanceType);
+            Assert.Equal(ApplicationStatus.Approved, c.ApplicationStatus);
+            Assert.NotNull(c.SummerEBTCaseID);
+        });
+    }
+
+    [Fact]
+    public async Task GetHouseholdByEmailAsync_CoLoadedScenario_HasSummerEbtCases()
+    {
+        var email = "co-loaded@example.com";
+        var result = await _repository.GetHouseholdByEmailAsync(email, FullPiiVisibility, UserIalLevel.IAL1plus);
+
+        Assert.NotNull(result);
+        Assert.Equal(2, result.SummerEbtCases.Count);
+
+        var sophiaCase = result.SummerEbtCases.First(c => c.ChildFirstName == "Sophia");
+        Assert.Equal("Martinez", sophiaCase.ChildLastName);
+        Assert.Equal("SNAP", sophiaCase.EligibilityType);
+        Assert.Equal(IssuanceType.SnapEbtCard, sophiaCase.IssuanceType);
+
+        var jamesCase = result.SummerEbtCases.First(c => c.ChildFirstName == "James");
+        Assert.Equal("Martinez", jamesCase.ChildLastName);
+        Assert.Equal("TANF", jamesCase.EligibilityType);
+        Assert.Equal(IssuanceType.TanfEbtCard, jamesCase.IssuanceType);
+    }
+
+    [Fact]
+    public async Task GetHouseholdByEmailAsync_VerifiedScenario_HasSummerEbtCases()
+    {
+        var email = "verified@example.com";
+        var result = await _repository.GetHouseholdByEmailAsync(email, FullPiiVisibility, UserIalLevel.IAL1plus);
+
+        Assert.NotNull(result);
+        Assert.Equal(2, result.SummerEbtCases.Count);
+
+        var johnCase = result.SummerEbtCases.First(c => c.ChildFirstName == "John");
+        Assert.Equal("Doe", johnCase.ChildLastName);
+        Assert.Equal("Application", johnCase.EligibilityType);
+        Assert.Equal(IssuanceType.SnapEbtCard, johnCase.IssuanceType);
+        Assert.NotNull(johnCase.BenefitAvailableDate);
+        Assert.True(johnCase.BenefitAvailableDate >= new DateTime(2026, 6, 15));
+        Assert.True(johnCase.BenefitAvailableDate <= new DateTime(2026, 6, 30));
+
+        var janeCase = result.SummerEbtCases.First(c => c.ChildFirstName == "Jane");
+        Assert.Equal("Application", janeCase.EligibilityType);
+    }
+
+    [Fact]
+    public async Task GetHouseholdByEmailAsync_ExpiredScenario_HasSummerEbtCaseWithExpiredBenefits()
+    {
+        var email = "expired@example.com";
+        var result = await _repository.GetHouseholdByEmailAsync(email, FullPiiVisibility, UserIalLevel.IAL1plus);
+
+        Assert.NotNull(result);
+        Assert.Single(result.SummerEbtCases);
+        var sebtCase = result.SummerEbtCases[0];
+        Assert.Equal("Deactivated", sebtCase.EbtCardStatus);
+        Assert.NotNull(sebtCase.BenefitExpirationDate);
+        Assert.True(sebtCase.BenefitExpirationDate < _timeProvider.GetUtcNow().UtcDateTime);
+    }
+
+    [Fact]
+    public async Task GetHouseholdByEmailAsync_SingleChildScenario_HasSummerEbtCases()
+    {
+        var email = "singlechild@example.com";
+        var result = await _repository.GetHouseholdByEmailAsync(email, FullPiiVisibility, UserIalLevel.IAL1plus);
+
+        Assert.NotNull(result);
+        Assert.Equal(2, result.SummerEbtCases.Count);
+        Assert.Contains(result.SummerEbtCases, c => c.EligibilityType == "Medicaid");
+        Assert.Contains(result.SummerEbtCases, c => c.EligibilityType == "Application");
+    }
+
+    [Theory]
+    [InlineData("review@example.com", "NSLP", IssuanceType.SummerEbt)]
+    [InlineData("non-co-loaded@example.com", "TANF", IssuanceType.TanfEbtCard)]
+    [InlineData("not-started@example.com", "NSLP", IssuanceType.SummerEbt)]
+    public async Task GetHouseholdByEmailAsync_ScenarioWithOneCase_HasSummerEbtCase(
+        string email,
+        string expectedEligibilityType,
+        IssuanceType expectedIssuanceType)
+    {
+        var result = await _repository.GetHouseholdByEmailAsync(email, FullPiiVisibility, UserIalLevel.IAL1plus);
+
+        Assert.NotNull(result);
+        Assert.Single(result.SummerEbtCases);
+        var sebtCase = result.SummerEbtCases[0];
+        Assert.Equal(expectedEligibilityType, sebtCase.EligibilityType);
+        Assert.Equal(expectedIssuanceType, sebtCase.IssuanceType);
+        Assert.NotNull(sebtCase.SummerEBTCaseID);
+    }
+
+    [Theory]
+    [InlineData("pending@example.com")]
+    [InlineData("minimal@example.com")]
+    [InlineData("denied@example.com")]
+    [InlineData("cancelled@example.com")]
+    [InlineData("unknown@example.com")]
+    public async Task GetHouseholdByEmailAsync_ScenarioWithNoCases_HasEmptySummerEbtCases(string email)
+    {
+        var result = await _repository.GetHouseholdByEmailAsync(email, FullPiiVisibility, UserIalLevel.IAL1plus);
+
+        Assert.NotNull(result);
+        Assert.Empty(result.SummerEbtCases);
+    }
 }
