@@ -36,10 +36,11 @@ vi.mock('@/features/auth', async () => {
     ...api,
     useAuth: () => ({
       login: mockLogin,
+      logout: vi.fn(),
       isAuthenticated: false,
-      token: null
-    }),
-    setAuthToken: vi.fn()
+      session: null,
+      isLoading: false
+    })
   }
 })
 
@@ -178,13 +179,13 @@ describe('CallbackPage', () => {
         token_endpoint: 'https://auth.example.com/token',
         client_id: 'test-client'
       })
-      // getState returns 'co'; flow is callback (returns callbackToken) then complete-login (returns token)
+      // getState returns 'co'; flow is callback (returns callbackToken) then complete-login (sets cookie, returns empty body)
       server.use(
         http.post('/api/auth/oidc/callback', () => {
           return HttpResponse.json({ callbackToken: 'mock-callback-token-for-testing' })
         }),
         http.post('/api/auth/oidc/complete-login', () => {
-          return HttpResponse.json({ token: 'mock-jwt-token-for-testing' })
+          return HttpResponse.json({})
         })
       )
     })
@@ -200,7 +201,7 @@ describe('CallbackPage', () => {
       await waitFor(() => {
         expect(mockReplace).toHaveBeenCalledWith('/dashboard')
       })
-      expect(mockLogin).toHaveBeenCalledWith('mock-jwt-token-for-testing')
+      expect(mockLogin).toHaveBeenCalledWith()
     })
   })
 

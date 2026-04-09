@@ -69,15 +69,16 @@ export function VerifyOtpForm({ email, contactLink }: VerifyOtpFormProps) {
     trackEvent(AnalyticsEvents.OTP_CHALLENGE)
 
     try {
-      const result = await validateOtp.mutateAsync({ email, otp })
+      await validateOtp.mutateAsync({ email, otp })
       setPageData('otp_status', 'success')
       setUserData('authenticated', true, ['default', 'analytics'])
       trackEvent(AnalyticsEvents.OTP_RESULT)
-      // Store the JWT token for authenticated API requests
-      login(result.token)
-      // Clear the stored email
+      // Backend set the HttpOnly session cookie; refresh the context from /auth/status.
+      const newSession = await login()
       sessionStorage.removeItem('otp_email')
-      router.push(result.requiresIdProofing === true ? '/login/id-proofing' : '/dashboard')
+      // ID proofing status NotStarted = 0; anything else (InProgress, Completed, Failed) skips the gate.
+      const needsIdProofing = newSession?.idProofingStatus === 0
+      router.push(needsIdProofing ? '/login/id-proofing' : '/dashboard')
     } catch (err) {
       setPageData('otp_status', 'error')
       trackEvent(AnalyticsEvents.OTP_RESULT)

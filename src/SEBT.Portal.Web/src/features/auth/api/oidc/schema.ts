@@ -50,7 +50,6 @@ const returnUrlAfterOidcSchema = z
   })
 
 export const OidcCompleteLoginResponseSchema = z.object({
-  token: z.string(),
   returnUrl: returnUrlAfterOidcSchema
 })
 

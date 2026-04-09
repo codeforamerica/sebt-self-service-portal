@@ -11,8 +11,9 @@ interface AuthGuardProps {
 /**
  * AuthGuard protects routes that require authentication.
  * Redirects to /login if user is not authenticated.
- * Waits for client-side hydration before checking auth to avoid
- * redirect on page refresh when token exists in sessionStorage.
+ * Waits for client-side hydration before checking auth so that the initial
+ * /auth/status fetch (sourced from the HttpOnly session cookie) has time to
+ * resolve, avoiding a flash redirect for users with a valid session.
  */
 export function AuthGuard({ children }: AuthGuardProps) {
   const { isAuthenticated, isLoading } = useAuth()

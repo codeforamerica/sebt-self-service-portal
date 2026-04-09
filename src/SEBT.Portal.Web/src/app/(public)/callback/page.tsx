@@ -1,7 +1,7 @@
 'use client'
 
 import { apiFetch } from '@/api'
-import { setAuthToken, useAuth } from '@/features/auth'
+import { useAuth } from '@/features/auth'
 import {
   OidcCallbackTokenResponseSchema,
   OidcCompleteLoginResponseSchema
@@ -120,12 +120,9 @@ export default function CallbackPage() {
         })
         if (cancelled) return
 
-        const { token, returnUrl: resolvedReturnUrl } = response
-
-        setAuthToken(token)
-        login(token)
-        await new Promise((resolve) => setTimeout(resolve, 0))
-        const destination = isStepUp && resolvedReturnUrl ? resolvedReturnUrl : '/dashboard'
+        // Backend set the HttpOnly session cookie; refresh the context from /auth/status.
+        await login()
+        const destination = isStepUp && response.returnUrl ? response.returnUrl : '/dashboard'
         router.replace(destination)
       } catch (e) {
         const errMsg =
