@@ -262,13 +262,17 @@ export const handlers = [
   }),
 
   // OIDC complete-login (.NET: validates callbackToken, creates session via HttpOnly cookie)
+  // Response shape mirrors .NET's CompleteLoginResponse: `returnUrl` is always present,
+  // null for normal login, a safe relative path for step-up. System.Text.Json defaults
+  // serialize nullable properties as `null`, not omitted — tests must mirror this so
+  // Zod schema drift (nullish vs optional) is caught at unit level.
   http.post('/api/auth/oidc/complete-login', async ({ request }) => {
     const body = (await request.json()) as { stateCode?: string; callbackToken?: string }
     if (!body?.stateCode || !body?.callbackToken) {
       return HttpResponse.json({ error: 'Missing stateCode or callbackToken.' }, { status: 400 })
     }
     return HttpResponse.json(
-      {},
+      { returnUrl: null },
       {
         status: 200,
         headers: { 'Set-Cookie': sessionCookie('mock-jwt-token-for-testing') }
