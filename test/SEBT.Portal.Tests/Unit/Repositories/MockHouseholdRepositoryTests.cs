@@ -680,4 +680,33 @@ public class MockHouseholdRepositoryTests
         Assert.NotNull(result);
         Assert.Empty(result.SummerEbtCases);
     }
+
+    [Theory]
+    [InlineData("simple1")]
+    [InlineData("simple2")]
+    [InlineData("simple3")]
+    [InlineData("simple4")]
+    [InlineData("simple5")]
+    [InlineData("simple6")]
+    [InlineData("simple7")]
+    public async Task GetHouseholdByEmailAsync_DcSimpleScenarios_HaveSummerEbtCases(string scenarioName)
+    {
+        // Arrange
+        const string pattern = "sebt.dc+{0}@codeforamerica.org";
+        var repo = CreateRepository(pattern, state: "dc");
+        var email = string.Format(pattern, scenarioName);
+
+        // Act
+        var result = await repo.GetHouseholdByEmailAsync(email, FullPiiVisibility, UserIalLevel.IAL1plus);
+
+        // Assert
+        Assert.NotNull(result);
+        Assert.Single(result.SummerEbtCases);
+        var sebtCase = result.SummerEbtCases[0];
+        Assert.Equal("NSLP", sebtCase.EligibilityType);
+        Assert.Equal(IssuanceType.SummerEbt, sebtCase.IssuanceType);
+        Assert.NotNull(sebtCase.SummerEBTCaseID);
+        Assert.NotEmpty(sebtCase.ChildFirstName);
+        Assert.NotEmpty(sebtCase.ChildLastName);
+    }
 }

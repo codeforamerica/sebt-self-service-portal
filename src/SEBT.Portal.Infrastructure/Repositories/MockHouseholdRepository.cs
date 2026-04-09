@@ -616,6 +616,11 @@ public class MockHouseholdRepository : IHouseholdRepository
                         app.BenefitExpirationDate = now.AddDays(122);
                         app.CardStatus = CardStatus.Active;
                         app.Children = dcChildFaker.Generate(1);
+                        var dcChild = app.Children.First();
+                        h.SummerEbtCases = new List<SummerEbtCase>
+                        {
+                            HouseholdFactory.CreateSummerEbtCase(dcChild.FirstName, dcChild.LastName, "NSLP")
+                        };
                     }
                     h.AddressOnFile = new Address
                     {
