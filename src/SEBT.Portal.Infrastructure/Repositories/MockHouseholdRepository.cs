@@ -212,13 +212,9 @@ public class MockHouseholdRepository : IHouseholdRepository
                 State = "CO",
                 PostalCode = "80202"
             };
-            var appBenefitStart = new Faker().Date.Between(
+            var appBenefitStart = SnapToWeekday(new Faker().Date.Between(
                 new DateTime(2026, 6, 15),
-                new DateTime(2026, 6, 30));
-            while (appBenefitStart.DayOfWeek == DayOfWeek.Saturday || appBenefitStart.DayOfWeek == DayOfWeek.Sunday)
-            {
-                appBenefitStart = appBenefitStart.AddDays(1);
-            }
+                new DateTime(2026, 6, 30)));
             h.SummerEbtCases = new List<SummerEbtCase>
             {
                 HouseholdFactory.CreateSummerEbtCase("John", "Doe", "Application", c =>
@@ -410,13 +406,9 @@ public class MockHouseholdRepository : IHouseholdRepository
             var scChildFaker = new Faker();
             var scChildFirst = scChildFaker.Name.FirstName();
             var scChildLast = scChildFaker.Name.LastName();
-            var appBenefitStart = scChildFaker.Date.Between(
+            var appBenefitStart = SnapToWeekday(scChildFaker.Date.Between(
                 new DateTime(2026, 6, 15),
-                new DateTime(2026, 6, 30));
-            while (appBenefitStart.DayOfWeek == DayOfWeek.Saturday || appBenefitStart.DayOfWeek == DayOfWeek.Sunday)
-            {
-                appBenefitStart = appBenefitStart.AddDays(1);
-            }
+                new DateTime(2026, 6, 30)));
             h.SummerEbtCases = new List<SummerEbtCase>
             {
                 HouseholdFactory.CreateSummerEbtCase(scChildFirst, scChildLast, "Medicaid"),
@@ -644,6 +636,16 @@ public class MockHouseholdRepository : IHouseholdRepository
 
         _logger.LogInformation("Seeded {Count} mock household records using Bogus", _households.Count);
     }
+
+    /// <summary>
+    /// If the given date falls on a weekend, advances it to the following Monday.
+    /// </summary>
+    private static DateTime SnapToWeekday(DateTime date) => date.DayOfWeek switch
+    {
+        DayOfWeek.Saturday => date.AddDays(2),
+        DayOfWeek.Sunday => date.AddDays(1),
+        _ => date
+    };
 
     private static string? NormalizePhone(string? phone)
     {
