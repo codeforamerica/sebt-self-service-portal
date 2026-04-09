@@ -27,12 +27,12 @@ export function proxy(request: NextRequest) {
   const cspHeader = `
     default-src 'self';
     script-src 'self' 'nonce-${nonce}' 'strict-dynamic' https://www.googletagmanager.com ${isDev ? "'unsafe-eval'" : ''};
-    style-src 'self' ${isDev ? "'unsafe-inline'" : `'nonce-${nonce}'`} https://fonts.googleapis.com;
+    style-src 'self' ${isDev ? "'unsafe-inline'" : `'nonce-${nonce}'`} https://fonts.googleapis.com https://verify-v2.socure.com;
     font-src 'self' https://fonts.gstatic.com;
     img-src 'self' data: https: https://www.google-analytics.com;
-    connect-src 'self' https://www.google-analytics.com https://*.google-analytics.com https://www.googletagmanager.com https://auth.pingone.com ${isDev ? 'ws://localhost:* http://localhost:*' : ''};
-    frame-src 'none';
-    child-src 'none';
+    connect-src 'self' https://www.google-analytics.com https://*.google-analytics.com https://www.googletagmanager.com https://auth.pingone.com https://*.socure.com ${isDev ? 'ws://localhost:* http://localhost:*' : ''};
+    frame-src https://verify-v2.socure.com;
+    child-src https://verify-v2.socure.com;
     worker-src 'self';
     frame-ancestors 'none';
     base-uri 'self';
@@ -59,7 +59,10 @@ export function proxy(request: NextRequest) {
   response.headers.set('X-Frame-Options', 'DENY')
   response.headers.set('X-Content-Type-Options', 'nosniff')
   response.headers.set('Referrer-Policy', 'strict-origin-when-cross-origin')
-  response.headers.set('Permissions-Policy', 'camera=(), microphone=(), geolocation=()')
+  response.headers.set(
+    'Permissions-Policy',
+    'camera=(self "https://verify-v2.socure.com"), microphone=(), geolocation=()'
+  )
 
   return response
 }

@@ -47,9 +47,9 @@ export type IdProofingResult = z.infer<typeof IdProofingResultSchema>
 
 export const SubmitIdProofingResponseSchema = z.object({
   result: IdProofingResultSchema,
-  challengeId: z.string().optional(),
-  allowIdRetry: z.boolean().optional(),
-  canApply: z.boolean().optional(),
-  offboardingReason: z.string().optional()
+  challengeId: z.string().nullable().optional(),
+  allowIdRetry: z.boolean().nullable().optional(),
+  canApply: z.boolean().nullable().optional(),
+  offboardingReason: z.string().nullable().optional()
 })
 export type SubmitIdProofingResponse = z.infer<typeof SubmitIdProofingResponseSchema>
