@@ -6,9 +6,10 @@ using SEBT.Portal.Core.Services;
 namespace SEBT.Portal.Infrastructure.Services;
 
 /// <summary>
-/// Validates addresses against configurable blocked address lists, applies street name
-/// abbreviations for addresses exceeding a configurable length limit, and delegates to
-/// an external validation service (e.g., Smarty) when available.
+/// Validates addresses against configurable blocked address lists and applies street name
+/// abbreviations for addresses exceeding a configurable length limit.
+/// Runs after Smarty normalization (handled by <c>UpdateAddressCommandHandler</c>)
+/// so that checks operate on the canonical address form.
 ///
 /// All state-specific data (blocked addresses, abbreviation mappings, length limits)
 /// is loaded from <see cref="AddressValidationDataSettings"/> via appsettings configuration.

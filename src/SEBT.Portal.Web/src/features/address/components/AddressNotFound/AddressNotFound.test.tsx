@@ -216,6 +216,46 @@ describe('AddressNotFound', () => {
     expect(screen.getByTestId('has-address')).toHaveTextContent('yes')
   })
 
+  // --- Blocked address ---
+
+  it('shows blocked-specific title when reason is "blocked"', () => {
+    const blockedResult: AddressUpdateResponse = {
+      status: 'invalid',
+      reason: 'blocked',
+      message: 'This address cannot be used for mail delivery.'
+    }
+    renderComponent(TEST_ADDRESS, blockedResult)
+
+    expect(
+      screen.queryByRole('heading', { name: /are you sure this address is correct/i })
+    ).not.toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: /this address can.t be used/i })).toBeInTheDocument()
+  })
+
+  it('shows blocked-specific body when reason is "blocked"', () => {
+    const blockedResult: AddressUpdateResponse = {
+      status: 'invalid',
+      reason: 'blocked',
+      message: 'This address cannot be used for mail delivery.'
+    }
+    renderComponent(TEST_ADDRESS, blockedResult)
+
+    expect(screen.queryByText(/couldn.t find the address you entered/i)).not.toBeInTheDocument()
+    expect(screen.getByText(/not available for .* card delivery/i)).toBeInTheDocument()
+  })
+
+  it('CO: does not show "Use this address" for blocked addresses', () => {
+    mockState = 'co'
+    const blockedResult: AddressUpdateResponse = {
+      status: 'invalid',
+      reason: 'blocked',
+      message: 'This address cannot be used for mail delivery.'
+    }
+    renderComponent(TEST_ADDRESS, blockedResult)
+
+    expect(screen.queryByRole('button', { name: /use this address/i })).not.toBeInTheDocument()
+  })
+
   // --- Edge case ---
 
   it('omits the street address line 2 when not provided', () => {

@@ -15,8 +15,16 @@ interface ApiRouteOverrides {
   /**
    * Override the PUT /api/household/address response.
    * Defaults to 200 with { status: 'valid' }.
+   * Use addressUpdateBody to customize the JSON payload.
    */
   addressUpdateStatus?: number
+  /**
+   * Override the PUT /api/household/address response body.
+   * Defaults to { status: 'valid' } for 200, or
+   * { status: 'invalid', reason: 'not-found', message: 'Address not found' } for 422.
+   * Set to null for no body (e.g., 204).
+   */
+  addressUpdateBody?: Record<string, unknown> | null
   /**
    * Override the POST /api/household/cards/replace response status.
    * Defaults to 204 (success).
@@ -41,6 +49,14 @@ export async function setupApiRoutes(page: Page, overrides: ApiRouteOverrides = 
   const householdData = overrides.householdData ?? makeHouseholdData()
   const featureFlags = { ...DEFAULT_FEATURE_FLAGS, ...(overrides.featureFlags ?? {}) }
   const addressUpdateStatus = overrides.addressUpdateStatus ?? 200
+  const addressUpdateBody =
+    overrides.addressUpdateBody !== undefined
+      ? overrides.addressUpdateBody
+      : addressUpdateStatus === 422
+        ? { status: 'invalid', reason: 'not-found', message: 'Address not found' }
+        : addressUpdateStatus === 200
+          ? { status: 'valid' }
+          : null
   const cardReplaceStatus = overrides.cardReplaceStatus ?? 204
 
   // Keep the mock session alive — a 401 here would clear the token and redirect to /login.
@@ -71,8 +87,9 @@ export async function setupApiRoutes(page: Page, overrides: ApiRouteOverrides = 
   await page.route('**/api/household/address', (route) => {
     void route.fulfill({
       status: addressUpdateStatus,
-      contentType: 'application/json',
-      body: JSON.stringify({ status: 'valid' })
+      ...(addressUpdateBody != null
+        ? { contentType: 'application/json', body: JSON.stringify(addressUpdateBody) }
+        : {})
     })
   })
 

@@ -14,7 +14,8 @@ export function AddressNotFound() {
   const { t } = useTranslation('confirmInfo')
   const router = useRouter()
   const currentState = getState()
-  const { enteredAddress, setAddress, clearValidationResult } = useAddressFlow()
+  const { enteredAddress, validationResult, setAddress, clearValidationResult } = useAddressFlow()
+  const isBlocked = validationResult?.reason === 'blocked'
 
   function handleEditAddress() {
     clearValidationResult()
@@ -31,10 +32,20 @@ export function AddressNotFound() {
   return (
     <div className="grid-container maxw-tablet padding-top-4 padding-bottom-4">
       <h1 className="font-sans-xl text-primary">
-        {t('notFoundTitle', 'Are you sure this address is correct?')}
+        {isBlocked
+          ? t('blockedTitle', "This address can't be used")
+          : t('notFoundTitle', 'Are you sure this address is correct?')}
       </h1>
       <p>
-        {t('notFoundBody', "We couldn't find the address you entered. Please check the address.")}
+        {isBlocked
+          ? t(
+              'blockedBody',
+              `This address is not available for ${currentState === 'dc' ? 'DC' : 'CO'} SUN Bucks card delivery. Please enter a different mailing address.`
+            )
+          : t(
+              'notFoundBody',
+              "We couldn't find the address you entered. Please check the address."
+            )}
       </p>
 
       {enteredAddress && (
@@ -64,7 +75,7 @@ export function AddressNotFound() {
         </Button>
       </div>
 
-      {currentState === 'co' && (
+      {currentState === 'co' && !isBlocked && (
         <div className="margin-top-2">
           <button
             type="button"
