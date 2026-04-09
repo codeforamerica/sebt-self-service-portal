@@ -91,6 +91,7 @@ internal static class PluginHouseholdDataMapper
             EbtCardStatus = GetProp<string>(t, source, "EbtCardStatus"),
             EbtCardIssueDate = ToDateTimeOrNull(GetProp(t, source, "EbtCardIssueDate")),
             EbtCardBalance = GetProp<decimal?>(t, source, "EbtCardBalance"),
+            CardRequestedAt = GetProp<DateTime?>(t, source, "CardRequestedAt"),
             BenefitAvailableDate = ToDateTimeOrNull(GetProp(t, source, "BenefitAvailableDate")),
             BenefitExpirationDate = ToDateTimeOrNull(GetProp(t, source, "BenefitExpirationDate"))
         };

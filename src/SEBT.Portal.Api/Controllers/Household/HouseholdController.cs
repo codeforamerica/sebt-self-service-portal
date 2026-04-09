@@ -52,24 +52,28 @@ public class HouseholdController : ControllerBase
 
     /// <summary>
     /// Updates the mailing address for the authenticated user's household.
+    /// Returns the address validation result, which may include a suggested alternative
+    /// (e.g., abbreviated street name for DC) or a validation error (blocked address, too long).
     /// </summary>
     /// <param name="request">The new mailing address.</param>
     /// <param name="commandHandler">The use case handler for updating the address.</param>
     /// <param name="cancellationToken">A token to monitor for cancellation requests.</param>
-    /// <returns>No content on success; otherwise, BadRequest or Unauthorized.</returns>
-    /// <response code="204">Address updated successfully.</response>
-    /// <response code="400">Validation failed (missing fields, invalid format, or address could not be verified).</response>
+    /// <returns>The address validation result on success; otherwise, BadRequest, Forbidden, or UnprocessableEntity.</returns>
+    /// <response code="200">Address validated and accepted.</response>
+    /// <response code="400">Input validation failed (missing fields, invalid format, or address could not be verified).</response>
     /// <response code="403">User is not authorized or no household identifier could be resolved from token.</response>
+    /// <response code="422">Address validation failed (blocked, too long, or has a suggested alternative).</response>
     /// <response code="502">Address verification provider error or timeout.</response>
     [HttpPut("address")]
     [Authorize]
-    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(typeof(AddressUpdateResponse), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(typeof(AddressUpdateResponse), StatusCodes.Status422UnprocessableEntity)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status502BadGateway)]
     public async Task<IActionResult> UpdateAddress(
         [FromBody] UpdateAddressRequest request,
-        [FromServices] ICommandHandler<UpdateAddressCommand> commandHandler,
+        [FromServices] ICommandHandler<UpdateAddressCommand, Core.Services.AddressValidationResult> commandHandler,
         CancellationToken cancellationToken = default)
     {
         var command = new UpdateAddressCommand
@@ -83,18 +87,45 @@ public class HouseholdController : ControllerBase
         };
 
         var result = await commandHandler.Handle(command, cancellationToken);
-        return result.ToActionResult();
+
+        return result.ToActionResult(
+            successMap: validationResult =>
+            {
+                if (validationResult.IsValid)
+                {
+                    return Ok(new AddressUpdateResponse { Status = "valid" });
+                }
+
+                var response = new AddressUpdateResponse
+                {
+                    Status = validationResult.SuggestedAddress != null ? "suggestion" : "invalid",
+                    Reason = validationResult.Reason,
+                    Message = validationResult.ErrorMessage,
+                    SuggestedAddress = validationResult.SuggestedAddress != null
+                        ? new AddressResponse
+                        {
+                            StreetAddress1 = validationResult.SuggestedAddress.StreetAddress1,
+                            StreetAddress2 = validationResult.SuggestedAddress.StreetAddress2,
+                            City = validationResult.SuggestedAddress.City,
+                            State = validationResult.SuggestedAddress.State,
+                            PostalCode = validationResult.SuggestedAddress.PostalCode
+                        }
+                        : null
+                };
+
+                return UnprocessableEntity(response);
+            });
     }
 
     /// <summary>
     /// Requests replacement cards for the authenticated user's household.
     /// </summary>
-    /// <param name="request">The application numbers to request replacements for.</param>
+    /// <param name="request">The case IDs to request replacements for.</param>
     /// <param name="commandHandler">The use case handler for requesting card replacements.</param>
     /// <param name="cancellationToken">A token to monitor for cancellation requests.</param>
     /// <returns>No content on success; otherwise, BadRequest, Forbidden, or NotFound.</returns>
     /// <response code="204">Card replacement request recorded successfully.</response>
-    /// <response code="400">Validation failed (no applications selected or cooldown active).</response>
+    /// <response code="400">Validation failed (no cases selected or cooldown active).</response>
     /// <response code="403">User is not authorized or no household identifier could be resolved from token.</response>
     /// <response code="404">Household data not found for the authenticated user.</response>
     [HttpPost("cards/replace")]
@@ -111,10 +142,11 @@ public class HouseholdController : ControllerBase
         var command = new RequestCardReplacementCommand
         {
             User = User,
-            ApplicationNumbers = request.ApplicationNumbers
+            CaseIds = request.CaseIds
         };
 
         var result = await commandHandler.Handle(command, cancellationToken);
         return result.ToActionResult();
     }
+
 }

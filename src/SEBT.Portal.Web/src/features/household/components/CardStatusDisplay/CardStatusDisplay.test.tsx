@@ -4,7 +4,7 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 import enCODashboard from '@/content/locales/en/co/dashboard.json'
 import { i18n } from '@sebt/design-system/client'
 
-import type { Application } from '../../api'
+import type { CardStatus } from '../../api'
 import { CardStatusDisplay } from './CardStatusDisplay'
 
 // CardStatusDisplay is CO-specific. Tests default to the DC locale, so we
@@ -17,20 +17,8 @@ afterAll(() => {
   i18n.removeResourceBundle('en', 'dashboard')
 })
 
-// Minimal application fixture — tests override cardStatus per case
-const baseApplication: Application = {
-  applicationNumber: 'APP-001',
-  caseNumber: 'CASE-001',
-  applicationStatus: 'Approved',
-  children: [{ firstName: 'Jane', lastName: 'Doe' }],
-  childrenOnApplication: 1,
-  cardStatus: 'Active'
-}
-
-function renderWithStatus(cardStatus: Application['cardStatus'], overrides?: Partial<Application>) {
-  return render(
-    <CardStatusDisplay application={{ ...baseApplication, cardStatus, ...overrides }} />
-  )
+function renderWithStatus(cardStatus: CardStatus | null | undefined) {
+  return render(<CardStatusDisplay cardStatus={cardStatus} />)
 }
 
 describe('CardStatusDisplay', () => {

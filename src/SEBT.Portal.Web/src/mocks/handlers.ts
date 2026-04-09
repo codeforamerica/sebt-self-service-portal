@@ -60,7 +60,7 @@ export const TEST_HOUSEHOLD_DATA = {
       eligibilityType: 'NSLP',
       issuanceType: 1,
       ebtCardLastFour: '1234',
-      ebtCardStatus: 'ACTIVE',
+      ebtCardStatus: 'Active',
       benefitAvailableDate: '2026-06-01T00:00:00Z',
       benefitExpirationDate: '2026-08-31T00:00:00Z'
     },
@@ -315,10 +315,16 @@ export const handlers = [
     return HttpResponse.json(TEST_HOUSEHOLD_DATA)
   }),
 
-  // Address update endpoint (stub — no real persistence yet)
-  // TODO: When state connector persistence is wired up, update this handler to
-  // reflect the real contract (validation errors, response body if not 204, etc.)
+  // Address update endpoint
+  // TODO: Tests override via server.use() for validation scenarios (422 invalid/suggestion)
   http.put('/api/household/address', () => {
+    return HttpResponse.json({ status: 'valid' }, { status: 200 })
+  }),
+
+  // Card replacement endpoint (stub — no real persistence yet)
+  // TODO: When state connector persistence is wired up, update this handler to
+  // reflect the real contract (cooldown validation errors, etc.)
+  http.post('/api/household/cards/replace', () => {
     return new HttpResponse(null, { status: 204 })
   }),
 

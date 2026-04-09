@@ -115,7 +115,7 @@ test.describe('Address update flow', () => {
       // Click the label — USWDS checkbox tiles use visually-hidden inputs.
       await page.locator('.usa-checkbox__label').first().click()
       await page.getByRole('button', { name: 'Continue' }).click()
-      await expect(page).toHaveURL(/\/profile\/address\/replacement-cards\/select\/confirm\?apps=/)
+      await expect(page).toHaveURL(/\/profile\/address\/replacement-cards\/select\/confirm\?cases=/)
     })
   })
 

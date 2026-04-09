@@ -283,7 +283,7 @@ describe('AddressForm', () => {
   it('allows street address of exactly 30 characters', async () => {
     server.use(
       http.put('/api/household/address', () => {
-        return new HttpResponse(null, { status: 204 })
+        return HttpResponse.json({ status: 'valid' }, { status: 200 })
       })
     )
 

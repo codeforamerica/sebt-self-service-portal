@@ -3,5 +3,6 @@ export {
   createMockApplication,
   createMockChild,
   createMockHouseholdData,
+  createMockSummerEbtCase,
   createMockUserProfile
 } from './fixtures'
