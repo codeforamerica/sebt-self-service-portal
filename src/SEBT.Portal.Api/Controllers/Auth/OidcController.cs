@@ -2,8 +2,11 @@ using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Text;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
 using SEBT.Portal.Api.Models;
+using SEBT.Portal.Api.Services;
+using SEBT.Portal.Core.AppSettings;
 using SEBT.Portal.Core.Models.Auth;
 using SEBT.Portal.Core.Repositories;
 using SEBT.Portal.Core.Services;
@@ -23,7 +26,8 @@ public class OidcController(
     IHttpClientFactory httpFactory,
     ILogger<OidcController> logger,
     IUserRepository userRepository,
-    IJwtTokenService jwtService) : ControllerBase
+    IJwtTokenService jwtService,
+    IOptions<JwtSettings> jwtSettingsOptions) : ControllerBase
 {
     /// <summary>
     /// Standard OIDC/JWT and IdP-infrastructure claim names to exclude when copying IdP claims into the portal JWT.
@@ -89,12 +93,13 @@ public class OidcController(
     /// <summary>
     /// Completes OIDC login when the Next.js server has already exchanged the code and validated the id_token.
     /// Accepts a short-lived callbackToken (JWT signed with Oidc:CompleteLoginSigningKey) containing IdP claims;
-    /// copies non-common IdP claims into the portal JWT and returns it.
+    /// copies non-common IdP claims into the portal JWT and writes it to the HttpOnly session cookie
+    /// (see <c>AuthCookies</c>). The response body carries metadata only — no token.
     /// Step-up may echo <c>returnUrl</c> only when it is a safe relative path (see <see cref="TrySanitizeStepUpReturnUrl"/>).
     /// </summary>
     [HttpPost("complete-login")]
-    [ProducesResponseType(StatusCodes.Status200OK)]
-    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(CompleteLoginResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status503ServiceUnavailable)]
     public async Task<IActionResult> CompleteLogin(
         [FromBody] CompleteLoginRequest? body,
@@ -207,17 +212,17 @@ public class OidcController(
         }
 
         var token = jwtService.GenerateToken(user, additionalClaims);
-        if (!body.IsStepUp)
-            return Ok(new { token });
+        var expiresAt = DateTimeOffset.UtcNow.AddMinutes(jwtSettingsOptions.Value.ExpirationMinutes);
+        AuthCookies.SetAuthCookie(Response, token, expiresAt);
 
-        var safeReturnUrl = TrySanitizeStepUpReturnUrl(body.ReturnUrl);
-        if (safeReturnUrl != null)
-            return Ok(new { token, returnUrl = safeReturnUrl });
-
-        if (!string.IsNullOrWhiteSpace(body.ReturnUrl))
-            logger.LogWarning("Step-up complete-login: returnUrl rejected (must be a safe relative path).");
-
-        return Ok(new { token });
+        string? safeReturnUrl = null;
+        if (body.IsStepUp)
+        {
+            safeReturnUrl = TrySanitizeStepUpReturnUrl(body.ReturnUrl);
+            if (safeReturnUrl == null && !string.IsNullOrWhiteSpace(body.ReturnUrl))
+                logger.LogWarning("Step-up complete-login: returnUrl rejected (must be a safe relative path).");
+        }
+        return Ok(new CompleteLoginResponse(ReturnUrl: safeReturnUrl));
     }
 
     private const int MaxStepUpReturnUrlLength = 4096;

@@ -17,6 +17,13 @@ namespace SEBT.Portal.Tests.Integration;
 /// </summary>
 public class PortalWebApplicationFactory : WebApplicationFactory<Program>
 {
+    /// <summary>
+    /// JWT signing key injected into the test host. Tests that mint their own
+    /// tokens (e.g. AuthCookieAuthenticationTests) reference this constant so the
+    /// signature matches what the JwtBearer middleware will validate against.
+    /// </summary>
+    public const string JwtSecretKey = "integration-test-secret-key-at-least-32-chars!";
+
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
         // Override plugin assembly paths via environment variables BEFORE the server starts.
@@ -30,8 +37,7 @@ public class PortalWebApplicationFactory : WebApplicationFactory<Program>
         // Provide a dummy JWT secret so the JwtBearer handler can initialize.
         // The auth middleware runs on every request (including /health), and
         // PostConfigure reads JwtSettings:SecretKey to create a SymmetricSecurityKey.
-        Environment.SetEnvironmentVariable("JwtSettings__SecretKey",
-            "integration-test-secret-key-at-least-32-chars!");
+        Environment.SetEnvironmentVariable("JwtSettings__SecretKey", JwtSecretKey);
 
         builder.ConfigureServices(services =>
         {
