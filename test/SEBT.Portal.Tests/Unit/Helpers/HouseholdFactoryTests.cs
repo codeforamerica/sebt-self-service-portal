@@ -358,8 +358,10 @@ public class HouseholdFactoryTests
         // Act
         var result = HouseholdFactory.CreateSummerEbtCase("Jane", "Doe", "NSLP");
 
-        // Assert
+        // Assert — child should be between 5 and 17 years old
         Assert.NotNull(result.ChildDateOfBirth);
+        Assert.True(result.ChildDateOfBirth >= DateTime.Today.AddYears(-17));
+        Assert.True(result.ChildDateOfBirth <= DateTime.Today.AddYears(-5));
     }
 
     [Fact]
