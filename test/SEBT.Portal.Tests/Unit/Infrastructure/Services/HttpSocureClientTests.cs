@@ -5,6 +5,7 @@ using Microsoft.Extensions.Options;
 using NSubstitute;
 using SEBT.Portal.Core.AppSettings;
 using SEBT.Portal.Core.Models.DocVerification;
+using SEBT.Portal.Core.Models.Household;
 using SEBT.Portal.Core.Services;
 using SEBT.Portal.Infrastructure.Services;
 using SEBT.Portal.Kernel;
@@ -449,6 +450,81 @@ public class HttpSocureClientTests
         var individual = doc.RootElement.GetProperty("data").GetProperty("individual");
         Assert.False(individual.TryGetProperty("ip_address", out _));
         Assert.False(individual.TryGetProperty("phone_number", out _));
+    }
+
+    // --- Address fields ---
+
+    [Fact]
+    public async Task RunIdProofingAssessment_ShouldIncludeAddress_WhenProvided()
+    {
+        string? capturedBody = null;
+        var handler = new CaptureRequestHandler(body =>
+        {
+            capturedBody = body;
+            return new HttpResponseMessage(HttpStatusCode.OK)
+            {
+                Content = new StringContent(JsonSerializer.Serialize(new
+                {
+                    eval_id = "eval-123",
+                    decision = "ACCEPT",
+                    data_enrichments = Array.Empty<object>()
+                }), System.Text.Encoding.UTF8, "application/json")
+            };
+        });
+
+        var client = CreateClient(handler);
+        var address = new Address
+        {
+            StreetAddress1 = "123 Main St",
+            StreetAddress2 = "Apt 4",
+            City = "Washington",
+            State = "DC",
+            PostalCode = "20001"
+        };
+
+        await client.RunIdProofingAssessmentAsync(
+            42, "user@example.com", "1990-06-15", "ssn", "123-45-6789",
+            address: address);
+
+        Assert.NotNull(capturedBody);
+        using var doc = JsonDocument.Parse(capturedBody);
+        var individual = doc.RootElement.GetProperty("data").GetProperty("individual");
+        var addr = individual.GetProperty("address");
+        Assert.Equal("123 Main St", addr.GetProperty("line_1").GetString());
+        Assert.Equal("Apt 4", addr.GetProperty("line_2").GetString());
+        Assert.Equal("Washington", addr.GetProperty("locality").GetString());
+        Assert.Equal("DC", addr.GetProperty("major_admin_division").GetString());
+        Assert.Equal("20001", addr.GetProperty("postal_code").GetString());
+        Assert.Equal("US", addr.GetProperty("country").GetString());
+        Assert.Equal("mailing", addr.GetProperty("type").GetString());
+    }
+
+    [Fact]
+    public async Task RunIdProofingAssessment_ShouldOmitAddress_WhenNotProvided()
+    {
+        string? capturedBody = null;
+        var handler = new CaptureRequestHandler(body =>
+        {
+            capturedBody = body;
+            return new HttpResponseMessage(HttpStatusCode.OK)
+            {
+                Content = new StringContent(JsonSerializer.Serialize(new
+                {
+                    eval_id = "eval-123",
+                    decision = "ACCEPT",
+                    data_enrichments = Array.Empty<object>()
+                }), System.Text.Encoding.UTF8, "application/json")
+            };
+        });
+
+        var client = CreateClient(handler);
+        await client.RunIdProofingAssessmentAsync(
+            42, "user@example.com", "1990-06-15", "ssn", "123-45-6789");
+
+        Assert.NotNull(capturedBody);
+        using var doc = JsonDocument.Parse(capturedBody);
+        var individual = doc.RootElement.GetProperty("data").GetProperty("individual");
+        Assert.False(individual.TryGetProperty("address", out _));
     }
 
     // --- DocV config shape ---

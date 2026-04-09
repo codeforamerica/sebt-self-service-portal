@@ -5,6 +5,7 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using SEBT.Portal.Core.AppSettings;
 using SEBT.Portal.Core.Models.DocVerification;
+using SEBT.Portal.Core.Models.Household;
 using SEBT.Portal.Core.Services;
 using SEBT.Portal.Infrastructure.Services.Socure;
 using SEBT.Portal.Kernel;
@@ -38,11 +39,12 @@ public class HttpSocureClient(
         string? phoneNumber = null,
         string? givenName = null,
         string? familyName = null,
+        Address? address = null,
         CancellationToken cancellationToken = default)
     {
         var settings = socureSettings.Value;
 
-        var request = BuildEvaluationRequest(userId, email, dateOfBirth, idType, idValue, settings, ipAddress, phoneNumber, givenName, familyName);
+        var request = BuildEvaluationRequest(userId, email, dateOfBirth, idType, idValue, settings, ipAddress, phoneNumber, givenName, familyName, address);
         var jsonContent = JsonSerializer.Serialize(request, JsonOptions);
 
         var httpClient = httpClientFactory.CreateClient("Socure");
@@ -117,7 +119,8 @@ public class HttpSocureClient(
         string? ipAddress = null,
         string? phoneNumber = null,
         string? givenName = null,
-        string? familyName = null)
+        string? familyName = null,
+        Address? address = null)
     {
         var individual = new SocureIndividual
         {
@@ -133,7 +136,8 @@ public class HttpSocureClient(
             PhoneNumber = phoneNumber,
             GivenName = givenName,
             FamilyName = familyName,
-            Docv = new SocureDocvConfig()
+            Docv = new SocureDocvConfig(),
+            Address = MapAddress(address)
         };
 
         return new SocureEvaluationRequest
@@ -142,6 +146,23 @@ public class HttpSocureClient(
             Workflow = settings.Workflow,
             Timestamp = DateTime.UtcNow.ToString("o"),
             Data = new SocureEvaluationRequestData { Individual = individual }
+        };
+    }
+
+    private static SocureAddress? MapAddress(Address? address)
+    {
+        if (address == null)
+            return null;
+
+        return new SocureAddress
+        {
+            Type = "mailing",
+            Line1 = address.StreetAddress1,
+            Line2 = address.StreetAddress2,
+            Locality = address.City,
+            MajorAdminDivision = address.State,
+            PostalCode = address.PostalCode,
+            Country = "US"
         };
     }
 
@@ -154,7 +175,7 @@ public class HttpSocureClient(
 
         return new IdProofingAssessmentResult(
             Outcome: outcome,
-            AllowIdRetry: true, // Stubbed — real logic pending compliance policy
+            AllowIdRetry: true, // Socure doesn't provide retry guidance; handler overrides based on attempt count
             DocvSession: docvSession);
     }
 

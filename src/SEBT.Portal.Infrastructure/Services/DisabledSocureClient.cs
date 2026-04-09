@@ -1,4 +1,5 @@
 using SEBT.Portal.Core.Models.DocVerification;
+using SEBT.Portal.Core.Models.Household;
 using SEBT.Portal.Core.Services;
 using SEBT.Portal.Kernel;
 using SEBT.Portal.Kernel.Results;
@@ -23,6 +24,7 @@ public class DisabledSocureClient : ISocureClient
         string? phoneNumber = null,
         string? givenName = null,
         string? familyName = null,
+        Address? address = null,
         CancellationToken cancellationToken = default)
     {
         return Task.FromResult(

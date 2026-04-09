@@ -73,4 +73,9 @@ public class UserEntity
 
     /// <summary>SSN or last-4 when used as household identifier (per state policy).</summary>
     public string? Ssn { get; set; }
+
+    /// <summary>
+    /// Number of times this user has submitted ID proofing to Socure.
+    /// </summary>
+    public int IdProofingAttemptCount { get; set; }
 }

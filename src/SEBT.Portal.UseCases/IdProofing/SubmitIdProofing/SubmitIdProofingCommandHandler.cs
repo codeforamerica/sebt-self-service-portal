@@ -3,6 +3,7 @@ using SEBT.Portal.Core.AppSettings;
 using SEBT.Portal.Core.Models;
 using SEBT.Portal.Core.Models.Auth;
 using SEBT.Portal.Core.Models.DocVerification;
+using SEBT.Portal.Core.Models.Household;
 using SEBT.Portal.Core.Repositories;
 using SEBT.Portal.Core.Services;
 using SEBT.Portal.Kernel;
@@ -48,6 +49,19 @@ public class SubmitIdProofingCommandHandler(
                 PreconditionFailedReason.NotFound, "User not found.");
         }
 
+        // Max attempts reached → off-board (3-attempt cap)
+        const int maxAttempts = 3;
+        if (user.IdProofingAttemptCount >= maxAttempts)
+        {
+            logger.LogInformation(
+                "User {UserId} has reached the maximum ID proofing attempts ({MaxAttempts})",
+                command.UserId, maxAttempts);
+            return Result<SubmitIdProofingResponse>.Success(
+                new SubmitIdProofingResponse("failed",
+                    AllowIdRetry: false,
+                    OffboardingReason: "maxAttemptsReached"));
+        }
+
         // No ID provided → off-board immediately (Codex test 5)
         if (string.IsNullOrWhiteSpace(command.IdType))
         {
@@ -71,18 +85,23 @@ public class SubmitIdProofingCommandHandler(
                     AllowIdRetry: activeChallenge.AllowIdRetry));
         }
 
-        // Fetch household data for user's name (best-effort, names are optional for Socure)
+        // Fetch household data for user's name and address (best-effort, optional for Socure)
         string? givenName = null;
         string? familyName = null;
+        Address? address = null;
         var household = await householdRepository.GetHouseholdByEmailAsync(
             user.Email,
-            new PiiVisibility(IncludeAddress: false, IncludeEmail: false, IncludePhone: false),
+            new PiiVisibility(IncludeAddress: true, IncludeEmail: false, IncludePhone: false),
             user.IalLevel,
             cancellationToken);
         if (household?.UserProfile != null)
         {
             givenName = household.UserProfile.FirstName;
             familyName = household.UserProfile.LastName;
+        }
+        if (household?.AddressOnFile != null)
+        {
+            address = household.AddressOnFile;
         }
 
         // Call Socure for risk assessment
@@ -96,6 +115,7 @@ public class SubmitIdProofingCommandHandler(
             phoneNumber: user.Phone,
             givenName: givenName,
             familyName: familyName,
+            address: address,
             cancellationToken: cancellationToken);
 
         if (!assessmentResult.IsSuccess)
@@ -114,6 +134,13 @@ public class SubmitIdProofingCommandHandler(
 
         var assessment = assessmentResult.Value;
 
+        // Increment attempt count and persist
+        user.IdProofingAttemptCount++;
+        await userRepository.UpdateUserAsync(user, cancellationToken);
+
+        // Derive retry eligibility from attempt count (overrides Socure's value)
+        var allowIdRetry = user.IdProofingAttemptCount < maxAttempts;
+
         return assessment.Outcome switch
         {
             IdProofingOutcome.Matched => Result<SubmitIdProofingResponse>.Success(
@@ -122,11 +149,11 @@ public class SubmitIdProofingCommandHandler(
             IdProofingOutcome.Failed => Result<SubmitIdProofingResponse>.Success(
                 new SubmitIdProofingResponse(
                     "failed",
-                    AllowIdRetry: assessment.AllowIdRetry,
+                    AllowIdRetry: allowIdRetry,
                     OffboardingReason: "idProofingFailed")),
 
             IdProofingOutcome.DocumentVerificationRequired =>
-                await CreateChallengeAndRespond(command.UserId, assessment, cancellationToken),
+                await CreateChallengeAndRespond(command.UserId, assessment, allowIdRetry, cancellationToken),
 
             _ => throw new InvalidOperationException(
                 $"Unexpected IdProofingOutcome: {assessment.Outcome}")
@@ -136,12 +163,13 @@ public class SubmitIdProofingCommandHandler(
     private async Task<Result<SubmitIdProofingResponse>> CreateChallengeAndRespond(
         int userId,
         IdProofingAssessmentResult assessment,
+        bool allowIdRetry,
         CancellationToken cancellationToken)
     {
         var challenge = new DocVerificationChallenge
         {
             UserId = userId,
-            AllowIdRetry = assessment.AllowIdRetry,
+            AllowIdRetry = allowIdRetry,
             ExpiresAt = DateTime.UtcNow.AddMinutes(socureSettings.ChallengeExpirationMinutes),
             DocvTransactionToken = assessment.DocvSession?.DocvTransactionToken,
             DocvUrl = assessment.DocvSession?.DocvUrl,
@@ -159,6 +187,6 @@ public class SubmitIdProofingCommandHandler(
             new SubmitIdProofingResponse(
                 "documentVerificationRequired",
                 ChallengeId: challenge.PublicId,
-                AllowIdRetry: assessment.AllowIdRetry));
+                AllowIdRetry: allowIdRetry));
     }
 }

@@ -90,6 +90,7 @@ public class DatabaseUserRepository(PortalDbContext dbContext, IIdentifierHasher
         entity.SnapId = user.SnapId;
         entity.TanfId = user.TanfId;
         entity.Ssn = identifierHasher.HashForStorage(user.Ssn);
+        entity.IdProofingAttemptCount = user.IdProofingAttemptCount;
         entity.UpdatedAt = DateTime.UtcNow;
 
         try
@@ -224,6 +225,7 @@ public class DatabaseUserRepository(PortalDbContext dbContext, IIdentifierHasher
             SnapId = entity.SnapId,
             TanfId = entity.TanfId,
             Ssn = entity.Ssn,
+            IdProofingAttemptCount = entity.IdProofingAttemptCount,
             CreatedAt = entity.CreatedAt,
             UpdatedAt = entity.UpdatedAt
         };
@@ -246,6 +248,7 @@ public class DatabaseUserRepository(PortalDbContext dbContext, IIdentifierHasher
             SnapId = user.SnapId,
             TanfId = user.TanfId,
             Ssn = identifierHasher.HashForStorage(user.Ssn),
+            IdProofingAttemptCount = user.IdProofingAttemptCount,
             CreatedAt = user.CreatedAt,
             UpdatedAt = user.UpdatedAt
         };

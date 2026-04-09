@@ -1,4 +1,5 @@
 using SEBT.Portal.Core.Models.DocVerification;
+using SEBT.Portal.Core.Models.Household;
 using SEBT.Portal.Kernel;
 
 namespace SEBT.Portal.Core.Services;
@@ -23,6 +24,7 @@ public interface ISocureClient
     /// <param name="phoneNumber">The user's phone number, or null.</param>
     /// <param name="givenName">The user's first name, or null.</param>
     /// <param name="familyName">The user's last name, or null.</param>
+    /// <param name="address">The user's mailing address from household data, or null.</param>
     /// <param name="cancellationToken">Cancellation token.</param>
     /// <returns>A result indicating the assessment outcome.</returns>
     Task<Result<IdProofingAssessmentResult>> RunIdProofingAssessmentAsync(
@@ -35,6 +37,7 @@ public interface ISocureClient
         string? phoneNumber = null,
         string? givenName = null,
         string? familyName = null,
+        Address? address = null,
         CancellationToken cancellationToken = default);
 
     /// <summary>

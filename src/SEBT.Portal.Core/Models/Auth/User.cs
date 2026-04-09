@@ -80,4 +80,10 @@ public class User
     /// SSN or last-4 when used as household identifier for a state (per state policy).
     /// </summary>
     public string? Ssn { get; set; }
+
+    /// <summary>
+    /// Number of times this user has submitted ID proofing to Socure.
+    /// Used to enforce the retry cap (max 3 attempts).
+    /// </summary>
+    public int IdProofingAttemptCount { get; set; }
 }
