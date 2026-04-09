@@ -1,5 +1,6 @@
 using System.ComponentModel.DataAnnotations;
 using System.Security.Claims;
+using SEBT.Portal.Core.Services;
 using SEBT.Portal.Kernel;
 
 namespace SEBT.Portal.UseCases.Household;
@@ -7,7 +8,7 @@ namespace SEBT.Portal.UseCases.Household;
 /// <summary>
 /// Command to update the mailing address for an authenticated user's household.
 /// </summary>
-public class UpdateAddressCommand : ICommand
+public class UpdateAddressCommand : ICommand<AddressValidationResult>
 {
     /// <summary>
     /// The authenticated user's claims principal, used to resolve household identity.

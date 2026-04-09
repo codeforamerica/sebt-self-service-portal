@@ -22,7 +22,7 @@ public static class Dependencies
         services.RegisterQueryHandler<GetVerificationStatusQuery, VerificationStatusResponse, GetVerificationStatusQueryHandler>();
         services.RegisterCommandHandler<ProcessWebhookCommand, ProcessWebhookCommandHandler>();
         services.RegisterCommandHandler<CheckEnrollmentCommand, EnrollmentCheckResult, CheckEnrollmentCommandHandler>();
-        services.RegisterCommandHandler<UpdateAddressCommand, UpdateAddressCommandHandler>();
+        services.RegisterCommandHandler<UpdateAddressCommand, Core.Services.AddressValidationResult, UpdateAddressCommandHandler>();
         services.RegisterCommandHandler<RequestCardReplacementCommand, RequestCardReplacementCommandHandler>();
 
         return services;
