@@ -105,6 +105,12 @@ public class SubmitIdProofingCommandHandler(
         }
 
         // Call Socure for risk assessment
+        // Sandbox phone override lets developers receive DocV SMS on a real phone
+        // without storing personal numbers in the database.
+        var phoneNumber = !string.IsNullOrWhiteSpace(socureSettings.SandboxPhoneOverride)
+            ? socureSettings.SandboxPhoneOverride
+            : user.Phone;
+
         var assessmentResult = await socureClient.RunIdProofingAssessmentAsync(
             command.UserId,
             user.Email,
@@ -112,7 +118,7 @@ public class SubmitIdProofingCommandHandler(
             command.IdType,
             command.IdValue,
             ipAddress: command.IpAddress,
-            phoneNumber: user.Phone,
+            phoneNumber: phoneNumber,
             givenName: givenName,
             familyName: familyName,
             address: address,

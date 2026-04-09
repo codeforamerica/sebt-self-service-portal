@@ -37,6 +37,7 @@ function readChallengeContext(searchParams: URLSearchParams): {
 function clearChallengeContext(): void {
   sessionStorage.removeItem(SK_CHALLENGE_ID)
   sessionStorage.removeItem(SK_SUB_STATE)
+  sessionStorage.removeItem('docv_still_checking')
 }
 
 export function DocVerifyPage({ contactLink, sdkKey }: DocVerifyPageProps) {

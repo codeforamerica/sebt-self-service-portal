@@ -22,7 +22,10 @@ export function VerificationPending({
   onRejected
 }: VerificationPendingProps) {
   const { t } = useTranslation('idProofing')
-  const [timerExpired, setTimerExpired] = useState(false)
+  // Persist "still checking" state across remounts so the UI doesn't oscillate
+  const [timerExpired, setTimerExpired] = useState(
+    () => sessionStorage.getItem('docv_still_checking') === 'true'
+  )
 
   const { data, error, refetch } = useVerificationStatus(challengeId)
 
@@ -31,12 +34,14 @@ export function VerificationPending({
 
   // Show "still checking" message after threshold
   useEffect(() => {
+    if (timerExpired) return
     const timer = setTimeout(() => {
+      sessionStorage.setItem('docv_still_checking', 'true')
       setTimerExpired(true)
     }, STILL_CHECKING_THRESHOLD_MS)
 
     return () => clearTimeout(timer)
-  }, [])
+  }, [timerExpired])
 
   // React to terminal status changes
   useEffect(() => {

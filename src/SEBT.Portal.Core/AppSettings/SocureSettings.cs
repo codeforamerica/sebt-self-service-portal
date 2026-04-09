@@ -71,4 +71,12 @@ public class SocureSettings
     /// from the Socure DI SDK on the frontend (not yet integrated).
     /// </summary>
     public string? DiSessionToken { get; set; }
+
+    /// <summary>
+    /// When set, overrides the user's phone number in Socure evaluation requests.
+    /// Use this in sandbox to receive DocV SMS links on a real phone without
+    /// storing personal phone numbers in the database.
+    /// Leave null in production.
+    /// </summary>
+    public string? SandboxPhoneOverride { get; set; }
 }
