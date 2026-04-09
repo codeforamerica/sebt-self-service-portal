@@ -12,20 +12,20 @@ export default function CardReplacePage() {
   const searchParams = useSearchParams()
   const { data, isLoading, isError } = useHouseholdData()
 
-  const appNumber = searchParams.get('app')
+  const caseId = searchParams.get('case')
 
   if (isLoading) {
     return <p>{tCommon('loading', 'Loading...')}</p>
   }
 
-  if (isError || !data || !appNumber) {
+  if (isError || !data || !caseId) {
     return <Alert variant="error">Unable to load card details. Please try again.</Alert>
   }
 
-  const application = data.applications.find((a) => a.applicationNumber === appNumber)
+  const summerEbtCase = data.summerEbtCases.find((c) => c.summerEBTCaseID === caseId)
   const address = data.addressOnFile
 
-  if (!application || !address) {
+  if (!summerEbtCase || !address) {
     return (
       <Alert variant="error">
         Card or address information not found. Please return to the dashboard.
@@ -40,10 +40,10 @@ export default function CardReplacePage() {
         Do you want the new card mailed to this address?
       </h1>
       <ConfirmAddress
-        application={application}
+        summerEbtCase={summerEbtCase}
         address={address}
-        confirmPath={`/cards/replace/confirm?app=${encodeURIComponent(appNumber)}`}
-        changePath={`/cards/replace/address?app=${encodeURIComponent(appNumber)}`}
+        confirmPath={`/cards/replace/confirm?case=${encodeURIComponent(caseId)}`}
+        changePath={`/cards/replace/address?case=${encodeURIComponent(caseId)}`}
       />
     </div>
   )

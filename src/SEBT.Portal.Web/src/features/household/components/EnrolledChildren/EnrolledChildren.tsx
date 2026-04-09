@@ -2,24 +2,13 @@
 
 import { useTranslation } from 'react-i18next'
 
-import { ApplicationStatus, useRequiredHouseholdData } from '../../api'
+import { useRequiredHouseholdData } from '../../api'
 import { ChildCard } from '../ChildCard'
 
 // Keys map to CSV: "S2 - Portal Dashboard - Section Enrolled Children - {Key}"
 export function EnrolledChildren() {
   const { t } = useTranslation('dashboard')
   const data = useRequiredHouseholdData()
-
-  // Flatten children across all applications for display
-  // Each child gets the application-level data it belongs to
-  // let childIndex = 0
-  // const childrenWithApplicationData = data.applications.flatMap((application) =>
-  //   application.children.map((child) => ({
-  //     child,
-  //     application,
-  //     index: childIndex++
-  //   }))
-  // )
 
   return (
     <section aria-labelledby="enrolled-children-heading">
@@ -44,45 +33,13 @@ export function EnrolledChildren() {
         data-allow-multiple
       >
         {data.summerEbtCases.map((c, index) => (
-          <>
-            {/* <pre>{JSON.stringify(c, null, 4)}</pre> */}
-            <ChildCard
-              key={`${c.childFirstName}-${c.childLastName}-${c.childDateOfBirth}-${c.summerEBTCaseID}`}
-              child={{
-                firstName: c.childFirstName,
-                lastName: c.childLastName
-              }}
-              application={{
-                ...c,
-                applicationNumber: c.applicationId,
-                caseNumber: c.ebtCaseNumber,
-                last4DigitsOfCard: c.ebtCardLastFour,
-                applicationStatus: 'Approved' as ApplicationStatus,
-                benefitIssueDate: c.benefitAvailableDate,
-                children: [{ firstName: c.childFirstName, lastName: c.childLastName }],
-                childrenOnApplication: 1
-              }}
-              id={`${c.summerEBTCaseID}`}
-              defaultExpanded={index === 0}
-            />
-          </>
-        ))}
-      </div>
-
-      {/* <div
-        className="usa-accordion usa-accordion--bordered"
-        data-allow-multiple
-      >
-        {childrenWithApplicationData.map(({ child, application, index }) => (
           <ChildCard
-            key={`${child.firstName}-${child.lastName}-${index}`}
-            child={child}
-            application={application}
-            id={`${index}`}
+            key={`${c.childFirstName}-${c.childLastName}-${c.childDateOfBirth}-${c.summerEBTCaseID}`}
+            summerEbtCase={c}
             defaultExpanded={index === 0}
           />
         ))}
-      </div> */}
+      </div>
     </section>
   )
 }

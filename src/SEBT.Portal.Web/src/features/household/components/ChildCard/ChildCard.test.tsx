@@ -5,30 +5,26 @@ import { describe, expect, it } from 'vitest'
 import { FeatureFlagsContext, type FeatureFlagsContextValue } from '@/features/feature-flags'
 import { TEST_FEATURE_FLAGS } from '@/mocks/handlers'
 
-import type { Application, Child } from '../../api'
+import type { SummerEbtCase } from '../../api'
+import { createMockSummerEbtCase } from '../../testing'
 
 import { ChildCard } from './ChildCard'
 
-const mockChild: Child = {
-  firstName: 'Sophia',
-  lastName: 'Martinez'
-}
-
-const mockApplication: Application = {
-  applicationNumber: 'APP-2026-001',
-  caseNumber: 'CASE-DC-2026-001',
-  applicationStatus: 'Approved',
-  benefitIssueDate: '2026-01-08T00:00:00Z',
+const mockCase: SummerEbtCase = createMockSummerEbtCase({
+  summerEBTCaseID: 'SEBT-001',
+  applicationId: 'APP-2026-001',
+  childFirstName: 'Sophia',
+  childLastName: 'Martinez',
+  ebtCaseNumber: 'CASE-DC-2026-001',
+  ebtCardLastFour: '1234',
+  ebtCardStatus: 'Active',
+  benefitAvailableDate: '2026-01-08T00:00:00Z',
   benefitExpirationDate: '2026-03-19T00:00:00Z',
-  last4DigitsOfCard: '1234',
-  cardStatus: 'Active',
   cardRequestedAt: '2026-01-01T00:00:00Z',
   cardMailedAt: '2026-01-03T00:00:00Z',
   cardActivatedAt: '2026-01-08T00:00:00Z',
-  cardDeactivatedAt: null,
-  children: [mockChild],
-  childrenOnApplication: 1
-}
+  cardDeactivatedAt: null
+})
 
 const defaultFlags: FeatureFlagsContextValue = {
   flags: TEST_FEATURE_FLAGS,
@@ -37,7 +33,7 @@ const defaultFlags: FeatureFlagsContextValue = {
 }
 
 function renderWithFlags(
-  props: { child: Child; application: Application; id: string; defaultExpanded?: boolean },
+  props: { summerEbtCase: SummerEbtCase; defaultExpanded?: boolean },
   flags: FeatureFlagsContextValue = defaultFlags
 ) {
   return render(
@@ -49,16 +45,12 @@ function renderWithFlags(
 
 describe('ChildCard', () => {
   it('renders card type when issuanceType is provided', () => {
-    const applicationWithIssuanceType: Application = {
-      ...mockApplication,
+    const caseWithIssuanceType = createMockSummerEbtCase({
+      ...mockCase,
       issuanceType: 'SnapEbtCard'
-    }
-
-    renderWithFlags({
-      child: mockChild,
-      application: applicationWithIssuanceType,
-      id: '0'
     })
+
+    renderWithFlags({ summerEbtCase: caseWithIssuanceType })
 
     // Check for the card type heading (i18n key: cardTableHeadingCardType → "Benefit issued to")
     expect(screen.getByText('Benefit issued to')).toBeInTheDocument()
@@ -67,75 +59,59 @@ describe('ChildCard', () => {
   })
 
   it('does not render card type when issuanceType is null', () => {
-    const applicationWithoutIssuanceType: Application = {
-      ...mockApplication,
+    const caseWithoutIssuanceType = createMockSummerEbtCase({
+      ...mockCase,
       issuanceType: null
-    }
-
-    renderWithFlags({
-      child: mockChild,
-      application: applicationWithoutIssuanceType,
-      id: '0'
     })
+
+    renderWithFlags({ summerEbtCase: caseWithoutIssuanceType })
 
     // Card type heading should not be present (i18n key: cardTableHeadingCardType → "Benefit issued to")
     expect(screen.queryByText('Benefit issued to')).not.toBeInTheDocument()
   })
 
   it('renders child name in accordion header', () => {
-    renderWithFlags({
-      child: mockChild,
-      application: mockApplication,
-      id: '0'
-    })
+    renderWithFlags({ summerEbtCase: mockCase })
 
     expect(screen.getByText('Sophia Martinez')).toBeInTheDocument()
   })
 
   it('renders benefit dates when provided', () => {
-    renderWithFlags({
-      child: mockChild,
-      application: mockApplication,
-      id: '0'
-    })
+    renderWithFlags({ summerEbtCase: mockCase })
 
     expect(screen.getByText('01/08/2026')).toBeInTheDocument()
     expect(screen.getByText('03/19/2026')).toBeInTheDocument()
   })
 
   it('renders card number when provided', () => {
-    renderWithFlags({
-      child: mockChild,
-      application: mockApplication,
-      id: '0'
-    })
+    renderWithFlags({ summerEbtCase: mockCase })
 
     expect(screen.getByText(/1234/)).toBeInTheDocument()
   })
 
   it('renders card status badge for CO-style cards (no cardRequestedAt)', () => {
-    const coApplication: Application = {
-      ...mockApplication,
-      cardStatus: 'Active',
+    const coCase = createMockSummerEbtCase({
+      ...mockCase,
+      ebtCardStatus: 'Active',
       cardRequestedAt: null
-    }
+    })
 
-    renderWithFlags({ child: mockChild, application: coApplication, id: '0' })
+    renderWithFlags({ summerEbtCase: coCase })
 
     expect(screen.getByTestId('card-status-badge')).toBeInTheDocument()
     expect(screen.queryByRole('list')).toBeNull()
   })
 
   it('renders card status timeline for DC-style cards (has cardRequestedAt)', () => {
-    const dcApplication: Application = {
-      ...mockApplication,
-      cardStatus: 'Requested',
+    const dcCase = createMockSummerEbtCase({
+      ...mockCase,
+      ebtCardStatus: 'Requested',
       cardRequestedAt: '2026-01-01T00:00:00Z',
       cardMailedAt: null,
       cardActivatedAt: null
-    }
+    })
 
-    renderWithFlags({ child: mockChild, application: dcApplication, id: '0' })
+    renderWithFlags({ summerEbtCase: dcCase })
 
     // DC-style: shows a single current-status row, not the CO badge
     expect(screen.queryByTestId('card-status-badge')).toBeNull()
@@ -144,39 +120,36 @@ describe('ChildCard', () => {
 
   it('renders timeline for DC Active card (cardRequestedAt present)', () => {
     // DC Active cards have gone through Requested → Mailed → Active lifecycle
-    const dcActiveApplication: Application = {
-      ...mockApplication,
-      cardStatus: 'Active',
+    const dcActiveCase = createMockSummerEbtCase({
+      ...mockCase,
+      ebtCardStatus: 'Active',
       cardRequestedAt: '2026-01-01T00:00:00Z',
       cardMailedAt: '2026-01-03T00:00:00Z',
       cardActivatedAt: '2026-01-08T00:00:00Z'
-    }
+    })
 
-    renderWithFlags({ child: mockChild, application: dcActiveApplication, id: '0' })
+    renderWithFlags({ summerEbtCase: dcActiveCase })
 
     expect(screen.queryByTestId('card-status-badge')).toBeNull()
     expect(screen.getByText('Card status')).toBeInTheDocument()
   })
 
   it('hides optional fields when not provided', () => {
-    const minimalApplication: Application = {
-      ...mockApplication,
-      caseNumber: null,
-      benefitIssueDate: null,
+    const minimalCase = createMockSummerEbtCase({
+      ...mockCase,
+      ebtCaseNumber: null,
+      benefitAvailableDate: null,
       benefitExpirationDate: null,
-      last4DigitsOfCard: null,
-      cardStatus: null,
+      ebtCardLastFour: null,
+      ebtCardStatus: null,
+      issuanceType: null,
       cardRequestedAt: null,
       cardMailedAt: null,
       cardActivatedAt: null,
       cardDeactivatedAt: null
-    }
-
-    renderWithFlags({
-      child: mockChild,
-      application: minimalApplication,
-      id: '0'
     })
+
+    renderWithFlags({ summerEbtCase: minimalCase })
 
     // Should not show dates, card number, or card status timeline when not provided
     const definitionTerms = screen.queryAllByRole('term')
@@ -185,9 +158,7 @@ describe('ChildCard', () => {
 
   it('sets aria-expanded to true when defaultExpanded is true', () => {
     renderWithFlags({
-      child: mockChild,
-      application: mockApplication,
-      id: '0',
+      summerEbtCase: mockCase,
       defaultExpanded: true
     })
 
@@ -196,9 +167,7 @@ describe('ChildCard', () => {
 
   it('sets aria-expanded to false when defaultExpanded is false', () => {
     renderWithFlags({
-      child: mockChild,
-      application: mockApplication,
-      id: '1',
+      summerEbtCase: mockCase,
       defaultExpanded: false
     })
 
@@ -209,9 +178,7 @@ describe('ChildCard', () => {
     const user = userEvent.setup()
 
     renderWithFlags({
-      child: mockChild,
-      application: mockApplication,
-      id: '0',
+      summerEbtCase: mockCase,
       defaultExpanded: true
     })
 
@@ -234,11 +201,7 @@ describe('ChildCard', () => {
   })
 
   it('renders SEBT ID when caseNumber is provided', () => {
-    renderWithFlags({
-      child: mockChild,
-      application: mockApplication,
-      id: '0'
-    })
+    renderWithFlags({ summerEbtCase: mockCase })
 
     // i18n key: cardTableHeadingSebtId → "DC SUN Bucks ID" (DC) / "Summer EBT ID" (CO)
     expect(screen.getByText('DC SUN Bucks ID')).toBeInTheDocument()
@@ -247,11 +210,7 @@ describe('ChildCard', () => {
 
   it('hides SEBT ID when show_case_number flag is off', () => {
     renderWithFlags(
-      {
-        child: mockChild,
-        application: mockApplication,
-        id: '0'
-      },
+      { summerEbtCase: mockCase },
       {
         flags: { ...TEST_FEATURE_FLAGS, show_case_number: false },
         isLoading: false,
@@ -265,11 +224,7 @@ describe('ChildCard', () => {
 
   it('hides card number when show_card_last4 flag is off', () => {
     renderWithFlags(
-      {
-        child: mockChild,
-        application: mockApplication,
-        id: '0'
-      },
+      { summerEbtCase: mockCase },
       {
         flags: { ...TEST_FEATURE_FLAGS, show_card_last4: false },
         isLoading: false,
