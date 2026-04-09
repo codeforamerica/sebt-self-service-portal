@@ -927,6 +927,163 @@ public class AppConfigAgentConfigurationProviderTests : IDisposable
         Assert.Null(exception);
     }
 
+    [Fact]
+    public void Load_InitialLoad_ShouldRetryOnConnectionRefused_ThenSucceed()
+    {
+        // Arrange — simulate AppConfig Agent sidecar not ready for the first 3 attempts
+        var profile = new AppConfigAgentProfile
+        {
+            BaseUrl = "http://localhost:2772",
+            ApplicationId = "test-app",
+            EnvironmentId = "test-env",
+            ProfileId = "test-profile",
+            IsFeatureFlag = false,
+            ReloadAfterSeconds = null // Disable reload timer for test isolation
+        };
+
+        var configJson = """{"Cbms": {"UseMockResponses": true}}""";
+        var handler = new FailThenSucceedHandler(
+            failCount: 3,
+            successResponse: new HttpResponseMessage(HttpStatusCode.OK)
+            {
+                Content = new StringContent(configJson, Encoding.UTF8, "application/json")
+            });
+
+        using var httpClient = new HttpClient(handler);
+        var provider = new AppConfigAgentConfigurationProvider(httpClient, profile, _logger, ownsHttpClient: false);
+
+        // Act
+        provider.Load();
+
+        // Assert — config should be loaded after retries
+        Assert.True(provider.TryGet("Cbms:UseMockResponses", out var value));
+        Assert.Equal("true", value);
+        Assert.Equal(4, handler.CallCount); // 3 failures + 1 success
+
+        provider.Dispose();
+    }
+
+    [Fact]
+    public void Load_InitialLoad_ShouldGiveUpAfterMaxRetries()
+    {
+        // Arrange — agent never becomes available
+        var profile = new AppConfigAgentProfile
+        {
+            BaseUrl = "http://localhost:2772",
+            ApplicationId = "test-app",
+            EnvironmentId = "test-env",
+            ProfileId = "test-profile",
+            IsFeatureFlag = false,
+            ReloadAfterSeconds = null
+        };
+
+        var handler = new FailThenSucceedHandler(
+            failCount: 100, // More than max retries
+            successResponse: new HttpResponseMessage(HttpStatusCode.OK));
+
+        using var httpClient = new HttpClient(handler);
+        var provider = new AppConfigAgentConfigurationProvider(httpClient, profile, _logger, ownsHttpClient: false);
+
+        // Act — should not throw
+        var exception = Record.Exception(() => provider.Load());
+
+        // Assert
+        Assert.Null(exception);
+        Assert.False(provider.TryGet("any-key", out _)); // No config loaded
+        Assert.Equal(10, handler.CallCount); // Should have tried exactly 10 times (max retries)
+
+        provider.Dispose();
+    }
+
+    [Fact]
+    public void Load_SubsequentReloads_ShouldNotRetryOnFailure()
+    {
+        // Arrange — first load succeeds, second load (simulating a reload) should not retry
+        var profile = new AppConfigAgentProfile
+        {
+            BaseUrl = "http://localhost:2772",
+            ApplicationId = "test-app",
+            EnvironmentId = "test-env",
+            ProfileId = "test-profile",
+            IsFeatureFlag = false,
+            ReloadAfterSeconds = null
+        };
+
+        var configJson = """{"Key1": "value1"}""";
+        // First call succeeds, then all subsequent calls fail
+        var handler = new FailThenSucceedHandler(
+            failCount: 0,
+            successResponse: new HttpResponseMessage(HttpStatusCode.OK)
+            {
+                Content = new StringContent(configJson, Encoding.UTF8, "application/json")
+            },
+            failAfterSuccess: true);
+
+        using var httpClient = new HttpClient(handler);
+        var provider = new AppConfigAgentConfigurationProvider(httpClient, profile, _logger, ownsHttpClient: false);
+
+        // Act — initial load succeeds
+        provider.Load();
+        Assert.True(provider.TryGet("Key1", out var value));
+        Assert.Equal("value1", value);
+        Assert.Equal(1, handler.CallCount);
+
+        // Act — subsequent load (reload) fails, should only try once (no retry)
+        provider.Load();
+
+        // Assert — only 2 total calls (1 initial + 1 reload), no retries on reload
+        Assert.Equal(2, handler.CallCount);
+
+        provider.Dispose();
+    }
+
+    /// <summary>
+    /// Test handler that throws HttpRequestException for the first N requests,
+    /// then returns a success response. Simulates the AppConfig Agent sidecar
+    /// startup race condition.
+    /// </summary>
+    private sealed class FailThenSucceedHandler : HttpMessageHandler
+    {
+        private readonly int _failCount;
+        private readonly HttpResponseMessage _successResponse;
+        private readonly bool _failAfterSuccess;
+        private int _callCount;
+
+        public int CallCount => _callCount;
+
+        public FailThenSucceedHandler(
+            int failCount,
+            HttpResponseMessage successResponse,
+            bool failAfterSuccess = false)
+        {
+            _failCount = failCount;
+            _successResponse = successResponse;
+            _failAfterSuccess = failAfterSuccess;
+        }
+
+        protected override Task<HttpResponseMessage> SendAsync(
+            HttpRequestMessage request, CancellationToken cancellationToken)
+        {
+            var currentCall = Interlocked.Increment(ref _callCount);
+
+            if (currentCall <= _failCount)
+            {
+                throw new HttpRequestException(
+                    "Connection refused (localhost:2772)",
+                    new System.Net.Sockets.SocketException(111));
+            }
+
+            if (_failAfterSuccess && currentCall > _failCount + 1)
+            {
+                throw new HttpRequestException(
+                    "Connection refused (localhost:2772)",
+                    new System.Net.Sockets.SocketException(111));
+            }
+
+            return Task.FromResult(_successResponse);
+        }
+    }
+
     public void Dispose()
     {
         _httpClient?.Dispose();
