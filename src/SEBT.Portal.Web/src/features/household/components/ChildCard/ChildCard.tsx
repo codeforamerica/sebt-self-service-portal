@@ -23,18 +23,20 @@ function hasCardLifecycleTimeline(summerEbtCase: SummerEbtCase): boolean {
 }
 
 function getReplacementLink(summerEbtCase: SummerEbtCase): string | null {
-  const { summerEBTCaseID, issuanceType, cardRequestedAt } = summerEbtCase
-  if (!summerEBTCaseID) return null
+  const { summerEBTCaseID, issuanceType, cardRequestedAt, canRequestReplacementCard } =
+    summerEbtCase
 
+  // Server-driven rules take precedence when the server explicitly denies replacement.
+  // A missing/null value means the server didn't send a ruling; fall back to client-side logic.
+  if (canRequestReplacementCard === false) return null
+
+  if (!summerEBTCaseID) return null
   if (isWithinCooldownPeriod(cardRequestedAt)) return null
 
   const currentState = getState()
   const isCoLoaded = issuanceType === 'TanfEbtCard' || issuanceType === 'SnapEbtCard'
 
-  if (isCoLoaded && currentState === 'dc') {
-    return '/cards/info'
-  }
-
+  if (isCoLoaded && currentState === 'dc') return '/cards/info'
   if (isCoLoaded) return null
 
   return `/cards/replace?case=${encodeURIComponent(summerEBTCaseID)}`

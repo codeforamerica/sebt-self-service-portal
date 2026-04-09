@@ -234,4 +234,51 @@ describe('ChildCard', () => {
 
     expect(screen.queryByText(/1234/)).not.toBeInTheDocument()
   })
+
+  describe('server-driven canRequestReplacementCard', () => {
+    const replacementEnabledFlags: FeatureFlagsContextValue = {
+      flags: { ...TEST_FEATURE_FLAGS, enable_card_replacement: true },
+      isLoading: false,
+      isError: false
+    }
+
+    it('hides replacement link when canRequestReplacementCard is false, even for Lost card', () => {
+      const lostCase = createMockSummerEbtCase({
+        ...mockCase,
+        ebtCardStatus: 'Lost',
+        canRequestReplacementCard: false,
+        cardRequestedAt: null
+      })
+
+      renderWithFlags({ summerEbtCase: lostCase }, replacementEnabledFlags)
+
+      expect(screen.queryByText('Request a replacement card')).not.toBeInTheDocument()
+    })
+
+    it('shows replacement link when canRequestReplacementCard is true and card is Lost', () => {
+      const lostCase = createMockSummerEbtCase({
+        ...mockCase,
+        ebtCardStatus: 'Lost',
+        canRequestReplacementCard: true,
+        cardRequestedAt: null
+      })
+
+      renderWithFlags({ summerEbtCase: lostCase }, replacementEnabledFlags)
+
+      expect(screen.getByText('Request a replacement card')).toBeInTheDocument()
+    })
+
+    it('shows replacement link when canRequestReplacementCard is absent (falls back to client logic)', () => {
+      const lostCase = createMockSummerEbtCase({
+        ...mockCase,
+        ebtCardStatus: 'Lost',
+        canRequestReplacementCard: undefined,
+        cardRequestedAt: null
+      })
+
+      renderWithFlags({ summerEbtCase: lostCase }, replacementEnabledFlags)
+
+      expect(screen.getByText('Request a replacement card')).toBeInTheDocument()
+    })
+  })
 })

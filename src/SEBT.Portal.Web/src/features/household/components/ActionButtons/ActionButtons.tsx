@@ -5,7 +5,7 @@ import { useTranslation } from 'react-i18next'
 
 import { getState, getStateConfig } from '@sebt/design-system'
 
-import type { SummerEbtCase } from '../../api'
+import type { HouseholdAllowedActions, SummerEbtCase } from '../../api'
 
 interface ActionButton {
   labelKey: string
@@ -17,6 +17,11 @@ interface ActionButton {
 interface ActionButtonsProps {
   /** Enrolled cases — used to determine which self-service actions are available. */
   cases: SummerEbtCase[]
+  /**
+   * Server-driven household permissions. When present, takes precedence over client-side
+   * issuance-type logic. When absent, falls back to isSelfServiceAvailable().
+   */
+  allowedActions?: HouseholdAllowedActions | null | undefined
 }
 
 // Keys map to CSV: "S2 - Portal Dashboard - Action Navigation - {Key}"
@@ -47,10 +52,11 @@ function isSelfServiceAvailable(cases: SummerEbtCase[]): boolean {
   )
 }
 
-export function ActionButtons({ cases }: ActionButtonsProps) {
+export function ActionButtons({ cases, allowedActions }: ActionButtonsProps) {
   const { t } = useTranslation('dashboard')
   const { actionButtonBg, actionButtonText } = getStateConfig(getState())
-  const selfServiceEnabled = isSelfServiceAvailable(cases)
+  const selfServiceEnabled =
+    allowedActions != null ? allowedActions.canUpdateAddress : isSelfServiceAvailable(cases)
 
   const visibleActions = ACTIONS.filter((action) => !action.selfServiceOnly || selfServiceEnabled)
 

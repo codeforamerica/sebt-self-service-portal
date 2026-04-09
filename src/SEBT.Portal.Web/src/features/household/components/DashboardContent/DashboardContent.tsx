@@ -81,7 +81,10 @@ export function DashboardContent() {
     <>
       {pageHeading}
       <DashboardAlerts />
-      <ActionButtons cases={data.summerEbtCases} />
+      <ActionButtons
+        cases={data.summerEbtCases}
+        allowedActions={data.allowedActions}
+      />
       <UserProfileCard />
       <HouseholdSummary />
       <EnrolledChildren />

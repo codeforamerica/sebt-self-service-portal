@@ -30,6 +30,7 @@ export function createMockSummerEbtCase(overrides?: Partial<SummerEbtCase>): Sum
     cardMailedAt: null,
     cardActivatedAt: null,
     cardDeactivatedAt: null,
+    canRequestReplacementCard: true,
     ...overrides
   }
 }

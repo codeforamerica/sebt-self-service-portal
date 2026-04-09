@@ -115,6 +115,61 @@ describe('ActionButtons', () => {
     expect(screen.queryByRole('status')).toBeNull()
   })
 
+  describe('server-driven allowedActions', () => {
+    it('hides self-service CTAs when allowedActions.canUpdateAddress is false', () => {
+      render(
+        <ActionButtons
+          cases={[makeCaseWithIssuance('SummerEbt')]}
+          allowedActions={{ canUpdateAddress: false }}
+        />
+      )
+      const links = screen.getAllByRole('link')
+      expect(links).toHaveLength(2)
+      expect(screen.queryByText('Change my mailing address')).toBeNull()
+      expect(screen.queryByText('Request new cards')).toBeNull()
+    })
+
+    it('shows self-service CTAs when allowedActions.canUpdateAddress is true', () => {
+      render(
+        <ActionButtons
+          cases={[makeCaseWithIssuance('SummerEbt')]}
+          allowedActions={{ canUpdateAddress: true }}
+        />
+      )
+      const links = screen.getAllByRole('link')
+      expect(links).toHaveLength(4)
+    })
+
+    it('falls back to isSelfServiceAvailable when allowedActions is null', () => {
+      // SummerEbt case with no allowedActions — should show all 4 links
+      render(
+        <ActionButtons
+          cases={[makeCaseWithIssuance('SummerEbt')]}
+          allowedActions={null}
+        />
+      )
+      const links = screen.getAllByRole('link')
+      expect(links).toHaveLength(4)
+    })
+
+    it('falls back to isSelfServiceAvailable when allowedActions is undefined', () => {
+      // SNAP case with no allowedActions — client-side logic hides self-service
+      render(<ActionButtons cases={[makeCaseWithIssuance('SnapEbtCard')]} />)
+      const links = screen.getAllByRole('link')
+      expect(links).toHaveLength(2)
+    })
+
+    it('shows info alert when allowedActions.canUpdateAddress is false', () => {
+      render(
+        <ActionButtons
+          cases={[makeCaseWithIssuance('SummerEbt')]}
+          allowedActions={{ canUpdateAddress: false }}
+        />
+      )
+      expect(screen.getByRole('status')).toBeInTheDocument()
+    })
+  })
+
   describe('DC state styling', () => {
     beforeEach(() => {
       mockGetState.mockReturnValue('dc')
