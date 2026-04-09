@@ -29,6 +29,14 @@ using SEBT.Portal.Core.Utilities;
 
 var builder = WebApplication.CreateBuilder(args);
 
+// Configure Serilog early so that configuration providers can log.
+Log.Logger = new LoggerConfiguration()
+    .ReadFrom.Configuration(builder.Configuration)
+    .Enrich.FromLogContext()
+    .CreateLogger();
+
+builder.Host.UseSerilog();
+
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddHttpClient();
 
@@ -56,12 +64,15 @@ if (!string.IsNullOrEmpty(applicationId) && !string.IsNullOrEmpty(environmentId)
     var baseUrl = agentSection["BaseUrl"] ?? "http://localhost:2772";
     var reloadAfterSeconds = agentSection.GetValue<int?>("ReloadAfterSeconds") ?? 90;
 
+    using var loggerFactory = LoggerFactory.Create(lb => lb.AddSerilog());
+    var appConfigLogger = loggerFactory.CreateLogger<AppConfigAgentConfigurationProvider>();
+
     var featureFlagsProfileId = builder.Configuration["AppConfig:FeatureFlags:ProfileId"];
     if (!string.IsNullOrEmpty(featureFlagsProfileId))
     {
         builder.Configuration.AddAppConfigAgent(
             baseUrl, applicationId, environmentId, featureFlagsProfileId,
-            reloadAfterSeconds, isFeatureFlag: true);
+            reloadAfterSeconds, isFeatureFlag: true, logger: appConfigLogger);
     }
 
     var appSettingsProfileId = builder.Configuration["AppConfig:AppSettings:ProfileId"];
@@ -69,7 +80,7 @@ if (!string.IsNullOrEmpty(applicationId) && !string.IsNullOrEmpty(environmentId)
     {
         builder.Configuration.AddAppConfigAgent(
             baseUrl, applicationId, environmentId, appSettingsProfileId,
-            reloadAfterSeconds, isFeatureFlag: false);
+            reloadAfterSeconds, isFeatureFlag: false, logger: appConfigLogger);
     }
 }
 
@@ -85,15 +96,6 @@ if (!string.IsNullOrEmpty(dbHost) && !string.IsNullOrEmpty(dbPassword))
     builder.Configuration["ConnectionStrings:DefaultConnection"] =
         $"Server={dbHost},{dbPort};Database={dbName};User Id={dbUser};Password={dbPassword};Encrypt=True;TrustServerCertificate=True;";
 }
-
-// Configure Serilog
-Log.Logger = new LoggerConfiguration()
-    .ReadFrom.Configuration(builder.Configuration)
-    .Enrich.FromLogContext()
-    .CreateLogger();
-
-// Use Serilog instead of default logger
-builder.Host.UseSerilog();
 
 // Caching must be registered before plugins — plugins may depend on HybridCache
 builder.Services.AddCaching(builder.Configuration);
