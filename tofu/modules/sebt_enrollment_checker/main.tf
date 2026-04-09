@@ -108,3 +108,54 @@ resource "aws_s3_bucket_lifecycle_configuration" "site" {
     }
   }
 }
+
+# ---------------------------------------------------------------------------
+# ACM certificate for HTTPS
+# ---------------------------------------------------------------------------
+
+# Request a TLS certificate for the enrollment checker domain. CloudFront
+# requires certificates to be in us-east-1, which must be the caller's
+# configured region. DNS validation proves domain ownership by checking for
+# a specific CNAME record in the hosted zone.
+resource "aws_acm_certificate" "site" {
+  domain_name       = var.domain
+  validation_method = "DNS"
+
+  # Create the replacement certificate before destroying the old one during
+  # renewal or changes, so there's no gap in coverage.
+  lifecycle {
+    create_before_destroy = true
+  }
+
+  tags = {
+    service = "enrollment-checker"
+  }
+}
+
+# Create the DNS record(s) that ACM needs to validate domain ownership.
+# ACM provides specific record names and values; we just write them into
+# our Route53 zone. Validation typically completes within a few minutes.
+resource "aws_route53_record" "certificate_validation" {
+  for_each = {
+    for dvo in aws_acm_certificate.site.domain_validation_options : dvo.domain_name => {
+      name   = dvo.resource_record_name
+      record = dvo.resource_record_value
+      type   = dvo.resource_record_type
+    }
+  }
+
+  allow_overwrite = true
+  name            = each.value.name
+  records         = [each.value.record]
+  ttl             = 60
+  type            = each.value.type
+  zone_id         = var.hosted_zone_id
+}
+
+# Wait for ACM to validate the certificate before allowing other resources
+# (like the CloudFront distribution) to reference it. This prevents errors
+# from trying to attach an unvalidated certificate.
+resource "aws_acm_certificate_validation" "site" {
+  certificate_arn         = aws_acm_certificate.site.arn
+  validation_record_fqdns = [for record in aws_route53_record.certificate_validation : record.fqdn]
+}
