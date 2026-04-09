@@ -108,8 +108,8 @@ public class MockHouseholdRepositoryTests
     }
 
     [Theory]
-    [InlineData("non-co-loaded@example.com", "Carlos", "Garcia", "Emma", ApplicationStatus.Pending)]
-    [InlineData("not-started@example.com", "Jordan", "Anderson", "Liam", ApplicationStatus.Pending)]
+    [InlineData("non-co-loaded@example.com", "Carlos", "GarciaMOCK", "Emma", ApplicationStatus.Pending)]
+    [InlineData("not-started@example.com", "Jordan", "AndersonMOCK", "Liam", ApplicationStatus.Pending)]
     public async Task GetHouseholdByEmailAsync_DefaultSeededUsers_HaveAssociatedHouseholdData(
         string email,
         string expectedFirstName,

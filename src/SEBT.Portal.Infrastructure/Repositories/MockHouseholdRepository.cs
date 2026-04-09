@@ -181,7 +181,7 @@ public class MockHouseholdRepository : IHouseholdRepository
         });
         coLoaded.Email = coLoadedEmail;
         coLoaded.Phone = "8185558437"; // Matches default DevelopmentPhoneOverride for mock + phone lookup in dev
-        coLoaded.UserProfile = new UserProfile { FirstName = "Maria", MiddleName = "Elena", LastName = "Martinez" };
+        coLoaded.UserProfile = new UserProfile { FirstName = "Maria", MiddleName = "Elena", LastName = "MartinezMOCK" };
         _households[coLoadedEmail] = coLoaded;
         IndexByPhone(coLoaded);
 
@@ -236,7 +236,7 @@ public class MockHouseholdRepository : IHouseholdRepository
             };
         });
         verified.Email = verifiedEmail;
-        verified.UserProfile = new UserProfile { FirstName = "John", MiddleName = "Robert", LastName = "Doe" };
+        verified.UserProfile = new UserProfile { FirstName = "John", MiddleName = "Robert", LastName = "DoeMOCK" };
         _households[verifiedEmail] = verified;
         IndexByPhone(verified);
         // To test CO OIDC login locally, uncomment and replace with your PingOne sandbox user email:
@@ -268,7 +268,7 @@ public class MockHouseholdRepository : IHouseholdRepository
             };
         });
         pending.Email = pendingEmail;
-        pending.UserProfile = new UserProfile { FirstName = "Jane", MiddleName = "Marie", LastName = "Smith" };
+        pending.UserProfile = new UserProfile { FirstName = "Jane", MiddleName = "Marie", LastName = "SmithMOCK" };
         _households[pendingEmail] = pending;
         IndexByPhone(pending);
 
@@ -284,7 +284,7 @@ public class MockHouseholdRepository : IHouseholdRepository
             }
         });
         denied.Email = deniedEmail;
-        denied.UserProfile = new UserProfile { FirstName = "Robert", MiddleName = null, LastName = "Johnson" };
+        denied.UserProfile = new UserProfile { FirstName = "Robert", MiddleName = null, LastName = "JohnsonMOCK" };
         _households[deniedEmail] = denied;
         IndexByPhone(denied);
 
@@ -311,7 +311,7 @@ public class MockHouseholdRepository : IHouseholdRepository
             };
         });
         review.Email = reviewEmail;
-        review.UserProfile = new UserProfile { FirstName = "Susan", MiddleName = "Lee", LastName = "Williams" };
+        review.UserProfile = new UserProfile { FirstName = "Susan", MiddleName = "Lee", LastName = "WilliamsMOCK" };
         _households[reviewEmail] = review;
         IndexByPhone(review);
 
@@ -339,7 +339,7 @@ public class MockHouseholdRepository : IHouseholdRepository
         });
         nonCoLoaded.Email = nonCoLoadedEmail;
         nonCoLoaded.Phone = "5551234567";
-        nonCoLoaded.UserProfile = new UserProfile { FirstName = "Carlos", MiddleName = "Miguel", LastName = "Garcia" };
+        nonCoLoaded.UserProfile = new UserProfile { FirstName = "Carlos", MiddleName = "Miguel", LastName = "GarciaMOCK" };
         _households[nonCoLoadedEmail] = nonCoLoaded;
         IndexByPhone(nonCoLoaded);
 
@@ -371,7 +371,7 @@ public class MockHouseholdRepository : IHouseholdRepository
         });
         notStarted.Email = notStartedEmail;
         notStarted.Phone = "5559876543";
-        notStarted.UserProfile = new UserProfile { FirstName = "Jordan", MiddleName = "Lee", LastName = "Anderson" };
+        notStarted.UserProfile = new UserProfile { FirstName = "Jordan", MiddleName = "Lee", LastName = "AndersonMOCK" };
         _households[notStartedEmail] = notStarted;
         IndexByPhone(notStarted);
 
@@ -387,7 +387,7 @@ public class MockHouseholdRepository : IHouseholdRepository
             }
         });
         cancelled.Email = cancelledEmail;
-        cancelled.UserProfile = new UserProfile { FirstName = "David", MiddleName = "James", LastName = "Davis" };
+        cancelled.UserProfile = new UserProfile { FirstName = "David", MiddleName = "James", LastName = "DavisMOCK" };
         _households[cancelledEmail] = cancelled;
         IndexByPhone(cancelled);
 
@@ -427,7 +427,7 @@ public class MockHouseholdRepository : IHouseholdRepository
             };
         });
         singleChild.Email = singleChildEmail;
-        singleChild.UserProfile = new UserProfile { FirstName = "Amanda", MiddleName = "Rose", LastName = "Taylor" };
+        singleChild.UserProfile = new UserProfile { FirstName = "Amanda", MiddleName = "Rose", LastName = "TaylorMOCK" };
         _households[singleChildEmail] = singleChild;
         IndexByPhone(singleChild);
 
@@ -470,7 +470,7 @@ public class MockHouseholdRepository : IHouseholdRepository
             };
         });
         largeFamily.Email = largeFamilyEmail;
-        largeFamily.UserProfile = new UserProfile { FirstName = "Christopher", MiddleName = "Michael", LastName = "Brown" };
+        largeFamily.UserProfile = new UserProfile { FirstName = "Christopher", MiddleName = "Michael", LastName = "BrownMOCK" };
         _households[largeFamilyEmail] = largeFamily;
         IndexByPhone(largeFamily);
 
@@ -487,7 +487,7 @@ public class MockHouseholdRepository : IHouseholdRepository
             }
         });
         minimal.Email = minimalEmail;
-        minimal.UserProfile = new UserProfile { FirstName = "Alex", MiddleName = null, LastName = "Jones" };
+        minimal.UserProfile = new UserProfile { FirstName = "Alex", MiddleName = null, LastName = "JonesMOCK" };
         _households[minimalEmail] = minimal;
         IndexByPhone(minimal);
 
@@ -520,7 +520,7 @@ public class MockHouseholdRepository : IHouseholdRepository
             };
         });
         expired.Email = expiredEmail;
-        expired.UserProfile = new UserProfile { FirstName = "Patricia", MiddleName = "Ann", LastName = "Garcia" };
+        expired.UserProfile = new UserProfile { FirstName = "Patricia", MiddleName = "Ann", LastName = "GarciaMOCK" };
         _households[expiredEmail] = expired;
         IndexByPhone(expired);
 
@@ -536,7 +536,7 @@ public class MockHouseholdRepository : IHouseholdRepository
             }
         });
         unknown.Email = unknownEmail;
-        unknown.UserProfile = new UserProfile { FirstName = "Unknown", MiddleName = null, LastName = "User" };
+        unknown.UserProfile = new UserProfile { FirstName = "Unknown", MiddleName = null, LastName = "UserMOCK" };
         _households[unknownEmail] = unknown;
         IndexByPhone(unknown);
 
@@ -588,7 +588,7 @@ public class MockHouseholdRepository : IHouseholdRepository
             };
         });
         multipleApps.Email = multipleAppsEmail;
-        multipleApps.UserProfile = new UserProfile { FirstName = "Jennifer", MiddleName = "Lynn", LastName = "Wilson" };
+        multipleApps.UserProfile = new UserProfile { FirstName = "Jennifer", MiddleName = "Lynn", LastName = "WilsonMOCK" };
         _households[multipleAppsEmail] = multipleApps;
         IndexByPhone(multipleApps);
 
@@ -636,7 +636,7 @@ public class MockHouseholdRepository : IHouseholdRepository
                 {
                     FirstName = dcUserFaker.Name.FirstName(),
                     MiddleName = null,
-                    LastName = dcUserFaker.Name.LastName()
+                    LastName = dcUserFaker.Name.LastName() + "MOCK"
                 };
                 _households[dcEmail] = dcHousehold;
                 IndexByPhone(dcHousehold);
