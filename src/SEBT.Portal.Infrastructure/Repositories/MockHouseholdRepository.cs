@@ -147,6 +147,7 @@ public class MockHouseholdRepository : IHouseholdRepository
             var app = h.Applications.FirstOrDefault();
             if (app != null)
             {
+                app.IssuanceType = IssuanceType.SnapEbtCard;
                 app.BenefitIssueDate = now.AddDays(-20);
                 app.BenefitExpirationDate = now.AddDays(70);
                 app.Last4DigitsOfCard = "0000";
@@ -181,6 +182,9 @@ public class MockHouseholdRepository : IHouseholdRepository
             var app = h.Applications.FirstOrDefault();
             if (app != null)
             {
+                app.ApplicationNumber = "APP-2025-01-100001";
+                app.CaseNumber = "CASE-100001";
+                app.IssuanceType = IssuanceType.SummerEbt;
                 app.BenefitIssueDate = now.AddDays(-30);
                 app.BenefitExpirationDate = now.AddDays(60);
                 app.Last4DigitsOfCard = "1234"; // Specific value for test
@@ -206,6 +210,8 @@ public class MockHouseholdRepository : IHouseholdRepository
         verified.UserProfile = new UserProfile { FirstName = "John", MiddleName = "Robert", LastName = "Doe" };
         _households[verifiedEmail] = verified;
         IndexByPhone(verified);
+        // To test CO OIDC login locally, uncomment and replace with your PingOne sandbox user email:
+        // _households["sebt.co+YOUR_PHONE@codeforamerica.org"] = verified;
 
         // Scenario 3: Pending application without address (not ID verified)
         // Note: Address should not be included for non-ID-verified users, but we set it here
@@ -347,6 +353,7 @@ public class MockHouseholdRepository : IHouseholdRepository
             var app = h.Applications.FirstOrDefault();
             if (app != null)
             {
+                app.IssuanceType = IssuanceType.SummerEbt;
                 app.BenefitIssueDate = now.AddDays(-15);
                 app.BenefitExpirationDate = now.AddDays(75);
                 app.CardStatus = CardStatus.Active;
@@ -370,6 +377,7 @@ public class MockHouseholdRepository : IHouseholdRepository
             var app = h.Applications.FirstOrDefault();
             if (app != null)
             {
+                app.IssuanceType = IssuanceType.TanfEbtCard;
                 app.BenefitIssueDate = now.AddDays(-45);
                 app.BenefitExpirationDate = now.AddDays(45);
                 app.Last4DigitsOfCard = "4321";
@@ -458,12 +466,13 @@ public class MockHouseholdRepository : IHouseholdRepository
         var multipleApps = HouseholdFactory.CreateHouseholdDataWithStatus(ApplicationStatus.Approved, h =>
         {
             h.BenefitIssuanceType = BenefitIssuanceType.SnapEbtCard;
-            var faker = new Faker();
+            var faker = new Faker { Random = new Randomizer(42) };
             var approvedApp = new Application
             {
                 ApplicationNumber = $"APP-{now.AddDays(-30):yyyy-MM}-{faker.Random.Number(100000, 999999)}",
                 CaseNumber = $"CASE-{faker.Random.Number(100000, 999999)}",
                 ApplicationStatus = ApplicationStatus.Approved,
+                IssuanceType = IssuanceType.SummerEbt,
                 BenefitIssueDate = now.AddDays(-30),
                 BenefitExpirationDate = now.AddDays(60),
                 Last4DigitsOfCard = "5678",

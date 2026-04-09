@@ -1,0 +1,20 @@
+{
+  "title": "Gracias por confirmar tu correo electrónico. Para mantener tu cuenta segura, necesitamos verificar tu identidad",
+  "body": "Al proporcionar tu fecha de nacimiento y un número de identificación, aceptas compartir esta información con nuestro proveedor externo. Solo utilizaremos estos datos una vez y no los compartiremos ni los guardaremos sin tu permiso.",
+  "labelDob": "¿Cuál es tu fecha de nacimiento?",
+  "labelId": "¿Qué número de identificación puedes proporcionar?",
+  "helperId": "!!!",
+  "optionLabelSsn": "Número de seguro social (SSN)",
+  "optionLabelItin": "Número de identificación personal del contribuyente (ITIN)",
+  "optionLabelMedicaidId": "ID de Medicaid",
+  "optionHelperMedicaidId": "Este número puede encontrarse en tus cartas de Medicaid y suele tener 7 u 8 dígitos",
+  "optionAccountId": "ID de la cuenta de SNAP o TANF",
+  "optionHelperAccountId": "Este número puede encontrarse en tus cartas de SNAP o TANF y suele tener 7 u 8 dígitos.",
+  "optionPersonId": "ID de persona de SNAP o TANF",
+  "optionHelperPersonId": "Este número puede encontrarse en tus cartas de SNAP o TANF  y suele tener 7 u 8 dígitos.",
+  "labelSsn": "Ingresa tu número de seguro social (SSN)",
+  "labelItin": "Ingresa tu número de identificación personal del contribuyente (ITIN)",
+  "labelMedicaidId": "Ingresa tu ID de Medicaid",
+  "labelAccountId": "Ingresa tu número de cuenta de SNAP o TANF",
+  "labelPersonId": "Ingresa tu número de ID de persona de SNAP o TANF"
+}
