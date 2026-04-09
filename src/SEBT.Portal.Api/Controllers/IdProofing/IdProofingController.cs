@@ -44,7 +44,8 @@ public class IdProofingController : ControllerBase
             UserId = userId,
             DateOfBirth = $"{request.DateOfBirth.Year}-{request.DateOfBirth.Month.PadLeft(2, '0')}-{request.DateOfBirth.Day.PadLeft(2, '0')}",
             IdType = request.IdType,
-            IdValue = request.IdValue
+            IdValue = request.IdValue,
+            IpAddress = HttpContext.Connection.RemoteIpAddress?.ToString()
         };
 
         var result = await handler.Handle(command, cancellationToken);

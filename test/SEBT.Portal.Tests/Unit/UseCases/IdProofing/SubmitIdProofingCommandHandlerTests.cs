@@ -132,7 +132,7 @@ public class SubmitIdProofingCommandHandlerTests
         await socureClient.DidNotReceive()
             .RunIdProofingAssessmentAsync(
                 Arg.Any<int>(), Arg.Any<string>(), Arg.Any<string>(),
-                Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>());
+                Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>());
     }
 
     // --- Socure assessment: Matched ---
@@ -149,7 +149,7 @@ public class SubmitIdProofingCommandHandlerTests
             .Returns((DocVerificationChallenge?)null);
         socureClient.RunIdProofingAssessmentAsync(
                 command.UserId, "test@example.com", command.DateOfBirth,
-                command.IdType, command.IdValue, Arg.Any<CancellationToken>())
+                command.IdType, command.IdValue, Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
             .Returns(Result<IdProofingAssessmentResult>.Success(
                 new IdProofingAssessmentResult(IdProofingOutcome.Matched, AllowIdRetry: false)));
 
@@ -176,7 +176,7 @@ public class SubmitIdProofingCommandHandlerTests
             .Returns((DocVerificationChallenge?)null);
         socureClient.RunIdProofingAssessmentAsync(
                 command.UserId, "test@example.com", command.DateOfBirth,
-                command.IdType, command.IdValue, Arg.Any<CancellationToken>())
+                command.IdType, command.IdValue, Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
             .Returns(Result<IdProofingAssessmentResult>.Success(
                 new IdProofingAssessmentResult(IdProofingOutcome.Failed, AllowIdRetry: true)));
 
@@ -203,7 +203,7 @@ public class SubmitIdProofingCommandHandlerTests
             .Returns((DocVerificationChallenge?)null);
         socureClient.RunIdProofingAssessmentAsync(
                 command.UserId, "test@example.com", command.DateOfBirth,
-                command.IdType, command.IdValue, Arg.Any<CancellationToken>())
+                command.IdType, command.IdValue, Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
             .Returns(Result<IdProofingAssessmentResult>.Success(
                 new IdProofingAssessmentResult(IdProofingOutcome.DocumentVerificationRequired, AllowIdRetry: true)));
 
@@ -236,7 +236,7 @@ public class SubmitIdProofingCommandHandlerTests
             .Returns((DocVerificationChallenge?)null);
         socureClient.RunIdProofingAssessmentAsync(
                 command.UserId, "test@example.com", command.DateOfBirth,
-                command.IdType, command.IdValue, Arg.Any<CancellationToken>())
+                command.IdType, command.IdValue, Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
             .Returns(Result<IdProofingAssessmentResult>.Success(
                 new IdProofingAssessmentResult(
                     IdProofingOutcome.DocumentVerificationRequired,
@@ -271,7 +271,7 @@ public class SubmitIdProofingCommandHandlerTests
             .Returns((DocVerificationChallenge?)null);
         socureClient.RunIdProofingAssessmentAsync(
                 command.UserId, "test@example.com", command.DateOfBirth,
-                command.IdType, command.IdValue, Arg.Any<CancellationToken>())
+                command.IdType, command.IdValue, Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
             .Returns(Result<IdProofingAssessmentResult>.DependencyFailed(
                 DependencyFailedReason.ConnectionFailed, "Socure API returned an error"));
 
@@ -295,7 +295,7 @@ public class SubmitIdProofingCommandHandlerTests
             .Returns((DocVerificationChallenge?)null);
         socureClient.RunIdProofingAssessmentAsync(
                 command.UserId, "test@example.com", command.DateOfBirth,
-                command.IdType, command.IdValue, Arg.Any<CancellationToken>())
+                command.IdType, command.IdValue, Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
             .Returns(Result<IdProofingAssessmentResult>.DependencyFailed(
                 DependencyFailedReason.Timeout, "Socure API request timed out."));
 

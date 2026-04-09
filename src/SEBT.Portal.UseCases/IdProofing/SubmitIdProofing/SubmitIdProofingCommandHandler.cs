@@ -75,7 +75,9 @@ public class SubmitIdProofingCommandHandler(
             command.DateOfBirth,
             command.IdType,
             command.IdValue,
-            cancellationToken);
+            ipAddress: command.IpAddress,
+            phoneNumber: user.Phone,
+            cancellationToken: cancellationToken);
 
         if (!assessmentResult.IsSuccess)
         {

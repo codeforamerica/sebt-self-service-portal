@@ -31,4 +31,9 @@ public class SubmitIdProofingCommand : ICommand<SubmitIdProofingResponse>
     /// The government ID value, or null if the user opted out.
     /// </summary>
     public string? IdValue { get; init; }
+
+    /// <summary>
+    /// The user's IP address from the HTTP request, for Socure risk assessment.
+    /// </summary>
+    public string? IpAddress { get; init; }
 }

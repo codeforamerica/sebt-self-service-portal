@@ -18,6 +18,8 @@ public class StubSocureClient(ILogger<StubSocureClient> logger) : ISocureClient
         string dateOfBirth,
         string? idType,
         string? idValue,
+        string? ipAddress = null,
+        string? phoneNumber = null,
         CancellationToken cancellationToken = default)
     {
         logger.LogInformation(

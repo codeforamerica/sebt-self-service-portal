@@ -19,6 +19,8 @@ public class DisabledSocureClient : ISocureClient
         string dateOfBirth,
         string? idType,
         string? idValue,
+        string? ipAddress = null,
+        string? phoneNumber = null,
         CancellationToken cancellationToken = default)
     {
         return Task.FromResult(

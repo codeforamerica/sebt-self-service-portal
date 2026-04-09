@@ -332,6 +332,95 @@ public class HttpSocureClientTests
         Assert.False(individual.TryGetProperty("di_session_token", out _));
     }
 
+    // --- Supplementary PII (IP address, phone) ---
+
+    [Fact]
+    public async Task RunIdProofingAssessment_ShouldIncludeIpAddress_WhenProvided()
+    {
+        string? capturedBody = null;
+        var handler = new CaptureRequestHandler(body =>
+        {
+            capturedBody = body;
+            return new HttpResponseMessage(HttpStatusCode.OK)
+            {
+                Content = new StringContent(JsonSerializer.Serialize(new
+                {
+                    eval_id = "eval-123",
+                    decision = "ACCEPT",
+                    data_enrichments = Array.Empty<object>()
+                }), System.Text.Encoding.UTF8, "application/json")
+            };
+        });
+
+        var client = CreateClient(handler);
+        await client.RunIdProofingAssessmentAsync(
+            42, "user@example.com", "1990-06-15", "ssn", "123-45-6789",
+            ipAddress: "203.0.0.10");
+
+        Assert.NotNull(capturedBody);
+        using var doc = JsonDocument.Parse(capturedBody);
+        var individual = doc.RootElement.GetProperty("data").GetProperty("individual");
+        Assert.Equal("203.0.0.10", individual.GetProperty("ip_address").GetString());
+    }
+
+    [Fact]
+    public async Task RunIdProofingAssessment_ShouldIncludePhoneNumber_WhenProvided()
+    {
+        string? capturedBody = null;
+        var handler = new CaptureRequestHandler(body =>
+        {
+            capturedBody = body;
+            return new HttpResponseMessage(HttpStatusCode.OK)
+            {
+                Content = new StringContent(JsonSerializer.Serialize(new
+                {
+                    eval_id = "eval-123",
+                    decision = "ACCEPT",
+                    data_enrichments = Array.Empty<object>()
+                }), System.Text.Encoding.UTF8, "application/json")
+            };
+        });
+
+        var client = CreateClient(handler);
+        await client.RunIdProofingAssessmentAsync(
+            42, "user@example.com", "1990-06-15", "ssn", "123-45-6789",
+            phoneNumber: "+12025551234");
+
+        Assert.NotNull(capturedBody);
+        using var doc = JsonDocument.Parse(capturedBody);
+        var individual = doc.RootElement.GetProperty("data").GetProperty("individual");
+        Assert.Equal("+12025551234", individual.GetProperty("phone_number").GetString());
+    }
+
+    [Fact]
+    public async Task RunIdProofingAssessment_ShouldOmitIpAndPhone_WhenNotProvided()
+    {
+        string? capturedBody = null;
+        var handler = new CaptureRequestHandler(body =>
+        {
+            capturedBody = body;
+            return new HttpResponseMessage(HttpStatusCode.OK)
+            {
+                Content = new StringContent(JsonSerializer.Serialize(new
+                {
+                    eval_id = "eval-123",
+                    decision = "ACCEPT",
+                    data_enrichments = Array.Empty<object>()
+                }), System.Text.Encoding.UTF8, "application/json")
+            };
+        });
+
+        var client = CreateClient(handler);
+        await client.RunIdProofingAssessmentAsync(
+            42, "user@example.com", "1990-06-15", "ssn", "123-45-6789");
+
+        Assert.NotNull(capturedBody);
+        using var doc = JsonDocument.Parse(capturedBody);
+        var individual = doc.RootElement.GetProperty("data").GetProperty("individual");
+        Assert.False(individual.TryGetProperty("ip_address", out _));
+        Assert.False(individual.TryGetProperty("phone_number", out _));
+    }
+
     // --- DocV config shape ---
 
     [Fact]

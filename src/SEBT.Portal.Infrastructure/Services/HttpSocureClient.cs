@@ -34,11 +34,13 @@ public class HttpSocureClient(
         string dateOfBirth,
         string? idType,
         string? idValue,
+        string? ipAddress = null,
+        string? phoneNumber = null,
         CancellationToken cancellationToken = default)
     {
         var settings = socureSettings.Value;
 
-        var request = BuildEvaluationRequest(userId, email, dateOfBirth, idType, idValue, settings);
+        var request = BuildEvaluationRequest(userId, email, dateOfBirth, idType, idValue, settings, ipAddress, phoneNumber);
         var jsonContent = JsonSerializer.Serialize(request, JsonOptions);
 
         var httpClient = httpClientFactory.CreateClient("Socure");
@@ -109,7 +111,9 @@ public class HttpSocureClient(
         string dateOfBirth,
         string? idType,
         string? idValue,
-        SocureSettings settings)
+        SocureSettings settings,
+        string? ipAddress = null,
+        string? phoneNumber = null)
     {
         var individual = new SocureIndividual
         {
@@ -121,6 +125,8 @@ public class HttpSocureClient(
             DiSessionToken = !string.IsNullOrWhiteSpace(settings.DiSessionToken)
                 ? settings.DiSessionToken
                 : null,
+            IpAddress = ipAddress,
+            PhoneNumber = phoneNumber,
             Docv = new SocureDocvConfig()
         };
 

@@ -19,6 +19,8 @@ public interface ISocureClient
     /// <param name="dateOfBirth">User's date of birth (yyyy-MM-dd).</param>
     /// <param name="idType">Type of government ID provided (ssn, itin, etc.), or null.</param>
     /// <param name="idValue">The ID value, or null.</param>
+    /// <param name="ipAddress">The user's IP address from the HTTP request, or null.</param>
+    /// <param name="phoneNumber">The user's phone number, or null.</param>
     /// <param name="cancellationToken">Cancellation token.</param>
     /// <returns>A result indicating the assessment outcome.</returns>
     Task<Result<IdProofingAssessmentResult>> RunIdProofingAssessmentAsync(
@@ -27,6 +29,8 @@ public interface ISocureClient
         string dateOfBirth,
         string? idType,
         string? idValue,
+        string? ipAddress = null,
+        string? phoneNumber = null,
         CancellationToken cancellationToken = default);
 
     /// <summary>
