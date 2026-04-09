@@ -341,7 +341,7 @@ public class MockHouseholdRepository : IHouseholdRepository
 
         // Scenario 7: Approved with single child
         var singleChildEmail = _settings.BuildEmail(SeedScenarios.SingleChild.Name);
-        var singleChild = HouseholdFactory.CreateHouseholdDataWithStatus(ApplicationStatus.Pending, h =>
+        var singleChild = HouseholdFactory.CreateHouseholdDataWithStatus(ApplicationStatus.Approved, h =>
         {
             h.BenefitIssuanceType = BenefitIssuanceType.SummerEbt;
             var app = h.Applications.FirstOrDefault();
