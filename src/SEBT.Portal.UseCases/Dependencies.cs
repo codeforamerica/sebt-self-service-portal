@@ -14,7 +14,7 @@ public static class Dependencies
     public static IServiceCollection AddUseCases(this IServiceCollection services)
     {
         services.RegisterCommandHandler<RequestOtpCommand, RequestOtpCommandHandler>();
-        services.RegisterCommandHandler<ValidateOtpCommand, string, ValidateOtpCommandHandler>();
+        services.RegisterCommandHandler<ValidateOtpCommand, ValidateOtpResult, ValidateOtpCommandHandler>();
         services.RegisterCommandHandler<RefreshTokenCommand, string, RefreshTokenCommandHandler>();
         services.RegisterQueryHandler<GetHouseholdDataQuery, HouseholdData, GetHouseholdDataQueryHandler>();
         services.RegisterCommandHandler<SubmitIdProofingCommand, SubmitIdProofingResponse, SubmitIdProofingCommandHandler>();

@@ -75,7 +75,7 @@ public class AuthController(ILogger<AuthController> logger) : ControllerBase
         if (result.IsSuccess)
         {
             logger.LogInformation("Token refreshed successfully for email {Email}", email);
-            return Ok(new ValidateOtpResponse(result.Value));
+            return Ok(new ValidateOtpResponse(result.Value, false));
         }
         else
         {

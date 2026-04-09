@@ -75,9 +75,9 @@ public class OtpControllerTests
     {
         // Arrange
         var command = new ValidateOtpCommand { Email = "user@example.com", Otp = "123456" };
-        var handlerMock = Substitute.For<ICommandHandler<ValidateOtpCommand, string>>();
+        var handlerMock = Substitute.For<ICommandHandler<ValidateOtpCommand, ValidateOtpResult>>();
         handlerMock.Handle(command)
-            .Returns(Result<string>.Success("test.token"));
+            .Returns(Result<ValidateOtpResult>.Success(new ValidateOtpResult("test.token", false)));
 
         // Act
         var result = await _controller.ValidateOtp(command, handlerMock);
@@ -92,10 +92,10 @@ public class OtpControllerTests
     {
         // Arrange
         var command = new ValidateOtpCommand { Email = "user@example.com", Otp = "123456" };
-        var handlerMock = Substitute.For<ICommandHandler<ValidateOtpCommand, string>>();
+        var handlerMock = Substitute.For<ICommandHandler<ValidateOtpCommand, ValidateOtpResult>>();
         var expectedToken = "test.jwt.token";
         handlerMock.Handle(command)
-            .Returns(Result<string>.Success(expectedToken));
+            .Returns(Result<ValidateOtpResult>.Success(new ValidateOtpResult(expectedToken, false)));
 
         // Act
         var result = await _controller.ValidateOtp(command, handlerMock);
@@ -112,13 +112,31 @@ public class OtpControllerTests
     }
 
     [Fact]
+    public async Task ValidateOtp_WhenSuccess_ReturnsRequiresIdProofingFromResult()
+    {
+        // Arrange
+        var command = new ValidateOtpCommand { Email = "user@example.com", Otp = "123456" };
+        var handlerMock = Substitute.For<ICommandHandler<ValidateOtpCommand, ValidateOtpResult>>();
+        handlerMock.Handle(command)
+            .Returns(Result<ValidateOtpResult>.Success(new ValidateOtpResult("test.jwt.token", true)));
+
+        // Act
+        var result = await _controller.ValidateOtp(command, handlerMock);
+
+        // Assert
+        var okResult = Assert.IsType<OkObjectResult>(result);
+        var response = Assert.IsType<ValidateOtpResponse>(okResult.Value);
+        Assert.True(response.RequiresIdProofing);
+    }
+
+    [Fact]
     public async Task ValidateOtp_WhenFailure_ReturnsBadRequest()
     {
         // Arrange
         var command = new ValidateOtpCommand { Email = "user@example.com", Otp = "123456" };
-        var handlerMock = Substitute.For<ICommandHandler<ValidateOtpCommand, string>>();
+        var handlerMock = Substitute.For<ICommandHandler<ValidateOtpCommand, ValidateOtpResult>>();
         handlerMock.Handle(command)
-            .Returns(Result<string>.ValidationFailed("message", "Invalid OTP"));
+            .Returns(Result<ValidateOtpResult>.ValidationFailed("message", "Invalid OTP"));
 
         // Act
         var result = await _controller.ValidateOtp(command, handlerMock);
@@ -134,9 +152,9 @@ public class OtpControllerTests
     {
         // Arrange
         var command = new ValidateOtpCommand { Email = "user@example.com", Otp = "123456" };
-        var handlerMock = Substitute.For<ICommandHandler<ValidateOtpCommand, string>>();
+        var handlerMock = Substitute.For<ICommandHandler<ValidateOtpCommand, ValidateOtpResult>>();
         handlerMock.Handle(command)
-            .Returns(Result<string>.ValidationFailed("Otp", "Invalid OTP"));
+            .Returns(Result<ValidateOtpResult>.ValidationFailed("Otp", "Invalid OTP"));
 
         // Act
         var result = await _controller.ValidateOtp(command, handlerMock);
@@ -151,7 +169,7 @@ public class OtpControllerTests
     {
         // Arrange
         ValidateOtpCommand? command = null;
-        var handlerMock = Substitute.For<ICommandHandler<ValidateOtpCommand, string>>();
+        var handlerMock = Substitute.For<ICommandHandler<ValidateOtpCommand, ValidateOtpResult>>();
 
         // Act
         var result = await _controller.ValidateOtp(command!, handlerMock);
@@ -169,9 +187,9 @@ public class OtpControllerTests
     {
         // Arrange
         var command = new ValidateOtpCommand { Email = "user@example.com", Otp = "123456" };
-        var handlerMock = Substitute.For<ICommandHandler<ValidateOtpCommand, string>>();
+        var handlerMock = Substitute.For<ICommandHandler<ValidateOtpCommand, ValidateOtpResult>>();
         handlerMock.Handle(command)
-            .Returns(Result<string>.DependencyFailed(
+            .Returns(Result<ValidateOtpResult>.DependencyFailed(
                 DependencyFailedReason.ConnectionFailed,
                 "An error occurred while generating the authentication token."));
 
@@ -190,9 +208,9 @@ public class OtpControllerTests
     {
         // Arrange
         var command = new ValidateOtpCommand { Email = "user@example.com", Otp = "123456" };
-        var handlerMock = Substitute.For<ICommandHandler<ValidateOtpCommand, string>>();
+        var handlerMock = Substitute.For<ICommandHandler<ValidateOtpCommand, ValidateOtpResult>>();
         handlerMock.Handle(command)
-            .Returns(Result<string>.ValidationFailed("Otp", "Invalid OTP"));
+            .Returns(Result<ValidateOtpResult>.ValidationFailed("Otp", "Invalid OTP"));
 
         // Act
         var result = await _controller.ValidateOtp(command, handlerMock);
@@ -215,10 +233,10 @@ public class OtpControllerTests
     {
         // Arrange
         var command = new ValidateOtpCommand { Email = "user@example.com", Otp = "123456" };
-        var handlerMock = Substitute.For<ICommandHandler<ValidateOtpCommand, string>>();
+        var handlerMock = Substitute.For<ICommandHandler<ValidateOtpCommand, ValidateOtpResult>>();
         var expectedToken = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.test.token";
         handlerMock.Handle(command)
-            .Returns(Result<string>.Success(expectedToken));
+            .Returns(Result<ValidateOtpResult>.Success(new ValidateOtpResult(expectedToken, false)));
 
         // Act
         var result = await _controller.ValidateOtp(command, handlerMock);

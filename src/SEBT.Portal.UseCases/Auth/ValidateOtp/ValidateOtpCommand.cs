@@ -3,7 +3,7 @@ using SEBT.Portal.Kernel;
 
 namespace SEBT.Portal.UseCases.Auth
 {
-    public class ValidateOtpCommand : ICommand<string>
+    public class ValidateOtpCommand : ICommand<ValidateOtpResult>
     {
         /// <summary>
         /// The email address associated with the OTP.

@@ -71,7 +71,7 @@ public class OtpController(ILogger<OtpController> logger) : ControllerBase
     [ProducesResponseType(StatusCodes.Status500InternalServerError)]
     public async Task<IActionResult> ValidateOtp(
         [FromBody] ValidateOtpCommand command,
-        [FromServices] ICommandHandler<ValidateOtpCommand, string> handler)
+        [FromServices] ICommandHandler<ValidateOtpCommand, ValidateOtpResult> handler)
     {
         if (command == null)
         {
@@ -85,7 +85,7 @@ public class OtpController(ILogger<OtpController> logger) : ControllerBase
         if (result.IsSuccess)
         {
             logger.LogInformation("JWT token generated successfully for email {Email}", command.Email);
-            return Ok(new ValidateOtpResponse(result.Value));
+            return Ok(new ValidateOtpResponse(result.Value.Token, result.Value.RequiresIdProofing));
         }
         else
         {

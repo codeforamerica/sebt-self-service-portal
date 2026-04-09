@@ -88,6 +88,7 @@ public class AuthControllerTests
         var okResult = Assert.IsType<OkObjectResult>(result);
         var response = Assert.IsType<ValidateOtpResponse>(okResult.Value);
         Assert.Equal(expectedToken, response.Token);
+        Assert.False(response.RequiresIdProofing);
         await handlerMock.Received(1).Handle(Arg.Is<RefreshTokenCommand>(c => c.Email == email));
     }
 

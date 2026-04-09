@@ -1,5 +1,6 @@
 using System.Linq;
 using Microsoft.Extensions.Logging;
+using SEBT.Portal.Core.Models.Auth;
 using SEBT.Portal.Core.Repositories;
 using SEBT.Portal.Core.Services;
 using SEBT.Portal.Kernel;
@@ -26,9 +27,9 @@ namespace SEBT.Portal.UseCases.Auth
         IJwtTokenService jwtTokenService,
         IValidator<ValidateOtpCommand> validator,
         ILogger<ValidateOtpCommandHandler> logger)
-        : ICommandHandler<ValidateOtpCommand, string>
+        : ICommandHandler<ValidateOtpCommand, ValidateOtpResult>
     {
-        public async Task<Result<string>> Handle(ValidateOtpCommand command, CancellationToken cancellationToken = default)
+        public async Task<Result<ValidateOtpResult>> Handle(ValidateOtpCommand command, CancellationToken cancellationToken = default)
         {
             var validationResult = await validator.Validate(command, cancellationToken);
 
@@ -37,7 +38,7 @@ namespace SEBT.Portal.UseCases.Auth
                 logger.LogWarning("OTP validation failed for email {Email}: {Errors}",
                     command.Email,
                     string.Join(", ", validationFailedResult.Errors.Select(e => $"{e.Key}: {e.Message}")));
-                return Result<string>.ValidationFailed(validationFailedResult.Errors);
+                return Result<ValidateOtpResult>.ValidationFailed(validationFailedResult.Errors);
             }
 
             var otp = await otpRepository.GetOtpCodeByEmailAsync(command.Email);
@@ -45,7 +46,7 @@ namespace SEBT.Portal.UseCases.Auth
             if (otp is null || otp.IsCodeValid(command.Otp) == false)
             {
                 logger.LogWarning("Invalid or expired OTP attempt for email {Email}", command.Email);
-                return Result<string>.ValidationFailed(new[]
+                return Result<ValidateOtpResult>.ValidationFailed(new[]
                 {
                     new ValidationError("Otp", "The provided OTP is invalid or has expired.")
                 });
@@ -88,12 +89,18 @@ namespace SEBT.Portal.UseCases.Auth
                     "OTP validated successfully and JWT token generated for email {Email} with co-loaded status {IsCoLoaded}",
                     command.Email,
                     user.IsCoLoaded);
-                return Result<string>.Success(token);
+
+                // TODO: Applicants should also skip ID proofing once an applicant flag exists on the User entity
+                var requiresIdProofing = !user.IsCoLoaded
+                    && user.IdProofingStatus != IdProofingStatus.Completed;
+
+                return Result<ValidateOtpResult>.Success(
+                    new ValidateOtpResult(token, requiresIdProofing));
             }
             catch (Exception ex)
             {
                 logger.LogError(ex, "Error processing OTP validation for email {Email}", command.Email);
-                return Result<string>.DependencyFailed(
+                return Result<ValidateOtpResult>.DependencyFailed(
                     DependencyFailedReason.ConnectionFailed,
                     "An error occurred while processing the authentication request.");
             }
