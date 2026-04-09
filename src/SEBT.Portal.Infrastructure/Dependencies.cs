@@ -41,6 +41,7 @@ public static class Dependencies
         // Self-service action permission evaluation
         services.AddTransient<ISelfServiceEvaluator, SelfServiceEvaluator>();
 
+        // Smarty address verification (or pass-through when disabled)
         services.AddHttpClient("Smarty", (sp, client) =>
         {
             var smarty = sp.GetRequiredService<IOptions<SmartySettings>>().Value;
@@ -60,7 +61,9 @@ public static class Dependencies
                 ? sp.GetRequiredService<SmartyAddressUpdateService>()
                 : sp.GetRequiredService<PassThroughAddressUpdateService>();
         });
-        services.AddTransient<IAddressValidationService, AddressValidationServiceAdapter>();
+
+        // Address validation — checks blocked addresses and street abbreviations per state config
+        services.AddSingleton<IAddressValidationService, AddressValidationService>();
         services.AddSingleton<IIdentifierHasher, IdentifierHasher>();
 
         // Expose SocureSettings directly for use case injection (avoids IOptions dependency in UseCases layer)
@@ -226,6 +229,8 @@ public static class Dependencies
             .BindConfiguration(SmartySettings.SectionName);
         services.AddOptions<AddressValidationPolicySettings>()
             .BindConfiguration(AddressValidationPolicySettings.SectionName);
+        services.AddOptions<AddressValidationDataSettings>()
+            .BindConfiguration(AddressValidationDataSettings.SectionName);
 
         services.AddSingleton<IValidateOptions<SelfServiceRulesSettings>, SelfServiceRulesSettingsValidator>();
         services.AddOptionsWithValidateOnStart<SelfServiceRulesSettings>()

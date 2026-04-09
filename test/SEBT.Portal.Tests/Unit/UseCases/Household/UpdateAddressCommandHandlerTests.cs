@@ -29,6 +29,7 @@ public class UpdateAddressCommandHandlerTests
     private readonly IHouseholdIdentifierResolver _resolver =
         Substitute.For<IHouseholdIdentifierResolver>();
     private readonly ICoreAddressUpdateService _addressUpdateService = Substitute.For<ICoreAddressUpdateService>();
+    private readonly IAddressValidationService _addressValidationService = Substitute.For<IAddressValidationService>();
     private readonly IHouseholdRepository _householdRepository =
         Substitute.For<IHouseholdRepository>();
     private readonly IIdProofingRequirementsService _idProofingRequirementsService =
@@ -60,6 +61,8 @@ public class UpdateAddressCommandHandlerTests
                         WasCorrected = false,
                         IsGeneralDelivery = false
                     })));
+        _addressValidationService.ValidateAsync(Arg.Any<Address>(), Arg.Any<CancellationToken>())
+            .Returns(AddressValidationResult.Valid());
         _stateAddressUpdateService.UpdateAddressAsync(Arg.Any<AddressUpdateRequest>(), Arg.Any<CancellationToken>())
             .Returns(AddressUpdateResult.Success());
         _idProofingRequirementsService.GetPiiVisibility(Arg.Any<UserIalLevel>())
@@ -69,7 +72,7 @@ public class UpdateAddressCommandHandlerTests
     }
 
     private UpdateAddressCommandHandler CreateHandler() =>
-        new(_validator, _addressUpdateService, _resolver, _householdRepository,
+        new(_validator, _addressUpdateService, _addressValidationService, _resolver, _householdRepository,
             _idProofingRequirementsService, _evaluator, _stateAddressUpdateService, _logger);
 
     private static ClaimsPrincipal CreateUser(string email)
@@ -119,7 +122,7 @@ public class UpdateAddressCommandHandlerTests
         var result = await handler.Handle(command, CancellationToken.None);
 
         Assert.False(result.IsSuccess);
-        Assert.IsType<ValidationFailedResult>(result);
+        Assert.IsType<ValidationFailedResult<AddressValidationResult>>(result);
     }
 
     [Fact]
@@ -138,7 +141,7 @@ public class UpdateAddressCommandHandlerTests
         var result = await handler.Handle(command, CancellationToken.None);
 
         Assert.False(result.IsSuccess);
-        Assert.IsType<ValidationFailedResult>(result);
+        Assert.IsType<ValidationFailedResult<AddressValidationResult>>(result);
     }
 
     [Fact]
@@ -157,7 +160,7 @@ public class UpdateAddressCommandHandlerTests
         var result = await handler.Handle(command, CancellationToken.None);
 
         Assert.False(result.IsSuccess);
-        Assert.IsType<ValidationFailedResult>(result);
+        Assert.IsType<ValidationFailedResult<AddressValidationResult>>(result);
     }
 
     [Fact]
@@ -176,7 +179,7 @@ public class UpdateAddressCommandHandlerTests
         var result = await handler.Handle(command, CancellationToken.None);
 
         Assert.False(result.IsSuccess);
-        Assert.IsType<ValidationFailedResult>(result);
+        Assert.IsType<ValidationFailedResult<AddressValidationResult>>(result);
     }
 
     [Fact]
@@ -195,7 +198,7 @@ public class UpdateAddressCommandHandlerTests
         var result = await handler.Handle(command, CancellationToken.None);
 
         Assert.False(result.IsSuccess);
-        Assert.IsType<ValidationFailedResult>(result);
+        Assert.IsType<ValidationFailedResult<AddressValidationResult>>(result);
     }
 
     [Fact]
@@ -214,7 +217,7 @@ public class UpdateAddressCommandHandlerTests
         var result = await handler.Handle(command, CancellationToken.None);
 
         Assert.False(result.IsSuccess);
-        Assert.IsType<ValidationFailedResult>(result);
+        Assert.IsType<ValidationFailedResult<AddressValidationResult>>(result);
     }
 
     [Fact]
@@ -250,7 +253,7 @@ public class UpdateAddressCommandHandlerTests
         var result = await handler.Handle(command, CancellationToken.None);
 
         Assert.False(result.IsSuccess);
-        Assert.IsType<UnauthorizedResult>(result);
+        Assert.IsType<UnauthorizedResult<AddressValidationResult>>(result);
     }
 
     [Fact]
@@ -267,7 +270,7 @@ public class UpdateAddressCommandHandlerTests
         var result = await handler.Handle(command, CancellationToken.None);
 
         Assert.False(result.IsSuccess);
-        var preconditionFailed = Assert.IsType<PreconditionFailedResult>(result);
+        var preconditionFailed = Assert.IsType<PreconditionFailedResult<AddressValidationResult>>(result);
         Assert.Equal(PreconditionFailedReason.NotAllowed, preconditionFailed.Reason);
     }
 
@@ -285,7 +288,7 @@ public class UpdateAddressCommandHandlerTests
         var result = await handler.Handle(command, CancellationToken.None);
 
         Assert.False(result.IsSuccess);
-        var preconditionFailed = Assert.IsType<PreconditionFailedResult>(result);
+        var preconditionFailed = Assert.IsType<PreconditionFailedResult<AddressValidationResult>>(result);
         Assert.Equal(PreconditionFailedReason.NotAllowed, preconditionFailed.Reason);
     }
 
@@ -332,7 +335,7 @@ public class UpdateAddressCommandHandlerTests
         var result = await handler.Handle(command, CancellationToken.None);
 
         Assert.False(result.IsSuccess);
-        var preconditionFailed = Assert.IsType<PreconditionFailedResult>(result);
+        var preconditionFailed = Assert.IsType<PreconditionFailedResult<AddressValidationResult>>(result);
         Assert.Equal(PreconditionFailedReason.NotAllowed, preconditionFailed.Reason);
     }
 
@@ -376,12 +379,12 @@ public class UpdateAddressCommandHandlerTests
         var result = await handler.Handle(command, CancellationToken.None);
 
         Assert.False(result.IsSuccess);
-        var preconditionFailed = Assert.IsType<PreconditionFailedResult>(result);
+        var preconditionFailed = Assert.IsType<PreconditionFailedResult<AddressValidationResult>>(result);
         Assert.Equal(PreconditionFailedReason.NotAllowed, preconditionFailed.Reason);
     }
 
     [Fact]
-    public async Task Handle_ReturnsValidationFailed_WhenAddressServiceReturnsValidationFailed()
+    public async Task Handle_ReturnsNotFoundResult_WhenAddressServiceReturnsValidationFailed()
     {
         _addressUpdateService
             .ValidateAndNormalizeAsync(Arg.Any<AddressUpdateOperationRequest>(), Arg.Any<CancellationToken>())
@@ -393,8 +396,12 @@ public class UpdateAddressCommandHandlerTests
 
         var result = await handler.Handle(command, CancellationToken.None);
 
-        Assert.False(result.IsSuccess);
-        Assert.IsType<ValidationFailedResult>(result);
+        // Smarty verification failures become structured "not-found" results (422)
+        // so the frontend routes to Address Not Found, not a generic 400.
+        Assert.True(result.IsSuccess);
+        var successResult = Assert.IsType<SuccessResult<AddressValidationResult>>(result);
+        Assert.False(successResult.Value.IsValid);
+        Assert.Equal("not-found", successResult.Value.Reason);
         await _resolver.DidNotReceive()
             .ResolveAsync(Arg.Any<ClaimsPrincipal>(), Arg.Any<CancellationToken>());
     }
@@ -415,7 +422,7 @@ public class UpdateAddressCommandHandlerTests
         var result = await handler.Handle(command, CancellationToken.None);
 
         Assert.False(result.IsSuccess);
-        Assert.IsType<DependencyFailedResult>(result);
+        Assert.IsType<DependencyFailedResult<AddressValidationResult>>(result);
         await _resolver.DidNotReceive()
             .ResolveAsync(Arg.Any<ClaimsPrincipal>(), Arg.Any<CancellationToken>());
     }
@@ -468,7 +475,7 @@ public class UpdateAddressCommandHandlerTests
         var result = await handler.Handle(command, CancellationToken.None);
 
         Assert.True(result.IsSuccess);
-        Assert.IsType<SuccessResult>(result);
+        Assert.IsType<SuccessResult<AddressValidationResult>>(result);
     }
 
     [Fact]
@@ -485,7 +492,7 @@ public class UpdateAddressCommandHandlerTests
         var result = await handler.Handle(command, CancellationToken.None);
 
         Assert.False(result.IsSuccess);
-        var preconditionFailed = Assert.IsType<PreconditionFailedResult>(result);
+        var preconditionFailed = Assert.IsType<PreconditionFailedResult<AddressValidationResult>>(result);
         Assert.Equal(PreconditionFailedReason.Conflict, preconditionFailed.Reason);
     }
 
@@ -503,7 +510,7 @@ public class UpdateAddressCommandHandlerTests
         var result = await handler.Handle(command, CancellationToken.None);
 
         Assert.False(result.IsSuccess);
-        Assert.IsType<DependencyFailedResult>(result);
+        Assert.IsType<DependencyFailedResult<AddressValidationResult>>(result);
     }
 
     [Fact]
@@ -520,7 +527,7 @@ public class UpdateAddressCommandHandlerTests
         var result = await handler.Handle(command, CancellationToken.None);
 
         Assert.False(result.IsSuccess);
-        Assert.IsType<DependencyFailedResult>(result);
+        Assert.IsType<DependencyFailedResult<AddressValidationResult>>(result);
     }
 
     [Fact]

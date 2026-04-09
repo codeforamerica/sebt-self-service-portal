@@ -31,6 +31,7 @@ function getReplacementLink(summerEbtCase: SummerEbtCase): string | null {
   if (canRequestReplacementCard === false) return null
 
   if (!summerEBTCaseID) return null
+  if (!issuanceType || issuanceType === 'Unknown') return null
   if (isWithinCooldownPeriod(cardRequestedAt)) return null
 
   const currentState = getState()
