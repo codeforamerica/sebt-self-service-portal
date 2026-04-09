@@ -4,13 +4,13 @@ import { useRouter } from 'next/navigation'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
-import type { Address, Application } from '@/features/household/api/schema'
+import type { Address, SummerEbtCase } from '@/features/household/api/schema'
 import { Alert, Button, getState } from '@sebt/design-system'
 
 import { useRequestCardReplacement } from '../../api/client'
 
 interface ConfirmRequestProps {
-  applications: Application[]
+  cases: SummerEbtCase[]
   address: Address
   onBack: () => void
 }
@@ -19,7 +19,7 @@ function getStateProgramName(state: string): string {
   return state === 'dc' ? 'DC SUN Bucks' : 'Summer EBT'
 }
 
-export function ConfirmRequest({ applications, address, onBack }: ConfirmRequestProps) {
+export function ConfirmRequest({ cases, address, onBack }: ConfirmRequestProps) {
   const { t } = useTranslation('confirmInfo')
   const { t: tCommon } = useTranslation('common')
   const router = useRouter()
@@ -28,14 +28,12 @@ export function ConfirmRequest({ applications, address, onBack }: ConfirmRequest
   const [error, setError] = useState<string | null>(null)
 
   const programName = getStateProgramName(currentState)
-  const applicationNumbers = applications
-    .map((app) => app.applicationNumber)
-    .filter((num): num is string => num != null)
+  const caseIds = cases.map((c) => c.summerEBTCaseID).filter((id): id is string => id != null)
 
   function handleSubmit() {
     setError(null)
     mutation.mutate(
-      { applicationNumbers },
+      { caseIds },
       {
         onSuccess: () => {
           router.push('/dashboard?flash=card_replaced')
@@ -83,24 +81,22 @@ export function ConfirmRequest({ applications, address, onBack }: ConfirmRequest
           </h2>
 
           <ul className="usa-list usa-list--unstyled">
-            {applications.flatMap((app) =>
-              app.children.map((child, i) => (
-                <li
-                  key={`${app.applicationNumber}-${i}`}
-                  className="margin-bottom-1"
-                >
-                  <span className="text-bold">
-                    {child.firstName} {child.lastName}&apos;s card
+            {cases.map((c) => (
+              <li
+                key={c.summerEBTCaseID}
+                className="margin-bottom-1"
+              >
+                <span className="text-bold">
+                  {c.childFirstName} {c.childLastName}&apos;s card
+                </span>
+                {currentState === 'co' && c.ebtCardLastFour && (
+                  <span className="display-block text-base-dark">
+                    {/* TODO: Use t('cardNumberLabel') once key is available in CSV */}
+                    Card number: {c.ebtCardLastFour} (last 4 digits)
                   </span>
-                  {currentState === 'co' && app.last4DigitsOfCard && (
-                    <span className="display-block text-base-dark">
-                      {/* TODO: Use t('cardNumberLabel') once key is available in CSV */}
-                      Card number: {app.last4DigitsOfCard} (last 4 digits)
-                    </span>
-                  )}
-                </li>
-              ))
-            )}
+                )}
+              </li>
+            ))}
           </ul>
 
           <p className="margin-top-2">

@@ -462,7 +462,7 @@ public class HouseholdControllerTests
         SetupAuthenticatedUser("user@example.com", ial: "1plus");
         var request = new RequestCardReplacementRequest
         {
-            ApplicationNumbers = new List<string> { "APP-001" }
+            CaseIds = new List<string> { "SEBT-001" }
         };
 
         var commandHandler = Substitute.For<ICommandHandler<RequestCardReplacementCommand>>();
@@ -483,12 +483,12 @@ public class HouseholdControllerTests
         SetupAuthenticatedUser("user@example.com", ial: "1plus");
         var request = new RequestCardReplacementRequest
         {
-            ApplicationNumbers = new List<string> { "APP-001" }
+            CaseIds = new List<string> { "SEBT-001" }
         };
 
         var commandHandler = Substitute.For<ICommandHandler<RequestCardReplacementCommand>>();
         commandHandler.Handle(Arg.Any<RequestCardReplacementCommand>(), Arg.Any<CancellationToken>())
-            .Returns(Result.ValidationFailed("ApplicationNumbers", "Application was requested within the last 14 days."));
+            .Returns(Result.ValidationFailed("CaseIds", "Case was requested within the last 14 days."));
 
         // Act
         var result = await _controller.RequestCardReplacement(request, commandHandler);
@@ -505,7 +505,7 @@ public class HouseholdControllerTests
         SetupAuthenticatedUser("user@example.com", ial: "1plus");
         var request = new RequestCardReplacementRequest
         {
-            ApplicationNumbers = new List<string> { "APP-001", "APP-002" }
+            CaseIds = new List<string> { "SEBT-001", "SEBT-002" }
         };
 
         RequestCardReplacementCommand? capturedCommand = null;
@@ -518,7 +518,7 @@ public class HouseholdControllerTests
 
         // Assert
         Assert.NotNull(capturedCommand);
-        Assert.Equal(new List<string> { "APP-001", "APP-002" }, capturedCommand.ApplicationNumbers);
+        Assert.Equal(new List<string> { "SEBT-001", "SEBT-002" }, capturedCommand.CaseIds);
         Assert.NotNull(capturedCommand.User);
     }
 

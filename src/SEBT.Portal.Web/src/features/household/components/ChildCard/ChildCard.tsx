@@ -8,7 +8,7 @@ import { isWithinCooldownPeriod } from '@/features/cards/utils/cooldown'
 import { useFeatureFlag } from '@/features/feature-flags'
 import { getState } from '@sebt/design-system'
 
-import type { Application, Child, IssuanceType } from '../../api'
+import type { IssuanceType, SummerEbtCase } from '../../api'
 import { formatDate } from '../../api'
 import { CardStatusDisplay } from '../CardStatusDisplay'
 import { CardStatusTimeline } from '../CardStatusTimeline'
@@ -18,13 +18,13 @@ import { CardStatusTimeline } from '../CardStatusTimeline'
  * CO cards are issued directly without a Requested stage, so cardRequestedAt is absent.
  * This is the data-driven discriminator between the two card lifecycle models.
  */
-function hasDcCardLifecycle(application: Application): boolean {
-  return application.cardRequestedAt != null
+function hasCardLifecycleTimeline(summerEbtCase: SummerEbtCase): boolean {
+  return summerEbtCase.cardRequestedAt != null
 }
 
-function getReplacementLink(application: Application): string | null {
-  const { applicationNumber, issuanceType, cardRequestedAt } = application
-  if (!applicationNumber) return null
+function getReplacementLink(summerEbtCase: SummerEbtCase): string | null {
+  const { summerEBTCaseID, issuanceType, cardRequestedAt } = summerEbtCase
+  if (!summerEBTCaseID) return null
 
   if (isWithinCooldownPeriod(cardRequestedAt)) return null
 
@@ -37,13 +37,11 @@ function getReplacementLink(application: Application): string | null {
 
   if (isCoLoaded) return null
 
-  return `/cards/replace?app=${encodeURIComponent(applicationNumber)}`
+  return `/cards/replace?case=${encodeURIComponent(summerEBTCaseID)}`
 }
 
 interface ChildCardProps {
-  child: Child
-  application: Application
-  id: string
+  summerEbtCase: SummerEbtCase
   defaultExpanded?: boolean
 }
 
@@ -55,18 +53,28 @@ const CARD_TYPE_KEYS: Partial<Record<IssuanceType, string>> = {
 }
 
 // Keys map to CSV: "S2 - Portal Dashboard - Card Table - {Key}"
-export function ChildCard({ child, application, id, defaultExpanded = true }: ChildCardProps) {
+export function ChildCard({ summerEbtCase, defaultExpanded = true }: ChildCardProps) {
   const { t, i18n } = useTranslation('dashboard')
   const enableCardReplacement = useFeatureFlag('enable_card_replacement')
   const showCaseNumber = useFeatureFlag('show_case_number')
   const showCardLast4 = useFeatureFlag('show_card_last4')
   const [isExpanded, setIsExpanded] = useState(defaultExpanded)
-  const childName = `${child.firstName} ${child.lastName}`
+  const childName = `${summerEbtCase.childFirstName} ${summerEbtCase.childLastName}`
+  const id = summerEbtCase.summerEBTCaseID ?? ''
 
-  const { caseNumber, benefitIssueDate, benefitExpirationDate, last4DigitsOfCard, issuanceType } =
-    application
+  const {
+    ebtCaseNumber,
+    benefitAvailableDate,
+    benefitExpirationDate,
+    ebtCardLastFour,
+    ebtCardStatus,
+    issuanceType,
+    cardRequestedAt,
+    cardMailedAt,
+    cardDeactivatedAt
+  } = summerEbtCase
   const cardTypeKey = issuanceType ? (CARD_TYPE_KEYS[issuanceType] ?? null) : null
-  const replacementLink = enableCardReplacement ? getReplacementLink(application) : null
+  const replacementLink = enableCardReplacement ? getReplacementLink(summerEbtCase) : null
 
   return (
     <div className="usa-accordion__item">
@@ -88,16 +96,16 @@ export function ChildCard({ child, application, id, defaultExpanded = true }: Ch
         data-testid="accordion-content"
       >
         <dl className="margin-0">
-          {showCaseNumber && caseNumber && (
+          {showCaseNumber && ebtCaseNumber && (
             <>
               <dt className="text-bold margin-top-2">{t('cardTableHeadingSebtId')}</dt>
-              <dd className="margin-left-0">{caseNumber}</dd>
+              <dd className="margin-left-0">{ebtCaseNumber}</dd>
             </>
           )}
-          {benefitIssueDate && (
+          {benefitAvailableDate && (
             <>
               <dt className="text-bold margin-top-2">{t('cardTableHeadingIssued')}</dt>
-              <dd className="margin-left-0">{formatDate(benefitIssueDate, i18n.language)}</dd>
+              <dd className="margin-left-0">{formatDate(benefitAvailableDate, i18n.language)}</dd>
             </>
           )}
           {benefitExpirationDate && (
@@ -112,18 +120,23 @@ export function ChildCard({ child, application, id, defaultExpanded = true }: Ch
               <dd className="margin-left-0">{t(cardTypeKey)}</dd>
             </>
           )}
-          {showCardLast4 && last4DigitsOfCard && (
+          {showCardLast4 && ebtCardLastFour && (
             <>
               <dt className="text-bold margin-top-2">{t('cardTableHeadingCardNumber')}</dt>
               <dd className="margin-left-0">
-                {t('cardTableLastFourDigits').replace('[9999]', last4DigitsOfCard)}
+                {t('cardTableLastFourDigits').replace('[9999]', ebtCardLastFour)}
               </dd>
             </>
           )}
-          {hasDcCardLifecycle(application) ? (
-            <CardStatusTimeline application={application} />
+          {hasCardLifecycleTimeline(summerEbtCase) ? (
+            <CardStatusTimeline
+              cardStatus={ebtCardStatus}
+              cardRequestedAt={cardRequestedAt}
+              cardMailedAt={cardMailedAt}
+              cardDeactivatedAt={cardDeactivatedAt}
+            />
           ) : (
-            <CardStatusDisplay application={application} />
+            <CardStatusDisplay cardStatus={ebtCardStatus} />
           )}
         </dl>
         {replacementLink && (
