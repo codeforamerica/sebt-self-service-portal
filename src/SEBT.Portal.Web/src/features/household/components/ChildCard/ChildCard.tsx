@@ -25,6 +25,7 @@ function hasCardLifecycleTimeline(summerEbtCase: SummerEbtCase): boolean {
 function getReplacementLink(summerEbtCase: SummerEbtCase): string | null {
   const { summerEBTCaseID, issuanceType, cardRequestedAt } = summerEbtCase
   if (!summerEBTCaseID) return null
+  if (!issuanceType || issuanceType === 'Unknown') return null
 
   if (isWithinCooldownPeriod(cardRequestedAt)) return null
 

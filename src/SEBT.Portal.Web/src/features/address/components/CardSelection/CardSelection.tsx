@@ -4,24 +4,30 @@ import { useRouter } from 'next/navigation'
 import { useEffect, useRef, useState, type FormEvent } from 'react'
 import { useTranslation } from 'react-i18next'
 
-import { useHouseholdData, type Child } from '@/features/household'
-import type { Application } from '@/features/household/api/schema'
+import { isWithinCooldownPeriod } from '@/features/cards/utils/cooldown'
+import { useHouseholdData } from '@/features/household'
+import type { SummerEbtCase } from '@/features/household/api/schema'
 import { Alert, Button, getState } from '@sebt/design-system'
 
-interface ChildWithCard {
-  key: string
-  child: Child
-  last4DigitsOfCard?: string | null | undefined
+interface CaseGroup {
+  caseId: string
+  childFirstName: string
+  childLastName: string
+  ebtCardLastFour?: string | null | undefined
 }
 
-function flattenChildren(applications: Application[]): ChildWithCard[] {
-  return applications.flatMap((app, appIndex) =>
-    app.children.map((child, i) => ({
-      key: `${app.applicationNumber ?? `app-${appIndex}`}-${i}`,
-      child,
-      last4DigitsOfCard: app.last4DigitsOfCard
+function buildCaseGroups(cases: SummerEbtCase[]): CaseGroup[] {
+  return cases
+    .filter(
+      (c): c is SummerEbtCase & { summerEBTCaseID: string } =>
+        c.summerEBTCaseID != null && !isWithinCooldownPeriod(c.cardRequestedAt)
+    )
+    .map((c) => ({
+      caseId: c.summerEBTCaseID,
+      childFirstName: c.childFirstName,
+      childLastName: c.childLastName,
+      ebtCardLastFour: c.ebtCardLastFour
     }))
-  )
 }
 
 export function CardSelection() {
@@ -31,7 +37,7 @@ export function CardSelection() {
   const currentState = getState()
   const { data, isLoading, isError } = useHouseholdData()
 
-  const [selectedKeys, setSelectedKeys] = useState<Set<string>>(new Set())
+  const [selectedCases, setSelectedCases] = useState<Set<string>>(new Set())
   const [error, setError] = useState<string | null>(null)
   const errorRef = useRef<HTMLSpanElement>(null)
 
@@ -53,23 +59,29 @@ export function CardSelection() {
     )
   }
 
-  const children = flattenChildren(data.applications)
+  const groups = buildCaseGroups(data.summerEbtCases)
 
-  if (children.length === 0) {
+  if (groups.length === 0) {
+    const hasCases = data.summerEbtCases.length > 0
     return (
       <Alert variant="info">
-        {t('cardSelectionNoChildren', 'No children found in your household.')}
+        {hasCases
+          ? t(
+              'cardSelectionAllInCooldown',
+              'All cards were recently replaced. Please try again later.'
+            )
+          : t('cardSelectionNoChildren', 'No children found in your household.')}
       </Alert>
     )
   }
 
-  function toggleChild(key: string) {
-    setSelectedKeys((prev) => {
+  function toggleCase(caseId: string) {
+    setSelectedCases((prev) => {
       const next = new Set(prev)
-      if (next.has(key)) {
-        next.delete(key)
+      if (next.has(caseId)) {
+        next.delete(caseId)
       } else {
-        next.add(key)
+        next.add(caseId)
       }
       return next
     })
@@ -79,14 +91,13 @@ export function CardSelection() {
   function handleSubmit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault()
 
-    if (selectedKeys.size === 0) {
+    if (selectedCases.size === 0) {
       setError(t('cardSelectionRequired', 'Please select at least one card.'))
       return
     }
 
-    // TODO (DC-153): Call card replacement API with selected children.
-    // For now, redirect to dashboard with success params.
-    router.push('/dashboard?addressUpdated=true&cardsRequested=true')
+    const cases = Array.from(selectedCases).join(',')
+    router.push(`select/confirm?cases=${encodeURIComponent(cases)}`)
   }
 
   return (
@@ -121,30 +132,28 @@ export function CardSelection() {
           </span>
         )}
 
-        {children.map(({ key, child, last4DigitsOfCard }) => (
+        {groups.map((group) => (
           <div
-            key={key}
+            key={group.caseId}
             className="usa-checkbox"
           >
             <input
               className="usa-checkbox__input usa-checkbox__input--tile"
               type="checkbox"
-              id={`card-${key}`}
+              id={`card-${group.caseId}`}
               name="selectedCards"
-              value={key}
-              checked={selectedKeys.has(key)}
-              onChange={() => toggleChild(key)}
+              value={group.caseId}
+              checked={selectedCases.has(group.caseId)}
+              onChange={() => toggleCase(group.caseId)}
             />
             <label
               className="usa-checkbox__label"
-              htmlFor={`card-${key}`}
+              htmlFor={`card-${group.caseId}`}
             >
-              {/* TODO: Use t('childCardLabel', { firstName, lastName }) once key is available in CSV */}
-              {child.firstName} {child.lastName}&apos;s card
-              {currentState === 'co' && last4DigitsOfCard && (
+              {group.childFirstName} {group.childLastName}&apos;s card
+              {currentState === 'co' && group.ebtCardLastFour && (
                 <span className="usa-checkbox__label-description">
-                  {/* TODO: Use t('cardNumberLabel', { last4 }) once key is available in CSV */}
-                  Card number: {last4DigitsOfCard} (last 4 digits)
+                  Card number: {group.ebtCardLastFour} (last 4 digits)
                 </span>
               )}
             </label>
