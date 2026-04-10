@@ -15,8 +15,8 @@ export default function ConfirmCardReplacementPage() {
   const { address } = useAddressFlow()
   const { data, isLoading, isError } = useHouseholdData()
 
-  const appsParam = searchParams.get('apps')
-  const selectedAppNumbers = appsParam ? appsParam.split(',') : []
+  const casesParam = searchParams.get('cases')
+  const selectedCaseIds = casesParam ? casesParam.split(',') : []
 
   if (isLoading) {
     return <p>{tCommon('loading', 'Loading...')}</p>
@@ -26,11 +26,11 @@ export default function ConfirmCardReplacementPage() {
     return <Alert variant="error">Unable to load card replacement details. Please try again.</Alert>
   }
 
-  const selectedApplications = data.applications.filter(
-    (app) => app.applicationNumber && selectedAppNumbers.includes(app.applicationNumber)
+  const selectedCases = data.summerEbtCases.filter(
+    (c) => c.summerEBTCaseID && selectedCaseIds.includes(c.summerEBTCaseID)
   )
 
-  if (selectedApplications.length === 0) {
+  if (selectedCases.length === 0) {
     return (
       <Alert variant="error">
         No matching cards found. Please go back and select cards to replace.
@@ -49,7 +49,7 @@ export default function ConfirmCardReplacementPage() {
   return (
     <div className="grid-container maxw-tablet padding-top-4 padding-bottom-4">
       <ConfirmRequest
-        applications={selectedApplications}
+        cases={selectedCases}
         address={addressForConfirm}
         onBack={() => router.back()}
       />

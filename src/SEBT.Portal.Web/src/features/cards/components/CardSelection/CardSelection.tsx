@@ -5,26 +5,28 @@ import { useEffect, useRef, useState, type FormEvent } from 'react'
 import { useTranslation } from 'react-i18next'
 
 import { isWithinCooldownPeriod } from '@/features/cards/utils/cooldown'
-import { useHouseholdData, type Child } from '@/features/household'
-import type { Application } from '@/features/household/api/schema'
+import { useHouseholdData } from '@/features/household'
+import type { SummerEbtCase } from '@/features/household/api/schema'
 import { Alert, Button, getState } from '@sebt/design-system'
 
-interface ApplicationGroup {
-  applicationNumber: string
-  children: Child[]
-  last4DigitsOfCard?: string | null | undefined
+interface CaseGroup {
+  caseId: string
+  childFirstName: string
+  childLastName: string
+  ebtCardLastFour?: string | null | undefined
 }
 
-function buildApplicationGroups(applications: Application[]): ApplicationGroup[] {
-  return applications
+function buildCaseGroups(cases: SummerEbtCase[]): CaseGroup[] {
+  return cases
     .filter(
-      (app): app is Application & { applicationNumber: string } =>
-        app.applicationNumber != null && !isWithinCooldownPeriod(app.cardRequestedAt)
+      (c): c is SummerEbtCase & { summerEBTCaseID: string } =>
+        c.summerEBTCaseID != null && !isWithinCooldownPeriod(c.cardRequestedAt)
     )
-    .map((app) => ({
-      applicationNumber: app.applicationNumber,
-      children: app.children,
-      last4DigitsOfCard: app.last4DigitsOfCard
+    .map((c) => ({
+      caseId: c.summerEBTCaseID,
+      childFirstName: c.childFirstName,
+      childLastName: c.childLastName,
+      ebtCardLastFour: c.ebtCardLastFour
     }))
 }
 
@@ -35,7 +37,7 @@ export function CardSelection() {
   const currentState = getState()
   const { data, isLoading, isError } = useHouseholdData()
 
-  const [selectedApps, setSelectedApps] = useState<Set<string>>(new Set())
+  const [selectedCases, setSelectedCases] = useState<Set<string>>(new Set())
   const [error, setError] = useState<string | null>(null)
   const errorRef = useRef<HTMLSpanElement>(null)
 
@@ -57,13 +59,13 @@ export function CardSelection() {
     )
   }
 
-  const groups = buildApplicationGroups(data.applications)
+  const groups = buildCaseGroups(data.summerEbtCases)
 
   if (groups.length === 0) {
-    const hasApplications = data.applications.length > 0
+    const hasCases = data.summerEbtCases.length > 0
     return (
       <Alert variant="info">
-        {hasApplications
+        {hasCases
           ? t(
               'cardSelectionAllInCooldown',
               'All cards were recently replaced. Please try again later.'
@@ -73,13 +75,13 @@ export function CardSelection() {
     )
   }
 
-  function toggleApplication(appNumber: string) {
-    setSelectedApps((prev) => {
+  function toggleCase(caseId: string) {
+    setSelectedCases((prev) => {
       const next = new Set(prev)
-      if (next.has(appNumber)) {
-        next.delete(appNumber)
+      if (next.has(caseId)) {
+        next.delete(caseId)
       } else {
-        next.add(appNumber)
+        next.add(caseId)
       }
       return next
     })
@@ -89,13 +91,13 @@ export function CardSelection() {
   function handleSubmit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault()
 
-    if (selectedApps.size === 0) {
+    if (selectedCases.size === 0) {
       setError(t('cardSelectionRequired', 'Please select at least one card.'))
       return
     }
 
-    const apps = Array.from(selectedApps).join(',')
-    router.push(`select/confirm?apps=${encodeURIComponent(apps)}`)
+    const cases = Array.from(selectedCases).join(',')
+    router.push(`select/confirm?cases=${encodeURIComponent(cases)}`)
   }
 
   return (
@@ -131,47 +133,35 @@ export function CardSelection() {
         )}
 
         {groups.map((group) => {
-          const isSelected = selectedApps.has(group.applicationNumber)
-          const isMultiChild = group.children.length > 1
+          const isSelected = selectedCases.has(group.caseId)
 
-          return group.children.map((child, childIndex) => {
-            const isFirstChild = childIndex === 0
-            const isSiblingOfSelected = isSelected && !isFirstChild
-
-            return (
-              <div
-                key={`${group.applicationNumber}-${childIndex}`}
-                className="usa-checkbox"
+          return (
+            <div
+              key={group.caseId}
+              className="usa-checkbox"
+            >
+              <input
+                className="usa-checkbox__input usa-checkbox__input--tile"
+                type="checkbox"
+                id={`card-${group.caseId}`}
+                name="selectedCards"
+                value={group.caseId}
+                checked={isSelected}
+                onChange={() => toggleCase(group.caseId)}
+              />
+              <label
+                className="usa-checkbox__label"
+                htmlFor={`card-${group.caseId}`}
               >
-                <input
-                  className="usa-checkbox__input usa-checkbox__input--tile"
-                  type="checkbox"
-                  id={`card-${group.applicationNumber}-${childIndex}`}
-                  name="selectedCards"
-                  value={group.applicationNumber}
-                  checked={isSelected}
-                  disabled={isSiblingOfSelected}
-                  onChange={() => toggleApplication(group.applicationNumber)}
-                />
-                <label
-                  className="usa-checkbox__label"
-                  htmlFor={`card-${group.applicationNumber}-${childIndex}`}
-                >
-                  {child.firstName} {child.lastName}&apos;s card
-                  {currentState === 'co' && group.last4DigitsOfCard && (
-                    <span className="usa-checkbox__label-description">
-                      Card number: {group.last4DigitsOfCard} (last 4 digits)
-                    </span>
-                  )}
-                  {isSiblingOfSelected && isMultiChild && (
-                    <span className="usa-checkbox__label-description text-base-dark">
-                      These children share a card
-                    </span>
-                  )}
-                </label>
-              </div>
-            )
-          })
+                {group.childFirstName} {group.childLastName}&apos;s card
+                {currentState === 'co' && group.ebtCardLastFour && (
+                  <span className="usa-checkbox__label-description">
+                    Card number: {group.ebtCardLastFour} (last 4 digits)
+                  </span>
+                )}
+              </label>
+            </div>
+          )
         })}
       </fieldset>
 
