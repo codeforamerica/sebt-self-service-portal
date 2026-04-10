@@ -37,6 +37,7 @@ public class PortalWebApplicationFactory : WebApplicationFactory<Program>
         "ConnectionStrings__Redis"
     ];
 
+
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
         // Plugin paths — prevent loading DLLs with missing transitive dependencies

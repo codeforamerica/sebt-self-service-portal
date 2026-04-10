@@ -31,12 +31,19 @@ export function LandingPage() {
         </div>
 
         <div className="margin-top-3">
-          <Button onClick={() => router.push('/disclaimer')}>
+          <Button
+            onClick={() => router.push('/disclaimer')}
+            data-analytics-cta="start_enrollment_check_cta"
+          >
             {t('action')}
           </Button>
         </div>
         <div className="margin-top-2">
-          <Button variant="outline" onClick={() => router.push('/disclaimer')}>
+          <Button
+            variant="outline"
+            onClick={() => router.push('/disclaimer')}
+            data-analytics-cta="start_enrollment_check_cta_es"
+          >
             {t('actionEspañol')}
           </Button>
         </div>

@@ -75,6 +75,7 @@ The JWT's claim shape, signing key, and expiry behavior are unchanged from the o
 - `SEBT.Portal.Web/src/api/client.ts`, `src/features/auth/context/AuthContext.tsx`, `src/lib/jwt.ts`
 - `SEBT.Portal.Tests/Unit/Services/AuthCookiesTests.cs`, `SEBT.Portal.Tests/Integration/AuthCookieAuthenticationTests.cs`
 
+
 ---
 
 ## Addendum (DC-243, 2026-04-10): Server-side OIDC pre-auth session
