@@ -143,6 +143,7 @@ export function ChildCard({ summerEbtCase, defaultExpanded = true }: ChildCardPr
         {replacementLink && (
           <Link
             href={replacementLink}
+            data-analytics-cta="replacement_card_cta"
             className="usa-link display-inline-block margin-top-2"
           >
             {t('cardTableActionRequestReplacement', 'Request a replacement card')}

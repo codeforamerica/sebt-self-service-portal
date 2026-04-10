@@ -189,6 +189,25 @@ builder.Services.AddOptions<JwtBearerOptions>(JwtBearerDefaults.AuthenticationSc
         };
         // Preserve JWT claim names (sub, email) so we can read them regardless of handler mapping.
         options.MapInboundClaims = false;
+
+        // DC-242: portal session JWT lives in an HttpOnly cookie. Fall back to the cookie
+        // when no Authorization header is present so the SPA never handles the raw token.
+        // The Authorization header path is preserved for service-to-service callers.
+        options.Events = new JwtBearerEvents
+        {
+            OnMessageReceived = context =>
+            {
+                if (string.IsNullOrEmpty(context.Token))
+                {
+                    var cookieToken = context.Request.Cookies[AuthCookies.AuthCookieName];
+                    if (!string.IsNullOrEmpty(cookieToken))
+                    {
+                        context.Token = cookieToken;
+                    }
+                }
+                return Task.CompletedTask;
+            }
+        };
     });
 
 builder.Services.AddAuthorization();

@@ -9,8 +9,9 @@ import { useAuth } from '../../context'
 const REFRESH_INTERVAL_MS = 10 * 60 * 1000
 
 /**
- * TokenRefresher proactively refreshes the JWT token while the user is authenticated.
- * This prevents token expiration during active sessions.
+ * TokenRefresher proactively refreshes the session cookie while the user is authenticated.
+ * This prevents cookie expiration during active sessions. After a successful refresh,
+ * it re-reads /auth/status so updated claims (IAL, ID proofing) propagate to the UI.
  * Should be rendered inside authenticated routes.
  */
 export function TokenRefresher() {
@@ -20,9 +21,9 @@ export function TokenRefresher() {
 
   const doRefresh = useCallback(() => {
     mutate(undefined, {
-      onSuccess: (result) => {
-        // Update the stored token with the new one
-        login(result.token)
+      onSuccess: () => {
+        // Backend rotated the HttpOnly session cookie; pick up any updated claims.
+        void login()
       }
       // Error handling (401 redirect) is done in apiFetch
       // Other errors are silently ignored - we'll retry on next interval

@@ -62,7 +62,7 @@ async function startOidcStepUpRedirect(): Promise<void> {
  * `NEXT_PUBLIC_DEBUG_REPEAT_OIDC_STEP_UP=true` forces the challenge path in development even when the JWT already has IAL1+.
  */
 export function IalGuard({ children, requiredIal = STEP_UP_REQUIRED_IAL }: IalGuardProps) {
-  const { token } = useAuth()
+  const { session } = useAuth()
   const router = useRouter()
   const { t } = useTranslation('common')
   const { t: tStepUpFailure } = useTranslation('stepUpFailure')
@@ -73,13 +73,13 @@ export function IalGuard({ children, requiredIal = STEP_UP_REQUIRED_IAL }: IalGu
 
   const ialAndIdProofingSufficient =
     requiredIal === 'IAL1plus' &&
-    hasIal1Plus(token) &&
-    isIdProofingCompletionFresh(token, maxIdProofingAgeYears) &&
+    hasIal1Plus(session) &&
+    isIdProofingCompletionFresh(session, maxIdProofingAgeYears) &&
     !debugRepeatOidcStepUp
 
-  const passesWithoutStepUp = !useOidcStepUpGate || !token || ialAndIdProofingSufficient
+  const passesWithoutStepUp = !useOidcStepUpGate || !session || ialAndIdProofingSufficient
 
-  const needsChallengeFlow = useOidcStepUpGate && !!token && !ialAndIdProofingSufficient
+  const needsChallengeFlow = useOidcStepUpGate && !!session && !ialAndIdProofingSufficient
 
   const [phase, setPhase] = useState<GuardPhase | null>(null)
 

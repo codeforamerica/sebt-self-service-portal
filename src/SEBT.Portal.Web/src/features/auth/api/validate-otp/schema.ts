@@ -5,10 +5,4 @@ export const ValidateOtpRequestSchema = z.object({
   otp: z.string().regex(/^\d{6}$/, 'OTP must be 6 digits')
 })
 
-export const ValidateOtpResponseSchema = z.object({
-  token: z.string(),
-  requiresIdProofing: z.boolean().optional()
-})
-
 export type ValidateOtpRequest = z.infer<typeof ValidateOtpRequestSchema>
-export type ValidateOtpResponse = z.infer<typeof ValidateOtpResponseSchema>

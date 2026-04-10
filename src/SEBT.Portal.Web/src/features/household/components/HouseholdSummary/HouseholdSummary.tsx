@@ -129,6 +129,7 @@ export function HouseholdSummary() {
                 <br />
                 <Link
                   href="/profile/address"
+                  data-analytics-cta="update_address_cta"
                   className="usa-link"
                 >
                   {t('profileTableActionChangeAddress')}
@@ -152,6 +153,7 @@ export function HouseholdSummary() {
                 <br />
                 <Link
                   href="/contact"
+                  data-analytics-cta="update_contact_cta"
                   className="usa-link"
                 >
                   {t('profileTableActionChangeContact')}
