@@ -33,7 +33,7 @@ describe('BetaBanner', () => {
     renderWithFlags({ enable_beta_banner: true })
 
     expect(screen.getByRole('alert')).toBeInTheDocument()
-    expect(screen.getByRole('alert')).toHaveClass('usa-alert--info', 'margin-top-0')
+    expect(screen.getByRole('alert')).toHaveClass('usa-alert--warning', 'margin-top-0')
   })
 
   it('renders localized banner text', () => {

@@ -14,7 +14,7 @@ export function BetaBanner() {
 
   return (
     <Alert
-      variant="info"
+      variant="warning"
       className="margin-top-0"
     >
       {t(
