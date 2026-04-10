@@ -22,7 +22,25 @@ vi.mock('next/navigation', () => ({
 
 const apiFetchMock = vi.fn()
 vi.mock('@/api', () => ({
-  apiFetch: (...args: unknown[]) => apiFetchMock(...args)
+  apiFetch: (...args: unknown[]) => apiFetchMock(...args),
+  ApiError: class ApiError extends Error {
+    status: number
+    constructor(message: string, status: number) {
+      super(message)
+      this.status = status
+    }
+  }
+}))
+
+vi.mock('@/api/client', () => ({
+  apiFetch: (...args: unknown[]) => apiFetchMock(...args),
+  ApiError: class ApiError extends Error {
+    status: number
+    constructor(message: string, status: number) {
+      super(message)
+      this.status = status
+    }
+  }
 }))
 
 vi.mock('@/lib/oidc-pkce', () => ({
@@ -34,28 +52,47 @@ vi.mock('@/lib/oidc-pkce', () => ({
   savePkceForCallback: vi.fn()
 }))
 
-function base64UrlEncodeJson(obj: Record<string, unknown>): string {
-  const json = JSON.stringify(obj)
-  return btoa(json).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '')
-}
-
-/** JWT that does not satisfy IAL1+ step-up gate (IAL 1 + fresh id_proofing for completeness). */
-function buildLowIalToken(): string {
-  const nowSec = Math.floor(Date.now() / 1000)
-  const payload = base64UrlEncodeJson({
-    ial: '1',
-    id_proofing_completed_at: nowSec
+/**
+ * Routes the shared apiFetch mock to either the /auth/status response (used by AuthProvider
+ * to establish the session) or the OIDC config response (used by IalGuard when the user
+ * clicks Verify). Call with `ial: null` to simulate an unauthenticated user.
+ */
+function setupApiFetchMock(options: {
+  ial: string | null
+  idProofingCompletedAtSecondsAgo?: number
+  oidcConfigFailure?: boolean
+}) {
+  apiFetchMock.mockImplementation((endpoint: string) => {
+    if (endpoint === '/auth/status') {
+      if (options.ial === null) {
+        return Promise.reject(Object.assign(new Error('Unauthorized'), { status: 401 }))
+      }
+      const nowSec = Math.floor(Date.now() / 1000)
+      return Promise.resolve({
+        isAuthorized: true,
+        email: 'user@example.com',
+        ial: options.ial,
+        idProofingStatus: 2,
+        idProofingCompletedAt:
+          options.idProofingCompletedAtSecondsAgo != null
+            ? nowSec - options.idProofingCompletedAtSecondsAgo
+            : nowSec,
+        idProofingExpiresAt: null
+      })
+    }
+    if (endpoint.startsWith('/auth/oidc/') && endpoint.includes('/config')) {
+      if (options.oidcConfigFailure) {
+        return Promise.reject(new Error('config failed'))
+      }
+      return Promise.resolve({
+        authorizationEndpoint: 'https://idp.example/auth',
+        tokenEndpoint: 'https://idp.example/token',
+        clientId: 'cid',
+        redirectUri: 'http://localhost:3000/callback'
+      })
+    }
+    return Promise.resolve({})
   })
-  return `h.${payload}.s`
-}
-
-function buildPassingToken(): string {
-  const nowSec = Math.floor(Date.now() / 1000)
-  const payload = base64UrlEncodeJson({
-    ial: '1plus',
-    id_proofing_completed_at: nowSec
-  })
-  return `h.${payload}.s`
 }
 
 describe('IalGuard', () => {
@@ -65,7 +102,6 @@ describe('IalGuard', () => {
     prevNextPublicState = process.env.NEXT_PUBLIC_STATE
     process.env.NEXT_PUBLIC_STATE = 'co'
     vi.useFakeTimers({ shouldAdvanceTime: true })
-    sessionStorage.clear()
     apiFetchMock.mockReset()
     mockBack.mockReset()
     mockPush.mockReset()
@@ -77,7 +113,6 @@ describe('IalGuard', () => {
 
   afterEach(() => {
     vi.useRealTimers()
-    sessionStorage.clear()
     if (prevNextPublicState === undefined) {
       delete process.env.NEXT_PUBLIC_STATE
     } else {
@@ -85,8 +120,8 @@ describe('IalGuard', () => {
     }
   })
 
-  it('renders children when JWT already satisfies IAL gate', async () => {
-    sessionStorage.setItem('auth_token', buildPassingToken())
+  it('renders children when session already satisfies IAL gate', async () => {
+    setupApiFetchMock({ ial: '1plus' })
 
     render(
       <AuthProvider>
@@ -101,13 +136,7 @@ describe('IalGuard', () => {
   })
 
   it('shows checking then challenge; Verify starts step-up redirect', async () => {
-    sessionStorage.setItem('auth_token', buildLowIalToken())
-    apiFetchMock.mockResolvedValue({
-      authorizationEndpoint: 'https://idp.example/auth',
-      tokenEndpoint: 'https://idp.example/token',
-      clientId: 'cid',
-      redirectUri: 'http://localhost:3000/callback'
-    })
+    setupApiFetchMock({ ial: '1' })
 
     const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTimeAsync })
 
@@ -119,7 +148,9 @@ describe('IalGuard', () => {
       </AuthProvider>
     )
 
-    expect(screen.getByText(/Please wait/)).toBeInTheDocument()
+    await waitFor(() => {
+      expect(screen.getByText(/Please wait/)).toBeInTheDocument()
+    })
     expect(screen.getByText(/Do not exit the page/i)).toBeInTheDocument()
 
     await act(async () => {
@@ -133,13 +164,16 @@ describe('IalGuard', () => {
     await user.click(screen.getByRole('button', { name: 'Verify' }))
 
     await waitFor(() => {
-      expect(apiFetchMock).toHaveBeenCalled()
+      expect(apiFetchMock).toHaveBeenCalledWith(
+        expect.stringContaining('/auth/oidc/'),
+        expect.anything()
+      )
     })
     expect(window.location.href).toBe('https://idp.example/authorize')
   })
 
   it('Back uses router.back when history length > 1', async () => {
-    sessionStorage.setItem('auth_token', buildLowIalToken())
+    setupApiFetchMock({ ial: '1' })
     vi.spyOn(window.history, 'length', 'get').mockReturnValue(2)
 
     render(
@@ -150,6 +184,7 @@ describe('IalGuard', () => {
       </AuthProvider>
     )
 
+    await waitFor(() => expect(screen.getByText(/Please wait/)).toBeInTheDocument())
     await act(async () => {
       await vi.advanceTimersByTimeAsync(500)
     })
@@ -164,7 +199,7 @@ describe('IalGuard', () => {
   })
 
   it('Back falls back to dashboard when history length is 1', async () => {
-    sessionStorage.setItem('auth_token', buildLowIalToken())
+    setupApiFetchMock({ ial: '1' })
     vi.spyOn(window.history, 'length', 'get').mockReturnValue(1)
 
     render(
@@ -175,6 +210,7 @@ describe('IalGuard', () => {
       </AuthProvider>
     )
 
+    await waitFor(() => expect(screen.getByText(/Please wait/)).toBeInTheDocument())
     await act(async () => {
       await vi.advanceTimersByTimeAsync(500)
     })
@@ -188,8 +224,7 @@ describe('IalGuard', () => {
   })
 
   it('failure state shows step-up failure layout; Continue behaves like Back', async () => {
-    sessionStorage.setItem('auth_token', buildLowIalToken())
-    apiFetchMock.mockRejectedValue(new Error('config failed'))
+    setupApiFetchMock({ ial: '1', oidcConfigFailure: true })
     vi.spyOn(window.history, 'length', 'get').mockReturnValue(2)
 
     const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTimeAsync })
@@ -202,8 +237,13 @@ describe('IalGuard', () => {
       </AuthProvider>
     )
 
+    await waitFor(() => expect(screen.getByText(/Please wait/)).toBeInTheDocument())
     await act(async () => {
       await vi.advanceTimersByTimeAsync(500)
+    })
+
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: 'Verify' })).toBeInTheDocument()
     })
 
     await user.click(screen.getByRole('button', { name: 'Verify' }))

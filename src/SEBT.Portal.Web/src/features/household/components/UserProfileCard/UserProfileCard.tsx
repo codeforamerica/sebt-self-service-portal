@@ -40,8 +40,8 @@ export function UserProfileCard() {
   const router = useRouter()
   const data = useRequiredHouseholdData()
 
-  const handleLogout = () => {
-    logout()
+  const handleLogout = async () => {
+    await logout()
     router.push('/login')
   }
 

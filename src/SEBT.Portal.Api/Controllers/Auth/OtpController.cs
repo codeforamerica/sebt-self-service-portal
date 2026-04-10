@@ -1,7 +1,10 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 using SEBT.Portal.Api.Models;
+using SEBT.Portal.Api.Services;
+using SEBT.Portal.Core.AppSettings;
 using SEBT.Portal.Kernel;
 using SEBT.Portal.Kernel.AspNetCore;
 using SEBT.Portal.Kernel.Results;
@@ -11,10 +14,12 @@ namespace SEBT.Portal.Api.Controllers;
 
 /// <summary>
 /// Controller for handling one-time password (OTP) requests and validations.
-/// </summary>  
+/// </summary>
 [ApiController]
 [Route("api/auth/otp")]
-public class OtpController(ILogger<OtpController> logger) : ControllerBase
+public class OtpController(
+    ILogger<OtpController> logger,
+    IOptions<JwtSettings> jwtSettingsOptions) : ControllerBase
 {
     /// <summary>
     /// Request a one-time password (OTP) to be sent to the specified email address.
@@ -59,13 +64,13 @@ public class OtpController(ILogger<OtpController> logger) : ControllerBase
     /// </summary>
     /// <param name="command">The command containing the email address and OTP code.</param>
     /// <param name="handler">The command handler for processing the OTP validation.</param>
-    /// <returns>An OK result with a JWT token if the OTP is valid; otherwise, a BadRequest result.</returns>
-    /// <response code="200">OTP validated successfully. Returns a JWT token.</response>
+    /// <returns>204 No Content on success; the session JWT is set via HttpOnly cookie.</returns>
+    /// <response code="204">OTP validated successfully. Session cookie set; no body.</response>
     /// <response code="400">Invalid OTP or request.</response>
     /// <response code="500">An error occurred while generating the authentication token.</response>
     [HttpPost("validate")]
     [EnableRateLimiting(RateLimitPolicies.Otp)]
-    [ProducesResponseType(typeof(ValidateOtpResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status429TooManyRequests)]
     [ProducesResponseType(StatusCodes.Status500InternalServerError)]
@@ -85,7 +90,9 @@ public class OtpController(ILogger<OtpController> logger) : ControllerBase
         if (result.IsSuccess)
         {
             logger.LogInformation("JWT token generated successfully for email {Email}", command.Email);
-            return Ok(new ValidateOtpResponse(result.Value));
+            var expiresAt = DateTimeOffset.UtcNow.AddMinutes(jwtSettingsOptions.Value.ExpirationMinutes);
+            AuthCookies.SetAuthCookie(Response, result.Value, expiresAt);
+            return NoContent();
         }
         else
         {

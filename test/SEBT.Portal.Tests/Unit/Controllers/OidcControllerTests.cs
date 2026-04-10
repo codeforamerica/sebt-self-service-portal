@@ -2,23 +2,24 @@ using System.IdentityModel.Tokens.Jwt;
 using System.Net.Http;
 using System.Security.Claims;
 using System.Text;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging.Abstractions;
+using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
 using NSubstitute;
 using RichardSzalay.MockHttp;
 using SEBT.Portal.Api.Controllers.Auth;
 using SEBT.Portal.Api.Models;
+using SEBT.Portal.Api.Services;
+using SEBT.Portal.Core.AppSettings;
 using SEBT.Portal.Core.Models.Auth;
 using SEBT.Portal.Core.Repositories;
 using SEBT.Portal.Core.Services;
 
 namespace SEBT.Portal.Tests.Unit.Controllers;
 
-/// <summary>
-/// Unit tests for <see cref="OidcController"/> (OIDC endpoints; Oidc config
-/// </summary>
 public class OidcControllerTests
 {
     private const string CoStateKey = "co";
@@ -34,13 +35,27 @@ public class OidcControllerTests
         _httpFactory = Substitute.For<IHttpClientFactory>();
         _userRepository = Substitute.For<IUserRepository>();
         _jwtService = Substitute.For<IJwtTokenService>();
+        var jwtSettings = Options.Create(new JwtSettings
+        {
+            SecretKey = new string('x', 32),
+            Issuer = "test",
+            Audience = "test",
+            ExpirationMinutes = 60
+        });
 
         _controller = new OidcController(
             _config,
             _httpFactory,
             NullLogger<OidcController>.Instance,
             _userRepository,
-            _jwtService);
+            _jwtService,
+            jwtSettings)
+        {
+            ControllerContext = new ControllerContext
+            {
+                HttpContext = new DefaultHttpContext()
+            }
+        };
     }
 
     [Fact]
@@ -135,9 +150,6 @@ public class OidcControllerTests
         Assert.Equal(503, statusResult.StatusCode);
     }
 
-    /// <summary>
-    /// Callback token must contain an email or sub claim usable as login identifier.
-    /// </summary>
     [Fact]
     public async Task CompleteLogin_WhenCallbackTokenHasNoEmailOrSub_Returns400()
     {
@@ -154,12 +166,8 @@ public class OidcControllerTests
         Assert.Equal("Callback token must contain an email or sub claim.", errorResponse.Error);
     }
 
-    /// <summary>
-    /// Success path: valid callback token returns 200 with a JSON body containing a "token" property (portal JWT).
-    /// Ensures the route returns the response shape the frontend expects.
-    /// </summary>
     [Fact]
-    public async Task CompleteLogin_WhenValidCallbackToken_Returns200WithToken()
+    public async Task CompleteLogin_WhenValidCallbackToken_SetsAuthCookieAndReturnsEmptyBody()
     {
         const string signingKey = "complete-login-signing-key-at-least-32-characters-long";
         _config["Oidc:CompleteLoginSigningKey"].Returns(signingKey);
@@ -178,12 +186,14 @@ public class OidcControllerTests
         var result = await _controller.CompleteLogin(body, CancellationToken.None);
 
         var okResult = Assert.IsType<OkObjectResult>(result);
-        Assert.NotNull(okResult.Value);
-        var valueType = okResult.Value.GetType();
-        var tokenProp = valueType.GetProperty("token");
-        Assert.NotNull(tokenProp);
-        var tokenValue = tokenProp.GetValue(okResult.Value) as string;
-        Assert.Equal(portalJwt, tokenValue);
+        var response = Assert.IsType<CompleteLoginResponse>(okResult.Value);
+        Assert.Null(response.ReturnUrl);
+
+        var setCookie = _controller.Response.Headers["Set-Cookie"].ToString();
+        Assert.Contains($"{AuthCookies.AuthCookieName}={portalJwt}", setCookie);
+        Assert.Contains("httponly", setCookie, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("secure", setCookie, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("samesite=lax", setCookie, StringComparison.OrdinalIgnoreCase);
     }
 
     /// <summary>
@@ -241,9 +251,11 @@ public class OidcControllerTests
         var result = await _controller.CompleteLogin(body, CancellationToken.None);
 
         var okResult = Assert.IsType<OkObjectResult>(result);
-        var valueType = okResult.Value!.GetType();
-        Assert.Equal("/profile/address?q=1", valueType.GetProperty("returnUrl")!.GetValue(okResult.Value) as string);
-        Assert.Equal(portalJwt, valueType.GetProperty("token")!.GetValue(okResult.Value) as string);
+        var response = Assert.IsType<CompleteLoginResponse>(okResult.Value);
+        Assert.Equal("/profile/address?q=1", response.ReturnUrl);
+
+        var setCookie = _controller.Response.Headers["Set-Cookie"].ToString();
+        Assert.Contains($"{AuthCookies.AuthCookieName}={portalJwt}", setCookie);
     }
 
     [Fact]
@@ -271,7 +283,8 @@ public class OidcControllerTests
         var result = await _controller.CompleteLogin(body, CancellationToken.None);
 
         var okResult = Assert.IsType<OkObjectResult>(result);
-        Assert.Null(okResult.Value!.GetType().GetProperty("returnUrl"));
+        var response = Assert.IsType<CompleteLoginResponse>(okResult.Value);
+        Assert.Null(response.ReturnUrl);
     }
 
     private static string CreateValidCallbackToken(string signingKey, string email)

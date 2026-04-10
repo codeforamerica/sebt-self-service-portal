@@ -44,13 +44,12 @@ export function isSafeOidcStepUpReturnPath(v: string): boolean {
 
 const returnUrlAfterOidcSchema = z
   .string()
-  .optional()
+  .nullish()
   .refine((v) => v == null || v === '' || isSafeOidcStepUpReturnPath(v), {
     message: 'returnUrl must be a safe relative path'
   })
 
 export const OidcCompleteLoginResponseSchema = z.object({
-  token: z.string(),
   returnUrl: returnUrlAfterOidcSchema
 })
 

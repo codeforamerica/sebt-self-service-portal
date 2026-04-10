@@ -1,7 +1,2 @@
-export {
-  ValidateOtpRequestSchema,
-  ValidateOtpResponseSchema,
-  type ValidateOtpRequest,
-  type ValidateOtpResponse
-} from './schema'
+export { ValidateOtpRequestSchema, type ValidateOtpRequest } from './schema'
 export { useValidateOtp } from './useValidateOtp'

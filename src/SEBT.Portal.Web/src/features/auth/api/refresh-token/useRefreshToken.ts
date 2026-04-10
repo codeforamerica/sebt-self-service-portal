@@ -2,20 +2,16 @@ import { useMutation } from '@tanstack/react-query'
 
 import { ApiError, apiFetch } from '@/api'
 
-import type { ValidateOtpResponse } from '../validate-otp/schema'
-import { ValidateOtpResponseSchema } from '../validate-otp/schema'
-
 /**
- * Hook to refresh the JWT token.
- * Requires a valid current token (Authorization header).
- * Returns a new token with updated claims and extended expiration.
+ * Hook to refresh the JWT session cookie.
+ * Requires an existing valid session cookie. Backend responds with 204 and a fresh Set-Cookie;
+ * the caller should re-read session state (e.g. via useAuth().login()) to pick up updated claims.
  */
 export function useRefreshToken() {
   return useMutation({
     mutationFn: () =>
-      apiFetch<ValidateOtpResponse>('/auth/refresh', {
-        method: 'POST',
-        schema: ValidateOtpResponseSchema
+      apiFetch<void>('/auth/refresh', {
+        method: 'POST'
       }),
     // Don't retry on 4xx errors (auth issues)
     retry: (failureCount, error) => {

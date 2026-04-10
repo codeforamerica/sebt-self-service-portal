@@ -4,89 +4,115 @@ import {
   createContext,
   useCallback,
   useContext,
+  useEffect,
   useMemo,
-  useSyncExternalStore,
+  useState,
   type ReactNode
 } from 'react'
 
-export const AUTH_TOKEN_KEY = 'auth_token'
+import { ApiError, apiFetch } from '@/api/client'
+
+import { AuthorizationStatusResponseSchema } from '../api/auth-status'
+
+/**
+ * Non-sensitive session claims the SPA needs for UI decisions.
+ * The underlying JWT lives in an HttpOnly cookie and cannot be read by JavaScript.
+ * Mirrors the validated GET /api/auth/status response, minus the always-true `isAuthorized` flag.
+ */
+export interface SessionInfo {
+  email: string | null
+  ial: string | null
+  idProofingStatus: number | null
+  idProofingCompletedAt: number | null
+  idProofingExpiresAt: number | null
+}
 
 interface AuthContextValue {
-  token: string | null
+  session: SessionInfo | null
   isAuthenticated: boolean
   isLoading: boolean
-  login: (token: string) => void
-  logout: () => void
+  /**
+   * Fetches /auth/status and updates context with the current session (call after login/refresh).
+   * Returns the freshly fetched session so callers can route based on its claims without
+   * waiting for React state to flush.
+   */
+  login: () => Promise<SessionInfo | null>
+  /** Clears the server cookie via /auth/logout and resets local state. */
+  logout: () => Promise<void>
 }
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined)
+
+async function fetchSession(): Promise<SessionInfo | null> {
+  try {
+    const response = await apiFetch('/auth/status', { schema: AuthorizationStatusResponseSchema })
+    if (!response.isAuthorized) return null
+    return {
+      email: response.email ?? null,
+      ial: response.ial ?? null,
+      idProofingStatus: response.idProofingStatus ?? null,
+      idProofingCompletedAt: response.idProofingCompletedAt ?? null,
+      idProofingExpiresAt: response.idProofingExpiresAt ?? null
+    }
+  } catch (error) {
+    // 401 means not logged in; anything else we also treat as unauthenticated
+    // so the guard can redirect. Network failures will retry on next navigation.
+    if (error instanceof ApiError && error.status !== 401) {
+      console.warn('Failed to fetch auth session', error)
+    }
+    return null
+  }
+}
 
 interface AuthProviderProps {
   children: ReactNode
 }
 
-// External store for token to avoid useEffect setState issues
-let tokenListeners: Array<() => void> = []
-
-function getTokenSnapshot(): string | null {
-  if (typeof window === 'undefined') {
-    return null
-  }
-  return sessionStorage.getItem(AUTH_TOKEN_KEY)
-}
-
 /**
- * Persist token to sessionStorage and notify listeners. Called by login() and by OIDC callback.
- */
-export function setAuthToken(newToken: string | null): void {
-  setTokenExternal(newToken)
-}
-
-function getServerSnapshot(): string | null {
-  return null
-}
-
-function subscribeToToken(callback: () => void): () => void {
-  tokenListeners.push(callback)
-  return () => {
-    tokenListeners = tokenListeners.filter((l) => l !== callback)
-  }
-}
-
-function setTokenExternal(newToken: string | null): void {
-  if (newToken !== null) {
-    sessionStorage.setItem(AUTH_TOKEN_KEY, newToken)
-  } else {
-    sessionStorage.removeItem(AUTH_TOKEN_KEY)
-  }
-  tokenListeners.forEach((listener) => listener())
-}
-
-/**
- * AuthProvider manages JWT token state for authenticated API requests.
- * Token is persisted in sessionStorage for security (cleared on browser close).
+ * Tracks the current authenticated session. On mount, queries /auth/status using
+ * the HttpOnly session cookie to determine who (if anyone) is logged in.
  */
 export function AuthProvider({ children }: AuthProviderProps) {
-  const token = useSyncExternalStore(subscribeToToken, getTokenSnapshot, getServerSnapshot)
+  const [session, setSession] = useState<SessionInfo | null>(null)
+  const [isLoading, setIsLoading] = useState(true)
 
-  const login = useCallback((newToken: string) => {
-    setTokenExternal(newToken)
+  useEffect(() => {
+    let cancelled = false
+    fetchSession().then((result) => {
+      if (!cancelled) {
+        setSession(result)
+        setIsLoading(false)
+      }
+    })
+    return () => {
+      cancelled = true
+    }
   }, [])
 
-  const logout = useCallback(() => {
-    setTokenExternal(null)
+  const login = useCallback(async () => {
+    const result = await fetchSession()
+    setSession(result)
+    return result
+  }, [])
+
+  const logout = useCallback(async () => {
+    try {
+      await apiFetch('/auth/logout', { method: 'POST' })
+    } catch {
+      // Logout is best-effort — clear local state even if the server call failed.
+    }
+    setSession(null)
   }, [])
 
   const value = useMemo<AuthContextValue>(
     () => ({
-      token,
-      isAuthenticated: token !== null,
-      // With useSyncExternalStore, the token is available synchronously
-      isLoading: false,
+      session,
+      isAuthenticated: session !== null,
+      isLoading,
       login,
       logout
     }),
-    [token, login, logout]
+    [session, isLoading, login, logout]
   )
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
@@ -102,28 +128,4 @@ export function useAuth(): AuthContextValue {
     throw new Error('useAuth must be used within an AuthProvider')
   }
   return context
-}
-
-/**
- * Get the current auth token from sessionStorage.
- * This is a synchronous helper for use in non-React code (e.g., apiFetch).
- * Returns null if no token is stored.
- */
-export function getAuthToken(): string | null {
-  if (typeof window === 'undefined') {
-    return null
-  }
-  return sessionStorage.getItem(AUTH_TOKEN_KEY)
-}
-
-/**
- * Clear the auth token from sessionStorage.
- * This is a synchronous helper for use in non-React code (e.g., apiFetch 401 handling).
- * Notifies all listeners so React components update.
- */
-export function clearAuthToken(): void {
-  if (typeof window === 'undefined') {
-    return
-  }
-  setTokenExternal(null)
 }
