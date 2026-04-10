@@ -345,6 +345,14 @@ try
     {
         var useMockHouseholdData = app.Configuration.GetValue<bool>("UseMockHouseholdData", false);
         var databaseSeeder = scope.ServiceProvider.GetRequiredService<IDatabaseSeeder>();
+
+        // In Development, clear stale seed data before re-seeding so that scenario
+        // definition changes (e.g. IAL levels) are always reflected in the database.
+        if (app.Environment.IsDevelopment())
+        {
+            await databaseSeeder.ClearSeededDataAsync(CancellationToken.None);
+        }
+
         await databaseSeeder.SeedTestUsersAsync(useMockHouseholdData, CancellationToken.None);
     }
     Log.Information("Database migrations completed successfully");
