@@ -133,6 +133,12 @@ describe('HouseholdSummary', () => {
     expect(link).toHaveAttribute('data-analytics-cta', 'update_address_cta')
   })
 
+  it('exposes data-analytics-cta on the change contact preferences link', () => {
+    render(<HouseholdSummary />)
+    const link = screen.getByRole('link', { name: 'Change my contact preferences' })
+    expect(link).toHaveAttribute('data-analytics-cta', 'update_contact_cta')
+  })
+
   it('hides mailing address when not provided', () => {
     mockReturnData = { ...defaultMockData, addressOnFile: null }
     render(<HouseholdSummary />)
