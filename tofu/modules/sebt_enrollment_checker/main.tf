@@ -52,12 +52,9 @@ resource "aws_kms_key" "site" {
   deletion_window_in_days = 7
   enable_key_rotation     = true
   policy = jsonencode(yamldecode(templatefile("${path.module}/templates/bucket-key-policy.yaml.tftpl", {
-    account_id = data.aws_caller_identity.current.account_id
-    partition  = data.aws_partition.current.partition
-    # CloudFront distribution ARN is needed here but the distribution is
-    # created in a later step. We use a wildcard for now and will tighten
-    # this once the distribution resource exists.
-    distribution_arn = "*"
+    account_id       = data.aws_caller_identity.current.account_id
+    partition        = data.aws_partition.current.partition
+    distribution_arn = aws_cloudfront_distribution.site.arn
   })))
 
   tags = {
@@ -158,4 +155,126 @@ resource "aws_route53_record" "certificate_validation" {
 resource "aws_acm_certificate_validation" "site" {
   certificate_arn         = aws_acm_certificate.site.arn
   validation_record_fqdns = [for record in aws_route53_record.certificate_validation : record.fqdn]
+}
+
+# ---------------------------------------------------------------------------
+# CloudFront distribution
+# ---------------------------------------------------------------------------
+
+# Origin Access Control (OAC) lets CloudFront authenticate to S3 using
+# AWS SigV4 request signing. This replaces the older Origin Access Identity
+# (OAI) approach. With OAC, CloudFront signs every request to S3, and the
+# bucket policy checks the signature — so the bucket never needs to be public.
+resource "aws_cloudfront_origin_access_control" "site" {
+  name                              = "${var.project}-${var.state}-${var.environment}-enrollment-checker"
+  origin_access_control_origin_type = "s3"
+  signing_behavior                  = "always"
+  signing_protocol                  = "sigv4"
+}
+
+# The CloudFront distribution serves the static site from S3 over HTTPS.
+# It acts as a CDN — caching files at edge locations close to users for
+# faster delivery — and handles TLS termination using our ACM certificate.
+resource "aws_cloudfront_distribution" "site" {
+  aliases             = [var.domain]
+  default_root_object = "index.html"
+  enabled             = true
+  price_class         = "PriceClass_100"
+
+  # S3 origin: CloudFront fetches files from our private bucket using OAC.
+  origin {
+    domain_name              = aws_s3_bucket.site.bucket_regional_domain_name
+    origin_id                = "s3"
+    origin_access_control_id = aws_cloudfront_origin_access_control.site.id
+  }
+
+  # Default cache behavior: serve static files from S3.
+  # GET and HEAD only — the static site has no server-side mutations.
+  default_cache_behavior {
+    allowed_methods        = ["GET", "HEAD"]
+    cached_methods         = ["GET", "HEAD"]
+    compress               = true
+    target_origin_id       = "s3"
+    viewer_protocol_policy = "redirect-to-https"
+
+    forwarded_values {
+      query_string = false
+
+      cookies {
+        forward = "none"
+      }
+    }
+  }
+
+  # Handle client-side routing: when S3 returns a 404 (e.g. user navigates
+  # to /check directly), serve index.html instead so the Next.js client
+  # router can handle the path.
+  custom_error_response {
+    error_code            = 403
+    response_code         = 200
+    response_page_path    = "/index.html"
+    error_caching_min_ttl = 10
+  }
+
+  custom_error_response {
+    error_code            = 404
+    response_code         = 200
+    response_page_path    = "/index.html"
+    error_caching_min_ttl = 10
+  }
+
+  # Send CloudFront access logs to the shared logging bucket.
+  logging_config {
+    bucket          = var.logging_bucket_domain_name
+    include_cookies = false
+    prefix          = "cloudfront/enrollment-checker/"
+  }
+
+  restrictions {
+    geo_restriction {
+      restriction_type = "none"
+    }
+  }
+
+  # Use our ACM certificate for HTTPS. TLS 1.2 is the minimum — older
+  # protocols have known vulnerabilities. SNI (Server Name Indication)
+  # is the standard approach and avoids the cost of a dedicated IP.
+  viewer_certificate {
+    acm_certificate_arn      = aws_acm_certificate_validation.site.certificate_arn
+    minimum_protocol_version = "TLSv1.2_2021"
+    ssl_support_method       = "sni-only"
+  }
+
+  tags = {
+    service = "enrollment-checker"
+  }
+}
+
+# Bucket policy: deny non-SSL requests and allow only this CloudFront
+# distribution to read objects. Applied after the distribution is created
+# so we can reference its ARN.
+resource "aws_s3_bucket_policy" "site" {
+  bucket = aws_s3_bucket.site.id
+  policy = jsonencode(yamldecode(templatefile("${path.module}/templates/bucket-policy.yaml.tftpl", {
+    bucket_arn       = aws_s3_bucket.site.arn
+    distribution_arn = aws_cloudfront_distribution.site.arn
+  })))
+
+  depends_on = [aws_s3_bucket_public_access_block.site]
+}
+
+# Route53 A record pointing the enrollment checker domain at CloudFront.
+# This is an "alias" record — a Route53-specific feature that maps a
+# domain directly to an AWS resource without a CNAME. It works at the
+# zone apex and has no TTL (queries resolve instantly via Route53).
+resource "aws_route53_record" "site" {
+  name    = var.domain
+  type    = "A"
+  zone_id = var.hosted_zone_id
+
+  alias {
+    evaluate_target_health = false
+    name                   = aws_cloudfront_distribution.site.domain_name
+    zone_id                = aws_cloudfront_distribution.site.hosted_zone_id
+  }
 }
