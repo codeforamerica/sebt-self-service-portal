@@ -308,4 +308,27 @@ describe('ChildCard', () => {
 
     expect(screen.queryByText('Request a replacement card')).not.toBeInTheDocument()
   })
+
+  it('exposes data-analytics-cta on the replacement card link for cta_click tracking', () => {
+    const summerEbtCase = createMockSummerEbtCase({
+      ...mockCase,
+      issuanceType: 'SummerEbt',
+      cardRequestedAt: '2025-01-01T00:00:00Z'
+    })
+
+    renderWithFlags(
+      { summerEbtCase },
+      {
+        flags: { ...TEST_FEATURE_FLAGS, enable_card_replacement: true },
+        isLoading: false,
+        isError: false
+      }
+    )
+
+    const replacementLink = screen.getByText('Request a replacement card')
+    expect(replacementLink.closest('a')).toHaveAttribute(
+      'data-analytics-cta',
+      'replacement_card_cta'
+    )
+  })
 })
