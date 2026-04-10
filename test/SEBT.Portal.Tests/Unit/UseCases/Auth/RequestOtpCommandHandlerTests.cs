@@ -1,6 +1,7 @@
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.FeatureManagement;
+using SEBT.Portal.Core.AppSettings;
 using SEBT.Portal.Core.Services;
 using SEBT.Portal.Kernel;
 using SEBT.Portal.Kernel.Results;
@@ -223,9 +224,9 @@ public class RequestOtpCommandHandlerTests
     public async Task Handle_WhenBypassEnabled_AndStaging_AndMatchingEmail_ReturnsSuccessWithoutSendingOtp()
     {
         // Arrange
-        featureManager.IsEnabledAsync("bypass_otp").Returns(true);
+        featureManager.IsEnabledAsync(OtpBypassSettings.FeatureFlagName).Returns(true);
         hostEnvironment.EnvironmentName.Returns("Staging");
-        var command = new RequestOtpCommand { Email = "dast-sanner@sebtportal.com" };
+        var command = new RequestOtpCommand { Email = OtpBypassSettings.Email };
 
         // Act
         var result = await handler.Handle(command, CancellationToken.None);
@@ -241,9 +242,9 @@ public class RequestOtpCommandHandlerTests
     public async Task Handle_WhenBypassEnabled_ButNotStaging_ProceedsNormally()
     {
         // Arrange
-        featureManager.IsEnabledAsync("bypass_otp").Returns(true);
+        featureManager.IsEnabledAsync(OtpBypassSettings.FeatureFlagName).Returns(true);
         hostEnvironment.EnvironmentName.Returns("Production");
-        var command = new RequestOtpCommand { Email = "dast-sanner@sebtportal.com" };
+        var command = new RequestOtpCommand { Email = OtpBypassSettings.Email };
         emailSender.SendOtpAsync(command.Email, Arg.Any<string>()).Returns(Result.Success());
 
         // Act
@@ -258,7 +259,7 @@ public class RequestOtpCommandHandlerTests
     public async Task Handle_WhenBypassEnabled_AndStaging_ButWrongEmail_ProceedsNormally()
     {
         // Arrange
-        featureManager.IsEnabledAsync("bypass_otp").Returns(true);
+        featureManager.IsEnabledAsync(OtpBypassSettings.FeatureFlagName).Returns(true);
         hostEnvironment.EnvironmentName.Returns("Staging");
         var command = new RequestOtpCommand { Email = "user@example.com" };
         emailSender.SendOtpAsync(command.Email, Arg.Any<string>()).Returns(Result.Success());
@@ -275,9 +276,9 @@ public class RequestOtpCommandHandlerTests
     public async Task Handle_WhenBypassDisabled_ProceedsNormally()
     {
         // Arrange
-        featureManager.IsEnabledAsync("bypass_otp").Returns(false);
+        featureManager.IsEnabledAsync(OtpBypassSettings.FeatureFlagName).Returns(false);
         hostEnvironment.EnvironmentName.Returns("Staging");
-        var command = new RequestOtpCommand { Email = "dast-sanner@sebtportal.com" };
+        var command = new RequestOtpCommand { Email = OtpBypassSettings.Email };
         emailSender.SendOtpAsync(command.Email, Arg.Any<string>()).Returns(Result.Success());
 
         // Act

@@ -6,6 +6,7 @@ using NSubstitute;
 using NSubstitute.ReceivedExtensions;
 using SEBT.Portal.Core.Models.Auth;
 using SEBT.Portal.Core.Repositories;
+using SEBT.Portal.Core.AppSettings;
 using SEBT.Portal.Core.Services;
 using SEBT.Portal.Kernel;
 using SEBT.Portal.Kernel.Results;
@@ -737,18 +738,18 @@ public class ValidateOtpCommandHandlerTests
     public async Task Handle_WhenBypassEnabled_AndStaging_AndMatchingEmailAndOtp_ReturnsRealJwt()
     {
         // Arrange
-        featureManager.IsEnabledAsync("bypass_otp").Returns(true);
+        featureManager.IsEnabledAsync(OtpBypassSettings.FeatureFlagName).Returns(true);
         hostEnvironment.EnvironmentName.Returns("Staging");
 
         var user = new User
         {
-            Email = "dast-sanner@sebtportal.com",
+            Email = OtpBypassSettings.Email,
             IalLevel = UserIalLevel.None
         };
 
-        userRepository.GetOrCreateUserAsync("dast-sanner@sebtportal.com", Arg.Any<CancellationToken>())
+        userRepository.GetOrCreateUserAsync(OtpBypassSettings.Email, Arg.Any<CancellationToken>())
             .Returns((user, true));
-        jwtTokenService.GenerateToken(Arg.Is<User>(u => u.Email == "dast-sanner@sebtportal.com"))
+        jwtTokenService.GenerateToken(Arg.Is<User>(u => u.Email == OtpBypassSettings.Email))
             .Returns("real.bypass.jwt.token");
 
         var handler = new ValidateOtpCommandHandler(
@@ -762,8 +763,8 @@ public class ValidateOtpCommandHandlerTests
 
         var command = new ValidateOtpCommand
         {
-            Email = "dast-sanner@sebtportal.com",
-            Otp = "123456"
+            Email = OtpBypassSettings.Email,
+            Otp = OtpBypassSettings.OtpCode
         };
 
         // Act
@@ -775,15 +776,15 @@ public class ValidateOtpCommandHandlerTests
         Assert.Equal("real.bypass.jwt.token", successResult.Value);
         await otpRepository.DidNotReceive().GetOtpCodeByEmailAsync(Arg.Any<string>());
         await otpRepository.DidNotReceive().DeleteOtpCodeByEmailAsync(Arg.Any<string>());
-        await userRepository.Received(1).GetOrCreateUserAsync("dast-sanner@sebtportal.com", Arg.Any<CancellationToken>());
-        jwtTokenService.Received(1).GenerateToken(Arg.Is<User>(u => u.Email == "dast-sanner@sebtportal.com"));
+        await userRepository.Received(1).GetOrCreateUserAsync(OtpBypassSettings.Email, Arg.Any<CancellationToken>());
+        jwtTokenService.Received(1).GenerateToken(Arg.Is<User>(u => u.Email == OtpBypassSettings.Email));
     }
 
     [Fact]
     public async Task Handle_WhenBypassEnabled_ButNotStaging_ProceedsNormally()
     {
         // Arrange
-        featureManager.IsEnabledAsync("bypass_otp").Returns(true);
+        featureManager.IsEnabledAsync(OtpBypassSettings.FeatureFlagName).Returns(true);
         hostEnvironment.EnvironmentName.Returns("Production");
 
         var handler = new ValidateOtpCommandHandler(
@@ -797,8 +798,8 @@ public class ValidateOtpCommandHandlerTests
 
         var command = new ValidateOtpCommand
         {
-            Email = "dast-sanner@sebtportal.com",
-            Otp = "123456"
+            Email = OtpBypassSettings.Email,
+            Otp = OtpBypassSettings.OtpCode
         };
 
         otpRepository.GetOtpCodeByEmailAsync(command.Email)
@@ -820,7 +821,7 @@ public class ValidateOtpCommandHandlerTests
     public async Task Handle_WhenBypassEnabled_AndStaging_ButWrongEmail_ProceedsNormally()
     {
         // Arrange
-        featureManager.IsEnabledAsync("bypass_otp").Returns(true);
+        featureManager.IsEnabledAsync(OtpBypassSettings.FeatureFlagName).Returns(true);
         hostEnvironment.EnvironmentName.Returns("Staging");
 
         var handler = new ValidateOtpCommandHandler(
@@ -835,7 +836,7 @@ public class ValidateOtpCommandHandlerTests
         var command = new ValidateOtpCommand
         {
             Email = "other@example.com",
-            Otp = "123456"
+            Otp = OtpBypassSettings.OtpCode
         };
 
         otpRepository.GetOtpCodeByEmailAsync(command.Email)
@@ -857,7 +858,7 @@ public class ValidateOtpCommandHandlerTests
     public async Task Handle_WhenBypassEnabled_AndStaging_ButWrongOtp_ProceedsNormally()
     {
         // Arrange
-        featureManager.IsEnabledAsync("bypass_otp").Returns(true);
+        featureManager.IsEnabledAsync(OtpBypassSettings.FeatureFlagName).Returns(true);
         hostEnvironment.EnvironmentName.Returns("Staging");
 
         var handler = new ValidateOtpCommandHandler(
@@ -871,7 +872,7 @@ public class ValidateOtpCommandHandlerTests
 
         var command = new ValidateOtpCommand
         {
-            Email = "dast-sanner@sebtportal.com",
+            Email = OtpBypassSettings.Email,
             Otp = "999999"
         };
 
@@ -908,8 +909,8 @@ public class ValidateOtpCommandHandlerTests
 
         var command = new ValidateOtpCommand
         {
-            Email = "dast-sanner@sebtportal.com",
-            Otp = "123456"
+            Email = OtpBypassSettings.Email,
+            Otp = OtpBypassSettings.OtpCode
         };
 
         otpRepository.GetOtpCodeByEmailAsync(command.Email)

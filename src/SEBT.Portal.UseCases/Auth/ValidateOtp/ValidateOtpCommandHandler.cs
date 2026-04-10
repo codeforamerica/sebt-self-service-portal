@@ -3,12 +3,15 @@ using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.FeatureManagement;
 using SEBT.Portal.Core.Repositories;
+using SEBT.Portal.Core.AppSettings;
 using SEBT.Portal.Core.Services;
 using SEBT.Portal.Kernel;
 using SEBT.Portal.Kernel.Results;
+using System.Runtime.CompilerServices;
 
 namespace SEBT.Portal.UseCases.Auth
 {
+
     /// <summary>
     /// Handles the validation of one-time passwords (OTP) for user authentication.
     /// </summary>
@@ -39,47 +42,42 @@ namespace SEBT.Portal.UseCases.Auth
             // Bypass OTP validation for specific email in staging environment when all criteria are met
             // 1. Feature flag "bypass_otp" is enabled
             // 2. The application is running in the staging environment
-            // 3. The email in the request matches "dast-sanner@sebtportal.com"
+            // 3. The email in the request matches "dast-scanner@sebtportal.com"
             // 4. The OTP code in the request matches "123456"
-            if (await featureManager.IsEnabledAsync("bypass_otp")
+            var byPassOtpEnabled = await featureManager.IsEnabledAsync(OtpBypassSettings.FeatureFlagName)
                 && hostEnvironment.IsStaging()
                 && !string.IsNullOrEmpty(command.Email)
-                && command.Email == "dast-sanner@sebtportal.com"
-                && command.Otp == "123456")
+                && command.Email == OtpBypassSettings.Email
+                && command.Otp == OtpBypassSettings.OtpCode;
+
+            if (byPassOtpEnabled)
             {
-                logger.LogWarning("OTP bypass is enabled. Skipping OTP validation for email {Email}", command.Email);
+                // Bypassing OTP validation, directly retrieve or create the user and generate a token
+                logger.LogWarning("OTP bypass is enabled. Skipping OTP validation for email {Email}", OtpBypassSettings.Email);
+            }
+            else
+            {
+                // Run full OTP validation for all other cases, including when the bypass criteria are not met
+                var validationResult = await validator.Validate(command, cancellationToken);
 
-                var (bypassUser, _) = await userRepository.GetOrCreateUserAsync(command.Email, cancellationToken);
-
-                if (bypassUser.IalLevel < Core.Models.Auth.UserIalLevel.IAL1)
+                if (validationResult is ValidationFailedResult validationFailedResult)
                 {
-                    bypassUser.IalLevel = Core.Models.Auth.UserIalLevel.IAL1;
-                    await userRepository.UpdateUserAsync(bypassUser, cancellationToken);
+                    logger.LogWarning("OTP validation failed for email {Email}: {Errors}",
+                        command.Email,
+                        string.Join(", ", validationFailedResult.Errors.Select(e => $"{e.Key}: {e.Message}")));
+                    return Result<string>.ValidationFailed(validationFailedResult.Errors);
                 }
 
-                var bypassToken = jwtTokenService.GenerateToken(bypassUser);
-                return Result<string>.Success(bypassToken);
-            }
+                var otp = await otpRepository.GetOtpCodeByEmailAsync(command.Email);
 
-            var validationResult = await validator.Validate(command, cancellationToken);
-
-            if (validationResult is ValidationFailedResult validationFailedResult)
-            {
-                logger.LogWarning("OTP validation failed for email {Email}: {Errors}",
-                    command.Email,
-                    string.Join(", ", validationFailedResult.Errors.Select(e => $"{e.Key}: {e.Message}")));
-                return Result<string>.ValidationFailed(validationFailedResult.Errors);
-            }
-
-            var otp = await otpRepository.GetOtpCodeByEmailAsync(command.Email);
-
-            if (otp is null || otp.IsCodeValid(command.Otp) == false)
-            {
-                logger.LogWarning("Invalid or expired OTP attempt for email {Email}", command.Email);
-                return Result<string>.ValidationFailed(new[]
+                if (otp is null || otp.IsCodeValid(command.Otp) == false)
                 {
+                    logger.LogWarning("Invalid or expired OTP attempt for email {Email}", command.Email);
+                    return Result<string>.ValidationFailed(new[]
+                    {
                     new ValidationError("Otp", "The provided OTP is invalid or has expired.")
                 });
+                }
             }
 
             try
@@ -96,7 +94,10 @@ namespace SEBT.Portal.UseCases.Auth
                 var token = jwtTokenService.GenerateToken(user);
 
                 // Delete OTP after successful validation
-                await otpRepository.DeleteOtpCodeByEmailAsync(command.Email);
+                if (!byPassOtpEnabled)
+                {
+                    await otpRepository.DeleteOtpCodeByEmailAsync(command.Email);
+                }
 
                 if (isNewUser)
                 {
@@ -119,6 +120,7 @@ namespace SEBT.Portal.UseCases.Auth
                     "OTP validated successfully and JWT token generated for email {Email} with co-loaded status {IsCoLoaded}",
                     command.Email,
                     user.IsCoLoaded);
+
                 return Result<string>.Success(token);
             }
             catch (Exception ex)
