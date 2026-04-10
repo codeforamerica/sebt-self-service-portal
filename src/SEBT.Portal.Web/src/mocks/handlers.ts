@@ -45,7 +45,8 @@ export const TEST_FEATURE_FLAGS = {
   enable_spanish_support: true,
   show_application_number: true,
   show_case_number: true,
-  show_card_last4: true
+  show_card_last4: true,
+  enable_beta_banner: false
 } as const
 
 // Test household data (mirrors MockHouseholdRepository seeded data)
