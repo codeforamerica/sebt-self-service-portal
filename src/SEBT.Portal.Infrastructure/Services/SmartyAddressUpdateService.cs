@@ -18,8 +18,8 @@ namespace SEBT.Portal.Infrastructure.Services;
 /// </summary>
 public sealed class SmartyAddressUpdateService(
     IHttpClientFactory httpClientFactory,
-    IOptions<SmartySettings> smartySettings,
-    IOptions<AddressValidationPolicySettings> policySettings,
+    IOptionsSnapshot<SmartySettings> smartySettingsSnapshot,
+    IOptionsSnapshot<AddressValidationPolicySettings> policySettingsSnapshot,
     ILogger<SmartyAddressUpdateService> logger) : IAddressUpdateService
 {
     private static readonly JsonSerializerOptions SmartyRequestJsonOptions = new()
@@ -31,8 +31,8 @@ public sealed class SmartyAddressUpdateService(
         AddressUpdateOperationRequest request,
         CancellationToken cancellationToken = default)
     {
-        var policy = policySettings.Value;
-        var settings = smartySettings.Value;
+        var policy = policySettingsSnapshot.Value;
+        var settings = smartySettingsSnapshot.Value;
 
         var inputAddress = AddressNormalizationHelper.TrimToAddress(
             request.StreetAddress1,

@@ -48,7 +48,7 @@ export function AddressForm({ initialAddress, redirectPath }: AddressFormProps) 
   const { t: tCommon } = useTranslation('common')
   const router = useRouter()
   const updateAddress = useUpdateAddress()
-  const { setAddress } = useAddressFlow()
+  const { setAddress, setValidationResult } = useAddressFlow()
   const errorSummaryRef = useRef<HTMLDivElement>(null)
 
   const currentState = getState()
@@ -119,9 +119,33 @@ export function AddressForm({ initialAddress, redirectPath }: AddressFormProps) 
     }
 
     try {
-      await updateAddress.mutateAsync(addressData)
-      setAddress(addressData)
-      router.push(redirectPath ?? DEFAULT_REDIRECT)
+      const result = await updateAddress.mutateAsync(addressData)
+
+      if (result.status === 'valid') {
+        setAddress(addressData)
+        router.push(redirectPath ?? DEFAULT_REDIRECT)
+        return
+      }
+
+      // too_long stays on the form with inline + banner errors
+      if (result.reason === 'too_long') {
+        setFieldErrors({
+          streetAddress1: t(
+            'streetAddressInlineError',
+            'Enter a street address shorter than 30 characters'
+          )
+        })
+        setSubmitError('too_long')
+        return
+      }
+
+      // blocked, abbreviated, or suggestion: store in context and navigate
+      setValidationResult(result, addressData)
+      if (result.status === 'suggestion') {
+        router.push('/profile/address/suggested-address')
+      } else {
+        router.push('/profile/address/address-not-found')
+      }
     } catch (err) {
       void err
       setSubmitError(t('addressUpdateError', 'Something went wrong. Please try again.'))

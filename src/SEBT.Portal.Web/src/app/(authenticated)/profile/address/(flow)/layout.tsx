@@ -15,12 +15,13 @@ const FORM_PATH = '/profile/address'
  * If address is missing (e.g., page refresh or direct URL access), redirect to the form.
  */
 function FlowGuard({ children }: { children: ReactNode }) {
-  const { address } = useAddressFlow()
+  const { address, validationResult } = useAddressFlow()
   const pathname = usePathname()
   const router = useRouter()
 
   const isFormPage = pathname === FORM_PATH
-  const needsRedirect = !isFormPage && !address
+  const hasFlowContext = !!address || !!validationResult
+  const needsRedirect = !isFormPage && !hasFlowContext
 
   useEffect(() => {
     if (needsRedirect) {
