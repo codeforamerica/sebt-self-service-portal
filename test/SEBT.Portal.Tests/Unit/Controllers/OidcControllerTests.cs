@@ -84,11 +84,22 @@ public class OidcControllerTests
     /// configures the session store mock to accept <c>TryAdvanceToLoginCompletedAsync</c>.
     /// Call before any <c>CompleteLogin</c> test that should get past session enforcement.
     /// </summary>
-    private void SetupPreAuthSession()
+    private void SetupPreAuthSession(bool isStepUp = false, string stateCode = CoStateKey)
     {
         _controller.ControllerContext.HttpContext = new DefaultHttpContext();
         _controller.ControllerContext.HttpContext.Request.Headers.Cookie =
             $"{OidcSessionCookie.CookieName}={TestSessionId}";
+        _sessionStore.GetAsync(TestSessionId, Arg.Any<CancellationToken>())
+            .Returns(new PreAuthSession
+            {
+                Id = TestSessionId,
+                State = "test-state",
+                CodeVerifier = "test-verifier",
+                StateCode = stateCode,
+                RedirectUri = "http://localhost:3000/callback",
+                IsStepUp = isStepUp,
+                Phase = PreAuthSessionPhase.CallbackCompleted
+            });
         _sessionStore.TryAdvanceToLoginCompletedAsync(
                 TestSessionId, Arg.Any<string>(), Arg.Any<CancellationToken>())
             .Returns(true);
@@ -304,7 +315,7 @@ public class OidcControllerTests
     [Fact]
     public async Task CompleteLogin_WhenStepUpAndNoExistingUser_Returns400()
     {
-        SetupPreAuthSession();
+        SetupPreAuthSession(isStepUp: true);
         const string signingKey = "complete-login-signing-key-at-least-32-characters-long";
         _config["Oidc:CompleteLoginSigningKey"].Returns(signingKey);
 
@@ -331,7 +342,7 @@ public class OidcControllerTests
     [Fact]
     public async Task CompleteLogin_WhenStepUpAndSafeReturnUrl_Returns200WithReturnUrl()
     {
-        SetupPreAuthSession();
+        SetupPreAuthSession(isStepUp: true);
         const string signingKey = "complete-login-signing-key-at-least-32-characters-long";
         _config["Oidc:CompleteLoginSigningKey"].Returns(signingKey);
 
@@ -365,7 +376,7 @@ public class OidcControllerTests
     [Fact]
     public async Task CompleteLogin_WhenStepUpAndExternalReturnUrl_OmitsReturnUrlFromResponse()
     {
-        SetupPreAuthSession();
+        SetupPreAuthSession(isStepUp: true);
         const string signingKey = "complete-login-signing-key-at-least-32-characters-long";
         _config["Oidc:CompleteLoginSigningKey"].Returns(signingKey);
 
@@ -390,6 +401,126 @@ public class OidcControllerTests
         var okResult = Assert.IsType<OkObjectResult>(result);
         var response = Assert.IsType<CompleteLoginResponse>(okResult.Value);
         Assert.Null(response.ReturnUrl);
+    }
+
+    /// <summary>
+    /// CompleteLogin must reject requests where the body's stateCode does not match the
+    /// session's stored stateCode, even if both are in the allowlist. This prevents a
+    /// tenant-switching attack where a session created for one state is used with another.
+    /// </summary>
+    [Fact]
+    public async Task CompleteLogin_WhenBodyStateCodeDiffersFromSession_Returns400()
+    {
+        // Session was created for "co", but body says "co" — we need a second state in
+        // the allowlist to test mismatch. Create a controller with both "co" and "dc".
+        var multiStateAllowlist = new StateAllowlist(["co", "dc"]);
+        var jwtSettings = Options.Create(new JwtSettings
+        {
+            SecretKey = new string('x', 32),
+            Issuer = "test",
+            Audience = "test",
+            ExpirationMinutes = 60
+        });
+        var env = Substitute.For<IWebHostEnvironment>();
+        env.EnvironmentName.Returns("Development");
+        var sessionStore = Substitute.For<IPreAuthSessionStore>();
+        var controller = new OidcController(
+            _config,
+            NullLogger<OidcController>.Instance,
+            _userRepository,
+            _jwtService,
+            jwtSettings,
+            multiStateAllowlist,
+            sessionStore,
+            env)
+        {
+            ControllerContext = new ControllerContext { HttpContext = new DefaultHttpContext() }
+        };
+
+        // Set oidc_session cookie
+        controller.ControllerContext.HttpContext.Request.Headers.Cookie =
+            $"{OidcSessionCookie.CookieName}={TestSessionId}";
+
+        // Session was created for "co"
+        sessionStore.GetAsync(TestSessionId, Arg.Any<CancellationToken>())
+            .Returns(new PreAuthSession
+            {
+                Id = TestSessionId,
+                State = "test-state",
+                CodeVerifier = "test-verifier",
+                StateCode = "co",
+                RedirectUri = "http://localhost:3000/callback",
+                IsStepUp = false,
+                Phase = PreAuthSessionPhase.CallbackCompleted
+            });
+        sessionStore.TryAdvanceToLoginCompletedAsync(
+                TestSessionId, Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns(true);
+
+        const string signingKey = "complete-login-signing-key-at-least-32-characters-long";
+        _config["Oidc:CompleteLoginSigningKey"].Returns(signingKey);
+        var callbackToken = CreateValidCallbackToken(signingKey, email: "user@example.com");
+
+        // Body says "dc" but session says "co" — should be rejected
+        var body = new CompleteLoginRequest("dc", callbackToken);
+
+        var result = await controller.CompleteLogin(body, CancellationToken.None);
+
+        var badRequest = Assert.IsType<BadRequestObjectResult>(result);
+        var error = Assert.IsType<ErrorResponse>(badRequest.Value);
+        Assert.Contains("mismatch", error.Error, StringComparison.OrdinalIgnoreCase);
+    }
+
+    /// <summary>
+    /// CompleteLogin must use the session's IsStepUp value, not the body's. A client
+    /// should not be able to initiate a non-step-up flow and then send isStepUp=true
+    /// on complete-login to trigger the IAL1+ upgrade path.
+    /// </summary>
+    [Fact]
+    public async Task CompleteLogin_WhenBodyIsStepUpDiffersFromSession_UsesSessionValue()
+    {
+        // Set oidc_session cookie
+        _controller.ControllerContext.HttpContext = new DefaultHttpContext();
+        _controller.ControllerContext.HttpContext.Request.Headers.Cookie =
+            $"{OidcSessionCookie.CookieName}={TestSessionId}";
+
+        // Session was created as non-step-up
+        _sessionStore.GetAsync(TestSessionId, Arg.Any<CancellationToken>())
+            .Returns(new PreAuthSession
+            {
+                Id = TestSessionId,
+                State = "test-state",
+                CodeVerifier = "test-verifier",
+                StateCode = CoStateKey,
+                RedirectUri = "http://localhost:3000/callback",
+                IsStepUp = false,
+                Phase = PreAuthSessionPhase.CallbackCompleted
+            });
+        _sessionStore.TryAdvanceToLoginCompletedAsync(
+                TestSessionId, Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns(true);
+
+        const string signingKey = "complete-login-signing-key-at-least-32-characters-long";
+        _config["Oidc:CompleteLoginSigningKey"].Returns(signingKey);
+        var callbackToken = CreateValidCallbackToken(signingKey, email: "user@example.com");
+
+        // Body lies: says IsStepUp=true, but session says false
+        var body = new CompleteLoginRequest(CoStateKey, callbackToken, IsStepUp: true);
+
+        var user = new User { Id = 1, Email = "user@example.com" };
+        _userRepository.GetOrCreateUserAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns((user, false));
+        _jwtService.GenerateToken(Arg.Any<User>(), Arg.Any<IReadOnlyDictionary<string, string>?>())
+            .Returns("portal-jwt");
+
+        var result = await _controller.CompleteLogin(body, CancellationToken.None);
+
+        // Should succeed (non-step-up path), NOT the step-up path
+        Assert.IsType<OkObjectResult>(result);
+
+        // The non-step-up path calls GetOrCreateUserAsync, NOT GetUserByEmailAsync
+        await _userRepository.Received(1).GetOrCreateUserAsync(Arg.Any<string>(), Arg.Any<CancellationToken>());
+        await _userRepository.DidNotReceive().GetUserByEmailAsync(Arg.Any<string>(), Arg.Any<CancellationToken>());
     }
 
     /// <summary>Callback token issuer/audience must match <c>Oidc:CallbackRedirectUri</c> (trimmed).</summary>

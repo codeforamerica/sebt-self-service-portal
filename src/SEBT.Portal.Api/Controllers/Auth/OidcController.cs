@@ -233,6 +233,22 @@ public class OidcController(
             return StatusCode(StatusCodes.Status403Forbidden, new ErrorResponse("Missing pre-auth session."));
         }
 
+        // --- Retrieve session to cross-check stateCode and read IsStepUp ---
+        var session = await sessionStore.GetAsync(sessionId, cancellationToken);
+        if (session == null)
+        {
+            logger.LogWarning("OIDC CompleteLogin rejected: session not found (reason=missing_session, SessionId={SessionId})", sessionId);
+            return StatusCode(StatusCodes.Status403Forbidden, new ErrorResponse("Pre-auth session invalid, expired, or already used."));
+        }
+
+        // --- Validate stateCode matches stored value (prevents tenant switching) ---
+        if (!string.Equals(requestedStateCode, session.StateCode, StringComparison.OrdinalIgnoreCase))
+        {
+            logger.LogWarning(
+                "OIDC CompleteLogin rejected: stateCode mismatch (reason=mismatched_stateCode, SessionId={SessionId})", sessionId);
+            return BadRequest(new ErrorResponse("State code mismatch."));
+        }
+
         // --- Verify the callback token matches this session and hasn't been consumed ---
         var tokenHash = IPreAuthSessionStore.HashCallbackToken(callbackToken);
         var advanced = await sessionStore.TryAdvanceToLoginCompletedAsync(sessionId, tokenHash, cancellationToken);
@@ -248,7 +264,7 @@ public class OidcController(
         OidcSessionCookie.Clear(Response);
         await sessionStore.RemoveAsync(sessionId, cancellationToken);
 
-        var stateKey = requestedStateCode.ToLowerInvariant();
+        var stateKey = session.StateCode.ToLowerInvariant();
         var signingKey = config["Oidc:CompleteLoginSigningKey"];
         if (string.IsNullOrEmpty(signingKey))
         {
@@ -314,7 +330,7 @@ public class OidcController(
         var normalizedEmail = EmailNormalizer.Normalize(email);
         User user;
 
-        if (body.IsStepUp)
+        if (session.IsStepUp)
         {
             var existingUser = await userRepository.GetUserByEmailAsync(normalizedEmail, cancellationToken);
             if (existingUser == null)
@@ -356,7 +372,7 @@ public class OidcController(
         AuthCookies.SetAuthCookie(Response, token, expiresAt);
 
         string? safeReturnUrl = null;
-        if (body.IsStepUp)
+        if (session.IsStepUp)
         {
             safeReturnUrl = TrySanitizeStepUpReturnUrl(body.ReturnUrl);
             if (safeReturnUrl == null && !string.IsNullOrWhiteSpace(body.ReturnUrl))
