@@ -114,8 +114,8 @@ module "app" {
     "Oidc__AuthorizationEndpoint"                      = var.oidc_authorization_endpoint
     "Oidc__CallbackRedirectUri"                        = "https://${var.domain}/callback"
     "Oidc__LanguageParam"                              = "en"
-    "Oidc__StepUp__DiscoveryEndpoint"                  = var.oidc_stepup_discovery_endpoint
-    "Oidc__StepUp__AuthorizationEndpoint"              = var.oidc_stepup_authorization_endpoint
+    "Oidc__StepUp__DiscoveryEndpoint"                  = var.oidc_discovery_endpoint
+    "Oidc__StepUp__AuthorizationEndpoint"              = var.oidc_authorization_endpoint
     "Oidc__StepUp__CallbackRedirectUri"                = "https://${var.domain}/callback"
     "StateHouseholdId__PreferredHouseholdIdTypes__0"   = "Phone"
   }
