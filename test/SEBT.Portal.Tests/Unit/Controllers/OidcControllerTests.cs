@@ -155,6 +155,9 @@ public class OidcControllerTests
         Assert.NotNull(valueType.GetProperty("state")?.GetValue(okResult.Value));
         Assert.NotNull(valueType.GetProperty("codeChallenge")?.GetValue(okResult.Value));
         Assert.Equal("S256", valueType.GetProperty("codeChallengeMethod")?.GetValue(okResult.Value));
+        // code_verifier must never be exposed to the client
+        Assert.Null(valueType.GetProperty("codeVerifier")?.GetValue(okResult.Value));
+        Assert.Null(valueType.GetProperty("code_verifier")?.GetValue(okResult.Value));
     }
 
     /// <summary>
