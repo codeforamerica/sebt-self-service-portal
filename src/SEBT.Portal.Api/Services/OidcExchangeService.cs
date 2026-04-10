@@ -103,7 +103,11 @@ public sealed class OidcExchangeService : IOidcExchangeService
     /// </summary>
     private static readonly ConcurrentDictionary<string, ConfigurationManager<OpenIdConnectConfiguration>>
         DiscoveryManagers = new(StringComparer.OrdinalIgnoreCase);
-    private static readonly HttpClient DiscoveryHttpClient = new() { Timeout = TimeSpan.FromSeconds(30) };
+    private static readonly HttpClient DiscoveryHttpClient = new(
+        new SocketsHttpHandler { PooledConnectionLifetime = TimeSpan.FromMinutes(5) })
+    {
+        Timeout = TimeSpan.FromSeconds(30)
+    };
 
     /// <inheritdoc cref="OidcExchangeService"/>
     public OidcExchangeService(
