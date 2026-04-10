@@ -1,11 +1,6 @@
-variable "project" {
+variable "domain" {
   type        = string
-  description = "Project name used for resource naming."
-}
-
-variable "state" {
-  type        = string
-  description = "State abbreviation (e.g. co, dc)."
+  description = "Fully qualified domain name for the enrollment checker (e.g. dev.co.sebt-enrollment.codeforamerica.app)."
 }
 
 variable "environment" {
@@ -13,9 +8,10 @@ variable "environment" {
   description = "Deployment environment (e.g. development, production)."
 }
 
-variable "domain" {
-  type        = string
-  description = "Fully qualified domain name for the enrollment checker (e.g. dev.co.sebt-enrollment.codeforamerica.app)."
+variable "force_delete" {
+  type        = bool
+  description = "Allow destruction of the S3 bucket even if it contains objects."
+  default     = false
 }
 
 variable "hosted_zone_id" {
@@ -28,8 +24,12 @@ variable "logging_bucket_domain_name" {
   description = "Domain name of the S3 logging bucket for access logs."
 }
 
-variable "force_delete" {
-  type        = bool
-  description = "Allow destruction of the S3 bucket even if it contains objects."
-  default     = false
+variable "project" {
+  type        = string
+  description = "Project name used for resource naming."
+}
+
+variable "state" {
+  type        = string
+  description = "State abbreviation (e.g. co, dc)."
 }

@@ -147,3 +147,16 @@ module "app" {
     OIDC_COMPLETE_LOGIN_SIGNING_KEY = "${module.state_secrets.secrets["oidc"].secret_arn}:complete_login_signing_key"
   }
 }
+
+# Deploy the enrollment checker as a static site behind CloudFront.
+module "enrollment_checker" {
+  source = "../../modules/sebt_enrollment_checker"
+
+  project     = var.project
+  state       = var.state
+  environment = var.environment
+  domain      = "dev.co.sebt-enrollment.codeforamerica.app"
+  hosted_zone_id             = aws_route53_zone.enrollment_checker.zone_id
+  logging_bucket_domain_name = module.logging.bucket_domain_name
+  force_delete               = true
+}
