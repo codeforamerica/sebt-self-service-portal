@@ -1,5 +1,7 @@
 using System.Linq;
+using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
+using Microsoft.FeatureManagement;
 using SEBT.Portal.Core.Models.Auth;
 using SEBT.Portal.Core.Repositories;
 using SEBT.Portal.Core.Services;
@@ -20,16 +22,31 @@ namespace SEBT.Portal.UseCases.Auth
     /// <param name="emailService">The service used to send the OTP to the user's email.</param>
     /// <param name="otpRepository">The repository used to persist OTP codes.</param>
     /// <param name="logger">The logger for recording errors and diagnostic information.</param>
+    /// <param name="featureManager">The feature manager for checking feature flags.</param>
+    /// <param name="hostEnvironment">The host environment for checking the current environment.</param>
     public class RequestOtpCommandHandler(
         IValidator<RequestOtpCommand> validator,
         IOtpGeneratorService otpGenerator,
         IOtpSenderService emailService,
         IOtpRepository otpRepository,
-        ILogger<RequestOtpCommandHandler> logger)
+        ILogger<RequestOtpCommandHandler> logger,
+        IFeatureManager featureManager,
+        IHostEnvironment hostEnvironment)
         : ICommandHandler<RequestOtpCommand>
     {
         public async Task<Result> Handle(RequestOtpCommand command, CancellationToken cancellationToken)
         {
+            // Bypass OTP request for specific email in staging environment when all criteria are met
+            // This allows testing of the login flow without needing to receive an OTP, but only for a specific test email and only in staging
+            if (await featureManager.IsEnabledAsync("bypass_otp")
+                && hostEnvironment.IsStaging()
+                && !string.IsNullOrEmpty(command.Email)
+                && command.Email == "dast-sanner@sebtportal.com")
+            {
+                logger.LogWarning("OTP bypass is enabled. Skipping OTP request for email {Email}", command.Email);
+                return Result.Success();
+            }
+
             var validationResult = await validator.Validate(command, cancellationToken);
 
             if (validationResult is ValidationFailedResult validationFailedResult)

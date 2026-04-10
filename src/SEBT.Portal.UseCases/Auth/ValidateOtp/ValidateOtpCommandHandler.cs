@@ -1,5 +1,7 @@
 using System.Linq;
+using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
+using Microsoft.FeatureManagement;
 using SEBT.Portal.Core.Repositories;
 using SEBT.Portal.Core.Services;
 using SEBT.Portal.Kernel;
@@ -20,16 +22,45 @@ namespace SEBT.Portal.UseCases.Auth
     /// <param name="jwtTokenService">Service for generating JWT tokens for authenticated users.</param>
     /// <param name="validator">Validator for the <see cref="ValidateOtpCommand"/>.</param>
     /// <param name="logger">Logger for tracking OTP validation attempts and results.</param>
+    /// <param name="featureManager">The feature manager for checking feature flags.</param>
+    /// <param name="hostEnvironment">The host environment for checking the current environment.</param>
     public class ValidateOtpCommandHandler(
         IOtpRepository otpRepository,
         IUserRepository userRepository,
         IJwtTokenService jwtTokenService,
         IValidator<ValidateOtpCommand> validator,
-        ILogger<ValidateOtpCommandHandler> logger)
+        ILogger<ValidateOtpCommandHandler> logger,
+        IFeatureManager featureManager,
+        IHostEnvironment hostEnvironment)
         : ICommandHandler<ValidateOtpCommand, string>
     {
         public async Task<Result<string>> Handle(ValidateOtpCommand command, CancellationToken cancellationToken = default)
         {
+            // Bypass OTP validation for specific email in staging environment when all criteria are met
+            // 1. Feature flag "bypass_otp" is enabled
+            // 2. The application is running in the staging environment
+            // 3. The email in the request matches "dast-sanner@sebtportal.com"
+            // 4. The OTP code in the request matches "123456"
+            if (await featureManager.IsEnabledAsync("bypass_otp")
+                && hostEnvironment.IsStaging()
+                && !string.IsNullOrEmpty(command.Email)
+                && command.Email == "dast-sanner@sebtportal.com"
+                && command.Otp == "123456")
+            {
+                logger.LogWarning("OTP bypass is enabled. Skipping OTP validation for email {Email}", command.Email);
+
+                var (bypassUser, _) = await userRepository.GetOrCreateUserAsync(command.Email, cancellationToken);
+
+                if (bypassUser.IalLevel < Core.Models.Auth.UserIalLevel.IAL1)
+                {
+                    bypassUser.IalLevel = Core.Models.Auth.UserIalLevel.IAL1;
+                    await userRepository.UpdateUserAsync(bypassUser, cancellationToken);
+                }
+
+                var bypassToken = jwtTokenService.GenerateToken(bypassUser);
+                return Result<string>.Success(bypassToken);
+            }
+
             var validationResult = await validator.Validate(command, cancellationToken);
 
             if (validationResult is ValidationFailedResult validationFailedResult)
