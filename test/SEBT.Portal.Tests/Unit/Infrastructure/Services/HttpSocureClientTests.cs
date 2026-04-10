@@ -291,7 +291,7 @@ public class HttpSocureClientTests
             DiSessionToken = "test-di-token"
         };
 
-        var httpClient = new HttpClient(handler) { BaseAddress = new Uri(settingsWithDiToken.BaseUrl) };
+        using var httpClient = new HttpClient(handler) { BaseAddress = new Uri(settingsWithDiToken.BaseUrl) };
         var factory = Substitute.For<IHttpClientFactory>();
         factory.CreateClient("Socure").Returns(httpClient);
         var snapshot = Substitute.For<IOptionsSnapshot<SocureSettings>>();
@@ -564,7 +564,7 @@ public class HttpSocureClientTests
             DiSessionToken = "config-placeholder-token"
         };
 
-        var httpClient = new HttpClient(handler) { BaseAddress = new Uri(settingsWithConfigToken.BaseUrl) };
+        using var httpClient = new HttpClient(handler) { BaseAddress = new Uri(settingsWithConfigToken.BaseUrl) };
         var factory = Substitute.For<IHttpClientFactory>();
         factory.CreateClient("Socure").Returns(httpClient);
         var snapshot = Substitute.For<IOptionsSnapshot<SocureSettings>>();
@@ -613,7 +613,7 @@ public class HttpSocureClientTests
             DiSessionToken = "config-fallback-token"
         };
 
-        var httpClient = new HttpClient(handler) { BaseAddress = new Uri(settingsWithConfigToken.BaseUrl) };
+        using var httpClient = new HttpClient(handler) { BaseAddress = new Uri(settingsWithConfigToken.BaseUrl) };
         var factory = Substitute.For<IHttpClientFactory>();
         factory.CreateClient("Socure").Returns(httpClient);
         var snapshot = Substitute.For<IOptionsSnapshot<SocureSettings>>();
