@@ -296,4 +296,99 @@ public class HouseholdFactoryTests
         var app = household.Applications.First();
         Assert.Null(app.CaseNumber);
     }
+
+    [Fact]
+    public void CreateSummerEbtCase_ShouldSetChildNameAndEligibility()
+    {
+        // Act
+        var result = HouseholdFactory.CreateSummerEbtCase("Michael", "Brown", "NSLP");
+
+        // Assert
+        Assert.Equal("Michael", result.ChildFirstName);
+        Assert.Equal("Brown", result.ChildLastName);
+        Assert.Equal("NSLP", result.EligibilityType);
+    }
+
+    [Fact]
+    public void CreateSummerEbtCase_ShouldGenerateNumericCaseId()
+    {
+        // Act
+        var result = HouseholdFactory.CreateSummerEbtCase("Jane", "Doe", "Application");
+
+        // Assert
+        Assert.NotNull(result.SummerEBTCaseID);
+        Assert.Matches(@"^\d+$", result.SummerEBTCaseID);
+    }
+
+    [Fact]
+    public void CreateSummerEbtCase_ShouldSetApprovedStatusAndActiveCard()
+    {
+        // Act
+        var result = HouseholdFactory.CreateSummerEbtCase("Jane", "Doe", "SNAP");
+
+        // Assert
+        Assert.Equal(ApplicationStatus.Approved, result.ApplicationStatus);
+        Assert.Equal("Active", result.EbtCardStatus);
+    }
+
+    [Fact]
+    public void CreateSummerEbtCase_ShouldSetDefaultSummerEbtIssuanceType()
+    {
+        // Act
+        var result = HouseholdFactory.CreateSummerEbtCase("Jane", "Doe", "NSLP");
+
+        // Assert
+        Assert.Equal(IssuanceType.SummerEbt, result.IssuanceType);
+    }
+
+    [Fact]
+    public void CreateSummerEbtCase_ShouldSetBenefitDates()
+    {
+        // Act
+        var result = HouseholdFactory.CreateSummerEbtCase("Jane", "Doe", "NSLP");
+
+        // Assert
+        Assert.Equal(new DateTime(2026, 5, 4), result.BenefitAvailableDate);
+        Assert.Equal(new DateTime(2026, 5, 4).AddDays(122), result.BenefitExpirationDate);
+    }
+
+    [Fact]
+    public void CreateSummerEbtCase_ShouldGenerateChildDateOfBirth()
+    {
+        // Act
+        var result = HouseholdFactory.CreateSummerEbtCase("Jane", "Doe", "NSLP");
+
+        // Assert — child should be between 5 and 17 years old
+        Assert.NotNull(result.ChildDateOfBirth);
+        Assert.True(result.ChildDateOfBirth >= DateTime.Today.AddYears(-17));
+        Assert.True(result.ChildDateOfBirth <= DateTime.Today.AddYears(-5));
+    }
+
+    [Fact]
+    public void CreateSummerEbtCase_ShouldNotPopulateCardRequestedAtOrCardLastFour()
+    {
+        // Act
+        var result = HouseholdFactory.CreateSummerEbtCase("Jane", "Doe", "NSLP");
+
+        // Assert
+        Assert.Null(result.CardRequestedAt);
+        Assert.Null(result.EbtCardLastFour);
+    }
+
+    [Fact]
+    public void CreateSummerEbtCase_ShouldAllowCustomization()
+    {
+        // Act
+        var result = HouseholdFactory.CreateSummerEbtCase("Jane", "Doe", "TANF", c =>
+        {
+            c.IssuanceType = IssuanceType.TanfEbtCard;
+            c.EbtCardStatus = "Deactivated";
+        });
+
+        // Assert
+        Assert.Equal("Jane", result.ChildFirstName);
+        Assert.Equal("TANF", result.EligibilityType);
+        Assert.Equal(IssuanceType.TanfEbtCard, result.IssuanceType);
+        Assert.Equal("Deactivated", result.EbtCardStatus);
+    }
 }

@@ -1,0 +1,13 @@
+{
+  "labelEmail": "Esto nos ayudará a enviarte información importante sobre tus beneficios.",
+  "helperEmail": "¿Podemos guardar tu fecha de nacimiento?",
+  "labelDob": "Esto nos ayudará a encontrar información sobre tus beneficios más fácilmente.",
+  "helperDob": "Selecciona al menos una opción",
+  "labelContactPreference": "Si esta es tu preferencia, se aplicarán tarifas de mensajes y datos.",
+  "optionHelperPhone": "Ingresa tu número de telefono",
+  "labelEnterPhone": "¿Podemos enviarte mensajes de texto a este número?",
+  "labelText": "Para confirmar tu identidad, necesitamos pedirte documentación adicional.",
+  "title": "¿Te gustaría recibir los avisos de Summer EBT por correo electrónico o por mensaje de texto (SMS)?",
+  "body": "Si eliges correo electrónico o mensajes de texto, también vamos a seguir enviando avisos por correo postal a tu dirección física.",
+  "textDescription": "Selecciona esta opción si quieres que te mandemos mensajes al ([999]) [999]-[9999]. Este número de teléfono tiene que poder recibir mensajes de texto y no se puede cambiar."
+}

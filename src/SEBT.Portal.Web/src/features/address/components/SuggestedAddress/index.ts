@@ -1,0 +1,1 @@
+export { SuggestedAddress } from './SuggestedAddress'

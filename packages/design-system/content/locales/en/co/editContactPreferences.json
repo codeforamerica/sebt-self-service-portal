@@ -1,0 +1,12 @@
+{
+  "title": "Your contact preferences",
+  "body": "If you choose email or text we’ll continue to also mail notices to your physical address.",
+  "labelLanguage": "Which language do you prefer to be contacted in?",
+  "labelContactPreference": "Would you like to get emails about your Summer EBT account?",
+  "labelEmail": "What's your email address?",
+  "labelTextPreference": "Would you like get text messages about your Summer EBT account sent to ([999]) [999]-[9999]?",
+  "descriptionTextPreference": "This phone number needs to be able to receive text messages and can’t be changed.",
+  "labelPhone": "",
+  "descriptionPhone": "",
+  "actionUpdateContact": "Update contact preferences"
+}

@@ -58,6 +58,7 @@ module "api" {
 
   environment_variables = merge({
     ASPNETCORE_ENVIRONMENT                       = var.environment
+    LOG_FORMAT                                   = var.log_as_json ? "json" : "text"
     STATE                                        = var.state
     DB_HOST                                      = module.database.endpoint
     DB_NAME                                      = "SebtPortal"

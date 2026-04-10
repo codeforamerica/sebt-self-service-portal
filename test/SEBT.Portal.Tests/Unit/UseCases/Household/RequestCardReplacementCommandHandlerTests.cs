@@ -39,17 +39,17 @@ public class RequestCardReplacementCommandHandlerTests
 
     private static RequestCardReplacementCommand CreateValidCommand(
         ClaimsPrincipal? user = null,
-        List<string>? applicationNumbers = null) =>
+        List<string>? caseIds = null) =>
         new()
         {
             User = user ?? CreateUser("user@example.com"),
-            ApplicationNumbers = applicationNumbers ?? new List<string> { "APP-2026-001" }
+            CaseIds = caseIds ?? new List<string> { "SEBT-001" }
         };
 
-    private static HouseholdData CreateHouseholdWithApplications(params Application[] applications) =>
+    private static HouseholdData CreateHouseholdWithCases(params SummerEbtCase[] cases) =>
         new()
         {
-            Applications = applications.ToList()
+            SummerEbtCases = cases.ToList()
         };
 
     private void SetupResolverSuccess()
@@ -71,10 +71,10 @@ public class RequestCardReplacementCommandHandlerTests
     // --- Validation tests ---
 
     [Fact]
-    public async Task Handle_ReturnsValidationFailed_WhenApplicationNumbersIsEmpty()
+    public async Task Handle_ReturnsValidationFailed_WhenCaseIdsIsEmpty()
     {
         var handler = CreateHandler();
-        var command = CreateValidCommand(applicationNumbers: new List<string>());
+        var command = CreateValidCommand(caseIds: new List<string>());
 
         var result = await handler.Handle(command, CancellationToken.None);
 
@@ -103,7 +103,7 @@ public class RequestCardReplacementCommandHandlerTests
     public async Task Handle_DoesNotCallResolver_WhenValidationFails()
     {
         var handler = CreateHandler();
-        var command = CreateValidCommand(applicationNumbers: new List<string>());
+        var command = CreateValidCommand(caseIds: new List<string>());
 
         await handler.Handle(command, CancellationToken.None);
 
@@ -128,16 +128,17 @@ public class RequestCardReplacementCommandHandlerTests
     // --- Cooldown tests ---
 
     [Fact]
-    public async Task Handle_ReturnsValidationFailed_WhenApplicationIsWithinCooldownPeriod()
+    public async Task Handle_ReturnsValidationFailed_WhenCaseIsWithinCooldownPeriod()
     {
         var handler = CreateHandler();
         var command = CreateValidCommand();
         SetupResolverSuccess();
-        SetupRepositoryReturns(CreateHouseholdWithApplications(
-            new Application
+        SetupRepositoryReturns(CreateHouseholdWithCases(
+            new SummerEbtCase
             {
-                ApplicationNumber = "APP-2026-001",
-                CardStatus = CardStatus.Requested,
+                SummerEBTCaseID = "SEBT-001",
+                ChildFirstName = "John",
+                ChildLastName = "Doe",
                 CardRequestedAt = DateTime.UtcNow.AddDays(-3)
             }
         ));
@@ -149,16 +150,17 @@ public class RequestCardReplacementCommandHandlerTests
     }
 
     [Fact]
-    public async Task Handle_ReturnsValidationFailed_WhenMailedCardIsStillWithinCooldown()
+    public async Task Handle_ReturnsValidationFailed_WhenRecentlyMailedCardIsStillWithinCooldown()
     {
         var handler = CreateHandler();
         var command = CreateValidCommand();
         SetupResolverSuccess();
-        SetupRepositoryReturns(CreateHouseholdWithApplications(
-            new Application
+        SetupRepositoryReturns(CreateHouseholdWithCases(
+            new SummerEbtCase
             {
-                ApplicationNumber = "APP-2026-001",
-                CardStatus = CardStatus.Mailed,
+                SummerEBTCaseID = "SEBT-001",
+                ChildFirstName = "John",
+                ChildLastName = "Doe",
                 CardRequestedAt = DateTime.UtcNow.AddDays(-10)
             }
         ));
@@ -170,16 +172,17 @@ public class RequestCardReplacementCommandHandlerTests
     }
 
     [Fact]
-    public async Task Handle_ReturnsSuccess_WhenApplicationIsOutsideCooldownPeriod()
+    public async Task Handle_ReturnsSuccess_WhenCaseIsOutsideCooldownPeriod()
     {
         var handler = CreateHandler();
         var command = CreateValidCommand();
         SetupResolverSuccess();
-        SetupRepositoryReturns(CreateHouseholdWithApplications(
-            new Application
+        SetupRepositoryReturns(CreateHouseholdWithCases(
+            new SummerEbtCase
             {
-                ApplicationNumber = "APP-2026-001",
-                CardStatus = CardStatus.Active,
+                SummerEBTCaseID = "SEBT-001",
+                ChildFirstName = "John",
+                ChildLastName = "Doe",
                 CardRequestedAt = DateTime.UtcNow.AddDays(-30)
             }
         ));
@@ -196,11 +199,12 @@ public class RequestCardReplacementCommandHandlerTests
         var handler = CreateHandler();
         var command = CreateValidCommand();
         SetupResolverSuccess();
-        SetupRepositoryReturns(CreateHouseholdWithApplications(
-            new Application
+        SetupRepositoryReturns(CreateHouseholdWithCases(
+            new SummerEbtCase
             {
-                ApplicationNumber = "APP-2026-001",
-                CardStatus = CardStatus.Active,
+                SummerEBTCaseID = "SEBT-001",
+                ChildFirstName = "John",
+                ChildLastName = "Doe",
                 CardRequestedAt = null
             }
         ));
@@ -211,16 +215,17 @@ public class RequestCardReplacementCommandHandlerTests
     }
 
     [Fact]
-    public async Task Handle_ReturnsValidationFailed_WhenApplicationNumberNotInHousehold()
+    public async Task Handle_ReturnsValidationFailed_WhenCaseIdNotInHousehold()
     {
         var handler = CreateHandler();
-        var command = CreateValidCommand(applicationNumbers: new List<string> { "APP-UNKNOWN" });
+        var command = CreateValidCommand(caseIds: new List<string> { "SEBT-UNKNOWN" });
         SetupResolverSuccess();
-        SetupRepositoryReturns(CreateHouseholdWithApplications(
-            new Application
+        SetupRepositoryReturns(CreateHouseholdWithCases(
+            new SummerEbtCase
             {
-                ApplicationNumber = "APP-2026-001",
-                CardStatus = CardStatus.Active,
+                SummerEBTCaseID = "SEBT-001",
+                ChildFirstName = "John",
+                ChildLastName = "Doe",
                 CardRequestedAt = DateTime.UtcNow.AddDays(-30)
             }
         ));
@@ -237,19 +242,21 @@ public class RequestCardReplacementCommandHandlerTests
     public async Task Handle_ReturnsSuccess_WhenValidCommandAndNoActiveCooldown()
     {
         var handler = CreateHandler();
-        var command = CreateValidCommand(applicationNumbers: new List<string> { "APP-001", "APP-002" });
+        var command = CreateValidCommand(caseIds: new List<string> { "SEBT-001", "SEBT-002" });
         SetupResolverSuccess();
-        SetupRepositoryReturns(CreateHouseholdWithApplications(
-            new Application
+        SetupRepositoryReturns(CreateHouseholdWithCases(
+            new SummerEbtCase
             {
-                ApplicationNumber = "APP-001",
-                CardStatus = CardStatus.Active,
+                SummerEBTCaseID = "SEBT-001",
+                ChildFirstName = "John",
+                ChildLastName = "Doe",
                 CardRequestedAt = DateTime.UtcNow.AddDays(-30)
             },
-            new Application
+            new SummerEbtCase
             {
-                ApplicationNumber = "APP-002",
-                CardStatus = CardStatus.Active,
+                SummerEBTCaseID = "SEBT-002",
+                ChildFirstName = "Jane",
+                ChildLastName = "Doe",
                 CardRequestedAt = DateTime.UtcNow.AddDays(-20)
             }
         ));
@@ -273,10 +280,12 @@ public class RequestCardReplacementCommandHandlerTests
         _resolver.ResolveAsync(Arg.Any<ClaimsPrincipal>(), token)
             .Returns(HouseholdIdentifier.Email(EmailNormalizer.Normalize("user@example.com")));
 
-        SetupRepositoryReturns(CreateHouseholdWithApplications(
-            new Application
+        SetupRepositoryReturns(CreateHouseholdWithCases(
+            new SummerEbtCase
             {
-                ApplicationNumber = "APP-2026-001",
+                SummerEBTCaseID = "SEBT-001",
+                ChildFirstName = "John",
+                ChildLastName = "Doe",
                 CardRequestedAt = DateTime.UtcNow.AddDays(-30)
             }
         ));
@@ -295,10 +304,12 @@ public class RequestCardReplacementCommandHandlerTests
         var user = CreateUser("user@example.com", ialClaim: "1plus");
         var command = CreateValidCommand(user: user);
         SetupResolverSuccess();
-        SetupRepositoryReturns(CreateHouseholdWithApplications(
-            new Application
+        SetupRepositoryReturns(CreateHouseholdWithCases(
+            new SummerEbtCase
             {
-                ApplicationNumber = "APP-2026-001",
+                SummerEBTCaseID = "SEBT-001",
+                ChildFirstName = "John",
+                ChildLastName = "Doe",
                 CardRequestedAt = DateTime.UtcNow.AddDays(-30)
             }
         ));
@@ -318,10 +329,12 @@ public class RequestCardReplacementCommandHandlerTests
         var handler = CreateHandler();
         var command = CreateValidCommand();
         SetupResolverSuccess();
-        SetupRepositoryReturns(CreateHouseholdWithApplications(
-            new Application
+        SetupRepositoryReturns(CreateHouseholdWithCases(
+            new SummerEbtCase
             {
-                ApplicationNumber = "APP-2026-001",
+                SummerEBTCaseID = "SEBT-001",
+                ChildFirstName = "John",
+                ChildLastName = "Doe",
                 CardRequestedAt = DateTime.UtcNow.AddDays(-30)
             }
         ));
@@ -344,11 +357,12 @@ public class RequestCardReplacementCommandHandlerTests
         var handler = CreateHandler(fakeTime);
         var command = CreateValidCommand();
         SetupResolverSuccess();
-        SetupRepositoryReturns(CreateHouseholdWithApplications(
-            new Application
+        SetupRepositoryReturns(CreateHouseholdWithCases(
+            new SummerEbtCase
             {
-                ApplicationNumber = "APP-2026-001",
-                CardStatus = CardStatus.Requested,
+                SummerEBTCaseID = "SEBT-001",
+                ChildFirstName = "John",
+                ChildLastName = "Doe",
                 CardRequestedAt = new DateTime(2026, 6, 2, 12, 0, 0, DateTimeKind.Utc)
             }
         ));
@@ -366,11 +380,12 @@ public class RequestCardReplacementCommandHandlerTests
         var handler = CreateHandler(fakeTime);
         var command = CreateValidCommand();
         SetupResolverSuccess();
-        SetupRepositoryReturns(CreateHouseholdWithApplications(
-            new Application
+        SetupRepositoryReturns(CreateHouseholdWithCases(
+            new SummerEbtCase
             {
-                ApplicationNumber = "APP-2026-001",
-                CardStatus = CardStatus.Active,
+                SummerEBTCaseID = "SEBT-001",
+                ChildFirstName = "John",
+                ChildLastName = "Doe",
                 CardRequestedAt = new DateTime(2026, 6, 1, 12, 0, 0, DateTimeKind.Utc)
             }
         ));

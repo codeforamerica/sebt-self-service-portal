@@ -1,0 +1,20 @@
+{
+  "title": "Al proporcionar tu fecha de nacimiento y un número de identificación, das tu consentimiento para compartir esta información con nuestro proveedor externo. Solo utilizaremos estos datos una vez y no los compartiremos ni los guardaremos sin tu permiso.",
+  "body": "¿Cuál es tu fecha de nacimiento?",
+  "labelDob": "¿Qué número de identificación puedes proporcionar?",
+  "labelId": "!!!",
+  "helperId": "Número de seguro social (SSN)",
+  "optionLabelSsn": "Número de identificación personal del contribuyente (ITIN)",
+  "optionLabelItin": "Medicaid ID",
+  "optionLabelMedicaidId": "Este número puede encontrarse en tus cartas de Medicaid y suele tener 7 u 8 dígitos",
+  "optionHelperMedicaidId": "ID de la cuenta de SNAP o TANF",
+  "optionAccountId": "Este número puede encontrarse en tus cartas de SNAP o TANF y suele tener 7 u 8 dígitos.",
+  "optionHelperAccountId": "ID de persona de SNAP o TANF",
+  "optionPersonId": "Este número puede encontrarse en tus cartas de SNAP o TANF  y suele tener 7 u 8 dígitos.",
+  "optionHelperPersonId": "Ingresa tu número de seguro social (SSN)",
+  "labelSsn": "Ingresa tu número de identificación personal del contribuyente (ITIN)",
+  "labelItin": "Ingresa tu Medicaid ID",
+  "labelMedicaidId": "Ingresa tu número de cuenta de SNAP o TANF",
+  "labelAccountId": "Ingresa tu número de ID de persona de SNAP o TANF",
+  "labelPersonId": "¿Podemos guardar tu correo electrónico ([email]@[domain.com]) para enviarte información sobre tu cuenta de DC SUN Bucks?"
+}

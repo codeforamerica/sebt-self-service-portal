@@ -154,6 +154,9 @@ const CONFIG = {
     'otp confirm': 'verify',
     'otp email message': 'email',
     'co-loaded off-boarding': 'coLoaded',
+    'address not found': 'notFound',
+    'suggested address': 'suggested',
+    'abbreviated address': 'abbreviated',
     'callback': 'callback',
   },
 };
