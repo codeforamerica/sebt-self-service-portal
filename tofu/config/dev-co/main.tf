@@ -125,8 +125,8 @@ module "app" {
     "Cbms__ClientSecret"            = "${module.state_secrets.secrets["cbms"].secret_arn}:client_secret"
     "Oidc__ClientId"                = "${module.state_secrets.secrets["oidc"].secret_arn}:client_id"
     "Oidc__ClientSecret"            = "${module.state_secrets.secrets["oidc"].secret_arn}:client_secret"
-    "Oidc__StepUp__ClientId"        = "${module.state_secrets.secrets["oidc"].secret_arn}:step_up:client_id"
-    "Oidc__StepUp__ClientSecret"    = "${module.state_secrets.secrets["oidc"].secret_arn}:step_up:client_secret"
+    "Oidc__StepUp__ClientId"        = "${module.state_secrets.secrets["oidc"].secret_arn}:step_up_client_id"
+    "Oidc__StepUp__ClientSecret"    = "${module.state_secrets.secrets["oidc"].secret_arn}:step_up_client_secret"
     "Oidc__CompleteLoginSigningKey" = "${module.state_secrets.secrets["oidc"].secret_arn}:complete_login_signing_key"
   }
 
