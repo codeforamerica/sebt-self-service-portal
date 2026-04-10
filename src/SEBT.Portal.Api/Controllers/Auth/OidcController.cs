@@ -50,11 +50,13 @@ public class OidcController(
         [FromQuery] bool stepUp = false,
         CancellationToken cancellationToken = default)
     {
-        if (!stateAllowlist.Contains(code))
+        // Resolve the route parameter to the canonical allowlist value. TryResolve returns
+        // a value from the allowlist itself (not derived from user input), breaking the
+        // taint chain for CodeQL's "user input in log" analysis.
+        var stateCode = stateAllowlist.TryResolve(code);
+        if (stateCode == null)
         {
-            logger.LogWarning(
-                "OIDC GetConfig rejected: stateCode {StateCode} not in allowlist (reason=unknown_state)",
-                SanitizeForLog(code));
+            logger.LogWarning("OIDC GetConfig rejected: unknown stateCode (reason=unknown_state)");
             return BadRequest(new ErrorResponse("Unknown or unsupported stateCode."));
         }
 
@@ -69,7 +71,7 @@ public class OidcController(
         {
             logger.LogWarning(
                 "OIDC config missing for stateCode {StateCode} (reason=oidc_not_configured)",
-                SanitizeForLog(code));
+                stateCode);
             var hint = environment.IsDevelopment()
                 ? "Set Oidc:AuthorizationEndpoint, Oidc:ClientId, and Oidc:CallbackRedirectUri in appsettings."
                 : "";
@@ -83,7 +85,7 @@ public class OidcController(
 
         // Create the pre-auth session and set the cookie.
         var session = await sessionStore.CreateAsync(
-            code.ToLowerInvariant(), state, codeVerifier, redirectUri, stepUp, cancellationToken);
+            stateCode, state, codeVerifier, redirectUri, stepUp, cancellationToken);
         OidcSessionCookie.Set(Response, session.Id);
 
         var languageParam = config["Oidc:LanguageParam"] ?? "en";
@@ -118,11 +120,12 @@ public class OidcController(
         if (body == null || string.IsNullOrEmpty(body.Code) || string.IsNullOrEmpty(body.StateCode))
             return BadRequest(new ErrorResponse("Missing code or stateCode."));
 
-        if (!stateAllowlist.Contains(body.StateCode))
+        // Resolve stateCode to the canonical allowlist value (breaks taint chain).
+        var requestedCode = body.Code;
+        var requestedStateCode = stateAllowlist.TryResolve(body.StateCode);
+        if (requestedStateCode == null)
         {
-            logger.LogWarning(
-                "OIDC Callback rejected: stateCode {StateCode} not in allowlist (reason=unknown_state)",
-                SanitizeForLog(body.StateCode));
+            logger.LogWarning("OIDC Callback rejected: unknown stateCode (reason=unknown_state)");
             return BadRequest(new ErrorResponse("Unknown or unsupported stateCode."));
         }
 
@@ -150,7 +153,7 @@ public class OidcController(
         }
 
         // --- Validate stateCode matches stored value (prevents tenant switching) ---
-        if (!string.Equals(body.StateCode, session.StateCode, StringComparison.OrdinalIgnoreCase))
+        if (!string.Equals(requestedStateCode, session.StateCode, StringComparison.OrdinalIgnoreCase))
         {
             logger.LogWarning(
                 "OIDC Callback rejected: stateCode mismatch (reason=mismatched_stateCode, SessionId={SessionId})", sessionId);
@@ -168,7 +171,7 @@ public class OidcController(
 
         // --- Exchange code using the stored code_verifier (never from the body) ---
         var result = await exchangeService.ExchangeCodeAsync(
-            body.Code,
+            requestedCode,
             session.CodeVerifier,
             session.RedirectUri,
             session.IsStepUp,
@@ -207,19 +210,20 @@ public class OidcController(
     [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status403Forbidden)]
     [ProducesResponseType(StatusCodes.Status503ServiceUnavailable)]
     public async Task<IActionResult> CompleteLogin(
-        [FromBody] CompleteLoginRequest? body,
+        [FromBody] CompleteLoginRequest body,
         CancellationToken cancellationToken)
     {
-        if (body == null || string.IsNullOrEmpty(body.StateCode) || string.IsNullOrEmpty(body.CallbackToken))
-            return BadRequest(new ErrorResponse("Missing stateCode or callbackToken."));
+        // Resolve stateCode via allowlist — returns a canonical value from the allowlist
+        // itself, not derived from user input. Null if missing or not in the allowlist.
+        var requestedStateCode = stateAllowlist.TryResolve(body.StateCode);
+        if (requestedStateCode == null)
+            return BadRequest(new ErrorResponse("Missing or unsupported stateCode."));
 
-        if (!stateAllowlist.Contains(body.StateCode))
-        {
-            logger.LogWarning(
-                "OIDC CompleteLogin rejected: stateCode {StateCode} not in allowlist (reason=unknown_state)",
-                SanitizeForLog(body.StateCode));
-            return BadRequest(new ErrorResponse("Unknown or unsupported stateCode."));
-        }
+        // Bind callbackToken after null check; the token is validated cryptographically
+        // (signature + hash match) before any sensitive action.
+        if (string.IsNullOrEmpty(body.CallbackToken))
+            return BadRequest(new ErrorResponse("Missing callbackToken."));
+        var callbackToken = body.CallbackToken;
 
         // --- Require the oidc_session cookie ---
         var sessionId = OidcSessionCookie.Read(Request);
@@ -230,7 +234,7 @@ public class OidcController(
         }
 
         // --- Verify the callback token matches this session and hasn't been consumed ---
-        var tokenHash = IPreAuthSessionStore.HashCallbackToken(body.CallbackToken);
+        var tokenHash = IPreAuthSessionStore.HashCallbackToken(callbackToken);
         var advanced = await sessionStore.TryAdvanceToLoginCompletedAsync(sessionId, tokenHash, cancellationToken);
         if (!advanced)
         {
@@ -244,7 +248,7 @@ public class OidcController(
         OidcSessionCookie.Clear(Response);
         await sessionStore.RemoveAsync(sessionId, cancellationToken);
 
-        var stateKey = body.StateCode.ToLowerInvariant();
+        var stateKey = requestedStateCode.ToLowerInvariant();
         var signingKey = config["Oidc:CompleteLoginSigningKey"];
         if (string.IsNullOrEmpty(signingKey))
         {
@@ -274,12 +278,12 @@ public class OidcController(
         ClaimsPrincipal principal;
         try
         {
-            principal = handler.ValidateToken(body.CallbackToken, validationParams, out _);
+            principal = handler.ValidateToken(callbackToken, validationParams, out _);
         }
         catch (Exception ex)
         {
             logger.LogWarning(ex, "Invalid or expired callback token for state {StateCode}",
-                SanitizeForLog(body.StateCode));
+                SanitizeForLog(requestedStateCode));
             return BadRequest(new ErrorResponse("Invalid or expired callback token."));
         }
 

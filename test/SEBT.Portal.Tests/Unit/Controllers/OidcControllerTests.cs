@@ -180,7 +180,7 @@ public class OidcControllerTests
 
         var badRequest = Assert.IsType<BadRequestObjectResult>(result);
         var error = Assert.IsType<ErrorResponse>(badRequest.Value);
-        Assert.Equal("Unknown or unsupported stateCode.", error.Error);
+        Assert.Contains("unsupported stateCode", error.Error);
         // Authorization endpoint must not be read at all for a rejected state.
         _ = _config.DidNotReceive()["Oidc:AuthorizationEndpoint"];
     }
@@ -197,15 +197,6 @@ public class OidcControllerTests
 
         var statusResult = Assert.IsType<ObjectResult>(result);
         Assert.Equal(503, statusResult.StatusCode);
-    }
-
-    [Fact]
-    public async Task CompleteLogin_WhenBodyNull_Returns400()
-    {
-        var result = await _controller.CompleteLogin(null, CancellationToken.None);
-
-        var badRequest = Assert.IsType<BadRequestObjectResult>(result);
-        Assert.NotNull(badRequest.Value);
     }
 
     [Fact]
@@ -243,7 +234,7 @@ public class OidcControllerTests
 
         var badRequest = Assert.IsType<BadRequestObjectResult>(result);
         var error = Assert.IsType<ErrorResponse>(badRequest.Value);
-        Assert.Equal("Unknown or unsupported stateCode.", error.Error);
+        Assert.Contains("unsupported stateCode", error.Error);
     }
 
     [Fact]

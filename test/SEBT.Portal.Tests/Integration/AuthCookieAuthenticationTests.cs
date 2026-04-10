@@ -70,7 +70,7 @@ public class AuthCookieAuthenticationTests : IClassFixture<PortalWebApplicationF
     private async Task<HttpResponseMessage> GetStatusWithCookie(string? token)
     {
         var client = _factory.CreateClient();
-        var request = new HttpRequestMessage(HttpMethod.Get, "/api/auth/status");
+        using var request = new HttpRequestMessage(HttpMethod.Get, "/api/auth/status");
         if (token != null)
             request.Headers.Add("Cookie", $"{AuthCookies.AuthCookieName}={token}");
         return await client.SendAsync(request);

@@ -12,6 +12,13 @@ public interface IStateAllowlist
     /// <summary>True if <paramref name="stateCode"/> (case-insensitive) is a configured OIDC tenant.</summary>
     bool Contains(string? stateCode);
 
+    /// <summary>
+    /// Resolves a user-provided stateCode to the canonical (lowercased) value from the
+    /// allowlist. Returns null if not found. The returned value is from the allowlist itself,
+    /// not derived from user input — safe for logging and downstream use without taint.
+    /// </summary>
+    string? TryResolve(string? stateCode);
+
     /// <summary>Lowercased, case-insensitive set of allowed state codes.</summary>
     IReadOnlySet<string> All { get; }
 }
@@ -32,6 +39,15 @@ public sealed class StateAllowlist : IStateAllowlist
     /// <inheritdoc/>
     public bool Contains(string? stateCode) =>
         !string.IsNullOrWhiteSpace(stateCode) && _states.Contains(stateCode.ToLowerInvariant());
+
+    /// <inheritdoc/>
+    public string? TryResolve(string? stateCode)
+    {
+        if (string.IsNullOrWhiteSpace(stateCode)) return null;
+        var normalized = stateCode.ToLowerInvariant();
+        // Return the canonical value from the set, breaking any taint chain from user input.
+        return _states.TryGetValue(normalized, out var canonical) ? canonical : null;
+    }
 
     /// <inheritdoc/>
     public IReadOnlySet<string> All => _states;

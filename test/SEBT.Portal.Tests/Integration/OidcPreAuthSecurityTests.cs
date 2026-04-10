@@ -43,7 +43,7 @@ public class OidcPreAuthSecurityTests : IClassFixture<PortalWebApplicationFactor
     {
         var client = _factory.CreateClient();
         var callbackToken = MintCallbackToken("user@example.com");
-        var request = new HttpRequestMessage(HttpMethod.Post, "/api/auth/oidc/complete-login")
+        using var request = new HttpRequestMessage(HttpMethod.Post, "/api/auth/oidc/complete-login")
         {
             Content = JsonContent.Create(new { stateCode = "co", callbackToken }),
             Headers = { { "Origin", "http://localhost:3000" } }
@@ -60,7 +60,7 @@ public class OidcPreAuthSecurityTests : IClassFixture<PortalWebApplicationFactor
     {
         var client = _factory.CreateClient();
         var callbackToken = MintCallbackToken("user@example.com");
-        var request = new HttpRequestMessage(HttpMethod.Post, "/api/auth/oidc/complete-login")
+        using var request = new HttpRequestMessage(HttpMethod.Post, "/api/auth/oidc/complete-login")
         {
             Content = JsonContent.Create(new { stateCode = "co", callbackToken }),
             Headers = { { "Origin", "https://attacker.example.com" } }
@@ -77,7 +77,7 @@ public class OidcPreAuthSecurityTests : IClassFixture<PortalWebApplicationFactor
     {
         var client = _factory.CreateClient();
         var callbackToken = MintCallbackToken("user@example.com");
-        var request = new HttpRequestMessage(HttpMethod.Post, "/api/auth/oidc/complete-login")
+        using var request = new HttpRequestMessage(HttpMethod.Post, "/api/auth/oidc/complete-login")
         {
             Content = JsonContent.Create(new { stateCode = "co", callbackToken })
             // No Origin header at all — curl from command line
@@ -119,7 +119,7 @@ public class OidcPreAuthSecurityTests : IClassFixture<PortalWebApplicationFactor
         await sessionStore.TryAdvanceToLoginCompletedAsync(session.Id, tokenHash);
 
         // Replay attempt: exact same token + cookie → must fail
-        var request = new HttpRequestMessage(HttpMethod.Post, "/api/auth/oidc/complete-login")
+        using var request = new HttpRequestMessage(HttpMethod.Post, "/api/auth/oidc/complete-login")
         {
             Content = JsonContent.Create(new { stateCode = "co", callbackToken }),
             Headers =
@@ -146,7 +146,7 @@ public class OidcPreAuthSecurityTests : IClassFixture<PortalWebApplicationFactor
         var session = await sessionStore.CreateAsync("co", "real-state-value", "verifier1", "http://localhost:3000/callback", false);
 
         var client = _factory.CreateClient();
-        var request = new HttpRequestMessage(HttpMethod.Post, "/api/auth/oidc/callback")
+        using var request = new HttpRequestMessage(HttpMethod.Post, "/api/auth/oidc/callback")
         {
             Content = JsonContent.Create(new
             {
@@ -187,7 +187,7 @@ public class OidcPreAuthSecurityTests : IClassFixture<PortalWebApplicationFactor
     {
         var client = _factory.CreateClient();
         var callbackToken = MintCallbackToken("user@example.com");
-        var request = new HttpRequestMessage(HttpMethod.Post, "/api/auth/oidc/complete-login")
+        using var request = new HttpRequestMessage(HttpMethod.Post, "/api/auth/oidc/complete-login")
         {
             Content = JsonContent.Create(new { stateCode, callbackToken }),
             Headers = { { "Origin", "http://localhost:3000" } }
@@ -204,7 +204,7 @@ public class OidcPreAuthSecurityTests : IClassFixture<PortalWebApplicationFactor
     public async Task V05_T07a_Callback_WithInvalidStateCode_Returns400(string stateCode)
     {
         var client = _factory.CreateClient();
-        var request = new HttpRequestMessage(HttpMethod.Post, "/api/auth/oidc/callback")
+        using var request = new HttpRequestMessage(HttpMethod.Post, "/api/auth/oidc/callback")
         {
             Content = JsonContent.Create(new { code = "code", state = "state", stateCode }),
             Headers = { { "Origin", "http://localhost:3000" } }
@@ -225,7 +225,7 @@ public class OidcPreAuthSecurityTests : IClassFixture<PortalWebApplicationFactor
     public async Task V06_T08aA_Callback_WithoutSessionCookie_Returns403()
     {
         var client = _factory.CreateClient();
-        var request = new HttpRequestMessage(HttpMethod.Post, "/api/auth/oidc/callback")
+        using var request = new HttpRequestMessage(HttpMethod.Post, "/api/auth/oidc/callback")
         {
             Content = JsonContent.Create(new
             {
@@ -246,7 +246,7 @@ public class OidcPreAuthSecurityTests : IClassFixture<PortalWebApplicationFactor
     public async Task V06_T08aA_Callback_WithSpoofedOrigin_Returns403()
     {
         var client = _factory.CreateClient();
-        var request = new HttpRequestMessage(HttpMethod.Post, "/api/auth/oidc/callback")
+        using var request = new HttpRequestMessage(HttpMethod.Post, "/api/auth/oidc/callback")
         {
             Content = JsonContent.Create(new
             {
@@ -274,7 +274,7 @@ public class OidcPreAuthSecurityTests : IClassFixture<PortalWebApplicationFactor
         var session = await sessionStore.CreateAsync("co", "correct-state", "verifier", "http://localhost:3000/callback", false);
 
         var client = _factory.CreateClient();
-        var request = new HttpRequestMessage(HttpMethod.Post, "/api/auth/oidc/callback")
+        using var request = new HttpRequestMessage(HttpMethod.Post, "/api/auth/oidc/callback")
         {
             Content = JsonContent.Create(new
             {
@@ -308,7 +308,7 @@ public class OidcPreAuthSecurityTests : IClassFixture<PortalWebApplicationFactor
         var client = _factory.CreateClient();
         // Session was created for "co" but we send "az" (stateCode mismatch)
         // Note: "az" isn't in the allowlist either, so this gets caught at both layers
-        var request = new HttpRequestMessage(HttpMethod.Post, "/api/auth/oidc/callback")
+        using var request = new HttpRequestMessage(HttpMethod.Post, "/api/auth/oidc/callback")
         {
             Content = JsonContent.Create(new
             {
@@ -344,7 +344,7 @@ public class OidcPreAuthSecurityTests : IClassFixture<PortalWebApplicationFactor
 
         var client = _factory.CreateClient();
         // Try to use the same session for another callback — should fail
-        var request = new HttpRequestMessage(HttpMethod.Post, "/api/auth/oidc/callback")
+        using var request = new HttpRequestMessage(HttpMethod.Post, "/api/auth/oidc/callback")
         {
             Content = JsonContent.Create(new
             {

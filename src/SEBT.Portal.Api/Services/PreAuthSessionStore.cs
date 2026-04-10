@@ -123,7 +123,7 @@ public sealed class PreAuthSessionStore : IPreAuthSessionStore
         KnownSessionIds.TryAdd(sessionId, 0);
         _logger.LogInformation(
             "Pre-auth session created: SessionId={SessionId}, StateCode={StateCode} (reason=session_created)",
-            sessionId, stateCode);
+            sessionId, SanitizeForLog(stateCode));
         return session;
     }
 
@@ -141,6 +141,14 @@ public sealed class PreAuthSessionStore : IPreAuthSessionStore
             _ => ValueTask.FromResult<PreAuthSession?>(null),
             CacheOptions,
             cancellationToken: cancellationToken);
+
+        // Session expired in cache — clean up tracking dictionaries so they don't grow unbounded.
+        if (result == null)
+        {
+            KnownSessionIds.TryRemove(sessionId, out _);
+            SessionLocks.TryRemove(sessionId, out _);
+        }
+
         return result;
     }
 
@@ -230,6 +238,16 @@ public sealed class PreAuthSessionStore : IPreAuthSessionStore
     }
 
     private static string CacheKey(string sessionId) => $"{CacheKeyPrefix}{sessionId}";
+
+    private static string SanitizeForLog(string? value)
+    {
+        if (string.IsNullOrEmpty(value)) return string.Empty;
+        return value
+            .Replace("\r", string.Empty, StringComparison.Ordinal)
+            .Replace("\n", string.Empty, StringComparison.Ordinal)
+            .Replace("\u2028", string.Empty, StringComparison.Ordinal)
+            .Replace("\u2029", string.Empty, StringComparison.Ordinal);
+    }
 
     private static string GenerateSessionId()
     {

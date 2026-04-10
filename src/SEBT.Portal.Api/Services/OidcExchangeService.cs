@@ -163,7 +163,7 @@ public sealed class OidcExchangeService : IOidcExchangeService
 
         // --- Exchange authorization code for tokens ---
         using var client = _httpFactory.CreateClient();
-        var tokenParams = new FormUrlEncodedContent(new Dictionary<string, string>
+        using var tokenParams = new FormUrlEncodedContent(new Dictionary<string, string>
         {
             ["grant_type"] = "authorization_code",
             ["code"] = code,
@@ -332,7 +332,15 @@ public sealed class OidcExchangeService : IOidcExchangeService
 
             TrySet("sub", "sub");
             TrySet("email", "email");
-            TrySet("preferred_username", "email"); // fallback for IdPs that put email here
+            // Some IdPs put email in preferred_username — only use it as email if it looks like one.
+            if (!claims.ContainsKey("email")
+                && doc.RootElement.TryGetProperty("preferred_username", out var pu)
+                && pu.ValueKind == JsonValueKind.String
+                && !string.IsNullOrEmpty(pu.GetString())
+                && pu.GetString()!.Contains('@'))
+            {
+                claims.TryAdd("email", pu.GetString()!);
+            }
             TrySet("phone", "phone");
             TrySet("phone_number", "phone_number");
             TrySet("given_name", "givenName");
