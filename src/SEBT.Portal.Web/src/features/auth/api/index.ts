@@ -10,18 +10,12 @@ export {
 } from './doc-verify'
 
 export {
-  OidcCallbackRequestSchema,
   OidcCallbackTokenResponseSchema,
   OidcCompleteLoginResponseSchema,
   OidcConfigResponseSchema,
-  OidcDiscoveryResponseSchema,
-  OidcTokenResponseSchema,
-  type OidcCallbackRequest,
   type OidcCallbackTokenResponse,
   type OidcCompleteLoginResponse,
-  type OidcConfigResponse,
-  type OidcDiscoveryResponse,
-  type OidcTokenResponse
+  type OidcConfigResponse
 } from './oidc'
 
 export { useRefreshToken } from './refresh-token'

@@ -155,9 +155,7 @@ describe('CallbackPage', () => {
     it('shows state mismatch when PKCE state does not match URL state', async () => {
       mockGetPkce.mockReturnValue({
         state: 'different-state-value',
-        code_verifier: 'test-verifier',
         redirect_uri: 'http://localhost:3000/callback',
-        token_endpoint: 'https://auth.example.com/token',
         client_id: 'test-client'
       })
 
@@ -174,9 +172,7 @@ describe('CallbackPage', () => {
     beforeEach(() => {
       mockGetPkce.mockReturnValue({
         state: 'test-state-value',
-        code_verifier: 'test-verifier',
         redirect_uri: 'http://localhost:3000/callback',
-        token_endpoint: 'https://auth.example.com/token',
         client_id: 'test-client'
       })
       // getState returns 'co'; flow is callback (returns callbackToken) then complete-login (sets cookie, returns empty body)
@@ -209,9 +205,7 @@ describe('CallbackPage', () => {
     beforeEach(() => {
       mockGetPkce.mockReturnValue({
         state: 'test-state-value',
-        code_verifier: 'test-verifier',
         redirect_uri: 'http://localhost:3000/callback',
-        token_endpoint: 'https://auth.example.com/token',
         client_id: 'test-client'
       })
     })

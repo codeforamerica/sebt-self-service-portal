@@ -5,12 +5,20 @@ import { z } from 'zod'
  * Used by COLoginPage (config fetch) and CallbackPage (token exchange).
  */
 
+/**
+ * the API now generates PKCE server-side and returns `state` + `codeChallenge`
+ * + `codeChallengeMethod`. The browser uses these to build the authorization URL but
+ * never sees or stores the `code_verifier`. Token exchange also happens server-side,
+ * so `tokenEndpoint` is no longer returned.
+ */
 export const OidcConfigResponseSchema = z.object({
-  authorizationEndpoint: z.string().url(),
-  tokenEndpoint: z.string().url(),
+  authorizationEndpoint: z.url(),
   clientId: z.string(),
-  redirectUri: z.string().url(),
-  languageParam: z.string().optional()
+  redirectUri: z.url(),
+  languageParam: z.string().optional(),
+  state: z.string(),
+  codeChallenge: z.string(),
+  codeChallengeMethod: z.literal('S256')
 })
 
 export type OidcConfigResponse = z.infer<typeof OidcConfigResponseSchema>
@@ -54,39 +62,3 @@ export const OidcCompleteLoginResponseSchema = z.object({
 })
 
 export type OidcCompleteLoginResponse = z.infer<typeof OidcCompleteLoginResponseSchema>
-
-/**
- * Server-side schemas for the Next.js OIDC route handler (route.ts).
- * These validate external IdP responses.
- */
-
-export const OidcCallbackRequestSchema = z.object({
-  code: z.string(),
-  code_verifier: z.string(),
-  /** redirect_uri used in the auth request — must match exactly for token exchange. Passed from PKCE storage. */
-  redirectUri: z.string().url(),
-  // state is validated client-side (PKCE flow) before this request — accepted here for passthrough but not used by the route handler
-  state: z.string().optional(),
-  stateCode: z.string(),
-  isStepUp: z.boolean().optional()
-})
-
-export type OidcCallbackRequest = z.infer<typeof OidcCallbackRequestSchema>
-
-export const OidcDiscoveryResponseSchema = z.object({
-  token_endpoint: z.string().url(),
-  jwks_uri: z.string().url(),
-  issuer: z.string().optional(),
-  userinfo_endpoint: z.string().url().optional()
-})
-
-export type OidcDiscoveryResponse = z.infer<typeof OidcDiscoveryResponseSchema>
-
-export const OidcTokenResponseSchema = z.object({
-  id_token: z.string(),
-  access_token: z.string().optional(),
-  error: z.string().optional(),
-  error_description: z.string().optional()
-})
-
-export type OidcTokenResponse = z.infer<typeof OidcTokenResponseSchema>

@@ -7,9 +7,6 @@ import { getCoIdProofingMaxAgeYearsRaw, isDebugRepeatOidcStepUp } from '@/lib/ia
 import { hasIal1Plus, isIdProofingCompletionFresh, parseIdProofingMaxAgeYears } from '@/lib/jwt'
 import {
   buildAuthorizationUrl,
-  generateCodeChallenge,
-  generateCodeVerifier,
-  generateState,
   getOidcRedirectUriForCurrentOrigin,
   savePkceForCallback
 } from '@/lib/oidc-pkce'
@@ -33,26 +30,27 @@ interface IalGuardProps {
 
 async function startOidcStepUpRedirect(): Promise<void> {
   const stateCode = getState()
+  // PKCE is generated server-side; config returns state + codeChallenge.
   const config = await apiFetch(`/auth/oidc/${stateCode}/config?stepUp=true`, {
     schema: OidcConfigResponseSchema
   })
 
-  const codeVerifier = generateCodeVerifier()
-  const codeChallenge = await generateCodeChallenge(codeVerifier)
-  const stateValue = generateState()
   const returnUrl =
     typeof window !== 'undefined' ? window.location.pathname + window.location.search : '/dashboard'
 
   const redirectUri = getOidcRedirectUriForCurrentOrigin()
-  savePkceForCallback(stateValue, codeVerifier, {
+  savePkceForCallback(config.state, {
     redirectUri,
-    tokenEndpoint: config.tokenEndpoint,
     clientId: config.clientId,
     isStepUp: true,
     returnUrl
   })
 
-  const authUrl = buildAuthorizationUrl({ ...config, redirectUri }, codeChallenge, stateValue)
+  const authUrl = buildAuthorizationUrl(
+    { ...config, redirectUri },
+    config.codeChallenge,
+    config.state
+  )
   window.location.href = authUrl
 }
 
