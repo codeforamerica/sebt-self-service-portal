@@ -2,10 +2,10 @@ import { useMutation } from '@tanstack/react-query'
 
 import { ApiError, apiFetch } from '@/api'
 
-import type { ValidateOtpRequest, ValidateOtpResponse } from './schema'
+import type { ValidateOtpRequest } from './schema'
 
-async function validateOtp(data: ValidateOtpRequest): Promise<ValidateOtpResponse> {
-  return apiFetch<ValidateOtpResponse>('/auth/otp/validate', {
+async function validateOtp(data: ValidateOtpRequest): Promise<void> {
+  await apiFetch<void>('/auth/otp/validate', {
     method: 'POST',
     body: data
   })

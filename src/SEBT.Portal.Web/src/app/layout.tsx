@@ -1,3 +1,4 @@
+import { BetaBanner } from '@/components/BetaBanner'
 import { MixpanelAnalytics } from '@/components/MixpanelAnalytics'
 import { primaryFont } from '@/design/fonts'
 import { portalRoutes } from '@/lib/analytics-routes'
@@ -117,6 +118,7 @@ export default async function RootLayout({
                         If a second consumer appears, refactor to a SiteAlertContext so
                         child components call setSiteAlert() instead of using createPortal directly. */}
                     <div id="site-alerts" />
+                    <BetaBanner />
                     <Header state={state} />
                     <main id="main-content">{children}</main>
                     <HelpSection state={state} />

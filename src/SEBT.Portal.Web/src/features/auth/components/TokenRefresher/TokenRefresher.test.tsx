@@ -42,20 +42,17 @@ describe('TokenRefresher', () => {
     expect(mockMutate).toHaveBeenCalledWith(undefined, expect.any(Object))
   })
 
-  it('should call login with new token on successful refresh', () => {
+  it('should re-read session on successful refresh', () => {
     render(<TokenRefresher />)
 
     // Get the onSuccess callback from the mutate call
-    const mutateCall = mockMutate.mock.calls[0] as [
-      undefined,
-      { onSuccess: (result: { token: string }) => void }
-    ]
+    const mutateCall = mockMutate.mock.calls[0] as [undefined, { onSuccess: () => void }]
     const options = mutateCall[1]
 
-    // Simulate successful refresh
-    options.onSuccess({ token: 'new-jwt-token' })
+    // Simulate successful refresh — cookie is rotated server-side; frontend re-reads session
+    options.onSuccess()
 
-    expect(mockLogin).toHaveBeenCalledWith('new-jwt-token')
+    expect(mockLogin).toHaveBeenCalledWith()
   })
 
   it('should set up periodic refresh interval', () => {

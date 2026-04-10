@@ -294,9 +294,11 @@ public class HttpSocureClientTests
         var httpClient = new HttpClient(handler) { BaseAddress = new Uri(settingsWithDiToken.BaseUrl) };
         var factory = Substitute.For<IHttpClientFactory>();
         factory.CreateClient("Socure").Returns(httpClient);
+        var snapshot = Substitute.For<IOptionsSnapshot<SocureSettings>>();
+        snapshot.Value.Returns(settingsWithDiToken);
         var client = new HttpSocureClient(
             factory,
-            Options.Create(settingsWithDiToken),
+            snapshot,
             NullLogger<HttpSocureClient>.Instance);
 
         await client.RunIdProofingAssessmentAsync(
@@ -565,9 +567,11 @@ public class HttpSocureClientTests
         var httpClient = new HttpClient(handler) { BaseAddress = new Uri(settingsWithConfigToken.BaseUrl) };
         var factory = Substitute.For<IHttpClientFactory>();
         factory.CreateClient("Socure").Returns(httpClient);
+        var snapshot = Substitute.For<IOptionsSnapshot<SocureSettings>>();
+        snapshot.Value.Returns(settingsWithConfigToken);
         var client = new HttpSocureClient(
             factory,
-            Options.Create(settingsWithConfigToken),
+            snapshot,
             NullLogger<HttpSocureClient>.Instance);
 
         await client.RunIdProofingAssessmentAsync(
@@ -612,9 +616,11 @@ public class HttpSocureClientTests
         var httpClient = new HttpClient(handler) { BaseAddress = new Uri(settingsWithConfigToken.BaseUrl) };
         var factory = Substitute.For<IHttpClientFactory>();
         factory.CreateClient("Socure").Returns(httpClient);
+        var snapshot = Substitute.For<IOptionsSnapshot<SocureSettings>>();
+        snapshot.Value.Returns(settingsWithConfigToken);
         var client = new HttpSocureClient(
             factory,
-            Options.Create(settingsWithConfigToken),
+            snapshot,
             NullLogger<HttpSocureClient>.Instance);
 
         await client.RunIdProofingAssessmentAsync(

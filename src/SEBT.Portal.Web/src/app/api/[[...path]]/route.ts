@@ -8,16 +8,16 @@ type RouteContext = {
   params: Promise<{ path?: string[] }>
 }
 
-/** Paths handled by Next.js API routes; proxy delegates to them instead of the backend */
-const NEXTJS_API_PATHS = ['auth/oidc/callback'] as const
+// all API paths (including auth/oidc/callback) now proxy to the .NET backend.
+// The OIDC token exchange was moved from Next.js to .NET so code_verifier and client
+// secret never leave the server; the Next.js OIDC callback route is no longer used.
 
 async function proxyRequest(request: NextRequest, context: RouteContext): Promise<NextResponse> {
   const { path } = await context.params
-  const pathStr = path?.join('/') ?? ''
 
-  if (pathStr === NEXTJS_API_PATHS[0] && request.method === 'POST') {
-    const { POST: oidcCallbackPost } = await import('../auth/oidc/callback/route')
-    return oidcCallbackPost(request)
+  // Reject path segments that could escape /api/ (e.g., ".." → /api/../internal/metrics)
+  if (path?.some((segment) => segment === '..' || segment === '.')) {
+    return NextResponse.json({ error: 'Invalid path' }, { status: 400 })
   }
 
   const pathname = path ? `/api/${path.join('/')}` : '/api'

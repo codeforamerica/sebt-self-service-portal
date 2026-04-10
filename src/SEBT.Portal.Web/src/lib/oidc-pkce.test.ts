@@ -3,9 +3,6 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import {
   buildAuthorizationUrl,
   clearPkceStorage,
-  generateCodeChallenge,
-  generateCodeVerifier,
-  generateState,
   getPkceFromStorage,
   PKCE_STORAGE_MAX_AGE_MS,
   savePkceForCallback
@@ -16,7 +13,6 @@ describe('oidc-pkce', () => {
     it('builds URL with required OIDC and PKCE query params', () => {
       const config = {
         authorizationEndpoint: 'https://auth.example.com/authorize',
-        tokenEndpoint: 'https://auth.example.com/token',
         clientId: 'my-client-id',
         redirectUri: 'https://app.example.com/callback'
       }
@@ -41,7 +37,6 @@ describe('oidc-pkce', () => {
     it('maps config.languageParam to language query param', () => {
       const config = {
         authorizationEndpoint: 'https://auth.example.com/authorize',
-        tokenEndpoint: 'https://auth.example.com/token',
         clientId: 'my-client-id',
         redirectUri: 'https://app.example.com/callback',
         languageParam: 'en'
@@ -52,48 +47,8 @@ describe('oidc-pkce', () => {
     })
   })
 
-  describe('generateCodeVerifier', () => {
-    it('returns a base64url string of expected length', () => {
-      const verifier = generateCodeVerifier()
-      expect(verifier).toMatch(/^[A-Za-z0-9_-]+$/)
-      expect(verifier).not.toContain('+')
-      expect(verifier).not.toContain('/')
-      expect(verifier).not.toContain('=')
-      expect(verifier.length).toBeGreaterThanOrEqual(40)
-      expect(verifier.length).toBeLessThanOrEqual(44)
-    })
-  })
-
-  describe('generateState', () => {
-    it('returns a base64url string', () => {
-      const state = generateState()
-      expect(state).toMatch(/^[A-Za-z0-9_-]+$/)
-      expect(state).not.toContain('+')
-      expect(state).not.toContain('/')
-      expect(state).not.toContain('=')
-    })
-  })
-
-  describe('generateCodeChallenge', () => {
-    it('produces S256 challenge from verifier', async () => {
-      // RFC 7636; see here for the example: https://datatracker.ietf.org/doc/html/rfc7636#appendix-B
-      const verifier = 'dBjftJeZ4CVP-mB92K27uhbUJU1p1r_wW1gFWFOEjXk'
-      const expectedChallenge = 'E9Melhoa2OwvFrEMTJguCHaoeK1t8URWbuGJSstw-cM'
-
-      const challenge = await generateCodeChallenge(verifier)
-
-      expect(challenge).toBe(expectedChallenge)
-    })
-
-    it('returns base64url (no +, /, or =)', async () => {
-      const verifier = generateCodeVerifier()
-      const challenge = await generateCodeChallenge(verifier)
-      expect(challenge).toMatch(/^[A-Za-z0-9_-]+$/)
-      expect(challenge).not.toContain('+')
-      expect(challenge).not.toContain('/')
-      expect(challenge).not.toContain('=')
-    })
-  })
+  // generateCodeVerifier, generateCodeChallenge, generateState are now server-side
+  // and tested in PkceHelperTests.cs. Client-side tests cover storage + URL building only.
 
   describe('savePkceForCallback / getPkceFromStorage', () => {
     beforeEach(() => {
@@ -106,17 +61,12 @@ describe('oidc-pkce', () => {
       vi.useRealTimers()
     })
 
-    it('round-trips PKCE with storedAtMs and returns it while fresh', () => {
+    it('round-trips state and metadata while fresh', () => {
       const before = Date.now()
-      savePkceForCallback('st', 'verifier', {
-        redirectUri: 'https://app/cb',
-        tokenEndpoint: 'https://auth/token',
-        clientId: 'cid'
-      })
+      savePkceForCallback('st', { redirectUri: 'https://app/cb', clientId: 'cid' })
       const got = getPkceFromStorage()
       expect(got).not.toBeNull()
       expect(got!.state).toBe('st')
-      expect(got!.code_verifier).toBe('verifier')
       expect(got!.storedAtMs).toBeGreaterThanOrEqual(before)
       expect(got!.storedAtMs).toBeLessThanOrEqual(Date.now())
     })
@@ -125,11 +75,7 @@ describe('oidc-pkce', () => {
       vi.useFakeTimers()
       const t0 = Date.now()
       vi.setSystemTime(t0)
-      savePkceForCallback('st', 'verifier', {
-        redirectUri: 'https://app/cb',
-        tokenEndpoint: 'https://auth/token',
-        clientId: 'cid'
-      })
+      savePkceForCallback('st', { redirectUri: 'https://app/cb', clientId: 'cid' })
       vi.setSystemTime(t0 + PKCE_STORAGE_MAX_AGE_MS + 1)
       expect(getPkceFromStorage()).toBeNull()
       expect(sessionStorage.getItem('oidc_co_pkce')).toBeNull()
@@ -140,9 +86,7 @@ describe('oidc-pkce', () => {
         'oidc_co_pkce',
         JSON.stringify({
           state: 's',
-          code_verifier: 'v',
           redirect_uri: 'https://r',
-          token_endpoint: 'https://t',
           client_id: 'c'
         })
       )
@@ -151,11 +95,7 @@ describe('oidc-pkce', () => {
     })
 
     it('clearPkceStorage removes the key', () => {
-      savePkceForCallback('st', 'verifier', {
-        redirectUri: 'https://app/cb',
-        tokenEndpoint: 'https://auth/token',
-        clientId: 'cid'
-      })
+      savePkceForCallback('st', { redirectUri: 'https://app/cb', clientId: 'cid' })
       clearPkceStorage()
       expect(sessionStorage.getItem('oidc_co_pkce')).toBeNull()
     })
