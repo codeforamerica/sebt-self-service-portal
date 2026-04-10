@@ -17,10 +17,6 @@ export const TEST_EMAILS = {
   notFound: 'notfound@example.com',
   serverError: 'error@example.com',
   badRequest: 'badrequest@example.com',
-  // OTP validation returns requiresIdProofing: false
-  idProofingNotRequired: 'noidproofing@example.com',
-  // OTP validation returns token only (no requiresIdProofing field)
-  idProofingAbsent: 'noflag@example.com',
   // ID proofing result: documentVerificationRequired with challengeId
   docVerifyRequired: 'docverify@example.com',
   // ID proofing result: failed with offboarding reason
@@ -33,6 +29,14 @@ export const TEST_OTP = {
   expired: '000000',
   invalid: '999999'
 } as const
+
+// Centralizes the Set-Cookie shape across mock auth handlers so a future tweak
+// (e.g. SameSite=Strict) only happens in one place. Pass an empty value + past
+// expiry to simulate the logout delete instruction.
+function sessionCookie(value: string, expires?: string): string {
+  const base = `sebt_portal_session=${value}; HttpOnly; Secure; SameSite=Lax; Path=/`
+  return expires ? `${base}; Expires=${expires}` : base
+}
 
 // Test feature flags (SUN Bucks portal features)
 export const TEST_FEATURE_FLAGS = {
@@ -180,32 +184,50 @@ export const handlers = [
       return HttpResponse.json({ error: 'Invalid OTP. Please try again.' }, { status: 401 })
     }
 
-    // Success - return mock token, with requiresIdProofing routed by email address
-    if (body.email === TEST_EMAILS.idProofingAbsent) {
-      return HttpResponse.json({ token: 'mock-jwt-token-for-testing' })
-    }
-    if (body.email === TEST_EMAILS.idProofingNotRequired) {
-      return HttpResponse.json({ token: 'mock-jwt-token-for-testing', requiresIdProofing: false })
-    }
-    return HttpResponse.json({
-      token: 'mock-jwt-token-for-testing',
-      requiresIdProofing: true
+    // Success — backend sets HttpOnly session cookie; session shape is read from /auth/status.
+    return new HttpResponse(null, {
+      status: 204,
+      headers: { 'Set-Cookie': sessionCookie('mock-jwt-token-for-testing') }
     })
   }),
 
-  // Refresh token endpoint
+  // Refresh session cookie
   http.post('/api/auth/refresh', async ({ request }) => {
     await delay(50)
 
-    // Check for Authorization header (requires valid token)
-    const authHeader = request.headers.get('Authorization')
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    // Require an existing session cookie to refresh.
+    const cookie = request.headers.get('Cookie') ?? ''
+    if (!cookie.includes('sebt_portal_session=')) {
       return HttpResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    // Success - return new mock token
+    // Rotate the cookie — session contents unchanged in this mock.
+    return new HttpResponse(null, {
+      status: 204,
+      headers: { 'Set-Cookie': sessionCookie('mock-jwt-token-refreshed') }
+    })
+  }),
+
+  // Session status — default mock returns an authenticated user so form-submission
+  // tests that call login() after OTP/OIDC succeed without needing to round-trip a
+  // Set-Cookie header through MSW (which does not maintain a cookie jar in Node).
+  // Unauthenticated tests override via server.use() to return 401.
+  http.get('/api/auth/status', () => {
     return HttpResponse.json({
-      token: 'mock-jwt-token-refreshed'
+      isAuthorized: true,
+      email: TEST_EMAILS.success,
+      ial: '1',
+      idProofingStatus: 0,
+      idProofingCompletedAt: null,
+      idProofingExpiresAt: null
+    })
+  }),
+
+  // Logout — clears the session cookie.
+  http.post('/api/auth/logout', () => {
+    return new HttpResponse(null, {
+      status: 204,
+      headers: { 'Set-Cookie': sessionCookie('', 'Thu, 01 Jan 1970 00:00:00 GMT') }
     })
   }),
 
@@ -239,13 +261,23 @@ export const handlers = [
     return HttpResponse.json({ callbackToken: 'mock-callback-token-for-testing' })
   }),
 
-  // OIDC complete-login (.NET: validates callbackToken, creates session, returns portal JWT)
+  // OIDC complete-login (.NET: validates callbackToken, creates session via HttpOnly cookie)
+  // Response shape mirrors .NET's CompleteLoginResponse: `returnUrl` is always present,
+  // null for normal login, a safe relative path for step-up. System.Text.Json defaults
+  // serialize nullable properties as `null`, not omitted — tests must mirror this so
+  // Zod schema drift (nullish vs optional) is caught at unit level.
   http.post('/api/auth/oidc/complete-login', async ({ request }) => {
     const body = (await request.json()) as { stateCode?: string; callbackToken?: string }
     if (!body?.stateCode || !body?.callbackToken) {
       return HttpResponse.json({ error: 'Missing stateCode or callbackToken.' }, { status: 400 })
     }
-    return HttpResponse.json({ token: 'mock-jwt-token-for-testing' })
+    return HttpResponse.json(
+      { returnUrl: null },
+      {
+        status: 200,
+        headers: { 'Set-Cookie': sessionCookie('mock-jwt-token-for-testing') }
+      }
+    )
   }),
 
   // Feature flags endpoint

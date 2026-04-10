@@ -1,7 +1,5 @@
 import type { ZodType } from 'zod'
 
-import { clearAuthToken, getAuthToken } from '@/features/auth/context'
-
 import type { ApiErrorResponse } from './schemas'
 
 const API_ROUTE_PREFIX = '/api'
@@ -47,6 +45,7 @@ interface ApiFetchOptions<T> {
 /**
  * Fetch wrapper for API calls with timeout, error handling, and optional schema validation.
  * All requests are routed through Next.js API proxy (/api/*) which forwards to the backend.
+ * Auth is carried by the browser's HttpOnly session cookie — no Authorization header is set here.
  */
 export async function apiFetch<T>(endpoint: string, options: ApiFetchOptions<T> = {}): Promise<T> {
   const { body, headers, method = 'GET', timeout = DEFAULT_TIMEOUT_MS, schema } = options
@@ -54,13 +53,9 @@ export async function apiFetch<T>(endpoint: string, options: ApiFetchOptions<T> 
   const controller = new AbortController()
   const timeoutId = setTimeout(() => controller.abort(), timeout)
 
-  const authToken = getAuthToken()
   const requestHeaders: HeadersInit = {
     'Content-Type': 'application/json',
     ...headers
-  }
-  if (authToken) {
-    ;(requestHeaders as Record<string, string>)['Authorization'] = `Bearer ${authToken}`
   }
 
   let response: Response
@@ -69,6 +64,7 @@ export async function apiFetch<T>(endpoint: string, options: ApiFetchOptions<T> 
       method,
       headers: requestHeaders,
       body: body !== undefined ? JSON.stringify(body) : null,
+      credentials: 'same-origin',
       signal: controller.signal
     })
   } catch (error) {
@@ -93,18 +89,12 @@ export async function apiFetch<T>(endpoint: string, options: ApiFetchOptions<T> 
   }
 
   if (!response.ok) {
-    // Handle 401 Unauthorized from auth endpoints - clear invalid token and redirect to login
-    // Only auto-redirect for auth endpoints where 401 means "session invalid"
-    // For other endpoints, 401 might mean "not authorized for this resource" (e.g., IAL/Id Proofing)
-    // and the user may still have a valid session for other resources
-    const isAuthEndpoint = endpoint.startsWith('/auth/')
-    if (response.status === 401 && isAuthEndpoint) {
-      clearAuthToken()
-      // Use replace() to avoid polluting browser history
-      // Note: window.location is used because apiFetch is not a React component and cannot use useRouter
-      if (typeof window !== 'undefined') {
-        window.location.replace('/login')
-      }
+    // Auto-redirect on 401 from auth endpoints (session invalid), except /auth/status —
+    // that's the bootstrap probe AuthContext uses to detect "not logged in" without redirecting.
+    // Other endpoints may 401 for resource-level reasons (IAL gating) where the session is still valid.
+    const shouldRedirectOn401 = endpoint.startsWith('/auth/') && endpoint !== '/auth/status'
+    if (response.status === 401 && shouldRedirectOn401 && typeof window !== 'undefined') {
+      window.location.replace('/login')
     }
 
     const errorData = data as ApiErrorResponse | undefined
