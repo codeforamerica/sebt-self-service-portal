@@ -1,4 +1,6 @@
+using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
+using Microsoft.FeatureManagement;
 using SEBT.Portal.Core.Services;
 using SEBT.Portal.Kernel;
 using SEBT.Portal.Kernel.Results;
@@ -18,6 +20,8 @@ public class RequestOtpCommandHandlerTests
     private readonly IOtpRepository otpRepository = Substitute.For<IOtpRepository>();
     private readonly ILogger<RequestOtpCommandHandler> logger = Substitute.For<ILogger<RequestOtpCommandHandler>>();
     private readonly IValidator<RequestOtpCommand> validator = new DataAnnotationsValidator<RequestOtpCommand>(null!);
+    private readonly IFeatureManager featureManager = Substitute.For<IFeatureManager>();
+    private readonly IHostEnvironment hostEnvironment = Substitute.For<IHostEnvironment>();
     private readonly RequestOtpCommandHandler handler;
     public RequestOtpCommandHandlerTests()
     {
@@ -27,7 +31,9 @@ public class RequestOtpCommandHandlerTests
             otpGenerator,
             emailSender,
             otpRepository,
-            logger);
+            logger,
+            featureManager,
+            hostEnvironment);
     }
     /// <summary>
     /// Tests that Handle returns a Success Result when a valid email is provided.
@@ -211,5 +217,74 @@ public class RequestOtpCommandHandlerTests
         Assert.False(result.IsSuccess);
         var failedResult = Assert.IsType<ValidationFailedResult>(result);
         Assert.Contains("Invalid email format.", failedResult.Errors.Select(e => e.Message));
+    }
+
+    [Fact]
+    public async Task Handle_WhenBypassEnabled_AndStaging_AndMatchingEmail_ReturnsSuccessWithoutSendingOtp()
+    {
+        // Arrange
+        featureManager.IsEnabledAsync("bypass_otp").Returns(true);
+        hostEnvironment.EnvironmentName.Returns("Staging");
+        var command = new RequestOtpCommand { Email = "dast-sanner@sebtportal.com" };
+
+        // Act
+        var result = await handler.Handle(command, CancellationToken.None);
+
+        // Assert
+        Assert.True(result.IsSuccess);
+        await emailSender.DidNotReceive().SendOtpAsync(Arg.Any<string>(), Arg.Any<string>());
+        await otpRepository.DidNotReceive().SaveOtpCodeAsync(Arg.Any<OtpCode>());
+        otpGenerator.DidNotReceive().GenerateOtp();
+    }
+
+    [Fact]
+    public async Task Handle_WhenBypassEnabled_ButNotStaging_ProceedsNormally()
+    {
+        // Arrange
+        featureManager.IsEnabledAsync("bypass_otp").Returns(true);
+        hostEnvironment.EnvironmentName.Returns("Production");
+        var command = new RequestOtpCommand { Email = "dast-sanner@sebtportal.com" };
+        emailSender.SendOtpAsync(command.Email, Arg.Any<string>()).Returns(Result.Success());
+
+        // Act
+        var result = await handler.Handle(command, CancellationToken.None);
+
+        // Assert
+        Assert.True(result.IsSuccess);
+        await emailSender.Received(1).SendOtpAsync(command.Email, Arg.Any<string>());
+    }
+
+    [Fact]
+    public async Task Handle_WhenBypassEnabled_AndStaging_ButWrongEmail_ProceedsNormally()
+    {
+        // Arrange
+        featureManager.IsEnabledAsync("bypass_otp").Returns(true);
+        hostEnvironment.EnvironmentName.Returns("Staging");
+        var command = new RequestOtpCommand { Email = "user@example.com" };
+        emailSender.SendOtpAsync(command.Email, Arg.Any<string>()).Returns(Result.Success());
+
+        // Act
+        var result = await handler.Handle(command, CancellationToken.None);
+
+        // Assert
+        Assert.True(result.IsSuccess);
+        await emailSender.Received(1).SendOtpAsync(command.Email, Arg.Any<string>());
+    }
+
+    [Fact]
+    public async Task Handle_WhenBypassDisabled_ProceedsNormally()
+    {
+        // Arrange
+        featureManager.IsEnabledAsync("bypass_otp").Returns(false);
+        hostEnvironment.EnvironmentName.Returns("Staging");
+        var command = new RequestOtpCommand { Email = "dast-sanner@sebtportal.com" };
+        emailSender.SendOtpAsync(command.Email, Arg.Any<string>()).Returns(Result.Success());
+
+        // Act
+        var result = await handler.Handle(command, CancellationToken.None);
+
+        // Assert
+        Assert.True(result.IsSuccess);
+        await emailSender.Received(1).SendOtpAsync(command.Email, Arg.Any<string>());
     }
 }

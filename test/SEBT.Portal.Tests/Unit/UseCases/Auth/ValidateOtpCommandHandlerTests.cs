@@ -1,5 +1,7 @@
+using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
+using Microsoft.FeatureManagement;
 using NSubstitute;
 using NSubstitute.ReceivedExtensions;
 using SEBT.Portal.Core.Models.Auth;
@@ -18,6 +20,8 @@ public class ValidateOtpCommandHandlerTests
     private readonly IJwtTokenService jwtTokenService = Substitute.For<IJwtTokenService>();
     private readonly NullLogger<ValidateOtpCommandHandler> logger = NullLogger<ValidateOtpCommandHandler>.Instance;
     private readonly IValidator<ValidateOtpCommand> validator = new DataAnnotationsValidator<ValidateOtpCommand>(null!);
+    private readonly IFeatureManager featureManager = Substitute.For<IFeatureManager>();
+    private readonly IHostEnvironment hostEnvironment = Substitute.For<IHostEnvironment>();
 
     [Fact]
     public async Task Handle_ShouldReturnSuccessResult_WhenUnexpiredOtpAndEmailAreValid()
@@ -28,7 +32,9 @@ public class ValidateOtpCommandHandlerTests
             userRepository,
             jwtTokenService,
             validator,
-            logger);
+            logger,
+            featureManager,
+            hostEnvironment);
 
         var command = new ValidateOtpCommand
         {
@@ -69,7 +75,9 @@ public class ValidateOtpCommandHandlerTests
             userRepository,
             jwtTokenService,
             validator,
-            logger);
+            logger,
+            featureManager,
+            hostEnvironment);
         var command = new ValidateOtpCommand
         {
             Email = "jim@example.com",
@@ -102,7 +110,9 @@ public class ValidateOtpCommandHandlerTests
             userRepository,
             jwtTokenService,
             validator,
-            logger);
+            logger,
+            featureManager,
+            hostEnvironment);
         var command = new ValidateOtpCommand
         {
             Email = "jim@example.com",
@@ -137,7 +147,9 @@ public class ValidateOtpCommandHandlerTests
             userRepository,
             jwtTokenService,
             validator,
-            logger);
+            logger,
+            featureManager,
+            hostEnvironment);
         var command = new ValidateOtpCommand
         {
             Email = "jim@example.com",
@@ -166,7 +178,9 @@ public class ValidateOtpCommandHandlerTests
             userRepository,
             jwtTokenService,
             validator,
-            logger);
+            logger,
+            featureManager,
+            hostEnvironment);
         var command = new ValidateOtpCommand
         {
             Email = "jim@example.com",
@@ -194,7 +208,9 @@ public class ValidateOtpCommandHandlerTests
             userRepository,
             jwtTokenService,
             validator,
-            logger);
+            logger,
+            featureManager,
+            hostEnvironment);
         var command = new ValidateOtpCommand
         {
             Email = "jim",
@@ -223,7 +239,9 @@ public class ValidateOtpCommandHandlerTests
             userRepository,
             jwtTokenService,
             validator,
-            logger);
+            logger,
+            featureManager,
+            hostEnvironment);
         var command = new ValidateOtpCommand
         {
             Email = "jim@example.com",
@@ -253,7 +271,9 @@ public class ValidateOtpCommandHandlerTests
             userRepository,
             jwtTokenService,
             validator,
-            logger);
+            logger,
+            featureManager,
+            hostEnvironment);
         var command = new ValidateOtpCommand
         {
             Email = "jim@example.com",
@@ -284,7 +304,9 @@ public class ValidateOtpCommandHandlerTests
             userRepository,
             jwtTokenService,
             validator,
-            logger);
+            logger,
+            featureManager,
+            hostEnvironment);
         var command = new ValidateOtpCommand
         {
             Email = "jim@example.com",
@@ -321,7 +343,9 @@ public class ValidateOtpCommandHandlerTests
             userRepository,
             jwtTokenService,
             validator,
-            logger);
+            logger,
+            featureManager,
+            hostEnvironment);
         var command = new ValidateOtpCommand
         {
             Email = "jim@example.com",
@@ -362,7 +386,9 @@ public class ValidateOtpCommandHandlerTests
             userRepository,
             jwtTokenService,
             validator,
-            logger);
+            logger,
+            featureManager,
+            hostEnvironment);
         var command = new ValidateOtpCommand
         {
             Email = "jim@example.com",
@@ -401,7 +427,9 @@ public class ValidateOtpCommandHandlerTests
             userRepository,
             jwtTokenService,
             validator,
-            logger);
+            logger,
+            featureManager,
+            hostEnvironment);
         var command = new ValidateOtpCommand
         {
             Email = "jim@example.com",
@@ -439,7 +467,9 @@ public class ValidateOtpCommandHandlerTests
             userRepository,
             jwtTokenService,
             validator,
-            logger);
+            logger,
+            featureManager,
+            hostEnvironment);
         var command = new ValidateOtpCommand
         {
             Email = "jim@example.com",
@@ -483,7 +513,9 @@ public class ValidateOtpCommandHandlerTests
             userRepository,
             jwtTokenService,
             validator,
-            mockLogger);
+            mockLogger,
+            featureManager,
+            hostEnvironment);
         var command = new ValidateOtpCommand
         {
             Email = "newuser@example.com",
@@ -526,7 +558,9 @@ public class ValidateOtpCommandHandlerTests
             userRepository,
             jwtTokenService,
             validator,
-            mockLogger);
+            mockLogger,
+            featureManager,
+            hostEnvironment);
         var command = new ValidateOtpCommand
         {
             Email = "existinguser@example.com",
@@ -569,7 +603,9 @@ public class ValidateOtpCommandHandlerTests
             userRepository,
             jwtTokenService,
             validator,
-            mockLogger);
+            mockLogger,
+            featureManager,
+            hostEnvironment);
         var command = new ValidateOtpCommand
         {
             Email = "newuser@example.com",
@@ -614,7 +650,9 @@ public class ValidateOtpCommandHandlerTests
             userRepository,
             jwtTokenService,
             validator,
-            mockLogger);
+            mockLogger,
+            featureManager,
+            hostEnvironment);
         var command = new ValidateOtpCommand
         {
             Email = "existinguser@example.com",
@@ -659,7 +697,9 @@ public class ValidateOtpCommandHandlerTests
             userRepository,
             jwtTokenService,
             validator,
-            mockLogger);
+            mockLogger,
+            featureManager,
+            hostEnvironment);
         var command = new ValidateOtpCommand
         {
             Email = "user@example.com",
@@ -691,5 +731,199 @@ public class ValidateOtpCommandHandlerTests
                                o.ToString()!.Contains(command.Email)),
             Arg.Any<Exception>(),
             Arg.Any<Func<object, Exception?, string>>());
+    }
+
+    [Fact]
+    public async Task Handle_WhenBypassEnabled_AndStaging_AndMatchingEmailAndOtp_ReturnsRealJwt()
+    {
+        // Arrange
+        featureManager.IsEnabledAsync("bypass_otp").Returns(true);
+        hostEnvironment.EnvironmentName.Returns("Staging");
+
+        var user = new User
+        {
+            Email = "dast-sanner@sebtportal.com",
+            IalLevel = UserIalLevel.None
+        };
+
+        userRepository.GetOrCreateUserAsync("dast-sanner@sebtportal.com", Arg.Any<CancellationToken>())
+            .Returns((user, true));
+        jwtTokenService.GenerateToken(Arg.Is<User>(u => u.Email == "dast-sanner@sebtportal.com"))
+            .Returns("real.bypass.jwt.token");
+
+        var handler = new ValidateOtpCommandHandler(
+            otpRepository,
+            userRepository,
+            jwtTokenService,
+            validator,
+            logger,
+            featureManager,
+            hostEnvironment);
+
+        var command = new ValidateOtpCommand
+        {
+            Email = "dast-sanner@sebtportal.com",
+            Otp = "123456"
+        };
+
+        // Act
+        var result = await handler.Handle(command, CancellationToken.None);
+
+        // Assert
+        Assert.True(result.IsSuccess);
+        var successResult = Assert.IsType<SuccessResult<string>>(result);
+        Assert.Equal("real.bypass.jwt.token", successResult.Value);
+        await otpRepository.DidNotReceive().GetOtpCodeByEmailAsync(Arg.Any<string>());
+        await otpRepository.DidNotReceive().DeleteOtpCodeByEmailAsync(Arg.Any<string>());
+        await userRepository.Received(1).GetOrCreateUserAsync("dast-sanner@sebtportal.com", Arg.Any<CancellationToken>());
+        jwtTokenService.Received(1).GenerateToken(Arg.Is<User>(u => u.Email == "dast-sanner@sebtportal.com"));
+    }
+
+    [Fact]
+    public async Task Handle_WhenBypassEnabled_ButNotStaging_ProceedsNormally()
+    {
+        // Arrange
+        featureManager.IsEnabledAsync("bypass_otp").Returns(true);
+        hostEnvironment.EnvironmentName.Returns("Production");
+
+        var handler = new ValidateOtpCommandHandler(
+            otpRepository,
+            userRepository,
+            jwtTokenService,
+            validator,
+            logger,
+            featureManager,
+            hostEnvironment);
+
+        var command = new ValidateOtpCommand
+        {
+            Email = "dast-sanner@sebtportal.com",
+            Otp = "123456"
+        };
+
+        otpRepository.GetOtpCodeByEmailAsync(command.Email)
+            .Returns(new OtpCode(command.Otp, command.Email));
+        var user = new User { Email = command.Email, IalLevel = UserIalLevel.None };
+        userRepository.GetOrCreateUserAsync(command.Email, Arg.Any<CancellationToken>())
+            .Returns((user, false));
+        jwtTokenService.GenerateToken(Arg.Any<User>()).Returns("test.token");
+
+        // Act
+        var result = await handler.Handle(command, CancellationToken.None);
+
+        // Assert
+        Assert.True(result.IsSuccess);
+        await otpRepository.Received(1).GetOtpCodeByEmailAsync(command.Email);
+    }
+
+    [Fact]
+    public async Task Handle_WhenBypassEnabled_AndStaging_ButWrongEmail_ProceedsNormally()
+    {
+        // Arrange
+        featureManager.IsEnabledAsync("bypass_otp").Returns(true);
+        hostEnvironment.EnvironmentName.Returns("Staging");
+
+        var handler = new ValidateOtpCommandHandler(
+            otpRepository,
+            userRepository,
+            jwtTokenService,
+            validator,
+            logger,
+            featureManager,
+            hostEnvironment);
+
+        var command = new ValidateOtpCommand
+        {
+            Email = "other@example.com",
+            Otp = "123456"
+        };
+
+        otpRepository.GetOtpCodeByEmailAsync(command.Email)
+            .Returns(new OtpCode(command.Otp, command.Email));
+        var user = new User { Email = command.Email, IalLevel = UserIalLevel.None };
+        userRepository.GetOrCreateUserAsync(command.Email, Arg.Any<CancellationToken>())
+            .Returns((user, false));
+        jwtTokenService.GenerateToken(Arg.Any<User>()).Returns("test.token");
+
+        // Act
+        var result = await handler.Handle(command, CancellationToken.None);
+
+        // Assert
+        Assert.True(result.IsSuccess);
+        await otpRepository.Received(1).GetOtpCodeByEmailAsync(command.Email);
+    }
+
+    [Fact]
+    public async Task Handle_WhenBypassEnabled_AndStaging_ButWrongOtp_ProceedsNormally()
+    {
+        // Arrange
+        featureManager.IsEnabledAsync("bypass_otp").Returns(true);
+        hostEnvironment.EnvironmentName.Returns("Staging");
+
+        var handler = new ValidateOtpCommandHandler(
+            otpRepository,
+            userRepository,
+            jwtTokenService,
+            validator,
+            logger,
+            featureManager,
+            hostEnvironment);
+
+        var command = new ValidateOtpCommand
+        {
+            Email = "dast-sanner@sebtportal.com",
+            Otp = "999999"
+        };
+
+        otpRepository.GetOtpCodeByEmailAsync(command.Email)
+            .Returns(new OtpCode(command.Otp, command.Email));
+        var user = new User { Email = command.Email, IalLevel = UserIalLevel.None };
+        userRepository.GetOrCreateUserAsync(command.Email, Arg.Any<CancellationToken>())
+            .Returns((user, false));
+        jwtTokenService.GenerateToken(Arg.Any<User>()).Returns("test.token");
+
+        // Act
+        var result = await handler.Handle(command, CancellationToken.None);
+
+        // Assert
+        Assert.True(result.IsSuccess);
+        await otpRepository.Received(1).GetOtpCodeByEmailAsync(command.Email);
+    }
+
+    [Fact]
+    public async Task Handle_WhenBypassDisabled_ProceedsNormally()
+    {
+        // Arrange
+        featureManager.IsEnabledAsync("bypass_otp").Returns(false);
+        hostEnvironment.EnvironmentName.Returns("Staging");
+
+        var handler = new ValidateOtpCommandHandler(
+            otpRepository,
+            userRepository,
+            jwtTokenService,
+            validator,
+            logger,
+            featureManager,
+            hostEnvironment);
+
+        var command = new ValidateOtpCommand
+        {
+            Email = "dast-sanner@sebtportal.com",
+            Otp = "123456"
+        };
+
+        otpRepository.GetOtpCodeByEmailAsync(command.Email)
+            .Returns(new OtpCode(command.Otp, command.Email));
+        var user = new User { Email = command.Email, IalLevel = UserIalLevel.None };
+        userRepository.GetOrCreateUserAsync(command.Email, Arg.Any<CancellationToken>())
+            .Returns((user, false));
+        jwtTokenService.GenerateToken(Arg.Any<User>()).Returns("test.token");
+
+        // Act
+        var result = await handler.Handle(command, CancellationToken.None);
+
+        // Assert
+        Assert.True(result.IsSuccess);
+        await otpRepository.Received(1).GetOtpCodeByEmailAsync(command.Email);
     }
 }
