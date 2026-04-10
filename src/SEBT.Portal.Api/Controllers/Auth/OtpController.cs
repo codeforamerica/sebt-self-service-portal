@@ -1,10 +1,13 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Hosting;
+using Microsoft.FeatureManagement;
 using SEBT.Portal.Api.Models;
 using SEBT.Portal.Kernel;
 using SEBT.Portal.Kernel.AspNetCore;
 using SEBT.Portal.Kernel.Results;
+using SEBT.Portal.Core.AppSettings;
 using SEBT.Portal.UseCases.Auth;
 
 namespace SEBT.Portal.Api.Controllers;
@@ -14,7 +17,7 @@ namespace SEBT.Portal.Api.Controllers;
 /// </summary>  
 [ApiController]
 [Route("api/auth/otp")]
-public class OtpController(ILogger<OtpController> logger) : ControllerBase
+public class OtpController(ILogger<OtpController> logger, IHostEnvironment hostEnvironment, IFeatureManager featureManager) : ControllerBase
 {
     /// <summary>
     /// Request a one-time password (OTP) to be sent to the specified email address.
@@ -31,13 +34,24 @@ public class OtpController(ILogger<OtpController> logger) : ControllerBase
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status429TooManyRequests)]
     public async Task<IActionResult> RequestOtp(
-        [FromBody] RequestOtpCommand command,
+        [FromBody] RequestOtpApiRequest request,
         [FromServices] ICommandHandler<RequestOtpCommand> handler)
     {
-        if (command == null)
+        if (request == null)
         {
             return BadRequest(new ErrorResponse("Request body is required."));
         }
+
+        var enableOtpBypass = await featureManager.IsEnabledAsync(OtpBypassSettings.FeatureFlagName)
+                && hostEnvironment.IsStaging()
+                && !string.IsNullOrEmpty(request.Email)
+                && request.Email == OtpBypassSettings.Email;
+
+        var command = new RequestOtpCommand
+        {
+            Email = request.Email,
+            BypassOtp = enableOtpBypass
+        };
 
         logger.LogInformation("OTP request received for email {Email}", command.Email);
 
@@ -57,7 +71,7 @@ public class OtpController(ILogger<OtpController> logger) : ControllerBase
     /// <summary>
     /// Validate a one-time password (OTP) for the specified email address.
     /// </summary>
-    /// <param name="command">The command containing the email address and OTP code.</param>
+    /// <param name="request">The request containing the email address and OTP code.</param>
     /// <param name="handler">The command handler for processing the OTP validation.</param>
     /// <returns>An OK result with a JWT token if the OTP is valid; otherwise, a BadRequest result.</returns>
     /// <response code="200">OTP validated successfully. Returns a JWT token.</response>
@@ -70,15 +84,27 @@ public class OtpController(ILogger<OtpController> logger) : ControllerBase
     [ProducesResponseType(StatusCodes.Status429TooManyRequests)]
     [ProducesResponseType(StatusCodes.Status500InternalServerError)]
     public async Task<IActionResult> ValidateOtp(
-        [FromBody] ValidateOtpCommand command,
+        [FromBody] ValidateOtpApiRequest request,
         [FromServices] ICommandHandler<ValidateOtpCommand, string> handler)
     {
-        if (command == null)
+        if (request == null)
         {
             return BadRequest(new ErrorResponse("Request body is required."));
         }
 
-        logger.LogInformation("OTP validation request received for email {Email}", command.Email);
+        logger.LogInformation("OTP validation request received for email {Email}", request.Email);
+
+        var isOtpByPassEnabled = await featureManager.IsEnabledAsync(OtpBypassSettings.FeatureFlagName)
+                && hostEnvironment.IsStaging()
+                && !string.IsNullOrEmpty(request.Email)
+                && request.Email == OtpBypassSettings.Email;
+
+        var command = new ValidateOtpCommand
+        {
+            Email = request.Email,
+            Otp = request.Otp,
+            BypassOtp = isOtpByPassEnabled
+        };
 
         var result = await handler.Handle(command);
 

@@ -1,7 +1,5 @@
-using Microsoft.Extensions.Hosting;
+
 using Microsoft.Extensions.Logging;
-using Microsoft.FeatureManagement;
-using SEBT.Portal.Core.AppSettings;
 using SEBT.Portal.Core.Services;
 using SEBT.Portal.Kernel;
 using SEBT.Portal.Kernel.Results;
@@ -9,7 +7,6 @@ using SEBT.Portal.UseCases.Auth;
 using NSubstitute;
 using SEBT.Portal.Core.Repositories;
 using SEBT.Portal.Core.Models.Auth;
-using NSubstitute.ReceivedExtensions;
 
 namespace SEBT.Portal.Tests.Unit.UseCases.Auth;
 
@@ -21,8 +18,6 @@ public class RequestOtpCommandHandlerTests
     private readonly IOtpRepository otpRepository = Substitute.For<IOtpRepository>();
     private readonly ILogger<RequestOtpCommandHandler> logger = Substitute.For<ILogger<RequestOtpCommandHandler>>();
     private readonly IValidator<RequestOtpCommand> validator = new DataAnnotationsValidator<RequestOtpCommand>(null!);
-    private readonly IFeatureManager featureManager = Substitute.For<IFeatureManager>();
-    private readonly IHostEnvironment hostEnvironment = Substitute.For<IHostEnvironment>();
     private readonly RequestOtpCommandHandler handler;
     public RequestOtpCommandHandlerTests()
     {
@@ -32,9 +27,7 @@ public class RequestOtpCommandHandlerTests
             otpGenerator,
             emailSender,
             otpRepository,
-            logger,
-            featureManager,
-            hostEnvironment);
+            logger);
     }
     /// <summary>
     /// Tests that Handle returns a Success Result when a valid email is provided.
@@ -220,13 +213,15 @@ public class RequestOtpCommandHandlerTests
         Assert.Contains("Invalid email format.", failedResult.Errors.Select(e => e.Message));
     }
 
+    /// <summary>
+    /// Tests that Handle skips OTP generation, persistence, and sending when BypassOtp is true.
+    /// The controller is responsible for determining when to set BypassOtp; the handler just respects the flag.
+    /// </summary>
     [Fact]
-    public async Task Handle_WhenBypassEnabled_AndStaging_AndMatchingEmail_ReturnsSuccessWithoutSendingOtp()
+    public async Task Handle_WhenBypassOtpIsTrue_ReturnsSuccessWithoutSendingOtp()
     {
         // Arrange
-        featureManager.IsEnabledAsync(OtpBypassSettings.FeatureFlagName).Returns(true);
-        hostEnvironment.EnvironmentName.Returns("Staging");
-        var command = new RequestOtpCommand { Email = OtpBypassSettings.Email };
+        var command = new RequestOtpCommand { Email = "user@example.com", BypassOtp = true };
 
         // Act
         var result = await handler.Handle(command, CancellationToken.None);
@@ -236,56 +231,5 @@ public class RequestOtpCommandHandlerTests
         await emailSender.DidNotReceive().SendOtpAsync(Arg.Any<string>(), Arg.Any<string>());
         await otpRepository.DidNotReceive().SaveOtpCodeAsync(Arg.Any<OtpCode>());
         otpGenerator.DidNotReceive().GenerateOtp();
-    }
-
-    [Fact]
-    public async Task Handle_WhenBypassEnabled_ButNotStaging_ProceedsNormally()
-    {
-        // Arrange
-        featureManager.IsEnabledAsync(OtpBypassSettings.FeatureFlagName).Returns(true);
-        hostEnvironment.EnvironmentName.Returns("Production");
-        var command = new RequestOtpCommand { Email = OtpBypassSettings.Email };
-        emailSender.SendOtpAsync(command.Email, Arg.Any<string>()).Returns(Result.Success());
-
-        // Act
-        var result = await handler.Handle(command, CancellationToken.None);
-
-        // Assert
-        Assert.True(result.IsSuccess);
-        await emailSender.Received(1).SendOtpAsync(command.Email, Arg.Any<string>());
-    }
-
-    [Fact]
-    public async Task Handle_WhenBypassEnabled_AndStaging_ButWrongEmail_ProceedsNormally()
-    {
-        // Arrange
-        featureManager.IsEnabledAsync(OtpBypassSettings.FeatureFlagName).Returns(true);
-        hostEnvironment.EnvironmentName.Returns("Staging");
-        var command = new RequestOtpCommand { Email = "user@example.com" };
-        emailSender.SendOtpAsync(command.Email, Arg.Any<string>()).Returns(Result.Success());
-
-        // Act
-        var result = await handler.Handle(command, CancellationToken.None);
-
-        // Assert
-        Assert.True(result.IsSuccess);
-        await emailSender.Received(1).SendOtpAsync(command.Email, Arg.Any<string>());
-    }
-
-    [Fact]
-    public async Task Handle_WhenBypassDisabled_ProceedsNormally()
-    {
-        // Arrange
-        featureManager.IsEnabledAsync(OtpBypassSettings.FeatureFlagName).Returns(false);
-        hostEnvironment.EnvironmentName.Returns("Staging");
-        var command = new RequestOtpCommand { Email = OtpBypassSettings.Email };
-        emailSender.SendOtpAsync(command.Email, Arg.Any<string>()).Returns(Result.Success());
-
-        // Act
-        var result = await handler.Handle(command, CancellationToken.None);
-
-        // Assert
-        Assert.True(result.IsSuccess);
-        await emailSender.Received(1).SendOtpAsync(command.Email, Arg.Any<string>());
     }
 }

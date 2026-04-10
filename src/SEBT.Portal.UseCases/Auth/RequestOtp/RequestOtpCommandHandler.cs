@@ -1,7 +1,5 @@
 using System.Linq;
-using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
-using Microsoft.FeatureManagement;
 using SEBT.Portal.Core.Models.Auth;
 using SEBT.Portal.Core.Repositories;
 using SEBT.Portal.Core.AppSettings;
@@ -30,19 +28,14 @@ namespace SEBT.Portal.UseCases.Auth
         IOtpGeneratorService otpGenerator,
         IOtpSenderService emailService,
         IOtpRepository otpRepository,
-        ILogger<RequestOtpCommandHandler> logger,
-        IFeatureManager featureManager,
-        IHostEnvironment hostEnvironment)
+        ILogger<RequestOtpCommandHandler> logger)
         : ICommandHandler<RequestOtpCommand>
     {
         public async Task<Result> Handle(RequestOtpCommand command, CancellationToken cancellationToken)
         {
             // Bypass OTP request for specific email in staging environment when all criteria are met
             // This allows testing of the login flow without needing to receive an OTP, but only for a specific test email and only in staging
-            if (await featureManager.IsEnabledAsync(OtpBypassSettings.FeatureFlagName)
-                && hostEnvironment.IsStaging()
-                && !string.IsNullOrEmpty(command.Email)
-                && command.Email == OtpBypassSettings.Email)
+            if (command.BypassOtp)
             {
                 logger.LogWarning("OTP bypass is enabled. Skipping OTP request for email {Email}", command.Email);
                 return Result.Success();
