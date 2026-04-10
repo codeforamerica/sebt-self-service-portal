@@ -32,7 +32,7 @@ public class AuthCookieAuthenticationTests : IClassFixture<PortalWebApplicationF
     [Fact]
     public async Task GetStatus_WithValidSessionCookie_ReturnsOk()
     {
-        var response = await GetStatusWithCookie(CreateValidJwt(email: "user@example.com"));
+        using var response = await GetStatusWithCookie(CreateValidJwt(email: "user@example.com"));
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
     }
@@ -40,7 +40,7 @@ public class AuthCookieAuthenticationTests : IClassFixture<PortalWebApplicationF
     [Fact]
     public async Task GetStatus_WithoutSessionCookie_ReturnsUnauthorized()
     {
-        var response = await GetStatusWithCookie(token: null);
+        using var response = await GetStatusWithCookie(token: null);
 
         Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
     }
@@ -52,7 +52,7 @@ public class AuthCookieAuthenticationTests : IClassFixture<PortalWebApplicationF
         // Replace the last 4 chars of the signature with garbage so verification fails.
         var tampered = token[..^4] + "XXXX";
 
-        var response = await GetStatusWithCookie(tampered);
+        using var response = await GetStatusWithCookie(tampered);
 
         Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
     }
@@ -62,7 +62,7 @@ public class AuthCookieAuthenticationTests : IClassFixture<PortalWebApplicationF
     {
         var token = CreateValidJwt(email: "user@example.com", expiresInMinutes: -10);
 
-        var response = await GetStatusWithCookie(token);
+        using var response = await GetStatusWithCookie(token);
 
         Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
     }
@@ -70,7 +70,7 @@ public class AuthCookieAuthenticationTests : IClassFixture<PortalWebApplicationF
     private async Task<HttpResponseMessage> GetStatusWithCookie(string? token)
     {
         var client = _factory.CreateClient();
-        var request = new HttpRequestMessage(HttpMethod.Get, "/api/auth/status");
+        using var request = new HttpRequestMessage(HttpMethod.Get, "/api/auth/status");
         if (token != null)
             request.Headers.Add("Cookie", $"{AuthCookies.AuthCookieName}={token}");
         return await client.SendAsync(request);
