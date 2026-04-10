@@ -8,10 +8,18 @@ interface ApiRouteOverrides {
   /** Override specific feature flags. Merged with DEFAULT_FEATURE_FLAGS. */
   featureFlags?: Partial<typeof DEFAULT_FEATURE_FLAGS>
   /**
-   * Override the PUT /api/household/address response status.
-   * Defaults to 204 (success).
+   * Override the PUT /api/household/address response.
+   * Defaults to 200 with { status: 'valid' }.
+   * Use addressUpdateBody to customize the JSON payload.
    */
   addressUpdateStatus?: number
+  /**
+   * Override the PUT /api/household/address response body.
+   * Defaults to { status: 'valid' } for 200, or
+   * { status: 'invalid', reason: 'not-found', message: 'Address not found' } for 422.
+   * Set to null for no body (e.g., 204).
+   */
+  addressUpdateBody?: Record<string, unknown> | null
   /**
    * Override the POST /api/household/cards/replace response status.
    * Defaults to 204 (success).
@@ -39,7 +47,15 @@ interface ApiRouteOverrides {
 export async function setupApiRoutes(page: Page, overrides: ApiRouteOverrides = {}): Promise<void> {
   const householdData = overrides.householdData ?? makeHouseholdData()
   const featureFlags = { ...DEFAULT_FEATURE_FLAGS, ...(overrides.featureFlags ?? {}) }
-  const addressUpdateStatus = overrides.addressUpdateStatus ?? 204
+  const addressUpdateStatus = overrides.addressUpdateStatus ?? 200
+  const addressUpdateBody =
+    overrides.addressUpdateBody !== undefined
+      ? overrides.addressUpdateBody
+      : addressUpdateStatus === 422
+        ? { status: 'invalid', reason: 'not-found', message: 'Address not found' }
+        : addressUpdateStatus === 200
+          ? { status: 'valid' }
+          : null
   const cardReplaceStatus = overrides.cardReplaceStatus ?? 204
 
   // Provide an authenticated session for AuthContext — IAL/id-proofing claims
@@ -83,7 +99,12 @@ export async function setupApiRoutes(page: Page, overrides: ApiRouteOverrides = 
   })
 
   await page.route('**/api/household/address', (route) => {
-    void route.fulfill({ status: addressUpdateStatus })
+    void route.fulfill({
+      status: addressUpdateStatus,
+      ...(addressUpdateBody != null
+        ? { contentType: 'application/json', body: JSON.stringify(addressUpdateBody) }
+        : {})
+    })
   })
 
   await page.route('**/api/household/cards/replace', (route) => {

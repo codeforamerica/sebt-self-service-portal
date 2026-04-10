@@ -71,12 +71,13 @@ describe('CardSelection', () => {
 
   // --- State-specific content ---
 
-  it('shows card number for CO', async () => {
+  it('shows card number for CO when case has ebtCardLastFour', async () => {
     mockState = 'co'
     renderCardSelection()
 
     await waitFor(() => {
-      expect(screen.getAllByText(/1234 \(last 4 digits\)/)).toHaveLength(2)
+      // Only the first case (SEBT-001) has ebtCardLastFour in the default mock
+      expect(screen.getByText(/1234 \(last 4 digits\)/)).toBeInTheDocument()
     })
   })
 
@@ -136,7 +137,7 @@ describe('CardSelection', () => {
 
   // --- Successful submission ---
 
-  it('redirects to dashboard with both params when cards selected', async () => {
+  it('navigates to confirm page with selected case IDs', async () => {
     const { user } = renderCardSelection()
 
     await waitFor(() => {
@@ -149,7 +150,7 @@ describe('CardSelection', () => {
     const submitButton = screen.getByRole('button', { name: /continue/i })
     await user.click(submitButton)
 
-    expect(mockPush).toHaveBeenCalledWith('/dashboard?addressUpdated=true&cardsRequested=true')
+    expect(mockPush).toHaveBeenCalledWith(expect.stringContaining('select/confirm?cases='))
   })
 
   // --- Error handling ---
@@ -185,27 +186,32 @@ describe('CardSelection', () => {
 
   // --- Key uniqueness ---
 
-  it('renders distinct checkboxes when multiple applications have null applicationNumber', async () => {
+  it('renders distinct checkboxes for multiple cases', async () => {
     server.use(
       http.get('/api/household/data', () => {
         return HttpResponse.json({
           email: 'test@example.com',
           phone: '3035550100',
           benefitIssuanceType: 1,
-          applications: [
+          summerEbtCases: [
             {
-              applicationNumber: null,
-              applicationStatus: 'Approved',
-              children: [{ firstName: 'Alice', lastName: 'Smith' }],
-              childrenOnApplication: 1
+              summerEBTCaseID: 'SEBT-A',
+              childFirstName: 'Alice',
+              childLastName: 'Smith',
+              householdType: 'OSSE',
+              eligibilityType: 'NSLP',
+              issuanceType: 1
             },
             {
-              applicationNumber: null,
-              applicationStatus: 'Approved',
-              children: [{ firstName: 'Bob', lastName: 'Smith' }],
-              childrenOnApplication: 1
+              summerEBTCaseID: 'SEBT-B',
+              childFirstName: 'Bob',
+              childLastName: 'Smith',
+              householdType: 'OSSE',
+              eligibilityType: 'NSLP',
+              issuanceType: 1
             }
           ],
+          applications: [],
           addressOnFile: {
             streetAddress1: '123 Main St',
             city: 'Washington',
@@ -226,7 +232,7 @@ describe('CardSelection', () => {
     const checkboxes = screen.getAllByRole('checkbox')
     expect(checkboxes).toHaveLength(2)
 
-    // Select only the first child — second should remain unchecked
+    // Select only the first child, second should remain unchecked
     await user.click(checkboxes[0]!)
     expect(checkboxes[0]).toBeChecked()
     expect(checkboxes[1]).not.toBeChecked()

@@ -19,7 +19,7 @@ namespace SEBT.Portal.Infrastructure.Services;
 /// </summary>
 public class HttpSocureClient(
     IHttpClientFactory httpClientFactory,
-    IOptions<SocureSettings> socureSettings,
+    IOptionsSnapshot<SocureSettings> socureSettingsSnapshot,
     ILogger<HttpSocureClient> logger) : ISocureClient
 {
     private static readonly JsonSerializerOptions JsonOptions = new()
@@ -36,7 +36,7 @@ public class HttpSocureClient(
         string? idValue,
         CancellationToken cancellationToken = default)
     {
-        var settings = socureSettings.Value;
+        var settings = socureSettingsSnapshot.Value;
 
         var request = BuildEvaluationRequest(userId, email, dateOfBirth, idType, idValue, settings);
         var jsonContent = JsonSerializer.Serialize(request, JsonOptions);

@@ -1,0 +1,16 @@
+{
+  "title": "Are you sure you want to delete this address?",
+  "body": "Please provide your student's information in the required fields below. This tool will check if your child is automatically enrolled to receive benefits.",
+  "labelBirthdate": "Birthdate",
+  "labelMonth": "Month",
+  "labelDay": "Day",
+  "labelYear": "Year",
+  "alertProfileUpdate": "Your profile has been updated",
+  "back": "Back to portal home",
+  "headingMailingAddress": "Your mailing address",
+  "labelPreferredMailingAddress": "Select your preferred mailing address",
+  "helperPreferredMailingAddress": "You may add or edit addresses in this list using the links below.",
+  "actionAddMailingAddress": "Add a new mailing address",
+  "editMailingAddress": "Edit mailing addresses",
+  "actionUpdateAddress": "Update address preferences"
+}
