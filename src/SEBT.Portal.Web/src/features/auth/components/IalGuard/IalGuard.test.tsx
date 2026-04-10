@@ -45,9 +45,6 @@ vi.mock('@/api/client', () => ({
 
 vi.mock('@/lib/oidc-pkce', () => ({
   buildAuthorizationUrl: () => 'https://idp.example/authorize',
-  generateCodeChallenge: async () => 'challenge',
-  generateCodeVerifier: () => 'verifier',
-  generateState: () => 'state',
   getOidcRedirectUriForCurrentOrigin: () => 'http://localhost:3000/callback',
   savePkceForCallback: vi.fn()
 }))
@@ -86,9 +83,11 @@ function setupApiFetchMock(options: {
       }
       return Promise.resolve({
         authorizationEndpoint: 'https://idp.example/auth',
-        tokenEndpoint: 'https://idp.example/token',
         clientId: 'cid',
-        redirectUri: 'http://localhost:3000/callback'
+        redirectUri: 'http://localhost:3000/callback',
+        state: 'mock-state',
+        codeChallenge: 'mock-challenge',
+        codeChallengeMethod: 'S256'
       })
     }
     return Promise.resolve({})

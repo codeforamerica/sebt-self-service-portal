@@ -4,9 +4,6 @@ import { apiFetch } from '@/api'
 import { OidcConfigResponseSchema, type OidcConfigResponse } from '@/features/auth'
 import {
   buildAuthorizationUrl,
-  generateCodeChallenge,
-  generateCodeVerifier,
-  generateState,
   getOidcRedirectUriForCurrentOrigin,
   savePkceForCallback
 } from '@/lib/oidc-pkce'
@@ -34,16 +31,18 @@ export function COLoginPage({ state }: { state: StateCode }) {
   async function startOidcLogin() {
     try {
       const config = await oidcConfig.mutateAsync()
-      const codeVerifier = generateCodeVerifier()
-      const codeChallenge = await generateCodeChallenge(codeVerifier)
-      const stateValue = generateState()
+      // PKCE is generated server-side. The config response includes state,
+      // codeChallenge, and codeChallengeMethod. We never touch code_verifier.
       const redirectUri = getOidcRedirectUriForCurrentOrigin()
-      savePkceForCallback(stateValue, codeVerifier, {
+      savePkceForCallback(config.state, {
         redirectUri,
-        tokenEndpoint: config.tokenEndpoint,
         clientId: config.clientId
       })
-      const authUrl = buildAuthorizationUrl({ ...config, redirectUri }, codeChallenge, stateValue)
+      const authUrl = buildAuthorizationUrl(
+        { ...config, redirectUri },
+        config.codeChallenge,
+        config.state
+      )
       window.location.href = authUrl
     } catch {
       // Error state is managed by useMutation — no additional handling needed

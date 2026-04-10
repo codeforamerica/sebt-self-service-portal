@@ -232,30 +232,29 @@ export const handlers = [
     })
   }),
 
-  // OIDC CO config (public; for frontend PKCE flow)
+  // OIDC CO config (public; server-generated PKCE).
+  // Returns state + codeChallenge; code_verifier is server-side only.
   http.get('/api/auth/oidc/co/config', () => {
     return HttpResponse.json({
       authorizationEndpoint: 'https://auth.example.com/authorize',
-      tokenEndpoint: 'https://auth.example.com/token',
       clientId: 'test-client',
       redirectUri: 'http://localhost:3000/callback',
-      languageParam: 'en'
+      languageParam: 'en',
+      state: 'mock-state-for-testing',
+      codeChallenge: 'mock-code-challenge',
+      codeChallengeMethod: 'S256'
     })
   }),
 
   // OIDC callback (Next.js: exchange + validate; returns callbackToken for complete-login)
+  // callback no longer expects code_verifier from the browser — the server
+  // reads it from the pre-auth session. We only check code + stateCode here.
   http.post('/api/auth/oidc/callback', async ({ request }) => {
-    const body = (await request.json()) as {
-      code?: string
-      code_verifier?: string
-      stateCode?: string
-    }
+    const body = (await request.json()) as { code?: string; stateCode?: string }
     const currentState = (process.env.NEXT_PUBLIC_STATE || process.env.STATE || 'dc').toLowerCase()
-    if (!body?.code || !body?.code_verifier || body?.stateCode !== currentState) {
+    if (!body?.code || body?.stateCode !== currentState) {
       return HttpResponse.json(
-        {
-          error: 'Missing or invalid code, code_verifier, or stateCode (must match current state).'
-        },
+        { error: 'Missing or invalid code or stateCode (must match current state).' },
         { status: 400 }
       )
     }

@@ -23,113 +23,269 @@ namespace SEBT.Portal.Api.Controllers.Auth;
 [Route("api/auth/oidc")]
 public class OidcController(
     IConfiguration config,
-    IHttpClientFactory httpFactory,
     ILogger<OidcController> logger,
     IUserRepository userRepository,
     IJwtTokenService jwtService,
-    IOptions<JwtSettings> jwtSettingsOptions) : ControllerBase
+    IOptions<JwtSettings> jwtSettingsOptions,
+    IStateAllowlist stateAllowlist,
+    IPreAuthSessionStore sessionStore,
+    IWebHostEnvironment environment) : ControllerBase
 {
     /// <summary>
-    /// Standard OIDC/JWT and IdP-infrastructure claim names to exclude when copying IdP claims into the portal JWT.
-    /// All other claims (for example: phone, givenName, familyName, email, sub, userId) are added to the portal token.
+    /// OIDC config + pre-auth session creation. Generates PKCE server-side, stores
+    /// <c>state</c> + <c>code_verifier</c> + <c>stateCode</c> in the session store, sets an
+    /// <c>oidc_session</c> HttpOnly cookie, and returns only the <c>code_challenge</c> +
+    /// <c>state</c> to the browser. The <c>code_verifier</c> never leaves the server.
     /// </summary>
-    private static readonly HashSet<string> CommonIdpClaimNames = new(StringComparer.OrdinalIgnoreCase)
-    {
-        "iss", "aud", "iat", "exp", "nbf",
-        "acr", "amr", "auth_time", "at_hash", "sid",
-        "env", "org", "p1.region"
-    };
-    /// <summary>
-    /// Public OIDC config for frontend PKCE flow (no secrets): authorization endpoint, token endpoint, client id, redirect URI.
-    /// Config keys: <c>Oidc:DiscoveryEndpoint</c>, <c>Oidc:ClientId</c>, <c>Oidc:CallbackRedirectUri</c>.
-    /// When <c>stepUp=true</c>, uses <c>Oidc:StepUp:*</c> (second client / discovery for elevated verification).
-    /// </summary>
+    /// <remarks>
+    /// The authorization endpoint is served from a pinned appsettings key, not from the
+    /// IdP discovery document, so it cannot be manipulated by a rogue proxy or DNS attack.
+    /// </remarks>
     [HttpGet("{code}/config")]
     [ProducesResponseType(StatusCodes.Status200OK)]
-    [ProducesResponseType(StatusCodes.Status502BadGateway)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status503ServiceUnavailable)]
     public async Task<IActionResult> GetConfig(
         [FromRoute] string code,
         [FromQuery] bool stepUp = false,
         CancellationToken cancellationToken = default)
     {
-        var discoveryEndpoint = stepUp
-            ? config["Oidc:StepUp:DiscoveryEndpoint"]
-            : config["Oidc:DiscoveryEndpoint"];
+        // Resolve the route parameter to the canonical allowlist value. TryResolve returns
+        // a value from the allowlist itself (not derived from user input), breaking the
+        // taint chain for CodeQL's "user input in log" analysis.
+        var stateCode = stateAllowlist.TryResolve(code);
+        if (stateCode == null)
+        {
+            logger.LogWarning("OIDC GetConfig rejected: unknown stateCode (reason=unknown_state)");
+            return BadRequest(new ErrorResponse("Unknown or unsupported stateCode."));
+        }
+
+        var authorizationEndpoint = stepUp
+            ? config["Oidc:StepUp:AuthorizationEndpoint"]
+            : config["Oidc:AuthorizationEndpoint"];
         var clientId = stepUp ? config["Oidc:StepUp:ClientId"] : config["Oidc:ClientId"];
         var redirectUri = stepUp
             ? (config["Oidc:StepUp:RedirectUri"] ?? config["Oidc:CallbackRedirectUri"])
             : config["Oidc:CallbackRedirectUri"];
-        if (string.IsNullOrEmpty(discoveryEndpoint) || string.IsNullOrEmpty(clientId) || string.IsNullOrEmpty(redirectUri))
+        if (string.IsNullOrEmpty(authorizationEndpoint) || string.IsNullOrEmpty(clientId) || string.IsNullOrEmpty(redirectUri))
         {
-            logger.LogWarning("OIDC config missing (Oidc:DiscoveryEndpoint, Oidc:ClientId, or Oidc:CallbackRedirectUri)");
-            return StatusCode(StatusCodes.Status503ServiceUnavailable, new
-            {
-                error = "OIDC not configured.",
-                hint = "Set Oidc:DiscoveryEndpoint, Oidc:ClientId, and Oidc:CallbackRedirectUri in appsettings."
-            });
+            logger.LogWarning(
+                "OIDC config missing for stateCode {StateCode} (reason=oidc_not_configured)",
+                stateCode);
+            var hint = environment.IsDevelopment()
+                ? "Set Oidc:AuthorizationEndpoint, Oidc:ClientId, and Oidc:CallbackRedirectUri in appsettings."
+                : "";
+            return StatusCode(StatusCodes.Status503ServiceUnavailable, new { error = "OIDC not configured.", hint });
         }
 
-        try
+        // Generate PKCE server-side — code_verifier never leaves the server.
+        var codeVerifier = PkceHelper.GenerateCodeVerifier();
+        var codeChallenge = PkceHelper.ComputeCodeChallenge(codeVerifier);
+        var state = PkceHelper.GenerateState();
+
+        // Create the pre-auth session and set the cookie.
+        var session = await sessionStore.CreateAsync(
+            stateCode, state, codeVerifier, redirectUri, stepUp, cancellationToken);
+        OidcSessionCookie.Set(Response, session.Id);
+
+        var languageParam = config["Oidc:LanguageParam"] ?? "en";
+        return Ok(new
         {
-            using var client = httpFactory.CreateClient();
-            var discoveryJson = await client.GetStringAsync(discoveryEndpoint, cancellationToken).ConfigureAwait(false);
-            using var doc = System.Text.Json.JsonDocument.Parse(discoveryJson);
-            var root = doc.RootElement;
-            var authEndpoint = root.TryGetProperty("authorization_endpoint", out var ae) ? ae.GetString() : null;
-            var tokenEndpoint = root.TryGetProperty("token_endpoint", out var te) ? te.GetString() : null;
-            if (string.IsNullOrEmpty(authEndpoint) || string.IsNullOrEmpty(tokenEndpoint))
-                return StatusCode(StatusCodes.Status502BadGateway, new ErrorResponse("Invalid discovery document."));
-            var languageParam = config["Oidc:LanguageParam"] ?? "en";
-            return Ok(new { authorizationEndpoint = authEndpoint, tokenEndpoint, clientId, redirectUri, languageParam });
-        }
-        catch (Exception ex)
-        {
-            logger.LogWarning(ex, "Failed to fetch OIDC discovery document");
-            return StatusCode(StatusCodes.Status502BadGateway, new ErrorResponse("Unable to load OIDC config."));
-        }
+            authorizationEndpoint,
+            clientId,
+            redirectUri,
+            languageParam,
+            state,
+            codeChallenge,
+            codeChallengeMethod = "S256"
+        });
     }
 
     /// <summary>
-    /// Completes OIDC login when the Next.js server has already exchanged the code and validated the id_token.
-    /// Accepts a short-lived callbackToken (JWT signed with Oidc:CompleteLoginSigningKey) containing IdP claims;
-    /// copies non-common IdP claims into the portal JWT and writes it to the HttpOnly session cookie
-    /// (see <c>AuthCookies</c>). The response body carries metadata only — no token.
-    /// Step-up may echo <c>returnUrl</c> only when it is a safe relative path (see <see cref="TrySanitizeStepUpReturnUrl"/>).
+    /// Server-side OIDC callback. Requires the <c>oidc_session</c> cookie to
+    /// locate the pre-auth session. Validates <c>state</c> against the stored value,
+    /// uses the stored <c>code_verifier</c> for the token exchange (never from the
+    /// request body), and advances the session to <c>CallbackCompleted</c>.
+    /// </summary>
+    [HttpPost("callback")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(StatusCodes.Status503ServiceUnavailable)]
+    public async Task<IActionResult> Callback(
+        [FromBody] OidcCallbackRequest? body,
+        [FromServices] IOidcExchangeService exchangeService,
+        CancellationToken cancellationToken)
+    {
+        if (body == null || string.IsNullOrEmpty(body.Code) || string.IsNullOrEmpty(body.StateCode))
+            return BadRequest(new ErrorResponse("Missing code or stateCode."));
+
+        // Resolve stateCode to the canonical allowlist value (breaks taint chain).
+        var requestedCode = body.Code;
+        var requestedStateCode = stateAllowlist.TryResolve(body.StateCode);
+        if (requestedStateCode == null)
+        {
+            logger.LogWarning("OIDC Callback rejected: unknown stateCode (reason=unknown_state)");
+            return BadRequest(new ErrorResponse("Unknown or unsupported stateCode."));
+        }
+
+        // --- Require the oidc_session cookie ---
+        var sessionId = OidcSessionCookie.Read(Request);
+        if (string.IsNullOrEmpty(sessionId))
+        {
+            logger.LogWarning("OIDC Callback rejected: missing oidc_session cookie (reason=missing_session)");
+            return StatusCode(StatusCodes.Status403Forbidden, new ErrorResponse("Missing pre-auth session."));
+        }
+
+        var session = await sessionStore.GetAsync(sessionId, cancellationToken);
+        if (session == null)
+        {
+            logger.LogWarning("OIDC Callback rejected: session {SessionId} not found or expired (reason=missing_session)", sessionId);
+            return StatusCode(StatusCodes.Status403Forbidden, new ErrorResponse("Pre-auth session expired or invalid."));
+        }
+
+        // --- Validate state matches stored value (CSRF protection) ---
+        if (string.IsNullOrEmpty(body.State) || body.State != session.State)
+        {
+            logger.LogWarning(
+                "OIDC Callback rejected: state mismatch (reason=mismatched_state, SessionId={SessionId})", sessionId);
+            return BadRequest(new ErrorResponse("State parameter mismatch."));
+        }
+
+        // --- Validate stateCode matches stored value (prevents tenant switching) ---
+        if (!string.Equals(requestedStateCode, session.StateCode, StringComparison.OrdinalIgnoreCase))
+        {
+            logger.LogWarning(
+                "OIDC Callback rejected: stateCode mismatch (reason=mismatched_stateCode, SessionId={SessionId})", sessionId);
+            return BadRequest(new ErrorResponse("State code mismatch."));
+        }
+
+        // --- Verify the session hasn't already been used (fail fast before the exchange) ---
+        if (session.Phase != PreAuthSessionPhase.Created)
+        {
+            logger.LogWarning(
+                "OIDC Callback rejected: session already used, Phase={Phase} (reason=replay, SessionId={SessionId})",
+                session.Phase, sessionId);
+            return BadRequest(new ErrorResponse("Pre-auth session has already been used."));
+        }
+
+        // --- Exchange code using the stored code_verifier (never from the body) ---
+        var result = await exchangeService.ExchangeCodeAsync(
+            requestedCode,
+            session.CodeVerifier,
+            session.RedirectUri,
+            session.IsStepUp,
+            cancellationToken);
+
+        if (!result.Success)
+        {
+            logger.LogWarning(
+                "OIDC Callback exchange failed: {Error} (reason=exchange_failed, SessionId={SessionId})",
+                result.Error, sessionId);
+            return StatusCode(result.StatusCode, new ErrorResponse(result.Error ?? "Exchange failed."));
+        }
+
+        // --- Advance session to CallbackCompleted and store the callback token hash ---
+        var tokenHash = IPreAuthSessionStore.HashCallbackToken(result.CallbackToken!);
+        var advanced = await sessionStore.TryAdvanceToCallbackCompletedAsync(sessionId, tokenHash, cancellationToken);
+        if (!advanced)
+        {
+            logger.LogWarning(
+                "OIDC Callback rejected: session could not advance (reason=replay, SessionId={SessionId})", sessionId);
+            return BadRequest(new ErrorResponse("Pre-auth session has already been used."));
+        }
+
+        return Ok(new { callbackToken = result.CallbackToken });
+    }
+
+    /// <summary>
+    /// Completes OIDC login. Requires the <c>oidc_session</c> cookie to locate
+    /// the pre-auth session. Verifies the callback token was issued for this session and
+    /// has not been used before. On success, mints the portal JWT, marks the session
+    /// consumed, and clears the pre-auth cookie.
     /// </summary>
     [HttpPost("complete-login")]
     [ProducesResponseType(typeof(CompleteLoginResponse), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status403Forbidden)]
     [ProducesResponseType(StatusCodes.Status503ServiceUnavailable)]
     public async Task<IActionResult> CompleteLogin(
-        [FromBody] CompleteLoginRequest? body,
+        [FromBody] CompleteLoginRequest body,
         CancellationToken cancellationToken)
     {
-        if (body == null || string.IsNullOrEmpty(body.StateCode) || string.IsNullOrEmpty(body.CallbackToken))
-            return BadRequest(new ErrorResponse("Missing stateCode or callbackToken."));
+        // Resolve stateCode via allowlist — returns a canonical value from the allowlist
+        // itself, not derived from user input. Null if missing or not in the allowlist.
+        var requestedStateCode = stateAllowlist.TryResolve(body.StateCode);
+        if (requestedStateCode == null)
+            return BadRequest(new ErrorResponse("Missing or unsupported stateCode."));
 
-        var stateKey = body.StateCode.ToLowerInvariant();
+        // Bind callbackToken after null check; the token is validated cryptographically
+        // (signature + hash match) before any sensitive action.
+        if (string.IsNullOrEmpty(body.CallbackToken))
+            return BadRequest(new ErrorResponse("Missing callbackToken."));
+        var callbackToken = body.CallbackToken;
+
+        // --- Require the oidc_session cookie ---
+        var sessionId = OidcSessionCookie.Read(Request);
+        if (string.IsNullOrEmpty(sessionId))
+        {
+            logger.LogWarning("OIDC CompleteLogin rejected: missing oidc_session cookie (reason=missing_session)");
+            return StatusCode(StatusCodes.Status403Forbidden, new ErrorResponse("Missing pre-auth session."));
+        }
+
+        // --- Retrieve session to cross-check stateCode and read IsStepUp ---
+        var session = await sessionStore.GetAsync(sessionId, cancellationToken);
+        if (session == null)
+        {
+            logger.LogWarning("OIDC CompleteLogin rejected: session not found (reason=missing_session, SessionId={SessionId})", sessionId);
+            return StatusCode(StatusCodes.Status403Forbidden, new ErrorResponse("Pre-auth session invalid, expired, or already used."));
+        }
+
+        // --- Validate stateCode matches stored value (prevents tenant switching) ---
+        if (!string.Equals(requestedStateCode, session.StateCode, StringComparison.OrdinalIgnoreCase))
+        {
+            logger.LogWarning(
+                "OIDC CompleteLogin rejected: stateCode mismatch (reason=mismatched_stateCode, SessionId={SessionId})", sessionId);
+            return BadRequest(new ErrorResponse("State code mismatch."));
+        }
+
+        // --- Verify the callback token matches this session and hasn't been consumed ---
+        var tokenHash = IPreAuthSessionStore.HashCallbackToken(callbackToken);
+        var advanced = await sessionStore.TryAdvanceToLoginCompletedAsync(sessionId, tokenHash, cancellationToken);
+        if (!advanced)
+        {
+            logger.LogWarning(
+                "OIDC CompleteLogin rejected: session advance failed (reason=replay, SessionId={SessionId})", sessionId);
+            return StatusCode(StatusCodes.Status403Forbidden, new ErrorResponse("Pre-auth session invalid, expired, or already used."));
+        }
+
+        // Clear the pre-auth cookie and remove the session from cache (defense-in-depth:
+        // even if the phase check were bypassed, the code_verifier is gone from memory).
+        OidcSessionCookie.Clear(Response);
+        await sessionStore.RemoveAsync(sessionId, cancellationToken);
+
+        var stateKey = session.StateCode.ToLowerInvariant();
         var signingKey = config["Oidc:CompleteLoginSigningKey"];
         if (string.IsNullOrEmpty(signingKey))
         {
             logger.LogWarning("Oidc:CompleteLoginSigningKey is not configured.");
-            return StatusCode(StatusCodes.Status503ServiceUnavailable, new
-            {
-                error = "Complete-login not configured.",
-                hint = "Set Oidc:CompleteLoginSigningKey (same value as Next.js OIDC_COMPLETE_LOGIN_SIGNING_KEY)."
-            });
+            var hint = environment.IsDevelopment() ? "Set Oidc:CompleteLoginSigningKey in appsettings." : "";
+            return StatusCode(StatusCodes.Status503ServiceUnavailable, new { error = "Complete-login not configured.", hint });
         }
 
+        var portalOrigin = config["Oidc:CallbackRedirectUri"]?.TrimEnd('/') ?? "sebt-portal";
         var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(signingKey));
         var validationParams = new TokenValidationParameters
         {
             ValidateIssuerSigningKey = true,
-            ValidateIssuer = false,
-            ValidateAudience = false,
+            ValidateIssuer = true,
+            ValidIssuer = portalOrigin,
+            ValidateAudience = true,
+            ValidAudience = portalOrigin,
             ValidateLifetime = true,
             ClockSkew = TimeSpan.FromMinutes(1),
             // Use resolver instead of IssuerSigningKey to bypass kid-matching;
-            // jose (Next.js) signs without a kid header, which causes IDX10517
+            // the callback token is signed without a kid header, which causes IDX10517
             // when JwtSecurityTokenHandler tries to match by kid.
             IssuerSigningKeyResolver = (token, securityToken, kid, parameters) => [key]
         };
@@ -138,12 +294,12 @@ public class OidcController(
         ClaimsPrincipal principal;
         try
         {
-            principal = handler.ValidateToken(body.CallbackToken, validationParams, out _);
+            principal = handler.ValidateToken(callbackToken, validationParams, out _);
         }
         catch (Exception ex)
         {
             logger.LogWarning(ex, "Invalid or expired callback token for state {StateCode}",
-                SanitizeForLog(body.StateCode));
+                SanitizeForLog(requestedStateCode));
             return BadRequest(new ErrorResponse("Invalid or expired callback token."));
         }
 
@@ -151,7 +307,7 @@ public class OidcController(
         var additionalClaims = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
         foreach (var claim in principal.Claims)
         {
-            if (!CommonIdpClaimNames.Contains(claim.Type) && !string.IsNullOrEmpty(claim.Value))
+            if (!OidcExchangeService.CommonOidcInfrastructureClaims.Contains(claim.Type) && !string.IsNullOrEmpty(claim.Value))
             {
                 additionalClaims[claim.Type] = claim.Value;
             }
@@ -174,7 +330,7 @@ public class OidcController(
         var normalizedEmail = EmailNormalizer.Normalize(email);
         User user;
 
-        if (body.IsStepUp)
+        if (session.IsStepUp)
         {
             var existingUser = await userRepository.GetUserByEmailAsync(normalizedEmail, cancellationToken);
             if (existingUser == null)
@@ -216,7 +372,7 @@ public class OidcController(
         AuthCookies.SetAuthCookie(Response, token, expiresAt);
 
         string? safeReturnUrl = null;
-        if (body.IsStepUp)
+        if (session.IsStepUp)
         {
             safeReturnUrl = TrySanitizeStepUpReturnUrl(body.ReturnUrl);
             if (safeReturnUrl == null && !string.IsNullOrWhiteSpace(body.ReturnUrl))

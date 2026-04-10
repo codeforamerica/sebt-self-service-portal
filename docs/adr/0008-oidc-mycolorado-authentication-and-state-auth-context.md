@@ -74,3 +74,48 @@ The JWT's claim shape, signing key, and expiry behavior are unchanged from the o
 - `SEBT.Portal.Api/Models/{AuthorizationStatusResponse,CompleteLoginResponse}.cs`
 - `SEBT.Portal.Web/src/api/client.ts`, `src/features/auth/context/AuthContext.tsx`, `src/lib/jwt.ts`
 - `SEBT.Portal.Tests/Unit/Services/AuthCookiesTests.cs`, `SEBT.Portal.Tests/Integration/AuthCookieAuthenticationTests.cs`
+
+
+---
+
+## Addendum (DC-243, 2026-04-10): Server-side OIDC pre-auth session
+
+### Context
+A penetration test found that the OIDC login flow was fully stateless from the portal's perspective: `code_verifier` was generated in the browser and sent in cleartext, authorization codes and ID tokens could be replayed from any machine to mint unlimited portal sessions, the `state` parameter was not validated server-side, and the `stateCode` route parameter accepted arbitrary values. The assessor demonstrated full account takeover by intercepting an authorization code and replaying it from a separate machine without any session binding.
+
+### Decision
+The OIDC flow now uses a server-side pre-auth session that binds PKCE, CSRF state, and token exchange to the browser that initiated the login.
+
+**Pre-auth session lifecycle:**
+1. `GET /api/auth/oidc/{stateCode}/config` generates PKCE (`code_verifier` + `code_challenge`) and a random `state` parameter on the server. These are stored in a `PreAuthSession` record in `HybridCache` (L1 memory + optional L2 Redis) with a 15-minute TTL. The session ID is set as an `oidc_session` HttpOnly, Secure, `SameSite=Strict` cookie. The response returns `state`, `code_challenge`, and the pinned `authorizationEndpoint` — never the `code_verifier`.
+2. `POST /api/auth/oidc/callback` requires the `oidc_session` cookie, validates `state` and `stateCode` against the stored session, uses the server-stored `code_verifier` for the token exchange (the browser never sends it), verifies the id_token with strict 10-second clock skew, and advances the session to `CallbackCompleted`.
+3. `POST /api/auth/oidc/complete-login` requires the same `oidc_session` cookie, verifies the callback token hash matches the session, enforces one-time use (session advances to `LoginCompleted`), mints the portal JWT, clears the pre-auth cookie, and removes the session from cache.
+
+**Token exchange moved from Next.js to .NET:**
+The OIDC code→token exchange and id_token verification previously happened in a Next.js API route (`/api/auth/oidc/callback/route.ts`). This route is deleted. The exchange now happens in `OidcExchangeService` on the .NET API, which owns the client secret, discovery document fetching, JWKS verification, and callback token signing. The Next.js proxy forwards all `/api/*` requests to .NET without interception.
+
+**Endpoint hardening:**
+- `stateCode` is validated against a server-side allowlist derived from loaded per-state OIDC configuration.
+- The PingOne authorization endpoint is pinned in appsettings (`Oidc:AuthorizationEndpoint`), not fetched from the IdP discovery document at request time.
+- `OidcOriginValidationMiddleware` requires a matching `Origin` header on all OIDC POST endpoints; mismatched `Referer` is logged but not enforced.
+- ID token `exp` is enforced with ≤10-second clock skew (previously ~60 seconds).
+- The callback token JWT now includes `iss`/`aud` claims matching the portal origin to prevent cross-environment confusion.
+- `Oidc:CompleteLoginSigningKey` is validated at startup to be ≥32 characters.
+
+**Config migration:**
+OIDC secrets (`ClientSecret`, `CompleteLoginSigningKey`, step-up equivalents) moved from Next.js `.env.local` to the .NET API's per-state appsettings (`Oidc:ClientSecret`, `Oidc:StepUp:ClientSecret`). New required keys: `Oidc:AuthorizationEndpoint` and `Oidc:StepUp:AuthorizationEndpoint`. The Next.js env schema no longer includes OIDC variables.
+
+### Consequences
+- Authorization code and ID token replay from another machine is no longer possible — the attacker would need the `oidc_session` cookie, which is HttpOnly and `SameSite=Strict`.
+- `code_verifier` never appears in browser-visible network traffic, sessionStorage, or request bodies.
+- Each login flow consumes its session exactly once; a second attempt with the same cookie returns 403.
+- The Next.js process no longer holds OIDC client secrets, reducing its attack surface.
+- Deployment configs must add `Oidc:ClientSecret` and `Oidc:AuthorizationEndpoint` to the API's per-state appsettings and can remove the corresponding `OIDC_*` env vars from the Next.js container.
+- The `oidc_session` cookie is short-lived (15 min) and cleared after successful login; it is not present during normal authenticated usage.
+
+### References
+- `SEBT.Portal.Api/Services/{PreAuthSession,PreAuthSessionStore,OidcSessionCookie,OidcExchangeService,PkceHelper,StateAllowlist}.cs`
+- `SEBT.Portal.Api/Middleware/OidcOriginValidationMiddleware.cs`
+- `SEBT.Portal.Api/Controllers/Auth/OidcController.cs`
+- `SEBT.Portal.Tests/Integration/OidcPreAuthSecurityTests.cs`
+- `appsettings.co.example.json` (Oidc block with new keys)

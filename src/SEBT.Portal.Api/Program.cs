@@ -151,6 +151,11 @@ builder.Services.AddPortalInfrastructureAppSettings(builder.Configuration);
 // Action filters
 builder.Services.AddScoped<ResolveUserFilter>();
 
+// OIDC token exchange (replaces the Next.js /api/auth/oidc/callback route)
+builder.Services.AddScoped<IOidcExchangeService, OidcExchangeService>();
+// pre-auth session store (HybridCache-backed, 15 min TTL)
+builder.Services.AddSingleton<IPreAuthSessionStore, PreAuthSessionStore>();
+
 // Register IDatabaseSeeder for development utilities (e.g., ClearSeededData script)
 builder.Services.AddScoped<IDatabaseSeeder>(sp =>
 {
@@ -160,6 +165,21 @@ builder.Services.AddScoped<IDatabaseSeeder>(sp =>
     var seedingSettings = sp.GetService<IOptions<SeedingSettings>>()?.Value ?? new SeedingSettings();
     return new DatabaseSeeder(dataSeeder, seedingSettings, logger, timeProvider);
 });
+
+// State allowlist for OIDC login endpoints. An instance is considered a
+// configured OIDC tenant iff its loaded config overlay has Oidc:AuthorizationEndpoint
+// set (the pinned IdP authorize URL). The current STATE env var is the only allowed
+// state when that's true; everything else (no STATE, no Oidc block) produces an empty
+// allowlist and all OIDC routes reject all stateCode inputs. This prevents the route
+// parameter from being used as a tenant escape.
+var allowedOidcStates = new List<string>();
+if (!string.IsNullOrWhiteSpace(builder.Configuration["Oidc:AuthorizationEndpoint"]))
+{
+    var currentState = Environment.GetEnvironmentVariable("STATE");
+    if (!string.IsNullOrWhiteSpace(currentState))
+        allowedOidcStates.Add(currentState);
+}
+builder.Services.AddSingleton<IStateAllowlist>(new StateAllowlist(allowedOidcStates));
 
 // Configure JWT Authentication
 builder.Services.AddAuthentication(options =>
@@ -333,6 +353,15 @@ if (app.Environment.IsProduction())
     IdentifierHasherGuard.ValidateForProduction(app.Configuration["IdentifierHasher:SecretKey"]);
 }
 
+// HMAC-SHA256 requires ≥256-bit (32-byte) key. Fail fast if configured but too short.
+var oidcSigningKey = app.Configuration["Oidc:CompleteLoginSigningKey"];
+if (!string.IsNullOrEmpty(oidcSigningKey) && oidcSigningKey.Length < 32)
+{
+    throw new InvalidOperationException(
+        $"Oidc:CompleteLoginSigningKey must be at least 32 characters (got {oidcSigningKey.Length}). " +
+        "HMAC-SHA256 requires a 256-bit key for full security.");
+}
+
 // Apply database migrations (non-blocking: app will start even if DB is unavailable)
 try
 {
@@ -404,6 +433,10 @@ forwardedHeadersOptions.KnownIPNetworks.Clear();
 app.UseForwardedHeaders(forwardedHeadersOptions);
 
 app.UseRouting();
+
+// reject OIDC POST requests with missing or disallowed Origin header.
+// Runs before authentication so replay attempts from rogue origins fail early.
+app.UseMiddleware<OidcOriginValidationMiddleware>();
 
 app.UseMiddleware<OtpRateLimitMiddleware>();
 
