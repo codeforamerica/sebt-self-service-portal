@@ -20,4 +20,16 @@ describe('LandingPage', () => {
     await userEvent.click(screen.getByRole('button', { name: /apply now/i }))
     expect(mockPush).toHaveBeenCalledWith('/disclaimer')
   })
+
+  it('exposes data-analytics-cta on the primary and Spanish action buttons', () => {
+    render(<LandingPage />)
+    expect(screen.getByRole('button', { name: /apply now/i })).toHaveAttribute(
+      'data-analytics-cta',
+      'start_enrollment_check_cta'
+    )
+    expect(screen.getByRole('button', { name: /aplica/i })).toHaveAttribute(
+      'data-analytics-cta',
+      'start_enrollment_check_cta_es'
+    )
+  })
 })
