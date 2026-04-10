@@ -1,6 +1,8 @@
 using Microsoft.Extensions.Logging.Abstractions;
 using NSubstitute;
+using NSubstitute.ExceptionExtensions;
 using SEBT.Portal.Core.AppSettings;
+using SEBT.Portal.Core.Exceptions;
 using SEBT.Portal.Core.Models.Auth;
 using SEBT.Portal.Core.Models.DocVerification;
 using SEBT.Portal.Core.Models;
@@ -538,5 +540,72 @@ public class SubmitIdProofingCommandHandlerTests
         var depFailed = Assert.IsType<DependencyFailedResult<SubmitIdProofingResponse>>(result);
         Assert.Equal(DependencyFailedReason.Timeout, depFailed.Reason);
         Assert.Equal("Socure API request timed out.", depFailed.Message);
+    }
+
+    // --- Race condition: duplicate active challenge ---
+
+    [Fact]
+    public async Task Handle_ShouldReuseExistingChallenge_WhenCreateThrowsDuplicateRecordException()
+    {
+        var handler = CreateHandler();
+        var command = CreateValidCommand();
+        var existingChallenge = DocVerificationChallengeFactory.CreateChallengeForUser(command.UserId);
+
+        userRepository.GetUserByIdAsync(command.UserId, Arg.Any<CancellationToken>())
+            .Returns(new User { Id = command.UserId, Email = "test@example.com" });
+
+        // First call: no active challenge (triggers Socure + create path)
+        challengeRepository.GetActiveByUserIdAsync(command.UserId, Arg.Any<CancellationToken>())
+            .Returns(
+                (DocVerificationChallenge?)null,  // first call (top of Handle)
+                existingChallenge);               // second call (after catching DuplicateRecordException)
+
+        socureClient.RunIdProofingAssessmentAsync(
+                command.UserId, "test@example.com", command.DateOfBirth,
+                command.IdType, command.IdValue, Arg.Any<string?>(), Arg.Any<string?>(),
+                Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<Address?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
+            .Returns(Result<IdProofingAssessmentResult>.Success(
+                new IdProofingAssessmentResult(IdProofingOutcome.DocumentVerificationRequired, AllowIdRetry: true)));
+
+        // CreateAsync throws because another instance inserted first (unique index violation)
+        challengeRepository.CreateAsync(Arg.Any<DocVerificationChallenge>(), Arg.Any<CancellationToken>())
+            .ThrowsAsync(new DuplicateRecordException(
+                $"A record with the same unique constraint already exists for user {command.UserId}."));
+
+        var result = await handler.Handle(command, CancellationToken.None);
+
+        Assert.True(result.IsSuccess);
+        var response = result.Value;
+        Assert.Equal("documentVerificationRequired", response.Result);
+        Assert.Equal(existingChallenge.PublicId, response.ChallengeId);
+        Assert.Equal(existingChallenge.AllowIdRetry, response.AllowIdRetry);
+    }
+
+    [Fact]
+    public async Task Handle_ShouldRethrow_WhenCreateThrowsDuplicateRecordAndReQueryReturnsNull()
+    {
+        var handler = CreateHandler();
+        var command = CreateValidCommand();
+
+        userRepository.GetUserByIdAsync(command.UserId, Arg.Any<CancellationToken>())
+            .Returns(new User { Id = command.UserId, Email = "test@example.com" });
+
+        // Both calls return null (shouldn't happen, but defensive)
+        challengeRepository.GetActiveByUserIdAsync(command.UserId, Arg.Any<CancellationToken>())
+            .Returns((DocVerificationChallenge?)null);
+
+        socureClient.RunIdProofingAssessmentAsync(
+                command.UserId, "test@example.com", command.DateOfBirth,
+                command.IdType, command.IdValue, Arg.Any<string?>(), Arg.Any<string?>(),
+                Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<Address?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
+            .Returns(Result<IdProofingAssessmentResult>.Success(
+                new IdProofingAssessmentResult(IdProofingOutcome.DocumentVerificationRequired, AllowIdRetry: true)));
+
+        challengeRepository.CreateAsync(Arg.Any<DocVerificationChallenge>(), Arg.Any<CancellationToken>())
+            .ThrowsAsync(new DuplicateRecordException(
+                $"A record with the same unique constraint already exists for user {command.UserId}."));
+
+        await Assert.ThrowsAsync<DuplicateRecordException>(
+            () => handler.Handle(command, CancellationToken.None));
     }
 }

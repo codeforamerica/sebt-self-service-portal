@@ -7,7 +7,10 @@ import { useTranslation } from 'react-i18next'
 import { AnalyticsEvents, useDataLayer } from '@sebt/analytics'
 import { Alert, Button, InputField } from '@sebt/design-system'
 
-import { SK_CHALLENGE_ID } from '@/features/auth/components/doc-verify/sessionKeys'
+import {
+  clearChallengeContext,
+  SK_CHALLENGE_ID
+} from '@/features/auth/components/doc-verify/sessionKeys'
 import { useSubmitIdProofing, type IdType } from '../../api'
 
 // UI-only sentinel value for the "none" radio option.
@@ -124,6 +127,7 @@ export function IdProofingForm({ idOptions, contactLink, getDiToken }: IdProofin
           )
           return
         }
+        clearChallengeContext()
         sessionStorage.setItem(SK_CHALLENGE_ID, response.challengeId)
         router.push(`/login/id-proofing/doc-verify?challengeId=${response.challengeId}`)
       } else if (response.result === 'failed') {

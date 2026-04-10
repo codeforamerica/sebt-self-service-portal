@@ -7,6 +7,7 @@ import { Button } from '@sebt/design-system'
 
 import { ApiError } from '@/api'
 import { useVerificationStatus } from '../../api'
+import { SK_STILL_CHECKING } from './sessionKeys'
 
 // After this threshold, show the "still checking" message with a manual check button
 const STILL_CHECKING_THRESHOLD_MS = 15000
@@ -25,7 +26,7 @@ export function VerificationPending({
   const { t } = useTranslation('idProofing')
   // Persist "still checking" state across remounts so the UI doesn't oscillate
   const [timerExpired, setTimerExpired] = useState(
-    () => sessionStorage.getItem('docv_still_checking') === 'true'
+    () => sessionStorage.getItem(SK_STILL_CHECKING) === 'true'
   )
 
   const { data, error, refetch } = useVerificationStatus(challengeId)
@@ -37,7 +38,7 @@ export function VerificationPending({
   useEffect(() => {
     if (timerExpired) return
     const timer = setTimeout(() => {
-      sessionStorage.setItem('docv_still_checking', 'true')
+      sessionStorage.setItem(SK_STILL_CHECKING, 'true')
       setTimerExpired(true)
     }, STILL_CHECKING_THRESHOLD_MS)
 
@@ -49,7 +50,7 @@ export function VerificationPending({
     if (data?.status === 'verified') {
       onVerified()
     } else if (data?.status === 'rejected') {
-      onRejected(data.offboardingReason)
+      onRejected(data.offboardingReason ?? undefined)
     }
   }, [data?.status, data?.offboardingReason, onVerified, onRejected])
 

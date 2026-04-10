@@ -8,6 +8,7 @@ import { AnalyticsEvents, useDataLayer } from '@sebt/analytics'
 import { Alert } from '@sebt/design-system'
 
 import {
+  clearChallengeContext,
   SK_CHALLENGE_ID,
   SK_SUB_STATE,
   SubState
@@ -28,16 +29,19 @@ function readChallengeContext(searchParams: URLSearchParams): {
   subState: SubState | null
 } {
   // URL query param is primary source for challengeId, sessionStorage is fallback
-  const challengeId = searchParams.get('challengeId') || sessionStorage.getItem(SK_CHALLENGE_ID)
-  const persisted = sessionStorage.getItem(SK_SUB_STATE)
-  const subState = persisted === 'capture' || persisted === 'pending' ? persisted : null
-  return { challengeId, subState }
-}
+  const urlChallengeId = searchParams.get('challengeId')
+  const challengeId = urlChallengeId || sessionStorage.getItem(SK_CHALLENGE_ID)
 
-function clearChallengeContext(): void {
-  sessionStorage.removeItem(SK_CHALLENGE_ID)
-  sessionStorage.removeItem(SK_SUB_STATE)
-  sessionStorage.removeItem('docv_still_checking')
+  const persisted = sessionStorage.getItem(SK_SUB_STATE)
+  const persistedChallengeId = sessionStorage.getItem(SK_CHALLENGE_ID)
+
+  // Only trust persisted subState when it belongs to the current challenge.
+  // A mismatch means old state from a prior DocV attempt is lingering.
+  const challengeMatches = urlChallengeId != null && persistedChallengeId === urlChallengeId
+  const subState =
+    challengeMatches && (persisted === 'capture' || persisted === 'pending') ? persisted : null
+
+  return { challengeId, subState }
 }
 
 export function DocVerifyPage({ contactLink, sdkKey }: DocVerifyPageProps) {
@@ -74,6 +78,12 @@ export function DocVerifyPage({ contactLink, sdkKey }: DocVerifyPageProps) {
       // No challenge context — redirect to id-proofing form
       router.replace('/login/id-proofing')
       return
+    }
+
+    // If persisted state belongs to a different challenge, clear it so it
+    // cannot bleed into this flow (e.g., after StrictMode double-invoke).
+    if (ctx.subState === null) {
+      clearChallengeContext()
     }
 
     setChallengeId(ctx.challengeId)
@@ -171,7 +181,7 @@ export function DocVerifyPage({ contactLink, sdkKey }: DocVerifyPageProps) {
     if (statusQuery.data?.status === 'verified') {
       handleVerified()
     } else if (statusQuery.data?.status === 'rejected') {
-      handleRejected(statusQuery.data.offboardingReason)
+      handleRejected(statusQuery.data.offboardingReason ?? undefined)
     }
   }, [
     subState,

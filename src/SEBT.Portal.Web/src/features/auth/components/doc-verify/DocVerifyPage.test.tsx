@@ -303,6 +303,53 @@ describe('DocVerifyPage', () => {
     })
   })
 
+  describe('Stale sessionStorage detection', () => {
+    it('shows interstitial when persisted challengeId does not match URL challengeId', async () => {
+      // Simulate stale sessionStorage from a prior DocV attempt
+      sessionStorage.setItem('docVerify_challengeId', 'old-challenge-id')
+      sessionStorage.setItem('docVerify_subState', 'pending')
+
+      // URL has a different (current) challengeId
+      mockSearchParams = new URLSearchParams({ challengeId: 'new-challenge-id' })
+
+      renderWithProviders(
+        <DocVerifyPage
+          contactLink={TEST_CONTACT_LINK}
+          sdkKey={TEST_SDK_KEY}
+        />
+      )
+
+      // Should render the interstitial, NOT the VerificationPending screen
+      expect(
+        await screen.findByRole('heading', { name: /we want to keep your account safe/i })
+      ).toBeInTheDocument()
+      expect(screen.queryByText(/verifying your document/i)).not.toBeInTheDocument()
+    })
+
+    it('resumes at pending when persisted challengeId matches URL challengeId', async () => {
+      // Same challengeId in both sessionStorage and URL
+      setChallengeContext('challenge-abc', 'pending')
+
+      // Override verification status to return pending so it stays on the pending screen
+      server.use(
+        http.get('/api/id-proofing/status', () => {
+          return HttpResponse.json({ status: 'pending' })
+        })
+      )
+
+      renderWithProviders(
+        <DocVerifyPage
+          contactLink={TEST_CONTACT_LINK}
+          sdkKey={TEST_SDK_KEY}
+        />
+      )
+
+      await waitFor(() => {
+        expect(screen.getByText(/verifying your document/i)).toBeInTheDocument()
+      })
+    })
+  })
+
   describe('SessionStorage recovery (D6)', () => {
     it('resumes at pending when persisted sub-state was capture', async () => {
       setChallengeContext('challenge-abc', 'capture')

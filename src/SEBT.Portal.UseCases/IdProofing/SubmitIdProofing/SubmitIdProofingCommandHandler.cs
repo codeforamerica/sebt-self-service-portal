@@ -1,5 +1,6 @@
 using Microsoft.Extensions.Logging;
 using SEBT.Portal.Core.AppSettings;
+using SEBT.Portal.Core.Exceptions;
 using SEBT.Portal.Core.Models;
 using SEBT.Portal.Core.Models.Auth;
 using SEBT.Portal.Core.Models.DocVerification;
@@ -200,7 +201,30 @@ public class SubmitIdProofingCommandHandler(
             EvalId = assessment.DocvSession?.EvalId
         };
 
-        await challengeRepository.CreateAsync(challenge, cancellationToken);
+        try
+        {
+            await challengeRepository.CreateAsync(challenge, cancellationToken);
+        }
+        catch (DuplicateRecordException)
+        {
+            // Race condition: another request inserted a challenge between our check and insert.
+            // Re-query and reuse the winner's challenge.
+            logger.LogWarning(
+                "Duplicate active challenge detected for user {UserId}, reusing existing challenge",
+                userId);
+
+            var existing = await challengeRepository.GetActiveByUserIdAsync(userId, cancellationToken);
+            if (existing == null)
+            {
+                throw;
+            }
+
+            return Result<SubmitIdProofingResponse>.Success(
+                new SubmitIdProofingResponse(
+                    "documentVerificationRequired",
+                    ChallengeId: existing.PublicId,
+                    AllowIdRetry: existing.AllowIdRetry));
+        }
 
         logger.LogInformation(
             "Created doc verification challenge {ChallengeId} for user {UserId}",
