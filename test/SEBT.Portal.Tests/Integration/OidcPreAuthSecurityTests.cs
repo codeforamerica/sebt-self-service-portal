@@ -372,6 +372,49 @@ public class OidcPreAuthSecurityTests : IClassFixture<PortalWebApplicationFactor
     }
 
     // ---------------------------------------------------------------------------
+    // Cross-session token use
+    // Attack: Attacker obtains a valid callbackToken from session A and presents
+    //         it with session B's cookie. The token hash stored in session B won't
+    //         match, so TryAdvanceToLoginCompleted must reject.
+    // ---------------------------------------------------------------------------
+
+    [Fact]
+    public async Task CrossSession_CompleteLogin_WithTokenFromDifferentSession_Returns403()
+    {
+        var client = _factory.CreateClient();
+        var sessionStore = _factory.Services.GetRequiredService<IPreAuthSessionStore>();
+
+        var callbackTokenA = MintCallbackToken("user-a@example.com");
+        var tokenHashA = IPreAuthSessionStore.HashCallbackToken(callbackTokenA);
+
+        var callbackTokenB = MintCallbackToken("user-b@example.com");
+        var tokenHashB = IPreAuthSessionStore.HashCallbackToken(callbackTokenB);
+
+        // Create two sessions and advance each to CallbackCompleted with their own token hash
+        var sessionA = await sessionStore.CreateAsync("co", "stateA", "verifierA", "http://localhost:3000/callback", false);
+        await sessionStore.TryAdvanceToCallbackCompletedAsync(sessionA.Id, tokenHashA);
+
+        var sessionB = await sessionStore.CreateAsync("co", "stateB", "verifierB", "http://localhost:3000/callback", false);
+        await sessionStore.TryAdvanceToCallbackCompletedAsync(sessionB.Id, tokenHashB);
+
+        // Attack: use session B's cookie with session A's callback token
+        using var request = new HttpRequestMessage(HttpMethod.Post, "/api/auth/oidc/complete-login")
+        {
+            Content = JsonContent.Create(new { stateCode = "co", callbackToken = callbackTokenA }),
+            Headers =
+            {
+                { "Origin", "http://localhost:3000" },
+                { "Cookie", $"{OidcSessionCookie.CookieName}={sessionB.Id}" }
+            }
+        };
+
+        var response = await client.SendAsync(request);
+
+        // Token hash mismatch — session B expects tokenHashB but got tokenHashA
+        Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
+    }
+
+    // ---------------------------------------------------------------------------
     // Helpers
     // ---------------------------------------------------------------------------
 
