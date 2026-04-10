@@ -90,19 +90,28 @@ public class SubmitIdProofingCommandHandler(
         string? givenName = null;
         string? familyName = null;
         Address? address = null;
-        var household = await householdRepository.GetHouseholdByEmailAsync(
-            user.Email,
-            new PiiVisibility(IncludeAddress: true, IncludeEmail: false, IncludePhone: false),
-            user.IalLevel,
-            cancellationToken);
-        if (household?.UserProfile != null)
+        try
         {
-            givenName = household.UserProfile.FirstName;
-            familyName = household.UserProfile.LastName;
+            var household = await householdRepository.GetHouseholdByEmailAsync(
+                user.Email,
+                new PiiVisibility(IncludeAddress: true, IncludeEmail: false, IncludePhone: false),
+                user.IalLevel,
+                cancellationToken);
+            if (household?.UserProfile != null)
+            {
+                givenName = household.UserProfile.FirstName;
+                familyName = household.UserProfile.LastName;
+            }
+            if (household?.AddressOnFile != null)
+            {
+                address = household.AddressOnFile;
+            }
         }
-        if (household?.AddressOnFile != null)
+        catch (Exception ex)
         {
-            address = household.AddressOnFile;
+            logger.LogWarning(ex,
+                "Household lookup failed for user {UserId}, proceeding without name/address",
+                command.UserId);
         }
 
         // Call Socure for risk assessment
@@ -142,29 +151,35 @@ public class SubmitIdProofingCommandHandler(
 
         var assessment = assessmentResult.Value;
 
-        // Increment attempt count and persist
+        // Increment attempt count (persisted below with each outcome's save)
         user.IdProofingAttemptCount++;
-        await userRepository.UpdateUserAsync(user, cancellationToken);
 
         // Derive retry eligibility from attempt count (overrides Socure's value)
         var allowIdRetry = user.IdProofingAttemptCount < maxAttempts;
 
-        return assessment.Outcome switch
+        switch (assessment.Outcome)
         {
-            IdProofingOutcome.Matched => await CompleteProofingAndRespond(user, cancellationToken),
+            case IdProofingOutcome.Matched:
+                // Single save: attempt count + proofing completion together
+                return await CompleteProofingAndRespond(user, cancellationToken);
 
-            IdProofingOutcome.Failed => Result<SubmitIdProofingResponse>.Success(
-                new SubmitIdProofingResponse(
-                    "failed",
-                    AllowIdRetry: allowIdRetry,
-                    OffboardingReason: "idProofingFailed")),
+            case IdProofingOutcome.Failed:
+                await userRepository.UpdateUserAsync(user, cancellationToken);
+                return Result<SubmitIdProofingResponse>.Success(
+                    new SubmitIdProofingResponse(
+                        "failed",
+                        AllowIdRetry: allowIdRetry,
+                        OffboardingReason: "idProofingFailed"));
 
-            IdProofingOutcome.DocumentVerificationRequired =>
-                await CreateChallengeAndRespond(command.UserId, assessment, allowIdRetry, cancellationToken),
+            case IdProofingOutcome.DocumentVerificationRequired:
+                await userRepository.UpdateUserAsync(user, cancellationToken);
+                return await CreateChallengeAndRespond(
+                    command.UserId, assessment, allowIdRetry, cancellationToken);
 
-            _ => throw new InvalidOperationException(
-                $"Unexpected IdProofingOutcome: {assessment.Outcome}")
-        };
+            default:
+                throw new InvalidOperationException(
+                    $"Unexpected IdProofingOutcome: {assessment.Outcome}");
+        }
     }
 
     private async Task<Result<SubmitIdProofingResponse>> CompleteProofingAndRespond(
