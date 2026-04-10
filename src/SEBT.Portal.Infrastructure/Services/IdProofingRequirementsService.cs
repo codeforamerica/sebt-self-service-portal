@@ -17,10 +17,10 @@ public class IdProofingRequirementsService : IIdProofingRequirementsService
     private readonly ILogger<IdProofingRequirementsService> _logger;
 
     public IdProofingRequirementsService(
-        IOptions<IdProofingRequirementsSettings> settings,
+        IOptionsSnapshot<IdProofingRequirementsSettings> settingsSnapshot,
         ILogger<IdProofingRequirementsService> logger)
     {
-        _settings = settings.Value;
+        _settings = settingsSnapshot.Value;
         _logger = logger;
     }
 

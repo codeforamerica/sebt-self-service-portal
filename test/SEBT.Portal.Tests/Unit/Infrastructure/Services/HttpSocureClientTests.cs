@@ -31,9 +31,12 @@ public class HttpSocureClientTests
         var factory = Substitute.For<IHttpClientFactory>();
         factory.CreateClient("Socure").Returns(httpClient);
 
+        var snapshot = Substitute.For<IOptionsSnapshot<SocureSettings>>();
+        snapshot.Value.Returns(settings);
+
         return new HttpSocureClient(
             factory,
-            Options.Create(settings),
+            snapshot,
             NullLogger<HttpSocureClient>.Instance);
     }
 

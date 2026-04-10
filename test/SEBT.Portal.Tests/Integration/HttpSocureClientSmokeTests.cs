@@ -3,6 +3,7 @@ using System.Text;
 using System.Text.Json;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
+using NSubstitute;
 using SEBT.Portal.Core.AppSettings;
 using SEBT.Portal.Core.Services;
 using SEBT.Portal.Infrastructure.Services;
@@ -38,7 +39,10 @@ public class HttpSocureClientSmokeTests(ITestOutputHelper output)
         var factory = new SingleClientFactory(httpClient);
         var logger = new TestOutputLogger<HttpSocureClient>(output);
 
-        return new HttpSocureClient(factory, Options.Create(settings), logger);
+        var snapshot = Substitute.For<IOptionsSnapshot<SocureSettings>>();
+        snapshot.Value.Returns(settings);
+
+        return new HttpSocureClient(factory, snapshot, logger);
     }
 
     [Fact]
