@@ -98,6 +98,12 @@ export class SocureDocVAdapter implements DocVAdapter {
         // Swallow errors during cleanup — the SDK may already be torn down
       }
     }
+
+    // The SDK caches internal DOM references that go stale after navigation.
+    // Fully tear down so the next launch() gets a fresh instance.
+    delete window.SocureDocVSDK
+    scriptLoadPromise = null
+    document.querySelectorAll(`script[src="${SOCURE_BUNDLE_URL}"]`).forEach((el) => el.remove())
   }
 
   isLoaded(): boolean {

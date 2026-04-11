@@ -173,9 +173,24 @@ export function DocVerifyPage({ contactLink, sdkKey }: DocVerifyPageProps) {
     [router, setPageData, trackEvent]
   )
 
+  // Auto-transition from capture to pending after a delay. For remote phone
+  // capture the SDK's onSuccess never fires (capture happens on a different
+  // device), leaving the container blank. After 15 seconds the user has either
+  // scanned the QR / opened the SMS link, so show the "checking" UI instead.
+  useEffect(() => {
+    if (subState !== 'capture') return
+
+    const timerId = window.setTimeout(() => {
+      sessionStorage.setItem(SK_SUB_STATE, 'pending')
+      setSubState('pending')
+    }, 15_000)
+
+    return () => window.clearTimeout(timerId)
+  }, [subState])
+
   // Safety net: if the webhook resolves the challenge while the SDK capture is
-  // still active (e.g., SDK fails to detect remote completion), redirect based
-  // on the polled status rather than waiting for SDK onSuccess.
+  // still active (e.g., SDK fires onSuccess late or not at all), redirect based
+  // on the polled status rather than waiting for the pending sub-state.
   useEffect(() => {
     if (subState !== 'capture') return
     if (statusQuery.data?.status === 'verified') {

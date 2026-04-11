@@ -1,4 +1,4 @@
-Content,English,,Español,,
+Variable Name/Key,🟡 DC English,⚪ SOURCE English,🟡 DC Español,⚪ SOURCE Español,Notes
 S1 - Landing Page - Title,Get a one-time payment of $120 in summer food benefits for your child,Get a one-time payment of $120 in summer food benefits for your child,Obtén un pago único de $120 para pagar la comida de su estudiante este verano,Obtenga un pago único de $120 para pagar la comida de su estudiante este verano,
 S1 - Landing Page - Body,"Each eligible child can receive a *one-time payment of $120*. Families may use the money to pay for groceries during the summer months. 
 
@@ -80,10 +80,10 @@ S1 - Result - Apply for SEBT - Accordion Body Alert Income,"If your household's 
 S1 - Result - Apply for SEBT - Card 1 Title,"To receive benefits for this summer, you must apply by August 25","To receive benefits for this summer, you must apply by August 25",Para recibir beneficios para este verano debes aplicar antes del 25 de agosto,Para recibir beneficios para este verano debes presentar tu solicitud antes del 25 de agosto,
 S1 - Result - Apply for SEBT - Card 1 Body,"The sooner you apply, the sooner your application will be reviewed. Applying for DC SUN Bucks usually takes 15 minutes or less.","The sooner you apply, the sooner your application will be reviewed. Applying for Summer EBT usually takes 10 minutes or less.","Mientras más pronto envíes tu aplicación, más pronto la vamos a revisar. La aplicación de DC SUN Bucks normalmente toma 15 minutos o menos..","Mientras más pronto envíes tu solicitud, más pronto la vamos a revisar. Solicitar Summer EBT normalmente toma 15 minutos o menos.",
 S1 - Result - Apply for SEBT - Card 1 Action,Apply for DC SUN Bucks,Apply for Summer EBT,Aplicar para DC SUN Bucks,Aplicar para Summer EBT,
-S1 - Result - Apply for SEBT - Notify Title,,Online applications open June 8 — sign up to be notified when you can apply:,,,
-S1 - Result - Apply for SEBT - Notify Label Email,,Enter your email address,,,
+S1 - Result - Apply for SEBT - Notify Title,,Online applications open June 8 — sign up to be notified when you can apply:,Las aplicaciones en línea se abrirán el 8 de junio — regístrate para recibir una notificación cuando puedas aplicar:,Las aplicaciones en línea se abrirán el 8 de junio — regístrate para recibir una notificación cuando puedas aplicar:,
+S1 - Result - Apply for SEBT - Notify Label Email,,Enter your email address,Ingresa tu correo electrónico,Ingresa tu correo electrónico,
 S1 - Result - Apply for SEBT - Library Applications,Copies of the paper application are also available year-round at DC public libraries.,Copies of the paper application are also available year-round at DC public libraries.,También hay copias de la aplicación disponibles en las bibliotecas públicas de DC.,También hay copias de la aplicación disponibles en las bibliotecas públicas de DC.,
-S1 - Result - Apply for SEBT - Notify Success ,,Your email address has been submitted. We’ll notify you when the online application is available.,,,
+S1 - Result - Apply for SEBT - Notify Success ,,Your email address has been submitted. We’ll notify you when the online application is available.,Tu correo electrónico ha sido enviado. Te avisaremos cuando la aplicación en línea esté disponible.,Tu correo electrónico ha sido enviado. Te avisaremos cuando la aplicación en línea esté disponible.,
 S1 - Result - Apply for SEBT - Card 2 Title,Do you have other children in your household?,Do you have other children in your household?,¿Tiene otros hijos en tu hogar?,¿Tiene otros hijos en tu hogar?,
 S1 - Result - Apply for SEBT - Card 2 Body,"To check if you need to submit a DC SUN Bucks application for any other school-age children in your household, please provide their information by clicking on the button below.","To check if you need to submit a Summer EBT application for any other school-age children in your household, please provide their information by clicking on the button below.","Para verificar si necesitas aplicar para DC SUN Bucks para algún otro menor en tu hogar que está en edad escolar, proporciona tu información haciendo clic en el botón a continuación.","Para verificar si necesitas entregar una aplicación para Summer EBT para algún otro menor en tu hogar que está en edad escolar, proporciona tu información haciendo clic en el botón a continuación.",
 S1 - Result - Apply for SEBT - Card 2 Action,Check another child,Check another child,Revisar otro(a) niño(a),Revisar otro(a) niño(a),
@@ -120,8 +120,8 @@ S1 - Result - Streamlined Enrolled - Card 2 Action,Check another child,Check ano
 S1 - Result - Streamlined Enrolled - Steps Heading,Next steps,Next steps,próximos pasos  ,próximos pasos  ,
 S1 - Result - None - Body 1,We don't have enough information for the following children.,We don't have enough information for the following children.,No tenemos suficiente información para los siguientes niños.,No tenemos suficiente información para los siguientes niños,
 S1 - Result - None - Body 2,We recommend logging into the DC Sun Bucks portal to confirm if they are automatically enrolled.,We recommend logging into the Summer EBT portal to confirm if they are automatically enrolled.,Recomendamos iniciar sesión en el portal de DC Sun Bucks para confirmar si están automaticamente inscritos.,Recomendamos iniciar sesión en el portal de Summer EBT para confirmar si están automaticamente inscritos.,
-S1 - Result - Error - Title,,Something went wrong on our end,,,
-S1 - Result - Error - Body,,We aren’t able to able to share enrollment information for your children. You may try to check again later or continue with these next steps.,,,
+S1 - Result - Error - Title,,Something went wrong on our end,,Algo salió mal de nuestro lado,
+S1 - Result - Error - Body,,We aren’t able to able to share enrollment information for your children. You may try to check again later or continue with these next steps.,,No podemos compartir información de inscripción de tus hijos en este momento. Puedes intentar revisar de nuevo más tarde o continuar con estos siguientes pasos.,
 S2 - Log In Disclaimer - Title,Log in to your DC SUN Bucks account,Log in to your Summer EBT account,Inicia sesión en tu cuenta de DC SUN Bucks,Inicia sesión en tu cuenta de Summer EBT,
 S2 - Log In Disclaimer - Log In Disclaimer - Body 1,"You can use the same login you use to access the OSSE Parent Portal. Also, if you don't have an account, you can create one using your email address.","You can use the same login you use to access PEAK. Also, if you don't have an account, you can create one using your email address.","Puedes usar el mismo inicio de sesión que utilizas para acceder al Portal de Padres de OSSE. Si no tienes una cuenta, puedes crear una. ","Puedes usar el mismo inicio de sesión que utilizas para acceder al portal de PEAK. Si no tienes una cuenta, puedes crear una. ",
 S2 - Log In Disclaimer - Log In Disclaimer - Body 2,Contact us if you need assistance logging into your account.,Contact us if you need assistance logging into your account.,Contáctanos si necesitas ayuda para entrar a tu cuenta.,Contáctanos si necesitas  ayuda para iniciar sesión en su cuenta. ,
@@ -157,6 +157,7 @@ S2 - Portal Dashboard - Profile Table - Contact Emails Off,Getting mailed notice
 S2 - Portal Dashboard - Profile Table - Contact Text On,Getting text messages at ([999]) 999-9999.,Getting text messages at ([999]) 999-9999.,Recibiendo mensajes de texto al ([999]) 999-9999.,Recibiendo mensajes de texto al ([999]) 999-9999.,
 S2 - Portal Dashboard - Profile Table - Contact Text Off,Not getting text messages.,Not getting text messages.,No está recibiendo mensajes de texto.,No está recibiendo mensajes de texto,
 S2 - Portal Dashboard - Profile Table - Heading Address,Your mailing address,Your mailing address,Tu dirección de correspondencia,Tu dirección de correspondencia,
+S2 - Portal Dashboard - Profile Table - Co-loaded Address,How we determine your mailing address,How we determine your mailing address,,Cómo determinamos tu dirección de correspondencia,
 S2 - Portal Dashboard - Profile Table - Update your profile,Update your profile,Update your profile,Actualizar tu perfil,Actualiza tu perfil,
 S2 - Portal Dashboard - Profile Table - Physical Mail,Physical Mail,Physical Mail,Correo físico,Correo físico,
 S2 - Portal Dashboard - Profile Table - Action Change Address,Change my mailing address,Change my mailing address,Cambiar mi dirección de correspondencia,Cambiar mi dirección de correspondencia,
@@ -207,6 +208,7 @@ S2 - Portal Dashboard - Card Table - Status Message Frozen,,"You won’t be able
 S2 - Portal Dashboard - Card Table - Status Message Undeliverable,,The card could not be delivered to the address on file. ,No se pudo entregar la tarjeta a la dirección que tenemos registrada.,No se pudo entregar la tarjeta a la dirección que tenemos registrada.,
 S2 - Portal Dashboard - Card Table - Action Update Mailing Address,Update this card's mailing address,Update this card's mailing address,Actualizar la dirección de correspondencia de esta tarjeta,Actualizar la dirección de correspondencia de esta tarjeta,
 S2 - Portal Dashboard - Card Table - Action Request Replacement,Request a replacement card,Request a replacement card,Solicitar una tarjeta de reemplazo,Solicitar una tarjeta de reemplazo,
+S2 - Portal Dashboard - Card Table - Action How to Replace,How to get a replacement EBT card,How to get a replacement EBT card,,Cómo conseguir una tarjeta EBT de reemplazo,
 S2 - Portal Dashboard - Card Table - Action Update Request,,Update your address and order a replacement card,Actualiza tu dirección y pide una tarjeta de reemplazo,Actualiza tu dirección y pide una tarjeta de reemplazo,
 S2 - Portal Dashboard - Alert EBT Edge - Title,Check balance or change PIN number,Check balance or change PIN number,Revisar balance o cambiar número de PIN,Revisar balance o cambiar número de PIN,
 S2 - Portal Dashboard - Alert EBT Edge - Body,If you need to,"When you add your cards to an ebtEDGE account, you can",Si necesitas,"Cuando agregas tus tarjetas a una cuenta de ebtEDGE, puedes",
@@ -316,14 +318,14 @@ Cualquier saldo restante en la tarjeta anterior se transferirá automáticamente
 Las tarjetas llegarán por correo entre 5 y 7 días, aproximadamente.
 Puedes verificar aquí cuándo se ha enviado la tarjeta.
 Cualquier saldo restante en la tarjeta anterior se transferirá automáticamente a la tarjeta de reemplazo",
-S5 - Bulk Order New Cards Confirm - Summary Title,Card order summary,Card order summary,,,
-S5 - Bulk Order New Cards Confirm - Summary Address,New cards will be mailed to the following address:,New cards will be mailed to the following address:,,,
-S5 - Bulk Order New Cards Who - Title,Which cards need to be replaced?,Which cards need to be replaced?,,,
+S5 - Bulk Order New Cards Confirm - Summary Title,Card order summary,Card order summary,Resumen del pedido de la tarjeta,Resumen del pedido de la tarjeta,
+S5 - Bulk Order New Cards Confirm - Summary Address,New cards will be mailed to the following address:,New cards will be mailed to the following address:,Las nuevas tarjetas se enviarán por correo a la siguiente dirección:,Las nuevas tarjetas se enviarán por correo a la siguiente dirección:,
+S5 - Bulk Order New Cards Who - Title,Which cards need to be replaced?,Which cards need to be replaced?,¿Cuáles tarjetas necesitan ser reemplazadas?,Cuáles tarjetas necesitan ser reemplazadas?,
 S5 - Bulk Order New Cards Who - Label Select Cards,Select which cards you want to replace,Select which cards you want to replace,Selecciona las tarjetas que deseas reemplazar,Selecciona las tarjetas que deseas reemplazar,
-S5 - Bulk Order New Cards Who - Who's Card,[First name] [M.] [Last name]'s card,[First name] [M.] [Last name]'s card,,,
-S5 - Bulk Order New Cards Who - Card Number,,Card number: [9999] (last 4 digits),,,
-S5 - Bulk Order New Cards Confirm - Action,Order cards,Order cards,,,
-S6 - Replacement Card - Pre-title,Replace [First name] [M.] [Last name]'s card,Replace card ending in [9999],,,
+S5 - Bulk Order New Cards Who - Who's Card,[First name] [M.] [Last name]'s card,[First name] [M.] [Last name]'s card,Tarjeta de [First name] [M.] [Last name],Tarjeta de [First name] [M.] [Last name],
+S5 - Bulk Order New Cards Who - Card Number,,Card number: [9999] (last 4 digits),,Número de tarjeta: [9999] (últimos 4 dígitos),
+S5 - Bulk Order New Cards Confirm - Action,Order cards,Order cards,Pedir tarjetas,Pedir tarjetas,
+S6 - Replacement Card - Pre-title,Replace [First name] [M.] [Last name]'s card,Replace card ending in [9999],Reemplazar la tarjeta que termina en [9999],Reemplazar la tarjeta que termina en [9999],
 S6 - Replacement Card Address - Title,Do you want the new card mailed to this address?,Do you want the new card mailed to this address?,¿Deseas que el reemplazo de la tarjeta que termina en [9999] se envíe por correo a esta dirección?,¿Deseas que el reemplazo de la tarjeta que termina en [9999] se envíe por correo a esta dirección?,
 S6 - Request Replacement Card FIS - Title,Getting a replacement SNAP or TANF EBT card,A few things to know before replacing cards,Cosas que saber antes de solicitar una tarjeta de reemplazo,Cosas que saber antes de solicitar una tarjeta de reemplazo,
 S6 - Request Replacement Card FIS - Replace Card Body 1,"You can get a replacement SNAP or TANF EBT card at a DHS EBT Card Office. 
@@ -331,23 +333,30 @@ S6 - Request Replacement Card FIS - Replace Card Body 1,"You can get a replaceme
 Your DC SUN Bucks benefits will be added to your regular SNAP or TANF benefits. 
 
 Offices are open Monday through Friday, from 7:30 a.m. to 4:45 p.m.",Call EBT Customer Service at (888) 328-2656 to request a replacement card to be sent to your address listed here.,Llama a Fidelity Information Services (FIS) al (888) 304-9167 para solicitar el envío de una tarjeta de reemplazo a la dirección que aparece aquí.,Llama a servicios al cliente de EBT al (888) 328-2656 para solicitar el envío de una tarjeta de reemplazo a la dirección que aparece aquí.,
-S6 - Request Replacement Card FIS - Replace Card Body 2,DHS EBT Card Office locations:,Hold on the line to select the lost card prompt and speak with an agent.,Mantente en la línea para elegir la opción de tarjeta perdida y hablar con un representante.,Mantente en la línea para elegir la opción de tarjeta perdida y hablar con un representante.,
+S6 - Request Replacement Card FIS - Replace Card Body 2,DHS EBT Card Office locations:,Hold on the line to select the lost card prompt and speak with an agent.,Ubicaciones de las oficinas de tarjetas EBT del DHS:,Mantente en la línea para elegir la opción de tarjeta perdida y hablar con un representante.,
 S6 - Request Replacement Card FIS - Replace Card Body 3,"645 H Street NE, 2nd Floor
-1649 Marion Barry Avenue SE",,,,
-S6 - Request Replacement Card FIS - Replace Card Body 4,You can get a new DC SUN Bucks card if you need one. Go to the portal dashboard and tap “Request a replacement card” under the child’s name that has benefits issued to a DC SUN Bucks card.,You can get a new DC SUN Bucks card if you need one. Go to the portal dashboard and tap “Request a replacement card” under the child’s name that has benefits issued to a DC SUN Bucks card.,,,
-S6 - Request Replacement Card FIS - Action,Go to the dashboard,Go to the dashboard,,,
+1649 Marion Barry Avenue SE",,"645 H Street NE, 2nd Floor
+1649 Marion Barry Avenue SE",,
+S6 - Request Replacement Card FIS - Replace Card Body 4,You can get a new DC SUN Bucks card if you need one. Go to the portal dashboard and tap “Request a replacement card” under the child’s name that has benefits issued to a DC SUN Bucks card.,You can get a new DC SUN Bucks card if you need one. Go to the portal dashboard and tap “Request a replacement card” under the child’s name that has benefits issued to a DC SUN Bucks card.,Puedes obtener una nueva tarjeta de DC SUN Bucks si la necesitas. Ve al panel del portal y toca “Solicitar una tarjeta de reemplazo” debajo del nombre del niño o niña que tiene los beneficios emitidos en una tarjeta de DC SUN Bucks.,Puedes obtener una nueva tarjeta de DC SUN Bucks si la necesitas. Ve al panel del portal y toca “Solicitar una tarjeta de reemplazo” debajo del nombre del niño o niña que tiene los beneficios emitidos en una tarjeta de DC SUN Bucks.,
+S6 - Request Replacement Card FIS - Action,Go to the dashboard,Go to the dashboard,Ir al panel del portal,Ir al panel del portal,
 S6 - Request Replacement Card FIS - Keep Card,Keep your card for next year. Benefits will be added to your new card.,Keep your card for next year. Benefits will be added to your new card.,Guarda tu tarjeta para el próximo año. Tus beneficios serán agregados a tu nueva tarjeta,Guarda tu tarjeta para el próximo año. Tus beneficios serán agregados a tu nueva tarjeta.,
 S6 - Request Replacement Card FIS - Tap to Call,Tap to call Fidelity Information Services (FIS),Tap to call EBT Customer Service,Toca la pantalla para llamar a Fidelity Information Services (FIS),Toca la pantalla para llamar a servicios al cliente de EBT,
 S6 - Request Replacement Card FIS - Subtle Link,I want a replacement for the card ending in [9999] mailed to a different address,I want a replacement for the card ending in [9999] mailed to a different address,Quiero que la tarjeta que termina en [9999] me la reemplacen y la envíen por correo a una dirección diferente.,Quiero que la tarjeta que termina en [9999] me la reemplacen y la envíen por correo a una dirección diferente.,
-S6 - Confirm Request Replacement Card - Title,A few things to know before replacing DC SUN Bucks cards,A few things to know before replacing Summer EBT cards,,,
+S6 - Confirm Request Replacement Card - Title,A few things to know before replacing DC SUN Bucks cards,A few things to know before replacing Summer EBT cards,Algunas cosas que debes saber antes de reemplazar las tarjetas de DC SUN Bucks,"
+
+Algunas cosas que debes saber antes de reemplazar las tarjetas de Summer EBT",
 S6 - Confirm Request Replacement Card - Body,"Once a replacement card is created, the previous card will be permanently deactivated
 Cards will arrive by mail in around 7-10 business days
 Any remaining balance on the previous card will automatically be rolled over to the replacement card","Once a replacement card is created, the previous card will be permanently deactivated
 Cards will arrive by mail in around 7-10 business days
-Any remaining balance on the previous card will automatically be rolled over to the replacement card",,,
-S6 - Confirm Request Replacement Card - Summary Title,Card order summary,Card order summary,,,
-S6 - Confirm Request Replacement Card - Summary Address,Your new card will be mailed to the following address:,A new card will be mailed to the following address:,,,
-S6 - Confirm Request Replacement Card - Action,,Order card,,,
+Any remaining balance on the previous card will automatically be rolled over to the replacement card","Una vez que se cree una tarjeta de reemplazo, la tarjeta anterior quedará desactivada permanentemente.
+Las tarjetas llegarán por correo en aproximadamente 7 a 10 días hábiles.
+Cualquier saldo restante en la tarjeta anterior se transferirá automáticamente a la tarjeta de reemplazo.","Una vez que se cree una tarjeta de reemplazo, la tarjeta anterior quedará desactivada permanentemente.
+Las tarjetas llegarán por correo en aproximadamente 7 a 10 días hábiles.
+Cualquier saldo restante en la tarjeta anterior se transferirá automáticamente a la tarjeta de reemplazo.",
+S6 - Confirm Request Replacement Card - Summary Title,Card order summary,Card order summary,Resumen del pedido de tarjetas,Resumen del pedido de tarjetas,
+S6 - Confirm Request Replacement Card - Summary Address,Your new card will be mailed to the following address:,A new card will be mailed to the following address:,Las nuevas tarjetas se enviarán por correo a la siguiente dirección:,Las nuevas tarjetas se enviarán por correo a la siguiente dirección:,
+S6 - Confirm Request Replacement Card - Action,,Order card,Pedir tarjetas,Pedir tarjetas,
 S7 - Pin Card - Title,Activate a card,Activate a card,Activar una tarjeta,Activar una tarjeta,
 S7 - Pin Card - Body,"Once you receive your child's card, call EBT Customer Service at (888) 328-2656. Follow the instructions to set the PIN number to activate the card.
 
@@ -367,8 +376,14 @@ Cuando la grabación te pida que “ingreses tu fecha de nacimiento”, no ponga
 
 Cuando te pidan “ingresar el código postal del titular principal de la tarjeta”, ingresa el código postal de la dirección a la que se envió por correo.",
 S7 - Pin Card - Action,Tap to call EBT Customer Service,Tap to call EBT Customer Service,Toca la pantalla para llamar a servicios al cliente de EBT,Toca la pantalla para llamar a servicios al cliente de EBT,
+S7 - Co-loaded Address Update - Title,Mailing address for SNAP or TANF EBT card,Mailing address for SNAP or TANF EBT card,,Dirección postal para la tarjeta EBT de SNAP o TANF,
+S7 - Co-loaded Address Update - Body 1,"The mailing address we have is the one listed on your household’s SNAP or TANF account. If your address has changed, it will not affect your child’s DC SUN Bucks benefits. The benefits are loaded onto your SNAP or TANF EBT card.","The mailing address we have is the one listed on your household’s SNAP or TANF account. If your address has changed, it will not affect your child’s DC SUN Bucks benefits. The benefits are loaded onto your SNAP or TANF EBT card.",,"La dirección de correspondencia que tenemos es la que aparece en la cuenta de SNAP o TANF de tu hogar. Si tu dirección ha cambiado, eso no afectará los beneficios de DC SUN Bucks de tu hijo. Los beneficios se cargan a tu tarjeta EBT de SNAP o TANF.",
+S7 - Co-loaded Address Update - Body 2,"If you lost your SNAP or TANF EBT card, you can get a new one at your local DC SNAP or TANF office.","If you lost your SNAP or TANF EBT card, you can get a new one at your local DC SNAP or TANF office.",,"Si perdiste tu tarjeta EBT de SNAP o TANF, puedes conseguir una nueva en tu oficina local de SNAP o TANF en DC.",
+S7 - Co-loaded Address Update - Action 2,Tap here to learn how to get a replacement SNAP or TANF EBT card,Tap here to learn how to get a replacement SNAP or TANF EBT card,,Toca aquí para aprender cómo conseguir una tarjeta de reemplazo de SNAP o TANF EBT.,
+S7 - Co-loaded Address Update - Body 3,"If you prefer, you can choose to get DC SUN Bucks notices by email instead of by physical mail.","If you prefer, you can choose to get DC SUN Bucks notices by email instead of by physical mail.",,"Si lo prefieres, puedes elegir recibir los avisos de DC SUN Bucks por correo electrónico en lugar de por correo postal.",
+S7 - Co-loaded Address Update - Action 3,Tap here to update your contact preferences,Tap here to update your contact preferences,,Toca aquí para actualizar tus preferencias de contacto.,
 S8 - OTP Enter Email - Title,Enter your email and we'll send you a code to log into your DC SUN Bucks account,Enter your email and we'll send you a code to log into your DC SUN Bucks account,Ingresa tu correo electrónico y te enviaremos un código para entrar a tu cuenta de DC SUN Bucks,Ingresa tu correo electrónico y te enviaremos un código para entrar a tu cuenta de DC SUN Bucks,
-S8 - OTP Enter Email - Body,If you are your child’s primary guardian enter your email to see their DC SUN Bucks information.,If you are your child’s primary guardian enter your email to see their DC SUN Bucks information.,"Si eres el cuidador principal de tu hijo, ingresa tu correo electrónico para ver su información de DC SUN Bucks.","Si eres el cuidador principal de tu hijo, ingresa tu correo electrónico para ver su información de DC SUN Bucks.","cuidador principal or ""tutor principal"" or ""representate legal?"""
+S8 - OTP Enter Email - Body,"If you are your child’s primary guardian, enter your email to see their DC SUN Bucks information.",If you are your child’s primary guardian enter your email to see their DC SUN Bucks information.,"Si eres el cuidador principal de tu hijo, ingresa tu correo electrónico para ver su información de DC SUN Bucks.","Si eres el cuidador principal de tu hijo, ingresa tu correo electrónico para ver su información de DC SUN Bucks.","cuidador principal or ""tutor principal"" or ""representate legal?"""
 S8 - OTP Enter Email - Label Email,Enter your email address,Enter your email address,Ingresa tu correo electrónico,Ingresa tu correo electrónico,
 S8 - OTP Confirm - Title,Confirm the code sent to your email,Confirm the code sent to your email,Confirma el código que enviamos a tu correo electrónico ,Confirma el código que enviamos a tu correo electrónico ,
 S8 - OTP Confirm - Label Code,Enter the 6 digit confirmation code,Enter the 6 digit confirmation code,Ingresa el código de confirmación de 6 dígitos,Ingresa el código de confirmación de 6 dígitos,
@@ -452,22 +467,14 @@ S9 - Text - Confirm Label,Confirm phone number,Confirm phone number,Confirma el 
 S9 - Language - Title,Which language do you prefer to be contacted in?,Which language do you prefer to be contacted in?,¿En qué idioma prefieres que te contactemos?,¿En qué idioma prefieres que te contactemos?,
 S9 - Language - Label Select Language,Select a language,Select a language,Selecciona un idioma,Selecciona un idioma,
 S9 - Language - Action,Continue to my account,Continue to my account,Continuar a mi cuenta,Continuar a mi cuenta,
-GLOBAL - Profile Address Stub,"Your mailing address
-123 Example Street
-City, ST 12345","Your mailing address
-123 Example Street
-City, ST 12345","","",""
-GLOBAL - Profile Address Back To Dashboard,Return to dashboard,Return to dashboard,,,
-GLOBAL - Ial Guard Title,Action needed before continuing,Action needed before continuing,,,
-GLOBAL - Ial Guard Body,To continue, you need to verify your identity.,To continue, you need to verify your identity.,,,
-GLOBAL - Ial Guard Action Verify,Verify my identity,Verify my identity,,,
-GLOBAL - Ial Guard Action Continue,Continue with limited access,Continue with limited access,,,
-S10 - Step-up Disclaimer - Title,Please wait...,Please wait...,,,
-S10 - Step-up Disclaimer - Body,Do not exit the page. Checking to see if we have enough information.,Do not exit the page. Checking to see if we have enough information.,,,
-S10 - Step-up Failure - Title,"We're sorry, we aren't able to show your DC SUN Bucks information","We're sorry, we aren't able to show your DC SUN Bucks information",,,
-S10 - Step-up Failure - Body,You can contact us if you need more help.,You can contact us if you need more help.,,,
-S10 - Step-up Failure - Action,Contact us,Contact us,,Contáctanos,
-S10 - Step-up Failure - Continue,Return to dashboard,Return to dashboard,,,
+S10 - Step-up Disclaimer - Title,,"To help keep your account safe, we need to confirm it’s really you",,"Para ayudar a mantener tu cuenta segura, necesitamos confirmar que realmente eres tú.",
+S10 - Step-up Disclaimer - Body,,We need to share some information with our third-party vendor to verify your identity. We will do this only once and will not share or save anything without your permission.,,Necesitamos compartir cierta información con nuestro proveedor externo para verificar tu identidad. Solo haremos esto una vez y no compartiremos ni guardaremos nada sin tu permiso.,
+S10 - Step-up Disclaimer - Action,,Verify,,Verifica,
+S10 - Step-up Processing - Title,,Please wait...,,"Por favor, espera...",
+S10 - Step-up Processing - Body,,Do not exit the page. Checking to see if we have enough information.,,No salgas de la página. Estamos verificando si tenemos suficiente información.,
+S10 - Step-up Failure - Title,,"We're sorry, we aren't able to show your Summer EBT information",,"Lo sentimos, no podemos mostrar tu información de Summer EBT",
+S10 - Step-up Failure - Body,,You can contact us if you need more help.,,Puedes contactarnos si necesitas más ayuda.,
+S10 - Step-up Failure - Action,,Contact us,,Contáctanos,
 GLOBAL - Program Name,DC SUN Bucks,Summer EBT,DC SUN Bucks,Summer EBT,
 GLOBAL - Language,Language,Language,Idioma,Idioma,
 GLOBAL - Label - Languages,Languages,Languages,Idiomas,Idiomas,
@@ -602,7 +609,7 @@ GLOBAL - Email address,Email address,Email address,Correo electrónico,Correo el
 GLOBAL - Phone number,Phone number,Phone number,Número de teléfono,Número de teléfono,
 GLOBAL - Label Send Cards to Preferred Address,Do you want us to send DC SUN Bucks cards for all of your enrolled children to your preferred address?,Do you want us to send Summer EBT cards for all of your enrolled children to your preferred address?,¿Quieres que enviemos las tarjetas Summer EBT para todos sus hijos inscritos a tu dirección de preferencia?,¿Quieres que enviemos las tarjetas Summer EBT para todos sus hijos inscritos a tu dirección de preferencia?,
 GLOBAL - Co-loaded Card Helper,"If your family uses a SNAP or TANF EBT card to spend your child's DC SUN Bucks, you cannot order a replacement card here.","If your child is eligible for Summer EBT through SNAP or Colorado Works (TANF) participation, they will not receive a Summer EBT card.","Si tu hijo es elegible para Summer EBT a través de la participación en SNAP o Colorado Works (TANF), no recibirá una tarjeta Summer EBT.","Si tu hijo es elegible para Summer EBT a través de la participación en SNAP o Colorado Works (TANF), no recibirá una tarjeta Summer EBT.",
-GLOBAL - Co-loaded Card Helper Link,Tap here to learn how to replace SNAP or TANF EBT cards,Tap here to learn how to replace SNAP or TANF EBT cards,,,
+GLOBAL - Co-loaded Card Helper Link,Tap here to learn how to replace SNAP or TANF EBT cards,Tap here to learn how to replace SNAP or TANF EBT cards,Toca aquí para aprender cómo reemplazar las tarjetas EBT de SNAP o TANF,Toca aquí para aprender cómo reemplazar las tarjetas EBT de SNAP o TANF,
 GLOBAL - Yes,Yes,Yes,Sí,Sí,
 GLOBAL - No,No,No,No,No,
 GLOBAL - Action - Back,Back,Back,Regresar,Regresar,
@@ -618,7 +625,7 @@ GLOBAL - Default State or Territory,District of Columbia,Colorado,Distrito de Co
 GLOBAL - ZIP Code,ZIP Code,ZIP Code,Código postal,Código postal,
 GLOBAL - Label Make Preferred Mailing Address,Do you want to make this your preferred mailing address?,Do you want to make this your preferred mailing address?,¿Quieres que esta sea tu dirección de correspondencia de preferencia?,¿Quieres que esta sea tu dirección de correspondencia de preferencia?,
 GLOBAL - Apply Online,Apply online,Apply online,Aplicar en línea,Aplicar en línea,
-GLOBAL - Sign Up,Sign up,Sign up,,,
+GLOBAL - Sign Up,Sign up,Sign up,,Regístrate,
 GLOBAL - Download Application,Download Application,Download Application,Descargar la aplicación,Descargar la aplicación,
 GLOBAL - Action - Log In,Log in,Log in,Iniciar sesión,Iniciar sesión,
 GLOBAL - Action - Log In Esp,Iniciar sesión,Iniciar sesión,Log in ,Log in,
@@ -642,7 +649,8 @@ GLOBAL - Link Privacy Policy,Privacy and Security,Privacy and Security,Privacida
 GLOBAL - Link Google Translate,Google Translate Disclaimer,Google Translate Disclaimer,Aviso legal del Traductor de Google,Aviso legal del Traductor de Google,
 GLOBAL - Link About,About DC.GOV,About DC.GOV,Acerca de DC.GOV,Acerca de DC.GOV,
 GLOBAL - Link Terms,Terms and Conditions,Terms and Conditions,Términos y condiciones,Términos y condiciones,
-GLOBAL - Copyrite,© 2026 District of Columbia,© [YYYY] District of Columbia,© [YYYY] Distrito de Columbia,© [YYYY] Distrito de Columbia,
+GLOBAL - Copyrite,© 2026 District of Columbia,© [YYYY] District of Columbia,© 2026 Distrito de Columbia,© [YYYY] Distrito de Columbia,
+GLOBAL - Alert Beta,,This site is currently in beta. Some features may be incomplete or missing.,,,
 VALIDATION - Summary,"We're sorry. Some required questions aren't filled or we can't accept some of the answers. We'll be able to continue your application once these issues are fixed.
 
 If you need additional support (especially in a language other than English or español), please contact us.","We're sorry. Some required questions aren't filled or we can't accept some of the answers. We'll be able to continue your application once these issues are fixed.
