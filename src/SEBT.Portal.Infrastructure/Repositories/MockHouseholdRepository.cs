@@ -641,6 +641,95 @@ public class MockHouseholdRepository : IHouseholdRepository
                 _households[dcEmail] = dcHousehold;
                 IndexByPhone(dcHousehold);
             }
+
+            // DC scenario: SummerEbt case with Lost card — replacement flow eligible
+            var lostCardEmail = _settings.BuildEmail(SeedScenarios.LostCard.Name);
+            var lostCard = HouseholdFactory.CreateHouseholdDataWithStatus(ApplicationStatus.Approved, h =>
+            {
+                h.BenefitIssuanceType = BenefitIssuanceType.SummerEbt;
+                var app = h.Applications.FirstOrDefault();
+                if (app != null)
+                {
+                    app.BenefitIssueDate = now.AddDays(-30);
+                    app.BenefitExpirationDate = now.AddDays(90);
+                    app.CardStatus = CardStatus.Lost;
+                    app.IssuanceType = IssuanceType.SummerEbt;
+                    app.Last4DigitsOfCard = "7777";
+                    app.Children = new List<Child>
+                    {
+                        new Child { FirstName = "Ana", LastName = "Rivera" }
+                    };
+                }
+                h.AddressOnFile = new Address
+                {
+                    StreetAddress1 = "200 Lost Card Avenue",
+                    City = "Washington",
+                    State = "DC",
+                    PostalCode = "20003"
+                };
+                h.SummerEbtCases = new List<SummerEbtCase>
+                {
+                    HouseholdFactory.CreateSummerEbtCase("Ana", "Rivera", "NSLP", c =>
+                    {
+                        c.IssuanceType = IssuanceType.SummerEbt;
+                        c.EbtCardStatus = "Lost";
+                        c.EbtCardLastFour = "7777";
+                        c.CardRequestedAt = now.AddDays(-100);
+                    })
+                };
+            });
+            lostCard.Email = lostCardEmail;
+            lostCard.UserProfile = new UserProfile { FirstName = "Jamie", MiddleName = null, LastName = "RiveraMOCK" };
+            _households[lostCardEmail] = lostCard;
+            IndexByPhone(lostCard);
+
+            // DC scenario: mixed household — one SummerEbt (Lost, replacement-eligible) + one SnapEbtCard (co-loaded, filtered)
+            var mixedEmail = _settings.BuildEmail(SeedScenarios.Mixed.Name);
+            var mixed = HouseholdFactory.CreateHouseholdDataWithStatus(ApplicationStatus.Approved, h =>
+            {
+                h.BenefitIssuanceType = BenefitIssuanceType.SummerEbt;
+                var app = h.Applications.FirstOrDefault();
+                if (app != null)
+                {
+                    app.BenefitIssueDate = now.AddDays(-40);
+                    app.BenefitExpirationDate = now.AddDays(80);
+                    app.CardStatus = CardStatus.Lost;
+                    app.IssuanceType = IssuanceType.SummerEbt;
+                    app.Last4DigitsOfCard = "5555";
+                    app.Children = new List<Child>
+                    {
+                        new Child { FirstName = "Lucia", LastName = "Chen" },
+                        new Child { FirstName = "Marco", LastName = "Chen" }
+                    };
+                }
+                h.AddressOnFile = new Address
+                {
+                    StreetAddress1 = "300 Mixed Way",
+                    City = "Washington",
+                    State = "DC",
+                    PostalCode = "20004"
+                };
+                h.SummerEbtCases = new List<SummerEbtCase>
+                {
+                    HouseholdFactory.CreateSummerEbtCase("Lucia", "Chen", "NSLP", c =>
+                    {
+                        c.IssuanceType = IssuanceType.SummerEbt;
+                        c.EbtCardStatus = "Lost";
+                        c.EbtCardLastFour = "5555";
+                        c.CardRequestedAt = now.AddDays(-110);
+                    }),
+                    HouseholdFactory.CreateSummerEbtCase("Marco", "Chen", "SNAP", c =>
+                    {
+                        c.IssuanceType = IssuanceType.SnapEbtCard;
+                        c.EbtCardStatus = "Active";
+                        c.EbtCardLastFour = "6666";
+                    })
+                };
+            });
+            mixed.Email = mixedEmail;
+            mixed.UserProfile = new UserProfile { FirstName = "Wei", MiddleName = null, LastName = "ChenMOCK" };
+            _households[mixedEmail] = mixed;
+            IndexByPhone(mixed);
         }
 
         _logger.LogInformation("Seeded {Count} mock household records using Bogus", _households.Count);

@@ -39,6 +39,11 @@ public static class SeedScenarios
     public static readonly SeedScenario Simple6 = new("simple6", UserIalLevel.None);
     public static readonly SeedScenario Simple7 = new("simple7", UserIalLevel.None);
 
+    // DC-157 scenarios: exercise the card-status and mixed-issuance paths.
+    // IAL1+ so walkthrough tests bypass id-proofing and go straight to dashboard.
+    public static readonly SeedScenario LostCard = new("lost-card", UserIalLevel.IAL1plus);
+    public static readonly SeedScenario Mixed = new("mixed", UserIalLevel.IAL1plus);
+
     /// <summary>
     /// Scenarios that are seeded as User entities in the database.
     /// </summary>
@@ -47,14 +52,15 @@ public static class SeedScenarios
         CoLoaded, Verified, SingleChild, LargeFamily, Expired,
         NonCoLoaded, NotStarted, Pending, Minimal, Denied,
         Review, Cancelled, Unknown,
-        Simple1, Simple2, Simple3, Simple4, Simple5, Simple6, Simple7
+        Simple1, Simple2, Simple3, Simple4, Simple5, Simple6, Simple7,
+        LostCard, Mixed
     ];
 
     /// <summary>
     /// Scenarios that should only be seeded when STATE=dc.
     /// </summary>
     public static readonly IReadOnlySet<SeedScenario> DcOnlyScenarios =
-        new HashSet<SeedScenario> { Simple1, Simple2, Simple3, Simple4, Simple5, Simple6, Simple7 };
+        new HashSet<SeedScenario> { Simple1, Simple2, Simple3, Simple4, Simple5, Simple6, Simple7, LostCard, Mixed };
 
     /// <summary>
     /// All scenarios including household-only entries (e.g., MultipleApps).

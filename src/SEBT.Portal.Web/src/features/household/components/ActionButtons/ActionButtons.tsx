@@ -93,7 +93,13 @@ export function ActionButtons({ cases, allowedActions }: ActionButtonsProps) {
           role="status"
         >
           <div className="usa-alert__body">
-            <p className="usa-alert__text">{t('actionNavigationSelfServiceUnavailable')}</p>
+            <p className="usa-alert__text">
+              {/* TODO: Remove fallback once actionNavigationSelfServiceUnavailable is added to dc.csv/co.csv */}
+              {t(
+                'actionNavigationSelfServiceUnavailable',
+                'Self-service actions are not available for your account. Please contact customer service for help updating your address or requesting a replacement card.'
+              )}
+            </p>
           </div>
         </div>
       )}

@@ -34,6 +34,25 @@ const DESCRIPTION_KEY: Partial<Record<CardStatus, string>> = {
   Undeliverable: 'cardTableStatusMessageUndeliverable'
 }
 
+// Fallback English copy used when the generated locale string is missing or empty
+// (the DC column in dc.csv has empty EN cells for several card-status messages).
+// TODO: Remove once dc.csv EN cells are filled in for cardTableStatusMessage* keys.
+const DESCRIPTION_FALLBACK: Partial<Record<CardStatus, string>> = {
+  Active:
+    "This card has been sent to you. It is ready to make purchases as soon as you set the PIN. When the card arrives, call EBT Customer Service at (888) 328-2656 to set the card's PIN.",
+  Processed: 'Your card has been processed and is on its way.',
+  Lost: 'This card was reported as lost, stolen, or damaged. Request a replacement card above.',
+  Stolen: 'This card was reported as lost, stolen, or damaged. Request a replacement card above.',
+  Damaged: 'This card was reported as lost, stolen, or damaged. Request a replacement card above.',
+  Deactivated:
+    'This card was reported as lost, stolen, damaged, or otherwise inactive. Contact customer service for help.',
+  DeactivatedByState: 'This card was deactivated by the state. Contact customer service for help.',
+  NotActivated: 'This card has not been activated. Contact customer service for help.',
+  Frozen: 'This card is frozen. Contact customer service for help.',
+  Undeliverable:
+    'This card could not be delivered. Verify your address is correct and contact customer service.'
+}
+
 export function CardStatusDisplay({ cardStatus }: CardStatusDisplayProps) {
   const { t } = useTranslation('dashboard')
 
@@ -48,7 +67,10 @@ export function CardStatusDisplay({ cardStatus }: CardStatusDisplayProps) {
   const uiStatus = toUiCardStatus(cardStatus)
   const { colorClass, labelKey } = STATUS_CONFIG[uiStatus]
   const statusLabel = t(labelKey)
-  const statusDescription = t(DESCRIPTION_KEY[cardStatus] ?? 'cardTableStatusMessageInactive')
+  const descriptionKey = DESCRIPTION_KEY[cardStatus] ?? 'cardTableStatusMessageInactive'
+  const translated = t(descriptionKey)
+  // Empty-string locale entries are treated as missing so the English fallback surfaces.
+  const statusDescription = translated || DESCRIPTION_FALLBACK[cardStatus] || ''
 
   return (
     <div className="margin-top-2">

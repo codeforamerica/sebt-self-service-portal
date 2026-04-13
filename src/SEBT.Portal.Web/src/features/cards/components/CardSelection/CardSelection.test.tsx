@@ -316,6 +316,93 @@ describe('CardSelection', () => {
     expect(screen.getAllByRole('checkbox')).toHaveLength(1)
   })
 
+  // --- Per-case canRequestReplacementCard filter ---
+
+  it('filters out cases where canRequestReplacementCard is false', async () => {
+    server.use(
+      http.get('/api/household/data', () => {
+        return HttpResponse.json({
+          email: 'test@example.com',
+          phone: '3035550100',
+          benefitIssuanceType: 1,
+          summerEbtCases: [
+            {
+              summerEBTCaseID: 'SEBT-ELIGIBLE',
+              childFirstName: 'Eligible',
+              childLastName: 'Child',
+              householdType: 'OSSE',
+              eligibilityType: 'NSLP',
+              issuanceType: 1,
+              canRequestReplacementCard: true
+            },
+            {
+              summerEBTCaseID: 'SEBT-COLOADED',
+              childFirstName: 'Co-Loaded',
+              childLastName: 'Child',
+              householdType: 'OSSE',
+              eligibilityType: 'NSLP',
+              issuanceType: 3,
+              canRequestReplacementCard: false
+            }
+          ],
+          applications: [],
+          addressOnFile: {
+            streetAddress1: '123 Main St',
+            city: 'Washington',
+            state: 'DC',
+            postalCode: '20001'
+          }
+        })
+      })
+    )
+
+    renderCardSelection()
+
+    await waitFor(() => {
+      expect(screen.getByText(/Eligible Child/)).toBeInTheDocument()
+    })
+
+    expect(screen.queryByText(/Co-Loaded Child/)).not.toBeInTheDocument()
+    expect(screen.getAllByRole('checkbox')).toHaveLength(1)
+  })
+
+  it('treats missing canRequestReplacementCard as allowed (backward compat)', async () => {
+    server.use(
+      http.get('/api/household/data', () => {
+        return HttpResponse.json({
+          email: 'test@example.com',
+          phone: '3035550100',
+          benefitIssuanceType: 1,
+          summerEbtCases: [
+            {
+              summerEBTCaseID: 'SEBT-LEGACY',
+              childFirstName: 'Legacy',
+              childLastName: 'Child',
+              householdType: 'OSSE',
+              eligibilityType: 'NSLP',
+              issuanceType: 1
+            }
+          ],
+          applications: [],
+          addressOnFile: {
+            streetAddress1: '123 Main St',
+            city: 'Washington',
+            state: 'DC',
+            postalCode: '20001'
+          }
+        })
+      })
+    )
+
+    renderCardSelection()
+
+    await waitFor(() => {
+      expect(screen.getByText(/Legacy Child/)).toBeInTheDocument()
+    })
+
+    expect(screen.getAllByRole('checkbox')).toHaveLength(1)
+  })
+
   // --- Accessibility ---
 
   it('uses fieldset and legend for checkbox group', async () => {

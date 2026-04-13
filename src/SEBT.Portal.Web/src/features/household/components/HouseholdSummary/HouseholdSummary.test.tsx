@@ -133,7 +133,7 @@ describe('HouseholdSummary', () => {
     expect(link).toHaveAttribute('data-analytics-cta', 'update_address_cta')
   })
 
-  it('hides change mailing address link when allowedActions.canUpdateAddress is false', () => {
+  it('shows info link (not action link) when allowedActions.canUpdateAddress is false', () => {
     mockReturnData = {
       ...defaultMockData,
       allowedActions: {
@@ -147,6 +147,9 @@ describe('HouseholdSummary', () => {
     expect(
       screen.queryByRole('link', { name: 'Change my mailing address' })
     ).not.toBeInTheDocument()
+    const infoLink = screen.getByRole('link', { name: /how to change your mailing address/i })
+    expect(infoLink).toHaveAttribute('href', '/profile/address/info')
+    expect(infoLink).toHaveAttribute('data-analytics-cta', 'update_address_info_cta')
   })
 
   it('shows change mailing address link when allowedActions.canUpdateAddress is true', () => {

@@ -114,6 +114,37 @@ public class SelfServiceEvaluatorTests
     }
 
     [Fact]
+    public void EvaluateHousehold_SummerEbtWithLost_OpenCardStatusList_CanUpdateAddress()
+    {
+        // Regression guard for F8: a SummerEbt case in Lost status must be able
+        // to update address when AllowedCardStatuses is empty (any status allowed).
+        // Prevents returning to the [Active, Mailed] allowlist that blocks Lost users.
+        var settings = new SelfServiceRulesSettings
+        {
+            AddressUpdate = new ActionRuleSettings
+            {
+                Enabled = true,
+                DisabledMessageKey = "dashboard.addressUpdateDisabled",
+                ByIssuanceType = new Dictionary<IssuanceType, IssuanceTypeRuleSettings>
+                {
+                    [IssuanceType.SummerEbt] = new IssuanceTypeRuleSettings
+                    {
+                        Enabled = true,
+                        AllowedCardStatuses = []
+                    }
+                }
+            },
+            CardReplacement = new ActionRuleSettings { Enabled = false }
+        };
+        var evaluator = Create(settings);
+        var lostCase = new[] { MakeCase(IssuanceType.SummerEbt, "Lost") };
+
+        var result = evaluator.EvaluateHousehold(lostCase);
+
+        Assert.True(result.CanUpdateAddress);
+    }
+
+    [Fact]
     public void EvaluateHousehold_DcConfig_MixedHousehold_PermissiveAggregation_CanUpdateAddress()
     {
         var evaluator = Create(DcSettings());
