@@ -202,6 +202,7 @@ public static class Dependencies
         services.AddSingleton<IValidateOptions<IdProofingRequirementsSettings>, IdProofingRequirementsSettingsValidator>();
         services.AddOptionsWithValidateOnStart<IdProofingRequirementsSettings>()
             .BindConfiguration(IdProofingRequirementsSettings.SectionName);
+        services.AddSingleton<IValidateOptions<MinimumIalSettings>, MinimumIalSettingsValidator>();
         services.AddOptionsWithValidateOnStart<MinimumIalSettings>()
             .BindConfiguration(MinimumIalSettings.SectionName);
 

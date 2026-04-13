@@ -13,7 +13,12 @@ public class MinimumIalServiceTests
 {
     private static MinimumIalService CreateService(MinimumIalSettings? settings = null)
     {
-        settings ??= new MinimumIalSettings();
+        settings ??= new MinimumIalSettings
+        {
+            ApplicationCases = IalLevel.IAL1,
+            CoLoadedStreamlineCases = IalLevel.IAL1,
+            NonCoLoadedStreamlineCases = IalLevel.IAL1plus
+        };
         var snapshot = Substitute.For<IOptionsSnapshot<MinimumIalSettings>>();
         snapshot.Value.Returns(settings);
         return new MinimumIalService(snapshot, NullLogger<MinimumIalService>.Instance);

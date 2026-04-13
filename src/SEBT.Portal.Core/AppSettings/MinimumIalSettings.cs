@@ -13,18 +13,21 @@ public class MinimumIalSettings
 
     /// <summary>
     /// Minimum IAL required for cases that originated from guardian-submitted applications.
+    /// Required — the app will fail to start if not configured in the state overlay.
     /// </summary>
-    public IalLevel ApplicationCases { get; set; } = IalLevel.IAL1;
+    public IalLevel? ApplicationCases { get; set; }
 
     /// <summary>
     /// Minimum IAL required for streamline-certified cases that were co-loaded
     /// (bulk-imported from the state system).
+    /// Required — the app will fail to start if not configured in the state overlay.
     /// </summary>
-    public IalLevel CoLoadedStreamlineCases { get; set; } = IalLevel.IAL1;
+    public IalLevel? CoLoadedStreamlineCases { get; set; }
 
     /// <summary>
     /// Minimum IAL required for streamline-certified cases that were NOT co-loaded
     /// (added through the portal, not bulk-imported).
+    /// Required — the app will fail to start if not configured in the state overlay.
     /// </summary>
-    public IalLevel NonCoLoadedStreamlineCases { get; set; } = IalLevel.IAL1plus;
+    public IalLevel? NonCoLoadedStreamlineCases { get; set; }
 }

@@ -34,17 +34,7 @@ public class MinimumIalService : IMinimumIalService
             return UserIalLevel.IAL1;
         }
 
-        var highest = IalLevel.IAL1;
-
-        foreach (var c in cases)
-        {
-            var required = ClassifyCase(c);
-            if (required > highest)
-            {
-                highest = required;
-            }
-        }
-
+        var highest = cases.Max(ClassifyCase);
         var result = ToUserIalLevel(highest);
         _logger.LogInformation(
             "Minimum IAL determined as {MinimumIal} from {CaseCount} case(s)",
@@ -57,12 +47,12 @@ public class MinimumIalService : IMinimumIalService
     {
         if (!c.IsStreamlineCertified)
         {
-            return _settings.ApplicationCases;
+            return _settings.ApplicationCases!.Value;
         }
 
         return c.IsCoLoaded
-            ? _settings.CoLoadedStreamlineCases
-            : _settings.NonCoLoadedStreamlineCases;
+            ? _settings.CoLoadedStreamlineCases!.Value
+            : _settings.NonCoLoadedStreamlineCases!.Value;
     }
 
     private static UserIalLevel ToUserIalLevel(IalLevel level)
