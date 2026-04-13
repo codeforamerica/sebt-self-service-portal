@@ -57,8 +57,7 @@ public class SummerEbtCase
     public IssuanceType IssuanceType { get; set; } = IssuanceType.Unknown;
 
     /// <summary>
-    /// Whether this case was bulk-imported (co-loaded) from the state system
-    /// rather than created through the application flow.
+    /// Whether this case has benefits co-loaded to an existing EBT card.
     /// </summary>
     public bool IsCoLoaded { get; set; }
 
