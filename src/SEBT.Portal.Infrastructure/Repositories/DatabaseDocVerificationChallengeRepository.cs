@@ -88,21 +88,39 @@ public class DatabaseDocVerificationChallengeRepository(PortalDbContext dbContex
 
         var now = DateTime.UtcNow;
 
-        await dbContext.DocVerificationChallenges
-            .Where(c => c.UserId == challenge.UserId
-                && (c.Status == (int)DocVerificationStatus.Created
-                    || c.Status == (int)DocVerificationStatus.Pending)
-                && c.ExpiresAt != null
-                && c.ExpiresAt <= now)
-            .ExecuteUpdateAsync(
-                setters => setters
-                    .SetProperty(e => e.Status, (int)DocVerificationStatus.Expired)
-                    .SetProperty(e => e.UpdatedAt, now),
-                cancellationToken);
+        // Single transaction: bulk expire + insert commit together. Without this, a failure after
+        // ExecuteUpdateAsync could leave stale rows expired with no new challenge (recoverable on
+        // retry but inconsistent until then).
+        await using var transaction =
+            await dbContext.Database.BeginTransactionAsync(cancellationToken);
+        try
+        {
+            // Bulk expire via SQL: does not use RowVersion optimistic concurrency or
+            // DocVerificationChallenge.TransitionTo (same Created→Expired transition as the domain).
+            // The predicate limits rows to stale Created/Pending; revisit if concurrent writers race here.
+            await dbContext.DocVerificationChallenges
+                .Where(c => c.UserId == challenge.UserId
+                    && (c.Status == (int)DocVerificationStatus.Created
+                        || c.Status == (int)DocVerificationStatus.Pending)
+                    && c.ExpiresAt != null
+                    && c.ExpiresAt <= now)
+                .ExecuteUpdateAsync(
+                    setters => setters
+                        .SetProperty(e => e.Status, (int)DocVerificationStatus.Expired)
+                        .SetProperty(e => e.UpdatedAt, now),
+                    cancellationToken);
 
-        var entity = MapToEntity(challenge);
-        dbContext.DocVerificationChallenges.Add(entity);
-        await dbContext.SaveChangesAsync(cancellationToken);
+            var entity = MapToEntity(challenge);
+            dbContext.DocVerificationChallenges.Add(entity);
+            await dbContext.SaveChangesAsync(cancellationToken);
+
+            await transaction.CommitAsync(cancellationToken);
+        }
+        catch
+        {
+            await transaction.RollbackAsync(cancellationToken);
+            throw;
+        }
     }
 
     public async Task UpdateAsync(
