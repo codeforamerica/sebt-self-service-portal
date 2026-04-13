@@ -215,7 +215,9 @@ export type UserProfile = z.infer<typeof UserProfileSchema>
 
 export const HouseholdAllowedActionsSchema = z.object({
   canUpdateAddress: z.boolean(),
-  addressUpdateDeniedMessageKey: z.string().nullable().optional()
+  addressUpdateDeniedMessageKey: z.string().nullable().optional(),
+  canRequestReplacementCard: z.boolean(),
+  cardReplacementDeniedMessageKey: z.string().nullable().optional()
 })
 
 export type HouseholdAllowedActions = z.infer<typeof HouseholdAllowedActionsSchema>

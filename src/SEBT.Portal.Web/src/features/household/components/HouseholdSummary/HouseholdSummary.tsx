@@ -94,6 +94,7 @@ export function HouseholdSummary() {
   const { t } = useTranslation('dashboard')
   const data = useRequiredHouseholdData()
   const { primary, secondary } = getOverallStatus(data)
+  const canUpdateAddress = data.allowedActions?.canUpdateAddress ?? true
 
   return (
     <div className="usa-card__container margin-bottom-4">
@@ -126,14 +127,18 @@ export function HouseholdSummary() {
               <dt className="text-bold">{t('profileTableHeadingAddress')}</dt>
               <dd className="margin-left-0 margin-bottom-2">
                 <span style={{ whiteSpace: 'pre-line' }}>{formatAddress(data.addressOnFile)}</span>
-                <br />
-                <Link
-                  href="/profile/address"
-                  data-analytics-cta="update_address_cta"
-                  className="usa-link"
-                >
-                  {t('profileTableActionChangeAddress')}
-                </Link>
+                {canUpdateAddress && (
+                  <>
+                    <br />
+                    <Link
+                      href="/profile/address"
+                      data-analytics-cta="update_address_cta"
+                      className="usa-link"
+                    >
+                      {t('profileTableActionChangeAddress')}
+                    </Link>
+                  </>
+                )}
               </dd>
             </>
           )}

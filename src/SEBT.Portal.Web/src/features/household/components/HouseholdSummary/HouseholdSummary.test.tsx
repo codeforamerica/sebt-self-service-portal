@@ -133,6 +133,36 @@ describe('HouseholdSummary', () => {
     expect(link).toHaveAttribute('data-analytics-cta', 'update_address_cta')
   })
 
+  it('hides change mailing address link when allowedActions.canUpdateAddress is false', () => {
+    mockReturnData = {
+      ...defaultMockData,
+      allowedActions: {
+        canUpdateAddress: false,
+        addressUpdateDeniedMessageKey: 'actionNavigationSelfServiceUnavailable',
+        canRequestReplacementCard: false,
+        cardReplacementDeniedMessageKey: null
+      }
+    }
+    render(<HouseholdSummary />)
+    expect(
+      screen.queryByRole('link', { name: 'Change my mailing address' })
+    ).not.toBeInTheDocument()
+  })
+
+  it('shows change mailing address link when allowedActions.canUpdateAddress is true', () => {
+    mockReturnData = {
+      ...defaultMockData,
+      allowedActions: {
+        canUpdateAddress: true,
+        addressUpdateDeniedMessageKey: null,
+        canRequestReplacementCard: true,
+        cardReplacementDeniedMessageKey: null
+      }
+    }
+    render(<HouseholdSummary />)
+    expect(screen.getByRole('link', { name: 'Change my mailing address' })).toBeInTheDocument()
+  })
+
   it('exposes data-analytics-cta on the change contact preferences link', () => {
     render(<HouseholdSummary />)
     const link = screen.getByRole('link', { name: 'Change my contact preferences' })

@@ -153,6 +153,70 @@ public class SelfServiceEvaluatorTests
         Assert.Equal("dashboard.addressUpdateDisabled", result.AddressUpdateDeniedMessageKey);
     }
 
+    [Fact]
+    public void EvaluateHousehold_DcConfig_SummerEbtWithLost_CanRequestReplacementCard()
+    {
+        var evaluator = Create(DcSettings());
+        var cases = new[] { MakeCase(IssuanceType.SummerEbt, "Lost") };
+
+        var result = evaluator.EvaluateHousehold(cases);
+
+        Assert.True(result.CanRequestReplacementCard);
+        Assert.Null(result.CardReplacementDeniedMessageKey);
+    }
+
+    [Fact]
+    public void EvaluateHousehold_DcConfig_OnlySnapCases_CannotRequestReplacementCard()
+    {
+        var evaluator = Create(DcSettings());
+        var cases = new[] { MakeCase(IssuanceType.SnapEbtCard, "Lost") };
+
+        var result = evaluator.EvaluateHousehold(cases);
+
+        Assert.False(result.CanRequestReplacementCard);
+        Assert.Equal("dashboard.cardReplacementDisabled", result.CardReplacementDeniedMessageKey);
+    }
+
+    [Fact]
+    public void EvaluateHousehold_DcConfig_MixedHousehold_PermissiveAggregation_CanRequestReplacementCard()
+    {
+        var evaluator = Create(DcSettings());
+        // SNAP case alone would be denied; the SummerEbt case grants access for the whole household.
+        var cases = new[]
+        {
+            MakeCase(IssuanceType.SnapEbtCard, "Lost", "SEBT-001"),
+            MakeCase(IssuanceType.SummerEbt, "Lost", "SEBT-002")
+        };
+
+        var result = evaluator.EvaluateHousehold(cases);
+
+        Assert.True(result.CanRequestReplacementCard);
+        Assert.Null(result.CardReplacementDeniedMessageKey);
+    }
+
+    [Fact]
+    public void EvaluateHousehold_CoConfig_CannotRequestReplacementCard()
+    {
+        var evaluator = Create(CoSettings());
+        var cases = new[] { MakeCase(IssuanceType.SummerEbt, "Lost") };
+
+        var result = evaluator.EvaluateHousehold(cases);
+
+        Assert.False(result.CanRequestReplacementCard);
+        Assert.Equal("dashboard.cardReplacementDisabled", result.CardReplacementDeniedMessageKey);
+    }
+
+    [Fact]
+    public void EvaluateHousehold_EmptyCasesList_CannotRequestReplacementCard()
+    {
+        var evaluator = Create(DcSettings());
+
+        var result = evaluator.EvaluateHousehold([]);
+
+        Assert.False(result.CanRequestReplacementCard);
+        Assert.Equal("dashboard.cardReplacementDisabled", result.CardReplacementDeniedMessageKey);
+    }
+
     // =========================================================================
     // EvaluateCase
     // =========================================================================

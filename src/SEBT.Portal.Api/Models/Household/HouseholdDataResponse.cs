@@ -65,4 +65,14 @@ public record HouseholdAllowedActionsResponse
     /// i18n key for the message shown when address update is denied.
     /// </summary>
     public string? AddressUpdateDeniedMessageKey { get; init; }
+
+    /// <summary>
+    /// Whether any case in the household qualifies for card replacement via the portal.
+    /// </summary>
+    public bool CanRequestReplacementCard { get; init; }
+
+    /// <summary>
+    /// i18n key for the message shown when no case qualifies for card replacement.
+    /// </summary>
+    public string? CardReplacementDeniedMessageKey { get; init; }
 }

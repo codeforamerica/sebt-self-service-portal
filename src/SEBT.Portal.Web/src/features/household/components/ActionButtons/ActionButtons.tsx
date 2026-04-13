@@ -7,12 +7,14 @@ import { getState, getStateConfig } from '@sebt/design-system'
 
 import type { HouseholdAllowedActions, SummerEbtCase } from '../../api'
 
+type SelfServiceGate = 'updateAddress' | 'requestReplacementCard'
+
 interface ActionButton {
   labelKey: string
   href: string
   ctaId: string
-  /** When true, this CTA is hidden when no case has a dedicated Summer EBT card. */
-  selfServiceOnly?: boolean
+  /** Which server-driven flag gates this CTA. Undefined = always visible. */
+  gate?: SelfServiceGate
 }
 
 interface ActionButtonsProps {
@@ -31,13 +33,13 @@ const ACTIONS: ActionButton[] = [
     labelKey: 'actionNavigationChangeMyMailingAddress',
     href: '/profile/address',
     ctaId: 'update_address_cta',
-    selfServiceOnly: true
+    gate: 'updateAddress'
   },
   {
     labelKey: 'actionNavigationOrderReplacementCards',
     href: '/cards/request',
     ctaId: 'replacement_card_cta',
-    selfServiceOnly: true
+    gate: 'requestReplacementCard'
   },
   {
     labelKey: 'actionNavigationCheckExistingCards',
@@ -54,7 +56,8 @@ const ACTIONS: ActionButton[] = [
 /**
  * SNAP and TANF benefit holders cannot use portal self-service features
  * (address update, replacement card) — those actions must go through
- * their case worker.
+ * their case worker. Used as fallback when server-driven allowedActions
+ * are not available.
  */
 function isSelfServiceAvailable(cases: SummerEbtCase[]): boolean {
   if (cases.length === 0) return true
@@ -66,10 +69,16 @@ function isSelfServiceAvailable(cases: SummerEbtCase[]): boolean {
 export function ActionButtons({ cases, allowedActions }: ActionButtonsProps) {
   const { t } = useTranslation('dashboard')
   const { actionButtonBg, actionButtonText } = getStateConfig(getState())
-  const selfServiceEnabled =
-    allowedActions != null ? allowedActions.canUpdateAddress : isSelfServiceAvailable(cases)
+  const fallback = isSelfServiceAvailable(cases)
+  const canUpdateAddress = allowedActions?.canUpdateAddress ?? fallback
+  const canRequestReplacementCard = allowedActions?.canRequestReplacementCard ?? fallback
+  const gateFlags: Record<SelfServiceGate, boolean> = {
+    updateAddress: canUpdateAddress,
+    requestReplacementCard: canRequestReplacementCard
+  }
 
-  const visibleActions = ACTIONS.filter((action) => !action.selfServiceOnly || selfServiceEnabled)
+  const visibleActions = ACTIONS.filter((action) => !action.gate || gateFlags[action.gate])
+  const allSelfServiceHidden = !canUpdateAddress && !canRequestReplacementCard
 
   return (
     <nav
@@ -78,7 +87,7 @@ export function ActionButtons({ cases, allowedActions }: ActionButtonsProps) {
     >
       <p className="margin-top-0 margin-bottom-2 text-base-dark">{t('actionNavigationLead')}</p>
 
-      {!selfServiceEnabled && (
+      {allSelfServiceHidden && (
         <div
           className="usa-alert usa-alert--info usa-alert--slim margin-bottom-2"
           role="status"

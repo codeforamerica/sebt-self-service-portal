@@ -136,11 +136,11 @@ describe('ActionButtons', () => {
   })
 
   describe('server-driven allowedActions', () => {
-    it('hides self-service CTAs when allowedActions.canUpdateAddress is false', () => {
+    it('hides both self-service CTAs when both flags are false', () => {
       render(
         <ActionButtons
           cases={[makeCaseWithIssuance('SummerEbt')]}
-          allowedActions={{ canUpdateAddress: false }}
+          allowedActions={{ canUpdateAddress: false, canRequestReplacementCard: false }}
         />
       )
       const links = screen.getAllByRole('link')
@@ -149,19 +149,40 @@ describe('ActionButtons', () => {
       expect(screen.queryByText('Request new cards')).toBeNull()
     })
 
-    it('shows self-service CTAs when allowedActions.canUpdateAddress is true', () => {
+    it('shows both self-service CTAs when both flags are true', () => {
       render(
         <ActionButtons
           cases={[makeCaseWithIssuance('SummerEbt')]}
-          allowedActions={{ canUpdateAddress: true }}
+          allowedActions={{ canUpdateAddress: true, canRequestReplacementCard: true }}
         />
       )
       const links = screen.getAllByRole('link')
       expect(links).toHaveLength(4)
     })
 
+    it('hides only address CTA when canUpdateAddress false but canRequestReplacementCard true', () => {
+      render(
+        <ActionButtons
+          cases={[makeCaseWithIssuance('SummerEbt')]}
+          allowedActions={{ canUpdateAddress: false, canRequestReplacementCard: true }}
+        />
+      )
+      expect(screen.queryByText('Change my mailing address')).toBeNull()
+      expect(screen.getByText('Request new cards')).toBeInTheDocument()
+    })
+
+    it('hides only replacement CTA when canRequestReplacementCard false but canUpdateAddress true', () => {
+      render(
+        <ActionButtons
+          cases={[makeCaseWithIssuance('SummerEbt')]}
+          allowedActions={{ canUpdateAddress: true, canRequestReplacementCard: false }}
+        />
+      )
+      expect(screen.getByText('Change my mailing address')).toBeInTheDocument()
+      expect(screen.queryByText('Request new cards')).toBeNull()
+    })
+
     it('falls back to isSelfServiceAvailable when allowedActions is null', () => {
-      // SummerEbt case with no allowedActions — should show all 4 links
       render(
         <ActionButtons
           cases={[makeCaseWithIssuance('SummerEbt')]}
@@ -173,20 +194,29 @@ describe('ActionButtons', () => {
     })
 
     it('falls back to isSelfServiceAvailable when allowedActions is undefined', () => {
-      // SNAP case with no allowedActions — client-side logic hides self-service
       render(<ActionButtons cases={[makeCaseWithIssuance('SnapEbtCard')]} />)
       const links = screen.getAllByRole('link')
       expect(links).toHaveLength(2)
     })
 
-    it('shows info alert when allowedActions.canUpdateAddress is false', () => {
+    it('shows info alert when both self-service flags are false', () => {
       render(
         <ActionButtons
           cases={[makeCaseWithIssuance('SummerEbt')]}
-          allowedActions={{ canUpdateAddress: false }}
+          allowedActions={{ canUpdateAddress: false, canRequestReplacementCard: false }}
         />
       )
       expect(screen.getByRole('status')).toBeInTheDocument()
+    })
+
+    it('does not show info alert when only one self-service flag is false', () => {
+      render(
+        <ActionButtons
+          cases={[makeCaseWithIssuance('SummerEbt')]}
+          allowedActions={{ canUpdateAddress: true, canRequestReplacementCard: false }}
+        />
+      )
+      expect(screen.queryByRole('status')).toBeNull()
     })
   })
 

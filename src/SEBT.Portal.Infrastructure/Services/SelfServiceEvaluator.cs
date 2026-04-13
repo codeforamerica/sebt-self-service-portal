@@ -16,11 +16,14 @@ public class SelfServiceEvaluator(IOptionsSnapshot<SelfServiceRulesSettings> opt
     public HouseholdAllowedActions EvaluateHousehold(IReadOnlyList<SummerEbtCase> cases)
     {
         var canUpdate = IsHouseholdActionAllowed(_settings.AddressUpdate, cases);
+        var canReplace = IsHouseholdActionAllowed(_settings.CardReplacement, cases);
 
         return new HouseholdAllowedActions
         {
             CanUpdateAddress = canUpdate,
-            AddressUpdateDeniedMessageKey = canUpdate ? null : _settings.AddressUpdate.DisabledMessageKey
+            AddressUpdateDeniedMessageKey = canUpdate ? null : _settings.AddressUpdate.DisabledMessageKey,
+            CanRequestReplacementCard = canReplace,
+            CardReplacementDeniedMessageKey = canReplace ? null : _settings.CardReplacement.DisabledMessageKey
         };
     }
 

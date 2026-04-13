@@ -115,7 +115,9 @@ export const TEST_HOUSEHOLD_DATA = {
   },
   allowedActions: {
     canUpdateAddress: true,
-    addressUpdateDeniedMessageKey: null
+    addressUpdateDeniedMessageKey: null,
+    canRequestReplacementCard: true,
+    cardReplacementDeniedMessageKey: null
   }
 } as const
 

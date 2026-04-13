@@ -32,7 +32,9 @@ public static class HouseholdDataResponseMapper
             AllowedActions = domain.AllowedActions == null ? null : new HouseholdAllowedActionsResponse
             {
                 CanUpdateAddress = domain.AllowedActions.CanUpdateAddress,
-                AddressUpdateDeniedMessageKey = domain.AllowedActions.AddressUpdateDeniedMessageKey
+                AddressUpdateDeniedMessageKey = domain.AllowedActions.AddressUpdateDeniedMessageKey,
+                CanRequestReplacementCard = domain.AllowedActions.CanRequestReplacementCard,
+                CardReplacementDeniedMessageKey = domain.AllowedActions.CardReplacementDeniedMessageKey
             }
         };
     }
