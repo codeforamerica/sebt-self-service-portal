@@ -24,13 +24,6 @@ body {
    These are necessary where USWDS theme settings don't reach
    ======================================== */
 
-/* Footer uses primary color as background (not standard USWDS) */
-.usa-footer,
-.usa-footer__primary-section,
-.usa-footer__secondary-section {
-  background-color: var(--color-primary);
-}
-
 .footer-logo {
   height: auto;
   width: auto;
