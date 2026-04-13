@@ -4,6 +4,9 @@
 #### ✍️ Description
 <!-- Brief summary of changes  -->
 
+#### 🔗 Links to related PRs
+<!-- If applicable, include links to dependent or related PRs in this or other repos  -->
+
 #### ✅ Completion tasks
 <!-- Remember to add testing instructions to ticket -->
 
