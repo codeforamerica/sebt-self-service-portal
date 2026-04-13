@@ -1,3 +1,4 @@
+using Microsoft.Extensions.Logging;
 using SEBT.Portal.Core.Models;
 using SEBT.Portal.Core.Models.Auth;
 using SEBT.Portal.Core.Models.Household;
@@ -17,10 +18,14 @@ namespace SEBT.Portal.Infrastructure.Repositories;
 public class HouseholdRepository : IHouseholdRepository
 {
     private readonly ISummerEbtCaseService _summerEbtCaseService;
+    private readonly ILogger<HouseholdRepository> _logger;
 
-    public HouseholdRepository(ISummerEbtCaseService summerEbtCaseService)
+    public HouseholdRepository(
+        ISummerEbtCaseService summerEbtCaseService,
+        ILogger<HouseholdRepository> logger)
     {
         _summerEbtCaseService = summerEbtCaseService;
+        _logger = logger;
     }
 
     /// <inheritdoc />
@@ -33,6 +38,7 @@ public class HouseholdRepository : IHouseholdRepository
         var pluginType = MapToPluginIdentifierType(identifier.Type);
         if (pluginType == null)
         {
+            _logger.LogDebug("State plugin does not support the provided identifier type.");
             return Task.FromResult<HouseholdData?>(null);
         }
 
@@ -61,6 +67,10 @@ public class HouseholdRepository : IHouseholdRepository
             ? EmailNormalizer.Normalize(identifierValue)
             : identifierValue.Trim();
 
+        _logger.LogDebug(
+            "Querying state plugin for household data by identifier type {Type}",
+            identifierType);
+
         var pluginPii = new PluginPiiVisibility(
             piiVisibility.IncludeAddress,
             piiVisibility.IncludeEmail,
@@ -75,8 +85,16 @@ public class HouseholdRepository : IHouseholdRepository
 
         if (pluginHousehold == null)
         {
+            _logger.LogInformation(
+                "No household data found for identifier type {Type}",
+                identifierType);
             return null;
         }
+
+        _logger.LogInformation(
+            "Retrieved household data for identifier type {Type} with {ApplicationCount} application(s)",
+            identifierType,
+            pluginHousehold.Applications.Count);
 
         var core = PluginHouseholdDataMapper.ToCore(pluginHousehold);
         if (core == null)

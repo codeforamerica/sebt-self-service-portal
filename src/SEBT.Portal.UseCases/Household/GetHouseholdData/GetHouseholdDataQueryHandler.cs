@@ -29,6 +29,8 @@ public class GetHouseholdDataQueryHandler(
             return Result<HouseholdData>.Unauthorized("Unable to identify user from token.");
         }
 
+        logger.LogDebug("Household data request received for identifier type {Type}", identifier.Type);
+
         var userIalLevel = UserIalLevelExtensions.FromClaimsPrincipal(query.User);
         var piiVisibility = idProofingRequirementsService.GetPiiVisibility(userIalLevel);
 
@@ -51,6 +53,7 @@ public class GetHouseholdDataQueryHandler(
             return Result<HouseholdData>.PreconditionFailed(PreconditionFailedReason.NotFound, "Household data not found.");
         }
 
+        logger.LogDebug("Household data retrieved successfully for identifier type {Type}", identifier.Type);
         return Result<HouseholdData>.Success(householdData);
     }
 }

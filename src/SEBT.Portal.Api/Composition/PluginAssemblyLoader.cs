@@ -145,8 +145,9 @@ internal static class PluginAssemblyLoader
                     if (Directory.GetFiles(dir, "*.dll", searchOption).Length == 0)
                         continue;
                 }
-                catch (IOException)
+                catch (IOException ex)
                 {
+                    Log.Warning(ex, "Could not enumerate plugin DLLs in directory {PluginDirectory}", dir);
                     continue;
                 }
 
