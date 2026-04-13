@@ -86,6 +86,20 @@ public class DatabaseDocVerificationChallengeRepository(PortalDbContext dbContex
             throw new ArgumentNullException(nameof(challenge));
         }
 
+        var now = DateTime.UtcNow;
+
+        await dbContext.DocVerificationChallenges
+            .Where(c => c.UserId == challenge.UserId
+                && (c.Status == (int)DocVerificationStatus.Created
+                    || c.Status == (int)DocVerificationStatus.Pending)
+                && c.ExpiresAt != null
+                && c.ExpiresAt <= now)
+            .ExecuteUpdateAsync(
+                setters => setters
+                    .SetProperty(e => e.Status, (int)DocVerificationStatus.Expired)
+                    .SetProperty(e => e.UpdatedAt, now),
+                cancellationToken);
+
         var entity = MapToEntity(challenge);
         dbContext.DocVerificationChallenges.Add(entity);
         await dbContext.SaveChangesAsync(cancellationToken);

@@ -131,6 +131,34 @@ public class DatabaseDocVerificationChallengeRepositoryTests : IClassFixture<Sql
     }
 
     [Fact]
+    public async Task CreateAsync_ShouldExpireTimeElapsedRow_ThenInsertNew()
+    {
+        using var context = _fixture.CreateContext();
+        var userId = await SeedChallengeAsync(context,
+            status: (int)DocVerificationStatus.Created,
+            expiresAt: DateTime.UtcNow.AddMinutes(-10));
+
+        var repo = new DatabaseDocVerificationChallengeRepository(context);
+        var challenge = new DocVerificationChallenge
+        {
+            UserId = userId,
+            ExpiresAt = DateTime.UtcNow.AddMinutes(30)
+        };
+
+        await repo.CreateAsync(challenge);
+
+        var rows = await context.DocVerificationChallenges
+            .AsNoTracking()
+            .Where(c => c.UserId == userId)
+            .OrderBy(c => c.Id)
+            .ToListAsync();
+
+        Assert.Equal(2, rows.Count);
+        Assert.Single(rows, r => r.Status == (int)DocVerificationStatus.Expired);
+        Assert.Single(rows, r => r.Status == (int)DocVerificationStatus.Created && r.PublicId == challenge.PublicId);
+    }
+
+    [Fact]
     public async Task CreateAsync_ShouldAllowNewChallenge_WhenExistingIsTerminal()
     {
         using var context = _fixture.CreateContext();
