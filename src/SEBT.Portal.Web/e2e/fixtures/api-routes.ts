@@ -1,11 +1,6 @@
 import type { Page } from '@playwright/test'
 
-import {
-  DEFAULT_FEATURE_FLAGS,
-  MOCK_JWT,
-  makeHouseholdData,
-  type MockHouseholdData
-} from './household-data'
+import { DEFAULT_FEATURE_FLAGS, makeHouseholdData, type MockHouseholdData } from './household-data'
 
 interface ApiRouteOverrides {
   /** Override the household data response. Defaults to makeHouseholdData(). */
@@ -13,10 +8,18 @@ interface ApiRouteOverrides {
   /** Override specific feature flags. Merged with DEFAULT_FEATURE_FLAGS. */
   featureFlags?: Partial<typeof DEFAULT_FEATURE_FLAGS>
   /**
-   * Override the PUT /api/household/address response status.
-   * Defaults to 204 (success).
+   * Override the PUT /api/household/address response.
+   * Defaults to 200 with { status: 'valid' }.
+   * Use addressUpdateBody to customize the JSON payload.
    */
   addressUpdateStatus?: number
+  /**
+   * Override the PUT /api/household/address response body.
+   * Defaults to { status: 'valid' } for 200, or
+   * { status: 'invalid', reason: 'not-found', message: 'Address not found' } for 422.
+   * Set to null for no body (e.g., 204).
+   */
+  addressUpdateBody?: Record<string, unknown> | null
   /**
    * Override the POST /api/household/cards/replace response status.
    * Defaults to 204 (success).
@@ -33,23 +36,50 @@ interface ApiRouteOverrides {
  * intercepts at the browser level, so it catches these proxied requests before
  * they leave the browser.
  *
- * auth/refresh must be intercepted here: if it returns 401, apiFetch clears
- * the token and redirects to /login, which would break all authenticated tests.
- * We return a success response with the same mock token to keep the session alive.
+ * auth/status drives the SPA's session — AuthContext queries it on mount and
+ * after login/refresh. AuthGuard redirects to /login if it returns 401, so it
+ * must be mocked as authenticated for all flows that depend on a logged-in user.
+ *
+ * auth/refresh must also be intercepted: a 401 here would log the user out.
+ * The new contract is 204 No Content with a Set-Cookie header (the JWT lives
+ * in the HttpOnly session cookie, not the response body).
  */
 export async function setupApiRoutes(page: Page, overrides: ApiRouteOverrides = {}): Promise<void> {
   const householdData = overrides.householdData ?? makeHouseholdData()
   const featureFlags = { ...DEFAULT_FEATURE_FLAGS, ...(overrides.featureFlags ?? {}) }
-  const addressUpdateStatus = overrides.addressUpdateStatus ?? 204
+  const addressUpdateStatus = overrides.addressUpdateStatus ?? 200
+  const addressUpdateBody =
+    overrides.addressUpdateBody !== undefined
+      ? overrides.addressUpdateBody
+      : addressUpdateStatus === 422
+        ? { status: 'invalid', reason: 'not-found', message: 'Address not found' }
+        : addressUpdateStatus === 200
+          ? { status: 'valid' }
+          : null
   const cardReplaceStatus = overrides.cardReplaceStatus ?? 204
 
-  // Keep the mock session alive — a 401 here would clear the token and redirect to /login.
-  await page.route('**/api/auth/refresh', (route) => {
+  // Provide an authenticated session for AuthContext — IAL/id-proofing claims
+  // satisfy the CO step-up gate; DC ignores them.
+  await page.route('**/api/auth/status', (route) => {
     void route.fulfill({
       status: 200,
       contentType: 'application/json',
-      body: JSON.stringify({ token: MOCK_JWT, requiresIdProofing: false })
+      body: JSON.stringify({
+        isAuthorized: true,
+        email: 'e2e@example.com',
+        ial: '1plus',
+        idProofingStatus: 2,
+        // ~Apr 2026; stays fresh inside the 5-year window
+        idProofingCompletedAt: 1775000000,
+        idProofingExpiresAt: null
+      })
     })
+  })
+
+  // Keep the mock session alive — a 401 here would clear local state and redirect to /login.
+  // New contract: 204 No Content + Set-Cookie (cookie value is opaque to the SPA).
+  await page.route('**/api/auth/refresh', (route) => {
+    void route.fulfill({ status: 204 })
   })
 
   await page.route('**/api/household/data', (route) => {
@@ -69,7 +99,12 @@ export async function setupApiRoutes(page: Page, overrides: ApiRouteOverrides = 
   })
 
   await page.route('**/api/household/address', (route) => {
-    void route.fulfill({ status: addressUpdateStatus })
+    void route.fulfill({
+      status: addressUpdateStatus,
+      ...(addressUpdateBody != null
+        ? { contentType: 'application/json', body: JSON.stringify(addressUpdateBody) }
+        : {})
+    })
   })
 
   await page.route('**/api/household/cards/replace', (route) => {

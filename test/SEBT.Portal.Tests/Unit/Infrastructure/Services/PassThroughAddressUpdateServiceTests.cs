@@ -1,4 +1,5 @@
 using Microsoft.Extensions.Options;
+using NSubstitute;
 using SEBT.Portal.Core.AppSettings;
 using SEBT.Portal.Core.Models.AddressUpdate;
 using SEBT.Portal.Infrastructure.Services;
@@ -8,11 +9,17 @@ namespace SEBT.Portal.Tests.Unit.Infrastructure.Services;
 
 public class PassThroughAddressUpdateServiceTests
 {
+    private static PassThroughAddressUpdateService CreateService(AddressValidationPolicySettings policy)
+    {
+        var snapshot = Substitute.For<IOptionsSnapshot<AddressValidationPolicySettings>>();
+        snapshot.Value.Returns(policy);
+        return new PassThroughAddressUpdateService(snapshot);
+    }
+
     [Fact]
     public async Task ValidateAndNormalizeAsync_AllowsGeneralDelivery_WhenPolicyAllows()
     {
-        var service = new PassThroughAddressUpdateService(
-            Options.Create(new AddressValidationPolicySettings { AllowGeneralDelivery = true }));
+        var service = CreateService(new AddressValidationPolicySettings { AllowGeneralDelivery = true });
 
         var request = new AddressUpdateOperationRequest
         {
@@ -32,8 +39,7 @@ public class PassThroughAddressUpdateServiceTests
     [Fact]
     public async Task ValidateAndNormalizeAsync_RejectsGeneralDelivery_WhenPolicyDisallows()
     {
-        var service = new PassThroughAddressUpdateService(
-            Options.Create(new AddressValidationPolicySettings { AllowGeneralDelivery = false }));
+        var service = CreateService(new AddressValidationPolicySettings { AllowGeneralDelivery = false });
 
         var request = new AddressUpdateOperationRequest
         {

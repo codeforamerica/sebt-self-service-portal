@@ -1,0 +1,15 @@
+{
+  "summary": "We're sorry. Some required questions aren't filled or we can't accept some of the answers. We'll be able to continue your application once these issues are fixed.\n\nIf you need additional support (especially in a language other than English or español), please contact us.",
+  "required": "This is required",
+  "selectOption": "Select an option",
+  "enterPhone": "Provide a valid phone number, including the area code",
+  "enterZip": "Provide a valid ZIP Code with at least five numbers",
+  "selectMonth": "Select a month",
+  "enterDay": "Provide a day using one or two numbers",
+  "enterYear": "Provide a year using four numbers",
+  "selectYear": "Select a year",
+  "enterEmail": "Provide a valid email address",
+  "otpInvalid": "Enter a valid [6] digit code. Tap here to send a new code.",
+  "globalInternalError": "An error occurred on our end. Please try again.",
+  "newCode": ""
+}

@@ -27,7 +27,7 @@ public static class Dependencies
         services.AddTransient<IJwtTokenService, JwtTokenService>();
 
         // ID Proofing Requirements (state-specific PII visibility)
-        services.AddSingleton<IIdProofingRequirementsService, IdProofingRequirementsService>();
+        services.AddScoped<IIdProofingRequirementsService, IdProofingRequirementsService>();
 
         // Enrollment Check logging
         services.AddScoped<IEnrollmentCheckSubmissionLogger, EnrollmentCheckSubmissionLogger>();
@@ -38,9 +38,10 @@ public static class Dependencies
         // Household identifier resolution (state-configurable preferred household ID type)
         services.AddTransient<IHouseholdIdentifierResolver, HouseholdIdentifierResolver>();
 
+        // Smarty address verification (or pass-through when disabled)
         services.AddHttpClient("Smarty", (sp, client) =>
         {
-            var smarty = sp.GetRequiredService<IOptions<SmartySettings>>().Value;
+            var smarty = sp.GetRequiredService<IOptionsSnapshot<SmartySettings>>().Value;
             var baseUrl = string.IsNullOrWhiteSpace(smarty.BaseUrl)
                 ? "https://us-street.api.smartystreets.com"
                 : smarty.BaseUrl.TrimEnd('/');
@@ -52,16 +53,19 @@ public static class Dependencies
         services.AddTransient<PassThroughAddressUpdateService>();
         services.AddTransient<IAddressUpdateService>(sp =>
         {
-            var smarty = sp.GetRequiredService<IOptions<SmartySettings>>().Value;
+            var smarty = sp.GetRequiredService<IOptionsSnapshot<SmartySettings>>().Value;
             return smarty.Enabled
                 ? sp.GetRequiredService<SmartyAddressUpdateService>()
                 : sp.GetRequiredService<PassThroughAddressUpdateService>();
         });
-        services.AddTransient<IAddressValidationService, AddressValidationServiceAdapter>();
+
+        // Address validation — checks blocked addresses and street abbreviations per state config
+        services.AddSingleton<IAddressValidationService, AddressValidationService>();
         services.AddSingleton<IIdentifierHasher, IdentifierHasher>();
 
-        // Expose SocureSettings directly for use case injection (avoids IOptions dependency in UseCases layer)
-        services.AddSingleton(sp => sp.GetRequiredService<IOptions<SocureSettings>>().Value);
+        // Expose SocureSettings directly for use case injection (avoids IOptions dependency in UseCases layer).
+        // Scoped so each request gets a consistent snapshot, supporting live AppConfig reload.
+        services.AddScoped(sp => sp.GetRequiredService<IOptionsSnapshot<SocureSettings>>().Value);
 
         // Socure client — disabled, stub, or real based on configuration
         var socureEnabled = configuration.GetValue<bool>("Socure:Enabled");
@@ -71,7 +75,7 @@ public static class Dependencies
             services.AddTransient<HttpSocureClient>();
             services.AddTransient<ISocureClient>(sp =>
             {
-                var settings = sp.GetRequiredService<IOptions<SocureSettings>>().Value;
+                var settings = sp.GetRequiredService<IOptionsSnapshot<SocureSettings>>().Value;
                 if (settings.UseStub)
                     return sp.GetRequiredService<StubSocureClient>();
 
@@ -223,6 +227,8 @@ public static class Dependencies
             .BindConfiguration(SmartySettings.SectionName);
         services.AddOptions<AddressValidationPolicySettings>()
             .BindConfiguration(AddressValidationPolicySettings.SectionName);
+        services.AddOptions<AddressValidationDataSettings>()
+            .BindConfiguration(AddressValidationDataSettings.SectionName);
 
         return services;
     }

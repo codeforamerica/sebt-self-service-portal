@@ -15,6 +15,18 @@ variable "image_tag" {
   default     = "latest"
 }
 
+variable "oidc_discovery_endpoint" {
+  type        = string
+  description = "MyColorado OIDC discovery endpoint URL."
+  default     = "https://auth.pingone.com/e8e64475-39e1-43de-964b-3bc2e835a2f5/as/.well-known/openid-configuration"
+}
+
+variable "oidc_authorization_endpoint" {
+  type        = string
+  description = "MyColorado OIDC authorization endpoint URL."
+  default     = "https://auth.pingone.com/e8e64475-39e1-43de-964b-3bc2e835a2f5/as/authorize"
+}
+
 variable "private_subnets" {
   type        = list(string)
   description = "List of private subnet CIDR blocks."
@@ -45,10 +57,4 @@ variable "state" {
 variable "vpc_cidr" {
   type        = string
   description = "IPv4 CIDR block for the VPC."
-}
-
-variable "oidc_discovery_endpoint" {
-  type        = string
-  description = "MyColorado OIDC discovery endpoint URL."
-  default     = "https://auth.pingone.com/e8e64475-39e1-43de-964b-3bc2e835a2f5/as/.well-known/openid-configuration"
 }

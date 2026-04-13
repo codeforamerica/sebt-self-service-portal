@@ -68,6 +68,26 @@ describe('ActionButtons', () => {
     expect(link).toHaveAttribute('href', '/applications')
   })
 
+  it('exposes data-analytics-cta on each action for cta_click tracking', () => {
+    render(<ActionButtons cases={[makeCaseWithIssuance('SummerEbt')]} />)
+    expect(screen.getByText('Change my mailing address').closest('a')).toHaveAttribute(
+      'data-analytics-cta',
+      'update_address_cta'
+    )
+    expect(screen.getByText('Request new cards').closest('a')).toHaveAttribute(
+      'data-analytics-cta',
+      'replacement_card_cta'
+    )
+    expect(screen.getByText('Check existing cards').closest('a')).toHaveAttribute(
+      'data-analytics-cta',
+      'check_cards_cta'
+    )
+    expect(screen.getByText('Check existing applications').closest('a')).toHaveAttribute(
+      'data-analytics-cta',
+      'check_applications_cta'
+    )
+  })
+
   it('renders "I want to" heading', () => {
     render(<ActionButtons cases={[]} />)
     expect(screen.getByText('I want to')).toBeInTheDocument()

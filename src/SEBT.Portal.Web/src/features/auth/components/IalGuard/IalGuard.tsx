@@ -7,9 +7,6 @@ import { getCoIdProofingMaxAgeYearsRaw, isDebugRepeatOidcStepUp } from '@/lib/ia
 import { hasIal1Plus, isIdProofingCompletionFresh, parseIdProofingMaxAgeYears } from '@/lib/jwt'
 import {
   buildAuthorizationUrl,
-  generateCodeChallenge,
-  generateCodeVerifier,
-  generateState,
   getOidcRedirectUriForCurrentOrigin,
   savePkceForCallback
 } from '@/lib/oidc-pkce'
@@ -33,26 +30,27 @@ interface IalGuardProps {
 
 async function startOidcStepUpRedirect(): Promise<void> {
   const stateCode = getState()
+  // PKCE is generated server-side; config returns state + codeChallenge.
   const config = await apiFetch(`/auth/oidc/${stateCode}/config?stepUp=true`, {
     schema: OidcConfigResponseSchema
   })
 
-  const codeVerifier = generateCodeVerifier()
-  const codeChallenge = await generateCodeChallenge(codeVerifier)
-  const stateValue = generateState()
   const returnUrl =
     typeof window !== 'undefined' ? window.location.pathname + window.location.search : '/dashboard'
 
   const redirectUri = getOidcRedirectUriForCurrentOrigin()
-  savePkceForCallback(stateValue, codeVerifier, {
+  savePkceForCallback(config.state, {
     redirectUri,
-    tokenEndpoint: config.tokenEndpoint,
     clientId: config.clientId,
     isStepUp: true,
     returnUrl
   })
 
-  const authUrl = buildAuthorizationUrl({ ...config, redirectUri }, codeChallenge, stateValue)
+  const authUrl = buildAuthorizationUrl(
+    { ...config, redirectUri },
+    config.codeChallenge,
+    config.state
+  )
   window.location.href = authUrl
 }
 
@@ -62,7 +60,7 @@ async function startOidcStepUpRedirect(): Promise<void> {
  * `NEXT_PUBLIC_DEBUG_REPEAT_OIDC_STEP_UP=true` forces the challenge path in development even when the JWT already has IAL1+.
  */
 export function IalGuard({ children, requiredIal = STEP_UP_REQUIRED_IAL }: IalGuardProps) {
-  const { token } = useAuth()
+  const { session } = useAuth()
   const router = useRouter()
   const { t } = useTranslation('common')
   const { t: tStepUpFailure } = useTranslation('stepUpFailure')
@@ -73,13 +71,13 @@ export function IalGuard({ children, requiredIal = STEP_UP_REQUIRED_IAL }: IalGu
 
   const ialAndIdProofingSufficient =
     requiredIal === 'IAL1plus' &&
-    hasIal1Plus(token) &&
-    isIdProofingCompletionFresh(token, maxIdProofingAgeYears) &&
+    hasIal1Plus(session) &&
+    isIdProofingCompletionFresh(session, maxIdProofingAgeYears) &&
     !debugRepeatOidcStepUp
 
-  const passesWithoutStepUp = !useOidcStepUpGate || !token || ialAndIdProofingSufficient
+  const passesWithoutStepUp = !useOidcStepUpGate || !session || ialAndIdProofingSufficient
 
-  const needsChallengeFlow = useOidcStepUpGate && !!token && !ialAndIdProofingSufficient
+  const needsChallengeFlow = useOidcStepUpGate && !!session && !ialAndIdProofingSufficient
 
   const [phase, setPhase] = useState<GuardPhase | null>(null)
 

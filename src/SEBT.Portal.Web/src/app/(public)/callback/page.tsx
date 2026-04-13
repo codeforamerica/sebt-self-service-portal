@@ -1,7 +1,7 @@
 'use client'
 
 import { apiFetch } from '@/api'
-import { setAuthToken, useAuth } from '@/features/auth'
+import { useAuth } from '@/features/auth'
 import {
   OidcCallbackTokenResponseSchema,
   OidcCompleteLoginResponseSchema
@@ -12,12 +12,13 @@ import { Alert, getState } from '@sebt/design-system'
 import { useRouter } from 'next/navigation'
 import { useEffect, useRef, useState } from 'react'
 
-type CallbackStep = 'loading' | 'have_code_state' | 'have_pkce' | 'exchanging' | 'error'
+type CallbackStep = 'loading' | 'have_code_state' | 'have_flow_data' | 'exchanging' | 'error'
 
 /**
  * OIDC callback: state IdP redirects here with ?code=...&state=...
- * We send code + code_verifier to Next.js /api/auth/oidc/callback; it exchanges with IdP, returns callbackToken.
- * We then send callbackToken to the .NET complete-login endpoint to create session and get the portal JWT.
+ * We send the code + state to the .NET /api/auth/oidc/callback endpoint, which
+ * uses the server-side pre-auth session's code_verifier to exchange with the IdP.
+ * We then send the callbackToken to /api/auth/oidc/complete-login to create the portal session.
  */
 export default function CallbackPage() {
   const router = useRouter()
@@ -85,7 +86,7 @@ export default function CallbackPage() {
         }
         return
       }
-      setStep('have_pkce')
+      setStep('have_flow_data')
       const isStepUp = stored.isStepUp === true
       const returnUrl = stored.returnUrl ?? ''
       clearPkceStorage()
@@ -94,12 +95,11 @@ export default function CallbackPage() {
         setStep('exchanging')
         const stateCode = getState()
 
+        // code_verifier is no longer sent — the server reads it from the pre-auth session.
         const { callbackToken } = await apiFetch('/auth/oidc/callback', {
           method: 'POST',
           body: {
             code,
-            code_verifier: stored.code_verifier,
-            redirectUri: stored.redirect_uri,
             state,
             stateCode,
             isStepUp
@@ -120,12 +120,9 @@ export default function CallbackPage() {
         })
         if (cancelled) return
 
-        const { token, returnUrl: resolvedReturnUrl } = response
-
-        setAuthToken(token)
-        login(token)
-        await new Promise((resolve) => setTimeout(resolve, 0))
-        const destination = isStepUp && resolvedReturnUrl ? resolvedReturnUrl : '/dashboard'
+        // Backend set the HttpOnly session cookie; refresh the context from /auth/status.
+        await login()
+        const destination = isStepUp && response.returnUrl ? response.returnUrl : '/dashboard'
         router.replace(destination)
       } catch (e) {
         const errMsg =
@@ -159,7 +156,7 @@ export default function CallbackPage() {
   const stepMessage: Record<CallbackStep, string> = {
     loading: t('callbackSigningIn'),
     have_code_state: t('callbackSigningIn'),
-    have_pkce: t('callbackSigningIn'),
+    have_flow_data: t('callbackSigningIn'),
     exchanging: t('callbackSigningIn'),
     error: errorDetail ?? t('callbackErrorGeneric')
   }

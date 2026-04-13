@@ -27,7 +27,12 @@ export function NotEnrolledSection({ results, applicationUrl }: NotEnrolledSecti
       ))}
       <p className="usa-prose">
         {t('notEnrolledCta')}{' '}
-        <TextLink href={applicationUrl}>{t('applyLink')}</TextLink>
+        <TextLink
+          href={applicationUrl}
+          data-analytics-cta="apply_cta"
+        >
+          {t('applyLink')}
+        </TextLink>
       </p>
     </section>
   )

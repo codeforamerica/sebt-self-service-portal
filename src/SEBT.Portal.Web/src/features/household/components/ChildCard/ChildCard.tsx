@@ -25,6 +25,7 @@ function hasCardLifecycleTimeline(summerEbtCase: SummerEbtCase): boolean {
 function getReplacementLink(summerEbtCase: SummerEbtCase): string | null {
   const { summerEBTCaseID, issuanceType, cardRequestedAt } = summerEbtCase
   if (!summerEBTCaseID) return null
+  if (!issuanceType || issuanceType === 'Unknown') return null
 
   if (isWithinCooldownPeriod(cardRequestedAt)) return null
 
@@ -142,6 +143,7 @@ export function ChildCard({ summerEbtCase, defaultExpanded = true }: ChildCardPr
         {replacementLink && (
           <Link
             href={replacementLink}
+            data-analytics-cta="replacement_card_cta"
             className="usa-link display-inline-block margin-top-2"
           >
             {t('cardTableActionRequestReplacement', 'Request a replacement card')}

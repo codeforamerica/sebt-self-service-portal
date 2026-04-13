@@ -32,6 +32,13 @@ public class GetHouseholdDataQueryHandler(
         var userIalLevel = UserIalLevelExtensions.FromClaimsPrincipal(query.User);
         var piiVisibility = idProofingRequirementsService.GetPiiVisibility(userIalLevel);
 
+        logger.LogInformation(
+            "PII visibility for user (IalLevel={IalLevel}): Address={IncludeAddress}, Email={IncludeEmail}, Phone={IncludePhone}",
+            userIalLevel,
+            piiVisibility.IncludeAddress,
+            piiVisibility.IncludeEmail,
+            piiVisibility.IncludePhone);
+
         var householdData = await repository.GetHouseholdByIdentifierAsync(
             identifier,
             piiVisibility,

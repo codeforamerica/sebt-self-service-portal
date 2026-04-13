@@ -64,7 +64,7 @@ export const CardStatusSchema = z.preprocess(
     typeof val === 'number'
       ? (CARD_STATUS_MAP[val as keyof typeof CARD_STATUS_MAP] ?? 'Unknown')
       : typeof val === 'string'
-        ? (CARD_STATUS_STRING_MAP[val.toUpperCase()] ?? val)
+        ? (CARD_STATUS_STRING_MAP[val.toUpperCase()] ?? (val || 'Unknown'))
         : val,
   z.enum([
     'Unknown',
