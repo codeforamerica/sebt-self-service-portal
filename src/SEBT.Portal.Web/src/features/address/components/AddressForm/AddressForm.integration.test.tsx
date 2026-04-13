@@ -95,7 +95,7 @@ describe('AddressForm integration', () => {
       const contextData = JSON.parse(spy.textContent!)
       expect(contextData.streetAddress1).toBe('456 K St NW')
       expect(contextData.city).toBe('Washington')
-      expect(contextData.state).toBe('District of Columbia')
+      expect(contextData.state).toBe('DC')
       expect(contextData.postalCode).toBe('20001')
     })
   })
