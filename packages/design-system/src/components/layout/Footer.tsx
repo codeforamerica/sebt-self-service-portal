@@ -1,32 +1,30 @@
-"use client";
+'use client'
 
-import Image from "next/image";
-import Link from "next/link";
-import { useTranslation } from "react-i18next";
+import Image from 'next/image'
+import Link from 'next/link'
+import { useTranslation } from 'react-i18next'
 
-import { getFooterLinks, getStateLinks } from "../../lib/links";
-import { getStateConfig } from "../../lib/state";
+import { getFooterLinks, getStateLinks } from '../../lib/links'
+import { getStateConfig } from '../../lib/state'
 
-import type { FooterProps } from "./types";
+import type { FooterProps } from './types'
 
-import type { StateCode } from "../../lib/state";
+import type { StateCode } from '../../lib/state'
 
-const footerOverrides: Partial<
-  Record<StateCode, React.ComponentType<FooterProps>>
-> = {
-  co: COFooter,
-};
+const footerOverrides: Partial<Record<StateCode, React.ComponentType<FooterProps>>> = {
+  co: COFooter
+}
 
-export function Footer({ state = "dc" }: FooterProps) {
-  const { t } = useTranslation("common");
+export function Footer({ state = 'dc' }: FooterProps) {
+  const { t } = useTranslation('common')
 
   // eslint-disable-next-line security/detect-object-injection -- state is typed StateCode
-  const Override = state ? footerOverrides[state] : undefined;
-  if (Override) return <Override state={state} />;
+  const Override = state ? footerOverrides[state] : undefined
+  if (Override) return <Override state={state} />
 
-  const config = getStateConfig(state);
-  const links = getStateLinks(state);
-  const footerLinks = getFooterLinks(state);
+  const config = getStateConfig(state)
+  const links = getStateLinks(state)
+  const footerLinks = getFooterLinks(state)
 
   return (
     <footer
@@ -53,17 +51,20 @@ export function Footer({ state = "dc" }: FooterProps) {
             rel="noopener noreferrer"
             className="usa-link text-ink font-ui-md text-semibold"
           >
-            {t("linkPublicNotices")}
+            {t('linkPublicNotices')}
           </Link>
         </div>
       </div>
 
       <div className="usa-footer__secondary-section padding-y-2">
         <div className="grid-container">
-          <nav aria-label={t("footerNavLabel", "Footer navigation")}>
+          <nav aria-label={t('footerNavLabel', 'Footer navigation')}>
             <ul className="usa-list usa-list--unstyled display-flex flex-column flex-align-center add-list-reset">
               {footerLinks.map((link) => (
-                <li key={link.key} className="margin-y-1">
+                <li
+                  key={link.key}
+                  className="margin-y-1"
+                >
                   <Link
                     href={link.href}
                     target="_blank"
@@ -81,17 +82,17 @@ export function Footer({ state = "dc" }: FooterProps) {
 
       <div className="usa-footer__secondary-section text-center">
         <div className="grid-container">
-          <p className="margin-0 text-ink footer-copyright">{t("copyrite")}</p>
+          <p className="margin-0 text-ink footer-copyright">{t('copyrite')}</p>
         </div>
       </div>
     </footer>
-  );
+  )
 }
 
-function COFooter({ state = "co" }: FooterProps) {
-  const { t } = useTranslation("common");
-  const config = getStateConfig(state);
-  const links = getStateLinks(state);
+function COFooter({ state = 'co' }: FooterProps) {
+  const { t } = useTranslation('common')
+  const config = getStateConfig(state)
+  const links = getStateLinks(state)
 
   return (
     <footer
@@ -101,24 +102,24 @@ function COFooter({ state = "co" }: FooterProps) {
       <div className="usa-footer__primary-section padding-y-2">
         <div className="grid-container text-center">
           <p className="margin-0 text-ink font-sans-xs">
-            {t("copyrite", "© 2026 State of Colorado")}
-            {" | "}
+            {t('copyrite', '© 2026 State of Colorado')}
+            {' | '}
             <Link
-              href={links.footer.transparencyOnline ?? "#"}
+              href={links.footer.transparencyOnline ?? '#'}
               target="_blank"
               rel="noopener noreferrer"
               className="usa-link text-ink text-underline"
             >
-              {t("transparencyOnline", "Transparency Online")}
+              {t('transparencyOnline', 'Transparency Online')}
             </Link>
-            {" | "}
+            {' | '}
             <Link
-              href={links.footer.generalNotices ?? "#"}
+              href={links.footer.generalNotices ?? '#'}
               target="_blank"
               rel="noopener noreferrer"
               className="usa-link text-ink text-underline"
             >
-              {t("generalNotices", "General Notices")}
+              {t('generalNotices', 'General Notices')}
             </Link>
           </p>
         </div>
@@ -136,5 +137,5 @@ function COFooter({ state = "co" }: FooterProps) {
         </div>
       </div>
     </footer>
-  );
+  )
 }
