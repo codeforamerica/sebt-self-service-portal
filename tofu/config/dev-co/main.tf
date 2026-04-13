@@ -136,9 +136,10 @@ module "app" {
   }
 
   state_web_environment_variables = {
-    OIDC_DISCOVERY_ENDPOINT = var.oidc_discovery_endpoint
-    OIDC_REDIRECT_URI       = "https://${var.domain}/callback"
-    OIDC_LANGUAGE_PARAM     = "en"
+    ENROLLMENT_CHECKER_ORIGIN = "https://dev.co.sebt-enrollment.codeforamerica.app"
+    OIDC_DISCOVERY_ENDPOINT   = var.oidc_discovery_endpoint
+    OIDC_REDIRECT_URI         = "https://${var.domain}/callback"
+    OIDC_LANGUAGE_PARAM       = "en"
   }
 
   state_web_environment_secrets = {
