@@ -122,7 +122,7 @@ if (!string.IsNullOrEmpty(dbHost) && !string.IsNullOrEmpty(dbPassword))
 builder.Services.AddCaching(builder.Configuration);
 
 // Registers plugins and allows them to be constructor injected into ASP.NET controllers
-builder.Services.AddPlugins(builder.Configuration);
+builder.Services.AddPlugins(builder.Configuration, builder.Environment.ContentRootPath);
 
 // Add services to the container.
 builder.Services.AddControllers();
