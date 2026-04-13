@@ -57,6 +57,18 @@ public class SummerEbtCase
     public IssuanceType IssuanceType { get; set; } = IssuanceType.Unknown;
 
     /// <summary>
+    /// Whether this case was bulk-imported (co-loaded) from the state system
+    /// rather than created through the application flow.
+    /// </summary>
+    public bool IsCoLoaded { get; set; }
+
+    /// <summary>
+    /// Whether this case was automatically certified (streamline certification)
+    /// rather than originating from a guardian-submitted application.
+    /// </summary>
+    public bool IsStreamlineCertified { get; set; }
+
+    /// <summary>
     /// The application date.
     /// </summary>
     public DateTime? ApplicationDate { get; set; }
