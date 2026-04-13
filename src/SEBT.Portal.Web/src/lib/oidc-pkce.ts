@@ -1,5 +1,8 @@
 /**
- * PKCE and OIDC helpers for state IdP sign-in (frontend flow).
+ * OIDC helpers for state IdP sign-in (frontend flow).
+ * PKCE generation (code_verifier, code_challenge, state) is now server-side.
+ * This module retains authorization-URL building, sessionStorage for flow metadata
+ * (state, redirect_uri, isStepUp, returnUrl), and cleanup helpers.
  */
 
 const CO_PKCE_STORAGE_KEY = 'oidc_co_pkce'
@@ -10,43 +13,13 @@ const CO_PKCE_STORAGE_KEY = 'oidc_co_pkce'
  */
 export const PKCE_STORAGE_MAX_AGE_MS = 15 * 60 * 1000
 
-function randomBase64Url(length: number): string {
-  const bytes = new Uint8Array(length)
-  // crypto.getRandomValues is required for PKCE security; Math.random is not cryptographically secure.
-  // All modern browsers support this (since 2013), and generateCodeChallenge already requires crypto.subtle.
-  crypto.getRandomValues(bytes)
-  return btoa(String.fromCharCode(...bytes))
-    .replace(/\+/g, '-')
-    .replace(/\//g, '_')
-    .replace(/=+$/, '')
-}
+import type { OidcConfigResponse } from '@/features/auth/api/oidc/schema'
 
-export function generateCodeVerifier(): string {
-  return randomBase64Url(32)
-}
-
-export async function generateCodeChallenge(verifier: string): Promise<string> {
-  const encoder = new TextEncoder()
-  const data = encoder.encode(verifier)
-  const digest = await crypto.subtle.digest('SHA-256', data)
-  return btoa(String.fromCharCode(...new Uint8Array(digest)))
-    .replace(/\+/g, '-')
-    .replace(/\//g, '_')
-    .replace(/=+$/, '')
-}
-
-export function generateState(): string {
-  return randomBase64Url(24)
-}
-
-export interface OidcConfig {
-  authorizationEndpoint: string
-  tokenEndpoint: string
-  clientId: string
-  redirectUri: string
-  /** Optional params from config **/
-  languageParam?: string | undefined
-}
+/** Subset of OidcConfigResponse needed to build the authorization URL. */
+type AuthUrlConfig = Pick<
+  OidcConfigResponse,
+  'authorizationEndpoint' | 'clientId' | 'redirectUri' | 'languageParam'
+>
 
 /**
  * OIDC redirect_uri sent to PingOne must match a value registered on the client.
@@ -61,7 +34,7 @@ export function getOidcRedirectUriForCurrentOrigin(): string {
 }
 
 export function buildAuthorizationUrl(
-  config: OidcConfig,
+  config: AuthUrlConfig,
   codeChallenge: string,
   state: string
 ): string {
@@ -82,11 +55,14 @@ export function buildAuthorizationUrl(
   return `${config.authorizationEndpoint}?${params.toString()}`
 }
 
+/**
+ * code_verifier is no longer stored client-side — it lives in the server's
+ * pre-auth session. StoredPkce retains state (for the callback POST), redirect_uri,
+ * and flow metadata so the callback page can construct its request.
+ */
 export interface StoredPkce {
   state: string
-  code_verifier: string
   redirect_uri: string
-  token_endpoint: string
   client_id: string
   /** True when this is a step-up flow (IAL1+ verification). */
   isStepUp?: boolean
@@ -98,10 +74,8 @@ export interface StoredPkce {
 
 export function savePkceForCallback(
   state: string,
-  codeVerifier: string,
   config: {
     redirectUri: string
-    tokenEndpoint: string
     clientId: string
     isStepUp?: boolean
     returnUrl?: string
@@ -110,17 +84,13 @@ export function savePkceForCallback(
   if (typeof window === 'undefined') return
   const payload: StoredPkce = {
     state,
-    code_verifier: codeVerifier,
     redirect_uri: config.redirectUri,
-    token_endpoint: config.tokenEndpoint,
     client_id: config.clientId,
     storedAtMs: Date.now(),
     ...(config.isStepUp !== undefined && { isStepUp: config.isStepUp }),
     ...(config.returnUrl !== undefined &&
       config.returnUrl !== '' && { returnUrl: config.returnUrl })
   }
-  // PKCE data is stored in sessionStorage only, not localStorage:
-  // localStorage would persist across tabs/sessions and could allow stale PKCE to be accepted.
   sessionStorage.setItem(CO_PKCE_STORAGE_KEY, JSON.stringify(payload))
 }
 
@@ -135,13 +105,7 @@ export function getPkceFromStorage(): StoredPkce | null {
   if (!raw) return null
   try {
     const payload = JSON.parse(raw) as StoredPkce
-    if (
-      !payload?.state ||
-      !payload?.code_verifier ||
-      !payload?.redirect_uri ||
-      !payload?.token_endpoint ||
-      !payload?.client_id
-    ) {
+    if (!payload?.state || !payload?.redirect_uri || !payload?.client_id) {
       sessionStorage.removeItem(CO_PKCE_STORAGE_KEY)
       return null
     }

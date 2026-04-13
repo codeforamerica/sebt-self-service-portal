@@ -3,24 +3,31 @@ import type { Page } from '@playwright/test'
 import { MOCK_JWT } from './household-data'
 
 /**
- * The session storage key used by the auth context.
- * Must match AUTH_TOKEN_KEY in src/features/auth/context/AuthContext.tsx.
+ * Name of the HttpOnly session cookie set by the backend (see AuthCookies.AuthCookieName).
+ * The browser sends it automatically; client-side JS cannot read it.
  */
-const AUTH_TOKEN_KEY = 'auth_token'
+const SESSION_COOKIE_NAME = 'sebt_portal_session'
 
 /**
- * Injects a mock auth token into sessionStorage before the page loads.
- * Must be called before page.goto() because addInitScript runs at page creation.
+ * Seeds an authenticated session for E2E tests by writing the HttpOnly session cookie
+ * directly into the browser context. The backend is intercepted by setupApiRoutes (which
+ * also mocks /auth/status), so the JWT value itself is never validated — only its
+ * presence on the request matters for the cookie path on the JwtBearer middleware.
  *
- * AuthGuard reads sessionStorage synchronously on hydration. Setting the token
- * via initScript ensures it's present before the React tree mounts, preventing
- * the redirect-to-login that would otherwise block navigation.
+ * Must be called before page.goto() so the cookie exists for the first navigation.
  */
 export async function injectAuth(page: Page, token = MOCK_JWT): Promise<void> {
-  await page.addInitScript(
-    ({ key, value }) => {
-      sessionStorage.setItem(key, value)
-    },
-    { key: AUTH_TOKEN_KEY, value: token }
-  )
+  // Mirrors playwright.config.ts so the cookie matches the page origin.
+  const baseURL = process.env.BASE_URL || 'http://localhost:3000'
+  await page.context().addCookies([
+    {
+      name: SESSION_COOKIE_NAME,
+      value: token,
+      url: baseURL,
+      httpOnly: true,
+      // E2E runs against http://localhost — Secure must be false or the browser drops the cookie.
+      secure: false,
+      sameSite: 'Lax'
+    }
+  ])
 }

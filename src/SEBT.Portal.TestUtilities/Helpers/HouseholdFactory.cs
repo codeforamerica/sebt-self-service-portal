@@ -87,6 +87,43 @@ public static class HouseholdFactory
     }
 
     /// <summary>
+    /// Creates a SummerEbtCase for an enrolled child with sensible defaults.
+    /// </summary>
+    /// <param name="childFirstName">The child's first name.</param>
+    /// <param name="childLastName">The child's last name.</param>
+    /// <param name="eligibilityType">How the child became eligible (e.g., SNAP, TANF, NSLP, Medicaid, CategoricalEligibility, Application).</param>
+    /// <param name="customize">Optional action to override defaults.</param>
+    /// <returns>A new SummerEbtCase instance.</returns>
+    public static SummerEbtCase CreateSummerEbtCase(
+        string childFirstName,
+        string childLastName,
+        string eligibilityType,
+        Action<SummerEbtCase>? customize = null)
+    {
+        var faker = new Faker();
+        var benefitStart = new DateTime(2026, 5, 4);
+
+        var summerEbtCase = new SummerEbtCase
+        {
+            SummerEBTCaseID = faker.Random.Number(100000, 999999).ToString(),
+            ChildFirstName = childFirstName,
+            ChildLastName = childLastName,
+            ChildDateOfBirth = faker.Date.Between(
+                DateTime.Today.AddYears(-17),
+                DateTime.Today.AddYears(-5)),
+            EligibilityType = eligibilityType,
+            ApplicationStatus = ApplicationStatus.Approved,
+            IssuanceType = IssuanceType.SummerEbt,
+            EbtCardStatus = "Active",
+            BenefitAvailableDate = benefitStart,
+            BenefitExpirationDate = benefitStart.AddDays(122)
+        };
+
+        customize?.Invoke(summerEbtCase);
+        return summerEbtCase;
+    }
+
+    /// <summary>
     /// Sets a seed for the random number generator to ensure deterministic test data.
     /// </summary>
     /// <param name="seed">The seed value to use.</param>

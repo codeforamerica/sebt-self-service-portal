@@ -10,6 +10,7 @@ import type { HouseholdAllowedActions, SummerEbtCase } from '../../api'
 interface ActionButton {
   labelKey: string
   href: string
+  ctaId: string
   /** When true, this CTA is hidden when no case has a dedicated Summer EBT card. */
   selfServiceOnly?: boolean
 }
@@ -29,15 +30,25 @@ const ACTIONS: ActionButton[] = [
   {
     labelKey: 'actionNavigationChangeMyMailingAddress',
     href: '/profile/address',
+    ctaId: 'update_address_cta',
     selfServiceOnly: true
   },
   {
     labelKey: 'actionNavigationOrderReplacementCards',
     href: '/cards/request',
+    ctaId: 'replacement_card_cta',
     selfServiceOnly: true
   },
-  { labelKey: 'actionNavigationCheckExistingCards', href: '/cards' },
-  { labelKey: 'actionNavigationCheckExistingApplications', href: '/applications' }
+  {
+    labelKey: 'actionNavigationCheckExistingCards',
+    href: '/cards',
+    ctaId: 'check_cards_cta'
+  },
+  {
+    labelKey: 'actionNavigationCheckExistingApplications',
+    href: '/applications',
+    ctaId: 'check_applications_cta'
+  }
 ]
 
 /**
@@ -86,6 +97,7 @@ export function ActionButtons({ cases, allowedActions }: ActionButtonsProps) {
           >
             <Link
               href={action.href}
+              data-analytics-cta={action.ctaId}
               className={`display-inline-flex flex-align-center padding-y-1 padding-x-205 text-no-underline ${actionButtonText} ${actionButtonBg} radius-pill font-sans-md text-semibold`}
             >
               {t(action.labelKey)}

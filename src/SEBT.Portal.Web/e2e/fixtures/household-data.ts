@@ -12,18 +12,12 @@
 import { currentState, type StateCode } from './state'
 
 /**
- * A minimal, structurally valid JWT for E2E tests.
- * The payload claims don't need to be real — the backend is fully intercepted.
- * Exported here so api-routes.ts can return it from the auth/refresh intercept.
- *
- * Payload: { sub, exp, ial: "1plus", id_proofing_completed_at: 1775000000 }
- * The IAL and id-proofing claims satisfy CO's IalGuard. DC ignores them.
- * id_proofing_completed_at 1775000000 (~Apr 2026) stays fresh for the 5-year window.
+ * Opaque session-cookie value used by injectAuth() in E2E tests.
+ * The backend is fully intercepted (setupApiRoutes mocks /auth/status with the
+ * authenticated session shape), so the token itself is never decoded or validated —
+ * any non-empty string would work. Kept JWT-shaped for clarity in network logs.
  */
-export const MOCK_JWT =
-  'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.' +
-  'eyJzdWIiOiJ0ZXN0LXVzZXIiLCJleHAiOjk5OTk5OTk5OTksImlhbCI6IjFwbHVzIiwiaWRfcHJvb2ZpbmdfY29tcGxldGVkX2F0IjoxNzc1MDAwMDAwfQ.' +
-  'mock-signature-not-verified-in-e2e'
+export const MOCK_JWT = 'e2e-mock-session-token'
 
 export type IssuanceTypeInt = 0 | 1 | 2 | 3
 export type ApplicationStatusInt = 0 | 1 | 2 | 3 | 4 | 5

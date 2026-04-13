@@ -97,6 +97,7 @@ module "app" {
   vpc_id                     = module.vpc.vpc_id
   waf_log_group              = module.logging.log_groups["waf"]
   passive_waf                = true
+  log_as_json                = true
 
   api_image_url      = data.aws_ecr_repository.api.repository_url
   api_repository_arn = data.aws_ecr_repository.api.arn
@@ -110,8 +111,12 @@ module "app" {
 
   state_api_environment_variables = {
     "Oidc__DiscoveryEndpoint"                          = var.oidc_discovery_endpoint
+    "Oidc__AuthorizationEndpoint"                      = var.oidc_authorization_endpoint
     "Oidc__CallbackRedirectUri"                        = "https://${var.domain}/callback"
     "Oidc__LanguageParam"                              = "en"
+    "Oidc__StepUp__DiscoveryEndpoint"                  = var.oidc_discovery_endpoint
+    "Oidc__StepUp__AuthorizationEndpoint"              = var.oidc_authorization_endpoint
+    "Oidc__StepUp__CallbackRedirectUri"                = "https://${var.domain}/callback"
     "StateHouseholdId__PreferredHouseholdIdTypes__0"   = "Phone"
   }
 
@@ -119,6 +124,9 @@ module "app" {
     "Cbms__ClientId"                = "${module.state_secrets.secrets["cbms"].secret_arn}:client_id"
     "Cbms__ClientSecret"            = "${module.state_secrets.secrets["cbms"].secret_arn}:client_secret"
     "Oidc__ClientId"                = "${module.state_secrets.secrets["oidc"].secret_arn}:client_id"
+    "Oidc__ClientSecret"            = "${module.state_secrets.secrets["oidc"].secret_arn}:client_secret"
+    "Oidc__StepUp__ClientId"        = "${module.state_secrets.secrets["oidc"].secret_arn}:step_up_client_id"
+    "Oidc__StepUp__ClientSecret"    = "${module.state_secrets.secrets["oidc"].secret_arn}:step_up_client_secret"
     "Oidc__CompleteLoginSigningKey" = "${module.state_secrets.secrets["oidc"].secret_arn}:complete_login_signing_key"
   }
 

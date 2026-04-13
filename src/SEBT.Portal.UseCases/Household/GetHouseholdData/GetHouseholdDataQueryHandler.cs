@@ -35,7 +35,7 @@ public class GetHouseholdDataQueryHandler(
         var userIalLevel = UserIalLevelExtensions.FromClaimsPrincipal(query.User);
         var piiVisibility = idProofingRequirementsService.GetPiiVisibility(userIalLevel);
 
-        logger.LogDebug(
+        logger.LogInformation(
             "PII visibility for user (IalLevel={IalLevel}): Address={IncludeAddress}, Email={IncludeEmail}, Phone={IncludePhone}",
             userIalLevel,
             piiVisibility.IncludeAddress,

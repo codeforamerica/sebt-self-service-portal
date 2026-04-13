@@ -1,4 +1,5 @@
 using Microsoft.Extensions.Options;
+using NSubstitute;
 using SEBT.Portal.Core.AppSettings;
 using SEBT.Portal.Core.Models.Household;
 using SEBT.Portal.Infrastructure.Services;
@@ -62,8 +63,12 @@ public class SelfServiceEvaluatorTests
         }
     };
 
-    private static SelfServiceEvaluator Create(SelfServiceRulesSettings settings) =>
-        new(Options.Create(settings));
+    private static SelfServiceEvaluator Create(SelfServiceRulesSettings settings)
+    {
+        var snapshot = Substitute.For<IOptionsSnapshot<SelfServiceRulesSettings>>();
+        snapshot.Value.Returns(settings);
+        return new SelfServiceEvaluator(snapshot);
+    }
 
     // -------------------------------------------------------------------------
     // Case factory

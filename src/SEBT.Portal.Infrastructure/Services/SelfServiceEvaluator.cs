@@ -9,9 +9,9 @@ namespace SEBT.Portal.Infrastructure.Services;
 /// Evaluates self-service action permissions from SelfServiceRulesSettings.
 /// Household-level uses permissive aggregation; per-case evaluates individually.
 /// </summary>
-public class SelfServiceEvaluator(IOptions<SelfServiceRulesSettings> options) : ISelfServiceEvaluator
+public class SelfServiceEvaluator(IOptionsSnapshot<SelfServiceRulesSettings> optionsSnapshot) : ISelfServiceEvaluator
 {
-    private readonly SelfServiceRulesSettings _settings = options.Value;
+    private readonly SelfServiceRulesSettings _settings = optionsSnapshot.Value;
 
     public HouseholdAllowedActions EvaluateHousehold(IReadOnlyList<SummerEbtCase> cases)
     {
