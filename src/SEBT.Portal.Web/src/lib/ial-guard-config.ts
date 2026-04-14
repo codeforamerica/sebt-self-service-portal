@@ -9,8 +9,3 @@ export function isDebugRepeatOidcStepUp(): boolean {
     process.env.NEXT_PUBLIC_DEBUG_REPEAT_OIDC_STEP_UP === 'true'
   )
 }
-
-/** Raw value for {@link parseIdProofingMaxAgeYears} in `jwt.ts` (default 5 when unset). */
-export function getCoIdProofingMaxAgeYearsRaw(): string | undefined {
-  return process.env.NEXT_PUBLIC_CO_ID_PROOFING_MAX_AGE_YEARS
-}
