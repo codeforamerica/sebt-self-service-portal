@@ -24,7 +24,7 @@ public class JwtTokenServiceTests
             ExpirationMinutes = 60
         };
         _options.Value.Returns(settings);
-        _validityOptions.Value.Returns(new IdProofingValiditySettings { ValidityYears = 5 });
+        _validityOptions.Value.Returns(new IdProofingValiditySettings { ValidityDays = 1826 });
         _jwtTokenService = new JwtTokenService(_options, _validityOptions);
     }
 
@@ -427,7 +427,7 @@ public class JwtTokenServiceTests
         // Arrange — expiration is now computed from IdProofingCompletedAt + validity duration,
         // not read from the (obsolete) IdProofingExpiresAt field.
         var completedAt = DateTime.UtcNow.AddDays(-10);
-        var expectedExpiresAt = completedAt.AddYears(5); // ValidityYears = 5
+        var expectedExpiresAt = completedAt.AddDays(1826); // ValidityDays = 1826
         var user = new User
         {
             Email = "user@example.com",

@@ -79,7 +79,7 @@ public class JwtTokenService : IJwtTokenService
         // without bulk data updates.
         if (user.IdProofingCompletedAt.HasValue)
         {
-            var expiresAt = user.IdProofingCompletedAt.Value.AddYears((int)_validitySettings.ValidityYears);
+            var expiresAt = user.IdProofingCompletedAt.Value.AddDays(_validitySettings.ValidityDays);
             var expiresAtOffset = new DateTimeOffset(expiresAt, TimeSpan.Zero);
             claims.Add(new Claim(JwtClaimTypes.IdProofingExpiresAt,
                 expiresAtOffset.ToUnixTimeSeconds().ToString(),

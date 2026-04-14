@@ -7,7 +7,7 @@ namespace SEBT.Portal.Tests.Unit.Services;
 public class OidcVerificationClaimTranslatorTests
 {
     private readonly OidcVerificationClaimSettings _claimSettings = new();
-    private readonly IdProofingValiditySettings _validitySettings = new() { ValidityYears = 5 };
+    private readonly IdProofingValiditySettings _validitySettings = new() { ValidityDays = 1826 };
 
     private OidcVerificationClaimTranslator CreateTranslator(
         OidcVerificationClaimSettings? claimSettings = null,
@@ -93,11 +93,10 @@ public class OidcVerificationClaimTranslatorTests
     }
 
     [Fact]
-    public void Translate_valid_level_without_date_claim_is_not_expired()
+    public void Translate_valid_level_without_date_claim_uses_current_time()
     {
-        // When the OIDC provider doesn't include a date, we trust the level claim.
-        // VerifiedAt is null (we don't fabricate a date), but the verification is
-        // treated as fresh since we can't prove it's stale.
+        // When the OIDC provider doesn't include a date, VerifiedAt falls back to
+        // DateTime.UtcNow so the expiration clock starts from "now".
         var claims = new Dictionary<string, string>
         {
             ["socureIdVerificationLevel"] = "1.5"
@@ -107,11 +106,12 @@ public class OidcVerificationClaimTranslatorTests
 
         Assert.NotNull(result);
         Assert.False(result.IsExpired);
-        Assert.Null(result.VerifiedAt);
+        // VerifiedAt should be approximately now (within a few seconds)
+        Assert.InRange(result.VerifiedAt, DateTime.UtcNow.AddSeconds(-5), DateTime.UtcNow.AddSeconds(1));
     }
 
     [Fact]
-    public void Translate_valid_level_with_unparseable_date_is_not_expired()
+    public void Translate_valid_level_with_unparseable_date_uses_current_time()
     {
         var claims = new Dictionary<string, string>
         {
@@ -138,8 +138,7 @@ public class OidcVerificationClaimTranslatorTests
         var result = CreateTranslator().Translate(claims);
 
         Assert.NotNull(result);
-        Assert.NotNull(result.VerifiedAt);
-        Assert.Equal(expected, result.VerifiedAt.Value, TimeSpan.FromSeconds(1));
+        Assert.Equal(expected, result.VerifiedAt, TimeSpan.FromSeconds(1));
     }
 
     [Fact]
@@ -165,7 +164,7 @@ public class OidcVerificationClaimTranslatorTests
     [Fact]
     public void Translate_respects_custom_validity_duration()
     {
-        var shortValidity = new IdProofingValiditySettings { ValidityYears = 1 };
+        var shortValidity = new IdProofingValiditySettings { ValidityDays = 365 };
         var verificationDate = DateTime.UtcNow.AddMonths(-18).ToString("o");
         var claims = new Dictionary<string, string>
         {
@@ -182,9 +181,9 @@ public class OidcVerificationClaimTranslatorTests
     [Fact]
     public void Translate_at_exact_boundary_is_expired()
     {
-        var validity = new IdProofingValiditySettings { ValidityYears = 1 };
-        // Set verification date to exactly 1 year ago (should be expired)
-        var verificationDate = DateTime.UtcNow.AddYears(-1).AddSeconds(-1).ToString("o");
+        var validity = new IdProofingValiditySettings { ValidityDays = 365 };
+        // Set verification date to exactly 365 days ago (should be expired)
+        var verificationDate = DateTime.UtcNow.AddDays(-365).AddSeconds(-1).ToString("o");
         var claims = new Dictionary<string, string>
         {
             ["socureIdVerificationLevel"] = "1.5",

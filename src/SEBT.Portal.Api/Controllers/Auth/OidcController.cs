@@ -31,7 +31,7 @@ public class OidcController(
     IStateAllowlist stateAllowlist,
     IPreAuthSessionStore sessionStore,
     IWebHostEnvironment environment,
-    OidcVerificationClaimTranslator? verificationClaimTranslator = null) : ControllerBase
+    OidcVerificationClaimTranslator verificationClaimTranslator) : ControllerBase
 {
     /// <summary>
     /// OIDC config + pre-auth session creation. Generates PKCE server-side, stores
@@ -371,18 +371,17 @@ public class OidcController(
             // Reconcile IAL from OIDC verification claims (e.g. CO's PingOne/Socure).
             // If the IdP says the user completed identity verification, update our DB
             // to match — the IdP is the source of truth for OIDC-based verification.
-            if (verificationClaimTranslator != null)
+            // For states without OIDC verification (e.g. DC), Translate() returns null
+            // because the IdP claims don't contain the configured verification claim names.
+            var verification = verificationClaimTranslator.Translate(additionalClaims);
+            if (verification != null)
             {
-                var verification = verificationClaimTranslator.Translate(additionalClaims);
-                if (verification != null)
-                {
-                    ReconcileIalFromOidcVerification(user, verification);
-                    await userRepository.UpdateUserAsync(user, cancellationToken);
+                ReconcileIalFromOidcVerification(user, verification);
+                await userRepository.UpdateUserAsync(user, cancellationToken);
 
-                    logger.LogInformation(
-                        "OIDC verification claim reconciled: UserId {UserId}, IalLevel {IalLevel}, IsExpired {IsExpired}, VerifiedAt {VerifiedAt}",
-                        user.Id, user.IalLevel, verification.IsExpired, verification.VerifiedAt);
-                }
+                logger.LogInformation(
+                    "OIDC verification claim reconciled: UserId {UserId}, IalLevel {IalLevel}, IsExpired {IsExpired}, VerifiedAt {VerifiedAt}",
+                    user.Id, user.IalLevel, verification.IsExpired, verification.VerifiedAt);
             }
         }
 
@@ -462,10 +461,7 @@ public class OidcController(
         // Valid, non-expired verification from the IdP — update to match.
         user.IalLevel = verification.IalLevel;
         user.IdProofingStatus = IdProofingStatus.Completed;
-        if (verification.VerifiedAt.HasValue)
-        {
-            user.IdProofingCompletedAt = verification.VerifiedAt.Value;
-        }
+        user.IdProofingCompletedAt = verification.VerifiedAt;
     }
 
     /// <summary>

@@ -63,6 +63,10 @@ public class OidcControllerTests
         var env = Substitute.For<IWebHostEnvironment>();
         env.EnvironmentName.Returns("Development");
 
+        var translator = new OidcVerificationClaimTranslator(
+            new OidcVerificationClaimSettings(),
+            new IdProofingValiditySettings());
+
         _controller = new OidcController(
             _config,
             NullLogger<OidcController>.Instance,
@@ -71,7 +75,8 @@ public class OidcControllerTests
             jwtSettings,
             allowlist,
             _sessionStore,
-            env)
+            env,
+            translator)
         {
             ControllerContext = new ControllerContext
             {
@@ -186,7 +191,8 @@ public class OidcControllerTests
             jwtSettings,
             new StateAllowlist(["co"]),
             Substitute.For<IPreAuthSessionStore>(),
-            testEnv)
+            testEnv,
+            new OidcVerificationClaimTranslator(new OidcVerificationClaimSettings(), new IdProofingValiditySettings()))
         {
             ControllerContext = new ControllerContext { HttpContext = new DefaultHttpContext() }
         };
@@ -436,7 +442,8 @@ public class OidcControllerTests
             jwtSettings,
             multiStateAllowlist,
             sessionStore,
-            env)
+            env,
+            new OidcVerificationClaimTranslator(new OidcVerificationClaimSettings(), new IdProofingValiditySettings()))
         {
             ControllerContext = new ControllerContext { HttpContext = new DefaultHttpContext() }
         };
@@ -538,7 +545,7 @@ public class OidcControllerTests
     {
         var translator = new OidcVerificationClaimTranslator(
             claimSettings ?? new OidcVerificationClaimSettings(),
-            validitySettings ?? new IdProofingValiditySettings { ValidityYears = 5 });
+            validitySettings ?? new IdProofingValiditySettings { ValidityDays = 1826 });
 
         var jwtSettings = Options.Create(new JwtSettings
         {
@@ -624,7 +631,7 @@ public class OidcControllerTests
         _config["Oidc:CompleteLoginSigningKey"].Returns(signingKey);
 
         var controller = CreateControllerWithTranslator(
-            validitySettings: new IdProofingValiditySettings { ValidityYears = 1 });
+            validitySettings: new IdProofingValiditySettings { ValidityDays = 365 });
         SetupPreAuthSessionForController(controller);
 
         // Verification date is 2 years ago, but validity is only 1 year
@@ -673,33 +680,6 @@ public class OidcControllerTests
 
         // No verification claims → no IAL reconciliation update
         // Only the initial IAL1 bump may have been called (user is already IAL1)
-        await _userRepository.DidNotReceive().UpdateUserAsync(
-            Arg.Any<User>(), Arg.Any<CancellationToken>());
-    }
-
-    [Fact]
-    public async Task CompleteLogin_WithoutTranslator_SkipsOidcReconciliation()
-    {
-        // Default controller (no translator) — simulates DC or states without OIDC verification
-        SetupPreAuthSession();
-        const string signingKey = "complete-login-signing-key-at-least-32-characters-long";
-        _config["Oidc:CompleteLoginSigningKey"].Returns(signingKey);
-
-        var callbackToken = CreateCallbackTokenWithClaims(signingKey,
-            new Claim("email", "user@example.com"),
-            new Claim("socureIdVerificationLevel", "1.5"),
-            new Claim("socureIdVerificationDate", DateTime.UtcNow.AddDays(-1).ToString("o")));
-        var body = new CompleteLoginRequest(CoStateKey, callbackToken);
-
-        var user = new User { Id = 1, Email = "user@example.com", IalLevel = UserIalLevel.IAL1 };
-        _userRepository.GetOrCreateUserAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
-            .Returns((user, false));
-        _jwtService.GenerateToken(Arg.Any<User>(), Arg.Any<IReadOnlyDictionary<string, string>?>())
-            .Returns("portal-jwt");
-
-        await _controller.CompleteLogin(body, CancellationToken.None);
-
-        // Without translator, OIDC claims are ignored — no update
         await _userRepository.DidNotReceive().UpdateUserAsync(
             Arg.Any<User>(), Arg.Any<CancellationToken>());
     }

@@ -10,8 +10,9 @@ public class IdProofingValiditySettings
     public static readonly string SectionName = "IdProofingValidity";
 
     /// <summary>
-    /// How long a completed ID proofing verification remains valid, in years.
-    /// Default: 5 years.
+    /// How long a completed ID proofing verification remains valid, in days.
+    /// Default: 1826 days (~5 years). Use a low value in test environments to
+    /// facilitate expiration testing.
     /// </summary>
-    public double ValidityYears { get; set; } = 5;
+    public int ValidityDays { get; set; } = 1826;
 }

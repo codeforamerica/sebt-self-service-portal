@@ -40,7 +40,9 @@ public class OidcVerificationClaimTranslator
             return null;
         }
 
-        var verifiedAt = ParseVerificationDate(claims);
+        // If the IdP doesn't include a verification date, use the current time so the
+        // expiration clock starts now. This prevents indefinite IAL1+ without a bounded validity.
+        var verifiedAt = ParseVerificationDate(claims) ?? DateTime.UtcNow;
         var isExpired = IsExpired(verifiedAt);
 
         return new OidcVerificationResult(ialLevel.Value, verifiedAt, isExpired);
@@ -75,16 +77,9 @@ public class OidcVerificationClaimTranslator
             : null;
     }
 
-    private bool IsExpired(DateTime? verifiedAt)
+    private bool IsExpired(DateTime verifiedAt)
     {
-        if (verifiedAt == null)
-        {
-            // No date available — treat as fresh (the provider confirmed the level
-            // but didn't say when; safer to grant access and let the next login re-evaluate).
-            return false;
-        }
-
-        var validUntil = verifiedAt.Value.AddYears((int)_validitySettings.ValidityYears);
+        var validUntil = verifiedAt.AddDays(_validitySettings.ValidityDays);
         return DateTime.UtcNow >= validUntil;
     }
 }
@@ -94,5 +89,5 @@ public class OidcVerificationClaimTranslator
 /// </summary>
 public record OidcVerificationResult(
     UserIalLevel IalLevel,
-    DateTime? VerifiedAt,
+    DateTime VerifiedAt,
     bool IsExpired);
