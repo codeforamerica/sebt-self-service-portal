@@ -1,4 +1,8 @@
+'use client'
+
 import { useQuery } from '@tanstack/react-query'
+import { useRouter } from 'next/navigation'
+import { useEffect } from 'react'
 
 import { ApiError, apiFetch } from '@/api'
 
@@ -15,10 +19,17 @@ async function fetchHouseholdData(): Promise<HouseholdData> {
  * Uses real-time fetching (staleTime: 0) to ensure data freshness
  * per ticket requirement to mitigate stale household/custody data.
  *
- * @returns TanStack Query result with household data
+ * When the API returns 403 with a `requiredIal` extension, the user's IAL is
+ * below the minimum required by their cases. The hook automatically redirects
+ * to `/login/id-proofing` and exposes `requiresProofing` so consumers can
+ * render a loading state during the redirect.
+ *
+ * @returns TanStack Query result with household data, plus `requiresProofing` flag
  */
 export function useHouseholdData() {
-  return useQuery({
+  const router = useRouter()
+
+  const query = useQuery({
     queryKey: ['householdData'],
     queryFn: fetchHouseholdData,
     staleTime: 0,
@@ -34,4 +45,19 @@ export function useHouseholdData() {
     },
     retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 10000)
   })
+
+  // A 403 with requiredIal in the response body means the user's IAL is below
+  // the minimum required by their cases. Redirect to ID proofing.
+  const requiresProofing =
+    query.error instanceof ApiError &&
+    query.error.status === 403 &&
+    'requiredIal' in ((query.error.data as Record<string, unknown>) ?? {})
+
+  useEffect(() => {
+    if (requiresProofing) {
+      router.push('/login/id-proofing')
+    }
+  }, [requiresProofing, router])
+
+  return { ...query, requiresProofing }
 }
