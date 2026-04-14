@@ -122,14 +122,6 @@ export function toUiCardStatus(cardStatus: CardStatus): UiCardStatus {
   }
 }
 
-/**
- * Determines whether a card with this status is eligible for replacement.
- * Only cards reported as Lost, Stolen, or Damaged can be replaced.
- */
-export function isReplacementEligible(cardStatus: CardStatus): boolean {
-  return cardStatus === 'Lost' || cardStatus === 'Stolen' || cardStatus === 'Damaged'
-}
-
 export const ChildSchema = z.object({
   firstName: z.string(),
   lastName: z.string(),
@@ -169,13 +161,22 @@ export const SummerEbtCaseSchema = z.object({
   benefitExpirationDate: z.string().nullable().optional(),
   eligibilitySource: z.string().nullable().optional(),
   issuanceType: IssuanceTypeSchema.nullable().optional(),
+  /** Whether this case's benefits are co-loaded onto an existing SNAP/TANF EBT card. */
+  isCoLoaded: z.boolean().nullable().optional(),
+  /** Whether this case was automatically certified rather than from a guardian application. */
+  isStreamlineCertified: z.boolean().nullable().optional(),
   // Card lifecycle timestamps — not yet populated by any state connector backend.
   // TODO: Add these fields to the state-connector SummerEbtCase interface model
   // so connectors can provide card fulfillment timeline data for enrolled children.
   cardRequestedAt: z.string().nullable().optional(),
   cardMailedAt: z.string().nullable().optional(),
   cardActivatedAt: z.string().nullable().optional(),
-  cardDeactivatedAt: z.string().nullable().optional()
+  cardDeactivatedAt: z.string().nullable().optional(),
+  // Server-driven permission flag — when explicitly false, replacement is blocked regardless
+  // of client-side eligibility checks. Absent/null means server didn't send a ruling;
+  // fall back to client-side logic.
+  canRequestReplacementCard: z.boolean().nullable().optional(),
+  cardReplacementDeniedMessageKey: z.string().nullable().optional()
 })
 
 export type SummerEbtCase = z.infer<typeof SummerEbtCaseSchema>
@@ -208,6 +209,15 @@ export const UserProfileSchema = z.object({
 
 export type UserProfile = z.infer<typeof UserProfileSchema>
 
+export const HouseholdAllowedActionsSchema = z.object({
+  canUpdateAddress: z.boolean(),
+  addressUpdateDeniedMessageKey: z.string().nullable().optional(),
+  canRequestReplacementCard: z.boolean(),
+  cardReplacementDeniedMessageKey: z.string().nullable().optional()
+})
+
+export type HouseholdAllowedActions = z.infer<typeof HouseholdAllowedActionsSchema>
+
 export const HouseholdDataSchema = z.object({
   // email is optional to support IAL authorization where user may not have access to PII
   email: z.string().nullable().optional(),
@@ -216,7 +226,9 @@ export const HouseholdDataSchema = z.object({
   applications: z.array(ApplicationSchema),
   addressOnFile: AddressSchema.nullable().optional(),
   userProfile: UserProfileSchema.nullable().optional(),
-  benefitIssuanceType: IssuanceTypeSchema.nullable().optional()
+  benefitIssuanceType: IssuanceTypeSchema.nullable().optional(),
+  // Server-driven household-level permissions. When absent, client-side logic applies.
+  allowedActions: HouseholdAllowedActionsSchema.nullable().optional()
 })
 
 export type HouseholdData = z.infer<typeof HouseholdDataSchema>

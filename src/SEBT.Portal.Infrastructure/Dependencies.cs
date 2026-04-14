@@ -41,6 +41,9 @@ public static class Dependencies
         // Household identifier resolution (state-configurable preferred household ID type)
         services.AddTransient<IHouseholdIdentifierResolver, HouseholdIdentifierResolver>();
 
+        // Self-service action permission evaluation
+        services.AddTransient<ISelfServiceEvaluator, SelfServiceEvaluator>();
+
         // Smarty address verification (or pass-through when disabled)
         services.AddHttpClient("Smarty", (sp, client) =>
         {
@@ -238,6 +241,10 @@ public static class Dependencies
             .BindConfiguration(AddressValidationPolicySettings.SectionName);
         services.AddOptions<AddressValidationDataSettings>()
             .BindConfiguration(AddressValidationDataSettings.SectionName);
+
+        services.AddSingleton<IValidateOptions<SelfServiceRulesSettings>, SelfServiceRulesSettingsValidator>();
+        services.AddOptionsWithValidateOnStart<SelfServiceRulesSettings>()
+            .BindConfiguration(SelfServiceRulesSettings.SectionName);
 
         return services;
     }

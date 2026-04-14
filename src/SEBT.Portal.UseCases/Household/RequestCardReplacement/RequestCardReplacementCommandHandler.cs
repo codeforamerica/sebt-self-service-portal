@@ -18,6 +18,7 @@ public class RequestCardReplacementCommandHandler(
     IHouseholdIdentifierResolver resolver,
     IHouseholdRepository repository,
     IMinimumIalService minimumIalService,
+    ISelfServiceEvaluator selfServiceEvaluator,
     TimeProvider timeProvider,
     ILogger<RequestCardReplacementCommandHandler> logger)
     : ICommandHandler<RequestCardReplacementCommand>
@@ -68,6 +69,24 @@ public class RequestCardReplacementCommandHandler(
                 minimumIal);
             return Result.Forbidden(
                 $"This household requires {minimumIal}. Complete identity verification to request card replacements.");
+        }
+
+        // Evaluate self-service rules per case before checking cooldown.
+        foreach (var caseId in command.CaseIds)
+        {
+            var summerEbtCase = household.SummerEbtCases
+                .FirstOrDefault(c => c.SummerEBTCaseID == caseId);
+
+            if (summerEbtCase == null)
+                continue; // CheckCooldown will catch unknown cases with a proper error
+
+            var caseActions = selfServiceEvaluator.EvaluateCase(summerEbtCase);
+            if (!caseActions.CanRequestReplacementCard)
+            {
+                logger.LogInformation("Card replacement denied by self-service rules for case {CaseId}", caseId);
+                return Result.Forbidden(
+                    caseActions.CardReplacementDeniedMessageKey ?? "Card replacement is not available for this case.");
+            }
         }
 
         var cooldownErrors = CheckCooldown(command.CaseIds, household, timeProvider);

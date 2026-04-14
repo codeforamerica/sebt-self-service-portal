@@ -18,12 +18,17 @@ public class GetHouseholdDataQueryHandlerTests
     private readonly IHouseholdRepository _repository = Substitute.For<IHouseholdRepository>();
     private readonly IIdProofingRequirementsService _idProofingRequirementsService = Substitute.For<IIdProofingRequirementsService>();
     private readonly IMinimumIalService _minimumIalService = Substitute.For<IMinimumIalService>();
+    private readonly ISelfServiceEvaluator _selfServiceEvaluator = Substitute.For<ISelfServiceEvaluator>();
     private readonly NullLogger<GetHouseholdDataQueryHandler> _logger = NullLogger<GetHouseholdDataQueryHandler>.Instance;
 
     public GetHouseholdDataQueryHandlerTests()
     {
         // Default: no elevated IAL requirement, so existing tests pass without per-test mock setup.
         _minimumIalService.GetMinimumIal(Arg.Any<IReadOnlyList<SummerEbtCase>>()).Returns(UserIalLevel.None);
+        _selfServiceEvaluator.EvaluateHousehold(Arg.Any<IReadOnlyList<SummerEbtCase>>())
+            .Returns(new HouseholdAllowedActions { CanUpdateAddress = true });
+        _selfServiceEvaluator.EvaluateCase(Arg.Any<SummerEbtCase>())
+            .Returns(new CaseAllowedActions { CanRequestReplacementCard = true });
     }
 
     private static ClaimsPrincipal CreateUser(string email, UserIalLevel ialLevel, string claimType = ClaimTypes.Email)
@@ -71,7 +76,7 @@ public class GetHouseholdDataQueryHandlerTests
         _repository.GetHouseholdByIdentifierAsync(identifier, Arg.Any<PiiVisibility>(), Arg.Any<UserIalLevel>(), Arg.Any<CancellationToken>())
             .Returns(householdData);
 
-        var handler = new GetHouseholdDataQueryHandler(_resolver, _repository, _idProofingRequirementsService, _minimumIalService, _logger);
+        var handler = new GetHouseholdDataQueryHandler(_resolver, _repository, _idProofingRequirementsService, _minimumIalService, _selfServiceEvaluator, _logger);
         var query = new GetHouseholdDataQuery { User = user };
 
         // Act
@@ -105,7 +110,7 @@ public class GetHouseholdDataQueryHandlerTests
         _repository.GetHouseholdByIdentifierAsync(identifier, Arg.Any<PiiVisibility>(), Arg.Any<UserIalLevel>(), Arg.Any<CancellationToken>())
             .Returns(householdData);
 
-        var handler = new GetHouseholdDataQueryHandler(_resolver, _repository, _idProofingRequirementsService, _minimumIalService, _logger);
+        var handler = new GetHouseholdDataQueryHandler(_resolver, _repository, _idProofingRequirementsService, _minimumIalService, _selfServiceEvaluator, _logger);
         var query = new GetHouseholdDataQuery { User = user };
 
         // Act
@@ -130,7 +135,7 @@ public class GetHouseholdDataQueryHandlerTests
         _resolver.ResolveAsync(Arg.Any<ClaimsPrincipal>(), Arg.Any<CancellationToken>())
             .Returns((HouseholdIdentifier?)null);
 
-        var handler = new GetHouseholdDataQueryHandler(_resolver, _repository, _idProofingRequirementsService, _minimumIalService, _logger);
+        var handler = new GetHouseholdDataQueryHandler(_resolver, _repository, _idProofingRequirementsService, _minimumIalService, _selfServiceEvaluator, _logger);
         var query = new GetHouseholdDataQuery { User = user };
 
         // Act
@@ -158,7 +163,7 @@ public class GetHouseholdDataQueryHandlerTests
         _repository.GetHouseholdByIdentifierAsync(Arg.Any<HouseholdIdentifier>(), Arg.Any<PiiVisibility>(), Arg.Any<UserIalLevel>(), Arg.Any<CancellationToken>())
             .Returns((HouseholdData?)null);
 
-        var handler = new GetHouseholdDataQueryHandler(_resolver, _repository, _idProofingRequirementsService, _minimumIalService, _logger);
+        var handler = new GetHouseholdDataQueryHandler(_resolver, _repository, _idProofingRequirementsService, _minimumIalService, _selfServiceEvaluator, _logger);
         var query = new GetHouseholdDataQuery { User = user };
 
         // Act
@@ -187,7 +192,7 @@ public class GetHouseholdDataQueryHandlerTests
         _repository.GetHouseholdByIdentifierAsync(Arg.Any<HouseholdIdentifier>(), Arg.Any<PiiVisibility>(), Arg.Any<UserIalLevel>(), Arg.Any<CancellationToken>())
             .Returns(householdData);
 
-        var handler = new GetHouseholdDataQueryHandler(_resolver, _repository, _idProofingRequirementsService, _minimumIalService, _logger);
+        var handler = new GetHouseholdDataQueryHandler(_resolver, _repository, _idProofingRequirementsService, _minimumIalService, _selfServiceEvaluator, _logger);
         var query = new GetHouseholdDataQuery { User = user };
 
         // Act
@@ -218,7 +223,7 @@ public class GetHouseholdDataQueryHandlerTests
         _repository.GetHouseholdByIdentifierAsync(Arg.Any<HouseholdIdentifier>(), Arg.Any<PiiVisibility>(), Arg.Any<UserIalLevel>(), Arg.Any<CancellationToken>())
             .Returns(householdData);
 
-        var handler = new GetHouseholdDataQueryHandler(_resolver, _repository, _idProofingRequirementsService, _minimumIalService, _logger);
+        var handler = new GetHouseholdDataQueryHandler(_resolver, _repository, _idProofingRequirementsService, _minimumIalService, _selfServiceEvaluator, _logger);
         var query = new GetHouseholdDataQuery { User = user };
 
         // Act
@@ -251,7 +256,7 @@ public class GetHouseholdDataQueryHandlerTests
         _minimumIalService.GetMinimumIal(Arg.Any<IReadOnlyList<SummerEbtCase>>())
             .Returns(UserIalLevel.IAL1plus);
 
-        var handler = new GetHouseholdDataQueryHandler(_resolver, _repository, _idProofingRequirementsService, _minimumIalService, _logger);
+        var handler = new GetHouseholdDataQueryHandler(_resolver, _repository, _idProofingRequirementsService, _minimumIalService, _selfServiceEvaluator, _logger);
         var query = new GetHouseholdDataQuery { User = user };
 
         // Act
@@ -282,7 +287,7 @@ public class GetHouseholdDataQueryHandlerTests
         _minimumIalService.GetMinimumIal(Arg.Any<IReadOnlyList<SummerEbtCase>>())
             .Returns(UserIalLevel.IAL1plus);
 
-        var handler = new GetHouseholdDataQueryHandler(_resolver, _repository, _idProofingRequirementsService, _minimumIalService, _logger);
+        var handler = new GetHouseholdDataQueryHandler(_resolver, _repository, _idProofingRequirementsService, _minimumIalService, _selfServiceEvaluator, _logger);
         var query = new GetHouseholdDataQuery { User = user };
 
         // Act
@@ -311,7 +316,7 @@ public class GetHouseholdDataQueryHandlerTests
         _repository.GetHouseholdByIdentifierAsync(Arg.Any<HouseholdIdentifier>(), Arg.Any<PiiVisibility>(), Arg.Any<UserIalLevel>(), token)
             .Returns(householdData);
 
-        var handler = new GetHouseholdDataQueryHandler(_resolver, _repository, _idProofingRequirementsService, _minimumIalService, _logger);
+        var handler = new GetHouseholdDataQueryHandler(_resolver, _repository, _idProofingRequirementsService, _minimumIalService, _selfServiceEvaluator, _logger);
         var query = new GetHouseholdDataQuery { User = user };
 
         // Act
@@ -325,5 +330,82 @@ public class GetHouseholdDataQueryHandlerTests
             Arg.Any<PiiVisibility>(),
             Arg.Any<UserIalLevel>(),
             token);
+    }
+
+    [Fact]
+    public async Task Handle_WhenSuccess_SetsHouseholdAllowedActionsFromEvaluator()
+    {
+        var email = "user@example.com";
+        var user = CreateUser(email, UserIalLevel.IAL1plus);
+        var identifier = HouseholdIdentifier.Email(EmailNormalizer.Normalize(email));
+        var cases = new List<SummerEbtCase>
+        {
+            new() { SummerEBTCaseID = "SEBT-001", IssuanceType = IssuanceType.SnapEbtCard, EbtCardStatus = "Active" }
+        };
+        var householdData = new HouseholdData
+        {
+            Email = email,
+            BenefitIssuanceType = BenefitIssuanceType.SnapEbtCard,
+            SummerEbtCases = cases
+        };
+        var expectedHouseholdActions = new HouseholdAllowedActions
+        {
+            CanUpdateAddress = false,
+            AddressUpdateDeniedMessageKey = "selfServiceUnavailable"
+        };
+
+        _resolver.ResolveAsync(Arg.Any<ClaimsPrincipal>(), Arg.Any<CancellationToken>()).Returns(identifier);
+        _idProofingRequirementsService.GetPiiVisibility(UserIalLevel.IAL1plus)
+            .Returns(new PiiVisibility(true, true, true));
+        _repository.GetHouseholdByIdentifierAsync(Arg.Any<HouseholdIdentifier>(), Arg.Any<PiiVisibility>(), Arg.Any<UserIalLevel>(), Arg.Any<CancellationToken>())
+            .Returns(householdData);
+        _selfServiceEvaluator.EvaluateHousehold(Arg.Any<IReadOnlyList<SummerEbtCase>>())
+            .Returns(expectedHouseholdActions);
+        _selfServiceEvaluator.EvaluateCase(Arg.Any<SummerEbtCase>())
+            .Returns(new CaseAllowedActions { CanRequestReplacementCard = false });
+
+        var handler = new GetHouseholdDataQueryHandler(_resolver, _repository, _idProofingRequirementsService, _minimumIalService, _selfServiceEvaluator, _logger);
+        var result = await handler.Handle(new GetHouseholdDataQuery { User = user }, CancellationToken.None);
+
+        Assert.True(result.IsSuccess);
+        var success = Assert.IsType<SuccessResult<HouseholdData>>(result);
+        Assert.NotNull(success.Value.AllowedActions);
+        Assert.False(success.Value.AllowedActions.CanUpdateAddress);
+        Assert.Equal("selfServiceUnavailable", success.Value.AllowedActions.AddressUpdateDeniedMessageKey);
+    }
+
+    [Fact]
+    public async Task Handle_WhenSuccess_SetsCaseAllowedActionsOnEachCase()
+    {
+        var email = "user@example.com";
+        var user = CreateUser(email, UserIalLevel.IAL1plus);
+        var identifier = HouseholdIdentifier.Email(EmailNormalizer.Normalize(email));
+        var cases = new List<SummerEbtCase>
+        {
+            new() { SummerEBTCaseID = "SEBT-001", IssuanceType = IssuanceType.SummerEbt, EbtCardStatus = "Lost" },
+            new() { SummerEBTCaseID = "SEBT-002", IssuanceType = IssuanceType.SummerEbt, EbtCardStatus = "Active" }
+        };
+        var householdData = new HouseholdData { Email = email, SummerEbtCases = cases };
+
+        _resolver.ResolveAsync(Arg.Any<ClaimsPrincipal>(), Arg.Any<CancellationToken>()).Returns(identifier);
+        _idProofingRequirementsService.GetPiiVisibility(Arg.Any<UserIalLevel>())
+            .Returns(new PiiVisibility(true, true, true));
+        _repository.GetHouseholdByIdentifierAsync(Arg.Any<HouseholdIdentifier>(), Arg.Any<PiiVisibility>(), Arg.Any<UserIalLevel>(), Arg.Any<CancellationToken>())
+            .Returns(householdData);
+        _selfServiceEvaluator.EvaluateHousehold(Arg.Any<IReadOnlyList<SummerEbtCase>>())
+            .Returns(new HouseholdAllowedActions { CanUpdateAddress = true });
+
+        _selfServiceEvaluator.EvaluateCase(Arg.Is<SummerEbtCase>(c => c.SummerEBTCaseID == "SEBT-001"))
+            .Returns(new CaseAllowedActions { CanRequestReplacementCard = true });
+        _selfServiceEvaluator.EvaluateCase(Arg.Is<SummerEbtCase>(c => c.SummerEBTCaseID == "SEBT-002"))
+            .Returns(new CaseAllowedActions { CanRequestReplacementCard = false });
+
+        var handler = new GetHouseholdDataQueryHandler(_resolver, _repository, _idProofingRequirementsService, _minimumIalService, _selfServiceEvaluator, _logger);
+        var result = await handler.Handle(new GetHouseholdDataQuery { User = user }, CancellationToken.None);
+
+        Assert.True(result.IsSuccess);
+        var success = Assert.IsType<SuccessResult<HouseholdData>>(result);
+        Assert.True(success.Value.SummerEbtCases[0].AllowedActions?.CanRequestReplacementCard);
+        Assert.False(success.Value.SummerEbtCases[1].AllowedActions?.CanRequestReplacementCard);
     }
 }

@@ -5,19 +5,26 @@ import { useTranslation } from 'react-i18next'
 
 import { getState, getStateConfig } from '@sebt/design-system'
 
-import type { SummerEbtCase } from '../../api'
+import type { HouseholdAllowedActions, SummerEbtCase } from '../../api'
+
+type SelfServiceGate = 'updateAddress' | 'requestReplacementCard'
 
 interface ActionButton {
   labelKey: string
   href: string
   ctaId: string
-  /** When true, this CTA is hidden when no case has a dedicated Summer EBT card. */
-  selfServiceOnly?: boolean
+  /** Which server-driven flag gates this CTA. Undefined = always visible. */
+  gate?: SelfServiceGate
 }
 
 interface ActionButtonsProps {
   /** Enrolled cases — used to determine which self-service actions are available. */
   cases: SummerEbtCase[]
+  /**
+   * Server-driven household permissions. When present, takes precedence over client-side
+   * issuance-type logic. When absent, falls back to isSelfServiceAvailable().
+   */
+  allowedActions?: HouseholdAllowedActions | null | undefined
 }
 
 // Keys map to CSV: "S2 - Portal Dashboard - Action Navigation - {Key}"
@@ -26,13 +33,13 @@ const ACTIONS: ActionButton[] = [
     labelKey: 'actionNavigationChangeMyMailingAddress',
     href: '/profile/address',
     ctaId: 'update_address_cta',
-    selfServiceOnly: true
+    gate: 'updateAddress'
   },
   {
     labelKey: 'actionNavigationOrderReplacementCards',
     href: '/cards/request',
     ctaId: 'replacement_card_cta',
-    selfServiceOnly: true
+    gate: 'requestReplacementCard'
   },
   {
     labelKey: 'actionNavigationCheckExistingCards',
@@ -49,7 +56,8 @@ const ACTIONS: ActionButton[] = [
 /**
  * SNAP and TANF benefit holders cannot use portal self-service features
  * (address update, replacement card) — those actions must go through
- * their case worker.
+ * their case worker. Used as fallback when server-driven allowedActions
+ * are not available.
  */
 function isSelfServiceAvailable(cases: SummerEbtCase[]): boolean {
   if (cases.length === 0) return true
@@ -58,12 +66,19 @@ function isSelfServiceAvailable(cases: SummerEbtCase[]): boolean {
   )
 }
 
-export function ActionButtons({ cases }: ActionButtonsProps) {
+export function ActionButtons({ cases, allowedActions }: ActionButtonsProps) {
   const { t } = useTranslation('dashboard')
   const { actionButtonBg, actionButtonText } = getStateConfig(getState())
-  const selfServiceEnabled = isSelfServiceAvailable(cases)
+  const fallback = isSelfServiceAvailable(cases)
+  const canUpdateAddress = allowedActions?.canUpdateAddress ?? fallback
+  const canRequestReplacementCard = allowedActions?.canRequestReplacementCard ?? fallback
+  const gateFlags: Record<SelfServiceGate, boolean> = {
+    updateAddress: canUpdateAddress,
+    requestReplacementCard: canRequestReplacementCard
+  }
 
-  const visibleActions = ACTIONS.filter((action) => !action.selfServiceOnly || selfServiceEnabled)
+  const visibleActions = ACTIONS.filter((action) => !action.gate || gateFlags[action.gate])
+  const allSelfServiceHidden = !canUpdateAddress && !canRequestReplacementCard
 
   return (
     <nav
@@ -72,13 +87,19 @@ export function ActionButtons({ cases }: ActionButtonsProps) {
     >
       <p className="margin-top-0 margin-bottom-2 text-base-dark">{t('actionNavigationLead')}</p>
 
-      {!selfServiceEnabled && (
+      {allSelfServiceHidden && (
         <div
           className="usa-alert usa-alert--info usa-alert--slim margin-bottom-2"
           role="status"
         >
           <div className="usa-alert__body">
-            <p className="usa-alert__text">{t('actionNavigationSelfServiceUnavailable')}</p>
+            <p className="usa-alert__text">
+              {/* TODO: Remove fallback once actionNavigationSelfServiceUnavailable is added to dc.csv/co.csv */}
+              {t(
+                'actionNavigationSelfServiceUnavailable',
+                'Self-service actions are not available for your account. Please contact customer service for help updating your address or requesting a replacement card.'
+              )}
+            </p>
           </div>
         </div>
       )}

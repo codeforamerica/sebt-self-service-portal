@@ -26,6 +26,7 @@ public class DatabaseSeeder : Core.Services.IDatabaseSeeder
     private const int DaysUntilBasicIdProofingExpires = 355;
 
     private bool IsDc => string.Equals(_settings.State, "dc", StringComparison.OrdinalIgnoreCase);
+    private bool IsCo => string.Equals(_settings.State, "co", StringComparison.OrdinalIgnoreCase);
 
     public DatabaseSeeder(
         IDataSeeder dataSeeder,
@@ -129,6 +130,12 @@ public class DatabaseSeeder : Core.Services.IDatabaseSeeder
             {
                 // Skip DC-only scenarios when not running as DC
                 if (!IsDc && SeedScenarios.DcOnlyScenarios.Contains(scenario))
+                {
+                    continue;
+                }
+
+                // Skip CO-only scenarios when not running as CO
+                if (!IsCo && SeedScenarios.CoOnlyScenarios.Contains(scenario))
                 {
                     continue;
                 }
@@ -265,6 +272,12 @@ public class DatabaseSeeder : Core.Services.IDatabaseSeeder
             {
                 // Skip DC-only scenarios when not running as DC
                 if (!IsDc && SeedScenarios.DcOnlyScenarios.Contains(scenario))
+                {
+                    continue;
+                }
+
+                // Skip CO-only scenarios when not running as CO
+                if (!IsCo && SeedScenarios.CoOnlyScenarios.Contains(scenario))
                 {
                     continue;
                 }

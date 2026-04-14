@@ -151,10 +151,8 @@ test.describe('ChildCard', () => {
       })
       await page.goto('/dashboard')
 
-      const link = page.locator('[data-testid="accordion-content"] a', {
-        hasText: 'Request a replacement card'
-      })
-      await expect(link).toHaveAttribute('href', '/cards/info')
+      const link = page.locator('[data-testid="accordion-content"] a[href="/cards/info"]')
+      await expect(link).toBeVisible()
     })
 
     test('CO: SnapEbtCard co-loaded shows no replacement link', async ({ page }) => {
@@ -183,10 +181,8 @@ test.describe('ChildCard', () => {
       })
       await page.goto('/dashboard')
 
-      const link = page.locator('[data-testid="accordion-content"] a', {
-        hasText: 'Request a replacement card'
-      })
-      await expect(link).toHaveAttribute('href', '/cards/info')
+      const link = page.locator('[data-testid="accordion-content"] a[href="/cards/info"]')
+      await expect(link).toBeVisible()
     })
 
     test('CO: TanfEbtCard co-loaded shows no replacement link', async ({ page }) => {

@@ -67,7 +67,8 @@ export const TEST_HOUSEHOLD_DATA = {
       ebtCardLastFour: '1234',
       ebtCardStatus: 'Active',
       benefitAvailableDate: '2026-06-01T00:00:00Z',
-      benefitExpirationDate: '2026-08-31T00:00:00Z'
+      benefitExpirationDate: '2026-08-31T00:00:00Z',
+      canRequestReplacementCard: true
     },
     {
       summerEBTCaseID: 'SEBT-002',
@@ -75,7 +76,8 @@ export const TEST_HOUSEHOLD_DATA = {
       childLastName: 'Martinez',
       householdType: 'OSSE',
       eligibilityType: 'NSLP',
-      issuanceType: 1
+      issuanceType: 1,
+      canRequestReplacementCard: true
     }
   ],
   applications: [
@@ -110,6 +112,12 @@ export const TEST_HOUSEHOLD_DATA = {
     firstName: 'Maria',
     middleName: 'L',
     lastName: 'Martinez'
+  },
+  allowedActions: {
+    canUpdateAddress: true,
+    addressUpdateDeniedMessageKey: null,
+    canRequestReplacementCard: true,
+    cardReplacementDeniedMessageKey: null
   }
 } as const
 

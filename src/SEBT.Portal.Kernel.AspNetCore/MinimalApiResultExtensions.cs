@@ -61,6 +61,10 @@ public static class MinimalApiResultExtensions
                 => result.ToProblemHttpResult(HttpStatusCode.Forbidden),
             UnauthorizedResult when !useProblemDetails
                 => HttpResults.Forbid(),
+            ForbiddenResult when useProblemDetails
+                => result.ToProblemHttpResult(HttpStatusCode.Forbidden),
+            ForbiddenResult when !useProblemDetails
+                => HttpResults.Forbid(),
             _ => throw new ArgumentOutOfRangeException(nameof(result))
         };
 
@@ -116,6 +120,10 @@ public static class MinimalApiResultExtensions
             UnauthorizedResult<T> when useProblemDetails
                 => result.ToProblemHttpResult(HttpStatusCode.Forbidden),
             UnauthorizedResult<T> when !useProblemDetails
+                => HttpResults.Forbid(),
+            ForbiddenResult<T> when useProblemDetails
+                => result.ToProblemHttpResult(HttpStatusCode.Forbidden),
+            ForbiddenResult<T> when !useProblemDetails
                 => HttpResults.Forbid(),
             _ => throw new ArgumentOutOfRangeException(nameof(result)),
         };

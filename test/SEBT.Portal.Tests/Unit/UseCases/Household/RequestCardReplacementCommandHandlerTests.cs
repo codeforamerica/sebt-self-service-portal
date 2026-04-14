@@ -24,6 +24,8 @@ public class RequestCardReplacementCommandHandlerTests
         Substitute.For<IHouseholdRepository>();
     private readonly IMinimumIalService _minimumIalService =
         Substitute.For<IMinimumIalService>();
+    private readonly ISelfServiceEvaluator _evaluator =
+        Substitute.For<ISelfServiceEvaluator>();
     private readonly NullLogger<RequestCardReplacementCommandHandler> _logger =
         NullLogger<RequestCardReplacementCommandHandler>.Instance;
 
@@ -31,10 +33,13 @@ public class RequestCardReplacementCommandHandlerTests
     {
         // Default: IAL gate passes (no elevated requirement)
         _minimumIalService.GetMinimumIal(Arg.Any<IReadOnlyList<SummerEbtCase>>()).Returns(UserIalLevel.None);
+        // Default: evaluator allows card replacement for any case
+        _evaluator.EvaluateCase(Arg.Any<SummerEbtCase>())
+            .Returns(new CaseAllowedActions { CanRequestReplacementCard = true });
     }
 
     private RequestCardReplacementCommandHandler CreateHandler(TimeProvider? timeProvider = null) =>
-        new(_validator, _resolver, _repository, _minimumIalService, timeProvider ?? TimeProvider.System, _logger);
+        new(_validator, _resolver, _repository, _minimumIalService, _evaluator, timeProvider ?? TimeProvider.System, _logger);
 
     private static ClaimsPrincipal CreateUser(string email, string? ialClaim = null)
     {
@@ -402,5 +407,30 @@ public class RequestCardReplacementCommandHandlerTests
 
         Assert.True(result.IsSuccess);
         Assert.IsType<SuccessResult>(result);
+    }
+
+    // --- Self-service rules tests ---
+
+    [Fact]
+    public async Task Handle_ReturnsForbidden_WhenEvaluatorDeniesCardReplacement()
+    {
+        var handler = CreateHandler();
+        var command = CreateValidCommand();
+        SetupResolverSuccess();
+        SetupRepositoryReturns(CreateHouseholdWithCases(
+            new SummerEbtCase
+            {
+                SummerEBTCaseID = "SEBT-001",
+                CardRequestedAt = null
+            }
+        ));
+        _evaluator.EvaluateCase(Arg.Any<SummerEbtCase>())
+            .Returns(new CaseAllowedActions { CanRequestReplacementCard = false, CardReplacementDeniedMessageKey = "selfServiceUnavailable" });
+
+        var result = await handler.Handle(command, CancellationToken.None);
+
+        Assert.False(result.IsSuccess);
+        var forbidden = Assert.IsType<ForbiddenResult>(result);
+        Assert.Equal("selfServiceUnavailable", forbidden.Message);
     }
 }

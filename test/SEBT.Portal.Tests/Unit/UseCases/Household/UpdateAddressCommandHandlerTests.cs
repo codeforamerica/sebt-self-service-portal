@@ -34,6 +34,8 @@ public class UpdateAddressCommandHandlerTests
         Substitute.For<IHouseholdRepository>();
     private readonly IIdProofingRequirementsService _idProofingRequirementsService =
         Substitute.For<IIdProofingRequirementsService>();
+    private readonly ISelfServiceEvaluator _evaluator =
+        Substitute.For<ISelfServiceEvaluator>();
     private readonly IStateAddressUpdateService _stateAddressUpdateService =
         Substitute.For<IStateAddressUpdateService>();
     private readonly IMinimumIalService _minimumIalService =
@@ -43,7 +45,8 @@ public class UpdateAddressCommandHandlerTests
 
     public UpdateAddressCommandHandlerTests()
     {
-        // Default: address validation passes, state connector succeeds, PII visibility minimal
+        // Default: address validation passes, state connector succeeds, PII visibility minimal,
+        // evaluator allows address update
         _addressUpdateService
             .ValidateAndNormalizeAsync(Arg.Any<AddressUpdateOperationRequest>(), Arg.Any<CancellationToken>())
             .Returns(Task.FromResult(
@@ -68,11 +71,13 @@ public class UpdateAddressCommandHandlerTests
             .Returns(new PiiVisibility(false, false, false));
         // Default: IAL gate passes (no elevated requirement)
         _minimumIalService.GetMinimumIal(Arg.Any<IReadOnlyList<SummerEbtCase>>()).Returns(UserIalLevel.None);
+        _evaluator.EvaluateHousehold(Arg.Any<IReadOnlyList<SummerEbtCase>>())
+            .Returns(new HouseholdAllowedActions { CanUpdateAddress = true });
     }
 
     private UpdateAddressCommandHandler CreateHandler() =>
         new(_validator, _addressUpdateService, _addressValidationService, _resolver, _householdRepository,
-            _idProofingRequirementsService, _minimumIalService, _stateAddressUpdateService, _logger);
+            _idProofingRequirementsService, _minimumIalService, _evaluator, _stateAddressUpdateService, _logger);
 
     private static ClaimsPrincipal CreateUser(string email)
     {
@@ -256,35 +261,37 @@ public class UpdateAddressCommandHandlerTests
     }
 
     [Fact]
-    public async Task Handle_ReturnsPreconditionFailed_WhenHouseholdIsSnapBenefitType()
+    public async Task Handle_ReturnsForbidden_WhenHouseholdIsSnapBenefitType()
     {
         var handler = CreateHandler();
         var command = CreateValidCommand();
 
         SetupResolverReturnsEmail();
         SetupHouseholdWithBenefitType(BenefitIssuanceType.SnapEbtCard);
+        _evaluator.EvaluateHousehold(Arg.Any<IReadOnlyList<SummerEbtCase>>())
+            .Returns(new HouseholdAllowedActions { CanUpdateAddress = false, AddressUpdateDeniedMessageKey = "selfServiceUnavailable" });
 
         var result = await handler.Handle(command, CancellationToken.None);
 
         Assert.False(result.IsSuccess);
-        var preconditionFailed = Assert.IsType<PreconditionFailedResult<AddressValidationResult>>(result);
-        Assert.Equal(PreconditionFailedReason.Conflict, preconditionFailed.Reason);
+        Assert.IsType<ForbiddenResult<AddressValidationResult>>(result);
     }
 
     [Fact]
-    public async Task Handle_ReturnsPreconditionFailed_WhenHouseholdIsTanfBenefitType()
+    public async Task Handle_ReturnsForbidden_WhenHouseholdIsTanfBenefitType()
     {
         var handler = CreateHandler();
         var command = CreateValidCommand();
 
         SetupResolverReturnsEmail();
         SetupHouseholdWithBenefitType(BenefitIssuanceType.TanfEbtCard);
+        _evaluator.EvaluateHousehold(Arg.Any<IReadOnlyList<SummerEbtCase>>())
+            .Returns(new HouseholdAllowedActions { CanUpdateAddress = false, AddressUpdateDeniedMessageKey = "selfServiceUnavailable" });
 
         var result = await handler.Handle(command, CancellationToken.None);
 
         Assert.False(result.IsSuccess);
-        var preconditionFailed = Assert.IsType<PreconditionFailedResult<AddressValidationResult>>(result);
-        Assert.Equal(PreconditionFailedReason.Conflict, preconditionFailed.Reason);
+        Assert.IsType<ForbiddenResult<AddressValidationResult>>(result);
     }
 
     [Fact]
@@ -316,7 +323,7 @@ public class UpdateAddressCommandHandlerTests
     }
 
     [Fact]
-    public async Task Handle_AllowsUpdate_WhenHouseholdNotFound()
+    public async Task Handle_ReturnsForbidden_WhenHouseholdNotFound()
     {
         var handler = CreateHandler();
         var command = CreateValidCommand();
@@ -329,7 +336,52 @@ public class UpdateAddressCommandHandlerTests
 
         var result = await handler.Handle(command, CancellationToken.None);
 
-        Assert.True(result.IsSuccess);
+        Assert.False(result.IsSuccess);
+        Assert.IsType<ForbiddenResult<AddressValidationResult>>(result);
+    }
+
+    [Fact]
+    public async Task Handle_PassesSummerEbtCasesToEvaluator()
+    {
+        var handler = CreateHandler();
+        var command = CreateValidCommand();
+        var cases = new List<SummerEbtCase>
+        {
+            new() { SummerEBTCaseID = "SEBT-001" }
+        };
+
+        SetupResolverReturnsEmail();
+        _householdRepository.GetHouseholdByIdentifierAsync(
+                Arg.Any<HouseholdIdentifier>(), Arg.Any<PiiVisibility>(),
+                Arg.Any<UserIalLevel>(), Arg.Any<CancellationToken>())
+            .Returns(new HouseholdData
+            {
+                BenefitIssuanceType = BenefitIssuanceType.SummerEbt,
+                SummerEbtCases = cases
+            });
+
+        await handler.Handle(command, CancellationToken.None);
+
+        _evaluator.Received(1).EvaluateHousehold(Arg.Is<IReadOnlyList<SummerEbtCase>>(
+            c => c.Count == 1 && c[0].SummerEBTCaseID == "SEBT-001"));
+    }
+
+    [Fact]
+    public async Task Handle_ReturnsForbidden_WhenEvaluatorDeniesAddressUpdate()
+    {
+        var handler = CreateHandler();
+        var command = CreateValidCommand();
+
+        SetupResolverReturnsEmail();
+        SetupHouseholdWithBenefitType(BenefitIssuanceType.SummerEbt);
+        _evaluator.EvaluateHousehold(Arg.Any<IReadOnlyList<SummerEbtCase>>())
+            .Returns(new HouseholdAllowedActions { CanUpdateAddress = false, AddressUpdateDeniedMessageKey = "selfServiceUnavailable" });
+
+        var result = await handler.Handle(command, CancellationToken.None);
+
+        Assert.False(result.IsSuccess);
+        var forbidden = Assert.IsType<ForbiddenResult<AddressValidationResult>>(result);
+        Assert.Equal("selfServiceUnavailable", forbidden.Message);
     }
 
     [Fact]
@@ -403,6 +455,8 @@ public class UpdateAddressCommandHandlerTests
 
         SetupResolverReturnsEmail();
         SetupHouseholdWithBenefitType(BenefitIssuanceType.SnapEbtCard);
+        _evaluator.EvaluateHousehold(Arg.Any<IReadOnlyList<SummerEbtCase>>())
+            .Returns(new HouseholdAllowedActions { CanUpdateAddress = false, AddressUpdateDeniedMessageKey = "selfServiceUnavailable" });
 
         await handler.Handle(command, CancellationToken.None);
 

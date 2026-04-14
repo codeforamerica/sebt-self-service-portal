@@ -37,8 +37,13 @@ public class HouseholdControllerTests
         IHouseholdIdentifierResolver resolver,
         IHouseholdRepository repository)
     {
+        var selfServiceEvaluator = Substitute.For<ISelfServiceEvaluator>();
+        selfServiceEvaluator.EvaluateHousehold(Arg.Any<IReadOnlyList<SummerEbtCase>>())
+            .Returns(new HouseholdAllowedActions());
+        selfServiceEvaluator.EvaluateCase(Arg.Any<SummerEbtCase>())
+            .Returns(new CaseAllowedActions());
         var logger = NullLogger<GetHouseholdDataQueryHandler>.Instance;
-        return new GetHouseholdDataQueryHandler(resolver, repository, _idProofingRequirementsService, _minimumIalService, logger);
+        return new GetHouseholdDataQueryHandler(resolver, repository, _idProofingRequirementsService, _minimumIalService, selfServiceEvaluator, logger);
     }
 
     private void SetupAuthenticatedUser(string email, UserIalLevel userIalLevel = UserIalLevel.None, string claimType = ClaimTypes.Email)

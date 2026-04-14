@@ -44,4 +44,35 @@ public record HouseholdDataResponse
     /// The type of benefit issuance for this household.
     /// </summary>
     public BenefitIssuanceType BenefitIssuanceType { get; init; }
+
+    /// <summary>
+    /// Computed household-level self-service permissions.
+    /// </summary>
+    public HouseholdAllowedActionsResponse? AllowedActions { get; init; }
+}
+
+/// <summary>
+/// API response model for household-level self-service permissions.
+/// </summary>
+public record HouseholdAllowedActionsResponse
+{
+    /// <summary>
+    /// Whether the household can update their mailing address via the portal.
+    /// </summary>
+    public bool CanUpdateAddress { get; init; }
+
+    /// <summary>
+    /// i18n key for the message shown when address update is denied.
+    /// </summary>
+    public string? AddressUpdateDeniedMessageKey { get; init; }
+
+    /// <summary>
+    /// Whether any case in the household qualifies for card replacement via the portal.
+    /// </summary>
+    public bool CanRequestReplacementCard { get; init; }
+
+    /// <summary>
+    /// i18n key for the message shown when no case qualifies for card replacement.
+    /// </summary>
+    public string? CardReplacementDeniedMessageKey { get; init; }
 }

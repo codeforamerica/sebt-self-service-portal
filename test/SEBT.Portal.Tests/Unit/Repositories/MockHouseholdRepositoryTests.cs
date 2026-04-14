@@ -242,10 +242,11 @@ public class MockHouseholdRepositoryTests
     [Fact]
     public async Task GetHouseholdByEmailAsync_ReturnsAllSeededScenarios()
     {
-        // Derive emails from the default catalog (no state set, so DC-only scenarios are excluded)
+        // Derive emails from the default catalog (no state set, so state-gated scenarios are excluded)
         var defaultSettings = new SeedingSettings();
         var expectedScenarios = SeedScenarios.AllScenarios
-            .Where(s => !SeedScenarios.DcOnlyScenarios.Contains(s));
+            .Where(s => !SeedScenarios.DcOnlyScenarios.Contains(s))
+            .Where(s => !SeedScenarios.CoOnlyScenarios.Contains(s));
 
         foreach (var scenario in expectedScenarios)
         {
@@ -535,7 +536,11 @@ public class MockHouseholdRepositoryTests
         var repo = CreateRepository(pattern, state: "dc");
         var settings = new SeedingSettings { EmailPattern = pattern, State = "dc" };
 
-        foreach (var scenario in SeedScenarios.AllScenarios)
+        // State=dc, so CO-only scenarios are not seeded; exclude them from the check.
+        var expectedScenarios = SeedScenarios.AllScenarios
+            .Where(s => !SeedScenarios.CoOnlyScenarios.Contains(s));
+
+        foreach (var scenario in expectedScenarios)
         {
             var email = settings.BuildEmail(scenario.Name);
             var result = await repo.GetHouseholdByEmailAsync(email, FullPiiVisibility, UserIalLevel.IAL1plus);

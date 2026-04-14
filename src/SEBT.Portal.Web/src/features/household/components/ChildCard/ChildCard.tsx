@@ -22,23 +22,33 @@ function hasCardLifecycleTimeline(summerEbtCase: SummerEbtCase): boolean {
   return summerEbtCase.cardRequestedAt != null
 }
 
-function getReplacementLink(summerEbtCase: SummerEbtCase): string | null {
-  const { summerEBTCaseID, issuanceType, cardRequestedAt } = summerEbtCase
+interface ReplacementLinkInfo {
+  href: string
+  /** When true, label is an informational "how to" rather than a direct action. */
+  isInfo: boolean
+}
+
+function getReplacementLink(summerEbtCase: SummerEbtCase): ReplacementLinkInfo | null {
+  const { summerEBTCaseID, issuanceType, cardRequestedAt, canRequestReplacementCard } =
+    summerEbtCase
+
   if (!summerEBTCaseID) return null
   if (!issuanceType || issuanceType === 'Unknown') return null
-
-  if (isWithinCooldownPeriod(cardRequestedAt)) return null
 
   const currentState = getState()
   const isCoLoaded = issuanceType === 'TanfEbtCard' || issuanceType === 'SnapEbtCard'
 
-  if (isCoLoaded && currentState === 'dc') {
-    return '/cards/info'
-  }
-
+  // Co-loaded DC cases never do self-service replacement — they always see an info
+  // link pointing to static guidance, regardless of server ruling.
+  if (isCoLoaded && currentState === 'dc') return { href: '/cards/info', isInfo: true }
   if (isCoLoaded) return null
 
-  return `/cards/replace?case=${encodeURIComponent(summerEBTCaseID)}`
+  // Server-driven rules take precedence for non-co-loaded cases.
+  // Missing/null value means the server didn't send a ruling — fall back to client logic.
+  if (canRequestReplacementCard === false) return null
+  if (isWithinCooldownPeriod(cardRequestedAt)) return null
+
+  return { href: `/cards/replace?case=${encodeURIComponent(summerEBTCaseID)}`, isInfo: false }
 }
 
 interface ChildCardProps {
@@ -56,7 +66,6 @@ const CARD_TYPE_KEYS: Partial<Record<IssuanceType, string>> = {
 // Keys map to CSV: "S2 - Portal Dashboard - Card Table - {Key}"
 export function ChildCard({ summerEbtCase, defaultExpanded = true }: ChildCardProps) {
   const { t, i18n } = useTranslation('dashboard')
-  const enableCardReplacement = useFeatureFlag('enable_card_replacement')
   const showCaseNumber = useFeatureFlag('show_case_number')
   const showCardLast4 = useFeatureFlag('show_card_last4')
   const [isExpanded, setIsExpanded] = useState(defaultExpanded)
@@ -75,7 +84,7 @@ export function ChildCard({ summerEbtCase, defaultExpanded = true }: ChildCardPr
     cardDeactivatedAt
   } = summerEbtCase
   const cardTypeKey = issuanceType ? (CARD_TYPE_KEYS[issuanceType] ?? null) : null
-  const replacementLink = enableCardReplacement ? getReplacementLink(summerEbtCase) : null
+  const replacementLink = getReplacementLink(summerEbtCase)
 
   return (
     <div className="usa-accordion__item">
@@ -142,11 +151,16 @@ export function ChildCard({ summerEbtCase, defaultExpanded = true }: ChildCardPr
         </dl>
         {replacementLink && (
           <Link
-            href={replacementLink}
-            data-analytics-cta="replacement_card_cta"
+            href={replacementLink.href}
+            data-analytics-cta={
+              replacementLink.isInfo ? 'replacement_card_info_cta' : 'replacement_card_cta'
+            }
             className="usa-link display-inline-block margin-top-2"
           >
-            {t('cardTableActionRequestReplacement', 'Request a replacement card')}
+            {replacementLink.isInfo
+              ? /* TODO: Remove fallback once cardTableActionHowToGetReplacement is added to CSV */
+                t('cardTableActionHowToGetReplacement', 'How to get a replacement EBT card')
+              : t('cardTableActionRequestReplacement', 'Request a replacement card')}
           </Link>
         )}
       </div>

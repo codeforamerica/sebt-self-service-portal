@@ -17,6 +17,7 @@ public class GetHouseholdDataQueryHandler(
     IHouseholdRepository repository,
     IIdProofingRequirementsService idProofingRequirementsService,
     IMinimumIalService minimumIalService,
+    ISelfServiceEvaluator selfServiceEvaluator,
     ILogger<GetHouseholdDataQueryHandler> logger)
     : IQueryHandler<GetHouseholdDataQuery, HouseholdData>
 {
@@ -66,6 +67,13 @@ public class GetHouseholdDataQueryHandler(
             return Result<HouseholdData>.Forbidden(
                 $"This household requires {minimumIal}. Complete identity verification to access this data.",
                 new Dictionary<string, object?> { ["requiredIal"] = minimumIal.ToString() });
+        }
+
+        householdData.AllowedActions = selfServiceEvaluator.EvaluateHousehold(householdData.SummerEbtCases);
+
+        foreach (var summerEbtCase in householdData.SummerEbtCases)
+        {
+            summerEbtCase.AllowedActions = selfServiceEvaluator.EvaluateCase(summerEbtCase);
         }
 
         logger.LogDebug("Household data retrieved successfully for identifier type {Type}", identifier.Type);
