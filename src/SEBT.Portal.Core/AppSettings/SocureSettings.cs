@@ -64,4 +64,19 @@ public class SocureSettings
     /// which varies by workflow (e.g. "Socure Document Request - Default Flow" in sandbox).
     /// </summary>
     public string DocvEnrichmentName { get; set; } = "SocureDocRequest";
+
+    /// <summary>
+    /// Device Intelligence session token to include in evaluation requests.
+    /// In sandbox, any value works (e.g., "ABC"). In production, this should come
+    /// from the Socure DI SDK on the frontend (not yet integrated).
+    /// </summary>
+    public string? DiSessionToken { get; set; }
+
+    /// <summary>
+    /// When set, overrides the user's phone number in Socure evaluation requests.
+    /// Use this in sandbox to receive DocV SMS links on a real phone without
+    /// storing personal phone numbers in the database.
+    /// Leave null in production.
+    /// </summary>
+    public string? SandboxPhoneOverride { get; set; }
 }

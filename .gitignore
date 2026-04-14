@@ -489,7 +489,5 @@ packages/design-system/design/sass/_uswds-settings.scss
 # JetBrains IDE configuration
 .idea/
 
-# AI
-.claude/settings.local.json
-
-src/SEBT.Portal.Api/appsettings.co.json
+# Generated design-system locale output (app reads from Web's gitignored copy)
+packages/design-system/content/locales/

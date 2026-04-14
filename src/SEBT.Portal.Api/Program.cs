@@ -277,6 +277,13 @@ builder.Services.AddRateLimiter(options =>
                 new { Error = $"Rate limit exceeded. Maximum {enrollmentSettings.PermitLimit} enrollment checks per {windowDescription} allowed." },
                 cancellationToken);
         }
+        else if (rateLimitAttribute?.PolicyName == RateLimitPolicies.Webhook)
+        {
+            // Webhook callers (Socure) don't need a friendly message, but log for observability
+            await context.HttpContext.Response.WriteAsJsonAsync(
+                new { Error = "Rate limit exceeded." },
+                cancellationToken);
+        }
         else
         {
             var otpSettings = context.HttpContext.RequestServices
@@ -329,6 +336,27 @@ builder.Services.AddRateLimiter(options =>
             {
                 PermitLimit = rateLimitOptions.PermitLimit,
                 Window = TimeSpan.FromMinutes(rateLimitOptions.WindowMinutes),
+                QueueProcessingOrder = QueueProcessingOrder.OldestFirst,
+                QueueLimit = 0,
+                AutoReplenishment = true
+            });
+    });
+
+    // Add fixed window limiter policy for Socure webhook endpoint with IP-based partitioning
+    // TODO: Confirm appropriate thresholds with Socure and the team
+    options.AddPolicy(RateLimitPolicies.Webhook, httpContext =>
+    {
+        var webhookRateLimitOptions = httpContext.RequestServices
+            .GetRequiredService<IOptionsMonitor<WebhookRateLimitSettings>>()
+            .CurrentValue;
+
+        var ipAddress = httpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown";
+        return RateLimitPartition.GetFixedWindowLimiter(
+            partitionKey: $"webhook:{ipAddress}",
+            factory: _ => new FixedWindowRateLimiterOptions
+            {
+                PermitLimit = webhookRateLimitOptions.PermitLimit,
+                Window = TimeSpan.FromMinutes(webhookRateLimitOptions.WindowMinutes),
                 QueueProcessingOrder = QueueProcessingOrder.OldestFirst,
                 QueueLimit = 0,
                 AutoReplenishment = true
