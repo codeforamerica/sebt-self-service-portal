@@ -122,14 +122,6 @@ export function toUiCardStatus(cardStatus: CardStatus): UiCardStatus {
   }
 }
 
-/**
- * Determines whether a card with this status is eligible for replacement.
- * Only cards reported as Lost, Stolen, or Damaged can be replaced.
- */
-export function isReplacementEligible(cardStatus: CardStatus): boolean {
-  return cardStatus === 'Lost' || cardStatus === 'Stolen' || cardStatus === 'Damaged'
-}
-
 export const ChildSchema = z.object({
   firstName: z.string(),
   lastName: z.string(),

@@ -11,7 +11,6 @@ export {
   formatDate,
   formatUsPhone,
   interpolateDate,
-  isReplacementEligible,
   toUiCardStatus,
   type Address,
   type Application,
