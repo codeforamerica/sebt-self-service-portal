@@ -27,11 +27,13 @@ public class HouseholdController : ControllerBase
     /// <returns>An OK result with household data if found; otherwise, NotFound or Unauthorized.</returns>
     /// <response code="200">Household data retrieved successfully.</response>
     /// <response code="401">User is not authorized or no household identifier could be resolved from token.</response>
+    /// <response code="403">User's identity assurance level is below the minimum required by their cases.</response>
     /// <response code="404">Household data not found for the authenticated user.</response>
     [HttpGet("data")]
     [Authorize]
     [ProducesResponseType(typeof(HouseholdDataResponse), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
     [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status404NotFound)]
     public async Task<IActionResult> GetHouseholdData(
         [FromServices] IQueryHandler<GetHouseholdDataQuery, Core.Models.Household.HouseholdData> queryHandler,
@@ -45,6 +47,11 @@ public class HouseholdController : ControllerBase
             failureMap: r => r switch
             {
                 UnauthorizedResult<Core.Models.Household.HouseholdData> unauthorized => Unauthorized(new ErrorResponse(unauthorized.Message)),
+                ForbiddenResult<Core.Models.Household.HouseholdData> forbidden => Problem(
+                    detail: forbidden.Message,
+                    title: "Insufficient identity assurance level",
+                    statusCode: StatusCodes.Status403Forbidden,
+                    extensions: forbidden.Extensions),
                 PreconditionFailedResult<Core.Models.Household.HouseholdData> preconditionFailed => NotFound(new ErrorResponse(preconditionFailed.Message)),
                 _ => StatusCode(StatusCodes.Status500InternalServerError, new ErrorResponse("An unexpected error occurred."))
             });

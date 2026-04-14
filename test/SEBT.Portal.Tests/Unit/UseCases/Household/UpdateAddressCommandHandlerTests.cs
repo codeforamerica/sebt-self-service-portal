@@ -36,6 +36,8 @@ public class UpdateAddressCommandHandlerTests
         Substitute.For<IIdProofingRequirementsService>();
     private readonly IStateAddressUpdateService _stateAddressUpdateService =
         Substitute.For<IStateAddressUpdateService>();
+    private readonly IMinimumIalService _minimumIalService =
+        Substitute.For<IMinimumIalService>();
     private readonly NullLogger<UpdateAddressCommandHandler> _logger =
         NullLogger<UpdateAddressCommandHandler>.Instance;
 
@@ -64,11 +66,13 @@ public class UpdateAddressCommandHandlerTests
             .Returns(AddressUpdateResult.Success());
         _idProofingRequirementsService.GetPiiVisibility(Arg.Any<UserIalLevel>())
             .Returns(new PiiVisibility(false, false, false));
+        // Default: IAL gate passes (no elevated requirement)
+        _minimumIalService.GetMinimumIal(Arg.Any<IReadOnlyList<SummerEbtCase>>()).Returns(UserIalLevel.None);
     }
 
     private UpdateAddressCommandHandler CreateHandler() =>
         new(_validator, _addressUpdateService, _addressValidationService, _resolver, _householdRepository,
-            _idProofingRequirementsService, _stateAddressUpdateService, _logger);
+            _idProofingRequirementsService, _minimumIalService, _stateAddressUpdateService, _logger);
 
     private static ClaimsPrincipal CreateUser(string email)
     {

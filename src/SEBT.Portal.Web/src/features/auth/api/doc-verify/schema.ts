@@ -13,7 +13,7 @@ export type StartChallengeResponse = z.infer<typeof StartChallengeResponseSchema
 // Backend receives Socure webhook results and exposes them here.
 export const VerificationStatusResponseSchema = z.object({
   status: z.enum(['pending', 'verified', 'rejected']),
-  offboardingReason: z.string().optional(),
+  offboardingReason: z.string().nullish(),
   allowIdRetry: z.boolean().optional()
 })
 

@@ -22,6 +22,38 @@ namespace SEBT.Portal.Infrastructure.Migrations
 
             SqlServerModelBuilderExtensions.UseIdentityColumns(modelBuilder);
 
+            modelBuilder.Entity("SEBT.Portal.Infrastructure.Data.Entities.DeidentifiedChildResultEntity", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<int>("BirthYear")
+                        .HasColumnType("int");
+
+                    b.Property<string>("EligibilityType")
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.Property<string>("SchoolName")
+                        .HasMaxLength(255)
+                        .HasColumnType("nvarchar(255)");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.Property<Guid>("SubmissionId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("SubmissionId");
+
+                    b.ToTable("DeidentifiedChildResults", (string)null);
+                });
+
             modelBuilder.Entity("SEBT.Portal.Infrastructure.Data.Entities.DocVerificationChallengeEntity", b =>
                 {
                     b.Property<int>("Id")
@@ -106,38 +138,6 @@ namespace SEBT.Portal.Infrastructure.Migrations
                     b.ToTable("DocVerificationChallenges", (string)null);
                 });
 
-            modelBuilder.Entity("SEBT.Portal.Infrastructure.Data.Entities.DeidentifiedChildResultEntity", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uniqueidentifier");
-
-                    b.Property<int>("BirthYear")
-                        .HasColumnType("int");
-
-                    b.Property<string>("EligibilityType")
-                        .HasMaxLength(50)
-                        .HasColumnType("nvarchar(50)");
-
-                    b.Property<string>("SchoolName")
-                        .HasMaxLength(255)
-                        .HasColumnType("nvarchar(255)");
-
-                    b.Property<string>("Status")
-                        .IsRequired()
-                        .HasMaxLength(50)
-                        .HasColumnType("nvarchar(50)");
-
-                    b.Property<Guid>("SubmissionId")
-                        .HasColumnType("uniqueidentifier");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("SubmissionId");
-
-                    b.ToTable("DeidentifiedChildResults", (string)null);
-                });
-
             modelBuilder.Entity("SEBT.Portal.Infrastructure.Data.Entities.EnrollmentCheckSubmissionEntity", b =>
                 {
                     b.Property<Guid>("Id")
@@ -184,6 +184,9 @@ namespace SEBT.Portal.Infrastructure.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("int")
                         .HasDefaultValue(0);
+
+                    b.Property<int>("IdProofingAttemptCount")
+                        .HasColumnType("int");
 
                     b.Property<DateTime?>("IdProofingCompletedAt")
                         .HasColumnType("datetime2");
@@ -275,17 +278,6 @@ namespace SEBT.Portal.Infrastructure.Migrations
                     b.ToTable("UserOptIns", (string)null);
                 });
 
-            modelBuilder.Entity("SEBT.Portal.Infrastructure.Data.Entities.DocVerificationChallengeEntity", b =>
-                {
-                    b.HasOne("SEBT.Portal.Infrastructure.Data.Entities.UserEntity", "User")
-                        .WithMany()
-                        .HasForeignKey("UserId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("User");
-                });
-
             modelBuilder.Entity("SEBT.Portal.Infrastructure.Data.Entities.DeidentifiedChildResultEntity", b =>
                 {
                     b.HasOne("SEBT.Portal.Infrastructure.Data.Entities.EnrollmentCheckSubmissionEntity", "Submission")
@@ -295,6 +287,17 @@ namespace SEBT.Portal.Infrastructure.Migrations
                         .IsRequired();
 
                     b.Navigation("Submission");
+                });
+
+            modelBuilder.Entity("SEBT.Portal.Infrastructure.Data.Entities.DocVerificationChallengeEntity", b =>
+                {
+                    b.HasOne("SEBT.Portal.Infrastructure.Data.Entities.UserEntity", "User")
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("User");
                 });
 
             modelBuilder.Entity("SEBT.Portal.Infrastructure.Data.Entities.EnrollmentCheckSubmissionEntity", b =>

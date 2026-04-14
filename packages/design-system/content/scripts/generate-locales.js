@@ -309,12 +309,24 @@ function buildStateLocaleData(rows, state) {
     const lower = h.toLowerCase()
     return lower.includes('content') || lower.includes('variable name')
   });
-  const englishIdx = headerRow.findIndex((h) =>
-    h.toLowerCase().includes('english')
-  );
-  const spanishIdx = headerRow.findIndex((h) =>
-    h.toLowerCase().includes('español')
-  );
+  // Sheet has two English columns: state-specific (e.g., "🟡 DC English") and "⚪ SOURCE English".
+  // Blank state cell means "inherit source wording unchanged" — fall back when the state column is empty.
+  const englishIdx = headerRow.findIndex((h) => {
+    const lower = h.toLowerCase()
+    return lower.includes('english') && !lower.includes('source')
+  });
+  const sourceEnglishIdx = headerRow.findIndex((h) => {
+    const lower = h.toLowerCase()
+    return lower.includes('english') && lower.includes('source')
+  });
+  const spanishIdx = headerRow.findIndex((h) => {
+    const lower = h.toLowerCase()
+    return lower.includes('español') && !lower.includes('source')
+  });
+  const sourceSpanishIdx = headerRow.findIndex((h) => {
+    const lower = h.toLowerCase()
+    return lower.includes('español') && lower.includes('source')
+  });
 
   if (contentIdx === -1 || englishIdx === -1) {
     throw new Error(`CSV for ${state} must have "Content" and "English" columns`);
@@ -329,8 +341,14 @@ function buildStateLocaleData(rows, state) {
   // Process each row
   for (const row of dataRows) {
     const contentKey = row[contentIdx];
-    const englishValue = row[englishIdx] || '';
-    const spanishValue = spanishIdx !== -1 ? row[spanishIdx] || '' : '';
+    const englishValue =
+      (row[englishIdx] || '') ||
+      (sourceEnglishIdx !== -1 ? row[sourceEnglishIdx] || '' : '');
+    const spanishValue =
+      spanishIdx !== -1
+        ? (row[spanishIdx] || '') ||
+          (sourceSpanishIdx !== -1 ? row[sourceSpanishIdx] || '' : '')
+        : '';
 
     // Skip empty rows or rows without content keys
     if (!contentKey || !contentKey.trim()) continue;

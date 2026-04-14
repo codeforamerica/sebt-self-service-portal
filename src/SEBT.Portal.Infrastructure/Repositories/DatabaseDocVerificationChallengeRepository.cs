@@ -14,6 +14,7 @@ namespace SEBT.Portal.Infrastructure.Repositories;
 public class DatabaseDocVerificationChallengeRepository(PortalDbContext dbContext)
     : IDocVerificationChallengeRepository
 {
+    private const string OneActivePerUserIndex = "IX_DocVerificationChallenges_OneActivePerUser";
     public async Task<DocVerificationChallenge?> GetByPublicIdAsync(
         Guid publicId,
         int userId,
@@ -112,7 +113,17 @@ public class DatabaseDocVerificationChallengeRepository(PortalDbContext dbContex
 
             var entity = MapToEntity(challenge);
             dbContext.DocVerificationChallenges.Add(entity);
-            await dbContext.SaveChangesAsync(cancellationToken);
+
+            try
+            {
+                await dbContext.SaveChangesAsync(cancellationToken);
+            }
+            catch (DbUpdateException ex) when (ex.InnerException?.Message.Contains(OneActivePerUserIndex) == true)
+            {
+                // A concurrent writer beat us to the active slot; surface as a domain exception.
+                throw new DuplicateRecordException(
+                    $"An active DocVerificationChallenge already exists for user {challenge.UserId}.", ex);
+            }
 
             await transaction.CommitAsync(cancellationToken);
         }
