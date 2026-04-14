@@ -131,11 +131,14 @@ public class HttpSocureClient(
                 ? settings.DiSessionToken
                 : null;
 
+        var sendIdentifierToSocure = !string.IsNullOrWhiteSpace(idType)
+            && !SocureExcludedIdentifierTypes.IsExcludedFromSocurePayload(idType);
+
         var individual = new SocureIndividual
         {
             Email = email,
             DateOfBirth = dateOfBirth,
-            NationalId = !string.IsNullOrWhiteSpace(idType) && !string.IsNullOrWhiteSpace(idValue)
+            NationalId = sendIdentifierToSocure && !string.IsNullOrWhiteSpace(idValue)
                 ? idValue
                 : null,
             DiSessionToken = effectiveDiToken,

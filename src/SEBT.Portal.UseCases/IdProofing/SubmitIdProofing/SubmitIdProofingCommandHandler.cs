@@ -17,8 +17,9 @@ namespace SEBT.Portal.UseCases.IdProofing;
 /// 1. Validate input
 /// 2. Early exit if no ID provided (noIdProvided off-boarding)
 /// 3. Reuse existing active challenge if one exists
-/// 4. Call Socure for risk assessment
-/// 5. Create a new challenge if document verification is required
+/// 4. Co-loaded users with SNAP/TANF ID: complete at IAL2 without Socure
+/// 5. Call Socure for risk assessment
+/// 6. Create a new challenge if document verification is required
 /// </summary>
 public class SubmitIdProofingCommandHandler(
     IUserRepository userRepository,
@@ -84,6 +85,20 @@ public class SubmitIdProofingCommandHandler(
                     "documentVerificationRequired",
                     ChallengeId: activeChallenge.PublicId,
                     AllowIdRetry: activeChallenge.AllowIdRetry));
+        }
+
+        // Co-loaded households: SNAP/TANF IDs are verified against records we already have — no Socure national_id path.
+        if (user.IsCoLoaded
+            && IdProofingBenefitIdentifierTypes.IsSnapOrTanfPortalSelection(command.IdType)
+            && !string.IsNullOrWhiteSpace(command.IdValue))
+        {
+            logger.LogInformation(
+                "User {UserId} is co-loaded and submitted benefit-program ID type {IdType}; completing proofing without Socure",
+                command.UserId, command.IdType);
+            return await CompleteProofingAndRespond(
+                user,
+                cancellationToken,
+                "co-loaded SNAP/TANF in-portal match (no Socure)");
         }
 
         // Fetch household data for user's name and address (best-effort, optional for Socure)
@@ -161,7 +176,10 @@ public class SubmitIdProofingCommandHandler(
         {
             case IdProofingOutcome.Matched:
                 // Single save: attempt count + proofing completion together
-                return await CompleteProofingAndRespond(user, cancellationToken);
+                return await CompleteProofingAndRespond(
+                    user,
+                    cancellationToken,
+                    "Socure ACCEPT (no DocV required)");
 
             case IdProofingOutcome.Failed:
                 await userRepository.UpdateUserAsync(user, cancellationToken);
@@ -184,7 +202,8 @@ public class SubmitIdProofingCommandHandler(
 
     private async Task<Result<SubmitIdProofingResponse>> CompleteProofingAndRespond(
         User user,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken,
+        string completionReasonForLog)
     {
         user.IdProofingStatus = IdProofingStatus.Completed;
         user.IalLevel = UserIalLevel.IAL2;
@@ -192,8 +211,9 @@ public class SubmitIdProofingCommandHandler(
         await userRepository.UpdateUserAsync(user, cancellationToken);
 
         logger.LogInformation(
-            "User {UserId} proofing completed via Socure ACCEPT (no DocV required)",
-            user.Id);
+            "User {UserId} ID proofing completed: {Reason}",
+            user.Id,
+            completionReasonForLog);
 
         return Result<SubmitIdProofingResponse>.Success(
             new SubmitIdProofingResponse("matched"));
