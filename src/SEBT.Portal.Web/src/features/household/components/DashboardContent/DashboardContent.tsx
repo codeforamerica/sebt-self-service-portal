@@ -3,6 +3,7 @@
 import { ApiError } from '@/api'
 import { AnalyticsEvents, useDataLayer } from '@sebt/analytics'
 import { Alert } from '@sebt/design-system'
+import { useRouter } from 'next/navigation'
 import { useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 
@@ -20,8 +21,18 @@ import { UserProfileCard } from '../UserProfileCard'
 // TODO: Add to CSV: "S2 - Portal Dashboard - Error Heading" and "S2 - Portal Dashboard - Error Description"
 export function DashboardContent() {
   const { t } = useTranslation('dashboard')
+  const router = useRouter()
   const { data, isLoading, isError, error } = useHouseholdData()
   const { setPageData, setUserData, trackEvent } = useDataLayer()
+
+  // 403 means the user's IAL is below the minimum required by their cases.
+  // Redirect to ID proofing so they can reach the required level.
+  const requiresProofing = error instanceof ApiError && error.status === 403
+  useEffect(() => {
+    if (requiresProofing) {
+      router.push('/login/id-proofing')
+    }
+  }, [requiresProofing, router])
 
   useEffect(() => {
     if (isLoading) return
@@ -38,7 +49,7 @@ export function DashboardContent() {
   // Visually hidden h1 for accessibility - provides page structure for screen readers
   const pageHeading = <h1 className="usa-sr-only">{t('pageTitle', 'SUN Bucks Dashboard')}</h1>
 
-  if (isLoading) {
+  if (isLoading || requiresProofing) {
     return (
       <>
         {pageHeading}

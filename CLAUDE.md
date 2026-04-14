@@ -100,6 +100,11 @@ We follow a test-driven development (TDD) approach: write tests first to fail, t
 - Apply CORS and rate-limiting where applicable; return safe error messages.
 - In React, avoid 'dangerouslySetInnerHtml'. If rendering HTML, sanitize it first.
 
+### Data boundary enforcement
+- Enforce access control at the data boundary (the API endpoint that returns the data), not at the UI layer. Client-side guards are UX conveniences, not security controls.
+- When an authenticated user lacks sufficient authorization for a specific resource (e.g., insufficient IAL for their household's cases), return a 403 with structured ProblemDetails — not a 200 with filtered/empty data. The client needs to know *why* access was denied and *what to do about it* (e.g., `requiredIal` in the ProblemDetails extensions).
+- Auth claims in JWTs can go stale (e.g., household composition changes after login). Server-side checks that re-evaluate on every request are safer than trusting a token's claims about what the user is allowed to see.
+
 ## Common Commands
 
 ### Development
