@@ -25,9 +25,12 @@ export function DashboardContent() {
   const { data, isLoading, isError, error } = useHouseholdData()
   const { setPageData, setUserData, trackEvent } = useDataLayer()
 
-  // 403 means the user's IAL is below the minimum required by their cases.
-  // Redirect to ID proofing so they can reach the required level.
-  const requiresProofing = error instanceof ApiError && error.status === 403
+  // A 403 with requiredIal in the response body means the user's IAL is below
+  // the minimum required by their cases. Redirect to ID proofing.
+  const requiresProofing =
+    error instanceof ApiError &&
+    error.status === 403 &&
+    'requiredIal' in ((error.data as Record<string, unknown>) ?? {})
   useEffect(() => {
     if (requiresProofing) {
       router.push('/login/id-proofing')

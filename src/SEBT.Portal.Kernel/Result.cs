@@ -57,7 +57,7 @@ public abstract class Result<T>(bool isSuccess) : Result(isSuccess)
     public new static Result<T> DependencyFailed(DependencyFailedReason reason, string? message = null)
         => new DependencyFailedResult<T>(reason, message);
 
-    public new static Result<T> Forbidden(string message, IDictionary<string, object?>? extensions = null)
+    public static Result<T> Forbidden(string message, IDictionary<string, object?>? extensions = null)
         => new ForbiddenResult<T>(message, extensions);
 
     public T Value => this switch
