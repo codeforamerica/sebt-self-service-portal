@@ -43,9 +43,13 @@ public class OidcVerificationClaimTranslatorTests
     }
 
     [Theory]
-    [InlineData("1.5")]
-    [InlineData("1.50")]
-    public void Translate_maps_1_5_to_IAL1plus(string levelValue)
+    [InlineData("1", UserIalLevel.IAL1)]
+    [InlineData("1.0", UserIalLevel.IAL1)]
+    [InlineData("1.5", UserIalLevel.IAL1plus)]
+    [InlineData("1.50", UserIalLevel.IAL1plus)]
+    [InlineData("2", UserIalLevel.IAL2)]
+    [InlineData("2.0", UserIalLevel.IAL2)]
+    public void Translate_maps_level_values_to_IAL(string levelValue, UserIalLevel expectedIal)
     {
         var verificationDate = DateTime.UtcNow.AddDays(-30).ToString("o");
         var claims = new Dictionary<string, string>
@@ -57,7 +61,7 @@ public class OidcVerificationClaimTranslatorTests
         var result = CreateTranslator().Translate(claims);
 
         Assert.NotNull(result);
-        Assert.Equal(UserIalLevel.IAL1plus, result.IalLevel);
+        Assert.Equal(expectedIal, result.IalLevel);
     }
 
     [Fact]

@@ -58,7 +58,9 @@ public class OidcVerificationClaimTranslator
 
         return numeric switch
         {
+            1m => UserIalLevel.IAL1,
             1.5m => UserIalLevel.IAL1plus,
+            2m => UserIalLevel.IAL2,
             _ => null
         };
     }
