@@ -312,7 +312,7 @@ function buildStateLocaleData(rows, state) {
     return lower.includes('content') || lower.includes('variable name')
   });
 
-    // Each state csv has two columns for each language: (e.g., "🟡 DC English Current") and "⚪ SOURCE English".
+    // Each state csv file has two columns for each language: (e.g., "🟡 DC English Current" and "⚪ SOURCE English").
     // We only want to import the "current" columns. This is the copy we care about
   const englishIdx = headerRow.findIndex((h) =>
     h.toLowerCase().includes('english current')
@@ -720,7 +720,7 @@ function main() {
       }
 
       // Save hash for caching
-      saveHash(stateFiles);
+      // saveHash(stateFiles);
 
       // Summary
       console.log(`✅ Generated ${totalFileCount} total locale files:`);
