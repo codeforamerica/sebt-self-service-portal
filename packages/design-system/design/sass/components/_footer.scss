@@ -2,16 +2,27 @@
 ----------------------------------------
 Footer Styles
 ----------------------------------------
-Custom footer background colors per Figma design.
-TODO: Replace hardcoded color with design token when available.
+State-specific footer backgrounds via CSS custom properties.
+Each state defines --footer-section-bg on a BEM modifier class
+(.usa-footer--dc, .usa-footer--co). Colors are bespoke values
+from each state's Figma design that don't map to USWDS tokens.
 ----------------------------------------
 */
 
 @use 'uswds-core' as *;
 
-// Footer sections - #00A4A4
-// TODO: This should use a token like color('footer-bg') when defined
+// DC: teal background per DC Figma global footer (node I2035:1118;6002:23451)
+.usa-footer--dc {
+  --footer-section-bg: #00a4a4;
+}
+
+// CO: neutral gray per CO Figma CDHS global footer (nodes 8007:29245, 8007:29246)
+// Computed from Figma's rgba(0,0,0,0.1) overlay on #f5f5f5
+.usa-footer--co {
+  --footer-section-bg: #dddddd;
+}
+
 .usa-footer__primary-section,
 .usa-footer__secondary-section {
-  background-color: #00a4a4;
+  background-color: var(--footer-section-bg);
 }

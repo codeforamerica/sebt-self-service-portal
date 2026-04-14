@@ -106,6 +106,8 @@ export async function apiFetch<T>(endpoint: string, options: ApiFetchOptions<T> 
   if (schema && data !== undefined) {
     const result = schema.safeParse(data)
     if (!result.success) {
+      console.error(`[apiFetch] Validation failed for ${endpoint}:`, result.error.issues)
+      console.error(`[apiFetch] Raw response data:`, data)
       throw new ApiValidationError(
         `Response validation failed for ${endpoint}`,
         result.error.issues

@@ -1,4 +1,8 @@
+'use client'
+
 import { useQuery } from '@tanstack/react-query'
+import { useRouter } from 'next/navigation'
+import { useEffect } from 'react'
 
 import { ApiError, apiFetch } from '@/api'
 
@@ -15,10 +19,20 @@ async function fetchHouseholdData(): Promise<HouseholdData> {
  * Uses real-time fetching (staleTime: 0) to ensure data freshness
  * per ticket requirement to mitigate stale household/custody data.
  *
- * @returns TanStack Query result with household data
+ * When the API returns 403 with a `requiredIal` extension, the user's IAL is
+ * below the minimum required by their cases. By default the hook redirects
+ * to `/login/id-proofing` and exposes `requiresProofing` so consumers can
+ * render a loading state during the redirect.
+ *
+ * @param options.redirectOnInsufficientIal - Whether to auto-redirect on 403.
+ *   Defaults to `true`. Set to `false` to handle the 403 yourself (e.g., show
+ *   an inline prompt instead of redirecting).
+ * @returns TanStack Query result with household data, plus `requiresProofing` flag
  */
-export function useHouseholdData() {
-  return useQuery({
+export function useHouseholdData({ redirectOnInsufficientIal = true } = {}) {
+  const router = useRouter()
+
+  const query = useQuery({
     queryKey: ['householdData'],
     queryFn: fetchHouseholdData,
     staleTime: 0,
@@ -34,4 +48,19 @@ export function useHouseholdData() {
     },
     retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 10000)
   })
+
+  // A 403 with requiredIal in the response body means the user's IAL is below
+  // the minimum required by their cases. Redirect to ID proofing.
+  const requiresProofing =
+    query.error instanceof ApiError &&
+    query.error.status === 403 &&
+    'requiredIal' in ((query.error.data as Record<string, unknown>) ?? {})
+
+  useEffect(() => {
+    if (requiresProofing && redirectOnInsufficientIal) {
+      router.push('/login/id-proofing')
+    }
+  }, [requiresProofing, redirectOnInsufficientIal, router])
+
+  return { ...query, requiresProofing }
 }

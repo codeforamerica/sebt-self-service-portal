@@ -16,6 +16,7 @@ public class GetHouseholdDataQueryHandler(
     IHouseholdIdentifierResolver resolver,
     IHouseholdRepository repository,
     IIdProofingRequirementsService idProofingRequirementsService,
+    IMinimumIalService minimumIalService,
     ILogger<GetHouseholdDataQueryHandler> logger)
     : IQueryHandler<GetHouseholdDataQuery, HouseholdData>
 {
@@ -51,6 +52,20 @@ public class GetHouseholdDataQueryHandler(
         {
             logger.LogWarning("Household data not found for authenticated user");
             return Result<HouseholdData>.PreconditionFailed(PreconditionFailedReason.NotFound, "Household data not found.");
+        }
+
+        var minimumIal = minimumIalService.GetMinimumIal(householdData.SummerEbtCases);
+        if (userIalLevel < minimumIal)
+        {
+            // SECURITY: Never return household case data when the user has not met
+            // the minimum IAL required by their cases. See docs/tdd/minimum-ial-determination.md.
+            logger.LogInformation(
+                "Household data access denied: user IAL {UserIal} is below minimum {MinimumIal}",
+                userIalLevel,
+                minimumIal);
+            return Result<HouseholdData>.Forbidden(
+                $"This household requires {minimumIal}. Complete identity verification to access this data.",
+                new Dictionary<string, object?> { ["requiredIal"] = minimumIal.ToString() });
         }
 
         logger.LogDebug("Household data retrieved successfully for identifier type {Type}", identifier.Type);
