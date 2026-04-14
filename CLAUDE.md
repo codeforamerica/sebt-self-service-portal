@@ -152,6 +152,9 @@ This is a .NET 10 + Next.js 16 application following Clean Architecture. For det
 - **Web** — Next.js 16 frontend (React 19, USWDS 3.13, i18next)
 - **Tests** — xUnit + NSubstitute + Bogus + Testcontainers (MSSQL)
 
+### Layer boundaries
+- Inner layers (Kernel, Core, UseCases) must not reference web/HTTP concepts (ProblemDetails, status codes, headers, controllers). They define abstractions; outer layers (Api, Web) decide how to serialize and transport them.
+
 ### Multi-State Plugin System
 State-specific behavior uses MEF (System.Composition) plugins loaded at runtime from `plugins-{state}/` directories. Plugin contracts live in the separate `sebt-self-service-portal-state-connector` repo; implementations live in per-state repos (`-dc-connector`, `-co-connector`). The `STATE` env var controls which state config overlay loads. See ADR-0007 for the design rationale.
 
