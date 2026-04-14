@@ -20,13 +20,16 @@ async function fetchHouseholdData(): Promise<HouseholdData> {
  * per ticket requirement to mitigate stale household/custody data.
  *
  * When the API returns 403 with a `requiredIal` extension, the user's IAL is
- * below the minimum required by their cases. The hook automatically redirects
+ * below the minimum required by their cases. By default the hook redirects
  * to `/login/id-proofing` and exposes `requiresProofing` so consumers can
  * render a loading state during the redirect.
  *
+ * @param options.redirectOnInsufficientIal - Whether to auto-redirect on 403.
+ *   Defaults to `true`. Set to `false` to handle the 403 yourself (e.g., show
+ *   an inline prompt instead of redirecting).
  * @returns TanStack Query result with household data, plus `requiresProofing` flag
  */
-export function useHouseholdData() {
+export function useHouseholdData({ redirectOnInsufficientIal = true } = {}) {
   const router = useRouter()
 
   const query = useQuery({
@@ -54,10 +57,10 @@ export function useHouseholdData() {
     'requiredIal' in ((query.error.data as Record<string, unknown>) ?? {})
 
   useEffect(() => {
-    if (requiresProofing) {
+    if (requiresProofing && redirectOnInsufficientIal) {
       router.push('/login/id-proofing')
     }
-  }, [requiresProofing, router])
+  }, [requiresProofing, redirectOnInsufficientIal, router])
 
   return { ...query, requiresProofing }
 }
