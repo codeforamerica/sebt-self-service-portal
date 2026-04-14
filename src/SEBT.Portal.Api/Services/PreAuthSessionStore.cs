@@ -78,7 +78,7 @@ public sealed class PreAuthSessionStore : IPreAuthSessionStore
     private const string CacheKeyPrefix = "oidc:preauth:";
 
     /// <summary>
-    /// Tracks known session IDs to avoid calling <see cref="HybridCache.GetOrCreateAsync"/>
+    /// Tracks known session IDs to avoid calling <see cref="HybridCache"/>.GetOrCreateAsync
     /// for fabricated IDs (which would cache null entries and amplify memory usage).
     /// </summary>
     private static readonly ConcurrentDictionary<string, byte> KnownSessionIds = new();

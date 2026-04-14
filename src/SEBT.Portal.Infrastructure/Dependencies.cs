@@ -221,6 +221,9 @@ public static class Dependencies
         services.AddOptionsWithValidateOnStart<EnrollmentCheckRateLimitSettings>()
             .BindConfiguration(EnrollmentCheckRateLimitSettings.SectionName);
 
+        services.AddOptionsWithValidateOnStart<WebhookRateLimitSettings>()
+            .BindConfiguration(WebhookRateLimitSettings.SectionName);
+
         services.AddOptions<SeedingSettings>()
             .BindConfiguration(SeedingSettings.SectionName);
 
