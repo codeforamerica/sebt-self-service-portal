@@ -77,8 +77,8 @@ module "state_secrets" {
   }
 }
 
-# Create a hosted zone for the enrollment checker.
-resource "aws_route53_zone" "enrollment_checker" {
+# Look up the enrollment checker hosted zone (created by bootstrap).
+data "aws_route53_zone" "enrollment_checker" {
   name = "co.sebt-enrollment.codeforamerica.app"
 }
 
@@ -157,7 +157,7 @@ module "enrollment_checker" {
   state       = var.state
   environment = var.environment
   domain      = "dev.co.sebt-enrollment.codeforamerica.app"
-  hosted_zone_id             = aws_route53_zone.enrollment_checker.zone_id
+  hosted_zone_id             = data.aws_route53_zone.enrollment_checker.zone_id
   logging_bucket_domain_name = module.logging.bucket_domain_name
   force_delete               = true
 }

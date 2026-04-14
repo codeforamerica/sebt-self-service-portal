@@ -15,7 +15,7 @@ output "enrollment_checker_distribution_id" {
 
 output "enrollment_checker_nameservers" {
   description = "NS records for the enrollment checker hosted zone."
-  value       = aws_route53_zone.enrollment_checker.name_servers
+  value       = data.aws_route53_zone.enrollment_checker.name_servers
 }
 
 output "enrollment_checker_s3_bucket" {
