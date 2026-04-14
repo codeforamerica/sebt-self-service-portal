@@ -16,6 +16,7 @@ public static class Dependencies
         services.RegisterCommandHandler<RequestOtpCommand, RequestOtpCommandHandler>();
         services.RegisterCommandHandler<ValidateOtpCommand, string, ValidateOtpCommandHandler>();
         services.RegisterCommandHandler<RefreshTokenCommand, string, RefreshTokenCommandHandler>();
+        services.RegisterCommandHandler<CompleteOidcLoginCommand, CompleteOidcLoginResult, CompleteOidcLoginCommandHandler>();
         services.RegisterQueryHandler<GetHouseholdDataQuery, HouseholdData, GetHouseholdDataQueryHandler>();
         services.RegisterCommandHandler<SubmitIdProofingCommand, SubmitIdProofingResponse, SubmitIdProofingCommandHandler>();
         services.RegisterCommandHandler<StartChallengeCommand, StartChallengeResponse, StartChallengeCommandHandler>();

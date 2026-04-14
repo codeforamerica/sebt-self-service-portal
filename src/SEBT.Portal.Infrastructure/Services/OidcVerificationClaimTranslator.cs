@@ -1,6 +1,7 @@
 using System.Globalization;
 using SEBT.Portal.Core.AppSettings;
 using SEBT.Portal.Core.Models.Auth;
+using SEBT.Portal.Core.Services;
 
 namespace SEBT.Portal.Infrastructure.Services;
 
@@ -9,7 +10,7 @@ namespace SEBT.Portal.Infrastructure.Services;
 /// into the portal's IAL model. Determines whether the verification is still valid
 /// based on the configurable validity duration.
 /// </summary>
-public class OidcVerificationClaimTranslator
+public class OidcVerificationClaimTranslator : IOidcVerificationClaimTranslator
 {
     private readonly OidcVerificationClaimSettings _claimSettings;
     private readonly IdProofingValiditySettings _validitySettings;
@@ -22,10 +23,7 @@ public class OidcVerificationClaimTranslator
         _validitySettings = validitySettings;
     }
 
-    /// <summary>
-    /// Attempts to extract and translate OIDC verification claims into a portal IAL result.
-    /// Returns <c>null</c> when the claims contain no recognized verification level.
-    /// </summary>
+    /// <inheritdoc />
     public OidcVerificationResult? Translate(IReadOnlyDictionary<string, string> claims)
     {
         if (!claims.TryGetValue(_claimSettings.LevelClaimName, out var levelValue)
@@ -88,11 +86,3 @@ public class OidcVerificationClaimTranslator
         return DateTime.UtcNow >= validUntil;
     }
 }
-
-/// <summary>
-/// Result of translating OIDC verification claims into the portal's IAL model.
-/// </summary>
-public record OidcVerificationResult(
-    UserIalLevel IalLevel,
-    DateTime? VerifiedAt,
-    bool IsExpired);

@@ -153,6 +153,8 @@ builder.Services.AddScoped<ResolveUserFilter>();
 
 // OIDC token exchange (replaces the Next.js /api/auth/oidc/callback route)
 builder.Services.AddScoped<IOidcExchangeService, OidcExchangeService>();
+// Callback token validation (validates OIDC callback JWTs and extracts claims)
+builder.Services.AddScoped<ICallbackTokenValidator, CallbackTokenValidator>();
 // pre-auth session store (HybridCache-backed, 15 min TTL)
 builder.Services.AddSingleton<IPreAuthSessionStore, PreAuthSessionStore>();
 

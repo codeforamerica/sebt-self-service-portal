@@ -1,17 +1,11 @@
-using System.IdentityModel.Tokens.Jwt;
-using System.Security.Claims;
-using System.Text;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.Extensions.Options;
-using Microsoft.IdentityModel.Tokens;
 using SEBT.Portal.Api.Models;
 using SEBT.Portal.Api.Services;
-using SEBT.Portal.Core.AppSettings;
-using SEBT.Portal.Core.Models.Auth;
-using SEBT.Portal.Core.Repositories;
 using SEBT.Portal.Core.Services;
-using SEBT.Portal.Core.Utilities;
-using SEBT.Portal.Infrastructure.Services;
+using SEBT.Portal.Kernel;
+using SEBT.Portal.Kernel.AspNetCore;
+using SEBT.Portal.Kernel.Results;
+using SEBT.Portal.UseCases.Auth;
 
 namespace SEBT.Portal.Api.Controllers.Auth;
 
@@ -25,13 +19,9 @@ namespace SEBT.Portal.Api.Controllers.Auth;
 public class OidcController(
     IConfiguration config,
     ILogger<OidcController> logger,
-    IUserRepository userRepository,
-    IJwtTokenService jwtService,
-    IOptions<JwtSettings> jwtSettingsOptions,
     IStateAllowlist stateAllowlist,
     IPreAuthSessionStore sessionStore,
-    IWebHostEnvironment environment,
-    OidcVerificationClaimTranslator? verificationClaimTranslator = null) : ControllerBase
+    IWebHostEnvironment environment) : ControllerBase
 {
     /// <summary>
     /// OIDC config + pre-auth session creation. Generates PKCE server-side, stores
@@ -201,10 +191,9 @@ public class OidcController(
     }
 
     /// <summary>
-    /// Completes OIDC login. Requires the <c>oidc_session</c> cookie to locate
-    /// the pre-auth session. Verifies the callback token was issued for this session and
-    /// has not been used before. On success, mints the portal JWT, marks the session
-    /// consumed, and clears the pre-auth cookie.
+    /// Completes OIDC login. Validates the pre-auth session (cookie, state match, phase),
+    /// then delegates to <see cref="CompleteOidcLoginCommandHandler"/> for callback token
+    /// validation, user creation/update, IAL reconciliation, and JWT generation.
     /// </summary>
     [HttpPost("complete-login")]
     [ProducesResponseType(typeof(CompleteLoginResponse), StatusCodes.Status200OK)]
@@ -213,21 +202,18 @@ public class OidcController(
     [ProducesResponseType(StatusCodes.Status503ServiceUnavailable)]
     public async Task<IActionResult> CompleteLogin(
         [FromBody] CompleteLoginRequest body,
+        [FromServices] ICommandHandler<CompleteOidcLoginCommand, CompleteOidcLoginResult> handler,
         CancellationToken cancellationToken)
     {
-        // Resolve stateCode via allowlist — returns a canonical value from the allowlist
-        // itself, not derived from user input. Null if missing or not in the allowlist.
+        // --- State code validation ---
         var requestedStateCode = stateAllowlist.TryResolve(body.StateCode);
         if (requestedStateCode == null)
             return BadRequest(new ErrorResponse("Missing or unsupported stateCode."));
 
-        // Bind callbackToken after null check; the token is validated cryptographically
-        // (signature + hash match) before any sensitive action.
         if (string.IsNullOrEmpty(body.CallbackToken))
             return BadRequest(new ErrorResponse("Missing callbackToken."));
-        var callbackToken = body.CallbackToken;
 
-        // --- Require the oidc_session cookie ---
+        // --- Session validation (HTTP infrastructure — stays in controller) ---
         var sessionId = OidcSessionCookie.Read(Request);
         if (string.IsNullOrEmpty(sessionId))
         {
@@ -235,7 +221,6 @@ public class OidcController(
             return StatusCode(StatusCodes.Status403Forbidden, new ErrorResponse("Missing pre-auth session."));
         }
 
-        // --- Retrieve session to cross-check stateCode and read IsStepUp ---
         var session = await sessionStore.GetAsync(sessionId, cancellationToken);
         if (session == null)
         {
@@ -243,7 +228,6 @@ public class OidcController(
             return StatusCode(StatusCodes.Status403Forbidden, new ErrorResponse("Pre-auth session invalid, expired, or already used."));
         }
 
-        // --- Validate stateCode matches stored value (prevents tenant switching) ---
         if (!string.Equals(requestedStateCode, session.StateCode, StringComparison.OrdinalIgnoreCase))
         {
             logger.LogWarning(
@@ -251,8 +235,7 @@ public class OidcController(
             return BadRequest(new ErrorResponse("State code mismatch."));
         }
 
-        // --- Verify the callback token matches this session and hasn't been consumed ---
-        var tokenHash = IPreAuthSessionStore.HashCallbackToken(callbackToken);
+        var tokenHash = IPreAuthSessionStore.HashCallbackToken(body.CallbackToken);
         var advanced = await sessionStore.TryAdvanceToLoginCompletedAsync(sessionId, tokenHash, cancellationToken);
         if (!advanced)
         {
@@ -261,222 +244,29 @@ public class OidcController(
             return StatusCode(StatusCodes.Status403Forbidden, new ErrorResponse("Pre-auth session invalid, expired, or already used."));
         }
 
-        // Clear the pre-auth cookie and remove the session from cache (defense-in-depth:
-        // even if the phase check were bypassed, the code_verifier is gone from memory).
+        // Session consumed — clear cookie and remove from store (defense-in-depth)
         OidcSessionCookie.Clear(Response);
         await sessionStore.RemoveAsync(sessionId, cancellationToken);
 
-        var stateKey = session.StateCode.ToLowerInvariant();
-        var signingKey = config["Oidc:CompleteLoginSigningKey"];
-        if (string.IsNullOrEmpty(signingKey))
+        // --- Delegate business logic to handler ---
+        var command = new CompleteOidcLoginCommand
         {
-            logger.LogWarning("Oidc:CompleteLoginSigningKey is not configured.");
-            var hint = environment.IsDevelopment() ? "Set Oidc:CompleteLoginSigningKey in appsettings." : "";
-            return StatusCode(StatusCodes.Status503ServiceUnavailable, new { error = "Complete-login not configured.", hint });
-        }
-
-        var portalOrigin = config["Oidc:CallbackRedirectUri"]?.TrimEnd('/') ?? "sebt-portal";
-        var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(signingKey));
-        var validationParams = new TokenValidationParameters
-        {
-            ValidateIssuerSigningKey = true,
-            ValidateIssuer = true,
-            ValidIssuer = portalOrigin,
-            ValidateAudience = true,
-            ValidAudience = portalOrigin,
-            ValidateLifetime = true,
-            ClockSkew = TimeSpan.FromMinutes(1),
-            // Use resolver instead of IssuerSigningKey to bypass kid-matching;
-            // the callback token is signed without a kid header, which causes IDX10517
-            // when JwtSecurityTokenHandler tries to match by kid.
-            IssuerSigningKeyResolver = (token, securityToken, kid, parameters) => [key]
+            CallbackToken = body.CallbackToken,
+            IsStepUp = session.IsStepUp,
+            ReturnUrl = body.ReturnUrl
         };
-        var handler = new JwtSecurityTokenHandler();
-        handler.MapInboundClaims = false; // Preserve original JWT claim names (sub, email)
-        ClaimsPrincipal principal;
-        try
-        {
-            principal = handler.ValidateToken(callbackToken, validationParams, out _);
-        }
-        catch (Exception ex)
-        {
-            logger.LogWarning(ex, "Invalid or expired callback token for state {StateCode}",
-                SanitizeForLog(requestedStateCode));
-            return BadRequest(new ErrorResponse("Invalid or expired callback token."));
-        }
 
-        // Copy non-common IdP claims into the portal JWT (e.g. phone, givenName, familyName, userId, email, sub)
-        var additionalClaims = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
-        foreach (var claim in principal.Claims)
-        {
-            if (!OidcExchangeService.CommonOidcInfrastructureClaims.Contains(claim.Type) && !string.IsNullOrEmpty(claim.Value))
+        var result = await handler.Handle(command, cancellationToken);
+
+        return result.ToActionResult(
+            successMap: r =>
             {
-                additionalClaims[claim.Type] = claim.Value;
-            }
-        }
-
-        logger.LogInformation("Additional OIDC claim types: {Claims}", string.Join(", ", additionalClaims.Select(c => c.Key).ToArray()));
-
-        if (!additionalClaims.Select(c => c.Key).Contains("phone"))
-        {
-            logger.LogWarning("OIDC incoming claims missing 'phone'");
-        }
-
-        var email = GetEmailFromClaims(principal);
-        if (string.IsNullOrWhiteSpace(email))
-        {
-            logger.LogWarning("Callback token had no email or sub claim");
-            return BadRequest(new ErrorResponse("Callback token must contain an email or sub claim."));
-        }
-
-        var normalizedEmail = EmailNormalizer.Normalize(email);
-        User user;
-
-        if (session.IsStepUp)
-        {
-            var existingUser = await userRepository.GetUserByEmailAsync(normalizedEmail, cancellationToken);
-            if (existingUser == null)
+                AuthCookies.SetAuthCookie(Response, r.Token, r.ExpiresAt);
+                return Ok(new CompleteLoginResponse(ReturnUrl: r.ReturnUrl));
+            },
+            failureMap: r => r switch
             {
-                logger.LogWarning("Step-up complete-login: no existing portal user for callback token; sign-in required first.");
-                return BadRequest(new { error = "Step-up requires an existing session. Please sign in again." });
-            }
-
-            user = existingUser;
-            user.IalLevel = UserIalLevel.IAL1plus;
-            user.IdProofingStatus = IdProofingStatus.Completed;
-            user.IdProofingCompletedAt = DateTime.UtcNow;
-            user.UpdatedAt = DateTime.UtcNow;
-            await userRepository.UpdateUserAsync(user, cancellationToken);
-
-            var safeStateKey = SanitizeForLog(stateKey);
-            logger.LogInformation(
-                "OIDC step-up complete-login succeeded: UserId {UserId}, StateCode {StateCode}, IalLevel {IalLevel}, IdProofingStatus {IdProofingStatus}",
-                user.Id,
-                safeStateKey,
-                user.IalLevel,
-                user.IdProofingStatus);
-        }
-        else
-        {
-            var (createdUser, _) = await userRepository.GetOrCreateUserAsync(normalizedEmail, cancellationToken);
-            user = createdUser;
-
-            // A user who completed OIDC login is at least IAL1; don't downgrade if already higher
-            if (user.IalLevel < UserIalLevel.IAL1)
-            {
-                user.IalLevel = UserIalLevel.IAL1;
-                await userRepository.UpdateUserAsync(user, cancellationToken);
-            }
-
-            // Reconcile IAL from OIDC verification claims (e.g. CO's PingOne/Socure).
-            // If the IdP says the user completed identity verification, update our DB
-            // to match — the IdP is the source of truth for OIDC-based verification.
-            if (verificationClaimTranslator != null)
-            {
-                var verification = verificationClaimTranslator.Translate(additionalClaims);
-                if (verification != null)
-                {
-                    ReconcileIalFromOidcVerification(user, verification);
-                    await userRepository.UpdateUserAsync(user, cancellationToken);
-
-                    logger.LogInformation(
-                        "OIDC verification claim reconciled: UserId {UserId}, IalLevel {IalLevel}, IsExpired {IsExpired}, VerifiedAt {VerifiedAt}",
-                        user.Id, user.IalLevel, verification.IsExpired, verification.VerifiedAt);
-                }
-            }
-        }
-
-        var token = jwtService.GenerateToken(user, additionalClaims);
-        var expiresAt = DateTimeOffset.UtcNow.AddMinutes(jwtSettingsOptions.Value.ExpirationMinutes);
-        AuthCookies.SetAuthCookie(Response, token, expiresAt);
-
-        string? safeReturnUrl = null;
-        if (session.IsStepUp)
-        {
-            safeReturnUrl = TrySanitizeStepUpReturnUrl(body.ReturnUrl);
-            if (safeReturnUrl == null && !string.IsNullOrWhiteSpace(body.ReturnUrl))
-                logger.LogWarning("Step-up complete-login: returnUrl rejected (must be a safe relative path).");
-        }
-        return Ok(new CompleteLoginResponse(ReturnUrl: safeReturnUrl));
-    }
-
-    private const int MaxStepUpReturnUrlLength = 4096;
-
-    /// <summary>
-    /// Step-up post-login navigation: only same-document relative paths (for example <c>/profile/address</c>).
-    /// Rejects absolute URLs and scheme-relative paths so the API never echoes an open redirect.
-    /// </summary>
-    private static string? TrySanitizeStepUpReturnUrl(string? returnUrl)
-    {
-        if (string.IsNullOrWhiteSpace(returnUrl))
-            return null;
-        var t = returnUrl.Trim();
-        if (t.Length > MaxStepUpReturnUrlLength)
-            return null;
-        if (!t.StartsWith("/", StringComparison.Ordinal))
-            return null;
-        if (t.StartsWith("//", StringComparison.Ordinal))
-            return null;
-        var pathPart = t;
-        var qIdx = t.IndexOf('?', StringComparison.Ordinal);
-        if (qIdx >= 0)
-            pathPart = t[..qIdx];
-        if (pathPart.Contains("://", StringComparison.Ordinal))
-            return null;
-        if (t.Contains("\\", StringComparison.Ordinal))
-            return null;
-        if (t.Contains("\r", StringComparison.Ordinal) || t.Contains("\n", StringComparison.Ordinal)
-            || t.Contains("\0", StringComparison.Ordinal))
-            return null;
-        return t;
-    }
-
-    /// <summary>
-    /// Removes newline/control-friendly breaks from values logged from user input.
-    /// </summary>
-    private static string SanitizeForLog(string? value)
-    {
-        if (string.IsNullOrEmpty(value))
-            return string.Empty;
-        return value
-            .Replace("\r", string.Empty, StringComparison.Ordinal)
-            .Replace("\n", string.Empty, StringComparison.Ordinal);
-    }
-
-    /// <summary>
-    /// Updates a user's IAL and proofing fields based on translated OIDC verification claims.
-    /// If the verification is expired, resets to IAL1 (the user must re-verify).
-    /// If valid, promotes to the verified IAL level.
-    /// </summary>
-    private static void ReconcileIalFromOidcVerification(User user, OidcVerificationResult verification)
-    {
-        if (verification.IsExpired)
-        {
-            // Verification has lapsed — reset to baseline IAL1 (they completed OIDC login,
-            // so they're at least IAL1, but no longer IAL1+).
-            user.IalLevel = UserIalLevel.IAL1;
-            user.IdProofingStatus = IdProofingStatus.Expired;
-            return;
-        }
-
-        // Valid, non-expired verification from the IdP — update to match.
-        user.IalLevel = verification.IalLevel;
-        user.IdProofingStatus = IdProofingStatus.Completed;
-        if (verification.VerifiedAt.HasValue)
-        {
-            user.IdProofingCompletedAt = verification.VerifiedAt.Value;
-        }
-    }
-
-    /// <summary>
-    /// Gets the email (or subject) from the callback token claims for portal user lookup.
-    /// </summary>
-    private static string? GetEmailFromClaims(ClaimsPrincipal principal)
-    {
-        var emailClaim = principal.FindFirst("email");
-        if (!string.IsNullOrEmpty(emailClaim?.Value))
-            return emailClaim.Value;
-        var subClaim = principal.FindFirst("sub");
-        return subClaim?.Value;
+                _ => BadRequest(new ErrorResponse(result.Message))
+            });
     }
 }

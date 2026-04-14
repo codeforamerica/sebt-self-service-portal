@@ -27,7 +27,7 @@ public static class Dependencies
         services.AddTransient<IJwtTokenService, JwtTokenService>();
 
         // OIDC verification claim translation (maps IdP claims like socureIdVerificationLevel to portal IAL)
-        services.AddTransient<OidcVerificationClaimTranslator>(sp =>
+        services.AddTransient<IOidcVerificationClaimTranslator>(sp =>
             new OidcVerificationClaimTranslator(
                 sp.GetRequiredService<IOptions<OidcVerificationClaimSettings>>().Value,
                 sp.GetRequiredService<IOptions<IdProofingValiditySettings>>().Value));
