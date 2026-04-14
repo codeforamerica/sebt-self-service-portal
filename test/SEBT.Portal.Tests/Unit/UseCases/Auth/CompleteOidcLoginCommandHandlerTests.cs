@@ -13,6 +13,11 @@ namespace SEBT.Portal.Tests.Unit.UseCases.Auth;
 
 public class CompleteOidcLoginCommandHandlerTests
 {
+    private const string DefaultStateCode = "co";
+    private const string DefaultSessionId = "test-session-id";
+
+    private readonly IPreAuthSessionStore _sessionStore;
+    private readonly IStateAllowlist _stateAllowlist;
     private readonly ICallbackTokenValidator _callbackTokenValidator;
     private readonly IUserRepository _userRepository;
     private readonly IJwtTokenService _jwtService;
@@ -25,6 +30,26 @@ public class CompleteOidcLoginCommandHandlerTests
         var validator = Substitute.For<IValidator<CompleteOidcLoginCommand>>();
         validator.Validate(Arg.Any<CompleteOidcLoginCommand>(), Arg.Any<CancellationToken>())
             .Returns(ValidationResult.Passed());
+
+        _sessionStore = Substitute.For<IPreAuthSessionStore>();
+        // Default session store setup: return a valid session in CallbackCompleted phase
+        _sessionStore.GetAsync(DefaultSessionId, Arg.Any<CancellationToken>())
+            .Returns(new PreAuthSession
+            {
+                Id = DefaultSessionId,
+                State = "test-state",
+                CodeVerifier = "test-verifier",
+                StateCode = DefaultStateCode,
+                RedirectUri = "http://localhost:3000/callback",
+                IsStepUp = false,
+                Phase = PreAuthSessionPhase.CallbackCompleted
+            });
+        _sessionStore.TryAdvanceToLoginCompletedAsync(
+                DefaultSessionId, Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns(true);
+
+        _stateAllowlist = Substitute.For<IStateAllowlist>();
+        _stateAllowlist.TryResolve(DefaultStateCode).Returns(DefaultStateCode);
 
         _callbackTokenValidator = Substitute.For<ICallbackTokenValidator>();
         _userRepository = Substitute.For<IUserRepository>();
@@ -44,6 +69,8 @@ public class CompleteOidcLoginCommandHandlerTests
 
         _handler = new CompleteOidcLoginCommandHandler(
             validator,
+            _sessionStore,
+            _stateAllowlist,
             _callbackTokenValidator,
             _userRepository,
             _jwtService,
@@ -52,13 +79,38 @@ public class CompleteOidcLoginCommandHandlerTests
             _verificationTranslator);
     }
 
-    private static CompleteOidcLoginCommand ValidCommand(bool isStepUp = false, string? returnUrl = null) =>
+    private static CompleteOidcLoginCommand ValidCommand(
+        string stateCode = DefaultStateCode,
+        string sessionId = DefaultSessionId,
+        string? returnUrl = null) =>
         new()
         {
+            StateCode = stateCode,
             CallbackToken = "valid.callback.token",
-            IsStepUp = isStepUp,
+            SessionId = sessionId,
             ReturnUrl = returnUrl
         };
+
+    /// <summary>
+    /// Sets up the session store to return a step-up session for the given session ID.
+    /// </summary>
+    private void SetupStepUpSession(string sessionId = DefaultSessionId, string stateCode = DefaultStateCode)
+    {
+        _sessionStore.GetAsync(sessionId, Arg.Any<CancellationToken>())
+            .Returns(new PreAuthSession
+            {
+                Id = sessionId,
+                State = "test-state",
+                CodeVerifier = "test-verifier",
+                StateCode = stateCode,
+                RedirectUri = "http://localhost:3000/callback",
+                IsStepUp = true,
+                Phase = PreAuthSessionPhase.CallbackCompleted
+            });
+        _sessionStore.TryAdvanceToLoginCompletedAsync(
+                sessionId, Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns(true);
+    }
 
     private void SetupValidCallbackToken(string email = "user@example.com",
         Dictionary<string, string>? claims = null)
@@ -80,6 +132,48 @@ public class CompleteOidcLoginCommandHandlerTests
 
         Assert.False(result.IsSuccess);
         Assert.IsType<ValidationFailedResult<CompleteOidcLoginResult>>(result);
+    }
+
+    #endregion
+
+    #region Session validation
+
+    [Fact]
+    public async Task Handle_WhenSessionNotFound_ReturnsUnauthorized()
+    {
+        _sessionStore.GetAsync("unknown-session", Arg.Any<CancellationToken>())
+            .Returns((PreAuthSession?)null);
+
+        var result = await _handler.Handle(ValidCommand(sessionId: "unknown-session"));
+
+        Assert.False(result.IsSuccess);
+        Assert.IsType<UnauthorizedResult<CompleteOidcLoginResult>>(result);
+    }
+
+    [Fact]
+    public async Task Handle_WhenStateCodeMismatch_ReturnsValidationFailed()
+    {
+        // Session is for "co" but command says "dc"
+        _stateAllowlist.TryResolve("dc").Returns("dc");
+
+        var result = await _handler.Handle(ValidCommand(stateCode: "dc"));
+
+        Assert.False(result.IsSuccess);
+        Assert.IsType<ValidationFailedResult<CompleteOidcLoginResult>>(result);
+    }
+
+    [Fact]
+    public async Task Handle_WhenSessionReplay_ReturnsUnauthorized()
+    {
+        // Phase advancement fails — session already used
+        _sessionStore.TryAdvanceToLoginCompletedAsync(
+                DefaultSessionId, Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns(false);
+
+        var result = await _handler.Handle(ValidCommand());
+
+        Assert.False(result.IsSuccess);
+        Assert.IsType<UnauthorizedResult<CompleteOidcLoginResult>>(result);
     }
 
     #endregion
@@ -153,12 +247,13 @@ public class CompleteOidcLoginCommandHandlerTests
     [Fact]
     public async Task Handle_StepUp_SetsIalToIAL1plus()
     {
+        SetupStepUpSession();
         SetupValidCallbackToken();
         var user = new User { Id = 1, Email = "user@example.com", IalLevel = UserIalLevel.IAL1 };
         _userRepository.GetUserByEmailAsync("user@example.com", Arg.Any<CancellationToken>())
             .Returns(user);
 
-        var result = await _handler.Handle(ValidCommand(isStepUp: true));
+        var result = await _handler.Handle(ValidCommand());
 
         Assert.True(result.IsSuccess);
         await _userRepository.Received().UpdateUserAsync(
@@ -170,11 +265,12 @@ public class CompleteOidcLoginCommandHandlerTests
     [Fact]
     public async Task Handle_StepUp_WhenNoExistingUser_ReturnsValidationFailed()
     {
+        SetupStepUpSession();
         SetupValidCallbackToken("new-user@example.com");
         _userRepository.GetUserByEmailAsync("new-user@example.com", Arg.Any<CancellationToken>())
             .Returns((User?)null);
 
-        var result = await _handler.Handle(ValidCommand(isStepUp: true));
+        var result = await _handler.Handle(ValidCommand());
 
         Assert.False(result.IsSuccess);
         await _userRepository.DidNotReceive().UpdateUserAsync(Arg.Any<User>(), Arg.Any<CancellationToken>());
@@ -183,12 +279,13 @@ public class CompleteOidcLoginCommandHandlerTests
     [Fact]
     public async Task Handle_StepUp_WithSafeReturnUrl_ReturnsIt()
     {
+        SetupStepUpSession();
         SetupValidCallbackToken();
         var user = new User { Id = 1, Email = "user@example.com", IalLevel = UserIalLevel.IAL1 };
         _userRepository.GetUserByEmailAsync("user@example.com", Arg.Any<CancellationToken>())
             .Returns(user);
 
-        var result = await _handler.Handle(ValidCommand(isStepUp: true, returnUrl: "/profile/address?q=1"));
+        var result = await _handler.Handle(ValidCommand(returnUrl: "/profile/address?q=1"));
 
         Assert.Equal("/profile/address?q=1", result.Value.ReturnUrl);
     }
@@ -196,12 +293,13 @@ public class CompleteOidcLoginCommandHandlerTests
     [Fact]
     public async Task Handle_StepUp_WithExternalReturnUrl_ReturnsNull()
     {
+        SetupStepUpSession();
         SetupValidCallbackToken();
         var user = new User { Id = 1, Email = "user@example.com", IalLevel = UserIalLevel.IAL1 };
         _userRepository.GetUserByEmailAsync("user@example.com", Arg.Any<CancellationToken>())
             .Returns(user);
 
-        var result = await _handler.Handle(ValidCommand(isStepUp: true, returnUrl: "https://evil.example/phish"));
+        var result = await _handler.Handle(ValidCommand(returnUrl: "https://evil.example/phish"));
 
         Assert.Null(result.Value.ReturnUrl);
     }
@@ -287,6 +385,8 @@ public class CompleteOidcLoginCommandHandlerTests
 
         var handlerWithoutTranslator = new CompleteOidcLoginCommandHandler(
             validator,
+            _sessionStore,
+            _stateAllowlist,
             _callbackTokenValidator,
             _userRepository,
             _jwtService,

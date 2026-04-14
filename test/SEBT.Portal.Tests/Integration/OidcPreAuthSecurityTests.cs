@@ -8,6 +8,7 @@ using Microsoft.Extensions.Caching.Hybrid;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.IdentityModel.Tokens;
 using SEBT.Portal.Api.Services;
+using SEBT.Portal.Core.Services;
 
 namespace SEBT.Portal.Tests.Integration;
 

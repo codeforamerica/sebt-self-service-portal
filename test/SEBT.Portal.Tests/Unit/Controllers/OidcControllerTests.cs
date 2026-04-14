@@ -63,29 +63,15 @@ public class OidcControllerTests
     }
 
     /// <summary>
-    /// Sets up the controller's HttpContext with an <c>oidc_session</c> cookie and
-    /// configures the session store mock to accept <c>TryAdvanceToLoginCompletedAsync</c>.
-    /// Call before any <c>CompleteLogin</c> test that should get past session enforcement.
+    /// Sets up the controller's HttpContext with an <c>oidc_session</c> cookie.
+    /// The controller reads only the cookie; all session validation is in the handler.
+    /// Call before any <c>CompleteLogin</c> test that needs the cookie present.
     /// </summary>
-    private void SetupPreAuthSession(bool isStepUp = false, string stateCode = CoStateKey)
+    private void SetupSessionCookie()
     {
         _controller.ControllerContext.HttpContext = new DefaultHttpContext();
         _controller.ControllerContext.HttpContext.Request.Headers.Cookie =
             $"{OidcSessionCookie.CookieName}={TestSessionId}";
-        _sessionStore.GetAsync(TestSessionId, Arg.Any<CancellationToken>())
-            .Returns(new PreAuthSession
-            {
-                Id = TestSessionId,
-                State = "test-state",
-                CodeVerifier = "test-verifier",
-                StateCode = stateCode,
-                RedirectUri = "http://localhost:3000/callback",
-                IsStepUp = isStepUp,
-                Phase = PreAuthSessionPhase.CallbackCompleted
-            });
-        _sessionStore.TryAdvanceToLoginCompletedAsync(
-                TestSessionId, Arg.Any<string>(), Arg.Any<CancellationToken>())
-            .Returns(true);
     }
 
     [Fact]
@@ -186,139 +172,56 @@ public class OidcControllerTests
         Assert.Equal(503, statusResult.StatusCode);
     }
 
+    /// <summary>
+    /// CompleteLogin builds the command with body fields + session cookie, then delegates
+    /// to the handler. When the handler returns ValidationFailed for missing stateCode,
+    /// the controller maps it to 400.
+    /// </summary>
     [Fact]
-    public async Task CompleteLogin_WhenStateCodeMissing_Returns400()
+    public async Task CompleteLogin_WhenHandlerRejectsForMissingStateCode_Returns400()
     {
         var body = new CompleteLoginRequest(StateCode: null, "callback.jwt.here");
 
+        _handler.Handle(Arg.Any<CompleteOidcLoginCommand>(), Arg.Any<CancellationToken>())
+            .Returns(Result<CompleteOidcLoginResult>.ValidationFailed("StateCode", "State code is required."));
+
         var result = await _controller.CompleteLogin(body, _handler, CancellationToken.None);
 
-        var badRequest = Assert.IsType<BadRequestObjectResult>(result);
-        Assert.NotNull(badRequest.Value);
+        var objectResult = Assert.IsType<ObjectResult>(result);
+        Assert.Equal(400, objectResult.StatusCode);
     }
 
+    /// <summary>
+    /// CompleteLogin builds the command with body fields + session cookie, then delegates
+    /// to the handler. When the handler returns ValidationFailed for missing callbackToken,
+    /// the controller maps it to 400.
+    /// </summary>
     [Fact]
-    public async Task CompleteLogin_WhenCallbackTokenMissing_Returns400()
+    public async Task CompleteLogin_WhenHandlerRejectsForMissingCallbackToken_Returns400()
     {
         var body = new CompleteLoginRequest(CoStateKey, CallbackToken: null);
 
-        var result = await _controller.CompleteLogin(body, _handler, CancellationToken.None);
-
-        var badRequest = Assert.IsType<BadRequestObjectResult>(result);
-        Assert.NotNull(badRequest.Value);
-    }
-
-    /// <summary>
-    /// complete-login must reject stateCodes outside the allowlist before
-    /// parsing the callback token, closing the "unknown tenant" entry point.
-    /// </summary>
-    [Fact]
-    public async Task CompleteLogin_WhenStateCodeNotInAllowlist_Returns400()
-    {
-        var body = new CompleteLoginRequest("nm", "callback.jwt.here");
+        _handler.Handle(Arg.Any<CompleteOidcLoginCommand>(), Arg.Any<CancellationToken>())
+            .Returns(Result<CompleteOidcLoginResult>.ValidationFailed("CallbackToken", "Callback token is required."));
 
         var result = await _controller.CompleteLogin(body, _handler, CancellationToken.None);
 
-        var badRequest = Assert.IsType<BadRequestObjectResult>(result);
-        var error = Assert.IsType<ErrorResponse>(badRequest.Value);
-        Assert.Contains("unsupported stateCode", error.Error);
+        var objectResult = Assert.IsType<ObjectResult>(result);
+        Assert.Equal(400, objectResult.StatusCode);
     }
 
     /// <summary>
-    /// CompleteLogin must reject requests when the oidc_session cookie is missing.
+    /// When the handler returns Unauthorized (e.g., missing/invalid session), the controller
+    /// maps it to 403.
     /// </summary>
     [Fact]
-    public async Task CompleteLogin_WhenMissingSessionCookie_Returns403()
+    public async Task CompleteLogin_WhenHandlerReturnsUnauthorized_Returns403()
     {
-        // No cookie set on the default HttpContext
         var body = new CompleteLoginRequest(CoStateKey, "some.jwt.token");
 
-        var result = await _controller.CompleteLogin(body, _handler, CancellationToken.None);
-
-        var statusResult = Assert.IsType<ObjectResult>(result);
-        Assert.Equal(403, statusResult.StatusCode);
-    }
-
-    /// <summary>
-    /// CompleteLogin must reject requests where the body's stateCode does not match the
-    /// session's stored stateCode, even if both are in the allowlist. This prevents a
-    /// tenant-switching attack where a session created for one state is used with another.
-    /// </summary>
-    [Fact]
-    public async Task CompleteLogin_WhenBodyStateCodeDiffersFromSession_Returns400()
-    {
-        // Session was created for "co", but body says "dc" — we need a second state in
-        // the allowlist to test mismatch. Create a controller with both "co" and "dc".
-        var multiStateAllowlist = new StateAllowlist(["co", "dc"]);
-        var env = Substitute.For<IWebHostEnvironment>();
-        env.EnvironmentName.Returns("Development");
-        var sessionStore = Substitute.For<IPreAuthSessionStore>();
-        var controller = new OidcController(
-            _config,
-            NullLogger<OidcController>.Instance,
-            multiStateAllowlist,
-            sessionStore,
-            env)
-        {
-            ControllerContext = new ControllerContext { HttpContext = new DefaultHttpContext() }
-        };
-
-        // Set oidc_session cookie
-        controller.ControllerContext.HttpContext.Request.Headers.Cookie =
-            $"{OidcSessionCookie.CookieName}={TestSessionId}";
-
-        // Session was created for "co"
-        sessionStore.GetAsync(TestSessionId, Arg.Any<CancellationToken>())
-            .Returns(new PreAuthSession
-            {
-                Id = TestSessionId,
-                State = "test-state",
-                CodeVerifier = "test-verifier",
-                StateCode = "co",
-                RedirectUri = "http://localhost:3000/callback",
-                IsStepUp = false,
-                Phase = PreAuthSessionPhase.CallbackCompleted
-            });
-        sessionStore.TryAdvanceToLoginCompletedAsync(
-                TestSessionId, Arg.Any<string>(), Arg.Any<CancellationToken>())
-            .Returns(true);
-
-        // Body says "dc" but session says "co" — should be rejected
-        var body = new CompleteLoginRequest("dc", "some.callback.token");
-
-        var result = await controller.CompleteLogin(body, _handler, CancellationToken.None);
-
-        var badRequest = Assert.IsType<BadRequestObjectResult>(result);
-        var error = Assert.IsType<ErrorResponse>(badRequest.Value);
-        Assert.Contains("mismatch", error.Error, StringComparison.OrdinalIgnoreCase);
-    }
-
-    /// <summary>
-    /// CompleteLogin must reject replayed sessions (where the session phase cannot advance).
-    /// </summary>
-    [Fact]
-    public async Task CompleteLogin_WhenSessionReplay_Returns403()
-    {
-        _controller.ControllerContext.HttpContext = new DefaultHttpContext();
-        _controller.ControllerContext.HttpContext.Request.Headers.Cookie =
-            $"{OidcSessionCookie.CookieName}={TestSessionId}";
-        _sessionStore.GetAsync(TestSessionId, Arg.Any<CancellationToken>())
-            .Returns(new PreAuthSession
-            {
-                Id = TestSessionId,
-                State = "test-state",
-                CodeVerifier = "test-verifier",
-                StateCode = CoStateKey,
-                RedirectUri = "http://localhost:3000/callback",
-                IsStepUp = false,
-                Phase = PreAuthSessionPhase.CallbackCompleted
-            });
-        // Phase advancement fails — session already used
-        _sessionStore.TryAdvanceToLoginCompletedAsync(
-                TestSessionId, Arg.Any<string>(), Arg.Any<CancellationToken>())
-            .Returns(false);
-
-        var body = new CompleteLoginRequest(CoStateKey, "some.callback.token");
+        _handler.Handle(Arg.Any<CompleteOidcLoginCommand>(), Arg.Any<CancellationToken>())
+            .Returns(Result<CompleteOidcLoginResult>.Unauthorized(
+                "Pre-auth session invalid, expired, or already used."));
 
         var result = await _controller.CompleteLogin(body, _handler, CancellationToken.None);
 
@@ -329,7 +232,7 @@ public class OidcControllerTests
     [Fact]
     public async Task CompleteLogin_WhenHandlerSucceeds_SetsAuthCookieAndReturnsEmptyBody()
     {
-        SetupPreAuthSession();
+        SetupSessionCookie();
 
         const string portalJwt = "portal-jwt-returned-by-handler";
         var expiresAt = DateTimeOffset.UtcNow.AddHours(1);
@@ -355,7 +258,7 @@ public class OidcControllerTests
     [Fact]
     public async Task CompleteLogin_WhenHandlerSucceedsWithReturnUrl_Returns200WithReturnUrl()
     {
-        SetupPreAuthSession(isStepUp: true);
+        SetupSessionCookie();
 
         const string portalJwt = "portal-jwt-returned-by-handler";
         var expiresAt = DateTimeOffset.UtcNow.AddHours(1);
@@ -382,7 +285,7 @@ public class OidcControllerTests
     [Fact]
     public async Task CompleteLogin_WhenHandlerReturnsValidationFailed_Returns400()
     {
-        SetupPreAuthSession();
+        SetupSessionCookie();
 
         _handler.Handle(Arg.Any<CompleteOidcLoginCommand>(), Arg.Any<CancellationToken>())
             .Returns(Result<CompleteOidcLoginResult>.ValidationFailed("callbackToken", "Callback token must contain an email or sub claim."));
@@ -391,8 +294,8 @@ public class OidcControllerTests
 
         var result = await _controller.CompleteLogin(body, _handler, CancellationToken.None);
 
-        var badRequest = Assert.IsType<BadRequestObjectResult>(result);
-        Assert.NotNull(badRequest.Value);
+        var objectResult = Assert.IsType<ObjectResult>(result);
+        Assert.Equal(400, objectResult.StatusCode);
     }
 
     /// <summary>
@@ -401,7 +304,7 @@ public class OidcControllerTests
     [Fact]
     public async Task CompleteLogin_WhenHandlerReturnsValidationFailedForStepUp_Returns400()
     {
-        SetupPreAuthSession(isStepUp: true);
+        SetupSessionCookie();
 
         _handler.Handle(Arg.Any<CompleteOidcLoginCommand>(), Arg.Any<CancellationToken>())
             .Returns(Result<CompleteOidcLoginResult>.ValidationFailed(
@@ -411,49 +314,18 @@ public class OidcControllerTests
 
         var result = await _controller.CompleteLogin(body, _handler, CancellationToken.None);
 
-        var badRequest = Assert.IsType<BadRequestObjectResult>(result);
-        Assert.NotNull(badRequest.Value);
+        var objectResult = Assert.IsType<ObjectResult>(result);
+        Assert.Equal(400, objectResult.StatusCode);
     }
 
     /// <summary>
-    /// CompleteLogin must use the session's IsStepUp value, not the body's. The handler
-    /// receives the command built from the session, so we verify the command passed to
-    /// the handler has IsStepUp=false even when the body says true.
-    /// </summary>
-    [Fact]
-    public async Task CompleteLogin_WhenBodyIsStepUpDiffersFromSession_UsesSessionValue()
-    {
-        // Session was created as non-step-up
-        SetupPreAuthSession(isStepUp: false);
-
-        const string portalJwt = "portal-jwt";
-        var expiresAt = DateTimeOffset.UtcNow.AddHours(1);
-        _handler.Handle(Arg.Any<CompleteOidcLoginCommand>(), Arg.Any<CancellationToken>())
-            .Returns(Result<CompleteOidcLoginResult>.Success(
-                new CompleteOidcLoginResult(portalJwt, expiresAt, ReturnUrl: null)));
-
-        // Body lies: says IsStepUp=true, but session says false
-        var body = new CompleteLoginRequest(CoStateKey, "valid.callback.token", IsStepUp: true);
-
-        var result = await _controller.CompleteLogin(body, _handler, CancellationToken.None);
-
-        // Should succeed
-        Assert.IsType<OkObjectResult>(result);
-
-        // Verify the command sent to the handler used the session's IsStepUp (false), not the body's
-        await _handler.Received(1).Handle(
-            Arg.Is<CompleteOidcLoginCommand>(c => c.IsStepUp == false),
-            Arg.Any<CancellationToken>());
-    }
-
-    /// <summary>
-    /// Verifies that the controller passes the callback token and return URL through
-    /// to the handler command correctly.
+    /// Verifies that the controller passes the correct fields through to the handler command:
+    /// StateCode and CallbackToken from the body, SessionId from the cookie, ReturnUrl from the body.
     /// </summary>
     [Fact]
     public async Task CompleteLogin_WhenValid_PassesCorrectCommandToHandler()
     {
-        SetupPreAuthSession(isStepUp: true);
+        SetupSessionCookie();
 
         const string portalJwt = "portal-jwt";
         var expiresAt = DateTimeOffset.UtcNow.AddHours(1);
@@ -471,8 +343,9 @@ public class OidcControllerTests
 
         await _handler.Received(1).Handle(
             Arg.Is<CompleteOidcLoginCommand>(c =>
+                c.StateCode == CoStateKey &&
                 c.CallbackToken == "the.callback.token" &&
-                c.IsStepUp == true &&
+                c.SessionId == TestSessionId &&
                 c.ReturnUrl == "/dashboard"),
             Arg.Any<CancellationToken>());
     }
@@ -482,9 +355,9 @@ public class OidcControllerTests
     /// results in a BadRequest from the controller's failureMap.
     /// </summary>
     [Fact]
-    public async Task CompleteLogin_WhenHandlerReturnsDependencyFailed_ReturnsBadRequest()
+    public async Task CompleteLogin_WhenHandlerReturnsDependencyFailed_Returns502()
     {
-        SetupPreAuthSession();
+        SetupSessionCookie();
 
         _handler.Handle(Arg.Any<CompleteOidcLoginCommand>(), Arg.Any<CancellationToken>())
             .Returns(Result<CompleteOidcLoginResult>.DependencyFailed(
@@ -494,7 +367,7 @@ public class OidcControllerTests
 
         var result = await _controller.CompleteLogin(body, _handler, CancellationToken.None);
 
-        var badRequest = Assert.IsType<BadRequestObjectResult>(result);
-        Assert.NotNull(badRequest.Value);
+        var objectResult = Assert.IsType<ObjectResult>(result);
+        Assert.Equal(502, objectResult.StatusCode);
     }
 }

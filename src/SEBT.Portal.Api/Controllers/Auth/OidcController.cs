@@ -4,7 +4,6 @@ using SEBT.Portal.Api.Services;
 using SEBT.Portal.Core.Services;
 using SEBT.Portal.Kernel;
 using SEBT.Portal.Kernel.AspNetCore;
-using SEBT.Portal.Kernel.Results;
 using SEBT.Portal.UseCases.Auth;
 
 namespace SEBT.Portal.Api.Controllers.Auth;
@@ -191,82 +190,38 @@ public class OidcController(
     }
 
     /// <summary>
-    /// Completes OIDC login. Validates the pre-auth session (cookie, state match, phase),
-    /// then delegates to <see cref="CompleteOidcLoginCommandHandler"/> for callback token
-    /// validation, user creation/update, IAL reconciliation, and JWT generation.
+    /// Completes OIDC login. Reads the session cookie (the only HTTP-specific input),
+    /// then delegates entirely to <see cref="CompleteOidcLoginCommandHandler"/> for session
+    /// validation, callback token verification, user creation/update, and JWT generation.
     /// </summary>
     [HttpPost("complete-login")]
     [ProducesResponseType(typeof(CompleteLoginResponse), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status403Forbidden)]
-    [ProducesResponseType(StatusCodes.Status503ServiceUnavailable)]
     public async Task<IActionResult> CompleteLogin(
         [FromBody] CompleteLoginRequest body,
         [FromServices] ICommandHandler<CompleteOidcLoginCommand, CompleteOidcLoginResult> handler,
         CancellationToken cancellationToken)
     {
-        // --- State code validation ---
-        var requestedStateCode = stateAllowlist.TryResolve(body.StateCode);
-        if (requestedStateCode == null)
-            return BadRequest(new ErrorResponse("Missing or unsupported stateCode."));
-
-        if (string.IsNullOrEmpty(body.CallbackToken))
-            return BadRequest(new ErrorResponse("Missing callbackToken."));
-
-        // --- Session validation (HTTP infrastructure — stays in controller) ---
-        var sessionId = OidcSessionCookie.Read(Request);
-        if (string.IsNullOrEmpty(sessionId))
-        {
-            logger.LogWarning("OIDC CompleteLogin rejected: missing oidc_session cookie (reason=missing_session)");
-            return StatusCode(StatusCodes.Status403Forbidden, new ErrorResponse("Missing pre-auth session."));
-        }
-
-        var session = await sessionStore.GetAsync(sessionId, cancellationToken);
-        if (session == null)
-        {
-            logger.LogWarning("OIDC CompleteLogin rejected: session not found (reason=missing_session, SessionId={SessionId})", sessionId);
-            return StatusCode(StatusCodes.Status403Forbidden, new ErrorResponse("Pre-auth session invalid, expired, or already used."));
-        }
-
-        if (!string.Equals(requestedStateCode, session.StateCode, StringComparison.OrdinalIgnoreCase))
-        {
-            logger.LogWarning(
-                "OIDC CompleteLogin rejected: stateCode mismatch (reason=mismatched_stateCode, SessionId={SessionId})", sessionId);
-            return BadRequest(new ErrorResponse("State code mismatch."));
-        }
-
-        var tokenHash = IPreAuthSessionStore.HashCallbackToken(body.CallbackToken);
-        var advanced = await sessionStore.TryAdvanceToLoginCompletedAsync(sessionId, tokenHash, cancellationToken);
-        if (!advanced)
-        {
-            logger.LogWarning(
-                "OIDC CompleteLogin rejected: session advance failed (reason=replay, SessionId={SessionId})", sessionId);
-            return StatusCode(StatusCodes.Status403Forbidden, new ErrorResponse("Pre-auth session invalid, expired, or already used."));
-        }
-
-        // Session consumed — clear cookie and remove from store (defense-in-depth)
-        OidcSessionCookie.Clear(Response);
-        await sessionStore.RemoveAsync(sessionId, cancellationToken);
-
-        // --- Delegate business logic to handler ---
         var command = new CompleteOidcLoginCommand
         {
+            StateCode = body.StateCode,
             CallbackToken = body.CallbackToken,
-            IsStepUp = session.IsStepUp,
+            SessionId = OidcSessionCookie.Read(Request),
             ReturnUrl = body.ReturnUrl
         };
 
         var result = await handler.Handle(command, cancellationToken);
 
+        // Success: clear session cookie, set auth cookie, return 200.
+        // Failures use the built-in Result→ActionResult mapping:
+        //   ValidationFailed → 400, Unauthorized → 403, DependencyFailed → 502.
         return result.ToActionResult(
             successMap: r =>
             {
+                OidcSessionCookie.Clear(Response);
                 AuthCookies.SetAuthCookie(Response, r.Token, r.ExpiresAt);
                 return Ok(new CompleteLoginResponse(ReturnUrl: r.ReturnUrl));
-            },
-            failureMap: r => r switch
-            {
-                _ => BadRequest(new ErrorResponse(result.Message))
             });
     }
 }

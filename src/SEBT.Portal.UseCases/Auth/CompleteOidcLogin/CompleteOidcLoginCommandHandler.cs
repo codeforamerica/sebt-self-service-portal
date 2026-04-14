@@ -10,16 +10,15 @@ using SEBT.Portal.Kernel.Results;
 namespace SEBT.Portal.UseCases.Auth;
 
 /// <summary>
-/// Handles the business logic of OIDC login completion: validates the callback token,
+/// Handles OIDC login completion: validates the pre-auth session and callback token,
 /// creates or updates the portal user, reconciles IAL from OIDC verification claims,
-/// and returns a signed portal JWT.
+/// and returns a signed portal JWT. The controller only reads the session cookie;
+/// all other validation and business logic lives here.
 /// </summary>
-/// <remarks>
-/// Session management (cookie, session store, state allowlist, phase advancement)
-/// is handled by the controller before this handler runs.
-/// </remarks>
 public class CompleteOidcLoginCommandHandler(
     IValidator<CompleteOidcLoginCommand> validator,
+    IPreAuthSessionStore sessionStore,
+    IStateAllowlist stateAllowlist,
     ICallbackTokenValidator callbackTokenValidator,
     IUserRepository userRepository,
     IJwtTokenService jwtService,
@@ -34,12 +33,57 @@ public class CompleteOidcLoginCommandHandler(
         CompleteOidcLoginCommand command,
         CancellationToken cancellationToken = default)
     {
-        // --- Input validation ---
+        // --- Input validation (required fields + stateCode allowlist) ---
         var validationResult = await validator.Validate(command, cancellationToken);
         if (validationResult is ValidationFailedResult validationFailed)
         {
             return Result<CompleteOidcLoginResult>.ValidationFailed(validationFailed.Errors);
         }
+
+        // Missing session ID is an authorization failure (no cookie), not a validation error.
+        // Checked after the validator so stateCode/callbackToken errors return 400, not 403.
+        if (string.IsNullOrEmpty(command.SessionId))
+        {
+            logger.LogWarning("OIDC CompleteLogin rejected: missing oidc_session cookie (reason=missing_session)");
+            return Result<CompleteOidcLoginResult>.Unauthorized("Missing pre-auth session.");
+        }
+
+        // --- Session validation ---
+        var requestedStateCode = stateAllowlist.TryResolve(command.StateCode!);
+
+        var session = await sessionStore.GetAsync(command.SessionId!, cancellationToken);
+        if (session == null)
+        {
+            logger.LogWarning(
+                "OIDC CompleteLogin rejected: session not found (reason=missing_session, SessionId={SessionId})",
+                command.SessionId);
+            return Result<CompleteOidcLoginResult>.Unauthorized(
+                "Pre-auth session invalid, expired, or already used.");
+        }
+
+        if (!string.Equals(requestedStateCode, session.StateCode, StringComparison.OrdinalIgnoreCase))
+        {
+            logger.LogWarning(
+                "OIDC CompleteLogin rejected: stateCode mismatch (reason=mismatched_stateCode, SessionId={SessionId})",
+                command.SessionId);
+            return Result<CompleteOidcLoginResult>.ValidationFailed(
+                [new ValidationError("StateCode", "State code mismatch.")]);
+        }
+
+        var tokenHash = IPreAuthSessionStore.HashCallbackToken(command.CallbackToken!);
+        var advanced = await sessionStore.TryAdvanceToLoginCompletedAsync(
+            command.SessionId!, tokenHash, cancellationToken);
+        if (!advanced)
+        {
+            logger.LogWarning(
+                "OIDC CompleteLogin rejected: session advance failed (reason=replay, SessionId={SessionId})",
+                command.SessionId);
+            return Result<CompleteOidcLoginResult>.Unauthorized(
+                "Pre-auth session invalid, expired, or already used.");
+        }
+
+        // Session consumed — remove from store (defense-in-depth: code_verifier is gone)
+        await sessionStore.RemoveAsync(command.SessionId!, cancellationToken);
 
         // --- Callback token validation + claim extraction ---
         var tokenResult = callbackTokenValidator.Validate(command.CallbackToken!);
@@ -51,7 +95,7 @@ public class CompleteOidcLoginCommandHandler(
 
         // --- Step-up vs normal login ---
         User user;
-        if (command.IsStepUp)
+        if (session.IsStepUp)
         {
             var stepUpResult = await HandleStepUpLogin(tokenResult.Email, cancellationToken);
             if (!stepUpResult.IsSuccess)
@@ -71,7 +115,7 @@ public class CompleteOidcLoginCommandHandler(
         var expiresAt = DateTimeOffset.UtcNow.AddMinutes(jwtSettingsOptions.Value.ExpirationMinutes);
 
         string? safeReturnUrl = null;
-        if (command.IsStepUp)
+        if (session.IsStepUp)
         {
             safeReturnUrl = TrySanitizeStepUpReturnUrl(command.ReturnUrl);
             if (safeReturnUrl == null && !string.IsNullOrWhiteSpace(command.ReturnUrl))

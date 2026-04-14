@@ -4,24 +4,26 @@ using SEBT.Portal.Kernel;
 namespace SEBT.Portal.UseCases.Auth;
 
 /// <summary>
-/// Completes an OIDC login after the controller has validated the pre-auth session.
-/// Validates the callback token, creates or updates the portal user, reconciles IAL
-/// from OIDC verification claims, and returns a signed portal JWT.
+/// Completes an OIDC login flow. The controller reads the session ID from the cookie
+/// and passes it here with the request body fields. The handler and validator own all
+/// remaining validation (state allowlist, session lookup, callback token verification)
+/// and business logic (user creation, IAL reconciliation, JWT generation).
 /// </summary>
-/// <remarks>
-/// Session management (cookie, session store, state allowlist, phase advancement) is
-/// handled by the controller before this command runs. By the time the handler executes,
-/// the session has been consumed and removed — the handler only needs the callback token
-/// and the session's step-up flag.
-/// </remarks>
 public class CompleteOidcLoginCommand : ICommand<CompleteOidcLoginResult>
 {
+    /// <summary>State code from the login request body (e.g. "co", "dc").</summary>
+    [Required(ErrorMessage = "State code is required.")]
+    public string? StateCode { get; init; }
+
     /// <summary>Callback token JWT from the OIDC exchange, containing IdP claims.</summary>
     [Required(ErrorMessage = "Callback token is required.")]
     public string? CallbackToken { get; init; }
 
-    /// <summary>Whether this login is a step-up (IAL elevation) flow. Determined by the pre-auth session.</summary>
-    public bool IsStepUp { get; init; }
+    /// <summary>
+    /// Pre-auth session ID read from the oidc_session HttpOnly cookie by the controller.
+    /// Null when the cookie is absent — the handler returns Unauthorized (403), not ValidationFailed (400).
+    /// </summary>
+    public string? SessionId { get; init; }
 
     /// <summary>Optional return URL for step-up flows (relative path only).</summary>
     public string? ReturnUrl { get; init; }

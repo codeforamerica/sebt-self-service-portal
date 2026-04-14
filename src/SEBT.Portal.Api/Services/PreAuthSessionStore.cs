@@ -1,64 +1,9 @@
 using System.Collections.Concurrent;
 using System.Security.Cryptography;
-using System.Text;
 using Microsoft.Extensions.Caching.Hybrid;
+using SEBT.Portal.Core.Services;
 
 namespace SEBT.Portal.Api.Services;
-
-/// <summary>
-/// manages the lifecycle of server-side pre-auth OIDC sessions.
-/// Sessions are stored in <see cref="HybridCache"/> (L1 memory + optional L2 Redis)
-/// with an automatic TTL so abandoned flows expire without explicit cleanup.
-/// </summary>
-public interface IPreAuthSessionStore
-{
-    /// <summary>Creates a new pre-auth session and returns its ID (for the cookie).</summary>
-    Task<PreAuthSession> CreateAsync(
-        string stateCode,
-        string state,
-        string codeVerifier,
-        string redirectUri,
-        bool isStepUp,
-        CancellationToken cancellationToken = default);
-
-    /// <summary>Retrieves a session by ID. Returns null if expired or not found.</summary>
-    Task<PreAuthSession?> GetAsync(string sessionId, CancellationToken cancellationToken = default);
-
-    /// <summary>
-    /// Advances the session to <see cref="PreAuthSessionPhase.CallbackCompleted"/>
-    /// and stores the callback token hash. Fails if the session is not in <c>Created</c> phase.
-    /// </summary>
-    /// <remarks>
-    /// Single-writer assumption: with in-memory L1 cache (single process) this is safe.
-    /// Under horizontal scaling with Redis L2, two concurrent requests could both read
-    /// <c>Created</c> and both advance. If multi-instance deployment is added, replace the
-    /// read-modify-write with a Redis WATCH/MULTI or Lua script for CAS semantics.
-    /// </remarks>
-    Task<bool> TryAdvanceToCallbackCompletedAsync(
-        string sessionId,
-        string callbackTokenHash,
-        CancellationToken cancellationToken = default);
-
-    /// <summary>
-    /// Advances the session to <see cref="PreAuthSessionPhase.LoginCompleted"/>.
-    /// Fails if the session is not in <c>CallbackCompleted</c> phase or the callback token
-    /// hash doesn't match. Same single-writer assumption as <see cref="TryAdvanceToCallbackCompletedAsync"/>.
-    /// </summary>
-    Task<bool> TryAdvanceToLoginCompletedAsync(
-        string sessionId,
-        string callbackTokenHash,
-        CancellationToken cancellationToken = default);
-
-    /// <summary>Removes a session (used after login completion or on error cleanup).</summary>
-    Task RemoveAsync(string sessionId, CancellationToken cancellationToken = default);
-
-    /// <summary>Computes the SHA-256 hash of a callback token for storage/comparison.</summary>
-    static string HashCallbackToken(string callbackToken)
-    {
-        var bytes = SHA256.HashData(Encoding.UTF8.GetBytes(callbackToken));
-        return Convert.ToHexStringLower(bytes);
-    }
-}
 
 /// <inheritdoc cref="IPreAuthSessionStore"/>
 public sealed class PreAuthSessionStore : IPreAuthSessionStore

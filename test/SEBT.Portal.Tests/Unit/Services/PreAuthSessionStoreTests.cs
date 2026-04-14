@@ -2,6 +2,7 @@ using Microsoft.Extensions.Caching.Hybrid;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
 using SEBT.Portal.Api.Services;
+using SEBT.Portal.Core.Services;
 
 namespace SEBT.Portal.Tests.Unit.Services;
 
