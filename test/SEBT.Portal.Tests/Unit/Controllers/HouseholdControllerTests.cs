@@ -21,12 +21,16 @@ namespace SEBT.Portal.Tests.Unit.Controllers;
 public class HouseholdControllerTests
 {
     private readonly IIdProofingRequirementsService _idProofingRequirementsService;
+    private readonly IMinimumIalService _minimumIalService;
     private readonly HouseholdController _controller;
 
     public HouseholdControllerTests()
     {
         _controller = new HouseholdController();
         _idProofingRequirementsService = Substitute.For<IIdProofingRequirementsService>();
+        _minimumIalService = Substitute.For<IMinimumIalService>();
+        // Default: no elevated IAL requirement, so existing tests pass without per-test mock setup.
+        _minimumIalService.GetMinimumIal(Arg.Any<IReadOnlyList<SummerEbtCase>>()).Returns(UserIalLevel.None);
     }
 
     private IQueryHandler<GetHouseholdDataQuery, HouseholdData> CreateQueryHandler(
@@ -34,7 +38,7 @@ public class HouseholdControllerTests
         IHouseholdRepository repository)
     {
         var logger = NullLogger<GetHouseholdDataQueryHandler>.Instance;
-        return new GetHouseholdDataQueryHandler(resolver, repository, _idProofingRequirementsService, logger);
+        return new GetHouseholdDataQueryHandler(resolver, repository, _idProofingRequirementsService, _minimumIalService, logger);
     }
 
     private void SetupAuthenticatedUser(string email, UserIalLevel userIalLevel = UserIalLevel.None, string claimType = ClaimTypes.Email)

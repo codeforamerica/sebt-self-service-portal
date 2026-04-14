@@ -57,6 +57,17 @@ public class SummerEbtCase
     public IssuanceType IssuanceType { get; set; } = IssuanceType.Unknown;
 
     /// <summary>
+    /// Whether this case has benefits co-loaded to an existing EBT card.
+    /// </summary>
+    public bool IsCoLoaded { get; set; }
+
+    /// <summary>
+    /// Whether this case was automatically certified (streamline certification)
+    /// rather than originating from a guardian-submitted application.
+    /// </summary>
+    public bool IsStreamlineCertified { get; set; }
+
+    /// <summary>
     /// The application date.
     /// </summary>
     public DateTime? ApplicationDate { get; set; }

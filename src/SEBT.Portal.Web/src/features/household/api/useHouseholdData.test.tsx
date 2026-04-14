@@ -14,6 +14,10 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { server } from '@/mocks/server'
 
+vi.mock('next/navigation', () => ({
+  useRouter: () => ({ push: vi.fn() })
+}))
+
 import { useHouseholdData } from './useHouseholdData'
 
 const TEST_HOUSEHOLD_DATA = {

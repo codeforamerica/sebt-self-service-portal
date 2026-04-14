@@ -118,6 +118,9 @@ module "app" {
     "Oidc__StepUp__AuthorizationEndpoint"              = var.oidc_authorization_endpoint
     "Oidc__StepUp__CallbackRedirectUri"                = "https://${var.domain}/callback"
     "StateHouseholdId__PreferredHouseholdIdTypes__0"   = "Phone"
+    "MinimumIal__ApplicationCases"                     = "IAL1"
+    "MinimumIal__CoLoadedStreamlineCases"               = "IAL1"
+    "MinimumIal__NonCoLoadedStreamlineCases"             = "IAL1"
   }
 
   state_api_environment_secrets = {

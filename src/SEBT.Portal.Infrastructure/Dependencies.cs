@@ -29,6 +29,9 @@ public static class Dependencies
         // ID Proofing Requirements (state-specific PII visibility)
         services.AddScoped<IIdProofingRequirementsService, IdProofingRequirementsService>();
 
+        // Minimum IAL service (state-configurable identity assurance level requirements)
+        services.AddScoped<IMinimumIalService, MinimumIalService>();
+
         // Enrollment Check logging
         services.AddScoped<IEnrollmentCheckSubmissionLogger, EnrollmentCheckSubmissionLogger>();
 
@@ -199,6 +202,9 @@ public static class Dependencies
         services.AddSingleton<IValidateOptions<IdProofingRequirementsSettings>, IdProofingRequirementsSettingsValidator>();
         services.AddOptionsWithValidateOnStart<IdProofingRequirementsSettings>()
             .BindConfiguration(IdProofingRequirementsSettings.SectionName);
+        services.AddSingleton<IValidateOptions<MinimumIalSettings>, MinimumIalSettingsValidator>();
+        services.AddOptionsWithValidateOnStart<MinimumIalSettings>()
+            .BindConfiguration(MinimumIalSettings.SectionName);
 
         services.AddSingleton<IValidateOptions<OidcStepUpSettings>, OidcStepUpSettingsValidator>();
         services.AddOptionsWithValidateOnStart<OidcStepUpSettings>()
