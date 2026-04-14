@@ -33,7 +33,10 @@ export default function CoLoadedInfoPage() {
     <div className="grid-container maxw-tablet">
       {/* TODO: Remove fallback once coLoadedAddressInfoTitle is added to CSV */}
       <h1>{t('coLoadedAddressInfoTitle', 'How to update your mailing address')}</h1>
-      <CoLoadedInfo variant="address" />
+      <CoLoadedInfo
+        variant="address"
+        terminal
+      />
     </div>
   )
 }

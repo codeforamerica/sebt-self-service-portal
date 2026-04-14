@@ -18,6 +18,13 @@ interface CoLoadedInfoProps {
    * - 'address': guidance for updating mailing address via FIS
    */
   variant?: CoLoadedInfoVariant
+  /**
+   * When true, render a single "Return to dashboard" action instead of the
+   * Back + Continue pair. Used when this screen is a terminal destination
+   * (e.g. denied-user redirect to /profile/address/info) and there is no
+   * next step in a surrounding flow.
+   */
+  terminal?: boolean
 }
 
 /**
@@ -25,7 +32,7 @@ interface CoLoadedInfoProps {
  * Tells them to call FIS. Copy variant switches between the "replacement card"
  * and "address update" intents; both paths converge on the same FIS contact.
  */
-export function CoLoadedInfo({ variant = 'card' }: CoLoadedInfoProps = {}) {
+export function CoLoadedInfo({ variant = 'card', terminal = false }: CoLoadedInfoProps = {}) {
   const { t } = useTranslation('confirmInfo')
   const { t: tCommon } = useTranslation('common')
   const router = useRouter()
@@ -92,19 +99,30 @@ export function CoLoadedInfo({ variant = 'card' }: CoLoadedInfoProps = {}) {
       </p>
 
       <div className="margin-top-3 display-flex flex-row gap-2">
-        <Button
-          variant="outline"
-          type="button"
-          onClick={() => router.back()}
-        >
-          {tCommon('back', 'Back')}
-        </Button>
-        <Button
-          type="button"
-          onClick={() => router.push('/dashboard')}
-        >
-          {tCommon('continue', 'Continue')}
-        </Button>
+        {terminal ? (
+          <Button
+            type="button"
+            onClick={() => router.push('/dashboard')}
+          >
+            {tCommon('profileAddressBackToDashboard', 'Return to dashboard')}
+          </Button>
+        ) : (
+          <>
+            <Button
+              variant="outline"
+              type="button"
+              onClick={() => router.back()}
+            >
+              {tCommon('back', 'Back')}
+            </Button>
+            <Button
+              type="button"
+              onClick={() => router.push('/dashboard')}
+            >
+              {tCommon('continue', 'Continue')}
+            </Button>
+          </>
+        )}
       </div>
     </div>
   )

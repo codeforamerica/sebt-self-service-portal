@@ -2,6 +2,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { http, HttpResponse } from 'msw'
+import type React from 'react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { server } from '@/mocks/server'
@@ -26,14 +27,14 @@ function createTestQueryClient() {
   })
 }
 
-function renderCoLoadedInfo() {
+function renderCoLoadedInfo(props: React.ComponentProps<typeof CoLoadedInfo> = {}) {
   const queryClient = createTestQueryClient()
   const user = userEvent.setup()
   return {
     user,
     ...render(
       <QueryClientProvider client={queryClient}>
-        <CoLoadedInfo />
+        <CoLoadedInfo {...props} />
       </QueryClientProvider>
     )
   }
@@ -125,6 +126,33 @@ describe('CoLoadedInfo', () => {
     })
 
     await user.click(screen.getByRole('button', { name: /continue/i }))
+    expect(mockPush).toHaveBeenCalledWith('/dashboard')
+  })
+
+  // --- Terminal mode ---
+  // When used as a terminal info page (e.g. denied-user redirect to
+  // /profile/address/info), the component has no next step. Render a single
+  // "Back to dashboard" action instead of the Back + Continue pair.
+
+  it('renders only a single dashboard action when terminal is true', async () => {
+    renderCoLoadedInfo({ terminal: true })
+
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: /return to dashboard/i })).toBeInTheDocument()
+    })
+
+    expect(screen.queryByRole('button', { name: /^back$/i })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /continue/i })).not.toBeInTheDocument()
+  })
+
+  it('navigates to /dashboard when terminal dashboard button is clicked', async () => {
+    const { user } = renderCoLoadedInfo({ terminal: true })
+
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: /return to dashboard/i })).toBeInTheDocument()
+    })
+
+    await user.click(screen.getByRole('button', { name: /return to dashboard/i }))
     expect(mockPush).toHaveBeenCalledWith('/dashboard')
   })
 })
