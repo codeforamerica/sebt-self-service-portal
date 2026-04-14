@@ -53,10 +53,6 @@ public static class MinimalApiResultExtensions
                 => result.ToProblemHttpResult(HttpStatusCode.Conflict),
             PreconditionFailedResult { Reason: PreconditionFailedReason.Conflict } when !useProblemDetails
                 => HttpResults.Conflict(),
-            PreconditionFailedResult { Reason: PreconditionFailedReason.NotAllowed } when useProblemDetails
-                => result.ToProblemHttpResult(HttpStatusCode.Forbidden),
-            PreconditionFailedResult { Reason: PreconditionFailedReason.NotAllowed } when !useProblemDetails
-                => HttpResults.Forbid(),
             ValidationFailedResult validationFailed when useProblemDetails
                 => HttpResults.ValidationProblem(errors: validationFailed.Errors.CreateErrorDictionary(), title: result.Message),
             ValidationFailedResult validationFailed when !useProblemDetails
@@ -64,6 +60,10 @@ public static class MinimalApiResultExtensions
             UnauthorizedResult when useProblemDetails
                 => result.ToProblemHttpResult(HttpStatusCode.Forbidden),
             UnauthorizedResult when !useProblemDetails
+                => HttpResults.Forbid(),
+            ForbiddenResult when useProblemDetails
+                => result.ToProblemHttpResult(HttpStatusCode.Forbidden),
+            ForbiddenResult when !useProblemDetails
                 => HttpResults.Forbid(),
             _ => throw new ArgumentOutOfRangeException(nameof(result))
         };
@@ -113,10 +113,6 @@ public static class MinimalApiResultExtensions
                 => result.ToProblemHttpResult(HttpStatusCode.Conflict),
             PreconditionFailedResult<T> { Reason: PreconditionFailedReason.Conflict } when !useProblemDetails
                 => HttpResults.Conflict(),
-            PreconditionFailedResult<T> { Reason: PreconditionFailedReason.NotAllowed } when useProblemDetails
-                => result.ToProblemHttpResult(HttpStatusCode.Forbidden),
-            PreconditionFailedResult<T> { Reason: PreconditionFailedReason.NotAllowed } when !useProblemDetails
-                => HttpResults.Forbid(),
             ValidationFailedResult<T> validationFailed when useProblemDetails
                 => HttpResults.ValidationProblem(errors: validationFailed.Errors.CreateErrorDictionary(), title: result.Message),
             ValidationFailedResult<T> validationFailed when !useProblemDetails
@@ -124,6 +120,10 @@ public static class MinimalApiResultExtensions
             UnauthorizedResult<T> when useProblemDetails
                 => result.ToProblemHttpResult(HttpStatusCode.Forbidden),
             UnauthorizedResult<T> when !useProblemDetails
+                => HttpResults.Forbid(),
+            ForbiddenResult<T> when useProblemDetails
+                => result.ToProblemHttpResult(HttpStatusCode.Forbidden),
+            ForbiddenResult<T> when !useProblemDetails
                 => HttpResults.Forbid(),
             _ => throw new ArgumentOutOfRangeException(nameof(result)),
         };

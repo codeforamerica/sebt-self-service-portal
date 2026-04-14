@@ -53,6 +53,8 @@ public static class HouseholdDataResponseMapper
             EligibilityType = domain.EligibilityType,
             EligibilitySource = domain.EligibilitySource,
             IssuanceType = domain.IssuanceType,
+            IsCoLoaded = domain.IsCoLoaded,
+            IsStreamlineCertified = domain.IsStreamlineCertified,
             ApplicationDate = domain.ApplicationDate,
             ApplicationStatus = domain.ApplicationStatus,
             MailingAddress = domain.MailingAddress?.ToResponse(),

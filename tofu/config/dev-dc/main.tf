@@ -91,4 +91,10 @@ module "app" {
   seeding_enabled         = "true"
   seeding_email_pattern   = "sebt.dc+{0}@codeforamerica.org"
   use_mock_household_data = "true"
+
+  state_api_environment_variables = {
+    "MinimumIal__ApplicationCases"           = "IAL1"
+    "MinimumIal__CoLoadedStreamlineCases"    = "IAL1"
+    "MinimumIal__NonCoLoadedStreamlineCases" = "IAL1plus"
+  }
 }

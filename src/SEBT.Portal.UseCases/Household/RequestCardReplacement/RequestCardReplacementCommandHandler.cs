@@ -17,6 +17,7 @@ public class RequestCardReplacementCommandHandler(
     IValidator<RequestCardReplacementCommand> validator,
     IHouseholdIdentifierResolver resolver,
     IHouseholdRepository repository,
+    IMinimumIalService minimumIalService,
     ISelfServiceEvaluator selfServiceEvaluator,
     TimeProvider timeProvider,
     ILogger<RequestCardReplacementCommandHandler> logger)
@@ -57,6 +58,19 @@ public class RequestCardReplacementCommandHandler(
             return Result.PreconditionFailed(PreconditionFailedReason.NotFound, "Household data not found.");
         }
 
+        // SECURITY: Block write operations when the user has not met the minimum IAL
+        // required by their cases. See docs/tdd/minimum-ial-determination.md.
+        var minimumIal = minimumIalService.GetMinimumIal(household.SummerEbtCases);
+        if (userIalLevel < minimumIal)
+        {
+            logger.LogInformation(
+                "Card replacement denied: user IAL {UserIal} is below minimum {MinimumIal}",
+                userIalLevel,
+                minimumIal);
+            return Result.Forbidden(
+                $"This household requires {minimumIal}. Complete identity verification to request card replacements.");
+        }
+
         // Evaluate self-service rules per case before checking cooldown.
         foreach (var caseId in command.CaseIds)
         {
@@ -70,7 +84,7 @@ public class RequestCardReplacementCommandHandler(
             if (!caseActions.CanRequestReplacementCard)
             {
                 logger.LogInformation("Card replacement denied by self-service rules for case {CaseId}", caseId);
-                return Result.PreconditionFailed(PreconditionFailedReason.NotAllowed,
+                return Result.Forbidden(
                     caseActions.CardReplacementDeniedMessageKey ?? "Card replacement is not available for this case.");
             }
         }

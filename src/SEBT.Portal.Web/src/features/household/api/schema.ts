@@ -169,6 +169,10 @@ export const SummerEbtCaseSchema = z.object({
   benefitExpirationDate: z.string().nullable().optional(),
   eligibilitySource: z.string().nullable().optional(),
   issuanceType: IssuanceTypeSchema.nullable().optional(),
+  /** Whether this case's benefits are co-loaded onto an existing SNAP/TANF EBT card. */
+  isCoLoaded: z.boolean().nullable().optional(),
+  /** Whether this case was automatically certified rather than from a guardian application. */
+  isStreamlineCertified: z.boolean().nullable().optional(),
   // Card lifecycle timestamps — not yet populated by any state connector backend.
   // TODO: Add these fields to the state-connector SummerEbtCase interface model
   // so connectors can provide card fulfillment timeline data for enrolled children.

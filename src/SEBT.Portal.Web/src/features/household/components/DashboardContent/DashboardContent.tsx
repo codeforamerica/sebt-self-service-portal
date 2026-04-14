@@ -20,7 +20,7 @@ import { UserProfileCard } from '../UserProfileCard'
 // TODO: Add to CSV: "S2 - Portal Dashboard - Error Heading" and "S2 - Portal Dashboard - Error Description"
 export function DashboardContent() {
   const { t } = useTranslation('dashboard')
-  const { data, isLoading, isError, error } = useHouseholdData()
+  const { data, isLoading, isError, error, requiresProofing } = useHouseholdData()
   const { setPageData, setUserData, trackEvent } = useDataLayer()
 
   useEffect(() => {
@@ -38,7 +38,7 @@ export function DashboardContent() {
   // Visually hidden h1 for accessibility - provides page structure for screen readers
   const pageHeading = <h1 className="usa-sr-only">{t('pageTitle', 'SUN Bucks Dashboard')}</h1>
 
-  if (isLoading) {
+  if (isLoading || requiresProofing) {
     return (
       <>
         {pageHeading}

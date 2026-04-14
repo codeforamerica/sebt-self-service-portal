@@ -38,6 +38,8 @@ public class UpdateAddressCommandHandlerTests
         Substitute.For<ISelfServiceEvaluator>();
     private readonly IStateAddressUpdateService _stateAddressUpdateService =
         Substitute.For<IStateAddressUpdateService>();
+    private readonly IMinimumIalService _minimumIalService =
+        Substitute.For<IMinimumIalService>();
     private readonly NullLogger<UpdateAddressCommandHandler> _logger =
         NullLogger<UpdateAddressCommandHandler>.Instance;
 
@@ -67,13 +69,15 @@ public class UpdateAddressCommandHandlerTests
             .Returns(AddressUpdateResult.Success());
         _idProofingRequirementsService.GetPiiVisibility(Arg.Any<UserIalLevel>())
             .Returns(new PiiVisibility(false, false, false));
+        // Default: IAL gate passes (no elevated requirement)
+        _minimumIalService.GetMinimumIal(Arg.Any<IReadOnlyList<SummerEbtCase>>()).Returns(UserIalLevel.None);
         _evaluator.EvaluateHousehold(Arg.Any<IReadOnlyList<SummerEbtCase>>())
             .Returns(new HouseholdAllowedActions { CanUpdateAddress = true });
     }
 
     private UpdateAddressCommandHandler CreateHandler() =>
         new(_validator, _addressUpdateService, _addressValidationService, _resolver, _householdRepository,
-            _idProofingRequirementsService, _evaluator, _stateAddressUpdateService, _logger);
+            _idProofingRequirementsService, _minimumIalService, _evaluator, _stateAddressUpdateService, _logger);
 
     private static ClaimsPrincipal CreateUser(string email)
     {
@@ -257,7 +261,7 @@ public class UpdateAddressCommandHandlerTests
     }
 
     [Fact]
-    public async Task Handle_ReturnsPreconditionFailed_WhenHouseholdIsSnapBenefitType()
+    public async Task Handle_ReturnsForbidden_WhenHouseholdIsSnapBenefitType()
     {
         var handler = CreateHandler();
         var command = CreateValidCommand();
@@ -270,12 +274,11 @@ public class UpdateAddressCommandHandlerTests
         var result = await handler.Handle(command, CancellationToken.None);
 
         Assert.False(result.IsSuccess);
-        var preconditionFailed = Assert.IsType<PreconditionFailedResult<AddressValidationResult>>(result);
-        Assert.Equal(PreconditionFailedReason.NotAllowed, preconditionFailed.Reason);
+        Assert.IsType<ForbiddenResult<AddressValidationResult>>(result);
     }
 
     [Fact]
-    public async Task Handle_ReturnsPreconditionFailed_WhenHouseholdIsTanfBenefitType()
+    public async Task Handle_ReturnsForbidden_WhenHouseholdIsTanfBenefitType()
     {
         var handler = CreateHandler();
         var command = CreateValidCommand();
@@ -288,8 +291,7 @@ public class UpdateAddressCommandHandlerTests
         var result = await handler.Handle(command, CancellationToken.None);
 
         Assert.False(result.IsSuccess);
-        var preconditionFailed = Assert.IsType<PreconditionFailedResult<AddressValidationResult>>(result);
-        Assert.Equal(PreconditionFailedReason.NotAllowed, preconditionFailed.Reason);
+        Assert.IsType<ForbiddenResult<AddressValidationResult>>(result);
     }
 
     [Fact]
@@ -321,7 +323,7 @@ public class UpdateAddressCommandHandlerTests
     }
 
     [Fact]
-    public async Task Handle_ReturnsPreconditionFailed_WhenHouseholdNotFound()
+    public async Task Handle_ReturnsForbidden_WhenHouseholdNotFound()
     {
         var handler = CreateHandler();
         var command = CreateValidCommand();
@@ -335,8 +337,7 @@ public class UpdateAddressCommandHandlerTests
         var result = await handler.Handle(command, CancellationToken.None);
 
         Assert.False(result.IsSuccess);
-        var preconditionFailed = Assert.IsType<PreconditionFailedResult<AddressValidationResult>>(result);
-        Assert.Equal(PreconditionFailedReason.NotAllowed, preconditionFailed.Reason);
+        Assert.IsType<ForbiddenResult<AddressValidationResult>>(result);
     }
 
     [Fact]
@@ -366,7 +367,7 @@ public class UpdateAddressCommandHandlerTests
     }
 
     [Fact]
-    public async Task Handle_ReturnsPreconditionFailed_WhenEvaluatorDeniesAddressUpdate()
+    public async Task Handle_ReturnsForbidden_WhenEvaluatorDeniesAddressUpdate()
     {
         var handler = CreateHandler();
         var command = CreateValidCommand();
@@ -379,8 +380,8 @@ public class UpdateAddressCommandHandlerTests
         var result = await handler.Handle(command, CancellationToken.None);
 
         Assert.False(result.IsSuccess);
-        var preconditionFailed = Assert.IsType<PreconditionFailedResult<AddressValidationResult>>(result);
-        Assert.Equal(PreconditionFailedReason.NotAllowed, preconditionFailed.Reason);
+        var forbidden = Assert.IsType<ForbiddenResult<AddressValidationResult>>(result);
+        Assert.Equal("selfServiceUnavailable", forbidden.Message);
     }
 
     [Fact]

@@ -22,6 +22,8 @@ public class RequestCardReplacementCommandHandlerTests
         Substitute.For<IHouseholdIdentifierResolver>();
     private readonly IHouseholdRepository _repository =
         Substitute.For<IHouseholdRepository>();
+    private readonly IMinimumIalService _minimumIalService =
+        Substitute.For<IMinimumIalService>();
     private readonly ISelfServiceEvaluator _evaluator =
         Substitute.For<ISelfServiceEvaluator>();
     private readonly NullLogger<RequestCardReplacementCommandHandler> _logger =
@@ -29,13 +31,15 @@ public class RequestCardReplacementCommandHandlerTests
 
     public RequestCardReplacementCommandHandlerTests()
     {
+        // Default: IAL gate passes (no elevated requirement)
+        _minimumIalService.GetMinimumIal(Arg.Any<IReadOnlyList<SummerEbtCase>>()).Returns(UserIalLevel.None);
         // Default: evaluator allows card replacement for any case
         _evaluator.EvaluateCase(Arg.Any<SummerEbtCase>())
             .Returns(new CaseAllowedActions { CanRequestReplacementCard = true });
     }
 
     private RequestCardReplacementCommandHandler CreateHandler(TimeProvider? timeProvider = null) =>
-        new(_validator, _resolver, _repository, _evaluator, timeProvider ?? TimeProvider.System, _logger);
+        new(_validator, _resolver, _repository, _minimumIalService, _evaluator, timeProvider ?? TimeProvider.System, _logger);
 
     private static ClaimsPrincipal CreateUser(string email, string? ialClaim = null)
     {
@@ -408,7 +412,7 @@ public class RequestCardReplacementCommandHandlerTests
     // --- Self-service rules tests ---
 
     [Fact]
-    public async Task Handle_ReturnsNotAllowed_WhenEvaluatorDeniesCardReplacement()
+    public async Task Handle_ReturnsForbidden_WhenEvaluatorDeniesCardReplacement()
     {
         var handler = CreateHandler();
         var command = CreateValidCommand();
@@ -426,7 +430,7 @@ public class RequestCardReplacementCommandHandlerTests
         var result = await handler.Handle(command, CancellationToken.None);
 
         Assert.False(result.IsSuccess);
-        var preconditionFailed = Assert.IsType<PreconditionFailedResult>(result);
-        Assert.Equal(PreconditionFailedReason.NotAllowed, preconditionFailed.Reason);
+        var forbidden = Assert.IsType<ForbiddenResult>(result);
+        Assert.Equal("selfServiceUnavailable", forbidden.Message);
     }
 }

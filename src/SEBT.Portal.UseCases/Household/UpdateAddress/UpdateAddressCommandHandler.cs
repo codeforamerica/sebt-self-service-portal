@@ -26,6 +26,7 @@ public class UpdateAddressCommandHandler(
     IHouseholdIdentifierResolver resolver,
     IHouseholdRepository householdRepository,
     IIdProofingRequirementsService idProofingRequirementsService,
+    IMinimumIalService minimumIalService,
     ISelfServiceEvaluator selfServiceEvaluator,
     IStateAddressUpdateService stateAddressUpdateService,
     ILogger<UpdateAddressCommandHandler> logger)
@@ -114,15 +115,28 @@ public class UpdateAddressCommandHandler(
         if (household == null)
         {
             logger.LogWarning("Address update denied: household not found for identifier");
-            return Result<AddressValidationResult>.PreconditionFailed(
-                PreconditionFailedReason.NotAllowed, "Address update is not available.");
+            return Result<AddressValidationResult>.Forbidden("Address update is not available.");
+        }
+
+        // SECURITY: Block write operations when the user has not met the minimum IAL
+        // required by their cases. See docs/tdd/minimum-ial-determination.md.
+        var minimumIal = minimumIalService.GetMinimumIal(household.SummerEbtCases);
+        if (userIalLevel < minimumIal)
+        {
+            logger.LogInformation(
+                "Address update denied: user IAL {UserIal} is below minimum {MinimumIal}",
+                userIalLevel,
+                minimumIal);
+            return Result<AddressValidationResult>.Forbidden(
+                $"This household requires {minimumIal}. Complete identity verification to update your address.",
+                new Dictionary<string, object?> { ["requiredIal"] = minimumIal.ToString() });
         }
 
         var allowedActions = selfServiceEvaluator.EvaluateHousehold(household.SummerEbtCases);
         if (!allowedActions.CanUpdateAddress)
         {
             logger.LogInformation("Address update denied by self-service rules for household");
-            return Result<AddressValidationResult>.PreconditionFailed(PreconditionFailedReason.NotAllowed,
+            return Result<AddressValidationResult>.Forbidden(
                 allowedActions.AddressUpdateDeniedMessageKey ?? "Address update is not available for this account.");
         }
 

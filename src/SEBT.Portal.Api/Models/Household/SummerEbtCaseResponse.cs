@@ -60,6 +60,17 @@ public record SummerEbtCaseResponse
     public Core::SEBT.Portal.Core.Models.Household.IssuanceType IssuanceType { get; init; }
 
     /// <summary>
+    /// Whether this case has benefits co-loaded to an existing EBT card.
+    /// </summary>
+    public bool IsCoLoaded { get; init; }
+
+    /// <summary>
+    /// Whether this case was automatically certified rather than originating
+    /// from a guardian-submitted application.
+    /// </summary>
+    public bool IsStreamlineCertified { get; init; }
+
+    /// <summary>
     /// The application date.
     /// </summary>
     public DateTime? ApplicationDate { get; init; }
