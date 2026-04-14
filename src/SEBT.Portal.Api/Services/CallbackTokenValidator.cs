@@ -15,13 +15,14 @@ public sealed class CallbackTokenValidator(
     ILogger<CallbackTokenValidator> logger) : ICallbackTokenValidator
 {
     /// <inheritdoc />
-    public CallbackTokenValidationResult? Validate(string callbackToken)
+    public CallbackTokenValidationResult Validate(string callbackToken)
     {
         var signingKey = config["Oidc:CompleteLoginSigningKey"];
         if (string.IsNullOrEmpty(signingKey))
         {
             logger.LogWarning("Oidc:CompleteLoginSigningKey is not configured.");
-            return null;
+            return CallbackTokenValidationResult.ServerConfigError(
+                "Complete-login not configured.");
         }
 
         var portalOrigin = config["Oidc:CallbackRedirectUri"]?.TrimEnd('/') ?? "sebt-portal";
@@ -51,7 +52,8 @@ public sealed class CallbackTokenValidator(
         catch (Exception ex)
         {
             logger.LogWarning(ex, "Invalid or expired callback token");
-            return null;
+            return CallbackTokenValidationResult.InvalidToken(
+                "Invalid or expired callback token.");
         }
 
         // Extract non-infrastructure claims for passthrough to the portal JWT
@@ -84,10 +86,11 @@ public sealed class CallbackTokenValidator(
         if (string.IsNullOrWhiteSpace(email))
         {
             logger.LogWarning("Callback token had no email or sub claim");
-            return null;
+            return CallbackTokenValidationResult.InvalidToken(
+                "Callback token must contain an email or sub claim.");
         }
 
-        return new CallbackTokenValidationResult(
+        return CallbackTokenValidationResult.Success(
             EmailNormalizer.Normalize(email),
             additionalClaims);
     }

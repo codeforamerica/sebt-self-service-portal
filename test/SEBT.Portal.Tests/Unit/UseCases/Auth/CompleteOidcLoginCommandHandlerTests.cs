@@ -116,7 +116,7 @@ public class CompleteOidcLoginCommandHandlerTests
         Dictionary<string, string>? claims = null)
     {
         _callbackTokenValidator.Validate(Arg.Any<string>())
-            .Returns(new CallbackTokenValidationResult(
+            .Returns(CallbackTokenValidationResult.Success(
                 email,
                 claims ?? new Dictionary<string, string>()));
     }
@@ -126,12 +126,25 @@ public class CompleteOidcLoginCommandHandlerTests
     [Fact]
     public async Task Handle_WhenCallbackTokenInvalid_ReturnsValidationFailed()
     {
-        _callbackTokenValidator.Validate(Arg.Any<string>()).Returns((CallbackTokenValidationResult?)null);
+        _callbackTokenValidator.Validate(Arg.Any<string>())
+            .Returns(CallbackTokenValidationResult.InvalidToken("Invalid token"));
 
         var result = await _handler.Handle(ValidCommand());
 
         Assert.False(result.IsSuccess);
         Assert.IsType<ValidationFailedResult<CompleteOidcLoginResult>>(result);
+    }
+
+    [Fact]
+    public async Task Handle_WhenSigningKeyNotConfigured_ReturnsDependencyFailed()
+    {
+        _callbackTokenValidator.Validate(Arg.Any<string>())
+            .Returns(CallbackTokenValidationResult.ServerConfigError("Complete-login not configured."));
+
+        var result = await _handler.Handle(ValidCommand());
+
+        Assert.False(result.IsSuccess);
+        Assert.IsType<DependencyFailedResult<CompleteOidcLoginResult>>(result);
     }
 
     #endregion

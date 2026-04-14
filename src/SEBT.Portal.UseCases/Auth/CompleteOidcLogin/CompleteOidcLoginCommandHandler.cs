@@ -87,17 +87,23 @@ public class CompleteOidcLoginCommandHandler(
 
         // --- Callback token validation + claim extraction ---
         var tokenResult = callbackTokenValidator.Validate(command.CallbackToken!);
-        if (tokenResult == null)
+        if (!tokenResult.IsSuccess)
         {
+            if (tokenResult.IsServerError)
+            {
+                return Result<CompleteOidcLoginResult>.DependencyFailed(
+                    DependencyFailedReason.NotConfigured,
+                    tokenResult.ErrorMessage ?? "Complete-login not configured.");
+            }
             return Result<CompleteOidcLoginResult>.ValidationFailed(
-                [new ValidationError("CallbackToken", "Invalid or expired callback token.")]);
+                [new ValidationError("CallbackToken", tokenResult.ErrorMessage ?? "Invalid or expired callback token.")]);
         }
 
         // --- Step-up vs normal login ---
         User user;
         if (session.IsStepUp)
         {
-            var stepUpResult = await HandleStepUpLogin(tokenResult.Email, cancellationToken);
+            var stepUpResult = await HandleStepUpLogin(tokenResult.Email!, session.StateCode, cancellationToken);
             if (!stepUpResult.IsSuccess)
             {
                 return Result<CompleteOidcLoginResult>.ValidationFailed(
@@ -107,7 +113,7 @@ public class CompleteOidcLoginCommandHandler(
         }
         else
         {
-            user = await HandleNormalLogin(tokenResult.Email, tokenResult.AdditionalClaims, cancellationToken);
+            user = await HandleNormalLogin(tokenResult.Email!, tokenResult.AdditionalClaims!, cancellationToken);
         }
 
         // --- Generate portal JWT ---
@@ -128,6 +134,7 @@ public class CompleteOidcLoginCommandHandler(
 
     private async Task<Result<User>> HandleStepUpLogin(
         string normalizedEmail,
+        string stateCode,
         CancellationToken cancellationToken)
     {
         var existingUser = await userRepository.GetUserByEmailAsync(normalizedEmail, cancellationToken);
@@ -146,8 +153,8 @@ public class CompleteOidcLoginCommandHandler(
         await userRepository.UpdateUserAsync(existingUser, cancellationToken);
 
         logger.LogInformation(
-            "OIDC step-up complete-login succeeded: UserId {UserId}, IalLevel {IalLevel}, IdProofingStatus {IdProofingStatus}",
-            existingUser.Id, existingUser.IalLevel, existingUser.IdProofingStatus);
+            "OIDC step-up complete-login succeeded: UserId {UserId}, StateCode {StateCode}, IalLevel {IalLevel}, IdProofingStatus {IdProofingStatus}",
+            existingUser.Id, stateCode, existingUser.IalLevel, existingUser.IdProofingStatus);
 
         return Result<User>.Success(existingUser);
     }
