@@ -1,8 +1,12 @@
 using Microsoft.Extensions.Logging.Abstractions;
 using NSubstitute;
+using NSubstitute.ExceptionExtensions;
 using SEBT.Portal.Core.AppSettings;
+using SEBT.Portal.Core.Exceptions;
 using SEBT.Portal.Core.Models.Auth;
 using SEBT.Portal.Core.Models.DocVerification;
+using SEBT.Portal.Core.Models;
+using SEBT.Portal.Core.Models.Household;
 using SEBT.Portal.Core.Repositories;
 using SEBT.Portal.Core.Services;
 using SEBT.Portal.Kernel;
@@ -15,6 +19,7 @@ namespace SEBT.Portal.Tests.Unit.UseCases.IdProofing;
 public class SubmitIdProofingCommandHandlerTests
 {
     private readonly IUserRepository userRepository = Substitute.For<IUserRepository>();
+    private readonly IHouseholdRepository householdRepository = Substitute.For<IHouseholdRepository>();
     private readonly IDocVerificationChallengeRepository challengeRepository =
         Substitute.For<IDocVerificationChallengeRepository>();
     private readonly ISocureClient socureClient = Substitute.For<ISocureClient>();
@@ -26,7 +31,7 @@ public class SubmitIdProofingCommandHandlerTests
         NullLogger<SubmitIdProofingCommandHandler>.Instance;
 
     private SubmitIdProofingCommandHandler CreateHandler() =>
-        new(userRepository, challengeRepository, socureClient, socureSettings, validator, logger);
+        new(userRepository, householdRepository, challengeRepository, socureClient, socureSettings, validator, logger);
 
     private static SubmitIdProofingCommand CreateValidCommand(
         int userId = 1,
@@ -132,7 +137,7 @@ public class SubmitIdProofingCommandHandlerTests
         await socureClient.DidNotReceive()
             .RunIdProofingAssessmentAsync(
                 Arg.Any<int>(), Arg.Any<string>(), Arg.Any<string>(),
-                Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>());
+                Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<Address?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>());
     }
 
     // --- Socure assessment: Matched ---
@@ -149,7 +154,7 @@ public class SubmitIdProofingCommandHandlerTests
             .Returns((DocVerificationChallenge?)null);
         socureClient.RunIdProofingAssessmentAsync(
                 command.UserId, "test@example.com", command.DateOfBirth,
-                command.IdType, command.IdValue, Arg.Any<CancellationToken>())
+                command.IdType, command.IdValue, Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<Address?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
             .Returns(Result<IdProofingAssessmentResult>.Success(
                 new IdProofingAssessmentResult(IdProofingOutcome.Matched, AllowIdRetry: false)));
 
@@ -160,6 +165,30 @@ public class SubmitIdProofingCommandHandlerTests
         Assert.Equal("matched", response.Result);
         Assert.Null(response.ChallengeId);
         Assert.Null(response.OffboardingReason);
+    }
+
+    [Fact]
+    public async Task Handle_ShouldUpdateProofingStatus_WhenSocureReturnsMatched()
+    {
+        var handler = CreateHandler();
+        var command = CreateValidCommand();
+        var user = new User { Id = command.UserId, Email = "test@example.com" };
+
+        userRepository.GetUserByIdAsync(command.UserId, Arg.Any<CancellationToken>())
+            .Returns(user);
+        challengeRepository.GetActiveByUserIdAsync(command.UserId, Arg.Any<CancellationToken>())
+            .Returns((DocVerificationChallenge?)null);
+        socureClient.RunIdProofingAssessmentAsync(
+                command.UserId, "test@example.com", command.DateOfBirth,
+                command.IdType, command.IdValue, Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<Address?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
+            .Returns(Result<IdProofingAssessmentResult>.Success(
+                new IdProofingAssessmentResult(IdProofingOutcome.Matched, AllowIdRetry: false)));
+
+        await handler.Handle(command, CancellationToken.None);
+
+        Assert.Equal(IdProofingStatus.Completed, user.IdProofingStatus);
+        Assert.Equal(UserIalLevel.IAL2, user.IalLevel);
+        Assert.NotNull(user.IdProofingCompletedAt);
     }
 
     // --- Socure assessment: Failed ---
@@ -176,7 +205,7 @@ public class SubmitIdProofingCommandHandlerTests
             .Returns((DocVerificationChallenge?)null);
         socureClient.RunIdProofingAssessmentAsync(
                 command.UserId, "test@example.com", command.DateOfBirth,
-                command.IdType, command.IdValue, Arg.Any<CancellationToken>())
+                command.IdType, command.IdValue, Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<Address?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
             .Returns(Result<IdProofingAssessmentResult>.Success(
                 new IdProofingAssessmentResult(IdProofingOutcome.Failed, AllowIdRetry: true)));
 
@@ -203,7 +232,7 @@ public class SubmitIdProofingCommandHandlerTests
             .Returns((DocVerificationChallenge?)null);
         socureClient.RunIdProofingAssessmentAsync(
                 command.UserId, "test@example.com", command.DateOfBirth,
-                command.IdType, command.IdValue, Arg.Any<CancellationToken>())
+                command.IdType, command.IdValue, Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<Address?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
             .Returns(Result<IdProofingAssessmentResult>.Success(
                 new IdProofingAssessmentResult(IdProofingOutcome.DocumentVerificationRequired, AllowIdRetry: true)));
 
@@ -236,7 +265,7 @@ public class SubmitIdProofingCommandHandlerTests
             .Returns((DocVerificationChallenge?)null);
         socureClient.RunIdProofingAssessmentAsync(
                 command.UserId, "test@example.com", command.DateOfBirth,
-                command.IdType, command.IdValue, Arg.Any<CancellationToken>())
+                command.IdType, command.IdValue, Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<Address?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
             .Returns(Result<IdProofingAssessmentResult>.Success(
                 new IdProofingAssessmentResult(
                     IdProofingOutcome.DocumentVerificationRequired,
@@ -271,7 +300,7 @@ public class SubmitIdProofingCommandHandlerTests
             .Returns((DocVerificationChallenge?)null);
         socureClient.RunIdProofingAssessmentAsync(
                 command.UserId, "test@example.com", command.DateOfBirth,
-                command.IdType, command.IdValue, Arg.Any<CancellationToken>())
+                command.IdType, command.IdValue, Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<Address?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
             .Returns(Result<IdProofingAssessmentResult>.DependencyFailed(
                 DependencyFailedReason.ConnectionFailed, "Socure API returned an error"));
 
@@ -281,7 +310,270 @@ public class SubmitIdProofingCommandHandlerTests
         Assert.IsType<DependencyFailedResult<SubmitIdProofingResponse>>(result);
     }
 
-    // --- Socure failure reason propagation (F6) ---
+    // --- Address wired through to Socure ---
+
+    [Fact]
+    public async Task Handle_ShouldPassAddressToSocure_WhenHouseholdHasAddress()
+    {
+        var handler = CreateHandler();
+        var command = CreateValidCommand();
+        var address = new Address
+        {
+            StreetAddress1 = "123 Main St",
+            StreetAddress2 = "Apt 4",
+            City = "Washington",
+            State = "DC",
+            PostalCode = "20001"
+        };
+
+        userRepository.GetUserByIdAsync(command.UserId, Arg.Any<CancellationToken>())
+            .Returns(new User { Id = command.UserId, Email = "test@example.com" });
+        challengeRepository.GetActiveByUserIdAsync(command.UserId, Arg.Any<CancellationToken>())
+            .Returns((DocVerificationChallenge?)null);
+        householdRepository.GetHouseholdByEmailAsync(
+                "test@example.com", Arg.Any<PiiVisibility>(), Arg.Any<UserIalLevel>(), Arg.Any<CancellationToken>())
+            .Returns(new HouseholdData
+            {
+                UserProfile = new UserProfile { FirstName = "Jane", LastName = "Doe" },
+                AddressOnFile = address
+            });
+        socureClient.RunIdProofingAssessmentAsync(
+                command.UserId, "test@example.com", command.DateOfBirth,
+                command.IdType, command.IdValue, Arg.Any<string?>(), Arg.Any<string?>(),
+                Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<Address?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
+            .Returns(Result<IdProofingAssessmentResult>.Success(
+                new IdProofingAssessmentResult(IdProofingOutcome.Matched, AllowIdRetry: false)));
+
+        await handler.Handle(command, CancellationToken.None);
+
+        await socureClient.Received(1).RunIdProofingAssessmentAsync(
+            command.UserId, "test@example.com", command.DateOfBirth,
+            command.IdType, command.IdValue, Arg.Any<string?>(), Arg.Any<string?>(),
+            Arg.Any<string?>(), Arg.Any<string?>(), address, Arg.Any<string?>(), Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task Handle_ShouldFetchHouseholdWithAddressIncluded()
+    {
+        var handler = CreateHandler();
+        var command = CreateValidCommand();
+
+        userRepository.GetUserByIdAsync(command.UserId, Arg.Any<CancellationToken>())
+            .Returns(new User { Id = command.UserId, Email = "test@example.com" });
+        challengeRepository.GetActiveByUserIdAsync(command.UserId, Arg.Any<CancellationToken>())
+            .Returns((DocVerificationChallenge?)null);
+        socureClient.RunIdProofingAssessmentAsync(
+                Arg.Any<int>(), Arg.Any<string>(), Arg.Any<string>(),
+                Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<string?>(),
+                Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<Address?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
+            .Returns(Result<IdProofingAssessmentResult>.Success(
+                new IdProofingAssessmentResult(IdProofingOutcome.Matched, AllowIdRetry: false)));
+
+        await handler.Handle(command, CancellationToken.None);
+
+        await householdRepository.Received(1).GetHouseholdByEmailAsync(
+            "test@example.com",
+            Arg.Is<PiiVisibility>(p => p.IncludeAddress),
+            Arg.Any<UserIalLevel>(),
+            Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task Handle_ShouldContinueWithNullData_WhenHouseholdLookupThrows()
+    {
+        var handler = CreateHandler();
+        var command = CreateValidCommand();
+
+        userRepository.GetUserByIdAsync(command.UserId, Arg.Any<CancellationToken>())
+            .Returns(new User { Id = command.UserId, Email = "test@example.com" });
+        challengeRepository.GetActiveByUserIdAsync(command.UserId, Arg.Any<CancellationToken>())
+            .Returns((DocVerificationChallenge?)null);
+        householdRepository.GetHouseholdByEmailAsync(
+                Arg.Any<string>(), Arg.Any<PiiVisibility>(), Arg.Any<UserIalLevel>(), Arg.Any<CancellationToken>())
+            .ThrowsAsync(new InvalidOperationException("DB timeout"));
+        socureClient.RunIdProofingAssessmentAsync(
+                command.UserId, "test@example.com", command.DateOfBirth,
+                command.IdType, command.IdValue, Arg.Any<string?>(), Arg.Any<string?>(),
+                Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<Address?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
+            .Returns(Result<IdProofingAssessmentResult>.Success(
+                new IdProofingAssessmentResult(IdProofingOutcome.Matched, AllowIdRetry: false)));
+
+        var result = await handler.Handle(command, CancellationToken.None);
+
+        Assert.True(result.IsSuccess);
+        Assert.Equal("matched", result.Value.Result);
+        // Socure was still called (with null name/address)
+        await socureClient.Received(1).RunIdProofingAssessmentAsync(
+            command.UserId, "test@example.com", command.DateOfBirth,
+            command.IdType, command.IdValue, Arg.Any<string?>(), Arg.Any<string?>(),
+            null, null, null, Arg.Any<string?>(), Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task Handle_ShouldSaveUserOnce_WhenSocureReturnsMatched()
+    {
+        var handler = CreateHandler();
+        var command = CreateValidCommand();
+        var user = new User { Id = command.UserId, Email = "test@example.com" };
+
+        userRepository.GetUserByIdAsync(command.UserId, Arg.Any<CancellationToken>())
+            .Returns(user);
+        challengeRepository.GetActiveByUserIdAsync(command.UserId, Arg.Any<CancellationToken>())
+            .Returns((DocVerificationChallenge?)null);
+        socureClient.RunIdProofingAssessmentAsync(
+                command.UserId, "test@example.com", command.DateOfBirth,
+                command.IdType, command.IdValue, Arg.Any<string?>(), Arg.Any<string?>(),
+                Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<Address?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
+            .Returns(Result<IdProofingAssessmentResult>.Success(
+                new IdProofingAssessmentResult(IdProofingOutcome.Matched, AllowIdRetry: false)));
+
+        await handler.Handle(command, CancellationToken.None);
+
+        // Single save: attempt count + proofing status together
+        await userRepository.Received(1).UpdateUserAsync(user, Arg.Any<CancellationToken>());
+        Assert.Equal(1, user.IdProofingAttemptCount);
+        Assert.Equal(IdProofingStatus.Completed, user.IdProofingStatus);
+    }
+
+    // --- Retry cap (3 attempts max) ---
+
+    [Fact]
+    public async Task Handle_ShouldBlockSubmission_WhenUserHasReachedMaxAttempts()
+    {
+        var handler = CreateHandler();
+        var command = CreateValidCommand();
+
+        userRepository.GetUserByIdAsync(command.UserId, Arg.Any<CancellationToken>())
+            .Returns(new User { Id = command.UserId, Email = "test@example.com", IdProofingAttemptCount = 3 });
+        challengeRepository.GetActiveByUserIdAsync(command.UserId, Arg.Any<CancellationToken>())
+            .Returns((DocVerificationChallenge?)null);
+
+        var result = await handler.Handle(command, CancellationToken.None);
+
+        Assert.True(result.IsSuccess);
+        var response = result.Value;
+        Assert.Equal("failed", response.Result);
+        Assert.Equal("maxAttemptsReached", response.OffboardingReason);
+        Assert.False(response.AllowIdRetry);
+
+        // Should NOT call Socure
+        await socureClient.DidNotReceive()
+            .RunIdProofingAssessmentAsync(
+                Arg.Any<int>(), Arg.Any<string>(), Arg.Any<string>(),
+                Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<string?>(),
+                Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<Address?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task Handle_ShouldReturnAllowIdRetryFalse_WhenAttemptReachesMax()
+    {
+        var handler = CreateHandler();
+        var command = CreateValidCommand();
+
+        // User at 2 attempts: after this submission they'll be at 3 (max)
+        userRepository.GetUserByIdAsync(command.UserId, Arg.Any<CancellationToken>())
+            .Returns(new User { Id = command.UserId, Email = "test@example.com", IdProofingAttemptCount = 2 });
+        challengeRepository.GetActiveByUserIdAsync(command.UserId, Arg.Any<CancellationToken>())
+            .Returns((DocVerificationChallenge?)null);
+        socureClient.RunIdProofingAssessmentAsync(
+                command.UserId, "test@example.com", command.DateOfBirth,
+                command.IdType, command.IdValue, Arg.Any<string?>(), Arg.Any<string?>(),
+                Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<Address?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
+            .Returns(Result<IdProofingAssessmentResult>.Success(
+                new IdProofingAssessmentResult(IdProofingOutcome.Failed, AllowIdRetry: true)));
+
+        var result = await handler.Handle(command, CancellationToken.None);
+
+        Assert.True(result.IsSuccess);
+        Assert.False(result.Value.AllowIdRetry);
+    }
+
+    [Fact]
+    public async Task Handle_ShouldReturnAllowIdRetryTrue_WhenAttemptsRemain()
+    {
+        var handler = CreateHandler();
+        var command = CreateValidCommand();
+
+        // User at 0 attempts: after this submission they'll be at 1 (2 remaining)
+        userRepository.GetUserByIdAsync(command.UserId, Arg.Any<CancellationToken>())
+            .Returns(new User { Id = command.UserId, Email = "test@example.com", IdProofingAttemptCount = 0 });
+        challengeRepository.GetActiveByUserIdAsync(command.UserId, Arg.Any<CancellationToken>())
+            .Returns((DocVerificationChallenge?)null);
+        socureClient.RunIdProofingAssessmentAsync(
+                command.UserId, "test@example.com", command.DateOfBirth,
+                command.IdType, command.IdValue, Arg.Any<string?>(), Arg.Any<string?>(),
+                Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<Address?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
+            .Returns(Result<IdProofingAssessmentResult>.Success(
+                new IdProofingAssessmentResult(IdProofingOutcome.Failed, AllowIdRetry: true)));
+
+        var result = await handler.Handle(command, CancellationToken.None);
+
+        Assert.True(result.IsSuccess);
+        Assert.True(result.Value.AllowIdRetry);
+    }
+
+    [Fact]
+    public async Task Handle_ShouldIncrementAttemptCount_AfterSocureCall()
+    {
+        var handler = CreateHandler();
+        var command = CreateValidCommand();
+
+        var user = new User { Id = command.UserId, Email = "test@example.com", IdProofingAttemptCount = 0 };
+        userRepository.GetUserByIdAsync(command.UserId, Arg.Any<CancellationToken>())
+            .Returns(user);
+        challengeRepository.GetActiveByUserIdAsync(command.UserId, Arg.Any<CancellationToken>())
+            .Returns((DocVerificationChallenge?)null);
+        socureClient.RunIdProofingAssessmentAsync(
+                command.UserId, "test@example.com", command.DateOfBirth,
+                command.IdType, command.IdValue, Arg.Any<string?>(), Arg.Any<string?>(),
+                Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<Address?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
+            .Returns(Result<IdProofingAssessmentResult>.Success(
+                new IdProofingAssessmentResult(IdProofingOutcome.Matched, AllowIdRetry: false)));
+
+        await handler.Handle(command, CancellationToken.None);
+
+        await userRepository.Received().UpdateUserAsync(
+            Arg.Is<User>(u => u.IdProofingAttemptCount == 1),
+            Arg.Any<CancellationToken>());
+    }
+
+    // --- DI session token passed through ---
+
+    [Fact]
+    public async Task Handle_ShouldPassDiSessionTokenToSocure_WhenProvided()
+    {
+        var handler = CreateHandler();
+        var command = new SubmitIdProofingCommand
+        {
+            UserId = 1,
+            DateOfBirth = "1990-01-01",
+            IdType = "ssn",
+            IdValue = "999-99-9999",
+            DiSessionToken = "real-di-token-from-frontend"
+        };
+
+        userRepository.GetUserByIdAsync(command.UserId, Arg.Any<CancellationToken>())
+            .Returns(new User { Id = command.UserId, Email = "test@example.com" });
+        challengeRepository.GetActiveByUserIdAsync(command.UserId, Arg.Any<CancellationToken>())
+            .Returns((DocVerificationChallenge?)null);
+        socureClient.RunIdProofingAssessmentAsync(
+                command.UserId, "test@example.com", command.DateOfBirth,
+                command.IdType, command.IdValue, Arg.Any<string?>(), Arg.Any<string?>(),
+                Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<Address?>(),
+                "real-di-token-from-frontend", Arg.Any<CancellationToken>())
+            .Returns(Result<IdProofingAssessmentResult>.Success(
+                new IdProofingAssessmentResult(IdProofingOutcome.Matched, AllowIdRetry: false)));
+
+        await handler.Handle(command, CancellationToken.None);
+
+        await socureClient.Received(1).RunIdProofingAssessmentAsync(
+            command.UserId, "test@example.com", command.DateOfBirth,
+            command.IdType, command.IdValue, Arg.Any<string?>(), Arg.Any<string?>(),
+            Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<Address?>(),
+            "real-di-token-from-frontend", Arg.Any<CancellationToken>());
+    }
+
+    // --- Socure failure reason propagation ---
 
     [Fact]
     public async Task Handle_ShouldPropagateTimeoutReason_WhenSocureClientTimesOut()
@@ -295,7 +587,7 @@ public class SubmitIdProofingCommandHandlerTests
             .Returns((DocVerificationChallenge?)null);
         socureClient.RunIdProofingAssessmentAsync(
                 command.UserId, "test@example.com", command.DateOfBirth,
-                command.IdType, command.IdValue, Arg.Any<CancellationToken>())
+                command.IdType, command.IdValue, Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<Address?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
             .Returns(Result<IdProofingAssessmentResult>.DependencyFailed(
                 DependencyFailedReason.Timeout, "Socure API request timed out."));
 
@@ -305,5 +597,72 @@ public class SubmitIdProofingCommandHandlerTests
         var depFailed = Assert.IsType<DependencyFailedResult<SubmitIdProofingResponse>>(result);
         Assert.Equal(DependencyFailedReason.Timeout, depFailed.Reason);
         Assert.Equal("Socure API request timed out.", depFailed.Message);
+    }
+
+    // --- Race condition: duplicate active challenge ---
+
+    [Fact]
+    public async Task Handle_ShouldReuseExistingChallenge_WhenCreateThrowsDuplicateRecordException()
+    {
+        var handler = CreateHandler();
+        var command = CreateValidCommand();
+        var existingChallenge = DocVerificationChallengeFactory.CreateChallengeForUser(command.UserId);
+
+        userRepository.GetUserByIdAsync(command.UserId, Arg.Any<CancellationToken>())
+            .Returns(new User { Id = command.UserId, Email = "test@example.com" });
+
+        // First call: no active challenge (triggers Socure + create path)
+        challengeRepository.GetActiveByUserIdAsync(command.UserId, Arg.Any<CancellationToken>())
+            .Returns(
+                (DocVerificationChallenge?)null,  // first call (top of Handle)
+                existingChallenge);               // second call (after catching DuplicateRecordException)
+
+        socureClient.RunIdProofingAssessmentAsync(
+                command.UserId, "test@example.com", command.DateOfBirth,
+                command.IdType, command.IdValue, Arg.Any<string?>(), Arg.Any<string?>(),
+                Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<Address?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
+            .Returns(Result<IdProofingAssessmentResult>.Success(
+                new IdProofingAssessmentResult(IdProofingOutcome.DocumentVerificationRequired, AllowIdRetry: true)));
+
+        // CreateAsync throws because another instance inserted first (unique index violation)
+        challengeRepository.CreateAsync(Arg.Any<DocVerificationChallenge>(), Arg.Any<CancellationToken>())
+            .ThrowsAsync(new DuplicateRecordException(
+                $"A record with the same unique constraint already exists for user {command.UserId}."));
+
+        var result = await handler.Handle(command, CancellationToken.None);
+
+        Assert.True(result.IsSuccess);
+        var response = result.Value;
+        Assert.Equal("documentVerificationRequired", response.Result);
+        Assert.Equal(existingChallenge.PublicId, response.ChallengeId);
+        Assert.Equal(existingChallenge.AllowIdRetry, response.AllowIdRetry);
+    }
+
+    [Fact]
+    public async Task Handle_ShouldRethrow_WhenCreateThrowsDuplicateRecordAndReQueryReturnsNull()
+    {
+        var handler = CreateHandler();
+        var command = CreateValidCommand();
+
+        userRepository.GetUserByIdAsync(command.UserId, Arg.Any<CancellationToken>())
+            .Returns(new User { Id = command.UserId, Email = "test@example.com" });
+
+        // Both calls return null (shouldn't happen, but defensive)
+        challengeRepository.GetActiveByUserIdAsync(command.UserId, Arg.Any<CancellationToken>())
+            .Returns((DocVerificationChallenge?)null);
+
+        socureClient.RunIdProofingAssessmentAsync(
+                command.UserId, "test@example.com", command.DateOfBirth,
+                command.IdType, command.IdValue, Arg.Any<string?>(), Arg.Any<string?>(),
+                Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<Address?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
+            .Returns(Result<IdProofingAssessmentResult>.Success(
+                new IdProofingAssessmentResult(IdProofingOutcome.DocumentVerificationRequired, AllowIdRetry: true)));
+
+        challengeRepository.CreateAsync(Arg.Any<DocVerificationChallenge>(), Arg.Any<CancellationToken>())
+            .ThrowsAsync(new DuplicateRecordException(
+                $"A record with the same unique constraint already exists for user {command.UserId}."));
+
+        await Assert.ThrowsAsync<DuplicateRecordException>(
+            () => handler.Handle(command, CancellationToken.None));
     }
 }
