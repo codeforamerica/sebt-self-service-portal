@@ -21,7 +21,12 @@ variable "hosted_zone_id" {
 
 variable "logging_bucket_domain_name" {
   type        = string
-  description = "Domain name of the S3 logging bucket for access logs."
+  description = "Domain name of the S3 logging bucket (e.g. my-bucket.s3.amazonaws.com). Used for CloudFront access logging."
+}
+
+variable "logging_bucket_name" {
+  type        = string
+  description = "Name of the S3 logging bucket (e.g. my-bucket). Used for S3 access logging."
 }
 
 variable "project" {

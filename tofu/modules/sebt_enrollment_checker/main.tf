@@ -31,7 +31,7 @@ resource "aws_s3_bucket_public_access_block" "site" {
 # Send S3 access logs to the shared logging bucket.
 resource "aws_s3_bucket_logging" "site" {
   bucket        = aws_s3_bucket.site.id
-  target_bucket = var.logging_bucket_domain_name
+  target_bucket = var.logging_bucket_name
   target_prefix = "s3/enrollment-checker/"
 }
 

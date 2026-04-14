@@ -159,5 +159,6 @@ module "enrollment_checker" {
   domain      = "dev.co.sebt-enrollment.codeforamerica.app"
   hosted_zone_id             = data.aws_route53_zone.enrollment_checker.zone_id
   logging_bucket_domain_name = module.logging.bucket_domain_name
+  logging_bucket_name        = module.logging.bucket
   force_delete               = true
 }
