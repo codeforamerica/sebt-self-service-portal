@@ -44,6 +44,19 @@ public static class SeedScenarios
     public static readonly SeedScenario LostCard = new("lost-card", UserIalLevel.IAL1plus);
     public static readonly SeedScenario Mixed = new("mixed", UserIalLevel.IAL1plus);
 
+    // DC-157 CO scenarios: card statuses that fall OUTSIDE the replacement allowlist
+    // (Lost/Stolen/Damaged), so the replacement CTA correctly hides on CO while
+    // address update stays available.
+    public static readonly SeedScenario CoNotActivated = new("not-activated", UserIalLevel.IAL1plus);
+    public static readonly SeedScenario CoDeactivatedByState = new("deactivated-state", UserIalLevel.IAL1plus);
+    public static readonly SeedScenario CoUndeliverable = new("undeliverable", UserIalLevel.IAL1plus);
+    // Mixed: one replacement-eligible case (Lost) + one denied case (DeactivatedByState).
+    // Exercises CardSelection per-case filtering on CO.
+    public static readonly SeedScenario CoMixed = new("mixed-co", UserIalLevel.IAL1plus);
+    // CO control: single-case SummerEbt Active — replacement denied (Active not in allowlist),
+    // address update allowed. Baseline for Stop 10 of the walkthrough.
+    public static readonly SeedScenario CoActive = new("active-co", UserIalLevel.IAL1plus);
+
     /// <summary>
     /// Scenarios that are seeded as User entities in the database.
     /// </summary>
@@ -53,7 +66,8 @@ public static class SeedScenarios
         NonCoLoaded, NotStarted, Pending, Minimal, Denied,
         Review, Cancelled, Unknown,
         Simple1, Simple2, Simple3, Simple4, Simple5, Simple6, Simple7,
-        LostCard, Mixed
+        LostCard, Mixed,
+        CoNotActivated, CoDeactivatedByState, CoUndeliverable, CoMixed, CoActive
     ];
 
     /// <summary>
@@ -61,6 +75,12 @@ public static class SeedScenarios
     /// </summary>
     public static readonly IReadOnlySet<SeedScenario> DcOnlyScenarios =
         new HashSet<SeedScenario> { Simple1, Simple2, Simple3, Simple4, Simple5, Simple6, Simple7, LostCard, Mixed };
+
+    /// <summary>
+    /// Scenarios that should only be seeded when STATE=co.
+    /// </summary>
+    public static readonly IReadOnlySet<SeedScenario> CoOnlyScenarios =
+        new HashSet<SeedScenario> { CoNotActivated, CoDeactivatedByState, CoUndeliverable, CoMixed, CoActive };
 
     /// <summary>
     /// All scenarios including household-only entries (e.g., MultipleApps).

@@ -365,6 +365,62 @@ public class SelfServiceEvaluatorTests
         Assert.True(result.CanRequestReplacementCard);
     }
 
+    // -------------------------------------------------------------------------
+    // CO-with-replacement-allowlist regression guard
+    //
+    // CO inherits base SelfServiceRules: CardReplacement allows Lost/Stolen/Damaged
+    // only; AddressUpdate has an empty allow-list (any status permitted).
+    // The DC-157 walkthrough needs personas whose card status sits OUTSIDE the
+    // replacement allowlist so the CTA hides while address update stays available.
+    // -------------------------------------------------------------------------
+
+    [Theory]
+    [InlineData("NotActivated")]
+    [InlineData("DeactivatedByState")]
+    [InlineData("Undeliverable")]
+    public void EvaluateHousehold_CoConfig_DeniedCardStatus_CannotRequestReplacement(string ebtCardStatus)
+    {
+        // CO-style config: replacement gated to Lost/Stolen/Damaged; address update open to any status.
+        var settings = new SelfServiceRulesSettings
+        {
+            AddressUpdate = new ActionRuleSettings
+            {
+                Enabled = true,
+                DisabledMessageKey = "dashboard.addressUpdateDisabled",
+                ByIssuanceType = new Dictionary<IssuanceType, IssuanceTypeRuleSettings>
+                {
+                    [IssuanceType.SummerEbt] = new IssuanceTypeRuleSettings
+                    {
+                        Enabled = true,
+                        AllowedCardStatuses = []
+                    }
+                }
+            },
+            CardReplacement = new ActionRuleSettings
+            {
+                Enabled = true,
+                DisabledMessageKey = "dashboard.cardReplacementDisabled",
+                ByIssuanceType = new Dictionary<IssuanceType, IssuanceTypeRuleSettings>
+                {
+                    [IssuanceType.SummerEbt] = new IssuanceTypeRuleSettings
+                    {
+                        Enabled = true,
+                        AllowedCardStatuses = [CardStatus.Lost, CardStatus.Stolen, CardStatus.Damaged]
+                    }
+                }
+            }
+        };
+        var evaluator = Create(settings);
+        var cases = new[] { MakeCase(IssuanceType.SummerEbt, ebtCardStatus) };
+
+        var result = evaluator.EvaluateHousehold(cases);
+
+        Assert.False(result.CanRequestReplacementCard);
+        Assert.Equal("dashboard.cardReplacementDisabled", result.CardReplacementDeniedMessageKey);
+        Assert.True(result.CanUpdateAddress);
+        Assert.Null(result.AddressUpdateDeniedMessageKey);
+    }
+
     [Fact]
     public void EvaluateHousehold_EmptyAllowedCardStatuses_AnyStatusAllowed()
     {

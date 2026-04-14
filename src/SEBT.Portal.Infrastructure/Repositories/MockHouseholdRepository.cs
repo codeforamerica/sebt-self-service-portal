@@ -159,13 +159,14 @@ public class MockHouseholdRepository : IHouseholdRepository
                     new Child { FirstName = "James", LastName = "Martinez" }
                 };
             }
+            var isCo = string.Equals(_settings.State, "co", StringComparison.OrdinalIgnoreCase);
             h.AddressOnFile = new Address
             {
                 StreetAddress1 = "100 Co-Loaded Street",
                 StreetAddress2 = "Suite 100",
-                City = "Denver",
-                State = "CO",
-                PostalCode = "80201"
+                City = isCo ? "Denver" : "Washington",
+                State = isCo ? "CO" : "DC",
+                PostalCode = isCo ? "80201" : "20001"
             };
             h.SummerEbtCases = new List<SummerEbtCase>
             {
@@ -730,6 +731,232 @@ public class MockHouseholdRepository : IHouseholdRepository
             mixed.UserProfile = new UserProfile { FirstName = "Wei", MiddleName = null, LastName = "ChenMOCK" };
             _households[mixedEmail] = mixed;
             IndexByPhone(mixed);
+        }
+
+        // DC-157 CO personas: card statuses that fall OUTSIDE the replacement allowlist
+        // (Lost/Stolen/Damaged), so the replacement CTA correctly hides on CO.
+        // Address update stays available because the CO AddressUpdate allowlist is open.
+        if (string.Equals(_settings.State, "co", StringComparison.OrdinalIgnoreCase))
+        {
+            // CO scenario: SummerEbt case with NotActivated card — replacement denied
+            var notActivatedEmail = _settings.BuildEmail(SeedScenarios.CoNotActivated.Name);
+            var notActivated = HouseholdFactory.CreateHouseholdDataWithStatus(ApplicationStatus.Approved, h =>
+            {
+                h.BenefitIssuanceType = BenefitIssuanceType.SummerEbt;
+                var app = h.Applications.FirstOrDefault();
+                if (app != null)
+                {
+                    app.BenefitIssueDate = now.AddDays(-25);
+                    app.BenefitExpirationDate = now.AddDays(95);
+                    app.CardStatus = CardStatus.NotActivated;
+                    app.IssuanceType = IssuanceType.SummerEbt;
+                    app.Last4DigitsOfCard = "1111";
+                    app.Children = new List<Child>
+                    {
+                        new Child { FirstName = "Sofia", LastName = "Martinez" }
+                    };
+                }
+                h.AddressOnFile = new Address
+                {
+                    StreetAddress1 = "400 Mile High Street",
+                    City = "Denver",
+                    State = "CO",
+                    PostalCode = "80203"
+                };
+                h.SummerEbtCases = new List<SummerEbtCase>
+                {
+                    HouseholdFactory.CreateSummerEbtCase("Sofia", "Martinez", "NSLP", c =>
+                    {
+                        c.IssuanceType = IssuanceType.SummerEbt;
+                        c.EbtCardStatus = "NotActivated";
+                        c.EbtCardLastFour = "1111";
+                        c.CardRequestedAt = now.AddDays(-60);
+                    })
+                };
+            });
+            notActivated.Email = notActivatedEmail;
+            notActivated.Phone = "3035551001";
+            notActivated.UserProfile = new UserProfile { FirstName = "Elena", MiddleName = null, LastName = "MartinezMOCK" };
+            _households[notActivatedEmail] = notActivated;
+            IndexByPhone(notActivated);
+
+            // CO scenario: SummerEbt case with DeactivatedByState card — replacement denied
+            var deactivatedEmail = _settings.BuildEmail(SeedScenarios.CoDeactivatedByState.Name);
+            var deactivated = HouseholdFactory.CreateHouseholdDataWithStatus(ApplicationStatus.Approved, h =>
+            {
+                h.BenefitIssuanceType = BenefitIssuanceType.SummerEbt;
+                var app = h.Applications.FirstOrDefault();
+                if (app != null)
+                {
+                    app.BenefitIssueDate = now.AddDays(-50);
+                    app.BenefitExpirationDate = now.AddDays(70);
+                    app.CardStatus = CardStatus.DeactivatedByState;
+                    app.IssuanceType = IssuanceType.SummerEbt;
+                    app.Last4DigitsOfCard = "2222";
+                    app.Children = new List<Child>
+                    {
+                        new Child { FirstName = "Diego", LastName = "Hernandez" }
+                    };
+                }
+                h.AddressOnFile = new Address
+                {
+                    StreetAddress1 = "500 Cherry Creek Drive",
+                    City = "Denver",
+                    State = "CO",
+                    PostalCode = "80206"
+                };
+                h.SummerEbtCases = new List<SummerEbtCase>
+                {
+                    HouseholdFactory.CreateSummerEbtCase("Diego", "Hernandez", "NSLP", c =>
+                    {
+                        c.IssuanceType = IssuanceType.SummerEbt;
+                        c.EbtCardStatus = "DeactivatedByState";
+                        c.EbtCardLastFour = "2222";
+                        c.CardRequestedAt = now.AddDays(-120);
+                    })
+                };
+            });
+            deactivated.Email = deactivatedEmail;
+            deactivated.Phone = "3035551002";
+            deactivated.UserProfile = new UserProfile { FirstName = "Carmen", MiddleName = null, LastName = "HernandezMOCK" };
+            _households[deactivatedEmail] = deactivated;
+            IndexByPhone(deactivated);
+
+            // CO scenario: SummerEbt case with Undeliverable card — replacement denied
+            var undeliverableEmail = _settings.BuildEmail(SeedScenarios.CoUndeliverable.Name);
+            var undeliverable = HouseholdFactory.CreateHouseholdDataWithStatus(ApplicationStatus.Approved, h =>
+            {
+                h.BenefitIssuanceType = BenefitIssuanceType.SummerEbt;
+                var app = h.Applications.FirstOrDefault();
+                if (app != null)
+                {
+                    app.BenefitIssueDate = now.AddDays(-35);
+                    app.BenefitExpirationDate = now.AddDays(85);
+                    app.CardStatus = CardStatus.Undeliverable;
+                    app.IssuanceType = IssuanceType.SummerEbt;
+                    app.Last4DigitsOfCard = "3333";
+                    app.Children = new List<Child>
+                    {
+                        new Child { FirstName = "Mateo", LastName = "Lopez" }
+                    };
+                }
+                h.AddressOnFile = new Address
+                {
+                    StreetAddress1 = "600 Colfax Avenue",
+                    City = "Denver",
+                    State = "CO",
+                    PostalCode = "80218"
+                };
+                h.SummerEbtCases = new List<SummerEbtCase>
+                {
+                    HouseholdFactory.CreateSummerEbtCase("Mateo", "Lopez", "NSLP", c =>
+                    {
+                        c.IssuanceType = IssuanceType.SummerEbt;
+                        c.EbtCardStatus = "Undeliverable";
+                        c.EbtCardLastFour = "3333";
+                        c.CardRequestedAt = now.AddDays(-80);
+                    })
+                };
+            });
+            undeliverable.Email = undeliverableEmail;
+            undeliverable.Phone = "3035551003";
+            undeliverable.UserProfile = new UserProfile { FirstName = "Rosa", MiddleName = null, LastName = "LopezMOCK" };
+            _households[undeliverableEmail] = undeliverable;
+            IndexByPhone(undeliverable);
+
+            // CO scenario: mixed household — Lost (replacement-eligible) + DeactivatedByState (denied).
+            // Exercises CardSelection per-case filtering: CTA visible, denied case filtered out.
+            var coMixedEmail = _settings.BuildEmail(SeedScenarios.CoMixed.Name);
+            var coMixed = HouseholdFactory.CreateHouseholdDataWithStatus(ApplicationStatus.Approved, h =>
+            {
+                h.BenefitIssuanceType = BenefitIssuanceType.SummerEbt;
+                var app = h.Applications.FirstOrDefault();
+                if (app != null)
+                {
+                    app.BenefitIssueDate = now.AddDays(-40);
+                    app.BenefitExpirationDate = now.AddDays(80);
+                    app.CardStatus = CardStatus.Lost;
+                    app.IssuanceType = IssuanceType.SummerEbt;
+                    app.Last4DigitsOfCard = "4444";
+                    app.Children = new List<Child>
+                    {
+                        new Child { FirstName = "Luz", LastName = "Ortega" },
+                        new Child { FirstName = "Nico", LastName = "Ortega" }
+                    };
+                }
+                h.AddressOnFile = new Address
+                {
+                    StreetAddress1 = "700 Broadway",
+                    City = "Denver",
+                    State = "CO",
+                    PostalCode = "80203"
+                };
+                h.SummerEbtCases = new List<SummerEbtCase>
+                {
+                    HouseholdFactory.CreateSummerEbtCase("Luz", "Ortega", "NSLP", c =>
+                    {
+                        c.IssuanceType = IssuanceType.SummerEbt;
+                        c.EbtCardStatus = "Lost";
+                        c.EbtCardLastFour = "4444";
+                        c.CardRequestedAt = now.AddDays(-100);
+                    }),
+                    HouseholdFactory.CreateSummerEbtCase("Nico", "Ortega", "NSLP", c =>
+                    {
+                        c.IssuanceType = IssuanceType.SummerEbt;
+                        c.EbtCardStatus = "DeactivatedByState";
+                        c.EbtCardLastFour = "5555";
+                        c.CardRequestedAt = now.AddDays(-130);
+                    })
+                };
+            });
+            coMixed.Email = coMixedEmail;
+            coMixed.Phone = "3035551004";
+            coMixed.UserProfile = new UserProfile { FirstName = "Javier", MiddleName = null, LastName = "OrtegaMOCK" };
+            _households[coMixedEmail] = coMixed;
+            IndexByPhone(coMixed);
+
+            // CO scenario: single-child SummerEbt with Active card — walkthrough Stop 10 control.
+            // Active is outside [Lost, Stolen, Damaged] so replacement CTA hidden; address allowed.
+            var coActiveEmail = _settings.BuildEmail(SeedScenarios.CoActive.Name);
+            var coActive = HouseholdFactory.CreateHouseholdDataWithStatus(ApplicationStatus.Approved, h =>
+            {
+                h.BenefitIssuanceType = BenefitIssuanceType.SummerEbt;
+                var app = h.Applications.FirstOrDefault();
+                if (app != null)
+                {
+                    app.BenefitIssueDate = now.AddDays(-20);
+                    app.BenefitExpirationDate = now.AddDays(122);
+                    app.CardStatus = CardStatus.Active;
+                    app.IssuanceType = IssuanceType.SummerEbt;
+                    app.Last4DigitsOfCard = "6666";
+                    app.Children = new List<Child>
+                    {
+                        new Child { FirstName = "Maya", LastName = "Castillo" }
+                    };
+                }
+                h.AddressOnFile = new Address
+                {
+                    StreetAddress1 = "800 Larimer Street",
+                    City = "Denver",
+                    State = "CO",
+                    PostalCode = "80202"
+                };
+                h.SummerEbtCases = new List<SummerEbtCase>
+                {
+                    HouseholdFactory.CreateSummerEbtCase("Maya", "Castillo", "NSLP", c =>
+                    {
+                        c.IssuanceType = IssuanceType.SummerEbt;
+                        c.EbtCardStatus = "Active";
+                        c.EbtCardLastFour = "6666";
+                        c.CardRequestedAt = now.AddDays(-90);
+                    })
+                };
+            });
+            coActive.Email = coActiveEmail;
+            coActive.Phone = "3035551005";
+            coActive.UserProfile = new UserProfile { FirstName = "Isabel", MiddleName = null, LastName = "CastilloMOCK" };
+            _households[coActiveEmail] = coActive;
+            IndexByPhone(coActive);
         }
 
         _logger.LogInformation("Seeded {Count} mock household records using Bogus", _households.Count);
