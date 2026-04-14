@@ -47,12 +47,18 @@ public class MinimumIalService : IMinimumIalService
     {
         if (!c.IsStreamlineCertified)
         {
-            return _settings.ApplicationCases!.Value;
+            return GetRequiredSetting(_settings.ApplicationCases, nameof(_settings.ApplicationCases));
         }
 
         return c.IsCoLoaded
-            ? _settings.CoLoadedStreamlineCases!.Value
-            : _settings.NonCoLoadedStreamlineCases!.Value;
+            ? GetRequiredSetting(_settings.CoLoadedStreamlineCases, nameof(_settings.CoLoadedStreamlineCases))
+            : GetRequiredSetting(_settings.NonCoLoadedStreamlineCases, nameof(_settings.NonCoLoadedStreamlineCases));
+    }
+
+    private static IalLevel GetRequiredSetting(IalLevel? value, string propertyName)
+    {
+        return value ?? throw new InvalidOperationException(
+            $"MinimumIalSettings.{propertyName} is null. Configuration may have been removed during a hot reload.");
     }
 
     private static UserIalLevel ToUserIalLevel(IalLevel level)
@@ -62,7 +68,7 @@ public class MinimumIalService : IMinimumIalService
             IalLevel.IAL1 => UserIalLevel.IAL1,
             IalLevel.IAL1plus => UserIalLevel.IAL1plus,
             IalLevel.IAL2 => UserIalLevel.IAL2,
-            _ => UserIalLevel.IAL1
+            _ => throw new ArgumentOutOfRangeException(nameof(level), level, "Unknown IalLevel value")
         };
     }
 }
