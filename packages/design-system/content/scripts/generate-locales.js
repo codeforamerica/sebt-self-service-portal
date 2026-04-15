@@ -6,8 +6,8 @@
  * Supports multi-state deployments with separate CSV files per state.
  *
  * Usage:
- *   node content/scripts/generate-locales.js           # Generate all locales
- *   node content/scripts/generate-locales.js --watch   # Watch mode (future)
+ *   node packages/design-system/content/scripts/generate-locales.js           # Generate all locales
+ *   node packages/design-system/content/scripts/generate-locales.js --watch   # Watch mode (future)
  *
  * CSV Files:
  *   content/states/dc.csv  # DC-specific content (downloaded from DC tab)
@@ -15,8 +15,8 @@
  *   content/states/ny.csv  # NY-specific content (future)
  *
  * CSV Format:
- *   🟡 Content,English,Español,
- *   "S1 - Landing Page - Title","Get a one-time...","Obtenga un pago...",
+ *   Variable Name/Key,🟢 CO English,⚪ SOURCE English,🟢 CO Español,⚪ SOURCE Español,Notes
+ *   S1 - Landing Page - Action Español,Aplica ahora,¿Necesito aplicar?,Apply now,Do I need to apply?,
  *
  * Content Key Format (supports two formats):
  *   3-part: "{Section} - {Page} - {Key}"
@@ -29,6 +29,7 @@
  *   - Key: Descriptive key name (spaces converted to camelCase)
  *
  * Output Structure:
+ *   content/locales/en/co/common.json
  *   content/locales/en/dc/common.json
  *   content/locales/en/dc/landing.json
  *   content/locales/es/dc/common.json
@@ -37,6 +38,7 @@
  * Features:
  * - Multi-state CSVs: Each state has its own CSV file (content/states/{state}.csv)
  * - Smart caching: Only regenerates if any CSV changed (SHA-256 hash)
+ *  -- to regenerate without caching, comment out any use of saveHash below
  * - Namespace splitting: Organizes by page/component for lazy loading
  * - Variable interpolation: Preserves {state}, {year} placeholders for runtime
  */
@@ -309,24 +311,15 @@ function buildStateLocaleData(rows, state) {
     const lower = h.toLowerCase()
     return lower.includes('content') || lower.includes('variable name')
   });
-  // Sheet has two English columns: state-specific (e.g., "🟡 DC English") and "⚪ SOURCE English".
-  // Blank state cell means "inherit source wording unchanged" — fall back when the state column is empty.
-  const englishIdx = headerRow.findIndex((h) => {
-    const lower = h.toLowerCase()
-    return lower.includes('english') && !lower.includes('source')
-  });
-  const sourceEnglishIdx = headerRow.findIndex((h) => {
-    const lower = h.toLowerCase()
-    return lower.includes('english') && lower.includes('source')
-  });
-  const spanishIdx = headerRow.findIndex((h) => {
-    const lower = h.toLowerCase()
-    return lower.includes('español') && !lower.includes('source')
-  });
-  const sourceSpanishIdx = headerRow.findIndex((h) => {
-    const lower = h.toLowerCase()
-    return lower.includes('español') && lower.includes('source')
-  });
+
+    // Each state csv file has two columns for each language: (e.g., "🟡 DC English Current" and "⚪ SOURCE English").
+    // We only want to import the "current" columns. This is the copy we care about
+  const englishIdx = headerRow.findIndex((h) =>
+    h.toLowerCase().includes('english current')
+  );
+  const spanishIdx = headerRow.findIndex((h) =>
+    h.toLowerCase().includes('español current')
+  );
 
   if (contentIdx === -1 || englishIdx === -1) {
     throw new Error(`CSV for ${state} must have "Content" and "English" columns`);
@@ -341,14 +334,8 @@ function buildStateLocaleData(rows, state) {
   // Process each row
   for (const row of dataRows) {
     const contentKey = row[contentIdx];
-    const englishValue =
-      (row[englishIdx] || '') ||
-      (sourceEnglishIdx !== -1 ? row[sourceEnglishIdx] || '' : '');
-    const spanishValue =
-      spanishIdx !== -1
-        ? (row[spanishIdx] || '') ||
-          (sourceSpanishIdx !== -1 ? row[sourceSpanishIdx] || '' : '')
-        : '';
+    const englishValue = row[englishIdx] || '';
+    const spanishValue = spanishIdx !== -1 ? row[spanishIdx] || '' : '';
 
     // Skip empty rows or rows without content keys
     if (!contentKey || !contentKey.trim()) continue;
