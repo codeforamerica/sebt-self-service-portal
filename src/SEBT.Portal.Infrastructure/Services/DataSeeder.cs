@@ -40,6 +40,7 @@ public class DataSeeder : IDataSeeder
             IdProofingSessionId = user.IdProofingSessionId,
             IdProofingCompletedAt = user.IdProofingCompletedAt,
             IdProofingExpiresAt = user.IdProofingExpiresAt,
+            DateOfBirth = user.DateOfBirth,
             IsCoLoaded = user.IsCoLoaded,
             CoLoadedLastUpdated = user.CoLoadedLastUpdated,
             Phone = user.Phone,

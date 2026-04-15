@@ -96,6 +96,7 @@ public static class UserFactory
             IdProofingSessionId = user.IdProofingSessionId,
             IdProofingCompletedAt = user.IdProofingCompletedAt,
             IdProofingExpiresAt = user.IdProofingExpiresAt,
+            DateOfBirth = user.DateOfBirth,
             IsCoLoaded = user.IsCoLoaded,
             CoLoadedLastUpdated = user.CoLoadedLastUpdated,
             IdProofingAttemptCount = user.IdProofingAttemptCount,
