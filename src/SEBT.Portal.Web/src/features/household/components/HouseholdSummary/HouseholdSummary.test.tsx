@@ -11,7 +11,9 @@ const mockCase: SummerEbtCase = {
   childLastName: 'Martinez',
   householdType: 'OSSE',
   eligibilityType: 'NSLP',
-  issuanceType: 'SummerEbt'
+  issuanceType: 'SummerEbt',
+  allowAddressChange: true,
+  allowCardReplacement: true
 }
 
 const mockApplication: Application = {
