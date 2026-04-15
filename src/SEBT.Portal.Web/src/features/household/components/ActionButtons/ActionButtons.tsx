@@ -96,7 +96,9 @@ export function ActionButtons({ cases }: ActionButtonsProps) {
               {...(action.href.startsWith('#') && {
                 onClick: (e: React.MouseEvent) => {
                   e.preventDefault()
-                  document.getElementById(action.href.slice(1))?.scrollIntoView({ behavior: 'smooth' })
+                  document
+                    .getElementById(action.href.slice(1))
+                    ?.scrollIntoView({ behavior: 'smooth' })
                 }
               })}
             >

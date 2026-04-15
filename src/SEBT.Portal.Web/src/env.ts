@@ -37,13 +37,7 @@ export const env = createEnv({
      * Development only: when `true`, IalGuard still sends users to OIDC step-up even if the portal JWT already has IAL1+.
      * No effect unless NODE_ENV is `development`.
      */
-    NEXT_PUBLIC_DEBUG_REPEAT_OIDC_STEP_UP: z.enum(['true', 'false']).optional(),
-    /**
-     * Max age (years) for portal JWT `id_proofing_completed_at` before IalGuard sends the user through OIDC step-up again.
-     * When `id_proofing_expires_at` is on the JWT, it is enforced as well (must be before that instant).
-     * Default 5 when unset (see parseIdProofingMaxAgeYears).
-     */
-    NEXT_PUBLIC_CO_ID_PROOFING_MAX_AGE_YEARS: z.string().optional()
+    NEXT_PUBLIC_DEBUG_REPEAT_OIDC_STEP_UP: z.enum(['true', 'false']).optional()
   },
 
   /**
@@ -57,8 +51,7 @@ export const env = createEnv({
     NEXT_PUBLIC_GA_ID: process.env.NEXT_PUBLIC_GA_ID,
     NEXT_PUBLIC_SOCURE_SDK_KEY: process.env.NEXT_PUBLIC_SOCURE_SDK_KEY,
     NEXT_PUBLIC_SOCURE_DI_SDK_KEY: process.env.NEXT_PUBLIC_SOCURE_DI_SDK_KEY,
-    NEXT_PUBLIC_DEBUG_REPEAT_OIDC_STEP_UP: process.env.NEXT_PUBLIC_DEBUG_REPEAT_OIDC_STEP_UP,
-    NEXT_PUBLIC_CO_ID_PROOFING_MAX_AGE_YEARS: process.env.NEXT_PUBLIC_CO_ID_PROOFING_MAX_AGE_YEARS
+    NEXT_PUBLIC_DEBUG_REPEAT_OIDC_STEP_UP: process.env.NEXT_PUBLIC_DEBUG_REPEAT_OIDC_STEP_UP
   },
 
   /**

@@ -11,6 +11,7 @@ using SEBT.Portal.Core.Models.Auth;
 using SEBT.Portal.Core.Repositories;
 using SEBT.Portal.Core.Services;
 using SEBT.Portal.Core.Utilities;
+using SEBT.Portal.Infrastructure.Services;
 
 namespace SEBT.Portal.Api.Controllers.Auth;
 
@@ -29,7 +30,8 @@ public class OidcController(
     IOptions<JwtSettings> jwtSettingsOptions,
     IStateAllowlist stateAllowlist,
     IPreAuthSessionStore sessionStore,
-    IWebHostEnvironment environment) : ControllerBase
+    IWebHostEnvironment environment,
+    OidcVerificationClaimTranslator verificationClaimTranslator) : ControllerBase
 {
     /// <summary>
     /// OIDC config + pre-auth session creation. Generates PKCE server-side, stores
@@ -365,6 +367,22 @@ public class OidcController(
                 user.IalLevel = UserIalLevel.IAL1;
                 await userRepository.UpdateUserAsync(user, cancellationToken);
             }
+
+            // Reconcile IAL from OIDC verification claims (e.g. CO's PingOne/Socure).
+            // If the IdP says the user completed identity verification, update our DB
+            // to match — the IdP is the source of truth for OIDC-based verification.
+            // For states without OIDC verification (e.g. DC), Translate() returns null
+            // because the IdP claims don't contain the configured verification claim names.
+            var verification = verificationClaimTranslator.Translate(additionalClaims);
+            if (verification != null)
+            {
+                ReconcileIalFromOidcVerification(user, verification);
+                await userRepository.UpdateUserAsync(user, cancellationToken);
+
+                logger.LogInformation(
+                    "OIDC verification claim reconciled: UserId {UserId}, IalLevel {IalLevel}, IsExpired {IsExpired}, VerifiedAt {VerifiedAt}",
+                    user.Id, user.IalLevel, verification.IsExpired, verification.VerifiedAt);
+            }
         }
 
         var token = jwtService.GenerateToken(user, additionalClaims);
@@ -422,6 +440,28 @@ public class OidcController(
         return value
             .Replace("\r", string.Empty, StringComparison.Ordinal)
             .Replace("\n", string.Empty, StringComparison.Ordinal);
+    }
+
+    /// <summary>
+    /// Updates a user's IAL and proofing fields based on translated OIDC verification claims.
+    /// If the verification is expired, resets to IAL1 (the user must re-verify).
+    /// If valid, promotes to the verified IAL level.
+    /// </summary>
+    private static void ReconcileIalFromOidcVerification(User user, OidcVerificationResult verification)
+    {
+        if (verification.IsExpired)
+        {
+            // Verification has lapsed — reset to baseline IAL1 (they completed OIDC login,
+            // so they're at least IAL1, but no longer IAL1+).
+            user.IalLevel = UserIalLevel.IAL1;
+            user.IdProofingStatus = IdProofingStatus.Expired;
+            return;
+        }
+
+        // Valid, non-expired verification from the IdP — update to match.
+        user.IalLevel = verification.IalLevel;
+        user.IdProofingStatus = IdProofingStatus.Completed;
+        user.IdProofingCompletedAt = verification.VerifiedAt;
     }
 
     /// <summary>
