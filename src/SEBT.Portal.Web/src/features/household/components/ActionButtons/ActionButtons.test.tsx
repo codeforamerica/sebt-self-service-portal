@@ -47,7 +47,7 @@ describe('ActionButtons', () => {
   it('renders check existing cards button', () => {
     render(<ActionButtons cases={[]} />)
     const link = screen.getByText('Check existing cards')
-    expect(link).toHaveAttribute('href', '/cards')
+    expect(link).toHaveAttribute('href', '#enrolled-children-heading')
   })
 
   it('renders request replacement cards button', () => {
@@ -65,7 +65,7 @@ describe('ActionButtons', () => {
   it('renders check applications button', () => {
     render(<ActionButtons cases={[]} />)
     const link = screen.getByText('Check existing applications')
-    expect(link).toHaveAttribute('href', '/applications')
+    expect(link).toHaveAttribute('href', '#applications-heading')
   })
 
   it('exposes data-analytics-cta on each action for cta_click tracking', () => {

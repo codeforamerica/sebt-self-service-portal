@@ -20,10 +20,8 @@ public class DatabaseSeeder : Core.Services.IDatabaseSeeder
     private readonly TimeProvider _timeProvider;
 
     private const int DaysSinceIdProofingCompleted = -30;
-    private const int DaysUntilIdProofingExpires = 335;
     private const int DaysSinceCoLoadedUpdate = -5;
     private const int DaysSinceBasicIdProofingCompleted = -10;
-    private const int DaysUntilBasicIdProofingExpires = 355;
 
     private bool IsDc => string.Equals(_settings.State, "dc", StringComparison.OrdinalIgnoreCase);
     private bool IsCo => string.Equals(_settings.State, "co", StringComparison.OrdinalIgnoreCase);
@@ -78,7 +76,6 @@ public class DatabaseSeeder : Core.Services.IDatabaseSeeder
                 u.IalLevel = UserIalLevel.IAL1plus;
                 u.CoLoadedLastUpdated = now.AddDays(-5);
                 u.IdProofingCompletedAt = now.AddDays(-10);
-                u.IdProofingExpiresAt = now.AddDays(355);
                 u.Phone = "5551234567";
                 u.SnapId = "SNAP-CO-001";
                 u.TanfId = "TANF-CO-001";
@@ -160,7 +157,7 @@ public class DatabaseSeeder : Core.Services.IDatabaseSeeder
                             u.IdProofingStatus = IdProofingStatus.Completed;
                             u.IalLevel = scenario.IalLevel;
                             u.IdProofingCompletedAt = now.AddDays(DaysSinceIdProofingCompleted);
-                            u.IdProofingExpiresAt = now.AddDays(DaysUntilIdProofingExpires);
+
                             u.CoLoadedLastUpdated = now.AddDays(DaysSinceCoLoadedUpdate);
                             u.Phone = "5551234567";
                             u.SnapId = "SNAP-CO-001";
@@ -175,7 +172,7 @@ public class DatabaseSeeder : Core.Services.IDatabaseSeeder
                             u.IdProofingStatus = IdProofingStatus.Completed;
                             u.IalLevel = scenario.IalLevel;
                             u.IdProofingCompletedAt = now.AddDays(DaysSinceIdProofingCompleted);
-                            u.IdProofingExpiresAt = now.AddDays(DaysUntilIdProofingExpires);
+
                             u.IsCoLoaded = false;
                             u.CoLoadedLastUpdated = null;
                             u.Phone = "5559876543";
@@ -195,7 +192,6 @@ public class DatabaseSeeder : Core.Services.IDatabaseSeeder
                             if (scenario.IalLevel is UserIalLevel.IAL1 or UserIalLevel.IAL1plus or UserIalLevel.IAL2)
                             {
                                 u.IdProofingCompletedAt = now.AddDays(DaysSinceIdProofingCompleted);
-                                u.IdProofingExpiresAt = now.AddDays(DaysUntilIdProofingExpires);
                             }
                             u.IsCoLoaded = false;
                             u.CoLoadedLastUpdated = null;
@@ -302,7 +298,7 @@ public class DatabaseSeeder : Core.Services.IDatabaseSeeder
                             u.IdProofingStatus = IdProofingStatus.Completed;
                             u.IalLevel = scenario.IalLevel;
                             u.IdProofingCompletedAt = now.AddDays(DaysSinceIdProofingCompleted);
-                            u.IdProofingExpiresAt = now.AddDays(DaysUntilIdProofingExpires);
+
                             u.CoLoadedLastUpdated = now.AddDays(DaysSinceCoLoadedUpdate);
                             u.Phone = "5551234567";
                             u.SnapId = "SNAP-CO-001";
@@ -317,7 +313,7 @@ public class DatabaseSeeder : Core.Services.IDatabaseSeeder
                             u.IdProofingStatus = IdProofingStatus.Completed;
                             u.IalLevel = scenario.IalLevel;
                             u.IdProofingCompletedAt = now.AddDays(DaysSinceIdProofingCompleted);
-                            u.IdProofingExpiresAt = now.AddDays(DaysUntilIdProofingExpires);
+
                             u.IsCoLoaded = false;
                             u.CoLoadedLastUpdated = null;
                             u.Phone = "5559876543";
@@ -337,7 +333,6 @@ public class DatabaseSeeder : Core.Services.IDatabaseSeeder
                             if (scenario.IalLevel is UserIalLevel.IAL1 or UserIalLevel.IAL1plus or UserIalLevel.IAL2)
                             {
                                 u.IdProofingCompletedAt = now.AddDays(DaysSinceIdProofingCompleted);
-                                u.IdProofingExpiresAt = now.AddDays(DaysUntilIdProofingExpires);
                             }
                             u.IsCoLoaded = false;
                             u.CoLoadedLastUpdated = null;

@@ -21,8 +21,6 @@ public static class UserFactory
             u.IalLevel is UserIalLevel.IAL1 or UserIalLevel.IAL1plus or UserIalLevel.IAL2
                 ? f.Date.Recent(30)
                 : null)
-        .RuleFor(u => u.IdProofingExpiresAt, (f, u) =>
-            u.IdProofingCompletedAt?.AddYears(1))
         .RuleFor(u => u.IsCoLoaded, f => f.Random.Bool(0.3f))
         .RuleFor(u => u.CoLoadedLastUpdated, (f, u) =>
             u.IsCoLoaded ? f.Date.Recent(60) : null)
@@ -108,12 +106,10 @@ public static class UserFactory
             {
                 var faker = new Faker();
                 u.IdProofingCompletedAt = faker.Date.Recent(30);
-                u.IdProofingExpiresAt = u.IdProofingCompletedAt.Value.AddYears(1);
             }
             else
             {
                 u.IdProofingCompletedAt = null;
-                u.IdProofingExpiresAt = null;
             }
 
             customize?.Invoke(u);

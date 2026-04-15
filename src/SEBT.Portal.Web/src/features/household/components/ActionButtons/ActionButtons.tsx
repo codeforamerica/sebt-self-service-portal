@@ -43,12 +43,12 @@ const ACTIONS: ActionButton[] = [
   },
   {
     labelKey: 'actionNavigationCheckExistingCards',
-    href: '/cards',
+    href: '#enrolled-children-heading',
     ctaId: 'check_cards_cta'
   },
   {
     labelKey: 'actionNavigationCheckExistingApplications',
-    href: '/applications',
+    href: '#applications-heading',
     ctaId: 'check_applications_cta'
   }
 ]
@@ -114,6 +114,14 @@ export function ActionButtons({ cases, allowedActions }: ActionButtonsProps) {
               href={action.href}
               data-analytics-cta={action.ctaId}
               className={`display-inline-flex flex-align-center padding-y-1 padding-x-205 text-no-underline ${actionButtonText} ${actionButtonBg} radius-pill font-sans-md text-semibold`}
+              {...(action.href.startsWith('#') && {
+                onClick: (e: React.MouseEvent) => {
+                  e.preventDefault()
+                  document
+                    .getElementById(action.href.slice(1))
+                    ?.scrollIntoView({ behavior: 'smooth' })
+                }
+              })}
             >
               {t(action.labelKey)}
               <svg

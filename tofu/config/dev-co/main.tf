@@ -121,6 +121,9 @@ module "app" {
     "MinimumIal__ApplicationCases"                     = "IAL1"
     "MinimumIal__CoLoadedStreamlineCases"               = "IAL1"
     "MinimumIal__NonCoLoadedStreamlineCases"             = "IAL1"
+    "IdProofingValidity__ValidityDays"                   = "1826"
+    "Oidc__VerificationClaims__LevelClaimName"           = "socureIdVerificationLevel"
+    "Oidc__VerificationClaims__DateClaimName"             = "socureIdVerificationDate"
   }
 
   state_api_environment_secrets = {
