@@ -1,4 +1,5 @@
 using System.Globalization;
+using Microsoft.Extensions.Logging;
 using SEBT.Portal.Core.AppSettings;
 using SEBT.Portal.Core.Models.Auth;
 
@@ -13,13 +14,16 @@ public class OidcVerificationClaimTranslator
 {
     private readonly OidcVerificationClaimSettings _claimSettings;
     private readonly IdProofingValiditySettings _validitySettings;
+    private readonly ILogger<OidcVerificationClaimTranslator> _logger;
 
     public OidcVerificationClaimTranslator(
         OidcVerificationClaimSettings claimSettings,
-        IdProofingValiditySettings validitySettings)
+        IdProofingValiditySettings validitySettings,
+        ILogger<OidcVerificationClaimTranslator> logger)
     {
         _claimSettings = claimSettings;
         _validitySettings = validitySettings;
+        _logger = logger;
     }
 
     /// <summary>
@@ -70,13 +74,19 @@ public class OidcVerificationClaimTranslator
         if (!claims.TryGetValue(_claimSettings.DateClaimName, out var dateValue)
             || string.IsNullOrWhiteSpace(dateValue))
         {
+            _logger.LogWarning("Missing expected OIDC ID verification claim \"{ClaimName}\"", _claimSettings.DateClaimName);
             return null;
         }
 
-        return DateTime.TryParse(dateValue, CultureInfo.InvariantCulture,
-            DateTimeStyles.AdjustToUniversal | DateTimeStyles.AssumeUniversal, out var parsed)
-            ? parsed
-            : null;
+        if (!DateTime.TryParse(dateValue, CultureInfo.InvariantCulture,
+            DateTimeStyles.AdjustToUniversal | DateTimeStyles.AssumeUniversal, out var parsed))
+        {
+            _logger.LogWarning("Failed to parse OIDC ID verification claim \"{ClaimName}\". Value: {Value}",
+                _claimSettings.DateClaimName, dateValue);
+            return null;
+        }
+
+        return parsed;
     }
 
     private bool IsExpired(DateTime verifiedAt)

@@ -1,3 +1,4 @@
+using Microsoft.Extensions.Logging.Abstractions;
 using SEBT.Portal.Core.AppSettings;
 using SEBT.Portal.Core.Models.Auth;
 using SEBT.Portal.Infrastructure.Services;
@@ -15,7 +16,8 @@ public class OidcVerificationClaimTranslatorTests
     {
         return new OidcVerificationClaimTranslator(
             claimSettings ?? _claimSettings,
-            validitySettings ?? _validitySettings);
+            validitySettings ?? _validitySettings,
+            NullLogger<OidcVerificationClaimTranslator>.Instance);
     }
 
     [Fact]

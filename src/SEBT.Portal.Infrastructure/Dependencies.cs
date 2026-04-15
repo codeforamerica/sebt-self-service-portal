@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using SEBT.Portal.Core.AppSettings;
 using SEBT.Portal.Core.Repositories;
@@ -30,7 +31,8 @@ public static class Dependencies
         services.AddTransient<OidcVerificationClaimTranslator>(sp =>
             new OidcVerificationClaimTranslator(
                 sp.GetRequiredService<IOptions<OidcVerificationClaimSettings>>().Value,
-                sp.GetRequiredService<IOptions<IdProofingValiditySettings>>().Value));
+                sp.GetRequiredService<IOptions<IdProofingValiditySettings>>().Value,
+                sp.GetRequiredService<ILoggerFactory>().CreateLogger<OidcVerificationClaimTranslator>()));
 
         // ID Proofing Requirements (state-specific PII visibility)
         services.AddScoped<IIdProofingRequirementsService, IdProofingRequirementsService>();

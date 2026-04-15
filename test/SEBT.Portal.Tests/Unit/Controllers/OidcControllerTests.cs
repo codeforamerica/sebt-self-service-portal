@@ -65,7 +65,8 @@ public class OidcControllerTests
 
         var translator = new OidcVerificationClaimTranslator(
             new OidcVerificationClaimSettings(),
-            new IdProofingValiditySettings());
+            new IdProofingValiditySettings(),
+            NullLogger<OidcVerificationClaimTranslator>.Instance);
 
         _controller = new OidcController(
             _config,
@@ -192,7 +193,7 @@ public class OidcControllerTests
             new StateAllowlist(["co"]),
             Substitute.For<IPreAuthSessionStore>(),
             testEnv,
-            new OidcVerificationClaimTranslator(new OidcVerificationClaimSettings(), new IdProofingValiditySettings()))
+            new OidcVerificationClaimTranslator(new OidcVerificationClaimSettings(), new IdProofingValiditySettings(), NullLogger<OidcVerificationClaimTranslator>.Instance))
         {
             ControllerContext = new ControllerContext { HttpContext = new DefaultHttpContext() }
         };
@@ -443,7 +444,7 @@ public class OidcControllerTests
             multiStateAllowlist,
             sessionStore,
             env,
-            new OidcVerificationClaimTranslator(new OidcVerificationClaimSettings(), new IdProofingValiditySettings()))
+            new OidcVerificationClaimTranslator(new OidcVerificationClaimSettings(), new IdProofingValiditySettings(), NullLogger<OidcVerificationClaimTranslator>.Instance))
         {
             ControllerContext = new ControllerContext { HttpContext = new DefaultHttpContext() }
         };
@@ -545,7 +546,8 @@ public class OidcControllerTests
     {
         var translator = new OidcVerificationClaimTranslator(
             claimSettings ?? new OidcVerificationClaimSettings(),
-            validitySettings ?? new IdProofingValiditySettings { ValidityDays = 1826 });
+            validitySettings ?? new IdProofingValiditySettings { ValidityDays = 1826 },
+            NullLogger<OidcVerificationClaimTranslator>.Instance);
 
         var jwtSettings = Options.Create(new JwtSettings
         {
