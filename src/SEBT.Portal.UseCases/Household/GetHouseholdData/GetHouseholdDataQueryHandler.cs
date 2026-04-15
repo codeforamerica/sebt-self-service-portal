@@ -68,12 +68,6 @@ public class GetHouseholdDataQueryHandler(
                 new Dictionary<string, object?> { ["requiredIal"] = minimumIal.ToString() });
         }
 
-        // Filter out co-loaded cases — portal users should only see and manage
-        // non-co-loaded cases. Co-loaded benefits are managed by caseworkers.
-        householdData.SummerEbtCases = householdData.SummerEbtCases
-            .Where(c => !c.IsCoLoaded)
-            .ToList();
-
         logger.LogDebug("Household data retrieved successfully for identifier type {Type}", identifier.Type);
         return Result<HouseholdData>.Success(householdData);
     }

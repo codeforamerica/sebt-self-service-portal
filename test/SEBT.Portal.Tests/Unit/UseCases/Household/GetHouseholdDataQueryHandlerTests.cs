@@ -295,55 +295,10 @@ public class GetHouseholdDataQueryHandlerTests
     }
 
     [Fact]
-    public async Task Handle_FiltersOutCoLoadedCases_FromReturnedHouseholdData()
+    public async Task Handle_ReturnsAllCases_IncludingCoLoaded()
     {
-        var email = "user@example.com";
-        var user = CreateUser(email, UserIalLevel.IAL1plus);
-        var identifier = HouseholdIdentifier.Email(EmailNormalizer.Normalize(email));
-        var coLoadedCase = new SummerEbtCase
-        {
-            SummerEBTCaseID = "SEBT-COLOADED",
-            ChildFirstName = "CoLoaded",
-            ChildLastName = "Child",
-            IsCoLoaded = true
-        };
-        var nonCoLoadedCase = new SummerEbtCase
-        {
-            SummerEBTCaseID = "SEBT-REGULAR",
-            ChildFirstName = "Regular",
-            ChildLastName = "Child",
-            IsCoLoaded = false
-        };
-        var householdData = new HouseholdData
-        {
-            Email = email,
-            SummerEbtCases = new List<SummerEbtCase> { coLoadedCase, nonCoLoadedCase }
-        };
-
-        _resolver.ResolveAsync(Arg.Any<ClaimsPrincipal>(), Arg.Any<CancellationToken>())
-            .Returns(identifier);
-        _idProofingRequirementsService.GetPiiVisibility(UserIalLevel.IAL1plus)
-            .Returns(new PiiVisibility(IncludeAddress: true, IncludeEmail: true, IncludePhone: true));
-        _repository.GetHouseholdByIdentifierAsync(
-                Arg.Any<HouseholdIdentifier>(), Arg.Any<PiiVisibility>(),
-                Arg.Any<UserIalLevel>(), Arg.Any<CancellationToken>())
-            .Returns(householdData);
-
-        var handler = new GetHouseholdDataQueryHandler(
-            _resolver, _repository, _idProofingRequirementsService, _minimumIalService, _logger);
-        var query = new GetHouseholdDataQuery { User = user };
-
-        var result = await handler.Handle(query, CancellationToken.None);
-
-        Assert.True(result.IsSuccess);
-        var success = Assert.IsType<SuccessResult<HouseholdData>>(result);
-        Assert.Single(success.Value.SummerEbtCases);
-        Assert.Equal("SEBT-REGULAR", success.Value.SummerEbtCases[0].SummerEBTCaseID);
-    }
-
-    [Fact]
-    public async Task Handle_ReturnsEmptyCasesList_WhenAllCasesAreCoLoaded()
-    {
+        // Co-loaded cases should be visible in the portal (but not actionable).
+        // Filtering happens at the UI layer via per-case AllowAddressChange/AllowCardReplacement flags.
         var email = "user@example.com";
         var user = CreateUser(email, UserIalLevel.IAL1plus);
         var identifier = HouseholdIdentifier.Email(EmailNormalizer.Normalize(email));
@@ -352,8 +307,8 @@ public class GetHouseholdDataQueryHandlerTests
             Email = email,
             SummerEbtCases = new List<SummerEbtCase>
             {
-                new() { SummerEBTCaseID = "SEBT-001", ChildFirstName = "A", ChildLastName = "B", IsCoLoaded = true },
-                new() { SummerEBTCaseID = "SEBT-002", ChildFirstName = "C", ChildLastName = "D", IsCoLoaded = true }
+                new() { SummerEBTCaseID = "SEBT-COLOADED", ChildFirstName = "A", ChildLastName = "B", IsCoLoaded = true },
+                new() { SummerEBTCaseID = "SEBT-REGULAR", ChildFirstName = "C", ChildLastName = "D", IsCoLoaded = false }
             }
         };
 
@@ -374,7 +329,7 @@ public class GetHouseholdDataQueryHandlerTests
 
         Assert.True(result.IsSuccess);
         var success = Assert.IsType<SuccessResult<HouseholdData>>(result);
-        Assert.Empty(success.Value.SummerEbtCases);
+        Assert.Equal(2, success.Value.SummerEbtCases.Count);
     }
 
     [Fact]
