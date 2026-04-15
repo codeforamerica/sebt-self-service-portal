@@ -37,14 +37,65 @@ internal class SocureIndividual
     [JsonPropertyName("national_id")]
     public string? NationalId { get; init; }
 
+    [JsonPropertyName("di_session_token")]
+    public string? DiSessionToken { get; init; }
+
+    [JsonPropertyName("given_name")]
+    public string? GivenName { get; init; }
+
+    [JsonPropertyName("family_name")]
+    public string? FamilyName { get; init; }
+
+    [JsonPropertyName("ip_address")]
+    public string? IpAddress { get; init; }
+
+    [JsonPropertyName("phone_number")]
+    public string? PhoneNumber { get; init; }
+
     [JsonPropertyName("docv")]
     public SocureDocvConfig? Docv { get; init; }
+
+    [JsonPropertyName("address")]
+    public SocureAddress? Address { get; init; }
+}
+
+internal class SocureAddress
+{
+    [JsonPropertyName("type")]
+    public string? Type { get; init; }
+
+    [JsonPropertyName("line_1")]
+    public string? Line1 { get; init; }
+
+    [JsonPropertyName("line_2")]
+    public string? Line2 { get; init; }
+
+    [JsonPropertyName("locality")]
+    public string? Locality { get; init; }
+
+    [JsonPropertyName("major_admin_division")]
+    public string? MajorAdminDivision { get; init; }
+
+    [JsonPropertyName("country")]
+    public string? Country { get; init; }
+
+    [JsonPropertyName("postal_code")]
+    public string? PostalCode { get; init; }
 }
 
 internal class SocureDocvConfig
 {
     [JsonPropertyName("config")]
-    public object Config { get; init; } = new { };
+    public SocureDocvConfigDetails Config { get; init; } = new();
+}
+
+internal class SocureDocvConfigDetails
+{
+    [JsonPropertyName("send_message")]
+    public bool SendMessage { get; init; } = true;
+
+    [JsonPropertyName("language")]
+    public string Language { get; init; } = "en";
 }
 
 // --- Inbound response ---

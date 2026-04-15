@@ -12,11 +12,11 @@ import { currentState } from '../fixtures/state'
 
 const ADDRESS_FORM_DATA =
   currentState === 'co'
-    ? { street: '200 E Colfax Ave', city: 'Denver', state: 'Colorado', zip: '80203' }
+    ? { street: '200 E Colfax Ave', city: 'Denver', state: 'CO', zip: '80203' }
     : {
         street: '456 Oak Avenue NW',
         city: 'Washington',
-        state: 'District of Columbia',
+        state: 'DC',
         zip: '20002'
       }
 

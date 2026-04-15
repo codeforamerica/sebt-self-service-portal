@@ -65,6 +65,7 @@ function setupApiFetchMock(options: {
         return Promise.reject(Object.assign(new Error('Unauthorized'), { status: 401 }))
       }
       const nowSec = Math.floor(Date.now() / 1000)
+      const fiveYearsInSeconds = 5 * 365.25 * 24 * 60 * 60
       return Promise.resolve({
         isAuthorized: true,
         email: 'user@example.com',
@@ -74,7 +75,7 @@ function setupApiFetchMock(options: {
           options.idProofingCompletedAtSecondsAgo != null
             ? nowSec - options.idProofingCompletedAtSecondsAgo
             : nowSec,
-        idProofingExpiresAt: null
+        idProofingExpiresAt: nowSec + fiveYearsInSeconds
       })
     }
     if (endpoint.startsWith('/auth/oidc/') && endpoint.includes('/config')) {

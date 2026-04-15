@@ -14,6 +14,7 @@ namespace SEBT.Portal.Infrastructure.Repositories;
 public class DatabaseDocVerificationChallengeRepository(PortalDbContext dbContext)
     : IDocVerificationChallengeRepository
 {
+    private const string OneActivePerUserIndex = "IX_DocVerificationChallenges_OneActivePerUser";
     public async Task<DocVerificationChallenge?> GetByPublicIdAsync(
         Guid publicId,
         int userId,
@@ -86,9 +87,51 @@ public class DatabaseDocVerificationChallengeRepository(PortalDbContext dbContex
             throw new ArgumentNullException(nameof(challenge));
         }
 
-        var entity = MapToEntity(challenge);
-        dbContext.DocVerificationChallenges.Add(entity);
-        await dbContext.SaveChangesAsync(cancellationToken);
+        var now = DateTime.UtcNow;
+
+        // Single transaction: bulk expire + insert commit together. Without this, a failure after
+        // ExecuteUpdateAsync could leave stale rows expired with no new challenge (recoverable on
+        // retry but inconsistent until then).
+        await using var transaction =
+            await dbContext.Database.BeginTransactionAsync(cancellationToken);
+        try
+        {
+            // Bulk expire via SQL: does not use RowVersion optimistic concurrency or
+            // DocVerificationChallenge.TransitionTo (same Created→Expired transition as the domain).
+            // The predicate limits rows to stale Created/Pending; revisit if concurrent writers race here.
+            await dbContext.DocVerificationChallenges
+                .Where(c => c.UserId == challenge.UserId
+                    && (c.Status == (int)DocVerificationStatus.Created
+                        || c.Status == (int)DocVerificationStatus.Pending)
+                    && c.ExpiresAt != null
+                    && c.ExpiresAt <= now)
+                .ExecuteUpdateAsync(
+                    setters => setters
+                        .SetProperty(e => e.Status, (int)DocVerificationStatus.Expired)
+                        .SetProperty(e => e.UpdatedAt, now),
+                    cancellationToken);
+
+            var entity = MapToEntity(challenge);
+            dbContext.DocVerificationChallenges.Add(entity);
+
+            try
+            {
+                await dbContext.SaveChangesAsync(cancellationToken);
+            }
+            catch (DbUpdateException ex) when (ex.InnerException?.Message.Contains(OneActivePerUserIndex) == true)
+            {
+                // A concurrent writer beat us to the active slot; surface as a domain exception.
+                throw new DuplicateRecordException(
+                    $"An active DocVerificationChallenge already exists for user {challenge.UserId}.", ex);
+            }
+
+            await transaction.CommitAsync(cancellationToken);
+        }
+        catch
+        {
+            await transaction.RollbackAsync(cancellationToken);
+            throw;
+        }
     }
 
     public async Task UpdateAsync(

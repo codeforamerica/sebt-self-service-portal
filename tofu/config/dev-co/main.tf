@@ -123,6 +123,12 @@ module "app" {
     "Oidc__StepUp__AuthorizationEndpoint"              = var.oidc_authorization_endpoint
     "Oidc__StepUp__CallbackRedirectUri"                = "https://${var.domain}/callback"
     "StateHouseholdId__PreferredHouseholdIdTypes__0"   = "Phone"
+    "MinimumIal__ApplicationCases"                     = "IAL1"
+    "MinimumIal__CoLoadedStreamlineCases"               = "IAL1"
+    "MinimumIal__NonCoLoadedStreamlineCases"             = "IAL1"
+    "IdProofingValidity__ValidityDays"                   = "1826"
+    "Oidc__VerificationClaims__LevelClaimName"           = "socureIdVerificationLevel"
+    "Oidc__VerificationClaims__DateClaimName"             = "socureIdVerificationDate"
   }
 
   state_api_environment_secrets = {

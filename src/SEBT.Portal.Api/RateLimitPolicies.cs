@@ -7,4 +7,5 @@ internal static class RateLimitPolicies
 {
     public const string Otp = "otp-policy";
     public const string EnrollmentCheck = "enrollment-check-policy";
+    public const string Webhook = "webhook-policy";
 }

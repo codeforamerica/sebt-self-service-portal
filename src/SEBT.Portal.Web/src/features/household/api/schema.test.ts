@@ -34,6 +34,10 @@ describe('CardStatusSchema', () => {
   it('passes through string values unchanged', () => {
     expect(CardStatusSchema.parse('Active')).toBe('Active')
   })
+
+  it('maps empty string to Unknown (CBMS returns "" for denied/pending children)', () => {
+    expect(CardStatusSchema.parse('')).toBe('Unknown')
+  })
 })
 
 describe('ApplicationStatusSchema', () => {

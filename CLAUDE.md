@@ -100,6 +100,11 @@ We follow a test-driven development (TDD) approach: write tests first to fail, t
 - Apply CORS and rate-limiting where applicable; return safe error messages.
 - In React, avoid 'dangerouslySetInnerHtml'. If rendering HTML, sanitize it first.
 
+### Data boundary enforcement
+- Enforce access control at the data boundary (the API endpoint that returns the data), not at the UI layer. Client-side guards are UX conveniences, not security controls.
+- When an authenticated user lacks sufficient authorization for a specific resource (e.g., insufficient IAL for their household's cases), return a 403 with structured ProblemDetails — not a 200 with filtered/empty data. The client needs to know *why* access was denied and *what to do about it* (e.g., `requiredIal` in the ProblemDetails extensions).
+- Auth claims in JWTs can go stale (e.g., household composition changes after login). Server-side checks that re-evaluate on every request are safer than trusting a token's claims about what the user is allowed to see.
+
 ## Common Commands
 
 ### Development
@@ -146,6 +151,9 @@ This is a .NET 10 + Next.js 16 application following Clean Architecture. For det
 - **Kernel** / **Kernel.AspNetCore** — Cross-cutting base classes and ASP.NET extensions
 - **Web** — Next.js 16 frontend (React 19, USWDS 3.13, i18next)
 - **Tests** — xUnit + NSubstitute + Bogus + Testcontainers (MSSQL)
+
+### Layer boundaries
+- Inner layers (Kernel, Core, UseCases) must not reference web/HTTP concepts (ProblemDetails, status codes, headers, controllers). They define abstractions; outer layers (Api, Web) decide how to serialize and transport them.
 
 ### Multi-State Plugin System
 State-specific behavior uses MEF (System.Composition) plugins loaded at runtime from `plugins-{state}/` directories. Plugin contracts live in the separate `sebt-self-service-portal-state-connector` repo; implementations live in per-state repos (`-dc-connector`, `-co-connector`). The `STATE` env var controls which state config overlay loads. See ADR-0007 for the design rationale.

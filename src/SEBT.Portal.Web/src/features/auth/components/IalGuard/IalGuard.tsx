@@ -3,8 +3,8 @@
 import { apiFetch } from '@/api'
 import { OidcConfigResponseSchema } from '@/features/auth/api/oidc/schema'
 import { useAuth } from '@/features/auth/context'
-import { getCoIdProofingMaxAgeYearsRaw, isDebugRepeatOidcStepUp } from '@/lib/ial-guard-config'
-import { hasIal1Plus, isIdProofingCompletionFresh, parseIdProofingMaxAgeYears } from '@/lib/jwt'
+import { isDebugRepeatOidcStepUp } from '@/lib/ial-guard-config'
+import { hasIal1Plus, isIdProofingCompletionFresh } from '@/lib/jwt'
 import {
   buildAuthorizationUrl,
   getOidcRedirectUriForCurrentOrigin,
@@ -67,12 +67,11 @@ export function IalGuard({ children, requiredIal = STEP_UP_REQUIRED_IAL }: IalGu
 
   const useOidcStepUpGate = getState() === 'co'
   const debugRepeatOidcStepUp = isDebugRepeatOidcStepUp()
-  const maxIdProofingAgeYears = parseIdProofingMaxAgeYears(getCoIdProofingMaxAgeYearsRaw())
 
   const ialAndIdProofingSufficient =
     requiredIal === 'IAL1plus' &&
     hasIal1Plus(session) &&
-    isIdProofingCompletionFresh(session, maxIdProofingAgeYears) &&
+    isIdProofingCompletionFresh(session) &&
     !debugRepeatOidcStepUp
 
   const passesWithoutStepUp = !useOidcStepUpGate || !session || ialAndIdProofingSufficient

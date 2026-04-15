@@ -71,7 +71,8 @@ export async function setupApiRoutes(page: Page, overrides: ApiRouteOverrides = 
         idProofingStatus: 2,
         // ~Apr 2026; stays fresh inside the 5-year window
         idProofingCompletedAt: 1775000000,
-        idProofingExpiresAt: null
+        // Server computes this from completedAt + ValidityDays; E2E must provide a future value
+        idProofingExpiresAt: 1775000000 + 1826 * 86400
       })
     })
   })

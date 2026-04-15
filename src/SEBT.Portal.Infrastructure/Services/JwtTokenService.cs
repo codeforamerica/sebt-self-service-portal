@@ -15,10 +15,14 @@ namespace SEBT.Portal.Infrastructure.Services;
 public class JwtTokenService : IJwtTokenService
 {
     private readonly JwtSettings _settings;
+    private readonly IdProofingValiditySettings _validitySettings;
 
-    public JwtTokenService(IOptions<JwtSettings> settings)
+    public JwtTokenService(
+        IOptions<JwtSettings> settings,
+        IOptions<IdProofingValiditySettings> validitySettings)
     {
         _settings = settings.Value;
+        _validitySettings = validitySettings.Value;
     }
 
     /// <summary>
@@ -70,9 +74,13 @@ public class JwtTokenService : IJwtTokenService
                 ClaimValueTypes.Integer64));
         }
 
-        if (user.IdProofingExpiresAt.HasValue)
+        // Compute expiration dynamically from IdProofingCompletedAt + configured validity duration.
+        // This avoids storing baked-in expiration dates and allows config changes to take effect
+        // without bulk data updates.
+        if (user.IdProofingCompletedAt.HasValue)
         {
-            var expiresAtOffset = new DateTimeOffset(user.IdProofingExpiresAt.Value, TimeSpan.Zero);
+            var expiresAt = user.IdProofingCompletedAt.Value.AddDays(_validitySettings.ValidityDays);
+            var expiresAtOffset = new DateTimeOffset(expiresAt, TimeSpan.Zero);
             claims.Add(new Claim(JwtClaimTypes.IdProofingExpiresAt,
                 expiresAtOffset.ToUnixTimeSeconds().ToString(),
                 ClaimValueTypes.Integer64));

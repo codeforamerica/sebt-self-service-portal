@@ -56,11 +56,11 @@ describe('SocureDocVAdapter', () => {
     await adapter.launch(config)
 
     expect(window.SocureDocVSDK!.launch).toHaveBeenCalledWith(
+      'test-sdk-key',
+      'test-token',
+      '#websdk',
       expect.objectContaining({
-        sdkKey: 'test-sdk-key',
-        token: 'test-token',
         type: 'docv',
-        containerId: 'websdk',
         autoOpenTabOnMobile: true,
         closeCaptureWindowOnComplete: true
       })
@@ -78,13 +78,15 @@ describe('SocureDocVAdapter', () => {
     expect(window.SocureDocVSDK!.launch).toHaveBeenCalledTimes(1)
   })
 
-  it('calls SocureDocVSDK.reset on reset()', () => {
+  it('calls SocureDocVSDK.reset and tears down global on reset()', () => {
     installMockSocureGlobal()
+    const resetFn = window.SocureDocVSDK!.reset
     const adapter = new SocureDocVAdapter()
 
     adapter.reset()
 
-    expect(window.SocureDocVSDK!.reset).toHaveBeenCalled()
+    expect(resetFn).toHaveBeenCalled()
+    expect(window.SocureDocVSDK).toBeUndefined()
   })
 
   it('can be re-launched after reset', async () => {
@@ -94,9 +96,11 @@ describe('SocureDocVAdapter', () => {
 
     await adapter.launch(config)
     adapter.reset()
+    // Re-install the global since reset() tears it down for a fresh load
+    installMockSocureGlobal()
     await adapter.launch(config)
 
-    expect(window.SocureDocVSDK!.launch).toHaveBeenCalledTimes(2)
+    expect(window.SocureDocVSDK!.launch).toHaveBeenCalledTimes(1)
   })
 
   it('swallows errors from SocureDocVSDK.reset()', () => {
