@@ -34,7 +34,10 @@ public class PortalWebApplicationFactory : WebApplicationFactory<Program>
         "Oidc__ClientId",
         "Oidc__CallbackRedirectUri",
         "Oidc__CompleteLoginSigningKey",
-        "ConnectionStrings__Redis"
+        "ConnectionStrings__Redis",
+        "MinimumIal__ApplicationCases",
+        "MinimumIal__CoLoadedStreamlineCases",
+        "MinimumIal__NonCoLoadedStreamlineCases"
     ];
 
 
@@ -54,6 +57,11 @@ public class PortalWebApplicationFactory : WebApplicationFactory<Program>
 
         // Disable Redis so HybridCache uses in-memory only (no 5s timeout per op)
         Environment.SetEnvironmentVariable("ConnectionStrings__Redis", "");
+
+        // MinimumIal settings are required — app fails to start without them
+        Environment.SetEnvironmentVariable("MinimumIal__ApplicationCases", "IAL1");
+        Environment.SetEnvironmentVariable("MinimumIal__CoLoadedStreamlineCases", "IAL1");
+        Environment.SetEnvironmentVariable("MinimumIal__NonCoLoadedStreamlineCases", "IAL1plus");
 
         builder.ConfigureServices(services =>
         {

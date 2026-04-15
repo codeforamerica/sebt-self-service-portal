@@ -1,5 +1,6 @@
 using Microsoft.Extensions.Logging;
 using SEBT.Portal.Core.Models.DocVerification;
+using SEBT.Portal.Core.Models.Household;
 using SEBT.Portal.Core.Services;
 using SEBT.Portal.Kernel;
 
@@ -18,6 +19,12 @@ public class StubSocureClient(ILogger<StubSocureClient> logger) : ISocureClient
         string dateOfBirth,
         string? idType,
         string? idValue,
+        string? ipAddress = null,
+        string? phoneNumber = null,
+        string? givenName = null,
+        string? familyName = null,
+        Address? address = null,
+        string? diSessionToken = null,
         CancellationToken cancellationToken = default)
     {
         logger.LogInformation(
