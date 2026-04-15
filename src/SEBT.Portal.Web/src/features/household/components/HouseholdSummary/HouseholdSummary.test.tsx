@@ -148,6 +148,38 @@ describe('HouseholdSummary', () => {
     expect(screen.queryByText(/1350 Pennsylvania Ave NW/)).not.toBeInTheDocument()
   })
 
+  it('hides change address link when no case allows address change', () => {
+    const coLoadedCase: SummerEbtCase = {
+      ...mockCase,
+      allowAddressChange: false,
+      allowCardReplacement: false
+    }
+    mockReturnData = {
+      ...defaultMockData,
+      summerEbtCases: [coLoadedCase]
+    }
+    render(<HouseholdSummary />)
+    expect(screen.getByText('Your mailing address')).toBeInTheDocument()
+    expect(screen.getByText(/1350 Pennsylvania Ave NW/)).toBeInTheDocument()
+    expect(
+      screen.queryByRole('link', { name: 'Change my mailing address' })
+    ).not.toBeInTheDocument()
+  })
+
+  it('shows change address link when any case allows address change', () => {
+    const allowedCase: SummerEbtCase = {
+      ...mockCase,
+      allowAddressChange: true,
+      allowCardReplacement: true
+    }
+    mockReturnData = {
+      ...defaultMockData,
+      summerEbtCases: [allowedCase]
+    }
+    render(<HouseholdSummary />)
+    expect(screen.getByRole('link', { name: 'Change my mailing address' })).toBeInTheDocument()
+  })
+
   it('renders preferred contact with email', () => {
     render(<HouseholdSummary />)
     expect(screen.getByText('Your preferred contact')).toBeInTheDocument()
