@@ -143,15 +143,16 @@ public class SubmitIdProofingCommandHandlerTests
     // --- Co-loaded + SNAP/TANF: streamline to IAL2 without Socure ---
 
     [Fact]
-    public async Task Handle_ShouldCompleteProofingWithoutSocure_WhenCoLoadedAndSnapIdWithValue()
+    public async Task Handle_ShouldCompleteProofingWithoutSocure_WhenCoLoadedAndSnapAccountMatchesUserSnapId()
     {
         var handler = CreateHandler();
-        var command = CreateValidCommand(idType: "snapAccountId", idValue: "123456789");
+        var command = CreateValidCommand(idType: "snapAccountId", idValue: "SNAP-CO-001");
         var user = new User
         {
             Id = command.UserId,
             Email = "test@example.com",
             IsCoLoaded = true,
+            SnapId = "SNAP-CO-001",
             IdProofingAttemptCount = 0
         };
 
@@ -159,6 +160,12 @@ public class SubmitIdProofingCommandHandlerTests
             .Returns(user);
         challengeRepository.GetActiveByUserIdAsync(command.UserId, Arg.Any<CancellationToken>())
             .Returns((DocVerificationChallenge?)null);
+        householdRepository.GetHouseholdByEmailAsync(
+                user.Email,
+                Arg.Any<PiiVisibility>(),
+                user.IalLevel,
+                Arg.Any<CancellationToken>())
+            .Returns((HouseholdData?)null);
 
         var result = await handler.Handle(command, CancellationToken.None);
 
@@ -168,6 +175,93 @@ public class SubmitIdProofingCommandHandlerTests
         Assert.Equal(UserIalLevel.IAL2, user.IalLevel);
         Assert.NotNull(user.IdProofingCompletedAt);
         Assert.Equal(0, user.IdProofingAttemptCount);
+
+        await socureClient.DidNotReceive()
+            .RunIdProofingAssessmentAsync(
+                Arg.Any<int>(), Arg.Any<string>(), Arg.Any<string>(),
+                Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<Address?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task Handle_ShouldCompleteProofingWithoutSocure_WhenCoLoadedAndSnapPersonMatchesHouseholdCase()
+    {
+        var handler = CreateHandler();
+        var command = CreateValidCommand(idType: "snapPersonId", idValue: "SNAP-PERSON-CO-001");
+        var user = new User
+        {
+            Id = command.UserId,
+            Email = "test@example.com",
+            IsCoLoaded = true,
+            IdProofingAttemptCount = 0
+        };
+        var household = new HouseholdData
+        {
+            SummerEbtCases =
+            [
+                new SummerEbtCase
+                {
+                    IsCoLoaded = true,
+                    IssuanceType = IssuanceType.SnapEbtCard,
+                    ApplicationStudentId = "SNAP-PERSON-CO-001"
+                }
+            ]
+        };
+
+        userRepository.GetUserByIdAsync(command.UserId, Arg.Any<CancellationToken>())
+            .Returns(user);
+        challengeRepository.GetActiveByUserIdAsync(command.UserId, Arg.Any<CancellationToken>())
+            .Returns((DocVerificationChallenge?)null);
+        householdRepository.GetHouseholdByEmailAsync(
+                user.Email,
+                Arg.Any<PiiVisibility>(),
+                user.IalLevel,
+                Arg.Any<CancellationToken>())
+            .Returns(household);
+
+        var result = await handler.Handle(command, CancellationToken.None);
+
+        Assert.True(result.IsSuccess);
+        Assert.Equal("matched", result.Value.Result);
+
+        await socureClient.DidNotReceive()
+            .RunIdProofingAssessmentAsync(
+                Arg.Any<int>(), Arg.Any<string>(), Arg.Any<string>(),
+                Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<Address?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task Handle_ShouldReturnFailedAndIncrementAttempts_WhenCoLoadedBenefitIdDoesNotMatch()
+    {
+        var handler = CreateHandler();
+        var command = CreateValidCommand(idType: "snapAccountId", idValue: "wrong-id");
+        var user = new User
+        {
+            Id = command.UserId,
+            Email = "test@example.com",
+            IsCoLoaded = true,
+            SnapId = "SNAP-CO-001",
+            IdProofingAttemptCount = 0
+        };
+
+        userRepository.GetUserByIdAsync(command.UserId, Arg.Any<CancellationToken>())
+            .Returns(user);
+        challengeRepository.GetActiveByUserIdAsync(command.UserId, Arg.Any<CancellationToken>())
+            .Returns((DocVerificationChallenge?)null);
+        householdRepository.GetHouseholdByEmailAsync(
+                user.Email,
+                Arg.Any<PiiVisibility>(),
+                user.IalLevel,
+                Arg.Any<CancellationToken>())
+            .Returns((HouseholdData?)null);
+
+        var result = await handler.Handle(command, CancellationToken.None);
+
+        Assert.True(result.IsSuccess);
+        Assert.Equal("failed", result.Value.Result);
+        Assert.Equal("idProofingFailed", result.Value.OffboardingReason);
+        Assert.True(result.Value.AllowIdRetry);
+        Assert.Equal(1, user.IdProofingAttemptCount);
+        await userRepository.Received(1).UpdateUserAsync(user, Arg.Any<CancellationToken>());
 
         await socureClient.DidNotReceive()
             .RunIdProofingAssessmentAsync(

@@ -87,18 +87,50 @@ public class SubmitIdProofingCommandHandler(
                     AllowIdRetry: activeChallenge.AllowIdRetry));
         }
 
-        // Co-loaded households: SNAP/TANF IDs are verified against records we already have — no Socure national_id path.
+        // Co-loaded households: SNAP/TANF IDs must match on-file records — no Socure national_id path.
         if (user.IsCoLoaded
             && IdProofingBenefitIdentifierTypes.IsSnapOrTanfPortalSelection(command.IdType)
             && !string.IsNullOrWhiteSpace(command.IdValue))
         {
+            HouseholdData? benefitHousehold = null;
+            try
+            {
+                benefitHousehold = await householdRepository.GetHouseholdByEmailAsync(
+                    user.Email,
+                    new PiiVisibility(IncludeAddress: false, IncludeEmail: false, IncludePhone: false),
+                    user.IalLevel,
+                    cancellationToken);
+            }
+            catch (Exception ex)
+            {
+                logger.LogWarning(ex,
+                    "Household lookup failed for co-loaded benefit ID verification for user {UserId}",
+                    command.UserId);
+            }
+
+            if (CoLoadedBenefitIdentifierMatch.Matches(user, benefitHousehold, command.IdType, command.IdValue))
+            {
+                logger.LogInformation(
+                    "User {UserId} co-loaded benefit ID verified for type {IdType}",
+                    command.UserId, command.IdType);
+                return await CompleteProofingAndRespond(
+                    user,
+                    cancellationToken,
+                    "co-loaded SNAP/TANF matched to on-file records (no Socure)");
+            }
+
             logger.LogInformation(
-                "User {UserId} is co-loaded and submitted benefit-program ID type {IdType}; completing proofing without Socure",
+                "User {UserId} co-loaded benefit ID did not match on-file records for type {IdType}",
                 command.UserId, command.IdType);
-            return await CompleteProofingAndRespond(
-                user,
-                cancellationToken,
-                "co-loaded SNAP/TANF in-portal match (no Socure)");
+
+            user.IdProofingAttemptCount++;
+            var allowBenefitRetry = user.IdProofingAttemptCount < maxAttempts;
+            await userRepository.UpdateUserAsync(user, cancellationToken);
+            return Result<SubmitIdProofingResponse>.Success(
+                new SubmitIdProofingResponse(
+                    "failed",
+                    AllowIdRetry: allowBenefitRetry,
+                    OffboardingReason: "idProofingFailed"));
         }
 
         // Fetch household data for user's name and address (best-effort, optional for Socure)

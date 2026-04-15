@@ -172,10 +172,16 @@ public class MockHouseholdRepository : IHouseholdRepository
                 HouseholdFactory.CreateSummerEbtCase("Sophia", "Martinez", "SNAP", c =>
                 {
                     c.IssuanceType = IssuanceType.SnapEbtCard;
+                    c.IsCoLoaded = true;
+                    c.EbtCaseNumber = "SNAP-CO-001";
+                    c.ApplicationStudentId = "SNAP-PERSON-CO-001";
                 }),
                 HouseholdFactory.CreateSummerEbtCase("James", "Martinez", "TANF", c =>
                 {
                     c.IssuanceType = IssuanceType.TanfEbtCard;
+                    c.IsCoLoaded = true;
+                    c.EbtCaseNumber = "TANF-CO-001";
+                    c.ApplicationStudentId = "TANF-PERSON-CO-001";
                 })
             };
         });
@@ -184,6 +190,19 @@ public class MockHouseholdRepository : IHouseholdRepository
         coLoaded.UserProfile = new UserProfile { FirstName = "Maria", MiddleName = "Elena", LastName = "MartinezMOCK" };
         _households[coLoadedEmail] = coLoaded;
         IndexByPhone(coLoaded);
+
+        if (string.Equals(_settings.State, "dc", StringComparison.OrdinalIgnoreCase))
+        {
+            var coLoadedPendingIdProofingEmail = _settings.BuildEmail(SeedScenarios.CoLoadedPendingIdProofing.Name);
+            var fullPii = new PiiVisibility(IncludeAddress: true, IncludeEmail: true, IncludePhone: true);
+            var coLoadedPending = CreateCopy(coLoaded, fullPii) with
+            {
+                Email = coLoadedPendingIdProofingEmail,
+                Phone = "8185558438",
+            };
+            _households[coLoadedPendingIdProofingEmail] = coLoadedPending;
+            IndexByPhone(coLoadedPending);
+        }
 
         // Scenario 2: Approved application with address (ID verified user)
         var verifiedEmail = _settings.BuildEmail(SeedScenarios.Verified.Name);
@@ -732,6 +751,8 @@ public class MockHouseholdRepository : IHouseholdRepository
                     : null,
                 EligibilitySource = sec.EligibilitySource,
                 IssuanceType = sec.IssuanceType,
+                IsCoLoaded = sec.IsCoLoaded,
+                IsStreamlineCertified = sec.IsStreamlineCertified,
                 EbtCaseNumber = sec.EbtCaseNumber,
                 EbtCardLastFour = sec.EbtCardLastFour,
                 EbtCardStatus = sec.EbtCardStatus,

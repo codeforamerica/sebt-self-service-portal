@@ -11,10 +11,10 @@ public class SeedingSettingsTests
         var settings = new SeedingSettings
         {
             EmailPattern = "{0}@example.com",
-            CoLoadedSeedEmailOverride = "michael.corey.walsh@gmail.com",
+            CoLoadedSeedEmailOverride = "co-loaded-override@example.com",
         };
 
-        Assert.Equal("michael.corey.walsh@gmail.com", settings.BuildEmail(SeedScenarios.CoLoaded.Name));
+        Assert.Equal("co-loaded-override@example.com", settings.BuildEmail(SeedScenarios.CoLoaded.Name));
     }
 
     [Fact]
