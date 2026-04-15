@@ -5,7 +5,7 @@ using SEBT.Portal.Kernel;
 namespace SEBT.Portal.UseCases.Household;
 
 /// <summary>
-/// Command to request a replacement card for an authenticated user's application.
+/// Command to request replacement cards for one or more cases.
 /// </summary>
 public class RequestCardReplacementCommand : ICommand
 {
@@ -16,8 +16,10 @@ public class RequestCardReplacementCommand : ICommand
     public required ClaimsPrincipal User { get; init; }
 
     /// <summary>
-    /// The application number identifying which card to replace.
+    /// Case IDs identifying which cards to replace.
+    /// Each case represents an enrolled child with a card.
     /// </summary>
-    [Required(ErrorMessage = "Application number is required.")]
-    public required string ApplicationNumber { get; init; }
+    [Required(ErrorMessage = "At least one case ID is required.")]
+    [MinLength(1, ErrorMessage = "At least one case ID is required.")]
+    public required List<string> CaseIds { get; init; }
 }

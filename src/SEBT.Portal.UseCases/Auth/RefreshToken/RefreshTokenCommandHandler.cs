@@ -49,7 +49,10 @@ public class RefreshTokenCommandHandler(
                     "User not found.");
             }
 
-            var token = jwtTokenService.GenerateToken(user);
+            var additionalClaims = command.CurrentPrincipal.Claims
+                .DistinctBy(c => c.Type)
+                .ToDictionary(c => c.Type, c => c.Value);
+            var token = jwtTokenService.GenerateToken(user, additionalClaims);
 
             logger.LogInformation(
                 "Token refreshed successfully for email {Email} with IAL level {IalLevel}",

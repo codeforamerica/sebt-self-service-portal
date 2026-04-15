@@ -20,7 +20,11 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { server } from '@/mocks/server'
 
-import { SK_CHALLENGE_ID } from '@/features/auth/components/doc-verify/sessionKeys'
+import {
+  SK_CHALLENGE_ID,
+  SK_STILL_CHECKING,
+  SK_SUB_STATE
+} from '@/features/auth/components/doc-verify/sessionKeys'
 import { AuthProvider } from '../../context'
 import { IdProofingForm, type IdOption } from './IdProofingForm'
 
@@ -322,6 +326,49 @@ describe('IdProofingForm', () => {
         )
       })
       expect(sessionStorage.getItem(SK_CHALLENGE_ID)).toBe('challenge-abc')
+    })
+
+    it('clears stale DocV session keys before navigating to doc-verify', async () => {
+      // Simulate leftover state from a prior DocV attempt
+      sessionStorage.setItem(SK_CHALLENGE_ID, 'old-challenge-id')
+      sessionStorage.setItem(SK_SUB_STATE, 'pending')
+      sessionStorage.setItem(SK_STILL_CHECKING, 'true')
+
+      server.use(
+        http.post('/api/id-proofing', () => {
+          return HttpResponse.json({
+            result: 'documentVerificationRequired',
+            challengeId: 'new-challenge-id',
+            allowIdRetry: true
+          })
+        })
+      )
+
+      const user = userEvent.setup()
+      renderWithProviders(
+        <IdProofingForm
+          idOptions={TEST_ID_OPTIONS}
+          contactLink={TEST_CONTACT_LINK}
+        />
+      )
+
+      await user.selectOptions(screen.getByRole('combobox', { name: /month/i }), '06')
+      await user.type(screen.getByRole('textbox', { name: INPUT_LABEL_DAY }), '20')
+      await user.type(screen.getByRole('textbox', { name: INPUT_LABEL_YEAR }), '1985')
+      await user.click(screen.getByRole('radio', { name: LABEL_NONE }))
+      await user.click(screen.getByRole('button', { name: /continue/i }))
+
+      await waitFor(() => {
+        expect(mockPush).toHaveBeenCalledWith(
+          '/login/id-proofing/doc-verify?challengeId=new-challenge-id'
+        )
+      })
+
+      // Old sub-state and timer keys should have been cleared before navigation
+      expect(sessionStorage.getItem(SK_SUB_STATE)).toBeNull()
+      expect(sessionStorage.getItem(SK_STILL_CHECKING)).toBeNull()
+      // The new challengeId should be set (by the existing sessionStorage.setItem call)
+      expect(sessionStorage.getItem(SK_CHALLENGE_ID)).toBe('new-challenge-id')
     })
 
     it('shows error when documentVerificationRequired but challengeId is missing', async () => {

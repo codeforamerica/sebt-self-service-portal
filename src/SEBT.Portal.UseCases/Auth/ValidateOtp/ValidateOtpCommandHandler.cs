@@ -55,6 +55,13 @@ namespace SEBT.Portal.UseCases.Auth
             {
                 var (user, isNewUser) = await userRepository.GetOrCreateUserAsync(command.Email, cancellationToken);
 
+                // A user who completed OTP authentication is at least IAL1; don't downgrade if already higher
+                if (user.IalLevel < Core.Models.Auth.UserIalLevel.IAL1)
+                {
+                    user.IalLevel = Core.Models.Auth.UserIalLevel.IAL1;
+                    await userRepository.UpdateUserAsync(user, cancellationToken);
+                }
+
                 var token = jwtTokenService.GenerateToken(user);
 
                 // Delete OTP after successful validation

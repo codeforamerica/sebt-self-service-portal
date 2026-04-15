@@ -13,6 +13,10 @@ const withBundleAnalyzer = bundleAnalyzer({
   enabled: process.env.ANALYZE === 'true'
 })
 
+// Origin of the enrollment checker static site. When set, CORS headers are
+// returned on /api/enrollment/* so the SSG-deployed checker can call the portal API.
+const enrollmentCheckerOrigin = process.env.ENROLLMENT_CHECKER_ORIGIN
+
 const nextConfig: NextConfig = {
   // NOTE: @sebt/design-system is NOT in transpilePackages. Turbopack handles
   // TypeScript natively. Using transpilePackages caused the entire barrel to
@@ -35,6 +39,7 @@ const nextConfig: NextConfig = {
    * `includePaths` is legacy-API-only and is ignored — without loadPaths, `@use "uswds-core"` fails under webpack. */
   sassOptions: {
     implementation: 'sass-embedded',
+    quietDeps: true,
     loadPaths: [
       path.join(designSystemPath, 'design/sass'),
       path.join(__dirname, 'node_modules/@uswds/uswds/packages'),
@@ -51,6 +56,7 @@ const nextConfig: NextConfig = {
             options: {
               implementation: 'sass-embedded',
               sassOptions: {
+                quietDeps: true,
                 loadPaths: [
                   path.join(designSystemPath, 'design/sass'),
                   path.join(__dirname, 'node_modules/@uswds/uswds/packages'),
@@ -63,6 +69,22 @@ const nextConfig: NextConfig = {
         as: '*.css'
       }
     }
+  },
+  // CORS headers for the enrollment checker SSG site. Only applied when the
+  // ENROLLMENT_CHECKER_ORIGIN env var is set (i.e. in deployed environments
+  // where the enrollment checker is on a separate domain).
+  headers: async () => {
+    if (!enrollmentCheckerOrigin) return []
+    return [
+      {
+        source: '/api/enrollment/:path*',
+        headers: [
+          { key: 'Access-Control-Allow-Origin', value: enrollmentCheckerOrigin },
+          { key: 'Access-Control-Allow-Methods', value: 'GET, POST, OPTIONS' },
+          { key: 'Access-Control-Allow-Headers', value: 'Content-Type' }
+        ]
+      }
+    ]
   },
   // Standalone output for Docker/CI deployments only (set BUILD_STANDALONE=true)
   // Local dev uses standard output so `next start` serves public/ and static/ correctly

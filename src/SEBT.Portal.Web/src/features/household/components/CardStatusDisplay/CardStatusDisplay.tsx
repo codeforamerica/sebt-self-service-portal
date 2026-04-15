@@ -1,14 +1,12 @@
 'use client'
 
-import Link from 'next/link'
 import { useTranslation } from 'react-i18next'
 
-import type { Application, CardStatus, UiCardStatus } from '../../api'
+import type { CardStatus, UiCardStatus } from '../../api'
 import { toUiCardStatus } from '../../api'
 
 interface CardStatusDisplayProps {
-  application: Application
-  canRequestReplacementCard?: boolean | undefined
+  cardStatus: CardStatus | null | undefined
 }
 
 // Keys map to CSV: "S2 - Portal Dashboard - Card Table - Status {Status}"
@@ -36,13 +34,8 @@ const DESCRIPTION_KEY: Partial<Record<CardStatus, string>> = {
   Undeliverable: 'cardTableStatusMessageUndeliverable'
 }
 
-export function CardStatusDisplay({
-  application,
-  canRequestReplacementCard
-}: CardStatusDisplayProps) {
+export function CardStatusDisplay({ cardStatus }: CardStatusDisplayProps) {
   const { t } = useTranslation('dashboard')
-
-  const { cardStatus } = application
 
   if (
     !cardStatus ||
@@ -73,14 +66,7 @@ export function CardStatusDisplay({
             {statusDescription}
           </p>
 
-          {canRequestReplacementCard && (
-            <Link
-              href="/cards/request"
-              className="usa-link display-inline-block margin-top-1 font-body-xs"
-            >
-              {t('cardTableActionRequestReplacement')}
-            </Link>
-          )}
+          {/* Replacement link is rendered by ChildCard, not here */}
         </div>
       </dd>
     </div>

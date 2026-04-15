@@ -58,6 +58,7 @@ module "api" {
 
   environment_variables = merge({
     ASPNETCORE_ENVIRONMENT                       = var.environment
+    LOG_FORMAT                                   = var.log_as_json ? "json" : "text"
     STATE                                        = var.state
     DB_HOST                                      = module.database.endpoint
     DB_NAME                                      = "SebtPortal"
@@ -69,6 +70,7 @@ module "api" {
     "EmailOtpSenderServiceSettings__SenderEmail" = module.ses.sender_email
     "Seeding__Enabled"                           = var.seeding_enabled
     "Seeding__EmailPattern"                      = var.seeding_email_pattern
+    "Seeding__State"                             = lower(var.state)
     "UseMockHouseholdData"                       = var.use_mock_household_data
   }, var.enable_appconfig ? {
     "AppConfig__Agent__BaseUrl"          = "http://localhost:2772"

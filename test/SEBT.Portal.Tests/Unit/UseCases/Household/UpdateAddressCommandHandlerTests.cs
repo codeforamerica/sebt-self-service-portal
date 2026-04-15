@@ -29,23 +29,22 @@ public class UpdateAddressCommandHandlerTests
     private readonly IHouseholdIdentifierResolver _resolver =
         Substitute.For<IHouseholdIdentifierResolver>();
     private readonly ICoreAddressUpdateService _addressUpdateService = Substitute.For<ICoreAddressUpdateService>();
+    private readonly IAddressValidationService _addressValidationService = Substitute.For<IAddressValidationService>();
     private readonly IHouseholdRepository _householdRepository =
         Substitute.For<IHouseholdRepository>();
     private readonly IIdProofingRequirementsService _idProofingRequirementsService =
         Substitute.For<IIdProofingRequirementsService>();
-    private readonly ISelfServiceEvaluator _evaluator =
-        Substitute.For<ISelfServiceEvaluator>();
     private readonly IStateAddressUpdateService _stateAddressUpdateService =
         Substitute.For<IStateAddressUpdateService>();
+    private readonly IMinimumIalService _minimumIalService =
+        Substitute.For<IMinimumIalService>();
+    private readonly ISelfServiceEvaluator _selfServiceEvaluator =
+        Substitute.For<ISelfServiceEvaluator>();
     private readonly NullLogger<UpdateAddressCommandHandler> _logger =
         NullLogger<UpdateAddressCommandHandler>.Instance;
 
     public UpdateAddressCommandHandlerTests()
     {
-        // Default: allow all actions so existing tests pass
-        _evaluator.Evaluate(Arg.Any<BenefitIssuanceType>(), Arg.Any<IReadOnlyList<Application>>())
-            .Returns(new AllowedActions { CanUpdateAddress = true, CanRequestReplacementCard = true });
-
         // Default: address validation passes, state connector succeeds, PII visibility minimal
         _addressUpdateService
             .ValidateAndNormalizeAsync(Arg.Any<AddressUpdateOperationRequest>(), Arg.Any<CancellationToken>())
@@ -63,15 +62,22 @@ public class UpdateAddressCommandHandlerTests
                         WasCorrected = false,
                         IsGeneralDelivery = false
                     })));
+        _addressValidationService.ValidateAsync(Arg.Any<Address>(), Arg.Any<CancellationToken>())
+            .Returns(AddressValidationResult.Valid());
         _stateAddressUpdateService.UpdateAddressAsync(Arg.Any<AddressUpdateRequest>(), Arg.Any<CancellationToken>())
             .Returns(AddressUpdateResult.Success());
         _idProofingRequirementsService.GetPiiVisibility(Arg.Any<UserIalLevel>())
             .Returns(new PiiVisibility(false, false, false));
+        // Default: IAL gate passes (no elevated requirement)
+        _minimumIalService.GetMinimumIal(Arg.Any<IReadOnlyList<SummerEbtCase>>()).Returns(UserIalLevel.None);
+        // Default: self-service rules allow address update
+        _selfServiceEvaluator.Evaluate(Arg.Any<BenefitIssuanceType>(), Arg.Any<IReadOnlyList<Application>>())
+            .Returns(new AllowedActions { CanUpdateAddress = true, CanRequestReplacementCard = true });
     }
 
     private UpdateAddressCommandHandler CreateHandler() =>
-        new(_validator, _addressUpdateService, _resolver, _householdRepository,
-            _idProofingRequirementsService, _evaluator, _stateAddressUpdateService, _logger);
+        new(_validator, _addressUpdateService, _addressValidationService, _resolver, _householdRepository,
+            _idProofingRequirementsService, _minimumIalService, _selfServiceEvaluator, _stateAddressUpdateService, _logger);
 
     private static ClaimsPrincipal CreateUser(string email)
     {
@@ -120,7 +126,7 @@ public class UpdateAddressCommandHandlerTests
         var result = await handler.Handle(command, CancellationToken.None);
 
         Assert.False(result.IsSuccess);
-        Assert.IsType<ValidationFailedResult>(result);
+        Assert.IsType<ValidationFailedResult<AddressValidationResult>>(result);
     }
 
     [Fact]
@@ -139,7 +145,7 @@ public class UpdateAddressCommandHandlerTests
         var result = await handler.Handle(command, CancellationToken.None);
 
         Assert.False(result.IsSuccess);
-        Assert.IsType<ValidationFailedResult>(result);
+        Assert.IsType<ValidationFailedResult<AddressValidationResult>>(result);
     }
 
     [Fact]
@@ -158,7 +164,7 @@ public class UpdateAddressCommandHandlerTests
         var result = await handler.Handle(command, CancellationToken.None);
 
         Assert.False(result.IsSuccess);
-        Assert.IsType<ValidationFailedResult>(result);
+        Assert.IsType<ValidationFailedResult<AddressValidationResult>>(result);
     }
 
     [Fact]
@@ -177,7 +183,7 @@ public class UpdateAddressCommandHandlerTests
         var result = await handler.Handle(command, CancellationToken.None);
 
         Assert.False(result.IsSuccess);
-        Assert.IsType<ValidationFailedResult>(result);
+        Assert.IsType<ValidationFailedResult<AddressValidationResult>>(result);
     }
 
     [Fact]
@@ -196,7 +202,7 @@ public class UpdateAddressCommandHandlerTests
         var result = await handler.Handle(command, CancellationToken.None);
 
         Assert.False(result.IsSuccess);
-        Assert.IsType<ValidationFailedResult>(result);
+        Assert.IsType<ValidationFailedResult<AddressValidationResult>>(result);
     }
 
     [Fact]
@@ -215,7 +221,7 @@ public class UpdateAddressCommandHandlerTests
         var result = await handler.Handle(command, CancellationToken.None);
 
         Assert.False(result.IsSuccess);
-        Assert.IsType<ValidationFailedResult>(result);
+        Assert.IsType<ValidationFailedResult<AddressValidationResult>>(result);
     }
 
     [Fact]
@@ -251,7 +257,7 @@ public class UpdateAddressCommandHandlerTests
         var result = await handler.Handle(command, CancellationToken.None);
 
         Assert.False(result.IsSuccess);
-        Assert.IsType<UnauthorizedResult>(result);
+        Assert.IsType<UnauthorizedResult<AddressValidationResult>>(result);
     }
 
     [Fact]
@@ -262,14 +268,12 @@ public class UpdateAddressCommandHandlerTests
 
         SetupResolverReturnsEmail();
         SetupHouseholdWithBenefitType(BenefitIssuanceType.SnapEbtCard);
-        _evaluator.Evaluate(Arg.Any<BenefitIssuanceType>(), Arg.Any<IReadOnlyList<Application>>())
-            .Returns(new AllowedActions { CanUpdateAddress = false, AddressUpdateDeniedMessageKey = "selfServiceUnavailable" });
 
         var result = await handler.Handle(command, CancellationToken.None);
 
         Assert.False(result.IsSuccess);
-        var preconditionFailed = Assert.IsType<PreconditionFailedResult>(result);
-        Assert.Equal(PreconditionFailedReason.NotAllowed, preconditionFailed.Reason);
+        var preconditionFailed = Assert.IsType<PreconditionFailedResult<AddressValidationResult>>(result);
+        Assert.Equal(PreconditionFailedReason.Conflict, preconditionFailed.Reason);
     }
 
     [Fact]
@@ -280,14 +284,12 @@ public class UpdateAddressCommandHandlerTests
 
         SetupResolverReturnsEmail();
         SetupHouseholdWithBenefitType(BenefitIssuanceType.TanfEbtCard);
-        _evaluator.Evaluate(Arg.Any<BenefitIssuanceType>(), Arg.Any<IReadOnlyList<Application>>())
-            .Returns(new AllowedActions { CanUpdateAddress = false, AddressUpdateDeniedMessageKey = "selfServiceUnavailable" });
 
         var result = await handler.Handle(command, CancellationToken.None);
 
         Assert.False(result.IsSuccess);
-        var preconditionFailed = Assert.IsType<PreconditionFailedResult>(result);
-        Assert.Equal(PreconditionFailedReason.NotAllowed, preconditionFailed.Reason);
+        var preconditionFailed = Assert.IsType<PreconditionFailedResult<AddressValidationResult>>(result);
+        Assert.Equal(PreconditionFailedReason.Conflict, preconditionFailed.Reason);
     }
 
     [Fact]
@@ -319,7 +321,7 @@ public class UpdateAddressCommandHandlerTests
     }
 
     [Fact]
-    public async Task Handle_ReturnsNotAllowed_WhenHouseholdNotFoundDuringPolicyCheck()
+    public async Task Handle_AllowsUpdate_WhenHouseholdNotFound()
     {
         var handler = CreateHandler();
         var command = CreateValidCommand();
@@ -332,13 +334,11 @@ public class UpdateAddressCommandHandlerTests
 
         var result = await handler.Handle(command, CancellationToken.None);
 
-        Assert.False(result.IsSuccess);
-        var preconditionFailed = Assert.IsType<PreconditionFailedResult>(result);
-        Assert.Equal(PreconditionFailedReason.NotAllowed, preconditionFailed.Reason);
+        Assert.True(result.IsSuccess);
     }
 
     [Fact]
-    public async Task Handle_ReturnsValidationFailed_WhenAddressServiceReturnsValidationFailed()
+    public async Task Handle_ReturnsNotFoundResult_WhenAddressServiceReturnsValidationFailed()
     {
         _addressUpdateService
             .ValidateAndNormalizeAsync(Arg.Any<AddressUpdateOperationRequest>(), Arg.Any<CancellationToken>())
@@ -350,8 +350,12 @@ public class UpdateAddressCommandHandlerTests
 
         var result = await handler.Handle(command, CancellationToken.None);
 
-        Assert.False(result.IsSuccess);
-        Assert.IsType<ValidationFailedResult>(result);
+        // Smarty verification failures become structured "not-found" results (422)
+        // so the frontend routes to Address Not Found, not a generic 400.
+        Assert.True(result.IsSuccess);
+        var successResult = Assert.IsType<SuccessResult<AddressValidationResult>>(result);
+        Assert.False(successResult.Value.IsValid);
+        Assert.Equal("not-found", successResult.Value.Reason);
         await _resolver.DidNotReceive()
             .ResolveAsync(Arg.Any<ClaimsPrincipal>(), Arg.Any<CancellationToken>());
     }
@@ -372,7 +376,7 @@ public class UpdateAddressCommandHandlerTests
         var result = await handler.Handle(command, CancellationToken.None);
 
         Assert.False(result.IsSuccess);
-        Assert.IsType<DependencyFailedResult>(result);
+        Assert.IsType<DependencyFailedResult<AddressValidationResult>>(result);
         await _resolver.DidNotReceive()
             .ResolveAsync(Arg.Any<ClaimsPrincipal>(), Arg.Any<CancellationToken>());
     }
@@ -397,15 +401,13 @@ public class UpdateAddressCommandHandlerTests
     }
 
     [Fact]
-    public async Task Handle_DoesNotCallStateConnector_WhenSelfServiceRulesDeny()
+    public async Task Handle_DoesNotCallStateConnector_WhenPolicyCheckRejects()
     {
         var handler = CreateHandler();
         var command = CreateValidCommand();
 
         SetupResolverReturnsEmail();
         SetupHouseholdWithBenefitType(BenefitIssuanceType.SnapEbtCard);
-        _evaluator.Evaluate(Arg.Any<BenefitIssuanceType>(), Arg.Any<IReadOnlyList<Application>>())
-            .Returns(new AllowedActions { CanUpdateAddress = false, AddressUpdateDeniedMessageKey = "selfServiceUnavailable" });
 
         await handler.Handle(command, CancellationToken.None);
 
@@ -425,7 +427,7 @@ public class UpdateAddressCommandHandlerTests
         var result = await handler.Handle(command, CancellationToken.None);
 
         Assert.True(result.IsSuccess);
-        Assert.IsType<SuccessResult>(result);
+        Assert.IsType<SuccessResult<AddressValidationResult>>(result);
     }
 
     [Fact]
@@ -442,7 +444,7 @@ public class UpdateAddressCommandHandlerTests
         var result = await handler.Handle(command, CancellationToken.None);
 
         Assert.False(result.IsSuccess);
-        var preconditionFailed = Assert.IsType<PreconditionFailedResult>(result);
+        var preconditionFailed = Assert.IsType<PreconditionFailedResult<AddressValidationResult>>(result);
         Assert.Equal(PreconditionFailedReason.Conflict, preconditionFailed.Reason);
     }
 
@@ -460,7 +462,7 @@ public class UpdateAddressCommandHandlerTests
         var result = await handler.Handle(command, CancellationToken.None);
 
         Assert.False(result.IsSuccess);
-        Assert.IsType<DependencyFailedResult>(result);
+        Assert.IsType<DependencyFailedResult<AddressValidationResult>>(result);
     }
 
     [Fact]
@@ -477,7 +479,7 @@ public class UpdateAddressCommandHandlerTests
         var result = await handler.Handle(command, CancellationToken.None);
 
         Assert.False(result.IsSuccess);
-        Assert.IsType<DependencyFailedResult>(result);
+        Assert.IsType<DependencyFailedResult<AddressValidationResult>>(result);
     }
 
     [Fact]
@@ -495,50 +497,6 @@ public class UpdateAddressCommandHandlerTests
 
         await _stateAddressUpdateService.DidNotReceive()
             .UpdateAddressAsync(Arg.Any<AddressUpdateRequest>(), Arg.Any<CancellationToken>());
-    }
-
-    // --- Self-service rules enforcement ---
-
-    [Fact]
-    public async Task Handle_ReturnsNotAllowed_WhenEvaluatorDeniesAddressUpdate()
-    {
-        var handler = CreateHandler();
-        var command = CreateValidCommand();
-
-        SetupResolverReturnsEmail();
-        SetupHouseholdWithBenefitType(BenefitIssuanceType.SnapEbtCard);
-
-        _evaluator.Evaluate(BenefitIssuanceType.SnapEbtCard, Arg.Any<IReadOnlyList<Application>>())
-            .Returns(new AllowedActions
-            {
-                CanUpdateAddress = false,
-                AddressUpdateDeniedMessageKey = "selfServiceUnavailable"
-            });
-
-        var result = await handler.Handle(command, CancellationToken.None);
-
-        Assert.False(result.IsSuccess);
-        var preconditionFailed = Assert.IsType<PreconditionFailedResult>(result);
-        Assert.Equal(PreconditionFailedReason.NotAllowed, preconditionFailed.Reason);
-    }
-
-    [Fact]
-    public async Task Handle_ReturnsNotAllowed_WhenHouseholdNotFound()
-    {
-        var handler = CreateHandler();
-        var command = CreateValidCommand();
-
-        SetupResolverReturnsEmail();
-        _householdRepository.GetHouseholdByIdentifierAsync(
-                Arg.Any<HouseholdIdentifier>(), Arg.Any<PiiVisibility>(),
-                Arg.Any<UserIalLevel>(), Arg.Any<CancellationToken>())
-            .Returns((HouseholdData?)null);
-
-        var result = await handler.Handle(command, CancellationToken.None);
-
-        Assert.False(result.IsSuccess);
-        var preconditionFailed = Assert.IsType<PreconditionFailedResult>(result);
-        Assert.Equal(PreconditionFailedReason.NotAllowed, preconditionFailed.Reason);
     }
 
     [Fact]

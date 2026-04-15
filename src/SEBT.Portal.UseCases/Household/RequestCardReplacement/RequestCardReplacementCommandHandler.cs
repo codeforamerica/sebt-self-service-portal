@@ -9,19 +9,26 @@ using SEBT.Portal.Kernel.Results;
 namespace SEBT.Portal.UseCases.Household;
 
 /// <summary>
-/// Handles card replacement requests for an authenticated user.
-/// Validates input, resolves household identity, enforces self-service rules,
-/// and returns success. State connector call is stubbed for now.
+/// Handles card replacement requests for an authenticated user's household.
+/// Validates input, resolves household identity, enforces minimum IAL,
+/// enforces self-service rules, enforces 2-week cooldown, and returns success.
+/// State connector call is stubbed — actual card replacement is a future integration.
 /// </summary>
 public class RequestCardReplacementCommandHandler(
     IValidator<RequestCardReplacementCommand> validator,
     IHouseholdIdentifierResolver resolver,
     IHouseholdRepository repository,
+    IMinimumIalService minimumIalService,
     ISelfServiceEvaluator selfServiceEvaluator,
+    TimeProvider timeProvider,
     ILogger<RequestCardReplacementCommandHandler> logger)
     : ICommandHandler<RequestCardReplacementCommand>
 {
-    public async Task<Result> Handle(RequestCardReplacementCommand command, CancellationToken cancellationToken = default)
+    private static readonly TimeSpan CooldownPeriod = TimeSpan.FromDays(14);
+
+    public async Task<Result> Handle(
+        RequestCardReplacementCommand command,
+        CancellationToken cancellationToken = default)
     {
         var validationResult = await validator.Validate(command, cancellationToken);
         if (validationResult is ValidationFailedResult validationFailed)
@@ -33,42 +40,107 @@ public class RequestCardReplacementCommandHandler(
         var identifier = await resolver.ResolveAsync(command.User, cancellationToken);
         if (identifier == null)
         {
-            logger.LogWarning("Card replacement attempted but no household identifier could be resolved from claims");
+            logger.LogWarning(
+                "Card replacement attempted but no household identifier could be resolved from claims");
             return Result.Unauthorized("Unable to identify user from token.");
         }
 
-        var householdData = await repository.GetHouseholdByIdentifierAsync(
+        var userIalLevel = UserIalLevelExtensions.FromClaimsPrincipal(command.User);
+
+        var household = await repository.GetHouseholdByIdentifierAsync(
             identifier,
             new PiiVisibility(IncludeAddress: false, IncludeEmail: false, IncludePhone: false),
-            UserIalLevel.None,
+            userIalLevel,
             cancellationToken);
 
-        if (householdData == null)
+        if (household == null)
         {
-            logger.LogWarning("Card replacement denied: household not found for identifier");
-            return Result.PreconditionFailed(PreconditionFailedReason.NotAllowed, "Card replacement is not available.");
+            logger.LogWarning("Card replacement attempted but household data not found");
+            return Result.PreconditionFailed(PreconditionFailedReason.NotFound, "Household data not found.");
         }
 
-        var allowedActions = selfServiceEvaluator.Evaluate(householdData.BenefitIssuanceType, householdData.Applications);
+        // SECURITY: Block write operations when the user has not met the minimum IAL
+        // required by their cases. See docs/tdd/minimum-ial-determination.md.
+        var minimumIal = minimumIalService.GetMinimumIal(household.SummerEbtCases);
+        if (userIalLevel < minimumIal)
+        {
+            logger.LogInformation(
+                "Card replacement denied: user IAL {UserIal} is below minimum {MinimumIal}",
+                userIalLevel,
+                minimumIal);
+            return Result.Forbidden(
+                $"This household requires {minimumIal}. Complete identity verification to request card replacements.");
+        }
+
+        var allowedActions = selfServiceEvaluator.Evaluate(
+            household.BenefitIssuanceType,
+            household.Applications);
         if (!allowedActions.CanRequestReplacementCard)
         {
             logger.LogInformation("Card replacement denied by self-service rules for household");
-            return Result.PreconditionFailed(PreconditionFailedReason.NotAllowed,
+            return Result.PreconditionFailed(
+                PreconditionFailedReason.NotAllowed,
                 allowedActions.CardReplacementDeniedMessageKey ?? "Card replacement is not available for this account.");
+        }
+
+        var cooldownErrors = CheckCooldown(command.CaseIds, household, timeProvider);
+        if (cooldownErrors.Count > 0)
+        {
+            logger.LogInformation(
+                "Card replacement rejected: {Count} case(s) within cooldown period",
+                cooldownErrors.Count);
+            return Result.ValidationFailed(cooldownErrors);
         }
 
         var identifierKind = identifier.Type.ToString();
         logger.LogInformation(
-            "Card replacement request received for application {ApplicationNumber}, household identifier kind {Kind}",
-            command.ApplicationNumber, identifierKind);
+            "Card replacement request received for household identifier kind {Kind}, {Count} case(s)",
+            identifierKind,
+            command.CaseIds.Count);
 
         // TODO: Call state connector to process card replacement.
-        // Stubbed for now. When the state connector integration lands, wire up the actual call here.
+        // Stubbed — returns success without calling the state system.
 
         logger.LogInformation(
-            "Card replacement completed for application {ApplicationNumber}, household identifier kind {Kind}",
-            command.ApplicationNumber, identifierKind);
+            "Card replacement request recorded for household identifier kind {Kind}",
+            identifierKind);
 
         return Result.Success();
+    }
+
+    private static List<ValidationError> CheckCooldown(
+        List<string> requestedCaseIds,
+        Core.Models.Household.HouseholdData household,
+        TimeProvider timeProvider)
+    {
+        var errors = new List<ValidationError>();
+        var now = timeProvider.GetUtcNow().UtcDateTime;
+
+        foreach (var caseId in requestedCaseIds)
+        {
+            var summerEbtCase = household.SummerEbtCases
+                .FirstOrDefault(c => c.SummerEBTCaseID == caseId);
+
+            if (summerEbtCase == null)
+            {
+                errors.Add(new ValidationError(
+                    "CaseIds",
+                    $"Case {caseId} does not belong to this household."));
+                continue;
+            }
+
+            if (summerEbtCase.CardRequestedAt == null)
+                continue;
+
+            var elapsed = now - summerEbtCase.CardRequestedAt.Value;
+            if (elapsed < CooldownPeriod)
+            {
+                errors.Add(new ValidationError(
+                    "CaseIds",
+                    $"Case {caseId} was requested within the last 14 days."));
+            }
+        }
+
+        return errors;
     }
 }

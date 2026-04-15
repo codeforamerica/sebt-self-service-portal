@@ -193,6 +193,12 @@ variable "use_mock_household_data" {
   default     = "false"
 }
 
+variable "log_as_json" {
+  type        = bool
+  description = "Output API logs as structured JSON. Enable in deployed environments so Datadog can parse log severity."
+  default     = false
+}
+
 variable "state_api_environment_variables" {
   type        = map(string)
   description = "State-specific environment variables to inject into the API container."

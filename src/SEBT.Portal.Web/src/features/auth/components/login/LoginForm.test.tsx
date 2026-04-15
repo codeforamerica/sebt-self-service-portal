@@ -69,6 +69,13 @@ describe('LoginForm', () => {
       expect(submitButton).toBeInTheDocument()
       expect(submitButton).toHaveAttribute('type', 'submit')
     })
+
+    it('exposes data-analytics-cta on the submit button for cta_click tracking', () => {
+      renderWithProviders(<LoginForm />)
+
+      const submitButton = screen.getByRole('button', { name: /continue/i })
+      expect(submitButton).toHaveAttribute('data-analytics-cta', 'login_cta')
+    })
   })
 
   describe('Form Submission', () => {

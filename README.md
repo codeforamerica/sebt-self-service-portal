@@ -132,6 +132,20 @@ docker compose down -v
 
 [Mailpit](https://mailpit.axllent.org/) captures all outgoing emails in local development. Once the Mailpit docker container is running on your machine, you can access its UI in your browser at <http://localhost:8025>
 
+### Redis (Distributed Cache)
+
+[Redis](https://redis.io/) is used as an optional distributed cache backing for `HybridCache`. It's included in Docker Compose and starts automatically with `docker compose up -d`.
+
+To enable Redis caching for a state, add a Redis connection string to the state's `appsettings.{state}.json`:
+
+```json
+"ConnectionStrings": {
+  "Redis": "localhost:6379"
+}
+```
+
+When no Redis connection string is configured, the application falls back to in-memory caching only. See `appsettings.co.example.json` for an example.
+
 ### Local Build & Test (Debug mode)
 
 ```bash
@@ -205,6 +219,12 @@ docker compose up
 ```
 
 Only include sections you want to override; other settings fall back to `appsettings.json`!
+
+### Minimum IAL requirements
+
+Each state must configure the minimum Identity Assurance Level (IAL) required based on case origin. The app will fail to start if these values are missing — there is no state-agnostic default.
+
+See [`appsettings.dc.example.json`](src/SEBT.Portal.Api/appsettings.dc.example.json) and [`appsettings.co.example.json`](src/SEBT.Portal.Api/appsettings.co.example.json) for example values.
 
 ### OIDC support
 

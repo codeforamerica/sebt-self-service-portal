@@ -77,6 +77,11 @@ module "state_secrets" {
   }
 }
 
+# Look up the enrollment checker hosted zone (created by bootstrap).
+data "aws_route53_zone" "enrollment_checker" {
+  name = "co.sebt-enrollment.codeforamerica.app"
+}
+
 # Deploy the application services (API + Web) using the shared wrapper module.
 module "app" {
   source = "../../modules/sebt_application"
@@ -97,6 +102,7 @@ module "app" {
   vpc_id                     = module.vpc.vpc_id
   waf_log_group              = module.logging.log_groups["waf"]
   passive_waf                = true
+  log_as_json                = true
 
   api_image_url      = data.aws_ecr_repository.api.repository_url
   api_repository_arn = data.aws_ecr_repository.api.arn
@@ -110,22 +116,36 @@ module "app" {
 
   state_api_environment_variables = {
     "Oidc__DiscoveryEndpoint"                          = var.oidc_discovery_endpoint
+    "Oidc__AuthorizationEndpoint"                      = var.oidc_authorization_endpoint
     "Oidc__CallbackRedirectUri"                        = "https://${var.domain}/callback"
     "Oidc__LanguageParam"                              = "en"
+    "Oidc__StepUp__DiscoveryEndpoint"                  = var.oidc_discovery_endpoint
+    "Oidc__StepUp__AuthorizationEndpoint"              = var.oidc_authorization_endpoint
+    "Oidc__StepUp__CallbackRedirectUri"                = "https://${var.domain}/callback"
     "StateHouseholdId__PreferredHouseholdIdTypes__0"   = "Phone"
+    "MinimumIal__ApplicationCases"                     = "IAL1"
+    "MinimumIal__CoLoadedStreamlineCases"               = "IAL1"
+    "MinimumIal__NonCoLoadedStreamlineCases"             = "IAL1"
+    "IdProofingValidity__ValidityDays"                   = "1826"
+    "Oidc__VerificationClaims__LevelClaimName"           = "socureIdVerificationLevel"
+    "Oidc__VerificationClaims__DateClaimName"             = "socureIdVerificationDate"
   }
 
   state_api_environment_secrets = {
     "Cbms__ClientId"                = "${module.state_secrets.secrets["cbms"].secret_arn}:client_id"
     "Cbms__ClientSecret"            = "${module.state_secrets.secrets["cbms"].secret_arn}:client_secret"
     "Oidc__ClientId"                = "${module.state_secrets.secrets["oidc"].secret_arn}:client_id"
+    "Oidc__ClientSecret"            = "${module.state_secrets.secrets["oidc"].secret_arn}:client_secret"
+    "Oidc__StepUp__ClientId"        = "${module.state_secrets.secrets["oidc"].secret_arn}:step_up_client_id"
+    "Oidc__StepUp__ClientSecret"    = "${module.state_secrets.secrets["oidc"].secret_arn}:step_up_client_secret"
     "Oidc__CompleteLoginSigningKey" = "${module.state_secrets.secrets["oidc"].secret_arn}:complete_login_signing_key"
   }
 
   state_web_environment_variables = {
-    OIDC_DISCOVERY_ENDPOINT = var.oidc_discovery_endpoint
-    OIDC_REDIRECT_URI       = "https://${var.domain}/callback"
-    OIDC_LANGUAGE_PARAM     = "en"
+    ENROLLMENT_CHECKER_ORIGIN = "https://dev.co.sebt-enrollment.codeforamerica.app"
+    OIDC_DISCOVERY_ENDPOINT   = var.oidc_discovery_endpoint
+    OIDC_REDIRECT_URI         = "https://${var.domain}/callback"
+    OIDC_LANGUAGE_PARAM       = "en"
   }
 
   state_web_environment_secrets = {
@@ -133,4 +153,18 @@ module "app" {
     OIDC_CLIENT_SECRET              = "${module.state_secrets.secrets["oidc"].secret_arn}:client_secret"
     OIDC_COMPLETE_LOGIN_SIGNING_KEY = "${module.state_secrets.secrets["oidc"].secret_arn}:complete_login_signing_key"
   }
+}
+
+# Deploy the enrollment checker as a static site behind CloudFront.
+module "enrollment_checker" {
+  source = "../../modules/sebt_enrollment_checker"
+
+  project     = var.project
+  state       = var.state
+  environment = var.environment
+  domain      = "dev.co.sebt-enrollment.codeforamerica.app"
+  hosted_zone_id             = data.aws_route53_zone.enrollment_checker.zone_id
+  logging_bucket_domain_name = module.logging.bucket_domain_name
+  logging_bucket_name        = module.logging.bucket
+  force_delete               = true
 }

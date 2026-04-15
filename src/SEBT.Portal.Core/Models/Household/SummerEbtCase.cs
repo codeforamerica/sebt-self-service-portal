@@ -47,6 +47,27 @@ public class SummerEbtCase
     public string EligibilityType { get; set; } = string.Empty;
 
     /// <summary>
+    /// The source of eligibility (e.g. school, SNAP, TANF).
+    /// </summary>
+    public string? EligibilitySource { get; set; }
+
+    /// <summary>
+    /// The type of issuance for this case (e.g. auto-issuance vs application-based).
+    /// </summary>
+    public IssuanceType IssuanceType { get; set; } = IssuanceType.Unknown;
+
+    /// <summary>
+    /// Whether this case has benefits co-loaded to an existing EBT card.
+    /// </summary>
+    public bool IsCoLoaded { get; set; }
+
+    /// <summary>
+    /// Whether this case was automatically certified (streamline certification)
+    /// rather than originating from a guardian-submitted application.
+    /// </summary>
+    public bool IsStreamlineCertified { get; set; }
+
+    /// <summary>
     /// The application date.
     /// </summary>
     public DateTime? ApplicationDate { get; set; }
@@ -85,6 +106,12 @@ public class SummerEbtCase
     /// The EBT card balance.
     /// </summary>
     public decimal? EbtCardBalance { get; set; }
+
+    /// <summary>
+    /// When a card replacement was last requested for this case.
+    /// Used to enforce a cooldown period between replacement requests.
+    /// </summary>
+    public DateTime? CardRequestedAt { get; set; }
 
     /// <summary>
     /// The date benefits become available.

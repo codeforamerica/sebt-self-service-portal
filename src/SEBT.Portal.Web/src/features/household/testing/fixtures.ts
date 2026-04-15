@@ -1,4 +1,4 @@
-import type { Address, Application, Child, HouseholdData, UserProfile } from '../api'
+import type { Address, Application, Child, HouseholdData, SummerEbtCase, UserProfile } from '../api'
 
 /**
  * Factory functions for creating test fixtures.
@@ -8,9 +8,28 @@ import type { Address, Application, Child, HouseholdData, UserProfile } from '..
 
 export function createMockChild(overrides?: Partial<Child>): Child {
   return {
-    caseNumber: 456001,
     firstName: 'Sophia',
     lastName: 'Martinez',
+    ...overrides
+  }
+}
+
+export function createMockSummerEbtCase(overrides?: Partial<SummerEbtCase>): SummerEbtCase {
+  return {
+    summerEBTCaseID: 'SEBT-001',
+    childFirstName: 'Sophia',
+    childLastName: 'Martinez',
+    householdType: 'OSSE',
+    eligibilityType: 'NSLP',
+    issuanceType: 'SummerEbt',
+    ebtCardLastFour: '1234',
+    ebtCardStatus: 'Active',
+    benefitAvailableDate: '2026-06-01T00:00:00Z',
+    benefitExpirationDate: '2026-08-31T00:00:00Z',
+    cardRequestedAt: null,
+    cardMailedAt: null,
+    cardActivatedAt: null,
+    cardDeactivatedAt: null,
     ...overrides
   }
 }
@@ -36,11 +55,11 @@ export function createMockApplication(overrides?: Partial<Application>): Applica
 
 export function createMockAddress(overrides?: Partial<Address>): Address {
   return {
-    streetAddress1: '123 Main Street',
-    streetAddress2: 'Apt 4B',
+    streetAddress1: '1350 Pennsylvania Ave NW',
+    streetAddress2: 'Suite 400',
     city: 'Washington',
     state: 'DC',
-    postalCode: '20001',
+    postalCode: '20004',
     ...overrides
   }
 }
@@ -57,8 +76,8 @@ export function createMockUserProfile(overrides?: Partial<UserProfile>): UserPro
 export function createMockHouseholdData(overrides?: Partial<HouseholdData>): HouseholdData {
   return {
     email: 'test@example.com',
-    phone: '(303) 555-0100',
-    summerEbtCases: [],
+    phone: '3035550100',
+    summerEbtCases: [createMockSummerEbtCase()],
     applications: [createMockApplication()],
     addressOnFile: createMockAddress(),
     userProfile: createMockUserProfile(),

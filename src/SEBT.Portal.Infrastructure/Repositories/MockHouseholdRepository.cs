@@ -147,14 +147,16 @@ public class MockHouseholdRepository : IHouseholdRepository
             var app = h.Applications.FirstOrDefault();
             if (app != null)
             {
+                app.IssuanceType = IssuanceType.SnapEbtCard;
                 app.BenefitIssueDate = now.AddDays(-20);
                 app.BenefitExpirationDate = now.AddDays(70);
                 app.Last4DigitsOfCard = "0000";
+                app.CardStatus = CardStatus.Active;
                 // Set specific children names for test
                 app.Children = new List<Child>
                 {
-                    new Child { CaseNumber = 456001, FirstName = "Sophia", LastName = "Martinez" },
-                    new Child { CaseNumber = 456002, FirstName = "James", LastName = "Martinez" }
+                    new Child { FirstName = "Sophia", LastName = "Martinez" },
+                    new Child { FirstName = "James", LastName = "Martinez" }
                 };
             }
             h.AddressOnFile = new Address
@@ -165,10 +167,21 @@ public class MockHouseholdRepository : IHouseholdRepository
                 State = "CO",
                 PostalCode = "80201"
             };
+            h.SummerEbtCases = new List<SummerEbtCase>
+            {
+                HouseholdFactory.CreateSummerEbtCase("Sophia", "Martinez", "SNAP", c =>
+                {
+                    c.IssuanceType = IssuanceType.SnapEbtCard;
+                }),
+                HouseholdFactory.CreateSummerEbtCase("James", "Martinez", "TANF", c =>
+                {
+                    c.IssuanceType = IssuanceType.TanfEbtCard;
+                })
+            };
         });
         coLoaded.Email = coLoadedEmail;
         coLoaded.Phone = "8185558437"; // Matches default DevelopmentPhoneOverride for mock + phone lookup in dev
-        coLoaded.UserProfile = new UserProfile { FirstName = "Maria", MiddleName = "Elena", LastName = "Martinez" };
+        coLoaded.UserProfile = new UserProfile { FirstName = "Maria", MiddleName = "Elena", LastName = "MartinezMOCK" };
         _households[coLoadedEmail] = coLoaded;
         IndexByPhone(coLoaded);
 
@@ -180,14 +193,18 @@ public class MockHouseholdRepository : IHouseholdRepository
             var app = h.Applications.FirstOrDefault();
             if (app != null)
             {
+                app.ApplicationNumber = "APP-2025-01-100001";
+                app.CaseNumber = "CASE-100001";
+                app.IssuanceType = IssuanceType.SummerEbt;
                 app.BenefitIssueDate = now.AddDays(-30);
                 app.BenefitExpirationDate = now.AddDays(60);
                 app.Last4DigitsOfCard = "1234"; // Specific value for test
+                app.CardStatus = CardStatus.Active;
                 // Set specific children names for test
                 app.Children = new List<Child>
                 {
-                    new Child { CaseNumber = 789001, FirstName = "John", LastName = "Doe" },
-                    new Child { CaseNumber = 789002, FirstName = "Jane", LastName = "Doe" }
+                    new Child { FirstName = "John", LastName = "Doe" },
+                    new Child { FirstName = "Jane", LastName = "Doe" }
                 };
             }
             // Set specific address for test
@@ -199,11 +216,31 @@ public class MockHouseholdRepository : IHouseholdRepository
                 State = "CO",
                 PostalCode = "80202"
             };
+            var appBenefitStart = SnapToWeekday(new Faker().Date.Between(
+                new DateTime(2026, 6, 15),
+                new DateTime(2026, 6, 30)));
+            h.SummerEbtCases = new List<SummerEbtCase>
+            {
+                HouseholdFactory.CreateSummerEbtCase("John", "Doe", "Application", c =>
+                {
+                    c.IssuanceType = IssuanceType.SnapEbtCard;
+                    c.BenefitAvailableDate = appBenefitStart;
+                    c.BenefitExpirationDate = appBenefitStart.AddDays(122);
+                }),
+                HouseholdFactory.CreateSummerEbtCase("Jane", "Doe", "Application", c =>
+                {
+                    c.IssuanceType = IssuanceType.SnapEbtCard;
+                    c.BenefitAvailableDate = appBenefitStart;
+                    c.BenefitExpirationDate = appBenefitStart.AddDays(122);
+                })
+            };
         });
         verified.Email = verifiedEmail;
-        verified.UserProfile = new UserProfile { FirstName = "John", MiddleName = "Robert", LastName = "Doe" };
+        verified.UserProfile = new UserProfile { FirstName = "John", MiddleName = "Robert", LastName = "DoeMOCK" };
         _households[verifiedEmail] = verified;
         IndexByPhone(verified);
+        // To test CO OIDC login locally, uncomment and replace with your PingOne sandbox user email:
+        // _households["sebt.co+YOUR_PHONE@codeforamerica.org"] = verified;
 
         // Scenario 3: Pending application without address (not ID verified)
         // Note: Address should not be included for non-ID-verified users, but we set it here
@@ -218,7 +255,7 @@ public class MockHouseholdRepository : IHouseholdRepository
                 // Set specific child name for test
                 app.Children = new List<Child>
                 {
-                    new Child { CaseNumber = 111001, FirstName = "Alice", LastName = "Smith" }
+                    new Child { FirstName = "Alice", LastName = "Smith" }
                 };
             }
             // Set address for testing (will be filtered based on ID verification status)
@@ -231,7 +268,7 @@ public class MockHouseholdRepository : IHouseholdRepository
             };
         });
         pending.Email = pendingEmail;
-        pending.UserProfile = new UserProfile { FirstName = "Jane", MiddleName = "Marie", LastName = "Smith" };
+        pending.UserProfile = new UserProfile { FirstName = "Jane", MiddleName = "Marie", LastName = "SmithMOCK" };
         _households[pendingEmail] = pending;
         IndexByPhone(pending);
 
@@ -247,7 +284,7 @@ public class MockHouseholdRepository : IHouseholdRepository
             }
         });
         denied.Email = deniedEmail;
-        denied.UserProfile = new UserProfile { FirstName = "Robert", MiddleName = null, LastName = "Johnson" };
+        denied.UserProfile = new UserProfile { FirstName = "Robert", MiddleName = null, LastName = "JohnsonMOCK" };
         _households[deniedEmail] = denied;
         IndexByPhone(denied);
 
@@ -259,6 +296,7 @@ public class MockHouseholdRepository : IHouseholdRepository
             var app = h.Applications.FirstOrDefault();
             if (app != null)
             {
+                app.CardStatus = CardStatus.Active;
                 // Use Bogus to generate child name
                 var childFaker = new Faker<Child>()
                     .RuleFor(c => c.FirstName, f => f.Name.FirstName())
@@ -266,9 +304,14 @@ public class MockHouseholdRepository : IHouseholdRepository
                 app.Children = childFaker.Generate(1);
                 app.CardRequestedAt = now.AddDays(-7);
             }
+            var reviewChild = h.Applications.First().Children.First();
+            h.SummerEbtCases = new List<SummerEbtCase>
+            {
+                HouseholdFactory.CreateSummerEbtCase(reviewChild.FirstName, reviewChild.LastName, "NSLP")
+            };
         });
         review.Email = reviewEmail;
-        review.UserProfile = new UserProfile { FirstName = "Susan", MiddleName = "Lee", LastName = "Williams" };
+        review.UserProfile = new UserProfile { FirstName = "Susan", MiddleName = "Lee", LastName = "WilliamsMOCK" };
         _households[reviewEmail] = review;
         IndexByPhone(review);
 
@@ -282,14 +325,21 @@ public class MockHouseholdRepository : IHouseholdRepository
             {
                 app.Children = new List<Child>
                 {
-                    new Child { CaseNumber = 555001, FirstName = "Emma", LastName = "Garcia" }
+                    new Child { FirstName = "Emma", LastName = "Garcia" }
                 };
             }
             h.AddressOnFile = null;
+            h.SummerEbtCases = new List<SummerEbtCase>
+            {
+                HouseholdFactory.CreateSummerEbtCase("Emma", "Garcia", "TANF", c =>
+                {
+                    c.IssuanceType = IssuanceType.TanfEbtCard;
+                })
+            };
         });
         nonCoLoaded.Email = nonCoLoadedEmail;
         nonCoLoaded.Phone = "5551234567";
-        nonCoLoaded.UserProfile = new UserProfile { FirstName = "Carlos", MiddleName = "Miguel", LastName = "Garcia" };
+        nonCoLoaded.UserProfile = new UserProfile { FirstName = "Carlos", MiddleName = "Miguel", LastName = "GarciaMOCK" };
         _households[nonCoLoadedEmail] = nonCoLoaded;
         IndexByPhone(nonCoLoaded);
 
@@ -303,7 +353,7 @@ public class MockHouseholdRepository : IHouseholdRepository
             {
                 app.Children = new List<Child>
                 {
-                    new Child { CaseNumber = 666001, FirstName = "Liam", LastName = "Anderson" }
+                    new Child { FirstName = "Liam", LastName = "Anderson" }
                 };
             }
             h.AddressOnFile = new Address
@@ -313,10 +363,15 @@ public class MockHouseholdRepository : IHouseholdRepository
                 State = "CO",
                 PostalCode = "80205"
             };
+            var notStartedChild = h.Applications.First().Children.First();
+            h.SummerEbtCases = new List<SummerEbtCase>
+            {
+                HouseholdFactory.CreateSummerEbtCase(notStartedChild.FirstName, notStartedChild.LastName, "NSLP")
+            };
         });
         notStarted.Email = notStartedEmail;
         notStarted.Phone = "5559876543";
-        notStarted.UserProfile = new UserProfile { FirstName = "Jordan", MiddleName = "Lee", LastName = "Anderson" };
+        notStarted.UserProfile = new UserProfile { FirstName = "Jordan", MiddleName = "Lee", LastName = "AndersonMOCK" };
         _households[notStartedEmail] = notStarted;
         IndexByPhone(notStarted);
 
@@ -332,29 +387,47 @@ public class MockHouseholdRepository : IHouseholdRepository
             }
         });
         cancelled.Email = cancelledEmail;
-        cancelled.UserProfile = new UserProfile { FirstName = "David", MiddleName = "James", LastName = "Davis" };
+        cancelled.UserProfile = new UserProfile { FirstName = "David", MiddleName = "James", LastName = "DavisMOCK" };
         _households[cancelledEmail] = cancelled;
         IndexByPhone(cancelled);
 
         // Scenario 7: Approved with single child
         var singleChildEmail = _settings.BuildEmail(SeedScenarios.SingleChild.Name);
-        var singleChild = HouseholdFactory.CreateHouseholdDataWithStatus(ApplicationStatus.Pending, h =>
+        var singleChild = HouseholdFactory.CreateHouseholdDataWithStatus(ApplicationStatus.Approved, h =>
         {
             h.BenefitIssuanceType = BenefitIssuanceType.SummerEbt;
             var app = h.Applications.FirstOrDefault();
             if (app != null)
             {
+                app.IssuanceType = IssuanceType.SummerEbt;
                 app.BenefitIssueDate = now.AddDays(-15);
                 app.BenefitExpirationDate = now.AddDays(75);
+                app.CardStatus = CardStatus.Active;
                 // Use Bogus to generate child name
                 var childFaker = new Faker<Child>()
                     .RuleFor(c => c.FirstName, f => f.Name.FirstName())
                     .RuleFor(c => c.LastName, f => f.Name.LastName());
                 app.Children = childFaker.Generate(1);
             }
+            var appChild = h.Applications.First().Children.First();
+            var scChildFaker = new Faker();
+            var scChildFirst = scChildFaker.Name.FirstName();
+            var scChildLast = scChildFaker.Name.LastName();
+            var appBenefitStart = SnapToWeekday(scChildFaker.Date.Between(
+                new DateTime(2026, 6, 15),
+                new DateTime(2026, 6, 30)));
+            h.SummerEbtCases = new List<SummerEbtCase>
+            {
+                HouseholdFactory.CreateSummerEbtCase(scChildFirst, scChildLast, "Medicaid"),
+                HouseholdFactory.CreateSummerEbtCase(appChild.FirstName, appChild.LastName, "Application", c =>
+                {
+                    c.BenefitAvailableDate = appBenefitStart;
+                    c.BenefitExpirationDate = appBenefitStart.AddDays(122);
+                })
+            };
         });
         singleChild.Email = singleChildEmail;
-        singleChild.UserProfile = new UserProfile { FirstName = "Amanda", MiddleName = "Rose", LastName = "Taylor" };
+        singleChild.UserProfile = new UserProfile { FirstName = "Amanda", MiddleName = "Rose", LastName = "TaylorMOCK" };
         _households[singleChildEmail] = singleChild;
         IndexByPhone(singleChild);
 
@@ -366,16 +439,18 @@ public class MockHouseholdRepository : IHouseholdRepository
             var app = h.Applications.FirstOrDefault();
             if (app != null)
             {
+                app.IssuanceType = IssuanceType.TanfEbtCard;
                 app.BenefitIssueDate = now.AddDays(-45);
                 app.BenefitExpirationDate = now.AddDays(45);
                 app.Last4DigitsOfCard = "4321";
+                app.CardStatus = CardStatus.Active;
                 // Set specific children names for test
                 app.Children = new List<Child>
                 {
-                    new Child { CaseNumber = 222001, FirstName = "Michael", LastName = "Brown" },
-                    new Child { CaseNumber = 222002, FirstName = "Sarah", LastName = "Brown" },
-                    new Child { CaseNumber = 222003, FirstName = "David", LastName = "Brown" },
-                    new Child { CaseNumber = 222004, FirstName = "Emily", LastName = "Brown" }
+                    new Child { FirstName = "Michael", LastName = "Brown" },
+                    new Child { FirstName = "Sarah", LastName = "Brown" },
+                    new Child { FirstName = "David", LastName = "Brown" },
+                    new Child { FirstName = "Emily", LastName = "Brown" }
                 };
             }
             h.AddressOnFile = new Address
@@ -386,9 +461,16 @@ public class MockHouseholdRepository : IHouseholdRepository
                 State = "CO",
                 PostalCode = "80010"
             };
+            h.SummerEbtCases = new List<SummerEbtCase>
+            {
+                HouseholdFactory.CreateSummerEbtCase("Michael", "Brown", "NSLP"),
+                HouseholdFactory.CreateSummerEbtCase("Sarah", "Brown", "NSLP"),
+                HouseholdFactory.CreateSummerEbtCase("David", "Brown", "NSLP"),
+                HouseholdFactory.CreateSummerEbtCase("Emily", "Brown", "NSLP")
+            };
         });
         largeFamily.Email = largeFamilyEmail;
-        largeFamily.UserProfile = new UserProfile { FirstName = "Christopher", MiddleName = "Michael", LastName = "Brown" };
+        largeFamily.UserProfile = new UserProfile { FirstName = "Christopher", MiddleName = "Michael", LastName = "BrownMOCK" };
         _households[largeFamilyEmail] = largeFamily;
         IndexByPhone(largeFamily);
 
@@ -405,7 +487,7 @@ public class MockHouseholdRepository : IHouseholdRepository
             }
         });
         minimal.Email = minimalEmail;
-        minimal.UserProfile = new UserProfile { FirstName = "Alex", MiddleName = null, LastName = "Jones" };
+        minimal.UserProfile = new UserProfile { FirstName = "Alex", MiddleName = null, LastName = "JonesMOCK" };
         _households[minimalEmail] = minimal;
         IndexByPhone(minimal);
 
@@ -419,15 +501,26 @@ public class MockHouseholdRepository : IHouseholdRepository
             {
                 app.BenefitIssueDate = now.AddDays(-120);
                 app.BenefitExpirationDate = now.AddDays(-10); // Expired
+                app.CardStatus = CardStatus.Deactivated;
                 // Use Bogus to generate child name
                 var childFaker = new Faker<Child>()
                     .RuleFor(c => c.FirstName, f => f.Name.FirstName())
                     .RuleFor(c => c.LastName, f => f.Name.LastName());
                 app.Children = childFaker.Generate(1);
             }
+            var expiredChild = h.Applications.First().Children.First();
+            h.SummerEbtCases = new List<SummerEbtCase>
+            {
+                HouseholdFactory.CreateSummerEbtCase(expiredChild.FirstName, expiredChild.LastName, "NSLP", c =>
+                {
+                    c.EbtCardStatus = "Deactivated";
+                    c.BenefitAvailableDate = now.AddDays(-120);
+                    c.BenefitExpirationDate = now.AddDays(-10);
+                })
+            };
         });
         expired.Email = expiredEmail;
-        expired.UserProfile = new UserProfile { FirstName = "Patricia", MiddleName = "Ann", LastName = "Garcia" };
+        expired.UserProfile = new UserProfile { FirstName = "Patricia", MiddleName = "Ann", LastName = "GarciaMOCK" };
         _households[expiredEmail] = expired;
         IndexByPhone(expired);
 
@@ -443,7 +536,7 @@ public class MockHouseholdRepository : IHouseholdRepository
             }
         });
         unknown.Email = unknownEmail;
-        unknown.UserProfile = new UserProfile { FirstName = "Unknown", MiddleName = null, LastName = "User" };
+        unknown.UserProfile = new UserProfile { FirstName = "Unknown", MiddleName = null, LastName = "UserMOCK" };
         _households[unknownEmail] = unknown;
         IndexByPhone(unknown);
 
@@ -452,12 +545,13 @@ public class MockHouseholdRepository : IHouseholdRepository
         var multipleApps = HouseholdFactory.CreateHouseholdDataWithStatus(ApplicationStatus.Approved, h =>
         {
             h.BenefitIssuanceType = BenefitIssuanceType.SnapEbtCard;
-            var faker = new Faker();
+            var faker = new Faker { Random = new Randomizer(42) };
             var approvedApp = new Application
             {
                 ApplicationNumber = $"APP-{now.AddDays(-30):yyyy-MM}-{faker.Random.Number(100000, 999999)}",
                 CaseNumber = $"CASE-{faker.Random.Number(100000, 999999)}",
                 ApplicationStatus = ApplicationStatus.Approved,
+                IssuanceType = IssuanceType.SummerEbt,
                 BenefitIssueDate = now.AddDays(-30),
                 BenefitExpirationDate = now.AddDays(60),
                 Last4DigitsOfCard = "5678",
@@ -467,8 +561,8 @@ public class MockHouseholdRepository : IHouseholdRepository
                 CardActivatedAt = now.AddDays(-40),
                 Children = new List<Child>
                 {
-                    new Child { CaseNumber = 333001, FirstName = "Emma", LastName = "Wilson" },
-                    new Child { CaseNumber = 333002, FirstName = "Lucas", LastName = "Wilson" }
+                    new Child { FirstName = "Emma", LastName = "Wilson" },
+                    new Child { FirstName = "Lucas", LastName = "Wilson" }
                 }
             };
 
@@ -480,7 +574,7 @@ public class MockHouseholdRepository : IHouseholdRepository
                 CardRequestedAt = now.AddDays(-10),
                 Children = new List<Child>
                 {
-                    new Child { CaseNumber = 333003, FirstName = "Olivia", LastName = "Wilson" }
+                    new Child { FirstName = "Olivia", LastName = "Wilson" }
                 }
             };
 
@@ -494,82 +588,144 @@ public class MockHouseholdRepository : IHouseholdRepository
             };
         });
         multipleApps.Email = multipleAppsEmail;
-        multipleApps.UserProfile = new UserProfile { FirstName = "Jennifer", MiddleName = "Lynn", LastName = "Wilson" };
+        multipleApps.UserProfile = new UserProfile { FirstName = "Jennifer", MiddleName = "Lynn", LastName = "WilsonMOCK" };
         _households[multipleAppsEmail] = multipleApps;
         IndexByPhone(multipleApps);
 
-        // Scenario 13: SummerEbt user with Active card (eligible for address update per DC self-service rules)
-        var summerActiveEmail = _settings.BuildEmail(SeedScenarios.SummerActive.Name);
-        var summerActive = HouseholdFactory.CreateHouseholdDataWithStatus(ApplicationStatus.Approved, h =>
+        // DC-only SummerEbt scenarios 13-14 and Simple scenarios 1-7 below are seeded only when STATE=dc.
+        if (string.Equals(_settings.State, "dc", StringComparison.OrdinalIgnoreCase))
         {
-            h.BenefitIssuanceType = BenefitIssuanceType.SummerEbt;
-            var app = h.Applications.FirstOrDefault();
-            if (app != null)
+            // Scenario 13: SummerEbt user with Active card (eligible for address update per DC self-service rules)
+            var summerActiveEmail = _settings.BuildEmail(SeedScenarios.SummerActive.Name);
+            var summerActive = HouseholdFactory.CreateHouseholdDataWithStatus(ApplicationStatus.Approved, h =>
             {
-                app.IssuanceType = IssuanceType.SummerEbt;
-                app.CardStatus = CardStatus.Active;
-                app.BenefitIssueDate = now.AddDays(-25);
-                app.BenefitExpirationDate = now.AddDays(65);
-                app.Last4DigitsOfCard = "7777";
-                app.CardRequestedAt = now.AddDays(-40);
-                app.CardMailedAt = now.AddDays(-35);
-                app.CardActivatedAt = now.AddDays(-25);
-                app.Children = new List<Child>
+                h.BenefitIssuanceType = BenefitIssuanceType.SummerEbt;
+                var app = h.Applications.FirstOrDefault();
+                if (app != null)
                 {
-                    new Child { CaseNumber = 770001, FirstName = "Noah", LastName = "Reyes" },
-                    new Child { CaseNumber = 770002, FirstName = "Mia", LastName = "Reyes" }
+                    app.IssuanceType = IssuanceType.SummerEbt;
+                    app.CardStatus = CardStatus.Active;
+                    app.BenefitIssueDate = now.AddDays(-25);
+                    app.BenefitExpirationDate = now.AddDays(65);
+                    app.Last4DigitsOfCard = "7777";
+                    app.CardRequestedAt = now.AddDays(-40);
+                    app.CardMailedAt = now.AddDays(-35);
+                    app.CardActivatedAt = now.AddDays(-25);
+                    app.Children = new List<Child>
+                    {
+                    new Child { FirstName = "Noah", LastName = "Reyes" },
+                    new Child { FirstName = "Mia", LastName = "Reyes" }
+                    };
+                }
+                h.AddressOnFile = new Address
+                {
+                    StreetAddress1 = "200 Summer Avenue NW",
+                    City = "Washington",
+                    State = "DC",
+                    PostalCode = "20001"
                 };
-            }
-            h.AddressOnFile = new Address
-            {
-                StreetAddress1 = "200 Summer Avenue NW",
-                City = "Washington",
-                State = "DC",
-                PostalCode = "20001"
-            };
-        });
-        summerActive.Email = summerActiveEmail;
-        summerActive.UserProfile = new UserProfile { FirstName = "Elena", MiddleName = "Rosa", LastName = "Reyes" };
-        _households[summerActiveEmail] = summerActive;
-        IndexByPhone(summerActive);
+            });
+            summerActive.Email = summerActiveEmail;
+            summerActive.UserProfile = new UserProfile { FirstName = "Elena", MiddleName = "Rosa", LastName = "Reyes" };
+            _households[summerActiveEmail] = summerActive;
+            IndexByPhone(summerActive);
 
-        // Scenario 14: SummerEbt user with Lost card (eligible for card replacement per DC self-service rules)
-        var summerLostEmail = _settings.BuildEmail(SeedScenarios.SummerLost.Name);
-        var summerLost = HouseholdFactory.CreateHouseholdDataWithStatus(ApplicationStatus.Approved, h =>
-        {
-            h.BenefitIssuanceType = BenefitIssuanceType.SummerEbt;
-            var app = h.Applications.FirstOrDefault();
-            if (app != null)
+            // Scenario 14: SummerEbt user with Lost card (eligible for card replacement per DC self-service rules)
+            var summerLostEmail = _settings.BuildEmail(SeedScenarios.SummerLost.Name);
+            var summerLost = HouseholdFactory.CreateHouseholdDataWithStatus(ApplicationStatus.Approved, h =>
             {
-                app.IssuanceType = IssuanceType.SummerEbt;
-                app.CardStatus = CardStatus.Lost;
-                app.BenefitIssueDate = now.AddDays(-30);
-                app.BenefitExpirationDate = now.AddDays(60);
-                app.Last4DigitsOfCard = "8888";
-                app.CardRequestedAt = now.AddDays(-50);
-                app.CardMailedAt = now.AddDays(-45);
-                app.CardActivatedAt = now.AddDays(-30);
-                app.Children = new List<Child>
+                h.BenefitIssuanceType = BenefitIssuanceType.SummerEbt;
+                var app = h.Applications.FirstOrDefault();
+                if (app != null)
                 {
-                    new Child { CaseNumber = 880001, FirstName = "Ethan", LastName = "Park" }
+                    app.IssuanceType = IssuanceType.SummerEbt;
+                    app.CardStatus = CardStatus.Lost;
+                    app.BenefitIssueDate = now.AddDays(-30);
+                    app.BenefitExpirationDate = now.AddDays(60);
+                    app.Last4DigitsOfCard = "8888";
+                    app.CardRequestedAt = now.AddDays(-50);
+                    app.CardMailedAt = now.AddDays(-45);
+                    app.CardActivatedAt = now.AddDays(-30);
+                    app.Children = new List<Child>
+                    {
+                    new Child { FirstName = "Ethan", LastName = "Park" }
+                    };
+                }
+                h.AddressOnFile = new Address
+                {
+                    StreetAddress1 = "450 Elm Street NW",
+                    StreetAddress2 = "Apt 2C",
+                    City = "Washington",
+                    State = "DC",
+                    PostalCode = "20002"
                 };
-            }
-            h.AddressOnFile = new Address
+            });
+            summerLost.Email = summerLostEmail;
+            summerLost.UserProfile = new UserProfile { FirstName = "Daniel", MiddleName = "Jin", LastName = "Park" };
+            _households[summerLostEmail] = summerLost;
+            IndexByPhone(summerLost);
+
+            // DC Scenarios 1-7: Simple non-co-loaded households with 1 child, Summer EBT, active benefits
+            var dcChildFaker = new Faker<Child>()
+                .RuleFor(c => c.FirstName, f => f.Name.FirstName())
+                .RuleFor(c => c.LastName, f => f.Name.LastName());
+
+            var dcUserFaker = new Faker();
+
+            SeedScenario[] dcScenarioList = [SeedScenarios.Simple1, SeedScenarios.Simple2, SeedScenarios.Simple3,
+                SeedScenarios.Simple4, SeedScenarios.Simple5, SeedScenarios.Simple6, SeedScenarios.Simple7];
+
+            foreach (var dcScenario in dcScenarioList)
             {
-                StreetAddress1 = "450 Elm Street NW",
-                StreetAddress2 = "Apt 2C",
-                City = "Washington",
-                State = "DC",
-                PostalCode = "20002"
-            };
-        });
-        summerLost.Email = summerLostEmail;
-        summerLost.UserProfile = new UserProfile { FirstName = "Daniel", MiddleName = "Jin", LastName = "Park" };
-        _households[summerLostEmail] = summerLost;
-        IndexByPhone(summerLost);
+                var dcEmail = _settings.BuildEmail(dcScenario.Name);
+                var dcHousehold = HouseholdFactory.CreateHouseholdDataWithStatus(ApplicationStatus.Approved, h =>
+                {
+                    h.BenefitIssuanceType = BenefitIssuanceType.SummerEbt;
+                    var app = h.Applications.FirstOrDefault();
+                    if (app != null)
+                    {
+                        app.BenefitIssueDate = now.AddDays(-20);
+                        app.BenefitExpirationDate = now.AddDays(122);
+                        app.CardStatus = CardStatus.Active;
+                        app.Children = dcChildFaker.Generate(1);
+                        var dcChild = app.Children.First();
+                        h.SummerEbtCases = new List<SummerEbtCase>
+                        {
+                            HouseholdFactory.CreateSummerEbtCase(dcChild.FirstName, dcChild.LastName, "NSLP")
+                        };
+                    }
+                    h.AddressOnFile = new Address
+                    {
+                        StreetAddress1 = dcUserFaker.Address.StreetAddress(),
+                        City = "Washington",
+                        State = "DC",
+                        PostalCode = "20002"
+                    };
+                });
+                dcHousehold.Email = dcEmail;
+                dcHousehold.UserProfile = new UserProfile
+                {
+                    FirstName = dcUserFaker.Name.FirstName(),
+                    MiddleName = null,
+                    LastName = dcUserFaker.Name.LastName() + "MOCK"
+                };
+                _households[dcEmail] = dcHousehold;
+                IndexByPhone(dcHousehold);
+            }
+        }
 
         _logger.LogInformation("Seeded {Count} mock household records using Bogus", _households.Count);
     }
+
+    /// <summary>
+    /// If the given date falls on a weekend, advances it to the following Monday.
+    /// </summary>
+    private static DateTime SnapToWeekday(DateTime date) => date.DayOfWeek switch
+    {
+        DayOfWeek.Saturday => date.AddDays(2),
+        DayOfWeek.Sunday => date.AddDays(1),
+        _ => date
+    };
 
     private static string? NormalizePhone(string? phone)
     {
@@ -645,11 +801,14 @@ public class MockHouseholdRepository : IHouseholdRepository
                         PostalCode = sec.MailingAddress.PostalCode
                     }
                     : null,
+                EligibilitySource = sec.EligibilitySource,
+                IssuanceType = sec.IssuanceType,
                 EbtCaseNumber = sec.EbtCaseNumber,
                 EbtCardLastFour = sec.EbtCardLastFour,
                 EbtCardStatus = sec.EbtCardStatus,
                 EbtCardIssueDate = sec.EbtCardIssueDate,
                 EbtCardBalance = sec.EbtCardBalance,
+                CardRequestedAt = sec.CardRequestedAt,
                 BenefitAvailableDate = sec.BenefitAvailableDate,
                 BenefitExpirationDate = sec.BenefitExpirationDate
             }).ToList(),
@@ -681,9 +840,9 @@ public class MockHouseholdRepository : IHouseholdRepository
                     : (IssuanceType)(int)source.BenefitIssuanceType,
                 Children = a.Children.Select(c => new Child
                 {
-                    CaseNumber = c.CaseNumber,
                     FirstName = c.FirstName,
-                    LastName = c.LastName
+                    LastName = c.LastName,
+                    Status = c.Status
                 }).ToList()
             }).ToList()
         };

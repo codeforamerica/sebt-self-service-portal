@@ -19,6 +19,11 @@ output "github_actions_secret_access_key" {
   sensitive   = true
 }
 
+output "enrollment_checker_nameservers" {
+  description = "NS records for the enrollment checker hosted zone. Send these to the CfA DNS maintainer for delegation."
+  value       = aws_route53_zone.enrollment_checker.name_servers
+}
+
 output "ecr_api_repository_url" {
   description = "ECR repository URL for the API image."
   value       = aws_ecr_repository.api.repository_url

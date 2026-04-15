@@ -4,7 +4,7 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 import enCODashboard from '@/content/locales/en/co/dashboard.json'
 import { i18n } from '@sebt/design-system/client'
 
-import type { Application } from '../../api'
+import type { CardStatus } from '../../api'
 import { CardStatusDisplay } from './CardStatusDisplay'
 
 // CardStatusDisplay is CO-specific. Tests default to the DC locale, so we
@@ -17,27 +17,8 @@ afterAll(() => {
   i18n.removeResourceBundle('en', 'dashboard')
 })
 
-// Minimal application fixture — tests override cardStatus per case
-const baseApplication: Application = {
-  applicationNumber: 'APP-001',
-  caseNumber: 'CASE-001',
-  applicationStatus: 'Approved',
-  children: [{ firstName: 'Jane', lastName: 'Doe' }],
-  childrenOnApplication: 1,
-  cardStatus: 'Active'
-}
-
-function renderWithStatus(
-  cardStatus: Application['cardStatus'],
-  overrides?: Partial<Application>,
-  canRequestReplacementCard = true
-) {
-  return render(
-    <CardStatusDisplay
-      application={{ ...baseApplication, cardStatus, ...overrides }}
-      canRequestReplacementCard={canRequestReplacementCard}
-    />
-  )
+function renderWithStatus(cardStatus: CardStatus | null | undefined) {
+  return render(<CardStatusDisplay cardStatus={cardStatus} />)
 }
 
 describe('CardStatusDisplay', () => {
@@ -125,8 +106,8 @@ describe('CardStatusDisplay', () => {
     expect(screen.getByText(/reported as lost, stolen, damaged/)).toBeInTheDocument()
   })
 
-  it('does not show replacement card link when canRequestReplacementCard is false', () => {
-    renderWithStatus('Processed', undefined, false)
+  it('does not show replacement card link for Processed status', () => {
+    renderWithStatus('Processed')
 
     expect(screen.queryByRole('link')).toBeNull()
   })
@@ -145,34 +126,17 @@ describe('CardStatusDisplay', () => {
     expect(screen.getByTestId('card-status-badge')).toHaveTextContent('Undeliverable')
   })
 
-  // ── Replacement eligibility ──
+  // ── Replacement link ──
+  // CardStatusDisplay does not render replacement links (ChildCard handles this)
 
-  it('shows replacement card link for Lost status', () => {
+  it('does not render replacement link for Lost status', () => {
     renderWithStatus('Lost')
-
-    expect(screen.getByRole('link')).toHaveTextContent('Request a replacement card')
-  })
-
-  it('shows replacement card link for Stolen status', () => {
-    renderWithStatus('Stolen')
-
-    expect(screen.getByRole('link')).toHaveTextContent('Request a replacement card')
-  })
-
-  it('shows replacement card link for Damaged status', () => {
-    renderWithStatus('Damaged')
-
-    expect(screen.getByRole('link')).toHaveTextContent('Request a replacement card')
-  })
-
-  it('does not show replacement card link for DeactivatedByState when denied', () => {
-    renderWithStatus('DeactivatedByState', undefined, false)
 
     expect(screen.queryByRole('link')).toBeNull()
   })
 
-  it('does not show replacement card link for Active when denied', () => {
-    renderWithStatus('Active', undefined, false)
+  it('does not render replacement link for Active status', () => {
+    renderWithStatus('Active')
 
     expect(screen.queryByRole('link')).toBeNull()
   })

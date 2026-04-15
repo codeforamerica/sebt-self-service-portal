@@ -8,6 +8,7 @@ namespace SEBT.Portal.Tests.Integration;
 /// Integration tests for rate limiting functionality.
 /// These tests verify the rate limiting policy configuration and behavior.
 /// </summary>
+[Trait("Category", "Integration")]
 public class RateLimitingTests
 {
     /// <summary>

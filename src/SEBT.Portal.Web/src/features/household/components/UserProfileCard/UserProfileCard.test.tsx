@@ -33,13 +33,13 @@ const mockApplication: Application = {
   cardMailedAt: null,
   cardActivatedAt: null,
   cardDeactivatedAt: null,
-  children: [{ caseNumber: 456001, firstName: 'Sophia', lastName: 'Martinez' }],
+  children: [{ firstName: 'Sophia', lastName: 'Martinez' }],
   childrenOnApplication: 1
 }
 
 const defaultMockData: HouseholdData = {
   email: 'test@example.com',
-  phone: '(303) 555-0100',
+  phone: '3035550100',
   summerEbtCases: [],
   applications: [mockApplication],
   addressOnFile: null,

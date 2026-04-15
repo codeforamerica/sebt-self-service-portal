@@ -12,3 +12,11 @@ output "security_group_id" {
   description = "Security group ID for the database."
   value       = aws_security_group.database.id
 }
+
+output "log_group_names" {
+  description = "CloudWatch log group names for the database."
+  value = {
+    error = aws_cloudwatch_log_group.error.name
+    agent = aws_cloudwatch_log_group.agent.name
+  }
+}

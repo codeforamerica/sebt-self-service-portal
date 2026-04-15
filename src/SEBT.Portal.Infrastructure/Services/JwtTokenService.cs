@@ -15,10 +15,14 @@ namespace SEBT.Portal.Infrastructure.Services;
 public class JwtTokenService : IJwtTokenService
 {
     private readonly JwtSettings _settings;
+    private readonly IdProofingValiditySettings _validitySettings;
 
-    public JwtTokenService(IOptions<JwtSettings> settings)
+    public JwtTokenService(
+        IOptions<JwtSettings> settings,
+        IOptions<IdProofingValiditySettings> validitySettings)
     {
         _settings = settings.Value;
+        _validitySettings = validitySettings.Value;
     }
 
     /// <summary>
@@ -42,6 +46,8 @@ public class JwtTokenService : IJwtTokenService
             new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString()),
             new Claim(JwtRegisteredClaimNames.Iat, unixTimeSeconds.ToString(), ClaimValueTypes.Integer64),
             new Claim(JwtRegisteredClaimNames.Nbf, unixTimeSeconds.ToString(), ClaimValueTypes.Integer64),
+            new Claim(JwtRegisteredClaimNames.Aud, "SEBT.Portal.Web"),
+            new Claim(JwtRegisteredClaimNames.Iss, "SEBT.Portal.Api"),
             // Workflow state of ID proofing process
             new Claim(JwtClaimTypes.IdProofingStatus, ((int)user.IdProofingStatus).ToString(), ClaimValueTypes.Integer32),
             // The Users's current Identity Assurance Level (IAL)
@@ -68,9 +74,13 @@ public class JwtTokenService : IJwtTokenService
                 ClaimValueTypes.Integer64));
         }
 
-        if (user.IdProofingExpiresAt.HasValue)
+        // Compute expiration dynamically from IdProofingCompletedAt + configured validity duration.
+        // This avoids storing baked-in expiration dates and allows config changes to take effect
+        // without bulk data updates.
+        if (user.IdProofingCompletedAt.HasValue)
         {
-            var expiresAtOffset = new DateTimeOffset(user.IdProofingExpiresAt.Value, TimeSpan.Zero);
+            var expiresAt = user.IdProofingCompletedAt.Value.AddDays(_validitySettings.ValidityDays);
+            var expiresAtOffset = new DateTimeOffset(expiresAt, TimeSpan.Zero);
             claims.Add(new Claim(JwtClaimTypes.IdProofingExpiresAt,
                 expiresAtOffset.ToUnixTimeSeconds().ToString(),
                 ClaimValueTypes.Integer64));
@@ -82,18 +92,26 @@ public class JwtTokenService : IJwtTokenService
         {
             JwtRegisteredClaimNames.Sub,
             ClaimTypes.Email,
+            JwtRegisteredClaimNames.Email,
             "email",
             JwtRegisteredClaimNames.Jti,
             JwtRegisteredClaimNames.Iat,
-            JwtRegisteredClaimNames.Nbf
+            JwtRegisteredClaimNames.Nbf,
+            JwtRegisteredClaimNames.Aud,
+            JwtRegisteredClaimNames.Iss
         };
 
         if (additionalClaims != null)
         {
             foreach (var (name, value) in additionalClaims)
             {
-                if (!string.IsNullOrEmpty(name) && value != null && !reservedNames.Contains(name))
+                if (!string.IsNullOrEmpty(name) &&
+                    value != null &&
+                    !reservedNames.Contains(name) &&
+                    !claims.Select(c => c.Type).Contains(name))
+                {
                     claims.Add(new Claim(name, value));
+                }
             }
         }
 

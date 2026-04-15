@@ -3,6 +3,8 @@ import { renderHook, waitFor } from '@testing-library/react'
 import { http, HttpResponse } from 'msw'
 import { beforeEach, describe, expect, it } from 'vitest'
 
+import { ApiError } from '@/api'
+
 import { AuthProvider } from '../../context'
 import { useVerificationStatus } from './useVerificationStatus'
 
@@ -141,6 +143,24 @@ describe('useVerificationStatus', () => {
 
     await waitFor(() => {
       expect(result.current.isError).toBe(true)
+    })
+  })
+
+  it('reports ApiError with status 404 when challenge is not found', async () => {
+    server.use(
+      http.get('/api/id-proofing/status', () => {
+        return HttpResponse.json({ error: 'Challenge not found.' }, { status: 404 })
+      })
+    )
+
+    const { result } = renderHook(() => useVerificationStatus('challenge-123'), {
+      wrapper: createWrapper()
+    })
+
+    await waitFor(() => {
+      expect(result.current.isError).toBe(true)
+      expect(result.current.error).toBeInstanceOf(ApiError)
+      expect((result.current.error as ApiError).status).toBe(404)
     })
   })
 })

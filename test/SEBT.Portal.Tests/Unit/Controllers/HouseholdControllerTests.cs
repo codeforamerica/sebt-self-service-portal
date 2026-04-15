@@ -13,6 +13,7 @@ using SEBT.Portal.Core.Repositories;
 using SEBT.Portal.Core.Services;
 using SEBT.Portal.Core.Utilities;
 using SEBT.Portal.Kernel;
+using SEBT.Portal.Kernel.Results;
 using SEBT.Portal.UseCases.Household;
 
 namespace SEBT.Portal.Tests.Unit.Controllers;
@@ -20,16 +21,16 @@ namespace SEBT.Portal.Tests.Unit.Controllers;
 public class HouseholdControllerTests
 {
     private readonly IIdProofingRequirementsService _idProofingRequirementsService;
-    private readonly ISelfServiceEvaluator _selfServiceEvaluator;
+    private readonly IMinimumIalService _minimumIalService;
     private readonly HouseholdController _controller;
 
     public HouseholdControllerTests()
     {
         _controller = new HouseholdController();
         _idProofingRequirementsService = Substitute.For<IIdProofingRequirementsService>();
-        _selfServiceEvaluator = Substitute.For<ISelfServiceEvaluator>();
-        _selfServiceEvaluator.Evaluate(Arg.Any<BenefitIssuanceType>(), Arg.Any<IReadOnlyList<Application>>())
-            .Returns(new AllowedActions { CanUpdateAddress = true, CanRequestReplacementCard = true });
+        _minimumIalService = Substitute.For<IMinimumIalService>();
+        // Default: no elevated IAL requirement, so existing tests pass without per-test mock setup.
+        _minimumIalService.GetMinimumIal(Arg.Any<IReadOnlyList<SummerEbtCase>>()).Returns(UserIalLevel.None);
     }
 
     private IQueryHandler<GetHouseholdDataQuery, HouseholdData> CreateQueryHandler(
@@ -37,7 +38,7 @@ public class HouseholdControllerTests
         IHouseholdRepository repository)
     {
         var logger = NullLogger<GetHouseholdDataQueryHandler>.Instance;
-        return new GetHouseholdDataQueryHandler(resolver, repository, _idProofingRequirementsService, _selfServiceEvaluator, logger);
+        return new GetHouseholdDataQueryHandler(resolver, repository, _idProofingRequirementsService, _minimumIalService, logger);
     }
 
     private void SetupAuthenticatedUser(string email, UserIalLevel userIalLevel = UserIalLevel.None, string claimType = ClaimTypes.Email)
@@ -454,6 +455,75 @@ public class HouseholdControllerTests
         // Assert
         Assert.NotNull(result);
         await repositoryMock.Received(1).GetHouseholdByIdentifierAsync(Arg.Is<HouseholdIdentifier>(id => id.Type == PreferredHouseholdIdType.Email && id.Value == EmailNormalizer.Normalize(email)), Arg.Any<PiiVisibility>(), Arg.Any<UserIalLevel>(), Arg.Any<CancellationToken>());
+    }
+
+    // --- RequestCardReplacement tests ---
+
+    [Fact]
+    public async Task RequestCardReplacement_ReturnsNoContent_WhenHandlerSucceeds()
+    {
+        // Arrange
+        SetupAuthenticatedUser("user@example.com", ial: "1plus");
+        var request = new RequestCardReplacementRequest
+        {
+            CaseIds = new List<string> { "SEBT-001" }
+        };
+
+        var commandHandler = Substitute.For<ICommandHandler<RequestCardReplacementCommand>>();
+        commandHandler.Handle(Arg.Any<RequestCardReplacementCommand>(), Arg.Any<CancellationToken>())
+            .Returns(Result.Success());
+
+        // Act
+        var result = await _controller.RequestCardReplacement(request, commandHandler);
+
+        // Assert
+        Assert.IsType<NoContentResult>(result);
+    }
+
+    [Fact]
+    public async Task RequestCardReplacement_ReturnsBadRequest_WhenValidationFails()
+    {
+        // Arrange
+        SetupAuthenticatedUser("user@example.com", ial: "1plus");
+        var request = new RequestCardReplacementRequest
+        {
+            CaseIds = new List<string> { "SEBT-001" }
+        };
+
+        var commandHandler = Substitute.For<ICommandHandler<RequestCardReplacementCommand>>();
+        commandHandler.Handle(Arg.Any<RequestCardReplacementCommand>(), Arg.Any<CancellationToken>())
+            .Returns(Result.ValidationFailed("CaseIds", "Case was requested within the last 14 days."));
+
+        // Act
+        var result = await _controller.RequestCardReplacement(request, commandHandler);
+
+        // Assert
+        var objectResult = Assert.IsType<ObjectResult>(result);
+        Assert.Equal(400, objectResult.StatusCode);
+    }
+
+    [Fact]
+    public async Task RequestCardReplacement_MapsRequestToCommand()
+    {
+        // Arrange
+        SetupAuthenticatedUser("user@example.com", ial: "1plus");
+        var request = new RequestCardReplacementRequest
+        {
+            CaseIds = new List<string> { "SEBT-001", "SEBT-002" }
+        };
+
+        RequestCardReplacementCommand? capturedCommand = null;
+        var commandHandler = Substitute.For<ICommandHandler<RequestCardReplacementCommand>>();
+        commandHandler.Handle(Arg.Do<RequestCardReplacementCommand>(cmd => capturedCommand = cmd), Arg.Any<CancellationToken>())
+            .Returns(Result.Success());
+
+        // Act
+        await _controller.RequestCardReplacement(request, commandHandler);
+
+        // Assert
+        Assert.NotNull(capturedCommand);
+        Assert.Equal(new List<string> { "SEBT-001", "SEBT-002" }, capturedCommand.CaseIds);
+        Assert.NotNull(capturedCommand.User);
     }
 
     [Fact]

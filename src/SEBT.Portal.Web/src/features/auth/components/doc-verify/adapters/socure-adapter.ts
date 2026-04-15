@@ -16,7 +16,12 @@ const SOCURE_BUNDLE_URL = 'https://websdk.socure.com/bundle.js'
 declare global {
   interface Window {
     SocureDocVSDK?: {
-      launch: (config: Record<string, unknown>) => void
+      launch: (
+        sdkKey: string,
+        token: string,
+        containerId: string,
+        config?: Record<string, unknown>
+      ) => void
       reset: () => void
     }
   }
@@ -74,11 +79,8 @@ export class SocureDocVAdapter implements DocVAdapter {
       throw new Error('SocureDocVSDK not available after script load')
     }
 
-    window.SocureDocVSDK.launch({
-      sdkKey: config.sdkKey,
-      token: config.token,
+    window.SocureDocVSDK.launch(config.sdkKey, config.token, `#${config.containerId}`, {
       type: 'docv',
-      containerId: config.containerId,
       autoOpenTabOnMobile: true,
       closeCaptureWindowOnComplete: true,
       onSuccess: config.onSuccess,
@@ -96,6 +98,12 @@ export class SocureDocVAdapter implements DocVAdapter {
         // Swallow errors during cleanup — the SDK may already be torn down
       }
     }
+
+    // The SDK caches internal DOM references that go stale after navigation.
+    // Fully tear down so the next launch() gets a fresh instance.
+    delete window.SocureDocVSDK
+    scriptLoadPromise = null
+    document.querySelectorAll(`script[src="${SOCURE_BUNDLE_URL}"]`).forEach((el) => el.remove())
   }
 
   isLoaded(): boolean {

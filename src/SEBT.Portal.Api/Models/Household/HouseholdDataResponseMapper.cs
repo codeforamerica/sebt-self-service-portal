@@ -45,6 +45,8 @@ public static class HouseholdDataResponseMapper
             ChildDateOfBirth = domain.ChildDateOfBirth,
             HouseholdType = domain.HouseholdType,
             EligibilityType = domain.EligibilityType,
+            EligibilitySource = domain.EligibilitySource,
+            IssuanceType = domain.IssuanceType,
             ApplicationDate = domain.ApplicationDate,
             ApplicationStatus = domain.ApplicationStatus,
             MailingAddress = domain.MailingAddress?.ToResponse(),
@@ -53,6 +55,7 @@ public static class HouseholdDataResponseMapper
             EbtCardStatus = domain.EbtCardStatus,
             EbtCardIssueDate = domain.EbtCardIssueDate,
             EbtCardBalance = domain.EbtCardBalance,
+            CardRequestedAt = domain.CardRequestedAt,
             BenefitAvailableDate = domain.BenefitAvailableDate,
             BenefitExpirationDate = domain.BenefitExpirationDate
         };
@@ -73,6 +76,7 @@ public static class HouseholdDataResponseMapper
             ApplicationNumber = domain.ApplicationNumber,
             CaseNumber = domain.CaseNumber,
             ApplicationStatus = domain.ApplicationStatus,
+            ApplicationDate = domain.ApplicationDate,
             BenefitIssueDate = domain.BenefitIssueDate,
             BenefitExpirationDate = domain.BenefitExpirationDate,
             Last4DigitsOfCard = domain.Last4DigitsOfCard,
@@ -91,9 +95,9 @@ public static class HouseholdDataResponseMapper
     {
         return new ChildResponse
         {
-            CaseNumber = domain.CaseNumber,
             FirstName = domain.FirstName,
-            LastName = domain.LastName
+            LastName = domain.LastName,
+            Status = domain.Status
         };
     }
 

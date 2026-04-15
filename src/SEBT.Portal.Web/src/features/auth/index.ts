@@ -1,4 +1,5 @@
 export {
+  AuthorizationStatusResponseSchema,
   IdProofingResultSchema,
   IdTypeSchema,
   OidcCallbackTokenResponseSchema,
@@ -9,7 +10,6 @@ export {
   SubmitIdProofingRequestSchema,
   SubmitIdProofingResponseSchema,
   ValidateOtpRequestSchema,
-  ValidateOtpResponseSchema,
   VerificationStatusResponseSchema,
   useRefreshToken,
   useRequestOtp,
@@ -17,6 +17,7 @@ export {
   useSubmitIdProofing,
   useValidateOtp,
   useVerificationStatus,
+  type AuthorizationStatusResponse,
   type IdProofingResult,
   type IdType,
   type OidcCallbackTokenResponse,
@@ -27,7 +28,6 @@ export {
   type SubmitIdProofingRequest,
   type SubmitIdProofingResponse,
   type ValidateOtpRequest,
-  type ValidateOtpResponse,
   type VerificationStatusResponse
 } from './api'
 
@@ -45,4 +45,4 @@ export {
   type IdOption
 } from './components'
 
-export { AuthProvider, clearAuthToken, getAuthToken, setAuthToken, useAuth } from './context'
+export { AuthProvider, useAuth, type SessionInfo } from './context'

@@ -10,6 +10,7 @@ import type { AllowedActions } from '../../api'
 interface ActionButton {
   labelKey: string
   href: string
+  ctaId: string
   /** Which allowedActions field gates this CTA. When set, the CTA is hidden if the field is false. */
   gatedBy?: keyof Pick<AllowedActions, 'canUpdateAddress' | 'canRequestReplacementCard'>
 }
@@ -24,15 +25,25 @@ const ACTIONS: ActionButton[] = [
   {
     labelKey: 'actionNavigationChangeMyMailingAddress',
     href: '/profile/address',
+    ctaId: 'update_address_cta',
     gatedBy: 'canUpdateAddress'
   },
   {
     labelKey: 'actionNavigationOrderReplacementCards',
     href: '/cards/request',
+    ctaId: 'replacement_card_cta',
     gatedBy: 'canRequestReplacementCard'
   },
-  { labelKey: 'actionNavigationCheckExistingCards', href: '/cards' },
-  { labelKey: 'actionNavigationCheckExistingApplications', href: '/applications' }
+  {
+    labelKey: 'actionNavigationCheckExistingCards',
+    href: '#enrolled-children-heading',
+    ctaId: 'check_cards_cta'
+  },
+  {
+    labelKey: 'actionNavigationCheckExistingApplications',
+    href: '#applications-heading',
+    ctaId: 'check_applications_cta'
+  }
 ]
 
 export function ActionButtons({ allowedActions }: ActionButtonsProps) {
@@ -40,11 +51,13 @@ export function ActionButtons({ allowedActions }: ActionButtonsProps) {
   const { actionButtonBg, actionButtonText } = getStateConfig(getState())
 
   const hasDeniedAction =
-    allowedActions &&
+    allowedActions !== null &&
+    allowedActions !== undefined &&
     (!allowedActions.canUpdateAddress || !allowedActions.canRequestReplacementCard)
 
   const visibleActions = ACTIONS.filter((action) => {
     if (!action.gatedBy) return true
+    // When allowedActions is not provided, default to showing the CTA (backward-compatible).
     if (!allowedActions) return true
     return allowedActions[action.gatedBy]
   })
@@ -75,7 +88,16 @@ export function ActionButtons({ allowedActions }: ActionButtonsProps) {
           >
             <Link
               href={action.href}
+              data-analytics-cta={action.ctaId}
               className={`display-inline-flex flex-align-center padding-y-1 padding-x-205 text-no-underline ${actionButtonText} ${actionButtonBg} radius-pill font-sans-md text-semibold`}
+              {...(action.href.startsWith('#') && {
+                onClick: (e: React.MouseEvent) => {
+                  e.preventDefault()
+                  document
+                    .getElementById(action.href.slice(1))
+                    ?.scrollIntoView({ behavior: 'smooth' })
+                }
+              })}
             >
               {t(action.labelKey)}
               <svg

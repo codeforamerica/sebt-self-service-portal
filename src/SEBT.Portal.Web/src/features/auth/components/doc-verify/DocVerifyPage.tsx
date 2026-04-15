@@ -4,9 +4,11 @@ import { useRouter, useSearchParams } from 'next/navigation'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
+import { AnalyticsEvents, useDataLayer } from '@sebt/analytics'
 import { Alert } from '@sebt/design-system'
 
 import {
+  clearChallengeContext,
   SK_CHALLENGE_ID,
   SK_SUB_STATE,
   SubState
@@ -27,15 +29,19 @@ function readChallengeContext(searchParams: URLSearchParams): {
   subState: SubState | null
 } {
   // URL query param is primary source for challengeId, sessionStorage is fallback
-  const challengeId = searchParams.get('challengeId') || sessionStorage.getItem(SK_CHALLENGE_ID)
-  const persisted = sessionStorage.getItem(SK_SUB_STATE)
-  const subState = persisted === 'capture' || persisted === 'pending' ? persisted : null
-  return { challengeId, subState }
-}
+  const urlChallengeId = searchParams.get('challengeId')
+  const challengeId = urlChallengeId || sessionStorage.getItem(SK_CHALLENGE_ID)
 
-function clearChallengeContext(): void {
-  sessionStorage.removeItem(SK_CHALLENGE_ID)
-  sessionStorage.removeItem(SK_SUB_STATE)
+  const persisted = sessionStorage.getItem(SK_SUB_STATE)
+  const persistedChallengeId = sessionStorage.getItem(SK_CHALLENGE_ID)
+
+  // Only trust persisted subState when it belongs to the current challenge.
+  // A mismatch means old state from a prior DocV attempt is lingering.
+  const challengeMatches = urlChallengeId != null && persistedChallengeId === urlChallengeId
+  const subState =
+    challengeMatches && (persisted === 'capture' || persisted === 'pending') ? persisted : null
+
+  return { challengeId, subState }
 }
 
 export function DocVerifyPage({ contactLink, sdkKey }: DocVerifyPageProps) {
@@ -47,6 +53,7 @@ export function DocVerifyPage({ contactLink, sdkKey }: DocVerifyPageProps) {
   const [subState, setSubState] = useState<SubState>('interstitial')
   const [challengeId, setChallengeId] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const { setPageData, trackEvent } = useDataLayer()
 
   // Capture launch config — set by handleContinue, consumed by DocVerifyCapture on mount
   const [captureLaunchConfig, setCaptureLaunchConfig] = useState<Omit<
@@ -73,6 +80,12 @@ export function DocVerifyPage({ contactLink, sdkKey }: DocVerifyPageProps) {
       return
     }
 
+    // If persisted state belongs to a different challenge, clear it so it
+    // cannot bleed into this flow (e.g., after StrictMode double-invoke).
+    if (ctx.subState === null) {
+      clearChallengeContext()
+    }
+
     setChallengeId(ctx.challengeId)
     // Persist to sessionStorage for mobile tab recovery
     sessionStorage.setItem(SK_CHALLENGE_ID, ctx.challengeId)
@@ -85,9 +98,10 @@ export function DocVerifyPage({ contactLink, sdkKey }: DocVerifyPageProps) {
     }
   }, [router, adapter, searchParams])
 
-  // Derive allowIdRetry from status API (D9) — server is the authority
+  // Poll status during interstitial (for allowIdRetry) and capture (safety net
+  // in case the SDK's onSuccess never fires after remote mobile capture).
   const statusQuery = useVerificationStatus(
-    subState === 'interstitial' && challengeId ? challengeId : undefined
+    (subState === 'interstitial' || subState === 'capture') && challengeId ? challengeId : undefined
   )
   const allowIdRetry = statusQuery.data?.allowIdRetry ?? false
 
@@ -96,6 +110,8 @@ export function DocVerifyPage({ contactLink, sdkKey }: DocVerifyPageProps) {
   const handleContinue = async () => {
     if (!challengeId) return
     setError(null)
+
+    trackEvent(AnalyticsEvents.DOCV_START)
 
     try {
       const { docvTransactionToken } = await startChallenge.mutateAsync(challengeId)
@@ -135,19 +151,60 @@ export function DocVerifyPage({ contactLink, sdkKey }: DocVerifyPageProps) {
   }, [router])
 
   const handleVerified = useCallback(() => {
+    setPageData('docv_status', 'success')
+    trackEvent(AnalyticsEvents.DOCV_RESULT)
+    setPageData('idv_final_status', 'success')
+    trackEvent(AnalyticsEvents.IDV_FINAL_RESULT)
     clearChallengeContext()
     router.push('/dashboard')
-  }, [router])
+  }, [router, setPageData, trackEvent])
 
   const handleRejected = useCallback(
     (offboardingReason?: string) => {
+      setPageData('docv_status', 'fail')
+      trackEvent(AnalyticsEvents.DOCV_RESULT)
+      setPageData('idv_final_status', 'fail')
+      trackEvent(AnalyticsEvents.IDV_FINAL_RESULT)
       sessionStorage.setItem('offboarding_reason', offboardingReason ?? '')
       sessionStorage.setItem('offboarding_canApply', 'false')
       clearChallengeContext()
       router.push('/login/id-proofing/off-boarding')
     },
-    [router]
+    [router, setPageData, trackEvent]
   )
+
+  // Auto-transition from capture to pending after a delay. For remote phone
+  // capture the SDK's onSuccess never fires (capture happens on a different
+  // device), leaving the container blank. After 15 seconds the user has either
+  // scanned the QR / opened the SMS link, so show the "checking" UI instead.
+  useEffect(() => {
+    if (subState !== 'capture') return
+
+    const timerId = window.setTimeout(() => {
+      sessionStorage.setItem(SK_SUB_STATE, 'pending')
+      setSubState('pending')
+    }, 15_000)
+
+    return () => window.clearTimeout(timerId)
+  }, [subState])
+
+  // Safety net: if the webhook resolves the challenge while the SDK capture is
+  // still active (e.g., SDK fires onSuccess late or not at all), redirect based
+  // on the polled status rather than waiting for the pending sub-state.
+  useEffect(() => {
+    if (subState !== 'capture') return
+    if (statusQuery.data?.status === 'verified') {
+      handleVerified()
+    } else if (statusQuery.data?.status === 'rejected') {
+      handleRejected(statusQuery.data.offboardingReason ?? undefined)
+    }
+  }, [
+    subState,
+    statusQuery.data?.status,
+    statusQuery.data?.offboardingReason,
+    handleVerified,
+    handleRejected
+  ])
 
   return (
     <div className="usa-section">

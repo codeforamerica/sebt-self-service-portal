@@ -1,0 +1,26 @@
+Version: "2012-10-17"
+Statement:
+  # Deny any request that isn't using HTTPS. This ensures data in transit
+  # is always encrypted, even for internal AWS service-to-service calls.
+  - Sid: DenyNonSSL
+    Effect: Deny
+    Principal: "*"
+    Action: s3:*
+    Resource:
+      - "${bucket_arn}"
+      - "${bucket_arn}/*"
+    Condition:
+      Bool:
+        aws:SecureTransport: false
+  # Allow only this specific CloudFront distribution to read objects.
+  # Combined with Origin Access Control (OAC), this keeps the bucket
+  # fully private while letting CloudFront serve its contents.
+  - Sid: AllowCloudFrontRead
+    Effect: Allow
+    Principal:
+      Service: cloudfront.amazonaws.com
+    Action: s3:GetObject
+    Resource: "${bucket_arn}/*"
+    Condition:
+      StringEquals:
+        AWS:SourceArn: "${distribution_arn}"

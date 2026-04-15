@@ -11,9 +11,11 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { act, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { http, HttpResponse } from 'msw'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { TEST_EMAILS, TEST_OTP } from '@/mocks/handlers'
+import { server } from '@/mocks/server'
 
 import { AuthProvider } from '../../context'
 import { VerifyOtpForm } from './VerifyOtpForm'
@@ -143,40 +145,26 @@ describe('VerifyOtpForm', () => {
       })
     })
 
-    it('should navigate to /dashboard when requiresIdProofing is false', async () => {
-      const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime })
-      sessionStorage.setItem('otp_email', TEST_EMAILS.idProofingNotRequired)
-      renderWithProviders(
-        <VerifyOtpForm
-          email={TEST_EMAILS.idProofingNotRequired}
-          contactLink={TEST_CONTACT_LINK}
-        />
+    it('should navigate to /dashboard when session reports ID proofing already complete', async () => {
+      // Override /auth/status to return a completed id_proofing status
+      server.use(
+        http.get('/api/auth/status', () =>
+          HttpResponse.json({
+            isAuthorized: true,
+            email: TEST_EMAILS.success,
+            ial: '1plus',
+            idProofingStatus: 2,
+            idProofingCompletedAt: Math.floor(Date.now() / 1000),
+            idProofingExpiresAt: null
+          })
+        )
       )
 
-      await waitFor(() => {
-        expect(
-          screen.getByRole('textbox', { name: /enter.*confirmation code/i })
-        ).toBeInTheDocument()
-      })
-
-      const otpInput = screen.getByRole('textbox', { name: /enter.*confirmation code/i })
-      const confirmButton = screen.getByRole('button', { name: /confirm/i })
-
-      await user.type(otpInput, TEST_OTP.valid)
-      await user.click(confirmButton)
-
-      await waitFor(() => {
-        expect(sessionStorage.getItem('otp_email')).toBeNull()
-        expect(mockPush).toHaveBeenCalledWith('/dashboard')
-      })
-    })
-
-    it('should navigate to /dashboard when requiresIdProofing is absent from response', async () => {
       const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime })
-      sessionStorage.setItem('otp_email', TEST_EMAILS.idProofingAbsent)
+      sessionStorage.setItem('otp_email', TEST_EMAILS.success)
       renderWithProviders(
         <VerifyOtpForm
-          email={TEST_EMAILS.idProofingAbsent}
+          email={TEST_EMAILS.success}
           contactLink={TEST_CONTACT_LINK}
         />
       )
