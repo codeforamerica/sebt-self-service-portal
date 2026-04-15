@@ -106,7 +106,7 @@ Los beneficios de Summer EBT 2025 se emitieron a partir de junio de 2025 y vence
 
 Los beneficios de Summer EBT 2026 se emitieron a partir de junio de 2026 y vencen 122 días después de su emisión.",
 S1 - Result - Streamlined Enrolled - Body 1,The following children are already enrolled in Summer EBT for 2026.,The following children are *likely automatically enrolled for Summer EBT for 2026*.,Los siguientes niños ya están inscritos en Summer EBT para 2026.,Es *probable que los siguientes menores estén inscritos automáticamente* en Summer EBT para 2026,
-S1 - Result - Streamlined Enrolled - Alert Title,Check the Summer EBT Portal to see where your enrolled children will receive their benefits.,Check the Summer EBT Portal to see where your children will receive their summer food benefits,Revisa el Portal de Summer EBT para ver dónde recibirán sus beneficios las niñas y los niños que ya están inscritos.,Revisa el portal de Summer EBT para ver dónde tus hijos recibirán sus beneficios de alimentos de verano,
+S1 - Result - Streamlined Enrolled - Alert Title,Check the Summer EBT Portal to see where your enrolled children will receive their benefits.,Check the Summer EBT Portal to see where your children will receive their summer food benefits,Revisa el Portal de Summer EBT para ver dónde recibirán sus beneficios las niñas y los niños que ya están inscritos.,Revisa el portal de Summer EBT para ver dónde tus hijos recibirán sus beneficios de alimentos de verano,
 S1 - Result - Streamlined Enrolled - Alert Body,"If they received the food benefit for a previous summer, we may issue their one-time $120 payment to the same Summer EBT card.
 
 If your child is new to Summer EBT or their previous card needs to be replaced, we will mail a new card to the address we have on file.","If they received the food benefit for a previous summer, we may issue their one-time $120 payment to the same Summer EBT card.
@@ -419,7 +419,7 @@ S8 - ID Proofing Optional ID Info - Option Helper Medicaid ID,,This number can b
 Este número puede encontrarse en tus cartas de Medicaid y suele tener 7 u 8 dígitos",
 S8 - ID Proofing Optional ID Info - Option Account ID,,SNAP or TANF account ID,"
 Este número puede encontrarse en tus cartas de SNAP o TANF y suele tener 7 u 8 dígitos.",ID de la cuenta de SNAP o TANF,
-S8 - ID Proofing Optional ID Info - Option Helper Account ID,,This number can be found on your SNAP or TANF letters and is typically 7 or 8 digits long.,ID de persona de SNAP o TANF,"
+S8 - ID Proofing Optional ID Info - Option Helper Account ID,,"If you receive SNAP or TANF, select this option. It can be found on your notices and is typically 7 or 8 digits long.",ID de persona de SNAP o TANF,"
 Este número puede encontrarse en tus cartas de SNAP o TANF y suele tener 7 u 8 dígitos.",
 S8 - ID Proofing Optional ID Info - Option Person ID,,SNAP or TANF person ID,"
 Este número puede encontrarse en tus cartas de SNAP o TANF  y suele tener 7 u 8 dígitos.",ID de persona de SNAP o TANF,
