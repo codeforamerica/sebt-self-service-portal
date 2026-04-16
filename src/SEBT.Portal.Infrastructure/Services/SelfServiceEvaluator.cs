@@ -41,13 +41,13 @@ public class SelfServiceEvaluator(IOptions<SelfServiceRulesSettings> options) : 
         if (applications.Count == 0)
         {
             var fallbackType = (IssuanceType)householdIssuanceType;
-            return IsIssuanceTypeAllowed(rule, fallbackType, cardStatus: null);
+            return IsIssuanceTypeAllowed(rule, fallbackType, cardStatus: null, caseStatus: null);
         }
 
         // Permissive aggregation: any eligible application grants access.
         foreach (var app in applications)
         {
-            if (IsIssuanceTypeAllowed(rule, app.IssuanceType, app.CardStatus))
+            if (IsIssuanceTypeAllowed(rule, app.IssuanceType, app.CardStatus, app.ApplicationStatus))
             {
                 return true;
             }
@@ -56,7 +56,11 @@ public class SelfServiceEvaluator(IOptions<SelfServiceRulesSettings> options) : 
         return false;
     }
 
-    private static bool IsIssuanceTypeAllowed(ActionRuleSettings rule, IssuanceType issuanceType, CardStatus? cardStatus)
+    private static bool IsIssuanceTypeAllowed(
+        ActionRuleSettings rule,
+        IssuanceType issuanceType,
+        CardStatus? cardStatus,
+        ApplicationStatus? caseStatus)
     {
         if (!rule.ByIssuanceType.TryGetValue(issuanceType, out var typeRule))
         {
@@ -68,18 +72,36 @@ public class SelfServiceEvaluator(IOptions<SelfServiceRulesSettings> options) : 
             return false;
         }
 
-        // Empty AllowedCardStatuses means any card status is permitted.
-        if (typeRule.AllowedCardStatuses.Count == 0)
+        // Card-status dimension: empty list means any card status is permitted.
+        if (typeRule.AllowedCardStatuses.Count > 0)
         {
-            return true;
+            // No card status available (fallback path): can't check against the list.
+            if (cardStatus is null)
+            {
+                return false;
+            }
+
+            if (!typeRule.AllowedCardStatuses.Contains(cardStatus.Value))
+            {
+                return false;
+            }
         }
 
-        // No card status available (fallback path): can't check against the list.
-        if (cardStatus is null)
+        // Case-status dimension: empty list means any case status is permitted.
+        if (typeRule.AllowedCaseStatuses.Count > 0)
         {
-            return false;
+            // No case status available (fallback path): can't check against the list.
+            if (caseStatus is null)
+            {
+                return false;
+            }
+
+            if (!typeRule.AllowedCaseStatuses.Contains(caseStatus.Value))
+            {
+                return false;
+            }
         }
 
-        return typeRule.AllowedCardStatuses.Contains(cardStatus.Value);
+        return true;
     }
 }

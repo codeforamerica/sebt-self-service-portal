@@ -78,4 +78,12 @@ public class IssuanceTypeRuleSettings
     /// If empty and <see cref="Enabled"/> is true, the action is allowed regardless of card status.
     /// </summary>
     public List<CardStatus> AllowedCardStatuses { get; set; } = new();
+
+    /// <summary>
+    /// Case (application) statuses for which the action is allowed.
+    /// If empty and <see cref="Enabled"/> is true, the action is allowed regardless of case status.
+    /// Combined with <see cref="AllowedCardStatuses"/> using AND semantics: both dimensions
+    /// must match for an application to be eligible. An empty list effectively skips that dimension.
+    /// </summary>
+    public List<ApplicationStatus> AllowedCaseStatuses { get; set; } = new();
 }

@@ -20,7 +20,10 @@ function buildCaseGroups(cases: SummerEbtCase[]): CaseGroup[] {
   return cases
     .filter(
       (c): c is SummerEbtCase & { summerEBTCaseID: string } =>
-        c.summerEBTCaseID != null && !isWithinCooldownPeriod(c.cardRequestedAt)
+        c.summerEBTCaseID != null &&
+        !isWithinCooldownPeriod(c.cardRequestedAt) &&
+        c.issuanceType !== 'TanfEbtCard' &&
+        c.issuanceType !== 'SnapEbtCard'
     )
     .map((c) => ({
       caseId: c.summerEBTCaseID,

@@ -13,6 +13,17 @@ public class SelfServiceEvaluatorTests
     private static Application MakeApp(IssuanceType issuanceType, CardStatus cardStatus = CardStatus.Active)
         => new() { IssuanceType = issuanceType, CardStatus = cardStatus };
 
+    private static Application MakeApp(
+        IssuanceType issuanceType,
+        CardStatus cardStatus,
+        ApplicationStatus applicationStatus)
+        => new()
+        {
+            IssuanceType = issuanceType,
+            CardStatus = cardStatus,
+            ApplicationStatus = applicationStatus
+        };
+
     // --- DC config: SummerEbt allowed, SNAP/TANF/Unknown denied ---
 
     private static SelfServiceRulesSettings DcSettings() => new()
@@ -226,6 +237,150 @@ public class SelfServiceEvaluatorTests
         var apps = new[] { MakeApp(IssuanceType.SummerEbt, CardStatus.Frozen) };
 
         var result = evaluator.Evaluate(BenefitIssuanceType.SummerEbt, apps);
+
+        Assert.True(result.CanUpdateAddress);
+    }
+
+    // --- AllowedCaseStatuses dimension ---
+
+    private static SelfServiceRulesSettings CaseStatusOnlySettings(List<ApplicationStatus> allowedCaseStatuses) => new()
+    {
+        AddressUpdate = new ActionRuleSettings
+        {
+            Enabled = true,
+            ByIssuanceType = new Dictionary<IssuanceType, IssuanceTypeRuleSettings>
+            {
+                [IssuanceType.SummerEbt] = new()
+                {
+                    Enabled = true,
+                    AllowedCaseStatuses = allowedCaseStatuses
+                }
+            }
+        },
+        CardReplacement = new ActionRuleSettings { Enabled = false }
+    };
+
+    [Fact]
+    public void AllowedCaseStatuses_Approved_AllowsApprovedApplication()
+    {
+        var evaluator = CreateEvaluator(CaseStatusOnlySettings([ApplicationStatus.Approved]));
+        var apps = new[] { MakeApp(IssuanceType.SummerEbt, CardStatus.Active, ApplicationStatus.Approved) };
+
+        var result = evaluator.Evaluate(BenefitIssuanceType.SummerEbt, apps);
+
+        Assert.True(result.CanUpdateAddress);
+    }
+
+    [Fact]
+    public void AllowedCaseStatuses_Approved_DeniesPendingApplication()
+    {
+        var evaluator = CreateEvaluator(CaseStatusOnlySettings([ApplicationStatus.Approved]));
+        var apps = new[] { MakeApp(IssuanceType.SummerEbt, CardStatus.Active, ApplicationStatus.Pending) };
+
+        var result = evaluator.Evaluate(BenefitIssuanceType.SummerEbt, apps);
+
+        Assert.False(result.CanUpdateAddress);
+    }
+
+    [Fact]
+    public void EmptyAllowedCaseStatuses_MeansAnyCaseStatusAllowed()
+    {
+        var evaluator = CreateEvaluator(CaseStatusOnlySettings([]));
+        var apps = new[] { MakeApp(IssuanceType.SummerEbt, CardStatus.Active, ApplicationStatus.Pending) };
+
+        var result = evaluator.Evaluate(BenefitIssuanceType.SummerEbt, apps);
+
+        Assert.True(result.CanUpdateAddress);
+    }
+
+    // --- Both dimensions AND ---
+
+    private static SelfServiceRulesSettings BothDimensionsSettings() => new()
+    {
+        AddressUpdate = new ActionRuleSettings
+        {
+            Enabled = true,
+            ByIssuanceType = new Dictionary<IssuanceType, IssuanceTypeRuleSettings>
+            {
+                [IssuanceType.SummerEbt] = new()
+                {
+                    Enabled = true,
+                    AllowedCardStatuses = [CardStatus.Active],
+                    AllowedCaseStatuses = [ApplicationStatus.Approved]
+                }
+            }
+        },
+        CardReplacement = new ActionRuleSettings { Enabled = false }
+    };
+
+    [Fact]
+    public void BothDimensions_ApprovedAndActive_Allowed()
+    {
+        var evaluator = CreateEvaluator(BothDimensionsSettings());
+        var apps = new[] { MakeApp(IssuanceType.SummerEbt, CardStatus.Active, ApplicationStatus.Approved) };
+
+        var result = evaluator.Evaluate(BenefitIssuanceType.SummerEbt, apps);
+
+        Assert.True(result.CanUpdateAddress);
+    }
+
+    [Fact]
+    public void BothDimensions_ApprovedAndLost_DeniedByCardStatus()
+    {
+        var evaluator = CreateEvaluator(BothDimensionsSettings());
+        var apps = new[] { MakeApp(IssuanceType.SummerEbt, CardStatus.Lost, ApplicationStatus.Approved) };
+
+        var result = evaluator.Evaluate(BenefitIssuanceType.SummerEbt, apps);
+
+        Assert.False(result.CanUpdateAddress);
+    }
+
+    [Fact]
+    public void BothDimensions_PendingAndActive_DeniedByCaseStatus()
+    {
+        var evaluator = CreateEvaluator(BothDimensionsSettings());
+        var apps = new[] { MakeApp(IssuanceType.SummerEbt, CardStatus.Active, ApplicationStatus.Pending) };
+
+        var result = evaluator.Evaluate(BenefitIssuanceType.SummerEbt, apps);
+
+        Assert.False(result.CanUpdateAddress);
+    }
+
+    // --- Permissive aggregation across apps with case-status gating ---
+
+    [Fact]
+    public void PermissiveAggregation_OneApprovedApp_AllowsAction()
+    {
+        var evaluator = CreateEvaluator(CaseStatusOnlySettings([ApplicationStatus.Approved]));
+        var apps = new[]
+        {
+            MakeApp(IssuanceType.SummerEbt, CardStatus.Active, ApplicationStatus.Pending),
+            MakeApp(IssuanceType.SummerEbt, CardStatus.Active, ApplicationStatus.Approved)
+        };
+
+        var result = evaluator.Evaluate(BenefitIssuanceType.SummerEbt, apps);
+
+        Assert.True(result.CanUpdateAddress);
+    }
+
+    // --- Fallback path (no applications) with case-status gating ---
+
+    [Fact]
+    public void EmptyApplications_NonEmptyAllowedCaseStatuses_Denied()
+    {
+        var evaluator = CreateEvaluator(CaseStatusOnlySettings([ApplicationStatus.Approved]));
+
+        var result = evaluator.Evaluate(BenefitIssuanceType.SummerEbt, Array.Empty<Application>());
+
+        Assert.False(result.CanUpdateAddress);
+    }
+
+    [Fact]
+    public void EmptyApplications_EmptyAllowedCaseStatuses_FallbackAllowed()
+    {
+        var evaluator = CreateEvaluator(CaseStatusOnlySettings([]));
+
+        var result = evaluator.Evaluate(BenefitIssuanceType.SummerEbt, Array.Empty<Application>());
 
         Assert.True(result.CanUpdateAddress);
     }
