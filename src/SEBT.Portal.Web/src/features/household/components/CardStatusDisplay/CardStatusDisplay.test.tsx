@@ -156,4 +156,57 @@ describe('CardStatusDisplay', () => {
     // i18n key: cardTableStatusMessageDeactivated
     expect(screen.getByText(/reported as lost, stolen, damaged/)).toBeInTheDocument()
   })
+
+  // --- CO denied-status fallback coverage ---
+  // When the resolved locale string is empty (e.g. missing CSV content for a
+  // given status), DESCRIPTION_FALLBACK supplies English copy so that the
+  // "Card status" heading and a useful description still render. These tests
+  // simulate the empty-locale condition by dropping the CO bundle we added in
+  // beforeAll, leaving the default DC namespace (which has empty EN cells for
+  // several of these keys) active for the test duration.
+
+  describe('with empty locale entries (CSV content gap)', () => {
+    beforeAll(() => {
+      i18n.removeResourceBundle('en', 'dashboard')
+      i18n.addResourceBundle(
+        'en',
+        'dashboard',
+        {
+          cardTableHeadingCardStatus: 'Card status',
+          cardTableStatusInactive: 'Inactive',
+          cardTableStatusUndeliverable: 'Undeliverable',
+          cardTableStatusMessageDeactivated: '',
+          cardTableStatusMessageUndeliverable: ''
+        },
+        true,
+        true
+      )
+    })
+
+    afterAll(() => {
+      i18n.removeResourceBundle('en', 'dashboard')
+      i18n.addResourceBundle('en', 'dashboard', enCODashboard, true, true)
+    })
+
+    it('renders fallback heading and body for NotActivated', () => {
+      renderWithStatus('NotActivated')
+
+      expect(screen.getByText('Card status')).toBeInTheDocument()
+      expect(screen.getByText(/hasn't been activated yet/i)).toBeInTheDocument()
+    })
+
+    it('renders fallback heading and body for DeactivatedByState', () => {
+      renderWithStatus('DeactivatedByState')
+
+      expect(screen.getByText('Card status')).toBeInTheDocument()
+      expect(screen.getByText(/state agency has deactivated this card/i)).toBeInTheDocument()
+    })
+
+    it('renders fallback heading and body for Undeliverable', () => {
+      renderWithStatus('Undeliverable')
+
+      expect(screen.getByText('Card status')).toBeInTheDocument()
+      expect(screen.getByText(/returned as undeliverable/i)).toBeInTheDocument()
+    })
+  })
 })

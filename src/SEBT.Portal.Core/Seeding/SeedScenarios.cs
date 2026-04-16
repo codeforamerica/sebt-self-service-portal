@@ -18,6 +18,9 @@ public static class SeedScenarios
     public static readonly SeedScenario DcMixed = new("dc-mixed", UserIalLevel.IAL1plus);
     public static readonly SeedScenario CoUndeliverable = new("co-undeliverable", UserIalLevel.IAL1plus);
     public static readonly SeedScenario CoFrozen = new("co-frozen", UserIalLevel.IAL1plus);
+    public static readonly SeedScenario CoNotActivated = new("co-notactivated", UserIalLevel.IAL1plus);
+    public static readonly SeedScenario CoDeactivatedByState = new("co-deactivatedbystate", UserIalLevel.IAL1plus);
+    public static readonly SeedScenario CoActive = new("co-active", UserIalLevel.IAL1plus);
 
     // IAL1 scenarios
     public static readonly SeedScenario SingleChild = new("singlechild", UserIalLevel.IAL1);
@@ -52,7 +55,7 @@ public static class SeedScenarios
         CoLoaded, Verified, SingleChild, LargeFamily, Expired,
         NonCoLoaded, NotStarted, Pending, Minimal, Denied,
         Review, Cancelled, Unknown, SummerActive, SummerLost,
-        DcMixed, CoUndeliverable, CoFrozen,
+        DcMixed, CoUndeliverable, CoFrozen, CoNotActivated, CoDeactivatedByState, CoActive,
         Simple1, Simple2, Simple3, Simple4, Simple5, Simple6, Simple7
     ];
 
