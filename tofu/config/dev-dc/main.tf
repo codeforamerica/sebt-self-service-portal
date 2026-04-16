@@ -119,4 +119,7 @@ module "app" {
     "Socure__ApiKey"        = "${module.state_secrets.secrets["socure"].secret_arn}:api_key"
     "Socure__WebhookSecret" = "${module.state_secrets.secrets["socure"].secret_arn}:webhook_secret"
   }
+
+  state_web_environment_variables = {}
+  state_web_environment_secrets   = {}
 }
