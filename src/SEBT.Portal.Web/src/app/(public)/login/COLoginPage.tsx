@@ -38,6 +38,7 @@ export function COLoginPage({ state }: { state: StateCode }) {
         redirectUri,
         clientId: config.clientId
       })
+      localStorage.setItem('i18nextLng', language)
       const authUrl = buildAuthorizationUrl(
         { ...config, redirectUri },
         config.codeChallenge,
