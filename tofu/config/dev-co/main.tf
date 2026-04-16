@@ -77,6 +77,11 @@ module "state_secrets" {
   }
 }
 
+# Look up the enrollment checker hosted zone (created by bootstrap).
+data "aws_route53_zone" "enrollment_checker" {
+  name = "co.sebt-enrollment.codeforamerica.app"
+}
+
 # Deploy the application services (API + Web) using the shared wrapper module.
 module "app" {
   source = "../../modules/sebt_application"
@@ -137,9 +142,10 @@ module "app" {
   }
 
   state_web_environment_variables = {
-    OIDC_DISCOVERY_ENDPOINT = var.oidc_discovery_endpoint
-    OIDC_REDIRECT_URI       = "https://${var.domain}/callback"
-    OIDC_LANGUAGE_PARAM     = "en"
+    ENROLLMENT_CHECKER_ORIGIN = "https://dev.co.sebt-enrollment.codeforamerica.app"
+    OIDC_DISCOVERY_ENDPOINT   = var.oidc_discovery_endpoint
+    OIDC_REDIRECT_URI         = "https://${var.domain}/callback"
+    OIDC_LANGUAGE_PARAM       = "en"
   }
 
   state_web_environment_secrets = {
@@ -147,4 +153,18 @@ module "app" {
     OIDC_CLIENT_SECRET              = "${module.state_secrets.secrets["oidc"].secret_arn}:client_secret"
     OIDC_COMPLETE_LOGIN_SIGNING_KEY = "${module.state_secrets.secrets["oidc"].secret_arn}:complete_login_signing_key"
   }
+}
+
+# Deploy the enrollment checker as a static site behind CloudFront.
+module "enrollment_checker" {
+  source = "../../modules/sebt_enrollment_checker"
+
+  project     = var.project
+  state       = var.state
+  environment = var.environment
+  domain      = "dev.co.sebt-enrollment.codeforamerica.app"
+  hosted_zone_id             = data.aws_route53_zone.enrollment_checker.zone_id
+  logging_bucket_domain_name = module.logging.bucket_domain_name
+  logging_bucket_name        = module.logging.bucket
+  force_delete               = true
 }

@@ -76,7 +76,22 @@ function loadFromStorage(): EnrollmentState {
     if (!raw) return initialState
     const parsed: unknown = JSON.parse(raw)
     const result = enrollmentStorageSchema.safeParse(parsed)
-    return result.success ? result.data : initialState
+    if (!result.success) return initialState
+    return {
+      editingChildId: result.data.editingChildId,
+      children: result.data.children.map(parsedChild => {
+        const child: Child = {
+          id: parsedChild.id,
+          firstName: parsedChild.firstName,
+          lastName: parsedChild.lastName,
+          dateOfBirth: parsedChild.dateOfBirth,
+          ...(parsedChild.middleName && { middleName: parsedChild.middleName }),
+          ...(parsedChild.schoolName && { schoolName: parsedChild.schoolName }),
+          ...(parsedChild.schoolCode && { schoolCode: parsedChild.schoolCode })
+        }
+        return child
+      })
+    }
   } catch {
     return initialState
   }
@@ -106,33 +121,36 @@ export function EnrollmentProvider({ children }: { children: ReactNode }) {
   const actions: EnrollmentActions = {
     addChild: (values) => update(s => {
       if (s.children.length >= MAX_CHILDREN) return s
-      return {
-      ...s,
-      children: [...s.children, {
+      const child: Child = {
         id: uuidv4(),
         firstName: values.firstName,
-        middleName: values.middleName,
         lastName: values.lastName,
         dateOfBirth: toDateOfBirth(values),
-        schoolName: values.schoolName,
-        schoolCode: values.schoolCode
-      }]
-    }}),
+        ...(values.middleName && { middleName: values.middleName }),
+        ...(values.schoolName && { schoolName: values.schoolName }),
+        ...(values.schoolCode && { schoolCode: values.schoolCode })
+      }
+      return { ...s, children: [...s.children, child] }
+    }),
     updateChild: (id, values) => update(s => ({
       ...s,
-      children: s.children.map(c => c.id === id ? {
-        id,
-        firstName: values.firstName,
-        middleName: values.middleName,
-        lastName: values.lastName,
-        dateOfBirth: toDateOfBirth(values),
-        schoolName: values.schoolName,
-        schoolCode: values.schoolCode
-      } : c)
+      children: s.children.map(child => {
+        if (child.id !== id) return child
+        const updated: Child = {
+          id,
+          firstName: values.firstName,
+          lastName: values.lastName,
+          dateOfBirth: toDateOfBirth(values),
+          ...(values.middleName && { middleName: values.middleName }),
+          ...(values.schoolName && { schoolName: values.schoolName }),
+          ...(values.schoolCode && { schoolCode: values.schoolCode })
+        }
+        return updated
+      })
     })),
     removeChild: (id) => update(s => ({
       ...s,
-      children: s.children.filter(c => c.id !== id)
+      children: s.children.filter(child => child.id !== id)
     })),
     setEditingChildId: (id) => update(s => ({ ...s, editingChildId: id })),
     clearState: () => {
