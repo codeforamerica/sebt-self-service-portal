@@ -89,7 +89,8 @@ public class OidcController(
 
         // Create the pre-auth session and set the cookie.
         var session = await sessionStore.CreateAsync(
-            stateCode, state, codeVerifier, redirectUri, stepUp, cancellationToken);
+            stateCode, state, codeVerifier, redirectUri, stepUp,
+            returnUrl: null, cancellationToken);
         OidcSessionCookie.Set(Response, session.Id);
 
         logger.LogInformation(

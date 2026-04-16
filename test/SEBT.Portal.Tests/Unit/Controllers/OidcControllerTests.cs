@@ -49,7 +49,8 @@ public class OidcControllerTests
         _sessionStore = Substitute.For<IPreAuthSessionStore>();
         _sessionStore.CreateAsync(
                 Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(),
-                Arg.Any<string>(), Arg.Any<bool>(), Arg.Any<CancellationToken>())
+                Arg.Any<string>(), Arg.Any<bool>(), Arg.Any<string?>(),
+                Arg.Any<CancellationToken>())
             .Returns(callInfo => new PreAuthSession
             {
                 Id = "test-session-id",
@@ -57,7 +58,8 @@ public class OidcControllerTests
                 CodeVerifier = callInfo.ArgAt<string>(2),
                 StateCode = callInfo.ArgAt<string>(0),
                 RedirectUri = callInfo.ArgAt<string>(3),
-                IsStepUp = callInfo.ArgAt<bool>(4)
+                IsStepUp = callInfo.ArgAt<bool>(4),
+                ReturnUrl = callInfo.ArgAt<string?>(5)
             });
 
         var env = Substitute.For<IWebHostEnvironment>();
