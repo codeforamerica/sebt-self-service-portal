@@ -120,6 +120,41 @@ public class IalRequirementTests
         Assert.Equal([IalLevel.IAL1, IalLevel.IAL1plus], levels);
     }
 
+    // --- Per-case-type: empty cases returns IAL1 (no cases = no elevated requirement) ---
+
+    [Fact]
+    public void PerCaseType_Resolve_EmptyCases_ReturnsIal1_NotHighestConfiguredLevel()
+    {
+        // This is intentional: when there are no cases to evaluate, there is no
+        // case-derived reason to require elevated IAL. The user still needs to meet
+        // any uniform requirements on the same resource (e.g., address+view: IAL1plus).
+        var req = IalRequirement.PerCaseType(new Dictionary<string, IalLevel>
+        {
+            ["ApplicationCases"] = IalLevel.IAL1plus,
+            ["CoLoadedStreamlineCases"] = IalLevel.IAL1plus,
+            ["NonCoLoadedStreamlineCases"] = IalLevel.IAL1plus
+        });
+
+        var result = req.Resolve([]);
+        Assert.Equal(UserIalLevel.IAL1, result);
+    }
+
+    // --- Per-case-type: missing case-type key falls back to IAL1plus (fail-closed) ---
+
+    [Fact]
+    public void PerCaseType_Resolve_MissingCaseTypeKey_FallsBackToIal1plus()
+    {
+        // Config only has CoLoadedStreamlineCases. An ApplicationCase lookup
+        // should fall back to IAL1plus (fail-closed), not IAL1.
+        var req = IalRequirement.PerCaseType(new Dictionary<string, IalLevel>
+        {
+            ["CoLoadedStreamlineCases"] = IalLevel.IAL1
+        });
+
+        var result = req.Resolve([ApplicationCase()]);
+        Assert.Equal(UserIalLevel.IAL1plus, result);
+    }
+
     // --- Default requirement ---
 
     [Fact]

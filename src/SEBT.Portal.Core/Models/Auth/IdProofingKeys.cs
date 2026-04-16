@@ -6,13 +6,6 @@ namespace SEBT.Portal.Core.Models.Auth;
 /// </summary>
 public static class IdProofingKeys
 {
-    public const string AddressView = "address+view";
-    public const string AddressWrite = "address+write";
-    public const string EmailView = "email+view";
-    public const string PhoneView = "phone+view";
-    public const string HouseholdView = "household+view";
-    public const string CardWrite = "card+write";
-
     /// <summary>
     /// Converts a resource+action enum pair to its config key string.
     /// </summary>

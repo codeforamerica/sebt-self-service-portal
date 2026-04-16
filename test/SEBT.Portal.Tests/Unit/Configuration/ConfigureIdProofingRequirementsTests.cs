@@ -106,4 +106,80 @@ public class ConfigureIdProofingRequirementsTests
             Arg.Any<Exception?>(),
             Arg.Any<Func<object, Exception?, string>>());
     }
+
+    [Fact]
+    public void Configure_InvalidEnumValue_SkipsKeyAndLogsError()
+    {
+        var config = new ConfigurationBuilder()
+            .AddInMemoryCollection(new Dictionary<string, string?>
+            {
+                ["IdProofingRequirements:address+view"] = "NotAValidLevel"
+            })
+            .Build();
+
+        var logger = Substitute.For<ILogger<ConfigureIdProofingRequirements>>();
+        var binder = new ConfigureIdProofingRequirements(config, logger);
+        var settings = new IdProofingRequirementsSettings();
+
+        binder.Configure(settings);
+
+        // Key was skipped — should fall back to IAL1plus default
+        var req = settings.Get(ProtectedResource.Address, ProtectedAction.View);
+        Assert.Equal(UserIalLevel.IAL1plus, req.Resolve([]));
+
+        logger.Received().Log(
+            LogLevel.Error,
+            Arg.Any<EventId>(),
+            Arg.Is<object>(o => o.ToString()!.Contains("NotAValidLevel")),
+            Arg.Any<Exception?>(),
+            Arg.Any<Func<object, Exception?, string>>());
+    }
+
+    [Fact]
+    public void Configure_NullSubValueInObjectForm_SkipsSubKeyAndLogsError()
+    {
+        // Simulate a null sub-value: in-memory config with a key that has no value
+        // .NET config treats "key": null as a key with null value
+        var config = new ConfigurationBuilder()
+            .AddInMemoryCollection(new Dictionary<string, string?>
+            {
+                ["IdProofingRequirements:household+view:ApplicationCases"] = null,
+                ["IdProofingRequirements:household+view:NonCoLoadedStreamlineCases"] = "IAL1plus"
+            })
+            .Build();
+
+        var logger = Substitute.For<ILogger<ConfigureIdProofingRequirements>>();
+        var binder = new ConfigureIdProofingRequirements(config, logger);
+        var settings = new IdProofingRequirementsSettings();
+
+        binder.Configure(settings);
+
+        logger.Received().Log(
+            LogLevel.Error,
+            Arg.Any<EventId>(),
+            Arg.Is<object>(o => o.ToString()!.Contains("(null)")),
+            Arg.Any<Exception?>(),
+            Arg.Any<Func<object, Exception?, string>>());
+    }
+
+    [Fact]
+    public void Configure_ObjectForm_CaseInsensitiveSubKeys()
+    {
+        // Config uses lowercase "applicationcases" — should still resolve correctly
+        var (_, settings) = BindConfig(new Dictionary<string, string?>
+        {
+            ["IdProofingRequirements:household+view:applicationcases"] = "IAL1",
+            ["IdProofingRequirements:household+view:NonCoLoadedStreamlineCases"] = "IAL1plus"
+        });
+
+        var req = settings.Get(ProtectedResource.Household, ProtectedAction.View);
+        var appCase = new SummerEbtCase
+        {
+            ChildFirstName = "Test",
+            ChildLastName = "Child",
+            IsStreamlineCertified = false,
+            IsCoLoaded = false
+        };
+        Assert.Equal(UserIalLevel.IAL1, req.Resolve([appCase]));
+    }
 }

@@ -111,26 +111,33 @@ public class UpdateAddressCommandHandler(
         var household = await householdRepository.GetHouseholdByIdentifierAsync(
             identifier, piiVisibility, userIalLevel, cancellationToken);
 
-        if (household != null)
+        if (household == null)
         {
-            // SECURITY: Block write operations when the user has not met the IAL
-            // required by their cases. See docs/config/ial/README.md.
-            var decision = idProofingService.Evaluate(
-                ProtectedResource.Address, ProtectedAction.Write,
-                userIalLevel, household.SummerEbtCases);
-            if (!decision.IsAllowed)
-            {
-                logger.LogInformation(
-                    "Address update denied: user IAL {UserIal} is below required {RequiredIal}",
-                    userIalLevel,
-                    decision.RequiredLevel);
-                return Result<AddressValidationResult>.Forbidden(
-                    $"This household requires {decision.RequiredLevel}. Complete identity verification to update your address.",
-                    new Dictionary<string, object?> { ["requiredIal"] = decision.RequiredLevel.ToString() });
-            }
+            logger.LogWarning(
+                "Address update attempted but household data not found for identifier kind {Kind}",
+                identifierKind);
+            return Result<AddressValidationResult>.PreconditionFailed(
+                PreconditionFailedReason.NotFound,
+                "Household data not found.");
         }
 
-        if (household is { BenefitIssuanceType: BenefitIssuanceType.SnapEbtCard or BenefitIssuanceType.TanfEbtCard })
+        // SECURITY: Block write operations when the user has not met the IAL
+        // required by their cases. See docs/config/ial/README.md.
+        var decision = idProofingService.Evaluate(
+            ProtectedResource.Address, ProtectedAction.Write,
+            userIalLevel, household.SummerEbtCases);
+        if (!decision.IsAllowed)
+        {
+            logger.LogInformation(
+                "Address update denied: user IAL {UserIal} is below required {RequiredIal}",
+                userIalLevel,
+                decision.RequiredLevel);
+            return Result<AddressValidationResult>.Forbidden(
+                $"This household requires {decision.RequiredLevel}. Complete identity verification to update your address.",
+                new Dictionary<string, object?> { ["requiredIal"] = decision.RequiredLevel.ToString() });
+        }
+
+        if (household.BenefitIssuanceType is BenefitIssuanceType.SnapEbtCard or BenefitIssuanceType.TanfEbtCard)
         {
             logger.LogWarning(
                 "Address update rejected for household identifier kind {Kind}: benefit type {BenefitType} is not eligible for portal self-service",

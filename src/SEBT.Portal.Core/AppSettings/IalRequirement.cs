@@ -39,6 +39,8 @@ public class IalRequirement
             return ToUserIalLevel(_uniform.Value);
         }
 
+        // No cases = no case-derived reason to require elevated IAL.
+        // Uniform requirements on the same resource (e.g., address+view) still apply independently.
         if (_perCaseType is null || cases.Count == 0)
         {
             return UserIalLevel.IAL1;
@@ -59,6 +61,9 @@ public class IalRequirement
         return _perCaseType?.Values ?? Enumerable.Empty<IalLevel>();
     }
 
+    // Case-type key lookup is case-insensitive when the dictionary is created with
+    // StringComparer.OrdinalIgnoreCase (see ConfigureIdProofingRequirements).
+    // If a case type is not in the dictionary, fail-closed to IAL1plus.
     private static IalLevel ClassifyCase(SummerEbtCase c, Dictionary<string, IalLevel> levels)
     {
         string key;

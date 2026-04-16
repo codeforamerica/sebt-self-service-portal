@@ -35,19 +35,41 @@ public class ConfigureIdProofingRequirements(
             if (child.Value is not null)
             {
                 // Simple form: "address+view": "IAL1plus"
-                var level = Enum.Parse<IalLevel>(child.Value, ignoreCase: true);
+                if (!Enum.TryParse<IalLevel>(child.Value, ignoreCase: true, out var level))
+                {
+                    logger.LogError(
+                        "Invalid IalLevel value '{Value}' for IdProofingRequirements key '{Key}'. " +
+                        "Valid values: IAL1, IAL1plus, IAL2. This key will default to IAL1plus (fail-safe).",
+                        child.Value, child.Key);
+                    continue;
+                }
+
                 options.Requirements[child.Key] = IalRequirement.Uniform(level);
             }
             else
             {
                 // Object form: "household+view": { "ApplicationCases": "IAL1plus", ... }
-                var perCase = new Dictionary<string, IalLevel>();
+                var perCase = new Dictionary<string, IalLevel>(StringComparer.OrdinalIgnoreCase);
+                var hasError = false;
                 foreach (var sub in child.GetChildren())
                 {
-                    perCase[sub.Key] = Enum.Parse<IalLevel>(sub.Value!, ignoreCase: true);
+                    if (sub.Value is null || !Enum.TryParse<IalLevel>(sub.Value, ignoreCase: true, out var subLevel))
+                    {
+                        logger.LogError(
+                            "Invalid IalLevel value '{Value}' for IdProofingRequirements key '{Key}:{SubKey}'. " +
+                            "Valid values: IAL1, IAL1plus, IAL2. This key will default to IAL1plus (fail-safe).",
+                            sub.Value ?? "(null)", child.Key, sub.Key);
+                        hasError = true;
+                        continue;
+                    }
+
+                    perCase[sub.Key] = subLevel;
                 }
 
-                options.Requirements[child.Key] = IalRequirement.PerCaseType(perCase);
+                if (!hasError || perCase.Count > 0)
+                {
+                    options.Requirements[child.Key] = IalRequirement.PerCaseType(perCase);
+                }
             }
         }
     }
