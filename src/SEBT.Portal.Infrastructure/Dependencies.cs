@@ -39,10 +39,6 @@ public static class Dependencies
         services.AddSingleton<IIdProofingService>(sp => sp.GetRequiredService<IdProofingService>());
         services.AddSingleton<IPiiVisibilityService>(sp => sp.GetRequiredService<IdProofingService>());
 
-        // Legacy adapters — keep until use-case handlers are migrated to IIdProofingService (Task 8)
-        services.AddScoped<IIdProofingRequirementsService, IdProofingRequirementsService>();
-        services.AddScoped<IMinimumIalService, MinimumIalService>();
-
         // Enrollment Check logging
         services.AddScoped<IEnrollmentCheckSubmissionLogger, EnrollmentCheckSubmissionLogger>();
 
