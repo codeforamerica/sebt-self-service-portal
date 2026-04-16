@@ -144,6 +144,7 @@ internal static class ServiceCollectionPluginExtensions
         services.TryAddSingleton<ISummerEbtCaseService, Defaults.DefaultSummerEbtCaseService>();
         services.TryAddSingleton<IEnrollmentCheckService, Defaults.DefaultEnrollmentCheckService>();
         services.TryAddSingleton<IAddressUpdateService, Defaults.DefaultAddressUpdateService>();
+        services.TryAddSingleton<ICardReplacementService, Defaults.DefaultCardReplacementService>();
 
         return services;
     }

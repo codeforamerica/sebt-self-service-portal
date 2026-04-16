@@ -5,6 +5,7 @@ using NSubstitute;
 using SEBT.Portal.Core.Repositories;
 using SEBT.Portal.Core.Services;
 using SEBT.Portal.Kernel;
+using SEBT.Portal.StatesPlugins.Interfaces;
 using SEBT.Portal.UseCases;
 using SEBT.Portal.UseCases.Household;
 
@@ -24,6 +25,7 @@ public class DependenciesTests
         services.AddSingleton(Substitute.For<IHouseholdIdentifierResolver>());
         services.AddSingleton(Substitute.For<IHouseholdRepository>());
         services.AddSingleton(Substitute.For<IMinimumIalService>());
+        services.AddSingleton(Substitute.For<ICardReplacementService>());
         services.AddSingleton(TimeProvider.System);
         services.AddSingleton(typeof(ILogger<>), typeof(NullLogger<>));
 

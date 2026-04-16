@@ -5,19 +5,23 @@ using SEBT.Portal.Core.Repositories;
 using SEBT.Portal.Core.Services;
 using SEBT.Portal.Kernel;
 using SEBT.Portal.Kernel.Results;
+using IStateCardReplacementService = SEBT.Portal.StatesPlugins.Interfaces.ICardReplacementService;
+using PluginCardReplacementRequest = SEBT.Portal.StatesPlugins.Interfaces.Models.Household.CardReplacementRequest;
 
 namespace SEBT.Portal.UseCases.Household;
 
 /// <summary>
 /// Handles card replacement requests for an authenticated user's household.
-/// Validates input, resolves household identity, enforces 2-week cooldown, and returns success.
-/// State connector call is stubbed — actual card replacement is a future integration.
+/// Validates input, resolves household identity, enforces 2-week cooldown, and
+/// dispatches to the state connector. Policy rejections and backend errors from
+/// the connector are mapped to portal <see cref="Result"/> types.
 /// </summary>
 public class RequestCardReplacementCommandHandler(
     IValidator<RequestCardReplacementCommand> validator,
     IHouseholdIdentifierResolver resolver,
     IHouseholdRepository repository,
     IMinimumIalService minimumIalService,
+    IStateCardReplacementService cardReplacementService,
     TimeProvider timeProvider,
     ILogger<RequestCardReplacementCommandHandler> logger)
     : ICommandHandler<RequestCardReplacementCommand>
@@ -85,14 +89,56 @@ public class RequestCardReplacementCommandHandler(
             identifierKind,
             command.CaseIds.Count);
 
-        // TODO: Call state connector to process card replacement.
-        // Stubbed — returns success without calling the state system.
+        var pluginRequest = new PluginCardReplacementRequest
+        {
+            HouseholdIdentifierValue = identifier.Value,
+            CaseIds = command.CaseIds,
+            Reason = StatesPlugins.Interfaces.Models.Household.CardReplacementReason.Unspecified,
+        };
 
-        logger.LogInformation(
-            "Card replacement request recorded for household identifier kind {Kind}",
-            identifierKind);
+        try
+        {
+            var connectorResult = await cardReplacementService.RequestCardReplacementAsync(
+                pluginRequest,
+                cancellationToken);
 
-        return Result.Success();
+            if (connectorResult.IsSuccess)
+            {
+                logger.LogInformation(
+                    "Card replacement request completed for household identifier kind {Kind}",
+                    identifierKind);
+                return Result.Success();
+            }
+
+            if (connectorResult.IsPolicyRejection)
+            {
+                logger.LogWarning(
+                    "Card replacement policy rejection for household identifier kind {Kind}: {ErrorCode}",
+                    identifierKind,
+                    connectorResult.ErrorCode);
+                return Result.PreconditionFailed(
+                    PreconditionFailedReason.Conflict,
+                    connectorResult.ErrorMessage);
+            }
+
+            logger.LogError(
+                "Card replacement backend error for household identifier kind {Kind}: {ErrorCode}",
+                identifierKind,
+                connectorResult.ErrorCode);
+            return Result.DependencyFailed(
+                DependencyFailedReason.ConnectionFailed,
+                connectorResult.ErrorMessage);
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(
+                ex,
+                "Card replacement plugin failed for household identifier kind {Kind}",
+                identifierKind);
+            return Result.DependencyFailed(
+                DependencyFailedReason.ConnectionFailed,
+                "Card replacement service is temporarily unavailable.");
+        }
     }
 
     private static List<ValidationError> CheckCooldown(

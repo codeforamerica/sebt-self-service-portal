@@ -2,6 +2,7 @@ using System.Security.Claims;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Time.Testing;
 using NSubstitute;
+using NSubstitute.ExceptionExtensions;
 using SEBT.Portal.Core.Models;
 using SEBT.Portal.Core.Models.Auth;
 using SEBT.Portal.Core.Models.Household;
@@ -10,7 +11,10 @@ using SEBT.Portal.Core.Services;
 using SEBT.Portal.Core.Utilities;
 using SEBT.Portal.Kernel;
 using SEBT.Portal.Kernel.Results;
+using SEBT.Portal.StatesPlugins.Interfaces;
 using SEBT.Portal.UseCases.Household;
+using CardReplacementRequest = SEBT.Portal.StatesPlugins.Interfaces.Models.Household.CardReplacementRequest;
+using CardReplacementResult = SEBT.Portal.StatesPlugins.Interfaces.Models.Household.CardReplacementResult;
 
 namespace SEBT.Portal.Tests.Unit.UseCases.Household;
 
@@ -24,6 +28,8 @@ public class RequestCardReplacementCommandHandlerTests
         Substitute.For<IHouseholdRepository>();
     private readonly IMinimumIalService _minimumIalService =
         Substitute.For<IMinimumIalService>();
+    private readonly ICardReplacementService _cardReplacementService =
+        Substitute.For<ICardReplacementService>();
     private readonly NullLogger<RequestCardReplacementCommandHandler> _logger =
         NullLogger<RequestCardReplacementCommandHandler>.Instance;
 
@@ -31,10 +37,15 @@ public class RequestCardReplacementCommandHandlerTests
     {
         // Default: IAL gate passes (no elevated requirement)
         _minimumIalService.GetMinimumIal(Arg.Any<IReadOnlyList<SummerEbtCase>>()).Returns(UserIalLevel.None);
+
+        // Default: connector reports success so existing tests that reach the success path still pass
+        _cardReplacementService
+            .RequestCardReplacementAsync(Arg.Any<CardReplacementRequest>(), Arg.Any<CancellationToken>())
+            .Returns(CardReplacementResult.Success());
     }
 
     private RequestCardReplacementCommandHandler CreateHandler(TimeProvider? timeProvider = null) =>
-        new(_validator, _resolver, _repository, _minimumIalService, timeProvider ?? TimeProvider.System, _logger);
+        new(_validator, _resolver, _repository, _minimumIalService, _cardReplacementService, timeProvider ?? TimeProvider.System, _logger);
 
     private static ClaimsPrincipal CreateUser(string email, string? ialClaim = null)
     {
@@ -402,5 +413,215 @@ public class RequestCardReplacementCommandHandlerTests
 
         Assert.True(result.IsSuccess);
         Assert.IsType<SuccessResult>(result);
+    }
+
+    // --- State connector integration tests ---
+
+    [Fact]
+    public async Task Handle_CallsCardReplacementService_WhenAllChecksPass()
+    {
+        var handler = CreateHandler();
+        var command = CreateValidCommand();
+        SetupResolverSuccess();
+        SetupRepositoryReturns(CreateHouseholdWithCases(
+            new SummerEbtCase { SummerEBTCaseID = "SEBT-001", ChildFirstName = "John", ChildLastName = "Doe" }
+        ));
+
+        await handler.Handle(command, CancellationToken.None);
+
+        await _cardReplacementService.Received(1).RequestCardReplacementAsync(
+            Arg.Any<CardReplacementRequest>(),
+            Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task Handle_ReturnsSuccess_WhenConnectorReturnsSuccess()
+    {
+        var handler = CreateHandler();
+        var command = CreateValidCommand();
+        SetupResolverSuccess();
+        SetupRepositoryReturns(CreateHouseholdWithCases(
+            new SummerEbtCase { SummerEBTCaseID = "SEBT-001", ChildFirstName = "John", ChildLastName = "Doe" }
+        ));
+        _cardReplacementService
+            .RequestCardReplacementAsync(Arg.Any<CardReplacementRequest>(), Arg.Any<CancellationToken>())
+            .Returns(CardReplacementResult.Success());
+
+        var result = await handler.Handle(command, CancellationToken.None);
+
+        Assert.True(result.IsSuccess);
+        Assert.IsType<SuccessResult>(result);
+    }
+
+    [Fact]
+    public async Task Handle_ReturnsPreconditionFailed_WhenConnectorReturnsPolicyRejection()
+    {
+        var handler = CreateHandler();
+        var command = CreateValidCommand();
+        SetupResolverSuccess();
+        SetupRepositoryReturns(CreateHouseholdWithCases(
+            new SummerEbtCase { SummerEBTCaseID = "SEBT-001", ChildFirstName = "John", ChildLastName = "Doe" }
+        ));
+        _cardReplacementService
+            .RequestCardReplacementAsync(Arg.Any<CardReplacementRequest>(), Arg.Any<CancellationToken>())
+            .Returns(CardReplacementResult.PolicyRejected("INELIGIBLE", "Not allowed right now."));
+
+        var result = await handler.Handle(command, CancellationToken.None);
+
+        var preconditionFailed = Assert.IsType<PreconditionFailedResult>(result);
+        Assert.Equal(PreconditionFailedReason.Conflict, preconditionFailed.Reason);
+        Assert.Equal("Not allowed right now.", preconditionFailed.Message);
+    }
+
+    [Fact]
+    public async Task Handle_ReturnsDependencyFailed_WhenConnectorReturnsBackendError()
+    {
+        var handler = CreateHandler();
+        var command = CreateValidCommand();
+        SetupResolverSuccess();
+        SetupRepositoryReturns(CreateHouseholdWithCases(
+            new SummerEbtCase { SummerEBTCaseID = "SEBT-001", ChildFirstName = "John", ChildLastName = "Doe" }
+        ));
+        _cardReplacementService
+            .RequestCardReplacementAsync(Arg.Any<CardReplacementRequest>(), Arg.Any<CancellationToken>())
+            .Returns(CardReplacementResult.BackendError("UPSTREAM_500", "Something broke downstream."));
+
+        var result = await handler.Handle(command, CancellationToken.None);
+
+        var dependencyFailed = Assert.IsType<DependencyFailedResult>(result);
+        Assert.Equal(DependencyFailedReason.ConnectionFailed, dependencyFailed.Reason);
+        Assert.Equal("Something broke downstream.", dependencyFailed.Message);
+    }
+
+    [Fact]
+    public async Task Handle_ReturnsDependencyFailed_WhenConnectorThrows()
+    {
+        var handler = CreateHandler();
+        var command = CreateValidCommand();
+        SetupResolverSuccess();
+        SetupRepositoryReturns(CreateHouseholdWithCases(
+            new SummerEbtCase { SummerEBTCaseID = "SEBT-001", ChildFirstName = "John", ChildLastName = "Doe" }
+        ));
+        _cardReplacementService
+            .RequestCardReplacementAsync(Arg.Any<CardReplacementRequest>(), Arg.Any<CancellationToken>())
+            .Throws(new InvalidOperationException("connector blew up"));
+
+        var result = await handler.Handle(command, CancellationToken.None);
+
+        var dependencyFailed = Assert.IsType<DependencyFailedResult>(result);
+        Assert.Equal(DependencyFailedReason.ConnectionFailed, dependencyFailed.Reason);
+    }
+
+    [Fact]
+    public async Task Handle_DoesNotCallConnector_WhenValidationFails()
+    {
+        var handler = CreateHandler();
+        var command = CreateValidCommand(caseIds: new List<string>());
+
+        await handler.Handle(command, CancellationToken.None);
+
+        await _cardReplacementService.DidNotReceive().RequestCardReplacementAsync(
+            Arg.Any<CardReplacementRequest>(),
+            Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task Handle_DoesNotCallConnector_WhenHouseholdNotFound()
+    {
+        var handler = CreateHandler();
+        var command = CreateValidCommand();
+        SetupResolverSuccess();
+        // Repository returns null by default
+
+        await handler.Handle(command, CancellationToken.None);
+
+        await _cardReplacementService.DidNotReceive().RequestCardReplacementAsync(
+            Arg.Any<CardReplacementRequest>(),
+            Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task Handle_DoesNotCallConnector_WhenIalInsufficient()
+    {
+        var handler = CreateHandler();
+        var command = CreateValidCommand();
+        SetupResolverSuccess();
+        SetupRepositoryReturns(CreateHouseholdWithCases(
+            new SummerEbtCase { SummerEBTCaseID = "SEBT-001", ChildFirstName = "John", ChildLastName = "Doe" }
+        ));
+        _minimumIalService.GetMinimumIal(Arg.Any<IReadOnlyList<SummerEbtCase>>()).Returns(UserIalLevel.IAL2);
+
+        await handler.Handle(command, CancellationToken.None);
+
+        await _cardReplacementService.DidNotReceive().RequestCardReplacementAsync(
+            Arg.Any<CardReplacementRequest>(),
+            Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task Handle_DoesNotCallConnector_WhenCooldownDenies()
+    {
+        var handler = CreateHandler();
+        var command = CreateValidCommand();
+        SetupResolverSuccess();
+        SetupRepositoryReturns(CreateHouseholdWithCases(
+            new SummerEbtCase
+            {
+                SummerEBTCaseID = "SEBT-001",
+                ChildFirstName = "John",
+                ChildLastName = "Doe",
+                CardRequestedAt = DateTime.UtcNow.AddDays(-3)
+            }
+        ));
+
+        await handler.Handle(command, CancellationToken.None);
+
+        await _cardReplacementService.DidNotReceive().RequestCardReplacementAsync(
+            Arg.Any<CardReplacementRequest>(),
+            Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task Handle_PassesCancellationTokenToConnector()
+    {
+        var handler = CreateHandler();
+        var command = CreateValidCommand();
+        var cts = new CancellationTokenSource();
+        var token = cts.Token;
+
+        _resolver.ResolveAsync(Arg.Any<ClaimsPrincipal>(), token)
+            .Returns(HouseholdIdentifier.Email(EmailNormalizer.Normalize("user@example.com")));
+        SetupRepositoryReturns(CreateHouseholdWithCases(
+            new SummerEbtCase { SummerEBTCaseID = "SEBT-001", ChildFirstName = "John", ChildLastName = "Doe" }
+        ));
+
+        await handler.Handle(command, token);
+
+        await _cardReplacementService.Received(1).RequestCardReplacementAsync(
+            Arg.Any<CardReplacementRequest>(),
+            token);
+    }
+
+    [Fact]
+    public async Task Handle_PassesCaseIdsAndIdentifierToConnector()
+    {
+        var handler = CreateHandler();
+        var caseIds = new List<string> { "SEBT-001", "SEBT-002" };
+        var command = CreateValidCommand(caseIds: caseIds);
+        SetupResolverSuccess();
+        SetupRepositoryReturns(CreateHouseholdWithCases(
+            new SummerEbtCase { SummerEBTCaseID = "SEBT-001", ChildFirstName = "John", ChildLastName = "Doe" },
+            new SummerEbtCase { SummerEBTCaseID = "SEBT-002", ChildFirstName = "Jane", ChildLastName = "Doe" }
+        ));
+
+        await handler.Handle(command, CancellationToken.None);
+
+        await _cardReplacementService.Received(1).RequestCardReplacementAsync(
+            Arg.Is<CardReplacementRequest>(r =>
+                r.HouseholdIdentifierValue == EmailNormalizer.Normalize("user@example.com") &&
+                r.CaseIds.Count == 2 &&
+                r.CaseIds[0] == "SEBT-001" &&
+                r.CaseIds[1] == "SEBT-002"),
+            Arg.Any<CancellationToken>());
     }
 }
