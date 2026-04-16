@@ -56,6 +56,23 @@ data "aws_route53_zone" "main" {
   name = "dc.sebt-portal.codeforamerica.app"
 }
 
+# Store DC-specific secrets in Secrets Manager. Each block represents a
+# separate set of secrets for a specific service or integration.
+module "state_secrets" {
+  source = "github.com/codeforamerica/tofu-modules-aws-secrets?ref=2.0.0"
+
+  project     = "${var.project}-${var.state}"
+  environment = var.environment
+  service     = "state-secrets"
+
+  secrets = {
+    "socure" = {
+      description     = "Socure API credentials for identity verification."
+      recovery_window = 7
+    }
+  }
+}
+
 # Deploy the application services (API + Web) using the shared wrapper module.
 module "app" {
   source = "../../modules/sebt_application"
@@ -97,4 +114,12 @@ module "app" {
     "MinimumIal__CoLoadedStreamlineCases"    = "IAL1"
     "MinimumIal__NonCoLoadedStreamlineCases" = "IAL1plus"
   }
+
+  state_api_environment_secrets = {
+    "Socure__ApiKey"        = "${module.state_secrets.secrets["socure"].secret_arn}:api_key"
+    "Socure__WebhookSecret" = "${module.state_secrets.secrets["socure"].secret_arn}:webhook_secret"
+  }
+
+  state_web_environment_variables = {}
+  state_web_environment_secrets   = {}
 }

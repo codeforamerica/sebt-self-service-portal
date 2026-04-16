@@ -77,7 +77,7 @@ export function ChildForm({
         label={tCommon('labelFirstName')}
         value={values.firstName ?? ''}
         onChange={e => set('firstName', e.target.value)}
-        error={errors.firstName}
+        {...(errors.firstName && { error: errors.firstName })}
         isRequired
         hint={nameHint}
       />
@@ -91,7 +91,7 @@ export function ChildForm({
         label={tCommon('labelLastName')}
         value={values.lastName ?? ''}
         onChange={e => set('lastName', e.target.value)}
-        error={errors.lastName}
+        {...(errors.lastName && { error: errors.lastName })}
         isRequired
         hint={nameHint}
       />
