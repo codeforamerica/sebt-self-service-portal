@@ -13,6 +13,8 @@ using SEBT.Portal.Core.Services;
 using SEBT.Portal.Core.Utilities;
 using SEBT.Portal.Infrastructure.Services;
 
+using static SEBT.Portal.Core.Utilities.PiiMasker;
+
 namespace SEBT.Portal.Api.Controllers.Auth;
 
 /// <summary>
@@ -195,6 +197,12 @@ public class OidcController(
             return BadRequest(new ErrorResponse("Pre-auth session has already been used."));
         }
 
+        logger.LogInformation(
+            "OIDC Callback exchange succeeded: IsStepUp={IsStepUp}, Phone={MaskedPhone}, SessionId={SessionId}",
+            session.IsStepUp,
+            MaskPhone(result.PhoneClaim),
+            sessionId);
+
         return Ok(new { callbackToken = result.CallbackToken });
     }
 
@@ -315,7 +323,13 @@ public class OidcController(
 
         logger.LogInformation("Additional OIDC claim types: {Claims}", string.Join(", ", additionalClaims.Select(c => c.Key).ToArray()));
 
-        if (!additionalClaims.Select(c => c.Key).Contains("phone"))
+        // Extract the phone claim for diagnostic logging (masked).
+        additionalClaims.TryGetValue("phone", out var phoneClaim);
+        if (phoneClaim == null)
+            additionalClaims.TryGetValue("phone_number", out phoneClaim);
+        var maskedPhone = MaskPhone(phoneClaim);
+
+        if (phoneClaim == null)
         {
             logger.LogWarning("OIDC incoming claims missing 'phone'");
         }
@@ -348,11 +362,12 @@ public class OidcController(
 
             var safeStateKey = SanitizeForLog(stateKey);
             logger.LogInformation(
-                "OIDC step-up complete-login succeeded: UserId {UserId}, StateCode {StateCode}, IalLevel {IalLevel}, IdProofingStatus {IdProofingStatus}",
+                "OIDC step-up complete-login succeeded: UserId {UserId}, StateCode {StateCode}, IalLevel {IalLevel}, IdProofingStatus {IdProofingStatus}, Phone={MaskedPhone}",
                 user.Id,
                 safeStateKey,
                 user.IalLevel,
-                user.IdProofingStatus);
+                user.IdProofingStatus,
+                maskedPhone);
         }
         else
         {
@@ -386,6 +401,13 @@ public class OidcController(
         var token = jwtService.GenerateToken(user, additionalClaims);
         var expiresAt = DateTimeOffset.UtcNow.AddMinutes(jwtSettingsOptions.Value.ExpirationMinutes);
         AuthCookies.SetAuthCookie(Response, token, expiresAt);
+
+        if (!session.IsStepUp)
+        {
+            logger.LogInformation(
+                "OIDC login complete: UserId {UserId}, IalLevel {IalLevel}, Phone={MaskedPhone}",
+                user.Id, user.IalLevel, maskedPhone);
+        }
 
         string? safeReturnUrl = null;
         if (session.IsStepUp)

@@ -46,6 +46,9 @@ public sealed record OidcExchangeResult
     /// <summary>Signed callback token (short-lived JWT containing IdP claims). Null on failure.</summary>
     public string? CallbackToken { get; init; }
 
+    /// <summary>Phone claim value extracted during the exchange (for diagnostic logging). Null when absent or on failure.</summary>
+    public string? PhoneClaim { get; init; }
+
     /// <summary>Human-readable error message for the client. Null on success.</summary>
     public string? Error { get; init; }
 
@@ -53,10 +56,11 @@ public sealed record OidcExchangeResult
     public int StatusCode { get; init; } = 200;
 
     /// <summary>Creates a successful result with the given callback token.</summary>
-    public static OidcExchangeResult Ok(string callbackToken) => new()
+    public static OidcExchangeResult Ok(string callbackToken, string? phoneClaim = null) => new()
     {
         Success = true,
         CallbackToken = callbackToken,
+        PhoneClaim = phoneClaim,
         StatusCode = 200
     };
 
@@ -299,12 +303,17 @@ public sealed class OidcExchangeService : IOidcExchangeService
             signingCredentials: credentials);
         var callbackToken = handler.WriteToken(callbackJwt);
 
+        // Surface the phone claim for diagnostic logging by the caller (masked before logging).
+        claims.TryGetValue("phone", out var phoneClaim);
+        if (phoneClaim == null)
+            claims.TryGetValue("phone_number", out phoneClaim);
+
         _logger.LogInformation(
             "OIDC exchange succeeded: claim types={ClaimTypes} (reason=exchange_success, isStepUp={IsStepUp})",
             string.Join(", ", claims.Keys),
             isStepUp);
 
-        return OidcExchangeResult.Ok(callbackToken);
+        return OidcExchangeResult.Ok(callbackToken, phoneClaim);
     }
 
     private async Task EnrichClaimsFromUserInfo(
