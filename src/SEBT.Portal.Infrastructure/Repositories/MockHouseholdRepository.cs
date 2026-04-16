@@ -592,6 +592,86 @@ public class MockHouseholdRepository : IHouseholdRepository
         _households[multipleAppsEmail] = multipleApps;
         IndexByPhone(multipleApps);
 
+        // Scenario CO-1: Approved SummerEbt with Undeliverable card (for CO card-status walkthrough)
+        var coUndeliverableEmail = _settings.BuildEmail(SeedScenarios.CoUndeliverable.Name);
+        var coUndeliverable = HouseholdFactory.CreateHouseholdDataWithStatus(ApplicationStatus.Approved, h =>
+        {
+            h.BenefitIssuanceType = BenefitIssuanceType.SummerEbt;
+            var app = h.Applications.FirstOrDefault();
+            if (app != null)
+            {
+                app.IssuanceType = IssuanceType.SummerEbt;
+                app.CardStatus = CardStatus.Undeliverable;
+                app.BenefitIssueDate = now.AddDays(-20);
+                app.BenefitExpirationDate = now.AddDays(70);
+                app.Last4DigitsOfCard = "3311";
+                app.CardRequestedAt = now.AddDays(-35);
+                app.CardMailedAt = now.AddDays(-30);
+                app.Children = new List<Child>
+                {
+                    new Child { FirstName = "Maya", LastName = "Torres" }
+                };
+            }
+            h.AddressOnFile = new Address
+            {
+                StreetAddress1 = "500 Undeliverable Way",
+                City = "Denver",
+                State = "CO",
+                PostalCode = "80204"
+            };
+            h.SummerEbtCases = new List<SummerEbtCase>
+            {
+                HouseholdFactory.CreateSummerEbtCase("Maya", "Torres", "NSLP", c =>
+                {
+                    c.EbtCardStatus = "Undeliverable";
+                })
+            };
+        });
+        coUndeliverable.Email = coUndeliverableEmail;
+        coUndeliverable.UserProfile = new UserProfile { FirstName = "Sandra", MiddleName = "Maria", LastName = "TorresMOCK" };
+        _households[coUndeliverableEmail] = coUndeliverable;
+        IndexByPhone(coUndeliverable);
+
+        // Scenario CO-2: Approved SummerEbt with Frozen card (for CO card-status walkthrough)
+        var coFrozenEmail = _settings.BuildEmail(SeedScenarios.CoFrozen.Name);
+        var coFrozen = HouseholdFactory.CreateHouseholdDataWithStatus(ApplicationStatus.Approved, h =>
+        {
+            h.BenefitIssuanceType = BenefitIssuanceType.SummerEbt;
+            var app = h.Applications.FirstOrDefault();
+            if (app != null)
+            {
+                app.IssuanceType = IssuanceType.SummerEbt;
+                app.CardStatus = CardStatus.Frozen;
+                app.BenefitIssueDate = now.AddDays(-20);
+                app.BenefitExpirationDate = now.AddDays(70);
+                app.Last4DigitsOfCard = "4422";
+                app.CardRequestedAt = now.AddDays(-35);
+                app.CardMailedAt = now.AddDays(-30);
+                app.Children = new List<Child>
+                {
+                    new Child { FirstName = "Lucas", LastName = "Rivera" }
+                };
+            }
+            h.AddressOnFile = new Address
+            {
+                StreetAddress1 = "600 Frozen Court",
+                City = "Colorado Springs",
+                State = "CO",
+                PostalCode = "80903"
+            };
+            h.SummerEbtCases = new List<SummerEbtCase>
+            {
+                HouseholdFactory.CreateSummerEbtCase("Lucas", "Rivera", "NSLP", c =>
+                {
+                    c.EbtCardStatus = "Frozen";
+                })
+            };
+        });
+        coFrozen.Email = coFrozenEmail;
+        coFrozen.UserProfile = new UserProfile { FirstName = "Miguel", MiddleName = "Angel", LastName = "RiveraMOCK" };
+        _households[coFrozenEmail] = coFrozen;
+        IndexByPhone(coFrozen);
+
         // DC-only SummerEbt scenarios 13-14 and Simple scenarios 1-7 below are seeded only when STATE=dc.
         if (string.Equals(_settings.State, "dc", StringComparison.OrdinalIgnoreCase))
         {
@@ -623,6 +703,17 @@ public class MockHouseholdRepository : IHouseholdRepository
                     City = "Washington",
                     State = "DC",
                     PostalCode = "20001"
+                };
+                h.SummerEbtCases = new List<SummerEbtCase>
+                {
+                    HouseholdFactory.CreateSummerEbtCase("Noah", "Reyes", "NSLP", c =>
+                    {
+                        c.IssuanceType = IssuanceType.SummerEbt;
+                    }),
+                    HouseholdFactory.CreateSummerEbtCase("Mia", "Reyes", "NSLP", c =>
+                    {
+                        c.IssuanceType = IssuanceType.SummerEbt;
+                    })
                 };
             });
             summerActive.Email = summerActiveEmail;
@@ -659,11 +750,66 @@ public class MockHouseholdRepository : IHouseholdRepository
                     State = "DC",
                     PostalCode = "20002"
                 };
+                h.SummerEbtCases = new List<SummerEbtCase>
+                {
+                    HouseholdFactory.CreateSummerEbtCase("Ethan", "Park", "NSLP", c =>
+                    {
+                        c.IssuanceType = IssuanceType.SummerEbt;
+                        c.EbtCardStatus = "Lost";
+                    })
+                };
             });
             summerLost.Email = summerLostEmail;
             summerLost.UserProfile = new UserProfile { FirstName = "Daniel", MiddleName = "Jin", LastName = "Park" };
             _households[summerLostEmail] = summerLost;
             IndexByPhone(summerLost);
+
+            // Scenario DC-3: Mixed household (SummerEbt + SNAP co-loaded) for co-loaded filter verification
+            var dcMixedEmail = _settings.BuildEmail(SeedScenarios.DcMixed.Name);
+            var dcMixed = HouseholdFactory.CreateHouseholdDataWithStatus(ApplicationStatus.Approved, h =>
+            {
+                h.BenefitIssuanceType = BenefitIssuanceType.SummerEbt;
+                var app = h.Applications.FirstOrDefault();
+                if (app != null)
+                {
+                    app.IssuanceType = IssuanceType.SummerEbt;
+                    app.CardStatus = CardStatus.Active;
+                    app.BenefitIssueDate = now.AddDays(-20);
+                    app.BenefitExpirationDate = now.AddDays(70);
+                    app.Last4DigitsOfCard = "5599";
+                    app.CardRequestedAt = now.AddDays(-35);
+                    app.CardMailedAt = now.AddDays(-30);
+                    app.CardActivatedAt = now.AddDays(-20);
+                    app.Children = new List<Child>
+                    {
+                        new Child { FirstName = "Aiden", LastName = "Chen" },
+                        new Child { FirstName = "Lily", LastName = "Chen" }
+                    };
+                }
+                h.AddressOnFile = new Address
+                {
+                    StreetAddress1 = "350 Mixed Lane NW",
+                    City = "Washington",
+                    State = "DC",
+                    PostalCode = "20003"
+                };
+                h.SummerEbtCases = new List<SummerEbtCase>
+                {
+                    HouseholdFactory.CreateSummerEbtCase("Aiden", "Chen", "NSLP", c =>
+                    {
+                        c.IssuanceType = IssuanceType.SummerEbt;
+                    }),
+                    HouseholdFactory.CreateSummerEbtCase("Lily", "Chen", "SNAP", c =>
+                    {
+                        c.IssuanceType = IssuanceType.SnapEbtCard;
+                        c.IsCoLoaded = true;
+                    })
+                };
+            });
+            dcMixed.Email = dcMixedEmail;
+            dcMixed.UserProfile = new UserProfile { FirstName = "Wei", MiddleName = null, LastName = "ChenMOCK" };
+            _households[dcMixedEmail] = dcMixed;
+            IndexByPhone(dcMixed);
 
             // DC Scenarios 1-7: Simple non-co-loaded households with 1 child, Summer EBT, active benefits
             var dcChildFaker = new Faker<Child>()

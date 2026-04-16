@@ -49,10 +49,13 @@ public static class Dependencies
         // Household identifier resolution (state-configurable preferred household ID type)
         services.AddTransient<IHouseholdIdentifierResolver, HouseholdIdentifierResolver>();
 
-        // Smarty address verification (or pass-through when disabled)
+        // Smarty address verification (or pass-through when disabled).
+        // IHttpClientFactory is a singleton, so its configure delegate receives the
+        // root provider — use IOptionsMonitor (singleton) instead of IOptionsSnapshot
+        // (scoped). Monitor still supports live AppConfig reload.
         services.AddHttpClient("Smarty", (sp, client) =>
         {
-            var smarty = sp.GetRequiredService<IOptionsSnapshot<SmartySettings>>().Value;
+            var smarty = sp.GetRequiredService<IOptionsMonitor<SmartySettings>>().CurrentValue;
             var baseUrl = string.IsNullOrWhiteSpace(smarty.BaseUrl)
                 ? "https://us-street.api.smartystreets.com"
                 : smarty.BaseUrl.TrimEnd('/');

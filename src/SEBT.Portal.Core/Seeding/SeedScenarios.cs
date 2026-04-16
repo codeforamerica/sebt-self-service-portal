@@ -15,6 +15,9 @@ public static class SeedScenarios
     public static readonly SeedScenario Review = new("review", UserIalLevel.IAL1plus);
     public static readonly SeedScenario SummerActive = new("summer-active", UserIalLevel.IAL1plus);
     public static readonly SeedScenario SummerLost = new("summer-lost", UserIalLevel.IAL1plus);
+    public static readonly SeedScenario DcMixed = new("dc-mixed", UserIalLevel.IAL1plus);
+    public static readonly SeedScenario CoUndeliverable = new("co-undeliverable", UserIalLevel.IAL1plus);
+    public static readonly SeedScenario CoFrozen = new("co-frozen", UserIalLevel.IAL1plus);
 
     // IAL1 scenarios
     public static readonly SeedScenario SingleChild = new("singlechild", UserIalLevel.IAL1);
@@ -49,6 +52,7 @@ public static class SeedScenarios
         CoLoaded, Verified, SingleChild, LargeFamily, Expired,
         NonCoLoaded, NotStarted, Pending, Minimal, Denied,
         Review, Cancelled, Unknown, SummerActive, SummerLost,
+        DcMixed, CoUndeliverable, CoFrozen,
         Simple1, Simple2, Simple3, Simple4, Simple5, Simple6, Simple7
     ];
 
@@ -58,7 +62,7 @@ public static class SeedScenarios
     public static readonly IReadOnlySet<SeedScenario> DcOnlyScenarios =
         new HashSet<SeedScenario>
         {
-            SummerActive, SummerLost,
+            SummerActive, SummerLost, DcMixed,
             Simple1, Simple2, Simple3, Simple4, Simple5, Simple6, Simple7
         };
 
