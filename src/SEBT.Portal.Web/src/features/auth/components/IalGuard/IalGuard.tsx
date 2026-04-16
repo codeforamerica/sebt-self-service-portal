@@ -1,15 +1,8 @@
 'use client'
 
-import { apiFetch } from '@/api'
-import { OidcConfigResponseSchema } from '@/features/auth/api/oidc/schema'
 import { useAuth } from '@/features/auth/context'
 import { isDebugRepeatOidcStepUp } from '@/lib/ial-guard-config'
 import { hasIal1Plus, isIdProofingCompletionFresh } from '@/lib/jwt'
-import {
-  buildAuthorizationUrl,
-  getOidcRedirectUriForCurrentOrigin,
-  savePkceForCallback
-} from '@/lib/oidc-pkce'
 import { Button, getState, SummaryBox } from '@sebt/design-system'
 import { useRouter } from 'next/navigation'
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react'
@@ -28,31 +21,15 @@ interface IalGuardProps {
   requiredIal?: typeof STEP_UP_REQUIRED_IAL
 }
 
-async function startOidcStepUpRedirect(language: string): Promise<void> {
+function startOidcStepUpRedirect(language: string): void {
   const stateCode = getState()
-  // PKCE is generated server-side; config returns state + codeChallenge.
-  const config = await apiFetch(`/auth/oidc/${stateCode}/config?stepUp=true`, {
-    schema: OidcConfigResponseSchema
-  })
-
   const returnUrl =
     typeof window !== 'undefined' ? window.location.pathname + window.location.search : '/dashboard'
 
-  const redirectUri = getOidcRedirectUriForCurrentOrigin()
-  savePkceForCallback(config.state, {
-    redirectUri,
-    clientId: config.clientId,
-    isStepUp: true,
-    returnUrl
-  })
-
-  const authUrl = buildAuthorizationUrl(
-    { ...config, redirectUri },
-    config.codeChallenge,
-    config.state,
-    language
-  )
-  window.location.href = authUrl
+  // Navigate to the server-side authorize endpoint, which builds the full
+  // authorization URL and returns a 302 redirect to PingOne (V04 fix).
+  const params = new URLSearchParams({ stepUp: 'true', returnUrl, language })
+  window.location.href = `/api/auth/oidc/${stateCode}/authorize?${params}`
 }
 
 /**
@@ -103,13 +80,9 @@ export function IalGuard({ children, requiredIal = STEP_UP_REQUIRED_IAL }: IalGu
     }
   }, [router])
 
-  const handleVerify = useCallback(async () => {
+  const handleVerify = useCallback(() => {
     setPhase('redirecting')
-    try {
-      await startOidcStepUpRedirect(i18n.language)
-    } catch {
-      setPhase('error')
-    }
+    startOidcStepUpRedirect(i18n.language)
   }, [i18n.language])
 
   const checkingCopy = useMemo(
@@ -232,9 +205,7 @@ export function IalGuard({ children, requiredIal = STEP_UP_REQUIRED_IAL }: IalGu
                 type="button"
                 variant="primary"
                 className="bg-primary-dark text-white border-primary-dark"
-                onClick={() => {
-                  void handleVerify()
-                }}
+                onClick={handleVerify}
               >
                 {t('ialGuardVerify', 'Verify')}
               </Button>

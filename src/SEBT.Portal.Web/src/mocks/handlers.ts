@@ -232,19 +232,6 @@ export const handlers = [
     })
   }),
 
-  // OIDC CO config (public; server-generated PKCE).
-  // Returns state + codeChallenge; code_verifier is server-side only.
-  http.get('/api/auth/oidc/co/config', () => {
-    return HttpResponse.json({
-      authorizationEndpoint: 'https://auth.example.com/authorize',
-      clientId: 'test-client',
-      redirectUri: 'http://localhost:3000/callback',
-      state: 'mock-state-for-testing',
-      codeChallenge: 'mock-code-challenge',
-      codeChallengeMethod: 'S256'
-    })
-  }),
-
   // OIDC callback (Next.js: exchange + validate; returns callbackToken for complete-login)
   // callback no longer expects code_verifier from the browser — the server
   // reads it from the pre-auth session. We only check code + stateCode here.
