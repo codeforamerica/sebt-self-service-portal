@@ -7,6 +7,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
+using Microsoft.IdentityModel.Protocols.OpenIdConnect;
 using Microsoft.IdentityModel.Tokens;
 using NSubstitute;
 using SEBT.Portal.Api.Controllers.Auth;
@@ -719,4 +720,184 @@ public class OidcControllerTests
             signingCredentials: credentials);
         return new JwtSecurityTokenHandler().WriteToken(token);
     }
+
+    #region Authorize endpoint
+
+    /// <summary>
+    /// Creates a mock <see cref="IOidcExchangeService"/> that returns a discovery config
+    /// with the given authorization endpoint. Used by Authorize endpoint tests.
+    /// </summary>
+    private static IOidcExchangeService MockExchangeServiceWithDiscovery(string authorizationEndpoint)
+    {
+        var exchangeService = Substitute.For<IOidcExchangeService>();
+        var discoveryConfig = new OpenIdConnectConfiguration
+        {
+            AuthorizationEndpoint = authorizationEndpoint
+        };
+        exchangeService.GetDiscoveryConfigAsync(Arg.Any<bool>(), Arg.Any<CancellationToken>())
+            .Returns(discoveryConfig);
+        return exchangeService;
+    }
+
+    [Fact]
+    public async Task Authorize_WhenStateCodeNotInAllowlist_Returns400()
+    {
+        var exchangeService = MockExchangeServiceWithDiscovery("https://auth.example.com/authorize");
+
+        var result = await _controller.Authorize("nm", exchangeService: exchangeService);
+
+        var badRequest = Assert.IsType<BadRequestObjectResult>(result);
+        var error = Assert.IsType<ErrorResponse>(badRequest.Value);
+        Assert.Contains("unsupported stateCode", error.Error);
+    }
+
+    [Fact]
+    public async Task Authorize_WhenClientIdMissing_RedirectsToLogin()
+    {
+        _config["Oidc:ClientId"].Returns((string?)null);
+        _config["Oidc:CallbackRedirectUri"].Returns("http://localhost:3000/callback");
+        var exchangeService = MockExchangeServiceWithDiscovery("https://auth.example.com/authorize");
+
+        var result = await _controller.Authorize(CoStateKey, exchangeService: exchangeService);
+
+        var redirect = Assert.IsType<RedirectResult>(result);
+        Assert.Equal("/login", redirect.Url);
+    }
+
+    [Fact]
+    public async Task Authorize_WhenDiscoveryFails_RedirectsToLogin()
+    {
+        _config["Oidc:ClientId"].Returns("client-id");
+        _config["Oidc:CallbackRedirectUri"].Returns("http://localhost:3000/callback");
+        var exchangeService = Substitute.For<IOidcExchangeService>();
+        exchangeService.GetDiscoveryConfigAsync(Arg.Any<bool>(), Arg.Any<CancellationToken>())
+            .Returns<OpenIdConnectConfiguration>(_ => throw new InvalidOperationException("discovery endpoint not configured"));
+
+        var result = await _controller.Authorize(CoStateKey, exchangeService: exchangeService);
+
+        var redirect = Assert.IsType<RedirectResult>(result);
+        Assert.Equal("/login", redirect.Url);
+    }
+
+    [Fact]
+    public async Task Authorize_WhenDiscoveryMissingAuthorizationEndpoint_RedirectsToLogin()
+    {
+        _config["Oidc:ClientId"].Returns("client-id");
+        _config["Oidc:CallbackRedirectUri"].Returns("http://localhost:3000/callback");
+        var exchangeService = MockExchangeServiceWithDiscovery(authorizationEndpoint: "");
+
+        var result = await _controller.Authorize(CoStateKey, exchangeService: exchangeService);
+
+        var redirect = Assert.IsType<RedirectResult>(result);
+        Assert.Equal("/login", redirect.Url);
+    }
+
+    [Fact]
+    public async Task Authorize_WhenConfigured_Returns302WithCorrectUrlAndSetsCookie()
+    {
+        const string authEndpoint = "https://auth.pingone.com/env-id/as/authorize";
+        _config["Oidc:ClientId"].Returns("test-client-id");
+        _config["Oidc:CallbackRedirectUri"].Returns("http://localhost:3000/callback");
+        _config["Oidc:LanguageParam"].Returns("en");
+        var exchangeService = MockExchangeServiceWithDiscovery(authEndpoint);
+
+        var result = await _controller.Authorize(CoStateKey, exchangeService: exchangeService);
+
+        var redirect = Assert.IsType<RedirectResult>(result);
+        Assert.StartsWith(authEndpoint + "?", redirect.Url);
+        Assert.Contains("response_type=code", redirect.Url);
+        Assert.Contains("client_id=test-client-id", redirect.Url);
+        Assert.Contains("redirect_uri=", redirect.Url);
+        Assert.Contains("scope=openid", redirect.Url);
+        Assert.Contains("state=", redirect.Url);
+        Assert.Contains("code_challenge=", redirect.Url);
+        Assert.Contains("code_challenge_method=S256", redirect.Url);
+        Assert.Contains("prompt=login", redirect.Url);
+        Assert.Contains("max_age=0", redirect.Url);
+        Assert.Contains("language=en", redirect.Url);
+
+        // Verify oidc_session cookie was set.
+        var setCookie = _controller.Response.Headers["Set-Cookie"].ToString();
+        Assert.Contains(OidcSessionCookie.CookieName, setCookie);
+    }
+
+    [Fact]
+    public async Task Authorize_WhenConfigured_CreatesPreAuthSessionWithCorrectValues()
+    {
+        _config["Oidc:StepUp:ClientId"].Returns("step-up-client-id");
+        _config["Oidc:StepUp:RedirectUri"].Returns("http://localhost:3000/callback");
+        var exchangeService = MockExchangeServiceWithDiscovery("https://auth.example.com/authorize");
+
+        await _controller.Authorize(CoStateKey, stepUp: true, returnUrl: "/profile/address",
+            exchangeService: exchangeService);
+
+        await _sessionStore.Received(1).CreateAsync(
+            CoStateKey,
+            Arg.Any<string>(),
+            Arg.Any<string>(),
+            "http://localhost:3000/callback",
+            true,
+            "/profile/address",
+            Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task Authorize_WhenStepUpWithUnsafeReturnUrl_StoresNullReturnUrl()
+    {
+        _config["Oidc:StepUp:ClientId"].Returns("step-up-client-id");
+        _config["Oidc:StepUp:RedirectUri"].Returns("http://localhost:3000/callback");
+        var exchangeService = MockExchangeServiceWithDiscovery("https://auth.example.com/authorize");
+
+        await _controller.Authorize(CoStateKey, stepUp: true, returnUrl: "https://evil.example/phish",
+            exchangeService: exchangeService);
+
+        await _sessionStore.Received(1).CreateAsync(
+            Arg.Any<string>(),
+            Arg.Any<string>(),
+            Arg.Any<string>(),
+            Arg.Any<string>(),
+            Arg.Any<bool>(),
+            Arg.Is<string?>(s => s == null),
+            Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task Authorize_WhenNotStepUp_IgnoresReturnUrl()
+    {
+        _config["Oidc:ClientId"].Returns("test-client-id");
+        _config["Oidc:CallbackRedirectUri"].Returns("http://localhost:3000/callback");
+        var exchangeService = MockExchangeServiceWithDiscovery("https://auth.example.com/authorize");
+
+        await _controller.Authorize(CoStateKey, stepUp: false, returnUrl: "/profile/address",
+            exchangeService: exchangeService);
+
+        await _sessionStore.Received(1).CreateAsync(
+            Arg.Any<string>(),
+            Arg.Any<string>(),
+            Arg.Any<string>(),
+            Arg.Any<string>(),
+            false,
+            Arg.Is<string?>(s => s == null),
+            Arg.Any<CancellationToken>());
+    }
+
+    /// <summary>
+    /// The authorization URL must never contain the code_verifier — only
+    /// code_challenge is sent to the IdP.
+    /// </summary>
+    [Fact]
+    public async Task Authorize_RedirectUrl_NeverContainsCodeVerifier()
+    {
+        _config["Oidc:ClientId"].Returns("test-client-id");
+        _config["Oidc:CallbackRedirectUri"].Returns("http://localhost:3000/callback");
+        var exchangeService = MockExchangeServiceWithDiscovery("https://auth.example.com/authorize");
+
+        var result = await _controller.Authorize(CoStateKey, exchangeService: exchangeService);
+
+        var redirect = Assert.IsType<RedirectResult>(result);
+        Assert.DoesNotContain("code_verifier", redirect.Url);
+    }
+
+    #endregion
+
 }

@@ -109,6 +109,125 @@ public class OidcController(
     }
 
     /// <summary>
+    /// Server-side OIDC authorize redirect. Builds the full authorization URL on the server
+    /// using the <c>authorization_endpoint</c> from the IdP discovery document and returns a
+    /// 302 redirect.
+    /// </summary>
+    [HttpGet("{code}/authorize")]
+    [ProducesResponseType(StatusCodes.Status302Found)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status502BadGateway)]
+    [ProducesResponseType(StatusCodes.Status503ServiceUnavailable)]
+    public async Task<IActionResult> Authorize(
+        [FromRoute] string code,
+        [FromQuery] bool stepUp = false,
+        [FromQuery] string? returnUrl = null,
+        [FromServices] IOidcExchangeService exchangeService = null!,
+        CancellationToken cancellationToken = default)
+    {
+        var stateCode = stateAllowlist.TryResolve(code);
+        if (stateCode == null)
+        {
+            logger.LogWarning("OIDC Authorize rejected: unknown stateCode (reason=unknown_state)");
+            return BadRequest(new ErrorResponse("Unknown or unsupported stateCode."));
+        }
+
+        // Sanitize returnUrl for step-up flows; ignore for normal login.
+        string? safeReturnUrl = null;
+        if (stepUp && !string.IsNullOrWhiteSpace(returnUrl))
+        {
+            safeReturnUrl = TrySanitizeStepUpReturnUrl(returnUrl);
+            if (safeReturnUrl == null)
+            {
+                logger.LogWarning("OIDC Authorize: returnUrl rejected (must be a safe relative path).");
+            }
+        }
+
+        var clientId = stepUp ? config["Oidc:StepUp:ClientId"] : config["Oidc:ClientId"];
+        var redirectUri = stepUp
+            ? (config["Oidc:StepUp:RedirectUri"] ?? config["Oidc:CallbackRedirectUri"])
+            : config["Oidc:CallbackRedirectUri"];
+        if (string.IsNullOrEmpty(clientId) || string.IsNullOrEmpty(redirectUri))
+        {
+            logger.LogWarning(
+                "OIDC config missing for stateCode {StateCode} (reason=oidc_not_configured)",
+                stateCode);
+            return Redirect("/login");
+        }
+
+        // Fetch the authorization endpoint from the cached discovery document.
+        Microsoft.IdentityModel.Protocols.OpenIdConnect.OpenIdConnectConfiguration oidcConfig;
+        try
+        {
+            oidcConfig = await exchangeService.GetDiscoveryConfigAsync(stepUp, cancellationToken);
+        }
+        catch (Exception ex)
+        {
+            logger.LogWarning(ex, "OIDC Authorize: failed to fetch discovery document (reason=discovery_failed)");
+            return Redirect("/login");
+        }
+
+        if (string.IsNullOrEmpty(oidcConfig.AuthorizationEndpoint))
+        {
+            logger.LogWarning("OIDC Authorize: discovery document missing authorization_endpoint");
+            return Redirect("/login");
+        }
+
+        // Generate PKCE server-side
+        var codeVerifier = PkceHelper.GenerateCodeVerifier();
+        var codeChallenge = PkceHelper.ComputeCodeChallenge(codeVerifier);
+        var state = PkceHelper.GenerateState();
+
+        // Create the pre-auth session and set the cookie.
+        var session = await sessionStore.CreateAsync(
+            stateCode, state, codeVerifier, redirectUri, stepUp,
+            safeReturnUrl, cancellationToken);
+        OidcSessionCookie.Set(Response, session.Id);
+
+        // Build the authorization URL server-side (mirrors the frontend's buildAuthorizationUrl).
+        var languageParam = config["Oidc:LanguageParam"] ?? "en";
+        var authUrl = BuildAuthorizationUrl(
+            oidcConfig.AuthorizationEndpoint, clientId, redirectUri,
+            state, codeChallenge, languageParam);
+
+        return Redirect(authUrl);
+    }
+
+    /// <summary>
+    /// Builds the full OIDC authorization URL with all required query parameters.
+    /// Mirrors the frontend's <c>buildAuthorizationUrl</c> in <c>oidc-pkce.ts</c>.
+    /// </summary>
+    private static string BuildAuthorizationUrl(
+        string authorizationEndpoint,
+        string clientId,
+        string redirectUri,
+        string state,
+        string codeChallenge,
+        string languageParam)
+    {
+        var query = new Dictionary<string, string>
+        {
+            ["response_type"] = "code",
+            ["client_id"] = clientId,
+            ["redirect_uri"] = redirectUri,
+            ["scope"] = "openid email profile phone",
+            ["state"] = state,
+            ["code_challenge"] = codeChallenge,
+            ["code_challenge_method"] = "S256",
+            ["prompt"] = "login",
+            ["max_age"] = "0"
+        };
+        if (!string.IsNullOrEmpty(languageParam))
+        {
+            query["language"] = languageParam;
+        }
+
+        var queryString = string.Join("&",
+            query.Select(kvp => $"{Uri.EscapeDataString(kvp.Key)}={Uri.EscapeDataString(kvp.Value)}"));
+        return $"{authorizationEndpoint}?{queryString}";
+    }
+
+    /// <summary>
     /// Server-side OIDC callback. Requires the <c>oidc_session</c> cookie to
     /// locate the pre-auth session. Validates <c>state</c> against the stored value,
     /// uses the stored <c>code_verifier</c> for the token exchange (never from the
