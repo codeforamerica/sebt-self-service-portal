@@ -57,7 +57,7 @@ data "aws_route53_zone" "main" {
 }
 
 # Store Colorado-specific secrets in Secrets Manager. Each block represents a
-# separate secret for a specific service or integration.
+# separate set of secrets for a specific service or integration.
 module "state_secrets" {
   source = "github.com/codeforamerica/tofu-modules-aws-secrets?ref=2.0.0"
 
