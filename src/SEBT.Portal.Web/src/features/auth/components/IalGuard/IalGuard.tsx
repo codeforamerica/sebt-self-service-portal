@@ -28,7 +28,7 @@ interface IalGuardProps {
   requiredIal?: typeof STEP_UP_REQUIRED_IAL
 }
 
-async function startOidcStepUpRedirect(): Promise<void> {
+async function startOidcStepUpRedirect(language: string): Promise<void> {
   const stateCode = getState()
   // PKCE is generated server-side; config returns state + codeChallenge.
   const config = await apiFetch(`/auth/oidc/${stateCode}/config?stepUp=true`, {
@@ -49,7 +49,8 @@ async function startOidcStepUpRedirect(): Promise<void> {
   const authUrl = buildAuthorizationUrl(
     { ...config, redirectUri },
     config.codeChallenge,
-    config.state
+    config.state,
+    language
   )
   window.location.href = authUrl
 }
@@ -62,7 +63,7 @@ async function startOidcStepUpRedirect(): Promise<void> {
 export function IalGuard({ children, requiredIal = STEP_UP_REQUIRED_IAL }: IalGuardProps) {
   const { session } = useAuth()
   const router = useRouter()
-  const { t } = useTranslation('common')
+  const { t, i18n } = useTranslation('common')
   const { t: tStepUpFailure } = useTranslation('stepUpFailure')
 
   const useOidcStepUpGate = getState() === 'co'
@@ -105,11 +106,11 @@ export function IalGuard({ children, requiredIal = STEP_UP_REQUIRED_IAL }: IalGu
   const handleVerify = useCallback(async () => {
     setPhase('redirecting')
     try {
-      await startOidcStepUpRedirect()
+      await startOidcStepUpRedirect(i18n.language)
     } catch {
       setPhase('error')
     }
-  }, [])
+  }, [i18n.language])
 
   const checkingCopy = useMemo(
     () => ({

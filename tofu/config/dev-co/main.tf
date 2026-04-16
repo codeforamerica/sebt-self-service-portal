@@ -57,7 +57,7 @@ data "aws_route53_zone" "main" {
 }
 
 # Store Colorado-specific secrets in Secrets Manager. Each block represents a
-# separate secret for a specific service or integration.
+# separate set of secrets for a specific service or integration.
 module "state_secrets" {
   source = "github.com/codeforamerica/tofu-modules-aws-secrets?ref=2.0.0"
 
@@ -118,7 +118,6 @@ module "app" {
     "Oidc__DiscoveryEndpoint"                          = var.oidc_discovery_endpoint
     "Oidc__AuthorizationEndpoint"                      = var.oidc_authorization_endpoint
     "Oidc__CallbackRedirectUri"                        = "https://${var.domain}/callback"
-    "Oidc__LanguageParam"                              = "en"
     "Oidc__StepUp__DiscoveryEndpoint"                  = var.oidc_discovery_endpoint
     "Oidc__StepUp__AuthorizationEndpoint"              = var.oidc_authorization_endpoint
     "Oidc__StepUp__CallbackRedirectUri"                = "https://${var.domain}/callback"

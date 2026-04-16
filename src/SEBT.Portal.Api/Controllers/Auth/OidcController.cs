@@ -90,13 +90,11 @@ public class OidcController(
             stateCode, state, codeVerifier, redirectUri, stepUp, cancellationToken);
         OidcSessionCookie.Set(Response, session.Id);
 
-        var languageParam = config["Oidc:LanguageParam"] ?? "en";
         return Ok(new
         {
             authorizationEndpoint,
             clientId,
             redirectUri,
-            languageParam,
             state,
             codeChallenge,
             codeChallengeMethod = "S256"

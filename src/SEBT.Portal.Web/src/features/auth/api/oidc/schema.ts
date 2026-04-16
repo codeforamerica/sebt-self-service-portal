@@ -15,7 +15,6 @@ export const OidcConfigResponseSchema = z.object({
   authorizationEndpoint: z.url(),
   clientId: z.string(),
   redirectUri: z.url(),
-  languageParam: z.string().optional(),
   state: z.string(),
   codeChallenge: z.string(),
   codeChallengeMethod: z.literal('S256')
