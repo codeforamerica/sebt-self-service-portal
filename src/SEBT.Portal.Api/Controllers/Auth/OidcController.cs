@@ -330,8 +330,6 @@ public class OidcController(
 
         // Extract the phone claim for diagnostic logging (masked).
         additionalClaims.TryGetValue("phone", out var phoneClaim);
-        if (phoneClaim == null)
-            additionalClaims.TryGetValue("phone_number", out phoneClaim);
         var maskedPhone = MaskPhone(phoneClaim);
 
         if (phoneClaim == null)
