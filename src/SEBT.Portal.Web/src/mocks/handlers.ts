@@ -239,7 +239,6 @@ export const handlers = [
       authorizationEndpoint: 'https://auth.example.com/authorize',
       clientId: 'test-client',
       redirectUri: 'http://localhost:3000/callback',
-      languageParam: 'en',
       state: 'mock-state-for-testing',
       codeChallenge: 'mock-code-challenge',
       codeChallengeMethod: 'S256'

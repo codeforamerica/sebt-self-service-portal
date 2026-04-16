@@ -16,10 +16,7 @@ export const PKCE_STORAGE_MAX_AGE_MS = 15 * 60 * 1000
 import type { OidcConfigResponse } from '@/features/auth/api/oidc/schema'
 
 /** Subset of OidcConfigResponse needed to build the authorization URL. */
-type AuthUrlConfig = Pick<
-  OidcConfigResponse,
-  'authorizationEndpoint' | 'clientId' | 'redirectUri' | 'languageParam'
->
+type AuthUrlConfig = Pick<OidcConfigResponse, 'authorizationEndpoint' | 'clientId' | 'redirectUri'>
 
 /**
  * OIDC redirect_uri sent to PingOne must match a value registered on the client.
@@ -36,7 +33,8 @@ export function getOidcRedirectUriForCurrentOrigin(): string {
 export function buildAuthorizationUrl(
   config: AuthUrlConfig,
   codeChallenge: string,
-  state: string
+  state: string,
+  language: string = 'en'
 ): string {
   const params = new URLSearchParams({
     response_type: 'code',
@@ -47,11 +45,9 @@ export function buildAuthorizationUrl(
     code_challenge: codeChallenge,
     code_challenge_method: 'S256',
     prompt: 'login',
-    max_age: '0'
+    max_age: '0',
+    language
   })
-  if (config.languageParam) {
-    params.set('language', config.languageParam)
-  }
   return `${config.authorizationEndpoint}?${params.toString()}`
 }
 

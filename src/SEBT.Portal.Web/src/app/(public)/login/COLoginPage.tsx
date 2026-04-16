@@ -28,7 +28,7 @@ export function COLoginPage({ state }: { state: StateCode }) {
     retry: false
   })
 
-  async function startOidcLogin() {
+  async function startOidcLogin(language: string) {
     try {
       const config = await oidcConfig.mutateAsync()
       // PKCE is generated server-side. The config response includes state,
@@ -41,7 +41,8 @@ export function COLoginPage({ state }: { state: StateCode }) {
       const authUrl = buildAuthorizationUrl(
         { ...config, redirectUri },
         config.codeChallenge,
-        config.state
+        config.state,
+        language
       )
       window.location.href = authUrl
     } catch {
@@ -77,7 +78,7 @@ export function COLoginPage({ state }: { state: StateCode }) {
           <div className="margin-top-4">
             <button
               type="button"
-              onClick={startOidcLogin}
+              onClick={() => startOidcLogin('en')}
               className="usa-button bg-primary-dark text-white border-primary-dark"
               aria-busy={oidcConfig.isPending}
               disabled={oidcConfig.isPending}
@@ -89,7 +90,7 @@ export function COLoginPage({ state }: { state: StateCode }) {
           <div className="margin-top-2">
             <button
               type="button"
-              onClick={startOidcLogin}
+              onClick={() => startOidcLogin('es')}
               className="usa-button usa-button--outline border-primary text-primary"
               lang="es"
               aria-busy={oidcConfig.isPending}

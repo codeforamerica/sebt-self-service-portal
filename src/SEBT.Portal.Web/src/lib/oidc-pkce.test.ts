@@ -34,12 +34,22 @@ describe('oidc-pkce', () => {
       expect(parsed.searchParams.get('max_age')).toBe('0')
     })
 
-    it('maps config.languageParam to language query param', () => {
+    it('sets language query param from explicit argument', () => {
       const config = {
         authorizationEndpoint: 'https://auth.example.com/authorize',
         clientId: 'my-client-id',
-        redirectUri: 'https://app.example.com/callback',
-        languageParam: 'en'
+        redirectUri: 'https://app.example.com/callback'
+      }
+      const url = buildAuthorizationUrl(config, 'challenge', 'state', 'es')
+      const parsed = new URL(url)
+      expect(parsed.searchParams.get('language')).toBe('es')
+    })
+
+    it('defaults language to en when not provided', () => {
+      const config = {
+        authorizationEndpoint: 'https://auth.example.com/authorize',
+        clientId: 'my-client-id',
+        redirectUri: 'https://app.example.com/callback'
       }
       const url = buildAuthorizationUrl(config, 'challenge', 'state')
       const parsed = new URL(url)
