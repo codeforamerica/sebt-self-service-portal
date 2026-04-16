@@ -75,8 +75,8 @@ public class IdProofingRequirementsCoherenceValidatorTests
             ["address+view"] = IalRequirement.Uniform(IalLevel.IAL1plus),
             ["address+write"] = IalRequirement.PerCaseType(new Dictionary<string, IalLevel>
             {
-                ["ApplicationCases"] = IalLevel.IAL1,
-                ["NonCoLoadedStreamlineCases"] = IalLevel.IAL1plus,
+                ["application"] = IalLevel.IAL1,
+                ["streamline"] = IalLevel.IAL1plus,
             }),
         });
 
@@ -125,8 +125,8 @@ public class IdProofingRequirementsCoherenceValidatorTests
         {
             ["address+view"] = IalRequirement.PerCaseType(new Dictionary<string, IalLevel>
             {
-                ["ApplicationCases"] = IalLevel.IAL1,
-                ["NonCoLoadedStreamlineCases"] = IalLevel.IAL1plus,
+                ["application"] = IalLevel.IAL1,
+                ["streamline"] = IalLevel.IAL1plus,
             }),
             // Uniform IAL1 write is below the IAL1plus view level for NonCoLoaded
             ["address+write"] = IalRequirement.Uniform(IalLevel.IAL1),
@@ -144,8 +144,8 @@ public class IdProofingRequirementsCoherenceValidatorTests
         {
             ["address+view"] = IalRequirement.PerCaseType(new Dictionary<string, IalLevel>
             {
-                ["ApplicationCases"] = IalLevel.IAL1,
-                ["NonCoLoadedStreamlineCases"] = IalLevel.IAL1plus,
+                ["application"] = IalLevel.IAL1,
+                ["streamline"] = IalLevel.IAL1plus,
             }),
             ["address+write"] = IalRequirement.Uniform(IalLevel.IAL1plus),
         });
@@ -164,11 +164,11 @@ public class IdProofingRequirementsCoherenceValidatorTests
         {
             ["address+view"] = IalRequirement.PerCaseType(new Dictionary<string, IalLevel>
             {
-                ["ApplicationCases"] = IalLevel.IAL1plus,
+                ["application"] = IalLevel.IAL1plus,
             }),
             ["address+write"] = IalRequirement.PerCaseType(new Dictionary<string, IalLevel>
             {
-                ["ApplicationCases"] = IalLevel.IAL1,
+                ["application"] = IalLevel.IAL1,
             }),
         });
 

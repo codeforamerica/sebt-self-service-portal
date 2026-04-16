@@ -69,11 +69,11 @@ public class IalRequirement
         string key;
         if (!c.IsStreamlineCertified)
         {
-            key = "ApplicationCases";
+            key = "application";
         }
         else
         {
-            key = c.IsCoLoaded ? "CoLoadedStreamlineCases" : "NonCoLoadedStreamlineCases";
+            key = c.IsCoLoaded ? "coloadedStreamline" : "streamline";
         }
 
         return levels.TryGetValue(key, out var level) ? level : IalLevel.IAL1plus;

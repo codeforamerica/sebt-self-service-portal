@@ -66,13 +66,13 @@ public class IalRequirementTests
     // --- Per-case-type requirement ---
 
     [Fact]
-    public void PerCaseType_Resolve_ReturnsApplicationCasesLevel()
+    public void PerCaseType_Resolve_ReturnsapplicationLevel()
     {
         var req = IalRequirement.PerCaseType(new Dictionary<string, IalLevel>
         {
-            ["ApplicationCases"] = IalLevel.IAL1,
-            ["CoLoadedStreamlineCases"] = IalLevel.IAL1,
-            ["NonCoLoadedStreamlineCases"] = IalLevel.IAL1plus
+            ["application"] = IalLevel.IAL1,
+            ["coloadedStreamline"] = IalLevel.IAL1,
+            ["streamline"] = IalLevel.IAL1plus
         });
 
         var result = req.Resolve([ApplicationCase()]);
@@ -84,9 +84,9 @@ public class IalRequirementTests
     {
         var req = IalRequirement.PerCaseType(new Dictionary<string, IalLevel>
         {
-            ["ApplicationCases"] = IalLevel.IAL1,
-            ["CoLoadedStreamlineCases"] = IalLevel.IAL1,
-            ["NonCoLoadedStreamlineCases"] = IalLevel.IAL1plus
+            ["application"] = IalLevel.IAL1,
+            ["coloadedStreamline"] = IalLevel.IAL1,
+            ["streamline"] = IalLevel.IAL1plus
         });
 
         var result = req.Resolve([CoLoadedStreamlineCase(), NonCoLoadedStreamlineCase()]);
@@ -98,9 +98,9 @@ public class IalRequirementTests
     {
         var req = IalRequirement.PerCaseType(new Dictionary<string, IalLevel>
         {
-            ["ApplicationCases"] = IalLevel.IAL1plus,
-            ["CoLoadedStreamlineCases"] = IalLevel.IAL1plus,
-            ["NonCoLoadedStreamlineCases"] = IalLevel.IAL1plus
+            ["application"] = IalLevel.IAL1plus,
+            ["coloadedStreamline"] = IalLevel.IAL1plus,
+            ["streamline"] = IalLevel.IAL1plus
         });
 
         var result = req.Resolve([]);
@@ -112,8 +112,8 @@ public class IalRequirementTests
     {
         var req = IalRequirement.PerCaseType(new Dictionary<string, IalLevel>
         {
-            ["ApplicationCases"] = IalLevel.IAL1,
-            ["NonCoLoadedStreamlineCases"] = IalLevel.IAL1plus
+            ["application"] = IalLevel.IAL1,
+            ["streamline"] = IalLevel.IAL1plus
         });
 
         var levels = req.AllLevels().OrderBy(l => l).ToList();
@@ -130,9 +130,9 @@ public class IalRequirementTests
         // any uniform requirements on the same resource (e.g., address+view: IAL1plus).
         var req = IalRequirement.PerCaseType(new Dictionary<string, IalLevel>
         {
-            ["ApplicationCases"] = IalLevel.IAL1plus,
-            ["CoLoadedStreamlineCases"] = IalLevel.IAL1plus,
-            ["NonCoLoadedStreamlineCases"] = IalLevel.IAL1plus
+            ["application"] = IalLevel.IAL1plus,
+            ["coloadedStreamline"] = IalLevel.IAL1plus,
+            ["streamline"] = IalLevel.IAL1plus
         });
 
         var result = req.Resolve([]);
@@ -144,11 +144,11 @@ public class IalRequirementTests
     [Fact]
     public void PerCaseType_Resolve_MissingCaseTypeKey_FallsBackToIal1plus()
     {
-        // Config only has CoLoadedStreamlineCases. An ApplicationCase lookup
+        // Config only has coloadedStreamline. An ApplicationCase lookup
         // should fall back to IAL1plus (fail-closed), not IAL1.
         var req = IalRequirement.PerCaseType(new Dictionary<string, IalLevel>
         {
-            ["CoLoadedStreamlineCases"] = IalLevel.IAL1
+            ["coloadedStreamline"] = IalLevel.IAL1
         });
 
         var result = req.Resolve([ApplicationCase()]);

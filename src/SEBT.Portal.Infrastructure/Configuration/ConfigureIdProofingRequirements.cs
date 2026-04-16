@@ -48,7 +48,7 @@ public class ConfigureIdProofingRequirements(
             }
             else
             {
-                // Object form: "household+view": { "ApplicationCases": "IAL1plus", ... }
+                // Object form: "household+view": { "application": "IAL1plus", ... }
                 var perCase = new Dictionary<string, IalLevel>(StringComparer.OrdinalIgnoreCase);
                 var hasError = false;
                 foreach (var sub in child.GetChildren())

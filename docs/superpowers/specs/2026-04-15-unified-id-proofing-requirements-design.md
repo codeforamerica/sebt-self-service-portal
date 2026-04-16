@@ -9,7 +9,7 @@ Unify two separate IAL configuration systems (`IdProofingRequirements` and `Mini
 The portal has two independent config sections controlling identity assurance:
 
 - **`IdProofingRequirements`** — per-field PII visibility (`address+view`, `email+view`, `phone+view`)
-- **`MinimumIal`** — per-case-type feature access (`ApplicationCases`, `CoLoadedStreamlineCases`, `NonCoLoadedStreamlineCases`)
+- **`MinimumIal`** — per-case-type feature access (`application`, `coloadedStreamline`, `streamline`)
 
 No validation enforced coherence between them. Colorado's `MinimumIal` was set to `IAL1` across the board, meaning a user at IAL1 could change their address (a write operation) even though `IdProofingRequirements` correctly required IAL1plus to *view* the address. The backend enforcement code was correct — the configuration was not.
 
@@ -42,9 +42,9 @@ Per-case-type example (when different case types have different IAL needs):
 
 ```json
 "household+view": {
-  "ApplicationCases": "IAL1",
-  "CoLoadedStreamlineCases": "IAL1",
-  "NonCoLoadedStreamlineCases": "IAL1plus"
+  "application": "IAL1",
+  "coloadedStreamline": "IAL1",
+  "streamline": "IAL1plus"
 }
 ```
 
@@ -130,7 +130,7 @@ public class ConfigureIdProofingRequirements(IConfiguration config, ILogger<...>
             }
             else
             {
-                // Object form: "card+write": { "ApplicationCases": "IAL1plus", ... }
+                // Object form: "card+write": { "application": "IAL1plus", ... }
                 var perCase = child.GetChildren()
                     .ToDictionary(c => c.Key, c => Enum.Parse<IalLevel>(c.Value!, ignoreCase: true));
                 options.Requirements[child.Key] = IalRequirement.PerCaseType(perCase);

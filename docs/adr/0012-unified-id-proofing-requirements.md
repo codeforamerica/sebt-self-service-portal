@@ -11,7 +11,7 @@ Accepted
 The portal had two independent configuration sections controlling identity assurance levels (IAL):
 
 - **`IdProofingRequirements`** — per-field PII visibility (e.g., `address+view` requires IAL1plus to see the address)
-- **`MinimumIal`** — per-case-type feature access (e.g., `NonCoLoadedStreamlineCases` requires IAL1plus to perform write operations)
+- **`MinimumIal`** — per-case-type feature access (e.g., `streamline` requires IAL1plus to perform write operations)
 
 These systems were unrelated in code: different settings classes, different services, different validators. No validation enforced coherence between them.
 

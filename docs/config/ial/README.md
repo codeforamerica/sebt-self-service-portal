@@ -87,9 +87,9 @@ When different case types need different IAL levels, use an object:
 
 ```json
 "household+view": {
-  "ApplicationCases": "IAL1",
-  "CoLoadedStreamlineCases": "IAL1",
-  "NonCoLoadedStreamlineCases": "IAL1plus"
+  "application": "IAL1",
+  "coloadedStreamline": "IAL1",
+  "streamline": "IAL1plus"
 }
 ```
 
@@ -97,9 +97,9 @@ The case type keys are:
 
 | Key                          | Meaning                                                                       |
 | ---------------------------- | ----------------------------------------------------------------------------- |
-| `ApplicationCases`           | Cases from guardian-submitted applications                                    |
-| `CoLoadedStreamlineCases`    | Streamline-certified cases bulk-imported from state systems (e.g., SNAP/TANF) |
-| `NonCoLoadedStreamlineCases` | Streamline-certified cases not bulk-imported (added through the portal)       |
+| `application`           | Cases from guardian-submitted applications                                    |
+| `coloadedStreamline`    | Streamline-certified cases bulk-imported from state systems (e.g., SNAP/TANF) |
+| `streamline` | Streamline-certified cases not bulk-imported (added through the portal)       |
 
 **"Highest wins" rule:** When a user has multiple cases of different types, the
 highest required IAL across all their cases applies. For example, if a user has
@@ -136,9 +136,9 @@ requirements vary by case type for household data access.
   "email+view": "IAL1",
   "phone+view": "IAL1",
   "household+view": {
-    "ApplicationCases": "IAL1",
-    "CoLoadedStreamlineCases": "IAL1",
-    "NonCoLoadedStreamlineCases": "IAL1plus"
+    "application": "IAL1",
+    "coloadedStreamline": "IAL1",
+    "streamline": "IAL1plus"
   },
   "card+write": "IAL1plus"
 }
@@ -187,9 +187,9 @@ If CO later needs per-case-type granularity (e.g., when co-loading begins in
 ```hcl
 state_api_environment_variables = {
   # Granular form: "section__key__caseType" = "value"
-  "IdProofingRequirements__household+view__ApplicationCases"            = "IAL1"
-  "IdProofingRequirements__household+view__CoLoadedStreamlineCases"     = "IAL1"
-  "IdProofingRequirements__household+view__NonCoLoadedStreamlineCases"  = "IAL1plus"
+  "IdProofingRequirements__household+view__application"            = "IAL1"
+  "IdProofingRequirements__household+view__coloadedStreamline"     = "IAL1"
+  "IdProofingRequirements__household+view__streamline"  = "IAL1plus"
 }
 ```
 
@@ -204,9 +204,9 @@ If your deployment previously used `MinimumIal__*` environment variables:
 
 | Old key                                  | New key                                                                                                                                                           |
 | ---------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `MinimumIal__ApplicationCases`           | `IdProofingRequirements__household+view__ApplicationCases` (granular) or `IdProofingRequirements__household+view` (simple, if all case types have the same value) |
-| `MinimumIal__CoLoadedStreamlineCases`    | `IdProofingRequirements__household+view__CoLoadedStreamlineCases`                                                                                                 |
-| `MinimumIal__NonCoLoadedStreamlineCases` | `IdProofingRequirements__household+view__NonCoLoadedStreamlineCases`                                                                                              |
+| `MinimumIal__application`           | `IdProofingRequirements__household+view__application` (granular) or `IdProofingRequirements__household+view` (simple, if all case types have the same value) |
+| `MinimumIal__coloadedStreamline`    | `IdProofingRequirements__household+view__coloadedStreamline`                                                                                                 |
+| `MinimumIal__streamline` | `IdProofingRequirements__household+view__streamline`                                                                                              |
 
 The `MinimumIal` configuration section is no longer read. Remove old keys after
 deploying the update to avoid confusion.

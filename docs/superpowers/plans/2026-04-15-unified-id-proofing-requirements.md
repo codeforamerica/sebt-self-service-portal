@@ -321,13 +321,13 @@ public class IalRequirementTests
     // --- Per-case-type requirement ---
 
     [Fact]
-    public void PerCaseType_Resolve_ReturnsApplicationCasesLevel()
+    public void PerCaseType_Resolve_ReturnsapplicationLevel()
     {
         var req = IalRequirement.PerCaseType(new Dictionary<string, IalLevel>
         {
-            ["ApplicationCases"] = IalLevel.IAL1,
-            ["CoLoadedStreamlineCases"] = IalLevel.IAL1,
-            ["NonCoLoadedStreamlineCases"] = IalLevel.IAL1plus
+            ["application"] = IalLevel.IAL1,
+            ["coloadedStreamline"] = IalLevel.IAL1,
+            ["streamline"] = IalLevel.IAL1plus
         });
 
         var result = req.Resolve([ApplicationCase()]);
@@ -339,9 +339,9 @@ public class IalRequirementTests
     {
         var req = IalRequirement.PerCaseType(new Dictionary<string, IalLevel>
         {
-            ["ApplicationCases"] = IalLevel.IAL1,
-            ["CoLoadedStreamlineCases"] = IalLevel.IAL1,
-            ["NonCoLoadedStreamlineCases"] = IalLevel.IAL1plus
+            ["application"] = IalLevel.IAL1,
+            ["coloadedStreamline"] = IalLevel.IAL1,
+            ["streamline"] = IalLevel.IAL1plus
         });
 
         var result = req.Resolve([CoLoadedStreamlineCase(), NonCoLoadedStreamlineCase()]);
@@ -353,9 +353,9 @@ public class IalRequirementTests
     {
         var req = IalRequirement.PerCaseType(new Dictionary<string, IalLevel>
         {
-            ["ApplicationCases"] = IalLevel.IAL1plus,
-            ["CoLoadedStreamlineCases"] = IalLevel.IAL1plus,
-            ["NonCoLoadedStreamlineCases"] = IalLevel.IAL1plus
+            ["application"] = IalLevel.IAL1plus,
+            ["coloadedStreamline"] = IalLevel.IAL1plus,
+            ["streamline"] = IalLevel.IAL1plus
         });
 
         var result = req.Resolve([]);
@@ -367,8 +367,8 @@ public class IalRequirementTests
     {
         var req = IalRequirement.PerCaseType(new Dictionary<string, IalLevel>
         {
-            ["ApplicationCases"] = IalLevel.IAL1,
-            ["NonCoLoadedStreamlineCases"] = IalLevel.IAL1plus
+            ["application"] = IalLevel.IAL1,
+            ["streamline"] = IalLevel.IAL1plus
         });
 
         var levels = req.AllLevels().OrderBy(l => l).ToList();
@@ -454,9 +454,9 @@ public class IalRequirement
     {
         string key;
         if (!c.IsStreamlineCertified)
-            key = "ApplicationCases";
+            key = "application";
         else
-            key = c.IsCoLoaded ? "CoLoadedStreamlineCases" : "NonCoLoadedStreamlineCases";
+            key = c.IsCoLoaded ? "coloadedStreamline" : "streamline";
 
         return levels.TryGetValue(key, out var level) ? level : IalLevel.IAL1plus;
     }
@@ -544,9 +544,9 @@ public class ConfigureIdProofingRequirementsTests
     {
         var (_, settings) = BindConfig(new Dictionary<string, string?>
         {
-            ["IdProofingRequirements:household+view:ApplicationCases"] = "IAL1",
-            ["IdProofingRequirements:household+view:CoLoadedStreamlineCases"] = "IAL1",
-            ["IdProofingRequirements:household+view:NonCoLoadedStreamlineCases"] = "IAL1plus"
+            ["IdProofingRequirements:household+view:application"] = "IAL1",
+            ["IdProofingRequirements:household+view:coloadedStreamline"] = "IAL1",
+            ["IdProofingRequirements:household+view:streamline"] = "IAL1plus"
         });
 
         var req = settings.Get(ProtectedResource.Household, ProtectedAction.View);
@@ -706,7 +706,7 @@ public class ConfigureIdProofingRequirements(
             }
             else
             {
-                // Object form: "household+view": { "ApplicationCases": "IAL1plus", ... }
+                // Object form: "household+view": { "application": "IAL1plus", ... }
                 var perCase = new Dictionary<string, IalLevel>();
                 foreach (var sub in child.GetChildren())
                 {
@@ -822,8 +822,8 @@ public class IdProofingRequirementsCoherenceValidatorTests
             ["address+view"] = IalRequirement.Uniform(IalLevel.IAL1plus),
             ["address+write"] = IalRequirement.PerCaseType(new Dictionary<string, IalLevel>
             {
-                ["ApplicationCases"] = IalLevel.IAL1,
-                ["NonCoLoadedStreamlineCases"] = IalLevel.IAL1plus,
+                ["application"] = IalLevel.IAL1,
+                ["streamline"] = IalLevel.IAL1plus,
             }),
         });
 
@@ -1607,9 +1607,9 @@ Read `src/SEBT.Portal.Api/appsettings.dc.json` first. Remove the `MinimumIal` se
 ```json
 "IdProofingRequirements": {
   "household+view": {
-    "ApplicationCases": "IAL1",
-    "CoLoadedStreamlineCases": "IAL1",
-    "NonCoLoadedStreamlineCases": "IAL1plus"
+    "application": "IAL1",
+    "coloadedStreamline": "IAL1",
+    "streamline": "IAL1plus"
   }
 }
 ```

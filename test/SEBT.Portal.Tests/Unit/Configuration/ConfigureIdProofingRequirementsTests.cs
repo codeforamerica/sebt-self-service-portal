@@ -42,9 +42,9 @@ public class ConfigureIdProofingRequirementsTests
     {
         var (_, settings) = BindConfig(new Dictionary<string, string?>
         {
-            ["IdProofingRequirements:household+view:ApplicationCases"] = "IAL1",
-            ["IdProofingRequirements:household+view:CoLoadedStreamlineCases"] = "IAL1",
-            ["IdProofingRequirements:household+view:NonCoLoadedStreamlineCases"] = "IAL1plus"
+            ["IdProofingRequirements:household+view:application"] = "IAL1",
+            ["IdProofingRequirements:household+view:coloadedStreamline"] = "IAL1",
+            ["IdProofingRequirements:household+view:streamline"] = "IAL1plus"
         });
 
         var req = settings.Get(ProtectedResource.Household, ProtectedAction.View);
@@ -143,8 +143,8 @@ public class ConfigureIdProofingRequirementsTests
         var config = new ConfigurationBuilder()
             .AddInMemoryCollection(new Dictionary<string, string?>
             {
-                ["IdProofingRequirements:household+view:ApplicationCases"] = null,
-                ["IdProofingRequirements:household+view:NonCoLoadedStreamlineCases"] = "IAL1plus"
+                ["IdProofingRequirements:household+view:application"] = null,
+                ["IdProofingRequirements:household+view:streamline"] = "IAL1plus"
             })
             .Build();
 
@@ -165,11 +165,11 @@ public class ConfigureIdProofingRequirementsTests
     [Fact]
     public void Configure_ObjectForm_CaseInsensitiveSubKeys()
     {
-        // Config uses lowercase "applicationcases" — should still resolve correctly
+        // Config uses uppercase "Application" — should still resolve correctly
         var (_, settings) = BindConfig(new Dictionary<string, string?>
         {
-            ["IdProofingRequirements:household+view:applicationcases"] = "IAL1",
-            ["IdProofingRequirements:household+view:NonCoLoadedStreamlineCases"] = "IAL1plus"
+            ["IdProofingRequirements:household+view:Application"] = "IAL1",
+            ["IdProofingRequirements:household+view:streamline"] = "IAL1plus"
         });
 
         var req = settings.Get(ProtectedResource.Household, ProtectedAction.View);
