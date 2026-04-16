@@ -1,3 +1,4 @@
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using NSubstitute;
@@ -73,6 +74,80 @@ public class IdProofingServiceTests
             UserIalLevel.IAL1, [ApplicationCase()]);
         Assert.False(decision.IsAllowed);
         Assert.Equal(UserIalLevel.IAL1plus, decision.RequiredLevel);
+    }
+
+    // --- OnChange hot-reload tests ---
+
+    [Fact]
+    public void OnChange_ValidConfig_UpdatesSettings()
+    {
+        var initialSettings = DefaultSettings();
+        var updatedSettings = new IdProofingRequirementsSettings();
+        updatedSettings.Requirements["address+write"] = IalRequirement.Uniform(IalLevel.IAL1);
+
+        var monitor = Substitute.For<IOptionsMonitor<IdProofingRequirementsSettings>>();
+        monitor.CurrentValue.Returns(initialSettings);
+
+        // Capture the OnChange callback so we can invoke it
+        Action<IdProofingRequirementsSettings, string?>? capturedCallback = null;
+        monitor.OnChange(Arg.Do<Action<IdProofingRequirementsSettings, string?>>(cb => capturedCallback = cb));
+
+        var service = new IdProofingService(monitor, NullLogger<IdProofingService>.Instance);
+
+        // Verify initial behavior (IAL1plus for address+write)
+        var before = service.Evaluate(
+            ProtectedResource.Address, ProtectedAction.Write,
+            UserIalLevel.IAL1, [ApplicationCase()]);
+        Assert.False(before.IsAllowed);
+
+        // Simulate config change — monitor now returns updated settings
+        monitor.CurrentValue.Returns(updatedSettings);
+        capturedCallback?.Invoke(updatedSettings, null);
+
+        // After reload, address+write defaults to IAL1plus (unconfigured key → default)
+        // But we set it to IAL1 explicitly, so IAL1 user should now be allowed
+        var after = service.Evaluate(
+            ProtectedResource.Address, ProtectedAction.Write,
+            UserIalLevel.IAL1, [ApplicationCase()]);
+        Assert.True(after.IsAllowed);
+    }
+
+    [Fact]
+    public void OnChange_ValidationFailure_RetainsPreviousSettings()
+    {
+        var initialSettings = DefaultSettings();
+        var monitor = Substitute.For<IOptionsMonitor<IdProofingRequirementsSettings>>();
+        monitor.CurrentValue.Returns(initialSettings);
+
+        Action<IdProofingRequirementsSettings, string?>? capturedCallback = null;
+        monitor.OnChange(Arg.Do<Action<IdProofingRequirementsSettings, string?>>(cb => capturedCallback = cb));
+
+        var logger = Substitute.For<ILogger<IdProofingService>>();
+        var service = new IdProofingService(monitor, logger);
+
+        // Simulate config change that fails validation — CurrentValue throws
+        monitor.CurrentValue.Returns(_ =>
+            throw new OptionsValidationException(
+                "IdProofingRequirementsSettings",
+                typeof(IdProofingRequirementsSettings),
+                ["write below view"]));
+
+        capturedCallback?.Invoke(initialSettings, null);
+
+        // Service should still use the original settings (IAL1plus for address+write)
+        var decision = service.Evaluate(
+            ProtectedResource.Address, ProtectedAction.Write,
+            UserIalLevel.IAL1, [ApplicationCase()]);
+        Assert.False(decision.IsAllowed);
+        Assert.Equal(UserIalLevel.IAL1plus, decision.RequiredLevel);
+
+        // Verify Critical log was emitted
+        logger.Received().Log(
+            LogLevel.Critical,
+            Arg.Any<EventId>(),
+            Arg.Is<object>(o => o.ToString()!.Contains("config change rejected")),
+            Arg.Any<OptionsValidationException>(),
+            Arg.Any<Func<object, Exception?, string>>());
     }
 
     // --- GetVisibility tests ---

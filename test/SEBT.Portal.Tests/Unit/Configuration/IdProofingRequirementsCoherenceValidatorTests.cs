@@ -115,6 +115,99 @@ public class IdProofingRequirementsCoherenceValidatorTests
         Assert.True(result.Succeeded);
     }
 
+    // --- Cross-product: per-case-type view × uniform write ---
+
+    [Fact]
+    public void Validate_PerCaseTypeViewUniformWrite_WriteBelowAnyViewLevel_Fails()
+    {
+        var validator = CreateValidator();
+        var settings = MakeSettings(new Dictionary<string, IalRequirement>
+        {
+            ["address+view"] = IalRequirement.PerCaseType(new Dictionary<string, IalLevel>
+            {
+                ["ApplicationCases"] = IalLevel.IAL1,
+                ["NonCoLoadedStreamlineCases"] = IalLevel.IAL1plus,
+            }),
+            // Uniform IAL1 write is below the IAL1plus view level for NonCoLoaded
+            ["address+write"] = IalRequirement.Uniform(IalLevel.IAL1),
+        });
+
+        var result = validator.Validate(null, settings);
+        Assert.True(result.Failed);
+    }
+
+    [Fact]
+    public void Validate_PerCaseTypeViewUniformWrite_WriteAboveAllViewLevels_Succeeds()
+    {
+        var validator = CreateValidator();
+        var settings = MakeSettings(new Dictionary<string, IalRequirement>
+        {
+            ["address+view"] = IalRequirement.PerCaseType(new Dictionary<string, IalLevel>
+            {
+                ["ApplicationCases"] = IalLevel.IAL1,
+                ["NonCoLoadedStreamlineCases"] = IalLevel.IAL1plus,
+            }),
+            ["address+write"] = IalRequirement.Uniform(IalLevel.IAL1plus),
+        });
+
+        var result = validator.Validate(null, settings);
+        Assert.True(result.Succeeded);
+    }
+
+    // --- Cross-product: per-case-type view × per-case-type write ---
+
+    [Fact]
+    public void Validate_BothPerCaseType_AnyWriteLevelBelowAnyViewLevel_Fails()
+    {
+        var validator = CreateValidator();
+        var settings = MakeSettings(new Dictionary<string, IalRequirement>
+        {
+            ["address+view"] = IalRequirement.PerCaseType(new Dictionary<string, IalLevel>
+            {
+                ["ApplicationCases"] = IalLevel.IAL1plus,
+            }),
+            ["address+write"] = IalRequirement.PerCaseType(new Dictionary<string, IalLevel>
+            {
+                ["ApplicationCases"] = IalLevel.IAL1,
+            }),
+        });
+
+        var result = validator.Validate(null, settings);
+        Assert.True(result.Failed);
+    }
+
+    // --- Partial resource keys (only view or only write) ---
+
+    [Fact]
+    public void Validate_WriteOnlyResource_NoViewKey_Succeeds()
+    {
+        var validator = CreateValidator();
+        var settings = MakeSettings(new Dictionary<string, IalRequirement>
+        {
+            // card has +write but no +view — should not fail
+            ["card+write"] = IalRequirement.Uniform(IalLevel.IAL1plus),
+        });
+
+        var result = validator.Validate(null, settings);
+        Assert.True(result.Succeeded);
+    }
+
+    [Fact]
+    public void Validate_ViewOnlyResource_NoWriteKey_Succeeds()
+    {
+        var validator = CreateValidator();
+        var settings = MakeSettings(new Dictionary<string, IalRequirement>
+        {
+            // email has +view but no +write — should not fail
+            ["email+view"] = IalRequirement.Uniform(IalLevel.IAL1),
+        });
+
+        var result = validator.Validate(null, settings);
+        Assert.True(result.Succeeded);
+    }
+
+    // --- Step-up consistency ---
+
     [Fact]
     public void Validate_NoStepUpConfigured_AllWriteIal1_Succeeds()
     {
