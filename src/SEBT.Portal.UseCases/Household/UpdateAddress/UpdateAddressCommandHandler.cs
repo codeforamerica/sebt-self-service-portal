@@ -25,8 +25,8 @@ public class UpdateAddressCommandHandler(
     IAddressValidationService addressValidationService,
     IHouseholdIdentifierResolver resolver,
     IHouseholdRepository householdRepository,
-    IIdProofingRequirementsService idProofingRequirementsService,
-    IMinimumIalService minimumIalService,
+    IPiiVisibilityService piiVisibilityService,
+    IIdProofingService idProofingService,
     IStateAddressUpdateService stateAddressUpdateService,
     ILogger<UpdateAddressCommandHandler> logger)
     : ICommandHandler<UpdateAddressCommand, AddressValidationResult>
@@ -107,24 +107,26 @@ public class UpdateAddressCommandHandler(
 
         // Policy enforcement: SNAP and TANF households must update via case worker, not the portal.
         var userIalLevel = UserIalLevelExtensions.FromClaimsPrincipal(command.User);
-        var piiVisibility = idProofingRequirementsService.GetPiiVisibility(userIalLevel);
+        var piiVisibility = piiVisibilityService.GetVisibility(userIalLevel);
         var household = await householdRepository.GetHouseholdByIdentifierAsync(
             identifier, piiVisibility, userIalLevel, cancellationToken);
 
         if (household != null)
         {
-            // SECURITY: Block write operations when the user has not met the minimum IAL
-            // required by their cases. See docs/tdd/minimum-ial-determination.md.
-            var minimumIal = minimumIalService.GetMinimumIal(household.SummerEbtCases);
-            if (userIalLevel < minimumIal)
+            // SECURITY: Block write operations when the user has not met the IAL
+            // required by their cases. See docs/config/ial/README.md.
+            var decision = idProofingService.Evaluate(
+                ProtectedResource.Address, ProtectedAction.Write,
+                userIalLevel, household.SummerEbtCases);
+            if (!decision.IsAllowed)
             {
                 logger.LogInformation(
-                    "Address update denied: user IAL {UserIal} is below minimum {MinimumIal}",
+                    "Address update denied: user IAL {UserIal} is below required {RequiredIal}",
                     userIalLevel,
-                    minimumIal);
+                    decision.RequiredLevel);
                 return Result<AddressValidationResult>.Forbidden(
-                    $"This household requires {minimumIal}. Complete identity verification to update your address.",
-                    new Dictionary<string, object?> { ["requiredIal"] = minimumIal.ToString() });
+                    $"This household requires {decision.RequiredLevel}. Complete identity verification to update your address.",
+                    new Dictionary<string, object?> { ["requiredIal"] = decision.RequiredLevel.ToString() });
             }
         }
 

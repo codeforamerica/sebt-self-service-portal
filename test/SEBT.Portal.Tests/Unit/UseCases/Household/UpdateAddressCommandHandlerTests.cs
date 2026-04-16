@@ -32,12 +32,12 @@ public class UpdateAddressCommandHandlerTests
     private readonly IAddressValidationService _addressValidationService = Substitute.For<IAddressValidationService>();
     private readonly IHouseholdRepository _householdRepository =
         Substitute.For<IHouseholdRepository>();
-    private readonly IIdProofingRequirementsService _idProofingRequirementsService =
-        Substitute.For<IIdProofingRequirementsService>();
+    private readonly IPiiVisibilityService _piiVisibilityService =
+        Substitute.For<IPiiVisibilityService>();
     private readonly IStateAddressUpdateService _stateAddressUpdateService =
         Substitute.For<IStateAddressUpdateService>();
-    private readonly IMinimumIalService _minimumIalService =
-        Substitute.For<IMinimumIalService>();
+    private readonly IIdProofingService _idProofingService =
+        Substitute.For<IIdProofingService>();
     private readonly NullLogger<UpdateAddressCommandHandler> _logger =
         NullLogger<UpdateAddressCommandHandler>.Instance;
 
@@ -64,15 +64,18 @@ public class UpdateAddressCommandHandlerTests
             .Returns(AddressValidationResult.Valid());
         _stateAddressUpdateService.UpdateAddressAsync(Arg.Any<AddressUpdateRequest>(), Arg.Any<CancellationToken>())
             .Returns(AddressUpdateResult.Success());
-        _idProofingRequirementsService.GetPiiVisibility(Arg.Any<UserIalLevel>())
+        _piiVisibilityService.GetVisibility(Arg.Any<UserIalLevel>())
             .Returns(new PiiVisibility(false, false, false));
         // Default: IAL gate passes (no elevated requirement)
-        _minimumIalService.GetMinimumIal(Arg.Any<IReadOnlyList<SummerEbtCase>>()).Returns(UserIalLevel.None);
+        _idProofingService.Evaluate(
+            Arg.Any<ProtectedResource>(), Arg.Any<ProtectedAction>(),
+            Arg.Any<UserIalLevel>(), Arg.Any<IReadOnlyList<SummerEbtCase>>())
+            .Returns(new IdProofingDecision(IsAllowed: true, RequiredLevel: UserIalLevel.None));
     }
 
     private UpdateAddressCommandHandler CreateHandler() =>
         new(_validator, _addressUpdateService, _addressValidationService, _resolver, _householdRepository,
-            _idProofingRequirementsService, _minimumIalService, _stateAddressUpdateService, _logger);
+            _piiVisibilityService, _idProofingService, _stateAddressUpdateService, _logger);
 
     private static ClaimsPrincipal CreateUser(string email)
     {

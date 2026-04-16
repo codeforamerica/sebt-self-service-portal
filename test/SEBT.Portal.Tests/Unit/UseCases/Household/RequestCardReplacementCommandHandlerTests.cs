@@ -22,19 +22,22 @@ public class RequestCardReplacementCommandHandlerTests
         Substitute.For<IHouseholdIdentifierResolver>();
     private readonly IHouseholdRepository _repository =
         Substitute.For<IHouseholdRepository>();
-    private readonly IMinimumIalService _minimumIalService =
-        Substitute.For<IMinimumIalService>();
+    private readonly IIdProofingService _idProofingService =
+        Substitute.For<IIdProofingService>();
     private readonly NullLogger<RequestCardReplacementCommandHandler> _logger =
         NullLogger<RequestCardReplacementCommandHandler>.Instance;
 
     public RequestCardReplacementCommandHandlerTests()
     {
         // Default: IAL gate passes (no elevated requirement)
-        _minimumIalService.GetMinimumIal(Arg.Any<IReadOnlyList<SummerEbtCase>>()).Returns(UserIalLevel.None);
+        _idProofingService.Evaluate(
+            Arg.Any<ProtectedResource>(), Arg.Any<ProtectedAction>(),
+            Arg.Any<UserIalLevel>(), Arg.Any<IReadOnlyList<SummerEbtCase>>())
+            .Returns(new IdProofingDecision(IsAllowed: true, RequiredLevel: UserIalLevel.None));
     }
 
     private RequestCardReplacementCommandHandler CreateHandler(TimeProvider? timeProvider = null) =>
-        new(_validator, _resolver, _repository, _minimumIalService, timeProvider ?? TimeProvider.System, _logger);
+        new(_validator, _resolver, _repository, _idProofingService, timeProvider ?? TimeProvider.System, _logger);
 
     private static ClaimsPrincipal CreateUser(string email, string? ialClaim = null)
     {
