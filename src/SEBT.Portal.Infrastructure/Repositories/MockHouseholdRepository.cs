@@ -628,6 +628,7 @@ public class MockHouseholdRepository : IHouseholdRepository
             };
         });
         coUndeliverable.Email = coUndeliverableEmail;
+        coUndeliverable.Phone = "3035551005"; // Deterministic phone so CO DevelopmentPhoneOverride can route to this persona in dev
         coUndeliverable.UserProfile = new UserProfile { FirstName = "Sandra", MiddleName = "Maria", LastName = "TorresMOCK" };
         _households[coUndeliverableEmail] = coUndeliverable;
         IndexByPhone(coUndeliverable);
@@ -668,6 +669,7 @@ public class MockHouseholdRepository : IHouseholdRepository
             };
         });
         coFrozen.Email = coFrozenEmail;
+        coFrozen.Phone = "3035551006"; // Deterministic phone so CO DevelopmentPhoneOverride can route to this persona in dev
         coFrozen.UserProfile = new UserProfile { FirstName = "Miguel", MiddleName = "Angel", LastName = "RiveraMOCK" };
         _households[coFrozenEmail] = coFrozen;
         IndexByPhone(coFrozen);

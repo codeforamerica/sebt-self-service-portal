@@ -1,4 +1,5 @@
 using Microsoft.Extensions.Options;
+using NSubstitute;
 using SEBT.Portal.Core.AppSettings;
 using SEBT.Portal.Core.Models.Household;
 using SEBT.Portal.Infrastructure.Services;
@@ -8,7 +9,11 @@ namespace SEBT.Portal.Tests.Unit.Services;
 public class SelfServiceEvaluatorTests
 {
     private static SelfServiceEvaluator CreateEvaluator(SelfServiceRulesSettings settings)
-        => new(Options.Create(settings));
+    {
+        var monitor = Substitute.For<IOptionsMonitor<SelfServiceRulesSettings>>();
+        monitor.CurrentValue.Returns(settings);
+        return new SelfServiceEvaluator(monitor);
+    }
 
     private static Application MakeApp(IssuanceType issuanceType, CardStatus cardStatus = CardStatus.Active)
         => new() { IssuanceType = issuanceType, CardStatus = cardStatus };
@@ -383,5 +388,27 @@ public class SelfServiceEvaluatorTests
         var result = evaluator.Evaluate(BenefitIssuanceType.SummerEbt, Array.Empty<Application>());
 
         Assert.True(result.CanUpdateAddress);
+    }
+
+    // --- Live reload: CurrentValue re-read per call so config file edits don't need an API restart ---
+
+    [Fact]
+    public void Evaluate_ReadsCurrentValueEachCall_ReflectsConfigReload()
+    {
+        var monitor = Substitute.For<IOptionsMonitor<SelfServiceRulesSettings>>();
+        var denySettings = new SelfServiceRulesSettings
+        {
+            AddressUpdate = new ActionRuleSettings { Enabled = false },
+            CardReplacement = new ActionRuleSettings { Enabled = false }
+        };
+        monitor.CurrentValue.Returns(denySettings);
+        var evaluator = new SelfServiceEvaluator(monitor);
+        var apps = new[] { MakeApp(IssuanceType.SummerEbt, CardStatus.Active, ApplicationStatus.Approved) };
+
+        Assert.False(evaluator.Evaluate(BenefitIssuanceType.SummerEbt, apps).CanUpdateAddress);
+
+        monitor.CurrentValue.Returns(CaseStatusOnlySettings([ApplicationStatus.Approved]));
+
+        Assert.True(evaluator.Evaluate(BenefitIssuanceType.SummerEbt, apps).CanUpdateAddress);
     }
 }

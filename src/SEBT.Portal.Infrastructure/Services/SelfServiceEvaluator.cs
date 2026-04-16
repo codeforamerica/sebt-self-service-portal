@@ -9,21 +9,20 @@ namespace SEBT.Portal.Infrastructure.Services;
 /// Evaluates self-service action permissions from <see cref="SelfServiceRulesSettings"/>.
 /// Uses permissive aggregation: if any application in the household is eligible, the action is allowed.
 /// </summary>
-public class SelfServiceEvaluator(IOptions<SelfServiceRulesSettings> options) : ISelfServiceEvaluator
+public class SelfServiceEvaluator(IOptionsMonitor<SelfServiceRulesSettings> optionsMonitor) : ISelfServiceEvaluator
 {
-    private readonly SelfServiceRulesSettings _settings = options.Value;
-
     public AllowedActions Evaluate(BenefitIssuanceType householdIssuanceType, IReadOnlyList<Application> applications)
     {
-        var canUpdateAddress = IsActionAllowed(_settings.AddressUpdate, householdIssuanceType, applications);
-        var canReplace = IsActionAllowed(_settings.CardReplacement, householdIssuanceType, applications);
+        var settings = optionsMonitor.CurrentValue;
+        var canUpdateAddress = IsActionAllowed(settings.AddressUpdate, householdIssuanceType, applications);
+        var canReplace = IsActionAllowed(settings.CardReplacement, householdIssuanceType, applications);
 
         return new AllowedActions
         {
             CanUpdateAddress = canUpdateAddress,
             CanRequestReplacementCard = canReplace,
-            AddressUpdateDeniedMessageKey = canUpdateAddress ? null : _settings.AddressUpdate.DisabledMessageKey,
-            CardReplacementDeniedMessageKey = canReplace ? null : _settings.CardReplacement.DisabledMessageKey
+            AddressUpdateDeniedMessageKey = canUpdateAddress ? null : settings.AddressUpdate.DisabledMessageKey,
+            CardReplacementDeniedMessageKey = canReplace ? null : settings.CardReplacement.DisabledMessageKey
         };
     }
 
