@@ -60,6 +60,8 @@ export interface MockSummerEbtCase {
   benefitExpirationDate: string
   eligibilitySource: string | null
   issuanceType: IssuanceTypeInt
+  allowAddressChange: boolean
+  allowCardReplacement: boolean
 }
 
 interface MockAddress {
@@ -180,6 +182,8 @@ export function makeSummerEbtCase(overrides: SummerEbtCaseOptions = {}): MockSum
     benefitExpirationDate,
     eligibilitySource: null,
     issuanceType,
+    allowAddressChange: true,
+    allowCardReplacement: true,
     ...extra
   } as MockSummerEbtCase
 }

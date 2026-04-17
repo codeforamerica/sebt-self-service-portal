@@ -15,7 +15,9 @@ const mockCase1: SummerEbtCase = {
   ebtCardLastFour: '1234',
   ebtCardStatus: 'Active',
   benefitAvailableDate: '2026-06-01T00:00:00Z',
-  benefitExpirationDate: '2026-08-31T00:00:00Z'
+  benefitExpirationDate: '2026-08-31T00:00:00Z',
+  allowAddressChange: true,
+  allowCardReplacement: true
 }
 
 const mockCase2: SummerEbtCase = {
@@ -24,7 +26,9 @@ const mockCase2: SummerEbtCase = {
   childLastName: 'Martinez',
   householdType: 'OSSE',
   eligibilityType: 'NSLP',
-  issuanceType: 'SummerEbt'
+  issuanceType: 'SummerEbt',
+  allowAddressChange: true,
+  allowCardReplacement: true
 }
 
 const defaultMockData: HouseholdData = {

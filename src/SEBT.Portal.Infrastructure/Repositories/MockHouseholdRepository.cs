@@ -172,10 +172,12 @@ public class MockHouseholdRepository : IHouseholdRepository
                 HouseholdFactory.CreateSummerEbtCase("Sophia", "Martinez", "SNAP", c =>
                 {
                     c.IssuanceType = IssuanceType.SnapEbtCard;
+                    c.IsCoLoaded = true;
                 }),
                 HouseholdFactory.CreateSummerEbtCase("James", "Martinez", "TANF", c =>
                 {
                     c.IssuanceType = IssuanceType.TanfEbtCard;
+                    c.IsCoLoaded = true;
                 })
             };
         });
@@ -224,12 +226,14 @@ public class MockHouseholdRepository : IHouseholdRepository
                 HouseholdFactory.CreateSummerEbtCase("John", "Doe", "Application", c =>
                 {
                     c.IssuanceType = IssuanceType.SnapEbtCard;
+                    c.IsCoLoaded = true;
                     c.BenefitAvailableDate = appBenefitStart;
                     c.BenefitExpirationDate = appBenefitStart.AddDays(122);
                 }),
                 HouseholdFactory.CreateSummerEbtCase("Jane", "Doe", "Application", c =>
                 {
                     c.IssuanceType = IssuanceType.SnapEbtCard;
+                    c.IsCoLoaded = true;
                     c.BenefitAvailableDate = appBenefitStart;
                     c.BenefitExpirationDate = appBenefitStart.AddDays(122);
                 })
@@ -293,6 +297,14 @@ public class MockHouseholdRepository : IHouseholdRepository
         var review = HouseholdFactory.CreateHouseholdDataWithStatus(ApplicationStatus.Unknown, h =>
         {
             h.BenefitIssuanceType = BenefitIssuanceType.SummerEbt;
+            h.AddressOnFile = new Address
+            {
+                StreetAddress1 = "700 14th Street NW",
+                StreetAddress2 = "Unit 2",
+                City = "Washington",
+                State = "DC",
+                PostalCode = "20005"
+            };
             var app = h.Applications.FirstOrDefault();
             if (app != null)
             {
@@ -737,6 +749,8 @@ public class MockHouseholdRepository : IHouseholdRepository
                 EbtCardStatus = sec.EbtCardStatus,
                 EbtCardIssueDate = sec.EbtCardIssueDate,
                 EbtCardBalance = sec.EbtCardBalance,
+                IsCoLoaded = sec.IsCoLoaded,
+                IsStreamlineCertified = sec.IsStreamlineCertified,
                 CardRequestedAt = sec.CardRequestedAt,
                 BenefitAvailableDate = sec.BenefitAvailableDate,
                 BenefitExpirationDate = sec.BenefitExpirationDate
