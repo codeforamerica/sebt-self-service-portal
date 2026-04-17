@@ -43,21 +43,14 @@ vi.mock('@/api/client', () => ({
   }
 }))
 
-vi.mock('@/lib/oidc-pkce', () => ({
-  buildAuthorizationUrl: () => 'https://idp.example/authorize',
-  getOidcRedirectUriForCurrentOrigin: () => 'http://localhost:3000/callback',
-  savePkceForCallback: vi.fn()
-}))
-
 /**
- * Routes the shared apiFetch mock to either the /auth/status response (used by AuthProvider
- * to establish the session) or the OIDC config response (used by IalGuard when the user
- * clicks Verify). Call with `ial: null` to simulate an unauthenticated user.
+ * Sets up the apiFetch mock for /auth/status (used by AuthProvider to establish the session).
+ * IalGuard no longer calls apiFetch directly — it navigates to the server-side authorize
+ * endpoint instead. Call with `ial: null` to simulate an unauthenticated user.
  */
 function setupApiFetchMock(options: {
   ial: string | null
   idProofingCompletedAtSecondsAgo?: number
-  oidcConfigFailure?: boolean
 }) {
   apiFetchMock.mockImplementation((endpoint: string) => {
     if (endpoint === '/auth/status') {
@@ -76,19 +69,6 @@ function setupApiFetchMock(options: {
             ? nowSec - options.idProofingCompletedAtSecondsAgo
             : nowSec,
         idProofingExpiresAt: nowSec + fiveYearsInSeconds
-      })
-    }
-    if (endpoint.startsWith('/auth/oidc/') && endpoint.includes('/config')) {
-      if (options.oidcConfigFailure) {
-        return Promise.reject(new Error('config failed'))
-      }
-      return Promise.resolve({
-        authorizationEndpoint: 'https://idp.example/auth',
-        clientId: 'cid',
-        redirectUri: 'http://localhost:3000/callback',
-        state: 'mock-state',
-        codeChallenge: 'mock-challenge',
-        codeChallengeMethod: 'S256'
       })
     }
     return Promise.resolve({})
@@ -163,13 +143,9 @@ describe('IalGuard', () => {
 
     await user.click(screen.getByRole('button', { name: 'Verify' }))
 
-    await waitFor(() => {
-      expect(apiFetchMock).toHaveBeenCalledWith(
-        expect.stringContaining('/auth/oidc/'),
-        expect.anything()
-      )
-    })
-    expect(window.location.href).toBe('https://idp.example/authorize')
+    // IalGuard navigates directly to the server-side authorize endpoint (V04 fix).
+    expect(window.location.href).toContain('/api/auth/oidc/co/authorize')
+    expect(window.location.href).toContain('stepUp=true')
   })
 
   it('Back uses router.back when history length > 1', async () => {
@@ -221,44 +197,5 @@ describe('IalGuard', () => {
 
     await userEvent.click(screen.getByRole('button', { name: 'Back' }))
     expect(mockPush).toHaveBeenCalledWith('/dashboard')
-  })
-
-  it('failure state shows step-up failure layout; Continue behaves like Back', async () => {
-    setupApiFetchMock({ ial: '1', oidcConfigFailure: true })
-    vi.spyOn(window.history, 'length', 'get').mockReturnValue(2)
-
-    const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTimeAsync })
-
-    render(
-      <AuthProvider>
-        <IalGuard>
-          <p>Protected</p>
-        </IalGuard>
-      </AuthProvider>
-    )
-
-    await waitFor(() => expect(screen.getByText(/Please wait/)).toBeInTheDocument())
-    await act(async () => {
-      await vi.advanceTimersByTimeAsync(500)
-    })
-
-    await waitFor(() => {
-      expect(screen.getByRole('button', { name: 'Verify' })).toBeInTheDocument()
-    })
-
-    await user.click(screen.getByRole('button', { name: 'Verify' }))
-
-    await waitFor(() => {
-      expect(
-        screen.getByRole('heading', {
-          name: /able to show your (DC SUN Bucks|Summer EBT) information/i
-        })
-      ).toBeInTheDocument()
-    })
-    expect(screen.getByText(/contact us if you need more help/i)).toBeInTheDocument()
-
-    mockBack.mockClear()
-    await user.click(screen.getByRole('button', { name: /Return to dashboard|Continue/i }))
-    expect(mockBack).toHaveBeenCalledTimes(1)
   })
 })

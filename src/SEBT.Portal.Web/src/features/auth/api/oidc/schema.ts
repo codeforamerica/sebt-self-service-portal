@@ -5,23 +5,6 @@ import { z } from 'zod'
  * Used by COLoginPage (config fetch) and CallbackPage (token exchange).
  */
 
-/**
- * the API now generates PKCE server-side and returns `state` + `codeChallenge`
- * + `codeChallengeMethod`. The browser uses these to build the authorization URL but
- * never sees or stores the `code_verifier`. Token exchange also happens server-side,
- * so `tokenEndpoint` is no longer returned.
- */
-export const OidcConfigResponseSchema = z.object({
-  authorizationEndpoint: z.url(),
-  clientId: z.string(),
-  redirectUri: z.url(),
-  state: z.string(),
-  codeChallenge: z.string(),
-  codeChallengeMethod: z.literal('S256')
-})
-
-export type OidcConfigResponse = z.infer<typeof OidcConfigResponseSchema>
-
 export const OidcCallbackTokenResponseSchema = z.object({
   callbackToken: z.string()
 })

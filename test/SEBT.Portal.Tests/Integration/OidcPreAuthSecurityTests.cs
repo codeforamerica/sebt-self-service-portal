@@ -173,46 +173,50 @@ public class OidcPreAuthSecurityTests : IClassFixture<PortalWebApplicationFactor
     }
 
     // ---------------------------------------------------------------------------
-    // V05 / T07a — stateCode not validated (tenant escape)
-    // Attack: POST to complete-login or callback with stateCode="az" or injection
-    //         payloads. Before any string was accepted.
+    // V05 / T07a — stateCode tenant escape (via Authorize endpoint)
+    // stateCode is now validated at the Authorize endpoint, which is the single
+    // entry point for OIDC flows. Callback and CompleteLogin read stateCode from
+    // the server-side pre-auth session, so the body's stateCode is irrelevant.
+    // These tests replace the removed V05_T07a_CompleteLogin_WithoutSession and
+    // V05_T07a_Callback_WithoutSession tests, and also cover V06_T08aE
+    // (stateCode mismatch with valid session) — that attack is now impossible
+    // because the body's stateCode is never read.
     // ---------------------------------------------------------------------------
 
     [Theory]
     [InlineData("az")]
     [InlineData("XX")]
     [InlineData("admin")]
-    [InlineData("co\0admin")]
-    public async Task V05_T07a_CompleteLogin_WithInvalidStateCode_Returns400(string stateCode)
+    // "co\0admin" is not tested here since null bytes in URL paths are rejected by
+    // ASP.NET's URL parser before reaching the controller, which is a valid defense.
+    public async Task V05_T07a_Authorize_WithInvalidStateCode_Returns400(string stateCode)
     {
         var client = _factory.CreateClient();
-        var callbackToken = MintCallbackToken("user@example.com");
-        using var request = new HttpRequestMessage(HttpMethod.Post, "/api/auth/oidc/complete-login")
-        {
-            Content = JsonContent.Create(new { stateCode, callbackToken }),
-            Headers = { { "Origin", "http://localhost:3000" } }
-        };
 
-        var response = await client.SendAsync(request);
+        var response = await client.GetAsync($"/api/auth/oidc/{stateCode}/authorize");
 
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
     }
 
-    [Theory]
-    [InlineData("az")]
-    [InlineData("XX")]
-    public async Task V05_T07a_Callback_WithInvalidStateCode_Returns400(string stateCode)
+    /// <summary>
+    /// The Authorize endpoint is the only place stateCode is accepted from user input.
+    /// A valid stateCode creates a pre-auth session and redirects to the IdP.
+    /// The redirect will fail (test host has no real IdP) but the point is the
+    /// stateCode passed the allowlist — contrast with the invalid cases above.
+    /// </summary>
+    [Fact]
+    public async Task V05_T07a_Authorize_WithValidStateCode_PassesAllowlist()
     {
-        var client = _factory.CreateClient();
-        using var request = new HttpRequestMessage(HttpMethod.Post, "/api/auth/oidc/callback")
+        var client = _factory.CreateClient(new Microsoft.AspNetCore.Mvc.Testing.WebApplicationFactoryClientOptions
         {
-            Content = JsonContent.Create(new { code = "code", state = "state", stateCode }),
-            Headers = { { "Origin", "http://localhost:3000" } }
-        };
+            AllowAutoRedirect = false
+        });
 
-        var response = await client.SendAsync(request);
+        var response = await client.GetAsync("/api/auth/oidc/co/authorize");
 
-        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        // Should NOT be 400 — the stateCode "co" is in the allowlist.
+        // It may redirect (302) or fail downstream (discovery/config), but not 400.
+        Assert.NotEqual(HttpStatusCode.BadRequest, response.StatusCode);
     }
 
     // ---------------------------------------------------------------------------
@@ -281,40 +285,6 @@ public class OidcPreAuthSecurityTests : IClassFixture<PortalWebApplicationFactor
                 code = "some-code",
                 state = "wrong-state",
                 stateCode = "co"
-            }),
-            Headers =
-            {
-                { "Origin", "http://localhost:3000" },
-                { "Cookie", $"{OidcSessionCookie.CookieName}={session.Id}" }
-            }
-        };
-
-        var response = await client.SendAsync(request);
-
-        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
-    }
-
-    // ---------------------------------------------------------------------------
-    // V06 / T08a-E — stateCode mismatch on callback with valid session
-    // Attack: Session was created for CO but attacker sends stateCode="az".
-    // ---------------------------------------------------------------------------
-
-    [Fact]
-    public async Task V06_T08aE_Callback_WithValidSessionButWrongStateCode_Returns400()
-    {
-        var sessionStore = _factory.Services.GetRequiredService<IPreAuthSessionStore>();
-        var session = await sessionStore.CreateAsync("co", "state1", "verifier1", "http://localhost:3000/callback", false);
-
-        var client = _factory.CreateClient();
-        // Session was created for "co" but we send "az" (stateCode mismatch)
-        // Note: "az" isn't in the allowlist either, so this gets caught at both layers
-        using var request = new HttpRequestMessage(HttpMethod.Post, "/api/auth/oidc/callback")
-        {
-            Content = JsonContent.Create(new
-            {
-                code = "some-code",
-                state = "state1",
-                stateCode = "az"
             }),
             Headers =
             {

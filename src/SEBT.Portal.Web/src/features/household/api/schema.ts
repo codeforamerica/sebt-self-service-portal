@@ -175,7 +175,9 @@ export const SummerEbtCaseSchema = z.object({
   cardRequestedAt: z.string().nullable().optional(),
   cardMailedAt: z.string().nullable().optional(),
   cardActivatedAt: z.string().nullable().optional(),
-  cardDeactivatedAt: z.string().nullable().optional()
+  cardDeactivatedAt: z.string().nullable().optional(),
+  allowAddressChange: z.boolean().optional().default(true),
+  allowCardReplacement: z.boolean().optional().default(true)
 })
 
 export type SummerEbtCase = z.infer<typeof SummerEbtCaseSchema>
