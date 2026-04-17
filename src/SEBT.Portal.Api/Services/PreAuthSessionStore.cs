@@ -19,6 +19,7 @@ public interface IPreAuthSessionStore
         string codeVerifier,
         string redirectUri,
         bool isStepUp,
+        string? returnUrl = null,
         CancellationToken cancellationToken = default);
 
     /// <summary>Retrieves a session by ID. Returns null if expired or not found.</summary>
@@ -104,6 +105,7 @@ public sealed class PreAuthSessionStore : IPreAuthSessionStore
         string codeVerifier,
         string redirectUri,
         bool isStepUp,
+        string? returnUrl = null,
         CancellationToken cancellationToken = default)
     {
         var sessionId = GenerateSessionId();
@@ -115,6 +117,7 @@ public sealed class PreAuthSessionStore : IPreAuthSessionStore
             StateCode = stateCode,
             RedirectUri = redirectUri,
             IsStepUp = isStepUp,
+            ReturnUrl = returnUrl,
             CreatedAt = DateTimeOffset.UtcNow,
             Phase = PreAuthSessionPhase.Created
         };

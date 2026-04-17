@@ -1,57 +1,22 @@
 'use client'
 
-import { apiFetch } from '@/api'
-import { OidcConfigResponseSchema, type OidcConfigResponse } from '@/features/auth'
-import {
-  buildAuthorizationUrl,
-  getOidcRedirectUriForCurrentOrigin,
-  savePkceForCallback
-} from '@/lib/oidc-pkce'
 import { getTranslations } from '@/lib/translations'
 import type { StateCode } from '@sebt/design-system'
-import { Alert, TextLink, getStateLinks } from '@sebt/design-system'
-import { useMutation } from '@tanstack/react-query'
-
-async function fetchOidcConfig(state: StateCode): Promise<OidcConfigResponse> {
-  return apiFetch<OidcConfigResponse>(`/auth/oidc/${state}/config`, {
-    schema: OidcConfigResponseSchema
-  })
-}
+import { TextLink, getStateLinks } from '@sebt/design-system'
 
 export function COLoginPage({ state }: { state: StateCode }) {
   const links = getStateLinks(state)
   const t = getTranslations('login')
   const tCommon = getTranslations('common')
 
-  const oidcConfig = useMutation({
-    mutationFn: () => fetchOidcConfig(state),
-    retry: false
-  })
-
-  async function startOidcLogin(language: string) {
-    try {
-      const config = await oidcConfig.mutateAsync()
-      // PKCE is generated server-side. The config response includes state,
-      // codeChallenge, and codeChallengeMethod. We never touch code_verifier.
-      const redirectUri = getOidcRedirectUriForCurrentOrigin()
-      savePkceForCallback(config.state, {
-        redirectUri,
-        clientId: config.clientId
-      })
-      localStorage.setItem('i18nextLng', language)
-      const authUrl = buildAuthorizationUrl(
-        { ...config, redirectUri },
-        config.codeChallenge,
-        config.state,
-        language
-      )
-      window.location.href = authUrl
-    } catch {
-      // Error state is managed by useMutation — no additional handling needed
-    }
+  function startOidcLogin(language: string) {
+    // Persist the user's language choice so the UI matches after the redirect.
+    localStorage.setItem('i18nextLng', language)
+    // Navigate to the server-side authorize endpoint, which builds the full
+    // authorization URL and returns a 302 redirect to PingOne. The browser
+    // never sees the authorization endpoint URL (V04 fix).
+    window.location.href = `/api/auth/oidc/${state}/authorize?language=${encodeURIComponent(language)}`
   }
-
-  const errorMessage = oidcConfig.isError ? t('oidcErrorConfigLoad') : null
 
   return (
     <div className="usa-section">
@@ -66,23 +31,11 @@ export function COLoginPage({ state }: { state: StateCode }) {
 
           <p className="margin-top-4 font-sans-sm">{t('logInDisclaimerBody1')}</p>
 
-          {errorMessage && (
-            <Alert
-              variant="error"
-              slim
-              className="margin-top-2"
-            >
-              {errorMessage}
-            </Alert>
-          )}
-
           <div className="margin-top-4">
             <button
               type="button"
               onClick={() => startOidcLogin('en')}
               className="usa-button bg-primary-dark text-white border-primary-dark"
-              aria-busy={oidcConfig.isPending}
-              disabled={oidcConfig.isPending}
             >
               {tCommon('logIn')}
             </button>
@@ -94,8 +47,6 @@ export function COLoginPage({ state }: { state: StateCode }) {
               onClick={() => startOidcLogin('es')}
               className="usa-button usa-button--outline border-primary text-primary"
               lang="es"
-              aria-busy={oidcConfig.isPending}
-              disabled={oidcConfig.isPending}
             >
               {tCommon('logInEsp')}
             </button>

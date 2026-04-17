@@ -1,8 +1,6 @@
 export {
   OidcCallbackTokenResponseSchema,
   OidcCompleteLoginResponseSchema,
-  OidcConfigResponseSchema,
   type OidcCallbackTokenResponse,
-  type OidcCompleteLoginResponse,
-  type OidcConfigResponse
+  type OidcCompleteLoginResponse
 } from './schema'
