@@ -17,7 +17,7 @@ namespace SEBT.Portal.UseCases.IdProofing;
 /// 1. Validate input
 /// 2. Early exit if no ID provided (noIdProvided off-boarding)
 /// 3. Reuse existing active challenge if one exists
-/// 4. Co-loaded users with SNAP/TANF ID: complete at IAL2 without Socure
+/// 4. Co-loaded users with SNAP/TANF ID: complete at IAL1+ without Socure
 /// 5. Call Socure for risk assessment
 /// 6. Create a new challenge if document verification is required
 /// </summary>
@@ -115,6 +115,7 @@ public class SubmitIdProofingCommandHandler(
                     command.UserId, command.IdType);
                 return await CompleteProofingAndRespond(
                     user,
+                    UserIalLevel.IAL1plus,
                     cancellationToken,
                     "co-loaded SNAP/TANF matched to on-file records (no Socure)");
             }
@@ -210,6 +211,7 @@ public class SubmitIdProofingCommandHandler(
                 // Single save: attempt count + proofing completion together
                 return await CompleteProofingAndRespond(
                     user,
+                    UserIalLevel.IAL2,
                     cancellationToken,
                     "Socure ACCEPT (no DocV required)");
 
@@ -234,11 +236,12 @@ public class SubmitIdProofingCommandHandler(
 
     private async Task<Result<SubmitIdProofingResponse>> CompleteProofingAndRespond(
         User user,
+        UserIalLevel ialLevelOnCompletion,
         CancellationToken cancellationToken,
         string completionReasonForLog)
     {
         user.IdProofingStatus = IdProofingStatus.Completed;
-        user.IalLevel = UserIalLevel.IAL2;
+        user.IalLevel = ialLevelOnCompletion;
         user.IdProofingCompletedAt = DateTime.UtcNow;
         await userRepository.UpdateUserAsync(user, cancellationToken);
 

@@ -140,7 +140,7 @@ public class SubmitIdProofingCommandHandlerTests
                 Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<Address?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>());
     }
 
-    // --- Co-loaded + SNAP/TANF: streamline to IAL2 without Socure ---
+    // --- Co-loaded + SNAP/TANF: streamline to IAL1+ without Socure ---
 
     [Fact]
     public async Task Handle_ShouldCompleteProofingWithoutSocure_WhenCoLoadedAndSnapAccountMatchesUserSnapId()
@@ -172,7 +172,7 @@ public class SubmitIdProofingCommandHandlerTests
         Assert.True(result.IsSuccess);
         Assert.Equal("matched", result.Value.Result);
         Assert.Equal(IdProofingStatus.Completed, user.IdProofingStatus);
-        Assert.Equal(UserIalLevel.IAL2, user.IalLevel);
+        Assert.Equal(UserIalLevel.IAL1plus, user.IalLevel);
         Assert.NotNull(user.IdProofingCompletedAt);
         Assert.Equal(0, user.IdProofingAttemptCount);
 
@@ -222,6 +222,8 @@ public class SubmitIdProofingCommandHandlerTests
 
         Assert.True(result.IsSuccess);
         Assert.Equal("matched", result.Value.Result);
+        Assert.Equal(UserIalLevel.IAL1plus, user.IalLevel);
+        Assert.Equal(IdProofingStatus.Completed, user.IdProofingStatus);
 
         await socureClient.DidNotReceive()
             .RunIdProofingAssessmentAsync(
