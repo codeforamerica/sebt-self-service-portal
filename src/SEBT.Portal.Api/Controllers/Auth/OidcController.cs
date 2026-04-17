@@ -13,6 +13,8 @@ using SEBT.Portal.Core.Services;
 using SEBT.Portal.Core.Utilities;
 using SEBT.Portal.Infrastructure.Services;
 
+using static SEBT.Portal.Core.Utilities.PiiMasker;
+
 namespace SEBT.Portal.Api.Controllers.Auth;
 
 /// <summary>
@@ -89,6 +91,10 @@ public class OidcController(
         var session = await sessionStore.CreateAsync(
             stateCode, state, codeVerifier, redirectUri, stepUp, cancellationToken);
         OidcSessionCookie.Set(Response, session.Id);
+
+        logger.LogInformation(
+            "OIDC GetConfig succeeded: StateCode={StateCode}, IsStepUp={IsStepUp}, SessionId={SessionId}",
+            stateCode, stepUp, session.Id);
 
         return Ok(new
         {
@@ -195,6 +201,12 @@ public class OidcController(
             return BadRequest(new ErrorResponse("Pre-auth session has already been used."));
         }
 
+        logger.LogInformation(
+            "OIDC Callback exchange succeeded: IsStepUp={IsStepUp}, Phone={MaskedPhone}, SessionId={SessionId}",
+            session.IsStepUp,
+            MaskPhone(result.PhoneClaim),
+            sessionId);
+
         return Ok(new { callbackToken = result.CallbackToken });
     }
 
@@ -268,7 +280,7 @@ public class OidcController(
         var signingKey = config["Oidc:CompleteLoginSigningKey"];
         if (string.IsNullOrEmpty(signingKey))
         {
-            logger.LogWarning("Oidc:CompleteLoginSigningKey is not configured.");
+            logger.LogWarning("Oidc:CompleteLoginSigningKey is not configured (SessionId={SessionId}).", sessionId);
             var hint = environment.IsDevelopment() ? "Set Oidc:CompleteLoginSigningKey in appsettings." : "";
             return StatusCode(StatusCodes.Status503ServiceUnavailable, new { error = "Complete-login not configured.", hint });
         }
@@ -298,8 +310,8 @@ public class OidcController(
         }
         catch (Exception ex)
         {
-            logger.LogWarning(ex, "Invalid or expired callback token for state {StateCode}",
-                SanitizeForLog(requestedStateCode));
+            logger.LogWarning(ex, "Invalid or expired callback token for state {StateCode} (SessionId={SessionId})",
+                SanitizeForLog(requestedStateCode), sessionId);
             return BadRequest(new ErrorResponse("Invalid or expired callback token."));
         }
 
@@ -313,17 +325,22 @@ public class OidcController(
             }
         }
 
-        logger.LogInformation("Additional OIDC claim types: {Claims}", string.Join(", ", additionalClaims.Select(c => c.Key).ToArray()));
+        logger.LogInformation("Additional OIDC claim types: {Claims} (SessionId={SessionId})",
+            string.Join(", ", additionalClaims.Select(c => c.Key).ToArray()), sessionId);
 
-        if (!additionalClaims.Select(c => c.Key).Contains("phone"))
+        // Extract the phone claim for diagnostic logging (masked).
+        additionalClaims.TryGetValue("phone", out var phoneClaim);
+        var maskedPhone = MaskPhone(phoneClaim);
+
+        if (phoneClaim == null)
         {
-            logger.LogWarning("OIDC incoming claims missing 'phone'");
+            logger.LogWarning("OIDC incoming claims missing 'phone' (SessionId={SessionId})", sessionId);
         }
 
         var email = GetEmailFromClaims(principal);
         if (string.IsNullOrWhiteSpace(email))
         {
-            logger.LogWarning("Callback token had no email or sub claim");
+            logger.LogWarning("Callback token had no email or sub claim (SessionId={SessionId})", sessionId);
             return BadRequest(new ErrorResponse("Callback token must contain an email or sub claim."));
         }
 
@@ -335,7 +352,7 @@ public class OidcController(
             var existingUser = await userRepository.GetUserByEmailAsync(normalizedEmail, cancellationToken);
             if (existingUser == null)
             {
-                logger.LogWarning("Step-up complete-login: no existing portal user for callback token; sign-in required first.");
+                logger.LogWarning("Step-up complete-login: no existing portal user for callback token; sign-in required first (SessionId={SessionId}).", sessionId);
                 return BadRequest(new { error = "Step-up requires an existing session. Please sign in again." });
             }
 
@@ -348,11 +365,13 @@ public class OidcController(
 
             var safeStateKey = SanitizeForLog(stateKey);
             logger.LogInformation(
-                "OIDC step-up complete-login succeeded: UserId {UserId}, StateCode {StateCode}, IalLevel {IalLevel}, IdProofingStatus {IdProofingStatus}",
+                "OIDC step-up complete-login succeeded: UserId {UserId}, StateCode {StateCode}, IalLevel {IalLevel}, IdProofingStatus {IdProofingStatus}, Phone={MaskedPhone}, SessionId={SessionId}",
                 user.Id,
                 safeStateKey,
                 user.IalLevel,
-                user.IdProofingStatus);
+                user.IdProofingStatus,
+                maskedPhone,
+                sessionId);
         }
         else
         {
@@ -378,14 +397,21 @@ public class OidcController(
                 await userRepository.UpdateUserAsync(user, cancellationToken);
 
                 logger.LogInformation(
-                    "OIDC verification claim reconciled: UserId {UserId}, IalLevel {IalLevel}, IsExpired {IsExpired}, VerifiedAt {VerifiedAt}",
-                    user.Id, user.IalLevel, verification.IsExpired, verification.VerifiedAt);
+                    "OIDC verification claim reconciled: UserId {UserId}, IalLevel {IalLevel}, IsExpired {IsExpired}, VerifiedAt {VerifiedAt}, SessionId={SessionId}",
+                    user.Id, user.IalLevel, verification.IsExpired, verification.VerifiedAt, sessionId);
             }
         }
 
         var token = jwtService.GenerateToken(user, additionalClaims);
         var expiresAt = DateTimeOffset.UtcNow.AddMinutes(jwtSettingsOptions.Value.ExpirationMinutes);
         AuthCookies.SetAuthCookie(Response, token, expiresAt);
+
+        if (!session.IsStepUp)
+        {
+            logger.LogInformation(
+                "OIDC login complete: UserId {UserId}, IalLevel {IalLevel}, Phone={MaskedPhone}, SessionId={SessionId}",
+                user.Id, user.IalLevel, maskedPhone, sessionId);
+        }
 
         string? safeReturnUrl = null;
         if (session.IsStepUp)
