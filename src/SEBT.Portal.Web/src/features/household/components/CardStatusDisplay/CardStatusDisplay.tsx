@@ -75,8 +75,11 @@ export function CardStatusDisplay({ cardStatus }: CardStatusDisplayProps) {
   const { colorClass, labelKey } = STATUS_CONFIG[uiStatus]
   const statusLabel = t(labelKey)
   const descriptionKey = DESCRIPTION_KEY[cardStatus] ?? 'cardTableStatusMessageInactive'
-  const translated = t(descriptionKey)
-  // Empty-string locale entries are treated as missing so the English fallback surfaces.
+  // defaultValue: '' collapses both missing keys (i18next would otherwise return
+  // the key string, which is truthy) and empty-string locale entries to the same
+  // falsy value, so the `|| DESCRIPTION_FALLBACK` chain consistently supplies
+  // English copy when a translation is absent.
+  const translated = t(descriptionKey, { defaultValue: '' })
   const statusDescription = translated || DESCRIPTION_FALLBACK[cardStatus] || ''
 
   return (

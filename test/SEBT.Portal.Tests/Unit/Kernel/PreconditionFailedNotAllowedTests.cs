@@ -1,4 +1,4 @@
-using System.Net;
+using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.Mvc;
 using SEBT.Portal.Kernel;
 using SEBT.Portal.Kernel.AspNetCore;
@@ -7,8 +7,10 @@ using SEBT.Portal.Kernel.Results;
 namespace SEBT.Portal.Tests.Unit.KernelExtensions;
 
 /// <summary>
-/// Verifies that PreconditionFailedReason.NotAllowed maps to HTTP 403
-/// in both MVC and Minimal API result extensions.
+/// Verifies that PreconditionFailedReason.NotAllowed maps to HTTP 412 in both
+/// MVC and Minimal API result extensions. 412 keeps the reason in the
+/// precondition-failed family alongside NotFound/ConcurrencyMismatch/Conflict
+/// and avoids colliding with the frontend's 403-insufficient-IAL interceptor.
 /// </summary>
 public class PreconditionFailedNotAllowedTests
 {
@@ -35,83 +37,88 @@ public class PreconditionFailedNotAllowedTests
     // MVC extension tests
 
     [Fact]
-    public void MvcResult_NotAllowed_WithProblemDetails_Returns403()
+    public void MvcResult_NotAllowed_WithProblemDetails_Returns412()
     {
         var result = Result.PreconditionFailed(PreconditionFailedReason.NotAllowed);
         var actionResult = result.ToActionResult(useProblemDetails: true);
 
         var objectResult = Assert.IsType<ObjectResult>(actionResult);
-        Assert.Equal(403, objectResult.StatusCode);
+        Assert.Equal(412, objectResult.StatusCode);
         var problemDetails = Assert.IsType<ProblemDetails>(objectResult.Value);
-        Assert.Equal(403, problemDetails.Status);
+        Assert.Equal(412, problemDetails.Status);
     }
 
     [Fact]
-    public void MvcResult_NotAllowed_WithoutProblemDetails_Returns403StatusCode()
+    public void MvcResult_NotAllowed_WithoutProblemDetails_Returns412StatusCode()
     {
         var result = Result.PreconditionFailed(PreconditionFailedReason.NotAllowed);
         var actionResult = result.ToActionResult(useProblemDetails: false);
 
         var statusCodeResult = Assert.IsType<StatusCodeResult>(actionResult);
-        Assert.Equal(403, statusCodeResult.StatusCode);
+        Assert.Equal(412, statusCodeResult.StatusCode);
     }
 
     [Fact]
-    public void MvcResultT_NotAllowed_WithProblemDetails_Returns403()
+    public void MvcResultT_NotAllowed_WithProblemDetails_Returns412()
     {
         var result = Result<string>.PreconditionFailed(PreconditionFailedReason.NotAllowed);
         var actionResult = result.ToActionResult<string>(useProblemDetails: true);
 
         var objectResult = Assert.IsType<ObjectResult>(actionResult);
-        Assert.Equal(403, objectResult.StatusCode);
+        Assert.Equal(412, objectResult.StatusCode);
     }
 
     [Fact]
-    public void MvcResultT_NotAllowed_WithoutProblemDetails_Returns403StatusCode()
+    public void MvcResultT_NotAllowed_WithoutProblemDetails_Returns412StatusCode()
     {
         var result = Result<string>.PreconditionFailed(PreconditionFailedReason.NotAllowed);
         var actionResult = result.ToActionResult<string>(useProblemDetails: false);
 
         var statusCodeResult = Assert.IsType<StatusCodeResult>(actionResult);
-        Assert.Equal(403, statusCodeResult.StatusCode);
+        Assert.Equal(412, statusCodeResult.StatusCode);
     }
 
     // Minimal API extension tests
 
     [Fact]
-    public void MinimalApi_NotAllowed_WithProblemDetails_Returns403()
+    public void MinimalApi_NotAllowed_WithProblemDetails_Returns412()
     {
         var result = Result.PreconditionFailed(PreconditionFailedReason.NotAllowed);
         var apiResult = result.ToMinimalApiResult(useProblemDetails: true);
 
-        // ProblemHttpResult wraps ProblemDetails with status code
-        Assert.NotNull(apiResult);
+        var problemResult = Assert.IsType<ProblemHttpResult>(apiResult);
+        Assert.Equal(412, problemResult.StatusCode);
+        Assert.Equal(412, problemResult.ProblemDetails.Status);
     }
 
     [Fact]
-    public void MinimalApi_NotAllowed_WithoutProblemDetails_Returns403()
+    public void MinimalApi_NotAllowed_WithoutProblemDetails_Returns412StatusCode()
     {
         var result = Result.PreconditionFailed(PreconditionFailedReason.NotAllowed);
         var apiResult = result.ToMinimalApiResult(useProblemDetails: false);
 
-        Assert.NotNull(apiResult);
+        var statusResult = Assert.IsType<StatusCodeHttpResult>(apiResult);
+        Assert.Equal(412, statusResult.StatusCode);
     }
 
     [Fact]
-    public void MinimalApiT_NotAllowed_WithProblemDetails_Returns403()
+    public void MinimalApiT_NotAllowed_WithProblemDetails_Returns412()
     {
         var result = Result<string>.PreconditionFailed(PreconditionFailedReason.NotAllowed);
         var apiResult = result.ToMinimalApiResult<string>(useProblemDetails: true);
 
-        Assert.NotNull(apiResult);
+        var problemResult = Assert.IsType<ProblemHttpResult>(apiResult);
+        Assert.Equal(412, problemResult.StatusCode);
+        Assert.Equal(412, problemResult.ProblemDetails.Status);
     }
 
     [Fact]
-    public void MinimalApiT_NotAllowed_WithoutProblemDetails_Returns403()
+    public void MinimalApiT_NotAllowed_WithoutProblemDetails_Returns412StatusCode()
     {
         var result = Result<string>.PreconditionFailed(PreconditionFailedReason.NotAllowed);
         var apiResult = result.ToMinimalApiResult<string>(useProblemDetails: false);
 
-        Assert.NotNull(apiResult);
+        var statusResult = Assert.IsType<StatusCodeHttpResult>(apiResult);
+        Assert.Equal(412, statusResult.StatusCode);
     }
 }
