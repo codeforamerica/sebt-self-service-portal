@@ -92,7 +92,7 @@ describe('initAmplitudeBridge', () => {
   })
 
   describe('privacy configuration', () => {
-    it('disables default autocapture and session replay', () => {
+    it('disables default tracking and autocapture', () => {
       new DataLayer('digitalData')
       initAmplitudeBridge('test-key', amplitudeStub)
 

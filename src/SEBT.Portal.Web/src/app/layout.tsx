@@ -155,7 +155,7 @@ export default async function RootLayout({
           {...(nonce ? { nonce } : {})}
         />
       )}
-      {/* Amplitude - only rendered when AMPLITUDE_API_KEY is configured */}
+      {/* Amplitude - only rendered when NEXT_PUBLIC_AMPLITUDE_API_KEY is configured */}
       {amplitudeApiKey && <AmplitudeAnalytics apiKey={amplitudeApiKey} />}
     </html>
   )

@@ -12,6 +12,7 @@ import { NextRequest, NextResponse } from 'next/server'
 export function proxy(request: NextRequest) {
   const nonce = Buffer.from(crypto.randomUUID()).toString('base64')
   const isDev = process.env.NODE_ENV === 'development'
+  const hasAmplitude = !!process.env.NEXT_PUBLIC_AMPLITUDE_API_KEY
   const proto =
     request.headers.get('x-forwarded-proto') ?? request.nextUrl.protocol.replace(':', '')
   const isHttps = proto === 'https'
@@ -30,7 +31,7 @@ export function proxy(request: NextRequest) {
     style-src 'self' ${isDev ? "'unsafe-inline'" : `'nonce-${nonce}'`} https://fonts.googleapis.com https://verify-v2.socure.com;
     font-src 'self' https://fonts.gstatic.com https://verify-v2.socure.com;
     img-src 'self' data: https: https://www.google-analytics.com;
-    connect-src 'self' https://www.google-analytics.com https://*.google-analytics.com https://www.googletagmanager.com https://auth.pingone.com https://*.socure.com https://*.socure.io https://*.amplitude.com ${isDev ? 'ws://localhost:* http://localhost:*' : ''};
+    connect-src 'self' https://www.google-analytics.com https://*.google-analytics.com https://www.googletagmanager.com https://auth.pingone.com https://*.socure.com https://*.socure.io ${hasAmplitude ? 'https://api2.amplitude.com' : ''} ${isDev ? 'ws://localhost:* http://localhost:*' : ''};
     frame-src https://verify-v2.socure.com;
     child-src https://verify-v2.socure.com;
     worker-src 'self';
