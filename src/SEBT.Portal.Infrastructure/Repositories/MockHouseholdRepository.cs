@@ -172,10 +172,12 @@ public class MockHouseholdRepository : IHouseholdRepository
                 HouseholdFactory.CreateSummerEbtCase("Sophia", "Martinez", "SNAP", c =>
                 {
                     c.IssuanceType = IssuanceType.SnapEbtCard;
+                    c.IsCoLoaded = true;
                 }),
                 HouseholdFactory.CreateSummerEbtCase("James", "Martinez", "TANF", c =>
                 {
                     c.IssuanceType = IssuanceType.TanfEbtCard;
+                    c.IsCoLoaded = true;
                 })
             };
         });
@@ -747,6 +749,8 @@ public class MockHouseholdRepository : IHouseholdRepository
                 EbtCardStatus = sec.EbtCardStatus,
                 EbtCardIssueDate = sec.EbtCardIssueDate,
                 EbtCardBalance = sec.EbtCardBalance,
+                IsCoLoaded = sec.IsCoLoaded,
+                IsStreamlineCertified = sec.IsStreamlineCertified,
                 CardRequestedAt = sec.CardRequestedAt,
                 BenefitAvailableDate = sec.BenefitAvailableDate,
                 BenefitExpirationDate = sec.BenefitExpirationDate
