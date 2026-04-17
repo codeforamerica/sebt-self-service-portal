@@ -118,6 +118,7 @@ public class OidcController(
         [FromRoute] string code,
         [FromQuery] bool stepUp = false,
         [FromQuery] string? returnUrl = null,
+        [FromQuery] string? language = null,
         [FromServices] IOidcExchangeService exchangeService = null!,
         CancellationToken cancellationToken = default)
     {
@@ -181,7 +182,9 @@ public class OidcController(
         OidcSessionCookie.Set(Response, session.Id);
 
         // Build the authorization URL server-side (mirrors the frontend's buildAuthorizationUrl).
-        var languageParam = config["Oidc:LanguageParam"] ?? "en";
+        // Use the language from the query param (set by the frontend based on user choice),
+        // falling back to the configured default.
+        var languageParam = language ?? config["Oidc:LanguageParam"] ?? "en";
         var authUrl = BuildAuthorizationUrl(
             oidcConfig.AuthorizationEndpoint, clientId, redirectUri,
             state, codeChallenge, languageParam);
@@ -191,7 +194,6 @@ public class OidcController(
 
     /// <summary>
     /// Builds the full OIDC authorization URL with all required query parameters.
-    /// Mirrors the frontend's <c>buildAuthorizationUrl</c> in <c>oidc-pkce.ts</c>.
     /// </summary>
     private static string BuildAuthorizationUrl(
         string authorizationEndpoint,
@@ -276,7 +278,9 @@ public class OidcController(
             return BadRequest(new ErrorResponse("Pre-auth session has already been used."));
         }
 
-        // --- Exchange code using session values (stateCode, code_verifier, redirectUri, isStepUp — never from the body) ---
+        // --- Exchange the authorization code from PingOne (body.Code) using server-side
+        // session values. code_verifier, redirectUri, and isStepUp are read from the
+        // pre-auth session — never from the body. ---
         var result = await exchangeService.ExchangeCodeAsync(
             body.Code,
             session.CodeVerifier,

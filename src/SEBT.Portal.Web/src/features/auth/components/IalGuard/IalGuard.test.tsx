@@ -198,10 +198,4 @@ describe('IalGuard', () => {
     await userEvent.click(screen.getByRole('button', { name: 'Back' }))
     expect(mockPush).toHaveBeenCalledWith('/dashboard')
   })
-
-  // Note: the error phase UI still exists in IalGuard but is currently unreachable.
-  // With the server-side redirect (V04 fix), startOidcStepUpRedirect is synchronous
-  // (sets window.location.href) and can't throw. If PingOne is down, the server
-  // redirects to /login — the user leaves the page rather than seeing the error UI.
-  // See PR comments for discussion of this UX trade-off.
 })
