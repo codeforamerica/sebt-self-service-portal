@@ -11,7 +11,9 @@ const mockCase: SummerEbtCase = {
   childLastName: 'Martinez',
   householdType: 'OSSE',
   eligibilityType: 'NSLP',
-  issuanceType: 'SummerEbt'
+  issuanceType: 'SummerEbt',
+  allowAddressChange: true,
+  allowCardReplacement: true
 }
 
 const mockApplication: Application = {
@@ -127,11 +129,55 @@ describe('HouseholdSummary', () => {
     expect(link).toHaveAttribute('href', '/profile/address')
   })
 
+  it('exposes data-analytics-cta on the change mailing address link', () => {
+    render(<HouseholdSummary />)
+    const link = screen.getByRole('link', { name: 'Change my mailing address' })
+    expect(link).toHaveAttribute('data-analytics-cta', 'update_address_cta')
+  })
+
+  it('exposes data-analytics-cta on the change contact preferences link', () => {
+    render(<HouseholdSummary />)
+    const link = screen.getByRole('link', { name: 'Change my contact preferences' })
+    expect(link).toHaveAttribute('data-analytics-cta', 'update_contact_cta')
+  })
+
   it('hides mailing address when not provided', () => {
     mockReturnData = { ...defaultMockData, addressOnFile: null }
     render(<HouseholdSummary />)
     expect(screen.queryByText('Your mailing address')).not.toBeInTheDocument()
     expect(screen.queryByText(/1350 Pennsylvania Ave NW/)).not.toBeInTheDocument()
+  })
+
+  it('hides change address link when no case allows address change', () => {
+    const coLoadedCase: SummerEbtCase = {
+      ...mockCase,
+      allowAddressChange: false,
+      allowCardReplacement: false
+    }
+    mockReturnData = {
+      ...defaultMockData,
+      summerEbtCases: [coLoadedCase]
+    }
+    render(<HouseholdSummary />)
+    expect(screen.getByText('Your mailing address')).toBeInTheDocument()
+    expect(screen.getByText(/1350 Pennsylvania Ave NW/)).toBeInTheDocument()
+    expect(
+      screen.queryByRole('link', { name: 'Change my mailing address' })
+    ).not.toBeInTheDocument()
+  })
+
+  it('shows change address link when any case allows address change', () => {
+    const allowedCase: SummerEbtCase = {
+      ...mockCase,
+      allowAddressChange: true,
+      allowCardReplacement: true
+    }
+    mockReturnData = {
+      ...defaultMockData,
+      summerEbtCases: [allowedCase]
+    }
+    render(<HouseholdSummary />)
+    expect(screen.getByRole('link', { name: 'Change my mailing address' })).toBeInTheDocument()
   })
 
   it('renders preferred contact with email', () => {

@@ -5,7 +5,6 @@
  * CO renders the external auth landing page (COLoginPage).
  * DC renders the OTP email form (LoginForm).
  */
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { render, screen } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import LoginPage from './page'
@@ -30,8 +29,7 @@ vi.mock('@/lib/translations', () => ({
         body: 'Enter your email to receive a one-time code.',
         logInDisclaimerBody1:
           'After tapping "Log in" you\'ll be redirected to log in using your myColorado™ account.',
-        logInDisclaimerBody2: 'Contact us if you need assistance logging into your account.',
-        oidcErrorConfigLoad: 'Unable to load login configuration.'
+        logInDisclaimerBody2: 'Contact us if you need assistance logging into your account.'
       },
       common: {
         logIn: 'Log in with myColorado™',
@@ -47,25 +45,11 @@ vi.mock('@/lib/translations', () => ({
 
 vi.mock('@/features/auth', () => ({
   LoginForm: () => <div data-testid="login-form">LoginForm</div>,
-  useAuth: () => ({ isAuthenticated: false }),
-  OidcConfigResponseSchema: {},
-  OidcCallbackTokenResponseSchema: {},
-  OidcCompleteLoginResponseSchema: {}
-}))
-
-vi.mock('@/api', () => ({
-  apiFetch: vi.fn()
+  useAuth: () => ({ isAuthenticated: false })
 }))
 
 import { getState } from '@sebt/design-system'
 const mockGetState = vi.mocked(getState)
-
-function renderWithQueryClient(ui: React.ReactElement) {
-  const queryClient = new QueryClient({
-    defaultOptions: { queries: { retry: false }, mutations: { retry: false } }
-  })
-  return render(<QueryClientProvider client={queryClient}>{ui}</QueryClientProvider>)
-}
 
 describe('LoginPage', () => {
   beforeEach(() => {
@@ -78,7 +62,7 @@ describe('LoginPage', () => {
     })
 
     it('renders the login title', () => {
-      renderWithQueryClient(<LoginPage />)
+      render(<LoginPage />)
       expect(
         screen.getByRole('heading', {
           name: /Access your Summer EBT account/i
@@ -87,7 +71,7 @@ describe('LoginPage', () => {
     })
 
     it('applies text-primary-dark class to the title', () => {
-      renderWithQueryClient(<LoginPage />)
+      render(<LoginPage />)
       const heading = screen.getByRole('heading', {
         name: /Access your Summer EBT account/i
       })
@@ -95,21 +79,21 @@ describe('LoginPage', () => {
     })
 
     it('renders the disclaimer body text', () => {
-      renderWithQueryClient(<LoginPage />)
+      render(<LoginPage />)
       expect(
         screen.getByText(/you'll be redirected to log in using your myColorado/i)
       ).toBeInTheDocument()
     })
 
     it('renders the Log in button with primary-dark styling', () => {
-      renderWithQueryClient(<LoginPage />)
+      render(<LoginPage />)
       const logInButton = screen.getByRole('button', { name: /Log in with myColorado/i })
       expect(logInButton).toHaveClass('usa-button')
       expect(logInButton).toHaveClass('bg-primary-dark')
     })
 
     it('renders the Iniciar sesión outline button', () => {
-      renderWithQueryClient(<LoginPage />)
+      render(<LoginPage />)
       const espButton = screen.getByRole('button', { name: /Iniciar sesión con myColorado/i })
       expect(espButton).toHaveAttribute('lang', 'es')
       expect(espButton).toHaveClass('usa-button--outline')
@@ -117,14 +101,14 @@ describe('LoginPage', () => {
     })
 
     it('renders the contact assistance link', () => {
-      renderWithQueryClient(<LoginPage />)
+      render(<LoginPage />)
       expect(
         screen.getByText('Contact us if you need assistance logging into your account.')
       ).toBeInTheDocument()
     })
 
     it('does not render LoginForm', () => {
-      renderWithQueryClient(<LoginPage />)
+      render(<LoginPage />)
       expect(screen.queryByTestId('login-form')).not.toBeInTheDocument()
     })
   })

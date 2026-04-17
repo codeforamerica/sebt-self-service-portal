@@ -1,6 +1,7 @@
 using System.Text.Json;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 using SEBT.Portal.Api.Models.IdProofing;
 using SEBT.Portal.Core.AppSettings;
 using SEBT.Portal.Kernel;
@@ -17,6 +18,7 @@ namespace SEBT.Portal.Api.Controllers.IdProofing;
 [ApiController]
 [Route("api/socure")]
 [AllowAnonymous]
+[EnableRateLimiting(RateLimitPolicies.Webhook)]
 public class WebhookController(
     SocureSettings socureSettings,
     ILogger<WebhookController> logger) : ControllerBase

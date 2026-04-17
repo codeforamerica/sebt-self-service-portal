@@ -9,6 +9,9 @@ WORKDIR /workspace
 
 # Build arg controls which state is embedded at build-time.
 ARG STATE=dc
+ARG NEXT_PUBLIC_SOCURE_SDK_KEY=""
+ARG NEXT_PUBLIC_SOCURE_DI_SDK_KEY=""
+ARG NEXT_PUBLIC_MOCK_SOCURE="false"
 ENV STATE=$STATE
 ENV BUILD_STANDALONE=true
 

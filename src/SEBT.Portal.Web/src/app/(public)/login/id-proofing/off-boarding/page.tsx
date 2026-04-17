@@ -28,7 +28,8 @@ export default async function OffBoardingPage({ searchParams }: OffBoardingPageP
             body={t('body1')}
             backHref="/login/id-proofing"
             contactHref={contactHref}
-            contactLabel={t('action1')}
+            // TODO: Use t('action1') once key is available in dc.csv
+            contactLabel="Contact us"
             canApply={canApply}
             applyBody={t('body2', '') || undefined}
             applySkipBody={t('body3', '') || undefined}

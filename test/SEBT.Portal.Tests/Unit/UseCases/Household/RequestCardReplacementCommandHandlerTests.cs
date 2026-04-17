@@ -22,11 +22,19 @@ public class RequestCardReplacementCommandHandlerTests
         Substitute.For<IHouseholdIdentifierResolver>();
     private readonly IHouseholdRepository _repository =
         Substitute.For<IHouseholdRepository>();
+    private readonly IMinimumIalService _minimumIalService =
+        Substitute.For<IMinimumIalService>();
     private readonly NullLogger<RequestCardReplacementCommandHandler> _logger =
         NullLogger<RequestCardReplacementCommandHandler>.Instance;
 
+    public RequestCardReplacementCommandHandlerTests()
+    {
+        // Default: IAL gate passes (no elevated requirement)
+        _minimumIalService.GetMinimumIal(Arg.Any<IReadOnlyList<SummerEbtCase>>()).Returns(UserIalLevel.None);
+    }
+
     private RequestCardReplacementCommandHandler CreateHandler(TimeProvider? timeProvider = null) =>
-        new(_validator, _resolver, _repository, timeProvider ?? TimeProvider.System, _logger);
+        new(_validator, _resolver, _repository, _minimumIalService, timeProvider ?? TimeProvider.System, _logger);
 
     private static ClaimsPrincipal CreateUser(string email, string? ialClaim = null)
     {
@@ -234,6 +242,64 @@ public class RequestCardReplacementCommandHandlerTests
 
         Assert.False(result.IsSuccess);
         Assert.IsType<ValidationFailedResult>(result);
+    }
+
+    // --- Co-loaded case tests ---
+
+    [Fact]
+    public async Task Handle_ReturnsConflict_WhenRequestedCaseIsCoLoaded()
+    {
+        var handler = CreateHandler();
+        var command = CreateValidCommand(caseIds: new List<string> { "SEBT-COLOADED" });
+        SetupResolverSuccess();
+        SetupRepositoryReturns(CreateHouseholdWithCases(
+            new SummerEbtCase
+            {
+                SummerEBTCaseID = "SEBT-COLOADED",
+                ChildFirstName = "John",
+                ChildLastName = "Doe",
+                IsCoLoaded = true,
+                CardRequestedAt = DateTime.UtcNow.AddDays(-30)
+            }
+        ));
+
+        var result = await handler.Handle(command, CancellationToken.None);
+
+        Assert.False(result.IsSuccess);
+        var preconditionFailed = Assert.IsType<PreconditionFailedResult>(result);
+        Assert.Equal(PreconditionFailedReason.Conflict, preconditionFailed.Reason);
+    }
+
+    [Fact]
+    public async Task Handle_ReturnsConflict_WhenAnyRequestedCaseIsCoLoaded()
+    {
+        var handler = CreateHandler();
+        var command = CreateValidCommand(caseIds: new List<string> { "SEBT-001", "SEBT-COLOADED" });
+        SetupResolverSuccess();
+        SetupRepositoryReturns(CreateHouseholdWithCases(
+            new SummerEbtCase
+            {
+                SummerEBTCaseID = "SEBT-001",
+                ChildFirstName = "Regular",
+                ChildLastName = "Child",
+                IsCoLoaded = false,
+                CardRequestedAt = DateTime.UtcNow.AddDays(-30)
+            },
+            new SummerEbtCase
+            {
+                SummerEBTCaseID = "SEBT-COLOADED",
+                ChildFirstName = "CoLoaded",
+                ChildLastName = "Child",
+                IsCoLoaded = true,
+                CardRequestedAt = DateTime.UtcNow.AddDays(-30)
+            }
+        ));
+
+        var result = await handler.Handle(command, CancellationToken.None);
+
+        Assert.False(result.IsSuccess);
+        var preconditionFailed = Assert.IsType<PreconditionFailedResult>(result);
+        Assert.Equal(PreconditionFailedReason.Conflict, preconditionFailed.Reason);
     }
 
     // --- Success tests ---

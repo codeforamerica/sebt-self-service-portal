@@ -2,6 +2,7 @@ using System.Linq;
 using Microsoft.Extensions.Logging;
 using SEBT.Portal.Core.Repositories;
 using SEBT.Portal.Core.Services;
+using SEBT.Portal.Core.Utilities;
 using SEBT.Portal.Kernel;
 using SEBT.Portal.Kernel.Results;
 
@@ -54,10 +55,14 @@ public class RefreshTokenCommandHandler(
                 .ToDictionary(c => c.Type, c => c.Value);
             var token = jwtTokenService.GenerateToken(user, additionalClaims);
 
+            var maskedPhone = PiiMasker.MaskPhone(
+                command.CurrentPrincipal.FindFirst("phone")?.Value
+                ?? command.CurrentPrincipal.FindFirst("phone_number")?.Value);
             logger.LogInformation(
-                "Token refreshed successfully for email {Email} with IAL level {IalLevel}",
+                "Token refreshed successfully for email {Email} with IAL level {IalLevel}, Phone={MaskedPhone}",
                 command.Email,
-                user.IalLevel);
+                user.IalLevel,
+                maskedPhone);
 
             return Result<string>.Success(token);
         }

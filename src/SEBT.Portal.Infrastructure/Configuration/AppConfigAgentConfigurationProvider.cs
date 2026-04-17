@@ -11,6 +11,8 @@ namespace SEBT.Portal.Infrastructure.Configuration;
 public sealed class AppConfigAgentConfigurationProvider : ConfigurationProvider, IDisposable
 {
     private const int LockReleaseTimeout = 3_000;
+    private const int InitialLoadMaxRetries = 10;
+    private static readonly TimeSpan InitialLoadRetryDelay = TimeSpan.FromSeconds(1);
 
     private readonly HttpClient _httpClient;
     private readonly AppConfigAgentProfile _profile;
@@ -21,6 +23,7 @@ public sealed class AppConfigAgentConfigurationProvider : ConfigurationProvider,
     private Timer? _reloadTimer;
     private int _isLoading; // 0 = not loading, 1 = loading
     private volatile bool _disposed;
+    private bool _initialLoadCompleted;
 
     public AppConfigAgentConfigurationProvider(
         HttpClient httpClient,
@@ -45,7 +48,19 @@ public sealed class AppConfigAgentConfigurationProvider : ConfigurationProvider,
 
         try
         {
-            LoadAsync().GetAwaiter().GetResult();
+            if (!_initialLoadCompleted)
+            {
+                _logger?.LogInformation(
+                    "Initial load starting for profile {ProfileId} (will retry up to {MaxRetries} times if agent is not ready)",
+                    _profile.ProfileId,
+                    InitialLoadMaxRetries);
+                LoadWithRetryAsync().GetAwaiter().GetResult();
+                _initialLoadCompleted = true;
+            }
+            else
+            {
+                LoadAsync().GetAwaiter().GetResult();
+            }
 
             if (_profile.ReloadAfterSeconds.HasValue)
             {
@@ -58,6 +73,45 @@ public sealed class AppConfigAgentConfigurationProvider : ConfigurationProvider,
         {
             Interlocked.Exchange(ref _isLoading, 0);
         }
+    }
+
+    /// <summary>
+    /// Attempts to load configuration with retries. Used only for the initial load
+    /// to handle the race condition where the AppConfig Agent sidecar may not be
+    /// ready when the API container starts.
+    /// </summary>
+    private async Task LoadWithRetryAsync()
+    {
+        for (var attempt = 1; attempt <= InitialLoadMaxRetries; attempt++)
+        {
+            try
+            {
+                await LoadAsync().ConfigureAwait(false);
+
+                // If Data has items, the load succeeded.
+                if (Data.Count > 0)
+                    return;
+            }
+            catch
+            {
+                // LoadAsync handles its own exceptions — this is a safety net.
+            }
+
+            if (attempt < InitialLoadMaxRetries)
+            {
+                _logger?.LogInformation(
+                    "AppConfig Agent not ready (attempt {Attempt}/{MaxRetries}). Retrying in {Delay}s...",
+                    attempt,
+                    InitialLoadMaxRetries,
+                    InitialLoadRetryDelay.TotalSeconds);
+                await Task.Delay(InitialLoadRetryDelay).ConfigureAwait(false);
+            }
+        }
+
+        _logger?.LogError(
+            "AppConfig Agent not available after {MaxRetries} attempts for profile {ProfileId}. Starting without AppConfig values.",
+            InitialLoadMaxRetries,
+            _profile.ProfileId);
     }
 
     private void OnReloadTimerFired()

@@ -11,7 +11,7 @@ import type { Address } from '@/features/household/api'
 
 import { isValidZip, useUpdateAddress } from '../../api'
 import { useAddressFlow } from '../../context'
-import { STATE_ABBREVIATIONS, US_STATES } from './usStates'
+import { STATE_ABBREVIATIONS, US_STATE_OPTIONS } from './usStates'
 
 interface AddressFormProps {
   initialAddress: Address | null
@@ -27,16 +27,26 @@ interface FieldErrors {
 }
 
 const STATE_DEFAULTS: Record<string, { city: string; state: string }> = {
-  dc: { city: 'Washington', state: 'District of Columbia' },
-  co: { city: '', state: 'Colorado' }
+  dc: { city: 'Washington', state: 'DC' },
+  co: { city: '', state: 'CO' }
 }
 
-/** Resolves a state value to a dropdown option: tries exact match, then abbreviation lookup, then fallback. */
+/** Resolves backend/form state to the USPS code used as the select value (labels stay full names). */
 function resolveStateValue(value: string | null | undefined, fallback: string): string {
   if (!value) return fallback
-  if ((US_STATES as readonly string[]).includes(value)) return value
-  const fromAbbreviation = STATE_ABBREVIATIONS[value.toUpperCase()]
-  if (fromAbbreviation) return fromAbbreviation
+  const trimmed = value.trim()
+  if (!trimmed) return fallback
+
+  const upper2 = trimmed.length === 2 ? trimmed.toUpperCase() : null
+  if (upper2 && upper2 in STATE_ABBREVIATIONS) return upper2
+
+  for (const [code, name] of Object.entries(STATE_ABBREVIATIONS)) {
+    if (name === trimmed) return code
+  }
+  for (const [code, name] of Object.entries(STATE_ABBREVIATIONS)) {
+    if (name.toLowerCase() === trimmed.toLowerCase()) return code
+  }
+
   return fallback
 }
 
@@ -48,7 +58,7 @@ export function AddressForm({ initialAddress, redirectPath }: AddressFormProps) 
   const { t: tCommon } = useTranslation('common')
   const router = useRouter()
   const updateAddress = useUpdateAddress()
-  const { setAddress } = useAddressFlow()
+  const { setAddress, setValidationResult } = useAddressFlow()
   const errorSummaryRef = useRef<HTMLDivElement>(null)
 
   const currentState = getState()
@@ -119,9 +129,33 @@ export function AddressForm({ initialAddress, redirectPath }: AddressFormProps) 
     }
 
     try {
-      await updateAddress.mutateAsync(addressData)
-      setAddress(addressData)
-      router.push(redirectPath ?? DEFAULT_REDIRECT)
+      const result = await updateAddress.mutateAsync(addressData)
+
+      if (result.status === 'valid') {
+        setAddress(addressData)
+        router.push(redirectPath ?? DEFAULT_REDIRECT)
+        return
+      }
+
+      // too_long stays on the form with inline + banner errors
+      if (result.reason === 'too_long') {
+        setFieldErrors({
+          streetAddress1: t(
+            'streetAddressInlineError',
+            'Enter a street address shorter than 30 characters'
+          )
+        })
+        setSubmitError('too_long')
+        return
+      }
+
+      // blocked, abbreviated, or suggestion: store in context and navigate
+      setValidationResult(result, addressData)
+      if (result.status === 'suggestion') {
+        router.push('/profile/address/suggested-address')
+      } else {
+        router.push('/profile/address/address-not-found')
+      }
     } catch (err) {
       void err
       setSubmitError(t('addressUpdateError', 'Something went wrong. Please try again.'))
@@ -255,12 +289,12 @@ export function AddressForm({ initialAddress, redirectPath }: AddressFormProps) 
             aria-describedby={fieldErrors.state ? 'address-state-error' : undefined}
           >
             <option value="">- Select -</option>
-            {US_STATES.map((s) => (
+            {US_STATE_OPTIONS.map(({ code, name }) => (
               <option
-                key={s}
-                value={s}
+                key={code}
+                value={code}
               >
-                {s}
+                {name}
               </option>
             ))}
           </select>

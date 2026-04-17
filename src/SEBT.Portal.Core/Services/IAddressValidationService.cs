@@ -22,16 +22,18 @@ public interface IAddressValidationService
 /// <param name="NormalizedAddress">USPS-normalized address when valid, if available.</param>
 /// <param name="SuggestedAddress">An alternative address suggested by the validation service, if any.</param>
 /// <param name="ErrorMessage">A user-facing error message if validation failed.</param>
+/// <param name="Reason">The specific reason for the validation outcome (e.g., "blocked", "too_long", "abbreviated").</param>
 public record AddressValidationResult(
     bool IsValid,
     Address? NormalizedAddress = null,
     Address? SuggestedAddress = null,
-    string? ErrorMessage = null)
+    string? ErrorMessage = null,
+    string? Reason = null)
 {
     public static AddressValidationResult Valid(Address? normalizedAddress = null) =>
         new(true, NormalizedAddress: normalizedAddress);
 
-    public static AddressValidationResult Invalid(string errorMessage) => new(false, ErrorMessage: errorMessage);
+    public static AddressValidationResult Invalid(string errorMessage, string reason) => new(false, ErrorMessage: errorMessage, Reason: reason);
 
-    public static AddressValidationResult Suggestion(Address suggested) => new(false, SuggestedAddress: suggested);
+    public static AddressValidationResult Suggestion(Address suggested, string reason) => new(false, SuggestedAddress: suggested, Reason: reason);
 }

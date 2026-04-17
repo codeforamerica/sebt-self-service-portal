@@ -36,10 +36,10 @@ describe('useRefreshToken', () => {
   })
 
   describe('Successful Refresh', () => {
-    it('should return new token on successful refresh', async () => {
+    it('resolves successfully when backend returns 204 and sets a fresh cookie', async () => {
       server.use(
         http.post('/api/auth/refresh', () => {
-          return HttpResponse.json({ token: 'new-jwt-token-12345' })
+          return new HttpResponse(null, { status: 204 })
         })
       )
 
@@ -52,29 +52,6 @@ describe('useRefreshToken', () => {
       await waitFor(() => {
         expect(result.current.isSuccess).toBe(true)
       })
-
-      expect(result.current.data?.token).toBe('new-jwt-token-12345')
-    })
-
-    it('should validate response with Zod schema', async () => {
-      server.use(
-        http.post('/api/auth/refresh', () => {
-          return HttpResponse.json({ token: 'valid-token' })
-        })
-      )
-
-      const { result } = renderHook(() => useRefreshToken(), {
-        wrapper: createWrapper()
-      })
-
-      result.current.mutate(undefined)
-
-      await waitFor(() => {
-        expect(result.current.isSuccess).toBe(true)
-      })
-
-      // Schema requires token to be a string
-      expect(typeof result.current.data?.token).toBe('string')
     })
   })
 
@@ -205,7 +182,7 @@ describe('useRefreshToken', () => {
           if (requestCount === 1) {
             return HttpResponse.json({ error: 'Service Unavailable' }, { status: 503 })
           }
-          return HttpResponse.json({ token: 'recovered-token' })
+          return new HttpResponse(null, { status: 204 })
         })
       )
 
@@ -227,7 +204,6 @@ describe('useRefreshToken', () => {
       })
 
       expect(requestCount).toBe(2)
-      expect(result.current.data?.token).toBe('recovered-token')
     })
 
     it('should succeed on second retry after two 502 errors', async () => {
@@ -239,7 +215,7 @@ describe('useRefreshToken', () => {
           if (requestCount <= 2) {
             return HttpResponse.json({ error: 'Bad Gateway' }, { status: 502 })
           }
-          return HttpResponse.json({ token: 'final-success-token' })
+          return new HttpResponse(null, { status: 204 })
         })
       )
 
@@ -262,15 +238,14 @@ describe('useRefreshToken', () => {
       })
 
       expect(requestCount).toBe(3)
-      expect(result.current.data?.token).toBe('final-success-token')
     })
   })
 
   describe('Mutation Callbacks', () => {
-    it('should call onSuccess callback with token data', async () => {
+    it('should call onSuccess callback on 204', async () => {
       server.use(
         http.post('/api/auth/refresh', () => {
-          return HttpResponse.json({ token: 'callback-test-token' })
+          return new HttpResponse(null, { status: 204 })
         })
       )
 
@@ -286,12 +261,7 @@ describe('useRefreshToken', () => {
         expect(result.current.isSuccess).toBe(true)
       })
 
-      expect(onSuccess).toHaveBeenCalledWith(
-        { token: 'callback-test-token' },
-        undefined,
-        undefined,
-        expect.any(Object) // TanStack Query context
-      )
+      expect(onSuccess).toHaveBeenCalled()
     })
 
     it('should call onError callback on failure', async () => {

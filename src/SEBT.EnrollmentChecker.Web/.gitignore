@@ -60,6 +60,9 @@ test-results/
 # Pa11y Accessibility Test Screenshots
 pa11y-screenshots/
 
+# Generated Design Tokens (auto-generated from design/states/*.json)
+design/fonts.ts
+
 # Generated i18n Locale Files
 content/locales/
 !content/locales/**/common.json

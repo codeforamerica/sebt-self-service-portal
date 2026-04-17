@@ -98,6 +98,7 @@ public static class UserFactory
             IdProofingExpiresAt = user.IdProofingExpiresAt,
             IsCoLoaded = user.IsCoLoaded,
             CoLoadedLastUpdated = user.CoLoadedLastUpdated,
+            IdProofingAttemptCount = user.IdProofingAttemptCount,
             CreatedAt = user.CreatedAt,
             UpdatedAt = user.UpdatedAt
         };

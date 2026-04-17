@@ -1,1 +1,1 @@
-export { AuthProvider, clearAuthToken, getAuthToken, setAuthToken, useAuth } from './AuthContext'
+export { AuthProvider, useAuth, type SessionInfo } from './AuthContext'

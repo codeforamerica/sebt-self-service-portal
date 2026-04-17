@@ -10,6 +10,7 @@ import type { SummerEbtCase } from '../../api'
 interface ActionButton {
   labelKey: string
   href: string
+  ctaId: string
   /** When true, this CTA is hidden when no case has a dedicated Summer EBT card. */
   selfServiceOnly?: boolean
 }
@@ -24,15 +25,25 @@ const ACTIONS: ActionButton[] = [
   {
     labelKey: 'actionNavigationChangeMyMailingAddress',
     href: '/profile/address',
+    ctaId: 'update_address_cta',
     selfServiceOnly: true
   },
   {
     labelKey: 'actionNavigationOrderReplacementCards',
     href: '/cards/request',
+    ctaId: 'replacement_card_cta',
     selfServiceOnly: true
   },
-  { labelKey: 'actionNavigationCheckExistingCards', href: '/cards' },
-  { labelKey: 'actionNavigationCheckExistingApplications', href: '/applications' }
+  {
+    labelKey: 'actionNavigationCheckExistingCards',
+    href: '#enrolled-children-heading',
+    ctaId: 'check_cards_cta'
+  },
+  {
+    labelKey: 'actionNavigationCheckExistingApplications',
+    href: '#applications-heading',
+    ctaId: 'check_applications_cta'
+  }
 ]
 
 /**
@@ -80,7 +91,16 @@ export function ActionButtons({ cases }: ActionButtonsProps) {
           >
             <Link
               href={action.href}
+              data-analytics-cta={action.ctaId}
               className={`display-inline-flex flex-align-center padding-y-1 padding-x-205 text-no-underline ${actionButtonText} ${actionButtonBg} radius-pill font-sans-md text-semibold`}
+              {...(action.href.startsWith('#') && {
+                onClick: (e: React.MouseEvent) => {
+                  e.preventDefault()
+                  document
+                    .getElementById(action.href.slice(1))
+                    ?.scrollIntoView({ behavior: 'smooth' })
+                }
+              })}
             >
               {t(action.labelKey)}
               <svg

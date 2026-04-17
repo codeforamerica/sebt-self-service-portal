@@ -11,6 +11,7 @@ namespace SEBT.Portal.Tests.Unit.Services;
 public class JwtTokenServiceTests
 {
     private readonly IOptions<JwtSettings> _options = Substitute.For<IOptions<JwtSettings>>();
+    private readonly IOptions<IdProofingValiditySettings> _validityOptions = Substitute.For<IOptions<IdProofingValiditySettings>>();
     private readonly JwtTokenService _jwtTokenService;
 
     public JwtTokenServiceTests()
@@ -23,7 +24,8 @@ public class JwtTokenServiceTests
             ExpirationMinutes = 60
         };
         _options.Value.Returns(settings);
-        _jwtTokenService = new JwtTokenService(_options);
+        _validityOptions.Value.Returns(new IdProofingValiditySettings { ValidityDays = 1826 });
+        _jwtTokenService = new JwtTokenService(_options, _validityOptions);
     }
 
     [Fact]
@@ -218,7 +220,9 @@ public class JwtTokenServiceTests
         };
         var options = Substitute.For<IOptions<JwtSettings>>();
         options.Value.Returns(settings);
-        var service = new JwtTokenService(options);
+        var validityOpts = Substitute.For<IOptions<IdProofingValiditySettings>>();
+        validityOpts.Value.Returns(new IdProofingValiditySettings());
+        var service = new JwtTokenService(options, validityOpts);
         var user = new User
         {
             Email = "user@example.com",
@@ -418,15 +422,17 @@ public class JwtTokenServiceTests
     }
 
     [Fact]
-    public void GenerateToken_ShouldContainIdProofingExpiresAt_WhenExpiresAtIsProvided()
+    public void GenerateToken_ShouldComputeIdProofingExpiresAt_FromCompletedAtPlusValidityDuration()
     {
-        // Arrange
-        var expiresAt = DateTime.UtcNow.AddYears(1);
+        // Arrange — expiration is now computed from IdProofingCompletedAt + validity duration,
+        // not read from the (obsolete) IdProofingExpiresAt field.
+        var completedAt = DateTime.UtcNow.AddDays(-10);
+        var expectedExpiresAt = completedAt.AddDays(1826); // ValidityDays = 1826
         var user = new User
         {
             Email = "user@example.com",
             IalLevel = UserIalLevel.IAL1plus,
-            IdProofingExpiresAt = expiresAt
+            IdProofingCompletedAt = completedAt
         };
 
         // Act
@@ -440,23 +446,20 @@ public class JwtTokenServiceTests
         Assert.NotNull(expiresAtClaim);
         Assert.True(long.TryParse(expiresAtClaim.Value, out var unixTimestamp));
         var claimDateTime = DateTimeOffset.FromUnixTimeSeconds(unixTimestamp).DateTime;
-        // Allow 1 second tolerance for conversion
-        Assert.True(Math.Abs((claimDateTime - expiresAt).TotalSeconds) < 1);
+        Assert.True(Math.Abs((claimDateTime - expectedExpiresAt).TotalSeconds) < 1);
     }
 
     [Fact]
     public void GenerateToken_ShouldIncludeAllIdProofingClaims_WhenUserHasCompleteData()
     {
-        // Arrange
+        // Arrange — id_proofing_expires_at is now computed from IdProofingCompletedAt
         var completedAt = DateTime.UtcNow.AddDays(-10);
-        var expiresAt = DateTime.UtcNow.AddYears(1);
         var user = new User
         {
             Email = "user@example.com",
             IalLevel = UserIalLevel.IAL1plus,
             IdProofingSessionId = "session-xyz-789",
-            IdProofingCompletedAt = completedAt,
-            IdProofingExpiresAt = expiresAt
+            IdProofingCompletedAt = completedAt
         };
 
         // Act

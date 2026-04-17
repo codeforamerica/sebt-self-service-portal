@@ -220,6 +220,12 @@ docker compose up
 
 Only include sections you want to override; other settings fall back to `appsettings.json`!
 
+### Minimum IAL requirements
+
+Each state must configure the minimum Identity Assurance Level (IAL) required based on case origin. The app will fail to start if these values are missing — there is no state-agnostic default.
+
+See [`appsettings.dc.example.json`](src/SEBT.Portal.Api/appsettings.dc.example.json) and [`appsettings.co.example.json`](src/SEBT.Portal.Api/appsettings.co.example.json) for example values.
+
 ### OIDC support
 
 States can use an external [OpenID Connect (OIDC)](https://openid.net/developers/how-connect-works/) provider for sign-in. OIDC is configured in the API under flat `Oidc` keys (`DiscoveryEndpoint`, `ClientId`, `CallbackRedirectUri`); the portal uses generic endpoints and config rather than state-specific auth code paths. Code exchange and id_token validation run in the Next.js server; the .NET API performs "complete-login" (validates a short-lived callback token and returns a portal JWT that includes IdP claims such as phone and name).

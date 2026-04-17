@@ -16,7 +16,7 @@
  */
 
 import './load-env.js'
-import { readFileSync, writeFileSync, existsSync } from 'fs'
+import { readFileSync, writeFileSync, existsSync, mkdirSync } from 'fs'
 import { join, dirname, relative } from 'path'
 import { fileURLToPath } from 'url'
 
@@ -170,6 +170,7 @@ function main() {
     console.log(`✅ Found ${fonts.size} font(s): ${Array.from(fonts).join(', ')}`)
 
     const fontsTs = generateFontsTs(fonts, state)
+    mkdirSync(dirname(outputPath), { recursive: true })
     writeFileSync(outputPath, fontsTs, 'utf8')
 
     console.log(`✅ Generated fonts.ts for ${state.toUpperCase()}`)

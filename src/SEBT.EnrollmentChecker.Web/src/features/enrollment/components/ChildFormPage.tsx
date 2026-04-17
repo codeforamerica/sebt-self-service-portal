@@ -67,7 +67,7 @@ export function ChildFormPage({ showSchoolField, apiBaseUrl }: ChildFormPageProp
         <p className="usa-prose">{t('body')}</p>
         <p className="usa-hint">{t('requiredFields', { ns: 'common' })}</p>
         <ChildForm
-          initialValues={editingChild}
+          {...(editingChild && { initialValues: editingChild })}
           onSubmit={handleSubmit}
           onCancel={handleCancel}
           showSchoolField={showSchoolField}

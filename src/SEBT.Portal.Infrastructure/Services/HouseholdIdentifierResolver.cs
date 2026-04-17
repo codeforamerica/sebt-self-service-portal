@@ -24,12 +24,12 @@ public class HouseholdIdentifierResolver : IHouseholdIdentifierResolver
     private readonly ILogger<HouseholdIdentifierResolver>? _logger;
 
     public HouseholdIdentifierResolver(
-        IOptions<StateHouseholdIdSettings> settings,
+        IOptionsSnapshot<StateHouseholdIdSettings> settingsSnapshot,
         IUserRepository userRepository,
         IPhoneOverrideProvider phoneOverrideProvider,
         ILogger<HouseholdIdentifierResolver>? logger = null)
     {
-        _settings = settings.Value;
+        _settings = settingsSnapshot.Value;
         _userRepository = userRepository;
         _phoneOverrideProvider = phoneOverrideProvider;
         _logger = logger;
@@ -79,7 +79,7 @@ public class HouseholdIdentifierResolver : IHouseholdIdentifierResolver
             var overridePhone = _phoneOverrideProvider.GetOverridePhone();
             if (!string.IsNullOrWhiteSpace(overridePhone))
             {
-                _logger?.LogInformation("Using development phone override for household lookup ");
+                _logger?.LogInformation("Using development phone override for household lookup");
                 return new HouseholdIdentifier(PreferredHouseholdIdType.Phone, overridePhone);
             }
 

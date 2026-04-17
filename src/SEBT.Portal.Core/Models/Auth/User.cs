@@ -38,6 +38,11 @@ public class User
     /// <summary>
     /// The date and time when ID proofing expires (if applicable).
     /// </summary>
+    // Expiration is now computed dynamically from IdProofingCompletedAt + configured
+    // IdProofingValiditySettings.ValidityDays. Storing a baked-in expiration date
+    // in the DB means config changes require bulk data updates to existing users.
+    // The JwtTokenService computes the id_proofing_expires_at JWT claim on the fly.
+    [Obsolete("Expiration is computed from IdProofingCompletedAt + IdProofingValiditySettings.ValidityDays. Do not read or write this field for new code.")]
     public DateTime? IdProofingExpiresAt { get; set; }
 
     /// <summary>
@@ -80,4 +85,10 @@ public class User
     /// SSN or last-4 when used as household identifier for a state (per state policy).
     /// </summary>
     public string? Ssn { get; set; }
+
+    /// <summary>
+    /// Number of times this user has submitted ID proofing to Socure.
+    /// Used to enforce the retry cap (max 3 attempts).
+    /// </summary>
+    public int IdProofingAttemptCount { get; set; }
 }

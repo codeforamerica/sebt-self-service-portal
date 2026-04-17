@@ -224,6 +224,132 @@ describe('DocVerifyPage', () => {
     })
   })
 
+  describe('Capture → webhook safety net', () => {
+    // Override the mock adapter delay to be very long so it never fires
+    // during the test. This simulates the real SDK failing to detect
+    // remote mobile capture completion.
+    beforeEach(() => {
+      server.use(
+        http.get('/api/challenges/:id/start', () => {
+          return HttpResponse.json({
+            docvTransactionToken: 'test-token',
+            docvUrl: 'https://verify.socure.com/#/dv/test-token'
+          })
+        })
+      )
+    })
+
+    it('redirects to dashboard when webhook resolves during capture', async () => {
+      setChallengeContext('mock-challenge-123')
+
+      // Return verified immediately; the capture-state polling should detect it
+      server.use(
+        http.get('/api/id-proofing/status', () => {
+          return HttpResponse.json({ status: 'verified' })
+        })
+      )
+
+      const user = userEvent.setup()
+
+      renderWithProviders(
+        <DocVerifyPage
+          contactLink={TEST_CONTACT_LINK}
+          sdkKey={TEST_SDK_KEY}
+        />
+      )
+
+      await user.click(await screen.findByRole('button', { name: /continue/i }))
+
+      // Should redirect via capture-state polling before mock adapter's 1500ms onSuccess
+      await waitFor(
+        () => {
+          expect(mockPush).toHaveBeenCalledWith('/dashboard')
+        },
+        { timeout: 1000 }
+      )
+    })
+
+    it('redirects to off-boarding when webhook rejects during capture', async () => {
+      setChallengeContext('mock-challenge-123')
+
+      server.use(
+        http.get('/api/id-proofing/status', () => {
+          return HttpResponse.json({
+            status: 'rejected',
+            offboardingReason: 'docVerificationFailed'
+          })
+        })
+      )
+
+      const user = userEvent.setup()
+
+      renderWithProviders(
+        <DocVerifyPage
+          contactLink={TEST_CONTACT_LINK}
+          sdkKey={TEST_SDK_KEY}
+        />
+      )
+
+      await user.click(await screen.findByRole('button', { name: /continue/i }))
+
+      await waitFor(
+        () => {
+          expect(mockPush).toHaveBeenCalledWith('/login/id-proofing/off-boarding')
+        },
+        { timeout: 1000 }
+      )
+
+      expect(sessionStorage.getItem('offboarding_reason')).toBe('docVerificationFailed')
+    })
+  })
+
+  describe('Stale sessionStorage detection', () => {
+    it('shows interstitial when persisted challengeId does not match URL challengeId', async () => {
+      // Simulate stale sessionStorage from a prior DocV attempt
+      sessionStorage.setItem('docVerify_challengeId', 'old-challenge-id')
+      sessionStorage.setItem('docVerify_subState', 'pending')
+
+      // URL has a different (current) challengeId
+      mockSearchParams = new URLSearchParams({ challengeId: 'new-challenge-id' })
+
+      renderWithProviders(
+        <DocVerifyPage
+          contactLink={TEST_CONTACT_LINK}
+          sdkKey={TEST_SDK_KEY}
+        />
+      )
+
+      // Should render the interstitial, NOT the VerificationPending screen
+      expect(
+        await screen.findByRole('heading', { name: /we want to keep your account safe/i })
+      ).toBeInTheDocument()
+      expect(screen.queryByText(/verifying your document/i)).not.toBeInTheDocument()
+    })
+
+    it('resumes at pending when persisted challengeId matches URL challengeId', async () => {
+      // Same challengeId in both sessionStorage and URL
+      setChallengeContext('challenge-abc', 'pending')
+
+      // Override verification status to return pending so it stays on the pending screen
+      server.use(
+        http.get('/api/id-proofing/status', () => {
+          return HttpResponse.json({ status: 'pending' })
+        })
+      )
+
+      renderWithProviders(
+        <DocVerifyPage
+          contactLink={TEST_CONTACT_LINK}
+          sdkKey={TEST_SDK_KEY}
+        />
+      )
+
+      await waitFor(() => {
+        expect(screen.getByText(/verifying your document/i)).toBeInTheDocument()
+      })
+    })
+  })
+
   describe('SessionStorage recovery (D6)', () => {
     it('resumes at pending when persisted sub-state was capture', async () => {
       setChallengeContext('challenge-abc', 'capture')
@@ -271,6 +397,29 @@ describe('DocVerifyPage', () => {
 
       // Challenge context should be cleared
       expect(sessionStorage.getItem('docVerify_challengeId')).toBeNull()
+    })
+
+    it('navigates to off-boarding when status endpoint returns 404', async () => {
+      setChallengeContext('challenge-abc', 'pending')
+
+      server.use(
+        http.get('/api/id-proofing/status', () => {
+          return HttpResponse.json({ error: 'Challenge not found.' }, { status: 404 })
+        })
+      )
+
+      renderWithProviders(
+        <DocVerifyPage
+          contactLink={TEST_CONTACT_LINK}
+          sdkKey={TEST_SDK_KEY}
+        />
+      )
+
+      await waitFor(() => {
+        expect(mockPush).toHaveBeenCalledWith('/login/id-proofing/off-boarding')
+      })
+
+      expect(sessionStorage.getItem('offboarding_reason')).toBe('challengeNotFound')
     })
 
     it('navigates to off-boarding when verification is rejected', async () => {
