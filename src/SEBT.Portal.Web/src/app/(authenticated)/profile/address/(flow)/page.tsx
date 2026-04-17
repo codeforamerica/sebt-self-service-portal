@@ -1,7 +1,7 @@
 'use client'
 
 import { useRouter } from 'next/navigation'
-import { useEffect } from 'react'
+import { useEffect, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 
 import { AddressForm } from '@/features/address/components/AddressForm'
@@ -16,7 +16,10 @@ export default function AddressFormPage() {
   const { data, isLoading } = useHouseholdData()
   const router = useRouter()
 
-  const canChangeAddress = data?.summerEbtCases.some((c) => c.allowAddressChange) ?? false
+  const canChangeAddress = useMemo(
+    () => data?.summerEbtCases.some((c) => c.allowAddressChange) ?? false,
+    [data?.summerEbtCases]
+  )
 
   useEffect(() => {
     if (!isLoading && !canChangeAddress) {
