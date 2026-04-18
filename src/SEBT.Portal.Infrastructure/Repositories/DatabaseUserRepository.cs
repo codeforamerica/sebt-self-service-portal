@@ -34,14 +34,20 @@ public class DatabaseUserRepository(PortalDbContext dbContext, IIdentifierHasher
             throw new ArgumentNullException(nameof(user));
         }
 
-        if (string.IsNullOrWhiteSpace(user.Email))
+        // OTP users must have an email; OIDC users must have an ExternalProviderId.
+        // At least one identifier is required.
+        if (string.IsNullOrWhiteSpace(user.Email) && string.IsNullOrWhiteSpace(user.ExternalProviderId))
         {
-            throw new ArgumentException("Email cannot be null or empty.", nameof(user));
+            throw new ArgumentException(
+                "Either Email or ExternalProviderId must be provided.", nameof(user));
         }
 
         var entity = MapToEntity(user);
-        // Normalize email to lowercase for consistent storage
-        entity.Email = NormalizeEmail(entity.Email);
+        // Normalize email to lowercase for consistent storage (when present)
+        if (entity.Email != null)
+        {
+            entity.Email = NormalizeEmail(entity.Email);
+        }
         dbContext.Users.Add(entity);
         await dbContext.SaveChangesAsync(cancellationToken);
     }
@@ -58,11 +64,6 @@ public class DatabaseUserRepository(PortalDbContext dbContext, IIdentifierHasher
             throw new ArgumentException("User Id must be greater than zero for updates.", nameof(user));
         }
 
-        if (string.IsNullOrWhiteSpace(user.Email))
-        {
-            throw new ArgumentException("Email cannot be null or empty.", nameof(user));
-        }
-
         var entity = await dbContext.Users
             .FirstOrDefaultAsync(u => u.Id == user.Id, cancellationToken);
 
@@ -71,11 +72,15 @@ public class DatabaseUserRepository(PortalDbContext dbContext, IIdentifierHasher
             throw new InvalidOperationException($"User with Id {user.Id} not found.");
         }
 
-        var normalizedEmail = NormalizeEmail(user.Email);
-
-        if (entity.Email != normalizedEmail)
+        // Update email only when the caller provides one (OTP users).
+        // OIDC users have null email — leave the DB value unchanged in that case.
+        if (user.Email != null)
         {
-            entity.Email = normalizedEmail;
+            var normalizedEmail = NormalizeEmail(user.Email);
+            if (entity.Email != normalizedEmail)
+            {
+                entity.Email = normalizedEmail;
+            }
         }
 
         // Update properties

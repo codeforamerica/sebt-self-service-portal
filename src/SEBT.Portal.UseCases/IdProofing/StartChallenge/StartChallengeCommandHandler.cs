@@ -111,11 +111,17 @@ public class StartChallengeCommandHandler(
                 PreconditionFailedReason.NotFound, "User not found.");
         }
 
+        if (string.IsNullOrWhiteSpace(user.Email))
+        {
+            return Result<StartChallengeResponse>.PreconditionFailed(
+                PreconditionFailedReason.Conflict, "Email is required for document verification.");
+        }
+
         Result<SocureDocvSession> sessionResult;
         try
         {
             sessionResult = await socureClient.StartDocvSessionAsync(
-                command.UserId, user.Email, cancellationToken);
+                command.UserId, user.Email!, cancellationToken);
         }
         catch (NotSupportedException)
         {

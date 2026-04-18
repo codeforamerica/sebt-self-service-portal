@@ -50,6 +50,15 @@ public class SubmitIdProofingCommandHandler(
                 PreconditionFailedReason.NotFound, "User not found.");
         }
 
+        // Socure requires an email address. OIDC users who reach this point without
+        // an email cannot proceed with ID proofing.
+        if (string.IsNullOrWhiteSpace(user.Email))
+        {
+            logger.LogWarning("User {UserId} has no email, cannot submit ID proofing", command.UserId);
+            return Result<SubmitIdProofingResponse>.PreconditionFailed(
+                PreconditionFailedReason.Conflict, "Email is required for ID proofing.");
+        }
+
         // Max attempts reached → off-board (3-attempt cap)
         const int maxAttempts = 3;
         if (user.IdProofingAttemptCount >= maxAttempts)
