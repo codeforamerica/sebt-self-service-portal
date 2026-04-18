@@ -21,5 +21,12 @@ public class RefreshTokenCommand : ICommand<string>
     /// </summary>
     [Required(ErrorMessage = "CurrentPrincipal is required.")]
     public required ClaimsPrincipal CurrentPrincipal { get; init; }
+
+    /// <summary>
+    /// The external provider ID (IdP sub claim) for OIDC users. Null for OTP users.
+    /// When present, the handler looks up the user by ExternalProviderId instead of email
+    /// and preserves IAL from JWT claims instead of reading from DB.
+    /// </summary>
+    public string? ExternalProviderId { get; set; }
 }
 

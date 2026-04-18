@@ -99,7 +99,16 @@ public class AuthController(
         logger.LogInformation("Token refresh request received for email {Email}, Phone={MaskedPhone}",
             email, GetMaskedPhone());
 
-        var command = new RefreshTokenCommand { Email = email, CurrentPrincipal = User };
+        var externalProviderId = User.FindFirst("sub")?.Value;
+        // If the JWT sub differs from the email, it's an OIDC user whose sub is the IdP subject
+        var isOidcUser = externalProviderId != null && externalProviderId != email;
+
+        var command = new RefreshTokenCommand
+        {
+            Email = email,
+            ExternalProviderId = isOidcUser ? externalProviderId : null,
+            CurrentPrincipal = User
+        };
         var result = await handler.Handle(command);
 
         if (result.IsSuccess)

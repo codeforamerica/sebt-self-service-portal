@@ -282,5 +282,72 @@ public class RefreshTokenCommandHandlerTests
             u.IdProofingSessionId == "session-xyz" &&
             u.IdProofingCompletedAt == completedAt), Arg.Any<IReadOnlyDictionary<string, string>>());
     }
+
+    [Fact]
+    public async Task Handle_WhenOidcUser_PreservesIalFromExistingJwtClaims()
+    {
+        // Arrange
+        var principal = new ClaimsPrincipal(new ClaimsIdentity(new[]
+        {
+            new Claim("email", "user@example.com"),
+            new Claim("sub", "pingone-sub-12345"),
+            new Claim(JwtClaimTypes.Ial, "1plus"),
+            new Claim(JwtClaimTypes.IdProofingStatus, "2"), // Completed
+        }));
+
+        var command = new RefreshTokenCommand
+        {
+            Email = "user@example.com",
+            ExternalProviderId = "pingone-sub-12345",
+            CurrentPrincipal = principal
+        };
+
+        // OIDC user has no IAL stored in DB
+        var user = new User
+        {
+            Id = 1,
+            ExternalProviderId = "pingone-sub-12345",
+            IalLevel = UserIalLevel.None
+        };
+
+        userRepository.GetUserByExternalIdAsync("pingone-sub-12345", Arg.Any<CancellationToken>())
+            .Returns(user);
+        jwtTokenService.GenerateToken(Arg.Any<User>(), Arg.Any<IReadOnlyDictionary<string, string>>())
+            .Returns("refreshed-jwt");
+
+        // Act
+        var result = await handler.Handle(command);
+
+        // Assert
+        Assert.True(result.IsSuccess);
+        // Verify that IAL from JWT claims (1plus) was passed through, not DB (None)
+        jwtTokenService.Received(1).GenerateToken(
+            Arg.Any<User>(),
+            Arg.Is<IReadOnlyDictionary<string, string>>(c =>
+                c.ContainsKey(JwtClaimTypes.Ial) && c[JwtClaimTypes.Ial] == "1plus"));
+    }
+
+    [Fact]
+    public async Task Handle_WhenOidcUserNotFound_ReturnsPreconditionFailed()
+    {
+        // Arrange
+        var command = new RefreshTokenCommand
+        {
+            Email = "user@example.com",
+            ExternalProviderId = "pingone-sub-nonexistent",
+            CurrentPrincipal = new ClaimsPrincipal()
+        };
+
+        userRepository.GetUserByExternalIdAsync("pingone-sub-nonexistent", Arg.Any<CancellationToken>())
+            .Returns((User?)null);
+
+        // Act
+        var result = await handler.Handle(command);
+
+        // Assert
+        Assert.False(result.IsSuccess);
+        var failedResult = Assert.IsType<PreconditionFailedResult<string>>(result);
+        Assert.Equal(PreconditionFailedReason.NotFound, failedResult.Reason);
+    }
 }
 
