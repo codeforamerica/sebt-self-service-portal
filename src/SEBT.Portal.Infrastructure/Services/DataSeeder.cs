@@ -35,6 +35,7 @@ public class DataSeeder : IDataSeeder
         {
             Id = user.Id, // Will be 0 for new users, set by database
             Email = normalizedEmail,
+            ExternalProviderId = user.ExternalProviderId,
             IdProofingStatus = (int)user.IdProofingStatus,
             IalLevel = (int)user.IalLevel,
             IdProofingSessionId = user.IdProofingSessionId,
