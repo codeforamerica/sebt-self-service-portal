@@ -260,7 +260,8 @@ public class OidcControllerTests
         var body = new CompleteLoginRequest(CoStateKey, callbackToken);
 
         var user = new User { Id = 1, Email = "user@example.com" };
-        _userRepository.GetOrCreateUserAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
+        _userRepository.GetOrCreateUserByExternalIdAsync(
+                Arg.Any<string>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
             .Returns((user, false));
 
         const string portalJwt = "portal-jwt-returned-by-service";
@@ -293,7 +294,7 @@ public class OidcControllerTests
         var callbackToken = CreateValidCallbackToken(signingKey, email: "new-user@example.com");
         var body = new CompleteLoginRequest(CoStateKey, callbackToken, IsStepUp: true);
 
-        _userRepository.GetUserByEmailAsync("new-user@example.com", Arg.Any<CancellationToken>())
+        _userRepository.GetUserByExternalIdAsync("test-sub-12345", Arg.Any<CancellationToken>())
             .Returns((User?)null);
 
         var result = await _controller.CompleteLogin(body, CancellationToken.None);
@@ -306,7 +307,8 @@ public class OidcControllerTests
             "Step-up requires an existing session. Please sign in again.",
             errorProp.GetValue(badRequest.Value) as string);
 
-        await _userRepository.DidNotReceive().GetOrCreateUserAsync(Arg.Any<string>(), Arg.Any<CancellationToken>());
+        await _userRepository.DidNotReceive().GetOrCreateUserByExternalIdAsync(
+            Arg.Any<string>(), Arg.Any<string?>(), Arg.Any<CancellationToken>());
         await _userRepository.DidNotReceive().UpdateUserAsync(Arg.Any<User>(), Arg.Any<CancellationToken>());
     }
 
@@ -321,10 +323,8 @@ public class OidcControllerTests
         var body = new CompleteLoginRequest(CoStateKey, callbackToken);
 
         var user = new User { Id = 1, Email = "user@example.com" };
-        _userRepository.GetUserByEmailAsync("user@example.com", Arg.Any<CancellationToken>())
+        _userRepository.GetUserByExternalIdAsync("test-sub-12345", Arg.Any<CancellationToken>())
             .Returns(user);
-        _userRepository.UpdateUserAsync(Arg.Any<User>(), Arg.Any<CancellationToken>())
-            .Returns(Task.CompletedTask);
 
         const string portalJwt = "portal-jwt-returned-by-service";
         _jwtService.GenerateToken(Arg.Any<User>(), Arg.Any<IReadOnlyDictionary<string, string>?>())
@@ -355,10 +355,8 @@ public class OidcControllerTests
         var body = new CompleteLoginRequest(CoStateKey, callbackToken);
 
         var user = new User { Id = 1, Email = "user@example.com" };
-        _userRepository.GetUserByEmailAsync("user@example.com", Arg.Any<CancellationToken>())
+        _userRepository.GetUserByExternalIdAsync("test-sub-12345", Arg.Any<CancellationToken>())
             .Returns(user);
-        _userRepository.UpdateUserAsync(Arg.Any<User>(), Arg.Any<CancellationToken>())
-            .Returns(Task.CompletedTask);
 
         _jwtService.GenerateToken(Arg.Any<User>(), Arg.Any<IReadOnlyDictionary<string, string>?>())
             .Returns("portal-jwt");
@@ -407,7 +405,8 @@ public class OidcControllerTests
         var body = new CompleteLoginRequest(CoStateKey, callbackToken, IsStepUp: true);
 
         var user = new User { Id = 1, Email = "user@example.com" };
-        _userRepository.GetOrCreateUserAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
+        _userRepository.GetOrCreateUserByExternalIdAsync(
+                Arg.Any<string>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
             .Returns((user, false));
         _jwtService.GenerateToken(Arg.Any<User>(), Arg.Any<IReadOnlyDictionary<string, string>?>())
             .Returns("portal-jwt");
@@ -417,9 +416,11 @@ public class OidcControllerTests
         // Should succeed (non-step-up path), NOT the step-up path
         Assert.IsType<OkObjectResult>(result);
 
-        // The non-step-up path calls GetOrCreateUserAsync, NOT GetUserByEmailAsync
-        await _userRepository.Received(1).GetOrCreateUserAsync(Arg.Any<string>(), Arg.Any<CancellationToken>());
-        await _userRepository.DidNotReceive().GetUserByEmailAsync(Arg.Any<string>(), Arg.Any<CancellationToken>());
+        // The non-step-up path calls GetOrCreateUserByExternalIdAsync, NOT GetUserByExternalIdAsync
+        await _userRepository.Received(1).GetOrCreateUserByExternalIdAsync(
+            Arg.Any<string>(), Arg.Any<string?>(), Arg.Any<CancellationToken>());
+        await _userRepository.DidNotReceive().GetUserByExternalIdAsync(
+            Arg.Any<string>(), Arg.Any<CancellationToken>());
     }
 
     #region OIDC verification claim reconciliation
@@ -483,7 +484,7 @@ public class OidcControllerTests
     }
 
     [Fact]
-    public async Task CompleteLogin_WhenOidcClaimsContainFreshVerification_UpdatesUserToIAL1plus()
+    public async Task CompleteLogin_WhenOidcClaimsContainFreshVerification_SetsIalInClaimsNotDb()
     {
         const string signingKey = "complete-login-signing-key-at-least-32-characters-long";
         _config["Oidc:CompleteLoginSigningKey"].Returns(signingKey);
@@ -494,27 +495,36 @@ public class OidcControllerTests
         var verificationDate = DateTime.UtcNow.AddDays(-30).ToString("o");
         var callbackToken = CreateCallbackTokenWithClaims(signingKey,
             new Claim("email", "user@example.com"),
+            new Claim("sub", "test-sub-12345"),
             new Claim("socureIdVerificationLevel", "1.5"),
             new Claim("socureIdVerificationDate", verificationDate));
         var body = new CompleteLoginRequest(CoStateKey, callbackToken);
 
         var user = new User { Id = 1, Email = "user@example.com", IalLevel = UserIalLevel.IAL1 };
-        _userRepository.GetOrCreateUserAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
+        _userRepository.GetOrCreateUserByExternalIdAsync(
+                Arg.Any<string>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
             .Returns((user, false));
-        _jwtService.GenerateToken(Arg.Any<User>(), Arg.Any<IReadOnlyDictionary<string, string>?>())
+
+        IReadOnlyDictionary<string, string>? capturedClaims = null;
+        _jwtService.GenerateToken(Arg.Any<User>(), Arg.Do<IReadOnlyDictionary<string, string>?>(c => capturedClaims = c))
             .Returns("portal-jwt");
 
         await controller.CompleteLogin(body, CancellationToken.None);
 
-        // User should have been updated to IAL1plus
-        await _userRepository.Received().UpdateUserAsync(
-            Arg.Is<User>(u => u.IalLevel == UserIalLevel.IAL1plus
-                           && u.IdProofingStatus == IdProofingStatus.Completed),
-            Arg.Any<CancellationToken>());
+        // IAL should be passed in additionalClaims, not persisted to DB
+        Assert.NotNull(capturedClaims);
+        Assert.Equal("1plus", capturedClaims![JwtClaimTypes.Ial]);
+        Assert.Equal(
+            ((int)IdProofingStatus.Completed).ToString(),
+            capturedClaims[JwtClaimTypes.IdProofingStatus]);
+
+        // DB should NOT have been updated
+        await _userRepository.DidNotReceive().UpdateUserAsync(
+            Arg.Any<User>(), Arg.Any<CancellationToken>());
     }
 
     [Fact]
-    public async Task CompleteLogin_WhenOidcVerificationExpired_ResetsUserToIAL1()
+    public async Task CompleteLogin_WhenOidcVerificationExpired_SetsExpiredIalInClaims()
     {
         const string signingKey = "complete-login-signing-key-at-least-32-characters-long";
         _config["Oidc:CompleteLoginSigningKey"].Returns(signingKey);
@@ -527,27 +537,36 @@ public class OidcControllerTests
         var verificationDate = DateTime.UtcNow.AddYears(-2).ToString("o");
         var callbackToken = CreateCallbackTokenWithClaims(signingKey,
             new Claim("email", "user@example.com"),
+            new Claim("sub", "test-sub-12345"),
             new Claim("socureIdVerificationLevel", "1.5"),
             new Claim("socureIdVerificationDate", verificationDate));
         var body = new CompleteLoginRequest(CoStateKey, callbackToken);
 
         var user = new User { Id = 1, Email = "user@example.com", IalLevel = UserIalLevel.IAL1plus };
-        _userRepository.GetOrCreateUserAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
+        _userRepository.GetOrCreateUserByExternalIdAsync(
+                Arg.Any<string>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
             .Returns((user, false));
-        _jwtService.GenerateToken(Arg.Any<User>(), Arg.Any<IReadOnlyDictionary<string, string>?>())
+
+        IReadOnlyDictionary<string, string>? capturedClaims = null;
+        _jwtService.GenerateToken(Arg.Any<User>(), Arg.Do<IReadOnlyDictionary<string, string>?>(c => capturedClaims = c))
             .Returns("portal-jwt");
 
         await controller.CompleteLogin(body, CancellationToken.None);
 
-        // User should have been reset to IAL1 with Expired status
-        await _userRepository.Received().UpdateUserAsync(
-            Arg.Is<User>(u => u.IalLevel == UserIalLevel.IAL1
-                           && u.IdProofingStatus == IdProofingStatus.Expired),
-            Arg.Any<CancellationToken>());
+        // Expired verification: IAL should be "1" with Expired status in claims
+        Assert.NotNull(capturedClaims);
+        Assert.Equal("1", capturedClaims![JwtClaimTypes.Ial]);
+        Assert.Equal(
+            ((int)IdProofingStatus.Expired).ToString(),
+            capturedClaims[JwtClaimTypes.IdProofingStatus]);
+
+        // DB should NOT have been updated
+        await _userRepository.DidNotReceive().UpdateUserAsync(
+            Arg.Any<User>(), Arg.Any<CancellationToken>());
     }
 
     [Fact]
-    public async Task CompleteLogin_WhenNoVerificationClaims_DoesNotChangeIal()
+    public async Task CompleteLogin_WhenNoVerificationClaims_SetsIal1InClaims()
     {
         const string signingKey = "complete-login-signing-key-at-least-32-characters-long";
         _config["Oidc:CompleteLoginSigningKey"].Returns(signingKey);
@@ -560,17 +579,144 @@ public class OidcControllerTests
         var body = new CompleteLoginRequest(CoStateKey, callbackToken);
 
         var user = new User { Id = 1, Email = "user@example.com", IalLevel = UserIalLevel.IAL1 };
-        _userRepository.GetOrCreateUserAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
+        _userRepository.GetOrCreateUserByExternalIdAsync(
+                Arg.Any<string>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
+            .Returns((user, false));
+
+        IReadOnlyDictionary<string, string>? capturedClaims = null;
+        _jwtService.GenerateToken(Arg.Any<User>(), Arg.Do<IReadOnlyDictionary<string, string>?>(c => capturedClaims = c))
+            .Returns("portal-jwt");
+
+        await controller.CompleteLogin(body, CancellationToken.None);
+
+        // No verification claims → IAL1 default in additionalClaims
+        Assert.NotNull(capturedClaims);
+        Assert.Equal("1", capturedClaims![JwtClaimTypes.Ial]);
+
+        // DB should NOT have been updated
+        await _userRepository.DidNotReceive().UpdateUserAsync(
+            Arg.Any<User>(), Arg.Any<CancellationToken>());
+    }
+
+    /// <summary>
+    /// CompleteLogin uses the sub claim (ExternalProviderId) for user lookup and passes
+    /// email as a migration hint to GetOrCreateUserByExternalIdAsync.
+    /// </summary>
+    [Fact]
+    public async Task CompleteLogin_WhenValidOidcLogin_LooksUpUserByExternalProviderId()
+    {
+        const string signingKey = "complete-login-signing-key-at-least-32-characters-long";
+        _config["Oidc:CompleteLoginSigningKey"].Returns(signingKey);
+
+        var controller = CreateControllerWithTranslator();
+        SetupPreAuthSessionForController(controller);
+
+        var callbackToken = CreateCallbackTokenWithClaims(signingKey,
+            new Claim("email", "user@example.com"),
+            new Claim("sub", "oidc-sub-abc123"));
+        var body = new CompleteLoginRequest(CoStateKey, callbackToken);
+
+        var user = new User { Id = 1, Email = "user@example.com" };
+        _userRepository.GetOrCreateUserByExternalIdAsync(
+                "oidc-sub-abc123", "user@example.com", Arg.Any<CancellationToken>())
+            .Returns((user, false));
+        _jwtService.GenerateToken(Arg.Any<User>(), Arg.Any<IReadOnlyDictionary<string, string>?>())
+            .Returns("portal-jwt");
+
+        var result = await controller.CompleteLogin(body, CancellationToken.None);
+
+        Assert.IsType<OkObjectResult>(result);
+
+        // Should have been called with the exact sub and email values
+        await _userRepository.Received(1).GetOrCreateUserByExternalIdAsync(
+            "oidc-sub-abc123", "user@example.com", Arg.Any<CancellationToken>());
+
+        // Should NOT use the old email-based lookup
+        await _userRepository.DidNotReceive().GetOrCreateUserAsync(
+            Arg.Any<string>(), Arg.Any<CancellationToken>());
+        await _userRepository.DidNotReceive().GetUserByEmailAsync(
+            Arg.Any<string>(), Arg.Any<CancellationToken>());
+    }
+
+    /// <summary>
+    /// CompleteLogin does NOT persist IAL to the database — verification claims
+    /// are injected into additionalClaims for JwtTokenService to pick up.
+    /// </summary>
+    [Fact]
+    public async Task CompleteLogin_WhenVerificationPresent_DoesNotPersistIalToDb()
+    {
+        const string signingKey = "complete-login-signing-key-at-least-32-characters-long";
+        _config["Oidc:CompleteLoginSigningKey"].Returns(signingKey);
+
+        var controller = CreateControllerWithTranslator();
+        SetupPreAuthSessionForController(controller);
+
+        var verificationDate = DateTime.UtcNow.AddDays(-30).ToString("o");
+        var callbackToken = CreateCallbackTokenWithClaims(signingKey,
+            new Claim("email", "user@example.com"),
+            new Claim("sub", "test-sub-12345"),
+            new Claim("socureIdVerificationLevel", "1.5"),
+            new Claim("socureIdVerificationDate", verificationDate));
+        var body = new CompleteLoginRequest(CoStateKey, callbackToken);
+
+        var user = new User { Id = 1, Email = "user@example.com", IalLevel = UserIalLevel.IAL1 };
+        _userRepository.GetOrCreateUserByExternalIdAsync(
+                Arg.Any<string>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
             .Returns((user, false));
         _jwtService.GenerateToken(Arg.Any<User>(), Arg.Any<IReadOnlyDictionary<string, string>?>())
             .Returns("portal-jwt");
 
         await controller.CompleteLogin(body, CancellationToken.None);
 
-        // No verification claims → no IAL reconciliation update
-        // Only the initial IAL1 bump may have been called (user is already IAL1)
+        // UpdateUserAsync should NEVER be called — IAL is in claims, not DB
         await _userRepository.DidNotReceive().UpdateUserAsync(
             Arg.Any<User>(), Arg.Any<CancellationToken>());
+
+        // The user object's IAL should remain untouched (IAL1, not IAL1plus)
+        Assert.Equal(UserIalLevel.IAL1, user.IalLevel);
+    }
+
+    /// <summary>
+    /// CompleteLogin passes IAL from verification claims into additionalClaims
+    /// so that GenerateToken includes them in the JWT.
+    /// </summary>
+    [Fact]
+    public async Task CompleteLogin_WhenVerificationPresent_PassesIalInAdditionalClaimsToGenerateToken()
+    {
+        const string signingKey = "complete-login-signing-key-at-least-32-characters-long";
+        _config["Oidc:CompleteLoginSigningKey"].Returns(signingKey);
+
+        var controller = CreateControllerWithTranslator();
+        SetupPreAuthSessionForController(controller);
+
+        var verificationDate = DateTime.UtcNow.AddDays(-30).ToString("o");
+        var callbackToken = CreateCallbackTokenWithClaims(signingKey,
+            new Claim("email", "user@example.com"),
+            new Claim("sub", "test-sub-12345"),
+            new Claim("socureIdVerificationLevel", "1.5"),
+            new Claim("socureIdVerificationDate", verificationDate));
+        var body = new CompleteLoginRequest(CoStateKey, callbackToken);
+
+        var user = new User { Id = 1, Email = "user@example.com", IalLevel = UserIalLevel.IAL1 };
+        _userRepository.GetOrCreateUserByExternalIdAsync(
+                Arg.Any<string>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
+            .Returns((user, false));
+
+        IReadOnlyDictionary<string, string>? capturedClaims = null;
+        _jwtService.GenerateToken(
+                Arg.Any<User>(),
+                Arg.Do<IReadOnlyDictionary<string, string>?>(c => capturedClaims = c))
+            .Returns("portal-jwt");
+
+        await controller.CompleteLogin(body, CancellationToken.None);
+
+        // Verify IAL claims were passed to GenerateToken
+        Assert.NotNull(capturedClaims);
+        Assert.Equal("1plus", capturedClaims![JwtClaimTypes.Ial]);
+        Assert.Equal(
+            ((int)IdProofingStatus.Completed).ToString(),
+            capturedClaims[JwtClaimTypes.IdProofingStatus]);
+        Assert.True(capturedClaims.ContainsKey(JwtClaimTypes.IdProofingCompletedAt));
     }
 
     #endregion
@@ -578,11 +724,11 @@ public class OidcControllerTests
     /// <summary>Callback token issuer/audience must match <c>Oidc:CallbackRedirectUri</c> (trimmed).</summary>
     private const string TestCallbackTokenAudience = "http://localhost:3000/callback";
 
-    private static string CreateValidCallbackToken(string signingKey, string email)
+    private static string CreateValidCallbackToken(string signingKey, string email, string sub = "test-sub-12345")
     {
         var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(signingKey));
         var credentials = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
-        var claims = new List<Claim> { new("email", email) };
+        var claims = new List<Claim> { new("email", email), new("sub", sub) };
         var token = new JwtSecurityToken(
             issuer: TestCallbackTokenAudience,
             audience: TestCallbackTokenAudience,
