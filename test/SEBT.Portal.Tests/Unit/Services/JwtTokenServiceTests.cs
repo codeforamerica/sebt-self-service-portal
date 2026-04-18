@@ -506,8 +506,8 @@ public class JwtTokenServiceTests
     [Fact]
     public void GenerateToken_WithAdditionalClaims_DoesNotDuplicateReservedClaims()
     {
-        // Arrange: Callback token may include "sub" and "email"; we must not add them again or JWT payload
-        // would have "sub": [a, b] which .NET's reader rejects
+        // Arrange: additionalClaims may include "sub" and "email"; they should override user values
+        // but each claim type must appear exactly once (no duplicates)
         var user = new User
         {
             Email = "user@example.com",
@@ -523,15 +523,15 @@ public class JwtTokenServiceTests
         // Act
         var token = _jwtTokenService.GenerateToken(user, additionalClaims);
 
-        // Assert: sub and email remain the portal values (from user); phone is added
+        // Assert: sub and email come from additionalClaims (override), each appears once; phone is added
         var handler = new JwtSecurityTokenHandler();
         var jsonToken = handler.ReadJwtToken(token);
         var subClaims = jsonToken.Claims.Where(c => c.Type == JwtRegisteredClaimNames.Sub).ToList();
         var emailClaims = jsonToken.Claims.Where(c => c.Type == ClaimTypes.Email || c.Type == "email").ToList();
         Assert.Single(subClaims);
-        Assert.Equal(user.Email, subClaims[0].Value);
+        Assert.Equal("idp-sub-123", subClaims[0].Value);
         Assert.Single(emailClaims);
-        Assert.Equal(user.Email, emailClaims[0].Value);
+        Assert.Equal("other@example.com", emailClaims[0].Value);
         Assert.Equal("+13035551234", jsonToken.Claims.FirstOrDefault(c => c.Type == "phone")?.Value);
     }
 
@@ -546,6 +546,171 @@ public class JwtTokenServiceTests
         var handler = new JwtSecurityTokenHandler();
         var jsonToken = handler.ReadJwtToken(token);
         Assert.Equal(user.Email, jsonToken.Claims.First(c => c.Type == JwtRegisteredClaimNames.Sub).Value);
+    }
+
+    [Fact]
+    public void GenerateToken_WhenAdditionalClaimsContainEmail_UsesClaimsEmail()
+    {
+        // Arrange: OIDC user has no stored email; email comes from IdP claims
+        var user = new User { Id = 1, Email = null };
+        var claims = new Dictionary<string, string>
+        {
+            ["email"] = "oidc-user@example.com",
+            ["sub"] = "pingone-sub-123"
+        };
+
+        // Act
+        var token = _jwtTokenService.GenerateToken(user, claims);
+
+        // Assert
+        var handler = new JwtSecurityTokenHandler();
+        var jwt = handler.ReadJwtToken(token);
+        var emailClaim = jwt.Claims.First(c => c.Type == ClaimTypes.Email);
+        Assert.Equal("oidc-user@example.com", emailClaim.Value);
+    }
+
+    [Fact]
+    public void GenerateToken_WhenAdditionalClaimsContainIal_UsesClaimsIal()
+    {
+        // Arrange: OIDC user has stale IAL in DB; fresh IAL comes from IdP claims
+        var user = new User { Id = 1, IalLevel = UserIalLevel.None };
+        var claims = new Dictionary<string, string>
+        {
+            ["email"] = "user@example.com",
+            [JwtClaimTypes.Ial] = "1plus"
+        };
+
+        // Act
+        var token = _jwtTokenService.GenerateToken(user, claims);
+
+        // Assert
+        var handler = new JwtSecurityTokenHandler();
+        var jwt = handler.ReadJwtToken(token);
+        var ialClaim = jwt.Claims.First(c => c.Type == JwtClaimTypes.Ial);
+        Assert.Equal("1plus", ialClaim.Value);
+    }
+
+    [Fact]
+    public void GenerateToken_WhenNoAdditionalClaims_UsesUserProperties()
+    {
+        // Arrange: OTP user — email and IAL come from the user object (DB values)
+        var user = new User
+        {
+            Id = 1,
+            Email = "otp-user@example.com",
+            IalLevel = UserIalLevel.IAL1plus
+        };
+
+        // Act
+        var token = _jwtTokenService.GenerateToken(user);
+
+        // Assert
+        var handler = new JwtSecurityTokenHandler();
+        var jwt = handler.ReadJwtToken(token);
+        Assert.Equal("otp-user@example.com", jwt.Claims.First(c => c.Type == ClaimTypes.Email).Value);
+        Assert.Equal("1plus", jwt.Claims.First(c => c.Type == JwtClaimTypes.Ial).Value);
+    }
+
+    [Fact]
+    public void GenerateToken_WhenAdditionalClaimsContainSub_UsesClaimsSub()
+    {
+        // Arrange: OIDC user — sub comes from IdP, not from user.Email
+        var user = new User { Id = 1, Email = null };
+        var claims = new Dictionary<string, string>
+        {
+            ["email"] = "oidc-user@example.com",
+            ["sub"] = "pingone-sub-456"
+        };
+
+        // Act
+        var token = _jwtTokenService.GenerateToken(user, claims);
+
+        // Assert
+        var handler = new JwtSecurityTokenHandler();
+        var jwt = handler.ReadJwtToken(token);
+        var subClaim = jwt.Claims.First(c => c.Type == JwtRegisteredClaimNames.Sub);
+        Assert.Equal("pingone-sub-456", subClaim.Value);
+    }
+
+    [Fact]
+    public void GenerateToken_WhenAdditionalClaimsContainIdProofingStatus_UsesClaimsValue()
+    {
+        // Arrange: OIDC user — ID proofing status comes from claims
+        var user = new User
+        {
+            Id = 1,
+            Email = null,
+            IdProofingStatus = IdProofingStatus.NotStarted
+        };
+        var claims = new Dictionary<string, string>
+        {
+            ["email"] = "user@example.com",
+            [JwtClaimTypes.IdProofingStatus] = "2" // Completed
+        };
+
+        // Act
+        var token = _jwtTokenService.GenerateToken(user, claims);
+
+        // Assert
+        var handler = new JwtSecurityTokenHandler();
+        var jwt = handler.ReadJwtToken(token);
+        var statusClaim = jwt.Claims.First(c => c.Type == JwtClaimTypes.IdProofingStatus);
+        Assert.Equal("2", statusClaim.Value);
+    }
+
+    [Fact]
+    public void GenerateToken_WhenAdditionalClaimsContainIdProofingSessionId_UsesClaimsValue()
+    {
+        // Arrange: OIDC user — session ID comes from claims, not user object
+        var user = new User
+        {
+            Id = 1,
+            Email = null,
+            IdProofingSessionId = null
+        };
+        var claims = new Dictionary<string, string>
+        {
+            ["email"] = "user@example.com",
+            [JwtClaimTypes.IdProofingSessionId] = "oidc-session-xyz"
+        };
+
+        // Act
+        var token = _jwtTokenService.GenerateToken(user, claims);
+
+        // Assert
+        var handler = new JwtSecurityTokenHandler();
+        var jwt = handler.ReadJwtToken(token);
+        var sessionIdClaim = jwt.Claims.First(c => c.Type == JwtClaimTypes.IdProofingSessionId);
+        Assert.Equal("oidc-session-xyz", sessionIdClaim.Value);
+    }
+
+    [Fact]
+    public void GenerateToken_WhenAdditionalClaimsContainIdProofingTimestamps_UsesClaimsValues()
+    {
+        // Arrange: OIDC user — completed_at and expires_at come from claims
+        var user = new User
+        {
+            Id = 1,
+            Email = null,
+            IdProofingCompletedAt = null
+        };
+        var completedAtUnix = "1700000000";
+        var expiresAtUnix = "1857676800";
+        var claims = new Dictionary<string, string>
+        {
+            ["email"] = "user@example.com",
+            [JwtClaimTypes.IdProofingCompletedAt] = completedAtUnix,
+            [JwtClaimTypes.IdProofingExpiresAt] = expiresAtUnix
+        };
+
+        // Act
+        var token = _jwtTokenService.GenerateToken(user, claims);
+
+        // Assert
+        var handler = new JwtSecurityTokenHandler();
+        var jwt = handler.ReadJwtToken(token);
+        Assert.Equal(completedAtUnix, jwt.Claims.First(c => c.Type == JwtClaimTypes.IdProofingCompletedAt).Value);
+        Assert.Equal(expiresAtUnix, jwt.Claims.First(c => c.Type == JwtClaimTypes.IdProofingExpiresAt).Value);
     }
 }
 

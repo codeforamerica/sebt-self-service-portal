@@ -29,7 +29,9 @@ public class JwtTokenService : IJwtTokenService
     /// Generates a JWT token for the specified user.
     /// </summary>
     /// <param name="user">The authenticated user.</param>
-    /// <param name="additionalClaims">Optional claims to add</param>
+    /// <param name="additionalClaims">Optional claims to add. For OIDC users, these carry
+    /// fresh values from the IdP (email, sub, IAL, ID proofing state) that override stale
+    /// DB values. For OTP users, this is typically null and the user object is used.</param>
     /// <returns>A JWT token string.</returns>
     public string GenerateToken(User user, IReadOnlyDictionary<string, string>? additionalClaims = null)
     {
@@ -39,34 +41,54 @@ public class JwtTokenService : IJwtTokenService
         var now = DateTimeOffset.UtcNow;
         var unixTimeSeconds = now.ToUnixTimeSeconds();
 
+        // For OIDC users, email and sub come from IdP claims (via additionalClaims).
+        // For OTP users, they come from user.Email (the DB value).
+        var email = additionalClaims?.GetValueOrDefault("email") ?? user.Email ?? "";
+        var sub = additionalClaims?.GetValueOrDefault("sub") ?? email;
+
+        // For OIDC users, IAL comes from IdP claims carried in additionalClaims.
+        // For OTP users, it comes from user.IalLevel (the DB value).
+        var ialValue = additionalClaims?.GetValueOrDefault(JwtClaimTypes.Ial)
+            ?? user.IalLevel switch
+            {
+                UserIalLevel.IAL1 => "1",
+                UserIalLevel.IAL1plus => "1plus",
+                UserIalLevel.IAL2 => "2",
+                _ => "0" // None
+            };
+
+        var idProofingStatusValue = additionalClaims?.GetValueOrDefault(JwtClaimTypes.IdProofingStatus)
+            ?? ((int)user.IdProofingStatus).ToString();
+
         var claims = new List<Claim>
         {
-            new Claim(ClaimTypes.Email, user.Email),
-            new Claim(JwtRegisteredClaimNames.Sub, user.Email),
+            new Claim(ClaimTypes.Email, email),
+            new Claim(JwtRegisteredClaimNames.Sub, sub),
             new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString()),
             new Claim(JwtRegisteredClaimNames.Iat, unixTimeSeconds.ToString(), ClaimValueTypes.Integer64),
             new Claim(JwtRegisteredClaimNames.Nbf, unixTimeSeconds.ToString(), ClaimValueTypes.Integer64),
             new Claim(JwtRegisteredClaimNames.Aud, "SEBT.Portal.Web"),
             new Claim(JwtRegisteredClaimNames.Iss, "SEBT.Portal.Api"),
             // Workflow state of ID proofing process
-            new Claim(JwtClaimTypes.IdProofingStatus, ((int)user.IdProofingStatus).ToString(), ClaimValueTypes.Integer32),
-            // The Users's current Identity Assurance Level (IAL)
-            new Claim(JwtClaimTypes.Ial, user.IalLevel switch
-            {
-                UserIalLevel.IAL1 => "1",
-                UserIalLevel.IAL1plus => "1plus",
-                UserIalLevel.IAL2 => "2",
-                _ => "0" // None
-            })
+            new Claim(JwtClaimTypes.IdProofingStatus, idProofingStatusValue, ClaimValueTypes.Integer32),
+            // The user's current Identity Assurance Level (IAL)
+            new Claim(JwtClaimTypes.Ial, ialValue)
         };
 
-        // Add optional ID proofing claims if available
-        if (!string.IsNullOrWhiteSpace(user.IdProofingSessionId))
+        // Add optional ID proofing claims — prefer additionalClaims, fall back to user properties
+        var sessionId = additionalClaims?.GetValueOrDefault(JwtClaimTypes.IdProofingSessionId)
+            ?? user.IdProofingSessionId;
+        if (!string.IsNullOrWhiteSpace(sessionId))
         {
-            claims.Add(new Claim(JwtClaimTypes.IdProofingSessionId, user.IdProofingSessionId));
+            claims.Add(new Claim(JwtClaimTypes.IdProofingSessionId, sessionId));
         }
 
-        if (user.IdProofingCompletedAt.HasValue)
+        var completedAtStr = additionalClaims?.GetValueOrDefault(JwtClaimTypes.IdProofingCompletedAt);
+        if (completedAtStr != null)
+        {
+            claims.Add(new Claim(JwtClaimTypes.IdProofingCompletedAt, completedAtStr, ClaimValueTypes.Integer64));
+        }
+        else if (user.IdProofingCompletedAt.HasValue)
         {
             var completedAtOffset = new DateTimeOffset(user.IdProofingCompletedAt.Value, TimeSpan.Zero);
             claims.Add(new Claim(JwtClaimTypes.IdProofingCompletedAt,
@@ -74,10 +96,13 @@ public class JwtTokenService : IJwtTokenService
                 ClaimValueTypes.Integer64));
         }
 
-        // Compute expiration dynamically from IdProofingCompletedAt + configured validity duration.
-        // This avoids storing baked-in expiration dates and allows config changes to take effect
-        // without bulk data updates.
-        if (user.IdProofingCompletedAt.HasValue)
+        // Compute expiration from completedAt + validity, regardless of source
+        var expiresAtStr = additionalClaims?.GetValueOrDefault(JwtClaimTypes.IdProofingExpiresAt);
+        if (expiresAtStr != null)
+        {
+            claims.Add(new Claim(JwtClaimTypes.IdProofingExpiresAt, expiresAtStr, ClaimValueTypes.Integer64));
+        }
+        else if (user.IdProofingCompletedAt.HasValue)
         {
             var expiresAt = user.IdProofingCompletedAt.Value.AddDays(_validitySettings.ValidityDays);
             var expiresAtOffset = new DateTimeOffset(expiresAt, TimeSpan.Zero);
@@ -86,7 +111,7 @@ public class JwtTokenService : IJwtTokenService
                 ClaimValueTypes.Integer64));
         }
 
-        // Portal-defined claim names we already set above; do not add again from additionalClaims
+        // Claim names already set above; do not add again from additionalClaims
         // or the JWT payload would have e.g. "sub": [a, b], which .NET's reader rejects (expects string).
         var reservedNames = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
         {
@@ -98,7 +123,12 @@ public class JwtTokenService : IJwtTokenService
             JwtRegisteredClaimNames.Iat,
             JwtRegisteredClaimNames.Nbf,
             JwtRegisteredClaimNames.Aud,
-            JwtRegisteredClaimNames.Iss
+            JwtRegisteredClaimNames.Iss,
+            JwtClaimTypes.Ial,
+            JwtClaimTypes.IdProofingStatus,
+            JwtClaimTypes.IdProofingSessionId,
+            JwtClaimTypes.IdProofingCompletedAt,
+            JwtClaimTypes.IdProofingExpiresAt,
         };
 
         if (additionalClaims != null)
