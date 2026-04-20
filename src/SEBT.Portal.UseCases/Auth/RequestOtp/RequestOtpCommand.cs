@@ -13,4 +13,8 @@ public class RequestOtpCommand : ICommand
     [Required(ErrorMessage = "Email address is required.")]
     [EmailAddress(ErrorMessage = "Invalid email format.")]
     public string Email { get; init; } = string.Empty;
+    /// <summary>
+    /// Indicates whether to bypass OTP generation and sending, allowing for testing of the login flow without needing to receive an OTP. 
+    /// </summary>
+    public bool BypassOtp { get; init; } = false;
 }
