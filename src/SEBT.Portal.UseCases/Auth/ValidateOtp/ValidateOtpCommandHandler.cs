@@ -70,23 +70,23 @@ namespace SEBT.Portal.UseCases.Auth
                 if (isNewUser)
                 {
                     logger.LogInformation(
-                        "New user authenticated via OTP for email {Email} with IAL level {IalLevel} and co-loaded status {IsCoLoaded}",
-                        command.Email,
+                        "New user authenticated via OTP: UserId {UserId} with IAL level {IalLevel} and co-loaded status {IsCoLoaded}",
+                        user.Id,
                         user.IalLevel,
                         user.IsCoLoaded);
                 }
                 else
                 {
                     logger.LogInformation(
-                        "Returning user authenticated via OTP for email {Email} with IAL level {IalLevel} and co-loaded status {IsCoLoaded}",
-                        command.Email,
+                        "Returning user authenticated via OTP: UserId {UserId} with IAL level {IalLevel} and co-loaded status {IsCoLoaded}",
+                        user.Id,
                         user.IalLevel,
                         user.IsCoLoaded);
                 }
 
                 logger.LogInformation(
-                    "OTP validated successfully and JWT token generated for email {Email} with co-loaded status {IsCoLoaded}",
-                    command.Email,
+                    "OTP validated successfully and JWT token generated: UserId {UserId} with co-loaded status {IsCoLoaded}",
+                    user.Id,
                     user.IsCoLoaded);
                 return Result<string>.Success(token);
             }

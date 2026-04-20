@@ -39,22 +39,14 @@ public class RefreshTokenCommandHandler(
 
         try
         {
-            User? user;
-            if (!string.IsNullOrEmpty(command.ExternalProviderId))
-            {
-                // OIDC user — look up by IdP subject, not email
-                user = await userRepository.GetUserByExternalIdAsync(
-                    command.ExternalProviderId, cancellationToken);
-            }
-            else
-            {
-                // OTP user — look up by email (existing behavior)
-                user = await userRepository.GetUserByEmailAsync(command.Email, cancellationToken);
-            }
+            // Look up by our internal user ID (from the JWT sub claim), which is
+            // uniform across OIDC and OTP users.
+            var user = await userRepository.GetUserByIdAsync(command.UserId, cancellationToken);
 
             if (user == null)
             {
-                logger.LogWarning("Token refresh attempted for non-existent user");
+                logger.LogWarning(
+                    "Token refresh attempted for non-existent UserId {UserId}", command.UserId);
                 return Result<string>.PreconditionFailed(
                     PreconditionFailedReason.NotFound, "User not found.");
             }
@@ -78,7 +70,7 @@ public class RefreshTokenCommandHandler(
         }
         catch (Exception ex)
         {
-            logger.LogError(ex, "Error refreshing token");
+            logger.LogError(ex, "Error refreshing token for UserId {UserId}", command.UserId);
             return Result<string>.DependencyFailed(
                 DependencyFailedReason.ConnectionFailed,
                 "An error occurred while refreshing the authentication token.");

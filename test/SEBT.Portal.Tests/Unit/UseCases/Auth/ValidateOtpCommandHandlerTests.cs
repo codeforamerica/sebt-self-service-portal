@@ -492,6 +492,7 @@ public class ValidateOtpCommandHandlerTests
 
         var newUser = new User
         {
+            Id = 1,
             Email = command.Email,
             IalLevel = UserIalLevel.None
         };
@@ -511,7 +512,7 @@ public class ValidateOtpCommandHandlerTests
         mockLogger.Received().Log(
             LogLevel.Information,
             Arg.Any<EventId>(),
-            Arg.Is<object>(o => o.ToString()!.Contains("New user authenticated via OTP") && o.ToString()!.Contains(command.Email)),
+            Arg.Is<object>(o => o.ToString()!.Contains("New user authenticated via OTP") && o.ToString()!.Contains("UserId")),
             Arg.Any<Exception>(),
             Arg.Any<Func<object, Exception?, string>>());
     }
@@ -535,6 +536,7 @@ public class ValidateOtpCommandHandlerTests
 
         var existingUser = new User
         {
+            Id = 2,
             Email = command.Email,
             IalLevel = UserIalLevel.IAL1plus
         };
@@ -554,7 +556,7 @@ public class ValidateOtpCommandHandlerTests
         mockLogger.Received().Log(
             LogLevel.Information,
             Arg.Any<EventId>(),
-            Arg.Is<object>(o => o.ToString()!.Contains("Returning user authenticated via OTP") && o.ToString()!.Contains(command.Email)),
+            Arg.Is<object>(o => o.ToString()!.Contains("Returning user authenticated via OTP") && o.ToString()!.Contains("UserId")),
             Arg.Any<Exception>(),
             Arg.Any<Func<object, Exception?, string>>());
     }
@@ -578,6 +580,7 @@ public class ValidateOtpCommandHandlerTests
 
         var newUser = new User
         {
+            Id = 3,
             Email = command.Email,
             IalLevel = UserIalLevel.None
         };
@@ -598,7 +601,7 @@ public class ValidateOtpCommandHandlerTests
             LogLevel.Information,
             Arg.Any<EventId>(),
             Arg.Is<object>(o => o.ToString()!.Contains("New user authenticated via OTP") &&
-                               o.ToString()!.Contains(command.Email) &&
+                               o.ToString()!.Contains("UserId") &&
                                o.ToString()!.Contains("IAL1")),
             Arg.Any<Exception>(),
             Arg.Any<Func<object, Exception?, string>>());
@@ -623,6 +626,7 @@ public class ValidateOtpCommandHandlerTests
 
         var existingUser = new User
         {
+            Id = 4,
             Email = command.Email,
             IalLevel = UserIalLevel.IAL1
         };
@@ -643,7 +647,7 @@ public class ValidateOtpCommandHandlerTests
             LogLevel.Information,
             Arg.Any<EventId>(),
             Arg.Is<object>(o => o.ToString()!.Contains("Returning user authenticated via OTP") &&
-                               o.ToString()!.Contains(command.Email) &&
+                               o.ToString()!.Contains("UserId") &&
                                o.ToString()!.Contains("IAL1")),
             Arg.Any<Exception>(),
             Arg.Any<Func<object, Exception?, string>>());
@@ -668,6 +672,7 @@ public class ValidateOtpCommandHandlerTests
 
         var user = new User
         {
+            Id = 5,
             Email = command.Email,
             IalLevel = UserIalLevel.None
         };
@@ -688,7 +693,7 @@ public class ValidateOtpCommandHandlerTests
             LogLevel.Information,
             Arg.Any<EventId>(),
             Arg.Is<object>(o => o.ToString()!.Contains("OTP validated successfully and JWT token generated") &&
-                               o.ToString()!.Contains(command.Email)),
+                               o.ToString()!.Contains("UserId")),
             Arg.Any<Exception>(),
             Arg.Any<Func<object, Exception?, string>>());
     }

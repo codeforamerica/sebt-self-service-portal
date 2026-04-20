@@ -40,14 +40,14 @@ public class AuthController(
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     public IActionResult GetAuthorizationStatus()
     {
-        var email = GetUserEmail();
+        var userId = GetUserId();
 
-        logger.LogInformation("Authorization status check successful for user {Email}, Phone={MaskedPhone}",
-            email ?? "unknown", GetMaskedPhone());
+        logger.LogInformation("Authorization status check successful for UserId {UserId}, Phone={MaskedPhone}",
+            userId?.ToString() ?? "unknown", GetMaskedPhone());
 
         return Ok(new AuthorizationStatusResponse(
             IsAuthorized: true,
-            Email: email,
+            Email: GetUserEmail(),
             Ial: User.FindFirst(JwtClaimTypes.Ial)?.Value,
             IdProofingStatus: int.TryParse(User.FindFirst(JwtClaimTypes.IdProofingStatus)?.Value, out var s) ? s : null,
             IdProofingCompletedAt: long.TryParse(User.FindFirst(JwtClaimTypes.IdProofingCompletedAt)?.Value, out var c) ? c : null,
@@ -88,40 +88,35 @@ public class AuthController(
     public async Task<IActionResult> RefreshToken(
         [FromServices] ICommandHandler<RefreshTokenCommand, string> handler)
     {
-        var email = GetUserEmail();
+        var userId = GetUserId();
 
-        if (string.IsNullOrWhiteSpace(email))
+        if (userId == null)
         {
-            logger.LogWarning("Token refresh attempted but email could not be extracted from claims");
+            logger.LogWarning("Token refresh attempted but user ID could not be extracted from claims");
             return Unauthorized(new ErrorResponse("Unable to identify user from token."));
         }
 
-        logger.LogInformation("Token refresh request received for email {Email}, Phone={MaskedPhone}",
-            email, GetMaskedPhone());
-
-        var externalProviderId = User.FindFirst("sub")?.Value;
-        // If the JWT sub differs from the email, it's an OIDC user whose sub is the IdP subject
-        var isOidcUser = externalProviderId != null && externalProviderId != email;
+        logger.LogInformation("Token refresh request received for UserId {UserId}, Phone={MaskedPhone}",
+            userId, GetMaskedPhone());
 
         var command = new RefreshTokenCommand
         {
-            Email = email,
-            ExternalProviderId = isOidcUser ? externalProviderId : null,
+            UserId = userId.Value,
             CurrentPrincipal = User
         };
         var result = await handler.Handle(command);
 
         if (result.IsSuccess)
         {
-            logger.LogInformation("Token refreshed successfully for email {Email}, Phone={MaskedPhone}",
-                email, GetMaskedPhone());
+            logger.LogInformation("Token refreshed successfully for UserId {UserId}, Phone={MaskedPhone}",
+                userId, GetMaskedPhone());
             var expiresAt = DateTimeOffset.UtcNow.AddMinutes(jwtSettingsOptions.Value.ExpirationMinutes);
             AuthCookies.SetAuthCookie(Response, result.Value, expiresAt);
             return NoContent();
         }
         else
         {
-            logger.LogWarning("Token refresh failed for email {Email}: {Message}", email, result.Message);
+            logger.LogWarning("Token refresh failed for UserId {UserId}: {Message}", userId, result.Message);
 
             if (result is ValidationFailedResult<string> validationFailed)
             {
@@ -141,18 +136,23 @@ public class AuthController(
     }
 
     /// <summary>
-    /// Extracts the user's email address from the authenticated user's claims.
-    /// Tries both long (.NET) and short (JWT) claim names so it works whether or not
-    /// the JWT handler has mapped inbound claims.
+    /// Extracts the portal's internal user ID from the authenticated JWT's sub claim.
+    /// Returns null if the sub claim is missing or not a positive integer.
     /// </summary>
-    /// <returns>The user's email address, or null if not found.</returns>
+    private int? GetUserId()
+    {
+        var subValue = User.FindFirst("sub")?.Value;
+        return int.TryParse(subValue, out var id) && id > 0 ? id : null;
+    }
+
+    /// <summary>
+    /// Extracts the user's email address from the authenticated user's JWT claims.
+    /// Returns null when absent (e.g. OIDC users whose IdP didn't include an email claim).
+    /// </summary>
     private string? GetUserEmail()
     {
         return User.FindFirst(ClaimTypes.Email)?.Value
-            ?? User.FindFirst(ClaimTypes.NameIdentifier)?.Value
-            ?? User.FindFirst("email")?.Value
-            ?? User.FindFirst("sub")?.Value
-            ?? User.Identity?.Name;
+            ?? User.FindFirst("email")?.Value;
     }
 
     /// <summary>
@@ -165,4 +165,3 @@ public class AuthController(
         return PiiMasker.MaskPhone(phone);
     }
 }
-

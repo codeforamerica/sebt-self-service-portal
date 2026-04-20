@@ -75,9 +75,10 @@ public class JwtTokenServiceTests
     [Fact]
     public void GenerateToken_ShouldContainSubjectClaim()
     {
-        // Arrange
+        // Arrange — sub is always the internal user ID, not the email
         var user = new User
         {
+            Id = 1,
             Email = "user@example.com",
             IalLevel = UserIalLevel.None
         };
@@ -91,7 +92,7 @@ public class JwtTokenServiceTests
         var subClaim = jsonToken.Claims.FirstOrDefault(c => c.Type == JwtRegisteredClaimNames.Sub);
 
         Assert.NotNull(subClaim);
-        Assert.Equal(user.Email, subClaim.Value);
+        Assert.Equal(user.Id.ToString(), subClaim.Value);
     }
 
     [Fact]
@@ -506,10 +507,12 @@ public class JwtTokenServiceTests
     [Fact]
     public void GenerateToken_WithAdditionalClaims_DoesNotDuplicateReservedClaims()
     {
-        // Arrange: additionalClaims may include "sub" and "email"; they should override user values
-        // but each claim type must appear exactly once (no duplicates)
+        // Arrange: additionalClaims may include "sub" and "email"; sub is always user.Id.ToString()
+        // (not overridable), email is overridable via additionalClaims, and each claim type appears
+        // exactly once (no duplicates).
         var user = new User
         {
+            Id = 1,
             Email = "user@example.com",
             IalLevel = UserIalLevel.None
         };
@@ -523,13 +526,14 @@ public class JwtTokenServiceTests
         // Act
         var token = _jwtTokenService.GenerateToken(user, additionalClaims);
 
-        // Assert: sub and email come from additionalClaims (override), each appears once; phone is added
+        // Assert: sub is always user.Id, not additionalClaims sub; email comes from additionalClaims;
+        // each claim type appears exactly once; phone is added
         var handler = new JwtSecurityTokenHandler();
         var jsonToken = handler.ReadJwtToken(token);
         var subClaims = jsonToken.Claims.Where(c => c.Type == JwtRegisteredClaimNames.Sub).ToList();
         var emailClaims = jsonToken.Claims.Where(c => c.Type == ClaimTypes.Email || c.Type == "email").ToList();
         Assert.Single(subClaims);
-        Assert.Equal("idp-sub-123", subClaims[0].Value);
+        Assert.Equal(user.Id.ToString(), subClaims[0].Value);
         Assert.Single(emailClaims);
         Assert.Equal("other@example.com", emailClaims[0].Value);
         Assert.Equal("+13035551234", jsonToken.Claims.FirstOrDefault(c => c.Type == "phone")?.Value);
@@ -538,14 +542,14 @@ public class JwtTokenServiceTests
     [Fact]
     public void GenerateToken_WithNullAdditionalClaims_BehavesAsSingleArgumentOverload()
     {
-        var user = new User { Email = "user@example.com", IalLevel = UserIalLevel.None };
+        var user = new User { Id = 1, Email = "user@example.com", IalLevel = UserIalLevel.None };
 
         var token = _jwtTokenService.GenerateToken(user, null);
 
         Assert.NotNull(token);
         var handler = new JwtSecurityTokenHandler();
         var jsonToken = handler.ReadJwtToken(token);
-        Assert.Equal(user.Email, jsonToken.Claims.First(c => c.Type == JwtRegisteredClaimNames.Sub).Value);
+        Assert.Equal(user.Id.ToString(), jsonToken.Claims.First(c => c.Type == JwtRegisteredClaimNames.Sub).Value);
     }
 
     [Fact]
@@ -612,9 +616,11 @@ public class JwtTokenServiceTests
     }
 
     [Fact]
-    public void GenerateToken_WhenAdditionalClaimsContainSub_UsesClaimsSub()
+    public void GenerateToken_WhenAdditionalClaimsContainSub_SubIsAlwaysUserId()
     {
-        // Arrange: OIDC user — sub comes from IdP, not from user.Email
+        // Arrange: OIDC user — sub in the portal JWT is always user.Id.ToString(),
+        // even when additionalClaims carries the IdP's sub. The IdP sub is stored as
+        // ExternalProviderId in the DB and is not propagated into the portal JWT.
         var user = new User { Id = 1, Email = null };
         var claims = new Dictionary<string, string>
         {
@@ -629,7 +635,7 @@ public class JwtTokenServiceTests
         var handler = new JwtSecurityTokenHandler();
         var jwt = handler.ReadJwtToken(token);
         var subClaim = jwt.Claims.First(c => c.Type == JwtRegisteredClaimNames.Sub);
-        Assert.Equal("pingone-sub-456", subClaim.Value);
+        Assert.Equal(user.Id.ToString(), subClaim.Value);
     }
 
     [Fact]

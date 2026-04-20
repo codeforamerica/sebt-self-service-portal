@@ -10,23 +10,15 @@ namespace SEBT.Portal.UseCases.Auth;
 public class RefreshTokenCommand : ICommand<string>
 {
     /// <summary>
-    /// The email address of the user requesting the token refresh.
+    /// The portal's internal user ID, extracted from the authenticated JWT's sub claim.
     /// </summary>
-    [Required(ErrorMessage = "Email address is required.")]
-    [EmailAddress(ErrorMessage = "Invalid email format.")]
-    public required string Email { get; init; } = string.Empty;
+    [Range(1, int.MaxValue, ErrorMessage = "User ID must be a positive integer.")]
+    public required int UserId { get; init; }
 
     /// <summary>
-    /// The current ClaimsPrincipal for the request. IMPORTANT: Used to preserve existing claims.
+    /// The current ClaimsPrincipal for the request. IMPORTANT: Used to preserve existing claims
+    /// (e.g. IAL from IdP for OIDC users) when generating the refreshed token.
     /// </summary>
     [Required(ErrorMessage = "CurrentPrincipal is required.")]
     public required ClaimsPrincipal CurrentPrincipal { get; init; }
-
-    /// <summary>
-    /// The external provider ID (IdP sub claim) for OIDC users. Null for OTP users.
-    /// When present, the handler looks up the user by ExternalProviderId instead of email
-    /// and preserves IAL from JWT claims instead of reading from DB.
-    /// </summary>
-    public string? ExternalProviderId { get; set; }
 }
-

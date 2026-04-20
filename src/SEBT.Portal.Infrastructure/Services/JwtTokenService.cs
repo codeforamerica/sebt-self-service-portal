@@ -41,10 +41,13 @@ public class JwtTokenService : IJwtTokenService
         var now = DateTimeOffset.UtcNow;
         var unixTimeSeconds = now.ToUnixTimeSeconds();
 
-        // For OIDC users, email and sub come from IdP claims (via additionalClaims).
-        // For OTP users, they come from user.Email (the DB value).
+        // The portal JWT sub is our internal user ID — always. The IdP's sub (for OIDC
+        // users) is stored as ExternalProviderId in the DB, not propagated into the JWT.
+        var sub = user.Id.ToString();
+
+        // For OIDC users, email comes from IdP claims (via additionalClaims).
+        // For OTP users, it comes from user.Email (the DB value).
         var email = additionalClaims?.GetValueOrDefault("email") ?? user.Email ?? "";
-        var sub = additionalClaims?.GetValueOrDefault("sub") ?? email;
 
         // For OIDC users, IAL comes from IdP claims carried in additionalClaims.
         // For OTP users, it comes from user.IalLevel (the DB value).
