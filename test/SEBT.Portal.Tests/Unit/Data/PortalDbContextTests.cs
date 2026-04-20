@@ -374,8 +374,9 @@ public class PortalDbContextTests
     }
 
     [Fact]
-    public void Users_Email_ShouldBeRequired()
+    public void Users_Email_ShouldBeNullable()
     {
+        // Email is optional — OIDC users may not have an email address.
         // Arrange
         var options = new DbContextOptionsBuilder<PortalDbContext>()
             .UseInMemoryDatabase(databaseName: Guid.NewGuid().ToString())
@@ -389,7 +390,75 @@ public class PortalDbContextTests
 
         // Assert
         Assert.NotNull(emailProperty);
-        Assert.False(emailProperty!.IsNullable);
+        Assert.True(emailProperty!.IsNullable);
+    }
+
+    [Fact]
+    public void Users_Email_ShouldHaveFilteredUniqueIndex()
+    {
+        // The filtered index ensures uniqueness only among non-null emails,
+        // allowing multiple OIDC users with no email address.
+        // Arrange
+        var options = new DbContextOptionsBuilder<PortalDbContext>()
+            .UseInMemoryDatabase(databaseName: Guid.NewGuid().ToString())
+            .Options;
+
+        using var context = new PortalDbContext(options);
+
+        // Act
+        var entityType = context.Model.FindEntityType(typeof(UserEntity));
+        var emailIndex = entityType!.GetIndexes()
+            .FirstOrDefault(i => i.Properties.Count == 1 && i.Properties[0].Name == "Email");
+
+        // Assert
+        Assert.NotNull(emailIndex);
+        Assert.True(emailIndex!.IsUnique);
+        Assert.Equal("IX_Users_Email", emailIndex.GetDatabaseName());
+        Assert.Equal("[Email] IS NOT NULL", emailIndex.GetFilter());
+    }
+
+    [Fact]
+    public void Users_ExternalProviderId_ShouldBeNullableWithMaxLength255()
+    {
+        // Arrange
+        var options = new DbContextOptionsBuilder<PortalDbContext>()
+            .UseInMemoryDatabase(databaseName: Guid.NewGuid().ToString())
+            .Options;
+
+        using var context = new PortalDbContext(options);
+
+        // Act
+        var entityType = context.Model.FindEntityType(typeof(UserEntity));
+        var property = entityType!.FindProperty("ExternalProviderId");
+
+        // Assert
+        Assert.NotNull(property);
+        Assert.True(property!.IsNullable);
+        Assert.Equal(255, property.GetMaxLength());
+    }
+
+    [Fact]
+    public void Users_ExternalProviderId_ShouldHaveFilteredUniqueIndex()
+    {
+        // Filtered index allows multiple null ExternalProviderIds (email-auth users)
+        // while enforcing uniqueness across OIDC users.
+        // Arrange
+        var options = new DbContextOptionsBuilder<PortalDbContext>()
+            .UseInMemoryDatabase(databaseName: Guid.NewGuid().ToString())
+            .Options;
+
+        using var context = new PortalDbContext(options);
+
+        // Act
+        var entityType = context.Model.FindEntityType(typeof(UserEntity));
+        var index = entityType!.GetIndexes()
+            .FirstOrDefault(i => i.Properties.Count == 1 && i.Properties[0].Name == "ExternalProviderId");
+
+        // Assert
+        Assert.NotNull(index);
+        Assert.True(index!.IsUnique);
+        Assert.Equal("IX_Users_ExternalProviderId", index.GetDatabaseName());
+        Assert.Equal("[ExternalProviderId] IS NOT NULL", index.GetFilter());
     }
 
     [Fact]

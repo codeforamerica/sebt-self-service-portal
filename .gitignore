@@ -1,6 +1,9 @@
 ## VS Code
 .vscode/
 
+## Git worktrees
+.worktrees/
+
 ## macOS Cruft
 .DS_Store
 

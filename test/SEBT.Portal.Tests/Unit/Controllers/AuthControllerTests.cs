@@ -9,6 +9,7 @@ using SEBT.Portal.Api.Models;
 using SEBT.Portal.Api.Services;
 using SEBT.Portal.Core.AppSettings;
 using SEBT.Portal.Core.Models.Auth;
+using SEBT.Portal.Core.Utilities;
 using SEBT.Portal.Kernel;
 using SEBT.Portal.Kernel.Results;
 using SEBT.Portal.UseCases.Auth;
@@ -40,6 +41,24 @@ public class AuthControllerTests
         _controller.ControllerContext = new ControllerContext
         {
             HttpContext = new DefaultHttpContext { User = principal }
+        };
+    }
+
+    /// <summary>
+    /// Sets up the authenticated user with a numeric sub claim (the portal JWT format)
+    /// plus an optional email claim for GetAuthorizationStatus tests.
+    /// </summary>
+    private void SetupAuthenticatedUserWithSub(int userId, string? email = null)
+    {
+        var claims = new List<Claim> { new Claim("sub", userId.ToString()) };
+        if (email != null)
+        {
+            claims.Add(new Claim("email", email));
+        }
+        var identity = new ClaimsIdentity(claims, "Test");
+        _controller.ControllerContext = new ControllerContext
+        {
+            HttpContext = new DefaultHttpContext { User = new ClaimsPrincipal(identity) }
         };
     }
 
@@ -111,11 +130,10 @@ public class AuthControllerTests
     }
 
     [Fact]
-    public void GetAuthorizationStatus_WhenEmailClaimIsMissing_UsesSubClaim()
+    public void GetAuthorizationStatus_WhenEmailClaimIsMissing_ReturnsNullEmail()
     {
-        // Arrange
-        var email = "user@example.com";
-        SetupAuthenticatedUser(email, "sub");
+        // Arrange: portal JWT has sub (user ID) but no email claim — OIDC users without stored email
+        SetupAuthenticatedUserWithSub(userId: 1);
 
         // Act
         var result = _controller.GetAuthorizationStatus();
@@ -125,19 +143,19 @@ public class AuthControllerTests
         var okResult = Assert.IsType<OkObjectResult>(result);
         var response = Assert.IsType<AuthorizationStatusResponse>(okResult.Value);
         Assert.True(response.IsAuthorized);
-        Assert.Equal(email, response.Email);
+        Assert.Null(response.Email);
     }
 
     [Fact]
     public async Task RefreshToken_WhenSuccess_ReturnsNoContentAndSetsAuthCookie()
     {
-        // Arrange
-        var email = "user@example.com";
-        var expectedToken = "refreshed.jwt.token";
-        SetupAuthenticatedUser(email);
+        // Arrange — controller reads UserId from the sub claim (portal JWT format: sub = user.Id)
+        const int userId = 1;
+        const string expectedToken = "refreshed.jwt.token";
+        SetupAuthenticatedUserWithSub(userId, email: "user@example.com");
 
         var handlerMock = Substitute.For<ICommandHandler<RefreshTokenCommand, string>>();
-        handlerMock.Handle(Arg.Is<RefreshTokenCommand>(c => c.Email == email))
+        handlerMock.Handle(Arg.Is<RefreshTokenCommand>(c => c.CurrentPrincipal.GetUserId() == userId))
             .Returns(Result<string>.Success(expectedToken));
 
         // Act
@@ -148,14 +166,14 @@ public class AuthControllerTests
         var setCookie = _controller.Response.Headers["Set-Cookie"].ToString();
         Assert.Contains($"{AuthCookies.AuthCookieName}={expectedToken}", setCookie);
         Assert.Contains("httponly", setCookie, StringComparison.OrdinalIgnoreCase);
-        await handlerMock.Received(1).Handle(Arg.Is<RefreshTokenCommand>(c => c.Email == email));
+        await handlerMock.Received(1).Handle(Arg.Is<RefreshTokenCommand>(c => c.CurrentPrincipal.GetUserId() == userId));
     }
 
     [Fact]
-    public async Task RefreshToken_WhenEmailCannotBeExtracted_ReturnsUnauthorized()
+    public async Task RefreshToken_WhenSubClaimMissing_ReturnsUnauthorized()
     {
-        // Arrange
-        var claims = new List<Claim>(); // No email claim
+        // Arrange — no sub claim means the controller cannot identify the user
+        var claims = new List<Claim>(); // No sub claim
         var identity = new ClaimsIdentity(claims, "Test");
         var principal = new ClaimsPrincipal(identity);
         _controller.ControllerContext = new ControllerContext
@@ -179,11 +197,11 @@ public class AuthControllerTests
     public async Task RefreshToken_WhenUserNotFound_ReturnsNotFound()
     {
         // Arrange
-        var email = "nonexistent@example.com";
-        SetupAuthenticatedUser(email);
+        const int userId = 999;
+        SetupAuthenticatedUserWithSub(userId);
 
         var handlerMock = Substitute.For<ICommandHandler<RefreshTokenCommand, string>>();
-        handlerMock.Handle(Arg.Is<RefreshTokenCommand>(c => c.Email == email))
+        handlerMock.Handle(Arg.Is<RefreshTokenCommand>(c => c.CurrentPrincipal.GetUserId() == userId))
             .Returns(Result<string>.PreconditionFailed(
                 PreconditionFailedReason.NotFound,
                 "User not found."));
@@ -201,16 +219,16 @@ public class AuthControllerTests
     [Fact]
     public async Task RefreshToken_WhenValidationFails_ReturnsBadRequestWithErrors()
     {
-        // Arrange
-        var email = "invalid-email";
-        SetupAuthenticatedUser(email);
+        // Arrange — handler returns a validation failure (e.g. some business rule violation)
+        const int userId = 1;
+        SetupAuthenticatedUserWithSub(userId);
 
         var handlerMock = Substitute.For<ICommandHandler<RefreshTokenCommand, string>>();
         var validationErrors = new[]
         {
-            new ValidationError("Email", "Invalid email format.")
+            new ValidationError("UserId", "User ID must be a positive integer.")
         };
-        handlerMock.Handle(Arg.Is<RefreshTokenCommand>(c => c.Email == email))
+        handlerMock.Handle(Arg.Any<RefreshTokenCommand>())
             .Returns(Result<string>.ValidationFailed(validationErrors));
 
         // Act
@@ -230,11 +248,11 @@ public class AuthControllerTests
     public async Task RefreshToken_WhenDependencyFails_ReturnsBadRequest()
     {
         // Arrange
-        var email = "user@example.com";
-        SetupAuthenticatedUser(email);
+        const int userId = 1;
+        SetupAuthenticatedUserWithSub(userId);
 
         var handlerMock = Substitute.For<ICommandHandler<RefreshTokenCommand, string>>();
-        handlerMock.Handle(Arg.Is<RefreshTokenCommand>(c => c.Email == email))
+        handlerMock.Handle(Arg.Is<RefreshTokenCommand>(c => c.CurrentPrincipal.GetUserId() == userId))
             .Returns(Result<string>.DependencyFailed(
                 DependencyFailedReason.ConnectionFailed,
                 "An error occurred while refreshing the authentication token."));
@@ -250,11 +268,11 @@ public class AuthControllerTests
     }
 
     [Fact]
-    public async Task RefreshToken_ExtractsEmailFromEmailClaim()
+    public async Task RefreshToken_ExtractsUserIdFromSubClaim()
     {
-        // Arrange
-        var email = "user@example.com";
-        SetupAuthenticatedUser(email);
+        // Arrange — portal JWT always has sub = user.Id (integer string)
+        const int userId = 42;
+        SetupAuthenticatedUserWithSub(userId);
 
         var handlerMock = Substitute.For<ICommandHandler<RefreshTokenCommand, string>>();
         handlerMock.Handle(Arg.Any<RefreshTokenCommand>())
@@ -264,97 +282,27 @@ public class AuthControllerTests
         var result = await _controller.RefreshToken(handlerMock);
 
         // Assert
-        await handlerMock.Received(1).Handle(Arg.Is<RefreshTokenCommand>(c => c.Email == email));
+        await handlerMock.Received(1).Handle(Arg.Is<RefreshTokenCommand>(c => c.CurrentPrincipal.GetUserId() == userId));
     }
 
     [Fact]
-    public async Task RefreshToken_ExtractsEmailFromSubClaim_WhenEmailClaimMissing()
+    public async Task RefreshToken_WhenSubClaimIsNotAnInteger_ReturnsUnauthorized()
     {
-        // Arrange
-        var email = "user@example.com";
-        SetupAuthenticatedUser(email, "sub");
-
-        var handlerMock = Substitute.For<ICommandHandler<RefreshTokenCommand, string>>();
-        handlerMock.Handle(Arg.Any<RefreshTokenCommand>())
-            .Returns(Result<string>.Success("token"));
-
-        // Act
-        var result = await _controller.RefreshToken(handlerMock);
-
-        // Assert
-        await handlerMock.Received(1).Handle(Arg.Is<RefreshTokenCommand>(c => c.Email == email));
-    }
-
-    [Fact]
-    public async Task RefreshToken_ExtractsEmailFromIdentityName_WhenOtherClaimsMissing()
-    {
-        // Arrange
-        var email = "user@example.com";
-        var identity = new ClaimsIdentity("Test");
-        identity.AddClaim(new Claim(ClaimTypes.Name, email));
-        var principal = new ClaimsPrincipal(identity);
+        // Arrange — OIDC-style sub (non-integer) is rejected; portal JWT sub is always user.Id
+        var claims = new List<Claim> { new Claim("sub", "not-an-integer") };
+        var identity = new ClaimsIdentity(claims, "Test");
         _controller.ControllerContext = new ControllerContext
         {
-            HttpContext = new DefaultHttpContext { User = principal }
+            HttpContext = new DefaultHttpContext { User = new ClaimsPrincipal(identity) }
         };
 
         var handlerMock = Substitute.For<ICommandHandler<RefreshTokenCommand, string>>();
-        handlerMock.Handle(Arg.Any<RefreshTokenCommand>())
-            .Returns(Result<string>.Success("token"));
 
         // Act
         var result = await _controller.RefreshToken(handlerMock);
 
         // Assert
-        await handlerMock.Received(1).Handle(Arg.Is<RefreshTokenCommand>(c => c.Email == email));
-    }
-
-    [Fact]
-    public async Task RefreshToken_ExtractsEmailFromShortEmailClaim_WhenJwtHandlerMappedClaims()
-    {
-        // Arrange: JWT Bearer maps inbound claims to short names; principal may have "email" not ClaimTypes.Email
-        var email = "user@example.com";
-        var identity = new ClaimsIdentity("Test");
-        identity.AddClaim(new Claim("email", email));
-        var principal = new ClaimsPrincipal(identity);
-        _controller.ControllerContext = new ControllerContext
-        {
-            HttpContext = new DefaultHttpContext { User = principal }
-        };
-
-        var handlerMock = Substitute.For<ICommandHandler<RefreshTokenCommand, string>>();
-        handlerMock.Handle(Arg.Any<RefreshTokenCommand>())
-            .Returns(Result<string>.Success("token"));
-
-        // Act
-        var result = await _controller.RefreshToken(handlerMock);
-
-        // Assert
-        await handlerMock.Received(1).Handle(Arg.Is<RefreshTokenCommand>(c => c.Email == email));
-    }
-
-    [Fact]
-    public async Task RefreshToken_ExtractsEmailFromSubClaim_WhenJwtHandlerMappedClaims()
-    {
-        // Arrange: OIDC tokens often use "sub" as the user identifier; ensure we accept it for refresh
-        var email = "user@example.com";
-        var identity = new ClaimsIdentity("Test");
-        identity.AddClaim(new Claim("sub", email));
-        var principal = new ClaimsPrincipal(identity);
-        _controller.ControllerContext = new ControllerContext
-        {
-            HttpContext = new DefaultHttpContext { User = principal }
-        };
-
-        var handlerMock = Substitute.For<ICommandHandler<RefreshTokenCommand, string>>();
-        handlerMock.Handle(Arg.Any<RefreshTokenCommand>())
-            .Returns(Result<string>.Success("token"));
-
-        // Act
-        var result = await _controller.RefreshToken(handlerMock);
-
-        // Assert
-        await handlerMock.Received(1).Handle(Arg.Is<RefreshTokenCommand>(c => c.Email == email));
+        Assert.IsType<UnauthorizedObjectResult>(result);
+        await handlerMock.DidNotReceive().Handle(Arg.Any<RefreshTokenCommand>());
     }
 }
-

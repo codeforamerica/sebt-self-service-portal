@@ -12,7 +12,8 @@ public class UserEntityTests
         var entity = new UserEntity();
 
         // Assert
-        Assert.Equal(string.Empty, entity.Email);
+        Assert.Null(entity.Email);
+        Assert.Null(entity.ExternalProviderId);
         Assert.Equal(0, entity.IalLevel); // UserIalLevel.None
         Assert.Null(entity.IdProofingSessionId);
         Assert.Null(entity.IdProofingCompletedAt);

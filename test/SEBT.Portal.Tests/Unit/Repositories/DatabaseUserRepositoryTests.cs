@@ -47,7 +47,7 @@ public class DatabaseUserRepositoryTests : IClassFixture<SqlServerTestFixture>
         await context.SaveChangesAsync();
 
         // Act
-        var result = await repository.GetUserByEmailAsync(entity.Email);
+        var result = await repository.GetUserByEmailAsync(entity.Email!);
 
         // Assert
         Assert.NotNull(result);

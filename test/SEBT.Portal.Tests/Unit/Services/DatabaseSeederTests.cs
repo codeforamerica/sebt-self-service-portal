@@ -136,7 +136,10 @@ public class DatabaseSeederTests : IClassFixture<SqlServerTestFixture>
         // Assert
         var users = await context.Users.ToListAsync();
         Assert.All(users, user =>
-            Assert.Equal(user.Email, user.Email.ToLowerInvariant()));
+        {
+            Assert.NotNull(user.Email);
+            Assert.Equal(user.Email, user.Email!.ToLowerInvariant());
+        });
     }
 
     [Fact]
@@ -581,8 +584,9 @@ public class DatabaseSeederTests : IClassFixture<SqlServerTestFixture>
 
         foreach (var user in users)
         {
-            Assert.NotEmpty(user.Email);
-            Assert.Contains("@", user.Email);
+            Assert.NotNull(user.Email);
+            Assert.NotEmpty(user.Email!);
+            Assert.Contains("@", user.Email!);
             Assert.InRange(user.IalLevel, 0, 3); // Valid UserIalLevel range
             Assert.NotEqual(default(DateTime), user.CreatedAt);
             Assert.NotEqual(default(DateTime), user.UpdatedAt);
@@ -603,7 +607,10 @@ public class DatabaseSeederTests : IClassFixture<SqlServerTestFixture>
         // Assert - All emails should be lowercase
         var users = await context.Users.ToListAsync();
         Assert.All(users, user =>
-            Assert.Equal(user.Email, user.Email.ToLowerInvariant()));
+        {
+            Assert.NotNull(user.Email);
+            Assert.Equal(user.Email, user.Email!.ToLowerInvariant());
+        });
     }
 
     [Fact]
@@ -620,7 +627,10 @@ public class DatabaseSeederTests : IClassFixture<SqlServerTestFixture>
         // Assert - All emails should be lowercase
         var users = await context.Users.ToListAsync();
         Assert.All(users, user =>
-            Assert.Equal(user.Email, user.Email.ToLowerInvariant()));
+        {
+            Assert.NotNull(user.Email);
+            Assert.Equal(user.Email, user.Email!.ToLowerInvariant());
+        });
     }
 
     [Fact]
