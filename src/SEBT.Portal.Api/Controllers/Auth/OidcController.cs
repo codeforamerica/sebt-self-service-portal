@@ -460,16 +460,25 @@ public class OidcController(
 
             user = existingEntity;
 
-            // Set step-up IAL in claims, not DB
-            additionalClaims[JwtClaimTypes.Ial] = "1plus";
-            additionalClaims[JwtClaimTypes.IdProofingStatus] = ((int)IdProofingStatus.Completed).ToString();
-            additionalClaims[JwtClaimTypes.IdProofingCompletedAt] =
-                new DateTimeOffset(DateTime.UtcNow).ToUnixTimeSeconds().ToString();
+            // Step-up IAL comes from the IdP's verification claims — could be 1plus
+            // (IDV) or 2 (doc verification), depending on the step-up client config.
+            // Reject if the IdP returned no verification claims: step-up exists to
+            // obtain verification, so its absence means something is misconfigured.
+            // Silently falling back to a default would risk downgrading the user's IAL.
+            var verification = verificationClaimTranslator.Translate(additionalClaims);
+            if (verification == null)
+            {
+                logger.LogWarning(
+                    "Step-up complete-login: IdP returned no verification claims (SessionId={SessionId})",
+                    sessionId);
+                return BadRequest(new { error = "Step-up verification failed. Please try again." });
+            }
+            ApplyVerificationToClaims(additionalClaims, verification);
 
             var safeStateKey = SanitizeForLog(stateKey);
             logger.LogInformation(
-                "OIDC step-up complete-login succeeded: UserId {UserId}, StateCode {StateCode}, IalLevel IAL1plus, SessionId={SessionId}",
-                user.Id, safeStateKey, sessionId);
+                "OIDC step-up complete-login succeeded: UserId {UserId}, StateCode {StateCode}, IalLevel {IalLevel}, IsExpired {IsExpired}, SessionId={SessionId}",
+                user.Id, safeStateKey, verification.IalLevel, verification.IsExpired, sessionId);
         }
         else
         {
@@ -496,32 +505,7 @@ public class OidcController(
             var verification = verificationClaimTranslator.Translate(additionalClaims);
             if (verification != null)
             {
-                // Set IAL in additionalClaims for JwtTokenService to pick up.
-                // If the verification has expired, reset to IAL1 — the user must re-verify.
-                if (verification.IsExpired)
-                {
-                    additionalClaims[JwtClaimTypes.Ial] = "1";
-                }
-                else
-                {
-                    additionalClaims[JwtClaimTypes.Ial] = verification.IalLevel switch
-                    {
-                        UserIalLevel.IAL1plus => "1plus",
-                        UserIalLevel.IAL2 => "2",
-                        UserIalLevel.IAL1 => "1",
-                        _ => "0"
-                    };
-                }
-                additionalClaims[JwtClaimTypes.IdProofingStatus] =
-                    ((int)(verification.IsExpired ? IdProofingStatus.Expired : IdProofingStatus.Completed)).ToString();
-
-                if (verification.VerifiedAt != default)
-                {
-                    var verifiedAtOffset = new DateTimeOffset(verification.VerifiedAt, TimeSpan.Zero);
-                    additionalClaims[JwtClaimTypes.IdProofingCompletedAt] =
-                        verifiedAtOffset.ToUnixTimeSeconds().ToString();
-                }
-
+                ApplyVerificationToClaims(additionalClaims, verification);
                 logger.LogInformation(
                     "OIDC verification claim reconciled: UserId {UserId}, IalLevel {IalLevel}, IsExpired {IsExpired}, VerifiedAt {VerifiedAt}, SessionId={SessionId}",
                     user.Id, verification.IalLevel, verification.IsExpired, verification.VerifiedAt, sessionId);
@@ -602,5 +586,35 @@ public class OidcController(
             return emailClaim.Value;
         var subClaim = principal.FindFirst("sub");
         return subClaim?.Value;
+    }
+
+    /// <summary>
+    /// Writes IAL, IdProofingStatus, and IdProofingCompletedAt claims into
+    /// <paramref name="additionalClaims"/> from the translated IdP verification result.
+    /// Expired verification resets IAL to 1 — the user must re-verify.
+    /// </summary>
+    private static void ApplyVerificationToClaims(
+        Dictionary<string, string> additionalClaims,
+        OidcVerificationResult verification)
+    {
+        additionalClaims[JwtClaimTypes.Ial] = verification.IsExpired
+            ? "1"
+            : verification.IalLevel switch
+            {
+                UserIalLevel.IAL1plus => "1plus",
+                UserIalLevel.IAL2 => "2",
+                UserIalLevel.IAL1 => "1",
+                _ => "0"
+            };
+
+        additionalClaims[JwtClaimTypes.IdProofingStatus] =
+            ((int)(verification.IsExpired ? IdProofingStatus.Expired : IdProofingStatus.Completed)).ToString();
+
+        if (verification.VerifiedAt != default)
+        {
+            var verifiedAtOffset = new DateTimeOffset(verification.VerifiedAt, TimeSpan.Zero);
+            additionalClaims[JwtClaimTypes.IdProofingCompletedAt] =
+                verifiedAtOffset.ToUnixTimeSeconds().ToString();
+        }
     }
 }

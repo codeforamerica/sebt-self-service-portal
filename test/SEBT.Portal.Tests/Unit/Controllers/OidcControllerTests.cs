@@ -319,7 +319,13 @@ public class OidcControllerTests
         const string signingKey = "complete-login-signing-key-at-least-32-characters-long";
         _config["Oidc:CompleteLoginSigningKey"].Returns(signingKey);
 
-        var callbackToken = CreateValidCallbackToken(signingKey, email: "user@example.com");
+        // Step-up requires verification claims from the IdP — step-up exists to obtain them
+        var verificationDate = DateTime.UtcNow.AddDays(-1).ToString("o");
+        var callbackToken = CreateCallbackTokenWithClaims(signingKey,
+            new Claim("email", "user@example.com"),
+            new Claim("sub", "test-sub-12345"),
+            new Claim("socureIdVerificationLevel", "1.5"),
+            new Claim("socureIdVerificationDate", verificationDate));
         var body = new CompleteLoginRequest(CoStateKey, callbackToken);
 
         var user = new User { Id = 1, Email = "user@example.com" };
@@ -351,7 +357,12 @@ public class OidcControllerTests
         const string signingKey = "complete-login-signing-key-at-least-32-characters-long";
         _config["Oidc:CompleteLoginSigningKey"].Returns(signingKey);
 
-        var callbackToken = CreateValidCallbackToken(signingKey, email: "user@example.com");
+        var verificationDate = DateTime.UtcNow.AddDays(-1).ToString("o");
+        var callbackToken = CreateCallbackTokenWithClaims(signingKey,
+            new Claim("email", "user@example.com"),
+            new Claim("sub", "test-sub-12345"),
+            new Claim("socureIdVerificationLevel", "1.5"),
+            new Claim("socureIdVerificationDate", verificationDate));
         var body = new CompleteLoginRequest(CoStateKey, callbackToken);
 
         var user = new User { Id = 1, Email = "user@example.com" };
@@ -366,6 +377,66 @@ public class OidcControllerTests
         var okResult = Assert.IsType<OkObjectResult>(result);
         var response = Assert.IsType<CompleteLoginResponse>(okResult.Value);
         Assert.Null(response.ReturnUrl);
+    }
+
+    /// <summary>
+    /// Step-up IAL comes from the IdP's verification claim — when the IdP asserts IAL2,
+    /// the portal JWT must carry "2", not a hardcoded "1plus".
+    /// </summary>
+    [Fact]
+    public async Task CompleteLogin_WhenStepUpAndIdpAssertsIal2_PassesIal2InAdditionalClaims()
+    {
+        SetupPreAuthSession(isStepUp: true);
+        const string signingKey = "complete-login-signing-key-at-least-32-characters-long";
+        _config["Oidc:CompleteLoginSigningKey"].Returns(signingKey);
+
+        var verificationDate = DateTime.UtcNow.AddDays(-1).ToString("o");
+        var callbackToken = CreateCallbackTokenWithClaims(signingKey,
+            new Claim("email", "user@example.com"),
+            new Claim("sub", "test-sub-12345"),
+            new Claim("socureIdVerificationLevel", "2"),
+            new Claim("socureIdVerificationDate", verificationDate));
+        var body = new CompleteLoginRequest(CoStateKey, callbackToken);
+
+        var user = new User { Id = 1 };
+        _userRepository.GetUserByExternalIdAsync("test-sub-12345", Arg.Any<CancellationToken>())
+            .Returns(user);
+        _jwtService.GenerateToken(Arg.Any<User>(), Arg.Any<IReadOnlyDictionary<string, string>?>())
+            .Returns("portal-jwt");
+
+        var result = await _controller.CompleteLogin(body, CancellationToken.None);
+
+        Assert.IsType<OkObjectResult>(result);
+        _jwtService.Received(1).GenerateToken(
+            Arg.Any<User>(),
+            Arg.Is<IReadOnlyDictionary<string, string>>(c =>
+                c.ContainsKey(JwtClaimTypes.Ial) && c[JwtClaimTypes.Ial] == "2"));
+    }
+
+    /// <summary>
+    /// Step-up rejects when the IdP returned no verification claims. Silently defaulting
+    /// to a fixed IAL would risk downgrading the user's existing IAL.
+    /// </summary>
+    [Fact]
+    public async Task CompleteLogin_WhenStepUpAndNoVerificationClaims_Returns400()
+    {
+        SetupPreAuthSession(isStepUp: true);
+        const string signingKey = "complete-login-signing-key-at-least-32-characters-long";
+        _config["Oidc:CompleteLoginSigningKey"].Returns(signingKey);
+
+        // Callback token has email + sub but NO verification claims
+        var callbackToken = CreateValidCallbackToken(signingKey, email: "user@example.com");
+        var body = new CompleteLoginRequest(CoStateKey, callbackToken);
+
+        var user = new User { Id = 1 };
+        _userRepository.GetUserByExternalIdAsync("test-sub-12345", Arg.Any<CancellationToken>())
+            .Returns(user);
+
+        var result = await _controller.CompleteLogin(body, CancellationToken.None);
+
+        Assert.IsType<BadRequestObjectResult>(result);
+        _jwtService.DidNotReceive().GenerateToken(
+            Arg.Any<User>(), Arg.Any<IReadOnlyDictionary<string, string>?>());
     }
 
     /// <summary>
