@@ -50,14 +50,14 @@ public class JwtTokenService : IJwtTokenService
         var email = additionalClaims?.GetValueOrDefault("email") ?? user.Email ?? "";
 
         // For OIDC users, IAL comes from IdP claims carried in additionalClaims.
-        // For OTP users, it comes from user.IalLevel (the DB value).
+        // For OTP users, it comes from user.IalLevel (the DB value). Any user reaching
+        // GenerateToken is authenticated, so the floor is "1" (IAL1) — never "0".
         var ialValue = additionalClaims?.GetValueOrDefault(JwtClaimTypes.Ial)
             ?? user.IalLevel switch
             {
-                UserIalLevel.IAL1 => "1",
                 UserIalLevel.IAL1plus => "1plus",
                 UserIalLevel.IAL2 => "2",
-                _ => "0" // None
+                _ => "1"
             };
 
         var idProofingStatusValue = additionalClaims?.GetValueOrDefault(JwtClaimTypes.IdProofingStatus)
