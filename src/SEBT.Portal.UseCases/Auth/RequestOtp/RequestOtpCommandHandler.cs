@@ -4,6 +4,7 @@ using SEBT.Portal.Core.Models.Auth;
 using SEBT.Portal.Core.Repositories;
 using SEBT.Portal.Core.AppSettings;
 using SEBT.Portal.Core.Services;
+using SEBT.Portal.Core.Utilities;
 using SEBT.Portal.Kernel;
 using SEBT.Portal.Kernel.Results;
 
@@ -21,8 +22,6 @@ namespace SEBT.Portal.UseCases.Auth
     /// <param name="emailService">The service used to send the OTP to the user's email.</param>
     /// <param name="otpRepository">The repository used to persist OTP codes.</param>
     /// <param name="logger">The logger for recording errors and diagnostic information.</param>
-    /// <param name="featureManager">The feature manager for checking feature flags.</param>
-    /// <param name="hostEnvironment">The host environment for checking the current environment.</param>
     public class RequestOtpCommandHandler(
         IValidator<RequestOtpCommand> validator,
         IOtpGeneratorService otpGenerator,
@@ -33,11 +32,13 @@ namespace SEBT.Portal.UseCases.Auth
     {
         public async Task<Result> Handle(RequestOtpCommand command, CancellationToken cancellationToken)
         {
+            var maskedEmail = PiiMasker.MaskEmail(command.Email);
+
             // Bypass OTP request for specific email in staging environment when all criteria are met
             // This allows testing of the login flow without needing to receive an OTP, but only for a specific test email and only in staging
             if (command.BypassOtp)
             {
-                logger.LogWarning("OTP bypass is enabled. Skipping OTP request for email {Email}", command.Email);
+                logger.LogWarning("OTP bypass is enabled. Skipping OTP request for {MaskedEmail}", maskedEmail);
                 return Result.Success();
             }
 
@@ -45,13 +46,13 @@ namespace SEBT.Portal.UseCases.Auth
 
             if (validationResult is ValidationFailedResult validationFailedResult)
             {
-                logger.LogWarning("OTP request failed for email {Email}: {Errors}",
-                    command.Email,
+                logger.LogWarning("OTP request failed for {MaskedEmail}: {Errors}",
+                    maskedEmail,
                     string.Join(", ", validationFailedResult.Errors.Select(e => $"{e.Key}: {e.Message}")));
                 return Result.ValidationFailed(validationFailedResult.Errors);
             }
 
-            logger.LogInformation("OTP requested for email {Email}", command.Email);
+            logger.LogInformation("OTP requested for {MaskedEmail}", maskedEmail);
 
             var otp = new OtpCode(otpGenerator.GenerateOtp(), command.Email);
 
@@ -61,13 +62,13 @@ namespace SEBT.Portal.UseCases.Auth
             }
             catch (TimeoutException e)
             {
-                logger.LogError(e, "A timeout occurred while attempting to persist the OTP request for email {Email}", command.Email);
+                logger.LogError(e, "A timeout occurred while attempting to persist the OTP request for {MaskedEmail}", maskedEmail);
                 return Result.DependencyFailed(DependencyFailedReason.Timeout,
                     $"A timeout occurred while processing the OTP request");
             }
             catch (Exception e)
             {
-                logger.LogError(e, "An error occurred while attempting to persist the OTP request for email {Email}", command.Email);
+                logger.LogError(e, "An error occurred while attempting to persist the OTP request for {MaskedEmail}", maskedEmail);
                 return Result.DependencyFailed(DependencyFailedReason.ConnectionFailed,
                     $"An error occurred while processing the OTP request");
             }
@@ -76,11 +77,11 @@ namespace SEBT.Portal.UseCases.Auth
 
             if (sendResult.IsSuccess)
             {
-                logger.LogInformation("OTP request successful for email {Email}", command.Email);
+                logger.LogInformation("OTP request successful for {MaskedEmail}", maskedEmail);
             }
             else
             {
-                logger.LogWarning("OTP request failed to send email for {Email}: {Message}", command.Email, sendResult.Message);
+                logger.LogWarning("OTP request failed to send email for {MaskedEmail}: {Message}", maskedEmail, sendResult.Message);
             }
 
             return sendResult;

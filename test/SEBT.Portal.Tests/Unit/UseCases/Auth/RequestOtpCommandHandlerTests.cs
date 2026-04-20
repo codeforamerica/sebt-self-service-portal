@@ -1,6 +1,7 @@
 
 using Microsoft.Extensions.Logging;
 using SEBT.Portal.Core.Services;
+using SEBT.Portal.Core.Utilities;
 using SEBT.Portal.Kernel;
 using SEBT.Portal.Kernel.Results;
 using SEBT.Portal.UseCases.Auth;
@@ -64,7 +65,7 @@ public class RequestOtpCommandHandlerTests
         logger.Received().Log(
             LogLevel.Information,
             Arg.Any<EventId>(),
-            Arg.Is<object>(o => o.ToString()!.Contains("OTP requested for email")),
+            Arg.Is<object>(o => o.ToString()!.Contains("OTP requested for") && o.ToString()!.Contains(PiiMasker.MaskEmail(command.Email)!)),
             Arg.Any<Exception>(),
             Arg.Any<Func<object, Exception?, string>>());
     }
@@ -85,7 +86,7 @@ public class RequestOtpCommandHandlerTests
         logger.Received().Log(
             LogLevel.Warning,
             Arg.Any<EventId>(),
-            Arg.Is<object>(o => o.ToString()!.Contains("OTP request failed for email")),
+            Arg.Is<object>(o => o.ToString()!.Contains("OTP request failed for") && !o.ToString()!.Contains(command.Email)),
             Arg.Any<Exception>(),
             Arg.Any<Func<object, Exception?, string>>());
     }
@@ -108,7 +109,7 @@ public class RequestOtpCommandHandlerTests
         logger.Received().Log(
             LogLevel.Information,
             Arg.Any<EventId>(),
-            Arg.Is<object>(o => o.ToString()!.Contains("OTP request successful for email")),
+            Arg.Is<object>(o => o.ToString()!.Contains("OTP request successful for") && o.ToString()!.Contains(PiiMasker.MaskEmail(command.Email)!)),
             Arg.Any<Exception>(),
             Arg.Any<Func<object, Exception?, string>>());
     }

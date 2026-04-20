@@ -5,6 +5,7 @@ using SEBT.Portal.Core.Models.Auth;
 using SEBT.Portal.Core.Repositories;
 using SEBT.Portal.Core.AppSettings;
 using SEBT.Portal.Core.Services;
+using SEBT.Portal.Core.Utilities;
 using SEBT.Portal.Kernel;
 using SEBT.Portal.Kernel.Results;
 using SEBT.Portal.UseCases.Auth;
@@ -512,7 +513,7 @@ public class ValidateOtpCommandHandlerTests
         mockLogger.Received().Log(
             LogLevel.Information,
             Arg.Any<EventId>(),
-            Arg.Is<object>(o => o.ToString()!.Contains("New user authenticated via OTP") && o.ToString()!.Contains(command.Email)),
+            Arg.Is<object>(o => o.ToString()!.Contains("New user authenticated via OTP") && o.ToString()!.Contains(PiiMasker.MaskEmail(command.Email)!) && !o.ToString()!.Contains(command.Email)),
             Arg.Any<Exception>(),
             Arg.Any<Func<object, Exception?, string>>());
     }
@@ -555,7 +556,7 @@ public class ValidateOtpCommandHandlerTests
         mockLogger.Received().Log(
             LogLevel.Information,
             Arg.Any<EventId>(),
-            Arg.Is<object>(o => o.ToString()!.Contains("Returning user authenticated via OTP") && o.ToString()!.Contains(command.Email)),
+            Arg.Is<object>(o => o.ToString()!.Contains("Returning user authenticated via OTP") && o.ToString()!.Contains(PiiMasker.MaskEmail(command.Email)!) && !o.ToString()!.Contains(command.Email)),
             Arg.Any<Exception>(),
             Arg.Any<Func<object, Exception?, string>>());
     }
@@ -599,7 +600,8 @@ public class ValidateOtpCommandHandlerTests
             LogLevel.Information,
             Arg.Any<EventId>(),
             Arg.Is<object>(o => o.ToString()!.Contains("New user authenticated via OTP") &&
-                               o.ToString()!.Contains(command.Email) &&
+                               o.ToString()!.Contains(PiiMasker.MaskEmail(command.Email)!) &&
+                               !o.ToString()!.Contains(command.Email) &&
                                o.ToString()!.Contains("IAL1")),
             Arg.Any<Exception>(),
             Arg.Any<Func<object, Exception?, string>>());
@@ -644,7 +646,8 @@ public class ValidateOtpCommandHandlerTests
             LogLevel.Information,
             Arg.Any<EventId>(),
             Arg.Is<object>(o => o.ToString()!.Contains("Returning user authenticated via OTP") &&
-                               o.ToString()!.Contains(command.Email) &&
+                               o.ToString()!.Contains(PiiMasker.MaskEmail(command.Email)!) &&
+                               !o.ToString()!.Contains(command.Email) &&
                                o.ToString()!.Contains("IAL1")),
             Arg.Any<Exception>(),
             Arg.Any<Func<object, Exception?, string>>());
@@ -689,7 +692,8 @@ public class ValidateOtpCommandHandlerTests
             LogLevel.Information,
             Arg.Any<EventId>(),
             Arg.Is<object>(o => o.ToString()!.Contains("OTP validated successfully and JWT token generated") &&
-                               o.ToString()!.Contains(command.Email)),
+                               o.ToString()!.Contains(PiiMasker.MaskEmail(command.Email)!) &&
+                               !o.ToString()!.Contains(command.Email)),
             Arg.Any<Exception>(),
             Arg.Any<Func<object, Exception?, string>>());
     }

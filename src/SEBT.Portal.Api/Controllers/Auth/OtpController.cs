@@ -7,6 +7,7 @@ using Microsoft.FeatureManagement;
 using SEBT.Portal.Api.Models;
 using SEBT.Portal.Api.Services;
 using SEBT.Portal.Core.AppSettings;
+using SEBT.Portal.Core.Utilities;
 using SEBT.Portal.Kernel;
 using SEBT.Portal.UseCases.Auth;
 
@@ -57,7 +58,7 @@ public class OtpController(
             BypassOtp = enableOtpBypass
         };
 
-        logger.LogInformation("OTP request received for email {Email}", command.Email);
+        logger.LogInformation("OTP request received for {MaskedEmail}", PiiMasker.MaskEmail(command.Email));
 
         var result = await handler.Handle(command);
 
@@ -80,13 +81,12 @@ public class OtpController(
     /// <returns>204 No Content on success; the session JWT is set via HttpOnly cookie.</returns>
     /// <response code="204">OTP validated successfully. Session cookie set; no body.</response>
     /// <response code="400">Invalid OTP or request.</response>
-    /// <response code="500">An error occurred while generating the authentication token.</response>
+    /// <response code="429">Rate limit exceeded. Maximum 5 OTP requests per minute allowed.</response>
     [HttpPost("validate")]
     [EnableRateLimiting(RateLimitPolicies.Otp)]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status429TooManyRequests)]
-    [ProducesResponseType(StatusCodes.Status500InternalServerError)]
     public async Task<IActionResult> ValidateOtp(
         [FromBody] ValidateOtpApiRequest request,
         [FromServices] ICommandHandler<ValidateOtpCommand, string> handler)
@@ -96,12 +96,13 @@ public class OtpController(
             return BadRequest(new ErrorResponse("Request body is required."));
         }
 
-        logger.LogInformation("OTP validation request received for email {Email}", request.Email);
+        logger.LogInformation("OTP validation request received for {MaskedEmail}", PiiMasker.MaskEmail(request.Email));
 
         var isOtpByPassEnabled = await featureManager.IsEnabledAsync(OtpBypassSettings.FeatureFlagName)
                 && hostEnvironment.IsStaging()
                 && !string.IsNullOrEmpty(request.Email)
-                && request.Email == OtpBypassSettings.Email;
+                && request.Email == OtpBypassSettings.Email
+                && request.Otp == OtpBypassSettings.OtpCode;
 
         var command = new ValidateOtpCommand
         {
@@ -114,14 +115,14 @@ public class OtpController(
 
         if (result.IsSuccess)
         {
-            logger.LogInformation("JWT token generated successfully for email {Email}", command.Email);
+            logger.LogInformation("JWT token generated successfully for {MaskedEmail}", PiiMasker.MaskEmail(command.Email));
             var expiresAt = DateTimeOffset.UtcNow.AddMinutes(jwtSettingsOptions.Value.ExpirationMinutes);
             AuthCookies.SetAuthCookie(Response, result.Value, expiresAt);
             return NoContent();
         }
         else
         {
-            logger.LogWarning("OTP validation failed for email {Email}: {Message}", command.Email, result.Message);
+            logger.LogWarning("OTP validation failed for {MaskedEmail}: {Message}", PiiMasker.MaskEmail(command.Email), result.Message);
             return BadRequest(new ErrorResponse(result.Message));
         }
     }
