@@ -7,6 +7,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
+using Microsoft.IdentityModel.Protocols.OpenIdConnect;
 using Microsoft.IdentityModel.Tokens;
 using NSubstitute;
 using SEBT.Portal.Api.Controllers.Auth;
@@ -49,7 +50,8 @@ public class OidcControllerTests
         _sessionStore = Substitute.For<IPreAuthSessionStore>();
         _sessionStore.CreateAsync(
                 Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(),
-                Arg.Any<string>(), Arg.Any<bool>(), Arg.Any<CancellationToken>())
+                Arg.Any<string>(), Arg.Any<bool>(), Arg.Any<string?>(),
+                Arg.Any<CancellationToken>())
             .Returns(callInfo => new PreAuthSession
             {
                 Id = "test-session-id",
@@ -57,7 +59,8 @@ public class OidcControllerTests
                 CodeVerifier = callInfo.ArgAt<string>(2),
                 StateCode = callInfo.ArgAt<string>(0),
                 RedirectUri = callInfo.ArgAt<string>(3),
-                IsStepUp = callInfo.ArgAt<bool>(4)
+                IsStepUp = callInfo.ArgAt<bool>(4),
+                ReturnUrl = callInfo.ArgAt<string?>(5)
             });
 
         var env = Substitute.For<IWebHostEnvironment>();
@@ -91,7 +94,7 @@ public class OidcControllerTests
     /// configures the session store mock to accept <c>TryAdvanceToLoginCompletedAsync</c>.
     /// Call before any <c>CompleteLogin</c> test that should get past session enforcement.
     /// </summary>
-    private void SetupPreAuthSession(bool isStepUp = false, string stateCode = CoStateKey)
+    private void SetupPreAuthSession(bool isStepUp = false, string stateCode = CoStateKey, string? returnUrl = null)
     {
         _controller.ControllerContext.HttpContext = new DefaultHttpContext();
         _controller.ControllerContext.HttpContext.Request.Headers.Cookie =
@@ -105,6 +108,7 @@ public class OidcControllerTests
                 StateCode = stateCode,
                 RedirectUri = "http://localhost:3000/callback",
                 IsStepUp = isStepUp,
+                ReturnUrl = returnUrl,
                 Phase = PreAuthSessionPhase.CallbackCompleted
             });
         _sessionStore.TryAdvanceToLoginCompletedAsync(
@@ -113,22 +117,8 @@ public class OidcControllerTests
     }
 
     [Fact]
-    public async Task GetConfig_WhenAuthorizationEndpointMissing_Returns503()
-    {
-        _config["Oidc:AuthorizationEndpoint"].Returns((string?)null);
-        _config["Oidc:ClientId"].Returns("client-id");
-        _config["Oidc:CallbackRedirectUri"].Returns("http://localhost:3000/callback");
-
-        var result = await _controller.GetConfig(CoStateKey);
-
-        var statusResult = Assert.IsType<ObjectResult>(result);
-        Assert.Equal(503, statusResult.StatusCode);
-    }
-
-    [Fact]
     public async Task GetConfig_WhenClientIdMissing_Returns503()
     {
-        _config["Oidc:AuthorizationEndpoint"].Returns("https://auth.example.com/authorize");
         _config["Oidc:ClientId"].Returns((string?)null);
         _config["Oidc:CallbackRedirectUri"].Returns("http://localhost:3000/callback");
 
@@ -139,15 +129,13 @@ public class OidcControllerTests
     }
 
     /// <summary>
-    /// GetConfig serves the pinned authorization endpoint from appsettings,
-    /// creates a pre-auth session, sets the oidc_session cookie, and returns
-    /// state + codeChallenge server-generated values.
+    /// GetConfig creates a pre-auth session, sets the oidc_session cookie, and returns
+    /// state + codeChallenge server-generated values. The authorization endpoint is
+    /// intentionally NOT included in the response.
     /// </summary>
     [Fact]
-    public async Task GetConfig_WhenConfigSet_ReturnsPinnedAuthorizationEndpointAndSessionState()
+    public async Task GetConfig_WhenConfigSet_ReturnsSessionStateWithoutAuthorizationEndpoint()
     {
-        const string pinnedAuthUrl = "https://auth.example.com/authorize";
-        _config["Oidc:AuthorizationEndpoint"].Returns(pinnedAuthUrl);
         _config["Oidc:ClientId"].Returns("client-id");
         _config["Oidc:CallbackRedirectUri"].Returns("http://localhost:3000/callback");
 
@@ -157,8 +145,9 @@ public class OidcControllerTests
         Assert.NotNull(okResult.Value);
         var valueType = okResult.Value.GetType();
         Assert.Equal("client-id", valueType.GetProperty("clientId")?.GetValue(okResult.Value));
-        Assert.Equal(pinnedAuthUrl, valueType.GetProperty("authorizationEndpoint")?.GetValue(okResult.Value));
-        // server now returns state + codeChallenge (never code_verifier)
+        // authorization endpoint must NOT be in the response (V04 fix)
+        Assert.Null(valueType.GetProperty("authorizationEndpoint")?.GetValue(okResult.Value));
+        // server returns state + codeChallenge (never code_verifier)
         Assert.NotNull(valueType.GetProperty("state")?.GetValue(okResult.Value));
         Assert.NotNull(valueType.GetProperty("codeChallenge")?.GetValue(okResult.Value));
         Assert.Equal("S256", valueType.GetProperty("codeChallengeMethod")?.GetValue(okResult.Value));
@@ -203,33 +192,20 @@ public class OidcControllerTests
         var badRequest = Assert.IsType<BadRequestObjectResult>(result);
         var error = Assert.IsType<ErrorResponse>(badRequest.Value);
         Assert.Contains("unsupported stateCode", error.Error);
-        // Authorization endpoint must not be read at all for a rejected state.
-        _ = _config.DidNotReceive()["Oidc:AuthorizationEndpoint"];
     }
 
     /// <summary>allowlist is case-insensitive; CO uppercase should resolve to "co".</summary>
     [Fact]
     public async Task GetConfig_WhenStateCodeCaseInsensitiveMatch_PassesAllowlistCheck()
     {
-        // No auth endpoint mock — we only care that we get past the allowlist into the
+        // No config mocked — we only care that we get past the allowlist into the
         // "no config" 503 path, which proves the check itself accepted the input.
-        _config["Oidc:AuthorizationEndpoint"].Returns((string?)null);
+        _config["Oidc:ClientId"].Returns((string?)null);
 
         var result = await _controller.GetConfig("CO");
 
         var statusResult = Assert.IsType<ObjectResult>(result);
         Assert.Equal(503, statusResult.StatusCode);
-    }
-
-    [Fact]
-    public async Task CompleteLogin_WhenStateCodeMissing_Returns400()
-    {
-        var body = new CompleteLoginRequest(StateCode: null, "callback.jwt.here");
-
-        var result = await _controller.CompleteLogin(body, CancellationToken.None);
-
-        var badRequest = Assert.IsType<BadRequestObjectResult>(result);
-        Assert.NotNull(badRequest.Value);
     }
 
     [Fact]
@@ -241,22 +217,6 @@ public class OidcControllerTests
 
         var badRequest = Assert.IsType<BadRequestObjectResult>(result);
         Assert.NotNull(badRequest.Value);
-    }
-
-    /// <summary>
-    /// complete-login must reject stateCodes outside the allowlist before
-    /// parsing the callback token, closing the "unknown tenant" entry point.
-    /// </summary>
-    [Fact]
-    public async Task CompleteLogin_WhenStateCodeNotInAllowlist_Returns400()
-    {
-        var body = new CompleteLoginRequest("nm", "callback.jwt.here");
-
-        var result = await _controller.CompleteLogin(body, CancellationToken.None);
-
-        var badRequest = Assert.IsType<BadRequestObjectResult>(result);
-        var error = Assert.IsType<ErrorResponse>(badRequest.Value);
-        Assert.Contains("unsupported stateCode", error.Error);
     }
 
     [Fact]
@@ -353,16 +313,12 @@ public class OidcControllerTests
     [Fact]
     public async Task CompleteLogin_WhenStepUpAndSafeReturnUrl_Returns200WithReturnUrl()
     {
-        SetupPreAuthSession(isStepUp: true);
+        SetupPreAuthSession(isStepUp: true, returnUrl: "/profile/address?q=1");
         const string signingKey = "complete-login-signing-key-at-least-32-characters-long";
         _config["Oidc:CompleteLoginSigningKey"].Returns(signingKey);
 
         var callbackToken = CreateValidCallbackToken(signingKey, email: "user@example.com");
-        var body = new CompleteLoginRequest(
-            CoStateKey,
-            callbackToken,
-            IsStepUp: true,
-            ReturnUrl: "/profile/address?q=1");
+        var body = new CompleteLoginRequest(CoStateKey, callbackToken);
 
         var user = new User { Id = 1, Email = "user@example.com" };
         _userRepository.GetUserByEmailAsync("user@example.com", Arg.Any<CancellationToken>())
@@ -384,19 +340,19 @@ public class OidcControllerTests
         Assert.Contains($"{AuthCookies.AuthCookieName}={portalJwt}", setCookie);
     }
 
+    /// <summary>
+    /// When the session has no returnUrl (e.g. unsafe URL was rejected at authorize time),
+    /// complete-login should return null returnUrl.
+    /// </summary>
     [Fact]
-    public async Task CompleteLogin_WhenStepUpAndExternalReturnUrl_OmitsReturnUrlFromResponse()
+    public async Task CompleteLogin_WhenStepUpWithNoSessionReturnUrl_OmitsReturnUrlFromResponse()
     {
-        SetupPreAuthSession(isStepUp: true);
+        SetupPreAuthSession(isStepUp: true, returnUrl: null);
         const string signingKey = "complete-login-signing-key-at-least-32-characters-long";
         _config["Oidc:CompleteLoginSigningKey"].Returns(signingKey);
 
         var callbackToken = CreateValidCallbackToken(signingKey, email: "user@example.com");
-        var body = new CompleteLoginRequest(
-            CoStateKey,
-            callbackToken,
-            IsStepUp: true,
-            ReturnUrl: "https://evil.example/phish");
+        var body = new CompleteLoginRequest(CoStateKey, callbackToken);
 
         var user = new User { Id = 1, Email = "user@example.com" };
         _userRepository.GetUserByEmailAsync("user@example.com", Arg.Any<CancellationToken>())
@@ -412,75 +368,6 @@ public class OidcControllerTests
         var okResult = Assert.IsType<OkObjectResult>(result);
         var response = Assert.IsType<CompleteLoginResponse>(okResult.Value);
         Assert.Null(response.ReturnUrl);
-    }
-
-    /// <summary>
-    /// CompleteLogin must reject requests where the body's stateCode does not match the
-    /// session's stored stateCode, even if both are in the allowlist. This prevents a
-    /// tenant-switching attack where a session created for one state is used with another.
-    /// </summary>
-    [Fact]
-    public async Task CompleteLogin_WhenBodyStateCodeDiffersFromSession_Returns400()
-    {
-        // Session was created for "co", but body says "co" — we need a second state in
-        // the allowlist to test mismatch. Create a controller with both "co" and "dc".
-        var multiStateAllowlist = new StateAllowlist(["co", "dc"]);
-        var jwtSettings = Options.Create(new JwtSettings
-        {
-            SecretKey = new string('x', 32),
-            Issuer = "test",
-            Audience = "test",
-            ExpirationMinutes = 60
-        });
-        var env = Substitute.For<IWebHostEnvironment>();
-        env.EnvironmentName.Returns("Development");
-        var sessionStore = Substitute.For<IPreAuthSessionStore>();
-        var controller = new OidcController(
-            _config,
-            NullLogger<OidcController>.Instance,
-            _userRepository,
-            _jwtService,
-            jwtSettings,
-            multiStateAllowlist,
-            sessionStore,
-            env,
-            new OidcVerificationClaimTranslator(new OidcVerificationClaimSettings(), new IdProofingValiditySettings(), NullLogger<OidcVerificationClaimTranslator>.Instance))
-        {
-            ControllerContext = new ControllerContext { HttpContext = new DefaultHttpContext() }
-        };
-
-        // Set oidc_session cookie
-        controller.ControllerContext.HttpContext.Request.Headers.Cookie =
-            $"{OidcSessionCookie.CookieName}={TestSessionId}";
-
-        // Session was created for "co"
-        sessionStore.GetAsync(TestSessionId, Arg.Any<CancellationToken>())
-            .Returns(new PreAuthSession
-            {
-                Id = TestSessionId,
-                State = "test-state",
-                CodeVerifier = "test-verifier",
-                StateCode = "co",
-                RedirectUri = "http://localhost:3000/callback",
-                IsStepUp = false,
-                Phase = PreAuthSessionPhase.CallbackCompleted
-            });
-        sessionStore.TryAdvanceToLoginCompletedAsync(
-                TestSessionId, Arg.Any<string>(), Arg.Any<CancellationToken>())
-            .Returns(true);
-
-        const string signingKey = "complete-login-signing-key-at-least-32-characters-long";
-        _config["Oidc:CompleteLoginSigningKey"].Returns(signingKey);
-        var callbackToken = CreateValidCallbackToken(signingKey, email: "user@example.com");
-
-        // Body says "dc" but session says "co" — should be rejected
-        var body = new CompleteLoginRequest("dc", callbackToken);
-
-        var result = await controller.CompleteLogin(body, CancellationToken.None);
-
-        var badRequest = Assert.IsType<BadRequestObjectResult>(result);
-        var error = Assert.IsType<ErrorResponse>(badRequest.Value);
-        Assert.Contains("mismatch", error.Error, StringComparison.OrdinalIgnoreCase);
     }
 
     /// <summary>
@@ -717,4 +604,197 @@ public class OidcControllerTests
             signingCredentials: credentials);
         return new JwtSecurityTokenHandler().WriteToken(token);
     }
+
+    #region Authorize endpoint
+
+    /// <summary>
+    /// Creates a mock <see cref="IOidcExchangeService"/> that returns a discovery config
+    /// with the given authorization endpoint. Used by Authorize endpoint tests.
+    /// </summary>
+    private static IOidcExchangeService MockExchangeServiceWithDiscovery(string authorizationEndpoint)
+    {
+        var exchangeService = Substitute.For<IOidcExchangeService>();
+        var discoveryConfig = new OpenIdConnectConfiguration
+        {
+            AuthorizationEndpoint = authorizationEndpoint
+        };
+        exchangeService.GetDiscoveryConfigAsync(Arg.Any<bool>(), Arg.Any<CancellationToken>())
+            .Returns(discoveryConfig);
+        return exchangeService;
+    }
+
+    /// <summary>
+    /// Covers V05/T07a (stateCode tenant escape): invalid stateCode is rejected at the
+    /// Authorize entry point. This replaces the removed integration tests
+    /// V05_T07a_CompleteLogin_WithInvalidStateCode and V05_T07a_Callback_WithInvalidStateCode,
+    /// and makes V06_T08aE (stateCode mismatch with valid session) impossible by design —
+    /// Callback and CompleteLogin read stateCode from the session, not the body.
+    /// </summary>
+    [Fact]
+    public async Task Authorize_WhenStateCodeNotInAllowlist_Returns400()
+    {
+        var exchangeService = MockExchangeServiceWithDiscovery("https://auth.example.com/authorize");
+
+        var result = await _controller.Authorize("nm", exchangeService: exchangeService);
+
+        var badRequest = Assert.IsType<BadRequestObjectResult>(result);
+        var error = Assert.IsType<ErrorResponse>(badRequest.Value);
+        Assert.Contains("unsupported stateCode", error.Error);
+    }
+
+    [Fact]
+    public async Task Authorize_WhenClientIdMissing_RedirectsToLogin()
+    {
+        _config["Oidc:ClientId"].Returns((string?)null);
+        _config["Oidc:CallbackRedirectUri"].Returns("http://localhost:3000/callback");
+        var exchangeService = MockExchangeServiceWithDiscovery("https://auth.example.com/authorize");
+
+        var result = await _controller.Authorize(CoStateKey, exchangeService: exchangeService);
+
+        var redirect = Assert.IsType<RedirectResult>(result);
+        Assert.Equal("/login", redirect.Url);
+    }
+
+    [Fact]
+    public async Task Authorize_WhenDiscoveryFails_RedirectsToLogin()
+    {
+        _config["Oidc:ClientId"].Returns("client-id");
+        _config["Oidc:CallbackRedirectUri"].Returns("http://localhost:3000/callback");
+        var exchangeService = Substitute.For<IOidcExchangeService>();
+        exchangeService.GetDiscoveryConfigAsync(Arg.Any<bool>(), Arg.Any<CancellationToken>())
+            .Returns<OpenIdConnectConfiguration>(_ => throw new InvalidOperationException("discovery endpoint not configured"));
+
+        var result = await _controller.Authorize(CoStateKey, exchangeService: exchangeService);
+
+        var redirect = Assert.IsType<RedirectResult>(result);
+        Assert.Equal("/login", redirect.Url);
+    }
+
+    [Fact]
+    public async Task Authorize_WhenDiscoveryMissingAuthorizationEndpoint_RedirectsToLogin()
+    {
+        _config["Oidc:ClientId"].Returns("client-id");
+        _config["Oidc:CallbackRedirectUri"].Returns("http://localhost:3000/callback");
+        var exchangeService = MockExchangeServiceWithDiscovery(authorizationEndpoint: "");
+
+        var result = await _controller.Authorize(CoStateKey, exchangeService: exchangeService);
+
+        var redirect = Assert.IsType<RedirectResult>(result);
+        Assert.Equal("/login", redirect.Url);
+    }
+
+    [Fact]
+    public async Task Authorize_WhenConfigured_Returns302WithCorrectUrlAndSetsCookie()
+    {
+        const string authEndpoint = "https://auth.pingone.com/env-id/as/authorize";
+        _config["Oidc:ClientId"].Returns("test-client-id");
+        _config["Oidc:CallbackRedirectUri"].Returns("http://localhost:3000/callback");
+        _config["Oidc:LanguageParam"].Returns("en");
+        var exchangeService = MockExchangeServiceWithDiscovery(authEndpoint);
+
+        var result = await _controller.Authorize(CoStateKey, exchangeService: exchangeService);
+
+        var redirect = Assert.IsType<RedirectResult>(result);
+        Assert.StartsWith(authEndpoint + "?", redirect.Url);
+        Assert.Contains("response_type=code", redirect.Url);
+        Assert.Contains("client_id=test-client-id", redirect.Url);
+        Assert.Contains("redirect_uri=", redirect.Url);
+        Assert.Contains("scope=openid", redirect.Url);
+        Assert.Contains("state=", redirect.Url);
+        Assert.Contains("code_challenge=", redirect.Url);
+        Assert.Contains("code_challenge_method=S256", redirect.Url);
+        Assert.Contains("prompt=login", redirect.Url);
+        Assert.Contains("max_age=0", redirect.Url);
+        Assert.Contains("language=en", redirect.Url);
+
+        // Verify oidc_session cookie was set.
+        var setCookie = _controller.Response.Headers["Set-Cookie"].ToString();
+        Assert.Contains(OidcSessionCookie.CookieName, setCookie);
+    }
+
+    /// <summary>
+    /// Proves the session stores the validated stateCode from the Authorize endpoint.
+    /// This is the mechanism that makes V06_T08aE (stateCode mismatch with valid session)
+    /// impossible — Callback and CompleteLogin read stateCode from this session, not
+    /// from the request body.
+    /// </summary>
+    [Fact]
+    public async Task Authorize_WhenConfigured_CreatesPreAuthSessionWithCorrectValues()
+    {
+        _config["Oidc:StepUp:ClientId"].Returns("step-up-client-id");
+        _config["Oidc:StepUp:RedirectUri"].Returns("http://localhost:3000/callback");
+        var exchangeService = MockExchangeServiceWithDiscovery("https://auth.example.com/authorize");
+
+        await _controller.Authorize(CoStateKey, stepUp: true, returnUrl: "/profile/address",
+            exchangeService: exchangeService);
+
+        await _sessionStore.Received(1).CreateAsync(
+            CoStateKey,
+            Arg.Any<string>(),
+            Arg.Any<string>(),
+            "http://localhost:3000/callback",
+            true,
+            "/profile/address",
+            Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task Authorize_WhenStepUpWithUnsafeReturnUrl_StoresNullReturnUrl()
+    {
+        _config["Oidc:StepUp:ClientId"].Returns("step-up-client-id");
+        _config["Oidc:StepUp:RedirectUri"].Returns("http://localhost:3000/callback");
+        var exchangeService = MockExchangeServiceWithDiscovery("https://auth.example.com/authorize");
+
+        await _controller.Authorize(CoStateKey, stepUp: true, returnUrl: "https://evil.example/phish",
+            exchangeService: exchangeService);
+
+        await _sessionStore.Received(1).CreateAsync(
+            Arg.Any<string>(),
+            Arg.Any<string>(),
+            Arg.Any<string>(),
+            Arg.Any<string>(),
+            Arg.Any<bool>(),
+            Arg.Is<string?>(s => s == null),
+            Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task Authorize_WhenNotStepUp_IgnoresReturnUrl()
+    {
+        _config["Oidc:ClientId"].Returns("test-client-id");
+        _config["Oidc:CallbackRedirectUri"].Returns("http://localhost:3000/callback");
+        var exchangeService = MockExchangeServiceWithDiscovery("https://auth.example.com/authorize");
+
+        await _controller.Authorize(CoStateKey, stepUp: false, returnUrl: "/profile/address",
+            exchangeService: exchangeService);
+
+        await _sessionStore.Received(1).CreateAsync(
+            Arg.Any<string>(),
+            Arg.Any<string>(),
+            Arg.Any<string>(),
+            Arg.Any<string>(),
+            false,
+            Arg.Is<string?>(s => s == null),
+            Arg.Any<CancellationToken>());
+    }
+
+    /// <summary>
+    /// The authorization URL must never contain the code_verifier — only
+    /// code_challenge is sent to the IdP.
+    /// </summary>
+    [Fact]
+    public async Task Authorize_RedirectUrl_NeverContainsCodeVerifier()
+    {
+        _config["Oidc:ClientId"].Returns("test-client-id");
+        _config["Oidc:CallbackRedirectUri"].Returns("http://localhost:3000/callback");
+        var exchangeService = MockExchangeServiceWithDiscovery("https://auth.example.com/authorize");
+
+        var result = await _controller.Authorize(CoStateKey, exchangeService: exchangeService);
+
+        var redirect = Assert.IsType<RedirectResult>(result);
+        Assert.DoesNotContain("code_verifier", redirect.Url);
+    }
+
+    #endregion
+
 }

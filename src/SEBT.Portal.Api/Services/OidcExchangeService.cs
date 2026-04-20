@@ -35,6 +35,17 @@ public interface IOidcExchangeService
         string redirectUri,
         bool isStepUp,
         CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Fetches the cached OIDC discovery document for the configured IdP. Returns the
+    /// <see cref="OpenIdConnectConfiguration"/> containing endpoint URLs (authorization,
+    /// token, userinfo), signing keys, and issuer metadata.
+    /// </summary>
+    /// <param name="isStepUp">True to use the step-up IdP configuration.</param>
+    /// <param name="cancellationToken">Cancellation.</param>
+    Task<OpenIdConnectConfiguration> GetDiscoveryConfigAsync(
+        bool isStepUp,
+        CancellationToken cancellationToken = default);
 }
 
 /// <summary>Result of the OIDC code exchange.</summary>
@@ -125,6 +136,31 @@ public sealed class OidcExchangeService : IOidcExchangeService
     }
 
     /// <inheritdoc/>
+    public async Task<OpenIdConnectConfiguration> GetDiscoveryConfigAsync(
+        bool isStepUp,
+        CancellationToken cancellationToken = default)
+    {
+        var discoveryEndpoint = isStepUp
+            ? _config["Oidc:StepUp:DiscoveryEndpoint"]
+            : _config["Oidc:DiscoveryEndpoint"];
+
+        if (string.IsNullOrEmpty(discoveryEndpoint))
+        {
+            throw new InvalidOperationException(
+                $"OIDC discovery endpoint not configured (isStepUp={isStepUp}). " +
+                "Set Oidc:DiscoveryEndpoint in appsettings.");
+        }
+
+        var configManager = DiscoveryManagers.GetOrAdd(discoveryEndpoint, url =>
+            new ConfigurationManager<OpenIdConnectConfiguration>(
+                url,
+                new OpenIdConnectConfigurationRetriever(),
+                new HttpDocumentRetriever(DiscoveryHttpClient)));
+
+        return await configManager.GetConfigurationAsync(cancellationToken);
+    }
+
+    /// <inheritdoc/>
     public async Task<OidcExchangeResult> ExchangeCodeAsync(
         string code,
         string codeVerifier,
@@ -133,14 +169,11 @@ public sealed class OidcExchangeService : IOidcExchangeService
         CancellationToken cancellationToken = default)
     {
         // --- Resolve per-flow config ---
-        var discoveryEndpoint = isStepUp
-            ? _config["Oidc:StepUp:DiscoveryEndpoint"]
-            : _config["Oidc:DiscoveryEndpoint"];
         var clientId = isStepUp ? _config["Oidc:StepUp:ClientId"] : _config["Oidc:ClientId"];
         var clientSecret = isStepUp ? _config["Oidc:StepUp:ClientSecret"] : _config["Oidc:ClientSecret"];
         var signingKey = _config["Oidc:CompleteLoginSigningKey"];
 
-        if (string.IsNullOrEmpty(discoveryEndpoint) || string.IsNullOrEmpty(clientId)
+        if (string.IsNullOrEmpty(clientId)
             || string.IsNullOrEmpty(clientSecret) || string.IsNullOrEmpty(signingKey))
         {
             _logger.LogWarning("OIDC exchange: missing config (reason=oidc_not_configured, isStepUp={IsStepUp})", isStepUp);
@@ -151,12 +184,7 @@ public sealed class OidcExchangeService : IOidcExchangeService
         OpenIdConnectConfiguration oidcConfig;
         try
         {
-            var configManager = DiscoveryManagers.GetOrAdd(discoveryEndpoint, url =>
-                new ConfigurationManager<OpenIdConnectConfiguration>(
-                    url,
-                    new OpenIdConnectConfigurationRetriever(),
-                    new HttpDocumentRetriever(DiscoveryHttpClient)));
-            oidcConfig = await configManager.GetConfigurationAsync(cancellationToken);
+            oidcConfig = await GetDiscoveryConfigAsync(isStepUp, cancellationToken);
         }
         catch (Exception ex)
         {
