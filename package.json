@@ -5,7 +5,7 @@
   "description": "Summer EBT (SUN Bucks) Self-Service Portal - Root package for convenience scripts",
   "scripts": {
     "dev": "pnpm dev:kill-port && concurrently -n \"API,Web\" -c \"blue,green\" \"pnpm api:dev\" \"pnpm web:dev\"",
-    "dev:co": "export STATE=co && pnpm api:build-co && pnpm dev",
+    "dev:co": "export STATE=co && export ENROLLMENT_CHECKER_ORIGIN=http://localhost:3001 && pnpm api:build-co && pnpm dev",
     "dev:dc": "export STATE=dc && pnpm api:build-dc && pnpm dev",
     "dev:kill-port": "lsof -ti :5280 | xargs kill 2>/dev/null; sleep 2 || true",
     "web:dev": "pnpm --filter @sebt/web dev",
