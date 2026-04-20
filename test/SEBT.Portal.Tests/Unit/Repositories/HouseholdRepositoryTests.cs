@@ -83,6 +83,23 @@ public class HouseholdRepositoryTests
     }
 
     [Fact]
+    public async Task TryMatchCoLoadedGuardianByBenefitIdAndDobAsync_DelegatesToPlugin()
+    {
+        var dob = new DateOnly(2000, 1, 1);
+        _summerEbtCaseService
+            .TryMatchCoLoadedGuardianByBenefitIdAndDobAsync("IC1", dob, Arg.Any<CancellationToken>())
+            .Returns(true);
+
+        var result = await _repository.TryMatchCoLoadedGuardianByBenefitIdAndDobAsync("IC1", dob);
+
+        Assert.True(result);
+        await _summerEbtCaseService.Received(1).TryMatchCoLoadedGuardianByBenefitIdAndDobAsync(
+            "IC1",
+            dob,
+            Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
     public async Task GetHouseholdByEmailAsync_WhenPluginReturnsSummerEbtCases_MapsToCore()
     {
         var email = "guardian@example.com";

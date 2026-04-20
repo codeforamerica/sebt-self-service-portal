@@ -104,6 +104,15 @@ public class MockHouseholdRepository : IHouseholdRepository
         return GetHouseholdByIdentifierAsync(HouseholdIdentifier.Email(email), piiVisibility, userIalLevel, cancellationToken);
     }
 
+    /// <inheritdoc />
+    public Task<bool> TryMatchCoLoadedGuardianByBenefitIdAndDobAsync(
+        string benefitIdentifierIc,
+        DateOnly guardianDateOfBirth,
+        CancellationToken cancellationToken = default)
+    {
+        return Task.FromResult(false);
+    }
+
     public Task UpsertHouseholdAsync(
         HouseholdData householdData,
         CancellationToken cancellationToken = default)

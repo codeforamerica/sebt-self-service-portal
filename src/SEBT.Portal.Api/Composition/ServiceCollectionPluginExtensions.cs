@@ -148,3 +148,4 @@ internal static class ServiceCollectionPluginExtensions
         return services;
     }
 }
+

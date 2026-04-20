@@ -143,6 +143,54 @@ public class SubmitIdProofingCommandHandlerTests
     // --- Co-loaded + SNAP/TANF: streamline to IAL1+ without Socure ---
 
     [Fact]
+    public async Task Handle_ShouldCompleteProofingWithoutSocure_WhenCoLoadedAndWarehouseIcDobMatches()
+    {
+        var handler = CreateHandler();
+        var command = CreateValidCommand(
+            dob: "1984-03-05",
+            idType: "snapAccountId",
+            idValue: "IC000001");
+        var user = new User
+        {
+            Id = command.UserId,
+            Email = "test@example.com",
+            IsCoLoaded = true,
+            IdProofingAttemptCount = 0
+        };
+
+        userRepository.GetUserByIdAsync(command.UserId, Arg.Any<CancellationToken>())
+            .Returns(user);
+        challengeRepository.GetActiveByUserIdAsync(command.UserId, Arg.Any<CancellationToken>())
+            .Returns((DocVerificationChallenge?)null);
+        householdRepository.TryMatchCoLoadedGuardianByBenefitIdAndDobAsync(
+                "IC000001",
+                new DateOnly(1984, 3, 5),
+                Arg.Any<CancellationToken>())
+            .Returns(true);
+
+        var result = await handler.Handle(command, CancellationToken.None);
+
+        Assert.True(result.IsSuccess);
+        Assert.Equal("matched", result.Value.Result);
+        Assert.Equal(UserIalLevel.IAL1plus, user.IalLevel);
+        Assert.Equal(IdProofingStatus.Completed, user.IdProofingStatus);
+        await householdRepository.Received(1).TryMatchCoLoadedGuardianByBenefitIdAndDobAsync(
+            "IC000001",
+            new DateOnly(1984, 3, 5),
+            Arg.Any<CancellationToken>());
+        await householdRepository.DidNotReceive()
+            .GetHouseholdByEmailAsync(
+                Arg.Any<string>(),
+                Arg.Any<PiiVisibility>(),
+                Arg.Any<UserIalLevel>(),
+                Arg.Any<CancellationToken>());
+        await socureClient.DidNotReceive()
+            .RunIdProofingAssessmentAsync(
+                Arg.Any<int>(), Arg.Any<string>(), Arg.Any<string>(),
+                Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<Address?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
     public async Task Handle_ShouldCompleteProofingWithoutSocure_WhenCoLoadedAndSnapAccountMatchesUserSnapId()
     {
         var handler = CreateHandler();

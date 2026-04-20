@@ -1,3 +1,4 @@
+using System.Globalization;
 using Microsoft.Extensions.Logging;
 using SEBT.Portal.Core.AppSettings;
 using SEBT.Portal.Core.Exceptions;
@@ -17,7 +18,7 @@ namespace SEBT.Portal.UseCases.IdProofing;
 /// 1. Validate input
 /// 2. Early exit if no ID provided (noIdProvided off-boarding)
 /// 3. Reuse existing active challenge if one exists
-/// 4. Co-loaded users with SNAP/TANF ID: complete at IAL1+ without Socure
+/// 4. Co-loaded users with SNAP/TANF ID: complete at IAL1+ without Socure (DC warehouse IC+DOB when applicable, then on-file match)
 /// 5. Call Socure for risk assessment
 /// 6. Create a new challenge if document verification is required
 /// </summary>
@@ -92,6 +93,39 @@ public class SubmitIdProofingCommandHandler(
             && IdProofingBenefitIdentifierTypes.IsSnapOrTanfPortalSelection(command.IdType)
             && !string.IsNullOrWhiteSpace(command.IdValue))
         {
+            if (DateOnly.TryParse(
+                    command.DateOfBirth,
+                    CultureInfo.InvariantCulture,
+                    DateTimeStyles.None,
+                    out var guardianDob))
+            {
+                try
+                {
+                    if (await householdRepository.TryMatchCoLoadedGuardianByBenefitIdAndDobAsync(
+                            command.IdValue.Trim(),
+                            guardianDob,
+                            cancellationToken))
+                    {
+                        logger.LogInformation(
+                            "User {UserId} co-loaded benefit ID verified via DC warehouse (IC+DOB) for type {IdType}",
+                            command.UserId,
+                            command.IdType);
+                        return await CompleteProofingAndRespond(
+                            user,
+                            UserIalLevel.IAL1plus,
+                            cancellationToken,
+                            "co-loaded SNAP/TANF matched via DC GetHouseholdByGuardian IC+DOB (no Socure)");
+                    }
+                }
+                catch (Exception ex)
+                {
+                    logger.LogWarning(
+                        ex,
+                        "DC warehouse IC+DOB match failed for co-loaded benefit ID verification for user {UserId}",
+                        command.UserId);
+                }
+            }
+
             HouseholdData? benefitHousehold = null;
             try
             {
