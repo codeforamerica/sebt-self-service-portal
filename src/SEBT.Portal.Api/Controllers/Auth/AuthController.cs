@@ -40,7 +40,7 @@ public class AuthController(
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     public IActionResult GetAuthorizationStatus()
     {
-        var userId = GetUserId();
+        var userId = User.GetUserId();
 
         logger.LogInformation("Authorization status check successful for UserId {UserId}, Phone={MaskedPhone}",
             userId?.ToString() ?? "unknown", GetMaskedPhone());
@@ -88,7 +88,7 @@ public class AuthController(
     public async Task<IActionResult> RefreshToken(
         [FromServices] ICommandHandler<RefreshTokenCommand, string> handler)
     {
-        var userId = GetUserId();
+        var userId = User.GetUserId();
 
         if (userId == null)
         {
@@ -133,16 +133,6 @@ public class AuthController(
 
             return BadRequest(new ErrorResponse(result.Message));
         }
-    }
-
-    /// <summary>
-    /// Extracts the portal's internal user ID from the authenticated JWT's sub claim.
-    /// Returns null if the sub claim is missing or not a positive integer.
-    /// </summary>
-    private int? GetUserId()
-    {
-        var subValue = User.FindFirst("sub")?.Value;
-        return int.TryParse(subValue, out var id) && id > 0 ? id : null;
     }
 
     /// <summary>
