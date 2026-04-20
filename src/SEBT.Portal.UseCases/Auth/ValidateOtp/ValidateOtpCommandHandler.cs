@@ -88,23 +88,23 @@ namespace SEBT.Portal.UseCases.Auth
                 if (isNewUser)
                 {
                     logger.LogInformation(
-                        "New user authenticated via OTP for {MaskedEmail} with IAL level {IalLevel} and co-loaded status {IsCoLoaded}",
-                        maskedEmail,
+                        "New user authenticated via OTP: UserId {UserId} with IAL level {IalLevel} and co-loaded status {IsCoLoaded}",
+                        user.Id,
                         user.IalLevel,
                         user.IsCoLoaded);
                 }
                 else
                 {
                     logger.LogInformation(
-                        "Returning user authenticated via OTP for {MaskedEmail} with IAL level {IalLevel} and co-loaded status {IsCoLoaded}",
-                        maskedEmail,
+                        "Returning user authenticated via OTP: UserId {UserId} with IAL level {IalLevel} and co-loaded status {IsCoLoaded}",
+                        user.Id,
                         user.IalLevel,
                         user.IsCoLoaded);
                 }
 
                 logger.LogInformation(
-                    "OTP validated successfully and JWT token generated for {MaskedEmail} with co-loaded status {IsCoLoaded}",
-                    maskedEmail,
+                    "OTP validated successfully and JWT token generated: UserId {UserId} with co-loaded status {IsCoLoaded}",
+                    user.Id,
                     user.IsCoLoaded);
 
                 return Result<string>.Success(token);

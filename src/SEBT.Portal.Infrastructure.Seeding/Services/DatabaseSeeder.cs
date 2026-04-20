@@ -212,11 +212,16 @@ public class DatabaseSeeder : Core.Services.IDatabaseSeeder
         else
         {
             var testUsers = CreateTestUsers(now);
-            var userEmails = testUsers.Select(u => u.Email).ToList();
+            var userEmails = testUsers
+                .Select(u => u.Email)
+                .Where(e => e != null)
+                .Cast<string>()
+                .ToList();
             var existingEmails = await _dataSeeder.GetExistingUserEmailsAsync(userEmails, cancellationToken);
 
             var usersToAdd = testUsers
-                .Where(user => !existingEmails.Contains(EmailNormalizer.Normalize(user.Email)))
+                .Where(user => user.Email != null
+                    && !existingEmails.Contains(EmailNormalizer.Normalize(user.Email)))
                 .ToList();
 
             if (usersToAdd.Count > 0)
@@ -347,11 +352,16 @@ public class DatabaseSeeder : Core.Services.IDatabaseSeeder
         else
         {
             var testUsers = CreateTestUsers(now);
-            var userEmails = testUsers.Select(u => u.Email).ToList();
+            var userEmails = testUsers
+                .Select(u => u.Email)
+                .Where(e => e != null)
+                .Cast<string>()
+                .ToList();
             var existingEmails = _dataSeeder.GetExistingUserEmails(userEmails);
 
             var usersToAdd = testUsers
-                .Where(user => !existingEmails.Contains(EmailNormalizer.Normalize(user.Email)))
+                .Where(user => user.Email != null
+                    && !existingEmails.Contains(EmailNormalizer.Normalize(user.Email)))
                 .ToList();
 
             if (usersToAdd.Count > 0)

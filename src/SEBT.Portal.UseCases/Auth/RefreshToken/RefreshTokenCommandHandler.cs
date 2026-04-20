@@ -1,5 +1,6 @@
 using System.Linq;
 using Microsoft.Extensions.Logging;
+using SEBT.Portal.Core.Models.Auth;
 using SEBT.Portal.Core.Repositories;
 using SEBT.Portal.Core.Services;
 using SEBT.Portal.Core.Utilities;
@@ -29,27 +30,39 @@ public class RefreshTokenCommandHandler(
     public async Task<Result<string>> Handle(RefreshTokenCommand command, CancellationToken cancellationToken = default)
     {
         var validationResult = await validator.Validate(command, cancellationToken);
-
         if (validationResult is ValidationFailedResult validationFailedResult)
         {
-            logger.LogWarning("Token refresh validation failed for email {Email}: {Errors}",
-                command.Email,
+            logger.LogWarning("Token refresh validation failed: {Errors}",
                 string.Join(", ", validationFailedResult.Errors.Select(e => $"{e.Key}: {e.Message}")));
             return Result<string>.ValidationFailed(validationFailedResult.Errors);
         }
 
+        // The user ID lives in the principal's sub claim. Missing or malformed means
+        // the caller isn't properly authenticated — reject rather than continuing.
+        var userId = command.CurrentPrincipal.GetUserId();
+        if (userId == null)
+        {
+            logger.LogWarning("Token refresh rejected: principal missing or invalid sub claim");
+            return Result<string>.PreconditionFailed(
+                PreconditionFailedReason.NotFound, "User not found.");
+        }
+
         try
         {
-            var user = await userRepository.GetUserByEmailAsync(command.Email, cancellationToken);
+            // Look up by our internal user ID — uniform across OIDC and OTP users.
+            var user = await userRepository.GetUserByIdAsync(userId.Value, cancellationToken);
 
             if (user == null)
             {
-                logger.LogWarning("Token refresh attempted for non-existent user {Email}", command.Email);
+                logger.LogWarning(
+                    "Token refresh attempted for non-existent UserId {UserId}", userId);
                 return Result<string>.PreconditionFailed(
-                    PreconditionFailedReason.NotFound,
-                    "User not found.");
+                    PreconditionFailedReason.NotFound, "User not found.");
             }
 
+            // Pass all existing JWT claims through — for OIDC users, this preserves
+            // IAL and other IdP-derived claims. For OTP users, GenerateToken will
+            // prefer user object values (from DB) over these claims.
             var additionalClaims = command.CurrentPrincipal.Claims
                 .DistinctBy(c => c.Type)
                 .ToDictionary(c => c.Type, c => c.Value);
@@ -59,16 +72,14 @@ public class RefreshTokenCommandHandler(
                 command.CurrentPrincipal.FindFirst("phone")?.Value
                 ?? command.CurrentPrincipal.FindFirst("phone_number")?.Value);
             logger.LogInformation(
-                "Token refreshed successfully for email {Email} with IAL level {IalLevel}, Phone={MaskedPhone}",
-                command.Email,
-                user.IalLevel,
-                maskedPhone);
+                "Token refreshed successfully for UserId {UserId}, Phone={MaskedPhone}",
+                user.Id, maskedPhone);
 
             return Result<string>.Success(token);
         }
         catch (Exception ex)
         {
-            logger.LogError(ex, "Error refreshing token for email {Email}", command.Email);
+            logger.LogError(ex, "Error refreshing token for UserId {UserId}", userId);
             return Result<string>.DependencyFailed(
                 DependencyFailedReason.ConnectionFailed,
                 "An error occurred while refreshing the authentication token.");
