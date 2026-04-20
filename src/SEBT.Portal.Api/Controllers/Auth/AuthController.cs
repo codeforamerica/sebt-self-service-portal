@@ -100,7 +100,6 @@ public class AuthController(
 
         var command = new RefreshTokenCommand
         {
-            UserId = userId.Value,
             CurrentPrincipal = User
         };
         var result = await handler.Handle(command);

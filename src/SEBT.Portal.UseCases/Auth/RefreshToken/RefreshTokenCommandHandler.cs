@@ -37,16 +37,25 @@ public class RefreshTokenCommandHandler(
             return Result<string>.ValidationFailed(validationFailedResult.Errors);
         }
 
+        // The user ID lives in the principal's sub claim. Missing or malformed means
+        // the caller isn't properly authenticated — reject rather than continuing.
+        var userId = command.CurrentPrincipal.GetUserId();
+        if (userId == null)
+        {
+            logger.LogWarning("Token refresh rejected: principal missing or invalid sub claim");
+            return Result<string>.PreconditionFailed(
+                PreconditionFailedReason.NotFound, "User not found.");
+        }
+
         try
         {
-            // Look up by our internal user ID (from the JWT sub claim), which is
-            // uniform across OIDC and OTP users.
-            var user = await userRepository.GetUserByIdAsync(command.UserId, cancellationToken);
+            // Look up by our internal user ID — uniform across OIDC and OTP users.
+            var user = await userRepository.GetUserByIdAsync(userId.Value, cancellationToken);
 
             if (user == null)
             {
                 logger.LogWarning(
-                    "Token refresh attempted for non-existent UserId {UserId}", command.UserId);
+                    "Token refresh attempted for non-existent UserId {UserId}", userId);
                 return Result<string>.PreconditionFailed(
                     PreconditionFailedReason.NotFound, "User not found.");
             }
@@ -70,7 +79,7 @@ public class RefreshTokenCommandHandler(
         }
         catch (Exception ex)
         {
-            logger.LogError(ex, "Error refreshing token for UserId {UserId}", command.UserId);
+            logger.LogError(ex, "Error refreshing token for UserId {UserId}", userId);
             return Result<string>.DependencyFailed(
                 DependencyFailedReason.ConnectionFailed,
                 "An error occurred while refreshing the authentication token.");

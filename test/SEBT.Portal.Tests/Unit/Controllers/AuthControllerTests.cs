@@ -9,6 +9,7 @@ using SEBT.Portal.Api.Models;
 using SEBT.Portal.Api.Services;
 using SEBT.Portal.Core.AppSettings;
 using SEBT.Portal.Core.Models.Auth;
+using SEBT.Portal.Core.Utilities;
 using SEBT.Portal.Kernel;
 using SEBT.Portal.Kernel.Results;
 using SEBT.Portal.UseCases.Auth;
@@ -154,7 +155,7 @@ public class AuthControllerTests
         SetupAuthenticatedUserWithSub(userId, email: "user@example.com");
 
         var handlerMock = Substitute.For<ICommandHandler<RefreshTokenCommand, string>>();
-        handlerMock.Handle(Arg.Is<RefreshTokenCommand>(c => c.UserId == userId))
+        handlerMock.Handle(Arg.Is<RefreshTokenCommand>(c => c.CurrentPrincipal.GetUserId() == userId))
             .Returns(Result<string>.Success(expectedToken));
 
         // Act
@@ -165,7 +166,7 @@ public class AuthControllerTests
         var setCookie = _controller.Response.Headers["Set-Cookie"].ToString();
         Assert.Contains($"{AuthCookies.AuthCookieName}={expectedToken}", setCookie);
         Assert.Contains("httponly", setCookie, StringComparison.OrdinalIgnoreCase);
-        await handlerMock.Received(1).Handle(Arg.Is<RefreshTokenCommand>(c => c.UserId == userId));
+        await handlerMock.Received(1).Handle(Arg.Is<RefreshTokenCommand>(c => c.CurrentPrincipal.GetUserId() == userId));
     }
 
     [Fact]
@@ -200,7 +201,7 @@ public class AuthControllerTests
         SetupAuthenticatedUserWithSub(userId);
 
         var handlerMock = Substitute.For<ICommandHandler<RefreshTokenCommand, string>>();
-        handlerMock.Handle(Arg.Is<RefreshTokenCommand>(c => c.UserId == userId))
+        handlerMock.Handle(Arg.Is<RefreshTokenCommand>(c => c.CurrentPrincipal.GetUserId() == userId))
             .Returns(Result<string>.PreconditionFailed(
                 PreconditionFailedReason.NotFound,
                 "User not found."));
@@ -251,7 +252,7 @@ public class AuthControllerTests
         SetupAuthenticatedUserWithSub(userId);
 
         var handlerMock = Substitute.For<ICommandHandler<RefreshTokenCommand, string>>();
-        handlerMock.Handle(Arg.Is<RefreshTokenCommand>(c => c.UserId == userId))
+        handlerMock.Handle(Arg.Is<RefreshTokenCommand>(c => c.CurrentPrincipal.GetUserId() == userId))
             .Returns(Result<string>.DependencyFailed(
                 DependencyFailedReason.ConnectionFailed,
                 "An error occurred while refreshing the authentication token."));
@@ -281,7 +282,7 @@ public class AuthControllerTests
         var result = await _controller.RefreshToken(handlerMock);
 
         // Assert
-        await handlerMock.Received(1).Handle(Arg.Is<RefreshTokenCommand>(c => c.UserId == userId));
+        await handlerMock.Received(1).Handle(Arg.Is<RefreshTokenCommand>(c => c.CurrentPrincipal.GetUserId() == userId));
     }
 
     [Fact]
