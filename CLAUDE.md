@@ -167,6 +167,9 @@ Uses Next.js App Router with route groups: `(public)/` for login flows, `(authen
 - `main` — production source for all states
 - `feature/*` — in-progress changes (all states build in CI)
 
+## Pull Requests
+All PRs (in this repo and related repos) must follow the template in [.github/pull_request_template.md](./.github/pull_request_template.md). When creating a PR, populate every section of the template: Jira ticket link, description, related PRs, and completion checklist.
+
 ## References
 - USWDS Design System: https://designsystem.digital.gov
 - Docker Docs: https://docs.docker.com

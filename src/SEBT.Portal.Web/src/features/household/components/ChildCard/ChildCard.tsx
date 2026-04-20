@@ -6,7 +6,6 @@ import { useTranslation } from 'react-i18next'
 
 import { isWithinCooldownPeriod } from '@/features/cards/utils/cooldown'
 import { useFeatureFlag } from '@/features/feature-flags'
-import { getState } from '@sebt/design-system'
 
 import type { IssuanceType, SummerEbtCase } from '../../api'
 import { formatDate } from '../../api'
@@ -23,20 +22,14 @@ function hasCardLifecycleTimeline(summerEbtCase: SummerEbtCase): boolean {
 }
 
 function getReplacementLink(summerEbtCase: SummerEbtCase): string | null {
-  const { summerEBTCaseID, issuanceType, cardRequestedAt } = summerEbtCase
+  const { summerEBTCaseID, allowCardReplacement, cardRequestedAt } = summerEbtCase
   if (!summerEBTCaseID) return null
-  if (!issuanceType || issuanceType === 'Unknown') return null
 
-  if (isWithinCooldownPeriod(cardRequestedAt)) return null
-
-  const currentState = getState()
-  const isCoLoaded = issuanceType === 'TanfEbtCard' || issuanceType === 'SnapEbtCard'
-
-  if (isCoLoaded && currentState === 'dc') {
+  if (!allowCardReplacement) {
     return '/cards/info'
   }
 
-  if (isCoLoaded) return null
+  if (isWithinCooldownPeriod(cardRequestedAt)) return null
 
   return `/cards/replace?case=${encodeURIComponent(summerEBTCaseID)}`
 }
@@ -129,16 +122,17 @@ export function ChildCard({ summerEbtCase, defaultExpanded = true }: ChildCardPr
               </dd>
             </>
           )}
-          {hasCardLifecycleTimeline(summerEbtCase) ? (
-            <CardStatusTimeline
-              cardStatus={ebtCardStatus}
-              cardRequestedAt={cardRequestedAt}
-              cardMailedAt={cardMailedAt}
-              cardDeactivatedAt={cardDeactivatedAt}
-            />
-          ) : (
-            <CardStatusDisplay cardStatus={ebtCardStatus} />
-          )}
+          {summerEbtCase.allowCardReplacement &&
+            (hasCardLifecycleTimeline(summerEbtCase) ? (
+              <CardStatusTimeline
+                cardStatus={ebtCardStatus}
+                cardRequestedAt={cardRequestedAt}
+                cardMailedAt={cardMailedAt}
+                cardDeactivatedAt={cardDeactivatedAt}
+              />
+            ) : (
+              <CardStatusDisplay cardStatus={ebtCardStatus} />
+            ))}
         </dl>
         {replacementLink && (
           <Link

@@ -17,7 +17,6 @@ using ICoreAddressUpdateService = SEBT.Portal.Core.Services.IAddressUpdateServic
 using IStateAddressUpdateService = SEBT.Portal.StatesPlugins.Interfaces.IAddressUpdateService;
 using AddressUpdateRequest = SEBT.Portal.StatesPlugins.Interfaces.Models.Household.AddressUpdateRequest;
 using AddressUpdateResult = SEBT.Portal.StatesPlugins.Interfaces.Models.Household.AddressUpdateResult;
-using BenefitIssuanceType = SEBT.Portal.Core.Models.Household.BenefitIssuanceType;
 using HouseholdData = SEBT.Portal.Core.Models.Household.HouseholdData;
 
 namespace SEBT.Portal.Tests.Unit.UseCases.Household;
@@ -97,12 +96,12 @@ public class UpdateAddressCommandHandlerTests
             .Returns(HouseholdIdentifier.Email(EmailNormalizer.Normalize(email)));
     }
 
-    private void SetupHouseholdWithBenefitType(BenefitIssuanceType benefitType)
+    private void SetupHouseholdWithCases(params SummerEbtCase[] cases)
     {
         _householdRepository.GetHouseholdByIdentifierAsync(
                 Arg.Any<HouseholdIdentifier>(), Arg.Any<PiiVisibility>(),
                 Arg.Any<UserIalLevel>(), Arg.Any<CancellationToken>())
-            .Returns(new HouseholdData { BenefitIssuanceType = benefitType });
+            .Returns(new HouseholdData { SummerEbtCases = cases.ToList() });
     }
 
     [Fact]
@@ -233,7 +232,7 @@ public class UpdateAddressCommandHandlerTests
         };
 
         SetupResolverReturnsEmail();
-        SetupHouseholdWithBenefitType(BenefitIssuanceType.SummerEbt);
+        SetupHouseholdWithCases();
 
         var result = await handler.Handle(command, CancellationToken.None);
 
@@ -256,13 +255,14 @@ public class UpdateAddressCommandHandlerTests
     }
 
     [Fact]
-    public async Task Handle_ReturnsPreconditionFailed_WhenHouseholdIsSnapBenefitType()
+    public async Task Handle_ReturnsPreconditionFailed_WhenAnyCaseIsCoLoaded()
     {
         var handler = CreateHandler();
         var command = CreateValidCommand();
 
         SetupResolverReturnsEmail();
-        SetupHouseholdWithBenefitType(BenefitIssuanceType.SnapEbtCard);
+        SetupHouseholdWithCases(
+            new SummerEbtCase { SummerEBTCaseID = "S1", ChildFirstName = "A", ChildLastName = "B", IsCoLoaded = true });
 
         var result = await handler.Handle(command, CancellationToken.None);
 
@@ -272,13 +272,15 @@ public class UpdateAddressCommandHandlerTests
     }
 
     [Fact]
-    public async Task Handle_ReturnsPreconditionFailed_WhenHouseholdIsTanfBenefitType()
+    public async Task Handle_ReturnsPreconditionFailed_WhenMixedCoLoadedAndNonCoLoaded()
     {
         var handler = CreateHandler();
         var command = CreateValidCommand();
 
         SetupResolverReturnsEmail();
-        SetupHouseholdWithBenefitType(BenefitIssuanceType.TanfEbtCard);
+        SetupHouseholdWithCases(
+            new SummerEbtCase { SummerEBTCaseID = "S1", ChildFirstName = "A", ChildLastName = "B", IsCoLoaded = true },
+            new SummerEbtCase { SummerEBTCaseID = "S2", ChildFirstName = "C", ChildLastName = "D", IsCoLoaded = false });
 
         var result = await handler.Handle(command, CancellationToken.None);
 
@@ -288,13 +290,14 @@ public class UpdateAddressCommandHandlerTests
     }
 
     [Fact]
-    public async Task Handle_AllowsUpdate_WhenHouseholdIsSummerEbtBenefitType()
+    public async Task Handle_AllowsUpdate_WhenNoCasesAreCoLoaded()
     {
         var handler = CreateHandler();
         var command = CreateValidCommand();
 
         SetupResolverReturnsEmail();
-        SetupHouseholdWithBenefitType(BenefitIssuanceType.SummerEbt);
+        SetupHouseholdWithCases(
+            new SummerEbtCase { SummerEBTCaseID = "S1", ChildFirstName = "A", ChildLastName = "B", IsCoLoaded = false });
 
         var result = await handler.Handle(command, CancellationToken.None);
 
@@ -302,13 +305,13 @@ public class UpdateAddressCommandHandlerTests
     }
 
     [Fact]
-    public async Task Handle_AllowsUpdate_WhenHouseholdIsUnknownBenefitType()
+    public async Task Handle_AllowsUpdate_WhenNoCasesExist()
     {
         var handler = CreateHandler();
         var command = CreateValidCommand();
 
         SetupResolverReturnsEmail();
-        SetupHouseholdWithBenefitType(BenefitIssuanceType.Unknown);
+        SetupHouseholdWithCases(); // empty
 
         var result = await handler.Handle(command, CancellationToken.None);
 
@@ -402,7 +405,8 @@ public class UpdateAddressCommandHandlerTests
         var command = CreateValidCommand();
 
         SetupResolverReturnsEmail();
-        SetupHouseholdWithBenefitType(BenefitIssuanceType.SnapEbtCard);
+        SetupHouseholdWithCases(
+            new SummerEbtCase { SummerEBTCaseID = "S1", ChildFirstName = "A", ChildLastName = "B", IsCoLoaded = true });
 
         await handler.Handle(command, CancellationToken.None);
 
@@ -417,7 +421,7 @@ public class UpdateAddressCommandHandlerTests
         var command = CreateValidCommand();
 
         SetupResolverReturnsEmail();
-        SetupHouseholdWithBenefitType(BenefitIssuanceType.SummerEbt);
+        SetupHouseholdWithCases();
 
         var result = await handler.Handle(command, CancellationToken.None);
 
@@ -432,7 +436,7 @@ public class UpdateAddressCommandHandlerTests
         var command = CreateValidCommand();
 
         SetupResolverReturnsEmail();
-        SetupHouseholdWithBenefitType(BenefitIssuanceType.SummerEbt);
+        SetupHouseholdWithCases();
         _stateAddressUpdateService.UpdateAddressAsync(Arg.Any<AddressUpdateRequest>(), Arg.Any<CancellationToken>())
             .Returns(AddressUpdateResult.PolicyRejected("HOUSEHOLD_NOT_ELIGIBLE", "Not eligible."));
 
@@ -450,7 +454,7 @@ public class UpdateAddressCommandHandlerTests
         var command = CreateValidCommand();
 
         SetupResolverReturnsEmail();
-        SetupHouseholdWithBenefitType(BenefitIssuanceType.SummerEbt);
+        SetupHouseholdWithCases();
         _stateAddressUpdateService.UpdateAddressAsync(Arg.Any<AddressUpdateRequest>(), Arg.Any<CancellationToken>())
             .Returns(AddressUpdateResult.BackendError("BACKEND_ERROR", "Something went wrong."));
 
@@ -467,7 +471,7 @@ public class UpdateAddressCommandHandlerTests
         var command = CreateValidCommand();
 
         SetupResolverReturnsEmail();
-        SetupHouseholdWithBenefitType(BenefitIssuanceType.SummerEbt);
+        SetupHouseholdWithCases();
         _stateAddressUpdateService.UpdateAddressAsync(Arg.Any<AddressUpdateRequest>(), Arg.Any<CancellationToken>())
             .Throws(new InvalidOperationException("Connection failed"));
 
@@ -503,7 +507,7 @@ public class UpdateAddressCommandHandlerTests
         var token = cts.Token;
 
         SetupResolverReturnsEmail();
-        SetupHouseholdWithBenefitType(BenefitIssuanceType.SummerEbt);
+        SetupHouseholdWithCases();
 
         await handler.Handle(command, token);
 
@@ -519,7 +523,7 @@ public class UpdateAddressCommandHandlerTests
         var token = cts.Token;
 
         SetupResolverReturnsEmail();
-        SetupHouseholdWithBenefitType(BenefitIssuanceType.SummerEbt);
+        SetupHouseholdWithCases();
 
         await handler.Handle(command, token);
 
@@ -536,7 +540,7 @@ public class UpdateAddressCommandHandlerTests
         var token = cts.Token;
 
         SetupResolverReturnsEmail();
-        SetupHouseholdWithBenefitType(BenefitIssuanceType.SummerEbt);
+        SetupHouseholdWithCases();
 
         await handler.Handle(command, token);
 
@@ -597,7 +601,7 @@ public class UpdateAddressCommandHandlerTests
         };
 
         SetupResolverReturnsEmail();
-        SetupHouseholdWithBenefitType(BenefitIssuanceType.SummerEbt);
+        SetupHouseholdWithCases();
 
         var result = await handler.Handle(command, CancellationToken.None);
 
@@ -630,7 +634,7 @@ public class UpdateAddressCommandHandlerTests
         var command = CreateValidCommand();
 
         SetupResolverReturnsEmail();
-        SetupHouseholdWithBenefitType(BenefitIssuanceType.SummerEbt);
+        SetupHouseholdWithCases();
 
         await handler.Handle(command, CancellationToken.None);
 

@@ -6,26 +6,26 @@ import {
   OidcCallbackTokenResponseSchema,
   OidcCompleteLoginResponseSchema
 } from '@/features/auth/api/oidc/schema'
-import { clearPkceStorage, getPkceFromStorage } from '@/lib/oidc-pkce'
 import { getTranslations } from '@/lib/translations'
-import { Alert, getState } from '@sebt/design-system'
+import { Alert } from '@sebt/design-system'
 import { useRouter } from 'next/navigation'
 import { useEffect, useRef, useState } from 'react'
 
-type CallbackStep = 'loading' | 'have_code_state' | 'have_flow_data' | 'exchanging' | 'error'
-
 /**
- * OIDC callback: state IdP redirects here with ?code=...&state=...
- * We send the code + state to the .NET /api/auth/oidc/callback endpoint, which
- * uses the server-side pre-auth session's code_verifier to exchange with the IdP.
- * We then send the callbackToken to /api/auth/oidc/complete-login to create the portal session.
+ * OIDC callback: the IdP redirects here with ?code=...&state=...
+ * We send code + state to the .NET /api/auth/oidc/callback endpoint, which
+ * uses the server-side pre-auth session (code_verifier, stateCode, isStepUp)
+ * to exchange with the IdP. We then send the callbackToken to
+ * /api/auth/oidc/complete-login to create the portal session.
+ *
+ * All flow metadata (stateCode, isStepUp, returnUrl) is stored in the server-side
+ * pre-auth session — no sessionStorage is used.
  */
 export default function CallbackPage() {
   const router = useRouter()
   const { login } = useAuth()
   const t = getTranslations('login')
   const [status, setStatus] = useState<'loading' | 'error'>('loading')
-  const [step, setStep] = useState<CallbackStep>('loading')
   const [errorDetail, setErrorDetail] = useState<string | null>(null)
   const exchangeStartedRef = useRef(false)
 
@@ -36,14 +36,10 @@ export default function CallbackPage() {
     const errorParam = params.get('error')
     const errorDescription = params.get('error_description')
 
+    // IdP returned an error (e.g., user cancelled login).
     if (errorParam) {
-      const storedPkce = getPkceFromStorage()
-      const stepUpFromIdpError = storedPkce?.isStepUp === true
       const idpDetail = errorDescription?.trim() ?? ''
-      const portalLine = t(
-        stepUpFromIdpError ? 'callbackErrorStepUpFailed' : 'callbackErrorIdpRedirect',
-        t('callbackErrorGeneric')
-      )
+      const portalLine = t('callbackErrorIdpRedirect', t('callbackErrorGeneric'))
       const message = idpDetail ? `${portalLine} ${idpDetail}` : portalLine
       queueMicrotask(() => {
         setErrorDetail(message)
@@ -55,81 +51,42 @@ export default function CallbackPage() {
     if (!code || !state) {
       queueMicrotask(() => {
         setErrorDetail(t('callbackErrorMissingParams'))
-        setStep('error')
         setStatus('error')
       })
       return
     }
-    queueMicrotask(() => setStep('have_code_state'))
 
     if (exchangeStartedRef.current) return
     exchangeStartedRef.current = true
 
     let cancelled = false
     async function run() {
-      const stored = getPkceFromStorage()
-      if (!stored) {
-        setErrorDetail(t('callbackErrorSessionExpired'))
-        clearPkceStorage()
-        if (!cancelled) {
-          setStep('error')
-          setStatus('error')
-        }
-        return
-      }
-      if (stored.state !== state) {
-        setErrorDetail(t('callbackErrorStateMismatch'))
-        clearPkceStorage()
-        if (!cancelled) {
-          setStep('error')
-          setStatus('error')
-        }
-        return
-      }
-      setStep('have_flow_data')
-      const isStepUp = stored.isStepUp === true
-      const returnUrl = stored.returnUrl ?? ''
-      clearPkceStorage()
-
       try {
-        setStep('exchanging')
-        const stateCode = getState()
-
-        // code_verifier is no longer sent — the server reads it from the pre-auth session.
+        // Send code + state to the server. The server reads stateCode, code_verifier,
+        // isStepUp, and returnUrl from the pre-auth session (oidc_session cookie).
         const { callbackToken } = await apiFetch('/auth/oidc/callback', {
           method: 'POST',
-          body: {
-            code,
-            state,
-            stateCode,
-            isStepUp
-          },
+          body: { code, state },
           schema: OidcCallbackTokenResponseSchema
         })
         if (cancelled) return
 
         const response = await apiFetch('/auth/oidc/complete-login', {
           method: 'POST',
-          body: {
-            stateCode,
-            callbackToken,
-            isStepUp,
-            returnUrl: returnUrl || undefined
-          },
+          body: { callbackToken },
           schema: OidcCompleteLoginResponseSchema
         })
         if (cancelled) return
 
         // Backend set the HttpOnly session cookie; refresh the context from /auth/status.
         await login()
-        const destination = isStepUp && response.returnUrl ? response.returnUrl : '/dashboard'
+        const destination = response.returnUrl ?? '/dashboard'
         router.replace(destination)
       } catch (e) {
         const errMsg =
           e instanceof Error ? e.message : typeof e === 'string' ? e : t('callbackErrorGeneric')
         setErrorDetail(errMsg || t('callbackErrorGeneric'))
         if (!cancelled) {
-          setStep('error')
           setStatus('error')
         }
       }
@@ -153,14 +110,6 @@ export default function CallbackPage() {
     return undefined
   }, [status, router])
 
-  const stepMessage: Record<CallbackStep, string> = {
-    loading: t('callbackSigningIn'),
-    have_code_state: t('callbackSigningIn'),
-    have_flow_data: t('callbackSigningIn'),
-    exchanging: t('callbackSigningIn'),
-    error: errorDetail ?? t('callbackErrorGeneric')
-  }
-
   return (
     <div className="usa-section">
       <div
@@ -176,7 +125,7 @@ export default function CallbackPage() {
             {errorDetail}
           </Alert>
         ) : (
-          <p className="font-sans-md">{stepMessage[step]}</p>
+          <p className="font-sans-md">{t('callbackSigningIn')}</p>
         )}
       </div>
     </div>
