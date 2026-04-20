@@ -213,7 +213,6 @@ public class DatabaseSeederTests : IClassFixture<SqlServerTestFixture>
         Assert.Equal((int)UserIalLevel.IAL1plus, coLoadedUser.IalLevel);
         Assert.NotNull(coLoadedUser.CoLoadedLastUpdated);
         Assert.NotNull(coLoadedUser.IdProofingCompletedAt);
-        Assert.NotNull(coLoadedUser.IdProofingExpiresAt);
 
         // Check non-co-loaded user
         var nonCoLoadedUser = await context.Users

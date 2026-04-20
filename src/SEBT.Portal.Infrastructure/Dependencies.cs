@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using SEBT.Portal.Core.AppSettings;
 using SEBT.Portal.Core.Repositories;
@@ -25,6 +26,13 @@ public static class Dependencies
 
         // JWT Services
         services.AddTransient<IJwtTokenService, JwtTokenService>();
+
+        // OIDC verification claim translation (maps IdP claims like socureIdVerificationLevel to portal IAL)
+        services.AddTransient<OidcVerificationClaimTranslator>(sp =>
+            new OidcVerificationClaimTranslator(
+                sp.GetRequiredService<IOptions<OidcVerificationClaimSettings>>().Value,
+                sp.GetRequiredService<IOptions<IdProofingValiditySettings>>().Value,
+                sp.GetRequiredService<ILoggerFactory>().CreateLogger<OidcVerificationClaimTranslator>()));
 
         // ID Proofing Requirements (state-specific PII visibility)
         services.AddScoped<IIdProofingRequirementsService, IdProofingRequirementsService>();
@@ -209,6 +217,11 @@ public static class Dependencies
         services.AddSingleton<IValidateOptions<OidcStepUpSettings>, OidcStepUpSettingsValidator>();
         services.AddOptionsWithValidateOnStart<OidcStepUpSettings>()
             .BindConfiguration(OidcStepUpSettings.SectionName);
+
+        services.AddOptions<IdProofingValiditySettings>()
+            .BindConfiguration(IdProofingValiditySettings.SectionName);
+        services.AddOptions<OidcVerificationClaimSettings>()
+            .BindConfiguration(OidcVerificationClaimSettings.SectionName);
 
         services.AddOptions<FeatureManagementSettings>()
             .Bind(configuration.GetSection(FeatureManagementSettings.SectionName))

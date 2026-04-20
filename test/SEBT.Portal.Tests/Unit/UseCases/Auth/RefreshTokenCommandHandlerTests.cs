@@ -143,8 +143,7 @@ public class RefreshTokenCommandHandlerTests
             Email = command.Email,
             IalLevel = UserIalLevel.IAL1,
             IdProofingSessionId = "session-abc-123",
-            IdProofingCompletedAt = null,
-            IdProofingExpiresAt = DateTime.UtcNow.AddYears(1)
+            IdProofingCompletedAt = null
         };
 
         userRepository.GetUserByEmailAsync(Arg.Is<string>(email => email == command.Email), Arg.Any<CancellationToken>())
@@ -259,14 +258,12 @@ public class RefreshTokenCommandHandlerTests
         };
 
         var completedAt = DateTime.UtcNow.AddDays(-5);
-        var expiresAt = DateTime.UtcNow.AddYears(1);
         var user = new User
         {
             Email = command.Email,
             IalLevel = UserIalLevel.IAL1plus,
             IdProofingSessionId = "session-xyz",
-            IdProofingCompletedAt = completedAt,
-            IdProofingExpiresAt = expiresAt
+            IdProofingCompletedAt = completedAt
         };
 
         userRepository.GetUserByEmailAsync(Arg.Is<string>(email => email == command.Email), Arg.Any<CancellationToken>())
@@ -283,8 +280,7 @@ public class RefreshTokenCommandHandlerTests
             u.Email == command.Email &&
             u.IalLevel == UserIalLevel.IAL1plus &&
             u.IdProofingSessionId == "session-xyz" &&
-            u.IdProofingCompletedAt == completedAt &&
-            u.IdProofingExpiresAt == expiresAt), Arg.Any<IReadOnlyDictionary<string, string>>());
+            u.IdProofingCompletedAt == completedAt), Arg.Any<IReadOnlyDictionary<string, string>>());
     }
 }
 

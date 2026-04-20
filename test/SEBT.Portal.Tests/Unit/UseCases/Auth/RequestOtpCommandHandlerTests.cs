@@ -1,12 +1,13 @@
+
 using Microsoft.Extensions.Logging;
 using SEBT.Portal.Core.Services;
+using SEBT.Portal.Core.Utilities;
 using SEBT.Portal.Kernel;
 using SEBT.Portal.Kernel.Results;
 using SEBT.Portal.UseCases.Auth;
 using NSubstitute;
 using SEBT.Portal.Core.Repositories;
 using SEBT.Portal.Core.Models.Auth;
-using NSubstitute.ReceivedExtensions;
 
 namespace SEBT.Portal.Tests.Unit.UseCases.Auth;
 
@@ -64,7 +65,7 @@ public class RequestOtpCommandHandlerTests
         logger.Received().Log(
             LogLevel.Information,
             Arg.Any<EventId>(),
-            Arg.Is<object>(o => o.ToString()!.Contains("OTP requested for email")),
+            Arg.Is<object>(o => o.ToString()!.Contains("OTP requested for") && o.ToString()!.Contains(PiiMasker.MaskEmail(command.Email)!)),
             Arg.Any<Exception>(),
             Arg.Any<Func<object, Exception?, string>>());
     }
@@ -85,7 +86,7 @@ public class RequestOtpCommandHandlerTests
         logger.Received().Log(
             LogLevel.Warning,
             Arg.Any<EventId>(),
-            Arg.Is<object>(o => o.ToString()!.Contains("OTP request failed for email")),
+            Arg.Is<object>(o => o.ToString()!.Contains("OTP request failed for") && !o.ToString()!.Contains(command.Email)),
             Arg.Any<Exception>(),
             Arg.Any<Func<object, Exception?, string>>());
     }
@@ -108,7 +109,7 @@ public class RequestOtpCommandHandlerTests
         logger.Received().Log(
             LogLevel.Information,
             Arg.Any<EventId>(),
-            Arg.Is<object>(o => o.ToString()!.Contains("OTP request successful for email")),
+            Arg.Is<object>(o => o.ToString()!.Contains("OTP request successful for") && o.ToString()!.Contains(PiiMasker.MaskEmail(command.Email)!)),
             Arg.Any<Exception>(),
             Arg.Any<Func<object, Exception?, string>>());
     }
@@ -211,5 +212,25 @@ public class RequestOtpCommandHandlerTests
         Assert.False(result.IsSuccess);
         var failedResult = Assert.IsType<ValidationFailedResult>(result);
         Assert.Contains("Invalid email format.", failedResult.Errors.Select(e => e.Message));
+    }
+
+    /// <summary>
+    /// Tests that Handle skips OTP generation, persistence, and sending when BypassOtp is true.
+    /// The controller is responsible for determining when to set BypassOtp; the handler just respects the flag.
+    /// </summary>
+    [Fact]
+    public async Task Handle_WhenBypassOtpIsTrue_ReturnsSuccessWithoutSendingOtp()
+    {
+        // Arrange
+        var command = new RequestOtpCommand { Email = "user@example.com", BypassOtp = true };
+
+        // Act
+        var result = await handler.Handle(command, CancellationToken.None);
+
+        // Assert
+        Assert.True(result.IsSuccess);
+        await emailSender.DidNotReceive().SendOtpAsync(Arg.Any<string>(), Arg.Any<string>());
+        await otpRepository.DidNotReceive().SaveOtpCodeAsync(Arg.Any<OtpCode>());
+        otpGenerator.DidNotReceive().GenerateOtp();
     }
 }

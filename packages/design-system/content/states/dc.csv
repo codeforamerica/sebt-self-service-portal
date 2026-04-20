@@ -1,4 +1,4 @@
-Variable Name/Key,🟡 DC English,⚪ SOURCE English,🟡 DC Español,⚪ SOURCE Español,Notes
+Variable Name/Key,🟡 DC English Current,⚪ SOURCE English,🟡 DC Español Current,⚪ SOURCE Español,Notes
 S1 - Landing Page - Title,Get a one-time payment of $120 in summer food benefits for your child,Get a one-time payment of $120 in summer food benefits for your child,Obtén un pago único de $120 para pagar la comida de su estudiante este verano,Obtenga un pago único de $120 para pagar la comida de su estudiante este verano,
 S1 - Landing Page - Body,"Each eligible child can receive a *one-time payment of $120*. Families may use the money to pay for groceries during the summer months. 
 
@@ -120,8 +120,8 @@ S1 - Result - Streamlined Enrolled - Card 2 Action,Check another child,Check ano
 S1 - Result - Streamlined Enrolled - Steps Heading,Next steps,Next steps,próximos pasos  ,próximos pasos  ,
 S1 - Result - None - Body 1,We don't have enough information for the following children.,We don't have enough information for the following children.,No tenemos suficiente información para los siguientes niños.,No tenemos suficiente información para los siguientes niños,
 S1 - Result - None - Body 2,We recommend logging into the DC Sun Bucks portal to confirm if they are automatically enrolled.,We recommend logging into the Summer EBT portal to confirm if they are automatically enrolled.,Recomendamos iniciar sesión en el portal de DC Sun Bucks para confirmar si están automaticamente inscritos.,Recomendamos iniciar sesión en el portal de Summer EBT para confirmar si están automaticamente inscritos.,
-S1 - Result - Error - Title,,Something went wrong on our end,,Algo salió mal de nuestro lado,
-S1 - Result - Error - Body,,We aren’t able to able to share enrollment information for your children. You may try to check again later or continue with these next steps.,,No podemos compartir información de inscripción de tus hijos en este momento. Puedes intentar revisar de nuevo más tarde o continuar con estos siguientes pasos.,
+S1 - Result - Error - Title,Something went wrong on our end,Something went wrong on our end,,Algo salió mal de nuestro lado,
+S1 - Result - Error - Body,We aren’t able to able to share enrollment information for your children. You may try to check again later or continue with these next steps.,We aren’t able to able to share enrollment information for your children. You may try to check again later or continue with these next steps.,,No podemos compartir información de inscripción de tus hijos en este momento. Puedes intentar revisar de nuevo más tarde o continuar con estos siguientes pasos.,
 S2 - Log In Disclaimer - Title,Log in to your DC SUN Bucks account,Log in to your Summer EBT account,Inicia sesión en tu cuenta de DC SUN Bucks,Inicia sesión en tu cuenta de Summer EBT,
 S2 - Log In Disclaimer - Log In Disclaimer - Body 1,"You can use the same login you use to access the OSSE Parent Portal. Also, if you don't have an account, you can create one using your email address.","You can use the same login you use to access PEAK. Also, if you don't have an account, you can create one using your email address.","Puedes usar el mismo inicio de sesión que utilizas para acceder al Portal de Padres de OSSE. Si no tienes una cuenta, puedes crear una. ","Puedes usar el mismo inicio de sesión que utilizas para acceder al portal de PEAK. Si no tienes una cuenta, puedes crear una. ",
 S2 - Log In Disclaimer - Log In Disclaimer - Body 2,Contact us if you need assistance logging into your account.,Contact us if you need assistance logging into your account.,Contáctanos si necesitas ayuda para entrar a tu cuenta.,Contáctanos si necesitas  ayuda para iniciar sesión en su cuenta. ,
@@ -181,11 +181,11 @@ S2 - Portal Dashboard - Card Table - Heading Mailing address,Mailing address,Mai
 S2 - Portal Dashboard - Card Table - Status Requested,Requested on [MM/DD/YYYY],Requested on [MM/DD/YYYY],Solicitada el [DD/MM/YYYY],Solicitada [DD/MM/YYYY],
 S2 - Portal Dashboard - Card Table - Status Issued,Issued on [MM/DD/YYYY],Issued on [MM/DD/YYYY],Emitida el [DD/MM/YYYY],Emitida el [DD/MM/YYYY],
 S2 - Portal Dashboard - Card Table - Status Mailed,Mailed on [MM/DD/YYYY],Mailed on [MM/DD/YYYY],Enviada por correo el [DD/MM/YYYY],Enviada por correo el [DD/MM/YYYY],
-S2 - Portal Dashboard - Card Table - Status Active,,Active,Activa,Activa,
-S2 - Portal Dashboard - Card Table - Status Deactivated,,Deactivated,Desactivada,Desactivada,
-S2 - Portal Dashboard - Card Table - Status Inactive,,Inactive,inactiva,Inactiva,
-S2 - Portal Dashboard - Card Table - Status Frozen,,Frozen,congelada,Congelada,
-S2 - Portal Dashboard - Card Table - Status Undeliverable,,Undeliverable,no se pudo entregar,No se pudo entregar,
+S2 - Portal Dashboard - Card Table - Status Active,Active,Active,Activa,Activa,
+S2 - Portal Dashboard - Card Table - Status Deactivated,Deactivated,Deactivated,Desactivada,Desactivada,
+S2 - Portal Dashboard - Card Table - Status Inactive,Inactive,Inactive,inactiva,Inactiva,
+S2 - Portal Dashboard - Card Table - Status Frozen,Frozen,Frozen,congelada,Congelada,
+S2 - Portal Dashboard - Card Table - Status Undeliverable,Undeliverable,Undeliverable,no se pudo entregar,No se pudo entregar,
 S2 - Portal Dashboard - Card Table - Status Message Requested 1,,We've requested a new Summer EBT card that will arrive in the mail within 2–3 weeks. Check back here to see when the card has been mailed.,Hemos solicitado una nueva tarjeta de DC SUN Bucks que llegará por correo en un plazo de 2 a 3 semanas. Regresa aquí para ver cuándo se ha enviado la tarjeta.,Hemos solicitado una nueva tarjeta de Summer EBT que llegará por correo en un plazo de 2 a 3 semanas. Regresa aquí para ver cuándo se envió la tarjeta.,
 S2 - Portal Dashboard - Card Table - Status Message Requested 2,,A replacement card will arrive in the mail in around 5–7 days. The card should be mailed within 2 days. Check back here to see when the replacement card has been mailed.,Una tarjeta de reemplazo llegará por correo en aproximadamente 5 a 7 días. La tarjeta debería ser enviada dentro de 2 días. Regresa aquí para ver cuándo se ha enviado la tarjeta de reemplazo.,Una tarjeta de reemplazo llegará por correo en aproximadamente 5 a 7 días. La tarjeta debería ser enviada dentro de 2 días. Regresa aquí para ver cuándo se envió la tarjeta de reemplazo.,
 S2 - Portal Dashboard - Card Table - Status Message Mailed,,"After the new card is mailed, it should arrive in around 5–7 days. If it doesn't arrive after two weeks, you can request a replacement card.","Una vez que se envíe por correo la nueva tarjeta, debería llegar en un plazo de 5 a 7 días. Si no llega después de dos semanas, puedes solicitar una tarjeta de reemplazo.","Una vez que se envíe por correo la nueva tarjeta, debería llegar en un plazo de 5 a 7 días. Si no llega después de dos semanas, puedes solicitar una tarjeta de reemplazo.",
@@ -202,8 +202,8 @@ Cuando te pidan “ingresar el código postal del titular principal de la tarjet
 Cuando te pidan ingresar la fecha de nacimiento, escribe la fecha de nacimiento de tu hijo usando el formato DD-MM-YYYY (día-mes-año).
 
 Cuando te pidan “ingresar el código postal del titular principal de la tarjeta”, ingresa el código postal de la dirección a la que se envió por correo tu tarjeta.",
-S2 - Portal Dashboard - Card Table - Status Message Deactivated,,"This card was reported as lost, stolen, damaged, or otherwise inactive. Email the Summer EBT Help Desk at cdhs_sebt_supportcenter@state.co.us to learn more or report a change.","Esta tarjeta fue reportada como perdida, robada, dañada o inactiva. Escribe al centro de ayuda Summer EBT a cdhs_sebt_supportcenter@state.co.us para saber más o reportar un cambio.","Esta tarjeta fue reportada como perdida, robada, dañada o inactiva. Escribe al centro de ayuda Summer EBT a cdhs_sebt_supportcenter@state.co.us para saber más o reportar un cambio.",
-S2 - Portal Dashboard - Card Table - Status Message Inactive,,"This card was reported as lost, stolen, damaged, or otherwise inactive. Email the Summer EBT Help Desk at cdhs_sebt_supportcenter@state.co.us to learn more or report a change.","Esta tarjeta fue reportada como perdida, robada, dañada o inactiva. Escribe al centro de ayuda Summer EBT a cdhs_sebt_supportcenter@state.co.us para saber más o reportar un cambio.","Esta tarjeta fue reportada como perdida, robada, dañada o inactiva. Escribe al centro de ayuda Summer EBT a cdhs_sebt_supportcenter@state.co.us para saber más o reportar un cambio.",
+S2 - Portal Dashboard - Card Table - Status Message Deactivated,,"This card was reported as lost, stolen, damaged, or otherwise inactive.","Esta tarjeta fue reportada como perdida, robada, dañada o inactiva. Escribe al centro de ayuda Summer EBT a cdhs_sebt_supportcenter@state.co.us para saber más o reportar un cambio.","Esta tarjeta fue reportada como perdida, robada, dañada o inactiva.",
+S2 - Portal Dashboard - Card Table - Status Message Inactive,,"This card was reported as lost, stolen, damaged, or otherwise inactive.","Esta tarjeta fue reportada como perdida, robada, dañada o inactiva. Escribe al centro de ayuda Summer EBT a cdhs_sebt_supportcenter@state.co.us para saber más o reportar un cambio.","Esta tarjeta fue reportada como perdida, robada, dañada o inactiva.",
 S2 - Portal Dashboard - Card Table - Status Message Frozen,,"You won’t be able to use your benefits while this card is frozen. Unfreeze the card to keep using your benefits. This can be done with the ebtEDGE, MyCoBenefits, or Propel apps.","No podrás usar tus beneficios mientras esta tarjeta esté congelada. Descongela la tarjeta para seguir usando tus beneficios. Puedes hacerlo con las aplicaciones ebtEDGE, MyCoBenefits o Propel","No podrás usar tus beneficios mientras esta tarjeta esté congelada. Descongela la tarjeta para seguir usando tus beneficios. Puedes hacerlo con las aplicaciones ebtEDGE, MyCoBenefits o Propel.",
 S2 - Portal Dashboard - Card Table - Status Message Undeliverable,,The card could not be delivered to the address on file. ,No se pudo entregar la tarjeta a la dirección que tenemos registrada.,No se pudo entregar la tarjeta a la dirección que tenemos registrada.,
 S2 - Portal Dashboard - Card Table - Action Update Mailing Address,Update this card's mailing address,Update this card's mailing address,Actualizar la dirección de correspondencia de esta tarjeta,Actualizar la dirección de correspondencia de esta tarjeta,
@@ -356,7 +356,7 @@ Las tarjetas llegarán por correo en aproximadamente 7 a 10 días hábiles.
 Cualquier saldo restante en la tarjeta anterior se transferirá automáticamente a la tarjeta de reemplazo.",
 S6 - Confirm Request Replacement Card - Summary Title,Card order summary,Card order summary,Resumen del pedido de tarjetas,Resumen del pedido de tarjetas,
 S6 - Confirm Request Replacement Card - Summary Address,Your new card will be mailed to the following address:,A new card will be mailed to the following address:,Las nuevas tarjetas se enviarán por correo a la siguiente dirección:,Las nuevas tarjetas se enviarán por correo a la siguiente dirección:,
-S6 - Confirm Request Replacement Card - Action,,Order card,Pedir tarjetas,Pedir tarjetas,
+S6 - Confirm Request Replacement Card - Action,Order card,Order card,Pedir tarjetas,Pedir tarjetas,
 S7 - Pin Card - Title,Activate a card,Activate a card,Activar una tarjeta,Activar una tarjeta,
 S7 - Pin Card - Body,"Once you receive your child's card, call EBT Customer Service at (888) 328-2656. Follow the instructions to set the PIN number to activate the card.
 
@@ -413,7 +413,7 @@ S8 - ID Proofing Optional ID Info - Option Helper Medicaid ID,This number can be
 Este número puede encontrarse en tus cartas de Medicaid y suele tener 7 u 8 dígitos","
 Este número puede encontrarse en tus cartas de Medicaid y suele tener 7 u 8 dígitos",
 S8 - ID Proofing Optional ID Info - Option Account ID,SNAP or TANF account ID,SNAP or TANF account ID,ID de la cuenta de SNAP o TANF,ID de la cuenta de SNAP o TANF,
-S8 - ID Proofing Optional ID Info - Option Helper Account ID,This number can be found on your SNAP or TANF letters and is typically 7 or 8 digits long.,This number can be found on your SNAP or TANF letters and is typically 7 or 8 digits long.,"
+S8 - ID Proofing Optional ID Info - Option Helper Account ID,"If you receive SNAP or TANF, select this option. It can be found on your notices and is typically 7 or 8 digits long.","If you receive SNAP or TANF, select this option. It can be found on your notices and is typically 7 or 8 digits long.","
 Este número puede encontrarse en tus cartas de SNAP o TANF y suele tener 7 u 8 dígitos.","
 Este número puede encontrarse en tus cartas de SNAP o TANF y suele tener 7 u 8 dígitos.",
 S8 - ID Proofing Optional ID Info - Option Person ID,SNAP or TANF person ID,SNAP or TANF person ID,ID de persona de SNAP o TANF,ID de persona de SNAP o TANF,
@@ -467,14 +467,14 @@ S9 - Text - Confirm Label,Confirm phone number,Confirm phone number,Confirma el 
 S9 - Language - Title,Which language do you prefer to be contacted in?,Which language do you prefer to be contacted in?,¿En qué idioma prefieres que te contactemos?,¿En qué idioma prefieres que te contactemos?,
 S9 - Language - Label Select Language,Select a language,Select a language,Selecciona un idioma,Selecciona un idioma,
 S9 - Language - Action,Continue to my account,Continue to my account,Continuar a mi cuenta,Continuar a mi cuenta,
-S10 - Step-up Disclaimer - Title,,"To help keep your account safe, we need to confirm it’s really you",,"Para ayudar a mantener tu cuenta segura, necesitamos confirmar que realmente eres tú.",
-S10 - Step-up Disclaimer - Body,,We need to share some information with our third-party vendor to verify your identity. We will do this only once and will not share or save anything without your permission.,,Necesitamos compartir cierta información con nuestro proveedor externo para verificar tu identidad. Solo haremos esto una vez y no compartiremos ni guardaremos nada sin tu permiso.,
-S10 - Step-up Disclaimer - Action,,Verify,,Verifica,
-S10 - Step-up Processing - Title,,Please wait...,,"Por favor, espera...",
-S10 - Step-up Processing - Body,,Do not exit the page. Checking to see if we have enough information.,,No salgas de la página. Estamos verificando si tenemos suficiente información.,
-S10 - Step-up Failure - Title,,"We're sorry, we aren't able to show your Summer EBT information",,"Lo sentimos, no podemos mostrar tu información de Summer EBT",
-S10 - Step-up Failure - Body,,You can contact us if you need more help.,,Puedes contactarnos si necesitas más ayuda.,
-S10 - Step-up Failure - Action,,Contact us,,Contáctanos,
+S10 - Step-up Disclaimer - Title,"To help keep your account safe, we need to confirm it’s really you","To help keep your account safe, we need to confirm it’s really you",,"Para ayudar a mantener tu cuenta segura, necesitamos confirmar que realmente eres tú.",
+S10 - Step-up Disclaimer - Body,We need to share some information with our third-party vendor to verify your identity. We will do this only once and will not share or save anything without your permission.,We need to share some information with our third-party vendor to verify your identity. We will do this only once and will not share or save anything without your permission.,,Necesitamos compartir cierta información con nuestro proveedor externo para verificar tu identidad. Solo haremos esto una vez y no compartiremos ni guardaremos nada sin tu permiso.,
+S10 - Step-up Disclaimer - Action,Verify,Verify,,Verifica,
+S10 - Step-up Processing - Title,Please wait...,Please wait...,,"Por favor, espera...",
+S10 - Step-up Processing - Body,Do not exit the page. Checking to see if we have enough information.,Do not exit the page. Checking to see if we have enough information.,,No salgas de la página. Estamos verificando si tenemos suficiente información.,
+S10 - Step-up Failure - Title,"We're sorry, we aren't able to show your DC SUN Bucks information","We're sorry, we aren't able to show your Summer EBT information",,"Lo sentimos, no podemos mostrar tu información de Summer EBT",
+S10 - Step-up Failure - Body,You can contact us if you need more help.,You can contact us if you need more help.,,Puedes contactarnos si necesitas más ayuda.,
+S10 - Step-up Failure - Action,Contact us,Contact us,,Contáctanos,
 GLOBAL - Program Name,DC SUN Bucks,Summer EBT,DC SUN Bucks,Summer EBT,
 GLOBAL - Language,Language,Language,Idioma,Idioma,
 GLOBAL - Label - Languages,Languages,Languages,Idiomas,Idiomas,

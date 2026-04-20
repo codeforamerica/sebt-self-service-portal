@@ -1,0 +1,98 @@
+name: Deploy Enrollment Checker
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - src/SEBT.EnrollmentChecker.Web/**
+      - packages/**
+      - pnpm-lock.yaml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: deploy-enrollment-checker
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    environment: dev-co
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Get pnpm store directory
+        id: pnpm-cache
+        shell: bash
+        run: echo "store=$(pnpm store path)" >> "$GITHUB_OUTPUT"
+
+      - name: Cache pnpm dependencies
+        uses: actions/cache@v4
+        with:
+          path: ${{ steps.pnpm-cache.outputs.store }}
+          key: pnpm-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml') }}
+          restore-keys: pnpm-${{ runner.os }}-
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Remove SSR-only API routes
+        run: rm -rf src/SEBT.EnrollmentChecker.Web/src/app/api
+
+      - name: Build static export
+        run: BUILD_STATIC=true pnpm --filter @sebt/enrollment-checker build
+        env:
+          STATE: co
+          NEXT_PUBLIC_STATE: co
+          NEXT_PUBLIC_API_BASE_URL: ${{ vars.ENROLLMENT_CHECKER_API_BASE_URL }}
+          NEXT_PUBLIC_PORTAL_URL: ${{ vars.ENROLLMENT_CHECKER_PORTAL_URL }}
+          NEXT_PUBLIC_APPLICATION_URL: ${{ vars.ENROLLMENT_CHECKER_APPLICATION_URL }}
+
+      - name: Upload static site artifact
+        uses: actions/upload-artifact@v6
+        with:
+          name: enrollment-checker-out
+          path: src/SEBT.EnrollmentChecker.Web/out/
+          retention-days: 1
+
+  deploy-co:
+    needs: build
+    runs-on: ubuntu-latest
+    environment: dev-co
+    env:
+      AWS_REGION: us-east-1
+    steps:
+      - name: Download static site artifact
+        uses: actions/download-artifact@v7
+        with:
+          name: enrollment-checker-out
+          path: out/
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v6
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Sync to S3
+        run: |
+          aws s3 sync out/ "s3://${{ vars.ENROLLMENT_CHECKER_S3_BUCKET }}" \
+            --delete
+
+      - name: Invalidate CloudFront cache
+        run: |
+          aws cloudfront create-invalidation \
+            --distribution-id "${{ vars.ENROLLMENT_CHECKER_DISTRIBUTION_ID }}" \
+            --paths "/*"

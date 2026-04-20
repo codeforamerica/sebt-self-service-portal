@@ -58,7 +58,9 @@ const TEST_CASES: SummerEbtCase[] = [
     cardRequestedAt: '2026-01-01T00:00:00Z',
     cardMailedAt: '2026-01-03T00:00:00Z',
     cardActivatedAt: '2026-01-08T00:00:00Z',
-    cardDeactivatedAt: null
+    cardDeactivatedAt: null,
+    allowAddressChange: true,
+    allowCardReplacement: true
   },
   {
     summerEBTCaseID: 'SEBT-002',
@@ -72,7 +74,9 @@ const TEST_CASES: SummerEbtCase[] = [
     cardRequestedAt: '2026-01-01T00:00:00Z',
     cardMailedAt: '2026-01-03T00:00:00Z',
     cardActivatedAt: '2026-01-08T00:00:00Z',
-    cardDeactivatedAt: null
+    cardDeactivatedAt: null,
+    allowAddressChange: true,
+    allowCardReplacement: true
   }
 ]
 

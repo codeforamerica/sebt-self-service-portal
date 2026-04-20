@@ -1,13 +1,11 @@
 'use client'
 
+import { useRouter } from 'next/navigation'
+import { useEffect, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 
 import { AddressForm } from '@/features/address/components/AddressForm'
 import { useHouseholdData } from '@/features/household'
-
-// TODO (D9): Eligibility check — redirect co-loaded DC users to /profile/address/info.
-// Canonical data source for co-loaded status is TBD (see questions.md).
-// Will need getState() to check benefitIssuanceType.
 
 // TODO (DC-153): Card-flow entry point — when accessed via /profile/address?from=cards,
 // the form should return the user to the card replacement flow on completion
@@ -16,8 +14,20 @@ import { useHouseholdData } from '@/features/household'
 export default function AddressFormPage() {
   const { t } = useTranslation('confirmInfo')
   const { data, isLoading } = useHouseholdData()
+  const router = useRouter()
 
-  if (isLoading) {
+  const canChangeAddress = useMemo(
+    () => data?.summerEbtCases.some((c) => c.allowAddressChange) ?? false,
+    [data?.summerEbtCases]
+  )
+
+  useEffect(() => {
+    if (!isLoading && !canChangeAddress) {
+      router.replace('/profile')
+    }
+  }, [isLoading, canChangeAddress, router])
+
+  if (isLoading || !canChangeAddress) {
     return (
       <div
         aria-busy="true"

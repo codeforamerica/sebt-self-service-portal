@@ -28,11 +28,11 @@ export function toDateOfBirth(values: Pick<ChildFormValues, 'month' | 'day' | 'y
 
 /** Decompose an ISO date string into month/day/year for form population. */
 export function fromDateOfBirth(dateOfBirth: string): { month: string; day: string; year: string } {
-  const [year, month, day] = dateOfBirth.split('-')
+  const parts = dateOfBirth.split('-')
   // Strip leading zeros for natural display (e.g., "04" -> "4")
   return {
-    month: String(parseInt(month, 10)),
-    day: String(parseInt(day, 10)),
-    year
+    month: String(parseInt(parts[1]!, 10)),
+    day: String(parseInt(parts[2]!, 10)),
+    year: parts[0]!
   }
 }

@@ -110,12 +110,10 @@ public static class UserFactory
             {
                 var faker = new Faker();
                 u.IdProofingCompletedAt = faker.Date.Recent(30);
-                u.IdProofingExpiresAt = u.IdProofingCompletedAt.Value.AddYears(1);
             }
             else
             {
                 u.IdProofingCompletedAt = null;
-                u.IdProofingExpiresAt = null;
             }
 
             customize?.Invoke(u);

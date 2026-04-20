@@ -252,12 +252,14 @@ public class MockHouseholdRepository : IHouseholdRepository
                 HouseholdFactory.CreateSummerEbtCase("John", "Doe", "Application", c =>
                 {
                     c.IssuanceType = IssuanceType.SnapEbtCard;
+                    c.IsCoLoaded = true;
                     c.BenefitAvailableDate = appBenefitStart;
                     c.BenefitExpirationDate = appBenefitStart.AddDays(122);
                 }),
                 HouseholdFactory.CreateSummerEbtCase("Jane", "Doe", "Application", c =>
                 {
                     c.IssuanceType = IssuanceType.SnapEbtCard;
+                    c.IsCoLoaded = true;
                     c.BenefitAvailableDate = appBenefitStart;
                     c.BenefitExpirationDate = appBenefitStart.AddDays(122);
                 })
@@ -321,6 +323,14 @@ public class MockHouseholdRepository : IHouseholdRepository
         var review = HouseholdFactory.CreateHouseholdDataWithStatus(ApplicationStatus.Unknown, h =>
         {
             h.BenefitIssuanceType = BenefitIssuanceType.SummerEbt;
+            h.AddressOnFile = new Address
+            {
+                StreetAddress1 = "700 14th Street NW",
+                StreetAddress2 = "Unit 2",
+                City = "Washington",
+                State = "DC",
+                PostalCode = "20005"
+            };
             var app = h.Applications.FirstOrDefault();
             if (app != null)
             {

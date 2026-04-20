@@ -35,6 +35,17 @@ public interface IOidcExchangeService
         string redirectUri,
         bool isStepUp,
         CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Fetches the cached OIDC discovery document for the configured IdP. Returns the
+    /// <see cref="OpenIdConnectConfiguration"/> containing endpoint URLs (authorization,
+    /// token, userinfo), signing keys, and issuer metadata.
+    /// </summary>
+    /// <param name="isStepUp">True to use the step-up IdP configuration.</param>
+    /// <param name="cancellationToken">Cancellation.</param>
+    Task<OpenIdConnectConfiguration> GetDiscoveryConfigAsync(
+        bool isStepUp,
+        CancellationToken cancellationToken = default);
 }
 
 /// <summary>Result of the OIDC code exchange.</summary>
@@ -46,6 +57,9 @@ public sealed record OidcExchangeResult
     /// <summary>Signed callback token (short-lived JWT containing IdP claims). Null on failure.</summary>
     public string? CallbackToken { get; init; }
 
+    /// <summary>Phone claim value extracted during the exchange (for diagnostic logging). Null when absent or on failure.</summary>
+    public string? PhoneClaim { get; init; }
+
     /// <summary>Human-readable error message for the client. Null on success.</summary>
     public string? Error { get; init; }
 
@@ -53,10 +67,11 @@ public sealed record OidcExchangeResult
     public int StatusCode { get; init; } = 200;
 
     /// <summary>Creates a successful result with the given callback token.</summary>
-    public static OidcExchangeResult Ok(string callbackToken) => new()
+    public static OidcExchangeResult Ok(string callbackToken, string? phoneClaim = null) => new()
     {
         Success = true,
         CallbackToken = callbackToken,
+        PhoneClaim = phoneClaim,
         StatusCode = 200
     };
 
@@ -121,6 +136,31 @@ public sealed class OidcExchangeService : IOidcExchangeService
     }
 
     /// <inheritdoc/>
+    public async Task<OpenIdConnectConfiguration> GetDiscoveryConfigAsync(
+        bool isStepUp,
+        CancellationToken cancellationToken = default)
+    {
+        var discoveryEndpoint = isStepUp
+            ? _config["Oidc:StepUp:DiscoveryEndpoint"]
+            : _config["Oidc:DiscoveryEndpoint"];
+
+        if (string.IsNullOrEmpty(discoveryEndpoint))
+        {
+            throw new InvalidOperationException(
+                $"OIDC discovery endpoint not configured (isStepUp={isStepUp}). " +
+                "Set Oidc:DiscoveryEndpoint in appsettings.");
+        }
+
+        var configManager = DiscoveryManagers.GetOrAdd(discoveryEndpoint, url =>
+            new ConfigurationManager<OpenIdConnectConfiguration>(
+                url,
+                new OpenIdConnectConfigurationRetriever(),
+                new HttpDocumentRetriever(DiscoveryHttpClient)));
+
+        return await configManager.GetConfigurationAsync(cancellationToken);
+    }
+
+    /// <inheritdoc/>
     public async Task<OidcExchangeResult> ExchangeCodeAsync(
         string code,
         string codeVerifier,
@@ -129,14 +169,11 @@ public sealed class OidcExchangeService : IOidcExchangeService
         CancellationToken cancellationToken = default)
     {
         // --- Resolve per-flow config ---
-        var discoveryEndpoint = isStepUp
-            ? _config["Oidc:StepUp:DiscoveryEndpoint"]
-            : _config["Oidc:DiscoveryEndpoint"];
         var clientId = isStepUp ? _config["Oidc:StepUp:ClientId"] : _config["Oidc:ClientId"];
         var clientSecret = isStepUp ? _config["Oidc:StepUp:ClientSecret"] : _config["Oidc:ClientSecret"];
         var signingKey = _config["Oidc:CompleteLoginSigningKey"];
 
-        if (string.IsNullOrEmpty(discoveryEndpoint) || string.IsNullOrEmpty(clientId)
+        if (string.IsNullOrEmpty(clientId)
             || string.IsNullOrEmpty(clientSecret) || string.IsNullOrEmpty(signingKey))
         {
             _logger.LogWarning("OIDC exchange: missing config (reason=oidc_not_configured, isStepUp={IsStepUp})", isStepUp);
@@ -147,12 +184,7 @@ public sealed class OidcExchangeService : IOidcExchangeService
         OpenIdConnectConfiguration oidcConfig;
         try
         {
-            var configManager = DiscoveryManagers.GetOrAdd(discoveryEndpoint, url =>
-                new ConfigurationManager<OpenIdConnectConfiguration>(
-                    url,
-                    new OpenIdConnectConfigurationRetriever(),
-                    new HttpDocumentRetriever(DiscoveryHttpClient)));
-            oidcConfig = await configManager.GetConfigurationAsync(cancellationToken);
+            oidcConfig = await GetDiscoveryConfigAsync(isStepUp, cancellationToken);
         }
         catch (Exception ex)
         {
@@ -299,12 +331,17 @@ public sealed class OidcExchangeService : IOidcExchangeService
             signingCredentials: credentials);
         var callbackToken = handler.WriteToken(callbackJwt);
 
+        // Surface the phone claim for diagnostic logging by the caller (masked before logging).
+        claims.TryGetValue("phone", out var phoneClaim);
+        if (phoneClaim == null)
+            claims.TryGetValue("phone_number", out phoneClaim);
+
         _logger.LogInformation(
             "OIDC exchange succeeded: claim types={ClaimTypes} (reason=exchange_success, isStepUp={IsStepUp})",
             string.Join(", ", claims.Keys),
             isStepUp);
 
-        return OidcExchangeResult.Ok(callbackToken);
+        return OidcExchangeResult.Ok(callbackToken, phoneClaim);
     }
 
     private async Task EnrichClaimsFromUserInfo(
