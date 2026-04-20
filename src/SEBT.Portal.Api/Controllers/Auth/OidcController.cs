@@ -597,18 +597,27 @@ public class OidcController(
         Dictionary<string, string> additionalClaims,
         OidcVerificationResult verification)
     {
+        // A user completing OIDC login is always at least IAL1 (authenticated). Expired
+        // verification or an unrecognized level both fall back to "1", never "0".
         additionalClaims[JwtClaimTypes.Ial] = verification.IsExpired
             ? "1"
             : verification.IalLevel switch
             {
                 UserIalLevel.IAL1plus => "1plus",
                 UserIalLevel.IAL2 => "2",
-                UserIalLevel.IAL1 => "1",
-                _ => "0"
+                _ => "1"
             };
 
-        additionalClaims[JwtClaimTypes.IdProofingStatus] =
-            ((int)(verification.IsExpired ? IdProofingStatus.Expired : IdProofingStatus.Completed)).ToString();
+        // IdProofingStatus is "Completed" only when verification actually elevated the user
+        // above IAL1. At IAL1 the user is authenticated but has not completed identity
+        // proofing, so status stays at NotStarted. Expired verifications are Expired.
+        additionalClaims[JwtClaimTypes.IdProofingStatus] = (verification.IsExpired, verification.IalLevel) switch
+        {
+            (true, _) => ((int)IdProofingStatus.Expired).ToString(),
+            (_, UserIalLevel.IAL1plus) => ((int)IdProofingStatus.Completed).ToString(),
+            (_, UserIalLevel.IAL2) => ((int)IdProofingStatus.Completed).ToString(),
+            _ => ((int)IdProofingStatus.NotStarted).ToString()
+        };
 
         if (verification.VerifiedAt != default)
         {
