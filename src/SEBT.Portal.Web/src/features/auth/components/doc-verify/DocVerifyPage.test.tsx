@@ -7,6 +7,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { server } from '@/mocks/server'
 
 import { AuthProvider } from '../../context'
+import { AuthGuard } from '../AuthGuard/AuthGuard'
 import { DocVerifyPage } from './DocVerifyPage'
 
 const TEST_CONTACT_LINK = 'https://example.com/contact'
@@ -66,6 +67,38 @@ describe('DocVerifyPage', () => {
   })
 
   describe('Route guard', () => {
+    it('redirects to /login when user is not authenticated', async () => {
+      setChallengeContext('challenge-abc')
+
+      // Override auth status to return unauthenticated
+      server.use(
+        http.get('/api/auth/status', () => {
+          return new HttpResponse(null, { status: 401 })
+        })
+      )
+
+      const queryClient = createTestQueryClient()
+      render(
+        <QueryClientProvider client={queryClient}>
+          <AuthProvider>
+            <AuthGuard>
+              <DocVerifyPage
+                contactLink={TEST_CONTACT_LINK}
+                sdkKey={TEST_SDK_KEY}
+              />
+            </AuthGuard>
+          </AuthProvider>
+        </QueryClientProvider>
+      )
+
+      await waitFor(() => {
+        expect(mockReplace).toHaveBeenCalledWith('/login')
+      })
+
+      // Should NOT render any doc-verify content
+      expect(screen.queryByRole('heading')).not.toBeInTheDocument()
+    })
+
     it('redirects to id-proofing when no challenge context is present', async () => {
       renderWithProviders(
         <DocVerifyPage

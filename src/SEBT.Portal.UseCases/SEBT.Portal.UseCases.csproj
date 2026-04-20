@@ -17,6 +17,9 @@
       <ProjectReference Include="..\SEBT.Portal.Core\SEBT.Portal.Core.csproj" />
     </ItemGroup>
 
+    <ItemGroup>
+    </ItemGroup>
+
   <!-- State connector as sibling repo only. Sibling under parent of portal, or CI path. -->
   <PropertyGroup>
     <_StateConnectorInterfacesProjectSiblingPath>$([System.IO.Path]::GetFullPath('$(MSBuildThisFileDirectory)../../../sebt-self-service-portal-state-connector/src/SEBT.Portal.StatesPlugins.Interfaces/SEBT.Portal.StatesPlugins.Interfaces.csproj'))</_StateConnectorInterfacesProjectSiblingPath>
