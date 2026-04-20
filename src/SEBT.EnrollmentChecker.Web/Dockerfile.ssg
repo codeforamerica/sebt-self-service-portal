@@ -18,6 +18,9 @@ ENV STATE=$STATE \
     NEXT_PUBLIC_PORTAL_URL=$NEXT_PUBLIC_PORTAL_URL \
     NEXT_PUBLIC_APPLICATION_URL=$NEXT_PUBLIC_APPLICATION_URL
 
+# API routes are SSR-only proxies — remove them before static export
+RUN rm -rf src/SEBT.EnrollmentChecker.Web/src/app/api
+
 RUN BUILD_STATIC=true pnpm --filter @sebt/enrollment-checker build
 # Output is in src/SEBT.EnrollmentChecker.Web/out/
 # Upload to S3: aws s3 sync src/SEBT.EnrollmentChecker.Web/out/ s3://your-bucket/

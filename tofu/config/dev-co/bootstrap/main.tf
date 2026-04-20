@@ -58,6 +58,14 @@ resource "aws_iam_access_key" "github_actions" {
   user = aws_iam_user.github_actions.name
 }
 
+# Route53 hosted zone for the enrollment checker static site.
+# Created here (not in the main config) because NS delegation to the
+# parent codeforamerica.app zone is an out-of-band step that must
+# complete before ACM certificate validation can succeed.
+resource "aws_route53_zone" "enrollment_checker" {
+  name = "${var.state}.sebt-enrollment.codeforamerica.app"
+}
+
 # ECR repositories for container images.
 resource "aws_ecr_repository" "api" {
   name                 = "${var.project}-${var.state}-${var.environment}-api"

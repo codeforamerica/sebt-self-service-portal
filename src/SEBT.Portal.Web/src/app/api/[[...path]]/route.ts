@@ -8,16 +8,16 @@ type RouteContext = {
   params: Promise<{ path?: string[] }>
 }
 
-/** Paths handled by Next.js API routes; proxy delegates to them instead of the backend */
-const NEXTJS_API_PATHS = ['auth/oidc/callback'] as const
+// all API paths (including auth/oidc/callback) now proxy to the .NET backend.
+// The OIDC token exchange was moved from Next.js to .NET so code_verifier and client
+// secret never leave the server; the Next.js OIDC callback route is no longer used.
 
 async function proxyRequest(request: NextRequest, context: RouteContext): Promise<NextResponse> {
   const { path } = await context.params
-  const pathStr = path?.join('/') ?? ''
 
-  if (pathStr === NEXTJS_API_PATHS[0] && request.method === 'POST') {
-    const { POST: oidcCallbackPost } = await import('../auth/oidc/callback/route')
-    return oidcCallbackPost(request)
+  // Reject path segments that could escape /api/ (e.g., ".." → /api/../internal/metrics)
+  if (path?.some((segment) => segment === '..' || segment === '.')) {
+    return NextResponse.json({ error: 'Invalid path' }, { status: 400 })
   }
 
   const pathname = path ? `/api/${path.join('/')}` : '/api'
@@ -39,6 +39,9 @@ async function proxyRequest(request: NextRequest, context: RouteContext): Promis
       headers,
       body: request.body,
       signal: controller.signal,
+      // Pass backend redirects (e.g., OIDC authorize 302) through to the browser
+      // instead of following them within the proxy.
+      redirect: 'manual',
       // @ts-expect-error - duplex is required for streaming request bodies
       duplex: 'half'
     })
@@ -90,5 +93,14 @@ export async function DELETE(request: NextRequest, context: RouteContext) {
 }
 
 export async function OPTIONS(request: NextRequest, context: RouteContext) {
+  // CORS preflight requests are handled by Next.js headers config (next.config.ts).
+  // Return 204 so the browser accepts the preflight — the CORS headers are added
+  // automatically by the headers config for matching routes.
+  const { path } = await context.params
+  const pathname = path ? path.join('/') : ''
+  if (pathname.startsWith('enrollment/')) {
+    return new NextResponse(null, { status: 204 })
+  }
+
   return proxyRequest(request, context)
 }

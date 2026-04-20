@@ -1,10 +1,13 @@
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging.Abstractions;
+using Microsoft.Extensions.Options;
 using Microsoft.Extensions.Hosting;
 using Microsoft.FeatureManagement;
 using NSubstitute;
 using SEBT.Portal.Api.Controllers;
 using SEBT.Portal.Api.Models;
+using SEBT.Portal.Api.Services;
 using SEBT.Portal.Core.AppSettings;
 using SEBT.Portal.Kernel;
 using SEBT.Portal.Kernel.Results;
@@ -21,7 +24,20 @@ public class OtpControllerTests
     public OtpControllerTests()
     {
         var logger = NullLogger<OtpController>.Instance;
-        _controller = new OtpController(logger, _hostEnvironment, _featureManager);
+        var jwtSettings = Options.Create(new JwtSettings
+        {
+            SecretKey = new string('x', 32),
+            Issuer = "test",
+            Audience = "test",
+            ExpirationMinutes = 60
+        });
+        _controller = new OtpController(logger, jwtSettings, _hostEnvironment, _featureManager)
+        {
+            ControllerContext = new ControllerContext
+            {
+                HttpContext = new DefaultHttpContext()
+            }
+        };
     }
 
     [Fact]
@@ -76,24 +92,7 @@ public class OtpControllerTests
     }
 
     [Fact]
-    public async Task ValidateOtp_CallsHandler()
-    {
-        // Arrange
-        var command = new ValidateOtpApiRequest("user@example.com", "123456");
-        var handlerMock = Substitute.For<ICommandHandler<ValidateOtpCommand, string>>();
-        handlerMock.Handle(Arg.Any<ValidateOtpCommand>())
-            .Returns(Result<string>.Success("test.token"));
-
-        // Act
-        var result = await _controller.ValidateOtp(command, handlerMock);
-
-        // Assert
-        await handlerMock.Received(1).Handle(Arg.Any<ValidateOtpCommand>());
-        Assert.NotNull(result);
-    }
-
-    [Fact]
-    public async Task ValidateOtp_WhenSuccess_ReturnsOkWithJwtToken()
+    public async Task ValidateOtp_WhenSuccess_ReturnsNoContentAndSetsAuthCookie()
     {
         // Arrange
         var command = new ValidateOtpApiRequest("user@example.com", "123456");
@@ -106,14 +105,22 @@ public class OtpControllerTests
         var result = await _controller.ValidateOtp(command, handlerMock);
 
         // Assert
-        Assert.NotNull(result);
-        var okResult = Assert.IsType<OkObjectResult>(result);
-        Assert.NotNull(okResult.Value);
-
-        var response = Assert.IsType<ValidateOtpResponse>(okResult.Value);
-        Assert.Equal(expectedToken, response.Token);
+        Assert.IsType<NoContentResult>(result);
+        AssertAuthCookieSet(expectedToken);
 
         await handlerMock.Received(1).Handle(Arg.Any<ValidateOtpCommand>());
+    }
+
+    private void AssertAuthCookieSet(string expectedToken)
+    {
+        var setCookieHeaders = _controller.Response.Headers["Set-Cookie"].ToArray();
+        var authCookie = Array.Find(setCookieHeaders, h =>
+            h != null && h.StartsWith($"{AuthCookies.AuthCookieName}="));
+        Assert.NotNull(authCookie);
+        Assert.Contains(expectedToken, authCookie);
+        Assert.Contains("httponly", authCookie, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("secure", authCookie, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("samesite=lax", authCookie, StringComparison.OrdinalIgnoreCase);
     }
 
     [Fact]
@@ -213,30 +220,6 @@ public class OtpControllerTests
         Assert.NotNull(errorValue);
 
         Assert.Contains("validation errors", errorValue.ToString() ?? string.Empty, StringComparison.OrdinalIgnoreCase);
-    }
-
-    [Fact]
-    public async Task ValidateOtp_WhenSuccess_ReturnsValidateOtpResponseWithToken()
-    {
-        // Arrange
-        var command = new ValidateOtpApiRequest("user@example.com", "123456");
-        var handlerMock = Substitute.For<ICommandHandler<ValidateOtpCommand, string>>();
-        var expectedToken = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.test.token";
-        handlerMock.Handle(Arg.Any<ValidateOtpCommand>())
-            .Returns(Result<string>.Success(expectedToken));
-
-        // Act
-        var result = await _controller.ValidateOtp(command, handlerMock);
-
-        // Assert
-        Assert.NotNull(result);
-        var okResult = Assert.IsType<OkObjectResult>(result);
-        Assert.NotNull(okResult.Value);
-
-        var response = Assert.IsType<ValidateOtpResponse>(okResult.Value);
-        Assert.Equal(expectedToken, response.Token);
-        Assert.NotNull(response.Token);
-        Assert.NotEmpty(response.Token);
     }
 
     #region RequestOtp bypass decision tests

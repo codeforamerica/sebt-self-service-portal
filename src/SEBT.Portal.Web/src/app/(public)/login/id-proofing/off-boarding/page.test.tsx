@@ -145,7 +145,7 @@ describe('OffBoardingPage', () => {
       const content = screen.getByTestId('off-boarding-content')
       expect(content).toHaveAttribute('data-title', 'offBoarding:title')
       expect(content).toHaveAttribute('data-body', 'offBoarding:body1')
-      expect(content).toHaveAttribute('data-contact-label', 'offBoarding:action1')
+      expect(content).toHaveAttribute('data-contact-label', 'Contact us')
     })
   })
 

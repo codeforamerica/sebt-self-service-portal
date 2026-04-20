@@ -17,6 +17,7 @@ public class RequestCardReplacementCommandHandler(
     IValidator<RequestCardReplacementCommand> validator,
     IHouseholdIdentifierResolver resolver,
     IHouseholdRepository repository,
+    IMinimumIalService minimumIalService,
     TimeProvider timeProvider,
     ILogger<RequestCardReplacementCommandHandler> logger)
     : ICommandHandler<RequestCardReplacementCommand>
@@ -54,6 +55,31 @@ public class RequestCardReplacementCommandHandler(
         {
             logger.LogWarning("Card replacement attempted but household data not found");
             return Result.PreconditionFailed(PreconditionFailedReason.NotFound, "Household data not found.");
+        }
+
+        // SECURITY: Block write operations when the user has not met the minimum IAL
+        // required by their cases. See docs/tdd/minimum-ial-determination.md.
+        var minimumIal = minimumIalService.GetMinimumIal(household.SummerEbtCases);
+        if (userIalLevel < minimumIal)
+        {
+            logger.LogInformation(
+                "Card replacement denied: user IAL {UserIal} is below minimum {MinimumIal}",
+                userIalLevel,
+                minimumIal);
+            return Result.Forbidden(
+                $"This household requires {minimumIal}. Complete identity verification to request card replacements.");
+        }
+
+        // Co-loaded cases are managed by caseworkers, not the portal.
+        var requestedCases = household.SummerEbtCases
+            .Where(c => c.SummerEBTCaseID != null && command.CaseIds.Contains(c.SummerEBTCaseID));
+        if (requestedCases.Any(c => c.IsCoLoaded))
+        {
+            logger.LogWarning(
+                "Card replacement rejected: request includes co-loaded case(s)");
+            return Result.PreconditionFailed(
+                PreconditionFailedReason.Conflict,
+                "Card replacements are not available for co-loaded benefits. Please contact your case worker.");
         }
 
         var cooldownErrors = CheckCooldown(command.CaseIds, household, timeProvider);

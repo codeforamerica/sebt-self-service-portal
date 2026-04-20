@@ -1,103 +1,121 @@
 /**
  * AuthContext Unit Tests
  *
- * Tests the authentication context including:
- * - Token storage and retrieval
- * - Login and logout functionality
- * - Session storage persistence
- * - Loading state management
+ * Tests the authentication context which sources its state from /auth/status
+ * (backed by an HttpOnly session cookie) rather than client-accessible storage.
  */
 import { act, render, renderHook, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 
-import { AuthProvider, getAuthToken, useAuth } from './AuthContext'
+import { server } from '@/mocks/server'
+import { http, HttpResponse } from 'msw'
 
-const TEST_TOKEN = 'test-jwt-token-12345'
+import { AuthProvider, useAuth } from './AuthContext'
+
+function mockAuthStatus(
+  response: {
+    status?: number
+    body?: Record<string, unknown> | null
+  } = {}
+) {
+  const { status = 200, body = { isAuthorized: true, email: 'user@example.com' } } = response
+  server.use(
+    http.get('/api/auth/status', () => {
+      if (status === 401) return new HttpResponse(null, { status: 401 })
+      return HttpResponse.json(body, { status })
+    })
+  )
+}
+
+function mockAuthLogout() {
+  server.use(http.post('/api/auth/logout', () => new HttpResponse(null, { status: 204 })))
+}
 
 describe('AuthContext', () => {
   beforeEach(() => {
-    sessionStorage.clear()
-  })
-
-  afterEach(() => {
-    sessionStorage.clear()
+    server.resetHandlers()
   })
 
   describe('AuthProvider', () => {
-    it('should provide initial unauthenticated state', async () => {
+    it('starts loading and resolves to unauthenticated when /auth/status returns 401', async () => {
+      mockAuthStatus({ status: 401 })
+
       const { result } = renderHook(() => useAuth(), {
         wrapper: AuthProvider
       })
 
-      // Wait for loading to complete
-      await waitFor(() => {
-        expect(result.current.isLoading).toBe(false)
-      })
+      expect(result.current.isLoading).toBe(true)
+      await waitFor(() => expect(result.current.isLoading).toBe(false))
 
-      expect(result.current.token).toBeNull()
+      expect(result.current.session).toBeNull()
       expect(result.current.isAuthenticated).toBe(false)
     })
 
-    it('should load token from sessionStorage on mount', async () => {
-      sessionStorage.setItem('auth_token', TEST_TOKEN)
-
-      const { result } = renderHook(() => useAuth(), {
-        wrapper: AuthProvider
+    it('populates session from /auth/status on mount when authorized', async () => {
+      mockAuthStatus({
+        body: {
+          isAuthorized: true,
+          email: 'user@example.com',
+          ial: '1plus',
+          idProofingStatus: 2,
+          idProofingCompletedAt: 1735689600,
+          idProofingExpiresAt: 1767225600
+        }
       })
 
-      await waitFor(() => {
-        expect(result.current.isLoading).toBe(false)
-      })
+      const { result } = renderHook(() => useAuth(), { wrapper: AuthProvider })
 
-      expect(result.current.token).toBe(TEST_TOKEN)
+      await waitFor(() => expect(result.current.isLoading).toBe(false))
+
       expect(result.current.isAuthenticated).toBe(true)
+      expect(result.current.session).toEqual({
+        email: 'user@example.com',
+        ial: '1plus',
+        idProofingStatus: 2,
+        idProofingCompletedAt: 1735689600,
+        idProofingExpiresAt: 1767225600
+      })
     })
 
-    it('should store token in sessionStorage on login', async () => {
-      const { result } = renderHook(() => useAuth(), {
-        wrapper: AuthProvider
-      })
+    it('login() re-fetches /auth/status and updates session', async () => {
+      mockAuthStatus({ status: 401 })
 
-      await waitFor(() => {
-        expect(result.current.isLoading).toBe(false)
-      })
-
-      act(() => {
-        result.current.login(TEST_TOKEN)
-      })
-
-      expect(result.current.token).toBe(TEST_TOKEN)
-      expect(result.current.isAuthenticated).toBe(true)
-      expect(sessionStorage.getItem('auth_token')).toBe(TEST_TOKEN)
-    })
-
-    it('should clear token from sessionStorage on logout', async () => {
-      sessionStorage.setItem('auth_token', TEST_TOKEN)
-
-      const { result } = renderHook(() => useAuth(), {
-        wrapper: AuthProvider
-      })
-
-      await waitFor(() => {
-        expect(result.current.isLoading).toBe(false)
-      })
-
-      expect(result.current.isAuthenticated).toBe(true)
-
-      act(() => {
-        result.current.logout()
-      })
-
-      expect(result.current.token).toBeNull()
+      const { result } = renderHook(() => useAuth(), { wrapper: AuthProvider })
+      await waitFor(() => expect(result.current.isLoading).toBe(false))
       expect(result.current.isAuthenticated).toBe(false)
-      expect(sessionStorage.getItem('auth_token')).toBeNull()
+
+      mockAuthStatus({
+        body: { isAuthorized: true, email: 'user@example.com', ial: '1' }
+      })
+
+      await act(async () => {
+        await result.current.login()
+      })
+
+      expect(result.current.isAuthenticated).toBe(true)
+      expect(result.current.session?.email).toBe('user@example.com')
+    })
+
+    it('logout() clears the session locally after calling /auth/logout', async () => {
+      mockAuthStatus({ body: { isAuthorized: true, email: 'user@example.com' } })
+      mockAuthLogout()
+
+      const { result } = renderHook(() => useAuth(), { wrapper: AuthProvider })
+      await waitFor(() => expect(result.current.isLoading).toBe(false))
+      expect(result.current.isAuthenticated).toBe(true)
+
+      await act(async () => {
+        await result.current.logout()
+      })
+
+      expect(result.current.session).toBeNull()
+      expect(result.current.isAuthenticated).toBe(false)
     })
   })
 
   describe('useAuth', () => {
-    it('should throw error when used outside AuthProvider', () => {
-      // Suppress console.error for this test
+    it('throws when used outside AuthProvider', () => {
       const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
 
       expect(() => {
@@ -108,20 +126,9 @@ describe('AuthContext', () => {
     })
   })
 
-  describe('getAuthToken', () => {
-    it('should return null when no token is stored', () => {
-      expect(getAuthToken()).toBeNull()
-    })
-
-    it('should return token when stored in sessionStorage', () => {
-      sessionStorage.setItem('auth_token', TEST_TOKEN)
-      expect(getAuthToken()).toBe(TEST_TOKEN)
-    })
-  })
-
   describe('Integration with components', () => {
     function TestComponent() {
-      const { token, isAuthenticated, isLoading, login, logout } = useAuth()
+      const { session, isAuthenticated, isLoading, login, logout } = useAuth()
 
       if (isLoading) {
         return <div>Loading...</div>
@@ -130,14 +137,15 @@ describe('AuthContext', () => {
       return (
         <div>
           <p data-testid="auth-status">{isAuthenticated ? 'Authenticated' : 'Not authenticated'}</p>
-          <p data-testid="token-display">{token ?? 'No token'}</p>
-          <button onClick={() => login(TEST_TOKEN)}>Login</button>
-          <button onClick={() => logout()}>Logout</button>
+          <p data-testid="email-display">{session?.email ?? 'No email'}</p>
+          <button onClick={() => void login()}>Login</button>
+          <button onClick={() => void logout()}>Logout</button>
         </div>
       )
     }
 
-    it('should update UI when login is called', async () => {
+    it('updates UI when login() resolves the session', async () => {
+      mockAuthStatus({ status: 401 })
       const user = userEvent.setup()
 
       render(
@@ -151,17 +159,20 @@ describe('AuthContext', () => {
       })
 
       expect(screen.getByTestId('auth-status')).toHaveTextContent('Not authenticated')
-      expect(screen.getByTestId('token-display')).toHaveTextContent('No token')
 
+      mockAuthStatus({ body: { isAuthorized: true, email: 'user@example.com' } })
       await user.click(screen.getByRole('button', { name: /login/i }))
 
-      expect(screen.getByTestId('auth-status')).toHaveTextContent('Authenticated')
-      expect(screen.getByTestId('token-display')).toHaveTextContent(TEST_TOKEN)
+      await waitFor(() => {
+        expect(screen.getByTestId('auth-status')).toHaveTextContent('Authenticated')
+      })
+      expect(screen.getByTestId('email-display')).toHaveTextContent('user@example.com')
     })
 
-    it('should update UI when logout is called', async () => {
+    it('updates UI when logout() clears the session', async () => {
+      mockAuthStatus({ body: { isAuthorized: true, email: 'user@example.com' } })
+      mockAuthLogout()
       const user = userEvent.setup()
-      sessionStorage.setItem('auth_token', TEST_TOKEN)
 
       render(
         <AuthProvider>
@@ -177,8 +188,10 @@ describe('AuthContext', () => {
 
       await user.click(screen.getByRole('button', { name: /logout/i }))
 
-      expect(screen.getByTestId('auth-status')).toHaveTextContent('Not authenticated')
-      expect(screen.getByTestId('token-display')).toHaveTextContent('No token')
+      await waitFor(() => {
+        expect(screen.getByTestId('auth-status')).toHaveTextContent('Not authenticated')
+      })
+      expect(screen.getByTestId('email-display')).toHaveTextContent('No email')
     })
   })
 })

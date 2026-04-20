@@ -18,4 +18,9 @@ describe('NotEnrolledSection', () => {
     const { container } = render(<NotEnrolledSection results={[]} applicationUrl="" />)
     expect(container.firstChild).toBeNull()
   })
+
+  it('exposes data-analytics-cta on the apply link', () => {
+    render(<NotEnrolledSection results={notEnrolled} applicationUrl="https://apply.example.gov" />)
+    expect(screen.getByRole('link')).toHaveAttribute('data-analytics-cta', 'apply_cta')
+  })
 })

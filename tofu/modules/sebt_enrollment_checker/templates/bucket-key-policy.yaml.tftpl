@@ -1,0 +1,21 @@
+Version: "2012-10-17"
+Statement:
+  - Sid: EnableIAMPermissions
+    Effect: Allow
+    Principal:
+      AWS: "arn:${partition}:iam::${account_id}:root"
+    Action: kms:*
+    Resource: "*"
+  # Allow CloudFront to decrypt objects encrypted with this key. Without
+  # this, CloudFront would get AccessDenied when serving files from S3.
+  - Sid: AllowCloudFrontDecrypt
+    Effect: Allow
+    Principal:
+      Service: cloudfront.amazonaws.com
+    Action:
+      - kms:Decrypt
+      - kms:GenerateDataKey
+    Resource: "*"
+    Condition:
+      StringEquals:
+        AWS:SourceArn: "${distribution_arn}"

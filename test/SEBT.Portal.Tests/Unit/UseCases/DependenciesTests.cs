@@ -23,6 +23,7 @@ public class DependenciesTests
         // Stub infrastructure dependencies that handlers need at construction time
         services.AddSingleton(Substitute.For<IHouseholdIdentifierResolver>());
         services.AddSingleton(Substitute.For<IHouseholdRepository>());
+        services.AddSingleton(Substitute.For<IMinimumIalService>());
         services.AddSingleton(TimeProvider.System);
         services.AddSingleton(typeof(ILogger<>), typeof(NullLogger<>));
 

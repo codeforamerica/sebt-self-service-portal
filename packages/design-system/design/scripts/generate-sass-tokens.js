@@ -265,6 +265,11 @@ function generateSettingsContent(state, variables, timestamp) {
   settingsLines.push('  $theme-alert-icon-size: 3,')
   settingsLines.push('')
 
+  // Suppress USWDS release notes printed on every compile
+  settingsLines.push('  // Suppress verbose USWDS compile notifications')
+  settingsLines.push('  $theme-show-notifications: false,')
+  settingsLines.push('')
+
   // Add utility settings - ensures utility classes override component styles
   settingsLines.push('  // Utility settings')
   settingsLines.push('  $utilities-use-important: true')

@@ -4,11 +4,13 @@
  * Tests the OIDC callback flow including:
  * - Successful token exchange and redirect to dashboard
  * - Missing code/state parameters
- * - PKCE session expired (no stored PKCE)
- * - PKCE state mismatch
  * - Exchange-code failure
+ * - IdP error redirect (?error=)
+ *
+ * PKCE/sessionStorage validation tests have been removed — all flow metadata
+ * (stateCode, isStepUp, returnUrl, state validation) is now handled server-side
+ * via the pre-auth session (V04 fix).
  */
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { render, screen, waitFor } from '@testing-library/react'
 import { http, HttpResponse } from 'msw'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
@@ -36,10 +38,11 @@ vi.mock('@/features/auth', async () => {
     ...api,
     useAuth: () => ({
       login: mockLogin,
+      logout: vi.fn(),
       isAuthenticated: false,
-      token: null
-    }),
-    setAuthToken: vi.fn()
+      session: null,
+      isLoading: false
+    })
   }
 })
 
@@ -51,10 +54,7 @@ vi.mock('@/lib/translations', () => ({
         callbackSigningIn: 'Signing you in…',
         callbackSignInIssue: 'Sign-in issue',
         callbackErrorMissingParams: 'Missing sign-in information.',
-        callbackErrorSessionExpired: 'Session expired.',
-        callbackErrorStateMismatch: 'State mismatch.',
         callbackErrorGeneric: 'Something went wrong.',
-        callbackErrorStepUpFailed: 'Step-up verification did not finish.',
         callbackErrorIdpRedirect: 'Primary MyColorado sign-in did not finish.'
       }
     }
@@ -74,26 +74,7 @@ vi.mock('@sebt/design-system', async (importOriginal) => {
   }
 })
 
-// Mock PKCE storage
-const mockGetPkce = vi.fn()
-const mockClearPkce = vi.fn()
-vi.mock('@/lib/oidc-pkce', () => ({
-  getPkceFromStorage: (...args: unknown[]) => mockGetPkce(...args),
-  clearPkceStorage: (...args: unknown[]) => mockClearPkce(...args)
-}))
-
 import CallbackPage from './page'
-
-function renderCallbackPage() {
-  const queryClient = new QueryClient({
-    defaultOptions: { queries: { retry: false }, mutations: { retry: false } }
-  })
-  return render(
-    <QueryClientProvider client={queryClient}>
-      <CallbackPage />
-    </QueryClientProvider>
-  )
-}
 
 describe('CallbackPage', () => {
   beforeEach(() => {
@@ -118,7 +99,7 @@ describe('CallbackPage', () => {
         writable: true
       })
 
-      renderCallbackPage()
+      render(<CallbackPage />)
 
       await waitFor(() => {
         expect(screen.getByText('Missing sign-in information.')).toBeInTheDocument()
@@ -131,7 +112,7 @@ describe('CallbackPage', () => {
         writable: true
       })
 
-      renderCallbackPage()
+      render(<CallbackPage />)
 
       await waitFor(() => {
         expect(screen.getByText('Missing sign-in information.')).toBeInTheDocument()
@@ -139,82 +120,52 @@ describe('CallbackPage', () => {
     })
   })
 
-  describe('PKCE validation', () => {
-    it('shows session expired when no PKCE data is stored', async () => {
-      mockGetPkce.mockReturnValue(null)
-
-      renderCallbackPage()
-
-      await waitFor(() => {
-        expect(screen.getByText('Session expired.')).toBeInTheDocument()
-      })
-      expect(mockClearPkce).toHaveBeenCalled()
-    })
-
-    it('shows state mismatch when PKCE state does not match URL state', async () => {
-      mockGetPkce.mockReturnValue({
-        state: 'different-state-value',
-        code_verifier: 'test-verifier',
-        redirect_uri: 'http://localhost:3000/callback',
-        token_endpoint: 'https://auth.example.com/token',
-        client_id: 'test-client'
-      })
-
-      renderCallbackPage()
-
-      await waitFor(() => {
-        expect(screen.getByText('State mismatch.')).toBeInTheDocument()
-      })
-      expect(mockClearPkce).toHaveBeenCalled()
-    })
-  })
-
   describe('successful flow', () => {
     beforeEach(() => {
-      mockGetPkce.mockReturnValue({
-        state: 'test-state-value',
-        code_verifier: 'test-verifier',
-        redirect_uri: 'http://localhost:3000/callback',
-        token_endpoint: 'https://auth.example.com/token',
-        client_id: 'test-client'
-      })
-      // getState returns 'co'; flow is callback (returns callbackToken) then complete-login (returns token)
+      // callback returns callbackToken, complete-login sets cookie and returns empty body
       server.use(
         http.post('/api/auth/oidc/callback', () => {
           return HttpResponse.json({ callbackToken: 'mock-callback-token-for-testing' })
         }),
         http.post('/api/auth/oidc/complete-login', () => {
-          return HttpResponse.json({ token: 'mock-jwt-token-for-testing' })
+          return HttpResponse.json({})
         })
       )
     })
 
     it('shows signing in message initially', () => {
-      renderCallbackPage()
+      render(<CallbackPage />)
       expect(screen.getByText('Signing you in…')).toBeInTheDocument()
     })
 
     it('redirects to dashboard on successful login', async () => {
-      renderCallbackPage()
+      render(<CallbackPage />)
 
       await waitFor(() => {
         expect(mockReplace).toHaveBeenCalledWith('/dashboard')
       })
-      expect(mockLogin).toHaveBeenCalledWith('mock-jwt-token-for-testing')
+      expect(mockLogin).toHaveBeenCalledWith()
+    })
+
+    it('redirects to returnUrl when complete-login returns one', async () => {
+      server.use(
+        http.post('/api/auth/oidc/callback', () => {
+          return HttpResponse.json({ callbackToken: 'mock-callback-token' })
+        }),
+        http.post('/api/auth/oidc/complete-login', () => {
+          return HttpResponse.json({ returnUrl: '/profile/address' })
+        })
+      )
+
+      render(<CallbackPage />)
+
+      await waitFor(() => {
+        expect(mockReplace).toHaveBeenCalledWith('/profile/address')
+      })
     })
   })
 
   describe('token exchange failure', () => {
-    beforeEach(() => {
-      mockGetPkce.mockReturnValue({
-        state: 'test-state-value',
-        code_verifier: 'test-verifier',
-        redirect_uri: 'http://localhost:3000/callback',
-        token_endpoint: 'https://auth.example.com/token',
-        client_id: 'test-client'
-      })
-    })
-
     it('shows error when exchange-code endpoint fails', async () => {
       server.use(
         http.post('/api/auth/oidc/callback', () => {
@@ -222,7 +173,7 @@ describe('CallbackPage', () => {
         })
       )
 
-      renderCallbackPage()
+      render(<CallbackPage />)
 
       await waitFor(() => {
         expect(screen.getByText('Token exchange failed')).toBeInTheDocument()
@@ -231,8 +182,7 @@ describe('CallbackPage', () => {
   })
 
   describe('IdP error redirect (?error=)', () => {
-    it('shows step-up message when PKCE marks isStepUp', async () => {
-      mockGetPkce.mockReturnValue({ isStepUp: true })
+    it('shows error message with IdP description', async () => {
       Object.defineProperty(window, 'location', {
         value: {
           search: '?error=access_denied&error_description=User+cancelled',
@@ -241,26 +191,7 @@ describe('CallbackPage', () => {
         writable: true
       })
 
-      renderCallbackPage()
-
-      await waitFor(() => {
-        expect(
-          screen.getByText('Step-up verification did not finish. User cancelled')
-        ).toBeInTheDocument()
-      })
-    })
-
-    it('shows primary sign-in message when not step-up', async () => {
-      mockGetPkce.mockReturnValue({ isStepUp: false })
-      Object.defineProperty(window, 'location', {
-        value: {
-          search: '?error=access_denied&error_description=User+cancelled',
-          href: 'http://localhost:3000/callback?error=access_denied'
-        },
-        writable: true
-      })
-
-      renderCallbackPage()
+      render(<CallbackPage />)
 
       await waitFor(() => {
         expect(
@@ -269,8 +200,7 @@ describe('CallbackPage', () => {
       })
     })
 
-    it('treats missing PKCE as primary sign-in for IdP error copy', async () => {
-      mockGetPkce.mockReturnValue(null)
+    it('shows error message without description when IdP omits it', async () => {
       Object.defineProperty(window, 'location', {
         value: {
           search: '?error=server_error',
@@ -279,7 +209,7 @@ describe('CallbackPage', () => {
         writable: true
       })
 
-      renderCallbackPage()
+      render(<CallbackPage />)
 
       await waitFor(() => {
         expect(screen.getByText('Primary MyColorado sign-in did not finish.')).toBeInTheDocument()
@@ -296,7 +226,7 @@ describe('CallbackPage', () => {
         writable: true
       })
 
-      renderCallbackPage()
+      render(<CallbackPage />)
 
       await waitFor(() => {
         expect(screen.getByText('Missing sign-in information.')).toBeInTheDocument()

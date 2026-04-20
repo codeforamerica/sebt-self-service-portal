@@ -5,7 +5,9 @@ import { useTranslation } from 'react-i18next'
 
 import { Button } from '@sebt/design-system'
 
+import { ApiError } from '@/api'
 import { useVerificationStatus } from '../../api'
+import { SK_STILL_CHECKING } from './sessionKeys'
 
 // After this threshold, show the "still checking" message with a manual check button
 const STILL_CHECKING_THRESHOLD_MS = 15000
@@ -22,7 +24,10 @@ export function VerificationPending({
   onRejected
 }: VerificationPendingProps) {
   const { t } = useTranslation('idProofing')
-  const [timerExpired, setTimerExpired] = useState(false)
+  // Persist "still checking" state across remounts so the UI doesn't oscillate
+  const [timerExpired, setTimerExpired] = useState(
+    () => sessionStorage.getItem(SK_STILL_CHECKING) === 'true'
+  )
 
   const { data, error, refetch } = useVerificationStatus(challengeId)
 
@@ -31,21 +36,30 @@ export function VerificationPending({
 
   // Show "still checking" message after threshold
   useEffect(() => {
+    if (timerExpired) return
     const timer = setTimeout(() => {
+      sessionStorage.setItem(SK_STILL_CHECKING, 'true')
       setTimerExpired(true)
     }, STILL_CHECKING_THRESHOLD_MS)
 
     return () => clearTimeout(timer)
-  }, [])
+  }, [timerExpired])
 
   // React to terminal status changes
   useEffect(() => {
     if (data?.status === 'verified') {
       onVerified()
     } else if (data?.status === 'rejected') {
-      onRejected(data.offboardingReason)
+      onRejected(data.offboardingReason ?? undefined)
     }
   }, [data?.status, data?.offboardingReason, onVerified, onRejected])
+
+  // Treat 404 as terminal — challenge doesn't exist for this user
+  useEffect(() => {
+    if (error instanceof ApiError && error.status === 404) {
+      onRejected('challengeNotFound')
+    }
+  }, [error, onRejected])
 
   return (
     <section aria-label={t('verificationPendingAriaLabel', 'Verification status')}>

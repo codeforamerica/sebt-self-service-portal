@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using SEBT.Portal.Core.AppSettings;
 using SEBT.Portal.Core.Repositories;
@@ -26,8 +27,18 @@ public static class Dependencies
         // JWT Services
         services.AddTransient<IJwtTokenService, JwtTokenService>();
 
+        // OIDC verification claim translation (maps IdP claims like socureIdVerificationLevel to portal IAL)
+        services.AddTransient<OidcVerificationClaimTranslator>(sp =>
+            new OidcVerificationClaimTranslator(
+                sp.GetRequiredService<IOptions<OidcVerificationClaimSettings>>().Value,
+                sp.GetRequiredService<IOptions<IdProofingValiditySettings>>().Value,
+                sp.GetRequiredService<ILoggerFactory>().CreateLogger<OidcVerificationClaimTranslator>()));
+
         // ID Proofing Requirements (state-specific PII visibility)
         services.AddScoped<IIdProofingRequirementsService, IdProofingRequirementsService>();
+
+        // Minimum IAL service (state-configurable identity assurance level requirements)
+        services.AddScoped<IMinimumIalService, MinimumIalService>();
 
         // Enrollment Check logging
         services.AddScoped<IEnrollmentCheckSubmissionLogger, EnrollmentCheckSubmissionLogger>();
@@ -199,10 +210,18 @@ public static class Dependencies
         services.AddSingleton<IValidateOptions<IdProofingRequirementsSettings>, IdProofingRequirementsSettingsValidator>();
         services.AddOptionsWithValidateOnStart<IdProofingRequirementsSettings>()
             .BindConfiguration(IdProofingRequirementsSettings.SectionName);
+        services.AddSingleton<IValidateOptions<MinimumIalSettings>, MinimumIalSettingsValidator>();
+        services.AddOptionsWithValidateOnStart<MinimumIalSettings>()
+            .BindConfiguration(MinimumIalSettings.SectionName);
 
         services.AddSingleton<IValidateOptions<OidcStepUpSettings>, OidcStepUpSettingsValidator>();
         services.AddOptionsWithValidateOnStart<OidcStepUpSettings>()
             .BindConfiguration(OidcStepUpSettings.SectionName);
+
+        services.AddOptions<IdProofingValiditySettings>()
+            .BindConfiguration(IdProofingValiditySettings.SectionName);
+        services.AddOptions<OidcVerificationClaimSettings>()
+            .BindConfiguration(OidcVerificationClaimSettings.SectionName);
 
         services.AddOptions<FeatureManagementSettings>()
             .Bind(configuration.GetSection(FeatureManagementSettings.SectionName))
@@ -214,6 +233,9 @@ public static class Dependencies
 
         services.AddOptionsWithValidateOnStart<EnrollmentCheckRateLimitSettings>()
             .BindConfiguration(EnrollmentCheckRateLimitSettings.SectionName);
+
+        services.AddOptionsWithValidateOnStart<WebhookRateLimitSettings>()
+            .BindConfiguration(WebhookRateLimitSettings.SectionName);
 
         services.AddOptions<SeedingSettings>()
             .BindConfiguration(SeedingSettings.SectionName);

@@ -19,6 +19,7 @@ import enCOOptionalId from '@/content/locales/en/co/optionalId.json'
 import enCOPersonalInfo from '@/content/locales/en/co/personalInfo.json'
 import enCOProto from '@/content/locales/en/co/proto.json'
 import enCOResult from '@/content/locales/en/co/result.json'
+import enCOStepUpProcessing from '@/content/locales/en/co/step-upProcessing.json'
 import enCOStepUpDisclaimer from '@/content/locales/en/co/stepUpDisclaimer.json'
 import enCOStepUpFailure from '@/content/locales/en/co/stepUpFailure.json'
 import enCOText from '@/content/locales/en/co/text.json'
@@ -41,6 +42,7 @@ import enDCOptionalId from '@/content/locales/en/dc/optionalId.json'
 import enDCPersonalInfo from '@/content/locales/en/dc/personalInfo.json'
 import enDCProto from '@/content/locales/en/dc/proto.json'
 import enDCResult from '@/content/locales/en/dc/result.json'
+import enDCStepUpProcessing from '@/content/locales/en/dc/step-upProcessing.json'
 import enDCStepUpDisclaimer from '@/content/locales/en/dc/stepUpDisclaimer.json'
 import enDCStepUpFailure from '@/content/locales/en/dc/stepUpFailure.json'
 import enDCText from '@/content/locales/en/dc/text.json'
@@ -63,6 +65,7 @@ import esCOOptionalId from '@/content/locales/es/co/optionalId.json'
 import esCOPersonalInfo from '@/content/locales/es/co/personalInfo.json'
 import esCOProto from '@/content/locales/es/co/proto.json'
 import esCOResult from '@/content/locales/es/co/result.json'
+import esCOStepUpProcessing from '@/content/locales/es/co/step-upProcessing.json'
 import esCOStepUpDisclaimer from '@/content/locales/es/co/stepUpDisclaimer.json'
 import esCOStepUpFailure from '@/content/locales/es/co/stepUpFailure.json'
 import esCOText from '@/content/locales/es/co/text.json'
@@ -85,6 +88,7 @@ import esDCOptionalId from '@/content/locales/es/dc/optionalId.json'
 import esDCPersonalInfo from '@/content/locales/es/dc/personalInfo.json'
 import esDCProto from '@/content/locales/es/dc/proto.json'
 import esDCResult from '@/content/locales/es/dc/result.json'
+import esDCStepUpProcessing from '@/content/locales/es/dc/step-upProcessing.json'
 import esDCStepUpDisclaimer from '@/content/locales/es/dc/stepUpDisclaimer.json'
 import esDCStepUpFailure from '@/content/locales/es/dc/stepUpFailure.json'
 import esDCText from '@/content/locales/es/dc/text.json'
@@ -111,6 +115,7 @@ export const stateResources = {
       personalInfo: enCOPersonalInfo,
       proto: enCOProto,
       result: enCOResult,
+      'step-upProcessing': enCOStepUpProcessing,
       stepUpDisclaimer: enCOStepUpDisclaimer,
       stepUpFailure: enCOStepUpFailure,
       text: enCOText,
@@ -135,6 +140,7 @@ export const stateResources = {
       personalInfo: esCOPersonalInfo,
       proto: esCOProto,
       result: esCOResult,
+      'step-upProcessing': esCOStepUpProcessing,
       stepUpDisclaimer: esCOStepUpDisclaimer,
       stepUpFailure: esCOStepUpFailure,
       text: esCOText,
@@ -161,6 +167,7 @@ export const stateResources = {
       personalInfo: enDCPersonalInfo,
       proto: enDCProto,
       result: enDCResult,
+      'step-upProcessing': enDCStepUpProcessing,
       stepUpDisclaimer: enDCStepUpDisclaimer,
       stepUpFailure: enDCStepUpFailure,
       text: enDCText,
@@ -185,6 +192,7 @@ export const stateResources = {
       personalInfo: esDCPersonalInfo,
       proto: esDCProto,
       result: esDCResult,
+      'step-upProcessing': esDCStepUpProcessing,
       stepUpDisclaimer: esDCStepUpDisclaimer,
       stepUpFailure: esDCStepUpFailure,
       text: esDCText,
@@ -193,5 +201,5 @@ export const stateResources = {
   },
 }
 
-export const namespaces = ['common', 'confirmInfo', 'dashboard', 'disclaimer', 'editContactPreferences', 'editMailingAddress', 'email', 'enterEmail', 'idProofing', 'landing', 'language', 'login', 'offBoarding', 'optIn', 'optionalId', 'personalInfo', 'proto', 'result', 'stepUpDisclaimer', 'stepUpFailure', 'text', 'validation'] as const
+export const namespaces = ['common', 'confirmInfo', 'dashboard', 'disclaimer', 'editContactPreferences', 'editMailingAddress', 'email', 'enterEmail', 'idProofing', 'landing', 'language', 'login', 'offBoarding', 'optIn', 'optionalId', 'personalInfo', 'proto', 'result', 'step-upProcessing', 'stepUpDisclaimer', 'stepUpFailure', 'text', 'validation'] as const
 export type Namespace = (typeof namespaces)[number]

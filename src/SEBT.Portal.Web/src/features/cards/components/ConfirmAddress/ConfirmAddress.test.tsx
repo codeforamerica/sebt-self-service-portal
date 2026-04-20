@@ -45,7 +45,9 @@ const TEST_CASE: SummerEbtCase = {
   cardRequestedAt: null,
   cardMailedAt: null,
   cardActivatedAt: null,
-  cardDeactivatedAt: null
+  cardDeactivatedAt: null,
+  allowAddressChange: true,
+  allowCardReplacement: true
 }
 
 function renderConfirmAddress() {

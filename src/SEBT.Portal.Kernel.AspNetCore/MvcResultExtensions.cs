@@ -67,6 +67,10 @@ public static class MvcResultExtensions
                 => result.ToProblemDetailsResult(HttpStatusCode.Forbidden),
             UnauthorizedResult when !useProblemDetails
                 => new ForbidResult(),
+            ForbiddenResult forbidden when useProblemDetails
+                => forbidden.ToProblemDetailsResult(HttpStatusCode.Forbidden),
+            ForbiddenResult when !useProblemDetails
+                => new StatusCodeResult((int)HttpStatusCode.Forbidden),
             DependencyFailedResult when useProblemDetails
                 => result.ToProblemDetailsResult(HttpStatusCode.BadGateway),
             DependencyFailedResult when !useProblemDetails
@@ -142,6 +146,10 @@ public static class MvcResultExtensions
                 => result.ToProblemDetailsResult(HttpStatusCode.Forbidden),
             UnauthorizedResult<T> when !useProblemDetails
                 => new ForbidResult(),
+            ForbiddenResult<T> forbidden when useProblemDetails
+                => forbidden.ToProblemDetailsWithExtensionsResult(HttpStatusCode.Forbidden),
+            ForbiddenResult<T> when !useProblemDetails
+                => new StatusCodeResult((int)HttpStatusCode.Forbidden),
             DependencyFailedResult<T> when useProblemDetails
                 => result.ToProblemDetailsResult(HttpStatusCode.BadGateway),
             DependencyFailedResult<T> when !useProblemDetails
@@ -168,4 +176,23 @@ public static class MvcResultExtensions
         {
             StatusCode = (int)statusCode,
         };
+
+    /// <summary>
+    /// Converts a <see cref="ForbiddenResult{T}"/> into a <see cref="ObjectResult"/> containing
+    /// <see cref="ProblemDetails"/> with the result's extensions merged in.
+    /// </summary>
+    private static IActionResult ToProblemDetailsWithExtensionsResult<T>(this ForbiddenResult<T> result, HttpStatusCode statusCode)
+    {
+        var problemDetails = new ProblemDetails
+        {
+            Title = "Insufficient identity assurance level",
+            Detail = result.Message,
+            Status = (int)statusCode,
+        };
+        foreach (var (key, value) in result.Extensions)
+        {
+            problemDetails.Extensions[key] = value;
+        }
+        return new ObjectResult(problemDetails) { StatusCode = (int)statusCode };
+    }
 }

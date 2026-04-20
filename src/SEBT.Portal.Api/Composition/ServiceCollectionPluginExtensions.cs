@@ -25,22 +25,31 @@ namespace SEBT.Portal.Api.Composition;
 internal static class ServiceCollectionPluginExtensions
 {
     public static IServiceCollection AddPlugins(this IServiceCollection services, IConfiguration configuration)
-    {
-        services.TryAddSingleton<IStateAuthenticationService, Defaults.DefaultStateAuthenticationService>();
-        services.TryAddSingleton<IStateHealthCheckService, Defaults.DefaultStateHealthCheckService>();
-        services.TryAddSingleton<ISummerEbtCaseService, Defaults.DefaultSummerEbtCaseService>();
-        services.TryAddSingleton<IEnrollmentCheckService, Defaults.DefaultEnrollmentCheckService>();
-        services.TryAddSingleton<IAddressUpdateService, Defaults.DefaultAddressUpdateService>();
+        => services.AddPlugins(configuration, contentRootPath: null);
 
+    /// <param name="services">The service collection.</param>
+    /// <param name="configuration">Application configuration (must include PluginAssemblyPaths).</param>
+    /// <param name="contentRootPath">
+    /// <see cref="Microsoft.Extensions.Hosting.IHostEnvironment.ContentRootPath"/> so plugin folders under
+    /// the API project directory are found when DLLs were not copied into <c>AppContext.BaseDirectory</c>.
+    /// </param>
+    public static IServiceCollection AddPlugins(
+        this IServiceCollection services,
+        IConfiguration configuration,
+        string? contentRootPath)
+    {
         var healthChecksBuilder = services.AddHealthChecks();
 
         var pluginAssemblyPaths = configuration
                                       .GetSection("PluginAssemblyPaths")
                                       .Get<string[]>()
                                   ?? throw new InvalidOperationException("PluginAssemblyPaths missing from configuration.");
-        Log.Information("Loading plugins from: {PluginAssemblyPaths}", pluginAssemblyPaths);
+        Log.Debug("Loading plugins from: {PluginAssemblyPaths}", pluginAssemblyPaths);
 
-        var loadedAssemblies = PluginAssemblyLoader.LoadAssembliesFromPaths(pluginAssemblyPaths);
+        var loadedAssemblies = PluginAssemblyLoader.LoadAssembliesFromPaths(
+            pluginAssemblyPaths,
+            SearchOption.TopDirectoryOnly,
+            contentRootPath);
 
         var pluginTypes = loadedAssemblies
             .SelectMany(a =>
@@ -57,10 +66,12 @@ internal static class ServiceCollectionPluginExtensions
 
         foreach (var pluginType in pluginTypes)
         {
-            Log.Information("Discovered plugin type: {PluginType}", pluginType.FullName);
+            Log.Debug("Discovered plugin type: {PluginType}", pluginType.FullName);
 
+            // Only service interfaces that extend IStatePlugin (excludes IDisposable and other
+            // non-state contracts that appear on GetInterfaces()).
             var pluginInterfaces = pluginType.GetInterfaces()
-                .Where(i => i != typeof(IStatePlugin))
+                .Where(i => i != typeof(IStatePlugin) && typeof(IStatePlugin).IsAssignableFrom(i))
                 .ToList();
 
             switch (pluginInterfaces.Count)
@@ -98,7 +109,7 @@ internal static class ServiceCollectionPluginExtensions
                 // with a lazy resolve adapter.
                 using var tempProvider = services.BuildServiceProvider();
                 var instance = ActivatorUtilities.CreateInstance(tempProvider, pluginType);
-                Log.Information("Constructed health check plugin: {PluginType}", pluginType.FullName);
+                Log.Debug("Constructed health check plugin: {PluginType}", pluginType.FullName);
 
                 ((IStateHealthCheckService)instance).ConfigureHealthChecks(healthChecksBuilder);
                 services.AddSingleton(pluginInterface, instance);
@@ -113,11 +124,26 @@ internal static class ServiceCollectionPluginExtensions
                 {
                     var logger = sp.GetRequiredService<ILoggerFactory>()
                         .CreateLogger("SEBT.Portal.Api.Composition");
-                    logger.LogInformation("Constructing plugin: {PluginType}", capturedType.FullName);
+                    logger.LogDebug("Constructing plugin: {PluginType}", capturedType.FullName);
                     return ActivatorUtilities.CreateInstance(sp, capturedType);
                 });
             }
         }
+
+        if (pluginTypes.Count == 0 && loadedAssemblies.Count > 0)
+        {
+            Log.Warning(
+                "Loaded {AssemblyCount} plugin assemblies but discovered 0 IStatePlugin implementations. " +
+                "See earlier warnings for TypeLoadException from GetExportedTypes.",
+                loadedAssemblies.Count);
+        }
+
+        // Register in-process defaults only for services no connector plugin provided.
+        services.TryAddSingleton<IStateAuthenticationService, Defaults.DefaultStateAuthenticationService>();
+        services.TryAddSingleton<IStateHealthCheckService, Defaults.DefaultStateHealthCheckService>();
+        services.TryAddSingleton<ISummerEbtCaseService, Defaults.DefaultSummerEbtCaseService>();
+        services.TryAddSingleton<IEnrollmentCheckService, Defaults.DefaultEnrollmentCheckService>();
+        services.TryAddSingleton<IAddressUpdateService, Defaults.DefaultAddressUpdateService>();
 
         return services;
     }

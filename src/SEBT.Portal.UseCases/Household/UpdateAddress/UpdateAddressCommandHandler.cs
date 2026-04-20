@@ -26,6 +26,7 @@ public class UpdateAddressCommandHandler(
     IHouseholdIdentifierResolver resolver,
     IHouseholdRepository householdRepository,
     IIdProofingRequirementsService idProofingRequirementsService,
+    IMinimumIalService minimumIalService,
     IStateAddressUpdateService stateAddressUpdateService,
     ILogger<UpdateAddressCommandHandler> logger)
     : ICommandHandler<UpdateAddressCommand, AddressValidationResult>
@@ -110,15 +111,31 @@ public class UpdateAddressCommandHandler(
         var household = await householdRepository.GetHouseholdByIdentifierAsync(
             identifier, piiVisibility, userIalLevel, cancellationToken);
 
-        if (household is { BenefitIssuanceType: BenefitIssuanceType.SnapEbtCard or BenefitIssuanceType.TanfEbtCard })
+        if (household != null)
+        {
+            // SECURITY: Block write operations when the user has not met the minimum IAL
+            // required by their cases. See docs/tdd/minimum-ial-determination.md.
+            var minimumIal = minimumIalService.GetMinimumIal(household.SummerEbtCases);
+            if (userIalLevel < minimumIal)
+            {
+                logger.LogInformation(
+                    "Address update denied: user IAL {UserIal} is below minimum {MinimumIal}",
+                    userIalLevel,
+                    minimumIal);
+                return Result<AddressValidationResult>.Forbidden(
+                    $"This household requires {minimumIal}. Complete identity verification to update your address.",
+                    new Dictionary<string, object?> { ["requiredIal"] = minimumIal.ToString() });
+            }
+        }
+
+        if (household != null && household.SummerEbtCases.Any(c => c.IsCoLoaded))
         {
             logger.LogWarning(
-                "Address update rejected for household identifier kind {Kind}: benefit type {BenefitType} is not eligible for portal self-service",
-                identifierKind,
-                household.BenefitIssuanceType);
+                "Address update rejected for household identifier kind {Kind}: household contains co-loaded cases",
+                identifierKind);
             return Result<AddressValidationResult>.PreconditionFailed(
                 PreconditionFailedReason.Conflict,
-                "Address updates are not available for this benefit type. Please contact your case worker.");
+                "Address updates are not available for co-loaded benefits. Please contact your case worker.");
         }
 
         // Use the normalized address from validation for the state connector call.

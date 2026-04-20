@@ -13,4 +13,5 @@ public record DateOfBirthDto(string Month, string Day, string Year);
 public record SubmitIdProofingRequest(
     DateOfBirthDto DateOfBirth,
     string? IdType,
-    string? IdValue);
+    string? IdValue,
+    string? DiSessionToken = null);

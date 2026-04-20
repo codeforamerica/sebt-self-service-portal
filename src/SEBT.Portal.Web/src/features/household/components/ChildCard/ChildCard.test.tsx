@@ -235,32 +235,28 @@ describe('ChildCard', () => {
     expect(screen.queryByText(/1234/)).not.toBeInTheDocument()
   })
 
-  it('does not show replacement link when issuanceType is null', () => {
-    const caseNoType = createMockSummerEbtCase({
+  it('hides card status when allowCardReplacement is false (co-loaded case)', () => {
+    const coLoadedCase = createMockSummerEbtCase({
       ...mockCase,
-      issuanceType: null
+      issuanceType: 'SnapEbtCard',
+      ebtCardStatus: 'Active',
+      allowCardReplacement: false
     })
 
-    renderWithFlags(
-      { summerEbtCase: caseNoType },
-      {
-        flags: { ...TEST_FEATURE_FLAGS, enable_card_replacement: true },
-        isLoading: false,
-        isError: false
-      }
-    )
+    renderWithFlags({ summerEbtCase: coLoadedCase })
 
-    expect(screen.queryByText('Request a replacement card')).not.toBeInTheDocument()
+    expect(screen.queryByTestId('card-status-badge')).not.toBeInTheDocument()
+    expect(screen.queryByText('Card status')).not.toBeInTheDocument()
   })
 
-  it('does not show replacement link when issuanceType is Unknown', () => {
-    const caseUnknown = createMockSummerEbtCase({
+  it('shows info link instead of replacement link when allowCardReplacement is false', () => {
+    const coLoadedCase = createMockSummerEbtCase({
       ...mockCase,
-      issuanceType: 'Unknown'
+      allowCardReplacement: false
     })
 
     renderWithFlags(
-      { summerEbtCase: caseUnknown },
+      { summerEbtCase: coLoadedCase },
       {
         flags: { ...TEST_FEATURE_FLAGS, enable_card_replacement: true },
         isLoading: false,
@@ -268,7 +264,8 @@ describe('ChildCard', () => {
       }
     )
 
-    expect(screen.queryByText('Request a replacement card')).not.toBeInTheDocument()
+    const link = screen.getByRole('link')
+    expect(link).toHaveAttribute('href', '/cards/info')
   })
 
   it('shows replacement link for SummerEbt when feature flag is enabled', () => {
@@ -307,5 +304,28 @@ describe('ChildCard', () => {
     )
 
     expect(screen.queryByText('Request a replacement card')).not.toBeInTheDocument()
+  })
+
+  it('exposes data-analytics-cta on the replacement card link for cta_click tracking', () => {
+    const summerEbtCase = createMockSummerEbtCase({
+      ...mockCase,
+      issuanceType: 'SummerEbt',
+      cardRequestedAt: '2025-01-01T00:00:00Z'
+    })
+
+    renderWithFlags(
+      { summerEbtCase },
+      {
+        flags: { ...TEST_FEATURE_FLAGS, enable_card_replacement: true },
+        isLoading: false,
+        isError: false
+      }
+    )
+
+    const replacementLink = screen.getByText('Request a replacement card')
+    expect(replacementLink.closest('a')).toHaveAttribute(
+      'data-analytics-cta',
+      'replacement_card_cta'
+    )
   })
 })

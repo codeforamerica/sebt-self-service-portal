@@ -64,7 +64,7 @@ export const CardStatusSchema = z.preprocess(
     typeof val === 'number'
       ? (CARD_STATUS_MAP[val as keyof typeof CARD_STATUS_MAP] ?? 'Unknown')
       : typeof val === 'string'
-        ? (CARD_STATUS_STRING_MAP[val.toUpperCase()] ?? val)
+        ? (CARD_STATUS_STRING_MAP[val.toUpperCase()] ?? (val || 'Unknown'))
         : val,
   z.enum([
     'Unknown',
@@ -175,7 +175,9 @@ export const SummerEbtCaseSchema = z.object({
   cardRequestedAt: z.string().nullable().optional(),
   cardMailedAt: z.string().nullable().optional(),
   cardActivatedAt: z.string().nullable().optional(),
-  cardDeactivatedAt: z.string().nullable().optional()
+  cardDeactivatedAt: z.string().nullable().optional(),
+  allowAddressChange: z.boolean().optional().default(true),
+  allowCardReplacement: z.boolean().optional().default(true)
 })
 
 export type SummerEbtCase = z.infer<typeof SummerEbtCaseSchema>
