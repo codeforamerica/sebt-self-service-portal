@@ -17,4 +17,16 @@ public static class ClaimsPrincipalExtensions
         var subValue = principal.FindFirst("sub")?.Value;
         return int.TryParse(subValue, out var id) && id > 0 ? id : null;
     }
+
+    /// <summary>
+    /// Extracts the user's email address from the JWT claims. Checks the long-form
+    /// <see cref="ClaimTypes.Email"/> first (written by <c>JwtTokenService</c>) then the
+    /// short-form <c>email</c>. Returns null when absent — OIDC users whose IdP didn't
+    /// include an email claim legitimately have no email.
+    /// </summary>
+    public static string? GetUserEmail(this ClaimsPrincipal principal)
+    {
+        return principal.FindFirst(ClaimTypes.Email)?.Value
+            ?? principal.FindFirst("email")?.Value;
+    }
 }

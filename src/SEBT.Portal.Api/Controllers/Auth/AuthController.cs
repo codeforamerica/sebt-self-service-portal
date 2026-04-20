@@ -1,4 +1,3 @@
-using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
@@ -47,7 +46,7 @@ public class AuthController(
 
         return Ok(new AuthorizationStatusResponse(
             IsAuthorized: true,
-            Email: GetUserEmail(),
+            Email: User.GetUserEmail(),
             Ial: User.FindFirst(JwtClaimTypes.Ial)?.Value,
             IdProofingStatus: int.TryParse(User.FindFirst(JwtClaimTypes.IdProofingStatus)?.Value, out var s) ? s : null,
             IdProofingCompletedAt: long.TryParse(User.FindFirst(JwtClaimTypes.IdProofingCompletedAt)?.Value, out var c) ? c : null,
@@ -133,16 +132,6 @@ public class AuthController(
 
             return BadRequest(new ErrorResponse(result.Message));
         }
-    }
-
-    /// <summary>
-    /// Extracts the user's email address from the authenticated user's JWT claims.
-    /// Returns null when absent (e.g. OIDC users whose IdP didn't include an email claim).
-    /// </summary>
-    private string? GetUserEmail()
-    {
-        return User.FindFirst(ClaimTypes.Email)?.Value
-            ?? User.FindFirst("email")?.Value;
     }
 
     /// <summary>
