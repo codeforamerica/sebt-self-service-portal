@@ -55,7 +55,9 @@ public static class HouseholdDataResponseMapper
             EbtCardBalance = domain.EbtCardBalance,
             CardRequestedAt = domain.CardRequestedAt,
             BenefitAvailableDate = domain.BenefitAvailableDate,
-            BenefitExpirationDate = domain.BenefitExpirationDate
+            BenefitExpirationDate = domain.BenefitExpirationDate,
+            AllowAddressChange = !domain.IsCoLoaded,
+            AllowCardReplacement = !domain.IsCoLoaded
         };
     }
 

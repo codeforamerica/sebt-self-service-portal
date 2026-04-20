@@ -39,6 +39,9 @@ async function proxyRequest(request: NextRequest, context: RouteContext): Promis
       headers,
       body: request.body,
       signal: controller.signal,
+      // Pass backend redirects (e.g., OIDC authorize 302) through to the browser
+      // instead of following them within the proxy.
+      redirect: 'manual',
       // @ts-expect-error - duplex is required for streaming request bodies
       duplex: 'half'
     })
@@ -90,14 +93,5 @@ export async function DELETE(request: NextRequest, context: RouteContext) {
 }
 
 export async function OPTIONS(request: NextRequest, context: RouteContext) {
-  // CORS preflight requests are handled by Next.js headers config (next.config.ts).
-  // Return 204 so the browser accepts the preflight — the CORS headers are added
-  // automatically by the headers config for matching routes.
-  const { path } = await context.params
-  const pathname = path ? path.join('/') : ''
-  if (pathname.startsWith('enrollment/')) {
-    return new NextResponse(null, { status: 204 })
-  }
-
   return proxyRequest(request, context)
 }

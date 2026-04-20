@@ -70,6 +70,18 @@ public class RequestCardReplacementCommandHandler(
                 $"This household requires {minimumIal}. Complete identity verification to request card replacements.");
         }
 
+        // Co-loaded cases are managed by caseworkers, not the portal.
+        var requestedCases = household.SummerEbtCases
+            .Where(c => c.SummerEBTCaseID != null && command.CaseIds.Contains(c.SummerEBTCaseID));
+        if (requestedCases.Any(c => c.IsCoLoaded))
+        {
+            logger.LogWarning(
+                "Card replacement rejected: request includes co-loaded case(s)");
+            return Result.PreconditionFailed(
+                PreconditionFailedReason.Conflict,
+                "Card replacements are not available for co-loaded benefits. Please contact your case worker.");
+        }
+
         var cooldownErrors = CheckCooldown(command.CaseIds, household, timeProvider);
         if (cooldownErrors.Count > 0)
         {

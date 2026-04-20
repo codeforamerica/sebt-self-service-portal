@@ -68,6 +68,15 @@ public class GetHouseholdDataQueryHandler(
                 new Dictionary<string, object?> { ["requiredIal"] = minimumIal.ToString() });
         }
 
+        // Mixed-eligibility households: hide co-loaded cases so the user only sees
+        // and manages their non-co-loaded cases. Co-loaded-only households still see
+        // their cases (they're all the user has), but per-case flags prevent actions.
+        var nonCoLoaded = householdData.SummerEbtCases.Where(c => !c.IsCoLoaded).ToList();
+        if (nonCoLoaded.Count > 0)
+        {
+            householdData.SummerEbtCases = nonCoLoaded;
+        }
+
         logger.LogDebug("Household data retrieved successfully for identifier type {Type}", identifier.Type);
         return Result<HouseholdData>.Success(householdData);
     }

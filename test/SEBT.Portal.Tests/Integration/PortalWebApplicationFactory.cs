@@ -30,7 +30,7 @@ public class PortalWebApplicationFactory : WebApplicationFactory<Program>
         "PluginAssemblyPaths__1",
         "JwtSettings__SecretKey",
         "STATE",
-        "Oidc__AuthorizationEndpoint",
+        "Oidc__DiscoveryEndpoint",
         "Oidc__ClientId",
         "Oidc__CallbackRedirectUri",
         "Oidc__CompleteLoginSigningKey",
@@ -50,7 +50,7 @@ public class PortalWebApplicationFactory : WebApplicationFactory<Program>
         // JWT + OIDC config for auth integration tests
         Environment.SetEnvironmentVariable("JwtSettings__SecretKey", JwtSecretKey);
         Environment.SetEnvironmentVariable("STATE", "co");
-        Environment.SetEnvironmentVariable("Oidc__AuthorizationEndpoint", "https://auth.example.com/authorize");
+        Environment.SetEnvironmentVariable("Oidc__DiscoveryEndpoint", "https://auth.example.com/.well-known/openid-configuration");
         Environment.SetEnvironmentVariable("Oidc__ClientId", "test-client");
         Environment.SetEnvironmentVariable("Oidc__CallbackRedirectUri", "http://localhost:3000/callback");
         Environment.SetEnvironmentVariable("Oidc__CompleteLoginSigningKey", JwtSecretKey);

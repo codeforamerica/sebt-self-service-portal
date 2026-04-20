@@ -22,7 +22,9 @@ function makeCaseWithIssuance(issuanceType: string): SummerEbtCase {
     childLastName: 'Child',
     householdType: 'SEBT',
     eligibilityType: 'NSLP',
-    issuanceType: issuanceType as SummerEbtCase['issuanceType']
+    issuanceType: issuanceType as SummerEbtCase['issuanceType'],
+    allowAddressChange: true,
+    allowCardReplacement: true
   }
 }
 

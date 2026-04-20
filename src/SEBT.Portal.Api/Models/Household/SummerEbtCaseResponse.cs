@@ -113,4 +113,16 @@ public record SummerEbtCaseResponse
     /// The date benefits expire.
     /// </summary>
     public DateTime? BenefitExpirationDate { get; init; }
+
+    /// <summary>
+    /// Whether the portal user can change the mailing address for this case.
+    /// False for co-loaded cases (benefits managed by caseworker).
+    /// </summary>
+    public bool AllowAddressChange { get; init; }
+
+    /// <summary>
+    /// Whether the portal user can request a replacement card for this case.
+    /// False for co-loaded cases (benefits managed by caseworker).
+    /// </summary>
+    public bool AllowCardReplacement { get; init; }
 }

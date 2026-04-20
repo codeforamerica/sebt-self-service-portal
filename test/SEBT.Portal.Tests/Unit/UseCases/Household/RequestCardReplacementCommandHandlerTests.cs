@@ -244,6 +244,64 @@ public class RequestCardReplacementCommandHandlerTests
         Assert.IsType<ValidationFailedResult>(result);
     }
 
+    // --- Co-loaded case tests ---
+
+    [Fact]
+    public async Task Handle_ReturnsConflict_WhenRequestedCaseIsCoLoaded()
+    {
+        var handler = CreateHandler();
+        var command = CreateValidCommand(caseIds: new List<string> { "SEBT-COLOADED" });
+        SetupResolverSuccess();
+        SetupRepositoryReturns(CreateHouseholdWithCases(
+            new SummerEbtCase
+            {
+                SummerEBTCaseID = "SEBT-COLOADED",
+                ChildFirstName = "John",
+                ChildLastName = "Doe",
+                IsCoLoaded = true,
+                CardRequestedAt = DateTime.UtcNow.AddDays(-30)
+            }
+        ));
+
+        var result = await handler.Handle(command, CancellationToken.None);
+
+        Assert.False(result.IsSuccess);
+        var preconditionFailed = Assert.IsType<PreconditionFailedResult>(result);
+        Assert.Equal(PreconditionFailedReason.Conflict, preconditionFailed.Reason);
+    }
+
+    [Fact]
+    public async Task Handle_ReturnsConflict_WhenAnyRequestedCaseIsCoLoaded()
+    {
+        var handler = CreateHandler();
+        var command = CreateValidCommand(caseIds: new List<string> { "SEBT-001", "SEBT-COLOADED" });
+        SetupResolverSuccess();
+        SetupRepositoryReturns(CreateHouseholdWithCases(
+            new SummerEbtCase
+            {
+                SummerEBTCaseID = "SEBT-001",
+                ChildFirstName = "Regular",
+                ChildLastName = "Child",
+                IsCoLoaded = false,
+                CardRequestedAt = DateTime.UtcNow.AddDays(-30)
+            },
+            new SummerEbtCase
+            {
+                SummerEBTCaseID = "SEBT-COLOADED",
+                ChildFirstName = "CoLoaded",
+                ChildLastName = "Child",
+                IsCoLoaded = true,
+                CardRequestedAt = DateTime.UtcNow.AddDays(-30)
+            }
+        ));
+
+        var result = await handler.Handle(command, CancellationToken.None);
+
+        Assert.False(result.IsSuccess);
+        var preconditionFailed = Assert.IsType<PreconditionFailedResult>(result);
+        Assert.Equal(PreconditionFailedReason.Conflict, preconditionFailed.Reason);
+    }
+
     // --- Success tests ---
 
     [Fact]

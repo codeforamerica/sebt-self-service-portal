@@ -7,6 +7,7 @@ using SEBT.Portal.Api.Models;
 using SEBT.Portal.Api.Services;
 using SEBT.Portal.Core.AppSettings;
 using SEBT.Portal.Core.Models.Auth;
+using SEBT.Portal.Core.Utilities;
 using SEBT.Portal.Kernel;
 using SEBT.Portal.Kernel.AspNetCore;
 using SEBT.Portal.Kernel.Results;
@@ -41,7 +42,8 @@ public class AuthController(
     {
         var email = GetUserEmail();
 
-        logger.LogInformation("Authorization status check successful for user {Email}", email ?? "unknown");
+        logger.LogInformation("Authorization status check successful for user {Email}, Phone={MaskedPhone}",
+            email ?? "unknown", GetMaskedPhone());
 
         return Ok(new AuthorizationStatusResponse(
             IsAuthorized: true,
@@ -94,14 +96,16 @@ public class AuthController(
             return Unauthorized(new ErrorResponse("Unable to identify user from token."));
         }
 
-        logger.LogInformation("Token refresh request received for email {Email}", email);
+        logger.LogInformation("Token refresh request received for email {Email}, Phone={MaskedPhone}",
+            email, GetMaskedPhone());
 
         var command = new RefreshTokenCommand { Email = email, CurrentPrincipal = User };
         var result = await handler.Handle(command);
 
         if (result.IsSuccess)
         {
-            logger.LogInformation("Token refreshed successfully for email {Email}", email);
+            logger.LogInformation("Token refreshed successfully for email {Email}, Phone={MaskedPhone}",
+                email, GetMaskedPhone());
             var expiresAt = DateTimeOffset.UtcNow.AddMinutes(jwtSettingsOptions.Value.ExpirationMinutes);
             AuthCookies.SetAuthCookie(Response, result.Value, expiresAt);
             return NoContent();
@@ -140,6 +144,16 @@ public class AuthController(
             ?? User.FindFirst("email")?.Value
             ?? User.FindFirst("sub")?.Value
             ?? User.Identity?.Name;
+    }
+
+    /// <summary>
+    /// Extracts and masks the phone number from the authenticated user's JWT claims.
+    /// Returns a masked value like "***-***-1234", or null if no phone claim is present.
+    /// </summary>
+    private string? GetMaskedPhone()
+    {
+        var phone = User.FindFirst("phone")?.Value ?? User.FindFirst("phone_number")?.Value;
+        return PiiMasker.MaskPhone(phone);
     }
 }
 

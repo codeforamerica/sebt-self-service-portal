@@ -187,30 +187,10 @@ jobs:
             -t sebt-portal-api:${{ steps.tag.outputs.tag }} \
             .
 
-      - name: Build Web DC image
-        run: |
-          docker build \
-            --platform linux/amd64 \
-            -f src/SEBT.Portal.Web/Dockerfile \
-            --build-arg STATE=dc \
-            -t sebt-portal-web-dc:${{ steps.tag.outputs.tag }} \
-            .
-
-      - name: Build Web CO image
-        run: |
-          docker build \
-            --platform linux/amd64 \
-            -f src/SEBT.Portal.Web/Dockerfile \
-            --build-arg STATE=co \
-            -t sebt-portal-web-co:${{ steps.tag.outputs.tag }} \
-            .
-
       - name: Save Docker images
         run: |
           docker save \
             sebt-portal-api:${{ steps.tag.outputs.tag }} \
-            sebt-portal-web-dc:${{ steps.tag.outputs.tag }} \
-            sebt-portal-web-co:${{ steps.tag.outputs.tag }} \
             -o /tmp/docker-images.tar
 
       - name: Upload Docker images
@@ -258,6 +238,18 @@ jobs:
       - name: Login to Amazon ECR
         id: login-ecr
         uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Build Web image
+        run: |
+          docker build \
+            --platform linux/amd64 \
+            -f src/SEBT.Portal.Web/Dockerfile \
+            --build-arg STATE=dc \
+            --build-arg NEXT_PUBLIC_SOCURE_SDK_KEY=${{ vars.SOCURE_SDK_KEY }} \
+            --build-arg NEXT_PUBLIC_SOCURE_DI_SDK_KEY=${{ vars.SOCURE_DI_SDK_KEY }} \
+            --build-arg NEXT_PUBLIC_MOCK_SOCURE=${{ vars.MOCK_SOCURE }} \
+            -t sebt-portal-web-dc:${{ needs.build.outputs.image_tag }} \
+            .
 
       - name: Push images to ECR
         run: |
@@ -332,6 +324,15 @@ jobs:
       - name: Login to Amazon ECR
         id: login-ecr
         uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Build Web image
+        run: |
+          docker build \
+            --platform linux/amd64 \
+            -f src/SEBT.Portal.Web/Dockerfile \
+            --build-arg STATE=co \
+            -t sebt-portal-web-co:${{ needs.build.outputs.image_tag }} \
+            .
 
       - name: Push images to ECR
         run: |

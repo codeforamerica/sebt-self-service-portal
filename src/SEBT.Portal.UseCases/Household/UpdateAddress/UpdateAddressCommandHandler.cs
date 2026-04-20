@@ -128,15 +128,14 @@ public class UpdateAddressCommandHandler(
             }
         }
 
-        if (household is { BenefitIssuanceType: BenefitIssuanceType.SnapEbtCard or BenefitIssuanceType.TanfEbtCard })
+        if (household != null && household.SummerEbtCases.Any(c => c.IsCoLoaded))
         {
             logger.LogWarning(
-                "Address update rejected for household identifier kind {Kind}: benefit type {BenefitType} is not eligible for portal self-service",
-                identifierKind,
-                household.BenefitIssuanceType);
+                "Address update rejected for household identifier kind {Kind}: household contains co-loaded cases",
+                identifierKind);
             return Result<AddressValidationResult>.PreconditionFailed(
                 PreconditionFailedReason.Conflict,
-                "Address updates are not available for this benefit type. Please contact your case worker.");
+                "Address updates are not available for co-loaded benefits. Please contact your case worker.");
         }
 
         // Use the normalized address from validation for the state connector call.
