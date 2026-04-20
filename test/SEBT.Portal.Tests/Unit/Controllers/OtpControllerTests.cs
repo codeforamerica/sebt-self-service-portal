@@ -2,6 +2,8 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
+using Microsoft.Extensions.Hosting;
+using Microsoft.FeatureManagement;
 using NSubstitute;
 using SEBT.Portal.Api.Controllers;
 using SEBT.Portal.Api.Models;
@@ -15,6 +17,8 @@ namespace SEBT.Portal.Tests.Unit.Controllers;
 
 public class OtpControllerTests
 {
+    private readonly IHostEnvironment _hostEnvironment = Substitute.For<IHostEnvironment>();
+    private readonly IFeatureManager _featureManager = Substitute.For<IFeatureManager>();
     private readonly OtpController _controller;
 
     public OtpControllerTests()
@@ -27,7 +31,7 @@ public class OtpControllerTests
             Audience = "test",
             ExpirationMinutes = 60
         });
-        _controller = new OtpController(logger, jwtSettings)
+        _controller = new OtpController(logger, jwtSettings, _hostEnvironment, _featureManager)
         {
             ControllerContext = new ControllerContext
             {
@@ -40,9 +44,9 @@ public class OtpControllerTests
     public async Task RequestOtp_WhenSuccess_ReturnsCreated()
     {
         // Arrange
-        var command = new RequestOtpCommand();
+        var command = new RequestOtpApiRequest("user@example.com");
         var handlerMock = Substitute.For<ICommandHandler<RequestOtpCommand>>();
-        handlerMock.Handle(command)
+        handlerMock.Handle(Arg.Any<RequestOtpCommand>())
             .Returns(Result.Success());
 
         // Act
@@ -56,7 +60,7 @@ public class OtpControllerTests
     public async Task RequestOtp_WhenCommandIsNull_ReturnsBadRequest()
     {
         // Arrange
-        RequestOtpCommand? command = null;
+        RequestOtpApiRequest? command = null!;
         var handlerMock = Substitute.For<ICommandHandler<RequestOtpCommand>>();
 
         // Act
@@ -74,9 +78,9 @@ public class OtpControllerTests
     public async Task RequestOtp_WhenFailure_ReturnsBadRequest()
     {
         // Arrange
-        var command = new RequestOtpCommand();
+        var command = new RequestOtpApiRequest("user@example.com");
         var handlerMock = Substitute.For<ICommandHandler<RequestOtpCommand>>();
-        handlerMock.Handle(command)
+        handlerMock.Handle(Arg.Any<RequestOtpCommand>())
             .Returns(Result.ValidationFailed("message", "Invalid OTP"));
 
         // Act
@@ -91,10 +95,10 @@ public class OtpControllerTests
     public async Task ValidateOtp_WhenSuccess_ReturnsNoContentAndSetsAuthCookie()
     {
         // Arrange
-        var command = new ValidateOtpCommand { Email = "user@example.com", Otp = "123456" };
+        var command = new ValidateOtpApiRequest("user@example.com", "123456");
         var handlerMock = Substitute.For<ICommandHandler<ValidateOtpCommand, string>>();
         var expectedToken = "test.jwt.token";
-        handlerMock.Handle(command)
+        handlerMock.Handle(Arg.Any<ValidateOtpCommand>())
             .Returns(Result<string>.Success(expectedToken));
 
         // Act
@@ -104,7 +108,7 @@ public class OtpControllerTests
         Assert.IsType<NoContentResult>(result);
         AssertAuthCookieSet(expectedToken);
 
-        await handlerMock.Received(1).Handle(command);
+        await handlerMock.Received(1).Handle(Arg.Any<ValidateOtpCommand>());
     }
 
     private void AssertAuthCookieSet(string expectedToken)
@@ -123,9 +127,9 @@ public class OtpControllerTests
     public async Task ValidateOtp_WhenFailure_ReturnsBadRequest()
     {
         // Arrange
-        var command = new ValidateOtpCommand { Email = "user@example.com", Otp = "123456" };
+        var command = new ValidateOtpApiRequest("user@example.com", "123456");
         var handlerMock = Substitute.For<ICommandHandler<ValidateOtpCommand, string>>();
-        handlerMock.Handle(command)
+        handlerMock.Handle(Arg.Any<ValidateOtpCommand>())
             .Returns(Result<string>.ValidationFailed("message", "Invalid OTP"));
 
         // Act
@@ -138,10 +142,27 @@ public class OtpControllerTests
     }
 
     [Fact]
+    public async Task ValidateOtp_WhenSuccess_DoesNotCallJwtServiceIfHandlerFails()
+    {
+        // Arrange
+        var command = new ValidateOtpApiRequest("user@example.com", "123456");
+        var handlerMock = Substitute.For<ICommandHandler<ValidateOtpCommand, string>>();
+        handlerMock.Handle(Arg.Any<ValidateOtpCommand>())
+            .Returns(Result<string>.ValidationFailed("Otp", "Invalid OTP"));
+
+        // Act
+        var result = await _controller.ValidateOtp(command, handlerMock);
+
+        // Assert
+        Assert.NotNull(result);
+        Assert.IsType<BadRequestObjectResult>(result);
+    }
+
+    [Fact]
     public async Task ValidateOtp_WhenCommandIsNull_ReturnsBadRequest()
     {
         // Arrange
-        ValidateOtpCommand? command = null;
+        ValidateOtpApiRequest? command = null!;
         var handlerMock = Substitute.For<ICommandHandler<ValidateOtpCommand, string>>();
 
         // Act
@@ -159,9 +180,9 @@ public class OtpControllerTests
     public async Task ValidateOtp_WhenJwtTokenGenerationFails_ReturnsInternalServerError()
     {
         // Arrange
-        var command = new ValidateOtpCommand { Email = "user@example.com", Otp = "123456" };
+        var command = new ValidateOtpApiRequest("user@example.com", "123456");
         var handlerMock = Substitute.For<ICommandHandler<ValidateOtpCommand, string>>();
-        handlerMock.Handle(command)
+        handlerMock.Handle(Arg.Any<ValidateOtpCommand>())
             .Returns(Result<string>.DependencyFailed(
                 DependencyFailedReason.ConnectionFailed,
                 "An error occurred while generating the authentication token."));
@@ -180,9 +201,9 @@ public class OtpControllerTests
     public async Task ValidateOtp_WhenFailure_ReturnsErrorInCorrectFormat()
     {
         // Arrange
-        var command = new ValidateOtpCommand { Email = "user@example.com", Otp = "123456" };
+        var command = new ValidateOtpApiRequest("user@example.com", "123456");
         var handlerMock = Substitute.For<ICommandHandler<ValidateOtpCommand, string>>();
-        handlerMock.Handle(command)
+        handlerMock.Handle(Arg.Any<ValidateOtpCommand>())
             .Returns(Result<string>.ValidationFailed("Otp", "Invalid OTP"));
 
         // Act
@@ -201,4 +222,155 @@ public class OtpControllerTests
         Assert.Contains("validation errors", errorValue.ToString() ?? string.Empty, StringComparison.OrdinalIgnoreCase);
     }
 
+    #region RequestOtp bypass decision tests
+
+    [Fact]
+    public async Task RequestOtp_WhenBypassEnabled_AndStaging_AndMatchingEmail_SetsCommandBypassTrue()
+    {
+        // Arrange
+        _featureManager.IsEnabledAsync(OtpBypassSettings.FeatureFlagName).Returns(true);
+        _hostEnvironment.EnvironmentName.Returns("Staging");
+
+        var request = new RequestOtpApiRequest(OtpBypassSettings.Email);
+        var handlerMock = Substitute.For<ICommandHandler<RequestOtpCommand>>();
+        handlerMock.Handle(Arg.Any<RequestOtpCommand>()).Returns(Result.Success());
+
+        // Act
+        await _controller.RequestOtp(request, handlerMock);
+
+        // Assert
+        await handlerMock.Received(1).Handle(Arg.Is<RequestOtpCommand>(c => c.BypassOtp == true));
+    }
+
+    [Fact]
+    public async Task RequestOtp_WhenBypassEnabled_ButProduction_SetsCommandBypassFalse()
+    {
+        // Arrange
+        _featureManager.IsEnabledAsync(OtpBypassSettings.FeatureFlagName).Returns(true);
+        _hostEnvironment.EnvironmentName.Returns("Production");
+
+        var request = new RequestOtpApiRequest(OtpBypassSettings.Email);
+        var handlerMock = Substitute.For<ICommandHandler<RequestOtpCommand>>();
+        handlerMock.Handle(Arg.Any<RequestOtpCommand>()).Returns(Result.Success());
+
+        // Act
+        await _controller.RequestOtp(request, handlerMock);
+
+        // Assert
+        await handlerMock.Received(1).Handle(Arg.Is<RequestOtpCommand>(c => c.BypassOtp == false));
+    }
+
+    [Fact]
+    public async Task RequestOtp_WhenBypassEnabled_AndStaging_ButWrongEmail_SetsCommandBypassFalse()
+    {
+        // Arrange
+        _featureManager.IsEnabledAsync(OtpBypassSettings.FeatureFlagName).Returns(true);
+        _hostEnvironment.EnvironmentName.Returns("Staging");
+
+        var request = new RequestOtpApiRequest("other@example.com");
+        var handlerMock = Substitute.For<ICommandHandler<RequestOtpCommand>>();
+        handlerMock.Handle(Arg.Any<RequestOtpCommand>()).Returns(Result.Success());
+
+        // Act
+        await _controller.RequestOtp(request, handlerMock);
+
+        // Assert
+        await handlerMock.Received(1).Handle(Arg.Is<RequestOtpCommand>(c => c.BypassOtp == false));
+    }
+
+    [Fact]
+    public async Task RequestOtp_WhenBypassDisabled_SetsCommandBypassFalse()
+    {
+        // Arrange
+        _featureManager.IsEnabledAsync(OtpBypassSettings.FeatureFlagName).Returns(false);
+        _hostEnvironment.EnvironmentName.Returns("Staging");
+
+        var request = new RequestOtpApiRequest(OtpBypassSettings.Email);
+        var handlerMock = Substitute.For<ICommandHandler<RequestOtpCommand>>();
+        handlerMock.Handle(Arg.Any<RequestOtpCommand>()).Returns(Result.Success());
+
+        // Act
+        await _controller.RequestOtp(request, handlerMock);
+
+        // Assert
+        await handlerMock.Received(1).Handle(Arg.Is<RequestOtpCommand>(c => c.BypassOtp == false));
+    }
+
+    #endregion
+
+    #region ValidateOtp bypass decision tests
+
+    [Fact]
+    public async Task ValidateOtp_WhenBypassEnabled_AndStaging_AndMatchingEmail_SetsCommandBypassTrue()
+    {
+        // Arrange
+        _featureManager.IsEnabledAsync(OtpBypassSettings.FeatureFlagName).Returns(true);
+        _hostEnvironment.EnvironmentName.Returns("Staging");
+
+        var request = new ValidateOtpApiRequest(OtpBypassSettings.Email, OtpBypassSettings.OtpCode);
+        var handlerMock = Substitute.For<ICommandHandler<ValidateOtpCommand, string>>();
+        handlerMock.Handle(Arg.Any<ValidateOtpCommand>()).Returns(Result<string>.Success("token"));
+
+        // Act
+        await _controller.ValidateOtp(request, handlerMock);
+
+        // Assert
+        await handlerMock.Received(1).Handle(Arg.Is<ValidateOtpCommand>(c => c.BypassOtp == true));
+    }
+
+    [Fact]
+    public async Task ValidateOtp_WhenBypassEnabled_ButProduction_SetsCommandBypassFalse()
+    {
+        // Arrange
+        _featureManager.IsEnabledAsync(OtpBypassSettings.FeatureFlagName).Returns(true);
+        _hostEnvironment.EnvironmentName.Returns("Production");
+
+        var request = new ValidateOtpApiRequest(OtpBypassSettings.Email, OtpBypassSettings.OtpCode);
+        var handlerMock = Substitute.For<ICommandHandler<ValidateOtpCommand, string>>();
+        handlerMock.Handle(Arg.Any<ValidateOtpCommand>()).Returns(Result<string>.Success("token"));
+
+        // Act
+        await _controller.ValidateOtp(request, handlerMock);
+
+        // Assert
+        await handlerMock.Received(1).Handle(Arg.Is<ValidateOtpCommand>(c => c.BypassOtp == false));
+    }
+
+    [Fact]
+    public async Task ValidateOtp_WhenBypassEnabled_AndStaging_ButWrongEmail_SetsCommandBypassFalse()
+    {
+        // Arrange
+        _featureManager.IsEnabledAsync(OtpBypassSettings.FeatureFlagName).Returns(true);
+        _hostEnvironment.EnvironmentName.Returns("Staging");
+
+        var request = new ValidateOtpApiRequest("other@example.com", OtpBypassSettings.OtpCode);
+        var handlerMock = Substitute.For<ICommandHandler<ValidateOtpCommand, string>>();
+        handlerMock.Handle(Arg.Any<ValidateOtpCommand>()).Returns(Result<string>.Success("token"));
+
+        // Act
+        await _controller.ValidateOtp(request, handlerMock);
+
+        // Assert
+        await handlerMock.Received(1).Handle(Arg.Is<ValidateOtpCommand>(c => c.BypassOtp == false));
+    }
+
+    [Fact]
+    public async Task ValidateOtp_WhenBypassDisabled_SetsCommandBypassFalse()
+    {
+        // Arrange
+        _featureManager.IsEnabledAsync(OtpBypassSettings.FeatureFlagName).Returns(false);
+        _hostEnvironment.EnvironmentName.Returns("Staging");
+
+        var request = new ValidateOtpApiRequest(OtpBypassSettings.Email, OtpBypassSettings.OtpCode);
+        var handlerMock = Substitute.For<ICommandHandler<ValidateOtpCommand, string>>();
+        handlerMock.Handle(Arg.Any<ValidateOtpCommand>()).Returns(Result<string>.Success("token"));
+
+        // Act
+        await _controller.ValidateOtp(request, handlerMock);
+
+        // Assert
+        await handlerMock.Received(1).Handle(Arg.Is<ValidateOtpCommand>(c => c.BypassOtp == false));
+    }
+
+    #endregion
 }
