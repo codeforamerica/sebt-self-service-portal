@@ -41,7 +41,7 @@ We're colleagues working together. Neither of us is afraid to admit we don't kno
 ### 🔴 Always Explicitly Ask a Human First!
 - Rewriting working code from scratch
 - Changing core business logic or removing functionality
-- Architectural changes. Architectural decisions are recorded as ADRs in [docs/adr/](./docs/adr/). Consult existing ADRs before proposing changes that affect architecture.
+- Architectural changes. Architectural decisions are recorded as ADRs in [docs/adr/](./docs/adr/). Consult existing ADRs before proposing changes that affect architecture. Note: some ADR numbers are accidentally reused (e.g., 0007) and may be cleaned up later — always reference ADRs by filename, not number.
 - Security modifications
 
 ## Designing Solutions
