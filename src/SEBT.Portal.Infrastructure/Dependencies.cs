@@ -52,7 +52,10 @@ public static class Dependencies
         // Smarty address verification (or pass-through when disabled)
         services.AddHttpClient("Smarty", (sp, client) =>
         {
-            var smarty = sp.GetRequiredService<IOptionsSnapshot<SmartySettings>>().Value;
+            // IOptionsMonitor (singleton) instead of IOptionsSnapshot (scoped) — the
+            // AddHttpClient delegate receives the root IServiceProvider, so scoped
+            // services cannot be resolved here.
+            var smarty = sp.GetRequiredService<IOptionsMonitor<SmartySettings>>().CurrentValue;
             var baseUrl = string.IsNullOrWhiteSpace(smarty.BaseUrl)
                 ? "https://us-street.api.smartystreets.com"
                 : smarty.BaseUrl.TrimEnd('/');

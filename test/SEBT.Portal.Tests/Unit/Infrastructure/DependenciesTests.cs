@@ -32,4 +32,41 @@ public class DependenciesTests
         Assert.Contains("UseMockHouseholdData is false", ex.Message);
         Assert.Contains("no household plugin", ex.Message);
     }
+
+    [Fact]
+    public void CreateSmartyHttpClient_CanBeCreatedFromScope_WhenSmartyEnabled()
+    {
+        // Arrange — build a real DI container with Smarty enabled and scope
+        // validation on, mimicking how ASP.NET Core validates service lifetimes.
+        var services = new ServiceCollection();
+        var config = new ConfigurationBuilder()
+            .AddInMemoryCollection(new Dictionary<string, string?>
+            {
+                ["Smarty:Enabled"] = "true",
+                ["Smarty:AuthId"] = "test-id",
+                ["Smarty:AuthToken"] = "test-token",
+                ["Smarty:BaseUrl"] = "https://us-street.api.smartystreets.com",
+            })
+            .Build();
+
+        services.AddSingleton<IConfiguration>(config);
+        services.AddLogging();
+        services.AddPortalInfrastructureAppSettings(config);
+        services.AddPortalInfrastructureServices(config);
+
+        var provider = services.BuildServiceProvider(new ServiceProviderOptions
+        {
+            ValidateScopes = true
+        });
+
+        // Act — creating the named HttpClient triggers the configuration delegate
+        // which must resolve options from the root provider.
+        using var scope = provider.CreateScope();
+        var factory = scope.ServiceProvider.GetRequiredService<IHttpClientFactory>();
+        var client = factory.CreateClient("Smarty");
+
+        // Assert
+        Assert.NotNull(client);
+        Assert.Equal(new Uri("https://us-street.api.smartystreets.com/"), client.BaseAddress);
+    }
 }
