@@ -1,6 +1,7 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { render, screen, waitFor } from '@testing-library/react'
 import { http, HttpResponse } from 'msw'
+import type { ReactNode } from 'react'
 import { describe, expect, it, vi } from 'vitest'
 
 import { TEST_HOUSEHOLD_DATA } from '@/mocks/handlers'
@@ -18,10 +19,14 @@ vi.mock('next/navigation', () => ({
   usePathname: () => '/dashboard'
 }))
 
-vi.mock('@/features/auth', () => ({
+// Mock the auth context rather than the barrel so real components like
+// SignOutLink (re-exported from @/features/auth) remain available while
+// useAuth is stubbed for all consumers (barrel re-exports and relative imports).
+vi.mock('@/features/auth/context', () => ({
   useAuth: () => ({
     logout: vi.fn()
-  })
+  }),
+  AuthProvider: ({ children }: { children: ReactNode }) => children
 }))
 
 vi.mock('@/features/feature-flags', () => ({
@@ -84,6 +89,22 @@ describe('DashboardContent', () => {
     })
   })
 
+  it('renders sign-out link in error state', async () => {
+    server.use(
+      http.get('/api/household/data', () => {
+        return HttpResponse.json({ error: 'Unauthorized' }, { status: 401 })
+      })
+    )
+
+    renderWithProviders(<DashboardContent />)
+
+    await waitFor(() => {
+      expect(screen.getByRole('alert')).toBeInTheDocument()
+    })
+
+    expect(screen.getByRole('button', { name: /logout|sign out/i })).toBeInTheDocument()
+  })
+
   it('renders empty state when no applications', async () => {
     server.use(
       http.get('/api/household/data', () => {
@@ -138,5 +159,41 @@ describe('DashboardContent', () => {
     await waitFor(() => {
       expect(screen.getByRole('alert')).toBeInTheDocument()
     })
+  })
+
+  it('renders sign-out link in empty state', async () => {
+    server.use(
+      http.get('/api/household/data', () => {
+        return HttpResponse.json({
+          ...TEST_HOUSEHOLD_DATA,
+          summerEbtCases: [],
+          applications: []
+        })
+      })
+    )
+
+    renderWithProviders(<DashboardContent />)
+
+    await waitFor(() => {
+      expect(screen.getByRole('alert')).toBeInTheDocument()
+    })
+
+    expect(screen.getByRole('button', { name: /logout|sign out/i })).toBeInTheDocument()
+  })
+
+  it('renders sign-out link on 404', async () => {
+    server.use(
+      http.get('/api/household/data', () => {
+        return HttpResponse.json({ error: 'Not found' }, { status: 404 })
+      })
+    )
+
+    renderWithProviders(<DashboardContent />)
+
+    await waitFor(() => {
+      expect(screen.getByRole('alert')).toBeInTheDocument()
+    })
+
+    expect(screen.getByRole('button', { name: /logout|sign out/i })).toBeInTheDocument()
   })
 })
