@@ -302,16 +302,18 @@ public class GetHouseholdDataQueryHandlerTests
     }
 
     [Fact]
-    public async Task Handle_PreservesCoLoadedCases_WhenMixedEligibilityHousehold()
+    public async Task Handle_FiltersCoLoadedCases_WhenMixedEligibilityHousehold()
     {
-        // Mixed households: all cases stay in the response so the client can render
-        // static-link treatment for co-loaded cases. Per-case flags signal gating.
+        // Mixed households: hide co-loaded cases so the user only sees non-co-loaded ones.
+        // Product intent (James/Devika, 2026-04-20): MVP does not visually support mixed
+        // households; only the non-co-loaded subset reaches the client.
         var email = "user@example.com";
         var user = CreateUser(email, UserIalLevel.IAL1plus);
         var identifier = HouseholdIdentifier.Email(EmailNormalizer.Normalize(email));
         var householdData = new HouseholdData
         {
             Email = email,
+            BenefitIssuanceType = BenefitIssuanceType.SnapEbtCard,
             SummerEbtCases = new List<SummerEbtCase>
             {
                 new() { SummerEBTCaseID = "SEBT-COLOADED", ChildFirstName = "A", ChildLastName = "B", IsCoLoaded = true },
@@ -335,9 +337,14 @@ public class GetHouseholdDataQueryHandlerTests
 
         Assert.True(result.IsSuccess);
         var success = Assert.IsType<SuccessResult<HouseholdData>>(result);
-        Assert.Equal(2, success.Value.SummerEbtCases.Count);
-        Assert.Contains(success.Value.SummerEbtCases, c => c.SummerEBTCaseID == "SEBT-COLOADED");
-        Assert.Contains(success.Value.SummerEbtCases, c => c.SummerEBTCaseID == "SEBT-REGULAR");
+        Assert.Single(success.Value.SummerEbtCases);
+        Assert.Equal("SEBT-REGULAR", success.Value.SummerEbtCases[0].SummerEBTCaseID);
+
+        // Recompute the household-level type to match the filtered view.
+        // Otherwise a downstream consumer keyed on BenefitIssuanceType (e.g. the
+        // address-info page's co-loaded guard) would render guidance that doesn't
+        // match what the user actually sees post-filter.
+        Assert.Equal(BenefitIssuanceType.SummerEbt, success.Value.BenefitIssuanceType);
     }
 
     [Fact]
@@ -429,6 +436,7 @@ public class GetHouseholdDataQueryHandlerTests
         var householdData = new HouseholdData
         {
             Email = email,
+            BenefitIssuanceType = BenefitIssuanceType.SnapEbtCard,
             SummerEbtCases = new List<SummerEbtCase>
             {
                 new() { SummerEBTCaseID = "SEBT-001", ChildFirstName = "A", ChildLastName = "B", IsCoLoaded = true },
@@ -453,6 +461,10 @@ public class GetHouseholdDataQueryHandlerTests
         Assert.True(result.IsSuccess);
         var success = Assert.IsType<SuccessResult<HouseholdData>>(result);
         Assert.Equal(2, success.Value.SummerEbtCases.Count);
+
+        // Fully-co-loaded households: no filter runs, so the upstream plugin's
+        // BenefitIssuanceType is preserved and drives downstream routing honestly.
+        Assert.Equal(BenefitIssuanceType.SnapEbtCard, success.Value.BenefitIssuanceType);
     }
 
     [Fact]
