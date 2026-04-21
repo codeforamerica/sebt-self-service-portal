@@ -72,11 +72,11 @@ public class PortalDbContext : DbContext
                 .ValueGeneratedOnAdd()
                 .UseIdentityColumn();
             entity.Property(e => e.Email)
-                .IsRequired()
                 .HasMaxLength(255);
             entity.HasIndex(e => e.Email)
                 .IsUnique()
-                .HasDatabaseName("IX_Users_Email");
+                .HasDatabaseName("IX_Users_Email")
+                .HasFilter("[Email] IS NOT NULL");
             entity.Property(e => e.IdProofingStatus)
                 .IsRequired()
                 .HasDefaultValue(0); // 0 = NotStarted
@@ -106,6 +106,14 @@ public class PortalDbContext : DbContext
             entity.Property(e => e.SnapId).HasMaxLength(64);
             entity.Property(e => e.TanfId).HasMaxLength(64);
             entity.Property(e => e.Ssn).HasMaxLength(64);
+
+            // OIDC external provider identifier — nullable, filtered unique index
+            entity.Property(e => e.ExternalProviderId)
+                .HasMaxLength(255);
+            entity.HasIndex(e => e.ExternalProviderId)
+                .IsUnique()
+                .HasDatabaseName("IX_Users_ExternalProviderId")
+                .HasFilter("[ExternalProviderId] IS NOT NULL");
         });
 
         modelBuilder.Entity<DocVerificationChallengeEntity>(entity =>

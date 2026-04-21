@@ -1,10 +1,11 @@
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using NSubstitute;
-using NSubstitute.ReceivedExtensions;
 using SEBT.Portal.Core.Models.Auth;
 using SEBT.Portal.Core.Repositories;
+using SEBT.Portal.Core.AppSettings;
 using SEBT.Portal.Core.Services;
+using SEBT.Portal.Core.Utilities;
 using SEBT.Portal.Kernel;
 using SEBT.Portal.Kernel.Results;
 using SEBT.Portal.UseCases.Auth;
@@ -402,6 +403,7 @@ public class ValidateOtpCommandHandlerTests
             jwtTokenService,
             validator,
             logger);
+
         var command = new ValidateOtpCommand
         {
             Email = "jim@example.com",
@@ -492,6 +494,7 @@ public class ValidateOtpCommandHandlerTests
 
         var newUser = new User
         {
+            Id = 1,
             Email = command.Email,
             IalLevel = UserIalLevel.None
         };
@@ -511,7 +514,7 @@ public class ValidateOtpCommandHandlerTests
         mockLogger.Received().Log(
             LogLevel.Information,
             Arg.Any<EventId>(),
-            Arg.Is<object>(o => o.ToString()!.Contains("New user authenticated via OTP") && o.ToString()!.Contains(command.Email)),
+            Arg.Is<object>(o => o.ToString()!.Contains("New user authenticated via OTP") && o.ToString()!.Contains("UserId") && !o.ToString()!.Contains(command.Email)),
             Arg.Any<Exception>(),
             Arg.Any<Func<object, Exception?, string>>());
     }
@@ -535,6 +538,7 @@ public class ValidateOtpCommandHandlerTests
 
         var existingUser = new User
         {
+            Id = 2,
             Email = command.Email,
             IalLevel = UserIalLevel.IAL1plus
         };
@@ -554,7 +558,7 @@ public class ValidateOtpCommandHandlerTests
         mockLogger.Received().Log(
             LogLevel.Information,
             Arg.Any<EventId>(),
-            Arg.Is<object>(o => o.ToString()!.Contains("Returning user authenticated via OTP") && o.ToString()!.Contains(command.Email)),
+            Arg.Is<object>(o => o.ToString()!.Contains("Returning user authenticated via OTP") && o.ToString()!.Contains("UserId") && !o.ToString()!.Contains(command.Email)),
             Arg.Any<Exception>(),
             Arg.Any<Func<object, Exception?, string>>());
     }
@@ -578,6 +582,7 @@ public class ValidateOtpCommandHandlerTests
 
         var newUser = new User
         {
+            Id = 3,
             Email = command.Email,
             IalLevel = UserIalLevel.None
         };
@@ -598,7 +603,8 @@ public class ValidateOtpCommandHandlerTests
             LogLevel.Information,
             Arg.Any<EventId>(),
             Arg.Is<object>(o => o.ToString()!.Contains("New user authenticated via OTP") &&
-                               o.ToString()!.Contains(command.Email) &&
+                               o.ToString()!.Contains("UserId") &&
+                               !o.ToString()!.Contains(command.Email) &&
                                o.ToString()!.Contains("IAL1")),
             Arg.Any<Exception>(),
             Arg.Any<Func<object, Exception?, string>>());
@@ -623,6 +629,7 @@ public class ValidateOtpCommandHandlerTests
 
         var existingUser = new User
         {
+            Id = 4,
             Email = command.Email,
             IalLevel = UserIalLevel.IAL1
         };
@@ -643,7 +650,8 @@ public class ValidateOtpCommandHandlerTests
             LogLevel.Information,
             Arg.Any<EventId>(),
             Arg.Is<object>(o => o.ToString()!.Contains("Returning user authenticated via OTP") &&
-                               o.ToString()!.Contains(command.Email) &&
+                               o.ToString()!.Contains("UserId") &&
+                               !o.ToString()!.Contains(command.Email) &&
                                o.ToString()!.Contains("IAL1")),
             Arg.Any<Exception>(),
             Arg.Any<Func<object, Exception?, string>>());
@@ -668,6 +676,7 @@ public class ValidateOtpCommandHandlerTests
 
         var user = new User
         {
+            Id = 5,
             Email = command.Email,
             IalLevel = UserIalLevel.None
         };
@@ -688,8 +697,96 @@ public class ValidateOtpCommandHandlerTests
             LogLevel.Information,
             Arg.Any<EventId>(),
             Arg.Is<object>(o => o.ToString()!.Contains("OTP validated successfully and JWT token generated") &&
-                               o.ToString()!.Contains(command.Email)),
+                               o.ToString()!.Contains("UserId") &&
+                               !o.ToString()!.Contains(command.Email)),
             Arg.Any<Exception>(),
             Arg.Any<Func<object, Exception?, string>>());
+    }
+
+    /// <summary>
+    /// Tests that Handle skips OTP repository lookup and deletion when BypassOtp is true,
+    /// but still creates the user and returns a JWT token.
+    /// The controller is responsible for determining when to set BypassOtp; the handler just respects the flag.
+    /// </summary>
+    [Fact]
+    public async Task Handle_WhenBypassOtpIsTrue_SkipsOtpValidation_ReturnsJwt()
+    {
+        // Arrange
+        var handler = new ValidateOtpCommandHandler(
+            otpRepository,
+            userRepository,
+            jwtTokenService,
+            validator,
+            logger);
+
+        var user = new User
+        {
+            Email = OtpBypassSettings.Email,
+            IalLevel = UserIalLevel.None
+        };
+
+        userRepository.GetOrCreateUserAsync(OtpBypassSettings.Email, Arg.Any<CancellationToken>())
+            .Returns((user, true));
+        jwtTokenService.GenerateToken(Arg.Is<User>(u => u.Email == OtpBypassSettings.Email))
+            .Returns("bypass.jwt.token");
+
+        var command = new ValidateOtpCommand
+        {
+            Email = OtpBypassSettings.Email,
+            Otp = OtpBypassSettings.OtpCode,
+            BypassOtp = true
+        };
+
+        // Act
+        var result = await handler.Handle(command, CancellationToken.None);
+
+        // Assert
+        Assert.True(result.IsSuccess);
+        var successResult = Assert.IsType<SuccessResult<string>>(result);
+        Assert.Equal("bypass.jwt.token", successResult.Value);
+        await otpRepository.DidNotReceive().GetOtpCodeByEmailAsync(Arg.Any<string>());
+        await otpRepository.DidNotReceive().DeleteOtpCodeByEmailAsync(Arg.Any<string>());
+        await userRepository.Received(1).GetOrCreateUserAsync(OtpBypassSettings.Email, Arg.Any<CancellationToken>());
+        jwtTokenService.Received(1).GenerateToken(Arg.Is<User>(u => u.Email == OtpBypassSettings.Email));
+    }
+
+    /// <summary>
+    /// Tests that Handle does not delete the OTP when BypassOtp is true, since OTP was never stored.
+    /// </summary>
+    [Fact]
+    public async Task Handle_WhenBypassOtpIsTrue_DoesNotDeleteOtp()
+    {
+        // Arrange
+        var handler = new ValidateOtpCommandHandler(
+            otpRepository,
+            userRepository,
+            jwtTokenService,
+            validator,
+            logger);
+
+        var user = new User
+        {
+            Email = "user@example.com",
+            IalLevel = UserIalLevel.None
+        };
+
+        userRepository.GetOrCreateUserAsync("user@example.com", Arg.Any<CancellationToken>())
+            .Returns((user, false));
+        jwtTokenService.GenerateToken(Arg.Any<User>())
+            .Returns("bypass.jwt.token");
+
+        var command = new ValidateOtpCommand
+        {
+            Email = "user@example.com",
+            Otp = "123456",
+            BypassOtp = true
+        };
+
+        // Act
+        var result = await handler.Handle(command, CancellationToken.None);
+
+        // Assert
+        Assert.True(result.IsSuccess);
+        await otpRepository.DidNotReceive().DeleteOtpCodeByEmailAsync(Arg.Any<string>());
     }
 }
