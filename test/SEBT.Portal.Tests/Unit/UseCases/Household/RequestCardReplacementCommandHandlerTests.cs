@@ -35,7 +35,7 @@ public class RequestCardReplacementCommandHandlerTests
         _minimumIalService.GetMinimumIal(Arg.Any<IReadOnlyList<SummerEbtCase>>()).Returns(UserIalLevel.None);
 
         // Default: self-service rules allow card replacement
-        _evaluator.Evaluate(Arg.Any<BenefitIssuanceType>(), Arg.Any<IReadOnlyList<Application>>())
+        _evaluator.Evaluate(Arg.Any<SummerEbtCase>())
             .Returns(new AllowedActions { CanUpdateAddress = true, CanRequestReplacementCard = true });
     }
 
@@ -142,7 +142,7 @@ public class RequestCardReplacementCommandHandlerTests
     // --- Self-service rule gating tests ---
 
     [Fact]
-    public async Task Handle_ReturnsPreconditionFailed_WhenSelfServiceRulesDenyReplacement()
+    public async Task Handle_ReturnsPreconditionFailed_WhenPerCaseRulesDenyReplacement()
     {
         var handler = CreateHandler();
         var command = CreateValidCommand();
@@ -156,7 +156,7 @@ public class RequestCardReplacementCommandHandlerTests
                 CardRequestedAt = DateTime.UtcNow.AddDays(-30)
             }
         ));
-        _evaluator.Evaluate(Arg.Any<BenefitIssuanceType>(), Arg.Any<IReadOnlyList<Application>>())
+        _evaluator.Evaluate(Arg.Any<SummerEbtCase>())
             .Returns(new AllowedActions
             {
                 CanRequestReplacementCard = false,
@@ -166,7 +166,74 @@ public class RequestCardReplacementCommandHandlerTests
         var result = await handler.Handle(command, CancellationToken.None);
 
         Assert.False(result.IsSuccess);
-        Assert.IsType<PreconditionFailedResult>(result);
+        var preconditionFailed = Assert.IsType<PreconditionFailedResult>(result);
+        Assert.Equal(PreconditionFailedReason.NotAllowed, preconditionFailed.Reason);
+    }
+
+    [Fact]
+    public async Task Handle_EvaluatesEachRequestedCase_NotHouseholdLevel()
+    {
+        var handler = CreateHandler();
+        var command = CreateValidCommand(caseIds: new List<string> { "SEBT-001", "SEBT-002" });
+        SetupResolverSuccess();
+        SetupRepositoryReturns(CreateHouseholdWithCases(
+            new SummerEbtCase
+            {
+                SummerEBTCaseID = "SEBT-001",
+                ChildFirstName = "A",
+                ChildLastName = "B",
+                CardRequestedAt = DateTime.UtcNow.AddDays(-30)
+            },
+            new SummerEbtCase
+            {
+                SummerEBTCaseID = "SEBT-002",
+                ChildFirstName = "C",
+                ChildLastName = "D",
+                CardRequestedAt = DateTime.UtcNow.AddDays(-30)
+            }
+        ));
+
+        await handler.Handle(command, CancellationToken.None);
+
+        _evaluator.Received(1).Evaluate(Arg.Is<SummerEbtCase>(c => c.SummerEBTCaseID == "SEBT-001"));
+        _evaluator.Received(1).Evaluate(Arg.Is<SummerEbtCase>(c => c.SummerEBTCaseID == "SEBT-002"));
+    }
+
+    [Fact]
+    public async Task Handle_DeniesWhenAnyRequestedCaseFailsPerCaseRules()
+    {
+        var handler = CreateHandler();
+        var command = CreateValidCommand(caseIds: new List<string> { "SEBT-001", "SEBT-002" });
+        SetupResolverSuccess();
+        SetupRepositoryReturns(CreateHouseholdWithCases(
+            new SummerEbtCase
+            {
+                SummerEBTCaseID = "SEBT-001",
+                ChildFirstName = "A",
+                ChildLastName = "B",
+                CardRequestedAt = DateTime.UtcNow.AddDays(-30)
+            },
+            new SummerEbtCase
+            {
+                SummerEBTCaseID = "SEBT-002",
+                ChildFirstName = "C",
+                ChildLastName = "D",
+                CardRequestedAt = DateTime.UtcNow.AddDays(-30)
+            }
+        ));
+        // Second case is denied; first is allowed.
+        _evaluator.Evaluate(Arg.Is<SummerEbtCase>(c => c.SummerEBTCaseID == "SEBT-002"))
+            .Returns(new AllowedActions
+            {
+                CanRequestReplacementCard = false,
+                CardReplacementDeniedMessageKey = "specific.denied.key"
+            });
+
+        var result = await handler.Handle(command, CancellationToken.None);
+
+        Assert.False(result.IsSuccess);
+        var preconditionFailed = Assert.IsType<PreconditionFailedResult>(result);
+        Assert.Equal(PreconditionFailedReason.NotAllowed, preconditionFailed.Reason);
     }
 
     // --- Cooldown tests ---

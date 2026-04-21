@@ -69,18 +69,18 @@ public class GetHouseholdDataQueryHandler(
                 new Dictionary<string, object?> { ["requiredIal"] = minimumIal.ToString() });
         }
 
-        // Mixed-eligibility households: hide co-loaded cases so the user only sees
-        // and manages their non-co-loaded cases. Co-loaded-only households still see
-        // their cases (they're all the user has), but per-case flags prevent actions.
-        var nonCoLoaded = householdData.SummerEbtCases.Where(c => !c.IsCoLoaded).ToList();
-        if (nonCoLoaded.Count > 0)
+        // Co-loaded cases stay in the response so the client can render static-link
+        // treatment for them. Per-case AllowedActions flags signal which cases can
+        // participate in self-service actions; command handlers enforce server-side.
+        foreach (var summerEbtCase in householdData.SummerEbtCases)
         {
-            householdData.SummerEbtCases = nonCoLoaded;
+            summerEbtCase.AllowedActions = selfServiceEvaluator.Evaluate(summerEbtCase);
         }
 
-        householdData.AllowedActions = selfServiceEvaluator.Evaluate(
-            householdData.BenefitIssuanceType,
-            householdData.Applications);
+        // Household-level rollup for top-level CTAs evaluates only non-co-loaded cases:
+        // co-loaded cases are structurally excluded from self-service regardless of rules.
+        var nonCoLoaded = householdData.SummerEbtCases.Where(c => !c.IsCoLoaded).ToList();
+        householdData.AllowedActions = selfServiceEvaluator.EvaluateHousehold(nonCoLoaded);
 
         logger.LogDebug("Household data retrieved successfully for identifier type {Type}", identifier.Type);
         return Result<HouseholdData>.Success(householdData);

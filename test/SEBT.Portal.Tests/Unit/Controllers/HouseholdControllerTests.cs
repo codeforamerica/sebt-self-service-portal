@@ -34,7 +34,9 @@ public class HouseholdControllerTests
         // Default: no elevated IAL requirement, so existing tests pass without per-test mock setup.
         _minimumIalService.GetMinimumIal(Arg.Any<IReadOnlyList<SummerEbtCase>>()).Returns(UserIalLevel.None);
         // Default: self-service rules allow both actions
-        _selfServiceEvaluator.Evaluate(Arg.Any<BenefitIssuanceType>(), Arg.Any<IReadOnlyList<Application>>())
+        _selfServiceEvaluator.Evaluate(Arg.Any<SummerEbtCase>())
+            .Returns(new AllowedActions { CanUpdateAddress = true, CanRequestReplacementCard = true });
+        _selfServiceEvaluator.EvaluateHousehold(Arg.Any<IReadOnlyList<SummerEbtCase>>())
             .Returns(new AllowedActions { CanUpdateAddress = true, CanRequestReplacementCard = true });
     }
 

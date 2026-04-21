@@ -9,14 +9,18 @@ namespace SEBT.Portal.Core.Services;
 public interface ISelfServiceEvaluator
 {
     /// <summary>
-    /// Evaluates which self-service actions are permitted for the given household.
-    /// Uses permissive aggregation: if ANY application is eligible, the action is allowed.
+    /// Evaluates which self-service actions are permitted for a single case.
+    /// Uses the case's own <see cref="SummerEbtCase.IssuanceType"/> and
+    /// <see cref="SummerEbtCase.CardStatus"/>. Per James's 4.3.26 guidance,
+    /// self-service actions are case-scoped, not household-scoped.
     /// </summary>
-    /// <param name="householdIssuanceType">
-    /// The household-level benefit issuance type. Used as a fallback when no applications exist.
-    /// </param>
-    /// <param name="applications">
-    /// The household's applications, each with its own issuance type and card status.
-    /// </param>
-    AllowedActions Evaluate(BenefitIssuanceType householdIssuanceType, IReadOnlyList<Application> applications);
+    AllowedActions Evaluate(SummerEbtCase summerEbtCase);
+
+    /// <summary>
+    /// Evaluates which self-service actions are permitted for the household as a whole.
+    /// Uses permissive aggregation: if ANY case is eligible, the action is allowed.
+    /// Used for top-level CTAs and for actions that operate on the household
+    /// address rather than a specific case.
+    /// </summary>
+    AllowedActions EvaluateHousehold(IReadOnlyList<SummerEbtCase> summerEbtCases);
 }

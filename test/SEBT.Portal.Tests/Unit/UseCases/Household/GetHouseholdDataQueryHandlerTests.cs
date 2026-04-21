@@ -27,7 +27,9 @@ public class GetHouseholdDataQueryHandlerTests
         _minimumIalService.GetMinimumIal(Arg.Any<IReadOnlyList<SummerEbtCase>>()).Returns(UserIalLevel.None);
 
         // Default: self-service rules allow both actions so existing tests don't need to mock this.
-        _selfServiceEvaluator.Evaluate(Arg.Any<BenefitIssuanceType>(), Arg.Any<IReadOnlyList<Application>>())
+        _selfServiceEvaluator.Evaluate(Arg.Any<SummerEbtCase>())
+            .Returns(new AllowedActions { CanUpdateAddress = true, CanRequestReplacementCard = true });
+        _selfServiceEvaluator.EvaluateHousehold(Arg.Any<IReadOnlyList<SummerEbtCase>>())
             .Returns(new AllowedActions { CanUpdateAddress = true, CanRequestReplacementCard = true });
     }
 
@@ -300,9 +302,10 @@ public class GetHouseholdDataQueryHandlerTests
     }
 
     [Fact]
-    public async Task Handle_FiltersCoLoadedCases_WhenMixedEligibilityHousehold()
+    public async Task Handle_PreservesCoLoadedCases_WhenMixedEligibilityHousehold()
     {
-        // Mixed households: hide co-loaded cases so the user only sees non-co-loaded ones.
+        // Mixed households: all cases stay in the response so the client can render
+        // static-link treatment for co-loaded cases. Per-case flags signal gating.
         var email = "user@example.com";
         var user = CreateUser(email, UserIalLevel.IAL1plus);
         var identifier = HouseholdIdentifier.Email(EmailNormalizer.Normalize(email));
@@ -332,8 +335,87 @@ public class GetHouseholdDataQueryHandlerTests
 
         Assert.True(result.IsSuccess);
         var success = Assert.IsType<SuccessResult<HouseholdData>>(result);
-        Assert.Single(success.Value.SummerEbtCases);
-        Assert.Equal("SEBT-REGULAR", success.Value.SummerEbtCases[0].SummerEBTCaseID);
+        Assert.Equal(2, success.Value.SummerEbtCases.Count);
+        Assert.Contains(success.Value.SummerEbtCases, c => c.SummerEBTCaseID == "SEBT-COLOADED");
+        Assert.Contains(success.Value.SummerEbtCases, c => c.SummerEBTCaseID == "SEBT-REGULAR");
+    }
+
+    [Fact]
+    public async Task Handle_AttachesPerCaseAllowedActions_FromEvaluator()
+    {
+        var email = "user@example.com";
+        var user = CreateUser(email, UserIalLevel.IAL1plus);
+        var identifier = HouseholdIdentifier.Email(EmailNormalizer.Normalize(email));
+        var householdData = new HouseholdData
+        {
+            Email = email,
+            SummerEbtCases = new List<SummerEbtCase>
+            {
+                new() { SummerEBTCaseID = "SEBT-001", ChildFirstName = "A", ChildLastName = "B", IsCoLoaded = false },
+                new() { SummerEBTCaseID = "SEBT-002", ChildFirstName = "C", ChildLastName = "D", IsCoLoaded = false }
+            }
+        };
+
+        _resolver.ResolveAsync(Arg.Any<ClaimsPrincipal>(), Arg.Any<CancellationToken>()).Returns(identifier);
+        _idProofingRequirementsService.GetPiiVisibility(UserIalLevel.IAL1plus)
+            .Returns(new PiiVisibility(IncludeAddress: true, IncludeEmail: true, IncludePhone: true));
+        _repository.GetHouseholdByIdentifierAsync(
+                Arg.Any<HouseholdIdentifier>(), Arg.Any<PiiVisibility>(),
+                Arg.Any<UserIalLevel>(), Arg.Any<CancellationToken>())
+            .Returns(householdData);
+        _selfServiceEvaluator.Evaluate(Arg.Is<SummerEbtCase>(c => c.SummerEBTCaseID == "SEBT-001"))
+            .Returns(new AllowedActions { CanUpdateAddress = true, CanRequestReplacementCard = false });
+        _selfServiceEvaluator.Evaluate(Arg.Is<SummerEbtCase>(c => c.SummerEBTCaseID == "SEBT-002"))
+            .Returns(new AllowedActions { CanUpdateAddress = false, CanRequestReplacementCard = true });
+
+        var handler = new GetHouseholdDataQueryHandler(_resolver, _repository, _idProofingRequirementsService, _minimumIalService, _selfServiceEvaluator, _logger);
+        var query = new GetHouseholdDataQuery { User = user };
+
+        var result = await handler.Handle(query, CancellationToken.None);
+
+        var success = Assert.IsType<SuccessResult<HouseholdData>>(result);
+        var caseOne = success.Value.SummerEbtCases.First(c => c.SummerEBTCaseID == "SEBT-001");
+        var caseTwo = success.Value.SummerEbtCases.First(c => c.SummerEBTCaseID == "SEBT-002");
+        Assert.NotNull(caseOne.AllowedActions);
+        Assert.True(caseOne.AllowedActions!.CanUpdateAddress);
+        Assert.False(caseOne.AllowedActions.CanRequestReplacementCard);
+        Assert.NotNull(caseTwo.AllowedActions);
+        Assert.False(caseTwo.AllowedActions!.CanUpdateAddress);
+        Assert.True(caseTwo.AllowedActions.CanRequestReplacementCard);
+    }
+
+    [Fact]
+    public async Task Handle_ComputesHouseholdRollup_FromNonCoLoadedSubset()
+    {
+        var email = "user@example.com";
+        var user = CreateUser(email, UserIalLevel.IAL1plus);
+        var identifier = HouseholdIdentifier.Email(EmailNormalizer.Normalize(email));
+        var householdData = new HouseholdData
+        {
+            Email = email,
+            SummerEbtCases = new List<SummerEbtCase>
+            {
+                new() { SummerEBTCaseID = "SEBT-COLOADED", ChildFirstName = "A", ChildLastName = "B", IsCoLoaded = true },
+                new() { SummerEBTCaseID = "SEBT-REGULAR", ChildFirstName = "C", ChildLastName = "D", IsCoLoaded = false }
+            }
+        };
+
+        _resolver.ResolveAsync(Arg.Any<ClaimsPrincipal>(), Arg.Any<CancellationToken>()).Returns(identifier);
+        _idProofingRequirementsService.GetPiiVisibility(UserIalLevel.IAL1plus)
+            .Returns(new PiiVisibility(IncludeAddress: true, IncludeEmail: true, IncludePhone: true));
+        _repository.GetHouseholdByIdentifierAsync(
+                Arg.Any<HouseholdIdentifier>(), Arg.Any<PiiVisibility>(),
+                Arg.Any<UserIalLevel>(), Arg.Any<CancellationToken>())
+            .Returns(householdData);
+
+        var handler = new GetHouseholdDataQueryHandler(_resolver, _repository, _idProofingRequirementsService, _minimumIalService, _selfServiceEvaluator, _logger);
+        var query = new GetHouseholdDataQuery { User = user };
+
+        await handler.Handle(query, CancellationToken.None);
+
+        _selfServiceEvaluator.Received(1).EvaluateHousehold(
+            Arg.Is<IReadOnlyList<SummerEbtCase>>(list =>
+                list.Count == 1 && list[0].SummerEBTCaseID == "SEBT-REGULAR"));
     }
 
     [Fact]

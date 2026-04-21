@@ -70,7 +70,7 @@ public class UpdateAddressCommandHandlerTests
         // Default: IAL gate passes (no elevated requirement)
         _minimumIalService.GetMinimumIal(Arg.Any<IReadOnlyList<SummerEbtCase>>()).Returns(UserIalLevel.None);
         // Default: self-service rules allow address update
-        _selfServiceEvaluator.Evaluate(Arg.Any<BenefitIssuanceType>(), Arg.Any<IReadOnlyList<Application>>())
+        _selfServiceEvaluator.EvaluateHousehold(Arg.Any<IReadOnlyList<SummerEbtCase>>())
             .Returns(new AllowedActions { CanUpdateAddress = true, CanRequestReplacementCard = true });
     }
 
@@ -260,7 +260,7 @@ public class UpdateAddressCommandHandlerTests
     }
 
     [Fact]
-    public async Task Handle_ReturnsPreconditionFailed_WhenAnyCaseIsCoLoaded()
+    public async Task Handle_ReturnsPreconditionFailed_WhenAllCasesAreCoLoaded()
     {
         var handler = CreateHandler();
         var command = CreateValidCommand();
@@ -277,8 +277,10 @@ public class UpdateAddressCommandHandlerTests
     }
 
     [Fact]
-    public async Task Handle_ReturnsPreconditionFailed_WhenMixedCoLoadedAndNonCoLoaded()
+    public async Task Handle_AllowsUpdate_WhenMixedCoLoadedAndNonCoLoaded()
     {
+        // Per reviewer feedback on PR #181: a household with any non-co-loaded case
+        // should retain address-update access; only fully-co-loaded households are blocked.
         var handler = CreateHandler();
         var command = CreateValidCommand();
 
@@ -289,9 +291,51 @@ public class UpdateAddressCommandHandlerTests
 
         var result = await handler.Handle(command, CancellationToken.None);
 
+        Assert.True(result.IsSuccess);
+    }
+
+    [Fact]
+    public async Task Handle_EvaluatesSelfServiceRulesOnNonCoLoadedSubset()
+    {
+        // Rules evaluation runs on the non-co-loaded subset, not the full case list:
+        // co-loaded cases are excluded from the permission surface before rules apply.
+        var handler = CreateHandler();
+        var command = CreateValidCommand();
+
+        SetupResolverReturnsEmail();
+        SetupHouseholdWithCases(
+            new SummerEbtCase { SummerEBTCaseID = "S1", ChildFirstName = "A", ChildLastName = "B", IsCoLoaded = true },
+            new SummerEbtCase { SummerEBTCaseID = "S2", ChildFirstName = "C", ChildLastName = "D", IsCoLoaded = false });
+
+        await handler.Handle(command, CancellationToken.None);
+
+        await Task.CompletedTask; // Sync assertion — NSubstitute captures synchronous .Received() calls below.
+        _selfServiceEvaluator.Received(1).EvaluateHousehold(
+            Arg.Is<IReadOnlyList<SummerEbtCase>>(list =>
+                list.Count == 1 && list[0].SummerEBTCaseID == "S2"));
+    }
+
+    [Fact]
+    public async Task Handle_ReturnsPreconditionFailed_WhenSelfServiceRulesDenyAddressUpdate()
+    {
+        var handler = CreateHandler();
+        var command = CreateValidCommand();
+
+        SetupResolverReturnsEmail();
+        SetupHouseholdWithCases(
+            new SummerEbtCase { SummerEBTCaseID = "S1", ChildFirstName = "A", ChildLastName = "B", IsCoLoaded = false });
+        _selfServiceEvaluator.EvaluateHousehold(Arg.Any<IReadOnlyList<SummerEbtCase>>())
+            .Returns(new AllowedActions
+            {
+                CanUpdateAddress = false,
+                AddressUpdateDeniedMessageKey = "selfServiceUnavailable"
+            });
+
+        var result = await handler.Handle(command, CancellationToken.None);
+
         Assert.False(result.IsSuccess);
         var preconditionFailed = Assert.IsType<PreconditionFailedResult<AddressValidationResult>>(result);
-        Assert.Equal(PreconditionFailedReason.Conflict, preconditionFailed.Reason);
+        Assert.Equal(PreconditionFailedReason.NotAllowed, preconditionFailed.Reason);
     }
 
     [Fact]
