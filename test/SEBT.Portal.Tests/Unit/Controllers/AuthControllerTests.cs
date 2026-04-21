@@ -149,7 +149,8 @@ public class AuthControllerTests
         Assert.Contains("%2Flogin", redirectResult.Url); // /login URL-encoded
 
         var setCookie = _controller.Response.Headers["Set-Cookie"].ToString();
-        Assert.Contains(AuthCookies.AuthCookieName, setCookie);
+        Assert.Contains($"{AuthCookies.AuthCookieName}=", setCookie);
+        Assert.Contains("expires=", setCookie, StringComparison.OrdinalIgnoreCase);
     }
 
     [Fact]
@@ -175,7 +176,8 @@ public class AuthControllerTests
         Assert.Equal("/login", redirectResult.Url);
 
         var setCookie = _controller.Response.Headers["Set-Cookie"].ToString();
-        Assert.Contains(AuthCookies.AuthCookieName, setCookie);
+        Assert.Contains($"{AuthCookies.AuthCookieName}=", setCookie);
+        Assert.Contains("expires=", setCookie, StringComparison.OrdinalIgnoreCase);
     }
 
     [Fact]
@@ -208,7 +210,8 @@ public class AuthControllerTests
         Assert.Equal("/login", redirectResult.Url);
 
         var setCookie = _controller.Response.Headers["Set-Cookie"].ToString();
-        Assert.Contains(AuthCookies.AuthCookieName, setCookie);
+        Assert.Contains($"{AuthCookies.AuthCookieName}=", setCookie);
+        Assert.Contains("expires=", setCookie, StringComparison.OrdinalIgnoreCase);
     }
 
     [Fact]
