@@ -295,6 +295,38 @@ public sealed class OidcExchangeService : IOidcExchangeService
             return OidcExchangeResult.Fail("Id token validation failed.");
         }
 
+        // --- Validate auth_time claim (OIDC Core §3.1.2.1: REQUIRED when max_age is sent) ---
+        // We send max_age=0 in the authorize request, so the IdP must include auth_time
+        // and it should reflect a fresh authentication. Log a warning if it's missing or
+        // stale so we can observe IdP behavior before enforcing rejection.
+        var authTimeClaim = principal.FindFirst("auth_time");
+        if (authTimeClaim == null)
+        {
+            _logger.LogWarning(
+                "OIDC exchange: id_token missing auth_time claim; IdP must include it when max_age is sent (reason=missing_auth_time, isStepUp={IsStepUp})",
+                isStepUp);
+        }
+        else if (long.TryParse(authTimeClaim.Value, out var authTimeEpoch))
+        {
+            var authTime = DateTimeOffset.FromUnixTimeSeconds(authTimeEpoch);
+            var authAge = DateTimeOffset.UtcNow - authTime;
+            _logger.LogInformation(
+                "OIDC exchange: auth_time={AuthTime}, age={AuthAgeSec}s (isStepUp={IsStepUp})",
+                authTime, (int)authAge.TotalSeconds, isStepUp);
+            if (authAge.TotalSeconds > 120)
+            {
+                _logger.LogWarning(
+                    "OIDC exchange: auth_time is stale — user was authenticated {AuthAgeSec}s ago, expected fresh authentication with max_age=0 (reason=stale_auth_time, isStepUp={IsStepUp})",
+                    (int)authAge.TotalSeconds, isStepUp);
+            }
+        }
+        else
+        {
+            _logger.LogWarning(
+                "OIDC exchange: auth_time claim present but not a valid Unix timestamp: {AuthTimeValue} (reason=invalid_auth_time, isStepUp={IsStepUp})",
+                authTimeClaim.Value, isStepUp);
+        }
+
         // --- Extract claims for the callback token ---
         var claims = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
         foreach (var claim in principal.Claims)
