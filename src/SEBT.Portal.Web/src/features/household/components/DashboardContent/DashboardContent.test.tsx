@@ -102,7 +102,7 @@ describe('DashboardContent', () => {
       expect(screen.getByRole('alert')).toBeInTheDocument()
     })
 
-    expect(screen.getByRole('button', { name: /logout|sign out/i })).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: /logout|sign out/i })).toBeInTheDocument()
   })
 
   it('renders empty state when no applications', async () => {
@@ -194,6 +194,6 @@ describe('DashboardContent', () => {
       expect(screen.getByRole('alert')).toBeInTheDocument()
     })
 
-    expect(screen.getByRole('button', { name: /logout|sign out/i })).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: /logout|sign out/i })).toBeInTheDocument()
   })
 })
