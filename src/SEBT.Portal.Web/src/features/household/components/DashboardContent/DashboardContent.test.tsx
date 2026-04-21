@@ -1,7 +1,6 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { render, screen, waitFor } from '@testing-library/react'
 import { http, HttpResponse } from 'msw'
-import type { ReactNode } from 'react'
 import { describe, expect, it, vi } from 'vitest'
 
 import { TEST_HOUSEHOLD_DATA } from '@/mocks/handlers'
@@ -19,15 +18,8 @@ vi.mock('next/navigation', () => ({
   usePathname: () => '/dashboard'
 }))
 
-// Mock the auth context rather than the barrel so real components like
-// SignOutLink (re-exported from @/features/auth) remain available while
-// useAuth is stubbed for all consumers (barrel re-exports and relative imports).
-vi.mock('@/features/auth/context', () => ({
-  useAuth: () => ({
-    logout: vi.fn()
-  }),
-  AuthProvider: ({ children }: { children: ReactNode }) => children
-}))
+// Neither SignOutLink nor UserProfileCard uses useAuth anymore (logout is
+// now a plain anchor to /api/auth/logout), so no auth context mock is needed.
 
 vi.mock('@/features/feature-flags', () => ({
   useFeatureFlag: (flag: string) => {
@@ -122,7 +114,7 @@ describe('DashboardContent', () => {
       expect(screen.getByRole('alert')).toBeInTheDocument()
     })
 
-    expect(screen.getByRole('link')).toHaveAttribute('href', '/apply')
+    expect(screen.getByRole('link', { name: /apply/i })).toHaveAttribute('href', '/apply')
   })
 
   it('renders UserProfileCard in empty state when userProfile available', async () => {
@@ -178,7 +170,7 @@ describe('DashboardContent', () => {
       expect(screen.getByRole('alert')).toBeInTheDocument()
     })
 
-    expect(screen.getByRole('button', { name: /logout|sign out/i })).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: /logout|sign out/i })).toBeInTheDocument()
   })
 
   it('renders sign-out link on 404', async () => {

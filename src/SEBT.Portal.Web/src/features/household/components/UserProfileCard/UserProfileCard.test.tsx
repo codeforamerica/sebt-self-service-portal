@@ -1,25 +1,9 @@
 import { render, screen } from '@testing-library/react'
-import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 import type { Application, HouseholdData } from '../../api'
 
 import { UserProfileCard } from './UserProfileCard'
-
-const mockPush = vi.fn()
-const mockLogout = vi.fn()
-
-vi.mock('next/navigation', () => ({
-  useRouter: () => ({
-    push: mockPush
-  })
-}))
-
-vi.mock('@/features/auth', () => ({
-  useAuth: () => ({
-    logout: mockLogout
-  })
-}))
 
 const mockApplication: Application = {
   applicationNumber: 'APP-2026-001',
@@ -58,8 +42,6 @@ vi.mock('../../api', () => ({
 
 describe('UserProfileCard', () => {
   beforeEach(() => {
-    mockPush.mockClear()
-    mockLogout.mockClear()
     mockReturnData = defaultMockData
   })
 
@@ -90,22 +72,18 @@ describe('UserProfileCard', () => {
     expect(screen.getByText('Maria Martinez')).toBeInTheDocument()
   })
 
-  it('renders logout button', () => {
+  it('renders logout link', () => {
     render(<UserProfileCard />)
 
-    const logoutButton = screen.getByRole('button')
-    expect(logoutButton).toBeInTheDocument()
+    const logoutLink = screen.getByRole('link', { name: /logout|sign out/i })
+    expect(logoutLink).toHaveAttribute('href', '/api/auth/logout')
   })
 
-  it('calls logout and redirects to /login when logout button is clicked', async () => {
-    const user = userEvent.setup()
+  it('logout link points to /api/auth/logout', () => {
     render(<UserProfileCard />)
 
-    const logoutButton = screen.getByRole('button')
-    await user.click(logoutButton)
-
-    expect(mockLogout).toHaveBeenCalledTimes(1)
-    expect(mockPush).toHaveBeenCalledWith('/login')
+    const logoutLink = screen.getByRole('link', { name: /logout|sign out/i })
+    expect(logoutLink).toHaveAttribute('href', '/api/auth/logout')
   })
 
   it('renders nothing when no userProfile', () => {
