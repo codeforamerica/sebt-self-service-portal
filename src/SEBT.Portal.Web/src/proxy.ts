@@ -10,6 +10,32 @@ import { NextRequest, NextResponse } from 'next/server'
  * @see https://nextjs.org/docs/app/guides/content-security-policy
  */
 export function proxy(request: NextRequest) {
+  // CORS for the enrollment checker static site. Read at runtime so it works
+  // in standalone Docker containers where ENROLLMENT_CHECKER_ORIGIN is set as
+  // a container env var (not available at build time).
+  const enrollmentCheckerOrigin = process.env.ENROLLMENT_CHECKER_ORIGIN
+  if (enrollmentCheckerOrigin && /^\/api\/enrollment(\/|$)/.test(request.nextUrl.pathname)) {
+    // Preflight: return 204 with CORS headers (don't proxy to the .NET backend,
+    // which would return 405 since the controller only defines HttpPost)
+    if (request.method === 'OPTIONS') {
+      return new NextResponse(null, {
+        status: 204,
+        headers: {
+          'Access-Control-Allow-Origin': enrollmentCheckerOrigin,
+          'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+          'Access-Control-Allow-Headers': 'Content-Type'
+        }
+      })
+    }
+
+    // Actual request: continue to the route handler, then add CORS headers
+    const response = NextResponse.next()
+    response.headers.set('Access-Control-Allow-Origin', enrollmentCheckerOrigin)
+    response.headers.set('Access-Control-Allow-Methods', 'GET, POST, OPTIONS')
+    response.headers.set('Access-Control-Allow-Headers', 'Content-Type')
+    return response
+  }
+
   const nonce = Buffer.from(crypto.randomUUID()).toString('base64')
   const isDev = process.env.NODE_ENV === 'development'
   const proto =

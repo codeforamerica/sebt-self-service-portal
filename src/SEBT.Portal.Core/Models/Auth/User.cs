@@ -13,7 +13,13 @@ public class User
     /// <summary>
     /// The user's email address, used as a unique identifier.
     /// </summary>
-    public string Email { get; set; } = string.Empty;
+    public string? Email { get; set; }
+
+    /// <summary>
+    /// The subject identifier from the external identity provider (e.g., PingOne sub claim).
+    /// Set for OIDC users; null for OTP-authenticated users.
+    /// </summary>
+    public string? ExternalProviderId { get; set; }
 
     /// <summary>
     /// Workflow state of the ID proofing process (NotStarted, InProgress, Completed, Failed, Expired).

@@ -18,6 +18,7 @@
     },
   ],
   "settings": {
+    "dotnet.defaultSolution": "Portal/SEBT.Portal.sln",
     "search.exclude": {
       "**/node_modules": true,
       "**/bin": true,

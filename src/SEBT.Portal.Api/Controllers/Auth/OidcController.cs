@@ -431,67 +431,89 @@ public class OidcController(
         }
 
         var email = GetEmailFromClaims(principal);
-        if (string.IsNullOrWhiteSpace(email))
+        var subClaim = additionalClaims.GetValueOrDefault("sub");
+        if (string.IsNullOrWhiteSpace(email) && string.IsNullOrWhiteSpace(subClaim))
         {
             logger.LogWarning("Callback token had no email or sub claim (SessionId={SessionId})", sessionId);
             return BadRequest(new ErrorResponse("Callback token must contain an email or sub claim."));
         }
 
-        var normalizedEmail = EmailNormalizer.Normalize(email);
         User user;
 
         if (session.IsStepUp)
         {
-            var existingUser = await userRepository.GetUserByEmailAsync(normalizedEmail, cancellationToken);
-            if (existingUser == null)
+            if (string.IsNullOrWhiteSpace(subClaim))
             {
-                logger.LogWarning("Step-up complete-login: no existing portal user for callback token; sign-in required first (SessionId={SessionId}).", sessionId);
+                logger.LogWarning("Step-up complete-login: missing sub claim (SessionId={SessionId})", sessionId);
+                return BadRequest(new ErrorResponse("Callback token must contain a sub claim."));
+            }
+
+            // Look up by ExternalProviderId for OIDC step-up
+            var existingEntity = await userRepository.GetUserByExternalIdAsync(subClaim, cancellationToken);
+            if (existingEntity == null)
+            {
+                logger.LogWarning(
+                    "Step-up complete-login: no existing portal user for sub claim; sign-in required first (SessionId={SessionId}).",
+                    sessionId);
                 return BadRequest(new { error = "Step-up requires an existing session. Please sign in again." });
             }
 
-            user = existingUser;
-            user.IalLevel = UserIalLevel.IAL1plus;
-            user.IdProofingStatus = IdProofingStatus.Completed;
-            user.IdProofingCompletedAt = DateTime.UtcNow;
-            user.UpdatedAt = DateTime.UtcNow;
-            await userRepository.UpdateUserAsync(user, cancellationToken);
+            user = existingEntity;
+
+            // Step-up IAL comes from the IdP's verification claims — could be 1plus
+            // (IDV) or 2 (doc verification), depending on the step-up client config.
+            // Reject if the IdP returned no verification claims: step-up exists to
+            // obtain verification, so its absence means something is misconfigured.
+            // Silently falling back to a default would risk downgrading the user's IAL.
+            var verification = verificationClaimTranslator.Translate(additionalClaims);
+            if (verification == null)
+            {
+                logger.LogWarning(
+                    "Step-up complete-login: IdP returned no verification claims (SessionId={SessionId})",
+                    sessionId);
+                return BadRequest(new { error = "Step-up verification failed. Please try again." });
+            }
+            ApplyVerificationToClaims(additionalClaims, verification);
 
             var safeStateKey = SanitizeForLog(stateKey);
             logger.LogInformation(
-                "OIDC step-up complete-login succeeded: UserId {UserId}, StateCode {StateCode}, IalLevel {IalLevel}, IdProofingStatus {IdProofingStatus}, Phone={MaskedPhone}, SessionId={SessionId}",
-                user.Id,
-                safeStateKey,
-                user.IalLevel,
-                user.IdProofingStatus,
-                maskedPhone,
-                sessionId);
+                "OIDC step-up complete-login succeeded: UserId {UserId}, StateCode {StateCode}, IalLevel {IalLevel}, IsExpired {IsExpired}, SessionId={SessionId}",
+                user.Id, safeStateKey, verification.IalLevel, verification.IsExpired, sessionId);
         }
         else
         {
-            var (createdUser, _) = await userRepository.GetOrCreateUserAsync(normalizedEmail, cancellationToken);
-            user = createdUser;
-
-            // A user who completed OIDC login is at least IAL1; don't downgrade if already higher
-            if (user.IalLevel < UserIalLevel.IAL1)
+            // Extract the IdP subject claim — this is the OIDC user's identity anchor.
+            if (string.IsNullOrWhiteSpace(subClaim))
             {
-                user.IalLevel = UserIalLevel.IAL1;
-                await userRepository.UpdateUserAsync(user, cancellationToken);
+                logger.LogWarning(
+                    "OIDC CompleteLogin: callback token missing sub claim (SessionId={SessionId})",
+                    sessionId);
+                return BadRequest(new ErrorResponse("Callback token must contain a sub claim."));
             }
 
-            // Reconcile IAL from OIDC verification claims (e.g. CO's PingOne/Socure).
-            // If the IdP says the user completed identity verification, update our DB
-            // to match — the IdP is the source of truth for OIDC-based verification.
-            // For states without OIDC verification (e.g. DC), Translate() returns null
-            // because the IdP claims don't contain the configured verification claim names.
+            // Pass email from IdP claims as a migration hint: if no user exists for
+            // this sub but one exists for this email, adopt that legacy record.
+            // TODO: Remove email parameter once all existing users have been migrated.
+            var emailHint = additionalClaims.GetValueOrDefault("email");
+            var (createdUser, _) = await userRepository.GetOrCreateUserByExternalIdAsync(
+                subClaim, emailHint, cancellationToken);
+            user = createdUser;
+
+            // Reconcile IAL from OIDC verification claims. The IdP is the source of truth —
+            // we derive IAL from claims and pass it through to the JWT, but do NOT persist
+            // it to the DB. The DB only stores the identity anchor (ExternalProviderId).
             var verification = verificationClaimTranslator.Translate(additionalClaims);
             if (verification != null)
             {
-                ReconcileIalFromOidcVerification(user, verification);
-                await userRepository.UpdateUserAsync(user, cancellationToken);
-
+                ApplyVerificationToClaims(additionalClaims, verification);
                 logger.LogInformation(
                     "OIDC verification claim reconciled: UserId {UserId}, IalLevel {IalLevel}, IsExpired {IsExpired}, VerifiedAt {VerifiedAt}, SessionId={SessionId}",
-                    user.Id, user.IalLevel, verification.IsExpired, verification.VerifiedAt, sessionId);
+                    user.Id, verification.IalLevel, verification.IsExpired, verification.VerifiedAt, sessionId);
+            }
+            else
+            {
+                // No verification claims from IdP — user is IAL1 (authenticated but not verified)
+                additionalClaims[JwtClaimTypes.Ial] = "1";
             }
         }
 
@@ -555,28 +577,6 @@ public class OidcController(
     }
 
     /// <summary>
-    /// Updates a user's IAL and proofing fields based on translated OIDC verification claims.
-    /// If the verification is expired, resets to IAL1 (the user must re-verify).
-    /// If valid, promotes to the verified IAL level.
-    /// </summary>
-    private static void ReconcileIalFromOidcVerification(User user, OidcVerificationResult verification)
-    {
-        if (verification.IsExpired)
-        {
-            // Verification has lapsed — reset to baseline IAL1 (they completed OIDC login,
-            // so they're at least IAL1, but no longer IAL1+).
-            user.IalLevel = UserIalLevel.IAL1;
-            user.IdProofingStatus = IdProofingStatus.Expired;
-            return;
-        }
-
-        // Valid, non-expired verification from the IdP — update to match.
-        user.IalLevel = verification.IalLevel;
-        user.IdProofingStatus = IdProofingStatus.Completed;
-        user.IdProofingCompletedAt = verification.VerifiedAt;
-    }
-
-    /// <summary>
     /// Gets the email (or subject) from the callback token claims for portal user lookup.
     /// </summary>
     private static string? GetEmailFromClaims(ClaimsPrincipal principal)
@@ -586,5 +586,44 @@ public class OidcController(
             return emailClaim.Value;
         var subClaim = principal.FindFirst("sub");
         return subClaim?.Value;
+    }
+
+    /// <summary>
+    /// Writes IAL, IdProofingStatus, and IdProofingCompletedAt claims into
+    /// <paramref name="additionalClaims"/> from the translated IdP verification result.
+    /// Expired verification resets IAL to 1 — the user must re-verify.
+    /// </summary>
+    private static void ApplyVerificationToClaims(
+        Dictionary<string, string> additionalClaims,
+        OidcVerificationResult verification)
+    {
+        // A user completing OIDC login is always at least IAL1 (authenticated). Expired
+        // verification or an unrecognized level both fall back to "1", never "0".
+        additionalClaims[JwtClaimTypes.Ial] = verification.IsExpired
+            ? "1"
+            : verification.IalLevel switch
+            {
+                UserIalLevel.IAL1plus => "1plus",
+                UserIalLevel.IAL2 => "2",
+                _ => "1"
+            };
+
+        // IdProofingStatus is "Completed" only when verification actually elevated the user
+        // above IAL1. At IAL1 the user is authenticated but has not completed identity
+        // proofing, so status stays at NotStarted. Expired verifications are Expired.
+        additionalClaims[JwtClaimTypes.IdProofingStatus] = (verification.IsExpired, verification.IalLevel) switch
+        {
+            (true, _) => ((int)IdProofingStatus.Expired).ToString(),
+            (_, UserIalLevel.IAL1plus) => ((int)IdProofingStatus.Completed).ToString(),
+            (_, UserIalLevel.IAL2) => ((int)IdProofingStatus.Completed).ToString(),
+            _ => ((int)IdProofingStatus.NotStarted).ToString()
+        };
+
+        if (verification.VerifiedAt != default)
+        {
+            var verifiedAtOffset = new DateTimeOffset(verification.VerifiedAt, TimeSpan.Zero);
+            additionalClaims[JwtClaimTypes.IdProofingCompletedAt] =
+                verifiedAtOffset.ToUnixTimeSeconds().ToString();
+        }
     }
 }
