@@ -373,7 +373,7 @@ public class SubmitIdProofingCommandHandlerTests
 
         await householdRepository.Received(1).GetHouseholdByEmailAsync(
             "test@example.com",
-            Arg.Is<PiiVisibility>(p => p.IncludeAddress),
+            Arg.Is<PiiVisibility>(p => p.IncludeAddress && p.IncludeEmail && p.IncludePhone),
             Arg.Any<UserIalLevel>(),
             Arg.Any<CancellationToken>());
     }

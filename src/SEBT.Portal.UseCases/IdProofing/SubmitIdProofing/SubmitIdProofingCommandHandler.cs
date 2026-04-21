@@ -17,8 +17,9 @@ namespace SEBT.Portal.UseCases.IdProofing;
 /// 1. Validate input
 /// 2. Early exit if no ID provided (noIdProvided off-boarding)
 /// 3. Reuse existing active challenge if one exists
-/// 4. Call Socure for risk assessment
-/// 5. Create a new challenge if document verification is required
+/// 4. Load household PII for Socure when available (name, address, phone from state/CMS)
+/// 5. Call Socure for risk assessment
+/// 6. Create a new challenge if document verification is required
 /// </summary>
 public class SubmitIdProofingCommandHandler(
     IUserRepository userRepository,
@@ -95,15 +96,16 @@ public class SubmitIdProofingCommandHandler(
                     AllowIdRetry: activeChallenge.AllowIdRetry));
         }
 
-        // Fetch household data for user's name and address (best-effort, optional for Socure)
+        // Fetch household data for Socure: state/CMS may supply name, address, and phone when available.
         string? givenName = null;
         string? familyName = null;
         Address? address = null;
+        string? householdPhone = null;
         try
         {
             var household = await householdRepository.GetHouseholdByEmailAsync(
                 user.Email,
-                new PiiVisibility(IncludeAddress: true, IncludeEmail: false, IncludePhone: false),
+                new PiiVisibility(IncludeAddress: true, IncludeEmail: true, IncludePhone: true),
                 user.IalLevel,
                 cancellationToken);
             if (household?.UserProfile != null)
@@ -115,21 +117,24 @@ public class SubmitIdProofingCommandHandler(
             {
                 address = household.AddressOnFile;
             }
+            householdPhone = household?.Phone;
         }
         catch (Exception ex)
         {
             logger.LogWarning(ex,
-                "Household lookup failed for user {UserId}, proceeding without name/address",
+                "Household lookup failed for user {UserId}, proceeding without name/address/phone from CMS",
                 command.UserId);
         }
 
-        // Call Socure for risk assessment
         // Sandbox phone override lets developers receive DocV SMS on a real phone
         // without storing personal numbers in the database.
         var phoneNumber = !string.IsNullOrWhiteSpace(socureSettings.SandboxPhoneOverride)
             ? socureSettings.SandboxPhoneOverride
-            : user.Phone;
+            : !string.IsNullOrWhiteSpace(householdPhone)
+                ? householdPhone
+                : user.Phone;
 
+        // Call Socure for risk assessment
         var assessmentResult = await socureClient.RunIdProofingAssessmentAsync(
             command.UserId,
             user.Email,
