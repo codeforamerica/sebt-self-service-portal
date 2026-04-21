@@ -230,14 +230,6 @@ export const handlers = [
     })
   }),
 
-  // Logout — clears the session cookie.
-  http.post('/api/auth/logout', () => {
-    return new HttpResponse(null, {
-      status: 204,
-      headers: { 'Set-Cookie': sessionCookie('', 'Thu, 01 Jan 1970 00:00:00 GMT') }
-    })
-  }),
-
   // OIDC callback (Next.js: exchange + validate; returns callbackToken for complete-login)
   // callback no longer expects code_verifier from the browser — the server
   // reads it from the pre-auth session. We only check code + stateCode here.
