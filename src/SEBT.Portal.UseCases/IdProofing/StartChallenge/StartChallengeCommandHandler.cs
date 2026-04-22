@@ -325,9 +325,15 @@ public class StartChallengeCommandHandler(
         challenge.DocvTokenIssuedAt = DateTime.UtcNow;
         challenge.SocureEventId = null;
 
+        var extendedExpiresAt = DateTime.UtcNow.AddMinutes(socureSettings.ChallengeExpirationMinutes);
+        if (!challenge.ExpiresAt.HasValue || challenge.ExpiresAt.Value < extendedExpiresAt)
+        {
+            challenge.ExpiresAt = extendedExpiresAt;
+        }
+
         logger.LogInformation(
-            "Refreshed DocV transaction token for challenge {ChallengeId}, user {UserId}",
-            challenge.PublicId, challenge.UserId);
+            "Refreshed DocV transaction token for challenge {ChallengeId}, user {UserId}, ExpiresAt={ExpiresAt}",
+            challenge.PublicId, challenge.UserId, challenge.ExpiresAt);
 
         return Result<StartChallengeResponse>.Success(
             new StartChallengeResponse(session.DocvTransactionToken, session.DocvUrl));

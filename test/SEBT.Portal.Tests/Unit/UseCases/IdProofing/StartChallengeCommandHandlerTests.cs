@@ -20,7 +20,11 @@ public class StartChallengeCommandHandlerTests
     private readonly IUserRepository userRepository = Substitute.For<IUserRepository>();
     private readonly IHouseholdRepository householdRepository = Substitute.For<IHouseholdRepository>();
     private readonly ISocureClient socureClient = Substitute.For<ISocureClient>();
-    private readonly SocureSettings socureSettings = new() { DocvTransactionTokenTtlMinutes = 20 };
+    private readonly SocureSettings socureSettings = new()
+    {
+        DocvTransactionTokenTtlMinutes = 20,
+        ChallengeExpirationMinutes = 30
+    };
     private readonly IValidator<StartChallengeCommand> validator =
         new DataAnnotationsValidator<StartChallengeCommand>(null!);
     private readonly NullLogger<StartChallengeCommandHandler> logger =
@@ -250,6 +254,134 @@ public class StartChallengeCommandHandlerTests
                     c.Status == DocVerificationStatus.Pending
                     && c.DocvTransactionToken == "fresh"),
                 Arg.Any<CancellationToken>());
+    }
+
+    // --- ExpiresAt extension on successful refresh ---
+
+    [Fact]
+    public async Task Handle_ShouldExtendExpiresAt_WhenRefreshSucceedsAndChallengeNearlyExpired()
+    {
+        var handler = CreateHandler();
+        var nearExpiry = DateTime.UtcNow.AddMinutes(1);
+        var challenge = DocVerificationChallengeFactory.CreatePendingChallenge(c =>
+        {
+            c.ProofingDateOfBirth = "1990-01-01";
+            c.ProofingIdType = "ssn";
+            c.ProofingIdValue = "999-99-9999";
+            c.DocvTokenIssuedAt = DateTime.UtcNow.AddMinutes(-socureSettings.DocvTransactionTokenTtlMinutes - 1);
+            c.ExpiresAt = nearExpiry;
+        });
+        var command = new StartChallengeCommand
+        {
+            ChallengeId = challenge.PublicId,
+            UserId = challenge.UserId
+        };
+        var newSession = new SocureDocvSession("new-token", "https://verify.socure.com/#/dv/new-token", "ref-x", "eval-y");
+
+        challengeRepository.GetByPublicIdAsync(command.ChallengeId, command.UserId, Arg.Any<CancellationToken>())
+            .Returns(challenge);
+        userRepository.GetUserByIdAsync(command.UserId, Arg.Any<CancellationToken>())
+            .Returns(new User { Id = command.UserId, Email = "test@example.com" });
+        socureClient.RunIdProofingAssessmentAsync(
+                command.UserId, "test@example.com", "1990-01-01", "ssn", "999-99-9999",
+                Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<Address?>(),
+                Arg.Any<string?>(), Arg.Any<CancellationToken>())
+            .Returns(Result<IdProofingAssessmentResult>.Success(
+                new IdProofingAssessmentResult(
+                    IdProofingOutcome.DocumentVerificationRequired,
+                    AllowIdRetry: true,
+                    DocvSession: newSession)));
+
+        var beforeHandle = DateTime.UtcNow;
+        var result = await handler.Handle(command, CancellationToken.None);
+
+        Assert.True(result.IsSuccess);
+        Assert.NotNull(challenge.ExpiresAt);
+        // Should be extended to at least UtcNow + ChallengeExpirationMinutes (allowing for clock drift within the test)
+        var expectedFloor = beforeHandle.AddMinutes(socureSettings.ChallengeExpirationMinutes);
+        Assert.True(
+            challenge.ExpiresAt.Value >= expectedFloor.AddSeconds(-1),
+            $"ExpiresAt {challenge.ExpiresAt:o} should be at or after {expectedFloor:o}");
+        // And definitely further out than the pre-refresh value
+        Assert.True(challenge.ExpiresAt.Value > nearExpiry);
+    }
+
+    [Fact]
+    public async Task Handle_ShouldNotShortenExpiresAt_WhenRefreshSucceedsAndChallengeAlreadyHasLongerExpiry()
+    {
+        var handler = CreateHandler();
+        var farFutureExpiry = DateTime.UtcNow.AddHours(12);
+        var challenge = DocVerificationChallengeFactory.CreatePendingChallenge(c =>
+        {
+            c.ProofingDateOfBirth = "1990-01-01";
+            c.ProofingIdType = "ssn";
+            c.ProofingIdValue = "999-99-9999";
+            c.DocvTokenIssuedAt = DateTime.UtcNow.AddMinutes(-socureSettings.DocvTransactionTokenTtlMinutes - 1);
+            c.ExpiresAt = farFutureExpiry;
+        });
+        var command = new StartChallengeCommand
+        {
+            ChallengeId = challenge.PublicId,
+            UserId = challenge.UserId
+        };
+        var newSession = new SocureDocvSession("new-token", "https://verify.socure.com/#/dv/new-token", "ref-x", "eval-y");
+
+        challengeRepository.GetByPublicIdAsync(command.ChallengeId, command.UserId, Arg.Any<CancellationToken>())
+            .Returns(challenge);
+        userRepository.GetUserByIdAsync(command.UserId, Arg.Any<CancellationToken>())
+            .Returns(new User { Id = command.UserId, Email = "test@example.com" });
+        socureClient.RunIdProofingAssessmentAsync(
+                Arg.Any<int>(), Arg.Any<string>(), Arg.Any<string>(),
+                Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<string?>(),
+                Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<Address?>(), Arg.Any<string?>(),
+                Arg.Any<CancellationToken>())
+            .Returns(Result<IdProofingAssessmentResult>.Success(
+                new IdProofingAssessmentResult(
+                    IdProofingOutcome.DocumentVerificationRequired,
+                    AllowIdRetry: true,
+                    DocvSession: newSession)));
+
+        var result = await handler.Handle(command, CancellationToken.None);
+
+        Assert.True(result.IsSuccess);
+        Assert.Equal(farFutureExpiry, challenge.ExpiresAt);
+    }
+
+    [Fact]
+    public async Task Handle_ShouldNotExtendExpiresAt_WhenRefreshFails()
+    {
+        var handler = CreateHandler();
+        var nearExpiry = DateTime.UtcNow.AddMinutes(1);
+        var challenge = DocVerificationChallengeFactory.CreatePendingChallenge(c =>
+        {
+            c.ProofingDateOfBirth = "1990-01-01";
+            c.ProofingIdType = "ssn";
+            c.ProofingIdValue = "999-99-9999";
+            c.DocvTokenIssuedAt = DateTime.UtcNow.AddMinutes(-socureSettings.DocvTransactionTokenTtlMinutes - 1);
+            c.ExpiresAt = nearExpiry;
+        });
+        var command = new StartChallengeCommand
+        {
+            ChallengeId = challenge.PublicId,
+            UserId = challenge.UserId
+        };
+
+        challengeRepository.GetByPublicIdAsync(command.ChallengeId, command.UserId, Arg.Any<CancellationToken>())
+            .Returns(challenge);
+        userRepository.GetUserByIdAsync(command.UserId, Arg.Any<CancellationToken>())
+            .Returns(new User { Id = command.UserId, Email = "test@example.com" });
+        socureClient.RunIdProofingAssessmentAsync(
+                Arg.Any<int>(), Arg.Any<string>(), Arg.Any<string>(),
+                Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<string?>(),
+                Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<Address?>(), Arg.Any<string?>(),
+                Arg.Any<CancellationToken>())
+            .Returns(Result<IdProofingAssessmentResult>.DependencyFailed(
+                DependencyFailedReason.ConnectionFailed, "Socure unavailable"));
+
+        var result = await handler.Handle(command, CancellationToken.None);
+
+        Assert.False(result.IsSuccess);
+        Assert.Equal(nearExpiry, challenge.ExpiresAt);
     }
 
     // --- Stored DocV data path (single-call design) ---
