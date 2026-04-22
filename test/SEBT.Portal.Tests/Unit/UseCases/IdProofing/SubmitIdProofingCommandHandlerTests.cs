@@ -353,6 +353,67 @@ public class SubmitIdProofingCommandHandlerTests
     }
 
     [Fact]
+    public async Task Handle_ShouldPersistDateOfBirth_WhenSubmittedDobIsParseable()
+    {
+        var handler = CreateHandler();
+        var command = CreateValidCommand(
+            dob: "1984-03-05",
+            idType: "snapAccountId",
+            idValue: "wrong-id");
+        var user = new User
+        {
+            Id = command.UserId,
+            Email = "test@example.com",
+            IsCoLoaded = true,
+            SnapId = "SNAP-CO-001",
+            IdProofingAttemptCount = 0
+        };
+
+        userRepository.GetUserByIdAsync(command.UserId, Arg.Any<CancellationToken>())
+            .Returns(user);
+        challengeRepository.GetActiveByUserIdAsync(command.UserId, Arg.Any<CancellationToken>())
+            .Returns((DocVerificationChallenge?)null);
+        householdRepository.GetHouseholdByEmailAsync(
+                user.Email, Arg.Any<PiiVisibility>(), user.IalLevel, Arg.Any<CancellationToken>())
+            .Returns((HouseholdData?)null);
+
+        await handler.Handle(command, CancellationToken.None);
+
+        Assert.Equal(new DateOnly(1984, 3, 5), user.DateOfBirth);
+        await userRepository.Received(1).UpdateUserAsync(user, Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task Handle_ShouldNotAssignDateOfBirth_WhenSubmittedDobIsMalformed()
+    {
+        var handler = CreateHandler();
+        var command = CreateValidCommand(
+            dob: "not-a-date",
+            idType: "snapAccountId",
+            idValue: "wrong-id");
+        var user = new User
+        {
+            Id = command.UserId,
+            Email = "test@example.com",
+            IsCoLoaded = true,
+            SnapId = "SNAP-CO-001",
+            IdProofingAttemptCount = 0
+        };
+
+        userRepository.GetUserByIdAsync(command.UserId, Arg.Any<CancellationToken>())
+            .Returns(user);
+        challengeRepository.GetActiveByUserIdAsync(command.UserId, Arg.Any<CancellationToken>())
+            .Returns((DocVerificationChallenge?)null);
+        householdRepository.GetHouseholdByEmailAsync(
+                user.Email, Arg.Any<PiiVisibility>(), user.IalLevel, Arg.Any<CancellationToken>())
+            .Returns((HouseholdData?)null);
+
+        await handler.Handle(command, CancellationToken.None);
+
+        Assert.Null(user.DateOfBirth);
+    }
+
+    [Fact]
     public async Task Handle_ShouldCallSocure_WhenNotCoLoadedAndSnapIdWithValue()
     {
         var handler = CreateHandler();

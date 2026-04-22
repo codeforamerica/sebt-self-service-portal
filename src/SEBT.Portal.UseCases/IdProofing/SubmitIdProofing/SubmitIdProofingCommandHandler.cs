@@ -88,16 +88,23 @@ public class SubmitIdProofingCommandHandler(
                     AllowIdRetry: activeChallenge.AllowIdRetry));
         }
 
+        DateOnly? submittedDob = null;
+        if (DateOnly.TryParse(
+                command.DateOfBirth,
+                CultureInfo.InvariantCulture,
+                DateTimeStyles.None,
+                out var parsedDob))
+        {
+            submittedDob = parsedDob;
+            user.DateOfBirth = parsedDob;
+        }
+
         // Co-loaded households: SNAP/TANF IDs must match on-file records — no Socure national_id path.
         if (user.IsCoLoaded
             && IdProofingBenefitIdentifierTypes.IsSnapOrTanfPortalSelection(command.IdType)
             && !string.IsNullOrWhiteSpace(command.IdValue))
         {
-            if (DateOnly.TryParse(
-                    command.DateOfBirth,
-                    CultureInfo.InvariantCulture,
-                    DateTimeStyles.None,
-                    out var guardianDob))
+            if (submittedDob is { } guardianDob)
             {
                 try
                 {
