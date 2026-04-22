@@ -384,33 +384,32 @@ public class SubmitIdProofingCommandHandlerTests
     }
 
     [Fact]
-    public async Task Handle_ShouldNotAssignDateOfBirth_WhenSubmittedDobIsMalformed()
+    public async Task Handle_ShouldReturnValidationFailed_WhenDateOfBirthIsMalformed()
     {
         var handler = CreateHandler();
         var command = CreateValidCommand(
             dob: "not-a-date",
             idType: "snapAccountId",
-            idValue: "wrong-id");
-        var user = new User
-        {
-            Id = command.UserId,
-            Email = "test@example.com",
-            IsCoLoaded = true,
-            SnapId = "SNAP-CO-001",
-            IdProofingAttemptCount = 0
-        };
+            idValue: "SNAP-CO-001");
 
-        userRepository.GetUserByIdAsync(command.UserId, Arg.Any<CancellationToken>())
-            .Returns(user);
-        challengeRepository.GetActiveByUserIdAsync(command.UserId, Arg.Any<CancellationToken>())
-            .Returns((DocVerificationChallenge?)null);
-        householdRepository.GetHouseholdByEmailAsync(
-                user.Email, Arg.Any<PiiVisibility>(), user.IalLevel, Arg.Any<CancellationToken>())
-            .Returns((HouseholdData?)null);
+        var result = await handler.Handle(command, CancellationToken.None);
 
-        await handler.Handle(command, CancellationToken.None);
+        Assert.False(result.IsSuccess);
+        var failed = Assert.IsType<ValidationFailedResult<SubmitIdProofingResponse>>(result);
+        Assert.Contains(
+            failed.Errors,
+            e => e.Key == nameof(SubmitIdProofingCommand.DateOfBirth));
 
-        Assert.Null(user.DateOfBirth);
+        await userRepository.DidNotReceive().GetUserByIdAsync(Arg.Any<int>(), Arg.Any<CancellationToken>());
+        await householdRepository.DidNotReceive()
+            .TryMatchCoLoadedGuardianByBenefitIdAndDobAsync(
+                Arg.Any<string>(), Arg.Any<DateOnly>(), Arg.Any<CancellationToken>());
+        await socureClient.DidNotReceive()
+            .RunIdProofingAssessmentAsync(
+                Arg.Any<int>(), Arg.Any<string>(), Arg.Any<string>(),
+                Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<string?>(),
+                Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<Address?>(), Arg.Any<string?>(),
+                Arg.Any<CancellationToken>());
     }
 
     [Fact]

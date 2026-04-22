@@ -43,6 +43,20 @@ public class SubmitIdProofingCommandHandler(
             return Result<SubmitIdProofingResponse>.ValidationFailed(validationFailed.Errors);
         }
 
+        if (!DateOnly.TryParse(
+                command.DateOfBirth,
+                CultureInfo.InvariantCulture,
+                DateTimeStyles.None,
+                out var submittedDob))
+        {
+            logger.LogWarning(
+                "ID proofing submission rejected for user {UserId}: DateOfBirth could not be parsed as yyyy-MM-dd",
+                command.UserId);
+            return Result<SubmitIdProofingResponse>.ValidationFailed(
+                nameof(SubmitIdProofingCommand.DateOfBirth),
+                "DateOfBirth must be a valid date in yyyy-MM-dd format.");
+        }
+
         // Load the user — needed for email (passed to Socure)
         var user = await userRepository.GetUserByIdAsync(command.UserId, cancellationToken);
         if (user == null)
@@ -88,49 +102,38 @@ public class SubmitIdProofingCommandHandler(
                     AllowIdRetry: activeChallenge.AllowIdRetry));
         }
 
-        DateOnly? submittedDob = null;
-        if (DateOnly.TryParse(
-                command.DateOfBirth,
-                CultureInfo.InvariantCulture,
-                DateTimeStyles.None,
-                out var parsedDob))
-        {
-            submittedDob = parsedDob;
-            user.DateOfBirth = parsedDob;
-        }
+        // Persist the parsed DOB on the user; all downstream save paths will carry it through.
+        user.DateOfBirth = submittedDob;
 
         // Co-loaded households: SNAP/TANF IDs must match on-file records — no Socure national_id path.
         if (user.IsCoLoaded
             && IdProofingBenefitIdentifierTypes.IsSnapOrTanfPortalSelection(command.IdType)
             && !string.IsNullOrWhiteSpace(command.IdValue))
         {
-            if (submittedDob is { } guardianDob)
+            try
             {
-                try
+                if (await householdRepository.TryMatchCoLoadedGuardianByBenefitIdAndDobAsync(
+                        command.IdValue.Trim(),
+                        submittedDob,
+                        cancellationToken))
                 {
-                    if (await householdRepository.TryMatchCoLoadedGuardianByBenefitIdAndDobAsync(
-                            command.IdValue.Trim(),
-                            guardianDob,
-                            cancellationToken))
-                    {
-                        logger.LogInformation(
-                            "User {UserId} co-loaded benefit ID verified via DC warehouse (IC+DOB) for type {IdType}",
-                            command.UserId,
-                            command.IdType);
-                        return await CompleteProofingAndRespond(
-                            user,
-                            UserIalLevel.IAL1plus,
-                            cancellationToken,
-                            "co-loaded SNAP/TANF matched via DC GetHouseholdByGuardian IC+DOB (no Socure)");
-                    }
+                    logger.LogInformation(
+                        "User {UserId} co-loaded benefit ID verified via DC warehouse (IC+DOB) for type {IdType}",
+                        command.UserId,
+                        command.IdType);
+                    return await CompleteProofingAndRespond(
+                        user,
+                        UserIalLevel.IAL1plus,
+                        cancellationToken,
+                        "co-loaded SNAP/TANF matched via DC GetHouseholdByGuardian IC+DOB (no Socure)");
                 }
-                catch (Exception ex) when (ex is not OperationCanceledException)
-                {
-                    logger.LogWarning(
-                        "DC warehouse IC+DOB match failed ({ExceptionType}) for co-loaded benefit ID verification for user {UserId}",
-                        ex.GetType().Name,
-                        command.UserId);
-                }
+            }
+            catch (Exception ex) when (ex is not OperationCanceledException)
+            {
+                logger.LogWarning(
+                    "DC warehouse IC+DOB match failed ({ExceptionType}) for co-loaded benefit ID verification for user {UserId}",
+                    ex.GetType().Name,
+                    command.UserId);
             }
 
             HouseholdData? benefitHousehold = null;
