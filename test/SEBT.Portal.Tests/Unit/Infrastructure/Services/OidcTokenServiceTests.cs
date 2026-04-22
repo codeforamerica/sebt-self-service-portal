@@ -9,7 +9,7 @@ using SEBT.Portal.Core.Services;
 using SEBT.Portal.Infrastructure.Services;
 using SEBT.Portal.Kernel.Results;
 
-namespace SEBT.Portal.Tests.Unit.Services;
+namespace SEBT.Portal.Tests.Unit.Infrastructure.Services;
 
 public class OidcTokenServiceTests
 {

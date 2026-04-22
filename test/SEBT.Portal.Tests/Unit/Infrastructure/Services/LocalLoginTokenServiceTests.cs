@@ -8,7 +8,7 @@ using SEBT.Portal.Core.Models.Auth;
 using SEBT.Portal.Core.Services;
 using SEBT.Portal.Infrastructure.Services;
 
-namespace SEBT.Portal.Tests.Unit.Services;
+namespace SEBT.Portal.Tests.Unit.Infrastructure.Services;
 
 public class LocalLoginTokenServiceTests
 {
