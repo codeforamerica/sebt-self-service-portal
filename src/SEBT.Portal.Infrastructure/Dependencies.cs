@@ -26,7 +26,6 @@ public static class Dependencies
 
         // JWT Services
         services.AddTransient<JwtTokenService>();
-        services.AddTransient<IJwtTokenService>(sp => sp.GetRequiredService<JwtTokenService>());
         services.AddTransient<ILocalLoginTokenService>(sp => sp.GetRequiredService<JwtTokenService>());
         services.AddTransient<IOidcTokenService>(sp => sp.GetRequiredService<JwtTokenService>());
         services.AddTransient<ISessionRefreshTokenService>(sp => sp.GetRequiredService<JwtTokenService>());

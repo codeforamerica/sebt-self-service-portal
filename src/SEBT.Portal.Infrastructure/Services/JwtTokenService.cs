@@ -13,9 +13,8 @@ namespace SEBT.Portal.Infrastructure.Services;
 /// Generates portal JWTs for all authentication paths. Implements three focused
 /// interfaces — one per caller — so each entry point owns its claim resolution.
 /// A shared <see cref="BuildAndSignToken"/> handles mechanical JWT construction.
-/// Also implements the legacy <see cref="IJwtTokenService"/> until callers are migrated.
 /// </summary>
-public class JwtTokenService : IJwtTokenService, ILocalLoginTokenService, IOidcTokenService, ISessionRefreshTokenService
+public class JwtTokenService : ILocalLoginTokenService, IOidcTokenService, ISessionRefreshTokenService
 {
     private readonly JwtSettings _settings;
     private readonly IdProofingValiditySettings _validitySettings;
@@ -64,98 +63,6 @@ public class JwtTokenService : IJwtTokenService, ILocalLoginTokenService, IOidcT
         _settings = settings.Value;
         _validitySettings = validitySettings.Value;
         _verificationClaimTranslator = verificationClaimTranslator;
-    }
-
-    // ──────────────────────────────────────────────
-    //  Legacy IJwtTokenService (kept until callers migrate)
-    // ──────────────────────────────────────────────
-
-    /// <inheritdoc />
-    public string GenerateToken(User user, IReadOnlyDictionary<string, string>? additionalClaims = null)
-    {
-        var email = additionalClaims?.GetValueOrDefault("email") ?? user.Email ?? "";
-        var ialValue = additionalClaims?.GetValueOrDefault(JwtClaimTypes.Ial)
-            ?? user.IalLevel switch
-            {
-                UserIalLevel.IAL1plus => "1plus",
-                UserIalLevel.IAL2 => "2",
-                _ => "1"
-            };
-
-        var idProofingStatusValue = additionalClaims?.GetValueOrDefault(JwtClaimTypes.IdProofingStatus)
-            ?? ((int)user.IdProofingStatus).ToString();
-
-        // Invariant: Completed ID proofing must have IAL > 1 and a completion timestamp.
-        if (idProofingStatusValue == ((int)IdProofingStatus.Completed).ToString())
-        {
-            if (ialValue == "1")
-            {
-                throw new InvalidOperationException(
-                    "Cannot mint JWT with IdProofingStatus=Completed and IAL=1. " +
-                    "Completed identity proofing must elevate IAL above 1.");
-            }
-
-            var hasCompletedAt = additionalClaims?.ContainsKey(JwtClaimTypes.IdProofingCompletedAt) == true
-                || user.IdProofingCompletedAt.HasValue;
-            if (!hasCompletedAt)
-            {
-                throw new InvalidOperationException(
-                    "Cannot mint JWT with IdProofingStatus=Completed without a completion timestamp. " +
-                    "IdProofingCompletedAt is required to compute expiration.");
-            }
-        }
-
-        var resolved = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
-        resolved[JwtClaimTypes.Ial] = ialValue;
-        resolved[JwtClaimTypes.IdProofingStatus] = idProofingStatusValue;
-
-        // Copy optional ID proofing claims
-        var sessionId = additionalClaims?.GetValueOrDefault(JwtClaimTypes.IdProofingSessionId)
-            ?? user.IdProofingSessionId;
-        if (!string.IsNullOrWhiteSpace(sessionId))
-        {
-            resolved[JwtClaimTypes.IdProofingSessionId] = sessionId;
-        }
-
-        var completedAtStr = additionalClaims?.GetValueOrDefault(JwtClaimTypes.IdProofingCompletedAt);
-        if (completedAtStr != null)
-        {
-            resolved[JwtClaimTypes.IdProofingCompletedAt] = completedAtStr;
-        }
-        else if (user.IdProofingCompletedAt.HasValue)
-        {
-            var completedAtOffset = new DateTimeOffset(user.IdProofingCompletedAt.Value, TimeSpan.Zero);
-            resolved[JwtClaimTypes.IdProofingCompletedAt] = completedAtOffset.ToUnixTimeSeconds().ToString();
-        }
-
-        // Compute expiration from completedAt + validity, regardless of source
-        var expiresAtStr = additionalClaims?.GetValueOrDefault(JwtClaimTypes.IdProofingExpiresAt);
-        if (expiresAtStr != null)
-        {
-            resolved[JwtClaimTypes.IdProofingExpiresAt] = expiresAtStr;
-        }
-        else if (resolved.TryGetValue(JwtClaimTypes.IdProofingCompletedAt, out var resolvedCompletedAt)
-            && long.TryParse(resolvedCompletedAt, out var completedAtUnix))
-        {
-            var completedAt = DateTimeOffset.FromUnixTimeSeconds(completedAtUnix).UtcDateTime;
-            var expiresAt = completedAt.AddDays(_validitySettings.ValidityDays);
-            resolved[JwtClaimTypes.IdProofingExpiresAt] =
-                new DateTimeOffset(expiresAt, TimeSpan.Zero).ToUnixTimeSeconds().ToString();
-        }
-
-        // Copy remaining additionalClaims as passthrough
-        if (additionalClaims != null)
-        {
-            foreach (var (name, value) in additionalClaims)
-            {
-                if (!resolved.ContainsKey(name) && !string.IsNullOrEmpty(value))
-                {
-                    resolved[name] = value;
-                }
-            }
-        }
-
-        return BuildAndSignToken(user.Id, email, resolved);
     }
 
     // ──────────────────────────────────────────────
