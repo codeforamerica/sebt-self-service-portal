@@ -27,6 +27,8 @@ export interface IdOption {
   helperKey?: string
   /** i18next key for the text input label shown when this option is selected */
   inputLabelKey?: string
+  /** Render a horizontal rule above this option to visually separate it from preceding options. */
+  dividerBefore?: boolean
 }
 
 interface IdProofingFormProps {
@@ -176,7 +178,7 @@ export function IdProofingForm({ idOptions, contactLink, getDiToken }: IdProofin
 
         <div className="grid-row grid-gap">
           {/* Month */}
-          <div className="mobile-lg:grid-col-4">
+          <div className="grid-col-7">
             <div
               className={
                 dobErrors.month ? 'usa-form-group usa-form-group--error' : 'usa-form-group'
@@ -205,7 +207,7 @@ export function IdProofingForm({ idOptions, contactLink, getDiToken }: IdProofin
                 aria-required="true"
                 aria-invalid={!!dobErrors.month}
               >
-                <option value=""></option>
+                <option value="">{`- ${tCommon('selectOne')} -`}</option>
                 {months.map((m) => (
                   <option
                     key={m.value}
@@ -219,7 +221,7 @@ export function IdProofingForm({ idOptions, contactLink, getDiToken }: IdProofin
           </div>
 
           {/* Day */}
-          <div className="mobile-lg:grid-col-4">
+          <div className="grid-col-2">
             <InputField
               label={tPersonalInfo('labelDay')}
               type="text"
@@ -229,13 +231,13 @@ export function IdProofingForm({ idOptions, contactLink, getDiToken }: IdProofin
               value={dobDay}
               onChange={(e) => setDobDay(e.target.value)}
               autoComplete="bday-day"
-              isRequired
+              aria-required="true"
               {...(dobErrors.day ? { error: dobErrors.day } : {})}
             />
           </div>
 
           {/* Year */}
-          <div className="mobile-lg:grid-col-4">
+          <div className="grid-col-3">
             <InputField
               label={tPersonalInfo('labelYear')}
               type="text"
@@ -245,7 +247,7 @@ export function IdProofingForm({ idOptions, contactLink, getDiToken }: IdProofin
               value={dobYear}
               onChange={(e) => setDobYear(e.target.value)}
               autoComplete="bday-year"
-              isRequired
+              aria-required="true"
               {...(dobErrors.year ? { error: dobErrors.year } : {})}
             />
           </div>
@@ -254,10 +256,7 @@ export function IdProofingForm({ idOptions, contactLink, getDiToken }: IdProofin
 
       {/* ID type selection */}
       <fieldset className="usa-fieldset margin-top-3">
-        <legend className="usa-legend">
-          {t('labelId')}
-          <span className="text-secondary-dark"> *</span>
-        </legend>
+        <legend className="usa-legend">{t('labelId')}</legend>
 
         {idTypeError && (
           <span
@@ -271,31 +270,36 @@ export function IdProofingForm({ idOptions, contactLink, getDiToken }: IdProofin
         {idOptions.map((option) => (
           <div
             key={option.value}
-            className="usa-radio"
+            className="margin-top-2"
           >
-            <input
-              className="usa-radio__input usa-radio__input--tile"
-              type="radio"
-              id={`${formId}-id-type-${option.value}`}
-              name="idType"
-              value={option.value}
-              checked={selectedIdType === option.value}
-              onChange={() => {
-                setSelectedIdType(option.value)
-                setIdValue('')
-                setIdTypeError(null)
-                setIdValueError(null)
-              }}
-            />
-            <label
-              className="usa-radio__label"
-              htmlFor={`${formId}-id-type-${option.value}`}
-            >
-              {t(option.labelKey)}
-              {option.helperKey && (
-                <span className="usa-radio__label-description">{t(option.helperKey)}</span>
-              )}
-            </label>
+            {option.dividerBefore && (
+              <hr className="margin-y-2 border-0 border-top border-base-ink" />
+            )}
+            <div className="usa-radio">
+              <input
+                className="usa-radio__input usa-radio__input--tile"
+                type="radio"
+                id={`${formId}-id-type-${option.value}`}
+                name="idType"
+                value={option.value}
+                checked={selectedIdType === option.value}
+                onChange={() => {
+                  setSelectedIdType(option.value)
+                  setIdValue('')
+                  setIdTypeError(null)
+                  setIdValueError(null)
+                }}
+              />
+              <label
+                className="usa-radio__label"
+                htmlFor={`${formId}-id-type-${option.value}`}
+              >
+                <span className="text-bold">{t(option.labelKey)}</span>
+                {option.helperKey && (
+                  <span className="usa-radio__label-description">{t(option.helperKey)}</span>
+                )}
+              </label>
+            </div>
           </div>
         ))}
       </fieldset>
