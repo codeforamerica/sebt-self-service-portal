@@ -120,8 +120,8 @@ public class SubmitIdProofingCommandHandler(
                 catch (Exception ex) when (ex is not OperationCanceledException)
                 {
                     logger.LogWarning(
-                        ex,
-                        "DC warehouse IC+DOB match failed for co-loaded benefit ID verification for user {UserId}",
+                        "DC warehouse IC+DOB match failed ({ExceptionType}) for co-loaded benefit ID verification for user {UserId}",
+                        ex.GetType().Name,
                         command.UserId);
                 }
             }
@@ -137,8 +137,9 @@ public class SubmitIdProofingCommandHandler(
             }
             catch (Exception ex) when (ex is not OperationCanceledException)
             {
-                logger.LogWarning(ex,
-                    "Household lookup failed for co-loaded benefit ID verification for user {UserId}",
+                logger.LogWarning(
+                    "Household lookup failed ({ExceptionType}) for co-loaded benefit ID verification for user {UserId}",
+                    ex.GetType().Name,
                     command.UserId);
             }
 
