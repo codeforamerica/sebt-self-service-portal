@@ -1,51 +1,11 @@
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
-using Microsoft.Extensions.Logging.Abstractions;
-using Microsoft.Extensions.Options;
-using NSubstitute;
-using SEBT.Portal.Core.AppSettings;
 using SEBT.Portal.Core.Models.Auth;
-using SEBT.Portal.Core.Services;
-using SEBT.Portal.Infrastructure.Services;
 
 namespace SEBT.Portal.Tests.Unit.Infrastructure.Services;
 
-public class SessionRefreshTokenServiceTests
+public class SessionRefreshTokenServiceTests : JwtTokenServiceTestBase
 {
-    private readonly ISessionRefreshTokenService _service;
-
-    public SessionRefreshTokenServiceTests()
-    {
-        var jwtOptions = Substitute.For<IOptions<JwtSettings>>();
-        jwtOptions.Value.Returns(new JwtSettings
-        {
-            SecretKey = "TestSecretKeyMustBeAtLeast32CharactersLongForSecurity",
-            Issuer = "TestIssuer",
-            Audience = "TestAudience",
-            ExpirationMinutes = 60
-        });
-
-        var validityOptions = Substitute.For<IOptions<IdProofingValiditySettings>>();
-        validityOptions.Value.Returns(new IdProofingValiditySettings { ValidityDays = 1826 });
-
-        var translator = new OidcVerificationClaimTranslator(
-            new OidcVerificationClaimSettings(),
-            new IdProofingValiditySettings { ValidityDays = 1826 },
-            NullLogger<OidcVerificationClaimTranslator>.Instance);
-
-        _service = new JwtTokenService(jwtOptions, validityOptions, translator);
-    }
-
-    private static ClaimsPrincipal MakePrincipal(params (string type, string value)[] claims)
-    {
-        var identity = new ClaimsIdentity(
-            claims.Select(c => new Claim(c.type, c.value)), "test");
-        return new ClaimsPrincipal(identity);
-    }
-
-    private static JwtSecurityToken ReadJwt(string token) =>
-        new JwtSecurityTokenHandler().ReadJwtToken(token);
-
     [Fact]
     public void CopiesIalFromExistingJwt()
     {
@@ -57,7 +17,7 @@ public class SessionRefreshTokenServiceTests
             (JwtClaimTypes.IdProofingExpiresAt, "1857676800"),
             ("email", "user@example.com"));
 
-        var token = _service.GenerateForSessionRefresh(user, principal);
+        var token = Service.GenerateForSessionRefresh(user, principal);
 
         var jwt = ReadJwt(token);
         Assert.Equal("1plus", jwt.Claims.First(c => c.Type == JwtClaimTypes.Ial).Value);
@@ -74,7 +34,7 @@ public class SessionRefreshTokenServiceTests
             (JwtClaimTypes.IdProofingExpiresAt, "1857676800"),
             ("email", "user@example.com"));
 
-        var token = _service.GenerateForSessionRefresh(user, principal);
+        var token = Service.GenerateForSessionRefresh(user, principal);
 
         var jwt = ReadJwt(token);
         Assert.Equal("1700000000", jwt.Claims.First(c => c.Type == JwtClaimTypes.IdProofingCompletedAt).Value);
@@ -92,7 +52,7 @@ public class SessionRefreshTokenServiceTests
             ("phone", "+13035551234"),
             ("givenName", "Jane"));
 
-        var token = _service.GenerateForSessionRefresh(user, principal);
+        var token = Service.GenerateForSessionRefresh(user, principal);
 
         var jwt = ReadJwt(token);
         Assert.Equal("+13035551234", jwt.Claims.First(c => c.Type == "phone").Value);
@@ -109,7 +69,7 @@ public class SessionRefreshTokenServiceTests
             (JwtClaimTypes.IdProofingStatus, "0"),
             ("email", "user@example.com"));
 
-        var token = _service.GenerateForSessionRefresh(user, principal);
+        var token = Service.GenerateForSessionRefresh(user, principal);
 
         var jwt = ReadJwt(token);
         var subClaims = jwt.Claims.Where(c => c.Type == JwtRegisteredClaimNames.Sub).ToList();
@@ -117,15 +77,117 @@ public class SessionRefreshTokenServiceTests
         Assert.Equal("42", subClaims[0].Value);
     }
 
+    // --- Fallback to user entity ---
+
     [Fact]
-    public void FallsBackToUserEntity_WhenPrincipalLacksIal()
+    public void FallsBackToUserIal_WhenPrincipalLacksIal_Ial1Plus()
     {
         var user = new User { Id = 1, IalLevel = UserIalLevel.IAL1plus, Email = "user@example.com" };
         var principal = MakePrincipal(("email", "user@example.com"));
 
-        var token = _service.GenerateForSessionRefresh(user, principal);
+        var token = Service.GenerateForSessionRefresh(user, principal);
 
         var jwt = ReadJwt(token);
         Assert.Equal("1plus", jwt.Claims.First(c => c.Type == JwtClaimTypes.Ial).Value);
+    }
+
+    [Fact]
+    public void FallsBackToUserIal_WhenPrincipalLacksIal_Ial2()
+    {
+        var user = new User { Id = 1, IalLevel = UserIalLevel.IAL2, Email = "user@example.com" };
+        var principal = MakePrincipal(("email", "user@example.com"));
+
+        var token = Service.GenerateForSessionRefresh(user, principal);
+
+        var jwt = ReadJwt(token);
+        Assert.Equal("2", jwt.Claims.First(c => c.Type == JwtClaimTypes.Ial).Value);
+    }
+
+    [Fact]
+    public void FallsBackToUserIal_WhenPrincipalLacksIal_DefaultsTo1()
+    {
+        var user = new User { Id = 1, IalLevel = UserIalLevel.None, Email = "user@example.com" };
+        var principal = MakePrincipal(("email", "user@example.com"));
+
+        var token = Service.GenerateForSessionRefresh(user, principal);
+
+        var jwt = ReadJwt(token);
+        Assert.Equal("1", jwt.Claims.First(c => c.Type == JwtClaimTypes.Ial).Value);
+    }
+
+    [Fact]
+    public void FallsBackToUserIdProofingStatus_WhenPrincipalLacksIt()
+    {
+        var user = new User { Id = 1, IdProofingStatus = IdProofingStatus.InProgress, Email = "user@example.com" };
+        var principal = MakePrincipal(
+            (JwtClaimTypes.Ial, "1"),
+            ("email", "user@example.com"));
+
+        var token = Service.GenerateForSessionRefresh(user, principal);
+
+        var jwt = ReadJwt(token);
+        Assert.Equal(
+            ((int)IdProofingStatus.InProgress).ToString(),
+            jwt.Claims.First(c => c.Type == JwtClaimTypes.IdProofingStatus).Value);
+    }
+
+    // --- Email fallback chain ---
+
+    [Fact]
+    public void EmailFromPrincipalEmailClaim()
+    {
+        var user = new User { Id = 1, Email = "fallback@example.com" };
+        var principal = MakePrincipal(
+            (JwtClaimTypes.Ial, "1"),
+            (JwtClaimTypes.IdProofingStatus, "0"),
+            ("email", "principal@example.com"));
+
+        var token = Service.GenerateForSessionRefresh(user, principal);
+
+        var jwt = ReadJwt(token);
+        Assert.Equal("principal@example.com", jwt.Claims.First(c => c.Type == ClaimTypes.Email).Value);
+    }
+
+    [Fact]
+    public void EmailFallsBackToClaimTypesEmail()
+    {
+        var user = new User { Id = 1, Email = "fallback@example.com" };
+        var principal = MakePrincipal(
+            (JwtClaimTypes.Ial, "1"),
+            (JwtClaimTypes.IdProofingStatus, "0"),
+            (ClaimTypes.Email, "claimtype@example.com"));
+
+        var token = Service.GenerateForSessionRefresh(user, principal);
+
+        var jwt = ReadJwt(token);
+        Assert.Equal("claimtype@example.com", jwt.Claims.First(c => c.Type == ClaimTypes.Email).Value);
+    }
+
+    [Fact]
+    public void EmailFallsBackToUserEmail()
+    {
+        var user = new User { Id = 1, Email = "user-entity@example.com" };
+        var principal = MakePrincipal(
+            (JwtClaimTypes.Ial, "1"),
+            (JwtClaimTypes.IdProofingStatus, "0"));
+
+        var token = Service.GenerateForSessionRefresh(user, principal);
+
+        var jwt = ReadJwt(token);
+        Assert.Equal("user-entity@example.com", jwt.Claims.First(c => c.Type == ClaimTypes.Email).Value);
+    }
+
+    [Fact]
+    public void EmailFallsBackToEmpty_WhenNoEmailAnywhere()
+    {
+        var user = new User { Id = 1, Email = null };
+        var principal = MakePrincipal(
+            (JwtClaimTypes.Ial, "1"),
+            (JwtClaimTypes.IdProofingStatus, "0"));
+
+        var token = Service.GenerateForSessionRefresh(user, principal);
+
+        var jwt = ReadJwt(token);
+        Assert.Equal("", jwt.Claims.First(c => c.Type == ClaimTypes.Email).Value);
     }
 }

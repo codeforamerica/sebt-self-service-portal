@@ -1,52 +1,12 @@
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
-using Microsoft.Extensions.Logging.Abstractions;
-using Microsoft.Extensions.Options;
-using NSubstitute;
-using SEBT.Portal.Core.AppSettings;
 using SEBT.Portal.Core.Models.Auth;
-using SEBT.Portal.Core.Services;
-using SEBT.Portal.Infrastructure.Services;
 using SEBT.Portal.Kernel.Results;
 
 namespace SEBT.Portal.Tests.Unit.Infrastructure.Services;
 
-public class OidcTokenServiceTests
+public class OidcTokenServiceTests : JwtTokenServiceTestBase
 {
-    private readonly IOidcTokenService _service;
-
-    public OidcTokenServiceTests()
-    {
-        var jwtOptions = Substitute.For<IOptions<JwtSettings>>();
-        jwtOptions.Value.Returns(new JwtSettings
-        {
-            SecretKey = "TestSecretKeyMustBeAtLeast32CharactersLongForSecurity",
-            Issuer = "TestIssuer",
-            Audience = "TestAudience",
-            ExpirationMinutes = 60
-        });
-
-        var validityOptions = Substitute.For<IOptions<IdProofingValiditySettings>>();
-        validityOptions.Value.Returns(new IdProofingValiditySettings { ValidityDays = 1826 });
-
-        var translator = new OidcVerificationClaimTranslator(
-            new OidcVerificationClaimSettings(),
-            new IdProofingValiditySettings { ValidityDays = 1826 },
-            NullLogger<OidcVerificationClaimTranslator>.Instance);
-
-        _service = new JwtTokenService(jwtOptions, validityOptions, translator);
-    }
-
-    private static ClaimsPrincipal MakePrincipal(params (string type, string value)[] claims)
-    {
-        var identity = new ClaimsIdentity(
-            claims.Select(c => new Claim(c.type, c.value)), "test");
-        return new ClaimsPrincipal(identity);
-    }
-
-    private static JwtSecurityToken ReadJwt(string token) =>
-        new JwtSecurityTokenHandler().ReadJwtToken(token);
-
     // --- Normal login (non-step-up) ---
 
     [Fact]
@@ -59,7 +19,7 @@ public class OidcTokenServiceTests
             ("socureIdVerificationLevel", "1.5"),
             ("socureIdVerificationDate", DateTime.UtcNow.ToString("o")));
 
-        var result = _service.GenerateForOidcLogin(user, principal, isStepUp: false);
+        var result = Service.GenerateForOidcLogin(user, principal, isStepUp: false);
 
         Assert.True(result.IsSuccess);
         var jwt = ReadJwt(result.Value);
@@ -80,7 +40,7 @@ public class OidcTokenServiceTests
             ("socureIdVerificationLevel", "1.5"),
             ("socureIdVerificationDate", verifiedAt.ToString("o")));
 
-        var result = _service.GenerateForOidcLogin(user, principal, isStepUp: false);
+        var result = Service.GenerateForOidcLogin(user, principal, isStepUp: false);
 
         Assert.True(result.IsSuccess);
         var jwt = ReadJwt(result.Value);
@@ -93,7 +53,7 @@ public class OidcTokenServiceTests
         var expiresAtClaim = jwt.Claims.First(c => c.Type == JwtClaimTypes.IdProofingExpiresAt);
         Assert.True(long.TryParse(expiresAtClaim.Value, out var expiresAtUnix));
         var expiresAt = DateTimeOffset.FromUnixTimeSeconds(expiresAtUnix).UtcDateTime;
-        var expectedExpiresAt = verifiedAt.AddDays(1826);
+        var expectedExpiresAt = verifiedAt.AddDays(TestValidityDays);
         Assert.True(Math.Abs((expiresAt - expectedExpiresAt).TotalSeconds) < 1);
     }
 
@@ -105,7 +65,7 @@ public class OidcTokenServiceTests
             ("sub", "idp-sub-123"),
             ("email", "user@example.com"));
 
-        var result = _service.GenerateForOidcLogin(user, principal, isStepUp: false);
+        var result = Service.GenerateForOidcLogin(user, principal, isStepUp: false);
 
         Assert.True(result.IsSuccess);
         var jwt = ReadJwt(result.Value);
@@ -123,7 +83,7 @@ public class OidcTokenServiceTests
             ("sub", "idp-sub-123"),
             ("email", "user@example.com"));
 
-        var result = _service.GenerateForOidcLogin(user, principal, isStepUp: false);
+        var result = Service.GenerateForOidcLogin(user, principal, isStepUp: false);
 
         var jwt = ReadJwt(result.Value);
         Assert.Null(jwt.Claims.FirstOrDefault(c => c.Type == JwtClaimTypes.IdProofingCompletedAt));
@@ -140,13 +100,34 @@ public class OidcTokenServiceTests
             ("socureIdVerificationLevel", "1.5"),
             ("socureIdVerificationDate", DateTime.UtcNow.AddDays(-2000).ToString("o")));
 
-        var result = _service.GenerateForOidcLogin(user, principal, isStepUp: false);
+        var result = Service.GenerateForOidcLogin(user, principal, isStepUp: false);
 
         Assert.True(result.IsSuccess);
         var jwt = ReadJwt(result.Value);
         Assert.Equal("1", jwt.Claims.First(c => c.Type == JwtClaimTypes.Ial).Value);
         Assert.Equal(
             ((int)IdProofingStatus.Expired).ToString(),
+            jwt.Claims.First(c => c.Type == JwtClaimTypes.IdProofingStatus).Value);
+    }
+
+    [Fact]
+    public void NormalLogin_WithIal1Verification_SetsIal1()
+    {
+        // Verification level 1.0 is "authenticated" — valid but doesn't elevate IAL
+        var user = new User { Id = 1 };
+        var principal = MakePrincipal(
+            ("sub", "idp-sub-123"),
+            ("email", "user@example.com"),
+            ("socureIdVerificationLevel", "1"),
+            ("socureIdVerificationDate", DateTime.UtcNow.ToString("o")));
+
+        var result = Service.GenerateForOidcLogin(user, principal, isStepUp: false);
+
+        Assert.True(result.IsSuccess);
+        var jwt = ReadJwt(result.Value);
+        Assert.Equal("1", jwt.Claims.First(c => c.Type == JwtClaimTypes.Ial).Value);
+        Assert.Equal(
+            ((int)IdProofingStatus.NotStarted).ToString(),
             jwt.Claims.First(c => c.Type == JwtClaimTypes.IdProofingStatus).Value);
     }
 
@@ -162,7 +143,7 @@ public class OidcTokenServiceTests
             ("socureIdVerificationLevel", "1.5"),
             ("socureIdVerificationDate", DateTime.UtcNow.ToString("o")));
 
-        var result = _service.GenerateForOidcLogin(user, principal, isStepUp: true);
+        var result = Service.GenerateForOidcLogin(user, principal, isStepUp: true);
 
         Assert.True(result.IsSuccess);
         var jwt = ReadJwt(result.Value);
@@ -179,7 +160,7 @@ public class OidcTokenServiceTests
             ("socureIdVerificationLevel", "2"),
             ("socureIdVerificationDate", DateTime.UtcNow.ToString("o")));
 
-        var result = _service.GenerateForOidcLogin(user, principal, isStepUp: true);
+        var result = Service.GenerateForOidcLogin(user, principal, isStepUp: true);
 
         Assert.True(result.IsSuccess);
         var jwt = ReadJwt(result.Value);
@@ -194,7 +175,7 @@ public class OidcTokenServiceTests
             ("sub", "idp-sub-123"),
             ("email", "user@example.com"));
 
-        var result = _service.GenerateForOidcLogin(user, principal, isStepUp: true);
+        var result = Service.GenerateForOidcLogin(user, principal, isStepUp: true);
 
         Assert.False(result.IsSuccess);
         Assert.IsType<DependencyFailedResult<string>>(result);
@@ -210,7 +191,7 @@ public class OidcTokenServiceTests
             ("sub", "idp-sub-999"),
             ("email", "user@example.com"));
 
-        var result = _service.GenerateForOidcLogin(user, principal, isStepUp: false);
+        var result = Service.GenerateForOidcLogin(user, principal, isStepUp: false);
 
         var jwt = ReadJwt(result.Value);
         var subClaim = jwt.Claims.First(c => c.Type == JwtRegisteredClaimNames.Sub);
@@ -225,11 +206,39 @@ public class OidcTokenServiceTests
             ("sub", "idp-sub-123"),
             ("email", "oidc@example.com"));
 
-        var result = _service.GenerateForOidcLogin(user, principal, isStepUp: false);
+        var result = Service.GenerateForOidcLogin(user, principal, isStepUp: false);
 
         var jwt = ReadJwt(result.Value);
         var emailClaim = jwt.Claims.First(c => c.Type == ClaimTypes.Email);
         Assert.Equal("oidc@example.com", emailClaim.Value);
+    }
+
+    [Fact]
+    public void EmailFallsBackToUserEmail_WhenIdpHasNone()
+    {
+        var user = new User { Id = 1, Email = "fallback@example.com" };
+        var principal = MakePrincipal(
+            ("sub", "idp-sub-123"));
+
+        var result = Service.GenerateForOidcLogin(user, principal, isStepUp: false);
+
+        var jwt = ReadJwt(result.Value);
+        var emailClaim = jwt.Claims.First(c => c.Type == ClaimTypes.Email);
+        Assert.Equal("fallback@example.com", emailClaim.Value);
+    }
+
+    [Fact]
+    public void EmailFallsBackToEmpty_WhenNoEmailAnywhere()
+    {
+        var user = new User { Id = 1, Email = null };
+        var principal = MakePrincipal(
+            ("sub", "idp-sub-123"));
+
+        var result = Service.GenerateForOidcLogin(user, principal, isStepUp: false);
+
+        var jwt = ReadJwt(result.Value);
+        var emailClaim = jwt.Claims.First(c => c.Type == ClaimTypes.Email);
+        Assert.Equal("", emailClaim.Value);
     }
 
     [Fact]
@@ -243,7 +252,7 @@ public class OidcTokenServiceTests
             ("givenName", "Jane"),
             ("familyName", "Doe"));
 
-        var result = _service.GenerateForOidcLogin(user, principal, isStepUp: false);
+        var result = Service.GenerateForOidcLogin(user, principal, isStepUp: false);
 
         var jwt = ReadJwt(result.Value);
         Assert.Equal("+13035551234", jwt.Claims.First(c => c.Type == "phone").Value);
@@ -265,7 +274,7 @@ public class OidcTokenServiceTests
             ("nonce", "abc123"),
             ("at_hash", "xyz789"));
 
-        var result = _service.GenerateForOidcLogin(user, principal, isStepUp: false);
+        var result = Service.GenerateForOidcLogin(user, principal, isStepUp: false);
 
         var jwt = ReadJwt(result.Value);
         // iss and aud should be the portal's values, not the IdP's

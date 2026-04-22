@@ -1,50 +1,17 @@
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
-using Microsoft.Extensions.Logging.Abstractions;
-using Microsoft.Extensions.Options;
-using NSubstitute;
-using SEBT.Portal.Core.AppSettings;
 using SEBT.Portal.Core.Models.Auth;
-using SEBT.Portal.Core.Services;
-using SEBT.Portal.Infrastructure.Services;
 
 namespace SEBT.Portal.Tests.Unit.Infrastructure.Services;
 
-public class LocalLoginTokenServiceTests
+public class LocalLoginTokenServiceTests : JwtTokenServiceTestBase
 {
-    private readonly ILocalLoginTokenService _service;
-
-    public LocalLoginTokenServiceTests()
-    {
-        var jwtOptions = Substitute.For<IOptions<JwtSettings>>();
-        jwtOptions.Value.Returns(new JwtSettings
-        {
-            SecretKey = "TestSecretKeyMustBeAtLeast32CharactersLongForSecurity",
-            Issuer = "TestIssuer",
-            Audience = "TestAudience",
-            ExpirationMinutes = 60
-        });
-
-        var validityOptions = Substitute.For<IOptions<IdProofingValiditySettings>>();
-        validityOptions.Value.Returns(new IdProofingValiditySettings { ValidityDays = 1826 });
-
-        var translator = new OidcVerificationClaimTranslator(
-            new OidcVerificationClaimSettings(),
-            new IdProofingValiditySettings { ValidityDays = 1826 },
-            NullLogger<OidcVerificationClaimTranslator>.Instance);
-
-        _service = new JwtTokenService(jwtOptions, validityOptions, translator);
-    }
-
-    private static JwtSecurityToken ReadJwt(string token) =>
-        new JwtSecurityTokenHandler().ReadJwtToken(token);
-
     [Fact]
     public void SubClaimIsUserId()
     {
         var user = new User { Id = 42, Email = "user@example.com" };
 
-        var token = _service.GenerateForLocalLogin(user);
+        var token = Service.GenerateForLocalLogin(user);
 
         var jwt = ReadJwt(token);
         Assert.Equal("42", jwt.Claims.First(c => c.Type == JwtRegisteredClaimNames.Sub).Value);
@@ -55,21 +22,54 @@ public class LocalLoginTokenServiceTests
     {
         var user = new User { Id = 1, Email = "otp-user@example.com" };
 
-        var token = _service.GenerateForLocalLogin(user);
+        var token = Service.GenerateForLocalLogin(user);
 
         var jwt = ReadJwt(token);
         Assert.Equal("otp-user@example.com", jwt.Claims.First(c => c.Type == ClaimTypes.Email).Value);
     }
 
     [Fact]
-    public void IalComesFromUserIalLevel()
+    public void EmailFallsBackToEmpty_WhenNull()
+    {
+        var user = new User { Id = 1, Email = null };
+
+        var token = Service.GenerateForLocalLogin(user);
+
+        var jwt = ReadJwt(token);
+        Assert.Equal("", jwt.Claims.First(c => c.Type == ClaimTypes.Email).Value);
+    }
+
+    [Fact]
+    public void IalComesFromUserIalLevel_Ial1Plus()
     {
         var user = new User { Id = 1, Email = "user@example.com", IalLevel = UserIalLevel.IAL1plus };
 
-        var token = _service.GenerateForLocalLogin(user);
+        var token = Service.GenerateForLocalLogin(user);
 
         var jwt = ReadJwt(token);
         Assert.Equal("1plus", jwt.Claims.First(c => c.Type == JwtClaimTypes.Ial).Value);
+    }
+
+    [Fact]
+    public void IalComesFromUserIalLevel_Ial2()
+    {
+        var user = new User { Id = 1, Email = "user@example.com", IalLevel = UserIalLevel.IAL2 };
+
+        var token = Service.GenerateForLocalLogin(user);
+
+        var jwt = ReadJwt(token);
+        Assert.Equal("2", jwt.Claims.First(c => c.Type == JwtClaimTypes.Ial).Value);
+    }
+
+    [Fact]
+    public void IalComesFromUserIalLevel_DefaultsTo1()
+    {
+        var user = new User { Id = 1, Email = "user@example.com", IalLevel = UserIalLevel.None };
+
+        var token = Service.GenerateForLocalLogin(user);
+
+        var jwt = ReadJwt(token);
+        Assert.Equal("1", jwt.Claims.First(c => c.Type == JwtClaimTypes.Ial).Value);
     }
 
     [Fact]
@@ -84,7 +84,7 @@ public class LocalLoginTokenServiceTests
             IdProofingCompletedAt = DateTime.UtcNow.AddDays(-5)
         };
 
-        var token = _service.GenerateForLocalLogin(user);
+        var token = Service.GenerateForLocalLogin(user);
 
         var jwt = ReadJwt(token);
         Assert.Equal(
@@ -105,7 +105,7 @@ public class LocalLoginTokenServiceTests
             IdProofingCompletedAt = completedAt
         };
 
-        var token = _service.GenerateForLocalLogin(user);
+        var token = Service.GenerateForLocalLogin(user);
 
         var jwt = ReadJwt(token);
         var completedAtClaim = jwt.Claims.First(c => c.Type == JwtClaimTypes.IdProofingCompletedAt);
@@ -113,7 +113,7 @@ public class LocalLoginTokenServiceTests
 
         var expiresAtClaim = jwt.Claims.First(c => c.Type == JwtClaimTypes.IdProofingExpiresAt);
         Assert.True(long.TryParse(expiresAtClaim.Value, out var expiresAtUnix));
-        var expectedExpiresAt = completedAt.AddDays(1826);
+        var expectedExpiresAt = completedAt.AddDays(TestValidityDays);
         var actualExpiresAt = DateTimeOffset.FromUnixTimeSeconds(expiresAtUnix).UtcDateTime;
         Assert.True(Math.Abs((actualExpiresAt - expectedExpiresAt).TotalSeconds) < 1);
     }
@@ -123,7 +123,7 @@ public class LocalLoginTokenServiceTests
     {
         var user = new User { Id = 1, Email = "user@example.com", IalLevel = UserIalLevel.None };
 
-        var token = _service.GenerateForLocalLogin(user);
+        var token = Service.GenerateForLocalLogin(user);
 
         var jwt = ReadJwt(token);
         Assert.Null(jwt.Claims.FirstOrDefault(c => c.Type == JwtClaimTypes.IdProofingCompletedAt));
@@ -140,7 +140,7 @@ public class LocalLoginTokenServiceTests
             IdProofingSessionId = "session-abc-123"
         };
 
-        var token = _service.GenerateForLocalLogin(user);
+        var token = Service.GenerateForLocalLogin(user);
 
         var jwt = ReadJwt(token);
         Assert.Equal("session-abc-123",
@@ -152,7 +152,7 @@ public class LocalLoginTokenServiceTests
     {
         var user = new User { Id = 1, Email = "user@example.com", IdProofingSessionId = null };
 
-        var token = _service.GenerateForLocalLogin(user);
+        var token = Service.GenerateForLocalLogin(user);
 
         var jwt = ReadJwt(token);
         Assert.Null(jwt.Claims.FirstOrDefault(c => c.Type == JwtClaimTypes.IdProofingSessionId));
@@ -163,7 +163,7 @@ public class LocalLoginTokenServiceTests
     {
         var user = new User { Id = 1, Email = "user@example.com" };
 
-        var token = _service.GenerateForLocalLogin(user);
+        var token = Service.GenerateForLocalLogin(user);
 
         var jwt = ReadJwt(token);
         Assert.Equal("TestIssuer", jwt.Issuer);

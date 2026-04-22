@@ -6,6 +6,7 @@ using Microsoft.IdentityModel.Tokens;
 using SEBT.Portal.Core.AppSettings;
 using SEBT.Portal.Core.Models.Auth;
 using SEBT.Portal.Core.Services;
+using SEBT.Portal.Kernel;
 
 namespace SEBT.Portal.Infrastructure.Services;
 
@@ -72,15 +73,16 @@ public class JwtTokenService : ILocalLoginTokenService, IOidcTokenService, ISess
     /// <inheritdoc />
     public string GenerateForLocalLogin(User user)
     {
-        var resolved = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
-
-        resolved[JwtClaimTypes.Ial] = user.IalLevel switch
+        var resolved = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
         {
-            UserIalLevel.IAL1plus => "1plus",
-            UserIalLevel.IAL2 => "2",
-            _ => "1"
+            [JwtClaimTypes.Ial] = user.IalLevel switch
+            {
+                UserIalLevel.IAL1plus => "1plus",
+                UserIalLevel.IAL2 => "2",
+                _ => "1"
+            },
+            [JwtClaimTypes.IdProofingStatus] = ((int)user.IdProofingStatus).ToString()
         };
-        resolved[JwtClaimTypes.IdProofingStatus] = ((int)user.IdProofingStatus).ToString();
 
         if (!string.IsNullOrWhiteSpace(user.IdProofingSessionId))
         {
@@ -106,7 +108,7 @@ public class JwtTokenService : ILocalLoginTokenService, IOidcTokenService, ISess
     // ──────────────────────────────────────────────
 
     /// <inheritdoc />
-    public Kernel.Result<string> GenerateForOidcLogin(
+    public Result<string> GenerateForOidcLogin(
         User user, ClaimsPrincipal idpPrincipal, bool isStepUp)
     {
         // Filter infrastructure claims from the IdP principal
@@ -171,7 +173,7 @@ public class JwtTokenService : ILocalLoginTokenService, IOidcTokenService, ISess
         }
 
         var email = idpClaims.GetValueOrDefault("email") ?? user.Email ?? "";
-        return Kernel.Result<string>.Success(BuildAndSignToken(user.Id, email, idpClaims));
+        return Result<string>.Success(BuildAndSignToken(user.Id, email, idpClaims));
     }
 
     // ──────────────────────────────────────────────
@@ -217,7 +219,7 @@ public class JwtTokenService : ILocalLoginTokenService, IOidcTokenService, ISess
     /// Mechanical JWT construction from pre-resolved claims. Each public method
     /// fully resolves its claims before calling this — no fallback logic here.
     /// </summary>
-    private string BuildAndSignToken(
+    internal string BuildAndSignToken(
         int userId,
         string email,
         IReadOnlyDictionary<string, string> resolvedClaims)
