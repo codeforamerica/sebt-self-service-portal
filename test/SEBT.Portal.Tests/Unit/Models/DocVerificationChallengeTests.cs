@@ -183,12 +183,17 @@ public class DocVerificationChallengeTests
         var createdAt = new DateTime(2025, 6, 1, 12, 0, 0, DateTimeKind.Utc);
         var updatedAt = new DateTime(2025, 6, 1, 12, 30, 0, DateTimeKind.Utc);
         var expiresAt = new DateTime(2025, 6, 1, 12, 30, 0, DateTimeKind.Utc);
+        var proofingDob = "1990-01-01";
+        var proofingIdType = "ssn";
+        var proofingIdValue = "999-99-9999";
+        var docvTokenIssuedAt = new DateTime(2025, 6, 1, 12, 15, 0, DateTimeKind.Utc);
 
         var challenge = DocVerificationChallenge.Reconstitute(
             id, publicId, userId, status,
             socureReferenceId, evalId, socureEventId,
             docvTransactionToken, docvUrl, offboardingReason,
-            allowIdRetry, createdAt, updatedAt, expiresAt);
+            allowIdRetry, createdAt, updatedAt, expiresAt,
+            proofingDob, proofingIdType, proofingIdValue, docvTokenIssuedAt);
 
         Assert.Equal(id, challenge.Id);
         Assert.Equal(publicId, challenge.PublicId);
@@ -204,6 +209,10 @@ public class DocVerificationChallengeTests
         Assert.Equal(createdAt, challenge.CreatedAt);
         Assert.Equal(updatedAt, challenge.UpdatedAt);
         Assert.Equal(expiresAt, challenge.ExpiresAt);
+        Assert.Equal(proofingDob, challenge.ProofingDateOfBirth);
+        Assert.Equal(proofingIdType, challenge.ProofingIdType);
+        Assert.Equal(proofingIdValue, challenge.ProofingIdValue);
+        Assert.Equal(docvTokenIssuedAt, challenge.DocvTokenIssuedAt);
     }
 
     [Fact]

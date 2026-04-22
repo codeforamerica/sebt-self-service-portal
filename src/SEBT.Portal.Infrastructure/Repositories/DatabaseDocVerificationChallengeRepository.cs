@@ -14,7 +14,6 @@ namespace SEBT.Portal.Infrastructure.Repositories;
 public class DatabaseDocVerificationChallengeRepository(PortalDbContext dbContext)
     : IDocVerificationChallengeRepository
 {
-    private const string OneActivePerUserIndex = "IX_DocVerificationChallenges_OneActivePerUser";
     public async Task<DocVerificationChallenge?> GetByPublicIdAsync(
         Guid publicId,
         int userId,
@@ -97,8 +96,8 @@ public class DatabaseDocVerificationChallengeRepository(PortalDbContext dbContex
         try
         {
             // Bulk expire via SQL: does not use RowVersion optimistic concurrency or
-            // DocVerificationChallenge.TransitionTo (same Created→Expired transition as the domain).
-            // The predicate limits rows to stale Created/Pending; revisit if concurrent writers race here.
+            // DocVerificationChallenge.TransitionTo.  The predicate limits rows to stale
+            // Created/Pending; revisit if concurrent writers race here.
             await dbContext.DocVerificationChallenges
                 .Where(c => c.UserId == challenge.UserId
                     && (c.Status == (int)DocVerificationStatus.Created
@@ -114,16 +113,7 @@ public class DatabaseDocVerificationChallengeRepository(PortalDbContext dbContex
             var entity = MapToEntity(challenge);
             dbContext.DocVerificationChallenges.Add(entity);
 
-            try
-            {
-                await dbContext.SaveChangesAsync(cancellationToken);
-            }
-            catch (DbUpdateException ex) when (ex.InnerException?.Message.Contains(OneActivePerUserIndex) == true)
-            {
-                // A concurrent writer beat us to the active slot; surface as a domain exception.
-                throw new DuplicateRecordException(
-                    $"An active DocVerificationChallenge already exists for user {challenge.UserId}.", ex);
-            }
+            await dbContext.SaveChangesAsync(cancellationToken);
 
             await transaction.CommitAsync(cancellationToken);
         }
@@ -161,6 +151,10 @@ public class DatabaseDocVerificationChallengeRepository(PortalDbContext dbContex
         entity.OffboardingReason = challenge.OffboardingReason;
         entity.AllowIdRetry = challenge.AllowIdRetry;
         entity.ExpiresAt = challenge.ExpiresAt;
+        entity.ProofingDateOfBirth = challenge.ProofingDateOfBirth;
+        entity.ProofingIdType = challenge.ProofingIdType;
+        entity.ProofingIdValue = challenge.ProofingIdValue;
+        entity.DocvTokenIssuedAt = challenge.DocvTokenIssuedAt;
         entity.UpdatedAt = DateTime.UtcNow;
 
         try
@@ -190,7 +184,11 @@ public class DatabaseDocVerificationChallengeRepository(PortalDbContext dbContex
             allowIdRetry: entity.AllowIdRetry,
             createdAt: entity.CreatedAt,
             updatedAt: entity.UpdatedAt,
-            expiresAt: entity.ExpiresAt);
+            expiresAt: entity.ExpiresAt,
+            proofingDateOfBirth: entity.ProofingDateOfBirth,
+            proofingIdType: entity.ProofingIdType,
+            proofingIdValue: entity.ProofingIdValue,
+            docvTokenIssuedAt: entity.DocvTokenIssuedAt);
     }
 
     private static DocVerificationChallengeEntity MapToEntity(DocVerificationChallenge challenge)
@@ -210,7 +208,11 @@ public class DatabaseDocVerificationChallengeRepository(PortalDbContext dbContex
             AllowIdRetry = challenge.AllowIdRetry,
             CreatedAt = challenge.CreatedAt,
             UpdatedAt = challenge.UpdatedAt,
-            ExpiresAt = challenge.ExpiresAt
+            ExpiresAt = challenge.ExpiresAt,
+            ProofingDateOfBirth = challenge.ProofingDateOfBirth,
+            ProofingIdType = challenge.ProofingIdType,
+            ProofingIdValue = challenge.ProofingIdValue,
+            DocvTokenIssuedAt = challenge.DocvTokenIssuedAt
         };
     }
 }

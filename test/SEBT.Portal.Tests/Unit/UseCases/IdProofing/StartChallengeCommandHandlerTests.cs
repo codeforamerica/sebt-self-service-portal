@@ -1,7 +1,9 @@
 using Microsoft.Extensions.Logging.Abstractions;
 using NSubstitute;
+using SEBT.Portal.Core.AppSettings;
 using SEBT.Portal.Core.Models.Auth;
 using SEBT.Portal.Core.Models.DocVerification;
+using SEBT.Portal.Core.Models.Household;
 using SEBT.Portal.Core.Repositories;
 using SEBT.Portal.Core.Services;
 using SEBT.Portal.Kernel;
@@ -16,14 +18,16 @@ public class StartChallengeCommandHandlerTests
     private readonly IDocVerificationChallengeRepository challengeRepository =
         Substitute.For<IDocVerificationChallengeRepository>();
     private readonly IUserRepository userRepository = Substitute.For<IUserRepository>();
+    private readonly IHouseholdRepository householdRepository = Substitute.For<IHouseholdRepository>();
     private readonly ISocureClient socureClient = Substitute.For<ISocureClient>();
+    private readonly SocureSettings socureSettings = new() { DocvTransactionTokenTtlMinutes = 20 };
     private readonly IValidator<StartChallengeCommand> validator =
         new DataAnnotationsValidator<StartChallengeCommand>(null!);
     private readonly NullLogger<StartChallengeCommandHandler> logger =
         NullLogger<StartChallengeCommandHandler>.Instance;
 
     private StartChallengeCommandHandler CreateHandler() =>
-        new(challengeRepository, userRepository, socureClient, validator, logger);
+        new(challengeRepository, userRepository, householdRepository, socureClient, socureSettings, validator, logger);
 
     // --- IDOR prevention (Codex test 1) ---
 
@@ -117,6 +121,135 @@ public class StartChallengeCommandHandlerTests
         // Should NOT call Socure again
         await socureClient.DidNotReceive()
             .StartDocvSessionAsync(Arg.Any<int>(), Arg.Any<string>(), Arg.Any<CancellationToken>());
+        await socureClient.DidNotReceive()
+            .RunIdProofingAssessmentAsync(
+                Arg.Any<int>(), Arg.Any<string>(), Arg.Any<string>(),
+                Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<string?>(),
+                Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<Address?>(), Arg.Any<string?>(),
+                Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task Handle_ShouldRefreshDocvToken_WhenPendingAndTokenIsStale()
+    {
+        var handler = CreateHandler();
+        var challenge = DocVerificationChallengeFactory.CreatePendingChallenge(c =>
+        {
+            c.ProofingDateOfBirth = "1990-01-01";
+            c.ProofingIdType = "ssn";
+            c.ProofingIdValue = "999-99-9999";
+            c.DocvTokenIssuedAt = DateTime.UtcNow.AddMinutes(-socureSettings.DocvTransactionTokenTtlMinutes - 1);
+        });
+        var command = new StartChallengeCommand
+        {
+            ChallengeId = challenge.PublicId,
+            UserId = challenge.UserId
+        };
+        var newSession = new SocureDocvSession("new-token", "https://verify.socure.com/#/dv/new-token", "ref-x", "eval-y");
+
+        challengeRepository.GetByPublicIdAsync(command.ChallengeId, command.UserId, Arg.Any<CancellationToken>())
+            .Returns(challenge);
+        userRepository.GetUserByIdAsync(command.UserId, Arg.Any<CancellationToken>())
+            .Returns(new User { Id = command.UserId, Email = "test@example.com" });
+        socureClient.RunIdProofingAssessmentAsync(
+                command.UserId, "test@example.com", "1990-01-01", "ssn", "999-99-9999",
+                Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<Address?>(),
+                Arg.Any<string?>(), Arg.Any<CancellationToken>())
+            .Returns(Result<IdProofingAssessmentResult>.Success(
+                new IdProofingAssessmentResult(
+                    IdProofingOutcome.DocumentVerificationRequired,
+                    AllowIdRetry: true,
+                    DocvSession: newSession)));
+
+        var result = await handler.Handle(command, CancellationToken.None);
+
+        Assert.True(result.IsSuccess);
+        Assert.Equal("new-token", result.Value.DocvTransactionToken);
+        await challengeRepository.Received(1)
+            .UpdateAsync(
+                Arg.Is<DocVerificationChallenge>(c =>
+                    c.DocvTransactionToken == "new-token"
+                    && c.EvalId == "eval-y"),
+                Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task Handle_ShouldReturnConflict_WhenTokenStaleButProofingSnapshotMissing()
+    {
+        var handler = CreateHandler();
+        var challenge = DocVerificationChallengeFactory.CreatePendingChallenge(c =>
+        {
+            c.ProofingDateOfBirth = null;
+            c.ProofingIdType = null;
+            c.ProofingIdValue = null;
+            c.DocvTokenIssuedAt = DateTime.UtcNow.AddMinutes(-socureSettings.DocvTransactionTokenTtlMinutes - 1);
+        });
+        var command = new StartChallengeCommand
+        {
+            ChallengeId = challenge.PublicId,
+            UserId = challenge.UserId
+        };
+
+        challengeRepository.GetByPublicIdAsync(command.ChallengeId, command.UserId, Arg.Any<CancellationToken>())
+            .Returns(challenge);
+
+        var result = await handler.Handle(command, CancellationToken.None);
+
+        Assert.False(result.IsSuccess);
+        var preconditionFailed = Assert.IsType<PreconditionFailedResult<StartChallengeResponse>>(result);
+        Assert.Equal(PreconditionFailedReason.Conflict, preconditionFailed.Reason);
+        await socureClient.DidNotReceive()
+            .RunIdProofingAssessmentAsync(
+                Arg.Any<int>(), Arg.Any<string>(), Arg.Any<string>(),
+                Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<string?>(),
+                Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<Address?>(), Arg.Any<string?>(),
+                Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task Handle_ShouldRefreshDocvToken_WhenCreatedAndStoredTokenIsStale()
+    {
+        var handler = CreateHandler();
+        var challenge = DocVerificationChallengeFactory.CreateChallengeForUser(1, c =>
+        {
+            c.ProofingDateOfBirth = "1990-01-01";
+            c.ProofingIdType = "ssn";
+            c.ProofingIdValue = "999-99-9999";
+            c.DocvTokenIssuedAt = DateTime.UtcNow.AddMinutes(-socureSettings.DocvTransactionTokenTtlMinutes - 1);
+            c.ExpiresAt = DateTime.UtcNow.AddMinutes(30);
+        });
+        var command = new StartChallengeCommand
+        {
+            ChallengeId = challenge.PublicId,
+            UserId = 1
+        };
+        var newSession = new SocureDocvSession("fresh", "https://verify.socure.com/#/dv/fresh", "ref-a", "eval-b");
+
+        challengeRepository.GetByPublicIdAsync(command.ChallengeId, command.UserId, Arg.Any<CancellationToken>())
+            .Returns(challenge);
+        userRepository.GetUserByIdAsync(command.UserId, Arg.Any<CancellationToken>())
+            .Returns(new User { Id = command.UserId, Email = "test@example.com" });
+        socureClient.RunIdProofingAssessmentAsync(
+                Arg.Any<int>(), Arg.Any<string>(), Arg.Any<string>(),
+                Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<string?>(),
+                Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<Address?>(), Arg.Any<string?>(),
+                Arg.Any<CancellationToken>())
+            .Returns(Result<IdProofingAssessmentResult>.Success(
+                new IdProofingAssessmentResult(
+                    IdProofingOutcome.DocumentVerificationRequired,
+                    AllowIdRetry: true,
+                    DocvSession: newSession)));
+
+        var result = await handler.Handle(command, CancellationToken.None);
+
+        Assert.True(result.IsSuccess);
+        Assert.Equal("fresh", result.Value.DocvTransactionToken);
+        await challengeRepository.Received(1)
+            .UpdateAsync(
+                Arg.Is<DocVerificationChallenge>(c =>
+                    c.Status == DocVerificationStatus.Pending
+                    && c.DocvTransactionToken == "fresh"),
+                Arg.Any<CancellationToken>());
     }
 
     // --- Stored DocV data path (single-call design) ---

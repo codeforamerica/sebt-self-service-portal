@@ -72,6 +72,26 @@ public class DocVerificationChallengeEntity
     public DateTime? ExpiresAt { get; set; }
 
     /// <summary>
+    /// Date of birth from ID proofing (yyyy-MM-dd), for refreshing an expired DocV token.
+    /// </summary>
+    public string? ProofingDateOfBirth { get; set; }
+
+    /// <summary>
+    /// ID type from ID proofing (e.g. ssn, itin).
+    /// </summary>
+    public string? ProofingIdType { get; set; }
+
+    /// <summary>
+    /// ID value from ID proofing.
+    /// </summary>
+    public string? ProofingIdValue { get; set; }
+
+    /// <summary>
+    /// When the DocV transaction token was last issued (UTC).
+    /// </summary>
+    public DateTime? DocvTokenIssuedAt { get; set; }
+
+    /// <summary>
     /// Optimistic concurrency token. SQL Server auto-increments this on every UPDATE.
     /// EF Core uses it to detect concurrent modifications.
     /// </summary>

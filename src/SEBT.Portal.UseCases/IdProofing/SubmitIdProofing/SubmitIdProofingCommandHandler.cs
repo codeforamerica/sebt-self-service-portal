@@ -188,7 +188,7 @@ public class SubmitIdProofingCommandHandler(
             case IdProofingOutcome.DocumentVerificationRequired:
                 await userRepository.UpdateUserAsync(user, cancellationToken);
                 return await CreateChallengeAndRespond(
-                    command.UserId, assessment, allowIdRetry, cancellationToken);
+                    command, assessment, allowIdRetry, cancellationToken);
 
             default:
                 throw new InvalidOperationException(
@@ -214,11 +214,12 @@ public class SubmitIdProofingCommandHandler(
     }
 
     private async Task<Result<SubmitIdProofingResponse>> CreateChallengeAndRespond(
-        int userId,
+        SubmitIdProofingCommand command,
         IdProofingAssessmentResult assessment,
         bool allowIdRetry,
         CancellationToken cancellationToken)
     {
+        var userId = command.UserId;
         var challenge = new DocVerificationChallenge
         {
             UserId = userId,
@@ -227,7 +228,11 @@ public class SubmitIdProofingCommandHandler(
             DocvTransactionToken = assessment.DocvSession?.DocvTransactionToken,
             DocvUrl = assessment.DocvSession?.DocvUrl,
             SocureReferenceId = assessment.DocvSession?.ReferenceId,
-            EvalId = assessment.DocvSession?.EvalId
+            EvalId = assessment.DocvSession?.EvalId,
+            ProofingDateOfBirth = command.DateOfBirth,
+            ProofingIdType = command.IdType,
+            ProofingIdValue = command.IdValue,
+            DocvTokenIssuedAt = assessment.DocvSession != null ? DateTime.UtcNow : null
         };
 
         try
