@@ -210,6 +210,15 @@ export const UserProfileSchema = z.object({
 
 export type UserProfile = z.infer<typeof UserProfileSchema>
 
+export const AllowedActionsSchema = z.object({
+  canUpdateAddress: z.boolean(),
+  canRequestReplacementCard: z.boolean(),
+  addressUpdateDeniedMessageKey: z.string().nullable().optional(),
+  cardReplacementDeniedMessageKey: z.string().nullable().optional()
+})
+
+export type AllowedActions = z.infer<typeof AllowedActionsSchema>
+
 export const HouseholdDataSchema = z.object({
   // email is optional to support IAL authorization where user may not have access to PII
   email: z.string().nullable().optional(),
@@ -218,7 +227,8 @@ export const HouseholdDataSchema = z.object({
   applications: z.array(ApplicationSchema),
   addressOnFile: AddressSchema.nullable().optional(),
   userProfile: UserProfileSchema.nullable().optional(),
-  benefitIssuanceType: IssuanceTypeSchema.nullable().optional()
+  benefitIssuanceType: IssuanceTypeSchema.nullable().optional(),
+  allowedActions: AllowedActionsSchema.nullable().optional()
 })
 
 export type HouseholdData = z.infer<typeof HouseholdDataSchema>

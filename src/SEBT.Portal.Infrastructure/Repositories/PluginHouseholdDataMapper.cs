@@ -95,7 +95,8 @@ internal static class PluginHouseholdDataMapper
             IsStreamlineCertified = GetProp<bool>(t, source, "IsStreamlineCertified"),
             CardRequestedAt = GetProp<DateTime?>(t, source, "CardRequestedAt"),
             BenefitAvailableDate = ToDateTimeOrNull(GetProp(t, source, "BenefitAvailableDate")),
-            BenefitExpirationDate = ToDateTimeOrNull(GetProp(t, source, "BenefitExpirationDate"))
+            BenefitExpirationDate = ToDateTimeOrNull(GetProp(t, source, "BenefitExpirationDate")),
+            IssuanceType = (IssuanceType)(GetProp(t, source, nameof(SummerEbtCase.IssuanceType)) ?? (int)IssuanceType.Unknown)
         };
     }
 

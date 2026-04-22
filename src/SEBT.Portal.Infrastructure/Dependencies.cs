@@ -52,7 +52,10 @@ public static class Dependencies
         // Household identifier resolution (state-configurable preferred household ID type)
         services.AddTransient<IHouseholdIdentifierResolver, HouseholdIdentifierResolver>();
 
-        // Smarty address verification (or pass-through when disabled)
+        // Smarty address verification (or pass-through when disabled).
+        // IHttpClientFactory is a singleton, so its configure delegate receives the
+        // root provider — use IOptionsMonitor (singleton) instead of IOptionsSnapshot
+        // (scoped). Monitor still supports live AppConfig reload.
         services.AddHttpClient("Smarty", (sp, client) =>
         {
             // IOptionsMonitor (singleton) instead of IOptionsSnapshot (scoped) — the
@@ -78,6 +81,9 @@ public static class Dependencies
 
         // Address validation — checks blocked addresses and street abbreviations per state config
         services.AddSingleton<IAddressValidationService, AddressValidationService>();
+
+        // Self-service rules evaluator — evaluates per-state config against household data
+        services.AddTransient<ISelfServiceEvaluator, SelfServiceEvaluator>();
         services.AddSingleton<IIdentifierHasher, IdentifierHasher>();
 
         // Expose SocureSettings directly for use case injection (avoids IOptions dependency in UseCases layer).
@@ -249,6 +255,10 @@ public static class Dependencies
         services.AddSingleton<IValidateOptions<SocureSettings>, SocureSettingsValidator>();
         services.AddOptionsWithValidateOnStart<SocureSettings>()
             .BindConfiguration(SocureSettings.SectionName);
+
+        services.AddSingleton<IValidateOptions<SelfServiceRulesSettings>, SelfServiceRulesSettingsValidator>();
+        services.AddOptionsWithValidateOnStart<SelfServiceRulesSettings>()
+            .BindConfiguration(SelfServiceRulesSettings.SectionName);
 
         services.AddSingleton<IValidateOptions<SmartySettings>, SmartySettingsValidator>();
         services.AddOptionsWithValidateOnStart<SmartySettings>()

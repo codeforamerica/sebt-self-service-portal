@@ -17,6 +17,7 @@ public class GetHouseholdDataQueryHandler(
     IHouseholdRepository repository,
     IIdProofingRequirementsService idProofingRequirementsService,
     IMinimumIalService minimumIalService,
+    ISelfServiceEvaluator selfServiceEvaluator,
     ILogger<GetHouseholdDataQueryHandler> logger)
     : IQueryHandler<GetHouseholdDataQuery, HouseholdData>
 {
@@ -71,11 +72,26 @@ public class GetHouseholdDataQueryHandler(
         // Mixed-eligibility households: hide co-loaded cases so the user only sees
         // and manages their non-co-loaded cases. Co-loaded-only households still see
         // their cases (they're all the user has), but per-case flags prevent actions.
+        // MVP intent confirmed by product: mixed households are not visually supported.
         var nonCoLoaded = householdData.SummerEbtCases.Where(c => !c.IsCoLoaded).ToList();
         if (nonCoLoaded.Count > 0)
         {
             householdData.SummerEbtCases = nonCoLoaded;
+            // Realign the household-level issuance type with the filtered view.
+            // Downstream consumers (e.g. the address-info page's co-loaded guard)
+            // key on BenefitIssuanceType; leaving it as the plugin's upstream value
+            // would misroute denials that aren't actually co-loaded.
+            householdData.BenefitIssuanceType = BenefitIssuanceType.SummerEbt;
         }
+
+        foreach (var summerEbtCase in householdData.SummerEbtCases)
+        {
+            summerEbtCase.AllowedActions = selfServiceEvaluator.Evaluate(summerEbtCase);
+        }
+
+        // Household-level rollup for top-level CTAs evaluates only non-co-loaded cases:
+        // co-loaded cases are structurally excluded from self-service regardless of rules.
+        householdData.AllowedActions = selfServiceEvaluator.EvaluateHousehold(nonCoLoaded);
 
         logger.LogDebug("Household data retrieved successfully for identifier type {Type}", identifier.Type);
         return Result<HouseholdData>.Success(householdData);

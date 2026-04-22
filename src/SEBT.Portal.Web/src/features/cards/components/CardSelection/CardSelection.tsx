@@ -20,7 +20,11 @@ function buildCaseGroups(cases: SummerEbtCase[]): CaseGroup[] {
   return cases
     .filter(
       (c): c is SummerEbtCase & { summerEBTCaseID: string } =>
-        c.summerEBTCaseID != null && !isWithinCooldownPeriod(c.cardRequestedAt)
+        c.summerEBTCaseID != null &&
+        c.allowCardReplacement &&
+        !isWithinCooldownPeriod(c.cardRequestedAt) &&
+        c.issuanceType !== 'TanfEbtCard' &&
+        c.issuanceType !== 'SnapEbtCard'
     )
     .map((c) => ({
       caseId: c.summerEBTCaseID,
@@ -30,7 +34,16 @@ function buildCaseGroups(cases: SummerEbtCase[]): CaseGroup[] {
     }))
 }
 
-export function CardSelection() {
+interface CardSelectionProps {
+  /**
+   * Path pushed on submit with `?cases=...` appended. Defaults to the
+   * address-flow sibling route `select/confirm` (relative). Callers outside
+   * that tree should pass an explicit path (absolute or relative).
+   */
+  confirmPath?: string
+}
+
+export function CardSelection({ confirmPath = 'select/confirm' }: CardSelectionProps = {}) {
   const { t } = useTranslation('confirmInfo')
   const { t: tCommon } = useTranslation('common')
   const router = useRouter()
@@ -97,7 +110,8 @@ export function CardSelection() {
     }
 
     const cases = Array.from(selectedCases).join(',')
-    router.push(`select/confirm?cases=${encodeURIComponent(cases)}`)
+    const separator = confirmPath.includes('?') ? '&' : '?'
+    router.push(`${confirmPath}${separator}cases=${encodeURIComponent(cases)}`)
   }
 
   return (
