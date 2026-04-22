@@ -1,5 +1,6 @@
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
+using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using NSubstitute;
 using SEBT.Portal.Core.AppSettings;
@@ -25,7 +26,11 @@ public class JwtTokenServiceTests
         };
         _options.Value.Returns(settings);
         _validityOptions.Value.Returns(new IdProofingValiditySettings { ValidityDays = 1826 });
-        _jwtTokenService = new JwtTokenService(_options, _validityOptions);
+        var translator = new OidcVerificationClaimTranslator(
+            new OidcVerificationClaimSettings(),
+            new IdProofingValiditySettings { ValidityDays = 1826 },
+            NullLogger<OidcVerificationClaimTranslator>.Instance);
+        _jwtTokenService = new JwtTokenService(_options, _validityOptions, translator);
     }
 
     [Fact]
@@ -223,7 +228,11 @@ public class JwtTokenServiceTests
         options.Value.Returns(settings);
         var validityOpts = Substitute.For<IOptions<IdProofingValiditySettings>>();
         validityOpts.Value.Returns(new IdProofingValiditySettings());
-        var service = new JwtTokenService(options, validityOpts);
+        var localTranslator = new OidcVerificationClaimTranslator(
+            new OidcVerificationClaimSettings(),
+            new IdProofingValiditySettings { ValidityDays = 1826 },
+            NullLogger<OidcVerificationClaimTranslator>.Instance);
+        var service = new JwtTokenService(options, validityOpts, localTranslator);
         var user = new User
         {
             Email = "user@example.com",
