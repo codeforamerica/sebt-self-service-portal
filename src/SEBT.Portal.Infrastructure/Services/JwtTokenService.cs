@@ -204,9 +204,7 @@ public class JwtTokenService : ILocalLoginTokenService, IOidcTokenService, ISess
             existingClaims[JwtClaimTypes.IdProofingStatus] = ((int)user.IdProofingStatus).ToString();
         }
 
-        var email = existingClaims.GetValueOrDefault("email")
-            ?? existingClaims.GetValueOrDefault(ClaimTypes.Email)
-            ?? user.Email ?? "";
+        var email = existingClaims.GetValueOrDefault(JwtRegisteredClaimNames.Email) ?? "";
 
         return BuildAndSignToken(user.Id, email, existingClaims);
     }
@@ -216,7 +214,7 @@ public class JwtTokenService : ILocalLoginTokenService, IOidcTokenService, ISess
     // ──────────────────────────────────────────────
 
     /// <summary>
-    /// Mechanical JWT construction from pre-resolved claims. Each public method
+    /// Construction of JWT from pre-resolved claims. Each public method
     /// fully resolves its claims before calling this — no fallback logic here.
     /// </summary>
     internal string BuildAndSignToken(
@@ -266,19 +264,9 @@ public class JwtTokenService : ILocalLoginTokenService, IOidcTokenService, ISess
         };
 
         // Add optional ID proofing claims if present in resolved set
-        if (resolvedClaims.TryGetValue(JwtClaimTypes.IdProofingSessionId, out var sessionId)
-            && !string.IsNullOrWhiteSpace(sessionId))
-        {
-            claims.Add(new Claim(JwtClaimTypes.IdProofingSessionId, sessionId));
-        }
-        if (resolvedClaims.TryGetValue(JwtClaimTypes.IdProofingCompletedAt, out var completedAt))
-        {
-            claims.Add(new Claim(JwtClaimTypes.IdProofingCompletedAt, completedAt, ClaimValueTypes.Integer64));
-        }
-        if (resolvedClaims.TryGetValue(JwtClaimTypes.IdProofingExpiresAt, out var expiresAt))
-        {
-            claims.Add(new Claim(JwtClaimTypes.IdProofingExpiresAt, expiresAt, ClaimValueTypes.Integer64));
-        }
+        TryAddClaim(claims, resolvedClaims, JwtClaimTypes.IdProofingSessionId);
+        TryAddClaim(claims, resolvedClaims, JwtClaimTypes.IdProofingCompletedAt);
+        TryAddClaim(claims, resolvedClaims, JwtClaimTypes.IdProofingExpiresAt);
 
         // Passthrough remaining application claims (phone, givenName, etc.)
         foreach (var (name, value) in resolvedClaims)
@@ -300,5 +288,18 @@ public class JwtTokenService : ILocalLoginTokenService, IOidcTokenService, ISess
             signingCredentials: credentials);
 
         return new JwtSecurityTokenHandler().WriteToken(token);
+    }
+
+    private static bool TryAddClaim(
+        IList<Claim> outgoingClaims,
+        IReadOnlyDictionary<string, string> incomingClaims,
+        string claimType)
+    {
+        if (incomingClaims.TryGetValue(claimType, out var claimValue))
+        {
+            outgoingClaims.Add(new Claim(claimType, claimValue));
+            return true;
+        }
+        return false;
     }
 }

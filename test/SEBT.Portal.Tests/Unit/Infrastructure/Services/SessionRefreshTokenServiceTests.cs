@@ -149,36 +149,7 @@ public class SessionRefreshTokenServiceTests : JwtTokenServiceTestBase
     }
 
     [Fact]
-    public void EmailFallsBackToClaimTypesEmail()
-    {
-        var user = new User { Id = 1, Email = "fallback@example.com" };
-        var principal = MakePrincipal(
-            (JwtClaimTypes.Ial, "1"),
-            (JwtClaimTypes.IdProofingStatus, "0"),
-            (ClaimTypes.Email, "claimtype@example.com"));
-
-        var token = Service.GenerateForSessionRefresh(user, principal);
-
-        var jwt = ReadJwt(token);
-        Assert.Equal("claimtype@example.com", jwt.Claims.First(c => c.Type == ClaimTypes.Email).Value);
-    }
-
-    [Fact]
-    public void EmailFallsBackToUserEmail()
-    {
-        var user = new User { Id = 1, Email = "user-entity@example.com" };
-        var principal = MakePrincipal(
-            (JwtClaimTypes.Ial, "1"),
-            (JwtClaimTypes.IdProofingStatus, "0"));
-
-        var token = Service.GenerateForSessionRefresh(user, principal);
-
-        var jwt = ReadJwt(token);
-        Assert.Equal("user-entity@example.com", jwt.Claims.First(c => c.Type == ClaimTypes.Email).Value);
-    }
-
-    [Fact]
-    public void EmailFallsBackToEmpty_WhenNoEmailAnywhere()
+    public void EmailFallsBackToEmpty_WhenNoEmailClaim()
     {
         var user = new User { Id = 1, Email = null };
         var principal = MakePrincipal(
