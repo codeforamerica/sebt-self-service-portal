@@ -11,7 +11,7 @@ using SEBT.Portal.Core.Models.Auth;
 using SEBT.Portal.Core.Repositories;
 using SEBT.Portal.Core.Services;
 using SEBT.Portal.Core.Utilities;
-using SEBT.Portal.Infrastructure.Services;
+using SEBT.Portal.Kernel;
 
 using static SEBT.Portal.Core.Utilities.PiiMasker;
 
@@ -28,12 +28,11 @@ public class OidcController(
     IConfiguration config,
     ILogger<OidcController> logger,
     IUserRepository userRepository,
-    IJwtTokenService jwtService,
+    IOidcTokenService oidcTokenService,
     IOptions<JwtSettings> jwtSettingsOptions,
     IStateAllowlist stateAllowlist,
     IPreAuthSessionStore sessionStore,
-    IWebHostEnvironment environment,
-    OidcVerificationClaimTranslator verificationClaimTranslator) : ControllerBase
+    IWebHostEnvironment environment) : ControllerBase
 {
     /// <summary>
     /// OIDC config + pre-auth session creation. Generates PKCE server-side, stores
@@ -408,21 +407,11 @@ public class OidcController(
             return BadRequest(new ErrorResponse("Invalid or expired callback token."));
         }
 
-        // Copy non-common IdP claims into the portal JWT (e.g. phone, givenName, familyName, userId, email, sub)
-        var additionalClaims = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
-        foreach (var claim in principal.Claims)
-        {
-            if (!OidcExchangeService.CommonOidcInfrastructureClaims.Contains(claim.Type) && !string.IsNullOrEmpty(claim.Value))
-            {
-                additionalClaims[claim.Type] = claim.Value;
-            }
-        }
-
-        logger.LogInformation("Additional OIDC claim types: {Claims} (SessionId={SessionId})",
-            string.Join(", ", additionalClaims.Select(c => c.Key).ToArray()), sessionId);
-
-        // Extract the phone claim for diagnostic logging (masked).
-        additionalClaims.TryGetValue("phone", out var phoneClaim);
+        // Extract sub + email from principal for user lookup. The service handles
+        // all claim processing (filtering, verification, IAL derivation).
+        var subClaim = principal.FindFirst("sub")?.Value;
+        var email = GetEmailFromClaims(principal);
+        var phoneClaim = principal.FindFirst("phone")?.Value;
         var maskedPhone = MaskPhone(phoneClaim);
 
         if (phoneClaim == null)
@@ -430,8 +419,6 @@ public class OidcController(
             logger.LogWarning("OIDC incoming claims missing 'phone' (SessionId={SessionId})", sessionId);
         }
 
-        var email = GetEmailFromClaims(principal);
-        var subClaim = additionalClaims.GetValueOrDefault("sub");
         if (string.IsNullOrWhiteSpace(email) && string.IsNullOrWhiteSpace(subClaim))
         {
             logger.LogWarning("Callback token had no email or sub claim (SessionId={SessionId})", sessionId);
@@ -448,7 +435,6 @@ public class OidcController(
                 return BadRequest(new ErrorResponse("Callback token must contain a sub claim."));
             }
 
-            // Look up by ExternalProviderId for OIDC step-up
             var existingEntity = await userRepository.GetUserByExternalIdAsync(subClaim, cancellationToken);
             if (existingEntity == null)
             {
@@ -459,30 +445,9 @@ public class OidcController(
             }
 
             user = existingEntity;
-
-            // Step-up IAL comes from the IdP's verification claims — could be 1plus
-            // (IDV) or 2 (doc verification), depending on the step-up client config.
-            // Reject if the IdP returned no verification claims: step-up exists to
-            // obtain verification, so its absence means something is misconfigured.
-            // Silently falling back to a default would risk downgrading the user's IAL.
-            var verification = verificationClaimTranslator.Translate(additionalClaims);
-            if (verification == null)
-            {
-                logger.LogWarning(
-                    "Step-up complete-login: IdP returned no verification claims (SessionId={SessionId})",
-                    sessionId);
-                return BadRequest(new { error = "Step-up verification failed. Please try again." });
-            }
-            ApplyVerificationToClaims(additionalClaims, verification);
-
-            var safeStateKey = SanitizeForLog(stateKey);
-            logger.LogInformation(
-                "OIDC step-up complete-login succeeded: UserId {UserId}, StateCode {StateCode}, IalLevel {IalLevel}, IsExpired {IsExpired}, SessionId={SessionId}",
-                user.Id, safeStateKey, verification.IalLevel, verification.IsExpired, sessionId);
         }
         else
         {
-            // Extract the IdP subject claim — this is the OIDC user's identity anchor.
             if (string.IsNullOrWhiteSpace(subClaim))
             {
                 logger.LogWarning(
@@ -494,41 +459,31 @@ public class OidcController(
             // Pass email from IdP claims as a migration hint: if no user exists for
             // this sub but one exists for this email, adopt that legacy record.
             // TODO: Remove email parameter once all existing users have been migrated.
-            var emailHint = additionalClaims.GetValueOrDefault("email");
+            var emailHint = principal.FindFirst("email")?.Value;
             var (createdUser, _) = await userRepository.GetOrCreateUserByExternalIdAsync(
                 subClaim, emailHint, cancellationToken);
             user = createdUser;
-
-            // Reconcile IAL from OIDC verification claims. The IdP is the source of truth —
-            // we derive IAL from claims and pass it through to the JWT, but do NOT persist
-            // it to the DB. The DB only stores the identity anchor (ExternalProviderId).
-            var verification = verificationClaimTranslator.Translate(additionalClaims);
-            if (verification != null)
-            {
-                ApplyVerificationToClaims(additionalClaims, verification);
-                logger.LogInformation(
-                    "OIDC verification claim reconciled: UserId {UserId}, IalLevel {IalLevel}, IsExpired {IsExpired}, VerifiedAt {VerifiedAt}, SessionId={SessionId}",
-                    user.Id, verification.IalLevel, verification.IsExpired, verification.VerifiedAt, sessionId);
-            }
-            else
-            {
-                // No verification claims from IdP — user is IAL1 (authenticated but not verified)
-                additionalClaims[JwtClaimTypes.Ial] = "1";
-            }
         }
 
-        var token = jwtService.GenerateToken(user, additionalClaims);
-        var expiresAt = DateTimeOffset.UtcNow.AddMinutes(jwtSettingsOptions.Value.ExpirationMinutes);
-        AuthCookies.SetAuthCookie(Response, token, expiresAt);
+        // The service handles claim filtering, verification translation,
+        // IAL derivation, and timestamp computation.
+        var tokenResult = oidcTokenService.GenerateForOidcLogin(user, principal, session.IsStepUp);
 
-        if (!session.IsStepUp)
+        if (!tokenResult.IsSuccess)
         {
-            logger.LogInformation(
-                "OIDC login complete: UserId {UserId}, IalLevel {IalLevel}, Phone={MaskedPhone}, SessionId={SessionId}",
-                user.Id, user.IalLevel, maskedPhone, sessionId);
+            logger.LogWarning(
+                "OIDC token generation failed: {Message} (SessionId={SessionId})",
+                tokenResult.Message, sessionId);
+            return BadRequest(new { error = "Step-up verification failed. Please try again." });
         }
 
-        // returnUrl was sanitized at authorize time and stored in the session.
+        var expiresAt = DateTimeOffset.UtcNow.AddMinutes(jwtSettingsOptions.Value.ExpirationMinutes);
+        AuthCookies.SetAuthCookie(Response, tokenResult.Value, expiresAt);
+
+        logger.LogInformation(
+            "OIDC {FlowType} complete: UserId {UserId}, Phone={MaskedPhone}, SessionId={SessionId}",
+            session.IsStepUp ? "step-up" : "login", user.Id, maskedPhone, sessionId);
+
         var safeReturnUrl = session.IsStepUp ? session.ReturnUrl : null;
         return Ok(new CompleteLoginResponse(ReturnUrl: safeReturnUrl));
     }
@@ -588,42 +543,4 @@ public class OidcController(
         return subClaim?.Value;
     }
 
-    /// <summary>
-    /// Writes IAL, IdProofingStatus, and IdProofingCompletedAt claims into
-    /// <paramref name="additionalClaims"/> from the translated IdP verification result.
-    /// Expired verification resets IAL to 1 — the user must re-verify.
-    /// </summary>
-    private static void ApplyVerificationToClaims(
-        Dictionary<string, string> additionalClaims,
-        OidcVerificationResult verification)
-    {
-        // A user completing OIDC login is always at least IAL1 (authenticated). Expired
-        // verification or an unrecognized level both fall back to "1", never "0".
-        additionalClaims[JwtClaimTypes.Ial] = verification.IsExpired
-            ? "1"
-            : verification.IalLevel switch
-            {
-                UserIalLevel.IAL1plus => "1plus",
-                UserIalLevel.IAL2 => "2",
-                _ => "1"
-            };
-
-        // IdProofingStatus is "Completed" only when verification actually elevated the user
-        // above IAL1. At IAL1 the user is authenticated but has not completed identity
-        // proofing, so status stays at NotStarted. Expired verifications are Expired.
-        additionalClaims[JwtClaimTypes.IdProofingStatus] = (verification.IsExpired, verification.IalLevel) switch
-        {
-            (true, _) => ((int)IdProofingStatus.Expired).ToString(),
-            (_, UserIalLevel.IAL1plus) => ((int)IdProofingStatus.Completed).ToString(),
-            (_, UserIalLevel.IAL2) => ((int)IdProofingStatus.Completed).ToString(),
-            _ => ((int)IdProofingStatus.NotStarted).ToString()
-        };
-
-        if (verification.VerifiedAt != default)
-        {
-            var verifiedAtOffset = new DateTimeOffset(verification.VerifiedAt, TimeSpan.Zero);
-            additionalClaims[JwtClaimTypes.IdProofingCompletedAt] =
-                verifiedAtOffset.ToUnixTimeSeconds().ToString();
-        }
-    }
 }
