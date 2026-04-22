@@ -208,17 +208,21 @@ public static class Dependencies
     {
 
         services.AddOptionsWithValidateOnStart<EmailOtpSenderServiceSettings>()
-            .BindConfiguration(EmailOtpSenderServiceSettings.SectionName);
+            .BindConfiguration(EmailOtpSenderServiceSettings.SectionName)
+            .ValidateDataAnnotations();
         services.AddOptionsWithValidateOnStart<SmtpClientSettings>()
             .BindConfiguration(SmtpClientSettings.SectionName);
         services.AddOptionsWithValidateOnStart<OtpRateLimitSettings>()
-            .BindConfiguration(OtpRateLimitSettings.SectionName);
+            .BindConfiguration(OtpRateLimitSettings.SectionName)
+            .ValidateDataAnnotations();
         services.AddOptionsWithValidateOnStart<JwtSettings>()
-            .BindConfiguration(JwtSettings.SectionName);
+            .BindConfiguration(JwtSettings.SectionName)
+            .ValidateDataAnnotations();
         services.AddOptions<StateHouseholdIdSettings>()
             .BindConfiguration(StateHouseholdIdSettings.SectionName);
         services.AddOptionsWithValidateOnStart<IdentifierHasherSettings>()
-            .BindConfiguration(IdentifierHasherSettings.SectionName);
+            .BindConfiguration(IdentifierHasherSettings.SectionName)
+            .ValidateDataAnnotations();
         services.AddSingleton<IValidateOptions<IdProofingRequirementsSettings>, IdProofingRequirementsSettingsValidator>();
         services.AddOptionsWithValidateOnStart<IdProofingRequirementsSettings>()
             .BindConfiguration(IdProofingRequirementsSettings.SectionName);
@@ -244,17 +248,20 @@ public static class Dependencies
             });
 
         services.AddOptionsWithValidateOnStart<EnrollmentCheckRateLimitSettings>()
-            .BindConfiguration(EnrollmentCheckRateLimitSettings.SectionName);
+            .BindConfiguration(EnrollmentCheckRateLimitSettings.SectionName)
+            .ValidateDataAnnotations();
 
         services.AddOptionsWithValidateOnStart<WebhookRateLimitSettings>()
-            .BindConfiguration(WebhookRateLimitSettings.SectionName);
+            .BindConfiguration(WebhookRateLimitSettings.SectionName)
+            .ValidateDataAnnotations();
 
         services.AddOptions<SeedingSettings>()
             .BindConfiguration(SeedingSettings.SectionName);
 
         services.AddSingleton<IValidateOptions<SocureSettings>, SocureSettingsValidator>();
         services.AddOptionsWithValidateOnStart<SocureSettings>()
-            .BindConfiguration(SocureSettings.SectionName);
+            .BindConfiguration(SocureSettings.SectionName)
+            .ValidateDataAnnotations();
 
         services.AddSingleton<IValidateOptions<SelfServiceRulesSettings>, SelfServiceRulesSettingsValidator>();
         services.AddOptionsWithValidateOnStart<SelfServiceRulesSettings>()
@@ -262,7 +269,8 @@ public static class Dependencies
 
         services.AddSingleton<IValidateOptions<SmartySettings>, SmartySettingsValidator>();
         services.AddOptionsWithValidateOnStart<SmartySettings>()
-            .BindConfiguration(SmartySettings.SectionName);
+            .BindConfiguration(SmartySettings.SectionName)
+            .ValidateDataAnnotations();
         services.AddOptions<AddressValidationPolicySettings>()
             .BindConfiguration(AddressValidationPolicySettings.SectionName);
         services.AddOptions<AddressValidationDataSettings>()
