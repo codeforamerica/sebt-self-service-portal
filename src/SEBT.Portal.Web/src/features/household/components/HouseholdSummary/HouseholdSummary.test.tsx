@@ -180,6 +180,37 @@ describe('HouseholdSummary', () => {
     expect(screen.getByRole('link', { name: 'Change my mailing address' })).toBeInTheDocument()
   })
 
+  it('shows "how we determine" link when co-loaded cases exist and none allow address change', () => {
+    const coLoadedCase: SummerEbtCase = {
+      ...mockCase,
+      allowAddressChange: false,
+      allowCardReplacement: false
+    }
+    mockReturnData = { ...defaultMockData, summerEbtCases: [coLoadedCase] }
+    render(<HouseholdSummary />)
+    const link = screen.getByRole('link', { name: 'How we determine your mailing address' })
+    expect(link).toHaveAttribute('href', '/profile/address/how-determined')
+    expect(link).toHaveAttribute('data-analytics-cta', 'how_address_determined_cta')
+  })
+
+  it('does not show "how we determine" link when a case allows address change', () => {
+    render(<HouseholdSummary />)
+    expect(
+      screen.queryByRole('link', { name: 'How we determine your mailing address' })
+    ).not.toBeInTheDocument()
+  })
+
+  it('shows neither address link when there are no cases', () => {
+    mockReturnData = { ...defaultMockData, summerEbtCases: [] }
+    render(<HouseholdSummary />)
+    expect(
+      screen.queryByRole('link', { name: 'Change my mailing address' })
+    ).not.toBeInTheDocument()
+    expect(
+      screen.queryByRole('link', { name: 'How we determine your mailing address' })
+    ).not.toBeInTheDocument()
+  })
+
   it('renders preferred contact with email', () => {
     render(<HouseholdSummary />)
     expect(screen.getByText('Your preferred contact')).toBeInTheDocument()

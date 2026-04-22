@@ -126,16 +126,26 @@ export function HouseholdSummary() {
               <dt className="text-bold">{t('profileTableHeadingAddress')}</dt>
               <dd className="margin-left-0 margin-bottom-2">
                 <span style={{ whiteSpace: 'pre-line' }}>{formatAddress(data.addressOnFile)}</span>
-                {data.summerEbtCases.some((c) => c.allowAddressChange) && (
+                {data.summerEbtCases.length > 0 && (
                   <>
                     <br />
-                    <Link
-                      href="/profile/address"
-                      data-analytics-cta="update_address_cta"
-                      className="usa-link"
-                    >
-                      {t('profileTableActionChangeAddress')}
-                    </Link>
+                    {data.summerEbtCases.some((c) => c.allowAddressChange) ? (
+                      <Link
+                        href="/profile/address"
+                        data-analytics-cta="update_address_cta"
+                        className="usa-link text-bold"
+                      >
+                        {t('profileTableActionChangeAddress')}
+                      </Link>
+                    ) : (
+                      <Link
+                        href="/profile/address/how-determined"
+                        data-analytics-cta="how_address_determined_cta"
+                        className="usa-link text-bold"
+                      >
+                        {t('profileTableCo-loadedAddress')}
+                      </Link>
+                    )}
                   </>
                 )}
               </dd>
@@ -158,7 +168,7 @@ export function HouseholdSummary() {
                 <Link
                   href="/contact"
                   data-analytics-cta="update_contact_cta"
-                  className="usa-link"
+                  className="usa-link text-bold"
                 >
                   {t('profileTableActionChangeContact')}
                 </Link>
