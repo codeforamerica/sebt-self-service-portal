@@ -332,7 +332,8 @@ public class JwtTokenServiceTests
         {
             Email = "user@example.com",
             IdProofingStatus = IdProofingStatus.Completed,
-            IalLevel = UserIalLevel.IAL1plus
+            IalLevel = UserIalLevel.IAL1plus,
+            IdProofingCompletedAt = DateTime.UtcNow.AddDays(-5)
         };
 
         // Act
@@ -651,7 +652,9 @@ public class JwtTokenServiceTests
         var claims = new Dictionary<string, string>
         {
             ["email"] = "user@example.com",
-            [JwtClaimTypes.IdProofingStatus] = "2" // Completed
+            [JwtClaimTypes.IdProofingStatus] = "2", // Completed
+            [JwtClaimTypes.Ial] = "1plus",
+            [JwtClaimTypes.IdProofingCompletedAt] = DateTimeOffset.UtcNow.ToUnixTimeSeconds().ToString()
         };
 
         // Act
@@ -717,6 +720,89 @@ public class JwtTokenServiceTests
         var jwt = handler.ReadJwtToken(token);
         Assert.Equal(completedAtUnix, jwt.Claims.First(c => c.Type == JwtClaimTypes.IdProofingCompletedAt).Value);
         Assert.Equal(expiresAtUnix, jwt.Claims.First(c => c.Type == JwtClaimTypes.IdProofingExpiresAt).Value);
+    }
+
+    [Fact]
+    public void GenerateToken_WhenAdditionalClaimsHaveCompletedAtButNoExpiresAt_ComputesExpiresAt()
+    {
+        // Arrange: OIDC step-up path — ApplyVerificationToClaims sets CompletedAt but
+        // not ExpiresAt, and the user entity has no IdProofingCompletedAt (OIDC users
+        // don't persist IAL to DB). Without the fix, neither fallback branch fires and
+        // IdProofingExpiresAt is missing from the JWT, causing the frontend IalGuard
+        // to loop the user back into step-up indefinitely.
+        var completedAt = DateTimeOffset.UtcNow.AddDays(-5);
+        var completedAtUnix = completedAt.ToUnixTimeSeconds().ToString();
+        var expectedExpiresAt = completedAt.UtcDateTime.AddDays(1826); // ValidityDays = 1826
+
+        var user = new User
+        {
+            Id = 1,
+            Email = null,
+            IdProofingCompletedAt = null // OIDC users don't persist to DB
+        };
+        var claims = new Dictionary<string, string>
+        {
+            ["email"] = "user@example.com",
+            [JwtClaimTypes.Ial] = "1plus",
+            [JwtClaimTypes.IdProofingStatus] = ((int)IdProofingStatus.Completed).ToString(),
+            [JwtClaimTypes.IdProofingCompletedAt] = completedAtUnix
+            // Note: no IdProofingExpiresAt — this is the bug scenario
+        };
+
+        // Act
+        var token = _jwtTokenService.GenerateToken(user, claims);
+
+        // Assert
+        var handler = new JwtSecurityTokenHandler();
+        var jwt = handler.ReadJwtToken(token);
+        var expiresAtClaim = jwt.Claims.FirstOrDefault(c => c.Type == JwtClaimTypes.IdProofingExpiresAt);
+
+        Assert.NotNull(expiresAtClaim);
+        Assert.True(long.TryParse(expiresAtClaim.Value, out var expiresAtUnix));
+        var claimDateTime = DateTimeOffset.FromUnixTimeSeconds(expiresAtUnix).UtcDateTime;
+        Assert.True(Math.Abs((claimDateTime - expectedExpiresAt).TotalSeconds) < 1);
+    }
+
+    [Fact]
+    public void GenerateToken_WhenIdProofingCompletedButIalIsOne_Throws()
+    {
+        // Arrange: IdProofingStatus=Completed with IAL=1 is an invariant violation.
+        // This combination means "we completed identity proofing but the user is still
+        // at the lowest assurance level" — which should never happen. Minting a JWT
+        // with these contradictory claims would confuse downstream guards.
+        var user = new User { Id = 1, Email = "user@example.com" };
+        var claims = new Dictionary<string, string>
+        {
+            [JwtClaimTypes.IdProofingStatus] = ((int)IdProofingStatus.Completed).ToString(),
+            [JwtClaimTypes.Ial] = "1",
+            [JwtClaimTypes.IdProofingCompletedAt] = DateTimeOffset.UtcNow.ToUnixTimeSeconds().ToString()
+        };
+
+        // Act & Assert
+        Assert.Throws<InvalidOperationException>(() => _jwtTokenService.GenerateToken(user, claims));
+    }
+
+    [Fact]
+    public void GenerateToken_WhenIdProofingCompletedButNoCompletedAt_Throws()
+    {
+        // Arrange: IdProofingStatus=Completed without a CompletedAt timestamp is an
+        // invariant violation. Without the timestamp we can't compute expiration, and
+        // the frontend IalGuard will reject the session (missing idProofingExpiresAt).
+        var user = new User
+        {
+            Id = 1,
+            Email = "user@example.com",
+            IdProofingCompletedAt = null // no DB timestamp either
+        };
+        var claims = new Dictionary<string, string>
+        {
+            [JwtClaimTypes.IdProofingStatus] = ((int)IdProofingStatus.Completed).ToString(),
+            [JwtClaimTypes.Ial] = "1plus"
+            // Note: no IdProofingCompletedAt in claims
+        };
+
+        // Act & Assert
+        Assert.Throws<InvalidOperationException>(() => _jwtTokenService.GenerateToken(user, claims));
     }
 }
 
