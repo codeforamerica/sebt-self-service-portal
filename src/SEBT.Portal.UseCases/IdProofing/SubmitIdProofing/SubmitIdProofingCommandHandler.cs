@@ -117,7 +117,7 @@ public class SubmitIdProofingCommandHandler(
                             "co-loaded SNAP/TANF matched via DC GetHouseholdByGuardian IC+DOB (no Socure)");
                     }
                 }
-                catch (Exception ex)
+                catch (Exception ex) when (ex is not OperationCanceledException)
                 {
                     logger.LogWarning(
                         ex,
@@ -135,7 +135,7 @@ public class SubmitIdProofingCommandHandler(
                     user.IalLevel,
                     cancellationToken);
             }
-            catch (Exception ex)
+            catch (Exception ex) when (ex is not OperationCanceledException)
             {
                 logger.LogWarning(ex,
                     "Household lookup failed for co-loaded benefit ID verification for user {UserId}",

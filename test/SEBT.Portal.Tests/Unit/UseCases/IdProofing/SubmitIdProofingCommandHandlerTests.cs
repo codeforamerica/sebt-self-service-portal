@@ -191,6 +191,39 @@ public class SubmitIdProofingCommandHandlerTests
     }
 
     [Fact]
+    public async Task Handle_ShouldPropagateCancellation_WhenWarehouseIcDobCallIsCancelled()
+    {
+        var handler = CreateHandler();
+        var command = CreateValidCommand(
+            dob: "1984-03-05",
+            idType: "snapAccountId",
+            idValue: "IC000001");
+        var user = new User
+        {
+            Id = command.UserId,
+            Email = "test@example.com",
+            IsCoLoaded = true,
+            IdProofingAttemptCount = 0
+        };
+
+        userRepository.GetUserByIdAsync(command.UserId, Arg.Any<CancellationToken>())
+            .Returns(user);
+        challengeRepository.GetActiveByUserIdAsync(command.UserId, Arg.Any<CancellationToken>())
+            .Returns((DocVerificationChallenge?)null);
+        householdRepository.TryMatchCoLoadedGuardianByBenefitIdAndDobAsync(
+                Arg.Any<string>(), Arg.Any<DateOnly>(), Arg.Any<CancellationToken>())
+            .ThrowsAsync(new OperationCanceledException());
+
+        await Assert.ThrowsAsync<OperationCanceledException>(
+            () => handler.Handle(command, CancellationToken.None));
+
+        await householdRepository.DidNotReceive()
+            .GetHouseholdByEmailAsync(
+                Arg.Any<string>(), Arg.Any<PiiVisibility>(),
+                Arg.Any<UserIalLevel>(), Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
     public async Task Handle_ShouldCompleteProofingWithoutSocure_WhenCoLoadedAndSnapAccountMatchesUserSnapId()
     {
         var handler = CreateHandler();
