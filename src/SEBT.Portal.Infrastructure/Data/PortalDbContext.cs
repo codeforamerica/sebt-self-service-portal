@@ -166,6 +166,16 @@ public class PortalDbContext : DbContext
             entity.Property(e => e.OffboardingReason)
                 .HasMaxLength(255);
 
+            entity.Property(e => e.ProofingDateOfBirth)
+                .HasMaxLength(32);
+            entity.Property(e => e.ProofingIdType)
+                .HasMaxLength(64);
+            entity.Property(e => e.ProofingIdValue)
+                .HasMaxLength(255);
+
+            entity.Property(e => e.DocvTokenIssuedAt)
+                .HasColumnType("datetime2");
+
             entity.Property(e => e.AllowIdRetry)
                 .IsRequired()
                 .HasDefaultValue(true);

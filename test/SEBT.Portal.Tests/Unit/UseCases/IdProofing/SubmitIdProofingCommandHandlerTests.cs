@@ -286,6 +286,82 @@ public class SubmitIdProofingCommandHandlerTests
                 Arg.Any<CancellationToken>());
     }
 
+    // --- ID-proofing snapshot stored on challenge (used to re-mint stale DocV tokens) ---
+
+    [Fact]
+    public async Task Handle_ShouldStoreProofingSnapshotAndTokenIssuedAt_WhenAssessmentIncludesDocvSession()
+    {
+        var handler = CreateHandler();
+        var command = CreateValidCommand(dob: "1985-07-14", idType: "ssn", idValue: "111-22-3333");
+        var docvSession = new SocureDocvSession("token-xyz", "https://verify.socure.com/#/dv/token-xyz", "ref-x", "eval-y");
+
+        userRepository.GetUserByIdAsync(command.UserId, Arg.Any<CancellationToken>())
+            .Returns(new User { Id = command.UserId, Email = "test@example.com" });
+        challengeRepository.GetActiveByUserIdAsync(command.UserId, Arg.Any<CancellationToken>())
+            .Returns((DocVerificationChallenge?)null);
+        socureClient.RunIdProofingAssessmentAsync(
+                command.UserId, "test@example.com", command.DateOfBirth,
+                command.IdType, command.IdValue, Arg.Any<string?>(), Arg.Any<string?>(),
+                Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<Address?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
+            .Returns(Result<IdProofingAssessmentResult>.Success(
+                new IdProofingAssessmentResult(
+                    IdProofingOutcome.DocumentVerificationRequired,
+                    AllowIdRetry: true,
+                    DocvSession: docvSession)));
+
+        var beforeHandle = DateTime.UtcNow;
+        var result = await handler.Handle(command, CancellationToken.None);
+        var afterHandle = DateTime.UtcNow;
+
+        Assert.True(result.IsSuccess);
+
+        await challengeRepository.Received(1)
+            .CreateAsync(Arg.Is<DocVerificationChallenge>(c =>
+                c.ProofingDateOfBirth == "1985-07-14"
+                && c.ProofingIdType == "ssn"
+                && c.ProofingIdValue == "111-22-3333"
+                && c.DocvTokenIssuedAt.HasValue
+                && c.DocvTokenIssuedAt.Value >= beforeHandle
+                && c.DocvTokenIssuedAt.Value <= afterHandle),
+                Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task Handle_ShouldStoreProofingSnapshotWithoutTokenIssuedAt_WhenAssessmentHasNoDocvSession()
+    {
+        var handler = CreateHandler();
+        var command = CreateValidCommand(dob: "1985-07-14", idType: "ssn", idValue: "111-22-3333");
+
+        userRepository.GetUserByIdAsync(command.UserId, Arg.Any<CancellationToken>())
+            .Returns(new User { Id = command.UserId, Email = "test@example.com" });
+        challengeRepository.GetActiveByUserIdAsync(command.UserId, Arg.Any<CancellationToken>())
+            .Returns((DocVerificationChallenge?)null);
+        // DocumentVerificationRequired without a DocvSession — StartChallenge's Socure-fallback
+        // path will mint the token later. The challenge still needs the proofing snapshot so that
+        // a future stale-token refresh has the inputs it needs.
+        socureClient.RunIdProofingAssessmentAsync(
+                command.UserId, "test@example.com", command.DateOfBirth,
+                command.IdType, command.IdValue, Arg.Any<string?>(), Arg.Any<string?>(),
+                Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<Address?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
+            .Returns(Result<IdProofingAssessmentResult>.Success(
+                new IdProofingAssessmentResult(
+                    IdProofingOutcome.DocumentVerificationRequired,
+                    AllowIdRetry: true,
+                    DocvSession: null)));
+
+        var result = await handler.Handle(command, CancellationToken.None);
+
+        Assert.True(result.IsSuccess);
+
+        await challengeRepository.Received(1)
+            .CreateAsync(Arg.Is<DocVerificationChallenge>(c =>
+                c.ProofingDateOfBirth == "1985-07-14"
+                && c.ProofingIdType == "ssn"
+                && c.ProofingIdValue == "111-22-3333"
+                && c.DocvTokenIssuedAt == null),
+                Arg.Any<CancellationToken>());
+    }
+
     // --- Socure client failure ---
 
     [Fact]
