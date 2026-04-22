@@ -3,6 +3,7 @@ using System.Security.Claims;
 using System.Text;
 using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
+using Microsoft.Extensions.Logging;
 using SEBT.Portal.Core.AppSettings;
 using SEBT.Portal.Core.Models.Auth;
 using SEBT.Portal.Core.Services;
@@ -20,6 +21,7 @@ public class JwtTokenService : ILocalLoginTokenService, IOidcTokenService, ISess
     private readonly JwtSettings _settings;
     private readonly IdProofingValiditySettings _validitySettings;
     private readonly OidcVerificationClaimTranslator _verificationClaimTranslator;
+    private readonly ILogger<JwtTokenService> _logger;
 
     /// <summary>
     /// Standard OIDC/JWT infrastructure claim names excluded when copying IdP claims.
@@ -59,11 +61,13 @@ public class JwtTokenService : ILocalLoginTokenService, IOidcTokenService, ISess
     public JwtTokenService(
         IOptions<JwtSettings> settings,
         IOptions<IdProofingValiditySettings> validitySettings,
-        OidcVerificationClaimTranslator verificationClaimTranslator)
+        OidcVerificationClaimTranslator verificationClaimTranslator,
+        ILogger<JwtTokenService> logger)
     {
         _settings = settings.Value;
         _validitySettings = validitySettings.Value;
         _verificationClaimTranslator = verificationClaimTranslator;
+        _logger = logger;
     }
 
     // ──────────────────────────────────────────────
@@ -73,6 +77,19 @@ public class JwtTokenService : ILocalLoginTokenService, IOidcTokenService, ISess
     /// <inheritdoc />
     public string GenerateForLocalLogin(User user)
     {
+        // Stale data guard: a user with Completed status but IAL ≤ 1 has inconsistent
+        // DB state (likely from before the IAL migration). Treat as NotStarted so they
+        // can re-verify rather than being blocked from login entirely.
+        var effectiveStatus = user.IdProofingStatus;
+        if (effectiveStatus == IdProofingStatus.Completed && user.IalLevel < UserIalLevel.IAL1plus)
+        {
+            _logger.LogError(
+                "Inconsistent user state: IdProofingStatus=Completed but IalLevel={IalLevel} for UserId {UserId}. " +
+                "Downgrading to NotStarted for JWT. This user's DB record needs correction.",
+                user.IalLevel, user.Id);
+            effectiveStatus = IdProofingStatus.NotStarted;
+        }
+
         var resolved = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
         {
             [JwtClaimTypes.Ial] = user.IalLevel switch
@@ -81,7 +98,7 @@ public class JwtTokenService : ILocalLoginTokenService, IOidcTokenService, ISess
                 UserIalLevel.IAL2 => "2",
                 _ => "1"
             },
-            [JwtClaimTypes.IdProofingStatus] = ((int)user.IdProofingStatus).ToString()
+            [JwtClaimTypes.IdProofingStatus] = ((int)effectiveStatus).ToString()
         };
 
         if (!string.IsNullOrWhiteSpace(user.IdProofingSessionId))
