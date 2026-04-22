@@ -249,21 +249,21 @@ public class OidcController(
         var sessionId = OidcSessionCookie.Read(Request);
         if (string.IsNullOrEmpty(sessionId))
         {
-            logger.LogWarning("OIDC Callback rejected: missing oidc_session cookie (reason=missing_session)");
+            logger.LogError("OIDC Callback rejected: missing oidc_session cookie (reason=missing_session)");
             return StatusCode(StatusCodes.Status403Forbidden, new ErrorResponse("Missing pre-auth session."));
         }
 
         var session = await sessionStore.GetAsync(sessionId, cancellationToken);
         if (session == null)
         {
-            logger.LogWarning("OIDC Callback rejected: session {SessionId} not found or expired (reason=missing_session)", sessionId);
+            logger.LogError("OIDC Callback rejected: session {SessionId} not found or expired (reason=missing_session)", sessionId);
             return StatusCode(StatusCodes.Status403Forbidden, new ErrorResponse("Pre-auth session expired or invalid."));
         }
 
         // --- Validate state matches stored value (CSRF protection) ---
         if (string.IsNullOrEmpty(body.State) || body.State != session.State)
         {
-            logger.LogWarning(
+            logger.LogError(
                 "OIDC Callback rejected: state mismatch (reason=mismatched_state, SessionId={SessionId})", sessionId);
             return BadRequest(new ErrorResponse("State parameter mismatch."));
         }
@@ -271,7 +271,7 @@ public class OidcController(
         // --- Verify the session hasn't already been used (fail fast before the exchange) ---
         if (session.Phase != PreAuthSessionPhase.Created)
         {
-            logger.LogWarning(
+            logger.LogError(
                 "OIDC Callback rejected: session already used, Phase={Phase} (reason=replay, SessionId={SessionId})",
                 session.Phase, sessionId);
             return BadRequest(new ErrorResponse("Pre-auth session has already been used."));
@@ -289,7 +289,7 @@ public class OidcController(
 
         if (!result.Success)
         {
-            logger.LogWarning(
+            logger.LogError(
                 "OIDC Callback exchange failed: {Error} (reason=exchange_failed, SessionId={SessionId})",
                 result.Error, sessionId);
             return StatusCode(result.StatusCode, new ErrorResponse(result.Error ?? "Exchange failed."));
@@ -300,7 +300,7 @@ public class OidcController(
         var advanced = await sessionStore.TryAdvanceToCallbackCompletedAsync(sessionId, tokenHash, cancellationToken);
         if (!advanced)
         {
-            logger.LogWarning(
+            logger.LogError(
                 "OIDC Callback rejected: session could not advance (reason=replay, SessionId={SessionId})", sessionId);
             return BadRequest(new ErrorResponse("Pre-auth session has already been used."));
         }
@@ -341,7 +341,7 @@ public class OidcController(
         var sessionId = OidcSessionCookie.Read(Request);
         if (string.IsNullOrEmpty(sessionId))
         {
-            logger.LogWarning("OIDC CompleteLogin rejected: missing oidc_session cookie (reason=missing_session)");
+            logger.LogError("OIDC CompleteLogin rejected: missing oidc_session cookie (reason=missing_session)");
             return StatusCode(StatusCodes.Status403Forbidden, new ErrorResponse("Missing pre-auth session."));
         }
 
@@ -349,7 +349,7 @@ public class OidcController(
         var session = await sessionStore.GetAsync(sessionId, cancellationToken);
         if (session == null)
         {
-            logger.LogWarning("OIDC CompleteLogin rejected: session not found (reason=missing_session, SessionId={SessionId})", sessionId);
+            logger.LogError("OIDC CompleteLogin rejected: session not found (reason=missing_session, SessionId={SessionId})", sessionId);
             return StatusCode(StatusCodes.Status403Forbidden, new ErrorResponse("Pre-auth session invalid, expired, or already used."));
         }
 
@@ -358,7 +358,7 @@ public class OidcController(
         var advanced = await sessionStore.TryAdvanceToLoginCompletedAsync(sessionId, tokenHash, cancellationToken);
         if (!advanced)
         {
-            logger.LogWarning(
+            logger.LogError(
                 "OIDC CompleteLogin rejected: session advance failed (reason=replay, SessionId={SessionId})", sessionId);
             return StatusCode(StatusCodes.Status403Forbidden, new ErrorResponse("Pre-auth session invalid, expired, or already used."));
         }
@@ -372,7 +372,7 @@ public class OidcController(
         var signingKey = config["Oidc:CompleteLoginSigningKey"];
         if (string.IsNullOrEmpty(signingKey))
         {
-            logger.LogWarning("Oidc:CompleteLoginSigningKey is not configured (SessionId={SessionId}).", sessionId);
+            logger.LogError("Oidc:CompleteLoginSigningKey is not configured (SessionId={SessionId}).", sessionId);
             var hint = environment.IsDevelopment() ? "Set Oidc:CompleteLoginSigningKey in appsettings." : "";
             return StatusCode(StatusCodes.Status503ServiceUnavailable, new { error = "Complete-login not configured.", hint });
         }
@@ -402,7 +402,7 @@ public class OidcController(
         }
         catch (Exception ex)
         {
-            logger.LogWarning(ex, "Invalid or expired callback token for state {StateCode} (SessionId={SessionId})",
+            logger.LogError(ex, "Invalid or expired callback token for state {StateCode} (SessionId={SessionId})",
                 SanitizeForLog(session.StateCode), sessionId);
             return BadRequest(new ErrorResponse("Invalid or expired callback token."));
         }
@@ -416,12 +416,12 @@ public class OidcController(
 
         if (phoneClaim == null)
         {
-            logger.LogWarning("OIDC incoming claims missing 'phone' (SessionId={SessionId})", sessionId);
+            logger.LogError("OIDC incoming claims missing 'phone' (SessionId={SessionId})", sessionId);
         }
 
         if (string.IsNullOrWhiteSpace(email) && string.IsNullOrWhiteSpace(subClaim))
         {
-            logger.LogWarning("Callback token had no email or sub claim (SessionId={SessionId})", sessionId);
+            logger.LogError("Callback token had no email or sub claim (SessionId={SessionId})", sessionId);
             return BadRequest(new ErrorResponse("Callback token must contain an email or sub claim."));
         }
 
@@ -431,14 +431,14 @@ public class OidcController(
         {
             if (string.IsNullOrWhiteSpace(subClaim))
             {
-                logger.LogWarning("Step-up complete-login: missing sub claim (SessionId={SessionId})", sessionId);
+                logger.LogError("Step-up complete-login: missing sub claim (SessionId={SessionId})", sessionId);
                 return BadRequest(new ErrorResponse("Callback token must contain a sub claim."));
             }
 
             var existingEntity = await userRepository.GetUserByExternalIdAsync(subClaim, cancellationToken);
             if (existingEntity == null)
             {
-                logger.LogWarning(
+                logger.LogError(
                     "Step-up complete-login: no existing portal user for sub claim; sign-in required first (SessionId={SessionId}).",
                     sessionId);
                 return BadRequest(new { error = "Step-up requires an existing session. Please sign in again." });
@@ -450,7 +450,7 @@ public class OidcController(
         {
             if (string.IsNullOrWhiteSpace(subClaim))
             {
-                logger.LogWarning(
+                logger.LogError(
                     "OIDC CompleteLogin: callback token missing sub claim (SessionId={SessionId})",
                     sessionId);
                 return BadRequest(new ErrorResponse("Callback token must contain a sub claim."));
@@ -471,7 +471,7 @@ public class OidcController(
 
         if (!tokenResult.IsSuccess)
         {
-            logger.LogWarning(
+            logger.LogError(
                 "OIDC token generation failed: {Message} (SessionId={SessionId})",
                 tokenResult.Message, sessionId);
             return BadRequest(new { error = "Step-up verification failed. Please try again." });
