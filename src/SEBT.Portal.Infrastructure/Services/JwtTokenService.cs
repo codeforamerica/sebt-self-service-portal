@@ -63,6 +63,28 @@ public class JwtTokenService : IJwtTokenService
         var idProofingStatusValue = additionalClaims?.GetValueOrDefault(JwtClaimTypes.IdProofingStatus)
             ?? ((int)user.IdProofingStatus).ToString();
 
+        // Invariant: Completed ID proofing must have IAL > 1 and a completion timestamp.
+        // Minting a JWT that says "proofing completed" with IAL1 or no timestamp would
+        // leave the frontend IalGuard in an unresolvable state.
+        if (idProofingStatusValue == ((int)IdProofingStatus.Completed).ToString())
+        {
+            if (ialValue == "1")
+            {
+                throw new InvalidOperationException(
+                    "Cannot mint JWT with IdProofingStatus=Completed and IAL=1. " +
+                    "Completed identity proofing must elevate IAL above 1.");
+            }
+
+            var hasCompletedAt = additionalClaims?.ContainsKey(JwtClaimTypes.IdProofingCompletedAt) == true
+                || user.IdProofingCompletedAt.HasValue;
+            if (!hasCompletedAt)
+            {
+                throw new InvalidOperationException(
+                    "Cannot mint JWT with IdProofingStatus=Completed without a completion timestamp. " +
+                    "IdProofingCompletedAt is required to compute expiration.");
+            }
+        }
+
         var claims = new List<Claim>
         {
             new Claim(ClaimTypes.Email, email),
@@ -104,6 +126,15 @@ public class JwtTokenService : IJwtTokenService
         if (expiresAtStr != null)
         {
             claims.Add(new Claim(JwtClaimTypes.IdProofingExpiresAt, expiresAtStr, ClaimValueTypes.Integer64));
+        }
+        else if (completedAtStr != null && long.TryParse(completedAtStr, out var completedAtUnix))
+        {
+            var completedAt = DateTimeOffset.FromUnixTimeSeconds(completedAtUnix).UtcDateTime;
+            var expiresAt = completedAt.AddDays(_validitySettings.ValidityDays);
+            var expiresAtOffset = new DateTimeOffset(expiresAt, TimeSpan.Zero);
+            claims.Add(new Claim(JwtClaimTypes.IdProofingExpiresAt,
+                expiresAtOffset.ToUnixTimeSeconds().ToString(),
+                ClaimValueTypes.Integer64));
         }
         else if (user.IdProofingCompletedAt.HasValue)
         {

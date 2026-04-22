@@ -76,6 +76,27 @@ public class DocVerificationChallenge
     public DateTime? ExpiresAt { get; set; }
 
     /// <summary>
+    /// Date of birth (yyyy-MM-dd) from the ID-proofing submission that created this challenge.
+    /// Used to re-run Socure evaluation when the DocV transaction token expires.
+    /// </summary>
+    public string? ProofingDateOfBirth { get; set; }
+
+    /// <summary>
+    /// Government ID type from the ID-proofing submission (e.g. ssn, itin).
+    /// </summary>
+    public string? ProofingIdType { get; set; }
+
+    /// <summary>
+    /// Government ID value from the ID-proofing submission.
+    /// </summary>
+    public string? ProofingIdValue { get; set; }
+
+    /// <summary>
+    /// When <see cref="DocvTransactionToken"/> was last issued or refreshed (UTC).
+    /// </summary>
+    public DateTime? DocvTokenIssuedAt { get; set; }
+
+    /// <summary>
     /// Whether this challenge is in a terminal state (Verified, Rejected, or Expired).
     /// Terminal challenges cannot be modified.
     /// </summary>
@@ -102,6 +123,18 @@ public class DocVerificationChallenge
 
         Status = newStatus;
         UpdatedAt = DateTime.UtcNow;
+
+        // Scrub id-proofing PII once the challenge reaches a terminal state. These fields
+        // exist only to re-issue a Socure DocV token while the challenge is still active;
+        // once Verified/Rejected/Expired they serve no further purpose and should not sit
+        // at rest. Keep DocvTokenIssuedAt — it is a timestamp, not PII, and is useful for
+        // auditing how long the last-issued token lived before the terminal transition.
+        if (IsTerminal)
+        {
+            ProofingDateOfBirth = null;
+            ProofingIdType = null;
+            ProofingIdValue = null;
+        }
     }
 
     private bool IsValidTransition(DocVerificationStatus newStatus) =>
@@ -135,7 +168,11 @@ public class DocVerificationChallenge
         bool allowIdRetry,
         DateTime createdAt,
         DateTime updatedAt,
-        DateTime? expiresAt)
+        DateTime? expiresAt,
+        string? proofingDateOfBirth = null,
+        string? proofingIdType = null,
+        string? proofingIdValue = null,
+        DateTime? docvTokenIssuedAt = null)
     {
         var challenge = new DocVerificationChallenge
         {
@@ -151,7 +188,11 @@ public class DocVerificationChallenge
             AllowIdRetry = allowIdRetry,
             CreatedAt = createdAt,
             UpdatedAt = updatedAt,
-            ExpiresAt = expiresAt
+            ExpiresAt = expiresAt,
+            ProofingDateOfBirth = proofingDateOfBirth,
+            ProofingIdType = proofingIdType,
+            ProofingIdValue = proofingIdValue,
+            DocvTokenIssuedAt = docvTokenIssuedAt
         };
 
         // Set status directly — bypasses TransitionTo because this is reconstitution,
