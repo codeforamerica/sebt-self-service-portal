@@ -263,9 +263,9 @@ public class StartChallengeCommandHandler(
         }
         catch (Exception ex)
         {
-            logger.LogWarning(ex,
-                "Household lookup failed for user {UserId} during DocV token refresh, proceeding without name/address/phone from CMS",
-                challenge.UserId);
+            logger.LogWarning(
+                "Household lookup failed ({ExceptionType}) for user {UserId} during DocV token refresh, proceeding without name/address/phone from CMS",
+                ex.GetType().FullName, challenge.UserId);
         }
 
         var phoneNumber = !string.IsNullOrWhiteSpace(socureSettings.SandboxPhoneOverride)
