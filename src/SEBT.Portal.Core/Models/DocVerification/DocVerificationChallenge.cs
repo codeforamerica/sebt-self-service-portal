@@ -123,6 +123,18 @@ public class DocVerificationChallenge
 
         Status = newStatus;
         UpdatedAt = DateTime.UtcNow;
+
+        // Scrub id-proofing PII once the challenge reaches a terminal state. These fields
+        // exist only to re-issue a Socure DocV token while the challenge is still active;
+        // once Verified/Rejected/Expired they serve no further purpose and should not sit
+        // at rest. Keep DocvTokenIssuedAt — it is a timestamp, not PII, and is useful for
+        // auditing how long the last-issued token lived before the terminal transition.
+        if (IsTerminal)
+        {
+            ProofingDateOfBirth = null;
+            ProofingIdType = null;
+            ProofingIdValue = null;
+        }
     }
 
     private bool IsValidTransition(DocVerificationStatus newStatus) =>
