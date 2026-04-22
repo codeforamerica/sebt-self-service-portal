@@ -25,7 +25,10 @@ public static class Dependencies
         services.AddTransient<ISmtpClientService, SmtpClientService>();
 
         // JWT Services
-        services.AddTransient<IJwtTokenService, JwtTokenService>();
+        services.AddTransient<JwtTokenService>();
+        services.AddTransient<ILocalLoginTokenService>(sp => sp.GetRequiredService<JwtTokenService>());
+        services.AddTransient<IOidcTokenService>(sp => sp.GetRequiredService<JwtTokenService>());
+        services.AddTransient<ISessionRefreshTokenService>(sp => sp.GetRequiredService<JwtTokenService>());
 
         // OIDC verification claim translation (maps IdP claims like socureIdVerificationLevel to portal IAL)
         services.AddTransient<OidcVerificationClaimTranslator>(sp =>

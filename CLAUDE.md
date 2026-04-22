@@ -76,7 +76,9 @@ We follow a test-driven development (TDD) approach: write tests first to fail, t
 
 - **Backend**: xUnit for test framework, NSubstitute for mocking, Bogus for test data generation (see [docs/adr/0007-bogus-factory-pattern-for-test-data.md](./docs/adr/0007-bogus-factory-pattern-for-test-data.md)). Integration tests use Testcontainers with real MSSQL instances.
 - **Frontend**: Vitest with React Testing Library for unit tests, Playwright for E2E tests.
+- **Pre-commit hook**: The backend pre-commit hook runs `dotnet build` and `dotnet test`. Non-compiling code cannot be committed. For TDD red-phase work, either combine test + implementation in one commit (commit at green), or use `--no-verify` for intermediate commits with a full-hook run before pushing.
 - New functionality must include tests. Prefer writing the test before the implementation.
+- **Backend test namespace convention**: .NET test namespaces should mirror the implementation namespace. For example, tests for `SEBT.Portal.Infrastructure.Services.JwtTokenService` belong in `SEBT.Portal.Tests.Unit.Infrastructure.Services` (file path: `test/SEBT.Portal.Tests/Unit/Infrastructure/Services/`). Some older tests live in a flat `Unit/Services/` directory — don't follow that pattern. Align incrementally when writing new tests or refactoring existing ones.
 
 ## Dependency Management
 - Manage all .NET dependencies with NuGet

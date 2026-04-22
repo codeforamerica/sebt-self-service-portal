@@ -27,7 +27,7 @@ namespace SEBT.Portal.UseCases.Auth
     public class ValidateOtpCommandHandler(
         IOtpRepository otpRepository,
         IUserRepository userRepository,
-        IJwtTokenService jwtTokenService,
+        ILocalLoginTokenService jwtTokenService,
         IValidator<ValidateOtpCommand> validator,
         ILogger<ValidateOtpCommandHandler> logger)
         : ICommandHandler<ValidateOtpCommand, string>
@@ -77,7 +77,7 @@ namespace SEBT.Portal.UseCases.Auth
                     await userRepository.UpdateUserAsync(user, cancellationToken);
                 }
 
-                var token = jwtTokenService.GenerateToken(user);
+                var token = jwtTokenService.GenerateForLocalLogin(user);
 
                 // Delete OTP after successful validation
                 if (!command.BypassOtp)
