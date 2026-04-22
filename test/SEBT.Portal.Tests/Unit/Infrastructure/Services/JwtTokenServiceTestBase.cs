@@ -42,7 +42,8 @@ public abstract class JwtTokenServiceTestBase
             new IdProofingValiditySettings { ValidityDays = TestValidityDays },
             NullLogger<OidcVerificationClaimTranslator>.Instance);
 
-        Service = new JwtTokenService(jwtOptions, validityOptions, translator);
+        Service = new JwtTokenService(jwtOptions, validityOptions, translator,
+            NullLogger<JwtTokenService>.Instance);
     }
 
     protected static ClaimsPrincipal MakePrincipal(params (string type, string value)[] claims)

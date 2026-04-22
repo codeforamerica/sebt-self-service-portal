@@ -178,11 +178,11 @@ public class DatabaseSeeder : Core.Services.IDatabaseSeeder
                     {
                         user = UserFactory.CreateUserWithEmail(normalizedEmail, u =>
                         {
-                            u.IdProofingStatus = scenario.IalLevel is UserIalLevel.IAL1 or UserIalLevel.IAL1plus or UserIalLevel.IAL2
+                            u.IdProofingStatus = scenario.IalLevel is UserIalLevel.IAL1plus or UserIalLevel.IAL2
                                 ? IdProofingStatus.Completed
                                 : IdProofingStatus.NotStarted;
                             u.IalLevel = scenario.IalLevel;
-                            if (scenario.IalLevel is UserIalLevel.IAL1 or UserIalLevel.IAL1plus or UserIalLevel.IAL2)
+                            if (scenario.IalLevel is UserIalLevel.IAL1plus or UserIalLevel.IAL2)
                             {
                                 u.IdProofingCompletedAt = now.AddDays(DaysSinceIdProofingCompleted);
                             }
@@ -318,11 +318,11 @@ public class DatabaseSeeder : Core.Services.IDatabaseSeeder
                     {
                         user = UserFactory.CreateUserWithEmail(normalizedEmail, u =>
                         {
-                            u.IdProofingStatus = scenario.IalLevel is UserIalLevel.IAL1 or UserIalLevel.IAL1plus or UserIalLevel.IAL2
+                            u.IdProofingStatus = scenario.IalLevel is UserIalLevel.IAL1plus or UserIalLevel.IAL2
                                 ? IdProofingStatus.Completed
                                 : IdProofingStatus.NotStarted;
                             u.IalLevel = scenario.IalLevel;
-                            if (scenario.IalLevel is UserIalLevel.IAL1 or UserIalLevel.IAL1plus or UserIalLevel.IAL2)
+                            if (scenario.IalLevel is UserIalLevel.IAL1plus or UserIalLevel.IAL2)
                             {
                                 u.IdProofingCompletedAt = now.AddDays(DaysSinceIdProofingCompleted);
                             }

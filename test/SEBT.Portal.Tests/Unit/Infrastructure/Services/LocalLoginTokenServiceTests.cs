@@ -73,6 +73,29 @@ public class LocalLoginTokenServiceTests : JwtTokenServiceTestBase
     }
 
     [Fact]
+    public void StaleData_CompletedWithLowIal_TreatsAsNotStarted()
+    {
+        // A user with Completed status but IAL ≤ 1 has inconsistent DB state.
+        // GenerateForLocalLogin should downgrade to NotStarted rather than throwing.
+        var user = new User
+        {
+            Id = 1,
+            Email = "user@example.com",
+            IdProofingStatus = IdProofingStatus.Completed,
+            IalLevel = UserIalLevel.IAL1,
+            IdProofingCompletedAt = DateTime.UtcNow.AddDays(-5)
+        };
+
+        var token = Service.GenerateForLocalLogin(user);
+
+        var jwt = ReadJwt(token);
+        Assert.Equal("1", jwt.Claims.First(c => c.Type == JwtClaimTypes.Ial).Value);
+        Assert.Equal(
+            ((int)IdProofingStatus.NotStarted).ToString(),
+            jwt.Claims.First(c => c.Type == JwtClaimTypes.IdProofingStatus).Value);
+    }
+
+    [Fact]
     public void IdProofingStatusComesFromUser()
     {
         var user = new User
