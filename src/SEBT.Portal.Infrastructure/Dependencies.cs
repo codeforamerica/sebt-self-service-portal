@@ -55,6 +55,9 @@ public static class Dependencies
         // (scoped). Monitor still supports live AppConfig reload.
         services.AddHttpClient("Smarty", (sp, client) =>
         {
+            // IOptionsMonitor (singleton) instead of IOptionsSnapshot (scoped) — the
+            // AddHttpClient delegate receives the root IServiceProvider, so scoped
+            // services cannot be resolved here.
             var smarty = sp.GetRequiredService<IOptionsMonitor<SmartySettings>>().CurrentValue;
             var baseUrl = string.IsNullOrWhiteSpace(smarty.BaseUrl)
                 ? "https://us-street.api.smartystreets.com"

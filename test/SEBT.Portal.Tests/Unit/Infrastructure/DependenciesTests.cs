@@ -35,42 +35,39 @@ public class DependenciesTests
     }
 
     [Fact]
-    public void SmartyHttpClient_CanBeCreated_WithValidateScopesEnabled()
+    public void CreateSmartyHttpClient_CanBeCreatedFromScope_WhenSmartyEnabled()
     {
-        // Arrange: match the Development-mode DI setup (ValidateScopes=true) so the
-        // HttpClient factory's configure delegate runs in the singleton root provider,
-        // which cannot resolve scoped services like IOptionsSnapshot<T>.
+        // Arrange — build a real DI container with Smarty enabled and scope
+        // validation on, mimicking how ASP.NET Core validates service lifetimes.
         var services = new ServiceCollection();
-        services.AddLogging();
-        services.AddOptions<SmartySettings>().Configure(s =>
-        {
-            s.Enabled = true;
-            s.AuthId = "test-id";
-            s.AuthToken = "test-token";
-        });
-        services.AddOptions<AddressValidationPolicySettings>();
-
-        var configuration = new ConfigurationBuilder()
+        var config = new ConfigurationBuilder()
             .AddInMemoryCollection(new Dictionary<string, string?>
             {
-                ["Socure:Enabled"] = "false"
+                ["Smarty:Enabled"] = "true",
+                ["Smarty:AuthId"] = "test-id",
+                ["Smarty:AuthToken"] = "test-token",
+                ["Smarty:BaseUrl"] = "https://us-street.api.smartystreets.com",
             })
             .Build();
-        services.AddSingleton<IConfiguration>(configuration);
-        services.AddPortalInfrastructureServices(configuration);
 
-        using var provider = services.BuildServiceProvider(
-            new ServiceProviderOptions { ValidateScopes = true });
+        services.AddSingleton<IConfiguration>(config);
+        services.AddLogging();
+        services.AddPortalInfrastructureAppSettings(config);
+        services.AddPortalInfrastructureServices(config);
 
-        // Act: resolving from a scope mirrors the request-path behavior; creating the
-        // "Smarty" client triggers the registered configure delegate.
+        var provider = services.BuildServiceProvider(new ServiceProviderOptions
+        {
+            ValidateScopes = true
+        });
+
+        // Act — creating the named HttpClient triggers the configuration delegate
+        // which must resolve options from the root provider.
         using var scope = provider.CreateScope();
         var factory = scope.ServiceProvider.GetRequiredService<IHttpClientFactory>();
-
-        // Assert: before the fix, this throws InvalidOperationException about
-        // resolving IOptionsSnapshot<SmartySettings> from the root provider.
         var client = factory.CreateClient("Smarty");
+
+        // Assert
         Assert.NotNull(client);
-        Assert.NotNull(client.BaseAddress);
+        Assert.Equal(new Uri("https://us-street.api.smartystreets.com/"), client.BaseAddress);
     }
 }
