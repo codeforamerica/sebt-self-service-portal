@@ -32,7 +32,8 @@ public class JwtSecretKeyValidationTests
             new IdProofingValiditySettings { ValidityDays = 1826 },
             NullLogger<OidcVerificationClaimTranslator>.Instance);
 
-        return new JwtTokenService(jwtOptions, validityOptions, translator);
+        return new JwtTokenService(jwtOptions, validityOptions, translator,
+            NullLogger<JwtTokenService>.Instance);
     }
 
     [Fact]
