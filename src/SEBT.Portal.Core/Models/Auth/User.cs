@@ -8,7 +8,7 @@ public class User
     /// <summary>
     /// The unique identifier for the user (database primary key).
     /// </summary>
-    public int Id { get; init; }
+    public Guid Id { get; init; } = Guid.CreateVersion7();
 
     /// <summary>
     /// The user's email address, used as a unique identifier.

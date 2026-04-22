@@ -22,7 +22,7 @@ public class DatabaseDocVerificationChallengeRepositoryTests : IClassFixture<Sql
     /// <summary>
     /// Creates a user and a challenge entity in the database, returning the user's Id.
     /// </summary>
-    private async Task<int> SeedChallengeAsync(
+    private async Task<Guid> SeedChallengeAsync(
         PortalDbContext context,
         int status,
         DateTime? expiresAt)

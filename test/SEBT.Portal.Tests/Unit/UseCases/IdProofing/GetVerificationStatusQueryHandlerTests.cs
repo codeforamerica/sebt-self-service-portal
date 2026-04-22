@@ -27,7 +27,7 @@ public class GetVerificationStatusQueryHandlerTests
         var query = new GetVerificationStatusQuery
         {
             ChallengeId = Guid.NewGuid(),
-            UserId = 1
+            UserId = Guid.NewGuid()
         };
 
         challengeRepository.GetByPublicIdAsync(query.ChallengeId, query.UserId, Arg.Any<CancellationToken>())

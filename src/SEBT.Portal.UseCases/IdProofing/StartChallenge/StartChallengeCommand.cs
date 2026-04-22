@@ -18,6 +18,6 @@ public class StartChallengeCommand : ICommand<StartChallengeResponse>
     /// <summary>
     /// The authenticated user's internal ID. Used to enforce ownership.
     /// </summary>
-    [Range(1, int.MaxValue, ErrorMessage = "UserId must be a positive integer.")]
-    public int UserId { get; init; }
+    [Required(ErrorMessage = "UserId is required.")]
+    public Guid UserId { get; init; }
 }

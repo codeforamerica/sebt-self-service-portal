@@ -23,7 +23,7 @@ public class BuildAndSignTokenTests : JwtTokenServiceTestBase
         };
 
         var ex = Assert.Throws<InvalidOperationException>(
-            () => Service.BuildAndSignToken(1, "user@example.com", claims));
+            () => Service.BuildAndSignToken(Guid.NewGuid(), "user@example.com", claims));
 
         Assert.Contains("IAL=1", ex.Message);
     }
@@ -38,7 +38,7 @@ public class BuildAndSignTokenTests : JwtTokenServiceTestBase
         };
 
         var ex = Assert.Throws<InvalidOperationException>(
-            () => Service.BuildAndSignToken(1, "user@example.com", claims));
+            () => Service.BuildAndSignToken(Guid.NewGuid(), "user@example.com", claims));
 
         Assert.Contains("completion timestamp", ex.Message);
     }
@@ -54,11 +54,12 @@ public class BuildAndSignTokenTests : JwtTokenServiceTestBase
             [JwtClaimTypes.IdProofingExpiresAt] = "1857676800"
         };
 
-        var token = Service.BuildAndSignToken(1, "user@example.com", claims);
+        var userId = Guid.NewGuid();
+        var token = Service.BuildAndSignToken(userId, "user@example.com", claims);
 
         var jwt = ReadJwt(token);
         Assert.Equal("1plus", jwt.Claims.First(c => c.Type == JwtClaimTypes.Ial).Value);
-        Assert.Equal("1", jwt.Claims.First(c => c.Type == JwtRegisteredClaimNames.Sub).Value);
+        Assert.Equal(userId.ToString(), jwt.Claims.First(c => c.Type == JwtRegisteredClaimNames.Sub).Value);
     }
 
     [Fact]
@@ -66,7 +67,7 @@ public class BuildAndSignTokenTests : JwtTokenServiceTestBase
     {
         var claims = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
 
-        var token = Service.BuildAndSignToken(1, "user@example.com", claims);
+        var token = Service.BuildAndSignToken(Guid.NewGuid(), "user@example.com", claims);
 
         var jwt = ReadJwt(token);
         Assert.Equal("1", jwt.Claims.First(c => c.Type == JwtClaimTypes.Ial).Value);
@@ -87,10 +88,11 @@ public class BuildAndSignTokenTests : JwtTokenServiceTestBase
             ["email"] = "should-be-ignored"
         };
 
-        var token = Service.BuildAndSignToken(42, "actual@example.com", claims);
+        var userId = Guid.NewGuid();
+        var token = Service.BuildAndSignToken(userId, "actual@example.com", claims);
 
         var jwt = ReadJwt(token);
-        Assert.Equal("42", jwt.Claims.First(c => c.Type == JwtRegisteredClaimNames.Sub).Value);
+        Assert.Equal(userId.ToString(), jwt.Claims.First(c => c.Type == JwtRegisteredClaimNames.Sub).Value);
         Assert.Equal("+13035551234", jwt.Claims.First(c => c.Type == "phone").Value);
         // email in the JWT should be the explicit parameter, not the passthrough claim
         Assert.Equal("actual@example.com",

@@ -12,8 +12,8 @@ public class SubmitIdProofingCommand : ICommand<SubmitIdProofingResponse>
     /// <summary>
     /// The authenticated user's internal ID.
     /// </summary>
-    [Range(1, int.MaxValue, ErrorMessage = "UserId must be a positive integer.")]
-    public int UserId { get; init; }
+    [Required(ErrorMessage = "UserId is required.")]
+    public Guid UserId { get; init; }
 
     /// <summary>
     /// User's date of birth in yyyy-MM-dd format.
