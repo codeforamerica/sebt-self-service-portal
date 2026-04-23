@@ -3,6 +3,7 @@ using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using SEBT.Portal.Infrastructure.Data;
 
@@ -11,9 +12,11 @@ using SEBT.Portal.Infrastructure.Data;
 namespace SEBT.Portal.Infrastructure.Migrations
 {
     [DbContext(typeof(PortalDbContext))]
-    partial class PortalDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260415165707_AddDateOfBirthToUsers")]
+    partial class AddDateOfBirthToUsers
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -56,8 +59,11 @@ namespace SEBT.Portal.Infrastructure.Migrations
 
             modelBuilder.Entity("SEBT.Portal.Infrastructure.Data.Entities.DocVerificationChallengeEntity", b =>
                 {
-                    b.Property<Guid>("Id")
-                        .HasColumnType("uniqueidentifier");
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
 
                     b.Property<bool>("AllowIdRetry")
                         .ValueGeneratedOnAdd()
@@ -68,9 +74,6 @@ namespace SEBT.Portal.Infrastructure.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("datetime2")
                         .HasDefaultValueSql("GETUTCDATE()");
-
-                    b.Property<DateTime?>("DocvTokenIssuedAt")
-                        .HasColumnType("datetime2");
 
                     b.Property<string>("DocvTransactionToken")
                         .HasMaxLength(255)
@@ -88,18 +91,6 @@ namespace SEBT.Portal.Infrastructure.Migrations
                         .HasColumnType("datetime2");
 
                     b.Property<string>("OffboardingReason")
-                        .HasMaxLength(255)
-                        .HasColumnType("nvarchar(255)");
-
-                    b.Property<string>("ProofingDateOfBirth")
-                        .HasMaxLength(32)
-                        .HasColumnType("nvarchar(32)");
-
-                    b.Property<string>("ProofingIdType")
-                        .HasMaxLength(64)
-                        .HasColumnType("nvarchar(64)");
-
-                    b.Property<string>("ProofingIdValue")
                         .HasMaxLength(255)
                         .HasColumnType("nvarchar(255)");
 
@@ -129,8 +120,8 @@ namespace SEBT.Portal.Infrastructure.Migrations
                         .HasColumnType("datetime2")
                         .HasDefaultValueSql("GETUTCDATE()");
 
-                    b.Property<Guid>("UserId")
-                        .HasColumnType("uniqueidentifier");
+                    b.Property<int>("UserId")
+                        .HasColumnType("int");
 
                     b.HasKey("Id");
 
@@ -173,8 +164,11 @@ namespace SEBT.Portal.Infrastructure.Migrations
 
             modelBuilder.Entity("SEBT.Portal.Infrastructure.Data.Entities.UserEntity", b =>
                 {
-                    b.Property<Guid>("Id")
-                        .HasColumnType("uniqueidentifier");
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
 
                     b.Property<DateTime?>("CoLoadedLastUpdated")
                         .HasColumnType("datetime2");
@@ -188,10 +182,7 @@ namespace SEBT.Portal.Infrastructure.Migrations
                         .HasColumnType("date");
 
                     b.Property<string>("Email")
-                        .HasMaxLength(255)
-                        .HasColumnType("nvarchar(255)");
-
-                    b.Property<string>("ExternalProviderId")
+                        .IsRequired()
                         .HasMaxLength(255)
                         .HasColumnType("nvarchar(255)");
 
@@ -201,9 +192,7 @@ namespace SEBT.Portal.Infrastructure.Migrations
                         .HasDefaultValue(0);
 
                     b.Property<int>("IdProofingAttemptCount")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int")
-                        .HasDefaultValue(0);
+                        .HasColumnType("int");
 
                     b.Property<DateTime?>("IdProofingCompletedAt")
                         .HasColumnType("datetime2");
@@ -250,13 +239,7 @@ namespace SEBT.Portal.Infrastructure.Migrations
 
                     b.HasIndex("Email")
                         .IsUnique()
-                        .HasDatabaseName("IX_Users_Email")
-                        .HasFilter("[Email] IS NOT NULL");
-
-                    b.HasIndex("ExternalProviderId")
-                        .IsUnique()
-                        .HasDatabaseName("IX_Users_ExternalProviderId")
-                        .HasFilter("[ExternalProviderId] IS NOT NULL");
+                        .HasDatabaseName("IX_Users_Email");
 
                     b.HasIndex("IdProofingSessionId")
                         .HasDatabaseName("IX_Users_IdProofingSessionId");
@@ -266,8 +249,11 @@ namespace SEBT.Portal.Infrastructure.Migrations
 
             modelBuilder.Entity("SEBT.Portal.Infrastructure.Data.Entities.UserOptInEntity", b =>
                 {
-                    b.Property<Guid>("Id")
-                        .HasColumnType("uniqueidentifier");
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
 
                     b.Property<DateTime>("CreatedAt")
                         .ValueGeneratedOnAdd()

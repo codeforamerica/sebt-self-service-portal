@@ -46,6 +46,7 @@ public class PortalDbContext : DbContext
         {
             entity.ToTable("UserOptIns");
             entity.HasKey(e => e.Id);
+            entity.Property(e => e.Id).ValueGeneratedNever();
             entity.HasIndex(e => e.Email).IsUnique();
             entity.Property(e => e.Email).IsRequired().HasMaxLength(255);
             entity.Property(e => e.EmailOptIn)
@@ -68,9 +69,7 @@ public class PortalDbContext : DbContext
         {
             entity.ToTable("Users");
             entity.HasKey(e => e.Id);
-            entity.Property(e => e.Id)
-                .ValueGeneratedOnAdd()
-                .UseIdentityColumn();
+            entity.Property(e => e.Id).ValueGeneratedNever();
             entity.Property(e => e.Email)
                 .HasMaxLength(255);
             entity.HasIndex(e => e.Email)
@@ -114,15 +113,23 @@ public class PortalDbContext : DbContext
                 .IsUnique()
                 .HasDatabaseName("IX_Users_ExternalProviderId")
                 .HasFilter("[ExternalProviderId] IS NOT NULL");
+
+            // The DF_Users_IdProofingAttemptCount default constraint has existed in the DB
+            // since migration 20260409181556_AddIdProofingAttemptCountToUsers created the
+            // column with defaultValue: 0. That prior migration never added the matching
+            // .HasDefaultValue(0) here, so EF's model snapshot has drifted from the actual
+            // schema. Declaring it here re-aligns the snapshot with the DB reality and
+            // ensures future migrations won't generate spurious "remove default" deltas.
+            entity.Property(e => e.IdProofingAttemptCount)
+                .IsRequired()
+                .HasDefaultValue(0);
         });
 
         modelBuilder.Entity<DocVerificationChallengeEntity>(entity =>
         {
             entity.ToTable("DocVerificationChallenges");
             entity.HasKey(e => e.Id);
-            entity.Property(e => e.Id)
-                .ValueGeneratedOnAdd()
-                .UseIdentityColumn();
+            entity.Property(e => e.Id).ValueGeneratedNever();
 
             // Opaque public ID for API consumers
             entity.Property(e => e.PublicId)

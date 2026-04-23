@@ -692,6 +692,31 @@ public class DatabaseSeederTests : IClassFixture<SqlServerTestFixture>
     }
 
     [Fact]
+    public async Task SeedTestUsersAsync_WithMockHouseholdData_AndStateDc_ShouldSeedCoLoadedPendingIdProofingUser()
+    {
+        using var context = CreateContext();
+        await CleanupDatabaseAsync(context);
+        var settings = new SeedingSettings { EmailPattern = "{0}@example.com", State = "dc" };
+        var seeder = CreateSeeder(context, settings);
+
+        await seeder.SeedTestUsersAsync(useMockHouseholdData: true);
+
+        var users = await context.Users.ToListAsync();
+        Assert.Equal(SeedScenarios.UserScenarios.Count, users.Count);
+        var pending = await context.Users
+            .SingleOrDefaultAsync(u => u.Email == "co-loaded-pending-id-proofing@example.com");
+        Assert.NotNull(pending);
+        Assert.True(pending!.IsCoLoaded);
+        Assert.Equal((int)IdProofingStatus.NotStarted, pending.IdProofingStatus);
+        Assert.Equal((int)UserIalLevel.None, pending.IalLevel);
+        Assert.Null(pending.IdProofingCompletedAt);
+        Assert.Null(pending.IdProofingExpiresAt);
+        Assert.Equal("8185558438", pending.Phone);
+        Assert.Equal("SNAP-CO-001", pending.SnapId);
+        Assert.Equal("TANF-CO-001", pending.TanfId);
+    }
+
+    [Fact]
     public async Task ClearSeededDataAsync_WithCustomEmailPattern_ShouldDeleteConfiguredEmails()
     {
         // Arrange

@@ -135,6 +135,34 @@ public class MockHouseholdRepositoryTests
     }
 
     [Fact]
+    public async Task GetHouseholdByEmailAsync_WhenDcCoLoadedPendingIdProofing_UsesDistinctPhoneAndCoLoadedCases()
+    {
+        var repo = CreateRepository("{0}@example.com", state: "dc");
+        const string email = "co-loaded-pending-id-proofing@example.com";
+
+        var result = await repo.GetHouseholdByEmailAsync(email, FullPiiVisibility, UserIalLevel.None);
+
+        Assert.NotNull(result);
+        Assert.Equal(email, result!.Email);
+        Assert.Equal("8185558438", result.Phone);
+        Assert.NotNull(result.SummerEbtCases);
+        var snapCase = Assert.Single(result.SummerEbtCases.Where(c => c.EbtCaseNumber == "SNAP-CO-001"));
+        Assert.True(snapCase.IsCoLoaded);
+    }
+
+    [Fact]
+    public async Task GetHouseholdByIdentifierAsync_WhenPhone8185558438_AndDc_ReturnsCoLoadedPendingHousehold()
+    {
+        var repo = CreateRepository("{0}@example.com", state: "dc");
+        var identifier = HouseholdIdentifier.Phone("8185558438");
+
+        var result = await repo.GetHouseholdByIdentifierAsync(identifier, FullPiiVisibility, UserIalLevel.None);
+
+        Assert.NotNull(result);
+        Assert.Equal("co-loaded-pending-id-proofing@example.com", result!.Email);
+    }
+
+    [Fact]
     public async Task GetHouseholdByEmailAsync_WhenHouseholdDoesNotExist_ReturnsNull()
     {
         // Arrange

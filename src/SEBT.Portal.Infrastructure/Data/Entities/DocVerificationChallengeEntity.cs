@@ -11,7 +11,7 @@ public class DocVerificationChallengeEntity
     /// <summary>
     /// Database primary key. Not exposed in API responses.
     /// </summary>
-    public int Id { get; set; }
+    public Guid Id { get; set; } = Guid.CreateVersion7();
 
     /// <summary>
     /// Opaque identifier exposed to API consumers. Prevents IDOR enumeration.
@@ -21,7 +21,7 @@ public class DocVerificationChallengeEntity
     /// <summary>
     /// Foreign key to the owning user.
     /// </summary>
-    public int UserId { get; set; }
+    public Guid UserId { get; set; }
 
     /// <summary>
     /// Current lifecycle state (0=Created, 1=Pending, 2=Verified, 3=Rejected, 4=Expired).
