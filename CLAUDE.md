@@ -103,6 +103,14 @@ We follow a test-driven development (TDD) approach: write tests first to fail, t
 - When an authenticated user lacks sufficient authorization for a specific resource (e.g., insufficient IAL for their household's cases), return a 403 with structured ProblemDetails — not a 200 with filtered/empty data. The client needs to know *why* access was denied and *what to do about it* (e.g., `requiredIal` in the ProblemDetails extensions).
 - Auth claims in JWTs can go stale (e.g., household composition changes after login). Server-side checks that re-evaluate on every request are safer than trusting a token's claims about what the user is allowed to see.
 
+### PII at rest
+- Never store PII (household identifiers, case IDs, SSNs) in cleartext in the portal database when the data is only needed for lookups (e.g., cooldown checks, deduplication). Use `IIdentifierHasher` (HMAC-SHA256 with `IdentifierHasher:SecretKey`) to produce deterministic hashes for storage and lookup.
+- Hashing is one-way — if there's any uncertainty about whether original cleartext values may need to be retrieved later, stop and ask a human. Encryption or another reversible approach may be more appropriate.
+
+### State connector data boundaries
+- State connectors provide read-only household data by default. The portal should not assume connectors support write-back except for well-known write operations: mailing address updates, card replacement requests (yes/no), and contact/communications preferences.
+- When the portal needs to enforce business rules (e.g., cooldown periods) based on user actions, persist that state in the portal database rather than relying on state connector round-trips.
+
 ## Common Commands
 
 ### Development
