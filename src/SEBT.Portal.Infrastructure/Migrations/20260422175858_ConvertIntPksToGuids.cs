@@ -37,6 +37,7 @@ namespace SEBT.Portal.Infrastructure.Migrations
                     SnapId = table.Column<string>(type: "nvarchar(64)", maxLength: 64, nullable: true),
                     TanfId = table.Column<string>(type: "nvarchar(64)", maxLength: 64, nullable: true),
                     Ssn = table.Column<string>(type: "nvarchar(64)", maxLength: 64, nullable: true),
+                    DateOfBirth = table.Column<DateOnly>(type: "date", nullable: true),
                     IdProofingAttemptCount = table.Column<int>(type: "int", nullable: false, defaultValue: 0),
                     CreatedAt = table.Column<DateTime>(type: "datetime2", nullable: false, defaultValueSql: "GETUTCDATE()"),
                     UpdatedAt = table.Column<DateTime>(type: "datetime2", nullable: false, defaultValueSql: "GETUTCDATE()")
