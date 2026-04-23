@@ -33,6 +33,12 @@ const ISSUANCE_TYPE_MAP: Record<number, string> = {
   3: 'SnapEbtCard'
 }
 
+const CO_LOADED_COHORT_MAP: Record<number, string> = {
+  0: 'NonCoLoaded',
+  1: 'CoLoadedOnly',
+  2: 'MixedOrApplicantExcluded'
+}
+
 // Preprocess to convert integer enum values from backend to string enum values
 // Unknown numeric values are mapped to 'Unknown' to handle future backend additions gracefully
 export const IssuanceTypeSchema = z.preprocess(
@@ -54,6 +60,36 @@ export const ApplicationStatusSchema = z.preprocess(
 )
 
 export type ApplicationStatus = z.infer<typeof ApplicationStatusSchema>
+
+/**
+ * Classification of a household relative to co-loaded benefits. Derived on the
+ * backend and shipped on HouseholdData to drive the analytics dimension.
+ */
+export const CoLoadedCohortSchema = z.preprocess(
+  (val) =>
+    typeof val === 'number'
+      ? (CO_LOADED_COHORT_MAP[val as keyof typeof CO_LOADED_COHORT_MAP] ?? 'NonCoLoaded')
+      : val,
+  z.enum(['NonCoLoaded', 'CoLoadedOnly', 'MixedOrApplicantExcluded'])
+)
+
+export type CoLoadedCohort = z.infer<typeof CoLoadedCohortSchema>
+
+/**
+ * Maps the cohort enum to the standardized snake_case property value used
+ * across analytics events. Kept out of the schema so analytics naming can
+ * evolve independently of the API contract.
+ */
+export function toAnalyticsCohort(cohort: CoLoadedCohort): string {
+  switch (cohort) {
+    case 'NonCoLoaded':
+      return 'non_co_loaded'
+    case 'CoLoadedOnly':
+      return 'co_loaded_only'
+    case 'MixedOrApplicantExcluded':
+      return 'mixed_or_applicant_excluded'
+  }
+}
 
 const CARD_STATUS_STRING_MAP: Record<string, string> = Object.fromEntries(
   Object.values(CARD_STATUS_MAP).map((v) => [v.toUpperCase(), v])
@@ -228,7 +264,11 @@ export const HouseholdDataSchema = z.object({
   addressOnFile: AddressSchema.nullable().optional(),
   userProfile: UserProfileSchema.nullable().optional(),
   benefitIssuanceType: IssuanceTypeSchema.nullable().optional(),
-  allowedActions: AllowedActionsSchema.nullable().optional()
+  allowedActions: AllowedActionsSchema.nullable().optional(),
+  // Defaults to NonCoLoaded for backward compatibility with older/cached payloads
+  // that may not carry the field yet; that's the safest assumption because it
+  // means the excluded-cohort analytics dimension is not falsely asserted.
+  coLoadedCohort: CoLoadedCohortSchema.optional().default('NonCoLoaded')
 })
 
 export type HouseholdData = z.infer<typeof HouseholdDataSchema>

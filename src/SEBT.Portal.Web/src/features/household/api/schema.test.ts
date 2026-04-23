@@ -3,9 +3,11 @@ import { describe, expect, it } from 'vitest'
 import {
   ApplicationStatusSchema,
   CardStatusSchema,
+  CoLoadedCohortSchema,
   formatUsPhone,
   interpolateDate,
-  IssuanceTypeSchema
+  IssuanceTypeSchema,
+  toAnalyticsCohort
 } from './schema'
 
 /**
@@ -61,6 +63,36 @@ describe('IssuanceTypeSchema', () => {
     [3, 'SnapEbtCard']
   ])('maps integer %i to "%s"', (input, expected) => {
     expect(IssuanceTypeSchema.parse(input)).toBe(expected)
+  })
+})
+
+describe('CoLoadedCohortSchema', () => {
+  // Must stay aligned with SEBT.Portal.Core.Models.Household.CoLoadedCohort:
+  //   NonCoLoaded=0, CoLoadedOnly=1, MixedOrApplicantExcluded=2
+  it.each([
+    [0, 'NonCoLoaded'],
+    [1, 'CoLoadedOnly'],
+    [2, 'MixedOrApplicantExcluded']
+  ])('maps integer %i to "%s"', (input, expected) => {
+    expect(CoLoadedCohortSchema.parse(input)).toBe(expected)
+  })
+
+  it('passes through string values unchanged', () => {
+    expect(CoLoadedCohortSchema.parse('MixedOrApplicantExcluded')).toBe('MixedOrApplicantExcluded')
+  })
+
+  it('defaults unrecognized integers to NonCoLoaded (safest analytics assumption)', () => {
+    expect(CoLoadedCohortSchema.parse(99)).toBe('NonCoLoaded')
+  })
+})
+
+describe('toAnalyticsCohort', () => {
+  it.each([
+    ['NonCoLoaded', 'non_co_loaded'],
+    ['CoLoadedOnly', 'co_loaded_only'],
+    ['MixedOrApplicantExcluded', 'mixed_or_applicant_excluded']
+  ] as const)('maps %s to standardized analytics value %s', (input, expected) => {
+    expect(toAnalyticsCohort(input)).toBe(expected)
   })
 })
 

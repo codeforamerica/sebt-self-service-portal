@@ -1,7 +1,7 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { render, screen, waitFor } from '@testing-library/react'
 import { http, HttpResponse } from 'msw'
-import { describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { TEST_HOUSEHOLD_DATA } from '@/mocks/handlers'
 import { server } from '@/mocks/server'
@@ -23,6 +23,33 @@ vi.mock('@/features/auth', () => ({
     logout: vi.fn()
   })
 }))
+
+const setPageDataSpy = vi.fn()
+const setUserDataSpy = vi.fn()
+const trackEventSpy = vi.fn()
+
+vi.mock('@sebt/analytics', async () => {
+  const actual = await vi.importActual<typeof import('@sebt/analytics')>('@sebt/analytics')
+  return {
+    ...actual,
+    useDataLayer: () => ({
+      setPageData: setPageDataSpy,
+      setUserData: setUserDataSpy,
+      trackEvent: trackEventSpy,
+      setPageCategory: vi.fn(),
+      setPageAttribute: vi.fn(),
+      setUserProfile: vi.fn(),
+      pageLoad: vi.fn(),
+      get: vi.fn()
+    })
+  }
+})
+
+beforeEach(() => {
+  setPageDataSpy.mockClear()
+  setUserDataSpy.mockClear()
+  trackEventSpy.mockClear()
+})
 
 function createTestQueryClient() {
   return new QueryClient({
@@ -130,6 +157,81 @@ describe('DashboardContent', () => {
     // 404 triggers error state since useQuery treats it as error via ApiError
     await waitFor(() => {
       expect(screen.getByRole('alert')).toBeInTheDocument()
+    })
+  })
+
+  describe('co-loaded cohort analytics', () => {
+    // Each test ships the backend's coLoadedCohort value and asserts the
+    // standardized snake_case analytics property. The payload shape matches
+    // a post-filter response — the frontend never sees co-loaded cases for
+    // the excluded cohort, so these fixtures reflect that intentionally.
+    function respondWith(overrides: Record<string, unknown>) {
+      server.use(
+        http.get('/api/household/data', () => {
+          return HttpResponse.json({ ...TEST_HOUSEHOLD_DATA, ...overrides })
+        })
+      )
+    }
+
+    it('emits co_loaded_cohort=non_co_loaded for households with no co-loaded cases', async () => {
+      respondWith({ coLoadedCohort: 'NonCoLoaded' })
+
+      renderWithProviders(<DashboardContent />)
+
+      await waitFor(() => {
+        expect(setUserDataSpy).toHaveBeenCalledWith('co_loaded_cohort', 'non_co_loaded', [
+          'default',
+          'analytics'
+        ])
+      })
+    })
+
+    it('emits co_loaded_cohort=co_loaded_only for co-loaded-only households', async () => {
+      respondWith({ coLoadedCohort: 'CoLoadedOnly' })
+
+      renderWithProviders(<DashboardContent />)
+
+      await waitFor(() => {
+        expect(setUserDataSpy).toHaveBeenCalledWith('co_loaded_cohort', 'co_loaded_only', [
+          'default',
+          'analytics'
+        ])
+      })
+    })
+
+    it('emits co_loaded_cohort=mixed_or_applicant_excluded for the excluded cohort', async () => {
+      // Payload reflects the post-filter view: the excluded cohort's co-loaded
+      // cases are suppressed upstream, so only non-co-loaded cases remain.
+      respondWith({ coLoadedCohort: 'MixedOrApplicantExcluded' })
+
+      renderWithProviders(<DashboardContent />)
+
+      await waitFor(() => {
+        expect(setUserDataSpy).toHaveBeenCalledWith(
+          'co_loaded_cohort',
+          'mixed_or_applicant_excluded',
+          ['default', 'analytics']
+        )
+      })
+    })
+
+    it('does not emit a cohort property when the API returns an error', async () => {
+      server.use(
+        http.get('/api/household/data', () => {
+          return HttpResponse.json({ error: 'Unauthorized' }, { status: 401 })
+        })
+      )
+
+      renderWithProviders(<DashboardContent />)
+
+      await waitFor(() => {
+        expect(setPageDataSpy).toHaveBeenCalledWith('household_status', 'error')
+      })
+      expect(setUserDataSpy).not.toHaveBeenCalledWith(
+        'co_loaded_cohort',
+        expect.anything(),
+        expect.anything()
+      )
     })
   })
 })

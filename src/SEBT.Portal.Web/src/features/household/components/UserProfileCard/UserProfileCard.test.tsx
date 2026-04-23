@@ -47,7 +47,8 @@ const defaultMockData: HouseholdData = {
     firstName: 'Maria',
     middleName: 'L',
     lastName: 'Martinez'
-  }
+  },
+  coLoadedCohort: 'NonCoLoaded'
 }
 
 let mockReturnData: HouseholdData

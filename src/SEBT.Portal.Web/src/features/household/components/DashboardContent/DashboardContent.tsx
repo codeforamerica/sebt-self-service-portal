@@ -7,6 +7,7 @@ import { useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 
 import { useHouseholdData } from '../../api'
+import { toAnalyticsCohort } from '../../api/schema'
 import { ActionButtons } from '../ActionButtons'
 import { ApplicationsSection } from '../ApplicationsSection'
 import { DashboardAlerts } from '../DashboardAlerts'
@@ -31,6 +32,10 @@ export function DashboardContent() {
       setPageData('household_status', 'success')
       const childCount = data.summerEbtCases.length
       setUserData('household_linked_children', childCount, ['default', 'analytics'])
+      setUserData('co_loaded_cohort', toAnalyticsCohort(data.coLoadedCohort), [
+        'default',
+        'analytics'
+      ])
     }
     trackEvent(AnalyticsEvents.HOUSEHOLD_RESULT)
   }, [isLoading, isError, data, setPageData, setUserData, trackEvent])
