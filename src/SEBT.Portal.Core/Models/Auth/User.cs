@@ -22,6 +22,11 @@ public class User
     public string? ExternalProviderId { get; set; }
 
     /// <summary>
+    /// The user's date of birth (calendar date), when collected for household matching or verification.
+    /// </summary>
+    public DateOnly? DateOfBirth { get; set; }
+
+    /// <summary>
     /// Workflow state of the ID proofing process (NotStarted, InProgress, Completed, Failed, Expired).
     /// </summary>
     public IdProofingStatus IdProofingStatus { get; set; } = IdProofingStatus.NotStarted;

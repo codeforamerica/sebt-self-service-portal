@@ -89,6 +89,7 @@ public class DatabaseUserRepository(PortalDbContext dbContext, IIdentifierHasher
         entity.IdProofingSessionId = user.IdProofingSessionId;
         entity.IdProofingCompletedAt = user.IdProofingCompletedAt;
         entity.IdProofingExpiresAt = user.IdProofingExpiresAt;
+        entity.DateOfBirth = user.DateOfBirth;
         entity.IsCoLoaded = user.IsCoLoaded;
         entity.CoLoadedLastUpdated = user.CoLoadedLastUpdated;
         entity.Phone = user.Phone;
@@ -318,6 +319,7 @@ public class DatabaseUserRepository(PortalDbContext dbContext, IIdentifierHasher
             IdProofingSessionId = entity.IdProofingSessionId,
             IdProofingCompletedAt = entity.IdProofingCompletedAt,
             IdProofingExpiresAt = entity.IdProofingExpiresAt,
+            DateOfBirth = entity.DateOfBirth,
             IsCoLoaded = entity.IsCoLoaded,
             CoLoadedLastUpdated = entity.CoLoadedLastUpdated,
             Phone = entity.Phone,
@@ -342,6 +344,7 @@ public class DatabaseUserRepository(PortalDbContext dbContext, IIdentifierHasher
             IdProofingSessionId = user.IdProofingSessionId,
             IdProofingCompletedAt = user.IdProofingCompletedAt,
             IdProofingExpiresAt = user.IdProofingExpiresAt,
+            DateOfBirth = user.DateOfBirth,
             IsCoLoaded = user.IsCoLoaded,
             CoLoadedLastUpdated = user.CoLoadedLastUpdated,
             Phone = user.Phone,

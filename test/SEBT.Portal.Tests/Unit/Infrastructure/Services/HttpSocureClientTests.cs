@@ -266,6 +266,62 @@ public class HttpSocureClientTests
         Assert.False(individual.TryGetProperty("national_id", out _));
     }
 
+    [Fact]
+    public async Task RunIdProofingAssessment_ShouldOmitNationalId_ForSnapBenefitIdTypes()
+    {
+        string? capturedBody = null;
+        var handler = new CaptureRequestHandler(body =>
+        {
+            capturedBody = body;
+            return new HttpResponseMessage(HttpStatusCode.OK)
+            {
+                Content = new StringContent(JsonSerializer.Serialize(new
+                {
+                    eval_id = "eval-123",
+                    decision = "ACCEPT",
+                    data_enrichments = Array.Empty<object>()
+                }), System.Text.Encoding.UTF8, "application/json")
+            };
+        });
+
+        var client = CreateClient(handler);
+        await client.RunIdProofingAssessmentAsync(
+            42, "user@example.com", "1990-06-15", "snapAccountId", "123456789");
+
+        Assert.NotNull(capturedBody);
+        using var doc = JsonDocument.Parse(capturedBody);
+        var individual = doc.RootElement.GetProperty("data").GetProperty("individual");
+        Assert.False(individual.TryGetProperty("national_id", out _));
+    }
+
+    [Fact]
+    public async Task RunIdProofingAssessment_ShouldOmitNationalId_WhenIdTypeProvidedWithoutIdValue()
+    {
+        string? capturedBody = null;
+        var handler = new CaptureRequestHandler(body =>
+        {
+            capturedBody = body;
+            return new HttpResponseMessage(HttpStatusCode.OK)
+            {
+                Content = new StringContent(JsonSerializer.Serialize(new
+                {
+                    eval_id = "eval-123",
+                    decision = "REJECT",
+                    data_enrichments = Array.Empty<object>()
+                }), System.Text.Encoding.UTF8, "application/json")
+            };
+        });
+
+        var client = CreateClient(handler);
+        await client.RunIdProofingAssessmentAsync(
+            42, "user@example.com", "1990-06-15", "itin", null);
+
+        Assert.NotNull(capturedBody);
+        using var doc = JsonDocument.Parse(capturedBody);
+        var individual = doc.RootElement.GetProperty("data").GetProperty("individual");
+        Assert.False(individual.TryGetProperty("national_id", out _));
+    }
+
     // --- DI session token ---
 
     [Fact]

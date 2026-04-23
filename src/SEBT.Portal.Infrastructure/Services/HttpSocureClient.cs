@@ -131,6 +131,9 @@ public class HttpSocureClient(
                 ? settings.DiSessionToken
                 : null;
 
+        var sendIdentifierToSocure = !string.IsNullOrWhiteSpace(idType)
+            && !SocureExcludedIdentifierTypes.IsExcludedFromSocurePayload(idType);
+
         var mappedAddress = MapAddress(address);
         if (mappedAddress == null)
         {
@@ -161,7 +164,7 @@ public class HttpSocureClient(
             Email = email,
             DateOfBirth = dateOfBirth,
             Country = "US",
-            NationalId = !string.IsNullOrWhiteSpace(idType) && !string.IsNullOrWhiteSpace(idValue)
+            NationalId = sendIdentifierToSocure && !string.IsNullOrWhiteSpace(idValue)
                 ? idValue
                 : null,
             DiSessionToken = effectiveDiToken,

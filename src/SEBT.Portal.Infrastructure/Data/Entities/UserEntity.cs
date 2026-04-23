@@ -22,6 +22,11 @@ public class UserEntity
     public string? ExternalProviderId { get; set; }
 
     /// <summary>
+    /// The user's date of birth, when collected.
+    /// </summary>
+    public DateOnly? DateOfBirth { get; set; }
+
+    /// <summary>
     /// Workflow state of ID proofing (NotStarted, InProgress, Completed, Failed, Expired)
     /// </summary>
     public int IdProofingStatus { get; set; } = 0; // 0 = NotStarted

@@ -120,6 +120,8 @@ public class DatabaseSeeder : Core.Services.IDatabaseSeeder
         if (useMockHouseholdData)
         {
             var coLoadedEmail = EmailNormalizer.Normalize(_settings.BuildEmail(SeedScenarios.CoLoaded.Name));
+            var coLoadedPendingIdProofingEmail = EmailNormalizer.Normalize(
+                _settings.BuildEmail(SeedScenarios.CoLoadedPendingIdProofing.Name));
             var verifiedEmail = EmailNormalizer.Normalize(_settings.BuildEmail(SeedScenarios.Verified.Name));
 
             foreach (var scenario in SeedScenarios.UserScenarios)
@@ -153,6 +155,22 @@ public class DatabaseSeeder : Core.Services.IDatabaseSeeder
 
                             u.CoLoadedLastUpdated = now.AddDays(DaysSinceCoLoadedUpdate);
                             u.Phone = "5551234567";
+                            u.SnapId = "SNAP-CO-001";
+                            u.TanfId = "TANF-CO-001";
+                            u.Ssn = "123456789";
+                        });
+                    }
+                    else if (normalizedEmail == coLoadedPendingIdProofingEmail)
+                    {
+                        user = UserFactory.CreateCoLoadedUser(u =>
+                        {
+                            u.Email = normalizedEmail;
+                            u.IdProofingStatus = IdProofingStatus.NotStarted;
+                            u.IalLevel = UserIalLevel.None;
+                            u.IdProofingCompletedAt = null;
+                            u.IdProofingExpiresAt = null;
+                            u.CoLoadedLastUpdated = now.AddDays(DaysSinceCoLoadedUpdate);
+                            u.Phone = "8185558438";
                             u.SnapId = "SNAP-CO-001";
                             u.TanfId = "TANF-CO-001";
                             u.Ssn = "123456789";
@@ -261,6 +279,8 @@ public class DatabaseSeeder : Core.Services.IDatabaseSeeder
         if (useMockHouseholdData)
         {
             var coLoadedEmail = EmailNormalizer.Normalize(_settings.BuildEmail(SeedScenarios.CoLoaded.Name));
+            var coLoadedPendingIdProofingEmail = EmailNormalizer.Normalize(
+                _settings.BuildEmail(SeedScenarios.CoLoadedPendingIdProofing.Name));
             var verifiedEmail = EmailNormalizer.Normalize(_settings.BuildEmail(SeedScenarios.Verified.Name));
             foreach (var scenario in SeedScenarios.UserScenarios)
             {
@@ -293,6 +313,22 @@ public class DatabaseSeeder : Core.Services.IDatabaseSeeder
 
                             u.CoLoadedLastUpdated = now.AddDays(DaysSinceCoLoadedUpdate);
                             u.Phone = "5551234567";
+                            u.SnapId = "SNAP-CO-001";
+                            u.TanfId = "TANF-CO-001";
+                            u.Ssn = "123456789";
+                        });
+                    }
+                    else if (normalizedEmail == coLoadedPendingIdProofingEmail)
+                    {
+                        user = UserFactory.CreateCoLoadedUser(u =>
+                        {
+                            u.Email = normalizedEmail;
+                            u.IdProofingStatus = IdProofingStatus.NotStarted;
+                            u.IalLevel = UserIalLevel.None;
+                            u.IdProofingCompletedAt = null;
+                            u.IdProofingExpiresAt = null;
+                            u.CoLoadedLastUpdated = now.AddDays(DaysSinceCoLoadedUpdate);
+                            u.Phone = "8185558438";
                             u.SnapId = "SNAP-CO-001";
                             u.TanfId = "TANF-CO-001";
                             u.Ssn = "123456789";
