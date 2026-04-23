@@ -11,8 +11,8 @@ public class SubmitIdProofingCommand : ICommand<SubmitIdProofingResponse>
 {
     /// <summary>
     /// The authenticated user's internal ID.
+    /// Guaranteed non-empty by ResolveUserFilter before the command is built.
     /// </summary>
-    [Required(ErrorMessage = "UserId is required.")]
     public Guid UserId { get; init; }
 
     /// <summary>

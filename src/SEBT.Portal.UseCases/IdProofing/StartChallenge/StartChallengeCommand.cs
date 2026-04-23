@@ -1,4 +1,3 @@
-using System.ComponentModel.DataAnnotations;
 using SEBT.Portal.Kernel;
 
 namespace SEBT.Portal.UseCases.IdProofing;
@@ -12,12 +11,11 @@ public class StartChallengeCommand : ICommand<StartChallengeResponse>
     /// <summary>
     /// The public GUID of the challenge to start.
     /// </summary>
-    [Required(ErrorMessage = "ChallengeId is required.")]
     public Guid ChallengeId { get; init; }
 
     /// <summary>
     /// The authenticated user's internal ID. Used to enforce ownership.
+    /// Guaranteed non-empty by ResolveUserFilter before the command is built.
     /// </summary>
-    [Required(ErrorMessage = "UserId is required.")]
     public Guid UserId { get; init; }
 }
