@@ -79,13 +79,19 @@ export class SocureDocVAdapter implements DocVAdapter {
       throw new Error('SocureDocVSDK not available after script load')
     }
 
+    // Socure's SDK invokes onProgress internally without a typeof check, so
+    // passing undefined causes a runtime "TypeError: s is not a function"
+    // once the SDK reaches its step-up flow. Default to a no-op so callers
+    // that don't care about progress events still get a working capture UI.
+    const onProgress = config.onProgress ?? (() => {})
+
     window.SocureDocVSDK.launch(config.sdkKey, config.token, `#${config.containerId}`, {
       type: 'docv',
       autoOpenTabOnMobile: true,
       closeCaptureWindowOnComplete: true,
       onSuccess: config.onSuccess,
       onError: config.onError,
-      onProgress: config.onProgress
+      onProgress
     })
   }
 
