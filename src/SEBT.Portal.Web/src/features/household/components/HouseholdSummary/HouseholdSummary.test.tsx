@@ -174,11 +174,19 @@ describe('HouseholdSummary', () => {
     expect(link).toHaveAttribute('data-analytics-cta', 'update_contact_cta')
   })
 
-  it('hides mailing address when not provided', () => {
+  it('shows address heading with dash placeholder when no address on file', () => {
     mockReturnData = { ...defaultMockData, addressOnFile: null }
     render(<HouseholdSummary />)
-    expect(screen.queryByText('Your mailing address')).not.toBeInTheDocument()
+    expect(screen.getByText('Your mailing address')).toBeInTheDocument()
+    expect(screen.getByText('—')).toBeInTheDocument()
     expect(screen.queryByText(/1350 Pennsylvania Ave NW/)).not.toBeInTheDocument()
+  })
+
+  it('shows change address link when no address on file and canUpdateAddress is true', () => {
+    mockReturnData = { ...defaultMockData, addressOnFile: null }
+    render(<HouseholdSummary />)
+    const link = screen.getByRole('link', { name: 'Change my mailing address' })
+    expect(link).toHaveAttribute('href', '/profile/address')
   })
 
   it('renders preferred contact with email', () => {

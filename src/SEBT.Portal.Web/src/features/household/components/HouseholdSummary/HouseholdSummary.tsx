@@ -122,36 +122,31 @@ export function HouseholdSummary() {
           </dd>
 
           {/* Your mailing address */}
-          {data.addressOnFile && (
-            <>
-              <dt className="text-bold">{t('profileTableHeadingAddress')}</dt>
-              <dd className="margin-left-0 margin-bottom-2">
-                <span style={{ whiteSpace: 'pre-line' }}>{formatAddress(data.addressOnFile)}</span>
-                <br />
-                {canUpdateAddress ? (
-                  <Link
-                    href="/profile/address"
-                    data-analytics-cta="update_address_cta"
-                    className="usa-link"
-                  >
-                    {t('profileTableActionChangeAddress')}
-                  </Link>
-                ) : (
-                  <Link
-                    href="/profile/address/info"
-                    data-analytics-cta="update_address_info_cta"
-                    className="usa-link"
-                  >
-                    {/* TODO: Remove fallback once profileTableActionHowToChangeAddress is added to CSV */}
-                    {t(
-                      'profileTableActionHowToChangeAddress',
-                      'How to change your mailing address'
-                    )}
-                  </Link>
-                )}
-              </dd>
-            </>
-          )}
+          <dt className="text-bold">{t('profileTableHeadingAddress')}</dt>
+          <dd className="margin-left-0 margin-bottom-2">
+            <span style={{ whiteSpace: 'pre-line' }}>
+              {data.addressOnFile ? formatAddress(data.addressOnFile) : '—'}
+            </span>
+            <br />
+            {canUpdateAddress ? (
+              <Link
+                href="/profile/address"
+                data-analytics-cta="update_address_cta"
+                className="usa-link"
+              >
+                {t('profileTableActionChangeAddress')}
+              </Link>
+            ) : (
+              <Link
+                href="/profile/address/info"
+                data-analytics-cta="update_address_info_cta"
+                className="usa-link"
+              >
+                {/* TODO: Remove fallback once profileTableActionHowToChangeAddress is added to CSV */}
+                {t('profileTableActionHowToChangeAddress', 'How to change your mailing address')}
+              </Link>
+            )}
+          </dd>
 
           {/* Your preferred contact */}
           {(data.email || data.phone) && (
