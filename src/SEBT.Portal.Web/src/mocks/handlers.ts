@@ -39,9 +39,9 @@ function sessionCookie(value: string, expires?: string): string {
 }
 
 // Test feature flags (SUN Bucks portal features)
+// Card replacement gating is now handled by SelfServiceRules config, not feature flags.
 export const TEST_FEATURE_FLAGS = {
   enable_enrollment_status: true,
-  enable_card_replacement: false,
   enable_spanish_support: true,
   show_application_number: true,
   show_case_number: true,
@@ -110,6 +110,12 @@ export const TEST_HOUSEHOLD_DATA = {
     firstName: 'Maria',
     middleName: 'L',
     lastName: 'Martinez'
+  },
+  allowedActions: {
+    canUpdateAddress: false,
+    canRequestReplacementCard: false,
+    addressUpdateDeniedMessageKey: 'actionNavigationSelfServiceUnavailable',
+    cardReplacementDeniedMessageKey: 'actionNavigationSelfServiceUnavailable'
   }
 } as const
 

@@ -156,4 +156,112 @@ describe('CardStatusDisplay', () => {
     // i18n key: cardTableStatusMessageDeactivated
     expect(screen.getByText(/reported as lost, stolen, damaged/)).toBeInTheDocument()
   })
+
+  // --- CO denied-status fallback coverage ---
+  // When the resolved locale string is empty (e.g. missing CSV content for a
+  // given status), DESCRIPTION_FALLBACK supplies English copy so that the
+  // "Card status" heading and a useful description still render. These tests
+  // simulate the empty-locale condition by dropping the CO bundle we added in
+  // beforeAll, leaving the default DC namespace (which has empty EN cells for
+  // several of these keys) active for the test duration.
+
+  describe('with empty locale entries (CSV content gap)', () => {
+    beforeAll(() => {
+      i18n.removeResourceBundle('en', 'dashboard')
+      i18n.addResourceBundle(
+        'en',
+        'dashboard',
+        {
+          cardTableHeadingCardStatus: 'Card status',
+          cardTableStatusInactive: 'Inactive',
+          cardTableStatusUndeliverable: 'Undeliverable',
+          cardTableStatusMessageDeactivated: '',
+          cardTableStatusMessageUndeliverable: ''
+        },
+        true,
+        true
+      )
+    })
+
+    afterAll(() => {
+      i18n.removeResourceBundle('en', 'dashboard')
+      i18n.addResourceBundle('en', 'dashboard', enCODashboard, true, true)
+    })
+
+    it('renders fallback heading and body for NotActivated', () => {
+      renderWithStatus('NotActivated')
+
+      expect(screen.getByText('Card status')).toBeInTheDocument()
+      expect(screen.getByText(/hasn't been activated yet/i)).toBeInTheDocument()
+    })
+
+    it('renders fallback heading and body for DeactivatedByState', () => {
+      renderWithStatus('DeactivatedByState')
+
+      expect(screen.getByText('Card status')).toBeInTheDocument()
+      expect(screen.getByText(/state agency has deactivated this card/i)).toBeInTheDocument()
+    })
+
+    it('renders fallback heading and body for Undeliverable', () => {
+      renderWithStatus('Undeliverable')
+
+      expect(screen.getByText('Card status')).toBeInTheDocument()
+      expect(screen.getByText(/returned as undeliverable/i)).toBeInTheDocument()
+    })
+  })
+
+  // --- Truly-missing key coverage ---
+  // i18next's default behavior is to return the key itself (a truthy string)
+  // when a translation is missing. If the component's fallback chain relies on
+  // a falsy value, it will render the raw key to the user instead of the
+  // English fallback copy. These tests pin the component to the "missing-key
+  // falls back to English copy" contract.
+
+  describe('with entirely-missing locale keys', () => {
+    beforeAll(() => {
+      i18n.removeResourceBundle('en', 'dashboard')
+      // Bundle intentionally omits every cardTableStatusMessage* key so each
+      // lookup falls back to i18next's missing-key behavior.
+      i18n.addResourceBundle(
+        'en',
+        'dashboard',
+        {
+          cardTableHeadingCardStatus: 'Card status',
+          cardTableStatusActive: 'Active',
+          cardTableStatusInactive: 'Inactive',
+          cardTableStatusFrozen: 'Frozen',
+          cardTableStatusUndeliverable: 'Undeliverable',
+          cardTableStatusProcessed: 'Processed'
+        },
+        true,
+        true
+      )
+    })
+
+    afterAll(() => {
+      i18n.removeResourceBundle('en', 'dashboard')
+      i18n.addResourceBundle('en', 'dashboard', enCODashboard, true, true)
+    })
+
+    it('renders English fallback when cardTableStatusMessageActive key is absent', () => {
+      renderWithStatus('Active')
+
+      expect(screen.getByText(/This card has been sent to you/i)).toBeInTheDocument()
+      expect(screen.queryByText('cardTableStatusMessageActive')).toBeNull()
+    })
+
+    it('renders English fallback when cardTableStatusMessageInactive key is absent', () => {
+      renderWithStatus('Lost')
+
+      expect(screen.getByText(/reported as lost, stolen, or damaged/i)).toBeInTheDocument()
+      expect(screen.queryByText('cardTableStatusMessageInactive')).toBeNull()
+    })
+
+    it('renders English fallback when cardTableStatusMessageFrozen key is absent', () => {
+      renderWithStatus('Frozen')
+
+      expect(screen.getByText(/This card is frozen/i)).toBeInTheDocument()
+      expect(screen.queryByText('cardTableStatusMessageFrozen')).toBeNull()
+    })
+  })
 })

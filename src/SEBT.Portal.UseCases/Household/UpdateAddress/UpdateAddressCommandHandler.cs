@@ -17,7 +17,7 @@ namespace SEBT.Portal.UseCases.Household;
 /// <summary>
 /// Handles mailing address updates for an authenticated user's household.
 /// Validates input, normalizes the address via <see cref="ICoreAddressUpdateService"/>,
-/// enforces benefit-type policy, and persists via state connector.
+/// enforces self-service rules and benefit-type policy, and persists via state connector.
 /// </summary>
 public class UpdateAddressCommandHandler(
     IValidator<UpdateAddressCommand> validator,
@@ -27,6 +27,7 @@ public class UpdateAddressCommandHandler(
     IHouseholdRepository householdRepository,
     IIdProofingRequirementsService idProofingRequirementsService,
     IMinimumIalService minimumIalService,
+    ISelfServiceEvaluator selfServiceEvaluator,
     IStateAddressUpdateService stateAddressUpdateService,
     ILogger<UpdateAddressCommandHandler> logger)
     : ICommandHandler<UpdateAddressCommand, AddressValidationResult>
@@ -126,16 +127,33 @@ public class UpdateAddressCommandHandler(
                     $"This household requires {minimumIal}. Complete identity verification to update your address.",
                     new Dictionary<string, object?> { ["requiredIal"] = minimumIal.ToString() });
             }
-        }
 
-        if (household != null && household.SummerEbtCases.Any(c => c.IsCoLoaded))
-        {
-            logger.LogWarning(
-                "Address update rejected for household identifier kind {Kind}: household contains co-loaded cases",
-                identifierKind);
-            return Result<AddressValidationResult>.PreconditionFailed(
-                PreconditionFailedReason.Conflict,
-                "Address updates are not available for co-loaded benefits. Please contact your case worker.");
+            if (household.SummerEbtCases.Count > 0)
+            {
+                // Mixed households: co-loaded cases are excluded from the self-service
+                // permission surface; a household with any non-co-loaded case retains
+                // address-update access. Only fully co-loaded households are blocked.
+                var nonCoLoaded = household.SummerEbtCases.Where(c => !c.IsCoLoaded).ToList();
+                if (nonCoLoaded.Count == 0)
+                {
+                    logger.LogWarning(
+                        "Address update rejected for household identifier kind {Kind}: household contains only co-loaded cases",
+                        identifierKind);
+                    return Result<AddressValidationResult>.PreconditionFailed(
+                        PreconditionFailedReason.Conflict,
+                        "Address updates are not available for co-loaded benefits. Please contact your case worker.");
+                }
+
+                // Self-service rules enforcement: config-driven per state, issuance type, and card status.
+                var allowedActions = selfServiceEvaluator.EvaluateHousehold(nonCoLoaded);
+                if (!allowedActions.CanUpdateAddress)
+                {
+                    logger.LogInformation("Address update denied by self-service rules for household");
+                    return Result<AddressValidationResult>.PreconditionFailed(
+                        PreconditionFailedReason.NotAllowed,
+                        allowedActions.AddressUpdateDeniedMessageKey ?? "Address update is not available for this account.");
+                }
+            }
         }
 
         // Use the normalized address from validation for the state connector call.

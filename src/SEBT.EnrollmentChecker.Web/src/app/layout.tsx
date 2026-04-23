@@ -32,6 +32,11 @@ export const metadata: Metadata = {
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en" data-state={state} className="usa-js-loading">
+      <head>
+        {process.env.NEXT_PUBLIC_BUILD_SHA && (
+          <meta name="build-sha" content={process.env.NEXT_PUBLIC_BUILD_SHA} />
+        )}
+      </head>
       <body>
         <Providers>
           <SkipNav />

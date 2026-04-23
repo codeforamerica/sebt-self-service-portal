@@ -136,7 +136,10 @@ public class DatabaseSeederTests : IClassFixture<SqlServerTestFixture>
         // Assert
         var users = await context.Users.ToListAsync();
         Assert.All(users, user =>
-            Assert.Equal(user.Email, user.Email.ToLowerInvariant()));
+        {
+            Assert.NotNull(user.Email);
+            Assert.Equal(user.Email, user.Email!.ToLowerInvariant());
+        });
     }
 
     [Fact]
@@ -581,8 +584,9 @@ public class DatabaseSeederTests : IClassFixture<SqlServerTestFixture>
 
         foreach (var user in users)
         {
-            Assert.NotEmpty(user.Email);
-            Assert.Contains("@", user.Email);
+            Assert.NotNull(user.Email);
+            Assert.NotEmpty(user.Email!);
+            Assert.Contains("@", user.Email!);
             Assert.InRange(user.IalLevel, 0, 3); // Valid UserIalLevel range
             Assert.NotEqual(default(DateTime), user.CreatedAt);
             Assert.NotEqual(default(DateTime), user.UpdatedAt);
@@ -603,7 +607,10 @@ public class DatabaseSeederTests : IClassFixture<SqlServerTestFixture>
         // Assert - All emails should be lowercase
         var users = await context.Users.ToListAsync();
         Assert.All(users, user =>
-            Assert.Equal(user.Email, user.Email.ToLowerInvariant()));
+        {
+            Assert.NotNull(user.Email);
+            Assert.Equal(user.Email, user.Email!.ToLowerInvariant());
+        });
     }
 
     [Fact]
@@ -620,7 +627,10 @@ public class DatabaseSeederTests : IClassFixture<SqlServerTestFixture>
         // Assert - All emails should be lowercase
         var users = await context.Users.ToListAsync();
         Assert.All(users, user =>
-            Assert.Equal(user.Email, user.Email.ToLowerInvariant()));
+        {
+            Assert.NotNull(user.Email);
+            Assert.Equal(user.Email, user.Email!.ToLowerInvariant());
+        });
     }
 
     [Fact]
@@ -667,13 +677,18 @@ public class DatabaseSeederTests : IClassFixture<SqlServerTestFixture>
 
         // Assert
         var users = await context.Users.ToListAsync();
-        Assert.Equal(13, users.Count);
+        Assert.Equal(18, users.Count);
 
         var emails = users.Select(u => u.Email).ToHashSet();
         Assert.Contains("sebt.co+co-loaded@codeforamerica.org", emails);
         Assert.Contains("sebt.co+verified@codeforamerica.org", emails);
         Assert.Contains("sebt.co+singlechild@codeforamerica.org", emails);
         Assert.Contains("sebt.co+pending@codeforamerica.org", emails);
+        Assert.Contains("sebt.co+co-undeliverable@codeforamerica.org", emails);
+        Assert.Contains("sebt.co+co-frozen@codeforamerica.org", emails);
+        Assert.Contains("sebt.co+co-notactivated@codeforamerica.org", emails);
+        Assert.Contains("sebt.co+co-deactivatedbystate@codeforamerica.org", emails);
+        Assert.Contains("sebt.co+co-active@codeforamerica.org", emails);
     }
 
     [Fact]

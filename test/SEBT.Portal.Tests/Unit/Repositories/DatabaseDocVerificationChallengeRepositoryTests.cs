@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using SEBT.Portal.Core.Exceptions;
 using SEBT.Portal.Core.Models.DocVerification;
 using SEBT.Portal.Infrastructure.Data;
 using SEBT.Portal.Infrastructure.Data.Entities;
@@ -156,6 +157,24 @@ public class DatabaseDocVerificationChallengeRepositoryTests : IClassFixture<Sql
         Assert.Equal(2, rows.Count);
         Assert.Single(rows, r => r.Status == (int)DocVerificationStatus.Expired);
         Assert.Single(rows, r => r.Status == (int)DocVerificationStatus.Created && r.PublicId == challenge.PublicId);
+    }
+
+    [Fact]
+    public async Task CreateAsync_ShouldTranslateUniqueIndexViolation_ToDuplicateRecordException()
+    {
+        using var context = _fixture.CreateContext();
+        var userId = await SeedChallengeAsync(context,
+            status: (int)DocVerificationStatus.Created,
+            expiresAt: DateTime.UtcNow.AddMinutes(30));
+
+        var repo = new DatabaseDocVerificationChallengeRepository(context);
+        var duplicate = new DocVerificationChallenge
+        {
+            UserId = userId,
+            ExpiresAt = DateTime.UtcNow.AddMinutes(30)
+        };
+
+        await Assert.ThrowsAsync<DuplicateRecordException>(() => repo.CreateAsync(duplicate));
     }
 
     [Fact]

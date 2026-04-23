@@ -46,31 +46,29 @@ public class HouseholdIdentifierResolverTests
         return new HouseholdIdentifierResolver(SnapshotFor(settings), userRepository, phoneOverride);
     }
 
-    private static ClaimsPrincipal CreatePrincipal(string email, string claimType = ClaimTypes.Email)
+    /// <summary>
+    /// Creates a principal with a sub claim matching the user's Id, plus any additional claims.
+    /// </summary>
+    private static ClaimsPrincipal CreatePrincipalForUser(User user, params Claim[] extraClaims)
     {
-        var claims = new List<Claim> { new Claim(claimType, email) };
-        var identity = new ClaimsIdentity(claims, "Test");
-        return new ClaimsPrincipal(identity);
-    }
-
-    private static ClaimsPrincipal CreatePrincipalWithNoEmail()
-    {
-        var identity = new ClaimsIdentity();
-        return new ClaimsPrincipal(identity);
+        var claims = new List<Claim> { new("sub", user.Id.ToString()) };
+        claims.AddRange(extraClaims);
+        return new ClaimsPrincipal(new ClaimsIdentity(claims, "Test"));
     }
 
     /// <summary>
-    /// Creates a principal where email is only available via Identity.Name (no Email or NameIdentifier claims).
+    /// Creates a user with a positive Id using an object initializer, seeding any additional
+    /// properties via the customize action. GetUserId() requires Id > 0 to be non-null.
     /// </summary>
-    private static ClaimsPrincipal CreatePrincipalWithIdentityNameOnly(string email)
+    private static User CreateUser(int id, string email, Action<User>? customize = null)
     {
-        var claims = new List<Claim> { new Claim(ClaimTypes.Name, email) };
-        var identity = new ClaimsIdentity(claims, "Test");
-        return new ClaimsPrincipal(identity);
+        var user = new User { Id = id, Email = EmailNormalizer.Normalize(email) };
+        customize?.Invoke(user);
+        return user;
     }
 
     [Fact]
-    public async Task ResolveAsync_WhenNoEmailInClaims_ReturnsNull()
+    public async Task ResolveAsync_WhenNoSubClaim_ReturnsNull()
     {
         var settings = new StateHouseholdIdSettings
         {
@@ -78,63 +76,48 @@ public class HouseholdIdentifierResolverTests
         };
         var resolver = CreateResolver(_userRepository, settings);
 
-        var principal = CreatePrincipalWithNoEmail();
+        var principal = new ClaimsPrincipal(new ClaimsIdentity());
 
         var result = await resolver.ResolveAsync(principal);
 
         Assert.Null(result);
-        await _userRepository.DidNotReceive().GetUserByEmailAsync(Arg.Any<string>(), Arg.Any<CancellationToken>());
-    }
-
-    [Fact]
-    public async Task ResolveAsync_WhenEmailClaimIsWhitespace_ReturnsNull()
-    {
-        var settings = new StateHouseholdIdSettings
-        {
-            PreferredHouseholdIdTypes = [PreferredHouseholdIdType.Email]
-        };
-        var resolver = CreateResolver(_userRepository, settings);
-
-        var principal = CreatePrincipal("   ");
-
-        var result = await resolver.ResolveAsync(principal);
-
-        Assert.Null(result);
+        await _userRepository.DidNotReceive().GetUserByIdAsync(Arg.Any<int>(), Arg.Any<CancellationToken>());
     }
 
     [Fact]
     public async Task ResolveAsync_WhenUserNotFound_ReturnsNull()
     {
+        var user = CreateUser(1, "user@example.com");
         var settings = new StateHouseholdIdSettings
         {
             PreferredHouseholdIdTypes = [PreferredHouseholdIdType.Email]
         };
-        _userRepository.GetUserByEmailAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
+        _userRepository.GetUserByIdAsync(user.Id, Arg.Any<CancellationToken>())
             .Returns((User?)null);
         var resolver = CreateResolver(_userRepository, settings);
 
-        var principal = CreatePrincipal("user@example.com");
+        var principal = CreatePrincipalForUser(user);
 
         var result = await resolver.ResolveAsync(principal);
 
         Assert.Null(result);
-        await _userRepository.Received(1).GetUserByEmailAsync(EmailNormalizer.Normalize("user@example.com"), Arg.Any<CancellationToken>());
+        await _userRepository.Received(1).GetUserByIdAsync(user.Id, Arg.Any<CancellationToken>());
     }
 
     [Fact]
     public async Task ResolveAsync_WhenPrefersEmailAndUserHasEmail_ReturnsEmailIdentifier()
     {
         var email = "user@example.com";
-        var user = UserFactory.CreateUserWithEmail(email);
+        var user = CreateUser(2, email);
         var settings = new StateHouseholdIdSettings
         {
             PreferredHouseholdIdTypes = [PreferredHouseholdIdType.Email]
         };
-        _userRepository.GetUserByEmailAsync(EmailNormalizer.Normalize(email), Arg.Any<CancellationToken>())
+        _userRepository.GetUserByIdAsync(user.Id, Arg.Any<CancellationToken>())
             .Returns(user);
         var resolver = CreateResolver(_userRepository, settings);
 
-        var principal = CreatePrincipal(email);
+        var principal = CreatePrincipalForUser(user);
 
         var result = await resolver.ResolveAsync(principal);
 
@@ -146,17 +129,16 @@ public class HouseholdIdentifierResolverTests
     [Fact]
     public async Task ResolveAsync_WhenPrefersPhoneAndUserHasPhone_ReturnsPhoneIdentifier()
     {
-        var email = "user@example.com";
-        var user = UserFactory.CreateUserWithEmail(email, u => u.Phone = "5551234567");
+        var user = CreateUser(3, "user@example.com", u => u.Phone = "5551234567");
         var settings = new StateHouseholdIdSettings
         {
             PreferredHouseholdIdTypes = [PreferredHouseholdIdType.Phone, PreferredHouseholdIdType.Email]
         };
-        _userRepository.GetUserByEmailAsync(EmailNormalizer.Normalize(email), Arg.Any<CancellationToken>())
+        _userRepository.GetUserByIdAsync(user.Id, Arg.Any<CancellationToken>())
             .Returns(user);
         var resolver = CreateResolver(_userRepository, settings);
 
-        var principal = CreatePrincipal(email);
+        var principal = CreatePrincipalForUser(user);
 
         var result = await resolver.ResolveAsync(principal);
 
@@ -172,17 +154,16 @@ public class HouseholdIdentifierResolverTests
     [Fact]
     public async Task ResolveAsync_WhenSettingsHavePhoneOnly_ReturnsPhoneNotEmail()
     {
-        var email = "user@example.com";
-        var user = UserFactory.CreateUserWithEmail(email, u => u.Phone = "8185558437");
+        var user = CreateUser(4, "user@example.com", u => u.Phone = "8185558437");
         var settings = new StateHouseholdIdSettings
         {
             PreferredHouseholdIdTypes = [PreferredHouseholdIdType.Phone]
         };
-        _userRepository.GetUserByEmailAsync(EmailNormalizer.Normalize(email), Arg.Any<CancellationToken>())
+        _userRepository.GetUserByIdAsync(user.Id, Arg.Any<CancellationToken>())
             .Returns(user);
         var resolver = CreateResolver(_userRepository, settings);
 
-        var principal = CreatePrincipal(email);
+        var principal = CreatePrincipalForUser(user);
 
         var result = await resolver.ResolveAsync(principal);
 
@@ -198,17 +179,16 @@ public class HouseholdIdentifierResolverTests
     [Fact]
     public async Task ResolveAsync_WhenSettingsHavePhoneOnlyAndUserHasNoPhone_ReturnsNull()
     {
-        var email = "user@example.com";
-        var user = UserFactory.CreateUserWithEmail(email, u => u.Phone = null);
+        var user = CreateUser(5, "user@example.com", u => u.Phone = null);
         var settings = new StateHouseholdIdSettings
         {
             PreferredHouseholdIdTypes = [PreferredHouseholdIdType.Phone]
         };
-        _userRepository.GetUserByEmailAsync(EmailNormalizer.Normalize(email), Arg.Any<CancellationToken>())
+        _userRepository.GetUserByIdAsync(user.Id, Arg.Any<CancellationToken>())
             .Returns(user);
         var resolver = CreateResolver(_userRepository, settings);
 
-        var principal = CreatePrincipal(email);
+        var principal = CreatePrincipalForUser(user);
 
         var result = await resolver.ResolveAsync(principal);
 
@@ -218,19 +198,18 @@ public class HouseholdIdentifierResolverTests
     [Fact]
     public async Task ResolveAsync_WhenPhoneOverrideProviderReturnsValue_UsesOverrideOverJwtAndUser()
     {
-        var email = "user@example.com";
-        var user = UserFactory.CreateUserWithEmail(email, u => u.Phone = "5551234567");
+        var user = CreateUser(6, "user@example.com", u => u.Phone = "5551234567");
         var settings = new StateHouseholdIdSettings
         {
             PreferredHouseholdIdTypes = [PreferredHouseholdIdType.Phone, PreferredHouseholdIdType.Email]
         };
-        _userRepository.GetUserByEmailAsync(EmailNormalizer.Normalize(email), Arg.Any<CancellationToken>())
+        _userRepository.GetUserByIdAsync(user.Id, Arg.Any<CancellationToken>())
             .Returns(user);
         var overrideProvider = Substitute.For<IPhoneOverrideProvider>();
         overrideProvider.GetOverridePhone().Returns("8185558437");
         var resolver = CreateResolver(_userRepository, settings, overrideProvider);
 
-        var principal = CreatePrincipal(email);
+        var principal = CreatePrincipalForUser(user);
 
         var result = await resolver.ResolveAsync(principal);
 
@@ -245,19 +224,18 @@ public class HouseholdIdentifierResolverTests
     [Fact]
     public async Task ResolveAsync_WhenPhoneOverrideProviderReturnsNull_UsesUserOrClaimsInstead()
     {
-        var email = "user@example.com";
-        var user = UserFactory.CreateUserWithEmail(email, u => u.Phone = "5551234567");
+        var user = CreateUser(7, "user@example.com", u => u.Phone = "5551234567");
         var settings = new StateHouseholdIdSettings
         {
             PreferredHouseholdIdTypes = [PreferredHouseholdIdType.Phone, PreferredHouseholdIdType.Email]
         };
-        _userRepository.GetUserByEmailAsync(EmailNormalizer.Normalize(email), Arg.Any<CancellationToken>())
+        _userRepository.GetUserByIdAsync(user.Id, Arg.Any<CancellationToken>())
             .Returns(user);
         var overrideProvider = Substitute.For<IPhoneOverrideProvider>();
         overrideProvider.GetOverridePhone().Returns((string?)null);
         var resolver = CreateResolver(_userRepository, settings, overrideProvider);
 
-        var principal = CreatePrincipal(email);
+        var principal = CreatePrincipalForUser(user);
 
         var result = await resolver.ResolveAsync(principal);
 
@@ -269,22 +247,16 @@ public class HouseholdIdentifierResolverTests
     [Fact]
     public async Task ResolveAsync_WhenPrefersPhoneAndUserHasNoPhoneButClaimsHavePhone_ReturnsPhoneFromClaims()
     {
-        var email = "user@example.com";
-        var user = UserFactory.CreateUserWithEmail(email, u => u.Phone = null);
+        var user = CreateUser(8, "user@example.com", u => u.Phone = null);
         var settings = new StateHouseholdIdSettings
         {
             PreferredHouseholdIdTypes = [PreferredHouseholdIdType.Phone, PreferredHouseholdIdType.Email]
         };
-        _userRepository.GetUserByEmailAsync(EmailNormalizer.Normalize(email), Arg.Any<CancellationToken>())
+        _userRepository.GetUserByIdAsync(user.Id, Arg.Any<CancellationToken>())
             .Returns(user);
         var resolver = CreateResolver(_userRepository, settings);
 
-        var claims = new List<Claim>
-        {
-            new Claim(ClaimTypes.Email, email),
-            new Claim("phone", "5559876543")
-        };
-        var principal = new ClaimsPrincipal(new ClaimsIdentity(claims, "Test"));
+        var principal = CreatePrincipalForUser(user, new Claim("phone", "5559876543"));
 
         var result = await resolver.ResolveAsync(principal);
 
@@ -296,17 +268,16 @@ public class HouseholdIdentifierResolverTests
     [Fact]
     public async Task ResolveAsync_WhenPrefersSnapIdAndUserHasSnapId_ReturnsSnapIdIdentifier()
     {
-        var email = "user@example.com";
-        var user = UserFactory.CreateUserWithEmail(email, u => u.SnapId = "SNAP-001");
+        var user = CreateUser(9, "user@example.com", u => u.SnapId = "SNAP-001");
         var settings = new StateHouseholdIdSettings
         {
             PreferredHouseholdIdTypes = [PreferredHouseholdIdType.SnapId, PreferredHouseholdIdType.Email]
         };
-        _userRepository.GetUserByEmailAsync(EmailNormalizer.Normalize(email), Arg.Any<CancellationToken>())
+        _userRepository.GetUserByIdAsync(user.Id, Arg.Any<CancellationToken>())
             .Returns(user);
         var resolver = CreateResolver(_userRepository, settings);
 
-        var principal = CreatePrincipal(email);
+        var principal = CreatePrincipalForUser(user);
 
         var result = await resolver.ResolveAsync(principal);
 
@@ -318,17 +289,16 @@ public class HouseholdIdentifierResolverTests
     [Fact]
     public async Task ResolveAsync_WhenPrefersTanfIdAndUserHasTanfId_ReturnsTanfIdIdentifier()
     {
-        var email = "user@example.com";
-        var user = UserFactory.CreateUserWithEmail(email, u => u.TanfId = "TANF-001");
+        var user = CreateUser(10, "user@example.com", u => u.TanfId = "TANF-001");
         var settings = new StateHouseholdIdSettings
         {
             PreferredHouseholdIdTypes = [PreferredHouseholdIdType.TanfId, PreferredHouseholdIdType.Email]
         };
-        _userRepository.GetUserByEmailAsync(EmailNormalizer.Normalize(email), Arg.Any<CancellationToken>())
+        _userRepository.GetUserByIdAsync(user.Id, Arg.Any<CancellationToken>())
             .Returns(user);
         var resolver = CreateResolver(_userRepository, settings);
 
-        var principal = CreatePrincipal(email);
+        var principal = CreatePrincipalForUser(user);
 
         var result = await resolver.ResolveAsync(principal);
 
@@ -341,17 +311,16 @@ public class HouseholdIdentifierResolverTests
     public async Task ResolveAsync_WhenPrefersSsnAndUserHasSsn_ReturnsSsnHashAsIs()
     {
         var hashedSsn = "A1B2C3D4E5F6789012345678901234567890ABCDEF1234567890ABCDEF123456";
-        var email = "user@example.com";
-        var user = UserFactory.CreateUserWithEmail(email, u => u.Ssn = hashedSsn);
+        var user = CreateUser(11, "user@example.com", u => u.Ssn = hashedSsn);
         var settings = new StateHouseholdIdSettings
         {
             PreferredHouseholdIdTypes = [PreferredHouseholdIdType.Ssn, PreferredHouseholdIdType.Email]
         };
-        _userRepository.GetUserByEmailAsync(EmailNormalizer.Normalize(email), Arg.Any<CancellationToken>())
+        _userRepository.GetUserByIdAsync(user.Id, Arg.Any<CancellationToken>())
             .Returns(user);
         var resolver = CreateResolver(_userRepository, settings);
 
-        var principal = CreatePrincipal(email);
+        var principal = CreatePrincipalForUser(user);
 
         var result = await resolver.ResolveAsync(principal);
 
@@ -363,8 +332,7 @@ public class HouseholdIdentifierResolverTests
     [Fact]
     public async Task ResolveAsync_WhenFirstPreferredTypeIsEmpty_FallsThroughToNext()
     {
-        var email = "user@example.com";
-        var user = UserFactory.CreateUserWithEmail(email, u =>
+        var user = CreateUser(12, "user@example.com", u =>
         {
             u.Phone = null;
             u.SnapId = "SNAP-002";
@@ -373,11 +341,11 @@ public class HouseholdIdentifierResolverTests
         {
             PreferredHouseholdIdTypes = [PreferredHouseholdIdType.Phone, PreferredHouseholdIdType.SnapId, PreferredHouseholdIdType.Email]
         };
-        _userRepository.GetUserByEmailAsync(EmailNormalizer.Normalize(email), Arg.Any<CancellationToken>())
+        _userRepository.GetUserByIdAsync(user.Id, Arg.Any<CancellationToken>())
             .Returns(user);
         var resolver = CreateResolver(_userRepository, settings);
 
-        var principal = CreatePrincipal(email);
+        var principal = CreatePrincipalForUser(user);
 
         var result = await resolver.ResolveAsync(principal);
 
@@ -389,17 +357,16 @@ public class HouseholdIdentifierResolverTests
     [Fact]
     public async Task ResolveAsync_WhenPreferredHouseholdIdTypesIsNull_ThrowsInvalidOperationException()
     {
-        var email = "user@example.com";
-        var user = UserFactory.CreateUserWithEmail(email);
+        var user = CreateUser(13, "user@example.com");
         var settings = new StateHouseholdIdSettings
         {
             PreferredHouseholdIdTypes = null!
         };
-        _userRepository.GetUserByEmailAsync(EmailNormalizer.Normalize(email), Arg.Any<CancellationToken>())
+        _userRepository.GetUserByIdAsync(user.Id, Arg.Any<CancellationToken>())
             .Returns(user);
         var resolver = CreateResolver(_userRepository, settings);
 
-        var principal = CreatePrincipal(email);
+        var principal = CreatePrincipalForUser(user);
 
         var ex = await Assert.ThrowsAsync<InvalidOperationException>(
             () => resolver.ResolveAsync(principal));
@@ -411,17 +378,16 @@ public class HouseholdIdentifierResolverTests
     [Fact]
     public async Task ResolveAsync_WhenPreferredHouseholdIdTypesIsEmpty_ThrowsInvalidOperationException()
     {
-        var email = "user@example.com";
-        var user = UserFactory.CreateUserWithEmail(email);
+        var user = CreateUser(14, "user@example.com");
         var settings = new StateHouseholdIdSettings
         {
             PreferredHouseholdIdTypes = []
         };
-        _userRepository.GetUserByEmailAsync(EmailNormalizer.Normalize(email), Arg.Any<CancellationToken>())
+        _userRepository.GetUserByIdAsync(user.Id, Arg.Any<CancellationToken>())
             .Returns(user);
         var resolver = CreateResolver(_userRepository, settings);
 
-        var principal = CreatePrincipal(email);
+        var principal = CreatePrincipalForUser(user);
 
         var ex = await Assert.ThrowsAsync<InvalidOperationException>(
             () => resolver.ResolveAsync(principal));
@@ -433,8 +399,7 @@ public class HouseholdIdentifierResolverTests
     [Fact]
     public async Task ResolveAsync_WhenNoPreferredTypeHasValue_ReturnsNull()
     {
-        var email = "user@example.com";
-        var user = UserFactory.CreateUserWithEmail(email, u =>
+        var user = CreateUser(15, "user@example.com", u =>
         {
             u.Phone = null;
             u.SnapId = null;
@@ -445,11 +410,11 @@ public class HouseholdIdentifierResolverTests
         {
             PreferredHouseholdIdTypes = [PreferredHouseholdIdType.Phone, PreferredHouseholdIdType.SnapId]
         };
-        _userRepository.GetUserByEmailAsync(EmailNormalizer.Normalize(email), Arg.Any<CancellationToken>())
+        _userRepository.GetUserByIdAsync(user.Id, Arg.Any<CancellationToken>())
             .Returns(user);
         var resolver = CreateResolver(_userRepository, settings);
 
-        var principal = CreatePrincipal(email);
+        var principal = CreatePrincipalForUser(user);
 
         var result = await resolver.ResolveAsync(principal);
 
@@ -457,63 +422,19 @@ public class HouseholdIdentifierResolverTests
     }
 
     [Fact]
-    public async Task ResolveAsync_WhenEmailFromNameIdentifierClaim_ResolvesCorrectly()
-    {
-        var email = "user@example.com";
-        var user = UserFactory.CreateUserWithEmail(email);
-        var settings = new StateHouseholdIdSettings
-        {
-            PreferredHouseholdIdTypes = [PreferredHouseholdIdType.Email]
-        };
-        _userRepository.GetUserByEmailAsync(EmailNormalizer.Normalize(email), Arg.Any<CancellationToken>())
-            .Returns(user);
-        var resolver = CreateResolver(_userRepository, settings);
-
-        var principal = CreatePrincipal(email, ClaimTypes.NameIdentifier);
-
-        var result = await resolver.ResolveAsync(principal);
-
-        Assert.NotNull(result);
-        Assert.Equal(PreferredHouseholdIdType.Email, result!.Type);
-        Assert.Equal(EmailNormalizer.Normalize(email), result.Value);
-    }
-
-    [Fact]
-    public async Task ResolveAsync_WhenEmailFromIdentityName_ResolvesCorrectly()
-    {
-        var email = "user@example.com";
-        var user = UserFactory.CreateUserWithEmail(email);
-        var settings = new StateHouseholdIdSettings
-        {
-            PreferredHouseholdIdTypes = [PreferredHouseholdIdType.Email]
-        };
-        _userRepository.GetUserByEmailAsync(EmailNormalizer.Normalize(email), Arg.Any<CancellationToken>())
-            .Returns(user);
-        var resolver = CreateResolver(_userRepository, settings);
-
-        var principal = CreatePrincipalWithIdentityNameOnly(email);
-
-        var result = await resolver.ResolveAsync(principal);
-
-        Assert.NotNull(result);
-        Assert.Equal(PreferredHouseholdIdType.Email, result!.Type);
-        Assert.Equal(EmailNormalizer.Normalize(email), result.Value);
-    }
-
-    [Fact]
     public async Task ResolveAsync_NormalizesEmailToLowercase()
     {
         var email = "User@Example.COM";
-        var user = UserFactory.CreateUserWithEmail(EmailNormalizer.Normalize(email));
+        var user = CreateUser(16, email);
         var settings = new StateHouseholdIdSettings
         {
             PreferredHouseholdIdTypes = [PreferredHouseholdIdType.Email]
         };
-        _userRepository.GetUserByEmailAsync(EmailNormalizer.Normalize(email), Arg.Any<CancellationToken>())
+        _userRepository.GetUserByIdAsync(user.Id, Arg.Any<CancellationToken>())
             .Returns(user);
         var resolver = CreateResolver(_userRepository, settings);
 
-        var principal = CreatePrincipal(email);
+        var principal = CreatePrincipalForUser(user);
 
         var result = await resolver.ResolveAsync(principal);
 
@@ -529,7 +450,7 @@ public class HouseholdIdentifierResolverTests
             PreferredHouseholdIdTypes = [PreferredHouseholdIdType.Email]
         };
         var resolver = CreateResolver(settings);
-        var principal = CreatePrincipal("user@example.com");
+        var principal = new ClaimsPrincipal(new ClaimsIdentity(new[] { new Claim("sub", "99") }, "Test"));
         using var cts = new CancellationTokenSource();
         cts.Cancel();
 
