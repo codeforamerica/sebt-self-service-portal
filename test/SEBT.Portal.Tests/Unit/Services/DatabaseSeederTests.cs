@@ -702,7 +702,7 @@ public class DatabaseSeederTests : IClassFixture<SqlServerTestFixture>
         await seeder.SeedTestUsersAsync(useMockHouseholdData: true);
 
         var users = await context.Users.ToListAsync();
-        Assert.Equal(21, users.Count);
+        Assert.Equal(SeedScenarios.UserScenarios.Count, users.Count);
         var pending = await context.Users
             .SingleOrDefaultAsync(u => u.Email == "co-loaded-pending-id-proofing@example.com");
         Assert.NotNull(pending);
