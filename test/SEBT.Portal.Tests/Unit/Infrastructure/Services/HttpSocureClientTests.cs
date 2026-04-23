@@ -75,7 +75,7 @@ public class HttpSocureClientTests
 
         var client = CreateClient(handler);
         var result = await client.RunIdProofingAssessmentAsync(
-            Guid.NewGuid(), "test@example.com", "1990-01-01", "ssn", "999-99-9999");
+            Guid.CreateVersion7(), "test@example.com", "1990-01-01", "ssn", "999-99-9999");
 
         Assert.True(result.IsSuccess);
         var assessment = result.Value;

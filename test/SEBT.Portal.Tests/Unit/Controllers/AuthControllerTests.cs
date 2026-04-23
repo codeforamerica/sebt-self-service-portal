@@ -133,7 +133,7 @@ public class AuthControllerTests
     public void GetAuthorizationStatus_WhenEmailClaimIsMissing_ReturnsNullEmail()
     {
         // Arrange: portal JWT has sub (user ID) but no email claim — OIDC users without stored email
-        SetupAuthenticatedUserWithSub(userId: Guid.NewGuid());
+        SetupAuthenticatedUserWithSub(userId: Guid.CreateVersion7());
 
         // Act
         var result = _controller.GetAuthorizationStatus();

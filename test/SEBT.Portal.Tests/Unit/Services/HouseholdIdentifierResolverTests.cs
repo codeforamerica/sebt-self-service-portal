@@ -108,7 +108,7 @@ public class HouseholdIdentifierResolverTests
     public async Task ResolveAsync_WhenPrefersEmailAndUserHasEmail_ReturnsEmailIdentifier()
     {
         var email = "user@example.com";
-        var user = CreateUser(Guid.NewGuid(), email);
+        var user = CreateUser(Guid.CreateVersion7(), email);
         var settings = new StateHouseholdIdSettings
         {
             PreferredHouseholdIdTypes = [PreferredHouseholdIdType.Email]

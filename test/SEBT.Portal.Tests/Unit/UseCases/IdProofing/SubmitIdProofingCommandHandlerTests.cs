@@ -40,7 +40,7 @@ public class SubmitIdProofingCommandHandlerTests
         string? idValue = "999-99-9999") =>
         new()
         {
-            UserId = userId ?? Guid.NewGuid(),
+            UserId = userId ?? Guid.CreateVersion7(),
             DateOfBirth = dob,
             IdType = idType,
             IdValue = idValue

@@ -494,7 +494,7 @@ public class ValidateOtpCommandHandlerTests
 
         var newUser = new User
         {
-            Id = Guid.NewGuid(),
+            Id = Guid.CreateVersion7(),
             Email = command.Email,
             IalLevel = UserIalLevel.None
         };

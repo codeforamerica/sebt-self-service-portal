@@ -41,8 +41,8 @@ public class StartChallengeCommandHandlerTests
         var handler = CreateHandler();
         var command = new StartChallengeCommand
         {
-            ChallengeId = Guid.NewGuid(),
-            UserId = Guid.NewGuid()
+            ChallengeId = Guid.CreateVersion7(),
+            UserId = Guid.CreateVersion7()
         };
 
         challengeRepository.GetByPublicIdAsync(command.ChallengeId, command.UserId, Arg.Any<CancellationToken>())
