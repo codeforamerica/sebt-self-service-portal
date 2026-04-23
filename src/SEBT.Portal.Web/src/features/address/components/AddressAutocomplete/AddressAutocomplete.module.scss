@@ -1,0 +1,30 @@
+.wrapper {
+  position: relative;
+}
+
+.listbox {
+  position: absolute;
+  z-index: 400;
+  top: 100%;
+  left: 0;
+  right: 0;
+  max-height: 200px;
+  overflow-y: auto;
+  background-color: white;
+  border: 1px solid #71767a;
+  border-top: none;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.option {
+  padding: 0.5rem 0.75rem;
+  cursor: pointer;
+  font-size: 1rem;
+
+  &:hover,
+  &[data-focused='true'] {
+    background-color: #dfe1e2;
+  }
+}
