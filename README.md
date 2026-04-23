@@ -220,12 +220,6 @@ docker compose up
 
 Only include sections you want to override; other settings fall back to `appsettings.json`!
 
-### Minimum IAL requirements
-
-Each state must configure the minimum Identity Assurance Level (IAL) required based on case origin. The app will fail to start if these values are missing — there is no state-agnostic default.
-
-See [`appsettings.dc.example.json`](src/SEBT.Portal.Api/appsettings.dc.example.json) and [`appsettings.co.example.json`](src/SEBT.Portal.Api/appsettings.co.example.json) for example values.
-
 ### OIDC support
 
 States can use an external [OpenID Connect (OIDC)](https://openid.net/developers/how-connect-works/) provider for sign-in. OIDC is configured in the API under flat `Oidc` keys (`DiscoveryEndpoint`, `ClientId`, `CallbackRedirectUri`); the portal uses generic endpoints and config rather than state-specific auth code paths. Code exchange and id_token validation run in the Next.js server; the .NET API performs "complete-login" (validates a short-lived callback token and returns a portal JWT that includes IdP claims such as phone and name).
@@ -266,19 +260,9 @@ The resolver then uses this phone for household lookup instead of the one from t
 
 ### ID Proofing Requirements
 
-PII data is only shown and editable to users who meet the ID proofing requirements configured within "IdProofingRequirements" and their current IAL status (for example, `address+view`, `email+view`, `phone+view`). Configure in `appsettings.json` or override with `appsettings.{state}.json`.
+The `IdProofingRequirements` config section controls which IAL (Identity Assurance Level) a user needs to view or modify each type of PII. Keys use a `resource+action` format (e.g. `address+view`, `card+write`). Values can be a uniform level (`"IAL1plus"`) or a per-case-type object for granular control. Unconfigured keys default to `IAL1plus` (fail-safe). Users below the view threshold see masked data (e.g. `****` for street addresses); users below the write threshold are blocked from modifications.
 
-Example (`appsettings.json`):
-
-```json
-{
-  "IdProofingRequirements": {
-    "address+view": "IAL1plus",
-    "email+view": "IAL1",
-    "phone+view": "IAL1"
-  }
-}
-```
+See the [full configuration guide](docs/config/ial/README.md) for all available keys, per-case-type syntax, coherence validation rules, and state-specific examples. See [`appsettings.dc.example.json`](src/SEBT.Portal.Api/appsettings.dc.example.json) and [`appsettings.co.example.json`](src/SEBT.Portal.Api/appsettings.co.example.json) for working state configurations.
 
 ## Database Setup
 

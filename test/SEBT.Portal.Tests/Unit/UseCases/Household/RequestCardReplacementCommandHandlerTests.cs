@@ -22,8 +22,8 @@ public class RequestCardReplacementCommandHandlerTests
         Substitute.For<IHouseholdIdentifierResolver>();
     private readonly IHouseholdRepository _repository =
         Substitute.For<IHouseholdRepository>();
-    private readonly IMinimumIalService _minimumIalService =
-        Substitute.For<IMinimumIalService>();
+    private readonly IIdProofingService _idProofingService =
+        Substitute.For<IIdProofingService>();
     private readonly ISelfServiceEvaluator _evaluator =
         Substitute.For<ISelfServiceEvaluator>();
     private readonly NullLogger<RequestCardReplacementCommandHandler> _logger =
@@ -32,7 +32,10 @@ public class RequestCardReplacementCommandHandlerTests
     public RequestCardReplacementCommandHandlerTests()
     {
         // Default: IAL gate passes (no elevated requirement)
-        _minimumIalService.GetMinimumIal(Arg.Any<IReadOnlyList<SummerEbtCase>>()).Returns(UserIalLevel.None);
+        _idProofingService.Evaluate(
+            Arg.Any<ProtectedResource>(), Arg.Any<ProtectedAction>(),
+            Arg.Any<UserIalLevel>(), Arg.Any<IReadOnlyList<SummerEbtCase>>())
+            .Returns(new IdProofingDecision(IsAllowed: true, RequiredLevel: UserIalLevel.None));
 
         // Default: self-service rules allow card replacement
         _evaluator.Evaluate(Arg.Any<SummerEbtCase>())
@@ -40,7 +43,7 @@ public class RequestCardReplacementCommandHandlerTests
     }
 
     private RequestCardReplacementCommandHandler CreateHandler(TimeProvider? timeProvider = null) =>
-        new(_validator, _resolver, _repository, _minimumIalService, _evaluator, timeProvider ?? TimeProvider.System, _logger);
+        new(_validator, _resolver, _repository, _idProofingService, _evaluator, timeProvider ?? TimeProvider.System, _logger);
 
     private static ClaimsPrincipal CreateUser(string email, string? ialClaim = null)
     {
@@ -97,6 +100,32 @@ public class RequestCardReplacementCommandHandlerTests
     }
 
     // --- Authorization tests ---
+
+    [Fact]
+    public async Task Handle_ReturnsForbidden_WhenUserIalBelowRequired()
+    {
+        var handler = CreateHandler();
+        var command = CreateValidCommand();
+        SetupResolverSuccess();
+        SetupRepositoryReturns(CreateHouseholdWithCases(
+            new SummerEbtCase
+            {
+                SummerEBTCaseID = "SEBT-001",
+                ChildFirstName = "John",
+                ChildLastName = "Doe",
+                CardRequestedAt = DateTime.UtcNow.AddDays(-30)
+            }
+        ));
+        _idProofingService.Evaluate(
+                Arg.Any<ProtectedResource>(), Arg.Any<ProtectedAction>(),
+                Arg.Any<UserIalLevel>(), Arg.Any<IReadOnlyList<SummerEbtCase>>())
+            .Returns(new IdProofingDecision(IsAllowed: false, RequiredLevel: UserIalLevel.IAL1plus));
+
+        var result = await handler.Handle(command, CancellationToken.None);
+
+        Assert.False(result.IsSuccess);
+        Assert.IsType<ForbiddenResult>(result);
+    }
 
     [Fact]
     public async Task Handle_ReturnsUnauthorized_WhenHouseholdIdentifierCannotBeResolved()

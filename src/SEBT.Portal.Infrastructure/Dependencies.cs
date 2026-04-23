@@ -37,11 +37,10 @@ public static class Dependencies
                 sp.GetRequiredService<IOptions<IdProofingValiditySettings>>().Value,
                 sp.GetRequiredService<ILoggerFactory>().CreateLogger<OidcVerificationClaimTranslator>()));
 
-        // ID Proofing Requirements (state-specific PII visibility)
-        services.AddScoped<IIdProofingRequirementsService, IdProofingRequirementsService>();
-
-        // Minimum IAL service (state-configurable identity assurance level requirements)
-        services.AddScoped<IMinimumIalService, MinimumIalService>();
+        // Unified identity proofing service (PII visibility + authorization gates)
+        services.AddSingleton<IdProofingService>();
+        services.AddSingleton<IIdProofingService>(sp => sp.GetRequiredService<IdProofingService>());
+        services.AddSingleton<IPiiVisibilityService>(sp => sp.GetRequiredService<IdProofingService>());
 
         // Enrollment Check logging
         services.AddScoped<IEnrollmentCheckSubmissionLogger, EnrollmentCheckSubmissionLogger>();
@@ -223,12 +222,12 @@ public static class Dependencies
         services.AddOptionsWithValidateOnStart<IdentifierHasherSettings>()
             .BindConfiguration(IdentifierHasherSettings.SectionName)
             .ValidateDataAnnotations();
-        services.AddSingleton<IValidateOptions<IdProofingRequirementsSettings>, IdProofingRequirementsSettingsValidator>();
-        services.AddOptionsWithValidateOnStart<IdProofingRequirementsSettings>()
-            .BindConfiguration(IdProofingRequirementsSettings.SectionName);
-        services.AddSingleton<IValidateOptions<MinimumIalSettings>, MinimumIalSettingsValidator>();
-        services.AddOptionsWithValidateOnStart<MinimumIalSettings>()
-            .BindConfiguration(MinimumIalSettings.SectionName);
+        services.ConfigureOptions<ConfigureIdProofingRequirements>();
+        services.AddSingleton<IOptionsChangeTokenSource<IdProofingRequirementsSettings>>(
+            new ConfigurationChangeTokenSource<IdProofingRequirementsSettings>(
+                configuration.GetSection(IdProofingRequirementsSettings.SectionName)));
+        services.AddSingleton<IValidateOptions<IdProofingRequirementsSettings>, IdProofingRequirementsCoherenceValidator>();
+        services.AddOptionsWithValidateOnStart<IdProofingRequirementsSettings>();
 
         services.AddSingleton<IValidateOptions<OidcStepUpSettings>, OidcStepUpSettingsValidator>();
         services.AddOptionsWithValidateOnStart<OidcStepUpSettings>()

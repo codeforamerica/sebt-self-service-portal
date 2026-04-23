@@ -323,8 +323,9 @@ public class HouseholdRepositoryTests
             HouseholdIdentifier.Email(email), NoAddressPii, UserIalLevel.None);
 
         Assert.NotNull(result);
+        // Plugin always receives full visibility — masking is handled by ApplyPiiVisibility
         await _summerEbtCaseService.Received(1)
-            .GetHouseholdByIdentifierAsync(PluginHouseholdIdentifierType.Email, email, Arg.Is<PluginPiiVisibility>(p => !p.IncludeAddress), Arg.Any<PluginIdentityAssuranceLevel>(), Arg.Any<CancellationToken>());
+            .GetHouseholdByIdentifierAsync(PluginHouseholdIdentifierType.Email, email, Arg.Is<PluginPiiVisibility>(p => p.IncludeAddress && p.IncludeEmail && p.IncludePhone), Arg.Any<PluginIdentityAssuranceLevel>(), Arg.Any<CancellationToken>());
     }
 
     [Fact]

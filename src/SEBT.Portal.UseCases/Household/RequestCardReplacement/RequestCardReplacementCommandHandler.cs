@@ -18,7 +18,7 @@ public class RequestCardReplacementCommandHandler(
     IValidator<RequestCardReplacementCommand> validator,
     IHouseholdIdentifierResolver resolver,
     IHouseholdRepository repository,
-    IMinimumIalService minimumIalService,
+    IIdProofingService idProofingService,
     ISelfServiceEvaluator selfServiceEvaluator,
     TimeProvider timeProvider,
     ILogger<RequestCardReplacementCommandHandler> logger)
@@ -59,17 +59,19 @@ public class RequestCardReplacementCommandHandler(
             return Result.PreconditionFailed(PreconditionFailedReason.NotFound, "Household data not found.");
         }
 
-        // SECURITY: Block write operations when the user has not met the minimum IAL
-        // required by their cases. See docs/tdd/minimum-ial-determination.md.
-        var minimumIal = minimumIalService.GetMinimumIal(household.SummerEbtCases);
-        if (userIalLevel < minimumIal)
+        // SECURITY: Block write operations when the user has not met the IAL
+        // required by their cases. See docs/config/ial/README.md.
+        var decision = idProofingService.Evaluate(
+            ProtectedResource.Card, ProtectedAction.Write,
+            userIalLevel, household.SummerEbtCases);
+        if (!decision.IsAllowed)
         {
             logger.LogInformation(
-                "Card replacement denied: user IAL {UserIal} is below minimum {MinimumIal}",
+                "Card replacement denied: user IAL {UserIal} is below required {RequiredIal}",
                 userIalLevel,
-                minimumIal);
+                decision.RequiredLevel);
             return Result.Forbidden(
-                $"This household requires {minimumIal}. Complete identity verification to request card replacements.");
+                $"This household requires {decision.RequiredLevel}. Complete identity verification to request card replacements.");
         }
 
         // Co-loaded cases are managed by caseworkers, not the portal.

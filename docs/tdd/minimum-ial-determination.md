@@ -1,5 +1,12 @@
 # Minimum IAL Determination
 
+> **Superseded.** This TDD describes the original `MinimumIal` configuration system,
+> which has been unified into `IdProofingRequirements` (see
+> [ADR-0012](../adr/0012-unified-id-proofing-requirements.md) and the
+> [design spec](../superpowers/specs/2026-04-15-unified-id-proofing-requirements-design.md)).
+> The "facts vs. policy" split and plugin boundary design below remain valid —
+> only the configuration surface and service layer changed.
+
 ## Problem Statement / Intent
 
 Different users need different levels of identity proofing depending on

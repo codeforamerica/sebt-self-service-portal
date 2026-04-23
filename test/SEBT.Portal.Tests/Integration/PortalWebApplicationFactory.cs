@@ -35,9 +35,9 @@ public class PortalWebApplicationFactory : WebApplicationFactory<Program>
         "Oidc__CallbackRedirectUri",
         "Oidc__CompleteLoginSigningKey",
         "ConnectionStrings__Redis",
-        "MinimumIal__ApplicationCases",
-        "MinimumIal__CoLoadedStreamlineCases",
-        "MinimumIal__NonCoLoadedStreamlineCases"
+        "IdProofingRequirements__household+view__application",
+        "IdProofingRequirements__household+view__coloadedStreamline",
+        "IdProofingRequirements__household+view__streamline"
     ];
 
 
@@ -58,10 +58,10 @@ public class PortalWebApplicationFactory : WebApplicationFactory<Program>
         // Disable Redis so HybridCache uses in-memory only (no 5s timeout per op)
         Environment.SetEnvironmentVariable("ConnectionStrings__Redis", "");
 
-        // MinimumIal settings are required — app fails to start without them
-        Environment.SetEnvironmentVariable("MinimumIal__ApplicationCases", "IAL1");
-        Environment.SetEnvironmentVariable("MinimumIal__CoLoadedStreamlineCases", "IAL1");
-        Environment.SetEnvironmentVariable("MinimumIal__NonCoLoadedStreamlineCases", "IAL1plus");
+        // IdProofingRequirements are configured via env vars for integration tests
+        Environment.SetEnvironmentVariable("IdProofingRequirements__household+view__application", "IAL1");
+        Environment.SetEnvironmentVariable("IdProofingRequirements__household+view__coloadedStreamline", "IAL1");
+        Environment.SetEnvironmentVariable("IdProofingRequirements__household+view__streamline", "IAL1plus");
 
         builder.ConfigureServices(services =>
         {

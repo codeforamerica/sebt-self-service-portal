@@ -104,6 +104,7 @@ We follow a test-driven development (TDD) approach: write tests first to fail, t
 - Auth claims in JWTs can go stale (e.g., household composition changes after login). Server-side checks that re-evaluate on every request are safer than trusting a token's claims about what the user is allowed to see.
 
 ## Common Commands
+**Prefer pnpm root-level scripts** (`pnpm api:test`, `pnpm api:build`, etc.) over raw `dotnet` commands. They handle working directories correctly and are the team convention. Use raw `dotnet` commands only for targeted operations like single-test filters.
 
 ### Development
 ```bash
@@ -173,6 +174,8 @@ This is a .NET 10 + Next.js 16 application following Clean Architecture. For det
 State-specific behavior uses MEF (System.Composition) plugins loaded at runtime from `plugins-{state}/` directories. Plugin contracts live in the separate `sebt-self-service-portal-state-connector` repo; implementations live in per-state repos (`-dc-connector`, `-co-connector`). The `STATE` env var controls which state config overlay loads. See [docs/adr/0007-multi-state-plugin-approach.md](./docs/adr/0007-multi-state-plugin-approach.md) for the design rationale.
 
 **Plugin development inner loop:** The state-connector repo builds its interface package to `~/nuget-store/` as a local NuGet source. The API project and state connector repos (e.g., `-dc-connector`) reference that package and have post-build targets that copy compiled DLLs into this repo's `src/SEBT.Portal.Api/plugins-{state}/` directory. After building a connector, restart the API to pick up changes.
+
+**Mock data mode:** When `UseMockHouseholdData` is `true` (set in `appsettings.{state}.json`), the API uses in-memory mock data from `MockHouseholdRepository` instead of calling state connector plugins. This affects both reads and writes. Mock data scenarios are defined in `MockHouseholdRepository.SeedMockData()` with test personas keyed by email/phone.
 
 ### Frontend
 Uses Next.js App Router with route groups: `(public)/` for login flows, `(authenticated)/` for protected pages. USWDS design tokens are generated via scripts before build. i18next handles internationalization with content files in `content/`.

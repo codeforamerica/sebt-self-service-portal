@@ -50,6 +50,12 @@ beforeEach(() => {
   setUserDataSpy.mockClear()
   trackEventSpy.mockClear()
 })
+vi.mock('@/features/feature-flags', () => ({
+  useFeatureFlag: (flag: string) => {
+    if (flag === 'show_contact_preferences') return true
+    return false
+  }
+}))
 
 function createTestQueryClient() {
   return new QueryClient({

@@ -71,10 +71,12 @@ public class HouseholdRepository : IHouseholdRepository
             "Querying state plugin for household data by identifier type {Type}",
             identifierType);
 
+        // Always request full PII from the plugin. Masking is a portal-layer
+        // concern handled by ApplyPiiVisibility after the data is returned.
         var pluginPii = new PluginPiiVisibility(
-            piiVisibility.IncludeAddress,
-            piiVisibility.IncludeEmail,
-            piiVisibility.IncludePhone);
+            IncludeAddress: true,
+            IncludeEmail: true,
+            IncludePhone: true);
         var pluginIal = (PluginIdentityAssuranceLevel)(int)userIalLevel;
         var pluginHousehold = await _summerEbtCaseService.GetHouseholdByIdentifierAsync(
             identifierType,
