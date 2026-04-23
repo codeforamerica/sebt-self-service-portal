@@ -104,6 +104,7 @@ We follow a test-driven development (TDD) approach: write tests first to fail, t
 - Auth claims in JWTs can go stale (e.g., household composition changes after login). Server-side checks that re-evaluate on every request are safer than trusting a token's claims about what the user is allowed to see.
 
 ## Common Commands
+**Prefer pnpm root-level scripts** (`pnpm api:test`, `pnpm api:build`, etc.) over raw `dotnet` commands. They handle working directories correctly and are the team convention. Use raw `dotnet` commands only for targeted operations like single-test filters.
 
 ### Development
 ```bash
