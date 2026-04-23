@@ -57,10 +57,10 @@ public class HouseholdIdentifierResolverTests
     }
 
     /// <summary>
-    /// Creates a user with a positive Id using an object initializer, seeding any additional
-    /// properties via the customize action. GetUserId() requires Id > 0 to be non-null.
+    /// Creates a user with a specific Id using an object initializer, seeding any additional
+    /// properties via the customize action.
     /// </summary>
-    private static User CreateUser(int id, string email, Action<User>? customize = null)
+    private static User CreateUser(Guid id, string email, Action<User>? customize = null)
     {
         var user = new User { Id = id, Email = EmailNormalizer.Normalize(email) };
         customize?.Invoke(user);
@@ -81,13 +81,13 @@ public class HouseholdIdentifierResolverTests
         var result = await resolver.ResolveAsync(principal);
 
         Assert.Null(result);
-        await _userRepository.DidNotReceive().GetUserByIdAsync(Arg.Any<int>(), Arg.Any<CancellationToken>());
+        await _userRepository.DidNotReceive().GetUserByIdAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>());
     }
 
     [Fact]
     public async Task ResolveAsync_WhenUserNotFound_ReturnsNull()
     {
-        var user = CreateUser(1, "user@example.com");
+        var user = CreateUser(Guid.NewGuid(), "user@example.com");
         var settings = new StateHouseholdIdSettings
         {
             PreferredHouseholdIdTypes = [PreferredHouseholdIdType.Email]
@@ -108,7 +108,7 @@ public class HouseholdIdentifierResolverTests
     public async Task ResolveAsync_WhenPrefersEmailAndUserHasEmail_ReturnsEmailIdentifier()
     {
         var email = "user@example.com";
-        var user = CreateUser(2, email);
+        var user = CreateUser(Guid.CreateVersion7(), email);
         var settings = new StateHouseholdIdSettings
         {
             PreferredHouseholdIdTypes = [PreferredHouseholdIdType.Email]
@@ -129,7 +129,7 @@ public class HouseholdIdentifierResolverTests
     [Fact]
     public async Task ResolveAsync_WhenPrefersPhoneAndUserHasPhone_ReturnsPhoneIdentifier()
     {
-        var user = CreateUser(3, "user@example.com", u => u.Phone = "5551234567");
+        var user = CreateUser(Guid.NewGuid(), "user@example.com", u => u.Phone = "5551234567");
         var settings = new StateHouseholdIdSettings
         {
             PreferredHouseholdIdTypes = [PreferredHouseholdIdType.Phone, PreferredHouseholdIdType.Email]
@@ -154,7 +154,7 @@ public class HouseholdIdentifierResolverTests
     [Fact]
     public async Task ResolveAsync_WhenSettingsHavePhoneOnly_ReturnsPhoneNotEmail()
     {
-        var user = CreateUser(4, "user@example.com", u => u.Phone = "8185558437");
+        var user = CreateUser(Guid.NewGuid(), "user@example.com", u => u.Phone = "8185558437");
         var settings = new StateHouseholdIdSettings
         {
             PreferredHouseholdIdTypes = [PreferredHouseholdIdType.Phone]
@@ -179,7 +179,7 @@ public class HouseholdIdentifierResolverTests
     [Fact]
     public async Task ResolveAsync_WhenSettingsHavePhoneOnlyAndUserHasNoPhone_ReturnsNull()
     {
-        var user = CreateUser(5, "user@example.com", u => u.Phone = null);
+        var user = CreateUser(Guid.NewGuid(), "user@example.com", u => u.Phone = null);
         var settings = new StateHouseholdIdSettings
         {
             PreferredHouseholdIdTypes = [PreferredHouseholdIdType.Phone]
@@ -198,7 +198,7 @@ public class HouseholdIdentifierResolverTests
     [Fact]
     public async Task ResolveAsync_WhenPhoneOverrideProviderReturnsValue_UsesOverrideOverJwtAndUser()
     {
-        var user = CreateUser(6, "user@example.com", u => u.Phone = "5551234567");
+        var user = CreateUser(Guid.NewGuid(), "user@example.com", u => u.Phone = "5551234567");
         var settings = new StateHouseholdIdSettings
         {
             PreferredHouseholdIdTypes = [PreferredHouseholdIdType.Phone, PreferredHouseholdIdType.Email]
@@ -224,7 +224,7 @@ public class HouseholdIdentifierResolverTests
     [Fact]
     public async Task ResolveAsync_WhenPhoneOverrideProviderReturnsNull_UsesUserOrClaimsInstead()
     {
-        var user = CreateUser(7, "user@example.com", u => u.Phone = "5551234567");
+        var user = CreateUser(Guid.NewGuid(), "user@example.com", u => u.Phone = "5551234567");
         var settings = new StateHouseholdIdSettings
         {
             PreferredHouseholdIdTypes = [PreferredHouseholdIdType.Phone, PreferredHouseholdIdType.Email]
@@ -247,7 +247,7 @@ public class HouseholdIdentifierResolverTests
     [Fact]
     public async Task ResolveAsync_WhenPrefersPhoneAndUserHasNoPhoneButClaimsHavePhone_ReturnsPhoneFromClaims()
     {
-        var user = CreateUser(8, "user@example.com", u => u.Phone = null);
+        var user = CreateUser(Guid.NewGuid(), "user@example.com", u => u.Phone = null);
         var settings = new StateHouseholdIdSettings
         {
             PreferredHouseholdIdTypes = [PreferredHouseholdIdType.Phone, PreferredHouseholdIdType.Email]
@@ -268,7 +268,7 @@ public class HouseholdIdentifierResolverTests
     [Fact]
     public async Task ResolveAsync_WhenPrefersSnapIdAndUserHasSnapId_ReturnsSnapIdIdentifier()
     {
-        var user = CreateUser(9, "user@example.com", u => u.SnapId = "SNAP-001");
+        var user = CreateUser(Guid.NewGuid(), "user@example.com", u => u.SnapId = "SNAP-001");
         var settings = new StateHouseholdIdSettings
         {
             PreferredHouseholdIdTypes = [PreferredHouseholdIdType.SnapId, PreferredHouseholdIdType.Email]
@@ -289,7 +289,7 @@ public class HouseholdIdentifierResolverTests
     [Fact]
     public async Task ResolveAsync_WhenPrefersTanfIdAndUserHasTanfId_ReturnsTanfIdIdentifier()
     {
-        var user = CreateUser(10, "user@example.com", u => u.TanfId = "TANF-001");
+        var user = CreateUser(Guid.NewGuid(), "user@example.com", u => u.TanfId = "TANF-001");
         var settings = new StateHouseholdIdSettings
         {
             PreferredHouseholdIdTypes = [PreferredHouseholdIdType.TanfId, PreferredHouseholdIdType.Email]
@@ -311,7 +311,7 @@ public class HouseholdIdentifierResolverTests
     public async Task ResolveAsync_WhenPrefersSsnAndUserHasSsn_ReturnsSsnHashAsIs()
     {
         var hashedSsn = "A1B2C3D4E5F6789012345678901234567890ABCDEF1234567890ABCDEF123456";
-        var user = CreateUser(11, "user@example.com", u => u.Ssn = hashedSsn);
+        var user = CreateUser(Guid.NewGuid(), "user@example.com", u => u.Ssn = hashedSsn);
         var settings = new StateHouseholdIdSettings
         {
             PreferredHouseholdIdTypes = [PreferredHouseholdIdType.Ssn, PreferredHouseholdIdType.Email]
@@ -332,7 +332,7 @@ public class HouseholdIdentifierResolverTests
     [Fact]
     public async Task ResolveAsync_WhenFirstPreferredTypeIsEmpty_FallsThroughToNext()
     {
-        var user = CreateUser(12, "user@example.com", u =>
+        var user = CreateUser(Guid.NewGuid(), "user@example.com", u =>
         {
             u.Phone = null;
             u.SnapId = "SNAP-002";
@@ -357,7 +357,7 @@ public class HouseholdIdentifierResolverTests
     [Fact]
     public async Task ResolveAsync_WhenPreferredHouseholdIdTypesIsNull_ThrowsInvalidOperationException()
     {
-        var user = CreateUser(13, "user@example.com");
+        var user = CreateUser(Guid.NewGuid(), "user@example.com");
         var settings = new StateHouseholdIdSettings
         {
             PreferredHouseholdIdTypes = null!
@@ -378,7 +378,7 @@ public class HouseholdIdentifierResolverTests
     [Fact]
     public async Task ResolveAsync_WhenPreferredHouseholdIdTypesIsEmpty_ThrowsInvalidOperationException()
     {
-        var user = CreateUser(14, "user@example.com");
+        var user = CreateUser(Guid.NewGuid(), "user@example.com");
         var settings = new StateHouseholdIdSettings
         {
             PreferredHouseholdIdTypes = []
@@ -399,7 +399,7 @@ public class HouseholdIdentifierResolverTests
     [Fact]
     public async Task ResolveAsync_WhenNoPreferredTypeHasValue_ReturnsNull()
     {
-        var user = CreateUser(15, "user@example.com", u =>
+        var user = CreateUser(Guid.NewGuid(), "user@example.com", u =>
         {
             u.Phone = null;
             u.SnapId = null;
@@ -425,7 +425,7 @@ public class HouseholdIdentifierResolverTests
     public async Task ResolveAsync_NormalizesEmailToLowercase()
     {
         var email = "User@Example.COM";
-        var user = CreateUser(16, email);
+        var user = CreateUser(Guid.NewGuid(), email);
         var settings = new StateHouseholdIdSettings
         {
             PreferredHouseholdIdTypes = [PreferredHouseholdIdType.Email]
@@ -450,7 +450,7 @@ public class HouseholdIdentifierResolverTests
             PreferredHouseholdIdTypes = [PreferredHouseholdIdType.Email]
         };
         var resolver = CreateResolver(settings);
-        var principal = new ClaimsPrincipal(new ClaimsIdentity(new[] { new Claim("sub", "99") }, "Test"));
+        var principal = new ClaimsPrincipal(new ClaimsIdentity(new[] { new Claim("sub", Guid.NewGuid().ToString()) }, "Test"));
         using var cts = new CancellationTokenSource();
         cts.Cancel();
 

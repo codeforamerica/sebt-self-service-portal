@@ -132,6 +132,18 @@ public class HouseholdRepository : IHouseholdRepository
             cancellationToken);
     }
 
+    /// <inheritdoc />
+    public Task<bool> TryMatchCoLoadedGuardianByBenefitIdAndDobAsync(
+        string benefitIdentifierIc,
+        DateOnly guardianDateOfBirth,
+        CancellationToken cancellationToken = default)
+    {
+        return _summerEbtCaseService.TryMatchCoLoadedGuardianByBenefitIdAndDobAsync(
+            benefitIdentifierIc,
+            guardianDateOfBirth,
+            cancellationToken);
+    }
+
     private static HouseholdData ApplyPiiVisibility(HouseholdData source, PiiVisibility piiVisibility)
     {
         return source with

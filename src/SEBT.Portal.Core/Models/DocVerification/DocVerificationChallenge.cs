@@ -10,7 +10,7 @@ public class DocVerificationChallenge
     /// <summary>
     /// Database primary key. Not exposed in API responses — use <see cref="PublicId"/> instead.
     /// </summary>
-    public int Id { get; init; }
+    public Guid Id { get; init; } = Guid.CreateVersion7();
 
     /// <summary>
     /// Opaque identifier exposed to API consumers. Prevents IDOR enumeration of challenge records.
@@ -21,7 +21,7 @@ public class DocVerificationChallenge
     /// The ID of the user who owns this challenge.
     /// All API reads are scoped by (PublicId, UserId) to enforce ownership.
     /// </summary>
-    public int UserId { get; init; }
+    public Guid UserId { get; init; }
 
     /// <summary>
     /// Current lifecycle state. Transitions enforced by <see cref="TransitionTo"/>.
@@ -155,9 +155,9 @@ public class DocVerificationChallenge
     /// <see cref="TransitionTo"/> instead.
     /// </summary>
     public static DocVerificationChallenge Reconstitute(
-        int id,
+        Guid id,
         Guid publicId,
-        int userId,
+        Guid userId,
         DocVerificationStatus status,
         string? socureReferenceId,
         string? evalId,

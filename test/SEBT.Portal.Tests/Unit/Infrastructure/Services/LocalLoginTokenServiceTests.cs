@@ -9,18 +9,19 @@ public class LocalLoginTokenServiceTests : JwtTokenServiceTestBase
     [Fact]
     public void SubClaimIsUserId()
     {
-        var user = new User { Id = 42, Email = "user@example.com" };
+        var userId = Guid.NewGuid();
+        var user = new User { Id = userId, Email = "user@example.com" };
 
         var token = Service.GenerateForLocalLogin(user);
 
         var jwt = ReadJwt(token);
-        Assert.Equal("42", jwt.Claims.First(c => c.Type == JwtRegisteredClaimNames.Sub).Value);
+        Assert.Equal(userId.ToString(), jwt.Claims.First(c => c.Type == JwtRegisteredClaimNames.Sub).Value);
     }
 
     [Fact]
     public void EmailComesFromUserEntity()
     {
-        var user = new User { Id = 1, Email = "otp-user@example.com" };
+        var user = new User { Email = "otp-user@example.com" };
 
         var token = Service.GenerateForLocalLogin(user);
 
@@ -31,7 +32,7 @@ public class LocalLoginTokenServiceTests : JwtTokenServiceTestBase
     [Fact]
     public void EmailFallsBackToEmpty_WhenNull()
     {
-        var user = new User { Id = 1, Email = null };
+        var user = new User { Email = null };
 
         var token = Service.GenerateForLocalLogin(user);
 
@@ -42,7 +43,7 @@ public class LocalLoginTokenServiceTests : JwtTokenServiceTestBase
     [Fact]
     public void IalComesFromUserIalLevel_Ial1Plus()
     {
-        var user = new User { Id = 1, Email = "user@example.com", IalLevel = UserIalLevel.IAL1plus };
+        var user = new User { Email = "user@example.com", IalLevel = UserIalLevel.IAL1plus };
 
         var token = Service.GenerateForLocalLogin(user);
 
@@ -53,7 +54,7 @@ public class LocalLoginTokenServiceTests : JwtTokenServiceTestBase
     [Fact]
     public void IalComesFromUserIalLevel_Ial2()
     {
-        var user = new User { Id = 1, Email = "user@example.com", IalLevel = UserIalLevel.IAL2 };
+        var user = new User { Email = "user@example.com", IalLevel = UserIalLevel.IAL2 };
 
         var token = Service.GenerateForLocalLogin(user);
 
@@ -64,7 +65,7 @@ public class LocalLoginTokenServiceTests : JwtTokenServiceTestBase
     [Fact]
     public void IalComesFromUserIalLevel_DefaultsTo1()
     {
-        var user = new User { Id = 1, Email = "user@example.com", IalLevel = UserIalLevel.None };
+        var user = new User { Email = "user@example.com", IalLevel = UserIalLevel.None };
 
         var token = Service.GenerateForLocalLogin(user);
 
@@ -79,7 +80,6 @@ public class LocalLoginTokenServiceTests : JwtTokenServiceTestBase
         // GenerateForLocalLogin should downgrade to NotStarted rather than throwing.
         var user = new User
         {
-            Id = 1,
             Email = "user@example.com",
             IdProofingStatus = IdProofingStatus.Completed,
             IalLevel = UserIalLevel.IAL1,
@@ -100,7 +100,6 @@ public class LocalLoginTokenServiceTests : JwtTokenServiceTestBase
     {
         var user = new User
         {
-            Id = 1,
             Email = "user@example.com",
             IdProofingStatus = IdProofingStatus.Completed,
             IalLevel = UserIalLevel.IAL1plus,
@@ -121,7 +120,6 @@ public class LocalLoginTokenServiceTests : JwtTokenServiceTestBase
         var completedAt = DateTime.UtcNow.AddDays(-10);
         var user = new User
         {
-            Id = 1,
             Email = "user@example.com",
             IalLevel = UserIalLevel.IAL1plus,
             IdProofingStatus = IdProofingStatus.Completed,
@@ -144,7 +142,7 @@ public class LocalLoginTokenServiceTests : JwtTokenServiceTestBase
     [Fact]
     public void UserWithNoProofing_HasNoCompletedAtOrExpiresAt()
     {
-        var user = new User { Id = 1, Email = "user@example.com", IalLevel = UserIalLevel.None };
+        var user = new User { Email = "user@example.com", IalLevel = UserIalLevel.None };
 
         var token = Service.GenerateForLocalLogin(user);
 
@@ -158,7 +156,6 @@ public class LocalLoginTokenServiceTests : JwtTokenServiceTestBase
     {
         var user = new User
         {
-            Id = 1,
             Email = "user@example.com",
             IdProofingSessionId = "session-abc-123"
         };
@@ -173,7 +170,7 @@ public class LocalLoginTokenServiceTests : JwtTokenServiceTestBase
     [Fact]
     public void OmitsIdProofingSessionId_WhenNull()
     {
-        var user = new User { Id = 1, Email = "user@example.com", IdProofingSessionId = null };
+        var user = new User { Email = "user@example.com", IdProofingSessionId = null };
 
         var token = Service.GenerateForLocalLogin(user);
 
@@ -184,7 +181,7 @@ public class LocalLoginTokenServiceTests : JwtTokenServiceTestBase
     [Fact]
     public void ProducesValidJwtWithStandardClaims()
     {
-        var user = new User { Id = 1, Email = "user@example.com" };
+        var user = new User { Email = "user@example.com" };
 
         var token = Service.GenerateForLocalLogin(user);
 

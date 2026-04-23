@@ -208,7 +208,7 @@ public class ProcessWebhookCommandHandler(
         };
     }
 
-    private async Task UpdateUserProofingStatus(int userId, CancellationToken cancellationToken)
+    private async Task UpdateUserProofingStatus(Guid userId, CancellationToken cancellationToken)
     {
         var user = await userRepository.GetUserByIdAsync(userId, cancellationToken);
         if (user == null)

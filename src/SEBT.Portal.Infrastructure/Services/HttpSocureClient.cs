@@ -30,7 +30,7 @@ public class HttpSocureClient(
     };
 
     public async Task<Result<IdProofingAssessmentResult>> RunIdProofingAssessmentAsync(
-        int userId,
+        Guid userId,
         string email,
         string dateOfBirth,
         string? idType,
@@ -98,7 +98,7 @@ public class HttpSocureClient(
     }
 
     public Task<Result<SocureDocvSession>> StartDocvSessionAsync(
-        int userId,
+        Guid userId,
         string email,
         CancellationToken cancellationToken = default)
     {
@@ -111,7 +111,7 @@ public class HttpSocureClient(
     }
 
     private static SocureEvaluationRequest BuildEvaluationRequest(
-        int userId,
+        Guid userId,
         string email,
         string dateOfBirth,
         string? idType,
@@ -130,6 +130,9 @@ public class HttpSocureClient(
             : !string.IsNullOrWhiteSpace(settings.DiSessionToken)
                 ? settings.DiSessionToken
                 : null;
+
+        var sendIdentifierToSocure = !string.IsNullOrWhiteSpace(idType)
+            && !SocureExcludedIdentifierTypes.IsExcludedFromSocurePayload(idType);
 
         var mappedAddress = MapAddress(address);
         if (mappedAddress == null)
@@ -161,7 +164,7 @@ public class HttpSocureClient(
             Email = email,
             DateOfBirth = dateOfBirth,
             Country = "US",
-            NationalId = !string.IsNullOrWhiteSpace(idType) && !string.IsNullOrWhiteSpace(idValue)
+            NationalId = sendIdentifierToSocure && !string.IsNullOrWhiteSpace(idValue)
                 ? idValue
                 : null,
             DiSessionToken = effectiveDiToken,

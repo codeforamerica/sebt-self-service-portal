@@ -43,6 +43,19 @@ public interface IHouseholdRepository
         CancellationToken cancellationToken = default);
 
     /// <summary>
+    /// For co-loaded SNAP/TANF ID proofing: asks the state plugin whether the submitted benefit identifier
+    /// (IC) and guardian date of birth match state warehouse data. Implemented for DC only; other states return <c>false</c>.
+    /// </summary>
+    /// <param name="benefitIdentifierIc">SNAP/TANF identifier from onboarding, mapped to warehouse IC.</param>
+    /// <param name="guardianDateOfBirth">Guardian DOB from ID proofing.</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    /// <returns><c>true</c> if the state reports a match.</returns>
+    Task<bool> TryMatchCoLoadedGuardianByBenefitIdAndDobAsync(
+        string benefitIdentifierIc,
+        DateOnly guardianDateOfBirth,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
     /// Creates or updates household data.
     /// </summary>
     /// <param name="householdData">The household data to create or update.</param>

@@ -252,7 +252,7 @@ public class OidcControllerTests
         var callbackToken = CreateValidCallbackToken(signingKey, email: "user@example.com");
         var body = new CompleteLoginRequest(CoStateKey, callbackToken);
 
-        var user = new User { Id = 1, Email = "user@example.com" };
+        var user = new User { Email = "user@example.com" };
         _userRepository.GetOrCreateUserByExternalIdAsync(
                 Arg.Any<string>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
             .Returns((user, false));
@@ -321,7 +321,7 @@ public class OidcControllerTests
             new Claim("socureIdVerificationDate", verificationDate));
         var body = new CompleteLoginRequest(CoStateKey, callbackToken);
 
-        var user = new User { Id = 1, Email = "user@example.com" };
+        var user = new User { Email = "user@example.com" };
         _userRepository.GetUserByExternalIdAsync("test-sub-12345", Arg.Any<CancellationToken>())
             .Returns(user);
 
@@ -358,7 +358,7 @@ public class OidcControllerTests
             new Claim("socureIdVerificationDate", verificationDate));
         var body = new CompleteLoginRequest(CoStateKey, callbackToken);
 
-        var user = new User { Id = 1, Email = "user@example.com" };
+        var user = new User { Email = "user@example.com" };
         _userRepository.GetUserByExternalIdAsync("test-sub-12345", Arg.Any<CancellationToken>())
             .Returns(user);
 
@@ -386,7 +386,7 @@ public class OidcControllerTests
         var callbackToken = CreateValidCallbackToken(signingKey, email: "user@example.com");
         var body = new CompleteLoginRequest(CoStateKey, callbackToken);
 
-        var user = new User { Id = 1 };
+        var user = new User();
         _userRepository.GetUserByExternalIdAsync("test-sub-12345", Arg.Any<CancellationToken>())
             .Returns(user);
         _oidcTokenService.GenerateForOidcLogin(Arg.Any<User>(), Arg.Any<ClaimsPrincipal>(), true)
@@ -412,7 +412,7 @@ public class OidcControllerTests
         var callbackToken = CreateValidCallbackToken(signingKey, email: "user@example.com");
         var body = new CompleteLoginRequest(CoStateKey, callbackToken);
 
-        var user = new User { Id = 1 };
+        var user = new User();
         _userRepository.GetUserByExternalIdAsync("test-sub-12345", Arg.Any<CancellationToken>())
             .Returns(user);
         _oidcTokenService.GenerateForOidcLogin(Arg.Any<User>(), Arg.Any<ClaimsPrincipal>(), true)
@@ -461,7 +461,7 @@ public class OidcControllerTests
         // Body lies: says IsStepUp=true, but session says false
         var body = new CompleteLoginRequest(CoStateKey, callbackToken, IsStepUp: true);
 
-        var user = new User { Id = 1, Email = "user@example.com" };
+        var user = new User { Email = "user@example.com" };
         _userRepository.GetOrCreateUserByExternalIdAsync(
                 Arg.Any<string>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
             .Returns((user, false));
@@ -496,7 +496,7 @@ public class OidcControllerTests
         var callbackToken = CreateValidCallbackToken(signingKey, email: "user@example.com");
         var body = new CompleteLoginRequest(CoStateKey, callbackToken);
 
-        var user = new User { Id = 1, Email = "user@example.com" };
+        var user = new User { Email = "user@example.com" };
         _userRepository.GetOrCreateUserByExternalIdAsync(
                 Arg.Any<string>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
             .Returns((user, false));
@@ -521,7 +521,7 @@ public class OidcControllerTests
         var callbackToken = CreateValidCallbackToken(signingKey, email: "user@example.com");
         var body = new CompleteLoginRequest(CoStateKey, callbackToken);
 
-        var user = new User { Id = 1 };
+        var user = new User();
         _userRepository.GetUserByExternalIdAsync("test-sub-12345", Arg.Any<CancellationToken>())
             .Returns(user);
         _oidcTokenService.GenerateForOidcLogin(Arg.Any<User>(), Arg.Any<ClaimsPrincipal>(), Arg.Any<bool>())
@@ -548,7 +548,7 @@ public class OidcControllerTests
             new Claim("sub", "oidc-sub-abc123"));
         var body = new CompleteLoginRequest(CoStateKey, callbackToken);
 
-        var user = new User { Id = 1, Email = "user@example.com" };
+        var user = new User { Email = "user@example.com" };
         _userRepository.GetOrCreateUserByExternalIdAsync(
                 "oidc-sub-abc123", "user@example.com", Arg.Any<CancellationToken>())
             .Returns((user, false));
@@ -584,7 +584,7 @@ public class OidcControllerTests
         var callbackToken = CreateValidCallbackToken(signingKey, email: "user@example.com");
         var body = new CompleteLoginRequest(CoStateKey, callbackToken);
 
-        var user = new User { Id = 1, Email = "user@example.com", IalLevel = UserIalLevel.IAL1 };
+        var user = new User { Email = "user@example.com", IalLevel = UserIalLevel.IAL1 };
         _userRepository.GetOrCreateUserByExternalIdAsync(
                 Arg.Any<string>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
             .Returns((user, false));

@@ -10,6 +10,8 @@ public static class SeedScenarios
 {
     // IAL1+ scenarios
     public static readonly SeedScenario CoLoaded = new("co-loaded", UserIalLevel.IAL1plus);
+    /// <summary>Co-loaded with SNAP/TANF on file; ID proofing not started (DC mock household + benefit-match dev).</summary>
+    public static readonly SeedScenario CoLoadedPendingIdProofing = new("co-loaded-pending-id-proofing", UserIalLevel.None);
     public static readonly SeedScenario Verified = new("verified", UserIalLevel.IAL1plus);
     public static readonly SeedScenario Expired = new("expired", UserIalLevel.IAL1plus);
     public static readonly SeedScenario Review = new("review", UserIalLevel.IAL1plus);
@@ -52,7 +54,7 @@ public static class SeedScenarios
     /// </summary>
     public static readonly IReadOnlyList<SeedScenario> UserScenarios =
     [
-        CoLoaded, Verified, SingleChild, LargeFamily, Expired,
+        CoLoaded, CoLoadedPendingIdProofing, Verified, SingleChild, LargeFamily, Expired,
         NonCoLoaded, NotStarted, Pending, Minimal, Denied,
         Review, Cancelled, Unknown, SummerActive, SummerLost,
         DcMixed, CoUndeliverable, CoFrozen, CoNotActivated, CoDeactivatedByState, CoActive,
@@ -66,7 +68,8 @@ public static class SeedScenarios
         new HashSet<SeedScenario>
         {
             SummerActive, SummerLost, DcMixed,
-            Simple1, Simple2, Simple3, Simple4, Simple5, Simple6, Simple7
+            Simple1, Simple2, Simple3, Simple4, Simple5, Simple6, Simple7,
+            CoLoadedPendingIdProofing,
         };
 
     /// <summary>
