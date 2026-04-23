@@ -286,7 +286,7 @@ public class HttpSocureClientTests
 
         var client = CreateClient(handler);
         await client.RunIdProofingAssessmentAsync(
-            42, "user@example.com", "1990-06-15", "snapAccountId", "123456789");
+            Guid.CreateVersion7(), "user@example.com", "1990-06-15", "snapAccountId", "123456789");
 
         Assert.NotNull(capturedBody);
         using var doc = JsonDocument.Parse(capturedBody);
@@ -314,7 +314,7 @@ public class HttpSocureClientTests
 
         var client = CreateClient(handler);
         await client.RunIdProofingAssessmentAsync(
-            42, "user@example.com", "1990-06-15", "itin", null);
+            Guid.CreateVersion7(), "user@example.com", "1990-06-15", "itin", null);
 
         Assert.NotNull(capturedBody);
         using var doc = JsonDocument.Parse(capturedBody);

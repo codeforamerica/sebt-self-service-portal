@@ -174,7 +174,7 @@ public class SubmitIdProofingCommandHandlerTests
                 Arg.Any<CancellationToken>());
         await socureClient.DidNotReceive()
             .RunIdProofingAssessmentAsync(
-                Arg.Any<int>(), Arg.Any<string>(), Arg.Any<string>(),
+                Arg.Any<Guid>(), Arg.Any<string>(), Arg.Any<string>(),
                 Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<Address?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>());
     }
 
@@ -247,7 +247,7 @@ public class SubmitIdProofingCommandHandlerTests
 
         await socureClient.DidNotReceive()
             .RunIdProofingAssessmentAsync(
-                Arg.Any<int>(), Arg.Any<string>(), Arg.Any<string>(),
+                Arg.Any<Guid>(), Arg.Any<string>(), Arg.Any<string>(),
                 Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<Address?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>());
     }
 
@@ -296,7 +296,7 @@ public class SubmitIdProofingCommandHandlerTests
 
         await socureClient.DidNotReceive()
             .RunIdProofingAssessmentAsync(
-                Arg.Any<int>(), Arg.Any<string>(), Arg.Any<string>(),
+                Arg.Any<Guid>(), Arg.Any<string>(), Arg.Any<string>(),
                 Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<Address?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>());
     }
 
@@ -336,7 +336,7 @@ public class SubmitIdProofingCommandHandlerTests
 
         await socureClient.DidNotReceive()
             .RunIdProofingAssessmentAsync(
-                Arg.Any<int>(), Arg.Any<string>(), Arg.Any<string>(),
+                Arg.Any<Guid>(), Arg.Any<string>(), Arg.Any<string>(),
                 Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<Address?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>());
     }
 
@@ -388,13 +388,13 @@ public class SubmitIdProofingCommandHandlerTests
             failed.Errors,
             e => e.Key == nameof(SubmitIdProofingCommand.DateOfBirth));
 
-        await userRepository.DidNotReceive().GetUserByIdAsync(Arg.Any<int>(), Arg.Any<CancellationToken>());
+        await userRepository.DidNotReceive().GetUserByIdAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>());
         await householdRepository.DidNotReceive()
             .TryMatchCoLoadedGuardianByBenefitIdAndDobAsync(
                 Arg.Any<string>(), Arg.Any<DateOnly>(), Arg.Any<CancellationToken>());
         await socureClient.DidNotReceive()
             .RunIdProofingAssessmentAsync(
-                Arg.Any<int>(), Arg.Any<string>(), Arg.Any<string>(),
+                Arg.Any<Guid>(), Arg.Any<string>(), Arg.Any<string>(),
                 Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<string?>(),
                 Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<Address?>(), Arg.Any<string?>(),
                 Arg.Any<CancellationToken>());
@@ -435,7 +435,7 @@ public class SubmitIdProofingCommandHandlerTests
         challengeRepository.GetActiveByUserIdAsync(command.UserId, Arg.Any<CancellationToken>())
             .Returns((DocVerificationChallenge?)null);
         socureClient.RunIdProofingAssessmentAsync(
-                Arg.Any<int>(), Arg.Any<string>(), Arg.Any<string>(),
+                Arg.Any<Guid>(), Arg.Any<string>(), Arg.Any<string>(),
                 Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<Address?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
             .Returns(Result<IdProofingAssessmentResult>.Success(
                 new IdProofingAssessmentResult(IdProofingOutcome.Matched, AllowIdRetry: false)));
@@ -444,7 +444,7 @@ public class SubmitIdProofingCommandHandlerTests
 
         await socureClient.Received(1)
             .RunIdProofingAssessmentAsync(
-                Arg.Any<int>(), Arg.Any<string>(), Arg.Any<string>(),
+                Arg.Any<Guid>(), Arg.Any<string>(), Arg.Any<string>(),
                 Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<Address?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>());
     }
 
