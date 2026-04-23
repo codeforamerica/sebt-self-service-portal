@@ -30,6 +30,7 @@ public class ConfigureIdProofingRequirements(
                     "Valid keys are resource+action combinations: {ValidKeys}",
                     child.Key,
                     string.Join(", ", IdProofingKeys.AllValidKeys));
+                continue;
             }
 
             if (child.Value is not null)
@@ -66,6 +67,9 @@ public class ConfigureIdProofingRequirements(
                     perCase[sub.Key] = subLevel;
                 }
 
+                // Partial success is intentional: valid sub-keys are kept; missing/invalid
+                // ones fall through to IalRequirement.ClassifyCase's fail-safe default
+                // (IAL1plus), so a single bad sub-key doesn't discard its valid siblings.
                 if (!hasError || perCase.Count > 0)
                 {
                     options.Requirements[child.Key] = IalRequirement.PerCaseType(perCase);
