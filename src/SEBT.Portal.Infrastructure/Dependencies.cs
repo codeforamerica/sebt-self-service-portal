@@ -120,6 +120,7 @@ public static class Dependencies
         services.AddTransient<IOtpRepository, InMemoryOtpRepository>();
         services.AddTransient<IUserRepository, DatabaseUserRepository>();
         services.AddTransient<IDocVerificationChallengeRepository, DatabaseDocVerificationChallengeRepository>();
+        services.AddScoped<ICardReplacementRequestRepository, CardReplacementRequestRepository>();
 
         // For deterministic time in seeding/mock data
         services.AddSingleton(TimeProvider.System);
