@@ -175,6 +175,8 @@ State-specific behavior uses MEF (System.Composition) plugins loaded at runtime 
 
 **Plugin development inner loop:** The state-connector repo builds its interface package to `~/nuget-store/` as a local NuGet source. The API project and state connector repos (e.g., `-dc-connector`) reference that package and have post-build targets that copy compiled DLLs into this repo's `src/SEBT.Portal.Api/plugins-{state}/` directory. After building a connector, restart the API to pick up changes.
 
+**Mock data mode:** When `UseMockHouseholdData` is `true` (set in `appsettings.{state}.json`), the API uses in-memory mock data from `MockHouseholdRepository` instead of calling state connector plugins. This affects both reads and writes. Mock data scenarios are defined in `MockHouseholdRepository.SeedMockData()` with test personas keyed by email/phone.
+
 ### Frontend
 Uses Next.js App Router with route groups: `(public)/` for login flows, `(authenticated)/` for protected pages. USWDS design tokens are generated via scripts before build. i18next handles internationalization with content files in `content/`.
 
