@@ -18,7 +18,7 @@ public static class UserFactory
         .RuleFor(u => u.IalLevel, f => f.PickRandom<UserIalLevel>())
         .RuleFor(u => u.IdProofingSessionId, f => f.Random.Guid().ToString())
         .RuleFor(u => u.IdProofingCompletedAt, (f, u) =>
-            u.IalLevel is UserIalLevel.IAL1 or UserIalLevel.IAL1plus or UserIalLevel.IAL2
+            u.IalLevel is UserIalLevel.IAL1plus or UserIalLevel.IAL2
                 ? f.Date.Recent(30)
                 : null)
         .RuleFor(u => u.IdProofingExpiresAt, (f, u) =>
@@ -105,8 +105,8 @@ public static class UserFactory
                 : IdProofingStatus.NotStarted;
             u.IalLevel = ialLevel;
 
-            // Set related dates when user has achieved an IAL level
-            if (ialLevel is UserIalLevel.IAL1 or UserIalLevel.IAL1plus or UserIalLevel.IAL2)
+            // IAL1+ / IAL2 store a proofing completion timestamp (matches DatabaseSeeder mock seeding).
+            if (ialLevel is UserIalLevel.IAL1plus or UserIalLevel.IAL2)
             {
                 var faker = new Faker();
                 u.IdProofingCompletedAt = faker.Date.Recent(30);
