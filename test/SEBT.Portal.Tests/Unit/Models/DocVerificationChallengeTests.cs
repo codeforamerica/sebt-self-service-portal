@@ -146,9 +146,9 @@ public class DocVerificationChallengeTests
         DocVerificationStatus status, bool expected)
     {
         var challenge = DocVerificationChallenge.Reconstitute(
-            id: 1,
+            id: Guid.NewGuid(),
             publicId: Guid.NewGuid(),
-            userId: 1,
+            userId: Guid.NewGuid(),
             status: status,
             socureReferenceId: null,
             evalId: null,
@@ -169,9 +169,9 @@ public class DocVerificationChallengeTests
     [Fact]
     public void Reconstitute_ShouldPreserveAllFields()
     {
-        var id = 42;
+        var id = Guid.NewGuid();
         var publicId = Guid.NewGuid();
-        var userId = 7;
+        var userId = Guid.NewGuid();
         var status = DocVerificationStatus.Verified;
         var socureReferenceId = "ref-123";
         var evalId = "eval-456";
@@ -275,9 +275,9 @@ public class DocVerificationChallengeTests
         var invalidStatus = (DocVerificationStatus)99;
 
         var challenge = DocVerificationChallenge.Reconstitute(
-            id: 1,
+            id: Guid.NewGuid(),
             publicId: Guid.NewGuid(),
-            userId: 1,
+            userId: Guid.NewGuid(),
             status: invalidStatus,
             socureReferenceId: null,
             evalId: null,

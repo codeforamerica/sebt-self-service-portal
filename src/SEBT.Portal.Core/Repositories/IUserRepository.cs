@@ -53,7 +53,7 @@ public interface IUserRepository
     /// <param name="id">The user's ID.</param>
     /// <param name="cancellationToken">A token to monitor for cancellation requests.</param>
     /// <returns>The user if found; otherwise, <c>null</c>.</returns>
-    Task<User?> GetUserByIdAsync(int id, CancellationToken cancellationToken = default);
+    Task<User?> GetUserByIdAsync(Guid id, CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Gets or creates a user by their external identity provider subject ID.

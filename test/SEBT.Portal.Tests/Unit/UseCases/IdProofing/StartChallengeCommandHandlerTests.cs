@@ -41,8 +41,8 @@ public class StartChallengeCommandHandlerTests
         var handler = CreateHandler();
         var command = new StartChallengeCommand
         {
-            ChallengeId = Guid.NewGuid(),
-            UserId = 1
+            ChallengeId = Guid.CreateVersion7(),
+            UserId = Guid.CreateVersion7()
         };
 
         challengeRepository.GetByPublicIdAsync(command.ChallengeId, command.UserId, Arg.Any<CancellationToken>())
@@ -59,11 +59,11 @@ public class StartChallengeCommandHandlerTests
     public async Task Handle_ShouldReturn404_WhenChallengeExistsButBelongsToDifferentUser()
     {
         var handler = CreateHandler();
-        var challenge = DocVerificationChallengeFactory.CreateChallengeForUser(userId: 2);
+        var challenge = DocVerificationChallengeFactory.CreateChallengeForUser(userId: Guid.NewGuid());
         var command = new StartChallengeCommand
         {
             ChallengeId = challenge.PublicId,
-            UserId = 1 // Different user
+            UserId = Guid.NewGuid() // Different user
         };
 
         // Repository returns null because (publicId, userId=1) doesn't match
@@ -124,10 +124,10 @@ public class StartChallengeCommandHandlerTests
 
         // Should NOT call Socure again
         await socureClient.DidNotReceive()
-            .StartDocvSessionAsync(Arg.Any<int>(), Arg.Any<string>(), Arg.Any<CancellationToken>());
+            .StartDocvSessionAsync(Arg.Any<Guid>(), Arg.Any<string>(), Arg.Any<CancellationToken>());
         await socureClient.DidNotReceive()
             .RunIdProofingAssessmentAsync(
-                Arg.Any<int>(), Arg.Any<string>(), Arg.Any<string>(),
+                Arg.Any<Guid>(), Arg.Any<string>(), Arg.Any<string>(),
                 Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<string?>(),
                 Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<Address?>(), Arg.Any<string?>(),
                 Arg.Any<CancellationToken>());
@@ -204,7 +204,7 @@ public class StartChallengeCommandHandlerTests
         Assert.Equal(PreconditionFailedReason.Conflict, preconditionFailed.Reason);
         await socureClient.DidNotReceive()
             .RunIdProofingAssessmentAsync(
-                Arg.Any<int>(), Arg.Any<string>(), Arg.Any<string>(),
+                Arg.Any<Guid>(), Arg.Any<string>(), Arg.Any<string>(),
                 Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<string?>(),
                 Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<Address?>(), Arg.Any<string?>(),
                 Arg.Any<CancellationToken>());
@@ -214,7 +214,8 @@ public class StartChallengeCommandHandlerTests
     public async Task Handle_ShouldRefreshDocvToken_WhenCreatedAndStoredTokenIsStale()
     {
         var handler = CreateHandler();
-        var challenge = DocVerificationChallengeFactory.CreateChallengeForUser(1, c =>
+        var userId = Guid.NewGuid();
+        var challenge = DocVerificationChallengeFactory.CreateChallengeForUser(userId, c =>
         {
             c.ProofingDateOfBirth = "1990-01-01";
             c.ProofingIdType = "ssn";
@@ -225,7 +226,7 @@ public class StartChallengeCommandHandlerTests
         var command = new StartChallengeCommand
         {
             ChallengeId = challenge.PublicId,
-            UserId = 1
+            UserId = userId
         };
         var newSession = new SocureDocvSession("fresh", "https://verify.socure.com/#/dv/fresh", "ref-a", "eval-b");
 
@@ -234,7 +235,7 @@ public class StartChallengeCommandHandlerTests
         userRepository.GetUserByIdAsync(command.UserId, Arg.Any<CancellationToken>())
             .Returns(new User { Id = command.UserId, Email = "test@example.com" });
         socureClient.RunIdProofingAssessmentAsync(
-                Arg.Any<int>(), Arg.Any<string>(), Arg.Any<string>(),
+                Arg.Any<Guid>(), Arg.Any<string>(), Arg.Any<string>(),
                 Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<string?>(),
                 Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<Address?>(), Arg.Any<string?>(),
                 Arg.Any<CancellationToken>())
@@ -331,7 +332,7 @@ public class StartChallengeCommandHandlerTests
         userRepository.GetUserByIdAsync(command.UserId, Arg.Any<CancellationToken>())
             .Returns(new User { Id = command.UserId, Email = "test@example.com" });
         socureClient.RunIdProofingAssessmentAsync(
-                Arg.Any<int>(), Arg.Any<string>(), Arg.Any<string>(),
+                Arg.Any<Guid>(), Arg.Any<string>(), Arg.Any<string>(),
                 Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<string?>(),
                 Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<Address?>(), Arg.Any<string?>(),
                 Arg.Any<CancellationToken>())
@@ -371,7 +372,7 @@ public class StartChallengeCommandHandlerTests
         userRepository.GetUserByIdAsync(command.UserId, Arg.Any<CancellationToken>())
             .Returns(new User { Id = command.UserId, Email = "test@example.com" });
         socureClient.RunIdProofingAssessmentAsync(
-                Arg.Any<int>(), Arg.Any<string>(), Arg.Any<string>(),
+                Arg.Any<Guid>(), Arg.Any<string>(), Arg.Any<string>(),
                 Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<string?>(),
                 Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<Address?>(), Arg.Any<string?>(),
                 Arg.Any<CancellationToken>())
@@ -390,7 +391,7 @@ public class StartChallengeCommandHandlerTests
     public async Task Handle_ShouldUseStoredDocvData_WhenChallengeAlreadyHasToken()
     {
         var handler = CreateHandler();
-        var challenge = DocVerificationChallengeFactory.CreateChallengeForUser(userId: 1, c =>
+        var challenge = DocVerificationChallengeFactory.CreateChallengeForUser(userId: Guid.NewGuid(), c =>
         {
             c.ExpiresAt = DateTime.UtcNow.AddMinutes(30);
         });
@@ -400,7 +401,7 @@ public class StartChallengeCommandHandlerTests
         var command = new StartChallengeCommand
         {
             ChallengeId = challenge.PublicId,
-            UserId = 1
+            UserId = Guid.NewGuid()
         };
 
         challengeRepository.GetByPublicIdAsync(command.ChallengeId, command.UserId, Arg.Any<CancellationToken>())
@@ -415,10 +416,10 @@ public class StartChallengeCommandHandlerTests
 
         // Should NOT call Socure — data was already stored
         await socureClient.DidNotReceive()
-            .StartDocvSessionAsync(Arg.Any<int>(), Arg.Any<string>(), Arg.Any<CancellationToken>());
+            .StartDocvSessionAsync(Arg.Any<Guid>(), Arg.Any<string>(), Arg.Any<CancellationToken>());
         // Should NOT need to look up the user
         await userRepository.DidNotReceive()
-            .GetUserByIdAsync(Arg.Any<int>(), Arg.Any<CancellationToken>());
+            .GetUserByIdAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>());
         // Should update challenge to Pending
         await challengeRepository.Received(1)
             .UpdateAsync(Arg.Is<DocVerificationChallenge>(c =>
@@ -432,7 +433,7 @@ public class StartChallengeCommandHandlerTests
     public async Task Handle_ShouldCallSocure_WhenChallengeHasNoStoredDocvData()
     {
         var handler = CreateHandler();
-        var challenge = DocVerificationChallengeFactory.CreateChallengeForUser(userId: 1, c =>
+        var challenge = DocVerificationChallengeFactory.CreateChallengeForUser(userId: Guid.NewGuid(), c =>
         {
             c.DocvTransactionToken = null;
             c.DocvUrl = null;
@@ -443,7 +444,7 @@ public class StartChallengeCommandHandlerTests
         var command = new StartChallengeCommand
         {
             ChallengeId = challenge.PublicId,
-            UserId = 1
+            UserId = Guid.NewGuid()
         };
         var expectedToken = Guid.NewGuid().ToString();
         var expectedUrl = $"https://verify.socure.com/#/dv/{expectedToken}";
@@ -478,7 +479,7 @@ public class StartChallengeCommandHandlerTests
     public async Task Handle_ShouldReturnDependencyFailed_WhenSocureSessionFails()
     {
         var handler = CreateHandler();
-        var challenge = DocVerificationChallengeFactory.CreateChallengeForUser(userId: 1, c =>
+        var challenge = DocVerificationChallengeFactory.CreateChallengeForUser(userId: Guid.NewGuid(), c =>
         {
             c.DocvTransactionToken = null;
             c.DocvUrl = null;
@@ -487,7 +488,7 @@ public class StartChallengeCommandHandlerTests
         var command = new StartChallengeCommand
         {
             ChallengeId = challenge.PublicId,
-            UserId = 1
+            UserId = Guid.NewGuid()
         };
 
         challengeRepository.GetByPublicIdAsync(command.ChallengeId, command.UserId, Arg.Any<CancellationToken>())
@@ -514,7 +515,7 @@ public class StartChallengeCommandHandlerTests
     public async Task Handle_ShouldReturnDependencyFailed_WhenSocureClientDoesNotSupportOnDemandSessions()
     {
         var handler = CreateHandler();
-        var challenge = DocVerificationChallengeFactory.CreateChallengeForUser(userId: 1, c =>
+        var challenge = DocVerificationChallengeFactory.CreateChallengeForUser(userId: Guid.NewGuid(), c =>
         {
             c.DocvTransactionToken = null;
             c.DocvUrl = null;
@@ -523,7 +524,7 @@ public class StartChallengeCommandHandlerTests
         var command = new StartChallengeCommand
         {
             ChallengeId = challenge.PublicId,
-            UserId = 1
+            UserId = Guid.NewGuid()
         };
 
         challengeRepository.GetByPublicIdAsync(command.ChallengeId, command.UserId, Arg.Any<CancellationToken>())
@@ -553,10 +554,10 @@ public class StartChallengeCommandHandlerTests
         var command = new StartChallengeCommand
         {
             ChallengeId = Guid.Empty,
-            UserId = 1
+            UserId = Guid.NewGuid()
         };
 
-        challengeRepository.GetByPublicIdAsync(Guid.Empty, 1, Arg.Any<CancellationToken>())
+        challengeRepository.GetByPublicIdAsync(Guid.Empty, command.UserId, Arg.Any<CancellationToken>())
             .Returns((DocVerificationChallenge?)null);
 
         var result = await handler.Handle(command, CancellationToken.None);
@@ -572,14 +573,14 @@ public class StartChallengeCommandHandlerTests
     public async Task Handle_ShouldReturnConflict_WhenCreatedChallengeHasExpired()
     {
         var handler = CreateHandler();
-        var challenge = DocVerificationChallengeFactory.CreateChallengeForUser(userId: 1, c =>
+        var challenge = DocVerificationChallengeFactory.CreateChallengeForUser(userId: Guid.NewGuid(), c =>
         {
             c.ExpiresAt = DateTime.UtcNow.AddMinutes(-5); // Expired 5 minutes ago
         });
         var command = new StartChallengeCommand
         {
             ChallengeId = challenge.PublicId,
-            UserId = 1
+            UserId = Guid.NewGuid()
         };
 
         challengeRepository.GetByPublicIdAsync(command.ChallengeId, command.UserId, Arg.Any<CancellationToken>())
@@ -603,14 +604,14 @@ public class StartChallengeCommandHandlerTests
     public async Task Handle_ShouldSucceed_WhenCreatedChallengeHasNotExpired()
     {
         var handler = CreateHandler();
-        var challenge = DocVerificationChallengeFactory.CreateChallengeForUser(userId: 1, c =>
+        var challenge = DocVerificationChallengeFactory.CreateChallengeForUser(userId: Guid.NewGuid(), c =>
         {
             c.ExpiresAt = DateTime.UtcNow.AddMinutes(30); // Still valid
         });
         var command = new StartChallengeCommand
         {
             ChallengeId = challenge.PublicId,
-            UserId = 1
+            UserId = Guid.NewGuid()
         };
 
         challengeRepository.GetByPublicIdAsync(command.ChallengeId, command.UserId, Arg.Any<CancellationToken>())
@@ -627,14 +628,14 @@ public class StartChallengeCommandHandlerTests
     public async Task Handle_ShouldSucceed_WhenCreatedChallengeHasNullExpiresAt()
     {
         var handler = CreateHandler();
-        var challenge = DocVerificationChallengeFactory.CreateChallengeForUser(userId: 1, c =>
+        var challenge = DocVerificationChallengeFactory.CreateChallengeForUser(userId: Guid.NewGuid(), c =>
         {
             c.ExpiresAt = null; // No expiration
         });
         var command = new StartChallengeCommand
         {
             ChallengeId = challenge.PublicId,
-            UserId = 1
+            UserId = Guid.NewGuid()
         };
 
         challengeRepository.GetByPublicIdAsync(command.ChallengeId, command.UserId, Arg.Any<CancellationToken>())

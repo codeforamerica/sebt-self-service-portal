@@ -18,7 +18,7 @@ public class DatabaseDocVerificationChallengeRepository(PortalDbContext dbContex
 
     public async Task<DocVerificationChallenge?> GetByPublicIdAsync(
         Guid publicId,
-        int userId,
+        Guid userId,
         CancellationToken cancellationToken = default)
     {
         var entity = await dbContext.DocVerificationChallenges
@@ -31,7 +31,7 @@ public class DatabaseDocVerificationChallengeRepository(PortalDbContext dbContex
     }
 
     public async Task<DocVerificationChallenge?> GetActiveByUserIdAsync(
-        int userId,
+        Guid userId,
         CancellationToken cancellationToken = default)
     {
         // Non-terminal statuses: Created (0) and Pending (1)

@@ -9,7 +9,7 @@ public class SessionRefreshTokenServiceTests : JwtTokenServiceTestBase
     [Fact]
     public void CopiesIalFromExistingJwt()
     {
-        var user = new User { Id = 1, IalLevel = UserIalLevel.None };
+        var user = new User { IalLevel = UserIalLevel.None };
         var principal = MakePrincipal(
             (JwtClaimTypes.Ial, "1plus"),
             (JwtClaimTypes.IdProofingStatus, ((int)IdProofingStatus.Completed).ToString()),
@@ -26,7 +26,7 @@ public class SessionRefreshTokenServiceTests : JwtTokenServiceTestBase
     [Fact]
     public void CopiesIdProofingTimestamps()
     {
-        var user = new User { Id = 1 };
+        var user = new User();
         var principal = MakePrincipal(
             (JwtClaimTypes.Ial, "1plus"),
             (JwtClaimTypes.IdProofingStatus, "2"),
@@ -44,7 +44,7 @@ public class SessionRefreshTokenServiceTests : JwtTokenServiceTestBase
     [Fact]
     public void CopiesApplicationClaims()
     {
-        var user = new User { Id = 1 };
+        var user = new User();
         var principal = MakePrincipal(
             (JwtClaimTypes.Ial, "1"),
             (JwtClaimTypes.IdProofingStatus, "0"),
@@ -62,9 +62,10 @@ public class SessionRefreshTokenServiceTests : JwtTokenServiceTestBase
     [Fact]
     public void SubIsAlwaysUserId_NotFromExistingJwt()
     {
-        var user = new User { Id = 42 };
+        var userId = Guid.NewGuid();
+        var user = new User { Id = userId };
         var principal = MakePrincipal(
-            (JwtRegisteredClaimNames.Sub, "999"),
+            (JwtRegisteredClaimNames.Sub, Guid.NewGuid().ToString()),
             (JwtClaimTypes.Ial, "1"),
             (JwtClaimTypes.IdProofingStatus, "0"),
             ("email", "user@example.com"));
@@ -74,7 +75,7 @@ public class SessionRefreshTokenServiceTests : JwtTokenServiceTestBase
         var jwt = ReadJwt(token);
         var subClaims = jwt.Claims.Where(c => c.Type == JwtRegisteredClaimNames.Sub).ToList();
         Assert.Single(subClaims);
-        Assert.Equal("42", subClaims[0].Value);
+        Assert.Equal(userId.ToString(), subClaims[0].Value);
     }
 
     // --- Fallback to user entity ---
@@ -82,7 +83,7 @@ public class SessionRefreshTokenServiceTests : JwtTokenServiceTestBase
     [Fact]
     public void FallsBackToUserIal_WhenPrincipalLacksIal_Ial1Plus()
     {
-        var user = new User { Id = 1, IalLevel = UserIalLevel.IAL1plus, Email = "user@example.com" };
+        var user = new User { IalLevel = UserIalLevel.IAL1plus, Email = "user@example.com" };
         var principal = MakePrincipal(("email", "user@example.com"));
 
         var token = Service.GenerateForSessionRefresh(user, principal);
@@ -94,7 +95,7 @@ public class SessionRefreshTokenServiceTests : JwtTokenServiceTestBase
     [Fact]
     public void FallsBackToUserIal_WhenPrincipalLacksIal_Ial2()
     {
-        var user = new User { Id = 1, IalLevel = UserIalLevel.IAL2, Email = "user@example.com" };
+        var user = new User { IalLevel = UserIalLevel.IAL2, Email = "user@example.com" };
         var principal = MakePrincipal(("email", "user@example.com"));
 
         var token = Service.GenerateForSessionRefresh(user, principal);
@@ -106,7 +107,7 @@ public class SessionRefreshTokenServiceTests : JwtTokenServiceTestBase
     [Fact]
     public void FallsBackToUserIal_WhenPrincipalLacksIal_DefaultsTo1()
     {
-        var user = new User { Id = 1, IalLevel = UserIalLevel.None, Email = "user@example.com" };
+        var user = new User { IalLevel = UserIalLevel.None, Email = "user@example.com" };
         var principal = MakePrincipal(("email", "user@example.com"));
 
         var token = Service.GenerateForSessionRefresh(user, principal);
@@ -118,7 +119,7 @@ public class SessionRefreshTokenServiceTests : JwtTokenServiceTestBase
     [Fact]
     public void FallsBackToUserIdProofingStatus_WhenPrincipalLacksIt()
     {
-        var user = new User { Id = 1, IdProofingStatus = IdProofingStatus.InProgress, Email = "user@example.com" };
+        var user = new User { IdProofingStatus = IdProofingStatus.InProgress, Email = "user@example.com" };
         var principal = MakePrincipal(
             (JwtClaimTypes.Ial, "1"),
             ("email", "user@example.com"));
@@ -136,7 +137,7 @@ public class SessionRefreshTokenServiceTests : JwtTokenServiceTestBase
     [Fact]
     public void EmailFromPrincipalEmailClaim()
     {
-        var user = new User { Id = 1, Email = "fallback@example.com" };
+        var user = new User { Email = "fallback@example.com" };
         var principal = MakePrincipal(
             (JwtClaimTypes.Ial, "1"),
             (JwtClaimTypes.IdProofingStatus, "0"),
@@ -151,7 +152,7 @@ public class SessionRefreshTokenServiceTests : JwtTokenServiceTestBase
     [Fact]
     public void EmailFallsBackToEmpty_WhenNoEmailClaim()
     {
-        var user = new User { Id = 1, Email = null };
+        var user = new User { Email = null };
         var principal = MakePrincipal(
             (JwtClaimTypes.Ial, "1"),
             (JwtClaimTypes.IdProofingStatus, "0"));

@@ -6,6 +6,7 @@ import { useTranslation } from 'react-i18next'
 
 import { AddressForm } from '@/features/address/components/AddressForm'
 import { useHouseholdData } from '@/features/household'
+import { getState } from '@sebt/design-system'
 
 // TODO: Card-flow entry point — when accessed via /profile/address?from=cards,
 // the form should return the user to the card replacement flow on completion
@@ -17,11 +18,13 @@ export default function AddressFormPage() {
   const router = useRouter()
   const canUpdateAddress = data?.allowedActions?.canUpdateAddress ?? true
 
+  const isDC = getState() === 'dc'
+
   useEffect(() => {
     if (!isLoading && data && !canUpdateAddress) {
-      router.replace('/profile/address/info')
+      router.replace(isDC ? '/profile/address/info' : '/dashboard')
     }
-  }, [isLoading, data, canUpdateAddress, router])
+  }, [isLoading, data, canUpdateAddress, isDC, router])
 
   if (isLoading || (data && !canUpdateAddress)) {
     return (

@@ -494,7 +494,7 @@ public class ValidateOtpCommandHandlerTests
 
         var newUser = new User
         {
-            Id = 1,
+            Id = Guid.CreateVersion7(),
             Email = command.Email,
             IalLevel = UserIalLevel.None
         };
@@ -538,7 +538,7 @@ public class ValidateOtpCommandHandlerTests
 
         var existingUser = new User
         {
-            Id = 2,
+            Id = Guid.NewGuid(),
             Email = command.Email,
             IalLevel = UserIalLevel.IAL1plus
         };
@@ -582,7 +582,7 @@ public class ValidateOtpCommandHandlerTests
 
         var newUser = new User
         {
-            Id = 3,
+            Id = Guid.NewGuid(),
             Email = command.Email,
             IalLevel = UserIalLevel.None
         };
@@ -629,7 +629,7 @@ public class ValidateOtpCommandHandlerTests
 
         var existingUser = new User
         {
-            Id = 4,
+            Id = Guid.NewGuid(),
             Email = command.Email,
             IalLevel = UserIalLevel.IAL1
         };
@@ -676,7 +676,7 @@ public class ValidateOtpCommandHandlerTests
 
         var user = new User
         {
-            Id = 5,
+            Id = Guid.NewGuid(),
             Email = command.Email,
             IalLevel = UserIalLevel.None
         };

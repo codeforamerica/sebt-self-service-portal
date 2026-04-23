@@ -43,7 +43,7 @@ public class JwtSecretKeyValidationTests
         var claims = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
 
         Assert.ThrowsAny<Exception>(
-            () => service.BuildAndSignToken(1, "user@example.com", claims));
+            () => service.BuildAndSignToken(Guid.CreateVersion7(), "user@example.com", claims));
     }
 
     [Fact]
@@ -53,7 +53,7 @@ public class JwtSecretKeyValidationTests
         var claims = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
 
         Assert.ThrowsAny<Exception>(
-            () => service.BuildAndSignToken(1, "user@example.com", claims));
+            () => service.BuildAndSignToken(Guid.CreateVersion7(), "user@example.com", claims));
     }
 
     [Fact]
@@ -62,7 +62,7 @@ public class JwtSecretKeyValidationTests
         var service = CreateService("TestSecretKeyMustBeAtLeast32CharactersLongForSecurity");
         var claims = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
 
-        var token = service.BuildAndSignToken(1, "user@example.com", claims);
+        var token = service.BuildAndSignToken(Guid.CreateVersion7(), "user@example.com", claims);
 
         Assert.False(string.IsNullOrEmpty(token));
     }

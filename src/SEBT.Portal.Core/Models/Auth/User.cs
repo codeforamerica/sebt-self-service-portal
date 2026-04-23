@@ -8,7 +8,7 @@ public class User
     /// <summary>
     /// The unique identifier for the user (database primary key).
     /// </summary>
-    public int Id { get; init; }
+    public Guid Id { get; init; } = Guid.CreateVersion7();
 
     /// <summary>
     /// The user's email address, used as a unique identifier.
@@ -20,6 +20,11 @@ public class User
     /// Set for OIDC users; null for OTP-authenticated users.
     /// </summary>
     public string? ExternalProviderId { get; set; }
+
+    /// <summary>
+    /// The user's date of birth (calendar date), when collected for household matching or verification.
+    /// </summary>
+    public DateOnly? DateOfBirth { get; set; }
 
     /// <summary>
     /// Workflow state of the ID proofing process (NotStarted, InProgress, Completed, Failed, Expired).

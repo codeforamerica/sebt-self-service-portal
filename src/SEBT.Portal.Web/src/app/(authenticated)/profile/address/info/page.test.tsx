@@ -95,12 +95,12 @@ describe('CoLoadedInfoPage', () => {
     expect(screen.queryByTestId('co-loaded-info')).not.toBeInTheDocument()
   })
 
-  it('redirects non-DC users to address form', () => {
+  it('redirects non-DC users to dashboard', () => {
     mockState = 'co'
     mockHouseholdData = makeHousehold({ benefitIssuanceType: 'SummerEbt' })
     render(<CoLoadedInfoPage />)
 
-    expect(mockReplace).toHaveBeenCalledWith('/profile/address')
+    expect(mockReplace).toHaveBeenCalledWith('/dashboard')
     expect(screen.queryByTestId('co-loaded-info')).not.toBeInTheDocument()
   })
 

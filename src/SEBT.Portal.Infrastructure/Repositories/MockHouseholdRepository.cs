@@ -104,6 +104,15 @@ public class MockHouseholdRepository : IHouseholdRepository
         return GetHouseholdByIdentifierAsync(HouseholdIdentifier.Email(email), piiVisibility, userIalLevel, cancellationToken);
     }
 
+    /// <inheritdoc />
+    public Task<bool> TryMatchCoLoadedGuardianByBenefitIdAndDobAsync(
+        string benefitIdentifierIc,
+        DateOnly guardianDateOfBirth,
+        CancellationToken cancellationToken = default)
+    {
+        return Task.FromResult(false);
+    }
+
     public Task UpsertHouseholdAsync(
         HouseholdData householdData,
         CancellationToken cancellationToken = default)
@@ -130,6 +139,72 @@ public class MockHouseholdRepository : IHouseholdRepository
 
         _logger.LogInformation("Mock household data updated for email {Email}", normalizedEmail);
         return Task.CompletedTask;
+    }
+
+    /// <summary>
+    /// Finds a household by identifier value (email or phone) and updates both the
+    /// household-level AddressOnFile and each SummerEbtCase's MailingAddress in place.
+    /// Used by the mock state address update service so that subsequent reads reflect
+    /// the updated address.
+    /// </summary>
+    /// <returns>True if a matching household was found and updated; false otherwise.</returns>
+    public bool TryUpdateAddress(string identifierValue, Address newAddress)
+    {
+        if (string.IsNullOrWhiteSpace(identifierValue))
+        {
+            return false;
+        }
+
+        var household = FindHouseholdByIdentifierValue(identifierValue);
+        if (household == null)
+        {
+            return false;
+        }
+
+        household.AddressOnFile = new Address
+        {
+            StreetAddress1 = newAddress.StreetAddress1,
+            StreetAddress2 = newAddress.StreetAddress2,
+            City = newAddress.City,
+            State = newAddress.State,
+            PostalCode = newAddress.PostalCode
+        };
+
+        foreach (var summerEbtCase in household.SummerEbtCases)
+        {
+            summerEbtCase.MailingAddress = new Address
+            {
+                StreetAddress1 = newAddress.StreetAddress1,
+                StreetAddress2 = newAddress.StreetAddress2,
+                City = newAddress.City,
+                State = newAddress.State,
+                PostalCode = newAddress.PostalCode
+            };
+        }
+
+        _logger.LogInformation("Mock address updated for household");
+        return true;
+    }
+
+    /// <summary>
+    /// Looks up a household by trying the value as an email key first, then as a phone key.
+    /// Returns the original (not a copy) so callers can mutate in-place.
+    /// </summary>
+    private HouseholdData? FindHouseholdByIdentifierValue(string identifierValue)
+    {
+        var normalizedEmail = EmailNormalizer.Normalize(identifierValue);
+        if (_households.TryGetValue(normalizedEmail, out var byEmail))
+        {
+            return byEmail;
+        }
+
+        var normalizedPhone = NormalizePhone(identifierValue);
+        if (normalizedPhone != null && _householdsByPhone.TryGetValue(normalizedPhone, out var byPhone))
+        {
+            return byPhone;
+        }
+
+        return null;
     }
 
     private void SeedMockData()
@@ -173,11 +248,15 @@ public class MockHouseholdRepository : IHouseholdRepository
                 {
                     c.IssuanceType = IssuanceType.SnapEbtCard;
                     c.IsCoLoaded = true;
+                    c.EbtCaseNumber = "SNAP-CO-001";
+                    c.ApplicationStudentId = "SNAP-PERSON-CO-001";
                 }),
                 HouseholdFactory.CreateSummerEbtCase("James", "Martinez", "TANF", c =>
                 {
                     c.IssuanceType = IssuanceType.TanfEbtCard;
                     c.IsCoLoaded = true;
+                    c.EbtCaseNumber = "TANF-CO-001";
+                    c.ApplicationStudentId = "TANF-PERSON-CO-001";
                 })
             };
         });
@@ -186,6 +265,19 @@ public class MockHouseholdRepository : IHouseholdRepository
         coLoaded.UserProfile = new UserProfile { FirstName = "Maria", MiddleName = "Elena", LastName = "MartinezMOCK" };
         _households[coLoadedEmail] = coLoaded;
         IndexByPhone(coLoaded);
+
+        if (string.Equals(_settings.State, "dc", StringComparison.OrdinalIgnoreCase))
+        {
+            var coLoadedPendingIdProofingEmail = _settings.BuildEmail(SeedScenarios.CoLoadedPendingIdProofing.Name);
+            var fullPii = new PiiVisibility(IncludeAddress: true, IncludeEmail: true, IncludePhone: true);
+            var coLoadedPending = CreateCopy(coLoaded, fullPii) with
+            {
+                Email = coLoadedPendingIdProofingEmail,
+                Phone = "8185558438",
+            };
+            _households[coLoadedPendingIdProofingEmail] = coLoadedPending;
+            IndexByPhone(coLoadedPending);
+        }
 
         // Scenario 2: Approved application with address (ID verified user)
         var verifiedEmail = _settings.BuildEmail(SeedScenarios.Verified.Name);
@@ -1094,13 +1186,13 @@ public class MockHouseholdRepository : IHouseholdRepository
                     : null,
                 EligibilitySource = sec.EligibilitySource,
                 IssuanceType = sec.IssuanceType,
+                IsCoLoaded = sec.IsCoLoaded,
+                IsStreamlineCertified = sec.IsStreamlineCertified,
                 EbtCaseNumber = sec.EbtCaseNumber,
                 EbtCardLastFour = sec.EbtCardLastFour,
                 EbtCardStatus = sec.EbtCardStatus,
                 EbtCardIssueDate = sec.EbtCardIssueDate,
                 EbtCardBalance = sec.EbtCardBalance,
-                IsCoLoaded = sec.IsCoLoaded,
-                IsStreamlineCertified = sec.IsStreamlineCertified,
                 CardRequestedAt = sec.CardRequestedAt,
                 BenefitAvailableDate = sec.BenefitAvailableDate,
                 BenefitExpirationDate = sec.BenefitExpirationDate
