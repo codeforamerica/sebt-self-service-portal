@@ -12,10 +12,8 @@ export {
 export {
   OidcCallbackTokenResponseSchema,
   OidcCompleteLoginResponseSchema,
-  OidcConfigResponseSchema,
   type OidcCallbackTokenResponse,
-  type OidcCompleteLoginResponse,
-  type OidcConfigResponse
+  type OidcCompleteLoginResponse
 } from './oidc'
 
 export { useRefreshToken } from './refresh-token'

@@ -4,8 +4,8 @@ import { EnrollmentProvider } from '@/features/enrollment/context/EnrollmentCont
 import { enrollmentCheckerRoutes } from '@/lib/analytics-routes'
 import { namespaces, stateResources } from '@/lib/generated-locale-resources'
 import { DataLayerProvider } from '@sebt/analytics'
-import { initI18n, type StateResources } from '@sebt/design-system/src/lib/i18n'
-import { I18nProvider } from '@sebt/design-system/src/providers/I18nProvider'
+import type { StateResources } from '@sebt/design-system'
+import { initI18n, I18nProvider } from '@sebt/design-system/client'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { useRef, useState, type ReactNode } from 'react'
 

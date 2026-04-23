@@ -39,6 +39,9 @@ async function proxyRequest(request: NextRequest, context: RouteContext): Promis
       headers,
       body: request.body,
       signal: controller.signal,
+      // Pass backend redirects (e.g., OIDC authorize 302) through to the browser
+      // instead of following them within the proxy.
+      redirect: 'manual',
       // @ts-expect-error - duplex is required for streaming request bodies
       duplex: 'half'
     })

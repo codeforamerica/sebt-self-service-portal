@@ -287,6 +287,66 @@ public class MockHouseholdRepositoryTests
     }
 
     [Fact]
+    public async Task GetHouseholdByEmailAsync_CoNotActivatedScenario_HasApprovedCaseAndNotActivatedCard()
+    {
+        // Tester AC: CO NotActivated persona should have Approved application + NotActivated
+        // card status so CO SelfServiceRules correctly hides Request Replacement CTA while
+        // leaving Update Address visible.
+        var email = "co-notactivated@example.com";
+
+        var result = await _repository.GetHouseholdByEmailAsync(email, FullPiiVisibility, UserIalLevel.IAL1plus);
+
+        Assert.NotNull(result);
+        var app = result.Applications.First();
+        Assert.Equal(ApplicationStatus.Approved, app.ApplicationStatus);
+        Assert.Equal(CardStatus.NotActivated, app.CardStatus);
+        Assert.Equal(IssuanceType.SummerEbt, app.IssuanceType);
+        Assert.Single(result.SummerEbtCases);
+        Assert.Equal("NotActivated", result.SummerEbtCases[0].EbtCardStatus);
+        Assert.Equal(IssuanceType.SummerEbt, result.SummerEbtCases[0].IssuanceType);
+    }
+
+    [Fact]
+    public async Task GetHouseholdByEmailAsync_CoDeactivatedByStateScenario_HasApprovedCaseAndDeactivatedByStateCard()
+    {
+        // Tester AC: CO DeactivatedByState persona should have Approved application +
+        // DeactivatedByState card status so CO SelfServiceRules correctly hides Request
+        // Replacement CTA while leaving Update Address visible.
+        var email = "co-deactivatedbystate@example.com";
+
+        var result = await _repository.GetHouseholdByEmailAsync(email, FullPiiVisibility, UserIalLevel.IAL1plus);
+
+        Assert.NotNull(result);
+        var app = result.Applications.First();
+        Assert.Equal(ApplicationStatus.Approved, app.ApplicationStatus);
+        Assert.Equal(CardStatus.DeactivatedByState, app.CardStatus);
+        Assert.Equal(IssuanceType.SummerEbt, app.IssuanceType);
+        Assert.Single(result.SummerEbtCases);
+        Assert.Equal("DeactivatedByState", result.SummerEbtCases[0].EbtCardStatus);
+        Assert.Equal(IssuanceType.SummerEbt, result.SummerEbtCases[0].IssuanceType);
+    }
+
+    [Fact]
+    public async Task GetHouseholdByEmailAsync_CoActiveScenario_HasApprovedCaseAndActiveCard()
+    {
+        // Tester AC: CO Active persona is the standard happy path — both Update Address
+        // and Request Replacement CTAs should be visible (Active is in CO
+        // CardReplacement.AllowedCardStatuses).
+        var email = "co-active@example.com";
+
+        var result = await _repository.GetHouseholdByEmailAsync(email, FullPiiVisibility, UserIalLevel.IAL1plus);
+
+        Assert.NotNull(result);
+        var app = result.Applications.First();
+        Assert.Equal(ApplicationStatus.Approved, app.ApplicationStatus);
+        Assert.Equal(CardStatus.Active, app.CardStatus);
+        Assert.Equal(IssuanceType.SummerEbt, app.IssuanceType);
+        Assert.Single(result.SummerEbtCases);
+        Assert.Equal("Active", result.SummerEbtCases[0].EbtCardStatus);
+        Assert.Equal(IssuanceType.SummerEbt, result.SummerEbtCases[0].IssuanceType);
+    }
+
+    [Fact]
     public async Task GetHouseholdByEmailAsync_VerifiedScenario_HasStableApplicationNumbers()
     {
         // Application numbers must be stable across multiple reads to ensure

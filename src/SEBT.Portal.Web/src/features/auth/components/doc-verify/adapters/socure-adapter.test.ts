@@ -103,6 +103,21 @@ describe('SocureDocVAdapter', () => {
     expect(window.SocureDocVSDK!.launch).toHaveBeenCalledTimes(1)
   })
 
+  it('defaults onProgress to a no-op when caller omits it', async () => {
+    installMockSocureGlobal()
+    const adapter = new SocureDocVAdapter()
+    const { onProgress: _omit, ...configWithoutProgress } = createTestConfig()
+
+    await adapter.launch(configWithoutProgress)
+
+    const launchMock = window.SocureDocVSDK!.launch as ReturnType<typeof vi.fn>
+    const launchArgs = launchMock.mock.calls[0]
+    expect(launchArgs).toBeDefined()
+    const sdkOptions = launchArgs![3] as { onProgress: unknown }
+    expect(typeof sdkOptions.onProgress).toBe('function')
+    expect(() => (sdkOptions.onProgress as () => void)()).not.toThrow()
+  })
+
   it('swallows errors from SocureDocVSDK.reset()', () => {
     window.SocureDocVSDK = {
       launch: vi.fn(),

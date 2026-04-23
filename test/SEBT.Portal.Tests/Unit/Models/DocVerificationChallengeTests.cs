@@ -183,12 +183,17 @@ public class DocVerificationChallengeTests
         var createdAt = new DateTime(2025, 6, 1, 12, 0, 0, DateTimeKind.Utc);
         var updatedAt = new DateTime(2025, 6, 1, 12, 30, 0, DateTimeKind.Utc);
         var expiresAt = new DateTime(2025, 6, 1, 12, 30, 0, DateTimeKind.Utc);
+        var proofingDob = "1990-01-01";
+        var proofingIdType = "ssn";
+        var proofingIdValue = "999-99-9999";
+        var docvTokenIssuedAt = new DateTime(2025, 6, 1, 12, 15, 0, DateTimeKind.Utc);
 
         var challenge = DocVerificationChallenge.Reconstitute(
             id, publicId, userId, status,
             socureReferenceId, evalId, socureEventId,
             docvTransactionToken, docvUrl, offboardingReason,
-            allowIdRetry, createdAt, updatedAt, expiresAt);
+            allowIdRetry, createdAt, updatedAt, expiresAt,
+            proofingDob, proofingIdType, proofingIdValue, docvTokenIssuedAt);
 
         Assert.Equal(id, challenge.Id);
         Assert.Equal(publicId, challenge.PublicId);
@@ -204,6 +209,64 @@ public class DocVerificationChallengeTests
         Assert.Equal(createdAt, challenge.CreatedAt);
         Assert.Equal(updatedAt, challenge.UpdatedAt);
         Assert.Equal(expiresAt, challenge.ExpiresAt);
+        Assert.Equal(proofingDob, challenge.ProofingDateOfBirth);
+        Assert.Equal(proofingIdType, challenge.ProofingIdType);
+        Assert.Equal(proofingIdValue, challenge.ProofingIdValue);
+        Assert.Equal(docvTokenIssuedAt, challenge.DocvTokenIssuedAt);
+    }
+
+    // --- PII scrubbing on terminal transitions ---
+
+    [Theory]
+    [InlineData(DocVerificationStatus.Verified)]
+    [InlineData(DocVerificationStatus.Rejected)]
+    [InlineData(DocVerificationStatus.Expired)]
+    public void TransitionTo_ShouldScrubProofingPii_WhenTransitioningToTerminalState(
+        DocVerificationStatus terminalStatus)
+    {
+        var challenge = DocVerificationChallengeFactory.CreatePendingChallenge();
+        challenge.ProofingDateOfBirth = "1990-01-01";
+        challenge.ProofingIdType = "ssn";
+        challenge.ProofingIdValue = "999-99-9999";
+        var issuedAt = DateTime.UtcNow.AddMinutes(-5);
+        challenge.DocvTokenIssuedAt = issuedAt;
+
+        challenge.TransitionTo(terminalStatus);
+
+        Assert.Null(challenge.ProofingDateOfBirth);
+        Assert.Null(challenge.ProofingIdType);
+        Assert.Null(challenge.ProofingIdValue);
+        Assert.Equal(issuedAt, challenge.DocvTokenIssuedAt);
+    }
+
+    [Fact]
+    public void TransitionTo_ShouldScrubProofingPii_WhenCreatedExpiresDirectly()
+    {
+        var challenge = DocVerificationChallengeFactory.CreateChallenge();
+        challenge.ProofingDateOfBirth = "1990-01-01";
+        challenge.ProofingIdType = "ssn";
+        challenge.ProofingIdValue = "999-99-9999";
+
+        challenge.TransitionTo(DocVerificationStatus.Expired);
+
+        Assert.Null(challenge.ProofingDateOfBirth);
+        Assert.Null(challenge.ProofingIdType);
+        Assert.Null(challenge.ProofingIdValue);
+    }
+
+    [Fact]
+    public void TransitionTo_ShouldPreserveProofingPii_WhenTransitioningToNonTerminalState()
+    {
+        var challenge = DocVerificationChallengeFactory.CreateChallenge();
+        challenge.ProofingDateOfBirth = "1990-01-01";
+        challenge.ProofingIdType = "ssn";
+        challenge.ProofingIdValue = "999-99-9999";
+
+        challenge.TransitionTo(DocVerificationStatus.Pending);
+
+        Assert.Equal("1990-01-01", challenge.ProofingDateOfBirth);
+        Assert.Equal("ssn", challenge.ProofingIdType);
+        Assert.Equal("999-99-9999", challenge.ProofingIdValue);
     }
 
     [Fact]

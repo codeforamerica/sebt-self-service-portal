@@ -22,6 +22,7 @@ public class HouseholdControllerTests
 {
     private readonly IPiiVisibilityService _piiVisibilityService;
     private readonly IIdProofingService _idProofingService;
+    private readonly ISelfServiceEvaluator _selfServiceEvaluator;
     private readonly HouseholdController _controller;
 
     public HouseholdControllerTests()
@@ -29,11 +30,17 @@ public class HouseholdControllerTests
         _controller = new HouseholdController();
         _piiVisibilityService = Substitute.For<IPiiVisibilityService>();
         _idProofingService = Substitute.For<IIdProofingService>();
+        _selfServiceEvaluator = Substitute.For<ISelfServiceEvaluator>();
         // Default: no elevated IAL requirement, so existing tests pass without per-test mock setup.
         _idProofingService.Evaluate(
             Arg.Any<ProtectedResource>(), Arg.Any<ProtectedAction>(),
             Arg.Any<UserIalLevel>(), Arg.Any<IReadOnlyList<SummerEbtCase>>())
             .Returns(new IdProofingDecision(IsAllowed: true, RequiredLevel: UserIalLevel.None));
+        // Default: self-service rules allow both actions
+        _selfServiceEvaluator.Evaluate(Arg.Any<SummerEbtCase>())
+            .Returns(new AllowedActions { CanUpdateAddress = true, CanRequestReplacementCard = true });
+        _selfServiceEvaluator.EvaluateHousehold(Arg.Any<IReadOnlyList<SummerEbtCase>>())
+            .Returns(new AllowedActions { CanUpdateAddress = true, CanRequestReplacementCard = true });
     }
 
     private IQueryHandler<GetHouseholdDataQuery, HouseholdData> CreateQueryHandler(
@@ -41,7 +48,7 @@ public class HouseholdControllerTests
         IHouseholdRepository repository)
     {
         var logger = NullLogger<GetHouseholdDataQueryHandler>.Instance;
-        return new GetHouseholdDataQueryHandler(resolver, repository, _piiVisibilityService, _idProofingService, logger);
+        return new GetHouseholdDataQueryHandler(resolver, repository, _piiVisibilityService, _idProofingService, _selfServiceEvaluator, logger);
     }
 
     private void SetupAuthenticatedUser(string email, UserIalLevel userIalLevel = UserIalLevel.None, string claimType = ClaimTypes.Email)

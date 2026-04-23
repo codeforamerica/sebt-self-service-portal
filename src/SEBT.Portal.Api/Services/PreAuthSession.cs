@@ -29,6 +29,12 @@ public sealed record PreAuthSession
     /// <summary>redirect_uri that was sent in the authorization request.</summary>
     public required string RedirectUri { get; init; }
 
+    /// <summary>
+    /// For step-up flows, the relative path to return to after verification completes
+    /// (e.g. <c>/profile/address</c>). Null for normal login flows.
+    /// </summary>
+    public string? ReturnUrl { get; init; }
+
     /// <summary>When the session was created (UTC).</summary>
     public DateTimeOffset CreatedAt { get; init; } = DateTimeOffset.UtcNow;
 

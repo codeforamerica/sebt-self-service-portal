@@ -57,7 +57,7 @@ data "aws_route53_zone" "main" {
 }
 
 # Store Colorado-specific secrets in Secrets Manager. Each block represents a
-# separate secret for a specific service or integration.
+# separate set of secrets for a specific service or integration.
 module "state_secrets" {
   source = "github.com/codeforamerica/tofu-modules-aws-secrets?ref=2.0.0"
 
@@ -75,6 +75,11 @@ module "state_secrets" {
       recovery_window = 7
     }
   }
+}
+
+# Look up the enrollment checker hosted zone (created by bootstrap).
+data "aws_route53_zone" "enrollment_checker" {
+  name = "co.sebt-enrollment.codeforamerica.app"
 }
 
 # Deploy the application services (API + Web) using the shared wrapper module.
@@ -113,7 +118,6 @@ module "app" {
     "Oidc__DiscoveryEndpoint"                          = var.oidc_discovery_endpoint
     "Oidc__AuthorizationEndpoint"                      = var.oidc_authorization_endpoint
     "Oidc__CallbackRedirectUri"                        = "https://${var.domain}/callback"
-    "Oidc__LanguageParam"                              = "en"
     "Oidc__StepUp__DiscoveryEndpoint"                  = var.oidc_discovery_endpoint
     "Oidc__StepUp__AuthorizationEndpoint"              = var.oidc_authorization_endpoint
     "Oidc__StepUp__CallbackRedirectUri"                = "https://${var.domain}/callback"
@@ -138,9 +142,10 @@ module "app" {
   }
 
   state_web_environment_variables = {
-    OIDC_DISCOVERY_ENDPOINT = var.oidc_discovery_endpoint
-    OIDC_REDIRECT_URI       = "https://${var.domain}/callback"
-    OIDC_LANGUAGE_PARAM     = "en"
+    ENROLLMENT_CHECKER_ORIGIN = "https://dev.co.sebt-enrollment.codeforamerica.app"
+    OIDC_DISCOVERY_ENDPOINT   = var.oidc_discovery_endpoint
+    OIDC_REDIRECT_URI         = "https://${var.domain}/callback"
+    OIDC_LANGUAGE_PARAM       = "en"
   }
 
   state_web_environment_secrets = {
@@ -148,4 +153,18 @@ module "app" {
     OIDC_CLIENT_SECRET              = "${module.state_secrets.secrets["oidc"].secret_arn}:client_secret"
     OIDC_COMPLETE_LOGIN_SIGNING_KEY = "${module.state_secrets.secrets["oidc"].secret_arn}:complete_login_signing_key"
   }
+}
+
+# Deploy the enrollment checker as a static site behind CloudFront.
+module "enrollment_checker" {
+  source = "../../modules/sebt_enrollment_checker"
+
+  project     = var.project
+  state       = var.state
+  environment = var.environment
+  domain      = "dev.co.sebt-enrollment.codeforamerica.app"
+  hosted_zone_id             = data.aws_route53_zone.enrollment_checker.zone_id
+  logging_bucket_domain_name = module.logging.bucket_domain_name
+  logging_bucket_name        = module.logging.bucket
+  force_delete               = true
 }

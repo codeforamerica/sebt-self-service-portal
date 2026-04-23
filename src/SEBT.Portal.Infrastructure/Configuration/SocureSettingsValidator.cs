@@ -30,6 +30,12 @@ public class SocureSettingsValidator(IHostEnvironment environment) : IValidateOp
                 "Socure:ChallengeExpirationMinutes must be between 1 and 1440.");
         }
 
+        if (options.DocvTransactionTokenTtlMinutes < 1 || options.DocvTransactionTokenTtlMinutes > 120)
+        {
+            return ValidateOptionsResult.Fail(
+                "Socure:DocvTransactionTokenTtlMinutes must be between 1 and 120.");
+        }
+
         // UseStub bypasses webhook signature validation — only safe in Development
         if (options.UseStub && !environment.IsDevelopment())
         {

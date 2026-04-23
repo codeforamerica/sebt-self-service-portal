@@ -3,7 +3,6 @@ import { expect, test } from '@playwright/test'
 import { setupApiRoutes } from '../fixtures/api-routes'
 import { injectAuth } from '../fixtures/auth'
 import { makeHouseholdData, makeSummerEbtCase, recentCardDate } from '../fixtures/household-data'
-import { skipUnlessState } from '../fixtures/state'
 
 test.describe('ChildCard', () => {
   test.beforeEach(async ({ page }) => {
@@ -141,12 +140,10 @@ test.describe('ChildCard', () => {
       await expect(link).toHaveAttribute('href', /\/cards\/replace\?case=SEBT-001/)
     })
 
-    test('DC: SnapEbtCard co-loaded shows /cards/info replacement link', async ({ page }) => {
-      skipUnlessState('dc')
-
+    test('co-loaded case (allowCardReplacement=false) shows /cards/info link', async ({ page }) => {
       await setupApiRoutes(page, {
         householdData: makeHouseholdData({
-          summerEbtCases: [makeSummerEbtCase({ issuanceType: 3 })]
+          summerEbtCases: [makeSummerEbtCase({ issuanceType: 3, allowCardReplacement: false })]
         })
       })
       await page.goto('/dashboard')
@@ -155,54 +152,6 @@ test.describe('ChildCard', () => {
         hasText: 'Request a replacement card'
       })
       await expect(link).toHaveAttribute('href', '/cards/info')
-    })
-
-    test('CO: SnapEbtCard co-loaded shows no replacement link', async ({ page }) => {
-      skipUnlessState('co')
-
-      await setupApiRoutes(page, {
-        householdData: makeHouseholdData({
-          summerEbtCases: [makeSummerEbtCase({ issuanceType: 3 })]
-        })
-      })
-      await page.goto('/dashboard')
-
-      const link = page.locator('[data-testid="accordion-content"] a', {
-        hasText: 'Request a replacement card'
-      })
-      await expect(link).toHaveCount(0)
-    })
-
-    test('DC: TanfEbtCard co-loaded shows /cards/info replacement link', async ({ page }) => {
-      skipUnlessState('dc')
-
-      await setupApiRoutes(page, {
-        householdData: makeHouseholdData({
-          summerEbtCases: [makeSummerEbtCase({ issuanceType: 2 })]
-        })
-      })
-      await page.goto('/dashboard')
-
-      const link = page.locator('[data-testid="accordion-content"] a', {
-        hasText: 'Request a replacement card'
-      })
-      await expect(link).toHaveAttribute('href', '/cards/info')
-    })
-
-    test('CO: TanfEbtCard co-loaded shows no replacement link', async ({ page }) => {
-      skipUnlessState('co')
-
-      await setupApiRoutes(page, {
-        householdData: makeHouseholdData({
-          summerEbtCases: [makeSummerEbtCase({ issuanceType: 2 })]
-        })
-      })
-      await page.goto('/dashboard')
-
-      const link = page.locator('[data-testid="accordion-content"] a', {
-        hasText: 'Request a replacement card'
-      })
-      await expect(link).toHaveCount(0)
     })
   })
 })

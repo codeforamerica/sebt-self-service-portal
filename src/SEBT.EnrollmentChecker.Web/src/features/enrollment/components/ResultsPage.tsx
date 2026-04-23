@@ -43,7 +43,7 @@ export function ResultsPage({ results, applicationUrl }: ResultsPageProps) {
                 firstName={child.firstName}
                 lastName={child.lastName}
                 displayStatus="error"
-                errorMessage={child.statusMessage}
+                {...(child.statusMessage !== undefined && { errorMessage: child.statusMessage })}
               />
             ))}
           </section>

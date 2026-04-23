@@ -1,4 +1,3 @@
-using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
@@ -7,6 +6,7 @@ using SEBT.Portal.Api.Models;
 using SEBT.Portal.Api.Services;
 using SEBT.Portal.Core.AppSettings;
 using SEBT.Portal.Core.Models.Auth;
+using SEBT.Portal.Core.Utilities;
 using SEBT.Portal.Kernel;
 using SEBT.Portal.Kernel.AspNetCore;
 using SEBT.Portal.Kernel.Results;
@@ -39,13 +39,14 @@ public class AuthController(
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     public IActionResult GetAuthorizationStatus()
     {
-        var email = GetUserEmail();
+        var userId = User.GetUserId();
 
-        logger.LogInformation("Authorization status check successful for user {Email}", email ?? "unknown");
+        logger.LogInformation("Authorization status check successful for UserId {UserId}, Phone={MaskedPhone}",
+            userId?.ToString() ?? "unknown", GetMaskedPhone());
 
         return Ok(new AuthorizationStatusResponse(
             IsAuthorized: true,
-            Email: email,
+            Email: User.GetUserEmail(),
             Ial: User.FindFirst(JwtClaimTypes.Ial)?.Value,
             IdProofingStatus: int.TryParse(User.FindFirst(JwtClaimTypes.IdProofingStatus)?.Value, out var s) ? s : null,
             IdProofingCompletedAt: long.TryParse(User.FindFirst(JwtClaimTypes.IdProofingCompletedAt)?.Value, out var c) ? c : null,
@@ -86,29 +87,34 @@ public class AuthController(
     public async Task<IActionResult> RefreshToken(
         [FromServices] ICommandHandler<RefreshTokenCommand, string> handler)
     {
-        var email = GetUserEmail();
+        var userId = User.GetUserId();
 
-        if (string.IsNullOrWhiteSpace(email))
+        if (userId == null)
         {
-            logger.LogWarning("Token refresh attempted but email could not be extracted from claims");
+            logger.LogWarning("Token refresh attempted but user ID could not be extracted from claims");
             return Unauthorized(new ErrorResponse("Unable to identify user from token."));
         }
 
-        logger.LogInformation("Token refresh request received for email {Email}", email);
+        logger.LogInformation("Token refresh request received for UserId {UserId}, Phone={MaskedPhone}",
+            userId, GetMaskedPhone());
 
-        var command = new RefreshTokenCommand { Email = email, CurrentPrincipal = User };
+        var command = new RefreshTokenCommand
+        {
+            CurrentPrincipal = User
+        };
         var result = await handler.Handle(command);
 
         if (result.IsSuccess)
         {
-            logger.LogInformation("Token refreshed successfully for email {Email}", email);
+            logger.LogInformation("Token refreshed successfully for UserId {UserId}, Phone={MaskedPhone}",
+                userId, GetMaskedPhone());
             var expiresAt = DateTimeOffset.UtcNow.AddMinutes(jwtSettingsOptions.Value.ExpirationMinutes);
             AuthCookies.SetAuthCookie(Response, result.Value, expiresAt);
             return NoContent();
         }
         else
         {
-            logger.LogWarning("Token refresh failed for email {Email}: {Message}", email, result.Message);
+            logger.LogWarning("Token refresh failed for UserId {UserId}: {Message}", userId, result.Message);
 
             if (result is ValidationFailedResult<string> validationFailed)
             {
@@ -128,18 +134,12 @@ public class AuthController(
     }
 
     /// <summary>
-    /// Extracts the user's email address from the authenticated user's claims.
-    /// Tries both long (.NET) and short (JWT) claim names so it works whether or not
-    /// the JWT handler has mapped inbound claims.
+    /// Extracts and masks the phone number from the authenticated user's JWT claims.
+    /// Returns a masked value like "***-***-1234", or null if no phone claim is present.
     /// </summary>
-    /// <returns>The user's email address, or null if not found.</returns>
-    private string? GetUserEmail()
+    private string? GetMaskedPhone()
     {
-        return User.FindFirst(ClaimTypes.Email)?.Value
-            ?? User.FindFirst(ClaimTypes.NameIdentifier)?.Value
-            ?? User.FindFirst("email")?.Value
-            ?? User.FindFirst("sub")?.Value
-            ?? User.Identity?.Name;
+        var phone = User.FindFirst("phone")?.Value ?? User.FindFirst("phone_number")?.Value;
+        return PiiMasker.MaskPhone(phone);
     }
 }
-

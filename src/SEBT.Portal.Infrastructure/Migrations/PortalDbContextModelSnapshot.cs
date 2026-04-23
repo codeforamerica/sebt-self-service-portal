@@ -72,6 +72,9 @@ namespace SEBT.Portal.Infrastructure.Migrations
                         .HasColumnType("datetime2")
                         .HasDefaultValueSql("GETUTCDATE()");
 
+                    b.Property<DateTime?>("DocvTokenIssuedAt")
+                        .HasColumnType("datetime2");
+
                     b.Property<string>("DocvTransactionToken")
                         .HasMaxLength(255)
                         .HasColumnType("nvarchar(255)");
@@ -88,6 +91,18 @@ namespace SEBT.Portal.Infrastructure.Migrations
                         .HasColumnType("datetime2");
 
                     b.Property<string>("OffboardingReason")
+                        .HasMaxLength(255)
+                        .HasColumnType("nvarchar(255)");
+
+                    b.Property<string>("ProofingDateOfBirth")
+                        .HasMaxLength(32)
+                        .HasColumnType("nvarchar(32)");
+
+                    b.Property<string>("ProofingIdType")
+                        .HasMaxLength(64)
+                        .HasColumnType("nvarchar(64)");
+
+                    b.Property<string>("ProofingIdValue")
                         .HasMaxLength(255)
                         .HasColumnType("nvarchar(255)");
 
@@ -176,7 +191,10 @@ namespace SEBT.Portal.Infrastructure.Migrations
                         .HasDefaultValueSql("GETUTCDATE()");
 
                     b.Property<string>("Email")
-                        .IsRequired()
+                        .HasMaxLength(255)
+                        .HasColumnType("nvarchar(255)");
+
+                    b.Property<string>("ExternalProviderId")
                         .HasMaxLength(255)
                         .HasColumnType("nvarchar(255)");
 
@@ -233,7 +251,13 @@ namespace SEBT.Portal.Infrastructure.Migrations
 
                     b.HasIndex("Email")
                         .IsUnique()
-                        .HasDatabaseName("IX_Users_Email");
+                        .HasDatabaseName("IX_Users_Email")
+                        .HasFilter("[Email] IS NOT NULL");
+
+                    b.HasIndex("ExternalProviderId")
+                        .IsUnique()
+                        .HasDatabaseName("IX_Users_ExternalProviderId")
+                        .HasFilter("[ExternalProviderId] IS NOT NULL");
 
                     b.HasIndex("IdProofingSessionId")
                         .HasDatabaseName("IX_Users_IdProofingSessionId");
