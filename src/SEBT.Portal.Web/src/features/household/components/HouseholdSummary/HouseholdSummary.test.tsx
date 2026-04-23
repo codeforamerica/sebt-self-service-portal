@@ -5,6 +5,14 @@ import type { Application, HouseholdData, SummerEbtCase } from '../../api'
 
 import { HouseholdSummary } from './HouseholdSummary'
 
+let mockShowContactPreferences = false
+vi.mock('@/features/feature-flags', () => ({
+  useFeatureFlag: (flag: string) => {
+    if (flag === 'show_contact_preferences') return mockShowContactPreferences
+    return false
+  }
+}))
+
 const mockCase: SummerEbtCase = {
   summerEBTCaseID: 'SEBT-001',
   childFirstName: 'Sophia',
@@ -56,6 +64,7 @@ vi.mock('../../api', async (importOriginal) => ({
 describe('HouseholdSummary', () => {
   beforeEach(() => {
     mockReturnData = defaultMockData
+    mockShowContactPreferences = false
   })
 
   it('renders status heading', () => {
@@ -169,6 +178,7 @@ describe('HouseholdSummary', () => {
   })
 
   it('exposes data-analytics-cta on the change contact preferences link', () => {
+    mockShowContactPreferences = true
     render(<HouseholdSummary />)
     const link = screen.getByRole('link', { name: 'Change my contact preferences' })
     expect(link).toHaveAttribute('data-analytics-cta', 'update_contact_cta')
@@ -182,23 +192,27 @@ describe('HouseholdSummary', () => {
   })
 
   it('renders preferred contact with email', () => {
+    mockShowContactPreferences = true
     render(<HouseholdSummary />)
     expect(screen.getByText('Your preferred contact')).toBeInTheDocument()
     expect(screen.getByText(/test@example.com/)).toBeInTheDocument()
   })
 
   it('renders change contact information link', () => {
+    mockShowContactPreferences = true
     render(<HouseholdSummary />)
     const link = screen.getByRole('link', { name: 'Change my contact preferences' })
     expect(link).toHaveAttribute('href', '/contact')
   })
 
   it('renders preferred contact with phone when provided', () => {
+    mockShowContactPreferences = true
     render(<HouseholdSummary />)
     expect(screen.getByText(/303-555-0100/)).toBeInTheDocument()
   })
 
   it('renders preferred contact without phone when not provided', () => {
+    mockShowContactPreferences = true
     mockReturnData = { ...defaultMockData, phone: null }
     render(<HouseholdSummary />)
     expect(screen.getByText('Your preferred contact')).toBeInTheDocument()
@@ -206,6 +220,7 @@ describe('HouseholdSummary', () => {
   })
 
   it('renders preferred contact with only phone when email not provided', () => {
+    mockShowContactPreferences = true
     mockReturnData = { ...defaultMockData, email: null }
     render(<HouseholdSummary />)
     expect(screen.getByText('Your preferred contact')).toBeInTheDocument()
@@ -213,6 +228,7 @@ describe('HouseholdSummary', () => {
   })
 
   it('hides contact section when neither email nor phone provided', () => {
+    mockShowContactPreferences = true
     mockReturnData = { ...defaultMockData, email: null, phone: null }
     render(<HouseholdSummary />)
     expect(screen.queryByText('Your preferred contact')).not.toBeInTheDocument()
