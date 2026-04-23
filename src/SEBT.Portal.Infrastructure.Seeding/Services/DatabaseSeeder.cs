@@ -85,6 +85,8 @@ public class DatabaseSeeder : Core.Services.IDatabaseSeeder
                 u.Email = _settings.BuildEmail(SeedScenarios.NonCoLoaded.Name);
                 u.IdProofingStatus = IdProofingStatus.InProgress;
                 u.IalLevel = UserIalLevel.None;
+                u.IdProofingCompletedAt = null;
+                u.IdProofingExpiresAt = null;
                 u.Phone = "5555551234";
                 u.SnapId = "SNAP-NCO-001";
             }),
@@ -93,6 +95,8 @@ public class DatabaseSeeder : Core.Services.IDatabaseSeeder
                 u.Email = _settings.BuildEmail(SeedScenarios.NotStarted.Name);
                 u.IdProofingStatus = IdProofingStatus.NotStarted;
                 u.IalLevel = UserIalLevel.None;
+                u.IdProofingCompletedAt = null;
+                u.IdProofingExpiresAt = null;
             })
         };
     }
@@ -203,6 +207,13 @@ public class DatabaseSeeder : Core.Services.IDatabaseSeeder
                             if (scenario.IalLevel is UserIalLevel.IAL1plus or UserIalLevel.IAL2)
                             {
                                 u.IdProofingCompletedAt = now.AddDays(DaysSinceIdProofingCompleted);
+                            }
+                            else
+                            {
+                                // Bogus may pre-set timestamps when the random draw is IAL1+; clear
+                                // so IAL None/1 never retain IdProofingCompletedAt from the generator.
+                                u.IdProofingCompletedAt = null;
+                                u.IdProofingExpiresAt = null;
                             }
                             u.IsCoLoaded = false;
                             u.CoLoadedLastUpdated = null;
@@ -361,6 +372,11 @@ public class DatabaseSeeder : Core.Services.IDatabaseSeeder
                             if (scenario.IalLevel is UserIalLevel.IAL1plus or UserIalLevel.IAL2)
                             {
                                 u.IdProofingCompletedAt = now.AddDays(DaysSinceIdProofingCompleted);
+                            }
+                            else
+                            {
+                                u.IdProofingCompletedAt = null;
+                                u.IdProofingExpiresAt = null;
                             }
                             u.IsCoLoaded = false;
                             u.CoLoadedLastUpdated = null;
