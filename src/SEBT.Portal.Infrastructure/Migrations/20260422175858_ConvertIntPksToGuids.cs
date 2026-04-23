@@ -154,55 +154,17 @@ namespace SEBT.Portal.Infrastructure.Migrations
         /// <inheritdoc />
         protected override void Down(MigrationBuilder migrationBuilder)
         {
-            // Destructive inverse: drops Guid-PK tables, recreates minimal int-PK tables.
-            // Data is not restored. Exists for completeness; in practice roll forward
-            // with a fixup migration rather than invoke Down() against a populated DB.
-
-            migrationBuilder.Sql("DROP INDEX IF EXISTS [IX_DocVerificationChallenges_OneActivePerUser] ON [DocVerificationChallenges];");
-            migrationBuilder.DropTable(name: "DocVerificationChallenges");
-            migrationBuilder.DropTable(name: "UserOptIns");
-            migrationBuilder.DropTable(name: "Users");
-
-            migrationBuilder.CreateTable(
-                name: "Users",
-                columns: table => new
-                {
-                    Id = table.Column<int>(type: "int", nullable: false)
-                        .Annotation("SqlServer:Identity", "1, 1"),
-                    Email = table.Column<string>(type: "nvarchar(255)", maxLength: 255, nullable: true),
-                    IdProofingAttemptCount = table.Column<int>(type: "int", nullable: false, defaultValue: 0)
-                },
-                constraints: table =>
-                {
-                    table.PrimaryKey("PK_Users", col => col.Id);
-                });
-
-            migrationBuilder.CreateTable(
-                name: "UserOptIns",
-                columns: table => new
-                {
-                    Id = table.Column<int>(type: "int", nullable: false)
-                        .Annotation("SqlServer:Identity", "1, 1"),
-                    Email = table.Column<string>(type: "nvarchar(255)", maxLength: 255, nullable: false)
-                },
-                constraints: table =>
-                {
-                    table.PrimaryKey("PK_UserOptIns", col => col.Id);
-                });
-
-            migrationBuilder.CreateTable(
-                name: "DocVerificationChallenges",
-                columns: table => new
-                {
-                    Id = table.Column<int>(type: "int", nullable: false)
-                        .Annotation("SqlServer:Identity", "1, 1"),
-                    PublicId = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
-                    UserId = table.Column<int>(type: "int", nullable: false)
-                },
-                constraints: table =>
-                {
-                    table.PrimaryKey("PK_DocVerificationChallenges", col => col.Id);
-                });
+            // Rollback is not supported. Up() drops and recreates Users, UserOptIns, and
+            // DocVerificationChallenges to change their int IDENTITY primary keys to
+            // uniqueidentifier — there is no mechanical path back to the pre-migration
+            // schema that also restores data.
+            //
+            // If you need to revert, restore from a database backup taken before this
+            // migration was applied.
+            throw new NotSupportedException(
+                "Rolling back migration 20260422175858_ConvertIntPksToGuids is not supported. " +
+                "Up() is destructive — restore from a database backup taken before the " +
+                "migration was applied if you need to revert.");
         }
     }
 }
