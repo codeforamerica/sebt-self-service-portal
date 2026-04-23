@@ -3,6 +3,7 @@ using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using SEBT.Portal.Infrastructure.Data;
 
@@ -11,9 +12,11 @@ using SEBT.Portal.Infrastructure.Data;
 namespace SEBT.Portal.Infrastructure.Migrations
 {
     [DbContext(typeof(PortalDbContext))]
-    partial class PortalDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260422175858_ConvertIntPksToGuids")]
+    partial class ConvertIntPksToGuids
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -69,9 +72,6 @@ namespace SEBT.Portal.Infrastructure.Migrations
                         .HasColumnType("datetime2")
                         .HasDefaultValueSql("GETUTCDATE()");
 
-                    b.Property<DateTime?>("DocvTokenIssuedAt")
-                        .HasColumnType("datetime2");
-
                     b.Property<string>("DocvTransactionToken")
                         .HasMaxLength(255)
                         .HasColumnType("nvarchar(255)");
@@ -88,18 +88,6 @@ namespace SEBT.Portal.Infrastructure.Migrations
                         .HasColumnType("datetime2");
 
                     b.Property<string>("OffboardingReason")
-                        .HasMaxLength(255)
-                        .HasColumnType("nvarchar(255)");
-
-                    b.Property<string>("ProofingDateOfBirth")
-                        .HasMaxLength(32)
-                        .HasColumnType("nvarchar(32)");
-
-                    b.Property<string>("ProofingIdType")
-                        .HasMaxLength(64)
-                        .HasColumnType("nvarchar(64)");
-
-                    b.Property<string>("ProofingIdValue")
                         .HasMaxLength(255)
                         .HasColumnType("nvarchar(255)");
 
@@ -183,9 +171,6 @@ namespace SEBT.Portal.Infrastructure.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("datetime2")
                         .HasDefaultValueSql("GETUTCDATE()");
-
-                    b.Property<DateOnly?>("DateOfBirth")
-                        .HasColumnType("date");
 
                     b.Property<string>("Email")
                         .HasMaxLength(255)

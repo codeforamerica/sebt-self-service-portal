@@ -59,9 +59,9 @@ public class DatabaseUserRepository(PortalDbContext dbContext, IIdentifierHasher
             throw new ArgumentNullException(nameof(user));
         }
 
-        if (user.Id <= 0)
+        if (user.Id == Guid.Empty)
         {
-            throw new ArgumentException("User Id must be greater than zero for updates.", nameof(user));
+            throw new ArgumentException("User Id must be assigned for updates.", nameof(user));
         }
 
         var entity = await dbContext.Users
@@ -135,6 +135,7 @@ public class DatabaseUserRepository(PortalDbContext dbContext, IIdentifierHasher
         }
 
         // Create new user with normalized email
+        // (Id defaults to Guid.CreateVersion7() on the entity; no need to set it explicitly.)
         var newEntity = new UserEntity
         {
             Email = normalizedEmail,
@@ -190,9 +191,9 @@ public class DatabaseUserRepository(PortalDbContext dbContext, IIdentifierHasher
         return entity == null ? null : MapToDomainModel(entity);
     }
 
-    public async Task<User?> GetUserByIdAsync(int id, CancellationToken cancellationToken = default)
+    public async Task<User?> GetUserByIdAsync(Guid id, CancellationToken cancellationToken = default)
     {
-        if (id <= 0)
+        if (id == Guid.Empty)
         {
             return null;
         }
@@ -262,6 +263,7 @@ public class DatabaseUserRepository(PortalDbContext dbContext, IIdentifierHasher
         }
 
         // No existing record found — create a new minimal one
+        // (Id defaults to Guid.CreateVersion7() on the entity; no need to set it explicitly.)
         var newEntity = new UserEntity
         {
             ExternalProviderId = externalProviderId,
@@ -334,7 +336,7 @@ public class DatabaseUserRepository(PortalDbContext dbContext, IIdentifierHasher
     {
         return new UserEntity
         {
-            Id = user.Id, // Will be 0 for new users, set by database
+            Id = user.Id,
             Email = user.Email, // Will be normalized in calling method
             ExternalProviderId = user.ExternalProviderId,
             IdProofingStatus = (int)user.IdProofingStatus,

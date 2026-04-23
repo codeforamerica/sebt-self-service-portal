@@ -235,7 +235,7 @@ public class JwtTokenService : ILocalLoginTokenService, IOidcTokenService, ISess
     /// fully resolves its claims before calling this — no fallback logic here.
     /// </summary>
     internal string BuildAndSignToken(
-        int userId,
+        Guid userId,
         string email,
         IReadOnlyDictionary<string, string> resolvedClaims)
     {

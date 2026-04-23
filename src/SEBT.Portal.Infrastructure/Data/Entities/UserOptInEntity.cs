@@ -6,9 +6,9 @@ namespace SEBT.Portal.Infrastructure.Data.Entities;
 public class UserOptInEntity
 {
     /// <summary>
-    /// Primary key identifier.
+    /// Primary key identifier. UUIDv7, assigned by the repository on insert.
     /// </summary>
-    public int Id { get; set; }
+    public Guid Id { get; set; } = Guid.CreateVersion7();
 
     /// <summary>
     /// The email address of the user.

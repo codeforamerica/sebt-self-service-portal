@@ -75,7 +75,7 @@ public class HttpSocureClientTests
 
         var client = CreateClient(handler);
         var result = await client.RunIdProofingAssessmentAsync(
-            1, "test@example.com", "1990-01-01", "ssn", "999-99-9999");
+            Guid.CreateVersion7(), "test@example.com", "1990-01-01", "ssn", "999-99-9999");
 
         Assert.True(result.IsSuccess);
         var assessment = result.Value;
@@ -102,7 +102,7 @@ public class HttpSocureClientTests
 
         var client = CreateClient(handler);
         var result = await client.RunIdProofingAssessmentAsync(
-            1, "test@example.com", "1990-01-01", "ssn", "999-99-9999");
+            Guid.CreateVersion7(), "test@example.com", "1990-01-01", "ssn", "999-99-9999");
 
         Assert.True(result.IsSuccess);
         Assert.Equal(IdProofingOutcome.Matched, result.Value.Outcome);
@@ -124,7 +124,7 @@ public class HttpSocureClientTests
 
         var client = CreateClient(handler);
         var result = await client.RunIdProofingAssessmentAsync(
-            1, "test@example.com", "1990-01-01", "ssn", "999-99-9999");
+            Guid.CreateVersion7(), "test@example.com", "1990-01-01", "ssn", "999-99-9999");
 
         Assert.True(result.IsSuccess);
         Assert.Equal(IdProofingOutcome.Failed, result.Value.Outcome);
@@ -139,7 +139,7 @@ public class HttpSocureClientTests
 
         var client = CreateClient(handler);
         var result = await client.RunIdProofingAssessmentAsync(
-            1, "test@example.com", "1990-01-01", "ssn", "999-99-9999");
+            Guid.CreateVersion7(), "test@example.com", "1990-01-01", "ssn", "999-99-9999");
 
         Assert.False(result.IsSuccess);
         Assert.IsType<DependencyFailedResult<IdProofingAssessmentResult>>(result);
@@ -152,7 +152,7 @@ public class HttpSocureClientTests
 
         var client = CreateClient(handler);
         var result = await client.RunIdProofingAssessmentAsync(
-            1, "test@example.com", "1990-01-01", "ssn", "999-99-9999");
+            Guid.CreateVersion7(), "test@example.com", "1990-01-01", "ssn", "999-99-9999");
 
         Assert.False(result.IsSuccess);
         Assert.IsType<DependencyFailedResult<IdProofingAssessmentResult>>(result);
@@ -167,7 +167,7 @@ public class HttpSocureClientTests
 
         var client = CreateClient(handler);
         var result = await client.RunIdProofingAssessmentAsync(
-            1, "test@example.com", "1990-01-01", "ssn", "999-99-9999");
+            Guid.CreateVersion7(), "test@example.com", "1990-01-01", "ssn", "999-99-9999");
 
         Assert.False(result.IsSuccess);
         Assert.IsType<DependencyFailedResult<IdProofingAssessmentResult>>(result);
@@ -188,7 +188,7 @@ public class HttpSocureClientTests
 
         var client = CreateClient(handler);
         var result = await client.RunIdProofingAssessmentAsync(
-            1, "test@example.com", "1990-01-01", "ssn", "999-99-9999");
+            Guid.CreateVersion7(), "test@example.com", "1990-01-01", "ssn", "999-99-9999");
 
         Assert.True(result.IsSuccess);
         Assert.Equal(IdProofingOutcome.DocumentVerificationRequired, result.Value.Outcome);
@@ -216,17 +216,18 @@ public class HttpSocureClientTests
         });
 
         var client = CreateClient(handler);
+        var userId = Guid.CreateVersion7();
         await client.RunIdProofingAssessmentAsync(
-            42, "user@example.com", "1990-06-15", "ssn", "123-45-6789");
+            userId, "user@example.com", "1990-06-15", "ssn", "123-45-6789");
 
         Assert.NotNull(capturedBody);
         using var doc = JsonDocument.Parse(capturedBody);
         var root = doc.RootElement;
-        Assert.Equal("42", root.GetProperty("id").GetString());
+        Assert.Equal(userId.ToString(), root.GetProperty("id").GetString());
         Assert.Equal("consumer_onboarding", root.GetProperty("workflow").GetString());
         Assert.True(root.TryGetProperty("timestamp", out _), "Request should include timestamp");
         var individual = root.GetProperty("data").GetProperty("individual");
-        Assert.Equal("42", individual.GetProperty("id").GetString());
+        Assert.Equal(userId.ToString(), individual.GetProperty("id").GetString());
         Assert.Equal("US", individual.GetProperty("country").GetString());
         Assert.Equal("user@example.com", individual.GetProperty("email").GetString());
         Assert.Equal("1990-06-15", individual.GetProperty("date_of_birth").GetString());
@@ -256,7 +257,7 @@ public class HttpSocureClientTests
 
         var client = CreateClient(handler);
         await client.RunIdProofingAssessmentAsync(
-            42, "user@example.com", "1990-06-15", null, null);
+            Guid.CreateVersion7(), "user@example.com", "1990-06-15", null, null);
 
         Assert.NotNull(capturedBody);
         using var doc = JsonDocument.Parse(capturedBody);
@@ -285,7 +286,7 @@ public class HttpSocureClientTests
 
         var client = CreateClient(handler);
         await client.RunIdProofingAssessmentAsync(
-            42, "user@example.com", "1990-06-15", "snapAccountId", "123456789");
+            Guid.CreateVersion7(), "user@example.com", "1990-06-15", "snapAccountId", "123456789");
 
         Assert.NotNull(capturedBody);
         using var doc = JsonDocument.Parse(capturedBody);
@@ -313,7 +314,7 @@ public class HttpSocureClientTests
 
         var client = CreateClient(handler);
         await client.RunIdProofingAssessmentAsync(
-            42, "user@example.com", "1990-06-15", "itin", null);
+            Guid.CreateVersion7(), "user@example.com", "1990-06-15", "itin", null);
 
         Assert.NotNull(capturedBody);
         using var doc = JsonDocument.Parse(capturedBody);
@@ -363,7 +364,7 @@ public class HttpSocureClientTests
             NullLogger<HttpSocureClient>.Instance);
 
         await client.RunIdProofingAssessmentAsync(
-            42, "user@example.com", "1990-06-15", "ssn", "123-45-6789");
+            Guid.CreateVersion7(), "user@example.com", "1990-06-15", "ssn", "123-45-6789");
 
         Assert.NotNull(capturedBody);
         using var doc = JsonDocument.Parse(capturedBody);
@@ -391,7 +392,7 @@ public class HttpSocureClientTests
 
         var client = CreateClient(handler);
         await client.RunIdProofingAssessmentAsync(
-            42, "user@example.com", "1990-06-15", "ssn", "123-45-6789");
+            Guid.CreateVersion7(), "user@example.com", "1990-06-15", "ssn", "123-45-6789");
 
         Assert.NotNull(capturedBody);
         using var doc = JsonDocument.Parse(capturedBody);
@@ -421,7 +422,7 @@ public class HttpSocureClientTests
 
         var client = CreateClient(handler);
         await client.RunIdProofingAssessmentAsync(
-            42, "user@example.com", "1990-06-15", "ssn", "123-45-6789",
+            Guid.CreateVersion7(), "user@example.com", "1990-06-15", "ssn", "123-45-6789",
             ipAddress: "203.0.0.10");
 
         Assert.NotNull(capturedBody);
@@ -450,7 +451,7 @@ public class HttpSocureClientTests
 
         var client = CreateClient(handler);
         await client.RunIdProofingAssessmentAsync(
-            42, "user@example.com", "1990-06-15", "ssn", "123-45-6789",
+            Guid.CreateVersion7(), "user@example.com", "1990-06-15", "ssn", "123-45-6789",
             phoneNumber: "+12025551234");
 
         Assert.NotNull(capturedBody);
@@ -479,7 +480,7 @@ public class HttpSocureClientTests
 
         var client = CreateClient(handler);
         await client.RunIdProofingAssessmentAsync(
-            42, "user@example.com", "1990-06-15", "ssn", "123-45-6789",
+            Guid.CreateVersion7(), "user@example.com", "1990-06-15", "ssn", "123-45-6789",
             givenName: "Maria", familyName: "Martinez");
 
         Assert.NotNull(capturedBody);
@@ -509,7 +510,7 @@ public class HttpSocureClientTests
 
         var client = CreateClient(handler);
         await client.RunIdProofingAssessmentAsync(
-            42, "user@example.com", "1990-06-15", "ssn", "123-45-6789");
+            Guid.CreateVersion7(), "user@example.com", "1990-06-15", "ssn", "123-45-6789");
 
         Assert.NotNull(capturedBody);
         using var doc = JsonDocument.Parse(capturedBody);
@@ -550,7 +551,7 @@ public class HttpSocureClientTests
         };
 
         await client.RunIdProofingAssessmentAsync(
-            42, "user@example.com", "1990-06-15", "ssn", "123-45-6789",
+            Guid.CreateVersion7(), "user@example.com", "1990-06-15", "ssn", "123-45-6789",
             address: address);
 
         Assert.NotNull(capturedBody);
@@ -586,7 +587,7 @@ public class HttpSocureClientTests
 
         var client = CreateClient(handler);
         await client.RunIdProofingAssessmentAsync(
-            42, "user@example.com", "1990-06-15", "ssn", "123-45-6789");
+            Guid.CreateVersion7(), "user@example.com", "1990-06-15", "ssn", "123-45-6789");
 
         Assert.NotNull(capturedBody);
         using var doc = JsonDocument.Parse(capturedBody);
@@ -641,7 +642,7 @@ public class HttpSocureClientTests
             NullLogger<HttpSocureClient>.Instance);
 
         await client.RunIdProofingAssessmentAsync(
-            42, "user@example.com", "1990-06-15", "ssn", "123-45-6789",
+            Guid.CreateVersion7(), "user@example.com", "1990-06-15", "ssn", "123-45-6789",
             diSessionToken: "real-frontend-token");
 
         Assert.NotNull(capturedBody);
@@ -690,7 +691,7 @@ public class HttpSocureClientTests
             NullLogger<HttpSocureClient>.Instance);
 
         await client.RunIdProofingAssessmentAsync(
-            42, "user@example.com", "1990-06-15", "ssn", "123-45-6789");
+            Guid.CreateVersion7(), "user@example.com", "1990-06-15", "ssn", "123-45-6789");
 
         Assert.NotNull(capturedBody);
         using var doc = JsonDocument.Parse(capturedBody);
@@ -720,7 +721,7 @@ public class HttpSocureClientTests
 
         var client = CreateClient(handler);
         await client.RunIdProofingAssessmentAsync(
-            42, "user@example.com", "1990-06-15", "ssn", "123-45-6789");
+            Guid.CreateVersion7(), "user@example.com", "1990-06-15", "ssn", "123-45-6789");
 
         Assert.NotNull(capturedBody);
         using var doc = JsonDocument.Parse(capturedBody);
@@ -739,7 +740,7 @@ public class HttpSocureClientTests
         var client = CreateClient(handler);
 
         await Assert.ThrowsAsync<NotSupportedException>(() =>
-            client.StartDocvSessionAsync(1, "test@example.com"));
+            client.StartDocvSessionAsync(Guid.CreateVersion7(), "test@example.com"));
     }
 
     // --- Sends correct headers ---
@@ -764,7 +765,7 @@ public class HttpSocureClientTests
 
         var client = CreateClient(handler);
         await client.RunIdProofingAssessmentAsync(
-            1, "test@example.com", "1990-01-01", "ssn", "999-99-9999");
+            Guid.CreateVersion7(), "test@example.com", "1990-01-01", "ssn", "999-99-9999");
 
         Assert.NotNull(capturedRequest);
         Assert.Equal("Bearer", capturedRequest.Headers.Authorization?.Scheme);

@@ -301,9 +301,9 @@ public class DatabaseUserRepositoryTests : IClassFixture<SqlServerTestFixture>
         {
             u.IalLevel = UserIalLevel.IAL1plus;
         });
-        // Set Id to a non-existent value
+        // Set Id to a non-existent value (reflection because User.Id is init-only)
         var idProperty = typeof(User).GetProperty(nameof(User.Id));
-        idProperty?.SetValue(user, 99999);
+        idProperty?.SetValue(user, Guid.NewGuid());
 
         // Act & Assert
         await Assert.ThrowsAsync<InvalidOperationException>(() => repository.UpdateUserAsync(user, CancellationToken.None));

@@ -34,13 +34,13 @@ public class SubmitIdProofingCommandHandlerTests
         new(userRepository, householdRepository, challengeRepository, socureClient, socureSettings, validator, logger);
 
     private static SubmitIdProofingCommand CreateValidCommand(
-        int userId = 1,
+        Guid? userId = null,
         string dob = "1990-01-01",
         string? idType = "ssn",
         string? idValue = "999-99-9999") =>
         new()
         {
-            UserId = userId,
+            UserId = userId ?? Guid.CreateVersion7(),
             DateOfBirth = dob,
             IdType = idType,
             IdValue = idValue
@@ -52,19 +52,7 @@ public class SubmitIdProofingCommandHandlerTests
     public async Task Handle_ShouldReturnValidationFailed_WhenDateOfBirthIsMissing()
     {
         var handler = CreateHandler();
-        var command = new SubmitIdProofingCommand { UserId = 1, DateOfBirth = "" };
-
-        var result = await handler.Handle(command, CancellationToken.None);
-
-        Assert.False(result.IsSuccess);
-        Assert.IsType<ValidationFailedResult<SubmitIdProofingResponse>>(result);
-    }
-
-    [Fact]
-    public async Task Handle_ShouldReturnValidationFailed_WhenUserIdIsZero()
-    {
-        var handler = CreateHandler();
-        var command = new SubmitIdProofingCommand { UserId = 0, DateOfBirth = "1990-01-01" };
+        var command = new SubmitIdProofingCommand { UserId = Guid.NewGuid(), DateOfBirth = "" };
 
         var result = await handler.Handle(command, CancellationToken.None);
 
@@ -136,7 +124,7 @@ public class SubmitIdProofingCommandHandlerTests
         // Should NOT call Socure
         await socureClient.DidNotReceive()
             .RunIdProofingAssessmentAsync(
-                Arg.Any<int>(), Arg.Any<string>(), Arg.Any<string>(),
+                Arg.Any<Guid>(), Arg.Any<string>(), Arg.Any<string>(),
                 Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<Address?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>());
     }
 
@@ -186,7 +174,7 @@ public class SubmitIdProofingCommandHandlerTests
                 Arg.Any<CancellationToken>());
         await socureClient.DidNotReceive()
             .RunIdProofingAssessmentAsync(
-                Arg.Any<int>(), Arg.Any<string>(), Arg.Any<string>(),
+                Arg.Any<Guid>(), Arg.Any<string>(), Arg.Any<string>(),
                 Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<Address?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>());
     }
 
@@ -259,7 +247,7 @@ public class SubmitIdProofingCommandHandlerTests
 
         await socureClient.DidNotReceive()
             .RunIdProofingAssessmentAsync(
-                Arg.Any<int>(), Arg.Any<string>(), Arg.Any<string>(),
+                Arg.Any<Guid>(), Arg.Any<string>(), Arg.Any<string>(),
                 Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<Address?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>());
     }
 
@@ -308,7 +296,7 @@ public class SubmitIdProofingCommandHandlerTests
 
         await socureClient.DidNotReceive()
             .RunIdProofingAssessmentAsync(
-                Arg.Any<int>(), Arg.Any<string>(), Arg.Any<string>(),
+                Arg.Any<Guid>(), Arg.Any<string>(), Arg.Any<string>(),
                 Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<Address?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>());
     }
 
@@ -348,7 +336,7 @@ public class SubmitIdProofingCommandHandlerTests
 
         await socureClient.DidNotReceive()
             .RunIdProofingAssessmentAsync(
-                Arg.Any<int>(), Arg.Any<string>(), Arg.Any<string>(),
+                Arg.Any<Guid>(), Arg.Any<string>(), Arg.Any<string>(),
                 Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<Address?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>());
     }
 
@@ -400,13 +388,13 @@ public class SubmitIdProofingCommandHandlerTests
             failed.Errors,
             e => e.Key == nameof(SubmitIdProofingCommand.DateOfBirth));
 
-        await userRepository.DidNotReceive().GetUserByIdAsync(Arg.Any<int>(), Arg.Any<CancellationToken>());
+        await userRepository.DidNotReceive().GetUserByIdAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>());
         await householdRepository.DidNotReceive()
             .TryMatchCoLoadedGuardianByBenefitIdAndDobAsync(
                 Arg.Any<string>(), Arg.Any<DateOnly>(), Arg.Any<CancellationToken>());
         await socureClient.DidNotReceive()
             .RunIdProofingAssessmentAsync(
-                Arg.Any<int>(), Arg.Any<string>(), Arg.Any<string>(),
+                Arg.Any<Guid>(), Arg.Any<string>(), Arg.Any<string>(),
                 Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<string?>(),
                 Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<Address?>(), Arg.Any<string?>(),
                 Arg.Any<CancellationToken>());
@@ -447,7 +435,7 @@ public class SubmitIdProofingCommandHandlerTests
         challengeRepository.GetActiveByUserIdAsync(command.UserId, Arg.Any<CancellationToken>())
             .Returns((DocVerificationChallenge?)null);
         socureClient.RunIdProofingAssessmentAsync(
-                Arg.Any<int>(), Arg.Any<string>(), Arg.Any<string>(),
+                Arg.Any<Guid>(), Arg.Any<string>(), Arg.Any<string>(),
                 Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<Address?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
             .Returns(Result<IdProofingAssessmentResult>.Success(
                 new IdProofingAssessmentResult(IdProofingOutcome.Matched, AllowIdRetry: false)));
@@ -456,7 +444,7 @@ public class SubmitIdProofingCommandHandlerTests
 
         await socureClient.Received(1)
             .RunIdProofingAssessmentAsync(
-                Arg.Any<int>(), Arg.Any<string>(), Arg.Any<string>(),
+                Arg.Any<Guid>(), Arg.Any<string>(), Arg.Any<string>(),
                 Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<Address?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>());
     }
 
@@ -759,7 +747,7 @@ public class SubmitIdProofingCommandHandlerTests
         challengeRepository.GetActiveByUserIdAsync(command.UserId, Arg.Any<CancellationToken>())
             .Returns((DocVerificationChallenge?)null);
         socureClient.RunIdProofingAssessmentAsync(
-                Arg.Any<int>(), Arg.Any<string>(), Arg.Any<string>(),
+                Arg.Any<Guid>(), Arg.Any<string>(), Arg.Any<string>(),
                 Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<string?>(),
                 Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<Address?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
             .Returns(Result<IdProofingAssessmentResult>.Success(
@@ -855,7 +843,7 @@ public class SubmitIdProofingCommandHandlerTests
         // Should NOT call Socure
         await socureClient.DidNotReceive()
             .RunIdProofingAssessmentAsync(
-                Arg.Any<int>(), Arg.Any<string>(), Arg.Any<string>(),
+                Arg.Any<Guid>(), Arg.Any<string>(), Arg.Any<string>(),
                 Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<string?>(),
                 Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<Address?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>());
     }
@@ -941,7 +929,7 @@ public class SubmitIdProofingCommandHandlerTests
         var handler = CreateHandler();
         var command = new SubmitIdProofingCommand
         {
-            UserId = 1,
+            UserId = Guid.NewGuid(),
             DateOfBirth = "1990-01-01",
             IdType = "ssn",
             IdValue = "999-99-9999",
