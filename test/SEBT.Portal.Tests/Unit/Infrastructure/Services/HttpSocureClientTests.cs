@@ -226,9 +226,14 @@ public class HttpSocureClientTests
         Assert.Equal("consumer_onboarding", root.GetProperty("workflow").GetString());
         Assert.True(root.TryGetProperty("timestamp", out _), "Request should include timestamp");
         var individual = root.GetProperty("data").GetProperty("individual");
+        Assert.Equal("42", individual.GetProperty("id").GetString());
+        Assert.Equal("US", individual.GetProperty("country").GetString());
         Assert.Equal("user@example.com", individual.GetProperty("email").GetString());
         Assert.Equal("1990-06-15", individual.GetProperty("date_of_birth").GetString());
         Assert.Equal("123-45-6789", individual.GetProperty("national_id").GetString());
+        var addr = individual.GetProperty("address");
+        Assert.Equal("US", addr.GetProperty("country").GetString());
+        Assert.Equal("mailing", addr.GetProperty("type").GetString());
     }
 
     [Fact]
@@ -511,6 +516,7 @@ public class HttpSocureClientTests
         var individual = doc.RootElement.GetProperty("data").GetProperty("individual");
         Assert.False(individual.TryGetProperty("ip_address", out _));
         Assert.False(individual.TryGetProperty("phone_number", out _));
+        Assert.True(individual.TryGetProperty("address", out _));
     }
 
     // --- Address fields ---
@@ -561,7 +567,7 @@ public class HttpSocureClientTests
     }
 
     [Fact]
-    public async Task RunIdProofingAssessment_ShouldOmitAddress_WhenNotProvided()
+    public async Task RunIdProofingAssessment_ShouldSendCountryOnlyAddress_WhenPortalAddressNotProvided()
     {
         string? capturedBody = null;
         var handler = new CaptureRequestHandler(body =>
@@ -585,7 +591,11 @@ public class HttpSocureClientTests
         Assert.NotNull(capturedBody);
         using var doc = JsonDocument.Parse(capturedBody);
         var individual = doc.RootElement.GetProperty("data").GetProperty("individual");
-        Assert.False(individual.TryGetProperty("address", out _));
+        Assert.Equal("US", individual.GetProperty("country").GetString());
+        var addr = individual.GetProperty("address");
+        Assert.Equal("US", addr.GetProperty("country").GetString());
+        Assert.Equal("mailing", addr.GetProperty("type").GetString());
+        Assert.False(addr.TryGetProperty("line_1", out _));
     }
 
     // --- DI session token from parameter overrides config ---

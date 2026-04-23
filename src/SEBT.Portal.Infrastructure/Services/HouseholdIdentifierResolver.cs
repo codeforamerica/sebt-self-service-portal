@@ -40,19 +40,14 @@ public class HouseholdIdentifierResolver : IHouseholdIdentifierResolver
     {
         cancellationToken.ThrowIfCancellationRequested();
 
-        var email = GetEmailFromClaims(principal);
-        if (string.IsNullOrWhiteSpace(email))
+        var userId = principal.GetUserId();
+
+        if (userId is null)
         {
             return null;
         }
 
-        var normalizedEmail = EmailNormalizer.NormalizeOrNull(email);
-        if (string.IsNullOrWhiteSpace(normalizedEmail))
-        {
-            return null;
-        }
-
-        var user = await _userRepository.GetUserByEmailAsync(normalizedEmail, cancellationToken);
+        var user = await _userRepository.GetUserByIdAsync(userId.Value, cancellationToken);
         if (user == null)
         {
             return null;
@@ -112,19 +107,6 @@ public class HouseholdIdentifierResolver : IHouseholdIdentifierResolver
         }
 
         return null;
-    }
-
-    /// <summary>
-    /// Gets the user's email from JWT claims (the only identity we need in the token).
-    /// </summary>
-    private static string? GetEmailFromClaims(ClaimsPrincipal principal)
-    {
-        var email = principal.FindFirst(ClaimTypes.Email)?.Value
-            ?? principal.FindFirst(ClaimTypes.NameIdentifier)?.Value
-            ?? principal.FindFirst("email")?.Value
-            ?? principal.FindFirst("sub")?.Value
-            ?? principal.Identity?.Name;
-        return string.IsNullOrWhiteSpace(email) ? null : email.Trim();
     }
 
     /// <summary>

@@ -1,33 +1,29 @@
 'use client'
 
 import { useRouter } from 'next/navigation'
-import { useEffect, useMemo } from 'react'
+import { useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 
 import { AddressForm } from '@/features/address/components/AddressForm'
 import { useHouseholdData } from '@/features/household'
 
-// TODO (DC-153): Card-flow entry point — when accessed via /profile/address?from=cards,
+// TODO: Card-flow entry point — when accessed via /profile/address?from=cards,
 // the form should return the user to the card replacement flow on completion
-// instead of the replacement card prompt. See DC-02/CO-01 mockups.
+// instead of the replacement card prompt.
 
 export default function AddressFormPage() {
   const { t } = useTranslation('confirmInfo')
   const { data, isLoading } = useHouseholdData()
   const router = useRouter()
-
-  const canChangeAddress = useMemo(
-    () => data?.summerEbtCases.some((c) => c.allowAddressChange) ?? false,
-    [data?.summerEbtCases]
-  )
+  const canUpdateAddress = data?.allowedActions?.canUpdateAddress ?? true
 
   useEffect(() => {
-    if (!isLoading && !canChangeAddress) {
-      router.replace('/profile')
+    if (!isLoading && data && !canUpdateAddress) {
+      router.replace('/profile/address/info')
     }
-  }, [isLoading, canChangeAddress, router])
+  }, [isLoading, data, canUpdateAddress, router])
 
-  if (isLoading || !canChangeAddress) {
+  if (isLoading || (data && !canUpdateAddress)) {
     return (
       <div
         aria-busy="true"

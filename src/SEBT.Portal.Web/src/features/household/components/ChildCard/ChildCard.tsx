@@ -37,6 +37,12 @@ function getReplacementLink(summerEbtCase: SummerEbtCase): string | null {
 interface ChildCardProps {
   summerEbtCase: SummerEbtCase
   defaultExpanded?: boolean
+  /**
+   * Server-computed permission for requesting a replacement card. When false,
+   * the per-case replacement link is hidden regardless of per-case eligibility.
+   * When omitted, defaults to allowed (backward-compatible).
+   */
+  canRequestReplacementCard?: boolean | undefined
 }
 
 // Keys map to CSV: "S2 - Portal Dashboard - Card Table - cardTableType{Sebt|Snap|Tanf}"
@@ -47,9 +53,12 @@ const CARD_TYPE_KEYS: Partial<Record<IssuanceType, string>> = {
 }
 
 // Keys map to CSV: "S2 - Portal Dashboard - Card Table - {Key}"
-export function ChildCard({ summerEbtCase, defaultExpanded = true }: ChildCardProps) {
+export function ChildCard({
+  summerEbtCase,
+  defaultExpanded = true,
+  canRequestReplacementCard = true
+}: ChildCardProps) {
   const { t, i18n } = useTranslation('dashboard')
-  const enableCardReplacement = useFeatureFlag('enable_card_replacement')
   const showCaseNumber = useFeatureFlag('show_case_number')
   const showCardLast4 = useFeatureFlag('show_card_last4')
   const [isExpanded, setIsExpanded] = useState(defaultExpanded)
@@ -68,7 +77,7 @@ export function ChildCard({ summerEbtCase, defaultExpanded = true }: ChildCardPr
     cardDeactivatedAt
   } = summerEbtCase
   const cardTypeKey = issuanceType ? (CARD_TYPE_KEYS[issuanceType] ?? null) : null
-  const replacementLink = enableCardReplacement ? getReplacementLink(summerEbtCase) : null
+  const replacementLink = canRequestReplacementCard ? getReplacementLink(summerEbtCase) : null
 
   return (
     <div className="usa-accordion__item">

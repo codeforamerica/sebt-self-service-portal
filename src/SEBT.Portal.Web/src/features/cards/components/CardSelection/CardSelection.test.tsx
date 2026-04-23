@@ -328,4 +328,202 @@ describe('CardSelection', () => {
       expect(fieldset).toBeInTheDocument()
     })
   })
+
+  // --- Co-loaded case filtering ---
+  // issuanceType values: 0=Unknown, 1=SummerEbt, 2=TanfEbtCard, 3=SnapEbtCard
+  // SNAP/TANF co-loaded cases cannot have a Summer EBT replacement card mailed,
+  // so they must not appear in the "which cards to replace?" selection.
+
+  it('excludes SNAP co-loaded cases from the selection', async () => {
+    server.use(
+      http.get('/api/household/data', () => {
+        return HttpResponse.json({
+          email: 'mixed@example.com',
+          phone: '3035550100',
+          benefitIssuanceType: 1,
+          summerEbtCases: [
+            {
+              summerEBTCaseID: 'SEBT-SUMMER',
+              childFirstName: 'Summer',
+              childLastName: 'Child',
+              householdType: 'OSSE',
+              eligibilityType: 'NSLP',
+              issuanceType: 1
+            },
+            {
+              summerEBTCaseID: 'SEBT-SNAP',
+              childFirstName: 'Snap',
+              childLastName: 'Child',
+              householdType: 'OSSE',
+              eligibilityType: 'NSLP',
+              issuanceType: 3
+            }
+          ],
+          applications: [],
+          addressOnFile: {
+            streetAddress1: '123 Main St',
+            city: 'Washington',
+            state: 'DC',
+            postalCode: '20001'
+          }
+        })
+      })
+    )
+
+    renderCardSelection()
+
+    await waitFor(() => {
+      expect(screen.getByText(/Summer Child/)).toBeInTheDocument()
+    })
+
+    expect(screen.queryByText(/Snap Child/)).not.toBeInTheDocument()
+
+    const checkboxes = screen.getAllByRole('checkbox')
+    expect(checkboxes).toHaveLength(1)
+  })
+
+  it('excludes TANF co-loaded cases from the selection', async () => {
+    server.use(
+      http.get('/api/household/data', () => {
+        return HttpResponse.json({
+          email: 'mixed@example.com',
+          phone: '3035550100',
+          benefitIssuanceType: 1,
+          summerEbtCases: [
+            {
+              summerEBTCaseID: 'SEBT-SUMMER',
+              childFirstName: 'Summer',
+              childLastName: 'Child',
+              householdType: 'OSSE',
+              eligibilityType: 'NSLP',
+              issuanceType: 1
+            },
+            {
+              summerEBTCaseID: 'SEBT-TANF',
+              childFirstName: 'Tanf',
+              childLastName: 'Child',
+              householdType: 'OSSE',
+              eligibilityType: 'NSLP',
+              issuanceType: 2
+            }
+          ],
+          applications: [],
+          addressOnFile: {
+            streetAddress1: '123 Main St',
+            city: 'Washington',
+            state: 'DC',
+            postalCode: '20001'
+          }
+        })
+      })
+    )
+
+    renderCardSelection()
+
+    await waitFor(() => {
+      expect(screen.getByText(/Summer Child/)).toBeInTheDocument()
+    })
+
+    expect(screen.queryByText(/Tanf Child/)).not.toBeInTheDocument()
+
+    const checkboxes = screen.getAllByRole('checkbox')
+    expect(checkboxes).toHaveLength(1)
+  })
+
+  it('excludes cases where allowCardReplacement is false (server-gated by SelfServiceRules card status)', async () => {
+    server.use(
+      http.get('/api/household/data', () => {
+        return HttpResponse.json({
+          email: 'mixed@example.com',
+          phone: '3035550100',
+          benefitIssuanceType: 1,
+          summerEbtCases: [
+            {
+              summerEBTCaseID: 'SEBT-ELIGIBLE',
+              childFirstName: 'Eligible',
+              childLastName: 'Child',
+              householdType: 'OSSE',
+              eligibilityType: 'NSLP',
+              issuanceType: 1,
+              allowCardReplacement: true
+            },
+            {
+              summerEBTCaseID: 'SEBT-INELIGIBLE',
+              childFirstName: 'Ineligible',
+              childLastName: 'Child',
+              householdType: 'OSSE',
+              eligibilityType: 'NSLP',
+              issuanceType: 1,
+              allowCardReplacement: false
+            }
+          ],
+          applications: [],
+          addressOnFile: {
+            streetAddress1: '123 Main St',
+            city: 'Washington',
+            state: 'DC',
+            postalCode: '20001'
+          }
+        })
+      })
+    )
+
+    renderCardSelection()
+
+    await waitFor(() => {
+      expect(screen.getByText(/Eligible Child/)).toBeInTheDocument()
+    })
+
+    expect(screen.queryByText(/Ineligible Child/)).not.toBeInTheDocument()
+
+    const checkboxes = screen.getAllByRole('checkbox')
+    expect(checkboxes).toHaveLength(1)
+  })
+
+  it('renders SummerEbt-only households unchanged', async () => {
+    server.use(
+      http.get('/api/household/data', () => {
+        return HttpResponse.json({
+          email: 'summeronly@example.com',
+          phone: '3035550100',
+          benefitIssuanceType: 1,
+          summerEbtCases: [
+            {
+              summerEBTCaseID: 'SEBT-1',
+              childFirstName: 'First',
+              childLastName: 'Kid',
+              householdType: 'OSSE',
+              eligibilityType: 'NSLP',
+              issuanceType: 1
+            },
+            {
+              summerEBTCaseID: 'SEBT-2',
+              childFirstName: 'Second',
+              childLastName: 'Kid',
+              householdType: 'OSSE',
+              eligibilityType: 'NSLP',
+              issuanceType: 1
+            }
+          ],
+          applications: [],
+          addressOnFile: {
+            streetAddress1: '123 Main St',
+            city: 'Washington',
+            state: 'DC',
+            postalCode: '20001'
+          }
+        })
+      })
+    )
+
+    renderCardSelection()
+
+    await waitFor(() => {
+      expect(screen.getByText(/First Kid/)).toBeInTheDocument()
+      expect(screen.getByText(/Second Kid/)).toBeInTheDocument()
+    })
+
+    const checkboxes = screen.getAllByRole('checkbox')
+    expect(checkboxes).toHaveLength(2)
+  })
 })

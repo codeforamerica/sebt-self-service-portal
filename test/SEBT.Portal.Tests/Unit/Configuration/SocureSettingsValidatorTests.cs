@@ -131,6 +131,19 @@ public class SocureSettingsValidatorTests
     }
 
     [Fact]
+    public void Validate_ShouldFail_WhenDocvTransactionTokenTtlOutOfRange()
+    {
+        var validator = CreateValidator();
+        var settings = CreateValidStubSettings();
+        settings.DocvTransactionTokenTtlMinutes = 0;
+
+        var result = validator.Validate(null, settings);
+
+        Assert.False(result.Succeeded);
+        Assert.Contains("DocvTransactionTokenTtlMinutes", result.Failures!.Single());
+    }
+
+    [Fact]
     public void Validate_ShouldFail_WhenUseStubFalseAndApiKeyMissing()
     {
         var validator = CreateValidator("Production");

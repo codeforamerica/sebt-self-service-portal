@@ -11,7 +11,7 @@ using SEBT.Portal.Core.Models.Auth;
 using SEBT.Portal.Core.Repositories;
 using SEBT.Portal.Core.Services;
 using SEBT.Portal.Core.Utilities;
-using SEBT.Portal.Infrastructure.Services;
+using SEBT.Portal.Kernel;
 
 using static SEBT.Portal.Core.Utilities.PiiMasker;
 
@@ -28,12 +28,11 @@ public class OidcController(
     IConfiguration config,
     ILogger<OidcController> logger,
     IUserRepository userRepository,
-    IJwtTokenService jwtService,
+    IOidcTokenService oidcTokenService,
     IOptions<JwtSettings> jwtSettingsOptions,
     IStateAllowlist stateAllowlist,
     IPreAuthSessionStore sessionStore,
-    IWebHostEnvironment environment,
-    OidcVerificationClaimTranslator verificationClaimTranslator) : ControllerBase
+    IWebHostEnvironment environment) : ControllerBase
 {
     /// <summary>
     /// OIDC config + pre-auth session creation. Generates PKCE server-side, stores
@@ -250,21 +249,21 @@ public class OidcController(
         var sessionId = OidcSessionCookie.Read(Request);
         if (string.IsNullOrEmpty(sessionId))
         {
-            logger.LogWarning("OIDC Callback rejected: missing oidc_session cookie (reason=missing_session)");
+            logger.LogError("OIDC Callback rejected: missing oidc_session cookie (reason=missing_session)");
             return StatusCode(StatusCodes.Status403Forbidden, new ErrorResponse("Missing pre-auth session."));
         }
 
         var session = await sessionStore.GetAsync(sessionId, cancellationToken);
         if (session == null)
         {
-            logger.LogWarning("OIDC Callback rejected: session {SessionId} not found or expired (reason=missing_session)", sessionId);
+            logger.LogError("OIDC Callback rejected: session {SessionId} not found or expired (reason=missing_session)", sessionId);
             return StatusCode(StatusCodes.Status403Forbidden, new ErrorResponse("Pre-auth session expired or invalid."));
         }
 
         // --- Validate state matches stored value (CSRF protection) ---
         if (string.IsNullOrEmpty(body.State) || body.State != session.State)
         {
-            logger.LogWarning(
+            logger.LogError(
                 "OIDC Callback rejected: state mismatch (reason=mismatched_state, SessionId={SessionId})", sessionId);
             return BadRequest(new ErrorResponse("State parameter mismatch."));
         }
@@ -272,7 +271,7 @@ public class OidcController(
         // --- Verify the session hasn't already been used (fail fast before the exchange) ---
         if (session.Phase != PreAuthSessionPhase.Created)
         {
-            logger.LogWarning(
+            logger.LogError(
                 "OIDC Callback rejected: session already used, Phase={Phase} (reason=replay, SessionId={SessionId})",
                 session.Phase, sessionId);
             return BadRequest(new ErrorResponse("Pre-auth session has already been used."));
@@ -290,7 +289,7 @@ public class OidcController(
 
         if (!result.Success)
         {
-            logger.LogWarning(
+            logger.LogError(
                 "OIDC Callback exchange failed: {Error} (reason=exchange_failed, SessionId={SessionId})",
                 result.Error, sessionId);
             return StatusCode(result.StatusCode, new ErrorResponse(result.Error ?? "Exchange failed."));
@@ -301,7 +300,7 @@ public class OidcController(
         var advanced = await sessionStore.TryAdvanceToCallbackCompletedAsync(sessionId, tokenHash, cancellationToken);
         if (!advanced)
         {
-            logger.LogWarning(
+            logger.LogError(
                 "OIDC Callback rejected: session could not advance (reason=replay, SessionId={SessionId})", sessionId);
             return BadRequest(new ErrorResponse("Pre-auth session has already been used."));
         }
@@ -342,7 +341,7 @@ public class OidcController(
         var sessionId = OidcSessionCookie.Read(Request);
         if (string.IsNullOrEmpty(sessionId))
         {
-            logger.LogWarning("OIDC CompleteLogin rejected: missing oidc_session cookie (reason=missing_session)");
+            logger.LogError("OIDC CompleteLogin rejected: missing oidc_session cookie (reason=missing_session)");
             return StatusCode(StatusCodes.Status403Forbidden, new ErrorResponse("Missing pre-auth session."));
         }
 
@@ -350,7 +349,7 @@ public class OidcController(
         var session = await sessionStore.GetAsync(sessionId, cancellationToken);
         if (session == null)
         {
-            logger.LogWarning("OIDC CompleteLogin rejected: session not found (reason=missing_session, SessionId={SessionId})", sessionId);
+            logger.LogError("OIDC CompleteLogin rejected: session not found (reason=missing_session, SessionId={SessionId})", sessionId);
             return StatusCode(StatusCodes.Status403Forbidden, new ErrorResponse("Pre-auth session invalid, expired, or already used."));
         }
 
@@ -359,7 +358,7 @@ public class OidcController(
         var advanced = await sessionStore.TryAdvanceToLoginCompletedAsync(sessionId, tokenHash, cancellationToken);
         if (!advanced)
         {
-            logger.LogWarning(
+            logger.LogError(
                 "OIDC CompleteLogin rejected: session advance failed (reason=replay, SessionId={SessionId})", sessionId);
             return StatusCode(StatusCodes.Status403Forbidden, new ErrorResponse("Pre-auth session invalid, expired, or already used."));
         }
@@ -373,7 +372,7 @@ public class OidcController(
         var signingKey = config["Oidc:CompleteLoginSigningKey"];
         if (string.IsNullOrEmpty(signingKey))
         {
-            logger.LogWarning("Oidc:CompleteLoginSigningKey is not configured (SessionId={SessionId}).", sessionId);
+            logger.LogError("Oidc:CompleteLoginSigningKey is not configured (SessionId={SessionId}).", sessionId);
             var hint = environment.IsDevelopment() ? "Set Oidc:CompleteLoginSigningKey in appsettings." : "";
             return StatusCode(StatusCodes.Status503ServiceUnavailable, new { error = "Complete-login not configured.", hint });
         }
@@ -403,110 +402,88 @@ public class OidcController(
         }
         catch (Exception ex)
         {
-            logger.LogWarning(ex, "Invalid or expired callback token for state {StateCode} (SessionId={SessionId})",
+            logger.LogError(ex, "Invalid or expired callback token for state {StateCode} (SessionId={SessionId})",
                 SanitizeForLog(session.StateCode), sessionId);
             return BadRequest(new ErrorResponse("Invalid or expired callback token."));
         }
 
-        // Copy non-common IdP claims into the portal JWT (e.g. phone, givenName, familyName, userId, email, sub)
-        var additionalClaims = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
-        foreach (var claim in principal.Claims)
-        {
-            if (!OidcExchangeService.CommonOidcInfrastructureClaims.Contains(claim.Type) && !string.IsNullOrEmpty(claim.Value))
-            {
-                additionalClaims[claim.Type] = claim.Value;
-            }
-        }
-
-        logger.LogInformation("Additional OIDC claim types: {Claims} (SessionId={SessionId})",
-            string.Join(", ", additionalClaims.Select(c => c.Key).ToArray()), sessionId);
-
-        // Extract the phone claim for diagnostic logging (masked).
-        additionalClaims.TryGetValue("phone", out var phoneClaim);
+        // Extract sub + email from principal for user lookup. The service handles
+        // all claim processing (filtering, verification, IAL derivation).
+        var subClaim = principal.FindFirst("sub")?.Value;
+        var email = GetEmailFromClaims(principal);
+        var phoneClaim = principal.FindFirst("phone")?.Value;
         var maskedPhone = MaskPhone(phoneClaim);
 
         if (phoneClaim == null)
         {
-            logger.LogWarning("OIDC incoming claims missing 'phone' (SessionId={SessionId})", sessionId);
+            logger.LogError("OIDC incoming claims missing 'phone' (SessionId={SessionId})", sessionId);
         }
 
-        var email = GetEmailFromClaims(principal);
-        if (string.IsNullOrWhiteSpace(email))
+        if (string.IsNullOrWhiteSpace(email) && string.IsNullOrWhiteSpace(subClaim))
         {
-            logger.LogWarning("Callback token had no email or sub claim (SessionId={SessionId})", sessionId);
+            logger.LogError("Callback token had no email or sub claim (SessionId={SessionId})", sessionId);
             return BadRequest(new ErrorResponse("Callback token must contain an email or sub claim."));
         }
 
-        var normalizedEmail = EmailNormalizer.Normalize(email);
         User user;
 
         if (session.IsStepUp)
         {
-            var existingUser = await userRepository.GetUserByEmailAsync(normalizedEmail, cancellationToken);
-            if (existingUser == null)
+            if (string.IsNullOrWhiteSpace(subClaim))
             {
-                logger.LogWarning("Step-up complete-login: no existing portal user for callback token; sign-in required first (SessionId={SessionId}).", sessionId);
+                logger.LogError("Step-up complete-login: missing sub claim (SessionId={SessionId})", sessionId);
+                return BadRequest(new ErrorResponse("Callback token must contain a sub claim."));
+            }
+
+            var existingEntity = await userRepository.GetUserByExternalIdAsync(subClaim, cancellationToken);
+            if (existingEntity == null)
+            {
+                logger.LogError(
+                    "Step-up complete-login: no existing portal user for sub claim; sign-in required first (SessionId={SessionId}).",
+                    sessionId);
                 return BadRequest(new { error = "Step-up requires an existing session. Please sign in again." });
             }
 
-            user = existingUser;
-            user.IalLevel = UserIalLevel.IAL1plus;
-            user.IdProofingStatus = IdProofingStatus.Completed;
-            user.IdProofingCompletedAt = DateTime.UtcNow;
-            user.UpdatedAt = DateTime.UtcNow;
-            await userRepository.UpdateUserAsync(user, cancellationToken);
-
-            var safeStateKey = SanitizeForLog(stateKey);
-            logger.LogInformation(
-                "OIDC step-up complete-login succeeded: UserId {UserId}, StateCode {StateCode}, IalLevel {IalLevel}, IdProofingStatus {IdProofingStatus}, Phone={MaskedPhone}, SessionId={SessionId}",
-                user.Id,
-                safeStateKey,
-                user.IalLevel,
-                user.IdProofingStatus,
-                maskedPhone,
-                sessionId);
+            user = existingEntity;
         }
         else
         {
-            var (createdUser, _) = await userRepository.GetOrCreateUserAsync(normalizedEmail, cancellationToken);
+            if (string.IsNullOrWhiteSpace(subClaim))
+            {
+                logger.LogError(
+                    "OIDC CompleteLogin: callback token missing sub claim (SessionId={SessionId})",
+                    sessionId);
+                return BadRequest(new ErrorResponse("Callback token must contain a sub claim."));
+            }
+
+            // Pass email from IdP claims as a migration hint: if no user exists for
+            // this sub but one exists for this email, adopt that legacy record.
+            // TODO: Remove email parameter once all existing users have been migrated.
+            var emailHint = principal.FindFirst("email")?.Value;
+            var (createdUser, _) = await userRepository.GetOrCreateUserByExternalIdAsync(
+                subClaim, emailHint, cancellationToken);
             user = createdUser;
-
-            // A user who completed OIDC login is at least IAL1; don't downgrade if already higher
-            if (user.IalLevel < UserIalLevel.IAL1)
-            {
-                user.IalLevel = UserIalLevel.IAL1;
-                await userRepository.UpdateUserAsync(user, cancellationToken);
-            }
-
-            // Reconcile IAL from OIDC verification claims (e.g. CO's PingOne/Socure).
-            // If the IdP says the user completed identity verification, update our DB
-            // to match — the IdP is the source of truth for OIDC-based verification.
-            // For states without OIDC verification (e.g. DC), Translate() returns null
-            // because the IdP claims don't contain the configured verification claim names.
-            var verification = verificationClaimTranslator.Translate(additionalClaims);
-            if (verification != null)
-            {
-                ReconcileIalFromOidcVerification(user, verification);
-                await userRepository.UpdateUserAsync(user, cancellationToken);
-
-                logger.LogInformation(
-                    "OIDC verification claim reconciled: UserId {UserId}, IalLevel {IalLevel}, IsExpired {IsExpired}, VerifiedAt {VerifiedAt}, SessionId={SessionId}",
-                    user.Id, user.IalLevel, verification.IsExpired, verification.VerifiedAt, sessionId);
-            }
         }
 
-        var token = jwtService.GenerateToken(user, additionalClaims);
-        var expiresAt = DateTimeOffset.UtcNow.AddMinutes(jwtSettingsOptions.Value.ExpirationMinutes);
-        AuthCookies.SetAuthCookie(Response, token, expiresAt);
+        // The service handles claim filtering, verification translation,
+        // IAL derivation, and timestamp computation.
+        var tokenResult = oidcTokenService.GenerateForOidcLogin(user, principal, session.IsStepUp);
 
-        if (!session.IsStepUp)
+        if (!tokenResult.IsSuccess)
         {
-            logger.LogInformation(
-                "OIDC login complete: UserId {UserId}, IalLevel {IalLevel}, Phone={MaskedPhone}, SessionId={SessionId}",
-                user.Id, user.IalLevel, maskedPhone, sessionId);
+            logger.LogError(
+                "OIDC token generation failed: {Message} (SessionId={SessionId})",
+                tokenResult.Message, sessionId);
+            return BadRequest(new { error = "Step-up verification failed. Please try again." });
         }
 
-        // returnUrl was sanitized at authorize time and stored in the session.
+        var expiresAt = DateTimeOffset.UtcNow.AddMinutes(jwtSettingsOptions.Value.ExpirationMinutes);
+        AuthCookies.SetAuthCookie(Response, tokenResult.Value, expiresAt);
+
+        logger.LogInformation(
+            "OIDC {FlowType} complete: UserId {UserId}, Phone={MaskedPhone}, SessionId={SessionId}",
+            session.IsStepUp ? "step-up" : "login", user.Id, maskedPhone, sessionId);
+
         var safeReturnUrl = session.IsStepUp ? session.ReturnUrl : null;
         return Ok(new CompleteLoginResponse(ReturnUrl: safeReturnUrl));
     }
@@ -555,28 +532,6 @@ public class OidcController(
     }
 
     /// <summary>
-    /// Updates a user's IAL and proofing fields based on translated OIDC verification claims.
-    /// If the verification is expired, resets to IAL1 (the user must re-verify).
-    /// If valid, promotes to the verified IAL level.
-    /// </summary>
-    private static void ReconcileIalFromOidcVerification(User user, OidcVerificationResult verification)
-    {
-        if (verification.IsExpired)
-        {
-            // Verification has lapsed — reset to baseline IAL1 (they completed OIDC login,
-            // so they're at least IAL1, but no longer IAL1+).
-            user.IalLevel = UserIalLevel.IAL1;
-            user.IdProofingStatus = IdProofingStatus.Expired;
-            return;
-        }
-
-        // Valid, non-expired verification from the IdP — update to match.
-        user.IalLevel = verification.IalLevel;
-        user.IdProofingStatus = IdProofingStatus.Completed;
-        user.IdProofingCompletedAt = verification.VerifiedAt;
-    }
-
-    /// <summary>
     /// Gets the email (or subject) from the callback token claims for portal user lookup.
     /// </summary>
     private static string? GetEmailFromClaims(ClaimsPrincipal principal)
@@ -587,4 +542,5 @@ public class OidcController(
         var subClaim = principal.FindFirst("sub");
         return subClaim?.Value;
     }
+
 }

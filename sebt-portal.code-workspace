@@ -18,6 +18,7 @@
     },
   ],
   "settings": {
+    "dotnet.defaultSolution": "Portal/SEBT.Portal.sln",
     "search.exclude": {
       "**/node_modules": true,
       "**/bin": true,
@@ -36,6 +37,7 @@
     "files.associations": {
       "*.scss": "scss",
       "*.json": "json",
+      "appsettings*.json": "jsonc",
     },
     "editor.defaultFormatter": "esbenp.prettier-vscode",
     "editor.formatOnSave": true,

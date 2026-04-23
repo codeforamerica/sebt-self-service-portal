@@ -93,9 +93,20 @@ public class SummerEbtCase
     public string? EbtCardLastFour { get; set; }
 
     /// <summary>
-    /// The EBT card status.
+    /// The EBT card status as reported by the state connector.
+    /// Use <see cref="CardStatus"/> for typed comparisons against self-service rules.
     /// </summary>
     public string? EbtCardStatus { get; set; }
+
+    /// <summary>
+    /// The EBT card status parsed into the portal's canonical enum.
+    /// Falls back to <see cref="Household.CardStatus.Unknown"/> when
+    /// <see cref="EbtCardStatus"/> is null or doesn't match a known value.
+    /// </summary>
+    public CardStatus CardStatus =>
+        Enum.TryParse<CardStatus>(EbtCardStatus, ignoreCase: true, out var s)
+            ? s
+            : CardStatus.Unknown;
 
     /// <summary>
     /// The EBT card issue date.
@@ -122,4 +133,11 @@ public class SummerEbtCase
     /// The date benefits expire.
     /// </summary>
     public DateTime? BenefitExpirationDate { get; set; }
+
+    /// <summary>
+    /// Self-service action permissions evaluated for this specific case.
+    /// Populated by <see cref="Services.ISelfServiceEvaluator"/> at the query handler layer;
+    /// null indicates the handler did not run and the client should treat actions as denied.
+    /// </summary>
+    public AllowedActions? AllowedActions { get; set; }
 }

@@ -90,7 +90,7 @@ public static class UserFactory
         return new UserEntity
         {
             Id = user.Id,
-            Email = EmailNormalizer.Normalize(user.Email),
+            Email = user.Email != null ? EmailNormalizer.Normalize(user.Email) : null,
             IdProofingStatus = (int)user.IdProofingStatus,
             IalLevel = (int)user.IalLevel,
             IdProofingSessionId = user.IdProofingSessionId,

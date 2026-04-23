@@ -33,7 +33,11 @@ const defaultFlags: FeatureFlagsContextValue = {
 }
 
 function renderWithFlags(
-  props: { summerEbtCase: SummerEbtCase; defaultExpanded?: boolean },
+  props: {
+    summerEbtCase: SummerEbtCase
+    defaultExpanded?: boolean
+    canRequestReplacementCard?: boolean
+  },
   flags: FeatureFlagsContextValue = defaultFlags
 ) {
   return render(
@@ -287,7 +291,7 @@ describe('ChildCard', () => {
     expect(screen.getByText('Request a replacement card')).toBeInTheDocument()
   })
 
-  it('hides replacement link when enable_card_replacement flag is off', () => {
+  it('hides replacement link when canRequestReplacementCard is false', () => {
     const summerEbtCase = createMockSummerEbtCase({
       ...mockCase,
       issuanceType: 'SummerEbt',
@@ -295,9 +299,9 @@ describe('ChildCard', () => {
     })
 
     renderWithFlags(
-      { summerEbtCase },
+      { summerEbtCase, canRequestReplacementCard: false },
       {
-        flags: { ...TEST_FEATURE_FLAGS, enable_card_replacement: false },
+        flags: TEST_FEATURE_FLAGS,
         isLoading: false,
         isError: false
       }

@@ -24,6 +24,7 @@ public class DependenciesTests
         services.AddSingleton(Substitute.For<IHouseholdIdentifierResolver>());
         services.AddSingleton(Substitute.For<IHouseholdRepository>());
         services.AddSingleton(Substitute.For<IMinimumIalService>());
+        services.AddSingleton(Substitute.For<ISelfServiceEvaluator>());
         services.AddSingleton(TimeProvider.System);
         services.AddSingleton(typeof(ILogger<>), typeof(NullLogger<>));
 

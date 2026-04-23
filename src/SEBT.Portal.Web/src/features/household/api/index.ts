@@ -1,5 +1,6 @@
 export {
   AddressSchema,
+  AllowedActionsSchema,
   ApplicationSchema,
   ApplicationStatusSchema,
   CardStatusSchema,
@@ -13,6 +14,7 @@ export {
   isReplacementEligible,
   toUiCardStatus,
   type Address,
+  type AllowedActions,
   type Application,
   type ApplicationStatus,
   type CardStatus,

@@ -31,6 +31,8 @@ jobs:
 
       - name: Setup pnpm
         uses: pnpm/action-setup@v4
+        with:
+          version: 10
 
       - name: Get pnpm store directory
         id: pnpm-cache
@@ -58,6 +60,7 @@ jobs:
           NEXT_PUBLIC_API_BASE_URL: ${{ vars.ENROLLMENT_CHECKER_API_BASE_URL }}
           NEXT_PUBLIC_PORTAL_URL: ${{ vars.ENROLLMENT_CHECKER_PORTAL_URL }}
           NEXT_PUBLIC_APPLICATION_URL: ${{ vars.ENROLLMENT_CHECKER_APPLICATION_URL }}
+          NEXT_PUBLIC_BUILD_SHA: ${{ github.sha }}
 
       - name: Upload static site artifact
         uses: actions/upload-artifact@v6

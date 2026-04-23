@@ -134,10 +134,36 @@ public class HttpSocureClient(
         var sendIdentifierToSocure = !string.IsNullOrWhiteSpace(idType)
             && !SocureExcludedIdentifierTypes.IsExcludedFromSocurePayload(idType);
 
+        var mappedAddress = MapAddress(address);
+        if (mappedAddress == null)
+        {
+            // Consumer onboarding docs require address.country at minimum for many workflows.
+            mappedAddress = new SocureAddress
+            {
+                Type = "mailing",
+                Country = "US"
+            };
+        }
+        else if (string.IsNullOrWhiteSpace(mappedAddress.Country))
+        {
+            mappedAddress = new SocureAddress
+            {
+                Type = mappedAddress.Type ?? "mailing",
+                Line1 = mappedAddress.Line1,
+                Line2 = mappedAddress.Line2,
+                Locality = mappedAddress.Locality,
+                MajorAdminDivision = mappedAddress.MajorAdminDivision,
+                PostalCode = mappedAddress.PostalCode,
+                Country = "US"
+            };
+        }
+
         var individual = new SocureIndividual
         {
+            CustomerIndividualId = userId.ToString(),
             Email = email,
             DateOfBirth = dateOfBirth,
+            Country = "US",
             NationalId = sendIdentifierToSocure && !string.IsNullOrWhiteSpace(idValue)
                 ? idValue
                 : null,
@@ -147,7 +173,7 @@ public class HttpSocureClient(
             GivenName = givenName,
             FamilyName = familyName,
             Docv = new SocureDocvConfig(),
-            Address = MapAddress(address)
+            Address = mappedAddress
         };
 
         return new SocureEvaluationRequest

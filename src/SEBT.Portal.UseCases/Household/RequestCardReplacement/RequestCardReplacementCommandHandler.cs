@@ -10,7 +10,8 @@ namespace SEBT.Portal.UseCases.Household;
 
 /// <summary>
 /// Handles card replacement requests for an authenticated user's household.
-/// Validates input, resolves household identity, enforces 2-week cooldown, and returns success.
+/// Validates input, resolves household identity, enforces minimum IAL,
+/// enforces self-service rules, enforces 2-week cooldown, and returns success.
 /// State connector call is stubbed — actual card replacement is a future integration.
 /// </summary>
 public class RequestCardReplacementCommandHandler(
@@ -18,6 +19,7 @@ public class RequestCardReplacementCommandHandler(
     IHouseholdIdentifierResolver resolver,
     IHouseholdRepository repository,
     IMinimumIalService minimumIalService,
+    ISelfServiceEvaluator selfServiceEvaluator,
     TimeProvider timeProvider,
     ILogger<RequestCardReplacementCommandHandler> logger)
     : ICommandHandler<RequestCardReplacementCommand>
@@ -72,7 +74,8 @@ public class RequestCardReplacementCommandHandler(
 
         // Co-loaded cases are managed by caseworkers, not the portal.
         var requestedCases = household.SummerEbtCases
-            .Where(c => c.SummerEBTCaseID != null && command.CaseIds.Contains(c.SummerEBTCaseID));
+            .Where(c => c.SummerEBTCaseID != null && command.CaseIds.Contains(c.SummerEBTCaseID))
+            .ToList();
         if (requestedCases.Any(c => c.IsCoLoaded))
         {
             logger.LogWarning(
@@ -80,6 +83,21 @@ public class RequestCardReplacementCommandHandler(
             return Result.PreconditionFailed(
                 PreconditionFailedReason.Conflict,
                 "Card replacements are not available for co-loaded benefits. Please contact your case worker.");
+        }
+
+        // Per-case self-service rules enforcement: each case's own issuance type
+        // and card status determine eligibility (per James's 4.3.26 guidance that
+        // self-service actions are case-scoped, not household-scoped).
+        foreach (var summerEbtCase in requestedCases)
+        {
+            var allowedActions = selfServiceEvaluator.Evaluate(summerEbtCase);
+            if (!allowedActions.CanRequestReplacementCard)
+            {
+                logger.LogInformation("Card replacement denied by self-service rules for case");
+                return Result.PreconditionFailed(
+                    PreconditionFailedReason.NotAllowed,
+                    allowedActions.CardReplacementDeniedMessageKey ?? "Card replacement is not available for this account.");
+            }
         }
 
         var cooldownErrors = CheckCooldown(command.CaseIds, household, timeProvider);
