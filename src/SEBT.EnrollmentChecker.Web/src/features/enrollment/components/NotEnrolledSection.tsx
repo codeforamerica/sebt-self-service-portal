@@ -1,6 +1,6 @@
 'use client'
 
-import { TextLink } from '@sebt/design-system'
+import { LinkItem } from '@sebt/design-system'
 import { useTranslation } from 'react-i18next'
 import type { ChildCheckApiResponse } from '../schemas/enrollmentSchema'
 import { ChildResultCard } from './ChildResultCard'
@@ -16,8 +16,9 @@ export function NotEnrolledSection({ results, applicationUrl }: NotEnrolledSecti
 
   return (
     <section>
-      <h2 className="font-family-sans">{t('notEnrolledHeading')}</h2>
-      {results.map(child => (
+      <h2 className="font-family-sans">{t('applyForSebtBody1')}</h2>
+      <ul>
+        {results.map(child => (
         <ChildResultCard
           key={child.checkId}
           firstName={child.firstName}
@@ -25,14 +26,18 @@ export function NotEnrolledSection({ results, applicationUrl }: NotEnrolledSecti
           displayStatus="notEnrolled"
         />
       ))}
+      </ul>
+
+      {/* TODO should this open in new window? */}
       <p className="usa-prose">
-        {t('notEnrolledCta')}{' '}
-        <TextLink
+        {t('applyForSebtBody')}{' '}
+        <a
           href={applicationUrl}
           data-analytics-cta="apply_cta"
+          className="usa-button"
         >
           {t('applyLink')}
-        </TextLink>
+        </a>
       </p>
     </section>
   )

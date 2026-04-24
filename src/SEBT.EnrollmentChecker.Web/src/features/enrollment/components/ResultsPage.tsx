@@ -1,6 +1,7 @@
 'use client'
 
 import { useRouter } from 'next/navigation'
+import Image from 'next/image'
 import { useTranslation } from 'react-i18next'
 import type { ChildCheckApiResponse } from '../schemas/enrollmentSchema'
 import { mapApiStatus } from '../schemas/enrollmentSchema'
@@ -24,19 +25,19 @@ export function ResultsPage({ results, applicationUrl }: ResultsPageProps) {
   return (
     <div className="usa-section">
       <div className="grid-container">
-        <button
-          type="button"
-          className="usa-button usa-button--unstyled margin-bottom-2"
-          onClick={() => router.push('/review')}
-        >
-          {t('back', { ns: 'common' })}
-        </button>
-        <h1 className="font-family-sans">{t('heading')}</h1>
+        <Image
+          src="/images/states/co/icon-review-card.svg"
+          alt=""
+          width={100}
+          height={75}
+          aria-hidden="true"
+        />
+        <h1 className="font-family-sans margin-top-1">{t('title')}</h1>
         <EnrolledSection results={enrolled} />
         <NotEnrolledSection results={notEnrolled} applicationUrl={applicationUrl} />
         {errors.length > 0 && (
           <section>
-            <h2 className="font-family-sans">{t('errorHeading')}</h2>
+            <h2 className="font-family-sans">{t('errorTitle')}</h2>
             {errors.map(child => (
               <ChildResultCard
                 key={child.checkId}

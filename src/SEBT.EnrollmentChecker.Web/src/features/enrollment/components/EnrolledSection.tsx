@@ -10,7 +10,7 @@ export function EnrolledSection({ results }: { results: ChildCheckApiResponse[] 
 
   return (
     <section>
-      <h2 className="font-family-sans">{t('enrolledHeading')}</h2>
+      <h2 className="font-family-sans">{t('title')}</h2>
       {results.map(child => (
         <ChildResultCard
           key={child.checkId}
@@ -19,6 +19,18 @@ export function EnrolledSection({ results }: { results: ChildCheckApiResponse[] 
           displayStatus="enrolled"
         />
       ))}
+      
+      {/* <p className="usa-prose">
+        {t('streamlinedEnrolledAlertTitle')}{' '}
+        {t('streamlinedEnrolledAlertBody')}{' '}
+        <a
+          href="#"
+          data-analytics-cta="apply_cta"
+          className="usa-button"
+        >
+          {t('streamlinedEnrolledAction')}
+        </a>
+      </p> */}
     </section>
   )
 }
