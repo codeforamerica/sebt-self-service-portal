@@ -3,6 +3,8 @@
 import Link from 'next/link'
 import { useTranslation } from 'react-i18next'
 
+import { getState } from '@sebt/design-system'
+
 import type { Address, HouseholdData } from '../../api'
 import { formatUsPhone, useRequiredHouseholdData } from '../../api'
 
@@ -94,6 +96,9 @@ export function HouseholdSummary() {
   const { t } = useTranslation('dashboard')
   const data = useRequiredHouseholdData()
   const { primary, secondary } = getOverallStatus(data)
+  // `/profile/address/how-determined` redirects non-DC users away, so only
+  // surface its link when we're actually running as DC.
+  const isDC = getState() === 'dc'
 
   return (
     <div className="usa-card__container margin-bottom-4">
@@ -138,13 +143,15 @@ export function HouseholdSummary() {
                         {t('profileTableActionChangeAddress')}
                       </Link>
                     ) : (
-                      <Link
-                        href="/profile/address/how-determined"
-                        data-analytics-cta="how_address_determined_cta"
-                        className="usa-link text-bold"
-                      >
-                        {t('profileTableCo-loadedAddress')}
-                      </Link>
+                      isDC && (
+                        <Link
+                          href="/profile/address/how-determined"
+                          data-analytics-cta="how_address_determined_cta"
+                          className="usa-link text-bold"
+                        >
+                          {t('profileTableCo-loadedAddress')}
+                        </Link>
+                      )
                     )}
                   </>
                 )}
