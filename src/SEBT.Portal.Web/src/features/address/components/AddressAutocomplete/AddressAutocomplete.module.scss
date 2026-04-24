@@ -2,6 +2,9 @@
   position: relative;
 }
 
+// Color values match USWDS design tokens. This is the first CSS module in the
+// project; importing uswds-core just for color() would be heavyweight. If more
+// modules are added, consider a shared _uswds-colors partial.
 .listbox {
   position: absolute;
   z-index: 400;
@@ -10,8 +13,8 @@
   right: 0;
   max-height: 200px;
   overflow-y: auto;
-  background-color: white;
-  border: 1px solid #71767a;
+  background-color: white; // USWDS: color('white')
+  border: 1px solid #71767a; // USWDS: color('base')
   border-top: none;
   list-style: none;
   margin: 0;
@@ -25,6 +28,6 @@
 
   &:hover,
   &[data-focused='true'] {
-    background-color: #dfe1e2;
+    background-color: #dfe1e2; // USWDS: color('base-lighter')
   }
 }

@@ -2,12 +2,15 @@
 
 import {
   useId,
+  useLayoutEffect,
   useRef,
   useState,
   type ChangeEvent,
   type InputHTMLAttributes,
   type KeyboardEvent
 } from 'react'
+
+import { useTranslation } from 'react-i18next'
 
 import { getState } from '@sebt/design-system'
 
@@ -40,6 +43,8 @@ export function AddressAutocomplete({
   isRequired,
   ...inputProps
 }: AddressAutocompleteProps) {
+  const { t } = useTranslation('confirmInfo')
+
   const baseId = useId()
   const inputId = `${baseId}-input`
   const listboxId = `${baseId}-listbox`
@@ -62,7 +67,13 @@ export function AddressAutocomplete({
     }
   })
 
-  const { suggestions, isOpen, selectSuggestion, dismiss, open } = autocomplete
+  const { suggestions, suggestionsVersion, isOpen, selectSuggestion, dismiss, open } = autocomplete
+
+  // Reset keyboard focus when suggestions change (e.g. secondary lookup replaces primary results).
+  // useLayoutEffect fires synchronously after DOM mutations so the reset is applied before
+  // the browser can paint a stale focused state or keyboard events observe stale activeIndex.
+  // eslint-disable-next-line react-hooks/set-state-in-effect -- intentional: synchronous reset guards against stale activeIndex after suggestion replacement
+  useLayoutEffect(() => setActiveIndex(-1), [suggestionsVersion])
 
   function handleKeyDown(e: KeyboardEvent<HTMLInputElement>) {
     if (!isOpen) {
@@ -214,7 +225,8 @@ export function AddressAutocomplete({
             const isFocused = index === activeIndex
             let display = suggestion.street_line
             if (suggestion.secondary) display += ` ${suggestion.secondary}`
-            if (suggestion.entries > 1) display += ` (${suggestion.entries} more entries)`
+            if (suggestion.entries > 1)
+              display += ` ${t('autocompleteMultiUnit', '({{count}} more entries)', { count: suggestion.entries })}`
             display += `, ${suggestion.city} ${suggestion.state} ${suggestion.zipcode}`
 
             return (
@@ -242,7 +254,9 @@ export function AddressAutocomplete({
         className="sr-only"
       >
         {isOpen && suggestions.length > 0
-          ? `${suggestions.length} suggestion${suggestions.length !== 1 ? 's' : ''} available`
+          ? t('autocompleteSuggestionsAvailable', '{{count}} suggestion available', {
+              count: suggestions.length
+            })
           : ''}
       </div>
     </div>

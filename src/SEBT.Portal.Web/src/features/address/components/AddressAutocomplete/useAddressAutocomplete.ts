@@ -1,8 +1,35 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react'
 
 import { fetchAutocompleteSuggestions, formatSelected } from './smartyAutocompleteClient'
 import type { SelectedAddress, SmartySuggestion } from './types'
 import { STATE_PREFER_STATES } from './types'
+
+/**
+ * Returns true if two suggestion arrays have identical content.
+ * Used to avoid updating state (and changing the array reference) when a
+ * re-fetch returns the same results — e.g. when the debounce re-fires due to
+ * a re-render without any actual change to the search string.
+ */
+function areSuggestionsEqual(a: SmartySuggestion[], b: SmartySuggestion[]): boolean {
+  if (a.length !== b.length) return false
+  for (let i = 0; i < a.length; i++) {
+    // eslint-disable-next-line security/detect-object-injection -- i is loop-controlled
+    const ai = a[i]!
+    // eslint-disable-next-line security/detect-object-injection -- i is loop-controlled
+    const bi = b[i]!
+    if (
+      ai.street_line !== bi.street_line ||
+      ai.secondary !== bi.secondary ||
+      ai.city !== bi.city ||
+      ai.state !== bi.state ||
+      ai.zipcode !== bi.zipcode ||
+      ai.entries !== bi.entries
+    ) {
+      return false
+    }
+  }
+  return true
+}
 
 const DEBOUNCE_MS = 300
 const MIN_CHARS = 3
@@ -18,6 +45,8 @@ interface UseAddressAutocompleteOptions {
 
 interface UseAddressAutocompleteReturn {
   suggestions: SmartySuggestion[]
+  /** Increments each time the suggestion list is replaced with genuinely new results. */
+  suggestionsVersion: number
   isOpen: boolean
   isLoading: boolean
   selectSuggestion: (index: number) => void
@@ -31,8 +60,18 @@ export function useAddressAutocomplete({
   onSelect
 }: UseAddressAutocompleteOptions): UseAddressAutocompleteReturn {
   const [suggestions, setSuggestions] = useState<SmartySuggestion[]>([])
+  const [suggestionsVersion, setSuggestionsVersion] = useState(0)
   const [isOpen, setIsOpen] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
+
+  // Ref to allow reading current suggestions synchronously inside async callbacks
+  // without adding suggestions to the closure deps of those callbacks.
+  // Updated in a layout effect (same pattern as onSelectRef) so it is current
+  // before any async callbacks that fire during the same flush.
+  const suggestionsRef = useRef(suggestions)
+  useLayoutEffect(() => {
+    suggestionsRef.current = suggestions
+  })
 
   const abortRef = useRef<AbortController | null>(null)
   const onSelectRef = useRef(onSelect)
@@ -72,7 +111,16 @@ export function useAddressAutocomplete({
       fetchAutocompleteSuggestions({ search, key, preferStates }, controller.signal).then(
         (results) => {
           if (!controller.signal.aborted) {
-            setSuggestions(results)
+            // Only update suggestions (and bump the version) if content actually changed.
+            // This prevents spurious activeIndex resets when a debounce re-fires for
+            // the same search string but the results are identical (e.g. when
+            // shouldAdvanceTime causes the timer to fire again while the user is
+            // navigating the current results with arrow keys).
+            const currentSuggestions = suggestionsRef.current
+            if (!areSuggestionsEqual(currentSuggestions, results)) {
+              setSuggestions(results)
+              setSuggestionsVersion((v) => v + 1)
+            }
             setIsOpen(results.length > 0)
             setIsLoading(false)
           }
@@ -108,6 +156,7 @@ export function useAddressAutocomplete({
         ).then((unitResults) => {
           if (!controller.signal.aborted) {
             setSuggestions(unitResults)
+            setSuggestionsVersion((v) => v + 1)
             setIsLoading(false)
             // Keep isOpen true to show unit options
           }
@@ -141,5 +190,5 @@ export function useAddressAutocomplete({
   // Abort any in-flight request on unmount
   useEffect(() => () => abortRef.current?.abort(), [])
 
-  return { suggestions, isOpen, isLoading, selectSuggestion, dismiss, open }
+  return { suggestions, suggestionsVersion, isOpen, isLoading, selectSuggestion, dismiss, open }
 }
