@@ -217,7 +217,7 @@ public sealed class OidcExchangeService : IOidcExchangeService
         }
         catch (Exception ex)
         {
-            _logger.LogWarning(ex, "OIDC exchange: token request failed (reason=token_request_failed)");
+            _logger.LogError(ex, "OIDC exchange: token request failed (reason=token_request_failed)");
             return OidcExchangeResult.Fail("Token exchange failed.");
         }
 
@@ -231,13 +231,13 @@ public sealed class OidcExchangeService : IOidcExchangeService
                 using var doc = JsonDocument.Parse(tokenBody);
                 var desc = doc.RootElement.TryGetProperty("error_description", out var ed) ? ed.GetString() : null;
                 var err = doc.RootElement.TryGetProperty("error", out var e) ? e.GetString() : null;
-                _logger.LogWarning(
+                _logger.LogError(
                     "OIDC exchange: token endpoint returned {StatusCode}, error={Error}, description={Description} (reason=token_exchange_rejected)",
                     (int)tokenRes.StatusCode, err, desc);
             }
             catch
             {
-                _logger.LogWarning("OIDC exchange: token endpoint returned {StatusCode} (reason=token_exchange_rejected)", (int)tokenRes.StatusCode);
+                _logger.LogError("OIDC exchange: token endpoint returned {StatusCode} (reason=token_exchange_rejected)", (int)tokenRes.StatusCode);
             }
             return OidcExchangeResult.Fail("Token exchange was rejected by the identity provider.");
         }
@@ -253,7 +253,7 @@ public sealed class OidcExchangeService : IOidcExchangeService
         }
         catch (Exception ex)
         {
-            _logger.LogWarning(ex, "OIDC exchange: failed to parse token response (reason=token_parse_failed)");
+            _logger.LogError(ex, "OIDC exchange: failed to parse token response (reason=token_parse_failed)");
             return OidcExchangeResult.Fail("Failed to parse token response.");
         }
 
@@ -286,12 +286,12 @@ public sealed class OidcExchangeService : IOidcExchangeService
         }
         catch (SecurityTokenExpiredException)
         {
-            _logger.LogWarning("OIDC exchange: id_token expired beyond {Skew}s skew (reason=expired_token)", IdTokenClockSkew.TotalSeconds);
+            _logger.LogError("OIDC exchange: id_token expired beyond {Skew}s skew (reason=expired_token)", IdTokenClockSkew.TotalSeconds);
             return OidcExchangeResult.Fail("Id token has expired.");
         }
         catch (Exception ex)
         {
-            _logger.LogWarning(ex, "OIDC exchange: id_token validation failed (reason=token_validation_failed)");
+            _logger.LogError(ex, "OIDC exchange: id_token validation failed (reason=token_validation_failed)");
             return OidcExchangeResult.Fail("Id token validation failed.");
         }
 
@@ -302,7 +302,7 @@ public sealed class OidcExchangeService : IOidcExchangeService
         var authTimeClaim = principal.FindFirst("auth_time");
         if (authTimeClaim == null)
         {
-            _logger.LogWarning(
+            _logger.LogError(
                 "OIDC exchange: id_token missing auth_time claim; IdP must include it when max_age is sent (reason=missing_auth_time, isStepUp={IsStepUp})",
                 isStepUp);
         }
@@ -315,14 +315,14 @@ public sealed class OidcExchangeService : IOidcExchangeService
                 authTime, (int)authAge.TotalSeconds, isStepUp);
             if (authAge.TotalSeconds > 120)
             {
-                _logger.LogWarning(
+                _logger.LogError(
                     "OIDC exchange: auth_time is stale — user was authenticated {AuthAgeSec}s ago, expected fresh authentication with max_age=0 (reason=stale_auth_time, isStepUp={IsStepUp})",
                     (int)authAge.TotalSeconds, isStepUp);
             }
         }
         else
         {
-            _logger.LogWarning(
+            _logger.LogError(
                 "OIDC exchange: auth_time claim present but not a valid Unix timestamp: {AuthTimeValue} (reason=invalid_auth_time, isStepUp={IsStepUp})",
                 authTimeClaim.Value, isStepUp);
         }
@@ -344,7 +344,7 @@ public sealed class OidcExchangeService : IOidcExchangeService
         // --- Verify we have at least sub or email ---
         if (!claims.ContainsKey("sub") && !claims.ContainsKey("email"))
         {
-            _logger.LogWarning("OIDC exchange: id_token + userinfo had no sub or email (reason=missing_identity_claim)");
+            _logger.LogError("OIDC exchange: id_token + userinfo had no sub or email (reason=missing_identity_claim)");
             return OidcExchangeResult.Fail("Callback token must contain an email or sub claim.");
         }
 
