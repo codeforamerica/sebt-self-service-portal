@@ -89,6 +89,52 @@ describe('initAmplitudeBridge', () => {
 
       expect(amplitudeStub.track).not.toHaveBeenCalled()
     })
+
+    it('ignores EventTracked events with an empty detail object', () => {
+      new DataLayer('digitalData')
+      initAmplitudeBridge('test-key', amplitudeStub)
+
+      const eventTrackedEvent = window.digitalData!.eventTypes.EVENT_TRACKED!
+      document.dispatchEvent(new CustomEvent(eventTrackedEvent, { detail: {} }))
+
+      expect(amplitudeStub.track).not.toHaveBeenCalled()
+    })
+  })
+
+  describe('error handling', () => {
+    it('logs a warning and returns a no-op teardown when amplitude.init throws', () => {
+      const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {})
+      amplitudeStub.init.mockImplementation(() => {
+        throw new Error('boom')
+      })
+      new DataLayer('digitalData')
+
+      const teardown = initAmplitudeBridge('test-key', amplitudeStub)
+
+      expect(warnSpy).toHaveBeenCalledWith(
+        expect.stringContaining('amplitude.init failed'),
+        expect.any(Error)
+      )
+      // The bridge must not attach when init throws — no tracking should flow.
+      window.digitalData!.trackEvent('cta_click')
+      expect(amplitudeStub.track).not.toHaveBeenCalled()
+      // And teardown must be callable without throwing.
+      expect(() => teardown()).not.toThrow()
+
+      warnSpy.mockRestore()
+    })
+
+    it('logs a warning when DataLayer:Initialized fires without a rootElement', () => {
+      const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {})
+      initAmplitudeBridge('test-key', amplitudeStub)
+
+      document.dispatchEvent(new CustomEvent('DataLayer:Initialized', { detail: {} }))
+
+      expect(warnSpy).toHaveBeenCalledWith(
+        expect.stringContaining('without rootElement')
+      )
+      warnSpy.mockRestore()
+    })
   })
 
   describe('privacy configuration', () => {

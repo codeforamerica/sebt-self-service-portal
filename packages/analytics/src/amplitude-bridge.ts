@@ -47,14 +47,19 @@ export function initAmplitudeBridge(apiKey: string, amplitude: AmplitudeLike): (
   //
   // Session Replay, Guides, and Surveys are separate Amplitude products that
   // require opting in via additional plugins — not enabled here by construction.
-  amplitude.init(apiKey, {
-    defaultTracking: false,
-    autocapture: false,
-    identityStorage: 'none',
-    trackingOptions: {
-      ipAddress: false
-    }
-  })
+  try {
+    amplitude.init(apiKey, {
+      defaultTracking: false,
+      autocapture: false,
+      identityStorage: 'none',
+      trackingOptions: {
+        ipAddress: false
+      }
+    })
+  } catch (err) {
+    console.warn('[amplitude-bridge] amplitude.init failed; bridge disabled', err)
+    return () => {}
+  }
 
   let bridgeTeardown: (() => void) | undefined
 
@@ -67,13 +72,20 @@ export function initAmplitudeBridge(apiKey: string, amplitude: AmplitudeLike): (
   // Otherwise wait for the initialization event
   function handleInitialized(event: Event) {
     const rootElement = (event as CustomEvent).detail?.rootElement as string | undefined
-    if (!rootElement) return
+    if (!rootElement) {
+      console.warn('[amplitude-bridge] DataLayer:Initialized fired without rootElement; bridge not attached')
+      return
+    }
 
     const dl = (window as unknown as Record<string, unknown>)[rootElement] as
       | DataLayerRoot
       | undefined
     if (dl) {
       bridgeTeardown = attachBridge(dl, amplitude)
+    } else {
+      console.warn(
+        `[amplitude-bridge] DataLayer:Initialized referenced rootElement "${rootElement}" but window["${rootElement}"] is not a data layer; bridge not attached`
+      )
     }
 
     document.removeEventListener('DataLayer:Initialized', handleInitialized)
