@@ -19,11 +19,18 @@ const NONE_VALUE = 'none' as const
 
 type IdOptionValue = IdType | typeof NONE_VALUE
 
-// ID types whose value is exactly 9 digits. Used to enable numeric keypad,
-// digit-only input, and a 9-char hard cap at the input level.
-// medicaidId is intentionally excluded: DC CSV specifies "7 or 8 digits" while
-// Socure expects "4 or 9" — follow-up tracked outside DC-296.
-const NUMERIC_9_ID_TYPES: ReadonlySet<IdOptionValue> = new Set(['ssn', 'itin'])
+/**
+ * Per-option validation rule for the ID value input.
+ *
+ * `digits: 9` means exactly 9 digits (after non-digit stripping).
+ * `digits: [7, 8]` means inclusive range.
+ *
+ * Undefined/absent means no digit-count check. The input renders as a plain
+ * text field and only the base "required" rule applies.
+ */
+export interface IdOptionValidation {
+  digits: number | [number, number]
+}
 
 export interface IdOption {
   value: IdOptionValue
@@ -33,6 +40,24 @@ export interface IdOption {
   helperKey?: string
   /** i18next key for the text input label shown when this option is selected */
   inputLabelKey?: string
+  /**
+   * Digit-count rule for the associated ID value input. When present, the form
+   * strips non-digits on change, applies a numeric keypad, caps length at the
+   * rule's upper bound, and enforces the rule on submit. State-specific rules
+   * live on the option rather than in the shared Zod schema.
+   */
+  validation?: IdOptionValidation
+}
+
+// Returns [min, max] for either form of the digits rule.
+function digitBounds(rule: IdOptionValidation): [number, number] {
+  return Array.isArray(rule.digits) ? rule.digits : [rule.digits, rule.digits]
+}
+
+function matchesDigitRule(value: string, rule: IdOptionValidation): boolean {
+  const digits = value.replace(/\D/g, '')
+  const [min, max] = digitBounds(rule)
+  return digits.length >= min && digits.length <= max
 }
 
 interface IdProofingFormProps {
@@ -80,8 +105,21 @@ export function IdProofingForm({ idOptions, contactLink, getDiToken }: IdProofin
   const REQUIRED_FIELD_ERROR = tValidation('required')
   // TODO: Use t('validation.ssnItinDigits') once key is available in dc.csv
   const SSN_ITIN_SHAPE_ERROR = 'Enter exactly 9 digits.'
+  // TODO: Use t('validation.sevenOrEightDigits') once key is available in dc.csv
+  const SEVEN_OR_EIGHT_DIGITS_ERROR = 'Enter 7 or 8 digits.'
   // TODO: Use t('validation.dobInvalid') once key is available in dc.csv
   const DOB_INVALID_ERROR = 'Enter a valid date of birth.'
+
+  // Pick the user-facing error message that matches the rule's shape. The SSN
+  // and ITIN messages stay verbatim so the existing wording carries through;
+  // [7, 8] rules use a shared message; other shapes fall back to a generic.
+  function digitRuleErrorMessage(rule: IdOptionValidation): string {
+    const [min, max] = digitBounds(rule)
+    if (min === max && min === 9) return SSN_ITIN_SHAPE_ERROR
+    if (min === 7 && max === 8) return SEVEN_OR_EIGHT_DIGITS_ERROR
+    if (min === max) return `Enter exactly ${min} digits.`
+    return `Enter ${min} or ${max} digits.`
+  }
 
   function validateFields(): boolean {
     const newDobErrors: { month?: string; day?: string; year?: string } = {}
@@ -125,6 +163,16 @@ export function IdProofingForm({ idOptions, contactLink, getDiToken }: IdProofin
           } else if (path === 'idValue' && showIdValueInput) {
             idError = SSN_ITIN_SHAPE_ERROR
           }
+        }
+      }
+
+      // Per-option digit-shape enforcement. The shared Zod schema only covers
+      // SSN/ITIN (federal, state-agnostic); other ID types carry their own
+      // rule on the IdOption. Run this after schema parsing so schema-level
+      // errors win when both apply.
+      if (idError === null && showIdValueInput && selectedOption?.validation) {
+        if (!matchesDigitRule(idValue, selectedOption.validation)) {
+          idError = digitRuleErrorMessage(selectedOption.validation)
         }
       }
     }
@@ -172,6 +220,11 @@ export function IdProofingForm({ idOptions, contactLink, getDiToken }: IdProofin
       } else if (response.result === 'failed') {
         setPageData('idv_primary_status', 'fail')
         trackEvent(AnalyticsEvents.IDV_PRIMARY_RESULT)
+        // Hand off offboarding context to OffBoardingPage so it can render
+        // reason-specific copy (e.g. noIdProvided gets a different heading).
+        // Mirrors the pattern DocVerifyPage uses on its reject path.
+        sessionStorage.setItem('offboarding_reason', response.offboardingReason ?? '')
+        sessionStorage.setItem('offboarding_canApply', String(response.canApply !== false))
         const params = new URLSearchParams()
         if (response.canApply === false) {
           params.set('canApply', 'false')
@@ -348,20 +401,21 @@ export function IdProofingForm({ idOptions, contactLink, getDiToken }: IdProofin
             name="idValue"
             value={idValue}
             onChange={(e) => {
-              // For 9-digit ID types (SSN/ITIN), strip non-digit characters
-              // as the user types. maxLength on the input caps the length,
-              // so pastes like "555-44-3333" land in state as "555443333".
+              // When the option carries a digit-count rule, strip non-digits
+              // as the user types. maxLength on the input caps length at the
+              // rule's upper bound, so pasted input like "555-44-3333" lands
+              // in state as "555443333" (and is clipped to maxLength).
               const raw = e.target.value
-              const next =
-                selectedIdType && NUMERIC_9_ID_TYPES.has(selectedIdType)
-                  ? raw.replace(/\D/g, '')
-                  : raw
+              const next = selectedOption?.validation ? raw.replace(/\D/g, '') : raw
               setIdValue(next)
             }}
             autoComplete="off"
             isRequired
-            {...(selectedIdType && NUMERIC_9_ID_TYPES.has(selectedIdType)
-              ? { inputMode: 'numeric' as const, maxLength: 9 }
+            {...(selectedOption?.validation
+              ? {
+                  inputMode: 'numeric' as const,
+                  maxLength: digitBounds(selectedOption.validation)[1]
+                }
               : {})}
             {...(idValueError ? { error: idValueError } : {})}
           />
