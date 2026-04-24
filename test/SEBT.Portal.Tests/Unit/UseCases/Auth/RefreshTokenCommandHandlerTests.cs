@@ -2,7 +2,6 @@ using System.Linq;
 using System.Security.Claims;
 using Microsoft.Extensions.Logging.Abstractions;
 using NSubstitute;
-using NSubstitute.ReceivedExtensions;
 using SEBT.Portal.Core.Models.Auth;
 using SEBT.Portal.Core.Repositories;
 using SEBT.Portal.Core.Services;
@@ -15,7 +14,7 @@ namespace SEBT.Portal.Tests.Unit.UseCases.Auth;
 public class RefreshTokenCommandHandlerTests
 {
     private readonly IUserRepository userRepository = Substitute.For<IUserRepository>();
-    private readonly IJwtTokenService jwtTokenService = Substitute.For<IJwtTokenService>();
+    private readonly ISessionRefreshTokenService jwtTokenService = Substitute.For<ISessionRefreshTokenService>();
     private readonly NullLogger<RefreshTokenCommandHandler> logger = NullLogger<RefreshTokenCommandHandler>.Instance;
     private readonly IValidator<RefreshTokenCommand> validator = new DataAnnotationsValidator<RefreshTokenCommand>(null!);
     private readonly RefreshTokenCommandHandler handler;
@@ -29,26 +28,35 @@ public class RefreshTokenCommandHandlerTests
             logger);
     }
 
+    /// <summary>Builds a ClaimsPrincipal carrying a sub claim (the portal's user ID) plus
+    /// any additional claims the test needs to pass through to the refreshed token.</summary>
+    private static ClaimsPrincipal PrincipalWithSub(string userIdSub, params Claim[] extraClaims)
+    {
+        var claims = new List<Claim> { new("sub", userIdSub) };
+        claims.AddRange(extraClaims);
+        return new ClaimsPrincipal(new ClaimsIdentity(claims));
+    }
+
     [Fact]
     public async Task Handle_ShouldReturnSuccessResult_WhenUserExists()
     {
         // Arrange
-
+        var userId = Guid.NewGuid();
         var command = new RefreshTokenCommand
         {
-            Email = "user@example.com",
-            CurrentPrincipal = new ClaimsPrincipal()
+            CurrentPrincipal = PrincipalWithSub(userId.ToString())
         };
 
         var user = new User
         {
-            Email = command.Email,
+            Id = userId,
+            Email = "user@example.com",
             IalLevel = UserIalLevel.IAL1plus
         };
 
-        userRepository.GetUserByEmailAsync(Arg.Is<string>(email => email == command.Email), Arg.Any<CancellationToken>())
+        userRepository.GetUserByIdAsync(userId, Arg.Any<CancellationToken>())
             .Returns(user);
-        jwtTokenService.GenerateToken(Arg.Is<User>(u => u.Email == command.Email), Arg.Any<IReadOnlyDictionary<string, string>>())
+        jwtTokenService.GenerateForSessionRefresh(Arg.Is<User>(u => u.Id == userId), Arg.Any<ClaimsPrincipal>())
             .Returns("refreshed.jwt.token");
 
         // Act
@@ -58,18 +66,19 @@ public class RefreshTokenCommandHandlerTests
         Assert.True(result.IsSuccess);
         var successResult = Assert.IsType<SuccessResult<string>>(result);
         Assert.Equal("refreshed.jwt.token", successResult.Value);
-        await userRepository.Received(1).GetUserByEmailAsync(command.Email, Arg.Any<CancellationToken>());
-        jwtTokenService.Received(1).GenerateToken(Arg.Is<User>(u => u.Email == command.Email && u.IalLevel == UserIalLevel.IAL1plus), Arg.Any<IReadOnlyDictionary<string, string>>());
+        await userRepository.Received(1).GetUserByIdAsync(userId, Arg.Any<CancellationToken>());
+        jwtTokenService.Received(1).GenerateForSessionRefresh(
+            Arg.Is<User>(u => u.Id == userId && u.IalLevel == UserIalLevel.IAL1plus),
+            Arg.Any<ClaimsPrincipal>());
     }
 
     [Fact]
-    public async Task Handle_ShouldReturnValidationFailure_WhenEmailIsEmpty()
+    public async Task Handle_WhenPrincipalHasNoSubClaim_ReturnsPreconditionFailed()
     {
         // Arrange
         var command = new RefreshTokenCommand
         {
-            Email = string.Empty,
-            CurrentPrincipal = new ClaimsPrincipal()
+            CurrentPrincipal = new ClaimsPrincipal(new ClaimsIdentity())
         };
 
         // Act
@@ -77,20 +86,19 @@ public class RefreshTokenCommandHandlerTests
 
         // Assert
         Assert.False(result.IsSuccess);
-        var failedResult = Assert.IsType<ValidationFailedResult<string>>(result);
-        Assert.Contains("Email", failedResult.Errors.Select(e => e.Key));
-        await userRepository.DidNotReceive().GetUserByEmailAsync(Arg.Any<string>(), Arg.Any<CancellationToken>());
-        jwtTokenService.DidNotReceive().GenerateToken(Arg.Any<User>());
+        var failedResult = Assert.IsType<PreconditionFailedResult<string>>(result);
+        Assert.Equal(PreconditionFailedReason.NotFound, failedResult.Reason);
+        await userRepository.DidNotReceive().GetUserByIdAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>());
+        jwtTokenService.DidNotReceive().GenerateForSessionRefresh(Arg.Any<User>(), Arg.Any<ClaimsPrincipal>());
     }
 
     [Fact]
-    public async Task Handle_ShouldReturnValidationFailure_WhenEmailIsInvalid()
+    public async Task Handle_WhenPrincipalSubIsNotAGuid_ReturnsPreconditionFailed()
     {
-        // Arrange
+        // Arrange — sub is present but malformed (e.g. legacy email-based sub)
         var command = new RefreshTokenCommand
         {
-            Email = "invalid-email",
-            CurrentPrincipal = new ClaimsPrincipal()
+            CurrentPrincipal = PrincipalWithSub("not-a-guid")
         };
 
         // Act
@@ -98,23 +106,22 @@ public class RefreshTokenCommandHandlerTests
 
         // Assert
         Assert.False(result.IsSuccess);
-        var failedResult = Assert.IsType<ValidationFailedResult<string>>(result);
-        Assert.Contains("Email", failedResult.Errors.Select(e => e.Key));
-        await userRepository.DidNotReceive().GetUserByEmailAsync(Arg.Any<string>(), Arg.Any<CancellationToken>());
-        jwtTokenService.DidNotReceive().GenerateToken(Arg.Any<User>());
+        var failedResult = Assert.IsType<PreconditionFailedResult<string>>(result);
+        Assert.Equal(PreconditionFailedReason.NotFound, failedResult.Reason);
+        await userRepository.DidNotReceive().GetUserByIdAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>());
     }
 
     [Fact]
     public async Task Handle_ShouldReturnPreconditionFailed_WhenUserDoesNotExist()
     {
         // Arrange
+        var missingUserId = Guid.NewGuid();
         var command = new RefreshTokenCommand
         {
-            Email = "nonexistent@example.com",
-            CurrentPrincipal = new ClaimsPrincipal()
+            CurrentPrincipal = PrincipalWithSub(missingUserId.ToString())
         };
 
-        userRepository.GetUserByEmailAsync(Arg.Is<string>(email => email == command.Email), Arg.Any<CancellationToken>())
+        userRepository.GetUserByIdAsync(missingUserId, Arg.Any<CancellationToken>())
             .Returns((User?)null);
 
         // Act
@@ -125,30 +132,31 @@ public class RefreshTokenCommandHandlerTests
         var failedResult = Assert.IsType<PreconditionFailedResult<string>>(result);
         Assert.Equal(PreconditionFailedReason.NotFound, failedResult.Reason);
         Assert.Contains("User not found", failedResult.Message, StringComparison.OrdinalIgnoreCase);
-        jwtTokenService.DidNotReceive().GenerateToken(Arg.Any<User>());
+        jwtTokenService.DidNotReceive().GenerateForSessionRefresh(Arg.Any<User>(), Arg.Any<ClaimsPrincipal>());
     }
 
     [Fact]
     public async Task Handle_ShouldGenerateTokenWithUpdatedIdProofingStatus()
     {
         // Arrange
+        var userId = Guid.NewGuid();
         var command = new RefreshTokenCommand
         {
-            Email = "user@example.com",
-            CurrentPrincipal = new ClaimsPrincipal()
+            CurrentPrincipal = PrincipalWithSub(userId.ToString())
         };
 
         var user = new User
         {
-            Email = command.Email,
+            Id = userId,
+            Email = "user@example.com",
             IalLevel = UserIalLevel.IAL1,
             IdProofingSessionId = "session-abc-123",
             IdProofingCompletedAt = null
         };
 
-        userRepository.GetUserByEmailAsync(Arg.Is<string>(email => email == command.Email), Arg.Any<CancellationToken>())
+        userRepository.GetUserByIdAsync(userId, Arg.Any<CancellationToken>())
             .Returns(user);
-        jwtTokenService.GenerateToken(Arg.Any<User>(), Arg.Any<IReadOnlyDictionary<string, string>>())
+        jwtTokenService.GenerateForSessionRefresh(Arg.Any<User>(), Arg.Any<ClaimsPrincipal>())
             .Returns("new.token");
 
         // Act
@@ -156,10 +164,10 @@ public class RefreshTokenCommandHandlerTests
 
         // Assert
         Assert.True(result.IsSuccess);
-        jwtTokenService.Received(1).GenerateToken(Arg.Is<User>(u =>
-            u.Email == command.Email &&
+        jwtTokenService.Received(1).GenerateForSessionRefresh(Arg.Is<User>(u =>
+            u.Id == userId &&
             u.IalLevel == UserIalLevel.IAL1 &&
-            u.IdProofingSessionId == "session-abc-123"), Arg.Any<IReadOnlyDictionary<string, string>>());
+            u.IdProofingSessionId == "session-abc-123"), Arg.Any<ClaimsPrincipal>());
     }
 
     [Fact]
@@ -168,11 +176,10 @@ public class RefreshTokenCommandHandlerTests
         // Arrange
         var command = new RefreshTokenCommand
         {
-            Email = "user@example.com",
-            CurrentPrincipal = new ClaimsPrincipal()
+            CurrentPrincipal = PrincipalWithSub(Guid.NewGuid().ToString())
         };
 
-        userRepository.GetUserByEmailAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
+        userRepository.GetUserByIdAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
             .Returns(Task.FromException<User?>(new Exception("Database connection failed")));
 
         // Act
@@ -183,29 +190,30 @@ public class RefreshTokenCommandHandlerTests
         var failedResult = Assert.IsType<DependencyFailedResult<string>>(result);
         Assert.Equal(DependencyFailedReason.ConnectionFailed, failedResult.Reason);
         Assert.Contains("error occurred while refreshing", failedResult.Message, StringComparison.OrdinalIgnoreCase);
-        jwtTokenService.DidNotReceive().GenerateToken(Arg.Any<User>());
+        jwtTokenService.DidNotReceive().GenerateForSessionRefresh(Arg.Any<User>(), Arg.Any<ClaimsPrincipal>());
     }
 
     [Fact]
     public async Task Handle_ShouldReturnDependencyFailed_WhenJwtServiceThrowsException()
     {
         // Arrange
+        var userId = Guid.NewGuid();
         var command = new RefreshTokenCommand
         {
-            Email = "user@example.com",
-            CurrentPrincipal = new ClaimsPrincipal()
+            CurrentPrincipal = PrincipalWithSub(userId.ToString())
         };
 
         var user = new User
         {
-            Email = command.Email,
+            Id = userId,
+            Email = "user@example.com",
             IalLevel = UserIalLevel.None
         };
 
-        userRepository.GetUserByEmailAsync(Arg.Is<string>(email => email == command.Email), Arg.Any<CancellationToken>())
+        userRepository.GetUserByIdAsync(userId, Arg.Any<CancellationToken>())
             .Returns(user);
         jwtTokenService
-            .When(x => x.GenerateToken(Arg.Any<User>(), Arg.Any<IReadOnlyDictionary<string, string>>()))
+            .When(x => x.GenerateForSessionRefresh(Arg.Any<User>(), Arg.Any<ClaimsPrincipal>()))
             .Do(x => throw new Exception("JWT generation failed"));
 
         // Act
@@ -222,21 +230,22 @@ public class RefreshTokenCommandHandlerTests
     public async Task Handle_ShouldRetrieveUserFromRepository()
     {
         // Arrange
+        var userId = Guid.NewGuid();
         var command = new RefreshTokenCommand
         {
-            Email = "user@example.com",
-            CurrentPrincipal = new ClaimsPrincipal()
+            CurrentPrincipal = PrincipalWithSub(userId.ToString())
         };
 
         var user = new User
         {
-            Email = command.Email,
+            Id = userId,
+            Email = "user@example.com",
             IalLevel = UserIalLevel.IAL1plus
         };
 
-        userRepository.GetUserByEmailAsync(Arg.Is<string>(email => email == command.Email), Arg.Any<CancellationToken>())
+        userRepository.GetUserByIdAsync(userId, Arg.Any<CancellationToken>())
             .Returns(user);
-        jwtTokenService.GenerateToken(Arg.Any<User>(), Arg.Any<IReadOnlyDictionary<string, string>>())
+        jwtTokenService.GenerateForSessionRefresh(Arg.Any<User>(), Arg.Any<ClaimsPrincipal>())
             .Returns("token");
 
         // Act
@@ -244,31 +253,32 @@ public class RefreshTokenCommandHandlerTests
 
         // Assert
         Assert.True(result.IsSuccess);
-        await userRepository.Received(1).GetUserByEmailAsync(command.Email, Arg.Any<CancellationToken>());
+        await userRepository.Received(1).GetUserByIdAsync(userId, Arg.Any<CancellationToken>());
     }
 
     [Fact]
     public async Task Handle_ShouldPassUserWithAllIdProofingData_ToJwtService()
     {
         // Arrange
+        var userId = Guid.NewGuid();
         var command = new RefreshTokenCommand
         {
-            Email = "user@example.com",
-            CurrentPrincipal = new ClaimsPrincipal()
+            CurrentPrincipal = PrincipalWithSub(userId.ToString())
         };
 
         var completedAt = DateTime.UtcNow.AddDays(-5);
         var user = new User
         {
-            Email = command.Email,
+            Id = userId,
+            Email = "user@example.com",
             IalLevel = UserIalLevel.IAL1plus,
             IdProofingSessionId = "session-xyz",
             IdProofingCompletedAt = completedAt
         };
 
-        userRepository.GetUserByEmailAsync(Arg.Is<string>(email => email == command.Email), Arg.Any<CancellationToken>())
+        userRepository.GetUserByIdAsync(userId, Arg.Any<CancellationToken>())
             .Returns(user);
-        jwtTokenService.GenerateToken(Arg.Any<User>(), Arg.Any<IReadOnlyDictionary<string, string>>())
+        jwtTokenService.GenerateForSessionRefresh(Arg.Any<User>(), Arg.Any<ClaimsPrincipal>())
             .Returns("token");
 
         // Act
@@ -276,11 +286,48 @@ public class RefreshTokenCommandHandlerTests
 
         // Assert
         Assert.True(result.IsSuccess);
-        jwtTokenService.Received(1).GenerateToken(Arg.Is<User>(u =>
-            u.Email == command.Email &&
+        jwtTokenService.Received(1).GenerateForSessionRefresh(Arg.Is<User>(u =>
+            u.Id == userId &&
             u.IalLevel == UserIalLevel.IAL1plus &&
             u.IdProofingSessionId == "session-xyz" &&
-            u.IdProofingCompletedAt == completedAt), Arg.Any<IReadOnlyDictionary<string, string>>());
+            u.IdProofingCompletedAt == completedAt), Arg.Any<ClaimsPrincipal>());
+    }
+
+    [Fact]
+    public async Task Handle_WhenOidcUser_PreservesIalFromExistingJwtClaims()
+    {
+        // Arrange — OIDC user whose IdP-sourced IAL lives in the existing JWT,
+        // not in the DB (where IalLevel is None).
+        var userId = Guid.NewGuid();
+        var principal = PrincipalWithSub(
+            userId.ToString(),
+            new Claim("email", "user@example.com"),
+            new Claim(JwtClaimTypes.Ial, "1plus"),
+            new Claim(JwtClaimTypes.IdProofingStatus, "2")); // Completed
+
+        var command = new RefreshTokenCommand { CurrentPrincipal = principal };
+
+        var user = new User
+        {
+            Id = userId,
+            ExternalProviderId = "pingone-sub-12345",
+            IalLevel = UserIalLevel.None
+        };
+
+        userRepository.GetUserByIdAsync(userId, Arg.Any<CancellationToken>())
+            .Returns(user);
+        jwtTokenService.GenerateForSessionRefresh(Arg.Any<User>(), Arg.Any<ClaimsPrincipal>())
+            .Returns("refreshed-jwt");
+
+        // Act
+        var result = await handler.Handle(command);
+
+        // Assert
+        Assert.True(result.IsSuccess);
+        // IAL from JWT claims (1plus) was passed through, not DB (None).
+        jwtTokenService.Received(1).GenerateForSessionRefresh(
+            Arg.Any<User>(),
+            Arg.Is<ClaimsPrincipal>(p =>
+                p.FindFirstValue(JwtClaimTypes.Ial) == "1plus"));
     }
 }
-

@@ -167,13 +167,13 @@ builder.Services.AddScoped<IDatabaseSeeder>(sp =>
 });
 
 // State allowlist for OIDC login endpoints. An instance is considered a
-// configured OIDC tenant iff its loaded config overlay has Oidc:AuthorizationEndpoint
-// set (the pinned IdP authorize URL). The current STATE env var is the only allowed
-// state when that's true; everything else (no STATE, no Oidc block) produces an empty
-// allowlist and all OIDC routes reject all stateCode inputs. This prevents the route
-// parameter from being used as a tenant escape.
+// configured OIDC tenant if its loaded config overlay has Oidc:DiscoveryEndpoint
+// set. The current STATE env var is the only allowed state when that's true;
+// everything else (no STATE, no Oidc block) produces an empty allowlist and all
+// OIDC routes reject all stateCode inputs. This prevents the route parameter
+// from being used as a tenant escape.
 var allowedOidcStates = new List<string>();
-if (!string.IsNullOrWhiteSpace(builder.Configuration["Oidc:AuthorizationEndpoint"]))
+if (!string.IsNullOrWhiteSpace(builder.Configuration["Oidc:DiscoveryEndpoint"]))
 {
     var currentState = Environment.GetEnvironmentVariable("STATE");
     if (!string.IsNullOrWhiteSpace(currentState))

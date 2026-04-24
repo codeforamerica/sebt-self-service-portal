@@ -34,14 +34,20 @@ public class DatabaseUserRepository(PortalDbContext dbContext, IIdentifierHasher
             throw new ArgumentNullException(nameof(user));
         }
 
-        if (string.IsNullOrWhiteSpace(user.Email))
+        // OTP users must have an email; OIDC users must have an ExternalProviderId.
+        // At least one identifier is required.
+        if (string.IsNullOrWhiteSpace(user.Email) && string.IsNullOrWhiteSpace(user.ExternalProviderId))
         {
-            throw new ArgumentException("Email cannot be null or empty.", nameof(user));
+            throw new ArgumentException(
+                "Either Email or ExternalProviderId must be provided.", nameof(user));
         }
 
         var entity = MapToEntity(user);
-        // Normalize email to lowercase for consistent storage
-        entity.Email = NormalizeEmail(entity.Email);
+        // Normalize email to lowercase for consistent storage (when present)
+        if (entity.Email != null)
+        {
+            entity.Email = NormalizeEmail(entity.Email);
+        }
         dbContext.Users.Add(entity);
         await dbContext.SaveChangesAsync(cancellationToken);
     }
@@ -53,14 +59,9 @@ public class DatabaseUserRepository(PortalDbContext dbContext, IIdentifierHasher
             throw new ArgumentNullException(nameof(user));
         }
 
-        if (user.Id <= 0)
+        if (user.Id == Guid.Empty)
         {
-            throw new ArgumentException("User Id must be greater than zero for updates.", nameof(user));
-        }
-
-        if (string.IsNullOrWhiteSpace(user.Email))
-        {
-            throw new ArgumentException("Email cannot be null or empty.", nameof(user));
+            throw new ArgumentException("User Id must be assigned for updates.", nameof(user));
         }
 
         var entity = await dbContext.Users
@@ -71,11 +72,15 @@ public class DatabaseUserRepository(PortalDbContext dbContext, IIdentifierHasher
             throw new InvalidOperationException($"User with Id {user.Id} not found.");
         }
 
-        var normalizedEmail = NormalizeEmail(user.Email);
-
-        if (entity.Email != normalizedEmail)
+        // Update email only when the caller provides one (OTP users).
+        // OIDC users have null email — leave the DB value unchanged in that case.
+        if (user.Email != null)
         {
-            entity.Email = normalizedEmail;
+            var normalizedEmail = NormalizeEmail(user.Email);
+            if (entity.Email != normalizedEmail)
+            {
+                entity.Email = normalizedEmail;
+            }
         }
 
         // Update properties
@@ -84,6 +89,7 @@ public class DatabaseUserRepository(PortalDbContext dbContext, IIdentifierHasher
         entity.IdProofingSessionId = user.IdProofingSessionId;
         entity.IdProofingCompletedAt = user.IdProofingCompletedAt;
         entity.IdProofingExpiresAt = user.IdProofingExpiresAt;
+        entity.DateOfBirth = user.DateOfBirth;
         entity.IsCoLoaded = user.IsCoLoaded;
         entity.CoLoadedLastUpdated = user.CoLoadedLastUpdated;
         entity.Phone = user.Phone;
@@ -129,6 +135,7 @@ public class DatabaseUserRepository(PortalDbContext dbContext, IIdentifierHasher
         }
 
         // Create new user with normalized email
+        // (Id defaults to Guid.CreateVersion7() on the entity; no need to set it explicitly.)
         var newEntity = new UserEntity
         {
             Email = normalizedEmail,
@@ -184,9 +191,9 @@ public class DatabaseUserRepository(PortalDbContext dbContext, IIdentifierHasher
         return entity == null ? null : MapToDomainModel(entity);
     }
 
-    public async Task<User?> GetUserByIdAsync(int id, CancellationToken cancellationToken = default)
+    public async Task<User?> GetUserByIdAsync(Guid id, CancellationToken cancellationToken = default)
     {
-        if (id <= 0)
+        if (id == Guid.Empty)
         {
             return null;
         }
@@ -196,6 +203,98 @@ public class DatabaseUserRepository(PortalDbContext dbContext, IIdentifierHasher
             .FirstOrDefaultAsync(u => u.Id == id, cancellationToken);
 
         return entity == null ? null : MapToDomainModel(entity);
+    }
+
+    public async Task<User?> GetUserByExternalIdAsync(
+        string externalProviderId, CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrWhiteSpace(externalProviderId))
+        {
+            return null;
+        }
+
+        var entity = await dbContext.Users
+            .AsNoTracking()
+            .FirstOrDefaultAsync(u => u.ExternalProviderId == externalProviderId, cancellationToken);
+
+        return entity == null ? null : MapToDomainModel(entity);
+    }
+
+    public async Task<(User user, bool isNewUser)> GetOrCreateUserByExternalIdAsync(
+        string externalProviderId,
+        string? email = null,
+        CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrWhiteSpace(externalProviderId))
+        {
+            throw new ArgumentException(
+                "External provider ID cannot be null or empty.", nameof(externalProviderId));
+        }
+
+        // Primary lookup: by ExternalProviderId (the steady-state path)
+        var entity = await dbContext.Users
+            .FirstOrDefaultAsync(u => u.ExternalProviderId == externalProviderId, cancellationToken);
+
+        if (entity != null)
+        {
+            return (MapToDomainModel(entity), false);
+        }
+
+        // Migration fallback: if an email hint is provided, check for a legacy
+        // email-only record and adopt it by setting ExternalProviderId.
+        // TODO: Remove this fallback once all existing users have logged in
+        // under the new sub-based identity flow.
+        if (!string.IsNullOrWhiteSpace(email))
+        {
+            var normalizedEmail = NormalizeEmail(email);
+            var legacyEntity = await dbContext.Users
+                .FirstOrDefaultAsync(
+                    u => u.Email == normalizedEmail && u.ExternalProviderId == null,
+                    cancellationToken);
+
+            if (legacyEntity != null)
+            {
+                legacyEntity.ExternalProviderId = externalProviderId;
+                legacyEntity.Email = null; // OIDC users derive email from IdP claims, not DB
+                legacyEntity.UpdatedAt = DateTime.UtcNow;
+                await dbContext.SaveChangesAsync(cancellationToken);
+                return (MapToDomainModel(legacyEntity), false);
+            }
+        }
+
+        // No existing record found — create a new minimal one
+        // (Id defaults to Guid.CreateVersion7() on the entity; no need to set it explicitly.)
+        var newEntity = new UserEntity
+        {
+            ExternalProviderId = externalProviderId,
+            CreatedAt = DateTime.UtcNow,
+            UpdatedAt = DateTime.UtcNow
+        };
+
+        dbContext.Users.Add(newEntity);
+
+        try
+        {
+            await dbContext.SaveChangesAsync(cancellationToken);
+        }
+        catch (DbUpdateException ex)
+        {
+            if (ex.InnerException?.Message.Contains("UNIQUE") == true ||
+                ex.InnerException?.Message.Contains("duplicate key") == true)
+            {
+                entity = await dbContext.Users
+                    .FirstOrDefaultAsync(
+                        u => u.ExternalProviderId == externalProviderId, cancellationToken);
+
+                if (entity != null)
+                {
+                    return (MapToDomainModel(entity), false);
+                }
+            }
+            throw;
+        }
+
+        return (MapToDomainModel(newEntity), true);
     }
 
     /// <summary>
@@ -214,11 +313,13 @@ public class DatabaseUserRepository(PortalDbContext dbContext, IIdentifierHasher
         {
             Id = entity.Id,
             Email = entity.Email,
+            ExternalProviderId = entity.ExternalProviderId,
             IdProofingStatus = (IdProofingStatus)entity.IdProofingStatus,
             IalLevel = (UserIalLevel)entity.IalLevel,
             IdProofingSessionId = entity.IdProofingSessionId,
             IdProofingCompletedAt = entity.IdProofingCompletedAt,
             IdProofingExpiresAt = entity.IdProofingExpiresAt,
+            DateOfBirth = entity.DateOfBirth,
             IsCoLoaded = entity.IsCoLoaded,
             CoLoadedLastUpdated = entity.CoLoadedLastUpdated,
             Phone = entity.Phone,
@@ -235,13 +336,15 @@ public class DatabaseUserRepository(PortalDbContext dbContext, IIdentifierHasher
     {
         return new UserEntity
         {
-            Id = user.Id, // Will be 0 for new users, set by database
+            Id = user.Id,
             Email = user.Email, // Will be normalized in calling method
+            ExternalProviderId = user.ExternalProviderId,
             IdProofingStatus = (int)user.IdProofingStatus,
             IalLevel = (int)user.IalLevel,
             IdProofingSessionId = user.IdProofingSessionId,
             IdProofingCompletedAt = user.IdProofingCompletedAt,
             IdProofingExpiresAt = user.IdProofingExpiresAt,
+            DateOfBirth = user.DateOfBirth,
             IsCoLoaded = user.IsCoLoaded,
             CoLoadedLastUpdated = user.CoLoadedLastUpdated,
             Phone = user.Phone,

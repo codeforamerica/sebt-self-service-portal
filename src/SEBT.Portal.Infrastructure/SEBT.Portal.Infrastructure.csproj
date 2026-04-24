@@ -24,7 +24,7 @@
     </ItemGroup>
 
     <ItemGroup>
-      <PackageReference Include="MailKit" Version="4.15.1" />
+      <PackageReference Include="MailKit" Version="4.16.0" />
       <PackageReference Include="Microsoft.EntityFrameworkCore.SqlServer" Version="10.0.0" />
       <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="10.0.0">
         <PrivateAssets>all</PrivateAssets>
@@ -41,6 +41,13 @@
       <PackageReference Include="Microsoft.Extensions.Options.ConfigurationExtensions" Version="10.0.0" />
       <PackageReference Include="Microsoft.FeatureManagement" Version="3.3.0" />
       <PackageReference Include="System.IdentityModel.Tokens.Jwt" Version="8.2.1" />
+      <!--
+        Pinned to override the transitive 9.0.0 pulled in by Microsoft.EntityFrameworkCore.Tools →
+        Microsoft.Build.Tasks.Core. 9.0.0 is flagged by NU1903 for CVE-2026-33116 and CVE-2026-26171
+        (DoS). 9.0.15 is the first patched release on the 9.x line. Remove this pin once
+        Microsoft.Build.Tasks.Core updates its transitive dependency.
+      -->
+      <PackageReference Include="System.Security.Cryptography.Xml" Version="9.0.15" />
     </ItemGroup>
 
   <!-- State connector as sibling repo only. Sibling under parent of portal, or CI path. -->

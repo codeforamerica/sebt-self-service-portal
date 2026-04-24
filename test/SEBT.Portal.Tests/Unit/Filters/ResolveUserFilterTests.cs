@@ -41,22 +41,23 @@ public class ResolveUserFilterTests
             controller: null!);
     }
 
-    private static ClaimsPrincipal CreateAuthenticatedUser(string email, string claimType = ClaimTypes.Email)
+    private static ClaimsPrincipal CreateAuthenticatedUserWithSub(string sub)
     {
-        var claims = new List<Claim> { new(claimType, email) };
+        var claims = new List<Claim> { new("sub", sub) };
         var identity = new ClaimsIdentity(claims, "Test");
         return new ClaimsPrincipal(identity);
     }
 
     [Fact]
-    public async Task OnActionExecutionAsync_ShouldSetUserId_WhenEmailClaimResolvesToUser()
+    public async Task OnActionExecutionAsync_ShouldSetUserId_WhenSubClaimResolvesToUser()
     {
         var filter = CreateFilter();
-        var user = new User { Id = 42, Email = "test@example.com" };
-        userRepository.GetUserByEmailAsync("test@example.com", Arg.Any<CancellationToken>())
+        var userId = Guid.NewGuid();
+        var user = new User { Id = userId, Email = "test@example.com" };
+        userRepository.GetUserByIdAsync(userId, Arg.Any<CancellationToken>())
             .Returns(user);
 
-        var context = CreateContext(CreateAuthenticatedUser("test@example.com"));
+        var context = CreateContext(CreateAuthenticatedUserWithSub(userId.ToString()));
         var nextCalled = false;
 
         await filter.OnActionExecutionAsync(context, () =>
@@ -67,11 +68,11 @@ public class ResolveUserFilterTests
         });
 
         Assert.True(nextCalled);
-        Assert.Equal(42, context.HttpContext.Items[ResolveUserFilter.UserIdKey]);
+        Assert.Equal(userId, context.HttpContext.Items[ResolveUserFilter.UserIdKey]);
     }
 
     [Fact]
-    public async Task OnActionExecutionAsync_ShouldReturn401_WhenNoEmailClaim()
+    public async Task OnActionExecutionAsync_ShouldReturn401_WhenNoSubClaim()
     {
         var filter = CreateFilter();
         var context = CreateContext(new ClaimsPrincipal(new ClaimsIdentity()));
@@ -84,13 +85,10 @@ public class ResolveUserFilterTests
     }
 
     [Fact]
-    public async Task OnActionExecutionAsync_ShouldReturn401_WhenUserNotFoundInDatabase()
+    public async Task OnActionExecutionAsync_ShouldReturn401_WhenSubClaimIsNotAGuid()
     {
         var filter = CreateFilter();
-        userRepository.GetUserByEmailAsync("unknown@example.com", Arg.Any<CancellationToken>())
-            .Returns((User?)null);
-
-        var context = CreateContext(CreateAuthenticatedUser("unknown@example.com"));
+        var context = CreateContext(CreateAuthenticatedUserWithSub("notaguid"));
 
         await filter.OnActionExecutionAsync(context, () =>
             throw new InvalidOperationException("Next should not be called"));
@@ -100,24 +98,19 @@ public class ResolveUserFilterTests
     }
 
     [Fact]
-    public async Task OnActionExecutionAsync_ShouldFallBackToNameIdentifier_WhenEmailClaimMissing()
+    public async Task OnActionExecutionAsync_ShouldReturn401_WhenUserNotFoundInDatabase()
     {
         var filter = CreateFilter();
-        var user = new User { Id = 7, Email = "fallback@example.com" };
-        userRepository.GetUserByEmailAsync("fallback@example.com", Arg.Any<CancellationToken>())
-            .Returns(user);
+        var missingUserId = Guid.NewGuid();
+        userRepository.GetUserByIdAsync(missingUserId, Arg.Any<CancellationToken>())
+            .Returns((User?)null);
 
-        var context = CreateContext(CreateAuthenticatedUser("fallback@example.com", ClaimTypes.NameIdentifier));
+        var context = CreateContext(CreateAuthenticatedUserWithSub(missingUserId.ToString()));
 
-        var nextCalled = false;
         await filter.OnActionExecutionAsync(context, () =>
-        {
-            nextCalled = true;
-            return Task.FromResult(new ActionExecutedContext(
-                context, new List<IFilterMetadata>(), controller: null!));
-        });
+            throw new InvalidOperationException("Next should not be called"));
 
-        Assert.True(nextCalled);
-        Assert.Equal(7, context.HttpContext.Items[ResolveUserFilter.UserIdKey]);
+        var result = Assert.IsType<UnauthorizedObjectResult>(context.Result);
+        Assert.NotNull(result);
     }
 }

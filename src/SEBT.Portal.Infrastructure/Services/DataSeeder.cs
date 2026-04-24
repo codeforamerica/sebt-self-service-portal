@@ -28,18 +28,19 @@ public class DataSeeder : IDataSeeder
     private UserEntity MapToEntity(User user)
     {
         ArgumentNullException.ThrowIfNull(user);
-        ArgumentNullException.ThrowIfNull(user.Email);
 
-        var normalizedEmail = EmailNormalizer.Normalize(user.Email);
+        var normalizedEmail = user.Email != null ? EmailNormalizer.Normalize(user.Email) : null;
         return new UserEntity
         {
             Id = user.Id, // Will be 0 for new users, set by database
             Email = normalizedEmail,
+            ExternalProviderId = user.ExternalProviderId,
             IdProofingStatus = (int)user.IdProofingStatus,
             IalLevel = (int)user.IalLevel,
             IdProofingSessionId = user.IdProofingSessionId,
             IdProofingCompletedAt = user.IdProofingCompletedAt,
             IdProofingExpiresAt = user.IdProofingExpiresAt,
+            DateOfBirth = user.DateOfBirth,
             IsCoLoaded = user.IsCoLoaded,
             CoLoadedLastUpdated = user.CoLoadedLastUpdated,
             Phone = user.Phone,
@@ -78,8 +79,8 @@ public class DataSeeder : IDataSeeder
 
         var normalizedEmails = emails.Select(EmailNormalizer.Normalize).ToList();
         var existingEmails = await _dbContext.Users
-            .Where(u => normalizedEmails.Contains(u.Email))
-            .Select(u => u.Email)
+            .Where(u => u.Email != null && normalizedEmails.Contains(u.Email))
+            .Select(u => u.Email!)
             .ToListAsync(cancellationToken);
         return existingEmails.ToHashSet();
     }
@@ -115,8 +116,8 @@ public class DataSeeder : IDataSeeder
         ArgumentNullException.ThrowIfNull(emailDomain);
 
         return await _dbContext.Users
-            .Where(u => u.Email.EndsWith(emailDomain))
-            .Select(u => u.Email)
+            .Where(u => u.Email != null && u.Email.EndsWith(emailDomain))
+            .Select(u => u.Email!)
             .ToListAsync(cancellationToken);
     }
 
@@ -126,7 +127,7 @@ public class DataSeeder : IDataSeeder
 
         var normalizedEmails = emails.Select(EmailNormalizer.Normalize).ToList();
         var usersToRemove = await _dbContext.Users
-            .Where(u => normalizedEmails.Contains(u.Email))
+            .Where(u => u.Email != null && normalizedEmails.Contains(u.Email))
             .ToListAsync(cancellationToken);
 
         _dbContext.Users.RemoveRange(usersToRemove);
@@ -155,8 +156,8 @@ public class DataSeeder : IDataSeeder
 
         var normalizedEmails = emails.Select(EmailNormalizer.Normalize).ToList();
         var existingEmails = _dbContext.Users
-            .Where(u => normalizedEmails.Contains(u.Email))
-            .Select(u => u.Email)
+            .Where(u => u.Email != null && normalizedEmails.Contains(u.Email))
+            .Select(u => u.Email!)
             .ToList();
         return existingEmails.ToHashSet();
     }

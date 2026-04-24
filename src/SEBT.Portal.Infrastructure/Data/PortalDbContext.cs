@@ -46,6 +46,7 @@ public class PortalDbContext : DbContext
         {
             entity.ToTable("UserOptIns");
             entity.HasKey(e => e.Id);
+            entity.Property(e => e.Id).ValueGeneratedNever();
             entity.HasIndex(e => e.Email).IsUnique();
             entity.Property(e => e.Email).IsRequired().HasMaxLength(255);
             entity.Property(e => e.EmailOptIn)
@@ -68,15 +69,13 @@ public class PortalDbContext : DbContext
         {
             entity.ToTable("Users");
             entity.HasKey(e => e.Id);
-            entity.Property(e => e.Id)
-                .ValueGeneratedOnAdd()
-                .UseIdentityColumn();
+            entity.Property(e => e.Id).ValueGeneratedNever();
             entity.Property(e => e.Email)
-                .IsRequired()
                 .HasMaxLength(255);
             entity.HasIndex(e => e.Email)
                 .IsUnique()
-                .HasDatabaseName("IX_Users_Email");
+                .HasDatabaseName("IX_Users_Email")
+                .HasFilter("[Email] IS NOT NULL");
             entity.Property(e => e.IdProofingStatus)
                 .IsRequired()
                 .HasDefaultValue(0); // 0 = NotStarted
@@ -106,15 +105,31 @@ public class PortalDbContext : DbContext
             entity.Property(e => e.SnapId).HasMaxLength(64);
             entity.Property(e => e.TanfId).HasMaxLength(64);
             entity.Property(e => e.Ssn).HasMaxLength(64);
+
+            // OIDC external provider identifier — nullable, filtered unique index
+            entity.Property(e => e.ExternalProviderId)
+                .HasMaxLength(255);
+            entity.HasIndex(e => e.ExternalProviderId)
+                .IsUnique()
+                .HasDatabaseName("IX_Users_ExternalProviderId")
+                .HasFilter("[ExternalProviderId] IS NOT NULL");
+
+            // The DF_Users_IdProofingAttemptCount default constraint has existed in the DB
+            // since migration 20260409181556_AddIdProofingAttemptCountToUsers created the
+            // column with defaultValue: 0. That prior migration never added the matching
+            // .HasDefaultValue(0) here, so EF's model snapshot has drifted from the actual
+            // schema. Declaring it here re-aligns the snapshot with the DB reality and
+            // ensures future migrations won't generate spurious "remove default" deltas.
+            entity.Property(e => e.IdProofingAttemptCount)
+                .IsRequired()
+                .HasDefaultValue(0);
         });
 
         modelBuilder.Entity<DocVerificationChallengeEntity>(entity =>
         {
             entity.ToTable("DocVerificationChallenges");
             entity.HasKey(e => e.Id);
-            entity.Property(e => e.Id)
-                .ValueGeneratedOnAdd()
-                .UseIdentityColumn();
+            entity.Property(e => e.Id).ValueGeneratedNever();
 
             // Opaque public ID for API consumers
             entity.Property(e => e.PublicId)
@@ -157,6 +172,16 @@ public class PortalDbContext : DbContext
                 .HasMaxLength(1024);
             entity.Property(e => e.OffboardingReason)
                 .HasMaxLength(255);
+
+            entity.Property(e => e.ProofingDateOfBirth)
+                .HasMaxLength(32);
+            entity.Property(e => e.ProofingIdType)
+                .HasMaxLength(64);
+            entity.Property(e => e.ProofingIdValue)
+                .HasMaxLength(255);
+
+            entity.Property(e => e.DocvTokenIssuedAt)
+                .HasColumnType("datetime2");
 
             entity.Property(e => e.AllowIdRetry)
                 .IsRequired()

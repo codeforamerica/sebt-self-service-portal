@@ -57,7 +57,7 @@ data "aws_route53_zone" "main" {
 }
 
 # Store Colorado-specific secrets in Secrets Manager. Each block represents a
-# separate secret for a specific service or integration.
+# separate set of secrets for a specific service or integration.
 module "state_secrets" {
   source = "github.com/codeforamerica/tofu-modules-aws-secrets?ref=2.0.0"
 
@@ -118,14 +118,14 @@ module "app" {
     "Oidc__DiscoveryEndpoint"                          = var.oidc_discovery_endpoint
     "Oidc__AuthorizationEndpoint"                      = var.oidc_authorization_endpoint
     "Oidc__CallbackRedirectUri"                        = "https://${var.domain}/callback"
-    "Oidc__LanguageParam"                              = "en"
     "Oidc__StepUp__DiscoveryEndpoint"                  = var.oidc_discovery_endpoint
     "Oidc__StepUp__AuthorizationEndpoint"              = var.oidc_authorization_endpoint
     "Oidc__StepUp__CallbackRedirectUri"                = "https://${var.domain}/callback"
     "StateHouseholdId__PreferredHouseholdIdTypes__0"   = "Phone"
-    "MinimumIal__ApplicationCases"                     = "IAL1"
-    "MinimumIal__CoLoadedStreamlineCases"               = "IAL1"
-    "MinimumIal__NonCoLoadedStreamlineCases"             = "IAL1"
+    "IdProofingRequirements__address+write"             = "IAL1plus"
+    "IdProofingRequirements__email+view"                = "IAL1plus"
+    "IdProofingRequirements__household+view"            = "IAL1plus"
+    "IdProofingRequirements__card+write"                = "IAL1plus"
     "IdProofingValidity__ValidityDays"                   = "1826"
     "Oidc__VerificationClaims__LevelClaimName"           = "socureIdVerificationLevel"
     "Oidc__VerificationClaims__DateClaimName"             = "socureIdVerificationDate"

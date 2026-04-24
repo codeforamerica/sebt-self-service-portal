@@ -30,7 +30,7 @@ public class HttpSocureClient(
     };
 
     public async Task<Result<IdProofingAssessmentResult>> RunIdProofingAssessmentAsync(
-        int userId,
+        Guid userId,
         string email,
         string dateOfBirth,
         string? idType,
@@ -98,7 +98,7 @@ public class HttpSocureClient(
     }
 
     public Task<Result<SocureDocvSession>> StartDocvSessionAsync(
-        int userId,
+        Guid userId,
         string email,
         CancellationToken cancellationToken = default)
     {
@@ -111,7 +111,7 @@ public class HttpSocureClient(
     }
 
     private static SocureEvaluationRequest BuildEvaluationRequest(
-        int userId,
+        Guid userId,
         string email,
         string dateOfBirth,
         string? idType,
@@ -131,11 +131,40 @@ public class HttpSocureClient(
                 ? settings.DiSessionToken
                 : null;
 
+        var sendIdentifierToSocure = !string.IsNullOrWhiteSpace(idType)
+            && !SocureExcludedIdentifierTypes.IsExcludedFromSocurePayload(idType);
+
+        var mappedAddress = MapAddress(address);
+        if (mappedAddress == null)
+        {
+            // Consumer onboarding docs require address.country at minimum for many workflows.
+            mappedAddress = new SocureAddress
+            {
+                Type = "mailing",
+                Country = "US"
+            };
+        }
+        else if (string.IsNullOrWhiteSpace(mappedAddress.Country))
+        {
+            mappedAddress = new SocureAddress
+            {
+                Type = mappedAddress.Type ?? "mailing",
+                Line1 = mappedAddress.Line1,
+                Line2 = mappedAddress.Line2,
+                Locality = mappedAddress.Locality,
+                MajorAdminDivision = mappedAddress.MajorAdminDivision,
+                PostalCode = mappedAddress.PostalCode,
+                Country = "US"
+            };
+        }
+
         var individual = new SocureIndividual
         {
+            CustomerIndividualId = userId.ToString(),
             Email = email,
             DateOfBirth = dateOfBirth,
-            NationalId = !string.IsNullOrWhiteSpace(idType) && !string.IsNullOrWhiteSpace(idValue)
+            Country = "US",
+            NationalId = sendIdentifierToSocure && !string.IsNullOrWhiteSpace(idValue)
                 ? idValue
                 : null,
             DiSessionToken = effectiveDiToken,
@@ -144,7 +173,7 @@ public class HttpSocureClient(
             GivenName = givenName,
             FamilyName = familyName,
             Docv = new SocureDocvConfig(),
-            Address = MapAddress(address)
+            Address = mappedAddress
         };
 
         return new SocureEvaluationRequest

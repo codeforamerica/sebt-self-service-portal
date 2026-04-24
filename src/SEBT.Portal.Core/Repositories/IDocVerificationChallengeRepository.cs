@@ -14,7 +14,7 @@ public interface IDocVerificationChallengeRepository
     /// </summary>
     Task<DocVerificationChallenge?> GetByPublicIdAsync(
         Guid publicId,
-        int userId,
+        Guid userId,
         CancellationToken cancellationToken = default);
 
     /// <summary>
@@ -22,7 +22,7 @@ public interface IDocVerificationChallengeRepository
     /// Used to enforce the one-active-challenge-per-user constraint.
     /// </summary>
     Task<DocVerificationChallenge?> GetActiveByUserIdAsync(
-        int userId,
+        Guid userId,
         CancellationToken cancellationToken = default);
 
     /// <summary>

@@ -29,7 +29,7 @@ public interface ISocureClient
     /// <param name="cancellationToken">Cancellation token.</param>
     /// <returns>A result indicating the assessment outcome.</returns>
     Task<Result<IdProofingAssessmentResult>> RunIdProofingAssessmentAsync(
-        int userId,
+        Guid userId,
         string email,
         string dateOfBirth,
         string? idType,
@@ -51,7 +51,7 @@ public interface ISocureClient
     /// <param name="cancellationToken">Cancellation token.</param>
     /// <returns>A session containing the DocV transaction token and URL.</returns>
     Task<Result<SocureDocvSession>> StartDocvSessionAsync(
-        int userId,
+        Guid userId,
         string email,
         CancellationToken cancellationToken = default);
 }

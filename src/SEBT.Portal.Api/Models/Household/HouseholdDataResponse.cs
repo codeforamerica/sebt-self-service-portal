@@ -44,4 +44,9 @@ public record HouseholdDataResponse
     /// The type of benefit issuance for this household.
     /// </summary>
     public BenefitIssuanceType BenefitIssuanceType { get; init; }
+
+    /// <summary>
+    /// Computed permissions for self-service portal actions.
+    /// </summary>
+    public AllowedActionsResponse? AllowedActions { get; init; }
 }

@@ -56,11 +56,8 @@ namespace SEBT.Portal.Infrastructure.Migrations
 
             modelBuilder.Entity("SEBT.Portal.Infrastructure.Data.Entities.DocVerificationChallengeEntity", b =>
                 {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
-
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uniqueidentifier");
 
                     b.Property<bool>("AllowIdRetry")
                         .ValueGeneratedOnAdd()
@@ -71,6 +68,9 @@ namespace SEBT.Portal.Infrastructure.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("datetime2")
                         .HasDefaultValueSql("GETUTCDATE()");
+
+                    b.Property<DateTime?>("DocvTokenIssuedAt")
+                        .HasColumnType("datetime2");
 
                     b.Property<string>("DocvTransactionToken")
                         .HasMaxLength(255)
@@ -88,6 +88,18 @@ namespace SEBT.Portal.Infrastructure.Migrations
                         .HasColumnType("datetime2");
 
                     b.Property<string>("OffboardingReason")
+                        .HasMaxLength(255)
+                        .HasColumnType("nvarchar(255)");
+
+                    b.Property<string>("ProofingDateOfBirth")
+                        .HasMaxLength(32)
+                        .HasColumnType("nvarchar(32)");
+
+                    b.Property<string>("ProofingIdType")
+                        .HasMaxLength(64)
+                        .HasColumnType("nvarchar(64)");
+
+                    b.Property<string>("ProofingIdValue")
                         .HasMaxLength(255)
                         .HasColumnType("nvarchar(255)");
 
@@ -117,8 +129,8 @@ namespace SEBT.Portal.Infrastructure.Migrations
                         .HasColumnType("datetime2")
                         .HasDefaultValueSql("GETUTCDATE()");
 
-                    b.Property<int>("UserId")
-                        .HasColumnType("int");
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uniqueidentifier");
 
                     b.HasKey("Id");
 
@@ -161,11 +173,8 @@ namespace SEBT.Portal.Infrastructure.Migrations
 
             modelBuilder.Entity("SEBT.Portal.Infrastructure.Data.Entities.UserEntity", b =>
                 {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
-
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uniqueidentifier");
 
                     b.Property<DateTime?>("CoLoadedLastUpdated")
                         .HasColumnType("datetime2");
@@ -175,8 +184,14 @@ namespace SEBT.Portal.Infrastructure.Migrations
                         .HasColumnType("datetime2")
                         .HasDefaultValueSql("GETUTCDATE()");
 
+                    b.Property<DateOnly?>("DateOfBirth")
+                        .HasColumnType("date");
+
                     b.Property<string>("Email")
-                        .IsRequired()
+                        .HasMaxLength(255)
+                        .HasColumnType("nvarchar(255)");
+
+                    b.Property<string>("ExternalProviderId")
                         .HasMaxLength(255)
                         .HasColumnType("nvarchar(255)");
 
@@ -186,7 +201,9 @@ namespace SEBT.Portal.Infrastructure.Migrations
                         .HasDefaultValue(0);
 
                     b.Property<int>("IdProofingAttemptCount")
-                        .HasColumnType("int");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasDefaultValue(0);
 
                     b.Property<DateTime?>("IdProofingCompletedAt")
                         .HasColumnType("datetime2");
@@ -233,7 +250,13 @@ namespace SEBT.Portal.Infrastructure.Migrations
 
                     b.HasIndex("Email")
                         .IsUnique()
-                        .HasDatabaseName("IX_Users_Email");
+                        .HasDatabaseName("IX_Users_Email")
+                        .HasFilter("[Email] IS NOT NULL");
+
+                    b.HasIndex("ExternalProviderId")
+                        .IsUnique()
+                        .HasDatabaseName("IX_Users_ExternalProviderId")
+                        .HasFilter("[ExternalProviderId] IS NOT NULL");
 
                     b.HasIndex("IdProofingSessionId")
                         .HasDatabaseName("IX_Users_IdProofingSessionId");
@@ -243,11 +266,8 @@ namespace SEBT.Portal.Infrastructure.Migrations
 
             modelBuilder.Entity("SEBT.Portal.Infrastructure.Data.Entities.UserOptInEntity", b =>
                 {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
-
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uniqueidentifier");
 
                     b.Property<DateTime>("CreatedAt")
                         .ValueGeneratedOnAdd()

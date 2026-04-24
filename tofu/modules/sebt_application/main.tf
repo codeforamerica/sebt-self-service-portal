@@ -85,8 +85,10 @@ module "api" {
     DB_PASSWORD                    = "${module.database.secret_arn}:password"
     "SmtpClientSettings__UserName" = "${module.ses.secret_arn}:username"
     "SmtpClientSettings__Password" = "${module.ses.secret_arn}:password"
-    "JwtSettings__SecretKey"       = "${module.secrets.secrets["app"].secret_arn}:jwt_secret_key"
-    "IdentifierHasher__SecretKey"  = "${module.secrets.secrets["app"].secret_arn}:identifier_hasher_secret_key"
+    "JwtSettings__SecretKey"       = "${module.secrets.secrets["auth"].secret_arn}:jwt_secret_key"
+    "IdentifierHasher__SecretKey"  = "${module.secrets.secrets["auth"].secret_arn}:identifier_hasher_secret_key"
+    "Smarty__AuthId"               = "${module.secrets.secrets["smarty"].secret_arn}:auth_id"
+    "Smarty__AuthToken"            = "${module.secrets.secrets["smarty"].secret_arn}:auth_token"
   }, var.state_api_environment_secrets)
 }
 
@@ -150,8 +152,12 @@ module "secrets" {
   service     = "api"
 
   secrets = {
-    "app" = {
-      description     = "Application secrets for the SEBT Portal API."
+    "auth" = {
+      description     = "JWT and identifier hashing secrets for the SEBT Portal API."
+      recovery_window = var.secret_recovery_period
+    }
+    "smarty" = {
+      description     = "Smarty address validation API credentials."
       recovery_window = var.secret_recovery_period
     }
   }

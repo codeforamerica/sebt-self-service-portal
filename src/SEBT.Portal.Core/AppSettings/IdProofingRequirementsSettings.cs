@@ -1,36 +1,36 @@
-using System.ComponentModel;
-using Microsoft.Extensions.Configuration;
 using SEBT.Portal.Core.Models.Auth;
 
 namespace SEBT.Portal.Core.AppSettings;
 
 /// <summary>
-/// Configuration for state-specific ID proofing requirements for PII data elements.
-/// Uses field-based + action keys (e.g. address+view) to support future view vs edit requirements.
-/// Valid values: IAL1, IAL1plus, IAL2 (Case-insensitive).
+/// Unified settings for all identity proofing requirements, keyed by
+/// resource+action (e.g. "address+view", "card+write").
+/// See docs/config/ial/README.md for the configuration guide.
 /// </summary>
 public class IdProofingRequirementsSettings
 {
     public static readonly string SectionName = "IdProofingRequirements";
 
     /// <summary>
-    /// Minimum assurance level required to view address. Valid: IAL1, IAL1plus, IAL2.
+    /// Map of config key (e.g. "address+view") to its IAL requirement.
+    /// Populated by <c>ConfigureIdProofingRequirements</c>.
     /// </summary>
-    [ConfigurationKeyName("address+view")]
-    [DefaultValue(IalLevel.IAL1plus)]
-    public IalLevel AddressView { get; set; } = IalLevel.IAL1plus;
+    public Dictionary<string, IalRequirement> Requirements { get; set; } = new(StringComparer.OrdinalIgnoreCase);
 
     /// <summary>
-    /// Minimum assurance level required to view email. Valid: IAL1, IAL1plus, IAL2.
+    /// Gets the requirement for a config key. Returns <see cref="IalRequirement.Default"/>
+    /// (IAL1plus) if the key is not configured — fail-safe by design.
     /// </summary>
-    [ConfigurationKeyName("email+view")]
-    [DefaultValue(IalLevel.IAL1)]
-    public IalLevel EmailView { get; set; } = IalLevel.IAL1;
+    public IalRequirement Get(string key)
+    {
+        return Requirements.TryGetValue(key, out var req) ? req : IalRequirement.Default();
+    }
 
     /// <summary>
-    /// Minimum assurance level required to view phone. Valid: IAL1, IAL1plus, IAL2.
+    /// Gets the requirement for a resource+action enum pair.
     /// </summary>
-    [ConfigurationKeyName("phone+view")]
-    [DefaultValue(IalLevel.IAL1)]
-    public IalLevel PhoneView { get; set; } = IalLevel.IAL1;
+    public IalRequirement Get(ProtectedResource resource, ProtectedAction action)
+    {
+        return Get(IdProofingKeys.ToConfigKey(resource, action));
+    }
 }

@@ -6,7 +6,6 @@ import { useTranslation } from 'react-i18next'
 
 import { isWithinCooldownPeriod } from '@/features/cards/utils/cooldown'
 import { useFeatureFlag } from '@/features/feature-flags'
-import { getState } from '@sebt/design-system'
 
 import type { IssuanceType, SummerEbtCase } from '../../api'
 import { formatDate } from '../../api'
@@ -23,20 +22,14 @@ function hasCardLifecycleTimeline(summerEbtCase: SummerEbtCase): boolean {
 }
 
 function getReplacementLink(summerEbtCase: SummerEbtCase): string | null {
-  const { summerEBTCaseID, issuanceType, cardRequestedAt } = summerEbtCase
+  const { summerEBTCaseID, allowCardReplacement, cardRequestedAt } = summerEbtCase
   if (!summerEBTCaseID) return null
-  if (!issuanceType || issuanceType === 'Unknown') return null
 
-  if (isWithinCooldownPeriod(cardRequestedAt)) return null
-
-  const currentState = getState()
-  const isCoLoaded = issuanceType === 'TanfEbtCard' || issuanceType === 'SnapEbtCard'
-
-  if (isCoLoaded && currentState === 'dc') {
+  if (!allowCardReplacement) {
     return '/cards/info'
   }
 
-  if (isCoLoaded) return null
+  if (isWithinCooldownPeriod(cardRequestedAt)) return null
 
   return `/cards/replace?case=${encodeURIComponent(summerEBTCaseID)}`
 }
@@ -44,6 +37,12 @@ function getReplacementLink(summerEbtCase: SummerEbtCase): string | null {
 interface ChildCardProps {
   summerEbtCase: SummerEbtCase
   defaultExpanded?: boolean
+  /**
+   * Server-computed permission for requesting a replacement card. When false,
+   * the per-case replacement link is hidden regardless of per-case eligibility.
+   * When omitted, defaults to allowed (backward-compatible).
+   */
+  canRequestReplacementCard?: boolean | undefined
 }
 
 // Keys map to CSV: "S2 - Portal Dashboard - Card Table - cardTableType{Sebt|Snap|Tanf}"
@@ -54,9 +53,12 @@ const CARD_TYPE_KEYS: Partial<Record<IssuanceType, string>> = {
 }
 
 // Keys map to CSV: "S2 - Portal Dashboard - Card Table - {Key}"
-export function ChildCard({ summerEbtCase, defaultExpanded = true }: ChildCardProps) {
+export function ChildCard({
+  summerEbtCase,
+  defaultExpanded = true,
+  canRequestReplacementCard = true
+}: ChildCardProps) {
   const { t, i18n } = useTranslation('dashboard')
-  const enableCardReplacement = useFeatureFlag('enable_card_replacement')
   const showCaseNumber = useFeatureFlag('show_case_number')
   const showCardLast4 = useFeatureFlag('show_card_last4')
   const [isExpanded, setIsExpanded] = useState(defaultExpanded)
@@ -75,7 +77,7 @@ export function ChildCard({ summerEbtCase, defaultExpanded = true }: ChildCardPr
     cardDeactivatedAt
   } = summerEbtCase
   const cardTypeKey = issuanceType ? (CARD_TYPE_KEYS[issuanceType] ?? null) : null
-  const replacementLink = enableCardReplacement ? getReplacementLink(summerEbtCase) : null
+  const replacementLink = canRequestReplacementCard ? getReplacementLink(summerEbtCase) : null
 
   return (
     <div className="usa-accordion__item">
@@ -129,16 +131,17 @@ export function ChildCard({ summerEbtCase, defaultExpanded = true }: ChildCardPr
               </dd>
             </>
           )}
-          {hasCardLifecycleTimeline(summerEbtCase) ? (
-            <CardStatusTimeline
-              cardStatus={ebtCardStatus}
-              cardRequestedAt={cardRequestedAt}
-              cardMailedAt={cardMailedAt}
-              cardDeactivatedAt={cardDeactivatedAt}
-            />
-          ) : (
-            <CardStatusDisplay cardStatus={ebtCardStatus} />
-          )}
+          {summerEbtCase.allowCardReplacement &&
+            (hasCardLifecycleTimeline(summerEbtCase) ? (
+              <CardStatusTimeline
+                cardStatus={ebtCardStatus}
+                cardRequestedAt={cardRequestedAt}
+                cardMailedAt={cardMailedAt}
+                cardDeactivatedAt={cardDeactivatedAt}
+              />
+            ) : (
+              <CardStatusDisplay cardStatus={ebtCardStatus} />
+            ))}
         </dl>
         {replacementLink && (
           <Link

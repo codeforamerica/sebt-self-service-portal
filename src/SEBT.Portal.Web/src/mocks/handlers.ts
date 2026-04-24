@@ -39,9 +39,9 @@ function sessionCookie(value: string, expires?: string): string {
 }
 
 // Test feature flags (SUN Bucks portal features)
+// Card replacement gating is now handled by SelfServiceRules config, not feature flags.
 export const TEST_FEATURE_FLAGS = {
   enable_enrollment_status: true,
-  enable_card_replacement: false,
   enable_spanish_support: true,
   show_application_number: true,
   show_case_number: true,
@@ -110,6 +110,12 @@ export const TEST_HOUSEHOLD_DATA = {
     firstName: 'Maria',
     middleName: 'L',
     lastName: 'Martinez'
+  },
+  allowedActions: {
+    canUpdateAddress: false,
+    canRequestReplacementCard: false,
+    addressUpdateDeniedMessageKey: 'actionNavigationSelfServiceUnavailable',
+    cardReplacementDeniedMessageKey: 'actionNavigationSelfServiceUnavailable'
   }
 } as const
 
@@ -229,20 +235,6 @@ export const handlers = [
     return new HttpResponse(null, {
       status: 204,
       headers: { 'Set-Cookie': sessionCookie('', 'Thu, 01 Jan 1970 00:00:00 GMT') }
-    })
-  }),
-
-  // OIDC CO config (public; server-generated PKCE).
-  // Returns state + codeChallenge; code_verifier is server-side only.
-  http.get('/api/auth/oidc/co/config', () => {
-    return HttpResponse.json({
-      authorizationEndpoint: 'https://auth.example.com/authorize',
-      clientId: 'test-client',
-      redirectUri: 'http://localhost:3000/callback',
-      languageParam: 'en',
-      state: 'mock-state-for-testing',
-      codeChallenge: 'mock-code-challenge',
-      codeChallengeMethod: 'S256'
     })
   }),
 

@@ -40,7 +40,17 @@ public record HouseholdData
     public UserProfile? UserProfile { get; set; }
 
     /// <summary>
-    /// The type of benefit issuance for this household.
+    /// The type of benefit issuance for this household, reflecting the cases the
+    /// client will receive. Plugin-sourced at load time; the query handler may
+    /// realign this value when it filters the case list (e.g. a mixed-eligibility
+    /// household whose co-loaded cases are filtered out becomes <c>SummerEbt</c>)
+    /// so that downstream routing keyed on this field matches the visible view.
     /// </summary>
     public BenefitIssuanceType BenefitIssuanceType { get; set; } = BenefitIssuanceType.Unknown;
+
+    /// <summary>
+    /// Computed permissions for self-service portal actions.
+    /// Set by the query handler after evaluating config rules against household data.
+    /// </summary>
+    public AllowedActions? AllowedActions { get; set; }
 }
