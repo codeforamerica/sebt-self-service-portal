@@ -1,12 +1,33 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { render, screen, waitFor } from '@testing-library/react'
 import { http, HttpResponse } from 'msw'
-import { describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { TEST_HOUSEHOLD_DATA } from '@/mocks/handlers'
 import { server } from '@/mocks/server'
 
 import { DashboardContent } from './DashboardContent'
+
+// Mock analytics to spy on setPageData / trackEvent calls.
+const mockSetPageData = vi.fn()
+const mockSetUserData = vi.fn()
+const mockTrackEvent = vi.fn()
+vi.mock('@sebt/analytics', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@sebt/analytics')>()
+  return {
+    ...actual,
+    useDataLayer: () => ({
+      setPageData: mockSetPageData,
+      setUserData: mockSetUserData,
+      trackEvent: mockTrackEvent,
+      pageLoad: vi.fn(),
+      setPageCategory: vi.fn(),
+      setPageAttribute: vi.fn(),
+      setUserProfile: vi.fn(),
+      get: vi.fn()
+    })
+  }
+})
 
 // Mock router, searchParams, and auth for UserProfileCard + DashboardAlerts
 vi.mock('next/navigation', () => ({
@@ -18,8 +39,10 @@ vi.mock('next/navigation', () => ({
   usePathname: () => '/dashboard'
 }))
 
+const mockAuthSession: { isCoLoaded: boolean | null } = { isCoLoaded: false }
 vi.mock('@/features/auth', () => ({
   useAuth: () => ({
+    session: mockAuthSession,
     logout: vi.fn()
   })
 }))
@@ -48,6 +71,13 @@ function renderWithProviders(ui: React.ReactElement) {
 }
 
 describe('DashboardContent', () => {
+  beforeEach(() => {
+    mockSetPageData.mockClear()
+    mockSetUserData.mockClear()
+    mockTrackEvent.mockClear()
+    mockAuthSession.isCoLoaded = false
+  })
+
   it('shows loading skeleton initially', () => {
     renderWithProviders(<DashboardContent />)
 
@@ -137,6 +167,70 @@ describe('DashboardContent', () => {
     // 404 triggers error state since useQuery treats it as error via ApiError
     await waitFor(() => {
       expect(screen.getByRole('alert')).toBeInTheDocument()
+    })
+  })
+
+  describe('analytics tagging when a co-loaded user lands on an empty dashboard', () => {
+    it('tags household_reason="no_children" when a co-loaded user lands on an empty dashboard', async () => {
+      mockAuthSession.isCoLoaded = true
+      server.use(
+        http.get('/api/household/data', () => {
+          return HttpResponse.json({
+            ...TEST_HOUSEHOLD_DATA,
+            summerEbtCases: [],
+            applications: []
+          })
+        })
+      )
+
+      renderWithProviders(<DashboardContent />)
+
+      await waitFor(() => {
+        expect(mockTrackEvent).toHaveBeenCalledWith('household_result')
+      })
+
+      expect(mockSetPageData).toHaveBeenCalledWith('household_status', 'empty')
+      expect(mockSetPageData).toHaveBeenCalledWith('household_reason', 'no_children')
+      // Fire exactly once per render.
+      const householdResultCalls = mockTrackEvent.mock.calls.filter(
+        ([name]) => name === 'household_result'
+      )
+      expect(householdResultCalls).toHaveLength(1)
+    })
+
+    it('does not tag household_reason for non-co-loaded users on an empty dashboard', async () => {
+      mockAuthSession.isCoLoaded = false
+      server.use(
+        http.get('/api/household/data', () => {
+          return HttpResponse.json({
+            ...TEST_HOUSEHOLD_DATA,
+            summerEbtCases: [],
+            applications: []
+          })
+        })
+      )
+
+      renderWithProviders(<DashboardContent />)
+
+      await waitFor(() => {
+        expect(mockTrackEvent).toHaveBeenCalledWith('household_result')
+      })
+
+      expect(mockSetPageData).toHaveBeenCalledWith('household_status', 'empty')
+      expect(mockSetPageData).not.toHaveBeenCalledWith('household_reason', 'no_children')
+    })
+
+    it('tags household_status="success" when co-loaded user has cases (NOT the no_children path)', async () => {
+      mockAuthSession.isCoLoaded = true
+      // Default TEST_HOUSEHOLD_DATA has non-empty cases.
+      renderWithProviders(<DashboardContent />)
+
+      await waitFor(() => {
+        expect(mockTrackEvent).toHaveBeenCalledWith('household_result')
+      })
+
+      expect(mockSetPageData).toHaveBeenCalledWith('household_status', 'success')
+      expect(mockSetPageData).not.toHaveBeenCalledWith('household_reason', 'no_children')
     })
   })
 })

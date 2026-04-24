@@ -7,6 +7,7 @@ import { useTranslation } from 'react-i18next'
 import { AnalyticsEvents, useDataLayer } from '@sebt/analytics'
 import { Alert, Button, InputField } from '@sebt/design-system'
 
+import { useAuth } from '@/features/auth'
 import {
   clearChallengeContext,
   SK_CHALLENGE_ID
@@ -69,6 +70,8 @@ export function IdProofingForm({ idOptions, contactLink, getDiToken }: IdProofin
   const submitIdProofing = useSubmitIdProofing()
   const isSubmitting = submitIdProofing.isPending
   const { setPageData, setUserData, trackEvent } = useDataLayer()
+  const { session } = useAuth()
+  const isCoLoaded = session?.isCoLoaded === true
 
   const selectedOption = idOptions.find((opt) => opt.value === selectedIdType)
   const showIdValueInput = selectedIdType !== null && selectedIdType !== NONE_VALUE
@@ -134,6 +137,9 @@ export function IdProofingForm({ idOptions, contactLink, getDiToken }: IdProofin
         router.push(`/login/id-proofing/doc-verify?challengeId=${response.challengeId}`)
       } else if (response.result === 'failed') {
         setPageData('idv_primary_status', 'fail')
+        // Co-loaded users reach "failed" only via SNAP/TANF + DOB mismatch (no Socure),
+        // so their failure is always a not-found. Non-co-loaded failures come from Socure.
+        setPageData('idv_primary_reason', isCoLoaded ? 'not_found' : 'socure_fail')
         trackEvent(AnalyticsEvents.IDV_PRIMARY_RESULT)
         const params = new URLSearchParams()
         if (response.canApply === false) {
