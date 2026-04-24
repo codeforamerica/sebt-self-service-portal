@@ -451,6 +451,126 @@ describe('IdProofingForm', () => {
     })
   })
 
+  describe('Shape validation (DC-296)', () => {
+    it('strips non-digit characters from SSN input as the user types', async () => {
+      const user = userEvent.setup()
+      renderWithProviders(
+        <IdProofingForm
+          idOptions={TEST_ID_OPTIONS}
+          contactLink={TEST_CONTACT_LINK}
+        />
+      )
+
+      await user.click(screen.getByRole('radio', { name: LABEL_SSN }))
+      const ssnInput = await screen.findByRole('textbox', { name: INPUT_LABEL_SSN })
+      await user.type(ssnInput, '555-44-3333')
+
+      // User typed hyphens; state should only hold the 9 digits.
+      expect(ssnInput).toHaveValue('555443333')
+    })
+
+    it('sets inputMode="numeric" and maxLength=9 on the SSN input', async () => {
+      const user = userEvent.setup()
+      renderWithProviders(
+        <IdProofingForm
+          idOptions={TEST_ID_OPTIONS}
+          contactLink={TEST_CONTACT_LINK}
+        />
+      )
+
+      await user.click(screen.getByRole('radio', { name: LABEL_SSN }))
+      const ssnInput = await screen.findByRole('textbox', { name: INPUT_LABEL_SSN })
+      expect(ssnInput).toHaveAttribute('inputMode', 'numeric')
+      expect(ssnInput).toHaveAttribute('maxLength', '9')
+    })
+
+    it('sets inputMode="numeric" and maxLength=9 on the ITIN input', async () => {
+      const user = userEvent.setup()
+      renderWithProviders(
+        <IdProofingForm
+          idOptions={TEST_ID_OPTIONS}
+          contactLink={TEST_CONTACT_LINK}
+        />
+      )
+
+      await user.click(screen.getByRole('radio', { name: LABEL_ITIN }))
+      const itinInput = await screen.findByRole('textbox', { name: INPUT_LABEL_ITIN })
+      expect(itinInput).toHaveAttribute('inputMode', 'numeric')
+      expect(itinInput).toHaveAttribute('maxLength', '9')
+    })
+
+    it('blocks submit and shows a field-level error when SSN is too short', async () => {
+      // With the digit-stripping onChange + maxLength=9, users literally cannot
+      // type a 10-digit value. An 8-digit value is the realistic "wrong shape"
+      // case — verify the form blocks it and does not call the mutation.
+      let submitCalled = false
+      server.use(
+        http.post('/api/id-proofing', () => {
+          submitCalled = true
+          return HttpResponse.json({ result: 'matched' })
+        })
+      )
+
+      const user = userEvent.setup()
+      renderWithProviders(
+        <IdProofingForm
+          idOptions={TEST_ID_OPTIONS}
+          contactLink={TEST_CONTACT_LINK}
+        />
+      )
+
+      await user.selectOptions(screen.getByRole('combobox', { name: /month/i }), '01')
+      await user.type(screen.getByRole('textbox', { name: INPUT_LABEL_DAY }), '15')
+      await user.type(screen.getByRole('textbox', { name: INPUT_LABEL_YEAR }), '1990')
+
+      await user.click(screen.getByRole('radio', { name: LABEL_SSN }))
+      const ssnInput = await screen.findByRole('textbox', { name: INPUT_LABEL_SSN })
+      await user.type(ssnInput, '12345678')
+
+      await user.click(screen.getByRole('button', { name: /continue/i }))
+
+      await waitFor(() => {
+        const errors = screen.getAllByRole('alert')
+        expect(errors.length).toBeGreaterThanOrEqual(1)
+      })
+      expect(submitCalled).toBe(false)
+      expect(mockPush).not.toHaveBeenCalled()
+    })
+
+    it('blocks submit and shows a DOB error when the DOB is in the future', async () => {
+      let submitCalled = false
+      server.use(
+        http.post('/api/id-proofing', () => {
+          submitCalled = true
+          return HttpResponse.json({ result: 'matched' })
+        })
+      )
+
+      const user = userEvent.setup()
+      renderWithProviders(
+        <IdProofingForm
+          idOptions={TEST_ID_OPTIONS}
+          contactLink={TEST_CONTACT_LINK}
+        />
+      )
+
+      const futureYear = String(new Date().getFullYear() + 5)
+      await user.selectOptions(screen.getByRole('combobox', { name: /month/i }), '06')
+      await user.type(screen.getByRole('textbox', { name: INPUT_LABEL_DAY }), '15')
+      await user.type(screen.getByRole('textbox', { name: INPUT_LABEL_YEAR }), futureYear)
+
+      await user.click(screen.getByRole('radio', { name: LABEL_NONE }))
+      await user.click(screen.getByRole('button', { name: /continue/i }))
+
+      await waitFor(() => {
+        const errors = screen.getAllByRole('alert')
+        expect(errors.length).toBeGreaterThanOrEqual(1)
+      })
+      expect(submitCalled).toBe(false)
+      expect(mockPush).not.toHaveBeenCalled()
+    })
+  })
+
   describe('API error handling', () => {
     it('shows a submit error alert when the API returns an error', async () => {
       const user = userEvent.setup()

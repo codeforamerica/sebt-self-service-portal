@@ -11,13 +11,19 @@ import {
   clearChallengeContext,
   SK_CHALLENGE_ID
 } from '@/features/auth/components/doc-verify/sessionKeys'
-import { useSubmitIdProofing, type IdType } from '../../api'
+import { SubmitIdProofingRequestSchema, useSubmitIdProofing, type IdType } from '../../api'
 
 // UI-only sentinel value for the "none" radio option.
 // The API receives idType: null when the user selects this.
 const NONE_VALUE = 'none' as const
 
 type IdOptionValue = IdType | typeof NONE_VALUE
+
+// ID types whose value is exactly 9 digits. Used to enable numeric keypad,
+// digit-only input, and a 9-char hard cap at the input level.
+// medicaidId is intentionally excluded: DC CSV specifies "7 or 8 digits" while
+// Socure expects "4 or 9" — follow-up tracked outside DC-296.
+const NUMERIC_9_ID_TYPES: ReadonlySet<IdOptionValue> = new Set(['ssn', 'itin'])
 
 export interface IdOption {
   value: IdOptionValue
@@ -72,6 +78,10 @@ export function IdProofingForm({ idOptions, contactLink, getDiToken }: IdProofin
   const showIdValueInput = selectedIdType !== null && selectedIdType !== NONE_VALUE
 
   const REQUIRED_FIELD_ERROR = tValidation('required')
+  // TODO: Use t('validation.ssnItinDigits') once key is available in dc.csv
+  const SSN_ITIN_SHAPE_ERROR = 'Enter exactly 9 digits.'
+  // TODO: Use t('validation.dobInvalid') once key is available in dc.csv
+  const DOB_INVALID_ERROR = 'Enter a valid date of birth.'
 
   function validateFields(): boolean {
     const newDobErrors: { month?: string; day?: string; year?: string } = {}
@@ -80,18 +90,47 @@ export function IdProofingForm({ idOptions, contactLink, getDiToken }: IdProofin
     if (!dobDay) newDobErrors.day = REQUIRED_FIELD_ERROR
     if (!dobYear) newDobErrors.year = REQUIRED_FIELD_ERROR
 
-    setDobErrors(newDobErrors)
-
     let idTypeErr: string | null = null
     if (selectedIdType === null) {
       idTypeErr = REQUIRED_FIELD_ERROR
     }
-    setIdTypeError(idTypeErr)
 
     let idError: string | null = null
     if (showIdValueInput && !idValue.trim()) {
       idError = REQUIRED_FIELD_ERROR
     }
+
+    // Run the shared schema only when the required-field checks above haven't
+    // already flagged the payload. The schema enforces SSN/ITIN digit count
+    // and DOB calendar/range rules; required-ness stays field-local so each
+    // field gets its own "This is required" message.
+    const allRequiredFilled =
+      Object.keys(newDobErrors).length === 0 && idTypeErr === null && idError === null
+
+    if (allRequiredFilled) {
+      const parsed = SubmitIdProofingRequestSchema.safeParse({
+        dateOfBirth: { month: dobMonth, day: dobDay, year: dobYear },
+        idType: selectedIdType === NONE_VALUE || selectedIdType === null ? null : selectedIdType,
+        idValue: showIdValueInput ? idValue : null
+      })
+
+      if (!parsed.success) {
+        for (const issue of parsed.error.issues) {
+          const path = issue.path.join('.')
+          if (path === 'dateOfBirth') {
+            // Surface the same message under the year field so the user has
+            // something to read. Month/day/year each render their own error
+            // slot; attaching to year avoids duplicate alerts for one issue.
+            newDobErrors.year = DOB_INVALID_ERROR
+          } else if (path === 'idValue' && showIdValueInput) {
+            idError = SSN_ITIN_SHAPE_ERROR
+          }
+        }
+      }
+    }
+
+    setDobErrors(newDobErrors)
+    setIdTypeError(idTypeErr)
     setIdValueError(idError)
 
     return Object.keys(newDobErrors).length === 0 && idTypeErr === null && idError === null
@@ -308,9 +347,22 @@ export function IdProofingForm({ idOptions, contactLink, getDiToken }: IdProofin
             type="text"
             name="idValue"
             value={idValue}
-            onChange={(e) => setIdValue(e.target.value)}
+            onChange={(e) => {
+              // For 9-digit ID types (SSN/ITIN), strip non-digit characters
+              // as the user types. maxLength on the input caps the length,
+              // so pastes like "555-44-3333" land in state as "555443333".
+              const raw = e.target.value
+              const next =
+                selectedIdType && NUMERIC_9_ID_TYPES.has(selectedIdType)
+                  ? raw.replace(/\D/g, '')
+                  : raw
+              setIdValue(next)
+            }}
             autoComplete="off"
             isRequired
+            {...(selectedIdType && NUMERIC_9_ID_TYPES.has(selectedIdType)
+              ? { inputMode: 'numeric' as const, maxLength: 9 }
+              : {})}
             {...(idValueError ? { error: idValueError } : {})}
           />
         </div>
