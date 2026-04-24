@@ -52,9 +52,9 @@ public class PluginIntegrationWebApplicationFactory : WebApplicationFactory<Prog
         Environment.SetEnvironmentVariable("PluginAssemblyPaths__1", "plugins-none");
         Environment.SetEnvironmentVariable("JwtSettings__SecretKey",
             "integration-test-key-must-be-at-least-32-bytes-long");
-        Environment.SetEnvironmentVariable("MinimumIal__ApplicationCases", "IAL1");
-        Environment.SetEnvironmentVariable("MinimumIal__CoLoadedStreamlineCases", "IAL1");
-        Environment.SetEnvironmentVariable("MinimumIal__NonCoLoadedStreamlineCases", "IAL1plus");
+        Environment.SetEnvironmentVariable("IdProofingRequirements__household+view__application", "IAL1");
+        Environment.SetEnvironmentVariable("IdProofingRequirements__household+view__coloadedStreamline", "IAL1");
+        Environment.SetEnvironmentVariable("IdProofingRequirements__household+view__streamline", "IAL1plus");
 
         builder.ConfigureServices(services =>
         {
@@ -100,9 +100,9 @@ public class PluginIntegrationWebApplicationFactory : WebApplicationFactory<Prog
         Environment.SetEnvironmentVariable("PluginAssemblyPaths__0", null);
         Environment.SetEnvironmentVariable("PluginAssemblyPaths__1", null);
         Environment.SetEnvironmentVariable("JwtSettings__SecretKey", null);
-        Environment.SetEnvironmentVariable("MinimumIal__ApplicationCases", null);
-        Environment.SetEnvironmentVariable("MinimumIal__CoLoadedStreamlineCases", null);
-        Environment.SetEnvironmentVariable("MinimumIal__NonCoLoadedStreamlineCases", null);
+        Environment.SetEnvironmentVariable("IdProofingRequirements__household+view__application", null);
+        Environment.SetEnvironmentVariable("IdProofingRequirements__household+view__coloadedStreamline", null);
+        Environment.SetEnvironmentVariable("IdProofingRequirements__household+view__streamline", null);
         foreach (var key in _envKeysToClean)
         {
             Environment.SetEnvironmentVariable(key, null);

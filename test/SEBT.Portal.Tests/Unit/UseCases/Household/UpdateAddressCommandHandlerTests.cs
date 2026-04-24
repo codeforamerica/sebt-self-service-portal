@@ -31,12 +31,12 @@ public class UpdateAddressCommandHandlerTests
     private readonly IAddressValidationService _addressValidationService = Substitute.For<IAddressValidationService>();
     private readonly IHouseholdRepository _householdRepository =
         Substitute.For<IHouseholdRepository>();
-    private readonly IIdProofingRequirementsService _idProofingRequirementsService =
-        Substitute.For<IIdProofingRequirementsService>();
+    private readonly IPiiVisibilityService _piiVisibilityService =
+        Substitute.For<IPiiVisibilityService>();
     private readonly IStateAddressUpdateService _stateAddressUpdateService =
         Substitute.For<IStateAddressUpdateService>();
-    private readonly IMinimumIalService _minimumIalService =
-        Substitute.For<IMinimumIalService>();
+    private readonly IIdProofingService _idProofingService =
+        Substitute.For<IIdProofingService>();
     private readonly ISelfServiceEvaluator _selfServiceEvaluator =
         Substitute.For<ISelfServiceEvaluator>();
     private readonly NullLogger<UpdateAddressCommandHandler> _logger =
@@ -65,10 +65,13 @@ public class UpdateAddressCommandHandlerTests
             .Returns(AddressValidationResult.Valid());
         _stateAddressUpdateService.UpdateAddressAsync(Arg.Any<AddressUpdateRequest>(), Arg.Any<CancellationToken>())
             .Returns(AddressUpdateResult.Success());
-        _idProofingRequirementsService.GetPiiVisibility(Arg.Any<UserIalLevel>())
+        _piiVisibilityService.GetVisibility(Arg.Any<UserIalLevel>())
             .Returns(new PiiVisibility(false, false, false));
         // Default: IAL gate passes (no elevated requirement)
-        _minimumIalService.GetMinimumIal(Arg.Any<IReadOnlyList<SummerEbtCase>>()).Returns(UserIalLevel.None);
+        _idProofingService.Evaluate(
+            Arg.Any<ProtectedResource>(), Arg.Any<ProtectedAction>(),
+            Arg.Any<UserIalLevel>(), Arg.Any<IReadOnlyList<SummerEbtCase>>())
+            .Returns(new IdProofingDecision(IsAllowed: true, RequiredLevel: UserIalLevel.None));
         // Default: self-service rules allow address update
         _selfServiceEvaluator.EvaluateHousehold(Arg.Any<IReadOnlyList<SummerEbtCase>>())
             .Returns(new AllowedActions { CanUpdateAddress = true, CanRequestReplacementCard = true });
@@ -76,7 +79,7 @@ public class UpdateAddressCommandHandlerTests
 
     private UpdateAddressCommandHandler CreateHandler() =>
         new(_validator, _addressUpdateService, _addressValidationService, _resolver, _householdRepository,
-            _idProofingRequirementsService, _minimumIalService, _selfServiceEvaluator, _stateAddressUpdateService, _logger);
+            _piiVisibilityService, _idProofingService, _selfServiceEvaluator, _stateAddressUpdateService, _logger);
 
     private static ClaimsPrincipal CreateUser(string email)
     {
@@ -107,6 +110,14 @@ public class UpdateAddressCommandHandlerTests
                 Arg.Any<HouseholdIdentifier>(), Arg.Any<PiiVisibility>(),
                 Arg.Any<UserIalLevel>(), Arg.Any<CancellationToken>())
             .Returns(new HouseholdData { SummerEbtCases = cases.ToList() });
+    }
+
+    private void SetupHouseholdWithBenefitType(BenefitIssuanceType benefitType)
+    {
+        _householdRepository.GetHouseholdByIdentifierAsync(
+                Arg.Any<HouseholdIdentifier>(), Arg.Any<PiiVisibility>(),
+                Arg.Any<UserIalLevel>(), Arg.Any<CancellationToken>())
+            .Returns(new HouseholdData { BenefitIssuanceType = benefitType });
     }
 
     [Fact]
@@ -368,7 +379,7 @@ public class UpdateAddressCommandHandlerTests
     }
 
     [Fact]
-    public async Task Handle_AllowsUpdate_WhenHouseholdNotFound()
+    public async Task Handle_ReturnsPreconditionFailed_WhenHouseholdNotFound()
     {
         var handler = CreateHandler();
         var command = CreateValidCommand();
@@ -381,7 +392,46 @@ public class UpdateAddressCommandHandlerTests
 
         var result = await handler.Handle(command, CancellationToken.None);
 
-        Assert.True(result.IsSuccess);
+        Assert.False(result.IsSuccess);
+        Assert.IsType<PreconditionFailedResult<AddressValidationResult>>(result);
+    }
+
+    [Fact]
+    public async Task Handle_ReturnsForbidden_WhenUserIalBelowRequired()
+    {
+        var handler = CreateHandler();
+        var command = CreateValidCommand();
+
+        SetupResolverReturnsEmail();
+        SetupHouseholdWithBenefitType(BenefitIssuanceType.SummerEbt);
+        _idProofingService.Evaluate(
+                Arg.Any<ProtectedResource>(), Arg.Any<ProtectedAction>(),
+                Arg.Any<UserIalLevel>(), Arg.Any<IReadOnlyList<SummerEbtCase>>())
+            .Returns(new IdProofingDecision(IsAllowed: false, RequiredLevel: UserIalLevel.IAL1plus));
+
+        var result = await handler.Handle(command, CancellationToken.None);
+
+        Assert.False(result.IsSuccess);
+        Assert.IsType<ForbiddenResult<AddressValidationResult>>(result);
+    }
+
+    [Fact]
+    public async Task Handle_DoesNotCallStateConnector_WhenIalInsufficient()
+    {
+        var handler = CreateHandler();
+        var command = CreateValidCommand();
+
+        SetupResolverReturnsEmail();
+        SetupHouseholdWithBenefitType(BenefitIssuanceType.SummerEbt);
+        _idProofingService.Evaluate(
+                Arg.Any<ProtectedResource>(), Arg.Any<ProtectedAction>(),
+                Arg.Any<UserIalLevel>(), Arg.Any<IReadOnlyList<SummerEbtCase>>())
+            .Returns(new IdProofingDecision(IsAllowed: false, RequiredLevel: UserIalLevel.IAL1plus));
+
+        await handler.Handle(command, CancellationToken.None);
+
+        await _stateAddressUpdateService.DidNotReceive()
+            .UpdateAddressAsync(Arg.Any<AddressUpdateRequest>(), Arg.Any<CancellationToken>());
     }
 
     [Fact]

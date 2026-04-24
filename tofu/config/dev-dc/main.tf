@@ -110,9 +110,9 @@ module "app" {
   use_mock_household_data = "true"
 
   state_api_environment_variables = {
-    "MinimumIal__ApplicationCases"           = "IAL1"
-    "MinimumIal__CoLoadedStreamlineCases"    = "IAL1"
-    "MinimumIal__NonCoLoadedStreamlineCases" = "IAL1plus"
+    "IdProofingRequirements__household+view__application"            = "IAL1"
+    "IdProofingRequirements__household+view__coloadedStreamline"     = "IAL1"
+    "IdProofingRequirements__household+view__streamline"  = "IAL1plus"
   }
 
   state_api_environment_secrets = {

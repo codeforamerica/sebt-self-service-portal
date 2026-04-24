@@ -717,6 +717,26 @@ public class DatabaseSeederTests : IClassFixture<SqlServerTestFixture>
     }
 
     [Fact]
+    public async Task SeedTestUsersAsync_WithMockHouseholdData_AndStateDc_NoIal0Or1UserHasIdProofingCompletedAt()
+    {
+        using var context = CreateContext();
+        await CleanupDatabaseAsync(context);
+        var settings = new SeedingSettings { EmailPattern = "{0}@example.com", State = "dc" };
+        var seeder = CreateSeeder(context, settings);
+
+        await seeder.SeedTestUsersAsync(useMockHouseholdData: true);
+
+        var users = await context.Users.ToListAsync();
+        var invalid = users
+            .Where(u =>
+                (u.IalLevel == (int)UserIalLevel.None || u.IalLevel == (int)UserIalLevel.IAL1) &&
+                u.IdProofingCompletedAt != null)
+            .Select(u => u.Email)
+            .ToList();
+        Assert.Empty(invalid);
+    }
+
+    [Fact]
     public async Task ClearSeededDataAsync_WithCustomEmailPattern_ShouldDeleteConfiguredEmails()
     {
         // Arrange

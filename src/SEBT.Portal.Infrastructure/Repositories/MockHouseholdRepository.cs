@@ -141,6 +141,72 @@ public class MockHouseholdRepository : IHouseholdRepository
         return Task.CompletedTask;
     }
 
+    /// <summary>
+    /// Finds a household by identifier value (email or phone) and updates both the
+    /// household-level AddressOnFile and each SummerEbtCase's MailingAddress in place.
+    /// Used by the mock state address update service so that subsequent reads reflect
+    /// the updated address.
+    /// </summary>
+    /// <returns>True if a matching household was found and updated; false otherwise.</returns>
+    public bool TryUpdateAddress(string identifierValue, Address newAddress)
+    {
+        if (string.IsNullOrWhiteSpace(identifierValue))
+        {
+            return false;
+        }
+
+        var household = FindHouseholdByIdentifierValue(identifierValue);
+        if (household == null)
+        {
+            return false;
+        }
+
+        household.AddressOnFile = new Address
+        {
+            StreetAddress1 = newAddress.StreetAddress1,
+            StreetAddress2 = newAddress.StreetAddress2,
+            City = newAddress.City,
+            State = newAddress.State,
+            PostalCode = newAddress.PostalCode
+        };
+
+        foreach (var summerEbtCase in household.SummerEbtCases)
+        {
+            summerEbtCase.MailingAddress = new Address
+            {
+                StreetAddress1 = newAddress.StreetAddress1,
+                StreetAddress2 = newAddress.StreetAddress2,
+                City = newAddress.City,
+                State = newAddress.State,
+                PostalCode = newAddress.PostalCode
+            };
+        }
+
+        _logger.LogInformation("Mock address updated for household");
+        return true;
+    }
+
+    /// <summary>
+    /// Looks up a household by trying the value as an email key first, then as a phone key.
+    /// Returns the original (not a copy) so callers can mutate in-place.
+    /// </summary>
+    private HouseholdData? FindHouseholdByIdentifierValue(string identifierValue)
+    {
+        var normalizedEmail = EmailNormalizer.Normalize(identifierValue);
+        if (_households.TryGetValue(normalizedEmail, out var byEmail))
+        {
+            return byEmail;
+        }
+
+        var normalizedPhone = NormalizePhone(identifierValue);
+        if (normalizedPhone != null && _householdsByPhone.TryGetValue(normalizedPhone, out var byPhone))
+        {
+            return byPhone;
+        }
+
+        return null;
+    }
+
     private void SeedMockData()
     {
         var now = _timeProvider.GetUtcNow().UtcDateTime;

@@ -23,7 +23,7 @@ export default function CoLoadedInfoPage() {
 
   useEffect(() => {
     if (!isDC) {
-      router.replace('/profile/address')
+      router.replace('/dashboard')
       return
     }
     if (data && !isCoLoaded) {
