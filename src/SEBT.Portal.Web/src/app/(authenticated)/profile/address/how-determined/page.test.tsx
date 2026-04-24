@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react'
+import { render, screen, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 import HowAddressDeterminedPage from './page'
@@ -63,11 +63,14 @@ describe('HowAddressDeterminedPage', () => {
     expect(mockBack).toHaveBeenCalled()
   })
 
-  it('redirects non-DC users to the dashboard', () => {
+  it('redirects non-DC users to the dashboard', async () => {
     mockState = 'co'
     render(<HowAddressDeterminedPage />)
 
-    expect(mockReplace).toHaveBeenCalledWith('/dashboard')
+    // router.replace is dispatched from useEffect; wait for it to settle.
+    await waitFor(() => {
+      expect(mockReplace).toHaveBeenCalledWith('/dashboard')
+    })
     expect(
       screen.queryByRole('heading', { name: /Mailing address for SNAP or TANF EBT/i })
     ).not.toBeInTheDocument()
