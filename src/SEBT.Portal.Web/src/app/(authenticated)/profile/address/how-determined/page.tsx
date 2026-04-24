@@ -25,36 +25,39 @@ export default function HowAddressDeterminedPage() {
         aria-busy="true"
         role="status"
       >
-        <span className="usa-sr-only">Loading...</span>
+        {/* TODO: Add "loading" to common.csv; SR-only until then. */}
+        <span className="usa-sr-only">{tCommon('loading', 'Loading...')}</span>
       </div>
     )
   }
 
   return (
     <div className="grid-container maxw-tablet padding-top-4">
-      <h1 className="font-heading-xl text-bold margin-bottom-3">{t('title')}</h1>
+      <h1 className="font-heading-xl text-bold margin-bottom-3">
+        {t('coLoadedAddressUpdateTitle')}
+      </h1>
 
-      <p className="margin-top-5 margin-bottom-3">{t('body1')}</p>
+      <p className="margin-top-5 margin-bottom-3">{t('coLoadedAddressUpdateBody1')}</p>
 
-      <p className="margin-bottom-3">{t('body2')}</p>
+      <p className="margin-bottom-3">{t('coLoadedAddressUpdateBody2')}</p>
 
       <p className="margin-bottom-3">
         <Link
           href="/cards/info"
           className="usa-link text-bold"
         >
-          {t('action2')}
+          {t('coLoadedAddressUpdateAction2')}
         </Link>
       </p>
 
-      <p className="margin-bottom-3">{t('body3')}</p>
+      <p className="margin-bottom-3">{t('coLoadedAddressUpdateBody3')}</p>
 
       <p className="margin-bottom-3">
         <Link
           href="/contact"
           className="usa-link text-bold"
         >
-          {t('action3')}
+          {t('coLoadedAddressUpdateAction3')}
         </Link>
       </p>
 
