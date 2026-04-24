@@ -98,6 +98,10 @@ We follow a test-driven development (TDD) approach: write tests first to fail, t
 - Apply CORS and rate-limiting where applicable; return safe error messages.
 - In React, avoid 'dangerouslySetInnerHtml'. If rendering HTML, sanitize it first.
 
+### Content Security Policy (CSP)
+- The portal enforces a strict CSP via `src/SEBT.Portal.Web/src/proxy.ts`. When adding **any browser-side call to a new external domain** (API, SDK, analytics, fonts), add the domain to the appropriate CSP directive (`connect-src`, `script-src`, `style-src`, `font-src`, etc.).
+- This is easy to miss because CSP is not enforced in local dev or in tests (MSW intercepts network calls). A missing entry means the feature silently fails in production — the browser blocks the request, and error-handling code gracefully degrades as if the service is down.
+
 ### Data boundary enforcement
 - Enforce access control at the data boundary (the API endpoint that returns the data), not at the UI layer. Client-side guards are UX conveniences, not security controls.
 - When an authenticated user lacks sufficient authorization for a specific resource (e.g., insufficient IAL for their household's cases), return a 403 with structured ProblemDetails — not a 200 with filtered/empty data. The client needs to know *why* access was denied and *what to do about it* (e.g., `requiredIal` in the ProblemDetails extensions).
