@@ -105,6 +105,7 @@ We follow a test-driven development (TDD) approach: write tests first to fail, t
 
 ### PII at rest
 - Never store PII (household identifiers, case IDs, SSNs) in cleartext in the portal database when the data is only needed for lookups (e.g., cooldown checks, deduplication). Use `IIdentifierHasher` (HMAC-SHA256 with `IdentifierHasher:SecretKey`) to produce deterministic hashes for storage and lookup.
+- `IIdentifierHasher.Hash()` normalizes input via `IdentifierNormalizer` (trims whitespace, strips dashes and spaces) before hashing. This means `"SEBT-001"` and `"SEBT001"` produce the same hash. Ensure read and write paths use `Hash()` consistently.
 - Hashing is one-way — if there's any uncertainty about whether original cleartext values may need to be retrieved later, stop and ask a human. Encryption or another reversible approach may be more appropriate.
 
 ### State connector data boundaries
@@ -187,6 +188,8 @@ State-specific behavior uses MEF (System.Composition) plugins loaded at runtime 
 
 ### Frontend
 Uses Next.js App Router with route groups: `(public)/` for login flows, `(authenticated)/` for protected pages. USWDS design tokens are generated via scripts before build. i18next handles internationalization with content files in `content/`.
+
+**React Query cache:** When a mutation should update cached data before navigating, `await queryClient.invalidateQueries()` — without `await`, the redirect races ahead and the destination page renders stale cache data.
 
 ## Branch Strategy
 - `main` — production source for all states
