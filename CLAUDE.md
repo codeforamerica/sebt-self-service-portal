@@ -179,6 +179,12 @@ This is a .NET 10 + Next.js 16 application following Clean Architecture. For det
 ### Layer boundaries
 - Inner layers (Kernel, Core, UseCases) must not reference web/HTTP concepts (ProblemDetails, status codes, headers, controllers). They define abstractions; outer layers (Api, Web) decide how to serialize and transport them.
 
+### Domain model: Cases vs Applications
+- A `SummerEbtCase` represents a single child with issued benefits. Most cases are auto-issued (no application). Card/EBT data and benefit delivery belong here.
+- An `Application` represents a guardian-submitted application for one or more children. Only a small fraction of children have one. A Case may link to an Application, but most won't.
+- State backends represent this differently: DC distinguishes cases from applications similarly to the portal; Colorado represents everything as an "application." The state connector mapping layer disaggregates into the portal's canonical model based on state-specific attributes.
+- Known tech debt: `Application` still carries card lifecycle fields (`CardStatus`, `CardRequestedAt`, etc.) that belong on `SummerEbtCase`.
+
 ### Multi-State Plugin System
 State-specific behavior uses MEF (System.Composition) plugins loaded at runtime from `plugins-{state}/` directories. Plugin contracts live in the separate `sebt-self-service-portal-state-connector` repo; implementations live in per-state repos (`-dc-connector`, `-co-connector`). The `STATE` env var controls which state config overlay loads. See [docs/adr/0007-multi-state-plugin-approach.md](./docs/adr/0007-multi-state-plugin-approach.md) for the design rationale.
 
