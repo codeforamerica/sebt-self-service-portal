@@ -178,7 +178,7 @@ export function IdProofingForm({ idOptions, contactLink, getDiToken }: IdProofin
 
         <div className="grid-row grid-gap">
           {/* Month */}
-          <div className="grid-col-7">
+          <div className="mobile-lg:grid-col-7">
             <div
               className={
                 dobErrors.month ? 'usa-form-group usa-form-group--error' : 'usa-form-group'
@@ -221,7 +221,7 @@ export function IdProofingForm({ idOptions, contactLink, getDiToken }: IdProofin
           </div>
 
           {/* Day */}
-          <div className="grid-col-2">
+          <div className="mobile-lg:grid-col-2">
             <InputField
               label={tPersonalInfo('labelDay')}
               type="text"
@@ -231,13 +231,13 @@ export function IdProofingForm({ idOptions, contactLink, getDiToken }: IdProofin
               value={dobDay}
               onChange={(e) => setDobDay(e.target.value)}
               autoComplete="bday-day"
-              aria-required="true"
+              isRequired
               {...(dobErrors.day ? { error: dobErrors.day } : {})}
             />
           </div>
 
           {/* Year */}
-          <div className="grid-col-3">
+          <div className="mobile-lg:grid-col-3">
             <InputField
               label={tPersonalInfo('labelYear')}
               type="text"
@@ -247,7 +247,7 @@ export function IdProofingForm({ idOptions, contactLink, getDiToken }: IdProofin
               value={dobYear}
               onChange={(e) => setDobYear(e.target.value)}
               autoComplete="bday-year"
-              aria-required="true"
+              isRequired
               {...(dobErrors.year ? { error: dobErrors.year } : {})}
             />
           </div>
@@ -256,7 +256,10 @@ export function IdProofingForm({ idOptions, contactLink, getDiToken }: IdProofin
 
       {/* ID type selection */}
       <fieldset className="usa-fieldset margin-top-3">
-        <legend className="usa-legend">{t('labelId')}</legend>
+        <legend className="usa-legend">
+          {t('labelId')}
+          <span className="text-secondary-dark"> *</span>
+        </legend>
 
         {idTypeError && (
           <span
@@ -273,7 +276,10 @@ export function IdProofingForm({ idOptions, contactLink, getDiToken }: IdProofin
             className="margin-top-2"
           >
             {option.dividerBefore && (
-              <hr className="margin-y-2 border-0 border-top border-base-ink" />
+              <hr
+                aria-hidden="true"
+                className="margin-y-2 border-0 border-top border-base-ink"
+              />
             )}
             <div className="usa-radio">
               <input
