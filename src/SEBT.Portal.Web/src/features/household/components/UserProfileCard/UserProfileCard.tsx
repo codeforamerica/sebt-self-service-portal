@@ -54,7 +54,7 @@ export function UserProfileCard() {
       <h2 className="margin-0 font-heading-lg">{fullName}</h2>
       <a
         href="/api/auth/logout"
-        className="usa-link font-sans-md text-bold line-height-sans-1"
+        className="usa-link font-sans-md text-bold line-height-sans-1 text-no-wrap"
       >
         {t('logout')}
       </a>
