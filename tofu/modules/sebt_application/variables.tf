@@ -26,6 +26,12 @@ variable "apply_immediately" {
   default     = false
 }
 
+variable "db_ingress_cidrs" {
+  type        = list(string)
+  description = "Extra CIDR blocks allowed to connect to the database on TCP 1433. Used to grant VPC-internal clients (e.g. the SSM bastion) access without plumbing security groups."
+  default     = []
+}
+
 variable "desired_containers" {
   type        = number
   description = "Number of desired containers for each service."

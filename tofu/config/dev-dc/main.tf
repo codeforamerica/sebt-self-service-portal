@@ -85,12 +85,13 @@ module "app" {
   logging_key_id             = module.logging.kms_key_arn
   logging_bucket_domain_name = module.logging.bucket_domain_name
   private_subnets            = module.vpc.private_subnets
-  project                    = var.project
   public_subnets             = module.vpc.public_subnets
+  vpc_id                     = module.vpc.vpc_id
+  db_ingress_cidrs           = [var.vpc_cidr]
+  project                    = var.project
   sender_email               = var.sender_email
   skip_final_snapshot        = true
   state                      = var.state
-  vpc_id                     = module.vpc.vpc_id
   waf_log_group              = module.logging.log_groups["waf"]
   passive_waf                = true
   enable_appconfig           = true
@@ -110,9 +111,9 @@ module "app" {
   use_mock_household_data = "true"
 
   state_api_environment_variables = {
-    "IdProofingRequirements__household+view__application"            = "IAL1"
-    "IdProofingRequirements__household+view__coloadedStreamline"     = "IAL1"
-    "IdProofingRequirements__household+view__streamline"  = "IAL1plus"
+    "IdProofingRequirements__household+view__application"        = "IAL1"
+    "IdProofingRequirements__household+view__coloadedStreamline" = "IAL1"
+    "IdProofingRequirements__household+view__streamline"         = "IAL1plus"
   }
 
   state_api_environment_secrets = {
@@ -122,4 +123,17 @@ module "app" {
 
   state_web_environment_variables = {}
   state_web_environment_secrets   = {}
+}
+
+# SSM bastion for developer DB access. Uses pure-SSM port forwarding;
+# no PEM distribution, no SSH. Access is IAM-gated via SSO.
+module "bastion" {
+  source = "github.com/codeforamerica/tofu-modules-aws-ssm-bastion?ref=1.1.0"
+
+  project                 = "${var.project}-${var.state}"
+  environment             = var.environment
+  private_subnet_ids      = module.vpc.private_subnets
+  vpc_id                  = module.vpc.vpc_id
+  kms_key_recovery_period = 7
+  instance_profile        = null
 }

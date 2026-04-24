@@ -72,7 +72,7 @@ module "api" {
     "Seeding__EmailPattern"                      = var.seeding_email_pattern
     "Seeding__State"                             = lower(var.state)
     "UseMockHouseholdData"                       = var.use_mock_household_data
-  }, var.enable_appconfig ? {
+    }, var.enable_appconfig ? {
     "AppConfig__Agent__BaseUrl"          = "http://localhost:2772"
     "AppConfig__Agent__ApplicationId"    = module.appconfig[0].application_id
     "AppConfig__Agent__EnvironmentId"    = module.appconfig[0].environment_id
@@ -135,9 +135,9 @@ module "web" {
   force_delete           = var.force_delete
 
   environment_variables = merge({
-    STATE                    = lower(var.state)
-    NEXT_PUBLIC_STATE        = lower(var.state)
-    BACKEND_URL              = "https://${module.api.endpoint_url}"
+    STATE             = lower(var.state)
+    NEXT_PUBLIC_STATE = lower(var.state)
+    BACKEND_URL       = "https://${module.api.endpoint_url}"
   }, var.state_web_environment_variables)
 
   environment_secrets = var.state_web_environment_secrets
@@ -175,6 +175,7 @@ module "database" {
   logging_key_arn = var.logging_key_id
 
   ingress_security_groups = [module.api.security_group_id]
+  ingress_cidrs           = var.db_ingress_cidrs
 
   skip_final_snapshot = var.skip_final_snapshot
   apply_immediately   = var.apply_immediately

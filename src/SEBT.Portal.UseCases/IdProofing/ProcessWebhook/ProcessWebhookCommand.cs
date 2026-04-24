@@ -35,10 +35,25 @@ public class ProcessWebhookCommand : ICommand
 
     /// <summary>
     /// The document verification decision value from Socure's data_enrichments.
-    /// Expected values: "accept", "reject", or similar Socure-defined outcomes.
+    /// Kept for diagnostic logging; routing decisions use <see cref="WorkflowDecision"/>.
     /// </summary>
     [RegularExpression(NoControlChars, ErrorMessage = ControlCharError)]
     public string? DocumentDecision { get; init; }
+
+    /// <summary>
+    /// The top-level workflow decision from Socure (e.g., "ACCEPT", "REJECT", "RESUBMIT", "REVIEW").
+    /// This is the authoritative routing decision: it reflects the full workflow outcome
+    /// including Digital Intelligence signals, not just the DocV enrichment.
+    /// </summary>
+    [RegularExpression(NoControlChars, ErrorMessage = ControlCharError)]
+    public string? WorkflowDecision { get; init; }
+
+    /// <summary>
+    /// The Socure webhook event type (e.g., "evaluation_completed", "evaluation_paused").
+    /// Paused events are intermediate and do not carry a terminal decision.
+    /// </summary>
+    [RegularExpression(NoControlChars, ErrorMessage = ControlCharError)]
+    public string? EventType { get; init; }
 
     /// <summary>
     /// The raw webhook signature header for validation.

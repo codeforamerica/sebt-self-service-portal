@@ -40,12 +40,42 @@ vi.mock('next/navigation', () => ({
 }))
 
 // Options used across tests. Labels/inputLabels match DC en translations.
-// Keys that are not yet in the locale JSON fall back to the key string itself.
+// The "none" option uses a cross-namespace lookup (common:noneOfTheAbove) because
+// the label key only lives in the common namespace.
+// Per-option `validation` mirrors DC_ID_OPTIONS in page.tsx so shape-enforcement
+// tests exercise the same path users hit in production.
 const TEST_ID_OPTIONS: IdOption[] = [
-  { value: 'ssn', labelKey: 'optionLabelSsn', inputLabelKey: 'labelSsn' },
-  { value: 'itin', labelKey: 'optionLabelItin', inputLabelKey: 'labelItin' },
-  // optionLabelNone is not yet in the locale JSON, so t() returns the key string
-  { value: 'none', labelKey: 'optionLabelNone' }
+  {
+    value: 'ssn',
+    labelKey: 'optionLabelSsn',
+    inputLabelKey: 'labelSsn',
+    validation: { digits: 9 }
+  },
+  {
+    value: 'itin',
+    labelKey: 'optionLabelItin',
+    inputLabelKey: 'labelItin',
+    validation: { digits: 9 }
+  },
+  {
+    value: 'medicaidId',
+    labelKey: 'optionLabelMedicaidId',
+    inputLabelKey: 'labelMedicaidId',
+    validation: { digits: [7, 8] }
+  },
+  {
+    value: 'snapAccountId',
+    labelKey: 'optionAccountId',
+    inputLabelKey: 'labelAccountId',
+    validation: { digits: [7, 8] }
+  },
+  {
+    value: 'snapPersonId',
+    labelKey: 'optionPersonId',
+    inputLabelKey: 'labelPersonId',
+    validation: { digits: [7, 8] }
+  },
+  { value: 'none', labelKey: 'common:noneOfTheAbove' }
 ]
 
 // Resolved translated strings / patterns for querying.
@@ -54,7 +84,7 @@ const TEST_ID_OPTIONS: IdOption[] = [
 // so regex patterns are used to match them.
 const LABEL_SSN = 'Social Security Number (SSN)'
 const LABEL_ITIN = 'Individual Taxpayer ID Number (ITIN)'
-const LABEL_NONE = 'optionLabelNone' // missing key → falls back to key
+const LABEL_NONE = 'None of the above'
 const INPUT_LABEL_SSN = /Enter your Social Security Number/i
 const INPUT_LABEL_ITIN = /Enter your Individual Taxpayer ID Number/i
 // Day/Year InputFields also append " *", so use partial-match patterns
@@ -99,6 +129,46 @@ describe('IdProofingForm', () => {
       expect(screen.getByRole('radio', { name: LABEL_SSN })).toBeInTheDocument()
       expect(screen.getByRole('radio', { name: LABEL_ITIN })).toBeInTheDocument()
       expect(screen.getByRole('radio', { name: LABEL_NONE })).toBeInTheDocument()
+    })
+
+    it('resolves cross-namespace labelKey (common:noneOfTheAbove) to the translated text', () => {
+      // Regression guard: the "none" option's label lives in the common namespace,
+      // while the form calls useTranslation('idProofing'). Without the "common:"
+      // prefix, i18next falls back to the raw key ("optionLabelNone" or similar).
+      renderWithProviders(
+        <IdProofingForm
+          idOptions={TEST_ID_OPTIONS}
+          contactLink={TEST_CONTACT_LINK}
+        />
+      )
+
+      const noneRadio = screen.getByRole('radio', { name: 'None of the above' })
+      expect(noneRadio).toBeInTheDocument()
+      // Should not leak the raw i18n key into the UI.
+      expect(screen.queryByText(/^optionLabelNone$/)).not.toBeInTheDocument()
+      expect(screen.queryByText(/^noneOfTheAbove$/)).not.toBeInTheDocument()
+    })
+
+    it('falls back to the raw key when a label key is missing from the active namespace (demonstrates the bug)', () => {
+      // Baseline demonstration: when labelKey is NOT prefixed with common: and
+      // the key does not exist in the idProofing namespace, i18next returns
+      // the key string itself. This is the behaviour that surfaced the
+      // literal "optionLabelNone" label in the UI before the fix.
+      const BROKEN_OPTIONS: IdOption[] = [
+        { value: 'ssn', labelKey: 'optionLabelSsn', inputLabelKey: 'labelSsn' },
+        { value: 'none', labelKey: 'optionLabelNone' }
+      ]
+
+      renderWithProviders(
+        <IdProofingForm
+          idOptions={BROKEN_OPTIONS}
+          contactLink={TEST_CONTACT_LINK}
+        />
+      )
+
+      // With the broken key, the label text is literally the key string.
+      expect(screen.getByRole('radio', { name: 'optionLabelNone' })).toBeInTheDocument()
+      expect(screen.queryByRole('radio', { name: 'None of the above' })).not.toBeInTheDocument()
     })
 
     it('renders Continue button', () => {
@@ -414,12 +484,13 @@ describe('IdProofingForm', () => {
       await user.type(screen.getByRole('textbox', { name: INPUT_LABEL_DAY }), '20')
       await user.type(screen.getByRole('textbox', { name: INPUT_LABEL_YEAR }), '1985')
 
-      // "None of the above" triggers a 'failed' result in the mock
+      // "None of the above" triggers a 'failed' result in the mock,
+      // which also returns offboardingReason so the URL carries a reason param.
       await user.click(screen.getByRole('radio', { name: LABEL_NONE }))
       await user.click(screen.getByRole('button', { name: /continue/i }))
 
       await waitFor(() => {
-        expect(mockPush).toHaveBeenCalledWith('/login/id-proofing/off-boarding')
+        expect(mockPush).toHaveBeenCalledWith('/login/id-proofing/off-boarding?reason=noIdProvided')
       })
     })
 
@@ -448,6 +519,315 @@ describe('IdProofingForm', () => {
       await waitFor(() => {
         expect(mockPush).toHaveBeenCalledWith('/login/id-proofing/off-boarding?canApply=false')
       })
+    })
+
+    it('appends offboardingReason as a URL query param so the off-boarding route can branch copy', async () => {
+      const user = userEvent.setup()
+      renderWithProviders(
+        <IdProofingForm
+          idOptions={TEST_ID_OPTIONS}
+          contactLink={TEST_CONTACT_LINK}
+        />
+      )
+
+      await user.selectOptions(screen.getByRole('combobox', { name: /month/i }), '06')
+      await user.type(screen.getByRole('textbox', { name: INPUT_LABEL_DAY }), '20')
+      await user.type(screen.getByRole('textbox', { name: INPUT_LABEL_YEAR }), '1985')
+      await user.click(screen.getByRole('radio', { name: LABEL_NONE }))
+      await user.click(screen.getByRole('button', { name: /continue/i }))
+
+      await waitFor(() => {
+        expect(mockPush).toHaveBeenCalledWith('/login/id-proofing/off-boarding?reason=noIdProvided')
+      })
+    })
+  })
+
+  describe('Shape validation (DC-296)', () => {
+    it('strips non-digit characters from SSN input as the user types', async () => {
+      const user = userEvent.setup()
+      renderWithProviders(
+        <IdProofingForm
+          idOptions={TEST_ID_OPTIONS}
+          contactLink={TEST_CONTACT_LINK}
+        />
+      )
+
+      await user.click(screen.getByRole('radio', { name: LABEL_SSN }))
+      const ssnInput = await screen.findByRole('textbox', { name: INPUT_LABEL_SSN })
+      await user.type(ssnInput, '555-44-3333')
+
+      // User typed hyphens; state should only hold the 9 digits.
+      expect(ssnInput).toHaveValue('555443333')
+    })
+
+    it('sets inputMode="numeric" and maxLength=9 on the SSN input', async () => {
+      const user = userEvent.setup()
+      renderWithProviders(
+        <IdProofingForm
+          idOptions={TEST_ID_OPTIONS}
+          contactLink={TEST_CONTACT_LINK}
+        />
+      )
+
+      await user.click(screen.getByRole('radio', { name: LABEL_SSN }))
+      const ssnInput = await screen.findByRole('textbox', { name: INPUT_LABEL_SSN })
+      expect(ssnInput).toHaveAttribute('inputMode', 'numeric')
+      expect(ssnInput).toHaveAttribute('maxLength', '9')
+    })
+
+    it('sets inputMode="numeric" and maxLength=9 on the ITIN input', async () => {
+      const user = userEvent.setup()
+      renderWithProviders(
+        <IdProofingForm
+          idOptions={TEST_ID_OPTIONS}
+          contactLink={TEST_CONTACT_LINK}
+        />
+      )
+
+      await user.click(screen.getByRole('radio', { name: LABEL_ITIN }))
+      const itinInput = await screen.findByRole('textbox', { name: INPUT_LABEL_ITIN })
+      expect(itinInput).toHaveAttribute('inputMode', 'numeric')
+      expect(itinInput).toHaveAttribute('maxLength', '9')
+    })
+
+    it('blocks submit and shows a field-level error when SSN is too short', async () => {
+      // With the digit-stripping onChange + maxLength=9, users literally cannot
+      // type a 10-digit value. An 8-digit value is the realistic "wrong shape"
+      // case — verify the form blocks it and does not call the mutation.
+      let submitCalled = false
+      server.use(
+        http.post('/api/id-proofing', () => {
+          submitCalled = true
+          return HttpResponse.json({ result: 'matched' })
+        })
+      )
+
+      const user = userEvent.setup()
+      renderWithProviders(
+        <IdProofingForm
+          idOptions={TEST_ID_OPTIONS}
+          contactLink={TEST_CONTACT_LINK}
+        />
+      )
+
+      await user.selectOptions(screen.getByRole('combobox', { name: /month/i }), '01')
+      await user.type(screen.getByRole('textbox', { name: INPUT_LABEL_DAY }), '15')
+      await user.type(screen.getByRole('textbox', { name: INPUT_LABEL_YEAR }), '1990')
+
+      await user.click(screen.getByRole('radio', { name: LABEL_SSN }))
+      const ssnInput = await screen.findByRole('textbox', { name: INPUT_LABEL_SSN })
+      await user.type(ssnInput, '12345678')
+
+      await user.click(screen.getByRole('button', { name: /continue/i }))
+
+      await waitFor(() => {
+        const errors = screen.getAllByRole('alert')
+        expect(errors.length).toBeGreaterThanOrEqual(1)
+      })
+      expect(submitCalled).toBe(false)
+      expect(mockPush).not.toHaveBeenCalled()
+    })
+
+    it('blocks submit and shows a DOB error when the DOB is in the future', async () => {
+      let submitCalled = false
+      server.use(
+        http.post('/api/id-proofing', () => {
+          submitCalled = true
+          return HttpResponse.json({ result: 'matched' })
+        })
+      )
+
+      const user = userEvent.setup()
+      renderWithProviders(
+        <IdProofingForm
+          idOptions={TEST_ID_OPTIONS}
+          contactLink={TEST_CONTACT_LINK}
+        />
+      )
+
+      const futureYear = String(new Date().getFullYear() + 5)
+      await user.selectOptions(screen.getByRole('combobox', { name: /month/i }), '06')
+      await user.type(screen.getByRole('textbox', { name: INPUT_LABEL_DAY }), '15')
+      await user.type(screen.getByRole('textbox', { name: INPUT_LABEL_YEAR }), futureYear)
+
+      await user.click(screen.getByRole('radio', { name: LABEL_NONE }))
+      await user.click(screen.getByRole('button', { name: /continue/i }))
+
+      await waitFor(() => {
+        const errors = screen.getAllByRole('alert')
+        expect(errors.length).toBeGreaterThanOrEqual(1)
+      })
+      expect(submitCalled).toBe(false)
+      expect(mockPush).not.toHaveBeenCalled()
+    })
+  })
+
+  describe('Per-option digit validation (DC-296)', () => {
+    // medicaidId: 7 or 8 digits accepted (per DC CSV).
+    const LABEL_MEDICAID = 'Medicaid ID'
+    const INPUT_LABEL_MEDICAID = /Enter your Medicaid ID/i
+
+    async function fillDobAndSelect(idLabel: string) {
+      const user = userEvent.setup()
+      renderWithProviders(
+        <IdProofingForm
+          idOptions={TEST_ID_OPTIONS}
+          contactLink={TEST_CONTACT_LINK}
+        />
+      )
+      await user.selectOptions(screen.getByRole('combobox', { name: /month/i }), '01')
+      await user.type(screen.getByRole('textbox', { name: INPUT_LABEL_DAY }), '15')
+      await user.type(screen.getByRole('textbox', { name: INPUT_LABEL_YEAR }), '1990')
+      await user.click(screen.getByRole('radio', { name: idLabel }))
+      return user
+    }
+
+    it('rejects a 6-digit Medicaid ID (below range)', async () => {
+      let submitCalled = false
+      server.use(
+        http.post('/api/id-proofing', () => {
+          submitCalled = true
+          return HttpResponse.json({ result: 'matched' })
+        })
+      )
+
+      const user = await fillDobAndSelect(LABEL_MEDICAID)
+      const input = await screen.findByRole('textbox', { name: INPUT_LABEL_MEDICAID })
+      await user.type(input, '123456')
+      await user.click(screen.getByRole('button', { name: /continue/i }))
+
+      await waitFor(() => {
+        const errors = screen.getAllByRole('alert')
+        expect(errors.length).toBeGreaterThanOrEqual(1)
+      })
+      expect(submitCalled).toBe(false)
+      expect(mockPush).not.toHaveBeenCalled()
+    })
+
+    it('accepts a 7-digit Medicaid ID (lower bound)', async () => {
+      const user = await fillDobAndSelect(LABEL_MEDICAID)
+      const input = await screen.findByRole('textbox', { name: INPUT_LABEL_MEDICAID })
+      await user.type(input, '1234567')
+      await user.click(screen.getByRole('button', { name: /continue/i }))
+
+      await waitFor(() => {
+        expect(mockPush).toHaveBeenCalled()
+      })
+    })
+
+    it('accepts an 8-digit Medicaid ID (upper bound)', async () => {
+      const user = await fillDobAndSelect(LABEL_MEDICAID)
+      const input = await screen.findByRole('textbox', { name: INPUT_LABEL_MEDICAID })
+      await user.type(input, '12345678')
+      await user.click(screen.getByRole('button', { name: /continue/i }))
+
+      await waitFor(() => {
+        expect(mockPush).toHaveBeenCalled()
+      })
+    })
+
+    it('rejects a 9-digit Medicaid ID (no SSN bleed-through)', async () => {
+      // Guard against accidental reuse of the 9-digit SSN/ITIN rule for
+      // medicaidId. With maxLength=8 a user can't even type a 9th digit,
+      // so the realistic boundary check is: when 9 digits are programmatically
+      // pasted, the form either truncates (caps at 8) or rejects on submit.
+      // Either way, submit must not fire with a 9-digit medicaidId.
+      let submitCalled = false
+      server.use(
+        http.post('/api/id-proofing', () => {
+          submitCalled = true
+          return HttpResponse.json({ result: 'matched' })
+        })
+      )
+
+      const user = await fillDobAndSelect(LABEL_MEDICAID)
+      const input = await screen.findByRole('textbox', { name: INPUT_LABEL_MEDICAID })
+      await user.type(input, '123456789')
+      // Expect the 9th digit to be clipped by maxLength=8.
+      expect(input).not.toHaveValue('123456789')
+
+      // Now double-check: if maxLength were raised, the form would still block
+      // submission. We can't easily simulate a paste past maxLength, but the
+      // prior expect already proves 9 chars never land in state via typing.
+      await user.click(screen.getByRole('button', { name: /continue/i }))
+
+      // 8-digit values submit successfully; the purpose of this test is to
+      // show a typed 9-digit entry can't land as-is. If the user actually
+      // ends up with 8 chars after typing 9, that's a valid submission.
+      if ((input as HTMLInputElement).value.length === 8) {
+        await waitFor(() => {
+          expect(mockPush).toHaveBeenCalled()
+        })
+      } else {
+        expect(submitCalled).toBe(false)
+      }
+    })
+
+    it('strips non-digit characters from Medicaid ID input', async () => {
+      const user = await fillDobAndSelect(LABEL_MEDICAID)
+      const input = await screen.findByRole('textbox', { name: INPUT_LABEL_MEDICAID })
+      await user.type(input, '12-34-567')
+      expect(input).toHaveValue('1234567')
+    })
+
+    it('sets inputMode="numeric" and maxLength=8 on the Medicaid ID input', async () => {
+      const user = userEvent.setup()
+      renderWithProviders(
+        <IdProofingForm
+          idOptions={TEST_ID_OPTIONS}
+          contactLink={TEST_CONTACT_LINK}
+        />
+      )
+      await user.click(screen.getByRole('radio', { name: LABEL_MEDICAID }))
+      const input = await screen.findByRole('textbox', { name: INPUT_LABEL_MEDICAID })
+      expect(input).toHaveAttribute('inputMode', 'numeric')
+      expect(input).toHaveAttribute('maxLength', '8')
+    })
+
+    it('rejects a 6-digit SNAP/TANF account ID (shared 7-8 rule, representative case)', async () => {
+      let submitCalled = false
+      server.use(
+        http.post('/api/id-proofing', () => {
+          submitCalled = true
+          return HttpResponse.json({ result: 'matched' })
+        })
+      )
+
+      const user = await fillDobAndSelect('SNAP or TANF account ID')
+      const input = await screen.findByRole('textbox', {
+        name: /Enter your SNAP or TANF account ID/i
+      })
+      await user.type(input, '123456')
+      await user.click(screen.getByRole('button', { name: /continue/i }))
+
+      await waitFor(() => {
+        const errors = screen.getAllByRole('alert')
+        expect(errors.length).toBeGreaterThanOrEqual(1)
+      })
+      expect(submitCalled).toBe(false)
+    })
+
+    it('rejects a 6-digit SNAP/TANF person ID (shared 7-8 rule, representative case)', async () => {
+      let submitCalled = false
+      server.use(
+        http.post('/api/id-proofing', () => {
+          submitCalled = true
+          return HttpResponse.json({ result: 'matched' })
+        })
+      )
+
+      const user = await fillDobAndSelect('SNAP or TANF person ID')
+      const input = await screen.findByRole('textbox', {
+        name: /Enter your SNAP or TANF person ID/i
+      })
+      await user.type(input, '123456')
+      await user.click(screen.getByRole('button', { name: /continue/i }))
+
+      await waitFor(() => {
+        const errors = screen.getAllByRole('alert')
+        expect(errors.length).toBeGreaterThanOrEqual(1)
+      })
+      expect(submitCalled).toBe(false)
     })
   })
 

@@ -13,7 +13,7 @@ import {
   SK_SUB_STATE,
   SubState
 } from '@/features/auth/components/doc-verify/sessionKeys'
-import { useStartChallenge, useVerificationStatus } from '../../api'
+import { useRefreshToken, useStartChallenge, useVerificationStatus } from '../../api'
 import { createDocVAdapter, type DocVAdapter, type DocVAdapterConfig } from './adapters'
 import { DocVerifyCapture } from './DocVerifyCapture'
 import { DocVerifyInterstitial } from './DocVerifyInterstitial'
@@ -49,6 +49,7 @@ export function DocVerifyPage({ contactLink, sdkKey }: DocVerifyPageProps) {
   const searchParams = useSearchParams()
   const { t } = useTranslation('idProofing')
   const startChallenge = useStartChallenge()
+  const refreshToken = useRefreshToken()
 
   const [subState, setSubState] = useState<SubState>('interstitial')
   const [challengeId, setChallengeId] = useState<string | null>(null)
@@ -125,10 +126,8 @@ export function DocVerifyPage({ contactLink, sdkKey }: DocVerifyPageProps) {
           setSubState('pending')
         },
         onError: () => {
-          sessionStorage.setItem('offboarding_reason', 'docVerificationFailed')
-          sessionStorage.setItem('offboarding_canApply', 'false')
           clearChallengeContext()
-          router.push('/login/id-proofing/off-boarding')
+          router.push('/login/id-proofing/off-boarding?reason=docVerificationFailed')
         }
       })
 
@@ -150,12 +149,34 @@ export function DocVerifyPage({ contactLink, sdkKey }: DocVerifyPageProps) {
     router.push('/login/id-proofing')
   }, [router])
 
-  const handleVerified = useCallback(() => {
+  // Pin the latest mutateAsync through a ref so handleVerified's identity is
+  // not affected by the mutation's internal status flips. Without this,
+  // VerificationPending's effect (which depends on onVerified) would re-run
+  // every time the refresh mutation's state changed, calling handleVerified
+  // again and creating an infinite update loop.
+  const refreshTokenAsyncRef = useRef(refreshToken.mutateAsync)
+  useEffect(() => {
+    refreshTokenAsyncRef.current = refreshToken.mutateAsync
+  }, [refreshToken.mutateAsync])
+
+  const handleVerified = useCallback(async () => {
     setPageData('docv_status', 'success')
     trackEvent(AnalyticsEvents.DOCV_RESULT)
     setPageData('idv_final_status', 'success')
     trackEvent(AnalyticsEvents.IDV_FINAL_RESULT)
     clearChallengeContext()
+
+    // DC-296: the webhook just bumped the user to IAL2 server-side. Await a
+    // token refresh so the rotated HttpOnly cookie is in place before we
+    // navigate. Otherwise the dashboard's first fetches race the refresh and
+    // hit the IAL guard with the stale IAL1 JWT. Swallow failures so we never
+    // trap the user on the "verified" screen; the dashboard will recover.
+    try {
+      await refreshTokenAsyncRef.current()
+    } catch {
+      // Intentionally silent. Fresh cookie did not arrive; proceed anyway.
+    }
+
     router.push('/dashboard')
   }, [router, setPageData, trackEvent])
 
@@ -165,10 +186,16 @@ export function DocVerifyPage({ contactLink, sdkKey }: DocVerifyPageProps) {
       trackEvent(AnalyticsEvents.DOCV_RESULT)
       setPageData('idv_final_status', 'fail')
       trackEvent(AnalyticsEvents.IDV_FINAL_RESULT)
-      sessionStorage.setItem('offboarding_reason', offboardingReason ?? '')
-      sessionStorage.setItem('offboarding_canApply', 'false')
       clearChallengeContext()
-      router.push('/login/id-proofing/off-boarding')
+      // Pass the reason via URL so the off-boarding route can render distinct
+      // copy (docVerificationFailed, challengeNotFound, etc). Mirrors the
+      // pattern IdProofingForm uses for noIdProvided.
+      const params = new URLSearchParams()
+      if (offboardingReason) {
+        params.set('reason', offboardingReason)
+      }
+      const query = params.toString()
+      router.push(`/login/id-proofing/off-boarding${query ? `?${query}` : ''}`)
     },
     [router, setPageData, trackEvent]
   )

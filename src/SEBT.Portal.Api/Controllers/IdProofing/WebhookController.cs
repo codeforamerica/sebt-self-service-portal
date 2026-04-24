@@ -47,8 +47,12 @@ public class WebhookController(
         var command = new ProcessWebhookCommand
         {
             EventId = payload.EventId ?? string.Empty,
+            EventType = payload.EventType,
             EvalId = payload.Data?.EvalId,
             ReferenceId = ExtractReferenceId(payload),
+            // Top-level workflow decision is authoritative for routing (DC-296).
+            WorkflowDecision = payload.Data?.Decision,
+            // DocV enrichment decision is kept for diagnostic logging, not routing.
             DocumentDecision = ExtractDocumentDecision(payload),
             WebhookSignature = bearerToken
         };

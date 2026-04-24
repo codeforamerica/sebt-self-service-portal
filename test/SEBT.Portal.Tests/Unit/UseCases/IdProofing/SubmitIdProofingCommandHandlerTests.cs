@@ -400,6 +400,138 @@ public class SubmitIdProofingCommandHandlerTests
                 Arg.Any<CancellationToken>());
     }
 
+    // --- SSN/ITIN must be exactly 9 digits after stripping non-digits (DC-296 Phase 3 backend guard) ---
+    // OpenAPI Individual.national_id permits 4-digit partials; product decision is full 9 only.
+
+    [Fact]
+    public async Task HandleAsync_SsnWithFewerThan9Digits_ReturnsValidationFailedAndDoesNotCallSocure()
+    {
+        var handler = CreateHandler();
+        var command = CreateValidCommand(idType: "ssn", idValue: "12345678");
+
+        userRepository.GetUserByIdAsync(command.UserId, Arg.Any<CancellationToken>())
+            .Returns(new User { Id = command.UserId, Email = "test@example.com" });
+
+        var result = await handler.Handle(command, CancellationToken.None);
+
+        Assert.False(result.IsSuccess);
+        var failed = Assert.IsType<ValidationFailedResult<SubmitIdProofingResponse>>(result);
+        Assert.Contains(
+            failed.Errors,
+            e => e.Key == nameof(SubmitIdProofingCommand.IdValue));
+
+        await socureClient.DidNotReceiveWithAnyArgs()
+            .RunIdProofingAssessmentAsync(
+                default, default!, default!,
+                default, default, default, default,
+                default, default, default, default,
+                default);
+    }
+
+    [Fact]
+    public async Task HandleAsync_SsnWithMoreThan9Digits_ReturnsValidationFailedAndDoesNotCallSocure()
+    {
+        var handler = CreateHandler();
+        var command = CreateValidCommand(idType: "ssn", idValue: "1234567890");
+
+        userRepository.GetUserByIdAsync(command.UserId, Arg.Any<CancellationToken>())
+            .Returns(new User { Id = command.UserId, Email = "test@example.com" });
+
+        var result = await handler.Handle(command, CancellationToken.None);
+
+        Assert.False(result.IsSuccess);
+        var failed = Assert.IsType<ValidationFailedResult<SubmitIdProofingResponse>>(result);
+        Assert.Contains(
+            failed.Errors,
+            e => e.Key == nameof(SubmitIdProofingCommand.IdValue));
+
+        await socureClient.DidNotReceiveWithAnyArgs()
+            .RunIdProofingAssessmentAsync(
+                default, default!, default!,
+                default, default, default, default,
+                default, default, default, default,
+                default);
+    }
+
+    [Fact]
+    public async Task HandleAsync_SsnWithNonDigits_ReturnsValidationFailedAndDoesNotCallSocure()
+    {
+        var handler = CreateHandler();
+        // 6 digits after stripping letters; should fail the 9-digit check
+        var command = CreateValidCommand(idType: "ssn", idValue: "abc123456");
+
+        userRepository.GetUserByIdAsync(command.UserId, Arg.Any<CancellationToken>())
+            .Returns(new User { Id = command.UserId, Email = "test@example.com" });
+
+        var result = await handler.Handle(command, CancellationToken.None);
+
+        Assert.False(result.IsSuccess);
+        var failed = Assert.IsType<ValidationFailedResult<SubmitIdProofingResponse>>(result);
+        Assert.Contains(
+            failed.Errors,
+            e => e.Key == nameof(SubmitIdProofingCommand.IdValue));
+
+        await socureClient.DidNotReceiveWithAnyArgs()
+            .RunIdProofingAssessmentAsync(
+                default, default!, default!,
+                default, default, default, default,
+                default, default, default, default,
+                default);
+    }
+
+    [Fact]
+    public async Task HandleAsync_ItinWithInvalidLength_ReturnsValidationFailedAndDoesNotCallSocure()
+    {
+        var handler = CreateHandler();
+        var command = CreateValidCommand(idType: "itin", idValue: "12345");
+
+        userRepository.GetUserByIdAsync(command.UserId, Arg.Any<CancellationToken>())
+            .Returns(new User { Id = command.UserId, Email = "test@example.com" });
+
+        var result = await handler.Handle(command, CancellationToken.None);
+
+        Assert.False(result.IsSuccess);
+        var failed = Assert.IsType<ValidationFailedResult<SubmitIdProofingResponse>>(result);
+        Assert.Contains(
+            failed.Errors,
+            e => e.Key == nameof(SubmitIdProofingCommand.IdValue));
+
+        await socureClient.DidNotReceiveWithAnyArgs()
+            .RunIdProofingAssessmentAsync(
+                default, default!, default!,
+                default, default, default, default,
+                default, default, default, default,
+                default);
+    }
+
+    [Fact]
+    public async Task HandleAsync_Ssn9DigitsWithHyphens_NormalizesAndProceeds()
+    {
+        var handler = CreateHandler();
+        // Hyphens are optional per OpenAPI; after stripping we have 9 digits and the guard lets us through.
+        var command = CreateValidCommand(idType: "ssn", idValue: "123-45-6789");
+
+        userRepository.GetUserByIdAsync(command.UserId, Arg.Any<CancellationToken>())
+            .Returns(new User { Id = command.UserId, Email = "test@example.com" });
+        challengeRepository.GetActiveByUserIdAsync(command.UserId, Arg.Any<CancellationToken>())
+            .Returns((DocVerificationChallenge?)null);
+        socureClient.RunIdProofingAssessmentAsync(
+                command.UserId, "test@example.com", command.DateOfBirth,
+                command.IdType, command.IdValue, Arg.Any<string?>(), Arg.Any<string?>(),
+                Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<Address?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
+            .Returns(Result<IdProofingAssessmentResult>.Success(
+                new IdProofingAssessmentResult(IdProofingOutcome.Matched, AllowIdRetry: false)));
+
+        var result = await handler.Handle(command, CancellationToken.None);
+
+        Assert.True(result.IsSuccess);
+        await socureClient.Received(1)
+            .RunIdProofingAssessmentAsync(
+                command.UserId, "test@example.com", command.DateOfBirth,
+                command.IdType, command.IdValue, Arg.Any<string?>(), Arg.Any<string?>(),
+                Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<Address?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>());
+    }
+
     [Fact]
     public async Task Handle_ShouldCallSocure_WhenNotCoLoadedAndSnapIdWithValue()
     {
