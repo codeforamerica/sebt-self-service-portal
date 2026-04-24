@@ -1,5 +1,6 @@
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using SEBT.Portal.Core.AppSettings;
 using SEBT.Portal.Core.Repositories;
 using SEBT.Portal.Infrastructure;
 

@@ -14,7 +14,7 @@ namespace SEBT.Portal.Infrastructure.Services;
 public class StubSocureClient(ILogger<StubSocureClient> logger) : ISocureClient
 {
     public Task<Result<IdProofingAssessmentResult>> RunIdProofingAssessmentAsync(
-        int userId,
+        Guid userId,
         string email,
         string dateOfBirth,
         string? idType,
@@ -47,7 +47,7 @@ public class StubSocureClient(ILogger<StubSocureClient> logger) : ISocureClient
     }
 
     public Task<Result<SocureDocvSession>> StartDocvSessionAsync(
-        int userId,
+        Guid userId,
         string email,
         CancellationToken cancellationToken = default)
     {

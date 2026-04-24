@@ -3,7 +3,7 @@
 import Link from 'next/link'
 import { useTranslation } from 'react-i18next'
 
-import { getState } from '@sebt/design-system'
+import { useFeatureFlag } from '@/features/feature-flags'
 
 import type { Address, HouseholdData } from '../../api'
 import { formatUsPhone, useRequiredHouseholdData } from '../../api'
@@ -96,9 +96,8 @@ export function HouseholdSummary() {
   const { t } = useTranslation('dashboard')
   const data = useRequiredHouseholdData()
   const { primary, secondary } = getOverallStatus(data)
-  // `/profile/address/how-determined` redirects non-DC users away, so only
-  // surface its link when we're actually running as DC.
-  const isDC = getState() === 'dc'
+  const canUpdateAddress = data.allowedActions?.canUpdateAddress ?? true
+  const showContactPreferences = useFeatureFlag('show_contact_preferences')
 
   return (
     <div className="usa-card__container margin-bottom-4">
@@ -126,41 +125,34 @@ export function HouseholdSummary() {
           </dd>
 
           {/* Your mailing address */}
-          {data.addressOnFile && (
-            <>
-              <dt className="text-bold">{t('profileTableHeadingAddress')}</dt>
-              <dd className="margin-left-0 margin-bottom-2">
-                <span style={{ whiteSpace: 'pre-line' }}>{formatAddress(data.addressOnFile)}</span>
-                {data.summerEbtCases.length > 0 && (
-                  <>
-                    <br />
-                    {data.summerEbtCases.some((c) => c.allowAddressChange) ? (
-                      <Link
-                        href="/profile/address"
-                        data-analytics-cta="update_address_cta"
-                        className="usa-link text-bold"
-                      >
-                        {t('profileTableActionChangeAddress')}
-                      </Link>
-                    ) : (
-                      isDC && (
-                        <Link
-                          href="/profile/address/how-determined"
-                          data-analytics-cta="how_address_determined_cta"
-                          className="usa-link text-bold"
-                        >
-                          {t('profileTableCo-loadedAddress')}
-                        </Link>
-                      )
-                    )}
-                  </>
-                )}
-              </dd>
-            </>
-          )}
+          <dt className="text-bold">{t('profileTableHeadingAddress')}</dt>
+          <dd className="margin-left-0 margin-bottom-2">
+            <span style={{ whiteSpace: 'pre-line' }}>
+              {data.addressOnFile ? formatAddress(data.addressOnFile) : '—'}
+            </span>
+            <br />
+            {canUpdateAddress ? (
+              <Link
+                href="/profile/address"
+                data-analytics-cta="update_address_cta"
+                className="usa-link"
+              >
+                {t('profileTableActionChangeAddress')}
+              </Link>
+            ) : (
+              <Link
+                href="/profile/address/info"
+                data-analytics-cta="update_address_info_cta"
+                className="usa-link"
+              >
+                {/* TODO: Remove fallback once profileTableActionHowToChangeAddress is added to CSV */}
+                {t('profileTableActionHowToChangeAddress', 'How to change your mailing address')}
+              </Link>
+            )}
+          </dd>
 
           {/* Your preferred contact */}
-          {(data.email || data.phone) && (
+          {showContactPreferences && (data.email || data.phone) && (
             <>
               <dt className="text-bold">{t('profileTableHeadingContact')}</dt>
               <dd className="margin-left-0 margin-bottom-2">
@@ -175,7 +167,7 @@ export function HouseholdSummary() {
                 <Link
                   href="/contact"
                   data-analytics-cta="update_contact_cta"
-                  className="usa-link text-bold"
+                  className="usa-link"
                 >
                   {t('profileTableActionChangeContact')}
                 </Link>

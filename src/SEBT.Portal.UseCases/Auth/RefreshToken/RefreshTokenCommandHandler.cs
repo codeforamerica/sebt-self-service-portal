@@ -22,7 +22,7 @@ namespace SEBT.Portal.UseCases.Auth;
 /// <param name="logger">Logger for tracking token refresh attempts and results.</param>
 public class RefreshTokenCommandHandler(
     IUserRepository userRepository,
-    IJwtTokenService jwtTokenService,
+    ISessionRefreshTokenService jwtTokenService,
     IValidator<RefreshTokenCommand> validator,
     ILogger<RefreshTokenCommandHandler> logger)
     : ICommandHandler<RefreshTokenCommand, string>
@@ -61,12 +61,9 @@ public class RefreshTokenCommandHandler(
             }
 
             // Pass all existing JWT claims through — for OIDC users, this preserves
-            // IAL and other IdP-derived claims. For OTP users, GenerateToken will
+            // IAL and other IdP-derived claims. For OTP users, GenerateForSessionRefresh will
             // prefer user object values (from DB) over these claims.
-            var additionalClaims = command.CurrentPrincipal.Claims
-                .DistinctBy(c => c.Type)
-                .ToDictionary(c => c.Type, c => c.Value);
-            var token = jwtTokenService.GenerateToken(user, additionalClaims);
+            var token = jwtTokenService.GenerateForSessionRefresh(user, command.CurrentPrincipal);
 
             var maskedPhone = PiiMasker.MaskPhone(
                 command.CurrentPrincipal.FindFirst("phone")?.Value

@@ -44,19 +44,28 @@ export function proxy(request: NextRequest) {
   // Only add upgrade-insecure-requests when actually served over HTTPS.
   const upgradeInsecure = !isDev && isHttps ? 'upgrade-insecure-requests;' : ''
 
-  // Build CSP header with nonce for script and style sources
-  // Development: Allow unsafe-eval for Next.js hot reload, unsafe-inline for styles (no nonce for styles)
-  // Production: Strict nonce-based policy with strict-dynamic for script loading
+  // Build CSP header with nonce for scripts; 'unsafe-inline' for styles.
+  // Development: Allow unsafe-eval for Next.js hot reload.
+  // Production: Strict nonce-based policy with strict-dynamic for script loading.
   //
-  // Note: When nonce is present, 'unsafe-inline' is ignored by browsers.
-  // In dev, we skip style nonce to allow HMR style injection.
+  // Script policy is strict (nonce + strict-dynamic). We intentionally use
+  // 'unsafe-inline' for style-src because Socure's Doc Verify Web SDK relies
+  // on styled-components, which injects <style> tags at runtime that can't
+  // carry our per-request nonce. A nonce-based style policy silently ignores
+  // 'unsafe-inline', so there is no way to keep both working together. Styles
+  // are a meaningfully lower-value injection target than scripts, and our
+  // other defenses (frame-ancestors 'none', no dangerouslySetInnerHTML,
+  // React's default escaping) remain in place.
+  //
+  // 'https://browser-intake-datadoghq.com' in connect-src is Socure's embedded
+  // Datadog RUM telemetry endpoint — required by the Doc Verify SDK.
   const cspHeader = `
     default-src 'self';
     script-src 'self' 'nonce-${nonce}' 'strict-dynamic' https://www.googletagmanager.com https://sdk.dv.socure.io ${isDev ? "'unsafe-eval'" : ''};
-    style-src 'self' ${isDev ? "'unsafe-inline'" : `'nonce-${nonce}'`} https://fonts.googleapis.com https://verify-v2.socure.com;
+    style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://verify-v2.socure.com;
     font-src 'self' https://fonts.gstatic.com https://verify-v2.socure.com;
     img-src 'self' data: https: https://www.google-analytics.com;
-    connect-src 'self' https://www.google-analytics.com https://*.google-analytics.com https://www.googletagmanager.com https://auth.pingone.com https://*.socure.com https://*.socure.io ${isDev ? 'ws://localhost:* http://localhost:*' : ''};
+    connect-src 'self' https://www.google-analytics.com https://*.google-analytics.com https://www.googletagmanager.com https://auth.pingone.com https://*.socure.com https://*.socure.io https://browser-intake-datadoghq.com ${isDev ? 'ws://localhost:* http://localhost:*' : ''};
     frame-src https://verify-v2.socure.com;
     child-src https://verify-v2.socure.com;
     worker-src 'self';

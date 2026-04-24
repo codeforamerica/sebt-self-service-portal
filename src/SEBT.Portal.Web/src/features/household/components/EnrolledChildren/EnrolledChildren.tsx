@@ -37,6 +37,7 @@ export function EnrolledChildren() {
             key={`${c.childFirstName}-${c.childLastName}-${c.childDateOfBirth}-${c.summerEBTCaseID}`}
             summerEbtCase={c}
             defaultExpanded={index === 0}
+            canRequestReplacementCard={data.allowedActions?.canRequestReplacementCard}
           />
         ))}
       </div>

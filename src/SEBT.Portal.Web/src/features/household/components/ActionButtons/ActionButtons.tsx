@@ -5,19 +5,19 @@ import { useTranslation } from 'react-i18next'
 
 import { getState, getStateConfig } from '@sebt/design-system'
 
-import type { SummerEbtCase } from '../../api'
+import type { AllowedActions } from '../../api'
 
 interface ActionButton {
   labelKey: string
   href: string
   ctaId: string
-  /** When true, this CTA is hidden when no case has a dedicated Summer EBT card. */
-  selfServiceOnly?: boolean
+  /** Which allowedActions field gates this CTA. When set, the CTA is hidden if the field is false. */
+  gatedBy?: keyof Pick<AllowedActions, 'canUpdateAddress' | 'canRequestReplacementCard'>
 }
 
 interface ActionButtonsProps {
-  /** Enrolled cases — used to determine which self-service actions are available. */
-  cases: SummerEbtCase[]
+  /** Server-computed action permissions from the household data response. */
+  allowedActions?: AllowedActions | null | undefined
 }
 
 // Keys map to CSV: "S2 - Portal Dashboard - Action Navigation - {Key}"
@@ -26,13 +26,13 @@ const ACTIONS: ActionButton[] = [
     labelKey: 'actionNavigationChangeMyMailingAddress',
     href: '/profile/address',
     ctaId: 'update_address_cta',
-    selfServiceOnly: true
+    gatedBy: 'canUpdateAddress'
   },
   {
     labelKey: 'actionNavigationOrderReplacementCards',
     href: '/cards/request',
     ctaId: 'replacement_card_cta',
-    selfServiceOnly: true
+    gatedBy: 'canRequestReplacementCard'
   },
   {
     labelKey: 'actionNavigationCheckExistingCards',
@@ -46,24 +46,21 @@ const ACTIONS: ActionButton[] = [
   }
 ]
 
-/**
- * SNAP and TANF benefit holders cannot use portal self-service features
- * (address update, replacement card) — those actions must go through
- * their case worker.
- */
-function isSelfServiceAvailable(cases: SummerEbtCase[]): boolean {
-  if (cases.length === 0) return true
-  return cases.some(
-    (c) => !c.issuanceType || c.issuanceType === 'Unknown' || c.issuanceType === 'SummerEbt'
-  )
-}
-
-export function ActionButtons({ cases }: ActionButtonsProps) {
+export function ActionButtons({ allowedActions }: ActionButtonsProps) {
   const { t } = useTranslation('dashboard')
   const { actionButtonBg, actionButtonText } = getStateConfig(getState())
-  const selfServiceEnabled = isSelfServiceAvailable(cases)
 
-  const visibleActions = ACTIONS.filter((action) => !action.selfServiceOnly || selfServiceEnabled)
+  const hasDeniedAction =
+    allowedActions !== null &&
+    allowedActions !== undefined &&
+    (!allowedActions.canUpdateAddress || !allowedActions.canRequestReplacementCard)
+
+  const visibleActions = ACTIONS.filter((action) => {
+    if (!action.gatedBy) return true
+    // When allowedActions is not provided, default to showing the CTA (backward-compatible).
+    if (!allowedActions) return true
+    return allowedActions[action.gatedBy]
+  })
 
   return (
     <nav
@@ -72,7 +69,7 @@ export function ActionButtons({ cases }: ActionButtonsProps) {
     >
       <p className="margin-top-0 margin-bottom-2 text-base-dark">{t('actionNavigationLead')}</p>
 
-      {!selfServiceEnabled && (
+      {hasDeniedAction && (
         <div
           className="usa-alert usa-alert--info usa-alert--slim margin-bottom-2"
           role="status"

@@ -52,11 +52,12 @@ public class ResolveUserFilterTests
     public async Task OnActionExecutionAsync_ShouldSetUserId_WhenSubClaimResolvesToUser()
     {
         var filter = CreateFilter();
-        var user = new User { Id = 123, Email = "test@example.com" };
-        userRepository.GetUserByIdAsync(123, Arg.Any<CancellationToken>())
+        var userId = Guid.NewGuid();
+        var user = new User { Id = userId, Email = "test@example.com" };
+        userRepository.GetUserByIdAsync(userId, Arg.Any<CancellationToken>())
             .Returns(user);
 
-        var context = CreateContext(CreateAuthenticatedUserWithSub("123"));
+        var context = CreateContext(CreateAuthenticatedUserWithSub(userId.ToString()));
         var nextCalled = false;
 
         await filter.OnActionExecutionAsync(context, () =>
@@ -67,7 +68,7 @@ public class ResolveUserFilterTests
         });
 
         Assert.True(nextCalled);
-        Assert.Equal(123, context.HttpContext.Items[ResolveUserFilter.UserIdKey]);
+        Assert.Equal(userId, context.HttpContext.Items[ResolveUserFilter.UserIdKey]);
     }
 
     [Fact]
@@ -84,10 +85,10 @@ public class ResolveUserFilterTests
     }
 
     [Fact]
-    public async Task OnActionExecutionAsync_ShouldReturn401_WhenSubClaimIsNotAnInteger()
+    public async Task OnActionExecutionAsync_ShouldReturn401_WhenSubClaimIsNotAGuid()
     {
         var filter = CreateFilter();
-        var context = CreateContext(CreateAuthenticatedUserWithSub("notanumber"));
+        var context = CreateContext(CreateAuthenticatedUserWithSub("notaguid"));
 
         await filter.OnActionExecutionAsync(context, () =>
             throw new InvalidOperationException("Next should not be called"));
@@ -100,10 +101,11 @@ public class ResolveUserFilterTests
     public async Task OnActionExecutionAsync_ShouldReturn401_WhenUserNotFoundInDatabase()
     {
         var filter = CreateFilter();
-        userRepository.GetUserByIdAsync(999, Arg.Any<CancellationToken>())
+        var missingUserId = Guid.NewGuid();
+        userRepository.GetUserByIdAsync(missingUserId, Arg.Any<CancellationToken>())
             .Returns((User?)null);
 
-        var context = CreateContext(CreateAuthenticatedUserWithSub("999"));
+        var context = CreateContext(CreateAuthenticatedUserWithSub(missingUserId.ToString()));
 
         await filter.OnActionExecutionAsync(context, () =>
             throw new InvalidOperationException("Next should not be called"));

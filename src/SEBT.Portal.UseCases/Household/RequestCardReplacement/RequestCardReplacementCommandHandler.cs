@@ -10,14 +10,16 @@ namespace SEBT.Portal.UseCases.Household;
 
 /// <summary>
 /// Handles card replacement requests for an authenticated user's household.
-/// Validates input, resolves household identity, enforces 2-week cooldown, and returns success.
+/// Validates input, resolves household identity, enforces minimum IAL,
+/// enforces self-service rules, enforces 2-week cooldown, and returns success.
 /// State connector call is stubbed — actual card replacement is a future integration.
 /// </summary>
 public class RequestCardReplacementCommandHandler(
     IValidator<RequestCardReplacementCommand> validator,
     IHouseholdIdentifierResolver resolver,
     IHouseholdRepository repository,
-    IMinimumIalService minimumIalService,
+    IIdProofingService idProofingService,
+    ISelfServiceEvaluator selfServiceEvaluator,
     TimeProvider timeProvider,
     ILogger<RequestCardReplacementCommandHandler> logger)
     : ICommandHandler<RequestCardReplacementCommand>
@@ -57,22 +59,25 @@ public class RequestCardReplacementCommandHandler(
             return Result.PreconditionFailed(PreconditionFailedReason.NotFound, "Household data not found.");
         }
 
-        // SECURITY: Block write operations when the user has not met the minimum IAL
-        // required by their cases. See docs/tdd/minimum-ial-determination.md.
-        var minimumIal = minimumIalService.GetMinimumIal(household.SummerEbtCases);
-        if (userIalLevel < minimumIal)
+        // SECURITY: Block write operations when the user has not met the IAL
+        // required by their cases. See docs/config/ial/README.md.
+        var decision = idProofingService.Evaluate(
+            ProtectedResource.Card, ProtectedAction.Write,
+            userIalLevel, household.SummerEbtCases);
+        if (!decision.IsAllowed)
         {
             logger.LogInformation(
-                "Card replacement denied: user IAL {UserIal} is below minimum {MinimumIal}",
+                "Card replacement denied: user IAL {UserIal} is below required {RequiredIal}",
                 userIalLevel,
-                minimumIal);
+                decision.RequiredLevel);
             return Result.Forbidden(
-                $"This household requires {minimumIal}. Complete identity verification to request card replacements.");
+                $"This household requires {decision.RequiredLevel}. Complete identity verification to request card replacements.");
         }
 
         // Co-loaded cases are managed by caseworkers, not the portal.
         var requestedCases = household.SummerEbtCases
-            .Where(c => c.SummerEBTCaseID != null && command.CaseIds.Contains(c.SummerEBTCaseID));
+            .Where(c => c.SummerEBTCaseID != null && command.CaseIds.Contains(c.SummerEBTCaseID))
+            .ToList();
         if (requestedCases.Any(c => c.IsCoLoaded))
         {
             logger.LogWarning(
@@ -80,6 +85,21 @@ public class RequestCardReplacementCommandHandler(
             return Result.PreconditionFailed(
                 PreconditionFailedReason.Conflict,
                 "Card replacements are not available for co-loaded benefits. Please contact your case worker.");
+        }
+
+        // Per-case self-service rules enforcement: each case's own issuance type
+        // and card status determine eligibility (per James's 4.3.26 guidance that
+        // self-service actions are case-scoped, not household-scoped).
+        foreach (var summerEbtCase in requestedCases)
+        {
+            var allowedActions = selfServiceEvaluator.Evaluate(summerEbtCase);
+            if (!allowedActions.CanRequestReplacementCard)
+            {
+                logger.LogInformation("Card replacement denied by self-service rules for case");
+                return Result.PreconditionFailed(
+                    PreconditionFailedReason.NotAllowed,
+                    allowedActions.CardReplacementDeniedMessageKey ?? "Card replacement is not available for this account.");
+            }
         }
 
         var cooldownErrors = CheckCooldown(command.CaseIds, household, timeProvider);
