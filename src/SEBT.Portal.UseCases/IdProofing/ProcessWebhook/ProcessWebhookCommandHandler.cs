@@ -80,21 +80,27 @@ public class ProcessWebhookCommandHandler(
             return Result.Success();
         }
 
-        // Determine the new status from the document decision
-        if (IsIntermediateDecision(command.DocumentDecision))
+        // Paused events are intermediate. No terminal decision yet, challenge stays Pending.
+        if (string.Equals(command.EventType, "evaluation_paused", StringComparison.OrdinalIgnoreCase))
         {
             logger.LogInformation(
-                "Webhook event {EventId}: intermediate decision {Decision}, challenge {ChallengeId} stays Pending",
-                SanitizeForLogging(command.EventId), SanitizeForLogging(command.DocumentDecision), challenge.PublicId);
+                "Webhook event {EventId}: evaluation_paused, challenge {ChallengeId} stays Pending",
+                SanitizeForLogging(command.EventId), challenge.PublicId);
             return Result.Success();
         }
 
-        var newStatus = MapDecisionToStatus(command.DocumentDecision);
+        // Route on the top-level workflow decision (DC-296). The DocV enrichment decision is
+        // diagnostic only: it reflects document quality alone and can disagree with the
+        // workflow outcome when Digital Intelligence signals drive a reject.
+        var newStatus = MapWorkflowDecisionToStatus(command.WorkflowDecision);
         if (newStatus == null)
         {
             logger.LogWarning(
-                "Webhook event {EventId} has unrecognized document decision: {Decision}",
-                SanitizeForLogging(command.EventId), SanitizeForLogging(command.DocumentDecision));
+                "Webhook event {EventId} has unrecognized workflow decision: {WorkflowDecision} " +
+                "(DocV enrichment decision was {DocumentDecision})",
+                SanitizeForLogging(command.EventId),
+                SanitizeForLogging(command.WorkflowDecision),
+                SanitizeForLogging(command.DocumentDecision));
             return Result.Success();
         }
 
@@ -189,21 +195,23 @@ public class ProcessWebhookCommandHandler(
     }
 
     /// <summary>
-    /// Returns true for Socure decisions that mean "not done yet" — the challenge stays Pending.
-    /// review: escalated to manual human review, follow-up webhook will arrive.
-    /// resubmit: document quality insufficient, user can retry within the existing session.
+    /// Maps the top-level Socure workflow decision to our DocV challenge status (DC-296).
+    /// ACCEPT -> Verified.
+    /// REJECT -> Rejected.
+    /// RESUBMIT -> Rejected. The workflow terminated (e.g. user declined on the Capture App
+    /// before uploading). Treated as terminal rejection here; DC-138 resubmit scaffold will
+    /// refine this once in-session retries are supported.
+    /// REVIEW -> Rejected. DC does not use human review queues, so we treat review as a safe
+    /// default reject.
     /// </summary>
-    private static bool IsIntermediateDecision(string? decision)
+    private static DocVerificationStatus? MapWorkflowDecisionToStatus(string? decision)
     {
-        return decision?.ToLowerInvariant() is "review" or "resubmit";
-    }
-
-    private static DocVerificationStatus? MapDecisionToStatus(string? decision)
-    {
-        return decision?.ToLowerInvariant() switch
+        return decision?.ToUpperInvariant() switch
         {
-            "accept" => DocVerificationStatus.Verified,
-            "reject" => DocVerificationStatus.Rejected,
+            "ACCEPT" => DocVerificationStatus.Verified,
+            "REJECT" => DocVerificationStatus.Rejected,
+            "RESUBMIT" => DocVerificationStatus.Rejected,
+            "REVIEW" => DocVerificationStatus.Rejected,
             _ => null
         };
     }

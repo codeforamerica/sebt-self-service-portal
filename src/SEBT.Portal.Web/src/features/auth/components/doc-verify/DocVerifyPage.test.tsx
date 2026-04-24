@@ -13,15 +13,14 @@ import { DocVerifyPage } from './DocVerifyPage'
 const TEST_CONTACT_LINK = 'https://example.com/contact'
 const TEST_SDK_KEY = 'test-sdk-key'
 
-// Mock next/navigation
+// Mock next/navigation. The router object is memoized so useCallback deps that
+// include `router` stay stable across renders, matching the real Next.js hook.
 const mockPush = vi.fn()
 const mockReplace = vi.fn()
+const mockRouter = { push: mockPush, replace: mockReplace }
 let mockSearchParams = new URLSearchParams()
 vi.mock('next/navigation', () => ({
-  useRouter: () => ({
-    push: mockPush,
-    replace: mockReplace
-  }),
+  useRouter: () => mockRouter,
   useSearchParams: () => mockSearchParams
 }))
 
@@ -327,12 +326,12 @@ describe('DocVerifyPage', () => {
 
       await waitFor(
         () => {
-          expect(mockPush).toHaveBeenCalledWith('/login/id-proofing/off-boarding')
+          expect(mockPush).toHaveBeenCalledWith(
+            '/login/id-proofing/off-boarding?reason=docVerificationFailed'
+          )
         },
         { timeout: 1000 }
       )
-
-      expect(sessionStorage.getItem('offboarding_reason')).toBe('docVerificationFailed')
     })
   })
 
@@ -432,6 +431,85 @@ describe('DocVerifyPage', () => {
       expect(sessionStorage.getItem('docVerify_challengeId')).toBeNull()
     })
 
+    it('refreshes the JWT before navigating to dashboard on verified', async () => {
+      setChallengeContext('challenge-abc', 'pending')
+
+      // Record the order in which the refresh endpoint resolves and the
+      // router navigates. The dashboard carries stale IAL claims if we
+      // navigate before the fresh Set-Cookie arrives (DC-296 race).
+      const callOrder: string[] = []
+
+      server.use(
+        http.get('/api/id-proofing/status', () => {
+          return HttpResponse.json({ status: 'verified' })
+        }),
+        http.post('/api/auth/refresh', async () => {
+          // Simulate network latency so navigation cannot race ahead.
+          await new Promise((resolve) => setTimeout(resolve, 50))
+          callOrder.push('refresh')
+          return new HttpResponse(null, { status: 204 })
+        })
+      )
+
+      mockPush.mockImplementation((path: string) => {
+        if (path === '/dashboard') {
+          callOrder.push('navigate')
+        }
+      })
+
+      renderWithProviders(
+        <DocVerifyPage
+          contactLink={TEST_CONTACT_LINK}
+          sdkKey={TEST_SDK_KEY}
+        />
+      )
+
+      await waitFor(() => {
+        expect(mockPush).toHaveBeenCalledWith('/dashboard')
+      })
+
+      // Refresh must be awaited before navigation so the dashboard's first
+      // fetches carry the rotated JWT with IAL2.
+      expect(callOrder).toEqual(['refresh', 'navigate'])
+    })
+
+    it('still navigates to dashboard when refresh fails', async () => {
+      setChallengeContext('challenge-abc', 'pending')
+
+      let refreshCalled = false
+
+      server.use(
+        http.get('/api/id-proofing/status', () => {
+          return HttpResponse.json({ status: 'verified' })
+        }),
+        http.post('/api/auth/refresh', () => {
+          refreshCalled = true
+          return HttpResponse.json({ error: 'Server error' }, { status: 500 })
+        })
+      )
+
+      renderWithProviders(
+        <DocVerifyPage
+          contactLink={TEST_CONTACT_LINK}
+          sdkKey={TEST_SDK_KEY}
+        />
+      )
+
+      // A failed refresh must not trap the user on the "verified" screen.
+      // Allow extra time because the refresh mutation may retry on 5xx per
+      // useRefreshToken's retry policy before the catch fires.
+      await waitFor(
+        () => {
+          expect(mockPush).toHaveBeenCalledWith('/dashboard')
+        },
+        { timeout: 5000 }
+      )
+
+      // And refresh must have been attempted. Otherwise we would have shipped
+      // the original bug (navigating with stale JWT) alongside the fallback.
+      expect(refreshCalled).toBe(true)
+    })
+
     it('navigates to off-boarding when status endpoint returns 404', async () => {
       setChallengeContext('challenge-abc', 'pending')
 
@@ -449,10 +527,10 @@ describe('DocVerifyPage', () => {
       )
 
       await waitFor(() => {
-        expect(mockPush).toHaveBeenCalledWith('/login/id-proofing/off-boarding')
+        expect(mockPush).toHaveBeenCalledWith(
+          '/login/id-proofing/off-boarding?reason=challengeNotFound'
+        )
       })
-
-      expect(sessionStorage.getItem('offboarding_reason')).toBe('challengeNotFound')
     })
 
     it('navigates to off-boarding when verification is rejected', async () => {
@@ -475,10 +553,10 @@ describe('DocVerifyPage', () => {
       )
 
       await waitFor(() => {
-        expect(mockPush).toHaveBeenCalledWith('/login/id-proofing/off-boarding')
+        expect(mockPush).toHaveBeenCalledWith(
+          '/login/id-proofing/off-boarding?reason=docVerificationFailed'
+        )
       })
-
-      expect(sessionStorage.getItem('offboarding_reason')).toBe('docVerificationFailed')
     })
   })
 

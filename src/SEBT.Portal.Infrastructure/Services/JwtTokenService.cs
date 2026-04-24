@@ -205,26 +205,74 @@ public class JwtTokenService : ILocalLoginTokenService, IOidcTokenService, ISess
             .Where(c => !string.IsNullOrEmpty(c.Value))
             .ToDictionary(c => c.Type, c => c.Value, StringComparer.OrdinalIgnoreCase);
 
-        // Resolve IAL: prefer existing JWT claim, fall back to user entity
-        if (!existingClaims.ContainsKey(JwtClaimTypes.Ial))
-        {
-            existingClaims[JwtClaimTypes.Ial] = user.IalLevel switch
-            {
-                UserIalLevel.IAL1plus => "1plus",
-                UserIalLevel.IAL2 => "2",
-                _ => "1"
-            };
-        }
+        // Resolve IAL: use whichever is higher between the existing session claim
+        // and the DB value. This lets the post-DocV elevation (DB=IAL2, claim=IAL1)
+        // take effect on refresh, without ever allowing a stale or admin-edited DB
+        // downgrade to supersede a current claim (defense-in-depth).
+        var existingIalClaim = existingClaims.GetValueOrDefault(JwtClaimTypes.Ial);
+        var dbIalClaim = FormatIal(user.IalLevel);
+        existingClaims[JwtClaimTypes.Ial] = RankIal(dbIalClaim) > RankIal(existingIalClaim)
+            ? dbIalClaim
+            : existingIalClaim ?? dbIalClaim;
 
-        if (!existingClaims.ContainsKey(JwtClaimTypes.IdProofingStatus))
+        // Resolve IdProofingStatus: elevate to Completed when the DB reflects a
+        // successful DocV webhook. Any other DB state defers to the existing claim
+        // to avoid unintended downgrades (e.g., transient InProgress overwriting
+        // a still-valid Completed session).
+        var existingStatusClaim = existingClaims.GetValueOrDefault(JwtClaimTypes.IdProofingStatus);
+        if (user.IdProofingStatus == IdProofingStatus.Completed)
         {
-            existingClaims[JwtClaimTypes.IdProofingStatus] = ((int)user.IdProofingStatus).ToString();
+            existingClaims[JwtClaimTypes.IdProofingStatus] =
+                ((int)IdProofingStatus.Completed).ToString();
+
+            // Completed status must carry a completion timestamp. The BuildAndSignToken
+            // invariant enforces this; repopulate from the DB so elevation is consistent.
+            if (user.IdProofingCompletedAt.HasValue)
+            {
+                var completedAtOffset = new DateTimeOffset(
+                    user.IdProofingCompletedAt.Value, TimeSpan.Zero);
+                existingClaims[JwtClaimTypes.IdProofingCompletedAt] =
+                    completedAtOffset.ToUnixTimeSeconds().ToString();
+
+                var expiresAt = user.IdProofingCompletedAt.Value
+                    .AddDays(_validitySettings.ValidityDays);
+                existingClaims[JwtClaimTypes.IdProofingExpiresAt] =
+                    new DateTimeOffset(expiresAt, TimeSpan.Zero).ToUnixTimeSeconds().ToString();
+            }
+        }
+        else if (existingStatusClaim == null)
+        {
+            existingClaims[JwtClaimTypes.IdProofingStatus] =
+                ((int)user.IdProofingStatus).ToString();
         }
 
         var email = existingClaims.GetValueOrDefault(JwtRegisteredClaimNames.Email) ?? "";
 
         return BuildAndSignToken(user.Id, email, existingClaims);
     }
+
+    /// <summary>
+    /// Comparable rank for an IAL claim string. Higher rank = stronger assurance.
+    /// Used by <see cref="GenerateForSessionRefresh"/> to pick the elevated value.
+    /// </summary>
+    private static int RankIal(string? ial) => ial switch
+    {
+        "2" => 3,
+        "1plus" => 2,
+        "1" => 1,
+        _ => 0
+    };
+
+    /// <summary>
+    /// Formats a <see cref="UserIalLevel"/> as the JWT claim string.
+    /// </summary>
+    private static string FormatIal(UserIalLevel level) => level switch
+    {
+        UserIalLevel.IAL2 => "2",
+        UserIalLevel.IAL1plus => "1plus",
+        UserIalLevel.IAL1 => "1",
+        _ => "1"
+    };
 
     // ──────────────────────────────────────────────
     //  Shared JWT construction
