@@ -1,5 +1,6 @@
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
+using Medallion.Threading;
 using Microsoft.Extensions.Logging.Abstractions;
 using NSubstitute;
 using SEBT.Portal.Core.Models;
@@ -32,6 +33,8 @@ public class RequestCardReplacementCommandHandlerTests
         Substitute.For<ICardReplacementRequestRepository>();
     private readonly IIdentifierHasher _identifierHasher =
         Substitute.For<IIdentifierHasher>();
+    private readonly IDistributedLockProvider _distributedLockProvider =
+        Substitute.For<IDistributedLockProvider>();
     private readonly NullLogger<RequestCardReplacementCommandHandler> _logger =
         NullLogger<RequestCardReplacementCommandHandler>.Instance;
 
@@ -55,11 +58,17 @@ public class RequestCardReplacementCommandHandlerTests
         _cardReplacementRepo.HasRecentRequestAsync(
             Arg.Any<string>(), Arg.Any<string>(), Arg.Any<TimeSpan>(), Arg.Any<CancellationToken>())
             .Returns(false);
+
+        // Default: distributed lock provider returns a no-op lock
+        var mockLock = Substitute.For<IDistributedLock>();
+        mockLock.AcquireAsync(Arg.Any<TimeSpan?>(), Arg.Any<CancellationToken>())
+            .Returns(Substitute.For<IDistributedSynchronizationHandle>());
+        _distributedLockProvider.CreateLock(Arg.Any<string>()).Returns(mockLock);
     }
 
     private RequestCardReplacementCommandHandler CreateHandler() =>
         new(_validator, _resolver, _repository, _idProofingService, _evaluator,
-            _cardReplacementRepo, _identifierHasher, _logger);
+            _cardReplacementRepo, _identifierHasher, _distributedLockProvider, _logger);
 
     private static ClaimsPrincipal CreateUser(string email, string? ialClaim = null)
     {

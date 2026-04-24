@@ -1,3 +1,4 @@
+using Medallion.Threading;
 using Microsoft.Extensions.Logging;
 using SEBT.Portal.Core.Models;
 using SEBT.Portal.Core.Models.Auth;
@@ -24,6 +25,7 @@ public class RequestCardReplacementCommandHandler(
     ISelfServiceEvaluator selfServiceEvaluator,
     ICardReplacementRequestRepository cardReplacementRepo,
     IIdentifierHasher identifierHasher,
+    IDistributedLockProvider distributedLockProvider,
     ILogger<RequestCardReplacementCommandHandler> logger)
     : ICommandHandler<RequestCardReplacementCommand>
 {
@@ -105,36 +107,7 @@ public class RequestCardReplacementCommandHandler(
             }
         }
 
-        // Check cooldown from portal DB — the authoritative source for request timestamps.
-        // State connector CardRequestedAt may be null/stale; portal DB tracks our own writes.
-        var householdHash = identifierHasher.Hash(identifier.Value);
-        var cooldownErrors = new List<ValidationError>();
-
-        foreach (var caseId in command.CaseIds)
-        {
-            var caseHash = identifierHasher.Hash(caseId);
-            if (householdHash != null && caseHash != null)
-            {
-                var hasCooldown = await cardReplacementRepo.HasRecentRequestAsync(
-                    householdHash, caseHash, CooldownPeriod, cancellationToken);
-                if (hasCooldown)
-                {
-                    cooldownErrors.Add(new ValidationError(
-                        "CaseIds",
-                        $"A card replacement was requested for this case within the last 14 days."));
-                }
-            }
-        }
-
-        if (cooldownErrors.Count > 0)
-        {
-            logger.LogInformation(
-                "Card replacement rejected: {Count} case(s) within cooldown period",
-                cooldownErrors.Count);
-            return Result.ValidationFailed(cooldownErrors);
-        }
-
-        // Resolve the user's database ID for the audit trail FK
+        // Resolve the user's database ID early — needed for lock key and audit trail FK.
         var userId = command.User.GetUserId();
         if (userId == null)
         {
@@ -142,14 +115,48 @@ public class RequestCardReplacementCommandHandler(
             return Result.Unauthorized("Unable to identify user from token.");
         }
 
-        // Persist replacement requests to portal DB for cooldown enforcement
-        foreach (var caseId in command.CaseIds)
+        // Distributed lock prevents TOCTOU race between cooldown check and persist.
+        // Scoped to the user — a single user can only be in one card replacement flow at a time.
+        await using (await distributedLockProvider.AcquireLockAsync(
+            $"CardReplacement:{userId.Value}", cancellationToken: cancellationToken))
         {
-            var caseHash = identifierHasher.Hash(caseId);
-            if (householdHash != null && caseHash != null)
+            // Check cooldown from portal DB — the authoritative source for request timestamps.
+            var householdHash = identifierHasher.Hash(identifier.Value);
+            var cooldownErrors = new List<ValidationError>();
+
+            foreach (var caseId in command.CaseIds)
             {
-                await cardReplacementRepo.CreateAsync(
-                    householdHash, caseHash, userId.Value, cancellationToken);
+                var caseHash = identifierHasher.Hash(caseId);
+                if (householdHash != null && caseHash != null)
+                {
+                    var hasCooldown = await cardReplacementRepo.HasRecentRequestAsync(
+                        householdHash, caseHash, CooldownPeriod, cancellationToken);
+                    if (hasCooldown)
+                    {
+                        cooldownErrors.Add(new ValidationError(
+                            "CaseIds",
+                            $"A card replacement was requested for this case within the last 14 days."));
+                    }
+                }
+            }
+
+            if (cooldownErrors.Count > 0)
+            {
+                logger.LogInformation(
+                    "Card replacement rejected: {Count} case(s) within cooldown period",
+                    cooldownErrors.Count);
+                return Result.ValidationFailed(cooldownErrors);
+            }
+
+            // Persist replacement requests to portal DB for cooldown enforcement
+            foreach (var caseId in command.CaseIds)
+            {
+                var caseHash = identifierHasher.Hash(caseId);
+                if (householdHash != null && caseHash != null)
+                {
+                    await cardReplacementRepo.CreateAsync(
+                        householdHash, caseHash, userId.Value, cancellationToken);
+                }
             }
         }
 

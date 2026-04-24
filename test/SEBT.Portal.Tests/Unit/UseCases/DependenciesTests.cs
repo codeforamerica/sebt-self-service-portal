@@ -28,6 +28,7 @@ public class DependenciesTests
         services.AddSingleton(Substitute.For<ISelfServiceEvaluator>());
         services.AddSingleton(Substitute.For<ICardReplacementRequestRepository>());
         services.AddSingleton(Substitute.For<IIdentifierHasher>());
+        services.AddSingleton(Substitute.For<Medallion.Threading.IDistributedLockProvider>());
         services.AddSingleton(typeof(ILogger<>), typeof(NullLogger<>));
 
         return services.BuildServiceProvider();
