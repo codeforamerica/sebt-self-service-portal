@@ -23,6 +23,17 @@ public interface ICardReplacementRequestRepository
         CancellationToken cancellationToken = default);
 
     /// <summary>
+    /// Returns the most recent request timestamp for a given household+case,
+    /// or null if no request has ever been recorded.
+    /// Used to hydrate <see cref="Models.Household.SummerEbtCase.CardRequestedAt"/>
+    /// so the frontend can enforce cooldown UI.
+    /// </summary>
+    Task<DateTime?> GetMostRecentRequestDateAsync(
+        string householdIdentifierHash,
+        string caseIdHash,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
     /// Records a new card replacement request.
     /// </summary>
     /// <param name="householdIdentifierHash">HMAC hash of the household identifier.</param>

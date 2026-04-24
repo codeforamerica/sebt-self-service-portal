@@ -1193,7 +1193,6 @@ public class MockHouseholdRepository : IHouseholdRepository
                 EbtCardStatus = sec.EbtCardStatus,
                 EbtCardIssueDate = sec.EbtCardIssueDate,
                 EbtCardBalance = sec.EbtCardBalance,
-                CardRequestedAt = sec.CardRequestedAt,
                 BenefitAvailableDate = sec.BenefitAvailableDate,
                 BenefitExpirationDate = sec.BenefitExpirationDate
             }).ToList(),

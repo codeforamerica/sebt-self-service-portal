@@ -29,6 +29,20 @@ public class CardReplacementRequestRepository(PortalDbContext dbContext)
     }
 
     /// <inheritdoc />
+    public async Task<DateTime?> GetMostRecentRequestDateAsync(
+        string householdIdentifierHash,
+        string caseIdHash,
+        CancellationToken cancellationToken = default)
+    {
+        return await dbContext.CardReplacementRequests
+            .Where(r => r.HouseholdIdentifierHash == householdIdentifierHash
+                        && r.CaseIdHash == caseIdHash)
+            .OrderByDescending(r => r.RequestedAt)
+            .Select(r => (DateTime?)r.RequestedAt)
+            .FirstOrDefaultAsync(cancellationToken);
+    }
+
+    /// <inheritdoc />
     public async Task CreateAsync(
         string householdIdentifierHash,
         string caseIdHash,
