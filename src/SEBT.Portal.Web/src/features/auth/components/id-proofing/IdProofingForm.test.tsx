@@ -484,12 +484,13 @@ describe('IdProofingForm', () => {
       await user.type(screen.getByRole('textbox', { name: INPUT_LABEL_DAY }), '20')
       await user.type(screen.getByRole('textbox', { name: INPUT_LABEL_YEAR }), '1985')
 
-      // "None of the above" triggers a 'failed' result in the mock
+      // "None of the above" triggers a 'failed' result in the mock,
+      // which also returns offboardingReason so the URL carries a reason param.
       await user.click(screen.getByRole('radio', { name: LABEL_NONE }))
       await user.click(screen.getByRole('button', { name: /continue/i }))
 
       await waitFor(() => {
-        expect(mockPush).toHaveBeenCalledWith('/login/id-proofing/off-boarding')
+        expect(mockPush).toHaveBeenCalledWith('/login/id-proofing/off-boarding?reason=noIdProvided')
       })
     })
 
@@ -520,7 +521,7 @@ describe('IdProofingForm', () => {
       })
     })
 
-    it('writes offboardingReason to sessionStorage before navigating so OffBoardingPage can branch', async () => {
+    it('appends offboardingReason as a URL query param so the off-boarding route can branch copy', async () => {
       const user = userEvent.setup()
       renderWithProviders(
         <IdProofingForm
@@ -536,10 +537,8 @@ describe('IdProofingForm', () => {
       await user.click(screen.getByRole('button', { name: /continue/i }))
 
       await waitFor(() => {
-        expect(mockPush).toHaveBeenCalledWith('/login/id-proofing/off-boarding')
+        expect(mockPush).toHaveBeenCalledWith('/login/id-proofing/off-boarding?reason=noIdProvided')
       })
-      expect(sessionStorage.getItem('offboarding_reason')).toBe('noIdProvided')
-      expect(sessionStorage.getItem('offboarding_canApply')).toBe('true')
     })
   })
 

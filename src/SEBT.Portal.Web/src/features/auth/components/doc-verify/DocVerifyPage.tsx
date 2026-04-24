@@ -126,10 +126,8 @@ export function DocVerifyPage({ contactLink, sdkKey }: DocVerifyPageProps) {
           setSubState('pending')
         },
         onError: () => {
-          sessionStorage.setItem('offboarding_reason', 'docVerificationFailed')
-          sessionStorage.setItem('offboarding_canApply', 'false')
           clearChallengeContext()
-          router.push('/login/id-proofing/off-boarding')
+          router.push('/login/id-proofing/off-boarding?reason=docVerificationFailed')
         }
       })
 
@@ -188,10 +186,16 @@ export function DocVerifyPage({ contactLink, sdkKey }: DocVerifyPageProps) {
       trackEvent(AnalyticsEvents.DOCV_RESULT)
       setPageData('idv_final_status', 'fail')
       trackEvent(AnalyticsEvents.IDV_FINAL_RESULT)
-      sessionStorage.setItem('offboarding_reason', offboardingReason ?? '')
-      sessionStorage.setItem('offboarding_canApply', 'false')
       clearChallengeContext()
-      router.push('/login/id-proofing/off-boarding')
+      // Pass the reason via URL so the off-boarding route can render distinct
+      // copy (docVerificationFailed, challengeNotFound, etc). Mirrors the
+      // pattern IdProofingForm uses for noIdProvided.
+      const params = new URLSearchParams()
+      if (offboardingReason) {
+        params.set('reason', offboardingReason)
+      }
+      const query = params.toString()
+      router.push(`/login/id-proofing/off-boarding${query ? `?${query}` : ''}`)
     },
     [router, setPageData, trackEvent]
   )

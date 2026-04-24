@@ -326,12 +326,12 @@ describe('DocVerifyPage', () => {
 
       await waitFor(
         () => {
-          expect(mockPush).toHaveBeenCalledWith('/login/id-proofing/off-boarding')
+          expect(mockPush).toHaveBeenCalledWith(
+            '/login/id-proofing/off-boarding?reason=docVerificationFailed'
+          )
         },
         { timeout: 1000 }
       )
-
-      expect(sessionStorage.getItem('offboarding_reason')).toBe('docVerificationFailed')
     })
   })
 
@@ -527,10 +527,10 @@ describe('DocVerifyPage', () => {
       )
 
       await waitFor(() => {
-        expect(mockPush).toHaveBeenCalledWith('/login/id-proofing/off-boarding')
+        expect(mockPush).toHaveBeenCalledWith(
+          '/login/id-proofing/off-boarding?reason=challengeNotFound'
+        )
       })
-
-      expect(sessionStorage.getItem('offboarding_reason')).toBe('challengeNotFound')
     })
 
     it('navigates to off-boarding when verification is rejected', async () => {
@@ -553,10 +553,10 @@ describe('DocVerifyPage', () => {
       )
 
       await waitFor(() => {
-        expect(mockPush).toHaveBeenCalledWith('/login/id-proofing/off-boarding')
+        expect(mockPush).toHaveBeenCalledWith(
+          '/login/id-proofing/off-boarding?reason=docVerificationFailed'
+        )
       })
-
-      expect(sessionStorage.getItem('offboarding_reason')).toBe('docVerificationFailed')
     })
   })
 

@@ -220,14 +220,14 @@ export function IdProofingForm({ idOptions, contactLink, getDiToken }: IdProofin
       } else if (response.result === 'failed') {
         setPageData('idv_primary_status', 'fail')
         trackEvent(AnalyticsEvents.IDV_PRIMARY_RESULT)
-        // Hand off offboarding context to OffBoardingPage so it can render
-        // reason-specific copy (e.g. noIdProvided gets a different heading).
-        // Mirrors the pattern DocVerifyPage uses on its reject path.
-        sessionStorage.setItem('offboarding_reason', response.offboardingReason ?? '')
-        sessionStorage.setItem('offboarding_canApply', String(response.canApply !== false))
+        // Hand off offboarding context via URL query params so the server-rendered
+        // route page can branch copy (noIdProvided gets a distinct heading).
         const params = new URLSearchParams()
         if (response.canApply === false) {
           params.set('canApply', 'false')
+        }
+        if (response.offboardingReason) {
+          params.set('reason', response.offboardingReason)
         }
         const query = params.toString()
         router.push(`/login/id-proofing/off-boarding${query ? `?${query}` : ''}`)
