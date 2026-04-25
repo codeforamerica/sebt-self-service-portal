@@ -91,6 +91,9 @@ export function IdProofingForm({ idOptions, contactLink, getDiToken }: IdProofin
   const [idValue, setIdValue] = useState('')
 
   const [dobErrors, setDobErrors] = useState<{ month?: string; day?: string; year?: string }>({})
+  // Composite errors that describe the date as a whole (impossible calendar date,
+  // future, >120 years ago) belong to the fieldset, not to any single input.
+  const [dobFieldsetError, setDobFieldsetError] = useState<string | null>(null)
   const [idTypeError, setIdTypeError] = useState<string | null>(null)
   const [idValueError, setIdValueError] = useState<string | null>(null)
   const [submitError, setSubmitError] = useState<string | null>(null)
@@ -123,6 +126,7 @@ export function IdProofingForm({ idOptions, contactLink, getDiToken }: IdProofin
 
   function validateFields(): boolean {
     const newDobErrors: { month?: string; day?: string; year?: string } = {}
+    let newDobFieldsetError: string | null = null
 
     if (!dobMonth) newDobErrors.month = REQUIRED_FIELD_ERROR
     if (!dobDay) newDobErrors.day = REQUIRED_FIELD_ERROR
@@ -156,10 +160,11 @@ export function IdProofingForm({ idOptions, contactLink, getDiToken }: IdProofin
         for (const issue of parsed.error.issues) {
           const path = issue.path.join('.')
           if (path === 'dateOfBirth') {
-            // Surface the same message under the year field so the user has
-            // something to read. Month/day/year each render their own error
-            // slot; attaching to year avoids duplicate alerts for one issue.
-            newDobErrors.year = DOB_INVALID_ERROR
+            // The schema emits dateOfBirth issues for failures that describe
+            // the whole date (impossible calendar date, future, age cap), not
+            // any single field. Surface at the fieldset level so we don't
+            // mark an individual input invalid that's actually fine.
+            newDobFieldsetError = DOB_INVALID_ERROR
           } else if (path === 'idValue' && showIdValueInput) {
             idError = SSN_ITIN_SHAPE_ERROR
           }
@@ -178,10 +183,16 @@ export function IdProofingForm({ idOptions, contactLink, getDiToken }: IdProofin
     }
 
     setDobErrors(newDobErrors)
+    setDobFieldsetError(newDobFieldsetError)
     setIdTypeError(idTypeErr)
     setIdValueError(idError)
 
-    return Object.keys(newDobErrors).length === 0 && idTypeErr === null && idError === null
+    return (
+      Object.keys(newDobErrors).length === 0 &&
+      newDobFieldsetError === null &&
+      idTypeErr === null &&
+      idError === null
+    )
   }
 
   async function handleSubmit(e: FormEvent<HTMLFormElement>) {
@@ -260,11 +271,20 @@ export function IdProofingForm({ idOptions, contactLink, getDiToken }: IdProofin
       )}
 
       {/* Date of birth */}
-      <fieldset className="usa-fieldset">
+      <fieldset className={`usa-fieldset${dobFieldsetError ? ' usa-form-group--error' : ''}`}>
         <legend className="usa-legend">
           {t('labelDob')}
           <span className="text-secondary-dark"> *</span>
         </legend>
+
+        {dobFieldsetError && (
+          <span
+            className="usa-error-message"
+            role="alert"
+          >
+            {dobFieldsetError}
+          </span>
+        )}
 
         <div className="grid-row grid-gap">
           {/* Month */}

@@ -11,7 +11,6 @@ import { AuthGuard } from '../AuthGuard/AuthGuard'
 import { DocVerifyPage } from './DocVerifyPage'
 
 const TEST_CONTACT_LINK = 'https://example.com/contact'
-const TEST_SDK_KEY = 'test-sdk-key'
 
 // Mock next/navigation. The router object is memoized so useCallback deps that
 // include `router` stay stable across renders, matching the real Next.js hook.
@@ -23,9 +22,6 @@ vi.mock('next/navigation', () => ({
   useRouter: () => mockRouter,
   useSearchParams: () => mockSearchParams
 }))
-
-// Use the mock adapter in tests
-vi.stubEnv('NEXT_PUBLIC_MOCK_SOCURE', 'true')
 
 function createTestQueryClient() {
   return new QueryClient({
@@ -81,10 +77,7 @@ describe('DocVerifyPage', () => {
         <QueryClientProvider client={queryClient}>
           <AuthProvider>
             <AuthGuard>
-              <DocVerifyPage
-                contactLink={TEST_CONTACT_LINK}
-                sdkKey={TEST_SDK_KEY}
-              />
+              <DocVerifyPage contactLink={TEST_CONTACT_LINK} />
             </AuthGuard>
           </AuthProvider>
         </QueryClientProvider>
@@ -99,12 +92,7 @@ describe('DocVerifyPage', () => {
     })
 
     it('redirects to id-proofing when no challenge context is present', async () => {
-      renderWithProviders(
-        <DocVerifyPage
-          contactLink={TEST_CONTACT_LINK}
-          sdkKey={TEST_SDK_KEY}
-        />
-      )
+      renderWithProviders(<DocVerifyPage contactLink={TEST_CONTACT_LINK} />)
 
       await waitFor(() => {
         expect(mockReplace).toHaveBeenCalledWith('/login/id-proofing')
@@ -116,12 +104,7 @@ describe('DocVerifyPage', () => {
     it('renders interstitial when challenge context is present', async () => {
       setChallengeContext('challenge-abc')
 
-      renderWithProviders(
-        <DocVerifyPage
-          contactLink={TEST_CONTACT_LINK}
-          sdkKey={TEST_SDK_KEY}
-        />
-      )
+      renderWithProviders(<DocVerifyPage contactLink={TEST_CONTACT_LINK} />)
 
       expect(
         await screen.findByRole('heading', { name: /we want to keep your account safe/i })
@@ -139,12 +122,7 @@ describe('DocVerifyPage', () => {
         })
       )
 
-      renderWithProviders(
-        <DocVerifyPage
-          contactLink={TEST_CONTACT_LINK}
-          sdkKey={TEST_SDK_KEY}
-        />
-      )
+      renderWithProviders(<DocVerifyPage contactLink={TEST_CONTACT_LINK} />)
 
       expect(await screen.findByRole('button', { name: /enter an id number/i })).toBeInTheDocument()
     })
@@ -158,12 +136,7 @@ describe('DocVerifyPage', () => {
         })
       )
 
-      renderWithProviders(
-        <DocVerifyPage
-          contactLink={TEST_CONTACT_LINK}
-          sdkKey={TEST_SDK_KEY}
-        />
-      )
+      renderWithProviders(<DocVerifyPage contactLink={TEST_CONTACT_LINK} />)
 
       // Wait for interstitial to render
       await screen.findByRole('heading', { name: /we want to keep your account safe/i })
@@ -182,12 +155,7 @@ describe('DocVerifyPage', () => {
 
       const user = userEvent.setup()
 
-      renderWithProviders(
-        <DocVerifyPage
-          contactLink={TEST_CONTACT_LINK}
-          sdkKey={TEST_SDK_KEY}
-        />
-      )
+      renderWithProviders(<DocVerifyPage contactLink={TEST_CONTACT_LINK} />)
 
       await user.click(await screen.findByRole('button', { name: /enter an id number/i }))
 
@@ -196,72 +164,15 @@ describe('DocVerifyPage', () => {
     })
   })
 
-  describe('Continue → capture → pending flow', () => {
-    // Override the default status handler to ensure a stable 'pending' response.
-    // The default handler uses a closure counter shared across tests; the new
-    // interstitial-level status query can consume counts and return 'verified'
-    // before the Continue click happens.
+  describe('Continue → Socure hand-off', () => {
+    // The default status handler uses a closure counter shared across tests;
+    // pin a stable 'pending' response so the interstitial-level status query
+    // can't consume counts and preempt the click.
     beforeEach(() => {
       server.use(
         http.get('/api/id-proofing/status', () => {
           return HttpResponse.json({ status: 'pending', allowIdRetry: false })
-        })
-      )
-    })
-
-    it('"Continue" triggers challenge start and persists capture sub-state', async () => {
-      setChallengeContext('mock-challenge-123')
-      const user = userEvent.setup()
-
-      renderWithProviders(
-        <DocVerifyPage
-          contactLink={TEST_CONTACT_LINK}
-          sdkKey={TEST_SDK_KEY}
-        />
-      )
-
-      await user.click(await screen.findByRole('button', { name: /continue/i }))
-
-      // After click → JIT token fetch → capture sub-state, the interstitial disappears
-      await waitFor(() => {
-        expect(
-          screen.queryByRole('heading', { name: /we want to keep your account safe/i })
-        ).not.toBeInTheDocument()
-      })
-
-      // Sub-state should be persisted for mobile tab recovery
-      expect(sessionStorage.getItem('docVerify_subState')).not.toBeNull()
-    })
-
-    it('full flow: Continue → capture → pending (mock adapter onSuccess)', async () => {
-      setChallengeContext('mock-challenge-123')
-      const user = userEvent.setup()
-
-      renderWithProviders(
-        <DocVerifyPage
-          contactLink={TEST_CONTACT_LINK}
-          sdkKey={TEST_SDK_KEY}
-        />
-      )
-
-      await user.click(await screen.findByRole('button', { name: /continue/i }))
-
-      // Mock adapter fires onSuccess after ~1500ms → transitions to pending
-      await waitFor(
-        () => {
-          expect(screen.getByText(/verifying your document/i)).toBeInTheDocument()
-        },
-        { timeout: 3000 }
-      )
-    })
-  })
-
-  describe('Capture → webhook safety net', () => {
-    // Override the mock adapter delay to be very long so it never fires
-    // during the test. This simulates the real SDK failing to detect
-    // remote mobile capture completion.
-    beforeEach(() => {
-      server.use(
+        }),
         http.get('/api/challenges/:id/start', () => {
           return HttpResponse.json({
             docvTransactionToken: 'test-token',
@@ -271,10 +182,49 @@ describe('DocVerifyPage', () => {
       )
     })
 
-    it('redirects to dashboard when webhook resolves during capture', async () => {
-      setChallengeContext('mock-challenge-123')
+    function mockWindowOpen() {
+      // Minimal Window stand-in: the page reads `.closed` and assigns
+      // `.location.href`, nothing else.
+      const popup = {
+        closed: false,
+        location: { href: '' },
+        close: vi.fn()
+      }
+      const spy = vi.spyOn(window, 'open').mockImplementation(() => popup as unknown as Window)
+      return { popup, spy }
+    }
 
-      // Return verified immediately; the capture-state polling should detect it
+    it('opens Socure capture URL in a new tab and transitions to pending', async () => {
+      setChallengeContext('mock-challenge-123')
+      const { popup, spy } = mockWindowOpen()
+      const user = userEvent.setup()
+
+      renderWithProviders(<DocVerifyPage contactLink={TEST_CONTACT_LINK} />)
+
+      await user.click(await screen.findByRole('button', { name: /continue/i }))
+
+      // Popup is opened synchronously on click (user-gesture preservation).
+      expect(spy).toHaveBeenCalledWith('about:blank', '_blank')
+
+      // Once the token fetch resolves, the popup is redirected to Socure and
+      // the page transitions to the pending/polling view.
+      await waitFor(() => {
+        expect(popup.location.href).toBe('https://verify.socure.com/#/dv/test-token')
+      })
+      await waitFor(() => {
+        expect(screen.getByText(/verifying your document/i)).toBeInTheDocument()
+      })
+
+      // Sub-state persisted for mobile tab recovery
+      expect(sessionStorage.getItem('docVerify_subState')).toBe('pending')
+
+      spy.mockRestore()
+    })
+
+    it('redirects to dashboard when webhook resolves after hand-off', async () => {
+      setChallengeContext('mock-challenge-123')
+      const { spy } = mockWindowOpen()
+
       server.use(
         http.get('/api/id-proofing/status', () => {
           return HttpResponse.json({ status: 'verified' })
@@ -282,27 +232,23 @@ describe('DocVerifyPage', () => {
       )
 
       const user = userEvent.setup()
-
-      renderWithProviders(
-        <DocVerifyPage
-          contactLink={TEST_CONTACT_LINK}
-          sdkKey={TEST_SDK_KEY}
-        />
-      )
+      renderWithProviders(<DocVerifyPage contactLink={TEST_CONTACT_LINK} />)
 
       await user.click(await screen.findByRole('button', { name: /continue/i }))
 
-      // Should redirect via capture-state polling before mock adapter's 1500ms onSuccess
       await waitFor(
         () => {
           expect(mockPush).toHaveBeenCalledWith('/dashboard')
         },
-        { timeout: 1000 }
+        { timeout: 1500 }
       )
+
+      spy.mockRestore()
     })
 
-    it('redirects to off-boarding when webhook rejects during capture', async () => {
+    it('redirects to off-boarding when webhook rejects after hand-off', async () => {
       setChallengeContext('mock-challenge-123')
+      const { spy } = mockWindowOpen()
 
       server.use(
         http.get('/api/id-proofing/status', () => {
@@ -314,13 +260,7 @@ describe('DocVerifyPage', () => {
       )
 
       const user = userEvent.setup()
-
-      renderWithProviders(
-        <DocVerifyPage
-          contactLink={TEST_CONTACT_LINK}
-          sdkKey={TEST_SDK_KEY}
-        />
-      )
+      renderWithProviders(<DocVerifyPage contactLink={TEST_CONTACT_LINK} />)
 
       await user.click(await screen.findByRole('button', { name: /continue/i }))
 
@@ -330,8 +270,10 @@ describe('DocVerifyPage', () => {
             '/login/id-proofing/off-boarding?reason=docVerificationFailed'
           )
         },
-        { timeout: 1000 }
+        { timeout: 1500 }
       )
+
+      spy.mockRestore()
     })
   })
 
@@ -344,12 +286,7 @@ describe('DocVerifyPage', () => {
       // URL has a different (current) challengeId
       mockSearchParams = new URLSearchParams({ challengeId: 'new-challenge-id' })
 
-      renderWithProviders(
-        <DocVerifyPage
-          contactLink={TEST_CONTACT_LINK}
-          sdkKey={TEST_SDK_KEY}
-        />
-      )
+      renderWithProviders(<DocVerifyPage contactLink={TEST_CONTACT_LINK} />)
 
       // Should render the interstitial, NOT the VerificationPending screen
       expect(
@@ -369,12 +306,7 @@ describe('DocVerifyPage', () => {
         })
       )
 
-      renderWithProviders(
-        <DocVerifyPage
-          contactLink={TEST_CONTACT_LINK}
-          sdkKey={TEST_SDK_KEY}
-        />
-      )
+      renderWithProviders(<DocVerifyPage contactLink={TEST_CONTACT_LINK} />)
 
       await waitFor(() => {
         expect(screen.getByText(/verifying your document/i)).toBeInTheDocument()
@@ -393,12 +325,7 @@ describe('DocVerifyPage', () => {
         })
       )
 
-      renderWithProviders(
-        <DocVerifyPage
-          contactLink={TEST_CONTACT_LINK}
-          sdkKey={TEST_SDK_KEY}
-        />
-      )
+      renderWithProviders(<DocVerifyPage contactLink={TEST_CONTACT_LINK} />)
 
       await waitFor(() => {
         expect(screen.getByText(/verifying your document/i)).toBeInTheDocument()
@@ -416,12 +343,7 @@ describe('DocVerifyPage', () => {
         })
       )
 
-      renderWithProviders(
-        <DocVerifyPage
-          contactLink={TEST_CONTACT_LINK}
-          sdkKey={TEST_SDK_KEY}
-        />
-      )
+      renderWithProviders(<DocVerifyPage contactLink={TEST_CONTACT_LINK} />)
 
       await waitFor(() => {
         expect(mockPush).toHaveBeenCalledWith('/dashboard')
@@ -457,12 +379,7 @@ describe('DocVerifyPage', () => {
         }
       })
 
-      renderWithProviders(
-        <DocVerifyPage
-          contactLink={TEST_CONTACT_LINK}
-          sdkKey={TEST_SDK_KEY}
-        />
-      )
+      renderWithProviders(<DocVerifyPage contactLink={TEST_CONTACT_LINK} />)
 
       await waitFor(() => {
         expect(mockPush).toHaveBeenCalledWith('/dashboard')
@@ -488,12 +405,7 @@ describe('DocVerifyPage', () => {
         })
       )
 
-      renderWithProviders(
-        <DocVerifyPage
-          contactLink={TEST_CONTACT_LINK}
-          sdkKey={TEST_SDK_KEY}
-        />
-      )
+      renderWithProviders(<DocVerifyPage contactLink={TEST_CONTACT_LINK} />)
 
       // A failed refresh must not trap the user on the "verified" screen.
       // Allow extra time because the refresh mutation may retry on 5xx per
@@ -519,12 +431,7 @@ describe('DocVerifyPage', () => {
         })
       )
 
-      renderWithProviders(
-        <DocVerifyPage
-          contactLink={TEST_CONTACT_LINK}
-          sdkKey={TEST_SDK_KEY}
-        />
-      )
+      renderWithProviders(<DocVerifyPage contactLink={TEST_CONTACT_LINK} />)
 
       await waitFor(() => {
         expect(mockPush).toHaveBeenCalledWith(
@@ -545,12 +452,7 @@ describe('DocVerifyPage', () => {
         })
       )
 
-      renderWithProviders(
-        <DocVerifyPage
-          contactLink={TEST_CONTACT_LINK}
-          sdkKey={TEST_SDK_KEY}
-        />
-      )
+      renderWithProviders(<DocVerifyPage contactLink={TEST_CONTACT_LINK} />)
 
       await waitFor(() => {
         expect(mockPush).toHaveBeenCalledWith(
@@ -572,12 +474,7 @@ describe('DocVerifyPage', () => {
 
       const user = userEvent.setup()
 
-      renderWithProviders(
-        <DocVerifyPage
-          contactLink={TEST_CONTACT_LINK}
-          sdkKey={TEST_SDK_KEY}
-        />
-      )
+      renderWithProviders(<DocVerifyPage contactLink={TEST_CONTACT_LINK} />)
 
       await user.click(await screen.findByRole('button', { name: /continue/i }))
 
