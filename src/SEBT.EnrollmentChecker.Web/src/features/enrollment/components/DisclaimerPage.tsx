@@ -15,10 +15,14 @@ export function DisclaimerPage() {
         <div className="usa-prose">
           <p>
             <strong>{t('body1')}</strong>{' '}
+          </p>
+          <p>
             {t('body2')}
           </p>
           <p>
             <strong>{t('body3')}</strong>{' '}
+          </p>
+          <p>            
             {t('body4')}
           </p>
         </div>

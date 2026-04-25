@@ -52,7 +52,7 @@ export function ReviewPage({ onSubmit }: ReviewPageProps) {
         <div className="margin-top-2">
           <button
             type="button"
-            className="usa-button usa-button--unstyled"
+            className="usa-link usa-button--unstyled"
             onClick={() => {
               setEditingChildId(null)
               router.push('/check')

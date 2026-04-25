@@ -34,6 +34,7 @@ export function LandingPage() {
           <Button
             onClick={() => router.push('/disclaimer')}
             data-analytics-cta="start_enrollment_check_cta"
+            lang="en"
           >
             {t('action')}
           </Button>
@@ -43,6 +44,7 @@ export function LandingPage() {
             variant="outline"
             onClick={() => router.push('/disclaimer')}
             data-analytics-cta="start_enrollment_check_cta_es"
+            lang="es"
           >
             {t('actionEspañol')}
           </Button>
@@ -53,12 +55,22 @@ export function LandingPage() {
           <h2 className="usa-accordion__heading">
             <button
               type="button"
-              className="usa-accordion__button"
+               className="usa-accordion__button bg-transparent border-0"
               aria-expanded={isAccordionExpanded}
               aria-controls="faq-content"
               onClick={() => setIsAccordionExpanded(prev => !prev)}
             >
+            <span className="display-flex flex-align-center text-info-darker">
+              <svg
+                className="usa-icon margin-right-1"
+                aria-hidden="true"
+                focusable="false"
+                role="img"
+              >
+                <use xlinkHref="/img/sprite.svg#info" />
+              </svg>
               {t('accordionTitle')}
+            </span>
             </button>
           </h2>
           <div

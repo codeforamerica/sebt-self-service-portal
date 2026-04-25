@@ -33,7 +33,7 @@ export function ChildReviewCard({ child, onEdit }: ChildReviewCardProps) {
       <p className="usa-prose margin-top-0">{formatBirthdate(child.dateOfBirth, i18n.language)}</p>
       <button
         type="button"
-        className="usa-button usa-button--unstyled"
+        className="usa-link usa-button--unstyled"
         onClick={() => onEdit(child.id)}
       >
         {t('tableAction')}
