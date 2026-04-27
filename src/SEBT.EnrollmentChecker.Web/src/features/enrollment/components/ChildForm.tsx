@@ -99,7 +99,7 @@ export function ChildForm({
       {/* USWDS memorable-date pattern: Month dropdown + Day/Year text inputs */}
       <fieldset className="usa-fieldset">
         <label className="usa-label">
-          {t('labelBirthdate')} <abbr title="required" className="usa-hint usa-hint--required">*</abbr>
+          {t('labelBirthdate')} <span title="required" className="usa-hint usa-hint--required">*</span>
         </label>
         <div className="usa-memorable-date">
           <div className="usa-form-group usa-form-group--month">
@@ -117,7 +117,7 @@ export function ChildForm({
             >
               <option value="">{tCommon('selectOne')}</option>
               {MONTH_KEYS.map((key, i) => (
-                <option key={i + 1} value={String(i + 1)}>{tCommon(`months.${key}`)}</option>
+                <option key={i + 1} value={String(i + 1)}>{tCommon(`${key}`)}</option>
               ))}
             </select>
           </div>

@@ -14,7 +14,7 @@ export function ChildResultCard({ firstName, lastName, displayStatus, errorMessa
   const { t } = useTranslation('result')
 
   return (
-    <div className="usa-card" data-status={displayStatus}>
+    <section className="usa-summary-box__text" data-status={displayStatus}>
       <li>
         <strong>{firstName} {lastName}</strong>
         {/* Visually hidden status for screen readers */}
@@ -23,6 +23,6 @@ export function ChildResultCard({ firstName, lastName, displayStatus, errorMessa
       {displayStatus === 'error' && errorMessage && (
         <p className="usa-prose text-error">{errorMessage}</p>
       )}
-    </div>
+    </section>
   )
 }

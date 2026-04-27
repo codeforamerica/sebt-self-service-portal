@@ -16,7 +16,7 @@ export function NotEnrolledSection({ results, applicationUrl }: NotEnrolledSecti
 
   return (
     <section>
-      <h2 className="font-family-sans">{t('applyForSebtBody1')}</h2>
+      <h3 className="usa-summary-box__heading">{t('applyForSebtBody1')}</h3>
       <ul>
         {results.map(child => (
         <ChildResultCard
@@ -27,18 +27,6 @@ export function NotEnrolledSection({ results, applicationUrl }: NotEnrolledSecti
         />
       ))}
       </ul>
-
-      {/* TODO should this open in new window? */}
-      <p className="usa-prose">
-        {t('applyForSebtBody')}{' '}
-        <a
-          href={applicationUrl}
-          data-analytics-cta="apply_cta"
-          className="usa-button"
-        >
-          {t('applyLink')}
-        </a>
-      </p>
     </section>
   )
 }

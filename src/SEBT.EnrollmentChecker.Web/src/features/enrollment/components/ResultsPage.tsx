@@ -4,6 +4,8 @@ import { useRouter } from 'next/navigation'
 import Image from 'next/image'
 import { useTranslation } from 'react-i18next'
 import type { ChildCheckApiResponse } from '../schemas/enrollmentSchema'
+import { useState } from 'react'
+
 import { mapApiStatus } from '../schemas/enrollmentSchema'
 import { ChildResultCard } from './ChildResultCard'
 import { EnrolledSection } from './EnrolledSection'
@@ -14,28 +16,141 @@ interface ResultsPageProps {
   applicationUrl: string
 }
 
+type HouseholdEnrollmentResult = 
+  "allEnrolled" |
+  "noneEnrolled" |
+  "mixedEnrolled" |
+  "indeterminate"
+
+function computeHouseholdEnrollmentResult(enrolledCount: number, notEnrolledCount: number): HouseholdEnrollmentResult {
+  if (enrolledCount > 0 && notEnrolledCount === 0) {
+    return "allEnrolled"
+  } else if (notEnrolledCount > 0 && enrolledCount === 0) {
+    return "noneEnrolled"
+  } else if (enrolledCount > 0 && notEnrolledCount > 0) {
+    return "mixedEnrolled"
+  } else {
+    return "indeterminate"
+  }
+}
+
+
 export function ResultsPage({ results, applicationUrl }: ResultsPageProps) {
   const { t } = useTranslation('result')
   const router = useRouter()
+  const [isAccordionExpanded, setIsAccordionExpanded] = useState(false)
 
+  const notEnrolledNextSteps = (
+    <section>
+      <h2 className="usa-prose">{t('applyForSebtActionApply')}</h2>
+      {t('applyForSebtBody2')}
+      {/* TODO should this open in new window? */}
+      <p>
+        <a
+          href={applicationUrl}
+          data-analytics-cta="apply_cta"
+          className="usa-button"
+        >
+          {t('applyLink')}
+      </a>
+      </p>
+    </section>
+  )
+
+  const enrolledNextSteps = (
+    <section>
+      <h2 className="usa-prose"> {t('streamlinedEnrolledAlertTitle')}</h2>
+      {t('streamlinedEnrolledAlertBody')}
+      <p>
+        <a
+          href="#"
+          data-analytics-cta="apply_cta"
+          className="usa-button"
+        >
+          {t('streamlinedEnrolledAction')}
+        </a>
+      </p>
+    </section>
+  )
+
+  const eligibilityAccordion = (
+    <div className="usa-accordion margin-top-4">
+      <h2 className="usa-accordion__heading">
+        <button
+          type="button"
+            className="usa-accordion__button"
+          aria-expanded={isAccordionExpanded}
+          aria-controls="faq-content"
+          onClick={() => setIsAccordionExpanded(prev => !prev)}
+        >
+          {t('applyForSebtAccordionTitle')} 
+         </button>
+     </h2>
+      <div
+            className="usa-accordion__content usa-prose"
+            hidden={!isAccordionExpanded}
+          >
+         <p> {t('applyForSebtAccordionBody1')} </p>
+
+        {/* TO DO: IMPLEMENT CALCULATOR
+        <p> {t('applyForSebtAccordionBody2')} </p>
+        <p> {t('applyForSebtAccordionBody3')} </p>
+        <p> {t('applyForSebtAccordionLabelSelectNumberPeople')} </p>
+        <p> {t('applyForSebtBody3')} </p>
+        <p> {t('applyForSebtBody4')} </p>
+        <p>
+          <a
+            href={applicationUrl}
+            data-analytics-cta="apply_cta"
+            className="usa-button"
+          >{t('applyLink')}
+          </a> 
+        </p> 
+        </section> */}
+      </div>
+    </div>
+  )
+    
   const enrolled = results.filter(r => mapApiStatus(r.status) === 'enrolled')
   const notEnrolled = results.filter(r => mapApiStatus(r.status) === 'notEnrolled')
   const errors = results.filter(r => mapApiStatus(r.status) === 'error')
+ 
+  const householdEnrollmentResult = computeHouseholdEnrollmentResult(enrolled.length, notEnrolled.length)
+
+  // const checkmarkIcon = 'icon-checkmark-card.svg'
+  // const exclaimIcon = 'icon-alert-card.svg'
+  // const reviewIcon = 'icon-review-card.svg'
 
   return (
     <div className="usa-section">
       <div className="grid-container">
         <Image
-          src="/images/states/co/icon-review-card.svg"
+          src='/images/states/co/icon-review-card.svg' // TODO dynamically load icons based on status
           alt=""
           width={100}
           height={75}
           aria-hidden="true"
         />
         <h1 className="font-family-sans margin-top-1">{t('title')}</h1>
-        <EnrolledSection results={enrolled} />
-        <NotEnrolledSection results={notEnrolled} applicationUrl={applicationUrl} />
-        {errors.length > 0 && (
+
+        {(householdEnrollmentResult === 'mixedEnrolled' || householdEnrollmentResult === 'noneEnrolled') && (
+          <section>
+            <div className="usa-summary-box">
+              <NotEnrolledSection results={notEnrolled} applicationUrl={applicationUrl} />
+            </div>
+            <div className="margin-top-3">
+              <EnrolledSection results={enrolled} />
+            </div>
+          </section>
+        )}
+
+        {householdEnrollmentResult === 'allEnrolled' && (
+          <div className="usa-summary-box">
+            <EnrolledSection results={enrolled} />
+          </div>
+        )}
+
+        {householdEnrollmentResult === 'indeterminate' && (
           <section>
             <h2 className="font-family-sans">{t('errorTitle')}</h2>
             {errors.map(child => (
@@ -49,7 +164,30 @@ export function ResultsPage({ results, applicationUrl }: ResultsPageProps) {
             ))}
           </section>
         )}
+
+        {(householdEnrollmentResult === 'mixedEnrolled' || householdEnrollmentResult === 'indeterminate') && (
+          <section>
+            <h1 className="font-family-sans margin-top-1">Next Steps</h1>
+            <section>1. {notEnrolledNextSteps}</section>
+            <section>2. {enrolledNextSteps}</section>
+            {eligibilityAccordion}
+          </section>
+        )}
+
+        {(householdEnrollmentResult === 'noneEnrolled') && (
+          <section>
+            {notEnrolledNextSteps}
+            {eligibilityAccordion}
+          </section>
+        )}
+
+        {(householdEnrollmentResult === 'allEnrolled') && (
+          <section>
+            {enrolledNextSteps}
+          </section>
+        )}
       </div>
     </div>
+
   )
 }
