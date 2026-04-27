@@ -42,8 +42,8 @@ export function ResultsPage({ results, applicationUrl }: ResultsPageProps) {
 
   const notEnrolledNextSteps = (
     <section>
-      <h2 className="usa-prose">{t('applyForSebtActionApply')}</h2>
-      {t('applyForSebtBody2')}
+      <h2 className="usa-process-list__heading">{t('applyForSebtActionApply')}</h2>
+      <p className="margin-top-05">{t('applyForSebtBody2')}</p>
       {/* TODO should this open in new window? */}
       <p>
         <a
@@ -59,8 +59,8 @@ export function ResultsPage({ results, applicationUrl }: ResultsPageProps) {
 
   const enrolledNextSteps = (
     <section>
-      <h2 className="usa-prose"> {t('streamlinedEnrolledAlertTitle')}</h2>
-      {t('streamlinedEnrolledAlertBody')}
+      <h2 className="usa-process-list__heading"> {t('streamlinedEnrolledAlertTitle')}</h2>
+      <p className="margin-top-05">{t('streamlinedEnrolledAlertBody')}</p>
       <p>
         <a
           href="#"
@@ -168,8 +168,11 @@ export function ResultsPage({ results, applicationUrl }: ResultsPageProps) {
         {(householdEnrollmentResult === 'mixedEnrolled' || householdEnrollmentResult === 'indeterminate') && (
           <section>
             <h1 className="font-family-sans margin-top-1">Next Steps</h1>
-            <section>1. {notEnrolledNextSteps}</section>
-            <section>2. {enrolledNextSteps}</section>
+            <ol className="usa-process-list">
+              <li className="usa-process-list__item">{notEnrolledNextSteps}</li>
+              <li className="usa-process-list__item">{enrolledNextSteps}</li>
+            </ol>
+
             {eligibilityAccordion}
           </section>
         )}
