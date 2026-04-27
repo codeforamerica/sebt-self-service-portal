@@ -662,6 +662,41 @@ describe('IdProofingForm', () => {
     })
   })
 
+  describe('Composite DOB error routing (DC-296 follow-up)', () => {
+    // When the schema rejects the DOB as a whole (impossible calendar date,
+    // future, >120 years ago) the message describes a property of the *fieldset*,
+    // not of any single input. Surface it at the fieldset level rather than
+    // arbitrarily attaching it to the year input.
+    it('routes a calendar-invalid DOB (Feb 31) to fieldset level, not the year input', async () => {
+      const user = userEvent.setup()
+      renderWithProviders(
+        <IdProofingForm
+          idOptions={TEST_ID_OPTIONS}
+          contactLink={TEST_CONTACT_LINK}
+        />
+      )
+
+      // Feb 31, 1990: month and year are individually fine; the combination is impossible.
+      await user.selectOptions(screen.getByRole('combobox', { name: /month/i }), '02')
+      await user.type(screen.getByRole('textbox', { name: INPUT_LABEL_DAY }), '31')
+      await user.type(screen.getByRole('textbox', { name: INPUT_LABEL_YEAR }), '1990')
+      await user.click(screen.getByRole('radio', { name: LABEL_NONE }))
+      await user.click(screen.getByRole('button', { name: /continue/i }))
+
+      const errorMessage = await screen.findByText(/valid date of birth/i)
+
+      // Year value is fine — it should not be flagged invalid.
+      const yearInput = screen.getByRole('textbox', { name: INPUT_LABEL_YEAR })
+      expect(yearInput).not.toHaveAttribute('aria-invalid', 'true')
+
+      // The message belongs to the date-of-birth fieldset, not to any single
+      // input's usa-form-group wrapper.
+      expect(errorMessage.closest('.usa-form-group')).toBeNull()
+
+      expect(mockPush).not.toHaveBeenCalled()
+    })
+  })
+
   describe('Per-option digit validation (DC-296)', () => {
     // medicaidId: 7 or 8 digits accepted (per DC CSV).
     const LABEL_MEDICAID = 'Medicaid ID'

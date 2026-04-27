@@ -284,4 +284,25 @@ public class SessionRefreshTokenServiceTests : JwtTokenServiceTestBase
         var jwt = ReadJwt(token);
         Assert.Equal("", jwt.Claims.First(c => c.Type == ClaimTypes.Email).Value);
     }
+
+    // BuildAndSignToken writes the email claim under ClaimTypes.Email and JWT bearer
+    // runs with MapInboundClaims=false, so the refresh principal carries the long URI
+    // form. GenerateForSessionRefresh must resolve the email from either form or the
+    // refreshed JWT will silently blank the user's email.
+    [Fact]
+    public void PreservesEmail_WhenPrincipalEmailUsesLongFormClaimType()
+    {
+        var user = new User { IalLevel = UserIalLevel.IAL1plus, Email = "user@example.com" };
+        var principal = MakePrincipal(
+            (JwtClaimTypes.Ial, "1plus"),
+            (JwtClaimTypes.IdProofingStatus, ((int)IdProofingStatus.Completed).ToString()),
+            (JwtClaimTypes.IdProofingCompletedAt, "1700000000"),
+            (JwtClaimTypes.IdProofingExpiresAt, "1857676800"),
+            (ClaimTypes.Email, "user@example.com"));
+
+        var token = Service.GenerateForSessionRefresh(user, principal);
+
+        var jwt = ReadJwt(token);
+        Assert.Equal("user@example.com", jwt.Claims.First(c => c.Type == ClaimTypes.Email).Value);
+    }
 }
