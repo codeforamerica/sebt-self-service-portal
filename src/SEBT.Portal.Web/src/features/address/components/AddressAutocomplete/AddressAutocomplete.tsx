@@ -53,12 +53,15 @@ export function AddressAutocomplete({
 
   const inputRef = useRef<HTMLInputElement>(null)
   const [activeIndex, setActiveIndex] = useState(-1)
+  // Only pass the real search value to the hook after the user has typed.
+  // This prevents pre-populated form values from triggering autocomplete on load.
+  const [hasUserTyped, setHasUserTyped] = useState(false)
 
   const smartyKey = process.env.NEXT_PUBLIC_SMARTY_EMBEDDED_KEY ?? ''
   const enabled = smartyKey.length > 0
 
   const autocomplete = useAddressAutocomplete({
-    search: value,
+    search: hasUserTyped ? value : '',
     stateCode: getState(),
     onSelect: (address) => {
       onSuggestionSelected(address)
@@ -198,7 +201,10 @@ export function AddressAutocomplete({
         type="text"
         role="combobox"
         value={value}
-        onChange={onChange}
+        onChange={(e) => {
+          setHasUserTyped(true)
+          onChange(e)
+        }}
         onKeyDown={handleKeyDown}
         onFocus={open}
         onBlur={() => {

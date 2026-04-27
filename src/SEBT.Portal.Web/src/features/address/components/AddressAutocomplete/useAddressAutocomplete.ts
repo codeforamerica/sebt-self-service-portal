@@ -64,11 +64,6 @@ export function useAddressAutocomplete({
   const [isOpen, setIsOpen] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
 
-  // Skip the first render so that a pre-populated initial value (e.g. on the
-  // change-address form) does not immediately trigger an autocomplete search.
-  // Only user-driven value changes (rerenders with a new search prop) should fire.
-  const isInitialRender = useRef(true)
-
   // Ref to allow reading current suggestions synchronously inside async callbacks
   // without adding suggestions to the closure deps of those callbacks.
   // Updated in a layout effect (same pattern as onSelectRef) so it is current
@@ -101,11 +96,6 @@ export function useAddressAutocomplete({
   // chain — never synchronously in the effect body — to satisfy the
   // react-hooks/set-state-in-effect lint rule.
   useEffect(() => {
-    if (isInitialRender.current) {
-      isInitialRender.current = false
-      return
-    }
-
     const timer = setTimeout(() => {
       if (!enabled || search.length < MIN_CHARS) {
         setSuggestions([])
