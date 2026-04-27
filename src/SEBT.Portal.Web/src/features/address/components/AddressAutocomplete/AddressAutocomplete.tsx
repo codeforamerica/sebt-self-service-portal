@@ -14,7 +14,6 @@ import { useTranslation } from 'react-i18next'
 
 import { getState } from '@sebt/design-system'
 
-import styles from './AddressAutocomplete.module.scss'
 import type { SelectedAddress } from './types'
 import { useAddressAutocomplete } from './useAddressAutocomplete'
 
@@ -164,7 +163,8 @@ export function AddressAutocomplete({
 
   return (
     <div
-      className={`${error ? 'usa-form-group usa-form-group--error' : 'usa-form-group'} ${styles.wrapper}`}
+      className={error ? 'usa-form-group usa-form-group--error' : 'usa-form-group'}
+      style={{ position: 'relative' }}
     >
       <label
         className="usa-label"
@@ -218,7 +218,7 @@ export function AddressAutocomplete({
         <ul
           id={listboxId}
           role="listbox"
-          className={styles.listbox}
+          className="usa-combo-box__list"
         >
           {suggestions.map((suggestion, index) => {
             const optionId = `${baseId}-option-${index}`
@@ -234,8 +234,7 @@ export function AddressAutocomplete({
                 key={optionId}
                 id={optionId}
                 role="option"
-                className={styles.option}
-                data-focused={isFocused || undefined}
+                className={`usa-combo-box__list-option${isFocused ? ' usa-combo-box__list-option--focused' : ''}`}
                 aria-selected={isFocused}
                 onMouseDown={(e) => e.preventDefault()}
                 onClick={() => handleSuggestionClick(index)}
@@ -251,7 +250,7 @@ export function AddressAutocomplete({
         role="status"
         aria-live="polite"
         aria-atomic="true"
-        className="sr-only"
+        className="usa-sr-only"
       >
         {isOpen && suggestions.length > 0
           ? t('autocompleteSuggestionsAvailable', '{{count}} suggestion available', {

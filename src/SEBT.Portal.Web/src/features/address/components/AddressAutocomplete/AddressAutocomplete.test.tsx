@@ -163,11 +163,11 @@ describe('AddressAutocomplete', () => {
 
     await user.keyboard('{ArrowDown}')
     const options = screen.getAllByRole('option')
-    expect(options[0]).toHaveAttribute('data-focused', 'true')
+    expect(options[0]).toHaveClass('usa-combo-box__list-option--focused')
     expect(input).toHaveAttribute('aria-activedescendant', options[0]!.id)
 
     await user.keyboard('{ArrowDown}')
-    expect(options[1]).toHaveAttribute('data-focused', 'true')
+    expect(options[1]).toHaveClass('usa-combo-box__list-option--focused')
   })
 
   it('selects the focused suggestion on Enter', async () => {

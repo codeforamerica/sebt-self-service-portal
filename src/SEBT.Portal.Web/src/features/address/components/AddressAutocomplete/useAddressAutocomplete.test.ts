@@ -57,9 +57,14 @@ describe('useAddressAutocomplete', () => {
     const useAddressAutocomplete = await importHook()
     const onSelect = vi.fn()
 
-    const { result } = renderHook(() =>
-      useAddressAutocomplete({ search: '123 Main', stateCode: 'dc', onSelect })
+    // Start with empty value so the initial-render skip doesn't suppress the
+    // real search. Then rerender with a long-enough value to simulate user typing.
+    const { result, rerender } = renderHook(
+      ({ search }) => useAddressAutocomplete({ search, stateCode: 'dc', onSelect }),
+      { initialProps: { search: '' } }
     )
+
+    rerender({ search: '123 Main' })
 
     // Before debounce: no suggestions
     expect(result.current.suggestions).toEqual([])
@@ -116,9 +121,13 @@ describe('useAddressAutocomplete', () => {
     )
     const useAddressAutocomplete = await importHook()
 
-    renderHook(() =>
-      useAddressAutocomplete({ search: '123 Main', stateCode: 'dc', onSelect: vi.fn() })
+    // Start with empty value; rerender to simulate typing past the initial-render skip
+    const { rerender } = renderHook(
+      ({ search }) => useAddressAutocomplete({ search, stateCode: 'dc', onSelect: vi.fn() }),
+      { initialProps: { search: '' } }
     )
+
+    rerender({ search: '123 Main' })
 
     await act(() => vi.advanceTimersByTime(300))
 
@@ -135,9 +144,12 @@ describe('useAddressAutocomplete', () => {
     const useAddressAutocomplete = await importHook()
     const onSelect = vi.fn()
 
-    const { result } = renderHook(() =>
-      useAddressAutocomplete({ search: '123 Main', stateCode: 'dc', onSelect })
+    const { result, rerender } = renderHook(
+      ({ search }) => useAddressAutocomplete({ search, stateCode: 'dc', onSelect }),
+      { initialProps: { search: '' } }
     )
+
+    rerender({ search: '123 Main' })
 
     await act(() => vi.advanceTimersByTime(300))
     await waitFor(() => expect(result.current.suggestions).toHaveLength(1))
@@ -174,9 +186,12 @@ describe('useAddressAutocomplete', () => {
     const useAddressAutocomplete = await importHook()
     const onSelect = vi.fn()
 
-    const { result } = renderHook(() =>
-      useAddressAutocomplete({ search: '123 Main', stateCode: 'dc', onSelect })
+    const { result, rerender } = renderHook(
+      ({ search }) => useAddressAutocomplete({ search, stateCode: 'dc', onSelect }),
+      { initialProps: { search: '' } }
     )
+
+    rerender({ search: '123 Main' })
 
     await act(() => vi.advanceTimersByTime(300))
     await waitFor(() => expect(result.current.suggestions).toHaveLength(1))
@@ -199,9 +214,12 @@ describe('useAddressAutocomplete', () => {
     server.use(http.get(SMARTY_URL, () => HttpResponse.json({ suggestions: [makeSuggestion()] })))
     const useAddressAutocomplete = await importHook()
 
-    const { result } = renderHook(() =>
-      useAddressAutocomplete({ search: '123 Main', stateCode: 'dc', onSelect: vi.fn() })
+    const { result, rerender } = renderHook(
+      ({ search }) => useAddressAutocomplete({ search, stateCode: 'dc', onSelect: vi.fn() }),
+      { initialProps: { search: '' } }
     )
+
+    rerender({ search: '123 Main' })
 
     await act(() => vi.advanceTimersByTime(300))
     await waitFor(() => expect(result.current.isOpen).toBe(true))
@@ -216,10 +234,13 @@ describe('useAddressAutocomplete', () => {
     server.use(http.get(SMARTY_URL, () => HttpResponse.json({ suggestions: [makeSuggestion()] })))
     const useAddressAutocomplete = await importHook()
 
+    // Start empty so the initial-render skip doesn't suppress the real search
     const { result, rerender } = renderHook(
       ({ search }) => useAddressAutocomplete({ search, stateCode: 'dc', onSelect: vi.fn() }),
-      { initialProps: { search: '123 Main' } }
+      { initialProps: { search: '' } }
     )
+
+    rerender({ search: '123 Main' })
 
     await act(() => vi.advanceTimersByTime(300))
     await waitFor(() => expect(result.current.suggestions).toHaveLength(1))
