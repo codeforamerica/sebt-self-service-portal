@@ -98,9 +98,9 @@ export function ChildForm({
 
       {/* USWDS memorable-date pattern: Month dropdown + Day/Year text inputs */}
       <fieldset className="usa-fieldset">
-        <label className="usa-label">
+        <legend className="usa-legend">
           {t('labelBirthdate')} <span title="required" className="usa-hint usa-hint--required">*</span>
-        </label>
+        </legend>
         <div className="usa-memorable-date">
           <div className="usa-form-group usa-form-group--month">
             <label className="usa-label" htmlFor="date-month">{t('labelMonth')}<span className="usa-hint usa-hint--required"> *</span></label>

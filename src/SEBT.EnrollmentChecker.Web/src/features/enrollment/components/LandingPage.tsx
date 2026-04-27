@@ -34,7 +34,6 @@ export function LandingPage() {
           <Button
             onClick={() => router.push('/disclaimer')}
             data-analytics-cta="start_enrollment_check_cta"
-            lang="en"
           >
             {t('action')}
           </Button>
@@ -44,7 +43,6 @@ export function LandingPage() {
             variant="outline"
             onClick={() => router.push('/disclaimer')}
             data-analytics-cta="start_enrollment_check_cta_es"
-            lang="es"
           >
             {t('actionEspañol')}
           </Button>

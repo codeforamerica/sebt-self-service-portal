@@ -34,7 +34,6 @@ function computeHouseholdEnrollmentResult(enrolledCount: number, notEnrolledCoun
   }
 }
 
-
 export function ResultsPage({ results, applicationUrl }: ResultsPageProps) {
   const { t } = useTranslation('result')
   const router = useRouter()
@@ -44,7 +43,6 @@ export function ResultsPage({ results, applicationUrl }: ResultsPageProps) {
     <section>
       <h2 className="usa-process-list__heading">{t('applyForSebtActionApply')}</h2>
       <p className="margin-top-05">{t('applyForSebtBody2')}</p>
-      {/* TODO should this open in new window? */}
       <p>
         <a
           href={applicationUrl}
@@ -85,12 +83,9 @@ export function ResultsPage({ results, applicationUrl }: ResultsPageProps) {
         >
           {t('applyForSebtAccordionTitle')} 
          </button>
-     </h2>
-      <div
-            className="usa-accordion__content usa-prose"
-            hidden={!isAccordionExpanded}
-          >
-         <p> {t('applyForSebtAccordionBody1')} </p>
+      </h2>
+      <div className="usa-accordion__content usa-prose" hidden={!isAccordionExpanded}>
+        <p> {t('applyForSebtAccordionBody1')} </p>
 
         {/* TO DO: IMPLEMENT CALCULATOR
         <p> {t('applyForSebtAccordionBody2')} </p>
@@ -106,7 +101,7 @@ export function ResultsPage({ results, applicationUrl }: ResultsPageProps) {
           >{t('applyLink')}
           </a> 
         </p> 
-        </section> */}
+          </section> */}
       </div>
     </div>
   )
@@ -133,7 +128,7 @@ export function ResultsPage({ results, applicationUrl }: ResultsPageProps) {
         />
         <h1 className="font-family-sans margin-top-1">{t('title')}</h1>
 
-        {(householdEnrollmentResult === 'mixedEnrolled' || householdEnrollmentResult === 'noneEnrolled') && (
+        {['mixedEnrolled','noneEnrolled'].includes(householdEnrollmentResult) && (
           <section>
             <div className="usa-summary-box">
               <NotEnrolledSection results={notEnrolled} applicationUrl={applicationUrl} />
@@ -165,7 +160,7 @@ export function ResultsPage({ results, applicationUrl }: ResultsPageProps) {
           </section>
         )}
 
-        {(householdEnrollmentResult === 'mixedEnrolled' || householdEnrollmentResult === 'indeterminate') && (
+        {['mixedEnrolled','indeterminate'].includes(householdEnrollmentResult)&& (
           <section>
             <h1 className="font-family-sans margin-top-1">Next Steps</h1>
             <ol className="usa-process-list">

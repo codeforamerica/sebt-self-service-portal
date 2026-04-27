@@ -1,6 +1,5 @@
 'use client'
 
-import { LinkItem } from '@sebt/design-system'
 import { useTranslation } from 'react-i18next'
 import type { ChildCheckApiResponse } from '../schemas/enrollmentSchema'
 import { ChildResultCard } from './ChildResultCard'
