@@ -37,7 +37,7 @@ public class ChallengesController : ControllerBase
         [FromServices] ICommandHandler<StartChallengeCommand, StartChallengeResponse> handler,
         CancellationToken cancellationToken)
     {
-        var userId = (int)HttpContext.Items[ResolveUserFilter.UserIdKey]!;
+        var userId = (Guid)HttpContext.Items[ResolveUserFilter.UserIdKey]!;
 
         var command = new StartChallengeCommand
         {

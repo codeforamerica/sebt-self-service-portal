@@ -25,8 +25,8 @@ public class UpdateAddressCommandHandler(
     IAddressValidationService addressValidationService,
     IHouseholdIdentifierResolver resolver,
     IHouseholdRepository householdRepository,
-    IIdProofingRequirementsService idProofingRequirementsService,
-    IMinimumIalService minimumIalService,
+    IPiiVisibilityService piiVisibilityService,
+    IIdProofingService idProofingService,
     ISelfServiceEvaluator selfServiceEvaluator,
     IStateAddressUpdateService stateAddressUpdateService,
     ILogger<UpdateAddressCommandHandler> logger)
@@ -108,51 +108,60 @@ public class UpdateAddressCommandHandler(
 
         // Policy enforcement: SNAP and TANF households must update via case worker, not the portal.
         var userIalLevel = UserIalLevelExtensions.FromClaimsPrincipal(command.User);
-        var piiVisibility = idProofingRequirementsService.GetPiiVisibility(userIalLevel);
+        var piiVisibility = piiVisibilityService.GetVisibility(userIalLevel);
         var household = await householdRepository.GetHouseholdByIdentifierAsync(
             identifier, piiVisibility, userIalLevel, cancellationToken);
 
-        if (household != null)
+        if (household == null)
         {
-            // SECURITY: Block write operations when the user has not met the minimum IAL
-            // required by their cases. See docs/tdd/minimum-ial-determination.md.
-            var minimumIal = minimumIalService.GetMinimumIal(household.SummerEbtCases);
-            if (userIalLevel < minimumIal)
+            logger.LogWarning(
+                "Address update attempted but household data not found for identifier kind {Kind}",
+                identifierKind);
+            return Result<AddressValidationResult>.PreconditionFailed(
+                PreconditionFailedReason.NotFound,
+                "Household data not found.");
+        }
+
+        // SECURITY: Block write operations when the user has not met the IAL
+        // required by their cases. See docs/config/ial/README.md.
+        var decision = idProofingService.Evaluate(
+            ProtectedResource.Address, ProtectedAction.Write,
+            userIalLevel, household.SummerEbtCases);
+        if (!decision.IsAllowed)
+        {
+            logger.LogInformation(
+                "Address update denied: user IAL {UserIal} is below required {RequiredIal}",
+                userIalLevel,
+                decision.RequiredLevel);
+            return Result<AddressValidationResult>.Forbidden(
+                $"This household requires {decision.RequiredLevel}. Complete identity verification to update your address.",
+                new Dictionary<string, object?> { ["requiredIal"] = decision.RequiredLevel.ToString() });
+        }
+
+        if (household.SummerEbtCases.Count > 0)
+        {
+            // Mixed households: co-loaded cases are excluded from the self-service
+            // permission surface; a household with any non-co-loaded case retains
+            // address-update access. Only fully co-loaded households are blocked.
+            var nonCoLoaded = household.SummerEbtCases.Where(c => !c.IsCoLoaded).ToList();
+            if (nonCoLoaded.Count == 0)
             {
-                logger.LogInformation(
-                    "Address update denied: user IAL {UserIal} is below minimum {MinimumIal}",
-                    userIalLevel,
-                    minimumIal);
-                return Result<AddressValidationResult>.Forbidden(
-                    $"This household requires {minimumIal}. Complete identity verification to update your address.",
-                    new Dictionary<string, object?> { ["requiredIal"] = minimumIal.ToString() });
+                logger.LogWarning(
+                    "Address update rejected for household identifier kind {Kind}: household contains only co-loaded cases",
+                    identifierKind);
+                return Result<AddressValidationResult>.PreconditionFailed(
+                    PreconditionFailedReason.Conflict,
+                    "Address updates are not available for co-loaded benefits. Please contact your case worker.");
             }
 
-            if (household.SummerEbtCases.Count > 0)
+            // Self-service rules enforcement: config-driven per state, issuance type, and card status.
+            var allowedActions = selfServiceEvaluator.EvaluateHousehold(nonCoLoaded);
+            if (!allowedActions.CanUpdateAddress)
             {
-                // Mixed households: co-loaded cases are excluded from the self-service
-                // permission surface; a household with any non-co-loaded case retains
-                // address-update access. Only fully co-loaded households are blocked.
-                var nonCoLoaded = household.SummerEbtCases.Where(c => !c.IsCoLoaded).ToList();
-                if (nonCoLoaded.Count == 0)
-                {
-                    logger.LogWarning(
-                        "Address update rejected for household identifier kind {Kind}: household contains only co-loaded cases",
-                        identifierKind);
-                    return Result<AddressValidationResult>.PreconditionFailed(
-                        PreconditionFailedReason.Conflict,
-                        "Address updates are not available for co-loaded benefits. Please contact your case worker.");
-                }
-
-                // Self-service rules enforcement: config-driven per state, issuance type, and card status.
-                var allowedActions = selfServiceEvaluator.EvaluateHousehold(nonCoLoaded);
-                if (!allowedActions.CanUpdateAddress)
-                {
-                    logger.LogInformation("Address update denied by self-service rules for household");
-                    return Result<AddressValidationResult>.PreconditionFailed(
-                        PreconditionFailedReason.NotAllowed,
-                        allowedActions.AddressUpdateDeniedMessageKey ?? "Address update is not available for this account.");
-                }
+                logger.LogInformation("Address update denied by self-service rules for household");
+                return Result<AddressValidationResult>.PreconditionFailed(
+                    PreconditionFailedReason.NotAllowed,
+                    allowedActions.AddressUpdateDeniedMessageKey ?? "Address update is not available for this account.");
             }
         }
 

@@ -30,7 +30,7 @@ public class HttpSocureClient(
     };
 
     public async Task<Result<IdProofingAssessmentResult>> RunIdProofingAssessmentAsync(
-        int userId,
+        Guid userId,
         string email,
         string dateOfBirth,
         string? idType,
@@ -45,7 +45,22 @@ public class HttpSocureClient(
     {
         var settings = socureSettingsSnapshot.Value;
 
-        var request = BuildEvaluationRequest(userId, email, dateOfBirth, idType, idValue, settings, ipAddress, phoneNumber, givenName, familyName, address, diSessionToken);
+        // Normalize phone to E.164 at the Socure boundary. Defense-in-depth:
+        // malformed upstream values (e.g. seed-data artifacts) must not reach the API.
+        var normalizedPhone = PhoneNormalizer.Normalize(phoneNumber);
+        if (normalizedPhone is null && !string.IsNullOrWhiteSpace(phoneNumber))
+        {
+            logger.LogWarning("Phone number could not be normalized to E.164; dropping from Socure payload");
+        }
+        var e164Phone = normalizedPhone is null ? null : $"+1{normalizedPhone}";
+
+        // Truncate names to OpenAPI Individual maxLength (240). Names are CMS-sourced and
+        // never user-entered, so the FE cannot police this. Truncation is preferred over
+        // rejection: the name itself is valid, just over-long.
+        var truncatedGivenName = TruncateNameOrWarn(givenName, nameof(givenName));
+        var truncatedFamilyName = TruncateNameOrWarn(familyName, nameof(familyName));
+
+        var request = BuildEvaluationRequest(userId, email, dateOfBirth, idType, idValue, settings, ipAddress, e164Phone, truncatedGivenName, truncatedFamilyName, address, diSessionToken);
         var jsonContent = JsonSerializer.Serialize(request, JsonOptions);
 
         var httpClient = httpClientFactory.CreateClient("Socure");
@@ -98,7 +113,7 @@ public class HttpSocureClient(
     }
 
     public Task<Result<SocureDocvSession>> StartDocvSessionAsync(
-        int userId,
+        Guid userId,
         string email,
         CancellationToken cancellationToken = default)
     {
@@ -111,7 +126,7 @@ public class HttpSocureClient(
     }
 
     private static SocureEvaluationRequest BuildEvaluationRequest(
-        int userId,
+        Guid userId,
         string email,
         string dateOfBirth,
         string? idType,
@@ -130,6 +145,9 @@ public class HttpSocureClient(
             : !string.IsNullOrWhiteSpace(settings.DiSessionToken)
                 ? settings.DiSessionToken
                 : null;
+
+        var sendIdentifierToSocure = !string.IsNullOrWhiteSpace(idType)
+            && !SocureExcludedIdentifierTypes.IsExcludedFromSocurePayload(idType);
 
         var mappedAddress = MapAddress(address);
         if (mappedAddress == null)
@@ -161,7 +179,7 @@ public class HttpSocureClient(
             Email = email,
             DateOfBirth = dateOfBirth,
             Country = "US",
-            NationalId = !string.IsNullOrWhiteSpace(idType) && !string.IsNullOrWhiteSpace(idValue)
+            NationalId = sendIdentifierToSocure && !string.IsNullOrWhiteSpace(idValue)
                 ? idValue
                 : null,
             DiSessionToken = effectiveDiToken,
@@ -175,12 +193,34 @@ public class HttpSocureClient(
 
         return new SocureEvaluationRequest
         {
-            Id = userId.ToString(),
+            // Per OpenAPI ConsumerOnboarding.id: must be unique per evaluation. Reusing an id
+            // causes RiskOS to treat the request as a re-run and can impact downstream workflows.
+            // The customer/transaction identifier stays on individual.id (userId).
+            Id = Guid.NewGuid().ToString(),
             Workflow = settings.Workflow,
             Timestamp = DateTime.UtcNow.ToString("o"),
             Data = new SocureEvaluationRequestData { Individual = individual }
         };
     }
+
+    /// <summary>
+    /// Truncates a name to <see cref="MaxNameLength"/> characters if needed, logging a warning.
+    /// OpenAPI Individual.given_name and Individual.family_name both specify maxLength: 240.
+    /// </summary>
+    private string? TruncateNameOrWarn(string? name, string fieldName)
+    {
+        if (name is null || name.Length <= MaxNameLength)
+        {
+            return name;
+        }
+
+        logger.LogWarning(
+            "Name field {FieldName} exceeded {MaxLength} chars ({ActualLength}); truncating for Socure payload",
+            fieldName, MaxNameLength, name.Length);
+        return name[..MaxNameLength];
+    }
+
+    private const int MaxNameLength = 240;
 
     private static SocureAddress? MapAddress(Address? address)
     {

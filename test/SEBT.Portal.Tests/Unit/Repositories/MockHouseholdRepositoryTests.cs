@@ -135,6 +135,34 @@ public class MockHouseholdRepositoryTests
     }
 
     [Fact]
+    public async Task GetHouseholdByEmailAsync_WhenDcCoLoadedPendingIdProofing_UsesDistinctPhoneAndCoLoadedCases()
+    {
+        var repo = CreateRepository("{0}@example.com", state: "dc");
+        const string email = "co-loaded-pending-id-proofing@example.com";
+
+        var result = await repo.GetHouseholdByEmailAsync(email, FullPiiVisibility, UserIalLevel.None);
+
+        Assert.NotNull(result);
+        Assert.Equal(email, result!.Email);
+        Assert.Equal("8185558438", result.Phone);
+        Assert.NotNull(result.SummerEbtCases);
+        var snapCase = Assert.Single(result.SummerEbtCases.Where(c => c.EbtCaseNumber == "SNAP-CO-001"));
+        Assert.True(snapCase.IsCoLoaded);
+    }
+
+    [Fact]
+    public async Task GetHouseholdByIdentifierAsync_WhenPhone8185558438_AndDc_ReturnsCoLoadedPendingHousehold()
+    {
+        var repo = CreateRepository("{0}@example.com", state: "dc");
+        var identifier = HouseholdIdentifier.Phone("8185558438");
+
+        var result = await repo.GetHouseholdByIdentifierAsync(identifier, FullPiiVisibility, UserIalLevel.None);
+
+        Assert.NotNull(result);
+        Assert.Equal("co-loaded-pending-id-proofing@example.com", result!.Email);
+    }
+
+    [Fact]
     public async Task GetHouseholdByEmailAsync_WhenHouseholdDoesNotExist_ReturnsNull()
     {
         // Arrange
@@ -789,5 +817,110 @@ public class MockHouseholdRepositoryTests
         Assert.NotNull(sebtCase.SummerEBTCaseID);
         Assert.NotEmpty(sebtCase.ChildFirstName);
         Assert.NotEmpty(sebtCase.ChildLastName);
+    }
+
+    [Fact]
+    public async Task TryUpdateAddress_WhenEmailMatchesHousehold_UpdatesAddressOnFileAndReturnsTrue()
+    {
+        // Arrange
+        var newAddress = new Address
+        {
+            StreetAddress1 = "999 Updated Boulevard",
+            StreetAddress2 = "Suite 42",
+            City = "Arlington",
+            State = "VA",
+            PostalCode = "22201"
+        };
+
+        // Act
+        var result = _repository.TryUpdateAddress("verified@example.com", newAddress);
+
+        // Assert
+        Assert.True(result);
+        var household = await _repository.GetHouseholdByEmailAsync("verified@example.com", FullPiiVisibility, UserIalLevel.IAL1plus);
+        Assert.NotNull(household);
+        Assert.NotNull(household.AddressOnFile);
+        Assert.Equal("999 Updated Boulevard", household.AddressOnFile.StreetAddress1);
+        Assert.Equal("Suite 42", household.AddressOnFile.StreetAddress2);
+        Assert.Equal("Arlington", household.AddressOnFile.City);
+        Assert.Equal("VA", household.AddressOnFile.State);
+        Assert.Equal("22201", household.AddressOnFile.PostalCode);
+    }
+
+    [Fact]
+    public async Task TryUpdateAddress_WhenEmailMatches_AlsoUpdatesCaseMailingAddresses()
+    {
+        // Arrange — large-family scenario has 4 SummerEbtCases
+        var newAddress = new Address
+        {
+            StreetAddress1 = "800 New Street",
+            City = "Denver",
+            State = "CO",
+            PostalCode = "80210"
+        };
+
+        // Act
+        _repository.TryUpdateAddress("largefamily@example.com", newAddress);
+
+        // Assert
+        var household = await _repository.GetHouseholdByEmailAsync("largefamily@example.com", FullPiiVisibility, UserIalLevel.IAL1plus);
+        Assert.NotNull(household);
+        Assert.All(household.SummerEbtCases, c =>
+        {
+            Assert.NotNull(c.MailingAddress);
+            Assert.Equal("800 New Street", c.MailingAddress.StreetAddress1);
+            Assert.Equal("Denver", c.MailingAddress.City);
+        });
+    }
+
+    [Fact]
+    public void TryUpdateAddress_WhenPhoneMatchesHousehold_UpdatesAddressAndReturnsTrue()
+    {
+        // Arrange — co-loaded scenario has phone "8185558437"
+        var newAddress = new Address
+        {
+            StreetAddress1 = "500 Phone Lookup Lane",
+            City = "Bethesda",
+            State = "MD",
+            PostalCode = "20814"
+        };
+
+        // Act
+        var result = _repository.TryUpdateAddress("8185558437", newAddress);
+
+        // Assert
+        Assert.True(result);
+    }
+
+    [Fact]
+    public void TryUpdateAddress_WhenIdentifierMatchesNothing_ReturnsFalse()
+    {
+        var newAddress = new Address
+        {
+            StreetAddress1 = "1 Nowhere",
+            City = "Nowhere",
+            State = "XX",
+            PostalCode = "00000"
+        };
+
+        var result = _repository.TryUpdateAddress("nonexistent@example.com", newAddress);
+
+        Assert.False(result);
+    }
+
+    [Fact]
+    public void TryUpdateAddress_WhenIdentifierIsNullOrEmpty_ReturnsFalse()
+    {
+        var newAddress = new Address
+        {
+            StreetAddress1 = "1 Somewhere",
+            City = "Somewhere",
+            State = "XX",
+            PostalCode = "00000"
+        };
+
+        Assert.False(_repository.TryUpdateAddress(null!, newAddress));
+        Assert.False(_repository.TryUpdateAddress("", newAddress));
+        Assert.False(_repository.TryUpdateAddress("  ", newAddress));
     }
 }

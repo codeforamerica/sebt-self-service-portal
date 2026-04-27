@@ -12,7 +12,7 @@ public class OidcTokenServiceTests : JwtTokenServiceTestBase
     [Fact]
     public void NormalLogin_WithVerificationClaims_SetsIal1Plus()
     {
-        var user = new User { Id = 1 };
+        var user = new User();
         var principal = MakePrincipal(
             ("sub", "idp-sub-123"),
             ("email", "user@example.com"),
@@ -33,7 +33,7 @@ public class OidcTokenServiceTests : JwtTokenServiceTestBase
     public void NormalLogin_WithVerificationClaims_SetsCompletedAtAndExpiresAt()
     {
         var verifiedAt = DateTime.UtcNow.AddDays(-5);
-        var user = new User { Id = 1 };
+        var user = new User();
         var principal = MakePrincipal(
             ("sub", "idp-sub-123"),
             ("email", "user@example.com"),
@@ -60,7 +60,7 @@ public class OidcTokenServiceTests : JwtTokenServiceTestBase
     [Fact]
     public void NormalLogin_WithoutVerificationClaims_SetsIal1()
     {
-        var user = new User { Id = 1 };
+        var user = new User();
         var principal = MakePrincipal(
             ("sub", "idp-sub-123"),
             ("email", "user@example.com"));
@@ -78,7 +78,7 @@ public class OidcTokenServiceTests : JwtTokenServiceTestBase
     [Fact]
     public void NormalLogin_WithoutVerificationClaims_HasNoCompletedAtOrExpiresAt()
     {
-        var user = new User { Id = 1 };
+        var user = new User();
         var principal = MakePrincipal(
             ("sub", "idp-sub-123"),
             ("email", "user@example.com"));
@@ -93,7 +93,7 @@ public class OidcTokenServiceTests : JwtTokenServiceTestBase
     [Fact]
     public void NormalLogin_WithExpiredVerification_SetsIal1()
     {
-        var user = new User { Id = 1 };
+        var user = new User();
         var principal = MakePrincipal(
             ("sub", "idp-sub-123"),
             ("email", "user@example.com"),
@@ -114,7 +114,7 @@ public class OidcTokenServiceTests : JwtTokenServiceTestBase
     public void NormalLogin_WithIal1Verification_SetsIal1()
     {
         // Verification level 1.0 is "authenticated" — valid but doesn't elevate IAL
-        var user = new User { Id = 1 };
+        var user = new User();
         var principal = MakePrincipal(
             ("sub", "idp-sub-123"),
             ("email", "user@example.com"),
@@ -136,7 +136,7 @@ public class OidcTokenServiceTests : JwtTokenServiceTestBase
     [Fact]
     public void StepUp_WithVerificationClaims_ReturnsSuccessWithIal1Plus()
     {
-        var user = new User { Id = 1 };
+        var user = new User();
         var principal = MakePrincipal(
             ("sub", "idp-sub-123"),
             ("email", "user@example.com"),
@@ -153,7 +153,7 @@ public class OidcTokenServiceTests : JwtTokenServiceTestBase
     [Fact]
     public void StepUp_WithIal2VerificationClaims_SetsIal2()
     {
-        var user = new User { Id = 1 };
+        var user = new User();
         var principal = MakePrincipal(
             ("sub", "idp-sub-123"),
             ("email", "user@example.com"),
@@ -170,7 +170,7 @@ public class OidcTokenServiceTests : JwtTokenServiceTestBase
     [Fact]
     public void StepUp_WithoutVerificationClaims_ReturnsDependencyFailed()
     {
-        var user = new User { Id = 1 };
+        var user = new User();
         var principal = MakePrincipal(
             ("sub", "idp-sub-123"),
             ("email", "user@example.com"));
@@ -186,7 +186,8 @@ public class OidcTokenServiceTests : JwtTokenServiceTestBase
     [Fact]
     public void SubClaimIsAlwaysUserId_NotIdpSub()
     {
-        var user = new User { Id = 42 };
+        var userId = Guid.NewGuid();
+        var user = new User { Id = userId };
         var principal = MakePrincipal(
             ("sub", "idp-sub-999"),
             ("email", "user@example.com"));
@@ -195,13 +196,13 @@ public class OidcTokenServiceTests : JwtTokenServiceTestBase
 
         var jwt = ReadJwt(result.Value);
         var subClaim = jwt.Claims.First(c => c.Type == JwtRegisteredClaimNames.Sub);
-        Assert.Equal("42", subClaim.Value);
+        Assert.Equal(userId.ToString(), subClaim.Value);
     }
 
     [Fact]
     public void EmailComesFromIdpClaims()
     {
-        var user = new User { Id = 1, Email = "old@example.com" };
+        var user = new User { Email = "old@example.com" };
         var principal = MakePrincipal(
             ("sub", "idp-sub-123"),
             ("email", "oidc@example.com"));
@@ -216,7 +217,7 @@ public class OidcTokenServiceTests : JwtTokenServiceTestBase
     [Fact]
     public void EmailFallsBackToUserEmail_WhenIdpHasNone()
     {
-        var user = new User { Id = 1, Email = "fallback@example.com" };
+        var user = new User { Email = "fallback@example.com" };
         var principal = MakePrincipal(
             ("sub", "idp-sub-123"));
 
@@ -230,7 +231,7 @@ public class OidcTokenServiceTests : JwtTokenServiceTestBase
     [Fact]
     public void EmailFallsBackToEmpty_WhenNoEmailAnywhere()
     {
-        var user = new User { Id = 1, Email = null };
+        var user = new User { Email = null };
         var principal = MakePrincipal(
             ("sub", "idp-sub-123"));
 
@@ -244,7 +245,7 @@ public class OidcTokenServiceTests : JwtTokenServiceTestBase
     [Fact]
     public void ApplicationClaimsPassThrough()
     {
-        var user = new User { Id = 1 };
+        var user = new User();
         var principal = MakePrincipal(
             ("sub", "idp-sub-123"),
             ("email", "user@example.com"),
@@ -263,7 +264,7 @@ public class OidcTokenServiceTests : JwtTokenServiceTestBase
     [Fact]
     public void InfrastructureClaimsAreFilteredOut()
     {
-        var user = new User { Id = 1 };
+        var user = new User();
         var principal = MakePrincipal(
             ("sub", "idp-sub-123"),
             ("email", "user@example.com"),

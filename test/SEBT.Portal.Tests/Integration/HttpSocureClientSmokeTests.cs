@@ -57,7 +57,7 @@ public class HttpSocureClientSmokeTests(ITestOutputHelper output)
         var client = CreateRealClient();
 
         var result = await client.RunIdProofingAssessmentAsync(
-            userId: 99999,
+            userId: Guid.NewGuid(),
             email: "smoketest@example.com",
             dateOfBirth: "1990-01-15",
             idType: "ssn",
@@ -110,7 +110,7 @@ public class HttpSocureClientSmokeTests(ITestOutputHelper output)
 
         // No SSN — tests the null national_id path
         var result = await client.RunIdProofingAssessmentAsync(
-            userId: 99998,
+            userId: Guid.NewGuid(),
             email: "smoketest-noid@example.com",
             dateOfBirth: "1985-06-20",
             idType: null,

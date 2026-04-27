@@ -1,30 +1,38 @@
+using Medallion.Threading;
 using Microsoft.Extensions.Logging;
 using SEBT.Portal.Core.Models;
 using SEBT.Portal.Core.Models.Auth;
 using SEBT.Portal.Core.Repositories;
 using SEBT.Portal.Core.Services;
+using SEBT.Portal.Core.Utilities;
 using SEBT.Portal.Kernel;
 using SEBT.Portal.Kernel.Results;
 using IStateCardReplacementService = SEBT.Portal.StatesPlugins.Interfaces.ICardReplacementService;
 using PluginCardReplacementRequest = SEBT.Portal.StatesPlugins.Interfaces.Models.Household.CardReplacementRequest;
+using CardReplacementResult = SEBT.Portal.StatesPlugins.Interfaces.Models.Household.CardReplacementResult;
 
 namespace SEBT.Portal.UseCases.Household;
 
 /// <summary>
 /// Handles card replacement requests for an authenticated user's household.
 /// Validates input, resolves household identity, enforces minimum IAL, enforces
-/// per-case self-service rules, enforces 2-week cooldown, and dispatches to the
-/// state connector. Policy rejections and backend errors from the connector are
-/// mapped to portal <see cref="Result"/> types.
+/// per-case self-service rules, enforces 2-week cooldown via portal DB, and
+/// dispatches to the state connector. Persists replacement-request records for
+/// future cooldown enforcement only when the connector reports success, so a
+/// failed dispatch does not burn the user's 14-day cooldown for an action that
+/// never executed. Connector policy rejections and backend errors are mapped to
+/// portal <see cref="Result"/> types.
 /// </summary>
 public class RequestCardReplacementCommandHandler(
     IValidator<RequestCardReplacementCommand> validator,
     IHouseholdIdentifierResolver resolver,
     IHouseholdRepository repository,
-    IMinimumIalService minimumIalService,
+    IIdProofingService idProofingService,
     ISelfServiceEvaluator selfServiceEvaluator,
     IStateCardReplacementService cardReplacementService,
-    TimeProvider timeProvider,
+    ICardReplacementRequestRepository cardReplacementRepo,
+    IIdentifierHasher identifierHasher,
+    IDistributedLockProvider distributedLockProvider,
     ILogger<RequestCardReplacementCommandHandler> logger)
     : ICommandHandler<RequestCardReplacementCommand>
 {
@@ -63,17 +71,19 @@ public class RequestCardReplacementCommandHandler(
             return Result.PreconditionFailed(PreconditionFailedReason.NotFound, "Household data not found.");
         }
 
-        // SECURITY: Block write operations when the user has not met the minimum IAL
-        // required by their cases. See docs/tdd/minimum-ial-determination.md.
-        var minimumIal = minimumIalService.GetMinimumIal(household.SummerEbtCases);
-        if (userIalLevel < minimumIal)
+        // SECURITY: Block write operations when the user has not met the IAL
+        // required by their cases. See docs/config/ial/README.md.
+        var decision = idProofingService.Evaluate(
+            ProtectedResource.Card, ProtectedAction.Write,
+            userIalLevel, household.SummerEbtCases);
+        if (!decision.IsAllowed)
         {
             logger.LogInformation(
-                "Card replacement denied: user IAL {UserIal} is below minimum {MinimumIal}",
+                "Card replacement denied: user IAL {UserIal} is below required {RequiredIal}",
                 userIalLevel,
-                minimumIal);
+                decision.RequiredLevel);
             return Result.Forbidden(
-                $"This household requires {minimumIal}. Complete identity verification to request card replacements.");
+                $"This household requires {decision.RequiredLevel}. Complete identity verification to request card replacements.");
         }
 
         // Co-loaded cases are managed by caseworkers, not the portal.
@@ -104,106 +114,150 @@ public class RequestCardReplacementCommandHandler(
             }
         }
 
-        var cooldownErrors = CheckCooldown(command.CaseIds, household, timeProvider);
-        if (cooldownErrors.Count > 0)
+        // Resolve the user's database ID early — needed for lock key and audit trail FK.
+        var userId = command.User.GetUserId();
+        if (userId == null)
         {
-            logger.LogInformation(
-                "Card replacement rejected: {Count} case(s) within cooldown period",
-                cooldownErrors.Count);
-            return Result.ValidationFailed(cooldownErrors);
+            logger.LogWarning("Card replacement: unable to resolve user ID from claims");
+            return Result.Unauthorized("Unable to identify user from token.");
         }
 
         var identifierKind = identifier.Type.ToString();
-        logger.LogInformation(
-            "Card replacement request received for household identifier kind {Kind}, {Count} case(s)",
-            identifierKind,
-            command.CaseIds.Count);
 
-        var pluginRequest = new PluginCardReplacementRequest
+        // Distributed lock prevents TOCTOU race between cooldown check, connector
+        // dispatch, and persist. Scoped to the user — a single user can only be
+        // in one card replacement flow at a time. Note: held during the connector
+        // call, which is acceptable because (a) the lock is per-user, not global,
+        // and (b) the connector call has its own cancellation token plumbing.
+        await using (await distributedLockProvider.AcquireLockAsync(
+            $"CardReplacement:{userId.Value}", cancellationToken: cancellationToken))
         {
-            HouseholdIdentifierValue = identifier.Value,
-            CaseIds = command.CaseIds,
-            Reason = StatesPlugins.Interfaces.Models.Household.CardReplacementReason.Unspecified,
-        };
+            // Check cooldown from portal DB — the authoritative source for request timestamps.
+            var householdHash = identifierHasher.Hash(identifier.Value);
+            var cooldownErrors = new List<ValidationError>();
 
-        try
-        {
-            var connectorResult = await cardReplacementService.RequestCardReplacementAsync(
-                pluginRequest,
-                cancellationToken);
-
-            if (connectorResult.IsSuccess)
+            foreach (var caseId in command.CaseIds)
             {
-                logger.LogInformation(
-                    "Card replacement request completed for household identifier kind {Kind}",
-                    identifierKind);
-                return Result.Success();
+                var caseHash = identifierHasher.Hash(caseId);
+                if (householdHash != null && caseHash != null)
+                {
+                    var hasCooldown = await cardReplacementRepo.HasRecentRequestAsync(
+                        householdHash, caseHash, CooldownPeriod, cancellationToken);
+                    if (hasCooldown)
+                    {
+                        cooldownErrors.Add(new ValidationError(
+                            "CaseIds",
+                            $"A card replacement was requested for this case within the last 14 days."));
+                    }
+                }
             }
 
-            if (connectorResult.IsPolicyRejection)
+            if (cooldownErrors.Count > 0)
             {
-                logger.LogWarning(
-                    "Card replacement policy rejection for household identifier kind {Kind}: {ErrorCode}",
+                logger.LogInformation(
+                    "Card replacement rejected: {Count} case(s) within cooldown period",
+                    cooldownErrors.Count);
+                return Result.ValidationFailed(cooldownErrors);
+            }
+
+            // Cooldown clear — dispatch to the state connector. Persist only on
+            // connector success so a failed dispatch does not burn the 14-day
+            // cooldown for a request that never executed.
+            logger.LogInformation(
+                "Card replacement dispatching to state connector for household identifier kind {Kind}, {Count} case(s)",
+                identifierKind,
+                command.CaseIds.Count);
+
+            var pluginRequest = new PluginCardReplacementRequest
+            {
+                HouseholdIdentifierValue = identifier.Value,
+                CaseIds = command.CaseIds,
+                Reason = StatesPlugins.Interfaces.Models.Household.CardReplacementReason.Unspecified,
+            };
+
+            CardReplacementResult connectorResult;
+            try
+            {
+                connectorResult = await cardReplacementService.RequestCardReplacementAsync(
+                    pluginRequest,
+                    cancellationToken);
+            }
+            catch (Exception ex)
+            {
+                // Plugin threw before returning a result — treat as transient backend
+                // failure. The SP signature is still being settled with DC; until then
+                // unexpected exceptions are plausible. Cooldown is NOT recorded so the
+                // user can retry without waiting 14 days.
+                logger.LogError(
+                    ex,
+                    "Card replacement plugin threw for household identifier kind {Kind}, {Count} case(s); cooldown NOT recorded, user may retry",
+                    identifierKind,
+                    command.CaseIds.Count);
+                return Result.DependencyFailed(
+                    DependencyFailedReason.ConnectionFailed,
+                    "Card replacement service is temporarily unavailable.");
+            }
+
+            if (!connectorResult.IsSuccess)
+            {
+                if (connectorResult.IsPolicyRejection)
+                {
+                    // DC-side policy declined the request (e.g., card already in flight,
+                    // case ineligible). Surface to the user as PreconditionFailed; do not
+                    // cooldown so they can take a different action immediately.
+                    logger.LogWarning(
+                        "Card replacement policy rejection for household identifier kind {Kind}: {ErrorCode}; cooldown NOT recorded",
+                        identifierKind,
+                        connectorResult.ErrorCode);
+                    return Result.PreconditionFailed(
+                        PreconditionFailedReason.Conflict,
+                        connectorResult.ErrorMessage);
+                }
+
+                logger.LogError(
+                    "Card replacement backend error for household identifier kind {Kind}: {ErrorCode}; cooldown NOT recorded, user may retry",
                     identifierKind,
                     connectorResult.ErrorCode);
-                return Result.PreconditionFailed(
-                    PreconditionFailedReason.Conflict,
+                return Result.DependencyFailed(
+                    DependencyFailedReason.ConnectionFailed,
                     connectorResult.ErrorMessage);
             }
 
-            logger.LogError(
-                "Card replacement backend error for household identifier kind {Kind}: {ErrorCode}",
+            // Connector reported success — persist replacement requests for cooldown
+            // enforcement. If persistence fails after a successful dispatch, the SP
+            // has executed but we have no portal-side record. Log critically: the
+            // user is not blocked from re-requesting (DC-side dedup is the backstop
+            // until next portal-side persist succeeds).
+            try
+            {
+                foreach (var caseId in command.CaseIds)
+                {
+                    var caseHash = identifierHasher.Hash(caseId);
+                    if (householdHash != null && caseHash != null)
+                    {
+                        await cardReplacementRepo.CreateAsync(
+                            householdHash, caseHash, userId.Value, cancellationToken);
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                logger.LogCritical(
+                    ex,
+                    "Card replacement: connector reported success but cooldown persistence failed for household identifier kind {Kind}, {Count} case(s). Subsequent portal requests within {Days} days will not be cooldown-blocked; relying on DC-side dedup.",
+                    identifierKind,
+                    command.CaseIds.Count,
+                    CooldownPeriod.TotalDays);
+                // The user-facing action did execute — return success rather than
+                // misleading the user with a failure for an action that happened.
+                return Result.Success();
+            }
+
+            logger.LogInformation(
+                "Card replacement request completed for household identifier kind {Kind}, {Count} case(s)",
                 identifierKind,
-                connectorResult.ErrorCode);
-            return Result.DependencyFailed(
-                DependencyFailedReason.ConnectionFailed,
-                connectorResult.ErrorMessage);
+                command.CaseIds.Count);
+            return Result.Success();
         }
-        catch (Exception ex)
-        {
-            logger.LogError(
-                ex,
-                "Card replacement plugin failed for household identifier kind {Kind}",
-                identifierKind);
-            return Result.DependencyFailed(
-                DependencyFailedReason.ConnectionFailed,
-                "Card replacement service is temporarily unavailable.");
-        }
-    }
-
-    private static List<ValidationError> CheckCooldown(
-        List<string> requestedCaseIds,
-        Core.Models.Household.HouseholdData household,
-        TimeProvider timeProvider)
-    {
-        var errors = new List<ValidationError>();
-        var now = timeProvider.GetUtcNow().UtcDateTime;
-
-        foreach (var caseId in requestedCaseIds)
-        {
-            var summerEbtCase = household.SummerEbtCases
-                .FirstOrDefault(c => c.SummerEBTCaseID == caseId);
-
-            if (summerEbtCase == null)
-            {
-                errors.Add(new ValidationError(
-                    "CaseIds",
-                    $"Case {caseId} does not belong to this household."));
-                continue;
-            }
-
-            if (summerEbtCase.CardRequestedAt == null)
-                continue;
-
-            var elapsed = now - summerEbtCase.CardRequestedAt.Value;
-            if (elapsed < CooldownPeriod)
-            {
-                errors.Add(new ValidationError(
-                    "CaseIds",
-                    $"Case {caseId} was requested within the last 14 days."));
-            }
-        }
-
-        return errors;
     }
 }

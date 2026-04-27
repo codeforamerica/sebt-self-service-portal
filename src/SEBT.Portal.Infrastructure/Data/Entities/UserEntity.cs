@@ -8,7 +8,7 @@ public class UserEntity
     /// <summary>
     /// The unique identifier for the user (primary key).
     /// </summary>
-    public int Id { get; set; }
+    public Guid Id { get; set; } = Guid.CreateVersion7();
 
     /// <summary>
     /// The user's email address, used as a unique identifier.
@@ -20,6 +20,11 @@ public class UserEntity
     /// Null for OTP-authenticated users.
     /// </summary>
     public string? ExternalProviderId { get; set; }
+
+    /// <summary>
+    /// The user's date of birth, when collected.
+    /// </summary>
+    public DateOnly? DateOfBirth { get; set; }
 
     /// <summary>
     /// Workflow state of ID proofing (NotStarted, InProgress, Completed, Failed, Expired)

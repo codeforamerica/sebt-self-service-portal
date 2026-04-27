@@ -15,9 +15,11 @@ namespace SEBT.Portal.UseCases.Household;
 public class GetHouseholdDataQueryHandler(
     IHouseholdIdentifierResolver resolver,
     IHouseholdRepository repository,
-    IIdProofingRequirementsService idProofingRequirementsService,
-    IMinimumIalService minimumIalService,
+    IPiiVisibilityService piiVisibilityService,
+    IIdProofingService idProofingService,
     ISelfServiceEvaluator selfServiceEvaluator,
+    ICardReplacementRequestRepository cardReplacementRepo,
+    IIdentifierHasher identifierHasher,
     ILogger<GetHouseholdDataQueryHandler> logger)
     : IQueryHandler<GetHouseholdDataQuery, HouseholdData>
 {
@@ -34,7 +36,7 @@ public class GetHouseholdDataQueryHandler(
         logger.LogDebug("Household data request received for identifier type {Type}", identifier.Type);
 
         var userIalLevel = UserIalLevelExtensions.FromClaimsPrincipal(query.User);
-        var piiVisibility = idProofingRequirementsService.GetPiiVisibility(userIalLevel);
+        var piiVisibility = piiVisibilityService.GetVisibility(userIalLevel);
 
         logger.LogInformation(
             "PII visibility for user (IalLevel={IalLevel}): Address={IncludeAddress}, Email={IncludeEmail}, Phone={IncludePhone}",
@@ -55,18 +57,20 @@ public class GetHouseholdDataQueryHandler(
             return Result<HouseholdData>.PreconditionFailed(PreconditionFailedReason.NotFound, "Household data not found.");
         }
 
-        var minimumIal = minimumIalService.GetMinimumIal(householdData.SummerEbtCases);
-        if (userIalLevel < minimumIal)
+        // SECURITY: Never return household case data when the user has not met
+        // the IAL required by their cases. See docs/config/ial/README.md.
+        var decision = idProofingService.Evaluate(
+            ProtectedResource.Household, ProtectedAction.View,
+            userIalLevel, householdData.SummerEbtCases);
+        if (!decision.IsAllowed)
         {
-            // SECURITY: Never return household case data when the user has not met
-            // the minimum IAL required by their cases. See docs/tdd/minimum-ial-determination.md.
             logger.LogInformation(
-                "Household data access denied: user IAL {UserIal} is below minimum {MinimumIal}",
+                "Household data access denied: user IAL {UserIal} is below required {RequiredIal}",
                 userIalLevel,
-                minimumIal);
+                decision.RequiredLevel);
             return Result<HouseholdData>.Forbidden(
-                $"This household requires {minimumIal}. Complete identity verification to access this data.",
-                new Dictionary<string, object?> { ["requiredIal"] = minimumIal.ToString() });
+                $"This household requires {decision.RequiredLevel}. Complete identity verification to access this data.",
+                new Dictionary<string, object?> { ["requiredIal"] = decision.RequiredLevel.ToString() });
         }
 
         // Mixed-eligibility households: hide co-loaded cases so the user only sees
@@ -82,6 +86,25 @@ public class GetHouseholdDataQueryHandler(
             // key on BenefitIssuanceType; leaving it as the plugin's upstream value
             // would misroute denials that aren't actually co-loaded.
             householdData.BenefitIssuanceType = BenefitIssuanceType.SummerEbt;
+        }
+
+        // Hydrate CardRequestedAt from portal DB — the authoritative source for
+        // replacement request timestamps. The frontend uses this to enforce cooldown UI.
+        var householdHash = identifierHasher.Hash(identifier.Value);
+        if (householdHash != null)
+        {
+            foreach (var summerEbtCase in householdData.SummerEbtCases)
+            {
+                if (summerEbtCase.SummerEBTCaseID != null)
+                {
+                    var caseHash = identifierHasher.Hash(summerEbtCase.SummerEBTCaseID);
+                    if (caseHash != null)
+                    {
+                        summerEbtCase.CardRequestedAt = await cardReplacementRepo
+                            .GetMostRecentRequestDateAsync(householdHash, caseHash, cancellationToken);
+                    }
+                }
+            }
         }
 
         foreach (var summerEbtCase in householdData.SummerEbtCases)

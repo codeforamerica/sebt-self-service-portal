@@ -2,6 +2,7 @@
 // and because [Export]/[ExportMetadata] attributes remain on plugin classes (inert).
 using Serilog;
 using Microsoft.Extensions.DependencyInjection.Extensions;
+using SEBT.Portal.Infrastructure.Repositories;
 using SEBT.Portal.StatesPlugins.Interfaces;
 
 namespace SEBT.Portal.Api.Composition;
@@ -138,6 +139,18 @@ internal static class ServiceCollectionPluginExtensions
                 loadedAssemblies.Count);
         }
 
+        // When mock household data is enabled, state connector write operations should also
+        // be mocked — the real state backend is unavailable. Override any plugin-provided
+        // IAddressUpdateService with an in-memory mock that updates the MockHouseholdRepository
+        // so subsequent reads reflect the change.
+        var useMockHouseholdData = configuration.GetValue<bool>("UseMockHouseholdData", false);
+        if (useMockHouseholdData)
+        {
+            services.AddSingleton<IAddressUpdateService>(sp =>
+                new Defaults.MockStateAddressUpdateService(
+                    sp.GetRequiredService<MockHouseholdRepository>()));
+        }
+
         // Register in-process defaults only for services no connector plugin provided.
         services.TryAddSingleton<IStateAuthenticationService, Defaults.DefaultStateAuthenticationService>();
         services.TryAddSingleton<IStateHealthCheckService, Defaults.DefaultStateHealthCheckService>();
@@ -149,3 +162,4 @@ internal static class ServiceCollectionPluginExtensions
         return services;
     }
 }
+

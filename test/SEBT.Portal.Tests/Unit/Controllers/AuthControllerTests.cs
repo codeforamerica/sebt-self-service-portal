@@ -1,9 +1,11 @@
 using System.Security.Claims;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using NSubstitute;
+using NSubstitute.ExceptionExtensions;
 using SEBT.Portal.Api.Controllers.Auth;
 using SEBT.Portal.Api.Models;
 using SEBT.Portal.Api.Services;
@@ -48,7 +50,7 @@ public class AuthControllerTests
     /// Sets up the authenticated user with a numeric sub claim (the portal JWT format)
     /// plus an optional email claim for GetAuthorizationStatus tests.
     /// </summary>
-    private void SetupAuthenticatedUserWithSub(int userId, string? email = null)
+    private void SetupAuthenticatedUserWithSub(Guid userId, string? email = null)
     {
         var claims = new List<Claim> { new Claim("sub", userId.ToString()) };
         if (email != null)
@@ -111,19 +113,102 @@ public class AuthControllerTests
     }
 
     [Fact]
-    public void Logout_ClearsAuthCookie()
+    public async Task Logout_WithOidcConfigured_ClearsCookieAndRedirectsToIdpEndSessionEndpoint()
     {
         // Arrange
+        var config = new ConfigurationBuilder()
+            .AddInMemoryCollection(new Dictionary<string, string?>
+            {
+                ["Oidc:DiscoveryEndpoint"] = "https://auth.pingone.com/.well-known/openid-configuration",
+                ["Oidc:ClientId"] = "test-client-id",
+                ["Oidc:CallbackRedirectUri"] = "https://portal.co.gov/callback"
+            })
+            .Build();
+
+        var oidcExchangeService = Substitute.For<IOidcExchangeService>();
+        var oidcConfig = new Microsoft.IdentityModel.Protocols.OpenIdConnect.OpenIdConnectConfiguration
+        {
+            EndSessionEndpoint = "https://auth.pingone.com/logout"
+        };
+        oidcExchangeService.GetDiscoveryConfigAsync(false, Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult(oidcConfig));
+
         _controller.ControllerContext = new ControllerContext
         {
             HttpContext = new DefaultHttpContext()
         };
 
         // Act
-        var result = _controller.Logout();
+        var result = await _controller.Logout(config, oidcExchangeService);
 
         // Assert
-        Assert.IsType<NoContentResult>(result);
+        var redirectResult = Assert.IsType<RedirectResult>(result);
+        Assert.Contains("https://auth.pingone.com/logout", redirectResult.Url);
+        Assert.Contains("client_id=test-client-id", redirectResult.Url);
+        Assert.Contains("post_logout_redirect_uri=", redirectResult.Url);
+        Assert.Contains("%2Flogin", redirectResult.Url); // /login URL-encoded
+
+        var setCookie = _controller.Response.Headers["Set-Cookie"].ToString();
+        Assert.Contains($"{AuthCookies.AuthCookieName}=", setCookie);
+        Assert.Contains("expires=", setCookie, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public async Task Logout_WithoutOidcConfigured_ClearsCookieAndRedirectsToLogin()
+    {
+        // Arrange
+        var config = new ConfigurationBuilder()
+            .AddInMemoryCollection(new Dictionary<string, string?>())
+            .Build();
+
+        var oidcExchangeService = Substitute.For<IOidcExchangeService>();
+
+        _controller.ControllerContext = new ControllerContext
+        {
+            HttpContext = new DefaultHttpContext()
+        };
+
+        // Act
+        var result = await _controller.Logout(config, oidcExchangeService);
+
+        // Assert
+        var redirectResult = Assert.IsType<RedirectResult>(result);
+        Assert.Equal("/login", redirectResult.Url);
+
+        var setCookie = _controller.Response.Headers["Set-Cookie"].ToString();
+        Assert.Contains($"{AuthCookies.AuthCookieName}=", setCookie);
+        Assert.Contains("expires=", setCookie, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public async Task Logout_WhenDiscoveryFails_ClearsCookieAndRedirectsToLogin()
+    {
+        // Arrange
+        var config = new ConfigurationBuilder()
+            .AddInMemoryCollection(new Dictionary<string, string?>
+            {
+                ["Oidc:DiscoveryEndpoint"] = "https://auth.pingone.com/.well-known/openid-configuration",
+                ["Oidc:ClientId"] = "test-client-id",
+                ["Oidc:CallbackRedirectUri"] = "https://portal.co.gov/callback"
+            })
+            .Build();
+
+        var oidcExchangeService = Substitute.For<IOidcExchangeService>();
+        oidcExchangeService.GetDiscoveryConfigAsync(false, Arg.Any<CancellationToken>())
+            .ThrowsAsync(new InvalidOperationException("Discovery failed"));
+
+        _controller.ControllerContext = new ControllerContext
+        {
+            HttpContext = new DefaultHttpContext()
+        };
+
+        // Act
+        var result = await _controller.Logout(config, oidcExchangeService);
+
+        // Assert — graceful fallback, don't strand the user
+        var redirectResult = Assert.IsType<RedirectResult>(result);
+        Assert.Equal("/login", redirectResult.Url);
+
         var setCookie = _controller.Response.Headers["Set-Cookie"].ToString();
         Assert.Contains($"{AuthCookies.AuthCookieName}=", setCookie);
         Assert.Contains("expires=", setCookie, StringComparison.OrdinalIgnoreCase);
@@ -133,7 +218,7 @@ public class AuthControllerTests
     public void GetAuthorizationStatus_WhenEmailClaimIsMissing_ReturnsNullEmail()
     {
         // Arrange: portal JWT has sub (user ID) but no email claim — OIDC users without stored email
-        SetupAuthenticatedUserWithSub(userId: 1);
+        SetupAuthenticatedUserWithSub(userId: Guid.CreateVersion7());
 
         // Act
         var result = _controller.GetAuthorizationStatus();
@@ -150,7 +235,7 @@ public class AuthControllerTests
     public async Task RefreshToken_WhenSuccess_ReturnsNoContentAndSetsAuthCookie()
     {
         // Arrange — controller reads UserId from the sub claim (portal JWT format: sub = user.Id)
-        const int userId = 1;
+        var userId = Guid.NewGuid();
         const string expectedToken = "refreshed.jwt.token";
         SetupAuthenticatedUserWithSub(userId, email: "user@example.com");
 
@@ -197,7 +282,7 @@ public class AuthControllerTests
     public async Task RefreshToken_WhenUserNotFound_ReturnsNotFound()
     {
         // Arrange
-        const int userId = 999;
+        var userId = Guid.NewGuid();
         SetupAuthenticatedUserWithSub(userId);
 
         var handlerMock = Substitute.For<ICommandHandler<RefreshTokenCommand, string>>();
@@ -220,7 +305,7 @@ public class AuthControllerTests
     public async Task RefreshToken_WhenValidationFails_ReturnsBadRequestWithErrors()
     {
         // Arrange — handler returns a validation failure (e.g. some business rule violation)
-        const int userId = 1;
+        var userId = Guid.NewGuid();
         SetupAuthenticatedUserWithSub(userId);
 
         var handlerMock = Substitute.For<ICommandHandler<RefreshTokenCommand, string>>();
@@ -248,7 +333,7 @@ public class AuthControllerTests
     public async Task RefreshToken_WhenDependencyFails_ReturnsBadRequest()
     {
         // Arrange
-        const int userId = 1;
+        var userId = Guid.NewGuid();
         SetupAuthenticatedUserWithSub(userId);
 
         var handlerMock = Substitute.For<ICommandHandler<RefreshTokenCommand, string>>();
@@ -270,8 +355,8 @@ public class AuthControllerTests
     [Fact]
     public async Task RefreshToken_ExtractsUserIdFromSubClaim()
     {
-        // Arrange — portal JWT always has sub = user.Id (integer string)
-        const int userId = 42;
+        // Arrange — portal JWT has sub = user.Id (Guid string)
+        var userId = Guid.NewGuid();
         SetupAuthenticatedUserWithSub(userId);
 
         var handlerMock = Substitute.For<ICommandHandler<RefreshTokenCommand, string>>();
