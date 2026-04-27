@@ -2,8 +2,8 @@
 
 import { Button, RichText } from '@sebt/design-system'
 import Image from 'next/image'
-import { useState } from 'react'
 import { useRouter } from 'next/navigation'
+import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
 export function LandingPage() {
@@ -53,22 +53,22 @@ export function LandingPage() {
           <h2 className="usa-accordion__heading">
             <button
               type="button"
-               className="usa-accordion__button bg-transparent border-0"
+              className="usa-accordion__button bg-transparent border-0"
               aria-expanded={isAccordionExpanded}
               aria-controls="faq-content"
-              onClick={() => setIsAccordionExpanded(prev => !prev)}
+              onClick={() => setIsAccordionExpanded((prev) => !prev)}
             >
-            <span className="display-flex flex-align-center text-info-darker">
-              <svg
-                className="usa-icon margin-right-1"
-                aria-hidden="true"
-                focusable="false"
-                role="img"
-              >
-                <use xlinkHref="/img/sprite.svg#info" />
-              </svg>
-              {t('accordionTitle')}
-            </span>
+              <span className="display-flex flex-align-center text-info-darker">
+                <svg
+                  className="usa-icon margin-right-1"
+                  aria-hidden="true"
+                  focusable="false"
+                  role="img"
+                >
+                  <use xlinkHref="/img/sprite.svg#info" />
+                </svg>
+                {t('accordionTitle')}
+              </span>
             </button>
           </h2>
           <div

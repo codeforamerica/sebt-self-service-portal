@@ -12,15 +12,14 @@ export function EnrolledSection({ results }: { results: ChildCheckApiResponse[] 
     <section>
       <h3 className="usa-summary-box__heading">{t('streamlinedEnrolledBody1')}</h3>
       <ul>
-
-      {results.map(child => (
-        <ChildResultCard
-          key={child.checkId}
-          firstName={child.firstName}
-          lastName={child.lastName}
-          displayStatus="enrolled"
-        />
-      ))}
+        {results.map((child) => (
+          <ChildResultCard
+            key={child.checkId}
+            firstName={child.firstName}
+            lastName={child.lastName}
+            displayStatus="enrolled"
+          />
+        ))}
       </ul>
     </section>
   )

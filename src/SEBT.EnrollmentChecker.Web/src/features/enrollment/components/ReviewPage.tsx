@@ -37,17 +37,23 @@ export function ReviewPage({ onSubmit }: ReviewPageProps) {
 
         <div className="margin-top-3">
           {state.children.map((child) => (
-            <ChildReviewCard key={child.id} child={child} onEdit={handleEdit} />
+            <ChildReviewCard
+              key={child.id}
+              child={child}
+              onEdit={handleEdit}
+            />
           ))}
         </div>
 
         <div className="display-flex flex-row flex-align-center margin-top-4">
-          <Button variant="outline" className="margin-right-1" onClick={() => router.push('/check')}>
+          <Button
+            variant="outline"
+            className="margin-right-1"
+            onClick={() => router.push('/check')}
+          >
             {tCommon('back')}
           </Button>
-          <Button onClick={onSubmit}>
-            {tCommon('submit')}
-          </Button>
+          <Button onClick={onSubmit}>{tCommon('submit')}</Button>
         </div>
         <div className="margin-top-2">
           <button

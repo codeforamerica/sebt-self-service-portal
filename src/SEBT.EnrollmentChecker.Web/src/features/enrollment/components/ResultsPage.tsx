@@ -1,10 +1,10 @@
 'use client'
 
-import { useRouter } from 'next/navigation'
 import Image from 'next/image'
+import { useRouter } from 'next/navigation'
+import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import type { ChildCheckApiResponse } from '../schemas/enrollmentSchema'
-import { useState } from 'react'
 
 import { mapApiStatus } from '../schemas/enrollmentSchema'
 import { ChildResultCard } from './ChildResultCard'
@@ -16,21 +16,20 @@ interface ResultsPageProps {
   applicationUrl: string
 }
 
-type HouseholdEnrollmentResult = 
-  "allEnrolled" |
-  "noneEnrolled" |
-  "mixedEnrolled" |
-  "indeterminate"
+type HouseholdEnrollmentResult = 'allEnrolled' | 'noneEnrolled' | 'mixedEnrolled' | 'indeterminate'
 
-function computeHouseholdEnrollmentResult(enrolledCount: number, notEnrolledCount: number): HouseholdEnrollmentResult {
+function computeHouseholdEnrollmentResult(
+  enrolledCount: number,
+  notEnrolledCount: number
+): HouseholdEnrollmentResult {
   if (enrolledCount > 0 && notEnrolledCount === 0) {
-    return "allEnrolled"
+    return 'allEnrolled'
   } else if (notEnrolledCount > 0 && enrolledCount === 0) {
-    return "noneEnrolled"
+    return 'noneEnrolled'
   } else if (enrolledCount > 0 && notEnrolledCount > 0) {
-    return "mixedEnrolled"
+    return 'mixedEnrolled'
   } else {
-    return "indeterminate"
+    return 'indeterminate'
   }
 }
 
@@ -50,7 +49,7 @@ export function ResultsPage({ results, applicationUrl }: ResultsPageProps) {
           className="usa-button"
         >
           {t('applyLink')}
-      </a>
+        </a>
       </p>
     </section>
   )
@@ -76,15 +75,18 @@ export function ResultsPage({ results, applicationUrl }: ResultsPageProps) {
       <h2 className="usa-accordion__heading">
         <button
           type="button"
-            className="usa-accordion__button"
+          className="usa-accordion__button"
           aria-expanded={isAccordionExpanded}
           aria-controls="faq-content"
-          onClick={() => setIsAccordionExpanded(prev => !prev)}
+          onClick={() => setIsAccordionExpanded((prev) => !prev)}
         >
-          {t('applyForSebtAccordionTitle')} 
-         </button>
+          {t('applyForSebtAccordionTitle')}
+        </button>
       </h2>
-      <div className="usa-accordion__content usa-prose" hidden={!isAccordionExpanded}>
+      <div
+        className="usa-accordion__content usa-prose"
+        hidden={!isAccordionExpanded}
+      >
         <p> {t('applyForSebtAccordionBody1')} </p>
 
         {/* TO DO: IMPLEMENT CALCULATOR
@@ -105,12 +107,15 @@ export function ResultsPage({ results, applicationUrl }: ResultsPageProps) {
       </div>
     </div>
   )
-    
-  const enrolled = results.filter(r => mapApiStatus(r.status) === 'enrolled')
-  const notEnrolled = results.filter(r => mapApiStatus(r.status) === 'notEnrolled')
-  const errors = results.filter(r => mapApiStatus(r.status) === 'error')
- 
-  const householdEnrollmentResult = computeHouseholdEnrollmentResult(enrolled.length, notEnrolled.length)
+
+  const enrolled = results.filter((r) => mapApiStatus(r.status) === 'enrolled')
+  const notEnrolled = results.filter((r) => mapApiStatus(r.status) === 'notEnrolled')
+  const errors = results.filter((r) => mapApiStatus(r.status) === 'error')
+
+  const householdEnrollmentResult = computeHouseholdEnrollmentResult(
+    enrolled.length,
+    notEnrolled.length
+  )
 
   // const checkmarkIcon = 'icon-checkmark-card.svg'
   // const exclaimIcon = 'icon-alert-card.svg'
@@ -120,7 +125,7 @@ export function ResultsPage({ results, applicationUrl }: ResultsPageProps) {
     <div className="usa-section">
       <div className="grid-container">
         <Image
-          src='/images/states/co/icon-review-card.svg' // TODO dynamically load icons based on status
+          src="/images/states/co/icon-review-card.svg" // TODO dynamically load icons based on status
           alt=""
           width={100}
           height={75}
@@ -128,10 +133,13 @@ export function ResultsPage({ results, applicationUrl }: ResultsPageProps) {
         />
         <h1 className="font-family-sans margin-top-1">{t('title')}</h1>
 
-        {['mixedEnrolled','noneEnrolled'].includes(householdEnrollmentResult) && (
+        {['mixedEnrolled', 'noneEnrolled'].includes(householdEnrollmentResult) && (
           <section>
             <div className="usa-summary-box">
-              <NotEnrolledSection results={notEnrolled} applicationUrl={applicationUrl} />
+              <NotEnrolledSection
+                results={notEnrolled}
+                applicationUrl={applicationUrl}
+              />
             </div>
             <div className="margin-top-3">
               <EnrolledSection results={enrolled} />
@@ -148,7 +156,7 @@ export function ResultsPage({ results, applicationUrl }: ResultsPageProps) {
         {householdEnrollmentResult === 'indeterminate' && (
           <section>
             <h2 className="font-family-sans">{t('errorTitle')}</h2>
-            {errors.map(child => (
+            {errors.map((child) => (
               <ChildResultCard
                 key={child.checkId}
                 firstName={child.firstName}
@@ -160,7 +168,7 @@ export function ResultsPage({ results, applicationUrl }: ResultsPageProps) {
           </section>
         )}
 
-        {['mixedEnrolled','indeterminate'].includes(householdEnrollmentResult)&& (
+        {['mixedEnrolled', 'indeterminate'].includes(householdEnrollmentResult) && (
           <section>
             <h1 className="font-family-sans margin-top-1">Next Steps</h1>
             <ol className="usa-process-list">
@@ -172,20 +180,15 @@ export function ResultsPage({ results, applicationUrl }: ResultsPageProps) {
           </section>
         )}
 
-        {(householdEnrollmentResult === 'noneEnrolled') && (
+        {householdEnrollmentResult === 'noneEnrolled' && (
           <section>
             {notEnrolledNextSteps}
             {eligibilityAccordion}
           </section>
         )}
 
-        {(householdEnrollmentResult === 'allEnrolled') && (
-          <section>
-            {enrolledNextSteps}
-          </section>
-        )}
+        {householdEnrollmentResult === 'allEnrolled' && <section>{enrolledNextSteps}</section>}
       </div>
     </div>
-
   )
 }
