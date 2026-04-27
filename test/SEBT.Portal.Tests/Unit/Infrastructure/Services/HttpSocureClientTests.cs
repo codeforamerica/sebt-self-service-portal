@@ -1,5 +1,6 @@
 using System.Net;
 using System.Text.Json;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using NSubstitute;
@@ -223,10 +224,12 @@ public class HttpSocureClientTests
         Assert.NotNull(capturedBody);
         using var doc = JsonDocument.Parse(capturedBody);
         var root = doc.RootElement;
-        Assert.Equal(userId.ToString(), root.GetProperty("id").GetString());
+        // Top-level id must be a fresh Guid per call (OpenAPI: ConsumerOnboarding.id must be unique per evaluation).
+        Assert.True(Guid.TryParse(root.GetProperty("id").GetString(), out _));
         Assert.Equal("consumer_onboarding", root.GetProperty("workflow").GetString());
         Assert.True(root.TryGetProperty("timestamp", out _), "Request should include timestamp");
         var individual = root.GetProperty("data").GetProperty("individual");
+        // Individual id remains the customer-scoped user id (Socure transaction identifier).
         Assert.Equal(userId.ToString(), individual.GetProperty("id").GetString());
         Assert.Equal("US", individual.GetProperty("country").GetString());
         Assert.Equal("user@example.com", individual.GetProperty("email").GetString());
@@ -729,6 +732,298 @@ public class HttpSocureClientTests
         var config = docv.GetProperty("config");
         Assert.True(config.GetProperty("send_message").GetBoolean());
         Assert.Equal("en", config.GetProperty("language").GetString());
+    }
+
+    // --- Phone normalization to E.164 at the Socure client boundary ---
+
+    [Fact]
+    public async Task RunIdProofingAssessmentAsync_NormalizesPhoneToE164InOutboundPayload()
+    {
+        string? capturedBody = null;
+        var handler = new CaptureRequestHandler(body =>
+        {
+            capturedBody = body;
+            return new HttpResponseMessage(HttpStatusCode.OK)
+            {
+                Content = new StringContent(JsonSerializer.Serialize(new
+                {
+                    eval_id = "eval-123",
+                    decision = "ACCEPT",
+                    data_enrichments = Array.Empty<object>()
+                }), System.Text.Encoding.UTF8, "application/json")
+            };
+        });
+
+        using var httpClient = new HttpClient(handler) { BaseAddress = new Uri(settings.BaseUrl) };
+        var factory = Substitute.For<IHttpClientFactory>();
+        factory.CreateClient("Socure").Returns(httpClient);
+        var snapshot = Substitute.For<IOptionsSnapshot<SocureSettings>>();
+        snapshot.Value.Returns(settings);
+        var logger = Substitute.For<ILogger<HttpSocureClient>>();
+
+        var client = new HttpSocureClient(factory, snapshot, logger);
+
+        await client.RunIdProofingAssessmentAsync(
+            Guid.CreateVersion7(), "user@example.com", "1990-06-15", "ssn", "123-45-6789",
+            phoneNumber: "588-3245");
+
+        Assert.NotNull(capturedBody);
+        using var doc = JsonDocument.Parse(capturedBody);
+        var individual = doc.RootElement.GetProperty("data").GetProperty("individual");
+        // Unparseable phone should be dropped, not sent as-is
+        Assert.False(individual.TryGetProperty("phone_number", out _));
+
+        logger.Received(1).Log(
+            LogLevel.Warning,
+            Arg.Any<EventId>(),
+            Arg.Any<object>(),
+            Arg.Any<Exception?>(),
+            Arg.Any<Func<object, Exception?, string>>());
+    }
+
+    [Fact]
+    public async Task RunIdProofingAssessmentAsync_FormatsValidUsPhoneAsE164()
+    {
+        string? capturedBody = null;
+        var handler = new CaptureRequestHandler(body =>
+        {
+            capturedBody = body;
+            return new HttpResponseMessage(HttpStatusCode.OK)
+            {
+                Content = new StringContent(JsonSerializer.Serialize(new
+                {
+                    eval_id = "eval-123",
+                    decision = "ACCEPT",
+                    data_enrichments = Array.Empty<object>()
+                }), System.Text.Encoding.UTF8, "application/json")
+            };
+        });
+
+        var client = CreateClient(handler);
+        await client.RunIdProofingAssessmentAsync(
+            Guid.CreateVersion7(), "user@example.com", "1990-06-15", "ssn", "123-45-6789",
+            phoneNumber: "(305) 302-1567");
+
+        Assert.NotNull(capturedBody);
+        using var doc = JsonDocument.Parse(capturedBody);
+        var individual = doc.RootElement.GetProperty("data").GetProperty("individual");
+        Assert.Equal("+13053021567", individual.GetProperty("phone_number").GetString());
+    }
+
+    // --- Name truncation at Socure boundary (DC-296 Phase 3; OpenAPI maxLength: 240) ---
+
+    [Fact]
+    public async Task RunIdProofingAssessmentAsync_TruncatesGivenNameTo240Chars()
+    {
+        string? capturedBody = null;
+        var handler = new CaptureRequestHandler(body =>
+        {
+            capturedBody = body;
+            return new HttpResponseMessage(HttpStatusCode.OK)
+            {
+                Content = new StringContent(JsonSerializer.Serialize(new
+                {
+                    eval_id = "eval-123",
+                    decision = "ACCEPT",
+                    data_enrichments = Array.Empty<object>()
+                }), System.Text.Encoding.UTF8, "application/json")
+            };
+        });
+
+        using var httpClient = new HttpClient(handler) { BaseAddress = new Uri(settings.BaseUrl) };
+        var factory = Substitute.For<IHttpClientFactory>();
+        factory.CreateClient("Socure").Returns(httpClient);
+        var snapshot = Substitute.For<IOptionsSnapshot<SocureSettings>>();
+        snapshot.Value.Returns(settings);
+        var logger = Substitute.For<ILogger<HttpSocureClient>>();
+
+        var client = new HttpSocureClient(factory, snapshot, logger);
+
+        var overlongGivenName = new string('a', 241);
+
+        await client.RunIdProofingAssessmentAsync(
+            Guid.CreateVersion7(), "user@example.com", "1990-06-15", "ssn", "123-45-6789",
+            givenName: overlongGivenName);
+
+        Assert.NotNull(capturedBody);
+        using var doc = JsonDocument.Parse(capturedBody);
+        var individual = doc.RootElement.GetProperty("data").GetProperty("individual");
+        Assert.Equal(240, individual.GetProperty("given_name").GetString()!.Length);
+
+        logger.Received(1).Log(
+            LogLevel.Warning,
+            Arg.Any<EventId>(),
+            Arg.Any<object>(),
+            Arg.Any<Exception?>(),
+            Arg.Any<Func<object, Exception?, string>>());
+    }
+
+    [Fact]
+    public async Task RunIdProofingAssessmentAsync_TruncatesFamilyNameTo240Chars()
+    {
+        string? capturedBody = null;
+        var handler = new CaptureRequestHandler(body =>
+        {
+            capturedBody = body;
+            return new HttpResponseMessage(HttpStatusCode.OK)
+            {
+                Content = new StringContent(JsonSerializer.Serialize(new
+                {
+                    eval_id = "eval-123",
+                    decision = "ACCEPT",
+                    data_enrichments = Array.Empty<object>()
+                }), System.Text.Encoding.UTF8, "application/json")
+            };
+        });
+
+        using var httpClient = new HttpClient(handler) { BaseAddress = new Uri(settings.BaseUrl) };
+        var factory = Substitute.For<IHttpClientFactory>();
+        factory.CreateClient("Socure").Returns(httpClient);
+        var snapshot = Substitute.For<IOptionsSnapshot<SocureSettings>>();
+        snapshot.Value.Returns(settings);
+        var logger = Substitute.For<ILogger<HttpSocureClient>>();
+
+        var client = new HttpSocureClient(factory, snapshot, logger);
+
+        var overlongFamilyName = new string('b', 500);
+
+        await client.RunIdProofingAssessmentAsync(
+            Guid.CreateVersion7(), "user@example.com", "1990-06-15", "ssn", "123-45-6789",
+            familyName: overlongFamilyName);
+
+        Assert.NotNull(capturedBody);
+        using var doc = JsonDocument.Parse(capturedBody);
+        var individual = doc.RootElement.GetProperty("data").GetProperty("individual");
+        Assert.Equal(240, individual.GetProperty("family_name").GetString()!.Length);
+
+        logger.Received(1).Log(
+            LogLevel.Warning,
+            Arg.Any<EventId>(),
+            Arg.Any<object>(),
+            Arg.Any<Exception?>(),
+            Arg.Any<Func<object, Exception?, string>>());
+    }
+
+    [Fact]
+    public async Task RunIdProofingAssessmentAsync_LeavesNamesUnderLimitUntouched()
+    {
+        string? capturedBody = null;
+        var handler = new CaptureRequestHandler(body =>
+        {
+            capturedBody = body;
+            return new HttpResponseMessage(HttpStatusCode.OK)
+            {
+                Content = new StringContent(JsonSerializer.Serialize(new
+                {
+                    eval_id = "eval-123",
+                    decision = "ACCEPT",
+                    data_enrichments = Array.Empty<object>()
+                }), System.Text.Encoding.UTF8, "application/json")
+            };
+        });
+
+        using var httpClient = new HttpClient(handler) { BaseAddress = new Uri(settings.BaseUrl) };
+        var factory = Substitute.For<IHttpClientFactory>();
+        factory.CreateClient("Socure").Returns(httpClient);
+        var snapshot = Substitute.For<IOptionsSnapshot<SocureSettings>>();
+        snapshot.Value.Returns(settings);
+        var logger = Substitute.For<ILogger<HttpSocureClient>>();
+
+        var client = new HttpSocureClient(factory, snapshot, logger);
+
+        var givenName = new string('g', 100);
+        var familyName = new string('f', 100);
+
+        await client.RunIdProofingAssessmentAsync(
+            Guid.CreateVersion7(), "user@example.com", "1990-06-15", "ssn", "123-45-6789",
+            givenName: givenName, familyName: familyName);
+
+        Assert.NotNull(capturedBody);
+        using var doc = JsonDocument.Parse(capturedBody);
+        var individual = doc.RootElement.GetProperty("data").GetProperty("individual");
+        Assert.Equal(givenName, individual.GetProperty("given_name").GetString());
+        Assert.Equal(familyName, individual.GetProperty("family_name").GetString());
+
+        logger.DidNotReceive().Log(
+            LogLevel.Warning,
+            Arg.Any<EventId>(),
+            Arg.Any<object>(),
+            Arg.Any<Exception?>(),
+            Arg.Any<Func<object, Exception?, string>>());
+    }
+
+    // --- Unique top-level evaluation id per call (DC-296 Phase 3; OpenAPI ConsumerOnboarding.id) ---
+
+    [Fact]
+    public async Task RunIdProofingAssessmentAsync_TopLevelIdIsUniquePerCall()
+    {
+        var capturedBodies = new List<string>();
+        var handler = new CaptureRequestHandler(body =>
+        {
+            capturedBodies.Add(body);
+            return new HttpResponseMessage(HttpStatusCode.OK)
+            {
+                Content = new StringContent(JsonSerializer.Serialize(new
+                {
+                    eval_id = "eval-123",
+                    decision = "ACCEPT",
+                    data_enrichments = Array.Empty<object>()
+                }), System.Text.Encoding.UTF8, "application/json")
+            };
+        });
+
+        var client = CreateClient(handler);
+        var userId = Guid.CreateVersion7();
+
+        await client.RunIdProofingAssessmentAsync(
+            userId, "user@example.com", "1990-06-15", "ssn", "123-45-6789");
+        await client.RunIdProofingAssessmentAsync(
+            userId, "user@example.com", "1990-06-15", "ssn", "123-45-6789");
+
+        Assert.Equal(2, capturedBodies.Count);
+
+        using var doc1 = JsonDocument.Parse(capturedBodies[0]);
+        using var doc2 = JsonDocument.Parse(capturedBodies[1]);
+        var id1 = doc1.RootElement.GetProperty("id").GetString();
+        var id2 = doc2.RootElement.GetProperty("id").GetString();
+
+        Assert.NotNull(id1);
+        Assert.NotNull(id2);
+        Assert.NotEqual(id1, id2);
+
+        // Customer-scoped individual id must stay stable. That's the transaction identifier per Socure.
+        var individualId1 = doc1.RootElement.GetProperty("data").GetProperty("individual").GetProperty("id").GetString();
+        var individualId2 = doc2.RootElement.GetProperty("data").GetProperty("individual").GetProperty("id").GetString();
+        Assert.Equal(userId.ToString(), individualId1);
+        Assert.Equal(userId.ToString(), individualId2);
+    }
+
+    [Fact]
+    public async Task RunIdProofingAssessmentAsync_TopLevelIdIsAValidGuid()
+    {
+        string? capturedBody = null;
+        var handler = new CaptureRequestHandler(body =>
+        {
+            capturedBody = body;
+            return new HttpResponseMessage(HttpStatusCode.OK)
+            {
+                Content = new StringContent(JsonSerializer.Serialize(new
+                {
+                    eval_id = "eval-123",
+                    decision = "ACCEPT",
+                    data_enrichments = Array.Empty<object>()
+                }), System.Text.Encoding.UTF8, "application/json")
+            };
+        });
+
+        var client = CreateClient(handler);
+        await client.RunIdProofingAssessmentAsync(
+            Guid.CreateVersion7(), "user@example.com", "1990-06-15", "ssn", "123-45-6789");
+
+        Assert.NotNull(capturedBody);
+        using var doc = JsonDocument.Parse(capturedBody);
+        var id = doc.RootElement.GetProperty("id").GetString();
+        Assert.True(Guid.TryParse(id, out _), $"Top-level id was not a Guid: {id}");
     }
 
     // --- StartDocvSessionAsync throws ---
