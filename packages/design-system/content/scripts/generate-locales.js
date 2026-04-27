@@ -156,6 +156,10 @@ const CONFIG = {
     'otp confirm': 'verify',
     'otp email message': 'email',
     'co-loaded off-boarding': 'coLoaded',
+    // "Co-loaded Address Update" shares the `dashboard` namespace with "Pin Card".
+    // Prefix isolates the co-loaded mailing-address page so its keys don't
+    // collide with (and overwrite) `title` / `body` / `action` from Pin Card.
+    'co-loaded address update': 'coLoadedAddressUpdate',
     'address not found': 'notFound',
     'suggested address': 'suggested',
     'abbreviated address': 'abbreviated',

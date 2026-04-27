@@ -31,9 +31,10 @@
     "knip:production": "knip --production"
   },
   "dependencies": {
+    "@amplitude/analytics-browser": "^2.40.0",
+    "@next/third-parties": "^16.1.7",
     "@sebt/analytics": "workspace:*",
     "@sebt/design-system": "workspace:*",
-    "@next/third-parties": "^16.1.7",
     "@t3-oss/env-nextjs": "^0.13.10",
     "@tanstack/react-query": "^5.90.21",
     "@uswds/uswds": "^3.13.0",
@@ -69,8 +70,8 @@
     "msw": "^2.12.13",
     "pa11y-ci": "^4.1.0",
     "prettier": "^3.8.1",
-    "puppeteer": "24.39.1",
     "prettier-plugin-organize-imports": "^4.3.0",
+    "puppeteer": "24.39.1",
     "sass": "^1.98.0",
     "sass-embedded": "^1.98.0",
     "sass-loader": "^16.0.7",

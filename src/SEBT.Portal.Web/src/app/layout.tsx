@@ -1,3 +1,4 @@
+import { AmplitudeAnalytics } from '@/components/AmplitudeAnalytics'
 import { BetaBanner } from '@/components/BetaBanner'
 import { MixpanelAnalytics } from '@/components/MixpanelAnalytics'
 import { primaryFont } from '@/design/fonts'
@@ -26,6 +27,7 @@ function getDefaultBaseUrl() {
 }
 const gaId = process.env.NEXT_PUBLIC_GA_ID
 const mixpanelToken = process.env.NEXT_PUBLIC_MIXPANEL_TOKEN
+const amplitudeApiKey = process.env.NEXT_PUBLIC_AMPLITUDE_API_KEY
 
 export const viewport: Viewport = {
   width: 'device-width',
@@ -153,6 +155,8 @@ export default async function RootLayout({
           {...(nonce ? { nonce } : {})}
         />
       )}
+      {/* Amplitude - only rendered when NEXT_PUBLIC_AMPLITUDE_API_KEY is configured */}
+      {amplitudeApiKey && <AmplitudeAnalytics apiKey={amplitudeApiKey} />}
     </html>
   )
 }
