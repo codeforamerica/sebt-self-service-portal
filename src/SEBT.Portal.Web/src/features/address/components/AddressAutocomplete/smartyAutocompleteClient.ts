@@ -26,11 +26,17 @@ export async function fetchAutocompleteSuggestions(
     if (params.selected) url.searchParams.set('selected', params.selected)
 
     const response = await fetch(url.toString(), { signal: signal ?? null })
-    if (!response.ok) return []
+    if (!response.ok) {
+      console.warn(`[AddressAutocomplete] Smarty API returned ${response.status}`)
+      return []
+    }
 
     const data: SmartyAutocompleteResponse = await response.json()
     return data.suggestions ?? []
-  } catch {
+  } catch (error) {
+    // AbortController cancellations are expected (user typing fast, component unmount) — don't log those.
+    if (error instanceof DOMException && error.name === 'AbortError') return []
+    console.warn('[AddressAutocomplete] Smarty API request failed:', error)
     return []
   }
 }
