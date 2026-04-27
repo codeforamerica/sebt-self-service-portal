@@ -2,8 +2,10 @@ namespace SEBT.Portal.Core.Models.DocVerification;
 
 /// <summary>
 /// Lifecycle states for a document verification challenge.
-/// Transitions: Created → Pending → Verified | Rejected | Expired.
-/// Terminal states (Verified, Rejected, Expired) cannot be overwritten.
+/// Transitions: Created → Pending → Verified | Rejected | Expired | Resubmit.
+/// All four post-Pending states are terminal and cannot be overwritten. Resubmit is terminal at
+/// the Socure level (the workflow ended) but retry-eligible at the portal level: a user who
+/// lands on Resubmit can open a fresh challenge against Socure's `docv_stepup` workflow.
 /// </summary>
 public enum DocVerificationStatus
 {
@@ -30,5 +32,13 @@ public enum DocVerificationStatus
     /// <summary>
     /// The challenge expired before the user completed the flow. Terminal state.
     /// </summary>
-    Expired = 4
+    Expired = 4,
+
+    /// <summary>
+    /// Socure returned a RESUBMIT decision (recoverable failure such as image quality).
+    /// Terminal at Socure: the workflow ended and a retry must start a brand-new evaluation.
+    /// Retry-eligible at the portal: a fresh `DocVerificationChallenge` can be opened against
+    /// Socure's `docv_stepup` workflow when the user clicks "try again".
+    /// </summary>
+    Resubmit = 5
 }
