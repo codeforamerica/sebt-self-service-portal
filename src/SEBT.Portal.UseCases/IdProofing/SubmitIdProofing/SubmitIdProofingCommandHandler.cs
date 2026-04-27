@@ -58,6 +58,21 @@ public class SubmitIdProofingCommandHandler(
                 "DateOfBirth must be a valid date in yyyy-MM-dd format.");
         }
 
+        // Defense-in-depth: SSN/ITIN must be exactly 9 digits after stripping non-digit
+        // characters. OpenAPI permits 4-digit partial SSNs, but product decision for DC-296
+        // is full 9 only (aligned with the frontend schema). Other id types have different
+        // format rules and are not policed here.
+        if (IsSsnOrItin(command.IdType)
+            && !IsExactlyNineDigitsAfterStripping(command.IdValue))
+        {
+            logger.LogWarning(
+                "ID proofing submission rejected for user {UserId}: IdValue for SSN/ITIN is not 9 digits",
+                command.UserId);
+            return Result<SubmitIdProofingResponse>.ValidationFailed(
+                nameof(SubmitIdProofingCommand.IdValue),
+                "IdValue must be 9 digits for SSN or ITIN.");
+        }
+
         // Load the user — needed for email (passed to Socure)
         var user = await userRepository.GetUserByIdAsync(command.UserId, cancellationToken);
         if (user == null)
@@ -369,5 +384,33 @@ public class SubmitIdProofingCommandHandler(
                 "documentVerificationRequired",
                 ChallengeId: challenge.PublicId,
                 AllowIdRetry: allowIdRetry));
+    }
+
+    private static bool IsSsnOrItin(string? idType)
+    {
+        return string.Equals(idType, "ssn", StringComparison.OrdinalIgnoreCase)
+            || string.Equals(idType, "itin", StringComparison.OrdinalIgnoreCase);
+    }
+
+    private static bool IsExactlyNineDigitsAfterStripping(string? idValue)
+    {
+        if (idValue is null)
+        {
+            return false;
+        }
+
+        var digitCount = 0;
+        foreach (var ch in idValue)
+        {
+            if (char.IsDigit(ch))
+            {
+                digitCount++;
+                if (digitCount > 9)
+                {
+                    return false;
+                }
+            }
+        }
+        return digitCount == 9;
     }
 }

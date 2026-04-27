@@ -30,12 +30,16 @@ public class ProcessWebhookCommandHandlerTests
     private static ProcessWebhookCommand CreateValidCommand(
         string eventId = "evt-123",
         string? referenceId = "ref-456",
-        string? decision = "accept") =>
+        string? workflowDecision = "ACCEPT",
+        string? documentDecision = "accept",
+        string? eventType = "evaluation_completed") =>
         new()
         {
             EventId = eventId,
             ReferenceId = referenceId,
-            DocumentDecision = decision
+            WorkflowDecision = workflowDecision,
+            DocumentDecision = documentDecision,
+            EventType = eventType
         };
 
     // --- Webhook signature rejection (Codex test 2) ---
@@ -51,7 +55,9 @@ public class ProcessWebhookCommandHandlerTests
         {
             EventId = "evt-123",
             ReferenceId = "ref-456",
+            WorkflowDecision = "ACCEPT",
             DocumentDecision = "accept",
+            EventType = "evaluation_completed",
             WebhookSignature = null // Missing signature
         };
 
@@ -83,7 +89,9 @@ public class ProcessWebhookCommandHandlerTests
         {
             EventId = "evt-123",
             ReferenceId = "ref-456",
+            WorkflowDecision = "ACCEPT",
             DocumentDecision = "accept",
+            EventType = "evaluation_completed",
             WebhookSignature = "my-webhook-secret" // Matches the configured secret
         };
 
@@ -103,7 +111,9 @@ public class ProcessWebhookCommandHandlerTests
         {
             EventId = "evt-123",
             ReferenceId = "ref-456",
+            WorkflowDecision = "ACCEPT",
             DocumentDecision = "accept",
+            EventType = "evaluation_completed",
             WebhookSignature = "wrong-secret" // Does NOT match
         };
 
@@ -154,7 +164,8 @@ public class ProcessWebhookCommandHandlerTests
         var command = CreateValidCommand(
             eventId: "evt-late-reject",
             referenceId: "ref-456",
-            decision: "reject");
+            workflowDecision: "REJECT",
+            documentDecision: "reject");
 
         var result = await handler.Handle(command, CancellationToken.None);
 
@@ -184,7 +195,7 @@ public class ProcessWebhookCommandHandlerTests
         userRepository.GetUserByIdAsync(challenge.UserId, Arg.Any<CancellationToken>())
             .Returns(user);
 
-        var command = CreateValidCommand(decision: "accept");
+        var command = CreateValidCommand(workflowDecision: "ACCEPT", documentDecision: "accept");
         var result = await handler.Handle(command, CancellationToken.None);
 
         Assert.True(result.IsSuccess);
@@ -215,7 +226,7 @@ public class ProcessWebhookCommandHandlerTests
         challengeRepository.GetBySocureReferenceIdAsync("ref-456", Arg.Any<CancellationToken>())
             .Returns(challenge);
 
-        var command = CreateValidCommand(decision: "reject");
+        var command = CreateValidCommand(workflowDecision: "REJECT", documentDecision: "reject");
         var result = await handler.Handle(command, CancellationToken.None);
 
         Assert.True(result.IsSuccess);
@@ -253,7 +264,9 @@ public class ProcessWebhookCommandHandlerTests
             EventId = "evt-123",
             ReferenceId = "ref-unknown",
             EvalId = "eval-789",
-            DocumentDecision = "accept"
+            WorkflowDecision = "ACCEPT",
+            DocumentDecision = "accept",
+            EventType = "evaluation_completed"
         };
 
         var result = await handler.Handle(command, CancellationToken.None);
@@ -277,7 +290,9 @@ public class ProcessWebhookCommandHandlerTests
         {
             EventId = "evt-123",
             ReferenceId = "ref-unknown",
-            DocumentDecision = "accept"
+            WorkflowDecision = "ACCEPT",
+            DocumentDecision = "accept",
+            EventType = "evaluation_completed"
         };
 
         var result = await handler.Handle(command, CancellationToken.None);
@@ -304,7 +319,7 @@ public class ProcessWebhookCommandHandlerTests
         challengeRepository.UpdateAsync(Arg.Any<DocVerificationChallenge>(), Arg.Any<CancellationToken>())
             .ThrowsAsync(new ConcurrencyConflictException("Row was updated by another thread"));
 
-        var command = CreateValidCommand(decision: "accept");
+        var command = CreateValidCommand(workflowDecision: "ACCEPT", documentDecision: "accept");
         var result = await handler.Handle(command, CancellationToken.None);
 
         // Should return success — the other thread handled it
@@ -333,7 +348,9 @@ public class ProcessWebhookCommandHandlerTests
         {
             EventId = "evt-123",
             ReferenceId = "ref-456",
+            WorkflowDecision = "ACCEPT",
             DocumentDecision = "accept",
+            EventType = "evaluation_completed",
             WebhookSignature = null // No signature, but stub mode
         };
 
@@ -357,7 +374,7 @@ public class ProcessWebhookCommandHandlerTests
         var command = CreateValidCommand(
             eventId: "evt-late-accept",
             referenceId: "ref-456",
-            decision: "accept");
+            workflowDecision: "ACCEPT", documentDecision: "accept");
 
         var result = await handler.Handle(command, CancellationToken.None);
 
@@ -382,7 +399,7 @@ public class ProcessWebhookCommandHandlerTests
         var command = CreateValidCommand(
             eventId: "evt-late-accept",
             referenceId: "ref-456",
-            decision: "accept");
+            workflowDecision: "ACCEPT", documentDecision: "accept");
 
         var result = await handler.Handle(command, CancellationToken.None);
 
@@ -391,10 +408,10 @@ public class ProcessWebhookCommandHandlerTests
             .UpdateAsync(Arg.Any<DocVerificationChallenge>(), Arg.Any<CancellationToken>());
     }
 
-    // --- Intermediate decisions stay Pending ---
+    // --- Workflow REVIEW transitions to Rejected (DC-296: DC does not use human review queues) ---
 
     [Fact]
-    public async Task Handle_ShouldReturnSuccess_WhenDecisionIsReview()
+    public async Task HandleAsync_EvaluationCompleted_WorkflowReview_TransitionsToRejected()
     {
         var handler = CreateHandler();
         var challenge = DocVerificationChallengeFactory.CreatePendingChallenge();
@@ -402,17 +419,167 @@ public class ProcessWebhookCommandHandlerTests
         challengeRepository.GetBySocureReferenceIdAsync("ref-456", Arg.Any<CancellationToken>())
             .Returns(challenge);
 
-        var command = CreateValidCommand(decision: "review");
+        var command = CreateValidCommand(workflowDecision: "REVIEW", documentDecision: null);
+        var result = await handler.Handle(command, CancellationToken.None);
+
+        Assert.True(result.IsSuccess);
+        await challengeRepository.Received(1)
+            .UpdateAsync(Arg.Is<DocVerificationChallenge>(c =>
+                c.Status == DocVerificationStatus.Rejected
+                && c.OffboardingReason == "docVerificationFailed"),
+                Arg.Any<CancellationToken>());
+        await userRepository.DidNotReceive()
+            .UpdateUserAsync(Arg.Any<User>(), Arg.Any<CancellationToken>());
+    }
+
+    // --- Workflow RESUBMIT transitions to Rejected (DC-296: covers DocV decline case) ---
+
+    [Fact]
+    public async Task HandleAsync_EvaluationCompleted_WorkflowResubmit_TransitionsToRejected()
+    {
+        var handler = CreateHandler();
+        var challenge = DocVerificationChallengeFactory.CreatePendingChallenge();
+
+        challengeRepository.GetBySocureReferenceIdAsync("ref-456", Arg.Any<CancellationToken>())
+            .Returns(challenge);
+
+        // Decline case: user declined on the Capture App, no DocV enrichment present
+        var command = CreateValidCommand(workflowDecision: "RESUBMIT", documentDecision: null);
+        var result = await handler.Handle(command, CancellationToken.None);
+
+        Assert.True(result.IsSuccess);
+        await challengeRepository.Received(1)
+            .UpdateAsync(Arg.Is<DocVerificationChallenge>(c =>
+                c.Status == DocVerificationStatus.Rejected
+                && c.OffboardingReason == "docVerificationFailed"),
+                Arg.Any<CancellationToken>());
+        await userRepository.DidNotReceive()
+            .UpdateUserAsync(Arg.Any<User>(), Arg.Any<CancellationToken>());
+    }
+
+    // --- Workflow REJECT transitions to Rejected ---
+
+    [Fact]
+    public async Task HandleAsync_EvaluationCompleted_WorkflowReject_TransitionsToRejected()
+    {
+        var handler = CreateHandler();
+        var challenge = DocVerificationChallengeFactory.CreatePendingChallenge();
+
+        challengeRepository.GetBySocureReferenceIdAsync("ref-456", Arg.Any<CancellationToken>())
+            .Returns(challenge);
+
+        var command = CreateValidCommand(workflowDecision: "REJECT", documentDecision: "reject");
+        var result = await handler.Handle(command, CancellationToken.None);
+
+        Assert.True(result.IsSuccess);
+        await challengeRepository.Received(1)
+            .UpdateAsync(Arg.Is<DocVerificationChallenge>(c =>
+                c.Status == DocVerificationStatus.Rejected
+                && c.OffboardingReason == "docVerificationFailed"),
+                Arg.Any<CancellationToken>());
+        await userRepository.DidNotReceive()
+            .UpdateUserAsync(Arg.Any<User>(), Arg.Any<CancellationToken>());
+    }
+
+    // --- Happy path: workflow ACCEPT on evaluation_completed ---
+
+    [Fact]
+    public async Task HandleAsync_EvaluationCompleted_WorkflowAccept_TransitionsToVerified()
+    {
+        var handler = CreateHandler();
+        var challenge = DocVerificationChallengeFactory.CreatePendingChallenge();
+        var user = new User
+        {
+            Id = challenge.UserId,
+            Email = "test@example.com",
+            IdProofingStatus = IdProofingStatus.InProgress
+        };
+
+        challengeRepository.GetBySocureReferenceIdAsync("ref-456", Arg.Any<CancellationToken>())
+            .Returns(challenge);
+        userRepository.GetUserByIdAsync(challenge.UserId, Arg.Any<CancellationToken>())
+            .Returns(user);
+
+        var command = CreateValidCommand(workflowDecision: "ACCEPT", documentDecision: "accept");
+        var result = await handler.Handle(command, CancellationToken.None);
+
+        Assert.True(result.IsSuccess);
+        await challengeRepository.Received(1)
+            .UpdateAsync(Arg.Is<DocVerificationChallenge>(c =>
+                c.Status == DocVerificationStatus.Verified),
+                Arg.Any<CancellationToken>());
+        await userRepository.Received(1)
+            .UpdateUserAsync(Arg.Is<User>(u =>
+                u.IdProofingStatus == IdProofingStatus.Completed
+                && u.IalLevel == UserIalLevel.IAL2),
+                Arg.Any<CancellationToken>());
+    }
+
+    // --- evaluation_paused keeps challenge Pending (no terminal decision yet) ---
+
+    [Fact]
+    public async Task HandleAsync_EvaluationPaused_KeepsChallengePending()
+    {
+        var handler = CreateHandler();
+        var challenge = DocVerificationChallengeFactory.CreatePendingChallenge();
+
+        challengeRepository.GetBySocureReferenceIdAsync("ref-456", Arg.Any<CancellationToken>())
+            .Returns(challenge);
+
+        var command = CreateValidCommand(
+            workflowDecision: null,
+            documentDecision: null,
+            eventType: "evaluation_paused");
         var result = await handler.Handle(command, CancellationToken.None);
 
         Assert.True(result.IsSuccess);
         Assert.Equal(DocVerificationStatus.Pending, challenge.Status);
         await challengeRepository.DidNotReceive()
             .UpdateAsync(Arg.Any<DocVerificationChallenge>(), Arg.Any<CancellationToken>());
+        await userRepository.DidNotReceive()
+            .UpdateUserAsync(Arg.Any<User>(), Arg.Any<CancellationToken>());
     }
 
+    // --- Latent-bug fix: DI-rejected workflow with DocV "accept" must NOT grant IAL2 ---
+
     [Fact]
-    public async Task Handle_ShouldReturnSuccess_WhenDecisionIsResubmit()
+    public async Task HandleAsync_EvaluationCompleted_WorkflowRejectButDocvAccept_TransitionsToRejected()
+    {
+        var handler = CreateHandler();
+        var challenge = DocVerificationChallengeFactory.CreatePendingChallenge();
+        var user = new User
+        {
+            Id = challenge.UserId,
+            Email = "test@example.com",
+            IdProofingStatus = IdProofingStatus.InProgress
+        };
+
+        challengeRepository.GetBySocureReferenceIdAsync("ref-456", Arg.Any<CancellationToken>())
+            .Returns(challenge);
+        userRepository.GetUserByIdAsync(challenge.UserId, Arg.Any<CancellationToken>())
+            .Returns(user);
+
+        // Workflow rejected by Digital Intelligence signals (VPN, timezone mismatch, etc.)
+        // even though the DocV enrichment internally said "accept".
+        var command = CreateValidCommand(workflowDecision: "REJECT", documentDecision: "accept");
+        var result = await handler.Handle(command, CancellationToken.None);
+
+        Assert.True(result.IsSuccess);
+        await challengeRepository.Received(1)
+            .UpdateAsync(Arg.Is<DocVerificationChallenge>(c =>
+                c.Status == DocVerificationStatus.Rejected
+                && c.OffboardingReason == "docVerificationFailed"),
+                Arg.Any<CancellationToken>());
+
+        // Critical: user must NOT be updated to IAL2
+        await userRepository.DidNotReceive()
+            .UpdateUserAsync(Arg.Any<User>(), Arg.Any<CancellationToken>());
+    }
+
+    // --- Unrecognized / missing workflow decision on evaluation_completed ---
+
+    [Fact]
+    public async Task HandleAsync_EvaluationCompleted_WorkflowDecisionMissing_LogsUnrecognizedAndStaysSuccess()
     {
         var handler = CreateHandler();
         var challenge = DocVerificationChallengeFactory.CreatePendingChallenge();
@@ -420,19 +587,19 @@ public class ProcessWebhookCommandHandlerTests
         challengeRepository.GetBySocureReferenceIdAsync("ref-456", Arg.Any<CancellationToken>())
             .Returns(challenge);
 
-        var command = CreateValidCommand(decision: "resubmit");
+        var command = CreateValidCommand(workflowDecision: null, documentDecision: null);
         var result = await handler.Handle(command, CancellationToken.None);
 
         Assert.True(result.IsSuccess);
         Assert.Equal(DocVerificationStatus.Pending, challenge.Status);
         await challengeRepository.DidNotReceive()
             .UpdateAsync(Arg.Any<DocVerificationChallenge>(), Arg.Any<CancellationToken>());
+        await userRepository.DidNotReceive()
+            .UpdateUserAsync(Arg.Any<User>(), Arg.Any<CancellationToken>());
     }
 
-    // --- Unrecognized decision ---
-
     [Fact]
-    public async Task Handle_ShouldReturnSuccess_WhenDecisionIsUnrecognized()
+    public async Task HandleAsync_EvaluationCompleted_WorkflowDecisionUnrecognized_StaysSuccess()
     {
         var handler = CreateHandler();
         var challenge = DocVerificationChallengeFactory.CreatePendingChallenge();
@@ -440,7 +607,7 @@ public class ProcessWebhookCommandHandlerTests
         challengeRepository.GetBySocureReferenceIdAsync("ref-456", Arg.Any<CancellationToken>())
             .Returns(challenge);
 
-        var command = CreateValidCommand(decision: "unknown");
+        var command = CreateValidCommand(workflowDecision: "unknown", documentDecision: null);
         var result = await handler.Handle(command, CancellationToken.None);
 
         Assert.True(result.IsSuccess);
@@ -460,7 +627,7 @@ public class ProcessWebhookCommandHandlerTests
         challengeRepository.GetBySocureReferenceIdAsync("ref-456", Arg.Any<CancellationToken>())
             .Returns(challenge);
 
-        var command = CreateValidCommand(decision: "accept");
+        var command = CreateValidCommand(workflowDecision: "ACCEPT", documentDecision: "accept");
         var result = await handler.Handle(command, CancellationToken.None);
 
         Assert.True(result.IsSuccess);
@@ -482,7 +649,7 @@ public class ProcessWebhookCommandHandlerTests
         userRepository.GetUserByIdAsync(challenge.UserId, Arg.Any<CancellationToken>())
             .Returns((User?)null);
 
-        var command = CreateValidCommand(decision: "accept");
+        var command = CreateValidCommand(workflowDecision: "ACCEPT", documentDecision: "accept");
         var result = await handler.Handle(command, CancellationToken.None);
 
         Assert.True(result.IsSuccess);
@@ -510,7 +677,9 @@ public class ProcessWebhookCommandHandlerTests
             EventId = "evt-123",
             ReferenceId = null,
             EvalId = null,
-            DocumentDecision = "accept"
+            WorkflowDecision = "ACCEPT",
+            DocumentDecision = "accept",
+            EventType = "evaluation_completed"
         };
 
         var result = await handler.Handle(command, CancellationToken.None);
@@ -539,7 +708,9 @@ public class ProcessWebhookCommandHandlerTests
         {
             EventId = eventId,
             ReferenceId = "ref-456",
-            DocumentDecision = "accept"
+            WorkflowDecision = "ACCEPT",
+            DocumentDecision = "accept",
+            EventType = "evaluation_completed"
         };
 
         var result = await handler.Handle(command, CancellationToken.None);
@@ -561,7 +732,9 @@ public class ProcessWebhookCommandHandlerTests
             EventId = "evt-valid",
             ReferenceId = injected,
             EvalId = injected,
-            DocumentDecision = injected
+            WorkflowDecision = injected,
+            DocumentDecision = injected,
+            EventType = injected
         };
 
         var result = await handler.Handle(command, CancellationToken.None);

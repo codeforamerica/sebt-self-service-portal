@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Options;
 using SEBT.Portal.Api.Models;
 using SEBT.Portal.Api.Services;
@@ -54,16 +55,54 @@ public class AuthController(
     }
 
     /// <summary>
-    /// Clears the HttpOnly session cookie. Safe to call even when no session exists —
-    /// the browser will simply receive a delete instruction for a cookie it does not have.
+    /// Clears the local session cookie and redirects to the IdP's end_session_endpoint
+    /// (RP-Initiated Logout) when OIDC is configured, or to <c>/login</c> otherwise.
+    /// The entire redirect chain is browser-level — no JavaScript processes the IdP
+    /// logout URL, eliminating XSS as a vector for redirect tampering.
     /// </summary>
-    [HttpPost("logout")]
+    [HttpGet("logout")]
     [AllowAnonymous]
-    [ProducesResponseType(StatusCodes.Status204NoContent)]
-    public IActionResult Logout()
+    [ProducesResponseType(StatusCodes.Status302Found)]
+    public async Task<IActionResult> Logout(
+        [FromServices] IConfiguration config,
+        [FromServices] IOidcExchangeService oidcExchangeService,
+        CancellationToken cancellationToken = default)
     {
         AuthCookies.ClearAuthCookie(Response);
-        return NoContent();
+
+        var discoveryEndpoint = config["Oidc:DiscoveryEndpoint"];
+        var clientId = config["Oidc:ClientId"];
+        var callbackRedirectUri = config["Oidc:CallbackRedirectUri"];
+
+        if (!string.IsNullOrEmpty(discoveryEndpoint) && !string.IsNullOrEmpty(clientId)
+            && !string.IsNullOrEmpty(callbackRedirectUri))
+        {
+            try
+            {
+                var oidcConfig = await oidcExchangeService.GetDiscoveryConfigAsync(
+                    isStepUp: false, cancellationToken);
+
+                if (!string.IsNullOrEmpty(oidcConfig.EndSessionEndpoint))
+                {
+                    var origin = new Uri(callbackRedirectUri).GetLeftPart(UriPartial.Authority);
+                    var postLogoutUri = $"{origin}/login";
+                    var logoutUrl = $"{oidcConfig.EndSessionEndpoint}" +
+                        $"?client_id={Uri.EscapeDataString(clientId)}" +
+                        $"&post_logout_redirect_uri={Uri.EscapeDataString(postLogoutUri)}";
+
+                    logger.LogInformation(
+                        "Logout: redirecting to IdP end_session_endpoint (reason=oidc_logout)");
+                    return Redirect(logoutUrl);
+                }
+            }
+            catch (Exception ex)
+            {
+                logger.LogWarning(ex,
+                    "Logout: failed to fetch OIDC discovery document, falling back to /login (reason=discovery_failed)");
+            }
+        }
+
+        return Redirect("/login");
     }
 
     /// <summary>

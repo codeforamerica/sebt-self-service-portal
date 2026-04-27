@@ -253,8 +253,8 @@ public class HouseholdFactoryTests
         // Assert
         if (!string.IsNullOrEmpty(household.Phone))
         {
-            // Should match format ###-####
-            Assert.Matches(@"^\d{3}-\d{4}$", household.Phone);
+            // Should be a 10-digit US phone (NANP): area code 2-9, exchange 2-9.
+            Assert.Matches(@"^[2-9]\d{2}[2-9]\d{6}$", household.Phone);
         }
     }
 

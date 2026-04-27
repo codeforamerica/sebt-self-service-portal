@@ -152,9 +152,9 @@ resource "aws_iam_role_policy" "rotation_lambda" {
         Resource = aws_secretsmanager_secret.smtp.arn
       },
       {
-        Sid    = "RedeployEcsService"
-        Effect = "Allow"
-        Action = "ecs:UpdateService"
+        Sid      = "RedeployEcsService"
+        Effect   = "Allow"
+        Action   = "ecs:UpdateService"
         Resource = "arn:${data.aws_partition.current.partition}:ecs:${data.aws_region.current.name}:${data.aws_caller_identity.current.account_id}:service/${var.ecs_cluster_name}/${var.ecs_service_name}"
       },
       {

@@ -1,3 +1,6 @@
+using Medallion.Threading;
+using Medallion.Threading.Redis;
+using Medallion.Threading.SqlServer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -11,6 +14,7 @@ using SEBT.Portal.Infrastructure.Configuration;
 using SEBT.Portal.Infrastructure.Data;
 using SEBT.Portal.Infrastructure.Repositories;
 using SEBT.Portal.Infrastructure.Services;
+using StackExchange.Redis;
 using ISummerEbtCaseService = SEBT.Portal.StatesPlugins.Interfaces.ISummerEbtCaseService;
 
 namespace SEBT.Portal.Infrastructure;
@@ -119,6 +123,7 @@ public static class Dependencies
         services.AddTransient<IOtpRepository, InMemoryOtpRepository>();
         services.AddTransient<IUserRepository, DatabaseUserRepository>();
         services.AddTransient<IDocVerificationChallengeRepository, DatabaseDocVerificationChallengeRepository>();
+        services.AddScoped<ICardReplacementRequestRepository, CardReplacementRequestRepository>();
 
         // For deterministic time in seeding/mock data
         services.AddSingleton(TimeProvider.System);
@@ -172,6 +177,36 @@ public static class Dependencies
         // When Redis is not configured, HybridCache operates as in-memory only.
         services.AddHybridCache();
         services.AddMemoryCache();
+
+        return services;
+    }
+
+    /// <summary>
+    /// Registers a distributed lock provider. Uses Redis when a Redis connection
+    /// string is configured; otherwise falls back to SQL Server application locks.
+    /// </summary>
+    public static IServiceCollection AddDistributedLocking(
+        this IServiceCollection services,
+        IConfiguration configuration)
+    {
+        var redisConnectionString = configuration.GetConnectionString("Redis");
+
+        if (!string.IsNullOrEmpty(redisConnectionString))
+        {
+            services.AddSingleton<IDistributedLockProvider>(_ =>
+            {
+                var connection = ConnectionMultiplexer.Connect(redisConnectionString);
+                return new RedisDistributedSynchronizationProvider(connection.GetDatabase());
+            });
+        }
+        else
+        {
+            var sqlConnectionString = configuration.GetConnectionString("DefaultConnection")
+                ?? throw new InvalidOperationException(
+                    "Connection string 'DefaultConnection' is required for distributed locking.");
+            services.AddSingleton<IDistributedLockProvider>(
+                new SqlDistributedSynchronizationProvider(sqlConnectionString));
+        }
 
         return services;
     }

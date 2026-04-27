@@ -55,16 +55,24 @@ describe('SocureDocVAdapter', () => {
 
     await adapter.launch(config)
 
+    // qrCodeNeeded:true opts into desktop QR rendering (Socure WebSDK v5).
+    // Without it, the SDK renders nothing on desktop and autoOpenTabOnMobile only
+    // covers the mobile branch.
     expect(window.SocureDocVSDK!.launch).toHaveBeenCalledWith(
       'test-sdk-key',
       'test-token',
       '#websdk',
       expect.objectContaining({
-        type: 'docv',
+        qrCodeNeeded: true,
         autoOpenTabOnMobile: true,
         closeCaptureWindowOnComplete: true
       })
     )
+
+    // `type` is not a documented WebSDK v5 option — ensure it's not passed.
+    const launchMock = window.SocureDocVSDK!.launch as ReturnType<typeof vi.fn>
+    const sdkOptions = launchMock.mock.calls[0]![3] as Record<string, unknown>
+    expect(sdkOptions).not.toHaveProperty('type')
   })
 
   it('is idempotent — second launch does not call SDK again', async () => {

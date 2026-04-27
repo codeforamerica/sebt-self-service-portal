@@ -38,6 +38,11 @@ public class PortalDbContext : DbContext
     /// </summary>
     public DbSet<DeidentifiedChildResultEntity> DeidentifiedChildResults { get; set; }
 
+    /// <summary>
+    /// Card replacement request records for cooldown enforcement.
+    /// </summary>
+    public DbSet<CardReplacementRequestEntity> CardReplacementRequests { get; set; }
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
@@ -224,6 +229,37 @@ public class PortalDbContext : DbContext
             entity.Property(e => e.Status).IsRequired().HasMaxLength(50);
             entity.Property(e => e.EligibilityType).HasMaxLength(50);
             entity.Property(e => e.SchoolName).HasMaxLength(255);
+        });
+
+        modelBuilder.Entity<CardReplacementRequestEntity>(entity =>
+        {
+            entity.ToTable("CardReplacementRequests");
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.Id).ValueGeneratedNever();
+
+            entity.Property(e => e.HouseholdIdentifierHash)
+                .IsRequired()
+                .HasMaxLength(64);
+
+            entity.Property(e => e.CaseIdHash)
+                .IsRequired()
+                .HasMaxLength(64);
+
+            entity.Property(e => e.RequestedAt)
+                .IsRequired();
+
+            entity.Property(e => e.RequestedByUserId)
+                .IsRequired();
+
+            entity.HasOne(e => e.RequestedByUser)
+                .WithMany()
+                .HasForeignKey(e => e.RequestedByUserId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            // Composite index covering the cooldown lookup query:
+            // WHERE HouseholdIdentifierHash = @hash AND CaseIdHash = @hash AND RequestedAt > @cutoff
+            entity.HasIndex(e => new { e.HouseholdIdentifierHash, e.CaseIdHash, e.RequestedAt })
+                .HasDatabaseName("IX_CardReplacementRequests_Household_Case_RequestedAt");
         });
     }
 }

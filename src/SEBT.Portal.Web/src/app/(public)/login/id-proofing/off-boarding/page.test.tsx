@@ -42,7 +42,7 @@ import OffBoardingPage from './page'
 const mockGetState = vi.mocked(getState)
 const mockGetStateLinks = vi.mocked(getStateLinks)
 
-async function renderPage(searchParams: { canApply?: string } = {}) {
+async function renderPage(searchParams: { canApply?: string; reason?: string } = {}) {
   const page = await OffBoardingPage({
     searchParams: Promise.resolve(searchParams)
   })
@@ -155,6 +155,59 @@ describe('OffBoardingPage', () => {
 
       const content = screen.getByTestId('off-boarding-content')
       expect(content).toHaveAttribute('data-back-href', '/login/id-proofing')
+    })
+  })
+
+  describe('searchParams.reason branching', () => {
+    it('renders noIdProvided-specific title and body when reason is noIdProvided', async () => {
+      await renderPage({ reason: 'noIdProvided' })
+
+      const content = screen.getByTestId('off-boarding-content')
+      expect(content).toHaveAttribute('data-title', 'We need an ID to verify you')
+      expect(content).toHaveAttribute(
+        'data-body',
+        "To confirm your identity, we need one of the listed IDs. If you don't have any of these IDs, contact us for help."
+      )
+    })
+
+    it('forces canApply to false for noIdProvided regardless of query param', async () => {
+      await renderPage({ reason: 'noIdProvided', canApply: 'true' })
+
+      const content = screen.getByTestId('off-boarding-content')
+      expect(content).toHaveAttribute('data-can-apply', 'false')
+    })
+
+    it('falls back to generic offBoarding copy when reason is absent', async () => {
+      await renderPage({})
+
+      const content = screen.getByTestId('off-boarding-content')
+      expect(content).toHaveAttribute('data-title', 'offBoarding:title')
+      expect(content).toHaveAttribute('data-body', 'offBoarding:body1')
+    })
+
+    it('falls back to generic copy for unknown reasons', async () => {
+      await renderPage({ reason: 'somethingElse' })
+
+      const content = screen.getByTestId('off-boarding-content')
+      expect(content).toHaveAttribute('data-title', 'offBoarding:title')
+    })
+
+    it('renders docVerificationFailed-specific title and body when reason is docVerificationFailed', async () => {
+      await renderPage({ reason: 'docVerificationFailed' })
+
+      const content = screen.getByTestId('off-boarding-content')
+      expect(content).toHaveAttribute('data-title', "We couldn't verify your identity")
+      expect(content).toHaveAttribute(
+        'data-body',
+        "Your document couldn't be verified. You can try again with a different ID, or contact us if you need help."
+      )
+    })
+
+    it('forces canApply to false for docVerificationFailed regardless of query param', async () => {
+      await renderPage({ reason: 'docVerificationFailed', canApply: 'true' })
+
+      const content = screen.getByTestId('off-boarding-content')
+      expect(content).toHaveAttribute('data-can-apply', 'false')
     })
   })
 })

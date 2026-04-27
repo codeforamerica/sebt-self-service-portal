@@ -1,8 +1,10 @@
+using Medallion.Threading;
 using Microsoft.Extensions.Logging;
 using SEBT.Portal.Core.Models;
 using SEBT.Portal.Core.Models.Auth;
 using SEBT.Portal.Core.Repositories;
 using SEBT.Portal.Core.Services;
+using SEBT.Portal.Core.Utilities;
 using SEBT.Portal.Kernel;
 using SEBT.Portal.Kernel.Results;
 
@@ -11,7 +13,8 @@ namespace SEBT.Portal.UseCases.Household;
 /// <summary>
 /// Handles card replacement requests for an authenticated user's household.
 /// Validates input, resolves household identity, enforces minimum IAL,
-/// enforces self-service rules, enforces 2-week cooldown, and returns success.
+/// enforces self-service rules, enforces 2-week cooldown via portal DB,
+/// and persists replacement requests for future cooldown enforcement.
 /// State connector call is stubbed — actual card replacement is a future integration.
 /// </summary>
 public class RequestCardReplacementCommandHandler(
@@ -20,7 +23,9 @@ public class RequestCardReplacementCommandHandler(
     IHouseholdRepository repository,
     IIdProofingService idProofingService,
     ISelfServiceEvaluator selfServiceEvaluator,
-    TimeProvider timeProvider,
+    ICardReplacementRequestRepository cardReplacementRepo,
+    IIdentifierHasher identifierHasher,
+    IDistributedLockProvider distributedLockProvider,
     ILogger<RequestCardReplacementCommandHandler> logger)
     : ICommandHandler<RequestCardReplacementCommand>
 {
@@ -102,64 +107,65 @@ public class RequestCardReplacementCommandHandler(
             }
         }
 
-        var cooldownErrors = CheckCooldown(command.CaseIds, household, timeProvider);
-        if (cooldownErrors.Count > 0)
+        // Resolve the user's database ID early — needed for lock key and audit trail FK.
+        var userId = command.User.GetUserId();
+        if (userId == null)
         {
-            logger.LogInformation(
-                "Card replacement rejected: {Count} case(s) within cooldown period",
-                cooldownErrors.Count);
-            return Result.ValidationFailed(cooldownErrors);
+            logger.LogWarning("Card replacement: unable to resolve user ID from claims");
+            return Result.Unauthorized("Unable to identify user from token.");
+        }
+
+        // Distributed lock prevents TOCTOU race between cooldown check and persist.
+        // Scoped to the user — a single user can only be in one card replacement flow at a time.
+        await using (await distributedLockProvider.AcquireLockAsync(
+            $"CardReplacement:{userId.Value}", cancellationToken: cancellationToken))
+        {
+            // Check cooldown from portal DB — the authoritative source for request timestamps.
+            var householdHash = identifierHasher.Hash(identifier.Value);
+            var cooldownErrors = new List<ValidationError>();
+
+            foreach (var caseId in command.CaseIds)
+            {
+                var caseHash = identifierHasher.Hash(caseId);
+                if (householdHash != null && caseHash != null)
+                {
+                    var hasCooldown = await cardReplacementRepo.HasRecentRequestAsync(
+                        householdHash, caseHash, CooldownPeriod, cancellationToken);
+                    if (hasCooldown)
+                    {
+                        cooldownErrors.Add(new ValidationError(
+                            "CaseIds",
+                            $"A card replacement was requested for this case within the last 14 days."));
+                    }
+                }
+            }
+
+            if (cooldownErrors.Count > 0)
+            {
+                logger.LogInformation(
+                    "Card replacement rejected: {Count} case(s) within cooldown period",
+                    cooldownErrors.Count);
+                return Result.ValidationFailed(cooldownErrors);
+            }
+
+            // Persist replacement requests to portal DB for cooldown enforcement
+            foreach (var caseId in command.CaseIds)
+            {
+                var caseHash = identifierHasher.Hash(caseId);
+                if (householdHash != null && caseHash != null)
+                {
+                    await cardReplacementRepo.CreateAsync(
+                        householdHash, caseHash, userId.Value, cancellationToken);
+                }
+            }
         }
 
         var identifierKind = identifier.Type.ToString();
         logger.LogInformation(
-            "Card replacement request received for household identifier kind {Kind}, {Count} case(s)",
+            "Card replacement request recorded for household identifier kind {Kind}, {Count} case(s)",
             identifierKind,
             command.CaseIds.Count);
 
-        // TODO: Call state connector to process card replacement.
-        // Stubbed — returns success without calling the state system.
-
-        logger.LogInformation(
-            "Card replacement request recorded for household identifier kind {Kind}",
-            identifierKind);
-
         return Result.Success();
-    }
-
-    private static List<ValidationError> CheckCooldown(
-        List<string> requestedCaseIds,
-        Core.Models.Household.HouseholdData household,
-        TimeProvider timeProvider)
-    {
-        var errors = new List<ValidationError>();
-        var now = timeProvider.GetUtcNow().UtcDateTime;
-
-        foreach (var caseId in requestedCaseIds)
-        {
-            var summerEbtCase = household.SummerEbtCases
-                .FirstOrDefault(c => c.SummerEBTCaseID == caseId);
-
-            if (summerEbtCase == null)
-            {
-                errors.Add(new ValidationError(
-                    "CaseIds",
-                    $"Case {caseId} does not belong to this household."));
-                continue;
-            }
-
-            if (summerEbtCase.CardRequestedAt == null)
-                continue;
-
-            var elapsed = now - summerEbtCase.CardRequestedAt.Value;
-            if (elapsed < CooldownPeriod)
-            {
-                errors.Add(new ValidationError(
-                    "CaseIds",
-                    $"Case {caseId} was requested within the last 14 days."));
-            }
-        }
-
-        return errors;
     }
 }

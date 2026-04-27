@@ -28,10 +28,6 @@ function mockAuthStatus(
   )
 }
 
-function mockAuthLogout() {
-  server.use(http.post('/api/auth/logout', () => new HttpResponse(null, { status: 204 })))
-}
-
 describe('AuthContext', () => {
   beforeEach(() => {
     server.resetHandlers()
@@ -96,22 +92,6 @@ describe('AuthContext', () => {
       expect(result.current.isAuthenticated).toBe(true)
       expect(result.current.session?.email).toBe('user@example.com')
     })
-
-    it('logout() clears the session locally after calling /auth/logout', async () => {
-      mockAuthStatus({ body: { isAuthorized: true, email: 'user@example.com' } })
-      mockAuthLogout()
-
-      const { result } = renderHook(() => useAuth(), { wrapper: AuthProvider })
-      await waitFor(() => expect(result.current.isLoading).toBe(false))
-      expect(result.current.isAuthenticated).toBe(true)
-
-      await act(async () => {
-        await result.current.logout()
-      })
-
-      expect(result.current.session).toBeNull()
-      expect(result.current.isAuthenticated).toBe(false)
-    })
   })
 
   describe('useAuth', () => {
@@ -128,7 +108,7 @@ describe('AuthContext', () => {
 
   describe('Integration with components', () => {
     function TestComponent() {
-      const { session, isAuthenticated, isLoading, login, logout } = useAuth()
+      const { session, isAuthenticated, isLoading, login } = useAuth()
 
       if (isLoading) {
         return <div>Loading...</div>
@@ -139,7 +119,6 @@ describe('AuthContext', () => {
           <p data-testid="auth-status">{isAuthenticated ? 'Authenticated' : 'Not authenticated'}</p>
           <p data-testid="email-display">{session?.email ?? 'No email'}</p>
           <button onClick={() => void login()}>Login</button>
-          <button onClick={() => void logout()}>Logout</button>
         </div>
       )
     }
@@ -167,31 +146,6 @@ describe('AuthContext', () => {
         expect(screen.getByTestId('auth-status')).toHaveTextContent('Authenticated')
       })
       expect(screen.getByTestId('email-display')).toHaveTextContent('user@example.com')
-    })
-
-    it('updates UI when logout() clears the session', async () => {
-      mockAuthStatus({ body: { isAuthorized: true, email: 'user@example.com' } })
-      mockAuthLogout()
-      const user = userEvent.setup()
-
-      render(
-        <AuthProvider>
-          <TestComponent />
-        </AuthProvider>
-      )
-
-      await waitFor(() => {
-        expect(screen.queryByText('Loading...')).not.toBeInTheDocument()
-      })
-
-      expect(screen.getByTestId('auth-status')).toHaveTextContent('Authenticated')
-
-      await user.click(screen.getByRole('button', { name: /logout/i }))
-
-      await waitFor(() => {
-        expect(screen.getByTestId('auth-status')).toHaveTextContent('Not authenticated')
-      })
-      expect(screen.getByTestId('email-display')).toHaveTextContent('No email')
     })
   })
 })

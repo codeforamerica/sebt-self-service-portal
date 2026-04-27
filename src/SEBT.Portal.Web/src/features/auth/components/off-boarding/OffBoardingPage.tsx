@@ -35,8 +35,16 @@ export function OffBoardingPage({ contactLink, applyLink }: OffBoardingPageProps
     return sessionStorage.getItem(SK_CAN_APPLY) === 'true'
   })
 
-  // reason is available for future copy differentiation by offboarding scenario
-  void reason
+  // Single reason branch so far: "noIdProvided" needs a tell-the-user-what-to-do
+  // tone rather than the generic failure copy. Other reasons (null, unknown,
+  // idProofingFailed, docVerificationFailed, ...) keep the existing generic path.
+  const isNoIdProvided = reason === 'noIdProvided'
+
+  // TODO: Use t('offboarding.noIdProvided.heading') once key is available in dc.csv
+  const noIdHeading = 'We need an ID to verify you'
+  // TODO: Use t('offboarding.noIdProvided.body') once key is available in dc.csv
+  const noIdBody =
+    "To confirm your identity, we need one of the listed IDs. If you don't have any of these IDs, contact us for help."
 
   // Clean up sessionStorage on unmount — the values have been read
   useEffect(() => {
@@ -54,17 +62,21 @@ export function OffBoardingPage({ contactLink, applyLink }: OffBoardingPageProps
             id="offboarding-title"
             className="font-sans-xl text-bold line-height-sans-1 margin-bottom-3"
           >
-            {t(
-              'offboardingHeading',
-              "We're sorry, we aren't able to show your DC SUN Bucks information"
-            )}
+            {isNoIdProvided
+              ? noIdHeading
+              : t(
+                  'offboardingHeading',
+                  "We're sorry, we aren't able to show your DC SUN Bucks information"
+                )}
           </h1>
 
           <p className="font-sans-sm">
-            {t(
-              'offboardingBody',
-              'You can go back to enter an ID number, or contact us if you need more help.'
-            )}
+            {isNoIdProvided
+              ? noIdBody
+              : t(
+                  'offboardingBody',
+                  'You can go back to enter an ID number, or contact us if you need more help.'
+                )}
           </p>
 
           <div className="margin-top-3">
@@ -88,8 +100,12 @@ export function OffBoardingPage({ contactLink, applyLink }: OffBoardingPageProps
             </a>
           </div>
 
-          {/* Conditional "Apply now" section (D7) — shown when canApply is true */}
-          {canApply && (
+          {/*
+            Conditional "Apply now" section. Shown when canApply is true,
+            but suppressed for the noIdProvided reason because the user hasn't
+            actually failed verification; they just didn't provide an ID yet.
+          */}
+          {canApply && !isNoIdProvided && (
             <div className="margin-top-4">
               <p className="font-sans-sm">
                 {t(
