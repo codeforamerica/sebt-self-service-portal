@@ -18,6 +18,8 @@ public class GetHouseholdDataQueryHandler(
     IPiiVisibilityService piiVisibilityService,
     IIdProofingService idProofingService,
     ISelfServiceEvaluator selfServiceEvaluator,
+    ICardReplacementRequestRepository cardReplacementRepo,
+    IIdentifierHasher identifierHasher,
     ILogger<GetHouseholdDataQueryHandler> logger)
     : IQueryHandler<GetHouseholdDataQuery, HouseholdData>
 {
@@ -84,6 +86,25 @@ public class GetHouseholdDataQueryHandler(
             // key on BenefitIssuanceType; leaving it as the plugin's upstream value
             // would misroute denials that aren't actually co-loaded.
             householdData.BenefitIssuanceType = BenefitIssuanceType.SummerEbt;
+        }
+
+        // Hydrate CardRequestedAt from portal DB — the authoritative source for
+        // replacement request timestamps. The frontend uses this to enforce cooldown UI.
+        var householdHash = identifierHasher.Hash(identifier.Value);
+        if (householdHash != null)
+        {
+            foreach (var summerEbtCase in householdData.SummerEbtCases)
+            {
+                if (summerEbtCase.SummerEBTCaseID != null)
+                {
+                    var caseHash = identifierHasher.Hash(summerEbtCase.SummerEBTCaseID);
+                    if (caseHash != null)
+                    {
+                        summerEbtCase.CardRequestedAt = await cardReplacementRepo
+                            .GetMostRecentRequestDateAsync(householdHash, caseHash, cancellationToken);
+                    }
+                }
+            }
         }
 
         foreach (var summerEbtCase in householdData.SummerEbtCases)

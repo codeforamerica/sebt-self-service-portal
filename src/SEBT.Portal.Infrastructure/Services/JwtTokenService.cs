@@ -7,6 +7,7 @@ using Microsoft.Extensions.Logging;
 using SEBT.Portal.Core.AppSettings;
 using SEBT.Portal.Core.Models.Auth;
 using SEBT.Portal.Core.Services;
+using SEBT.Portal.Core.Utilities;
 using SEBT.Portal.Kernel;
 
 namespace SEBT.Portal.Infrastructure.Services;
@@ -246,7 +247,10 @@ public class JwtTokenService : ILocalLoginTokenService, IOidcTokenService, ISess
                 ((int)user.IdProofingStatus).ToString();
         }
 
-        var email = existingClaims.GetValueOrDefault(JwtRegisteredClaimNames.Email) ?? "";
+        // BuildAndSignToken writes email under ClaimTypes.Email; with MapInboundClaims=false,
+        // the refresh principal still carries that long URI form. Resolve via the helper
+        // so either form is accepted.
+        var email = currentPrincipal.GetUserEmail() ?? "";
 
         return BuildAndSignToken(user.Id, email, existingClaims);
     }

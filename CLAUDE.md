@@ -103,6 +103,15 @@ We follow a test-driven development (TDD) approach: write tests first to fail, t
 - When an authenticated user lacks sufficient authorization for a specific resource (e.g., insufficient IAL for their household's cases), return a 403 with structured ProblemDetails — not a 200 with filtered/empty data. The client needs to know *why* access was denied and *what to do about it* (e.g., `requiredIal` in the ProblemDetails extensions).
 - Auth claims in JWTs can go stale (e.g., household composition changes after login). Server-side checks that re-evaluate on every request are safer than trusting a token's claims about what the user is allowed to see.
 
+### PII at rest
+- Never store PII (household identifiers, case IDs, SSNs) in cleartext in the portal database when the data is only needed for lookups (e.g., cooldown checks, deduplication). Use `IIdentifierHasher` (HMAC-SHA256 with `IdentifierHasher:SecretKey`) to produce deterministic hashes for storage and lookup.
+- `IIdentifierHasher.Hash()` normalizes input via `IdentifierNormalizer` (trims whitespace, strips dashes and spaces) before hashing. This means `"SEBT-001"` and `"SEBT001"` produce the same hash. Ensure read and write paths use `Hash()` consistently.
+- Hashing is one-way — if there's any uncertainty about whether original cleartext values may need to be retrieved later, stop and ask a human. Encryption or another reversible approach may be more appropriate.
+
+### State connector data boundaries
+- State connectors provide read-only household data by default. The portal should not assume connectors support write-back except for well-known write operations: mailing address updates, card replacement requests (yes/no), and contact/communications preferences.
+- When the portal needs to enforce business rules (e.g., cooldown periods) based on user actions, persist that state in the portal database rather than relying on state connector round-trips.
+
 ## Common Commands
 **Prefer pnpm root-level scripts** (`pnpm api:test`, `pnpm api:build`, etc.) over raw `dotnet` commands. They handle working directories correctly and are the team convention. Use raw `dotnet` commands only for targeted operations like single-test filters.
 
@@ -170,6 +179,12 @@ This is a .NET 10 + Next.js 16 application following Clean Architecture. For det
 ### Layer boundaries
 - Inner layers (Kernel, Core, UseCases) must not reference web/HTTP concepts (ProblemDetails, status codes, headers, controllers). They define abstractions; outer layers (Api, Web) decide how to serialize and transport them.
 
+### Domain model: Cases vs Applications
+- A `SummerEbtCase` represents a single child with issued benefits. Most cases are auto-issued (no application). Card/EBT data and benefit delivery belong here.
+- An `Application` represents a guardian-submitted application for one or more children. Only a small fraction of children have one. A Case may link to an Application, but most won't.
+- State backends represent this differently: DC distinguishes cases from applications similarly to the portal; Colorado represents everything as an "application." The state connector mapping layer disaggregates into the portal's canonical model based on state-specific attributes.
+- Known tech debt: `Application` still carries card lifecycle fields (`CardStatus`, `CardRequestedAt`, etc.) that belong on `SummerEbtCase`.
+
 ### Multi-State Plugin System
 State-specific behavior uses MEF (System.Composition) plugins loaded at runtime from `plugins-{state}/` directories. Plugin contracts live in the separate `sebt-self-service-portal-state-connector` repo; implementations live in per-state repos (`-dc-connector`, `-co-connector`). The `STATE` env var controls which state config overlay loads. See [docs/adr/0007-multi-state-plugin-approach.md](./docs/adr/0007-multi-state-plugin-approach.md) for the design rationale.
 
@@ -179,6 +194,8 @@ State-specific behavior uses MEF (System.Composition) plugins loaded at runtime 
 
 ### Frontend
 Uses Next.js App Router with route groups: `(public)/` for login flows, `(authenticated)/` for protected pages. USWDS design tokens are generated via scripts before build. i18next handles internationalization with content files in `content/`.
+
+**React Query cache:** When a mutation should update cached data before navigating, `await queryClient.invalidateQueries()` — without `await`, the redirect races ahead and the destination page renders stale cache data.
 
 ## Branch Strategy
 - `main` — production source for all states
