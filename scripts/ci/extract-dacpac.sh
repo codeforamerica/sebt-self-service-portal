@@ -185,12 +185,15 @@ extract_dacpac() {
 
   local conn="Server=${MSSQL_HOST},${MSSQL_PORT};Database=${TEMP_DB};User Id=${MSSQL_USER};Password=${MSSQL_SA_PASSWORD};TrustServerCertificate=True;"
 
+  # TableData is set to only __EFMigrationsHistory so the DACPAC includes the
+  # migrations table contents (the app's startup check sees the schema as fully
+  # up to date) but no other table data.
   sqlpackage \
     /Action:Extract \
     /SourceConnectionString:"$conn" \
     /TargetFile:"$OUTPUT_DACPAC" \
     /p:ExtractAllTableData=false \
-    /p:TableData="[dbo].[__EFMigrationsHistory]" \ # Include only the migrations history data, not any app data
+    /p:TableData="[dbo].[__EFMigrationsHistory]" \
     /p:ExtractApplicationScopedObjectsOnly=true \
     /p:IgnorePermissions=true \
     /p:IgnoreUserLoginMappings=true \

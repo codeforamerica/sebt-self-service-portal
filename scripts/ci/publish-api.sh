@@ -76,19 +76,54 @@ dotnet publish "$PROJECT_ROOT/src/SEBT.Portal.Api/SEBT.Portal.Api.csproj" \
 log_info "Writing appsettings.prod.example.json (DC-specific / secret keys only)"
 cat > "$API_OUT/appsettings.prod.example.json" <<'JSON'
 {
-  "_comment": "Copy this file to appsettings.Production.json and fill in DC production values. Defaults for everything not listed here come from appsettings.json. Do not commit your filled-in copy.",
+  "_comment": "Copy this file to appsettings.Production.json and fill in DC production values. Defaults for everything not listed here come from appsettings.json. Do not commit your filled-in copy. Every key with a YOUR_* placeholder MUST be replaced before the API will run correctly.",
   "ConnectionStrings": {
     "DefaultConnection": "Server=YOUR_DB_HOST,1433;Database=SEBT_Portal_DC;User Id=YOUR_DB_USER;Password=YOUR_DB_PASSWORD;TrustServerCertificate=True;"
   },
   "DCConnector": {
     "ConnectionString": "Server=YOUR_DC_SOURCE_DB_HOST,1433;Database=DcSource;User Id=YOUR_DC_SOURCE_USER;Password=YOUR_DC_SOURCE_PASSWORD;TrustServerCertificate=True;"
   },
+  "IdentifierHasher": {
+    "_comment": "32+ character random secret used to hash identifiers (email, phone, etc) when stored. Generate with: openssl rand -base64 48",
+    "SecretKey": "YOUR_IDENTIFIER_HASHER_SECRET_KEY_AT_LEAST_32_CHARACTERS"
+  },
+  "JwtSettings": {
+    "_comment": "32+ character HMAC secret for signing API JWTs. Generate with: openssl rand -base64 48",
+    "SecretKey": "YOUR_JWT_HMAC_SECRET_KEY_AT_LEAST_32_CHARACTERS"
+  },
+  "Oidc": {
+    "_comment": "32+ character HMAC secret for signing the OIDC complete-login token.",
+    "CompleteLoginSigningKey": "YOUR_OIDC_COMPLETE_LOGIN_SIGNING_KEY_AT_LEAST_32_CHARACTERS"
+  },
+  "SmtpClientSettings": {
+    "_comment": "Defaults in appsettings.json point at Mailpit (localhost:1025) for local dev. Override for production with the agency's outbound SMTP relay.",
+    "SmtpServer": "YOUR_SMTP_HOST",
+    "SmtpPort": 587,
+    "EnableSsl": true,
+    "Username": "YOUR_SMTP_USER",
+    "Password": "YOUR_SMTP_PASSWORD"
+  },
+  "AppConfig": {
+    "_comment": "AWS AppConfig integration. If you are not using AWS AppConfig, leave the IDs blank and ensure the Enabled flags in FeatureManagement.AppConfig are also false.",
+    "Agent": {
+      "ApplicationId": "YOUR_APPCONFIG_APPLICATION_ID_OR_EMPTY",
+      "EnvironmentId": "YOUR_APPCONFIG_ENVIRONMENT_ID_OR_EMPTY"
+    },
+    "FeatureFlags": {
+      "ProfileId": "YOUR_APPCONFIG_FEATURE_FLAGS_PROFILE_ID_OR_EMPTY"
+    },
+    "AppSettings": {
+      "ProfileId": "YOUR_APPCONFIG_APPSETTINGS_PROFILE_ID_OR_EMPTY"
+    }
+  },
   "Smarty": {
+    "_comment": "SmartyStreets address validation. Leave Enabled=false to skip; set Enabled=true and provide credentials to use.",
     "Enabled": true,
     "AuthId": "YOUR_SMARTY_AUTH_ID",
     "AuthToken": "YOUR_SMARTY_AUTH_TOKEN"
   },
   "Socure": {
+    "_comment": "Socure identity verification. ApiKey and WebhookSecret are obtained from the Socure RiskOS dashboard.",
     "ApiKey": "YOUR_SOCURE_PROD_API_KEY",
     "WebhookSecret": "YOUR_SOCURE_WEBHOOK_BEARER_TOKEN",
     "BaseUrl": "https://riskos.socure.com",
