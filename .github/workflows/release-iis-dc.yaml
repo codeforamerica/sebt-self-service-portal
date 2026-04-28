@@ -1,6 +1,7 @@
 # Release IIS Package — DC
-# Builds a self-contained IIS deployment bundle for DC: API + web + dacpac +
-# README + schema-change report.
+# Builds an IIS deployment bundle for DC as an additional delivery option
+# alongside the existing Docker/ECR process: API + web + dacpac + README +
+# schema-change report.
 #
 # Triggers:
 #   workflow_dispatch (manual button, optional version input)

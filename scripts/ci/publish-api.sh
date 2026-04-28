@@ -9,6 +9,8 @@
 # stages them explicitly by publishing the DC connector with CopyPlugins=false
 # and copying its publish/*.dll output into plugins-dc/. The API csproj's
 # <None Include="plugins-dc\**\*.dll"> ItemGroup then picks them up during publish.
+# If the directory is empty, this script fails fast rather than producing an
+# invalid DC IIS bundle that will fail during MEF composition at runtime.
 #
 # Usage:
 #   ./scripts/ci/publish-api.sh --output <dir> [--configuration Release]
@@ -57,9 +59,9 @@ fi
 # Sanity-check that DC plugin DLLs have already been staged into plugins-dc/.
 PLUGIN_DIR="$PROJECT_ROOT/src/SEBT.Portal.Api/plugins-dc"
 if [ -z "$(ls -A "$PLUGIN_DIR" 2>/dev/null | grep -E '\.dll$' || true)" ]; then
-  log_warning "$PLUGIN_DIR has no DLLs — DC plugin artifacts were not staged before publish-api.sh."
-  log_warning "The published API will START but FAIL during MEF plugin composition at runtime."
-  log_warning "If this is a release build for delivery, abort and stage the DC plugin DLLs first."
+  log_error "$PLUGIN_DIR has no DLLs — DC plugin artifacts were not staged before publish-api.sh."
+  log_error "Stage the DC connector publish output before building the IIS bundle."
+  exit 1
 fi
 
 API_OUT="$OUTPUT_DIR/api"

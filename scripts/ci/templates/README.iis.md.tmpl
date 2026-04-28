@@ -3,7 +3,7 @@
 **Version:** {{VERSION}}
 **Built:** {{BUILD_DATE}} from commit {{GIT_SHA}}
 
-This package is a self-contained drop-in for a Windows Server / IIS environment. It contains the .NET API, the Next.js web bundle, a DACPAC with the database schema, and a delta report describing how that schema differs from the previous release. The IIS administrator deploys the API and web tiers; the DACPAC is **not** applied by the IIS admin — it goes to the DBA via a ticket.
+This package is a Windows Server / IIS deployment bundle for DC. It is an additional delivery option alongside the existing Docker/ECR deployment path. It contains the framework-dependent .NET API publish, the Next.js web bundle, a DACPAC with the database schema, and a delta report describing how that schema differs from the previous release. The IIS administrator deploys the API and web tiers; the DACPAC is **not** applied by the IIS admin — it goes to the DBA via a ticket.
 
 ## What's in this package
 
@@ -12,7 +12,7 @@ This package is a self-contained drop-in for a Windows Server / IIS environment.
 ├── README.md                       # this file
 ├── CHANGELOG-DACPAC.md             # schema delta vs the previous release
 ├── api/
-│   ├── *.exe, *.dll                # ASP.NET Core API, framework-dependent win-x64
+│   ├── *.exe, *.dll                # ASP.NET Core API publish, framework-dependent win-x64
 │   ├── plugins-dc/                 # DC state connector plugin DLLs (loaded at startup)
 │   ├── appsettings.json            # base config (do not edit on the server)
 │   ├── appsettings.prod.example.json   # template for DC-specific / secret values
@@ -37,7 +37,7 @@ When a previous release exists, the full machine-readable report is at `dacpac/d
 
 ## Prerequisites on the IIS server
 
-Install once per server. None of these are bundled in this zip.
+Install once per IIS server. None of these runtime prerequisites are bundled in this zip.
 
 - **Windows Server** 2019+ with IIS enabled.
 - **ASP.NET Core 10 Hosting Bundle.** Download from <https://dotnet.microsoft.com/download/dotnet/10.0>. After install, run `iisreset` once.
@@ -84,6 +84,10 @@ For a dry run / pre-flight first:
 
 Please apply during the agreed maintenance window and confirm completion.
 ```
+
+## Relationship to the Docker deployment
+
+This IIS package does not replace the existing DC Docker/ECR deployment process. Use this bundle when the target environment is Windows Server + IIS. Use the existing container deployment workflow when the target environment is the current Docker/AWS path.
 
 ## Verification
 
