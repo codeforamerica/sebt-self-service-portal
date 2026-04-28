@@ -25,7 +25,8 @@ trap 'rm -rf "$OUT_DIR"' EXIT
 
 # Clean the source tree's build artifacts before running the test.
 # This ensures we start fresh and can verify no new pollution is created.
-find "$PROJECT_ROOT/src" -maxdepth 2 -type d \( -name "obj" -o -name "bin" \) -prune -exec rm -rf {} + 2>/dev/null || true
+# Only clean directories within this project's src tree, not sibling repos.
+rm -rf "$PROJECT_ROOT"/src/*/obj "$PROJECT_ROOT"/src/*/bin 2>/dev/null || true
 
 bash "$PROJECT_ROOT/scripts/ci/publish-api.sh" \
   --output "$OUT_DIR" \
