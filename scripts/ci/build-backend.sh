@@ -140,7 +140,6 @@ build_backend() {
 # Build state connector package
 build_state_connector_package() {
   log_info "Building state connector package..."
-  cd "$PROJECT_ROOT/state-connector/src/SEBT.Portal.StatesPlugins.Interfaces"
 
   if [ -f /.dockerenv ]; then
     PACKAGE_OUTPUT="/root/nuget-store"
@@ -152,16 +151,20 @@ build_state_connector_package() {
     PACKAGE_OUTPUT="./nuget-store"
   fi
 
-  dotnet build SEBT.Portal.StatesPlugins.Interfaces.csproj \
-    -p:GeneratePackageOnBuild=false \
-    --configuration "$CONFIGURATION" \
-    --verbosity minimal
+  (
+    cd "$PROJECT_ROOT/state-connector/src/SEBT.Portal.StatesPlugins.Interfaces"
 
-  dotnet pack SEBT.Portal.StatesPlugins.Interfaces.csproj \
-    --no-build \
-    --configuration "$CONFIGURATION" \
-    --output "$PACKAGE_OUTPUT" \
-    --verbosity minimal
+    dotnet build SEBT.Portal.StatesPlugins.Interfaces.csproj \
+      -p:GeneratePackageOnBuild=false \
+      --configuration "$CONFIGURATION" \
+      --verbosity minimal
+
+    dotnet pack SEBT.Portal.StatesPlugins.Interfaces.csproj \
+      --no-build \
+      --configuration "$CONFIGURATION" \
+      --output "$PACKAGE_OUTPUT" \
+      --verbosity minimal
+  )
 
   log_success "State connector package built"
 }
