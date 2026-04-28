@@ -6,7 +6,7 @@ using SEBT.Portal.Kernel.Telemetry;
 /// <summary>
 /// 
 /// </summary>
-public class InstrumentationSource : IInstrumentationSource, IDisposable
+public sealed class InstrumentationSource : IInstrumentationSource, IDisposable
 {
     internal const string ActivitySourceName = "sebt-portal-api";
     internal const string MeterName = "sebt-portal-api";
