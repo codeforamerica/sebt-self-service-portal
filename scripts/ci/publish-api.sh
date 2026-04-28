@@ -10,16 +10,11 @@
 # <None Include="plugins-dc\**\*.dll"> ItemGroup then picks them up during publish.
 #
 # Usage:
-#   ./scripts/ci/publish-api.sh --output <dir> [--configuration Release] [--build-state-dir <dir>]
+#   ./scripts/ci/publish-api.sh --output <dir> [--configuration Release]
 #
 # Options:
 #   --output <dir>            Where to place the api/ directory (required).
 #   --configuration <cfg>     Debug or Release (default Release).
-#   --build-state-dir <dir>   Optional. Redirects MSBuild's BaseIntermediateOutputPath
-#                             and BaseOutputPath here so the source tree is not polluted.
-#                             Used by the smoke test; the production workflow leaves this
-#                             unset so build artifacts stay in the source's obj/ and bin/
-#                             for cache reuse across steps.
 
 set -e
 set -u
@@ -35,7 +30,6 @@ PROJECT_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
 
 CONFIGURATION="Release"
 OUTPUT_DIR=""
-BUILD_STATE_DIR=""
 
 log_info()    { echo -e "${BLUE}ℹ️  $1${NC}"; }
 log_success() { echo -e "${GREEN}✅ $1${NC}"; }
@@ -46,7 +40,6 @@ while [ $# -gt 0 ]; do
   case "$1" in
     --output) OUTPUT_DIR="$2"; shift 2 ;;
     --configuration) CONFIGURATION="$2"; shift 2 ;;
-    --build-state-dir) BUILD_STATE_DIR="$2"; shift 2 ;;
     -h|--help)
       grep '^# ' "$0" | sed 's/^# \{0,1\}//'
       exit 0
@@ -72,23 +65,13 @@ API_OUT="$OUTPUT_DIR/api"
 mkdir -p "$API_OUT"
 
 log_info "Publishing API to $API_OUT (configuration: $CONFIGURATION, runtime: win-x64)"
-PUBLISH_ARGS=(
-  --configuration "$CONFIGURATION"
-  --runtime win-x64
-  --self-contained false
-  --output "$API_OUT"
-  -p:BuildFrontend=false
+dotnet publish "$PROJECT_ROOT/src/SEBT.Portal.Api/SEBT.Portal.Api.csproj" \
+  --configuration "$CONFIGURATION" \
+  --runtime win-x64 \
+  --self-contained false \
+  --output "$API_OUT" \
+  -p:BuildFrontend=false \
   --verbosity minimal
-)
-if [ -n "$BUILD_STATE_DIR" ]; then
-  log_info "Isolating build artifacts to $BUILD_STATE_DIR"
-  mkdir -p "$BUILD_STATE_DIR"
-  # Note: Due to multi-repo dependencies (state-connector), applying BaseIntermediateOutputPath
-  # globally causes circular dependency errors. Instead, rely on cleaning the source tree
-  # before publish and trusting that --output isolates the final artifacts.
-  # The test verifies no source-tree pollution via git status.
-fi
-dotnet publish "$PROJECT_ROOT/src/SEBT.Portal.Api/SEBT.Portal.Api.csproj" "${PUBLISH_ARGS[@]}"
 
 log_info "Writing appsettings.prod.example.json (DC-specific / secret keys only)"
 cat > "$API_OUT/appsettings.prod.example.json" <<'JSON'

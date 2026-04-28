@@ -23,14 +23,10 @@ fi
 OUT_DIR="$(mktemp -d)"
 trap 'rm -rf "$OUT_DIR"' EXIT
 
-# Clean the source tree's build artifacts before running the test.
-# This ensures we start fresh and can verify no new pollution is created.
-# Only clean directories within this project's src tree, not sibling repos.
-rm -rf "$PROJECT_ROOT"/src/*/obj "$PROJECT_ROOT"/src/*/bin 2>/dev/null || true
-
-bash "$PROJECT_ROOT/scripts/ci/publish-api.sh" \
-  --output "$OUT_DIR" \
-  --build-state-dir "$OUT_DIR"
+# This test runs a real `dotnet publish` against the live source tree. It will
+# leave behind populated obj/ and bin/ directories under src/SEBT.Portal.Api/ —
+# this is normal .NET behavior; those directories are .gitignored.
+bash "$PROJECT_ROOT/scripts/ci/publish-api.sh" --output "$OUT_DIR"
 
 assert_dir_exists "$OUT_DIR/api"
 assert_file_exists "$OUT_DIR/api/SEBT.Portal.Api.dll"
