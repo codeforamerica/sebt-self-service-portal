@@ -93,8 +93,10 @@ if [ -n "$REPO" ]; then
   GH_REPO_FLAG=(--repo "$REPO")
 fi
 
+# Bash 3.2 (macOS default) treats `"${arr[@]}"` as unbound under `set -u` when
+# the array is empty. Use the `${arr[@]+"${arr[@]}"}` idiom to expand-only-if-set.
 # `gh release list` does not support globs natively, so we filter after.
-PREV_TAG="$(gh release list "${GH_REPO_FLAG[@]}" --limit 100 --json tagName --jq '.[].tagName' \
+PREV_TAG="$(gh release list ${GH_REPO_FLAG[@]+"${GH_REPO_FLAG[@]}"} --limit 100 --json tagName --jq '.[].tagName' \
   | grep -E "^${PREV_TAG_PATTERN//\*/.*}$" \
   | head -n 1 || true)"
 
@@ -110,7 +112,7 @@ log_info "Previous release: $PREV_TAG"
 PREV_DIR="$(mktemp -d)"
 trap 'rm -rf "$PREV_DIR"' EXIT
 log_info "Downloading previous DACPAC from $PREV_TAG"
-gh release download "$PREV_TAG" "${GH_REPO_FLAG[@]}" --dir "$PREV_DIR" --pattern "*.dacpac" || {
+gh release download "$PREV_TAG" ${GH_REPO_FLAG[@]+"${GH_REPO_FLAG[@]}"} --dir "$PREV_DIR" --pattern "*.dacpac" || {
   log_warning "No DACPAC asset on $PREV_TAG — treating as first run"
   write_initial_release_changelog "previous release had no DACPAC asset"
   log_success "Done."
