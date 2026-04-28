@@ -13,6 +13,11 @@ interface DocVerifyResubmitProps {
 // TODO: Use t('resubmit*') keys once they are available in dc.csv. The retry copy is a content
 // gap until Laura's reason-code mapping doc lands; ship with generic copy first and surface
 // reason-specific branches (blur, glare, unsupported ID) when the mapping is in.
+// TODO: Sandbox observation 2026-04-28 — Socure coerces a consent decline into the same
+// RESUBMIT verdict as a poor-quality capture, so this screen also greets users who actively
+// declined the DocV terms. The "we weren't able to verify your identity from the document
+// you uploaded" line is misleading in that case (they didn't upload anything). Confirm prod
+// behavior with Laura, then split copy by reason if consent-decline lands here in prod too.
 export function DocVerifyResubmit({ onResubmit, isResubmitting, error }: DocVerifyResubmitProps) {
   const { t } = useTranslation('idProofing')
 
