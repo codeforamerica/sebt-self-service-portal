@@ -107,6 +107,7 @@ export function EnrollmentProvider({ children }: { children: ReactNode }) {
 
   // Hydrate from sessionStorage after mount (avoids SSR mismatch)
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setState(loadFromStorage())
   }, [])
 
