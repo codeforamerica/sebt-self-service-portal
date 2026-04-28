@@ -4,6 +4,9 @@
 
 name: State CI
 
+permissions:
+  contents: read
+
 on:
   push:
     branches: ["main", "deploy/*"]
