@@ -1,7 +1,7 @@
 'use client'
 
 import { ApiError } from '@/api'
-import { useAuth } from '@/features/auth'
+import { SignOutLink, useAuth } from '@/features/auth'
 import { AnalyticsEvents, useDataLayer } from '@sebt/analytics'
 import { Alert } from '@sebt/design-system'
 import { useEffect } from 'react'
@@ -63,6 +63,7 @@ export function DashboardContent() {
     return (
       <>
         {pageHeading}
+        <SignOutLink />
         <Alert
           variant="error"
           heading={t('errorHeading', 'Error loading dashboard')}
@@ -80,7 +81,7 @@ export function DashboardContent() {
     return (
       <>
         {pageHeading}
-        {data?.userProfile && <UserProfileCard />}
+        {data?.userProfile ? <UserProfileCard /> : <SignOutLink />}
         <EmptyState />
       </>
     )

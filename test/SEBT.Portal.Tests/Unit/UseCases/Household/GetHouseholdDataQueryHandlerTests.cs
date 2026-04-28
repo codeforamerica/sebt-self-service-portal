@@ -19,6 +19,8 @@ public class GetHouseholdDataQueryHandlerTests
     private readonly IPiiVisibilityService _piiVisibilityService = Substitute.For<IPiiVisibilityService>();
     private readonly IIdProofingService _idProofingService = Substitute.For<IIdProofingService>();
     private readonly ISelfServiceEvaluator _selfServiceEvaluator = Substitute.For<ISelfServiceEvaluator>();
+    private readonly ICardReplacementRequestRepository _cardReplacementRepo = Substitute.For<ICardReplacementRequestRepository>();
+    private readonly IIdentifierHasher _identifierHasher = Substitute.For<IIdentifierHasher>();
     private readonly NullLogger<GetHouseholdDataQueryHandler> _logger = NullLogger<GetHouseholdDataQueryHandler>.Instance;
 
     public GetHouseholdDataQueryHandlerTests()
@@ -81,7 +83,7 @@ public class GetHouseholdDataQueryHandlerTests
         _repository.GetHouseholdByIdentifierAsync(identifier, Arg.Any<PiiVisibility>(), Arg.Any<UserIalLevel>(), Arg.Any<CancellationToken>())
             .Returns(householdData);
 
-        var handler = new GetHouseholdDataQueryHandler(_resolver, _repository, _piiVisibilityService, _idProofingService, _selfServiceEvaluator, _logger);
+        var handler = new GetHouseholdDataQueryHandler(_resolver, _repository, _piiVisibilityService, _idProofingService, _selfServiceEvaluator, _cardReplacementRepo, _identifierHasher, _logger);
         var query = new GetHouseholdDataQuery { User = user };
 
         // Act
@@ -115,7 +117,7 @@ public class GetHouseholdDataQueryHandlerTests
         _repository.GetHouseholdByIdentifierAsync(identifier, Arg.Any<PiiVisibility>(), Arg.Any<UserIalLevel>(), Arg.Any<CancellationToken>())
             .Returns(householdData);
 
-        var handler = new GetHouseholdDataQueryHandler(_resolver, _repository, _piiVisibilityService, _idProofingService, _selfServiceEvaluator, _logger);
+        var handler = new GetHouseholdDataQueryHandler(_resolver, _repository, _piiVisibilityService, _idProofingService, _selfServiceEvaluator, _cardReplacementRepo, _identifierHasher, _logger);
         var query = new GetHouseholdDataQuery { User = user };
 
         // Act
@@ -140,7 +142,7 @@ public class GetHouseholdDataQueryHandlerTests
         _resolver.ResolveAsync(Arg.Any<ClaimsPrincipal>(), Arg.Any<CancellationToken>())
             .Returns((HouseholdIdentifier?)null);
 
-        var handler = new GetHouseholdDataQueryHandler(_resolver, _repository, _piiVisibilityService, _idProofingService, _selfServiceEvaluator, _logger);
+        var handler = new GetHouseholdDataQueryHandler(_resolver, _repository, _piiVisibilityService, _idProofingService, _selfServiceEvaluator, _cardReplacementRepo, _identifierHasher, _logger);
         var query = new GetHouseholdDataQuery { User = user };
 
         // Act
@@ -168,7 +170,7 @@ public class GetHouseholdDataQueryHandlerTests
         _repository.GetHouseholdByIdentifierAsync(Arg.Any<HouseholdIdentifier>(), Arg.Any<PiiVisibility>(), Arg.Any<UserIalLevel>(), Arg.Any<CancellationToken>())
             .Returns((HouseholdData?)null);
 
-        var handler = new GetHouseholdDataQueryHandler(_resolver, _repository, _piiVisibilityService, _idProofingService, _selfServiceEvaluator, _logger);
+        var handler = new GetHouseholdDataQueryHandler(_resolver, _repository, _piiVisibilityService, _idProofingService, _selfServiceEvaluator, _cardReplacementRepo, _identifierHasher, _logger);
         var query = new GetHouseholdDataQuery { User = user };
 
         // Act
@@ -197,7 +199,7 @@ public class GetHouseholdDataQueryHandlerTests
         _repository.GetHouseholdByIdentifierAsync(Arg.Any<HouseholdIdentifier>(), Arg.Any<PiiVisibility>(), Arg.Any<UserIalLevel>(), Arg.Any<CancellationToken>())
             .Returns(householdData);
 
-        var handler = new GetHouseholdDataQueryHandler(_resolver, _repository, _piiVisibilityService, _idProofingService, _selfServiceEvaluator, _logger);
+        var handler = new GetHouseholdDataQueryHandler(_resolver, _repository, _piiVisibilityService, _idProofingService, _selfServiceEvaluator, _cardReplacementRepo, _identifierHasher, _logger);
         var query = new GetHouseholdDataQuery { User = user };
 
         // Act
@@ -228,7 +230,7 @@ public class GetHouseholdDataQueryHandlerTests
         _repository.GetHouseholdByIdentifierAsync(Arg.Any<HouseholdIdentifier>(), Arg.Any<PiiVisibility>(), Arg.Any<UserIalLevel>(), Arg.Any<CancellationToken>())
             .Returns(householdData);
 
-        var handler = new GetHouseholdDataQueryHandler(_resolver, _repository, _piiVisibilityService, _idProofingService, _selfServiceEvaluator, _logger);
+        var handler = new GetHouseholdDataQueryHandler(_resolver, _repository, _piiVisibilityService, _idProofingService, _selfServiceEvaluator, _cardReplacementRepo, _identifierHasher, _logger);
         var query = new GetHouseholdDataQuery { User = user };
 
         // Act
@@ -263,7 +265,7 @@ public class GetHouseholdDataQueryHandlerTests
             Arg.Any<UserIalLevel>(), Arg.Any<IReadOnlyList<SummerEbtCase>>())
             .Returns(new IdProofingDecision(IsAllowed: false, RequiredLevel: UserIalLevel.IAL1plus));
 
-        var handler = new GetHouseholdDataQueryHandler(_resolver, _repository, _piiVisibilityService, _idProofingService, _selfServiceEvaluator, _logger);
+        var handler = new GetHouseholdDataQueryHandler(_resolver, _repository, _piiVisibilityService, _idProofingService, _selfServiceEvaluator, _cardReplacementRepo, _identifierHasher, _logger);
         var query = new GetHouseholdDataQuery { User = user };
 
         // Act
@@ -296,7 +298,7 @@ public class GetHouseholdDataQueryHandlerTests
             Arg.Any<UserIalLevel>(), Arg.Any<IReadOnlyList<SummerEbtCase>>())
             .Returns(new IdProofingDecision(IsAllowed: true, RequiredLevel: UserIalLevel.IAL1plus));
 
-        var handler = new GetHouseholdDataQueryHandler(_resolver, _repository, _piiVisibilityService, _idProofingService, _selfServiceEvaluator, _logger);
+        var handler = new GetHouseholdDataQueryHandler(_resolver, _repository, _piiVisibilityService, _idProofingService, _selfServiceEvaluator, _cardReplacementRepo, _identifierHasher, _logger);
         var query = new GetHouseholdDataQuery { User = user };
 
         // Act
@@ -337,7 +339,7 @@ public class GetHouseholdDataQueryHandlerTests
                 Arg.Any<UserIalLevel>(), Arg.Any<CancellationToken>())
             .Returns(householdData);
 
-        var handler = new GetHouseholdDataQueryHandler(_resolver, _repository, _piiVisibilityService, _idProofingService, _selfServiceEvaluator, _logger);
+        var handler = new GetHouseholdDataQueryHandler(_resolver, _repository, _piiVisibilityService, _idProofingService, _selfServiceEvaluator, _cardReplacementRepo, _identifierHasher, _logger);
         var query = new GetHouseholdDataQuery { User = user };
 
         var result = await handler.Handle(query, CancellationToken.None);
@@ -382,7 +384,7 @@ public class GetHouseholdDataQueryHandlerTests
         _selfServiceEvaluator.Evaluate(Arg.Is<SummerEbtCase>(c => c.SummerEBTCaseID == "SEBT-002"))
             .Returns(new AllowedActions { CanUpdateAddress = false, CanRequestReplacementCard = true });
 
-        var handler = new GetHouseholdDataQueryHandler(_resolver, _repository, _piiVisibilityService, _idProofingService, _selfServiceEvaluator, _logger);
+        var handler = new GetHouseholdDataQueryHandler(_resolver, _repository, _piiVisibilityService, _idProofingService, _selfServiceEvaluator, _cardReplacementRepo, _identifierHasher, _logger);
         var query = new GetHouseholdDataQuery { User = user };
 
         var result = await handler.Handle(query, CancellationToken.None);
@@ -422,7 +424,7 @@ public class GetHouseholdDataQueryHandlerTests
                 Arg.Any<UserIalLevel>(), Arg.Any<CancellationToken>())
             .Returns(householdData);
 
-        var handler = new GetHouseholdDataQueryHandler(_resolver, _repository, _piiVisibilityService, _idProofingService, _selfServiceEvaluator, _logger);
+        var handler = new GetHouseholdDataQueryHandler(_resolver, _repository, _piiVisibilityService, _idProofingService, _selfServiceEvaluator, _cardReplacementRepo, _identifierHasher, _logger);
         var query = new GetHouseholdDataQuery { User = user };
 
         await handler.Handle(query, CancellationToken.None);
@@ -460,7 +462,7 @@ public class GetHouseholdDataQueryHandlerTests
                 Arg.Any<UserIalLevel>(), Arg.Any<CancellationToken>())
             .Returns(householdData);
 
-        var handler = new GetHouseholdDataQueryHandler(_resolver, _repository, _piiVisibilityService, _idProofingService, _selfServiceEvaluator, _logger);
+        var handler = new GetHouseholdDataQueryHandler(_resolver, _repository, _piiVisibilityService, _idProofingService, _selfServiceEvaluator, _cardReplacementRepo, _identifierHasher, _logger);
         var query = new GetHouseholdDataQuery { User = user };
 
         var result = await handler.Handle(query, CancellationToken.None);
@@ -491,7 +493,7 @@ public class GetHouseholdDataQueryHandlerTests
         _repository.GetHouseholdByIdentifierAsync(Arg.Any<HouseholdIdentifier>(), Arg.Any<PiiVisibility>(), Arg.Any<UserIalLevel>(), token)
             .Returns(householdData);
 
-        var handler = new GetHouseholdDataQueryHandler(_resolver, _repository, _piiVisibilityService, _idProofingService, _selfServiceEvaluator, _logger);
+        var handler = new GetHouseholdDataQueryHandler(_resolver, _repository, _piiVisibilityService, _idProofingService, _selfServiceEvaluator, _cardReplacementRepo, _identifierHasher, _logger);
         var query = new GetHouseholdDataQuery { User = user };
 
         // Act

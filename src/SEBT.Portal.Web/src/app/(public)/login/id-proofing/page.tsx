@@ -6,24 +6,51 @@ import { getState, getStateLinks } from '@sebt/design-system'
 // DC-only: CO uses external auth and never reaches this route.
 const DC_ID_OPTIONS: IdOption[] = [
   {
-    value: 'snapAccountId',
-    labelKey: 'optionAccountId',
-    helperKey: 'optionHelperAccountId',
-    inputLabelKey: 'labelAccountId'
-  },
-  {
     value: 'ssn',
     labelKey: 'optionLabelSsn',
-    inputLabelKey: 'labelSsn'
+    inputLabelKey: 'labelSsn',
+    // SSN is federally 9 digits. Shared Zod schema also enforces this.
+    validation: { digits: 9 }
   },
   {
     value: 'itin',
     labelKey: 'optionLabelItin',
-    inputLabelKey: 'labelItin'
+    inputLabelKey: 'labelItin',
+    // ITIN is federally 9 digits. Shared Zod schema also enforces this.
+    validation: { digits: 9 }
+  },
+  {
+    value: 'medicaidId',
+    labelKey: 'optionLabelMedicaidId',
+    helperKey: 'optionHelperMedicaidId',
+    inputLabelKey: 'labelMedicaidId',
+    // DC CSV: "typically 7 or 8 digits long".
+    validation: { digits: [7, 8] }
+  },
+  {
+    value: 'snapAccountId',
+    labelKey: 'optionAccountId',
+    helperKey: 'optionHelperAccountId',
+    inputLabelKey: 'labelAccountId',
+    // DC CSV: "typically 7 or 8 digits long".
+    validation: { digits: [7, 8] }
+  },
+  {
+    value: 'snapPersonId',
+    labelKey: 'optionPersonId',
+    helperKey: 'optionHelperPersonId',
+    inputLabelKey: 'labelPersonId',
+    // DC CSV: "typically 7 or 8 digits long".
+    validation: { digits: [7, 8] }
   },
   {
     value: 'none',
+    // Cross-namespace lookup: the label key "noneOfTheAbove" lives in the
+    // common namespace (sourced from CSV row "GLOBAL - Option - None of the
+    // above"). The form's useTranslation() targets the idProofing namespace,
+    // so the "common:" prefix tells i18next to resolve from common instead.
     labelKey: 'common:noneOfTheAbove',
+    // No validation: "none of the above" skips the ID value input entirely.
     dividerBefore: true
   }
 ]
@@ -34,12 +61,16 @@ const DC_ID_OPTIONS_CO_LOADED: IdOption[] = [
     value: 'snapAccountId',
     labelKey: 'optionAccountId',
     helperKey: 'optionHelperAccountId',
-    inputLabelKey: 'labelAccountId'
+    inputLabelKey: 'labelAccountId',
+    // DC CSV: "typically 7 or 8 digits long".
+    validation: { digits: [7, 8] }
   },
   {
     value: 'itin',
     labelKey: 'optionLabelItin',
-    inputLabelKey: 'labelItin'
+    inputLabelKey: 'labelItin',
+    // ITIN is federally 9 digits. Shared Zod schema also enforces this.
+    validation: { digits: 9 }
   },
   {
     value: 'none',
