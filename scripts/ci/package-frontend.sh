@@ -56,6 +56,24 @@ log_success() { echo -e "${GREEN}✅ $1${NC}"; }
 log_warning() { echo -e "${YELLOW}⚠️  $1${NC}"; }
 log_error()   { echo -e "${RED}❌ $1${NC}"; }
 
+remove_dangling_symlinks() {
+  local dangling_links_file
+  dangling_links_file=$(mktemp)
+
+  find "$STANDALONE_DIR" -type l ! -exec test -e {} \; -print > "$dangling_links_file"
+
+  if [ -s "$dangling_links_file" ]; then
+    log_warning "Removing dangling symlinks from standalone output before packaging..."
+    while IFS= read -r dangling_link; do
+      [ -n "$dangling_link" ] || continue
+      log_warning "  $(basename "$dangling_link")"
+      rm "$dangling_link"
+    done < "$dangling_links_file"
+  fi
+
+  rm -f "$dangling_links_file"
+}
+
 build_standalone() {
   if [ "$SKIP_BUILD" = true ]; then
     log_info "Skipping build (--skip-build)"
@@ -80,6 +98,8 @@ package_frontend() {
   trap 'rm -rf "$STAGING_DIR"' EXIT
 
   log_info "Staging portable build..."
+
+  remove_dangling_symlinks
 
   # Copy the entire standalone output, dereferencing pnpm symlinks so the
   # result contains real files that work on any OS without pnpm installed.
