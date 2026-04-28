@@ -3,9 +3,9 @@
 **Version:** {{VERSION}}
 **Built:** {{BUILD_DATE}} from commit {{GIT_SHA}}
 
-This package is a Windows Server / IIS deployment bundle for DC. It is an additional delivery option alongside the existing Docker/ECR deployment path. It contains the framework-dependent .NET API publish, the Next.js web bundle, a DACPAC with the database schema, and a delta report describing how that schema differs from the previous release. The IIS administrator deploys the API and web tiers; the DACPAC is **not** applied by the IIS admin — it goes to the DBA via a ticket.
+This package is the DC Windows Server / IIS release bundle. It includes the application files for the API and web tiers plus the database artifacts needed to review and apply schema changes for this release. Use this README as the handoff and update checklist for the receiving administrator.
 
-## What's in this package
+## What is in this package
 
 ```
 .
@@ -35,6 +35,16 @@ This package is a Windows Server / IIS deployment bundle for DC. It is an additi
 
 When a previous release exists, the full machine-readable report is at `dacpac/deploy-report.xml` and the human-readable rendering is at `dacpac/deploy-report.html`. `CHANGELOG-DACPAC.md` always has the grouped summary (or the "initial release" note when no prior release exists).
 
+## Update workflow
+
+Use this order for the release:
+
+1. Review `CHANGELOG-DACPAC.md` and `dacpac/deploy-report.html` to understand the schema impact.
+2. Stage the new application package on the IIS server without overwriting the currently running version.
+3. Coordinate the database change for `dacpac/{{DACPAC_FILENAME}}`.
+4. Switch IIS to the new application directory only after the database work is approved and completed.
+5. Verify the API and web endpoints, then keep the prior deployment directory available for rollback.
+
 ## Prerequisites on the IIS server
 
 Install once per IIS server. None of these runtime prerequisites are bundled in this zip.
@@ -44,50 +54,60 @@ Install once per IIS server. None of these runtime prerequisites are bundled in 
 - **Node.js 24 LTS (x64)** — the MSI installer from <https://nodejs.org>. Confirm with `node -v`.
 - **HttpPlatformHandler module for IIS** — install via Web Platform Installer or download from Microsoft. Required for the web tier.
 
-## Deployment steps
+## Application update steps
 
-1. **Extract** this zip to a deployment root, e.g. `C:\inetpub\sebt-dc\{{VERSION}}`.
-2. **Create the IIS site** for the web tier pointing at `<root>\web`. Set Application Pool to **No Managed Code** and **No** for "Load User Profile."
-3. **Create an application** under that site at the path `/api`, pointing at `<root>\api`. Set Application Pool to **No Managed Code** with managed pipeline mode **Integrated**.
-4. **Configure the API.** Copy `api\appsettings.prod.example.json` to `api\appsettings.Production.json` and fill in every value with a `YOUR_*` placeholder. The base `appsettings.json` already contains all defaults; you only need to set the keys present in the example file. The example covers, in order: portal database connection string, DC source database connection string, identifier hasher secret, JWT signing secret, OIDC complete-login signing key, SMTP server credentials, AWS AppConfig IDs (or blank/disabled), SmartyStreets credentials, and Socure credentials. Any missing required secret will surface as a startup or first-request failure — do not leave placeholders in place.
-5. **Set ACLs** on `api\logs\` and `web\logs\` to grant the app pool identity (typically `IIS APPPOOL\<your pool name>`) **Modify** permission.
-6. **Verify environment variables** in `web\web.config`. The shipped values point `BACKEND_URL` at `http://localhost:5280` — adjust if your API binding port differs. `NEXT_PUBLIC_STATE` is `dc`; do not change.
-7. **Start the site.** Hit `https://<host>/` for the web app and `https://<host>/api/health` (or your configured health endpoint) for the API.
-8. **TLS / HTTPS termination is the operator's responsibility.** Configure the IIS site bindings (port 443, certificate selection) per your organization's standards. The shipped `web.config` does not enforce HTTPS; if you need HTTP→HTTPS redirect, add it via your standard IIS module (URL Rewrite or HSTS).
+1. **Extract** this zip to a new versioned deployment directory, for example `C:\inetpub\sebt-dc\{{VERSION}}`. Do not overwrite the currently active directory.
+2. **Review the target layout** after extraction. The IIS site root should point to `<root>\web` and the API application should point to `<root>\api`.
+3. **Configure the API.** Copy `api\appsettings.prod.example.json` to `api\appsettings.Production.json` and replace every `YOUR_*` placeholder before go-live. The example file covers the required production-only values.
+4. **Confirm file system permissions.** Grant the IIS app pool identity **Modify** permission on `api\logs\` and `web\logs\`.
+5. **Confirm the web tier settings.** In `web\web.config`, verify that `BACKEND_URL` points to the correct API binding. Leave `NEXT_PUBLIC_STATE=dc` unchanged.
+6. **Update IIS paths.** Point the existing IIS site to `<root>\web` and the `/api` application to `<root>\api`, or create them if this is the first deployment.
+7. **Restart or recycle** the affected IIS application pool(s) after the path change.
+8. **Verify** `https://<host>/` and `https://<host>/api/health` before declaring the deployment complete.
+9. **Keep the previous version directory** in place until the release is accepted.
 
-## Database update — DBA ticket
+## DACPAC review and database update
 
-**The IIS administrator does not run the DACPAC.** Open a DBA ticket using the template below.
+The database artifact for this release is `dacpac/{{DACPAC_FILENAME}}`.
+
+Review these files together before applying the schema change:
+
+- `CHANGELOG-DACPAC.md` for the summarized change list.
+- `dacpac/deploy-report.html` for a human-readable object-by-object report.
+- `dacpac/deploy-report.xml` for the raw `sqlpackage` deploy report.
+
+If you are responsible for the database deployment, generate a fresh pre-flight report against the target database before publish:
 
 ```
-Subject: SEBT Portal DC v{{VERSION}} — DACPAC application
+sqlpackage /Action:DeployReport ^
+  /SourceFile:{{DACPAC_FILENAME}} ^
+  /TargetConnectionString:"<target connection string>" ^
+  /OutputPath:dba-pre-flight-report.xml
+```
 
-The IIS deployment of SEBT Portal DC v{{VERSION}} is in place and requires a database schema update before it can be activated.
+Then, if the pre-flight report is approved, apply the DACPAC:
 
-Package version:  {{VERSION}}
+```
+sqlpackage /Action:Publish ^
+  /SourceFile:{{DACPAC_FILENAME}} ^
+  /TargetConnectionString:"<target connection string>"
+```
+
+If you are not the person authorized to apply database changes, open the database change ticket with these details:
+
+```
+Release:          SEBT Portal DC v{{VERSION}}
 Built:            {{BUILD_DATE}} from commit {{GIT_SHA}}
 DACPAC filename:  {{DACPAC_FILENAME}}
-Schema delta:     see attached CHANGELOG-DACPAC.md and deploy-report.html
-
-Apply with sqlpackage:
-
-  sqlpackage /Action:Publish ^
-    /SourceFile:{{DACPAC_FILENAME}} ^
-    /TargetConnectionString:"<production connection string>"
-
-For a dry run / pre-flight first:
-
-  sqlpackage /Action:DeployReport ^
-    /SourceFile:{{DACPAC_FILENAME}} ^
-    /TargetConnectionString:"<production connection string>" ^
-    /OutputPath:dba-pre-flight-report.xml
-
-Please apply during the agreed maintenance window and confirm completion.
+Review files:     CHANGELOG-DACPAC.md, deploy-report.html, deploy-report.xml
+Requested action: Review pre-flight impact and apply the DACPAC during the approved maintenance window
 ```
 
-## Relationship to the Docker deployment
+Do not switch the IIS site to the new application version until the database work required by this release is approved and complete.
 
-This IIS package does not replace the existing DC Docker/ECR deployment process. Use this bundle when the target environment is Windows Server + IIS. Use the existing container deployment workflow when the target environment is the current Docker/AWS path.
+## First deployment notes
+
+If this is the first time this package has been delivered to the environment, `CHANGELOG-DACPAC.md` may show an initial-release note instead of a delta. In that case, the DACPAC still needs the same pre-flight review and approval before publish.
 
 ## Verification
 
