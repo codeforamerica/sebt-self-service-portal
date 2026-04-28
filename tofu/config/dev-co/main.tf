@@ -74,6 +74,10 @@ module "state_secrets" {
       description     = "MyColorado OIDC credentials for authentication."
       recovery_window = 7
     }
+    "analytics" = {
+      description     = "Analytics API keys (Amplitude, Mixpanel). Fields: amplitude_api_key, mixpanel_token."
+      recovery_window = 7
+    }
   }
 }
 

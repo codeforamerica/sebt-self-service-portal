@@ -70,6 +70,10 @@ module "state_secrets" {
       description     = "Socure API credentials for identity verification."
       recovery_window = 7
     }
+    "analytics" = {
+      description     = "Analytics API keys (Amplitude, Mixpanel). Fields: amplitude_api_key, mixpanel_token."
+      recovery_window = 7
+    }
   }
 }
 

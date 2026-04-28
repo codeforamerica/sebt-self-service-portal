@@ -52,3 +52,8 @@ output "database_secret_arn" {
   description = "ARN of the Secrets Manager secret with DB admin credentials."
   value       = module.app.database_secret_arn
 }
+
+output "analytics_secret_arn" {
+  description = "ARN of the Secrets Manager secret holding analytics API keys (Amplitude, Mixpanel)."
+  value       = module.state_secrets.secrets["analytics"].secret_arn
+}
