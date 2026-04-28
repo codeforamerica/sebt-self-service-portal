@@ -1,3 +1,4 @@
+using System.Text.Json;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
@@ -33,8 +34,10 @@ public class ConfigureIdProofingRequirements(
                 continue;
             }
 
-            if (child.Value is not null)
+            if (child.Value is not null && !child.GetChildren().Any())
             {
+                logger.LogInformation("IdProofingRequirements Child - {Key}: {Value}", child.Key, child.Value);
+
                 // Simple form: "address+view": "IAL1plus"
                 if (!Enum.TryParse<IalLevel>(child.Value, ignoreCase: true, out var level))
                 {
@@ -74,7 +77,11 @@ public class ConfigureIdProofingRequirements(
                 {
                     options.Requirements[child.Key] = IalRequirement.PerCaseType(perCase);
                 }
+
+                logger.LogInformation("IdProofingRequirements Child - {Key}: {Values}", child.Key, perCase);
             }
         }
+
+        logger.LogInformation("IdProofingRequirements: {IdProofingRequirements}", options.ToString());
     }
 }

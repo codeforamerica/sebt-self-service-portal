@@ -1,3 +1,4 @@
+using System.Text;
 using SEBT.Portal.Core.Models.Auth;
 
 namespace SEBT.Portal.Core.AppSettings;
@@ -32,5 +33,20 @@ public class IdProofingRequirementsSettings
     public IalRequirement Get(ProtectedResource resource, ProtectedAction action)
     {
         return Get(IdProofingKeys.ToConfigKey(resource, action));
+    }
+
+    public override string ToString()
+    {
+        var sb = new StringBuilder();
+        sb.AppendLine("[");
+
+        foreach (var kvp in Requirements)
+        {
+            sb.AppendLine($"    {kvp.Key}: {kvp.Value},");
+        }
+
+        sb.AppendLine("]");
+
+        return sb.ToString();
     }
 }

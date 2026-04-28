@@ -61,6 +61,19 @@ public class IalRequirement
         return _perCaseType?.Values ?? Enumerable.Empty<IalLevel>();
     }
 
+    public override string ToString()
+    {
+        if (_uniform.HasValue)
+        {
+            return _uniform.Value.ToString();
+        }
+        else if (_perCaseType is not null)
+        {
+            return $"[{string.Join(',', _perCaseType.Select(kvp => $"{kvp.Key}:{kvp.Value}"))}]";
+        }
+        return "unknown";
+    }
+
     // Case-type key lookup is case-insensitive when the dictionary is created with
     // StringComparer.OrdinalIgnoreCase (see ConfigureIdProofingRequirements).
     // If a case type is not in the dictionary, fail-closed to IAL1plus.
