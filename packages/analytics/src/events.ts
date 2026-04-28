@@ -18,6 +18,7 @@ export const IDV_PRIMARY_RESULT = 'idv_primary_result'
 export const DOCV_START = 'docv_start'
 export const DOCV_UPLOAD = 'docv_upload'
 export const DOCV_RESULT = 'docv_result'
+export const DOCV_RESUBMIT = 'docv_resubmit'
 export const IDV_FINAL_RESULT = 'idv_final_result'
 
 // Benefits Dashboard

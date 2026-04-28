@@ -54,6 +54,31 @@ public interface ISocureClient
         Guid userId,
         string email,
         CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Starts a fresh DocV step-up evaluation for a user who landed on Resubmit (DC-301).
+    /// Backed by the <c>docv_stepup</c> workflow, which only emits ACCEPT/REJECT — caps retries
+    /// at one by construction. Returns a brand-new transaction token + DocV URL; the caller
+    /// persists these on a new <see cref="DocVerificationChallenge"/> row.
+    /// </summary>
+    /// <param name="userId">Internal user ID for correlation.</param>
+    /// <param name="email">User's email address.</param>
+    /// <param name="phoneNumber">User's phone number (drives Socure's SMS link), or null.</param>
+    /// <param name="givenName">The user's first name, or null.</param>
+    /// <param name="familyName">The user's last name, or null.</param>
+    /// <param name="address">The user's mailing address from household data, or null.</param>
+    /// <param name="diSessionToken">Device Intelligence session token from the frontend SDK, or null to use config fallback.</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    /// <returns>An assessment result whose Outcome should be DocumentVerificationRequired with a non-null DocvSession.</returns>
+    Task<Result<IdProofingAssessmentResult>> RunDocvStepupAssessmentAsync(
+        Guid userId,
+        string email,
+        string? phoneNumber = null,
+        string? givenName = null,
+        string? familyName = null,
+        Address? address = null,
+        string? diSessionToken = null,
+        CancellationToken cancellationToken = default);
 }
 
 /// <summary>

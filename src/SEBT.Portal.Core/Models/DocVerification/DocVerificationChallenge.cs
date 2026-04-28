@@ -97,16 +97,18 @@ public class DocVerificationChallenge
     public DateTime? DocvTokenIssuedAt { get; set; }
 
     /// <summary>
-    /// Whether this challenge is in a terminal state (Verified, Rejected, or Expired).
-    /// Terminal challenges cannot be modified.
+    /// Whether this challenge is in a terminal state (Verified, Rejected, Expired, or Resubmit).
+    /// Terminal challenges cannot be modified. A Resubmit challenge is terminal at this challenge's
+    /// scope; the user opens a fresh challenge to retry.
     /// </summary>
     public bool IsTerminal => Status is DocVerificationStatus.Verified
         or DocVerificationStatus.Rejected
-        or DocVerificationStatus.Expired;
+        or DocVerificationStatus.Expired
+        or DocVerificationStatus.Resubmit;
 
     /// <summary>
     /// Transitions the challenge to a new status, enforcing valid state transitions.
-    /// Allowed: Created → Pending → Verified | Rejected | Expired.
+    /// Allowed: Created → Pending → Verified | Rejected | Expired | Resubmit.
     /// Terminal states cannot be overwritten.
     /// </summary>
     /// <param name="newStatus">The target status.</param>
@@ -126,9 +128,10 @@ public class DocVerificationChallenge
 
         // Scrub id-proofing PII once the challenge reaches a terminal state. These fields
         // exist only to re-issue a Socure DocV token while the challenge is still active;
-        // once Verified/Rejected/Expired they serve no further purpose and should not sit
-        // at rest. Keep DocvTokenIssuedAt — it is a timestamp, not PII, and is useful for
-        // auditing how long the last-issued token lived before the terminal transition.
+        // once terminal they serve no further purpose and should not sit at rest. Resubmit
+        // is included: any retry opens a brand-new challenge with freshly minted tokens.
+        // Keep DocvTokenIssuedAt — it is a timestamp, not PII, and is useful for auditing
+        // how long the last-issued token lived before the terminal transition.
         if (IsTerminal)
         {
             ProofingDateOfBirth = null;
@@ -144,6 +147,7 @@ public class DocVerificationChallenge
             (DocVerificationStatus.Pending, DocVerificationStatus.Verified) => true,
             (DocVerificationStatus.Pending, DocVerificationStatus.Rejected) => true,
             (DocVerificationStatus.Pending, DocVerificationStatus.Expired) => true,
+            (DocVerificationStatus.Pending, DocVerificationStatus.Resubmit) => true,
             // Created can also expire directly if the user never starts
             (DocVerificationStatus.Created, DocVerificationStatus.Expired) => true,
             _ => false
