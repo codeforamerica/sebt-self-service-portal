@@ -137,6 +137,35 @@ build_backend() {
   log_success "Backend build complete"
 }
 
+# Build state connector package
+build_state_connector_package() {
+  log_info "Building state connector package..."
+  cd "$PROJECT_ROOT/state-connector/src/SEBT.Portal.StatesPlugins.Interfaces"
+
+  if [ -f /.dockerenv ]; then
+    PACKAGE_OUTPUT="/root/nuget-store"
+  elif [ -n "${DOCKER_HOST:-}" ]; then
+    PACKAGE_OUTPUT="/root/nuget-store"
+  elif [ -n "${GITHUB_ACTIONS:-}" ]; then
+    PACKAGE_OUTPUT="$PROJECT_ROOT/../nuget-store"
+  else
+    PACKAGE_OUTPUT="./nuget-store"
+  fi
+
+  dotnet build SEBT.Portal.StatesPlugins.Interfaces.csproj \
+    -p:GeneratePackageOnBuild=false \
+    --configuration "$CONFIGURATION" \
+    --verbosity minimal
+
+  dotnet pack SEBT.Portal.StatesPlugins.Interfaces.csproj \
+    --no-build \
+    --configuration "$CONFIGURATION" \
+    --output "$PACKAGE_OUTPUT" \
+    --verbosity minimal
+
+  log_success "State connector package built"
+}
+
 # Display build artifacts
 show_artifacts() {
   log_info "Build artifacts:"
@@ -162,6 +191,12 @@ main() {
   check_prerequisites
   restore_dependencies
   build_backend
+
+  if [ -d "$PROJECT_ROOT/state-connector" ]; then
+    build_state_connector_package
+  else
+    log_info "Skipping state connector package (state-connector dir not present)"
+  fi
 
   echo ""
   show_artifacts
