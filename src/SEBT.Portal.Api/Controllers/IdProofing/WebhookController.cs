@@ -57,6 +57,20 @@ public class WebhookController(
             WebhookSignature = bearerToken
         };
 
+        // Boundary log: capture what arrived before correlation/dispatch runs. Lets us trace
+        // every webhook by event_id even if downstream branches return early. Source contract is
+        // fragile, so we log the raw deserialized fields side-by-side with the mapped command.
+        logger.LogInformation(
+            "Webhook received: EventId={EventId}, EventType={EventType}, EvalId={EvalId}, " +
+            "ReferenceId={ReferenceId}, WorkflowDecision={WorkflowDecision}, " +
+            "DocumentDecision={DocumentDecision}",
+            command.EventId,
+            command.EventType,
+            command.EvalId,
+            command.ReferenceId,
+            command.WorkflowDecision,
+            command.DocumentDecision);
+
         var result = await handler.Handle(command, cancellationToken);
 
         // Always return 200 to Socure — failures are logged, not surfaced
