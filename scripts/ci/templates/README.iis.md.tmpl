@@ -33,7 +33,7 @@ This package is a self-contained drop-in for a Windows Server / IIS environment.
 
 {{DACPAC_SUMMARY}}
 
-The full machine-readable report is at `dacpac/deploy-report.xml`. The human-readable rendering is at `dacpac/deploy-report.html`. `CHANGELOG-DACPAC.md` has the full grouped summary.
+When a previous release exists, the full machine-readable report is at `dacpac/deploy-report.xml` and the human-readable rendering is at `dacpac/deploy-report.html`. `CHANGELOG-DACPAC.md` always has the grouped summary (or the "initial release" note when no prior release exists).
 
 ## Prerequisites on the IIS server
 
@@ -43,17 +43,17 @@ Install once per server. None of these are bundled in this zip.
 - **ASP.NET Core 10 Hosting Bundle.** Download from <https://dotnet.microsoft.com/download/dotnet/10.0>. After install, run `iisreset` once.
 - **Node.js 24 LTS (x64)** — the MSI installer from <https://nodejs.org>. Confirm with `node -v`.
 - **HttpPlatformHandler module for IIS** — install via Web Platform Installer or download from Microsoft. Required for the web tier.
-- **URL Rewrite module for IIS** — install from <https://www.iis.net/downloads/microsoft/url-rewrite>.
 
 ## Deployment steps
 
 1. **Extract** this zip to a deployment root, e.g. `C:\inetpub\sebt-dc\{{VERSION}}`.
 2. **Create the IIS site** for the web tier pointing at `<root>\web`. Set Application Pool to **No Managed Code** and **No** for "Load User Profile."
-3. **Create an application** under that site at the path `/api`, pointing at `<root>\api`. Set Application Pool to **.NET CLR v4.0** with managed pipeline mode **Integrated**.
+3. **Create an application** under that site at the path `/api`, pointing at `<root>\api`. Set Application Pool to **No Managed Code** with managed pipeline mode **Integrated**.
 4. **Configure the API.** Copy `api\appsettings.prod.example.json` to `api\appsettings.Production.json` and fill in the DC-specific / secret values (connection string from your DBA, Socure / IdP secrets, etc.). The base `appsettings.json` already contains all defaults; you only need to set the keys present in the example file.
 5. **Set ACLs** on `api\logs\` and `web\logs\` to grant the app pool identity (typically `IIS APPPOOL\<your pool name>`) **Modify** permission.
 6. **Verify environment variables** in `web\web.config`. The shipped values point `BACKEND_URL` at `http://localhost:5280` — adjust if your API binding port differs. `NEXT_PUBLIC_STATE` is `dc`; do not change.
 7. **Start the site.** Hit `https://<host>/` for the web app and `https://<host>/api/health` (or your configured health endpoint) for the API.
+8. **TLS / HTTPS termination is the operator's responsibility.** Configure the IIS site bindings (port 443, certificate selection) per your organization's standards. The shipped `web.config` does not enforce HTTPS; if you need HTTP→HTTPS redirect, add it via your standard IIS module (URL Rewrite or HSTS).
 
 ## Database update — DBA ticket
 
