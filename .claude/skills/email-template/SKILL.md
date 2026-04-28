@@ -1,6 +1,6 @@
 ---
 name: email-template
-description: Convert markdown email notice content into email-client-safe HTML matching DC SUN Bucks branding. Generates HTML, runs structural lint, and captures verification screenshots.
+description: Convert markdown email notice content into email-client-safe HTML matching DC SUN Bucks branding. Generates HTML, runs structural lint, and captures verification screenshots. Use this skill whenever the user pastes markdown email content, asks to create or generate an email notice/template, references an existing notice in `email-templates/test-inputs/`, or mentions converting a Google Doc draft into HTML. Currently DC-only — Colorado and other states will need a separate skill or a token-driven extension before this can be reused.
 allowed-tools: Read, Write, Bash(node email-templates/verify.mjs*), Bash(mkdir -p email-templates/_snapshots), Bash(ls email-templates*), Bash(rm email-templates/_snapshots/*), mcp__plugin_playwright_playwright__browser_navigate, mcp__plugin_playwright_playwright__browser_take_screenshot, mcp__plugin_playwright_playwright__browser_resize, mcp__plugin_playwright_playwright__browser_close
 argument-hint: <template-name>
 ---
@@ -27,8 +27,8 @@ If no arguments provided, ask the user for a template name.
 
 ## Workflow
 
-1. **Receive markdown content** — Ask the user to paste the email notice content as markdown if not already provided in the conversation.
-2. **Read the reference implementation** — ALWAYS read `email-templates/PreApprovalNotice.html` first. This is the canonical source of truth for every pattern.
+1. **Receive markdown content** — If the user references an existing notice by name (e.g. "the pre-approval notice"), check `email-templates/test-inputs/` for a matching `.md` file before asking them to paste content. Otherwise ask the user to paste the markdown if not already provided in the conversation.
+2. **Read the reference implementation** — Read `email-templates/PreApprovalNotice.html` first. Email HTML is finicky: MSO conditionals for Outlook, table-based layout, inline-only CSS, and exact entity encoding all matter, and small drift from the reference can break rendering in Outlook or Gmail. The reference contains patterns that have already been validated against real clients, so use it as the canonical source for every structural decision.
 3. **Identify template variables** — Scan for placeholder text like `<FIRST NAME>`, `<ISSUE DATE>`, etc. Convert these to `{{CamelCase}}` Handlebars-style variables.
 4. **Generate HTML** — Convert the markdown to email-safe HTML following the patterns below exactly.
 5. **Write the file** — Save to `email-templates/<TemplateName>.html`
@@ -429,12 +429,12 @@ If this is not the first template, also capture (or show) the reference template
 
 ## Rules
 
-- **Reference implementation is truth:** When in doubt about any pattern, read `email-templates/PreApprovalNotice.html` and match it.
-- **No creative interpretation:** Apply the patterns mechanically. Do not invent new element styles, spacing values, or color combinations.
+- **Reference implementation is truth:** When in doubt about any pattern, read `email-templates/PreApprovalNotice.html` and match it. The reference has been validated against real email clients; reinventing patterns risks reintroducing bugs that have already been fixed there.
+- **Apply patterns mechanically:** Don't invent new element styles, spacing values, or color combinations. Government notices are brand-locked and legally reviewed — visual consistency across notices is the whole point of having a template skill, and improvisation defeats it.
 - **Content from markdown, structure from patterns:** All text content comes from the user's markdown input. All HTML structure and styling comes from the patterns defined above.
-- **Legal content varies:** Do NOT copy legal text from the reference implementation. Each notice has its own legal language — use what the markdown provides.
-- **Lint must pass:** Never present a template to the user that fails `verify.mjs`.
-- **Preserve all content:** Never omit, summarize, or rephrase any content from the markdown input. Government notices have legally reviewed language.
-- **HTML entities for special characters:** Use `&ldquo;` `&rdquo;` for smart quotes, `&ndash;` for en-dash, `&#8226;` for bullets, `&rsquo;` for apostrophes. Use numeric HTML entities for non-Latin scripts (Amharic, Korean, Chinese, Vietnamese).
-- **No `<div>` elements:** Use `<table>` for all layout. This ensures maximum email client compatibility.
-- **Section-aware list styling:** Bullet and numbered lists in the main body use 16px/#1b1b1b. Lists in legal sections use 12px/#5c5c5c. Always use the correct variant for the section context.
+- **Legal content varies per notice:** Don't copy legal text from the reference implementation. Each notice has its own legally reviewed language — use what the markdown provides, even if it looks similar to the reference.
+- **Lint must pass:** Don't present a template to the user that fails `verify.mjs`. The lint catches things invisible to the eye (unapproved colors, missing entities, `<div>` layout drift) that would otherwise ship to thousands of recipients.
+- **Preserve all content:** Don't omit, summarize, or rephrase any content from the markdown input. Government notices have legally reviewed language and dropping a clause can have real legal consequences.
+- **HTML entities for special characters:** Use `&ldquo;` `&rdquo;` for smart quotes, `&ndash;` for en-dash, `&#8226;` for bullets, `&rsquo;` for apostrophes. Use numeric HTML entities for non-Latin scripts (Amharic, Korean, Chinese, Vietnamese). Raw Unicode can corrupt in some legacy email clients; entities render reliably everywhere.
+- **No `<div>` elements:** Use `<table>` for all layout. Outlook on Windows still uses Word's rendering engine and ignores most modern CSS — table-based layout is the only thing that renders consistently across Outlook, Gmail, Apple Mail, and webmail clients.
+- **Section-aware list styling:** Bullet and numbered lists in the main body use 16px/#1b1b1b. Lists in legal sections use 12px/#5c5c5c. The size/color difference is what visually separates "stuff the recipient needs to act on" from "regulatory boilerplate" — mixing them up makes the email look broken.
