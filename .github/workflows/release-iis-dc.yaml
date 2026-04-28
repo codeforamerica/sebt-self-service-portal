@@ -1,0 +1,178 @@
+# Release IIS Package — DC
+# Builds a self-contained IIS deployment bundle for DC: API + web + dacpac +
+# README + schema-change report.
+#
+# Triggers:
+#   workflow_dispatch (manual button, optional version input)
+#   push of tags matching release/dc-v* (creates a GitHub Release with the bundle attached)
+
+name: Release IIS Package — DC
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Version label for the bundle (default: dev-{shortsha})"
+        required: false
+        type: string
+  push:
+    tags:
+      - "release/dc-v*"
+
+jobs:
+  build:
+    name: Build DC IIS bundle
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write   # needed to create a Release on tag
+    env:
+      STATE: dc
+
+    steps:
+      - name: Checkout portal
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Resolve version
+        id: ver
+        run: |
+          if [[ "${GITHUB_REF}" == refs/tags/release/dc-v* ]]; then
+            VERSION="${GITHUB_REF#refs/tags/release/dc-v}"
+          elif [ -n "${{ github.event.inputs.version }}" ]; then
+            VERSION="${{ github.event.inputs.version }}"
+          else
+            VERSION="dev-$(git rev-parse --short HEAD)"
+          fi
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "git_sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+          echo "Resolved version: $VERSION"
+
+      - name: Determine state-connector ref
+        id: state-connector-ref
+        run: |
+          BRANCH="${{ github.event_name == 'pull_request' && github.head_ref || github.ref_name }}"
+          FALLBACK="main"
+          REPO_URL="https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository_owner }}/sebt-self-service-portal-state-connector.git"
+          if git ls-remote --exit-code --heads "$REPO_URL" "refs/heads/${BRANCH}" 1>/dev/null 2>&1; then
+            echo "ref=${BRANCH}" >> "$GITHUB_OUTPUT"
+          else
+            echo "ref=${FALLBACK}" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Determine dc-connector ref
+        id: dc-connector-ref
+        run: |
+          BRANCH="${{ github.event_name == 'pull_request' && github.head_ref || github.ref_name }}"
+          FALLBACK="main"
+          REPO_URL="https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository_owner }}/sebt-self-service-portal-dc-connector.git"
+          if git ls-remote --exit-code --heads "$REPO_URL" "refs/heads/${BRANCH}" 1>/dev/null 2>&1; then
+            echo "ref=${BRANCH}" >> "$GITHUB_OUTPUT"
+          else
+            echo "ref=${FALLBACK}" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Checkout state-connector (interfaces NuGet source)
+        uses: actions/checkout@v4
+        with:
+          repository: codeforamerica/sebt-self-service-portal-state-connector
+          ref: ${{ steps.state-connector-ref.outputs.ref }}
+          path: state-connector
+
+      - name: Checkout dc-connector (DC plugin implementation)
+        uses: actions/checkout@v4
+        with:
+          repository: codeforamerica/sebt-self-service-portal-dc-connector
+          ref: ${{ steps.dc-connector-ref.outputs.ref }}
+          path: dc-connector
+
+      - name: Setup .NET 10
+        uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: "10.0.200"
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: "10"
+
+      - name: Setup Node 24
+        uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+          cache: "pnpm"
+
+      - name: Install dotnet-ef and sqlpackage
+        run: |
+          dotnet tool install --global dotnet-ef
+          dotnet tool install --global Microsoft.SqlPackage
+          echo "$HOME/.dotnet/tools" >> "$GITHUB_PATH"
+
+      - name: Build backend (includes state-connector NuGet pack)
+        run: ./scripts/ci/build-backend.sh --configuration Release -p:BuildFrontend=false
+
+      - name: Build DC connector (populates src/SEBT.Portal.Api/plugins-dc/)
+        # The DC connector's csproj has a CopyPlugins target (AfterTargets="Build")
+        # that copies its DLL output into the API's plugins-dc/ folder. We override
+        # PluginDestDir to make the destination explicit (the default expects the
+        # portal repo as a sibling, which is true in CI but worth being explicit).
+        run: |
+          dotnet build dc-connector/src/SEBT.Portal.StatePlugins.DC/SEBT.Portal.StatePlugins.DC.csproj \
+            --configuration Release \
+            -p:PluginDestDir="$(pwd)/src/SEBT.Portal.Api/plugins-dc" \
+            --verbosity minimal
+
+      - name: Publish API for IIS
+        run: ./scripts/ci/publish-api.sh --output staging --configuration Release
+
+      - name: Build and package frontend
+        run: |
+          ./.github/workflows/scripts/build-frontend.sh --production
+          ./scripts/ci/package-frontend.sh --skip-build --output output/sebt-web.zip
+
+      - name: Extract DACPAC
+        run: ./scripts/ci/extract-dacpac.sh --output "output/sebt-portal-${{ steps.ver.outputs.version }}.dacpac"
+
+      - name: Generate DACPAC report
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          ./scripts/ci/generate-dacpac-report.sh \
+            --dacpac "output/sebt-portal-${{ steps.ver.outputs.version }}.dacpac" \
+            --output-dir output/dacpac-report \
+            --prev-tag-pattern "release/dc-v*" \
+            --repo "${{ github.repository }}"
+
+      - name: Bundle IIS package
+        run: |
+          ./scripts/ci/bundle-iis-package.sh \
+            --api-dir staging/api \
+            --web-zip output/sebt-web.zip \
+            --dacpac "output/sebt-portal-${{ steps.ver.outputs.version }}.dacpac" \
+            --changelog output/dacpac-report/CHANGELOG-DACPAC.md \
+            --deploy-report-xml output/dacpac-report/deploy-report.xml \
+            --deploy-report-html output/dacpac-report/deploy-report.html \
+            --version "${{ steps.ver.outputs.version }}" \
+            --git-sha "${{ steps.ver.outputs.git_sha }}" \
+            --output "output/sebt-dc-iis-${{ steps.ver.outputs.version }}.zip"
+
+      - name: Upload workflow artifact
+        if: github.event_name == 'workflow_dispatch'
+        uses: actions/upload-artifact@v4
+        with:
+          name: sebt-dc-iis-${{ steps.ver.outputs.version }}
+          path: |
+            output/sebt-dc-iis-${{ steps.ver.outputs.version }}.zip
+            output/sebt-portal-${{ steps.ver.outputs.version }}.dacpac
+          retention-days: 90
+
+      - name: Create GitHub Release (tag push)
+        if: startsWith(github.ref, 'refs/tags/release/dc-v')
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release create "${GITHUB_REF#refs/tags/}" \
+            "output/sebt-dc-iis-${{ steps.ver.outputs.version }}.zip" \
+            "output/sebt-portal-${{ steps.ver.outputs.version }}.dacpac" \
+            --title "DC v${{ steps.ver.outputs.version }}" \
+            --notes-file "output/dacpac-report/CHANGELOG-DACPAC.md"
