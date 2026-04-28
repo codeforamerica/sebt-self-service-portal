@@ -12,7 +12,12 @@ import {
   clearChallengeContext,
   SK_CHALLENGE_ID
 } from '@/features/auth/components/doc-verify/sessionKeys'
-import { SubmitIdProofingRequestSchema, useSubmitIdProofing, type IdType } from '../../api'
+import {
+  SubmitIdProofingRequestSchema,
+  useRefreshToken,
+  useSubmitIdProofing,
+  type IdType
+} from '../../api'
 
 // UI-only sentinel value for the "none" radio option.
 // The API receives idType: null when the user selects this.
@@ -102,6 +107,7 @@ export function IdProofingForm({ idOptions, contactLink, getDiToken }: IdProofin
   const [submitError, setSubmitError] = useState<string | null>(null)
 
   const submitIdProofing = useSubmitIdProofing()
+  const refreshToken = useRefreshToken()
   const isSubmitting = submitIdProofing.isPending
   const { setPageData, setUserData, trackEvent } = useDataLayer()
   const { session } = useAuth()
@@ -253,6 +259,17 @@ export function IdProofingForm({ idOptions, contactLink, getDiToken }: IdProofin
       } else {
         setPageData('idv_primary_status', 'success')
         trackEvent(AnalyticsEvents.IDV_PRIMARY_RESULT)
+
+        // A successful co-loaded match flips user.IsCoLoaded server-side, but the cookie
+        // we hold was minted before the match. Refresh so the dashboard reads the updated
+        // claim. Swallow failures — leave the user on a working flow if the refresh hiccups;
+        // the dashboard will still load with the prior claim.
+        try {
+          await refreshToken.mutateAsync()
+        } catch {
+          // Intentionally silent.
+        }
+
         router.push('/dashboard')
       }
     } catch (err) {
