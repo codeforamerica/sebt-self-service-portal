@@ -122,6 +122,40 @@ restore_dependencies() {
   log_success "Dependencies restored"
 }
 
+# Build state connector package
+build_state_connector_package() {
+  local state_connector_dir="$PROJECT_ROOT/state-connector/src/SEBT.Portal.StatesPlugins.Interfaces"
+
+  if [ ! -d "$state_connector_dir" ]; then
+    log_info "Skipping state connector package (state-connector dir not present)"
+    return 0
+  fi
+
+  local package_output
+  if [ -n "${HOME:-}" ]; then
+    package_output="$HOME/nuget-store"
+  else
+    package_output="$PROJECT_ROOT/nuget-store"
+  fi
+
+  log_info "Building state connector package..."
+  mkdir -p "$package_output"
+  cd "$state_connector_dir"
+
+  dotnet build SEBT.Portal.StatesPlugins.Interfaces.csproj \
+    -p:GeneratePackageOnBuild=false \
+    --configuration "$CONFIGURATION" \
+    --verbosity minimal
+
+  dotnet pack SEBT.Portal.StatesPlugins.Interfaces.csproj \
+    --no-build \
+    --configuration "$CONFIGURATION" \
+    --output "$package_output" \
+    --verbosity minimal
+
+  log_success "State connector package built"
+}
+
 # Build backend
 build_backend() {
   log_info "Building backend (Configuration: $CONFIGURATION)..."
@@ -160,6 +194,7 @@ main() {
 
   detect_environment
   check_prerequisites
+  build_state_connector_package
   restore_dependencies
   build_backend
 
