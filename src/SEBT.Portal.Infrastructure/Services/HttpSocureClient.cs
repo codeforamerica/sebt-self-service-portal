@@ -43,7 +43,56 @@ public class HttpSocureClient(
         string? diSessionToken = null,
         CancellationToken cancellationToken = default)
     {
+        return await RunEvaluationAsync(
+            userId, email, dateOfBirth, idType, idValue,
+            workflow: null,
+            ipAddress, phoneNumber, givenName, familyName, address, diSessionToken,
+            cancellationToken);
+    }
+
+    public async Task<Result<IdProofingAssessmentResult>> RunDocvStepupAssessmentAsync(
+        Guid userId,
+        string email,
+        string? phoneNumber = null,
+        string? givenName = null,
+        string? familyName = null,
+        Address? address = null,
+        string? diSessionToken = null,
+        CancellationToken cancellationToken = default)
+    {
+        var stepupWorkflow = socureSettingsSnapshot.Value.DocvStepupWorkflow;
+
+        // docv_stepup tolerates an empty DOB and no national_id; the workflow only re-runs the
+        // Document Request enrichment to mint a fresh capture URL. Sandbox-confirmed via
+        // docs/.local/socure-context/docv_stepup-experiments/FINDINGS.md (2026-04-18).
+        return await RunEvaluationAsync(
+            userId, email,
+            dateOfBirth: string.Empty,
+            idType: null,
+            idValue: null,
+            workflow: stepupWorkflow,
+            ipAddress: null,
+            phoneNumber, givenName, familyName, address, diSessionToken,
+            cancellationToken);
+    }
+
+    private async Task<Result<IdProofingAssessmentResult>> RunEvaluationAsync(
+        Guid userId,
+        string email,
+        string dateOfBirth,
+        string? idType,
+        string? idValue,
+        string? workflow,
+        string? ipAddress,
+        string? phoneNumber,
+        string? givenName,
+        string? familyName,
+        Address? address,
+        string? diSessionToken,
+        CancellationToken cancellationToken)
+    {
         var settings = socureSettingsSnapshot.Value;
+        var effectiveWorkflow = !string.IsNullOrWhiteSpace(workflow) ? workflow : settings.Workflow;
 
         // Normalize phone to E.164 at the Socure boundary. Defense-in-depth:
         // malformed upstream values (e.g. seed-data artifacts) must not reach the API.
@@ -60,7 +109,7 @@ public class HttpSocureClient(
         var truncatedGivenName = TruncateNameOrWarn(givenName, nameof(givenName));
         var truncatedFamilyName = TruncateNameOrWarn(familyName, nameof(familyName));
 
-        var request = BuildEvaluationRequest(userId, email, dateOfBirth, idType, idValue, settings, ipAddress, e164Phone, truncatedGivenName, truncatedFamilyName, address, diSessionToken);
+        var request = BuildEvaluationRequest(userId, email, dateOfBirth, idType, idValue, settings, ipAddress, e164Phone, truncatedGivenName, truncatedFamilyName, address, diSessionToken, effectiveWorkflow);
         var jsonContent = JsonSerializer.Serialize(request, JsonOptions);
 
         var httpClient = httpClientFactory.CreateClient("Socure");
@@ -137,7 +186,8 @@ public class HttpSocureClient(
         string? givenName = null,
         string? familyName = null,
         Address? address = null,
-        string? diSessionToken = null)
+        string? diSessionToken = null,
+        string? workflow = null)
     {
         // Frontend-provided DI token takes precedence over config fallback
         var effectiveDiToken = !string.IsNullOrWhiteSpace(diSessionToken)
@@ -197,7 +247,7 @@ public class HttpSocureClient(
             // causes RiskOS to treat the request as a re-run and can impact downstream workflows.
             // The customer/transaction identifier stays on individual.id (userId).
             Id = Guid.NewGuid().ToString(),
-            Workflow = settings.Workflow,
+            Workflow = !string.IsNullOrWhiteSpace(workflow) ? workflow : settings.Workflow,
             Timestamp = DateTime.UtcNow.ToString("o"),
             Data = new SocureEvaluationRequestData { Individual = individual }
         };

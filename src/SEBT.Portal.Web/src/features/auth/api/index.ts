@@ -1,10 +1,13 @@
 export { AuthorizationStatusResponseSchema, type AuthorizationStatusResponse } from './auth-status'
 
 export {
+  ResubmitChallengeResponseSchema,
   StartChallengeResponseSchema,
   VerificationStatusResponseSchema,
+  useResubmitChallenge,
   useStartChallenge,
   useVerificationStatus,
+  type ResubmitChallengeResponse,
   type StartChallengeResponse,
   type VerificationStatusResponse
 } from './doc-verify'

@@ -10,11 +10,18 @@ import { Alert } from '@sebt/design-system'
 import {
   clearChallengeContext,
   SK_CHALLENGE_ID,
+  SK_STILL_CHECKING,
   SK_SUB_STATE,
   SubState
 } from '@/features/auth/components/doc-verify/sessionKeys'
-import { useRefreshToken, useStartChallenge, useVerificationStatus } from '../../api'
+import {
+  useRefreshToken,
+  useResubmitChallenge,
+  useStartChallenge,
+  useVerificationStatus
+} from '../../api'
 import { DocVerifyInterstitial } from './DocVerifyInterstitial'
+import { DocVerifyResubmit } from './DocVerifyResubmit'
 import { VerificationPending } from './VerificationPending'
 
 interface DocVerifyPageProps {
@@ -46,6 +53,7 @@ export function DocVerifyPage({ contactLink }: DocVerifyPageProps) {
   const searchParams = useSearchParams()
   const { t } = useTranslation('idProofing')
   const startChallenge = useStartChallenge()
+  const resubmitChallenge = useResubmitChallenge()
   const refreshToken = useRefreshToken()
 
   const [subState, setSubState] = useState<SubState>('interstitial')
@@ -184,6 +192,48 @@ export function DocVerifyPage({ contactLink }: DocVerifyPageProps) {
     [router, setPageData, trackEvent]
   )
 
+  const handleEnterResubmit = useCallback(() => {
+    setSubState('resubmit')
+    setError(null)
+  }, [])
+
+  // "Try again" → open Socure's hosted retry URL in a new tab. Same user-gesture
+  // discipline as handleContinue: synchronous window.open so popup blockers honor
+  // the click. The mutation creates a brand-new docv_stepup challenge server-side
+  // and returns the new challenge's public ID; we swap that into URL, state, and
+  // sessionStorage so polling and reloads target the fresh challenge — not the
+  // old terminal Resubmit one (which would otherwise loop us right back here).
+  const handleResubmit = () => {
+    if (!challengeId) return
+    setError(null)
+    trackEvent(AnalyticsEvents.DOCV_RESUBMIT)
+
+    const captureTab = window.open('about:blank', '_blank')
+
+    resubmitChallenge
+      .mutateAsync(challengeId)
+      .then(({ challengeId: newChallengeId, docvUrl }) => {
+        if (captureTab && !captureTab.closed) {
+          captureTab.location.href = docvUrl
+        } else {
+          window.location.href = docvUrl
+        }
+        // Clear "still checking" so the new challenge's pending state starts fresh
+        sessionStorage.removeItem(SK_STILL_CHECKING)
+        sessionStorage.setItem(SK_CHALLENGE_ID, newChallengeId)
+        sessionStorage.setItem(SK_SUB_STATE, 'pending')
+        setChallengeId(newChallengeId)
+        setSubState('pending')
+        router.replace(`/login/id-proofing/doc-verify?challengeId=${newChallengeId}`)
+      })
+      .catch(() => {
+        if (captureTab && !captureTab.closed) captureTab.close()
+        setError(
+          t('docVerifyResubmitError', "We couldn't start a retry. Please try again in a moment.")
+        )
+      })
+  }
+
   return (
     <div className="usa-section">
       <div className="grid-container maxw-tablet">
@@ -212,6 +262,14 @@ export function DocVerifyPage({ contactLink }: DocVerifyPageProps) {
             challengeId={challengeId}
             onVerified={handleVerified}
             onRejected={handleRejected}
+            onResubmit={handleEnterResubmit}
+          />
+        )}
+
+        {subState === 'resubmit' && challengeId && (
+          <DocVerifyResubmit
+            onResubmit={handleResubmit}
+            isResubmitting={resubmitChallenge.isPending}
           />
         )}
       </div>

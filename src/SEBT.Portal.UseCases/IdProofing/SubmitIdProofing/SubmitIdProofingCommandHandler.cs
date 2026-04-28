@@ -104,12 +104,24 @@ public class SubmitIdProofingCommandHandler(
                     OffboardingReason: "maxAttemptsReached"));
         }
 
-        // No ID provided → off-board immediately (Codex test 5)
+        // Co-loaded users still need a SNAP/TANF identifier so we can household them; off-board
+        // when no ID is provided. Non-co-loaded users fall through to Socure DocV — Socure's
+        // consumer_onboarding workflow short-circuits to document verification when KYC can't
+        // resolve the consumer, so national_id is optional for that path.
         if (string.IsNullOrWhiteSpace(command.IdType))
         {
-            logger.LogInformation("User {UserId} submitted ID proofing without an ID type", command.UserId);
-            return Result<SubmitIdProofingResponse>.Success(
-                new SubmitIdProofingResponse("failed", OffboardingReason: "noIdProvided"));
+            if (user.IsCoLoaded)
+            {
+                logger.LogInformation(
+                    "Co-loaded user {UserId} submitted ID proofing without an ID type; off-boarding (householding requires a benefit ID)",
+                    command.UserId);
+                return Result<SubmitIdProofingResponse>.Success(
+                    new SubmitIdProofingResponse("failed", OffboardingReason: "noIdProvided"));
+            }
+
+            logger.LogInformation(
+                "Non-co-loaded user {UserId} submitted ID proofing without an ID type; proceeding to Socure DocV with no national_id",
+                command.UserId);
         }
 
         // Check for an existing active challenge → reuse instead of creating a duplicate
