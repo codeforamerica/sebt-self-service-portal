@@ -16,20 +16,20 @@
 
 ## File Structure
 
-| File | Status | Responsibility |
-| --- | --- | --- |
-| `scripts/ci/build-backend.sh` | Modify | Add `build_state_connector_package` function (currently missing vs. the canonical copy under `.github/workflows/scripts/`) so the new workflow can call this script and get the connector NuGet built. |
-| `scripts/ci/templates/web.config` | Create | Static HttpPlatformHandler config for the Next.js bundle on IIS. Copied verbatim into the bundle. |
-| `scripts/ci/templates/README.iis.md.tmpl` | Create | Mustache-style template for the per-release deployment README. Variables: `{{VERSION}}`, `{{BUILD_DATE}}`, `{{GIT_SHA}}`, `{{DACPAC_FILENAME}}`, `{{DACPAC_SUMMARY}}`. |
-| `scripts/ci/publish-api.sh` | Create | `dotnet publish` API for win-x64; emit `appsettings.prod.example.json`; enable stdout logging in the API's auto-generated `web.config`. (DC plugin DLLs are copied into `plugins-dc/` by the DC connector's MSBuild `CopyPlugins` target before this runs — see Task 7.) |
-| `scripts/ci/generate-dacpac-report.sh` | Create | Use `gh` to find the previous `release/dc-v*` dacpac; run `sqlpackage /Action:DeployReport`; render XML→HTML; write `CHANGELOG-DACPAC.md`. First-run path when no prior release exists. |
-| `scripts/ci/bundle-iis-package.sh` | Create | Assemble the directory tree, render README from template, zip it to `sebt-dc-iis-{version}.zip`. |
-| `scripts/ci/tests/_assert.sh` | Create | Tiny shared assertion helpers (`assert_file_exists`, `assert_dir_exists`, `assert_contains`, `assert_eq`). Sourced by every `*_test.sh`. |
-| `scripts/ci/tests/publish-api_test.sh` | Create | Smoke test for `publish-api.sh`. |
-| `scripts/ci/tests/generate-dacpac-report_test.sh` | Create | Smoke tests for both branches of `generate-dacpac-report.sh` (first-run, delta-found). |
-| `scripts/ci/tests/bundle-iis-package_test.sh` | Create | Smoke test for `bundle-iis-package.sh` with synthetic inputs. |
-| `scripts/ci/tests/run-all.sh` | Create | Runs every `*_test.sh` in this dir, exits non-zero on any failure. |
-| `.github/workflows/release-iis-dc.yaml` | Create | The release workflow. |
+| File                                              | Status | Responsibility                                                                                                                                                                                                                                                           |
+| ------------------------------------------------- | ------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `scripts/ci/build-backend.sh`                     | Modify | Add `build_state_connector_package` function (currently missing vs. the canonical copy under `.github/workflows/scripts/`) so the new workflow can call this script and get the connector NuGet built.                                                                   |
+| `scripts/ci/templates/web.config`                 | Create | Static HttpPlatformHandler config for the Next.js bundle on IIS. Copied verbatim into the bundle.                                                                                                                                                                        |
+| `scripts/ci/templates/README.iis.md.tmpl`         | Create | Mustache-style template for the per-release deployment README. Variables: `{{VERSION}}`, `{{BUILD_DATE}}`, `{{GIT_SHA}}`, `{{DACPAC_FILENAME}}`, `{{DACPAC_SUMMARY}}`.                                                                                                   |
+| `scripts/ci/publish-api.sh`                       | Create | `dotnet publish` API for win-x64; emit `appsettings.prod.example.json`; enable stdout logging in the API's auto-generated `web.config`. (DC plugin DLLs are copied into `plugins-dc/` by the DC connector's MSBuild `CopyPlugins` target before this runs — see Task 7.) |
+| `scripts/ci/generate-dacpac-report.sh`            | Create | Use `gh` to find the previous `release/dc-v*` dacpac; run `sqlpackage /Action:DeployReport`; render XML→HTML; write `CHANGELOG-DACPAC.md`. First-run path when no prior release exists.                                                                                  |
+| `scripts/ci/bundle-iis-package.sh`                | Create | Assemble the directory tree, render README from template, zip it to `sebt-dc-iis-{version}.zip`.                                                                                                                                                                         |
+| `scripts/ci/tests/_assert.sh`                     | Create | Tiny shared assertion helpers (`assert_file_exists`, `assert_dir_exists`, `assert_contains`, `assert_eq`). Sourced by every `*_test.sh`.                                                                                                                                 |
+| `scripts/ci/tests/publish-api_test.sh`            | Create | Smoke test for `publish-api.sh`.                                                                                                                                                                                                                                         |
+| `scripts/ci/tests/generate-dacpac-report_test.sh` | Create | Smoke tests for both branches of `generate-dacpac-report.sh` (first-run, delta-found).                                                                                                                                                                                   |
+| `scripts/ci/tests/bundle-iis-package_test.sh`     | Create | Smoke test for `bundle-iis-package.sh` with synthetic inputs.                                                                                                                                                                                                            |
+| `scripts/ci/tests/run-all.sh`                     | Create | Runs every `*_test.sh` in this dir, exits non-zero on any failure.                                                                                                                                                                                                       |
+| `.github/workflows/release-iis-dc.yaml`           | Create | The release workflow.                                                                                                                                                                                                                                                    |
 
 ---
 
@@ -38,6 +38,7 @@
 **Why:** The new workflow will call `scripts/ci/build-backend.sh` to produce the state-connector NuGet that the API plugin compilation needs. The canonical copy of this function lives at `.github/workflows/scripts/build-backend.sh:125-153`. Port it back to the `scripts/ci/` copy so the new workflow has a self-sufficient script to call. We are explicitly **not** consolidating the two script directories in this work.
 
 **Files:**
+
 - Modify: `scripts/ci/build-backend.sh`
 
 - [ ] **Step 1: Read the canonical source to copy from**
@@ -110,6 +111,7 @@ git commit -m "Restore state-connector package step in scripts/ci/build-backend.
 ## Task 2: Create the static templates directory
 
 **Files:**
+
 - Create: `scripts/ci/templates/web.config`
 - Create: `scripts/ci/templates/README.iis.md.tmpl`
 
@@ -168,27 +170,28 @@ Write `scripts/ci/templates/README.iis.md.tmpl`:
 This package is a self-contained drop-in for a Windows Server / IIS environment. It contains the .NET API, the Next.js web bundle, a DACPAC with the database schema, and a delta report describing how that schema differs from the previous release. The IIS administrator deploys the API and web tiers; the DACPAC is **not** applied by the IIS admin — it goes to the DBA via a ticket.
 
 ## What's in this package
-
 ```
+
 .
-├── README.md                       # this file
-├── CHANGELOG-DACPAC.md             # schema delta vs the previous release
+├── README.md # this file
+├── CHANGELOG-DACPAC.md # schema delta vs the previous release
 ├── api/
-│   ├── *.exe, *.dll                # ASP.NET Core API, framework-dependent win-x64
-│   ├── plugins-dc/                 # DC state connector plugin DLLs (loaded at startup)
-│   ├── appsettings.json            # base config (do not edit on the server)
-│   ├── appsettings.prod.example.json   # template for DC-specific / secret values
-│   ├── web.config                  # ASP.NET Core Module config (stdout logging enabled)
-│   └── logs/                       # API stdout log directory
+│ ├── _.exe, _.dll # ASP.NET Core API, framework-dependent win-x64
+│ ├── plugins-dc/ # DC state connector plugin DLLs (loaded at startup)
+│ ├── appsettings.json # base config (do not edit on the server)
+│ ├── appsettings.prod.example.json # template for DC-specific / secret values
+│ ├── web.config # ASP.NET Core Module config (stdout logging enabled)
+│ └── logs/ # API stdout log directory
 ├── web/
-│   ├── web.config                  # HttpPlatformHandler config for Node.js
-│   ├── src/SEBT.Portal.Web/server.js  # the Next.js standalone server entrypoint
-│   ├── .next/, public/, node_modules/  # already hoisted; no symlinks
-│   └── logs/                       # Node.js stdout log directory
+│ ├── web.config # HttpPlatformHandler config for Node.js
+│ ├── src/SEBT.Portal.Web/server.js # the Next.js standalone server entrypoint
+│ ├── .next/, public/, node_modules/ # already hoisted; no symlinks
+│ └── logs/ # Node.js stdout log directory
 └── dacpac/
-    ├── {{DACPAC_FILENAME}}
-    ├── deploy-report.xml           # raw sqlpackage DeployReport
-    └── deploy-report.html          # human-readable version
+├── {{DACPAC_FILENAME}}
+├── deploy-report.xml # raw sqlpackage DeployReport
+└── deploy-report.html # human-readable version
+
 ```
 
 ## Schema changes since the previous release
@@ -222,29 +225,31 @@ Install once per server. None of these are bundled in this zip.
 **The IIS administrator does not run the DACPAC.** Open a DBA ticket using the template below.
 
 ```
+
 Subject: SEBT Portal DC v{{VERSION}} — DACPAC application
 
 The IIS deployment of SEBT Portal DC v{{VERSION}} is in place and requires a database schema update before it can be activated.
 
-Package version:  {{VERSION}}
-Built:            {{BUILD_DATE}} from commit {{GIT_SHA}}
-DACPAC filename:  {{DACPAC_FILENAME}}
-Schema delta:     see attached CHANGELOG-DACPAC.md and deploy-report.html
+Package version: {{VERSION}}
+Built: {{BUILD_DATE}} from commit {{GIT_SHA}}
+DACPAC filename: {{DACPAC_FILENAME}}
+Schema delta: see attached CHANGELOG-DACPAC.md and deploy-report.html
 
 Apply with sqlpackage:
 
-  sqlpackage /Action:Publish ^
-    /SourceFile:{{DACPAC_FILENAME}} ^
-    /TargetConnectionString:"<production connection string>"
+sqlpackage /Action:Publish ^
+/SourceFile:{{DACPAC_FILENAME}} ^
+/TargetConnectionString:"<production connection string>"
 
 For a dry run / pre-flight first:
 
-  sqlpackage /Action:DeployReport ^
-    /SourceFile:{{DACPAC_FILENAME}} ^
-    /TargetConnectionString:"<production connection string>" ^
-    /OutputPath:dba-pre-flight-report.xml
+sqlpackage /Action:DeployReport ^
+/SourceFile:{{DACPAC_FILENAME}} ^
+/TargetConnectionString:"<production connection string>" ^
+/OutputPath:dba-pre-flight-report.xml
 
 Please apply during the agreed maintenance window and confirm completion.
+
 ```
 
 ## Verification
@@ -271,6 +276,7 @@ git commit -m "Add IIS web.config and README template for release bundle"
 ## Task 3: Add the test helpers and runner
 
 **Files:**
+
 - Create: `scripts/ci/tests/_assert.sh`
 - Create: `scripts/ci/tests/run-all.sh`
 
@@ -390,6 +396,7 @@ git commit -m "Add shell-test assertion helpers and runner for scripts/ci/"
 **Plan correction (vs the original draft):** The DC plugin DLLs are NOT manually copied here. They land in `src/SEBT.Portal.Api/plugins-dc/` as a side effect of building the DC connector — its csproj has a `CopyPlugins` MSBuild target that runs `AfterTargets="Build"` and copies its DLLs to the API's `plugins-dc/` directory. The API's `<None Include="plugins-dc\**\*.dll">` ItemGroup then sweeps them into the publish output automatically. Task 7 (workflow) is responsible for ordering: build DC connector BEFORE running this script. This script just runs `dotnet publish`, writes the appsettings example, and patches the web.config.
 
 **Files:**
+
 - Create: `scripts/ci/tests/publish-api_test.sh`
 - Create: `scripts/ci/publish-api.sh`
 
@@ -608,6 +615,7 @@ git commit -m "Add publish-api.sh: dotnet publish for IIS with DC plugins and st
 **Why:** Produces `CHANGELOG-DACPAC.md` and `deploy-report.{xml,html}` so the DBA ticket has a clear summary of what schema changes are coming. Two distinct paths: when a previous `release/dc-v*` GitHub Release exists, run `sqlpackage /Action:DeployReport` against its dacpac; when no prior release exists (first release ever), emit an "initial release — full schema" CHANGELOG without invoking sqlpackage.
 
 **Files:**
+
 - Create: `scripts/ci/tests/generate-dacpac-report_test.sh`
 - Create: `scripts/ci/generate-dacpac-report.sh`
 
@@ -882,6 +890,7 @@ git commit -m "Add generate-dacpac-report.sh: schema delta vs previous release"
 **Why:** Final assembly step — takes the API publish dir, the web zip, the dacpac, and the report files; renders the README from `templates/README.iis.md.tmpl` with version/SHA/summary substitutions; produces the deliverable zip.
 
 **Files:**
+
 - Create: `scripts/ci/tests/bundle-iis-package_test.sh`
 - Create: `scripts/ci/bundle-iis-package.sh`
 
@@ -1122,6 +1131,7 @@ git commit -m "Add bundle-iis-package.sh: assemble final IIS deployment zip"
 **Why:** Orchestrates everything end-to-end. Triggered on `workflow_dispatch` and on `release/dc-v*` tag pushes. On a tag, attaches the bundle and standalone dacpac as GitHub Release assets so the next release can diff against them.
 
 **Files:**
+
 - Create: `.github/workflows/release-iis-dc.yaml`
 
 - [ ] **Step 1: Create the workflow file**
@@ -1153,7 +1163,7 @@ jobs:
     name: Build DC IIS bundle
     runs-on: ubuntu-latest
     permissions:
-      contents: write   # needed to create a Release on tag
+      contents: write # needed to create a Release on tag
     env:
       STATE: dc
 
@@ -1326,6 +1336,7 @@ git commit -m "Add release-iis-dc.yaml workflow for DC IIS bundle"
 **Why:** Without CI integration, the smoke tests will rot. Add a small job to `state-ci.yaml` that runs `scripts/ci/tests/run-all.sh` on PRs that touch `scripts/ci/`. Keep the change minimal to avoid scope creep into existing CI.
 
 **Files:**
+
 - Modify: `.github/workflows/state-ci.yaml`
 
 - [ ] **Step 1: Read the current state-ci.yaml to find the right insertion point**
@@ -1338,18 +1349,18 @@ Confirm: top-level `jobs:` map exists. We'll add a new job alongside `discover-s
 Append to `.github/workflows/state-ci.yaml`:
 
 ```yaml
-  ci-scripts-test:
-    name: CI scripts smoke tests
-    runs-on: ubuntu-latest
-    if: |
-      github.event_name == 'pull_request' &&
-      contains(toJson(github.event.pull_request.changed_files), 'scripts/ci/')
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+ci-scripts-test:
+  name: CI scripts smoke tests
+  runs-on: ubuntu-latest
+  if: |
+    github.event_name == 'pull_request' &&
+    contains(toJson(github.event.pull_request.changed_files), 'scripts/ci/')
+  steps:
+    - name: Checkout
+      uses: actions/checkout@v4
 
-      - name: Run scripts/ci/tests/run-all.sh
-        run: bash scripts/ci/tests/run-all.sh
+    - name: Run scripts/ci/tests/run-all.sh
+      run: bash scripts/ci/tests/run-all.sh
 ```
 
 Note: the `contains(toJson(...))` guard is best-effort. If it doesn't behave as expected on your runner version, replace with `paths:` triggering on the workflow itself, or drop the guard and run on every PR (the suite is fast).

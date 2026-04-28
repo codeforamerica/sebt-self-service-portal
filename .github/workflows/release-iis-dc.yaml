@@ -16,9 +16,6 @@ on:
         description: "Version label for the bundle (default: dev-{shortsha})"
         required: false
         type: string
-  push:
-    tags:
-      - "release/dc-v*"
 
 jobs:
   build:

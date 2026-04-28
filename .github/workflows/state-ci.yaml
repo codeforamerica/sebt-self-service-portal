@@ -101,8 +101,7 @@ jobs:
           echo "pnpm: ${{ steps.config.outputs.pnpm_version }}"
           echo ".NET: ${{ steps.config.outputs.dotnet_version }}"
           echo "Build Config: ${{ steps.config.outputs.build_config }}"
-      
-      
+
       - name: Determine state connector ref
         id: connector-ref
         run: |
@@ -125,7 +124,7 @@ jobs:
           repository: codeforamerica/sebt-self-service-portal-state-connector
           ref: ${{ steps.connector-ref.outputs.ref }}
           path: state-connector
-      
+
       # Docker Build Path
       - name: Build Backend (Docker)
         if: steps.config.outputs.use_docker == 'true'
