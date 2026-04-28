@@ -1,8 +1,7 @@
 'use client'
 
 import Image from 'next/image'
-import { useRouter } from 'next/navigation'
-import { useState } from 'react'
+  import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import type { ChildCheckApiResponse } from '../schemas/enrollmentSchema'
 
@@ -35,7 +34,6 @@ function computeHouseholdEnrollmentResult(
 
 export function ResultsPage({ results, applicationUrl }: ResultsPageProps) {
   const { t } = useTranslation('result')
-  const router = useRouter()
   const [isAccordionExpanded, setIsAccordionExpanded] = useState(false)
 
   const notEnrolledNextSteps = (
@@ -61,7 +59,7 @@ export function ResultsPage({ results, applicationUrl }: ResultsPageProps) {
       <p className="margin-top-05">{t('streamlinedEnrolledAlertBody')}</p>
       <p>
         <a
-          href="#"
+          href="http://google.com"
           // data-analytics-cta="apply_cta" TODO replace w action for dashbaord
           className="usa-button"
           data-testid="portal-link"
