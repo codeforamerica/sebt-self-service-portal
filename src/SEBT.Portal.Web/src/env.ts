@@ -35,6 +35,8 @@ export const env = createEnv({
   client: {
     NEXT_PUBLIC_STATE: z.enum(['dc', 'co']),
     NEXT_PUBLIC_GA_ID: z.string().startsWith('G-').optional(),
+    NEXT_PUBLIC_AMPLITUDE_API_KEY: z.string().min(1).optional(),
+    NEXT_PUBLIC_MIXPANEL_TOKEN: z.string().min(1).optional(),
     NEXT_PUBLIC_SOCURE_SDK_KEY: z.string().min(1).optional(),
     NEXT_PUBLIC_SOCURE_DI_SDK_KEY: z.string().min(1).optional(),
     NEXT_PUBLIC_MOCK_SOCURE: z.enum(['true', 'false']).optional(),
@@ -55,6 +57,8 @@ export const env = createEnv({
     ENROLLMENT_CHECKER_ORIGIN: process.env.ENROLLMENT_CHECKER_ORIGIN,
     NEXT_PUBLIC_STATE: process.env.NEXT_PUBLIC_STATE,
     NEXT_PUBLIC_GA_ID: process.env.NEXT_PUBLIC_GA_ID,
+    NEXT_PUBLIC_AMPLITUDE_API_KEY: process.env.NEXT_PUBLIC_AMPLITUDE_API_KEY,
+    NEXT_PUBLIC_MIXPANEL_TOKEN: process.env.NEXT_PUBLIC_MIXPANEL_TOKEN,
     NEXT_PUBLIC_SOCURE_SDK_KEY: process.env.NEXT_PUBLIC_SOCURE_SDK_KEY,
     NEXT_PUBLIC_SOCURE_DI_SDK_KEY: process.env.NEXT_PUBLIC_SOCURE_DI_SDK_KEY,
     NEXT_PUBLIC_MOCK_SOCURE: process.env.NEXT_PUBLIC_MOCK_SOCURE,
