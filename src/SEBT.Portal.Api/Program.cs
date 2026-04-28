@@ -36,7 +36,8 @@ var useJsonLogs = string.Equals(
 
 var logConfig = new LoggerConfiguration()
     .ReadFrom.Configuration(builder.Configuration)
-    .Enrich.FromLogContext();
+    .Enrich.FromLogContext()
+    .Enrich.WithOtelTracingSpanId();
 
 if (useJsonLogs)
 {
