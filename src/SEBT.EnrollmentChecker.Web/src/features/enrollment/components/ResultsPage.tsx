@@ -39,7 +39,7 @@ export function ResultsPage({ results, applicationUrl }: ResultsPageProps) {
   const [isAccordionExpanded, setIsAccordionExpanded] = useState(false)
 
   const notEnrolledNextSteps = (
-    <section>
+    <section data-testid="not-enrolled-next-steps">
       <h2 className="usa-process-list__heading">{t('applyForSebtActionApply')}</h2>
       <p className="margin-top-05">{t('applyForSebtBody2')}</p>
       <p>
@@ -47,22 +47,24 @@ export function ResultsPage({ results, applicationUrl }: ResultsPageProps) {
           href={applicationUrl}
           data-analytics-cta="apply_cta"
           className="usa-button"
+          data-testid="apply-for-sebt-link"
         >
-          {t('applyLink')}
+          {t('applyLink', 'Continue your application')}
         </a>
       </p>
     </section>
   )
 
   const enrolledNextSteps = (
-    <section>
+    <section data-testid="enrolled-next-steps">
       <h2 className="usa-process-list__heading"> {t('streamlinedEnrolledAlertTitle')}</h2>
       <p className="margin-top-05">{t('streamlinedEnrolledAlertBody')}</p>
       <p>
         <a
           href="#"
-          data-analytics-cta="apply_cta"
+          // data-analytics-cta="apply_cta" TODO replace w action for dashbaord
           className="usa-button"
+          data-testid="portal-link"
         >
           {t('streamlinedEnrolledAction')}
         </a>
@@ -71,7 +73,7 @@ export function ResultsPage({ results, applicationUrl }: ResultsPageProps) {
   )
 
   const eligibilityAccordion = (
-    <div className="usa-accordion margin-top-4">
+    <div className="usa-accordion margin-top-4" data-testid="eligibility-accordion">
       <h2 className="usa-accordion__heading">
         <button
           type="button"
@@ -134,7 +136,7 @@ export function ResultsPage({ results, applicationUrl }: ResultsPageProps) {
         <h1 className="font-family-sans margin-top-1">{t('title')}</h1>
 
         {['mixedEnrolled', 'noneEnrolled'].includes(householdEnrollmentResult) && (
-          <section>
+          <section >
             <div className="usa-summary-box">
               <NotEnrolledSection
                 results={notEnrolled}
@@ -148,7 +150,7 @@ export function ResultsPage({ results, applicationUrl }: ResultsPageProps) {
         )}
 
         {householdEnrollmentResult === 'allEnrolled' && (
-          <div className="usa-summary-box">
+          <div className="usa-summary-box" >
             <EnrolledSection results={enrolled} />
           </div>
         )}
@@ -169,7 +171,7 @@ export function ResultsPage({ results, applicationUrl }: ResultsPageProps) {
         )}
 
         {['mixedEnrolled', 'indeterminate'].includes(householdEnrollmentResult) && (
-          <section>
+          <section data-testid="next-steps">
             <h1 className="font-family-sans margin-top-1">Next Steps</h1>
             <ol className="usa-process-list">
               <li className="usa-process-list__item">{notEnrolledNextSteps}</li>
@@ -187,7 +189,9 @@ export function ResultsPage({ results, applicationUrl }: ResultsPageProps) {
           </section>
         )}
 
-        {householdEnrollmentResult === 'allEnrolled' && <section>{enrolledNextSteps}</section>}
+        {householdEnrollmentResult === 'allEnrolled' && (
+          <section>{enrolledNextSteps}</section>
+        )}
       </div>
     </div>
   )

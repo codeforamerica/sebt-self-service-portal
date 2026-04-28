@@ -130,6 +130,7 @@ export function ChildForm({
               name="day"
               type="text"
               inputMode="numeric"
+              minLength={1}
               maxLength={2}
               aria-label={t('labelDay')}
               aria-invalid={!!errors.day}
@@ -147,6 +148,7 @@ export function ChildForm({
               name="year"
               type="text"
               inputMode="numeric"
+              minLength={4}
               maxLength={4}
               aria-label={t('labelYear')}
               aria-invalid={!!errors.year}

@@ -14,7 +14,7 @@ export function NotEnrolledSection({ results, applicationUrl }: NotEnrolledSecti
   if (results.length === 0) return null
 
   return (
-    <section>
+    <section data-testid="not-enrolled-summary-box">
       <h3 className="usa-summary-box__heading">{t('applyForSebtBody1')}</h3>
       <ul>
         {results.map(child => (

@@ -14,9 +14,9 @@ export const childFormSchema = z.object({
   // TODO: Use t('validation.monthRequired') once content key is added
   month: z.string().min(1, 'Select a month'),
   // TODO: Use t('validation.dayFormat') once content key is added
-  day: z.string().regex(/^\d{1,2}$/, 'Provide a day using one or two numbers'),
+  day: z.string().regex(/^(0?[1-9]|[12][0-9]|3[01])$/, 'Provide a day using one or two numbers'),
   // TODO: Use t('validation.yearFormat') once content key is added
-  year: z.string().regex(/^\d{4}$/, 'Provide a year using four numbers'),
+  year: z.string().regex(/\b(19|20)\d{2}\b/, 'Provide a year using four numbers'),
   schoolName: z.string().max(200).optional(),
   schoolCode: z.string().max(50).optional()
 })
