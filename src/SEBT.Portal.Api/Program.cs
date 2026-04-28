@@ -70,6 +70,7 @@ builder.Services.AddHttpClient();
 var state = Environment.GetEnvironmentVariable("STATE");
 if (!string.IsNullOrEmpty(state))
 {
+    Log.Logger.Information("Loading state-specific config: {State}", state);
     var stateConfigFile = $"appsettings.{state.ToLowerInvariant()}.json";
     builder.Configuration.AddJsonFile(stateConfigFile, optional: true, reloadOnChange: true);
 }
