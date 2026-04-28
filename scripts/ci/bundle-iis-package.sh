@@ -23,6 +23,7 @@ RED='\033[0;31m'; GREEN='\033[0;32m'; YELLOW='\033[1;33m'; BLUE='\033[0;34m'; NC
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 PROJECT_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
 TEMPLATES_DIR="$SCRIPT_DIR/templates"
+CALLER_PWD="$(pwd)"
 
 API_DIR=""; WEB_ZIP=""; DACPAC=""; CHANGELOG=""; REPORT_XML=""; REPORT_HTML=""
 VERSION=""; GIT_SHA=""; OUT_ZIP=""
@@ -52,6 +53,11 @@ for var in API_DIR WEB_ZIP DACPAC CHANGELOG REPORT_XML REPORT_HTML VERSION GIT_S
     exit 1
   fi
 done
+
+case "$OUT_ZIP" in
+  /*) ;;
+  *) OUT_ZIP="$CALLER_PWD/$OUT_ZIP" ;;
+esac
 
 STAGING="$(mktemp -d)"
 trap 'rm -rf "$STAGING"' EXIT

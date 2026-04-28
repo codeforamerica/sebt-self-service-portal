@@ -10,7 +10,9 @@ source "$SCRIPT_DIR/_assert.sh"
 
 WORK="$(mktemp -d)"
 EXTRACTED="$(mktemp -d)"
-trap 'rm -rf "$WORK" "$EXTRACTED"' EXIT
+OUT_ZIP="output/sebt-dc-iis-1.0.0-test.zip"
+ABSOLUTE_OUT_ZIP="$PROJECT_ROOT/$OUT_ZIP"
+trap 'rm -rf "$WORK" "$EXTRACTED" && rm -f "$ABSOLUTE_OUT_ZIP"' EXIT
 
 # Synthesize a fake api/ publish dir
 mkdir -p "$WORK/api/plugins-dc"
@@ -36,34 +38,35 @@ printf '# DACPAC schema changes\n\nInitial release — full schema.\n' > "$WORK/
 echo "<DeployReport/>" > "$WORK/deploy-report.xml"
 echo "<html/>" > "$WORK/deploy-report.html"
 
-OUT_ZIP="$WORK/sebt-dc-iis-1.0.0.zip"
+(
+  cd "$PROJECT_ROOT"
+  bash "$PROJECT_ROOT/scripts/ci/bundle-iis-package.sh" \
+    --api-dir "$WORK/api" \
+    --web-zip "$WORK/web.zip" \
+    --dacpac "$WORK/sebt-portal-1.0.0.dacpac" \
+    --changelog "$WORK/CHANGELOG-DACPAC.md" \
+    --deploy-report-xml "$WORK/deploy-report.xml" \
+    --deploy-report-html "$WORK/deploy-report.html" \
+    --version "1.0.0" \
+    --git-sha "deadbeef" \
+    --output "$OUT_ZIP"
+)
 
-bash "$PROJECT_ROOT/scripts/ci/bundle-iis-package.sh" \
-  --api-dir "$WORK/api" \
-  --web-zip "$WORK/web.zip" \
-  --dacpac "$WORK/sebt-portal-1.0.0.dacpac" \
-  --changelog "$WORK/CHANGELOG-DACPAC.md" \
-  --deploy-report-xml "$WORK/deploy-report.xml" \
-  --deploy-report-html "$WORK/deploy-report.html" \
-  --version "1.0.0" \
-  --git-sha "deadbeef" \
-  --output "$OUT_ZIP"
-
-assert_file_exists "$OUT_ZIP"
-assert_zip_contains "$OUT_ZIP" "README.md"
-assert_zip_contains "$OUT_ZIP" "CHANGELOG-DACPAC.md"
-assert_zip_contains "$OUT_ZIP" "api/SEBT.Portal.Api.dll"
-assert_zip_contains "$OUT_ZIP" "api/plugins-dc/Plugin.dll"
-assert_zip_contains "$OUT_ZIP" "api/appsettings.prod.example.json"
-assert_zip_contains "$OUT_ZIP" "api/web.config"
-assert_zip_contains "$OUT_ZIP" "web/web.config"
-assert_zip_contains "$OUT_ZIP" "web/src/SEBT.Portal.Web/server.js"
-assert_zip_contains "$OUT_ZIP" "dacpac/sebt-portal-1.0.0.dacpac"
-assert_zip_contains "$OUT_ZIP" "dacpac/deploy-report.xml"
-assert_zip_contains "$OUT_ZIP" "dacpac/deploy-report.html"
+assert_file_exists "$ABSOLUTE_OUT_ZIP"
+assert_zip_contains "$ABSOLUTE_OUT_ZIP" "README.md"
+assert_zip_contains "$ABSOLUTE_OUT_ZIP" "CHANGELOG-DACPAC.md"
+assert_zip_contains "$ABSOLUTE_OUT_ZIP" "api/SEBT.Portal.Api.dll"
+assert_zip_contains "$ABSOLUTE_OUT_ZIP" "api/plugins-dc/Plugin.dll"
+assert_zip_contains "$ABSOLUTE_OUT_ZIP" "api/appsettings.prod.example.json"
+assert_zip_contains "$ABSOLUTE_OUT_ZIP" "api/web.config"
+assert_zip_contains "$ABSOLUTE_OUT_ZIP" "web/web.config"
+assert_zip_contains "$ABSOLUTE_OUT_ZIP" "web/src/SEBT.Portal.Web/server.js"
+assert_zip_contains "$ABSOLUTE_OUT_ZIP" "dacpac/sebt-portal-1.0.0.dacpac"
+assert_zip_contains "$ABSOLUTE_OUT_ZIP" "dacpac/deploy-report.xml"
+assert_zip_contains "$ABSOLUTE_OUT_ZIP" "dacpac/deploy-report.html"
 
 # Verify template substitution actually happened
-unzip -q "$OUT_ZIP" -d "$EXTRACTED"
+unzip -q "$ABSOLUTE_OUT_ZIP" -d "$EXTRACTED"
 README_PATH="$(ls "$EXTRACTED"/*/README.md 2>/dev/null || true)"
 if [ -z "$README_PATH" ]; then
   echo "ASSERT FAIL: README.md not found at expected location inside zip" >&2
