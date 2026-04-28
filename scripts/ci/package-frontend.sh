@@ -51,6 +51,11 @@ for arg in "$@"; do
   esac
 done
 
+case "$OUTPUT_ZIP" in
+  /*) ;;
+  *) OUTPUT_ZIP="$PROJECT_ROOT/$OUTPUT_ZIP" ;;
+esac
+
 log_info()    { echo -e "${BLUE}ℹ️  $1${NC}"; }
 log_success() { echo -e "${GREEN}✅ $1${NC}"; }
 log_warning() { echo -e "${YELLOW}⚠️  $1${NC}"; }
@@ -114,6 +119,7 @@ package_frontend() {
   local PNPM_STORE="$WEB_DIR/node_modules/.pnpm"
   if [ -d "$PNPM_STORE" ]; then
     log_info "Hoisting pnpm virtual store to flat node_modules..."
+    shopt -s nullglob
     for pkg_dir in "$PNPM_STORE"/*/node_modules/*; do
       local pkg_name
       pkg_name=$(basename "$pkg_dir")
@@ -136,6 +142,7 @@ package_frontend() {
         fi
       fi
     done
+    shopt -u nullglob
 
     rm -rf "$PNPM_STORE"
     log_success "Dependencies hoisted"
@@ -145,6 +152,7 @@ package_frontend() {
   # into the location server.js expects them.
   local APP_DIR="$WEB_DIR/src/SEBT.Portal.Web"
   if [ -d "$APP_DIR" ]; then
+    mkdir -p "$APP_DIR/.next"
     cp -r "$FRONTEND_DIR/.next/static" "$APP_DIR/.next/static"
     cp -r "$FRONTEND_DIR/public" "$APP_DIR/public"
     log_success "Static assets and public files copied"
