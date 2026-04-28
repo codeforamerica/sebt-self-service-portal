@@ -54,7 +54,7 @@ jobs:
         run: |
           BRANCH="${{ github.event_name == 'pull_request' && github.head_ref || github.ref_name }}"
           FALLBACK="main"
-          REPO_URL="https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository_owner }}/sebt-self-service-portal-state-connector.git"
+          REPO_URL="https://x-access-token:${{ secrets.SEBT_CONNECTOR_REPOSITORY_PAT }}@github.com/${{ github.repository_owner }}/sebt-self-service-portal-state-connector.git"
           if git ls-remote --exit-code --heads "$REPO_URL" "refs/heads/${BRANCH}" 1>/dev/null 2>&1; then
             echo "ref=${BRANCH}" >> "$GITHUB_OUTPUT"
           else
@@ -66,7 +66,7 @@ jobs:
         run: |
           BRANCH="${{ github.event_name == 'pull_request' && github.head_ref || github.ref_name }}"
           FALLBACK="main"
-          REPO_URL="https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository_owner }}/sebt-self-service-portal-dc-connector.git"
+          REPO_URL="https://x-access-token:${{ secrets.SEBT_CONNECTOR_REPOSITORY_PAT }}@github.com/${{ github.repository_owner }}/sebt-self-service-portal-dc-connector.git"
           if git ls-remote --exit-code --heads "$REPO_URL" "refs/heads/${BRANCH}" 1>/dev/null 2>&1; then
             echo "ref=${BRANCH}" >> "$GITHUB_OUTPUT"
           else
@@ -77,6 +77,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           repository: codeforamerica/sebt-self-service-portal-state-connector
+          token: ${{ secrets.SEBT_CONNECTOR_REPOSITORY_PAT }}
           ref: ${{ steps.state-connector-ref.outputs.ref }}
           path: state-connector
 
@@ -84,6 +85,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           repository: codeforamerica/sebt-self-service-portal-dc-connector
+          token: ${{ secrets.SEBT_CONNECTOR_REPOSITORY_PAT }}
           ref: ${{ steps.dc-connector-ref.outputs.ref }}
           path: dc-connector
 
