@@ -21,7 +21,7 @@
 | `scripts/ci/build-backend.sh` | Modify | Add `build_state_connector_package` function (currently missing vs. the canonical copy under `.github/workflows/scripts/`) so the new workflow can call this script and get the connector NuGet built. |
 | `scripts/ci/templates/web.config` | Create | Static HttpPlatformHandler config for the Next.js bundle on IIS. Copied verbatim into the bundle. |
 | `scripts/ci/templates/README.iis.md.tmpl` | Create | Mustache-style template for the per-release deployment README. Variables: `{{VERSION}}`, `{{BUILD_DATE}}`, `{{GIT_SHA}}`, `{{DACPAC_FILENAME}}`, `{{DACPAC_SUMMARY}}`. |
-| `scripts/ci/publish-api.sh` | Create | `dotnet publish` API for win-x64; copy DC plugin DLLs into `plugins-dc/`; emit `appsettings.prod.example.json`; enable stdout logging in the API's auto-generated `web.config`. |
+| `scripts/ci/publish-api.sh` | Create | `dotnet publish` API for win-x64; emit `appsettings.prod.example.json`; enable stdout logging in the API's auto-generated `web.config`. (DC plugin DLLs are copied into `plugins-dc/` by the DC connector's MSBuild `CopyPlugins` target before this runs — see Task 7.) |
 | `scripts/ci/generate-dacpac-report.sh` | Create | Use `gh` to find the previous `release/dc-v*` dacpac; run `sqlpackage /Action:DeployReport`; render XML→HTML; write `CHANGELOG-DACPAC.md`. First-run path when no prior release exists. |
 | `scripts/ci/bundle-iis-package.sh` | Create | Assemble the directory tree, render README from template, zip it to `sebt-dc-iis-{version}.zip`. |
 | `scripts/ci/tests/_assert.sh` | Create | Tiny shared assertion helpers (`assert_file_exists`, `assert_dir_exists`, `assert_contains`, `assert_eq`). Sourced by every `*_test.sh`. |
@@ -385,7 +385,9 @@ git commit -m "Add shell-test assertion helpers and runner for scripts/ci/"
 
 ## Task 4: Build `scripts/ci/publish-api.sh`
 
-**Why:** The release workflow needs an API publish step that produces a Windows / IIS-ready directory: framework-dependent `dotnet publish` for `win-x64`, the DC connector plugin DLLs in `plugins-dc/`, an `appsettings.prod.example.json` listing only the DC-specific / secret keys, the auto-generated `web.config` patched to enable stdout logging, and a `logs/` directory ready for the app pool identity.
+**Why:** The release workflow needs an API publish step that produces a Windows / IIS-ready directory: framework-dependent `dotnet publish` for `win-x64`, an `appsettings.prod.example.json` listing only the DC-specific / secret keys, the auto-generated `web.config` patched to enable stdout logging, and a `logs/` directory ready for the app pool identity.
+
+**Plan correction (vs the original draft):** The DC plugin DLLs are NOT manually copied here. They land in `src/SEBT.Portal.Api/plugins-dc/` as a side effect of building the DC connector — its csproj has a `CopyPlugins` MSBuild target that runs `AfterTargets="Build"` and copies its DLLs to the API's `plugins-dc/` directory. The API's `<None Include="plugins-dc\**\*.dll">` ItemGroup then sweeps them into the publish output automatically. Task 7 (workflow) is responsible for ordering: build DC connector BEFORE running this script. This script just runs `dotnet publish`, writes the appsettings example, and patches the web.config.
 
 **Files:**
 - Create: `scripts/ci/tests/publish-api_test.sh`
@@ -399,6 +401,11 @@ Create `scripts/ci/tests/publish-api_test.sh`:
 #!/usr/bin/env bash
 # Smoke test for scripts/ci/publish-api.sh.
 # Asserts the resulting directory has the structure the bundle step expects.
+#
+# Pre-req: src/SEBT.Portal.Api/plugins-dc/ must already contain DC plugin DLLs
+# (populated by building the DC connector, which has a CopyPlugins MSBuild target
+# that runs AfterTargets="Build"). The smoke test does NOT build the DC connector
+# itself — too heavy for a smoke test — so it skips when plugins-dc is empty.
 set -e
 set -u
 
@@ -406,25 +413,22 @@ SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 PROJECT_ROOT="$(cd "$SCRIPT_DIR/../../.." && pwd)"
 source "$SCRIPT_DIR/_assert.sh"
 
-# Only run if the state connector is checked out next to this repo (mirrors the
-# CI environment). Skip locally if not — this test exercises a real publish.
-CONNECTOR_DIR="${STATE_CONNECTOR_DIR:-$PROJECT_ROOT/../sebt-self-service-portal-state-connector}"
-if [ ! -d "$CONNECTOR_DIR" ]; then
-  echo "SKIP: state connector dir not present at $CONNECTOR_DIR"
+# Skip locally if the API plugins-dc dir is empty (no DC connector built).
+PLUGIN_DIR="$PROJECT_ROOT/src/SEBT.Portal.Api/plugins-dc"
+if [ ! -d "$PLUGIN_DIR" ] || [ -z "$(ls -A "$PLUGIN_DIR" 2>/dev/null | grep -E '\.dll$' || true)" ]; then
+  echo "SKIP: $PLUGIN_DIR has no plugin DLLs (build the DC connector first to populate it)"
   exit 0
 fi
 
 OUT_DIR="$(mktemp -d)"
 trap 'rm -rf "$OUT_DIR"' EXIT
 
-bash "$PROJECT_ROOT/scripts/ci/publish-api.sh" \
-  --output "$OUT_DIR" \
-  --state-connector-dir "$CONNECTOR_DIR"
+bash "$PROJECT_ROOT/scripts/ci/publish-api.sh" --output "$OUT_DIR"
 
 assert_dir_exists "$OUT_DIR/api"
 assert_file_exists "$OUT_DIR/api/SEBT.Portal.Api.dll"
 assert_dir_exists "$OUT_DIR/api/plugins-dc"
-# Plugin dir should have at least one DLL
+# Plugin dir should have at least one DLL (copied by the API csproj's <None> rule)
 test -n "$(ls "$OUT_DIR/api/plugins-dc"/*.dll 2>/dev/null)" || {
   echo "ASSERT FAIL: api/plugins-dc/ has no DLLs" >&2
   exit 1
@@ -447,7 +451,7 @@ chmod +x scripts/ci/tests/publish-api_test.sh
 - [ ] **Step 2: Run the test, confirm it fails**
 
 Run: `bash scripts/ci/tests/publish-api_test.sh`
-Expected: fails with `bash: scripts/ci/publish-api.sh: No such file or directory` (or skips if no connector dir, in which case continue without proof of failure — the assertions will fire in CI).
+Expected: fails with `bash: scripts/ci/publish-api.sh: No such file or directory` (or skips if plugins-dc/ is empty — in CI the connector will be built first, so the assertions will run there).
 
 - [ ] **Step 3: Implement `scripts/ci/publish-api.sh`**
 
@@ -457,12 +461,16 @@ Create `scripts/ci/publish-api.sh`:
 #!/bin/bash
 # API Publish Script
 # Publishes the .NET API for win-x64 (framework-dependent) into <output>/api/,
-# bundles the DC state-connector plugin DLLs into plugins-dc/, emits a
-# secrets-only appsettings.prod.example.json, and patches the auto-generated
-# web.config to enable ASP.NET Core stdout logging.
+# emits a secrets-only appsettings.prod.example.json, and patches the
+# auto-generated web.config to enable ASP.NET Core stdout logging.
+#
+# Plugin DLLs are NOT copied by this script — they must already be in
+# src/SEBT.Portal.Api/plugins-dc/ before this runs (populated by building the
+# DC connector, whose MSBuild CopyPlugins target handles that). The API csproj's
+# <None Include="plugins-dc\**\*.dll"> ItemGroup then picks them up during publish.
 #
 # Usage:
-#   ./scripts/ci/publish-api.sh --output <dir> --state-connector-dir <dir> [--configuration Release]
+#   ./scripts/ci/publish-api.sh --output <dir> [--configuration Release]
 
 set -e
 set -u
@@ -478,7 +486,6 @@ PROJECT_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
 
 CONFIGURATION="Release"
 OUTPUT_DIR=""
-STATE_CONNECTOR_DIR=""
 
 log_info()    { echo -e "${BLUE}ℹ️  $1${NC}"; }
 log_success() { echo -e "${GREEN}✅ $1${NC}"; }
@@ -488,7 +495,6 @@ log_error()   { echo -e "${RED}❌ $1${NC}"; }
 while [ $# -gt 0 ]; do
   case "$1" in
     --output) OUTPUT_DIR="$2"; shift 2 ;;
-    --state-connector-dir) STATE_CONNECTOR_DIR="$2"; shift 2 ;;
     --configuration) CONFIGURATION="$2"; shift 2 ;;
     -h|--help)
       grep '^# ' "$0" | sed 's/^# \{0,1\}//'
@@ -498,9 +504,16 @@ while [ $# -gt 0 ]; do
   esac
 done
 
-if [ -z "$OUTPUT_DIR" ] || [ -z "$STATE_CONNECTOR_DIR" ]; then
-  log_error "--output and --state-connector-dir are required"
+if [ -z "$OUTPUT_DIR" ]; then
+  log_error "--output is required"
   exit 1
+fi
+
+# Sanity-check that the DC connector has already populated plugins-dc/.
+PLUGIN_DIR="$PROJECT_ROOT/src/SEBT.Portal.Api/plugins-dc"
+if [ -z "$(ls -A "$PLUGIN_DIR" 2>/dev/null | grep -E '\.dll$' || true)" ]; then
+  log_warning "$PLUGIN_DIR has no DLLs — DC connector was not built before publish-api.sh."
+  log_warning "The published output will not contain DC plugin DLLs."
 fi
 
 API_OUT="$OUTPUT_DIR/api"
@@ -514,16 +527,6 @@ dotnet publish "$PROJECT_ROOT/src/SEBT.Portal.Api/SEBT.Portal.Api.csproj" \
   --output "$API_OUT" \
   -p:BuildFrontend=false \
   --verbosity minimal
-
-log_info "Copying DC state-connector plugin DLLs into plugins-dc/"
-PLUGIN_SRC="$STATE_CONNECTOR_DIR/src/SEBT.Portal.StatesPlugins.DC/bin/$CONFIGURATION/net10.0"
-if [ ! -d "$PLUGIN_SRC" ]; then
-  log_error "DC plugin build output not found: $PLUGIN_SRC"
-  log_error "Build the state connector before invoking publish-api.sh."
-  exit 1
-fi
-mkdir -p "$API_OUT/plugins-dc"
-cp -r "$PLUGIN_SRC"/*.dll "$API_OUT/plugins-dc/"
 
 log_info "Writing appsettings.prod.example.json (DC-specific / secret keys only)"
 cat > "$API_OUT/appsettings.prod.example.json" <<'JSON'
@@ -580,10 +583,16 @@ chmod +x scripts/ci/publish-api.sh
 
 - [ ] **Step 4: Run the smoke test, confirm it passes**
 
-Pre-req for local run: have the state-connector repo checked out at `../sebt-self-service-portal-state-connector` and have built it once (`dotnet build` inside `src/SEBT.Portal.StatesPlugins.DC/`).
+Pre-req for local run: build the DC connector once with the sibling-repo layout so `src/SEBT.Portal.Api/plugins-dc/` is populated. Run from `../sebt-self-service-portal-dc-connector`:
+
+```bash
+dotnet build src/SEBT.Portal.StatePlugins.DC/SEBT.Portal.StatePlugins.DC.csproj --configuration Release
+```
+
+The DC connector's `CopyPlugins` MSBuild target (defined in its csproj, runs `AfterTargets="Build"`) copies its DLLs into the portal repo's `src/SEBT.Portal.Api/plugins-dc/` automatically when the two repos are siblings.
 
 Run: `bash scripts/ci/tests/publish-api_test.sh`
-Expected: `publish-api_test: OK` (or `SKIP: state connector dir not present` if not checked out — in CI the connector will be checked out, so the assertions will run there).
+Expected: `publish-api_test: OK` (or `SKIP: ... no plugin DLLs` if you didn't build the DC connector yet — in CI the workflow builds the DC connector before invoking this script, so the assertions will run there).
 
 - [ ] **Step 5: Commit**
 
@@ -1168,8 +1177,8 @@ jobs:
           echo "git_sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
           echo "Resolved version: $VERSION"
 
-      - name: Determine state connector ref
-        id: connector-ref
+      - name: Determine state-connector ref
+        id: state-connector-ref
         run: |
           BRANCH="${{ github.event_name == 'pull_request' && github.head_ref || github.ref_name }}"
           FALLBACK="main"
@@ -1180,12 +1189,31 @@ jobs:
             echo "ref=${FALLBACK}" >> "$GITHUB_OUTPUT"
           fi
 
-      - name: Checkout state-connector (DC)
+      - name: Determine dc-connector ref
+        id: dc-connector-ref
+        run: |
+          BRANCH="${{ github.event_name == 'pull_request' && github.head_ref || github.ref_name }}"
+          FALLBACK="main"
+          REPO_URL="https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository_owner }}/sebt-self-service-portal-dc-connector.git"
+          if git ls-remote --exit-code --heads "$REPO_URL" "refs/heads/${BRANCH}" 1>/dev/null 2>&1; then
+            echo "ref=${BRANCH}" >> "$GITHUB_OUTPUT"
+          else
+            echo "ref=${FALLBACK}" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Checkout state-connector (interfaces NuGet source)
         uses: actions/checkout@v4
         with:
           repository: codeforamerica/sebt-self-service-portal-state-connector
-          ref: ${{ steps.connector-ref.outputs.ref }}
+          ref: ${{ steps.state-connector-ref.outputs.ref }}
           path: state-connector
+
+      - name: Checkout dc-connector (DC plugin implementation)
+        uses: actions/checkout@v4
+        with:
+          repository: codeforamerica/sebt-self-service-portal-dc-connector
+          ref: ${{ steps.dc-connector-ref.outputs.ref }}
+          path: dc-connector
 
       - name: Setup .NET 10
         uses: actions/setup-dotnet@v5
@@ -1212,12 +1240,19 @@ jobs:
       - name: Build backend (includes state-connector NuGet pack)
         run: ./scripts/ci/build-backend.sh --configuration Release -p:BuildFrontend=false
 
-      - name: Publish API for IIS
+      - name: Build DC connector (populates src/SEBT.Portal.Api/plugins-dc/)
+        # The DC connector's csproj has a CopyPlugins target (AfterTargets="Build")
+        # that copies its DLL output into the API's plugins-dc/ folder. We override
+        # PluginDestDir to make the destination explicit (the default expects the
+        # portal repo as a sibling, which is true in CI but worth being explicit).
         run: |
-          ./scripts/ci/publish-api.sh \
-            --output staging \
-            --state-connector-dir state-connector \
-            --configuration Release
+          dotnet build dc-connector/src/SEBT.Portal.StatePlugins.DC/SEBT.Portal.StatePlugins.DC.csproj \
+            --configuration Release \
+            -p:PluginDestDir="$(pwd)/src/SEBT.Portal.Api/plugins-dc" \
+            --verbosity minimal
+
+      - name: Publish API for IIS
+        run: ./scripts/ci/publish-api.sh --output staging --configuration Release
 
       - name: Build and package frontend
         run: |
