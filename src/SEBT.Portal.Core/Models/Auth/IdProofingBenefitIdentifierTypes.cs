@@ -1,3 +1,5 @@
+using System.Diagnostics.CodeAnalysis;
+
 namespace SEBT.Portal.Core.Models.Auth;
 
 /// <summary>
@@ -19,6 +21,6 @@ public static class IdProofingBenefitIdentifierTypes
     /// True when <paramref name="idType"/> is a SNAP or TANF selection from the portal onboarding UI
     /// (aligned with the web <c>IdType</c> enum and any future TANF variants).
     /// </summary>
-    public static bool IsSnapOrTanfPortalSelection(string? idType) =>
+    public static bool IsSnapOrTanfPortalSelection([NotNullWhen(true)] string? idType) =>
         idType != null && SnapOrTanfPortalTypes.Contains(idType);
 }
