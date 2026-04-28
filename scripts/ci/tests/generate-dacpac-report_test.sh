@@ -26,6 +26,10 @@ bash "$PROJECT_ROOT/scripts/ci/generate-dacpac-report.sh" \
 assert_file_exists "$WORK/out/CHANGELOG-DACPAC.md"
 assert_contains "$WORK/out/CHANGELOG-DACPAC.md" "Initial release"
 assert_contains "$WORK/out/CHANGELOG-DACPAC.md" "no prior baseline"
+assert_file_exists "$WORK/out/deploy-report.xml"
+assert_file_exists "$WORK/out/deploy-report.html"
+assert_contains "$WORK/out/deploy-report.xml" "InitialRelease"
+assert_contains "$WORK/out/deploy-report.html" "Initial release"
 
 echo "[generate-dacpac-report_test] case 1: OK"
 

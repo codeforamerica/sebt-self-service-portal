@@ -13,12 +13,13 @@
 #
 # Outputs (under <output-dir>):
 #   CHANGELOG-DACPAC.md   summary
-#   deploy-report.xml     raw DeployReport (only when prior release exists)
-#   deploy-report.html    rendered version (only when prior release exists)
+#   deploy-report.xml     raw DeployReport (placeholder on first-run)
+#   deploy-report.html    rendered version (placeholder on first-run)
 #
 # First-run case: when no tag matching --prev-tag-pattern exists in the repo,
-# CHANGELOG-DACPAC.md is written with an "Initial release" message and no
-# DeployReport files are produced. The script exits 0.
+# CHANGELOG-DACPAC.md is written with an "Initial release" message and
+# placeholder DeployReport files are produced so downstream packaging can use a
+# stable file contract. The script exits 0.
 
 set -e
 set -u
@@ -79,11 +80,35 @@ The DBA should treat this as a fresh deploy: \`sqlpackage /Action:Publish\` will
 EOF
 }
 
+write_initial_release_reports() {
+  local reason="$1"
+
+  cat > "$OUT_DIR/deploy-report.xml" <<EOF
+<?xml version="1.0" encoding="utf-8"?>
+<DeployReport>
+  <Alert Type="InitialRelease">No previous DACPAC baseline was available.</Alert>
+  <Message>$reason</Message>
+</DeployReport>
+EOF
+
+  cat > "$OUT_DIR/deploy-report.html" <<EOF
+<!doctype html>
+<html><head><meta charset="utf-8"><title>DeployReport — Initial release</title>
+<style>body{font-family:system-ui,sans-serif;max-width:960px;margin:2rem auto;padding:0 1rem}</style>
+</head><body>
+<h1>DACPAC DeployReport</h1>
+<p><strong>Initial release:</strong> no previous DACPAC baseline was available.</p>
+<p>$reason</p>
+</body></html>
+EOF
+}
+
 # Resolve previous release tag via gh.
 log_info "Looking for previous release matching: $PREV_TAG_PATTERN"
 if ! command -v gh >/dev/null 2>&1; then
   log_warning "gh CLI not found — treating as first run"
   write_initial_release_changelog "gh CLI unavailable"
+  write_initial_release_reports "GitHub CLI was unavailable, so no previous release baseline could be inspected."
   log_success "Done."
   exit 0
 fi
@@ -102,6 +127,7 @@ PREV_TAG="$(gh release list ${GH_REPO_FLAG[@]+"${GH_REPO_FLAG[@]}"} --limit 100 
 
 if [ -z "$PREV_TAG" ]; then
   write_initial_release_changelog "no matching prior release"
+  write_initial_release_reports "No release matching $PREV_TAG_PATTERN was found."
   log_success "Done."
   exit 0
 fi
@@ -115,6 +141,7 @@ log_info "Downloading previous DACPAC from $PREV_TAG"
 gh release download "$PREV_TAG" ${GH_REPO_FLAG[@]+"${GH_REPO_FLAG[@]}"} --dir "$PREV_DIR" --pattern "*.dacpac" || {
   log_warning "No DACPAC asset on $PREV_TAG — treating as first run"
   write_initial_release_changelog "previous release had no DACPAC asset"
+  write_initial_release_reports "Previous release $PREV_TAG did not include a DACPAC asset."
   log_success "Done."
   exit 0
 }
