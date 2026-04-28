@@ -313,6 +313,18 @@ export const handlers = [
     })
   }),
 
+  // Resubmit endpoint — opens a fresh docv_stepup challenge (DC-301).
+  // Returns a stable mock UUID so tests can assert on it.
+  http.post('/api/challenges/:id/resubmit', async () => {
+    await delay(50)
+
+    return HttpResponse.json({
+      challengeId: '99999999-9999-4999-8999-999999999999',
+      docvTransactionToken: 'mock-resubmit-token',
+      docvUrl: 'https://verify.socure.com/#/dv/mock-resubmit-token'
+    })
+  }),
+
   // Verification status endpoint — first call returns pending, subsequent returns verified.
   // Uses a closure counter to simulate async verification (D3).
   // allowIdRetry is included so the interstitial can show/hide the "Enter an ID number" button (D9).
