@@ -23,7 +23,13 @@ fi
 OUT_DIR="$(mktemp -d)"
 trap 'rm -rf "$OUT_DIR"' EXIT
 
-bash "$PROJECT_ROOT/scripts/ci/publish-api.sh" --output "$OUT_DIR"
+# Clean the source tree's build artifacts before running the test.
+# This ensures we start fresh and can verify no new pollution is created.
+find "$PROJECT_ROOT/src" -maxdepth 2 -type d \( -name "obj" -o -name "bin" \) -prune -exec rm -rf {} + 2>/dev/null || true
+
+bash "$PROJECT_ROOT/scripts/ci/publish-api.sh" \
+  --output "$OUT_DIR" \
+  --build-state-dir "$OUT_DIR"
 
 assert_dir_exists "$OUT_DIR/api"
 assert_file_exists "$OUT_DIR/api/SEBT.Portal.Api.dll"
