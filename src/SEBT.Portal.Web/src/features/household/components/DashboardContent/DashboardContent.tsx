@@ -1,7 +1,10 @@
 'use client'
 
 import { ApiError } from '@/api'
+import { SignOutLink } from '@/features/auth'
+import { AnalyticsEvents, useDataLayer } from '@sebt/analytics'
 import { Alert } from '@sebt/design-system'
+import { useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 
 import { useHouseholdData } from '../../api'
@@ -18,12 +21,25 @@ import { UserProfileCard } from '../UserProfileCard'
 // TODO: Add to CSV: "S2 - Portal Dashboard - Error Heading" and "S2 - Portal Dashboard - Error Description"
 export function DashboardContent() {
   const { t } = useTranslation('dashboard')
-  const { data, isLoading, isError, error } = useHouseholdData()
+  const { data, isLoading, isError, error, requiresProofing } = useHouseholdData()
+  const { setPageData, setUserData, trackEvent } = useDataLayer()
+
+  useEffect(() => {
+    if (isLoading) return
+    if (isError) {
+      setPageData('household_status', 'error')
+    } else if (data) {
+      setPageData('household_status', 'success')
+      const childCount = data.summerEbtCases.length
+      setUserData('household_linked_children', childCount, ['default', 'analytics'])
+    }
+    trackEvent(AnalyticsEvents.HOUSEHOLD_RESULT)
+  }, [isLoading, isError, data, setPageData, setUserData, trackEvent])
 
   // Visually hidden h1 for accessibility - provides page structure for screen readers
   const pageHeading = <h1 className="usa-sr-only">{t('pageTitle', 'SUN Bucks Dashboard')}</h1>
 
-  if (isLoading) {
+  if (isLoading || requiresProofing) {
     return (
       <>
         {pageHeading}
@@ -39,6 +55,7 @@ export function DashboardContent() {
     return (
       <>
         {pageHeading}
+        <SignOutLink />
         <Alert
           variant="error"
           heading={t('errorHeading', 'Error loading dashboard')}
@@ -52,11 +69,11 @@ export function DashboardContent() {
     )
   }
 
-  if (!data || data.applications.length === 0 || isNotFound) {
+  if (!data || isNotFound || (data.summerEbtCases.length === 0 && data.applications.length === 0)) {
     return (
       <>
         {pageHeading}
-        {data?.userProfile && <UserProfileCard />}
+        {data?.userProfile ? <UserProfileCard /> : <SignOutLink />}
         <EmptyState />
       </>
     )
@@ -66,7 +83,7 @@ export function DashboardContent() {
     <>
       {pageHeading}
       <DashboardAlerts />
-      <ActionButtons issuanceType={data.benefitIssuanceType} />
+      <ActionButtons allowedActions={data.allowedActions} />
       <UserProfileCard />
       <HouseholdSummary />
       <EnrolledChildren />

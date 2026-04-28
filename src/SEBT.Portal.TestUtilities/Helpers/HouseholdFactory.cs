@@ -13,8 +13,11 @@ public static class HouseholdFactory
 {
     private static readonly Faker<HouseholdData> HouseholdDataFaker = new Faker<HouseholdData>()
         .RuleFor(h => h.Email, f => f.Internet.Email().ToLowerInvariant())
-        .RuleFor(h => h.Phone, f => f.Phone.PhoneNumber("###-####"))
+        // Generate a valid US 10-digit phone. Area code starts 2-9 and exchange
+        // starts 2-9 per NANP rules so libphonenumber accepts the result.
+        .RuleFor(h => h.Phone, f => $"{f.Random.Int(2, 9)}{f.Random.Int(0, 99):D2}{f.Random.Int(2, 9)}{f.Random.Int(0, 99):D2}{f.Random.Int(0, 9999):D4}")
         .RuleFor(h => h.BenefitIssuanceType, f => f.PickRandom<BenefitIssuanceType>())
+        .RuleFor(h => h.SummerEbtCases, _ => new List<SummerEbtCase>())
         .RuleFor(h => h.Applications, f => GenerateApplications(f))
         .RuleFor(h => h.AddressOnFile, (f, h) =>
             f.Random.Bool(0.6f) && h.Applications.Any(a => a.ApplicationStatus == ApplicationStatus.Approved)
@@ -86,6 +89,43 @@ public static class HouseholdFactory
     }
 
     /// <summary>
+    /// Creates a SummerEbtCase for an enrolled child with sensible defaults.
+    /// </summary>
+    /// <param name="childFirstName">The child's first name.</param>
+    /// <param name="childLastName">The child's last name.</param>
+    /// <param name="eligibilityType">How the child became eligible (e.g., SNAP, TANF, NSLP, Medicaid, CategoricalEligibility, Application).</param>
+    /// <param name="customize">Optional action to override defaults.</param>
+    /// <returns>A new SummerEbtCase instance.</returns>
+    public static SummerEbtCase CreateSummerEbtCase(
+        string childFirstName,
+        string childLastName,
+        string eligibilityType,
+        Action<SummerEbtCase>? customize = null)
+    {
+        var faker = new Faker();
+        var benefitStart = new DateTime(2026, 5, 4);
+
+        var summerEbtCase = new SummerEbtCase
+        {
+            SummerEBTCaseID = faker.Random.Number(100000, 999999).ToString(),
+            ChildFirstName = childFirstName,
+            ChildLastName = childLastName,
+            ChildDateOfBirth = faker.Date.Between(
+                DateTime.Today.AddYears(-17),
+                DateTime.Today.AddYears(-5)),
+            EligibilityType = eligibilityType,
+            ApplicationStatus = ApplicationStatus.Approved,
+            IssuanceType = IssuanceType.SummerEbt,
+            EbtCardStatus = "Active",
+            BenefitAvailableDate = benefitStart,
+            BenefitExpirationDate = benefitStart.AddDays(122)
+        };
+
+        customize?.Invoke(summerEbtCase);
+        return summerEbtCase;
+    }
+
+    /// <summary>
     /// Sets a seed for the random number generator to ensure deterministic test data.
     /// </summary>
     /// <param name="seed">The seed value to use.</param>
@@ -119,7 +159,7 @@ public static class HouseholdFactory
 
         if (status == ApplicationStatus.Approved)
         {
-            application.ApplicationNumber = $"APP-{faker.Date.Recent(365):yyyy-MM}-{faker.Random.Number(100000, 999999)}";
+            application.ApplicationNumber = $"APP-{faker.Random.Number(2024, 2026)}-{faker.Random.Number(1, 12):D2}-{faker.Random.Number(100000, 999999)}";
             application.CaseNumber = $"CASE-{faker.Random.Number(100000, 999999)}";
             application.BenefitIssueDate = faker.Date.Recent(120);
             application.BenefitExpirationDate = application.BenefitIssueDate.Value.AddDays(faker.Random.Int(30, 365));
@@ -134,7 +174,7 @@ public static class HouseholdFactory
         }
         else if (status == ApplicationStatus.Denied)
         {
-            application.ApplicationNumber = $"APP-{faker.Date.Recent(365):yyyy-MM}-{faker.Random.Number(100000, 999999)}";
+            application.ApplicationNumber = $"APP-{faker.Random.Number(2024, 2026)}-{faker.Random.Number(1, 12):D2}-{faker.Random.Number(100000, 999999)}";
             application.CaseNumber = $"CASE-{faker.Random.Number(100000, 999999)}";
             if (faker.Random.Bool(0.5f))
             {
@@ -163,7 +203,7 @@ public static class HouseholdFactory
         else
         {
             // For other statuses (Pending, UnderReview, Cancelled)
-            application.ApplicationNumber = $"APP-{faker.Date.Recent(365):yyyy-MM}-{faker.Random.Number(100000, 999999)}";
+            application.ApplicationNumber = $"APP-{faker.Random.Number(2024, 2026)}-{faker.Random.Number(1, 12):D2}-{faker.Random.Number(100000, 999999)}";
             if (faker.Random.Bool(0.5f))
             {
                 application.CardStatus = CardStatus.Requested;

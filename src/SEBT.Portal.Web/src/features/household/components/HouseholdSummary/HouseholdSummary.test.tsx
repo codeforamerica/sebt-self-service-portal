@@ -1,9 +1,28 @@
 import { render, screen } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
-import type { Application, HouseholdData } from '../../api'
+import type { Application, HouseholdData, SummerEbtCase } from '../../api'
 
 import { HouseholdSummary } from './HouseholdSummary'
+
+let mockShowContactPreferences = false
+vi.mock('@/features/feature-flags', () => ({
+  useFeatureFlag: (flag: string) => {
+    if (flag === 'show_contact_preferences') return mockShowContactPreferences
+    return false
+  }
+}))
+
+const mockCase: SummerEbtCase = {
+  summerEBTCaseID: 'SEBT-001',
+  childFirstName: 'Sophia',
+  childLastName: 'Martinez',
+  householdType: 'OSSE',
+  eligibilityType: 'NSLP',
+  issuanceType: 'SummerEbt',
+  allowAddressChange: true,
+  allowCardReplacement: true
+}
 
 const mockApplication: Application = {
   applicationNumber: 'APP-2026-001',
@@ -17,163 +36,209 @@ const mockApplication: Application = {
   cardMailedAt: null,
   cardActivatedAt: null,
   cardDeactivatedAt: null,
-  children: [{ caseNumber: 456001, firstName: 'Sophia', lastName: 'Martinez' }],
+  children: [{ firstName: 'Sophia', lastName: 'Martinez' }],
   childrenOnApplication: 1
 }
 
 const defaultMockData: HouseholdData = {
   email: 'test@example.com',
-  phone: '(303) 555-0100',
+  phone: '3035550100',
+  summerEbtCases: [mockCase],
   applications: [mockApplication],
   addressOnFile: {
-    streetAddress1: '123 Main Street',
-    streetAddress2: 'Apt 4B',
+    streetAddress1: '1350 Pennsylvania Ave NW',
+    streetAddress2: 'Suite 400',
     city: 'Washington',
     state: 'DC',
-    postalCode: '20001'
+    postalCode: '20004'
   }
 }
 
 let mockReturnData: HouseholdData
 
-vi.mock('../../api', () => ({
+vi.mock('../../api', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('../../api')>()),
   useRequiredHouseholdData: () => mockReturnData
 }))
 
 describe('HouseholdSummary', () => {
   beforeEach(() => {
     mockReturnData = defaultMockData
+    mockShowContactPreferences = false
   })
 
   it('renders status heading', () => {
     render(<HouseholdSummary />)
-
-    // i18n key: profileTableHeadingStatus → "Status"
     expect(screen.getByText('Status')).toBeInTheDocument()
   })
 
-  it('renders enrolled status for approved application', () => {
+  it('renders enrolled status when cases exist', () => {
     render(<HouseholdSummary />)
-
-    // i18n key: profileTableStatusEnrolled → "Enrolled"
     const statusText = screen.getByText('Enrolled')
     expect(statusText).toHaveClass('text-bold')
     expect(statusText).toHaveClass('text-green')
   })
 
-  it('renders enrolled status description for approved application', () => {
+  it('renders enrolled status description when cases exist', () => {
     render(<HouseholdSummary />)
-
-    // i18n key: profileTableStatusEnrolledDescription
     expect(
       screen.getByText(/Your children are enrolled because we have enough information/)
     ).toBeInTheDocument()
   })
 
-  it('renders in-progress status for pending application', () => {
+  it('renders combined status when cases exist with pending application', () => {
     const pendingApp: Application = { ...mockApplication, applicationStatus: 'Pending' }
     mockReturnData = { ...defaultMockData, applications: [pendingApp] }
-
     render(<HouseholdSummary />)
+    expect(screen.getByText('Enrolled')).toBeInTheDocument()
+    expect(screen.getByText('Application in-progress')).toBeInTheDocument()
+  })
 
-    // i18n key: profileTableStatusApplicationIn-progress → "Application in-progress"
+  it('renders in-progress status for pending application when no cases', () => {
+    const pendingApp: Application = { ...mockApplication, applicationStatus: 'Pending' }
+    mockReturnData = { ...defaultMockData, summerEbtCases: [], applications: [pendingApp] }
+    render(<HouseholdSummary />)
     const statusText = screen.getByText('Application in-progress')
     expect(statusText).toHaveClass('text-gold')
   })
 
-  it('does not render enrolled description for non-approved status', () => {
+  it('does not render enrolled description when no cases and application pending', () => {
     const pendingApp: Application = { ...mockApplication, applicationStatus: 'Pending' }
-    mockReturnData = { ...defaultMockData, applications: [pendingApp] }
-
+    mockReturnData = { ...defaultMockData, summerEbtCases: [], applications: [pendingApp] }
     render(<HouseholdSummary />)
-
     expect(
       screen.queryByText(/Your children are enrolled because we have enough information/)
     ).not.toBeInTheDocument()
   })
 
-  it('renders denied status for denied application', () => {
+  it('renders denied status for denied application when no cases', () => {
     const deniedApp: Application = { ...mockApplication, applicationStatus: 'Denied' }
-    mockReturnData = { ...defaultMockData, applications: [deniedApp] }
-
+    mockReturnData = { ...defaultMockData, summerEbtCases: [], applications: [deniedApp] }
     render(<HouseholdSummary />)
-
-    // i18n key: profileTableStatusApplicationDenied → "Application denied"
     const statusText = screen.getByText('Application denied')
     expect(statusText).toHaveClass('text-red')
   })
 
+  it('does not show secondary status when all applications are approved', () => {
+    render(<HouseholdSummary />)
+    expect(screen.getByText('Enrolled')).toBeInTheDocument()
+    expect(screen.queryByText('Application denied')).not.toBeInTheDocument()
+    expect(screen.queryByText('Application in-progress')).not.toBeInTheDocument()
+  })
+
   it('renders mailing address when provided', () => {
     render(<HouseholdSummary />)
-
-    // i18n key: profileTableHeadingMailingAddress → "Your mailing address"
     expect(screen.getByText('Your mailing address')).toBeInTheDocument()
-    expect(screen.getByText(/123 Main Street/)).toBeInTheDocument()
+    expect(screen.getByText(/1350 Pennsylvania Ave NW/)).toBeInTheDocument()
   })
 
   it('renders change mailing address link', () => {
     render(<HouseholdSummary />)
-
-    // i18n key: profileTableActionChangeAddress → "Change my mailing address"
     const link = screen.getByRole('link', { name: 'Change my mailing address' })
-    expect(link).toHaveAttribute('href', '/address')
+    expect(link).toHaveAttribute('href', '/profile/address')
   })
 
-  it('hides mailing address when not provided', () => {
+  it('exposes data-analytics-cta on the change mailing address link', () => {
+    render(<HouseholdSummary />)
+    const link = screen.getByRole('link', { name: 'Change my mailing address' })
+    expect(link).toHaveAttribute('data-analytics-cta', 'update_address_cta')
+  })
+
+  it('shows info link (not action link) when allowedActions.canUpdateAddress is false', () => {
+    mockReturnData = {
+      ...defaultMockData,
+      allowedActions: {
+        canUpdateAddress: false,
+        addressUpdateDeniedMessageKey: 'actionNavigationSelfServiceUnavailable',
+        canRequestReplacementCard: false,
+        cardReplacementDeniedMessageKey: null
+      }
+    }
+    render(<HouseholdSummary />)
+    expect(
+      screen.queryByRole('link', { name: 'Change my mailing address' })
+    ).not.toBeInTheDocument()
+    const infoLink = screen.getByRole('link', { name: /how to change your mailing address/i })
+    expect(infoLink).toHaveAttribute('href', '/profile/address/info')
+    expect(infoLink).toHaveAttribute('data-analytics-cta', 'update_address_info_cta')
+  })
+
+  it('shows change mailing address link when allowedActions.canUpdateAddress is true', () => {
+    mockReturnData = {
+      ...defaultMockData,
+      allowedActions: {
+        canUpdateAddress: true,
+        addressUpdateDeniedMessageKey: null,
+        canRequestReplacementCard: true,
+        cardReplacementDeniedMessageKey: null
+      }
+    }
+    render(<HouseholdSummary />)
+    expect(screen.getByRole('link', { name: 'Change my mailing address' })).toBeInTheDocument()
+  })
+
+  it('exposes data-analytics-cta on the change contact preferences link', () => {
+    mockShowContactPreferences = true
+    render(<HouseholdSummary />)
+    const link = screen.getByRole('link', { name: 'Change my contact preferences' })
+    expect(link).toHaveAttribute('data-analytics-cta', 'update_contact_cta')
+  })
+
+  it('shows address heading with dash placeholder when no address on file', () => {
     mockReturnData = { ...defaultMockData, addressOnFile: null }
     render(<HouseholdSummary />)
+    expect(screen.getByText('Your mailing address')).toBeInTheDocument()
+    expect(screen.getByText('—')).toBeInTheDocument()
+    expect(screen.queryByText(/1350 Pennsylvania Ave NW/)).not.toBeInTheDocument()
+  })
 
-    expect(screen.queryByText('Your mailing address')).not.toBeInTheDocument()
-    expect(screen.queryByText(/123 Main Street/)).not.toBeInTheDocument()
+  it('shows change address link when no address on file and canUpdateAddress is true', () => {
+    mockReturnData = { ...defaultMockData, addressOnFile: null }
+    render(<HouseholdSummary />)
+    const link = screen.getByRole('link', { name: 'Change my mailing address' })
+    expect(link).toHaveAttribute('href', '/profile/address')
   })
 
   it('renders preferred contact with email', () => {
+    mockShowContactPreferences = true
     render(<HouseholdSummary />)
-
-    // i18n key: profileTableHeadingPreferredContact → "Your preferred contact"
     expect(screen.getByText('Your preferred contact')).toBeInTheDocument()
     expect(screen.getByText(/test@example.com/)).toBeInTheDocument()
   })
 
   it('renders change contact information link', () => {
+    mockShowContactPreferences = true
     render(<HouseholdSummary />)
-
-    // i18n key: profileTableActionChangeContact → "Change my contact preferences"
     const link = screen.getByRole('link', { name: 'Change my contact preferences' })
     expect(link).toHaveAttribute('href', '/contact')
   })
 
   it('renders preferred contact with phone when provided', () => {
+    mockShowContactPreferences = true
     render(<HouseholdSummary />)
-
-    expect(screen.getByText(/\(303\) 555-0100/)).toBeInTheDocument()
+    expect(screen.getByText(/303-555-0100/)).toBeInTheDocument()
   })
 
   it('renders preferred contact without phone when not provided', () => {
+    mockShowContactPreferences = true
     mockReturnData = { ...defaultMockData, phone: null }
     render(<HouseholdSummary />)
-
     expect(screen.getByText('Your preferred contact')).toBeInTheDocument()
-    expect(screen.getByText(/test@example.com/)).toBeInTheDocument()
-    expect(screen.queryByText(/\(303\) 555-0100/)).not.toBeInTheDocument()
+    expect(screen.queryByText(/303-555-0100/)).not.toBeInTheDocument()
   })
 
   it('renders preferred contact with only phone when email not provided', () => {
+    mockShowContactPreferences = true
     mockReturnData = { ...defaultMockData, email: null }
     render(<HouseholdSummary />)
-
     expect(screen.getByText('Your preferred contact')).toBeInTheDocument()
-    expect(screen.getByText(/\(303\) 555-0100/)).toBeInTheDocument()
-    expect(screen.queryByText(/test@example.com/)).not.toBeInTheDocument()
+    expect(screen.getByText(/303-555-0100/)).toBeInTheDocument()
   })
 
   it('hides contact section when neither email nor phone provided', () => {
+    mockShowContactPreferences = true
     mockReturnData = { ...defaultMockData, email: null, phone: null }
     render(<HouseholdSummary />)
-
     expect(screen.queryByText('Your preferred contact')).not.toBeInTheDocument()
-    expect(
-      screen.queryByRole('link', { name: 'Change my contact preferences' })
-    ).not.toBeInTheDocument()
   })
 })

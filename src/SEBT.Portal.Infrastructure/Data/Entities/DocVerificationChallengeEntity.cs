@@ -11,7 +11,7 @@ public class DocVerificationChallengeEntity
     /// <summary>
     /// Database primary key. Not exposed in API responses.
     /// </summary>
-    public int Id { get; set; }
+    public Guid Id { get; set; } = Guid.CreateVersion7();
 
     /// <summary>
     /// Opaque identifier exposed to API consumers. Prevents IDOR enumeration.
@@ -21,7 +21,7 @@ public class DocVerificationChallengeEntity
     /// <summary>
     /// Foreign key to the owning user.
     /// </summary>
-    public int UserId { get; set; }
+    public Guid UserId { get; set; }
 
     /// <summary>
     /// Current lifecycle state (0=Created, 1=Pending, 2=Verified, 3=Rejected, 4=Expired).
@@ -70,6 +70,26 @@ public class DocVerificationChallengeEntity
     /// When this challenge expires.
     /// </summary>
     public DateTime? ExpiresAt { get; set; }
+
+    /// <summary>
+    /// Date of birth from ID proofing (yyyy-MM-dd), for refreshing an expired DocV token.
+    /// </summary>
+    public string? ProofingDateOfBirth { get; set; }
+
+    /// <summary>
+    /// ID type from ID proofing (e.g. ssn, itin).
+    /// </summary>
+    public string? ProofingIdType { get; set; }
+
+    /// <summary>
+    /// ID value from ID proofing.
+    /// </summary>
+    public string? ProofingIdValue { get; set; }
+
+    /// <summary>
+    /// When the DocV transaction token was last issued (UTC).
+    /// </summary>
+    public DateTime? DocvTokenIssuedAt { get; set; }
 
     /// <summary>
     /// Optimistic concurrency token. SQL Server auto-increments this on every UPDATE.

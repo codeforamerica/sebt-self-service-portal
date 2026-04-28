@@ -30,7 +30,7 @@ public class IdentifierHasher : IIdentifierHasher
     /// <inheritdoc />
     public string? Hash(string? plaintext)
     {
-        var normalized = SsnNormalizer.NormalizeOrNull(plaintext);
+        var normalized = IdentifierNormalizer.NormalizeOrNull(plaintext);
         if (string.IsNullOrWhiteSpace(normalized))
         {
             return null;

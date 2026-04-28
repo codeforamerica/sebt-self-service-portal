@@ -1,6 +1,10 @@
+using Medallion.Threading;
+using Medallion.Threading.Redis;
+using Medallion.Threading.SqlServer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using SEBT.Portal.Core.AppSettings;
 using SEBT.Portal.Core.Repositories;
@@ -10,6 +14,7 @@ using SEBT.Portal.Infrastructure.Configuration;
 using SEBT.Portal.Infrastructure.Data;
 using SEBT.Portal.Infrastructure.Repositories;
 using SEBT.Portal.Infrastructure.Services;
+using StackExchange.Redis;
 using ISummerEbtCaseService = SEBT.Portal.StatesPlugins.Interfaces.ISummerEbtCaseService;
 
 namespace SEBT.Portal.Infrastructure;
@@ -24,10 +29,22 @@ public static class Dependencies
         services.AddTransient<ISmtpClientService, SmtpClientService>();
 
         // JWT Services
-        services.AddTransient<IJwtTokenService, JwtTokenService>();
+        services.AddTransient<JwtTokenService>();
+        services.AddTransient<ILocalLoginTokenService>(sp => sp.GetRequiredService<JwtTokenService>());
+        services.AddTransient<IOidcTokenService>(sp => sp.GetRequiredService<JwtTokenService>());
+        services.AddTransient<ISessionRefreshTokenService>(sp => sp.GetRequiredService<JwtTokenService>());
 
-        // ID Proofing Requirements (state-specific PII visibility)
-        services.AddSingleton<IIdProofingRequirementsService, IdProofingRequirementsService>();
+        // OIDC verification claim translation (maps IdP claims like socureIdVerificationLevel to portal IAL)
+        services.AddTransient<OidcVerificationClaimTranslator>(sp =>
+            new OidcVerificationClaimTranslator(
+                sp.GetRequiredService<IOptions<OidcVerificationClaimSettings>>().Value,
+                sp.GetRequiredService<IOptions<IdProofingValiditySettings>>().Value,
+                sp.GetRequiredService<ILoggerFactory>().CreateLogger<OidcVerificationClaimTranslator>()));
+
+        // Unified identity proofing service (PII visibility + authorization gates)
+        services.AddSingleton<IdProofingService>();
+        services.AddSingleton<IIdProofingService>(sp => sp.GetRequiredService<IdProofingService>());
+        services.AddSingleton<IPiiVisibilityService>(sp => sp.GetRequiredService<IdProofingService>());
 
         // Enrollment Check logging
         services.AddScoped<IEnrollmentCheckSubmissionLogger, EnrollmentCheckSubmissionLogger>();
@@ -38,12 +55,43 @@ public static class Dependencies
         // Household identifier resolution (state-configurable preferred household ID type)
         services.AddTransient<IHouseholdIdentifierResolver, HouseholdIdentifierResolver>();
 
-        // Address validation — stub for now, swap with Smarty integration in DC-160
-        services.AddTransient<IAddressValidationService, AlwaysValidAddressValidator>();
+        // Smarty address verification (or pass-through when disabled).
+        // IHttpClientFactory is a singleton, so its configure delegate receives the
+        // root provider — use IOptionsMonitor (singleton) instead of IOptionsSnapshot
+        // (scoped). Monitor still supports live AppConfig reload.
+        services.AddHttpClient("Smarty", (sp, client) =>
+        {
+            // IOptionsMonitor (singleton) instead of IOptionsSnapshot (scoped) — the
+            // AddHttpClient delegate receives the root IServiceProvider, so scoped
+            // services cannot be resolved here.
+            var smarty = sp.GetRequiredService<IOptionsMonitor<SmartySettings>>().CurrentValue;
+            var baseUrl = string.IsNullOrWhiteSpace(smarty.BaseUrl)
+                ? "https://us-street.api.smartystreets.com"
+                : smarty.BaseUrl.TrimEnd('/');
+            client.BaseAddress = new Uri(baseUrl + "/");
+            client.Timeout = TimeSpan.FromSeconds(Math.Clamp(smarty.TimeoutSeconds, 1, 120));
+        });
+
+        services.AddTransient<SmartyAddressUpdateService>();
+        services.AddTransient<PassThroughAddressUpdateService>();
+        services.AddTransient<IAddressUpdateService>(sp =>
+        {
+            var smarty = sp.GetRequiredService<IOptionsSnapshot<SmartySettings>>().Value;
+            return smarty.Enabled
+                ? sp.GetRequiredService<SmartyAddressUpdateService>()
+                : sp.GetRequiredService<PassThroughAddressUpdateService>();
+        });
+
+        // Address validation — checks blocked addresses and street abbreviations per state config
+        services.AddSingleton<IAddressValidationService, AddressValidationService>();
+
+        // Self-service rules evaluator — evaluates per-state config against household data
+        services.AddTransient<ISelfServiceEvaluator, SelfServiceEvaluator>();
         services.AddSingleton<IIdentifierHasher, IdentifierHasher>();
 
-        // Expose SocureSettings directly for use case injection (avoids IOptions dependency in UseCases layer)
-        services.AddSingleton(sp => sp.GetRequiredService<IOptions<SocureSettings>>().Value);
+        // Expose SocureSettings directly for use case injection (avoids IOptions dependency in UseCases layer).
+        // Scoped so each request gets a consistent snapshot, supporting live AppConfig reload.
+        services.AddScoped(sp => sp.GetRequiredService<IOptionsSnapshot<SocureSettings>>().Value);
 
         // Socure client — disabled, stub, or real based on configuration
         var socureEnabled = configuration.GetValue<bool>("Socure:Enabled");
@@ -53,7 +101,7 @@ public static class Dependencies
             services.AddTransient<HttpSocureClient>();
             services.AddTransient<ISocureClient>(sp =>
             {
-                var settings = sp.GetRequiredService<IOptions<SocureSettings>>().Value;
+                var settings = sp.GetRequiredService<IOptionsSnapshot<SocureSettings>>().Value;
                 if (settings.UseStub)
                     return sp.GetRequiredService<StubSocureClient>();
 
@@ -75,6 +123,7 @@ public static class Dependencies
         services.AddTransient<IOtpRepository, InMemoryOtpRepository>();
         services.AddTransient<IUserRepository, DatabaseUserRepository>();
         services.AddTransient<IDocVerificationChallengeRepository, DatabaseDocVerificationChallengeRepository>();
+        services.AddScoped<ICardReplacementRequestRepository, CardReplacementRequestRepository>();
 
         // For deterministic time in seeding/mock data
         services.AddSingleton(TimeProvider.System);
@@ -102,7 +151,62 @@ public static class Dependencies
         services.AddSingleton<MockHouseholdRepository>();
         services.AddTransient<HouseholdRepository>();
 
+        return services;
+    }
+
+    /// <summary>
+    /// Registers caching services. When a Redis connection string is configured,
+    /// uses Redis as the distributed cache (L2) backing HybridCache.
+    /// Otherwise, falls back to in-memory caching only.
+    /// Call this before AddPlugins — plugins may depend on HybridCache.
+    /// </summary>
+    public static IServiceCollection AddCaching(this IServiceCollection services, IConfiguration? configuration)
+    {
+        var redisConnectionString = configuration?.GetConnectionString("Redis");
+
+        if (!string.IsNullOrEmpty(redisConnectionString))
+        {
+            services.AddStackExchangeRedisCache(options =>
+            {
+                options.Configuration = redisConnectionString;
+            });
+        }
+
+        // HybridCache provides an L1 in-memory cache with optional L2 distributed backing.
+        // When Redis is registered above, HybridCache automatically uses it as L2.
+        // When Redis is not configured, HybridCache operates as in-memory only.
+        services.AddHybridCache();
         services.AddMemoryCache();
+
+        return services;
+    }
+
+    /// <summary>
+    /// Registers a distributed lock provider. Uses Redis when a Redis connection
+    /// string is configured; otherwise falls back to SQL Server application locks.
+    /// </summary>
+    public static IServiceCollection AddDistributedLocking(
+        this IServiceCollection services,
+        IConfiguration configuration)
+    {
+        var redisConnectionString = configuration.GetConnectionString("Redis");
+
+        if (!string.IsNullOrEmpty(redisConnectionString))
+        {
+            services.AddSingleton<IDistributedLockProvider>(_ =>
+            {
+                var connection = ConnectionMultiplexer.Connect(redisConnectionString);
+                return new RedisDistributedSynchronizationProvider(connection.GetDatabase());
+            });
+        }
+        else
+        {
+            var sqlConnectionString = configuration.GetConnectionString("DefaultConnection")
+                ?? throw new InvalidOperationException(
+                    "Connection string 'DefaultConnection' is required for distributed locking.");
+            services.AddSingleton<IDistributedLockProvider>(
+                new SqlDistributedSynchronizationProvider(sqlConnectionString));
+        }
 
         return services;
     }
@@ -138,20 +242,36 @@ public static class Dependencies
     {
 
         services.AddOptionsWithValidateOnStart<EmailOtpSenderServiceSettings>()
-            .BindConfiguration(EmailOtpSenderServiceSettings.SectionName);
+            .BindConfiguration(EmailOtpSenderServiceSettings.SectionName)
+            .ValidateDataAnnotations();
         services.AddOptionsWithValidateOnStart<SmtpClientSettings>()
             .BindConfiguration(SmtpClientSettings.SectionName);
         services.AddOptionsWithValidateOnStart<OtpRateLimitSettings>()
-            .BindConfiguration(OtpRateLimitSettings.SectionName);
+            .BindConfiguration(OtpRateLimitSettings.SectionName)
+            .ValidateDataAnnotations();
         services.AddOptionsWithValidateOnStart<JwtSettings>()
-            .BindConfiguration(JwtSettings.SectionName);
+            .BindConfiguration(JwtSettings.SectionName)
+            .ValidateDataAnnotations();
         services.AddOptions<StateHouseholdIdSettings>()
             .BindConfiguration(StateHouseholdIdSettings.SectionName);
         services.AddOptionsWithValidateOnStart<IdentifierHasherSettings>()
-            .BindConfiguration(IdentifierHasherSettings.SectionName);
-        services.AddSingleton<IValidateOptions<IdProofingRequirementsSettings>, IdProofingRequirementsSettingsValidator>();
-        services.AddOptionsWithValidateOnStart<IdProofingRequirementsSettings>()
-            .BindConfiguration(IdProofingRequirementsSettings.SectionName);
+            .BindConfiguration(IdentifierHasherSettings.SectionName)
+            .ValidateDataAnnotations();
+        services.ConfigureOptions<ConfigureIdProofingRequirements>();
+        services.AddSingleton<IOptionsChangeTokenSource<IdProofingRequirementsSettings>>(
+            new ConfigurationChangeTokenSource<IdProofingRequirementsSettings>(
+                configuration.GetSection(IdProofingRequirementsSettings.SectionName)));
+        services.AddSingleton<IValidateOptions<IdProofingRequirementsSettings>, IdProofingRequirementsCoherenceValidator>();
+        services.AddOptionsWithValidateOnStart<IdProofingRequirementsSettings>();
+
+        services.AddSingleton<IValidateOptions<OidcStepUpSettings>, OidcStepUpSettingsValidator>();
+        services.AddOptionsWithValidateOnStart<OidcStepUpSettings>()
+            .BindConfiguration(OidcStepUpSettings.SectionName);
+
+        services.AddOptions<IdProofingValiditySettings>()
+            .BindConfiguration(IdProofingValiditySettings.SectionName);
+        services.AddOptions<OidcVerificationClaimSettings>()
+            .BindConfiguration(OidcVerificationClaimSettings.SectionName);
 
         services.AddOptions<FeatureManagementSettings>()
             .Bind(configuration.GetSection(FeatureManagementSettings.SectionName))
@@ -162,14 +282,33 @@ public static class Dependencies
             });
 
         services.AddOptionsWithValidateOnStart<EnrollmentCheckRateLimitSettings>()
-            .BindConfiguration(EnrollmentCheckRateLimitSettings.SectionName);
+            .BindConfiguration(EnrollmentCheckRateLimitSettings.SectionName)
+            .ValidateDataAnnotations();
+
+        services.AddOptionsWithValidateOnStart<WebhookRateLimitSettings>()
+            .BindConfiguration(WebhookRateLimitSettings.SectionName)
+            .ValidateDataAnnotations();
 
         services.AddOptions<SeedingSettings>()
             .BindConfiguration(SeedingSettings.SectionName);
 
         services.AddSingleton<IValidateOptions<SocureSettings>, SocureSettingsValidator>();
         services.AddOptionsWithValidateOnStart<SocureSettings>()
-            .BindConfiguration(SocureSettings.SectionName);
+            .BindConfiguration(SocureSettings.SectionName)
+            .ValidateDataAnnotations();
+
+        services.AddSingleton<IValidateOptions<SelfServiceRulesSettings>, SelfServiceRulesSettingsValidator>();
+        services.AddOptionsWithValidateOnStart<SelfServiceRulesSettings>()
+            .BindConfiguration(SelfServiceRulesSettings.SectionName);
+
+        services.AddSingleton<IValidateOptions<SmartySettings>, SmartySettingsValidator>();
+        services.AddOptionsWithValidateOnStart<SmartySettings>()
+            .BindConfiguration(SmartySettings.SectionName)
+            .ValidateDataAnnotations();
+        services.AddOptions<AddressValidationPolicySettings>()
+            .BindConfiguration(AddressValidationPolicySettings.SectionName);
+        services.AddOptions<AddressValidationDataSettings>()
+            .BindConfiguration(AddressValidationDataSettings.SectionName);
 
         return services;
     }

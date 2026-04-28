@@ -3,17 +3,17 @@ using System.Threading.RateLimiting;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Microsoft.AspNetCore.HttpOverrides;
-using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
 using SEBT.Portal.Api;
 using SEBT.Portal.Api.Composition;
 using SEBT.Portal.Api.Filters;
-using SEBT.Portal.Api.Models;
 using Serilog;
+using Serilog.Templates;
 using Microsoft.FeatureManagement;
 using SEBT.Portal.Api.Middleware;
 using SEBT.Portal.Api.Options;
+using SEBT.Portal.Api.Services;
 using SEBT.Portal.Core.AppSettings;
 using SEBT.Portal.Core.Services;
 using SEBT.Portal.Infrastructure.Configuration;
@@ -22,11 +22,38 @@ using SEBT.Portal.Infrastructure.Seeding.Services;
 using SEBT.Portal.UseCases;
 using SEBT.Portal.Infrastructure;
 using SEBT.Portal.Api.Startup;
-using SEBT.Portal.Core.Models.Auth;
-using SEBT.Portal.Core.Repositories;
-using SEBT.Portal.Core.Utilities;
 
 var builder = WebApplication.CreateBuilder(args);
+
+// Configure Serilog early so that configuration providers can log.
+// Console sink is configured in code (not appsettings) so we can use
+// human-readable text locally and structured JSON in deployed environments.
+// The JSON format uses field names that Datadog auto-recognizes (level,
+// message, timestamp) so log severity maps correctly without custom pipelines.
+// Set LOG_FORMAT=json in ECS task definitions to enable structured output.
+var useJsonLogs = string.Equals(
+    Environment.GetEnvironmentVariable("LOG_FORMAT"), "json", StringComparison.OrdinalIgnoreCase);
+
+var logConfig = new LoggerConfiguration()
+    .ReadFrom.Configuration(builder.Configuration)
+    .Enrich.FromLogContext()
+    .Enrich.WithOtelTracingSpanId();
+
+if (useJsonLogs)
+{
+    logConfig.WriteTo.Console(new ExpressionTemplate(
+        "{ {timestamp: @t, level: @l, message: @m, exception: @x, ..@p} }\n"));
+}
+else
+{
+    logConfig.WriteTo.Console(
+        outputTemplate: "[{Timestamp:HH:mm:ss} {Level:u3}] {Message:lj} {Properties:j}{NewLine}{Exception}");
+}
+
+Log.Logger = logConfig.CreateLogger();
+
+builder.Host.UseSerilog();
+builder.SetupOpenTelemetry();
 
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddHttpClient();
@@ -40,6 +67,7 @@ builder.Services.AddHttpClient();
 var state = Environment.GetEnvironmentVariable("STATE");
 if (!string.IsNullOrEmpty(state))
 {
+    Log.Logger.Information("Loading state-specific config: {State}", state);
     var stateConfigFile = $"appsettings.{state.ToLowerInvariant()}.json";
     builder.Configuration.AddJsonFile(stateConfigFile, optional: true, reloadOnChange: true);
 }
@@ -55,12 +83,15 @@ if (!string.IsNullOrEmpty(applicationId) && !string.IsNullOrEmpty(environmentId)
     var baseUrl = agentSection["BaseUrl"] ?? "http://localhost:2772";
     var reloadAfterSeconds = agentSection.GetValue<int?>("ReloadAfterSeconds") ?? 90;
 
+    using var loggerFactory = LoggerFactory.Create(lb => lb.AddSerilog());
+    var appConfigLogger = loggerFactory.CreateLogger<AppConfigAgentConfigurationProvider>();
+
     var featureFlagsProfileId = builder.Configuration["AppConfig:FeatureFlags:ProfileId"];
     if (!string.IsNullOrEmpty(featureFlagsProfileId))
     {
         builder.Configuration.AddAppConfigAgent(
             baseUrl, applicationId, environmentId, featureFlagsProfileId,
-            reloadAfterSeconds, isFeatureFlag: true);
+            reloadAfterSeconds, isFeatureFlag: true, logger: appConfigLogger);
     }
 
     var appSettingsProfileId = builder.Configuration["AppConfig:AppSettings:ProfileId"];
@@ -68,7 +99,7 @@ if (!string.IsNullOrEmpty(applicationId) && !string.IsNullOrEmpty(environmentId)
     {
         builder.Configuration.AddAppConfigAgent(
             baseUrl, applicationId, environmentId, appSettingsProfileId,
-            reloadAfterSeconds, isFeatureFlag: false);
+            reloadAfterSeconds, isFeatureFlag: false, logger: appConfigLogger);
     }
 }
 
@@ -85,17 +116,12 @@ if (!string.IsNullOrEmpty(dbHost) && !string.IsNullOrEmpty(dbPassword))
         $"Server={dbHost},{dbPort};Database={dbName};User Id={dbUser};Password={dbPassword};Encrypt=True;TrustServerCertificate=True;";
 }
 
-// Configure Serilog
-Log.Logger = new LoggerConfiguration()
-    .ReadFrom.Configuration(builder.Configuration)
-    .Enrich.FromLogContext()
-    .CreateLogger();
-
-// Use Serilog instead of default logger
-builder.Host.UseSerilog();
+// Caching must be registered before plugins — plugins may depend on HybridCache
+builder.Services.AddCaching(builder.Configuration);
+builder.Services.AddDistributedLocking(builder.Configuration);
 
 // Registers plugins and allows them to be constructor injected into ASP.NET controllers
-builder.Services.AddPlugins(builder.Configuration);
+builder.Services.AddPlugins(builder.Configuration, builder.Environment.ContentRootPath);
 
 // Add services to the container.
 builder.Services.AddControllers();
@@ -124,6 +150,11 @@ builder.Services.AddPortalInfrastructureAppSettings(builder.Configuration);
 // Action filters
 builder.Services.AddScoped<ResolveUserFilter>();
 
+// OIDC token exchange (replaces the Next.js /api/auth/oidc/callback route)
+builder.Services.AddScoped<IOidcExchangeService, OidcExchangeService>();
+// pre-auth session store (HybridCache-backed, 15 min TTL)
+builder.Services.AddSingleton<IPreAuthSessionStore, PreAuthSessionStore>();
+
 // Register IDatabaseSeeder for development utilities (e.g., ClearSeededData script)
 builder.Services.AddScoped<IDatabaseSeeder>(sp =>
 {
@@ -133,6 +164,21 @@ builder.Services.AddScoped<IDatabaseSeeder>(sp =>
     var seedingSettings = sp.GetService<IOptions<SeedingSettings>>()?.Value ?? new SeedingSettings();
     return new DatabaseSeeder(dataSeeder, seedingSettings, logger, timeProvider);
 });
+
+// State allowlist for OIDC login endpoints. An instance is considered a
+// configured OIDC tenant if its loaded config overlay has Oidc:DiscoveryEndpoint
+// set. The current STATE env var is the only allowed state when that's true;
+// everything else (no STATE, no Oidc block) produces an empty allowlist and all
+// OIDC routes reject all stateCode inputs. This prevents the route parameter
+// from being used as a tenant escape.
+var allowedOidcStates = new List<string>();
+if (!string.IsNullOrWhiteSpace(builder.Configuration["Oidc:DiscoveryEndpoint"]))
+{
+    var currentState = Environment.GetEnvironmentVariable("STATE");
+    if (!string.IsNullOrWhiteSpace(currentState))
+        allowedOidcStates.Add(currentState);
+}
+builder.Services.AddSingleton<IStateAllowlist>(new StateAllowlist(allowedOidcStates));
 
 // Configure JWT Authentication
 builder.Services.AddAuthentication(options =>
@@ -162,9 +208,43 @@ builder.Services.AddOptions<JwtBearerOptions>(JwtBearerDefaults.AuthenticationSc
         };
         // Preserve JWT claim names (sub, email) so we can read them regardless of handler mapping.
         options.MapInboundClaims = false;
+
+        // DC-242: portal session JWT lives in an HttpOnly cookie. Fall back to the cookie
+        // when no Authorization header is present so the SPA never handles the raw token.
+        // The Authorization header path is preserved for service-to-service callers.
+        options.Events = new JwtBearerEvents
+        {
+            OnMessageReceived = context =>
+            {
+                if (string.IsNullOrEmpty(context.Token))
+                {
+                    var cookieToken = context.Request.Cookies[AuthCookies.AuthCookieName];
+                    if (!string.IsNullOrEmpty(cookieToken))
+                    {
+                        context.Token = cookieToken;
+                    }
+                }
+                return Task.CompletedTask;
+            }
+        };
     });
 
 builder.Services.AddAuthorization();
+
+// Development-only phone override: when set, overrides JWT phone for household lookup
+builder.Services.AddOptions<DevelopmentPhoneOverrideOptions>()
+    .BindConfiguration(DevelopmentPhoneOverrideOptions.SectionName);
+builder.Services.AddSingleton<IPhoneOverrideProvider>(sp =>
+{
+    var env = sp.GetRequiredService<IWebHostEnvironment>();
+    var options = sp.GetRequiredService<IOptions<DevelopmentPhoneOverrideOptions>>().Value;
+    if (env.IsDevelopment() && !string.IsNullOrWhiteSpace(options.Phone))
+    {
+        return sp.GetRequiredService<DevelopmentPhoneOverrideProvider>();
+    }
+    return NullPhoneOverrideProvider.Instance;
+});
+builder.Services.AddSingleton<DevelopmentPhoneOverrideProvider>();
 
 builder.Services.AddRateLimiter(options =>
 {
@@ -194,6 +274,13 @@ builder.Services.AddRateLimiter(options =>
                 : $"{enrollmentSettings.WindowMinutes} minutes";
             await context.HttpContext.Response.WriteAsJsonAsync(
                 new { Error = $"Rate limit exceeded. Maximum {enrollmentSettings.PermitLimit} enrollment checks per {windowDescription} allowed." },
+                cancellationToken);
+        }
+        else if (rateLimitAttribute?.PolicyName == RateLimitPolicies.Webhook)
+        {
+            // Webhook callers (Socure) don't need a friendly message, but log for observability
+            await context.HttpContext.Response.WriteAsJsonAsync(
+                new { Error = "Rate limit exceeded." },
                 cancellationToken);
         }
         else
@@ -253,6 +340,27 @@ builder.Services.AddRateLimiter(options =>
                 AutoReplenishment = true
             });
     });
+
+    // Add fixed window limiter policy for Socure webhook endpoint with IP-based partitioning
+    // TODO: Confirm appropriate thresholds with Socure and the team
+    options.AddPolicy(RateLimitPolicies.Webhook, httpContext =>
+    {
+        var webhookRateLimitOptions = httpContext.RequestServices
+            .GetRequiredService<IOptionsMonitor<WebhookRateLimitSettings>>()
+            .CurrentValue;
+
+        var ipAddress = httpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown";
+        return RateLimitPartition.GetFixedWindowLimiter(
+            partitionKey: $"webhook:{ipAddress}",
+            factory: _ => new FixedWindowRateLimiterOptions
+            {
+                PermitLimit = webhookRateLimitOptions.PermitLimit,
+                Window = TimeSpan.FromMinutes(webhookRateLimitOptions.WindowMinutes),
+                QueueProcessingOrder = QueueProcessingOrder.OldestFirst,
+                QueueLimit = 0,
+                AutoReplenishment = true
+            });
+    });
 });
 
 static FixedWindowRateLimiterOptions CreateOtpRateLimitOptions(OtpRateLimitSettings settings) => new()
@@ -272,6 +380,15 @@ if (app.Environment.IsProduction())
     IdentifierHasherGuard.ValidateForProduction(app.Configuration["IdentifierHasher:SecretKey"]);
 }
 
+// HMAC-SHA256 requires ≥256-bit (32-byte) key. Fail fast if configured but too short.
+var oidcSigningKey = app.Configuration["Oidc:CompleteLoginSigningKey"];
+if (!string.IsNullOrEmpty(oidcSigningKey) && oidcSigningKey.Length < 32)
+{
+    throw new InvalidOperationException(
+        $"Oidc:CompleteLoginSigningKey must be at least 32 characters (got {oidcSigningKey.Length}). " +
+        "HMAC-SHA256 requires a 256-bit key for full security.");
+}
+
 // Apply database migrations (non-blocking: app will start even if DB is unavailable)
 try
 {
@@ -284,6 +401,14 @@ try
     {
         var useMockHouseholdData = app.Configuration.GetValue<bool>("UseMockHouseholdData", false);
         var databaseSeeder = scope.ServiceProvider.GetRequiredService<IDatabaseSeeder>();
+
+        // In Development, clear stale seed data before re-seeding so that scenario
+        // definition changes (e.g. IAL levels) are always reflected in the database.
+        if (app.Environment.IsDevelopment())
+        {
+            await databaseSeeder.ClearSeededDataAsync(CancellationToken.None);
+        }
+
         await databaseSeeder.SeedTestUsersAsync(useMockHouseholdData, CancellationToken.None);
     }
     Log.Information("Database migrations completed successfully");
@@ -313,13 +438,13 @@ else
 // from the Next.js server's single private IP, collapsing all clients into
 // one rate-limit bucket.
 //
-// Current configuration uses open trust (cleared KnownProxies/KnownNetworks)
+// Current configuration uses open trust (cleared KnownProxies/KnownIPNetworks)
 // which is acceptable because the API is not directly reachable from the
 // public internet. ForwardLimit = 1 ensures only the last proxy hop is read,
 // preventing clients from prepending fake entries.
 //
 // TODO: For defense-in-depth, consider restricting trust to the VPC CIDR:
-//   options.KnownNetworks.Add(new IPNetwork(IPAddress.Parse("10.0.0.0"), 8));
+//   options.KnownIPNetworks.Add(IPNetwork.Parse("10.0.0.0/8"));
 // This would reject forwarded headers from any source outside the private
 // network, guarding against future topology changes that might expose the API.
 var forwardedHeadersOptions = new ForwardedHeadersOptions
@@ -331,10 +456,14 @@ var forwardedHeadersOptions = new ForwardedHeadersOptions
 // the API is on a private network with no public ingress. Clear the defaults
 // (loopback) so the middleware processes headers from all sources.
 forwardedHeadersOptions.KnownProxies.Clear();
-forwardedHeadersOptions.KnownNetworks.Clear();
+forwardedHeadersOptions.KnownIPNetworks.Clear();
 app.UseForwardedHeaders(forwardedHeadersOptions);
 
 app.UseRouting();
+
+// reject OIDC POST requests with missing or disallowed Origin header.
+// Runs before authentication so replay attempts from rogue origins fail early.
+app.UseMiddleware<OidcOriginValidationMiddleware>();
 
 app.UseMiddleware<OtpRateLimitMiddleware>();
 
@@ -351,6 +480,15 @@ app.MapHealthChecks("/health", new HealthCheckOptions
 
 try
 {
+    var resolvedHouseholdIdTypes = app.Configuration
+        .GetSection("StateHouseholdId:PreferredHouseholdIdTypes")
+        .GetChildren()
+        .Select(c => c.Value)
+        .ToList();
+    Log.Information(
+        "Resolved StateHouseholdId:PreferredHouseholdIdTypes: [{Types}]",
+        string.Join(", ", resolvedHouseholdIdTypes));
+
     Log.Information("SEBT Portal API started successfully");
     app.Run();
 }

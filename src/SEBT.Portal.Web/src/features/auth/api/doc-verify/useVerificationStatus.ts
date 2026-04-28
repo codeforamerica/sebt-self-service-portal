@@ -20,8 +20,9 @@ async function fetchVerificationStatus(challengeId: string): Promise<Verificatio
 const BASE_INTERVAL_MS = 1000
 const MAX_INTERVAL_MS = 10000
 
-// Stop automatic polling after this many fetches (~5 min at max interval)
-const MAX_POLL_COUNT = 30
+// Stop automatic polling after this many fetches (~30 min at max interval).
+// Must cover the full challenge expiration window (ChallengeExpirationMinutes, default 30).
+const MAX_POLL_COUNT = 180
 
 export function useVerificationStatus(challengeId: string | undefined) {
   return useQuery({

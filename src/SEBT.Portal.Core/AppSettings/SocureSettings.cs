@@ -48,6 +48,14 @@ public class SocureSettings
     public int ChallengeExpirationMinutes { get; set; } = 30;
 
     /// <summary>
+    /// How long a Socure DocV transaction token is treated as valid after issuance, in minutes.
+    /// When exceeded, <c>StartChallenge</c> runs a new evaluation to obtain a fresh token for the same user.
+    /// </summary>
+    [Range(1, 120, ErrorMessage = "DocvTransactionTokenTtlMinutes must be between 1 and 120.")]
+    [DefaultValue(20)]
+    public int DocvTransactionTokenTtlMinutes { get; set; } = 20;
+
+    /// <summary>
     /// Socure API version header value.
     /// </summary>
     public string ApiVersion { get; set; } = "2025-01-01.orion";
@@ -59,9 +67,31 @@ public class SocureSettings
     public string Workflow { get; set; } = "consumer_onboarding";
 
     /// <summary>
+    /// Socure workflow name for DocV step-up retries (DC-301). Used when a user clicks
+    /// "try again" from a Resubmit prompt. The step-up workflow only emits ACCEPT/REJECT,
+    /// so retries are structurally capped at one attempt.
+    /// </summary>
+    public string DocvStepupWorkflow { get; set; } = "docv_stepup";
+
+    /// <summary>
     /// Identifier used to locate the DocV enrichment in the evaluation response.
     /// Matched against the <c>enrichment_provider</c> field — not <c>enrichment_name</c>,
     /// which varies by workflow (e.g. "Socure Document Request - Default Flow" in sandbox).
     /// </summary>
     public string DocvEnrichmentName { get; set; } = "SocureDocRequest";
+
+    /// <summary>
+    /// Device Intelligence session token to include in evaluation requests.
+    /// In sandbox, any value works (e.g., "ABC"). In production, this should come
+    /// from the Socure DI SDK on the frontend (not yet integrated).
+    /// </summary>
+    public string? DiSessionToken { get; set; }
+
+    /// <summary>
+    /// When set, overrides the user's phone number in Socure evaluation requests.
+    /// Use this in sandbox to receive DocV SMS links on a real phone without
+    /// storing personal phone numbers in the database.
+    /// Leave null in production.
+    /// </summary>
+    public string? SandboxPhoneOverride { get; set; }
 }

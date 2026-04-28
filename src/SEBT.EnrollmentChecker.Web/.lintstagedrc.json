@@ -1,0 +1,8 @@
+{
+  "*.{ts,tsx}": ["eslint --fix", "prettier --write", "bash -c 'tsc --noEmit'"],
+  "*.{css,scss}": ["prettier --write"],
+  "*.{json,md}": ["prettier --write"],
+  "../../packages/design-system/design/sass/**/*.scss": [
+    "node ../../packages/design-system/design/scripts/generate-tokens.js"
+  ]
+}

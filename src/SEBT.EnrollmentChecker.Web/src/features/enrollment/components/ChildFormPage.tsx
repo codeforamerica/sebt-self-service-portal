@@ -1,7 +1,9 @@
 'use client'
 
+import { AnalyticsEvents, useDataLayer } from '@sebt/analytics'
 import Image from 'next/image'
 import { useRouter } from 'next/navigation'
+import { useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useEnrollment } from '../context/EnrollmentContext'
 import type { ChildFormValues } from '../schemas/childSchema'
@@ -16,6 +18,11 @@ export function ChildFormPage({ showSchoolField, apiBaseUrl }: ChildFormPageProp
   const { t } = useTranslation('personalInfo')
   const router = useRouter()
   const { state, addChild, updateChild, setEditingChildId } = useEnrollment()
+  const { trackEvent } = useDataLayer()
+
+  useEffect(() => {
+    trackEvent(AnalyticsEvents.ENROLLMENT_CHECK_START)
+  }, [trackEvent])
 
   const editingChild = state.editingChildId
     ? state.children.find(c => c.id === state.editingChildId)
@@ -42,25 +49,19 @@ export function ChildFormPage({ showSchoolField, apiBaseUrl }: ChildFormPageProp
   return (
     <div className="usa-section">
       <div className="grid-container">
-        <button
-          type="button"
-          className="usa-button usa-button--unstyled margin-bottom-2"
-          onClick={handleCancel}
-        >
-          {t('back', { ns: 'common' })}
-        </button>
         <Image
-          src="/img/icon-form-card.svg"
+          src="/images/states/co/icon-form-card.svg"
           alt=""
           width={100}
           height={75}
           aria-hidden="true"
         />
-        <h1 className="font-family-sans margin-top-1">{isEditMode ? t('editHeading') : t('title')}</h1>
+        {/* added temp fallback */}
+        <h1 className="font-family-sans margin-top-1">{isEditMode ? t('editHeading', t('title')) : t('title')}</h1>
         <p className="usa-prose">{t('body')}</p>
         <p className="usa-hint">{t('requiredFields', { ns: 'common' })}</p>
         <ChildForm
-          initialValues={editingChild}
+          {...(editingChild && { initialValues: editingChild })}
           onSubmit={handleSubmit}
           onCancel={handleCancel}
           showSchoolField={showSchoolField}

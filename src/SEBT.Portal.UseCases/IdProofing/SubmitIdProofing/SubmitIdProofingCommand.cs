@@ -11,9 +11,9 @@ public class SubmitIdProofingCommand : ICommand<SubmitIdProofingResponse>
 {
     /// <summary>
     /// The authenticated user's internal ID.
+    /// Guaranteed non-empty by ResolveUserFilter before the command is built.
     /// </summary>
-    [Range(1, int.MaxValue, ErrorMessage = "UserId must be a positive integer.")]
-    public int UserId { get; init; }
+    public Guid UserId { get; init; }
 
     /// <summary>
     /// User's date of birth in yyyy-MM-dd format.
@@ -31,4 +31,15 @@ public class SubmitIdProofingCommand : ICommand<SubmitIdProofingResponse>
     /// The government ID value, or null if the user opted out.
     /// </summary>
     public string? IdValue { get; init; }
+
+    /// <summary>
+    /// The user's IP address from the HTTP request, for Socure risk assessment.
+    /// </summary>
+    public string? IpAddress { get; init; }
+
+    /// <summary>
+    /// Device Intelligence session token from the Socure DI SDK running in the user's browser.
+    /// When present, overrides the config-level placeholder for real device fingerprinting.
+    /// </summary>
+    public string? DiSessionToken { get; init; }
 }

@@ -37,14 +37,16 @@ public class IdProofingController : ControllerBase
         [FromServices] ICommandHandler<SubmitIdProofingCommand, SubmitIdProofingResponse> handler,
         CancellationToken cancellationToken)
     {
-        var userId = (int)HttpContext.Items[ResolveUserFilter.UserIdKey]!;
+        var userId = (Guid)HttpContext.Items[ResolveUserFilter.UserIdKey]!;
 
         var command = new SubmitIdProofingCommand
         {
             UserId = userId,
             DateOfBirth = $"{request.DateOfBirth.Year}-{request.DateOfBirth.Month.PadLeft(2, '0')}-{request.DateOfBirth.Day.PadLeft(2, '0')}",
             IdType = request.IdType,
-            IdValue = request.IdValue
+            IdValue = request.IdValue,
+            IpAddress = HttpContext.Connection.RemoteIpAddress?.ToString(),
+            DiSessionToken = request.DiSessionToken
         };
 
         var result = await handler.Handle(command, cancellationToken);
@@ -70,7 +72,7 @@ public class IdProofingController : ControllerBase
         [FromServices] IQueryHandler<GetVerificationStatusQuery, VerificationStatusResponse> handler,
         CancellationToken cancellationToken)
     {
-        var userId = (int)HttpContext.Items[ResolveUserFilter.UserIdKey]!;
+        var userId = (Guid)HttpContext.Items[ResolveUserFilter.UserIdKey]!;
 
         var query = new GetVerificationStatusQuery
         {

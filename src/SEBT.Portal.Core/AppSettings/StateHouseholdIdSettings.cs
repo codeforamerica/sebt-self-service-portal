@@ -14,5 +14,5 @@ public class StateHouseholdIdSettings
     /// Ordered list of household ID types for authorization/linking.
     /// The first type that can be resolved from the user is used for lookup.
     /// </summary>
-    public List<PreferredHouseholdIdType> PreferredHouseholdIdTypes { get; set; } = [PreferredHouseholdIdType.Email];
+    public HashSet<PreferredHouseholdIdType> PreferredHouseholdIdTypes { get; set; } = [];
 }

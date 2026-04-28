@@ -3,6 +3,7 @@ using System.Text;
 using System.Text.Json;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
+using NSubstitute;
 using SEBT.Portal.Core.AppSettings;
 using SEBT.Portal.Core.Services;
 using SEBT.Portal.Infrastructure.Services;
@@ -38,7 +39,10 @@ public class HttpSocureClientSmokeTests(ITestOutputHelper output)
         var factory = new SingleClientFactory(httpClient);
         var logger = new TestOutputLogger<HttpSocureClient>(output);
 
-        return new HttpSocureClient(factory, Options.Create(settings), logger);
+        var snapshot = Substitute.For<IOptionsSnapshot<SocureSettings>>();
+        snapshot.Value.Returns(settings);
+
+        return new HttpSocureClient(factory, snapshot, logger);
     }
 
     [Fact]
@@ -53,7 +57,7 @@ public class HttpSocureClientSmokeTests(ITestOutputHelper output)
         var client = CreateRealClient();
 
         var result = await client.RunIdProofingAssessmentAsync(
-            userId: 99999,
+            userId: Guid.NewGuid(),
             email: "smoketest@example.com",
             dateOfBirth: "1990-01-15",
             idType: "ssn",
@@ -106,7 +110,7 @@ public class HttpSocureClientSmokeTests(ITestOutputHelper output)
 
         // No SSN — tests the null national_id path
         var result = await client.RunIdProofingAssessmentAsync(
-            userId: 99998,
+            userId: Guid.NewGuid(),
             email: "smoketest-noid@example.com",
             dateOfBirth: "1985-06-20",
             idType: null,

@@ -10,8 +10,8 @@ interface ChildReviewCardProps {
 
 /** Format ISO date (YYYY-MM-DD) as a locale-aware date string (e.g., "April 12, 2015"). */
 function formatBirthdate(dateOfBirth: string, locale: string): string {
-  const [year, month, day] = dateOfBirth.split('-').map(Number)
-  const date = new Date(year, month - 1, day)
+  const parts = dateOfBirth.split('-').map(Number)
+  const date = new Date(parts[0]!, parts[1]! - 1, parts[2]!)
   return date.toLocaleDateString(locale, { year: 'numeric', month: 'long', day: 'numeric' })
 }
 
@@ -33,7 +33,7 @@ export function ChildReviewCard({ child, onEdit }: ChildReviewCardProps) {
       <p className="usa-prose margin-top-0">{formatBirthdate(child.dateOfBirth, i18n.language)}</p>
       <button
         type="button"
-        className="usa-button usa-button--unstyled"
+        className="usa-link usa-button--unstyled"
         onClick={() => onEdit(child.id)}
       >
         {t('tableAction')}

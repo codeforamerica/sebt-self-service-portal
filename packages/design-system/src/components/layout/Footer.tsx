@@ -28,7 +28,7 @@ export function Footer({ state = 'dc' }: FooterProps) {
 
   return (
     <footer
-      className="usa-footer usa-footer--slim"
+      className={`usa-footer usa-footer--slim usa-footer--${state}`}
       role="contentinfo"
     >
       <div className="usa-footer__primary-section padding-top-4">
@@ -96,19 +96,19 @@ function COFooter({ state = 'co' }: FooterProps) {
 
   return (
     <footer
-      className="usa-footer usa-footer--slim"
+      className={`usa-footer usa-footer--slim usa-footer--${state}`}
       role="contentinfo"
     >
       <div className="usa-footer__primary-section padding-y-2">
         <div className="grid-container text-center">
-          <p className="margin-0 text-white font-sans-xs">
+          <p className="margin-0 text-ink font-sans-xs">
             {t('copyrite', '© 2026 State of Colorado')}
             {' | '}
             <Link
               href={links.footer.transparencyOnline ?? '#'}
               target="_blank"
               rel="noopener noreferrer"
-              className="usa-link text-white text-underline"
+              className="usa-link text-ink text-underline"
             >
               {t('transparencyOnline', 'Transparency Online')}
             </Link>
@@ -117,7 +117,7 @@ function COFooter({ state = 'co' }: FooterProps) {
               href={links.footer.generalNotices ?? '#'}
               target="_blank"
               rel="noopener noreferrer"
-              className="usa-link text-white text-underline"
+              className="usa-link text-ink text-underline"
             >
               {t('generalNotices', 'General Notices')}
             </Link>

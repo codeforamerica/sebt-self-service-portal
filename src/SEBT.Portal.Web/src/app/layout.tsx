@@ -1,4 +1,8 @@
+import { AmplitudeAnalytics } from '@/components/AmplitudeAnalytics'
+import { BetaBanner } from '@/components/BetaBanner'
+import { MixpanelAnalytics } from '@/components/MixpanelAnalytics'
 import { primaryFont } from '@/design/fonts'
+import { portalRoutes } from '@/lib/analytics-routes'
 import {
   AuthProvider,
   AxeProvider,
@@ -22,6 +26,8 @@ function getDefaultBaseUrl() {
   return process.env.NEXT_PUBLIC_BASE_URL ?? `https://sebt.${state}.gov`
 }
 const gaId = process.env.NEXT_PUBLIC_GA_ID
+const mixpanelToken = process.env.NEXT_PUBLIC_MIXPANEL_TOKEN
+const amplitudeApiKey = process.env.NEXT_PUBLIC_AMPLITUDE_API_KEY
 
 export const viewport: Viewport = {
   width: 'device-width',
@@ -99,7 +105,10 @@ export default async function RootLayout({
       className={`usa-js-loading ${primaryFont.variable}`}
     >
       <body>
-        <DataLayerProvider>
+        <DataLayerProvider
+          application="sebt-portal"
+          routes={portalRoutes}
+        >
           <QueryProvider>
             <AuthProvider>
               <FeatureFlagsProvider>
@@ -111,6 +120,7 @@ export default async function RootLayout({
                         If a second consumer appears, refactor to a SiteAlertContext so
                         child components call setSiteAlert() instead of using createPortal directly. */}
                     <div id="site-alerts" />
+                    <BetaBanner />
                     <Header state={state} />
                     <main id="main-content">{children}</main>
                     <HelpSection state={state} />
@@ -138,6 +148,15 @@ export default async function RootLayout({
           {...(nonce ? { nonce } : {})}
         />
       )}
+      {/* Mixpanel - only rendered when MIXPANEL_TOKEN is configured */}
+      {mixpanelToken && (
+        <MixpanelAnalytics
+          token={mixpanelToken}
+          {...(nonce ? { nonce } : {})}
+        />
+      )}
+      {/* Amplitude - only rendered when NEXT_PUBLIC_AMPLITUDE_API_KEY is configured */}
+      {amplitudeApiKey && <AmplitudeAnalytics apiKey={amplitudeApiKey} />}
     </html>
   )
 }

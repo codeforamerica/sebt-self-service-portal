@@ -55,11 +55,17 @@ export const ApplicationStatusSchema = z.preprocess(
 
 export type ApplicationStatus = z.infer<typeof ApplicationStatusSchema>
 
+const CARD_STATUS_STRING_MAP: Record<string, string> = Object.fromEntries(
+  Object.values(CARD_STATUS_MAP).map((v) => [v.toUpperCase(), v])
+)
+
 export const CardStatusSchema = z.preprocess(
   (val) =>
     typeof val === 'number'
       ? (CARD_STATUS_MAP[val as keyof typeof CARD_STATUS_MAP] ?? 'Unknown')
-      : val,
+      : typeof val === 'string'
+        ? (CARD_STATUS_STRING_MAP[val.toUpperCase()] ?? (val || 'Unknown'))
+        : val,
   z.enum([
     'Unknown',
     'Requested',
@@ -125,9 +131,9 @@ export function isReplacementEligible(cardStatus: CardStatus): boolean {
 }
 
 export const ChildSchema = z.object({
-  caseNumber: z.number().nullable().optional(),
   firstName: z.string(),
-  lastName: z.string()
+  lastName: z.string(),
+  status: ApplicationStatusSchema.nullable().optional()
 })
 
 export type Child = z.infer<typeof ChildSchema>
@@ -142,10 +148,45 @@ export const AddressSchema = z.object({
 
 export type Address = z.infer<typeof AddressSchema>
 
+export const SummerEbtCaseSchema = z.object({
+  summerEBTCaseID: z.string().nullable().optional(),
+  applicationId: z.string().nullable().optional(),
+  applicationStudentId: z.string().nullable().optional(),
+  childFirstName: z.string(),
+  childLastName: z.string(),
+  childDateOfBirth: z.string().nullable().optional(),
+  householdType: z.string(),
+  eligibilityType: z.string(),
+  applicationDate: z.string().nullable().optional(),
+  applicationStatus: ApplicationStatusSchema.nullable().optional(),
+  mailingAddress: AddressSchema.nullable().optional(),
+  ebtCaseNumber: z.string().nullable().optional(),
+  ebtCardLastFour: z.string().nullable().optional(),
+  ebtCardStatus: CardStatusSchema.nullable().optional(),
+  ebtCardIssueDate: z.string().nullable().optional(),
+  ebtCardBalance: z.number().nullable().optional(),
+  benefitAvailableDate: z.string().nullable().optional(),
+  benefitExpirationDate: z.string().nullable().optional(),
+  eligibilitySource: z.string().nullable().optional(),
+  issuanceType: IssuanceTypeSchema.nullable().optional(),
+  // Card lifecycle timestamps — not yet populated by any state connector backend.
+  // TODO: Add these fields to the state-connector SummerEbtCase interface model
+  // so connectors can provide card fulfillment timeline data for enrolled children.
+  cardRequestedAt: z.string().nullable().optional(),
+  cardMailedAt: z.string().nullable().optional(),
+  cardActivatedAt: z.string().nullable().optional(),
+  cardDeactivatedAt: z.string().nullable().optional(),
+  allowAddressChange: z.boolean().optional().default(true),
+  allowCardReplacement: z.boolean().optional().default(true)
+})
+
+export type SummerEbtCase = z.infer<typeof SummerEbtCaseSchema>
+
 export const ApplicationSchema = z.object({
   applicationNumber: z.string().nullable().optional(),
   caseNumber: z.string().nullable().optional(),
   applicationStatus: ApplicationStatusSchema,
+  applicationDate: z.string().nullable().optional(),
   benefitIssueDate: z.string().nullable().optional(),
   benefitExpirationDate: z.string().nullable().optional(),
   last4DigitsOfCard: z.string().nullable().optional(),
@@ -169,17 +210,42 @@ export const UserProfileSchema = z.object({
 
 export type UserProfile = z.infer<typeof UserProfileSchema>
 
+export const AllowedActionsSchema = z.object({
+  canUpdateAddress: z.boolean(),
+  canRequestReplacementCard: z.boolean(),
+  addressUpdateDeniedMessageKey: z.string().nullable().optional(),
+  cardReplacementDeniedMessageKey: z.string().nullable().optional()
+})
+
+export type AllowedActions = z.infer<typeof AllowedActionsSchema>
+
 export const HouseholdDataSchema = z.object({
   // email is optional to support IAL authorization where user may not have access to PII
   email: z.string().nullable().optional(),
   phone: z.string().nullable().optional(),
+  summerEbtCases: z.array(SummerEbtCaseSchema).optional().default([]),
   applications: z.array(ApplicationSchema),
   addressOnFile: AddressSchema.nullable().optional(),
   userProfile: UserProfileSchema.nullable().optional(),
-  benefitIssuanceType: IssuanceTypeSchema.nullable().optional()
+  benefitIssuanceType: IssuanceTypeSchema.nullable().optional(),
+  allowedActions: AllowedActionsSchema.nullable().optional()
 })
 
 export type HouseholdData = z.infer<typeof HouseholdDataSchema>
+
+/**
+ * Formats a US phone number as XXX-XXX-XXXX.
+ * Strips non-digit characters and a leading country code (1) before formatting.
+ * Returns the input unchanged if it does not resolve to exactly 10 digits.
+ */
+export function formatUsPhone(phone: string): string {
+  let digits = phone.replace(/\D/g, '')
+  if (digits.length === 11 && digits.startsWith('1')) {
+    digits = digits.slice(1)
+  }
+  if (digits.length !== 10) return phone
+  return `${digits.slice(0, 3)}-${digits.slice(3, 6)}-${digits.slice(6)}`
+}
 
 export function formatDate(isoDate: string, locale: string): string {
   return new Intl.DateTimeFormat(locale, {
@@ -188,4 +254,18 @@ export function formatDate(isoDate: string, locale: string): string {
     year: 'numeric',
     timeZone: 'UTC'
   }).format(new Date(isoDate))
+}
+
+// Matches date placeholders in locale strings: [MM/DD/YYYY] (English) or [DD/MM/YYYY] (Spanish)
+const DATE_PLACEHOLDER = /\[(?:MM\/DD\/YYYY|DD\/MM\/YYYY)\]/
+
+// "Requested on [MM/DD/YYYY]" → "Requested on 01/15/2026" or "Requested"
+// "Solicitada el [DD/MM/YYYY]" → "Solicitada el 15/01/2026" or "Solicitada"
+export function interpolateDate(template: string, isoDate: string | null, locale: string): string {
+  if (isoDate) {
+    return template.replace(DATE_PLACEHOLDER, formatDate(isoDate, locale))
+  }
+  // Strip optional preceding connector word (" on", " el") along with the placeholder
+  // eslint-disable-next-line security/detect-non-literal-regexp
+  return template.replace(new RegExp(`(?:\\s+\\S+)?\\s*${DATE_PLACEHOLDER.source}`), '').trim()
 }

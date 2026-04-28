@@ -16,7 +16,12 @@ const SOCURE_BUNDLE_URL = 'https://websdk.socure.com/bundle.js'
 declare global {
   interface Window {
     SocureDocVSDK?: {
-      launch: (config: Record<string, unknown>) => void
+      launch: (
+        sdkKey: string,
+        token: string,
+        containerId: string,
+        config?: Record<string, unknown>
+      ) => void
       reset: () => void
     }
   }
@@ -74,16 +79,24 @@ export class SocureDocVAdapter implements DocVAdapter {
       throw new Error('SocureDocVSDK not available after script load')
     }
 
-    window.SocureDocVSDK.launch({
-      sdkKey: config.sdkKey,
-      token: config.token,
-      type: 'docv',
-      containerId: config.containerId,
+    // Socure's SDK invokes onProgress internally without a typeof check, so
+    // passing undefined causes a runtime "TypeError: s is not a function"
+    // once the SDK reaches its step-up flow. Default to a no-op so callers
+    // that don't care about progress events still get a working capture UI.
+    const onProgress = config.onProgress ?? (() => {})
+
+    // qrCodeNeeded:true opts desktop users into inline QR rendering inside the
+    // container. autoOpenTabOnMobile:true handles mobile browsers by opening
+    // the capture flow in a new tab. Together they cover both primary paths.
+    // DocV V5 moved document/language/redirect config server-side (set on the
+    // Evaluation request), so no capture-type field is passed here.
+    window.SocureDocVSDK.launch(config.sdkKey, config.token, `#${config.containerId}`, {
+      qrCodeNeeded: true,
       autoOpenTabOnMobile: true,
       closeCaptureWindowOnComplete: true,
       onSuccess: config.onSuccess,
       onError: config.onError,
-      onProgress: config.onProgress
+      onProgress
     })
   }
 
@@ -96,6 +109,12 @@ export class SocureDocVAdapter implements DocVAdapter {
         // Swallow errors during cleanup — the SDK may already be torn down
       }
     }
+
+    // The SDK caches internal DOM references that go stale after navigation.
+    // Fully tear down so the next launch() gets a fresh instance.
+    delete window.SocureDocVSDK
+    scriptLoadPromise = null
+    document.querySelectorAll(`script[src="${SOCURE_BUNDLE_URL}"]`).forEach((el) => el.remove())
   }
 
   isLoaded(): boolean {

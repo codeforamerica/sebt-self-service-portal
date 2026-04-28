@@ -1,97 +1,164 @@
-using System.Composition.Convention;
-using System.Composition.Hosting;
-using Microsoft.Extensions.DependencyInjection;
+// TODO: Remove System.Composition dependency — only referenced for assembly loading reuse
+// and because [Export]/[ExportMetadata] attributes remain on plugin classes (inert).
+using Serilog;
 using Microsoft.Extensions.DependencyInjection.Extensions;
+using SEBT.Portal.Infrastructure.Repositories;
 using SEBT.Portal.StatesPlugins.Interfaces;
 
 namespace SEBT.Portal.Api.Composition;
 
-using Serilog;
-
+// Plugin Discovery and Registration
+//
+// Plugins are discovered by scanning assemblies loaded from plugins-{state}/ directories.
+// Each plugin must implement exactly one service interface (e.g., ISummerEbtCaseService)
+// in addition to IStatePlugin.
+//
+// Plugins are instantiated by the DI container via ActivatorUtilities — NOT by MEF.
+// This means plugin constructors can receive any DI-registered service (IConfiguration,
+// ILoggerFactory, HybridCache, etc.) as constructor parameters.
+//
+// The MEF attributes ([Export], [ExportMetadata], [ImportingConstructor]) on plugin
+// classes are currently inert — they are not read or used by this code. They remain
+// for now because the plugin assemblies have not been updated to remove them.
+//
+// Next step: extract assembly loading into a standalone helper and remove the
+// System.Composition dependency entirely.
 internal static class ServiceCollectionPluginExtensions
 {
     public static IServiceCollection AddPlugins(this IServiceCollection services, IConfiguration configuration)
-    {
-        services.TryAddSingleton<IStateAuthenticationService, Defaults.DefaultStateAuthenticationService>();
-        services.TryAddSingleton<IStateHealthCheckService, Defaults.DefaultStateHealthCheckService>();
-        services.TryAddSingleton<ISummerEbtCaseService, Defaults.DefaultSummerEbtCaseService>();
-        services.TryAddSingleton<IEnrollmentCheckService, Defaults.DefaultEnrollmentCheckService>();
+        => services.AddPlugins(configuration, contentRootPath: null);
 
+    /// <param name="services">The service collection.</param>
+    /// <param name="configuration">Application configuration (must include PluginAssemblyPaths).</param>
+    /// <param name="contentRootPath">
+    /// <see cref="Microsoft.Extensions.Hosting.IHostEnvironment.ContentRootPath"/> so plugin folders under
+    /// the API project directory are found when DLLs were not copied into <c>AppContext.BaseDirectory</c>.
+    /// </param>
+    public static IServiceCollection AddPlugins(
+        this IServiceCollection services,
+        IConfiguration configuration,
+        string? contentRootPath)
+    {
         var healthChecksBuilder = services.AddHealthChecks();
 
         var pluginAssemblyPaths = configuration
                                       .GetSection("PluginAssemblyPaths")
                                       .Get<string[]>()
                                   ?? throw new InvalidOperationException("PluginAssemblyPaths missing from configuration.");
-        Log.Information("Loading plugins from: {PluginAssemblyPaths}", pluginAssemblyPaths);
+        Log.Debug("Loading plugins from: {PluginAssemblyPaths}", pluginAssemblyPaths);
 
-        var containerConfiguration = CreateContainerConfiguration(pluginAssemblyPaths, configuration);
-        using var container = containerConfiguration.CreateContainer();
+        var loadedAssemblies = PluginAssemblyLoader.LoadAssembliesFromPaths(
+            pluginAssemblyPaths,
+            SearchOption.TopDirectoryOnly,
+            contentRootPath);
 
-        var plugins = container.GetExports<IStatePlugin>();
+        var pluginTypes = loadedAssemblies
+            .SelectMany(a =>
+            {
+                try { return a.GetExportedTypes(); }
+                catch (TypeLoadException ex)
+                {
+                    Log.Warning(ex, "Could not load types from assembly {Assembly}", a.FullName);
+                    return [];
+                }
+            })
+            .Where(t => typeof(IStatePlugin).IsAssignableFrom(t) && !t.IsAbstract && !t.IsInterface)
+            .ToList();
 
-        foreach (var plugin in plugins)
+        foreach (var pluginType in pluginTypes)
         {
-            var pluginType = plugin.GetType();
-            Log.Information("Configuring services for plugin: {PluginType}", pluginType.FullName);
+            Log.Debug("Discovered plugin type: {PluginType}", pluginType.FullName);
+
+            // Only service interfaces that extend IStatePlugin (excludes IDisposable and other
+            // non-state contracts that appear on GetInterfaces()).
             var pluginInterfaces = pluginType.GetInterfaces()
-                .Where(i => i != typeof(IStatePlugin))
+                .Where(i => i != typeof(IStatePlugin) && typeof(IStatePlugin).IsAssignableFrom(i))
                 .ToList();
 
             switch (pluginInterfaces.Count)
             {
                 case 0:
-                    throw new InvalidOperationException($"Plugin '{pluginType.FullName}' does not implement any interface besides IStatePlugin. " +
-                                                        "Each plugin must implement exactly one service interface in addition to IStatePlugin.");
+                    throw new InvalidOperationException(
+                        $"Plugin '{pluginType.FullName}' does not implement any interface besides IStatePlugin. " +
+                        "Each plugin must implement exactly one service interface in addition to IStatePlugin.");
                 case > 1:
-                    throw new InvalidOperationException($"Plugin '{pluginType.FullName}' implements multiple interfaces: " +
-                                                        $"{string.Join(", ", pluginInterfaces.Select(i => i.FullName))}. " +
-                                                        "Each plugin must implement exactly one service interface in addition to IStatePlugin.");
-                default:
-                    services.AddSingleton(pluginInterfaces[0], plugin);
-                    break;
+                    throw new InvalidOperationException(
+                        $"Plugin '{pluginType.FullName}' implements multiple interfaces: " +
+                        $"{string.Join(", ", pluginInterfaces.Select(i => i.FullName))}. " +
+                        "Each plugin must implement exactly one service interface in addition to IStatePlugin.");
             }
 
-            if (plugin is IStateHealthCheckService healthCheckPlugin)
+            var pluginInterface = pluginInterfaces[0];
+
+            if (typeof(IStateHealthCheckService).IsAssignableFrom(pluginType))
             {
-                healthCheckPlugin.ConfigureHealthChecks(healthChecksBuilder);
+                // Health check plugins are instantiated eagerly so we can call
+                // ConfigureHealthChecks() during service registration (it needs
+                // IHealthChecksBuilder, which wraps IServiceCollection).
+                //
+                // LIMITATION: This builds a temporary IServiceProvider from the current
+                // IServiceCollection to resolve constructor dependencies. The temporary
+                // provider has its own singleton scope, which works today because health
+                // check plugins only depend on IConfiguration and ILoggerFactory — both
+                // are already fully constructed at this point and are effectively shared.
+                //
+                // If a health check plugin ever needs a DI service with shared mutable
+                // state (e.g., HybridCache backed by Redis), the temporary provider
+                // would create a separate instance, breaking shared-state assumptions.
+                // At that point, revisit this approach — e.g., defer health check
+                // registration to a post-build step, or use a type-based registration
+                // with a lazy resolve adapter.
+                using var tempProvider = services.BuildServiceProvider();
+                var instance = ActivatorUtilities.CreateInstance(tempProvider, pluginType);
+                Log.Debug("Constructed health check plugin: {PluginType}", pluginType.FullName);
+
+                ((IStateHealthCheckService)instance).ConfigureHealthChecks(healthChecksBuilder);
+                services.AddSingleton(pluginInterface, instance);
+            }
+            else
+            {
+                // All other plugins: register as a factory so DI creates them on first
+                // resolve using the *real* service provider. This gives plugins access
+                // to any DI-registered service via constructor injection.
+                var capturedType = pluginType; // avoid closure over loop variable
+                services.AddSingleton(pluginInterface, sp =>
+                {
+                    var logger = sp.GetRequiredService<ILoggerFactory>()
+                        .CreateLogger("SEBT.Portal.Api.Composition");
+                    logger.LogDebug("Constructing plugin: {PluginType}", capturedType.FullName);
+                    return ActivatorUtilities.CreateInstance(sp, capturedType);
+                });
             }
         }
 
+        if (pluginTypes.Count == 0 && loadedAssemblies.Count > 0)
+        {
+            Log.Warning(
+                "Loaded {AssemblyCount} plugin assemblies but discovered 0 IStatePlugin implementations. " +
+                "See earlier warnings for TypeLoadException from GetExportedTypes.",
+                loadedAssemblies.Count);
+        }
+
+        // When mock household data is enabled, state connector write operations should also
+        // be mocked — the real state backend is unavailable. Override any plugin-provided
+        // IAddressUpdateService with an in-memory mock that updates the MockHouseholdRepository
+        // so subsequent reads reflect the change.
+        var useMockHouseholdData = configuration.GetValue<bool>("UseMockHouseholdData", false);
+        if (useMockHouseholdData)
+        {
+            services.AddSingleton<IAddressUpdateService>(sp =>
+                new Defaults.MockStateAddressUpdateService(
+                    sp.GetRequiredService<MockHouseholdRepository>()));
+        }
+
+        // Register in-process defaults only for services no connector plugin provided.
+        services.TryAddSingleton<IStateAuthenticationService, Defaults.DefaultStateAuthenticationService>();
+        services.TryAddSingleton<IStateHealthCheckService, Defaults.DefaultStateHealthCheckService>();
+        services.TryAddSingleton<ISummerEbtCaseService, Defaults.DefaultSummerEbtCaseService>();
+        services.TryAddSingleton<IEnrollmentCheckService, Defaults.DefaultEnrollmentCheckService>();
+        services.TryAddSingleton<IAddressUpdateService, Defaults.DefaultAddressUpdateService>();
+
         return services;
     }
-
-    private static ContainerConfiguration CreateContainerConfiguration(string[] assemblyPaths, IConfiguration configuration)
-    {
-        var conventions = new ConventionBuilder();
-
-        conventions
-            .ForTypesDerivedFrom<IStateMetadataService>()
-            .Export<IStateMetadataService>()
-            .Shared();
-
-        conventions
-            .ForTypesDerivedFrom<IStateAuthenticationService>()
-            .Export<IStateAuthenticationService>()
-            .Shared();
-
-        conventions
-            .ForTypesDerivedFrom<ISummerEbtCaseService>()
-            .Export<ISummerEbtCaseService>()
-            .Shared();
-
-        conventions
-            .ForTypesDerivedFrom<IStateHealthCheckService>()
-            .Export<IStateHealthCheckService>()
-            .Shared();
-
-        conventions
-            .ForTypesDerivedFrom<IEnrollmentCheckService>()
-            .Export<IEnrollmentCheckService>()
-            .Shared();
-
-        return new ContainerConfiguration()
-            .WithExport(configuration)
-            .WithAssembliesInPath(assemblyPaths, conventions);
-    }
 }
+

@@ -5,7 +5,9 @@ namespace SEBT.Portal.Api.Models.Household;
 using Address = Core::SEBT.Portal.Core.Models.Household.Address;
 using Application = Core::SEBT.Portal.Core.Models.Household.Application;
 using Child = Core::SEBT.Portal.Core.Models.Household.Child;
+using AllowedActions = Core::SEBT.Portal.Core.Models.Household.AllowedActions;
 using HouseholdData = Core::SEBT.Portal.Core.Models.Household.HouseholdData;
+using SummerEbtCase = Core::SEBT.Portal.Core.Models.Household.SummerEbtCase;
 using UserProfile = Core::SEBT.Portal.Core.Models.Household.UserProfile;
 
 /// <summary>
@@ -22,10 +24,44 @@ public static class HouseholdDataResponseMapper
         {
             Email = domain.Email,
             Phone = domain.Phone,
+            SummerEbtCases = domain.SummerEbtCases.Select(ToResponse).ToList(),
             Applications = domain.Applications.Select(a => ToResponse(a, domain.BenefitIssuanceType)).ToList(),
             AddressOnFile = domain.AddressOnFile?.ToResponse(),
             UserProfile = domain.UserProfile?.ToResponse(),
-            BenefitIssuanceType = domain.BenefitIssuanceType
+            BenefitIssuanceType = domain.BenefitIssuanceType,
+            AllowedActions = domain.AllowedActions?.ToResponse()
+        };
+    }
+
+    private static SummerEbtCaseResponse ToResponse(this SummerEbtCase domain)
+    {
+        return new SummerEbtCaseResponse
+        {
+            SummerEBTCaseID = domain.SummerEBTCaseID,
+            ApplicationId = domain.ApplicationId,
+            ApplicationStudentId = domain.ApplicationStudentId,
+            ChildFirstName = domain.ChildFirstName,
+            ChildLastName = domain.ChildLastName,
+            ChildDateOfBirth = domain.ChildDateOfBirth,
+            HouseholdType = domain.HouseholdType,
+            EligibilityType = domain.EligibilityType,
+            EligibilitySource = domain.EligibilitySource,
+            IssuanceType = domain.IssuanceType,
+            ApplicationDate = domain.ApplicationDate,
+            ApplicationStatus = domain.ApplicationStatus,
+            MailingAddress = domain.MailingAddress?.ToResponse(),
+            EbtCaseNumber = domain.EbtCaseNumber,
+            EbtCardLastFour = domain.EbtCardLastFour,
+            EbtCardStatus = domain.EbtCardStatus,
+            EbtCardIssueDate = domain.EbtCardIssueDate,
+            EbtCardBalance = domain.EbtCardBalance,
+            CardRequestedAt = domain.CardRequestedAt,
+            BenefitAvailableDate = domain.BenefitAvailableDate,
+            BenefitExpirationDate = domain.BenefitExpirationDate,
+            // Per-case gating is driven by the per-case evaluator result; co-loaded
+            // cases are always denied regardless of rules config (handled elsewhere).
+            AllowAddressChange = (domain.AllowedActions?.CanUpdateAddress ?? false) && !domain.IsCoLoaded,
+            AllowCardReplacement = (domain.AllowedActions?.CanRequestReplacementCard ?? false) && !domain.IsCoLoaded
         };
     }
 
@@ -44,6 +80,7 @@ public static class HouseholdDataResponseMapper
             ApplicationNumber = domain.ApplicationNumber,
             CaseNumber = domain.CaseNumber,
             ApplicationStatus = domain.ApplicationStatus,
+            ApplicationDate = domain.ApplicationDate,
             BenefitIssueDate = domain.BenefitIssueDate,
             BenefitExpirationDate = domain.BenefitExpirationDate,
             Last4DigitsOfCard = domain.Last4DigitsOfCard,
@@ -62,9 +99,9 @@ public static class HouseholdDataResponseMapper
     {
         return new ChildResponse
         {
-            CaseNumber = domain.CaseNumber,
             FirstName = domain.FirstName,
-            LastName = domain.LastName
+            LastName = domain.LastName,
+            Status = domain.Status
         };
     }
 
@@ -87,6 +124,17 @@ public static class HouseholdDataResponseMapper
             FirstName = domain.FirstName,
             MiddleName = domain.MiddleName,
             LastName = domain.LastName
+        };
+    }
+
+    private static AllowedActionsResponse ToResponse(this AllowedActions domain)
+    {
+        return new AllowedActionsResponse
+        {
+            CanUpdateAddress = domain.CanUpdateAddress,
+            CanRequestReplacementCard = domain.CanRequestReplacementCard,
+            AddressUpdateDeniedMessageKey = domain.AddressUpdateDeniedMessageKey,
+            CardReplacementDeniedMessageKey = domain.CardReplacementDeniedMessageKey
         };
     }
 }

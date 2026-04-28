@@ -57,7 +57,7 @@ data "aws_route53_zone" "main" {
 }
 
 # Store Colorado-specific secrets in Secrets Manager. Each block represents a
-# separate secret for a specific service or integration.
+# separate set of secrets for a specific service or integration.
 module "state_secrets" {
   source = "github.com/codeforamerica/tofu-modules-aws-secrets?ref=2.0.0"
 
@@ -77,6 +77,11 @@ module "state_secrets" {
   }
 }
 
+# Look up the enrollment checker hosted zone (created by bootstrap).
+data "aws_route53_zone" "enrollment_checker" {
+  name = "co.sebt-enrollment.codeforamerica.app"
+}
+
 # Deploy the application services (API + Web) using the shared wrapper module.
 module "app" {
   source = "../../modules/sebt_application"
@@ -89,14 +94,16 @@ module "app" {
   logging_key_id             = module.logging.kms_key_arn
   logging_bucket_domain_name = module.logging.bucket_domain_name
   private_subnets            = module.vpc.private_subnets
-  project                    = var.project
   public_subnets             = module.vpc.public_subnets
+  vpc_id                     = module.vpc.vpc_id
+  db_ingress_cidrs           = [var.vpc_cidr]
+  project                    = var.project
   sender_email               = var.sender_email
   skip_final_snapshot        = true
   state                      = var.state
-  vpc_id                     = module.vpc.vpc_id
   waf_log_group              = module.logging.log_groups["waf"]
   passive_waf                = true
+  log_as_json                = true
 
   api_image_url      = data.aws_ecr_repository.api.repository_url
   api_repository_arn = data.aws_ecr_repository.api.arn
@@ -108,32 +115,70 @@ module "app" {
   enable_execute_command = true
   enable_appconfig       = true
 
-  seeding_enabled         = "true"
-  seeding_email_pattern   = "sebt.co+{0}@codeforamerica.org"
-  use_mock_household_data = "true"
-
   state_api_environment_variables = {
-    "Oidc__DiscoveryEndpoint"  = var.oidc_discovery_endpoint
-    "Oidc__CallbackRedirectUri" = "https://${var.domain}/callback"
-    "Oidc__LanguageParam"      = "en"
+    "Oidc__DiscoveryEndpoint"                        = var.oidc_discovery_endpoint
+    "Oidc__AuthorizationEndpoint"                    = var.oidc_authorization_endpoint
+    "Oidc__CallbackRedirectUri"                      = "https://${var.domain}/callback"
+    "Oidc__StepUp__DiscoveryEndpoint"                = var.oidc_discovery_endpoint
+    "Oidc__StepUp__AuthorizationEndpoint"            = var.oidc_authorization_endpoint
+    "Oidc__StepUp__CallbackRedirectUri"              = "https://${var.domain}/callback"
+    "StateHouseholdId__PreferredHouseholdIdTypes__0" = "Phone"
+    "IdProofingRequirements__address+write"          = "IAL1plus"
+    "IdProofingRequirements__email+view"             = "IAL1plus"
+    "IdProofingRequirements__household+view"         = "IAL1plus"
+    "IdProofingRequirements__card+write"             = "IAL1plus"
+    "IdProofingValidity__ValidityDays"               = "1826"
+    "Oidc__VerificationClaims__LevelClaimName"       = "socureIdVerificationLevel"
+    "Oidc__VerificationClaims__DateClaimName"        = "socureIdVerificationDate"
   }
 
   state_api_environment_secrets = {
-    "Cbms__ClientId"               = "${module.state_secrets.secrets["cbms"].secret_arn}:client_id"
-    "Cbms__ClientSecret"           = "${module.state_secrets.secrets["cbms"].secret_arn}:client_secret"
-    "Oidc__ClientId"               = "${module.state_secrets.secrets["oidc"].secret_arn}:client_id"
+    "Cbms__ClientId"                = "${module.state_secrets.secrets["cbms"].secret_arn}:client_id"
+    "Cbms__ClientSecret"            = "${module.state_secrets.secrets["cbms"].secret_arn}:client_secret"
+    "Oidc__ClientId"                = "${module.state_secrets.secrets["oidc"].secret_arn}:client_id"
+    "Oidc__ClientSecret"            = "${module.state_secrets.secrets["oidc"].secret_arn}:client_secret"
+    "Oidc__StepUp__ClientId"        = "${module.state_secrets.secrets["oidc"].secret_arn}:step_up_client_id"
+    "Oidc__StepUp__ClientSecret"    = "${module.state_secrets.secrets["oidc"].secret_arn}:step_up_client_secret"
     "Oidc__CompleteLoginSigningKey" = "${module.state_secrets.secrets["oidc"].secret_arn}:complete_login_signing_key"
   }
 
   state_web_environment_variables = {
-    OIDC_DISCOVERY_ENDPOINT = var.oidc_discovery_endpoint
-    OIDC_REDIRECT_URI       = "https://${var.domain}/callback"
-    OIDC_LANGUAGE_PARAM     = "en"
+    ENROLLMENT_CHECKER_ORIGIN = "https://dev.co.sebt-enrollment.codeforamerica.app"
+    OIDC_DISCOVERY_ENDPOINT   = var.oidc_discovery_endpoint
+    OIDC_REDIRECT_URI         = "https://${var.domain}/callback"
+    OIDC_LANGUAGE_PARAM       = "en"
   }
 
   state_web_environment_secrets = {
-    OIDC_CLIENT_ID                 = "${module.state_secrets.secrets["oidc"].secret_arn}:client_id"
-    OIDC_CLIENT_SECRET             = "${module.state_secrets.secrets["oidc"].secret_arn}:client_secret"
+    OIDC_CLIENT_ID                  = "${module.state_secrets.secrets["oidc"].secret_arn}:client_id"
+    OIDC_CLIENT_SECRET              = "${module.state_secrets.secrets["oidc"].secret_arn}:client_secret"
     OIDC_COMPLETE_LOGIN_SIGNING_KEY = "${module.state_secrets.secrets["oidc"].secret_arn}:complete_login_signing_key"
   }
+}
+
+# SSM bastion for developer DB access. Uses pure-SSM port forwarding;
+# no PEM distribution, no SSH. Access is IAM-gated via SSO.
+module "bastion" {
+  source = "github.com/codeforamerica/tofu-modules-aws-ssm-bastion?ref=1.1.0"
+
+  project                 = "${var.project}-${var.state}"
+  environment             = var.environment
+  private_subnet_ids      = module.vpc.private_subnets
+  vpc_id                  = module.vpc.vpc_id
+  kms_key_recovery_period = 7
+  instance_profile        = null
+}
+
+# Deploy the enrollment checker as a static site behind CloudFront.
+module "enrollment_checker" {
+  source = "../../modules/sebt_enrollment_checker"
+
+  project                    = var.project
+  state                      = var.state
+  environment                = var.environment
+  domain                     = "dev.co.sebt-enrollment.codeforamerica.app"
+  hosted_zone_id             = data.aws_route53_zone.enrollment_checker.zone_id
+  logging_bucket_domain_name = module.logging.bucket_domain_name
+  logging_bucket_name        = module.logging.bucket
+  force_delete               = true
 }

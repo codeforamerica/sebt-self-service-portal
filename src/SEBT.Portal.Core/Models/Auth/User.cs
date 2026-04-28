@@ -8,12 +8,23 @@ public class User
     /// <summary>
     /// The unique identifier for the user (database primary key).
     /// </summary>
-    public int Id { get; init; }
+    public Guid Id { get; init; } = Guid.CreateVersion7();
 
     /// <summary>
     /// The user's email address, used as a unique identifier.
     /// </summary>
-    public string Email { get; set; } = string.Empty;
+    public string? Email { get; set; }
+
+    /// <summary>
+    /// The subject identifier from the external identity provider (e.g., PingOne sub claim).
+    /// Set for OIDC users; null for OTP-authenticated users.
+    /// </summary>
+    public string? ExternalProviderId { get; set; }
+
+    /// <summary>
+    /// The user's date of birth (calendar date), when collected for household matching or verification.
+    /// </summary>
+    public DateOnly? DateOfBirth { get; set; }
 
     /// <summary>
     /// Workflow state of the ID proofing process (NotStarted, InProgress, Completed, Failed, Expired).
@@ -38,6 +49,11 @@ public class User
     /// <summary>
     /// The date and time when ID proofing expires (if applicable).
     /// </summary>
+    // Expiration is now computed dynamically from IdProofingCompletedAt + configured
+    // IdProofingValiditySettings.ValidityDays. Storing a baked-in expiration date
+    // in the DB means config changes require bulk data updates to existing users.
+    // The JwtTokenService computes the id_proofing_expires_at JWT claim on the fly.
+    [Obsolete("Expiration is computed from IdProofingCompletedAt + IdProofingValiditySettings.ValidityDays. Do not read or write this field for new code.")]
     public DateTime? IdProofingExpiresAt { get; set; }
 
     /// <summary>
@@ -80,4 +96,10 @@ public class User
     /// SSN or last-4 when used as household identifier for a state (per state policy).
     /// </summary>
     public string? Ssn { get; set; }
+
+    /// <summary>
+    /// Number of times this user has submitted ID proofing to Socure.
+    /// Used to enforce the retry cap (max 3 attempts).
+    /// </summary>
+    public int IdProofingAttemptCount { get; set; }
 }

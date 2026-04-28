@@ -1,21 +1,25 @@
 'use client'
 
 import { apiFetch } from '@/api'
+import { useAuth } from '@/features/auth'
 import {
   OidcCallbackTokenResponseSchema,
-  OidcCompleteLoginResponseSchema,
-  setAuthToken,
-  useAuth
-} from '@/features/auth'
-import { clearPkceStorage, getPkceFromStorage } from '@/lib/oidc-pkce'
+  OidcCompleteLoginResponseSchema
+} from '@/features/auth/api/oidc/schema'
 import { getTranslations } from '@/lib/translations'
-import { Alert, getState } from '@sebt/design-system'
+import { Alert } from '@sebt/design-system'
 import { useRouter } from 'next/navigation'
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 
 /**
- * OIDC callback: state IdP redirects here with ?code=...&state=...
- * We then send callbackToken to the .NET complete-login endpoint to create session and get the portal JWT.
+ * OIDC callback: the IdP redirects here with ?code=...&state=...
+ * We send code + state to the .NET /api/auth/oidc/callback endpoint, which
+ * uses the server-side pre-auth session (code_verifier, stateCode, isStepUp)
+ * to exchange with the IdP. We then send the callbackToken to
+ * /api/auth/oidc/complete-login to create the portal session.
+ *
+ * All flow metadata (stateCode, isStepUp, returnUrl) is stored in the server-side
+ * pre-auth session — no sessionStorage is used.
  */
 export default function CallbackPage() {
   const router = useRouter()
@@ -23,12 +27,26 @@ export default function CallbackPage() {
   const t = getTranslations('login')
   const [status, setStatus] = useState<'loading' | 'error'>('loading')
   const [errorDetail, setErrorDetail] = useState<string | null>(null)
+  const exchangeStartedRef = useRef(false)
 
   useEffect(() => {
-    // Read from the actual URL; useSearchParams() can be empty on first run (hydration)
     const params = new URLSearchParams(typeof window !== 'undefined' ? window.location.search : '')
     const code = params.get('code')
     const state = params.get('state')
+    const errorParam = params.get('error')
+    const errorDescription = params.get('error_description')
+
+    // IdP returned an error (e.g., user cancelled login).
+    if (errorParam) {
+      const idpDetail = errorDescription?.trim() ?? ''
+      const portalLine = t('callbackErrorIdpRedirect', t('callbackErrorGeneric'))
+      const message = idpDetail ? `${portalLine} ${idpDetail}` : portalLine
+      queueMicrotask(() => {
+        setErrorDetail(message)
+        setStatus('error')
+      })
+      return
+    }
 
     if (!code || !state) {
       queueMicrotask(() => {
@@ -38,58 +56,37 @@ export default function CallbackPage() {
       return
     }
 
+    if (exchangeStartedRef.current) return
+    exchangeStartedRef.current = true
+
     let cancelled = false
     async function run() {
-      const stored = getPkceFromStorage()
-      if (!stored) {
-        clearPkceStorage()
-        if (!cancelled) {
-          setErrorDetail(t('callbackErrorSessionExpired'))
-          setStatus('error')
-        }
-        return
-      }
-      if (stored.state !== state) {
-        clearPkceStorage()
-        if (!cancelled) {
-          setErrorDetail(t('callbackErrorStateMismatch'))
-          setStatus('error')
-        }
-        return
-      }
-      clearPkceStorage()
-
       try {
-        // Exchange authorization code for a short-lived callback token (via Next.js server)
+        // Send code + state to the server. The server reads stateCode, code_verifier,
+        // isStepUp, and returnUrl from the pre-auth session (oidc_session cookie).
         const { callbackToken } = await apiFetch('/auth/oidc/callback', {
           method: 'POST',
-          body: {
-            code,
-            code_verifier: stored.code_verifier,
-            state,
-            stateCode: getState()
-          },
+          body: { code, state },
           schema: OidcCallbackTokenResponseSchema
         })
         if (cancelled) return
 
-        // Complete login with .NET backend — validates callback token, creates portal JWT
-        const { token } = await apiFetch('/auth/oidc/complete-login', {
+        const response = await apiFetch('/auth/oidc/complete-login', {
           method: 'POST',
-          body: { stateCode: getState(), callbackToken },
+          body: { callbackToken },
           schema: OidcCompleteLoginResponseSchema
         })
         if (cancelled) return
 
-        // Persist to sessionStorage and notify auth context
-        setAuthToken(token)
-        login(token)
-        // Ensure token is stored and listeners have run before navigating
-        await new Promise((resolve) => setTimeout(resolve, 0))
-        router.replace('/dashboard')
-      } catch {
+        // Backend set the HttpOnly session cookie; refresh the context from /auth/status.
+        await login()
+        const destination = response.returnUrl ?? '/dashboard'
+        router.replace(destination)
+      } catch (e) {
+        const errMsg =
+          e instanceof Error ? e.message : typeof e === 'string' ? e : t('callbackErrorGeneric')
+        setErrorDetail(errMsg || t('callbackErrorGeneric'))
         if (!cancelled) {
-          setErrorDetail(t('callbackErrorGeneric'))
           setStatus('error')
         }
       }
@@ -97,8 +94,11 @@ export default function CallbackPage() {
     run()
     return () => {
       cancelled = true
+      // React Strict Mode remounts effects: allow the next mount to run the exchange;
+      // otherwise ref stays true and the retried effect bails while the aborted run skipped navigation.
+      exchangeStartedRef.current = false
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- t (getTranslations) is a static lookup, not a reactive dependency
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- t (getTranslations) is a static lookup
   }, [login, router])
 
   useEffect(() => {

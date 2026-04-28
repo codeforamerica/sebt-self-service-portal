@@ -1,6 +1,9 @@
 ## VS Code
 .vscode/
 
+## Git worktrees
+.worktrees/
+
 ## macOS Cruft
 .DS_Store
 
@@ -444,6 +447,7 @@ FodyWeavers.xsd
 # AI
 CLAUDE.local.md
 .claude/settings.local.json
+.claude/qa-summary.*
 
 # Developer-local workflow artifacts (branch context, PR reviews, screenshots)
 docs/.local/
@@ -488,8 +492,8 @@ packages/design-system/design/sass/_uswds-settings.scss
 # JetBrains IDE configuration
 .idea/
 
-# AI
-.claude/settings.local.json
-
 # Email template verification screenshots
 email-templates/_snapshots/
+
+# Generated design-system locale output (app reads from Web's gitignored copy)
+packages/design-system/content/locales/

@@ -55,16 +55,24 @@ describe('SocureDocVAdapter', () => {
 
     await adapter.launch(config)
 
+    // qrCodeNeeded:true opts into desktop QR rendering (Socure WebSDK v5).
+    // Without it, the SDK renders nothing on desktop and autoOpenTabOnMobile only
+    // covers the mobile branch.
     expect(window.SocureDocVSDK!.launch).toHaveBeenCalledWith(
+      'test-sdk-key',
+      'test-token',
+      '#websdk',
       expect.objectContaining({
-        sdkKey: 'test-sdk-key',
-        token: 'test-token',
-        type: 'docv',
-        containerId: 'websdk',
+        qrCodeNeeded: true,
         autoOpenTabOnMobile: true,
         closeCaptureWindowOnComplete: true
       })
     )
+
+    // `type` is not a documented WebSDK v5 option — ensure it's not passed.
+    const launchMock = window.SocureDocVSDK!.launch as ReturnType<typeof vi.fn>
+    const sdkOptions = launchMock.mock.calls[0]![3] as Record<string, unknown>
+    expect(sdkOptions).not.toHaveProperty('type')
   })
 
   it('is idempotent — second launch does not call SDK again', async () => {
@@ -78,13 +86,15 @@ describe('SocureDocVAdapter', () => {
     expect(window.SocureDocVSDK!.launch).toHaveBeenCalledTimes(1)
   })
 
-  it('calls SocureDocVSDK.reset on reset()', () => {
+  it('calls SocureDocVSDK.reset and tears down global on reset()', () => {
     installMockSocureGlobal()
+    const resetFn = window.SocureDocVSDK!.reset
     const adapter = new SocureDocVAdapter()
 
     adapter.reset()
 
-    expect(window.SocureDocVSDK!.reset).toHaveBeenCalled()
+    expect(resetFn).toHaveBeenCalled()
+    expect(window.SocureDocVSDK).toBeUndefined()
   })
 
   it('can be re-launched after reset', async () => {
@@ -94,9 +104,26 @@ describe('SocureDocVAdapter', () => {
 
     await adapter.launch(config)
     adapter.reset()
+    // Re-install the global since reset() tears it down for a fresh load
+    installMockSocureGlobal()
     await adapter.launch(config)
 
-    expect(window.SocureDocVSDK!.launch).toHaveBeenCalledTimes(2)
+    expect(window.SocureDocVSDK!.launch).toHaveBeenCalledTimes(1)
+  })
+
+  it('defaults onProgress to a no-op when caller omits it', async () => {
+    installMockSocureGlobal()
+    const adapter = new SocureDocVAdapter()
+    const { onProgress: _omit, ...configWithoutProgress } = createTestConfig()
+
+    await adapter.launch(configWithoutProgress)
+
+    const launchMock = window.SocureDocVSDK!.launch as ReturnType<typeof vi.fn>
+    const launchArgs = launchMock.mock.calls[0]
+    expect(launchArgs).toBeDefined()
+    const sdkOptions = launchArgs![3] as { onProgress: unknown }
+    expect(typeof sdkOptions.onProgress).toBe('function')
+    expect(() => (sdkOptions.onProgress as () => void)()).not.toThrow()
   })
 
   it('swallows errors from SocureDocVSDK.reset()', () => {

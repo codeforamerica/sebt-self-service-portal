@@ -13,19 +13,38 @@ using SEBT.Portal.Core.Repositories;
 using SEBT.Portal.Core.Services;
 using SEBT.Portal.Core.Utilities;
 using SEBT.Portal.Kernel;
+using SEBT.Portal.Kernel.Results;
 using SEBT.Portal.UseCases.Household;
 
 namespace SEBT.Portal.Tests.Unit.Controllers;
 
 public class HouseholdControllerTests
 {
-    private readonly IIdProofingRequirementsService _idProofingRequirementsService;
+    private readonly IPiiVisibilityService _piiVisibilityService;
+    private readonly IIdProofingService _idProofingService;
+    private readonly ISelfServiceEvaluator _selfServiceEvaluator;
+    private readonly ICardReplacementRequestRepository _cardReplacementRepo;
+    private readonly IIdentifierHasher _identifierHasher;
     private readonly HouseholdController _controller;
 
     public HouseholdControllerTests()
     {
         _controller = new HouseholdController();
-        _idProofingRequirementsService = Substitute.For<IIdProofingRequirementsService>();
+        _piiVisibilityService = Substitute.For<IPiiVisibilityService>();
+        _idProofingService = Substitute.For<IIdProofingService>();
+        _selfServiceEvaluator = Substitute.For<ISelfServiceEvaluator>();
+        _cardReplacementRepo = Substitute.For<ICardReplacementRequestRepository>();
+        _identifierHasher = Substitute.For<IIdentifierHasher>();
+        // Default: no elevated IAL requirement, so existing tests pass without per-test mock setup.
+        _idProofingService.Evaluate(
+            Arg.Any<ProtectedResource>(), Arg.Any<ProtectedAction>(),
+            Arg.Any<UserIalLevel>(), Arg.Any<IReadOnlyList<SummerEbtCase>>())
+            .Returns(new IdProofingDecision(IsAllowed: true, RequiredLevel: UserIalLevel.None));
+        // Default: self-service rules allow both actions
+        _selfServiceEvaluator.Evaluate(Arg.Any<SummerEbtCase>())
+            .Returns(new AllowedActions { CanUpdateAddress = true, CanRequestReplacementCard = true });
+        _selfServiceEvaluator.EvaluateHousehold(Arg.Any<IReadOnlyList<SummerEbtCase>>())
+            .Returns(new AllowedActions { CanUpdateAddress = true, CanRequestReplacementCard = true });
     }
 
     private IQueryHandler<GetHouseholdDataQuery, HouseholdData> CreateQueryHandler(
@@ -33,7 +52,7 @@ public class HouseholdControllerTests
         IHouseholdRepository repository)
     {
         var logger = NullLogger<GetHouseholdDataQueryHandler>.Instance;
-        return new GetHouseholdDataQueryHandler(resolver, repository, _idProofingRequirementsService, logger);
+        return new GetHouseholdDataQueryHandler(resolver, repository, _piiVisibilityService, _idProofingService, _selfServiceEvaluator, _cardReplacementRepo, _identifierHasher, logger);
     }
 
     private void SetupAuthenticatedUser(string email, UserIalLevel userIalLevel = UserIalLevel.None, string claimType = ClaimTypes.Email)
@@ -84,7 +103,7 @@ public class HouseholdControllerTests
         // Arrange
         var email = "user@example.com";
         SetupAuthenticatedUser(email, ial: "1plus");
-        _idProofingRequirementsService.GetPiiVisibility(UserIalLevel.IAL1plus)
+        _piiVisibilityService.GetVisibility(UserIalLevel.IAL1plus)
             .Returns(new PiiVisibility(IncludeAddress: true, IncludeEmail: true, IncludePhone: true));
 
         var householdData = new HouseholdData
@@ -140,7 +159,7 @@ public class HouseholdControllerTests
         // Arrange
         var email = "user@example.com";
         SetupAuthenticatedUser(email, UserIalLevel.None);
-        _idProofingRequirementsService.GetPiiVisibility(UserIalLevel.None)
+        _piiVisibilityService.GetVisibility(UserIalLevel.None)
             .Returns(new PiiVisibility(IncludeAddress: false, IncludeEmail: true, IncludePhone: true));
 
         var householdData = new HouseholdData
@@ -183,7 +202,7 @@ public class HouseholdControllerTests
         // Arrange
         var email = "nonexistent@example.com";
         SetupAuthenticatedUser(email, ial: "1plus");
-        _idProofingRequirementsService.GetPiiVisibility(UserIalLevel.IAL1plus)
+        _piiVisibilityService.GetVisibility(UserIalLevel.IAL1plus)
             .Returns(new PiiVisibility(IncludeAddress: true, IncludeEmail: true, IncludePhone: true));
 
         var resolverMock = CreateResolverMock(email);
@@ -234,7 +253,7 @@ public class HouseholdControllerTests
         // Arrange
         var email = "user@example.com";
         SetupAuthenticatedUser(email, UserIalLevel.None);
-        _idProofingRequirementsService.GetPiiVisibility(UserIalLevel.None)
+        _piiVisibilityService.GetVisibility(UserIalLevel.None)
             .Returns(new PiiVisibility(IncludeAddress: false, IncludeEmail: true, IncludePhone: true));
 
         var householdData = new HouseholdData
@@ -267,7 +286,7 @@ public class HouseholdControllerTests
         // Arrange
         var email = "user@example.com";
         SetupAuthenticatedUser(email, UserIalLevel.None);
-        _idProofingRequirementsService.GetPiiVisibility(UserIalLevel.None)
+        _piiVisibilityService.GetVisibility(UserIalLevel.None)
             .Returns(new PiiVisibility(IncludeAddress: false, IncludeEmail: true, IncludePhone: true));
 
         var householdData = new HouseholdData
@@ -308,7 +327,7 @@ public class HouseholdControllerTests
         {
             HttpContext = new DefaultHttpContext { User = principal }
         };
-        _idProofingRequirementsService.GetPiiVisibility(UserIalLevel.None)
+        _piiVisibilityService.GetVisibility(UserIalLevel.None)
             .Returns(new PiiVisibility(IncludeAddress: false, IncludeEmail: true, IncludePhone: true));
 
         var householdData = new HouseholdData
@@ -350,7 +369,7 @@ public class HouseholdControllerTests
         {
             HttpContext = new DefaultHttpContext { User = principal }
         };
-        _idProofingRequirementsService.GetPiiVisibility(UserIalLevel.None)
+        _piiVisibilityService.GetVisibility(UserIalLevel.None)
             .Returns(new PiiVisibility(IncludeAddress: false, IncludeEmail: true, IncludePhone: true));
 
         var householdData = new HouseholdData
@@ -382,7 +401,7 @@ public class HouseholdControllerTests
         // Arrange
         var email = "user@example.com";
         SetupAuthenticatedUser(email, ial: "1plus", claimType: ClaimTypes.Email);
-        _idProofingRequirementsService.GetPiiVisibility(UserIalLevel.IAL1plus)
+        _piiVisibilityService.GetVisibility(UserIalLevel.IAL1plus)
             .Returns(new PiiVisibility(IncludeAddress: true, IncludeEmail: true, IncludePhone: true));
 
         var householdData = new HouseholdData { Email = email };
@@ -405,7 +424,7 @@ public class HouseholdControllerTests
         // Arrange
         var email = "user@example.com";
         SetupAuthenticatedUser(email, ial: "1plus", claimType: ClaimTypes.NameIdentifier);
-        _idProofingRequirementsService.GetPiiVisibility(UserIalLevel.IAL1plus)
+        _piiVisibilityService.GetVisibility(UserIalLevel.IAL1plus)
             .Returns(new PiiVisibility(IncludeAddress: true, IncludeEmail: true, IncludePhone: true));
 
         var householdData = new HouseholdData { Email = email };
@@ -435,7 +454,7 @@ public class HouseholdControllerTests
         {
             HttpContext = new DefaultHttpContext { User = principal }
         };
-        _idProofingRequirementsService.GetPiiVisibility(Arg.Any<UserIalLevel>())
+        _piiVisibilityService.GetVisibility(Arg.Any<UserIalLevel>())
             .Returns(new PiiVisibility(IncludeAddress: true, IncludeEmail: true, IncludePhone: true));
 
         var householdData = new HouseholdData { Email = email };
@@ -452,13 +471,82 @@ public class HouseholdControllerTests
         await repositoryMock.Received(1).GetHouseholdByIdentifierAsync(Arg.Is<HouseholdIdentifier>(id => id.Type == PreferredHouseholdIdType.Email && id.Value == EmailNormalizer.Normalize(email)), Arg.Any<PiiVisibility>(), Arg.Any<UserIalLevel>(), Arg.Any<CancellationToken>());
     }
 
+    // --- RequestCardReplacement tests ---
+
+    [Fact]
+    public async Task RequestCardReplacement_ReturnsNoContent_WhenHandlerSucceeds()
+    {
+        // Arrange
+        SetupAuthenticatedUser("user@example.com", ial: "1plus");
+        var request = new RequestCardReplacementRequest
+        {
+            CaseIds = new List<string> { "SEBT-001" }
+        };
+
+        var commandHandler = Substitute.For<ICommandHandler<RequestCardReplacementCommand>>();
+        commandHandler.Handle(Arg.Any<RequestCardReplacementCommand>(), Arg.Any<CancellationToken>())
+            .Returns(Result.Success());
+
+        // Act
+        var result = await _controller.RequestCardReplacement(request, commandHandler);
+
+        // Assert
+        Assert.IsType<NoContentResult>(result);
+    }
+
+    [Fact]
+    public async Task RequestCardReplacement_ReturnsBadRequest_WhenValidationFails()
+    {
+        // Arrange
+        SetupAuthenticatedUser("user@example.com", ial: "1plus");
+        var request = new RequestCardReplacementRequest
+        {
+            CaseIds = new List<string> { "SEBT-001" }
+        };
+
+        var commandHandler = Substitute.For<ICommandHandler<RequestCardReplacementCommand>>();
+        commandHandler.Handle(Arg.Any<RequestCardReplacementCommand>(), Arg.Any<CancellationToken>())
+            .Returns(Result.ValidationFailed("CaseIds", "Case was requested within the last 14 days."));
+
+        // Act
+        var result = await _controller.RequestCardReplacement(request, commandHandler);
+
+        // Assert
+        var objectResult = Assert.IsType<ObjectResult>(result);
+        Assert.Equal(400, objectResult.StatusCode);
+    }
+
+    [Fact]
+    public async Task RequestCardReplacement_MapsRequestToCommand()
+    {
+        // Arrange
+        SetupAuthenticatedUser("user@example.com", ial: "1plus");
+        var request = new RequestCardReplacementRequest
+        {
+            CaseIds = new List<string> { "SEBT-001", "SEBT-002" }
+        };
+
+        RequestCardReplacementCommand? capturedCommand = null;
+        var commandHandler = Substitute.For<ICommandHandler<RequestCardReplacementCommand>>();
+        commandHandler.Handle(Arg.Do<RequestCardReplacementCommand>(cmd => capturedCommand = cmd), Arg.Any<CancellationToken>())
+            .Returns(Result.Success());
+
+        // Act
+        await _controller.RequestCardReplacement(request, commandHandler);
+
+        // Assert
+        Assert.NotNull(capturedCommand);
+        Assert.Equal(new List<string> { "SEBT-001", "SEBT-002" }, capturedCommand.CaseIds);
+        Assert.NotNull(capturedCommand.User);
+    }
+
     [Fact]
     public async Task GetHouseholdData_WhenIdProofingStatusIsExpired_DoesNotIncludeAddress()
     {
         // Arrange
         var email = "user@example.com";
         SetupAuthenticatedUser(email, UserIalLevel.None);
-        _idProofingRequirementsService.GetPiiVisibility(UserIalLevel.None)
+        _piiVisibilityService.GetVisibility(UserIalLevel.None)
             .Returns(new PiiVisibility(IncludeAddress: false, IncludeEmail: true, IncludePhone: true));
 
         var householdData = new HouseholdData
@@ -489,7 +577,7 @@ public class HouseholdControllerTests
         // Arrange
         var email = "user@example.com";
         SetupAuthenticatedUser(email, ial: "1plus");
-        _idProofingRequirementsService.GetPiiVisibility(Arg.Any<UserIalLevel>())
+        _piiVisibilityService.GetVisibility(Arg.Any<UserIalLevel>())
             .Returns(new PiiVisibility(IncludeAddress: true, IncludeEmail: true, IncludePhone: true));
 
         var householdData = new HouseholdData

@@ -16,7 +16,7 @@
  */
 
 import './load-env.js'
-import { readFileSync, writeFileSync, existsSync } from 'fs'
+import { readFileSync, writeFileSync, existsSync, mkdirSync } from 'fs'
 import { join, dirname, relative } from 'path'
 import { fileURLToPath } from 'url'
 
@@ -132,13 +132,15 @@ export const primaryFont = {
 import { ${googleFontImport} } from 'next/font/google'
 
 // Primary font from Figma tokens: ${primaryFontName}
+// adjustFontFallback: false avoids "Failed to find font override values" for fonts not in Next.js metrics
 export const ${variableName} = ${googleFontImport}({
   subsets: ['latin'],
   weight: [${DEFAULT_WEIGHTS.map(w => `'${w}'`).join(', ')}],
   variable: '--font-primary',
   display: 'optional',
   preload: true,
-  fallback: ['system-ui', 'sans-serif']
+  fallback: ['system-ui', 'sans-serif'],
+  adjustFontFallback: false
 })
 
 // Export as primaryFont for consistent usage
@@ -168,6 +170,7 @@ function main() {
     console.log(`✅ Found ${fonts.size} font(s): ${Array.from(fonts).join(', ')}`)
 
     const fontsTs = generateFontsTs(fonts, state)
+    mkdirSync(dirname(outputPath), { recursive: true })
     writeFileSync(outputPath, fontsTs, 'utf8')
 
     console.log(`✅ Generated fonts.ts for ${state.toUpperCase()}`)

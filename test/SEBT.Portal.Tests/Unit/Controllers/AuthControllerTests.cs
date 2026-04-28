@@ -1,10 +1,17 @@
 using System.Security.Claims;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging.Abstractions;
+using Microsoft.Extensions.Options;
 using NSubstitute;
+using NSubstitute.ExceptionExtensions;
 using SEBT.Portal.Api.Controllers.Auth;
 using SEBT.Portal.Api.Models;
+using SEBT.Portal.Api.Services;
+using SEBT.Portal.Core.AppSettings;
+using SEBT.Portal.Core.Models.Auth;
+using SEBT.Portal.Core.Utilities;
 using SEBT.Portal.Kernel;
 using SEBT.Portal.Kernel.Results;
 using SEBT.Portal.UseCases.Auth;
@@ -18,7 +25,14 @@ public class AuthControllerTests
     public AuthControllerTests()
     {
         var logger = NullLogger<AuthController>.Instance;
-        _controller = new AuthController(logger);
+        var jwtSettings = Options.Create(new JwtSettings
+        {
+            SecretKey = new string('x', 32),
+            Issuer = "test",
+            Audience = "test",
+            ExpirationMinutes = 60
+        });
+        _controller = new AuthController(logger, jwtSettings);
     }
 
     private void SetupAuthenticatedUser(string email, string claimType = "email")
@@ -29,6 +43,24 @@ public class AuthControllerTests
         _controller.ControllerContext = new ControllerContext
         {
             HttpContext = new DefaultHttpContext { User = principal }
+        };
+    }
+
+    /// <summary>
+    /// Sets up the authenticated user with a numeric sub claim (the portal JWT format)
+    /// plus an optional email claim for GetAuthorizationStatus tests.
+    /// </summary>
+    private void SetupAuthenticatedUserWithSub(Guid userId, string? email = null)
+    {
+        var claims = new List<Claim> { new Claim("sub", userId.ToString()) };
+        if (email != null)
+        {
+            claims.Add(new Claim("email", email));
+        }
+        var identity = new ClaimsIdentity(claims, "Test");
+        _controller.ControllerContext = new ControllerContext
+        {
+            HttpContext = new DefaultHttpContext { User = new ClaimsPrincipal(identity) }
         };
     }
 
@@ -51,11 +83,142 @@ public class AuthControllerTests
     }
 
     [Fact]
-    public void GetAuthorizationStatus_WhenEmailClaimIsMissing_UsesSubClaim()
+    public void GetAuthorizationStatus_WhenIalAndIdProofingClaimsPresent_IncludesThemInResponse()
     {
         // Arrange
-        var email = "user@example.com";
-        SetupAuthenticatedUser(email, "sub");
+        var claims = new List<Claim>
+        {
+            new Claim("email", "user@example.com"),
+            new Claim(JwtClaimTypes.Ial, "1plus"),
+            new Claim(JwtClaimTypes.IdProofingStatus, "2"),
+            new Claim(JwtClaimTypes.IdProofingCompletedAt, "1735689600"),
+            new Claim(JwtClaimTypes.IdProofingExpiresAt, "1767225600")
+        };
+        var identity = new ClaimsIdentity(claims, "Test");
+        _controller.ControllerContext = new ControllerContext
+        {
+            HttpContext = new DefaultHttpContext { User = new ClaimsPrincipal(identity) }
+        };
+
+        // Act
+        var result = _controller.GetAuthorizationStatus();
+
+        // Assert
+        var okResult = Assert.IsType<OkObjectResult>(result);
+        var response = Assert.IsType<AuthorizationStatusResponse>(okResult.Value);
+        Assert.Equal("1plus", response.Ial);
+        Assert.Equal(2, response.IdProofingStatus);
+        Assert.Equal(1735689600L, response.IdProofingCompletedAt);
+        Assert.Equal(1767225600L, response.IdProofingExpiresAt);
+    }
+
+    [Fact]
+    public async Task Logout_WithOidcConfigured_ClearsCookieAndRedirectsToIdpEndSessionEndpoint()
+    {
+        // Arrange
+        var config = new ConfigurationBuilder()
+            .AddInMemoryCollection(new Dictionary<string, string?>
+            {
+                ["Oidc:DiscoveryEndpoint"] = "https://auth.pingone.com/.well-known/openid-configuration",
+                ["Oidc:ClientId"] = "test-client-id",
+                ["Oidc:CallbackRedirectUri"] = "https://portal.co.gov/callback"
+            })
+            .Build();
+
+        var oidcExchangeService = Substitute.For<IOidcExchangeService>();
+        var oidcConfig = new Microsoft.IdentityModel.Protocols.OpenIdConnect.OpenIdConnectConfiguration
+        {
+            EndSessionEndpoint = "https://auth.pingone.com/logout"
+        };
+        oidcExchangeService.GetDiscoveryConfigAsync(false, Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult(oidcConfig));
+
+        _controller.ControllerContext = new ControllerContext
+        {
+            HttpContext = new DefaultHttpContext()
+        };
+
+        // Act
+        var result = await _controller.Logout(config, oidcExchangeService);
+
+        // Assert
+        var redirectResult = Assert.IsType<RedirectResult>(result);
+        Assert.Contains("https://auth.pingone.com/logout", redirectResult.Url);
+        Assert.Contains("client_id=test-client-id", redirectResult.Url);
+        Assert.Contains("post_logout_redirect_uri=", redirectResult.Url);
+        Assert.Contains("%2Flogin", redirectResult.Url); // /login URL-encoded
+
+        var setCookie = _controller.Response.Headers["Set-Cookie"].ToString();
+        Assert.Contains($"{AuthCookies.AuthCookieName}=", setCookie);
+        Assert.Contains("expires=", setCookie, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public async Task Logout_WithoutOidcConfigured_ClearsCookieAndRedirectsToLogin()
+    {
+        // Arrange
+        var config = new ConfigurationBuilder()
+            .AddInMemoryCollection(new Dictionary<string, string?>())
+            .Build();
+
+        var oidcExchangeService = Substitute.For<IOidcExchangeService>();
+
+        _controller.ControllerContext = new ControllerContext
+        {
+            HttpContext = new DefaultHttpContext()
+        };
+
+        // Act
+        var result = await _controller.Logout(config, oidcExchangeService);
+
+        // Assert
+        var redirectResult = Assert.IsType<RedirectResult>(result);
+        Assert.Equal("/login", redirectResult.Url);
+
+        var setCookie = _controller.Response.Headers["Set-Cookie"].ToString();
+        Assert.Contains($"{AuthCookies.AuthCookieName}=", setCookie);
+        Assert.Contains("expires=", setCookie, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public async Task Logout_WhenDiscoveryFails_ClearsCookieAndRedirectsToLogin()
+    {
+        // Arrange
+        var config = new ConfigurationBuilder()
+            .AddInMemoryCollection(new Dictionary<string, string?>
+            {
+                ["Oidc:DiscoveryEndpoint"] = "https://auth.pingone.com/.well-known/openid-configuration",
+                ["Oidc:ClientId"] = "test-client-id",
+                ["Oidc:CallbackRedirectUri"] = "https://portal.co.gov/callback"
+            })
+            .Build();
+
+        var oidcExchangeService = Substitute.For<IOidcExchangeService>();
+        oidcExchangeService.GetDiscoveryConfigAsync(false, Arg.Any<CancellationToken>())
+            .ThrowsAsync(new InvalidOperationException("Discovery failed"));
+
+        _controller.ControllerContext = new ControllerContext
+        {
+            HttpContext = new DefaultHttpContext()
+        };
+
+        // Act
+        var result = await _controller.Logout(config, oidcExchangeService);
+
+        // Assert — graceful fallback, don't strand the user
+        var redirectResult = Assert.IsType<RedirectResult>(result);
+        Assert.Equal("/login", redirectResult.Url);
+
+        var setCookie = _controller.Response.Headers["Set-Cookie"].ToString();
+        Assert.Contains($"{AuthCookies.AuthCookieName}=", setCookie);
+        Assert.Contains("expires=", setCookie, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public void GetAuthorizationStatus_WhenEmailClaimIsMissing_ReturnsNullEmail()
+    {
+        // Arrange: portal JWT has sub (user ID) but no email claim — OIDC users without stored email
+        SetupAuthenticatedUserWithSub(userId: Guid.CreateVersion7());
 
         // Act
         var result = _controller.GetAuthorizationStatus();
@@ -65,37 +228,37 @@ public class AuthControllerTests
         var okResult = Assert.IsType<OkObjectResult>(result);
         var response = Assert.IsType<AuthorizationStatusResponse>(okResult.Value);
         Assert.True(response.IsAuthorized);
-        Assert.Equal(email, response.Email);
+        Assert.Null(response.Email);
     }
 
     [Fact]
-    public async Task RefreshToken_WhenSuccess_ReturnsOkWithNewToken()
+    public async Task RefreshToken_WhenSuccess_ReturnsNoContentAndSetsAuthCookie()
     {
-        // Arrange
-        var email = "user@example.com";
-        var expectedToken = "refreshed.jwt.token";
-        SetupAuthenticatedUser(email);
+        // Arrange — controller reads UserId from the sub claim (portal JWT format: sub = user.Id)
+        var userId = Guid.NewGuid();
+        const string expectedToken = "refreshed.jwt.token";
+        SetupAuthenticatedUserWithSub(userId, email: "user@example.com");
 
         var handlerMock = Substitute.For<ICommandHandler<RefreshTokenCommand, string>>();
-        handlerMock.Handle(Arg.Is<RefreshTokenCommand>(c => c.Email == email))
+        handlerMock.Handle(Arg.Is<RefreshTokenCommand>(c => c.CurrentPrincipal.GetUserId() == userId))
             .Returns(Result<string>.Success(expectedToken));
 
         // Act
         var result = await _controller.RefreshToken(handlerMock);
 
         // Assert
-        Assert.NotNull(result);
-        var okResult = Assert.IsType<OkObjectResult>(result);
-        var response = Assert.IsType<ValidateOtpResponse>(okResult.Value);
-        Assert.Equal(expectedToken, response.Token);
-        await handlerMock.Received(1).Handle(Arg.Is<RefreshTokenCommand>(c => c.Email == email));
+        Assert.IsType<NoContentResult>(result);
+        var setCookie = _controller.Response.Headers["Set-Cookie"].ToString();
+        Assert.Contains($"{AuthCookies.AuthCookieName}={expectedToken}", setCookie);
+        Assert.Contains("httponly", setCookie, StringComparison.OrdinalIgnoreCase);
+        await handlerMock.Received(1).Handle(Arg.Is<RefreshTokenCommand>(c => c.CurrentPrincipal.GetUserId() == userId));
     }
 
     [Fact]
-    public async Task RefreshToken_WhenEmailCannotBeExtracted_ReturnsUnauthorized()
+    public async Task RefreshToken_WhenSubClaimMissing_ReturnsUnauthorized()
     {
-        // Arrange
-        var claims = new List<Claim>(); // No email claim
+        // Arrange — no sub claim means the controller cannot identify the user
+        var claims = new List<Claim>(); // No sub claim
         var identity = new ClaimsIdentity(claims, "Test");
         var principal = new ClaimsPrincipal(identity);
         _controller.ControllerContext = new ControllerContext
@@ -119,11 +282,11 @@ public class AuthControllerTests
     public async Task RefreshToken_WhenUserNotFound_ReturnsNotFound()
     {
         // Arrange
-        var email = "nonexistent@example.com";
-        SetupAuthenticatedUser(email);
+        var userId = Guid.NewGuid();
+        SetupAuthenticatedUserWithSub(userId);
 
         var handlerMock = Substitute.For<ICommandHandler<RefreshTokenCommand, string>>();
-        handlerMock.Handle(Arg.Is<RefreshTokenCommand>(c => c.Email == email))
+        handlerMock.Handle(Arg.Is<RefreshTokenCommand>(c => c.CurrentPrincipal.GetUserId() == userId))
             .Returns(Result<string>.PreconditionFailed(
                 PreconditionFailedReason.NotFound,
                 "User not found."));
@@ -141,16 +304,16 @@ public class AuthControllerTests
     [Fact]
     public async Task RefreshToken_WhenValidationFails_ReturnsBadRequestWithErrors()
     {
-        // Arrange
-        var email = "invalid-email";
-        SetupAuthenticatedUser(email);
+        // Arrange — handler returns a validation failure (e.g. some business rule violation)
+        var userId = Guid.NewGuid();
+        SetupAuthenticatedUserWithSub(userId);
 
         var handlerMock = Substitute.For<ICommandHandler<RefreshTokenCommand, string>>();
         var validationErrors = new[]
         {
-            new ValidationError("Email", "Invalid email format.")
+            new ValidationError("UserId", "User ID must be a positive integer.")
         };
-        handlerMock.Handle(Arg.Is<RefreshTokenCommand>(c => c.Email == email))
+        handlerMock.Handle(Arg.Any<RefreshTokenCommand>())
             .Returns(Result<string>.ValidationFailed(validationErrors));
 
         // Act
@@ -170,11 +333,11 @@ public class AuthControllerTests
     public async Task RefreshToken_WhenDependencyFails_ReturnsBadRequest()
     {
         // Arrange
-        var email = "user@example.com";
-        SetupAuthenticatedUser(email);
+        var userId = Guid.NewGuid();
+        SetupAuthenticatedUserWithSub(userId);
 
         var handlerMock = Substitute.For<ICommandHandler<RefreshTokenCommand, string>>();
-        handlerMock.Handle(Arg.Is<RefreshTokenCommand>(c => c.Email == email))
+        handlerMock.Handle(Arg.Is<RefreshTokenCommand>(c => c.CurrentPrincipal.GetUserId() == userId))
             .Returns(Result<string>.DependencyFailed(
                 DependencyFailedReason.ConnectionFailed,
                 "An error occurred while refreshing the authentication token."));
@@ -190,11 +353,11 @@ public class AuthControllerTests
     }
 
     [Fact]
-    public async Task RefreshToken_ExtractsEmailFromEmailClaim()
+    public async Task RefreshToken_ExtractsUserIdFromSubClaim()
     {
-        // Arrange
-        var email = "user@example.com";
-        SetupAuthenticatedUser(email);
+        // Arrange — portal JWT has sub = user.Id (Guid string)
+        var userId = Guid.NewGuid();
+        SetupAuthenticatedUserWithSub(userId);
 
         var handlerMock = Substitute.For<ICommandHandler<RefreshTokenCommand, string>>();
         handlerMock.Handle(Arg.Any<RefreshTokenCommand>())
@@ -204,97 +367,27 @@ public class AuthControllerTests
         var result = await _controller.RefreshToken(handlerMock);
 
         // Assert
-        await handlerMock.Received(1).Handle(Arg.Is<RefreshTokenCommand>(c => c.Email == email));
+        await handlerMock.Received(1).Handle(Arg.Is<RefreshTokenCommand>(c => c.CurrentPrincipal.GetUserId() == userId));
     }
 
     [Fact]
-    public async Task RefreshToken_ExtractsEmailFromSubClaim_WhenEmailClaimMissing()
+    public async Task RefreshToken_WhenSubClaimIsNotAnInteger_ReturnsUnauthorized()
     {
-        // Arrange
-        var email = "user@example.com";
-        SetupAuthenticatedUser(email, "sub");
-
-        var handlerMock = Substitute.For<ICommandHandler<RefreshTokenCommand, string>>();
-        handlerMock.Handle(Arg.Any<RefreshTokenCommand>())
-            .Returns(Result<string>.Success("token"));
-
-        // Act
-        var result = await _controller.RefreshToken(handlerMock);
-
-        // Assert
-        await handlerMock.Received(1).Handle(Arg.Is<RefreshTokenCommand>(c => c.Email == email));
-    }
-
-    [Fact]
-    public async Task RefreshToken_ExtractsEmailFromIdentityName_WhenOtherClaimsMissing()
-    {
-        // Arrange
-        var email = "user@example.com";
-        var identity = new ClaimsIdentity("Test");
-        identity.AddClaim(new Claim(ClaimTypes.Name, email));
-        var principal = new ClaimsPrincipal(identity);
+        // Arrange — OIDC-style sub (non-integer) is rejected; portal JWT sub is always user.Id
+        var claims = new List<Claim> { new Claim("sub", "not-an-integer") };
+        var identity = new ClaimsIdentity(claims, "Test");
         _controller.ControllerContext = new ControllerContext
         {
-            HttpContext = new DefaultHttpContext { User = principal }
+            HttpContext = new DefaultHttpContext { User = new ClaimsPrincipal(identity) }
         };
 
         var handlerMock = Substitute.For<ICommandHandler<RefreshTokenCommand, string>>();
-        handlerMock.Handle(Arg.Any<RefreshTokenCommand>())
-            .Returns(Result<string>.Success("token"));
 
         // Act
         var result = await _controller.RefreshToken(handlerMock);
 
         // Assert
-        await handlerMock.Received(1).Handle(Arg.Is<RefreshTokenCommand>(c => c.Email == email));
-    }
-
-    [Fact]
-    public async Task RefreshToken_ExtractsEmailFromShortEmailClaim_WhenJwtHandlerMappedClaims()
-    {
-        // Arrange: JWT Bearer maps inbound claims to short names; principal may have "email" not ClaimTypes.Email
-        var email = "user@example.com";
-        var identity = new ClaimsIdentity("Test");
-        identity.AddClaim(new Claim("email", email));
-        var principal = new ClaimsPrincipal(identity);
-        _controller.ControllerContext = new ControllerContext
-        {
-            HttpContext = new DefaultHttpContext { User = principal }
-        };
-
-        var handlerMock = Substitute.For<ICommandHandler<RefreshTokenCommand, string>>();
-        handlerMock.Handle(Arg.Any<RefreshTokenCommand>())
-            .Returns(Result<string>.Success("token"));
-
-        // Act
-        var result = await _controller.RefreshToken(handlerMock);
-
-        // Assert
-        await handlerMock.Received(1).Handle(Arg.Is<RefreshTokenCommand>(c => c.Email == email));
-    }
-
-    [Fact]
-    public async Task RefreshToken_ExtractsEmailFromSubClaim_WhenJwtHandlerMappedClaims()
-    {
-        // Arrange: OIDC tokens often use "sub" as the user identifier; ensure we accept it for refresh
-        var email = "user@example.com";
-        var identity = new ClaimsIdentity("Test");
-        identity.AddClaim(new Claim("sub", email));
-        var principal = new ClaimsPrincipal(identity);
-        _controller.ControllerContext = new ControllerContext
-        {
-            HttpContext = new DefaultHttpContext { User = principal }
-        };
-
-        var handlerMock = Substitute.For<ICommandHandler<RefreshTokenCommand, string>>();
-        handlerMock.Handle(Arg.Any<RefreshTokenCommand>())
-            .Returns(Result<string>.Success("token"));
-
-        // Act
-        var result = await _controller.RefreshToken(handlerMock);
-
-        // Assert
-        await handlerMock.Received(1).Handle(Arg.Is<RefreshTokenCommand>(c => c.Email == email));
+        Assert.IsType<UnauthorizedObjectResult>(result);
+        await handlerMock.DidNotReceive().Handle(Arg.Any<RefreshTokenCommand>());
     }
 }
-

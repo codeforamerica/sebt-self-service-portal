@@ -86,9 +86,67 @@ describe('OffBoardingPage', () => {
       />
     )
 
-    // The component renders — the reason is read but not currently displayed
-    // (future: copy can vary by reason per D7)
+    // The component renders. Generic copy is preserved for unknown reasons.
     expect(screen.getByRole('heading', { name: /we're sorry/i })).toBeInTheDocument()
     expect(screen.getByRole('link', { name: /apply now/i })).toBeInTheDocument()
+  })
+
+  describe('reason-specific copy', () => {
+    it('renders distinct heading and body when reason is noIdProvided', () => {
+      sessionStorage.setItem('offboarding_reason', 'noIdProvided')
+
+      render(<OffBoardingPage contactLink={TEST_CONTACT_LINK} />)
+
+      // Distinct heading for the noIdProvided case, not the generic "we're sorry".
+      expect(
+        screen.getByRole('heading', { name: /we need an ID to verify you/i })
+      ).toBeInTheDocument()
+      expect(screen.queryByRole('heading', { name: /we're sorry/i })).not.toBeInTheDocument()
+
+      // Body references providing one of the listed IDs.
+      expect(screen.getByText(/one of the listed IDs/i)).toBeInTheDocument()
+    })
+
+    it('hides the Apply now block for noIdProvided even when canApply is true', () => {
+      sessionStorage.setItem('offboarding_reason', 'noIdProvided')
+      sessionStorage.setItem('offboarding_canApply', 'true')
+
+      render(
+        <OffBoardingPage
+          contactLink={TEST_CONTACT_LINK}
+          applyLink={TEST_APPLY_LINK}
+        />
+      )
+
+      // canApply is true, but for noIdProvided we intentionally don't surface
+      // "Apply now". The user hasn't failed; they just haven't provided an ID.
+      expect(screen.queryByRole('link', { name: /apply now/i })).not.toBeInTheDocument()
+    })
+
+    it('renders generic copy when reason is null', () => {
+      // No sessionStorage key set; lazy initializer returns null.
+      render(<OffBoardingPage contactLink={TEST_CONTACT_LINK} />)
+
+      expect(screen.getByRole('heading', { name: /we're sorry/i })).toBeInTheDocument()
+      expect(screen.queryByRole('heading', { name: /we need an ID/i })).not.toBeInTheDocument()
+    })
+
+    it('renders generic copy when reason is idProofingFailed', () => {
+      sessionStorage.setItem('offboarding_reason', 'idProofingFailed')
+
+      render(<OffBoardingPage contactLink={TEST_CONTACT_LINK} />)
+
+      expect(screen.getByRole('heading', { name: /we're sorry/i })).toBeInTheDocument()
+      expect(screen.queryByRole('heading', { name: /we need an ID/i })).not.toBeInTheDocument()
+    })
+
+    it('renders generic copy when reason is unknown', () => {
+      sessionStorage.setItem('offboarding_reason', 'someFutureReason')
+
+      render(<OffBoardingPage contactLink={TEST_CONTACT_LINK} />)
+
+      expect(screen.getByRole('heading', { name: /we're sorry/i })).toBeInTheDocument()
+      expect(screen.queryByRole('heading', { name: /we need an ID/i })).not.toBeInTheDocument()
+    })
   })
 })

@@ -90,14 +90,16 @@ public static class UserFactory
         return new UserEntity
         {
             Id = user.Id,
-            Email = EmailNormalizer.Normalize(user.Email),
+            Email = user.Email != null ? EmailNormalizer.Normalize(user.Email) : null,
             IdProofingStatus = (int)user.IdProofingStatus,
             IalLevel = (int)user.IalLevel,
             IdProofingSessionId = user.IdProofingSessionId,
             IdProofingCompletedAt = user.IdProofingCompletedAt,
             IdProofingExpiresAt = user.IdProofingExpiresAt,
+            DateOfBirth = user.DateOfBirth,
             IsCoLoaded = user.IsCoLoaded,
             CoLoadedLastUpdated = user.CoLoadedLastUpdated,
+            IdProofingAttemptCount = user.IdProofingAttemptCount,
             CreatedAt = user.CreatedAt,
             UpdatedAt = user.UpdatedAt
         };

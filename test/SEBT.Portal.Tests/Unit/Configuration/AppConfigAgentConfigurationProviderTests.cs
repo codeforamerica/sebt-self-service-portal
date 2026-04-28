@@ -321,7 +321,7 @@ public class AppConfigAgentConfigurationProviderTests : IDisposable
     }
 
     [Fact]
-    public void Load_WithArrays_ShouldSkipArrays()
+    public void Load_WithStringArray_ShouldFlattenWithIndexedKeys()
     {
         // Arrange
         var profile = new AppConfigAgentProfile
@@ -336,7 +336,7 @@ public class AppConfigAgentConfigurationProviderTests : IDisposable
         var configJson = new
         {
             Key1 = "value1",
-            ArrayKey = new[] { "item1", "item2" }
+            ArrayKey = new[] { "item1", "item2", "item3" }
         };
 
         _mockHttpHandler
@@ -351,8 +351,158 @@ public class AppConfigAgentConfigurationProviderTests : IDisposable
         // Assert
         Assert.True(provider.TryGet("Key1", out var key1));
         Assert.Equal("value1", key1);
-        // arrays should be skipped
-        Assert.False(provider.TryGet("ArrayKey", out _));
+        Assert.True(provider.TryGet("ArrayKey:0", out var item0));
+        Assert.Equal("item1", item0);
+        Assert.True(provider.TryGet("ArrayKey:1", out var item1));
+        Assert.Equal("item2", item1);
+        Assert.True(provider.TryGet("ArrayKey:2", out var item2));
+        Assert.Equal("item3", item2);
+    }
+
+    [Fact]
+    public void Load_WithNestedConfigArray_ShouldFlattenWithSectionAndIndex()
+    {
+        // Arrange — mirrors the real StateHouseholdId config structure
+        var profile = new AppConfigAgentProfile
+        {
+            BaseUrl = "http://localhost:2772",
+            ApplicationId = "test-app",
+            EnvironmentId = "test-env",
+            ProfileId = "test-profile",
+            IsFeatureFlag = false
+        };
+
+        var configJson = new
+        {
+            StateHouseholdId = new
+            {
+                PreferredHouseholdIdTypes = new[] { "Phone" }
+            }
+        };
+
+        _mockHttpHandler
+            .When("http://localhost:2772/applications/test-app/environments/test-env/configurations/test-profile")
+            .Respond(HttpStatusCode.OK, "application/json", JsonSerializer.Serialize(configJson));
+
+        var provider = new AppConfigAgentConfigurationProvider(_httpClient, profile, _logger, ownsHttpClient: false);
+
+        // Act
+        provider.Load();
+
+        // Assert
+        Assert.True(provider.TryGet("StateHouseholdId:PreferredHouseholdIdTypes:0", out var type0));
+        Assert.Equal("Phone", type0);
+    }
+
+    [Fact]
+    public void Load_WithArrayOfObjects_ShouldFlattenWithIndexAndPropertyKeys()
+    {
+        // Arrange
+        var profile = new AppConfigAgentProfile
+        {
+            BaseUrl = "http://localhost:2772",
+            ApplicationId = "test-app",
+            EnvironmentId = "test-env",
+            ProfileId = "test-profile",
+            IsFeatureFlag = false
+        };
+
+        var configJson = new
+        {
+            Items = new[]
+            {
+                new { Name = "first", Value = 1 },
+                new { Name = "second", Value = 2 }
+            }
+        };
+
+        _mockHttpHandler
+            .When("http://localhost:2772/applications/test-app/environments/test-env/configurations/test-profile")
+            .Respond(HttpStatusCode.OK, "application/json", JsonSerializer.Serialize(configJson));
+
+        var provider = new AppConfigAgentConfigurationProvider(_httpClient, profile, _logger, ownsHttpClient: false);
+
+        // Act
+        provider.Load();
+
+        // Assert
+        Assert.True(provider.TryGet("Items:0:Name", out var name0));
+        Assert.Equal("first", name0);
+        Assert.True(provider.TryGet("Items:0:Value", out var value0));
+        Assert.Equal("1", value0);
+        Assert.True(provider.TryGet("Items:1:Name", out var name1));
+        Assert.Equal("second", name1);
+        Assert.True(provider.TryGet("Items:1:Value", out var value1));
+        Assert.Equal("2", value1);
+    }
+
+    [Fact]
+    public void Load_WithEmptyArray_ShouldProduceNoKeys()
+    {
+        // Arrange
+        var profile = new AppConfigAgentProfile
+        {
+            BaseUrl = "http://localhost:2772",
+            ApplicationId = "test-app",
+            EnvironmentId = "test-env",
+            ProfileId = "test-profile",
+            IsFeatureFlag = false
+        };
+
+        // Use raw JSON since anonymous types can't express empty typed arrays cleanly
+        var configJson = """{"Key1": "value1", "EmptyArray": []}""";
+
+        _mockHttpHandler
+            .When("http://localhost:2772/applications/test-app/environments/test-env/configurations/test-profile")
+            .Respond(HttpStatusCode.OK, "application/json", configJson);
+
+        var provider = new AppConfigAgentConfigurationProvider(_httpClient, profile, _logger, ownsHttpClient: false);
+
+        // Act
+        provider.Load();
+
+        // Assert
+        Assert.True(provider.TryGet("Key1", out var key1));
+        Assert.Equal("value1", key1);
+        Assert.False(provider.TryGet("EmptyArray:0", out _));
+    }
+
+    [Fact]
+    public void Load_WithMixedTypeArray_ShouldFlattenAllElementTypes()
+    {
+        // Arrange
+        var profile = new AppConfigAgentProfile
+        {
+            BaseUrl = "http://localhost:2772",
+            ApplicationId = "test-app",
+            EnvironmentId = "test-env",
+            ProfileId = "test-profile",
+            IsFeatureFlag = false
+        };
+
+        // Mixed types require raw JSON
+        var configJson = """{"Mixed": ["text", 42, true, false, null]}""";
+
+        _mockHttpHandler
+            .When("http://localhost:2772/applications/test-app/environments/test-env/configurations/test-profile")
+            .Respond(HttpStatusCode.OK, "application/json", configJson);
+
+        var provider = new AppConfigAgentConfigurationProvider(_httpClient, profile, _logger, ownsHttpClient: false);
+
+        // Act
+        provider.Load();
+
+        // Assert
+        Assert.True(provider.TryGet("Mixed:0", out var v0));
+        Assert.Equal("text", v0);
+        Assert.True(provider.TryGet("Mixed:1", out var v1));
+        Assert.Equal("42", v1);
+        Assert.True(provider.TryGet("Mixed:2", out var v2));
+        Assert.Equal("true", v2);
+        Assert.True(provider.TryGet("Mixed:3", out var v3));
+        Assert.Equal("false", v3);
+        Assert.True(provider.TryGet("Mixed:4", out var v4));
+        Assert.Null(v4);
     }
 
     [Fact]
@@ -775,6 +925,163 @@ public class AppConfigAgentConfigurationProviderTests : IDisposable
         // Provider should own the HttpClient since one was created
         var exception = Record.Exception(() => provider.Dispose());
         Assert.Null(exception);
+    }
+
+    [Fact]
+    public void Load_InitialLoad_ShouldRetryOnConnectionRefused_ThenSucceed()
+    {
+        // Arrange — simulate AppConfig Agent sidecar not ready for the first 3 attempts
+        var profile = new AppConfigAgentProfile
+        {
+            BaseUrl = "http://localhost:2772",
+            ApplicationId = "test-app",
+            EnvironmentId = "test-env",
+            ProfileId = "test-profile",
+            IsFeatureFlag = false,
+            ReloadAfterSeconds = null // Disable reload timer for test isolation
+        };
+
+        var configJson = """{"Cbms": {"UseMockResponses": true}}""";
+        var handler = new FailThenSucceedHandler(
+            failCount: 3,
+            successResponse: new HttpResponseMessage(HttpStatusCode.OK)
+            {
+                Content = new StringContent(configJson, Encoding.UTF8, "application/json")
+            });
+
+        using var httpClient = new HttpClient(handler);
+        var provider = new AppConfigAgentConfigurationProvider(httpClient, profile, _logger, ownsHttpClient: false);
+
+        // Act
+        provider.Load();
+
+        // Assert — config should be loaded after retries
+        Assert.True(provider.TryGet("Cbms:UseMockResponses", out var value));
+        Assert.Equal("true", value);
+        Assert.Equal(4, handler.CallCount); // 3 failures + 1 success
+
+        provider.Dispose();
+    }
+
+    [Fact]
+    public void Load_InitialLoad_ShouldGiveUpAfterMaxRetries()
+    {
+        // Arrange — agent never becomes available
+        var profile = new AppConfigAgentProfile
+        {
+            BaseUrl = "http://localhost:2772",
+            ApplicationId = "test-app",
+            EnvironmentId = "test-env",
+            ProfileId = "test-profile",
+            IsFeatureFlag = false,
+            ReloadAfterSeconds = null
+        };
+
+        var handler = new FailThenSucceedHandler(
+            failCount: 100, // More than max retries
+            successResponse: new HttpResponseMessage(HttpStatusCode.OK));
+
+        using var httpClient = new HttpClient(handler);
+        var provider = new AppConfigAgentConfigurationProvider(httpClient, profile, _logger, ownsHttpClient: false);
+
+        // Act — should not throw
+        var exception = Record.Exception(() => provider.Load());
+
+        // Assert
+        Assert.Null(exception);
+        Assert.False(provider.TryGet("any-key", out _)); // No config loaded
+        Assert.Equal(10, handler.CallCount); // Should have tried exactly 10 times (max retries)
+
+        provider.Dispose();
+    }
+
+    [Fact]
+    public void Load_SubsequentReloads_ShouldNotRetryOnFailure()
+    {
+        // Arrange — first load succeeds, second load (simulating a reload) should not retry
+        var profile = new AppConfigAgentProfile
+        {
+            BaseUrl = "http://localhost:2772",
+            ApplicationId = "test-app",
+            EnvironmentId = "test-env",
+            ProfileId = "test-profile",
+            IsFeatureFlag = false,
+            ReloadAfterSeconds = null
+        };
+
+        var configJson = """{"Key1": "value1"}""";
+        // First call succeeds, then all subsequent calls fail
+        var handler = new FailThenSucceedHandler(
+            failCount: 0,
+            successResponse: new HttpResponseMessage(HttpStatusCode.OK)
+            {
+                Content = new StringContent(configJson, Encoding.UTF8, "application/json")
+            },
+            failAfterSuccess: true);
+
+        using var httpClient = new HttpClient(handler);
+        var provider = new AppConfigAgentConfigurationProvider(httpClient, profile, _logger, ownsHttpClient: false);
+
+        // Act — initial load succeeds
+        provider.Load();
+        Assert.True(provider.TryGet("Key1", out var value));
+        Assert.Equal("value1", value);
+        Assert.Equal(1, handler.CallCount);
+
+        // Act — subsequent load (reload) fails, should only try once (no retry)
+        provider.Load();
+
+        // Assert — only 2 total calls (1 initial + 1 reload), no retries on reload
+        Assert.Equal(2, handler.CallCount);
+
+        provider.Dispose();
+    }
+
+    /// <summary>
+    /// Test handler that throws HttpRequestException for the first N requests,
+    /// then returns a success response. Simulates the AppConfig Agent sidecar
+    /// startup race condition.
+    /// </summary>
+    private sealed class FailThenSucceedHandler : HttpMessageHandler
+    {
+        private readonly int _failCount;
+        private readonly HttpResponseMessage _successResponse;
+        private readonly bool _failAfterSuccess;
+        private int _callCount;
+
+        public int CallCount => _callCount;
+
+        public FailThenSucceedHandler(
+            int failCount,
+            HttpResponseMessage successResponse,
+            bool failAfterSuccess = false)
+        {
+            _failCount = failCount;
+            _successResponse = successResponse;
+            _failAfterSuccess = failAfterSuccess;
+        }
+
+        protected override Task<HttpResponseMessage> SendAsync(
+            HttpRequestMessage request, CancellationToken cancellationToken)
+        {
+            var currentCall = Interlocked.Increment(ref _callCount);
+
+            if (currentCall <= _failCount)
+            {
+                throw new HttpRequestException(
+                    "Connection refused (localhost:2772)",
+                    new System.Net.Sockets.SocketException(111));
+            }
+
+            if (_failAfterSuccess && currentCall > _failCount + 1)
+            {
+                throw new HttpRequestException(
+                    "Connection refused (localhost:2772)",
+                    new System.Net.Sockets.SocketException(111));
+            }
+
+            return Task.FromResult(_successResponse);
+        }
     }
 
     public void Dispose()

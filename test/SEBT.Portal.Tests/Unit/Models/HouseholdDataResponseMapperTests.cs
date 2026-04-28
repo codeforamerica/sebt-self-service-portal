@@ -41,8 +41,8 @@ public class HouseholdDataResponseMapperTests
                     CardDeactivatedAt = null,
                     Children = new List<Child>
                     {
-                        new Child { CaseNumber = 1001, FirstName = "John", LastName = "Doe" },
-                        new Child { CaseNumber = 1002, FirstName = "Jane", LastName = "Doe" }
+                        new Child { FirstName = "John", LastName = "Doe" },
+                        new Child { FirstName = "Jane", LastName = "Doe" }
                     }
                 }
             },
@@ -70,6 +70,8 @@ public class HouseholdDataResponseMapperTests
         Assert.Equal("user@example.com", response.Email);
         Assert.Equal("555-1234", response.Phone);
         Assert.Equal(BenefitIssuanceType.SnapEbtCard, response.BenefitIssuanceType);
+        Assert.NotNull(response.SummerEbtCases);
+        Assert.Empty(response.SummerEbtCases);
         Assert.NotNull(response.Applications);
         Assert.Single(response.Applications);
 
@@ -97,12 +99,12 @@ public class HouseholdDataResponseMapperTests
         Assert.Null(app.CardDeactivatedAt);
         Assert.Equal(2, app.ChildrenOnApplication);
         Assert.Equal(2, app.Children.Count);
-        Assert.Equal(1001, app.Children[0].CaseNumber);
         Assert.Equal("John", app.Children[0].FirstName);
         Assert.Equal("Doe", app.Children[0].LastName);
-        Assert.Equal(1002, app.Children[1].CaseNumber);
+        Assert.Equal(ApplicationStatus.Unknown, app.Children[0].Status);
         Assert.Equal("Jane", app.Children[1].FirstName);
         Assert.Equal("Doe", app.Children[1].LastName);
+        Assert.Equal(ApplicationStatus.Unknown, app.Children[1].Status);
 
         // Assert - user profile
         Assert.NotNull(response.UserProfile);
@@ -207,5 +209,41 @@ public class HouseholdDataResponseMapperTests
         Assert.Equal(ApplicationStatus.Pending, response.Applications[1].ApplicationStatus);
         Assert.Single(response.Applications[1].Children);
         Assert.Equal("B", response.Applications[1].Children[0].FirstName);
+    }
+
+    [Fact]
+    public void ToResponse_MapsSummerEbtCases()
+    {
+        var domain = new HouseholdData
+        {
+            Email = "user@example.com",
+            Applications = new List<Application>(),
+            SummerEbtCases = new List<SummerEbtCase>
+            {
+                new SummerEbtCase
+                {
+                    SummerEBTCaseID = "CASE-001",
+                    ChildFirstName = "Maria",
+                    ChildLastName = "Garcia",
+                    ChildDateOfBirth = new DateTime(2015, 5, 15),
+                    ApplicationStatus = ApplicationStatus.Approved,
+                    EbtCardLastFour = "1234",
+                    EbtCardBalance = 120.50m
+                }
+            }
+        };
+
+        var response = domain.ToResponse();
+
+        Assert.NotNull(response);
+        Assert.Single(response.SummerEbtCases);
+        var sec = response.SummerEbtCases[0];
+        Assert.Equal("CASE-001", sec.SummerEBTCaseID);
+        Assert.Equal("Maria", sec.ChildFirstName);
+        Assert.Equal("Garcia", sec.ChildLastName);
+        Assert.Equal(new DateTime(2015, 5, 15), sec.ChildDateOfBirth);
+        Assert.Equal(ApplicationStatus.Approved, sec.ApplicationStatus);
+        Assert.Equal("1234", sec.EbtCardLastFour);
+        Assert.Equal(120.50m, sec.EbtCardBalance);
     }
 }

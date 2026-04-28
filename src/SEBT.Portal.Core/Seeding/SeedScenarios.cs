@@ -10,9 +10,19 @@ public static class SeedScenarios
 {
     // IAL1+ scenarios
     public static readonly SeedScenario CoLoaded = new("co-loaded", UserIalLevel.IAL1plus);
+    /// <summary>Co-loaded with SNAP/TANF on file; ID proofing not started (DC mock household + benefit-match dev).</summary>
+    public static readonly SeedScenario CoLoadedPendingIdProofing = new("co-loaded-pending-id-proofing", UserIalLevel.None);
     public static readonly SeedScenario Verified = new("verified", UserIalLevel.IAL1plus);
     public static readonly SeedScenario Expired = new("expired", UserIalLevel.IAL1plus);
     public static readonly SeedScenario Review = new("review", UserIalLevel.IAL1plus);
+    public static readonly SeedScenario SummerActive = new("summer-active", UserIalLevel.IAL1plus);
+    public static readonly SeedScenario SummerLost = new("summer-lost", UserIalLevel.IAL1plus);
+    public static readonly SeedScenario DcMixed = new("dc-mixed", UserIalLevel.IAL1plus);
+    public static readonly SeedScenario CoUndeliverable = new("co-undeliverable", UserIalLevel.IAL1plus);
+    public static readonly SeedScenario CoFrozen = new("co-frozen", UserIalLevel.IAL1plus);
+    public static readonly SeedScenario CoNotActivated = new("co-notactivated", UserIalLevel.IAL1plus);
+    public static readonly SeedScenario CoDeactivatedByState = new("co-deactivatedbystate", UserIalLevel.IAL1plus);
+    public static readonly SeedScenario CoActive = new("co-active", UserIalLevel.IAL1plus);
 
     // IAL1 scenarios
     public static readonly SeedScenario SingleChild = new("singlechild", UserIalLevel.IAL1);
@@ -30,15 +40,37 @@ public static class SeedScenarios
     // Household-only scenario (not seeded as a User in the database)
     public static readonly SeedScenario MultipleApps = new("multipleapps", UserIalLevel.None);
 
+    // Simple scenarios (non-co-loaded, Summer EBT, active benefits)
+    public static readonly SeedScenario Simple1 = new("simple1", UserIalLevel.None);
+    public static readonly SeedScenario Simple2 = new("simple2", UserIalLevel.None);
+    public static readonly SeedScenario Simple3 = new("simple3", UserIalLevel.None);
+    public static readonly SeedScenario Simple4 = new("simple4", UserIalLevel.None);
+    public static readonly SeedScenario Simple5 = new("simple5", UserIalLevel.None);
+    public static readonly SeedScenario Simple6 = new("simple6", UserIalLevel.None);
+    public static readonly SeedScenario Simple7 = new("simple7", UserIalLevel.None);
+
     /// <summary>
     /// Scenarios that are seeded as User entities in the database.
     /// </summary>
     public static readonly IReadOnlyList<SeedScenario> UserScenarios =
     [
-        CoLoaded, Verified, SingleChild, LargeFamily, Expired,
+        CoLoaded, CoLoadedPendingIdProofing, Verified, SingleChild, LargeFamily, Expired,
         NonCoLoaded, NotStarted, Pending, Minimal, Denied,
-        Review, Cancelled, Unknown
+        Review, Cancelled, Unknown, SummerActive, SummerLost,
+        DcMixed, CoUndeliverable, CoFrozen, CoNotActivated, CoDeactivatedByState, CoActive,
+        Simple1, Simple2, Simple3, Simple4, Simple5, Simple6, Simple7
     ];
+
+    /// <summary>
+    /// Scenarios that should only be seeded when STATE=dc.
+    /// </summary>
+    public static readonly IReadOnlySet<SeedScenario> DcOnlyScenarios =
+        new HashSet<SeedScenario>
+        {
+            SummerActive, SummerLost, DcMixed,
+            Simple1, Simple2, Simple3, Simple4, Simple5, Simple6, Simple7,
+            CoLoadedPendingIdProofing,
+        };
 
     /// <summary>
     /// All scenarios including household-only entries (e.g., MultipleApps).

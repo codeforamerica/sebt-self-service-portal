@@ -42,13 +42,11 @@ public class EmailOtpSenderService(
                 _settings.Subject,
                 htmlBody,
                 linkedResources);
-
-            logger.LogInformation("OTP email sent to {To}", to);
         }
         catch (Exception ex)
         {
-            logger.LogError(ex, "Failed to send OTP to: {To}", to);
-            return new PreconditionFailedResult(PreconditionFailedReason.Conflict, $"Failed to send OTP to: {to}");
+            logger.LogError(ex, "Failed to send OTP.");
+            return new PreconditionFailedResult(PreconditionFailedReason.Conflict, "Failed to send OTP email.");
         }
 
         return new SuccessResult();

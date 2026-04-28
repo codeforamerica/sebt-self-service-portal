@@ -6,8 +6,8 @@
  * Supports multi-state deployments with separate CSV files per state.
  *
  * Usage:
- *   node content/scripts/generate-locales.js           # Generate all locales
- *   node content/scripts/generate-locales.js --watch   # Watch mode (future)
+ *   node packages/design-system/content/scripts/generate-locales.js           # Generate all locales
+ *   node packages/design-system/content/scripts/generate-locales.js --watch   # Watch mode (future)
  *
  * CSV Files:
  *   content/states/dc.csv  # DC-specific content (downloaded from DC tab)
@@ -15,8 +15,8 @@
  *   content/states/ny.csv  # NY-specific content (future)
  *
  * CSV Format:
- *   🟡 Content,English,Español,
- *   "S1 - Landing Page - Title","Get a one-time...","Obtenga un pago...",
+ *   Variable Name/Key,🟢 CO English,⚪ SOURCE English,🟢 CO Español,⚪ SOURCE Español,Notes
+ *   S1 - Landing Page - Action Español,Aplica ahora,¿Necesito aplicar?,Apply now,Do I need to apply?,
  *
  * Content Key Format (supports two formats):
  *   3-part: "{Section} - {Page} - {Key}"
@@ -29,6 +29,7 @@
  *   - Key: Descriptive key name (spaces converted to camelCase)
  *
  * Output Structure:
+ *   content/locales/en/co/common.json
  *   content/locales/en/dc/common.json
  *   content/locales/en/dc/landing.json
  *   content/locales/es/dc/common.json
@@ -37,6 +38,7 @@
  * Features:
  * - Multi-state CSVs: Each state has its own CSV file (content/states/{state}.csv)
  * - Smart caching: Only regenerates if any CSV changed (SHA-256 hash)
+ *  -- to regenerate without caching, comment out any use of saveHash below
  * - Namespace splitting: Organizes by page/component for lazy loading
  * - Variable interpolation: Preserves {state}, {year} placeholders for runtime
  */
@@ -125,6 +127,8 @@ const CONFIG = {
     'otp email message': 'login',
     // S2 - Log In Disclaimer (maps to login namespace)
     'log in disclaimer': 'login',
+    // S8 - OIDC/MyColorado callback
+    'callback': 'login',
     // S8 - Identity proofing
     'id proofing optional id info': 'idProofing',
     // S8 - Opt-in preferences
@@ -152,6 +156,14 @@ const CONFIG = {
     'otp confirm': 'verify',
     'otp email message': 'email',
     'co-loaded off-boarding': 'coLoaded',
+    // "Co-loaded Address Update" shares the `dashboard` namespace with "Pin Card".
+    // Prefix isolates the co-loaded mailing-address page so its keys don't
+    // collide with (and overwrite) `title` / `body` / `action` from Pin Card.
+    'co-loaded address update': 'coLoadedAddressUpdate',
+    'address not found': 'notFound',
+    'suggested address': 'suggested',
+    'abbreviated address': 'abbreviated',
+    'callback': 'callback',
   },
 };
 
@@ -298,15 +310,19 @@ function parseContentKey(contentKey) {
 function buildStateLocaleData(rows, state) {
   const [headerRow, ...dataRows] = rows;
 
-  // Find column indices (handle emoji prefixes like "🟡 Content")
-  const contentIdx = headerRow.findIndex((h) =>
-    h.toLowerCase().includes('content')
-  );
+  // Find column indices (handle emoji prefixes like "🟡 Content" and renamed headers like "Variable Name/Key")
+  const contentIdx = headerRow.findIndex((h) => {
+    const lower = h.toLowerCase()
+    return lower.includes('content') || lower.includes('variable name')
+  });
+
+    // Each state csv file has two columns for each language: (e.g., "🟡 DC English Current" and "⚪ SOURCE English").
+    // We only want to import the "current" columns. This is the copy we care about
   const englishIdx = headerRow.findIndex((h) =>
-    h.toLowerCase().includes('english')
+    h.toLowerCase().includes('english current')
   );
   const spanishIdx = headerRow.findIndex((h) =>
-    h.toLowerCase().includes('español')
+    h.toLowerCase().includes('español current')
   );
 
   if (contentIdx === -1 || englishIdx === -1) {

@@ -10,17 +10,6 @@ export function EnrolledChildren() {
   const { t } = useTranslation('dashboard')
   const data = useRequiredHouseholdData()
 
-  // Flatten children across all applications for display
-  // Each child gets the application-level data it belongs to
-  let childIndex = 0
-  const childrenWithApplicationData = data.applications.flatMap((application) =>
-    application.children.map((child) => ({
-      child,
-      application,
-      index: childIndex++
-    }))
-  )
-
   return (
     <section aria-labelledby="enrolled-children-heading">
       <h2
@@ -43,13 +32,12 @@ export function EnrolledChildren() {
         className="usa-accordion usa-accordion--bordered"
         data-allow-multiple
       >
-        {childrenWithApplicationData.map(({ child, application, index }) => (
+        {data.summerEbtCases.map((c, index) => (
           <ChildCard
-            key={`${child.firstName}-${child.lastName}-${index}`}
-            child={child}
-            application={application}
-            id={`${index}`}
+            key={`${c.childFirstName}-${c.childLastName}-${c.childDateOfBirth}-${c.summerEBTCaseID}`}
+            summerEbtCase={c}
             defaultExpanded={index === 0}
+            canRequestReplacementCard={data.allowedActions?.canRequestReplacementCard}
           />
         ))}
       </div>

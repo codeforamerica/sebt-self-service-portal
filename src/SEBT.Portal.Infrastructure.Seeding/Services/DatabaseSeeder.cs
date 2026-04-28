@@ -20,10 +20,10 @@ public class DatabaseSeeder : Core.Services.IDatabaseSeeder
     private readonly TimeProvider _timeProvider;
 
     private const int DaysSinceIdProofingCompleted = -30;
-    private const int DaysUntilIdProofingExpires = 335;
     private const int DaysSinceCoLoadedUpdate = -5;
     private const int DaysSinceBasicIdProofingCompleted = -10;
-    private const int DaysUntilBasicIdProofingExpires = 355;
+
+    private bool IsDc => string.Equals(_settings.State, "dc", StringComparison.OrdinalIgnoreCase);
 
     public DatabaseSeeder(
         IDataSeeder dataSeeder,
@@ -75,7 +75,6 @@ public class DatabaseSeeder : Core.Services.IDatabaseSeeder
                 u.IalLevel = UserIalLevel.IAL1plus;
                 u.CoLoadedLastUpdated = now.AddDays(-5);
                 u.IdProofingCompletedAt = now.AddDays(-10);
-                u.IdProofingExpiresAt = now.AddDays(355);
                 u.Phone = "5551234567";
                 u.SnapId = "SNAP-CO-001";
                 u.TanfId = "TANF-CO-001";
@@ -86,6 +85,8 @@ public class DatabaseSeeder : Core.Services.IDatabaseSeeder
                 u.Email = _settings.BuildEmail(SeedScenarios.NonCoLoaded.Name);
                 u.IdProofingStatus = IdProofingStatus.InProgress;
                 u.IalLevel = UserIalLevel.None;
+                u.IdProofingCompletedAt = null;
+                u.IdProofingExpiresAt = null;
                 u.Phone = "5555551234";
                 u.SnapId = "SNAP-NCO-001";
             }),
@@ -94,6 +95,8 @@ public class DatabaseSeeder : Core.Services.IDatabaseSeeder
                 u.Email = _settings.BuildEmail(SeedScenarios.NotStarted.Name);
                 u.IdProofingStatus = IdProofingStatus.NotStarted;
                 u.IalLevel = UserIalLevel.None;
+                u.IdProofingCompletedAt = null;
+                u.IdProofingExpiresAt = null;
             })
         };
     }
@@ -121,10 +124,18 @@ public class DatabaseSeeder : Core.Services.IDatabaseSeeder
         if (useMockHouseholdData)
         {
             var coLoadedEmail = EmailNormalizer.Normalize(_settings.BuildEmail(SeedScenarios.CoLoaded.Name));
+            var coLoadedPendingIdProofingEmail = EmailNormalizer.Normalize(
+                _settings.BuildEmail(SeedScenarios.CoLoadedPendingIdProofing.Name));
             var verifiedEmail = EmailNormalizer.Normalize(_settings.BuildEmail(SeedScenarios.Verified.Name));
 
             foreach (var scenario in SeedScenarios.UserScenarios)
             {
+                // Skip DC-only scenarios when not running as DC
+                if (!IsDc && SeedScenarios.DcOnlyScenarios.Contains(scenario))
+                {
+                    continue;
+                }
+
                 var normalizedEmail = EmailNormalizer.Normalize(_settings.BuildEmail(scenario.Name));
 
                 var existingEmails = await _dataSeeder.GetExistingUserEmailsAsync(new[] { normalizedEmail }, cancellationToken);
@@ -145,9 +156,25 @@ public class DatabaseSeeder : Core.Services.IDatabaseSeeder
                             u.IdProofingStatus = IdProofingStatus.Completed;
                             u.IalLevel = scenario.IalLevel;
                             u.IdProofingCompletedAt = now.AddDays(DaysSinceIdProofingCompleted);
-                            u.IdProofingExpiresAt = now.AddDays(DaysUntilIdProofingExpires);
+
                             u.CoLoadedLastUpdated = now.AddDays(DaysSinceCoLoadedUpdate);
                             u.Phone = "5551234567";
+                            u.SnapId = "SNAP-CO-001";
+                            u.TanfId = "TANF-CO-001";
+                            u.Ssn = "123456789";
+                        });
+                    }
+                    else if (normalizedEmail == coLoadedPendingIdProofingEmail)
+                    {
+                        user = UserFactory.CreateCoLoadedUser(u =>
+                        {
+                            u.Email = normalizedEmail;
+                            u.IdProofingStatus = IdProofingStatus.NotStarted;
+                            u.IalLevel = UserIalLevel.None;
+                            u.IdProofingCompletedAt = null;
+                            u.IdProofingExpiresAt = null;
+                            u.CoLoadedLastUpdated = now.AddDays(DaysSinceCoLoadedUpdate);
+                            u.Phone = "8185558438";
                             u.SnapId = "SNAP-CO-001";
                             u.TanfId = "TANF-CO-001";
                             u.Ssn = "123456789";
@@ -160,7 +187,7 @@ public class DatabaseSeeder : Core.Services.IDatabaseSeeder
                             u.IdProofingStatus = IdProofingStatus.Completed;
                             u.IalLevel = scenario.IalLevel;
                             u.IdProofingCompletedAt = now.AddDays(DaysSinceIdProofingCompleted);
-                            u.IdProofingExpiresAt = now.AddDays(DaysUntilIdProofingExpires);
+
                             u.IsCoLoaded = false;
                             u.CoLoadedLastUpdated = null;
                             u.Phone = "5559876543";
@@ -173,14 +200,20 @@ public class DatabaseSeeder : Core.Services.IDatabaseSeeder
                     {
                         user = UserFactory.CreateUserWithEmail(normalizedEmail, u =>
                         {
-                            u.IdProofingStatus = scenario.IalLevel is UserIalLevel.IAL1 or UserIalLevel.IAL1plus or UserIalLevel.IAL2
+                            u.IdProofingStatus = scenario.IalLevel is UserIalLevel.IAL1plus or UserIalLevel.IAL2
                                 ? IdProofingStatus.Completed
                                 : IdProofingStatus.NotStarted;
                             u.IalLevel = scenario.IalLevel;
-                            if (scenario.IalLevel is UserIalLevel.IAL1 or UserIalLevel.IAL1plus or UserIalLevel.IAL2)
+                            if (scenario.IalLevel is UserIalLevel.IAL1plus or UserIalLevel.IAL2)
                             {
                                 u.IdProofingCompletedAt = now.AddDays(DaysSinceIdProofingCompleted);
-                                u.IdProofingExpiresAt = now.AddDays(DaysUntilIdProofingExpires);
+                            }
+                            else
+                            {
+                                // Bogus may pre-set timestamps when the random draw is IAL1+; clear
+                                // so IAL None/1 never retain IdProofingCompletedAt from the generator.
+                                u.IdProofingCompletedAt = null;
+                                u.IdProofingExpiresAt = null;
                             }
                             u.IsCoLoaded = false;
                             u.CoLoadedLastUpdated = null;
@@ -208,11 +241,16 @@ public class DatabaseSeeder : Core.Services.IDatabaseSeeder
         else
         {
             var testUsers = CreateTestUsers(now);
-            var userEmails = testUsers.Select(u => u.Email).ToList();
+            var userEmails = testUsers
+                .Select(u => u.Email)
+                .Where(e => e != null)
+                .Cast<string>()
+                .ToList();
             var existingEmails = await _dataSeeder.GetExistingUserEmailsAsync(userEmails, cancellationToken);
 
             var usersToAdd = testUsers
-                .Where(user => !existingEmails.Contains(EmailNormalizer.Normalize(user.Email)))
+                .Where(user => user.Email != null
+                    && !existingEmails.Contains(EmailNormalizer.Normalize(user.Email)))
                 .ToList();
 
             if (usersToAdd.Count > 0)
@@ -252,10 +290,17 @@ public class DatabaseSeeder : Core.Services.IDatabaseSeeder
         if (useMockHouseholdData)
         {
             var coLoadedEmail = EmailNormalizer.Normalize(_settings.BuildEmail(SeedScenarios.CoLoaded.Name));
+            var coLoadedPendingIdProofingEmail = EmailNormalizer.Normalize(
+                _settings.BuildEmail(SeedScenarios.CoLoadedPendingIdProofing.Name));
             var verifiedEmail = EmailNormalizer.Normalize(_settings.BuildEmail(SeedScenarios.Verified.Name));
-
             foreach (var scenario in SeedScenarios.UserScenarios)
             {
+                // Skip DC-only scenarios when not running as DC
+                if (!IsDc && SeedScenarios.DcOnlyScenarios.Contains(scenario))
+                {
+                    continue;
+                }
+
                 var normalizedEmail = EmailNormalizer.Normalize(_settings.BuildEmail(scenario.Name));
 
                 var existingEmails = _dataSeeder.GetExistingUserEmails(new[] { normalizedEmail });
@@ -276,9 +321,25 @@ public class DatabaseSeeder : Core.Services.IDatabaseSeeder
                             u.IdProofingStatus = IdProofingStatus.Completed;
                             u.IalLevel = scenario.IalLevel;
                             u.IdProofingCompletedAt = now.AddDays(DaysSinceIdProofingCompleted);
-                            u.IdProofingExpiresAt = now.AddDays(DaysUntilIdProofingExpires);
+
                             u.CoLoadedLastUpdated = now.AddDays(DaysSinceCoLoadedUpdate);
                             u.Phone = "5551234567";
+                            u.SnapId = "SNAP-CO-001";
+                            u.TanfId = "TANF-CO-001";
+                            u.Ssn = "123456789";
+                        });
+                    }
+                    else if (normalizedEmail == coLoadedPendingIdProofingEmail)
+                    {
+                        user = UserFactory.CreateCoLoadedUser(u =>
+                        {
+                            u.Email = normalizedEmail;
+                            u.IdProofingStatus = IdProofingStatus.NotStarted;
+                            u.IalLevel = UserIalLevel.None;
+                            u.IdProofingCompletedAt = null;
+                            u.IdProofingExpiresAt = null;
+                            u.CoLoadedLastUpdated = now.AddDays(DaysSinceCoLoadedUpdate);
+                            u.Phone = "8185558438";
                             u.SnapId = "SNAP-CO-001";
                             u.TanfId = "TANF-CO-001";
                             u.Ssn = "123456789";
@@ -291,7 +352,7 @@ public class DatabaseSeeder : Core.Services.IDatabaseSeeder
                             u.IdProofingStatus = IdProofingStatus.Completed;
                             u.IalLevel = scenario.IalLevel;
                             u.IdProofingCompletedAt = now.AddDays(DaysSinceIdProofingCompleted);
-                            u.IdProofingExpiresAt = now.AddDays(DaysUntilIdProofingExpires);
+
                             u.IsCoLoaded = false;
                             u.CoLoadedLastUpdated = null;
                             u.Phone = "5559876543";
@@ -304,14 +365,18 @@ public class DatabaseSeeder : Core.Services.IDatabaseSeeder
                     {
                         user = UserFactory.CreateUserWithEmail(normalizedEmail, u =>
                         {
-                            u.IdProofingStatus = scenario.IalLevel is UserIalLevel.IAL1 or UserIalLevel.IAL1plus or UserIalLevel.IAL2
+                            u.IdProofingStatus = scenario.IalLevel is UserIalLevel.IAL1plus or UserIalLevel.IAL2
                                 ? IdProofingStatus.Completed
                                 : IdProofingStatus.NotStarted;
                             u.IalLevel = scenario.IalLevel;
-                            if (scenario.IalLevel is UserIalLevel.IAL1 or UserIalLevel.IAL1plus or UserIalLevel.IAL2)
+                            if (scenario.IalLevel is UserIalLevel.IAL1plus or UserIalLevel.IAL2)
                             {
                                 u.IdProofingCompletedAt = now.AddDays(DaysSinceIdProofingCompleted);
-                                u.IdProofingExpiresAt = now.AddDays(DaysUntilIdProofingExpires);
+                            }
+                            else
+                            {
+                                u.IdProofingCompletedAt = null;
+                                u.IdProofingExpiresAt = null;
                             }
                             u.IsCoLoaded = false;
                             u.CoLoadedLastUpdated = null;
@@ -339,11 +404,16 @@ public class DatabaseSeeder : Core.Services.IDatabaseSeeder
         else
         {
             var testUsers = CreateTestUsers(now);
-            var userEmails = testUsers.Select(u => u.Email).ToList();
+            var userEmails = testUsers
+                .Select(u => u.Email)
+                .Where(e => e != null)
+                .Cast<string>()
+                .ToList();
             var existingEmails = _dataSeeder.GetExistingUserEmails(userEmails);
 
             var usersToAdd = testUsers
-                .Where(user => !existingEmails.Contains(EmailNormalizer.Normalize(user.Email)))
+                .Where(user => user.Email != null
+                    && !existingEmails.Contains(EmailNormalizer.Normalize(user.Email)))
                 .ToList();
 
             if (usersToAdd.Count > 0)

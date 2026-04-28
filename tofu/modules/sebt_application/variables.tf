@@ -26,6 +26,12 @@ variable "apply_immediately" {
   default     = false
 }
 
+variable "db_ingress_cidrs" {
+  type        = list(string)
+  description = "Extra CIDR blocks allowed to connect to the database on TCP 1433. Used to grant VPC-internal clients (e.g. the SSM bastion) access without plumbing security groups."
+  default     = []
+}
+
 variable "desired_containers" {
   type        = number
   description = "Number of desired containers for each service."
@@ -191,6 +197,12 @@ variable "use_mock_household_data" {
   type        = string
   description = "Enable mock household data seeding to create all test user scenarios."
   default     = "false"
+}
+
+variable "log_as_json" {
+  type        = bool
+  description = "Output API logs as structured JSON. Enable in deployed environments so Datadog can parse log severity."
+  default     = false
 }
 
 variable "state_api_environment_variables" {

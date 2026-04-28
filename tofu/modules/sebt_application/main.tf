@@ -58,6 +58,7 @@ module "api" {
 
   environment_variables = merge({
     ASPNETCORE_ENVIRONMENT                       = var.environment
+    LOG_FORMAT                                   = var.log_as_json ? "json" : "text"
     STATE                                        = var.state
     DB_HOST                                      = module.database.endpoint
     DB_NAME                                      = "SebtPortal"
@@ -69,8 +70,9 @@ module "api" {
     "EmailOtpSenderServiceSettings__SenderEmail" = module.ses.sender_email
     "Seeding__Enabled"                           = var.seeding_enabled
     "Seeding__EmailPattern"                      = var.seeding_email_pattern
+    "Seeding__State"                             = lower(var.state)
     "UseMockHouseholdData"                       = var.use_mock_household_data
-  }, var.enable_appconfig ? {
+    }, var.enable_appconfig ? {
     "AppConfig__Agent__BaseUrl"          = "http://localhost:2772"
     "AppConfig__Agent__ApplicationId"    = module.appconfig[0].application_id
     "AppConfig__Agent__EnvironmentId"    = module.appconfig[0].environment_id
@@ -83,8 +85,10 @@ module "api" {
     DB_PASSWORD                    = "${module.database.secret_arn}:password"
     "SmtpClientSettings__UserName" = "${module.ses.secret_arn}:username"
     "SmtpClientSettings__Password" = "${module.ses.secret_arn}:password"
-    "JwtSettings__SecretKey"       = "${module.secrets.secrets["app"].secret_arn}:jwt_secret_key"
-    "IdentifierHasher__SecretKey"  = "${module.secrets.secrets["app"].secret_arn}:identifier_hasher_secret_key"
+    "JwtSettings__SecretKey"       = "${module.secrets.secrets["auth"].secret_arn}:jwt_secret_key"
+    "IdentifierHasher__SecretKey"  = "${module.secrets.secrets["auth"].secret_arn}:identifier_hasher_secret_key"
+    "Smarty__AuthId"               = "${module.secrets.secrets["smarty"].secret_arn}:auth_id"
+    "Smarty__AuthToken"            = "${module.secrets.secrets["smarty"].secret_arn}:auth_token"
   }, var.state_api_environment_secrets)
 }
 
@@ -131,9 +135,9 @@ module "web" {
   force_delete           = var.force_delete
 
   environment_variables = merge({
-    STATE                    = lower(var.state)
-    NEXT_PUBLIC_STATE        = lower(var.state)
-    BACKEND_URL              = "https://${module.api.endpoint_url}"
+    STATE             = lower(var.state)
+    NEXT_PUBLIC_STATE = lower(var.state)
+    BACKEND_URL       = "https://${module.api.endpoint_url}"
   }, var.state_web_environment_variables)
 
   environment_secrets = var.state_web_environment_secrets
@@ -148,8 +152,12 @@ module "secrets" {
   service     = "api"
 
   secrets = {
-    "app" = {
-      description     = "Application secrets for the SEBT Portal API."
+    "auth" = {
+      description     = "JWT and identifier hashing secrets for the SEBT Portal API."
+      recovery_window = var.secret_recovery_period
+    }
+    "smarty" = {
+      description     = "Smarty address validation API credentials."
       recovery_window = var.secret_recovery_period
     }
   }
@@ -167,6 +175,7 @@ module "database" {
   logging_key_arn = var.logging_key_id
 
   ingress_security_groups = [module.api.security_group_id]
+  ingress_cidrs           = var.db_ingress_cidrs
 
   skip_final_snapshot = var.skip_final_snapshot
   apply_immediately   = var.apply_immediately
@@ -189,7 +198,7 @@ module "ses" {
 }
 
 module "cloudfront_waf" {
-  source     = "github.com/codeforamerica/tofu-modules-aws-cloudfront-waf?ref=2.1.0"
+  source     = "github.com/codeforamerica/tofu-modules-aws-cloudfront-waf?ref=2.2.0"
   depends_on = [module.web.load_balancer_arn]
 
   project        = "${var.project}-${var.state}"

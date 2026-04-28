@@ -11,7 +11,8 @@ public class UserOptInEntityTests
         var entity = new UserOptInEntity();
 
         // Assert
-        Assert.Equal(0, entity.Id);
+        // Id defaults to a fresh UUIDv7 at construction, assert not Guid.Empty.
+        Assert.NotEqual(Guid.Empty, entity.Id);
         Assert.Equal(string.Empty, entity.Email);
         Assert.False(entity.EmailOptIn);
         Assert.False(entity.DobOptIn);
@@ -24,12 +25,13 @@ public class UserOptInEntityTests
     {
         // Arrange
         var entity = new UserOptInEntity();
+        var testId = Guid.CreateVersion7();
         var testEmail = "test@example.com";
         var testCreatedAt = DateTime.UtcNow.AddDays(-1);
         var testUpdatedAt = DateTime.UtcNow;
 
         // Act
-        entity.Id = 1;
+        entity.Id = testId;
         entity.Email = testEmail;
         entity.EmailOptIn = true;
         entity.DobOptIn = true;
@@ -37,7 +39,7 @@ public class UserOptInEntityTests
         entity.UpdatedAt = testUpdatedAt;
 
         // Assert
-        Assert.Equal(1, entity.Id);
+        Assert.Equal(testId, entity.Id);
         Assert.Equal(testEmail, entity.Email);
         Assert.True(entity.EmailOptIn);
         Assert.True(entity.DobOptIn);

@@ -1,4 +1,5 @@
 import { AuthGuard, TokenRefresher } from '@/features/auth'
+import { UserDataSync } from '@/hooks/useUserDataSync'
 import type { ReactNode } from 'react'
 
 interface AuthenticatedLayoutProps {
@@ -9,6 +10,7 @@ export default function AuthenticatedLayout({ children }: AuthenticatedLayoutPro
   return (
     <AuthGuard>
       <TokenRefresher />
+      <UserDataSync />
       {children}
     </AuthGuard>
   )

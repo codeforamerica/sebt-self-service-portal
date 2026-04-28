@@ -7,25 +7,21 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { server } from '@/mocks/server'
 
 import { AuthProvider } from '../../context'
+import { AuthGuard } from '../AuthGuard/AuthGuard'
 import { DocVerifyPage } from './DocVerifyPage'
 
 const TEST_CONTACT_LINK = 'https://example.com/contact'
-const TEST_SDK_KEY = 'test-sdk-key'
 
-// Mock next/navigation
+// Mock next/navigation. The router object is memoized so useCallback deps that
+// include `router` stay stable across renders, matching the real Next.js hook.
 const mockPush = vi.fn()
 const mockReplace = vi.fn()
+const mockRouter = { push: mockPush, replace: mockReplace }
 let mockSearchParams = new URLSearchParams()
 vi.mock('next/navigation', () => ({
-  useRouter: () => ({
-    push: mockPush,
-    replace: mockReplace
-  }),
+  useRouter: () => mockRouter,
   useSearchParams: () => mockSearchParams
 }))
-
-// Use the mock adapter in tests
-vi.stubEnv('NEXT_PUBLIC_MOCK_SOCURE', 'true')
 
 function createTestQueryClient() {
   return new QueryClient({
@@ -66,13 +62,37 @@ describe('DocVerifyPage', () => {
   })
 
   describe('Route guard', () => {
-    it('redirects to id-proofing when no challenge context is present', async () => {
-      renderWithProviders(
-        <DocVerifyPage
-          contactLink={TEST_CONTACT_LINK}
-          sdkKey={TEST_SDK_KEY}
-        />
+    it('redirects to /login when user is not authenticated', async () => {
+      setChallengeContext('challenge-abc')
+
+      // Override auth status to return unauthenticated
+      server.use(
+        http.get('/api/auth/status', () => {
+          return new HttpResponse(null, { status: 401 })
+        })
       )
+
+      const queryClient = createTestQueryClient()
+      render(
+        <QueryClientProvider client={queryClient}>
+          <AuthProvider>
+            <AuthGuard>
+              <DocVerifyPage contactLink={TEST_CONTACT_LINK} />
+            </AuthGuard>
+          </AuthProvider>
+        </QueryClientProvider>
+      )
+
+      await waitFor(() => {
+        expect(mockReplace).toHaveBeenCalledWith('/login')
+      })
+
+      // Should NOT render any doc-verify content
+      expect(screen.queryByRole('heading')).not.toBeInTheDocument()
+    })
+
+    it('redirects to id-proofing when no challenge context is present', async () => {
+      renderWithProviders(<DocVerifyPage contactLink={TEST_CONTACT_LINK} />)
 
       await waitFor(() => {
         expect(mockReplace).toHaveBeenCalledWith('/login/id-proofing')
@@ -84,12 +104,7 @@ describe('DocVerifyPage', () => {
     it('renders interstitial when challenge context is present', async () => {
       setChallengeContext('challenge-abc')
 
-      renderWithProviders(
-        <DocVerifyPage
-          contactLink={TEST_CONTACT_LINK}
-          sdkKey={TEST_SDK_KEY}
-        />
-      )
+      renderWithProviders(<DocVerifyPage contactLink={TEST_CONTACT_LINK} />)
 
       expect(
         await screen.findByRole('heading', { name: /we want to keep your account safe/i })
@@ -107,12 +122,7 @@ describe('DocVerifyPage', () => {
         })
       )
 
-      renderWithProviders(
-        <DocVerifyPage
-          contactLink={TEST_CONTACT_LINK}
-          sdkKey={TEST_SDK_KEY}
-        />
-      )
+      renderWithProviders(<DocVerifyPage contactLink={TEST_CONTACT_LINK} />)
 
       expect(await screen.findByRole('button', { name: /enter an id number/i })).toBeInTheDocument()
     })
@@ -126,12 +136,7 @@ describe('DocVerifyPage', () => {
         })
       )
 
-      renderWithProviders(
-        <DocVerifyPage
-          contactLink={TEST_CONTACT_LINK}
-          sdkKey={TEST_SDK_KEY}
-        />
-      )
+      renderWithProviders(<DocVerifyPage contactLink={TEST_CONTACT_LINK} />)
 
       // Wait for interstitial to render
       await screen.findByRole('heading', { name: /we want to keep your account safe/i })
@@ -150,12 +155,7 @@ describe('DocVerifyPage', () => {
 
       const user = userEvent.setup()
 
-      renderWithProviders(
-        <DocVerifyPage
-          contactLink={TEST_CONTACT_LINK}
-          sdkKey={TEST_SDK_KEY}
-        />
-      )
+      renderWithProviders(<DocVerifyPage contactLink={TEST_CONTACT_LINK} />)
 
       await user.click(await screen.findByRole('button', { name: /enter an id number/i }))
 
@@ -164,63 +164,153 @@ describe('DocVerifyPage', () => {
     })
   })
 
-  describe('Continue → capture → pending flow', () => {
-    // Override the default status handler to ensure a stable 'pending' response.
-    // The default handler uses a closure counter shared across tests; the new
-    // interstitial-level status query can consume counts and return 'verified'
-    // before the Continue click happens.
+  describe('Continue → Socure hand-off', () => {
+    // The default status handler uses a closure counter shared across tests;
+    // pin a stable 'pending' response so the interstitial-level status query
+    // can't consume counts and preempt the click.
     beforeEach(() => {
       server.use(
         http.get('/api/id-proofing/status', () => {
           return HttpResponse.json({ status: 'pending', allowIdRetry: false })
+        }),
+        http.get('/api/challenges/:id/start', () => {
+          return HttpResponse.json({
+            docvTransactionToken: 'test-token',
+            docvUrl: 'https://verify.socure.com/#/dv/test-token'
+          })
         })
       )
     })
 
-    it('"Continue" triggers challenge start and persists capture sub-state', async () => {
+    function mockWindowOpen() {
+      // Minimal Window stand-in: the page reads `.closed` and assigns
+      // `.location.href`, nothing else.
+      const popup = {
+        closed: false,
+        location: { href: '' },
+        close: vi.fn()
+      }
+      const spy = vi.spyOn(window, 'open').mockImplementation(() => popup as unknown as Window)
+      return { popup, spy }
+    }
+
+    it('opens Socure capture URL in a new tab and transitions to pending', async () => {
       setChallengeContext('mock-challenge-123')
+      const { popup, spy } = mockWindowOpen()
       const user = userEvent.setup()
 
-      renderWithProviders(
-        <DocVerifyPage
-          contactLink={TEST_CONTACT_LINK}
-          sdkKey={TEST_SDK_KEY}
-        />
-      )
+      renderWithProviders(<DocVerifyPage contactLink={TEST_CONTACT_LINK} />)
 
       await user.click(await screen.findByRole('button', { name: /continue/i }))
 
-      // After click → JIT token fetch → capture sub-state, the interstitial disappears
+      // Popup is opened synchronously on click (user-gesture preservation).
+      expect(spy).toHaveBeenCalledWith('about:blank', '_blank')
+
+      // Once the token fetch resolves, the popup is redirected to Socure and
+      // the page transitions to the pending/polling view.
       await waitFor(() => {
-        expect(
-          screen.queryByRole('heading', { name: /we want to keep your account safe/i })
-        ).not.toBeInTheDocument()
+        expect(popup.location.href).toBe('https://verify.socure.com/#/dv/test-token')
+      })
+      await waitFor(() => {
+        expect(screen.getByText(/verifying your document/i)).toBeInTheDocument()
       })
 
-      // Sub-state should be persisted for mobile tab recovery
-      expect(sessionStorage.getItem('docVerify_subState')).not.toBeNull()
+      // Sub-state persisted for mobile tab recovery
+      expect(sessionStorage.getItem('docVerify_subState')).toBe('pending')
+
+      spy.mockRestore()
     })
 
-    it('full flow: Continue → capture → pending (mock adapter onSuccess)', async () => {
+    it('redirects to dashboard when webhook resolves after hand-off', async () => {
       setChallengeContext('mock-challenge-123')
-      const user = userEvent.setup()
+      const { spy } = mockWindowOpen()
 
-      renderWithProviders(
-        <DocVerifyPage
-          contactLink={TEST_CONTACT_LINK}
-          sdkKey={TEST_SDK_KEY}
-        />
+      server.use(
+        http.get('/api/id-proofing/status', () => {
+          return HttpResponse.json({ status: 'verified' })
+        })
       )
+
+      const user = userEvent.setup()
+      renderWithProviders(<DocVerifyPage contactLink={TEST_CONTACT_LINK} />)
 
       await user.click(await screen.findByRole('button', { name: /continue/i }))
 
-      // Mock adapter fires onSuccess after ~1500ms → transitions to pending
       await waitFor(
         () => {
-          expect(screen.getByText(/verifying your document/i)).toBeInTheDocument()
+          expect(mockPush).toHaveBeenCalledWith('/dashboard')
         },
-        { timeout: 3000 }
+        { timeout: 1500 }
       )
+
+      spy.mockRestore()
+    })
+
+    it('redirects to off-boarding when webhook rejects after hand-off', async () => {
+      setChallengeContext('mock-challenge-123')
+      const { spy } = mockWindowOpen()
+
+      server.use(
+        http.get('/api/id-proofing/status', () => {
+          return HttpResponse.json({
+            status: 'rejected',
+            offboardingReason: 'docVerificationFailed'
+          })
+        })
+      )
+
+      const user = userEvent.setup()
+      renderWithProviders(<DocVerifyPage contactLink={TEST_CONTACT_LINK} />)
+
+      await user.click(await screen.findByRole('button', { name: /continue/i }))
+
+      await waitFor(
+        () => {
+          expect(mockPush).toHaveBeenCalledWith(
+            '/login/id-proofing/off-boarding?reason=docVerificationFailed'
+          )
+        },
+        { timeout: 1500 }
+      )
+
+      spy.mockRestore()
+    })
+  })
+
+  describe('Stale sessionStorage detection', () => {
+    it('shows interstitial when persisted challengeId does not match URL challengeId', async () => {
+      // Simulate stale sessionStorage from a prior DocV attempt
+      sessionStorage.setItem('docVerify_challengeId', 'old-challenge-id')
+      sessionStorage.setItem('docVerify_subState', 'pending')
+
+      // URL has a different (current) challengeId
+      mockSearchParams = new URLSearchParams({ challengeId: 'new-challenge-id' })
+
+      renderWithProviders(<DocVerifyPage contactLink={TEST_CONTACT_LINK} />)
+
+      // Should render the interstitial, NOT the VerificationPending screen
+      expect(
+        await screen.findByRole('heading', { name: /we want to keep your account safe/i })
+      ).toBeInTheDocument()
+      expect(screen.queryByText(/verifying your document/i)).not.toBeInTheDocument()
+    })
+
+    it('resumes at pending when persisted challengeId matches URL challengeId', async () => {
+      // Same challengeId in both sessionStorage and URL
+      setChallengeContext('challenge-abc', 'pending')
+
+      // Override verification status to return pending so it stays on the pending screen
+      server.use(
+        http.get('/api/id-proofing/status', () => {
+          return HttpResponse.json({ status: 'pending' })
+        })
+      )
+
+      renderWithProviders(<DocVerifyPage contactLink={TEST_CONTACT_LINK} />)
+
+      await waitFor(() => {
+        expect(screen.getByText(/verifying your document/i)).toBeInTheDocument()
+      })
     })
   })
 
@@ -235,12 +325,7 @@ describe('DocVerifyPage', () => {
         })
       )
 
-      renderWithProviders(
-        <DocVerifyPage
-          contactLink={TEST_CONTACT_LINK}
-          sdkKey={TEST_SDK_KEY}
-        />
-      )
+      renderWithProviders(<DocVerifyPage contactLink={TEST_CONTACT_LINK} />)
 
       await waitFor(() => {
         expect(screen.getByText(/verifying your document/i)).toBeInTheDocument()
@@ -258,12 +343,7 @@ describe('DocVerifyPage', () => {
         })
       )
 
-      renderWithProviders(
-        <DocVerifyPage
-          contactLink={TEST_CONTACT_LINK}
-          sdkKey={TEST_SDK_KEY}
-        />
-      )
+      renderWithProviders(<DocVerifyPage contactLink={TEST_CONTACT_LINK} />)
 
       await waitFor(() => {
         expect(mockPush).toHaveBeenCalledWith('/dashboard')
@@ -271,6 +351,93 @@ describe('DocVerifyPage', () => {
 
       // Challenge context should be cleared
       expect(sessionStorage.getItem('docVerify_challengeId')).toBeNull()
+    })
+
+    it('refreshes the JWT before navigating to dashboard on verified', async () => {
+      setChallengeContext('challenge-abc', 'pending')
+
+      // Record the order in which the refresh endpoint resolves and the
+      // router navigates. The dashboard carries stale IAL claims if we
+      // navigate before the fresh Set-Cookie arrives (DC-296 race).
+      const callOrder: string[] = []
+
+      server.use(
+        http.get('/api/id-proofing/status', () => {
+          return HttpResponse.json({ status: 'verified' })
+        }),
+        http.post('/api/auth/refresh', async () => {
+          // Simulate network latency so navigation cannot race ahead.
+          await new Promise((resolve) => setTimeout(resolve, 50))
+          callOrder.push('refresh')
+          return new HttpResponse(null, { status: 204 })
+        })
+      )
+
+      mockPush.mockImplementation((path: string) => {
+        if (path === '/dashboard') {
+          callOrder.push('navigate')
+        }
+      })
+
+      renderWithProviders(<DocVerifyPage contactLink={TEST_CONTACT_LINK} />)
+
+      await waitFor(() => {
+        expect(mockPush).toHaveBeenCalledWith('/dashboard')
+      })
+
+      // Refresh must be awaited before navigation so the dashboard's first
+      // fetches carry the rotated JWT with IAL2.
+      expect(callOrder).toEqual(['refresh', 'navigate'])
+    })
+
+    it('still navigates to dashboard when refresh fails', async () => {
+      setChallengeContext('challenge-abc', 'pending')
+
+      let refreshCalled = false
+
+      server.use(
+        http.get('/api/id-proofing/status', () => {
+          return HttpResponse.json({ status: 'verified' })
+        }),
+        http.post('/api/auth/refresh', () => {
+          refreshCalled = true
+          return HttpResponse.json({ error: 'Server error' }, { status: 500 })
+        })
+      )
+
+      renderWithProviders(<DocVerifyPage contactLink={TEST_CONTACT_LINK} />)
+
+      // A failed refresh must not trap the user on the "verified" screen.
+      // Allow extra time because the refresh mutation may retry on 5xx per
+      // useRefreshToken's retry policy before the catch fires.
+      await waitFor(
+        () => {
+          expect(mockPush).toHaveBeenCalledWith('/dashboard')
+        },
+        { timeout: 5000 }
+      )
+
+      // And refresh must have been attempted. Otherwise we would have shipped
+      // the original bug (navigating with stale JWT) alongside the fallback.
+      expect(refreshCalled).toBe(true)
+    })
+
+    it('navigates to off-boarding when status endpoint returns 404', async () => {
+      setChallengeContext('challenge-abc', 'pending')
+
+      server.use(
+        http.get('/api/id-proofing/status', () => {
+          return HttpResponse.json({ error: 'Challenge not found.' }, { status: 404 })
+        })
+      )
+
+      renderWithProviders(<DocVerifyPage contactLink={TEST_CONTACT_LINK} />)
+
+      await waitFor(() => {
+        expect(mockPush).toHaveBeenCalledWith(
+          '/login/id-proofing/off-boarding?reason=challengeNotFound'
+        )
+      })
     })
 
     it('navigates to off-boarding when verification is rejected', async () => {
@@ -285,18 +452,77 @@ describe('DocVerifyPage', () => {
         })
       )
 
-      renderWithProviders(
-        <DocVerifyPage
-          contactLink={TEST_CONTACT_LINK}
-          sdkKey={TEST_SDK_KEY}
-        />
-      )
+      renderWithProviders(<DocVerifyPage contactLink={TEST_CONTACT_LINK} />)
 
       await waitFor(() => {
-        expect(mockPush).toHaveBeenCalledWith('/login/id-proofing/off-boarding')
+        expect(mockPush).toHaveBeenCalledWith(
+          '/login/id-proofing/off-boarding?reason=docVerificationFailed'
+        )
+      })
+    })
+  })
+
+  describe('Pending → resubmit branch (DC-301)', () => {
+    function mockWindowOpen() {
+      const popup = {
+        closed: false,
+        location: { href: '' },
+        close: vi.fn()
+      }
+      const spy = vi.spyOn(window, 'open').mockImplementation(() => popup as unknown as Window)
+      return { popup, spy }
+    }
+
+    it('renders the retry prompt when status returns resubmit', async () => {
+      setChallengeContext('challenge-abc', 'pending')
+
+      server.use(
+        http.get('/api/id-proofing/status', () => {
+          return HttpResponse.json({ status: 'resubmit' })
+        })
+      )
+
+      renderWithProviders(<DocVerifyPage contactLink={TEST_CONTACT_LINK} />)
+
+      expect(
+        await screen.findByRole('heading', { name: /let's try that again/i })
+      ).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: /try again/i })).toBeEnabled()
+    })
+
+    it('opens a new tab and swaps to the new challenge ID when Try again is clicked', async () => {
+      setChallengeContext('challenge-abc', 'pending')
+
+      server.use(
+        http.get('/api/id-proofing/status', () => {
+          return HttpResponse.json({ status: 'resubmit' })
+        })
+      )
+
+      const { popup, spy } = mockWindowOpen()
+      const user = userEvent.setup()
+
+      renderWithProviders(<DocVerifyPage contactLink={TEST_CONTACT_LINK} />)
+
+      await user.click(await screen.findByRole('button', { name: /try again/i }))
+
+      expect(spy).toHaveBeenCalledWith('about:blank', '_blank')
+
+      await waitFor(() => {
+        expect(popup.location.href).toBe('https://verify.socure.com/#/dv/mock-resubmit-token')
       })
 
-      expect(sessionStorage.getItem('offboarding_reason')).toBe('docVerificationFailed')
+      // sessionStorage and URL both swap to the new challenge ID returned by the mutation
+      await waitFor(() => {
+        expect(sessionStorage.getItem('docVerify_challengeId')).toBe(
+          '99999999-9999-4999-8999-999999999999'
+        )
+      })
+      expect(mockReplace).toHaveBeenCalledWith(
+        '/login/id-proofing/doc-verify?challengeId=99999999-9999-4999-8999-999999999999'
+      )
+
+      spy.mockRestore()
     })
   })
 
@@ -312,12 +538,7 @@ describe('DocVerifyPage', () => {
 
       const user = userEvent.setup()
 
-      renderWithProviders(
-        <DocVerifyPage
-          contactLink={TEST_CONTACT_LINK}
-          sdkKey={TEST_SDK_KEY}
-        />
-      )
+      renderWithProviders(<DocVerifyPage contactLink={TEST_CONTACT_LINK} />)
 
       await user.click(await screen.findByRole('button', { name: /continue/i }))
 
