@@ -2,10 +2,9 @@
 # Smoke test for scripts/ci/publish-api.sh.
 # Asserts the resulting directory has the structure the bundle step expects.
 #
-# Pre-req: src/SEBT.Portal.Api/plugins-dc/ must already contain DC plugin DLLs
-# (populated by building the DC connector, which has a CopyPlugins MSBuild target
-# that runs AfterTargets="Build"). The smoke test does NOT build the DC connector
-# itself — too heavy for a smoke test — so it skips when plugins-dc is empty.
+# Pre-req: src/SEBT.Portal.Api/plugins-dc/ must already contain DC plugin DLLs.
+# The smoke test does NOT build or publish the DC connector itself — too heavy
+# for a smoke test — so it skips when plugins-dc is empty.
 set -e
 set -u
 
@@ -13,10 +12,10 @@ SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 PROJECT_ROOT="$(cd "$SCRIPT_DIR/../../.." && pwd)"
 source "$SCRIPT_DIR/_assert.sh"
 
-# Skip locally if the API plugins-dc dir is empty (no DC connector built).
+# Skip locally if the API plugins-dc dir is empty (no plugin DLLs staged).
 PLUGIN_DIR="$PROJECT_ROOT/src/SEBT.Portal.Api/plugins-dc"
 if [ ! -d "$PLUGIN_DIR" ] || [ -z "$(ls -A "$PLUGIN_DIR" 2>/dev/null | grep -E '\.dll$' || true)" ]; then
-  echo "SKIP: $PLUGIN_DIR has no plugin DLLs (build the DC connector first to populate it)"
+  echo "SKIP: $PLUGIN_DIR has no plugin DLLs (stage the DC connector publish output first)"
   exit 0
 fi
 

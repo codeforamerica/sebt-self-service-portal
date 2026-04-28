@@ -5,8 +5,9 @@
 # auto-generated web.config to enable ASP.NET Core stdout logging.
 #
 # Plugin DLLs are NOT copied by this script — they must already be in
-# src/SEBT.Portal.Api/plugins-dc/ before this runs (populated by building the
-# DC connector, whose MSBuild CopyPlugins target handles that). The API csproj's
+# src/SEBT.Portal.Api/plugins-dc/ before this runs. In CI, the release workflow
+# stages them explicitly by publishing the DC connector with CopyPlugins=false
+# and copying its publish/*.dll output into plugins-dc/. The API csproj's
 # <None Include="plugins-dc\**\*.dll"> ItemGroup then picks them up during publish.
 #
 # Usage:
@@ -53,12 +54,12 @@ if [ -z "$OUTPUT_DIR" ]; then
   exit 1
 fi
 
-# Sanity-check that the DC connector has already populated plugins-dc/.
+# Sanity-check that DC plugin DLLs have already been staged into plugins-dc/.
 PLUGIN_DIR="$PROJECT_ROOT/src/SEBT.Portal.Api/plugins-dc"
 if [ -z "$(ls -A "$PLUGIN_DIR" 2>/dev/null | grep -E '\.dll$' || true)" ]; then
-  log_warning "$PLUGIN_DIR has no DLLs — DC connector was not built before publish-api.sh."
+  log_warning "$PLUGIN_DIR has no DLLs — DC plugin artifacts were not staged before publish-api.sh."
   log_warning "The published API will START but FAIL during MEF plugin composition at runtime."
-  log_warning "If this is a Release build for delivery, abort and rebuild the DC connector first."
+  log_warning "If this is a release build for delivery, abort and stage the DC plugin DLLs first."
 fi
 
 API_OUT="$OUTPUT_DIR/api"

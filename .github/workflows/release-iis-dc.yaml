@@ -24,7 +24,7 @@ jobs:
     name: Build DC IIS bundle
     runs-on: ubuntu-latest
     permissions:
-      contents: write   # needed to create a Release on tag
+      contents: write # needed to create a Release on tag
     env:
       STATE: dc
 
@@ -108,19 +108,25 @@ jobs:
           dotnet tool install --global Microsoft.SqlPackage
           echo "$HOME/.dotnet/tools" >> "$GITHUB_PATH"
 
-      - name: Build backend (includes state-connector NuGet pack)
+      - name: Build backend
         run: ./scripts/ci/build-backend.sh --configuration Release -p:BuildFrontend=false
 
-      - name: Build DC connector (populates src/SEBT.Portal.Api/plugins-dc/)
-        # The DC connector's csproj has a CopyPlugins target (AfterTargets="Build")
-        # that copies its DLL output into the API's plugins-dc/ folder. We override
-        # PluginDestDir to make the destination explicit (the default expects the
-        # portal repo as a sibling, which is true in CI but worth being explicit).
+      - name: Build plugin interfaces (NuGet package)
         run: |
-          dotnet build dc-connector/src/SEBT.Portal.StatePlugins.DC/SEBT.Portal.StatePlugins.DC.csproj \
-            --configuration Release \
-            -p:PluginDestDir="$(pwd)/src/SEBT.Portal.Api/plugins-dc" \
-            --verbosity minimal
+          dotnet build state-connector/src/SEBT.Portal.StatesPlugins.Interfaces/SEBT.Portal.StatesPlugins.Interfaces.csproj \
+            -c Release
+
+      - name: Publish DC plugin
+        run: |
+          dotnet publish dc-connector/src/SEBT.Portal.StatePlugins.DC/SEBT.Portal.StatePlugins.DC.csproj \
+            -c Release \
+            -p:CopyPlugins=false
+
+      - name: Stage plugin artifacts for IIS publish
+        run: |
+          mkdir -p src/SEBT.Portal.Api/plugins-dc
+          cp dc-connector/src/SEBT.Portal.StatePlugins.DC/bin/Release/net10.0/publish/*.dll \
+            src/SEBT.Portal.Api/plugins-dc/
 
       - name: Publish API for IIS
         run: ./scripts/ci/publish-api.sh --output staging --configuration Release
