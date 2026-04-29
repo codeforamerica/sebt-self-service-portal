@@ -4,7 +4,7 @@ using SEBT.Portal.Kernel;
 using SEBT.Portal.Kernel.AspNetCore;
 using SEBT.Portal.Kernel.Results;
 
-namespace SEBT.Portal.Tests.Unit.KernelExtensions;
+namespace SEBT.Portal.Tests.Unit.Kernel;
 
 /// <summary>
 /// Verifies that PreconditionFailedReason.NotAllowed maps to HTTP 412 in both

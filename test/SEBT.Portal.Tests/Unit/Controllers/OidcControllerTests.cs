@@ -417,7 +417,7 @@ public class OidcControllerTests
             .Returns(user);
         _oidcTokenService.GenerateForOidcLogin(Arg.Any<User>(), Arg.Any<ClaimsPrincipal>(), true)
             .Returns(Result<string>.DependencyFailed(
-                Kernel.Results.DependencyFailedReason.BadRequest,
+                Portal.Kernel.Results.DependencyFailedReason.BadRequest,
                 "Step-up verification failed: IdP returned no verification claims."));
 
         var result = await _controller.CompleteLogin(body, CancellationToken.None);
