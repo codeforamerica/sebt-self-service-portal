@@ -1,7 +1,7 @@
 'use client'
 
 import { ApiError } from '@/api'
-import { SignOutLink } from '@/features/auth'
+import { SignOutLink, useAuth } from '@/features/auth'
 import { AnalyticsEvents, useDataLayer } from '@sebt/analytics'
 import { Alert } from '@sebt/design-system'
 import { useEffect } from 'react'
@@ -23,18 +23,26 @@ export function DashboardContent() {
   const { t } = useTranslation('dashboard')
   const { data, isLoading, isError, error, requiresProofing } = useHouseholdData()
   const { setPageData, setUserData, trackEvent } = useDataLayer()
+  const { session } = useAuth()
+  const isCoLoaded = session?.isCoLoaded === true
 
   useEffect(() => {
     if (isLoading) return
     if (isError) {
       setPageData('household_status', 'error')
     } else if (data) {
-      setPageData('household_status', 'success')
       const childCount = data.summerEbtCases.length
+      const isEmpty = childCount === 0 && data.applications.length === 0
+      setPageData('household_status', isEmpty ? 'empty' : 'success')
       setUserData('household_linked_children', childCount, ['default', 'analytics'])
+      // Distinguishes a co-loaded user who matched but has no enrolled children
+      // from a non-co-loaded applicant seeing the same empty screen.
+      if (isEmpty && isCoLoaded) {
+        setPageData('household_reason', 'no_children')
+      }
     }
     trackEvent(AnalyticsEvents.HOUSEHOLD_RESULT)
-  }, [isLoading, isError, data, setPageData, setUserData, trackEvent])
+  }, [isLoading, isError, data, isCoLoaded, setPageData, setUserData, trackEvent])
 
   // Visually hidden h1 for accessibility - provides page structure for screen readers
   const pageHeading = <h1 className="usa-sr-only">{t('pageTitle', 'SUN Bucks Dashboard')}</h1>
