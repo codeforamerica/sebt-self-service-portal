@@ -67,6 +67,13 @@ public class SocureSettings
     public string Workflow { get; set; } = "consumer_onboarding";
 
     /// <summary>
+    /// Socure workflow name for DocV step-up retries (DC-301). Used when a user clicks
+    /// "try again" from a Resubmit prompt. The step-up workflow only emits ACCEPT/REJECT,
+    /// so retries are structurally capped at one attempt.
+    /// </summary>
+    public string DocvStepupWorkflow { get; set; } = "docv_stepup";
+
+    /// <summary>
     /// Identifier used to locate the DocV enrichment in the evaluation response.
     /// Matched against the <c>enrichment_provider</c> field — not <c>enrichment_name</c>,
     /// which varies by workflow (e.g. "Socure Document Request - Default Flow" in sandbox).

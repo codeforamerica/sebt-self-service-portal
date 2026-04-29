@@ -195,12 +195,11 @@ public class ProcessWebhookCommandHandler(
     }
 
     /// <summary>
-    /// Maps the top-level Socure workflow decision to our DocV challenge status (DC-296).
+    /// Maps the top-level Socure workflow decision to our DocV challenge status.
     /// ACCEPT -> Verified.
     /// REJECT -> Rejected.
-    /// RESUBMIT -> Rejected. The workflow terminated (e.g. user declined on the Capture App
-    /// before uploading). Treated as terminal rejection here; DC-138 resubmit scaffold will
-    /// refine this once in-session retries are supported.
+    /// RESUBMIT -> Resubmit (DC-301). Terminal at Socure but retry-eligible at the portal —
+    /// the user opens a fresh challenge against `docv_stepup` from the resubmit prompt.
     /// REVIEW -> Rejected. DC does not use human review queues, so we treat review as a safe
     /// default reject.
     /// </summary>
@@ -210,7 +209,7 @@ public class ProcessWebhookCommandHandler(
         {
             "ACCEPT" => DocVerificationStatus.Verified,
             "REJECT" => DocVerificationStatus.Rejected,
-            "RESUBMIT" => DocVerificationStatus.Rejected,
+            "RESUBMIT" => DocVerificationStatus.Resubmit,
             "REVIEW" => DocVerificationStatus.Rejected,
             _ => null
         };

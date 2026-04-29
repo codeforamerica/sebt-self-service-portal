@@ -462,6 +462,70 @@ describe('DocVerifyPage', () => {
     })
   })
 
+  describe('Pending → resubmit branch (DC-301)', () => {
+    function mockWindowOpen() {
+      const popup = {
+        closed: false,
+        location: { href: '' },
+        close: vi.fn()
+      }
+      const spy = vi.spyOn(window, 'open').mockImplementation(() => popup as unknown as Window)
+      return { popup, spy }
+    }
+
+    it('renders the retry prompt when status returns resubmit', async () => {
+      setChallengeContext('challenge-abc', 'pending')
+
+      server.use(
+        http.get('/api/id-proofing/status', () => {
+          return HttpResponse.json({ status: 'resubmit' })
+        })
+      )
+
+      renderWithProviders(<DocVerifyPage contactLink={TEST_CONTACT_LINK} />)
+
+      expect(
+        await screen.findByRole('heading', { name: /let's try that again/i })
+      ).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: /try again/i })).toBeEnabled()
+    })
+
+    it('opens a new tab and swaps to the new challenge ID when Try again is clicked', async () => {
+      setChallengeContext('challenge-abc', 'pending')
+
+      server.use(
+        http.get('/api/id-proofing/status', () => {
+          return HttpResponse.json({ status: 'resubmit' })
+        })
+      )
+
+      const { popup, spy } = mockWindowOpen()
+      const user = userEvent.setup()
+
+      renderWithProviders(<DocVerifyPage contactLink={TEST_CONTACT_LINK} />)
+
+      await user.click(await screen.findByRole('button', { name: /try again/i }))
+
+      expect(spy).toHaveBeenCalledWith('about:blank', '_blank')
+
+      await waitFor(() => {
+        expect(popup.location.href).toBe('https://verify.socure.com/#/dv/mock-resubmit-token')
+      })
+
+      // sessionStorage and URL both swap to the new challenge ID returned by the mutation
+      await waitFor(() => {
+        expect(sessionStorage.getItem('docVerify_challengeId')).toBe(
+          '99999999-9999-4999-8999-999999999999'
+        )
+      })
+      expect(mockReplace).toHaveBeenCalledWith(
+        '/login/id-proofing/doc-verify?challengeId=99999999-9999-4999-8999-999999999999'
+      )
+
+      spy.mockRestore()
+    })
+  })
+
   describe('Error handling', () => {
     it('shows error alert when challenge start fails', async () => {
       setChallengeContext('challenge-abc')

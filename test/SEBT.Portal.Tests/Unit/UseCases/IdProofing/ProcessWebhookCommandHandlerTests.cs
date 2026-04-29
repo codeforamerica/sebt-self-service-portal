@@ -432,10 +432,10 @@ public class ProcessWebhookCommandHandlerTests
             .UpdateUserAsync(Arg.Any<User>(), Arg.Any<CancellationToken>());
     }
 
-    // --- Workflow RESUBMIT transitions to Rejected (DC-296: covers DocV decline case) ---
+    // --- Workflow RESUBMIT transitions to Resubmit (DC-301: terminal at Socure, retry-eligible at portal) ---
 
     [Fact]
-    public async Task HandleAsync_EvaluationCompleted_WorkflowResubmit_TransitionsToRejected()
+    public async Task HandleAsync_EvaluationCompleted_WorkflowResubmit_TransitionsToResubmit()
     {
         var handler = CreateHandler();
         var challenge = DocVerificationChallengeFactory.CreatePendingChallenge();
@@ -443,15 +443,14 @@ public class ProcessWebhookCommandHandlerTests
         challengeRepository.GetBySocureReferenceIdAsync("ref-456", Arg.Any<CancellationToken>())
             .Returns(challenge);
 
-        // Decline case: user declined on the Capture App, no DocV enrichment present
         var command = CreateValidCommand(workflowDecision: "RESUBMIT", documentDecision: null);
         var result = await handler.Handle(command, CancellationToken.None);
 
         Assert.True(result.IsSuccess);
         await challengeRepository.Received(1)
             .UpdateAsync(Arg.Is<DocVerificationChallenge>(c =>
-                c.Status == DocVerificationStatus.Rejected
-                && c.OffboardingReason == "docVerificationFailed"),
+                c.Status == DocVerificationStatus.Resubmit
+                && c.OffboardingReason == null),
                 Arg.Any<CancellationToken>());
         await userRepository.DidNotReceive()
             .UpdateUserAsync(Arg.Any<User>(), Arg.Any<CancellationToken>());

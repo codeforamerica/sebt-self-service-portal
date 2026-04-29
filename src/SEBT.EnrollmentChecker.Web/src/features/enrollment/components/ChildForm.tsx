@@ -1,6 +1,6 @@
 'use client'
 
-import { InputField } from '@sebt/design-system'
+import { InputField, Button } from '@sebt/design-system'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import type { Child } from '../context/EnrollmentContext'
@@ -99,11 +99,11 @@ export function ChildForm({
       {/* USWDS memorable-date pattern: Month dropdown + Day/Year text inputs */}
       <fieldset className="usa-fieldset">
         <legend className="usa-legend">
-          {t('labelBirthdate')} <abbr title="required" className="usa-hint usa-hint--required">*</abbr>
+          {t('labelBirthdate')} <span title="required" className="usa-hint usa-hint--required">*</span>
         </legend>
         <div className="usa-memorable-date">
           <div className="usa-form-group usa-form-group--month">
-            <label className="usa-label" htmlFor="date-month">{t('labelMonth')}</label>
+            <label className="usa-label" htmlFor="date-month">{t('labelMonth')}<span className="usa-hint usa-hint--required"> *</span></label>
             {errors.month && <span id="date-month-error" className="usa-error-message" role="alert">{errors.month}</span>}
             <select
               className={`usa-select${errors.month ? ' usa-input--error' : ''}`}
@@ -117,12 +117,12 @@ export function ChildForm({
             >
               <option value="">{tCommon('selectOne')}</option>
               {MONTH_KEYS.map((key, i) => (
-                <option key={i + 1} value={String(i + 1)}>{tCommon(`months.${key}`)}</option>
+                <option key={i + 1} value={String(i + 1)}>{tCommon(`${key}`)}</option>
               ))}
             </select>
           </div>
           <div className="usa-form-group usa-form-group--day">
-            <label className="usa-label" htmlFor="date-day">{t('labelDay')}</label>
+            <label className="usa-label" htmlFor="date-day">{t('labelDay')}<span className="usa-hint usa-hint--required"> *</span></label>
             {errors.day && <span id="date-day-error" className="usa-error-message" role="alert">{errors.day}</span>}
             <input
               className={`usa-input usa-input--inline${errors.day ? ' usa-input--error' : ''}`}
@@ -130,6 +130,7 @@ export function ChildForm({
               name="day"
               type="text"
               inputMode="numeric"
+              minLength={1}
               maxLength={2}
               aria-label={t('labelDay')}
               aria-invalid={!!errors.day}
@@ -139,7 +140,7 @@ export function ChildForm({
             />
           </div>
           <div className="usa-form-group usa-form-group--year">
-            <label className="usa-label" htmlFor="date-year">{t('labelYear')}</label>
+            <label title="required" className="usa-label" htmlFor="date-year">{t('labelYear')}<span className="usa-hint usa-hint--required"> *</span></label>
             {errors.year && <span id="date-year-error" className="usa-error-message" role="alert">{errors.year}</span>}
             <input
               className={`usa-input usa-input--inline${errors.year ? ' usa-input--error' : ''}`}
@@ -147,6 +148,7 @@ export function ChildForm({
               name="year"
               type="text"
               inputMode="numeric"
+              minLength={4}
               maxLength={4}
               aria-label={t('labelYear')}
               aria-invalid={!!errors.year}
@@ -173,9 +175,9 @@ export function ChildForm({
             {tCommon('back')}
           </button>
         )}
-        <button type="submit" className="usa-button">
+        <Button type="submit" className="usa-button">
           {tCommon('continue')}
-        </button>
+        </Button>
       </div>
     </form>
   )

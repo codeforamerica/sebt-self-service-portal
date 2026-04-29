@@ -60,16 +60,16 @@ public class SubmitIdProofingCommandHandlerTests
         Assert.IsType<ValidationFailedResult<SubmitIdProofingResponse>>(result);
     }
 
-    // --- Null idType → noIdProvided (Codex test 5) ---
+    // --- Null idType: co-loaded users still need a benefit ID (householding); non-co-loaded fall through to Socure DocV ---
 
     [Fact]
-    public async Task Handle_ShouldReturnFailed_WhenIdTypeIsNull()
+    public async Task Handle_ShouldReturnFailed_WhenIdTypeIsNullAndUserIsCoLoaded()
     {
         var handler = CreateHandler();
         var command = CreateValidCommand(idType: null, idValue: null);
 
         userRepository.GetUserByIdAsync(command.UserId, Arg.Any<CancellationToken>())
-            .Returns(new User { Id = command.UserId, Email = "test@example.com" });
+            .Returns(new User { Id = command.UserId, Email = "test@example.com", IsCoLoaded = true });
 
         var result = await handler.Handle(command, CancellationToken.None);
 
@@ -78,6 +78,49 @@ public class SubmitIdProofingCommandHandlerTests
         Assert.Equal("failed", response.Result);
         Assert.Equal("noIdProvided", response.OffboardingReason);
         Assert.Null(response.ChallengeId);
+
+        await socureClient.DidNotReceive()
+            .RunIdProofingAssessmentAsync(
+                Arg.Any<Guid>(), Arg.Any<string>(), Arg.Any<string>(),
+                Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<string?>(),
+                Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<Address?>(), Arg.Any<string?>(),
+                Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task Handle_ShouldCallSocureWithNullIdentifier_WhenIdTypeIsNullAndUserIsNotCoLoaded()
+    {
+        // Socure's consumer_onboarding workflow short-circuits to DocV when KYC can't resolve
+        // the consumer; national_id is not required. Non-co-loaded users who pick "none of the
+        // above" should reach Socure, not the noIdProvided off-board.
+        var handler = CreateHandler();
+        var command = CreateValidCommand(idType: null, idValue: null);
+
+        userRepository.GetUserByIdAsync(command.UserId, Arg.Any<CancellationToken>())
+            .Returns(new User { Id = command.UserId, Email = "test@example.com", IsCoLoaded = false });
+        challengeRepository.GetActiveByUserIdAsync(command.UserId, Arg.Any<CancellationToken>())
+            .Returns((DocVerificationChallenge?)null);
+        socureClient.RunIdProofingAssessmentAsync(
+                command.UserId, "test@example.com", command.DateOfBirth,
+                null, null, Arg.Any<string?>(), Arg.Any<string?>(),
+                Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<Address?>(), Arg.Any<string?>(),
+                Arg.Any<CancellationToken>())
+            .Returns(Result<IdProofingAssessmentResult>.Success(
+                new IdProofingAssessmentResult(IdProofingOutcome.DocumentVerificationRequired, AllowIdRetry: true)));
+
+        var result = await handler.Handle(command, CancellationToken.None);
+
+        Assert.True(result.IsSuccess);
+        var response = result.Value;
+        Assert.Equal("documentVerificationRequired", response.Result);
+        Assert.NotNull(response.ChallengeId);
+
+        await socureClient.Received(1)
+            .RunIdProofingAssessmentAsync(
+                command.UserId, "test@example.com", command.DateOfBirth,
+                null, null, Arg.Any<string?>(), Arg.Any<string?>(),
+                Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<Address?>(), Arg.Any<string?>(),
+                Arg.Any<CancellationToken>());
     }
 
     // --- User not found ---

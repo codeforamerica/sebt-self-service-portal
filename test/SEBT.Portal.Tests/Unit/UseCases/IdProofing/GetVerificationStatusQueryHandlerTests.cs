@@ -110,6 +110,29 @@ public class GetVerificationStatusQueryHandlerTests
         Assert.Equal("docVerificationFailed", result.Value.OffboardingReason);
     }
 
+    // --- Resubmit status (DC-301: Socure RESUBMIT decision, retry-eligible at portal) ---
+
+    [Fact]
+    public async Task Handle_ShouldReturnResubmit_WhenChallengeIsResubmit()
+    {
+        var handler = CreateHandler();
+        var challenge = DocVerificationChallengeFactory.CreateResubmitChallenge();
+        var query = new GetVerificationStatusQuery
+        {
+            ChallengeId = challenge.PublicId,
+            UserId = challenge.UserId
+        };
+
+        challengeRepository.GetByPublicIdAsync(query.ChallengeId, query.UserId, Arg.Any<CancellationToken>())
+            .Returns(challenge);
+
+        var result = await handler.Handle(query, CancellationToken.None);
+
+        Assert.True(result.IsSuccess);
+        Assert.Equal("resubmit", result.Value.Status);
+        Assert.Null(result.Value.OffboardingReason);
+    }
+
     // --- Check-on-read expiration (Codex test 7) ---
 
     [Fact]

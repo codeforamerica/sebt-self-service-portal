@@ -42,4 +42,19 @@ public class DisabledSocureClient : ISocureClient
             Result<SocureDocvSession>.DependencyFailed(
                 DependencyFailedReason.NotConfigured, DisabledMessage));
     }
+
+    public Task<Result<IdProofingAssessmentResult>> RunDocvStepupAssessmentAsync(
+        Guid userId,
+        string email,
+        string? phoneNumber = null,
+        string? givenName = null,
+        string? familyName = null,
+        Address? address = null,
+        string? diSessionToken = null,
+        CancellationToken cancellationToken = default)
+    {
+        return Task.FromResult(
+            Result<IdProofingAssessmentResult>.DependencyFailed(
+                DependencyFailedReason.NotConfigured, DisabledMessage));
+    }
 }

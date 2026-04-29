@@ -1,6 +1,7 @@
 using System.Text;
 using System.Text.Json;
 using Microsoft.Extensions.Logging;
+using SEBT.Portal.Core.Utilities;
 
 namespace SEBT.Portal.Api.Middleware;
 
@@ -152,7 +153,7 @@ public class OtpRateLimitMiddleware
                 {
                     // Store email in HttpContext.Items for rate limiting partition key resolver
                     context.Items[EmailKey] = email.ToLowerInvariant();
-                    _logger.LogDebug("Extracted email {Email} for rate limiting", email);
+                    _logger.LogDebug("Extracted email {MaskedEmail} for rate limiting", PiiMasker.MaskEmail(email));
                     return true;
                 }
             }

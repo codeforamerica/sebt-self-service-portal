@@ -16,12 +16,14 @@ interface VerificationPendingProps {
   challengeId: string
   onVerified: () => void
   onRejected: (offboardingReason?: string) => void
+  onResubmit: () => void
 }
 
 export function VerificationPending({
   challengeId,
   onVerified,
-  onRejected
+  onRejected,
+  onResubmit
 }: VerificationPendingProps) {
   const { t } = useTranslation('idProofing')
   // Persist "still checking" state across remounts so the UI doesn't oscillate
@@ -51,8 +53,10 @@ export function VerificationPending({
       onVerified()
     } else if (data?.status === 'rejected') {
       onRejected(data.offboardingReason ?? undefined)
+    } else if (data?.status === 'resubmit') {
+      onResubmit()
     }
-  }, [data?.status, data?.offboardingReason, onVerified, onRejected])
+  }, [data?.status, data?.offboardingReason, onVerified, onRejected, onResubmit])
 
   // Treat 404 as terminal — challenge doesn't exist for this user
   useEffect(() => {
