@@ -463,7 +463,7 @@ public class MockHouseholdRepository : IHouseholdRepository
             };
         });
         nonCoLoaded.Email = nonCoLoadedEmail;
-        nonCoLoaded.Phone = "5551234567";
+        nonCoLoaded.Phone = "8185558439";
         nonCoLoaded.UserProfile = new UserProfile { FirstName = "Carlos", MiddleName = "Miguel", LastName = "GarciaMOCK" };
         _households[nonCoLoadedEmail] = nonCoLoaded;
         IndexByPhone(nonCoLoaded);
@@ -495,7 +495,7 @@ public class MockHouseholdRepository : IHouseholdRepository
             };
         });
         notStarted.Email = notStartedEmail;
-        notStarted.Phone = "5559876543";
+        notStarted.Phone = "8185558440";
         notStarted.UserProfile = new UserProfile { FirstName = "Jordan", MiddleName = "Lee", LastName = "AndersonMOCK" };
         _households[notStartedEmail] = notStarted;
         IndexByPhone(notStarted);
