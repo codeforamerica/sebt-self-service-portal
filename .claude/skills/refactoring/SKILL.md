@@ -1,6 +1,6 @@
 ---
 name: refactoring
-description: Use when restructuring code, migrating between models, renaming abstractions, or moving behavior between layers — before making changes. Triggers when the intent is to change structure without changing what the code does.
+description: Use before restructuring code, migrating between models, renaming abstractions, moving behavior between layers, extracting methods/classes, consolidating duplication, or any cleanup that reshapes structure without changing behavior. Apply this skill even when the user says "clean up," "reorganize," "extract," "move," "simplify," or "tidy" rather than "refactor" — the intent (change shape, preserve behavior) is what matters. Engage the skill before making changes, not after.
 ---
 
 # Refactoring
@@ -11,37 +11,25 @@ Refactoring is changing the structure of code without changing its observable be
 
 **If existing tests must be deleted or weakened for a refactor to succeed, you are not refactoring — you are changing behavior.** Stop and treat it as a separate, deliberate decision (see "Separating Structure Changes from Behavior Changes" below).
 
+## Scope discipline
+
+Refactor only what the current task requires. Two failure modes to avoid:
+
+- **Drift** — you start renaming a type and end up restructuring a layer. Each additional change widens the diff, weakens reviewability, and increases the chance of a behavioral regression slipping through.
+- **The "I notice this is messy" trap** — mid-refactor, you spot adjacent code that could be cleaner. Resist. Document it as a follow-up (a TODO, a note, an issue) and stay on the original task. Future-you can pick it up with a clean head; current-you is already holding too much state.
+
+If the user's request is ambiguous about scope, ask before expanding it.
+
 ## Process
 
-```mermaid
-flowchart TD
-    A[Identify behavioral contract] --> B{Coverage gaps?}
-    B -- yes --> C[Write characterization tests]
-    B -- no --> D{Run all tests — GREEN?}
-    C --> D
-    D -- yes --> E[Make structural change]
-    D -- no --> F[FIX: You broke behavior]
-    F --> D
-    E --> G{Tests still GREEN?}
-    G -- yes --> H((Done))
-    G -- "no — compilation errors" --> I{Adapt test signatures?}
-    I -- yes --> J[Update compilation only\ntypes, imports, renames]
-    I -- "no — logic errors" --> F
-    J --> K{Assertions unchanged?}
-    K -- "yes — re-run" --> G
-    K -- no --> L[STOP: You're changing behavior. See Separating Changes]
-```
-
-**Step-by-step:**
-
-1. **Identify the behavioral contract** — count tests, list behaviors they verify, note assertions
-2. **If coverage gaps exist**, write characterization tests first (see below)
-3. **Run all tests** — must be GREEN before you touch anything
-4. **Make the structural change**
-5. **If tests fail with compilation errors**, update test signatures only (types, imports, renames) — assertions must not change in meaning
-6. **If tests fail with logic errors**, you broke behavior — fix the code, not the tests
-7. **Re-run all tests** — must be GREEN
-8. **If assertions must change to pass**, STOP — you're changing behavior. See "Separating Structure Changes from Behavior Changes" below.
+1. **Identify the behavioral contract** — count tests covering the code, list behaviors they verify, note the assertions. These are the contract.
+2. **If coverage gaps exist**, write characterization tests first (see "Behavioral Contract" below).
+3. **Run all tests — they must be GREEN before you touch anything.** If they're already failing, fix that first or stop; you can't tell what your refactor broke if the baseline is red.
+4. **Make the structural change.**
+5. **Re-run all tests.** Three outcomes:
+   - **GREEN** → done.
+   - **Compilation errors only** → update test signatures (types, imports, renames, fixture construction). Assertions must not change in meaning. Re-run.
+   - **Logic errors (assertions failing)** → you broke behavior. Fix the code, not the tests. If you find yourself wanting to change an assertion to pass, STOP — see "Separating Structure Changes from Behavior Changes."
 
 ## Behavioral Contract
 
@@ -81,7 +69,7 @@ Some changes look structural but carry behavioral risk. These require human conf
 
 ### Swapping one type for another
 
-Renaming a type everywhere (e.g., `AppRequest` → `CaseRequest`, same fields) is safe — it's the same type with a new name. A rename is safe only if the type's shape (fields, methods, invariants) is unchanged.
+Renaming a type everywhere (e.g., in this project, `AppRequest` → `CaseRequest` with identical fields) is safe — it's the same type with a new name. A rename is safe only if the type's shape (fields, methods, invariants) is unchanged.
 
 **Replacing one type with a different type** (e.g., changing a function from accepting `Application` to accepting `SummerEbtCase`) is a behavioral change in disguise. The two types have different fields, different semantics, and different invariants. Even if the code compiles, the behavior may have changed. If the type's shape changes alongside a rename, treat it as a type swap, not a rename.
 
@@ -89,7 +77,7 @@ Renaming a type everywhere (e.g., `AppRequest` → `CaseRequest`, same fields) i
 
 ### Moving fields or behavior between models
 
-Migrating a field from Model A to Model B (e.g., moving `CardRequestedAt` from `Application` to `SummerEbtCase`) changes _where_ behavior is sourced. The behavior should transfer wholesale:
+Migrating a field from Model A to Model B (e.g., in this project, moving `CardRequestedAt` from `Application` to `SummerEbtCase`) changes _where_ behavior is sourced. The behavior should transfer wholesale:
 
 - Every place that read the field on Model A must now read it on Model B
 - Every enforcement, validation, or logic that depended on the field must be preserved
@@ -112,7 +100,7 @@ If a refactor genuinely needs to change behavior (remove a feature, relax a cons
 1. **First commit: structural refactor** — all existing tests pass, behavior preserved
 2. **Second commit: behavioral change** — tests updated deliberately, reviewed separately
 
-This makes the behavioral change visible and reviewable on its own, rather than hidden inside a structural change. If the flowchart or process above leads you to STOP, this is your recovery path.
+This makes the behavioral change visible and reviewable on its own, rather than hidden inside a structural change. If the process above leads you to STOP, this is your recovery path.
 
 ## Red Flags — STOP and Reassess
 
