@@ -340,7 +340,7 @@ public class DatabaseSeederTests : IClassFixture<SqlServerTestFixture>
 
         // Verify Phone/SnapId/TanfId stored as plaintext; SSN stored as hash
         var coLoaded = users.First(u => u.Email == "co-loaded@example.com");
-        Assert.Equal("5551234567", coLoaded.Phone);
+        Assert.Equal("8185558439", coLoaded.Phone);
         Assert.Equal("SNAP-CO-001", coLoaded.SnapId);
         Assert.Equal("TANF-CO-001", coLoaded.TanfId);
         Assert.NotNull(coLoaded.Ssn);

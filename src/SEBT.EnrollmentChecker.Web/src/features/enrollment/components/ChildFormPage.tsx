@@ -49,21 +49,15 @@ export function ChildFormPage({ showSchoolField, apiBaseUrl }: ChildFormPageProp
   return (
     <div className="usa-section">
       <div className="grid-container">
-        <button
-          type="button"
-          className="usa-button usa-button--unstyled margin-bottom-2"
-          onClick={handleCancel}
-        >
-          {t('back', { ns: 'common' })}
-        </button>
         <Image
-          src="/img/icon-form-card.svg"
+          src="/images/states/co/icon-form-card.svg"
           alt=""
           width={100}
           height={75}
           aria-hidden="true"
         />
-        <h1 className="font-family-sans margin-top-1">{isEditMode ? t('editHeading') : t('title')}</h1>
+        {/* added temp fallback */}
+        <h1 className="font-family-sans margin-top-1">{isEditMode ? t('editHeading', t('title')) : t('title')}</h1>
         <p className="usa-prose">{t('body')}</p>
         <p className="usa-hint">{t('requiredFields', { ns: 'common' })}</p>
         <ChildForm

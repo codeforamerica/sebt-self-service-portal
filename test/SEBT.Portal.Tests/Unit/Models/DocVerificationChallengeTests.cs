@@ -67,6 +67,20 @@ public class DocVerificationChallengeTests
         Assert.True(challenge.UpdatedAt >= beforeTransition);
     }
 
+    // Socure RESUBMIT terminates the workflow; the portal treats Resubmit as a terminal
+    // status from which a fresh challenge can be opened. See branch-context/DC-301/socure-validation.md.
+    [Fact]
+    public void TransitionTo_ShouldSucceed_WhenPendingToResubmit()
+    {
+        var challenge = DocVerificationChallengeFactory.CreatePendingChallenge();
+        var beforeTransition = DateTime.UtcNow;
+
+        challenge.TransitionTo(DocVerificationStatus.Resubmit);
+
+        Assert.Equal(DocVerificationStatus.Resubmit, challenge.Status);
+        Assert.True(challenge.UpdatedAt >= beforeTransition);
+    }
+
     // --- Invalid transitions from terminal states ---
 
     [Theory]
@@ -74,6 +88,7 @@ public class DocVerificationChallengeTests
     [InlineData(DocVerificationStatus.Pending)]
     [InlineData(DocVerificationStatus.Rejected)]
     [InlineData(DocVerificationStatus.Expired)]
+    [InlineData(DocVerificationStatus.Resubmit)]
     public void TransitionTo_ShouldThrow_WhenFromVerified(DocVerificationStatus target)
     {
         var challenge = DocVerificationChallengeFactory.CreateVerifiedChallenge();
@@ -88,6 +103,7 @@ public class DocVerificationChallengeTests
     [InlineData(DocVerificationStatus.Pending)]
     [InlineData(DocVerificationStatus.Verified)]
     [InlineData(DocVerificationStatus.Expired)]
+    [InlineData(DocVerificationStatus.Resubmit)]
     public void TransitionTo_ShouldThrow_WhenFromRejected(DocVerificationStatus target)
     {
         var challenge = DocVerificationChallengeFactory.CreateRejectedChallenge();
@@ -102,6 +118,7 @@ public class DocVerificationChallengeTests
     [InlineData(DocVerificationStatus.Pending)]
     [InlineData(DocVerificationStatus.Verified)]
     [InlineData(DocVerificationStatus.Rejected)]
+    [InlineData(DocVerificationStatus.Resubmit)]
     public void TransitionTo_ShouldThrow_WhenFromExpired(DocVerificationStatus target)
     {
         var challenge = DocVerificationChallengeFactory.CreatePendingChallenge();
@@ -110,6 +127,21 @@ public class DocVerificationChallengeTests
         var ex = Assert.Throws<InvalidOperationException>(
             () => challenge.TransitionTo(target));
         Assert.Contains("Cannot transition from Expired", ex.Message);
+    }
+
+    [Theory]
+    [InlineData(DocVerificationStatus.Created)]
+    [InlineData(DocVerificationStatus.Pending)]
+    [InlineData(DocVerificationStatus.Verified)]
+    [InlineData(DocVerificationStatus.Rejected)]
+    [InlineData(DocVerificationStatus.Expired)]
+    public void TransitionTo_ShouldThrow_WhenFromResubmit(DocVerificationStatus target)
+    {
+        var challenge = DocVerificationChallengeFactory.CreateResubmitChallenge();
+
+        var ex = Assert.Throws<InvalidOperationException>(
+            () => challenge.TransitionTo(target));
+        Assert.Contains("Cannot transition from Resubmit", ex.Message);
     }
 
     // --- Invalid transitions that skip Pending ---
@@ -134,6 +166,16 @@ public class DocVerificationChallengeTests
         Assert.Contains("Cannot transition from Created to Rejected", ex.Message);
     }
 
+    [Fact]
+    public void TransitionTo_ShouldThrow_WhenCreatedToResubmit()
+    {
+        var challenge = DocVerificationChallengeFactory.CreateChallenge();
+
+        var ex = Assert.Throws<InvalidOperationException>(
+            () => challenge.TransitionTo(DocVerificationStatus.Resubmit));
+        Assert.Contains("Cannot transition from Created to Resubmit", ex.Message);
+    }
+
     // --- IsTerminal property ---
 
     [Theory]
@@ -142,6 +184,7 @@ public class DocVerificationChallengeTests
     [InlineData(DocVerificationStatus.Verified, true)]
     [InlineData(DocVerificationStatus.Rejected, true)]
     [InlineData(DocVerificationStatus.Expired, true)]
+    [InlineData(DocVerificationStatus.Resubmit, true)]
     public void IsTerminal_ShouldReturnExpectedValue_ForEachStatus(
         DocVerificationStatus status, bool expected)
     {
@@ -221,6 +264,7 @@ public class DocVerificationChallengeTests
     [InlineData(DocVerificationStatus.Verified)]
     [InlineData(DocVerificationStatus.Rejected)]
     [InlineData(DocVerificationStatus.Expired)]
+    [InlineData(DocVerificationStatus.Resubmit)]
     public void TransitionTo_ShouldScrubProofingPii_WhenTransitioningToTerminalState(
         DocVerificationStatus terminalStatus)
     {

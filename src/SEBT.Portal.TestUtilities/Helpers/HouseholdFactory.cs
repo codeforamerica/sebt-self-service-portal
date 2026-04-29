@@ -13,7 +13,9 @@ public static class HouseholdFactory
 {
     private static readonly Faker<HouseholdData> HouseholdDataFaker = new Faker<HouseholdData>()
         .RuleFor(h => h.Email, f => f.Internet.Email().ToLowerInvariant())
-        .RuleFor(h => h.Phone, f => f.Phone.PhoneNumber("###-####"))
+        // Generate a valid US 10-digit phone. Area code starts 2-9 and exchange
+        // starts 2-9 per NANP rules so libphonenumber accepts the result.
+        .RuleFor(h => h.Phone, f => $"{f.Random.Int(2, 9)}{f.Random.Int(0, 99):D2}{f.Random.Int(2, 9)}{f.Random.Int(0, 99):D2}{f.Random.Int(0, 9999):D4}")
         .RuleFor(h => h.BenefitIssuanceType, f => f.PickRandom<BenefitIssuanceType>())
         .RuleFor(h => h.SummerEbtCases, _ => new List<SummerEbtCase>())
         .RuleFor(h => h.Applications, f => GenerateApplications(f))

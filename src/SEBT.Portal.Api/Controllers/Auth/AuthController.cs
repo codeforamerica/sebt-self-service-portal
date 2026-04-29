@@ -51,7 +51,8 @@ public class AuthController(
             Ial: User.FindFirst(JwtClaimTypes.Ial)?.Value,
             IdProofingStatus: int.TryParse(User.FindFirst(JwtClaimTypes.IdProofingStatus)?.Value, out var s) ? s : null,
             IdProofingCompletedAt: long.TryParse(User.FindFirst(JwtClaimTypes.IdProofingCompletedAt)?.Value, out var c) ? c : null,
-            IdProofingExpiresAt: long.TryParse(User.FindFirst(JwtClaimTypes.IdProofingExpiresAt)?.Value, out var e) ? e : null));
+            IdProofingExpiresAt: long.TryParse(User.FindFirst(JwtClaimTypes.IdProofingExpiresAt)?.Value, out var e) ? e : null,
+            IsCoLoaded: bool.TryParse(User.FindFirst(JwtClaimTypes.IsCoLoaded)?.Value, out var cl) ? cl : null));
     }
 
     /// <summary>

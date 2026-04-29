@@ -761,7 +761,7 @@ public class DatabaseUserRepositoryTests : IClassFixture<SqlServerTestFixture>
         var uniqueEmail = $"hash-{Guid.NewGuid()}@example.com";
         var user = UserFactory.CreateUserWithEmail(uniqueEmail, u =>
         {
-            u.Phone = "5551234567";
+            u.Phone = "8185558439";
             u.SnapId = "SNAP123";
             u.TanfId = "TANF456";
             u.Ssn = "123456789";
@@ -773,7 +773,7 @@ public class DatabaseUserRepositoryTests : IClassFixture<SqlServerTestFixture>
         // Assert - Phone, SnapId, TanfId stored as plaintext; SSN stored as HMAC-SHA256 hash
         var stored = await context.Users.FirstOrDefaultAsync(u => u.Email == uniqueEmail);
         Assert.NotNull(stored);
-        Assert.Equal("5551234567", stored!.Phone);
+        Assert.Equal("8185558439", stored!.Phone);
         Assert.Equal("SNAP123", stored.SnapId);
         Assert.Equal("TANF456", stored.TanfId);
         Assert.NotNull(stored.Ssn);

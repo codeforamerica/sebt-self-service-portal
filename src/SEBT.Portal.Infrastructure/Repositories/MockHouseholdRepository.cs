@@ -277,6 +277,27 @@ public class MockHouseholdRepository : IHouseholdRepository
             };
             _households[coLoadedPendingIdProofingEmail] = coLoadedPending;
             IndexByPhone(coLoadedPending);
+
+            // Co-loaded household with zero enrolled children and zero applications —
+            // matched ID proofing lands on the dashboard's empty-state alert.
+            var coLoadedNoChildrenEmail = _settings.BuildEmail(SeedScenarios.CoLoadedNoChildren.Name);
+            var coLoadedNoChildren = HouseholdFactory.CreateHouseholdData(h =>
+            {
+                h.Email = coLoadedNoChildrenEmail;
+                h.Phone = "8185558439";
+                h.BenefitIssuanceType = BenefitIssuanceType.SnapEbtCard;
+                h.SummerEbtCases = new List<SummerEbtCase>();
+                h.Applications = new List<Application>();
+                h.AddressOnFile = null;
+                h.UserProfile = new UserProfile
+                {
+                    FirstName = "Noelle",
+                    MiddleName = "C",
+                    LastName = "ChildlessMOCK"
+                };
+            });
+            _households[coLoadedNoChildrenEmail] = coLoadedNoChildren;
+            IndexByPhone(coLoadedNoChildren);
         }
 
         // Scenario 2: Approved application with address (ID verified user)
@@ -442,7 +463,7 @@ public class MockHouseholdRepository : IHouseholdRepository
             };
         });
         nonCoLoaded.Email = nonCoLoadedEmail;
-        nonCoLoaded.Phone = "5551234567";
+        nonCoLoaded.Phone = "8185558439";
         nonCoLoaded.UserProfile = new UserProfile { FirstName = "Carlos", MiddleName = "Miguel", LastName = "GarciaMOCK" };
         _households[nonCoLoadedEmail] = nonCoLoaded;
         IndexByPhone(nonCoLoaded);
@@ -474,7 +495,7 @@ public class MockHouseholdRepository : IHouseholdRepository
             };
         });
         notStarted.Email = notStartedEmail;
-        notStarted.Phone = "5559876543";
+        notStarted.Phone = "8185558440";
         notStarted.UserProfile = new UserProfile { FirstName = "Jordan", MiddleName = "Lee", LastName = "AndersonMOCK" };
         _households[notStartedEmail] = notStarted;
         IndexByPhone(notStarted);
@@ -1193,7 +1214,6 @@ public class MockHouseholdRepository : IHouseholdRepository
                 EbtCardStatus = sec.EbtCardStatus,
                 EbtCardIssueDate = sec.EbtCardIssueDate,
                 EbtCardBalance = sec.EbtCardBalance,
-                CardRequestedAt = sec.CardRequestedAt,
                 BenefitAvailableDate = sec.BenefitAvailableDate,
                 BenefitExpirationDate = sec.BenefitExpirationDate
             }).ToList(),

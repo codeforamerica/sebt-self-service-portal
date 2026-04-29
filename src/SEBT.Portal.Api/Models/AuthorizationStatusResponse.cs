@@ -21,11 +21,15 @@ namespace SEBT.Portal.Api.Models;
 /// <param name="IdProofingExpiresAt">
 /// Unix seconds timestamp after which the IdP-bounded proofing credential should be re-verified. Null when not time-bounded.
 /// </param>
+/// <param name="IsCoLoaded">
+/// Whether the user's record was co-loaded from an external state system. Null when the claim is absent.
+/// </param>
 public record AuthorizationStatusResponse(
     bool IsAuthorized,
     string? Email = null,
     string? Ial = null,
     int? IdProofingStatus = null,
     long? IdProofingCompletedAt = null,
-    long? IdProofingExpiresAt = null);
+    long? IdProofingExpiresAt = null,
+    bool? IsCoLoaded = null);
 

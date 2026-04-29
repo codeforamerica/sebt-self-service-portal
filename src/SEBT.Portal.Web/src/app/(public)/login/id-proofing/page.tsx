@@ -4,46 +4,78 @@ import { getTranslations } from '@/lib/translations'
 import { getState, getStateLinks } from '@sebt/design-system'
 
 // DC-only: CO uses external auth and never reaches this route.
-// If a future state adopts OTP auth with id-proofing, add a state-based options
-// map or guard here.
-//
-// The full set shown here is for non-co-loaded users. Once the backend confirms
-// which options are available for co-loaded users (via JWT claim), this list can
-// be made dynamic at the page level.
-// TODO: Filter options based on co-loaded status once that claim is available in the JWT.
 const DC_ID_OPTIONS: IdOption[] = [
   {
     value: 'ssn',
     labelKey: 'optionLabelSsn',
-    inputLabelKey: 'labelSsn'
+    inputLabelKey: 'labelSsn',
+    // SSN is federally 9 digits. Shared Zod schema also enforces this.
+    validation: { digits: 9 }
   },
   {
     value: 'itin',
     labelKey: 'optionLabelItin',
-    inputLabelKey: 'labelItin'
+    inputLabelKey: 'labelItin',
+    // ITIN is federally 9 digits. Shared Zod schema also enforces this.
+    validation: { digits: 9 }
   },
   {
     value: 'medicaidId',
     labelKey: 'optionLabelMedicaidId',
     helperKey: 'optionHelperMedicaidId',
-    inputLabelKey: 'labelMedicaidId'
+    inputLabelKey: 'labelMedicaidId',
+    // DC CSV: "typically 7 or 8 digits long".
+    validation: { digits: [7, 8] }
   },
   {
     value: 'snapAccountId',
     labelKey: 'optionAccountId',
     helperKey: 'optionHelperAccountId',
-    inputLabelKey: 'labelAccountId'
+    inputLabelKey: 'labelAccountId',
+    // DC CSV: "typically 7 or 8 digits long".
+    validation: { digits: [7, 8] }
   },
   {
     value: 'snapPersonId',
     labelKey: 'optionPersonId',
     helperKey: 'optionHelperPersonId',
-    inputLabelKey: 'labelPersonId'
+    inputLabelKey: 'labelPersonId',
+    // DC CSV: "typically 7 or 8 digits long".
+    validation: { digits: [7, 8] }
   },
   {
     value: 'none',
-    // TODO: Use t('optionLabelNone') once key is available in dc.csv
-    labelKey: 'optionLabelNone'
+    // Cross-namespace lookup: the label key "noneOfTheAbove" lives in the
+    // common namespace (sourced from CSV row "GLOBAL - Option - None of the
+    // above"). The form's useTranslation() targets the idProofing namespace,
+    // so the "common:" prefix tells i18next to resolve from common instead.
+    labelKey: 'common:noneOfTheAbove',
+    // No validation: "none of the above" skips the ID value input entirely.
+    dividerBefore: true
+  }
+]
+
+// For co-loaded users, the SNAP/TANF account ID is the Household lookup key in DC's CMS.
+const DC_ID_OPTIONS_CO_LOADED: IdOption[] = [
+  {
+    value: 'snapAccountId',
+    labelKey: 'optionAccountId',
+    helperKey: 'optionHelperAccountId',
+    inputLabelKey: 'labelAccountId',
+    // DC CSV: "typically 7 or 8 digits long".
+    validation: { digits: [7, 8] }
+  },
+  {
+    value: 'itin',
+    labelKey: 'optionLabelItin',
+    inputLabelKey: 'labelItin',
+    // ITIN is federally 9 digits. Shared Zod schema also enforces this.
+    validation: { digits: 9 }
+  },
+  {
+    value: 'none',
+    labelKey: 'common:noneOfTheAbove',
+    dividerBefore: true
   }
 ]
 
@@ -70,6 +102,7 @@ export default function IdProofingPage() {
 
           <IdProofingWithDi
             idOptions={DC_ID_OPTIONS}
+            coLoadedIdOptions={DC_ID_OPTIONS_CO_LOADED}
             contactLink={links.external.contactUsAssistance}
           />
         </section>

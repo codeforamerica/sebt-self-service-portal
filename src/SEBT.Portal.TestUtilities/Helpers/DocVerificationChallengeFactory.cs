@@ -113,6 +113,21 @@ public static class DocVerificationChallengeFactory
     }
 
     /// <summary>
+    /// Creates a challenge that has been marked Resubmit (Socure RESUBMIT decision).
+    /// Terminal at Socure level; the user can open a fresh challenge via the resubmit endpoint.
+    /// </summary>
+    /// <param name="customize">Optional action to further customize the challenge.</param>
+    /// <returns>A challenge in Resubmit status.</returns>
+    public static DocVerificationChallenge CreateResubmitChallenge(Action<DocVerificationChallenge>? customize = null)
+    {
+        var challenge = ChallengeFaker.Generate();
+        challenge.TransitionTo(DocVerificationStatus.Pending);
+        challenge.TransitionTo(DocVerificationStatus.Resubmit);
+        customize?.Invoke(challenge);
+        return challenge;
+    }
+
+    /// <summary>
     /// Sets a seed for the random number generator to ensure deterministic test data.
     /// </summary>
     /// <param name="seed">The seed value to use.</param>

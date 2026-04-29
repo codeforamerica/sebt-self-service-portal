@@ -283,9 +283,14 @@ export const handlers = [
       return HttpResponse.json({ error: 'Date of birth is required' }, { status: 400 })
     }
 
-    // Simulate failure when user selects "none of the above" for ID type
+    // Simulate failure when user selects "none of the above" for ID type.
+    // Backend returns offboardingReason so the frontend can land on distinct copy.
     if (body.idType === null) {
-      return HttpResponse.json({ result: 'failed', canApply: true })
+      return HttpResponse.json({
+        result: 'failed',
+        canApply: true,
+        offboardingReason: 'noIdProvided'
+      })
     }
 
     // Simulate step-up failure (canApply: false) with Medicaid ID for dev testing.
@@ -305,6 +310,18 @@ export const handlers = [
     return HttpResponse.json({
       docvTransactionToken: 'mock-token-for-testing',
       docvUrl: 'https://websdk.socure.com'
+    })
+  }),
+
+  // Resubmit endpoint — opens a fresh docv_stepup challenge (DC-301).
+  // Returns a stable mock UUID so tests can assert on it.
+  http.post('/api/challenges/:id/resubmit', async () => {
+    await delay(50)
+
+    return HttpResponse.json({
+      challengeId: '99999999-9999-4999-8999-999999999999',
+      docvTransactionToken: 'mock-resubmit-token',
+      docvUrl: 'https://verify.socure.com/#/dv/mock-resubmit-token'
     })
   }),
 

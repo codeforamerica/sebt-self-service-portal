@@ -23,6 +23,8 @@ public class HouseholdControllerTests
     private readonly IPiiVisibilityService _piiVisibilityService;
     private readonly IIdProofingService _idProofingService;
     private readonly ISelfServiceEvaluator _selfServiceEvaluator;
+    private readonly ICardReplacementRequestRepository _cardReplacementRepo;
+    private readonly IIdentifierHasher _identifierHasher;
     private readonly HouseholdController _controller;
 
     public HouseholdControllerTests()
@@ -31,6 +33,8 @@ public class HouseholdControllerTests
         _piiVisibilityService = Substitute.For<IPiiVisibilityService>();
         _idProofingService = Substitute.For<IIdProofingService>();
         _selfServiceEvaluator = Substitute.For<ISelfServiceEvaluator>();
+        _cardReplacementRepo = Substitute.For<ICardReplacementRequestRepository>();
+        _identifierHasher = Substitute.For<IIdentifierHasher>();
         // Default: no elevated IAL requirement, so existing tests pass without per-test mock setup.
         _idProofingService.Evaluate(
             Arg.Any<ProtectedResource>(), Arg.Any<ProtectedAction>(),
@@ -48,7 +52,7 @@ public class HouseholdControllerTests
         IHouseholdRepository repository)
     {
         var logger = NullLogger<GetHouseholdDataQueryHandler>.Instance;
-        return new GetHouseholdDataQueryHandler(resolver, repository, _piiVisibilityService, _idProofingService, _selfServiceEvaluator, logger);
+        return new GetHouseholdDataQueryHandler(resolver, repository, _piiVisibilityService, _idProofingService, _selfServiceEvaluator, _cardReplacementRepo, _identifierHasher, logger);
     }
 
     private void SetupAuthenticatedUser(string email, UserIalLevel userIalLevel = UserIalLevel.None, string claimType = ClaimTypes.Email)

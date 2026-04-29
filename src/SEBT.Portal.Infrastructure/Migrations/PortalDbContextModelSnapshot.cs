@@ -22,6 +22,37 @@ namespace SEBT.Portal.Infrastructure.Migrations
 
             SqlServerModelBuilderExtensions.UseIdentityColumns(modelBuilder);
 
+            modelBuilder.Entity("SEBT.Portal.Infrastructure.Data.Entities.CardReplacementRequestEntity", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("CaseIdHash")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("nvarchar(64)");
+
+                    b.Property<string>("HouseholdIdentifierHash")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("nvarchar(64)");
+
+                    b.Property<DateTime>("RequestedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<Guid>("RequestedByUserId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("RequestedByUserId");
+
+                    b.HasIndex("HouseholdIdentifierHash", "CaseIdHash", "RequestedAt")
+                        .HasDatabaseName("IX_CardReplacementRequests_Household_Case_RequestedAt");
+
+                    b.ToTable("CardReplacementRequests", (string)null);
+                });
+
             modelBuilder.Entity("SEBT.Portal.Infrastructure.Data.Entities.DeidentifiedChildResultEntity", b =>
                 {
                     b.Property<Guid>("Id")
@@ -296,6 +327,17 @@ namespace SEBT.Portal.Infrastructure.Migrations
                         .IsUnique();
 
                     b.ToTable("UserOptIns", (string)null);
+                });
+
+            modelBuilder.Entity("SEBT.Portal.Infrastructure.Data.Entities.CardReplacementRequestEntity", b =>
+                {
+                    b.HasOne("SEBT.Portal.Infrastructure.Data.Entities.UserEntity", "RequestedByUser")
+                        .WithMany()
+                        .HasForeignKey("RequestedByUserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("RequestedByUser");
                 });
 
             modelBuilder.Entity("SEBT.Portal.Infrastructure.Data.Entities.DeidentifiedChildResultEntity", b =>

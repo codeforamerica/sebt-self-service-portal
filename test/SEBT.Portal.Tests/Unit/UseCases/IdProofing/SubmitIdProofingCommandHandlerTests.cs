@@ -60,16 +60,16 @@ public class SubmitIdProofingCommandHandlerTests
         Assert.IsType<ValidationFailedResult<SubmitIdProofingResponse>>(result);
     }
 
-    // --- Null idType → noIdProvided (Codex test 5) ---
+    // --- Null idType: co-loaded users still need a benefit ID (householding); non-co-loaded fall through to Socure DocV ---
 
     [Fact]
-    public async Task Handle_ShouldReturnFailed_WhenIdTypeIsNull()
+    public async Task Handle_ShouldReturnFailed_WhenIdTypeIsNullAndUserIsCoLoaded()
     {
         var handler = CreateHandler();
         var command = CreateValidCommand(idType: null, idValue: null);
 
         userRepository.GetUserByIdAsync(command.UserId, Arg.Any<CancellationToken>())
-            .Returns(new User { Id = command.UserId, Email = "test@example.com" });
+            .Returns(new User { Id = command.UserId, Email = "test@example.com", IsCoLoaded = true });
 
         var result = await handler.Handle(command, CancellationToken.None);
 
@@ -78,6 +78,49 @@ public class SubmitIdProofingCommandHandlerTests
         Assert.Equal("failed", response.Result);
         Assert.Equal("noIdProvided", response.OffboardingReason);
         Assert.Null(response.ChallengeId);
+
+        await socureClient.DidNotReceive()
+            .RunIdProofingAssessmentAsync(
+                Arg.Any<Guid>(), Arg.Any<string>(), Arg.Any<string>(),
+                Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<string?>(),
+                Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<Address?>(), Arg.Any<string?>(),
+                Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task Handle_ShouldCallSocureWithNullIdentifier_WhenIdTypeIsNullAndUserIsNotCoLoaded()
+    {
+        // Socure's consumer_onboarding workflow short-circuits to DocV when KYC can't resolve
+        // the consumer; national_id is not required. Non-co-loaded users who pick "none of the
+        // above" should reach Socure, not the noIdProvided off-board.
+        var handler = CreateHandler();
+        var command = CreateValidCommand(idType: null, idValue: null);
+
+        userRepository.GetUserByIdAsync(command.UserId, Arg.Any<CancellationToken>())
+            .Returns(new User { Id = command.UserId, Email = "test@example.com", IsCoLoaded = false });
+        challengeRepository.GetActiveByUserIdAsync(command.UserId, Arg.Any<CancellationToken>())
+            .Returns((DocVerificationChallenge?)null);
+        socureClient.RunIdProofingAssessmentAsync(
+                command.UserId, "test@example.com", command.DateOfBirth,
+                null, null, Arg.Any<string?>(), Arg.Any<string?>(),
+                Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<Address?>(), Arg.Any<string?>(),
+                Arg.Any<CancellationToken>())
+            .Returns(Result<IdProofingAssessmentResult>.Success(
+                new IdProofingAssessmentResult(IdProofingOutcome.DocumentVerificationRequired, AllowIdRetry: true)));
+
+        var result = await handler.Handle(command, CancellationToken.None);
+
+        Assert.True(result.IsSuccess);
+        var response = result.Value;
+        Assert.Equal("documentVerificationRequired", response.Result);
+        Assert.NotNull(response.ChallengeId);
+
+        await socureClient.Received(1)
+            .RunIdProofingAssessmentAsync(
+                command.UserId, "test@example.com", command.DateOfBirth,
+                null, null, Arg.Any<string?>(), Arg.Any<string?>(),
+                Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<Address?>(), Arg.Any<string?>(),
+                Arg.Any<CancellationToken>());
     }
 
     // --- User not found ---
@@ -400,28 +443,210 @@ public class SubmitIdProofingCommandHandlerTests
                 Arg.Any<CancellationToken>());
     }
 
+    // --- SSN/ITIN must be exactly 9 digits after stripping non-digits (DC-296 Phase 3 backend guard) ---
+    // OpenAPI Individual.national_id permits 4-digit partials; product decision is full 9 only.
+
     [Fact]
-    public async Task Handle_ShouldCallSocure_WhenNotCoLoadedAndSnapIdWithValue()
+    public async Task HandleAsync_SsnWithFewerThan9Digits_ReturnsValidationFailedAndDoesNotCallSocure()
     {
         var handler = CreateHandler();
-        var command = CreateValidCommand(idType: "snapPersonId", idValue: "987654321");
+        var command = CreateValidCommand(idType: "ssn", idValue: "12345678");
 
         userRepository.GetUserByIdAsync(command.UserId, Arg.Any<CancellationToken>())
-            .Returns(new User { Id = command.UserId, Email = "test@example.com", IsCoLoaded = false });
+            .Returns(new User { Id = command.UserId, Email = "test@example.com" });
+
+        var result = await handler.Handle(command, CancellationToken.None);
+
+        Assert.False(result.IsSuccess);
+        var failed = Assert.IsType<ValidationFailedResult<SubmitIdProofingResponse>>(result);
+        Assert.Contains(
+            failed.Errors,
+            e => e.Key == nameof(SubmitIdProofingCommand.IdValue));
+
+        await socureClient.DidNotReceiveWithAnyArgs()
+            .RunIdProofingAssessmentAsync(
+                default, default!, default!,
+                default, default, default, default,
+                default, default, default, default,
+                default);
+    }
+
+    [Fact]
+    public async Task HandleAsync_SsnWithMoreThan9Digits_ReturnsValidationFailedAndDoesNotCallSocure()
+    {
+        var handler = CreateHandler();
+        var command = CreateValidCommand(idType: "ssn", idValue: "1234567890");
+
+        userRepository.GetUserByIdAsync(command.UserId, Arg.Any<CancellationToken>())
+            .Returns(new User { Id = command.UserId, Email = "test@example.com" });
+
+        var result = await handler.Handle(command, CancellationToken.None);
+
+        Assert.False(result.IsSuccess);
+        var failed = Assert.IsType<ValidationFailedResult<SubmitIdProofingResponse>>(result);
+        Assert.Contains(
+            failed.Errors,
+            e => e.Key == nameof(SubmitIdProofingCommand.IdValue));
+
+        await socureClient.DidNotReceiveWithAnyArgs()
+            .RunIdProofingAssessmentAsync(
+                default, default!, default!,
+                default, default, default, default,
+                default, default, default, default,
+                default);
+    }
+
+    [Fact]
+    public async Task HandleAsync_SsnWithNonDigits_ReturnsValidationFailedAndDoesNotCallSocure()
+    {
+        var handler = CreateHandler();
+        // 6 digits after stripping letters; should fail the 9-digit check
+        var command = CreateValidCommand(idType: "ssn", idValue: "abc123456");
+
+        userRepository.GetUserByIdAsync(command.UserId, Arg.Any<CancellationToken>())
+            .Returns(new User { Id = command.UserId, Email = "test@example.com" });
+
+        var result = await handler.Handle(command, CancellationToken.None);
+
+        Assert.False(result.IsSuccess);
+        var failed = Assert.IsType<ValidationFailedResult<SubmitIdProofingResponse>>(result);
+        Assert.Contains(
+            failed.Errors,
+            e => e.Key == nameof(SubmitIdProofingCommand.IdValue));
+
+        await socureClient.DidNotReceiveWithAnyArgs()
+            .RunIdProofingAssessmentAsync(
+                default, default!, default!,
+                default, default, default, default,
+                default, default, default, default,
+                default);
+    }
+
+    [Fact]
+    public async Task HandleAsync_ItinWithInvalidLength_ReturnsValidationFailedAndDoesNotCallSocure()
+    {
+        var handler = CreateHandler();
+        var command = CreateValidCommand(idType: "itin", idValue: "12345");
+
+        userRepository.GetUserByIdAsync(command.UserId, Arg.Any<CancellationToken>())
+            .Returns(new User { Id = command.UserId, Email = "test@example.com" });
+
+        var result = await handler.Handle(command, CancellationToken.None);
+
+        Assert.False(result.IsSuccess);
+        var failed = Assert.IsType<ValidationFailedResult<SubmitIdProofingResponse>>(result);
+        Assert.Contains(
+            failed.Errors,
+            e => e.Key == nameof(SubmitIdProofingCommand.IdValue));
+
+        await socureClient.DidNotReceiveWithAnyArgs()
+            .RunIdProofingAssessmentAsync(
+                default, default!, default!,
+                default, default, default, default,
+                default, default, default, default,
+                default);
+    }
+
+    [Fact]
+    public async Task HandleAsync_Ssn9DigitsWithHyphens_NormalizesAndProceeds()
+    {
+        var handler = CreateHandler();
+        // Hyphens are optional per OpenAPI; after stripping we have 9 digits and the guard lets us through.
+        var command = CreateValidCommand(idType: "ssn", idValue: "123-45-6789");
+
+        userRepository.GetUserByIdAsync(command.UserId, Arg.Any<CancellationToken>())
+            .Returns(new User { Id = command.UserId, Email = "test@example.com" });
         challengeRepository.GetActiveByUserIdAsync(command.UserId, Arg.Any<CancellationToken>())
             .Returns((DocVerificationChallenge?)null);
         socureClient.RunIdProofingAssessmentAsync(
                 command.UserId, "test@example.com", command.DateOfBirth,
-                command.IdType, command.IdValue, Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<Address?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
+                command.IdType, command.IdValue, Arg.Any<string?>(), Arg.Any<string?>(),
+                Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<Address?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
             .Returns(Result<IdProofingAssessmentResult>.Success(
                 new IdProofingAssessmentResult(IdProofingOutcome.Matched, AllowIdRetry: false)));
 
-        await handler.Handle(command, CancellationToken.None);
+        var result = await handler.Handle(command, CancellationToken.None);
 
+        Assert.True(result.IsSuccess);
         await socureClient.Received(1)
             .RunIdProofingAssessmentAsync(
                 command.UserId, "test@example.com", command.DateOfBirth,
-                command.IdType, command.IdValue, Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<Address?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>());
+                command.IdType, command.IdValue, Arg.Any<string?>(), Arg.Any<string?>(),
+                Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<Address?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task Handle_ShouldAttemptCoLoadedMatchAndSkipSocure_WhenSnapIdSubmittedRegardlessOfPriorIsCoLoaded()
+    {
+        // Co-loaded status is discovered by the match attempt itself, so the precondition
+        // gate on user.IsCoLoaded was removed. SNAP/TANF id types are an in-portal lookup
+        // and must never reach Socure as national_id.
+        var handler = CreateHandler();
+        var command = CreateValidCommand(
+            dob: "1984-03-05",
+            idType: "snapPersonId",
+            idValue: "987654321");
+        var user = new User
+        {
+            Id = command.UserId,
+            Email = "test@example.com",
+            IsCoLoaded = false,
+            IdProofingAttemptCount = 0
+        };
+
+        userRepository.GetUserByIdAsync(command.UserId, Arg.Any<CancellationToken>())
+            .Returns(user);
+        challengeRepository.GetActiveByUserIdAsync(command.UserId, Arg.Any<CancellationToken>())
+            .Returns((DocVerificationChallenge?)null);
+        householdRepository.TryMatchCoLoadedGuardianByBenefitIdAndDobAsync(
+                Arg.Any<string>(), Arg.Any<DateOnly>(), Arg.Any<CancellationToken>())
+            .Returns(false);
+        householdRepository.GetHouseholdByEmailAsync(
+                Arg.Any<string>(), Arg.Any<PiiVisibility>(), Arg.Any<UserIalLevel>(), Arg.Any<CancellationToken>())
+            .Returns((HouseholdData?)null);
+
+        await handler.Handle(command, CancellationToken.None);
+
+        await householdRepository.Received(1).TryMatchCoLoadedGuardianByBenefitIdAndDobAsync(
+            "987654321", new DateOnly(1984, 3, 5), Arg.Any<CancellationToken>());
+        await socureClient.DidNotReceive()
+            .RunIdProofingAssessmentAsync(
+                Arg.Any<Guid>(), Arg.Any<string>(), Arg.Any<string>(),
+                Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<Address?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task Handle_ShouldPersistIsCoLoadedTrue_WhenWarehouseMatchSucceeds()
+    {
+        // The user-level co-loaded flag is derived from the match: starts false,
+        // becomes true after a successful warehouse IC+DOB match.
+        var handler = CreateHandler();
+        var command = CreateValidCommand(
+            dob: "1984-03-05",
+            idType: "snapAccountId",
+            idValue: "IC000001");
+        var user = new User
+        {
+            Id = command.UserId,
+            Email = "test@example.com",
+            IsCoLoaded = false,
+            IdProofingAttemptCount = 0
+        };
+
+        userRepository.GetUserByIdAsync(command.UserId, Arg.Any<CancellationToken>())
+            .Returns(user);
+        challengeRepository.GetActiveByUserIdAsync(command.UserId, Arg.Any<CancellationToken>())
+            .Returns((DocVerificationChallenge?)null);
+        householdRepository.TryMatchCoLoadedGuardianByBenefitIdAndDobAsync(
+                "IC000001", new DateOnly(1984, 3, 5), Arg.Any<CancellationToken>())
+            .Returns(true);
+
+        var result = await handler.Handle(command, CancellationToken.None);
+
+        Assert.True(result.IsSuccess);
+        Assert.Equal("matched", result.Value.Result);
+        Assert.True(user.IsCoLoaded);
+        Assert.NotNull(user.CoLoadedLastUpdated);
     }
 
     [Fact]

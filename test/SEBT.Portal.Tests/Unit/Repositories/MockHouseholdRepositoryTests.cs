@@ -70,8 +70,8 @@ public class MockHouseholdRepositoryTests
     [Fact]
     public async Task GetHouseholdByIdentifierAsync_WhenPhoneIdentifierWithFormatting_NormalizesAndFindsHousehold()
     {
-        // Phone normalization strips non-digits; 555-123-4567 -> 5551234567
-        var identifier = HouseholdIdentifier.Phone("555-123-4567");
+        // Phone normalization strips non-digits; 818-555-8439 -> 8185558439
+        var identifier = HouseholdIdentifier.Phone("818-555-8439");
 
         var result = await _repository.GetHouseholdByIdentifierAsync(identifier, FullPiiVisibility, UserIalLevel.IAL1plus);
 
@@ -594,7 +594,7 @@ public class MockHouseholdRepositoryTests
         // Assert
         Assert.NotNull(result);
         Assert.Equal(email, result.Email);
-        Assert.Equal("***-***-4567", result.Phone);
+        Assert.Equal("***-***-8439", result.Phone);
     }
 
     [Fact]
