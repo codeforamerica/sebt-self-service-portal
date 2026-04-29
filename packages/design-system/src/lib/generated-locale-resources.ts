@@ -6,10 +6,8 @@ import enCOConfirmInfo from '@/content/locales/en/co/confirmInfo.json'
 import enCODashboard from '@/content/locales/en/co/dashboard.json'
 import enCODisclaimer from '@/content/locales/en/co/disclaimer.json'
 import enCOEditContactPreferences from '@/content/locales/en/co/editContactPreferences.json'
-import enCOEditMailingAddress from '@/content/locales/en/co/editMailingAddress.json'
 import enCOEmail from '@/content/locales/en/co/email.json'
 import enCOEnterEmail from '@/content/locales/en/co/enterEmail.json'
-import enCOIdProofing from '@/content/locales/en/co/idProofing.json'
 import enCOLanding from '@/content/locales/en/co/landing.json'
 import enCOLanguage from '@/content/locales/en/co/language.json'
 import enCOLogin from '@/content/locales/en/co/login.json'
@@ -19,10 +17,10 @@ import enCOOptionalId from '@/content/locales/en/co/optionalId.json'
 import enCOPersonalInfo from '@/content/locales/en/co/personalInfo.json'
 import enCOProto from '@/content/locales/en/co/proto.json'
 import enCOResult from '@/content/locales/en/co/result.json'
+import enCOSignIn from '@/content/locales/en/co/signIn.json'
 import enCOStepUpProcessing from '@/content/locales/en/co/step-upProcessing.json'
 import enCOStepUpDisclaimer from '@/content/locales/en/co/stepUpDisclaimer.json'
 import enCOStepUpFailure from '@/content/locales/en/co/stepUpFailure.json'
-import enCOText from '@/content/locales/en/co/text.json'
 import enCOValidation from '@/content/locales/en/co/validation.json'
 import enDCCommon from '@/content/locales/en/dc/common.json'
 import enDCConfirmInfo from '@/content/locales/en/dc/confirmInfo.json'
@@ -52,10 +50,8 @@ import esCOConfirmInfo from '@/content/locales/es/co/confirmInfo.json'
 import esCODashboard from '@/content/locales/es/co/dashboard.json'
 import esCODisclaimer from '@/content/locales/es/co/disclaimer.json'
 import esCOEditContactPreferences from '@/content/locales/es/co/editContactPreferences.json'
-import esCOEditMailingAddress from '@/content/locales/es/co/editMailingAddress.json'
 import esCOEmail from '@/content/locales/es/co/email.json'
 import esCOEnterEmail from '@/content/locales/es/co/enterEmail.json'
-import esCOIdProofing from '@/content/locales/es/co/idProofing.json'
 import esCOLanding from '@/content/locales/es/co/landing.json'
 import esCOLanguage from '@/content/locales/es/co/language.json'
 import esCOLogin from '@/content/locales/es/co/login.json'
@@ -65,10 +61,10 @@ import esCOOptionalId from '@/content/locales/es/co/optionalId.json'
 import esCOPersonalInfo from '@/content/locales/es/co/personalInfo.json'
 import esCOProto from '@/content/locales/es/co/proto.json'
 import esCOResult from '@/content/locales/es/co/result.json'
+import esCOSignIn from '@/content/locales/es/co/signIn.json'
 import esCOStepUpProcessing from '@/content/locales/es/co/step-upProcessing.json'
 import esCOStepUpDisclaimer from '@/content/locales/es/co/stepUpDisclaimer.json'
 import esCOStepUpFailure from '@/content/locales/es/co/stepUpFailure.json'
-import esCOText from '@/content/locales/es/co/text.json'
 import esCOValidation from '@/content/locales/es/co/validation.json'
 import esDCCommon from '@/content/locales/es/dc/common.json'
 import esDCConfirmInfo from '@/content/locales/es/dc/confirmInfo.json'
@@ -102,10 +98,8 @@ export const stateResources = {
       dashboard: enCODashboard,
       disclaimer: enCODisclaimer,
       editContactPreferences: enCOEditContactPreferences,
-      editMailingAddress: enCOEditMailingAddress,
       email: enCOEmail,
       enterEmail: enCOEnterEmail,
-      idProofing: enCOIdProofing,
       landing: enCOLanding,
       language: enCOLanguage,
       login: enCOLogin,
@@ -115,10 +109,10 @@ export const stateResources = {
       personalInfo: enCOPersonalInfo,
       proto: enCOProto,
       result: enCOResult,
+      signIn: enCOSignIn,
       'step-upProcessing': enCOStepUpProcessing,
       stepUpDisclaimer: enCOStepUpDisclaimer,
       stepUpFailure: enCOStepUpFailure,
-      text: enCOText,
       validation: enCOValidation,
     },
     es: {
@@ -127,10 +121,8 @@ export const stateResources = {
       dashboard: esCODashboard,
       disclaimer: esCODisclaimer,
       editContactPreferences: esCOEditContactPreferences,
-      editMailingAddress: esCOEditMailingAddress,
       email: esCOEmail,
       enterEmail: esCOEnterEmail,
-      idProofing: esCOIdProofing,
       landing: esCOLanding,
       language: esCOLanguage,
       login: esCOLogin,
@@ -140,10 +132,10 @@ export const stateResources = {
       personalInfo: esCOPersonalInfo,
       proto: esCOProto,
       result: esCOResult,
+      signIn: esCOSignIn,
       'step-upProcessing': esCOStepUpProcessing,
       stepUpDisclaimer: esCOStepUpDisclaimer,
       stepUpFailure: esCOStepUpFailure,
-      text: esCOText,
       validation: esCOValidation,
     },
   },
@@ -201,5 +193,5 @@ export const stateResources = {
   },
 }
 
-export const namespaces = ['common', 'confirmInfo', 'dashboard', 'disclaimer', 'editContactPreferences', 'editMailingAddress', 'email', 'enterEmail', 'idProofing', 'landing', 'language', 'login', 'offBoarding', 'optIn', 'optionalId', 'personalInfo', 'proto', 'result', 'step-upProcessing', 'stepUpDisclaimer', 'stepUpFailure', 'text', 'validation'] as const
+export const namespaces = ['common', 'confirmInfo', 'dashboard', 'disclaimer', 'editContactPreferences', 'editMailingAddress', 'email', 'enterEmail', 'idProofing', 'landing', 'language', 'login', 'offBoarding', 'optIn', 'optionalId', 'personalInfo', 'proto', 'result', 'signIn', 'step-upProcessing', 'stepUpDisclaimer', 'stepUpFailure', 'text', 'validation'] as const
 export type Namespace = (typeof namespaces)[number]
