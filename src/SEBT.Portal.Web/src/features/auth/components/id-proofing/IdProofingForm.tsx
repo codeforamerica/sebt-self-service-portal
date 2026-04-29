@@ -7,11 +7,17 @@ import { useTranslation } from 'react-i18next'
 import { AnalyticsEvents, useDataLayer } from '@sebt/analytics'
 import { Alert, Button, InputField } from '@sebt/design-system'
 
+import { useAuth } from '@/features/auth'
 import {
   clearChallengeContext,
   SK_CHALLENGE_ID
 } from '@/features/auth/components/doc-verify/sessionKeys'
-import { SubmitIdProofingRequestSchema, useSubmitIdProofing, type IdType } from '../../api'
+import {
+  SubmitIdProofingRequestSchema,
+  useRefreshToken,
+  useSubmitIdProofing,
+  type IdType
+} from '../../api'
 
 // UI-only sentinel value for the "none" radio option.
 // The API receives idType: null when the user selects this.
@@ -101,8 +107,11 @@ export function IdProofingForm({ idOptions, contactLink, getDiToken }: IdProofin
   const [submitError, setSubmitError] = useState<string | null>(null)
 
   const submitIdProofing = useSubmitIdProofing()
+  const refreshToken = useRefreshToken()
   const isSubmitting = submitIdProofing.isPending
   const { setPageData, setUserData, trackEvent } = useDataLayer()
+  const { session } = useAuth()
+  const isCoLoaded = session?.isCoLoaded === true
 
   const selectedOption = idOptions.find((opt) => opt.value === selectedIdType)
   const showIdValueInput = selectedIdType !== null && selectedIdType !== NONE_VALUE
@@ -232,6 +241,9 @@ export function IdProofingForm({ idOptions, contactLink, getDiToken }: IdProofin
         router.push(`/login/id-proofing/doc-verify?challengeId=${response.challengeId}`)
       } else if (response.result === 'failed') {
         setPageData('idv_primary_status', 'fail')
+        // Co-loaded users reach "failed" only via SNAP/TANF + DOB mismatch (no Socure),
+        // so their failure is always a not-found. Non-co-loaded failures come from Socure.
+        setPageData('idv_primary_reason', isCoLoaded ? 'not_found' : 'socure_fail')
         trackEvent(AnalyticsEvents.IDV_PRIMARY_RESULT)
         // Hand off offboarding context via URL query params so the server-rendered
         // route page can branch copy (noIdProvided gets a distinct heading).
@@ -247,6 +259,17 @@ export function IdProofingForm({ idOptions, contactLink, getDiToken }: IdProofin
       } else {
         setPageData('idv_primary_status', 'success')
         trackEvent(AnalyticsEvents.IDV_PRIMARY_RESULT)
+
+        // A successful co-loaded match flips user.IsCoLoaded server-side, but the cookie
+        // we hold was minted before the match. Refresh so the dashboard reads the updated
+        // claim. Swallow failures — leave the user on a working flow if the refresh hiccups;
+        // the dashboard will still load with the prior claim.
+        try {
+          await refreshToken.mutateAsync()
+        } catch {
+          // Intentionally silent.
+        }
+
         router.push('/dashboard')
       }
     } catch (err) {

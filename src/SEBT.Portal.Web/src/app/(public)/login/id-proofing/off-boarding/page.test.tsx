@@ -1,10 +1,11 @@
 /**
  * Off-Boarding Page Unit Tests (Co-located)
  *
- * Tests the server component behavior including:
+ * Covers:
  * - searchParams.canApply parsing (defaults to true, 'false' yields false)
  * - State-specific contactHref from getStateLinks
- * - Translation key mapping to OffBoardingContent props
+ * - Translation key mapping branches by session.isCoLoaded
+ *   (co-loaded users see the "cannot identify" copy, not DocV copy)
  */
 import { render, screen } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
@@ -16,13 +17,46 @@ vi.mock('@sebt/design-system', () => ({
   })
 }))
 
-vi.mock('@/lib/translations', () => ({
-  getTranslations: vi.fn().mockImplementation(() => {
-    return (key: string) => `offBoarding:${key}`
+// Keys the test asserts against get a populated value; anything else (state-specific
+// keys that may be empty in some locales) returns empty so the page's `|| fallback`
+// branch is exercised.
+const POPULATED_KEYS = new Set([
+  'offBoarding:title',
+  'offBoarding:body1',
+  'offBoarding:body2',
+  'offBoarding:body3',
+  'offBoarding:action',
+  'offBoarding:action2',
+  'offBoarding:coLoadedTitle',
+  'offBoarding:coLoadedBody1',
+  'offBoarding:coLoadedAction1',
+  'offBoarding:coLoadedBody2',
+  'offBoarding:coLoadedAction2',
+  'common:linkContactUs',
+  'common:back'
+])
+let emptyKeys = new Set<string>()
+vi.mock('react-i18next', () => ({
+  useTranslation: (ns: string) => ({
+    t: (key: string, defaultValue?: string) => {
+      const fullKey = `${ns}:${key}`
+      if (emptyKeys.has(fullKey)) return defaultValue ?? fullKey
+      if (POPULATED_KEYS.has(fullKey)) return fullKey
+      return defaultValue ?? fullKey
+    }
   })
 }))
 
+const mockSearchParams = new Map<string, string>()
+vi.mock('next/navigation', () => ({
+  useSearchParams: () => ({
+    get: (key: string) => mockSearchParams.get(key) ?? null
+  })
+}))
+
+const mockUseAuth = vi.fn()
 vi.mock('@/features/auth', () => ({
+  useAuth: () => mockUseAuth(),
   OffBoardingContent: (props: Record<string, unknown>) => (
     <div
       data-testid="off-boarding-content"
@@ -31,22 +65,32 @@ vi.mock('@/features/auth', () => ({
       data-title={String(props.title)}
       data-body={String(props.body)}
       data-contact-label={String(props.contactLabel)}
+      data-apply-body={String(props.applyBody)}
+      data-apply-label={String(props.applyLabel)}
       data-back-href={String(props.backHref)}
+      data-back-label={String(props.backLabel)}
     />
   )
 }))
 
 import { getState, getStateLinks } from '@sebt/design-system'
+
 import OffBoardingPage from './page'
 
 const mockGetState = vi.mocked(getState)
 const mockGetStateLinks = vi.mocked(getStateLinks)
 
-async function renderPage(searchParams: { canApply?: string; reason?: string } = {}) {
-  const page = await OffBoardingPage({
-    searchParams: Promise.resolve(searchParams)
+function renderPage(
+  opts: { canApply?: string; reason?: string; isCoLoaded?: boolean; emptyKeys?: string[] } = {}
+) {
+  mockSearchParams.clear()
+  if (opts.canApply !== undefined) mockSearchParams.set('canApply', opts.canApply)
+  if (opts.reason !== undefined) mockSearchParams.set('reason', opts.reason)
+  mockUseAuth.mockReturnValue({
+    session: { isCoLoaded: opts.isCoLoaded ?? false }
   })
-  return render(page)
+  emptyKeys = new Set(opts.emptyKeys ?? [])
+  return render(<OffBoardingPage />)
 }
 
 describe('OffBoardingPage', () => {
@@ -68,22 +112,22 @@ describe('OffBoardingPage', () => {
   })
 
   describe('searchParams.canApply parsing', () => {
-    it('defaults canApply to true when searchParams has no canApply', async () => {
-      await renderPage({})
+    it('defaults canApply to true when searchParams has no canApply', () => {
+      renderPage({})
 
       const content = screen.getByTestId('off-boarding-content')
       expect(content).toHaveAttribute('data-can-apply', 'true')
     })
 
-    it('sets canApply to true when searchParams.canApply is "true"', async () => {
-      await renderPage({ canApply: 'true' })
+    it('sets canApply to true when searchParams.canApply is "true"', () => {
+      renderPage({ canApply: 'true' })
 
       const content = screen.getByTestId('off-boarding-content')
       expect(content).toHaveAttribute('data-can-apply', 'true')
     })
 
-    it('sets canApply to false when searchParams.canApply is "false"', async () => {
-      await renderPage({ canApply: 'false' })
+    it('sets canApply to false when searchParams.canApply is "false"', () => {
+      renderPage({ canApply: 'false' })
 
       const content = screen.getByTestId('off-boarding-content')
       expect(content).toHaveAttribute('data-can-apply', 'false')
@@ -91,8 +135,8 @@ describe('OffBoardingPage', () => {
   })
 
   describe('State-specific props', () => {
-    it('passes the contactHref from state links', async () => {
-      await renderPage()
+    it('passes the contactHref from state links', () => {
+      renderPage()
 
       const content = screen.getByTestId('off-boarding-content')
       expect(content).toHaveAttribute(
@@ -101,15 +145,15 @@ describe('OffBoardingPage', () => {
       )
     })
 
-    it('calls getStateLinks with the current state', async () => {
+    it('calls getStateLinks with the current state', () => {
       mockGetState.mockReturnValue('co')
 
-      await renderPage()
+      renderPage()
 
       expect(mockGetStateLinks).toHaveBeenCalledWith('co')
     })
 
-    it('falls back to helpDeskEmail when contactUs is a placeholder', async () => {
+    it('falls back to helpDeskEmail when contactUs is a placeholder', () => {
       mockGetState.mockReturnValue('co')
       mockGetStateLinks.mockReturnValue({
         help: {
@@ -128,7 +172,7 @@ describe('OffBoardingPage', () => {
         external: { contactUsAssistance: '' }
       })
 
-      await renderPage()
+      renderPage()
 
       const content = screen.getByTestId('off-boarding-content')
       expect(content).toHaveAttribute(
@@ -139,22 +183,59 @@ describe('OffBoardingPage', () => {
   })
 
   describe('Translation key mapping', () => {
-    it('maps translation keys to the correct props', async () => {
-      await renderPage()
+    it('uses the default off-boarding copy when the session is not co-loaded', () => {
+      renderPage({ isCoLoaded: false })
 
       const content = screen.getByTestId('off-boarding-content')
       expect(content).toHaveAttribute('data-title', 'offBoarding:title')
       expect(content).toHaveAttribute('data-body', 'offBoarding:body1')
-      expect(content).toHaveAttribute('data-contact-label', 'Contact us')
+      expect(content).toHaveAttribute('data-apply-body', 'offBoarding:body2')
+      expect(content).toHaveAttribute('data-apply-label', 'offBoarding:action2')
+    })
+
+    it('uses the co-loaded off-boarding copy when the session is co-loaded', () => {
+      renderPage({ isCoLoaded: true })
+
+      const content = screen.getByTestId('off-boarding-content')
+      expect(content).toHaveAttribute('data-title', 'offBoarding:coLoadedTitle')
+      expect(content).toHaveAttribute('data-body', 'offBoarding:coLoadedBody1')
+      expect(content).toHaveAttribute('data-contact-label', 'offBoarding:coLoadedAction1')
+      expect(content).toHaveAttribute('data-apply-body', 'offBoarding:coLoadedBody2')
+      expect(content).toHaveAttribute('data-apply-label', 'offBoarding:coLoadedAction2')
     })
   })
 
   describe('Static props', () => {
-    it('passes backHref pointing to the id-proofing form', async () => {
-      await renderPage()
+    it('passes backHref pointing to the id-proofing form (NOT Socure) for the Socure flow', () => {
+      renderPage({ isCoLoaded: false })
+      expect(screen.getByTestId('off-boarding-content')).toHaveAttribute(
+        'data-back-href',
+        '/login/id-proofing'
+      )
+    })
 
-      const content = screen.getByTestId('off-boarding-content')
-      expect(content).toHaveAttribute('data-back-href', '/login/id-proofing')
+    it('passes backHref pointing to the id-proofing form (NOT Socure) for the co-loaded flow', () => {
+      renderPage({ isCoLoaded: true })
+      expect(screen.getByTestId('off-boarding-content')).toHaveAttribute(
+        'data-back-href',
+        '/login/id-proofing'
+      )
+    })
+
+    it('passes the state-specific back label from the offBoarding action key when present (DC)', () => {
+      renderPage({ isCoLoaded: true })
+      expect(screen.getByTestId('off-boarding-content')).toHaveAttribute(
+        'data-back-label',
+        'offBoarding:action'
+      )
+    })
+
+    it('falls back to the common "Back" label when the state omits offBoarding action (CO)', () => {
+      renderPage({ isCoLoaded: true, emptyKeys: ['offBoarding:action'] })
+      expect(screen.getByTestId('off-boarding-content')).toHaveAttribute(
+        'data-back-label',
+        'common:back'
+      )
     })
   })
 

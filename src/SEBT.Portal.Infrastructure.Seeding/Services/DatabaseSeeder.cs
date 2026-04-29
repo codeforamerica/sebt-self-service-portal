@@ -126,6 +126,8 @@ public class DatabaseSeeder : Core.Services.IDatabaseSeeder
             var coLoadedEmail = EmailNormalizer.Normalize(_settings.BuildEmail(SeedScenarios.CoLoaded.Name));
             var coLoadedPendingIdProofingEmail = EmailNormalizer.Normalize(
                 _settings.BuildEmail(SeedScenarios.CoLoadedPendingIdProofing.Name));
+            var coLoadedNoChildrenEmail = EmailNormalizer.Normalize(
+                _settings.BuildEmail(SeedScenarios.CoLoadedNoChildren.Name));
             var verifiedEmail = EmailNormalizer.Normalize(_settings.BuildEmail(SeedScenarios.Verified.Name));
 
             foreach (var scenario in SeedScenarios.UserScenarios)
@@ -177,6 +179,21 @@ public class DatabaseSeeder : Core.Services.IDatabaseSeeder
                             u.Phone = "8185558438";
                             u.SnapId = "SNAP-CO-001";
                             u.TanfId = "TANF-CO-001";
+                            u.Ssn = "123456789";
+                        });
+                    }
+                    else if (normalizedEmail == coLoadedNoChildrenEmail)
+                    {
+                        user = UserFactory.CreateCoLoadedUser(u =>
+                        {
+                            u.Email = normalizedEmail;
+                            u.IdProofingStatus = IdProofingStatus.Completed;
+                            u.IalLevel = scenario.IalLevel;
+                            u.IdProofingCompletedAt = now.AddDays(DaysSinceIdProofingCompleted);
+                            u.CoLoadedLastUpdated = now.AddDays(DaysSinceCoLoadedUpdate);
+                            u.Phone = "8185558439";
+                            u.SnapId = "SNAP-CO-NC-001";
+                            u.TanfId = "TANF-CO-NC-001";
                             u.Ssn = "123456789";
                         });
                     }
@@ -292,6 +309,8 @@ public class DatabaseSeeder : Core.Services.IDatabaseSeeder
             var coLoadedEmail = EmailNormalizer.Normalize(_settings.BuildEmail(SeedScenarios.CoLoaded.Name));
             var coLoadedPendingIdProofingEmail = EmailNormalizer.Normalize(
                 _settings.BuildEmail(SeedScenarios.CoLoadedPendingIdProofing.Name));
+            var coLoadedNoChildrenEmail = EmailNormalizer.Normalize(
+                _settings.BuildEmail(SeedScenarios.CoLoadedNoChildren.Name));
             var verifiedEmail = EmailNormalizer.Normalize(_settings.BuildEmail(SeedScenarios.Verified.Name));
             foreach (var scenario in SeedScenarios.UserScenarios)
             {
@@ -342,6 +361,21 @@ public class DatabaseSeeder : Core.Services.IDatabaseSeeder
                             u.Phone = "8185558438";
                             u.SnapId = "SNAP-CO-001";
                             u.TanfId = "TANF-CO-001";
+                            u.Ssn = "123456789";
+                        });
+                    }
+                    else if (normalizedEmail == coLoadedNoChildrenEmail)
+                    {
+                        user = UserFactory.CreateCoLoadedUser(u =>
+                        {
+                            u.Email = normalizedEmail;
+                            u.IdProofingStatus = IdProofingStatus.Completed;
+                            u.IalLevel = scenario.IalLevel;
+                            u.IdProofingCompletedAt = now.AddDays(DaysSinceIdProofingCompleted);
+                            u.CoLoadedLastUpdated = now.AddDays(DaysSinceCoLoadedUpdate);
+                            u.Phone = "8185558439";
+                            u.SnapId = "SNAP-CO-NC-001";
+                            u.TanfId = "TANF-CO-NC-001";
                             u.Ssn = "123456789";
                         });
                     }
