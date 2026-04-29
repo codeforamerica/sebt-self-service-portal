@@ -4,9 +4,6 @@
 ## Git worktrees
 .worktrees/
 
-## macOS Cruft
-.DS_Store
-
 ## Git worktrees
 .worktrees/
 
@@ -497,3 +494,6 @@ packages/design-system/design/sass/_uswds-settings.scss
 
 # Generated design-system locale output (app reads from Web's gitignored copy)
 packages/design-system/content/locales/
+
+## macOS Cruft
+.DS_Store
