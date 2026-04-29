@@ -17,7 +17,7 @@ namespace SEBT.Portal.Api.Controllers.IdProofing;
 [Route("api/id-proofing")]
 [Authorize]
 [ServiceFilter(typeof(ResolveUserFilter))]
-public class IdProofingController(ILogger<IdProofingController> logger) : ControllerBase
+public class IdProofingController : ControllerBase
 {
     /// <summary>
     /// Submits ID proofing data for risk assessment.
@@ -38,19 +38,6 @@ public class IdProofingController(ILogger<IdProofingController> logger) : Contro
         CancellationToken cancellationToken)
     {
         var userId = (Guid)HttpContext.Items[ResolveUserFilter.UserIdKey]!;
-
-        var remoteIp = HttpContext.Connection.RemoteIpAddress?.ToString() ?? "<null>";
-        var xForwardedFor = Request.Headers.TryGetValue("X-Forwarded-For", out var xff) && xff.Count > 0
-            ? xff.ToString()
-            : "<absent>";
-
-        // Boundary log: captures the post-UseForwardedHeaders RemoteIp alongside the raw
-        // XFF header chain. Lets us pick the correct ForwardLimit value from real deployed
-        // traffic instead of inferring it from topology assumptions. The same RemoteIp value
-        // flows downstream as Socure's data.ip_address.
-        logger.LogInformation(
-            "ID proofing submit: UserId={UserId}, RemoteIp={RemoteIp}, XForwardedFor={XForwardedFor}",
-            userId, remoteIp, xForwardedFor);
 
         var command = new SubmitIdProofingCommand
         {
