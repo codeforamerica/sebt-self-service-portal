@@ -66,6 +66,10 @@ export function AddressAutocomplete({
     onSelect: (address) => {
       onSuggestionSelected(address)
       setActiveIndex(-1)
+      // Treat the selection-caused value change like a fresh prepopulation:
+      // without this, the canonical street_line that flows back into `value`
+      // re-fires the debounced search and the listbox immediately reopens.
+      setHasUserTyped(false)
     }
   })
 

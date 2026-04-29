@@ -304,4 +304,57 @@ describe('AddressAutocomplete', () => {
       expect.objectContaining({ streetLine2: 'Apt 2' })
     )
   })
+
+  // --- Selection should not re-trigger autocomplete ---
+
+  it('does not re-fetch or re-open suggestions when selection rewrites the input value', async () => {
+    // Smarty returns the canonical street_line ("123 Main Street NW"), which
+    // typically differs from what the user typed ("123 Main"). When the parent
+    // form propagates that canonical value back into the input, the hook must
+    // not re-fetch and re-open the listbox — the user has already chosen.
+    let fetchCount = 0
+    server.use(
+      http.get(SMARTY_URL, () => {
+        fetchCount++
+        return HttpResponse.json({
+          suggestions: [makeSuggestion({ street_line: '123 Main Street NW' })]
+        })
+      })
+    )
+
+    const { AddressAutocomplete } = await import('./AddressAutocomplete')
+
+    function Wrapper() {
+      const [value, setValue] = useState('')
+      return (
+        <AddressAutocomplete
+          label="Street address"
+          name="streetAddress1"
+          value={value}
+          onChange={(e) => setValue(e.target.value)}
+          onSuggestionSelected={(addr) => setValue(addr.streetLine1)}
+          isRequired
+        />
+      )
+    }
+
+    const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime })
+    render(<Wrapper />)
+
+    await user.type(screen.getByRole('combobox'), '123 Main')
+    await vi.advanceTimersByTimeAsync(300)
+    await waitFor(() => expect(screen.getByRole('option')).toBeInTheDocument())
+
+    expect(fetchCount).toBe(1)
+    await user.click(screen.getByRole('option'))
+
+    // Drain the debounce window AND any in-flight fetch resolution.
+    await vi.advanceTimersByTimeAsync(1000)
+    await vi.runAllTimersAsync()
+
+    // The selection-caused value change must not trigger another Smarty call,
+    // and the listbox must remain closed.
+    expect(fetchCount).toBe(1)
+    expect(screen.queryByRole('listbox')).not.toBeInTheDocument()
+  })
 })
