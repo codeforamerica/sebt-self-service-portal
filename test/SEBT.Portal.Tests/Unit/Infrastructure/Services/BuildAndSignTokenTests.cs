@@ -98,4 +98,38 @@ public class BuildAndSignTokenTests : JwtTokenServiceTestBase
         Assert.Equal("actual@example.com",
             jwt.Claims.First(c => c.Type == System.Security.Claims.ClaimTypes.Email).Value);
     }
+
+    [Fact]
+    public void IsCoLoaded_IsReserved_PassthroughSkipsDifferentCasing()
+    {
+        // Guards against a case-sensitive caller producing a duplicate claim by including
+        // both the canonical name (set by BuildAndSignToken as a base claim) and a variant
+        // casing in the passthrough dict. ReservedClaimNames uses OrdinalIgnoreCase, so
+        // the variant must be skipped rather than emitted as a second is_co_loaded claim.
+        var claims = new Dictionary<string, string>(StringComparer.Ordinal)
+        {
+            [JwtClaimTypes.Ial] = "1",
+            [JwtClaimTypes.IdProofingStatus] = "0",
+            ["IS_CO_LOADED"] = "rogue"
+        };
+
+        var token = Service.BuildAndSignToken(Guid.NewGuid(), "user@example.com", claims);
+
+        var jwt = ReadJwt(token);
+        var isCoLoadedClaims = jwt.Claims.Where(c => c.Type == JwtClaimTypes.IsCoLoaded).ToList();
+        Assert.Single(isCoLoadedClaims);
+        Assert.Equal("false", isCoLoadedClaims[0].Value);
+        Assert.Null(jwt.Claims.FirstOrDefault(c => c.Type == "IS_CO_LOADED"));
+    }
+
+    [Fact]
+    public void IsCoLoaded_DefaultsToFalse_WhenMissingFromResolvedClaims()
+    {
+        var claims = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+
+        var token = Service.BuildAndSignToken(Guid.NewGuid(), "user@example.com", claims);
+
+        var jwt = ReadJwt(token);
+        Assert.Equal("false", jwt.Claims.First(c => c.Type == JwtClaimTypes.IsCoLoaded).Value);
+    }
 }

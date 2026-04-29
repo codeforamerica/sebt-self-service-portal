@@ -198,7 +198,7 @@ module "ses" {
 }
 
 module "cloudfront_waf" {
-  source     = "github.com/codeforamerica/tofu-modules-aws-cloudfront-waf?ref=2.1.0"
+  source     = "github.com/codeforamerica/tofu-modules-aws-cloudfront-waf?ref=2.2.0"
   depends_on = [module.web.load_balancer_arn]
 
   project        = "${var.project}-${var.state}"

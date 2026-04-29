@@ -262,6 +262,22 @@ public class OidcTokenServiceTests : JwtTokenServiceTestBase
     }
 
     [Fact]
+    public void IsCoLoadedClaim_ComesFromUserEntity_NotIdp()
+    {
+        // The IdP has no concept of co-loaded — it comes from the DB user record.
+        var user = new User { IsCoLoaded = true };
+        var principal = MakePrincipal(
+            ("sub", "idp-sub-123"),
+            ("email", "user@example.com"));
+
+        var result = Service.GenerateForOidcLogin(user, principal, isStepUp: false);
+
+        Assert.True(result.IsSuccess);
+        var jwt = ReadJwt(result.Value);
+        Assert.Equal("true", jwt.Claims.First(c => c.Type == JwtClaimTypes.IsCoLoaded).Value);
+    }
+
+    [Fact]
     public void InfrastructureClaimsAreFilteredOut()
     {
         var user = new User();

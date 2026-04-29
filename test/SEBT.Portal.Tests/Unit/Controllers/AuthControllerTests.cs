@@ -92,7 +92,8 @@ public class AuthControllerTests
             new Claim(JwtClaimTypes.Ial, "1plus"),
             new Claim(JwtClaimTypes.IdProofingStatus, "2"),
             new Claim(JwtClaimTypes.IdProofingCompletedAt, "1735689600"),
-            new Claim(JwtClaimTypes.IdProofingExpiresAt, "1767225600")
+            new Claim(JwtClaimTypes.IdProofingExpiresAt, "1767225600"),
+            new Claim(JwtClaimTypes.IsCoLoaded, "true")
         };
         var identity = new ClaimsIdentity(claims, "Test");
         _controller.ControllerContext = new ControllerContext
@@ -110,6 +111,47 @@ public class AuthControllerTests
         Assert.Equal(2, response.IdProofingStatus);
         Assert.Equal(1735689600L, response.IdProofingCompletedAt);
         Assert.Equal(1767225600L, response.IdProofingExpiresAt);
+        Assert.True(response.IsCoLoaded);
+    }
+
+    [Fact]
+    public void GetAuthorizationStatus_WhenIsCoLoadedClaimFalse_ReturnsFalse()
+    {
+        // Arrange
+        var claims = new List<Claim>
+        {
+            new Claim("email", "user@example.com"),
+            new Claim(JwtClaimTypes.IsCoLoaded, "false")
+        };
+        var identity = new ClaimsIdentity(claims, "Test");
+        _controller.ControllerContext = new ControllerContext
+        {
+            HttpContext = new DefaultHttpContext { User = new ClaimsPrincipal(identity) }
+        };
+
+        // Act
+        var result = _controller.GetAuthorizationStatus();
+
+        // Assert
+        var okResult = Assert.IsType<OkObjectResult>(result);
+        var response = Assert.IsType<AuthorizationStatusResponse>(okResult.Value);
+        Assert.False(response.IsCoLoaded);
+    }
+
+    [Fact]
+    public void GetAuthorizationStatus_WhenIsCoLoadedClaimAbsent_ReturnsNull()
+    {
+        // Arrange
+        var email = "user@example.com";
+        SetupAuthenticatedUser(email);
+
+        // Act
+        var result = _controller.GetAuthorizationStatus();
+
+        // Assert
+        var okResult = Assert.IsType<OkObjectResult>(result);
+        var response = Assert.IsType<AuthorizationStatusResponse>(okResult.Value);
+        Assert.Null(response.IsCoLoaded);
     }
 
     [Fact]
