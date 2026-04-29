@@ -453,6 +453,7 @@ CLAUDE.local.md
 docs/.local/
 .claude-figma-verify/
 screenshots/
+.playwright-mcp/
 
 # output files
 output
