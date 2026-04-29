@@ -1,3 +1,4 @@
+export { initAmplitudeBridge } from './amplitude-bridge'
 export { DataLayer } from './data-layer'
 export type { DataLayerEvent, DataLayerRoot } from './data-layer'
 export { DataLayerProvider } from './DataLayerProvider'

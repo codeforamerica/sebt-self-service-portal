@@ -111,7 +111,11 @@ describe('useSubmitIdProofing', () => {
         expect(result.current.isSuccess).toBe(true)
       })
 
-      expect(result.current.data).toEqual({ result: 'failed', canApply: true })
+      expect(result.current.data).toEqual({
+        result: 'failed',
+        canApply: true,
+        offboardingReason: 'noIdProvided'
+      })
     })
   })
 

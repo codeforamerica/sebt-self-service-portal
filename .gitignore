@@ -1,8 +1,14 @@
 ## VS Code
 .vscode/
 
+## Git worktrees
+.worktrees/
+
 ## macOS Cruft
 .DS_Store
+
+## Git worktrees
+.worktrees/
 
 ## GitHub Actions Local Testing (act)
 .secrets

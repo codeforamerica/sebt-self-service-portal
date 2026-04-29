@@ -8,12 +8,23 @@ public class User
     /// <summary>
     /// The unique identifier for the user (database primary key).
     /// </summary>
-    public int Id { get; init; }
+    public Guid Id { get; init; } = Guid.CreateVersion7();
 
     /// <summary>
     /// The user's email address, used as a unique identifier.
     /// </summary>
-    public string Email { get; set; } = string.Empty;
+    public string? Email { get; set; }
+
+    /// <summary>
+    /// The subject identifier from the external identity provider (e.g., PingOne sub claim).
+    /// Set for OIDC users; null for OTP-authenticated users.
+    /// </summary>
+    public string? ExternalProviderId { get; set; }
+
+    /// <summary>
+    /// The user's date of birth (calendar date), when collected for household matching or verification.
+    /// </summary>
+    public DateOnly? DateOfBirth { get; set; }
 
     /// <summary>
     /// Workflow state of the ID proofing process (NotStarted, InProgress, Completed, Failed, Expired).

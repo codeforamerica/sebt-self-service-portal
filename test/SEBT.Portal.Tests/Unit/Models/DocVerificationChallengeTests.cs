@@ -67,6 +67,20 @@ public class DocVerificationChallengeTests
         Assert.True(challenge.UpdatedAt >= beforeTransition);
     }
 
+    // Socure RESUBMIT terminates the workflow; the portal treats Resubmit as a terminal
+    // status from which a fresh challenge can be opened. See branch-context/DC-301/socure-validation.md.
+    [Fact]
+    public void TransitionTo_ShouldSucceed_WhenPendingToResubmit()
+    {
+        var challenge = DocVerificationChallengeFactory.CreatePendingChallenge();
+        var beforeTransition = DateTime.UtcNow;
+
+        challenge.TransitionTo(DocVerificationStatus.Resubmit);
+
+        Assert.Equal(DocVerificationStatus.Resubmit, challenge.Status);
+        Assert.True(challenge.UpdatedAt >= beforeTransition);
+    }
+
     // --- Invalid transitions from terminal states ---
 
     [Theory]
@@ -74,6 +88,7 @@ public class DocVerificationChallengeTests
     [InlineData(DocVerificationStatus.Pending)]
     [InlineData(DocVerificationStatus.Rejected)]
     [InlineData(DocVerificationStatus.Expired)]
+    [InlineData(DocVerificationStatus.Resubmit)]
     public void TransitionTo_ShouldThrow_WhenFromVerified(DocVerificationStatus target)
     {
         var challenge = DocVerificationChallengeFactory.CreateVerifiedChallenge();
@@ -88,6 +103,7 @@ public class DocVerificationChallengeTests
     [InlineData(DocVerificationStatus.Pending)]
     [InlineData(DocVerificationStatus.Verified)]
     [InlineData(DocVerificationStatus.Expired)]
+    [InlineData(DocVerificationStatus.Resubmit)]
     public void TransitionTo_ShouldThrow_WhenFromRejected(DocVerificationStatus target)
     {
         var challenge = DocVerificationChallengeFactory.CreateRejectedChallenge();
@@ -102,6 +118,7 @@ public class DocVerificationChallengeTests
     [InlineData(DocVerificationStatus.Pending)]
     [InlineData(DocVerificationStatus.Verified)]
     [InlineData(DocVerificationStatus.Rejected)]
+    [InlineData(DocVerificationStatus.Resubmit)]
     public void TransitionTo_ShouldThrow_WhenFromExpired(DocVerificationStatus target)
     {
         var challenge = DocVerificationChallengeFactory.CreatePendingChallenge();
@@ -110,6 +127,21 @@ public class DocVerificationChallengeTests
         var ex = Assert.Throws<InvalidOperationException>(
             () => challenge.TransitionTo(target));
         Assert.Contains("Cannot transition from Expired", ex.Message);
+    }
+
+    [Theory]
+    [InlineData(DocVerificationStatus.Created)]
+    [InlineData(DocVerificationStatus.Pending)]
+    [InlineData(DocVerificationStatus.Verified)]
+    [InlineData(DocVerificationStatus.Rejected)]
+    [InlineData(DocVerificationStatus.Expired)]
+    public void TransitionTo_ShouldThrow_WhenFromResubmit(DocVerificationStatus target)
+    {
+        var challenge = DocVerificationChallengeFactory.CreateResubmitChallenge();
+
+        var ex = Assert.Throws<InvalidOperationException>(
+            () => challenge.TransitionTo(target));
+        Assert.Contains("Cannot transition from Resubmit", ex.Message);
     }
 
     // --- Invalid transitions that skip Pending ---
@@ -134,6 +166,16 @@ public class DocVerificationChallengeTests
         Assert.Contains("Cannot transition from Created to Rejected", ex.Message);
     }
 
+    [Fact]
+    public void TransitionTo_ShouldThrow_WhenCreatedToResubmit()
+    {
+        var challenge = DocVerificationChallengeFactory.CreateChallenge();
+
+        var ex = Assert.Throws<InvalidOperationException>(
+            () => challenge.TransitionTo(DocVerificationStatus.Resubmit));
+        Assert.Contains("Cannot transition from Created to Resubmit", ex.Message);
+    }
+
     // --- IsTerminal property ---
 
     [Theory]
@@ -142,13 +184,14 @@ public class DocVerificationChallengeTests
     [InlineData(DocVerificationStatus.Verified, true)]
     [InlineData(DocVerificationStatus.Rejected, true)]
     [InlineData(DocVerificationStatus.Expired, true)]
+    [InlineData(DocVerificationStatus.Resubmit, true)]
     public void IsTerminal_ShouldReturnExpectedValue_ForEachStatus(
         DocVerificationStatus status, bool expected)
     {
         var challenge = DocVerificationChallenge.Reconstitute(
-            id: 1,
+            id: Guid.NewGuid(),
             publicId: Guid.NewGuid(),
-            userId: 1,
+            userId: Guid.NewGuid(),
             status: status,
             socureReferenceId: null,
             evalId: null,
@@ -169,9 +212,9 @@ public class DocVerificationChallengeTests
     [Fact]
     public void Reconstitute_ShouldPreserveAllFields()
     {
-        var id = 42;
+        var id = Guid.NewGuid();
         var publicId = Guid.NewGuid();
-        var userId = 7;
+        var userId = Guid.NewGuid();
         var status = DocVerificationStatus.Verified;
         var socureReferenceId = "ref-123";
         var evalId = "eval-456";
@@ -183,12 +226,17 @@ public class DocVerificationChallengeTests
         var createdAt = new DateTime(2025, 6, 1, 12, 0, 0, DateTimeKind.Utc);
         var updatedAt = new DateTime(2025, 6, 1, 12, 30, 0, DateTimeKind.Utc);
         var expiresAt = new DateTime(2025, 6, 1, 12, 30, 0, DateTimeKind.Utc);
+        var proofingDob = "1990-01-01";
+        var proofingIdType = "ssn";
+        var proofingIdValue = "999-99-9999";
+        var docvTokenIssuedAt = new DateTime(2025, 6, 1, 12, 15, 0, DateTimeKind.Utc);
 
         var challenge = DocVerificationChallenge.Reconstitute(
             id, publicId, userId, status,
             socureReferenceId, evalId, socureEventId,
             docvTransactionToken, docvUrl, offboardingReason,
-            allowIdRetry, createdAt, updatedAt, expiresAt);
+            allowIdRetry, createdAt, updatedAt, expiresAt,
+            proofingDob, proofingIdType, proofingIdValue, docvTokenIssuedAt);
 
         Assert.Equal(id, challenge.Id);
         Assert.Equal(publicId, challenge.PublicId);
@@ -204,6 +252,65 @@ public class DocVerificationChallengeTests
         Assert.Equal(createdAt, challenge.CreatedAt);
         Assert.Equal(updatedAt, challenge.UpdatedAt);
         Assert.Equal(expiresAt, challenge.ExpiresAt);
+        Assert.Equal(proofingDob, challenge.ProofingDateOfBirth);
+        Assert.Equal(proofingIdType, challenge.ProofingIdType);
+        Assert.Equal(proofingIdValue, challenge.ProofingIdValue);
+        Assert.Equal(docvTokenIssuedAt, challenge.DocvTokenIssuedAt);
+    }
+
+    // --- PII scrubbing on terminal transitions ---
+
+    [Theory]
+    [InlineData(DocVerificationStatus.Verified)]
+    [InlineData(DocVerificationStatus.Rejected)]
+    [InlineData(DocVerificationStatus.Expired)]
+    [InlineData(DocVerificationStatus.Resubmit)]
+    public void TransitionTo_ShouldScrubProofingPii_WhenTransitioningToTerminalState(
+        DocVerificationStatus terminalStatus)
+    {
+        var challenge = DocVerificationChallengeFactory.CreatePendingChallenge();
+        challenge.ProofingDateOfBirth = "1990-01-01";
+        challenge.ProofingIdType = "ssn";
+        challenge.ProofingIdValue = "999-99-9999";
+        var issuedAt = DateTime.UtcNow.AddMinutes(-5);
+        challenge.DocvTokenIssuedAt = issuedAt;
+
+        challenge.TransitionTo(terminalStatus);
+
+        Assert.Null(challenge.ProofingDateOfBirth);
+        Assert.Null(challenge.ProofingIdType);
+        Assert.Null(challenge.ProofingIdValue);
+        Assert.Equal(issuedAt, challenge.DocvTokenIssuedAt);
+    }
+
+    [Fact]
+    public void TransitionTo_ShouldScrubProofingPii_WhenCreatedExpiresDirectly()
+    {
+        var challenge = DocVerificationChallengeFactory.CreateChallenge();
+        challenge.ProofingDateOfBirth = "1990-01-01";
+        challenge.ProofingIdType = "ssn";
+        challenge.ProofingIdValue = "999-99-9999";
+
+        challenge.TransitionTo(DocVerificationStatus.Expired);
+
+        Assert.Null(challenge.ProofingDateOfBirth);
+        Assert.Null(challenge.ProofingIdType);
+        Assert.Null(challenge.ProofingIdValue);
+    }
+
+    [Fact]
+    public void TransitionTo_ShouldPreserveProofingPii_WhenTransitioningToNonTerminalState()
+    {
+        var challenge = DocVerificationChallengeFactory.CreateChallenge();
+        challenge.ProofingDateOfBirth = "1990-01-01";
+        challenge.ProofingIdType = "ssn";
+        challenge.ProofingIdValue = "999-99-9999";
+
+        challenge.TransitionTo(DocVerificationStatus.Pending);
+
+        Assert.Equal("1990-01-01", challenge.ProofingDateOfBirth);
+        Assert.Equal("ssn", challenge.ProofingIdType);
+        Assert.Equal("999-99-9999", challenge.ProofingIdValue);
     }
 
     [Fact]
@@ -212,9 +319,9 @@ public class DocVerificationChallengeTests
         var invalidStatus = (DocVerificationStatus)99;
 
         var challenge = DocVerificationChallenge.Reconstitute(
-            id: 1,
+            id: Guid.NewGuid(),
             publicId: Guid.NewGuid(),
-            userId: 1,
+            userId: Guid.NewGuid(),
             status: invalidStatus,
             socureReferenceId: null,
             evalId: null,

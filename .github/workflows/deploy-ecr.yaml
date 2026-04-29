@@ -248,6 +248,8 @@ jobs:
             --build-arg NEXT_PUBLIC_SOCURE_SDK_KEY=${{ vars.SOCURE_SDK_KEY }} \
             --build-arg NEXT_PUBLIC_SOCURE_DI_SDK_KEY=${{ vars.SOCURE_DI_SDK_KEY }} \
             --build-arg NEXT_PUBLIC_MOCK_SOCURE=${{ vars.MOCK_SOCURE }} \
+            --build-arg NEXT_PUBLIC_AMPLITUDE_API_KEY=${{ vars.AMPLITUDE_API_KEY }} \
+            --build-arg NEXT_PUBLIC_MIXPANEL_TOKEN=${{ vars.MIXPANEL_TOKEN }} \
             -t sebt-portal-web-dc:${{ needs.build.outputs.image_tag }} \
             .
 
@@ -331,6 +333,8 @@ jobs:
             --platform linux/amd64 \
             -f src/SEBT.Portal.Web/Dockerfile \
             --build-arg STATE=co \
+            --build-arg NEXT_PUBLIC_AMPLITUDE_API_KEY=${{ vars.AMPLITUDE_API_KEY }} \
+            --build-arg NEXT_PUBLIC_MIXPANEL_TOKEN=${{ vars.MIXPANEL_TOKEN }} \
             -t sebt-portal-web-co:${{ needs.build.outputs.image_tag }} \
             .
 

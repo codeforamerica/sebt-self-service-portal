@@ -28,11 +28,19 @@ internal class SocureEvaluationRequestData
 
 internal class SocureIndividual
 {
+    /// <summary>Customer-defined identifier for the consumer (Socure <c>data.individual.id</c>).</summary>
+    [JsonPropertyName("id")]
+    public string? CustomerIndividualId { get; init; }
+
     [JsonPropertyName("email")]
     public string? Email { get; init; }
 
     [JsonPropertyName("date_of_birth")]
     public string? DateOfBirth { get; init; }
+
+    /// <summary>ISO 3166-1 alpha-2 country of residence (Socure recommends <c>US</c> for domestic workflows).</summary>
+    [JsonPropertyName("country")]
+    public string? Country { get; init; }
 
     [JsonPropertyName("national_id")]
     public string? NationalId { get; init; }

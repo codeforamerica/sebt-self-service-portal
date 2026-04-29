@@ -5,21 +5,16 @@ using SEBT.Portal.Kernel;
 namespace SEBT.Portal.UseCases.Auth;
 
 /// <summary>
-/// Command for refreshing a JWT token with updated user information.
+/// Command for refreshing a JWT token with updated user information. The user ID and
+/// the claims to preserve are both read from <see cref="CurrentPrincipal"/>.
 /// </summary>
 public class RefreshTokenCommand : ICommand<string>
 {
     /// <summary>
-    /// The email address of the user requesting the token refresh.
-    /// </summary>
-    [Required(ErrorMessage = "Email address is required.")]
-    [EmailAddress(ErrorMessage = "Invalid email format.")]
-    public required string Email { get; init; } = string.Empty;
-
-    /// <summary>
-    /// The current ClaimsPrincipal for the request. IMPORTANT: Used to preserve existing claims.
+    /// The current ClaimsPrincipal for the request. The handler reads the portal user ID
+    /// from the <c>sub</c> claim and preserves the remaining claims (e.g. IAL from IdP for
+    /// OIDC users) when generating the refreshed token.
     /// </summary>
     [Required(ErrorMessage = "CurrentPrincipal is required.")]
     public required ClaimsPrincipal CurrentPrincipal { get; init; }
 }
-

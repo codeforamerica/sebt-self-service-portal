@@ -73,9 +73,9 @@ const stateLinks: Record<string, StateLinks> = {
       googleTranslateDisclaimer: '#',
       about: '#',
       termsAndConditions: '#',
-      transparencyOnline: '#',
-      generalNotices: '#',
-      digitalAccessibility: '#'
+      transparencyOnline: 'https://data.colorado.gov/stories/s/fjyf-bdat',
+      generalNotices: 'https://www.colorado.gov/general-notices',
+      digitalAccessibility: 'https://cdhs.colorado.gov/accessibility-at-cdhs'
     },
     help: {
       faqs: '#',

@@ -31,4 +31,13 @@ internal sealed class DefaultSummerEbtCaseService : ISummerEbtCaseService
     {
         return Task.FromResult<HouseholdData?>(null);
     }
+
+    /// <inheritdoc />
+    public Task<bool> TryMatchCoLoadedGuardianByBenefitIdAndDobAsync(
+        string benefitIdentifierIc,
+        DateOnly guardianDateOfBirth,
+        CancellationToken cancellationToken = default)
+    {
+        return Task.FromResult(false);
+    }
 }

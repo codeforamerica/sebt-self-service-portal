@@ -14,17 +14,15 @@ export function ChildResultCard({ firstName, lastName, displayStatus, errorMessa
   const { t } = useTranslation('result')
 
   return (
-    <div className="usa-card" data-status={displayStatus}>
-      <div className="usa-card__body">
-        <p>
-          <strong>{firstName} {lastName}</strong>
-          {/* Visually hidden status for screen readers */}
-          <span className="usa-sr-only"> — {t(`status.${displayStatus}`)}</span>
-        </p>
-        {displayStatus === 'error' && errorMessage && (
-          <p className="usa-prose text-error">{errorMessage}</p>
-        )}
-      </div>
-    </div>
+    <section className="usa-summary-box__text" data-status={displayStatus}>
+      <li>
+        <strong>{firstName} {lastName}</strong>
+        {/* Visually hidden status for screen readers */}
+        <span className="usa-sr-only"> — {t(`status.${displayStatus}`)}</span>
+      </li>
+      {displayStatus === 'error' && errorMessage && (
+        <p className="usa-prose text-error">{errorMessage}</p>
+      )}
+    </section>
   )
 }

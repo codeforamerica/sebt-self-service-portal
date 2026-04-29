@@ -47,15 +47,15 @@ of children eligible for [Summer EBT](https://www.fns.usda.gov/summer/sunbucks) 
 
 Clone this repository on your local machine, alongside the [state connector repository](https://github.com/codeforamerica/sebt-self-service-portal-state-connector/) and any revelant state backend connector(s) - for example, [Colorado](https://github.com/codeforamerica/sebt-self-service-portal-co-connector) - as siblings (within the same parent folder). Note that you will need to build and set up all repos as part of your local env setup.
 
-  ```bash
-  git clone git@github.com:codeforamerica/sebt-self-service-portal.git
+```bash
+git clone git@github.com:codeforamerica/sebt-self-service-portal.git
 
-  git clone git@github.com:codeforamerica/sebt-self-service-portal-state-connector.git
+git clone git@github.com:codeforamerica/sebt-self-service-portal-state-connector.git
 
-  # Colorado:
-  git clone git@github.com:codeforamerica/sebt-self-service-portal-co-connector.git
-  
-  ```
+# Colorado:
+git clone git@github.com:codeforamerica/sebt-self-service-portal-co-connector.git
+
+```
 
 ### 3. Configure local environment
 
@@ -77,7 +77,7 @@ You'll also need an API `appsettings` file for your local machine with certain v
 
 ```bash
 cd src/SEBT.Portal.Api
-cp appsettings.Development.example.json appsettings.Development.json 
+cp appsettings.Development.example.json appsettings.Development.json
 ```
 
 ### 4. Install dependencies
@@ -90,10 +90,9 @@ Front end
 Back end
 
 - .NET tools are CLI utilities installed and managed using [NuGet](https://www.nuget.org/). Currently, we are using the
-  [`nuget-license`](https://www.nuget.org/packages/nuget-license) tool for auditing backend dependency license.  Needed tools are defined in the tools manifest in `.config/dotnet-tools.json`. To install .NET tools, run `dotnet tool restore` from each solution root (ie, each top-level directory containing a `.sln` or `.slnx` file):
+  [`nuget-license`](https://www.nuget.org/packages/nuget-license) tool for auditing backend dependency license. Needed tools are defined in the tools manifest in `.config/dotnet-tools.json`. To install .NET tools, run `dotnet tool restore` from each solution root (ie, each top-level directory containing a `.sln` or `.slnx` file):
   - /src/SEBT.Portal.Infrastructure
   - /src/SEBT.Portal.Api
-  
 - You'll also want to run `dotnet build` from within the root of each repository before starting up the app for the first time.
 
 ### 5. Start Services 💻
@@ -116,7 +115,7 @@ To open the app, navigate to <https://localhost:3000>
 
 ```bash
 # Start frontend only
-pnpm web:dev  
+pnpm web:dev
 
 # View logs
 docker compose logs -f
@@ -145,6 +144,10 @@ To enable Redis caching for a state, add a Redis connection string to the state'
 ```
 
 When no Redis connection string is configured, the application falls back to in-memory caching only. See `appsettings.co.example.json` for an example.
+
+### Jaeger (Local OpenTelemetry Tracing)
+
+[Jaeger](https://github.com/jaegertracing/jaeger) acts as a local OTLP collector for OpenTelemetry tracing. The default configuration for the portal sends traces and metrics via OTLP over gRPC to http://localhost:4317, which is the standard port. Local traces can be viewed in the Jaeger UI at [http://localhost:16686](http://localhost:16686).
 
 ### Local Build & Test (Debug mode)
 
@@ -220,12 +223,6 @@ docker compose up
 
 Only include sections you want to override; other settings fall back to `appsettings.json`!
 
-### Minimum IAL requirements
-
-Each state must configure the minimum Identity Assurance Level (IAL) required based on case origin. The app will fail to start if these values are missing — there is no state-agnostic default.
-
-See [`appsettings.dc.example.json`](src/SEBT.Portal.Api/appsettings.dc.example.json) and [`appsettings.co.example.json`](src/SEBT.Portal.Api/appsettings.co.example.json) for example values.
-
 ### OIDC support
 
 States can use an external [OpenID Connect (OIDC)](https://openid.net/developers/how-connect-works/) provider for sign-in. OIDC is configured in the API under flat `Oidc` keys (`DiscoveryEndpoint`, `ClientId`, `CallbackRedirectUri`); the portal uses generic endpoints and config rather than state-specific auth code paths. Code exchange and id_token validation run in the Next.js server; the .NET API performs "complete-login" (validates a short-lived callback token and returns a portal JWT that includes IdP claims such as phone and name).
@@ -266,25 +263,15 @@ The resolver then uses this phone for household lookup instead of the one from t
 
 ### ID Proofing Requirements
 
-PII data is only shown and editable to users who meet the ID proofing requirements configured within "IdProofingRequirements" and their current IAL status (for example, `address+view`, `email+view`, `phone+view`). Configure in `appsettings.json` or override with `appsettings.{state}.json`.
+The `IdProofingRequirements` config section controls which IAL (Identity Assurance Level) a user needs to view or modify each type of PII. Keys use a `resource+action` format (e.g. `address+view`, `card+write`). Values can be a uniform level (`"IAL1plus"`) or a per-case-type object for granular control. Unconfigured keys default to `IAL1plus` (fail-safe). Users below the view threshold see masked data (e.g. `****` for street addresses); users below the write threshold are blocked from modifications.
 
-Example (`appsettings.json`):
-
-```json
-{
-  "IdProofingRequirements": {
-    "address+view": "IAL1plus",
-    "email+view": "IAL1",
-    "phone+view": "IAL1"
-  }
-}
-```
+See the [full configuration guide](docs/config/ial/README.md) for all available keys, per-case-type syntax, coherence validation rules, and state-specific examples. See [`appsettings.dc.example.json`](src/SEBT.Portal.Api/appsettings.dc.example.json) and [`appsettings.co.example.json`](src/SEBT.Portal.Api/appsettings.co.example.json) for working state configurations.
 
 ## Database Setup
 
 ### MSSQL Server
 
-The application uses Microsoft SQL Server as its database.  This is propped up via a Docker container for local development.
+The application uses Microsoft SQL Server as its database. This is propped up via a Docker container for local development.
 
 #### Configuration
 
@@ -366,7 +353,7 @@ The database is automatically seeded with test users when running in the **Devel
 - Application startup (when migrations are applied)
 - `DbContext.EnsureCreated()` calls
 
-The automatic seeding uses EF Core's `UseSeeding` mechanism under the hood.  See <https://learn.microsoft.com/en-us/ef/core/modeling/data-seeding>
+The automatic seeding uses EF Core's `UseSeeding` mechanism under the hood. See <https://learn.microsoft.com/en-us/ef/core/modeling/data-seeding>
 
 To help test different workflows and users in different states, the seeder will create the following users unless instructed otherwise:
 
@@ -378,7 +365,7 @@ Seeding only runs if no users exist in the database, preventing duplicate data o
 
 #### Clearing Seeded Data
 
-There's occasionally going to be instances where you'd want have the auto-seeded data be not be created for certain types of testing.  For those instances, there's a small console app to help with this.
+There's occasionally going to be instances where you'd want have the auto-seeded data be not be created for certain types of testing. For those instances, there's a small console app to help with this.
 
 To clear all seeded data from the database, use the `ClearSeededData` console application:
 

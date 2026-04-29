@@ -16,7 +16,7 @@ We're colleagues working together. Neither of us is afraid to admit we don't kno
 - Preserve comments. They're documentation, not clutter.
 - Write evergreen code. Describe what code does, not when it was written. (i.e. avoid "newFunction")
 - All user-facing strings must go through i18next. Never hardcode display text in components — reference keys via the translation functions.
-- **Locale JSON files are generated — NEVER hand-edit them.** They are produced by `packages/design-system/content/scripts/generate-locales.js` from CSV exports in `packages/design-system/content/states/`. To add or change content: update the source Google Sheet, re-export the CSV, and re-run the generator (`pnpm copy:generate`). If a key is missing, note it as a content gap to resolve in the spreadsheet — do not add it directly to the JSON.
+- **Locale JSON files are generated — NEVER hand-edit them.** They are produced by `packages/design-system/content/scripts/generate-locales.js` from CSV exports in `packages/design-system/content/states/`. To add or change content: update the source Google Sheet, re-export the CSV, and re-run the generator (run `pnpm copy:generate` from within `src/SEBT.Portal.Web/` or `src/SEBT.EnrollmentChecker.Web/`). This also runs automatically via the `predev` and `prebuild` hooks. If a key is missing, note it as a content gap to resolve in the spreadsheet — do not add it directly to the JSON.
 
 ### Code style
 - C#: 4-space indent, Allman brace style (braces on own line), nullable reference types enabled (see `.editorconfig`)
@@ -42,7 +42,7 @@ We're colleagues working together. Neither of us is afraid to admit we don't kno
 ### 🔴 Always Explicitly Ask a Human First!
 - Rewriting working code from scratch
 - Changing core business logic or removing functionality
-- Architectural changes. Architectural decisions are recorded as ADRs in [docs/adr/](./docs/adr/). Consult existing ADRs before proposing changes that affect architecture.
+- Architectural changes. Architectural decisions are recorded as ADRs in [docs/adr/](./docs/adr/). Consult existing ADRs before proposing changes that affect architecture. Note: some ADR numbers are accidentally reused (e.g., 0007) and may be cleaned up later — always reference ADRs by filename, not number.
 - Security modifications
 
 ## Designing Solutions
@@ -53,13 +53,9 @@ We're colleagues working together. Neither of us is afraid to admit we don't kno
 - Services expose documented REST APIs.
 - This project uses Swashbuckle to auto-generate OpenAPI docs from controller attributes. When adding or changing API endpoints, ensure controller actions have appropriate route, HTTP method, and response type attributes so the generated spec stays accurate.
 ### 3. Design for deployment
-- Package services in containers with clear deployment documentation.
-- Use docker-compose.yml to define and run the complete application stack and manage services, networking, and dependencies.
-- Use multi-stage builds and slim images (like node:24-alpine, etc.) to create small, secure containers.
-- Create a non-root user in your Dockerfile and run the container process as that user.
-- Docker Compose is to create a reliable, configurable, and secure environment for your multi-container application.
-- Externalize all configuration! Configure through environment variables, feature flags, etc.
-- Load all secrets from Docker secret files (/run/secrets) or environment variables - NEVER hard code secrets in the image.
+Our government partners require containers that pass security review. Every Dockerfile and `compose.yaml` change must follow these standards:
+- Multi-stage builds with slim base images (e.g., `node:24-alpine`). Run as a non-root user.
+- Externalize all configuration via environment variables or feature flags. Load secrets from Docker secret files (`/run/secrets`) or environment variables — NEVER hardcode in the image.
 ### 4. Write for handoff
 - Write code assuming the state government partner agency will maintain it without us.
 - Include clear README files, architecture decision records, and inline documentation explaining the "why" behind any non-obvious choices.
@@ -74,14 +70,16 @@ We're colleagues working together. Neither of us is afraid to admit we don't kno
   - Key architectural libraries: next, react, i18next, react-i18next, tanstack/react-query, zod 
   - Package manager: pnpm
   - Design system: USWDS, with design tokens specified for each state
-- Containerization: Docker with docker-compose for local development
+- Containerization: Docker with Docker Compose for local development
 
 ## Testing
 We follow a test-driven development (TDD) approach: write tests first to fail, then write the implementation to make them pass.
 
-- **Backend**: xUnit for test framework, NSubstitute for mocking, Bogus for test data generation (see ADR-0007 on the factory pattern). Integration tests use Testcontainers with real MSSQL instances.
+- **Backend**: xUnit for test framework, NSubstitute for mocking, Bogus for test data generation (see [docs/adr/0007-bogus-factory-pattern-for-test-data.md](./docs/adr/0007-bogus-factory-pattern-for-test-data.md)). Integration tests use Testcontainers with real MSSQL instances.
 - **Frontend**: Vitest with React Testing Library for unit tests, Playwright for E2E tests.
+- **Pre-commit hook**: The backend pre-commit hook runs `dotnet build` and `dotnet test`. Non-compiling code cannot be committed. For TDD red-phase work, either combine test + implementation in one commit (commit at green), or use `--no-verify` for intermediate commits with a full-hook run before pushing.
 - New functionality must include tests. Prefer writing the test before the implementation.
+- **Backend test namespace convention**: .NET test namespaces should mirror the implementation namespace. For example, tests for `SEBT.Portal.Infrastructure.Services.JwtTokenService` belong in `SEBT.Portal.Tests.Unit.Infrastructure.Services` (file path: `test/SEBT.Portal.Tests/Unit/Infrastructure/Services/`). Some older tests live in a flat `Unit/Services/` directory — don't follow that pattern. Align incrementally when writing new tests or refactoring existing ones.
 
 ## Dependency Management
 - Manage all .NET dependencies with NuGet
@@ -106,7 +104,17 @@ We follow a test-driven development (TDD) approach: write tests first to fail, t
 - When an authenticated user lacks sufficient authorization for a specific resource (e.g., insufficient IAL for their household's cases), return a 403 with structured ProblemDetails — not a 200 with filtered/empty data. The client needs to know *why* access was denied and *what to do about it* (e.g., `requiredIal` in the ProblemDetails extensions).
 - Auth claims in JWTs can go stale (e.g., household composition changes after login). Server-side checks that re-evaluate on every request are safer than trusting a token's claims about what the user is allowed to see.
 
+### PII at rest
+- Never store PII (household identifiers, case IDs, SSNs) in cleartext in the portal database when the data is only needed for lookups (e.g., cooldown checks, deduplication). Use `IIdentifierHasher` (HMAC-SHA256 with `IdentifierHasher:SecretKey`) to produce deterministic hashes for storage and lookup.
+- `IIdentifierHasher.Hash()` normalizes input via `IdentifierNormalizer` (trims whitespace, strips dashes and spaces) before hashing. This means `"SEBT-001"` and `"SEBT001"` produce the same hash. Ensure read and write paths use `Hash()` consistently.
+- Hashing is one-way — if there's any uncertainty about whether original cleartext values may need to be retrieved later, stop and ask a human. Encryption or another reversible approach may be more appropriate.
+
+### State connector data boundaries
+- State connectors provide read-only household data by default. The portal should not assume connectors support write-back except for well-known write operations: mailing address updates, card replacement requests (yes/no), and contact/communications preferences.
+- When the portal needs to enforce business rules (e.g., cooldown periods) based on user actions, persist that state in the portal database rather than relying on state connector round-trips.
+
 ## Common Commands
+**Prefer pnpm root-level scripts** (`pnpm api:test`, `pnpm api:build`, etc.) over raw `dotnet` commands. They handle working directories correctly and are the team convention. Use raw `dotnet` commands only for targeted operations like single-test filters.
 
 ### Development
 ```bash
@@ -120,11 +128,20 @@ pnpm dev                  # Start API + Web concurrently
 ```bash
 pnpm api:build            # Backend (Debug)
 pnpm api:test             # All backend tests
+pnpm api:test:unit        # Backend unit tests only (excludes Testcontainers/external APIs)
 dotnet test --filter "FullyQualifiedName~MyTest"  # Single backend test
 cd src/SEBT.Portal.Web && pnpm test              # Frontend tests (Vitest)
 cd src/SEBT.Portal.Web && pnpm test:e2e          # Playwright E2E tests
 pnpm ci:build             # Full Release build
 pnpm ci:test              # Full Release test suite
+```
+
+### State-Specific Development
+```bash
+pnpm dev:dc               # Build DC plugin + start API & Web for DC
+pnpm dev:co               # Build CO plugin + start API & Web for CO
+pnpm api:build-dc         # Build DC connector plugin only
+pnpm api:build-co         # Build CO connector plugin only
 ```
 
 ### Database Migrations (EF Core)
@@ -149,20 +166,37 @@ This is a .NET 10 + Next.js 16 application following Clean Architecture. For det
 - **UseCases** — Application layer: command/query handlers for auth, households
 - **Core** — Domain models, service interfaces, exceptions, settings
 - **Infrastructure** — EF Core DbContext, repositories, service implementations, migrations
+- **Infrastructure.Seeding** — Development-only data seeding services
 - **Kernel** / **Kernel.AspNetCore** — Cross-cutting base classes and ASP.NET extensions
 - **Web** — Next.js 16 frontend (React 19, USWDS 3.13, i18next)
-- **Tests** — xUnit + NSubstitute + Bogus + Testcontainers (MSSQL)
+- **EnrollmentChecker.Web** — Next.js enrollment-check standalone app (separate pnpm workspace member)
+- **TestUtilities** — Shared test helpers (Bogus factories, builders)
+- **Tests** / **UseCases.Tests** — xUnit + NSubstitute + Bogus + Testcontainers (MSSQL)
+
+#### Workspace Packages (`packages/`)
+- **design-system** — USWDS design tokens, locale generation scripts, shared content
+- **analytics** — Analytics instrumentation library
 
 ### Layer boundaries
 - Inner layers (Kernel, Core, UseCases) must not reference web/HTTP concepts (ProblemDetails, status codes, headers, controllers). They define abstractions; outer layers (Api, Web) decide how to serialize and transport them.
 
+### Domain model: Cases vs Applications
+- A `SummerEbtCase` represents a single child with issued benefits. Most cases are auto-issued (no application). Card/EBT data and benefit delivery belong here.
+- An `Application` represents a guardian-submitted application for one or more children. Only a small fraction of children have one. A Case may link to an Application, but most won't.
+- State backends represent this differently: DC distinguishes cases from applications similarly to the portal; Colorado represents everything as an "application." The state connector mapping layer disaggregates into the portal's canonical model based on state-specific attributes.
+- Known tech debt: `Application` still carries card lifecycle fields (`CardStatus`, `CardRequestedAt`, etc.) that belong on `SummerEbtCase`.
+
 ### Multi-State Plugin System
-State-specific behavior uses MEF (System.Composition) plugins loaded at runtime from `plugins-{state}/` directories. Plugin contracts live in the separate `sebt-self-service-portal-state-connector` repo; implementations live in per-state repos (`-dc-connector`, `-co-connector`). The `STATE` env var controls which state config overlay loads. See ADR-0007 for the design rationale.
+State-specific behavior uses MEF (System.Composition) plugins loaded at runtime from `plugins-{state}/` directories. Plugin contracts live in the separate `sebt-self-service-portal-state-connector` repo; implementations live in per-state repos (`-dc-connector`, `-co-connector`). The `STATE` env var controls which state config overlay loads. See [docs/adr/0007-multi-state-plugin-approach.md](./docs/adr/0007-multi-state-plugin-approach.md) for the design rationale.
 
 **Plugin development inner loop:** The state-connector repo builds its interface package to `~/nuget-store/` as a local NuGet source. The API project and state connector repos (e.g., `-dc-connector`) reference that package and have post-build targets that copy compiled DLLs into this repo's `src/SEBT.Portal.Api/plugins-{state}/` directory. After building a connector, restart the API to pick up changes.
 
+**Mock data mode:** When `UseMockHouseholdData` is `true` (set in `appsettings.{state}.json`), the API uses in-memory mock data from `MockHouseholdRepository` instead of calling state connector plugins. This affects both reads and writes. Mock data scenarios are defined in `MockHouseholdRepository.SeedMockData()` with test personas keyed by email/phone.
+
 ### Frontend
 Uses Next.js App Router with route groups: `(public)/` for login flows, `(authenticated)/` for protected pages. USWDS design tokens are generated via scripts before build. i18next handles internationalization with content files in `content/`.
+
+**React Query cache:** When a mutation should update cached data before navigating, `await queryClient.invalidateQueries()` — without `await`, the redirect races ahead and the destination page renders stale cache data.
 
 ## Branch Strategy
 - `main` — production source for all states

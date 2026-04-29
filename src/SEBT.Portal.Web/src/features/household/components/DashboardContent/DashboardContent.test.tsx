@@ -18,10 +18,14 @@ vi.mock('next/navigation', () => ({
   usePathname: () => '/dashboard'
 }))
 
-vi.mock('@/features/auth', () => ({
-  useAuth: () => ({
-    logout: vi.fn()
-  })
+// Neither SignOutLink nor UserProfileCard uses useAuth anymore (logout is
+// now a plain anchor to /api/auth/logout), so no auth context mock is needed.
+
+vi.mock('@/features/feature-flags', () => ({
+  useFeatureFlag: (flag: string) => {
+    if (flag === 'show_contact_preferences') return true
+    return false
+  }
 }))
 
 function createTestQueryClient() {
@@ -77,6 +81,22 @@ describe('DashboardContent', () => {
     })
   })
 
+  it('renders sign-out link in error state', async () => {
+    server.use(
+      http.get('/api/household/data', () => {
+        return HttpResponse.json({ error: 'Unauthorized' }, { status: 401 })
+      })
+    )
+
+    renderWithProviders(<DashboardContent />)
+
+    await waitFor(() => {
+      expect(screen.getByRole('alert')).toBeInTheDocument()
+    })
+
+    expect(screen.getByRole('link', { name: /logout|sign out/i })).toBeInTheDocument()
+  })
+
   it('renders empty state when no applications', async () => {
     server.use(
       http.get('/api/household/data', () => {
@@ -94,7 +114,7 @@ describe('DashboardContent', () => {
       expect(screen.getByRole('alert')).toBeInTheDocument()
     })
 
-    expect(screen.getByRole('link')).toHaveAttribute('href', '/apply')
+    expect(screen.getByRole('link', { name: /apply/i })).toHaveAttribute('href', '/apply')
   })
 
   it('renders UserProfileCard in empty state when userProfile available', async () => {
@@ -131,5 +151,41 @@ describe('DashboardContent', () => {
     await waitFor(() => {
       expect(screen.getByRole('alert')).toBeInTheDocument()
     })
+  })
+
+  it('renders sign-out link in empty state', async () => {
+    server.use(
+      http.get('/api/household/data', () => {
+        return HttpResponse.json({
+          ...TEST_HOUSEHOLD_DATA,
+          summerEbtCases: [],
+          applications: []
+        })
+      })
+    )
+
+    renderWithProviders(<DashboardContent />)
+
+    await waitFor(() => {
+      expect(screen.getByRole('alert')).toBeInTheDocument()
+    })
+
+    expect(screen.getByRole('link', { name: /logout|sign out/i })).toBeInTheDocument()
+  })
+
+  it('renders sign-out link on 404', async () => {
+    server.use(
+      http.get('/api/household/data', () => {
+        return HttpResponse.json({ error: 'Not found' }, { status: 404 })
+      })
+    )
+
+    renderWithProviders(<DashboardContent />)
+
+    await waitFor(() => {
+      expect(screen.getByRole('alert')).toBeInTheDocument()
+    })
+
+    expect(screen.getByRole('link', { name: /logout|sign out/i })).toBeInTheDocument()
   })
 })
