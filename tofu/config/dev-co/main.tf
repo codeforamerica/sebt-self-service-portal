@@ -130,6 +130,8 @@ module "app" {
     "IdProofingValidity__ValidityDays"               = "1826"
     "Oidc__VerificationClaims__LevelClaimName"       = "socureIdVerificationLevel"
     "Oidc__VerificationClaims__DateClaimName"        = "socureIdVerificationDate"
+    "Oidc__VerificationClaims__FallbackLevelClaimName" = "myCoIdVerificationLevel"
+    "Oidc__VerificationClaims__FallbackDateClaimName"  = "myCoIdVerificationDate"
   }
 
   state_api_environment_secrets = {
