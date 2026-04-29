@@ -9,7 +9,8 @@ const EMPTY_SESSION: SessionInfo = {
   ial: null,
   idProofingStatus: null,
   idProofingCompletedAt: null,
-  idProofingExpiresAt: null
+  idProofingExpiresAt: null,
+  isCoLoaded: null
 }
 
 function sessionWith(partial: Partial<SessionInfo>): SessionInfo {

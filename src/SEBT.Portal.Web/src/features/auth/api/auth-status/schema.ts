@@ -12,7 +12,8 @@ export const AuthorizationStatusResponseSchema = z.object({
   ial: z.enum(['0', '1', '1plus', '2']).nullish(),
   idProofingStatus: z.number().int().nullish(),
   idProofingCompletedAt: z.number().int().nullish(),
-  idProofingExpiresAt: z.number().int().nullish()
+  idProofingExpiresAt: z.number().int().nullish(),
+  isCoLoaded: z.boolean().nullish()
 })
 
 export type AuthorizationStatusResponse = z.infer<typeof AuthorizationStatusResponseSchema>

@@ -142,9 +142,10 @@ public class SubmitIdProofingCommandHandler(
         // Persist the parsed DOB on the user; all downstream save paths will carry it through.
         user.DateOfBirth = submittedDob;
 
-        // Co-loaded households: SNAP/TANF IDs must match on-file records — no Socure national_id path.
-        if (user.IsCoLoaded
-            && IdProofingBenefitIdentifierTypes.IsSnapOrTanfPortalSelection(command.IdType)
+        // Co-loaded discovery: SNAP/TANF ids are an in-portal lookup (never Socure as national_id).
+        // User-level IsCoLoaded isn't presumed from a pre-populated flag — the match itself is the
+        // determination, and on success we persist it so downstream UI flows can rely on the claim.
+        if (IdProofingBenefitIdentifierTypes.IsSnapOrTanfPortalSelection(command.IdType)
             && !string.IsNullOrWhiteSpace(command.IdValue))
         {
             try
@@ -162,7 +163,8 @@ public class SubmitIdProofingCommandHandler(
                         user,
                         UserIalLevel.IAL1plus,
                         cancellationToken,
-                        "co-loaded SNAP/TANF matched via DC GetHouseholdByGuardian IC+DOB (no Socure)");
+                        "co-loaded SNAP/TANF matched via DC GetHouseholdByGuardian IC+DOB (no Socure)",
+                        markCoLoaded: true);
                 }
             }
             catch (Exception ex) when (ex is not OperationCanceledException)
@@ -199,7 +201,8 @@ public class SubmitIdProofingCommandHandler(
                     user,
                     UserIalLevel.IAL1plus,
                     cancellationToken,
-                    "co-loaded SNAP/TANF matched to on-file records (no Socure)");
+                    "co-loaded SNAP/TANF matched to on-file records (no Socure)",
+                    markCoLoaded: true);
             }
 
             logger.LogInformation(
@@ -324,11 +327,19 @@ public class SubmitIdProofingCommandHandler(
         User user,
         UserIalLevel ialLevelOnCompletion,
         CancellationToken cancellationToken,
-        string completionReasonForLog)
+        string completionReasonForLog,
+        bool markCoLoaded = false)
     {
         user.IdProofingStatus = IdProofingStatus.Completed;
         user.IalLevel = ialLevelOnCompletion;
         user.IdProofingCompletedAt = DateTime.UtcNow;
+
+        if (markCoLoaded)
+        {
+            user.IsCoLoaded = true;
+            user.CoLoadedLastUpdated = DateTime.UtcNow;
+        }
+
         await userRepository.UpdateUserAsync(user, cancellationToken);
 
         logger.LogInformation(

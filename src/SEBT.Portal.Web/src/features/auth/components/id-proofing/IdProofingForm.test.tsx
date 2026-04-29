@@ -39,6 +39,27 @@ vi.mock('next/navigation', () => ({
   })
 }))
 
+// Mock analytics to spy on setPageData / trackEvent without needing a data layer.
+const mockSetPageData = vi.fn()
+const mockSetUserData = vi.fn()
+const mockTrackEvent = vi.fn()
+vi.mock('@sebt/analytics', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@sebt/analytics')>()
+  return {
+    ...actual,
+    useDataLayer: () => ({
+      setPageData: mockSetPageData,
+      setUserData: mockSetUserData,
+      trackEvent: mockTrackEvent,
+      pageLoad: vi.fn(),
+      setPageCategory: vi.fn(),
+      setPageAttribute: vi.fn(),
+      setUserProfile: vi.fn(),
+      get: vi.fn()
+    })
+  }
+})
+
 // Options used across tests. Labels/inputLabels match DC en translations.
 // The "none" option uses a cross-namespace lookup (common:noneOfTheAbove) because
 // the label key only lives in the common namespace.
@@ -115,6 +136,9 @@ function renderWithProviders(ui: React.ReactElement) {
 describe('IdProofingForm', () => {
   beforeEach(() => {
     mockPush.mockClear()
+    mockSetPageData.mockClear()
+    mockSetUserData.mockClear()
+    mockTrackEvent.mockClear()
   })
 
   describe('Rendering', () => {
@@ -863,6 +887,89 @@ describe('IdProofingForm', () => {
         expect(errors.length).toBeGreaterThanOrEqual(1)
       })
       expect(submitCalled).toBe(false)
+    })
+  })
+
+  describe('co-loaded failure analytics', () => {
+    // Override /auth/status to mark the session as co-loaded; AuthProvider reads this
+    // on mount and makes session.isCoLoaded=true available via useAuth.
+    function useCoLoadedSession() {
+      server.use(
+        http.get('/api/auth/status', () => {
+          return HttpResponse.json({
+            isAuthorized: true,
+            email: 'co-loaded@example.com',
+            ial: '1',
+            idProofingStatus: 0,
+            idProofingCompletedAt: null,
+            idProofingExpiresAt: null,
+            isCoLoaded: true
+          })
+        })
+      )
+    }
+
+    it('tags idv_primary_reason as "not_found" for a co-loaded failed submission and fires result event exactly once', async () => {
+      useCoLoadedSession()
+      const user = userEvent.setup()
+      renderWithProviders(
+        <IdProofingForm
+          idOptions={TEST_ID_OPTIONS}
+          contactLink={TEST_CONTACT_LINK}
+        />
+      )
+
+      // Wait for AuthProvider to settle the session so isCoLoaded reads true.
+      await waitFor(() => {
+        // Use the radio presence as a proxy for the form being interactive after
+        // the provider resolves. This avoids querying internal state.
+        expect(screen.getByRole('radio', { name: LABEL_NONE })).toBeInTheDocument()
+      })
+
+      await user.selectOptions(screen.getByRole('combobox', { name: /month/i }), '06')
+      await user.type(screen.getByRole('textbox', { name: INPUT_LABEL_DAY }), '20')
+      await user.type(screen.getByRole('textbox', { name: INPUT_LABEL_YEAR }), '1985')
+      await user.click(screen.getByRole('radio', { name: LABEL_NONE }))
+      await user.click(screen.getByRole('button', { name: /continue/i }))
+
+      await waitFor(() => {
+        expect(mockPush).toHaveBeenCalledWith('/login/id-proofing/off-boarding?reason=noIdProvided')
+      })
+
+      expect(mockSetPageData).toHaveBeenCalledWith('idv_primary_status', 'fail')
+      expect(mockSetPageData).toHaveBeenCalledWith('idv_primary_reason', 'not_found')
+      // Exactly one IDV_PRIMARY_RESULT event per attempt (plus the IDV_PRIMARY_START event).
+      const resultCalls = mockTrackEvent.mock.calls.filter(
+        ([name]) => name === 'idv_primary_result'
+      )
+      expect(resultCalls).toHaveLength(1)
+    })
+
+    it('tags idv_primary_reason as "socure_fail" for a non-co-loaded failed submission', async () => {
+      // Default /auth/status handler returns no isCoLoaded (null/undefined → false).
+      const user = userEvent.setup()
+      renderWithProviders(
+        <IdProofingForm
+          idOptions={TEST_ID_OPTIONS}
+          contactLink={TEST_CONTACT_LINK}
+        />
+      )
+
+      await waitFor(() => {
+        expect(screen.getByRole('radio', { name: LABEL_NONE })).toBeInTheDocument()
+      })
+
+      await user.selectOptions(screen.getByRole('combobox', { name: /month/i }), '06')
+      await user.type(screen.getByRole('textbox', { name: INPUT_LABEL_DAY }), '20')
+      await user.type(screen.getByRole('textbox', { name: INPUT_LABEL_YEAR }), '1985')
+      await user.click(screen.getByRole('radio', { name: LABEL_NONE }))
+      await user.click(screen.getByRole('button', { name: /continue/i }))
+
+      await waitFor(() => {
+        expect(mockPush).toHaveBeenCalledWith('/login/id-proofing/off-boarding?reason=noIdProvided')
+      })
+
+      expect(mockSetPageData).toHaveBeenCalledWith('idv_primary_reason', 'socure_fail')
     })
   })
 

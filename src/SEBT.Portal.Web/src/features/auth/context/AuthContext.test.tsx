@@ -70,7 +70,8 @@ describe('AuthContext', () => {
         ial: '1plus',
         idProofingStatus: 2,
         idProofingCompletedAt: 1735689600,
-        idProofingExpiresAt: 1767225600
+        idProofingExpiresAt: 1767225600,
+        isCoLoaded: null
       })
     })
 

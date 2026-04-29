@@ -73,6 +73,18 @@ a {
   font-weight: 600;
 }
 
+// Tile radio borders: USWDS default uses gray-20 (too light). Figma calls for base.
+.usa-radio__input--tile + [class*='__label'] {
+  border-color: color('base');
+}
+
+// Checked tile radio: USWDS default uses primary-lighter background and primary border.
+// Figma calls for primary-lightest background and primary-vivid border.
+.usa-radio__input--tile:checked + [class*='__label'] {
+  background-color: color('primary-lightest');
+  border-color: color('primary-vivid');
+}
+
 // Reset native button chrome while preserving content styling.
 // Use on <button> elements that should look like links or plain text.
 .button-unstyled {
