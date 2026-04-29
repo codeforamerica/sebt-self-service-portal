@@ -73,7 +73,7 @@
     </When>
     <Otherwise>
       <ItemGroup>
-        <PackageReference Include="SEBT.Portal.StatesPlugins.Interfaces" Version="0.0.1-*" PrivateAssets="compile" />
+        <PackageReference Include="SEBT.Portal.StatesPlugins.Interfaces" Version="0.0.2-*" PrivateAssets="compile" />
       </ItemGroup>
     </Otherwise>
   </Choose>
