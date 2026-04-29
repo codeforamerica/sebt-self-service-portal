@@ -19,7 +19,7 @@ const state = (process.env.NEXT_PUBLIC_STATE || process.env.STATE || 'dc').toLow
 
 // Extract English-only resources for server-side (language switching happens client-side)
 // eslint-disable-next-line security/detect-object-injection -- state is validated at build time, fallback guards against misconfiguration
-const resources = (stateResources[state]?.en ?? stateResources.dc.en) as Record<
+const resources = (stateResources[state]?.en ?? stateResources.co.en) as unknown as Record<
   Namespace,
   Record<string, string>
 >
