@@ -14,6 +14,9 @@ import { useAuth } from '../../context'
 
 const RESEND_COOLDOWN_SECONDS = 30
 
+/** Matches `SEBT.Portal.Core.Models.Auth.IdProofingStatus.Completed`. */
+const ID_PROOFING_COMPLETED = 2
+
 interface VerifyOtpFormProps {
   email: string
   contactLink: string
@@ -76,8 +79,8 @@ export function VerifyOtpForm({ email, contactLink }: VerifyOtpFormProps) {
       // Backend set the HttpOnly session cookie; refresh the context from /auth/status.
       const newSession = await login()
       sessionStorage.removeItem('otp_email')
-      // ID proofing status NotStarted = 0; anything else (InProgress, Completed, Failed) skips the gate.
-      const needsIdProofing = newSession?.idProofingStatus === 0
+      // Only Completed — InProgress / Failed / Expired / missing claim route to proofing flow.
+      const needsIdProofing = newSession?.idProofingStatus !== ID_PROOFING_COMPLETED
       router.push(needsIdProofing ? '/login/id-proofing' : '/dashboard')
     } catch (err) {
       setPageData('otp_status', 'error')
