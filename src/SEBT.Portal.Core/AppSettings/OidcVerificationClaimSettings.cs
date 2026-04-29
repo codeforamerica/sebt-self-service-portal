@@ -27,11 +27,13 @@ public class OidcVerificationClaimSettings
 
     /// <summary>
     /// Secondary claim name for verification level when <see cref="LevelClaimName"/> is absent or unusable.
+    /// Defaults to myColorado&apos;s <c>myCoIdVerificationLevel</c> when omitted or whitespace.
     /// </summary>
     public string? FallbackLevelClaimName { get; set; }
 
     /// <summary>
     /// Secondary claim name for verification completion date when <see cref="DateClaimName"/> is absent or unusable.
+    /// Defaults to myColorado&apos;s <c>myCoIdVerificationDate</c> when omitted or whitespace.
     /// </summary>
     public string? FallbackDateClaimName { get; set; }
 }

@@ -18,9 +18,9 @@ public class OidcVerificationClaimTranslator
 {
     /// <summary>
     /// Default secondary OIDC claim name for verification level when
-    /// <see cref="OidcVerificationClaimSettings.FallbackLevelClaimName"/> is unset.
+    /// <see cref="OidcVerificationClaimSettings.FallbackLevelClaimName"/> is unset (myColorado: <c>myCoIdVerificationLevel</c>).
     /// </summary>
-    internal const string DefaultFallbackLevelClaimName = "MyCoIdVerificationLevel";
+    internal const string DefaultFallbackLevelClaimName = "myCoIdVerificationLevel";
 
     /// <summary>
     /// Default secondary OIDC claim name for verification date when

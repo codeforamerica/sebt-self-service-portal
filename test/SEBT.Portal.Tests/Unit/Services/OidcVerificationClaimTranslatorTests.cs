@@ -168,12 +168,12 @@ public class OidcVerificationClaimTranslatorTests
     }
 
     [Fact]
-    public void Translate_uses_MyCoIdVerificationLevel_when_primary_claim_missing()
+    public void Translate_uses_myCoIdVerificationLevel_when_primary_claim_missing()
     {
         var verificationDate = DateTime.UtcNow.AddDays(-30).ToString("o");
         var claims = new Dictionary<string, string>
         {
-            ["MyCoIdVerificationLevel"] = "1.5",
+            ["myCoIdVerificationLevel"] = "1.5",
             ["socureIdVerificationDate"] = verificationDate
         };
 
@@ -185,13 +185,13 @@ public class OidcVerificationClaimTranslatorTests
     }
 
     [Fact]
-    public void Translate_uses_MyCoIdVerificationLevel_when_primary_level_unrecognized()
+    public void Translate_uses_myCoIdVerificationLevel_when_primary_level_unrecognized()
     {
         var verificationDate = DateTime.UtcNow.AddDays(-30).ToString("o");
         var claims = new Dictionary<string, string>
         {
             ["socureIdVerificationLevel"] = "3.0",
-            ["MyCoIdVerificationLevel"] = "2",
+            ["myCoIdVerificationLevel"] = "2",
             ["socureIdVerificationDate"] = verificationDate
         };
 
@@ -202,13 +202,13 @@ public class OidcVerificationClaimTranslatorTests
     }
 
     [Fact]
-    public void Translate_prefers_configured_level_claim_when_MyCo_id_verification_level_also_present()
+    public void Translate_prefers_configured_level_claim_when_myCo_id_verification_level_also_present()
     {
         var verificationDate = DateTime.UtcNow.AddDays(-30).ToString("o");
         var claims = new Dictionary<string, string>
         {
             ["socureIdVerificationLevel"] = "1.5",
-            ["MyCoIdVerificationLevel"] = "2",
+            ["myCoIdVerificationLevel"] = "2",
             ["socureIdVerificationDate"] = verificationDate
         };
 
