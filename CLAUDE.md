@@ -102,6 +102,16 @@ We follow a test-driven development (TDD) approach: write tests first to fail, t
 - The portal enforces a strict CSP via `src/SEBT.Portal.Web/src/proxy.ts`. When adding **any browser-side call to a new external domain** (API, SDK, analytics, fonts), add the domain to the appropriate CSP directive (`connect-src`, `script-src`, `style-src`, `font-src`, etc.).
 - This is easy to miss because CSP is not enforced in local dev or in tests (MSW intercepts network calls). A missing entry means the feature silently fails in production — the browser blocks the request, and error-handling code gracefully degrades as if the service is down.
 
+### Client-side env vars (`NEXT_PUBLIC_*`)
+Next.js inlines `NEXT_PUBLIC_*` references into the client bundle at **build time**, not runtime. Adding a new client-exposed var requires four wire-ups, all needed for it to appear in deployed builds:
+
+1. `src/SEBT.Portal.Web/src/env.ts` — declare in the `client` schema and pass through.
+2. `src/SEBT.Portal.Web/Dockerfile` — add `ARG NEXT_PUBLIC_FOO=""` (BuildKit auto-exposes named ARGs as env vars to subsequent RUN steps; no explicit `ENV` bridge needed).
+3. `.github/workflows/deploy-ecr.yaml` — add `--build-arg NEXT_PUBLIC_FOO=${{ vars.FOO }}` to **both** the DC and CO docker build steps.
+4. **GitHub repo Variables** — set `vars.FOO` per environment (admin, out-of-band).
+
+Skipping any of (2)–(4) results in the var being empty in deployed bundles. Local dev reads from `.env`/`.env.local` and bypasses this whole pipeline, so the gap only surfaces in deployed environments.
+
 ### Data boundary enforcement
 - Enforce access control at the data boundary (the API endpoint that returns the data), not at the UI layer. Client-side guards are UX conveniences, not security controls.
 - When an authenticated user lacks sufficient authorization for a specific resource (e.g., insufficient IAL for their household's cases), return a 403 with structured ProblemDetails — not a 200 with filtered/empty data. The client needs to know *why* access was denied and *what to do about it* (e.g., `requiredIal` in the ProblemDetails extensions).
