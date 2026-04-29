@@ -12,7 +12,7 @@ import {
 
 import { useTranslation } from 'react-i18next'
 
-import { getState } from '@sebt/design-system'
+import { InputField, getState } from '@sebt/design-system'
 
 import type { SelectedAddress } from './types'
 import { useAddressAutocomplete } from './useAddressAutocomplete'
@@ -118,47 +118,20 @@ export function AddressAutocomplete({
 
   const describedBy = [hintId, errorId].filter(Boolean).join(' ') || undefined
 
-  // When disabled (no Smarty key), render a plain text input
+  // When disabled (no Smarty key), defer to the shared InputField primitive
+  // so the form behaves identically to non-autocomplete fields.
   if (!enabled) {
     return (
-      <div className={error ? 'usa-form-group usa-form-group--error' : 'usa-form-group'}>
-        <label
-          className="usa-label"
-          htmlFor={inputId}
-        >
-          {label}
-          {isRequired && <span className="text-secondary-dark"> *</span>}
-        </label>
-        {hint && (
-          <span
-            className="usa-hint"
-            id={hintId}
-          >
-            {hint}
-          </span>
-        )}
-        {error && (
-          <span
-            className="usa-error-message"
-            id={errorId}
-            role="alert"
-          >
-            {error}
-          </span>
-        )}
-        <input
-          id={inputId}
-          className={`usa-input${error ? ' usa-input--error' : ''}`}
-          name={name}
-          type="text"
-          value={value}
-          onChange={onChange}
-          aria-required={isRequired || undefined}
-          aria-invalid={!!error || undefined}
-          aria-describedby={describedBy}
-          {...inputProps}
-        />
-      </div>
+      <InputField
+        label={label}
+        name={name}
+        value={value}
+        onChange={onChange}
+        {...(error !== undefined && { error })}
+        {...(hint !== undefined && { hint })}
+        {...(isRequired !== undefined && { isRequired })}
+        {...inputProps}
+      />
     )
   }
 
