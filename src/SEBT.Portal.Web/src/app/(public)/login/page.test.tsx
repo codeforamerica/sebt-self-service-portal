@@ -85,19 +85,28 @@ describe('LoginPage', () => {
       ).toBeInTheDocument()
     })
 
-    it('renders the Log in button with primary-dark styling', () => {
+    it('renders the Log in button with myColorado branded styling', () => {
       render(<LoginPage />)
       const logInButton = screen.getByRole('button', { name: /Log in with myColorado/i })
       expect(logInButton).toHaveClass('usa-button')
-      expect(logInButton).toHaveClass('bg-primary-dark')
+      expect(logInButton).toHaveClass('usa-button--mycolorado')
+      expect(logInButton).not.toHaveClass('usa-button--outline')
     })
 
-    it('renders the Iniciar sesión outline button', () => {
+    it('renders the Iniciar sesión button as an outlined myColorado variant', () => {
       render(<LoginPage />)
       const espButton = screen.getByRole('button', { name: /Iniciar sesión con myColorado/i })
       expect(espButton).toHaveAttribute('lang', 'es')
+      expect(espButton).toHaveClass('usa-button--mycolorado')
       expect(espButton).toHaveClass('usa-button--outline')
-      expect(espButton).toHaveClass('border-primary')
+    })
+
+    it('renders the myColorado logo inside both auth buttons', () => {
+      render(<LoginPage />)
+      const logInButton = screen.getByRole('button', { name: /Log in with myColorado/i })
+      const espButton = screen.getByRole('button', { name: /Iniciar sesión con myColorado/i })
+      expect(logInButton.querySelector('[data-testid="mycolorado-logo"]')).toBeInTheDocument()
+      expect(espButton.querySelector('[data-testid="mycolorado-logo"]')).toBeInTheDocument()
     })
 
     it('renders the contact assistance link', () => {
