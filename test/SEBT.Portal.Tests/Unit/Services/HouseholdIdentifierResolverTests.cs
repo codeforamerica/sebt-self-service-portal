@@ -129,7 +129,7 @@ public class HouseholdIdentifierResolverTests
     [Fact]
     public async Task ResolveAsync_WhenPrefersPhoneAndUserHasPhone_ReturnsPhoneIdentifier()
     {
-        var user = CreateUser(Guid.NewGuid(), "user@example.com", u => u.Phone = "5551234567");
+        var user = CreateUser(Guid.NewGuid(), "user@example.com", u => u.Phone = "8185558439");
         var settings = new StateHouseholdIdSettings
         {
             PreferredHouseholdIdTypes = [PreferredHouseholdIdType.Phone, PreferredHouseholdIdType.Email]
@@ -144,7 +144,7 @@ public class HouseholdIdentifierResolverTests
 
         Assert.NotNull(result);
         Assert.Equal(PreferredHouseholdIdType.Phone, result!.Type);
-        Assert.Equal("5551234567", result.Value);
+        Assert.Equal("8185558439", result.Value);
     }
 
     /// <summary>
@@ -198,7 +198,7 @@ public class HouseholdIdentifierResolverTests
     [Fact]
     public async Task ResolveAsync_WhenPhoneOverrideProviderReturnsValue_UsesOverrideOverJwtAndUser()
     {
-        var user = CreateUser(Guid.NewGuid(), "user@example.com", u => u.Phone = "5551234567");
+        var user = CreateUser(Guid.NewGuid(), "user@example.com", u => u.Phone = "8185558439");
         var settings = new StateHouseholdIdSettings
         {
             PreferredHouseholdIdTypes = [PreferredHouseholdIdType.Phone, PreferredHouseholdIdType.Email]
@@ -224,7 +224,7 @@ public class HouseholdIdentifierResolverTests
     [Fact]
     public async Task ResolveAsync_WhenPhoneOverrideProviderReturnsNull_UsesUserOrClaimsInstead()
     {
-        var user = CreateUser(Guid.NewGuid(), "user@example.com", u => u.Phone = "5551234567");
+        var user = CreateUser(Guid.NewGuid(), "user@example.com", u => u.Phone = "8185558439");
         var settings = new StateHouseholdIdSettings
         {
             PreferredHouseholdIdTypes = [PreferredHouseholdIdType.Phone, PreferredHouseholdIdType.Email]
@@ -241,7 +241,7 @@ public class HouseholdIdentifierResolverTests
 
         Assert.NotNull(result);
         Assert.Equal(PreferredHouseholdIdType.Phone, result!.Type);
-        Assert.Equal("5551234567", result.Value);
+        Assert.Equal("8185558439", result.Value);
     }
 
     [Fact]
@@ -256,13 +256,13 @@ public class HouseholdIdentifierResolverTests
             .Returns(user);
         var resolver = CreateResolver(_userRepository, settings);
 
-        var principal = CreatePrincipalForUser(user, new Claim("phone", "5559876543"));
+        var principal = CreatePrincipalForUser(user, new Claim("phone", "8185558440"));
 
         var result = await resolver.ResolveAsync(principal);
 
         Assert.NotNull(result);
         Assert.Equal(PreferredHouseholdIdType.Phone, result!.Type);
-        Assert.Equal("5559876543", result.Value);
+        Assert.Equal("8185558440", result.Value);
     }
 
     [Fact]
