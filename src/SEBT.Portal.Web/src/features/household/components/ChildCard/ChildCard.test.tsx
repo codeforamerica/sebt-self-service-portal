@@ -271,9 +271,7 @@ describe('ChildCard', () => {
 
     const link = screen.getByRole('link')
     expect(link).toHaveAttribute('href', '/cards/info')
-    // Co-loaded cases route to the explainer page, so the link text matches that intent
-    // rather than offering an in-portal replacement action.
-    expect(link).toHaveTextContent(/how to get a replacement ebt card/i)
+    expect(link).toHaveTextContent(/request a replacement card/i)
   })
 
   it('shows info link for a co-loaded case even when household-level canRequestReplacementCard is false', () => {
@@ -297,7 +295,7 @@ describe('ChildCard', () => {
 
     const link = screen.getByRole('link')
     expect(link).toHaveAttribute('href', '/cards/info')
-    expect(link).toHaveTextContent(/how to get a replacement ebt card/i)
+    expect(link).toHaveTextContent(/request a replacement card/i)
   })
 
   it('shows replacement link for SummerEbt when feature flag is enabled', () => {

@@ -86,9 +86,6 @@ export function ChildCard({
   } = summerEbtCase
   const cardTypeKey = issuanceType ? (CARD_TYPE_KEYS[issuanceType] ?? null) : null
   const replacementLink = getReplacementLink(summerEbtCase, canRequestReplacementCard)
-  // Co-loaded cases route to /cards/info (an explainer) instead of the in-portal replacement
-  // flow, so the link label needs to match the destination's intent.
-  const replacementLinkIsInfo = replacementLink === '/cards/info'
 
   return (
     <div className="usa-accordion__item">
@@ -160,9 +157,7 @@ export function ChildCard({
             data-analytics-cta="replacement_card_cta"
             className="usa-link display-inline-block margin-top-2"
           >
-            {replacementLinkIsInfo
-              ? t('cardTableActionHowToReplace')
-              : t('cardTableActionRequestReplacement')}
+            {t('cardTableActionRequestReplacement')}
           </Link>
         )}
       </div>
