@@ -117,7 +117,7 @@ restore_dependencies() {
   log_info "Restoring .NET dependencies..."
   cd "$PROJECT_ROOT"
 
-  dotnet restore --locked-mode --verbosity minimal
+  dotnet restore --verbosity minimal
 
   log_success "Dependencies restored"
 }
