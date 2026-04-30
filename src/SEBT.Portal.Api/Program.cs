@@ -3,13 +3,11 @@ using System.Threading.RateLimiting;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Microsoft.AspNetCore.HttpOverrides;
-using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
 using SEBT.Portal.Api;
 using SEBT.Portal.Api.Composition;
 using SEBT.Portal.Api.Filters;
-using SEBT.Portal.Api.Models;
 using Serilog;
 using Serilog.Templates;
 using Microsoft.FeatureManagement;
@@ -24,9 +22,6 @@ using SEBT.Portal.Infrastructure.Seeding.Services;
 using SEBT.Portal.UseCases;
 using SEBT.Portal.Infrastructure;
 using SEBT.Portal.Api.Startup;
-using SEBT.Portal.Core.Models.Auth;
-using SEBT.Portal.Core.Repositories;
-using SEBT.Portal.Core.Utilities;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -41,7 +36,8 @@ var useJsonLogs = string.Equals(
 
 var logConfig = new LoggerConfiguration()
     .ReadFrom.Configuration(builder.Configuration)
-    .Enrich.FromLogContext();
+    .Enrich.FromLogContext()
+    .Enrich.WithOtelTracingSpanId();
 
 if (useJsonLogs)
 {
@@ -57,6 +53,7 @@ else
 Log.Logger = logConfig.CreateLogger();
 
 builder.Host.UseSerilog();
+builder.SetupOpenTelemetry();
 
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddHttpClient();
@@ -70,6 +67,7 @@ builder.Services.AddHttpClient();
 var state = Environment.GetEnvironmentVariable("STATE");
 if (!string.IsNullOrEmpty(state))
 {
+    Log.Logger.Information("Loading state-specific config: {State}", state);
     var stateConfigFile = $"appsettings.{state.ToLowerInvariant()}.json";
     builder.Configuration.AddJsonFile(stateConfigFile, optional: true, reloadOnChange: true);
 }
@@ -120,6 +118,7 @@ if (!string.IsNullOrEmpty(dbHost) && !string.IsNullOrEmpty(dbPassword))
 
 // Caching must be registered before plugins — plugins may depend on HybridCache
 builder.Services.AddCaching(builder.Configuration);
+builder.Services.AddDistributedLocking(builder.Configuration);
 
 // Registers plugins and allows them to be constructor injected into ASP.NET controllers
 builder.Services.AddPlugins(builder.Configuration, builder.Environment.ContentRootPath);

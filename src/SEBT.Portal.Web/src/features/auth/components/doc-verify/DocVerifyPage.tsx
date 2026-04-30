@@ -10,18 +10,22 @@ import { Alert } from '@sebt/design-system'
 import {
   clearChallengeContext,
   SK_CHALLENGE_ID,
+  SK_STILL_CHECKING,
   SK_SUB_STATE,
   SubState
 } from '@/features/auth/components/doc-verify/sessionKeys'
-import { useStartChallenge, useVerificationStatus } from '../../api'
-import { createDocVAdapter, type DocVAdapter, type DocVAdapterConfig } from './adapters'
-import { DocVerifyCapture } from './DocVerifyCapture'
+import {
+  useRefreshToken,
+  useResubmitChallenge,
+  useStartChallenge,
+  useVerificationStatus
+} from '../../api'
 import { DocVerifyInterstitial } from './DocVerifyInterstitial'
+import { DocVerifyResubmit } from './DocVerifyResubmit'
 import { VerificationPending } from './VerificationPending'
 
 interface DocVerifyPageProps {
   contactLink: string
-  sdkKey: string
 }
 
 function readChallengeContext(searchParams: URLSearchParams): {
@@ -44,31 +48,18 @@ function readChallengeContext(searchParams: URLSearchParams): {
   return { challengeId, subState }
 }
 
-export function DocVerifyPage({ contactLink, sdkKey }: DocVerifyPageProps) {
+export function DocVerifyPage({ contactLink }: DocVerifyPageProps) {
   const router = useRouter()
   const searchParams = useSearchParams()
   const { t } = useTranslation('idProofing')
   const startChallenge = useStartChallenge()
+  const resubmitChallenge = useResubmitChallenge()
+  const refreshToken = useRefreshToken()
 
   const [subState, setSubState] = useState<SubState>('interstitial')
   const [challengeId, setChallengeId] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
   const { setPageData, trackEvent } = useDataLayer()
-
-  // Capture launch config — set by handleContinue, consumed by DocVerifyCapture on mount
-  const [captureLaunchConfig, setCaptureLaunchConfig] = useState<Omit<
-    DocVAdapterConfig,
-    'containerId'
-  > | null>(null)
-
-  // Create adapter once — stable across renders
-  /* eslint-disable react-hooks/refs -- Intentional: lazy-init pattern reads ref to avoid recreating the adapter on every render */
-  const adapterRef = useRef<DocVAdapter | null>(null)
-  if (adapterRef.current == null) {
-    adapterRef.current = createDocVAdapter()
-  }
-  const adapter = adapterRef.current
-  /* eslint-enable react-hooks/refs */
 
   // Read challenge context on mount — URL query param is primary, sessionStorage is fallback (D6, D9)
   useEffect(() => {
@@ -86,63 +77,63 @@ export function DocVerifyPage({ contactLink, sdkKey }: DocVerifyPageProps) {
       clearChallengeContext()
     }
 
+    // Seed challengeId from URL/sessionStorage after mount because sessionStorage
+    // is not available during SSR — we can't lazy-init this via useState.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setChallengeId(ctx.challengeId)
     // Persist to sessionStorage for mobile tab recovery
     sessionStorage.setItem(SK_CHALLENGE_ID, ctx.challengeId)
 
-    // If the user was in capture (e.g., mobile tab recovery), skip to pending (D6)
+    // Either persisted sub-state means the user already handed off to Socure
+    // on a prior visit. Resume at pending and let polling pick up the webhook
+    // outcome. The legacy 'capture' value may live in sessionStorage from an
+    // older client build; map it forward rather than drop the session.
     if (ctx.subState === 'capture' || ctx.subState === 'pending') {
-      adapter.reset()
       setSubState('pending')
       sessionStorage.setItem(SK_SUB_STATE, 'pending')
     }
-  }, [router, adapter, searchParams])
+  }, [router, searchParams])
 
-  // Poll status during interstitial (for allowIdRetry) and capture (safety net
-  // in case the SDK's onSuccess never fires after remote mobile capture).
+  // Poll status during interstitial so the DocVerifyInterstitial CTA can
+  // expose the allowIdRetry flag. VerificationPending runs its own polling
+  // once the user hands off to Socure.
   const statusQuery = useVerificationStatus(
-    (subState === 'interstitial' || subState === 'capture') && challengeId ? challengeId : undefined
+    subState === 'interstitial' && challengeId ? challengeId : undefined
   )
   const allowIdRetry = statusQuery.data?.allowIdRetry ?? false
 
-  // "Continue" click handler — JIT token fetch, then transition to capture sub-state.
-  // The actual adapter.launch() happens inside DocVerifyCapture after its container mounts.
-  const handleContinue = async () => {
+  // "Continue" → open Socure's hosted capture URL in a new tab. The blank tab
+  // is opened synchronously to preserve the click's user-gesture activation;
+  // browsers block window.open once an async boundary separates it from the
+  // user event. Once the JIT token fetch resolves, redirect that tab to the
+  // real Socure URL. A popup blocker collapses us to same-tab navigation.
+  const handleContinue = () => {
     if (!challengeId) return
     setError(null)
-
     trackEvent(AnalyticsEvents.DOCV_START)
 
-    try {
-      const { docvTransactionToken } = await startChallenge.mutateAsync(challengeId)
+    const captureTab = window.open('about:blank', '_blank')
 
-      // Build config for the capture component
-      setCaptureLaunchConfig({
-        sdkKey,
-        token: docvTransactionToken,
-        onSuccess: () => {
-          sessionStorage.setItem(SK_SUB_STATE, 'pending')
-          setSubState('pending')
-        },
-        onError: () => {
-          sessionStorage.setItem('offboarding_reason', 'docVerificationFailed')
-          sessionStorage.setItem('offboarding_canApply', 'false')
-          clearChallengeContext()
-          router.push('/login/id-proofing/off-boarding')
+    startChallenge
+      .mutateAsync(challengeId)
+      .then(({ docvUrl }) => {
+        if (captureTab && !captureTab.closed) {
+          captureTab.location.href = docvUrl
+        } else {
+          window.location.href = docvUrl
         }
+        sessionStorage.setItem(SK_SUB_STATE, 'pending')
+        setSubState('pending')
       })
-
-      // Persist sub-state for mobile tab recovery (D6) and transition
-      sessionStorage.setItem(SK_SUB_STATE, 'capture')
-      setSubState('capture')
-    } catch {
-      setError(
-        t(
-          'docVerifyStartError',
-          'Something went wrong starting document verification. Please try again.'
+      .catch(() => {
+        if (captureTab && !captureTab.closed) captureTab.close()
+        setError(
+          t(
+            'docVerifyStartError',
+            'Something went wrong starting document verification. Please try again.'
+          )
         )
-      )
-    }
+      })
   }
 
   const handleEnterIdNumber = useCallback(() => {
@@ -150,12 +141,34 @@ export function DocVerifyPage({ contactLink, sdkKey }: DocVerifyPageProps) {
     router.push('/login/id-proofing')
   }, [router])
 
-  const handleVerified = useCallback(() => {
+  // Pin the latest mutateAsync through a ref so handleVerified's identity is
+  // not affected by the mutation's internal status flips. Without this,
+  // VerificationPending's effect (which depends on onVerified) would re-run
+  // every time the refresh mutation's state changed, calling handleVerified
+  // again and creating an infinite update loop.
+  const refreshTokenAsyncRef = useRef(refreshToken.mutateAsync)
+  useEffect(() => {
+    refreshTokenAsyncRef.current = refreshToken.mutateAsync
+  }, [refreshToken.mutateAsync])
+
+  const handleVerified = useCallback(async () => {
     setPageData('docv_status', 'success')
     trackEvent(AnalyticsEvents.DOCV_RESULT)
     setPageData('idv_final_status', 'success')
     trackEvent(AnalyticsEvents.IDV_FINAL_RESULT)
     clearChallengeContext()
+
+    // DC-296: the webhook just bumped the user to IAL2 server-side. Await a
+    // token refresh so the rotated HttpOnly cookie is in place before we
+    // navigate. Otherwise the dashboard's first fetches race the refresh and
+    // hit the IAL guard with the stale IAL1 JWT. Swallow failures so we never
+    // trap the user on the "verified" screen; the dashboard will recover.
+    try {
+      await refreshTokenAsyncRef.current()
+    } catch {
+      // Intentionally silent. Fresh cookie did not arrive; proceed anyway.
+    }
+
     router.push('/dashboard')
   }, [router, setPageData, trackEvent])
 
@@ -165,46 +178,61 @@ export function DocVerifyPage({ contactLink, sdkKey }: DocVerifyPageProps) {
       trackEvent(AnalyticsEvents.DOCV_RESULT)
       setPageData('idv_final_status', 'fail')
       trackEvent(AnalyticsEvents.IDV_FINAL_RESULT)
-      sessionStorage.setItem('offboarding_reason', offboardingReason ?? '')
-      sessionStorage.setItem('offboarding_canApply', 'false')
       clearChallengeContext()
-      router.push('/login/id-proofing/off-boarding')
+      // Pass the reason via URL so the off-boarding route can render distinct
+      // copy (docVerificationFailed, challengeNotFound, etc). Mirrors the
+      // pattern IdProofingForm uses for noIdProvided.
+      const params = new URLSearchParams()
+      if (offboardingReason) {
+        params.set('reason', offboardingReason)
+      }
+      const query = params.toString()
+      router.push(`/login/id-proofing/off-boarding${query ? `?${query}` : ''}`)
     },
     [router, setPageData, trackEvent]
   )
 
-  // Auto-transition from capture to pending after a delay. For remote phone
-  // capture the SDK's onSuccess never fires (capture happens on a different
-  // device), leaving the container blank. After 15 seconds the user has either
-  // scanned the QR / opened the SMS link, so show the "checking" UI instead.
-  useEffect(() => {
-    if (subState !== 'capture') return
+  const handleEnterResubmit = useCallback(() => {
+    setSubState('resubmit')
+    setError(null)
+  }, [])
 
-    const timerId = window.setTimeout(() => {
-      sessionStorage.setItem(SK_SUB_STATE, 'pending')
-      setSubState('pending')
-    }, 15_000)
+  // "Try again" → open Socure's hosted retry URL in a new tab. Same user-gesture
+  // discipline as handleContinue: synchronous window.open so popup blockers honor
+  // the click. The mutation creates a brand-new docv_stepup challenge server-side
+  // and returns the new challenge's public ID; we swap that into URL, state, and
+  // sessionStorage so polling and reloads target the fresh challenge — not the
+  // old terminal Resubmit one (which would otherwise loop us right back here).
+  const handleResubmit = () => {
+    if (!challengeId) return
+    setError(null)
+    trackEvent(AnalyticsEvents.DOCV_RESUBMIT)
 
-    return () => window.clearTimeout(timerId)
-  }, [subState])
+    const captureTab = window.open('about:blank', '_blank')
 
-  // Safety net: if the webhook resolves the challenge while the SDK capture is
-  // still active (e.g., SDK fires onSuccess late or not at all), redirect based
-  // on the polled status rather than waiting for the pending sub-state.
-  useEffect(() => {
-    if (subState !== 'capture') return
-    if (statusQuery.data?.status === 'verified') {
-      handleVerified()
-    } else if (statusQuery.data?.status === 'rejected') {
-      handleRejected(statusQuery.data.offboardingReason ?? undefined)
-    }
-  }, [
-    subState,
-    statusQuery.data?.status,
-    statusQuery.data?.offboardingReason,
-    handleVerified,
-    handleRejected
-  ])
+    resubmitChallenge
+      .mutateAsync(challengeId)
+      .then(({ challengeId: newChallengeId, docvUrl }) => {
+        if (captureTab && !captureTab.closed) {
+          captureTab.location.href = docvUrl
+        } else {
+          window.location.href = docvUrl
+        }
+        // Clear "still checking" so the new challenge's pending state starts fresh
+        sessionStorage.removeItem(SK_STILL_CHECKING)
+        sessionStorage.setItem(SK_CHALLENGE_ID, newChallengeId)
+        sessionStorage.setItem(SK_SUB_STATE, 'pending')
+        setChallengeId(newChallengeId)
+        setSubState('pending')
+        router.replace(`/login/id-proofing/doc-verify?challengeId=${newChallengeId}`)
+      })
+      .catch(() => {
+        if (captureTab && !captureTab.closed) captureTab.close()
+        setError(
+          t('docVerifyResubmitError', "We couldn't start a retry. Please try again in a moment.")
+        )
+      })
+  }
 
   return (
     <div className="usa-section">
@@ -229,18 +257,19 @@ export function DocVerifyPage({ contactLink, sdkKey }: DocVerifyPageProps) {
           />
         )}
 
-        {subState === 'capture' && captureLaunchConfig && (
-          <DocVerifyCapture
-            adapter={adapter}
-            launchConfig={captureLaunchConfig}
-          />
-        )}
-
         {subState === 'pending' && challengeId && (
           <VerificationPending
             challengeId={challengeId}
             onVerified={handleVerified}
             onRejected={handleRejected}
+            onResubmit={handleEnterResubmit}
+          />
+        )}
+
+        {subState === 'resubmit' && challengeId && (
+          <DocVerifyResubmit
+            onResubmit={handleResubmit}
+            isResubmitting={resubmitChallenge.isPending}
           />
         )}
       </div>

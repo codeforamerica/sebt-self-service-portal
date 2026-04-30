@@ -37,6 +37,7 @@ export {
   LoginForm,
   OffBoardingContent,
   OffBoardingPage,
+  SignOutLink,
   TokenRefresher,
   VerifyOtpForm,
   VerifyOtpFormWrapper,

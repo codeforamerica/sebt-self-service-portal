@@ -58,6 +58,21 @@ public class SubmitIdProofingCommandHandler(
                 "DateOfBirth must be a valid date in yyyy-MM-dd format.");
         }
 
+        // Defense-in-depth: SSN/ITIN must be exactly 9 digits after stripping non-digit
+        // characters. OpenAPI permits 4-digit partial SSNs, but product decision for DC-296
+        // is full 9 only (aligned with the frontend schema). Other id types have different
+        // format rules and are not policed here.
+        if (IsSsnOrItin(command.IdType)
+            && !IsExactlyNineDigitsAfterStripping(command.IdValue))
+        {
+            logger.LogWarning(
+                "ID proofing submission rejected for user {UserId}: IdValue for SSN/ITIN is not 9 digits",
+                command.UserId);
+            return Result<SubmitIdProofingResponse>.ValidationFailed(
+                nameof(SubmitIdProofingCommand.IdValue),
+                "IdValue must be 9 digits for SSN or ITIN.");
+        }
+
         // Load the user — needed for email (passed to Socure)
         var user = await userRepository.GetUserByIdAsync(command.UserId, cancellationToken);
         if (user == null)
@@ -89,12 +104,24 @@ public class SubmitIdProofingCommandHandler(
                     OffboardingReason: "maxAttemptsReached"));
         }
 
-        // No ID provided → off-board immediately (Codex test 5)
+        // Co-loaded users still need a SNAP/TANF identifier so we can household them; off-board
+        // when no ID is provided. Non-co-loaded users fall through to Socure DocV — Socure's
+        // consumer_onboarding workflow short-circuits to document verification when KYC can't
+        // resolve the consumer, so national_id is optional for that path.
         if (string.IsNullOrWhiteSpace(command.IdType))
         {
-            logger.LogInformation("User {UserId} submitted ID proofing without an ID type", command.UserId);
-            return Result<SubmitIdProofingResponse>.Success(
-                new SubmitIdProofingResponse("failed", OffboardingReason: "noIdProvided"));
+            if (user.IsCoLoaded)
+            {
+                logger.LogInformation(
+                    "Co-loaded user {UserId} submitted ID proofing without an ID type; off-boarding (householding requires a benefit ID)",
+                    command.UserId);
+                return Result<SubmitIdProofingResponse>.Success(
+                    new SubmitIdProofingResponse("failed", OffboardingReason: "noIdProvided"));
+            }
+
+            logger.LogInformation(
+                "Non-co-loaded user {UserId} submitted ID proofing without an ID type; proceeding to Socure DocV with no national_id",
+                command.UserId);
         }
 
         // Check for an existing active challenge → reuse instead of creating a duplicate
@@ -115,9 +142,10 @@ public class SubmitIdProofingCommandHandler(
         // Persist the parsed DOB on the user; all downstream save paths will carry it through.
         user.DateOfBirth = submittedDob;
 
-        // Co-loaded households: SNAP/TANF IDs must match on-file records — no Socure national_id path.
-        if (user.IsCoLoaded
-            && IdProofingBenefitIdentifierTypes.IsSnapOrTanfPortalSelection(command.IdType)
+        // Co-loaded discovery: SNAP/TANF ids are an in-portal lookup (never Socure as national_id).
+        // User-level IsCoLoaded isn't presumed from a pre-populated flag — the match itself is the
+        // determination, and on success we persist it so downstream UI flows can rely on the claim.
+        if (IdProofingBenefitIdentifierTypes.IsSnapOrTanfPortalSelection(command.IdType)
             && !string.IsNullOrWhiteSpace(command.IdValue))
         {
             try
@@ -135,7 +163,8 @@ public class SubmitIdProofingCommandHandler(
                         user,
                         UserIalLevel.IAL1plus,
                         cancellationToken,
-                        "co-loaded SNAP/TANF matched via DC GetHouseholdByGuardian IC+DOB (no Socure)");
+                        "co-loaded SNAP/TANF matched via DC GetHouseholdByGuardian IC+DOB (no Socure)",
+                        markCoLoaded: true);
                 }
             }
             catch (Exception ex) when (ex is not OperationCanceledException)
@@ -172,7 +201,8 @@ public class SubmitIdProofingCommandHandler(
                     user,
                     UserIalLevel.IAL1plus,
                     cancellationToken,
-                    "co-loaded SNAP/TANF matched to on-file records (no Socure)");
+                    "co-loaded SNAP/TANF matched to on-file records (no Socure)",
+                    markCoLoaded: true);
             }
 
             logger.LogInformation(
@@ -297,11 +327,19 @@ public class SubmitIdProofingCommandHandler(
         User user,
         UserIalLevel ialLevelOnCompletion,
         CancellationToken cancellationToken,
-        string completionReasonForLog)
+        string completionReasonForLog,
+        bool markCoLoaded = false)
     {
         user.IdProofingStatus = IdProofingStatus.Completed;
         user.IalLevel = ialLevelOnCompletion;
         user.IdProofingCompletedAt = DateTime.UtcNow;
+
+        if (markCoLoaded)
+        {
+            user.IsCoLoaded = true;
+            user.CoLoadedLastUpdated = DateTime.UtcNow;
+        }
+
         await userRepository.UpdateUserAsync(user, cancellationToken);
 
         logger.LogInformation(
@@ -369,5 +407,33 @@ public class SubmitIdProofingCommandHandler(
                 "documentVerificationRequired",
                 ChallengeId: challenge.PublicId,
                 AllowIdRetry: allowIdRetry));
+    }
+
+    private static bool IsSsnOrItin(string? idType)
+    {
+        return string.Equals(idType, "ssn", StringComparison.OrdinalIgnoreCase)
+            || string.Equals(idType, "itin", StringComparison.OrdinalIgnoreCase);
+    }
+
+    private static bool IsExactlyNineDigitsAfterStripping(string? idValue)
+    {
+        if (idValue is null)
+        {
+            return false;
+        }
+
+        var digitCount = 0;
+        foreach (var ch in idValue)
+        {
+            if (char.IsDigit(ch))
+            {
+                digitCount++;
+                if (digitCount > 9)
+                {
+                    return false;
+                }
+            }
+        }
+        return digitCount == 9;
     }
 }

@@ -8,6 +8,27 @@ import { server } from '@/mocks/server'
 
 import { DashboardContent } from './DashboardContent'
 
+// Mock analytics to spy on setPageData / trackEvent calls.
+const mockSetPageData = vi.fn()
+const mockSetUserData = vi.fn()
+const mockTrackEvent = vi.fn()
+vi.mock('@sebt/analytics', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@sebt/analytics')>()
+  return {
+    ...actual,
+    useDataLayer: () => ({
+      setPageData: mockSetPageData,
+      setUserData: mockSetUserData,
+      trackEvent: mockTrackEvent,
+      pageLoad: vi.fn(),
+      setPageCategory: vi.fn(),
+      setPageAttribute: vi.fn(),
+      setUserProfile: vi.fn(),
+      get: vi.fn()
+    })
+  }
+})
+
 // Mock router, searchParams, and auth for UserProfileCard + DashboardAlerts
 vi.mock('next/navigation', () => ({
   useRouter: () => ({
@@ -18,38 +39,22 @@ vi.mock('next/navigation', () => ({
   usePathname: () => '/dashboard'
 }))
 
-vi.mock('@/features/auth', () => ({
-  useAuth: () => ({
-    logout: vi.fn()
-  })
-}))
-
-const setPageDataSpy = vi.fn()
-const setUserDataSpy = vi.fn()
-const trackEventSpy = vi.fn()
-
-vi.mock('@sebt/analytics', async () => {
-  const actual = await vi.importActual<typeof import('@sebt/analytics')>('@sebt/analytics')
+// SignOutLink and UserProfileCard no longer use useAuth (logout is a plain
+// anchor to /api/auth/logout); only DashboardContent itself reads useAuth
+// for the co-loaded analytics branch. Preserve the real SignOutLink by
+// extending the actual module instead of replacing it.
+const mockAuthSession: { isCoLoaded: boolean | null } = { isCoLoaded: false }
+vi.mock('@/features/auth', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/features/auth')>()
   return {
     ...actual,
-    useDataLayer: () => ({
-      setPageData: setPageDataSpy,
-      setUserData: setUserDataSpy,
-      trackEvent: trackEventSpy,
-      setPageCategory: vi.fn(),
-      setPageAttribute: vi.fn(),
-      setUserProfile: vi.fn(),
-      pageLoad: vi.fn(),
-      get: vi.fn()
+    useAuth: () => ({
+      session: mockAuthSession,
+      logout: vi.fn()
     })
   }
 })
 
-beforeEach(() => {
-  setPageDataSpy.mockClear()
-  setUserDataSpy.mockClear()
-  trackEventSpy.mockClear()
-})
 vi.mock('@/features/feature-flags', () => ({
   useFeatureFlag: (flag: string) => {
     if (flag === 'show_contact_preferences') return true
@@ -74,6 +79,13 @@ function renderWithProviders(ui: React.ReactElement) {
 }
 
 describe('DashboardContent', () => {
+  beforeEach(() => {
+    mockSetPageData.mockClear()
+    mockSetUserData.mockClear()
+    mockTrackEvent.mockClear()
+    mockAuthSession.isCoLoaded = false
+  })
+
   it('shows loading skeleton initially', () => {
     renderWithProviders(<DashboardContent />)
 
@@ -110,6 +122,22 @@ describe('DashboardContent', () => {
     })
   })
 
+  it('renders sign-out link in error state', async () => {
+    server.use(
+      http.get('/api/household/data', () => {
+        return HttpResponse.json({ error: 'Unauthorized' }, { status: 401 })
+      })
+    )
+
+    renderWithProviders(<DashboardContent />)
+
+    await waitFor(() => {
+      expect(screen.getByRole('alert')).toBeInTheDocument()
+    })
+
+    expect(screen.getByRole('link', { name: /logout|sign out/i })).toBeInTheDocument()
+  })
+
   it('renders empty state when no applications', async () => {
     server.use(
       http.get('/api/household/data', () => {
@@ -127,7 +155,7 @@ describe('DashboardContent', () => {
       expect(screen.getByRole('alert')).toBeInTheDocument()
     })
 
-    expect(screen.getByRole('link')).toHaveAttribute('href', '/apply')
+    expect(screen.getByRole('link', { name: /apply/i })).toHaveAttribute('href', '/apply')
   })
 
   it('renders UserProfileCard in empty state when userProfile available', async () => {
@@ -166,6 +194,106 @@ describe('DashboardContent', () => {
     })
   })
 
+  it('renders sign-out link in empty state', async () => {
+    server.use(
+      http.get('/api/household/data', () => {
+        return HttpResponse.json({
+          ...TEST_HOUSEHOLD_DATA,
+          summerEbtCases: [],
+          applications: []
+        })
+      })
+    )
+
+    renderWithProviders(<DashboardContent />)
+
+    await waitFor(() => {
+      expect(screen.getByRole('alert')).toBeInTheDocument()
+    })
+
+    expect(screen.getByRole('link', { name: /logout|sign out/i })).toBeInTheDocument()
+  })
+
+  it('renders sign-out link on 404', async () => {
+    server.use(
+      http.get('/api/household/data', () => {
+        return HttpResponse.json({ error: 'Not found' }, { status: 404 })
+      })
+    )
+
+    renderWithProviders(<DashboardContent />)
+
+    await waitFor(() => {
+      expect(screen.getByRole('alert')).toBeInTheDocument()
+    })
+
+    expect(screen.getByRole('link', { name: /logout|sign out/i })).toBeInTheDocument()
+  })
+
+  describe('analytics tagging when a co-loaded user lands on an empty dashboard', () => {
+    it('tags household_reason="no_children" when a co-loaded user lands on an empty dashboard', async () => {
+      mockAuthSession.isCoLoaded = true
+      server.use(
+        http.get('/api/household/data', () => {
+          return HttpResponse.json({
+            ...TEST_HOUSEHOLD_DATA,
+            summerEbtCases: [],
+            applications: []
+          })
+        })
+      )
+
+      renderWithProviders(<DashboardContent />)
+
+      await waitFor(() => {
+        expect(mockTrackEvent).toHaveBeenCalledWith('household_result')
+      })
+
+      expect(mockSetPageData).toHaveBeenCalledWith('household_status', 'empty')
+      expect(mockSetPageData).toHaveBeenCalledWith('household_reason', 'no_children')
+      // Fire exactly once per render.
+      const householdResultCalls = mockTrackEvent.mock.calls.filter(
+        ([name]) => name === 'household_result'
+      )
+      expect(householdResultCalls).toHaveLength(1)
+    })
+
+    it('does not tag household_reason for non-co-loaded users on an empty dashboard', async () => {
+      mockAuthSession.isCoLoaded = false
+      server.use(
+        http.get('/api/household/data', () => {
+          return HttpResponse.json({
+            ...TEST_HOUSEHOLD_DATA,
+            summerEbtCases: [],
+            applications: []
+          })
+        })
+      )
+
+      renderWithProviders(<DashboardContent />)
+
+      await waitFor(() => {
+        expect(mockTrackEvent).toHaveBeenCalledWith('household_result')
+      })
+
+      expect(mockSetPageData).toHaveBeenCalledWith('household_status', 'empty')
+      expect(mockSetPageData).not.toHaveBeenCalledWith('household_reason', 'no_children')
+    })
+
+    it('tags household_status="success" when co-loaded user has cases (NOT the no_children path)', async () => {
+      mockAuthSession.isCoLoaded = true
+      // Default TEST_HOUSEHOLD_DATA has non-empty cases.
+      renderWithProviders(<DashboardContent />)
+
+      await waitFor(() => {
+        expect(mockTrackEvent).toHaveBeenCalledWith('household_result')
+      })
+
+      expect(mockSetPageData).toHaveBeenCalledWith('household_status', 'success')
+      expect(mockSetPageData).not.toHaveBeenCalledWith('household_reason', 'no_children')
+    })
+  })
+
   describe('co-loaded cohort analytics', () => {
     // Each test ships the backend's coLoadedCohort value and asserts the
     // standardized snake_case analytics property. The payload shape matches
@@ -185,7 +313,7 @@ describe('DashboardContent', () => {
       renderWithProviders(<DashboardContent />)
 
       await waitFor(() => {
-        expect(setUserDataSpy).toHaveBeenCalledWith('co_loaded_cohort', 'non_co_loaded', [
+        expect(mockSetUserData).toHaveBeenCalledWith('co_loaded_cohort', 'non_co_loaded', [
           'default',
           'analytics'
         ])
@@ -198,7 +326,7 @@ describe('DashboardContent', () => {
       renderWithProviders(<DashboardContent />)
 
       await waitFor(() => {
-        expect(setUserDataSpy).toHaveBeenCalledWith('co_loaded_cohort', 'co_loaded_only', [
+        expect(mockSetUserData).toHaveBeenCalledWith('co_loaded_cohort', 'co_loaded_only', [
           'default',
           'analytics'
         ])
@@ -213,7 +341,7 @@ describe('DashboardContent', () => {
       renderWithProviders(<DashboardContent />)
 
       await waitFor(() => {
-        expect(setUserDataSpy).toHaveBeenCalledWith(
+        expect(mockSetUserData).toHaveBeenCalledWith(
           'co_loaded_cohort',
           'mixed_or_applicant_excluded',
           ['default', 'analytics']
@@ -231,9 +359,9 @@ describe('DashboardContent', () => {
       renderWithProviders(<DashboardContent />)
 
       await waitFor(() => {
-        expect(setPageDataSpy).toHaveBeenCalledWith('household_status', 'error')
+        expect(mockSetPageData).toHaveBeenCalledWith('household_status', 'error')
       })
-      expect(setUserDataSpy).not.toHaveBeenCalledWith(
+      expect(mockSetUserData).not.toHaveBeenCalledWith(
         'co_loaded_cohort',
         expect.anything(),
         expect.anything()

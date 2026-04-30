@@ -85,8 +85,13 @@ export class SocureDocVAdapter implements DocVAdapter {
     // that don't care about progress events still get a working capture UI.
     const onProgress = config.onProgress ?? (() => {})
 
+    // qrCodeNeeded:true opts desktop users into inline QR rendering inside the
+    // container. autoOpenTabOnMobile:true handles mobile browsers by opening
+    // the capture flow in a new tab. Together they cover both primary paths.
+    // DocV V5 moved document/language/redirect config server-side (set on the
+    // Evaluation request), so no capture-type field is passed here.
     window.SocureDocVSDK.launch(config.sdkKey, config.token, `#${config.containerId}`, {
-      type: 'docv',
+      qrCodeNeeded: true,
       autoOpenTabOnMobile: true,
       closeCaptureWindowOnComplete: true,
       onSuccess: config.onSuccess,

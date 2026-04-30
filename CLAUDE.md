@@ -22,6 +22,13 @@ We're colleagues working together. Neither of us is afraid to admit we don't kno
 - Frontend: TypeScript (not JavaScript). ESLint + Prettier with organize-imports plugin
 - Unix line endings (LF) enforced project-wide
 
+### Frontend styling
+- **Avoid inline `style={...}` props.** They bypass the design-token system, can't be themed per state, are hard to override, and don't compose with USWDS modifier classes.
+- **Reach for shared design-system components first** (`Button`, `InputField`, `Alert`, … from `@sebt/design-system`) before composing your own from raw HTML + USWDS classes. They already encapsulate ARIA wiring, USWDS class composition, and per-state theming — re-using them keeps behavior consistent and prevents accessibility drift. Use a `<button>` with `usa-button` only when no shared component fits, and consider whether the design system should be extended instead.
+- **When no shared component fits, prefer USWDS component classes** (`usa-button`, `usa-input`, `usa-form-group`, `usa-combo-box__list`, …) before writing custom CSS.
+- **Use USWDS utility classes** (`position-relative`, `margin-bottom-2`, `text-center`, `display-flex`, …) for layout, spacing, and one-off style needs. The full utility set is generated from our design tokens, so utilities stay in sync with the per-state theme.
+- When none of the above fits, add SCSS in a co-located `.scss` file that references USWDS tokens (`@use 'uswds-core' as *;` and the `units()` / `color()` helpers). Don't hardcode colors, spacing, or font sizes.
+
 ## Getting help
 - If you're confused or having trouble with something, you are strongly encouraged to stop and ask for help. Especially if it's something your human might be better at.
 
@@ -98,10 +105,33 @@ We follow a test-driven development (TDD) approach: write tests first to fail, t
 - Apply CORS and rate-limiting where applicable; return safe error messages.
 - In React, avoid 'dangerouslySetInnerHtml'. If rendering HTML, sanitize it first.
 
+### Content Security Policy (CSP)
+- The portal enforces a strict CSP via `src/SEBT.Portal.Web/src/proxy.ts`. When adding **any browser-side call to a new external domain** (API, SDK, analytics, fonts), add the domain to the appropriate CSP directive (`connect-src`, `script-src`, `style-src`, `font-src`, etc.).
+- This is easy to miss because CSP is not enforced in local dev or in tests (MSW intercepts network calls). A missing entry means the feature silently fails in production — the browser blocks the request, and error-handling code gracefully degrades as if the service is down.
+
+### Client-side env vars (`NEXT_PUBLIC_*`)
+Next.js inlines `NEXT_PUBLIC_*` references into the client bundle at **build time**, not runtime. Adding a new client-exposed var requires four wire-ups, all needed for it to appear in deployed builds:
+
+1. `src/SEBT.Portal.Web/src/env.ts` — declare in the `client` schema and pass through.
+2. `src/SEBT.Portal.Web/Dockerfile` — add `ARG NEXT_PUBLIC_FOO=""` (BuildKit auto-exposes named ARGs as env vars to subsequent RUN steps; no explicit `ENV` bridge needed).
+3. `.github/workflows/deploy-ecr.yaml` — add `--build-arg NEXT_PUBLIC_FOO=${{ vars.FOO }}` to **both** the DC and CO docker build steps.
+4. **GitHub repo Variables** — set `vars.FOO` per environment (admin, out-of-band).
+
+Skipping any of (2)–(4) results in the var being empty in deployed bundles. Local dev reads from `.env`/`.env.local` and bypasses this whole pipeline, so the gap only surfaces in deployed environments.
+
 ### Data boundary enforcement
 - Enforce access control at the data boundary (the API endpoint that returns the data), not at the UI layer. Client-side guards are UX conveniences, not security controls.
 - When an authenticated user lacks sufficient authorization for a specific resource (e.g., insufficient IAL for their household's cases), return a 403 with structured ProblemDetails — not a 200 with filtered/empty data. The client needs to know *why* access was denied and *what to do about it* (e.g., `requiredIal` in the ProblemDetails extensions).
 - Auth claims in JWTs can go stale (e.g., household composition changes after login). Server-side checks that re-evaluate on every request are safer than trusting a token's claims about what the user is allowed to see.
+
+### PII at rest
+- Never store PII (household identifiers, case IDs, SSNs) in cleartext in the portal database when the data is only needed for lookups (e.g., cooldown checks, deduplication). Use `IIdentifierHasher` (HMAC-SHA256 with `IdentifierHasher:SecretKey`) to produce deterministic hashes for storage and lookup.
+- `IIdentifierHasher.Hash()` normalizes input via `IdentifierNormalizer` (trims whitespace, strips dashes and spaces) before hashing. This means `"SEBT-001"` and `"SEBT001"` produce the same hash. Ensure read and write paths use `Hash()` consistently.
+- Hashing is one-way — if there's any uncertainty about whether original cleartext values may need to be retrieved later, stop and ask a human. Encryption or another reversible approach may be more appropriate.
+
+### State connector data boundaries
+- State connectors provide read-only household data by default. The portal should not assume connectors support write-back except for well-known write operations: mailing address updates, card replacement requests (yes/no), and contact/communications preferences.
+- When the portal needs to enforce business rules (e.g., cooldown periods) based on user actions, persist that state in the portal database rather than relying on state connector round-trips.
 
 ## Common Commands
 **Prefer pnpm root-level scripts** (`pnpm api:test`, `pnpm api:build`, etc.) over raw `dotnet` commands. They handle working directories correctly and are the team convention. Use raw `dotnet` commands only for targeted operations like single-test filters.
@@ -170,6 +200,12 @@ This is a .NET 10 + Next.js 16 application following Clean Architecture. For det
 ### Layer boundaries
 - Inner layers (Kernel, Core, UseCases) must not reference web/HTTP concepts (ProblemDetails, status codes, headers, controllers). They define abstractions; outer layers (Api, Web) decide how to serialize and transport them.
 
+### Domain model: Cases vs Applications
+- A `SummerEbtCase` represents a single child with issued benefits. Most cases are auto-issued (no application). Card/EBT data and benefit delivery belong here.
+- An `Application` represents a guardian-submitted application for one or more children. Only a small fraction of children have one. A Case may link to an Application, but most won't.
+- State backends represent this differently: DC distinguishes cases from applications similarly to the portal; Colorado represents everything as an "application." The state connector mapping layer disaggregates into the portal's canonical model based on state-specific attributes.
+- Known tech debt: `Application` still carries card lifecycle fields (`CardStatus`, `CardRequestedAt`, etc.) that belong on `SummerEbtCase`.
+
 ### Multi-State Plugin System
 State-specific behavior uses MEF (System.Composition) plugins loaded at runtime from `plugins-{state}/` directories. Plugin contracts live in the separate `sebt-self-service-portal-state-connector` repo; implementations live in per-state repos (`-dc-connector`, `-co-connector`). The `STATE` env var controls which state config overlay loads. See [docs/adr/0007-multi-state-plugin-approach.md](./docs/adr/0007-multi-state-plugin-approach.md) for the design rationale.
 
@@ -179,6 +215,8 @@ State-specific behavior uses MEF (System.Composition) plugins loaded at runtime 
 
 ### Frontend
 Uses Next.js App Router with route groups: `(public)/` for login flows, `(authenticated)/` for protected pages. USWDS design tokens are generated via scripts before build. i18next handles internationalization with content files in `content/`.
+
+**React Query cache:** When a mutation should update cached data before navigating, `await queryClient.invalidateQueries()` — without `await`, the redirect races ahead and the destination page renders stale cache data.
 
 ## Branch Strategy
 - `main` — production source for all states

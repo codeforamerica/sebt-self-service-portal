@@ -30,4 +30,10 @@ public static class JwtClaimTypes
     /// Claim name for the ID proofing expiration timestamp.
     /// </summary>
     public const string IdProofingExpiresAt = "id_proofing_expires_at";
+
+    /// <summary>
+    /// Claim name for whether the user's record was co-loaded from an external state system.
+    /// Values: "true" or "false".
+    /// </summary>
+    public const string IsCoLoaded = "is_co_loaded";
 }

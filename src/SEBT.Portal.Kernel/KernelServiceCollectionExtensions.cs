@@ -1,4 +1,5 @@
 using Microsoft.Extensions.DependencyInjection;
+using SEBT.Portal.Kernel.Telemetry;
 
 namespace SEBT.Portal.Kernel;
 
@@ -9,7 +10,14 @@ public static class KernelServiceCollectionExtensions
         where TQueryHandler : class, IQueryHandler<TQuery, TResult>
     {
         services.AddTransient<IValidator<TQuery>, DataAnnotationsValidator<TQuery>>();
-        services.AddTransient<IQueryHandler<TQuery, TResult>, TQueryHandler>();
+        services.AddTransient<IQueryHandler<TQuery, TResult>>(sp =>
+        {
+            var inner = ActivatorUtilities.CreateInstance<TQueryHandler>(sp);
+            var instrumentationSource = sp.GetService<IInstrumentationSource>();
+            return instrumentationSource is not null
+                ? new InstrumentedQueryHandler<TQuery, TResult>(inner, instrumentationSource)
+                : inner;
+        });
 
         return services;
     }
@@ -20,7 +28,14 @@ public static class KernelServiceCollectionExtensions
         where TQuery : IQuery<TResult>
     {
         services.AddTransient<IValidator<TQuery>, DataAnnotationsValidator<TQuery>>();
-        services.AddTransient(queryHandlerFactory);
+        services.AddTransient<IQueryHandler<TQuery, TResult>>(sp =>
+        {
+            var inner = queryHandlerFactory(sp);
+            var instrumentationSource = sp.GetService<IInstrumentationSource>();
+            return instrumentationSource is not null
+                ? new InstrumentedQueryHandler<TQuery, TResult>(inner, instrumentationSource)
+                : inner;
+        });
 
         return services;
     }
@@ -30,7 +45,14 @@ public static class KernelServiceCollectionExtensions
         where TCommandHandler : class, ICommandHandler<TCommand, TResult>
     {
         services.AddTransient<IValidator<TCommand>, DataAnnotationsValidator<TCommand>>();
-        services.AddTransient<ICommandHandler<TCommand, TResult>, TCommandHandler>();
+        services.AddTransient<ICommandHandler<TCommand, TResult>>(sp =>
+        {
+            var inner = ActivatorUtilities.CreateInstance<TCommandHandler>(sp);
+            var instrumentationSource = sp.GetService<IInstrumentationSource>();
+            return instrumentationSource is not null
+                ? new InstrumentedCommandHandler<TCommand, TResult>(inner, instrumentationSource)
+                : inner;
+        });
 
         return services;
     }
@@ -41,7 +63,14 @@ public static class KernelServiceCollectionExtensions
         where TCommand : ICommand<TResult>
     {
         services.AddTransient<IValidator<TCommand>, DataAnnotationsValidator<TCommand>>();
-        services.AddTransient(commandHandlerFactory);
+        services.AddTransient<ICommandHandler<TCommand, TResult>>(sp =>
+        {
+            var inner = commandHandlerFactory(sp);
+            var instrumentationSource = sp.GetService<IInstrumentationSource>();
+            return instrumentationSource is not null
+                ? new InstrumentedCommandHandler<TCommand, TResult>(inner, instrumentationSource)
+                : inner;
+        });
 
         return services;
     }
@@ -51,7 +80,14 @@ public static class KernelServiceCollectionExtensions
         where TCommandHandler : class, ICommandHandler<TCommand>
     {
         services.AddTransient<IValidator<TCommand>, DataAnnotationsValidator<TCommand>>();
-        services.AddTransient<ICommandHandler<TCommand>, TCommandHandler>();
+        services.AddTransient<ICommandHandler<TCommand>>(sp =>
+        {
+            var inner = ActivatorUtilities.CreateInstance<TCommandHandler>(sp);
+            var instrumentationSource = sp.GetService<IInstrumentationSource>();
+            return instrumentationSource is not null
+                ? new InstrumentedCommandHandler<TCommand>(inner, instrumentationSource)
+                : inner;
+        });
 
         return services;
     }
@@ -62,7 +98,14 @@ public static class KernelServiceCollectionExtensions
         where TCommand : ICommand
     {
         services.AddTransient<IValidator<TCommand>, DataAnnotationsValidator<TCommand>>();
-        services.AddTransient(commandHandlerFactory);
+        services.AddTransient<ICommandHandler<TCommand>>(sp =>
+        {
+            var inner = commandHandlerFactory(sp);
+            var instrumentationSource = sp.GetService<IInstrumentationSource>();
+            return instrumentationSource is not null
+                ? new InstrumentedCommandHandler<TCommand>(inner, instrumentationSource)
+                : inner;
+        });
 
         return services;
     }

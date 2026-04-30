@@ -17,6 +17,7 @@ const DEFAULT_PROPS = {
   title: 'We\u2019re sorry, we aren\u2019t able to show your DC SUN Bucks information',
   body: 'You can go back to enter an ID number, or contact us if you need more help.',
   backHref: '/login/id-proofing',
+  backLabel: 'Enter an ID number',
   contactHref: 'https://sunbucks.dc.gov/page/contact-us',
   contactLabel: 'Contact us',
   canApply: true,
@@ -41,10 +42,10 @@ describe('OffBoardingContent', () => {
   })
 
   describe('Navigation buttons', () => {
-    it('renders a "Back" link pointing to the id-proofing form', () => {
+    it('renders the back link with the provided label, pointing to the id-proofing form', () => {
       render(<OffBoardingContent {...DEFAULT_PROPS} />)
 
-      const backLink = screen.getByRole('link', { name: /back/i })
+      const backLink = screen.getByRole('link', { name: DEFAULT_PROPS.backLabel })
       expect(backLink).toHaveAttribute('href', '/login/id-proofing')
     })
 

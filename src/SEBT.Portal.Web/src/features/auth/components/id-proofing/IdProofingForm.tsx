@@ -7,17 +7,36 @@ import { useTranslation } from 'react-i18next'
 import { AnalyticsEvents, useDataLayer } from '@sebt/analytics'
 import { Alert, Button, InputField } from '@sebt/design-system'
 
+import { useAuth } from '@/features/auth'
 import {
   clearChallengeContext,
   SK_CHALLENGE_ID
 } from '@/features/auth/components/doc-verify/sessionKeys'
-import { useSubmitIdProofing, type IdType } from '../../api'
+import {
+  SubmitIdProofingRequestSchema,
+  useRefreshToken,
+  useSubmitIdProofing,
+  type IdType
+} from '../../api'
 
 // UI-only sentinel value for the "none" radio option.
 // The API receives idType: null when the user selects this.
 const NONE_VALUE = 'none' as const
 
 type IdOptionValue = IdType | typeof NONE_VALUE
+
+/**
+ * Per-option validation rule for the ID value input.
+ *
+ * `digits: 9` means exactly 9 digits (after non-digit stripping).
+ * `digits: [7, 8]` means inclusive range.
+ *
+ * Undefined/absent means no digit-count check. The input renders as a plain
+ * text field and only the base "required" rule applies.
+ */
+export interface IdOptionValidation {
+  digits: number | [number, number]
+}
 
 export interface IdOption {
   value: IdOptionValue
@@ -27,6 +46,26 @@ export interface IdOption {
   helperKey?: string
   /** i18next key for the text input label shown when this option is selected */
   inputLabelKey?: string
+  /** Render a horizontal rule above this option to visually separate it from preceding options. */
+  dividerBefore?: boolean
+  /**
+   * Digit-count rule for the associated ID value input. When present, the form
+   * strips non-digits on change, applies a numeric keypad, caps length at the
+   * rule's upper bound, and enforces the rule on submit. State-specific rules
+   * live on the option rather than in the shared Zod schema.
+   */
+  validation?: IdOptionValidation
+}
+
+// Returns [min, max] for either form of the digits rule.
+function digitBounds(rule: IdOptionValidation): [number, number] {
+  return Array.isArray(rule.digits) ? rule.digits : [rule.digits, rule.digits]
+}
+
+function matchesDigitRule(value: string, rule: IdOptionValidation): boolean {
+  const digits = value.replace(/\D/g, '')
+  const [min, max] = digitBounds(rule)
+  return digits.length >= min && digits.length <= max
 }
 
 interface IdProofingFormProps {
@@ -60,41 +99,111 @@ export function IdProofingForm({ idOptions, contactLink, getDiToken }: IdProofin
   const [idValue, setIdValue] = useState('')
 
   const [dobErrors, setDobErrors] = useState<{ month?: string; day?: string; year?: string }>({})
+  // Composite errors that describe the date as a whole (impossible calendar date,
+  // future, >120 years ago) belong to the fieldset, not to any single input.
+  const [dobFieldsetError, setDobFieldsetError] = useState<string | null>(null)
   const [idTypeError, setIdTypeError] = useState<string | null>(null)
   const [idValueError, setIdValueError] = useState<string | null>(null)
   const [submitError, setSubmitError] = useState<string | null>(null)
 
   const submitIdProofing = useSubmitIdProofing()
+  const refreshToken = useRefreshToken()
   const isSubmitting = submitIdProofing.isPending
   const { setPageData, setUserData, trackEvent } = useDataLayer()
+  const { session } = useAuth()
+  const isCoLoaded = session?.isCoLoaded === true
 
   const selectedOption = idOptions.find((opt) => opt.value === selectedIdType)
   const showIdValueInput = selectedIdType !== null && selectedIdType !== NONE_VALUE
 
   const REQUIRED_FIELD_ERROR = tValidation('required')
+  // TODO: Use t('validation.ssnItinDigits') once key is available in dc.csv
+  const SSN_ITIN_SHAPE_ERROR = 'Enter exactly 9 digits.'
+  // TODO: Use t('validation.sevenOrEightDigits') once key is available in dc.csv
+  const SEVEN_OR_EIGHT_DIGITS_ERROR = 'Enter 7 or 8 digits.'
+  // TODO: Use t('validation.dobInvalid') once key is available in dc.csv
+  const DOB_INVALID_ERROR = 'Enter a valid date of birth.'
+
+  // Pick the user-facing error message that matches the rule's shape. The SSN
+  // and ITIN messages stay verbatim so the existing wording carries through;
+  // [7, 8] rules use a shared message; other shapes fall back to a generic.
+  function digitRuleErrorMessage(rule: IdOptionValidation): string {
+    const [min, max] = digitBounds(rule)
+    if (min === max && min === 9) return SSN_ITIN_SHAPE_ERROR
+    if (min === 7 && max === 8) return SEVEN_OR_EIGHT_DIGITS_ERROR
+    if (min === max) return `Enter exactly ${min} digits.`
+    return `Enter ${min} or ${max} digits.`
+  }
 
   function validateFields(): boolean {
     const newDobErrors: { month?: string; day?: string; year?: string } = {}
+    let newDobFieldsetError: string | null = null
 
     if (!dobMonth) newDobErrors.month = REQUIRED_FIELD_ERROR
     if (!dobDay) newDobErrors.day = REQUIRED_FIELD_ERROR
     if (!dobYear) newDobErrors.year = REQUIRED_FIELD_ERROR
 
-    setDobErrors(newDobErrors)
-
     let idTypeErr: string | null = null
     if (selectedIdType === null) {
       idTypeErr = REQUIRED_FIELD_ERROR
     }
-    setIdTypeError(idTypeErr)
 
     let idError: string | null = null
     if (showIdValueInput && !idValue.trim()) {
       idError = REQUIRED_FIELD_ERROR
     }
+
+    // Run the shared schema only when the required-field checks above haven't
+    // already flagged the payload. The schema enforces SSN/ITIN digit count
+    // and DOB calendar/range rules; required-ness stays field-local so each
+    // field gets its own "This is required" message.
+    const allRequiredFilled =
+      Object.keys(newDobErrors).length === 0 && idTypeErr === null && idError === null
+
+    if (allRequiredFilled) {
+      const parsed = SubmitIdProofingRequestSchema.safeParse({
+        dateOfBirth: { month: dobMonth, day: dobDay, year: dobYear },
+        idType: selectedIdType === NONE_VALUE || selectedIdType === null ? null : selectedIdType,
+        idValue: showIdValueInput ? idValue : null
+      })
+
+      if (!parsed.success) {
+        for (const issue of parsed.error.issues) {
+          const path = issue.path.join('.')
+          if (path === 'dateOfBirth') {
+            // The schema emits dateOfBirth issues for failures that describe
+            // the whole date (impossible calendar date, future, age cap), not
+            // any single field. Surface at the fieldset level so we don't
+            // mark an individual input invalid that's actually fine.
+            newDobFieldsetError = DOB_INVALID_ERROR
+          } else if (path === 'idValue' && showIdValueInput) {
+            idError = SSN_ITIN_SHAPE_ERROR
+          }
+        }
+      }
+
+      // Per-option digit-shape enforcement. The shared Zod schema only covers
+      // SSN/ITIN (federal, state-agnostic); other ID types carry their own
+      // rule on the IdOption. Run this after schema parsing so schema-level
+      // errors win when both apply.
+      if (idError === null && showIdValueInput && selectedOption?.validation) {
+        if (!matchesDigitRule(idValue, selectedOption.validation)) {
+          idError = digitRuleErrorMessage(selectedOption.validation)
+        }
+      }
+    }
+
+    setDobErrors(newDobErrors)
+    setDobFieldsetError(newDobFieldsetError)
+    setIdTypeError(idTypeErr)
     setIdValueError(idError)
 
-    return Object.keys(newDobErrors).length === 0 && idTypeErr === null && idError === null
+    return (
+      Object.keys(newDobErrors).length === 0 &&
+      newDobFieldsetError === null &&
+      idTypeErr === null &&
+      idError === null
+    )
   }
 
   async function handleSubmit(e: FormEvent<HTMLFormElement>) {
@@ -132,16 +241,35 @@ export function IdProofingForm({ idOptions, contactLink, getDiToken }: IdProofin
         router.push(`/login/id-proofing/doc-verify?challengeId=${response.challengeId}`)
       } else if (response.result === 'failed') {
         setPageData('idv_primary_status', 'fail')
+        // Co-loaded users reach "failed" only via SNAP/TANF + DOB mismatch (no Socure),
+        // so their failure is always a not-found. Non-co-loaded failures come from Socure.
+        setPageData('idv_primary_reason', isCoLoaded ? 'not_found' : 'socure_fail')
         trackEvent(AnalyticsEvents.IDV_PRIMARY_RESULT)
+        // Hand off offboarding context via URL query params so the server-rendered
+        // route page can branch copy (noIdProvided gets a distinct heading).
         const params = new URLSearchParams()
         if (response.canApply === false) {
           params.set('canApply', 'false')
+        }
+        if (response.offboardingReason) {
+          params.set('reason', response.offboardingReason)
         }
         const query = params.toString()
         router.push(`/login/id-proofing/off-boarding${query ? `?${query}` : ''}`)
       } else {
         setPageData('idv_primary_status', 'success')
         trackEvent(AnalyticsEvents.IDV_PRIMARY_RESULT)
+
+        // A successful co-loaded match flips user.IsCoLoaded server-side, but the cookie
+        // we hold was minted before the match. Refresh so the dashboard reads the updated
+        // claim. Swallow failures — leave the user on a working flow if the refresh hiccups;
+        // the dashboard will still load with the prior claim.
+        try {
+          await refreshToken.mutateAsync()
+        } catch {
+          // Intentionally silent.
+        }
+
         router.push('/dashboard')
       }
     } catch (err) {
@@ -168,15 +296,24 @@ export function IdProofingForm({ idOptions, contactLink, getDiToken }: IdProofin
       )}
 
       {/* Date of birth */}
-      <fieldset className="usa-fieldset">
+      <fieldset className={`usa-fieldset${dobFieldsetError ? ' usa-form-group--error' : ''}`}>
         <legend className="usa-legend">
           {t('labelDob')}
           <span className="text-secondary-dark"> *</span>
         </legend>
 
+        {dobFieldsetError && (
+          <span
+            className="usa-error-message"
+            role="alert"
+          >
+            {dobFieldsetError}
+          </span>
+        )}
+
         <div className="grid-row grid-gap">
           {/* Month */}
-          <div className="mobile-lg:grid-col-4">
+          <div className="mobile-lg:grid-col-7">
             <div
               className={
                 dobErrors.month ? 'usa-form-group usa-form-group--error' : 'usa-form-group'
@@ -205,7 +342,7 @@ export function IdProofingForm({ idOptions, contactLink, getDiToken }: IdProofin
                 aria-required="true"
                 aria-invalid={!!dobErrors.month}
               >
-                <option value=""></option>
+                <option value="">{`- ${tCommon('selectOne')} -`}</option>
                 {months.map((m) => (
                   <option
                     key={m.value}
@@ -219,7 +356,7 @@ export function IdProofingForm({ idOptions, contactLink, getDiToken }: IdProofin
           </div>
 
           {/* Day */}
-          <div className="mobile-lg:grid-col-4">
+          <div className="mobile-lg:grid-col-2">
             <InputField
               label={tPersonalInfo('labelDay')}
               type="text"
@@ -235,7 +372,7 @@ export function IdProofingForm({ idOptions, contactLink, getDiToken }: IdProofin
           </div>
 
           {/* Year */}
-          <div className="mobile-lg:grid-col-4">
+          <div className="mobile-lg:grid-col-3">
             <InputField
               label={tPersonalInfo('labelYear')}
               type="text"
@@ -271,31 +408,39 @@ export function IdProofingForm({ idOptions, contactLink, getDiToken }: IdProofin
         {idOptions.map((option) => (
           <div
             key={option.value}
-            className="usa-radio"
+            className="margin-top-2"
           >
-            <input
-              className="usa-radio__input usa-radio__input--tile"
-              type="radio"
-              id={`${formId}-id-type-${option.value}`}
-              name="idType"
-              value={option.value}
-              checked={selectedIdType === option.value}
-              onChange={() => {
-                setSelectedIdType(option.value)
-                setIdValue('')
-                setIdTypeError(null)
-                setIdValueError(null)
-              }}
-            />
-            <label
-              className="usa-radio__label"
-              htmlFor={`${formId}-id-type-${option.value}`}
-            >
-              {t(option.labelKey)}
-              {option.helperKey && (
-                <span className="usa-radio__label-description">{t(option.helperKey)}</span>
-              )}
-            </label>
+            {option.dividerBefore && (
+              <hr
+                aria-hidden="true"
+                className="margin-y-2 border-0 border-top border-base-ink"
+              />
+            )}
+            <div className="usa-radio">
+              <input
+                className="usa-radio__input usa-radio__input--tile"
+                type="radio"
+                id={`${formId}-id-type-${option.value}`}
+                name="idType"
+                value={option.value}
+                checked={selectedIdType === option.value}
+                onChange={() => {
+                  setSelectedIdType(option.value)
+                  setIdValue('')
+                  setIdTypeError(null)
+                  setIdValueError(null)
+                }}
+              />
+              <label
+                className="usa-radio__label"
+                htmlFor={`${formId}-id-type-${option.value}`}
+              >
+                <span className="text-bold">{t(option.labelKey)}</span>
+                {option.helperKey && (
+                  <span className="usa-radio__label-description">{t(option.helperKey)}</span>
+                )}
+              </label>
+            </div>
           </div>
         ))}
       </fieldset>
@@ -308,9 +453,23 @@ export function IdProofingForm({ idOptions, contactLink, getDiToken }: IdProofin
             type="text"
             name="idValue"
             value={idValue}
-            onChange={(e) => setIdValue(e.target.value)}
+            onChange={(e) => {
+              // When the option carries a digit-count rule, strip non-digits
+              // as the user types. maxLength on the input caps length at the
+              // rule's upper bound, so pasted input like "555-44-3333" lands
+              // in state as "555443333" (and is clipped to maxLength).
+              const raw = e.target.value
+              const next = selectedOption?.validation ? raw.replace(/\D/g, '') : raw
+              setIdValue(next)
+            }}
             autoComplete="off"
             isRequired
+            {...(selectedOption?.validation
+              ? {
+                  inputMode: 'numeric' as const,
+                  maxLength: digitBounds(selectedOption.validation)[1]
+                }
+              : {})}
             {...(idValueError ? { error: idValueError } : {})}
           />
         </div>

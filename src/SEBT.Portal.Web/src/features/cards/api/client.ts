@@ -20,8 +20,8 @@ export function useRequestCardReplacement() {
 
   return useMutation({
     mutationFn: requestCardReplacement,
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['householdData'] })
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ['householdData'] })
     },
     retry: (failureCount, error) => {
       if (error instanceof ApiError && error.status >= 400 && error.status < 500) {

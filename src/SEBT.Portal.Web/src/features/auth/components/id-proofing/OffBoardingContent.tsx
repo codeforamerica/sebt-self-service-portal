@@ -4,6 +4,7 @@ interface OffBoardingContentProps {
   title: string
   body: string
   backHref: string
+  backLabel: string
   contactHref: string
   contactLabel: string
   canApply: boolean
@@ -17,6 +18,7 @@ export function OffBoardingContent({
   title,
   body,
   backHref,
+  backLabel,
   contactHref,
   contactLabel,
   canApply,
@@ -31,25 +33,24 @@ export function OffBoardingContent({
     <>
       <h1
         id="off-boarding-title"
-        className="font-sans-xl text-bold line-height-sans-1 margin-bottom-3"
+        className="font-sans-xl text-bold line-height-sans-1 margin-bottom-4"
       >
         {title}
       </h1>
 
       <p className="font-sans-sm">{body}</p>
 
-      <div className="display-flex flex-row gap-2 margin-top-3">
-        {/* TODO: Use a common translation key for "Back" once available */}
+      <div className="display-flex flex-row gap-2 margin-y-4">
         <Link
           href={backHref}
-          className="usa-button usa-button--outline"
+          className="usa-button usa-button--outline margin-right-2"
         >
-          Back
+          {backLabel}
         </Link>
         <a
           href={contactHref}
           {...(isExternalLink ? { target: '_blank', rel: 'noopener noreferrer' } : {})}
-          className="usa-button usa-button--outline"
+          className="usa-button"
         >
           {contactLabel}
           {isExternalLink && <span className="usa-sr-only"> (opens in a new tab)</span>}
@@ -66,7 +67,7 @@ export function OffBoardingContent({
           {applyLabel && applyHref && (
             <a
               href={applyHref}
-              className="usa-button margin-top-1"
+              className="usa-button margin-top-4"
             >
               {applyLabel}
             </a>
