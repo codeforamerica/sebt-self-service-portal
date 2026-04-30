@@ -51,8 +51,12 @@ at query time into one of three values, computed on the pre-filter state:
 
 `GetHouseholdDataQueryHandler` attaches the classification to
 `HouseholdData.CoLoadedCohort`, then — for the `MixedOrApplicantExcluded`
-cohort only — strips co-loaded cases out of the response before mapping it
-to the API DTO. Co-loaded-only households retain their cases so the
+cohort only and when `CoLoadedCohortFilter:SuppressCoLoadedCasesForExcludedCohort`
+is `true` (the default) — strips co-loaded cases out of the response before mapping it
+to the API DTO and realigns `BenefitIssuanceType` with the filtered view.
+Setting `SuppressCoLoadedCasesForExcludedCohort` to `false` (via appsettings or Azure App Configuration)
+returns the full case list for that cohort while preserving cohort classification for analytics.
+Co-loaded-only households retain their cases so the
 dashboard isn't empty; per-case `AllowAddressChange` /
 `AllowCardReplacement` flags and command-handler guards prevent any
 self-service actions on those cases.
@@ -92,14 +96,19 @@ dashboard load.
 
 ## Update process
 
-To adjust the classification rule:
+To enable or disable **suppression** of co-loaded cases for the excluded cohort (without changing who is classified into each cohort):
+
+1. Set `CoLoadedCohortFilter:SuppressCoLoadedCasesForExcludedCohort` to `false` in environment-specific configuration or Azure App Configuration (reload applies on the options snapshot cadence).
+2. Default is `true`, matching the MVP behavior described above.
+
+To adjust the **classification rule**:
 
 1. Open `src/SEBT.Portal.UseCases/Household/GetHouseholdData/GetHouseholdDataQueryHandler.cs`.
 2. Edit `ClassifyCoLoadedCohort` (and `IsPendingApplicant` if the applicant
    definition shifts).
 3. Update `test/SEBT.Portal.Tests/Unit/UseCases/Household/GetHouseholdDataQueryHandlerTests.cs`
    so each of the three cohort values is covered, including any new edge
-   cases the rule change introduces.
+   cases the rule change introduces, and scenarios for `SuppressCoLoadedCasesForExcludedCohort` true/false where relevant.
 4. If the set of cohort values changes, update:
    - `src/SEBT.Portal.Core/Models/Household/CoLoadedCohort.cs`
    - `src/SEBT.Portal.Web/src/features/household/api/schema.ts`

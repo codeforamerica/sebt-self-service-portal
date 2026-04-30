@@ -1,4 +1,5 @@
 using Microsoft.Extensions.Logging;
+using SEBT.Portal.Core.AppSettings;
 using SEBT.Portal.Core.Models.Auth;
 using SEBT.Portal.Core.Models.Household;
 using SEBT.Portal.Core.Repositories;
@@ -20,6 +21,7 @@ public class GetHouseholdDataQueryHandler(
     ISelfServiceEvaluator selfServiceEvaluator,
     ICardReplacementRequestRepository cardReplacementRepo,
     IIdentifierHasher identifierHasher,
+    CoLoadedCohortFilterSettings coLoadedCohortFilter,
     ILogger<GetHouseholdDataQueryHandler> logger)
     : IQueryHandler<GetHouseholdDataQuery, HouseholdData>
 {
@@ -79,7 +81,8 @@ public class GetHouseholdDataQueryHandler(
         householdData.CoLoadedCohort = ClassifyCoLoadedCohort(householdData);
 
         var nonCoLoaded = householdData.SummerEbtCases.Where(c => !c.IsCoLoaded).ToList();
-        if (householdData.CoLoadedCohort == CoLoadedCohort.MixedOrApplicantExcluded)
+        if (coLoadedCohortFilter.SuppressCoLoadedCasesForExcludedCohort
+            && householdData.CoLoadedCohort == CoLoadedCohort.MixedOrApplicantExcluded)
         {
             // Suppress co-loaded cases from the payload for the excluded cohort
             // (mixed-eligibility families and applicants with co-loaded benefits).
@@ -130,9 +133,11 @@ public class GetHouseholdDataQueryHandler(
 
     /// <summary>
     /// Classifies the household based on its pre-filter case list and applications.
-    /// See <see cref="CoLoadedCohort"/> for the rule
-    /// The rule is intentionally derived at runtime so ops
-    /// changes to the cohort definition require only a code change, not a data migration.
+    /// See <see cref="CoLoadedCohort"/> for the rule.
+    /// The rule is intentionally derived at runtime from case and application state; changing
+    /// who falls into each cohort still requires a code change. Whether co-loaded cases are
+    /// suppressed for the excluded cohort is configured via
+    /// <see cref="CoLoadedCohortFilterSettings.SuppressCoLoadedCasesForExcludedCohort"/>.
     /// </summary>
     private static CoLoadedCohort ClassifyCoLoadedCohort(HouseholdData household)
     {
