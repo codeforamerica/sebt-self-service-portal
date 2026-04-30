@@ -38,17 +38,21 @@ ARG BUILD_CONFIGURATION=Release
 
 WORKDIR /src
 
-# Copy project files for restore caching
-COPY src/SEBT.Portal.Api/SEBT.Portal.Api.csproj SEBT.Portal.Api/
-COPY src/SEBT.Portal.Core/SEBT.Portal.Core.csproj SEBT.Portal.Core/
-COPY src/SEBT.Portal.Infrastructure/SEBT.Portal.Infrastructure.csproj SEBT.Portal.Infrastructure/
-COPY src/SEBT.Portal.Infrastructure.Seeding/SEBT.Portal.Infrastructure.Seeding.csproj SEBT.Portal.Infrastructure.Seeding/
-COPY src/SEBT.Portal.Kernel/SEBT.Portal.Kernel.csproj SEBT.Portal.Kernel/
-COPY src/SEBT.Portal.Kernel.AspNetCore/SEBT.Portal.Kernel.AspNetCore.csproj SEBT.Portal.Kernel.AspNetCore/
-COPY src/SEBT.Portal.UseCases/SEBT.Portal.UseCases.csproj SEBT.Portal.UseCases/
+# Copy MSBuild props (enables RestorePackagesWithLockFile for all projects)
+# and NuGet config (defines sources + packageSourceMapping)
+COPY Directory.Build.props nuget.config ./
+
+# Copy project files and lockfiles for restore caching
+COPY src/SEBT.Portal.Api/SEBT.Portal.Api.csproj src/SEBT.Portal.Api/packages.lock.json SEBT.Portal.Api/
+COPY src/SEBT.Portal.Core/SEBT.Portal.Core.csproj src/SEBT.Portal.Core/packages.lock.json SEBT.Portal.Core/
+COPY src/SEBT.Portal.Infrastructure/SEBT.Portal.Infrastructure.csproj src/SEBT.Portal.Infrastructure/packages.lock.json SEBT.Portal.Infrastructure/
+COPY src/SEBT.Portal.Infrastructure.Seeding/SEBT.Portal.Infrastructure.Seeding.csproj src/SEBT.Portal.Infrastructure.Seeding/packages.lock.json SEBT.Portal.Infrastructure.Seeding/
+COPY src/SEBT.Portal.Kernel/SEBT.Portal.Kernel.csproj src/SEBT.Portal.Kernel/packages.lock.json SEBT.Portal.Kernel/
+COPY src/SEBT.Portal.Kernel.AspNetCore/SEBT.Portal.Kernel.AspNetCore.csproj src/SEBT.Portal.Kernel.AspNetCore/packages.lock.json SEBT.Portal.Kernel.AspNetCore/
+COPY src/SEBT.Portal.UseCases/SEBT.Portal.UseCases.csproj src/SEBT.Portal.UseCases/packages.lock.json SEBT.Portal.UseCases/
 
 # RUN dotnet restore SEBT.Portal.Infrastructure.Seeding/SEBT.Portal.Infrastructure.Seeding.csproj
-RUN dotnet restore SEBT.Portal.Api/SEBT.Portal.Api.csproj
+RUN dotnet restore SEBT.Portal.Api/SEBT.Portal.Api.csproj --locked-mode
 
 # Copy source and publish (--no-restore uses cached restore)
 COPY src/SEBT.Portal.Api/ SEBT.Portal.Api/
