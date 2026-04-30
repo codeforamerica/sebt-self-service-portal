@@ -22,6 +22,13 @@ We're colleagues working together. Neither of us is afraid to admit we don't kno
 - Frontend: TypeScript (not JavaScript). ESLint + Prettier with organize-imports plugin
 - Unix line endings (LF) enforced project-wide
 
+### Frontend styling
+- **Avoid inline `style={...}` props.** They bypass the design-token system, can't be themed per state, are hard to override, and don't compose with USWDS modifier classes.
+- **Reach for shared design-system components first** (`Button`, `InputField`, `Alert`, … from `@sebt/design-system`) before composing your own from raw HTML + USWDS classes. They already encapsulate ARIA wiring, USWDS class composition, and per-state theming — re-using them keeps behavior consistent and prevents accessibility drift. Use a `<button>` with `usa-button` only when no shared component fits, and consider whether the design system should be extended instead.
+- **When no shared component fits, prefer USWDS component classes** (`usa-button`, `usa-input`, `usa-form-group`, `usa-combo-box__list`, …) before writing custom CSS.
+- **Use USWDS utility classes** (`position-relative`, `margin-bottom-2`, `text-center`, `display-flex`, …) for layout, spacing, and one-off style needs. The full utility set is generated from our design tokens, so utilities stay in sync with the per-state theme.
+- When none of the above fits, add SCSS in a co-located `.scss` file that references USWDS tokens (`@use 'uswds-core' as *;` and the `units()` / `color()` helpers). Don't hardcode colors, spacing, or font sizes.
+
 ## Getting help
 - If you're confused or having trouble with something, you are strongly encouraged to stop and ask for help. Especially if it's something your human might be better at.
 

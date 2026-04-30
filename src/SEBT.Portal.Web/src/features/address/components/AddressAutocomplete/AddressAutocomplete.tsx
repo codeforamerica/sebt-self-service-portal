@@ -73,7 +73,8 @@ export function AddressAutocomplete({
     }
   })
 
-  const { suggestions, suggestionsVersion, isOpen, selectSuggestion, dismiss, open } = autocomplete
+  const { suggestions, suggestionsVersion, isOpen, isLoading, selectSuggestion, dismiss, open } =
+    autocomplete
 
   // Reset keyboard focus when suggestions change (e.g. secondary lookup replaces primary results).
   // useLayoutEffect fires synchronously after DOM mutations so the reset is applied before
@@ -143,8 +144,7 @@ export function AddressAutocomplete({
 
   return (
     <div
-      className={error ? 'usa-form-group usa-form-group--error' : 'usa-form-group'}
-      style={{ position: 'relative' }}
+      className={`${error ? 'usa-form-group usa-form-group--error' : 'usa-form-group'} position-relative`}
     >
       <label
         className="usa-label"
@@ -233,6 +233,7 @@ export function AddressAutocomplete({
         role="status"
         aria-live="polite"
         aria-atomic="true"
+        aria-busy={isLoading}
         className="usa-sr-only"
       >
         {isOpen && suggestions.length > 0
