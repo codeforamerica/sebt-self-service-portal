@@ -91,7 +91,7 @@ describe('HouseholdSummary', () => {
     mockReturnData = { ...defaultMockData, applications: [pendingApp] }
     render(<HouseholdSummary />)
     expect(screen.getByText('Enrolled')).toBeInTheDocument()
-    expect(screen.getByText('Application in-progress')).toBeInTheDocument()
+    expect(screen.getByText('Application in-process')).toBeInTheDocument()
   })
 
   it('renders in-progress status for pending application when no cases', () => {
