@@ -58,7 +58,7 @@
     </When>
     <Otherwise>
       <ItemGroup>
-        <PackageReference Include="SEBT.Portal.StatesPlugins.Interfaces" Version="0.0.1-*" />
+        <PackageReference Include="SEBT.Portal.StatesPlugins.Interfaces" Version="0.0.2-*" />
         <!-- HouseholdRepositoryTests requires plugin model types (Models.Household.*, etc.). When only the package is used (no state-connector project), the package may not expose those namespaces, so exclude the file to allow the project to build. -->
         <Compile Remove="Unit/Repositories/HouseholdRepositoryTests.cs" />
       </ItemGroup>

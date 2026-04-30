@@ -75,7 +75,7 @@ public class DatabaseSeeder : Core.Services.IDatabaseSeeder
                 u.IalLevel = UserIalLevel.IAL1plus;
                 u.CoLoadedLastUpdated = now.AddDays(-5);
                 u.IdProofingCompletedAt = now.AddDays(-10);
-                u.Phone = "5551234567";
+                u.Phone = "8185558439";
                 u.SnapId = "SNAP-CO-001";
                 u.TanfId = "TANF-CO-001";
                 u.Ssn = "123456789";
@@ -160,7 +160,7 @@ public class DatabaseSeeder : Core.Services.IDatabaseSeeder
                             u.IdProofingCompletedAt = now.AddDays(DaysSinceIdProofingCompleted);
 
                             u.CoLoadedLastUpdated = now.AddDays(DaysSinceCoLoadedUpdate);
-                            u.Phone = "5551234567";
+                            u.Phone = "8185558439";
                             u.SnapId = "SNAP-CO-001";
                             u.TanfId = "TANF-CO-001";
                             u.Ssn = "123456789";
@@ -207,7 +207,7 @@ public class DatabaseSeeder : Core.Services.IDatabaseSeeder
 
                             u.IsCoLoaded = false;
                             u.CoLoadedLastUpdated = null;
-                            u.Phone = "5559876543";
+                            u.Phone = "8185558440";
                             u.SnapId = "SNAP-VER-001";
                             u.TanfId = "TANF-VER-001";
                             u.Ssn = "123456789";
@@ -342,7 +342,7 @@ public class DatabaseSeeder : Core.Services.IDatabaseSeeder
                             u.IdProofingCompletedAt = now.AddDays(DaysSinceIdProofingCompleted);
 
                             u.CoLoadedLastUpdated = now.AddDays(DaysSinceCoLoadedUpdate);
-                            u.Phone = "5551234567";
+                            u.Phone = "8185558439";
                             u.SnapId = "SNAP-CO-001";
                             u.TanfId = "TANF-CO-001";
                             u.Ssn = "123456789";
@@ -389,7 +389,7 @@ public class DatabaseSeeder : Core.Services.IDatabaseSeeder
 
                             u.IsCoLoaded = false;
                             u.CoLoadedLastUpdated = null;
-                            u.Phone = "5559876543";
+                            u.Phone = "8185558440";
                             u.SnapId = "SNAP-VER-001";
                             u.TanfId = "TANF-VER-001";
                             u.Ssn = "123456789";
