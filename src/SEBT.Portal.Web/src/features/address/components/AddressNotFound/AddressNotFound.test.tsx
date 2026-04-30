@@ -173,6 +173,7 @@ describe('AddressNotFound', () => {
     })
 
     it('CO: shows "Edit the address" button and "Use this address" link if not blocked', () => {
+      mockState = 'co'
       renderComponent()
 
       expect(screen.getByRole('button', { name: /edit the address/i })).toBeInTheDocument()
@@ -180,6 +181,7 @@ describe('AddressNotFound', () => {
     })
 
     it('CO: does not show "Contact us"', () => {
+      mockState = 'co'
       renderComponent()
 
       expect(screen.queryByRole('link', { name: /contact us/i })).not.toBeInTheDocument()
@@ -200,6 +202,7 @@ describe('AddressNotFound', () => {
     })
 
     it('CO: "Use this address" sets address and navigates to replacement cards', async () => {
+      mockState = 'co'
       const { user } = renderComponent()
 
       const useButton = screen.getByRole('button', { name: /use this address/i })
@@ -209,6 +212,7 @@ describe('AddressNotFound', () => {
     })
 
     it('CO: "Use this address" preserves validationResult in context (prevents FlowGuard race)', async () => {
+      mockState = 'co'
       const { user } = renderComponent(TEST_ADDRESS, TEST_VALIDATION_RESULT, {
         includeInspector: true
       })
