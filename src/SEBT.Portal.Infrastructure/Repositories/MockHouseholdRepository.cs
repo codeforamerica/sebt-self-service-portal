@@ -1210,6 +1210,7 @@ public class MockHouseholdRepository : IHouseholdRepository
                 IsCoLoaded = sec.IsCoLoaded,
                 IsStreamlineCertified = sec.IsStreamlineCertified,
                 EbtCaseNumber = sec.EbtCaseNumber,
+                CaseDisplayNumber = sec.CaseDisplayNumber,
                 EbtCardLastFour = sec.EbtCardLastFour,
                 EbtCardStatus = sec.EbtCardStatus,
                 EbtCardIssueDate = sec.EbtCardIssueDate,
