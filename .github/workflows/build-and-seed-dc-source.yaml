@@ -34,8 +34,10 @@ jobs:
         uses: aws-actions/amazon-ecr-login@v2
 
       - name: Build and push seed image
+        env:
+          ECR_URL: ${{ secrets.ECR_DC_SOURCE_SEED_REPOSITORY_URL }}
         run: |
-          IMAGE="${{ secrets.ECR_DC_SOURCE_SEED_REPOSITORY_URL }}:latest"
+          IMAGE="${ECR_URL}:latest"
           docker build --platform linux/amd64 -f Dockerfile.seed -t "$IMAGE" .
           docker push "$IMAGE"
 
@@ -86,17 +88,21 @@ jobs:
         id: run
         run: |
           set -euo pipefail
-          NET_CONFIG=$(aws ecs describe-services \
+          NET_CONFIG_JSON=$(aws ecs describe-services \
             --cluster "${{ steps.discover.outputs.cluster }}" \
             --services "${{ steps.discover.outputs.api_service }}" \
             --query 'services[0].networkConfiguration.awsvpcConfiguration' \
             --output json)
 
+          SUBNETS=$(echo "$NET_CONFIG_JSON" | jq -r '.subnets | join(",")')
+          SGS=$(echo "$NET_CONFIG_JSON" | jq -r '.securityGroups | join(",")')
+          PUBLIC_IP=$(echo "$NET_CONFIG_JSON" | jq -r '.assignPublicIp')
+
           TASK_ARN=$(aws ecs run-task \
             --cluster "${{ steps.discover.outputs.cluster }}" \
             --task-definition "$TASK_FAMILY" \
             --launch-type FARGATE \
-            --network-configuration "awsvpcConfiguration=$NET_CONFIG" \
+            --network-configuration "awsvpcConfiguration={subnets=[$SUBNETS],securityGroups=[$SGS],assignPublicIp=$PUBLIC_IP}" \
             --query 'tasks[0].taskArn' \
             --output text)
 
@@ -127,16 +133,21 @@ jobs:
             --order-by LastEventTime --descending \
             --max-items 1 \
             --query 'logStreams[0].logStreamName' \
-            --output text)
+            --output text 2>/dev/null || echo "")
 
-          echo ""
-          echo "--- Last 50 log events from $LOG_STREAM ---"
-          aws logs get-log-events \
-            --log-group-name "$LOG_GROUP" \
-            --log-stream-name "$LOG_STREAM" \
-            --limit 50 \
-            --query 'events[].message' \
-            --output text | tr '\t' '\n'
+          if [ -n "$LOG_STREAM" ] && [ "$LOG_STREAM" != "None" ]; then
+            echo ""
+            echo "--- Last 50 log events from $LOG_STREAM ---"
+            aws logs get-log-events \
+              --log-group-name "$LOG_GROUP" \
+              --log-stream-name "$LOG_STREAM" \
+              --limit 50 \
+              --query 'events[].message' \
+              --output text 2>/dev/null | tr '\t' '\n' || echo "(could not fetch log events)"
+          else
+            echo ""
+            echo "(no log stream available — task may not have produced logs yet)"
+          fi
 
           if [ "$EXIT_CODE" != "0" ]; then
             echo ""
