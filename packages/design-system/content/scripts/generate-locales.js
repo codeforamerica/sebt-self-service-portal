@@ -726,7 +726,7 @@ function main() {
       }
 
       // Save hash for caching
-      // saveHash(stateFiles);
+      saveHash(stateFiles);
 
       // Summary
       console.log(`✅ Generated ${totalFileCount} total locale files:`);
