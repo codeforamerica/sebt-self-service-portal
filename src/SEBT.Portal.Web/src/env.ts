@@ -44,7 +44,11 @@ export const env = createEnv({
      * Development only: when `true`, IalGuard still sends users to OIDC step-up even if the portal JWT already has IAL1+.
      * No effect unless NODE_ENV is `development`.
      */
-    NEXT_PUBLIC_DEBUG_REPEAT_OIDC_STEP_UP: z.enum(['true', 'false']).optional()
+    NEXT_PUBLIC_DEBUG_REPEAT_OIDC_STEP_UP: z.enum(['true', 'false']).optional(),
+    // Smarty US Autocomplete Pro embeddable key.
+    // When set, the change-address form shows type-ahead suggestions.
+    // Omit to disable autocomplete (users type addresses manually).
+    NEXT_PUBLIC_SMARTY_EMBEDDED_KEY: z.string().min(1).optional()
   },
 
   /**
@@ -62,7 +66,8 @@ export const env = createEnv({
     NEXT_PUBLIC_SOCURE_SDK_KEY: process.env.NEXT_PUBLIC_SOCURE_SDK_KEY,
     NEXT_PUBLIC_SOCURE_DI_SDK_KEY: process.env.NEXT_PUBLIC_SOCURE_DI_SDK_KEY,
     NEXT_PUBLIC_MOCK_SOCURE: process.env.NEXT_PUBLIC_MOCK_SOCURE,
-    NEXT_PUBLIC_DEBUG_REPEAT_OIDC_STEP_UP: process.env.NEXT_PUBLIC_DEBUG_REPEAT_OIDC_STEP_UP
+    NEXT_PUBLIC_DEBUG_REPEAT_OIDC_STEP_UP: process.env.NEXT_PUBLIC_DEBUG_REPEAT_OIDC_STEP_UP,
+    NEXT_PUBLIC_SMARTY_EMBEDDED_KEY: process.env.NEXT_PUBLIC_SMARTY_EMBEDDED_KEY
   },
 
   /**

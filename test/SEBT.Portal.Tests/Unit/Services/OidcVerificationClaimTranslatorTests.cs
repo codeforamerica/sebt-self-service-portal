@@ -168,6 +168,130 @@ public class OidcVerificationClaimTranslatorTests
     }
 
     [Fact]
+    public void Translate_uses_myCoIdVerificationLevel_when_primary_claim_missing()
+    {
+        var verificationDate = DateTime.UtcNow.AddDays(-30).ToString("o");
+        var claims = new Dictionary<string, string>
+        {
+            ["myCoIdVerificationLevel"] = "1.5",
+            ["socureIdVerificationDate"] = verificationDate
+        };
+
+        var result = CreateTranslator().Translate(claims);
+
+        Assert.NotNull(result);
+        Assert.Equal(UserIalLevel.IAL1plus, result.IalLevel);
+        Assert.False(result.IsExpired);
+    }
+
+    [Fact]
+    public void Translate_uses_myCoIdVerificationLevel_when_primary_level_unrecognized()
+    {
+        var verificationDate = DateTime.UtcNow.AddDays(-30).ToString("o");
+        var claims = new Dictionary<string, string>
+        {
+            ["socureIdVerificationLevel"] = "3.0",
+            ["myCoIdVerificationLevel"] = "2",
+            ["socureIdVerificationDate"] = verificationDate
+        };
+
+        var result = CreateTranslator().Translate(claims);
+
+        Assert.NotNull(result);
+        Assert.Equal(UserIalLevel.IAL2, result.IalLevel);
+    }
+
+    [Fact]
+    public void Translate_prefers_configured_level_claim_when_myCo_id_verification_level_also_present()
+    {
+        var verificationDate = DateTime.UtcNow.AddDays(-30).ToString("o");
+        var claims = new Dictionary<string, string>
+        {
+            ["socureIdVerificationLevel"] = "1.5",
+            ["myCoIdVerificationLevel"] = "2",
+            ["socureIdVerificationDate"] = verificationDate
+        };
+
+        var result = CreateTranslator().Translate(claims);
+
+        Assert.NotNull(result);
+        Assert.Equal(UserIalLevel.IAL1plus, result.IalLevel);
+    }
+
+    [Fact]
+    public void Translate_uses_myCoIdVerificationDate_when_primary_date_missing()
+    {
+        var expected = new DateTime(2025, 3, 1, 12, 0, 0, DateTimeKind.Utc);
+        var claims = new Dictionary<string, string>
+        {
+            ["socureIdVerificationLevel"] = "1.5",
+            ["myCoIdVerificationDate"] = expected.ToString("o")
+        };
+
+        var result = CreateTranslator().Translate(claims);
+
+        Assert.NotNull(result);
+        Assert.Equal(expected, result.VerifiedAt, TimeSpan.FromSeconds(1));
+    }
+
+    [Fact]
+    public void Translate_prefers_configured_date_claim_when_myCo_id_verification_date_also_present()
+    {
+        var primaryDate = new DateTime(2025, 4, 1, 10, 0, 0, DateTimeKind.Utc);
+        var fallbackDate = new DateTime(2025, 5, 1, 10, 0, 0, DateTimeKind.Utc);
+        var claims = new Dictionary<string, string>
+        {
+            ["socureIdVerificationLevel"] = "1.5",
+            ["socureIdVerificationDate"] = primaryDate.ToString("o"),
+            ["myCoIdVerificationDate"] = fallbackDate.ToString("o")
+        };
+
+        var result = CreateTranslator().Translate(claims);
+
+        Assert.NotNull(result);
+        Assert.Equal(primaryDate, result.VerifiedAt, TimeSpan.FromSeconds(1));
+    }
+
+    [Fact]
+    public void Translate_uses_myCoIdVerificationDate_when_primary_date_unparseable()
+    {
+        var expected = new DateTime(2025, 6, 10, 15, 30, 0, DateTimeKind.Utc);
+        var claims = new Dictionary<string, string>
+        {
+            ["socureIdVerificationLevel"] = "1.5",
+            ["socureIdVerificationDate"] = "not-a-date",
+            ["myCoIdVerificationDate"] = expected.ToString("o")
+        };
+
+        var result = CreateTranslator().Translate(claims);
+
+        Assert.NotNull(result);
+        Assert.Equal(expected, result.VerifiedAt, TimeSpan.FromSeconds(1));
+    }
+
+    [Fact]
+    public void Translate_uses_fallback_claim_names_from_settings_when_primary_missing()
+    {
+        var settings = new OidcVerificationClaimSettings
+        {
+            FallbackLevelClaimName = "customLevelFallback",
+            FallbackDateClaimName = "customDateFallback"
+        };
+        var expectedDate = new DateTime(2025, 1, 15, 14, 0, 0, DateTimeKind.Utc);
+        var claims = new Dictionary<string, string>
+        {
+            ["customLevelFallback"] = "1.5",
+            ["customDateFallback"] = expectedDate.ToString("o")
+        };
+
+        var result = CreateTranslator(claimSettings: settings).Translate(claims);
+
+        Assert.NotNull(result);
+        Assert.Equal(UserIalLevel.IAL1plus, result.IalLevel);
+        Assert.Equal(expectedDate, result.VerifiedAt, TimeSpan.FromSeconds(1));
+    }
+
+    [Fact]
     public void Translate_respects_custom_validity_duration()
     {
         var shortValidity = new IdProofingValiditySettings { ValidityDays = 365 };
