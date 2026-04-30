@@ -77,6 +77,8 @@ const contentDir = join(__dirname, '..');
 const rootDir = join(contentDir, '..');
 const rel = p => relative(rootDir, p);
 
+const ignoredStringIndicator = "!N/A!"
+
 // Configuration
 const CONFIG = {
   // State CSV files directory (content/states/{state}.csv)
@@ -342,7 +344,7 @@ function buildStateLocaleData(rows, state) {
     const spanishValue = spanishIdx !== -1 ? row[spanishIdx] || '' : '';
 
     // Skip empty rows or rows without content keys
-    if (!contentKey || !contentKey.trim()) continue;
+    if (!contentKey || !contentKey.trim() || englishValue === ignoredStringIndicator) continue;
 
     const parsed = parseContentKey(contentKey);
     if (!parsed) continue;
