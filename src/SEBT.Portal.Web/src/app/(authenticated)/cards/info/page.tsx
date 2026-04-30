@@ -1,17 +1,21 @@
 'use client'
 
+import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 
-import Link from 'next/link'
+import { useHouseholdData } from '@/features/household'
+import { Alert, Button, getState } from '@sebt/design-system'
 
-import { CoLoadedInfo } from '@/features/address/components/CoLoadedInfo'
-import { Alert, getState } from '@sebt/design-system'
+const FIS_PHONE_HREF = 'tel:+18883049167'
 
 export default function CardInfoPage() {
-  const { t } = useTranslation('confirmInfo')
+  const { t: tInfo } = useTranslation('confirmInfo')
+  const { t: tResult } = useTranslation('result')
+  const { t: tCommon } = useTranslation('common')
   const router = useRouter()
+  const { data, isLoading } = useHouseholdData()
   const isDC = getState() === 'dc'
 
   useEffect(() => {
@@ -20,41 +24,81 @@ export default function CardInfoPage() {
     }
   }, [isDC, router])
 
-  if (!isDC) {
+  if (!isDC || isLoading) {
     return (
       <div
         aria-busy="true"
         role="status"
       >
-        <span className="usa-sr-only">Loading...</span>
+        <span className="usa-sr-only">Loading…</span>
       </div>
     )
   }
 
+  // The "Go to the dashboard" alert only makes sense when there's at least one
+  // SUN Bucks card on the dashboard for the user to act on. Fully co-loaded
+  // households have no replace-card button waiting for them, so suppress it.
+  const hasSunBucksCard = data?.summerEbtCases.some((c) => c.issuanceType === 'SummerEbt') ?? false
+
+  const officeAddresses = tResult('replaceCardBody3').split(/\r?\n/).filter(Boolean)
+
   return (
-    <div className="grid-container maxw-tablet padding-top-4 padding-bottom-4">
-      <h1 className="font-sans-xl text-primary">
-        {t('coLoadedInfoTitle', 'Getting a replacement SNAP or TANF EBT card')}
+    <div className="grid-container maxw-tablet padding-top-4">
+      <h1 className="font-sans-xl text-ink margin-bottom-4">
+        {tInfo('coLoadedInfoTitle', 'Getting a replacement SNAP or TANF EBT card')}
       </h1>
 
-      <Alert
-        variant="info"
-        slim
+      <p
         className="margin-bottom-3"
+        style={{ whiteSpace: 'pre-line' }}
       >
-        {/* TODO: Use t('coLoadedSunBucksNote') once key is available in CSV */}
-        You can get a new DC SUN Bucks card if you need one. Go to the portal dashboard and tap
-        &quot;Request a replacement card&quot; under the child&apos;s name that has benefits issued
-        to a DC SUN Bucks card.{' '}
-        <Link
-          href="/dashboard"
+        {tResult('replaceCardBody1')}
+      </p>
+
+      <p className="margin-bottom-2">{tResult('replaceCardBody2')}</p>
+      <ul className="usa-list usa-list--small-bullets">
+        {officeAddresses.map((line) => (
+          <li key={line}>{line}</li>
+        ))}
+      </ul>
+
+      <p className="margin-top-2 margin-bottom-1">
+        {/* TODO: Replace with t('replaceCardByMail') once the key is added to the CSV. */}
+        You can also request a replacement EBT card by mail by calling FIS at{' '}
+        <a
+          href={FIS_PHONE_HREF}
           className="usa-link"
         >
-          Go to the dashboard
-        </Link>
-      </Alert>
+          (888) 304-9167
+        </a>
+        .
+      </p>
 
-      <CoLoadedInfo />
+      {hasSunBucksCard && (
+        <Alert
+          variant="info"
+          slim
+          className="margin-y-3"
+        >
+          {tResult('replaceCardBody4')}{' '}
+          <Link
+            href="/dashboard"
+            className="usa-link"
+          >
+            {/* TODO: Use a dedicated key once "S6 - Request Replacement Card FIS - Action"
+                stops colliding with S5's "action" key in the result namespace. */}
+            Go to the dashboard
+          </Link>
+        </Alert>
+      )}
+
+      <Button
+        variant="outline"
+        type="button"
+        onClick={() => router.back()}
+      >
+        {tCommon('back', 'Back')}
+      </Button>
     </div>
   )
 }

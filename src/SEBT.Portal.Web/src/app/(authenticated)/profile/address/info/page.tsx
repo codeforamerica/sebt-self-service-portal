@@ -1,23 +1,20 @@
 'use client'
 
+import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 
-import { CoLoadedInfo } from '@/features/address/components/CoLoadedInfo'
 import { useHouseholdData } from '@/features/household'
-import { getState } from '@sebt/design-system'
+import { Button, getState } from '@sebt/design-system'
 
-export default function CoLoadedInfoPage() {
-  const { t } = useTranslation('confirmInfo')
+export default function CoLoadedAddressInfoPage() {
+  const { t: tDashboard } = useTranslation('dashboard')
+  const { t: tCommon } = useTranslation('common')
   const router = useRouter()
   const { data, isLoading } = useHouseholdData()
   const isDC = getState() === 'dc'
 
-  // This page's content is SNAP/TANF co-loaded guidance (FIS callout, keep-your-card
-  // message). Users denied address update for other reasons (e.g. Pending/Denied
-  // application status via AllowedCaseStatuses) get bounced to /profile, where
-  // ActionButtons renders the generic "self-service unavailable" alert.
   const isCoLoaded =
     data?.benefitIssuanceType === 'SnapEbtCard' || data?.benefitIssuanceType === 'TanfEbtCard'
 
@@ -43,13 +40,39 @@ export default function CoLoadedInfoPage() {
   }
 
   return (
-    <div className="grid-container maxw-tablet">
-      {/* TODO: Remove fallback once coLoadedAddressInfoTitle is added to CSV */}
-      <h1>{t('coLoadedAddressInfoTitle', 'How to update your mailing address')}</h1>
-      <CoLoadedInfo
-        variant="address"
-        terminal
-      />
+    <div className="grid-container maxw-tablet padding-top-4 padding-bottom-4">
+      <h1 className="font-sans-xl text-ink">{tDashboard('coLoadedAddressUpdateTitle')}</h1>
+
+      <p>{tDashboard('coLoadedAddressUpdateBody1')}</p>
+
+      <p>{tDashboard('coLoadedAddressUpdateBody2')}</p>
+      <p>
+        <Link
+          href="/cards/info"
+          className="usa-link"
+        >
+          {tDashboard('coLoadedAddressUpdateAction2')}
+        </Link>
+      </p>
+
+      <p>{tDashboard('coLoadedAddressUpdateBody3')}</p>
+      <p>
+        <Link
+          href="/contact"
+          className="usa-link"
+        >
+          {tDashboard('coLoadedAddressUpdateAction3')}
+        </Link>
+      </p>
+
+      <Button
+        variant="outline"
+        type="button"
+        onClick={() => router.back()}
+        className="margin-top-3"
+      >
+        {tCommon('back', 'Back')}
+      </Button>
     </div>
   )
 }

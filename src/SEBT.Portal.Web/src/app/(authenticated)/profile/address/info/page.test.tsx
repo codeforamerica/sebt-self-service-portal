@@ -3,13 +3,15 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 import type { HouseholdData } from '@/features/household'
 
-import CoLoadedInfoPage from './page'
+import CoLoadedAddressInfoPage from './page'
 
 const mockReplace = vi.fn()
+const mockBack = vi.fn()
 
 vi.mock('next/navigation', () => ({
   useRouter: () => ({
-    replace: mockReplace
+    replace: mockReplace,
+    back: mockBack
   })
 }))
 
@@ -21,10 +23,6 @@ vi.mock('@sebt/design-system', async (importOriginal) => {
     getState: () => mockState
   }
 })
-
-vi.mock('@/features/address/components/CoLoadedInfo', () => ({
-  CoLoadedInfo: () => <div data-testid="co-loaded-info">CoLoadedInfo content</div>
-}))
 
 let mockHouseholdData: HouseholdData | null = null
 let mockIsLoading = false
@@ -47,70 +45,84 @@ function makeHousehold(partial: Partial<HouseholdData> = {}): HouseholdData {
   } as HouseholdData
 }
 
-describe('CoLoadedInfoPage', () => {
+describe('CoLoadedAddressInfoPage', () => {
   beforeEach(() => {
     mockReplace.mockClear()
+    mockBack.mockClear()
     mockState = 'dc'
     mockHouseholdData = null
     mockIsLoading = false
   })
 
-  it('renders CoLoadedInfo content for co-loaded DC household (SNAP)', () => {
-    mockState = 'dc'
+  it('renders the SNAP/TANF mailing-address explainer for a co-loaded DC household (SNAP)', () => {
     mockHouseholdData = makeHousehold({ benefitIssuanceType: 'SnapEbtCard' })
-    render(<CoLoadedInfoPage />)
+    render(<CoLoadedAddressInfoPage />)
 
-    expect(screen.getByTestId('co-loaded-info')).toBeInTheDocument()
+    expect(
+      screen.getByRole('heading', { name: /mailing address for snap or tanf ebt card/i })
+    ).toBeInTheDocument()
     expect(mockReplace).not.toHaveBeenCalled()
   })
 
-  it('renders CoLoadedInfo content for co-loaded DC household (TANF)', () => {
-    mockState = 'dc'
+  it('renders the explainer for a co-loaded DC household (TANF)', () => {
     mockHouseholdData = makeHousehold({ benefitIssuanceType: 'TanfEbtCard' })
-    render(<CoLoadedInfoPage />)
+    render(<CoLoadedAddressInfoPage />)
 
-    expect(screen.getByTestId('co-loaded-info')).toBeInTheDocument()
-    expect(mockReplace).not.toHaveBeenCalled()
+    expect(
+      screen.getByRole('heading', { name: /mailing address for snap or tanf ebt card/i })
+    ).toBeInTheDocument()
+  })
+
+  it('links out to /cards/info for the replacement-card explainer', () => {
+    mockHouseholdData = makeHousehold({ benefitIssuanceType: 'SnapEbtCard' })
+    render(<CoLoadedAddressInfoPage />)
+
+    const replaceLink = screen.getByRole('link', {
+      name: /tap here to learn how to get a replacement snap or tanf ebt card/i
+    })
+    expect(replaceLink).toHaveAttribute('href', '/cards/info')
+  })
+
+  it('links out to /contact for the contact-preferences flow', () => {
+    mockHouseholdData = makeHousehold({ benefitIssuanceType: 'SnapEbtCard' })
+    render(<CoLoadedAddressInfoPage />)
+
+    const contactLink = screen.getByRole('link', {
+      name: /tap here to update your contact preferences/i
+    })
+    expect(contactLink).toHaveAttribute('href', '/contact')
   })
 
   it('redirects non-co-loaded DC households to /profile (SummerEbt benefit)', () => {
-    // A DC household denied address update for reasons other than co-loaded
-    // (e.g. Pending/Denied application status). The info page's FIS/SNAP-TANF
-    // guidance does not apply — send the user back to the dashboard, where the
-    // generic "self-service unavailable" alert explains the denial.
-    mockState = 'dc'
     mockHouseholdData = makeHousehold({ benefitIssuanceType: 'SummerEbt' })
-    render(<CoLoadedInfoPage />)
+    render(<CoLoadedAddressInfoPage />)
 
     expect(mockReplace).toHaveBeenCalledWith('/profile')
-    expect(screen.queryByTestId('co-loaded-info')).not.toBeInTheDocument()
   })
 
   it('redirects non-co-loaded DC households to /profile (Unknown benefit)', () => {
-    mockState = 'dc'
     mockHouseholdData = makeHousehold({ benefitIssuanceType: 'Unknown' })
-    render(<CoLoadedInfoPage />)
+    render(<CoLoadedAddressInfoPage />)
 
     expect(mockReplace).toHaveBeenCalledWith('/profile')
-    expect(screen.queryByTestId('co-loaded-info')).not.toBeInTheDocument()
   })
 
-  it('redirects non-DC users to dashboard', () => {
+  it('redirects non-DC users to /dashboard', () => {
     mockState = 'co'
     mockHouseholdData = makeHousehold({ benefitIssuanceType: 'SummerEbt' })
-    render(<CoLoadedInfoPage />)
+    render(<CoLoadedAddressInfoPage />)
 
     expect(mockReplace).toHaveBeenCalledWith('/dashboard')
-    expect(screen.queryByTestId('co-loaded-info')).not.toBeInTheDocument()
   })
 
-  it('shows loading state (no redirect) while household data is fetching', () => {
-    mockState = 'dc'
+  it('shows loading state while household data is fetching', () => {
     mockHouseholdData = null
     mockIsLoading = true
-    render(<CoLoadedInfoPage />)
+    render(<CoLoadedAddressInfoPage />)
 
     expect(mockReplace).not.toHaveBeenCalled()
-    expect(screen.queryByTestId('co-loaded-info')).not.toBeInTheDocument()
+    expect(
+      screen.queryByRole('heading', { name: /mailing address for snap or tanf ebt card/i })
+    ).not.toBeInTheDocument()
   })
 })
