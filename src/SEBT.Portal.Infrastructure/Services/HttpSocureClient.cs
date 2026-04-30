@@ -233,7 +233,6 @@ public class HttpSocureClient(
                 ? idValue
                 : null,
             DiSessionToken = effectiveDiToken,
-            IpAddress = ipAddress,
             PhoneNumber = phoneNumber,
             GivenName = givenName,
             FamilyName = familyName,
@@ -249,7 +248,7 @@ public class HttpSocureClient(
             Id = Guid.NewGuid().ToString(),
             Workflow = !string.IsNullOrWhiteSpace(workflow) ? workflow : settings.Workflow,
             Timestamp = DateTime.UtcNow.ToString("o"),
-            Data = new SocureEvaluationRequestData { Individual = individual }
+            Data = new SocureEvaluationRequestData { Individual = individual, IpAddress = ipAddress }
         };
     }
 

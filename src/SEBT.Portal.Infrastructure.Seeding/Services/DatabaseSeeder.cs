@@ -75,7 +75,7 @@ public class DatabaseSeeder : Core.Services.IDatabaseSeeder
                 u.IalLevel = UserIalLevel.IAL1plus;
                 u.CoLoadedLastUpdated = now.AddDays(-5);
                 u.IdProofingCompletedAt = now.AddDays(-10);
-                u.Phone = "5551234567";
+                u.Phone = "8185558439";
                 u.SnapId = "SNAP-CO-001";
                 u.TanfId = "TANF-CO-001";
                 u.Ssn = "123456789";
@@ -126,6 +126,8 @@ public class DatabaseSeeder : Core.Services.IDatabaseSeeder
             var coLoadedEmail = EmailNormalizer.Normalize(_settings.BuildEmail(SeedScenarios.CoLoaded.Name));
             var coLoadedPendingIdProofingEmail = EmailNormalizer.Normalize(
                 _settings.BuildEmail(SeedScenarios.CoLoadedPendingIdProofing.Name));
+            var coLoadedNoChildrenEmail = EmailNormalizer.Normalize(
+                _settings.BuildEmail(SeedScenarios.CoLoadedNoChildren.Name));
             var verifiedEmail = EmailNormalizer.Normalize(_settings.BuildEmail(SeedScenarios.Verified.Name));
 
             foreach (var scenario in SeedScenarios.UserScenarios)
@@ -158,7 +160,7 @@ public class DatabaseSeeder : Core.Services.IDatabaseSeeder
                             u.IdProofingCompletedAt = now.AddDays(DaysSinceIdProofingCompleted);
 
                             u.CoLoadedLastUpdated = now.AddDays(DaysSinceCoLoadedUpdate);
-                            u.Phone = "5551234567";
+                            u.Phone = "8185558439";
                             u.SnapId = "SNAP-CO-001";
                             u.TanfId = "TANF-CO-001";
                             u.Ssn = "123456789";
@@ -180,6 +182,21 @@ public class DatabaseSeeder : Core.Services.IDatabaseSeeder
                             u.Ssn = "123456789";
                         });
                     }
+                    else if (normalizedEmail == coLoadedNoChildrenEmail)
+                    {
+                        user = UserFactory.CreateCoLoadedUser(u =>
+                        {
+                            u.Email = normalizedEmail;
+                            u.IdProofingStatus = IdProofingStatus.Completed;
+                            u.IalLevel = scenario.IalLevel;
+                            u.IdProofingCompletedAt = now.AddDays(DaysSinceIdProofingCompleted);
+                            u.CoLoadedLastUpdated = now.AddDays(DaysSinceCoLoadedUpdate);
+                            u.Phone = "8185558439";
+                            u.SnapId = "SNAP-CO-NC-001";
+                            u.TanfId = "TANF-CO-NC-001";
+                            u.Ssn = "123456789";
+                        });
+                    }
                     else if (normalizedEmail == verifiedEmail)
                     {
                         user = UserFactory.CreateUserWithEmail(normalizedEmail, u =>
@@ -190,7 +207,7 @@ public class DatabaseSeeder : Core.Services.IDatabaseSeeder
 
                             u.IsCoLoaded = false;
                             u.CoLoadedLastUpdated = null;
-                            u.Phone = "5559876543";
+                            u.Phone = "8185558440";
                             u.SnapId = "SNAP-VER-001";
                             u.TanfId = "TANF-VER-001";
                             u.Ssn = "123456789";
@@ -292,6 +309,8 @@ public class DatabaseSeeder : Core.Services.IDatabaseSeeder
             var coLoadedEmail = EmailNormalizer.Normalize(_settings.BuildEmail(SeedScenarios.CoLoaded.Name));
             var coLoadedPendingIdProofingEmail = EmailNormalizer.Normalize(
                 _settings.BuildEmail(SeedScenarios.CoLoadedPendingIdProofing.Name));
+            var coLoadedNoChildrenEmail = EmailNormalizer.Normalize(
+                _settings.BuildEmail(SeedScenarios.CoLoadedNoChildren.Name));
             var verifiedEmail = EmailNormalizer.Normalize(_settings.BuildEmail(SeedScenarios.Verified.Name));
             foreach (var scenario in SeedScenarios.UserScenarios)
             {
@@ -323,7 +342,7 @@ public class DatabaseSeeder : Core.Services.IDatabaseSeeder
                             u.IdProofingCompletedAt = now.AddDays(DaysSinceIdProofingCompleted);
 
                             u.CoLoadedLastUpdated = now.AddDays(DaysSinceCoLoadedUpdate);
-                            u.Phone = "5551234567";
+                            u.Phone = "8185558439";
                             u.SnapId = "SNAP-CO-001";
                             u.TanfId = "TANF-CO-001";
                             u.Ssn = "123456789";
@@ -345,6 +364,21 @@ public class DatabaseSeeder : Core.Services.IDatabaseSeeder
                             u.Ssn = "123456789";
                         });
                     }
+                    else if (normalizedEmail == coLoadedNoChildrenEmail)
+                    {
+                        user = UserFactory.CreateCoLoadedUser(u =>
+                        {
+                            u.Email = normalizedEmail;
+                            u.IdProofingStatus = IdProofingStatus.Completed;
+                            u.IalLevel = scenario.IalLevel;
+                            u.IdProofingCompletedAt = now.AddDays(DaysSinceIdProofingCompleted);
+                            u.CoLoadedLastUpdated = now.AddDays(DaysSinceCoLoadedUpdate);
+                            u.Phone = "8185558439";
+                            u.SnapId = "SNAP-CO-NC-001";
+                            u.TanfId = "TANF-CO-NC-001";
+                            u.Ssn = "123456789";
+                        });
+                    }
                     else if (normalizedEmail == verifiedEmail)
                     {
                         user = UserFactory.CreateUserWithEmail(normalizedEmail, u =>
@@ -355,7 +389,7 @@ public class DatabaseSeeder : Core.Services.IDatabaseSeeder
 
                             u.IsCoLoaded = false;
                             u.CoLoadedLastUpdated = null;
-                            u.Phone = "5559876543";
+                            u.Phone = "8185558440";
                             u.SnapId = "SNAP-VER-001";
                             u.TanfId = "TANF-VER-001";
                             u.Ssn = "123456789";

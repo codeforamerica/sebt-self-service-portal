@@ -106,9 +106,9 @@ module "app" {
   image_tags_mutable     = true
   enable_execute_command = true
 
-  seeding_enabled         = "true"
-  seeding_email_pattern   = "sebt.dc+{0}@codeforamerica.org"
-  use_mock_household_data = "true"
+  seeding_enabled       = "true"
+  seeding_email_pattern = "sebt.dc+{0}@codeforamerica.org"
+  dc_source_db_name     = "DcSource"
 
   state_api_environment_variables = {
     "IdProofingRequirements__household+view__application"        = "IAL1"
@@ -136,4 +136,20 @@ module "bastion" {
   vpc_id                  = module.vpc.vpc_id
   kms_key_recovery_period = 7
   instance_profile        = null
+}
+
+# DC-only: ECS task definition + IAM role for one-off DcSource seed runs.
+# Runs on the existing API cluster, reuses the API security group and RDS
+# master credentials. ECR repo is provisioned in bootstrap.
+module "dc_source_seed" {
+  source = "../../modules/sebt_dc_source_seed"
+
+  project           = "${var.project}-${var.state}"
+  environment       = var.environment
+  cluster_name      = module.app.api_cluster_name
+  subnet_ids        = module.vpc.private_subnets
+  security_group_id = module.app.api_security_group_id
+  db_endpoint       = module.app.database_endpoint
+  db_secret_arn     = module.app.database_secret_arn
+  logging_key_arn   = module.logging.kms_key_arn
 }

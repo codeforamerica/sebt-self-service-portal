@@ -331,7 +331,7 @@ public class HouseholdRepositoryTests
     [Fact]
     public async Task GetHouseholdByIdentifierAsync_WhenPhoneIdentifier_DelegatesToPlugin()
     {
-        var phone = "5551234567";
+        var phone = "8185558439";
         var pluginData = new PluginHouseholdData { Phone = phone, Applications = new List<PluginApplication>() };
         _summerEbtCaseService
             .GetHouseholdByIdentifierAsync(PluginHouseholdIdentifierType.Phone, phone, Arg.Any<PluginPiiVisibility>(), Arg.Any<PluginIdentityAssuranceLevel>(), Arg.Any<CancellationToken>())
@@ -349,16 +349,16 @@ public class HouseholdRepositoryTests
     [Fact]
     public async Task GetHouseholdByIdentifierAsync_WhenPhoneIdentifier_TrimsWhitespaceBeforePluginCall()
     {
-        var pluginData = new PluginHouseholdData { Phone = "5551234567", Applications = new List<PluginApplication>() };
+        var pluginData = new PluginHouseholdData { Phone = "8185558439", Applications = new List<PluginApplication>() };
         _summerEbtCaseService
-            .GetHouseholdByIdentifierAsync(PluginHouseholdIdentifierType.Phone, "5551234567", Arg.Any<PluginPiiVisibility>(), Arg.Any<PluginIdentityAssuranceLevel>(), Arg.Any<CancellationToken>())
+            .GetHouseholdByIdentifierAsync(PluginHouseholdIdentifierType.Phone, "8185558439", Arg.Any<PluginPiiVisibility>(), Arg.Any<PluginIdentityAssuranceLevel>(), Arg.Any<CancellationToken>())
             .Returns(pluginData);
 
         await _repository.GetHouseholdByIdentifierAsync(
-            HouseholdIdentifier.Phone("  5551234567  "), FullPii, UserIalLevel.IAL1plus);
+            HouseholdIdentifier.Phone("  8185558439  "), FullPii, UserIalLevel.IAL1plus);
 
         await _summerEbtCaseService.Received(1)
-            .GetHouseholdByIdentifierAsync(PluginHouseholdIdentifierType.Phone, "5551234567", Arg.Any<PluginPiiVisibility>(), Arg.Any<PluginIdentityAssuranceLevel>(), Arg.Any<CancellationToken>());
+            .GetHouseholdByIdentifierAsync(PluginHouseholdIdentifierType.Phone, "8185558439", Arg.Any<PluginPiiVisibility>(), Arg.Any<PluginIdentityAssuranceLevel>(), Arg.Any<CancellationToken>());
     }
 
     [Fact]

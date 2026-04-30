@@ -35,6 +35,8 @@ export const env = createEnv({
   client: {
     NEXT_PUBLIC_STATE: z.enum(['dc', 'co']),
     NEXT_PUBLIC_GA_ID: z.string().startsWith('G-').optional(),
+    NEXT_PUBLIC_AMPLITUDE_API_KEY: z.string().min(1).optional(),
+    NEXT_PUBLIC_MIXPANEL_TOKEN: z.string().min(1).optional(),
     NEXT_PUBLIC_SOCURE_SDK_KEY: z.string().min(1).optional(),
     NEXT_PUBLIC_SOCURE_DI_SDK_KEY: z.string().min(1).optional(),
     NEXT_PUBLIC_MOCK_SOCURE: z.enum(['true', 'false']).optional(),
@@ -42,7 +44,11 @@ export const env = createEnv({
      * Development only: when `true`, IalGuard still sends users to OIDC step-up even if the portal JWT already has IAL1+.
      * No effect unless NODE_ENV is `development`.
      */
-    NEXT_PUBLIC_DEBUG_REPEAT_OIDC_STEP_UP: z.enum(['true', 'false']).optional()
+    NEXT_PUBLIC_DEBUG_REPEAT_OIDC_STEP_UP: z.enum(['true', 'false']).optional(),
+    // Smarty US Autocomplete Pro embeddable key.
+    // When set, the change-address form shows type-ahead suggestions.
+    // Omit to disable autocomplete (users type addresses manually).
+    NEXT_PUBLIC_SMARTY_EMBEDDED_KEY: z.string().min(1).optional()
   },
 
   /**
@@ -55,10 +61,13 @@ export const env = createEnv({
     ENROLLMENT_CHECKER_ORIGIN: process.env.ENROLLMENT_CHECKER_ORIGIN,
     NEXT_PUBLIC_STATE: process.env.NEXT_PUBLIC_STATE,
     NEXT_PUBLIC_GA_ID: process.env.NEXT_PUBLIC_GA_ID,
+    NEXT_PUBLIC_AMPLITUDE_API_KEY: process.env.NEXT_PUBLIC_AMPLITUDE_API_KEY,
+    NEXT_PUBLIC_MIXPANEL_TOKEN: process.env.NEXT_PUBLIC_MIXPANEL_TOKEN,
     NEXT_PUBLIC_SOCURE_SDK_KEY: process.env.NEXT_PUBLIC_SOCURE_SDK_KEY,
     NEXT_PUBLIC_SOCURE_DI_SDK_KEY: process.env.NEXT_PUBLIC_SOCURE_DI_SDK_KEY,
     NEXT_PUBLIC_MOCK_SOCURE: process.env.NEXT_PUBLIC_MOCK_SOCURE,
-    NEXT_PUBLIC_DEBUG_REPEAT_OIDC_STEP_UP: process.env.NEXT_PUBLIC_DEBUG_REPEAT_OIDC_STEP_UP
+    NEXT_PUBLIC_DEBUG_REPEAT_OIDC_STEP_UP: process.env.NEXT_PUBLIC_DEBUG_REPEAT_OIDC_STEP_UP,
+    NEXT_PUBLIC_SMARTY_EMBEDDED_KEY: process.env.NEXT_PUBLIC_SMARTY_EMBEDDED_KEY
   },
 
   /**

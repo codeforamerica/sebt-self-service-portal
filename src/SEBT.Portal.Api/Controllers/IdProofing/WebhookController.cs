@@ -57,6 +57,21 @@ public class WebhookController(
             WebhookSignature = bearerToken
         };
 
+        // Boundary log: capture what arrived before correlation/dispatch runs. Lets us trace
+        // every webhook by event_id even if downstream branches return early. Source contract is
+        // fragile, so we log the raw deserialized fields side-by-side with the mapped command.
+        // All values are sanitized — webhook payload is attacker-controllable input (CWE-117).
+        logger.LogInformation(
+            "Webhook received: EventId={EventId}, EventType={EventType}, EvalId={EvalId}, " +
+            "ReferenceId={ReferenceId}, WorkflowDecision={WorkflowDecision}, " +
+            "DocumentDecision={DocumentDecision}",
+            SanitizeForLog(command.EventId),
+            SanitizeForLog(command.EventType),
+            SanitizeForLog(command.EvalId),
+            SanitizeForLog(command.ReferenceId),
+            SanitizeForLog(command.WorkflowDecision),
+            SanitizeForLog(command.DocumentDecision));
+
         var result = await handler.Handle(command, cancellationToken);
 
         // Always return 200 to Socure — failures are logged, not surfaced
@@ -113,5 +128,18 @@ public class WebhookController(
     private static bool HasDocumentVerification(JsonElement response)
     {
         return response.TryGetProperty("documentVerification", out _);
+    }
+
+    /// <summary>
+    /// Strips CR/LF from values logged from the webhook payload to prevent log forging
+    /// (CWE-117). Mirrors the sanitizer in <c>ProcessWebhookCommandHandler</c>.
+    /// </summary>
+    private static string SanitizeForLog(string? value)
+    {
+        if (string.IsNullOrEmpty(value))
+            return string.Empty;
+        return value
+            .Replace("\r", string.Empty, StringComparison.Ordinal)
+            .Replace("\n", string.Empty, StringComparison.Ordinal);
     }
 }

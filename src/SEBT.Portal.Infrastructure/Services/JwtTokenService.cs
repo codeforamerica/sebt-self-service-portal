@@ -57,6 +57,7 @@ public class JwtTokenService : ILocalLoginTokenService, IOidcTokenService, ISess
             JwtClaimTypes.IdProofingSessionId,
             JwtClaimTypes.IdProofingCompletedAt,
             JwtClaimTypes.IdProofingExpiresAt,
+            JwtClaimTypes.IsCoLoaded,
         };
 
     public JwtTokenService(
@@ -99,7 +100,8 @@ public class JwtTokenService : ILocalLoginTokenService, IOidcTokenService, ISess
                 UserIalLevel.IAL2 => "2",
                 _ => "1"
             },
-            [JwtClaimTypes.IdProofingStatus] = ((int)effectiveStatus).ToString()
+            [JwtClaimTypes.IdProofingStatus] = ((int)effectiveStatus).ToString(),
+            [JwtClaimTypes.IsCoLoaded] = user.IsCoLoaded ? "true" : "false"
         };
 
         if (!string.IsNullOrWhiteSpace(user.IdProofingSessionId))
@@ -190,6 +192,8 @@ public class JwtTokenService : ILocalLoginTokenService, IOidcTokenService, ISess
             idpClaims[JwtClaimTypes.IdProofingStatus] = ((int)IdProofingStatus.NotStarted).ToString();
         }
 
+        idpClaims[JwtClaimTypes.IsCoLoaded] = user.IsCoLoaded ? "true" : "false";
+
         var email = idpClaims.GetValueOrDefault("email") ?? user.Email ?? "";
         return Result<string>.Success(BuildAndSignToken(user.Id, email, idpClaims));
     }
@@ -247,6 +251,10 @@ public class JwtTokenService : ILocalLoginTokenService, IOidcTokenService, ISess
                 ((int)user.IdProofingStatus).ToString();
         }
 
+        // Refresh IsCoLoaded from the user entity — the DB is authoritative since
+        // co-loaded status can change between token mints.
+        existingClaims[JwtClaimTypes.IsCoLoaded] = user.IsCoLoaded ? "true" : "false";
+
         // BuildAndSignToken writes email under ClaimTypes.Email; with MapInboundClaims=false,
         // the refresh principal still carries that long URI form. Resolve via the helper
         // so either form is accepted.
@@ -294,6 +302,7 @@ public class JwtTokenService : ILocalLoginTokenService, IOidcTokenService, ISess
         var ialValue = resolvedClaims.GetValueOrDefault(JwtClaimTypes.Ial) ?? "1";
         var idProofingStatusValue = resolvedClaims.GetValueOrDefault(JwtClaimTypes.IdProofingStatus)
             ?? ((int)IdProofingStatus.NotStarted).ToString();
+        var isCoLoadedValue = resolvedClaims.GetValueOrDefault(JwtClaimTypes.IsCoLoaded) ?? "false";
 
         // Invariant: Completed ID proofing must have IAL > 1 and a completion timestamp.
         if (idProofingStatusValue == ((int)IdProofingStatus.Completed).ToString())
@@ -329,7 +338,8 @@ public class JwtTokenService : ILocalLoginTokenService, IOidcTokenService, ISess
             new(JwtRegisteredClaimNames.Aud, "SEBT.Portal.Web"),
             new(JwtRegisteredClaimNames.Iss, "SEBT.Portal.Api"),
             new(JwtClaimTypes.IdProofingStatus, idProofingStatusValue, ClaimValueTypes.Integer32),
-            new(JwtClaimTypes.Ial, ialValue)
+            new(JwtClaimTypes.Ial, ialValue),
+            new(JwtClaimTypes.IsCoLoaded, isCoLoadedValue, ClaimValueTypes.Boolean)
         };
 
         // Add optional ID proofing claims if present in resolved set

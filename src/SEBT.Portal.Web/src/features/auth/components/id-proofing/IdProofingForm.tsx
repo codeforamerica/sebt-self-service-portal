@@ -7,11 +7,17 @@ import { useTranslation } from 'react-i18next'
 import { AnalyticsEvents, useDataLayer } from '@sebt/analytics'
 import { Alert, Button, InputField } from '@sebt/design-system'
 
+import { useAuth } from '@/features/auth'
 import {
   clearChallengeContext,
   SK_CHALLENGE_ID
 } from '@/features/auth/components/doc-verify/sessionKeys'
-import { SubmitIdProofingRequestSchema, useSubmitIdProofing, type IdType } from '../../api'
+import {
+  SubmitIdProofingRequestSchema,
+  useRefreshToken,
+  useSubmitIdProofing,
+  type IdType
+} from '../../api'
 
 // UI-only sentinel value for the "none" radio option.
 // The API receives idType: null when the user selects this.
@@ -40,6 +46,8 @@ export interface IdOption {
   helperKey?: string
   /** i18next key for the text input label shown when this option is selected */
   inputLabelKey?: string
+  /** Render a horizontal rule above this option to visually separate it from preceding options. */
+  dividerBefore?: boolean
   /**
    * Digit-count rule for the associated ID value input. When present, the form
    * strips non-digits on change, applies a numeric keypad, caps length at the
@@ -99,8 +107,11 @@ export function IdProofingForm({ idOptions, contactLink, getDiToken }: IdProofin
   const [submitError, setSubmitError] = useState<string | null>(null)
 
   const submitIdProofing = useSubmitIdProofing()
+  const refreshToken = useRefreshToken()
   const isSubmitting = submitIdProofing.isPending
   const { setPageData, setUserData, trackEvent } = useDataLayer()
+  const { session } = useAuth()
+  const isCoLoaded = session?.isCoLoaded === true
 
   const selectedOption = idOptions.find((opt) => opt.value === selectedIdType)
   const showIdValueInput = selectedIdType !== null && selectedIdType !== NONE_VALUE
@@ -230,6 +241,9 @@ export function IdProofingForm({ idOptions, contactLink, getDiToken }: IdProofin
         router.push(`/login/id-proofing/doc-verify?challengeId=${response.challengeId}`)
       } else if (response.result === 'failed') {
         setPageData('idv_primary_status', 'fail')
+        // Co-loaded users reach "failed" only via SNAP/TANF + DOB mismatch (no Socure),
+        // so their failure is always a not-found. Non-co-loaded failures come from Socure.
+        setPageData('idv_primary_reason', isCoLoaded ? 'not_found' : 'socure_fail')
         trackEvent(AnalyticsEvents.IDV_PRIMARY_RESULT)
         // Hand off offboarding context via URL query params so the server-rendered
         // route page can branch copy (noIdProvided gets a distinct heading).
@@ -245,6 +259,17 @@ export function IdProofingForm({ idOptions, contactLink, getDiToken }: IdProofin
       } else {
         setPageData('idv_primary_status', 'success')
         trackEvent(AnalyticsEvents.IDV_PRIMARY_RESULT)
+
+        // A successful co-loaded match flips user.IsCoLoaded server-side, but the cookie
+        // we hold was minted before the match. Refresh so the dashboard reads the updated
+        // claim. Swallow failures — leave the user on a working flow if the refresh hiccups;
+        // the dashboard will still load with the prior claim.
+        try {
+          await refreshToken.mutateAsync()
+        } catch {
+          // Intentionally silent.
+        }
+
         router.push('/dashboard')
       }
     } catch (err) {
@@ -288,7 +313,7 @@ export function IdProofingForm({ idOptions, contactLink, getDiToken }: IdProofin
 
         <div className="grid-row grid-gap">
           {/* Month */}
-          <div className="mobile-lg:grid-col-4">
+          <div className="mobile-lg:grid-col-7">
             <div
               className={
                 dobErrors.month ? 'usa-form-group usa-form-group--error' : 'usa-form-group'
@@ -317,7 +342,7 @@ export function IdProofingForm({ idOptions, contactLink, getDiToken }: IdProofin
                 aria-required="true"
                 aria-invalid={!!dobErrors.month}
               >
-                <option value=""></option>
+                <option value="">{`- ${tCommon('selectOne')} -`}</option>
                 {months.map((m) => (
                   <option
                     key={m.value}
@@ -331,7 +356,7 @@ export function IdProofingForm({ idOptions, contactLink, getDiToken }: IdProofin
           </div>
 
           {/* Day */}
-          <div className="mobile-lg:grid-col-4">
+          <div className="mobile-lg:grid-col-2">
             <InputField
               label={tPersonalInfo('labelDay')}
               type="text"
@@ -347,7 +372,7 @@ export function IdProofingForm({ idOptions, contactLink, getDiToken }: IdProofin
           </div>
 
           {/* Year */}
-          <div className="mobile-lg:grid-col-4">
+          <div className="mobile-lg:grid-col-3">
             <InputField
               label={tPersonalInfo('labelYear')}
               type="text"
@@ -383,31 +408,39 @@ export function IdProofingForm({ idOptions, contactLink, getDiToken }: IdProofin
         {idOptions.map((option) => (
           <div
             key={option.value}
-            className="usa-radio"
+            className="margin-top-2"
           >
-            <input
-              className="usa-radio__input usa-radio__input--tile"
-              type="radio"
-              id={`${formId}-id-type-${option.value}`}
-              name="idType"
-              value={option.value}
-              checked={selectedIdType === option.value}
-              onChange={() => {
-                setSelectedIdType(option.value)
-                setIdValue('')
-                setIdTypeError(null)
-                setIdValueError(null)
-              }}
-            />
-            <label
-              className="usa-radio__label"
-              htmlFor={`${formId}-id-type-${option.value}`}
-            >
-              {t(option.labelKey)}
-              {option.helperKey && (
-                <span className="usa-radio__label-description">{t(option.helperKey)}</span>
-              )}
-            </label>
+            {option.dividerBefore && (
+              <hr
+                aria-hidden="true"
+                className="margin-y-2 border-0 border-top border-base-ink"
+              />
+            )}
+            <div className="usa-radio">
+              <input
+                className="usa-radio__input usa-radio__input--tile"
+                type="radio"
+                id={`${formId}-id-type-${option.value}`}
+                name="idType"
+                value={option.value}
+                checked={selectedIdType === option.value}
+                onChange={() => {
+                  setSelectedIdType(option.value)
+                  setIdValue('')
+                  setIdTypeError(null)
+                  setIdValueError(null)
+                }}
+              />
+              <label
+                className="usa-radio__label"
+                htmlFor={`${formId}-id-type-${option.value}`}
+              >
+                <span className="text-bold">{t(option.labelKey)}</span>
+                {option.helperKey && (
+                  <span className="usa-radio__label-description">{t(option.helperKey)}</span>
+                )}
+              </label>
+            </div>
           </div>
         ))}
       </fieldset>

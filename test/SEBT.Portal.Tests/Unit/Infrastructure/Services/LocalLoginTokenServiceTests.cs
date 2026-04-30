@@ -192,4 +192,26 @@ public class LocalLoginTokenServiceTests : JwtTokenServiceTestBase
         Assert.NotNull(jwt.Claims.FirstOrDefault(c => c.Type == JwtRegisteredClaimNames.Iat));
         Assert.True(jwt.ValidTo > DateTime.UtcNow);
     }
+
+    [Fact]
+    public void IsCoLoadedClaim_IsTrue_WhenUserIsCoLoaded()
+    {
+        var user = new User { Email = "user@example.com", IsCoLoaded = true };
+
+        var token = Service.GenerateForLocalLogin(user);
+
+        var jwt = ReadJwt(token);
+        Assert.Equal("true", jwt.Claims.First(c => c.Type == JwtClaimTypes.IsCoLoaded).Value);
+    }
+
+    [Fact]
+    public void IsCoLoadedClaim_IsFalse_WhenUserIsNotCoLoaded()
+    {
+        var user = new User { Email = "user@example.com", IsCoLoaded = false };
+
+        var token = Service.GenerateForLocalLogin(user);
+
+        var jwt = ReadJwt(token);
+        Assert.Equal("false", jwt.Claims.First(c => c.Type == JwtClaimTypes.IsCoLoaded).Value);
+    }
 }
