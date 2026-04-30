@@ -182,33 +182,6 @@ pnpm ci:list          # List all ACT workflows
 pnpm ci:validate      # Validate workflows (dry-run)
 ```
 
-### Updating Dependencies
-
-Both ecosystems commit lockfiles and enforce them strictly in CI: NuGet restore runs with `--locked-mode`, and pnpm install runs with `--frozen-lockfile`. CI fails if a lockfile is out of sync with its manifest.
-
-**Backend (NuGet):** after bumping a `Version=` attribute in a `.csproj`, regenerate the affected `packages.lock.json` files:
-
-```bash
-dotnet restore
-```
-
-`RestorePackagesWithLockFile` is enabled globally via [Directory.Build.props](./Directory.Build.props), so a plain `restore` rewrites the lockfiles for any project whose dependencies changed. Commit the updated `packages.lock.json` files alongside the `.csproj` change.
-
-To pick up a new floating version without changing any `.csproj` (e.g. when the [state-connector repo](https://github.com/codeforamerica/sebt-self-service-portal-state-connector) publishes a new `SEBT.Portal.StatesPlugins.Interfaces` package matching the floating `0.0.2-*` reference), force re-resolution:
-
-```bash
-dotnet restore --force-evaluate
-```
-
-**Frontend (pnpm):** use the standard pnpm commands — both rewrite `pnpm-lock.yaml`:
-
-```bash
-pnpm update <package>           # bump within the existing semver range
-pnpm add <package>@<version>    # add a new package or bump beyond the existing range
-```
-
-Commit the updated `pnpm-lock.yaml` alongside the `package.json` change.
-
 ## Branch Strategy 🌿
 
 **State-Specific Development:**
