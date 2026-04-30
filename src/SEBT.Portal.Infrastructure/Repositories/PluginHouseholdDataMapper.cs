@@ -87,6 +87,7 @@ internal static class PluginHouseholdDataMapper
             ApplicationStatus = (ApplicationStatus)(GetProp(t, source, "ApplicationStatus") ?? (int)ApplicationStatus.Unknown),
             MailingAddress = ToCoreAddress(GetProp(t, source, "MailingAddress")),
             EbtCaseNumber = GetProp<string>(t, source, "EbtCaseNumber"),
+            CaseDisplayNumber = GetProp<string>(t, source, "CaseDisplayNumber"),
             EbtCardLastFour = GetProp<string>(t, source, "EbtCardLastFour"),
             EbtCardStatus = GetProp<string>(t, source, "EbtCardStatus"),
             EbtCardIssueDate = ToDateTimeOrNull(GetProp(t, source, "EbtCardIssueDate")),

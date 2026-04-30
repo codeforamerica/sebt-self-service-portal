@@ -83,9 +83,15 @@ public class SummerEbtCase
     public Address? MailingAddress { get; set; }
 
     /// <summary>
-    /// The EBT case number.
+    /// State backend case identifier when the connector exposes one (e.g. CBMS case id).
     /// </summary>
     public string? EbtCaseNumber { get; set; }
+
+    /// <summary>
+    /// Guardian-facing reference for UI when it differs from <see cref="EbtCaseNumber"/> (e.g. Colorado application id).
+    /// Clients typically show this when non-null; otherwise <see cref="EbtCaseNumber"/>.
+    /// </summary>
+    public string? CaseDisplayNumber { get; set; }
 
     /// <summary>
     /// The last 4 digits of the EBT card.
