@@ -91,13 +91,14 @@ describe('HouseholdSummary', () => {
     mockReturnData = { ...defaultMockData, applications: [pendingApp] }
     render(<HouseholdSummary />)
     expect(screen.getByText('Enrolled')).toBeInTheDocument()
-    expect(screen.getByText('Application in-process')).toBeInTheDocument()
+    expect(screen.getByText('Application in-progress')).toBeInTheDocument()
   })
 
   it('renders in-progress status for pending application when no cases', () => {
     const pendingApp: Application = { ...mockApplication, applicationStatus: 'Pending' }
     mockReturnData = { ...defaultMockData, summerEbtCases: [], applications: [pendingApp] }
     render(<HouseholdSummary />)
+    // TODO update when DC copy import
     const statusText = screen.getByText('Application in-progress')
     expect(statusText).toHaveClass('text-gold')
   })
