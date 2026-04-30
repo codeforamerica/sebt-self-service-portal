@@ -193,10 +193,10 @@ variable "seeding_email_pattern" {
   default     = ""
 }
 
-variable "use_mock_household_data" {
+variable "dc_source_db_name" {
   type        = string
-  description = "Enable mock household data seeding to create all test user scenarios."
-  default     = "false"
+  description = "DC-only: name of the DcSource database (alongside SebtPortal on the same RDS instance) holding the seeded mock data the DC plugin's stored procedures read from. When non-empty, the API task gets a DC_SOURCE_DB_NAME env var so Program.cs builds DCConnector:ConnectionString. Empty means the DC plugin path isn't wired (the typical case for CO and for in-memory mock mode)."
+  default     = ""
 }
 
 variable "log_as_json" {

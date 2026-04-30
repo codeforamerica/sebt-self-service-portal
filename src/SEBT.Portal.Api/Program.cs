@@ -114,6 +114,13 @@ if (!string.IsNullOrEmpty(dbHost) && !string.IsNullOrEmpty(dbPassword))
     var dbUser = Environment.GetEnvironmentVariable("DB_USER") ?? "admin";
     builder.Configuration["ConnectionStrings:DefaultConnection"] =
         $"Server={dbHost},{dbPort};Database={dbName};User Id={dbUser};Password={dbPassword};Encrypt=True;TrustServerCertificate=True;";
+
+    var dcSourceDbName = Environment.GetEnvironmentVariable("DC_SOURCE_DB_NAME");
+    if (!string.IsNullOrEmpty(dcSourceDbName))
+    {
+        builder.Configuration["DCConnector:ConnectionString"] =
+            $"Server={dbHost},{dbPort};Database={dcSourceDbName};User Id={dbUser};Password={dbPassword};Encrypt=True;TrustServerCertificate=True;";
+    }
 }
 
 // Caching must be registered before plugins — plugins may depend on HybridCache

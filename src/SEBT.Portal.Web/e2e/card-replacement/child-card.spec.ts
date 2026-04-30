@@ -70,6 +70,26 @@ test.describe('ChildCard', () => {
       )
     })
 
+    test('when caseDisplayNumber is set it is shown as SEBT ID instead of ebtCaseNumber', async ({
+      page
+    }) => {
+      await setupApiRoutes(page, {
+        featureFlags: { show_case_number: true },
+        householdData: makeHouseholdData({
+          summerEbtCases: [
+            makeSummerEbtCase({
+              ebtCaseNumber: 'CBMS-CASE-ID',
+              caseDisplayNumber: 'APP-DISPLAY-ID'
+            })
+          ]
+        })
+      })
+      await page.goto('/dashboard')
+      const panel = page.locator('[data-testid="accordion-content"]')
+      await expect(panel).toContainText('APP-DISPLAY-ID')
+      await expect(panel).not.toContainText('CBMS-CASE-ID')
+    })
+
     test('show_card_last4=true shows card number row', async ({ page }) => {
       await setupApiRoutes(page, {
         featureFlags: { show_card_last4: true }
