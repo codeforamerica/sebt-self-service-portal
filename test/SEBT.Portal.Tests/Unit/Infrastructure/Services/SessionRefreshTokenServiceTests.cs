@@ -305,4 +305,23 @@ public class SessionRefreshTokenServiceTests : JwtTokenServiceTestBase
         var jwt = ReadJwt(token);
         Assert.Equal("user@example.com", jwt.Claims.First(c => c.Type == ClaimTypes.Email).Value);
     }
+
+    // --- IsCoLoaded refresh semantics ---
+
+    [Fact]
+    public void IsCoLoaded_RefreshedFromUser_OverridingPrincipal()
+    {
+        // DB is authoritative: if the user entity disagrees with an older JWT claim,
+        // the refreshed token reflects the current DB value.
+        var user = new User { IsCoLoaded = true };
+        var principal = MakePrincipal(
+            (JwtClaimTypes.Ial, "1"),
+            (JwtClaimTypes.IdProofingStatus, "0"),
+            (JwtClaimTypes.IsCoLoaded, "false"));
+
+        var token = Service.GenerateForSessionRefresh(user, principal);
+
+        var jwt = ReadJwt(token);
+        Assert.Equal("true", jwt.Claims.First(c => c.Type == JwtClaimTypes.IsCoLoaded).Value);
+    }
 }

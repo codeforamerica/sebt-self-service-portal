@@ -73,6 +73,18 @@ a {
   font-weight: 600;
 }
 
+// Tile radio borders: USWDS default uses gray-20 (too light). Figma calls for base.
+.usa-radio__input--tile + [class*='__label'] {
+  border-color: color('base');
+}
+
+// Checked tile radio: USWDS default uses primary-lighter background and primary border.
+// Figma calls for primary-lightest background and primary-vivid border.
+.usa-radio__input--tile:checked + [class*='__label'] {
+  background-color: color('primary-lightest');
+  border-color: color('primary-vivid');
+}
+
 // Reset native button chrome while preserving content styling.
 // Use on <button> elements that should look like links or plain text.
 .button-unstyled {
@@ -89,6 +101,36 @@ a {
   width: 36px;
   height: 36px;
   flex-shrink: 0;
+}
+
+// myColorado vendor brand for OIDC entry buttons (CO only).
+// Figma token: myColorado/Primary/primary. Outside the USWDS palette,
+// so applied as a project-specific modifier class rather than a theme color.
+$mycolorado-primary: #007d30;
+
+.usa-button--mycolorado {
+  background-color: $mycolorado-primary;
+  border-color: $mycolorado-primary;
+  color: white;
+
+  &:hover,
+  &:active {
+    background-color: darken($mycolorado-primary, 8%);
+    border-color: darken($mycolorado-primary, 8%);
+    color: white;
+  }
+
+  &.usa-button--outline {
+    background-color: transparent;
+    color: $mycolorado-primary;
+
+    &:hover,
+    &:active {
+      background-color: transparent;
+      color: darken($mycolorado-primary, 8%);
+      border-color: darken($mycolorado-primary, 8%);
+    }
+  }
 }
 
 // UserProfileCard: avatar + name centered on row 1, logout on row 2 aligned with name

@@ -13,6 +13,8 @@ export function NotEnrolledSection({ results, applicationUrl }: NotEnrolledSecti
   const { t } = useTranslation('result')
   if (results.length === 0) return null
 
+  console.log(applicationUrl) // TODO REMOVE
+
   return (
     <section data-testid="not-enrolled-summary-box">
       <h3 className="usa-summary-box__heading">{t('applyForSebtBody1')}</h3>

@@ -66,7 +66,7 @@ export function proxy(request: NextRequest) {
     style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://verify-v2.socure.com;
     font-src 'self' https://fonts.gstatic.com https://verify-v2.socure.com;
     img-src 'self' data: https: https://www.google-analytics.com;
-    connect-src 'self' https://www.google-analytics.com https://*.google-analytics.com https://www.googletagmanager.com https://auth.pingone.com https://*.socure.com https://*.socure.io https://browser-intake-datadoghq.com ${hasAmplitude ? 'https://api2.amplitude.com' : ''} ${isDev ? 'ws://localhost:* http://localhost:*' : ''};
+    connect-src 'self' https://www.google-analytics.com https://*.google-analytics.com https://www.googletagmanager.com https://auth.pingone.com https://*.socure.com https://*.socure.io https://browser-intake-datadoghq.com https://us-autocomplete-pro.api.smarty.com ${hasAmplitude ? 'https://api2.amplitude.com' : ''} ${isDev ? 'ws://localhost:* http://localhost:*' : ''};
     frame-src https://verify-v2.socure.com;
     child-src https://verify-v2.socure.com;
     worker-src 'self';

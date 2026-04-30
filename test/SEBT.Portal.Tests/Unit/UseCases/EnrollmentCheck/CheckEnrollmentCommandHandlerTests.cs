@@ -30,7 +30,7 @@ public class CheckEnrollmentCommandHandlerTests
         var result = await handler.Handle(command);
 
         Assert.False(result.IsSuccess);
-        Assert.IsType<Kernel.Results.ValidationFailedResult<EnrollmentCheckResult>>(result);
+        Assert.IsType<Portal.Kernel.Results.ValidationFailedResult<EnrollmentCheckResult>>(result);
     }
 
     [Fact]
@@ -52,7 +52,7 @@ public class CheckEnrollmentCommandHandlerTests
         var result = await handler.Handle(command);
 
         Assert.False(result.IsSuccess);
-        Assert.IsType<Kernel.Results.ValidationFailedResult<EnrollmentCheckResult>>(result);
+        Assert.IsType<Portal.Kernel.Results.ValidationFailedResult<EnrollmentCheckResult>>(result);
     }
 
     [Fact]
@@ -174,6 +174,6 @@ public class CheckEnrollmentCommandHandlerTests
         var result = await handler.Handle(command);
 
         Assert.False(result.IsSuccess);
-        Assert.IsType<Kernel.Results.DependencyFailedResult<EnrollmentCheckResult>>(result);
+        Assert.IsType<Portal.Kernel.Results.DependencyFailedResult<EnrollmentCheckResult>>(result);
     }
 }
