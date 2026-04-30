@@ -9,13 +9,12 @@ import { ApiError } from '@/api/client'
 import { AnalyticsEvents, useDataLayer } from '@sebt/analytics'
 import { Alert, Button, InputField, TextLink } from '@sebt/design-system'
 
+import { needsIdProofingFlowAfterOtp } from '@/lib/idProofingStatus'
+
 import { useRequestOtp, useValidateOtp, ValidateOtpRequestSchema } from '../../api'
 import { useAuth } from '../../context'
 
 const RESEND_COOLDOWN_SECONDS = 30
-
-/** Matches `SEBT.Portal.Core.Models.Auth.IdProofingStatus.Completed`. */
-const ID_PROOFING_COMPLETED = 2
 
 interface VerifyOtpFormProps {
   email: string
@@ -80,7 +79,7 @@ export function VerifyOtpForm({ email, contactLink }: VerifyOtpFormProps) {
       const newSession = await login()
       sessionStorage.removeItem('otp_email')
       // Only Completed — InProgress / Failed / Expired / missing claim route to proofing flow.
-      const needsIdProofing = newSession?.idProofingStatus !== ID_PROOFING_COMPLETED
+      const needsIdProofing = needsIdProofingFlowAfterOtp(newSession?.idProofingStatus)
       router.push(needsIdProofing ? '/login/id-proofing' : '/dashboard')
     } catch (err) {
       setPageData('otp_status', 'error')
