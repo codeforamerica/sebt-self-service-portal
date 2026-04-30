@@ -98,6 +98,10 @@ export function useAddressAutocomplete({
   useEffect(() => {
     const timer = setTimeout(() => {
       if (!enabled || search.length < MIN_CHARS) {
+        // Abort any in-flight fetch from a previous (longer) search, otherwise
+        // its late resolution would write stale suggestions and reopen the
+        // listbox after the user has already deleted back under the threshold.
+        abortRef.current?.abort()
         setSuggestions([])
         setIsOpen(false)
         return

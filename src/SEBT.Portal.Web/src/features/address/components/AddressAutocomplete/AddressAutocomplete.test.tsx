@@ -305,6 +305,54 @@ describe('AddressAutocomplete', () => {
     )
   })
 
+  // --- Stale-fetch race when typing under MIN_CHARS ---
+
+  it('does not reopen suggestions when an in-flight fetch resolves after the input drops below MIN_CHARS', async () => {
+    // Race scenario: user types past MIN_CHARS, the debounce fires, a fetch
+    // starts. While that fetch is still in flight, the user deletes back under
+    // MIN_CHARS. The hook's < MIN_CHARS branch must abort the in-flight fetch;
+    // otherwise its late resolution writes stale suggestions and reopens the
+    // listbox after the user has indicated they no longer want them.
+    let fetchCount = 0
+    let resolveFetch: (() => void) | null = null
+    const fetchGate = new Promise<void>((resolve) => {
+      resolveFetch = resolve
+    })
+
+    server.use(
+      http.get(SMARTY_URL, async () => {
+        fetchCount++
+        await fetchGate
+        return HttpResponse.json({
+          suggestions: [makeSuggestion({ street_line: '123 Main St NW' })]
+        })
+      })
+    )
+
+    const { user } = await renderAutocomplete()
+    const input = screen.getByRole('combobox')
+
+    // Type past MIN_CHARS, fire debounce → fetch starts (gated open).
+    await user.type(input, '123 M')
+    await vi.advanceTimersByTimeAsync(300)
+    expect(fetchCount).toBe(1)
+
+    // Delete back below MIN_CHARS without letting the fetch resolve, then
+    // fire the new debounce timer. The < MIN_CHARS branch should run and
+    // abort the in-flight controller.
+    await user.clear(input)
+    await user.type(input, '12')
+    await vi.advanceTimersByTimeAsync(300)
+
+    // Now release the original fetch. With the bug present this would call
+    // setSuggestions(...)/setIsOpen(true) and reopen the listbox.
+    resolveFetch!()
+    await vi.runAllTimersAsync()
+
+    expect(screen.queryByRole('listbox')).not.toBeInTheDocument()
+    expect(screen.queryAllByRole('option')).toHaveLength(0)
+  })
+
   // --- Selection should not re-trigger autocomplete ---
 
   it('does not re-fetch or re-open suggestions when selection rewrites the input value', async () => {
