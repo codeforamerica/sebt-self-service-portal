@@ -11,6 +11,7 @@ import type { Address } from '@/features/household/api'
 
 import { isValidZip, useUpdateAddress } from '../../api'
 import { useAddressFlow } from '../../context'
+import { AddressAutocomplete, type SelectedAddress } from '../AddressAutocomplete'
 import { STATE_ABBREVIATIONS, US_STATE_OPTIONS } from './usStates'
 
 interface AddressFormProps {
@@ -223,7 +224,7 @@ export function AddressForm({ initialAddress, redirectPath }: AddressFormProps) 
           </div>
         )}
 
-        <InputField
+        <AddressAutocomplete
           label={t('labelStreetAddress', 'Street address')}
           {...(currentState === 'dc'
             ? { hint: t('hintStreetAddressDc', 'Include direction. NW, NE, SE, or SW.') }
@@ -231,6 +232,13 @@ export function AddressForm({ initialAddress, redirectPath }: AddressFormProps) 
           name="streetAddress1"
           value={streetAddress1}
           onChange={(e) => setStreetAddress1(e.target.value)}
+          onSuggestionSelected={(address: SelectedAddress) => {
+            setStreetAddress1(address.streetLine1)
+            setStreetAddress2(address.streetLine2)
+            setCity(address.city)
+            setStateValue(address.state)
+            setPostalCode(address.zipcode)
+          }}
           autoComplete="address-line1"
           isRequired
           {...(fieldErrors.streetAddress1 ? { error: fieldErrors.streetAddress1 } : {})}
