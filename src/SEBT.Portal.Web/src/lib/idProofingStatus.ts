@@ -16,9 +16,10 @@ export function isIdProofingStatusCompleted(status: number | null | undefined): 
 }
 
 /**
- * After email OTP, the user continues ID proofing unless the session reports
- * {@link IdProofingStatus.Completed}. Any other value (including missing/null)
- * routes to the proofing flow.
+ * After OTP, use this when `/auth/status` returned an authenticated session.
+ * The user continues ID proofing unless status is {@link IdProofingStatus.Completed}.
+ * Any other value (including missing/null claim on that session) routes to proofing.
+ * If `login()` returned no session, surface an error instead of calling this.
  */
 export function needsIdProofingFlowAfterOtp(status: number | null | undefined): boolean {
   return !isIdProofingStatusCompleted(status)

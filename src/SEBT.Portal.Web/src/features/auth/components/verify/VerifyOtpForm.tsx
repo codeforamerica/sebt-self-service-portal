@@ -74,12 +74,19 @@ export function VerifyOtpForm({ email, contactLink }: VerifyOtpFormProps) {
       await validateOtp.mutateAsync({ email, otp })
       setPageData('otp_status', 'success')
       setUserData('authenticated', true, ['default', 'analytics'])
-      trackEvent(AnalyticsEvents.OTP_RESULT)
       // Backend set the HttpOnly session cookie; refresh the context from /auth/status.
       const newSession = await login()
+      if (!newSession) {
+        setPageData('otp_status', 'error')
+        setUserData('authenticated', false, ['default', 'analytics'])
+        trackEvent(AnalyticsEvents.OTP_RESULT)
+        setSubmitError(tValidation('globalInternalError'))
+        return
+      }
+      trackEvent(AnalyticsEvents.OTP_RESULT)
       sessionStorage.removeItem('otp_email')
       // Only Completed — InProgress / Failed / Expired / missing claim route to proofing flow.
-      const needsIdProofing = needsIdProofingFlowAfterOtp(newSession?.idProofingStatus)
+      const needsIdProofing = needsIdProofingFlowAfterOtp(newSession.idProofingStatus)
       router.push(needsIdProofing ? '/login/id-proofing' : '/dashboard')
     } catch (err) {
       setPageData('otp_status', 'error')
