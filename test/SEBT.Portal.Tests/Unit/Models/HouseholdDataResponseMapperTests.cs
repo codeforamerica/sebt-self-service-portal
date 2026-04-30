@@ -228,7 +228,9 @@ public class HouseholdDataResponseMapperTests
                     ChildDateOfBirth = new DateTime(2015, 5, 15),
                     ApplicationStatus = ApplicationStatus.Approved,
                     EbtCardLastFour = "1234",
-                    EbtCardBalance = 120.50m
+                    EbtCardBalance = 120.50m,
+                    EbtCaseNumber = "CBMS-REF",
+                    CaseDisplayNumber = "APP-DISPLAY"
                 }
             }
         };
@@ -245,5 +247,7 @@ public class HouseholdDataResponseMapperTests
         Assert.Equal(ApplicationStatus.Approved, sec.ApplicationStatus);
         Assert.Equal("1234", sec.EbtCardLastFour);
         Assert.Equal(120.50m, sec.EbtCardBalance);
+        Assert.Equal("CBMS-REF", sec.EbtCaseNumber);
+        Assert.Equal("APP-DISPLAY", sec.CaseDisplayNumber);
     }
 }

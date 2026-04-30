@@ -161,6 +161,7 @@ export const SummerEbtCaseSchema = z.object({
   applicationStatus: ApplicationStatusSchema.nullable().optional(),
   mailingAddress: AddressSchema.nullable().optional(),
   ebtCaseNumber: z.string().nullable().optional(),
+  caseDisplayNumber: z.string().nullable().optional(),
   ebtCardLastFour: z.string().nullable().optional(),
   ebtCardStatus: CardStatusSchema.nullable().optional(),
   ebtCardIssueDate: z.string().nullable().optional(),
