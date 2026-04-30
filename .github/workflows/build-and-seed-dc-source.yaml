@@ -1,0 +1,145 @@
+name: Build and Seed DcSource (DC only)
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  AWS_REGION: us-east-1
+  TASK_FAMILY: sebt-portal-dc-development-dc-source-seed
+  LOG_GROUP: /ecs/sebt-portal-dc-development-dc-source-seed
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    environment: dev-dc
+
+    steps:
+      - name: Checkout dc-connector
+        uses: actions/checkout@v6
+        with:
+          repository: codeforamerica/sebt-self-service-portal-dc-connector
+          token: ${{ secrets.SEBT_CONNECTOR_REPOSITORY_PAT }}
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v6
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Login to Amazon ECR
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Build and push seed image
+        run: |
+          IMAGE="${{ secrets.ECR_DC_SOURCE_SEED_REPOSITORY_URL }}:latest"
+          docker build --platform linux/amd64 -f Dockerfile.seed -t "$IMAGE" .
+          docker push "$IMAGE"
+
+  seed:
+    needs: build
+    runs-on: ubuntu-latest
+    environment: dev-dc
+
+    steps:
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v6
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Mask sensitive identifiers
+        run: |
+          ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
+          echo "::add-mask::$ACCOUNT_ID"
+
+          DB_ENDPOINT=$(aws rds describe-db-instances \
+            --query "DBInstances[?contains(DBInstanceIdentifier, 'sebt-portal-dc-development')].Endpoint.Address | [0]" \
+            --output text)
+          [ -n "$DB_ENDPOINT" ] && echo "::add-mask::$DB_ENDPOINT"
+
+      - name: Discover ECS cluster and API service
+        id: discover
+        run: |
+          set -euo pipefail
+          CLUSTER=$(aws ecs list-clusters \
+            --query "clusterArns[?contains(@, 'sebt-portal-dc-development')]" \
+            --output text | head -1 | awk -F'/' '{print $NF}')
+          [ -z "$CLUSTER" ] && { echo "::error::No matching ECS cluster"; exit 1; }
+
+          API_SERVICE=$(aws ecs list-services \
+            --cluster "$CLUSTER" \
+            --query "serviceArns[?contains(@, '-api')]" \
+            --output text | head -1 | awk -F'/' '{print $NF}')
+          [ -z "$API_SERVICE" ] && { echo "::error::No API service in cluster"; exit 1; }
+
+          echo "Cluster: $CLUSTER"
+          echo "API service: $API_SERVICE"
+          echo "cluster=$CLUSTER" >> "$GITHUB_OUTPUT"
+          echo "api_service=$API_SERVICE" >> "$GITHUB_OUTPUT"
+
+      - name: Run seed task
+        id: run
+        run: |
+          set -euo pipefail
+          NET_CONFIG=$(aws ecs describe-services \
+            --cluster "${{ steps.discover.outputs.cluster }}" \
+            --services "${{ steps.discover.outputs.api_service }}" \
+            --query 'services[0].networkConfiguration.awsvpcConfiguration' \
+            --output json)
+
+          TASK_ARN=$(aws ecs run-task \
+            --cluster "${{ steps.discover.outputs.cluster }}" \
+            --task-definition "$TASK_FAMILY" \
+            --launch-type FARGATE \
+            --network-configuration "awsvpcConfiguration=$NET_CONFIG" \
+            --query 'tasks[0].taskArn' \
+            --output text)
+
+          echo "Task ID: ${TASK_ARN##*/}"
+          echo "task_arn=$TASK_ARN" >> "$GITHUB_OUTPUT"
+
+      - name: Wait for task to complete
+        run: |
+          aws ecs wait tasks-stopped \
+            --cluster "${{ steps.discover.outputs.cluster }}" \
+            --tasks "${{ steps.run.outputs.task_arn }}"
+
+      - name: Surface exit code and logs
+        run: |
+          set -euo pipefail
+          CLUSTER="${{ steps.discover.outputs.cluster }}"
+          TASK_ARN="${{ steps.run.outputs.task_arn }}"
+
+          TASK_INFO=$(aws ecs describe-tasks --cluster "$CLUSTER" --tasks "$TASK_ARN")
+          EXIT_CODE=$(echo "$TASK_INFO" | jq -r '.tasks[0].containers[0].exitCode')
+          STOP_REASON=$(echo "$TASK_INFO" | jq -r '.tasks[0].stoppedReason // ""')
+
+          echo "Exit code: $EXIT_CODE"
+          [ -n "$STOP_REASON" ] && echo "Stop reason: $STOP_REASON"
+
+          LOG_STREAM=$(aws logs describe-log-streams \
+            --log-group-name "$LOG_GROUP" \
+            --order-by LastEventTime --descending \
+            --max-items 1 \
+            --query 'logStreams[0].logStreamName' \
+            --output text)
+
+          echo ""
+          echo "--- Last 50 log events from $LOG_STREAM ---"
+          aws logs get-log-events \
+            --log-group-name "$LOG_GROUP" \
+            --log-stream-name "$LOG_STREAM" \
+            --limit 50 \
+            --query 'events[].message' \
+            --output text | tr '\t' '\n'
+
+          if [ "$EXIT_CODE" != "0" ]; then
+            echo ""
+            echo "::error::Seed task failed with exit code $EXIT_CODE"
+            exit 1
+          fi
