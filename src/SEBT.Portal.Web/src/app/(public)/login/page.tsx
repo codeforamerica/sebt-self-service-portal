@@ -1,6 +1,8 @@
+'use client'
+
 import { LoginForm } from '@/features/auth'
-import { getTranslations } from '@/lib/translations'
 import { TextLink, getState, getStateLinks, type StateCode } from '@sebt/design-system'
+import { useTranslation } from 'react-i18next'
 import { COLoginPage } from './COLoginPage'
 
 const loginPageOverrides: Partial<Record<StateCode, React.ComponentType<{ state: StateCode }>>> = {
@@ -9,13 +11,13 @@ const loginPageOverrides: Partial<Record<StateCode, React.ComponentType<{ state:
 
 export default function LoginPage() {
   const state = getState()
+  const { t } = useTranslation('login')
 
   // eslint-disable-next-line security/detect-object-injection -- state is typed StateCode
   const Override = loginPageOverrides[state]
   if (Override) return <Override state={state} />
 
   const links = getStateLinks(state)
-  const t = getTranslations('login')
 
   return (
     <>
