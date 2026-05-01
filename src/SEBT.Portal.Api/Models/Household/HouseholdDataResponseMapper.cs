@@ -51,6 +51,7 @@ public static class HouseholdDataResponseMapper
             ApplicationStatus = domain.ApplicationStatus,
             MailingAddress = domain.MailingAddress?.ToResponse(),
             EbtCaseNumber = domain.EbtCaseNumber,
+            CaseDisplayNumber = domain.CaseDisplayNumber,
             EbtCardLastFour = domain.EbtCardLastFour,
             EbtCardStatus = domain.EbtCardStatus,
             EbtCardIssueDate = domain.EbtCardIssueDate,

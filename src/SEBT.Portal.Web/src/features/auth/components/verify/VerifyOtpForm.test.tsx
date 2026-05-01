@@ -187,6 +187,212 @@ describe('VerifyOtpForm', () => {
       })
     })
 
+    it('should navigate to /login/id-proofing when ID proofing is InProgress', async () => {
+      server.use(
+        http.get('/api/auth/status', () =>
+          HttpResponse.json({
+            isAuthorized: true,
+            email: TEST_EMAILS.success,
+            ial: '1',
+            idProofingStatus: 1,
+            idProofingCompletedAt: null,
+            idProofingExpiresAt: null
+          })
+        )
+      )
+
+      const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime })
+      sessionStorage.setItem('otp_email', TEST_EMAILS.success)
+      renderWithProviders(
+        <VerifyOtpForm
+          email={TEST_EMAILS.success}
+          contactLink={TEST_CONTACT_LINK}
+        />
+      )
+
+      await waitFor(() => {
+        expect(
+          screen.getByRole('textbox', { name: /enter.*confirmation code/i })
+        ).toBeInTheDocument()
+      })
+
+      const otpInput = screen.getByRole('textbox', { name: /enter.*confirmation code/i })
+      const confirmButton = screen.getByRole('button', { name: /confirm/i })
+
+      await user.type(otpInput, TEST_OTP.valid)
+      await user.click(confirmButton)
+
+      await waitFor(() => {
+        expect(sessionStorage.getItem('otp_email')).toBeNull()
+        expect(mockPush).toHaveBeenCalledWith('/login/id-proofing')
+      })
+    })
+
+    it('should navigate to /login/id-proofing when ID proofing is Failed', async () => {
+      server.use(
+        http.get('/api/auth/status', () =>
+          HttpResponse.json({
+            isAuthorized: true,
+            email: TEST_EMAILS.success,
+            ial: '1',
+            idProofingStatus: 3,
+            idProofingCompletedAt: null,
+            idProofingExpiresAt: null
+          })
+        )
+      )
+
+      const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime })
+      sessionStorage.setItem('otp_email', TEST_EMAILS.success)
+      renderWithProviders(
+        <VerifyOtpForm
+          email={TEST_EMAILS.success}
+          contactLink={TEST_CONTACT_LINK}
+        />
+      )
+
+      await waitFor(() => {
+        expect(
+          screen.getByRole('textbox', { name: /enter.*confirmation code/i })
+        ).toBeInTheDocument()
+      })
+
+      const otpInput = screen.getByRole('textbox', { name: /enter.*confirmation code/i })
+      const confirmButton = screen.getByRole('button', { name: /confirm/i })
+
+      await user.type(otpInput, TEST_OTP.valid)
+      await user.click(confirmButton)
+
+      await waitFor(() => {
+        expect(sessionStorage.getItem('otp_email')).toBeNull()
+        expect(mockPush).toHaveBeenCalledWith('/login/id-proofing')
+      })
+    })
+
+    it('should navigate to /login/id-proofing when ID proofing is Expired', async () => {
+      server.use(
+        http.get('/api/auth/status', () =>
+          HttpResponse.json({
+            isAuthorized: true,
+            email: TEST_EMAILS.success,
+            ial: '1',
+            idProofingStatus: 4,
+            idProofingCompletedAt: null,
+            idProofingExpiresAt: null
+          })
+        )
+      )
+
+      const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime })
+      sessionStorage.setItem('otp_email', TEST_EMAILS.success)
+      renderWithProviders(
+        <VerifyOtpForm
+          email={TEST_EMAILS.success}
+          contactLink={TEST_CONTACT_LINK}
+        />
+      )
+
+      await waitFor(() => {
+        expect(
+          screen.getByRole('textbox', { name: /enter.*confirmation code/i })
+        ).toBeInTheDocument()
+      })
+
+      const otpInput = screen.getByRole('textbox', { name: /enter.*confirmation code/i })
+      const confirmButton = screen.getByRole('button', { name: /confirm/i })
+
+      await user.type(otpInput, TEST_OTP.valid)
+      await user.click(confirmButton)
+
+      await waitFor(() => {
+        expect(sessionStorage.getItem('otp_email')).toBeNull()
+        expect(mockPush).toHaveBeenCalledWith('/login/id-proofing')
+      })
+    })
+
+    it('should show an error and not navigate when session refresh fails after valid OTP', async () => {
+      server.use(
+        http.get('/api/auth/status', () =>
+          HttpResponse.json({
+            isAuthorized: false,
+            email: null,
+            ial: null,
+            idProofingStatus: null,
+            idProofingCompletedAt: null,
+            idProofingExpiresAt: null
+          })
+        )
+      )
+
+      const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime })
+      sessionStorage.setItem('otp_email', TEST_EMAILS.success)
+      renderWithProviders(
+        <VerifyOtpForm
+          email={TEST_EMAILS.success}
+          contactLink={TEST_CONTACT_LINK}
+        />
+      )
+
+      await waitFor(() => {
+        expect(
+          screen.getByRole('textbox', { name: /enter.*confirmation code/i })
+        ).toBeInTheDocument()
+      })
+
+      const otpInput = screen.getByRole('textbox', { name: /enter.*confirmation code/i })
+      const confirmButton = screen.getByRole('button', { name: /confirm/i })
+
+      await user.type(otpInput, TEST_OTP.valid)
+      await user.click(confirmButton)
+
+      await waitFor(() => {
+        expect(screen.getByRole('alert')).toBeInTheDocument()
+        expect(screen.getByText(/error occurred on our end/i)).toBeInTheDocument()
+        expect(mockPush).not.toHaveBeenCalled()
+        expect(sessionStorage.getItem('otp_email')).toBe(TEST_EMAILS.success)
+      })
+    })
+
+    it('should navigate to /login/id-proofing when idProofingStatus claim is absent', async () => {
+      server.use(
+        http.get('/api/auth/status', () =>
+          HttpResponse.json({
+            isAuthorized: true,
+            email: TEST_EMAILS.success,
+            ial: '1',
+            idProofingCompletedAt: null,
+            idProofingExpiresAt: null
+          })
+        )
+      )
+
+      const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime })
+      sessionStorage.setItem('otp_email', TEST_EMAILS.success)
+      renderWithProviders(
+        <VerifyOtpForm
+          email={TEST_EMAILS.success}
+          contactLink={TEST_CONTACT_LINK}
+        />
+      )
+
+      await waitFor(() => {
+        expect(
+          screen.getByRole('textbox', { name: /enter.*confirmation code/i })
+        ).toBeInTheDocument()
+      })
+
+      const otpInput = screen.getByRole('textbox', { name: /enter.*confirmation code/i })
+      const confirmButton = screen.getByRole('button', { name: /confirm/i })
+
+      await user.type(otpInput, TEST_OTP.valid)
+      await user.click(confirmButton)
+
+      await waitFor(() => {
+        expect(sessionStorage.getItem('otp_email')).toBeNull()
+        expect(mockPush).toHaveBeenCalledWith('/login/id-proofing')
+      })
+    })
+
     it('should show loading state during submission', async () => {
       const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime })
       renderWithProviders(

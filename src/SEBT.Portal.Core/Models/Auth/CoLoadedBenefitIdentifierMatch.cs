@@ -38,7 +38,9 @@ public static class CoLoadedBenefitIdentifierMatch
     private static bool MatchSnapAccount(User user, HouseholdData? household, string v) =>
         EqualsNormalized(user.SnapId, v)
         || AnyMatchingCoLoadedCase(household, IsSnapCase, c =>
-            EqualsNormalized(c.EbtCaseNumber, v) || EqualsNormalized(c.SummerEBTCaseID, v));
+            EqualsNormalized(c.EbtCaseNumber, v)
+            || EqualsNormalized(c.CaseDisplayNumber, v)
+            || EqualsNormalized(c.SummerEBTCaseID, v));
 
     private static bool MatchSnapPerson(HouseholdData? household, string v) =>
         AnyMatchingCoLoadedCase(household, IsSnapCase, c => EqualsNormalized(c.ApplicationStudentId, v));
@@ -46,7 +48,9 @@ public static class CoLoadedBenefitIdentifierMatch
     private static bool MatchTanfAccount(User user, HouseholdData? household, string v) =>
         EqualsNormalized(user.TanfId, v)
         || AnyMatchingCoLoadedCase(household, IsTanfCase, c =>
-            EqualsNormalized(c.EbtCaseNumber, v) || EqualsNormalized(c.SummerEBTCaseID, v));
+            EqualsNormalized(c.EbtCaseNumber, v)
+            || EqualsNormalized(c.CaseDisplayNumber, v)
+            || EqualsNormalized(c.SummerEBTCaseID, v));
 
     private static bool MatchTanfPerson(HouseholdData? household, string v) =>
         AnyMatchingCoLoadedCase(household, IsTanfCase, c => EqualsNormalized(c.ApplicationStudentId, v));

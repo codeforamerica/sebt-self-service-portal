@@ -33,25 +33,22 @@ export function AddressNotFound() {
     <div className="grid-container maxw-tablet padding-top-4 padding-bottom-4">
       <h1 className="font-sans-xl text-primary">
         {isBlocked
-          ? t('blockedTitle', "This address can't be used")
-          : t('notFoundTitle', 'Are you sure this address is correct?')}
+          ? t('blockedTitle', "This address can't be used") // TODO REMOVE FALLBACK
+          : t('notFoundTitle')}
       </h1>
       <p>
         {isBlocked
           ? t(
               'blockedBody',
               `This address is not available for ${currentState === 'dc' ? 'DC' : 'CO'} SUN Bucks card delivery. Please enter a different mailing address.`
-            )
-          : t(
-              'notFoundBody',
-              "We couldn't find the address you entered. Please check the address."
-            )}
+            ) // TODO REMOVE FALLBACK
+          : t('notFoundBody')}
       </p>
 
       {enteredAddress && (
         <Alert
           variant="warning"
-          heading={t('notFoundAlertTitle', 'Address you entered')}
+          heading={t('notFoundAlertTitle')}
           className="margin-y-3"
         >
           {enteredAddress.streetAddress1}
@@ -71,7 +68,7 @@ export function AddressNotFound() {
           type="button"
           onClick={handleEditAddress}
         >
-          {t('notFoundAlertAction', 'Edit the address')}
+          {t('notFoundAlertAction')}
         </Button>
       </div>
 
@@ -82,7 +79,7 @@ export function AddressNotFound() {
             className="usa-button usa-button--unstyled"
             onClick={handleUseThisAddress}
           >
-            {t('notFoundContinue', 'Use this address')}
+            {t('notFoundContinue')}
           </button>
         </div>
       )}
@@ -93,7 +90,7 @@ export function AddressNotFound() {
             href={getStateLinks(currentState).help.contactUs}
             className="usa-link"
           >
-            {t('notFoundActionHelp', 'Contact us')}
+            {t('notFoundActionHelp')}
           </a>
         </div>
       )}

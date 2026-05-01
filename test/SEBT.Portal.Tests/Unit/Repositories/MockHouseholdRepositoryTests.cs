@@ -55,6 +55,19 @@ public class MockHouseholdRepositoryTests
     }
 
     [Fact]
+    public async Task GetHouseholdByIdentifierAsync_WhenEmailIsIdProofInProgressScenario_ReturnsHouseholdData()
+    {
+        var identifier = HouseholdIdentifier.Email("id-proof-in-progress@example.com");
+
+        var result = await _repository.GetHouseholdByIdentifierAsync(identifier, FullPiiVisibility, UserIalLevel.IAL1);
+
+        Assert.NotNull(result);
+        Assert.Equal("id-proof-in-progress@example.com", result.Email);
+        Assert.NotNull(result.Applications);
+        Assert.Equal(ApplicationStatus.Pending, result.Applications!.First().ApplicationStatus);
+    }
+
+    [Fact]
     public async Task GetHouseholdByIdentifierAsync_WhenPhoneIdentifierAndHouseholdExists_ReturnsHouseholdData()
     {
         // Mock supports phone lookup for DevelopmentPhoneOverride; co-loaded uses default override phone
