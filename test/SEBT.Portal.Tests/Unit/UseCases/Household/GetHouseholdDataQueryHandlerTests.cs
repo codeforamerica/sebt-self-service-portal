@@ -494,12 +494,15 @@ public class GetHouseholdDataQueryHandlerTests
     {
         // Household with only non-co-loaded cases should be classified NonCoLoaded,
         // and the full case list should be returned unchanged.
+        // BenefitIssuanceType is not rewritten for this cohort (only MixedOrApplicantExcluded
+        // suppression realigns it); upstream / connector value passes through unchanged.
         var email = "user@example.com";
         var user = CreateUser(email, UserIalLevel.IAL1plus);
         var identifier = HouseholdIdentifier.Email(EmailNormalizer.Normalize(email));
         var householdData = new HouseholdData
         {
             Email = email,
+            BenefitIssuanceType = BenefitIssuanceType.SummerEbt,
             SummerEbtCases = new List<SummerEbtCase>
             {
                 new() { SummerEBTCaseID = "SEBT-001", ChildFirstName = "A", ChildLastName = "B", IsCoLoaded = false },
@@ -523,6 +526,7 @@ public class GetHouseholdDataQueryHandlerTests
         var success = Assert.IsType<SuccessResult<HouseholdData>>(result);
         Assert.Equal(CoLoadedCohort.NonCoLoaded, success.Value.CoLoadedCohort);
         Assert.Equal(2, success.Value.SummerEbtCases.Count);
+        Assert.Equal(BenefitIssuanceType.SummerEbt, success.Value.BenefitIssuanceType);
     }
 
     [Fact]
