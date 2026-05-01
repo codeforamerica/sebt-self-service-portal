@@ -23,6 +23,8 @@ export { TextLink } from './components/ui/TextLink'
 export type { TextLinkProps } from './components/ui/TextLink'
 export { SummaryBox } from './components/ui/SummaryBox'
 export type { SummaryBoxProps } from './components/ui/SummaryBox'
+export { LoadingInterstitial } from './components/ui/LoadingInterstitial'
+export type { LoadingInterstitialProps } from './components/ui/LoadingInterstitial'
 
 // Rich text rendering (markdown-to-jsx)
 export { RichText } from './components/RichText/RichText'
