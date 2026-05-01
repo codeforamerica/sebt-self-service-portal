@@ -340,7 +340,7 @@ public class DatabaseSeederTests : IClassFixture<SqlServerTestFixture>
 
         // Verify Phone/SnapId/TanfId stored as plaintext; SSN stored as hash
         var coLoaded = users.First(u => u.Email == "co-loaded@example.com");
-        Assert.Equal("5551234567", coLoaded.Phone);
+        Assert.Equal("8185558439", coLoaded.Phone);
         Assert.Equal("SNAP-CO-001", coLoaded.SnapId);
         Assert.Equal("TANF-CO-001", coLoaded.TanfId);
         Assert.NotNull(coLoaded.Ssn);
@@ -677,7 +677,7 @@ public class DatabaseSeederTests : IClassFixture<SqlServerTestFixture>
 
         // Assert
         var users = await context.Users.ToListAsync();
-        Assert.Equal(18, users.Count);
+        Assert.Equal(19, users.Count);
 
         var emails = users.Select(u => u.Email).ToHashSet();
         Assert.Contains("sebt.co+co-loaded@codeforamerica.org", emails);
@@ -689,6 +689,26 @@ public class DatabaseSeederTests : IClassFixture<SqlServerTestFixture>
         Assert.Contains("sebt.co+co-notactivated@codeforamerica.org", emails);
         Assert.Contains("sebt.co+co-deactivatedbystate@codeforamerica.org", emails);
         Assert.Contains("sebt.co+co-active@codeforamerica.org", emails);
+    }
+
+    [Fact]
+    public async Task SeedTestUsersAsync_WithMockHouseholdData_IdProofInProgressUser_HasInProgressStatus()
+    {
+        using var context = CreateContext();
+        await CleanupDatabaseAsync(context);
+        var settings = new SeedingSettings { EmailPattern = "{0}@example.com", State = "dc" };
+        var seeder = CreateSeeder(context, settings);
+
+        await seeder.SeedTestUsersAsync(useMockHouseholdData: true);
+
+        var user = await context.Users
+            .SingleOrDefaultAsync(u => u.Email == "id-proof-in-progress@example.com");
+        Assert.NotNull(user);
+        Assert.False(user!.IsCoLoaded);
+        Assert.Equal((int)IdProofingStatus.InProgress, user.IdProofingStatus);
+        Assert.Equal((int)UserIalLevel.None, user.IalLevel);
+        Assert.Null(user.IdProofingCompletedAt);
+        Assert.Null(user.IdProofingExpiresAt);
     }
 
     [Fact]

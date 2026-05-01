@@ -1,7 +1,10 @@
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import i18n from 'i18next'
 import { useEffect } from 'react'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
+
+import enCOConfirmInfo from '@/content/locales/en/co/confirmInfo.json'
 
 import type { AddressUpdateResponse, UpdateAddressRequest } from '../../api/schema'
 import { AddressFlowProvider, useAddressFlow } from '../../context'
@@ -109,76 +112,118 @@ function renderComponent(
 describe('AddressNotFound', () => {
   beforeEach(() => {
     mockPush.mockClear()
-    mockState = 'dc'
   })
 
-  // --- Content rendering ---
+  describe('Content rendering', () => {
+    it('renders the title and body text', () => {
+      renderComponent()
 
-  it('renders the title and body text', () => {
-    renderComponent()
+      expect(
+        screen.getByRole('heading', { name: /are you sure this address is correct/i })
+      ).toBeInTheDocument()
+      expect(screen.getByText(/couldn.t find the address you entered/i)).toBeInTheDocument()
+    })
 
-    expect(
-      screen.getByRole('heading', { name: /are you sure this address is correct/i })
-    ).toBeInTheDocument()
-    expect(screen.getByText(/couldn.t find the address you entered/i)).toBeInTheDocument()
+    it('shows entered address in the warning alert', () => {
+      renderComponent()
+
+      expect(screen.getByText(/123 Main St NW/)).toBeInTheDocument()
+      expect(screen.getByText(/Apt 4B/)).toBeInTheDocument()
+      expect(screen.getByText(/Washington, DC 20001/)).toBeInTheDocument()
+    })
+
+    it('shows the alert heading', () => {
+      renderComponent()
+
+      const heading = screen.getByRole('heading', { name: /address you entered/i })
+      expect(heading).toBeInTheDocument()
+      expect(heading.tagName).toBe('H4')
+    })
   })
 
-  it('shows entered address in the warning alert', () => {
-    renderComponent()
+  describe('DC state specific', () => {
+    it('DC: shows "Edit the address" button and "Contact us" link', () => {
+      mockState = 'dc'
+      renderComponent()
 
-    expect(screen.getByText(/123 Main St NW/)).toBeInTheDocument()
-    expect(screen.getByText(/Apt 4B/)).toBeInTheDocument()
-    expect(screen.getByText(/Washington, DC 20001/)).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: /edit the address/i })).toBeInTheDocument()
+      expect(screen.getByRole('link', { name: /contact us/i })).toBeInTheDocument()
+    })
+
+    it('DC: does not show "Use this address"', () => {
+      mockState = 'dc'
+      renderComponent()
+
+      expect(screen.queryByRole('button', { name: /use this address/i })).not.toBeInTheDocument()
+    })
+
+    it('DC: "Contact us" link points to the state help URL', () => {
+      mockState = 'dc'
+      renderComponent()
+
+      const contactLink = screen.getByRole('link', { name: /contact us/i })
+      expect(contactLink).toHaveAttribute('href', 'https://sunbucks.dc.gov/page/contact-us')
+    })
   })
 
-  it('shows the alert heading', () => {
-    renderComponent()
+  describe('CO state specific', () => {
+    beforeAll(() => {
+      mockState = 'co'
+      i18n.addResourceBundle('en', 'confirmInfo', enCOConfirmInfo, true, true)
+    })
 
-    const heading = screen.getByRole('heading', { name: /address you entered/i })
-    expect(heading).toBeInTheDocument()
-    expect(heading.tagName).toBe('H4')
-  })
+    it('CO: shows "Edit the address" button and "Use this address" link if not blocked', () => {
+      mockState = 'co'
+      renderComponent()
 
-  // --- DC state-specific ---
+      expect(screen.getByRole('button', { name: /edit the address/i })).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: /use this address/i })).toBeInTheDocument()
+    })
 
-  it('DC: shows "Edit the address" button and "Contact us" link', () => {
-    mockState = 'dc'
-    renderComponent()
+    it('CO: does not show "Contact us"', () => {
+      mockState = 'co'
+      renderComponent()
 
-    expect(screen.getByRole('button', { name: /edit the address/i })).toBeInTheDocument()
-    expect(screen.getByRole('link', { name: /contact us/i })).toBeInTheDocument()
-  })
+      expect(screen.queryByRole('link', { name: /contact us/i })).not.toBeInTheDocument()
+    })
 
-  it('DC: does not show "Use this address"', () => {
-    mockState = 'dc'
-    renderComponent()
+    it('CO: does not show "Use this address" for blocked addresses', () => {
+      mockState = 'co'
+      const blockedResult: AddressUpdateResponse = {
+        status: 'invalid',
+        reason: 'blocked',
+        message: 'This address cannot be used for mail delivery.'
+      }
+      renderComponent(TEST_ADDRESS, blockedResult)
 
-    expect(screen.queryByRole('button', { name: /use this address/i })).not.toBeInTheDocument()
-  })
+      expect(screen.getByRole('button', { name: /edit the address/i })).toBeInTheDocument()
 
-  it('DC: "Contact us" link points to the state help URL', () => {
-    mockState = 'dc'
-    renderComponent()
+      expect(screen.queryByRole('button', { name: /use this address/i })).not.toBeInTheDocument()
+    })
 
-    const contactLink = screen.getByRole('link', { name: /contact us/i })
-    expect(contactLink).toHaveAttribute('href', 'https://sunbucks.dc.gov/page/contact-us')
-  })
+    it('CO: "Use this address" sets address and navigates to replacement cards', async () => {
+      mockState = 'co'
+      const { user } = renderComponent()
 
-  // --- CO state-specific ---
+      const useButton = screen.getByRole('button', { name: /use this address/i })
+      await user.click(useButton)
 
-  it('CO: shows "Edit the address" button and "Use this address" link', () => {
-    mockState = 'co'
-    renderComponent()
+      expect(mockPush).toHaveBeenCalledWith('/profile/address/replacement-cards')
+    })
 
-    expect(screen.getByRole('button', { name: /edit the address/i })).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: /use this address/i })).toBeInTheDocument()
-  })
+    it('CO: "Use this address" preserves validationResult in context (prevents FlowGuard race)', async () => {
+      mockState = 'co'
+      const { user } = renderComponent(TEST_ADDRESS, TEST_VALIDATION_RESULT, {
+        includeInspector: true
+      })
 
-  it('CO: does not show "Contact us"', () => {
-    mockState = 'co'
-    renderComponent()
+      const useButton = screen.getByRole('button', { name: /use this address/i })
+      await user.click(useButton)
 
-    expect(screen.queryByRole('link', { name: /contact us/i })).not.toBeInTheDocument()
+      // validationResult should still be present (not cleared before navigation)
+      expect(screen.getByTestId('has-validation-result')).toHaveTextContent('yes')
+      expect(screen.getByTestId('has-address')).toHaveTextContent('yes')
+    })
   })
 
   // --- Navigation ---
@@ -190,30 +235,6 @@ describe('AddressNotFound', () => {
     await user.click(editButton)
 
     expect(mockPush).toHaveBeenCalledWith('/profile/address')
-  })
-
-  it('CO: "Use this address" sets address and navigates to replacement cards', async () => {
-    mockState = 'co'
-    const { user } = renderComponent()
-
-    const useButton = screen.getByRole('button', { name: /use this address/i })
-    await user.click(useButton)
-
-    expect(mockPush).toHaveBeenCalledWith('/profile/address/replacement-cards')
-  })
-
-  it('CO: "Use this address" preserves validationResult in context (prevents FlowGuard race)', async () => {
-    mockState = 'co'
-    const { user } = renderComponent(TEST_ADDRESS, TEST_VALIDATION_RESULT, {
-      includeInspector: true
-    })
-
-    const useButton = screen.getByRole('button', { name: /use this address/i })
-    await user.click(useButton)
-
-    // validationResult should still be present (not cleared before navigation)
-    expect(screen.getByTestId('has-validation-result')).toHaveTextContent('yes')
-    expect(screen.getByTestId('has-address')).toHaveTextContent('yes')
   })
 
   // --- Blocked address ---
@@ -242,18 +263,6 @@ describe('AddressNotFound', () => {
 
     expect(screen.queryByText(/couldn.t find the address you entered/i)).not.toBeInTheDocument()
     expect(screen.getByText(/not available for .* card delivery/i)).toBeInTheDocument()
-  })
-
-  it('CO: does not show "Use this address" for blocked addresses', () => {
-    mockState = 'co'
-    const blockedResult: AddressUpdateResponse = {
-      status: 'invalid',
-      reason: 'blocked',
-      message: 'This address cannot be used for mail delivery.'
-    }
-    renderComponent(TEST_ADDRESS, blockedResult)
-
-    expect(screen.queryByRole('button', { name: /use this address/i })).not.toBeInTheDocument()
   })
 
   // --- Edge case ---

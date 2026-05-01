@@ -250,6 +250,7 @@ jobs:
             --build-arg NEXT_PUBLIC_MOCK_SOCURE=${{ vars.MOCK_SOCURE }} \
             --build-arg NEXT_PUBLIC_AMPLITUDE_API_KEY=${{ vars.AMPLITUDE_API_KEY }} \
             --build-arg NEXT_PUBLIC_MIXPANEL_TOKEN=${{ vars.MIXPANEL_TOKEN }} \
+            --build-arg NEXT_PUBLIC_SMARTY_EMBEDDED_KEY=${{ vars.SMARTY_EMBEDDED_KEY }} \
             -t sebt-portal-web-dc:${{ needs.build.outputs.image_tag }} \
             .
 
@@ -335,6 +336,7 @@ jobs:
             --build-arg STATE=co \
             --build-arg NEXT_PUBLIC_AMPLITUDE_API_KEY=${{ vars.AMPLITUDE_API_KEY }} \
             --build-arg NEXT_PUBLIC_MIXPANEL_TOKEN=${{ vars.MIXPANEL_TOKEN }} \
+            --build-arg NEXT_PUBLIC_SMARTY_EMBEDDED_KEY=${{ vars.SMARTY_EMBEDDED_KEY }} \
             -t sebt-portal-web-co:${{ needs.build.outputs.image_tag }} \
             .
 

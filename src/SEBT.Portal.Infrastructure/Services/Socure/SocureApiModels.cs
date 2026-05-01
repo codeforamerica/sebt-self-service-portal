@@ -24,6 +24,14 @@ internal class SocureEvaluationRequestData
 {
     [JsonPropertyName("individual")]
     public SocureIndividual Individual { get; init; } = new();
+
+    /// <summary>
+    /// Applicant's IP (IPv4 decimal or IPv6 hex). Sibling of <c>individual</c>, not nested
+    /// inside it. Socure parses only this top-level location; placement under
+    /// <c>individual</c> is silently ignored and breaks DI triangulation + fraud scoring.
+    /// </summary>
+    [JsonPropertyName("ip_address")]
+    public string? IpAddress { get; init; }
 }
 
 internal class SocureIndividual
@@ -53,9 +61,6 @@ internal class SocureIndividual
 
     [JsonPropertyName("family_name")]
     public string? FamilyName { get; init; }
-
-    [JsonPropertyName("ip_address")]
-    public string? IpAddress { get; init; }
 
     [JsonPropertyName("phone_number")]
     public string? PhoneNumber { get; init; }

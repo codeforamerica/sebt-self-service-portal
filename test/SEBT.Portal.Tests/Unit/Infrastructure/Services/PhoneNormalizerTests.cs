@@ -62,4 +62,18 @@ public class PhoneNormalizerTests
         // NANP area code, so this should be rejected as invalid.
         Assert.Null(PhoneNormalizer.Normalize("11234567890"));
     }
+
+    // Every phone we seed (mock repo, DB seeder, frontend fixtures) must survive
+    // libphonenumber validation, otherwise it gets silently dropped from the
+    // Socure payload. Use 818-555-NNNN (real area code, fake central office) for
+    // test data — never the 555 area code, which is fictional in the NANP.
+    [Theory]
+    [InlineData("8185558437")]   // MockHouseholdRepository CoLoaded
+    [InlineData("8185558438")]   // MockHouseholdRepository CoLoadedPendingIdProofing (DC)
+    [InlineData("8185558439")]   // MockHouseholdRepository NonCoLoaded + DatabaseSeeder co-loaded user
+    [InlineData("8185558440")]   // MockHouseholdRepository NotStarted + DatabaseSeeder verified user
+    public void NormalizePhone_accepts_every_seeded_phone(string seededPhone)
+    {
+        Assert.NotNull(PhoneNormalizer.Normalize(seededPhone));
+    }
 }

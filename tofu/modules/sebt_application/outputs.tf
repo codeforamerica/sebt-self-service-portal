@@ -3,6 +3,11 @@ output "appconfig_application_id" {
   value       = var.enable_appconfig ? module.appconfig[0].application_id : null
 }
 
+output "api_cluster_name" {
+  description = "ECS cluster name running the API service. Exposed so DC-only seed task can run on the same cluster."
+  value       = module.api.cluster_name
+}
+
 output "api_endpoint_url" {
   description = "URL of the API service endpoint."
   value       = module.api.endpoint_url
