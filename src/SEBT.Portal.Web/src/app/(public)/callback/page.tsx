@@ -1,13 +1,14 @@
 'use client'
 
 import { apiFetch } from '@/api'
+import { CoLoadingScreen } from '@/components/CoLoadingScreen'
 import { useAuth } from '@/features/auth'
 import {
   OidcCallbackTokenResponseSchema,
   OidcCompleteLoginResponseSchema
 } from '@/features/auth/api/oidc/schema'
 import { getTranslations } from '@/lib/translations'
-import { Alert } from '@sebt/design-system'
+import { Alert, getState } from '@sebt/design-system'
 import { useRouter } from 'next/navigation'
 import { useEffect, useRef, useState } from 'react'
 
@@ -25,9 +26,11 @@ export default function CallbackPage() {
   const router = useRouter()
   const { login } = useAuth()
   const t = getTranslations('login')
+  const tProcessing = getTranslations('step-upProcessing')
   const [status, setStatus] = useState<'loading' | 'error'>('loading')
   const [errorDetail, setErrorDetail] = useState<string | null>(null)
   const exchangeStartedRef = useRef(false)
+  const isCO = getState() === 'co'
 
   useEffect(() => {
     const params = new URLSearchParams(typeof window !== 'undefined' ? window.location.search : '')
@@ -110,6 +113,37 @@ export default function CallbackPage() {
     return undefined
   }, [status, router])
 
+  if (status === 'error') {
+    return (
+      <div className="usa-section">
+        <div
+          className="grid-container maxw-tablet"
+          aria-live="polite"
+          role="status"
+        >
+          <Alert
+            variant="error"
+            heading={t('callbackSignInIssue')}
+          >
+            {errorDetail}
+          </Alert>
+        </div>
+      </div>
+    )
+  }
+
+  if (isCO) {
+    return (
+      <CoLoadingScreen
+        title={tProcessing('title', 'Please wait...')}
+        message={tProcessing(
+          'body',
+          'Do not exit the page. Checking to see if we have enough information.'
+        )}
+      />
+    )
+  }
+
   return (
     <div className="usa-section">
       <div
@@ -117,16 +151,7 @@ export default function CallbackPage() {
         aria-live="polite"
         role="status"
       >
-        {status === 'error' ? (
-          <Alert
-            variant="error"
-            heading={t('callbackSignInIssue')}
-          >
-            {errorDetail}
-          </Alert>
-        ) : (
-          <p className="font-sans-md">{t('callbackSigningIn')}</p>
-        )}
+        <p className="font-sans-md">{t('callbackSigningIn')}</p>
       </div>
     </div>
   )
