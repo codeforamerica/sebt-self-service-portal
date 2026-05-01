@@ -1,10 +1,11 @@
 'use client'
 
 import { ApiError } from '@/api'
+import { CoLoadingScreen } from '@/components/CoLoadingScreen'
 import { SignOutLink, useAuth } from '@/features/auth'
 import { getColoadingStatus } from '@/lib/coloadingStatus'
 import { AnalyticsEvents, useDataLayer } from '@sebt/analytics'
-import { Alert } from '@sebt/design-system'
+import { Alert, getState } from '@sebt/design-system'
 import { useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 
@@ -22,10 +23,12 @@ import { UserProfileCard } from '../UserProfileCard'
 // TODO: Add to CSV: "S2 - Portal Dashboard - Error Heading" and "S2 - Portal Dashboard - Error Description"
 export function DashboardContent() {
   const { t } = useTranslation('dashboard')
+  const { t: tProcessing } = useTranslation('step-upProcessing')
   const { data, isLoading, isError, error, requiresProofing } = useHouseholdData()
   const { setPageData, setUserData, trackEvent } = useDataLayer()
   const { session } = useAuth()
   const sessionIsCoLoaded = session?.isCoLoaded
+  const isCO = getState() === 'co'
 
   useEffect(() => {
     if (isLoading) return
@@ -60,6 +63,19 @@ export function DashboardContent() {
   const pageHeading = <h1 className="usa-sr-only">{t('pageTitle', 'SUN Bucks Dashboard')}</h1>
 
   if (isLoading || requiresProofing) {
+    if (isCO) {
+      // CoLoadingScreen renders its own h1 ("Please wait..."), so omit pageHeading
+      // here to avoid two h1 elements on the same view.
+      return (
+        <CoLoadingScreen
+          title={tProcessing('title', 'Please wait...')}
+          message={tProcessing(
+            'body',
+            'Do not exit the page. Checking to see if we have enough information.'
+          )}
+        />
+      )
+    }
     return (
       <>
         {pageHeading}
