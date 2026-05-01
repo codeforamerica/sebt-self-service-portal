@@ -2,6 +2,7 @@
 
 import { ApiError } from '@/api'
 import { SignOutLink, useAuth } from '@/features/auth'
+import { getColoadingStatus } from '@/lib/coloadingStatus'
 import { AnalyticsEvents, useDataLayer } from '@sebt/analytics'
 import { Alert } from '@sebt/design-system'
 import { useEffect } from 'react'
@@ -35,6 +36,14 @@ export function DashboardContent() {
       const isEmpty = childCount === 0 && data.applications.length === 0
       setPageData('household_status', isEmpty ? 'empty' : 'success')
       setUserData('household_linked_children', childCount, ['default', 'analytics'])
+
+      // DC-215: classify the household into one of three buckets so analytics can
+      // segment dashboard usage. Same value is mirrored on user.* (persists across
+      // pages) and page.* (lives with this page_load / household_result event).
+      const coloadingStatus = getColoadingStatus(isCoLoaded, data)
+      setUserData('coloading_status', coloadingStatus, ['default', 'analytics'])
+      setPageData('household_type', coloadingStatus)
+
       // Distinguishes a co-loaded user who matched but has no enrolled children
       // from a non-co-loaded applicant seeing the same empty screen.
       if (isEmpty && isCoLoaded) {
