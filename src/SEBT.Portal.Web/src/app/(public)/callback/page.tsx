@@ -7,10 +7,10 @@ import {
   OidcCallbackTokenResponseSchema,
   OidcCompleteLoginResponseSchema
 } from '@/features/auth/api/oidc/schema'
-import { getTranslations } from '@/lib/translations'
 import { Alert, getState } from '@sebt/design-system'
 import { useRouter } from 'next/navigation'
 import { useEffect, useRef, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 
 /**
  * OIDC callback: the IdP redirects here with ?code=...&state=...
@@ -25,8 +25,8 @@ import { useEffect, useRef, useState } from 'react'
 export default function CallbackPage() {
   const router = useRouter()
   const { login } = useAuth()
-  const t = getTranslations('login')
-  const tProcessing = getTranslations('step-upProcessing')
+  const { t } = useTranslation('login')
+  const { t: tProcessing } = useTranslation('step-upProcessing')
   const [status, setStatus] = useState<'loading' | 'error'>('loading')
   const [errorDetail, setErrorDetail] = useState<string | null>(null)
   const exchangeStartedRef = useRef(false)
@@ -101,7 +101,7 @@ export default function CallbackPage() {
       // otherwise ref stays true and the retried effect bails while the aborted run skipped navigation.
       exchangeStartedRef.current = false
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- t (getTranslations) is a static lookup
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- t/tProcessing are stable refs from useTranslation; safe to omit
   }, [login, router])
 
   useEffect(() => {

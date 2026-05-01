@@ -47,21 +47,24 @@ vi.mock('@/features/auth', async () => {
 })
 
 // Mock translations
-vi.mock('@/lib/translations', () => ({
-  getTranslations: vi.fn().mockImplementation((namespace: string) => {
-    const namespaces: Record<string, Record<string, string>> = {
-      login: {
-        callbackSigningIn: 'Signing you in…',
-        callbackSignInIssue: 'Sign-in issue',
-        callbackErrorMissingParams: 'Missing sign-in information.',
-        callbackErrorGeneric: 'Something went wrong.',
-        callbackErrorIdpRedirect: 'Primary MyColorado sign-in did not finish.'
-      }
-    }
-    /* eslint-disable security/detect-object-injection -- test mock */
-    const translations = namespaces[namespace] ?? {}
-    return (key: string, defaultValue?: string) => translations[key] ?? defaultValue ?? key
+// CallbackPage now uses the client-side useTranslation() hook (DC-187 fix).
+const TEST_TRANSLATIONS: Record<string, Record<string, string>> = {
+  login: {
+    callbackSigningIn: 'Signing you in…',
+    callbackSignInIssue: 'Sign-in issue',
+    callbackErrorMissingParams: 'Missing sign-in information.',
+    callbackErrorGeneric: 'Something went wrong.',
+    callbackErrorIdpRedirect: 'Primary MyColorado sign-in did not finish.'
+  }
+}
+
+vi.mock('react-i18next', () => ({
+  useTranslation: (namespace: string) => ({
+    /* eslint-disable security/detect-object-injection -- test mock; namespace + key controlled */
+    t: (key: string, defaultValue?: string) =>
+      TEST_TRANSLATIONS[namespace]?.[key] ?? defaultValue ?? key,
     /* eslint-enable security/detect-object-injection */
+    i18n: { language: 'en' }
   })
 }))
 
