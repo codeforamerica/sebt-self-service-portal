@@ -34,7 +34,7 @@
     "next": "16.2.3",
     "react": "19.2.1",
     "react-dom": "19.2.1",
-    "react-i18next": "^16.5.0",
+    "react-i18next": "^17.0.4",
     "vitest": "^4.0.15"
   },
   "dependencies": {
