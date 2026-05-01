@@ -98,6 +98,7 @@ describe('HouseholdSummary', () => {
     const pendingApp: Application = { ...mockApplication, applicationStatus: 'Pending' }
     mockReturnData = { ...defaultMockData, summerEbtCases: [], applications: [pendingApp] }
     render(<HouseholdSummary />)
+    // TODO update when DC copy import
     const statusText = screen.getByText('Application in-progress')
     expect(statusText).toHaveClass('text-gold')
   })

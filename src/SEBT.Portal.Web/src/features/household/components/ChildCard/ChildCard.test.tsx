@@ -74,6 +74,45 @@ describe('ChildCard', () => {
     expect(screen.queryByText('Benefit issued to')).not.toBeInTheDocument()
   })
 
+  // TODO add test for COlike scenario
+  // it('does not render cardTableTypeSnap when empty and issuance type 1', () => {
+  //   const caseWithoutIssuanceType = createMockSummerEbtCase({
+  //     ...mockCase,
+  //     issuanceType: null
+  //   })
+
+  //   renderWithFlags({ summerEbtCase: caseWithoutIssuanceType })
+
+  //   // Card type heading should not be present (i18n key: cardTableHeadingCardType → "Benefit issued to")
+  //   expect(screen.queryByText('Benefit issued to')).not.toBeInTheDocument()
+  // })
+
+  // TODO add test for DClike scenario
+  // it('renders cardTableTypeSnap when defined and issuance type 3', () => {
+  //   const caseWithoutIssuanceType = createMockSummerEbtCase({
+  //     ...mockCase,
+  //     issuanceType: 3
+  //   })
+
+  //   renderWithFlags({ summerEbtCase: caseWithoutIssuanceType })
+
+  //   // Card type heading should not be present (i18n key: cardTableHeadingCardType → "Benefit issued to")
+  //   expect(screen.queryByText('Benefit issued to')).not.toBeInTheDocument()
+  // })
+
+  // TODO add test for DClike scenario
+  // it('renders cardTableTypeTanf when defined and issuance type 2', () => {
+  //   const caseWithoutIssuanceType = createMockSummerEbtCase({
+  //     ...mockCase,
+  //     issuanceType: 2
+  //   })
+
+  //   renderWithFlags({ summerEbtCase: caseWithoutIssuanceType })
+
+  //   // Card type heading should not be present (i18n key: cardTableHeadingCardType → "Benefit issued to")
+  //   expect(screen.queryByText('Benefit issued to')).not.toBeInTheDocument()
+  // })
+
   it('renders child name in accordion header', () => {
     renderWithFlags({ summerEbtCase: mockCase })
 
