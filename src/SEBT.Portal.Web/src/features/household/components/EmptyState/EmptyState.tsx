@@ -3,6 +3,7 @@
 import Link from 'next/link'
 import { useTranslation } from 'react-i18next'
 
+import { getApplyHref } from '@/lib/applyHref'
 import { Alert } from '@sebt/design-system'
 
 // Keys map to CSV: "S2 - Portal Dashboard - Alert Applications - {Key}"
@@ -18,7 +19,7 @@ export function EmptyState() {
     >
       <span>{t('alertApplicationsBody')}</span>{' '}
       <Link
-        href="/apply"
+        href={getApplyHref()}
         className="usa-link font-sans-md text-bold text-ink display-block margin-top-1"
       >
         {t('alertApplicationsAction')}

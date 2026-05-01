@@ -5,6 +5,11 @@ import type { HouseholdData, SummerEbtCase } from '../../api'
 
 import { EnrolledChildren } from './EnrolledChildren'
 
+let mockApplyHref = '/apply'
+vi.mock('@/lib/applyHref', () => ({
+  getApplyHref: () => mockApplyHref
+}))
+
 const mockCase1: SummerEbtCase = {
   summerEBTCaseID: 'SEBT-001',
   childFirstName: 'Sophia',
@@ -49,6 +54,7 @@ vi.mock('../../api', async (importOriginal) => ({
 describe('EnrolledChildren', () => {
   beforeEach(() => {
     mockReturnData = defaultMockData
+    mockApplyHref = '/apply'
   })
 
   it('renders section heading', () => {
@@ -86,5 +92,11 @@ describe('EnrolledChildren', () => {
     render(<EnrolledChildren />)
     expect(screen.getByText('Sophia Martinez')).toBeInTheDocument()
     expect(screen.getByText('Emily Brown')).toBeInTheDocument()
+  })
+
+  it('routes the apply link to whatever getApplyHref returns', () => {
+    mockApplyHref = 'https://peak.my.site.com/SEBT/s/apply-for-sebt-starting-page?language=en_US'
+    render(<EnrolledChildren />)
+    expect(screen.getByRole('link', { name: /submit/i })).toHaveAttribute('href', mockApplyHref)
   })
 })

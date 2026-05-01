@@ -2,6 +2,8 @@
 
 import { useTranslation } from 'react-i18next'
 
+import { getApplyHref } from '@/lib/applyHref'
+
 import { useRequiredHouseholdData } from '../../api'
 import { ChildCard } from '../ChildCard'
 
@@ -9,6 +11,7 @@ import { ChildCard } from '../ChildCard'
 export function EnrolledChildren() {
   const { t } = useTranslation('dashboard')
   const data = useRequiredHouseholdData()
+  const applyHref = getApplyHref()
 
   return (
     <section aria-labelledby="enrolled-children-heading">
@@ -21,7 +24,7 @@ export function EnrolledChildren() {
       <p className="margin-bottom-3">
         {t('sectionEnrolledChildrenBody1')}{' '}
         <a
-          href="/apply"
+          href={applyHref}
           className="usa-link"
         >
           {t('sectionEnrolledChildrenAction')}
