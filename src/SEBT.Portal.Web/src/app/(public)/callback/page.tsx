@@ -1,13 +1,14 @@
 'use client'
 
 import { apiFetch } from '@/api'
+import { CoLoadingScreen } from '@/components/CoLoadingScreen'
 import { useAuth } from '@/features/auth'
 import {
   OidcCallbackTokenResponseSchema,
   OidcCompleteLoginResponseSchema
 } from '@/features/auth/api/oidc/schema'
 import { getTranslations } from '@/lib/translations'
-import { Alert, getState, LoadingInterstitial } from '@sebt/design-system'
+import { Alert, getState } from '@sebt/design-system'
 import { useRouter } from 'next/navigation'
 import { useEffect, useRef, useState } from 'react'
 
@@ -133,15 +134,13 @@ export default function CallbackPage() {
 
   if (isCO) {
     return (
-      <div className="grid-container maxw-tablet">
-        <LoadingInterstitial
-          title={tProcessing('title', 'Please wait...')}
-          message={tProcessing(
-            'body',
-            'Do not exit the page. Checking to see if we have enough information.'
-          )}
-        />
-      </div>
+      <CoLoadingScreen
+        title={tProcessing('title', 'Please wait...')}
+        message={tProcessing(
+          'body',
+          'Do not exit the page. Checking to see if we have enough information.'
+        )}
+      />
     )
   }
 

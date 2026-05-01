@@ -1,4 +1,4 @@
-interface LoadingInterstitialProps {
+export interface LoadingInterstitialProps {
   title: string;
   message: string;
 }

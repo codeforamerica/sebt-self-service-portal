@@ -1,7 +1,7 @@
 'use client'
 
+import { CoLoadingScreen } from '@/components/CoLoadingScreen'
 import { useAuth } from '@/features/auth'
-import { getState, LoadingInterstitial } from '@sebt/design-system'
 import { useRouter } from 'next/navigation'
 import { useEffect, useState, type ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -22,7 +22,6 @@ export function AuthGuard({ children }: AuthGuardProps) {
   const { t } = useTranslation('step-upProcessing')
   const router = useRouter()
   const [isHydrated, setIsHydrated] = useState(false)
-  const isCO = getState() === 'co'
 
   // Wait for hydration before checking auth
   // This is a standard pattern for detecting client-side hydration
@@ -39,17 +38,12 @@ export function AuthGuard({ children }: AuthGuardProps) {
   // user knows the dashboard is still loading. Other states keep the existing
   // blank-screen behavior until their content is wired up.
   if (!isHydrated || isLoading) {
-    return isCO ? (
-      <div className="grid-container maxw-tablet">
-        <LoadingInterstitial
-          title={t('title', 'Please wait...')}
-          message={t(
-            'body',
-            'Do not exit the page. Checking to see if we have enough information.'
-          )}
-        />
-      </div>
-    ) : null
+    return (
+      <CoLoadingScreen
+        title={t('title', 'Please wait...')}
+        message={t('body', 'Do not exit the page. Checking to see if we have enough information.')}
+      />
+    )
   }
 
   if (!isAuthenticated) {

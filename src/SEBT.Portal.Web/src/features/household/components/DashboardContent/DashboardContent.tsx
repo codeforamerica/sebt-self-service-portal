@@ -1,9 +1,10 @@
 'use client'
 
 import { ApiError } from '@/api'
+import { CoLoadingScreen } from '@/components/CoLoadingScreen'
 import { SignOutLink, useAuth } from '@/features/auth'
 import { AnalyticsEvents, useDataLayer } from '@sebt/analytics'
-import { Alert, getState, LoadingInterstitial } from '@sebt/design-system'
+import { Alert, getState } from '@sebt/design-system'
 import { useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 
@@ -50,20 +51,23 @@ export function DashboardContent() {
   const pageHeading = <h1 className="usa-sr-only">{t('pageTitle', 'SUN Bucks Dashboard')}</h1>
 
   if (isLoading || requiresProofing) {
+    if (isCO) {
+      // CoLoadingScreen renders its own h1 ("Please wait..."), so omit pageHeading
+      // here to avoid two h1 elements on the same view.
+      return (
+        <CoLoadingScreen
+          title={tProcessing('title', 'Please wait...')}
+          message={tProcessing(
+            'body',
+            'Do not exit the page. Checking to see if we have enough information.'
+          )}
+        />
+      )
+    }
     return (
       <>
         {pageHeading}
-        {isCO ? (
-          <LoadingInterstitial
-            title={tProcessing('title', 'Please wait...')}
-            message={tProcessing(
-              'body',
-              'Do not exit the page. Checking to see if we have enough information.'
-            )}
-          />
-        ) : (
-          <DashboardSkeleton />
-        )}
+        <DashboardSkeleton />
       </>
     )
   }
