@@ -15,6 +15,7 @@ using SEBT.Portal.Infrastructure.Data;
 using SEBT.Portal.Infrastructure.Repositories;
 using SEBT.Portal.Infrastructure.Services;
 using StackExchange.Redis;
+using SEBT.Portal.StatesPlugins.Interfaces.Services;
 using ISummerEbtCaseService = SEBT.Portal.StatesPlugins.Interfaces.ISummerEbtCaseService;
 
 namespace SEBT.Portal.Infrastructure;
@@ -88,6 +89,7 @@ public static class Dependencies
         // Self-service rules evaluator — evaluates per-state config against household data
         services.AddTransient<ISelfServiceEvaluator, SelfServiceEvaluator>();
         services.AddSingleton<IIdentifierHasher, IdentifierHasher>();
+        services.AddSingleton<IHMACSHA256Hasher, HMACSHA256Hasher>();
 
         // Expose SocureSettings directly for use case injection (avoids IOptions dependency in UseCases layer).
         // Scoped so each request gets a consistent snapshot, supporting live AppConfig reload.
