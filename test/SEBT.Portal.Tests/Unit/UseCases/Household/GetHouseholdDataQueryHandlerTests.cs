@@ -568,6 +568,53 @@ public class GetHouseholdDataQueryHandlerTests
     }
 
     [Fact]
+    public async Task Handle_ClassifiesCohort_AsCoLoadedOnly_WhenAllCasesCoLoadedAndHouseholdApplicationsAreHistoricalOnly()
+    {
+        // Household Applications often retains terminal rows (Approved/Denied/Cancelled).
+        // Those alone must not classify as MixedOrApplicantExcluded when every case is co-loaded.
+        var email = "user@example.com";
+        var user = CreateUser(email, UserIalLevel.IAL1plus);
+        var identifier = HouseholdIdentifier.Email(EmailNormalizer.Normalize(email));
+        var householdData = new HouseholdData
+        {
+            Email = email,
+            BenefitIssuanceType = BenefitIssuanceType.SnapEbtCard,
+            SummerEbtCases = new List<SummerEbtCase>
+            {
+                new() { SummerEBTCaseID = "SEBT-001", ChildFirstName = "A", ChildLastName = "B", IsCoLoaded = true },
+                new() { SummerEBTCaseID = "SEBT-002", ChildFirstName = "C", ChildLastName = "D", IsCoLoaded = true }
+            },
+            Applications = new List<Application>
+            {
+                new()
+                {
+                    ApplicationNumber = "APP-PAST",
+                    ApplicationStatus = ApplicationStatus.Approved,
+                    IssuanceType = IssuanceType.SummerEbt
+                }
+            }
+        };
+
+        _resolver.ResolveAsync(Arg.Any<ClaimsPrincipal>(), Arg.Any<CancellationToken>()).Returns(identifier);
+        _piiVisibilityService.GetVisibility(UserIalLevel.IAL1plus)
+            .Returns(new PiiVisibility(IncludeAddress: true, IncludeEmail: true, IncludePhone: true));
+        _repository.GetHouseholdByIdentifierAsync(
+                Arg.Any<HouseholdIdentifier>(), Arg.Any<PiiVisibility>(),
+                Arg.Any<UserIalLevel>(), Arg.Any<CancellationToken>())
+            .Returns(householdData);
+
+        var handler = CreateHandler();
+        var query = new GetHouseholdDataQuery { User = user };
+
+        var result = await handler.Handle(query, CancellationToken.None);
+
+        var success = Assert.IsType<SuccessResult<HouseholdData>>(result);
+        Assert.Equal(CoLoadedCohort.CoLoadedOnly, success.Value.CoLoadedCohort);
+        Assert.Equal(2, success.Value.SummerEbtCases.Count);
+        Assert.Equal(BenefitIssuanceType.SnapEbtCard, success.Value.BenefitIssuanceType);
+    }
+
+    [Fact]
     public async Task Handle_ClassifiesCohort_AsMixedOrApplicantExcluded_WhenHouseholdHasCoLoadedAndNonCoLoadedCases()
     {
         // Mixed-eligibility family: co-loaded cases are suppressed and the

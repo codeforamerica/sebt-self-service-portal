@@ -148,10 +148,10 @@ public class GetHouseholdDataQueryHandler(
         }
 
         var hasNonCoLoaded = household.SummerEbtCases.Any(c => !c.IsCoLoaded);
-        var hasApplications = household.Applications.Count > 0;
+        var hasInFlightHouseholdApplication = household.Applications.Any(IsInFlightHouseholdApplication);
         var hasPendingCase = household.SummerEbtCases.Any(IsPendingApplicant);
 
-        return hasNonCoLoaded || hasApplications || hasPendingCase
+        return hasNonCoLoaded || hasInFlightHouseholdApplication || hasPendingCase
             ? CoLoadedCohort.MixedOrApplicantExcluded
             : CoLoadedCohort.CoLoadedOnly;
     }
@@ -163,4 +163,12 @@ public class GetHouseholdDataQueryHandler(
     /// </summary>
     private static bool IsPendingApplicant(SummerEbtCase summerEbtCase) =>
         summerEbtCase.ApplicationStatus is ApplicationStatus.Pending or ApplicationStatus.UnderReview;
+
+    /// <summary>
+    /// Household-level <see cref="HouseholdData.Applications"/> often retains historical rows
+    /// (approved/denied/cancelled). Only pending or under-review applications indicate an active
+    /// applicant journey alongside co-loaded cases.
+    /// </summary>
+    private static bool IsInFlightHouseholdApplication(Application application) =>
+        application.ApplicationStatus is ApplicationStatus.Pending or ApplicationStatus.UnderReview;
 }

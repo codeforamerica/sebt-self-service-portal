@@ -17,10 +17,10 @@ benefits:
    the experience is coherent and so the caseworker remains the authoritative
    contact for the co-loaded benefits.
 2. **Applicants with co-loaded benefits** — a household that has co-loaded
-   cases and also a pending application (or a case still in
-   `Pending`/`UnderReview` status). These users are on the applicant journey
-   and should see their application view, not the co-loaded benefits the
-   caseworker is managing on their behalf.
+   cases and also an **in-flight** application path: either a household-level
+   `Application` in `Pending`/`UnderReview`, or a case whose `ApplicationStatus`
+   is still `Pending`/`UnderReview`. Historical application rows alone (for example
+   `Approved`) do not place the household on the applicant journey for this rule.
 
 Together, this exclusion cohort represents ~3,000 households at rollout.
 
@@ -43,11 +43,15 @@ We chose the **derived-at-runtime** approach.
 at query time into one of three values, computed on the pre-filter state:
 
 - `NonCoLoaded` — no `SummerEbtCase.IsCoLoaded` is true.
-- `CoLoadedOnly` — all cases are co-loaded AND there are no `Application`
-  records and no cases in `Pending`/`UnderReview` status.
+- `CoLoadedOnly` — all cases are co-loaded AND there are no **in-flight**
+  household applications (`Applications` entries with status `Pending` or
+  `UnderReview`), AND no cases whose `ApplicationStatus` is pending applicant.
+  Historical application rows alone (for example `Approved`) do **not**
+  trigger this cohort when every case is co-loaded.
 - `MixedOrApplicantExcluded` — at least one co-loaded case AND at least one
-  of: a non-co-loaded case, an `Application` record, or a case with
-  `Pending`/`UnderReview` status.
+  of: a non-co-loaded case, an in-flight household application (`Pending` /
+  `UnderReview`), or a case with pending-applicant status (`Pending` /
+  `UnderReview` on the case).
 
 `GetHouseholdDataQueryHandler` attaches the classification to
 `HouseholdData.CoLoadedCohort`, then — for the `MixedOrApplicantExcluded`
