@@ -21,7 +21,8 @@ const nextConfig: NextConfig = {
   // into server-safe (index.ts) and client (client.ts) entry points instead.
   reactCompiler: true,
   env: {
-    NEXT_PUBLIC_STATE: state
+    NEXT_PUBLIC_STATE: state,
+    NEXT_PUBLIC_SMARTY_EMBEDDED_KEY: process.env.NEXT_PUBLIC_SMARTY_EMBEDDED_KEY || ''
   },
   experimental: {
     // Use our custom sass-loader configuration instead of built-in

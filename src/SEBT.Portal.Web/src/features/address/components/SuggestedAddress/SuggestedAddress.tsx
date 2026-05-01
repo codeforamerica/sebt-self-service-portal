@@ -49,14 +49,11 @@ export function SuggestedAddress() {
 
   // Use abbreviated copy for DC 30-char abbreviation, suggested copy otherwise
   const title = isAbbreviated
-    ? t('abbreviatedTitle', 'We abbreviated your address')
-    : t('suggestedTitle', 'Check the address')
+    ? t('abbreviatedTitle', 'We abbreviated your address') // TODO remove fallback
+    : t('suggestedTitle')
   const body = isAbbreviated
-    ? t('abbreviatedBody1', 'We updated the street address to a format we can accept.')
-    : t(
-        'suggestedBody',
-        'We updated the address you entered. If correct, use the suggested address.'
-      )
+    ? t('abbreviatedBody1', 'We updated the street address to a format we can accept.') // TODO remove fallback
+    : t('suggestedBody')
 
   // For abbreviated, show additional context about the 30-char limit
   const bodyDetail = isAbbreviated
@@ -65,11 +62,11 @@ export function SuggestedAddress() {
 
   // Labels for the radio group items
   const suggestedLabel = isAbbreviated
-    ? t('abbreviatedBody2', 'Suggested address')
-    : tCommon('suggestedAddress', 'Suggested address')
+    ? t('abbreviatedBody2', 'Suggested address') // TODO remove fallback
+    : tCommon('suggestedAddress', 'Suggested address') // TODO remove fallback
   const enteredLabel = isAbbreviated
-    ? t('abbreviatedBody3', 'Address you entered')
-    : tCommon('addressYouEntered', 'Address you entered')
+    ? t('abbreviatedBody3', 'Address you entered') // TODO remove fallback
+    : tCommon('addressYouEntered', 'Address you entered') // TODO remove fallback
 
   function formatAddress(addr: UpdateAddressRequest | null) {
     if (!addr) return null
@@ -102,7 +99,7 @@ export function SuggestedAddress() {
 
       <fieldset className="usa-fieldset margin-top-3">
         <legend className="usa-legend">
-          {t('suggestedLabelSelect', 'Select the address to use')}
+          {t('suggestedLabelSelect')}
           <span className="text-secondary-dark"> *</span>
         </legend>
 

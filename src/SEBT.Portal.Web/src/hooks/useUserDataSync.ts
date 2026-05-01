@@ -4,12 +4,9 @@ import { useDataLayer } from '@sebt/analytics'
 import { useEffect } from 'react'
 
 import { useAuth } from '@/features/auth/context'
+import { IdProofingStatus, isIdProofedForAnalytics } from '@/lib/idProofingStatus'
 
 const ANALYTICS_SCOPE: string[] = ['default', 'analytics']
-
-// Mirrors SEBT.Portal.Core.Models.Auth.IdProofingStatus enum values exposed via /auth/status.
-const ID_PROOFING_NOT_STARTED = 0
-const ID_PROOFING_COMPLETED = 2
 
 /**
  * Syncs user-level data from the current session into the data layer.
@@ -32,12 +29,12 @@ export function useUserDataSync() {
     const idProofingStatus = session.idProofingStatus
     setUserData(
       'id_proofed',
-      idProofingStatus === ID_PROOFING_COMPLETED || !!session.idProofingCompletedAt,
+      isIdProofedForAnalytics(idProofingStatus, session.idProofingCompletedAt),
       ANALYTICS_SCOPE
     )
     setUserData(
       'has_dob',
-      idProofingStatus != null && idProofingStatus !== ID_PROOFING_NOT_STARTED,
+      idProofingStatus != null && idProofingStatus !== IdProofingStatus.NotStarted,
       ANALYTICS_SCOPE
     )
 
