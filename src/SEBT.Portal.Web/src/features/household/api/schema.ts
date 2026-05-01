@@ -64,13 +64,22 @@ export type ApplicationStatus = z.infer<typeof ApplicationStatusSchema>
 /**
  * Classification of a household relative to co-loaded benefits. Derived on the
  * backend and shipped on HouseholdData to drive the analytics dimension.
+ *
+ * `Unknown` is a frontend-only sentinel when the field is absent, null, or not a
+ * recognized backend enum value — so analytics do not collapse that state into
+ * `NonCoLoaded` (which would under-count the excluded cohort if the wire contract breaks).
  */
 export const CoLoadedCohortSchema = z.preprocess(
-  (val) =>
-    typeof val === 'number'
-      ? (CO_LOADED_COHORT_MAP[val as keyof typeof CO_LOADED_COHORT_MAP] ?? 'NonCoLoaded')
-      : val,
-  z.enum(['NonCoLoaded', 'CoLoadedOnly', 'MixedOrApplicantExcluded'])
+  (val) => {
+    if (val === undefined || val === null) {
+      return 'Unknown'
+    }
+    if (typeof val === 'number') {
+      return CO_LOADED_COHORT_MAP[val as keyof typeof CO_LOADED_COHORT_MAP] ?? 'Unknown'
+    }
+    return val
+  },
+  z.enum(['NonCoLoaded', 'CoLoadedOnly', 'MixedOrApplicantExcluded', 'Unknown'])
 )
 
 export type CoLoadedCohort = z.infer<typeof CoLoadedCohortSchema>
@@ -88,6 +97,8 @@ export function toAnalyticsCohort(cohort: CoLoadedCohort): string {
       return 'co_loaded_only'
     case 'MixedOrApplicantExcluded':
       return 'mixed_or_applicant_excluded'
+    case 'Unknown':
+      return 'unknown'
   }
 }
 
@@ -265,10 +276,8 @@ export const HouseholdDataSchema = z.object({
   userProfile: UserProfileSchema.nullable().optional(),
   benefitIssuanceType: IssuanceTypeSchema.nullable().optional(),
   allowedActions: AllowedActionsSchema.nullable().optional(),
-  // Defaults to NonCoLoaded for backward compatibility with older/cached payloads
-  // that may not carry the field yet; that's the safest assumption because it
-  // means the excluded-cohort analytics dimension is not falsely asserted.
-  coLoadedCohort: CoLoadedCohortSchema.optional().default('NonCoLoaded')
+  // Missing/null preprocess to Unknown so analytics never collapse broken payloads into NonCoLoaded (PR #208).
+  coLoadedCohort: CoLoadedCohortSchema
 })
 
 export type HouseholdData = z.infer<typeof HouseholdDataSchema>

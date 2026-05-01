@@ -5,19 +5,19 @@ import {
   CardStatusSchema,
   CoLoadedCohortSchema,
   formatUsPhone,
+  HouseholdDataSchema,
   interpolateDate,
   IssuanceTypeSchema,
   toAnalyticsCohort
 } from './schema'
 
 /**
- * These tests verify that frontend Zod enum schemas correctly map the integer
- * values sent by the .NET API (System.Text.Json default: enums as integers).
- *
- * Backend enum definitions (source of truth):
+ * Backend enum definitions (source of truth for wire integers):
  *   CardStatus:        Requested=0, Mailed=1, Active=2, Deactivated=3
  *   ApplicationStatus: Unknown=0, Pending=1, Approved=2, Denied=3, UnderReview=4, Cancelled=5
  *   IssuanceType:      Unknown=0, SummerEbt=1, TanfEbtCard=2, SnapEbtCard=3
+ *   CoLoadedCohort:    NonCoLoaded=0, CoLoadedOnly=1, MixedOrApplicantExcluded=2
+ * Frontend-only: CoLoaded cohort parse value `Unknown` for absent/unrecognized wire values (not a backend enum member).
  */
 describe('CardStatusSchema', () => {
   it.each([
@@ -67,7 +67,7 @@ describe('IssuanceTypeSchema', () => {
 })
 
 describe('CoLoadedCohortSchema', () => {
-  // Must stay aligned with SEBT.Portal.Core.Models.Household.CoLoadedCohort:
+  // Backend enum — stay aligned with SEBT.Portal.Core.Models.Household.CoLoadedCohort:
   //   NonCoLoaded=0, CoLoadedOnly=1, MixedOrApplicantExcluded=2
   it.each([
     [0, 'NonCoLoaded'],
@@ -77,12 +77,17 @@ describe('CoLoadedCohortSchema', () => {
     expect(CoLoadedCohortSchema.parse(input)).toBe(expected)
   })
 
+  it('maps absent and null to Unknown', () => {
+    expect(CoLoadedCohortSchema.parse(undefined)).toBe('Unknown')
+    expect(CoLoadedCohortSchema.parse(null)).toBe('Unknown')
+  })
+
   it('passes through string values unchanged', () => {
     expect(CoLoadedCohortSchema.parse('MixedOrApplicantExcluded')).toBe('MixedOrApplicantExcluded')
   })
 
-  it('defaults unrecognized integers to NonCoLoaded (safest analytics assumption)', () => {
-    expect(CoLoadedCohortSchema.parse(99)).toBe('NonCoLoaded')
+  it('maps unrecognized integers to Unknown (distinct analytics bucket)', () => {
+    expect(CoLoadedCohortSchema.parse(99)).toBe('Unknown')
   })
 })
 
@@ -90,9 +95,35 @@ describe('toAnalyticsCohort', () => {
   it.each([
     ['NonCoLoaded', 'non_co_loaded'],
     ['CoLoadedOnly', 'co_loaded_only'],
-    ['MixedOrApplicantExcluded', 'mixed_or_applicant_excluded']
+    ['MixedOrApplicantExcluded', 'mixed_or_applicant_excluded'],
+    ['Unknown', 'unknown']
   ] as const)('maps %s to standardized analytics value %s', (input, expected) => {
     expect(toAnalyticsCohort(input)).toBe(expected)
+  })
+})
+
+describe('HouseholdDataSchema coLoadedCohort', () => {
+  const minimalHousehold = {
+    applications: [
+      {
+        applicationStatus: 'Approved' as const,
+        children: [{ firstName: 'A', lastName: 'B' }],
+        childrenOnApplication: 1
+      }
+    ]
+  }
+
+  it('defaults missing coLoadedCohort to Unknown after parse', () => {
+    const data = HouseholdDataSchema.parse(minimalHousehold)
+    expect(data.coLoadedCohort).toBe('Unknown')
+  })
+
+  it('preserves explicit NonCoLoaded', () => {
+    const data = HouseholdDataSchema.parse({
+      ...minimalHousehold,
+      coLoadedCohort: 0
+    })
+    expect(data.coLoadedCohort).toBe('NonCoLoaded')
   })
 })
 

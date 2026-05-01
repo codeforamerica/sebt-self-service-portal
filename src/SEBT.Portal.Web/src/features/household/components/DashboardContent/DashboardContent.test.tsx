@@ -307,6 +307,25 @@ describe('DashboardContent', () => {
       )
     }
 
+    it('emits co_loaded_cohort=unknown when the API omits coLoadedCohort', async () => {
+      server.use(
+        http.get('/api/household/data', () => {
+          const payload = { ...TEST_HOUSEHOLD_DATA } as Record<string, unknown>
+          delete payload.coLoadedCohort
+          return HttpResponse.json(payload)
+        })
+      )
+
+      renderWithProviders(<DashboardContent />)
+
+      await waitFor(() => {
+        expect(mockSetUserData).toHaveBeenCalledWith('co_loaded_cohort', 'unknown', [
+          'default',
+          'analytics'
+        ])
+      })
+    })
+
     it('emits co_loaded_cohort=non_co_loaded for households with no co-loaded cases', async () => {
       respondWith({ coLoadedCohort: 'NonCoLoaded' })
 

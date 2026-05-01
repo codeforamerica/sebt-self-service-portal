@@ -41,7 +41,8 @@ const TEST_HOUSEHOLD_DATA = {
       children: [{ firstName: 'Test', lastName: 'Child' }],
       childrenOnApplication: 1
     }
-  ]
+  ],
+  coLoadedCohort: 0
 }
 
 function createTestQueryClient() {
