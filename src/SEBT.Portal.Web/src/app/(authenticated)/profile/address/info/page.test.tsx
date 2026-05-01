@@ -2,6 +2,7 @@ import { render, screen } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 import type { HouseholdData } from '@/features/household'
+import { createMockApplication } from '@/features/household/testing'
 
 import CoLoadedAddressInfoPage from './page'
 
@@ -35,6 +36,26 @@ vi.mock('@/features/household', () => ({
   })
 }))
 
+const mockAuthSession: { isCoLoaded: boolean | null } = { isCoLoaded: false }
+vi.mock('@/features/auth', () => ({
+  useAuth: () => ({ session: mockAuthSession })
+}))
+
+const mockSetPageData = vi.fn()
+vi.mock('@sebt/analytics', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@sebt/analytics')>()
+  return {
+    ...actual,
+    useDataLayer: () => ({
+      setPageData: mockSetPageData,
+      setUserData: vi.fn(),
+      trackEvent: vi.fn(),
+      pageLoad: vi.fn(),
+      get: vi.fn()
+    })
+  }
+})
+
 function makeHousehold(partial: Partial<HouseholdData> = {}): HouseholdData {
   return {
     email: 'test@example.com',
@@ -54,6 +75,8 @@ describe('CoLoadedAddressInfoPage', () => {
     mockHouseholdData = null
     mockIsLoading = false
     mockIsError = false
+    mockAuthSession.isCoLoaded = false
+    mockSetPageData.mockClear()
   })
 
   it('renders the SNAP/TANF mailing-address explainer for a co-loaded DC household (SNAP)', () => {
@@ -137,5 +160,46 @@ describe('CoLoadedAddressInfoPage', () => {
       screen.queryByRole('heading', { name: /mailing address for snap or tanf ebt card/i })
     ).not.toBeInTheDocument()
     expect(screen.getByText(/unable to load address details/i)).toBeInTheDocument()
+  })
+
+  it('tags the in-page CTAs with data-analytics-cta for click tracking', () => {
+    mockHouseholdData = makeHousehold({ benefitIssuanceType: 'SnapEbtCard' })
+    render(<CoLoadedAddressInfoPage />)
+
+    expect(
+      screen.getByRole('link', {
+        name: /tap here to learn how to get a replacement snap or tanf ebt card/i
+      })
+    ).toHaveAttribute('data-analytics-cta', 'address_info_to_cards_info_cta')
+    expect(
+      screen.getByRole('link', { name: /tap here to update your contact preferences/i })
+    ).toHaveAttribute('data-analytics-cta', 'address_info_to_contact_cta')
+  })
+
+  it('sets household_type page data based on the household bucket', () => {
+    mockAuthSession.isCoLoaded = true
+    mockHouseholdData = makeHousehold({ benefitIssuanceType: 'SnapEbtCard' })
+    render(<CoLoadedAddressInfoPage />)
+
+    expect(mockSetPageData).toHaveBeenCalledWith('household_type', 'co_loaded_only')
+  })
+
+  it('tags household_type as mixed_eligibility when a co-loaded user also has a submitted application', () => {
+    mockAuthSession.isCoLoaded = true
+    mockHouseholdData = makeHousehold({
+      benefitIssuanceType: 'SnapEbtCard',
+      applications: [createMockApplication()]
+    })
+    render(<CoLoadedAddressInfoPage />)
+
+    expect(mockSetPageData).toHaveBeenCalledWith('household_type', 'mixed_eligibility')
+  })
+
+  it('tags household_type as unknown when the household fetch fails', () => {
+    mockHouseholdData = null
+    mockIsError = true
+    render(<CoLoadedAddressInfoPage />)
+
+    expect(mockSetPageData).toHaveBeenCalledWith('household_type', 'unknown')
   })
 })

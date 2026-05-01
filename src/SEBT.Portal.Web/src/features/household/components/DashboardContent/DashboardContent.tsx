@@ -3,6 +3,7 @@
 import { ApiError } from '@/api'
 import { CoLoadingScreen } from '@/components/CoLoadingScreen'
 import { SignOutLink, useAuth } from '@/features/auth'
+import { getColoadingStatus } from '@/lib/coloadingStatus'
 import { AnalyticsEvents, useDataLayer } from '@sebt/analytics'
 import { Alert, getState } from '@sebt/design-system'
 import { useEffect } from 'react'
@@ -26,7 +27,7 @@ export function DashboardContent() {
   const { data, isLoading, isError, error, requiresProofing } = useHouseholdData()
   const { setPageData, setUserData, trackEvent } = useDataLayer()
   const { session } = useAuth()
-  const isCoLoaded = session?.isCoLoaded === true
+  const sessionIsCoLoaded = session?.isCoLoaded
   const isCO = getState() === 'co'
 
   useEffect(() => {
@@ -38,14 +39,25 @@ export function DashboardContent() {
       const isEmpty = childCount === 0 && data.applications.length === 0
       setPageData('household_status', isEmpty ? 'empty' : 'success')
       setUserData('household_linked_children', childCount, ['default', 'analytics'])
+
+      // DC-215: classify the household into one of four buckets so analytics can
+      // segment dashboard usage. Same value is mirrored on user.* (persists across
+      // pages) and page.* (lives with this page_load / household_result event).
+      // Passing the raw nullable claim means an unresolved auth state tags
+      // `unknown` instead of biasing toward `non_co_loaded`.
+      const coloadingStatus = getColoadingStatus(sessionIsCoLoaded, data)
+      setUserData('coloading_status', coloadingStatus, ['default', 'analytics'])
+      setPageData('household_type', coloadingStatus)
+
       // Distinguishes a co-loaded user who matched but has no enrolled children
-      // from a non-co-loaded applicant seeing the same empty screen.
-      if (isEmpty && isCoLoaded) {
+      // from a non-co-loaded applicant seeing the same empty screen. Only fires
+      // for a definitively true claim — null/undefined auth shouldn't infer it.
+      if (isEmpty && sessionIsCoLoaded === true) {
         setPageData('household_reason', 'no_children')
       }
     }
     trackEvent(AnalyticsEvents.HOUSEHOLD_RESULT)
-  }, [isLoading, isError, data, isCoLoaded, setPageData, setUserData, trackEvent])
+  }, [isLoading, isError, data, sessionIsCoLoaded, setPageData, setUserData, trackEvent])
 
   // Visually hidden h1 for accessibility - provides page structure for screen readers
   const pageHeading = <h1 className="usa-sr-only">{t('pageTitle', 'SUN Bucks Dashboard')}</h1>

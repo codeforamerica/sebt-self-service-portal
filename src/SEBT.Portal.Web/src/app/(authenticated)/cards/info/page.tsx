@@ -5,7 +5,10 @@ import { useRouter } from 'next/navigation'
 import { useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 
+import { useAuth } from '@/features/auth'
 import { useHouseholdData } from '@/features/household'
+import { getColoadingStatus } from '@/lib/coloadingStatus'
+import { useDataLayer } from '@sebt/analytics'
 import { Alert, Button, getState } from '@sebt/design-system'
 
 const FIS_PHONE_HREF = 'tel:+18883049167'
@@ -16,6 +19,8 @@ export default function CardInfoPage() {
   const { t: tCommon } = useTranslation('common')
   const router = useRouter()
   const { data, isLoading, isError } = useHouseholdData()
+  const { session } = useAuth()
+  const { setPageData } = useDataLayer()
   const isDC = getState() === 'dc'
 
   useEffect(() => {
@@ -23,6 +28,18 @@ export default function CardInfoPage() {
       router.replace('/dashboard')
     }
   }, [isDC, router])
+
+  // DC-215: tag this info-screen view with the household bucket so analytics can
+  // segment who actually lands here (co_loaded_only vs mixed_eligibility vs non).
+  // Tag error-state visits as `unknown` so they're counted, not dropped.
+  useEffect(() => {
+    if (isError) {
+      setPageData('household_type', 'unknown')
+      return
+    }
+    if (!data) return
+    setPageData('household_type', getColoadingStatus(session?.isCoLoaded, data))
+  }, [data, isError, session?.isCoLoaded, setPageData])
 
   if (!isDC || isLoading) {
     return (
@@ -81,6 +98,8 @@ export default function CardInfoPage() {
         <a
           href={FIS_PHONE_HREF}
           className="usa-link"
+          data-analytics-cta="fis_phone_call"
+          data-analytics-cta-destination-type="external_only"
         >
           (888) 304-9167
         </a>

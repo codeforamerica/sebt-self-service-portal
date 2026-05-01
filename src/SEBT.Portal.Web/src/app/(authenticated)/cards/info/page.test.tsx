@@ -41,6 +41,26 @@ vi.mock('@/features/household', async (importOriginal) => {
   }
 })
 
+const mockAuthSession: { isCoLoaded: boolean | null } = { isCoLoaded: false }
+vi.mock('@/features/auth', () => ({
+  useAuth: () => ({ session: mockAuthSession })
+}))
+
+const mockSetPageData = vi.fn()
+vi.mock('@sebt/analytics', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@sebt/analytics')>()
+  return {
+    ...actual,
+    useDataLayer: () => ({
+      setPageData: mockSetPageData,
+      setUserData: vi.fn(),
+      trackEvent: vi.fn(),
+      pageLoad: vi.fn(),
+      get: vi.fn()
+    })
+  }
+})
+
 function makeHousehold(cases: SummerEbtCase[]): HouseholdData {
   return {
     email: 'test@example.com',
@@ -59,6 +79,8 @@ describe('CardInfoPage', () => {
     mockHouseholdData = makeHousehold([])
     mockIsLoading = false
     mockIsError = false
+    mockAuthSession.isCoLoaded = false
+    mockSetPageData.mockClear()
   })
 
   it('renders the SNAP/TANF replacement-card explainer with DHS office locations', () => {
@@ -116,6 +138,41 @@ describe('CardInfoPage', () => {
 
     const fisLink = screen.getByRole('link', { name: /\(888\) 304-9167/ })
     expect(fisLink).toHaveAttribute('href', 'tel:+18883049167')
+  })
+
+  it('tags the FIS phone link as an external_only CTA for analytics', () => {
+    render(<CardInfoPage />)
+
+    const fisLink = screen.getByRole('link', { name: /\(888\) 304-9167/ })
+    expect(fisLink).toHaveAttribute('data-analytics-cta', 'fis_phone_call')
+    expect(fisLink).toHaveAttribute('data-analytics-cta-destination-type', 'external_only')
+  })
+
+  it('sets household_type page data based on the household bucket', () => {
+    mockAuthSession.isCoLoaded = true
+    mockHouseholdData = makeHousehold([createMockSummerEbtCase({ issuanceType: 'SnapEbtCard' })])
+    render(<CardInfoPage />)
+
+    expect(mockSetPageData).toHaveBeenCalledWith('household_type', 'co_loaded_only')
+  })
+
+  it('tags household_type as mixed_eligibility when a co-loaded user has at least one SummerEbt case', () => {
+    mockAuthSession.isCoLoaded = true
+    mockHouseholdData = makeHousehold([
+      createMockSummerEbtCase({ issuanceType: 'SnapEbtCard' }),
+      createMockSummerEbtCase({ issuanceType: 'SummerEbt' })
+    ])
+    render(<CardInfoPage />)
+
+    expect(mockSetPageData).toHaveBeenCalledWith('household_type', 'mixed_eligibility')
+  })
+
+  it('tags household_type as unknown when the household fetch fails', () => {
+    mockHouseholdData = null
+    mockIsError = true
+    render(<CardInfoPage />)
+
+    expect(mockSetPageData).toHaveBeenCalledWith('household_type', 'unknown')
   })
 
   it('renders an error alert when the household fetch fails', () => {

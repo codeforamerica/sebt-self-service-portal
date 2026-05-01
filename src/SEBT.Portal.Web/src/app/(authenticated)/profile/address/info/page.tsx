@@ -5,7 +5,10 @@ import { useRouter } from 'next/navigation'
 import { useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 
+import { useAuth } from '@/features/auth'
 import { useHouseholdData } from '@/features/household'
+import { getColoadingStatus } from '@/lib/coloadingStatus'
+import { useDataLayer } from '@sebt/analytics'
 import { Alert, Button, getState } from '@sebt/design-system'
 
 export default function CoLoadedAddressInfoPage() {
@@ -13,6 +16,8 @@ export default function CoLoadedAddressInfoPage() {
   const { t: tCommon } = useTranslation('common')
   const router = useRouter()
   const { data, isLoading, isError } = useHouseholdData()
+  const { session } = useAuth()
+  const { setPageData } = useDataLayer()
   const isDC = getState() === 'dc'
 
   const isCoLoaded =
@@ -27,6 +32,18 @@ export default function CoLoadedAddressInfoPage() {
       router.replace('/profile')
     }
   }, [isDC, data, isCoLoaded, router])
+
+  // DC-215: tag this info-screen view with the household bucket so analytics can
+  // segment who actually lands here (co_loaded_only vs mixed_eligibility vs non).
+  // Tag error-state visits as `unknown` so they're counted, not dropped.
+  useEffect(() => {
+    if (isError) {
+      setPageData('household_type', 'unknown')
+      return
+    }
+    if (!data) return
+    setPageData('household_type', getColoadingStatus(session?.isCoLoaded, data))
+  }, [data, isError, session?.isCoLoaded, setPageData])
 
   if (isError) {
     return (
@@ -58,6 +75,7 @@ export default function CoLoadedAddressInfoPage() {
         <Link
           href="/cards/info"
           className="usa-link"
+          data-analytics-cta="address_info_to_cards_info_cta"
         >
           {tDashboard('coLoadedAddressUpdateAction2')}
         </Link>
@@ -68,6 +86,7 @@ export default function CoLoadedAddressInfoPage() {
         <Link
           href="/contact"
           className="usa-link"
+          data-analytics-cta="address_info_to_contact_cta"
         >
           {tDashboard('coLoadedAddressUpdateAction3')}
         </Link>
