@@ -33,6 +33,27 @@ public class CoLoadedBenefitIdentifierMatchTests
     }
 
     [Fact]
+    public void Matches_ReturnsTrue_WhenSnapAccountEqualsCoLoadedCaseDisplayNumber()
+    {
+        var user = new User();
+        var household = new HouseholdData
+        {
+            SummerEbtCases =
+            [
+                new SummerEbtCase
+                {
+                    IsCoLoaded = true,
+                    IssuanceType = IssuanceType.SnapEbtCard,
+                    EbtCaseNumber = "CBMS-INTERNAL",
+                    CaseDisplayNumber = "APP-777"
+                }
+            ]
+        };
+
+        Assert.True(CoLoadedBenefitIdentifierMatch.Matches(user, household, "snapAccountId", "app-777"));
+    }
+
+    [Fact]
     public void Matches_ReturnsTrue_WhenSnapPersonEqualsApplicationStudentId()
     {
         var user = new User();
