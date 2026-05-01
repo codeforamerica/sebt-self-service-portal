@@ -15,7 +15,7 @@ export default function OffBoardingPage() {
   const { session } = useAuth()
   const isCoLoaded = session?.isCoLoaded === true
 
-  const { t } = useTranslation('offBoarding')
+  const { t, i18n } = useTranslation('offBoarding')
   const { t: tCommon } = useTranslation('common')
 
   const state = getState()
@@ -91,7 +91,7 @@ export default function OffBoardingPage() {
             applyBody={applyBody}
             applySkipBody={applySkipBody}
             applyLabel={applyLabel}
-            applyHref={getApplyHref()}
+            applyHref={getApplyHref(i18n.language)}
           />
         </section>
       </div>

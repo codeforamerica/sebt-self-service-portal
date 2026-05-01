@@ -13,20 +13,35 @@ afterEach(() => {
 })
 
 describe('getApplyHref', () => {
-  it('returns the CO PEAK starting-page URL when state is co', () => {
+  it('returns the CO PEAK starting-page URL with English language param when locale is en', () => {
     mockState = 'co'
-    expect(getApplyHref()).toBe(
+    expect(getApplyHref('en')).toBe(
       'https://peak.my.site.com/SEBT/s/apply-for-sebt-starting-page?language=en_US'
     )
   })
 
-  it('returns /apply when state is dc', () => {
+  it('returns the CO PEAK starting-page URL with Spanish language param when locale is es', () => {
+    mockState = 'co'
+    expect(getApplyHref('es')).toBe(
+      'https://peak.my.site.com/SEBT/s/apply-for-sebt-starting-page?language=es_US'
+    )
+  })
+
+  it('falls back to en_US for an unknown locale on CO', () => {
+    mockState = 'co'
+    expect(getApplyHref('fr')).toBe(
+      'https://peak.my.site.com/SEBT/s/apply-for-sebt-starting-page?language=en_US'
+    )
+  })
+
+  it('returns /apply when state is dc, regardless of locale', () => {
     mockState = 'dc'
-    expect(getApplyHref()).toBe('/apply')
+    expect(getApplyHref('en')).toBe('/apply')
+    expect(getApplyHref('es')).toBe('/apply')
   })
 
   it('falls back to /apply for an unknown state', () => {
     mockState = 'xx'
-    expect(getApplyHref()).toBe('/apply')
+    expect(getApplyHref('en')).toBe('/apply')
   })
 })

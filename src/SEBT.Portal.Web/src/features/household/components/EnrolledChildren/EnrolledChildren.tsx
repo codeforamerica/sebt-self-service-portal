@@ -9,9 +9,9 @@ import { ChildCard } from '../ChildCard'
 
 // Keys map to CSV: "S2 - Portal Dashboard - Section Enrolled Children - {Key}"
 export function EnrolledChildren() {
-  const { t } = useTranslation('dashboard')
+  const { t, i18n } = useTranslation('dashboard')
   const data = useRequiredHouseholdData()
-  const applyHref = getApplyHref()
+  const applyHref = getApplyHref(i18n.language)
 
   return (
     <section aria-labelledby="enrolled-children-heading">
