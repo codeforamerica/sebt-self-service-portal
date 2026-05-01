@@ -468,6 +468,16 @@ public class MockHouseholdRepository : IHouseholdRepository
         _households[nonCoLoadedEmail] = nonCoLoaded;
         IndexByPhone(nonCoLoaded);
 
+        var idProofInProgressEmail = _settings.BuildEmail(SeedScenarios.IdProofInProgress.Name);
+        var idProofFullPii = new PiiVisibility(IncludeAddress: true, IncludeEmail: true, IncludePhone: true);
+        var idProofInProgressHousehold = CreateCopy(nonCoLoaded, idProofFullPii) with
+        {
+            Email = idProofInProgressEmail,
+            Phone = "5552223344"
+        };
+        _households[idProofInProgressEmail] = idProofInProgressHousehold;
+        IndexByPhone(idProofInProgressHousehold);
+
         // Scenario 5c: Not-started user (ID proofing not started)
         var notStartedEmail = _settings.BuildEmail(SeedScenarios.NotStarted.Name);
         var notStarted = HouseholdFactory.CreateHouseholdDataWithStatus(ApplicationStatus.Pending, h =>
