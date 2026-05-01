@@ -15,7 +15,7 @@ export default function CardInfoPage() {
   const { t: tResult } = useTranslation('result')
   const { t: tCommon } = useTranslation('common')
   const router = useRouter()
-  const { data, isLoading } = useHouseholdData()
+  const { data, isLoading, isError } = useHouseholdData()
   const isDC = getState() === 'dc'
 
   useEffect(() => {
@@ -35,11 +35,22 @@ export default function CardInfoPage() {
     )
   }
 
+  if (isError || !data) {
+    return (
+      <div className="grid-container maxw-tablet padding-top-4">
+        <Alert variant="error">Unable to load card details. Please try again.</Alert>
+      </div>
+    )
+  }
+
   // The "Go to the dashboard" alert only makes sense when there's at least one
   // SUN Bucks card on the dashboard for the user to act on. Fully co-loaded
   // households have no replace-card button waiting for them, so suppress it.
-  const hasSunBucksCard = data?.summerEbtCases.some((c) => c.issuanceType === 'SummerEbt') ?? false
+  const hasSunBucksCard = data.summerEbtCases.some((c) => c.issuanceType === 'SummerEbt')
 
+  const replaceCardParagraphs = tResult('replaceCardBody1')
+    .split(/\r?\n\r?\n/)
+    .filter(Boolean)
   const officeAddresses = tResult('replaceCardBody3').split(/\r?\n/).filter(Boolean)
 
   return (
@@ -48,12 +59,14 @@ export default function CardInfoPage() {
         {tInfo('coLoadedInfoTitle', 'Getting a replacement SNAP or TANF EBT card')}
       </h1>
 
-      <p
-        className="margin-bottom-3"
-        style={{ whiteSpace: 'pre-line' }}
-      >
-        {tResult('replaceCardBody1')}
-      </p>
+      {replaceCardParagraphs.map((paragraph) => (
+        <p
+          key={paragraph}
+          className="margin-bottom-3"
+        >
+          {paragraph}
+        </p>
+      ))}
 
       <p className="margin-bottom-2">{tResult('replaceCardBody2')}</p>
       <ul className="usa-list usa-list--small-bullets">

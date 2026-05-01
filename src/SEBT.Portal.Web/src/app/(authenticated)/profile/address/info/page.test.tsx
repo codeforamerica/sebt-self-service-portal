@@ -26,11 +26,12 @@ vi.mock('@sebt/design-system', async (importOriginal) => {
 
 let mockHouseholdData: HouseholdData | null = null
 let mockIsLoading = false
+let mockIsError = false
 vi.mock('@/features/household', () => ({
   useHouseholdData: () => ({
     data: mockHouseholdData,
     isLoading: mockIsLoading,
-    isError: false
+    isError: mockIsError
   })
 }))
 
@@ -52,6 +53,7 @@ describe('CoLoadedAddressInfoPage', () => {
     mockState = 'dc'
     mockHouseholdData = null
     mockIsLoading = false
+    mockIsError = false
   })
 
   it('renders the SNAP/TANF mailing-address explainer for a co-loaded DC household (SNAP)', () => {
@@ -124,5 +126,16 @@ describe('CoLoadedAddressInfoPage', () => {
     expect(
       screen.queryByRole('heading', { name: /mailing address for snap or tanf ebt card/i })
     ).not.toBeInTheDocument()
+  })
+
+  it('renders an error alert when the household fetch fails', () => {
+    mockHouseholdData = null
+    mockIsError = true
+    render(<CoLoadedAddressInfoPage />)
+
+    expect(
+      screen.queryByRole('heading', { name: /mailing address for snap or tanf ebt card/i })
+    ).not.toBeInTheDocument()
+    expect(screen.getByText(/unable to load address details/i)).toBeInTheDocument()
   })
 })

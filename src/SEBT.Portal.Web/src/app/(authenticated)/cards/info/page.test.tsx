@@ -28,6 +28,7 @@ vi.mock('@sebt/design-system', async (importOriginal) => {
 
 let mockHouseholdData: HouseholdData | null = null
 let mockIsLoading = false
+let mockIsError = false
 vi.mock('@/features/household', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/features/household')>()
   return {
@@ -35,7 +36,7 @@ vi.mock('@/features/household', async (importOriginal) => {
     useHouseholdData: () => ({
       data: mockHouseholdData,
       isLoading: mockIsLoading,
-      isError: false
+      isError: mockIsError
     })
   }
 })
@@ -57,6 +58,7 @@ describe('CardInfoPage', () => {
     mockState = 'dc'
     mockHouseholdData = makeHousehold([])
     mockIsLoading = false
+    mockIsError = false
   })
 
   it('renders the SNAP/TANF replacement-card explainer with DHS office locations', () => {
@@ -107,6 +109,24 @@ describe('CardInfoPage', () => {
     expect(
       screen.queryByRole('heading', { name: /getting a replacement snap or tanf ebt card/i })
     ).not.toBeInTheDocument()
+  })
+
+  it('renders the FIS phone number as a tap-to-call link', () => {
+    render(<CardInfoPage />)
+
+    const fisLink = screen.getByRole('link', { name: /\(888\) 304-9167/ })
+    expect(fisLink).toHaveAttribute('href', 'tel:+18883049167')
+  })
+
+  it('renders an error alert when the household fetch fails', () => {
+    mockHouseholdData = null
+    mockIsError = true
+    render(<CardInfoPage />)
+
+    expect(
+      screen.queryByRole('heading', { name: /getting a replacement snap or tanf ebt card/i })
+    ).not.toBeInTheDocument()
+    expect(screen.getByText(/unable to load card details/i)).toBeInTheDocument()
   })
 
   it('exposes a Back button that calls router.back()', async () => {

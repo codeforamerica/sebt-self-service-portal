@@ -6,13 +6,13 @@ import { useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 
 import { useHouseholdData } from '@/features/household'
-import { Button, getState } from '@sebt/design-system'
+import { Alert, Button, getState } from '@sebt/design-system'
 
 export default function CoLoadedAddressInfoPage() {
   const { t: tDashboard } = useTranslation('dashboard')
   const { t: tCommon } = useTranslation('common')
   const router = useRouter()
-  const { data, isLoading } = useHouseholdData()
+  const { data, isLoading, isError } = useHouseholdData()
   const isDC = getState() === 'dc'
 
   const isCoLoaded =
@@ -27,6 +27,14 @@ export default function CoLoadedAddressInfoPage() {
       router.replace('/profile')
     }
   }, [isDC, data, isCoLoaded, router])
+
+  if (isError) {
+    return (
+      <div className="grid-container maxw-tablet padding-top-4 padding-bottom-4">
+        <Alert variant="error">Unable to load address details. Please try again.</Alert>
+      </div>
+    )
+  }
 
   if (!isDC || isLoading || !data || !isCoLoaded) {
     return (
