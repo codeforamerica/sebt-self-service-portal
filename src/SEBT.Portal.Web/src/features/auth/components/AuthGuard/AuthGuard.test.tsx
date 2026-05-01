@@ -19,9 +19,23 @@ vi.mock('@/features/auth', () => ({
   useAuth: () => mockUseAuth()
 }))
 
+vi.mock('react-i18next', () => ({
+  useTranslation: () => ({ t: (key: string) => key })
+}))
+
+let mockState = 'dc'
+vi.mock('@sebt/design-system', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@sebt/design-system')>()
+  return {
+    ...actual,
+    getState: () => mockState
+  }
+})
+
 describe('AuthGuard', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    mockState = 'dc'
   })
 
   it('renders children when authenticated', () => {
@@ -56,7 +70,7 @@ describe('AuthGuard', () => {
     expect(mockReplace).toHaveBeenCalledWith('/login')
   })
 
-  it('renders nothing while loading', () => {
+  it('renders nothing while loading in non-CO states', () => {
     mockUseAuth.mockReturnValue({
       isAuthenticated: false,
       isLoading: true
@@ -69,6 +83,24 @@ describe('AuthGuard', () => {
     )
 
     expect(container).toBeEmptyDOMElement()
+    expect(mockReplace).not.toHaveBeenCalled()
+  })
+
+  it('renders the loading interstitial while loading in CO', () => {
+    mockState = 'co'
+    mockUseAuth.mockReturnValue({
+      isAuthenticated: false,
+      isLoading: true
+    })
+
+    render(
+      <AuthGuard>
+        <div>Protected Content</div>
+      </AuthGuard>
+    )
+
+    expect(screen.getByRole('status')).toHaveAttribute('aria-busy', 'true')
+    expect(screen.queryByText('Protected Content')).not.toBeInTheDocument()
     expect(mockReplace).not.toHaveBeenCalled()
   })
 })
