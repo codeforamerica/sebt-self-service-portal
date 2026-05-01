@@ -1,7 +1,10 @@
+'use client'
+
 import { type IdOption } from '@/features/auth'
 import { IdProofingWithDi } from '@/features/auth/components/id-proofing/IdProofingWithDi'
 import { getTranslations } from '@/lib/translations'
 import { getState, getStateLinks } from '@sebt/design-system'
+import { useTranslation } from 'react-i18next'
 
 // DC-only: CO uses external auth and never reaches this route.
 const DC_ID_OPTIONS: IdOption[] = [
@@ -82,7 +85,7 @@ const DC_ID_OPTIONS_CO_LOADED: IdOption[] = [
 export default function IdProofingPage() {
   const state = getState()
   const links = getStateLinks(state)
-  const t = getTranslations('idProofing')
+  const { t } = useTranslation('idProofing')
   const tCommon = getTranslations('common')
 
   return (
