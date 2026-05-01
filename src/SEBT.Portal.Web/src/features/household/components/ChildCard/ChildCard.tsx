@@ -154,7 +154,7 @@ export function ChildCard({
             data-analytics-cta="replacement_card_cta"
             className="usa-link display-inline-block margin-top-2"
           >
-            {t('cardTableActionRequestReplacement', 'Request a replacement card')}
+            {t('cardTableActionRequestReplacement')}
           </Link>
         )}
       </div>
