@@ -222,6 +222,32 @@ describe('CallbackPage', () => {
     })
   })
 
+  describe('language toggle reactivity', () => {
+    it('re-translates the error message when the user switches language after the error fires', async () => {
+      Object.defineProperty(window, 'location', {
+        value: { search: '', href: 'http://localhost:3000/callback' },
+        writable: true
+      })
+
+      const { rerender } = render(<CallbackPage />)
+      await waitFor(() => {
+        expect(screen.getByText('Missing sign-in information.')).toBeInTheDocument()
+      })
+
+      // Simulate the user toggling language: the bundle the mocked t() reads
+      // from now returns Spanish copy. The component should re-render with
+      // the new translation because we store the key, not the resolved string.
+      const original = TEST_TRANSLATIONS.login!.callbackErrorMissingParams
+      TEST_TRANSLATIONS.login!.callbackErrorMissingParams = 'Falta información de inicio de sesión.'
+      try {
+        rerender(<CallbackPage />)
+        expect(screen.getByText('Falta información de inicio de sesión.')).toBeInTheDocument()
+      } finally {
+        TEST_TRANSLATIONS.login!.callbackErrorMissingParams = original!
+      }
+    })
+  })
+
   describe('error redirect', () => {
     it('redirects to login after showing error', async () => {
       vi.useFakeTimers({ shouldAdvanceTime: true })
