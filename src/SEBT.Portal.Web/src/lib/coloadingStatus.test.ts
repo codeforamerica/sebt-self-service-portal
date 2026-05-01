@@ -17,8 +17,12 @@ describe('getColoadingStatus', () => {
     expect(getColoadingStatus(false, household({ cases: ['SummerEbt'] }))).toBe('non_co_loaded')
   })
 
-  it('returns non_co_loaded when session.isCoLoaded is null (defensive default)', () => {
-    expect(getColoadingStatus(null, household())).toBe('non_co_loaded')
+  it('returns unknown when session.isCoLoaded is null (auth not resolved)', () => {
+    expect(getColoadingStatus(null, household())).toBe('unknown')
+  })
+
+  it('returns unknown when session.isCoLoaded is undefined (no session yet)', () => {
+    expect(getColoadingStatus(undefined, household())).toBe('unknown')
   })
 
   it('returns co_loaded_only when co-loaded with only SnapEbtCard/TanfEbtCard cases and no applications', () => {

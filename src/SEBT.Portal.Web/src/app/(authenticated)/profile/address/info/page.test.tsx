@@ -2,6 +2,7 @@ import { render, screen } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 import type { HouseholdData } from '@/features/household'
+import { createMockApplication } from '@/features/household/testing'
 
 import CoLoadedAddressInfoPage from './page'
 
@@ -181,5 +182,24 @@ describe('CoLoadedAddressInfoPage', () => {
     render(<CoLoadedAddressInfoPage />)
 
     expect(mockSetPageData).toHaveBeenCalledWith('household_type', 'co_loaded_only')
+  })
+
+  it('tags household_type as mixed_eligibility when a co-loaded user also has a submitted application', () => {
+    mockAuthSession.isCoLoaded = true
+    mockHouseholdData = makeHousehold({
+      benefitIssuanceType: 'SnapEbtCard',
+      applications: [createMockApplication()]
+    })
+    render(<CoLoadedAddressInfoPage />)
+
+    expect(mockSetPageData).toHaveBeenCalledWith('household_type', 'mixed_eligibility')
+  })
+
+  it('tags household_type as unknown when the household fetch fails', () => {
+    mockHouseholdData = null
+    mockIsError = true
+    render(<CoLoadedAddressInfoPage />)
+
+    expect(mockSetPageData).toHaveBeenCalledWith('household_type', 'unknown')
   })
 })

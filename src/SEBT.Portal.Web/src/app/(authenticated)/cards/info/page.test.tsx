@@ -156,6 +156,25 @@ describe('CardInfoPage', () => {
     expect(mockSetPageData).toHaveBeenCalledWith('household_type', 'co_loaded_only')
   })
 
+  it('tags household_type as mixed_eligibility when a co-loaded user has at least one SummerEbt case', () => {
+    mockAuthSession.isCoLoaded = true
+    mockHouseholdData = makeHousehold([
+      createMockSummerEbtCase({ issuanceType: 'SnapEbtCard' }),
+      createMockSummerEbtCase({ issuanceType: 'SummerEbt' })
+    ])
+    render(<CardInfoPage />)
+
+    expect(mockSetPageData).toHaveBeenCalledWith('household_type', 'mixed_eligibility')
+  })
+
+  it('tags household_type as unknown when the household fetch fails', () => {
+    mockHouseholdData = null
+    mockIsError = true
+    render(<CardInfoPage />)
+
+    expect(mockSetPageData).toHaveBeenCalledWith('household_type', 'unknown')
+  })
+
   it('renders an error alert when the household fetch fails', () => {
     mockHouseholdData = null
     mockIsError = true

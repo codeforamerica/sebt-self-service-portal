@@ -333,7 +333,7 @@ describe('DashboardContent', () => {
           return HttpResponse.json({
             ...TEST_HOUSEHOLD_DATA,
             summerEbtCases: [
-              { ...TEST_HOUSEHOLD_DATA.summerEbtCases[0], issuanceType: 3 } // SnapEbtCard
+              { ...TEST_HOUSEHOLD_DATA.summerEbtCases[0], issuanceType: 'SnapEbtCard' }
             ],
             applications: []
           })

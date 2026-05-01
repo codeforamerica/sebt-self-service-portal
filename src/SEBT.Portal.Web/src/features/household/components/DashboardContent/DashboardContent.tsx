@@ -25,7 +25,7 @@ export function DashboardContent() {
   const { data, isLoading, isError, error, requiresProofing } = useHouseholdData()
   const { setPageData, setUserData, trackEvent } = useDataLayer()
   const { session } = useAuth()
-  const isCoLoaded = session?.isCoLoaded === true
+  const sessionIsCoLoaded = session?.isCoLoaded
 
   useEffect(() => {
     if (isLoading) return
@@ -37,21 +37,24 @@ export function DashboardContent() {
       setPageData('household_status', isEmpty ? 'empty' : 'success')
       setUserData('household_linked_children', childCount, ['default', 'analytics'])
 
-      // DC-215: classify the household into one of three buckets so analytics can
+      // DC-215: classify the household into one of four buckets so analytics can
       // segment dashboard usage. Same value is mirrored on user.* (persists across
       // pages) and page.* (lives with this page_load / household_result event).
-      const coloadingStatus = getColoadingStatus(isCoLoaded, data)
+      // Passing the raw nullable claim means an unresolved auth state tags
+      // `unknown` instead of biasing toward `non_co_loaded`.
+      const coloadingStatus = getColoadingStatus(sessionIsCoLoaded, data)
       setUserData('coloading_status', coloadingStatus, ['default', 'analytics'])
       setPageData('household_type', coloadingStatus)
 
       // Distinguishes a co-loaded user who matched but has no enrolled children
-      // from a non-co-loaded applicant seeing the same empty screen.
-      if (isEmpty && isCoLoaded) {
+      // from a non-co-loaded applicant seeing the same empty screen. Only fires
+      // for a definitively true claim — null/undefined auth shouldn't infer it.
+      if (isEmpty && sessionIsCoLoaded === true) {
         setPageData('household_reason', 'no_children')
       }
     }
     trackEvent(AnalyticsEvents.HOUSEHOLD_RESULT)
-  }, [isLoading, isError, data, isCoLoaded, setPageData, setUserData, trackEvent])
+  }, [isLoading, isError, data, sessionIsCoLoaded, setPageData, setUserData, trackEvent])
 
   // Visually hidden h1 for accessibility - provides page structure for screen readers
   const pageHeading = <h1 className="usa-sr-only">{t('pageTitle', 'SUN Bucks Dashboard')}</h1>

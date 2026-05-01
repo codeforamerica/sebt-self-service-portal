@@ -35,10 +35,15 @@ export default function CoLoadedAddressInfoPage() {
 
   // DC-215: tag this info-screen view with the household bucket so analytics can
   // segment who actually lands here (co_loaded_only vs mixed_eligibility vs non).
+  // Tag error-state visits as `unknown` so they're counted, not dropped.
   useEffect(() => {
+    if (isError) {
+      setPageData('household_type', 'unknown')
+      return
+    }
     if (!data) return
     setPageData('household_type', getColoadingStatus(session?.isCoLoaded, data))
-  }, [data, session?.isCoLoaded, setPageData])
+  }, [data, isError, session?.isCoLoaded, setPageData])
 
   if (isError) {
     return (

@@ -1,8 +1,11 @@
 /**
- * Classifies the user's household into one of three buckets used by analytics
- * (DC-215). Three buckets, mutually exclusive:
+ * Classifies the user's household into one of four buckets used by analytics
+ * (DC-215). Mutually exclusive:
  *
- *   non_co_loaded     — standard SUN Bucks recipient (or unauth/unknown).
+ *   unknown           — auth state hasn't resolved yet (`isCoLoaded` is null/undefined).
+ *                       Filterable downstream so we don't bias any of the three
+ *                       resolved buckets with "auth-not-yet-loaded" pageviews.
+ *   non_co_loaded     — auth resolved, user did NOT match into SNAP/TANF.
  *   co_loaded_only    — matched into SNAP/TANF only; no SummerEbt cases or applications.
  *   mixed_eligibility — co-loaded user who also has at least one non-co-loaded
  *                       benefit (a SummerEbt case or a submitted application).
@@ -14,12 +17,13 @@
 
 import type { HouseholdData } from '@/features/household'
 
-export type ColoadingStatus = 'non_co_loaded' | 'co_loaded_only' | 'mixed_eligibility'
+export type ColoadingStatus = 'unknown' | 'non_co_loaded' | 'co_loaded_only' | 'mixed_eligibility'
 
 export function getColoadingStatus(
   isCoLoaded: boolean | null | undefined,
   household: Pick<HouseholdData, 'summerEbtCases' | 'applications'>
 ): ColoadingStatus {
+  if (isCoLoaded == null) return 'unknown'
   if (!isCoLoaded) return 'non_co_loaded'
 
   const hasSummerEbtCase = household.summerEbtCases.some((c) => c.issuanceType === 'SummerEbt')
