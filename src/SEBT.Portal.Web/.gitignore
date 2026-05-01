@@ -25,7 +25,9 @@ coverage/
 public/css/
 public/img/
 public/js/
-public/fonts/
+public/fonts/*
+# Track non-USWDS locally-hosted fonts (referenced by next/font/local).
+!public/fonts/museo-slab/
 
 # Keep only manually created public assets
 !public/.gitkeep
