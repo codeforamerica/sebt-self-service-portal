@@ -21,6 +21,7 @@ export function createMockSummerEbtCase(overrides?: Partial<SummerEbtCase>): Sum
     childLastName: 'Martinez',
     householdType: 'OSSE',
     eligibilityType: 'NSLP',
+    // TODO update issuanceType to reflect current api
     issuanceType: 'SummerEbt',
     ebtCardLastFour: '1234',
     ebtCardStatus: 'Active',

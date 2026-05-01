@@ -133,9 +133,11 @@ describe('CallbackPage', () => {
       )
     })
 
-    it('shows signing in message initially', () => {
+    it('shows the CO loading interstitial initially', () => {
       render(<CallbackPage />)
-      expect(screen.getByText('Signing you in…')).toBeInTheDocument()
+      const status = screen.getByRole('status')
+      expect(status).toHaveAttribute('aria-busy', 'true')
+      expect(screen.getByText('Please wait...')).toBeInTheDocument()
     })
 
     it('redirects to dashboard on successful login', async () => {

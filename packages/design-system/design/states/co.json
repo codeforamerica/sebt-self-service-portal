@@ -1970,12 +1970,12 @@
     },
     "theme-font-type-sans": {
       "$type": "fontFamilies",
-      "$value": "Atkinson Hyperlegible",
+      "$value": "Museo Slab",
       "$description": "In your HTML files, add a reference to the JavaScript and/or CSS files provided by the font hosting service. https://fonts.google.com/specimen/Urbanist\n\nIn your settings configuration, tell $theme-typeface-tokens to create a new typeface token. In the code example, we are creating a new typeface token:\n\n $theme-typeface-tokens: (\n   \"Urbanist\": (\n     \"display-name\": \"Urbanist\",\n     \"cap-height\": 364px\n   ),\n ),\n\nSource: https://designsystem.digital.gov/design-tokens/typesetting/font-family/#adding-fonts-to-uswds-2"
     },
     "theme-font-type-serif": {
       "$type": "fontFamilies",
-      "$value": "Atkinson Hyperlegible",
+      "$value": "Museo Slab",
       "$description": "In your HTML files, add a reference to the JavaScript and/or CSS files provided by the font hosting service. https://fonts.google.com/specimen/Urbanist\n\nIn your settings configuration, tell $theme-typeface-tokens to create a new typeface token. In the code example, we are creating a new typeface token:\n\n $theme-typeface-tokens: (\n   \"Urbanist\": (\n     \"display-name\": \"Urbanist\",\n     \"cap-height\": 364px\n   ),\n ),\n\nSource: https://designsystem.digital.gov/design-tokens/typesetting/font-family/#adding-fonts-to-uswds-2"
     },
     "theme-font-role-heading": {

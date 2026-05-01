@@ -30,6 +30,12 @@ public static class SeedScenarios
     public static readonly SeedScenario SingleChild = new("singlechild", UserIalLevel.IAL1);
     public static readonly SeedScenario NonCoLoaded = new("non-co-loaded", UserIalLevel.IAL1);
 
+    /// <summary>
+    /// Non-co-loaded user with ID proofing status InProgress (mock-household seed path).
+    /// Use for OTP/post-login routing tests where only Completed should skip ID proofing.
+    /// </summary>
+    public static readonly SeedScenario IdProofInProgress = new("id-proof-in-progress", UserIalLevel.None);
+
     // Non-IAL scenarios
     public static readonly SeedScenario LargeFamily = new("largefamily", UserIalLevel.None);
     public static readonly SeedScenario NotStarted = new("not-started", UserIalLevel.None);
@@ -57,7 +63,7 @@ public static class SeedScenarios
     public static readonly IReadOnlyList<SeedScenario> UserScenarios =
     [
         CoLoaded, CoLoadedPendingIdProofing, CoLoadedNoChildren, Verified, SingleChild, LargeFamily, Expired,
-        NonCoLoaded, NotStarted, Pending, Minimal, Denied,
+        NonCoLoaded, IdProofInProgress, NotStarted, Pending, Minimal, Denied,
         Review, Cancelled, Unknown, SummerActive, SummerLost,
         DcMixed, CoUndeliverable, CoFrozen, CoNotActivated, CoDeactivatedByState, CoActive,
         Simple1, Simple2, Simple3, Simple4, Simple5, Simple6, Simple7
