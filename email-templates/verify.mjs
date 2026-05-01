@@ -13,8 +13,9 @@
  *   2 — missing or invalid argument
  */
 
-import { readFileSync } from 'node:fs';
-import { resolve } from 'node:path';
+import { existsSync, readFileSync } from 'node:fs';
+import { dirname, resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
 
 // ---------------------------------------------------------------------------
 // Argument handling
@@ -313,10 +314,63 @@ check(
 );
 
 // ---------------------------------------------------------------------------
+// Image integrity checks (19)
+// ---------------------------------------------------------------------------
+
+// 19. Embedded base64 image data URIs match the canonical asset byte-for-byte.
+// Long opaque base64 blobs are unreliable to transcribe by hand, so we compare
+// every embedded data URI in the HTML against a canonical reference file.
+// If the canonical asset is missing, the check is skipped (opt-in).
+const verifyDir = dirname(fileURLToPath(import.meta.url));
+const canonicalAssetPath = resolve(verifyDir, 'assets/sun-bucks-logo-inline.html');
+
+if (!existsSync(canonicalAssetPath)) {
+  console.log(
+    'logo-base64-integrity: canonical asset not found, skipped',
+  );
+} else {
+  const canonicalSource = readFileSync(canonicalAssetPath, 'utf8');
+  const canonicalMatch = canonicalSource.match(
+    /data:image\/png;base64,([A-Za-z0-9+/=]+)/,
+  );
+  const canonicalBase64 = canonicalMatch ? canonicalMatch[1] : null;
+
+  // Find every base64 data URI in the input HTML.
+  const embeddedBase64s = [];
+  for (const match of html.matchAll(
+    /data:image\/png;base64,([A-Za-z0-9+/=]+)/g,
+  )) {
+    embeddedBase64s.push(match[1]);
+  }
+
+  if (embeddedBase64s.length === 0) {
+    // No embedded data URIs — trivially passes.
+    check('logo-base64-integrity', true, '');
+  } else if (!canonicalBase64) {
+    // Canonical asset exists but didn't yield a base64 string; treat as failure
+    // since we cannot validate the embedded URIs.
+    check(
+      'logo-base64-integrity',
+      false,
+      'Canonical asset assets/sun-bucks-logo-inline.html does not contain a parseable base64 data URI',
+    );
+  } else {
+    const mismatch = embeddedBase64s.find((b) => b !== canonicalBase64);
+    check(
+      'logo-base64-integrity',
+      mismatch === undefined,
+      mismatch === undefined
+        ? ''
+        : `Embedded base64 image data does not match canonical assets/sun-bucks-logo-inline.html (found length=${mismatch.length}, expected length=${canonicalBase64.length}) — possible truncation, duplication, or hand-paste corruption. Use a script-based substitution rather than typing the base64 directly.`,
+    );
+  }
+}
+
+// ---------------------------------------------------------------------------
 // Report
 // ---------------------------------------------------------------------------
 
-const totalChecks = 18;
+const totalChecks = 19;
 const passedCount = totalChecks - failures.length;
 
 if (failures.length === 0) {

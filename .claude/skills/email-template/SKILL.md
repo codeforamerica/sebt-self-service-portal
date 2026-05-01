@@ -31,10 +31,11 @@ If no arguments provided, ask the user for a template name.
 2. **Read the reference implementation** — Read `email-templates/PreApprovalNotice.html` first. Email HTML is finicky: MSO conditionals for Outlook, table-based layout, inline-only CSS, and exact entity encoding all matter, and small drift from the reference can break rendering in Outlook or Gmail. The reference contains patterns that have already been validated against real clients, so use it as the canonical source for every structural decision.
 3. **Identify template variables** — Scan for placeholder text like `<FIRST NAME>`, `<ISSUE DATE>`, etc. Convert these to `{{CamelCase}}` Handlebars-style variables.
 4. **Generate HTML** — Convert the markdown to email-safe HTML following the patterns below exactly.
-5. **Write the file** — Save to `email-templates/<TemplateName>.html`
-6. **Run structural lint** — Execute `node email-templates/verify.mjs email-templates/<TemplateName>.html`. If it fails, fix the issues and re-run.
-7. **Capture screenshots** — Use Playwright to render the HTML at 375px (mobile) and 600px (desktop) widths and save screenshots for visual review.
-8. **Present for review** — Show the user the screenshots and ask for approval.
+5. **Write the file** — Save to `email-templates/<TemplateName>.html`. If the template embeds long base64 content (e.g. an inline logo) rather than a runtime `{{LogoHtml}}` placeholder, write a placeholder token (`__LOGO_INLINE__`) here — do NOT paste the base64 directly. See "Injecting inline base64 content" below.
+6. **Substitute inline assets** — If you used a placeholder token in step 5, run the script-based substitution now (see "Injecting inline base64 content"). Skip if the template keeps `{{LogoHtml}}` for runtime substitution.
+7. **Run structural lint** — Execute `node email-templates/verify.mjs email-templates/<TemplateName>.html`. Always run lint AFTER asset substitution so the `logo-base64-integrity` check (#19) runs against final content. If it fails, fix the issues and re-run.
+8. **Capture screenshots** — Use Playwright to render the HTML at 375px (mobile) and 600px (desktop) widths and save screenshots for visual review.
+9. **Present for review** — Show the user the screenshots and ask for approval.
 
 ## HTML Document Structure
 
@@ -397,6 +398,23 @@ Convert placeholder text from the markdown to `{{CamelCase}}` variables:
 - `<MONTH DAY, YEAR>` → `{{BenefitExpirationDate}}`
 
 Always include `{{Language}}` on the `<html>` tag and `{{LogoHtml}}` in the header bar. If new placeholders appear in the markdown, follow the CamelCase convention and document them in a comment at the top of the generated HTML.
+
+### Injecting inline base64 content (logos, etc.)
+
+When a template needs to embed a base64 image directly (rather than relying on `{{LogoHtml}}` runtime substitution), DO NOT paste the base64 string into the Write tool — it will silently corrupt for blobs >10KB. Truncation, duplication, and subtle byte-level transcription errors all happen, and the structural lint can't catch them. Use a script-based substitution instead:
+
+1. Keep the canonical image as a complete `<img>` snippet at a known asset path: `email-templates/assets/sun-bucks-logo-inline.html`.
+2. In the HTML you Write, use a placeholder token where the image goes — either `{{LogoHtml}}` (if the renderer will substitute at send-time) or `__LOGO_INLINE__` (if you intend to inline the bytes now).
+3. After writing the HTML, substitute via Bash + Node:
+   ```bash
+   node -e "
+   const fs = require('fs');
+   const logo = fs.readFileSync('email-templates/assets/sun-bucks-logo-inline.html', 'utf8').trim();
+   const path = 'email-templates/<TemplateName>.html';
+   fs.writeFileSync(path, fs.readFileSync(path, 'utf8').replace('__LOGO_INLINE__', logo));
+   "
+   ```
+4. Run lint AFTER substitution. The `logo-base64-integrity` check (#19 in `verify.mjs`) compares any embedded `data:image/png;base64,...` URI to the canonical asset byte-for-byte and catches corruption that visual review would otherwise have to find.
 
 ## Verification Steps
 
