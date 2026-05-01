@@ -122,7 +122,7 @@ jobs:
           TASK_ARN="${{ steps.run.outputs.task_arn }}"
 
           TASK_INFO=$(aws ecs describe-tasks --cluster "$CLUSTER" --tasks "$TASK_ARN")
-          EXIT_CODE=$(echo "$TASK_INFO" | jq -r '.tasks[0].containers[0].exitCode')
+          EXIT_CODE=$(echo "$TASK_INFO" | jq -r '.tasks[0].containers[] | select(.name=="dc-source-seed") | .exitCode')
           STOP_REASON=$(echo "$TASK_INFO" | jq -r '.tasks[0].stoppedReason // ""')
 
           echo "Exit code: $EXIT_CODE"
