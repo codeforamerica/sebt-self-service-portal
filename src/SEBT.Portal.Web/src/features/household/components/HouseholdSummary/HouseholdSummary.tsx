@@ -42,7 +42,7 @@ function getApplicationStatus(data: HouseholdData): StatusInfo | null {
   if (statuses.includes('Pending') || statuses.includes('UnderReview')) {
     return {
       labelKey: 'profileTableStatusApplicationIn-progress',
-      fallback: 'Application in-progress',
+      fallback: 'Application in-process',
       variant: 'warning'
     }
   }

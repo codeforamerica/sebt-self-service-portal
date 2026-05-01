@@ -52,6 +52,8 @@ export interface MockSummerEbtCase {
   applicationDate: string | null
   applicationStatus: ApplicationStatusInt | null
   ebtCaseNumber: string
+  /** When set, dashboard SEBT ID row shows this instead of ebtCaseNumber (state connector contract). */
+  caseDisplayNumber?: string | null
   ebtCardLastFour: string | null
   ebtCardStatus: string | null
   ebtCardIssueDate: string | null

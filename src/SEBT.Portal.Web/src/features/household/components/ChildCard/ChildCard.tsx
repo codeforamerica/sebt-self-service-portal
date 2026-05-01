@@ -75,6 +75,7 @@ export function ChildCard({
 
   const {
     ebtCaseNumber,
+    caseDisplayNumber,
     benefitAvailableDate,
     benefitExpirationDate,
     ebtCardLastFour,
@@ -84,6 +85,10 @@ export function ChildCard({
     cardMailedAt,
     cardDeactivatedAt
   } = summerEbtCase
+  const referenceIdShown =
+    caseDisplayNumber !== undefined && caseDisplayNumber !== null && caseDisplayNumber !== ''
+      ? caseDisplayNumber
+      : ebtCaseNumber
   const cardTypeKey = issuanceType ? (CARD_TYPE_KEYS[issuanceType] ?? null) : null
   const replacementLink = getReplacementLink(summerEbtCase, canRequestReplacementCard)
 
@@ -107,10 +112,10 @@ export function ChildCard({
         data-testid="accordion-content"
       >
         <dl className="margin-0">
-          {showCaseNumber && ebtCaseNumber && (
+          {showCaseNumber && referenceIdShown && (
             <>
               <dt className="text-bold margin-top-2">{t('cardTableHeadingSebtId')}</dt>
-              <dd className="margin-left-0">{ebtCaseNumber}</dd>
+              <dd className="margin-left-0">{referenceIdShown}</dd>
             </>
           )}
           {benefitAvailableDate && (
