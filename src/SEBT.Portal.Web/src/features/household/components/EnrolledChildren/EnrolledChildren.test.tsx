@@ -42,7 +42,8 @@ const defaultMockData: HouseholdData = {
   phone: '3035550100',
   summerEbtCases: [mockCase1, mockCase2],
   applications: [],
-  addressOnFile: null
+  addressOnFile: null,
+  coLoadedCohort: 'NonCoLoaded'
 }
 
 let mockReturnData: HouseholdData

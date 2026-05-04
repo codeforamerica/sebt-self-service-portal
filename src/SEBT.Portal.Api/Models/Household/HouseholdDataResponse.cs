@@ -3,6 +3,7 @@ extern alias Core;
 namespace SEBT.Portal.Api.Models.Household;
 
 using BenefitIssuanceType = Core::SEBT.Portal.Core.Models.Household.BenefitIssuanceType;
+using CoLoadedCohort = Core::SEBT.Portal.Core.Models.Household.CoLoadedCohort;
 
 /// <summary>
 /// API response model for household data.
@@ -49,4 +50,12 @@ public record HouseholdDataResponse
     /// Computed permissions for self-service portal actions.
     /// </summary>
     public AllowedActionsResponse? AllowedActions { get; init; }
+
+    /// <summary>
+    /// Classification of this household relative to co-loaded benefits.
+    /// Used by the frontend to emit a standardized analytics dimension so
+    /// the mixed-eligibility/applicant exclusion cohort can be segmented
+    /// from non-co-loaded and co-loaded-only households.
+    /// </summary>
+    public CoLoadedCohort CoLoadedCohort { get; init; }
 }

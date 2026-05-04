@@ -10,6 +10,7 @@ import { useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 
 import { useHouseholdData } from '../../api'
+import { toAnalyticsCohort } from '../../api/schema'
 import { ActionButtons } from '../ActionButtons'
 import { ApplicationsSection } from '../ApplicationsSection'
 import { DashboardAlerts } from '../DashboardAlerts'
@@ -39,6 +40,10 @@ export function DashboardContent() {
       const isEmpty = childCount === 0 && data.applications.length === 0
       setPageData('household_status', isEmpty ? 'empty' : 'success')
       setUserData('household_linked_children', childCount, ['default', 'analytics'])
+      setUserData('co_loaded_cohort', toAnalyticsCohort(data.coLoadedCohort), [
+        'default',
+        'analytics'
+      ])
 
       // DC-215: classify the household into one of four buckets so analytics can
       // segment dashboard usage. Same value is mirrored on user.* (persists across
@@ -48,7 +53,6 @@ export function DashboardContent() {
       const coloadingStatus = getColoadingStatus(sessionIsCoLoaded, data)
       setUserData('coloading_status', coloadingStatus, ['default', 'analytics'])
       setPageData('household_type', coloadingStatus)
-
       // Distinguishes a co-loaded user who matched but has no enrolled children
       // from a non-co-loaded applicant seeing the same empty screen. Only fires
       // for a definitively true claim — null/undefined auth shouldn't infer it.
