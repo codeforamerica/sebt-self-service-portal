@@ -65,7 +65,14 @@ export function useSessionRefresh({
     const delayMs = Math.max(0, fireAtMs - Date.now())
 
     const timer = setTimeout(() => {
-      if (!isWithinIdleThreshold(getLastActivityAt(), idleThresholdMs)) {
+      // At the absolute cap the session is dead regardless of activity — fire the
+      // refresh anyway so the server rejects, the bearer middleware clears the
+      // cookie, and apiFetch's 401 handler redirects the user to /login. The
+      // idle gate only applies at the sliding fire point, where skipping the
+      // refresh lets an idle session lapse naturally.
+      const reachedAbsoluteCap =
+        absoluteExpiresAt !== null && Date.now() >= absoluteExpiresAt * 1000
+      if (!reachedAbsoluteCap && !isWithinIdleThreshold(getLastActivityAt(), idleThresholdMs)) {
         return
       }
       refresh()

@@ -84,9 +84,11 @@ describe('useSessionRefresh', () => {
     expect(refresh).toHaveBeenCalledTimes(1)
   })
 
-  it('does not refresh at the absolute cap when the user is idle', () => {
-    // The activity gate still applies: an idle user past absolute is left alone;
-    // the next user-initiated API call will surface the 401 → redirect path.
+  it('refreshes at the absolute cap even when the user is idle', () => {
+    // At the absolute cap the session is dead regardless of activity. Firing the
+    // refresh gets a 401 from the bearer middleware, which the SPA turns into a
+    // redirect to /login — so an idle user sitting on the page gets a clean kick
+    // instead of a stale tab.
     const staleActivity = NOW_MS - IDLE_THRESHOLD_MS - 1000
     const { refresh } = setup({
       expiresAt: NOW_SEC + 15 * 60,
@@ -98,7 +100,7 @@ describe('useSessionRefresh', () => {
       vi.advanceTimersByTime(5 * 60 * 1000)
     })
 
-    expect(refresh).not.toHaveBeenCalled()
+    expect(refresh).toHaveBeenCalledTimes(1)
   })
 
   it('does not schedule when expiresAt is null', () => {
