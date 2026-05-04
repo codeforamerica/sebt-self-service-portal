@@ -53,16 +53,18 @@ export function useSessionRefresh({
       return
     }
 
-    const expiresAtMs = expiresAt * 1000
-    const fireAt = expiresAtMs - REFRESH_SAFETY_MARGIN_MS
-    const delayMs = Math.max(0, fireAt - Date.now())
+    const idleFireAtMs = expiresAt * 1000 - REFRESH_SAFETY_MARGIN_MS
+    // Fire whichever happens first: the sliding refresh point or the absolute cap.
+    // When the absolute cap arrives sooner, the refresh request hits the cap on the
+    // server, gets 401 from the bearer middleware, and the SPA's 401 handler
+    // redirects to /login — instead of leaving the user on a dead page until they
+    // click something.
+    const absoluteFireAtMs =
+      absoluteExpiresAt !== null ? absoluteExpiresAt * 1000 : Number.POSITIVE_INFINITY
+    const fireAtMs = Math.min(idleFireAtMs, absoluteFireAtMs)
+    const delayMs = Math.max(0, fireAtMs - Date.now())
 
     const timer = setTimeout(() => {
-      const absoluteCapReached =
-        absoluteExpiresAt !== null && Date.now() >= absoluteExpiresAt * 1000
-      if (absoluteCapReached) {
-        return
-      }
       if (!isWithinIdleThreshold(getLastActivityAt(), idleThresholdMs)) {
         return
       }

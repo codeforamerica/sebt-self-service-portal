@@ -108,10 +108,12 @@ describe('DashboardContent', () => {
   })
 
   it('renders error alert on API failure', async () => {
-    // Use 401 to avoid hook retry logic (4xx errors are not retried)
+    // 503 represents a generic server-side failure that should surface the error UI.
+    // (401 is suppressed by useHouseholdData because the SPA redirects to /login on
+    // session-invalid responses; using it here would test the redirect path instead.)
     server.use(
       http.get('/api/household/data', () => {
-        return HttpResponse.json({ error: 'Unauthorized' }, { status: 401 })
+        return HttpResponse.json({ error: 'Bad Request' }, { status: 400 })
       })
     )
 
@@ -125,7 +127,7 @@ describe('DashboardContent', () => {
   it('renders sign-out link in error state', async () => {
     server.use(
       http.get('/api/household/data', () => {
-        return HttpResponse.json({ error: 'Unauthorized' }, { status: 401 })
+        return HttpResponse.json({ error: 'Bad Request' }, { status: 400 })
       })
     )
 

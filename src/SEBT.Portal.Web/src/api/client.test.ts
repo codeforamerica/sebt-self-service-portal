@@ -109,6 +109,13 @@ describe('apiFetch', () => {
     })
 
     it('should throw ApiError for 401 Unauthorized', async () => {
+      // 401 also triggers window.location.replace; this test covers the throw shape.
+      // The redirect side-effect has its own coverage in '401 Redirect Behavior' below.
+      const originalLocation = window.location
+      Object.defineProperty(window, 'location', {
+        configurable: true,
+        value: { ...originalLocation, replace: vi.fn() }
+      })
       server.use(
         http.get('/api/test', () => {
           return HttpResponse.json({ message: 'Unauthorized' }, { status: 401 })
@@ -117,10 +124,16 @@ describe('apiFetch', () => {
 
       try {
         await apiFetch('/test')
+        expect.fail('Expected ApiError to be thrown')
       } catch (error) {
         expect(error).toBeInstanceOf(ApiError)
         expect((error as ApiError).status).toBe(401)
         expect((error as ApiError).message).toBe('Unauthorized')
+      } finally {
+        Object.defineProperty(window, 'location', {
+          configurable: true,
+          value: originalLocation
+        })
       }
     })
 
@@ -355,18 +368,28 @@ describe('apiFetch', () => {
       })
     })
 
-    it('redirects to /login on 401 from a resource endpoint', async () => {
+    it('redirects to /login on 401 from a resource endpoint and marks the error as redirecting', async () => {
       // Bug fix: bearer middleware rejects an aged/missing-auth_time token with 401
-      // on /household/data. Without this, the dashboard rendered an error message
-      // instead of sending the user to log in again.
+      // on /household/data. The error is thrown so consumers can decide what to do,
+      // but the `isRedirecting` flag tells them the page is navigating away — they
+      // should treat it as a loading state and not flash an error UI.
       server.use(
         http.get('/api/household/data', () =>
           HttpResponse.json({ message: 'Unauthorized' }, { status: 401 })
         )
       )
 
-      await expect(apiFetch('/household/data')).rejects.toBeInstanceOf(ApiError)
+      let caught: unknown
+      try {
+        await apiFetch('/household/data')
+      } catch (err) {
+        caught = err
+      }
+
       expect(replaceSpy).toHaveBeenCalledWith('/login')
+      expect(caught).toBeInstanceOf(ApiError)
+      expect((caught as ApiError).status).toBe(401)
+      expect((caught as ApiError).isRedirecting).toBe(true)
     })
 
     it('redirects to /login on 401 from /auth/refresh', async () => {
@@ -376,8 +399,15 @@ describe('apiFetch', () => {
         )
       )
 
-      await expect(apiFetch('/auth/refresh', { method: 'POST' })).rejects.toBeInstanceOf(ApiError)
+      let caught: unknown
+      try {
+        await apiFetch('/auth/refresh', { method: 'POST' })
+      } catch (err) {
+        caught = err
+      }
+
       expect(replaceSpy).toHaveBeenCalledWith('/login')
+      expect((caught as ApiError).isRedirecting).toBe(true)
     })
 
     it('does NOT redirect on 401 from /auth/status (bootstrap probe)', async () => {
@@ -389,8 +419,16 @@ describe('apiFetch', () => {
         )
       )
 
-      await expect(apiFetch('/auth/status')).rejects.toBeInstanceOf(ApiError)
+      let caught: unknown
+      try {
+        await apiFetch('/auth/status')
+      } catch (err) {
+        caught = err
+      }
+
       expect(replaceSpy).not.toHaveBeenCalled()
+      expect(caught).toBeInstanceOf(ApiError)
+      expect((caught as ApiError).isRedirecting).toBe(false)
     })
 
     it('does NOT redirect on non-401 errors', async () => {
@@ -402,8 +440,15 @@ describe('apiFetch', () => {
         )
       )
 
-      await expect(apiFetch('/household/data')).rejects.toBeInstanceOf(ApiError)
+      let caught: unknown
+      try {
+        await apiFetch('/household/data')
+      } catch (err) {
+        caught = err
+      }
+
       expect(replaceSpy).not.toHaveBeenCalled()
+      expect((caught as ApiError).isRedirecting).toBe(false)
     })
   })
 })

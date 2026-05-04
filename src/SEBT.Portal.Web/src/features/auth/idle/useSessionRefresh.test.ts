@@ -63,16 +63,39 @@ describe('useSessionRefresh', () => {
     expect(refresh).not.toHaveBeenCalled()
   })
 
-  it('does not refresh once the absolute cap has been reached', () => {
-    // Schedule fires at expiresAt - 60s. If absoluteExpiresAt is in the past
-    // by then, refresh is suppressed even with recent activity.
+  it('fires at absoluteExpiresAt when the cap precedes the idle fire time', () => {
+    // When the absolute cap arrives sooner than `expiresAt - safetyMargin`, the
+    // schedule moves to the cap. Firing then gets 401 from the bearer middleware
+    // (server-side cap enforcement) and the SPA redirects — instead of leaving
+    // the user on a dead page until they click something.
     const { refresh } = setup({
-      expiresAt: NOW_SEC + 15 * 60,
-      absoluteExpiresAt: NOW_SEC + 5 * 60 // cap reached well before fire time
+      expiresAt: NOW_SEC + 15 * 60, // sliding fire time would be at 14 min
+      absoluteExpiresAt: NOW_SEC + 5 * 60 // absolute cap arrives at 5 min — sooner
     })
 
     act(() => {
-      vi.advanceTimersByTime(15 * 60 * 1000)
+      vi.advanceTimersByTime(5 * 60 * 1000 - 1)
+    })
+    expect(refresh).not.toHaveBeenCalled()
+
+    act(() => {
+      vi.advanceTimersByTime(1)
+    })
+    expect(refresh).toHaveBeenCalledTimes(1)
+  })
+
+  it('does not refresh at the absolute cap when the user is idle', () => {
+    // The activity gate still applies: an idle user past absolute is left alone;
+    // the next user-initiated API call will surface the 401 → redirect path.
+    const staleActivity = NOW_MS - IDLE_THRESHOLD_MS - 1000
+    const { refresh } = setup({
+      expiresAt: NOW_SEC + 15 * 60,
+      absoluteExpiresAt: NOW_SEC + 5 * 60,
+      getLastActivityAt: () => staleActivity
+    })
+
+    act(() => {
+      vi.advanceTimersByTime(5 * 60 * 1000)
     })
 
     expect(refresh).not.toHaveBeenCalled()

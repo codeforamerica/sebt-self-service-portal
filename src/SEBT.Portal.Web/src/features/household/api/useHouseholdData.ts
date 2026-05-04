@@ -56,11 +56,18 @@ export function useHouseholdData({ redirectOnInsufficientIal = true } = {}) {
     query.error.status === 403 &&
     'requiredIal' in ((query.error.data as Record<string, unknown>) ?? {})
 
+  // When apiFetch has triggered a 401 redirect to /login, suppress the error
+  // state so the dashboard stays in its loading shell instead of flashing the
+  // error alert before the browser navigates.
+  const isRedirecting = query.error instanceof ApiError && query.error.isRedirecting
+  const isError = query.isError && !isRedirecting
+  const isLoading = query.isLoading || isRedirecting
+
   useEffect(() => {
     if (requiresProofing && redirectOnInsufficientIal) {
       router.push('/login/id-proofing')
     }
   }, [requiresProofing, redirectOnInsufficientIal, router])
 
-  return { ...query, requiresProofing }
+  return { ...query, isError, isLoading, requiresProofing }
 }

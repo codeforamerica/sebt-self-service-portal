@@ -9,7 +9,13 @@ export class ApiError extends Error {
   constructor(
     message: string,
     public status: number,
-    public data?: ApiErrorResponse
+    public data?: ApiErrorResponse,
+    /**
+     * True when the 401 path triggered `window.location.replace('/login')`. Consumers
+     * that render error UIs should treat this as a loading state — the page is
+     * unmounting, and the user shouldn't briefly see an error before the redirect.
+     */
+    public readonly isRedirecting: boolean = false
   ) {
     super(message)
     this.name = 'ApiError'
@@ -96,14 +102,16 @@ export async function apiFetch<T>(endpoint: string, options: ApiFetchOptions<T> 
     // IAL gating) returns 403 with structured ProblemDetails — never 401 — so any 401
     // here is unambiguously session-level.
     const isBootstrapProbe = endpoint === '/auth/status'
-    if (response.status === 401 && !isBootstrapProbe && typeof window !== 'undefined') {
+    const isRedirecting =
+      response.status === 401 && !isBootstrapProbe && typeof window !== 'undefined'
+    if (isRedirecting) {
       window.location.replace('/login')
     }
 
     const errorData = data as ApiErrorResponse | undefined
     const message =
       errorData?.error ?? errorData?.message ?? `Request failed with status ${response.status}`
-    throw new ApiError(message, response.status, errorData)
+    throw new ApiError(message, response.status, errorData, isRedirecting)
   }
 
   if (schema && data !== undefined) {
