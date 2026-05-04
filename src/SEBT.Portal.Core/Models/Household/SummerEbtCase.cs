@@ -100,19 +100,8 @@ public class SummerEbtCase
 
     /// <summary>
     /// The EBT card status as reported by the state connector.
-    /// Use <see cref="CardStatus"/> for typed comparisons against self-service rules.
     /// </summary>
-    public string? EbtCardStatus { get; set; }
-
-    /// <summary>
-    /// The EBT card status parsed into the portal's canonical enum.
-    /// Falls back to <see cref="Household.CardStatus.Unknown"/> when
-    /// <see cref="EbtCardStatus"/> is null or doesn't match a known value.
-    /// </summary>
-    public CardStatus CardStatus =>
-        Enum.TryParse<CardStatus>(EbtCardStatus, ignoreCase: true, out var s)
-            ? s
-            : CardStatus.Unknown;
+    public CardStatus? EbtCardStatus { get; set; }
 
     /// <summary>
     /// The EBT card issue date.

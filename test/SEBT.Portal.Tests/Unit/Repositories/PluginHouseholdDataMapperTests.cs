@@ -1,6 +1,10 @@
 using SEBT.Portal.Core.Models.Household;
 using SEBT.Portal.Infrastructure.Repositories;
 
+using InterfaceCardStatus = SEBT.Portal.StatesPlugins.Interfaces.Models.Household.CardStatus;
+using InterfaceHouseholdData = SEBT.Portal.StatesPlugins.Interfaces.Models.Household.HouseholdData;
+using InterfaceSummerEbtCase = SEBT.Portal.StatesPlugins.Interfaces.Data.Cases.SummerEbtCase;
+
 namespace SEBT.Portal.Tests.Unit.Repositories;
 
 /// <summary>
@@ -104,7 +108,6 @@ public class PluginHouseholdDataMapperTests
                     CaseNumber = "CASE-001",
                     ApplicationStatus = ApplicationStatus.Approved,
                     Last4DigitsOfCard = "1234",
-                    CardStatus = CardStatus.Active,
                     IssuanceType = IssuanceType.SummerEbt,
                     Children = new List<Child>
                     {
@@ -123,7 +126,6 @@ public class PluginHouseholdDataMapperTests
         Assert.Equal("CASE-001", app.CaseNumber);
         Assert.Equal(ApplicationStatus.Approved, app.ApplicationStatus);
         Assert.Equal("1234", app.Last4DigitsOfCard);
-        Assert.Equal(CardStatus.Active, app.CardStatus);
         Assert.Equal(IssuanceType.SummerEbt, app.IssuanceType);
         Assert.Single(app.Children);
         Assert.Equal("Maria", app.Children[0].FirstName);
@@ -185,5 +187,61 @@ public class PluginHouseholdDataMapperTests
         Assert.Single(result.SummerEbtCases);
         Assert.Equal("STATE-CASE", result.SummerEbtCases[0].EbtCaseNumber);
         Assert.Equal("SHOW-ME", result.SummerEbtCases[0].CaseDisplayNumber);
+    }
+
+    [Fact]
+    public void ToCore_WhenInterfaceSummerEbtCaseHasEbtCardStatus_ConvertsToCoreEnumByName()
+    {
+        // Source uses the StatesPlugins.Interfaces type so the reflective mapper exercises
+        // the name-based enum conversion path.
+        var source = new InterfaceHouseholdData
+        {
+            Email = "a@b.com",
+            SummerEbtCases = new List<InterfaceSummerEbtCase>
+            {
+                new InterfaceSummerEbtCase
+                {
+                    ChildFirstName = "Alex",
+                    ChildLastName = "Rivera",
+                    ChildDateOfBirth = DateOnly.FromDateTime(DateTime.Today.AddYears(-10)),
+                    HouseholdType = "OSSE",
+                    EligibilityType = "OSSE",
+                    EbtCardStatus = InterfaceCardStatus.Active
+                }
+            }
+        };
+
+        var core = PluginHouseholdDataMapper.ToCore(source);
+
+        Assert.NotNull(core);
+        Assert.Single(core!.SummerEbtCases);
+        Assert.Equal(CardStatus.Active, core.SummerEbtCases[0].EbtCardStatus);
+    }
+
+    [Fact]
+    public void ToCore_WhenInterfaceSummerEbtCaseEbtCardStatusIsNull_ReturnsNull()
+    {
+        var source = new InterfaceHouseholdData
+        {
+            Email = "a@b.com",
+            SummerEbtCases = new List<InterfaceSummerEbtCase>
+            {
+                new InterfaceSummerEbtCase
+                {
+                    ChildFirstName = "Alex",
+                    ChildLastName = "Rivera",
+                    ChildDateOfBirth = DateOnly.FromDateTime(DateTime.Today.AddYears(-10)),
+                    HouseholdType = "OSSE",
+                    EligibilityType = "OSSE",
+                    EbtCardStatus = null
+                }
+            }
+        };
+
+        var core = PluginHouseholdDataMapper.ToCore(source);
+
+        Assert.NotNull(core);
+        Assert.Single(core!.SummerEbtCases);
+        Assert.Null(core.SummerEbtCases[0].EbtCardStatus);
     }
 }

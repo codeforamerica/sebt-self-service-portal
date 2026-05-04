@@ -340,10 +340,9 @@ public class MockHouseholdRepositoryTests
         Assert.NotNull(result);
         var app = result.Applications.First();
         Assert.Equal(ApplicationStatus.Approved, app.ApplicationStatus);
-        Assert.Equal(CardStatus.NotActivated, app.CardStatus);
         Assert.Equal(IssuanceType.SummerEbt, app.IssuanceType);
         Assert.Single(result.SummerEbtCases);
-        Assert.Equal("NotActivated", result.SummerEbtCases[0].EbtCardStatus);
+        Assert.Equal(CardStatus.NotActivated, result.SummerEbtCases[0].EbtCardStatus);
         Assert.Equal(IssuanceType.SummerEbt, result.SummerEbtCases[0].IssuanceType);
     }
 
@@ -360,10 +359,9 @@ public class MockHouseholdRepositoryTests
         Assert.NotNull(result);
         var app = result.Applications.First();
         Assert.Equal(ApplicationStatus.Approved, app.ApplicationStatus);
-        Assert.Equal(CardStatus.DeactivatedByState, app.CardStatus);
         Assert.Equal(IssuanceType.SummerEbt, app.IssuanceType);
         Assert.Single(result.SummerEbtCases);
-        Assert.Equal("DeactivatedByState", result.SummerEbtCases[0].EbtCardStatus);
+        Assert.Equal(CardStatus.DeactivatedByState, result.SummerEbtCases[0].EbtCardStatus);
         Assert.Equal(IssuanceType.SummerEbt, result.SummerEbtCases[0].IssuanceType);
     }
 
@@ -380,10 +378,9 @@ public class MockHouseholdRepositoryTests
         Assert.NotNull(result);
         var app = result.Applications.First();
         Assert.Equal(ApplicationStatus.Approved, app.ApplicationStatus);
-        Assert.Equal(CardStatus.Active, app.CardStatus);
         Assert.Equal(IssuanceType.SummerEbt, app.IssuanceType);
         Assert.Single(result.SummerEbtCases);
-        Assert.Equal("Active", result.SummerEbtCases[0].EbtCardStatus);
+        Assert.Equal(CardStatus.Active, result.SummerEbtCases[0].EbtCardStatus);
         Assert.Equal(IssuanceType.SummerEbt, result.SummerEbtCases[0].IssuanceType);
     }
 
@@ -753,7 +750,7 @@ public class MockHouseholdRepositoryTests
         Assert.NotNull(result);
         Assert.Single(result.SummerEbtCases);
         var sebtCase = result.SummerEbtCases[0];
-        Assert.Equal("Deactivated", sebtCase.EbtCardStatus);
+        Assert.Equal(CardStatus.DeactivatedByState, sebtCase.EbtCardStatus);
         Assert.NotNull(sebtCase.BenefitExpirationDate);
         Assert.True(sebtCase.BenefitExpirationDate < _timeProvider.GetUtcNow().UtcDateTime);
     }

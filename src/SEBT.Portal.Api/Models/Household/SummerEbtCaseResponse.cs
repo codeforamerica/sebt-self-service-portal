@@ -92,7 +92,7 @@ public record SummerEbtCaseResponse
     /// <summary>
     /// The EBT card status.
     /// </summary>
-    public string? EbtCardStatus { get; init; }
+    public Core::SEBT.Portal.Core.Models.Household.CardStatus? EbtCardStatus { get; init; }
 
     /// <summary>
     /// The EBT card issue date.

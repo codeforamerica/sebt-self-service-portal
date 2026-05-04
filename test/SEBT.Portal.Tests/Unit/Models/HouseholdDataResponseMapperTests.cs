@@ -14,9 +14,6 @@ public class HouseholdDataResponseMapperTests
         // Arrange
         var benefitIssue = new DateTime(2026, 1, 1, 10, 0, 0, DateTimeKind.Utc);
         var benefitExpiry = new DateTime(2026, 4, 1, 10, 0, 0, DateTimeKind.Utc);
-        var cardRequested = new DateTime(2025, 11, 11, 12, 0, 0, DateTimeKind.Utc);
-        var cardMailed = new DateTime(2025, 11, 28, 12, 0, 0, DateTimeKind.Utc);
-        var cardActivated = new DateTime(2025, 12, 2, 12, 0, 0, DateTimeKind.Utc);
 
         var domain = new HouseholdData
         {
@@ -34,11 +31,6 @@ public class HouseholdDataResponseMapperTests
                     BenefitIssueDate = benefitIssue,
                     BenefitExpirationDate = benefitExpiry,
                     Last4DigitsOfCard = "1234",
-                    CardStatus = CardStatus.Active,
-                    CardRequestedAt = cardRequested,
-                    CardMailedAt = cardMailed,
-                    CardActivatedAt = cardActivated,
-                    CardDeactivatedAt = null,
                     Children = new List<Child>
                     {
                         new Child { FirstName = "John", LastName = "Doe" },
@@ -92,11 +84,6 @@ public class HouseholdDataResponseMapperTests
         Assert.Equal(benefitIssue, app.BenefitIssueDate);
         Assert.Equal(benefitExpiry, app.BenefitExpirationDate);
         Assert.Equal("1234", app.Last4DigitsOfCard);
-        Assert.Equal(CardStatus.Active, app.CardStatus);
-        Assert.Equal(cardRequested, app.CardRequestedAt);
-        Assert.Equal(cardMailed, app.CardMailedAt);
-        Assert.Equal(cardActivated, app.CardActivatedAt);
-        Assert.Null(app.CardDeactivatedAt);
         Assert.Equal(2, app.ChildrenOnApplication);
         Assert.Equal(2, app.Children.Count);
         Assert.Equal("John", app.Children[0].FirstName);

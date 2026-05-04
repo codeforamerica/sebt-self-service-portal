@@ -89,7 +89,7 @@ internal static class PluginHouseholdDataMapper
             EbtCaseNumber = GetProp<string>(t, source, "EbtCaseNumber"),
             CaseDisplayNumber = GetProp<string>(t, source, "CaseDisplayNumber"),
             EbtCardLastFour = GetProp<string>(t, source, "EbtCardLastFour"),
-            EbtCardStatus = GetProp<string>(t, source, "EbtCardStatus"),
+            EbtCardStatus = ConvertEnum<CardStatus>(GetProp(t, source, "EbtCardStatus")),
             EbtCardIssueDate = ToDateTimeOrNull(GetProp(t, source, "EbtCardIssueDate")),
             EbtCardBalance = GetProp<decimal?>(t, source, "EbtCardBalance"),
             IsCoLoaded = GetProp<bool>(t, source, "IsCoLoaded"),
@@ -134,11 +134,6 @@ internal static class PluginHouseholdDataMapper
             BenefitIssueDate = GetProp<DateTime?>(t, source, nameof(Application.BenefitIssueDate)),
             BenefitExpirationDate = GetProp<DateTime?>(t, source, nameof(Application.BenefitExpirationDate)),
             Last4DigitsOfCard = GetProp<string>(t, source, nameof(Application.Last4DigitsOfCard)),
-            CardStatus = (CardStatus)(GetProp(t, source, nameof(Application.CardStatus)) ?? (int)CardStatus.Requested),
-            CardRequestedAt = GetProp<DateTime?>(t, source, nameof(Application.CardRequestedAt)),
-            CardMailedAt = GetProp<DateTime?>(t, source, nameof(Application.CardMailedAt)),
-            CardActivatedAt = GetProp<DateTime?>(t, source, nameof(Application.CardActivatedAt)),
-            CardDeactivatedAt = GetProp<DateTime?>(t, source, nameof(Application.CardDeactivatedAt)),
             IssuanceType = (IssuanceType)(GetProp(t, source, nameof(Application.IssuanceType)) ?? (int)IssuanceType.Unknown),
             Children = children
         };
@@ -182,5 +177,13 @@ internal static class PluginHouseholdDataMapper
     {
         var prop = type.GetProperty(name);
         return prop?.GetValue(obj);
+    }
+
+    private static T? ConvertEnum<T>(object? value) where T : struct, Enum
+    {
+        if (value == null) return null;
+        return Enum.TryParse<T>(value.ToString(), ignoreCase: true, out var result)
+            ? result
+            : null;
     }
 }

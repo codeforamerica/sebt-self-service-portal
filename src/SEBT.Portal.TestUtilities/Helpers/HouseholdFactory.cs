@@ -116,7 +116,7 @@ public static class HouseholdFactory
             EligibilityType = eligibilityType,
             ApplicationStatus = ApplicationStatus.Approved,
             IssuanceType = IssuanceType.SummerEbt,
-            EbtCardStatus = "Active",
+            EbtCardStatus = CardStatus.Active,
             BenefitAvailableDate = benefitStart,
             BenefitExpirationDate = benefitStart.AddDays(122)
         };
@@ -164,59 +164,20 @@ public static class HouseholdFactory
             application.BenefitIssueDate = faker.Date.Recent(120);
             application.BenefitExpirationDate = application.BenefitIssueDate.Value.AddDays(faker.Random.Int(30, 365));
             application.Last4DigitsOfCard = faker.Random.Number(1000, 9999).ToString();
-            application.CardStatus = CardStatus.Active;
-            var requestedDate = faker.Date.Recent(150);
-            var mailedDate = requestedDate.AddDays(faker.Random.Int(5, 30));
-            var activatedDate = mailedDate.AddDays(faker.Random.Int(1, 14));
-            application.CardRequestedAt = requestedDate;
-            application.CardMailedAt = mailedDate;
-            application.CardActivatedAt = activatedDate;
         }
         else if (status == ApplicationStatus.Denied)
         {
             application.ApplicationNumber = $"APP-{faker.Random.Number(2024, 2026)}-{faker.Random.Number(1, 12):D2}-{faker.Random.Number(100000, 999999)}";
             application.CaseNumber = $"CASE-{faker.Random.Number(100000, 999999)}";
-            if (faker.Random.Bool(0.5f))
-            {
-                application.CardStatus = CardStatus.Requested;
-                application.CardRequestedAt = faker.Date.Recent(90);
-            }
-            else
-            {
-                application.CardStatus = CardStatus.Deactivated;
-                var requestedDate = faker.Date.Recent(120);
-                var mailedDate = requestedDate.AddDays(faker.Random.Int(5, 30));
-                var activatedDate = mailedDate.AddDays(faker.Random.Int(1, 14));
-                var deactivatedDate = activatedDate.AddDays(faker.Random.Int(1, 60));
-                application.CardRequestedAt = requestedDate;
-                application.CardMailedAt = mailedDate;
-                application.CardActivatedAt = activatedDate;
-                application.CardDeactivatedAt = deactivatedDate;
-            }
         }
         else if (status == ApplicationStatus.Unknown)
         {
             application.ApplicationNumber = null; // Explicitly null for Unknown status
-            application.CardStatus = CardStatus.Requested;
-            application.CardRequestedAt = faker.Date.Recent(60);
         }
         else
         {
             // For other statuses (Pending, UnderReview, Cancelled)
             application.ApplicationNumber = $"APP-{faker.Random.Number(2024, 2026)}-{faker.Random.Number(1, 12):D2}-{faker.Random.Number(100000, 999999)}";
-            if (faker.Random.Bool(0.5f))
-            {
-                application.CardStatus = CardStatus.Requested;
-                application.CardRequestedAt = faker.Date.Recent(90);
-            }
-            else
-            {
-                application.CardStatus = CardStatus.Mailed;
-                var requestedDate = faker.Date.Recent(90);
-                var mailedDate = requestedDate.AddDays(faker.Random.Int(5, 30));
-                application.CardRequestedAt = requestedDate;
-                application.CardMailedAt = mailedDate;
-            }
         }
 
         return application;
