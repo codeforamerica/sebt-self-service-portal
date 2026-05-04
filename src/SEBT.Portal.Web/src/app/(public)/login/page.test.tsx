@@ -21,25 +21,30 @@ vi.mock('@sebt/design-system', () => ({
   )
 }))
 
-vi.mock('@/lib/translations', () => ({
-  getTranslations: vi.fn().mockImplementation((namespace: string) => {
-    const namespaces: Record<string, Record<string, string>> = {
-      login: {
-        title: 'Access your Summer EBT account',
-        body: 'Enter your email to receive a one-time code.',
-        logInDisclaimerBody1:
-          'After tapping "Log in" you\'ll be redirected to log in using your myColorado™ account.',
-        logInDisclaimerBody2: 'Contact us if you need assistance logging into your account.'
-      },
-      common: {
-        logIn: 'Log in with myColorado™',
-        logInEsp: 'Iniciar sesión con myColorado™'
-      }
-    }
-    /* eslint-disable security/detect-object-injection -- test mock; namespace and key are controlled */
-    const translations = namespaces[namespace] ?? {}
-    return (key: string, defaultValue?: string) => translations[key] ?? defaultValue ?? key
+// COLoginPage now uses the client-side useTranslation() hook (DC-187 fix).
+// Mock the hook with CO-specific copy so the CO-state tests stay isolated from
+// the project's real i18n init (which boots in DC mode for tests).
+const TEST_TRANSLATIONS: Record<string, Record<string, string>> = {
+  login: {
+    title: 'Access your Summer EBT account',
+    body: 'Enter your email to receive a one-time code.',
+    logInDisclaimerBody1:
+      'After tapping "Log in" you\'ll be redirected to log in using your myColorado™ account.',
+    logInDisclaimerBody2: 'Contact us if you need assistance logging into your account.'
+  },
+  common: {
+    logIn: 'Log in with myColorado™',
+    logInEsp: 'Iniciar sesión con myColorado™'
+  }
+}
+
+vi.mock('react-i18next', () => ({
+  useTranslation: (namespace: string) => ({
+    /* eslint-disable security/detect-object-injection -- test mock; namespace + key controlled */
+    t: (key: string, defaultValue?: string) =>
+      TEST_TRANSLATIONS[namespace]?.[key] ?? defaultValue ?? key,
     /* eslint-enable security/detect-object-injection */
+    i18n: { language: 'en' }
   })
 }))
 

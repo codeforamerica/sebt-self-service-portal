@@ -43,7 +43,8 @@ vi.mock('react-i18next', () => ({
       if (emptyKeys.has(fullKey)) return defaultValue ?? fullKey
       if (POPULATED_KEYS.has(fullKey)) return fullKey
       return defaultValue ?? fullKey
-    }
+    },
+    i18n: { language: 'en' }
   })
 }))
 

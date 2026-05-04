@@ -293,4 +293,64 @@ describe('DashboardContent', () => {
       expect(mockSetPageData).not.toHaveBeenCalledWith('household_reason', 'no_children')
     })
   })
+
+  describe('coloading_status / household_type tagging (DC-215)', () => {
+    it('tags non_co_loaded when session.isCoLoaded is false', async () => {
+      mockAuthSession.isCoLoaded = false
+      renderWithProviders(<DashboardContent />)
+
+      await waitFor(() => {
+        expect(mockTrackEvent).toHaveBeenCalledWith('household_result')
+      })
+
+      expect(mockSetUserData).toHaveBeenCalledWith('coloading_status', 'non_co_loaded', [
+        'default',
+        'analytics'
+      ])
+      expect(mockSetPageData).toHaveBeenCalledWith('household_type', 'non_co_loaded')
+    })
+
+    it('tags mixed_eligibility when co-loaded user also has SummerEbt cases', async () => {
+      // Default TEST_HOUSEHOLD_DATA has SummerEbt cases (issuanceType: 1).
+      mockAuthSession.isCoLoaded = true
+      renderWithProviders(<DashboardContent />)
+
+      await waitFor(() => {
+        expect(mockTrackEvent).toHaveBeenCalledWith('household_result')
+      })
+
+      expect(mockSetUserData).toHaveBeenCalledWith('coloading_status', 'mixed_eligibility', [
+        'default',
+        'analytics'
+      ])
+      expect(mockSetPageData).toHaveBeenCalledWith('household_type', 'mixed_eligibility')
+    })
+
+    it('tags co_loaded_only when co-loaded user has only SnapEbtCard/TanfEbtCard cases and no applications', async () => {
+      mockAuthSession.isCoLoaded = true
+      server.use(
+        http.get('/api/household/data', () => {
+          return HttpResponse.json({
+            ...TEST_HOUSEHOLD_DATA,
+            summerEbtCases: [
+              { ...TEST_HOUSEHOLD_DATA.summerEbtCases[0], issuanceType: 'SnapEbtCard' }
+            ],
+            applications: []
+          })
+        })
+      )
+
+      renderWithProviders(<DashboardContent />)
+
+      await waitFor(() => {
+        expect(mockTrackEvent).toHaveBeenCalledWith('household_result')
+      })
+
+      expect(mockSetUserData).toHaveBeenCalledWith('coloading_status', 'co_loaded_only', [
+        'default',
+        'analytics'
+      ])
+      expect(mockSetPageData).toHaveBeenCalledWith('household_type', 'co_loaded_only')
+    })
+  })
 })

@@ -1,9 +1,11 @@
-import { getTranslations } from '@/lib/translations'
+'use client'
+
 import { Alert } from '@sebt/design-system'
 import Link from 'next/link'
+import { useTranslation } from 'react-i18next'
 
 export default function NotFound() {
-  const t = getTranslations('common')
+  const { t } = useTranslation('common')
 
   return (
     <section
