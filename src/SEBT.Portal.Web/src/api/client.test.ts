@@ -8,7 +8,7 @@
  * - Schema validation
  */
 import { http, HttpResponse } from 'msw'
-import { describe, expect, it } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { z } from 'zod'
 
 import { server } from '@/mocks/server'
@@ -331,6 +331,79 @@ describe('apiFetch', () => {
 
       await apiFetch('/test', { method: 'DELETE' })
       expect(requestMethod).toBe('DELETE')
+    })
+  })
+
+  describe('401 Redirect Behavior', () => {
+    // Stub window.location.replace so we can verify which endpoints trigger the
+    // session-invalid redirect to /login.
+    let replaceSpy: ReturnType<typeof vi.fn>
+    const originalLocation = window.location
+
+    beforeEach(() => {
+      replaceSpy = vi.fn()
+      Object.defineProperty(window, 'location', {
+        configurable: true,
+        value: { ...originalLocation, replace: replaceSpy }
+      })
+    })
+
+    afterEach(() => {
+      Object.defineProperty(window, 'location', {
+        configurable: true,
+        value: originalLocation
+      })
+    })
+
+    it('redirects to /login on 401 from a resource endpoint', async () => {
+      // Bug fix: bearer middleware rejects an aged/missing-auth_time token with 401
+      // on /household/data. Without this, the dashboard rendered an error message
+      // instead of sending the user to log in again.
+      server.use(
+        http.get('/api/household/data', () =>
+          HttpResponse.json({ message: 'Unauthorized' }, { status: 401 })
+        )
+      )
+
+      await expect(apiFetch('/household/data')).rejects.toBeInstanceOf(ApiError)
+      expect(replaceSpy).toHaveBeenCalledWith('/login')
+    })
+
+    it('redirects to /login on 401 from /auth/refresh', async () => {
+      server.use(
+        http.post('/api/auth/refresh', () =>
+          HttpResponse.json({ message: 'Unauthorized' }, { status: 401 })
+        )
+      )
+
+      await expect(apiFetch('/auth/refresh', { method: 'POST' })).rejects.toBeInstanceOf(ApiError)
+      expect(replaceSpy).toHaveBeenCalledWith('/login')
+    })
+
+    it('does NOT redirect on 401 from /auth/status (bootstrap probe)', async () => {
+      // AuthContext uses /auth/status on mount to learn whether the user is logged in;
+      // a 401 here means "no session yet" and must not navigate the page.
+      server.use(
+        http.get('/api/auth/status', () =>
+          HttpResponse.json({ message: 'Unauthorized' }, { status: 401 })
+        )
+      )
+
+      await expect(apiFetch('/auth/status')).rejects.toBeInstanceOf(ApiError)
+      expect(replaceSpy).not.toHaveBeenCalled()
+    })
+
+    it('does NOT redirect on non-401 errors', async () => {
+      // 403 (e.g., IAL gating) and 500 leave the user on the page so they can see
+      // the appropriate inline message.
+      server.use(
+        http.get('/api/household/data', () =>
+          HttpResponse.json({ message: 'Forbidden' }, { status: 403 })
+        )
+      )
+
+      await expect(apiFetch('/household/data')).rejects.toBeInstanceOf(ApiError)
+      expect(replaceSpy).not.toHaveBeenCalled()
     })
   })
 })

@@ -89,11 +89,14 @@ export async function apiFetch<T>(endpoint: string, options: ApiFetchOptions<T> 
   }
 
   if (!response.ok) {
-    // Auto-redirect on 401 from auth endpoints (session invalid), except /auth/status —
-    // that's the bootstrap probe AuthContext uses to detect "not logged in" without redirecting.
-    // Other endpoints may 401 for resource-level reasons (IAL gating) where the session is still valid.
-    const shouldRedirectOn401 = endpoint.startsWith('/auth/') && endpoint !== '/auth/status'
-    if (response.status === 401 && shouldRedirectOn401 && typeof window !== 'undefined') {
+    // 401 from any controller means the session is invalid (bearer middleware rejected
+    // the JWT — expired exp, missing/expired auth_time, etc). Redirect to /login on
+    // every endpoint EXCEPT /auth/status, which is the bootstrap probe AuthContext uses
+    // to detect "not logged in" without redirecting. Resource-level access denial (e.g.,
+    // IAL gating) returns 403 with structured ProblemDetails — never 401 — so any 401
+    // here is unambiguously session-level.
+    const isBootstrapProbe = endpoint === '/auth/status'
+    if (response.status === 401 && !isBootstrapProbe && typeof window !== 'undefined') {
       window.location.replace('/login')
     }
 
