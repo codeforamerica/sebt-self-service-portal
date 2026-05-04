@@ -234,8 +234,8 @@ describe('CardSelection', () => {
   // --- Error handling ---
 
   it('shows error alert when household data fails to load', async () => {
-    // 503 surfaces the error UI; 401 is suppressed by useHouseholdData while the
-    // SPA redirects to /login.
+    // 400 surfaces the error UI without retries (4xx skips retry); 401 is suppressed
+    // by useHouseholdData while the SPA redirects to /login.
     server.use(
       http.get('/api/household/data', () => {
         return HttpResponse.json({ error: 'Bad Request' }, { status: 400 })

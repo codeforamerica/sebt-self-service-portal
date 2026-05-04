@@ -108,9 +108,9 @@ describe('DashboardContent', () => {
   })
 
   it('renders error alert on API failure', async () => {
-    // 503 represents a generic server-side failure that should surface the error UI.
-    // (401 is suppressed by useHouseholdData because the SPA redirects to /login on
-    // session-invalid responses; using it here would test the redirect path instead.)
+    // 400 surfaces the error UI without retries (4xx skips the hook's retry logic).
+    // 401 is suppressed by useHouseholdData because the SPA redirects to /login on
+    // session-invalid responses; using it here would test the redirect path instead.
     server.use(
       http.get('/api/household/data', () => {
         return HttpResponse.json({ error: 'Bad Request' }, { status: 400 })
