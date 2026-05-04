@@ -168,15 +168,6 @@ public class AuthController(
                 return BadRequest(new ErrorResponse(result.Message, validationFailed.Errors));
             }
 
-            if (result is UnauthorizedResult<string>)
-            {
-                // Absolute-timeout (or any handler-signaled "session is no longer valid")
-                // path: clear the cookie so the rejected JWT can't be replayed, then 401
-                // so the SPA's existing 401 handler redirects to /login.
-                AuthCookies.ClearAuthCookie(Response);
-                return Unauthorized(new ErrorResponse(result.Message));
-            }
-
             if (result is PreconditionFailedResult<string> preconditionFailed)
             {
                 // Return 404 for NotFound, 409 for Conflict, etc.

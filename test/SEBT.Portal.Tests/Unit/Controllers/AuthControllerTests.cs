@@ -238,30 +238,6 @@ public class AuthControllerTests
     }
 
     [Fact]
-    public async Task RefreshToken_WhenHandlerReturnsUnauthorized_Returns401AndClearsCookie()
-    {
-        // Arrange — handler signals absolute-timeout exceeded by returning Unauthorized.
-        // Controller must (a) return 401 so the SPA's 401 redirect kicks in, and
-        // (b) clear the auth cookie so the rejected JWT can't be replayed.
-        var userId = Guid.NewGuid();
-        SetupAuthenticatedUserWithSub(userId);
-
-        var handlerMock = Substitute.For<ICommandHandler<RefreshTokenCommand, string>>();
-        handlerMock.Handle(Arg.Any<RefreshTokenCommand>())
-            .Returns(Result<string>.Unauthorized("Session has reached its maximum lifetime; please sign in again."));
-
-        // Act
-        var result = await _controller.RefreshToken(handlerMock);
-
-        // Assert
-        Assert.IsType<UnauthorizedObjectResult>(result);
-        var setCookie = _controller.Response.Headers["Set-Cookie"].ToString();
-        Assert.Contains($"{AuthCookies.AuthCookieName}=", setCookie);
-        // ClearAuthCookie sets an expires= in the past
-        Assert.Contains("expires=", setCookie, StringComparison.OrdinalIgnoreCase);
-    }
-
-    [Fact]
     public void GetAuthorizationStatus_WhenExpClaimNotANumber_ReturnsNullExpiresAt()
     {
         // Arrange — defensive: a non-numeric exp claim should not crash the endpoint

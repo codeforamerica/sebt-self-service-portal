@@ -1,10 +1,7 @@
-using System.IdentityModel.Tokens.Jwt;
 using System.Linq;
 using System.Security.Claims;
 using Microsoft.Extensions.Logging.Abstractions;
-using Microsoft.Extensions.Options;
 using NSubstitute;
-using SEBT.Portal.Core.AppSettings;
 using SEBT.Portal.Core.Models.Auth;
 using SEBT.Portal.Core.Repositories;
 using SEBT.Portal.Core.Services;
@@ -16,8 +13,6 @@ namespace SEBT.Portal.Tests.Unit.UseCases.Auth;
 
 public class RefreshTokenCommandHandlerTests
 {
-    private const int AbsoluteCapMinutes = 60;
-
     private readonly IUserRepository userRepository = Substitute.For<IUserRepository>();
     private readonly ISessionRefreshTokenService jwtTokenService = Substitute.For<ISessionRefreshTokenService>();
     private readonly NullLogger<RefreshTokenCommandHandler> logger = NullLogger<RefreshTokenCommandHandler>.Instance;
@@ -26,46 +21,21 @@ public class RefreshTokenCommandHandlerTests
 
     public RefreshTokenCommandHandlerTests()
     {
-        var jwtSettings = Options.Create(new JwtSettings
-        {
-            SecretKey = new string('x', 32),
-            Issuer = "test",
-            Audience = "test",
-            ExpirationMinutes = 15,
-            AbsoluteExpirationMinutes = AbsoluteCapMinutes
-        });
+        // The absolute-cap is enforced upstream by SessionLifetimePolicy in the bearer
+        // middleware; principals reaching this handler have already passed that check.
         handler = new RefreshTokenCommandHandler(
             userRepository,
             jwtTokenService,
             validator,
-            jwtSettings,
             logger);
     }
 
-    /// <summary>Builds a ClaimsPrincipal carrying a sub claim (the portal's user ID) and
-    /// a recent auth_time claim (so absolute-cap checks pass), plus any additional claims
-    /// the test needs to pass through to the refreshed token.</summary>
+    /// <summary>Builds a ClaimsPrincipal carrying a sub claim (the portal's user ID), plus
+    /// any additional claims the test needs to pass through to the refreshed token.</summary>
     private static ClaimsPrincipal PrincipalWithSub(string userIdSub, params Claim[] extraClaims)
     {
-        var nowSeconds = DateTimeOffset.UtcNow.ToUnixTimeSeconds().ToString();
-        var claims = new List<Claim>
-        {
-            new("sub", userIdSub),
-            new(JwtRegisteredClaimNames.AuthTime, nowSeconds)
-        };
-        claims.AddRange(extraClaims);
-        return new ClaimsPrincipal(new ClaimsIdentity(claims));
-    }
-
-    /// <summary>Builds a principal with sub but with a custom auth_time (or no auth_time
-    /// at all when <paramref name="authTimeUnixSeconds"/> is null) — for absolute-cap tests.</summary>
-    private static ClaimsPrincipal PrincipalWithAuthTime(string userIdSub, long? authTimeUnixSeconds)
-    {
         var claims = new List<Claim> { new("sub", userIdSub) };
-        if (authTimeUnixSeconds.HasValue)
-        {
-            claims.Add(new Claim(JwtRegisteredClaimNames.AuthTime, authTimeUnixSeconds.Value.ToString()));
-        }
+        claims.AddRange(extraClaims);
         return new ClaimsPrincipal(new ClaimsIdentity(claims));
     }
 
@@ -323,69 +293,6 @@ public class RefreshTokenCommandHandlerTests
             u.IalLevel == UserIalLevel.IAL1plus &&
             u.IdProofingSessionId == "session-xyz" &&
             u.IdProofingCompletedAt == completedAt), Arg.Any<ClaimsPrincipal>());
-    }
-
-    [Fact]
-    public async Task Handle_WhenAbsoluteTimeoutExceeded_ReturnsUnauthorized()
-    {
-        // Arrange — a session whose original auth_time is older than the absolute cap.
-        var userId = Guid.NewGuid();
-        var staleAuthTime = DateTimeOffset.UtcNow.AddMinutes(-(AbsoluteCapMinutes + 1)).ToUnixTimeSeconds();
-        var command = new RefreshTokenCommand
-        {
-            CurrentPrincipal = PrincipalWithAuthTime(userId.ToString(), staleAuthTime)
-        };
-
-        // Act
-        var result = await handler.Handle(command, CancellationToken.None);
-
-        // Assert
-        Assert.False(result.IsSuccess);
-        Assert.IsType<UnauthorizedResult<string>>(result);
-        await userRepository.DidNotReceive().GetUserByIdAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>());
-        jwtTokenService.DidNotReceive().GenerateForSessionRefresh(Arg.Any<User>(), Arg.Any<ClaimsPrincipal>());
-    }
-
-    [Fact]
-    public async Task Handle_WhenAuthTimeWithinAbsoluteCap_AllowsRefresh()
-    {
-        // Arrange — auth_time is just inside the cap, refresh should still succeed.
-        var userId = Guid.NewGuid();
-        var freshAuthTime = DateTimeOffset.UtcNow.AddMinutes(-(AbsoluteCapMinutes - 1)).ToUnixTimeSeconds();
-        var command = new RefreshTokenCommand
-        {
-            CurrentPrincipal = PrincipalWithAuthTime(userId.ToString(), freshAuthTime)
-        };
-
-        var user = new User { Id = userId, Email = "user@example.com", IalLevel = UserIalLevel.IAL1 };
-        userRepository.GetUserByIdAsync(userId, Arg.Any<CancellationToken>()).Returns(user);
-        jwtTokenService.GenerateForSessionRefresh(Arg.Any<User>(), Arg.Any<ClaimsPrincipal>())
-            .Returns("token");
-
-        // Act
-        var result = await handler.Handle(command, CancellationToken.None);
-
-        // Assert
-        Assert.True(result.IsSuccess);
-    }
-
-    [Fact]
-    public async Task Handle_WhenAuthTimeMissing_ReturnsUnauthorized()
-    {
-        // Defensive: a token without auth_time predates this code path. Reject so the
-        // user re-authenticates rather than allowing an unbounded session by omission.
-        var userId = Guid.NewGuid();
-        var command = new RefreshTokenCommand
-        {
-            CurrentPrincipal = PrincipalWithAuthTime(userId.ToString(), authTimeUnixSeconds: null)
-        };
-
-        // Act
-        var result = await handler.Handle(command, CancellationToken.None);
-
-        // Assert
-        Assert.False(result.IsSuccess);
-        Assert.IsType<UnauthorizedResult<string>>(result);
     }
 
     [Fact]
