@@ -371,9 +371,12 @@ describe('DashboardContent', () => {
     })
 
     it('does not emit a cohort property when the API returns an error', async () => {
+      // 400 surfaces the error UI without retries (4xx skips the hook's retry logic).
+      // 401 is suppressed by useHouseholdData while the SPA redirects to /login, so it
+      // would leave the component in `isLoading` and never run the error-analytics branch.
       server.use(
         http.get('/api/household/data', () => {
-          return HttpResponse.json({ error: 'Unauthorized' }, { status: 401 })
+          return HttpResponse.json({ error: 'Bad Request' }, { status: 400 })
         })
       )
 
