@@ -11,13 +11,14 @@ import { Alert } from '@sebt/design-system'
 export default function CardReplaceAddressPage() {
   const { t } = useTranslation('confirmInfo')
   const { t: tCommon } = useTranslation('common')
+  
   const searchParams = useSearchParams()
   const { data, isLoading, isError } = useHouseholdData()
 
   const caseId = searchParams.get('case')
 
   if (isLoading) {
-    return <p>{tCommon('loading', 'Loading...')}</p>
+    return <p>{tCommon('loading')}</p>
   }
 
   if (isError || !data || !caseId) {
@@ -27,6 +28,7 @@ export default function CardReplaceAddressPage() {
   return (
     <div className="grid-container maxw-tablet padding-top-4 padding-bottom-4">
       <h1 className="font-sans-xl text-primary">
+        {/* TODO UPDATE */}
         {t('addressUpdateTitle', 'Update your mailing address')}
       </h1>
       <AddressFlowProvider>

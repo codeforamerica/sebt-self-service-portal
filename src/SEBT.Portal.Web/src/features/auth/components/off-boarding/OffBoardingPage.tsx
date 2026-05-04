@@ -24,6 +24,7 @@ interface OffBoardingPageProps {
 export function OffBoardingPage({ contactLink, applyLink }: OffBoardingPageProps) {
   const router = useRouter()
   const { t } = useTranslation('idProofing')
+  const { t: tCommon } = useTranslation('common')
 
   // Read sessionStorage once on initial render (lazy initializer avoids setState-in-effect)
   const [reason] = useState(() => {
@@ -64,19 +65,13 @@ export function OffBoardingPage({ contactLink, applyLink }: OffBoardingPageProps
           >
             {isNoIdProvided
               ? noIdHeading
-              : t(
-                  'offboardingHeading',
-                  "We're sorry, we aren't able to show your DC SUN Bucks information"
-                )}
+              : t('coLoadedTitle')}
           </h1>
 
           <p className="font-sans-sm">
             {isNoIdProvided
               ? noIdBody
-              : t(
-                  'offboardingBody',
-                  'You can go back to enter an ID number, or contact us if you need more help.'
-                )}
+              : t('coLoadedBody')}
           </p>
 
           <div className="margin-top-3">
@@ -87,7 +82,7 @@ export function OffBoardingPage({ contactLink, applyLink }: OffBoardingPageProps
                 router.push('/login/id-proofing')
               }}
             >
-              {t('offboardingActionBack', 'Back')}
+              {tCommon('back')}
             </Button>
 
             <a
@@ -96,7 +91,7 @@ export function OffBoardingPage({ contactLink, applyLink }: OffBoardingPageProps
               rel="noopener noreferrer"
               className="usa-button usa-button--outline"
             >
-              {t('offboardingActionContact', 'Contact us')}
+              {tCommon('linkContactUs')}
             </a>
           </div>
 
@@ -108,10 +103,7 @@ export function OffBoardingPage({ contactLink, applyLink }: OffBoardingPageProps
           {canApply && !isNoIdProvided && (
             <div className="margin-top-4">
               <p className="font-sans-sm">
-                {t(
-                  'offboardingApplyBody',
-                  'If you\'re not sure what to do, or you want to apply for DC SUN Bucks, we can help you find out if you need to apply for your child. Tap "Apply now" and enter your child\'s information.'
-                )}
+                {t('coLoadedBody2')}
               </p>
 
               {applyLink && (
@@ -119,7 +111,7 @@ export function OffBoardingPage({ contactLink, applyLink }: OffBoardingPageProps
                   href={applyLink}
                   className="usa-button margin-top-2"
                 >
-                  {t('offboardingActionApply', 'Apply now')}
+                  {t('coLoadedAction2')}
                 </a>
               )}
             </div>
@@ -127,13 +119,13 @@ export function OffBoardingPage({ contactLink, applyLink }: OffBoardingPageProps
 
           {/* FAQs placeholder */}
           <div className="margin-top-6">
-            <h2 className="font-sans-lg text-bold">{t('offboardingFaqsHeading', 'FAQs')}</h2>
+            <h2 className="font-sans-lg text-bold">{tCommon('linkFaqs')}</h2>
           </div>
 
           {/* Contact Us */}
           <div className="margin-top-4">
             <h2 className="font-sans-lg text-bold">
-              {t('offboardingContactUsHeading', 'Contact Us')}
+              {tCommon('linkFaqs')}
             </h2>
             <p className="font-sans-sm">
               <a
@@ -142,6 +134,8 @@ export function OffBoardingPage({ contactLink, applyLink }: OffBoardingPageProps
                 rel="noopener noreferrer"
                 className="usa-link"
               >
+                {/* TODO check on this copy */}
+                {t('offboardingContactUsLink', 'Need help? Contact us.')}
                 {t('offboardingContactUsLink', 'Need help? Contact us.')}
               </a>
             </p>

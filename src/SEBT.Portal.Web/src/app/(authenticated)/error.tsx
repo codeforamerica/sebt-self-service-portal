@@ -8,6 +8,7 @@ import type { ErrorProps } from '../types'
 
 export default function AuthenticatedError({ error, reset }: ErrorProps) {
   const { t } = useTranslation('common')
+  const { t: tDev } = useTranslation('common')
 
   useEffect(() => {
     // TODO: Log error to monitoring service in production
@@ -30,16 +31,15 @@ export default function AuthenticatedError({ error, reset }: ErrorProps) {
           variant="error"
           heading={
             isAuthError
-              ? t('errorSessionExpired', 'Session expired')
+              ? tDev('alertSession', 'Session expired')
+              // TODO update with correct string
               : t('errorSomethingWentWrong', 'Something went wrong')
           }
         >
           <p>
             {isAuthError
-              ? t(
-                  'errorSessionExpiredBody',
-                  'Your session has expired. Please log in again to continue.'
-                )
+              ? tDev('alertSessionClient')
+              // TODO update with correct string
               : t(
                   'errorPageBody',
                   'We encountered an error loading this page. Please try again or log in again if the problem persists.'
@@ -47,7 +47,7 @@ export default function AuthenticatedError({ error, reset }: ErrorProps) {
           </p>
           {error.digest && (
             <p className="font-mono text-base-dark margin-top-1">
-              {t('errorId', 'Error ID: ')}
+              {tDev('errorPrefix')}
               {error.digest}
             </p>
           )}
@@ -57,7 +57,7 @@ export default function AuthenticatedError({ error, reset }: ErrorProps) {
                 type="button"
                 onClick={() => (window.location.href = '/login')}
               >
-                {t('errorLogInAgain', 'Log in again')}
+                {tDev('logInRefresh')}
               </Button>
             ) : (
               <>
@@ -66,14 +66,14 @@ export default function AuthenticatedError({ error, reset }: ErrorProps) {
                   onClick={reset}
                   className="margin-right-2"
                 >
-                  {t('errorTryAgain', 'Try again')}
+                  {tDev('alertTryAgain')}
                 </Button>
                 <Button
                   type="button"
                   variant="outline"
                   onClick={() => (window.location.href = '/login')}
                 >
-                  {t('errorLogInAgain', 'Log in again')}
+                  {tDev('logInRefresh')}
                 </Button>
               </>
             )}

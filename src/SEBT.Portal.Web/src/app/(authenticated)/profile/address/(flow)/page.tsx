@@ -14,6 +14,9 @@ import { getState } from '@sebt/design-system'
 
 export default function AddressFormPage() {
   const { t } = useTranslation('confirmInfo')
+  const { t: tCommon } = useTranslation('common')
+  const { t: tDev } = useTranslation('dev')
+  
   const { data, isLoading } = useHouseholdData()
   const router = useRouter()
   const canUpdateAddress = data?.allowedActions?.canUpdateAddress ?? true
@@ -32,7 +35,7 @@ export default function AddressFormPage() {
         aria-busy="true"
         role="status"
       >
-        <span className="usa-sr-only">Loading…</span>
+        <span className="usa-sr-only">{tDev('loading')}</span>
       </div>
     )
   }
@@ -40,10 +43,10 @@ export default function AddressFormPage() {
   return (
     <div className="grid-container maxw-tablet padding-top-4 padding-bottom-4">
       <h1 className="font-sans-xl text-primary">
-        {t('pageTitle', 'Tell us where to safely send your mail')}
+        {t('titleYour')}
       </h1>
       <p className="usa-hint">
-        {t('requiredFieldsNote', 'Asterisks (*) indicate a required field')}
+        {tCommon('requiredFields')}
       </p>
       <AddressForm initialAddress={data?.addressOnFile ?? null} />
     </div>

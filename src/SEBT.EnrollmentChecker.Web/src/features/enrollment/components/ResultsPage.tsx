@@ -35,7 +35,9 @@ function computeHouseholdEnrollmentResult(
 }
 
 export function ResultsPage({ results, portalUrl }: ResultsPageProps) {
-  const { t, i18n } = useTranslation('result')
+  const { t } = useTranslation('result')
+  const { t: tCommon } = useTranslation('common')
+
   const [isAccordionExpanded, setIsAccordionExpanded] = useState(false)
   const applyHref = getApplyHref(i18n.language)
 
@@ -50,7 +52,7 @@ export function ResultsPage({ results, portalUrl }: ResultsPageProps) {
           className="usa-button"
           data-testid="apply-for-sebt-link"
         >
-          {t('applyLink', 'Continue your application')}
+          {tCommon('applyOnline')}
         </a>
       </p>
     </section>
@@ -159,7 +161,7 @@ export function ResultsPage({ results, portalUrl }: ResultsPageProps) {
 
         {['mixedEnrolled', 'indeterminate'].includes(householdEnrollmentResult) && (
           <section data-testid="next-steps">
-            <h1 className="font-family-sans margin-top-1">Next Steps</h1>
+            <h1 className="font-family-sans margin-top-1">{t('streamlinedEnrolledStepsHeading')}</h1>
             <ol className="usa-process-list">
               <li className="usa-process-list__item">{notEnrolledNextSteps}</li>
               <li className="usa-process-list__item">{enrolledNextSteps}</li>
