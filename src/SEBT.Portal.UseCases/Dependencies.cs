@@ -1,8 +1,10 @@
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 using SEBT.Portal.Core.Models.Household;
 using SEBT.Portal.Kernel;
 using SEBT.Portal.StatesPlugins.Interfaces.Models.EnrollmentCheck;
 using SEBT.Portal.UseCases.Auth;
+using SEBT.Portal.UseCases.Auth.SessionLifetime;
 using SEBT.Portal.UseCases.EnrollmentCheck;
 using SEBT.Portal.UseCases.Household;
 using SEBT.Portal.UseCases.IdProofing;
@@ -25,6 +27,11 @@ public static class Dependencies
         services.RegisterCommandHandler<CheckEnrollmentCommand, EnrollmentCheckResult, CheckEnrollmentCommandHandler>();
         services.RegisterCommandHandler<UpdateAddressCommand, Core.Services.AddressValidationResult, UpdateAddressCommandHandler>();
         services.RegisterCommandHandler<RequestCardReplacementCommand, RequestCardReplacementCommandHandler>();
+
+        // SessionLifetimePolicy is invoked by the JWT bearer middleware on every authenticated
+        // request. TryAdd lets a host (e.g., tests) substitute a different TimeProvider.
+        services.TryAddSingleton(TimeProvider.System);
+        services.AddSingleton<SessionLifetimePolicy>();
 
         return services;
     }

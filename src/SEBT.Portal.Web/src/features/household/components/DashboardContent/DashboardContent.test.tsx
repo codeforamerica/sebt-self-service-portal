@@ -108,10 +108,12 @@ describe('DashboardContent', () => {
   })
 
   it('renders error alert on API failure', async () => {
-    // Use 401 to avoid hook retry logic (4xx errors are not retried)
+    // 400 surfaces the error UI without retries (4xx skips the hook's retry logic).
+    // 401 is suppressed by useHouseholdData because the SPA redirects to /login on
+    // session-invalid responses; using it here would test the redirect path instead.
     server.use(
       http.get('/api/household/data', () => {
-        return HttpResponse.json({ error: 'Unauthorized' }, { status: 401 })
+        return HttpResponse.json({ error: 'Bad Request' }, { status: 400 })
       })
     )
 
@@ -125,7 +127,7 @@ describe('DashboardContent', () => {
   it('renders sign-out link in error state', async () => {
     server.use(
       http.get('/api/household/data', () => {
-        return HttpResponse.json({ error: 'Unauthorized' }, { status: 401 })
+        return HttpResponse.json({ error: 'Bad Request' }, { status: 400 })
       })
     )
 
@@ -369,9 +371,12 @@ describe('DashboardContent', () => {
     })
 
     it('does not emit a cohort property when the API returns an error', async () => {
+      // 400 surfaces the error UI without retries (4xx skips the hook's retry logic).
+      // 401 is suppressed by useHouseholdData while the SPA redirects to /login, so it
+      // would leave the component in `isLoading` and never run the error-analytics branch.
       server.use(
         http.get('/api/household/data', () => {
-          return HttpResponse.json({ error: 'Unauthorized' }, { status: 401 })
+          return HttpResponse.json({ error: 'Bad Request' }, { status: 400 })
         })
       )
 

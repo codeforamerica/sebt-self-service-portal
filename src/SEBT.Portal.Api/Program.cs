@@ -20,6 +20,7 @@ using SEBT.Portal.Infrastructure.Configuration;
 using SEBT.Portal.Infrastructure.Services;
 using SEBT.Portal.Infrastructure.Seeding.Services;
 using SEBT.Portal.UseCases;
+using SEBT.Portal.UseCases.Auth.SessionLifetime;
 using SEBT.Portal.Infrastructure;
 using SEBT.Portal.Api.Startup;
 
@@ -230,6 +231,31 @@ builder.Services.AddOptions<JwtBearerOptions>(JwtBearerDefaults.AuthenticationSc
                     {
                         context.Token = cookieToken;
                     }
+                }
+                return Task.CompletedTask;
+            },
+            OnTokenValidated = context =>
+            {
+                // Enforce the absolute session lifetime cap on every authenticated request.
+                // Tokens missing auth_time (e.g., minted before the cap was introduced) or
+                // older than the cap are rejected here so the SPA's 401 handler kicks in.
+                if (context.Principal is null)
+                {
+                    return Task.CompletedTask;
+                }
+
+                var policy = context.HttpContext.RequestServices
+                    .GetRequiredService<SessionLifetimePolicy>();
+                var outcome = policy.Evaluate(context.Principal);
+
+                if (outcome != SessionLifetimePolicy.Outcome.Valid)
+                {
+                    AuthCookies.ClearAuthCookie(context.Response);
+                    var logger = context.HttpContext.RequestServices
+                        .GetRequiredService<ILogger<JwtBearerEvents>>();
+                    logger.LogInformation(
+                        "JWT rejected by absolute session lifetime policy: {Outcome}", outcome);
+                    context.Fail($"Absolute session lifetime: {outcome}");
                 }
                 return Task.CompletedTask;
             }

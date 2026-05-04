@@ -180,8 +180,17 @@ describe('useHouseholdData', () => {
       expect(requestCount).toBe(1)
     })
 
-    it('should NOT retry on 401 unauthorized', async () => {
+    it('should NOT retry on 401 unauthorized and suppresses error while redirecting', async () => {
+      // 401 from /household/data means the bearer middleware rejected the JWT.
+      // apiFetch redirects to /login and marks the error as redirecting; the hook
+      // suppresses isError so the dashboard stays in its loading shell instead of
+      // flashing an error UI before the browser navigates.
       let requestCount = 0
+      const originalLocation = window.location
+      Object.defineProperty(window, 'location', {
+        configurable: true,
+        value: { ...originalLocation, replace: vi.fn() }
+      })
 
       server.use(
         http.get('/api/household/data', () => {
@@ -199,10 +208,17 @@ describe('useHouseholdData', () => {
       })
 
       await waitFor(() => {
-        expect(result.current.isError).toBe(true)
+        expect(result.current.isLoading).toBe(true)
       })
 
+      expect(result.current.isError).toBe(false)
       expect(requestCount).toBe(1)
+      expect(window.location.replace).toHaveBeenCalledWith('/login')
+
+      Object.defineProperty(window, 'location', {
+        configurable: true,
+        value: originalLocation
+      })
     })
 
     it('should retry on 5xx server errors up to 2 times', async () => {
