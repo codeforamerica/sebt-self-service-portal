@@ -29,7 +29,8 @@ public static class HouseholdDataResponseMapper
             AddressOnFile = domain.AddressOnFile?.ToResponse(),
             UserProfile = domain.UserProfile?.ToResponse(),
             BenefitIssuanceType = domain.BenefitIssuanceType,
-            AllowedActions = domain.AllowedActions?.ToResponse()
+            AllowedActions = domain.AllowedActions?.ToResponse(),
+            CoLoadedCohort = domain.CoLoadedCohort
         };
     }
 

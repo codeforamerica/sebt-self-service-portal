@@ -67,7 +67,8 @@ function makeHousehold(cases: SummerEbtCase[]): HouseholdData {
     phone: null,
     summerEbtCases: cases,
     applications: [],
-    addressOnFile: null
+    addressOnFile: null,
+    coLoadedCohort: 'NonCoLoaded'
   } as HouseholdData
 }
 
