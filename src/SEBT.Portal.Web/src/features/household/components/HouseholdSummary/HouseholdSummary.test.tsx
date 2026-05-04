@@ -31,11 +31,6 @@ const mockApplication: Application = {
   benefitIssueDate: '2026-01-08T00:00:00Z',
   benefitExpirationDate: '2026-03-19T00:00:00Z',
   last4DigitsOfCard: '1234',
-  cardStatus: 'Active',
-  cardRequestedAt: null,
-  cardMailedAt: null,
-  cardActivatedAt: null,
-  cardDeactivatedAt: null,
   children: [{ firstName: 'Sophia', lastName: 'Martinez' }],
   childrenOnApplication: 1
 }

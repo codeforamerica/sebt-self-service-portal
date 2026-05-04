@@ -21,13 +21,24 @@ const STATUS_CONFIG: Record<UiCardStatus, { colorClass: string; labelKey: string
   }
 }
 
+// Fallback English copy used when the generated locale string is missing or
+// empty. Mirrors the existing DESCRIPTION_FALLBACK pattern. Keep these in
+// sync with the source spreadsheet — they exist to render reasonable copy
+// when the content team hasn't yet populated the per-state CSV column.
+const LABEL_FALLBACK: Record<UiCardStatus, string> = {
+  Active: 'Active',
+  Processed: 'Processed on [MM/DD/YYYY]',
+  Inactive: 'Inactive',
+  Frozen: 'Frozen',
+  Undeliverable: 'Undeliverable'
+}
+
 const DESCRIPTION_KEY: Partial<Record<CardStatus, string>> = {
   Active: 'cardTableStatusMessageActive',
   Processed: 'cardTableStatusMessageProcessed',
   Lost: 'cardTableStatusMessageInactive',
   Stolen: 'cardTableStatusMessageInactive',
   Damaged: 'cardTableStatusMessageInactive',
-  Deactivated: 'cardTableStatusMessageDeactivated',
   DeactivatedByState: 'cardTableStatusMessageDeactivated',
   NotActivated: 'cardTableStatusMessageDeactivated',
   Frozen: 'cardTableStatusMessageFrozen',
@@ -47,8 +58,6 @@ const DESCRIPTION_FALLBACK: Partial<Record<CardStatus, string>> = {
   Lost: 'This card was reported as lost, stolen, or damaged. Request a replacement card above.',
   Stolen: 'This card was reported as lost, stolen, or damaged. Request a replacement card above.',
   Damaged: 'This card was reported as lost, stolen, or damaged. Request a replacement card above.',
-  Deactivated:
-    'This card was reported as lost, stolen, damaged, or otherwise inactive. Contact customer service for help.',
   // TODO: Use cardTableStatusMessageDeactivated once CO CSV covers this status explicitly.
   DeactivatedByState:
     'The state agency has deactivated this card. Contact Summer EBT support for assistance.',
@@ -63,17 +72,11 @@ const DESCRIPTION_FALLBACK: Partial<Record<CardStatus, string>> = {
 export function CardStatusDisplay({ cardStatus }: CardStatusDisplayProps) {
   const { t } = useTranslation('dashboard')
 
-  if (
-    !cardStatus ||
-    cardStatus === 'Unknown' ||
-    cardStatus === 'Requested' ||
-    cardStatus === 'Mailed'
-  )
-    return null
+  if (!cardStatus || cardStatus === 'Unknown') return null
 
   const uiStatus = toUiCardStatus(cardStatus)
   const { colorClass, labelKey } = STATUS_CONFIG[uiStatus]
-  const statusLabel = t(labelKey)
+  const statusLabel = t(labelKey, { defaultValue: '' }) || LABEL_FALLBACK[uiStatus]
   const descriptionKey = DESCRIPTION_KEY[cardStatus] ?? 'cardTableStatusMessageInactive'
   // defaultValue: '' collapses both missing keys (i18next would otherwise return
   // the key string, which is truthy) and empty-string locale entries to the same

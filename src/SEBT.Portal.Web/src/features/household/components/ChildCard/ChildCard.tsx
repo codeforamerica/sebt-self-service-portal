@@ -12,15 +12,6 @@ import { formatDate } from '../../api'
 import { CardStatusDisplay } from '../CardStatusDisplay'
 import { CardStatusTimeline } from '../CardStatusTimeline'
 
-/**
- * DC cards always originate as 'Requested' and carry a cardRequestedAt timestamp.
- * CO cards are issued directly without a Requested stage, so cardRequestedAt is absent.
- * This is the data-driven discriminator between the two card lifecycle models.
- */
-function hasCardLifecycleTimeline(summerEbtCase: SummerEbtCase): boolean {
-  return summerEbtCase.cardRequestedAt != null
-}
-
 function isCoLoadedIssuance(issuanceType: IssuanceType | null | undefined): boolean {
   return issuanceType === 'SnapEbtCard' || issuanceType === 'TanfEbtCard'
 }
@@ -81,9 +72,7 @@ export function ChildCard({
     ebtCardLastFour,
     ebtCardStatus,
     issuanceType,
-    cardRequestedAt,
-    cardMailedAt,
-    cardDeactivatedAt
+    cardRequestedAt
   } = summerEbtCase
   const referenceIdShown =
     caseDisplayNumber !== undefined && caseDisplayNumber !== null && caseDisplayNumber !== ''
@@ -145,13 +134,8 @@ export function ChildCard({
             </>
           )}
           {summerEbtCase.allowCardReplacement &&
-            (hasCardLifecycleTimeline(summerEbtCase) ? (
-              <CardStatusTimeline
-                cardStatus={ebtCardStatus}
-                cardRequestedAt={cardRequestedAt}
-                cardMailedAt={cardMailedAt}
-                cardDeactivatedAt={cardDeactivatedAt}
-              />
+            (isWithinCooldownPeriod(cardRequestedAt) ? (
+              <CardStatusTimeline cardRequestedAt={cardRequestedAt} />
             ) : (
               <CardStatusDisplay cardStatus={ebtCardStatus} />
             ))}

@@ -12,8 +12,10 @@ import {
 } from './schema'
 
 /**
- * Backend enum definitions (source of truth for wire integers):
- *   CardStatus:        Requested=0, Mailed=1, Active=2, Deactivated=3
+ * Backend enum definitions (source of truth for wire values):
+ *   EbtCardStatus:     string enum, serialized by name (Active, Lost, Stolen, Damaged,
+ *                      DeactivatedByState, NotActivated, Frozen, Undeliverable,
+ *                      Processed, Unknown)
  *   ApplicationStatus: Unknown=0, Pending=1, Approved=2, Denied=3, UnderReview=4, Cancelled=5
  *   IssuanceType:      Unknown=0, SummerEbt=1, TanfEbtCard=2, SnapEbtCard=3
  *   CoLoadedCohort:    NonCoLoaded=0, CoLoadedOnly=1, MixedOrApplicantExcluded=2
@@ -21,24 +23,26 @@ import {
  */
 describe('CardStatusSchema', () => {
   it.each([
-    [0, 'Requested'],
-    [1, 'Mailed'],
-    [2, 'Active'],
-    [3, 'Deactivated']
-  ])('maps integer %i to "%s"', (input, expected) => {
-    expect(CardStatusSchema.parse(input)).toBe(expected)
+    'Active',
+    'Damaged',
+    'DeactivatedByState',
+    'Frozen',
+    'Lost',
+    'NotActivated',
+    'Processed',
+    'Stolen',
+    'Undeliverable',
+    'Unknown'
+  ])('passes through string value %s unchanged', (input) => {
+    expect(CardStatusSchema.parse(input)).toBe(input)
   })
 
-  it('maps unrecognized integer to "Unknown"', () => {
-    expect(CardStatusSchema.parse(99)).toBe('Unknown')
+  it('accepts null', () => {
+    expect(CardStatusSchema.parse(null)).toBe(null)
   })
 
-  it('passes through string values unchanged', () => {
-    expect(CardStatusSchema.parse('Active')).toBe('Active')
-  })
-
-  it('maps empty string to Unknown (CBMS returns "" for denied/pending children)', () => {
-    expect(CardStatusSchema.parse('')).toBe('Unknown')
+  it('accepts undefined', () => {
+    expect(CardStatusSchema.parse(undefined)).toBe(undefined)
   })
 })
 

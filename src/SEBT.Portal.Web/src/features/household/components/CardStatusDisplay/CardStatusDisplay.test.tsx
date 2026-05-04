@@ -34,18 +34,6 @@ describe('CardStatusDisplay', () => {
     expect(container.innerHTML).toBe('')
   })
 
-  it('renders nothing when cardStatus is Requested', () => {
-    const { container } = renderWithStatus('Requested')
-
-    expect(container.innerHTML).toBe('')
-  })
-
-  it('renders nothing when cardStatus is Mailed', () => {
-    const { container } = renderWithStatus('Mailed')
-
-    expect(container.innerHTML).toBe('')
-  })
-
   it('renders Active status badge', () => {
     renderWithStatus('Active')
 
@@ -91,19 +79,6 @@ describe('CardStatusDisplay', () => {
     // i18n key: cardTableStatusProcessed
     expect(badge).toHaveTextContent(/processed/i)
     expect(badge.className).toContain('bg-info-dark')
-  })
-
-  it('renders Inactive badge for Deactivated status', () => {
-    renderWithStatus('Deactivated')
-
-    expect(screen.getByTestId('card-status-badge')).toHaveTextContent('Inactive')
-  })
-
-  it('shows deactivated description for Deactivated status', () => {
-    renderWithStatus('Deactivated')
-
-    // i18n key: cardTableStatusMessageDeactivated
-    expect(screen.getByText(/reported as lost, stolen, damaged/)).toBeInTheDocument()
   })
 
   it('does not show replacement card link for Processed status', () => {

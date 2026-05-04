@@ -6,7 +6,8 @@
  *
  * IssuanceType: 0=Unknown, 1=SummerEbt, 2=TanfEbtCard, 3=SnapEbtCard
  * ApplicationStatus: 0=Unknown, 1=Pending, 2=Approved, 3=Denied, 4=UnderReview, 5=Cancelled
- * CardStatus: 0=Requested, 1=Mailed, 2=Active, 3=Deactivated
+ *
+ * Card lifecycle fields live on SummerEbtCase, not Application — see DC-256.
  */
 
 import { currentState, type StateCode } from './state'
@@ -21,7 +22,6 @@ export const MOCK_JWT = 'e2e-mock-session-token'
 
 export type IssuanceTypeInt = 0 | 1 | 2 | 3
 export type ApplicationStatusInt = 0 | 1 | 2 | 3 | 4 | 5
-export type CardStatusInt = 0 | 1 | 2 | 3
 
 export interface MockApplication {
   applicationNumber: string
@@ -30,11 +30,6 @@ export interface MockApplication {
   benefitIssueDate: string
   benefitExpirationDate: string
   last4DigitsOfCard: string | null
-  cardStatus: CardStatusInt
-  cardRequestedAt: string | null
-  cardMailedAt: string | null
-  cardActivatedAt: string | null
-  cardDeactivatedAt: string | null
   children: Array<{ caseNumber: number; firstName: string; lastName: string }>
   childrenOnApplication: number
   issuanceType: IssuanceTypeInt
@@ -100,8 +95,6 @@ interface ApplicationOptions {
   applicationNumber?: string
   caseNumber?: string
   issuanceType?: IssuanceTypeInt
-  cardRequestedAt?: string | null
-  cardStatus?: CardStatusInt
   last4DigitsOfCard?: string | null
   children?: Array<{ caseNumber: number; firstName: string; lastName: string }>
 }
@@ -114,11 +107,6 @@ export function makeApplication(overrides: ApplicationOptions = {}): MockApplica
     benefitIssueDate: '2026-01-08T00:00:00Z',
     benefitExpirationDate: '2026-09-30T00:00:00Z',
     last4DigitsOfCard: '1234',
-    cardStatus: 2, // Active
-    cardRequestedAt: OLD_CARD_DATE,
-    cardMailedAt: '2025-01-15T00:00:00Z',
-    cardActivatedAt: '2025-01-20T00:00:00Z',
-    cardDeactivatedAt: null,
     children: [{ caseNumber: 456001, firstName: 'John', lastName: 'Doe' }],
     childrenOnApplication: 1,
     issuanceType: 1, // SummerEbt

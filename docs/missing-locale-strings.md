@@ -1,6 +1,6 @@
 # Missing Locale Strings Report
 
-Generated: 2026-02-26 | CSVs: co.csv and dc.csv (latest)
+Generated: 2026-05-04 | CSVs: co.csv and dc.csv (latest)
 
 Cross-referenced all fallback strings against both CSVs and generated JSON files. Every item below has been verified — no CSV row exists (even with different wording) unless noted otherwise.
 
@@ -12,14 +12,12 @@ CO English and Spanish columns are populated for all of these. DC just needs Eng
 
 #### `en/dc/dashboard.json` — 2 empty (used by code, have fallbacks) + 12 unused placeholders
 
-**Used by `CardStatusTimeline.tsx` (have English fallbacks, low priority):**
+**Used by code (have English fallbacks, low priority):**
 
-| Key                          | Fallback in code | CO English value | CSV verification                          |
-| ---------------------------- | ---------------- | ---------------- | ----------------------------------------- |
-| `cardTableStatusActive`      | "Active"         | "Active"         | dc.csv:178 — DC col 1 empty, CO has value |
-| `cardTableStatusDeactivated` | "Deactivated"    | "Inactive"       | dc.csv:179 — DC col 1 empty, CO has value |
-
-Note: CO intentionally uses "Inactive" for the deactivated status. Code fallback "Deactivated" only renders for DC.
+| Key                                | Fallback in code                                                         | CO English value | CSV verification                          |
+| ---------------------------------- | ------------------------------------------------------------------------ | ---------------- | ----------------------------------------- |
+| `cardTableStatusActive`            | "Active"                                                                 | "Active"         | dc.csv:178 — DC col 1 empty, CO has value |
+| `cardTableStatusMessageRequested1` | "We've requested a new card... within 2–3 weeks."                       | (empty)          | Now used by simplified CardStatusTimeline; both DC and CO English Current columns empty in CSV — code falls back to state-neutral English |
 
 **Not referenced by any component (future/placeholder rows — no action needed):**
 
@@ -28,15 +26,14 @@ Note: CO intentionally uses "Inactive" for the deactivated status. Code fallback
 | `cardTableStatusInactive`             | Not used by any component |
 | `cardTableStatusFrozen`               | Not used by any component |
 | `cardTableStatusUndeliverable`        | Not used by any component |
-| `cardTableStatusMessageRequested1`    | Not used by any component |
 | `cardTableStatusMessageRequested2`    | Not used by any component |
-| `cardTableStatusMessageMailed`        | Not used by any component |
 | `cardTableStatusMessageActive`        | Not used by any component |
-| `cardTableStatusMessageDeactivated`   | Not used by any component |
 | `cardTableStatusMessageInactive`      | Not used by any component |
 | `cardTableStatusMessageFrozen`        | Not used by any component |
 | `cardTableStatusMessageUndeliverable` | Not used by any component |
 | `cardTableActionUpdateRequest`        | Not used by any component |
+
+Note: as of DC-256, `cardTableStatusMailed`, `cardTableStatusMessageMailed`, `cardTableStatusIssued`, `cardTableStatusDeactivated`, and `cardTableStatusMessageDeactivated` are no longer referenced by any component — they can be retired from the source spreadsheet.
 
 #### `en/dc/editContactPreferences.json` — 1 empty
 
@@ -90,6 +87,15 @@ These CSV rows exist and have DC English values. CO needs its own values added t
 ---
 
 ## Keys Missing from CSV (no row exists — need new CSV rows)
+
+### Both states — DC-256 introduces `Processed` UI bucket
+
+| Key                              | Suggested English                                       | Notes                                                                                                                |
+| -------------------------------- | ------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------- |
+| `cardTableStatusProcessed`       | "Processed on [MM/DD/YYYY]"                             | Label for DC's primary card status (data shows when issue date present). Code falls back to `LABEL_FALLBACK` until CSV row is added. |
+| `cardTableStatusMessageProcessed` | "Your card has been processed and is on its way."      | Description. Code falls back to `DESCRIPTION_FALLBACK`.                                                              |
+
+
 
 All items below are wired in code with `t('key', 'English fallback')` so they render correctly in English. They need CSV rows added for proper Spanish translation support.
 
@@ -180,9 +186,9 @@ These pages were coded by us, not sourced from the state partner CSV. No CSV row
 | Category                                    | DC  | CO  | Both |
 | ------------------------------------------- | --- | --- | ---- |
 | Empty keys used by code (have fallbacks)    | 2   | 15  | —    |
-| Empty keys not referenced (placeholders)    | 12  | —   | —    |
+| Empty keys not referenced (placeholders)    | 9   | —   | —    |
 | Empty keys (needs value in CSV)             | 2   | —   | —    |
-| Missing CSV rows (code wired with fallback) | 1   | 3   | 23   |
+| Missing CSV rows (code wired with fallback) | 1   | 3   | 25   |
 | Missing CSV rows (still hardcoded)          | —   | 7   | 1    |
 | Data quality issues                         | —   | —   | 5    |
 

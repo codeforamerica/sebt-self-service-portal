@@ -20,10 +20,7 @@ const mockCase: SummerEbtCase = createMockSummerEbtCase({
   ebtCardStatus: 'Active',
   benefitAvailableDate: '2026-01-08T00:00:00Z',
   benefitExpirationDate: '2026-03-19T00:00:00Z',
-  cardRequestedAt: '2026-01-01T00:00:00Z',
-  cardMailedAt: '2026-01-03T00:00:00Z',
-  cardActivatedAt: '2026-01-08T00:00:00Z',
-  cardDeactivatedAt: null
+  cardRequestedAt: null
 })
 
 const defaultFlags: FeatureFlagsContextValue = {
@@ -132,7 +129,7 @@ describe('ChildCard', () => {
     expect(screen.getByText(/1234/)).toBeInTheDocument()
   })
 
-  it('renders card status badge for CO-style cards (no cardRequestedAt)', () => {
+  it('renders card status badge when no recent request (cooldown not active)', () => {
     const coCase = createMockSummerEbtCase({
       ...mockCase,
       ebtCardStatus: 'Active',
@@ -145,35 +142,33 @@ describe('ChildCard', () => {
     expect(screen.queryByRole('list')).toBeNull()
   })
 
-  it('renders card status timeline for DC-style cards (has cardRequestedAt)', () => {
+  it('renders cooldown timeline when cardRequestedAt is within cooldown window', () => {
+    // 1 day ago — inside 14-day cooldown
+    const recent = new Date()
+    recent.setDate(recent.getDate() - 1)
     const dcCase = createMockSummerEbtCase({
       ...mockCase,
-      ebtCardStatus: 'Requested',
-      cardRequestedAt: '2026-01-01T00:00:00Z',
-      cardMailedAt: null,
-      cardActivatedAt: null
+      ebtCardStatus: 'Active',
+      cardRequestedAt: recent.toISOString()
     })
 
     renderWithFlags({ summerEbtCase: dcCase })
 
-    // DC-style: shows a single current-status row, not the CO badge
+    // Inside cooldown: shows the cooldown notice, not the CO badge
     expect(screen.queryByTestId('card-status-badge')).toBeNull()
     expect(screen.getByText('Card status')).toBeInTheDocument()
   })
 
-  it('renders timeline for DC Active card (cardRequestedAt present)', () => {
-    // DC Active cards have gone through Requested → Mailed → Active lifecycle
+  it('renders status badge when cardRequestedAt is older than the cooldown window', () => {
     const dcActiveCase = createMockSummerEbtCase({
       ...mockCase,
       ebtCardStatus: 'Active',
-      cardRequestedAt: '2026-01-01T00:00:00Z',
-      cardMailedAt: '2026-01-03T00:00:00Z',
-      cardActivatedAt: '2026-01-08T00:00:00Z'
+      cardRequestedAt: '2025-01-01T00:00:00Z'
     })
 
     renderWithFlags({ summerEbtCase: dcActiveCase })
 
-    expect(screen.queryByTestId('card-status-badge')).toBeNull()
+    expect(screen.getByTestId('card-status-badge')).toBeInTheDocument()
     expect(screen.getByText('Card status')).toBeInTheDocument()
   })
 
@@ -186,10 +181,7 @@ describe('ChildCard', () => {
       ebtCardLastFour: null,
       ebtCardStatus: null,
       issuanceType: null,
-      cardRequestedAt: null,
-      cardMailedAt: null,
-      cardActivatedAt: null,
-      cardDeactivatedAt: null
+      cardRequestedAt: null
     })
 
     renderWithFlags({ summerEbtCase: minimalCase })
