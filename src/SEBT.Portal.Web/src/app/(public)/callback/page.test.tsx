@@ -3,9 +3,9 @@
  *
  * Tests the OIDC callback flow including:
  * - Successful token exchange and redirect to dashboard
- * - Missing code/state parameters
- * - Exchange-code failure
- * - IdP error redirect (?error=)
+ * - Missing code/state parameters → step-up failure page
+ * - Exchange-code failure → step-up failure page
+ * - IdP error redirect (?error=) → step-up failure page
  *
  * PKCE/sessionStorage validation tests have been removed — all flow metadata
  * (stateCode, isStepUp, returnUrl, state validation) is now handled server-side
@@ -16,6 +16,8 @@ import { http, HttpResponse } from 'msw'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { server } from '@/mocks/server'
+
+const OIDC_CALLBACK_ERROR_OFF_BOARDING = '/login/id-proofing/off-boarding?reason=oidcCallbackError'
 
 // Mock router
 const mockReplace = vi.fn()
@@ -46,19 +48,13 @@ vi.mock('@/features/auth', async () => {
   }
 })
 
-// Mock translations
-// CallbackPage now uses the client-side useTranslation() hook (DC-187 fix).
 const TEST_TRANSLATIONS: Record<string, Record<string, string>> = {
   login: {
-    callbackSigningIn: 'Signing you in…',
-    callbackSignInIssue: 'Sign-in issue',
-    callbackErrorMissingParams: 'Missing sign-in information.',
-    callbackErrorGeneric: 'Something went wrong.',
-    callbackErrorIdpRedirect: 'Primary MyColorado sign-in did not finish.',
-    callbackStepUpDeclinedTitle: 'Identity verification was not completed',
-    callbackStepUpDeclinedBody:
-      'You chose not to share information with our identity verification partner.',
-    callbackStepUpDeclinedActionDashboard: 'Go to dashboard'
+    callbackSigningIn: 'Signing you in…'
+  },
+  'step-upProcessing': {
+    title: 'Please wait...',
+    body: 'Do not exit the page. Checking to see if we have enough information.'
   }
 }
 
@@ -97,7 +93,7 @@ describe('CallbackPage', () => {
   })
 
   describe('missing URL parameters', () => {
-    it('shows error when code is missing from URL', async () => {
+    it('redirects to step-up failure when code is missing from URL', async () => {
       Object.defineProperty(window, 'location', {
         value: {
           search: '?state=test-state',
@@ -109,11 +105,11 @@ describe('CallbackPage', () => {
       render(<CallbackPage />)
 
       await waitFor(() => {
-        expect(screen.getByText('Missing sign-in information.')).toBeInTheDocument()
+        expect(mockReplace).toHaveBeenCalledWith(OIDC_CALLBACK_ERROR_OFF_BOARDING)
       })
     })
 
-    it('shows error when state is missing from URL', async () => {
+    it('redirects to step-up failure when state is missing from URL', async () => {
       Object.defineProperty(window, 'location', {
         value: { search: '?code=test-code', href: 'http://localhost:3000/callback?code=test-code' },
         writable: true
@@ -122,14 +118,13 @@ describe('CallbackPage', () => {
       render(<CallbackPage />)
 
       await waitFor(() => {
-        expect(screen.getByText('Missing sign-in information.')).toBeInTheDocument()
+        expect(mockReplace).toHaveBeenCalledWith(OIDC_CALLBACK_ERROR_OFF_BOARDING)
       })
     })
   })
 
   describe('successful flow', () => {
     beforeEach(() => {
-      // callback returns callbackToken, complete-login sets cookie and returns empty body
       server.use(
         http.post('/api/auth/oidc/callback', () => {
           return HttpResponse.json({ callbackToken: 'mock-callback-token-for-testing' })
@@ -175,7 +170,7 @@ describe('CallbackPage', () => {
   })
 
   describe('token exchange failure', () => {
-    it('shows a generic message when exchange-code endpoint fails (never raw IdP text)', async () => {
+    it('redirects to step-up failure without rendering raw IdP text', async () => {
       server.use(
         http.post('/api/auth/oidc/callback', () => {
           return HttpResponse.json({ error: 'Token exchange failed' }, { status: 400 })
@@ -185,14 +180,14 @@ describe('CallbackPage', () => {
       render(<CallbackPage />)
 
       await waitFor(() => {
-        expect(screen.getByText('Something went wrong.')).toBeInTheDocument()
+        expect(mockReplace).toHaveBeenCalledWith(OIDC_CALLBACK_ERROR_OFF_BOARDING)
       })
       expect(screen.queryByText('Token exchange failed')).not.toBeInTheDocument()
     })
   })
 
   describe('IdP error redirect (?error=)', () => {
-    it('shows error message with short IdP description when safe', async () => {
+    it('redirects to step-up failure for server_error with description', async () => {
       Object.defineProperty(window, 'location', {
         value: {
           search: '?error=server_error&error_description=User+cancelled',
@@ -204,13 +199,11 @@ describe('CallbackPage', () => {
       render(<CallbackPage />)
 
       await waitFor(() => {
-        expect(
-          screen.getByText('Primary MyColorado sign-in did not finish. User cancelled')
-        ).toBeInTheDocument()
+        expect(mockReplace).toHaveBeenCalledWith(OIDC_CALLBACK_ERROR_OFF_BOARDING)
       })
     })
 
-    it('shows error message without description when IdP omits it', async () => {
+    it('redirects to step-up failure when IdP omits error_description', async () => {
       Object.defineProperty(window, 'location', {
         value: {
           search: '?error=server_error',
@@ -222,11 +215,11 @@ describe('CallbackPage', () => {
       render(<CallbackPage />)
 
       await waitFor(() => {
-        expect(screen.getByText('Primary MyColorado sign-in did not finish.')).toBeInTheDocument()
+        expect(mockReplace).toHaveBeenCalledWith(OIDC_CALLBACK_ERROR_OFF_BOARDING)
       })
     })
 
-    it('does not render Ping/Socure connector blobs when description is structured JSON', async () => {
+    it('redirects to step-up failure for structured JSON error_description (no blob rendered)', async () => {
       const blob = JSON.stringify({
         code: 'errorResponse',
         interactionId: '03018f37-c15e-4da2-9f79-26dd163f9c9f',
@@ -243,13 +236,12 @@ describe('CallbackPage', () => {
       render(<CallbackPage />)
 
       await waitFor(() => {
-        expect(screen.getByText('Primary MyColorado sign-in did not finish.')).toBeInTheDocument()
+        expect(mockReplace).toHaveBeenCalledWith(OIDC_CALLBACK_ERROR_OFF_BOARDING)
       })
       expect(screen.queryByText(/interactionId/i)).not.toBeInTheDocument()
-      expect(screen.queryByText(/errorResponse/i)).not.toBeInTheDocument()
     })
 
-    it('shows the step-up declined screen when Socure consent text appears inside a connector blob', async () => {
+    it('redirects to step-up failure when Socure consent text appears inside a connector blob', async () => {
       const blob = JSON.stringify({
         errors: {
           x: { additionalProperties: { errorMsg: 'User opted out' } }
@@ -267,17 +259,11 @@ describe('CallbackPage', () => {
       render(<CallbackPage />)
 
       await waitFor(() => {
-        expect(screen.getByText('Identity verification was not completed')).toBeInTheDocument()
+        expect(mockReplace).toHaveBeenCalledWith(OIDC_CALLBACK_ERROR_OFF_BOARDING)
       })
-      expect(
-        screen.getByText(
-          'You chose not to share information with our identity verification partner.'
-        )
-      ).toBeInTheDocument()
-      expect(screen.queryByText(/interactionId/i)).not.toBeInTheDocument()
     })
 
-    it('treats OAuth access_denied as step-up declined even when description is omitted', async () => {
+    it('redirects to step-up failure for access_denied', async () => {
       Object.defineProperty(window, 'location', {
         value: {
           search: '?error=access_denied',
@@ -289,81 +275,8 @@ describe('CallbackPage', () => {
       render(<CallbackPage />)
 
       await waitFor(() => {
-        expect(screen.getByText('Identity verification was not completed')).toBeInTheDocument()
+        expect(mockReplace).toHaveBeenCalledWith(OIDC_CALLBACK_ERROR_OFF_BOARDING)
       })
-    })
-  })
-
-  describe('language toggle reactivity', () => {
-    it('re-translates the error message when the user switches language after the error fires', async () => {
-      Object.defineProperty(window, 'location', {
-        value: { search: '', href: 'http://localhost:3000/callback' },
-        writable: true
-      })
-
-      const { rerender } = render(<CallbackPage />)
-      await waitFor(() => {
-        expect(screen.getByText('Missing sign-in information.')).toBeInTheDocument()
-      })
-
-      // Simulate the user toggling language: the bundle the mocked t() reads
-      // from now returns Spanish copy. The component should re-render with
-      // the new translation because we store the key, not the resolved string.
-      const original = TEST_TRANSLATIONS.login!.callbackErrorMissingParams
-      TEST_TRANSLATIONS.login!.callbackErrorMissingParams = 'Falta información de inicio de sesión.'
-      try {
-        rerender(<CallbackPage />)
-        expect(screen.getByText('Falta información de inicio de sesión.')).toBeInTheDocument()
-      } finally {
-        TEST_TRANSLATIONS.login!.callbackErrorMissingParams = original!
-      }
-    })
-  })
-
-  describe('error redirect', () => {
-    it('redirects to dashboard after showing a generic callback error', async () => {
-      vi.useFakeTimers({ shouldAdvanceTime: true })
-
-      Object.defineProperty(window, 'location', {
-        value: { search: '', href: 'http://localhost:3000/callback' },
-        writable: true
-      })
-
-      render(<CallbackPage />)
-
-      await waitFor(() => {
-        expect(screen.getByText('Missing sign-in information.')).toBeInTheDocument()
-      })
-
-      await vi.advanceTimersByTimeAsync(5000)
-
-      expect(mockReplace).toHaveBeenCalledWith('/dashboard')
-
-      vi.useRealTimers()
-    })
-
-    it('does not auto-redirect after step-up declined', async () => {
-      vi.useFakeTimers({ shouldAdvanceTime: true })
-
-      Object.defineProperty(window, 'location', {
-        value: {
-          search: '?error=access_denied',
-          href: 'http://localhost:3000/callback?error=access_denied'
-        },
-        writable: true
-      })
-
-      render(<CallbackPage />)
-
-      await waitFor(() => {
-        expect(screen.getByText('Identity verification was not completed')).toBeInTheDocument()
-      })
-
-      await vi.advanceTimersByTimeAsync(5000)
-
-      expect(mockReplace).not.toHaveBeenCalled()
-
-      vi.useRealTimers()
     })
   })
 })

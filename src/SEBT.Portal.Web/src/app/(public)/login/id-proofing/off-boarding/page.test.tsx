@@ -32,6 +32,8 @@ const POPULATED_KEYS = new Set([
   'offBoarding:coLoadedAction1',
   'offBoarding:coLoadedBody2',
   'offBoarding:coLoadedAction2',
+  'stepUpFailure:title',
+  'stepUpFailure:body',
   'common:linkContactUs',
   'common:back'
 ])
@@ -283,6 +285,24 @@ describe('OffBoardingPage', () => {
         'data-body',
         "Your document couldn't be verified. You can try again with a different ID, or contact us if you need help."
       )
+    })
+
+    it('uses step-up failure copy for OIDC callback errors (CO MyCO step-up)', async () => {
+      await renderPage({ reason: 'oidcCallbackError', isCoLoaded: false })
+
+      const content = screen.getByTestId('off-boarding-content')
+      expect(content).toHaveAttribute('data-title', 'stepUpFailure:title')
+      expect(content).toHaveAttribute('data-body', 'stepUpFailure:body')
+      expect(content).toHaveAttribute('data-back-href', '/dashboard')
+      expect(content).toHaveAttribute('data-contact-label', 'common:linkContactUs')
+      expect(content).toHaveAttribute('data-can-apply', 'false')
+    })
+
+    it('OIDC callback error reason wins over co-loaded session copy', async () => {
+      await renderPage({ reason: 'oidcCallbackError', isCoLoaded: true })
+
+      const content = screen.getByTestId('off-boarding-content')
+      expect(content).toHaveAttribute('data-title', 'stepUpFailure:title')
     })
 
     it('forces canApply to false for docVerificationFailed regardless of query param', async () => {

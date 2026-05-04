@@ -13,7 +13,7 @@ const STEP_UP_REQUIRED_IAL = 'IAL1plus' as const
 /** Minimum time to show the “checking” screen so the flow never flashes straight to the challenge. */
 const MIN_CHECKING_MS = 500
 
-type GuardPhase = 'challenge' | 'redirecting' | 'error'
+type GuardPhase = 'challenge' | 'redirecting'
 
 interface IalGuardProps {
   children: ReactNode
@@ -41,7 +41,6 @@ export function IalGuard({ children, requiredIal = STEP_UP_REQUIRED_IAL }: IalGu
   const { session } = useAuth()
   const router = useRouter()
   const { t, i18n } = useTranslation('common')
-  const { t: tStepUpFailure } = useTranslation('stepUpFailure')
 
   const useOidcStepUpGate = getState() === 'co'
   const debugRepeatOidcStepUp = isDebugRepeatOidcStepUp()
@@ -98,47 +97,6 @@ export function IalGuard({ children, requiredIal = STEP_UP_REQUIRED_IAL }: IalGu
 
   if (passesWithoutStepUp) {
     return <>{children}</>
-  }
-
-  if (phase === 'error') {
-    return (
-      <div className="usa-section">
-        <div className="grid-container maxw-tablet">
-          <section aria-labelledby="ial-guard-error-title">
-            <h1
-              id="ial-guard-error-title"
-              className="font-heading-lg text-primary margin-bottom-3 line-height-sans-1"
-            >
-              {tStepUpFailure(
-                'title',
-                "We're sorry, we aren't able to show your Summer EBT information"
-              )}
-            </h1>
-            <p className="font-sans-sm margin-bottom-3">
-              {tStepUpFailure('body', 'You can contact us if you need more help.')}
-            </p>
-            <div className="display-flex flex-row flex-wrap flex-gap-2 margin-top-3">
-              <Button
-                type="button"
-                variant="outline"
-                className="border-primary text-primary"
-                onClick={handleBack}
-              >
-                {t('ialGuardBack', 'Back')}
-              </Button>
-              <Button
-                type="button"
-                variant="primary"
-                className="bg-primary-dark text-white border-primary-dark"
-                onClick={handleBack}
-              >
-                {tStepUpFailure('continue', 'Continue')}
-              </Button>
-            </div>
-          </section>
-        </div>
-      </div>
-    )
   }
 
   const showChecking = phase === null || phase === 'redirecting'
