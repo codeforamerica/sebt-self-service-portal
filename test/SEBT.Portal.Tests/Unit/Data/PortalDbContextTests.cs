@@ -394,10 +394,9 @@ public class PortalDbContextTests
     }
 
     [Fact]
-    public void Users_Email_ShouldHaveFilteredUniqueIndex()
+    public void Users_EmailHash_ShouldHaveFilteredUniqueIndex()
     {
-        // The filtered index ensures uniqueness only among non-null emails,
-        // allowing multiple OIDC users with no email address.
+        // Equality lookup uses EmailHash; ciphertext Email is intentionally non-unique/non-indexed at the DB layer.
         // Arrange
         var options = new DbContextOptionsBuilder<PortalDbContext>()
             .UseInMemoryDatabase(databaseName: Guid.NewGuid().ToString())
@@ -407,14 +406,14 @@ public class PortalDbContextTests
 
         // Act
         var entityType = context.Model.FindEntityType(typeof(UserEntity));
-        var emailIndex = entityType!.GetIndexes()
-            .FirstOrDefault(i => i.Properties.Count == 1 && i.Properties[0].Name == "Email");
+        var emailHashIndex = entityType!.GetIndexes()
+            .FirstOrDefault(i => i.Properties.Count == 1 && i.Properties[0].Name == "EmailHash");
 
         // Assert
-        Assert.NotNull(emailIndex);
-        Assert.True(emailIndex!.IsUnique);
-        Assert.Equal("IX_Users_Email", emailIndex.GetDatabaseName());
-        Assert.Equal("[Email] IS NOT NULL", emailIndex.GetFilter());
+        Assert.NotNull(emailHashIndex);
+        Assert.True(emailHashIndex!.IsUnique);
+        Assert.Equal("IX_Users_EmailHash", emailHashIndex.GetDatabaseName());
+        Assert.Equal("[EmailHash] IS NOT NULL", emailHashIndex.GetFilter());
     }
 
     [Fact]
@@ -462,8 +461,9 @@ public class PortalDbContextTests
     }
 
     [Fact]
-    public void Users_Email_ShouldHaveMaxLength255()
+    public void Users_Email_ShouldHaveMaxLength512()
     {
+        // Email column holds AES-GCM envelopes (much wider than plaintext addresses).
         // Arrange
         var options = new DbContextOptionsBuilder<PortalDbContext>()
             .UseInMemoryDatabase(databaseName: Guid.NewGuid().ToString())
@@ -477,7 +477,7 @@ public class PortalDbContextTests
 
         // Assert
         Assert.NotNull(emailProperty);
-        Assert.Equal(255, emailProperty!.GetMaxLength());
+        Assert.Equal(512, emailProperty!.GetMaxLength());
     }
 
     [Fact]

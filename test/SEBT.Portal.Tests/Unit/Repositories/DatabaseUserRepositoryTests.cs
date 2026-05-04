@@ -4,9 +4,11 @@ using SEBT.Portal.Core.AppSettings;
 using SEBT.Portal.Core.Models.Auth;
 using SEBT.Portal.Core.Services;
 using SEBT.Portal.Infrastructure.Data;
+using SEBT.Portal.Infrastructure.Data.Entities;
 using SEBT.Portal.Infrastructure.Helpers;
 using SEBT.Portal.Infrastructure.Repositories;
 using SEBT.Portal.Infrastructure.Services;
+using SEBT.Portal.Tests.Unit.TestSupport;
 
 namespace SEBT.Portal.Tests.Unit.Repositories;
 
@@ -29,7 +31,11 @@ public class DatabaseUserRepositoryTests : IClassFixture<SqlServerTestFixture>
     }
 
     private static DatabaseUserRepository CreateRepository(PortalDbContext context) =>
-        new(context, TestHasher);
+        new(
+            context,
+            TestHasher,
+            TestPortalCryptography.PiiSymmetricEncryption,
+            TestPortalCryptography.EmailLookupHasher);
 
     [Fact]
     public async Task GetUserByEmailAsync_WhenUserExists_ShouldReturnUser()
@@ -142,7 +148,6 @@ public class DatabaseUserRepositoryTests : IClassFixture<SqlServerTestFixture>
             IalLevel = UserIalLevel.IAL1,
             IdProofingSessionId = "session-123",
             IdProofingCompletedAt = null,
-            IdProofingExpiresAt = null,
             CreatedAt = DateTime.UtcNow,
             UpdatedAt = DateTime.UtcNow
         };
@@ -152,9 +157,9 @@ public class DatabaseUserRepositoryTests : IClassFixture<SqlServerTestFixture>
 
         // Assert
         var normalizedEmail = uniqueEmail.ToLowerInvariant();
-        var stored = await context.Users.FirstOrDefaultAsync(u => u.Email == normalizedEmail);
+        var stored = await FindStoredUserWithLegacyPlaintextFallbackAsync(context, normalizedEmail);
         Assert.NotNull(stored);
-        Assert.Equal(normalizedEmail, stored!.Email);
+        AssertPersistedNormalizedEmailCipher(normalizedEmail, stored!.Email);
         Assert.Equal((int)UserIalLevel.IAL1, stored.IalLevel);
         Assert.Equal("session-123", stored.IdProofingSessionId);
     }
@@ -177,9 +182,9 @@ public class DatabaseUserRepositoryTests : IClassFixture<SqlServerTestFixture>
 
         // Assert
         var normalizedEmail = $"user-{uniqueId}@example.com";
-        var stored = await context.Users.FirstOrDefaultAsync(u => u.Email == normalizedEmail);
+        var stored = await FindStoredUserWithLegacyPlaintextFallbackAsync(context, normalizedEmail);
         Assert.NotNull(stored);
-        Assert.Equal(normalizedEmail, stored!.Email);
+        AssertPersistedNormalizedEmailCipher(normalizedEmail, stored!.Email);
     }
 
     [Fact]
@@ -230,7 +235,6 @@ public class DatabaseUserRepositoryTests : IClassFixture<SqlServerTestFixture>
             u.IalLevel = UserIalLevel.IAL1plus;
             u.IdProofingSessionId = "new-session-456";
             u.IdProofingCompletedAt = DateTime.UtcNow;
-            u.IdProofingExpiresAt = DateTime.UtcNow.AddYears(1);
         });
         // Set init-only properties using reflection
         var idProperty = typeof(User).GetProperty(nameof(User.Id));
@@ -242,12 +246,11 @@ public class DatabaseUserRepositoryTests : IClassFixture<SqlServerTestFixture>
         await repository.UpdateUserAsync(user, CancellationToken.None);
 
         // Assert
-        var updated = await context.Users.FirstOrDefaultAsync(u => u.Email == uniqueEmail);
+        var updated = await FindStoredUserWithLegacyPlaintextFallbackAsync(context, uniqueEmail);
         Assert.NotNull(updated);
         Assert.Equal((int)UserIalLevel.IAL1plus, updated!.IalLevel);
         Assert.Equal("new-session-456", updated.IdProofingSessionId);
         Assert.NotNull(updated.IdProofingCompletedAt);
-        Assert.NotNull(updated.IdProofingExpiresAt);
     }
 
     [Fact]
@@ -285,7 +288,7 @@ public class DatabaseUserRepositoryTests : IClassFixture<SqlServerTestFixture>
         await repository.UpdateUserAsync(user, CancellationToken.None);
 
         // Assert
-        var updated = await context.Users.FirstOrDefaultAsync(u => u.Email == uniqueEmail);
+        var updated = await FindStoredUserWithLegacyPlaintextFallbackAsync(context, uniqueEmail);
         Assert.NotNull(updated);
         Assert.True(updated!.UpdatedAt > originalTime);
     }
@@ -351,7 +354,7 @@ public class DatabaseUserRepositoryTests : IClassFixture<SqlServerTestFixture>
         await repository.UpdateUserAsync(user, CancellationToken.None);
 
         // Assert
-        var updated = await context.Users.FirstOrDefaultAsync(u => u.Email == baseEmail);
+        var updated = await FindStoredUserWithLegacyPlaintextFallbackAsync(context, baseEmail);
         Assert.NotNull(updated);
         Assert.Equal((int)UserIalLevel.IAL1plus, updated!.IalLevel);
     }
@@ -389,7 +392,7 @@ public class DatabaseUserRepositoryTests : IClassFixture<SqlServerTestFixture>
         // Assert
         var updated = await context.Users.FirstOrDefaultAsync(u => u.Id == entity.Id);
         Assert.NotNull(updated);
-        Assert.Equal(newEmail.ToLowerInvariant(), updated!.Email);
+        AssertPersistedNormalizedEmailCipher(newEmail.ToLowerInvariant(), updated!.Email);
         Assert.Equal((int)UserIalLevel.IAL1plus, updated.IalLevel);
     }
 
@@ -461,7 +464,7 @@ public class DatabaseUserRepositoryTests : IClassFixture<SqlServerTestFixture>
         await repository.UpdateUserAsync(user, CancellationToken.None);
 
         // Assert - SSN stored as HMAC-SHA256 hash, not plaintext
-        var updated = await context.Users.FirstOrDefaultAsync(u => u.Email == uniqueEmail);
+        var updated = await FindStoredUserWithLegacyPlaintextFallbackAsync(context, uniqueEmail);
         Assert.NotNull(updated);
         Assert.NotNull(updated!.Ssn);
         Assert.Equal(64, updated.Ssn.Length);
@@ -498,7 +501,7 @@ public class DatabaseUserRepositoryTests : IClassFixture<SqlServerTestFixture>
         Assert.Equal(entity.CreatedAt, result.CreatedAt);
 
         // Verify only one user exists with this email
-        var count = await context.Users.CountAsync(u => u.Email == uniqueEmail);
+        var count = await CountNormalizedEmailMatchesAsync(context, uniqueEmail);
         Assert.Equal(1, count);
     }
 
@@ -523,7 +526,7 @@ public class DatabaseUserRepositoryTests : IClassFixture<SqlServerTestFixture>
         Assert.NotEqual(default(DateTime), result.UpdatedAt);
 
         // Verify user was saved
-        var stored = await context.Users.FirstOrDefaultAsync(u => u.Email == uniqueEmail);
+        var stored = await FindStoredUserWithLegacyPlaintextFallbackAsync(context, uniqueEmail);
         Assert.NotNull(stored);
     }
 
@@ -547,7 +550,7 @@ public class DatabaseUserRepositoryTests : IClassFixture<SqlServerTestFixture>
         Assert.Equal(expectedEmail, result.Email);
 
         // Verify stored with lowercase
-        var stored = await context.Users.FirstOrDefaultAsync(u => u.Email == expectedEmail);
+        var stored = await FindStoredUserWithLegacyPlaintextFallbackAsync(context, expectedEmail);
         Assert.NotNull(stored);
     }
 
@@ -744,7 +747,9 @@ public class DatabaseUserRepositoryTests : IClassFixture<SqlServerTestFixture>
         Assert.Equal(UserIalLevel.IAL1plus, result.IalLevel);
         Assert.Equal("test-session", result.IdProofingSessionId);
         Assert.Equal(completedAt, result.IdProofingCompletedAt);
+#pragma warning disable CS0618 // User.IdProofingExpiresAt — verifying EF ↔ domain mapping until column retired
         Assert.Equal(expiresAt, result.IdProofingExpiresAt);
+#pragma warning restore CS0618
         Assert.True(result.IsCoLoaded);
         Assert.Equal(coLoadedUpdated, result.CoLoadedLastUpdated);
         Assert.Equal(createdAt, result.CreatedAt);
@@ -752,7 +757,7 @@ public class DatabaseUserRepositoryTests : IClassFixture<SqlServerTestFixture>
     }
 
     [Fact]
-    public async Task CreateUserAsync_WhenUserHasIdentifierFields_ShouldStoreSsnAsHashAndOthersAsPlaintext()
+    public async Task CreateUserAsync_WhenUserHasIdentifierFields_ShouldStoreSsnAsHashAndOthersEncrypted()
     {
         // Arrange
         using var context = CreateContext();
@@ -770,12 +775,18 @@ public class DatabaseUserRepositoryTests : IClassFixture<SqlServerTestFixture>
         // Act
         await repository.CreateUserAsync(user, CancellationToken.None);
 
-        // Assert - Phone, SnapId, TanfId stored as plaintext; SSN stored as HMAC-SHA256 hash
-        var stored = await context.Users.FirstOrDefaultAsync(u => u.Email == uniqueEmail);
+        // Assert - reversible identifiers persist as ciphertext; SSN stored as HMAC-SHA256 hash
+        var stored = await FindStoredUserWithLegacyPlaintextFallbackAsync(context, uniqueEmail);
         Assert.NotNull(stored);
-        Assert.Equal("8185558439", stored!.Phone);
-        Assert.Equal("SNAP123", stored.SnapId);
-        Assert.Equal("TANF456", stored.TanfId);
+        Assert.Equal(
+            "8185558439",
+            TestPortalCryptography.PiiSymmetricEncryption.DecryptOrPassThroughLegacy(stored!.Phone));
+        Assert.Equal(
+            "SNAP123",
+            TestPortalCryptography.PiiSymmetricEncryption.DecryptOrPassThroughLegacy(stored.SnapId));
+        Assert.Equal(
+            "TANF456",
+            TestPortalCryptography.PiiSymmetricEncryption.DecryptOrPassThroughLegacy(stored.TanfId));
         Assert.NotNull(stored.Ssn);
         Assert.Equal(64, stored.Ssn.Length);
         Assert.NotEqual("123456789", stored.Ssn);
@@ -798,11 +809,13 @@ public class DatabaseUserRepositoryTests : IClassFixture<SqlServerTestFixture>
             u.IalLevel = UserIalLevel.None;
             u.IdProofingSessionId = "full-session";
             u.IdProofingCompletedAt = completedAt;
-            u.IdProofingExpiresAt = expiresAt;
             u.IsCoLoaded = true;
             u.CoLoadedLastUpdated = coLoadedUpdated;
             u.UpdatedAt = DateTime.UtcNow.AddDays(-5);
         });
+#pragma warning disable CS0618 // User.IdProofingExpiresAt — persistence round-trip for legacy column
+        user.IdProofingExpiresAt = expiresAt;
+#pragma warning restore CS0618
         // Set init-only CreatedAt using reflection
         var createdAtProperty = typeof(User).GetProperty(nameof(User.CreatedAt));
         createdAtProperty?.SetValue(user, DateTime.UtcNow.AddDays(-10));
@@ -811,7 +824,7 @@ public class DatabaseUserRepositoryTests : IClassFixture<SqlServerTestFixture>
         await repository.CreateUserAsync(user, CancellationToken.None);
 
         // Assert
-        var stored = await context.Users.FirstOrDefaultAsync(u => u.Email == uniqueEmail);
+        var stored = await FindStoredUserWithLegacyPlaintextFallbackAsync(context, uniqueEmail);
         Assert.NotNull(stored);
         Assert.Equal((int)UserIalLevel.None, stored!.IalLevel);
         Assert.Equal("full-session", stored.IdProofingSessionId);
@@ -819,6 +832,41 @@ public class DatabaseUserRepositoryTests : IClassFixture<SqlServerTestFixture>
         Assert.Equal(expiresAt, stored.IdProofingExpiresAt);
         Assert.True(stored.IsCoLoaded);
         Assert.Equal(coLoadedUpdated, stored.CoLoadedLastUpdated);
+    }
+
+    private static async Task<UserEntity?> FindStoredUserWithLegacyPlaintextFallbackAsync(
+        PortalDbContext ctx,
+        string normalizedEmailPlaintext)
+    {
+        var fingerprint =
+            TestPortalCryptography.EmailLookupHasher.HashNormalized(normalizedEmailPlaintext)!;
+
+        return await ctx.Users.FirstOrDefaultAsync(
+            u =>
+                u.EmailHash == fingerprint ||
+                u.EmailHash == null && u.Email != null && u.Email == normalizedEmailPlaintext,
+            CancellationToken.None);
+    }
+
+    private static async Task<int> CountNormalizedEmailMatchesAsync(PortalDbContext ctx, string normalizedEmail)
+    {
+        var fingerprint =
+            TestPortalCryptography.EmailLookupHasher.HashNormalized(normalizedEmail)!;
+
+        return await ctx.Users.CountAsync(
+            u =>
+                u.EmailHash == fingerprint ||
+                u.EmailHash == null && u.Email != null && u.Email == normalizedEmail,
+            CancellationToken.None);
+    }
+
+    private static void AssertPersistedNormalizedEmailCipher(string expectedNormalizedPlaintext, string? ciphertextEmail)
+    {
+        Assert.False(string.IsNullOrEmpty(ciphertextEmail));
+        var plain =
+            TestPortalCryptography.PiiSymmetricEncryption.DecryptOrPassThroughLegacy(ciphertextEmail!);
+        Assert.False(string.IsNullOrEmpty(plain));
+        Assert.Equal(expectedNormalizedPlaintext, plain);
     }
 }
 

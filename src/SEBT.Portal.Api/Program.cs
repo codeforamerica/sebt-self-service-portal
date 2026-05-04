@@ -385,6 +385,10 @@ var app = builder.Build();
 if (app.Environment.IsProduction())
 {
     IdentifierHasherGuard.ValidateForProduction(app.Configuration["IdentifierHasher:SecretKey"]);
+
+    var piiEncryptionSettings = app.Configuration.GetSection(PiiEncryptionSettings.SectionName)
+        .Get<PiiEncryptionSettings>();
+    PiiEncryptionGuard.ValidateForProduction(piiEncryptionSettings);
 }
 
 // HMAC-SHA256 requires ≥256-bit (32-byte) key. Fail fast if configured but too short.
@@ -402,6 +406,16 @@ try
     await using var scope = app.Services.CreateAsyncScope();
     var databaseMigrator = scope.ServiceProvider.GetRequiredService<IDatabaseMigrator>();
     await databaseMigrator.MigrateAsync();
+
+    try
+    {
+        var piiBackfill = scope.ServiceProvider.GetRequiredService<PiiPlaintextEncryptionBackfill>();
+        await piiBackfill.ApplyAsync(CancellationToken.None);
+    }
+    catch (Exception backfillEx)
+    {
+        Log.Warning(backfillEx, "PII ciphertext backfill step failed.");
+    }
 
     var seedingSettings = app.Configuration.GetSection(SeedingSettings.SectionName).Get<SeedingSettings>();
     if (app.Environment.IsDevelopment() || seedingSettings?.Enabled == true)

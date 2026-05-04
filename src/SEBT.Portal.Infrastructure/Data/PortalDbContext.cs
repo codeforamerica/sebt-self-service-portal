@@ -76,11 +76,13 @@ public class PortalDbContext : DbContext
             entity.HasKey(e => e.Id);
             entity.Property(e => e.Id).ValueGeneratedNever();
             entity.Property(e => e.Email)
-                .HasMaxLength(255);
-            entity.HasIndex(e => e.Email)
+                .HasMaxLength(512);
+            entity.Property(e => e.EmailHash)
+                .HasMaxLength(64);
+            entity.HasIndex(e => e.EmailHash)
                 .IsUnique()
-                .HasDatabaseName("IX_Users_Email")
-                .HasFilter("[Email] IS NOT NULL");
+                .HasDatabaseName("IX_Users_EmailHash")
+                .HasFilter("[EmailHash] IS NOT NULL");
             entity.Property(e => e.IdProofingStatus)
                 .IsRequired()
                 .HasDefaultValue(0); // 0 = NotStarted
@@ -106,9 +108,10 @@ public class PortalDbContext : DbContext
                 .HasDatabaseName("IX_Users_IdProofingSessionId");
 
             // Household identifier fields
-            entity.Property(e => e.Phone).HasMaxLength(64);
-            entity.Property(e => e.SnapId).HasMaxLength(64);
-            entity.Property(e => e.TanfId).HasMaxLength(64);
+            entity.Property(e => e.Phone).HasMaxLength(512);
+            entity.Property(e => e.SnapId).HasMaxLength(512);
+            entity.Property(e => e.TanfId).HasMaxLength(512);
+            entity.Property(e => e.DateOfBirth).HasMaxLength(512);
             entity.Property(e => e.Ssn).HasMaxLength(64);
 
             // OIDC external provider identifier — nullable, filtered unique index
@@ -179,11 +182,11 @@ public class PortalDbContext : DbContext
                 .HasMaxLength(255);
 
             entity.Property(e => e.ProofingDateOfBirth)
-                .HasMaxLength(32);
+                .HasMaxLength(512);
             entity.Property(e => e.ProofingIdType)
-                .HasMaxLength(64);
+                .HasMaxLength(512);
             entity.Property(e => e.ProofingIdValue)
-                .HasMaxLength(255);
+                .HasMaxLength(512);
 
             entity.Property(e => e.DocvTokenIssuedAt)
                 .HasColumnType("datetime2");
