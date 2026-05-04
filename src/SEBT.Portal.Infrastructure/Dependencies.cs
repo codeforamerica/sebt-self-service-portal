@@ -251,6 +251,7 @@ public static class Dependencies
         services.AddOptionsWithValidateOnStart<OtpRateLimitSettings>()
             .BindConfiguration(OtpRateLimitSettings.SectionName)
             .ValidateDataAnnotations();
+        services.AddSingleton<IValidateOptions<JwtSettings>, JwtSettingsValidator>();
         services.AddOptionsWithValidateOnStart<JwtSettings>()
             .BindConfiguration(JwtSettings.SectionName)
             .ValidateDataAnnotations();

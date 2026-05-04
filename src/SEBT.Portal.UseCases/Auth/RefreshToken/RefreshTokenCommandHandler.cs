@@ -1,5 +1,7 @@
 using System.Linq;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
+using SEBT.Portal.Core.AppSettings;
 using SEBT.Portal.Core.Models.Auth;
 using SEBT.Portal.Core.Repositories;
 using SEBT.Portal.Core.Services;
@@ -13,17 +15,15 @@ namespace SEBT.Portal.UseCases.Auth;
 /// Handles the refresh of JWT tokens for authenticated users.
 /// </summary>
 /// <remarks>
-/// This handler validates the command, retrieves the current user information from the repository,
-/// and generates a new JWT token with updated ID proofing status and other user claims.
+/// Validates the command, enforces the absolute-session-lifetime cap by reading the
+/// inbound <c>auth_time</c> claim, and (when within the cap) generates a new JWT with
+/// updated user claims.
 /// </remarks>
-/// <param name="userRepository">Repository for user data and ID proofing status.</param>
-/// <param name="jwtTokenService">Service for generating JWT tokens.</param>
-/// <param name="validator">Validator for the <see cref="RefreshTokenCommand"/>.</param>
-/// <param name="logger">Logger for tracking token refresh attempts and results.</param>
 public class RefreshTokenCommandHandler(
     IUserRepository userRepository,
     ISessionRefreshTokenService jwtTokenService,
     IValidator<RefreshTokenCommand> validator,
+    IOptions<JwtSettings> jwtSettings,
     ILogger<RefreshTokenCommandHandler> logger)
     : ICommandHandler<RefreshTokenCommand, string>
 {
@@ -45,6 +45,15 @@ public class RefreshTokenCommandHandler(
             logger.LogWarning("Token refresh rejected: principal missing or invalid sub claim");
             return Result<string>.PreconditionFailed(
                 PreconditionFailedReason.NotFound, "User not found.");
+        }
+
+        // Absolute-session-lifetime check (per OWASP / NIST SP 800-63B §7.1).
+        // The JWT 'auth_time' claim records when the user originally authenticated; we never
+        // re-stamp it on refresh, so this enforces a hard ceiling regardless of activity.
+        var absoluteCapResult = CheckAbsoluteCap(command, userId.Value);
+        if (absoluteCapResult is not null)
+        {
+            return absoluteCapResult;
         }
 
         try
@@ -82,5 +91,36 @@ public class RefreshTokenCommandHandler(
                 "An error occurred while refreshing the authentication token.");
         }
     }
-}
 
+    /// <summary>
+    /// Returns an Unauthorized result when the inbound principal's auth_time is missing,
+    /// unparseable, or older than the configured absolute cap. Returns null when refresh
+    /// may proceed.
+    /// </summary>
+    private Result<string>? CheckAbsoluteCap(RefreshTokenCommand command, Guid userId)
+    {
+        // Standard OIDC/JWT claim name (RFC 7519/OIDC Core); using the string literal keeps
+        // the UseCases layer free of a JWT-package dependency.
+        const string AuthTimeClaim = "auth_time";
+        var authTimeClaim = command.CurrentPrincipal.FindFirst(AuthTimeClaim)?.Value;
+        if (!long.TryParse(authTimeClaim, out var authTimeUnixSeconds))
+        {
+            logger.LogWarning(
+                "Token refresh rejected: missing or invalid auth_time claim for UserId {UserId}", userId);
+            return Result<string>.Unauthorized("Session is invalid; please sign in again.");
+        }
+
+        var nowUnixSeconds = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
+        var ageSeconds = nowUnixSeconds - authTimeUnixSeconds;
+        var capSeconds = jwtSettings.Value.AbsoluteExpirationMinutes * 60L;
+        if (ageSeconds >= capSeconds)
+        {
+            logger.LogInformation(
+                "Token refresh rejected: absolute session lifetime exceeded for UserId {UserId} " +
+                "(age={AgeSeconds}s, cap={CapSeconds}s)", userId, ageSeconds, capSeconds);
+            return Result<string>.Unauthorized("Session has reached its maximum lifetime; please sign in again.");
+        }
+
+        return null;
+    }
+}

@@ -64,7 +64,9 @@ function session(isCoLoaded: boolean): SessionInfo {
     idProofingStatus: 0,
     idProofingCompletedAt: null,
     idProofingExpiresAt: null,
-    isCoLoaded
+    isCoLoaded,
+    expiresAt: null,
+    absoluteExpiresAt: null
   }
 }
 

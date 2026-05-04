@@ -155,6 +155,137 @@ public class AuthControllerTests
     }
 
     [Fact]
+    public void GetAuthorizationStatus_WhenExpClaimPresent_IncludesExpiresAtInResponse()
+    {
+        // Arrange — the SPA needs to know when the session cookie expires so it can
+        // schedule activity-gated refreshes (preventing indefinite-session bypass of
+        // idle timeout). The JWT 'exp' claim is the source of truth.
+        const long expEpochSeconds = 1767225600L;
+        var claims = new List<Claim>
+        {
+            new Claim("email", "user@example.com"),
+            new Claim("exp", expEpochSeconds.ToString())
+        };
+        var identity = new ClaimsIdentity(claims, "Test");
+        _controller.ControllerContext = new ControllerContext
+        {
+            HttpContext = new DefaultHttpContext { User = new ClaimsPrincipal(identity) }
+        };
+
+        // Act
+        var result = _controller.GetAuthorizationStatus();
+
+        // Assert
+        var okResult = Assert.IsType<OkObjectResult>(result);
+        var response = Assert.IsType<AuthorizationStatusResponse>(okResult.Value);
+        Assert.Equal(expEpochSeconds, response.ExpiresAt);
+    }
+
+    [Fact]
+    public void GetAuthorizationStatus_WhenExpClaimAbsent_ReturnsNullExpiresAt()
+    {
+        // Arrange
+        SetupAuthenticatedUser("user@example.com");
+
+        // Act
+        var result = _controller.GetAuthorizationStatus();
+
+        // Assert
+        var okResult = Assert.IsType<OkObjectResult>(result);
+        var response = Assert.IsType<AuthorizationStatusResponse>(okResult.Value);
+        Assert.Null(response.ExpiresAt);
+    }
+
+    [Fact]
+    public void GetAuthorizationStatus_WhenAuthTimePresent_IncludesAbsoluteExpiresAtInResponse()
+    {
+        // Arrange — controller derives AbsoluteExpiresAt from auth_time + AbsoluteExpirationMinutes.
+        // Test controller is configured with AbsoluteExpirationMinutes=60.
+        const long authTimeEpochSeconds = 1700000000L;
+        var claims = new List<Claim>
+        {
+            new Claim("email", "user@example.com"),
+            new Claim("auth_time", authTimeEpochSeconds.ToString())
+        };
+        var identity = new ClaimsIdentity(claims, "Test");
+        _controller.ControllerContext = new ControllerContext
+        {
+            HttpContext = new DefaultHttpContext { User = new ClaimsPrincipal(identity) }
+        };
+
+        // Act
+        var result = _controller.GetAuthorizationStatus();
+
+        // Assert
+        var okResult = Assert.IsType<OkObjectResult>(result);
+        var response = Assert.IsType<AuthorizationStatusResponse>(okResult.Value);
+        Assert.Equal(authTimeEpochSeconds + 60 * 60L, response.AbsoluteExpiresAt);
+    }
+
+    [Fact]
+    public void GetAuthorizationStatus_WhenAuthTimeAbsent_ReturnsNullAbsoluteExpiresAt()
+    {
+        // Arrange
+        SetupAuthenticatedUser("user@example.com");
+
+        // Act
+        var result = _controller.GetAuthorizationStatus();
+
+        // Assert
+        var okResult = Assert.IsType<OkObjectResult>(result);
+        var response = Assert.IsType<AuthorizationStatusResponse>(okResult.Value);
+        Assert.Null(response.AbsoluteExpiresAt);
+    }
+
+    [Fact]
+    public async Task RefreshToken_WhenHandlerReturnsUnauthorized_Returns401AndClearsCookie()
+    {
+        // Arrange — handler signals absolute-timeout exceeded by returning Unauthorized.
+        // Controller must (a) return 401 so the SPA's 401 redirect kicks in, and
+        // (b) clear the auth cookie so the rejected JWT can't be replayed.
+        var userId = Guid.NewGuid();
+        SetupAuthenticatedUserWithSub(userId);
+
+        var handlerMock = Substitute.For<ICommandHandler<RefreshTokenCommand, string>>();
+        handlerMock.Handle(Arg.Any<RefreshTokenCommand>())
+            .Returns(Result<string>.Unauthorized("Session has reached its maximum lifetime; please sign in again."));
+
+        // Act
+        var result = await _controller.RefreshToken(handlerMock);
+
+        // Assert
+        Assert.IsType<UnauthorizedObjectResult>(result);
+        var setCookie = _controller.Response.Headers["Set-Cookie"].ToString();
+        Assert.Contains($"{AuthCookies.AuthCookieName}=", setCookie);
+        // ClearAuthCookie sets an expires= in the past
+        Assert.Contains("expires=", setCookie, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public void GetAuthorizationStatus_WhenExpClaimNotANumber_ReturnsNullExpiresAt()
+    {
+        // Arrange — defensive: a non-numeric exp claim should not crash the endpoint
+        var claims = new List<Claim>
+        {
+            new Claim("email", "user@example.com"),
+            new Claim("exp", "not-a-number")
+        };
+        var identity = new ClaimsIdentity(claims, "Test");
+        _controller.ControllerContext = new ControllerContext
+        {
+            HttpContext = new DefaultHttpContext { User = new ClaimsPrincipal(identity) }
+        };
+
+        // Act
+        var result = _controller.GetAuthorizationStatus();
+
+        // Assert
+        var okResult = Assert.IsType<OkObjectResult>(result);
+        var response = Assert.IsType<AuthorizationStatusResponse>(okResult.Value);
+        Assert.Null(response.ExpiresAt);
+    }
+
+    [Fact]
     public async Task Logout_WithOidcConfigured_ClearsCookieAndRedirectsToIdpEndSessionEndpoint()
     {
         // Arrange

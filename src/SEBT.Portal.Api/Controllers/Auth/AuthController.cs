@@ -45,6 +45,11 @@ public class AuthController(
         logger.LogInformation("Authorization status check successful for UserId {UserId}, Phone={MaskedPhone}",
             userId?.ToString() ?? "unknown", GetMaskedPhone());
 
+        long? expiresAt = long.TryParse(User.FindFirst("exp")?.Value, out var exp) ? exp : null;
+        long? absoluteExpiresAt = long.TryParse(User.FindFirst("auth_time")?.Value, out var authTime)
+            ? authTime + jwtSettingsOptions.Value.AbsoluteExpirationMinutes * 60L
+            : null;
+
         return Ok(new AuthorizationStatusResponse(
             IsAuthorized: true,
             Email: User.GetUserEmail(),
@@ -52,7 +57,9 @@ public class AuthController(
             IdProofingStatus: int.TryParse(User.FindFirst(JwtClaimTypes.IdProofingStatus)?.Value, out var s) ? s : null,
             IdProofingCompletedAt: long.TryParse(User.FindFirst(JwtClaimTypes.IdProofingCompletedAt)?.Value, out var c) ? c : null,
             IdProofingExpiresAt: long.TryParse(User.FindFirst(JwtClaimTypes.IdProofingExpiresAt)?.Value, out var e) ? e : null,
-            IsCoLoaded: bool.TryParse(User.FindFirst(JwtClaimTypes.IsCoLoaded)?.Value, out var cl) ? cl : null));
+            IsCoLoaded: bool.TryParse(User.FindFirst(JwtClaimTypes.IsCoLoaded)?.Value, out var cl) ? cl : null,
+            ExpiresAt: expiresAt,
+            AbsoluteExpiresAt: absoluteExpiresAt));
     }
 
     /// <summary>
@@ -159,6 +166,15 @@ public class AuthController(
             if (result is ValidationFailedResult<string> validationFailed)
             {
                 return BadRequest(new ErrorResponse(result.Message, validationFailed.Errors));
+            }
+
+            if (result is UnauthorizedResult<string>)
+            {
+                // Absolute-timeout (or any handler-signaled "session is no longer valid")
+                // path: clear the cookie so the rejected JWT can't be replayed, then 401
+                // so the SPA's existing 401 handler redirects to /login.
+                AuthCookies.ClearAuthCookie(Response);
+                return Unauthorized(new ErrorResponse(result.Message));
             }
 
             if (result is PreconditionFailedResult<string> preconditionFailed)

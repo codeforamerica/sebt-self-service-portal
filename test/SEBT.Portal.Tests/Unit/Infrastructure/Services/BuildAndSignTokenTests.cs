@@ -132,4 +132,39 @@ public class BuildAndSignTokenTests : JwtTokenServiceTestBase
         var jwt = ReadJwt(token);
         Assert.Equal("false", jwt.Claims.First(c => c.Type == JwtClaimTypes.IsCoLoaded).Value);
     }
+
+    [Fact]
+    public void AuthTime_IsStampedAtCurrentTime_WhenAbsentFromResolvedClaims()
+    {
+        // Fresh login: no auth_time in resolved claims → stamp now.
+        // Drives absolute-timeout enforcement on later refresh.
+        var before = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
+        var claims = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+
+        var token = Service.BuildAndSignToken(Guid.NewGuid(), "user@example.com", claims);
+        var after = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
+
+        var jwt = ReadJwt(token);
+        var authTime = long.Parse(jwt.Claims.First(c => c.Type == "auth_time").Value);
+        Assert.InRange(authTime, before, after);
+    }
+
+    [Fact]
+    public void AuthTime_IsForwardedFromResolvedClaims_OnRefresh()
+    {
+        // Refresh path: caller passes the existing auth_time forward so the absolute
+        // timeout window does not reset on every renewal.
+        const long originalAuthTime = 1700000000L;
+        var claims = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+        {
+            ["auth_time"] = originalAuthTime.ToString()
+        };
+
+        var token = Service.BuildAndSignToken(Guid.NewGuid(), "user@example.com", claims);
+
+        var jwt = ReadJwt(token);
+        var authTimeClaims = jwt.Claims.Where(c => c.Type == "auth_time").ToList();
+        Assert.Single(authTimeClaims);
+        Assert.Equal(originalAuthTime.ToString(), authTimeClaims[0].Value);
+    }
 }
