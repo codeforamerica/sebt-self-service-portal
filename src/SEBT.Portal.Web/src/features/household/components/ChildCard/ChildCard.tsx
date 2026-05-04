@@ -21,14 +21,22 @@ function hasCardLifecycleTimeline(summerEbtCase: SummerEbtCase): boolean {
   return summerEbtCase.cardRequestedAt != null
 }
 
-function getReplacementLink(summerEbtCase: SummerEbtCase): string | null {
-  const { summerEBTCaseID, allowCardReplacement, cardRequestedAt } = summerEbtCase
+function isCoLoadedIssuance(issuanceType: IssuanceType | null | undefined): boolean {
+  return issuanceType === 'SnapEbtCard' || issuanceType === 'TanfEbtCard'
+}
+
+function getReplacementLink(
+  summerEbtCase: SummerEbtCase,
+  canRequestReplacementCard: boolean
+): string | null {
+  const { summerEBTCaseID, issuanceType, cardRequestedAt } = summerEbtCase
   if (!summerEBTCaseID) return null
 
-  if (!allowCardReplacement) {
-    return '/cards/info'
-  }
+  // Co-loaded cases always link to the info page — they cannot be replaced in-portal,
+  // and the household-level allow flag is irrelevant for the educational link.
+  if (isCoLoadedIssuance(issuanceType)) return '/cards/info'
 
+  if (!canRequestReplacementCard) return null
   if (isWithinCooldownPeriod(cardRequestedAt)) return null
 
   return `/cards/replace?case=${encodeURIComponent(summerEBTCaseID)}`
@@ -82,7 +90,7 @@ export function ChildCard({
       ? caseDisplayNumber
       : ebtCaseNumber
   const cardTypeKey = issuanceType ? (CARD_TYPE_KEYS[issuanceType] ?? null) : null
-  const replacementLink = canRequestReplacementCard ? getReplacementLink(summerEbtCase) : null
+  const replacementLink = getReplacementLink(summerEbtCase, canRequestReplacementCard)
 
   return (
     <div className="usa-accordion__item">

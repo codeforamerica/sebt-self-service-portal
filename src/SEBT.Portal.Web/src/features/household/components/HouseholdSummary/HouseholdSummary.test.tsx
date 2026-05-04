@@ -159,7 +159,7 @@ describe('HouseholdSummary', () => {
     expect(
       screen.queryByRole('link', { name: 'Change my mailing address' })
     ).not.toBeInTheDocument()
-    const infoLink = screen.getByRole('link', { name: /how to change your mailing address/i })
+    const infoLink = screen.getByRole('link', { name: /how we determine your mailing address/i })
     expect(infoLink).toHaveAttribute('href', '/profile/address/info')
     expect(infoLink).toHaveAttribute('data-analytics-cta', 'update_address_info_cta')
   })

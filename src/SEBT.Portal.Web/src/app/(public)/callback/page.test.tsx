@@ -47,21 +47,24 @@ vi.mock('@/features/auth', async () => {
 })
 
 // Mock translations
-vi.mock('@/lib/translations', () => ({
-  getTranslations: vi.fn().mockImplementation((namespace: string) => {
-    const namespaces: Record<string, Record<string, string>> = {
-      login: {
-        callbackSigningIn: 'Signing you in…',
-        callbackSignInIssue: 'Sign-in issue',
-        callbackErrorMissingParams: 'Missing sign-in information.',
-        callbackErrorGeneric: 'Something went wrong.',
-        callbackErrorIdpRedirect: 'Primary MyColorado sign-in did not finish.'
-      }
-    }
-    /* eslint-disable security/detect-object-injection -- test mock */
-    const translations = namespaces[namespace] ?? {}
-    return (key: string, defaultValue?: string) => translations[key] ?? defaultValue ?? key
+// CallbackPage now uses the client-side useTranslation() hook (DC-187 fix).
+const TEST_TRANSLATIONS: Record<string, Record<string, string>> = {
+  login: {
+    callbackSigningIn: 'Signing you in…',
+    callbackSignInIssue: 'Sign-in issue',
+    callbackErrorMissingParams: 'Missing sign-in information.',
+    callbackErrorGeneric: 'Something went wrong.',
+    callbackErrorIdpRedirect: 'Primary MyColorado sign-in did not finish.'
+  }
+}
+
+vi.mock('react-i18next', () => ({
+  useTranslation: (namespace: string) => ({
+    /* eslint-disable security/detect-object-injection -- test mock; namespace + key controlled */
+    t: (key: string, defaultValue?: string) =>
+      TEST_TRANSLATIONS[namespace]?.[key] ?? defaultValue ?? key,
     /* eslint-enable security/detect-object-injection */
+    i18n: { language: 'en' }
   })
 }))
 
@@ -216,6 +219,32 @@ describe('CallbackPage', () => {
       await waitFor(() => {
         expect(screen.getByText('Primary MyColorado sign-in did not finish.')).toBeInTheDocument()
       })
+    })
+  })
+
+  describe('language toggle reactivity', () => {
+    it('re-translates the error message when the user switches language after the error fires', async () => {
+      Object.defineProperty(window, 'location', {
+        value: { search: '', href: 'http://localhost:3000/callback' },
+        writable: true
+      })
+
+      const { rerender } = render(<CallbackPage />)
+      await waitFor(() => {
+        expect(screen.getByText('Missing sign-in information.')).toBeInTheDocument()
+      })
+
+      // Simulate the user toggling language: the bundle the mocked t() reads
+      // from now returns Spanish copy. The component should re-render with
+      // the new translation because we store the key, not the resolved string.
+      const original = TEST_TRANSLATIONS.login!.callbackErrorMissingParams
+      TEST_TRANSLATIONS.login!.callbackErrorMissingParams = 'Falta información de inicio de sesión.'
+      try {
+        rerender(<CallbackPage />)
+        expect(screen.getByText('Falta información de inicio de sesión.')).toBeInTheDocument()
+      } finally {
+        TEST_TRANSLATIONS.login!.callbackErrorMissingParams = original!
+      }
     })
   })
 
