@@ -54,7 +54,11 @@ const TEST_TRANSLATIONS: Record<string, Record<string, string>> = {
     callbackSignInIssue: 'Sign-in issue',
     callbackErrorMissingParams: 'Missing sign-in information.',
     callbackErrorGeneric: 'Something went wrong.',
-    callbackErrorIdpRedirect: 'Primary MyColorado sign-in did not finish.'
+    callbackErrorIdpRedirect: 'Primary MyColorado sign-in did not finish.',
+    callbackStepUpDeclinedTitle: 'Identity verification was not completed',
+    callbackStepUpDeclinedBody:
+      'You chose not to share information with our identity verification partner.',
+    callbackStepUpDeclinedActionDashboard: 'Go to dashboard'
   }
 }
 
@@ -171,7 +175,7 @@ describe('CallbackPage', () => {
   })
 
   describe('token exchange failure', () => {
-    it('shows error when exchange-code endpoint fails', async () => {
+    it('shows a generic message when exchange-code endpoint fails (never raw IdP text)', async () => {
       server.use(
         http.post('/api/auth/oidc/callback', () => {
           return HttpResponse.json({ error: 'Token exchange failed' }, { status: 400 })
@@ -181,17 +185,18 @@ describe('CallbackPage', () => {
       render(<CallbackPage />)
 
       await waitFor(() => {
-        expect(screen.getByText('Token exchange failed')).toBeInTheDocument()
+        expect(screen.getByText('Something went wrong.')).toBeInTheDocument()
       })
+      expect(screen.queryByText('Token exchange failed')).not.toBeInTheDocument()
     })
   })
 
   describe('IdP error redirect (?error=)', () => {
-    it('shows error message with IdP description', async () => {
+    it('shows error message with short IdP description when safe', async () => {
       Object.defineProperty(window, 'location', {
         value: {
-          search: '?error=access_denied&error_description=User+cancelled',
-          href: 'http://localhost:3000/callback?error=access_denied'
+          search: '?error=server_error&error_description=User+cancelled',
+          href: 'http://localhost:3000/callback?error=server_error'
         },
         writable: true
       })
@@ -218,6 +223,73 @@ describe('CallbackPage', () => {
 
       await waitFor(() => {
         expect(screen.getByText('Primary MyColorado sign-in did not finish.')).toBeInTheDocument()
+      })
+    })
+
+    it('does not render Ping/Socure connector blobs when description is structured JSON', async () => {
+      const blob = JSON.stringify({
+        code: 'errorResponse',
+        interactionId: '03018f37-c15e-4da2-9f79-26dd163f9c9f',
+        errors: { nested: { message: 'Error creating delayed response' } }
+      })
+      Object.defineProperty(window, 'location', {
+        value: {
+          search: `?error=invalid_request&error_description=${encodeURIComponent(blob)}`,
+          href: 'http://localhost:3000/callback'
+        },
+        writable: true
+      })
+
+      render(<CallbackPage />)
+
+      await waitFor(() => {
+        expect(screen.getByText('Primary MyColorado sign-in did not finish.')).toBeInTheDocument()
+      })
+      expect(screen.queryByText(/interactionId/i)).not.toBeInTheDocument()
+      expect(screen.queryByText(/errorResponse/i)).not.toBeInTheDocument()
+    })
+
+    it('shows the step-up declined screen when Socure consent text appears inside a connector blob', async () => {
+      const blob = JSON.stringify({
+        errors: {
+          x: { additionalProperties: { errorMsg: 'User opted out' } }
+        },
+        additionalProperties: { errorObj: 'User denied consent' }
+      })
+      Object.defineProperty(window, 'location', {
+        value: {
+          search: `?error=invalid_request&error_description=${encodeURIComponent(blob)}`,
+          href: 'http://localhost:3000/callback'
+        },
+        writable: true
+      })
+
+      render(<CallbackPage />)
+
+      await waitFor(() => {
+        expect(screen.getByText('Identity verification was not completed')).toBeInTheDocument()
+      })
+      expect(
+        screen.getByText(
+          'You chose not to share information with our identity verification partner.'
+        )
+      ).toBeInTheDocument()
+      expect(screen.queryByText(/interactionId/i)).not.toBeInTheDocument()
+    })
+
+    it('treats OAuth access_denied as step-up declined even when description is omitted', async () => {
+      Object.defineProperty(window, 'location', {
+        value: {
+          search: '?error=access_denied',
+          href: 'http://localhost:3000/callback?error=access_denied'
+        },
+        writable: true
+      })
+
+      render(<CallbackPage />)
+
+      await waitFor(() => {
+        expect(screen.getByText('Identity verification was not completed')).toBeInTheDocument()
       })
     })
   })
@@ -249,7 +321,7 @@ describe('CallbackPage', () => {
   })
 
   describe('error redirect', () => {
-    it('redirects to login after showing error', async () => {
+    it('redirects to dashboard after showing a generic callback error', async () => {
       vi.useFakeTimers({ shouldAdvanceTime: true })
 
       Object.defineProperty(window, 'location', {
@@ -265,7 +337,31 @@ describe('CallbackPage', () => {
 
       await vi.advanceTimersByTimeAsync(5000)
 
-      expect(mockReplace).toHaveBeenCalledWith('/login')
+      expect(mockReplace).toHaveBeenCalledWith('/dashboard')
+
+      vi.useRealTimers()
+    })
+
+    it('does not auto-redirect after step-up declined', async () => {
+      vi.useFakeTimers({ shouldAdvanceTime: true })
+
+      Object.defineProperty(window, 'location', {
+        value: {
+          search: '?error=access_denied',
+          href: 'http://localhost:3000/callback?error=access_denied'
+        },
+        writable: true
+      })
+
+      render(<CallbackPage />)
+
+      await waitFor(() => {
+        expect(screen.getByText('Identity verification was not completed')).toBeInTheDocument()
+      })
+
+      await vi.advanceTimersByTimeAsync(5000)
+
+      expect(mockReplace).not.toHaveBeenCalled()
 
       vi.useRealTimers()
     })

@@ -1,16 +1,18 @@
 'use client'
 
-import { apiFetch } from '@/api'
+import { ApiError, apiFetch } from '@/api'
 import { CoLoadingScreen } from '@/components/CoLoadingScreen'
 import { useAuth } from '@/features/auth'
 import {
   OidcCallbackTokenResponseSchema,
   OidcCompleteLoginResponseSchema
 } from '@/features/auth/api/oidc/schema'
-import { Alert, getState } from '@sebt/design-system'
+import { Alert, Button, getState, SummaryBox } from '@sebt/design-system'
 import { useRouter } from 'next/navigation'
 import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+
+import { classifyIdpOAuthRedirectError } from './oidcCallbackErrors'
 
 /**
  * OIDC callback: the IdP redirects here with ?code=...&state=...
@@ -22,7 +24,9 @@ import { useTranslation } from 'react-i18next'
  * All flow metadata (stateCode, isStepUp, returnUrl) is stored in the server-side
  * pre-auth session — no sessionStorage is used.
  */
-type ErrorState = { kind: 'key'; key: string; appended?: string } | { kind: 'raw'; message: string }
+type CallbackErrorState =
+  | { kind: 'stepUpDeclined' }
+  | { kind: 'key'; key: string; appended?: string }
 
 export default function CallbackPage() {
   const router = useRouter()
@@ -30,11 +34,7 @@ export default function CallbackPage() {
   const { t } = useTranslation('login')
   const { t: tProcessing } = useTranslation('step-upProcessing')
   const [status, setStatus] = useState<'loading' | 'error'>('loading')
-  // Store the i18n key (not the resolved string) so a mid-flow language
-  // toggle re-translates the error on render. `appended` carries IdP-supplied
-  // detail text that we cannot translate (passed through as-is). `raw` covers
-  // server/network errors whose message is not translatable.
-  const [error, setError] = useState<ErrorState | null>(null)
+  const [error, setError] = useState<CallbackErrorState | null>(null)
   const exchangeStartedRef = useRef(false)
   const isCO = getState() === 'co'
 
@@ -45,15 +45,19 @@ export default function CallbackPage() {
     const errorParam = params.get('error')
     const errorDescription = params.get('error_description')
 
-    // IdP returned an error (e.g., user cancelled login).
+    // IdP returned an error (e.g., user cancelled login / declined Socure consent).
     if (errorParam) {
-      const idpDetail = errorDescription?.trim()
+      const classification = classifyIdpOAuthRedirectError(errorParam, errorDescription)
       queueMicrotask(() => {
-        setError({
-          kind: 'key',
-          key: 'callbackErrorIdpRedirect',
-          ...(idpDetail ? { appended: idpDetail } : {})
-        })
+        if (classification.type === 'stepUpDeclined') {
+          setError({ kind: 'stepUpDeclined' })
+        } else {
+          setError({
+            kind: 'key',
+            key: 'callbackErrorIdpRedirect',
+            ...(classification.safeDetail ? { appended: classification.safeDetail } : {})
+          })
+        }
         setStatus('error')
       })
       return
@@ -95,12 +99,16 @@ export default function CallbackPage() {
         router.replace(destination)
       } catch (e) {
         if (cancelled) return
-        const rawMessage = e instanceof Error ? e.message : typeof e === 'string' ? e : ''
-        if (rawMessage) {
-          setError({ kind: 'raw', message: rawMessage })
-        } else {
-          setError({ kind: 'key', key: 'callbackErrorGeneric' })
+        // Never surface raw API payloads (ProblemDetails, IdP blobs) on this screen.
+        const statusCode = e instanceof ApiError ? e.status : undefined
+        const logDetail = e instanceof Error ? e.message : ''
+        if (process.env.NODE_ENV === 'development') {
+          console.warn('[callback] OIDC exchange failed', {
+            statusCode,
+            detail: logDetail.slice(0, 500)
+          })
         }
+        setError({ kind: 'key', key: 'callbackErrorGeneric' })
         setStatus('error')
       }
     }
@@ -114,21 +122,62 @@ export default function CallbackPage() {
   }, [login, router])
 
   useEffect(() => {
-    if (status === 'error') {
-      // Give user a moment to read the error before redirecting to login
-      const timeout = setTimeout(() => router.replace('/login'), 5000)
-      return () => clearTimeout(timeout)
+    if (status !== 'error' || error?.kind === 'stepUpDeclined') {
+      return undefined
     }
-    return undefined
-  }, [status, router])
+    // Brief pause so users can read IdP / exchange errors before continuing.
+    const timeout = setTimeout(() => router.replace('/dashboard'), 5000)
+    return () => clearTimeout(timeout)
+  }, [status, error?.kind, router])
+
+  if (status === 'error' && error?.kind === 'stepUpDeclined') {
+    const title = t('callbackStepUpDeclinedTitle') || 'Identity verification was not completed'
+    const body =
+      t('callbackStepUpDeclinedBody') ||
+      'You can go to your dashboard and try again when you are ready.'
+    const actionLabel = t('callbackStepUpDeclinedActionDashboard') || 'Go to dashboard'
+
+    return (
+      <div className="usa-section">
+        <div
+          className="grid-container maxw-tablet"
+          aria-live="polite"
+          role="status"
+        >
+          <section aria-labelledby="callback-step-up-declined-title">
+            <h1
+              id="callback-step-up-declined-title"
+              className="font-heading-lg text-primary margin-bottom-3 line-height-sans-1"
+            >
+              {title}
+            </h1>
+            <div
+              role="status"
+              aria-live="polite"
+            >
+              <SummaryBox>
+                <p className="font-sans-sm margin-0">{body}</p>
+              </SummaryBox>
+            </div>
+            <Button
+              type="button"
+              variant="primary"
+              className="bg-primary-dark text-white border-primary-dark margin-top-3"
+              onClick={() => router.replace('/dashboard')}
+            >
+              {actionLabel}
+            </Button>
+          </section>
+        </div>
+      </div>
+    )
+  }
 
   if (status === 'error') {
     let body: string | null = null
     if (error?.kind === 'key') {
-      const line = t(error.key, t('callbackErrorGeneric'))
+      const line = t(error.key) || t('callbackErrorGeneric') || 'Something went wrong.'
       body = error.appended ? `${line} ${error.appended}` : line
-    } else if (error?.kind === 'raw') {
-      body = error.message
     }
     return (
       <div className="usa-section">
@@ -139,7 +188,7 @@ export default function CallbackPage() {
         >
           <Alert
             variant="error"
-            heading={t('callbackSignInIssue')}
+            heading={t('callbackSignInIssue') || 'Sign-in issue'}
           >
             {body}
           </Alert>
