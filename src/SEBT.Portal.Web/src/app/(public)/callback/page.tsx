@@ -4,16 +4,14 @@ import { ApiError, apiFetch } from '@/api'
 import { CoLoadingScreen } from '@/components/CoLoadingScreen'
 import { useAuth } from '@/features/auth'
 import {
+  OIDC_CALLBACK_ERROR_OFF_BOARDING,
   OidcCallbackTokenResponseSchema,
   OidcCompleteLoginResponseSchema
-} from '@/features/auth/api/oidc/schema'
+} from '@/features/auth/api/oidc'
 import { getState } from '@sebt/design-system'
 import { useRouter } from 'next/navigation'
 import { useEffect, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
-
-/** Colorado OIDC `/callback` failures: same screen as id-proofing off-boarding with step-up failure copy. */
-const OIDC_CALLBACK_ERROR_OFF_BOARDING = '/login/id-proofing/off-boarding?reason=oidcCallbackError'
 
 /**
  * OIDC callback: the IdP redirects here with ?code=...&state=...

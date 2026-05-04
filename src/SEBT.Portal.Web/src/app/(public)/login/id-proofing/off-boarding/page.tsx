@@ -27,7 +27,7 @@ export default function OffBoardingPage() {
   const contactHref =
     links.help.contactUs !== '#' ? links.help.contactUs : (links.help.helpDeskEmail ?? '#')
 
-  // Branch order: OIDC `/callback` failures (CO step-up), then co-loaded copy,
+  // Branch order: OIDC `/callback` failures, then co-loaded copy,
   // then reason-specific copy for the non-co-loaded path, then generic offBoarding copy.
   // - Co-loaded users cannot off-board to Socure DocV per PRD; they see a
   //   "cannot identify you" screen instead of the DocV-flavored copy.

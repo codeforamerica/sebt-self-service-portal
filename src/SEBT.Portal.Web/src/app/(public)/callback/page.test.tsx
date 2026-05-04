@@ -15,9 +15,8 @@ import { render, screen, waitFor } from '@testing-library/react'
 import { http, HttpResponse } from 'msw'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
+import { OIDC_CALLBACK_ERROR_OFF_BOARDING } from '@/features/auth/api/oidc'
 import { server } from '@/mocks/server'
-
-const OIDC_CALLBACK_ERROR_OFF_BOARDING = '/login/id-proofing/off-boarding?reason=oidcCallbackError'
 
 // Mock router
 const mockReplace = vi.fn()
