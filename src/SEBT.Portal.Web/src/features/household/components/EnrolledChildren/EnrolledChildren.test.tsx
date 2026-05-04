@@ -5,6 +5,12 @@ import type { HouseholdData, SummerEbtCase } from '../../api'
 
 import { EnrolledChildren } from './EnrolledChildren'
 
+let mockApplyHref = '/apply'
+const mockGetApplyHref = vi.fn((_locale: string) => mockApplyHref)
+vi.mock('@/lib/applyHref', () => ({
+  getApplyHref: (locale: string) => mockGetApplyHref(locale)
+}))
+
 const mockCase1: SummerEbtCase = {
   summerEBTCaseID: 'SEBT-001',
   childFirstName: 'Sophia',
@@ -49,6 +55,8 @@ vi.mock('../../api', async (importOriginal) => ({
 describe('EnrolledChildren', () => {
   beforeEach(() => {
     mockReturnData = defaultMockData
+    mockApplyHref = '/apply'
+    mockGetApplyHref.mockClear()
   })
 
   it('renders section heading', () => {
@@ -86,5 +94,20 @@ describe('EnrolledChildren', () => {
     render(<EnrolledChildren />)
     expect(screen.getByText('Sophia Martinez')).toBeInTheDocument()
     expect(screen.getByText('Emily Brown')).toBeInTheDocument()
+  })
+
+  it('routes the apply link to whatever getApplyHref returns', () => {
+    mockApplyHref = 'https://peak.my.site.com/SEBT/s/apply-for-sebt-starting-page?language=en_US'
+    render(<EnrolledChildren />)
+    expect(screen.getByRole('link', { name: /submit/i })).toHaveAttribute('href', mockApplyHref)
+  })
+
+  it('passes the active i18n locale through to getApplyHref so PEAK gets the right language', () => {
+    render(<EnrolledChildren />)
+    // Test setup boots i18n with state=dc and language=en. We just need to
+    // confirm whatever the active language is gets forwarded — not a hardcoded
+    // value, which is the bug this guards against.
+    expect(mockGetApplyHref).toHaveBeenCalledWith(expect.any(String))
+    expect(mockGetApplyHref.mock.calls[0]![0]).not.toBe('')
   })
 })

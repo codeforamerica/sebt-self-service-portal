@@ -292,9 +292,10 @@ describe('ChildCard', () => {
     expect(screen.queryByText('Card status')).not.toBeInTheDocument()
   })
 
-  it('shows info link instead of replacement link when allowCardReplacement is false', () => {
+  it('shows info link instead of replacement link for a co-loaded case', () => {
     const coLoadedCase = createMockSummerEbtCase({
       ...mockCase,
+      issuanceType: 'SnapEbtCard',
       allowCardReplacement: false
     })
 
@@ -309,6 +310,31 @@ describe('ChildCard', () => {
 
     const link = screen.getByRole('link')
     expect(link).toHaveAttribute('href', '/cards/info')
+    expect(link).toHaveTextContent(/request a replacement card/i)
+  })
+
+  it('shows info link for a co-loaded case even when household-level canRequestReplacementCard is false', () => {
+    // Regression: when every child is co-loaded, the rules engine sets the household
+    // flag to false. The per-case link must still render so co-loaded users can reach
+    // the explainer page.
+    const coLoadedCase = createMockSummerEbtCase({
+      ...mockCase,
+      issuanceType: 'TanfEbtCard',
+      allowCardReplacement: false
+    })
+
+    renderWithFlags(
+      { summerEbtCase: coLoadedCase, canRequestReplacementCard: false },
+      {
+        flags: { ...TEST_FEATURE_FLAGS, enable_card_replacement: true },
+        isLoading: false,
+        isError: false
+      }
+    )
+
+    const link = screen.getByRole('link')
+    expect(link).toHaveAttribute('href', '/cards/info')
+    expect(link).toHaveTextContent(/request a replacement card/i)
   })
 
   it('shows replacement link for SummerEbt when feature flag is enabled', () => {

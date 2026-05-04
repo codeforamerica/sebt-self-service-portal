@@ -7,10 +7,10 @@ import {
   OidcCallbackTokenResponseSchema,
   OidcCompleteLoginResponseSchema
 } from '@/features/auth/api/oidc/schema'
-import { getTranslations } from '@/lib/translations'
 import { Alert, getState } from '@sebt/design-system'
 import { useRouter } from 'next/navigation'
 import { useEffect, useRef, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 
 /**
  * OIDC callback: the IdP redirects here with ?code=...&state=...
@@ -22,13 +22,19 @@ import { useEffect, useRef, useState } from 'react'
  * All flow metadata (stateCode, isStepUp, returnUrl) is stored in the server-side
  * pre-auth session — no sessionStorage is used.
  */
+type ErrorState = { kind: 'key'; key: string; appended?: string } | { kind: 'raw'; message: string }
+
 export default function CallbackPage() {
   const router = useRouter()
   const { login } = useAuth()
-  const t = getTranslations('login')
-  const tProcessing = getTranslations('step-upProcessing')
+  const { t } = useTranslation('login')
+  const { t: tProcessing } = useTranslation('step-upProcessing')
   const [status, setStatus] = useState<'loading' | 'error'>('loading')
-  const [errorDetail, setErrorDetail] = useState<string | null>(null)
+  // Store the i18n key (not the resolved string) so a mid-flow language
+  // toggle re-translates the error on render. `appended` carries IdP-supplied
+  // detail text that we cannot translate (passed through as-is). `raw` covers
+  // server/network errors whose message is not translatable.
+  const [error, setError] = useState<ErrorState | null>(null)
   const exchangeStartedRef = useRef(false)
   const isCO = getState() === 'co'
 
@@ -41,11 +47,13 @@ export default function CallbackPage() {
 
     // IdP returned an error (e.g., user cancelled login).
     if (errorParam) {
-      const idpDetail = errorDescription?.trim() ?? ''
-      const portalLine = t('callbackErrorIdpRedirect', t('callbackErrorGeneric'))
-      const message = idpDetail ? `${portalLine} ${idpDetail}` : portalLine
+      const idpDetail = errorDescription?.trim()
       queueMicrotask(() => {
-        setErrorDetail(message)
+        setError({
+          kind: 'key',
+          key: 'callbackErrorIdpRedirect',
+          ...(idpDetail ? { appended: idpDetail } : {})
+        })
         setStatus('error')
       })
       return
@@ -53,7 +61,7 @@ export default function CallbackPage() {
 
     if (!code || !state) {
       queueMicrotask(() => {
-        setErrorDetail(t('callbackErrorMissingParams'))
+        setError({ kind: 'key', key: 'callbackErrorMissingParams' })
         setStatus('error')
       })
       return
@@ -86,12 +94,14 @@ export default function CallbackPage() {
         const destination = response.returnUrl ?? '/dashboard'
         router.replace(destination)
       } catch (e) {
-        const errMsg =
-          e instanceof Error ? e.message : typeof e === 'string' ? e : t('callbackErrorGeneric')
-        setErrorDetail(errMsg || t('callbackErrorGeneric'))
-        if (!cancelled) {
-          setStatus('error')
+        if (cancelled) return
+        const rawMessage = e instanceof Error ? e.message : typeof e === 'string' ? e : ''
+        if (rawMessage) {
+          setError({ kind: 'raw', message: rawMessage })
+        } else {
+          setError({ kind: 'key', key: 'callbackErrorGeneric' })
         }
+        setStatus('error')
       }
     }
     run()
@@ -101,7 +111,6 @@ export default function CallbackPage() {
       // otherwise ref stays true and the retried effect bails while the aborted run skipped navigation.
       exchangeStartedRef.current = false
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- t (getTranslations) is a static lookup
   }, [login, router])
 
   useEffect(() => {
@@ -114,6 +123,13 @@ export default function CallbackPage() {
   }, [status, router])
 
   if (status === 'error') {
+    let body: string | null = null
+    if (error?.kind === 'key') {
+      const line = t(error.key, t('callbackErrorGeneric'))
+      body = error.appended ? `${line} ${error.appended}` : line
+    } else if (error?.kind === 'raw') {
+      body = error.message
+    }
     return (
       <div className="usa-section">
         <div
@@ -125,7 +141,7 @@ export default function CallbackPage() {
             variant="error"
             heading={t('callbackSignInIssue')}
           >
-            {errorDetail}
+            {body}
           </Alert>
         </div>
       </div>

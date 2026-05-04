@@ -29,3 +29,18 @@ body {
   width: auto;
   max-height: 50px;
 }
+
+/* USWDS has no small-bullet variant. Negative margin pulls the list back
+   toward the container edge to match the /info Figma spec. */
+.usa-list--small-bullets {
+  padding-left: 0;
+  margin-left: -1ch;
+}
+
+.usa-list--small-bullets li {
+  padding-left: 0.75ch;
+}
+
+.usa-list--small-bullets li::marker {
+  font-size: 0.4em;
+}

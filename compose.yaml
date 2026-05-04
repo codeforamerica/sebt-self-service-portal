@@ -49,6 +49,21 @@ services:
       timeout: 5s
       retries: 5
 
+  # Redis web UI for local dev — browse keys, inspect values, verify TTLs.
+  # Open http://localhost:8081 (auto-connects to the redis service above).
+  redis-commander:
+    image: rediscommander/redis-commander:latest
+    container_name: sebt_redis_commander
+    ports:
+      - "8081:8081"
+    environment:
+      - REDIS_HOSTS=local:redis:6379
+    networks:
+      - sebt.portal.api
+    depends_on:
+      - redis
+    restart: unless-stopped
+
   # Jaeger (OpenTelemetry trace/metrics viewer for local development)
   jaeger:
     image: jaegertracing/jaeger:latest
