@@ -51,7 +51,8 @@ const defaultMockData: HouseholdData = {
     city: 'Washington',
     state: 'DC',
     postalCode: '20004'
-  }
+  },
+  coLoadedCohort: 'NonCoLoaded'
 }
 
 let mockReturnData: HouseholdData

@@ -33,6 +33,12 @@ const ISSUANCE_TYPE_MAP: Record<number, string> = {
   3: 'SnapEbtCard'
 }
 
+const CO_LOADED_COHORT_MAP: Record<number, string> = {
+  0: 'NonCoLoaded',
+  1: 'CoLoadedOnly',
+  2: 'MixedOrApplicantExcluded'
+}
+
 // Preprocess to convert integer enum values from backend to string enum values
 // Unknown numeric values are mapped to 'Unknown' to handle future backend additions gracefully
 export const IssuanceTypeSchema = z.preprocess(
@@ -54,6 +60,47 @@ export const ApplicationStatusSchema = z.preprocess(
 )
 
 export type ApplicationStatus = z.infer<typeof ApplicationStatusSchema>
+
+/**
+ * Classification of a household relative to co-loaded benefits. Derived on the
+ * backend and shipped on HouseholdData to drive the analytics dimension.
+ *
+ * `Unknown` is a frontend-only sentinel when the field is absent, null, or not a
+ * recognized backend enum value — so analytics do not collapse that state into
+ * `NonCoLoaded` (which would under-count the excluded cohort if the wire contract breaks).
+ */
+export const CoLoadedCohortSchema = z.preprocess(
+  (val) => {
+    if (val === undefined || val === null) {
+      return 'Unknown'
+    }
+    if (typeof val === 'number') {
+      return CO_LOADED_COHORT_MAP[val as keyof typeof CO_LOADED_COHORT_MAP] ?? 'Unknown'
+    }
+    return val
+  },
+  z.enum(['NonCoLoaded', 'CoLoadedOnly', 'MixedOrApplicantExcluded', 'Unknown'])
+)
+
+export type CoLoadedCohort = z.infer<typeof CoLoadedCohortSchema>
+
+/**
+ * Maps the cohort enum to the standardized snake_case property value used
+ * across analytics events. Kept out of the schema so analytics naming can
+ * evolve independently of the API contract.
+ */
+export function toAnalyticsCohort(cohort: CoLoadedCohort): string {
+  switch (cohort) {
+    case 'NonCoLoaded':
+      return 'non_co_loaded'
+    case 'CoLoadedOnly':
+      return 'co_loaded_only'
+    case 'MixedOrApplicantExcluded':
+      return 'mixed_or_applicant_excluded'
+    case 'Unknown':
+      return 'unknown'
+  }
+}
 
 const CARD_STATUS_STRING_MAP: Record<string, string> = Object.fromEntries(
   Object.values(CARD_STATUS_MAP).map((v) => [v.toUpperCase(), v])
@@ -229,7 +276,9 @@ export const HouseholdDataSchema = z.object({
   addressOnFile: AddressSchema.nullable().optional(),
   userProfile: UserProfileSchema.nullable().optional(),
   benefitIssuanceType: IssuanceTypeSchema.nullable().optional(),
-  allowedActions: AllowedActionsSchema.nullable().optional()
+  allowedActions: AllowedActionsSchema.nullable().optional(),
+  // Missing/null preprocess to Unknown so analytics never collapse broken payloads into NonCoLoaded (PR #208).
+  coLoadedCohort: CoLoadedCohortSchema
 })
 
 export type HouseholdData = z.infer<typeof HouseholdDataSchema>

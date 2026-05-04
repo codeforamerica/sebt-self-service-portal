@@ -303,6 +303,10 @@ public static class Dependencies
         services.AddOptionsWithValidateOnStart<SelfServiceRulesSettings>()
             .BindConfiguration(SelfServiceRulesSettings.SectionName);
 
+        services.AddOptions<CoLoadedCohortFilterSettings>()
+            .BindConfiguration(CoLoadedCohortFilterSettings.SectionName);
+        services.AddScoped(sp => sp.GetRequiredService<IOptionsSnapshot<CoLoadedCohortFilterSettings>>().Value);
+
         services.AddSingleton<IValidateOptions<SmartySettings>, SmartySettingsValidator>();
         services.AddOptionsWithValidateOnStart<SmartySettings>()
             .BindConfiguration(SmartySettings.SectionName)
