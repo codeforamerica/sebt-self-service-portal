@@ -1,12 +1,14 @@
+'use client'
+
 import { VerifyOtpFormWrapper } from '@/features/auth'
-import { getTranslations } from '@/lib/translations'
 import { getState, getStateLinks } from '@sebt/design-system'
+import { useTranslation } from 'react-i18next'
 
 export default function VerifyPage() {
   const state = getState()
   const links = getStateLinks(state)
-  const t = getTranslations('login')
-  const tCommon = getTranslations('common')
+  const { t } = useTranslation('login')
+  const { t: tCommon } = useTranslation('common')
 
   return (
     <>

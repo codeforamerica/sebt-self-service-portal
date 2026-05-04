@@ -128,6 +128,50 @@ describe('PageTracker (via DataLayerProvider)', () => {
     expect(countAfterRerender).toBe(countAfterMount)
   })
 
+  it('emits cta_click with cta_destination_type when an element opts in via data-analytics-cta-destination-type', () => {
+    new DataLayer('digitalData')
+
+    const { container } = render(
+      <DataLayerProvider application="test" routes={routes}>
+        <a
+          href="tel:+18883049167"
+          data-analytics-cta="fis_phone_call"
+          data-analytics-cta-destination-type="external_only"
+        >
+          (888) 304-9167
+        </a>
+      </DataLayerProvider>
+    )
+
+    act(() => {
+      container.querySelector('a')!.click()
+    })
+
+    const ctaEvent = window.digitalData!.event.findLast((e) => e.eventName === 'cta_click')
+    expect(ctaEvent).toBeDefined()
+    expect(ctaEvent!.eventData).toMatchObject({
+      cta_id: 'fis_phone_call',
+      cta_destination_type: 'external_only'
+    })
+  })
+
+  it('omits cta_destination_type when no destination-type attribute is present', () => {
+    new DataLayer('digitalData')
+
+    const { container } = render(
+      <DataLayerProvider application="test" routes={routes}>
+        <button data-analytics-cta="dashboard_action">Click</button>
+      </DataLayerProvider>
+    )
+
+    act(() => {
+      container.querySelector('button')!.click()
+    })
+
+    const ctaEvent = window.digitalData!.event.findLast((e) => e.eventName === 'cta_click')
+    expect(ctaEvent!.eventData).not.toHaveProperty('cta_destination_type')
+  })
+
   it('clears stale flow and step when navigating to an unmatched route', () => {
     new DataLayer('digitalData')
 

@@ -17,10 +17,10 @@ benefits:
    the experience is coherent and so the caseworker remains the authoritative
    contact for the co-loaded benefits.
 2. **Applicants with co-loaded benefits** — a household that has co-loaded
-   cases and also a pending application (or a case still in
-   `Pending`/`UnderReview` status). These users are on the applicant journey
-   and should see their application view, not the co-loaded benefits the
-   caseworker is managing on their behalf.
+   cases and also an **in-flight** application path: either a household-level
+   `Application` in `Pending`/`UnderReview`, or a case whose `ApplicationStatus`
+   is still `Pending`/`UnderReview`. Historical application rows alone (for example
+   `Approved`) do not place the household on the applicant journey for this rule.
 
 Together, this exclusion cohort represents ~3,000 households at rollout.
 
@@ -43,16 +43,24 @@ We chose the **derived-at-runtime** approach.
 at query time into one of three values, computed on the pre-filter state:
 
 - `NonCoLoaded` — no `SummerEbtCase.IsCoLoaded` is true.
-- `CoLoadedOnly` — all cases are co-loaded AND there are no `Application`
-  records and no cases in `Pending`/`UnderReview` status.
+- `CoLoadedOnly` — all cases are co-loaded AND there are no **in-flight**
+  household applications (`Applications` entries with status `Pending` or
+  `UnderReview`), AND no cases whose `ApplicationStatus` is pending applicant.
+  Historical application rows alone (for example `Approved`) do **not**
+  trigger this cohort when every case is co-loaded.
 - `MixedOrApplicantExcluded` — at least one co-loaded case AND at least one
-  of: a non-co-loaded case, an `Application` record, or a case with
-  `Pending`/`UnderReview` status.
+  of: a non-co-loaded case, an in-flight household application (`Pending` /
+  `UnderReview`), or a case with pending-applicant status (`Pending` /
+  `UnderReview` on the case).
 
 `GetHouseholdDataQueryHandler` attaches the classification to
 `HouseholdData.CoLoadedCohort`, then — for the `MixedOrApplicantExcluded`
-cohort only — strips co-loaded cases out of the response before mapping it
-to the API DTO. Co-loaded-only households retain their cases so the
+cohort only and when `CoLoadedCohortFilter:SuppressCoLoadedCasesForExcludedCohort`
+is `true` (the default) — strips co-loaded cases out of the response before mapping it
+to the API DTO and realigns `BenefitIssuanceType` with the filtered view.
+Setting `SuppressCoLoadedCasesForExcludedCohort` to `false` (via appsettings or Azure App Configuration)
+returns the full case list for that cohort while preserving cohort classification for analytics.
+Co-loaded-only households retain their cases so the
 dashboard isn't empty; per-case `AllowAddressChange` /
 `AllowCardReplacement` flags and command-handler guards prevent any
 self-service actions on those cases.
@@ -92,14 +100,19 @@ dashboard load.
 
 ## Update process
 
-To adjust the classification rule:
+To enable or disable **suppression** of co-loaded cases for the excluded cohort (without changing who is classified into each cohort):
+
+1. Set `CoLoadedCohortFilter:SuppressCoLoadedCasesForExcludedCohort` to `false` in environment-specific configuration or Azure App Configuration (reload applies on the options snapshot cadence).
+2. Default is `true`, matching the MVP behavior described above.
+
+To adjust the **classification rule**:
 
 1. Open `src/SEBT.Portal.UseCases/Household/GetHouseholdData/GetHouseholdDataQueryHandler.cs`.
 2. Edit `ClassifyCoLoadedCohort` (and `IsPendingApplicant` if the applicant
    definition shifts).
 3. Update `test/SEBT.Portal.Tests/Unit/UseCases/Household/GetHouseholdDataQueryHandlerTests.cs`
    so each of the three cohort values is covered, including any new edge
-   cases the rule change introduces.
+   cases the rule change introduces, and scenarios for `SuppressCoLoadedCasesForExcludedCohort` true/false where relevant.
 4. If the set of cohort values changes, update:
    - `src/SEBT.Portal.Core/Models/Household/CoLoadedCohort.cs`
    - `src/SEBT.Portal.Web/src/features/household/api/schema.ts`
