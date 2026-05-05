@@ -59,10 +59,7 @@ export function DashboardAlerts() {
           variant="success"
           heading={t('alertAddressUpdatedHeading', 'Address update recorded')}
         >
-          {t(
-            'alertAddressUpdatedBody',
-            'Your address update has been recorded. State system integration is pending — changes are not yet reflected in the benefits system.'
-          )}
+          {t('alertAddressUpdatedBody', 'Your address update has been recorded.')}
         </Alert>
       )}
 
@@ -73,7 +70,7 @@ export function DashboardAlerts() {
         >
           {t(
             'alertCardsRequestedBody',
-            'Your address update and card replacement request have been recorded. State system integration is pending — changes are not yet reflected in the benefits system.'
+            'Your address update and card replacement request have been recorded.'
           )}
         </Alert>
       )}

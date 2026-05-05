@@ -5,28 +5,40 @@ import { afterEach, beforeEach, describe, expect, it, vi, type Mock } from 'vite
 
 import { TokenRefresher } from './TokenRefresher'
 
-// Mock the hooks
+// Substantive scheduling/activity logic lives in `useUserActivity` and
+// `useSessionRefresh` — those hooks have their own tests. This file only
+// verifies that the component wires session/expiry from `useAuth` to those
+// hooks and re-reads `/auth/status` after a successful refresh.
+
 const mockLogin = vi.fn()
 const mockMutate = vi.fn()
 
-vi.mock('../../context', () => ({
-  useAuth: vi.fn()
-}))
-
+vi.mock('../../context', () => ({ useAuth: vi.fn() }))
 vi.mock('../../api', () => ({
-  useRefreshToken: () => ({
-    mutate: mockMutate
-  })
+  useRefreshToken: () => ({ mutate: mockMutate })
 }))
 
 import { useAuth } from '../../context'
+
+const NOW_MS = new Date('2026-01-01T00:00:00Z').getTime()
+const NOW_SEC = Math.floor(NOW_MS / 1000)
 
 describe('TokenRefresher', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     vi.useFakeTimers()
+    vi.setSystemTime(new Date(NOW_MS))
     ;(useAuth as Mock).mockReturnValue({
-      isAuthenticated: true,
+      session: {
+        email: 'user@example.com',
+        ial: '1plus',
+        idProofingStatus: 2,
+        idProofingCompletedAt: null,
+        idProofingExpiresAt: null,
+        isCoLoaded: false,
+        expiresAt: NOW_SEC + 15 * 60,
+        absoluteExpiresAt: NOW_SEC + 60 * 60
+      },
       login: mockLogin
     })
   })
@@ -35,96 +47,44 @@ describe('TokenRefresher', () => {
     vi.useRealTimers()
   })
 
-  it('should call refresh when authenticated', () => {
-    render(<TokenRefresher />)
-
-    expect(mockMutate).toHaveBeenCalledTimes(1)
-    expect(mockMutate).toHaveBeenCalledWith(undefined, expect.any(Object))
+  it('renders nothing', () => {
+    const { container } = render(<TokenRefresher />)
+    expect(container).toBeEmptyDOMElement()
   })
 
-  it('should re-read session on successful refresh', () => {
+  it('schedules a refresh keyed off session.expiresAt and re-reads on success', () => {
     render(<TokenRefresher />)
 
-    // Get the onSuccess callback from the mutate call
-    const mutateCall = mockMutate.mock.calls[0] as [undefined, { onSuccess: () => void }]
-    const options = mutateCall[1]
+    // No upfront mutate — schedule waits until just before expiresAt.
+    expect(mockMutate).not.toHaveBeenCalled()
 
-    // Simulate successful refresh — cookie is rotated server-side; frontend re-reads session
+    // Simulate an active user (an event in the throttle window).
+    act(() => {
+      window.dispatchEvent(new Event('mousedown'))
+    })
+
+    // Fire just past 14 min (15 min - 60 s safety margin).
+    act(() => {
+      vi.advanceTimersByTime(14 * 60 * 1000)
+    })
+
+    expect(mockMutate).toHaveBeenCalledTimes(1)
+
+    // Simulate refresh success → component should re-read /auth/status.
+    const [, options] = mockMutate.mock.calls[0] as [undefined, { onSuccess: () => void }]
     options.onSuccess()
-
     expect(mockLogin).toHaveBeenCalledWith()
   })
 
-  it('should set up periodic refresh interval', () => {
-    render(<TokenRefresher />)
-
-    expect(mockMutate).toHaveBeenCalledTimes(1)
-
-    // Advance time by 10 minutes
-    act(() => {
-      vi.advanceTimersByTime(10 * 60 * 1000)
-    })
-    expect(mockMutate).toHaveBeenCalledTimes(2)
-
-    act(() => {
-      vi.advanceTimersByTime(10 * 60 * 1000)
-    })
-    expect(mockMutate).toHaveBeenCalledTimes(3)
-  })
-
-  it('should clear interval on unmount', () => {
-    const { unmount } = render(<TokenRefresher />)
-
-    expect(mockMutate).toHaveBeenCalledTimes(1)
-
-    unmount()
-
-    act(() => {
-      vi.advanceTimersByTime(10 * 60 * 1000)
-    })
-
-    expect(mockMutate).toHaveBeenCalledTimes(1)
-  })
-
-  it('should not refresh when not authenticated', () => {
-    ;(useAuth as Mock).mockReturnValue({
-      isAuthenticated: false,
-      login: mockLogin
-    })
+  it('does not schedule a refresh when there is no session', () => {
+    ;(useAuth as Mock).mockReturnValue({ session: null, login: mockLogin })
 
     render(<TokenRefresher />)
 
-    expect(mockMutate).not.toHaveBeenCalled()
-
-    // Advance time - should still not call refresh
     act(() => {
-      vi.advanceTimersByTime(10 * 60 * 1000)
+      vi.advanceTimersByTime(60 * 60 * 1000)
     })
 
     expect(mockMutate).not.toHaveBeenCalled()
-  })
-
-  it('should clear interval when authentication state changes to false', () => {
-    const { rerender } = render(<TokenRefresher />)
-
-    expect(mockMutate).toHaveBeenCalledTimes(1)
-    ;(useAuth as Mock).mockReturnValue({
-      isAuthenticated: false,
-      login: mockLogin
-    })
-
-    rerender(<TokenRefresher />)
-
-    act(() => {
-      vi.advanceTimersByTime(10 * 60 * 1000)
-    })
-
-    expect(mockMutate).toHaveBeenCalledTimes(1)
-  })
-
-  it('should render nothing', () => {
-    const { container } = render(<TokenRefresher />)
-
-    expect(container).toBeEmptyDOMElement()
   })
 })

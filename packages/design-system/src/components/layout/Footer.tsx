@@ -110,7 +110,7 @@ function COFooter({ state = 'co' }: FooterProps) {
               rel="noopener noreferrer"
               className="usa-link text-ink text-underline"
             >
-              {t('transparencyOnline', 'Transparency Online')}
+              {t('linkPrivacyPolicy')}
             </Link>
             {' | '}
             <Link

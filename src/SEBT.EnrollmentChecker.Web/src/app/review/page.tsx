@@ -4,7 +4,7 @@ import { ReviewPage } from '@/features/enrollment/components/ReviewPage'
 import { checkEnrollment } from '@/features/enrollment/api/checkEnrollment'
 import { useEnrollment } from '@/features/enrollment/context/EnrollmentContext'
 import { AnalyticsEvents, useDataLayer } from '@sebt/analytics'
-import { Alert } from '@sebt/design-system'
+import { Alert, LoadingInterstitial } from '@sebt/design-system'
 import { useRouter } from 'next/navigation'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -12,6 +12,7 @@ import { getEnrollmentConfig } from '@/lib/stateConfig'
 
 export default function Page() {
   const { t } = useTranslation('confirmInfo')
+  const { t: tProcessing } = useTranslation('step-upProcessing')
   const router = useRouter()
   const { state } = useEnrollment()
   const [error, setError] = useState<string | null>(null)
@@ -37,6 +38,20 @@ export default function Page() {
     } finally {
       setIsSubmitting(false)
     }
+  }
+
+  if (isSubmitting) {
+    return (
+      <div className="grid-container maxw-tablet">
+        <LoadingInterstitial
+          title={tProcessing('title', 'Please wait...')}
+          message={tProcessing(
+            'body',
+            'Do not exit the page. Checking to see if we have enough information.'
+          )}
+        />
+      </div>
+    )
   }
 
   return (

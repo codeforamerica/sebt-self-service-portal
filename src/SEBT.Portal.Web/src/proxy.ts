@@ -89,7 +89,8 @@ export function proxy(request: NextRequest) {
     'https://*.socure.com',
     'https://*.socure.io',
     'https://browser-intake-datadoghq.com',
-    hasAmplitude && 'https://api2.amplitude.com',
+    'https://us-autocomplete-pro.api.smarty.com',
+    hasAmplitude && 'https://api2.amplitude.com https://sr-client-cfg.amplitude.com',
     hasSiteImprove && 'https://siteimproveanalytics.io',
     isDev && 'ws://localhost:* http://localhost:*'
   ])

@@ -1,6 +1,7 @@
 // Direct subpath imports avoid the @sebt/design-system barrel export, which
 // re-exports react-i18next-dependent modules. Importing from the barrel in a
 // Server Component would pull react-i18next into the RSC bundle and crash.
+import { primaryFont } from '@/design/fonts'
 import { Footer } from '@sebt/design-system/src/components/layout/Footer'
 import { Header } from '@sebt/design-system/src/components/layout/Header'
 import { HelpSection } from '@sebt/design-system/src/components/layout/HelpSection'
@@ -31,7 +32,7 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en" data-state={state} className="usa-js-loading">
+    <html lang="en" data-state={state} className={`usa-js-loading ${primaryFont.variable}`}>
       <head>
         {process.env.NEXT_PUBLIC_BUILD_SHA && (
           <meta name="build-sha" content={process.env.NEXT_PUBLIC_BUILD_SHA} />

@@ -50,11 +50,11 @@ We want to add **type-ahead address autocomplete** to the street address field, 
 
 ### State preference configuration
 
-Use Smarty's `prefer_states` parameter, configured per-state:
-- **DC portal:** `prefer_states: "DC,MD,VA"` (DMV area)
+Use Smarty's `prefer_states` parameter, configured per-state as a comma-delimited, prioritized list (home state first):
+- **DC portal:** `prefer_states: "DC,VA,MD"`
 - **CO portal:** `prefer_states: "CO"`
 
-This biases results toward in-state addresses but does not exclude out-of-state results.
+This biases results toward preferred states but does not exclude out-of-state results.
 
 ### Environment configuration
 

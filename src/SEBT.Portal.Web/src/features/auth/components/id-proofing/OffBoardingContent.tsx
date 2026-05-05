@@ -33,7 +33,7 @@ export function OffBoardingContent({
     <>
       <h1
         id="off-boarding-title"
-        className="font-sans-xl text-bold line-height-sans-1 margin-bottom-4"
+        className="font-sans-xl text-bold text-primary line-height-sans-1 margin-bottom-4"
       >
         {title}
       </h1>

@@ -1,14 +1,15 @@
 'use client'
 
-import { getTranslations } from '@/lib/translations'
 import type { StateCode } from '@sebt/design-system'
 import { TextLink, getStateLinks } from '@sebt/design-system'
+import { useTranslation } from 'react-i18next'
 import { MyColoradoLogo } from './MyColoradoLogo'
 
 export function COLoginPage({ state }: { state: StateCode }) {
   const links = getStateLinks(state)
-  const t = getTranslations('login')
-  const tCommon = getTranslations('common')
+
+  const { t } = useTranslation('login')
+  const { t: tCommon } = useTranslation('common')
 
   function startOidcLogin(language: string) {
     // Persist the user's language choice so the UI matches after the redirect.

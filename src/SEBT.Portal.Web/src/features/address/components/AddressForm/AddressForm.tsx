@@ -11,6 +11,7 @@ import type { Address } from '@/features/household/api'
 
 import { isValidZip, useUpdateAddress } from '../../api'
 import { useAddressFlow } from '../../context'
+import { AddressAutocomplete, type SelectedAddress } from '../AddressAutocomplete'
 import { STATE_ABBREVIATIONS, US_STATE_OPTIONS } from './usStates'
 
 interface AddressFormProps {
@@ -91,12 +92,6 @@ export function AddressForm({ initialAddress, redirectPath }: AddressFormProps) 
 
     if (!streetAddress1.trim()) {
       errors.streetAddress1 = required
-    } else if (streetAddress1.trim().length > 30) {
-      // TODO: Backend does not yet enforce this limit — add [MaxLength(30)] when confirmed
-      errors.streetAddress1 = t(
-        'streetAddressTooLong',
-        'Enter a street address shorter than 30 characters.'
-      )
     }
     if (!city.trim()) errors.city = required
     if (!stateValue.trim()) errors.state = required
@@ -137,7 +132,7 @@ export function AddressForm({ initialAddress, redirectPath }: AddressFormProps) 
         return
       }
 
-      // too_long stays on the form with inline + banner errors
+      // too_long stays on the form: inline field error + portal banner via showStreetLengthAlert.
       if (result.reason === 'too_long') {
         setFieldErrors({
           streetAddress1: t(
@@ -145,7 +140,6 @@ export function AddressForm({ initialAddress, redirectPath }: AddressFormProps) 
             'Enter a street address shorter than 30 characters'
           )
         })
-        setSubmitError('too_long')
         return
       }
 
@@ -223,7 +217,7 @@ export function AddressForm({ initialAddress, redirectPath }: AddressFormProps) 
           </div>
         )}
 
-        <InputField
+        <AddressAutocomplete
           label={t('labelStreetAddress', 'Street address')}
           {...(currentState === 'dc'
             ? { hint: t('hintStreetAddressDc', 'Include direction. NW, NE, SE, or SW.') }
@@ -231,6 +225,13 @@ export function AddressForm({ initialAddress, redirectPath }: AddressFormProps) 
           name="streetAddress1"
           value={streetAddress1}
           onChange={(e) => setStreetAddress1(e.target.value)}
+          onSuggestionSelected={(address: SelectedAddress) => {
+            setStreetAddress1(address.streetLine1)
+            setStreetAddress2(address.streetLine2)
+            setCity(address.city)
+            setStateValue(address.state)
+            setPostalCode(address.zipcode)
+          }}
           autoComplete="address-line1"
           isRequired
           {...(fieldErrors.streetAddress1 ? { error: fieldErrors.streetAddress1 } : {})}

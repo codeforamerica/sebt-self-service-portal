@@ -43,10 +43,31 @@ const GOOGLE_FONTS_MAP = {
   merriweather: 'Merriweather'
 }
 
+// Map of locally-hosted typefaces loaded via next/font/local.
+// Used for fonts that aren't on Google Fonts (e.g. exljbris's Museo Slab).
+// Key: lowercase font name. Value: { variable, src } where src paths are
+// relative to the generated design/fonts.ts so next/font/local can resolve them.
+// Files live at <app>/public/fonts/{name}/ and must be supplied alongside this
+// map entry — the generator does not bundle fonts.
+const LOCAL_FONTS_MAP = {
+  'museo slab': {
+    variable: 'museoSlab',
+    src: [
+      {
+        // Font Squirrel's distributed filename — preserved verbatim so the
+        // file matches what's downloaded from the legitimate redistributor.
+        path: '../public/fonts/museo-slab/Museo_Slab_500_2-webfont.woff2',
+        weight: '500',
+        style: 'normal'
+      }
+    ]
+  }
+}
+
 // Default font weights to load
 const DEFAULT_WEIGHTS = ['400', '600', '700']
 
-function extractFonts(tokensJson) {
+export function extractFonts(tokensJson) {
   const fonts = new Set()
 
   if (!tokensJson.theme) {
@@ -68,7 +89,7 @@ function extractFonts(tokensJson) {
   return fonts
 }
 
-function generateFontsTs(fonts, state) {
+export function generateFontsTs(fonts, state) {
   const fontArray = Array.from(fonts)
 
   if (fontArray.length === 0) {
@@ -93,10 +114,18 @@ export const primaryFont = {
 
   // Get primary font (first one)
   const primaryFontName = fontArray[0]
+
+  // Locally-hosted typeface (next/font/local) — used for fonts that
+  // aren't on Google Fonts (e.g. exljbris's Museo Slab).
+  const localFontConfig = LOCAL_FONTS_MAP[primaryFontName]
+  if (localFontConfig) {
+    return generateLocalFontsTs(primaryFontName, localFontConfig, state)
+  }
+
   const googleFontImport = GOOGLE_FONTS_MAP[primaryFontName]
 
   if (!googleFontImport) {
-    console.warn(`⚠️  Font "${primaryFontName}" not found in Google Fonts mapping`)
+    console.warn(`⚠️  Font "${primaryFontName}" not found in Google Fonts or Local Fonts mapping`)
     return `/**
  * Font Configuration - ${state.toUpperCase()}
  *
@@ -107,7 +136,7 @@ export const primaryFont = {
  * Generated: ${new Date().toISOString()}
  */
 
-// Font "${primaryFontName}" not available via next/font/google
+// Font "${primaryFontName}" not available via next/font/google or next/font/local
 // Using system fonts as fallback
 export const primaryFont = {
   variable: '--font-primary',
@@ -148,6 +177,41 @@ export const primaryFont = ${variableName}
 `
 }
 
+function generateLocalFontsTs(fontName, config, state) {
+  const srcEntries = config.src
+    .map(s => `    { path: '${s.path}', weight: '${s.weight}', style: '${s.style}' }`)
+    .join(',\n')
+
+  return `/**
+ * Font Configuration - ${state.toUpperCase()}
+ *
+ * Auto-generated from design tokens.
+ * Source: design/states/${state}.json
+ * DO NOT EDIT DIRECTLY - Regenerate with: pnpm tokens
+ *
+ * Generated: ${new Date().toISOString()}
+ */
+
+import localFont from 'next/font/local'
+
+// Primary font (locally-hosted): ${fontName}
+// adjustFontFallback: false avoids "Failed to find font override values" for fonts not in Next.js metrics
+export const ${config.variable} = localFont({
+  src: [
+${srcEntries}
+  ],
+  variable: '--font-primary',
+  display: 'optional',
+  preload: true,
+  fallback: ['system-ui', 'sans-serif'],
+  adjustFontFallback: false
+})
+
+// Export as primaryFont for consistent usage
+export const primaryFont = ${config.variable}
+`
+}
+
 function main() {
   try {
     const state = (process.env.STATE || process.env.NEXT_PUBLIC_STATE || 'dc').toLowerCase()
@@ -183,4 +247,7 @@ function main() {
   }
 }
 
-main()
+// Only auto-run when invoked as a script, not when imported by tests.
+if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) {
+  main()
+}

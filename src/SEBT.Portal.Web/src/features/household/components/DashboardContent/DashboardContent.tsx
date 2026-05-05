@@ -1,13 +1,16 @@
 'use client'
 
 import { ApiError } from '@/api'
+import { CoLoadingScreen } from '@/components/CoLoadingScreen'
 import { SignOutLink, useAuth } from '@/features/auth'
+import { getColoadingStatus } from '@/lib/coloadingStatus'
 import { AnalyticsEvents, useDataLayer } from '@sebt/analytics'
-import { Alert } from '@sebt/design-system'
+import { Alert, getState } from '@sebt/design-system'
 import { useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 
 import { useHouseholdData } from '../../api'
+import { toAnalyticsCohort } from '../../api/schema'
 import { ActionButtons } from '../ActionButtons'
 import { ApplicationsSection } from '../ApplicationsSection'
 import { DashboardAlerts } from '../DashboardAlerts'
@@ -21,10 +24,12 @@ import { UserProfileCard } from '../UserProfileCard'
 // TODO: Add to CSV: "S2 - Portal Dashboard - Error Heading" and "S2 - Portal Dashboard - Error Description"
 export function DashboardContent() {
   const { t } = useTranslation('dashboard')
+  const { t: tProcessing } = useTranslation('step-upProcessing')
   const { data, isLoading, isError, error, requiresProofing } = useHouseholdData()
   const { setPageData, setUserData, trackEvent } = useDataLayer()
   const { session } = useAuth()
-  const isCoLoaded = session?.isCoLoaded === true
+  const sessionIsCoLoaded = session?.isCoLoaded
+  const isCO = getState() === 'co'
 
   useEffect(() => {
     if (isLoading) return
@@ -35,19 +40,46 @@ export function DashboardContent() {
       const isEmpty = childCount === 0 && data.applications.length === 0
       setPageData('household_status', isEmpty ? 'empty' : 'success')
       setUserData('household_linked_children', childCount, ['default', 'analytics'])
+      setUserData('co_loaded_cohort', toAnalyticsCohort(data.coLoadedCohort), [
+        'default',
+        'analytics'
+      ])
+
+      // DC-215: classify the household into one of four buckets so analytics can
+      // segment dashboard usage. Same value is mirrored on user.* (persists across
+      // pages) and page.* (lives with this page_load / household_result event).
+      // Passing the raw nullable claim means an unresolved auth state tags
+      // `unknown` instead of biasing toward `non_co_loaded`.
+      const coloadingStatus = getColoadingStatus(sessionIsCoLoaded, data)
+      setUserData('coloading_status', coloadingStatus, ['default', 'analytics'])
+      setPageData('household_type', coloadingStatus)
       // Distinguishes a co-loaded user who matched but has no enrolled children
-      // from a non-co-loaded applicant seeing the same empty screen.
-      if (isEmpty && isCoLoaded) {
+      // from a non-co-loaded applicant seeing the same empty screen. Only fires
+      // for a definitively true claim — null/undefined auth shouldn't infer it.
+      if (isEmpty && sessionIsCoLoaded === true) {
         setPageData('household_reason', 'no_children')
       }
     }
     trackEvent(AnalyticsEvents.HOUSEHOLD_RESULT)
-  }, [isLoading, isError, data, isCoLoaded, setPageData, setUserData, trackEvent])
+  }, [isLoading, isError, data, sessionIsCoLoaded, setPageData, setUserData, trackEvent])
 
   // Visually hidden h1 for accessibility - provides page structure for screen readers
   const pageHeading = <h1 className="usa-sr-only">{t('pageTitle', 'SUN Bucks Dashboard')}</h1>
 
   if (isLoading || requiresProofing) {
+    if (isCO) {
+      // CoLoadingScreen renders its own h1 ("Please wait..."), so omit pageHeading
+      // here to avoid two h1 elements on the same view.
+      return (
+        <CoLoadingScreen
+          title={tProcessing('title', 'Please wait...')}
+          message={tProcessing(
+            'body',
+            'Do not exit the page. Checking to see if we have enough information.'
+          )}
+        />
+      )
+    }
     return (
       <>
         {pageHeading}

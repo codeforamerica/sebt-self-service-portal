@@ -42,7 +42,7 @@ function getApplicationStatus(data: HouseholdData): StatusInfo | null {
   if (statuses.includes('Pending') || statuses.includes('UnderReview')) {
     return {
       labelKey: 'profileTableStatusApplicationIn-progress',
-      fallback: 'Application in-progress',
+      fallback: 'Application in-process',
       variant: 'warning'
     }
   }
@@ -143,10 +143,9 @@ export function HouseholdSummary() {
               <Link
                 href="/profile/address/info"
                 data-analytics-cta="update_address_info_cta"
-                className="usa-link"
+                className="usa-link display-inline-block margin-top-1"
               >
-                {/* TODO: Remove fallback once profileTableActionHowToChangeAddress is added to CSV */}
-                {t('profileTableActionHowToChangeAddress', 'How to change your mailing address')}
+                {t('profileTableCo-loadedAddress')}
               </Link>
             )}
           </dd>

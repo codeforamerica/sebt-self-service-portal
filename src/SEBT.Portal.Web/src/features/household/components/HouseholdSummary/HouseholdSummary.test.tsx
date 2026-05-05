@@ -51,7 +51,8 @@ const defaultMockData: HouseholdData = {
     city: 'Washington',
     state: 'DC',
     postalCode: '20004'
-  }
+  },
+  coLoadedCohort: 'NonCoLoaded'
 }
 
 let mockReturnData: HouseholdData
@@ -98,6 +99,7 @@ describe('HouseholdSummary', () => {
     const pendingApp: Application = { ...mockApplication, applicationStatus: 'Pending' }
     mockReturnData = { ...defaultMockData, summerEbtCases: [], applications: [pendingApp] }
     render(<HouseholdSummary />)
+    // TODO update when DC copy import
     const statusText = screen.getByText('Application in-progress')
     expect(statusText).toHaveClass('text-gold')
   })
@@ -158,7 +160,7 @@ describe('HouseholdSummary', () => {
     expect(
       screen.queryByRole('link', { name: 'Change my mailing address' })
     ).not.toBeInTheDocument()
-    const infoLink = screen.getByRole('link', { name: /how to change your mailing address/i })
+    const infoLink = screen.getByRole('link', { name: /how we determine your mailing address/i })
     expect(infoLink).toHaveAttribute('href', '/profile/address/info')
     expect(infoLink).toHaveAttribute('data-analytics-cta', 'update_address_info_cta')
   })

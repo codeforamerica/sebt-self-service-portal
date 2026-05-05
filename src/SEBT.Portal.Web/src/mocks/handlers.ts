@@ -116,7 +116,9 @@ export const TEST_HOUSEHOLD_DATA = {
     canRequestReplacementCard: false,
     addressUpdateDeniedMessageKey: 'actionNavigationSelfServiceUnavailable',
     cardReplacementDeniedMessageKey: 'actionNavigationSelfServiceUnavailable'
-  }
+  },
+  // Matches API: CoLoadedCohort enum as integer (NonCoLoaded=0)
+  coLoadedCohort: 0
 } as const
 
 export const handlers = [

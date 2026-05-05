@@ -156,4 +156,34 @@ public class PluginHouseholdDataMapperTests
         Assert.Single(result.SummerEbtCases);
         Assert.Equal(IssuanceType.SnapEbtCard, result.SummerEbtCases[0].IssuanceType);
     }
+
+    [Fact]
+    public void ToCore_WhenSourceHasSummerEbtCases_MapsCaseDisplayNumber()
+    {
+        var source = new HouseholdData
+        {
+            Email = "a@b.com",
+            Applications = new List<Application>(),
+            SummerEbtCases = new List<SummerEbtCase>
+            {
+                new SummerEbtCase
+                {
+                    ChildFirstName = "Alex",
+                    ChildLastName = "Rivera",
+                    HouseholdType = "OSSE",
+                    EligibilityType = "OSSE",
+                    IssuanceType = IssuanceType.SummerEbt,
+                    EbtCaseNumber = "STATE-CASE",
+                    CaseDisplayNumber = "SHOW-ME"
+                }
+            }
+        };
+
+        var result = PluginHouseholdDataMapper.ToCore(source);
+
+        Assert.NotNull(result);
+        Assert.Single(result.SummerEbtCases);
+        Assert.Equal("STATE-CASE", result.SummerEbtCases[0].EbtCaseNumber);
+        Assert.Equal("SHOW-ME", result.SummerEbtCases[0].CaseDisplayNumber);
+    }
 }
