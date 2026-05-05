@@ -266,6 +266,82 @@ describe('CardSelection', () => {
     expect(mockBack).toHaveBeenCalled()
   })
 
+  // DC-357: when all cards are filtered out client-side (cooldown / no eligible
+  // children), the user previously got a bare alert with no way out.
+  it('shows a back button when all cards are within the cooldown window', async () => {
+    const recentlyRequested = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString()
+    server.use(
+      http.get('/api/household/data', () =>
+        HttpResponse.json({
+          email: 'cooldown@example.com',
+          phone: '3035550100',
+          benefitIssuanceType: 1,
+          summerEbtCases: [
+            {
+              summerEBTCaseID: 'SEBT-COOL-1',
+              childFirstName: 'Cool',
+              childLastName: 'Down',
+              householdType: 'OSSE',
+              eligibilityType: 'NSLP',
+              issuanceType: 1,
+              allowCardReplacement: true,
+              cardRequestedAt: recentlyRequested
+            }
+          ],
+          applications: [],
+          addressOnFile: {
+            streetAddress1: '123 Main St',
+            city: 'Washington',
+            state: 'DC',
+            postalCode: '20001'
+          }
+        })
+      )
+    )
+
+    const { user } = renderCardSelection()
+
+    await waitFor(() => {
+      expect(screen.getByText(/recently replaced/i)).toBeInTheDocument()
+    })
+
+    const backButton = screen.getByRole('button', { name: /back/i })
+    await user.click(backButton)
+
+    expect(mockBack).toHaveBeenCalled()
+  })
+
+  it('shows a back button when the household has no eligible children', async () => {
+    server.use(
+      http.get('/api/household/data', () =>
+        HttpResponse.json({
+          email: 'empty@example.com',
+          phone: '3035550100',
+          benefitIssuanceType: 1,
+          summerEbtCases: [],
+          applications: [],
+          addressOnFile: {
+            streetAddress1: '123 Main St',
+            city: 'Washington',
+            state: 'DC',
+            postalCode: '20001'
+          }
+        })
+      )
+    )
+
+    const { user } = renderCardSelection()
+
+    await waitFor(() => {
+      expect(screen.getByText(/no children found/i)).toBeInTheDocument()
+    })
+
+    const backButton = screen.getByRole('button', { name: /back/i })
+    await user.click(backButton)
+
+    expect(mockBack).toHaveBeenCalled()
+  })
+
   // --- Null summerEBTCaseID filtering ---
 
   it('excludes cases without summerEBTCaseID', async () => {
