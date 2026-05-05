@@ -52,6 +52,7 @@ public class JwtTokenService : ILocalLoginTokenService, IOidcTokenService, ISess
             JwtRegisteredClaimNames.Nbf,
             JwtRegisteredClaimNames.Aud,
             JwtRegisteredClaimNames.Iss,
+            JwtRegisteredClaimNames.AuthTime,
             JwtClaimTypes.Ial,
             JwtClaimTypes.IdProofingStatus,
             JwtClaimTypes.IdProofingSessionId,
@@ -328,6 +329,11 @@ public class JwtTokenService : ILocalLoginTokenService, IOidcTokenService, ISess
         var now = DateTimeOffset.UtcNow;
         var unixTimeSeconds = now.ToUnixTimeSeconds();
 
+        // auth_time anchors the absolute-timeout window. Forward the inbound value on
+        // refresh; stamp `now` only on a fresh login (when the caller didn't supply one).
+        var authTimeValue = resolvedClaims.GetValueOrDefault(JwtRegisteredClaimNames.AuthTime)
+            ?? unixTimeSeconds.ToString();
+
         var claims = new List<Claim>
         {
             new(ClaimTypes.Email, email),
@@ -337,6 +343,7 @@ public class JwtTokenService : ILocalLoginTokenService, IOidcTokenService, ISess
             new(JwtRegisteredClaimNames.Nbf, unixTimeSeconds.ToString(), ClaimValueTypes.Integer64),
             new(JwtRegisteredClaimNames.Aud, "SEBT.Portal.Web"),
             new(JwtRegisteredClaimNames.Iss, "SEBT.Portal.Api"),
+            new(JwtRegisteredClaimNames.AuthTime, authTimeValue, ClaimValueTypes.Integer64),
             new(JwtClaimTypes.IdProofingStatus, idProofingStatusValue, ClaimValueTypes.Integer32),
             new(JwtClaimTypes.Ial, ialValue),
             new(JwtClaimTypes.IsCoLoaded, isCoLoadedValue, ClaimValueTypes.Boolean)

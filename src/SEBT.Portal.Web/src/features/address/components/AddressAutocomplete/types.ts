@@ -25,8 +25,12 @@ export interface SelectedAddress {
   zipcode: string
 }
 
-/** Per-state comma-delimited, prioritized list of state abbreviations for Smarty's prefer_states parameter. */
+/** Per-state prioritized list of state abbreviations for Smarty's prefer_states parameter.
+ *  Semicolons rather than commas: the embedded key's dashboard config trips a validator on
+ *  any comma-delimited multi-value `*_states` input. Smarty parses semicolons equivalently
+ *  for prefer_states and include_only_states, so this delimiter swap preserves the bias
+ *  semantics while bypassing the dashboard bug. */
 export const STATE_PREFER_STATES: Record<string, string> = {
-  dc: 'DC,VA,MD',
+  dc: 'DC;VA;MD',
   co: 'CO'
 }
