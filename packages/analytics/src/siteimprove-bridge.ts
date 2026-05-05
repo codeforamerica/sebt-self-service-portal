@@ -20,7 +20,55 @@ declare global {
   }
 }
 
-const EVENT_CATEGORY = 'sebt-portal'
+// Top-level path segment becomes the SiteImprove category so analysts can
+// segment by flow (`dashboard`, `cards`, `profile`, `login`, …). Falls back
+// to `root` for `/`.
+function deriveCategory(): string {
+  const segment = window.location.pathname.split('/').filter(Boolean)[0]
+  return segment ?? 'root'
+}
+
+// Keys that may carry PII are dropped before the label is serialized. The
+// match is case-insensitive against the lowercased key. This is a defensive
+// floor — callers should still scope payloads to non-PII fields up front.
+const PII_KEYS = new Set([
+  'email',
+  'emailaddress',
+  'phone',
+  'phonenumber',
+  'phonenum',
+  'name',
+  'firstname',
+  'lastname',
+  'middlename',
+  'fullname',
+  'address',
+  'street',
+  'streetaddress',
+  'streetaddress1',
+  'streetaddress2',
+  'city',
+  'state',
+  'zip',
+  'zipcode',
+  'postalcode',
+  'dob',
+  'dateofbirth',
+  'birthdate',
+  'ssn',
+  'socialsecuritynumber'
+])
+
+function scrubPii(value: unknown): unknown {
+  if (value === null || typeof value !== 'object') return value
+  if (Array.isArray(value)) return value.map(scrubPii)
+  const out: Record<string, unknown> = {}
+  for (const [k, v] of Object.entries(value as Record<string, unknown>)) {
+    if (PII_KEYS.has(k.toLowerCase())) continue
+    out[k] = scrubPii(v)
+  }
+  return out
+}
 
 function pushToSz(cmd: SzCommand): void {
   // The official snippet seeds `_sz = _sz || []` before the script tag loads.
@@ -50,15 +98,16 @@ function attachBridge(dl: DataLayerRoot): () => void {
       | undefined
     if (!detail?.eventName) return
 
-    // PLACEHOLDER mapping (DC-272): SiteImprove labels are typically short strings,
-    // but DC has not defined per-event labels yet. Until they do, we serialize the
-    // whole eventData as JSON so analysts can still see context. Replace with a
-    // per-event label scheme once DC confirms what they want to track.
-    const hasData = detail.eventData && Object.keys(detail.eventData).length > 0
+    // Label carries the JSON-serialized event payload with known PII keys
+    // dropped (see PII_KEYS). When DC confirms a per-event label scheme this
+    // can be tightened to a per-event allow-list.
+    const category = deriveCategory()
+    const scrubbed = detail.eventData ? (scrubPii(detail.eventData) as Record<string, unknown>) : undefined
+    const hasData = scrubbed && Object.keys(scrubbed).length > 0
     pushToSz(
       hasData
-        ? ['event', EVENT_CATEGORY, detail.eventName, JSON.stringify(detail.eventData)]
-        : ['event', EVENT_CATEGORY, detail.eventName]
+        ? ['event', category, detail.eventName, JSON.stringify(scrubbed)]
+        : ['event', category, detail.eventName]
     )
   }
 

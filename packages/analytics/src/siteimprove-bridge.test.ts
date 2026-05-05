@@ -12,12 +12,15 @@ describe('initSiteImproveBridge', () => {
     pushSpy = vi.fn()
     ;(window as unknown as Record<string, unknown>)._sz = { push: pushSpy }
     teardown = undefined
+    // Reset path so deriveCategory() returns a predictable bucket per test.
+    window.history.replaceState({}, '', '/')
   })
 
   afterEach(() => {
     teardown?.()
     delete (window as unknown as Record<string, unknown>)._sz
     delete (window as unknown as Record<string, unknown>).digitalData
+    window.history.replaceState({}, '', '/')
   })
 
   it('forwards page_load to _sz with a trackdynamic command', () => {
@@ -36,7 +39,8 @@ describe('initSiteImproveBridge', () => {
     })
   })
 
-  it('forwards trackEvent to _sz with the sebt-portal category and the event name as action', () => {
+  it('forwards trackEvent with the path-derived category and event name as action', () => {
+    window.history.replaceState({}, '', '/cards/info')
     new DataLayer('digitalData')
     teardown = initSiteImproveBridge()
 
@@ -45,10 +49,19 @@ describe('initSiteImproveBridge', () => {
     expect(pushSpy).toHaveBeenCalledTimes(1)
     expect(pushSpy.mock.calls[0][0]).toEqual([
       'event',
-      'sebt-portal',
+      'cards',
       'cta_click',
       JSON.stringify({ target: 'replace_card' })
     ])
+  })
+
+  it('uses "root" as the category when on /', () => {
+    new DataLayer('digitalData')
+    teardown = initSiteImproveBridge()
+
+    window.digitalData!.trackEvent('page_load')
+
+    expect(pushSpy.mock.calls[0][0]).toEqual(['event', 'root', 'page_load'])
   })
 
   it('omits the label when the event has no data', () => {
@@ -57,7 +70,59 @@ describe('initSiteImproveBridge', () => {
 
     window.digitalData!.trackEvent('page_load')
 
-    expect(pushSpy.mock.calls[0][0]).toEqual(['event', 'sebt-portal', 'page_load'])
+    expect(pushSpy.mock.calls[0][0]).toEqual(['event', 'root', 'page_load'])
+  })
+
+  it('strips PII keys from the label payload before serializing', () => {
+    window.history.replaceState({}, '', '/profile/address')
+    new DataLayer('digitalData')
+    teardown = initSiteImproveBridge()
+
+    window.digitalData!.trackEvent('cta_click', {
+      target: 'save_address',
+      email: 'user@example.com',
+      firstName: 'Alex',
+      lastName: 'Smith',
+      address: '123 Main St',
+      zip: '20001',
+      household_type: 'co_loaded_only'
+    })
+
+    expect(pushSpy.mock.calls[0][0]).toEqual([
+      'event',
+      'profile',
+      'cta_click',
+      JSON.stringify({ target: 'save_address', household_type: 'co_loaded_only' })
+    ])
+  })
+
+  it('strips PII recursively from nested objects', () => {
+    new DataLayer('digitalData')
+    teardown = initSiteImproveBridge()
+
+    window.digitalData!.trackEvent('cta_click', {
+      target: 'submit',
+      user: { id: 'abc-123', email: 'user@example.com', name: 'Alex' }
+    })
+
+    expect(pushSpy.mock.calls[0][0]).toEqual([
+      'event',
+      'root',
+      'cta_click',
+      JSON.stringify({ target: 'submit', user: { id: 'abc-123' } })
+    ])
+  })
+
+  it('omits the label when every key in the payload is PII', () => {
+    new DataLayer('digitalData')
+    teardown = initSiteImproveBridge()
+
+    window.digitalData!.trackEvent('cta_click', {
+      email: 'user@example.com',
+      phone: '202-555-0100'
+    })
+
+    expect(pushSpy.mock.calls[0][0]).toEqual(['event', 'root', 'cta_click'])
   })
 
   it('seeds _sz as an array if SiteImprove script has not loaded yet', () => {
