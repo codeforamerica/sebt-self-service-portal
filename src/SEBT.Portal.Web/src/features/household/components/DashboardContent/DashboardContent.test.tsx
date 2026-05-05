@@ -393,7 +393,71 @@ describe('DashboardContent', () => {
     })
   })
 
-  describe('coloading_status / household_type tagging (DC-215)', () => {
+  describe('error_code tagging on the household_result event', () => {
+    it("tags error_code='NOT_FOUND' when the API returns 404", async () => {
+      server.use(
+        http.get('/api/household/data', () => {
+          return HttpResponse.json({ error: 'Not found' }, { status: 404 })
+        })
+      )
+
+      renderWithProviders(<DashboardContent />)
+
+      await waitFor(() => {
+        expect(mockTrackEvent).toHaveBeenCalledWith('household_result')
+      })
+      expect(mockSetPageData).toHaveBeenCalledWith('error_code', 'NOT_FOUND')
+    })
+
+    it("tags error_code='TECH_ERROR' when the API returns 400", async () => {
+      // Using 400 instead of 5xx because the household-data hook retries 5xx
+      // up to twice with exponential backoff, blowing past the test timeout.
+      // 400 hits the same TECH_ERROR mapping branch and skips the retry path.
+      server.use(
+        http.get('/api/household/data', () => {
+          return HttpResponse.json({ error: 'Bad Request' }, { status: 400 })
+        })
+      )
+
+      renderWithProviders(<DashboardContent />)
+
+      await waitFor(() => {
+        expect(mockTrackEvent).toHaveBeenCalledWith('household_result')
+      })
+      expect(mockSetPageData).toHaveBeenCalledWith('error_code', 'TECH_ERROR')
+    })
+
+    it("tags error_code='NO_CHILDREN' when the response is empty (no cases, no applications)", async () => {
+      server.use(
+        http.get('/api/household/data', () => {
+          return HttpResponse.json({
+            ...TEST_HOUSEHOLD_DATA,
+            summerEbtCases: [],
+            applications: []
+          })
+        })
+      )
+
+      renderWithProviders(<DashboardContent />)
+
+      await waitFor(() => {
+        expect(mockTrackEvent).toHaveBeenCalledWith('household_result')
+      })
+      expect(mockSetPageData).toHaveBeenCalledWith('error_code', 'NO_CHILDREN')
+    })
+
+    it('omits error_code on the success path', async () => {
+      // Default TEST_HOUSEHOLD_DATA has non-empty cases — the success path.
+      renderWithProviders(<DashboardContent />)
+
+      await waitFor(() => {
+        expect(mockTrackEvent).toHaveBeenCalledWith('household_result')
+      })
+      expect(mockSetPageData).not.toHaveBeenCalledWith('error_code', expect.anything())
+    })
+  })
+
+  describe('coloading_status / household_type tagging', () => {
     it('tags non_co_loaded when session.isCoLoaded is false', async () => {
       mockAuthSession.isCoLoaded = false
       renderWithProviders(<DashboardContent />)

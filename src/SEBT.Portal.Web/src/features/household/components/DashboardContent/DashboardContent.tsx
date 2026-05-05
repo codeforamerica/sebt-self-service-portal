@@ -21,6 +21,18 @@ import { EnrolledChildren } from '../EnrolledChildren'
 import { HouseholdSummary } from '../HouseholdSummary'
 import { UserProfileCard } from '../UserProfileCard'
 
+// Maps an HTTP failure to one of the analytics taxonomy buckets. NOT_FOUND
+// covers 404 (the connector returned no household for the user); 4xx other
+// than 404 are treated as auth/permission failures (the API redirects 401/403
+// before reaching the dashboard, but tag them here defensively); everything
+// else lands in TECH_ERROR.
+function dashboardErrorCodeFromStatus(error: unknown): string {
+  if (!(error instanceof ApiError)) return 'TECH_ERROR'
+  if (error.status === 404) return 'NOT_FOUND'
+  if (error.status === 401 || error.status === 403) return 'AUTH_FAILURE'
+  return 'TECH_ERROR'
+}
+
 // TODO: Add to CSV: "S2 - Portal Dashboard - Error Heading" and "S2 - Portal Dashboard - Error Description"
 export function DashboardContent() {
   const { t } = useTranslation('dashboard')
@@ -35,6 +47,7 @@ export function DashboardContent() {
     if (isLoading) return
     if (isError) {
       setPageData('household_status', 'error')
+      setPageData('error_code', dashboardErrorCodeFromStatus(error))
     } else if (data) {
       const childCount = data.summerEbtCases.length
       const isEmpty = childCount === 0 && data.applications.length === 0
@@ -45,23 +58,31 @@ export function DashboardContent() {
         'analytics'
       ])
 
-      // DC-215: classify the household into one of four buckets so analytics can
-      // segment dashboard usage. Same value is mirrored on user.* (persists across
-      // pages) and page.* (lives with this page_load / household_result event).
-      // Passing the raw nullable claim means an unresolved auth state tags
-      // `unknown` instead of biasing toward `non_co_loaded`.
+      // Classify the household into one of four buckets so analytics can
+      // segment dashboard usage. Same value is mirrored on user.* (persists
+      // across pages) and page.* (lives with this page_load /
+      // household_result event). Passing the raw nullable claim means an
+      // unresolved auth state tags `unknown` instead of biasing toward
+      // `non_co_loaded`.
       const coloadingStatus = getColoadingStatus(sessionIsCoLoaded, data)
       setUserData('coloading_status', coloadingStatus, ['default', 'analytics'])
       setPageData('household_type', coloadingStatus)
-      // Distinguishes a co-loaded user who matched but has no enrolled children
-      // from a non-co-loaded applicant seeing the same empty screen. Only fires
-      // for a definitively true claim — null/undefined auth shouldn't infer it.
-      if (isEmpty && sessionIsCoLoaded === true) {
-        setPageData('household_reason', 'no_children')
+      // An empty household is a separate analytics failure category from
+      // server errors — surface it as error_code='NO_CHILDREN' so dashboards
+      // can split "couldn't reach data" from "got data, none qualifies".
+      if (isEmpty) {
+        setPageData('error_code', 'NO_CHILDREN')
+        // Distinguishes a co-loaded user who matched but has no enrolled
+        // children from a non-co-loaded applicant seeing the same empty
+        // screen. Only fires for a definitively true claim — null/undefined
+        // auth shouldn't infer it.
+        if (sessionIsCoLoaded === true) {
+          setPageData('household_reason', 'no_children')
+        }
       }
     }
     trackEvent(AnalyticsEvents.HOUSEHOLD_RESULT)
-  }, [isLoading, isError, data, sessionIsCoLoaded, setPageData, setUserData, trackEvent])
+  }, [isLoading, isError, error, data, sessionIsCoLoaded, setPageData, setUserData, trackEvent])
 
   // Visually hidden h1 for accessibility - provides page structure for screen readers
   const pageHeading = <h1 className="usa-sr-only">{t('pageTitle', 'SUN Bucks Dashboard')}</h1>
