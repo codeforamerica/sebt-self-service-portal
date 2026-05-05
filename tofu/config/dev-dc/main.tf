@@ -108,6 +108,7 @@ module "app" {
 
   seeding_enabled       = "true"
   seeding_email_pattern = "sebt.dc+{0}@codeforamerica.org"
+  dc_source_db_name     = "DcSource"
 
   state_api_environment_variables = {
     "IdProofingRequirements__household+view__application"        = "IAL1"

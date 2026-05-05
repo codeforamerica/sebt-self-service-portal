@@ -116,7 +116,9 @@ export const TEST_HOUSEHOLD_DATA = {
     canRequestReplacementCard: false,
     addressUpdateDeniedMessageKey: 'actionNavigationSelfServiceUnavailable',
     cardReplacementDeniedMessageKey: 'actionNavigationSelfServiceUnavailable'
-  }
+  },
+  // Matches API: CoLoadedCohort enum as integer (NonCoLoaded=0)
+  coLoadedCohort: 0
 } as const
 
 export const handlers = [
@@ -291,12 +293,6 @@ export const handlers = [
         canApply: true,
         offboardingReason: 'noIdProvided'
       })
-    }
-
-    // Simulate step-up failure (canApply: false) with Medicaid ID for dev testing.
-    // In production, the backend determines canApply based on the user's enrollment pathway.
-    if (body.idType === 'medicaidId') {
-      return HttpResponse.json({ result: 'failed', canApply: false })
     }
 
     // Default: identity matched

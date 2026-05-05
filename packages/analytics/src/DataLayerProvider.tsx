@@ -119,10 +119,16 @@ function CtaTracker() {
 
       const ctaId = target.getAttribute('data-analytics-cta') || target.id || undefined
       const ctaTarget = target.getAttribute('aria-label') || target.textContent?.trim() || undefined
+      // Opt-in: tag external destinations (phone, mailto, third-party links) with
+      // data-analytics-cta-destination-type so analytics can split internal nav
+      // from outbound interactions. Internal CTAs leave the attribute off.
+      const ctaDestinationType =
+        target.getAttribute('data-analytics-cta-destination-type') || undefined
 
       window.digitalData!.trackEvent(CTA_CLICK, {
         ...(ctaTarget && { cta_target: ctaTarget }),
-        ...(ctaId && { cta_id: ctaId })
+        ...(ctaId && { cta_id: ctaId }),
+        ...(ctaDestinationType && { cta_destination_type: ctaDestinationType })
       })
     }
 

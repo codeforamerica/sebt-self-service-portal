@@ -92,12 +92,6 @@ export function AddressForm({ initialAddress, redirectPath }: AddressFormProps) 
 
     if (!streetAddress1.trim()) {
       errors.streetAddress1 = required
-    } else if (streetAddress1.trim().length > 30) {
-      // TODO: Backend does not yet enforce this limit — add [MaxLength(30)] when confirmed
-      errors.streetAddress1 = t(
-        'streetAddressTooLong',
-        'Enter a street address shorter than 30 characters.'
-      )
     }
     if (!city.trim()) errors.city = required
     if (!stateValue.trim()) errors.state = required
@@ -138,7 +132,7 @@ export function AddressForm({ initialAddress, redirectPath }: AddressFormProps) 
         return
       }
 
-      // too_long stays on the form with inline + banner errors
+      // too_long stays on the form: inline field error + portal banner via showStreetLengthAlert.
       if (result.reason === 'too_long') {
         setFieldErrors({
           streetAddress1: t(
@@ -146,7 +140,6 @@ export function AddressForm({ initialAddress, redirectPath }: AddressFormProps) 
             'Enter a street address shorter than 30 characters'
           )
         })
-        setSubmitError('too_long')
         return
       }
 

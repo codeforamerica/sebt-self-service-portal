@@ -251,6 +251,7 @@ public static class Dependencies
         services.AddOptionsWithValidateOnStart<OtpRateLimitSettings>()
             .BindConfiguration(OtpRateLimitSettings.SectionName)
             .ValidateDataAnnotations();
+        services.AddSingleton<IValidateOptions<JwtSettings>, JwtSettingsValidator>();
         services.AddOptionsWithValidateOnStart<JwtSettings>()
             .BindConfiguration(JwtSettings.SectionName)
             .ValidateDataAnnotations();
@@ -302,6 +303,10 @@ public static class Dependencies
         services.AddSingleton<IValidateOptions<SelfServiceRulesSettings>, SelfServiceRulesSettingsValidator>();
         services.AddOptionsWithValidateOnStart<SelfServiceRulesSettings>()
             .BindConfiguration(SelfServiceRulesSettings.SectionName);
+
+        services.AddOptions<CoLoadedCohortFilterSettings>()
+            .BindConfiguration(CoLoadedCohortFilterSettings.SectionName);
+        services.AddScoped(sp => sp.GetRequiredService<IOptionsSnapshot<CoLoadedCohortFilterSettings>>().Value);
 
         services.AddSingleton<IValidateOptions<SmartySettings>, SmartySettingsValidator>();
         services.AddOptionsWithValidateOnStart<SmartySettings>()
