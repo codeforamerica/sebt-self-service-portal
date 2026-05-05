@@ -1,6 +1,6 @@
 'use client'
 
-import { useRouter } from 'next/navigation'
+import { usePathname, useRouter, useSearchParams } from 'next/navigation'
 import { useEffect, useRef, useState, type FormEvent } from 'react'
 import { createPortal } from 'react-dom'
 import { useTranslation } from 'react-i18next'
@@ -58,8 +58,10 @@ export function AddressForm({ initialAddress, redirectPath }: AddressFormProps) 
   const { t: tValidation } = useTranslation('validation')
   const { t: tCommon } = useTranslation('common')
   const router = useRouter()
+  const pathname = usePathname()
+  const searchParams = useSearchParams()
   const updateAddress = useUpdateAddress()
-  const { setAddress, setValidationResult } = useAddressFlow()
+  const { setAddress, setValidationResult, setNavigationTargets } = useAddressFlow()
   const errorSummaryRef = useRef<HTMLDivElement>(null)
 
   const currentState = getState()
@@ -85,6 +87,15 @@ export function AddressForm({ initialAddress, redirectPath }: AddressFormProps) 
       errorSummaryRef.current?.focus()
     }
   }, [hasErrors])
+
+  useEffect(() => {
+    const currentQuery = searchParams.toString()
+    const formPath = currentQuery ? `${pathname}?${currentQuery}` : pathname
+    setNavigationTargets({
+      formPath,
+      continuePath: redirectPath ?? DEFAULT_REDIRECT
+    })
+  }, [pathname, redirectPath, searchParams, setNavigationTargets])
 
   function validate(): FieldErrors {
     const errors: FieldErrors = {}

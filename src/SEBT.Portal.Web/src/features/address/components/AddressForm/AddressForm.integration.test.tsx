@@ -20,7 +20,9 @@ vi.mock('next/navigation', () => ({
   useRouter: () => ({
     push: mockPush,
     back: vi.fn()
-  })
+  }),
+  usePathname: () => '/profile/address',
+  useSearchParams: () => new URLSearchParams()
 }))
 
 vi.mock('@sebt/design-system', async (importOriginal) => {

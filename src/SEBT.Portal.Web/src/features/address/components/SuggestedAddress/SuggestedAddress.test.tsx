@@ -69,15 +69,22 @@ const mockSuggestionResult: AddressUpdateResponse = {
 function ContextSetter({
   children,
   result,
-  entered
+  entered,
+  formPath,
+  continuePath
 }: {
   children: ReactNode
   result: AddressUpdateResponse
   entered: UpdateAddressRequest
+  formPath?: string
+  continuePath?: string
 }) {
-  const { setValidationResult } = useAddressFlow()
+  const { setValidationResult, setNavigationTargets } = useAddressFlow()
   useEffect(() => {
     setValidationResult(result, entered)
+    if (formPath && continuePath) {
+      setNavigationTargets({ formPath, continuePath })
+    }
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
   return <>{children}</>
 }
@@ -99,7 +106,11 @@ function ContextInspector() {
 function renderSuggestedAddress(
   result: AddressUpdateResponse = mockSuggestionResult,
   entered: UpdateAddressRequest = mockEntered,
-  { includeInspector = false }: { includeInspector?: boolean } = {}
+  {
+    includeInspector = false,
+    formPath,
+    continuePath
+  }: { includeInspector?: boolean; formPath?: string; continuePath?: string } = {}
 ) {
   const queryClient = new QueryClient({
     defaultOptions: {
@@ -116,6 +127,8 @@ function renderSuggestedAddress(
           <ContextSetter
             result={result}
             entered={entered}
+            {...(formPath ? { formPath } : {})}
+            {...(continuePath ? { continuePath } : {})}
           >
             <SuggestedAddress />
             {includeInspector && <ContextInspector />}
@@ -213,6 +226,21 @@ describe('SuggestedAddress', () => {
     expect(mockPush).toHaveBeenCalledWith('/profile/address/replacement-cards')
   })
 
+  it('navigates using context continuePath when configured', async () => {
+    server.use(http.put('/api/household/address', () => HttpResponse.json({ status: 'valid' })))
+    const { user } = renderSuggestedAddress(mockSuggestionResult, mockEntered, {
+      formPath: '/cards/replace/address?case=SEBT-001',
+      continuePath: '/cards/replace/confirm?case=SEBT-001'
+    })
+
+    const continueButton = screen.getByRole('button', { name: /continue/i })
+    await user.click(continueButton)
+
+    await waitFor(() => {
+      expect(mockPush).toHaveBeenCalledWith('/cards/replace/confirm?case=SEBT-001')
+    })
+  })
+
   it('preserves validationResult in context when Continue is clicked (prevents FlowGuard race)', async () => {
     server.use(http.put('/api/household/address', () => HttpResponse.json({ status: 'valid' })))
 
@@ -258,6 +286,18 @@ describe('SuggestedAddress', () => {
     await user.click(backButton)
 
     expect(mockPush).toHaveBeenCalledWith('/profile/address')
+  })
+
+  it('back button uses context formPath when configured', async () => {
+    const { user } = renderSuggestedAddress(mockSuggestionResult, mockEntered, {
+      formPath: '/cards/replace/address?case=SEBT-001',
+      continuePath: '/cards/replace/confirm?case=SEBT-001'
+    })
+
+    const backButton = screen.getByRole('button', { name: /back/i })
+    await user.click(backButton)
+
+    expect(mockPush).toHaveBeenCalledWith('/cards/replace/address?case=SEBT-001')
   })
 
   // --- DC abbreviated variant ---

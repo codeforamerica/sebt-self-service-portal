@@ -11,15 +11,20 @@ import { useUpdateAddress } from '../../api'
 import type { UpdateAddressRequest } from '../../api/schema'
 import { useAddressFlow } from '../../context'
 
-const DEFAULT_REDIRECT = '/profile/address/replacement-cards'
-
 export function SuggestedAddress() {
   const { t } = useTranslation('confirmInfo')
   const { t: tCommon } = useTranslation('common')
   const router = useRouter()
   const currentState = getState()
   const updateAddress = useUpdateAddress()
-  const { validationResult, enteredAddress, setAddress, clearValidationResult } = useAddressFlow()
+  const {
+    validationResult,
+    enteredAddress,
+    setAddress,
+    clearValidationResult,
+    continuePath,
+    formPath
+  } = useAddressFlow()
   const [submitError, setSubmitError] = useState<string | null>(null)
 
   const isAbbreviated = validationResult?.reason === 'abbreviated' && currentState === 'dc'
@@ -59,12 +64,12 @@ export function SuggestedAddress() {
     }
 
     flushSync(() => setAddress(selectedAddress))
-    router.push(DEFAULT_REDIRECT)
+    router.push(continuePath)
   }
 
   function handleBack() {
     clearValidationResult()
-    router.push('/profile/address')
+    router.push(formPath)
   }
 
   // Use abbreviated copy for DC 30-char abbreviation, suggested copy otherwise
