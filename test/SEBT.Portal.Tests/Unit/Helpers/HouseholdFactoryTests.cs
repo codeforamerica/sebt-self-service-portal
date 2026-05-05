@@ -115,7 +115,6 @@ public class HouseholdFactoryTests
         Assert.Equal(ApplicationStatus.Approved, app.ApplicationStatus);
         Assert.NotNull(app.BenefitIssueDate);
         Assert.NotNull(app.BenefitExpirationDate);
-        Assert.NotNull(app.Last4DigitsOfCard);
         Assert.NotNull(app.CaseNumber);
         Assert.True(app.BenefitExpirationDate > app.BenefitIssueDate);
     }
@@ -133,7 +132,6 @@ public class HouseholdFactoryTests
         Assert.Equal(ApplicationStatus.Unknown, app.ApplicationStatus);
         Assert.Null(app.BenefitIssueDate);
         Assert.Null(app.BenefitExpirationDate);
-        Assert.Null(app.Last4DigitsOfCard);
         Assert.Null(app.CaseNumber);
         Assert.Null(app.ApplicationNumber);
     }

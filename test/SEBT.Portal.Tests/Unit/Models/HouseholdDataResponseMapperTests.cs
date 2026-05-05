@@ -30,7 +30,6 @@ public class HouseholdDataResponseMapperTests
                     IssuanceType = IssuanceType.SnapEbtCard,
                     BenefitIssueDate = benefitIssue,
                     BenefitExpirationDate = benefitExpiry,
-                    Last4DigitsOfCard = "1234",
                     Children = new List<Child>
                     {
                         new Child { FirstName = "John", LastName = "Doe" },
@@ -83,7 +82,6 @@ public class HouseholdDataResponseMapperTests
         Assert.Equal(IssuanceType.SnapEbtCard, app.IssuanceType);
         Assert.Equal(benefitIssue, app.BenefitIssueDate);
         Assert.Equal(benefitExpiry, app.BenefitExpirationDate);
-        Assert.Equal("1234", app.Last4DigitsOfCard);
         Assert.Equal(2, app.ChildrenOnApplication);
         Assert.Equal(2, app.Children.Count);
         Assert.Equal("John", app.Children[0].FirstName);

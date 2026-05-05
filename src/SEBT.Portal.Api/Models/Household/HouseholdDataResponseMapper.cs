@@ -85,7 +85,6 @@ public static class HouseholdDataResponseMapper
             ApplicationDate = domain.ApplicationDate,
             BenefitIssueDate = domain.BenefitIssueDate,
             BenefitExpirationDate = domain.BenefitExpirationDate,
-            Last4DigitsOfCard = domain.Last4DigitsOfCard,
             Children = domain.Children.Select(ToResponse).ToList(),
             ChildrenOnApplication = domain.ChildrenOnApplication,
             IssuanceType = issuanceType

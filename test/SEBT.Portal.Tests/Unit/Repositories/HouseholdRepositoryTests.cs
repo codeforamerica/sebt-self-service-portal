@@ -55,7 +55,6 @@ public class HouseholdRepositoryTests
                     ApplicationNumber = "APP-001",
                     CaseNumber = "CASE-001",
                     ApplicationStatus = PluginApplicationStatus.Approved,
-                    Last4DigitsOfCard = "1234",
                     IssuanceType = PluginIssuanceType.SummerEbt,
                     Children = new List<PluginChild>
                     {

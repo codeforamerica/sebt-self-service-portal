@@ -85,7 +85,6 @@ export const TEST_HOUSEHOLD_DATA = {
       applicationStatus: 'Approved',
       benefitIssueDate: '2026-01-08T00:00:00Z',
       benefitExpirationDate: '2026-03-19T00:00:00Z',
-      last4DigitsOfCard: '1234',
       issuanceType: 3, // SnapEbtCard
       children: [
         { caseNumber: 456001, firstName: 'Sophia', lastName: 'Martinez' },

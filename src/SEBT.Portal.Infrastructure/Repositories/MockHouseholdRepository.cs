@@ -225,7 +225,6 @@ public class MockHouseholdRepository : IHouseholdRepository
                 app.IssuanceType = IssuanceType.SnapEbtCard;
                 app.BenefitIssueDate = now.AddDays(-20);
                 app.BenefitExpirationDate = now.AddDays(70);
-                app.Last4DigitsOfCard = "0000";
                 // Set specific children names for test
                 app.Children = new List<Child>
                 {
@@ -312,7 +311,6 @@ public class MockHouseholdRepository : IHouseholdRepository
                 app.IssuanceType = IssuanceType.SummerEbt;
                 app.BenefitIssueDate = now.AddDays(-30);
                 app.BenefitExpirationDate = now.AddDays(60);
-                app.Last4DigitsOfCard = "1234"; // Specific value for test
                 // Set specific children names for test
                 app.Children = new List<Child>
                 {
@@ -572,7 +570,6 @@ public class MockHouseholdRepository : IHouseholdRepository
                 app.IssuanceType = IssuanceType.TanfEbtCard;
                 app.BenefitIssueDate = now.AddDays(-45);
                 app.BenefitExpirationDate = now.AddDays(45);
-                app.Last4DigitsOfCard = "4321";
                 // Set specific children names for test
                 app.Children = new List<Child>
                 {
@@ -682,7 +679,6 @@ public class MockHouseholdRepository : IHouseholdRepository
                 IssuanceType = IssuanceType.SummerEbt,
                 BenefitIssueDate = now.AddDays(-30),
                 BenefitExpirationDate = now.AddDays(60),
-                Last4DigitsOfCard = "5678",
                 Children = new List<Child>
                 {
                     new Child { FirstName = "Emma", LastName = "Wilson" },
@@ -725,7 +721,6 @@ public class MockHouseholdRepository : IHouseholdRepository
                 app.IssuanceType = IssuanceType.SummerEbt;
                 app.BenefitIssueDate = now.AddDays(-20);
                 app.BenefitExpirationDate = now.AddDays(70);
-                app.Last4DigitsOfCard = "3311";
                 app.Children = new List<Child>
                 {
                     new Child { FirstName = "Maya", LastName = "Torres" }
@@ -763,7 +758,6 @@ public class MockHouseholdRepository : IHouseholdRepository
                 app.IssuanceType = IssuanceType.SummerEbt;
                 app.BenefitIssueDate = now.AddDays(-20);
                 app.BenefitExpirationDate = now.AddDays(70);
-                app.Last4DigitsOfCard = "4422";
                 app.Children = new List<Child>
                 {
                     new Child { FirstName = "Lucas", LastName = "Rivera" }
@@ -802,7 +796,6 @@ public class MockHouseholdRepository : IHouseholdRepository
                 app.IssuanceType = IssuanceType.SummerEbt;
                 app.BenefitIssueDate = now.AddDays(-5);
                 app.BenefitExpirationDate = now.AddDays(85);
-                app.Last4DigitsOfCard = "5533";
                 app.Children = new List<Child>
                 {
                     new Child { FirstName = "Sofia", LastName = "Morales" }
@@ -842,7 +835,6 @@ public class MockHouseholdRepository : IHouseholdRepository
                 app.IssuanceType = IssuanceType.SummerEbt;
                 app.BenefitIssueDate = now.AddDays(-40);
                 app.BenefitExpirationDate = now.AddDays(50);
-                app.Last4DigitsOfCard = "6644";
                 app.Children = new List<Child>
                 {
                     new Child { FirstName = "Diego", LastName = "Navarro" }
@@ -884,7 +876,6 @@ public class MockHouseholdRepository : IHouseholdRepository
                 app.IssuanceType = IssuanceType.SummerEbt;
                 app.BenefitIssueDate = now.AddDays(-25);
                 app.BenefitExpirationDate = now.AddDays(65);
-                app.Last4DigitsOfCard = "7755";
                 app.Children = new List<Child>
                 {
                     new Child { FirstName = "Camila", LastName = "Ortiz" }
@@ -926,7 +917,6 @@ public class MockHouseholdRepository : IHouseholdRepository
                     app.IssuanceType = IssuanceType.SummerEbt;
                     app.BenefitIssueDate = now.AddDays(-25);
                     app.BenefitExpirationDate = now.AddDays(65);
-                    app.Last4DigitsOfCard = "7777";
                     app.Children = new List<Child>
                     {
                     new Child { FirstName = "Noah", LastName = "Reyes" },
@@ -968,7 +958,6 @@ public class MockHouseholdRepository : IHouseholdRepository
                     app.IssuanceType = IssuanceType.SummerEbt;
                     app.BenefitIssueDate = now.AddDays(-30);
                     app.BenefitExpirationDate = now.AddDays(60);
-                    app.Last4DigitsOfCard = "8888";
                     app.Children = new List<Child>
                     {
                     new Child { FirstName = "Ethan", LastName = "Park" }
@@ -1007,7 +996,6 @@ public class MockHouseholdRepository : IHouseholdRepository
                     app.IssuanceType = IssuanceType.SummerEbt;
                     app.BenefitIssueDate = now.AddDays(-20);
                     app.BenefitExpirationDate = now.AddDays(70);
-                    app.Last4DigitsOfCard = "5599";
                     app.Children = new List<Child>
                     {
                         new Child { FirstName = "Aiden", LastName = "Chen" },
@@ -1202,7 +1190,6 @@ public class MockHouseholdRepository : IHouseholdRepository
                 ApplicationStatus = a.ApplicationStatus,
                 BenefitIssueDate = a.BenefitIssueDate,
                 BenefitExpirationDate = a.BenefitExpirationDate,
-                Last4DigitsOfCard = a.Last4DigitsOfCard,
                 // If application-level issuance type isn't set, inherit from the
                 // household-level BenefitIssuanceType (both enums share the same values)
                 IssuanceType = a.IssuanceType != IssuanceType.Unknown

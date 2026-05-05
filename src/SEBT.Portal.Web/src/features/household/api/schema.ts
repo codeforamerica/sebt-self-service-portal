@@ -199,7 +199,6 @@ export const ApplicationSchema = z.object({
   applicationDate: z.string().nullable().optional(),
   benefitIssueDate: z.string().nullable().optional(),
   benefitExpirationDate: z.string().nullable().optional(),
-  last4DigitsOfCard: z.string().nullable().optional(),
   children: z.array(ChildSchema),
   childrenOnApplication: z.number(),
   issuanceType: IssuanceTypeSchema.nullable().optional()

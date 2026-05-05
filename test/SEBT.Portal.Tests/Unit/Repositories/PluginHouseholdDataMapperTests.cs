@@ -107,7 +107,6 @@ public class PluginHouseholdDataMapperTests
                     ApplicationNumber = "APP-001",
                     CaseNumber = "CASE-001",
                     ApplicationStatus = ApplicationStatus.Approved,
-                    Last4DigitsOfCard = "1234",
                     IssuanceType = IssuanceType.SummerEbt,
                     Children = new List<Child>
                     {
@@ -125,7 +124,6 @@ public class PluginHouseholdDataMapperTests
         Assert.Equal("APP-001", app.ApplicationNumber);
         Assert.Equal("CASE-001", app.CaseNumber);
         Assert.Equal(ApplicationStatus.Approved, app.ApplicationStatus);
-        Assert.Equal("1234", app.Last4DigitsOfCard);
         Assert.Equal(IssuanceType.SummerEbt, app.IssuanceType);
         Assert.Single(app.Children);
         Assert.Equal("Maria", app.Children[0].FirstName);

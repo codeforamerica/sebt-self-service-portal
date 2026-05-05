@@ -31,7 +31,6 @@ const TEST_HOUSEHOLD_DATA = {
       applicationStatus: 'Approved',
       benefitIssueDate: '2026-01-15T00:00:00Z',
       benefitExpirationDate: '2026-06-30T00:00:00Z',
-      last4DigitsOfCard: '1234',
       issuanceType: 1,
       children: [{ firstName: 'Test', lastName: 'Child' }],
       childrenOnApplication: 1

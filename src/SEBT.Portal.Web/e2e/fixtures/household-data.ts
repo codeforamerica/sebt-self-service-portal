@@ -29,7 +29,6 @@ export interface MockApplication {
   applicationStatus: ApplicationStatusInt
   benefitIssueDate: string
   benefitExpirationDate: string
-  last4DigitsOfCard: string | null
   children: Array<{ caseNumber: number; firstName: string; lastName: string }>
   childrenOnApplication: number
   issuanceType: IssuanceTypeInt
@@ -95,7 +94,6 @@ interface ApplicationOptions {
   applicationNumber?: string
   caseNumber?: string
   issuanceType?: IssuanceTypeInt
-  last4DigitsOfCard?: string | null
   children?: Array<{ caseNumber: number; firstName: string; lastName: string }>
 }
 
@@ -106,7 +104,6 @@ export function makeApplication(overrides: ApplicationOptions = {}): MockApplica
     applicationStatus: 2, // Approved
     benefitIssueDate: '2026-01-08T00:00:00Z',
     benefitExpirationDate: '2026-09-30T00:00:00Z',
-    last4DigitsOfCard: '1234',
     children: [{ caseNumber: 456001, firstName: 'John', lastName: 'Doe' }],
     childrenOnApplication: 1,
     issuanceType: 1, // SummerEbt

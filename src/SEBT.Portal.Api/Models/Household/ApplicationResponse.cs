@@ -41,11 +41,6 @@ public record ApplicationResponse
     public DateTime? BenefitExpirationDate { get; init; }
 
     /// <summary>
-    /// The last 4 digits of the card the benefit is issued to for this application.
-    /// </summary>
-    public string? Last4DigitsOfCard { get; init; }
-
-    /// <summary>
     /// The list of children on this application.
     /// </summary>
     public IReadOnlyList<ChildResponse> Children { get; init; } = Array.Empty<ChildResponse>();

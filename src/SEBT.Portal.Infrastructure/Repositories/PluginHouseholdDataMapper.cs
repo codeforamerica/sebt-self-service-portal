@@ -133,7 +133,6 @@ internal static class PluginHouseholdDataMapper
             ApplicationStatus = (ApplicationStatus)(GetProp(t, source, nameof(Application.ApplicationStatus)) ?? (int)ApplicationStatus.Unknown),
             BenefitIssueDate = GetProp<DateTime?>(t, source, nameof(Application.BenefitIssueDate)),
             BenefitExpirationDate = GetProp<DateTime?>(t, source, nameof(Application.BenefitExpirationDate)),
-            Last4DigitsOfCard = GetProp<string>(t, source, nameof(Application.Last4DigitsOfCard)),
             IssuanceType = (IssuanceType)(GetProp(t, source, nameof(Application.IssuanceType)) ?? (int)IssuanceType.Unknown),
             Children = children
         };

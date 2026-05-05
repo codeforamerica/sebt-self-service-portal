@@ -163,7 +163,6 @@ public static class HouseholdFactory
             application.CaseNumber = $"CASE-{faker.Random.Number(100000, 999999)}";
             application.BenefitIssueDate = faker.Date.Recent(120);
             application.BenefitExpirationDate = application.BenefitIssueDate.Value.AddDays(faker.Random.Int(30, 365));
-            application.Last4DigitsOfCard = faker.Random.Number(1000, 9999).ToString();
         }
         else if (status == ApplicationStatus.Denied)
         {

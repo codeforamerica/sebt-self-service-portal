@@ -6,34 +6,57 @@ Cross-referenced all fallback strings against both CSVs and generated JSON files
 
 ---
 
-## DC — Empty Keys (CSV rows exist, DC English column empty)
+## DC — `dashboard.json` keys with empty DC English column
 
-CO English and Spanish columns are populated for all of these. DC just needs English values added.
+Verified against `packages/design-system/content/states/dc.csv` and the rendered components in `src/SEBT.Portal.Web/src/features/household/components/{CardStatusDisplay,CardStatusTimeline}/`.
 
-#### `en/dc/dashboard.json` — 2 empty (used by code, have fallbacks) + 12 unused placeholders
+In dc.csv, the message rows (descriptions, second column) have an empty "DC English Current" column for the keys below — the SOURCE column has English copy but the locale generator only reads the per-state column. For each, code in `CardStatusDisplay.tsx` or `CardStatusTimeline.tsx` falls back to a hardcoded English string from `LABEL_FALLBACK`, `DESCRIPTION_FALLBACK`, or `REQUESTED_*_FALLBACK`.
 
-**Used by code (have English fallbacks, low priority):**
+**Used by `CardStatusDisplay.tsx` `STATUS_CONFIG` (label rendered for each UI bucket):**
 
-| Key                                | Fallback in code                                                         | CO English value | CSV verification                          |
-| ---------------------------------- | ------------------------------------------------------------------------ | ---------------- | ----------------------------------------- |
-| `cardTableStatusActive`            | "Active"                                                                 | "Active"         | dc.csv:178 — DC col 1 empty, CO has value |
-| `cardTableStatusMessageRequested1` | "We've requested a new card... within 2–3 weeks."                       | (empty)          | Now used by simplified CardStatusTimeline; both DC and CO English Current columns empty in CSV — code falls back to state-neutral English |
+| Key                            | DC col 1 | CO col 1 | Code fallback when key empty                                |
+| ------------------------------ | -------- | -------- | ----------------------------------------------------------- |
+| `cardTableStatusActive`        | "Active" | "Active" | `LABEL_FALLBACK.Active = "Active"`                          |
+| `cardTableStatusInactive`      | "Inactive" | "Inactive" | `LABEL_FALLBACK.Inactive = "Inactive"`                  |
+| `cardTableStatusFrozen`        | "Frozen" | "Frozen" | `LABEL_FALLBACK.Frozen = "Frozen"`                          |
+| `cardTableStatusUndeliverable` | "Undeliverable" | "Undeliverable" | `LABEL_FALLBACK.Undeliverable = "Undeliverable"` |
 
-**Not referenced by any component (future/placeholder rows — no action needed):**
+**Used by `CardStatusDisplay.tsx` `DESCRIPTION_KEY` (paragraph rendered below the badge), DC col 1 empty, CO col 1 has English content:**
 
-| Key                                   | Context                   |
-| ------------------------------------- | ------------------------- |
-| `cardTableStatusInactive`             | Not used by any component |
-| `cardTableStatusFrozen`               | Not used by any component |
-| `cardTableStatusUndeliverable`        | Not used by any component |
-| `cardTableStatusMessageRequested2`    | Not used by any component |
-| `cardTableStatusMessageActive`        | Not used by any component |
-| `cardTableStatusMessageInactive`      | Not used by any component |
-| `cardTableStatusMessageFrozen`        | Not used by any component |
-| `cardTableStatusMessageUndeliverable` | Not used by any component |
-| `cardTableActionUpdateRequest`        | Not used by any component |
+| Key                                   | Mapped enum values                                | Code fallback when key empty                                                                                       |
+| ------------------------------------- | ------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------ |
+| `cardTableStatusMessageActive`        | `Active`                                          | `DESCRIPTION_FALLBACK.Active` (English EBT Customer Service text)                                                  |
+| `cardTableStatusMessageInactive`      | `Lost`, `Stolen`, `Damaged`                       | `DESCRIPTION_FALLBACK.Lost`/`Stolen`/`Damaged` ("This card was reported as lost, stolen, or damaged...")           |
+| `cardTableStatusMessageDeactivated`   | `DeactivatedByState`, `NotActivated`              | `DESCRIPTION_FALLBACK.DeactivatedByState` and `.NotActivated` (per-status English copy)                            |
+| `cardTableStatusMessageFrozen`        | `Frozen`                                          | `DESCRIPTION_FALLBACK.Frozen` ("This card is frozen. Contact customer service for help.")                          |
+| `cardTableStatusMessageUndeliverable` | `Undeliverable`                                   | `DESCRIPTION_FALLBACK.Undeliverable` ("This card was returned as undeliverable...")                                |
 
-Note: as of DC-256, `cardTableStatusMailed`, `cardTableStatusMessageMailed`, `cardTableStatusIssued`, `cardTableStatusDeactivated`, and `cardTableStatusMessageDeactivated` are no longer referenced by any component — they can be retired from the source spreadsheet.
+**Used by `CardStatusTimeline.tsx` (cooldown notice after a replacement request):**
+
+| Key                                | DC col 1                          | CO col 1 | Code fallback when key empty                                                          |
+| ---------------------------------- | --------------------------------- | -------- | ------------------------------------------------------------------------------------- |
+| `cardTableStatusRequested`         | "Requested on [MM/DD/YYYY]"       | (empty)  | `REQUESTED_LABEL_FALLBACK = "Requested on [MM/DD/YYYY]"`                              |
+| `cardTableStatusMessageRequested1` | (empty)                           | (empty)  | `REQUESTED_MESSAGE_FALLBACK` (state-neutral English; "We've requested a new card...") |
+
+**Truly not referenced by any component (rows can be retired from the spreadsheet):**
+
+| Key                                | Why it's unused                                                                                |
+| ---------------------------------- | ---------------------------------------------------------------------------------------------- |
+| `cardTableStatusMessageRequested2` | Was for distinguishing replacement vs new-enrollee cooldown copy; never wired to a render path |
+| `cardTableActionUpdateRequest`     | No component renders this key                                                                  |
+| `cardTableStatusMailed`            | Was used by the old multi-step `CardStatusTimeline`; removed in DC-256                          |
+| `cardTableStatusMessageMailed`     | Same — old timeline only                                                                       |
+| `cardTableStatusIssued`            | Was used by the old timeline as the label for `Mailed` status; removed in DC-256                |
+| `cardTableStatusDeactivated`       | Was the label for the now-removed `CardStatus.Deactivated` enum value; removed in DC-256        |
+
+**Note on `cardTableStatusMessageDeactivated`:** Despite the value name suggesting otherwise, this key IS still used. `CardStatusDisplay.DESCRIPTION_KEY` maps both `DeactivatedByState` and `NotActivated` to it. Don't retire the row.
+
+**Keys missing from CSV entirely (no row exists, code falls back):**
+
+| Key                              | Suggested English                                  | Used by                                                                                                                                                                            |
+| -------------------------------- | -------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `cardTableStatusProcessed`       | "Processed on [MM/DD/YYYY]"                        | `CardStatusDisplay.STATUS_CONFIG.Processed`. DC's primary card status when an issue date is present. Code falls back to `LABEL_FALLBACK.Processed = "Processed on [MM/DD/YYYY]"`. |
+| `cardTableStatusMessageProcessed` | "Your card has been processed and is on its way." | `CardStatusDisplay.DESCRIPTION_KEY.Processed`. Code falls back to `DESCRIPTION_FALLBACK.Processed`.                                                                              |
 
 #### `en/dc/editContactPreferences.json` — 1 empty
 
@@ -88,14 +111,7 @@ These CSV rows exist and have DC English values. CO needs its own values added t
 
 ## Keys Missing from CSV (no row exists — need new CSV rows)
 
-### Both states — DC-256 introduces `Processed` UI bucket
-
-| Key                              | Suggested English                                       | Notes                                                                                                                |
-| -------------------------------- | ------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------- |
-| `cardTableStatusProcessed`       | "Processed on [MM/DD/YYYY]"                             | Label for DC's primary card status (data shows when issue date present). Code falls back to `LABEL_FALLBACK` until CSV row is added. |
-| `cardTableStatusMessageProcessed` | "Your card has been processed and is on its way."      | Description. Code falls back to `DESCRIPTION_FALLBACK`.                                                              |
-
-
+(The DC-256 `Processed` keys listed in the DC dashboard.json section above also belong here — they're new and need CSV rows added.)
 
 All items below are wired in code with `t('key', 'English fallback')` so they render correctly in English. They need CSV rows added for proper Spanish translation support.
 
@@ -183,22 +199,25 @@ These pages were coded by us, not sourced from the state partner CSV. No CSV row
 
 ## Summary
 
-| Category                                    | DC  | CO  | Both |
-| ------------------------------------------- | --- | --- | ---- |
-| Empty keys used by code (have fallbacks)    | 2   | 15  | —    |
-| Empty keys not referenced (placeholders)    | 9   | —   | —    |
-| Empty keys (needs value in CSV)             | 2   | —   | —    |
-| Missing CSV rows (code wired with fallback) | 1   | 3   | 25   |
-| Missing CSV rows (still hardcoded)          | —   | 7   | 1    |
-| Data quality issues                         | —   | —   | 5    |
+| Category                                                              | DC  | CO  | Both |
+| --------------------------------------------------------------------- | --- | --- | ---- |
+| `dashboard.json` keys used by code with fallbacks (DC col 1 empty)    | 11  | 1   | —    |
+| `dashboard.json` keys truly unreferenced (rows can be retired)        | 6   | —   | —    |
+| `dashboard.json` keys missing from CSV entirely (need new CSV rows)   | —   | —   | 2    |
+| Other empty keys (other JSON files)                                   | 3   | 15  | —    |
+| Missing CSV rows (code wired with fallback)                           | 1   | 3   | 23   |
+| Missing CSV rows (still hardcoded)                                    | —   | 7   | 1    |
+| Data quality issues                                                   | —   | —   | 5    |
 
 **Remaining work (needs CSV/content changes):**
 
-1. **CO common footer values** (10 empty keys) — CSV rows exist, CO column just needs filling
-2. **DC card status values** (2 used keys with code fallbacks) — low priority, fallbacks render correctly
-3. **Add new CSV rows** for wired-with-fallback keys (27 items) — English works, needed for Spanish
-4. **Wire `HelpSection.tsx`** hardcoded strings (7 items) — needs CSV rows first, then code wiring
-5. **Wire `IdProofingForm.tsx` `optionLabelNone`** — needs CSV row first, then code wiring
-6. **Fix `"Borarr"` typo** and `"!!!"` placeholder in CSVs
-7. **Fix broken CSV row** `"VALIDATION -"` to generate proper key name
-8. **Fix DC common.json column shift** — CSV alignment issue causing wrong values in DC footer keys
+1. **DC dashboard message values** (11 keys with empty DC col 1) — CSV rows exist, code falls back to English; populate DC col 1 for proper rendering
+2. **`cardTableStatusProcessed` and `cardTableStatusMessageProcessed`** — new keys introduced by DC-256, need CSV rows added (both DC and CO English + Spanish)
+3. **Retire 6 unreferenced rows** — `cardTableStatusMessageRequested2`, `cardTableActionUpdateRequest`, `cardTableStatusMailed`, `cardTableStatusMessageMailed`, `cardTableStatusIssued`, `cardTableStatusDeactivated`
+4. **CO common footer values** (10 empty keys) — CSV rows exist, CO column just needs filling
+5. **Add new CSV rows** for other wired-with-fallback keys (~25 items: ARIA labels, error pages, dashboard content) — English works, needed for Spanish
+6. **Wire `HelpSection.tsx`** hardcoded strings (7 items) — needs CSV rows first, then code wiring
+7. **Wire `IdProofingForm.tsx` `optionLabelNone`** — needs CSV row first, then code wiring
+8. **Fix `"Borarr"` typo** and `"!!!"` placeholder in CSVs
+9. **Fix broken CSV row** `"VALIDATION -"` to generate proper key name
+10. **Fix DC common.json column shift** — CSV alignment issue causing wrong values in DC footer keys

@@ -41,7 +41,6 @@ export function createMockApplication(overrides?: Partial<Application>): Applica
     applicationStatus: 'Approved',
     benefitIssueDate: '2026-01-08T00:00:00Z',
     benefitExpirationDate: '2026-03-19T00:00:00Z',
-    last4DigitsOfCard: '1234',
     children: [createMockChild()],
     childrenOnApplication: 1,
     ...overrides
