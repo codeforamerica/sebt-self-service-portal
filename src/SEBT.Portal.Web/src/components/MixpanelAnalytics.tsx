@@ -9,9 +9,19 @@ interface MixpanelAnalyticsProps {
   nonce?: string
 }
 
+// Mixpanel's official boot snippet: defines `window.mixpanel` as a queue stub
+// (with init/track/etc. already attached) and asynchronously loads the full
+// library, which replays the queued calls once it executes. Pulling in the
+// CDN script directly skips this stub, so any caller that touches `mixpanel.*`
+// before the library finishes loading hits "object not initialized".
+// Source: https://docs.mixpanel.com/docs/quickstart/install-mixpanel#javascript
+const MIXPANEL_BOOT_SNIPPET = `(function(c,a){if(!a.__SV){var b=window;try{var d,m,j,k=b.location,f=k.hash;d=function(a,b){return(m=a.match(RegExp(b+"=([^&]*)")))?m[1]:null};f&&d(f,"state")&&(j=JSON.parse(decodeURIComponent(d(f,"state"))),"mpeditor"===j.action&&(b.sessionStorage.setItem("_mpcehash",f),history.replaceState(j.desiredHash||"",c.title,k.pathname+k.search)))}catch(n){}var l,h;window.mixpanel=a;a._i=[];a.init=function(b,d,g){function c(b,i){var a=i.split(".");2==a.length&&(b=b[a[0]],i=a[1]);b[i]=function(){b.push([i].concat(Array.prototype.slice.call(arguments,0)))}}var e=a;"undefined"!==typeof g?e=a[g]=[]:g="mixpanel";e.people=e.people||[];e.toString=function(b){var a="mixpanel";"mixpanel"!==g&&(a+="."+g);b||(a+=" (stub)");return a};e.people.toString=function(){return e.toString(1)+".people (stub)"};l="disable time_event track track_pageview track_links track_forms track_with_groups add_group set_group remove_group register register_once alias unregister identify name_tag set_config reset opt_in_tracking opt_out_tracking has_opted_in_tracking has_opted_out_tracking clear_opt_in_out_tracking start_batch_senders people.set people.set_once people.unset people.increment people.append people.union people.track_charge people.clear_charges people.delete_user people.remove".split(" ");for(h=0;h<l.length;h++)c(e,l[h]);var f="set set_once union unset remove delete".split(" ");e.get_group=function(){function a(c){b[c]=function(){call2_args=arguments;call2=[c].concat(Array.prototype.slice.call(call2_args,0));e.push([d,call2])}}for(var b={},d=["get_group"].concat(Array.prototype.slice.call(arguments,0)),c=0;c<f.length;c++)a(f[c]);return b};a._i.push([b,d,g])};a.__SV=1.5;b=c.createElement("script");b.type="text/javascript";b.async=!0;b.src="https://cdn.mxpnl.com/libs/mixpanel-2-latest.min.js";d=c.getElementsByTagName("script")[0];d.parentNode.insertBefore(b,d)}})(document,window.mixpanel||[]);`
+
 export function MixpanelAnalytics({ token, nonce }: MixpanelAnalyticsProps) {
   const teardownRef = useRef<(() => void) | null>(null)
 
+  // Detach the bridge's DOM listeners on unmount so they don't leak across
+  // hot reloads / route changes that remount the analytics root.
   useEffect(() => {
     return () => {
       teardownRef.current?.()
@@ -19,15 +29,16 @@ export function MixpanelAnalytics({ token, nonce }: MixpanelAnalyticsProps) {
     }
   }, [token])
 
-  const scriptProps = {
-    src: 'https://cdn.mxpnl.com/libs/mixpanel-2-latest.min.js',
-    strategy: 'afterInteractive' as const,
-    nonce,
-    onLoad: () => {
-      if (teardownRef.current) return
-      teardownRef.current = initMixpanelBridge(token)
-    }
-  }
-
-  return <Script {...scriptProps} />
+  return (
+    <Script
+      id="mixpanel-boot-snippet"
+      strategy="afterInteractive"
+      nonce={nonce}
+      dangerouslySetInnerHTML={{ __html: MIXPANEL_BOOT_SNIPPET }}
+      onReady={() => {
+        if (teardownRef.current) return
+        teardownRef.current = initMixpanelBridge(token)
+      }}
+    />
+  )
 }
