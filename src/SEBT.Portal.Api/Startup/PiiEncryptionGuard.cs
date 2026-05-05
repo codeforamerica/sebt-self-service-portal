@@ -45,9 +45,22 @@ public static class PiiEncryptionGuard
 
         foreach (var entry in settings.Keys)
         {
-            if (entry == null || string.IsNullOrWhiteSpace(entry.KeyMaterialBase64))
+            if (entry == null)
             {
-                continue;
+                throw new InvalidOperationException(
+                    "PiiEncryption:Keys must not contain null entries in production.");
+            }
+
+            if (string.IsNullOrWhiteSpace(entry.KeyId))
+            {
+                throw new InvalidOperationException(
+                    "Each PiiEncryption:Keys entry must have a non-empty KeyId in production.");
+            }
+
+            if (string.IsNullOrWhiteSpace(entry.KeyMaterialBase64))
+            {
+                throw new InvalidOperationException(
+                    "Each PiiEncryption:Keys entry must have KeyMaterialBase64 set in production.");
             }
 
             var material = entry.KeyMaterialBase64.Trim();

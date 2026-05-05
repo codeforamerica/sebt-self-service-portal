@@ -1,4 +1,4 @@
-# 14. PII encryption at rest (AES-256-GCM + key rotation)
+# 15. PII encryption at rest (AES-256-GCM + key rotation)
 
 Date: 2026-05-04
 
@@ -33,6 +33,8 @@ We also need email lookup by equality in SQL without storing a searchable plaint
 - **Pros:** Strong confidentiality at rest for reversible PII, forward-compatible key rotation, indexed email lookup without plaintext email in the database, and a single encryption path for future columns that need the same pattern.
 - **Cons:** Key material must be managed like other secrets (rotation runbook, secure distribution). Decryption is required on every read path touched by repositories; performance impact is small relative to I/O but must be kept in hot paths. Production startup rejects placeholder `PiiEncryption` keys (`PiiEncryptionGuard`), mirroring `IdentifierHasherGuard`.
 - **Migration:** SQL Server `date`-typed `Users.DateOfBirth` is converted to `nvarchar` via a migration batch that uses dynamic SQL so column renames and copies parse correctly. Down-migration is intentionally unsupported once ciphertext is written.
+- **Email lookup keying:** `EmailLookupHasher` derives its HMAC key from the same `IdentifierHasher:SecretKey` used for other deterministic hashes, with a distinct domain prefix so message formats do not collide. Rotating that secret affects **both** identifier hashing and email lookup hashes — plan coordinated rotation or introduce a dedicated secret later if isolation is required.
+- **Backfill failures:** If `PiiPlaintextEncryptionBackfill` throws during startup, the failure is logged at **error** severity (structured logs / Datadog). The API process still starts so transient DB issues do not brick the service; **operations should alert on that log** and re-run or fix the underlying issue until backfill completes, since plaintext-at-rest rows may remain until then.
 
 ## References
 

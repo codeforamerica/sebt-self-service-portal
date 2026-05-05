@@ -57,6 +57,51 @@ public class PiiEncryptionGuardTests
     }
 
     [Fact]
+    public void ValidateForProduction_WhenNullKeyEntry_Throws()
+    {
+        var ex = Assert.Throws<InvalidOperationException>(() =>
+            PiiEncryptionGuard.ValidateForProduction(
+                new PiiEncryptionSettings
+                {
+                    ActiveKeyId = "prod-key",
+                    Keys = [null!, new PiiEncryptionKeySetting { KeyId = "prod-key", KeyMaterialBase64 = "YjJiYmJiYmJiYmJiYmJiYmJiYmJiYmJiYmJiYmJiYmI=" }]
+                }));
+        Assert.Contains("null", ex.Message, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public void ValidateForProduction_WhenEmptyKeyId_Throws()
+    {
+        var ex = Assert.Throws<InvalidOperationException>(() =>
+            PiiEncryptionGuard.ValidateForProduction(
+                new PiiEncryptionSettings
+                {
+                    ActiveKeyId = "prod-key",
+                    Keys =
+                    [
+                        new PiiEncryptionKeySetting { KeyId = "   ", KeyMaterialBase64 = "YjJiYmJiYmJiYmJiYmJiYmJiYmJiYmJiYmJiYmJiYmI=" }
+                    ]
+                }));
+        Assert.Contains("KeyId", ex.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void ValidateForProduction_WhenEmptyKeyMaterial_Throws()
+    {
+        var ex = Assert.Throws<InvalidOperationException>(() =>
+            PiiEncryptionGuard.ValidateForProduction(
+                new PiiEncryptionSettings
+                {
+                    ActiveKeyId = "prod-key",
+                    Keys =
+                    [
+                        new PiiEncryptionKeySetting { KeyId = "prod-key", KeyMaterialBase64 = "   " }
+                    ]
+                }));
+        Assert.Contains("KeyMaterialBase64", ex.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void ValidateForProduction_WhenPlaceholderKeyMaterial_Throws()
     {
         var ex = Assert.Throws<InvalidOperationException>(() =>

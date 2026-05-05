@@ -440,7 +440,9 @@ try
     }
     catch (Exception backfillEx)
     {
-        Log.Warning(backfillEx, "PII ciphertext backfill step failed.");
+        // Error severity so deploy logs / Datadog can alert; app still starts so a transient DB
+        // blip does not take down the service — see docs/adr/0015-pii-encryption-at-rest.md.
+        Log.Error(backfillEx, "PII ciphertext backfill step failed.");
     }
 
     var seedingSettings = app.Configuration.GetSection(SeedingSettings.SectionName).Get<SeedingSettings>();
