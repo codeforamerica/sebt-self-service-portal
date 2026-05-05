@@ -8,8 +8,24 @@ import { useTranslation } from 'react-i18next'
 import { Alert, Button, getState } from '@sebt/design-system'
 
 import { useUpdateAddress } from '../../api'
-import type { UpdateAddressRequest } from '../../api/schema'
+import type { AddressResponse, UpdateAddressRequest } from '../../api/schema'
 import { useAddressFlow } from '../../context'
+
+function toUpdateAddressRequestOrNull(
+  address: AddressResponse | null | undefined
+): UpdateAddressRequest | null {
+  if (!address?.streetAddress1 || !address.city || !address.state || !address.postalCode) {
+    return null
+  }
+
+  return {
+    streetAddress1: address.streetAddress1,
+    streetAddress2: address.streetAddress2 ?? undefined,
+    city: address.city,
+    state: address.state,
+    postalCode: address.postalCode
+  }
+}
 
 export function SuggestedAddress() {
   const { t } = useTranslation('confirmInfo')
@@ -55,6 +71,12 @@ export function SuggestedAddress() {
         const result = await updateAddress.mutateAsync(selectedAddress)
         if (result.status !== 'valid') {
           setSubmitError(t('addressUpdateError', 'Something went wrong. Please try again.'))
+          return
+        }
+        const normalized = toUpdateAddressRequestOrNull(result.normalizedAddress)
+        if (normalized) {
+          flushSync(() => setAddress(normalized))
+          router.push(continuePath)
           return
         }
       } catch {

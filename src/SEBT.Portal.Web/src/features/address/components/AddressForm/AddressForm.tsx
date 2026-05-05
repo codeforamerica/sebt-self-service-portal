@@ -10,6 +10,7 @@ import { Alert, Button, InputField, getState, getStateLinks } from '@sebt/design
 import type { Address } from '@/features/household/api'
 
 import { isValidZip, useUpdateAddress } from '../../api'
+import type { AddressResponse, UpdateAddressRequest } from '../../api/schema'
 import { useAddressFlow } from '../../context'
 import { AddressAutocomplete, type SelectedAddress } from '../AddressAutocomplete'
 import { STATE_ABBREVIATIONS, US_STATE_OPTIONS } from './usStates'
@@ -52,6 +53,22 @@ function resolveStateValue(value: string | null | undefined, fallback: string): 
 }
 
 const DEFAULT_REDIRECT = '/profile/address/replacement-cards'
+
+function toUpdateAddressRequestOrNull(
+  address: AddressResponse | null | undefined
+): UpdateAddressRequest | null {
+  if (!address?.streetAddress1 || !address.city || !address.state || !address.postalCode) {
+    return null
+  }
+
+  return {
+    streetAddress1: address.streetAddress1,
+    streetAddress2: address.streetAddress2 ?? undefined,
+    city: address.city,
+    state: address.state,
+    postalCode: address.postalCode
+  }
+}
 
 export function AddressForm({ initialAddress, redirectPath }: AddressFormProps) {
   const { t } = useTranslation('confirmInfo')
@@ -138,7 +155,7 @@ export function AddressForm({ initialAddress, redirectPath }: AddressFormProps) 
       const result = await updateAddress.mutateAsync(addressData)
 
       if (result.status === 'valid') {
-        setAddress(addressData)
+        setAddress(toUpdateAddressRequestOrNull(result.normalizedAddress) ?? addressData)
         router.push(redirectPath ?? DEFAULT_REDIRECT)
         return
       }

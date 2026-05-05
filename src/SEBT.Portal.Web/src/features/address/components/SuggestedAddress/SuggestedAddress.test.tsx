@@ -99,6 +99,7 @@ function ContextInspector() {
     <div data-testid="context-inspector">
       <span data-testid="has-validation-result">{validationResult ? 'yes' : 'no'}</span>
       <span data-testid="has-address">{address ? 'yes' : 'no'}</span>
+      <span data-testid="address-json">{address ? JSON.stringify(address) : ''}</span>
     </div>
   )
 }
@@ -256,6 +257,39 @@ describe('SuggestedAddress', () => {
       expect(screen.getByTestId('has-validation-result')).toHaveTextContent('yes')
       // address should now be set
       expect(screen.getByTestId('has-address')).toHaveTextContent('yes')
+    })
+  })
+
+  it('stores normalized address from API response when suggested address is accepted', async () => {
+    server.use(
+      http.put('/api/household/address', () =>
+        HttpResponse.json({
+          status: 'valid',
+          normalizedAddress: {
+            streetAddress1: '123 MLK JR AVE NW',
+            streetAddress2: null,
+            city: 'WASHINGTON',
+            state: 'DC',
+            postalCode: '20001-0001'
+          }
+        })
+      )
+    )
+
+    const { user } = renderSuggestedAddress(mockSuggestionResult, mockEntered, {
+      includeInspector: true
+    })
+
+    const continueButton = screen.getByRole('button', { name: /continue/i })
+    await user.click(continueButton)
+
+    await waitFor(() => {
+      expect(screen.getByTestId('has-address')).toHaveTextContent('yes')
+      const contextData = JSON.parse(screen.getByTestId('address-json').textContent ?? '{}')
+      expect(contextData.streetAddress1).toBe('123 MLK JR AVE NW')
+      expect(contextData.city).toBe('WASHINGTON')
+      expect(contextData.postalCode).toBe('20001-0001')
+      expect(mockPush).toHaveBeenCalledWith('/profile/address/replacement-cards')
     })
   })
 
