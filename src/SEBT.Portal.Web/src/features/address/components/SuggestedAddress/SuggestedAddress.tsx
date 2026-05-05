@@ -5,8 +5,9 @@ import { useState } from 'react'
 import { flushSync } from 'react-dom'
 import { useTranslation } from 'react-i18next'
 
-import { Button, getState } from '@sebt/design-system'
+import { Alert, Button, getState } from '@sebt/design-system'
 
+import { useUpdateAddress } from '../../api'
 import type { UpdateAddressRequest } from '../../api/schema'
 import { useAddressFlow } from '../../context'
 
@@ -17,7 +18,9 @@ export function SuggestedAddress() {
   const { t: tCommon } = useTranslation('common')
   const router = useRouter()
   const currentState = getState()
+  const updateAddress = useUpdateAddress()
   const { validationResult, enteredAddress, setAddress, clearValidationResult } = useAddressFlow()
+  const [submitError, setSubmitError] = useState<string | null>(null)
 
   const isAbbreviated = validationResult?.reason === 'abbreviated' && currentState === 'dc'
 
@@ -34,12 +37,29 @@ export function SuggestedAddress() {
 
   const [selection, setSelection] = useState<'suggested' | 'entered'>('suggested')
 
-  function handleContinue() {
+  async function handleContinue() {
     const selectedAddress = selection === 'suggested' ? suggestedAddr : enteredAddress
-    if (selectedAddress) {
-      flushSync(() => setAddress(selectedAddress))
-      router.push(DEFAULT_REDIRECT)
+    if (!selectedAddress) {
+      return
     }
+
+    if (selection === 'suggested') {
+      setSubmitError(null)
+
+      try {
+        const result = await updateAddress.mutateAsync(selectedAddress)
+        if (result.status !== 'valid') {
+          setSubmitError(t('addressUpdateError', 'Something went wrong. Please try again.'))
+          return
+        }
+      } catch {
+        setSubmitError(t('addressUpdateError', 'Something went wrong. Please try again.'))
+        return
+      }
+    }
+
+    flushSync(() => setAddress(selectedAddress))
+    router.push(DEFAULT_REDIRECT)
   }
 
   function handleBack() {
@@ -92,6 +112,16 @@ export function SuggestedAddress() {
       <h1 className="font-sans-xl text-primary">{title}</h1>
       <p>{body}</p>
       {bodyDetail && <p>{bodyDetail}</p>}
+
+      {submitError && (
+        <Alert
+          variant="error"
+          slim
+          className="margin-bottom-2"
+        >
+          {submitError}
+        </Alert>
+      )}
 
       <p className="font-sans-3xs text-base margin-bottom-0">
         {t('requiredFieldNote', 'Asterisks (*) indicate a required field.')}
@@ -153,8 +183,11 @@ export function SuggestedAddress() {
         <Button
           type="button"
           onClick={handleContinue}
+          disabled={updateAddress.isPending}
         >
-          {tCommon('continue', 'Continue')}
+          {updateAddress.isPending
+            ? tCommon('loading', 'Loading...')
+            : tCommon('continue', 'Continue')}
         </Button>
       </div>
     </div>
