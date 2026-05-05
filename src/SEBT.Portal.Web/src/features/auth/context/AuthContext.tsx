@@ -25,6 +25,11 @@ export interface SessionInfo {
   idProofingStatus: number | null
   idProofingCompletedAt: number | null
   idProofingExpiresAt: number | null
+  isCoLoaded: boolean | null
+  /** Unix epoch seconds when the sliding session cookie expires. */
+  expiresAt: number | null
+  /** Unix epoch seconds when the absolute session lifetime cap is reached. */
+  absoluteExpiresAt: number | null
 }
 
 interface AuthContextValue {
@@ -50,7 +55,10 @@ async function fetchSession(): Promise<SessionInfo | null> {
       ial: response.ial ?? null,
       idProofingStatus: response.idProofingStatus ?? null,
       idProofingCompletedAt: response.idProofingCompletedAt ?? null,
-      idProofingExpiresAt: response.idProofingExpiresAt ?? null
+      idProofingExpiresAt: response.idProofingExpiresAt ?? null,
+      isCoLoaded: response.isCoLoaded ?? null,
+      expiresAt: response.expiresAt ?? null,
+      absoluteExpiresAt: response.absoluteExpiresAt ?? null
     }
   } catch (error) {
     // 401 means not logged in; anything else we also treat as unauthenticated

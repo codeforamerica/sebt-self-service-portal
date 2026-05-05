@@ -9,16 +9,18 @@ export function EnrolledSection({ results }: { results: ChildCheckApiResponse[] 
   if (results.length === 0) return null
 
   return (
-    <section>
-      <h2 className="font-family-sans">{t('enrolledHeading')}</h2>
-      {results.map(child => (
-        <ChildResultCard
-          key={child.checkId}
-          firstName={child.firstName}
-          lastName={child.lastName}
-          displayStatus="enrolled"
-        />
-      ))}
+    <section data-testid="enrolled-summary-box">
+      <h3 className="usa-summary-box__heading">{t('streamlinedEnrolledBody1')}</h3>
+      <ul>
+        {results.map((child) => (
+          <ChildResultCard
+            key={child.checkId}
+            firstName={child.firstName}
+            lastName={child.lastName}
+            displayStatus="enrolled"
+          />
+        ))}
+      </ul>
     </section>
   )
 }

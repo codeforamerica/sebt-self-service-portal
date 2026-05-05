@@ -1,13 +1,15 @@
 'use client'
 
-import { getTranslations } from '@/lib/translations'
 import type { StateCode } from '@sebt/design-system'
 import { TextLink, getStateLinks } from '@sebt/design-system'
+import { useTranslation } from 'react-i18next'
+import { MyColoradoLogo } from './MyColoradoLogo'
 
 export function COLoginPage({ state }: { state: StateCode }) {
   const links = getStateLinks(state)
-  const t = getTranslations('login')
-  const tCommon = getTranslations('common')
+
+  const { t } = useTranslation('login')
+  const { t: tCommon } = useTranslation('common')
 
   function startOidcLogin(language: string) {
     // Persist the user's language choice so the UI matches after the redirect.
@@ -35,8 +37,9 @@ export function COLoginPage({ state }: { state: StateCode }) {
             <button
               type="button"
               onClick={() => startOidcLogin('en')}
-              className="usa-button bg-primary-dark text-white border-primary-dark"
+              className="usa-button usa-button--mycolorado display-flex flex-align-center"
             >
+              <MyColoradoLogo className="margin-right-1" />
               {tCommon('logIn')}
             </button>
           </div>
@@ -45,9 +48,10 @@ export function COLoginPage({ state }: { state: StateCode }) {
             <button
               type="button"
               onClick={() => startOidcLogin('es')}
-              className="usa-button usa-button--outline border-primary text-primary"
+              className="usa-button usa-button--outline usa-button--mycolorado display-flex flex-align-center"
               lang="es"
             >
+              <MyColoradoLogo className="margin-right-1" />
               {tCommon('logInEsp')}
             </button>
           </div>

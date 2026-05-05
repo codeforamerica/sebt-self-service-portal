@@ -21,6 +21,7 @@ export function createMockSummerEbtCase(overrides?: Partial<SummerEbtCase>): Sum
     childLastName: 'Martinez',
     householdType: 'OSSE',
     eligibilityType: 'NSLP',
+    // TODO update issuanceType to reflect current api
     issuanceType: 'SummerEbt',
     ebtCardLastFour: '1234',
     ebtCardStatus: 'Active',
@@ -83,6 +84,7 @@ export function createMockHouseholdData(overrides?: Partial<HouseholdData>): Hou
     applications: [createMockApplication()],
     addressOnFile: createMockAddress(),
     userProfile: createMockUserProfile(),
+    coLoadedCohort: 'NonCoLoaded',
     ...overrides
   }
 }

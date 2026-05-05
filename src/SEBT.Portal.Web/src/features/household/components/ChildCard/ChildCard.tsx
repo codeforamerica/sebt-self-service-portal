@@ -21,14 +21,22 @@ function hasCardLifecycleTimeline(summerEbtCase: SummerEbtCase): boolean {
   return summerEbtCase.cardRequestedAt != null
 }
 
-function getReplacementLink(summerEbtCase: SummerEbtCase): string | null {
-  const { summerEBTCaseID, allowCardReplacement, cardRequestedAt } = summerEbtCase
+function isCoLoadedIssuance(issuanceType: IssuanceType | null | undefined): boolean {
+  return issuanceType === 'SnapEbtCard' || issuanceType === 'TanfEbtCard'
+}
+
+function getReplacementLink(
+  summerEbtCase: SummerEbtCase,
+  canRequestReplacementCard: boolean
+): string | null {
+  const { summerEBTCaseID, issuanceType, cardRequestedAt } = summerEbtCase
   if (!summerEBTCaseID) return null
 
-  if (!allowCardReplacement) {
-    return '/cards/info'
-  }
+  // Co-loaded cases always link to the info page — they cannot be replaced in-portal,
+  // and the household-level allow flag is irrelevant for the educational link.
+  if (isCoLoadedIssuance(issuanceType)) return '/cards/info'
 
+  if (!canRequestReplacementCard) return null
   if (isWithinCooldownPeriod(cardRequestedAt)) return null
 
   return `/cards/replace?case=${encodeURIComponent(summerEBTCaseID)}`
@@ -67,6 +75,7 @@ export function ChildCard({
 
   const {
     ebtCaseNumber,
+    caseDisplayNumber,
     benefitAvailableDate,
     benefitExpirationDate,
     ebtCardLastFour,
@@ -76,8 +85,12 @@ export function ChildCard({
     cardMailedAt,
     cardDeactivatedAt
   } = summerEbtCase
+  const referenceIdShown =
+    caseDisplayNumber !== undefined && caseDisplayNumber !== null && caseDisplayNumber !== ''
+      ? caseDisplayNumber
+      : ebtCaseNumber
   const cardTypeKey = issuanceType ? (CARD_TYPE_KEYS[issuanceType] ?? null) : null
-  const replacementLink = canRequestReplacementCard ? getReplacementLink(summerEbtCase) : null
+  const replacementLink = getReplacementLink(summerEbtCase, canRequestReplacementCard)
 
   return (
     <div className="usa-accordion__item">
@@ -99,10 +112,10 @@ export function ChildCard({
         data-testid="accordion-content"
       >
         <dl className="margin-0">
-          {showCaseNumber && ebtCaseNumber && (
+          {showCaseNumber && referenceIdShown && (
             <>
               <dt className="text-bold margin-top-2">{t('cardTableHeadingSebtId')}</dt>
-              <dd className="margin-left-0">{ebtCaseNumber}</dd>
+              <dd className="margin-left-0">{referenceIdShown}</dd>
             </>
           )}
           {benefitAvailableDate && (
@@ -149,7 +162,7 @@ export function ChildCard({
             data-analytics-cta="replacement_card_cta"
             className="usa-link display-inline-block margin-top-2"
           >
-            {t('cardTableActionRequestReplacement', 'Request a replacement card')}
+            {t('cardTableActionRequestReplacement')}
           </Link>
         )}
       </div>

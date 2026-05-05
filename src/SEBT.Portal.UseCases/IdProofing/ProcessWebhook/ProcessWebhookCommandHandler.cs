@@ -62,6 +62,12 @@ public class ProcessWebhookCommandHandler(
             return Result.Success();
         }
 
+        logger.LogInformation(
+            "Webhook event {EventId}: correlated to challenge {ChallengeId} (current status {Status}) " +
+            "via ReferenceId={ReferenceId}, EvalId={EvalId}",
+            SanitizeForLogging(command.EventId), challenge.PublicId, challenge.Status,
+            SanitizeForLogging(command.ReferenceId), SanitizeForLogging(command.EvalId));
+
         // Idempotency check: if this event was already processed, return success
         if (challenge.SocureEventId == command.EventId)
         {
@@ -138,8 +144,10 @@ public class ProcessWebhookCommandHandler(
         }
 
         logger.LogInformation(
-            "Webhook event {EventId}: challenge {ChallengeId} transitioned to {Status}",
-            SanitizeForLogging(command.EventId), challenge.PublicId, newStatus);
+            "Webhook event {EventId}: challenge {ChallengeId} transitioned to {Status} " +
+            "(workflow_decision={WorkflowDecision}, docv_decision={DocumentDecision})",
+            SanitizeForLogging(command.EventId), challenge.PublicId, newStatus,
+            SanitizeForLogging(command.WorkflowDecision), SanitizeForLogging(command.DocumentDecision));
 
         // If verified: update user's proofing status and IAL level
         if (newStatus == DocVerificationStatus.Verified)

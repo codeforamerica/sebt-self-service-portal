@@ -2,7 +2,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { http, HttpResponse } from 'msw'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import type { Address } from '@/features/household/api'
 import { server } from '@/mocks/server'
@@ -67,7 +67,10 @@ function renderForm(initialAddress: Address | null = null) {
 
 /** Helpers to find address form fields by accessible name. */
 function getStreetInput() {
-  return screen.getByRole('textbox', { name: /^street address(?! line)/i })
+  return (
+    screen.queryByRole('combobox', { name: /^street address(?! line)/i }) ??
+    screen.getByRole('textbox', { name: /^street address(?! line)/i })
+  )
 }
 function getLine2Input() {
   return screen.getByRole('textbox', { name: /street address line 2/i })
@@ -248,7 +251,20 @@ describe('AddressForm', () => {
     expect(errorMessages.length).toBeGreaterThanOrEqual(1)
   })
 
-  it('shows inline error when street address exceeds 30 characters', async () => {
+  it('shows inline error when backend rejects an unabbreviatable long address', async () => {
+    server.use(
+      http.put('/api/household/address', () =>
+        HttpResponse.json(
+          {
+            status: 'invalid',
+            reason: 'too_long',
+            message: 'Enter a street address shorter than 30 characters.'
+          },
+          { status: 422 }
+        )
+      )
+    )
+
     const { user } = renderForm()
 
     await user.type(getStreetInput(), '1234567890 Northeast Pennsylvania Ave NW')
@@ -257,12 +273,27 @@ describe('AddressForm', () => {
     const submitButton = screen.getByRole('button', { name: /continue/i })
     await user.click(submitButton)
 
-    const inlineError = document.querySelector('.usa-error-message')
-    expect(inlineError).toBeInTheDocument()
-    expect(inlineError).toHaveTextContent(/shorter than 30 characters/i)
+    await waitFor(() => {
+      const inlineError = document.querySelector('.usa-error-message')
+      expect(inlineError).toBeInTheDocument()
+      expect(inlineError).toHaveTextContent(/shorter than 30 characters/i)
+    })
   })
 
-  it('shows page-level error alert with contact link when street address exceeds 30 characters', async () => {
+  it('shows page-level error alert with contact link when backend rejects an unabbreviatable long address', async () => {
+    server.use(
+      http.put('/api/household/address', () =>
+        HttpResponse.json(
+          {
+            status: 'invalid',
+            reason: 'too_long',
+            message: 'Enter a street address shorter than 30 characters.'
+          },
+          { status: 422 }
+        )
+      )
+    )
+
     const { user } = renderForm()
 
     await user.type(getStreetInput(), '1234567890 Northeast Pennsylvania Ave NW')
@@ -271,13 +302,51 @@ describe('AddressForm', () => {
     const submitButton = screen.getByRole('button', { name: /continue/i })
     await user.click(submitButton)
 
-    const siteAlerts = document.getElementById('site-alerts')!
-    expect(siteAlerts.textContent).toContain('issue with the address')
+    await waitFor(() => {
+      const siteAlerts = document.getElementById('site-alerts')!
+      expect(siteAlerts.textContent).toContain('issue with the address')
+    })
 
+    const siteAlerts = document.getElementById('site-alerts')!
     const contactLink = siteAlerts.querySelector('a.usa-link')
     expect(contactLink).toBeInTheDocument()
     expect(contactLink).toHaveTextContent(/contact us/i)
     expect(contactLink).toHaveAttribute('href', expect.stringContaining('contact'))
+  })
+
+  it('routes to Suggested Address when backend returns an abbreviation for a long DC street', async () => {
+    server.use(
+      http.put('/api/household/address', () => {
+        return HttpResponse.json(
+          {
+            status: 'suggestion',
+            reason: 'abbreviated',
+            suggestedAddress: {
+              streetAddress1: '2100 MLK JR Avenue SE',
+              streetAddress2: null,
+              city: 'Washington',
+              state: 'DC',
+              postalCode: '20020'
+            }
+          },
+          { status: 422 }
+        )
+      })
+    )
+
+    const { user } = renderForm()
+
+    // 36 chars: longer than the 30-char DC limit, abbreviates to "2100 MLK JR Avenue SE" (21).
+    await user.type(getStreetInput(), '2100 Martin Luther King Jr Avenue SE')
+    await user.clear(getPostalInput())
+    await user.type(getPostalInput(), '20020')
+
+    const submitButton = screen.getByRole('button', { name: /continue/i })
+    await user.click(submitButton)
+
+    await waitFor(() => {
+      expect(mockPush).toHaveBeenCalledWith('/profile/address/suggested-address')
+    })
   })
 
   it('allows street address of exactly 30 characters', async () => {
@@ -374,5 +443,79 @@ describe('AddressForm', () => {
     await user.click(backButton)
 
     expect(mockBack).toHaveBeenCalled()
+  })
+
+  // --- Autocomplete integration ---
+
+  describe('with Smarty autocomplete enabled', () => {
+    beforeEach(() => {
+      process.env.NEXT_PUBLIC_SMARTY_EMBEDDED_KEY = 'test-embedded-key'
+    })
+
+    afterEach(() => {
+      delete process.env.NEXT_PUBLIC_SMARTY_EMBEDDED_KEY
+    })
+
+    it('renders street address as a combobox when Smarty key is configured', () => {
+      renderForm()
+      expect(screen.getByRole('combobox', { name: /street address/i })).toBeInTheDocument()
+    })
+
+    it('populates all form fields when an autocomplete suggestion is selected', async () => {
+      vi.useFakeTimers({ shouldAdvanceTime: true })
+      server.use(
+        http.get('https://us-autocomplete-pro.api.smarty.com/lookup', () =>
+          HttpResponse.json({
+            suggestions: [
+              {
+                street_line: '1600 Pennsylvania Ave NW',
+                secondary: '',
+                city: 'Washington',
+                state: 'DC',
+                zipcode: '20500',
+                entries: 0
+              }
+            ]
+          })
+        )
+      )
+
+      const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime })
+      const queryClient = createTestQueryClient()
+      render(
+        <QueryClientProvider client={queryClient}>
+          <AddressFlowProvider>
+            <AddressForm initialAddress={null} />
+          </AddressFlowProvider>
+        </QueryClientProvider>
+      )
+
+      const input = screen.getByRole('combobox', { name: /street address/i })
+
+      await user.type(input, '1600 Penn')
+      await vi.advanceTimersByTimeAsync(300)
+
+      await waitFor(() =>
+        expect(screen.getByRole('option', { name: /pennsylvania ave/i })).toBeInTheDocument()
+      )
+      await user.click(screen.getByRole('option', { name: /pennsylvania ave/i }))
+
+      // Verify all fields were populated from the suggestion
+      expect(getStreetInput()).toHaveValue('1600 Pennsylvania Ave NW')
+      expect(getCityInput()).toHaveValue('Washington')
+      expect(getStateSelect()).toHaveValue('DC')
+      expect(getPostalInput()).toHaveValue('20500')
+
+      vi.useRealTimers()
+    })
+  })
+
+  it('renders street address as a plain textbox when Smarty key is not configured', () => {
+    delete process.env.NEXT_PUBLIC_SMARTY_EMBEDDED_KEY
+    renderForm()
+    expect(
+      screen.queryByRole('combobox', { name: /^street address(?! line)/i })
+    ).not.toBeInTheDocument()
+    expect(screen.getByRole('textbox', { name: /^street address(?! line)/i })).toBeInTheDocument()
   })
 })

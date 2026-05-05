@@ -12,6 +12,8 @@ public static class SeedScenarios
     public static readonly SeedScenario CoLoaded = new("co-loaded", UserIalLevel.IAL1plus);
     /// <summary>Co-loaded with SNAP/TANF on file; ID proofing not started (DC mock household + benefit-match dev).</summary>
     public static readonly SeedScenario CoLoadedPendingIdProofing = new("co-loaded-pending-id-proofing", UserIalLevel.None);
+    /// <summary>Co-loaded with SNAP/TANF on file; ID proofing completed, but the linked household has zero enrolled children and zero applications.</summary>
+    public static readonly SeedScenario CoLoadedNoChildren = new("co-loaded-no-children", UserIalLevel.IAL1plus);
     public static readonly SeedScenario Verified = new("verified", UserIalLevel.IAL1plus);
     public static readonly SeedScenario Expired = new("expired", UserIalLevel.IAL1plus);
     public static readonly SeedScenario Review = new("review", UserIalLevel.IAL1plus);
@@ -27,6 +29,12 @@ public static class SeedScenarios
     // IAL1 scenarios
     public static readonly SeedScenario SingleChild = new("singlechild", UserIalLevel.IAL1);
     public static readonly SeedScenario NonCoLoaded = new("non-co-loaded", UserIalLevel.IAL1);
+
+    /// <summary>
+    /// Non-co-loaded user with ID proofing status InProgress (mock-household seed path).
+    /// Use for OTP/post-login routing tests where only Completed should skip ID proofing.
+    /// </summary>
+    public static readonly SeedScenario IdProofInProgress = new("id-proof-in-progress", UserIalLevel.None);
 
     // Non-IAL scenarios
     public static readonly SeedScenario LargeFamily = new("largefamily", UserIalLevel.None);
@@ -54,8 +62,8 @@ public static class SeedScenarios
     /// </summary>
     public static readonly IReadOnlyList<SeedScenario> UserScenarios =
     [
-        CoLoaded, CoLoadedPendingIdProofing, Verified, SingleChild, LargeFamily, Expired,
-        NonCoLoaded, NotStarted, Pending, Minimal, Denied,
+        CoLoaded, CoLoadedPendingIdProofing, CoLoadedNoChildren, Verified, SingleChild, LargeFamily, Expired,
+        NonCoLoaded, IdProofInProgress, NotStarted, Pending, Minimal, Denied,
         Review, Cancelled, Unknown, SummerActive, SummerLost,
         DcMixed, CoUndeliverable, CoFrozen, CoNotActivated, CoDeactivatedByState, CoActive,
         Simple1, Simple2, Simple3, Simple4, Simple5, Simple6, Simple7
@@ -70,6 +78,7 @@ public static class SeedScenarios
             SummerActive, SummerLost, DcMixed,
             Simple1, Simple2, Simple3, Simple4, Simple5, Simple6, Simple7,
             CoLoadedPendingIdProofing,
+            CoLoadedNoChildren,
         };
 
     /// <summary>

@@ -1,8 +1,10 @@
 'use client'
 
+import { CoLoadingScreen } from '@/components/CoLoadingScreen'
 import { useAuth } from '@/features/auth'
 import { useRouter } from 'next/navigation'
 import { useEffect, useState, type ReactNode } from 'react'
+import { useTranslation } from 'react-i18next'
 
 interface AuthGuardProps {
   children: ReactNode
@@ -17,6 +19,7 @@ interface AuthGuardProps {
  */
 export function AuthGuard({ children }: AuthGuardProps) {
   const { isAuthenticated, isLoading } = useAuth()
+  const { t } = useTranslation('step-upProcessing')
   const router = useRouter()
   const [isHydrated, setIsHydrated] = useState(false)
 
@@ -31,8 +34,19 @@ export function AuthGuard({ children }: AuthGuardProps) {
     }
   }, [isHydrated, isAuthenticated, isLoading, router])
 
-  // Show nothing while hydrating, loading, or redirecting
-  if (!isHydrated || isLoading || !isAuthenticated) {
+  // While the auth-status fetch is in flight, CO shows an interstitial so the
+  // user knows the dashboard is still loading. Other states keep the existing
+  // blank-screen behavior until their content is wired up.
+  if (!isHydrated || isLoading) {
+    return (
+      <CoLoadingScreen
+        title={t('title', 'Please wait...')}
+        message={t('body', 'Do not exit the page. Checking to see if we have enough information.')}
+      />
+    )
+  }
+
+  if (!isAuthenticated) {
     return null
   }
 

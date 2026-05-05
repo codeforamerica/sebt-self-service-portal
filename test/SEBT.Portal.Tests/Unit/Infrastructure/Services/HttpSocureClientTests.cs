@@ -430,8 +430,14 @@ public class HttpSocureClientTests
 
         Assert.NotNull(capturedBody);
         using var doc = JsonDocument.Parse(capturedBody);
-        var individual = doc.RootElement.GetProperty("data").GetProperty("individual");
-        Assert.Equal("203.0.0.10", individual.GetProperty("ip_address").GetString());
+        // Socure expects ip_address at data.ip_address (sibling of individual), per their
+        // certification team. Placement under data.individual.ip_address is silently ignored
+        // and breaks digital-intelligence triangulation + fraud model performance.
+        var data = doc.RootElement.GetProperty("data");
+        Assert.Equal("203.0.0.10", data.GetProperty("ip_address").GetString());
+        var individual = data.GetProperty("individual");
+        Assert.False(individual.TryGetProperty("ip_address", out _),
+            "ip_address must not be nested under individual; Socure parses only data.ip_address");
     }
 
     [Fact]
@@ -517,7 +523,9 @@ public class HttpSocureClientTests
 
         Assert.NotNull(capturedBody);
         using var doc = JsonDocument.Parse(capturedBody);
-        var individual = doc.RootElement.GetProperty("data").GetProperty("individual");
+        var data = doc.RootElement.GetProperty("data");
+        var individual = data.GetProperty("individual");
+        Assert.False(data.TryGetProperty("ip_address", out _));
         Assert.False(individual.TryGetProperty("ip_address", out _));
         Assert.False(individual.TryGetProperty("phone_number", out _));
         Assert.True(individual.TryGetProperty("address", out _));

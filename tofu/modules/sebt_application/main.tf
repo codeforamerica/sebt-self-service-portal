@@ -71,13 +71,14 @@ module "api" {
     "Seeding__Enabled"                           = var.seeding_enabled
     "Seeding__EmailPattern"                      = var.seeding_email_pattern
     "Seeding__State"                             = lower(var.state)
-    "UseMockHouseholdData"                       = var.use_mock_household_data
     }, var.enable_appconfig ? {
     "AppConfig__Agent__BaseUrl"          = "http://localhost:2772"
     "AppConfig__Agent__ApplicationId"    = module.appconfig[0].application_id
     "AppConfig__Agent__EnvironmentId"    = module.appconfig[0].environment_id
     "AppConfig__FeatureFlags__ProfileId" = module.appconfig[0].feature_flags_profile_id
     "AppConfig__AppSettings__ProfileId"  = module.appconfig[0].app_settings_profile_id
+    } : {}, var.dc_source_db_name != "" ? {
+    "DC_SOURCE_DB_NAME" = var.dc_source_db_name
   } : {}, var.state_api_environment_variables)
 
   environment_secrets = merge({
@@ -198,7 +199,7 @@ module "ses" {
 }
 
 module "cloudfront_waf" {
-  source     = "github.com/codeforamerica/tofu-modules-aws-cloudfront-waf?ref=2.1.0"
+  source     = "github.com/codeforamerica/tofu-modules-aws-cloudfront-waf?ref=2.2.0"
   depends_on = [module.web.load_balancer_arn]
 
   project        = "${var.project}-${var.state}"

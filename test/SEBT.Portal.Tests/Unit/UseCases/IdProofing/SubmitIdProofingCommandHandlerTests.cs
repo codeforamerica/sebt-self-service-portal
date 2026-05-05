@@ -576,27 +576,77 @@ public class SubmitIdProofingCommandHandlerTests
     }
 
     [Fact]
-    public async Task Handle_ShouldCallSocure_WhenNotCoLoadedAndSnapIdWithValue()
+    public async Task Handle_ShouldAttemptCoLoadedMatchAndSkipSocure_WhenSnapIdSubmittedRegardlessOfPriorIsCoLoaded()
     {
+        // Co-loaded status is discovered by the match attempt itself, so the precondition
+        // gate on user.IsCoLoaded was removed. SNAP/TANF id types are an in-portal lookup
+        // and must never reach Socure as national_id.
         var handler = CreateHandler();
-        var command = CreateValidCommand(idType: "snapPersonId", idValue: "987654321");
+        var command = CreateValidCommand(
+            dob: "1984-03-05",
+            idType: "snapPersonId",
+            idValue: "987654321");
+        var user = new User
+        {
+            Id = command.UserId,
+            Email = "test@example.com",
+            IsCoLoaded = false,
+            IdProofingAttemptCount = 0
+        };
 
         userRepository.GetUserByIdAsync(command.UserId, Arg.Any<CancellationToken>())
-            .Returns(new User { Id = command.UserId, Email = "test@example.com", IsCoLoaded = false });
+            .Returns(user);
         challengeRepository.GetActiveByUserIdAsync(command.UserId, Arg.Any<CancellationToken>())
             .Returns((DocVerificationChallenge?)null);
-        socureClient.RunIdProofingAssessmentAsync(
-                command.UserId, "test@example.com", command.DateOfBirth,
-                command.IdType, command.IdValue, Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<Address?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
-            .Returns(Result<IdProofingAssessmentResult>.Success(
-                new IdProofingAssessmentResult(IdProofingOutcome.Matched, AllowIdRetry: false)));
+        householdRepository.TryMatchCoLoadedGuardianByBenefitIdAndDobAsync(
+                Arg.Any<string>(), Arg.Any<DateOnly>(), Arg.Any<CancellationToken>())
+            .Returns(false);
+        householdRepository.GetHouseholdByEmailAsync(
+                Arg.Any<string>(), Arg.Any<PiiVisibility>(), Arg.Any<UserIalLevel>(), Arg.Any<CancellationToken>())
+            .Returns((HouseholdData?)null);
 
         await handler.Handle(command, CancellationToken.None);
 
-        await socureClient.Received(1)
+        await householdRepository.Received(1).TryMatchCoLoadedGuardianByBenefitIdAndDobAsync(
+            "987654321", new DateOnly(1984, 3, 5), Arg.Any<CancellationToken>());
+        await socureClient.DidNotReceive()
             .RunIdProofingAssessmentAsync(
-                command.UserId, "test@example.com", command.DateOfBirth,
-                command.IdType, command.IdValue, Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<Address?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>());
+                Arg.Any<Guid>(), Arg.Any<string>(), Arg.Any<string>(),
+                Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<Address?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task Handle_ShouldPersistIsCoLoadedTrue_WhenWarehouseMatchSucceeds()
+    {
+        // The user-level co-loaded flag is derived from the match: starts false,
+        // becomes true after a successful warehouse IC+DOB match.
+        var handler = CreateHandler();
+        var command = CreateValidCommand(
+            dob: "1984-03-05",
+            idType: "snapAccountId",
+            idValue: "IC000001");
+        var user = new User
+        {
+            Id = command.UserId,
+            Email = "test@example.com",
+            IsCoLoaded = false,
+            IdProofingAttemptCount = 0
+        };
+
+        userRepository.GetUserByIdAsync(command.UserId, Arg.Any<CancellationToken>())
+            .Returns(user);
+        challengeRepository.GetActiveByUserIdAsync(command.UserId, Arg.Any<CancellationToken>())
+            .Returns((DocVerificationChallenge?)null);
+        householdRepository.TryMatchCoLoadedGuardianByBenefitIdAndDobAsync(
+                "IC000001", new DateOnly(1984, 3, 5), Arg.Any<CancellationToken>())
+            .Returns(true);
+
+        var result = await handler.Handle(command, CancellationToken.None);
+
+        Assert.True(result.IsSuccess);
+        Assert.Equal("matched", result.Value.Result);
+        Assert.True(user.IsCoLoaded);
+        Assert.NotNull(user.CoLoadedLastUpdated);
     }
 
     [Fact]

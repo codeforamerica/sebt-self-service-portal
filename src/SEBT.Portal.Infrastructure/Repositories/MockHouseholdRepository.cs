@@ -277,6 +277,27 @@ public class MockHouseholdRepository : IHouseholdRepository
             };
             _households[coLoadedPendingIdProofingEmail] = coLoadedPending;
             IndexByPhone(coLoadedPending);
+
+            // Co-loaded household with zero enrolled children and zero applications —
+            // matched ID proofing lands on the dashboard's empty-state alert.
+            var coLoadedNoChildrenEmail = _settings.BuildEmail(SeedScenarios.CoLoadedNoChildren.Name);
+            var coLoadedNoChildren = HouseholdFactory.CreateHouseholdData(h =>
+            {
+                h.Email = coLoadedNoChildrenEmail;
+                h.Phone = "8185558439";
+                h.BenefitIssuanceType = BenefitIssuanceType.SnapEbtCard;
+                h.SummerEbtCases = new List<SummerEbtCase>();
+                h.Applications = new List<Application>();
+                h.AddressOnFile = null;
+                h.UserProfile = new UserProfile
+                {
+                    FirstName = "Noelle",
+                    MiddleName = "C",
+                    LastName = "ChildlessMOCK"
+                };
+            });
+            _households[coLoadedNoChildrenEmail] = coLoadedNoChildren;
+            IndexByPhone(coLoadedNoChildren);
         }
 
         // Scenario 2: Approved application with address (ID verified user)
@@ -442,10 +463,20 @@ public class MockHouseholdRepository : IHouseholdRepository
             };
         });
         nonCoLoaded.Email = nonCoLoadedEmail;
-        nonCoLoaded.Phone = "5551234567";
+        nonCoLoaded.Phone = "8185558439";
         nonCoLoaded.UserProfile = new UserProfile { FirstName = "Carlos", MiddleName = "Miguel", LastName = "GarciaMOCK" };
         _households[nonCoLoadedEmail] = nonCoLoaded;
         IndexByPhone(nonCoLoaded);
+
+        var idProofInProgressEmail = _settings.BuildEmail(SeedScenarios.IdProofInProgress.Name);
+        var idProofFullPii = new PiiVisibility(IncludeAddress: true, IncludeEmail: true, IncludePhone: true);
+        var idProofInProgressHousehold = CreateCopy(nonCoLoaded, idProofFullPii) with
+        {
+            Email = idProofInProgressEmail,
+            Phone = "5552223344"
+        };
+        _households[idProofInProgressEmail] = idProofInProgressHousehold;
+        IndexByPhone(idProofInProgressHousehold);
 
         // Scenario 5c: Not-started user (ID proofing not started)
         var notStartedEmail = _settings.BuildEmail(SeedScenarios.NotStarted.Name);
@@ -474,7 +505,7 @@ public class MockHouseholdRepository : IHouseholdRepository
             };
         });
         notStarted.Email = notStartedEmail;
-        notStarted.Phone = "5559876543";
+        notStarted.Phone = "8185558440";
         notStarted.UserProfile = new UserProfile { FirstName = "Jordan", MiddleName = "Lee", LastName = "AndersonMOCK" };
         _households[notStartedEmail] = notStarted;
         IndexByPhone(notStarted);
@@ -1189,6 +1220,7 @@ public class MockHouseholdRepository : IHouseholdRepository
                 IsCoLoaded = sec.IsCoLoaded,
                 IsStreamlineCertified = sec.IsStreamlineCertified,
                 EbtCaseNumber = sec.EbtCaseNumber,
+                CaseDisplayNumber = sec.CaseDisplayNumber,
                 EbtCardLastFour = sec.EbtCardLastFour,
                 EbtCardStatus = sec.EbtCardStatus,
                 EbtCardIssueDate = sec.EbtCardIssueDate,

@@ -26,7 +26,7 @@ export function ReviewPage({ onSubmit }: ReviewPageProps) {
     <div className="usa-section">
       <div className="grid-container">
         <Image
-          src="/img/icon-review-card.svg"
+          src="/images/states/co/icon-review-card.svg"
           alt=""
           width={100}
           height={75}
@@ -37,22 +37,28 @@ export function ReviewPage({ onSubmit }: ReviewPageProps) {
 
         <div className="margin-top-3">
           {state.children.map((child) => (
-            <ChildReviewCard key={child.id} child={child} onEdit={handleEdit} />
+            <ChildReviewCard
+              key={child.id}
+              child={child}
+              onEdit={handleEdit}
+            />
           ))}
         </div>
 
         <div className="display-flex flex-row flex-align-center margin-top-4">
-          <Button variant="outline" className="margin-right-1" onClick={() => router.push('/check')}>
+          <Button
+            variant="outline"
+            className="margin-right-1"
+            onClick={() => router.push('/check')}
+          >
             {tCommon('back')}
           </Button>
-          <Button onClick={onSubmit}>
-            {tCommon('submit')}
-          </Button>
+          <Button onClick={onSubmit}>{tCommon('submit')}</Button>
         </div>
         <div className="margin-top-2">
           <button
             type="button"
-            className="usa-button usa-button--unstyled"
+            className="usa-link usa-button--unstyled"
             onClick={() => {
               setEditingChildId(null)
               router.push('/check')

@@ -29,7 +29,8 @@ public static class HouseholdDataResponseMapper
             AddressOnFile = domain.AddressOnFile?.ToResponse(),
             UserProfile = domain.UserProfile?.ToResponse(),
             BenefitIssuanceType = domain.BenefitIssuanceType,
-            AllowedActions = domain.AllowedActions?.ToResponse()
+            AllowedActions = domain.AllowedActions?.ToResponse(),
+            CoLoadedCohort = domain.CoLoadedCohort
         };
     }
 
@@ -51,6 +52,7 @@ public static class HouseholdDataResponseMapper
             ApplicationStatus = domain.ApplicationStatus,
             MailingAddress = domain.MailingAddress?.ToResponse(),
             EbtCaseNumber = domain.EbtCaseNumber,
+            CaseDisplayNumber = domain.CaseDisplayNumber,
             EbtCardLastFour = domain.EbtCardLastFour,
             EbtCardStatus = domain.EbtCardStatus,
             EbtCardIssueDate = domain.EbtCardIssueDate,

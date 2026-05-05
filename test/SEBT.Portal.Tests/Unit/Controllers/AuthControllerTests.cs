@@ -92,7 +92,8 @@ public class AuthControllerTests
             new Claim(JwtClaimTypes.Ial, "1plus"),
             new Claim(JwtClaimTypes.IdProofingStatus, "2"),
             new Claim(JwtClaimTypes.IdProofingCompletedAt, "1735689600"),
-            new Claim(JwtClaimTypes.IdProofingExpiresAt, "1767225600")
+            new Claim(JwtClaimTypes.IdProofingExpiresAt, "1767225600"),
+            new Claim(JwtClaimTypes.IsCoLoaded, "true")
         };
         var identity = new ClaimsIdentity(claims, "Test");
         _controller.ControllerContext = new ControllerContext
@@ -110,6 +111,154 @@ public class AuthControllerTests
         Assert.Equal(2, response.IdProofingStatus);
         Assert.Equal(1735689600L, response.IdProofingCompletedAt);
         Assert.Equal(1767225600L, response.IdProofingExpiresAt);
+        Assert.True(response.IsCoLoaded);
+    }
+
+    [Fact]
+    public void GetAuthorizationStatus_WhenIsCoLoadedClaimFalse_ReturnsFalse()
+    {
+        // Arrange
+        var claims = new List<Claim>
+        {
+            new Claim("email", "user@example.com"),
+            new Claim(JwtClaimTypes.IsCoLoaded, "false")
+        };
+        var identity = new ClaimsIdentity(claims, "Test");
+        _controller.ControllerContext = new ControllerContext
+        {
+            HttpContext = new DefaultHttpContext { User = new ClaimsPrincipal(identity) }
+        };
+
+        // Act
+        var result = _controller.GetAuthorizationStatus();
+
+        // Assert
+        var okResult = Assert.IsType<OkObjectResult>(result);
+        var response = Assert.IsType<AuthorizationStatusResponse>(okResult.Value);
+        Assert.False(response.IsCoLoaded);
+    }
+
+    [Fact]
+    public void GetAuthorizationStatus_WhenIsCoLoadedClaimAbsent_ReturnsNull()
+    {
+        // Arrange
+        var email = "user@example.com";
+        SetupAuthenticatedUser(email);
+
+        // Act
+        var result = _controller.GetAuthorizationStatus();
+
+        // Assert
+        var okResult = Assert.IsType<OkObjectResult>(result);
+        var response = Assert.IsType<AuthorizationStatusResponse>(okResult.Value);
+        Assert.Null(response.IsCoLoaded);
+    }
+
+    [Fact]
+    public void GetAuthorizationStatus_WhenExpClaimPresent_IncludesExpiresAtInResponse()
+    {
+        // Arrange — the SPA needs to know when the session cookie expires so it can
+        // schedule activity-gated refreshes (preventing indefinite-session bypass of
+        // idle timeout). The JWT 'exp' claim is the source of truth.
+        const long expEpochSeconds = 1767225600L;
+        var claims = new List<Claim>
+        {
+            new Claim("email", "user@example.com"),
+            new Claim("exp", expEpochSeconds.ToString())
+        };
+        var identity = new ClaimsIdentity(claims, "Test");
+        _controller.ControllerContext = new ControllerContext
+        {
+            HttpContext = new DefaultHttpContext { User = new ClaimsPrincipal(identity) }
+        };
+
+        // Act
+        var result = _controller.GetAuthorizationStatus();
+
+        // Assert
+        var okResult = Assert.IsType<OkObjectResult>(result);
+        var response = Assert.IsType<AuthorizationStatusResponse>(okResult.Value);
+        Assert.Equal(expEpochSeconds, response.ExpiresAt);
+    }
+
+    [Fact]
+    public void GetAuthorizationStatus_WhenExpClaimAbsent_ReturnsNullExpiresAt()
+    {
+        // Arrange
+        SetupAuthenticatedUser("user@example.com");
+
+        // Act
+        var result = _controller.GetAuthorizationStatus();
+
+        // Assert
+        var okResult = Assert.IsType<OkObjectResult>(result);
+        var response = Assert.IsType<AuthorizationStatusResponse>(okResult.Value);
+        Assert.Null(response.ExpiresAt);
+    }
+
+    [Fact]
+    public void GetAuthorizationStatus_WhenAuthTimePresent_IncludesAbsoluteExpiresAtInResponse()
+    {
+        // Arrange — controller derives AbsoluteExpiresAt from auth_time + AbsoluteExpirationMinutes.
+        // Test controller is configured with AbsoluteExpirationMinutes=60.
+        const long authTimeEpochSeconds = 1700000000L;
+        var claims = new List<Claim>
+        {
+            new Claim("email", "user@example.com"),
+            new Claim("auth_time", authTimeEpochSeconds.ToString())
+        };
+        var identity = new ClaimsIdentity(claims, "Test");
+        _controller.ControllerContext = new ControllerContext
+        {
+            HttpContext = new DefaultHttpContext { User = new ClaimsPrincipal(identity) }
+        };
+
+        // Act
+        var result = _controller.GetAuthorizationStatus();
+
+        // Assert
+        var okResult = Assert.IsType<OkObjectResult>(result);
+        var response = Assert.IsType<AuthorizationStatusResponse>(okResult.Value);
+        Assert.Equal(authTimeEpochSeconds + 60 * 60L, response.AbsoluteExpiresAt);
+    }
+
+    [Fact]
+    public void GetAuthorizationStatus_WhenAuthTimeAbsent_ReturnsNullAbsoluteExpiresAt()
+    {
+        // Arrange
+        SetupAuthenticatedUser("user@example.com");
+
+        // Act
+        var result = _controller.GetAuthorizationStatus();
+
+        // Assert
+        var okResult = Assert.IsType<OkObjectResult>(result);
+        var response = Assert.IsType<AuthorizationStatusResponse>(okResult.Value);
+        Assert.Null(response.AbsoluteExpiresAt);
+    }
+
+    [Fact]
+    public void GetAuthorizationStatus_WhenExpClaimNotANumber_ReturnsNullExpiresAt()
+    {
+        // Arrange — defensive: a non-numeric exp claim should not crash the endpoint
+        var claims = new List<Claim>
+        {
+            new Claim("email", "user@example.com"),
+            new Claim("exp", "not-a-number")
+        };
+        var identity = new ClaimsIdentity(claims, "Test");
+        _controller.ControllerContext = new ControllerContext
+        {
+            HttpContext = new DefaultHttpContext { User = new ClaimsPrincipal(identity) }
+        };
+
+        // Act
+        var result = _controller.GetAuthorizationStatus();
+
+        // Assert
+        var okResult = Assert.IsType<OkObjectResult>(result);
+        var response = Assert.IsType<AuthorizationStatusResponse>(okResult.Value);
+        Assert.Null(response.ExpiresAt);
     }
 
     [Fact]

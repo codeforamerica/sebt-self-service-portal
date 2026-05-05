@@ -1,6 +1,8 @@
 import { env } from '@/lib/env'
 import { NextResponse } from 'next/server'
 
+export const dynamic = 'force-static'
+
 const BACKEND_URL = env.BACKEND_URL
 const TIMEOUT_MS = 10_000
 

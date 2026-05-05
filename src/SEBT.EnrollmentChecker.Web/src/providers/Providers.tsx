@@ -15,6 +15,7 @@ export function Providers({ children }: { children: ReactNode }) {
   // Initialize i18n once, lazily inside the component to avoid
   // calling initReactI18next during server-side module evaluation
   const i18nInitialized = useRef(false)
+  // eslint-disable-next-line react-hooks/refs
   if (!i18nInitialized.current) {
     initI18n(stateResources as StateResources, namespaces, state)
     i18nInitialized.current = true

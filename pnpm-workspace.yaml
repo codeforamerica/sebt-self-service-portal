@@ -5,3 +5,6 @@ packages:
 
 overrides:
   tmp@<=0.2.3: '>=0.2.4'
+
+# [SECURITY] Enforce minimum package age. Consult Security Team before updating.
+minimumReleaseAge: 10080 # 7 days (minutes)

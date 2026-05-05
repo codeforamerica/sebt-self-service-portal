@@ -28,3 +28,8 @@ output "ecr_web_repository_url" {
   description = "ECR repository URL for the web image."
   value       = aws_ecr_repository.web.repository_url
 }
+
+output "ecr_dc_source_seed_repository_url" {
+  description = "ECR repository URL for the DcSource seed image."
+  value       = aws_ecr_repository.dc_source_seed.repository_url
+}
