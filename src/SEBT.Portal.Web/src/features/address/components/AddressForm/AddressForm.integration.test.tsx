@@ -9,7 +9,10 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { http, HttpResponse } from 'msw'
 import { describe, expect, it, vi } from 'vitest'
+
+import { server } from '@/mocks/server'
 
 import { AddressFlowProvider, useAddressFlow } from '../../context'
 import { AddressForm } from './AddressForm'
@@ -20,7 +23,9 @@ vi.mock('next/navigation', () => ({
   useRouter: () => ({
     push: mockPush,
     back: vi.fn()
-  })
+  }),
+  usePathname: () => '/profile/address',
+  useSearchParams: () => new URLSearchParams()
 }))
 
 vi.mock('@sebt/design-system', async (importOriginal) => {
@@ -97,6 +102,50 @@ describe('AddressForm integration', () => {
       expect(contextData.city).toBe('Washington')
       expect(contextData.state).toBe('DC')
       expect(contextData.postalCode).toBe('20001')
+    })
+  })
+
+  it('stores normalized address from API response in context', async () => {
+    server.use(
+      http.put('/api/household/address', () =>
+        HttpResponse.json({
+          status: 'valid',
+          normalizedAddress: {
+            streetAddress1: '456 K ST NW',
+            streetAddress2: null,
+            city: 'WASHINGTON',
+            state: 'DC',
+            postalCode: '20001-1234'
+          }
+        })
+      )
+    )
+
+    const queryClient = createTestQueryClient()
+    const user = userEvent.setup()
+
+    render(
+      <QueryClientProvider client={queryClient}>
+        <AddressFlowProvider>
+          <AddressForm initialAddress={null} />
+          <ContextSpy />
+        </AddressFlowProvider>
+      </QueryClientProvider>
+    )
+
+    const streetInput = screen.getByRole('textbox', { name: /^street address(?! line)/i })
+    const postalInput = screen.getByRole('textbox', { name: /zip code/i })
+
+    await user.type(streetInput, '456 K St NW')
+    await user.type(postalInput, '20001')
+    await user.click(screen.getByRole('button', { name: /continue/i }))
+
+    await waitFor(() => {
+      const spy = screen.getByTestId('context-spy')
+      const contextData = JSON.parse(spy.textContent!)
+      expect(contextData.streetAddress1).toBe('456 K ST NW')
+      expect(contextData.city).toBe('WASHINGTON')
+      expect(contextData.postalCode).toBe('20001-1234')
     })
   })
 })
