@@ -28,8 +28,7 @@ export default function CardReplaceAddressPage() {
   return (
     <div className="grid-container maxw-tablet padding-top-4 padding-bottom-4">
       <h1 className="font-sans-xl text-primary">
-        {/* TODO UPDATE */}
-        {t('addressUpdateTitle', 'Update your mailing address')}
+        {t('titleYour')}
       </h1>
       <AddressFlowProvider>
         <AddressForm

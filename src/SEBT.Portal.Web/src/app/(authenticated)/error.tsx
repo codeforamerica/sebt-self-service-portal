@@ -8,7 +8,8 @@ import type { ErrorProps } from '../types'
 
 export default function AuthenticatedError({ error, reset }: ErrorProps) {
   const { t } = useTranslation('common')
-  const { t: tDev } = useTranslation('common')
+  const { t: tDev } = useTranslation('dev')
+  const { t: tValidation } = useTranslation('validation')
 
   useEffect(() => {
     // TODO: Log error to monitoring service in production
@@ -39,11 +40,7 @@ export default function AuthenticatedError({ error, reset }: ErrorProps) {
           <p>
             {isAuthError
               ? tDev('alertSessionClient')
-              // TODO update with correct string
-              : t(
-                  'errorPageBody',
-                  'We encountered an error loading this page. Please try again or log in again if the problem persists.'
-                )}
+              : tValidation('globalInternalError')}
           </p>
           {error.digest && (
             <p className="font-mono text-base-dark margin-top-1">

@@ -313,8 +313,7 @@ export function AddressForm({ initialAddress, redirectPath }: AddressFormProps) 
             aria-invalid={!!fieldErrors.state}
             aria-describedby={fieldErrors.state ? 'address-state-error' : undefined}
           >
-            {/* TODO update */}
-            <option value="">- Select -</option>
+            <option value="">{`- ${tCommon('selectOne')} -`}</option>
             {US_STATE_OPTIONS.map(({ code, name }) => (
               <option
                 key={code}
