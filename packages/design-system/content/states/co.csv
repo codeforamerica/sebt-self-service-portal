@@ -202,7 +202,11 @@ S2 - Portal Dashboard - Card Table - Status Inactive,Inactive,Inactive,Inactiva,
 S2 - Portal Dashboard - Card Table - Status Frozen,Frozen,Frozen,Congelada,Congelada,
 S2 - Portal Dashboard - Card Table - Status Undeliverable,Undeliverable,Undeliverable,No se pudo entregar,No se pudo entregar,
 S2 - Portal Dashboard - Card Table - Status Message Requested 1,!N/A!,We've requested a new Summer EBT card that will arrive in the mail within 2–3 weeks. Check back here to see when the card has been mailed.,!N/A!,Hemos solicitado una nueva tarjeta de Summer EBT que llegará por correo en un plazo de 2 a 3 semanas. Regresa aquí para ver cuándo se envió la tarjeta.,
-S2 - Portal Dashboard - Card Table - Status Message Requested 2,!N/A!,A replacement card will arrive in the mail in around 5–7 days. The card should be mailed within 2 days. Check back here to see when the replacement card has been mailed.,!N/A!,Una tarjeta de reemplazo llegará por correo en aproximadamente 5 a 7 días. La tarjeta debería ser enviada dentro de 2 días. Regresa aquí para ver cuándo se envió la tarjeta de reemplazo.,
+S2 - Portal Dashboard - Card Table - Status Message Requested 2,"A replacement card will arrive in the mail in around 7-10 business days. Once replacement cards are created, the previous cards will be permanently deactivated. Any remaining balance on the previous card will automatically be rolled over to the replacement card.
+
+If it doesn't arrive in the mail after 10 business days, you can request a new card here.",A replacement card will arrive in the mail in around 5–7 days. The card should be mailed within 2 days. Check back here to see when the replacement card has been mailed.,"Una tarjeta de reemplazo llegará por correo en aproximadamente 7 a 10 días hábiles. Una vez que se creen las tarjetas de reemplazo, las tarjetas anteriores se desactivarán permanentemente. Cualquier saldo restante en la tarjeta anterior se transferirá automáticamente a la tarjeta de reemplazo.
+
+Si no te llega por correo después de 10 días hábiles, puedes solicitar una nueva tarjeta aquí.",Una tarjeta de reemplazo llegará por correo en aproximadamente 5 a 7 días. La tarjeta debería ser enviada dentro de 2 días. Regresa aquí para ver cuándo se envió la tarjeta de reemplazo.,
 S2 - Portal Dashboard - Card Table - Status Message Mailed,!N/A!,"After the new card is mailed, it should arrive in around 5–7 days. If it doesn't arrive after two weeks, you can request a replacement card.",!N/A!,"Una vez que se envíe por correo la nueva tarjeta, debería llegar en un plazo de 5 a 7 días. Si no llega después de dos semanas, puedes solicitar una tarjeta de reemplazo.",
 S2 - Portal Dashboard - Card Table - Status Message Active,"This card has been sent to you. It is ready to make purchases as soon as you set the PIN. When the card arrives, call EBT Customer Service at (888) 328-2656 to set the card's PIN.
 
@@ -328,9 +332,8 @@ Cards will arrive by mail in around 7-10 business days
 Any remaining balance on the previous card will automatically be rolled over to the replacement card","Once replacement cards are created, the previous cards will be permanently deactivated
 Cards will arrive by mail in around 5–7 days
 You can check here to see when the card has been mailed
-Any remaining balance on the previous card will automatically be rolled over to the replacement card","Una vez que se creen las tarjetas de reemplazo, las tarjetas anteriores se desactivarán permanentemente.
-Las tarjetas llegarán por correo entre 5 y 7 días, aproximadamente.
-Puedes verificar aquí cuándo se ha enviado la tarjeta.
+Any remaining balance on the previous card will automatically be rolled over to the replacement card","Una vez que se creen las tarjetas de reemplazo, las tarjetas anteriores se desactivarán permanentemente
+Las tarjetas llegarán por correo en aproximadamente 7 a 10 días hábiles
 Cualquier saldo restante en la tarjeta anterior se transferirá automáticamente a la tarjeta de reemplazo","Una vez que se creen las tarjetas de reemplazo, las tarjetas anteriores se desactivarán permanentemente.
 Las tarjetas llegarán por correo entre 5 y 7 días, aproximadamente.
 Puedes verificar aquí cuándo se ha enviado la tarjeta.
@@ -361,7 +364,8 @@ S6 - Confirm Request Replacement Card - Body,"Once a replacement card is created
 Cards will arrive by mail in around 7-10 business days
 Any remaining balance on the previous card will automatically be rolled over to the replacement card","Once a replacement card is created, the previous card will be permanently deactivated
 Cards will arrive by mail in around 7-10 business days
-Any remaining balance on the previous card will automatically be rolled over to the replacement card","Llama a servicios al cliente de EBT al (888) 328-2656 para solicitar el envío de una tarjeta de reemplazo a la dirección que aparece aquí. Las tarjetas llegarán por correo en aproximadamente 7 a 10 días hábiles.
+Any remaining balance on the previous card will automatically be rolled over to the replacement card","Una vez que se creen las tarjetas de reemplazo, las tarjetas anteriores se desactivarán de forma permanente 
+Las tarjetas llegarán por correo en aproximadamente 7 a 10 días hábiles
 Cualquier saldo restante en la tarjeta anterior se transferirá automáticamente a la tarjeta de reemplazo.","Una vez que se cree una tarjeta de reemplazo, la tarjeta anterior quedará desactivada permanentemente.
 Las tarjetas llegarán por correo en aproximadamente 7 a 10 días hábiles.
 Cualquier saldo restante en la tarjeta anterior se transferirá automáticamente a la tarjeta de reemplazo.",
@@ -628,7 +632,7 @@ GLOBAL - No,No,No,No,No,
 GLOBAL - Action - Back,Back,Back,Regresar,Regresar,
 GLOBAL - Label - Select One,Select one,Select one,Selecciona una opción,Selecciona una opción,
 GLOBAL - Street Address,Street address,Street address,Dirección,Dirección,
-GLOBAL - Helper Street Address,!N/A!,"Include direction, NW, NE, SE, or SW.",!N/A!,"Incluya la dirección: NO, NE, SE o SO.",
+GLOBAL - Helper Street Address,!N/A!,"Include direction, NW, NE, SE, or SW.",!N/A!,"Incluya la dirección: NW, NE, SE o SO.",
 GLOBAL - Street Address 2,Street address line 2,Street address line 2,"Dirección, línea 2","Dirección, línea 2",
 GLOBAL - Helper Street Address 2,"For example, an apartment number, unit number, floor, or PO Box.","For example, an apartment number, unit number, floor, or PO Box.","Por ejemplo, número de apartamento, número de unidad, piso o apartado postal","Por ejemplo, número de apartamento, número de unidad, piso o apartado postal",
 GLOBAL - City,City,City,Ciudad,Ciudad,
@@ -653,12 +657,7 @@ GLOBAL - Link Contact Us,Email the Summer EBT Help Desk at,Contact us,Envía un 
 GLOBAL - Link Contact Us 2,cdhs_sebt_supportcenter@state.co.us,,cdhs_sebt_supportcenter@state.co.us,,
 GLOBAL - Link Public Notices,General Notices,Public Notifications,Avisos generales,Notificaciones públicas,
 GLOBAL - Title Accessibility,Accessibility at CDHS,Accessibility at CDHS,Accesibilidad en CDHS,Accesibilidad en CDHS,
-GLOBAL - Body Accessibility,"CDHS is committed to meeting members
-of our community where they are, and
-strives to provide all Coloradans with
-access to our programs, services,
-resources, activities and communication
-regardless of ability.","CDHS is committed to meeting members of our community where they are, and strives to provide all Coloradans with access to our programs, services, resources, activities and communication regardless of ability.","El Departamento de Servicios Humanos de Colorado (CDHS) se compromete a atender a los miembros de nuestra comunidad donde se encuentren y se esfuerza por brindar a todos loa habitantes de Colorado acceso a nuestros programas, servicios, recursos, actividades y comunicación, independientemente de sus capacidades.","El Departamento de Servicios Humanos de Colorado (CDHS) se compromete a atender a los miembros de nuestra comunidad donde se encuentren y se esfuerza por brindar a todos loa habitantes de Colorado acceso a nuestros programas, servicios, recursos, actividades y comunicación, independientemente de sus capacidades.",
+GLOBAL - Body Accessibility,"CDHS is committed to meeting members of our community where they are, and strives to provide all Coloradans with access to our programs, services, resources, activities and communication regardless of ability.","CDHS is committed to meeting members of our community where they are, and strives to provide all Coloradans with access to our programs, services, resources, activities and communication regardless of ability.","El Departamento de Servicios Humanos de Colorado (CDHS) se compromete a atender a los miembros de nuestra comunidad donde se encuentren y se esfuerza por brindar a todos loa habitantes de Colorado acceso a nuestros programas, servicios, recursos, actividades y comunicación, independientemente de sus capacidades.","El Departamento de Servicios Humanos de Colorado (CDHS) se compromete a atender a los miembros de nuestra comunidad donde se encuentren y se esfuerza por brindar a todos loa habitantes de Colorado acceso a nuestros programas, servicios, recursos, actividades y comunicación, independientemente de sus capacidades.",
 GLOBAL - Link Accessibility,Digital accessibility statement,Accessibility,Declaración de accesibilidad digital,Accesibilidad,
 GLOBAL - Link Privacy Policy,Transparency Online,Privacy and Security,Transparencia en línea,Privacidad y seguridad,
 GLOBAL - Link Google Translate,!N/A!,Google Translate Disclaimer,!N/A!,Aviso legal del Traductor de Google,
@@ -721,22 +720,22 @@ PROTO - S2 - Portal Dashboard - Alert Address Title,A replacement for the card e
 DEV - Loading,Loading...,Loading...,Cargando...,Cargando...,
 DEV - Error Prefix,Error ID:,Error ID:,ID de error:,ID de error:,
 DEV - Log In Refresh,Log in again,Log in again,Inicia sesión de nuevo,Inicia sesión de nuevo,
-DEV - Alert Session,Session expired,Session expired,La sesión ha caducado.,La sesión ha caducado.,
-DEV - Alert Session Client,Your session has expired. Please log in again to continue.,Your session has expired. Please log in again to continue.,"Su sesión ha caducado. Por favor, inicie sesión nuevamente para continuar.","Su sesión ha caducado. Por favor, inicie sesión nuevamente para continuar.",
+DEV - Alert Session,Session expired,Session expired,La sesión ha expirado.,La sesión ha expirado,
+DEV - Alert Session Client,Your session has expired. Please log in again to continue.,Your session has expired. Please log in again to continue.,Tu sesión ha expirado. Vuelve a iniciar sesión para continuar.  ,Tu sesión ha expirado. Vuelve a iniciar sesión para continuar.  ,
 DEV - Alert Try Again,Try again,Try again,Intentar otra vez,Intentar otra vez,
 DEV - Alert More Entries,({count}} more entries,({count}} more entries,{{count}} entradas más,{{count}} entradas más,
 DEV - Alert Suggestion,{{count}} suggestion available,{{count}} suggestion available,{{count}} sugerencia disponible,{{count}} sugerencia disponible,
-DEV - Alert Enter Different Address,This address is not available for {{currentState === 'dc' ? 'DC SUN Bucks' : 'Summer EBT'}} card delivery. Please enter a different mailing address.,This address is not available for {{currentState === 'dc' ? 'DC SUN Bucks' : 'Summer EBT'}} card delivery. Please enter a different mailing address.,"Esta dirección no está disponible para la entrega de la tarjeta de {{currentState === 'dc' ? 'DC SUN Bucks' : 'Summer EBT'}}. Por favor, ingrese una dirección postal diferente.","Esta dirección no está disponible para la entrega de la tarjeta de {{currentState === 'dc' ? 'DC SUN Bucks' : 'Summer EBT'}}. Por favor, ingrese una dirección postal diferente.",
+DEV - Alert Enter Different Address,This address is not available for {{currentState === 'dc' ? 'DC SUN Bucks' : 'Summer EBT'}} card delivery. Please enter a different mailing address.,This address is not available for {{currentState === 'dc' ? 'DC SUN Bucks' : 'Summer EBT'}} card delivery. Please enter a different mailing address.,"Esta dirección no está disponible para la entrega de la tarjeta de {{currentState === 'dc' ? 'DC SUN Bucks' : 'Summer EBT'}}. Por favor, ingresa una dirección postal diferente.","Esta dirección no está disponible para la entrega de la tarjeta de {{currentState === 'dc' ? 'DC SUN Bucks' : 'Summer EBT'}}. Por favor, ingresa una dirección postal diferente.",
 DEV - Alert Address Unusable,This address can't be used,This address can't be used,Esta dirección no se puede utilizar.,Esta dirección no se puede utilizar.,
-DEV - Alert No Retry,We couldn't start a retry. Please try again in a moment.,We couldn't start a retry. Please try again in a moment.,"No pudimos iniciar un reintento. Por favor, inténtelo de nuevo en un momento.","No pudimos iniciar un reintento. Por favor, inténtelo de nuevo en un momento.",
-DEV - Alert Doc Verify,Something went wrong starting document verification. Please try again.,Something went wrong starting document verification. Please try again.,"Algo salió mal al iniciar la verificación del documento. Por favor, inténtelo de nuevo.","Algo salió mal al iniciar la verificación del documento. Por favor, inténtelo de nuevo.",
-DEV - Alert Verify Identity,We weren't able to verify your identity from the document you uploaded.,We weren't able to verify your identity from the document you uploaded.,No pudimos verificar su identidad a partir del documento que subió.,No pudimos verificar su identidad a partir del documento que subió.,
+DEV - Alert No Retry,We couldn't start a retry. Please try again in a moment.,We couldn't start a retry. Please try again in a moment.,"No pudimos iniciar un reintento. Por favor, inténtalo de nuevo en un momento.","No pudimos iniciar un reintento. Por favor, inténtalo de nuevo en un momento.",
+DEV - Alert Doc Verify,Something went wrong starting document verification. Please try again.,Something went wrong starting document verification. Please try again.,"Algo salió mal al iniciar la verificación del documento. Por favor, inténtalo de nuevo.","Algo salió mal al iniciar la verificación del documento. Por favor, inténtalo de nuevo.",
+DEV - Alert Verify Identity,We weren't able to verify your identity from the document you uploaded.,We weren't able to verify your identity from the document you uploaded.,No pudimos verificar tu identidad con el documento que subiste.,No pudimos verificar tu identidad con el documento que subiste.,
 DEV - Alert Starting Retry,Starting retry...,Starting retry...,Iniciando reintento...,Iniciando reintento...,
 DEV - Alert Status,Check status,Check status,Verificar estado,Verificar estado,
-DEV - Alert Verification,Verification status,Verification status,Verification status,Verification status,
-DEV - Alert Keep Page Open,This may take a moment. Please don't close this page.,This may take a moment. Please don't close this page.,"Esto puede tardar un momento. Por favor, no cierre esta página.","Esto puede tardar un momento. Por favor, no cierre esta página.",
-DEV - Alert Verify Document,Verifying your document...,Verifying your document...,Verifying your document...,Verifying your document...,
+DEV - Alert Verification,Verification status,Verification status,Estado de verificación,Estado de verificación,
+DEV - Alert Keep Page Open,This may take a moment. Please don't close this page.,This may take a moment. Please don't close this page.,"Esto puede tardar un momento. Por favor, no cierres esta página.","Esto puede tardar un momento. Por favor, no cierres esta página.",
+DEV - Alert Verify Document,Verifying your document...,Verifying your document...,Verificando tu documento...,Verificando tu documento...,
 DEV - Alert Check Verification,Checking verification status,Checking verification status,Comprobando el estado de verificación,Comprobando el estado de verificación,
-DEV - Alert Verification Delay,Verification is taking longer than expected. You can check the status or try again later.,Verification is taking longer than expected. You can check the status or try again later.,La verificación está tardando más de lo esperado. Puede verificar el estado o intentarlo de nuevo más tarde.,La verificación está tardando más de lo esperado. Puede verificar el estado o intentarlo de nuevo más tarde.,
-DEV - Alert Still Checking,We're still checking your document,We're still checking your document,Todavía estamos revisando su documento.,Todavía estamos revisando su documento.,
-DEV - Alert Verification Retry,Unable to start document verification. Please try again.,Unable to start document verification. Please try again.,"No se pudo iniciar la verificación del documento. Por favor, inténtelo de nuevo.","No se pudo iniciar la verificación del documento. Por favor, inténtelo de nuevo.",
+DEV - Alert Verification Delay,Verification is taking longer than expected. You can check the status or try again later.,Verification is taking longer than expected. You can check the status or try again later.,La verificación está tardando más de lo esperado. Puedes verificar el estado o intentarlo de nuevo más tarde.,La verificación está tardando más de lo esperado. Puedes verificar el estado o intentarlo de nuevo más tarde.,
+DEV - Alert Still Checking,We're still checking your document,We're still checking your document,Todavía estamos revisando tu documento.,Todavía estamos revisando tu documento,
+DEV - Alert Verification Retry,Unable to start document verification. Please try again.,Unable to start document verification. Please try again.,"No se pudo iniciar la verificación del documento. Por favor, inténtalo de nuevo.","No se pudo iniciar la verificación del documento. Por favor, inténtalo de nuevo.",
