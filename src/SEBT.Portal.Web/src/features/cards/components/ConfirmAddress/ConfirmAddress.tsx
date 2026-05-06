@@ -23,7 +23,6 @@ export function ConfirmAddress({
   changePath
 }: ConfirmAddressProps) {
   const { t } = useTranslation('validation')
-  const { t: tResult } = useTranslation('result')
   const { t: tCommon } = useTranslation('common')
 
   const router = useRouter()

@@ -47,7 +47,7 @@ export function CardSelection({ confirmPath = 'select/confirm' }: CardSelectionP
   const { t } = useTranslation('confirmInfo')
   const { t: tOptional } = useTranslation('optionalId')
   const { t: tCommon } = useTranslation('common')
-  
+
   const router = useRouter()
   const currentState = getState()
   const { data, isLoading, isError } = useHouseholdData()
@@ -118,7 +118,7 @@ export function CardSelection({ confirmPath = 'select/confirm' }: CardSelectionP
     e.preventDefault()
 
     if (selectedCases.size === 0) {
-      setError(tCommon('selectOne'))
+      setError(tCommon('helperSelectAtLeastOne'))
       return
     }
 
@@ -133,9 +133,7 @@ export function CardSelection({ confirmPath = 'select/confirm' }: CardSelectionP
       onSubmit={handleSubmit}
       noValidate
     >
-      <p className="usa-hint">
-        {tCommon('requiredFields')}
-      </p>
+      <p className="usa-hint">{tCommon('requiredFields')}</p>
 
       <fieldset
         className="usa-fieldset"

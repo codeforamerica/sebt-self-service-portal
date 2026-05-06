@@ -23,7 +23,7 @@ interface OffBoardingPageProps {
  */
 export function OffBoardingPage({ contactLink, applyLink }: OffBoardingPageProps) {
   const router = useRouter()
-  const { t } = useTranslation('idProofing')
+  const { t } = useTranslation('offBoarding')
   const { t: tCommon } = useTranslation('common')
 
   // Read sessionStorage once on initial render (lazy initializer avoids setState-in-effect)
@@ -63,16 +63,10 @@ export function OffBoardingPage({ contactLink, applyLink }: OffBoardingPageProps
             id="offboarding-title"
             className="font-sans-xl text-bold line-height-sans-1 margin-bottom-3"
           >
-            {isNoIdProvided
-              ? noIdHeading
-              : t('coLoadedTitle')}
+            {isNoIdProvided ? noIdHeading : t('coLoadedTitle')}
           </h1>
 
-          <p className="font-sans-sm">
-            {isNoIdProvided
-              ? noIdBody
-              : t('coLoadedBody')}
-          </p>
+          <p className="font-sans-sm">{isNoIdProvided ? noIdBody : t('coLoadedBody1')}</p>
 
           <div className="margin-top-3">
             <Button
@@ -102,9 +96,7 @@ export function OffBoardingPage({ contactLink, applyLink }: OffBoardingPageProps
           */}
           {canApply && !isNoIdProvided && (
             <div className="margin-top-4">
-              <p className="font-sans-sm">
-                {t('coLoadedBody2')}
-              </p>
+              <p className="font-sans-sm">{t('coLoadedBody2')}</p>
 
               {applyLink && (
                 <a
@@ -124,9 +116,7 @@ export function OffBoardingPage({ contactLink, applyLink }: OffBoardingPageProps
 
           {/* Contact Us */}
           <div className="margin-top-4">
-            <h2 className="font-sans-lg text-bold">
-              {tCommon('linkFaqs')}
-            </h2>
+            <h2 className="font-sans-lg text-bold">{tCommon('linkFaqs')}</h2>
             <p className="font-sans-sm">
               <a
                 href={contactLink}

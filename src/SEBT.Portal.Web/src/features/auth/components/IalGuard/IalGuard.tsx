@@ -41,7 +41,6 @@ export function IalGuard({ children, requiredIal = STEP_UP_REQUIRED_IAL }: IalGu
   const { session } = useAuth()
   const router = useRouter()
   const { t, i18n } = useTranslation('common')
-  const { t: tStep} = useTranslation('step-upProcessing')
   const { t: tDisclaimer} = useTranslation('stepUpDisclaimer')
 
   const useOidcStepUpGate = getState() === 'co'

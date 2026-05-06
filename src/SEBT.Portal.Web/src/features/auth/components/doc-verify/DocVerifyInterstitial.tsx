@@ -20,10 +20,9 @@ export function DocVerifyInterstitial({
   contactLink
 }: DocVerifyInterstitialProps) {
   const { t } = useTranslation('idProofing')
-  const { t: tOffboard } = useTranslation('offboarding')
+  const { t: tOffboard } = useTranslation('offBoarding')
   const { t: tCommon } = useTranslation('common')
   const { t: tDev } = useTranslation('dev')
-
 
   return (
     <section aria-labelledby="doc-verify-title">
@@ -34,9 +33,7 @@ export function DocVerifyInterstitial({
         {tOffboard('title')}
       </h1>
 
-      <p className="font-sans-sm">
-        {tOffboard('body1')}
-      </p>
+      <p className="font-sans-sm">{tOffboard('body1')}</p>
 
       <ul className="usa-list font-sans-sm">
         {/* TODO update copy*/}
@@ -83,9 +80,7 @@ export function DocVerifyInterstitial({
 
       {/* Contact Us */}
       <div className="margin-top-4">
-        <h2 className="font-sans-lg text-bold">
-          {tCommon('linkContactUs')}
-        </h2>
+        <h2 className="font-sans-lg text-bold">{tCommon('linkContactUs')}</h2>
         <p className="font-sans-sm">
           <a
             href={contactLink}

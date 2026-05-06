@@ -16,9 +16,6 @@ import { useHouseholdData } from '@/features/household'
  */
 export function DashboardAlerts() {
   const { t } = useTranslation('dashboard')
-  const { t: tCommon } = useTranslation('common')
-
-
 
   const searchParams = useSearchParams()
   const router = useRouter()

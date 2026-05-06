@@ -181,7 +181,7 @@ export function AddressForm({ initialAddress, redirectPath }: AddressFormProps) 
       }
     } catch (err) {
       void err
-      setSubmitError(tCommon('globalInternalError'))
+      setSubmitError(tValidation('globalInternalError'))
     }
   }
 
@@ -246,9 +246,7 @@ export function AddressForm({ initialAddress, redirectPath }: AddressFormProps) 
 
         <AddressAutocomplete
           label={tCommon('streetAddress')}
-          {...(currentState === 'dc'
-            ? { hint: tCommon('helperStreetAddress') }
-            : {})}
+          {...(currentState === 'dc' ? { hint: tCommon('helperStreetAddress') } : {})}
           name="streetAddress1"
           value={streetAddress1}
           onChange={(e) => setStreetAddress1(e.target.value)}

@@ -1,0 +1,32 @@
+@use 'uswds-core' as *;
+
+// `<Copy>` only emits `data-copy-status` in NODE_ENV=development, so this
+// selector never matches in production builds.
+[data-copy-status='fallback'] {
+  background-color: color('yellow-warm-10');
+  border-bottom: units(0.5) dashed color('yellow-warm-50v');
+  padding: 0 units(0.5);
+  position: relative;
+
+  &::before {
+    content: '⚠ NO COPY ';
+    font-weight: bold;
+    font-size: 0.75em;
+    color: color('red-warm-50v');
+    margin-right: units(0.5);
+  }
+
+  &:hover::after {
+    content: attr(data-copy-key);
+    position: absolute;
+    bottom: 100%;
+    left: 0;
+    background: color('base-darkest');
+    color: color('white');
+    padding: units(0.5) units(1);
+    white-space: nowrap;
+    font-size: 0.75rem;
+    z-index: 100;
+    pointer-events: none;
+  }
+}

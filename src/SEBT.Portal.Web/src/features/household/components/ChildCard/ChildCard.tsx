@@ -6,6 +6,7 @@ import { useTranslation } from 'react-i18next'
 
 import { isWithinCooldownPeriod } from '@/features/cards/utils/cooldown'
 import { useFeatureFlag } from '@/features/feature-flags'
+import { Copy } from '@sebt/design-system/client'
 
 import type { IssuanceType, SummerEbtCase } from '../../api'
 import { formatDate } from '../../api'
@@ -114,7 +115,13 @@ export function ChildCard({
         <dl className="margin-0">
           {showCaseNumber && referenceIdShown && (
             <>
-              <dt className="text-bold margin-top-2">{t('cardTableHeadingSebtId')}</dt>
+              <dt className="text-bold margin-top-2">
+                <Copy
+                  ns="dashboard"
+                  k="cardTableHeadingSebtId"
+                  fallback="DC SUN Bucks ID"
+                />
+              </dt>
               <dd className="margin-left-0">{referenceIdShown}</dd>
             </>
           )}
@@ -138,9 +145,18 @@ export function ChildCard({
           )}
           {showCardLast4 && ebtCardLastFour && (
             <>
-              <dt className="text-bold margin-top-2">{t('cardTableHeadingCardNumber')}</dt>
+              <dt className="text-bold margin-top-2">
+                <Copy
+                  ns="dashboard"
+                  k="cardTableHeadingCardNumber"
+                  fallback="Card number"
+                />
+              </dt>
               <dd className="margin-left-0">
-                {t('cardTableLastFourDigits').replace('[9999]', ebtCardLastFour)}
+                {t('cardTableLastFourDigits', { defaultValue: '[9999]' }).replace(
+                  '[9999]',
+                  ebtCardLastFour
+                )}
               </dd>
             </>
           )}

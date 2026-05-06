@@ -12,6 +12,10 @@ export { Footer } from './components/layout/Footer'
 export { HelpSection } from './components/layout/HelpSection'
 export { LanguageSelector } from './components/layout/LanguageSelector/LanguageSelector'
 
+// i18n copy fallback helpers
+export { Copy, useCopy } from './components/ui/Copy'
+export type { CopyProps, UseCopyResult } from './components/ui/Copy'
+
 // Providers
 export { I18nProvider } from './providers/I18nProvider'
 

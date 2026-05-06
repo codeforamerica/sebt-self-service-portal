@@ -15,10 +15,6 @@ interface ConfirmRequestProps {
   onBack: () => void
 }
 
-function getStateProgramName(state: string): string {
-  return state === 'dc' ? 'DC SUN Bucks' : 'Summer EBT'
-}
-
 export function ConfirmRequest({ cases, address, onBack }: ConfirmRequestProps) {
   const { t } = useTranslation('result')
   const { t: tDev } = useTranslation('dev')
