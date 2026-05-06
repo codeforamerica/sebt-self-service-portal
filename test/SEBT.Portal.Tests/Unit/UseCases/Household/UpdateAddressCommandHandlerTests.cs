@@ -803,7 +803,8 @@ public class UpdateAddressCommandHandlerTests
                             State = "dc",
                             PostalCode = "20001"
                         },
-                        WasCorrected = true,
+                        // Matches Smarty: AddressesEqualLoose treats case-only / ZIP-format-only differences as not corrected.
+                        WasCorrected = false,
                         IsGeneralDelivery = false
                     })));
 

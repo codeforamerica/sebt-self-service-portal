@@ -53,6 +53,7 @@ public class UpdateAddressCommandHandler(
 
         var addressOutcome = await addressUpdateService.ValidateAndNormalizeAsync(addressRequest, cancellationToken);
         Address? normalizedAddress = null;
+        var normalizationCorrectedAddress = false;
         switch (addressOutcome)
         {
             case ValidationFailedResult<AddressUpdateSuccess> addressValidationFailed:
@@ -72,6 +73,7 @@ public class UpdateAddressCommandHandler(
                 return Result<AddressValidationResult>.DependencyFailed(addressDependencyFailed.Reason, addressDependencyFailed.Message);
             case SuccessResult<AddressUpdateSuccess> success:
                 normalizedAddress = success.Value.NormalizedAddress;
+                normalizationCorrectedAddress = success.Value.WasCorrected;
                 break;
             default:
                 return Result<AddressValidationResult>.DependencyFailed(
@@ -91,17 +93,8 @@ public class UpdateAddressCommandHandler(
             return Result<AddressValidationResult>.Success(stateValidation);
         }
 
-        // If Smarty returned a canonical address that differs from what the user entered,
-        // route through the suggestion flow so the user can explicitly confirm which one to use.
-        var requestedAddress = new Address
-        {
-            StreetAddress1 = command.StreetAddress1,
-            StreetAddress2 = command.StreetAddress2,
-            City = command.City,
-            State = command.State,
-            PostalCode = command.PostalCode
-        };
-        if (!AddressesEquivalent(requestedAddress, normalizedAddress!))
+        // Use WasCorrected from validation (Smarty compares input vs normalized via AddressNormalizationHelper.AddressesEqualLoose).
+        if (normalizationCorrectedAddress)
         {
             logger.LogInformation("Address normalization produced a suggested alternative");
             return Result<AddressValidationResult>.Success(
@@ -231,21 +224,5 @@ public class UpdateAddressCommandHandler(
                 DependencyFailedReason.ConnectionFailed,
                 "Address update service is temporarily unavailable.");
         }
-    }
-
-    private static bool AddressesEquivalent(Address left, Address right)
-    {
-        return StringFieldEquals(left.StreetAddress1, right.StreetAddress1)
-            && StringFieldEquals(left.StreetAddress2, right.StreetAddress2)
-            && StringFieldEquals(left.City, right.City)
-            && StringFieldEquals(left.State, right.State)
-            && StringFieldEquals(left.PostalCode, right.PostalCode);
-    }
-
-    private static bool StringFieldEquals(string? left, string? right)
-    {
-        var normalizedLeft = string.IsNullOrWhiteSpace(left) ? null : left.Trim();
-        var normalizedRight = string.IsNullOrWhiteSpace(right) ? null : right.Trim();
-        return string.Equals(normalizedLeft, normalizedRight, StringComparison.OrdinalIgnoreCase);
     }
 }
