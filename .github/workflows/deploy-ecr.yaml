@@ -239,6 +239,42 @@ jobs:
         id: login-ecr
         uses: aws-actions/amazon-ecr-login@v2
 
+      - name: Install OpenTofu
+        uses: opentofu/setup-opentofu@v1
+        with:
+          tofu_version: "1.10.0"
+
+      - name: OpenTofu Init
+        working-directory: tofu/config/dev-dc
+        run: tofu init -upgrade
+
+      - name: Resolve analytics keys
+        id: analytics
+        working-directory: tofu/config/dev-dc
+        run: |
+          # Start with GitHub variable fallbacks
+          AMPLITUDE_API_KEY="${{ vars.AMPLITUDE_API_KEY }}"
+          MIXPANEL_TOKEN="${{ vars.MIXPANEL_TOKEN }}"
+
+          # Prefer values from Secrets Manager when the secret exists in tofu state
+          SECRET_ARN=$(tofu output -raw analytics_secret_arn 2>/dev/null || echo "")
+          if [ -n "$SECRET_ARN" ]; then
+            SECRET_JSON=$(aws secretsmanager get-secret-value \
+              --secret-id "$SECRET_ARN" \
+              --query 'SecretString' --output text 2>/dev/null || echo "")
+            if [ -n "$SECRET_JSON" ]; then
+              AWS_AMPLITUDE=$(echo "$SECRET_JSON" | jq -r '.amplitude_api_key // empty')
+              AWS_MIXPANEL=$(echo "$SECRET_JSON" | jq -r '.mixpanel_token // empty')
+              [ -n "$AWS_AMPLITUDE" ] && AMPLITUDE_API_KEY="$AWS_AMPLITUDE"
+              [ -n "$AWS_MIXPANEL" ] && MIXPANEL_TOKEN="$AWS_MIXPANEL"
+            fi
+          fi
+
+          [ -n "$AMPLITUDE_API_KEY" ] && echo "::add-mask::$AMPLITUDE_API_KEY"
+          [ -n "$MIXPANEL_TOKEN" ] && echo "::add-mask::$MIXPANEL_TOKEN"
+          echo "amplitude_api_key=$AMPLITUDE_API_KEY" >> "$GITHUB_OUTPUT"
+          echo "mixpanel_token=$MIXPANEL_TOKEN" >> "$GITHUB_OUTPUT"
+
       - name: Build Web image
         run: |
           docker build \
@@ -248,9 +284,8 @@ jobs:
             --build-arg NEXT_PUBLIC_SOCURE_SDK_KEY=${{ vars.SOCURE_SDK_KEY }} \
             --build-arg NEXT_PUBLIC_SOCURE_DI_SDK_KEY=${{ vars.SOCURE_DI_SDK_KEY }} \
             --build-arg NEXT_PUBLIC_MOCK_SOCURE=${{ vars.MOCK_SOCURE }} \
-            --build-arg NEXT_PUBLIC_AMPLITUDE_API_KEY=${{ vars.AMPLITUDE_API_KEY }} \
-            --build-arg NEXT_PUBLIC_MIXPANEL_TOKEN=${{ vars.MIXPANEL_TOKEN }} \
-            --build-arg NEXT_PUBLIC_SMARTY_EMBEDDED_KEY=${{ vars.SMARTY_EMBEDDED_KEY }} \
+            --build-arg NEXT_PUBLIC_AMPLITUDE_API_KEY=${{ steps.analytics.outputs.amplitude_api_key }} \
+            --build-arg NEXT_PUBLIC_MIXPANEL_TOKEN=${{ steps.analytics.outputs.mixpanel_token }} \
             -t sebt-portal-web-dc:${{ needs.build.outputs.image_tag }} \
             .
 
@@ -265,15 +300,6 @@ jobs:
 
           docker push ${API_REPO}:${IMAGE_TAG}
           docker push ${WEB_REPO}:${IMAGE_TAG}
-
-      - name: Install OpenTofu
-        uses: opentofu/setup-opentofu@v1
-        with:
-          tofu_version: "1.10.0"
-
-      - name: OpenTofu Init
-        working-directory: tofu/config/dev-dc
-        run: tofu init -upgrade
 
       - name: OpenTofu Apply
         working-directory: tofu/config/dev-dc
@@ -328,15 +354,50 @@ jobs:
         id: login-ecr
         uses: aws-actions/amazon-ecr-login@v2
 
+      - name: Install OpenTofu
+        uses: opentofu/setup-opentofu@v1
+        with:
+          tofu_version: "1.10.0"
+
+      - name: OpenTofu Init
+        working-directory: tofu/config/dev-co
+        run: tofu init -upgrade
+
+      - name: Resolve analytics keys
+        id: analytics
+        working-directory: tofu/config/dev-co
+        run: |
+          # Start with GitHub variable fallbacks
+          AMPLITUDE_API_KEY="${{ vars.AMPLITUDE_API_KEY }}"
+          MIXPANEL_TOKEN="${{ vars.MIXPANEL_TOKEN }}"
+
+          # Prefer values from Secrets Manager when the secret exists in tofu state
+          SECRET_ARN=$(tofu output -raw analytics_secret_arn 2>/dev/null || echo "")
+          if [ -n "$SECRET_ARN" ]; then
+            SECRET_JSON=$(aws secretsmanager get-secret-value \
+              --secret-id "$SECRET_ARN" \
+              --query 'SecretString' --output text 2>/dev/null || echo "")
+            if [ -n "$SECRET_JSON" ]; then
+              AWS_AMPLITUDE=$(echo "$SECRET_JSON" | jq -r '.amplitude_api_key // empty')
+              AWS_MIXPANEL=$(echo "$SECRET_JSON" | jq -r '.mixpanel_token // empty')
+              [ -n "$AWS_AMPLITUDE" ] && AMPLITUDE_API_KEY="$AWS_AMPLITUDE"
+              [ -n "$AWS_MIXPANEL" ] && MIXPANEL_TOKEN="$AWS_MIXPANEL"
+            fi
+          fi
+
+          [ -n "$AMPLITUDE_API_KEY" ] && echo "::add-mask::$AMPLITUDE_API_KEY"
+          [ -n "$MIXPANEL_TOKEN" ] && echo "::add-mask::$MIXPANEL_TOKEN"
+          echo "amplitude_api_key=$AMPLITUDE_API_KEY" >> "$GITHUB_OUTPUT"
+          echo "mixpanel_token=$MIXPANEL_TOKEN" >> "$GITHUB_OUTPUT"
+
       - name: Build Web image
         run: |
           docker build \
             --platform linux/amd64 \
             -f src/SEBT.Portal.Web/Dockerfile \
             --build-arg STATE=co \
-            --build-arg NEXT_PUBLIC_AMPLITUDE_API_KEY=${{ vars.AMPLITUDE_API_KEY }} \
-            --build-arg NEXT_PUBLIC_MIXPANEL_TOKEN=${{ vars.MIXPANEL_TOKEN }} \
-            --build-arg NEXT_PUBLIC_SMARTY_EMBEDDED_KEY=${{ vars.SMARTY_EMBEDDED_KEY }} \
+            --build-arg NEXT_PUBLIC_AMPLITUDE_API_KEY=${{ steps.analytics.outputs.amplitude_api_key }} \
+            --build-arg NEXT_PUBLIC_MIXPANEL_TOKEN=${{ steps.analytics.outputs.mixpanel_token }} \
             -t sebt-portal-web-co:${{ needs.build.outputs.image_tag }} \
             .
 
@@ -351,15 +412,6 @@ jobs:
 
           docker push ${API_REPO}:${IMAGE_TAG}
           docker push ${WEB_REPO}:${IMAGE_TAG}
-
-      - name: Install OpenTofu
-        uses: opentofu/setup-opentofu@v1
-        with:
-          tofu_version: "1.10.0"
-
-      - name: OpenTofu Init
-        working-directory: tofu/config/dev-co
-        run: tofu init -upgrade
 
       - name: OpenTofu Apply
         working-directory: tofu/config/dev-co
