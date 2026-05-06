@@ -147,10 +147,11 @@ if (matched.Count < request.CaseRefs.Count)
     return CardReplacementResult.PolicyRejected(
         "CASES_NOT_FOUND",
         $"Requested {request.CaseRefs.Count} case(s), but only {matched.Count} matched usable CBMS enrollment row(s). " +
-        "The case list may have changed since you loaded this page — refresh and try again. " +
-        "If the problem persists, contact support.");
+        "Portal case list may be stale; ask the user to refresh and retry.");
 }
 ```
+
+The rejection branch is preserved as a defensive guard against PATCHing an empty array to CBMS, but the user-facing wording is **not refined** beyond the existing message. Per tech-lead guidance (2026-05-05), the scenarios that would surface this rejection — stale frontend state (DD is set at submission time and is immutable, so a case can't flip to DD between page-load and click), frontend bug (frontend and API are co-deployed so divergence is unlikely), and tampered request (acceptable for tampering to surface ugly errors) — do not justify investing in user-friendly wording.
 
 `MatchesCaseRef` prefers the unique pair when present:
 
@@ -304,4 +305,3 @@ The card-replacement mutation builds the request from the case objects already i
 - Verification that the household API response model exposes `ApplicationId` and `ApplicationStudentId` to the frontend today, and that the response Zod schema parses them.
 - Exact JSON serialized field names for `SummerEBTCaseID`, `ApplicationId`, `ApplicationStudentId` under the existing serializer configuration — these determine the wire field names used by the Zod schemas.
 - Whether any other portal-side caller of `CardReplacementRequest` exists outside `RequestCardReplacementCommandHandler`.
-- Final wording of the "refresh and retry" rejection message (copy review).
