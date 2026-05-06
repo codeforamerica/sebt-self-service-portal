@@ -6,6 +6,7 @@ using NSubstitute;
 using SEBT.Portal.Api.Controllers.Household;
 using SEBT.Portal.Api.Models;
 using SEBT.Portal.Api.Models.Household;
+using SEBT.Portal.Core.AppSettings;
 using SEBT.Portal.Core.Models;
 using SEBT.Portal.Core.Models.Auth;
 using SEBT.Portal.Core.Models.Household;
@@ -52,7 +53,16 @@ public class HouseholdControllerTests
         IHouseholdRepository repository)
     {
         var logger = NullLogger<GetHouseholdDataQueryHandler>.Instance;
-        return new GetHouseholdDataQueryHandler(resolver, repository, _piiVisibilityService, _idProofingService, _selfServiceEvaluator, _cardReplacementRepo, _identifierHasher, logger);
+        return new GetHouseholdDataQueryHandler(
+            resolver,
+            repository,
+            _piiVisibilityService,
+            _idProofingService,
+            _selfServiceEvaluator,
+            _cardReplacementRepo,
+            _identifierHasher,
+            new CoLoadedCohortFilterSettings(),
+            logger);
     }
 
     private void SetupAuthenticatedUser(string email, UserIalLevel userIalLevel = UserIalLevel.None, string claimType = ClaimTypes.Email)

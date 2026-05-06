@@ -84,6 +84,7 @@ export function createMockHouseholdData(overrides?: Partial<HouseholdData>): Hou
     applications: [createMockApplication()],
     addressOnFile: createMockAddress(),
     userProfile: createMockUserProfile(),
+    coLoadedCohort: 'NonCoLoaded',
     ...overrides
   }
 }

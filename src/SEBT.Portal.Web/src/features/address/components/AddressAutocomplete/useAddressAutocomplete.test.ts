@@ -134,7 +134,7 @@ describe('useAddressAutocomplete', () => {
     await waitFor(() => {
       expect(capturedUrl).toBeTruthy()
       const url = new URL(capturedUrl)
-      expect(url.searchParams.get('prefer_states')).toBe('DC,VA,MD')
+      expect(url.searchParams.get('prefer_states')).toBe('DC;VA;MD')
     })
   })
 

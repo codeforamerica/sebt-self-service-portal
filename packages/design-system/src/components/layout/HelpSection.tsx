@@ -67,6 +67,7 @@ export function HelpSection({ state = 'dc' }: HelpSectionProps) {
 
 function COHelpSection({ state = 'co' }: HelpSectionProps) {
   const links = getStateLinks(state)
+  const { t } = useTranslation('common')
 
   return (
     <section
@@ -78,32 +79,25 @@ function COHelpSection({ state = 'co' }: HelpSectionProps) {
           id="help-section-title"
           className="font-sans-lg text-bold margin-top-0 margin-bottom-1"
         >
-          {/* TODO: Use t('helpDeskTitle') once the key is added to co.csv */}
-          Summer EBT Help Desk
+          {t('titleContactUs')}
         </h2>
 
         <p className="font-sans-sm margin-top-0">
-          {/* TODO: Use t('helpDeskBody') once the key is added to co.csv */}
-          Email the Summer EBT Help Desk at{' '}
+          {t('linkContactUs')}{' '}
           <Link
             href={links.help.helpDeskEmail ?? ''}
             className="usa-link text-ink"
           >
-            {/* TODO: Use t('helpDeskEmail') once the key is added to co.csv */}
-            cdhs_sebt_supportcenter@state.co.us
+            {t('linkContactUs2')}
           </Link>
         </p>
 
         <h2 className="font-sans-lg text-bold margin-top-4 margin-bottom-1">
-          {/* TODO: Use t('accessibilityTitle') once the key is added to co.csv */}
-          Accessibility at CDHS
+          {t('titleAccessibility')}
         </h2>
 
         <p className="font-sans-sm margin-top-0">
-          {/* TODO: Use t('accessibilityBody') once the key is added to co.csv */}
-          CDHS is committed to meeting members of our community where they are, and strives to
-          provide all Coloradans with access to our programs, services, resources, activities and
-          communication regardless of ability.
+          {t('bodyAccessibility')}
         </p>
 
         <Link
@@ -112,8 +106,7 @@ function COHelpSection({ state = 'co' }: HelpSectionProps) {
           rel="noopener noreferrer"
           className="usa-button usa-button--outline border-primary text-primary display-block text-center"
         >
-          {/* TODO: Use t('digitalAccessibilityStatement') once the key is added to co.csv */}
-          Digital accessibility statement
+          {t('linkAccessibility')}
         </Link>
       </div>
     </section>

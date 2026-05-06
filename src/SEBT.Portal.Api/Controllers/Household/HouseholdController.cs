@@ -100,7 +100,20 @@ public class HouseholdController : ControllerBase
             {
                 if (validationResult.IsValid)
                 {
-                    return Ok(new AddressUpdateResponse { Status = "valid" });
+                    return Ok(new AddressUpdateResponse
+                    {
+                        Status = "valid",
+                        NormalizedAddress = validationResult.NormalizedAddress != null
+                            ? new AddressResponse
+                            {
+                                StreetAddress1 = validationResult.NormalizedAddress.StreetAddress1,
+                                StreetAddress2 = validationResult.NormalizedAddress.StreetAddress2,
+                                City = validationResult.NormalizedAddress.City,
+                                State = validationResult.NormalizedAddress.State,
+                                PostalCode = validationResult.NormalizedAddress.PostalCode
+                            }
+                            : null
+                    });
                 }
 
                 var response = new AddressUpdateResponse

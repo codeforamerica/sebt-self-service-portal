@@ -1,6 +1,7 @@
 using System.Security.Claims;
 using Microsoft.Extensions.Logging.Abstractions;
 using NSubstitute;
+using SEBT.Portal.Core.AppSettings;
 using SEBT.Portal.Core.Models;
 using SEBT.Portal.Core.Models.Auth;
 using SEBT.Portal.Core.Models.Household;
@@ -22,6 +23,18 @@ public class GetHouseholdDataQueryHandlerTests
     private readonly ICardReplacementRequestRepository _cardReplacementRepo = Substitute.For<ICardReplacementRequestRepository>();
     private readonly IIdentifierHasher _identifierHasher = Substitute.For<IIdentifierHasher>();
     private readonly NullLogger<GetHouseholdDataQueryHandler> _logger = NullLogger<GetHouseholdDataQueryHandler>.Instance;
+
+    private GetHouseholdDataQueryHandler CreateHandler(CoLoadedCohortFilterSettings? coLoadedCohortFilter = null) =>
+        new(
+            _resolver,
+            _repository,
+            _piiVisibilityService,
+            _idProofingService,
+            _selfServiceEvaluator,
+            _cardReplacementRepo,
+            _identifierHasher,
+            coLoadedCohortFilter ?? new CoLoadedCohortFilterSettings(),
+            _logger);
 
     public GetHouseholdDataQueryHandlerTests()
     {
@@ -83,7 +96,7 @@ public class GetHouseholdDataQueryHandlerTests
         _repository.GetHouseholdByIdentifierAsync(identifier, Arg.Any<PiiVisibility>(), Arg.Any<UserIalLevel>(), Arg.Any<CancellationToken>())
             .Returns(householdData);
 
-        var handler = new GetHouseholdDataQueryHandler(_resolver, _repository, _piiVisibilityService, _idProofingService, _selfServiceEvaluator, _cardReplacementRepo, _identifierHasher, _logger);
+        var handler = CreateHandler();
         var query = new GetHouseholdDataQuery { User = user };
 
         // Act
@@ -117,7 +130,7 @@ public class GetHouseholdDataQueryHandlerTests
         _repository.GetHouseholdByIdentifierAsync(identifier, Arg.Any<PiiVisibility>(), Arg.Any<UserIalLevel>(), Arg.Any<CancellationToken>())
             .Returns(householdData);
 
-        var handler = new GetHouseholdDataQueryHandler(_resolver, _repository, _piiVisibilityService, _idProofingService, _selfServiceEvaluator, _cardReplacementRepo, _identifierHasher, _logger);
+        var handler = CreateHandler();
         var query = new GetHouseholdDataQuery { User = user };
 
         // Act
@@ -142,7 +155,7 @@ public class GetHouseholdDataQueryHandlerTests
         _resolver.ResolveAsync(Arg.Any<ClaimsPrincipal>(), Arg.Any<CancellationToken>())
             .Returns((HouseholdIdentifier?)null);
 
-        var handler = new GetHouseholdDataQueryHandler(_resolver, _repository, _piiVisibilityService, _idProofingService, _selfServiceEvaluator, _cardReplacementRepo, _identifierHasher, _logger);
+        var handler = CreateHandler();
         var query = new GetHouseholdDataQuery { User = user };
 
         // Act
@@ -170,7 +183,7 @@ public class GetHouseholdDataQueryHandlerTests
         _repository.GetHouseholdByIdentifierAsync(Arg.Any<HouseholdIdentifier>(), Arg.Any<PiiVisibility>(), Arg.Any<UserIalLevel>(), Arg.Any<CancellationToken>())
             .Returns((HouseholdData?)null);
 
-        var handler = new GetHouseholdDataQueryHandler(_resolver, _repository, _piiVisibilityService, _idProofingService, _selfServiceEvaluator, _cardReplacementRepo, _identifierHasher, _logger);
+        var handler = CreateHandler();
         var query = new GetHouseholdDataQuery { User = user };
 
         // Act
@@ -199,7 +212,7 @@ public class GetHouseholdDataQueryHandlerTests
         _repository.GetHouseholdByIdentifierAsync(Arg.Any<HouseholdIdentifier>(), Arg.Any<PiiVisibility>(), Arg.Any<UserIalLevel>(), Arg.Any<CancellationToken>())
             .Returns(householdData);
 
-        var handler = new GetHouseholdDataQueryHandler(_resolver, _repository, _piiVisibilityService, _idProofingService, _selfServiceEvaluator, _cardReplacementRepo, _identifierHasher, _logger);
+        var handler = CreateHandler();
         var query = new GetHouseholdDataQuery { User = user };
 
         // Act
@@ -230,7 +243,7 @@ public class GetHouseholdDataQueryHandlerTests
         _repository.GetHouseholdByIdentifierAsync(Arg.Any<HouseholdIdentifier>(), Arg.Any<PiiVisibility>(), Arg.Any<UserIalLevel>(), Arg.Any<CancellationToken>())
             .Returns(householdData);
 
-        var handler = new GetHouseholdDataQueryHandler(_resolver, _repository, _piiVisibilityService, _idProofingService, _selfServiceEvaluator, _cardReplacementRepo, _identifierHasher, _logger);
+        var handler = CreateHandler();
         var query = new GetHouseholdDataQuery { User = user };
 
         // Act
@@ -265,7 +278,7 @@ public class GetHouseholdDataQueryHandlerTests
             Arg.Any<UserIalLevel>(), Arg.Any<IReadOnlyList<SummerEbtCase>>())
             .Returns(new IdProofingDecision(IsAllowed: false, RequiredLevel: UserIalLevel.IAL1plus));
 
-        var handler = new GetHouseholdDataQueryHandler(_resolver, _repository, _piiVisibilityService, _idProofingService, _selfServiceEvaluator, _cardReplacementRepo, _identifierHasher, _logger);
+        var handler = CreateHandler();
         var query = new GetHouseholdDataQuery { User = user };
 
         // Act
@@ -298,7 +311,7 @@ public class GetHouseholdDataQueryHandlerTests
             Arg.Any<UserIalLevel>(), Arg.Any<IReadOnlyList<SummerEbtCase>>())
             .Returns(new IdProofingDecision(IsAllowed: true, RequiredLevel: UserIalLevel.IAL1plus));
 
-        var handler = new GetHouseholdDataQueryHandler(_resolver, _repository, _piiVisibilityService, _idProofingService, _selfServiceEvaluator, _cardReplacementRepo, _identifierHasher, _logger);
+        var handler = CreateHandler();
         var query = new GetHouseholdDataQuery { User = user };
 
         // Act
@@ -339,7 +352,7 @@ public class GetHouseholdDataQueryHandlerTests
                 Arg.Any<UserIalLevel>(), Arg.Any<CancellationToken>())
             .Returns(householdData);
 
-        var handler = new GetHouseholdDataQueryHandler(_resolver, _repository, _piiVisibilityService, _idProofingService, _selfServiceEvaluator, _cardReplacementRepo, _identifierHasher, _logger);
+        var handler = CreateHandler();
         var query = new GetHouseholdDataQuery { User = user };
 
         var result = await handler.Handle(query, CancellationToken.None);
@@ -384,7 +397,7 @@ public class GetHouseholdDataQueryHandlerTests
         _selfServiceEvaluator.Evaluate(Arg.Is<SummerEbtCase>(c => c.SummerEBTCaseID == "SEBT-002"))
             .Returns(new AllowedActions { CanUpdateAddress = false, CanRequestReplacementCard = true });
 
-        var handler = new GetHouseholdDataQueryHandler(_resolver, _repository, _piiVisibilityService, _idProofingService, _selfServiceEvaluator, _cardReplacementRepo, _identifierHasher, _logger);
+        var handler = CreateHandler();
         var query = new GetHouseholdDataQuery { User = user };
 
         var result = await handler.Handle(query, CancellationToken.None);
@@ -424,7 +437,7 @@ public class GetHouseholdDataQueryHandlerTests
                 Arg.Any<UserIalLevel>(), Arg.Any<CancellationToken>())
             .Returns(householdData);
 
-        var handler = new GetHouseholdDataQueryHandler(_resolver, _repository, _piiVisibilityService, _idProofingService, _selfServiceEvaluator, _cardReplacementRepo, _identifierHasher, _logger);
+        var handler = CreateHandler();
         var query = new GetHouseholdDataQuery { User = user };
 
         await handler.Handle(query, CancellationToken.None);
@@ -462,7 +475,7 @@ public class GetHouseholdDataQueryHandlerTests
                 Arg.Any<UserIalLevel>(), Arg.Any<CancellationToken>())
             .Returns(householdData);
 
-        var handler = new GetHouseholdDataQueryHandler(_resolver, _repository, _piiVisibilityService, _idProofingService, _selfServiceEvaluator, _cardReplacementRepo, _identifierHasher, _logger);
+        var handler = CreateHandler();
         var query = new GetHouseholdDataQuery { User = user };
 
         var result = await handler.Handle(query, CancellationToken.None);
@@ -474,6 +487,330 @@ public class GetHouseholdDataQueryHandlerTests
         // Fully-co-loaded households: no filter runs, so the upstream plugin's
         // BenefitIssuanceType is preserved and drives downstream routing honestly.
         Assert.Equal(BenefitIssuanceType.SnapEbtCard, success.Value.BenefitIssuanceType);
+    }
+
+    [Fact]
+    public async Task Handle_ClassifiesCohort_AsNonCoLoaded_WhenNoCasesAreCoLoaded()
+    {
+        // Household with only non-co-loaded cases should be classified NonCoLoaded,
+        // and the full case list should be returned unchanged.
+        // BenefitIssuanceType is not rewritten for this cohort (only MixedOrApplicantExcluded
+        // suppression realigns it); upstream / connector value passes through unchanged.
+        var email = "user@example.com";
+        var user = CreateUser(email, UserIalLevel.IAL1plus);
+        var identifier = HouseholdIdentifier.Email(EmailNormalizer.Normalize(email));
+        var householdData = new HouseholdData
+        {
+            Email = email,
+            BenefitIssuanceType = BenefitIssuanceType.SummerEbt,
+            SummerEbtCases = new List<SummerEbtCase>
+            {
+                new() { SummerEBTCaseID = "SEBT-001", ChildFirstName = "A", ChildLastName = "B", IsCoLoaded = false },
+                new() { SummerEBTCaseID = "SEBT-002", ChildFirstName = "C", ChildLastName = "D", IsCoLoaded = false }
+            }
+        };
+
+        _resolver.ResolveAsync(Arg.Any<ClaimsPrincipal>(), Arg.Any<CancellationToken>()).Returns(identifier);
+        _piiVisibilityService.GetVisibility(UserIalLevel.IAL1plus)
+            .Returns(new PiiVisibility(IncludeAddress: true, IncludeEmail: true, IncludePhone: true));
+        _repository.GetHouseholdByIdentifierAsync(
+                Arg.Any<HouseholdIdentifier>(), Arg.Any<PiiVisibility>(),
+                Arg.Any<UserIalLevel>(), Arg.Any<CancellationToken>())
+            .Returns(householdData);
+
+        var handler = CreateHandler();
+        var query = new GetHouseholdDataQuery { User = user };
+
+        var result = await handler.Handle(query, CancellationToken.None);
+
+        var success = Assert.IsType<SuccessResult<HouseholdData>>(result);
+        Assert.Equal(CoLoadedCohort.NonCoLoaded, success.Value.CoLoadedCohort);
+        Assert.Equal(2, success.Value.SummerEbtCases.Count);
+        Assert.Equal(BenefitIssuanceType.SummerEbt, success.Value.BenefitIssuanceType);
+    }
+
+    [Fact]
+    public async Task Handle_ClassifiesCohort_AsCoLoadedOnly_WhenAllCasesAreCoLoadedAndNoApplications()
+    {
+        // Co-loaded-only households: cases are retained (they're all the user has);
+        // classification enables analytics to segment this cohort distinctly from
+        // the mixed/applicant-excluded cohort whose co-loaded cases are suppressed.
+        var email = "user@example.com";
+        var user = CreateUser(email, UserIalLevel.IAL1plus);
+        var identifier = HouseholdIdentifier.Email(EmailNormalizer.Normalize(email));
+        var householdData = new HouseholdData
+        {
+            Email = email,
+            BenefitIssuanceType = BenefitIssuanceType.SnapEbtCard,
+            SummerEbtCases = new List<SummerEbtCase>
+            {
+                new() { SummerEBTCaseID = "SEBT-001", ChildFirstName = "A", ChildLastName = "B", IsCoLoaded = true },
+                new() { SummerEBTCaseID = "SEBT-002", ChildFirstName = "C", ChildLastName = "D", IsCoLoaded = true }
+            }
+        };
+
+        _resolver.ResolveAsync(Arg.Any<ClaimsPrincipal>(), Arg.Any<CancellationToken>()).Returns(identifier);
+        _piiVisibilityService.GetVisibility(UserIalLevel.IAL1plus)
+            .Returns(new PiiVisibility(IncludeAddress: true, IncludeEmail: true, IncludePhone: true));
+        _repository.GetHouseholdByIdentifierAsync(
+                Arg.Any<HouseholdIdentifier>(), Arg.Any<PiiVisibility>(),
+                Arg.Any<UserIalLevel>(), Arg.Any<CancellationToken>())
+            .Returns(householdData);
+
+        var handler = CreateHandler();
+        var query = new GetHouseholdDataQuery { User = user };
+
+        var result = await handler.Handle(query, CancellationToken.None);
+
+        var success = Assert.IsType<SuccessResult<HouseholdData>>(result);
+        Assert.Equal(CoLoadedCohort.CoLoadedOnly, success.Value.CoLoadedCohort);
+        Assert.Equal(2, success.Value.SummerEbtCases.Count);
+    }
+
+    [Fact]
+    public async Task Handle_ClassifiesCohort_AsCoLoadedOnly_WhenAllCasesCoLoadedAndHouseholdApplicationsAreHistoricalOnly()
+    {
+        // Household Applications often retains terminal rows (Approved/Denied/Cancelled).
+        // Those alone must not classify as MixedOrApplicantExcluded when every case is co-loaded.
+        var email = "user@example.com";
+        var user = CreateUser(email, UserIalLevel.IAL1plus);
+        var identifier = HouseholdIdentifier.Email(EmailNormalizer.Normalize(email));
+        var householdData = new HouseholdData
+        {
+            Email = email,
+            BenefitIssuanceType = BenefitIssuanceType.SnapEbtCard,
+            SummerEbtCases = new List<SummerEbtCase>
+            {
+                new() { SummerEBTCaseID = "SEBT-001", ChildFirstName = "A", ChildLastName = "B", IsCoLoaded = true },
+                new() { SummerEBTCaseID = "SEBT-002", ChildFirstName = "C", ChildLastName = "D", IsCoLoaded = true }
+            },
+            Applications = new List<Application>
+            {
+                new()
+                {
+                    ApplicationNumber = "APP-PAST",
+                    ApplicationStatus = ApplicationStatus.Approved,
+                    IssuanceType = IssuanceType.SummerEbt
+                }
+            }
+        };
+
+        _resolver.ResolveAsync(Arg.Any<ClaimsPrincipal>(), Arg.Any<CancellationToken>()).Returns(identifier);
+        _piiVisibilityService.GetVisibility(UserIalLevel.IAL1plus)
+            .Returns(new PiiVisibility(IncludeAddress: true, IncludeEmail: true, IncludePhone: true));
+        _repository.GetHouseholdByIdentifierAsync(
+                Arg.Any<HouseholdIdentifier>(), Arg.Any<PiiVisibility>(),
+                Arg.Any<UserIalLevel>(), Arg.Any<CancellationToken>())
+            .Returns(householdData);
+
+        var handler = CreateHandler();
+        var query = new GetHouseholdDataQuery { User = user };
+
+        var result = await handler.Handle(query, CancellationToken.None);
+
+        var success = Assert.IsType<SuccessResult<HouseholdData>>(result);
+        Assert.Equal(CoLoadedCohort.CoLoadedOnly, success.Value.CoLoadedCohort);
+        Assert.Equal(2, success.Value.SummerEbtCases.Count);
+        Assert.Equal(BenefitIssuanceType.SnapEbtCard, success.Value.BenefitIssuanceType);
+    }
+
+    [Fact]
+    public async Task Handle_ClassifiesCohort_AsMixedOrApplicantExcluded_WhenHouseholdHasCoLoadedAndNonCoLoadedCases()
+    {
+        // Mixed-eligibility family: co-loaded cases are suppressed and the
+        // household is tagged for analytics as excluded.
+        var email = "user@example.com";
+        var user = CreateUser(email, UserIalLevel.IAL1plus);
+        var identifier = HouseholdIdentifier.Email(EmailNormalizer.Normalize(email));
+        var householdData = new HouseholdData
+        {
+            Email = email,
+            SummerEbtCases = new List<SummerEbtCase>
+            {
+                new() { SummerEBTCaseID = "SEBT-COLOADED", ChildFirstName = "A", ChildLastName = "B", IsCoLoaded = true },
+                new() { SummerEBTCaseID = "SEBT-REGULAR", ChildFirstName = "C", ChildLastName = "D", IsCoLoaded = false }
+            }
+        };
+
+        _resolver.ResolveAsync(Arg.Any<ClaimsPrincipal>(), Arg.Any<CancellationToken>()).Returns(identifier);
+        _piiVisibilityService.GetVisibility(UserIalLevel.IAL1plus)
+            .Returns(new PiiVisibility(IncludeAddress: true, IncludeEmail: true, IncludePhone: true));
+        _repository.GetHouseholdByIdentifierAsync(
+                Arg.Any<HouseholdIdentifier>(), Arg.Any<PiiVisibility>(),
+                Arg.Any<UserIalLevel>(), Arg.Any<CancellationToken>())
+            .Returns(householdData);
+
+        var handler = CreateHandler();
+        var query = new GetHouseholdDataQuery { User = user };
+
+        var result = await handler.Handle(query, CancellationToken.None);
+
+        var success = Assert.IsType<SuccessResult<HouseholdData>>(result);
+        Assert.Equal(CoLoadedCohort.MixedOrApplicantExcluded, success.Value.CoLoadedCohort);
+        Assert.Single(success.Value.SummerEbtCases);
+        Assert.Equal("SEBT-REGULAR", success.Value.SummerEbtCases[0].SummerEBTCaseID);
+    }
+
+    [Fact]
+    public async Task Handle_ClassifiesCohort_AsMixedOrApplicantExcluded_WhenApplicantHasCoLoadedBenefits()
+    {
+        // Applicant-with-co-loaded: all cases are co-loaded but the household has
+        // a pending application. The user is on the applicant journey, so co-loaded
+        // cases are suppressed and they see only their application view.
+        var email = "user@example.com";
+        var user = CreateUser(email, UserIalLevel.IAL1plus);
+        var identifier = HouseholdIdentifier.Email(EmailNormalizer.Normalize(email));
+        var householdData = new HouseholdData
+        {
+            Email = email,
+            SummerEbtCases = new List<SummerEbtCase>
+            {
+                new() { SummerEBTCaseID = "SEBT-COLOADED", ChildFirstName = "A", ChildLastName = "B", IsCoLoaded = true }
+            },
+            Applications = new List<Application>
+            {
+                new() { ApplicationNumber = "APP-1", ApplicationStatus = ApplicationStatus.Pending }
+            }
+        };
+
+        _resolver.ResolveAsync(Arg.Any<ClaimsPrincipal>(), Arg.Any<CancellationToken>()).Returns(identifier);
+        _piiVisibilityService.GetVisibility(UserIalLevel.IAL1plus)
+            .Returns(new PiiVisibility(IncludeAddress: true, IncludeEmail: true, IncludePhone: true));
+        _repository.GetHouseholdByIdentifierAsync(
+                Arg.Any<HouseholdIdentifier>(), Arg.Any<PiiVisibility>(),
+                Arg.Any<UserIalLevel>(), Arg.Any<CancellationToken>())
+            .Returns(householdData);
+
+        var handler = CreateHandler();
+        var query = new GetHouseholdDataQuery { User = user };
+
+        var result = await handler.Handle(query, CancellationToken.None);
+
+        var success = Assert.IsType<SuccessResult<HouseholdData>>(result);
+        Assert.Equal(CoLoadedCohort.MixedOrApplicantExcluded, success.Value.CoLoadedCohort);
+        Assert.Empty(success.Value.SummerEbtCases);
+        Assert.Single(success.Value.Applications);
+    }
+
+    [Fact]
+    public async Task Handle_ClassifiesCohort_AsMixedOrApplicantExcluded_WhenCoLoadedCaseHasPendingApplicationStatus()
+    {
+        // Applicant-with-co-loaded variant: no separate Applications[] entry, but
+        // the co-loaded case itself carries ApplicationStatus.Pending. This still
+        // represents an applicant and must be treated as the excluded cohort.
+        var email = "user@example.com";
+        var user = CreateUser(email, UserIalLevel.IAL1plus);
+        var identifier = HouseholdIdentifier.Email(EmailNormalizer.Normalize(email));
+        var householdData = new HouseholdData
+        {
+            Email = email,
+            SummerEbtCases = new List<SummerEbtCase>
+            {
+                new()
+                {
+                    SummerEBTCaseID = "SEBT-COLOADED",
+                    ChildFirstName = "A",
+                    ChildLastName = "B",
+                    IsCoLoaded = true,
+                    ApplicationStatus = ApplicationStatus.Pending
+                }
+            }
+        };
+
+        _resolver.ResolveAsync(Arg.Any<ClaimsPrincipal>(), Arg.Any<CancellationToken>()).Returns(identifier);
+        _piiVisibilityService.GetVisibility(UserIalLevel.IAL1plus)
+            .Returns(new PiiVisibility(IncludeAddress: true, IncludeEmail: true, IncludePhone: true));
+        _repository.GetHouseholdByIdentifierAsync(
+                Arg.Any<HouseholdIdentifier>(), Arg.Any<PiiVisibility>(),
+                Arg.Any<UserIalLevel>(), Arg.Any<CancellationToken>())
+            .Returns(householdData);
+
+        var handler = CreateHandler();
+        var query = new GetHouseholdDataQuery { User = user };
+
+        var result = await handler.Handle(query, CancellationToken.None);
+
+        var success = Assert.IsType<SuccessResult<HouseholdData>>(result);
+        Assert.Equal(CoLoadedCohort.MixedOrApplicantExcluded, success.Value.CoLoadedCohort);
+        Assert.Empty(success.Value.SummerEbtCases);
+    }
+
+    [Fact]
+    public async Task Handle_WhenSuppressCoLoadedCasesDisabled_KeepsMixedCohortCasesAndUpstreamBenefitIssuanceType()
+    {
+        var email = "user@example.com";
+        var user = CreateUser(email, UserIalLevel.IAL1plus);
+        var identifier = HouseholdIdentifier.Email(EmailNormalizer.Normalize(email));
+        var householdData = new HouseholdData
+        {
+            Email = email,
+            BenefitIssuanceType = BenefitIssuanceType.SnapEbtCard,
+            SummerEbtCases = new List<SummerEbtCase>
+            {
+                new() { SummerEBTCaseID = "SEBT-COLOADED", ChildFirstName = "A", ChildLastName = "B", IsCoLoaded = true },
+                new() { SummerEBTCaseID = "SEBT-REGULAR", ChildFirstName = "C", ChildLastName = "D", IsCoLoaded = false }
+            }
+        };
+
+        _resolver.ResolveAsync(Arg.Any<ClaimsPrincipal>(), Arg.Any<CancellationToken>()).Returns(identifier);
+        _piiVisibilityService.GetVisibility(UserIalLevel.IAL1plus)
+            .Returns(new PiiVisibility(IncludeAddress: true, IncludeEmail: true, IncludePhone: true));
+        _repository.GetHouseholdByIdentifierAsync(
+                Arg.Any<HouseholdIdentifier>(), Arg.Any<PiiVisibility>(),
+                Arg.Any<UserIalLevel>(), Arg.Any<CancellationToken>())
+            .Returns(householdData);
+
+        var cohortFilter = new CoLoadedCohortFilterSettings { SuppressCoLoadedCasesForExcludedCohort = false };
+        var handler = CreateHandler(cohortFilter);
+        var query = new GetHouseholdDataQuery { User = user };
+
+        var result = await handler.Handle(query, CancellationToken.None);
+
+        var success = Assert.IsType<SuccessResult<HouseholdData>>(result);
+        Assert.Equal(CoLoadedCohort.MixedOrApplicantExcluded, success.Value.CoLoadedCohort);
+        Assert.Equal(2, success.Value.SummerEbtCases.Count);
+        Assert.Contains(success.Value.SummerEbtCases, c => c.SummerEBTCaseID == "SEBT-COLOADED");
+        Assert.Equal(BenefitIssuanceType.SnapEbtCard, success.Value.BenefitIssuanceType);
+    }
+
+    [Fact]
+    public async Task Handle_WhenSuppressCoLoadedCasesDisabled_KeepsApplicantCoLoadedCases()
+    {
+        var email = "user@example.com";
+        var user = CreateUser(email, UserIalLevel.IAL1plus);
+        var identifier = HouseholdIdentifier.Email(EmailNormalizer.Normalize(email));
+        var householdData = new HouseholdData
+        {
+            Email = email,
+            SummerEbtCases = new List<SummerEbtCase>
+            {
+                new() { SummerEBTCaseID = "SEBT-COLOADED", ChildFirstName = "A", ChildLastName = "B", IsCoLoaded = true }
+            },
+            Applications = new List<Application>
+            {
+                new() { ApplicationNumber = "APP-1", ApplicationStatus = ApplicationStatus.Pending }
+            }
+        };
+
+        _resolver.ResolveAsync(Arg.Any<ClaimsPrincipal>(), Arg.Any<CancellationToken>()).Returns(identifier);
+        _piiVisibilityService.GetVisibility(UserIalLevel.IAL1plus)
+            .Returns(new PiiVisibility(IncludeAddress: true, IncludeEmail: true, IncludePhone: true));
+        _repository.GetHouseholdByIdentifierAsync(
+                Arg.Any<HouseholdIdentifier>(), Arg.Any<PiiVisibility>(),
+                Arg.Any<UserIalLevel>(), Arg.Any<CancellationToken>())
+            .Returns(householdData);
+
+        var cohortFilter = new CoLoadedCohortFilterSettings { SuppressCoLoadedCasesForExcludedCohort = false };
+        var handler = CreateHandler(cohortFilter);
+        var query = new GetHouseholdDataQuery { User = user };
+
+        var result = await handler.Handle(query, CancellationToken.None);
+
+        var success = Assert.IsType<SuccessResult<HouseholdData>>(result);
+        Assert.Equal(CoLoadedCohort.MixedOrApplicantExcluded, success.Value.CoLoadedCohort);
+        Assert.Single(success.Value.SummerEbtCases);
+        Assert.Equal("SEBT-COLOADED", success.Value.SummerEbtCases[0].SummerEBTCaseID);
+        Assert.Single(success.Value.Applications);
     }
 
     [Fact]
@@ -493,7 +830,7 @@ public class GetHouseholdDataQueryHandlerTests
         _repository.GetHouseholdByIdentifierAsync(Arg.Any<HouseholdIdentifier>(), Arg.Any<PiiVisibility>(), Arg.Any<UserIalLevel>(), token)
             .Returns(householdData);
 
-        var handler = new GetHouseholdDataQueryHandler(_resolver, _repository, _piiVisibilityService, _idProofingService, _selfServiceEvaluator, _cardReplacementRepo, _identifierHasher, _logger);
+        var handler = CreateHandler();
         var query = new GetHouseholdDataQuery { User = user };
 
         // Act
