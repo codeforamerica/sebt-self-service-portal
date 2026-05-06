@@ -69,13 +69,19 @@ export function SuggestedAddress() {
 
       try {
         const result = await updateAddress.mutateAsync(selectedAddress)
-        if (result.status !== 'valid') {
+        if (result.status !== 'valid' && result.status !== 'suggestion') {
           setSubmitError(t('addressUpdateError', 'Something went wrong. Please try again.'))
           return
         }
         const normalized = toUpdateAddressRequestOrNull(result.normalizedAddress)
         if (normalized) {
           flushSync(() => setAddress(normalized))
+          router.push(continuePath)
+          return
+        }
+        const suggested = toUpdateAddressRequestOrNull(result.suggestedAddress)
+        if (suggested) {
+          flushSync(() => setAddress(suggested))
           router.push(continuePath)
           return
         }
