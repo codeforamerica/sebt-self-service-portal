@@ -25,6 +25,12 @@ public record AddressUpdateResponse
     public string? Message { get; init; }
 
     /// <summary>
+    /// The normalized address that was persisted when Status is "valid".
+    /// </summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public AddressResponse? NormalizedAddress { get; init; }
+
+    /// <summary>
     /// A suggested alternative address (e.g., abbreviated street for DC 30-char limit,
     /// or a Smarty-corrected address). Present only when Status is "suggestion".
     /// </summary>

@@ -13,7 +13,11 @@ export const AuthorizationStatusResponseSchema = z.object({
   idProofingStatus: z.number().int().nullish(),
   idProofingCompletedAt: z.number().int().nullish(),
   idProofingExpiresAt: z.number().int().nullish(),
-  isCoLoaded: z.boolean().nullish()
+  isCoLoaded: z.boolean().nullish(),
+  /** Sliding (idle) cookie expiry — Unix epoch seconds. */
+  expiresAt: z.number().int().nullish(),
+  /** Absolute session lifetime cap — Unix epoch seconds. */
+  absoluteExpiresAt: z.number().int().nullish()
 })
 
 export type AuthorizationStatusResponse = z.infer<typeof AuthorizationStatusResponseSchema>

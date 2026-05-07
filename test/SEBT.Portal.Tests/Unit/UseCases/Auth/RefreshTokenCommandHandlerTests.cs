@@ -21,6 +21,8 @@ public class RefreshTokenCommandHandlerTests
 
     public RefreshTokenCommandHandlerTests()
     {
+        // The absolute-cap is enforced upstream by SessionLifetimePolicy in the bearer
+        // middleware; principals reaching this handler have already passed that check.
         handler = new RefreshTokenCommandHandler(
             userRepository,
             jwtTokenService,
@@ -28,7 +30,7 @@ public class RefreshTokenCommandHandlerTests
             logger);
     }
 
-    /// <summary>Builds a ClaimsPrincipal carrying a sub claim (the portal's user ID) plus
+    /// <summary>Builds a ClaimsPrincipal carrying a sub claim (the portal's user ID), plus
     /// any additional claims the test needs to pass through to the refreshed token.</summary>
     private static ClaimsPrincipal PrincipalWithSub(string userIdSub, params Claim[] extraClaims)
     {

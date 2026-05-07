@@ -24,6 +24,15 @@ namespace SEBT.Portal.Api.Models;
 /// <param name="IsCoLoaded">
 /// Whether the user's record was co-loaded from an external state system. Null when the claim is absent.
 /// </param>
+/// <param name="ExpiresAt">
+/// Unix seconds timestamp at which the current session cookie expires (sliding/idle expiry).
+/// The SPA uses this to schedule activity-gated refreshes. Null when the claim is absent.
+/// </param>
+/// <param name="AbsoluteExpiresAt">
+/// Unix seconds timestamp at which the session reaches its absolute lifetime cap, regardless of
+/// activity. Computed from the JWT <c>auth_time</c> claim plus <c>JwtSettings.AbsoluteExpirationMinutes</c>.
+/// Null when <c>auth_time</c> is absent.
+/// </param>
 public record AuthorizationStatusResponse(
     bool IsAuthorized,
     string? Email = null,
@@ -31,5 +40,7 @@ public record AuthorizationStatusResponse(
     int? IdProofingStatus = null,
     long? IdProofingCompletedAt = null,
     long? IdProofingExpiresAt = null,
-    bool? IsCoLoaded = null);
+    bool? IsCoLoaded = null,
+    long? ExpiresAt = null,
+    long? AbsoluteExpiresAt = null);
 

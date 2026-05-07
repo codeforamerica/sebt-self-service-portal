@@ -1,6 +1,6 @@
 'use client'
 
-import { useRouter } from 'next/navigation'
+import { usePathname, useRouter, useSearchParams } from 'next/navigation'
 import { useEffect, useRef, useState, type FormEvent } from 'react'
 import { createPortal } from 'react-dom'
 import { useTranslation } from 'react-i18next'
@@ -10,6 +10,7 @@ import { Alert, Button, InputField, getState, getStateLinks } from '@sebt/design
 import type { Address } from '@/features/household/api'
 
 import { isValidZip, useUpdateAddress } from '../../api'
+import type { AddressResponse, UpdateAddressRequest } from '../../api/schema'
 import { useAddressFlow } from '../../context'
 import { AddressAutocomplete, type SelectedAddress } from '../AddressAutocomplete'
 import { STATE_ABBREVIATIONS, US_STATE_OPTIONS } from './usStates'
@@ -53,13 +54,31 @@ function resolveStateValue(value: string | null | undefined, fallback: string): 
 
 const DEFAULT_REDIRECT = '/profile/address/replacement-cards'
 
+function toUpdateAddressRequestOrNull(
+  address: AddressResponse | null | undefined
+): UpdateAddressRequest | null {
+  if (!address?.streetAddress1 || !address.city || !address.state || !address.postalCode) {
+    return null
+  }
+
+  return {
+    streetAddress1: address.streetAddress1,
+    streetAddress2: address.streetAddress2 ?? undefined,
+    city: address.city,
+    state: address.state,
+    postalCode: address.postalCode
+  }
+}
+
 export function AddressForm({ initialAddress, redirectPath }: AddressFormProps) {
   const { t } = useTranslation('confirmInfo')
   const { t: tValidation } = useTranslation('validation')
   const { t: tCommon } = useTranslation('common')
   const router = useRouter()
+  const pathname = usePathname()
+  const searchParams = useSearchParams()
   const updateAddress = useUpdateAddress()
-  const { setAddress, setValidationResult } = useAddressFlow()
+  const { setAddress, setValidationResult, setNavigationTargets } = useAddressFlow()
   const errorSummaryRef = useRef<HTMLDivElement>(null)
 
   const currentState = getState()
@@ -86,18 +105,21 @@ export function AddressForm({ initialAddress, redirectPath }: AddressFormProps) 
     }
   }, [hasErrors])
 
+  useEffect(() => {
+    const currentQuery = searchParams.toString()
+    const formPath = currentQuery ? `${pathname}?${currentQuery}` : pathname
+    setNavigationTargets({
+      formPath,
+      continuePath: redirectPath ?? DEFAULT_REDIRECT
+    })
+  }, [pathname, redirectPath, searchParams, setNavigationTargets])
+
   function validate(): FieldErrors {
     const errors: FieldErrors = {}
     const required = tValidation('required', 'This field is required.')
 
     if (!streetAddress1.trim()) {
       errors.streetAddress1 = required
-    } else if (streetAddress1.trim().length > 30) {
-      // TODO: Backend does not yet enforce this limit — add [MaxLength(30)] when confirmed
-      errors.streetAddress1 = t(
-        'streetAddressTooLong',
-        'Enter a street address shorter than 30 characters.'
-      )
     }
     if (!city.trim()) errors.city = required
     if (!stateValue.trim()) errors.state = required
@@ -133,12 +155,12 @@ export function AddressForm({ initialAddress, redirectPath }: AddressFormProps) 
       const result = await updateAddress.mutateAsync(addressData)
 
       if (result.status === 'valid') {
-        setAddress(addressData)
+        setAddress(toUpdateAddressRequestOrNull(result.normalizedAddress) ?? addressData)
         router.push(redirectPath ?? DEFAULT_REDIRECT)
         return
       }
 
-      // too_long stays on the form with inline + banner errors
+      // too_long stays on the form: inline field error + portal banner via showStreetLengthAlert.
       if (result.reason === 'too_long') {
         setFieldErrors({
           streetAddress1: t(
@@ -146,7 +168,6 @@ export function AddressForm({ initialAddress, redirectPath }: AddressFormProps) 
             'Enter a street address shorter than 30 characters'
           )
         })
-        setSubmitError('too_long')
         return
       }
 
