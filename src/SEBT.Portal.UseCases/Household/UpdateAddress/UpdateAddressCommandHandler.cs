@@ -88,18 +88,28 @@ public class UpdateAddressCommandHandler(
 
         // Smarty's USPS-long canonical street can exceed DC's connector limit while the user's typed
         // street still fits. Abbreviated suggestions must not loop forever when the user explicitly
-        // chooses "address you entered" — validate and persist those lines instead.
-        var abbreviatedOnlyBlocksPersist =
-            command.AcceptEnteredAddress
-            && !stateValidationOnNormalized.IsValid
-            && stateValidationOnNormalized.Reason == "abbreviated";
-
-        if (!stateValidationOnNormalized.IsValid && !abbreviatedOnlyBlocksPersist)
+        // chooses "address you entered" - validate and persist those lines instead.
+        var abbreviatedOnlyBlocksPersist = false;
+        if (!stateValidationOnNormalized.IsValid)
         {
-            logger.LogInformation(
-                "Address failed state-specific validation: {Reason}",
-                stateValidationOnNormalized.Reason);
-            return Result<AddressValidationResult>.Success(stateValidationOnNormalized);
+            // Only abbreviated-normalization mismatch may proceed; entered lines are validated below before persist.
+            if (stateValidationOnNormalized.Reason != "abbreviated")
+            {
+                logger.LogInformation(
+                    "Address failed state-specific validation: {Reason}",
+                    stateValidationOnNormalized.Reason);
+                return Result<AddressValidationResult>.Success(stateValidationOnNormalized);
+            }
+
+            if (!command.AcceptEnteredAddress)
+            {
+                logger.LogInformation(
+                    "Address failed state-specific validation: {Reason}",
+                    stateValidationOnNormalized.Reason);
+                return Result<AddressValidationResult>.Success(stateValidationOnNormalized);
+            }
+
+            abbreviatedOnlyBlocksPersist = true;
         }
 
         Address persistAddress = normalizedAddress!;
@@ -147,7 +157,7 @@ public class UpdateAddressCommandHandler(
             return Result<AddressValidationResult>.Unauthorized("Unable to identify user from token.");
         }
 
-        // Never log raw address fields — PII policy.
+        // Never log raw address fields - PII policy.
         // Extract enum name to a local to break CodeQL taint chain (identifier is tainted via .Value).
         var identifierKind = identifier.Type.ToString();
 

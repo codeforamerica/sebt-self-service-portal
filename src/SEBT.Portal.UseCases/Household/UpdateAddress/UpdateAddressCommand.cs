@@ -37,7 +37,7 @@ public class UpdateAddressCommand : ICommand<AddressValidationResult>
     /// <summary>
     /// When true and address verification produced a normalized suggestion, persist the command fields
     /// (what the user entered) instead of returning another suggestion. Used after the user explicitly
-    /// chooses “address you entered” on the suggestion screen.
+    /// chooses "address you entered" on the suggestion screen.
     /// </summary>
     public bool AcceptEnteredAddress { get; init; }
 }
