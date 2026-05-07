@@ -2,8 +2,7 @@
 # Smoke tests for generate-dacpac-report.sh.
 # Test 1: first-run path — pattern matches no prior release, emits initial-release CHANGELOG.
 # Test 2 (skipped locally): delta path requires sqlpackage, gh, and a prior release.
-set -e
-set -u
+set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 PROJECT_ROOT="$(cd "$SCRIPT_DIR/../../.." && pwd)"

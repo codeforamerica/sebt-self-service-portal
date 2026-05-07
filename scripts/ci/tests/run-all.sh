@@ -1,7 +1,6 @@
 #!/usr/bin/env bash
 # Runs every *_test.sh in this directory. Exits non-zero on the first failure.
-set -e
-set -u
+set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 shopt -s nullglob

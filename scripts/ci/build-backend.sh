@@ -9,8 +9,7 @@
 #   --skip-restore           Skip dotnet restore (useful if already restored)
 #   --configuration <config> Build configuration (Debug|Release, default: Release in CI)
 
-set -e  # Exit on error
-set -u  # Exit on undefined variable
+set -euo pipefail  # Exit on error, undefined variable, or pipeline failure
 
 # Colors for output
 RED='\033[0;31m'

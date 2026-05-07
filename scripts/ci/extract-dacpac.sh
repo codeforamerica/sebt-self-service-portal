@@ -18,8 +18,7 @@
 #   - dotnet SDK + dotnet-ef tool (dotnet tool install --global dotnet-ef)
 #   - sqlpackage (dotnet tool install --global Microsoft.SqlPackage)
 
-set -e
-set -u
+set -euo pipefail
 
 # Colors for output
 RED='\033[0;31m'

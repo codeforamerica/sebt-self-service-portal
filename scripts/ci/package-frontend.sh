@@ -18,8 +18,7 @@
 #   The frontend must be built with BUILD_STANDALONE=true before packaging,
 #   or omit --skip-build to let this script build it.
 
-set -e
-set -u
+set -euo pipefail
 
 # Colors for output
 RED='\033[0;31m'

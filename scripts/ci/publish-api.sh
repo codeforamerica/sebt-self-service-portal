@@ -19,8 +19,7 @@
 #   --output <dir>            Where to place the api/ directory (required).
 #   --configuration <cfg>     Debug or Release (default Release).
 
-set -e
-set -u
+set -euo pipefail
 
 RED='\033[0;31m'
 GREEN='\033[0;32m'

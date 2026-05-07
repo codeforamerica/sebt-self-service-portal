@@ -21,8 +21,7 @@
 # placeholder DeployReport files are produced so downstream packaging can use a
 # stable file contract. The script exits 0.
 
-set -e
-set -u
+set -euo pipefail
 
 RED='\033[0;31m'
 GREEN='\033[0;32m'

@@ -3,8 +3,7 @@
 # Source this file at the top of each test:  source "$(dirname "$0")/_assert.sh"
 # Each assertion prints to stderr and exits non-zero on failure (the parent test fails fast).
 
-set -e
-set -u
+set -euo pipefail
 
 assert_file_exists() {
   local path="$1"
@@ -43,9 +42,11 @@ assert_eq() {
 assert_zip_contains() {
   local zip_path="$1"
   local entry="$2"
-  if ! unzip -l "$zip_path" | grep -qF -- "$entry"; then
+  local listing
+  listing=$(unzip -l "$zip_path")
+  if ! grep -qF -- "$entry" <<<"$listing"; then
     echo "ASSERT FAIL: expected zip '$zip_path' to contain entry: $entry" >&2
-    unzip -l "$zip_path" >&2
+    echo "$listing" >&2
     exit 1
   fi
 }

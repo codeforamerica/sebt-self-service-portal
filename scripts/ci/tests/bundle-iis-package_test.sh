@@ -1,8 +1,7 @@
 #!/usr/bin/env bash
 # Smoke test for bundle-iis-package.sh: synthesize fake inputs, run the script,
 # assert the resulting zip's structure.
-set -e
-set -u
+set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 PROJECT_ROOT="$(cd "$SCRIPT_DIR/../../.." && pwd)"

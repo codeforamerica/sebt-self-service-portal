@@ -5,8 +5,7 @@
 # Pre-req: src/SEBT.Portal.Api/plugins-dc/ must already contain DC plugin DLLs.
 # The smoke test does NOT build or publish the DC connector itself — too heavy
 # for a smoke test — so it skips when plugins-dc is empty.
-set -e
-set -u
+set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 PROJECT_ROOT="$(cd "$SCRIPT_DIR/../../.." && pwd)"
