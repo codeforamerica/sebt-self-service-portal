@@ -492,7 +492,7 @@ public class HouseholdControllerTests
         SetupAuthenticatedUser("user@example.com", ial: "1plus");
         var request = new RequestCardReplacementRequest
         {
-            CaseIds = new List<string> { "SEBT-001" }
+            CaseRefs = new List<CaseRefRequestDto> { new() { SummerEbtCaseId = "SEBT-001" } }
         };
 
         var commandHandler = Substitute.For<ICommandHandler<RequestCardReplacementCommand>>();
@@ -513,12 +513,12 @@ public class HouseholdControllerTests
         SetupAuthenticatedUser("user@example.com", ial: "1plus");
         var request = new RequestCardReplacementRequest
         {
-            CaseIds = new List<string> { "SEBT-001" }
+            CaseRefs = new List<CaseRefRequestDto> { new() { SummerEbtCaseId = "SEBT-001" } }
         };
 
         var commandHandler = Substitute.For<ICommandHandler<RequestCardReplacementCommand>>();
         commandHandler.Handle(Arg.Any<RequestCardReplacementCommand>(), Arg.Any<CancellationToken>())
-            .Returns(Result.ValidationFailed("CaseIds", "Case was requested within the last 14 days."));
+            .Returns(Result.ValidationFailed("CaseRefs", "Case was requested within the last 14 days."));
 
         // Act
         var result = await _controller.RequestCardReplacement(request, commandHandler);
@@ -535,7 +535,11 @@ public class HouseholdControllerTests
         SetupAuthenticatedUser("user@example.com", ial: "1plus");
         var request = new RequestCardReplacementRequest
         {
-            CaseIds = new List<string> { "SEBT-001", "SEBT-002" }
+            CaseRefs = new List<CaseRefRequestDto>
+            {
+                new() { SummerEbtCaseId = "SEBT-001" },
+                new() { SummerEbtCaseId = "SEBT-002" }
+            }
         };
 
         RequestCardReplacementCommand? capturedCommand = null;
@@ -548,7 +552,9 @@ public class HouseholdControllerTests
 
         // Assert
         Assert.NotNull(capturedCommand);
-        Assert.Equal(new List<string> { "SEBT-001", "SEBT-002" }, capturedCommand.CaseIds);
+        Assert.Equal(
+            new[] { "SEBT-001", "SEBT-002" },
+            capturedCommand.CaseRefs.Select(r => r.SummerEbtCaseId).ToArray());
         Assert.NotNull(capturedCommand.User);
     }
 
