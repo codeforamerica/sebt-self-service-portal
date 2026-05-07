@@ -160,10 +160,13 @@ public class HouseholdController : ControllerBase
         [FromServices] ICommandHandler<RequestCardReplacementCommand> commandHandler,
         CancellationToken cancellationToken = default)
     {
+        var caseRefs = request.CaseRefs
+            .Select(r => new CaseRefDto(r.SummerEbtCaseId, r.ApplicationId, r.ApplicationStudentId))
+            .ToList();
         var command = new RequestCardReplacementCommand
         {
             User = User,
-            CaseIds = request.CaseIds
+            CaseRefs = caseRefs
         };
 
         var result = await commandHandler.Handle(command, cancellationToken);

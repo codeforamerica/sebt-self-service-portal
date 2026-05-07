@@ -155,6 +155,7 @@ public class SubmitIdProofingCommandHandler(
                         submittedDob,
                         cancellationToken))
                 {
+                    IdProofingBenefitIdentifierTypes.PersistBenefitIdentifierOnUser(user, command.IdType, command.IdValue);
                     logger.LogInformation(
                         "User {UserId} co-loaded benefit ID verified via DC warehouse (IC+DOB) for type {IdType}",
                         command.UserId,
@@ -194,6 +195,7 @@ public class SubmitIdProofingCommandHandler(
 
             if (CoLoadedBenefitIdentifierMatch.Matches(user, benefitHousehold, command.IdType, command.IdValue))
             {
+                IdProofingBenefitIdentifierTypes.PersistBenefitIdentifierOnUser(user, command.IdType, command.IdValue);
                 logger.LogInformation(
                     "User {UserId} co-loaded benefit ID verified for type {IdType}",
                     command.UserId, command.IdType);
