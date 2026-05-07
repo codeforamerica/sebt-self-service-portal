@@ -27,7 +27,9 @@ export const UpdateAddressRequestSchema = z.object({
   postalCode: z
     .string()
     .min(1, 'Postal code is required.')
-    .refine(isValidZip, 'Postal code must be a valid 5- or 9-digit ZIP code.')
+    .refine(isValidZip, 'Postal code must be a valid 5- or 9-digit ZIP code.'),
+  /** When true, API persists these fields even if Smarty suggested a correction. */
+  acceptEnteredAddress: z.boolean().optional()
 })
 
 export type UpdateAddressRequest = z.infer<typeof UpdateAddressRequestSchema>

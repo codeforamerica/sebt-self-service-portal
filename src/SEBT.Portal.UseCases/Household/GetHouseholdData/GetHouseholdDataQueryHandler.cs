@@ -4,6 +4,7 @@ using SEBT.Portal.Core.Models.Auth;
 using SEBT.Portal.Core.Models.Household;
 using SEBT.Portal.Core.Repositories;
 using SEBT.Portal.Core.Services;
+using SEBT.Portal.Core.Utilities;
 using SEBT.Portal.Kernel;
 using SEBT.Portal.Kernel.Results;
 
@@ -16,6 +17,7 @@ namespace SEBT.Portal.UseCases.Household;
 public class GetHouseholdDataQueryHandler(
     IHouseholdIdentifierResolver resolver,
     IHouseholdRepository repository,
+    IUserRepository userRepository,
     IPiiVisibilityService piiVisibilityService,
     IIdProofingService idProofingService,
     ISelfServiceEvaluator selfServiceEvaluator,
@@ -52,6 +54,35 @@ public class GetHouseholdDataQueryHandler(
             piiVisibility,
             userIalLevel,
             cancellationToken);
+
+        if (householdData == null
+            && identifier.Type == PreferredHouseholdIdType.Email)
+        {
+            var userId = query.User.GetUserId();
+            if (userId != null)
+            {
+                var user = await userRepository.GetUserByIdAsync(userId.Value, cancellationToken);
+                var benefitIc = string.IsNullOrWhiteSpace(user?.SnapId) ? user?.TanfId : user?.SnapId;
+                if (user?.IsCoLoaded == true
+                    && user.DateOfBirth is { } verifiedDob
+                    && !string.IsNullOrWhiteSpace(benefitIc))
+                {
+                    householdData = await repository.GetHouseholdByBenefitIdentifierAndGuardianDobAsync(
+                        identifier.Value,
+                        benefitIc.Trim(),
+                        verifiedDob,
+                        piiVisibility,
+                        userIalLevel,
+                        cancellationToken);
+                    if (householdData != null)
+                    {
+                        logger.LogInformation(
+                            "Household data loaded via co-loaded IC + DOB fallback for user {UserId}",
+                            userId);
+                    }
+                }
+            }
+        }
 
         if (householdData == null)
         {
