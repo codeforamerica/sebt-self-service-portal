@@ -83,7 +83,11 @@ function attachBridge(dl: DataLayerRoot): () => void {
 
 export function initMixpanelBridge(token: string): () => void {
   const mp = window.mixpanel
-  if (!mp?.init || !mp?.track) {
+  // Only `init` is required up-front. The official Mixpanel boot snippet
+  // defines `init` immediately on the queue stub but only attaches `track`
+  // (and the rest of the API surface) the first time `init()` is called —
+  // checking for `track` here would always fail and never bootstrap the SDK.
+  if (!mp?.init) {
     return () => {}
   }
 

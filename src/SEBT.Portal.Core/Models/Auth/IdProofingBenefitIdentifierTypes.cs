@@ -23,4 +23,26 @@ public static class IdProofingBenefitIdentifierTypes
     /// </summary>
     public static bool IsSnapOrTanfPortalSelection([NotNullWhen(true)] string? idType) =>
         idType != null && SnapOrTanfPortalTypes.Contains(idType);
+
+    /// <summary>
+    /// Stores the submitted SNAP/TANF identifier on the user so DC warehouse household lookups can fall back to IC + DOB
+    /// after login when rows use IC as <c>PortalID</c> instead of portal email.
+    /// </summary>
+    public static void PersistBenefitIdentifierOnUser(User user, string? idType, string? idValue)
+    {
+        if (string.IsNullOrWhiteSpace(idValue) || !IsSnapOrTanfPortalSelection(idType))
+        {
+            return;
+        }
+
+        var trimmed = idValue.Trim();
+        if (string.Equals(idType, "snapAccountId", StringComparison.Ordinal)
+            || string.Equals(idType, "snapPersonId", StringComparison.Ordinal))
+        {
+            user.SnapId = trimmed;
+            return;
+        }
+
+        user.TanfId = trimmed;
+    }
 }

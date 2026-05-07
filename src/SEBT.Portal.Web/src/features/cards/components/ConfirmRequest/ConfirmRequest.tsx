@@ -28,12 +28,18 @@ export function ConfirmRequest({ cases, address, onBack }: ConfirmRequestProps) 
   const [error, setError] = useState<string | null>(null)
 
   const programName = getStateProgramName(currentState)
-  const caseIds = cases.map((c) => c.summerEBTCaseID).filter((id): id is string => id != null)
+  const caseRefs = cases
+    .filter((c): c is SummerEbtCase & { summerEBTCaseID: string } => c.summerEBTCaseID != null)
+    .map((c) => ({
+      summerEbtCaseId: c.summerEBTCaseID,
+      applicationId: c.applicationId ?? null,
+      applicationStudentId: c.applicationStudentId ?? null
+    }))
 
   function handleSubmit() {
     setError(null)
     mutation.mutate(
-      { caseIds },
+      { caseRefs },
       {
         onSuccess: () => {
           router.push('/dashboard?flash=card_replaced')

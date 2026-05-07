@@ -295,12 +295,6 @@ export const handlers = [
       })
     }
 
-    // Simulate step-up failure (canApply: false) with Medicaid ID for dev testing.
-    // In production, the backend determines canApply based on the user's enrollment pathway.
-    if (body.idType === 'medicaidId') {
-      return HttpResponse.json({ result: 'failed', canApply: false })
-    }
-
     // Default: identity matched
     return HttpResponse.json({ result: 'matched' })
   }),

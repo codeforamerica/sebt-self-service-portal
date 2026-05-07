@@ -13,13 +13,11 @@ namespace SEBT.Portal.UseCases.Auth;
 /// Handles the refresh of JWT tokens for authenticated users.
 /// </summary>
 /// <remarks>
-/// This handler validates the command, retrieves the current user information from the repository,
-/// and generates a new JWT token with updated ID proofing status and other user claims.
+/// The absolute session lifetime cap is enforced upstream by
+/// <see cref="SessionLifetime.SessionLifetimePolicy"/>, wired into the JWT bearer
+/// middleware. If a request reaches this handler, its principal has already passed
+/// that check.
 /// </remarks>
-/// <param name="userRepository">Repository for user data and ID proofing status.</param>
-/// <param name="jwtTokenService">Service for generating JWT tokens.</param>
-/// <param name="validator">Validator for the <see cref="RefreshTokenCommand"/>.</param>
-/// <param name="logger">Logger for tracking token refresh attempts and results.</param>
 public class RefreshTokenCommandHandler(
     IUserRepository userRepository,
     ISessionRefreshTokenService jwtTokenService,
@@ -83,4 +81,3 @@ public class RefreshTokenCommandHandler(
         }
     }
 }
-
