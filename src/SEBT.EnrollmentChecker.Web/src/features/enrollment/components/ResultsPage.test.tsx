@@ -227,4 +227,47 @@ describe('ResultsPage', () => {
       expect(screen.getByText(nextStepsSectionText)).toBeVisible()
     })
   })
+
+  describe('IncomeCalculator rendering', () => {
+    it('renders IncomeCalculator on mixedEnrolled branch', () => {
+      render(
+        <ResultsPage
+          results={mixedEnrolled}
+          applicationUrl="https://apply.example.gov"
+        />
+      )
+      expect(screen.getByTestId('income-calculator')).toBeInTheDocument()
+    })
+
+    it('renders IncomeCalculator on noneEnrolled branch', () => {
+      render(
+        <ResultsPage
+          results={noneEnrolled}
+          applicationUrl="https://apply.example.gov"
+        />
+      )
+      expect(screen.getByTestId('income-calculator')).toBeInTheDocument()
+    })
+
+    it('does NOT render IncomeCalculator on allEnrolled branch', () => {
+      render(
+        <ResultsPage
+          results={allEnrolled}
+          applicationUrl="https://apply.example.gov"
+        />
+      )
+      expect(screen.queryByTestId('income-calculator')).toBeNull()
+    })
+
+    it('renders IncomeCalculator on indeterminate branch (inherited behavior)', () => {
+      // indeterminate: no enrolled, no notEnrolled — all results are error
+      render(
+        <ResultsPage
+          results={errorResponse}
+          applicationUrl="https://apply.example.gov"
+        />
+      )
+      expect(screen.getByTestId('income-calculator')).toBeInTheDocument()
+    })
+  })
 })

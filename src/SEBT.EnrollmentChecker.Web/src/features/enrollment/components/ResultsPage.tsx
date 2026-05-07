@@ -1,13 +1,14 @@
 'use client'
 
 import Image from 'next/image'
-  import { useState } from 'react'
+import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import type { ChildCheckApiResponse } from '../schemas/enrollmentSchema'
 
 import { mapApiStatus } from '../schemas/enrollmentSchema'
 import { ChildResultCard } from './ChildResultCard'
 import { EnrolledSection } from './EnrolledSection'
+import { IncomeCalculator } from './IncomeCalculator'
 import { NotEnrolledSection } from './NotEnrolledSection'
 
 interface ResultsPageProps {
@@ -84,26 +85,20 @@ export function ResultsPage({ results, applicationUrl }: ResultsPageProps) {
         </button>
       </h2>
       <div
+        id="faq-content"
         className="usa-accordion__content usa-prose"
         hidden={!isAccordionExpanded}
       >
-        <p> {t('applyForSebtAccordionBody1')} </p>
-
-        {/* TO DO: IMPLEMENT CALCULATOR
-        <p> {t('applyForSebtAccordionBody2')} </p>
-        <p> {t('applyForSebtAccordionBody3')} </p>
-        <p> {t('applyForSebtAccordionLabelSelectNumberPeople')} </p>
-        <p> {t('applyForSebtBody3')} </p>
-        <p> {t('applyForSebtBody4')} </p>
+        <p>{t('applyForSebtAccordionBody1')}</p>
         <p>
           <a
             href={applicationUrl}
-            data-analytics-cta="apply_cta"
-            className="usa-button"
-          >{t('applyLink')}
-          </a> 
-        </p> 
-          </section> */}
+            data-analytics-cta="apply_cta_accordion"
+          >
+            {t('applyForSebtAccordionBody2')}
+          </a>
+        </p>
+        <IncomeCalculator />
       </div>
     </div>
   )
