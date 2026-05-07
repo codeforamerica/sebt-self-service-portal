@@ -8,24 +8,29 @@ import { Alert, Button, getState, getStateLinks } from '@sebt/design-system'
 
 import { useAddressFlow } from '../../context'
 
-const DEFAULT_REDIRECT = '/profile/address/replacement-cards'
-
 export function AddressNotFound() {
   const { t } = useTranslation('confirmInfo')
   const router = useRouter()
   const currentState = getState()
-  const { enteredAddress, validationResult, setAddress, clearValidationResult } = useAddressFlow()
+  const {
+    enteredAddress,
+    validationResult,
+    setAddress,
+    clearValidationResult,
+    continuePath,
+    formPath
+  } = useAddressFlow()
   const isBlocked = validationResult?.reason === 'blocked'
 
   function handleEditAddress() {
     clearValidationResult()
-    router.push('/profile/address')
+    router.push(formPath)
   }
 
   function handleUseThisAddress() {
     if (enteredAddress) {
       flushSync(() => setAddress(enteredAddress))
-      router.push(DEFAULT_REDIRECT)
+      router.push(continuePath)
     }
   }
 

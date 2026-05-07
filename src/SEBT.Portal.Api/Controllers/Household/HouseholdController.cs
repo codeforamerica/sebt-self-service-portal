@@ -90,7 +90,8 @@ public class HouseholdController : ControllerBase
             StreetAddress2 = request.StreetAddress2,
             City = request.City,
             State = request.State,
-            PostalCode = request.PostalCode
+            PostalCode = request.PostalCode,
+            AcceptEnteredAddress = request.AcceptEnteredAddress ?? false
         };
 
         var result = await commandHandler.Handle(command, cancellationToken);
@@ -100,7 +101,20 @@ public class HouseholdController : ControllerBase
             {
                 if (validationResult.IsValid)
                 {
-                    return Ok(new AddressUpdateResponse { Status = "valid" });
+                    return Ok(new AddressUpdateResponse
+                    {
+                        Status = "valid",
+                        NormalizedAddress = validationResult.NormalizedAddress != null
+                            ? new AddressResponse
+                            {
+                                StreetAddress1 = validationResult.NormalizedAddress.StreetAddress1,
+                                StreetAddress2 = validationResult.NormalizedAddress.StreetAddress2,
+                                City = validationResult.NormalizedAddress.City,
+                                State = validationResult.NormalizedAddress.State,
+                                PostalCode = validationResult.NormalizedAddress.PostalCode
+                            }
+                            : null
+                    });
                 }
 
                 var response = new AddressUpdateResponse

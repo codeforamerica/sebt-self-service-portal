@@ -17,7 +17,9 @@ vi.mock('next/navigation', () => ({
   useRouter: () => ({
     push: mockPush,
     back: mockBack
-  })
+  }),
+  usePathname: () => '/profile/address',
+  useSearchParams: () => new URLSearchParams()
 }))
 
 let mockState = 'dc'
