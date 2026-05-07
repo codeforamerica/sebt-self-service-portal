@@ -200,23 +200,83 @@ public sealed class SmartyAddressUpdateService(
             || code.Equals("D", StringComparison.OrdinalIgnoreCase);
     }
 
+    // Smarty's delivery_line_1 is a USPS mailing-label line: it concatenates the primary
+    // street parts AND the secondary unit (e.g. "123 MAIN ST APT 5"). Mapping it directly
+    // to StreetAddress1 collapses the apartment/suite into line 1 and loses line 2.
+    // We rebuild StreetAddress1 and StreetAddress2 from the structured `components` block
+    // so the secondary lands on its own line, matching what backends like CBMS expect.
+    // See https://www.smarty.com/docs/delivery-line-one for Smarty's own construction recipe.
     private static Address MapToAddress(SmartyCandidateDto c)
     {
-        var zip = c.Components?.Zipcode ?? string.Empty;
-        if (!string.IsNullOrWhiteSpace(c.Components?.Plus4Code))
+        var components = c.Components;
+        var zip = components?.Zipcode ?? string.Empty;
+        if (!string.IsNullOrWhiteSpace(components?.Plus4Code))
         {
-            zip = $"{zip}-{c.Components!.Plus4Code}";
+            zip = $"{zip}-{components!.Plus4Code}";
+        }
+
+        var streetAddress1 = BuildStreetAddress1(components);
+        var streetAddress2 = BuildStreetAddress2(components, c.DeliveryLine2);
+
+        // Fallback: if the response somehow lacks any street components, fall back to
+        // delivery_line_1 so we degrade gracefully instead of returning an empty line.
+        if (string.IsNullOrWhiteSpace(streetAddress1))
+        {
+            streetAddress1 = (c.DeliveryLine1 ?? string.Empty).Trim();
         }
 
         return new Address
         {
-            StreetAddress1 = (c.DeliveryLine1 ?? string.Empty).Trim(),
-            StreetAddress2 = string.IsNullOrWhiteSpace(c.DeliveryLine2) ? null : c.DeliveryLine2.Trim(),
-            City = (c.Components?.CityName ?? string.Empty).Trim(),
-            State = (c.Components?.StateAbbreviation ?? string.Empty).Trim(),
+            StreetAddress1 = streetAddress1,
+            StreetAddress2 = string.IsNullOrWhiteSpace(streetAddress2) ? null : streetAddress2,
+            City = (components?.CityName ?? string.Empty).Trim(),
+            State = (components?.StateAbbreviation ?? string.Empty).Trim(),
             PostalCode = AddressNormalizationHelper.FormatPostalCode(zip)
         };
     }
+
+    private static string BuildStreetAddress1(SmartyComponentsDto? components)
+    {
+        if (components is null)
+        {
+            return string.Empty;
+        }
+
+        return JoinNonEmpty(
+            components.Urbanization,
+            components.PrimaryNumber,
+            components.StreetPredirection,
+            components.StreetName,
+            components.StreetSuffix,
+            components.StreetPostdirection);
+    }
+
+    private static string BuildStreetAddress2(SmartyComponentsDto? components, string? deliveryLine2)
+    {
+        // Order mirrors Smarty's own delivery-line-one recipe: secondary, then extra
+        // secondary, then PMB. delivery_line_2 (rare — used for "C/O" lines, etc.) is
+        // appended last so we don't drop information when Smarty populates it.
+        var line2 = JoinNonEmpty(
+            components?.SecondaryDesignator,
+            components?.SecondaryNumber,
+            components?.ExtraSecondaryDesignator,
+            components?.ExtraSecondaryNumber,
+            components?.PmbDesignator,
+            components?.PmbNumber);
+
+        var trimmedDeliveryLine2 = deliveryLine2?.Trim();
+        if (!string.IsNullOrEmpty(trimmedDeliveryLine2))
+        {
+            line2 = string.IsNullOrEmpty(line2)
+                ? trimmedDeliveryLine2
+                : $"{line2} {trimmedDeliveryLine2}";
+        }
+
+        return line2;
+    }
+
+    private static string JoinNonEmpty(params string?[] parts) =>
+        string.Join(' ', parts.Where(p => !string.IsNullOrWhiteSpace(p)).Select(p => p!.Trim()));
 
     private static readonly JsonSerializerOptions SmartyJsonOptions = new()
     {
@@ -267,6 +327,42 @@ public sealed class SmartyAddressUpdateService(
 
     private sealed class SmartyComponentsDto
     {
+        [JsonPropertyName("urbanization")]
+        public string? Urbanization { get; set; }
+
+        [JsonPropertyName("primary_number")]
+        public string? PrimaryNumber { get; set; }
+
+        [JsonPropertyName("street_predirection")]
+        public string? StreetPredirection { get; set; }
+
+        [JsonPropertyName("street_name")]
+        public string? StreetName { get; set; }
+
+        [JsonPropertyName("street_suffix")]
+        public string? StreetSuffix { get; set; }
+
+        [JsonPropertyName("street_postdirection")]
+        public string? StreetPostdirection { get; set; }
+
+        [JsonPropertyName("secondary_designator")]
+        public string? SecondaryDesignator { get; set; }
+
+        [JsonPropertyName("secondary_number")]
+        public string? SecondaryNumber { get; set; }
+
+        [JsonPropertyName("extra_secondary_designator")]
+        public string? ExtraSecondaryDesignator { get; set; }
+
+        [JsonPropertyName("extra_secondary_number")]
+        public string? ExtraSecondaryNumber { get; set; }
+
+        [JsonPropertyName("pmb_designator")]
+        public string? PmbDesignator { get; set; }
+
+        [JsonPropertyName("pmb_number")]
+        public string? PmbNumber { get; set; }
+
         [JsonPropertyName("city_name")]
         public string? CityName { get; set; }
 
