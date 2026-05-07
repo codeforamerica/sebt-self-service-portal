@@ -45,7 +45,8 @@ public class DcEnrollmentCheckIntegrationTests : IClassFixture<DcSourceDatabaseF
                     pluginDir: "plugins-dc",
                     configOverrides: new Dictionary<string, string>
                     {
-                        ["DCConnector:ConnectionString"] = dcDatabase.ConnectionString
+                        ["DCConnector:ConnectionString"] = dcDatabase.ConnectionString,
+                        ["DCConnector:CheckEligibilityProcName"] = "dbo.sp_CheckEligibility"
                     });
 
                 using (var scope = factory.Services.CreateScope())
