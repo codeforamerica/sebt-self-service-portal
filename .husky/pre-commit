@@ -29,12 +29,20 @@ has_frontend_changes() {
   git diff --cached --name-only | grep -qE '^src/SEBT\.Portal\.Web/' || return 1
 }
 
+# i18n audit fires when frontend code OR content (CSVs) change. CSV-only commits
+# can break code that references a removed key without touching any portal-web file,
+# so this can't piggy-back on has_frontend_changes.
+has_i18n_relevant_changes() {
+  git diff --cached --name-only | grep -qE '^src/SEBT\.Portal\.Web/|^packages/design-system/content/' || return 1
+}
+
 log_info "=== Running pre-commit checks ==="
 echo ""
 
 # Determine what needs to run
 BACKEND_CHANGES=false
 FRONTEND_CHANGES=false
+I18N_CHANGES=false
 
 if has_backend_changes; then
   BACKEND_CHANGES=true
@@ -42,6 +50,10 @@ fi
 
 if has_frontend_changes; then
   FRONTEND_CHANGES=true
+fi
+
+if has_i18n_relevant_changes; then
+  I18N_CHANGES=true
 fi
 
 # Calculate step numbers
@@ -54,6 +66,12 @@ fi
 
 if [ "$BACKEND_CHANGES" = "true" ]; then
   TOTAL_STEPS=$((TOTAL_STEPS + 3))  # format + build + tests
+fi
+
+# i18n audit runs when either is true; counted separately so CSV-only commits
+# (no frontend or backend code change) still pay the ~2s audit cost.
+if [ "$I18N_CHANGES" = "true" ]; then
+  TOTAL_STEPS=$((TOTAL_STEPS + 1))  # i18n audit
 fi
 
 # Step 1: Frontend linting (if frontend changes)
@@ -81,6 +99,36 @@ if [ "$FRONTEND_CHANGES" = "true" ]; then
     exit 1
   }
   log_success "Linting passed"
+  echo ""
+  cd "$PROJECT_ROOT"
+fi
+
+# i18n integrity audit (runs on frontend or content changes; cheap, fail-fast).
+# Surfaces missing/empty translations and CSV→code drift before the slower
+# build/test steps so a content-side issue doesn't waste a 30s build cycle.
+if [ "$I18N_CHANGES" = "true" ]; then
+  STEP_NUM=$((STEP_NUM + 1))
+  log_info "Step $STEP_NUM/$TOTAL_STEPS: Running i18n integrity audit..."
+
+  cd src/SEBT.Portal.Web || {
+    log_error "Could not change to web package directory"
+    exit 1
+  }
+
+  # Regenerate locales first — a CSV change must produce fresh JSON before the
+  # audit cross-checks code against it. The generator is hash-cached so the
+  # no-op path is fast.
+  pnpm --silent copy:generate || {
+    log_error "Locale generation failed"
+    exit 1
+  }
+
+  pnpm --silent lint:i18n || {
+    log_error "i18n audit failed — fix missing/empty translations or update the baseline"
+    log_error "  see docs/i18n-audit.md for the cleanup workflow"
+    exit 1
+  }
+  log_success "i18n audit passed"
   echo ""
   cd "$PROJECT_ROOT"
 fi

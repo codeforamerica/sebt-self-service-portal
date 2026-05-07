@@ -16,6 +16,7 @@ We're colleagues working together. Neither of us is afraid to admit we don't kno
 - Write evergreen code. Describe what code does, not when it was written. (i.e. avoid "newFunction")
 - All user-facing strings must go through i18next. Never hardcode display text in components — reference keys via the translation functions.
 - **Locale JSON files are generated — NEVER hand-edit them.** They are produced by `packages/design-system/content/scripts/generate-locales.js` from CSV exports in `packages/design-system/content/states/`. To add or change content: update the source Google Sheet, re-export the CSV, and re-run the generator (run `pnpm copy:generate` from within `src/SEBT.Portal.Web/` or `src/SEBT.EnrollmentChecker.Web/`). This also runs automatically via the `predev` and `prebuild` hooks. If a key is missing, note it as a content gap to resolve in the spreadsheet — do not add it directly to the JSON.
+- **i18n integrity is gated at build time.** `pnpm lint:i18n` (in `src/SEBT.Portal.Web/`) cross-checks every `t('key')` call against the generated JSON and fails on missing/empty values that aren't in `docs/i18n-audit-baseline.json`. Wired into `prebuild`. Don't bypass — fix the sheet, regenerate, retry. See [docs/i18n-audit.md](./docs/i18n-audit.md) for the cleanup workflow and how to shrink the baseline.
 
 ### Code style
 - C#: 4-space indent, Allman brace style (braces on own line), nullable reference types enabled (see `.editorconfig`)

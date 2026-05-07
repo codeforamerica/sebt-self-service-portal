@@ -1,0 +1,687 @@
+{
+  "$schema": "i18n-audit-baseline-v1",
+  "recordedAt": "2026-05-07",
+  "note": "Grandfathered missing/empty translation issues. Shrink, never grow.",
+  "count": 97,
+  "entries": [
+    {
+      "kind": "empty",
+      "ns": "confirmInfo",
+      "key": "notFoundActionHelp",
+      "locale": "en",
+      "state": "co"
+    },
+    {
+      "kind": "empty",
+      "ns": "confirmInfo",
+      "key": "notFoundActionHelp",
+      "locale": "es",
+      "state": "co"
+    },
+    {
+      "kind": "empty",
+      "ns": "dashboard",
+      "key": "cardTableStatusIssued",
+      "locale": "en",
+      "state": "co"
+    },
+    {
+      "kind": "empty",
+      "ns": "dashboard",
+      "key": "cardTableStatusIssued",
+      "locale": "es",
+      "state": "co"
+    },
+    {
+      "kind": "empty",
+      "ns": "dashboard",
+      "key": "cardTableStatusMailed",
+      "locale": "en",
+      "state": "co"
+    },
+    {
+      "kind": "empty",
+      "ns": "dashboard",
+      "key": "cardTableStatusMailed",
+      "locale": "es",
+      "state": "co"
+    },
+    {
+      "kind": "empty",
+      "ns": "dashboard",
+      "key": "cardTableStatusMessageActive",
+      "locale": "en",
+      "state": "dc"
+    },
+    {
+      "kind": "empty",
+      "ns": "dashboard",
+      "key": "cardTableStatusMessageDeactivated",
+      "locale": "en",
+      "state": "dc"
+    },
+    {
+      "kind": "empty",
+      "ns": "dashboard",
+      "key": "cardTableStatusMessageMailed",
+      "locale": "en",
+      "state": "co"
+    },
+    {
+      "kind": "empty",
+      "ns": "dashboard",
+      "key": "cardTableStatusMessageMailed",
+      "locale": "en",
+      "state": "dc"
+    },
+    {
+      "kind": "empty",
+      "ns": "dashboard",
+      "key": "cardTableStatusMessageMailed",
+      "locale": "es",
+      "state": "co"
+    },
+    {
+      "kind": "empty",
+      "ns": "dashboard",
+      "key": "cardTableStatusMessageRequested1",
+      "locale": "en",
+      "state": "co"
+    },
+    {
+      "kind": "empty",
+      "ns": "dashboard",
+      "key": "cardTableStatusMessageRequested1",
+      "locale": "en",
+      "state": "dc"
+    },
+    {
+      "kind": "empty",
+      "ns": "dashboard",
+      "key": "cardTableStatusMessageRequested1",
+      "locale": "es",
+      "state": "co"
+    },
+    {
+      "kind": "empty",
+      "ns": "dashboard",
+      "key": "cardTableStatusRequested",
+      "locale": "en",
+      "state": "co"
+    },
+    {
+      "kind": "empty",
+      "ns": "dashboard",
+      "key": "cardTableStatusRequested",
+      "locale": "es",
+      "state": "co"
+    },
+    {
+      "kind": "empty",
+      "ns": "dashboard",
+      "key": "coLoadedAddressUpdateAction2",
+      "locale": "en",
+      "state": "co"
+    },
+    {
+      "kind": "empty",
+      "ns": "dashboard",
+      "key": "coLoadedAddressUpdateAction2",
+      "locale": "es",
+      "state": "co"
+    },
+    {
+      "kind": "empty",
+      "ns": "dashboard",
+      "key": "coLoadedAddressUpdateAction2",
+      "locale": "es",
+      "state": "dc"
+    },
+    {
+      "kind": "empty",
+      "ns": "dashboard",
+      "key": "coLoadedAddressUpdateAction3",
+      "locale": "en",
+      "state": "co"
+    },
+    {
+      "kind": "empty",
+      "ns": "dashboard",
+      "key": "coLoadedAddressUpdateAction3",
+      "locale": "es",
+      "state": "co"
+    },
+    {
+      "kind": "empty",
+      "ns": "dashboard",
+      "key": "coLoadedAddressUpdateAction3",
+      "locale": "es",
+      "state": "dc"
+    },
+    {
+      "kind": "empty",
+      "ns": "dashboard",
+      "key": "coLoadedAddressUpdateBody1",
+      "locale": "en",
+      "state": "co"
+    },
+    {
+      "kind": "empty",
+      "ns": "dashboard",
+      "key": "coLoadedAddressUpdateBody1",
+      "locale": "es",
+      "state": "co"
+    },
+    {
+      "kind": "empty",
+      "ns": "dashboard",
+      "key": "coLoadedAddressUpdateBody1",
+      "locale": "es",
+      "state": "dc"
+    },
+    {
+      "kind": "empty",
+      "ns": "dashboard",
+      "key": "coLoadedAddressUpdateBody2",
+      "locale": "en",
+      "state": "co"
+    },
+    {
+      "kind": "empty",
+      "ns": "dashboard",
+      "key": "coLoadedAddressUpdateBody2",
+      "locale": "es",
+      "state": "co"
+    },
+    {
+      "kind": "empty",
+      "ns": "dashboard",
+      "key": "coLoadedAddressUpdateBody2",
+      "locale": "es",
+      "state": "dc"
+    },
+    {
+      "kind": "empty",
+      "ns": "dashboard",
+      "key": "coLoadedAddressUpdateBody3",
+      "locale": "en",
+      "state": "co"
+    },
+    {
+      "kind": "empty",
+      "ns": "dashboard",
+      "key": "coLoadedAddressUpdateBody3",
+      "locale": "es",
+      "state": "co"
+    },
+    {
+      "kind": "empty",
+      "ns": "dashboard",
+      "key": "coLoadedAddressUpdateBody3",
+      "locale": "es",
+      "state": "dc"
+    },
+    {
+      "kind": "empty",
+      "ns": "dashboard",
+      "key": "coLoadedAddressUpdateTitle",
+      "locale": "en",
+      "state": "co"
+    },
+    {
+      "kind": "empty",
+      "ns": "dashboard",
+      "key": "coLoadedAddressUpdateTitle",
+      "locale": "es",
+      "state": "co"
+    },
+    {
+      "kind": "empty",
+      "ns": "dashboard",
+      "key": "coLoadedAddressUpdateTitle",
+      "locale": "es",
+      "state": "dc"
+    },
+    {
+      "kind": "empty",
+      "ns": "dashboard",
+      "key": "profileTableCo-loadedAddress",
+      "locale": "en",
+      "state": "co"
+    },
+    {
+      "kind": "empty",
+      "ns": "dashboard",
+      "key": "profileTableCo-loadedAddress",
+      "locale": "es",
+      "state": "co"
+    },
+    {
+      "kind": "empty",
+      "ns": "dashboard",
+      "key": "profileTableCo-loadedAddress",
+      "locale": "es",
+      "state": "dc"
+    },
+    {
+      "kind": "empty",
+      "ns": "idProofing",
+      "key": "body",
+      "locale": "en",
+      "state": "co"
+    },
+    {
+      "kind": "empty",
+      "ns": "idProofing",
+      "key": "body",
+      "locale": "es",
+      "state": "co"
+    },
+    {
+      "kind": "empty",
+      "ns": "idProofing",
+      "key": "labelDob",
+      "locale": "en",
+      "state": "co"
+    },
+    {
+      "kind": "empty",
+      "ns": "idProofing",
+      "key": "labelDob",
+      "locale": "es",
+      "state": "co"
+    },
+    {
+      "kind": "empty",
+      "ns": "idProofing",
+      "key": "labelId",
+      "locale": "en",
+      "state": "co"
+    },
+    {
+      "kind": "empty",
+      "ns": "idProofing",
+      "key": "labelId",
+      "locale": "es",
+      "state": "co"
+    },
+    {
+      "kind": "empty",
+      "ns": "idProofing",
+      "key": "title",
+      "locale": "en",
+      "state": "co"
+    },
+    {
+      "kind": "empty",
+      "ns": "idProofing",
+      "key": "title",
+      "locale": "es",
+      "state": "co"
+    },
+    {
+      "kind": "empty",
+      "ns": "login",
+      "key": "body",
+      "locale": "en",
+      "state": "co"
+    },
+    {
+      "kind": "empty",
+      "ns": "login",
+      "key": "body",
+      "locale": "es",
+      "state": "co"
+    },
+    {
+      "kind": "empty",
+      "ns": "login",
+      "key": "labelEmail",
+      "locale": "en",
+      "state": "co"
+    },
+    {
+      "kind": "empty",
+      "ns": "login",
+      "key": "labelEmail",
+      "locale": "es",
+      "state": "co"
+    },
+    {
+      "kind": "empty",
+      "ns": "login",
+      "key": "verifyActionConfirm",
+      "locale": "en",
+      "state": "co"
+    },
+    {
+      "kind": "empty",
+      "ns": "login",
+      "key": "verifyActionConfirm",
+      "locale": "en",
+      "state": "co"
+    },
+    {
+      "kind": "empty",
+      "ns": "login",
+      "key": "verifyActionConfirm",
+      "locale": "es",
+      "state": "co"
+    },
+    {
+      "kind": "empty",
+      "ns": "login",
+      "key": "verifyActionConfirm",
+      "locale": "es",
+      "state": "co"
+    },
+    {
+      "kind": "empty",
+      "ns": "login",
+      "key": "verifyActionResend",
+      "locale": "en",
+      "state": "co"
+    },
+    {
+      "kind": "empty",
+      "ns": "login",
+      "key": "verifyActionResend",
+      "locale": "en",
+      "state": "co"
+    },
+    {
+      "kind": "empty",
+      "ns": "login",
+      "key": "verifyActionResend",
+      "locale": "es",
+      "state": "co"
+    },
+    {
+      "kind": "empty",
+      "ns": "login",
+      "key": "verifyActionResend",
+      "locale": "es",
+      "state": "co"
+    },
+    {
+      "kind": "empty",
+      "ns": "login",
+      "key": "verifyLabelCode",
+      "locale": "en",
+      "state": "co"
+    },
+    {
+      "kind": "empty",
+      "ns": "login",
+      "key": "verifyLabelCode",
+      "locale": "es",
+      "state": "co"
+    },
+    {
+      "kind": "empty",
+      "ns": "login",
+      "key": "verifyTitle",
+      "locale": "en",
+      "state": "co"
+    },
+    {
+      "kind": "empty",
+      "ns": "login",
+      "key": "verifyTitle",
+      "locale": "es",
+      "state": "co"
+    },
+    {
+      "kind": "empty",
+      "ns": "offBoarding",
+      "key": "body1",
+      "locale": "en",
+      "state": "co"
+    },
+    {
+      "kind": "empty",
+      "ns": "offBoarding",
+      "key": "body1",
+      "locale": "es",
+      "state": "co"
+    },
+    {
+      "kind": "empty",
+      "ns": "offBoarding",
+      "key": "title",
+      "locale": "en",
+      "state": "co"
+    },
+    {
+      "kind": "empty",
+      "ns": "offBoarding",
+      "key": "title",
+      "locale": "es",
+      "state": "co"
+    },
+    {
+      "kind": "empty",
+      "ns": "result",
+      "key": "replaceCardBody1",
+      "locale": "en",
+      "state": "co"
+    },
+    {
+      "kind": "empty",
+      "ns": "result",
+      "key": "replaceCardBody1",
+      "locale": "es",
+      "state": "co"
+    },
+    {
+      "kind": "empty",
+      "ns": "result",
+      "key": "replaceCardBody2",
+      "locale": "en",
+      "state": "co"
+    },
+    {
+      "kind": "empty",
+      "ns": "result",
+      "key": "replaceCardBody2",
+      "locale": "es",
+      "state": "co"
+    },
+    {
+      "kind": "empty",
+      "ns": "result",
+      "key": "replaceCardBody3",
+      "locale": "en",
+      "state": "co"
+    },
+    {
+      "kind": "empty",
+      "ns": "result",
+      "key": "replaceCardBody3",
+      "locale": "es",
+      "state": "co"
+    },
+    {
+      "kind": "empty",
+      "ns": "result",
+      "key": "replaceCardBody4",
+      "locale": "en",
+      "state": "co"
+    },
+    {
+      "kind": "empty",
+      "ns": "result",
+      "key": "replaceCardBody4",
+      "locale": "es",
+      "state": "co"
+    },
+    {
+      "kind": "empty",
+      "ns": "stepUpFailure",
+      "key": "body",
+      "locale": "es",
+      "state": "dc"
+    },
+    {
+      "kind": "empty",
+      "ns": "stepUpFailure",
+      "key": "title",
+      "locale": "es",
+      "state": "dc"
+    },
+    {
+      "kind": "empty",
+      "ns": "validation",
+      "key": "otpInvalid",
+      "locale": "en",
+      "state": "co"
+    },
+    {
+      "kind": "empty",
+      "ns": "validation",
+      "key": "otpInvalid",
+      "locale": "es",
+      "state": "co"
+    },
+    {
+      "kind": "missing",
+      "ns": "confirmInfo",
+      "key": "blockedBody",
+      "locale": "en",
+      "state": "co"
+    },
+    {
+      "kind": "missing",
+      "ns": "confirmInfo",
+      "key": "blockedBody",
+      "locale": "en",
+      "state": "dc"
+    },
+    {
+      "kind": "missing",
+      "ns": "confirmInfo",
+      "key": "blockedBody",
+      "locale": "es",
+      "state": "co"
+    },
+    {
+      "kind": "missing",
+      "ns": "confirmInfo",
+      "key": "blockedBody",
+      "locale": "es",
+      "state": "dc"
+    },
+    {
+      "kind": "missing",
+      "ns": "confirmInfo",
+      "key": "replacementCardsTitle",
+      "locale": "en",
+      "state": "co"
+    },
+    {
+      "kind": "missing",
+      "ns": "confirmInfo",
+      "key": "replacementCardsTitle",
+      "locale": "en",
+      "state": "dc"
+    },
+    {
+      "kind": "missing",
+      "ns": "confirmInfo",
+      "key": "replacementCardsTitle",
+      "locale": "es",
+      "state": "co"
+    },
+    {
+      "kind": "missing",
+      "ns": "confirmInfo",
+      "key": "replacementCardsTitle",
+      "locale": "es",
+      "state": "dc"
+    },
+    {
+      "kind": "missing",
+      "ns": "dashboard",
+      "key": "actionNavigationSelfServiceUnavailable",
+      "locale": "en",
+      "state": "co"
+    },
+    {
+      "kind": "missing",
+      "ns": "dashboard",
+      "key": "actionNavigationSelfServiceUnavailable",
+      "locale": "en",
+      "state": "dc"
+    },
+    {
+      "kind": "missing",
+      "ns": "dashboard",
+      "key": "actionNavigationSelfServiceUnavailable",
+      "locale": "es",
+      "state": "co"
+    },
+    {
+      "kind": "missing",
+      "ns": "dashboard",
+      "key": "actionNavigationSelfServiceUnavailable",
+      "locale": "es",
+      "state": "dc"
+    },
+    {
+      "kind": "missing",
+      "ns": "idProofing",
+      "key": "resubmitBody",
+      "locale": "en",
+      "state": "co"
+    },
+    {
+      "kind": "missing",
+      "ns": "idProofing",
+      "key": "resubmitBody",
+      "locale": "en",
+      "state": "dc"
+    },
+    {
+      "kind": "missing",
+      "ns": "idProofing",
+      "key": "resubmitBody",
+      "locale": "es",
+      "state": "co"
+    },
+    {
+      "kind": "missing",
+      "ns": "idProofing",
+      "key": "resubmitBody",
+      "locale": "es",
+      "state": "dc"
+    },
+    {
+      "kind": "missing",
+      "ns": "login",
+      "key": "callbackSigningIn",
+      "locale": "en",
+      "state": "co"
+    },
+    {
+      "kind": "missing",
+      "ns": "login",
+      "key": "callbackSigningIn",
+      "locale": "en",
+      "state": "dc"
+    },
+    {
+      "kind": "missing",
+      "ns": "login",
+      "key": "callbackSigningIn",
+      "locale": "es",
+      "state": "co"
+    },
+    {
+      "kind": "missing",
+      "ns": "login",
+      "key": "callbackSigningIn",
+      "locale": "es",
+      "state": "dc"
+    }
+  ]
+}
