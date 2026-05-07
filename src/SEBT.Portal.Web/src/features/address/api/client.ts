@@ -34,9 +34,9 @@ export function useUpdateAddress() {
 
   return useMutation({
     mutationFn: updateAddress,
-    onSuccess: (result) => {
+    onSuccess: async (result) => {
       if (result.status === 'valid') {
-        queryClient.invalidateQueries({ queryKey: ['householdData'] })
+        await queryClient.invalidateQueries({ queryKey: ['householdData'] })
       }
     },
     retry: (failureCount, error) => {
