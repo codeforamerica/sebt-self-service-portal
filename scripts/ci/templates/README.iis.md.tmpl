@@ -1,0 +1,121 @@
+# SEBT Portal — DC — IIS Deployment Package
+
+**Version:** {{VERSION}}
+**Built:** {{BUILD_DATE}} from commit {{GIT_SHA}}
+
+This package is the DC Windows Server / IIS release bundle. It includes the application files for the API and web tiers plus the database artifacts needed to review and apply schema changes for this release. Use this README as the handoff and update checklist for the receiving administrator.
+
+## What is in this package
+
+```
+.
+├── README.md                       # this file
+├── CHANGELOG-DACPAC.md             # schema delta vs the previous release
+├── api/
+│   ├── *.exe, *.dll                # ASP.NET Core API publish, framework-dependent win-x64
+│   ├── plugins-dc/                 # DC state connector plugin DLLs (loaded at startup)
+│   ├── appsettings.json            # base config (do not edit on the server)
+│   ├── appsettings.prod.example.json   # template for DC-specific / secret values
+│   ├── web.config                  # ASP.NET Core Module config (stdout logging enabled)
+│   └── logs/                       # API stdout log directory
+├── web/
+│   ├── web.config                  # HttpPlatformHandler config for Node.js
+│   ├── src/SEBT.Portal.Web/server.js  # the Next.js standalone server entrypoint
+│   ├── .next/, public/, node_modules/  # already hoisted; no symlinks
+│   └── logs/                       # Node.js stdout log directory
+└── dacpac/
+    ├── {{DACPAC_FILENAME}}
+    ├── deploy-report.xml           # raw sqlpackage DeployReport
+    └── deploy-report.html          # human-readable version
+```
+
+## Schema changes since the previous release
+
+{{DACPAC_SUMMARY}}
+
+When a previous release exists, the full machine-readable report is at `dacpac/deploy-report.xml` and the human-readable rendering is at `dacpac/deploy-report.html`. `CHANGELOG-DACPAC.md` always has the grouped summary (or the "initial release" note when no prior release exists).
+
+## Update workflow
+
+Use this order for the release:
+
+1. Review `CHANGELOG-DACPAC.md` and `dacpac/deploy-report.html` to understand the schema impact.
+2. Stage the new application package on the IIS server without overwriting the currently running version.
+3. Coordinate the database change for `dacpac/{{DACPAC_FILENAME}}`.
+4. Switch IIS to the new application directory only after the database work is approved and completed.
+5. Verify the API and web endpoints, then keep the prior deployment directory available for rollback.
+
+## Prerequisites on the IIS server
+
+Install once per IIS server. None of these runtime prerequisites are bundled in this zip.
+
+- **Windows Server** 2019+ with IIS enabled.
+- **ASP.NET Core 10 Hosting Bundle.** Download from <https://dotnet.microsoft.com/download/dotnet/10.0>. After install, run `iisreset` once.
+- **Node.js 24 LTS (x64)** — the MSI installer from <https://nodejs.org>. Confirm with `node -v`.
+- **HttpPlatformHandler module for IIS** — install via direct MSI download from Microsoft. Required for the web tier.
+
+## Application update steps
+
+1. **Extract** this zip to a new versioned deployment directory, for example `C:\inetpub\sebt-dc\{{VERSION}}`. Do not overwrite the currently active directory.
+2. **Review the target layout** after extraction. The IIS site root should point to `<root>\web` and the API application should point to `<root>\api`.
+3. **Configure the API.** Copy `api\appsettings.prod.example.json` to `api\appsettings.Production.json` and replace every `YOUR_*` placeholder before go-live. The example file covers the required production-only values.
+4. **Confirm file system permissions.** Grant the IIS app pool identity **Modify** permission on `api\logs\` and `web\logs\`.
+5. **Confirm the web tier settings.** In `web\web.config`, verify that `BACKEND_URL` points to the correct API binding. Leave `NEXT_PUBLIC_STATE=dc` unchanged.
+6. **Update IIS paths.** Point the existing IIS site to `<root>\web` and the `/api` application to `<root>\api`, or create them if this is the first deployment.
+7. **Restart or recycle** the affected IIS application pool(s) after the path change.
+8. **Verify** `https://<host>/` and `https://<host>/api/health` before declaring the deployment complete.
+9. **Keep the previous version directory** in place until the release is accepted.
+
+## DACPAC review and database update
+
+The database artifact for this release is `dacpac/{{DACPAC_FILENAME}}`.
+
+Review these files together before applying the schema change:
+
+- `CHANGELOG-DACPAC.md` for the summarized change list.
+- `dacpac/deploy-report.html` for a human-readable object-by-object report.
+- `dacpac/deploy-report.xml` for the raw `sqlpackage` deploy report.
+
+If you are responsible for the database deployment, generate a fresh pre-flight report against the target database before publish:
+
+```
+sqlpackage /Action:DeployReport ^
+  /SourceFile:{{DACPAC_FILENAME}} ^
+  /TargetConnectionString:"<target connection string>" ^
+  /OutputPath:dba-pre-flight-report.xml
+```
+
+Then, if the pre-flight report is approved, apply the DACPAC:
+
+```
+sqlpackage /Action:Publish ^
+  /SourceFile:{{DACPAC_FILENAME}} ^
+  /TargetConnectionString:"<target connection string>"
+```
+
+If you are not the person authorized to apply database changes, open the database change ticket with these details:
+
+```
+Release:          SEBT Portal DC v{{VERSION}}
+Built:            {{BUILD_DATE}} from commit {{GIT_SHA}}
+DACPAC filename:  {{DACPAC_FILENAME}}
+Review files:     CHANGELOG-DACPAC.md, deploy-report.html, deploy-report.xml
+Requested action: Review pre-flight impact and apply the DACPAC during the approved maintenance window
+```
+
+Do not switch the IIS site to the new application version until the database work required by this release is approved and complete.
+
+## First deployment notes
+
+If this is the first time this package has been delivered to the environment, `CHANGELOG-DACPAC.md` may show an initial-release note instead of a delta. In that case, the DACPAC still needs the same pre-flight review and approval before publish.
+
+## Verification
+
+- API health: `https://<host>/api/health`
+- Web home: `https://<host>/`
+- API logs: `api\logs\stdout_*.log`
+- Web logs: `web\logs\node-stdout*.log`
+
+## Rollback
+
+Keep the previous deployment directory in place (e.g. `C:\inetpub\sebt-dc\<previous-version>`). To roll back the application tier, point the IIS site's physical path back to that directory and restart the app pool. **Schema rollback is a separate DBA ticket** — DACPACs do not auto-rollback; the DBA decides whether to revert based on the delta in this release's `CHANGELOG-DACPAC.md`.
