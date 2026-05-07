@@ -47,18 +47,20 @@ jobs:
         env:
           INPUT_VERSION: ${{ github.event.inputs.version }}
         run: |
+          GIT_SHA="$(git rev-parse --short HEAD)"
           if [[ "${GITHUB_REF}" == refs/tags/release/dc-v* ]]; then
-            VERSION="${GITHUB_REF#refs/tags/release/dc-v}"  
-          elif [ -n "$INPUT_VERSION" ]; then  
-            VERSION="$INPUT_VERSION"  
-          else  
-            VERSION="dev-$(git rev-parse --short HEAD)"  
-          fi  
-          if [[ ! "$VERSION" =~ ^[A-Za-z0-9._-]+$ ]]; then  
-            echo "::error::Invalid version: $VERSION"  
-            exit 1  
-          fi  
+            VERSION="${GITHUB_REF#refs/tags/release/dc-v}"
+          elif [ -n "$INPUT_VERSION" ]; then
+            VERSION="$INPUT_VERSION"
+          else
+            VERSION="dev-$GIT_SHA"
+          fi
+          if [[ ! "$VERSION" =~ ^[A-Za-z0-9._-]+$ ]]; then
+            echo "::error::Invalid version: $VERSION"
+            exit 1
+          fi
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "git_sha=$GIT_SHA" >> "$GITHUB_OUTPUT"
 
       - name: Determine state-connector ref
         id: state-connector-ref
