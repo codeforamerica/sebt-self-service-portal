@@ -90,7 +90,8 @@ public class HouseholdController : ControllerBase
             StreetAddress2 = request.StreetAddress2,
             City = request.City,
             State = request.State,
-            PostalCode = request.PostalCode
+            PostalCode = request.PostalCode,
+            AcceptEnteredAddress = request.AcceptEnteredAddress ?? false
         };
 
         var result = await commandHandler.Handle(command, cancellationToken);

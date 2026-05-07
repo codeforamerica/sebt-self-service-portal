@@ -64,29 +64,40 @@ export function SuggestedAddress() {
       return
     }
 
-    if (selection === 'suggested') {
-      setSubmitError(null)
+    setSubmitError(null)
 
-      try {
-        const result = await updateAddress.mutateAsync(selectedAddress)
-        if (result.status !== 'valid') {
-          setSubmitError(t('addressUpdateError', 'Something went wrong. Please try again.'))
-          return
-        }
-        const normalized = toUpdateAddressRequestOrNull(result.normalizedAddress)
-        if (normalized) {
-          flushSync(() => setAddress(normalized))
-          router.push(continuePath)
-          return
-        }
-      } catch {
+    try {
+      const payload =
+        selection === 'entered'
+          ? { ...selectedAddress, acceptEnteredAddress: true }
+          : selectedAddress
+
+      const result = await updateAddress.mutateAsync(payload)
+
+      if (result.status !== 'valid' && result.status !== 'suggestion') {
         setSubmitError(t('addressUpdateError', 'Something went wrong. Please try again.'))
         return
       }
-    }
 
-    flushSync(() => setAddress(selectedAddress))
-    router.push(continuePath)
+      const normalized = toUpdateAddressRequestOrNull(result.normalizedAddress)
+      if (normalized) {
+        flushSync(() => setAddress(normalized))
+        router.push(continuePath)
+        return
+      }
+
+      const suggested = toUpdateAddressRequestOrNull(result.suggestedAddress)
+      if (suggested) {
+        flushSync(() => setAddress(suggested))
+        router.push(continuePath)
+        return
+      }
+
+      flushSync(() => setAddress(selectedAddress))
+      router.push(continuePath)
+    } catch {
+      setSubmitError(t('addressUpdateError', 'Something went wrong. Please try again.'))
+    }
   }
 
   function handleBack() {
