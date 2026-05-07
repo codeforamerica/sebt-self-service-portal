@@ -14,7 +14,6 @@ import { Alert, Button, getState } from '@sebt/design-system'
 const FIS_PHONE_HREF = 'tel:+18883049167'
 
 export default function CardInfoPage() {
-  const { t: tInfo } = useTranslation('confirmInfo')
   const { t: tResult } = useTranslation('result')
   const { t: tCommon } = useTranslation('common')
   const router = useRouter()
@@ -73,7 +72,7 @@ export default function CardInfoPage() {
   return (
     <div className="grid-container maxw-tablet padding-top-4">
       <h1 className="font-sans-xl text-ink margin-bottom-4">
-        {tInfo('coLoadedInfoTitle', 'Getting a replacement SNAP or TANF EBT card')}
+        {tResult('requestReplacementCardFisTitle')}
       </h1>
 
       {replaceCardParagraphs.map((paragraph) => (

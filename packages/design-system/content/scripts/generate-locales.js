@@ -337,41 +337,86 @@ function buildStateLocaleData(rows, state) {
     data[locale] = {};
   }
 
-  // Process each row
+  // Track every contentKey that wrote into a (namespace, key) slot. After
+  // processing we treat any slot reached by 2+ DIFFERENT contentKeys with at
+  // least one non-empty English value as a collision — those rows lose their
+  // copy silently because the parser dropped page context. Resolve by adding
+  // an entry to CONFIG.pageKeyPrefix so each page gets its own scoped key.
+  const writesByslot = new Map(); // 'namespace.key' → [{ contentKey, en, es }]
+
   for (const row of dataRows) {
     const contentKey = row[contentIdx];
     const englishValue = row[englishIdx] || '';
     const spanishValue = spanishIdx !== -1 ? row[spanishIdx] || '' : '';
 
-    // Skip empty rows or rows without content keys
     if (!contentKey || !contentKey.trim() || englishValue === ignoredStringIndicator) continue;
 
     const parsed = parseContentKey(contentKey);
     if (!parsed) continue;
 
-    // Section-level filter: skip rows from sections not in the allowed list
     if (allowedSections && !allowedSections.includes(parsed.section)) continue;
 
     const { namespace, key } = parsed;
+    const slot = `${namespace}.${key}`;
+    if (!writesByslot.has(slot)) writesByslot.set(slot, []);
+    writesByslot.get(slot).push({ contentKey, en: englishValue, es: spanishValue });
 
-    // English — don't overwrite a non-empty value with an empty one
-    // (handles key collisions where multiple CSV rows map to the same namespace+key)
-    if (!data.en[namespace]) {
-      data.en[namespace] = {};
-    }
+    if (!data.en[namespace]) data.en[namespace] = {};
     if (englishValue || !data.en[namespace][key]) {
       data.en[namespace][key] = englishValue;
     }
 
-    // Spanish — same collision protection
     if (spanishIdx !== -1) {
-      if (!data.es[namespace]) {
-        data.es[namespace] = {};
-      }
+      if (!data.es[namespace]) data.es[namespace] = {};
       if (spanishValue || !data.es[namespace][key]) {
         data.es[namespace][key] = spanishValue;
       }
     }
+  }
+
+  // Resolve collisions: a slot reached by ≥2 distinct contentKeys with
+  // ≥2 distinct non-empty values. The LAST write keeps the bare key
+  // (preserves current production behavior). Earlier writes get re-emitted
+  // at a page-prefixed key so their copy isn't silently lost.
+  data._collisions = [];
+  for (const [slot, writes] of writesByslot) {
+    const distinctKeys = new Set(writes.map((w) => w.contentKey));
+    if (distinctKeys.size < 2) continue;
+    const distinctValues = new Set(writes.map((w) => w.en).filter(Boolean));
+    if (distinctValues.size < 2) continue;
+
+    const [namespace, baseKey] = slot.split('.');
+    // Last write wins the bare slot — already done by the linear pass above.
+    // Recover earlier writes by storing them at `namespace.{pagePrefix}{Key}`.
+    for (let i = 0; i < writes.length - 1; i++) {
+      const loser = writes[i];
+      // Derive page from contentKey: "S6 - Replacement Card Address - Title"
+      // → page = "Replacement Card Address" → camelCase = "replacementCardAddress"
+      const parts = loser.contentKey.split(' - ').map((p) => p.trim());
+      if (parts.length < 3) continue; // 2-part keys can't disambiguate by page
+      const pageCamel = toCamelCase(parts[1]);
+      const newKey =
+        pageCamel + baseKey.charAt(0).toUpperCase() + baseKey.slice(1);
+
+      if (loser.en && !data.en[namespace][newKey]) {
+        data.en[namespace][newKey] = loser.en;
+      }
+      if (spanishIdx !== -1 && loser.es && data.es[namespace] && !data.es[namespace][newKey]) {
+        data.es[namespace][newKey] = loser.es;
+      }
+    }
+
+    data._collisions.push({
+      state,
+      slot,
+      writes: writes.map((w) => ({ contentKey: w.contentKey, en: w.en })),
+      resolvedAs: writes.slice(0, -1).map((w) => {
+        const parts = w.contentKey.split(' - ').map((p) => p.trim());
+        if (parts.length < 3) return null;
+        const pageCamel = toCamelCase(parts[1]);
+        return `${namespace}.${pageCamel + baseKey.charAt(0).toUpperCase() + baseKey.slice(1)}`;
+      }).filter(Boolean)
+    });
   }
 
   return data;
@@ -470,6 +515,7 @@ function writeStateLocaleFiles(stateData, state) {
   let fileCount = 0;
 
   for (const [locale, namespaces] of Object.entries(stateData)) {
+    if (locale.startsWith('_')) continue; // metadata, not locale data (e.g. _collisions)
     for (const [namespace, translations] of Object.entries(namespaces)) {
       if (Object.keys(translations).length === 0) continue;
 
@@ -697,6 +743,7 @@ function main() {
       const allWarnings = [];
 
       // Process each state CSV
+      const allCollisions = [];
       for (const { state, csvPath } of stateFiles) {
         console.log(`📖 Processing ${state.toUpperCase()}:`);
         console.log(`   Reading: ${rel(csvPath)}`);
@@ -707,6 +754,7 @@ function main() {
 
         // Build locale data for this state
         const stateData = buildStateLocaleData(rows, state);
+        if (stateData._collisions) allCollisions.push(...stateData._collisions);
 
         // Validate completeness
         const warnings = validateStateCompleteness(stateData, state);
@@ -716,6 +764,34 @@ function main() {
         const fileCount = writeStateLocaleFiles(stateData, state);
         totalFileCount += fileCount;
         console.log(`   Generated ${fileCount} files\n`);
+      }
+
+      // Surface CSV key collisions. The generator already recovered the
+      // losing values into page-prefixed keys (see writesByslot loop above),
+      // so no copy is silently lost. We still report and — when --strict is
+      // passed — fail so CI can hold the line on net-new collisions.
+      const strict = process.argv.includes('--strict');
+      if (allCollisions.length > 0) {
+        const tag = strict ? '❌' : '⚠️';
+        const stream = strict ? console.error : console.log;
+        stream(`\n${tag} CSV key collisions (auto-resolved by storing earlier writes under a page-prefixed key):\n`);
+        for (const c of allCollisions) {
+          stream(`   [${c.state}] ${c.slot}`);
+          for (const w of c.writes) {
+            const preview = (w.en || '(empty)').slice(0, 80);
+            stream(`      • "${w.contentKey}" → "${preview}${w.en && w.en.length > 80 ? '…' : ''}"`);
+          }
+          if (c.resolvedAs && c.resolvedAs.length) {
+            stream(`      → recovered at: ${c.resolvedAs.join(', ')}`);
+          }
+        }
+        if (strict) {
+          console.error(
+            '\nFail: --strict mode requires zero collisions. Resolve by giving the CSV rows distinct keys (not just distinct page names within the same section).\n'
+          );
+          process.exit(1);
+        }
+        stream();
       }
 
       // Show validation warnings

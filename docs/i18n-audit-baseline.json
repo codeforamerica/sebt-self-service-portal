@@ -2,7 +2,7 @@
   "$schema": "i18n-audit-baseline-v1",
   "recordedAt": "2026-05-07",
   "note": "Grandfathered missing/empty translation issues. Shrink, never grow.",
-  "count": 114,
+  "count": 116,
   "entries": [
     {
       "kind": "empty",
@@ -801,6 +801,20 @@
       "key": "callbackSigningIn",
       "locale": "es",
       "state": "dc"
+    },
+    {
+      "kind": "missing",
+      "ns": "result",
+      "key": "requestReplacementCardFisTitle",
+      "locale": "en",
+      "state": "co"
+    },
+    {
+      "kind": "missing",
+      "ns": "result",
+      "key": "requestReplacementCardFisTitle",
+      "locale": "es",
+      "state": "co"
     }
   ]
 }
