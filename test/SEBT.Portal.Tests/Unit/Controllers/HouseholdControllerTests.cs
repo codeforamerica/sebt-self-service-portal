@@ -53,9 +53,11 @@ public class HouseholdControllerTests
         IHouseholdRepository repository)
     {
         var logger = NullLogger<GetHouseholdDataQueryHandler>.Instance;
+        var userRepository = Substitute.For<IUserRepository>();
         return new GetHouseholdDataQueryHandler(
             resolver,
             repository,
+            userRepository,
             _piiVisibilityService,
             _idProofingService,
             _selfServiceEvaluator,
