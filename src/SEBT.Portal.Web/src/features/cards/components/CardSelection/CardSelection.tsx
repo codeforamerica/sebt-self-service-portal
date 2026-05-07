@@ -120,9 +120,7 @@ export function CardSelection({ confirmPath = 'select/confirm' }: CardSelectionP
       onSubmit={handleSubmit}
       noValidate
     >
-      <p className="usa-hint">
-        {t('requiredFieldsNote', 'Asterisks (*) indicate a required field')}
-      </p>
+      <p className="usa-hint">{tCommon('requiredFields')}</p>
 
       <fieldset
         className="usa-fieldset"

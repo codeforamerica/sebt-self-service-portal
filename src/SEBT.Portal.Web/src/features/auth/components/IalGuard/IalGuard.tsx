@@ -87,10 +87,7 @@ export function IalGuard({ children, requiredIal = STEP_UP_REQUIRED_IAL }: IalGu
   const checkingCopy = useMemo(
     () => ({
       title: t('ialGuardCheckingTitle', 'Please wait…'),
-      body: t(
-        'ialGuardCheckingBody',
-        'Do not exit the page. Checking to see if we have enough information.'
-      )
+      body: t('step-upProcessing:body')
     }),
     [t]
   )
@@ -144,12 +141,7 @@ export function IalGuard({ children, requiredIal = STEP_UP_REQUIRED_IAL }: IalGu
                 'To keep your account safe, we need to confirm it’s really you'
               )}
             </h1>
-            <p className="font-sans-sm margin-bottom-3">
-              {t(
-                'ialGuardChallengeBody',
-                'We need to share some information with our third-party vendor to verify your identity. We will do this only once and will not share or save anything without your permission.'
-              )}
-            </p>
+            <p className="font-sans-sm margin-bottom-3">{t('stepUpDisclaimer:body')}</p>
             <div className="display-flex flex-row flex-wrap flex-gap-2 margin-top-3">
               <Button
                 type="button"
@@ -165,7 +157,7 @@ export function IalGuard({ children, requiredIal = STEP_UP_REQUIRED_IAL }: IalGu
                 className="bg-primary-dark text-white border-primary-dark"
                 onClick={handleVerify}
               >
-                {t('ialGuardVerify', 'Verify')}
+                {t('stepUpDisclaimer:action')}
               </Button>
             </div>
           </section>

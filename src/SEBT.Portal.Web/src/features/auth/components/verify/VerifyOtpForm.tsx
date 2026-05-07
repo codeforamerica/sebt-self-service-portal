@@ -113,8 +113,7 @@ export function VerifyOtpForm({ email, contactLink }: VerifyOtpFormProps) {
 
     try {
       await requestOtp.mutateAsync({ email })
-      // TODO: "codeSentSuccess" value exists in CSV but under a broken row key ("VALIDATION -" with no key name) — needs CSV fix
-      setSuccessMessage(tLogin('codeSentSuccess', 'A new code has been sent to your email.'))
+      setSuccessMessage(tValidation('newCode'))
       resetCountdown()
       startCountdown()
       setHasStartedCountdown(true)

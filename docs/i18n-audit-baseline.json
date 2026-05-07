@@ -2,7 +2,7 @@
   "$schema": "i18n-audit-baseline-v1",
   "recordedAt": "2026-05-07",
   "note": "Grandfathered missing/empty translation issues. Shrink, never grow.",
-  "count": 103,
+  "count": 114,
   "entries": [
     {
       "kind": "empty",
@@ -484,6 +484,34 @@
       "kind": "empty",
       "ns": "offBoarding",
       "key": "body1",
+      "locale": "en",
+      "state": "co"
+    },
+    {
+      "kind": "empty",
+      "ns": "offBoarding",
+      "key": "body1",
+      "locale": "es",
+      "state": "co"
+    },
+    {
+      "kind": "empty",
+      "ns": "offBoarding",
+      "key": "body1",
+      "locale": "es",
+      "state": "co"
+    },
+    {
+      "kind": "empty",
+      "ns": "offBoarding",
+      "key": "body3",
+      "locale": "en",
+      "state": "co"
+    },
+    {
+      "kind": "empty",
+      "ns": "offBoarding",
+      "key": "body3",
       "locale": "es",
       "state": "co"
     },
@@ -492,6 +520,20 @@
       "ns": "offBoarding",
       "key": "title",
       "locale": "en",
+      "state": "co"
+    },
+    {
+      "kind": "empty",
+      "ns": "offBoarding",
+      "key": "title",
+      "locale": "en",
+      "state": "co"
+    },
+    {
+      "kind": "empty",
+      "ns": "offBoarding",
+      "key": "title",
+      "locale": "es",
       "state": "co"
     },
     {
@@ -556,6 +598,27 @@
       "key": "replaceCardBody4",
       "locale": "es",
       "state": "co"
+    },
+    {
+      "kind": "empty",
+      "ns": "step-upProcessing",
+      "key": "body",
+      "locale": "es",
+      "state": "dc"
+    },
+    {
+      "kind": "empty",
+      "ns": "stepUpDisclaimer",
+      "key": "action",
+      "locale": "es",
+      "state": "dc"
+    },
+    {
+      "kind": "empty",
+      "ns": "stepUpDisclaimer",
+      "key": "body",
+      "locale": "es",
+      "state": "dc"
     },
     {
       "kind": "empty",
@@ -570,6 +633,20 @@
       "key": "title",
       "locale": "es",
       "state": "dc"
+    },
+    {
+      "kind": "empty",
+      "ns": "validation",
+      "key": "newCode",
+      "locale": "en",
+      "state": "co"
+    },
+    {
+      "kind": "empty",
+      "ns": "validation",
+      "key": "newCode",
+      "locale": "es",
+      "state": "co"
     },
     {
       "kind": "empty",

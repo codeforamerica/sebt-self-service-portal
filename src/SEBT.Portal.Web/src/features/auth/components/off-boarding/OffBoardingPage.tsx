@@ -71,12 +71,7 @@ export function OffBoardingPage({ contactLink, applyLink }: OffBoardingPageProps
           </h1>
 
           <p className="font-sans-sm">
-            {isNoIdProvided
-              ? noIdBody
-              : t(
-                  'offboardingBody',
-                  'You can go back to enter an ID number, or contact us if you need more help.'
-                )}
+            {isNoIdProvided ? noIdBody : t('offBoarding:coLoadedBody1')}
           </p>
 
           <div className="margin-top-3">
@@ -107,12 +102,7 @@ export function OffBoardingPage({ contactLink, applyLink }: OffBoardingPageProps
           */}
           {canApply && !isNoIdProvided && (
             <div className="margin-top-4">
-              <p className="font-sans-sm">
-                {t(
-                  'offboardingApplyBody',
-                  'If you\'re not sure what to do, or you want to apply for DC SUN Bucks, we can help you find out if you need to apply for your child. Tap "Apply now" and enter your child\'s information.'
-                )}
-              </p>
+              <p className="font-sans-sm">{t('offBoarding:coLoadedBody2')}</p>
 
               {applyLink && (
                 <a

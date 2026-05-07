@@ -59,7 +59,7 @@ export function ReplacementCardPrompt({ address }: ReplacementCardPromptProps) {
         </p>
       </div>
 
-      <p>{t('replacementCardsCriteria', 'We can send replacement cards if')}</p>
+      <p>{t('optionalId:body1')}</p>
       <ul className="usa-list">
         <li>
           {t(
@@ -83,9 +83,7 @@ export function ReplacementCardPrompt({ address }: ReplacementCardPromptProps) {
         </Alert>
       )}
 
-      <p className="usa-hint margin-bottom-3">
-        {t('requiredFieldsNote', 'Asterisks (*) indicate a required field')}
-      </p>
+      <p className="usa-hint margin-bottom-3">{tCommon('requiredFields')}</p>
 
       <fieldset
         className="usa-fieldset"

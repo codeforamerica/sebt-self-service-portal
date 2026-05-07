@@ -321,23 +321,34 @@ if (updateBaseline && baselinePath) {
 
 if (punchListPath) {
   // Build a reverse index: every English value in the sheet → the keys that
-  // hold it. When an engineer's fallback string already exists in the sheet at
-  // a *different* key, the bug is in the code (wrong key), not the sheet.
-  // Surfacing these as "key mismatch" lets us fix them in this PR without
-  // touching the content pipeline at all.
+  // hold it. When an engineer's fallback string already matches the sheet at a
+  // *different* key, the bug is in the code (wrong key), not the sheet.
+  //
+  // Match is case + punctuation + whitespace insensitive: "Hello!" and "hello"
+  // and "Hello. " all collapse to the same bucket. That picks up engineer-vs-
+  // copywriter casing/punctuation drift without false-positives — the values
+  // really are the same string for analytics/UX purposes.
+  const normalizeForMatch = (s) =>
+    s
+      .trim()
+      .toLowerCase()
+      .replace(/\s+/g, ' ')
+      .replace(/['"“”‘’`]/g, "'")
+      .replace(/[.!?:;,]+$/, '')
+
   const valueIndex = new Map() // normalized value → Set<ns:key>
   for (const state of enforcedStates) {
     const enState = localesData['en']?.[state] ?? {}
     for (const [composite, value] of Object.entries(enState)) {
       if (typeof value !== 'string') continue
-      const normalized = value.trim()
+      const normalized = normalizeForMatch(value)
       if (!normalized) continue
       if (!valueIndex.has(normalized)) valueIndex.set(normalized, new Set())
       valueIndex.get(normalized).add(composite)
     }
   }
 
-  /** mismatched call sites — fallback exactly matches an existing key's value */
+  /** mismatched call sites — fallback matches an existing key's value */
   const keyMismatches = []
   // De-dupe by call site, not by issue (issues fan out per locale/state).
   const seenCalls = new Set()
@@ -345,9 +356,9 @@ if (punchListPath) {
     const callId = `${issue.file}:${issue.line}:${issue.ns}:${issue.key}`
     if (seenCalls.has(callId)) continue
     seenCalls.add(callId)
-    const fallback = issue.fallback?.trim()
+    const fallback = issue.fallback
     if (!fallback) continue
-    const matches = valueIndex.get(fallback)
+    const matches = valueIndex.get(normalizeForMatch(fallback))
     if (!matches) continue
     // Exclude the engineer's own key (in case it was filled in for some state
     // but not others — covered by the regular Quick Wins bucket).
@@ -387,7 +398,14 @@ if (punchListPath) {
     )
   }
 
-  const maskedGrouped = groupByKey(masked)
+  // Quick Wins should NOT include entries already surfaced as key mismatches —
+  // those have a clearer fix (rewrite the call) and shouldn't be double-counted.
+  const mismatchedKeys = new Set(
+    keyMismatches.map((m) => `${m.currentNs}:${m.currentKey}`)
+  )
+  const maskedGrouped = groupByKey(
+    masked.filter((m) => !mismatchedKeys.has(`${m.ns}:${m.key}`))
+  )
   const errorsGrouped = groupByKey(issues.filter((i) => !i.masked))
   const orphanKeys = [...new Set(orphans.map((o) => `${o.ns}:${o.key}`))].sort()
 

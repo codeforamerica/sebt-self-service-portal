@@ -27,15 +27,10 @@ export function DocVerifyInterstitial({
         id="doc-verify-title"
         className="font-sans-xl text-bold line-height-sans-1 margin-bottom-3"
       >
-        {t('interstitialHeading', 'We want to keep your account safe')}
+        {t('offBoarding:title')}
       </h1>
 
-      <p className="font-sans-sm">
-        {t(
-          'interstitialBody',
-          "In order to confirm your identity we need to ask for additional documentation. On the next screen, we'll ask you to upload a photo of your:"
-        )}
-      </p>
+      <p className="font-sans-sm">{t('offBoarding:body1')}</p>
 
       <ul className="usa-list font-sans-sm">
         <li>{t('interstitialIdTypeDriversLicense', "driver's license")}</li>
@@ -43,14 +38,7 @@ export function DocVerifyInterstitial({
         <li>{t('interstitialIdTypeOtherPhotoId', 'or another photo ID')}</li>
       </ul>
 
-      {allowIdRetry && (
-        <p className="font-sans-sm">
-          {t(
-            'interstitialSkipHint',
-            'You can skip this step by going back and typing in your ID number instead.'
-          )}
-        </p>
-      )}
+      {allowIdRetry && <p className="font-sans-sm">{t('offBoarding:body3')}</p>}
 
       <div className="margin-top-3">
         {allowIdRetry && (

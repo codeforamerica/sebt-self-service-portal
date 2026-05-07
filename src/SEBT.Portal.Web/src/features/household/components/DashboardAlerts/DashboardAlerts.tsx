@@ -126,7 +126,7 @@ export function DashboardAlerts() {
       {alerts.addressVerification && (
         <Alert
           variant="warning"
-          heading={t('alertAddressVerificationHeading', 'Is your address correct?')}
+          heading={t('alertCheckAddressTitle')}
         >
           {t(
             'alertAddressVerificationBody',
