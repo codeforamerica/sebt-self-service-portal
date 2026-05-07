@@ -200,16 +200,13 @@ export function AddressForm({ initialAddress, redirectPath }: AddressFormProps) 
             className="margin-bottom-0"
             textClassName="text-bold"
           >
-            {t(
-              'streetAddressWarning',
-              'There was an issue with the address provided. If you can, please, enter a street address shorter than 30 characters.'
-            )}
+            {t('alertBody')}
             <br />
             <a
               href={getStateLinks(currentState).help.contactUs}
               className="usa-link"
             >
-              {t('contactUsHelp', 'Contact us if you need more help.')}
+              {t('alertAction')}
             </a>
           </Alert>,
           siteAlertsEl
@@ -246,7 +243,7 @@ export function AddressForm({ initialAddress, redirectPath }: AddressFormProps) 
         )}
 
         <AddressAutocomplete
-          label={t('labelStreetAddress', 'Street address')}
+          label={tCommon('streetAddress')}
           {...(currentState === 'dc'
             ? { hint: t('hintStreetAddressDc', 'Include direction. NW, NE, SE, or SW.') }
             : {})}
@@ -266,11 +263,8 @@ export function AddressForm({ initialAddress, redirectPath }: AddressFormProps) 
         />
 
         <InputField
-          label={t('labelStreetAddress2', 'Street address line 2')}
-          hint={t(
-            'hintStreetAddress2',
-            'For example, an apartment number, unit number, floor, or PO Box.'
-          )}
+          label={tCommon('streetAddress2')}
+          hint={tCommon('helperStreetAddress2')}
           name="streetAddress2"
           value={streetAddress2}
           onChange={(e) => setStreetAddress2(e.target.value)}
@@ -278,7 +272,7 @@ export function AddressForm({ initialAddress, redirectPath }: AddressFormProps) 
         />
 
         <InputField
-          label={t('labelCity', 'City')}
+          label={tCommon('city')}
           name="city"
           value={city}
           onChange={(e) => setCity(e.target.value)}
@@ -294,7 +288,7 @@ export function AddressForm({ initialAddress, redirectPath }: AddressFormProps) 
             className="usa-label"
             htmlFor="address-state"
           >
-            {t('labelState', 'State or territory')}
+            {tCommon('stateOrTerritory')}
             <span className="text-secondary-dark"> *</span>
           </label>
           {fieldErrors.state && (
@@ -330,7 +324,7 @@ export function AddressForm({ initialAddress, redirectPath }: AddressFormProps) 
         </div>
 
         <InputField
-          label={t('labelPostalCode', 'ZIP Code')}
+          label={tCommon('zipCode')}
           name="postalCode"
           value={postalCode}
           onChange={(e) => setPostalCode(e.target.value)}

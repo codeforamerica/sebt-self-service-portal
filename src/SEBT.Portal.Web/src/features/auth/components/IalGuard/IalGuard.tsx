@@ -157,7 +157,7 @@ export function IalGuard({ children, requiredIal = STEP_UP_REQUIRED_IAL }: IalGu
                 className="border-primary text-primary"
                 onClick={handleBack}
               >
-                {t('ialGuardBack', 'Back')}
+                {t('back')}
               </Button>
               <Button
                 type="button"

@@ -126,11 +126,11 @@ export function CardSelection({ confirmPath = 'select/confirm' }: CardSelectionP
 
       <fieldset
         className="usa-fieldset"
-        aria-label={t('cardSelectionLabel', 'Select which cards you want to replace')}
+        aria-label={t('optionalId:labelSelectCards')}
         aria-describedby={error ? 'card-selection-error' : undefined}
       >
         <legend className="usa-legend">
-          {t('cardSelectionLabel', 'Select which cards you want to replace')}
+          {t('optionalId:labelSelectCards')}
           <span className="text-secondary-dark"> *</span>
         </legend>
 

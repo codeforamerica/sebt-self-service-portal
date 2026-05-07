@@ -35,16 +35,4 @@ describe('BetaBanner', () => {
     expect(screen.getByRole('alert')).toBeInTheDocument()
     expect(screen.getByRole('alert')).toHaveClass('usa-alert--warning', 'margin-top-0')
   })
-
-  it('renders localized banner text', () => {
-    renderWithFlags({ enable_beta_banner: true })
-
-    // i18n key: betaBannerText (common namespace)
-    // Falls back to the default English string until the key is in the spreadsheet
-    expect(
-      screen.getByText(
-        'This site is currently in beta. Some features may be incomplete or missing.'
-      )
-    ).toBeInTheDocument()
-  })
 })

@@ -87,7 +87,7 @@ export function OffBoardingPage({ contactLink, applyLink }: OffBoardingPageProps
                 router.push('/login/id-proofing')
               }}
             >
-              {t('offboardingActionBack', 'Back')}
+              {t('common:back')}
             </Button>
 
             <a
@@ -127,14 +127,12 @@ export function OffBoardingPage({ contactLink, applyLink }: OffBoardingPageProps
 
           {/* FAQs placeholder */}
           <div className="margin-top-6">
-            <h2 className="font-sans-lg text-bold">{t('offboardingFaqsHeading', 'FAQs')}</h2>
+            <h2 className="font-sans-lg text-bold">{t('common:linkFaqs')}</h2>
           </div>
 
           {/* Contact Us */}
           <div className="margin-top-4">
-            <h2 className="font-sans-lg text-bold">
-              {t('offboardingContactUsHeading', 'Contact Us')}
-            </h2>
+            <h2 className="font-sans-lg text-bold">{t('common:linkContactUs')}</h2>
             <p className="font-sans-sm">
               <a
                 href={contactLink}

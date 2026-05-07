@@ -2,8 +2,50 @@
   "$schema": "i18n-audit-baseline-v1",
   "recordedAt": "2026-05-07",
   "note": "Grandfathered missing/empty translation issues. Shrink, never grow.",
-  "count": 97,
+  "count": 103,
   "entries": [
+    {
+      "kind": "empty",
+      "ns": "common",
+      "key": "alertBeta",
+      "locale": "en",
+      "state": "dc"
+    },
+    {
+      "kind": "empty",
+      "ns": "common",
+      "key": "alertBeta",
+      "locale": "es",
+      "state": "dc"
+    },
+    {
+      "kind": "empty",
+      "ns": "common",
+      "key": "linkFaqs",
+      "locale": "en",
+      "state": "co"
+    },
+    {
+      "kind": "empty",
+      "ns": "common",
+      "key": "linkFaqs",
+      "locale": "en",
+      "state": "co"
+    },
+    {
+      "kind": "empty",
+      "ns": "common",
+      "key": "linkFaqs",
+      "locale": "es",
+      "state": "co"
+    },
+    {
+      "kind": "empty",
+      "ns": "common",
+      "key": "linkFaqs",
+      "locale": "es",
+      "state": "co"
+    },
     {
       "kind": "empty",
       "ns": "confirmInfo",

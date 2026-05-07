@@ -155,6 +155,12 @@ function scanFile(filePath) {
           resolvedNs = key.slice(0, idx)
           key = key.slice(idx + 1)
         }
+        // Only the positional second-arg fallback is recognized as "masking"
+        // (`t('foo', 'Fallback')`). The audit intentionally does NOT treat
+        // `t('foo') || 'Fallback'` as a fallback — the principle is that the
+        // CSV is source of truth, and any code-side fallback is debt. Existing
+        // positional fallbacks live in the baseline; new ones (including `||`)
+        // fail CI.
         const second = node.arguments[1]
         const fallback = second && ts.isStringLiteral(second) ? second.text : null
         calls.push({
@@ -314,6 +320,49 @@ if (updateBaseline && baselinePath) {
 }
 
 if (punchListPath) {
+  // Build a reverse index: every English value in the sheet → the keys that
+  // hold it. When an engineer's fallback string already exists in the sheet at
+  // a *different* key, the bug is in the code (wrong key), not the sheet.
+  // Surfacing these as "key mismatch" lets us fix them in this PR without
+  // touching the content pipeline at all.
+  const valueIndex = new Map() // normalized value → Set<ns:key>
+  for (const state of enforcedStates) {
+    const enState = localesData['en']?.[state] ?? {}
+    for (const [composite, value] of Object.entries(enState)) {
+      if (typeof value !== 'string') continue
+      const normalized = value.trim()
+      if (!normalized) continue
+      if (!valueIndex.has(normalized)) valueIndex.set(normalized, new Set())
+      valueIndex.get(normalized).add(composite)
+    }
+  }
+
+  /** mismatched call sites — fallback exactly matches an existing key's value */
+  const keyMismatches = []
+  // De-dupe by call site, not by issue (issues fan out per locale/state).
+  const seenCalls = new Set()
+  for (const issue of masked) {
+    const callId = `${issue.file}:${issue.line}:${issue.ns}:${issue.key}`
+    if (seenCalls.has(callId)) continue
+    seenCalls.add(callId)
+    const fallback = issue.fallback?.trim()
+    if (!fallback) continue
+    const matches = valueIndex.get(fallback)
+    if (!matches) continue
+    // Exclude the engineer's own key (in case it was filled in for some state
+    // but not others — covered by the regular Quick Wins bucket).
+    const candidates = [...matches].filter((m) => m !== `${issue.ns}:${issue.key}`)
+    if (candidates.length === 0) continue
+    keyMismatches.push({
+      file: issue.file,
+      line: issue.line,
+      currentNs: issue.ns,
+      currentKey: issue.key,
+      fallback,
+      candidates
+    })
+  }
+
   // Group by ns:key so each unique key shows up once, with the locale/state
   // matrix it's missing in. The fallback string (when one exists) is the
   // engineer's draft of what the English copy should say — surfacing it lets
@@ -349,9 +398,31 @@ if (punchListPath) {
   lines.push(``)
   lines.push(`| Bucket | Count | What it means |`)
   lines.push(`|---|---:|---|`)
+  lines.push(`| 🔧 Code-fix: key mismatch | ${keyMismatches.length} | Fallback string already exists in the sheet at a different key. Engineer is calling the wrong key — fix in code, no sheet change. |`)
   lines.push(`| 🚨 Quick wins (masked) | ${maskedGrouped.length} | Code has a fallback string. Copy it into the sheet, drop the fallback. |`)
   lines.push(`| 🟠 Needs research (unmasked) | ${errorsGrouped.length} | No fallback in code. Renders empty. PM/designer needs to source copy. |`)
   lines.push(`| 🗑️ Orphans | ${orphanKeys.length} | Sheet has the row, no code references it. Probably safe to delete. |`)
+  lines.push(``)
+
+  // — Key mismatches (code-side fix, ship in the next PR)
+  lines.push(`## 🔧 Code-side fixes — key mismatch`)
+  lines.push(``)
+  lines.push(`Engineer's fallback string is identical to a value already in the sheet at a different key. Most likely the call site is calling the wrong key (typo, copy-paste from another component, or a key that got renamed in the sheet but not in code). These are fixed in the **code**, not the sheet — change the \`t()\` call to use the matched key.`)
+  lines.push(``)
+  if (keyMismatches.length) {
+    lines.push(`| Current call | Likely correct key | Fallback string | Where |`)
+    lines.push(`|---|---|---|---|`)
+    for (const m of keyMismatches.slice(0, 200)) {
+      const safe = m.fallback.replace(/\|/g, '\\|').replace(/\n/g, ' ')
+      const candidates = m.candidates.length === 1
+        ? `\`${m.candidates[0]}\``
+        : m.candidates.map((c) => `\`${c}\``).join(' or ')
+      lines.push(`| \`${m.currentNs}:${m.currentKey}\` | ${candidates} | ${safe} | \`${m.file}:${m.line}\` |`)
+    }
+    if (keyMismatches.length > 200) lines.push(`| _…and ${keyMismatches.length - 200} more_ | | | |`)
+  } else {
+    lines.push(`_(none — nice)_`)
+  }
   lines.push(``)
 
   // — Quick wins

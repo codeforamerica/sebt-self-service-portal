@@ -94,11 +94,11 @@ export function ConfirmAddress({
 
       <fieldset
         className="usa-fieldset"
-        aria-label={t('selectOneLabel', 'Select one')}
+        aria-label={tCommon('selectOne')}
         aria-describedby={error ? 'confirm-address-error' : undefined}
       >
         <legend className="usa-legend text-bold">
-          {t('selectOneLabel', 'Select one')}
+          {tCommon('selectOne')}
           <span className="text-secondary-dark"> *</span>
         </legend>
 

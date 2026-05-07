@@ -70,20 +70,18 @@ export function DocVerifyInterstitial({
           loadingText={t('interstitialLoading', 'Loading...')}
           disabled={isStartingChallenge}
         >
-          {t('interstitialActionContinue', 'Continue')}
+          {t('common:continue')}
         </Button>
       </div>
 
       {/* FAQs placeholder */}
       <div className="margin-top-6">
-        <h2 className="font-sans-lg text-bold">{t('interstitialFaqsHeading', 'FAQs')}</h2>
+        <h2 className="font-sans-lg text-bold">{t('common:linkFaqs')}</h2>
       </div>
 
       {/* Contact Us */}
       <div className="margin-top-4">
-        <h2 className="font-sans-lg text-bold">
-          {t('interstitialContactUsHeading', 'Contact Us')}
-        </h2>
+        <h2 className="font-sans-lg text-bold">{t('common:linkContactUs')}</h2>
         <p className="font-sans-sm">
           <a
             href={contactLink}

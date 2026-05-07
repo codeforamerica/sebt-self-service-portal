@@ -17,10 +17,7 @@ export function BetaBanner() {
       variant="warning"
       className="margin-top-0"
     >
-      {t(
-        'betaBannerText',
-        'This site is currently in beta. Some features may be incomplete or missing.'
-      )}
+      {t('alertBeta')}
     </Alert>
   )
 }
