@@ -52,6 +52,7 @@ export const AddressUpdateResponseSchema = z.object({
   status: z.enum(['valid', 'invalid', 'suggestion']),
   reason: z.string().nullable().optional(),
   message: z.string().nullable().optional(),
+  normalizedAddress: AddressResponseSchema.nullable().optional(),
   suggestedAddress: AddressResponseSchema.nullable().optional()
 })
 

@@ -1,8 +1,12 @@
-import { render, screen } from '@testing-library/react'
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { http, HttpResponse } from 'msw'
 import type { ReactNode } from 'react'
 import { useEffect } from 'react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+
+import { server } from '@/mocks/server'
 
 import type { AddressUpdateResponse, UpdateAddressRequest } from '../../api/schema'
 import { AddressFlowProvider, useAddressFlow } from '../../context'
@@ -65,15 +69,22 @@ const mockSuggestionResult: AddressUpdateResponse = {
 function ContextSetter({
   children,
   result,
-  entered
+  entered,
+  formPath,
+  continuePath
 }: {
   children: ReactNode
   result: AddressUpdateResponse
   entered: UpdateAddressRequest
+  formPath?: string
+  continuePath?: string
 }) {
-  const { setValidationResult } = useAddressFlow()
+  const { setValidationResult, setNavigationTargets } = useAddressFlow()
   useEffect(() => {
     setValidationResult(result, entered)
+    if (formPath && continuePath) {
+      setNavigationTargets({ formPath, continuePath })
+    }
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
   return <>{children}</>
 }
@@ -88,6 +99,7 @@ function ContextInspector() {
     <div data-testid="context-inspector">
       <span data-testid="has-validation-result">{validationResult ? 'yes' : 'no'}</span>
       <span data-testid="has-address">{address ? 'yes' : 'no'}</span>
+      <span data-testid="address-json">{address ? JSON.stringify(address) : ''}</span>
     </div>
   )
 }
@@ -95,21 +107,35 @@ function ContextInspector() {
 function renderSuggestedAddress(
   result: AddressUpdateResponse = mockSuggestionResult,
   entered: UpdateAddressRequest = mockEntered,
-  { includeInspector = false }: { includeInspector?: boolean } = {}
+  {
+    includeInspector = false,
+    formPath,
+    continuePath
+  }: { includeInspector?: boolean; formPath?: string; continuePath?: string } = {}
 ) {
+  const queryClient = new QueryClient({
+    defaultOptions: {
+      queries: { retry: false },
+      mutations: { retry: false }
+    }
+  })
   const user = userEvent.setup()
   return {
     user,
     ...render(
-      <AddressFlowProvider>
-        <ContextSetter
-          result={result}
-          entered={entered}
-        >
-          <SuggestedAddress />
-          {includeInspector && <ContextInspector />}
-        </ContextSetter>
-      </AddressFlowProvider>
+      <QueryClientProvider client={queryClient}>
+        <AddressFlowProvider>
+          <ContextSetter
+            result={result}
+            entered={entered}
+            {...(formPath ? { formPath } : {})}
+            {...(continuePath ? { continuePath } : {})}
+          >
+            <SuggestedAddress />
+            {includeInspector && <ContextInspector />}
+          </ContextSetter>
+        </AddressFlowProvider>
+      </QueryClientProvider>
     )
   }
 }
@@ -166,12 +192,27 @@ describe('SuggestedAddress', () => {
   // --- Continue button ---
 
   it('calls setAddress with suggested address and navigates to replacement-cards', async () => {
+    server.use(
+      http.put('/api/household/address', async ({ request }) => {
+        const body = (await request.json()) as UpdateAddressRequest
+        expect(body).toMatchObject({
+          streetAddress1: '123 MLK Jr Ave NW',
+          city: 'Washington',
+          state: 'DC',
+          postalCode: '20001'
+        })
+        return HttpResponse.json({ status: 'valid' })
+      })
+    )
+
     const { user } = renderSuggestedAddress()
 
     const continueButton = screen.getByRole('button', { name: /continue/i })
     await user.click(continueButton)
 
-    expect(mockPush).toHaveBeenCalledWith('/profile/address/replacement-cards')
+    await waitFor(() => {
+      expect(mockPush).toHaveBeenCalledWith('/profile/address/replacement-cards')
+    })
   })
 
   it('calls setAddress with entered address when "Address you entered" is selected', async () => {
@@ -186,7 +227,24 @@ describe('SuggestedAddress', () => {
     expect(mockPush).toHaveBeenCalledWith('/profile/address/replacement-cards')
   })
 
+  it('navigates using context continuePath when configured', async () => {
+    server.use(http.put('/api/household/address', () => HttpResponse.json({ status: 'valid' })))
+    const { user } = renderSuggestedAddress(mockSuggestionResult, mockEntered, {
+      formPath: '/cards/replace/address?case=SEBT-001',
+      continuePath: '/cards/replace/confirm?case=SEBT-001'
+    })
+
+    const continueButton = screen.getByRole('button', { name: /continue/i })
+    await user.click(continueButton)
+
+    await waitFor(() => {
+      expect(mockPush).toHaveBeenCalledWith('/cards/replace/confirm?case=SEBT-001')
+    })
+  })
+
   it('preserves validationResult in context when Continue is clicked (prevents FlowGuard race)', async () => {
+    server.use(http.put('/api/household/address', () => HttpResponse.json({ status: 'valid' })))
+
     const { user } = renderSuggestedAddress(mockSuggestionResult, mockEntered, {
       includeInspector: true
     })
@@ -194,10 +252,63 @@ describe('SuggestedAddress', () => {
     const continueButton = screen.getByRole('button', { name: /continue/i })
     await user.click(continueButton)
 
-    // validationResult should still be present after Continue (not cleared)
-    expect(screen.getByTestId('has-validation-result')).toHaveTextContent('yes')
-    // address should now be set
-    expect(screen.getByTestId('has-address')).toHaveTextContent('yes')
+    await waitFor(() => {
+      // validationResult should still be present after Continue (not cleared)
+      expect(screen.getByTestId('has-validation-result')).toHaveTextContent('yes')
+      // address should now be set
+      expect(screen.getByTestId('has-address')).toHaveTextContent('yes')
+    })
+  })
+
+  it('stores normalized address from API response when suggested address is accepted', async () => {
+    server.use(
+      http.put('/api/household/address', () =>
+        HttpResponse.json({
+          status: 'valid',
+          normalizedAddress: {
+            streetAddress1: '123 MLK JR AVE NW',
+            streetAddress2: null,
+            city: 'WASHINGTON',
+            state: 'DC',
+            postalCode: '20001-0001'
+          }
+        })
+      )
+    )
+
+    const { user } = renderSuggestedAddress(mockSuggestionResult, mockEntered, {
+      includeInspector: true
+    })
+
+    const continueButton = screen.getByRole('button', { name: /continue/i })
+    await user.click(continueButton)
+
+    await waitFor(() => {
+      expect(screen.getByTestId('has-address')).toHaveTextContent('yes')
+      const contextData = JSON.parse(screen.getByTestId('address-json').textContent ?? '{}')
+      expect(contextData.streetAddress1).toBe('123 MLK JR AVE NW')
+      expect(contextData.city).toBe('WASHINGTON')
+      expect(contextData.postalCode).toBe('20001-0001')
+      expect(mockPush).toHaveBeenCalledWith('/profile/address/replacement-cards')
+    })
+  })
+
+  it('shows an error and stays on the page when persisting the suggested address fails', async () => {
+    server.use(
+      http.put('/api/household/address', () =>
+        HttpResponse.json({ error: 'Bad request' }, { status: 400 })
+      )
+    )
+
+    const { user } = renderSuggestedAddress()
+
+    const continueButton = screen.getByRole('button', { name: /continue/i })
+    await user.click(continueButton)
+
+    await waitFor(() => {
+      expect(screen.getByText(/something went wrong/i)).toBeInTheDocument()
+    })
+    expect(mockPush).not.toHaveBeenCalled()
   })
 
   // --- Back button ---
@@ -209,6 +320,18 @@ describe('SuggestedAddress', () => {
     await user.click(backButton)
 
     expect(mockPush).toHaveBeenCalledWith('/profile/address')
+  })
+
+  it('back button uses context formPath when configured', async () => {
+    const { user } = renderSuggestedAddress(mockSuggestionResult, mockEntered, {
+      formPath: '/cards/replace/address?case=SEBT-001',
+      continuePath: '/cards/replace/confirm?case=SEBT-001'
+    })
+
+    const backButton = screen.getByRole('button', { name: /back/i })
+    await user.click(backButton)
+
+    expect(mockPush).toHaveBeenCalledWith('/cards/replace/address?case=SEBT-001')
   })
 
   // --- DC abbreviated variant ---
