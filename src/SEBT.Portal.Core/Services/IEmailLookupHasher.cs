@@ -6,7 +6,9 @@ namespace SEBT.Portal.Core.Services;
 /// </summary>
 public interface IEmailLookupHasher
 {
-    /// <inheritdoc cref="NormalizeAndHash"/>
+    /// <summary>
+    /// Returns null when <paramref name="email"/> is null/whitespace or cannot be normalized; otherwise returns the same MAC as <see cref="HashNormalized"/> for that normalized address.
+    /// </summary>
     string? NormalizeAndHash(string? email);
 
     /// <summary>Returns null when email is null/whitespace; otherwise trims + lowercases then MACs UTF-8.</summary>
