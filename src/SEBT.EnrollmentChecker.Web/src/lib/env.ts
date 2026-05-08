@@ -8,6 +8,7 @@ export const env = createEnv({
   },
   client: {
     NEXT_PUBLIC_STATE: z.enum(['dc', 'co']),
+    NEXT_PUBLIC_BASE_PATH: z.string().url().optional(),
     NEXT_PUBLIC_API_BASE_URL: z.string().url().optional(),
     NEXT_PUBLIC_SHOW_SCHOOL_FIELD: z.coerce.boolean().default(false),
     NEXT_PUBLIC_CHECKER_ENABLED: z.coerce.boolean().default(true),
