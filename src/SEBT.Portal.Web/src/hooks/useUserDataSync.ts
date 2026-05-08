@@ -21,9 +21,7 @@ export function useUserDataSync() {
 
     if (!session) return
 
-    // Stable portal-level identifier so analytics can correlate events
-    // per-user without exposing PII to vendor tooling. The UUID is the
-    // portal's own user.id (Guid v7), surfaced via /api/auth/status.
+    // Portal user UUID (Guid v7), used for per-user analytics correlation.
     if (session.userId) {
       setUserData('portal_id', session.userId, ANALYTICS_SCOPE)
     }

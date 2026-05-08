@@ -315,7 +315,7 @@ describe('DashboardContent', () => {
     })
   })
 
-  describe('hashed_app_id user data (DC-295)', () => {
+  describe('hashed_app_id user data', () => {
     it('sets user.hashed_app_id when the API includes hashedAppId', async () => {
       const expectedDigest = 'ca383d90647e371547d6e66297cda8089b81fc1c5cb30da6cfcbdf744d9e2861'
       server.use(

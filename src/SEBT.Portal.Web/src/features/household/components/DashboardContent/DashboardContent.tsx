@@ -60,9 +60,7 @@ export function DashboardContent() {
         setPageData('household_reason', 'no_children')
       }
 
-      // Backend emits hashedAppId only for states configured to surface it
-      // (CO today). When absent we don't set the field at all, so analytics
-      // never sees a stale or empty digest. See docs/analytics/hashed-sebt-app-id.md.
+      // hashedAppId is gated server-side (CO only); skip the call when absent.
       if (data.hashedAppId) {
         setUserData('hashed_app_id', data.hashedAppId, ['default', 'analytics'])
       }
