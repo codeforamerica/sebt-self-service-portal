@@ -278,7 +278,11 @@ export const HouseholdDataSchema = z.object({
   benefitIssuanceType: IssuanceTypeSchema.nullable().optional(),
   allowedActions: AllowedActionsSchema.nullable().optional(),
   // Missing/null preprocess to Unknown so analytics never collapse broken payloads into NonCoLoaded (PR #208).
-  coLoadedCohort: CoLoadedCohortSchema
+  coLoadedCohort: CoLoadedCohortSchema,
+  // HMAC-SHA256 digest of the SEBT App ID (lowercase hex). Backend emits this
+  // only for states configured to surface it (CO today). Null otherwise.
+  // See docs/analytics/hashed-sebt-app-id.md.
+  hashedAppId: z.string().nullable().optional()
 })
 
 export type HouseholdData = z.infer<typeof HouseholdDataSchema>

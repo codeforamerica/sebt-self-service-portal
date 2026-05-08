@@ -60,6 +60,18 @@ public class IdentifierHasher : IIdentifierHasher
     }
 
     /// <inheritdoc />
+    public string? HashForAnalytics(string? plaintext)
+    {
+        if (string.IsNullOrWhiteSpace(plaintext))
+        {
+            return null;
+        }
+
+        var hash = HMACSHA256.HashData(_keyBytes, Encoding.UTF8.GetBytes(plaintext));
+        return Convert.ToHexString(hash).ToLowerInvariant();
+    }
+
+    /// <inheritdoc />
     public string? HashForStorage(string? value)
     {
         if (string.IsNullOrWhiteSpace(value))

@@ -59,6 +59,13 @@ export function DashboardContent() {
       if (isEmpty && sessionIsCoLoaded === true) {
         setPageData('household_reason', 'no_children')
       }
+
+      // Backend emits hashedAppId only for states configured to surface it
+      // (CO today). When absent we don't set the field at all, so analytics
+      // never sees a stale or empty digest. See docs/analytics/hashed-sebt-app-id.md.
+      if (data.hashedAppId) {
+        setUserData('hashed_app_id', data.hashedAppId, ['default', 'analytics'])
+      }
     }
     trackEvent(AnalyticsEvents.HOUSEHOLD_RESULT)
   }, [isLoading, isError, data, sessionIsCoLoaded, setPageData, setUserData, trackEvent])
