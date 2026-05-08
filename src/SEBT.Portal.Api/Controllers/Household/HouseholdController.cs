@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Configuration;
 using SEBT.Portal.Api.Models;
 using SEBT.Portal.Api.Models.Household;
 using SEBT.Portal.Core.Services;
@@ -39,13 +40,14 @@ public class HouseholdController : ControllerBase
     public async Task<IActionResult> GetHouseholdData(
         [FromServices] IQueryHandler<GetHouseholdDataQuery, Core.Models.Household.HouseholdData> queryHandler,
         [FromServices] IIdentifierHasher identifierHasher,
+        [FromServices] IConfiguration configuration,
         CancellationToken cancellationToken = default)
     {
         var query = new GetHouseholdDataQuery { User = User };
         var result = await queryHandler.Handle(query, cancellationToken);
 
         return result.ToActionResult(
-            successMap: data => Ok(data.ToResponse(ResolveHashedAppId(data, identifierHasher))),
+            successMap: data => Ok(data.ToResponse(ResolveHashedAppId(data, identifierHasher, configuration))),
             failureMap: r => r switch
             {
                 UnauthorizedResult<Core.Models.Household.HouseholdData> unauthorized => Unauthorized(new ErrorResponse(unauthorized.Message)),
@@ -64,20 +66,30 @@ public class HouseholdController : ControllerBase
     /// today (gated on the active state so DC payloads stay unchanged). Returns
     /// null when no application carries an ApplicationNumber (e.g. auto-issued
     /// SummerEbt cases). The frontend treats null as "do not emit".
+    /// State is read from IConfiguration["STATE"], which surfaces the STATE
+    /// env var via the default ASP.NET configuration providers and lets tests
+    /// inject an in-memory value without touching process state.
     /// </summary>
     private static string? ResolveHashedAppId(
         Core.Models.Household.HouseholdData data,
-        IIdentifierHasher identifierHasher)
+        IIdentifierHasher identifierHasher,
+        IConfiguration configuration)
     {
-        var state = Environment.GetEnvironmentVariable("STATE");
+        var state = configuration["STATE"];
         if (!string.Equals(state, "co", StringComparison.OrdinalIgnoreCase))
         {
             return null;
         }
 
+        // Sort lexicographically so a household with multiple applications
+        // always hashes the same one, regardless of the order the connector
+        // returns rows in. Otherwise hashed_app_id could shift across page
+        // loads and break per-user analytics correlation.
         var applicationNumber = data.Applications
             .Select(a => a.ApplicationNumber)
-            .FirstOrDefault(n => !string.IsNullOrWhiteSpace(n));
+            .Where(n => !string.IsNullOrWhiteSpace(n))
+            .OrderBy(n => n, StringComparer.Ordinal)
+            .FirstOrDefault();
 
         return identifierHasher.HashForAnalytics(applicationNumber);
     }

@@ -168,6 +168,46 @@ public class IdentifierHasherTests
     }
 
     [Fact]
+    public void HashForAnalytics_UsesAnalyticsKey_WhenConfiguredSeparately()
+    {
+        // Storage key and analytics key are independent: rotating one must not
+        // affect the other. With distinct keys, the same plaintext produces
+        // different digests for storage vs. analytics.
+        var hasher = new IdentifierHasher(Options.Create(new IdentifierHasherSettings
+        {
+            SecretKey = "StorageKeyMustBeAtLeast32CharsLong!!!!",
+            AnalyticsSecretKey = "AnalyticsKeyMustBeAtLeast32CharsLong!!"
+        }));
+
+        var storage = hasher.Hash("APP20240001");
+        var analytics = hasher.HashForAnalytics("APP20240001");
+
+        Assert.NotNull(storage);
+        Assert.NotNull(analytics);
+        Assert.NotEqual(storage, analytics, StringComparer.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public void HashForAnalytics_FallsBackToSecretKey_WhenAnalyticsKeyAbsent()
+    {
+        // Back-compat: deployments that haven't configured the new analytics
+        // key still emit a stable digest using SecretKey.
+        var fallbackHasher = new IdentifierHasher(Options.Create(new IdentifierHasherSettings
+        {
+            SecretKey = "SharedKeyMustBeAtLeast32CharsLong!!!!!"
+        }));
+        var explicitHasher = new IdentifierHasher(Options.Create(new IdentifierHasherSettings
+        {
+            SecretKey = "SharedKeyMustBeAtLeast32CharsLong!!!!!",
+            AnalyticsSecretKey = "SharedKeyMustBeAtLeast32CharsLong!!!!!"
+        }));
+
+        Assert.Equal(
+            fallbackHasher.HashForAnalytics("APP-2024-0001"),
+            explicitHasher.HashForAnalytics("APP-2024-0001"));
+    }
+
+    [Fact]
     public void HashForAnalytics_TestVector_MatchesPublishedReference()
     {
         // This vector is the contract published in docs/analytics/hashed-sebt-app-id.md
@@ -179,7 +219,13 @@ public class IdentifierHasherTests
         const string testInput = "APP-2024-0001";
         const string expected = "ca383d90647e371547d6e66297cda8089b81fc1c5cb30da6cfcbdf744d9e2861";
 
-        var hasher = new IdentifierHasher(Options.Create(new IdentifierHasherSettings { SecretKey = testSecret }));
+        // Set AnalyticsSecretKey explicitly so the vector is reproducible
+        // regardless of the SecretKey fallback behavior changing later.
+        var hasher = new IdentifierHasher(Options.Create(new IdentifierHasherSettings
+        {
+            SecretKey = testSecret,
+            AnalyticsSecretKey = testSecret
+        }));
 
         Assert.Equal(expected, hasher.HashForAnalytics(testInput));
     }

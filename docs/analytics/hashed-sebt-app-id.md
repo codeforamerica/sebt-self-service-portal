@@ -53,10 +53,11 @@ python3 docs/analytics/scripts/hash_sebt_app_id.py 'APP-2024-0001' 'TestVectorSe
 
 | Key | Required | Notes |
 |---|---|---|
-| `IdentifierHasher:SecretKey` | yes (when emitting `hashedAppId`) | At least 32 bytes UTF-8. Loaded via the standard ASP.NET configuration pipeline (env vars, AppConfig, Doppler, whatever the environment uses). Never logged. Rotatable: changing the secret invalidates prior digests, which is the intended behavior. |
-| `STATE` env var | yes | Controls which state plugin is loaded. The API gates `hashedAppId` emission on `STATE=co`. |
+| `IdentifierHasher:SecretKey` | yes | At least 32 bytes UTF-8. Used for storage-side hashing (cooldown lookups, deduplication). Long-lived: rotating this key invalidates every existing stored hash. |
+| `IdentifierHasher:AnalyticsSecretKey` | recommended | At least 32 bytes UTF-8. Used by `HashForAnalytics`. Kept separate from `SecretKey` so the analytics secret can be rotated freely without invalidating stored cooldown hashes. When unset, `HashForAnalytics` falls back to `SecretKey` (back-compat). |
+| `STATE` | yes | Controls which state plugin is loaded. The API gates `hashedAppId` emission on `STATE=co`. Read via `IConfiguration["STATE"]` (env var or any other registered provider). |
 
-If `IdentifierHasher:SecretKey` is missing the application fails fast at startup (`IdentifierHasherGuard`), so the field is never silently dropped.
+If `IdentifierHasher:SecretKey` is missing the application fails fast at startup (`IdentifierHasherGuard`), so the field is never silently dropped. `AnalyticsSecretKey` is optional (storage key fallback) but recommended for any environment where rotation is on the table.
 
 ## Where it surfaces
 
