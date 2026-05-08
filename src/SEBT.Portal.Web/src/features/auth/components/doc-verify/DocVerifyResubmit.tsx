@@ -37,7 +37,7 @@ export function DocVerifyResubmit({ onResubmit, isResubmitting, error }: DocVeri
         id="doc-verify-resubmit-title"
         className="font-sans-xl text-bold line-height-sans-1 margin-bottom-3"
       >
-        {t('resubmitHeading', "Let's try that again")}
+        {t('resubmitHeading')}
       </h1>
 
       <p className="font-sans-sm">
@@ -53,10 +53,10 @@ export function DocVerifyResubmit({ onResubmit, isResubmitting, error }: DocVeri
           type="button"
           onClick={onResubmit}
           isLoading={isResubmitting}
-          loadingText={t('resubmitLoading', 'Starting retry...')}
+          loadingText={t('resubmitLoading')}
           disabled={isResubmitting}
         >
-          {t('resubmitActionTryAgain', 'Try again')}
+          {t('resubmitActionTryAgain')}
         </Button>
       </div>
     </section>

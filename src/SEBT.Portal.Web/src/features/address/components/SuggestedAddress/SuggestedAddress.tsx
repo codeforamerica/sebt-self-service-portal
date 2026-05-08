@@ -70,7 +70,7 @@ export function SuggestedAddress() {
       try {
         const result = await updateAddress.mutateAsync(selectedAddress)
         if (result.status !== 'valid') {
-          setSubmitError(t('addressUpdateError', 'Something went wrong. Please try again.'))
+          setSubmitError(t('addressUpdateError'))
           return
         }
         const normalized = toUpdateAddressRequestOrNull(result.normalizedAddress)
@@ -80,7 +80,7 @@ export function SuggestedAddress() {
           return
         }
       } catch {
-        setSubmitError(t('addressUpdateError', 'Something went wrong. Please try again.'))
+        setSubmitError(t('addressUpdateError'))
         return
       }
     }
@@ -96,16 +96,14 @@ export function SuggestedAddress() {
 
   // Use abbreviated copy for DC 30-char abbreviation, suggested copy otherwise
   const title = isAbbreviated
-    ? t('abbreviatedTitle', 'We abbreviated your address') // TODO remove fallback
+    ? t('abbreviatedTitle') // TODO remove fallback
     : t('suggestedTitle')
   const body = isAbbreviated
-    ? t('abbreviatedBody1', 'We updated the street address to a format we can accept.') // TODO remove fallback
+    ? t('abbreviatedBody1') // TODO remove fallback
     : t('suggestedBody')
 
   // For abbreviated, show additional context about the 30-char limit
-  const bodyDetail = isAbbreviated
-    ? t('abbreviatedBody4', 'If the suggested address is correct, tap "Use suggested address".')
-    : null
+  const bodyDetail = isAbbreviated ? t('abbreviatedBody4') : null
 
   // Labels for the radio group items. Both the suggested and entered labels
   // share the canonical strings from common (`suggestedAddress`, `addressEntered`)
@@ -201,16 +199,14 @@ export function SuggestedAddress() {
           type="button"
           onClick={handleBack}
         >
-          {tCommon('back', 'Back')}
+          {tCommon('back')}
         </Button>
         <Button
           type="button"
           onClick={handleContinue}
           disabled={updateAddress.isPending}
         >
-          {updateAddress.isPending
-            ? tCommon('loading', 'Loading...')
-            : tCommon('continue', 'Continue')}
+          {updateAddress.isPending ? tCommon('loading') : tCommon('continue')}
         </Button>
       </div>
     </div>

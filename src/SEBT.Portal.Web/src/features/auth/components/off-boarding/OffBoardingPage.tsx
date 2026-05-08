@@ -62,12 +62,7 @@ export function OffBoardingPage({ contactLink, applyLink }: OffBoardingPageProps
             id="offboarding-title"
             className="font-sans-xl text-bold line-height-sans-1 margin-bottom-3"
           >
-            {isNoIdProvided
-              ? noIdHeading
-              : t(
-                  'offboardingHeading',
-                  "We're sorry, we aren't able to show your DC SUN Bucks information"
-                )}
+            {isNoIdProvided ? noIdHeading : t('offboardingHeading')}
           </h1>
 
           <p className="font-sans-sm">
@@ -91,7 +86,7 @@ export function OffBoardingPage({ contactLink, applyLink }: OffBoardingPageProps
               rel="noopener noreferrer"
               className="usa-button usa-button--outline"
             >
-              {t('offboardingActionContact', 'Contact us')}
+              {t('offboardingActionContact')}
             </a>
           </div>
 
@@ -109,7 +104,7 @@ export function OffBoardingPage({ contactLink, applyLink }: OffBoardingPageProps
                   href={applyLink}
                   className="usa-button margin-top-2"
                 >
-                  {t('offboardingActionApply', 'Apply now')}
+                  {t('offboardingActionApply')}
                 </a>
               )}
             </div>
@@ -130,7 +125,7 @@ export function OffBoardingPage({ contactLink, applyLink }: OffBoardingPageProps
                 rel="noopener noreferrer"
                 className="usa-link"
               >
-                {t('offboardingContactUsLink', 'Need help? Contact us.')}
+                {t('offboardingContactUsLink')}
               </a>
             </p>
           </div>

@@ -32,7 +32,7 @@ export function ReplacementCardPrompt({ address }: ReplacementCardPromptProps) {
     e.preventDefault()
 
     if (selection === null) {
-      setError(t('selectOneError', 'Please select an option.'))
+      setError(t('selectOneError'))
       return
     }
 
@@ -61,13 +61,8 @@ export function ReplacementCardPrompt({ address }: ReplacementCardPromptProps) {
 
       <p>{t('optionalId:body1')}</p>
       <ul className="usa-list">
-        <li>
-          {t(
-            'replacementCardsCriteriaNotReceived',
-            "You haven't received them in the mail after two weeks"
-          )}
-        </li>
-        <li>{t('replacementCardsCriteriaLost', 'Or you no longer have them')}</li>
+        <li>{t('replacementCardsCriteriaNotReceived')}</li>
+        <li>{t('replacementCardsCriteriaLost')}</li>
       </ul>
 
       {currentState === 'dc' && (
@@ -76,10 +71,7 @@ export function ReplacementCardPrompt({ address }: ReplacementCardPromptProps) {
           slim
           className="margin-bottom-3"
         >
-          {t(
-            'snapTanfCallout',
-            'If your child is eligible for DC SUN Bucks through SNAP or TANF participation, they will not receive a DC SUN Bucks card.'
-          )}
+          {t('snapTanfCallout')}
         </Alert>
       )}
 
@@ -124,7 +116,7 @@ export function ReplacementCardPrompt({ address }: ReplacementCardPromptProps) {
             className="usa-radio__label text-bold"
             htmlFor="replacement-yes"
           >
-            {tCommon('yes', 'Yes')}
+            {tCommon('yes')}
           </label>
         </div>
 
@@ -145,7 +137,7 @@ export function ReplacementCardPrompt({ address }: ReplacementCardPromptProps) {
             className="usa-radio__label text-bold"
             htmlFor="replacement-no"
           >
-            {tCommon('no', 'No')}
+            {tCommon('no')}
           </label>
         </div>
       </fieldset>
@@ -156,9 +148,9 @@ export function ReplacementCardPrompt({ address }: ReplacementCardPromptProps) {
           type="button"
           onClick={() => router.back()}
         >
-          {tCommon('back', 'Back')}
+          {tCommon('back')}
         </Button>
-        <Button type="submit">{tCommon('continue', 'Continue')}</Button>
+        <Button type="submit">{tCommon('continue')}</Button>
       </div>
     </form>
   )

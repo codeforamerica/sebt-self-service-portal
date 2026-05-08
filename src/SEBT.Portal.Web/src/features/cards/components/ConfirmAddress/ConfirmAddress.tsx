@@ -52,7 +52,7 @@ export function ConfirmAddress({
     e.preventDefault()
 
     if (selection === null) {
-      setError(t('selectOneError', 'Please select an option.'))
+      setError(t('selectOneError'))
       return
     }
 
@@ -129,7 +129,7 @@ export function ConfirmAddress({
             className="usa-radio__label text-bold"
             htmlFor="confirm-address-yes"
           >
-            {tCommon('yes', 'Yes')}
+            {tCommon('yes')}
           </label>
         </div>
 
@@ -150,7 +150,7 @@ export function ConfirmAddress({
             className="usa-radio__label text-bold"
             htmlFor="confirm-address-no"
           >
-            {tCommon('no', 'No')}
+            {tCommon('no')}
           </label>
         </div>
       </fieldset>
@@ -161,9 +161,9 @@ export function ConfirmAddress({
           type="button"
           onClick={() => router.back()}
         >
-          {tCommon('back', 'Back')}
+          {tCommon('back')}
         </Button>
-        <Button type="submit">{tCommon('continue', 'Continue')}</Button>
+        <Button type="submit">{tCommon('continue')}</Button>
       </div>
     </form>
   )

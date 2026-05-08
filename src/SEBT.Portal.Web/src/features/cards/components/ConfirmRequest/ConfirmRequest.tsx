@@ -39,12 +39,7 @@ export function ConfirmRequest({ cases, address, onBack }: ConfirmRequestProps) 
           router.push('/dashboard?flash=card_replaced')
         },
         onError: () => {
-          setError(
-            t(
-              'cardReplacementError',
-              'There was an issue requesting your replacement card. Please try again later.'
-            )
-          )
+          setError(t('cardReplacementError'))
         }
       }
     )
@@ -134,7 +129,7 @@ export function ConfirmRequest({ cases, address, onBack }: ConfirmRequestProps) 
           onClick={onBack}
           disabled={mutation.isPending}
         >
-          {tCommon('back', 'Back')}
+          {tCommon('back')}
         </Button>
         <Button
           type="button"
@@ -142,7 +137,7 @@ export function ConfirmRequest({ cases, address, onBack }: ConfirmRequestProps) 
           disabled={mutation.isPending}
         >
           {/* TODO: Use t('orderCard') once key is available in CSV */}
-          {mutation.isPending ? tCommon('loading', 'Loading...') : 'Order card'}
+          {mutation.isPending ? tCommon('loading') : 'Order card'}
         </Button>
       </div>
     </div>

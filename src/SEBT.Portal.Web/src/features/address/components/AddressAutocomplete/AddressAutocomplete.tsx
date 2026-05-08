@@ -209,7 +209,7 @@ export function AddressAutocomplete({
             let display = suggestion.street_line
             if (suggestion.secondary) display += ` ${suggestion.secondary}`
             if (suggestion.entries > 1)
-              display += ` ${t('autocompleteMultiUnit', '({{count}} more entries)', { count: suggestion.entries })}`
+              display += ` ${t('autocompleteMultiUnit', { count: suggestion.entries })}`
             display += `, ${suggestion.city} ${suggestion.state} ${suggestion.zipcode}`
 
             return (
@@ -237,7 +237,7 @@ export function AddressAutocomplete({
         className="usa-sr-only"
       >
         {isOpen && suggestions.length > 0
-          ? t('autocompleteSuggestionsAvailable', '{{count}} suggestion available', {
+          ? t('autocompleteSuggestionsAvailable', {
               count: suggestions.length
             })
           : ''}

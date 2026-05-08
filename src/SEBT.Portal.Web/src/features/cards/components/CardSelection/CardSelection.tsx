@@ -61,15 +61,11 @@ export function CardSelection({ confirmPath = 'select/confirm' }: CardSelectionP
   }, [error])
 
   if (isLoading) {
-    return <p>{tCommon('loading', 'Loading...')}</p>
+    return <p>{tCommon('loading')}</p>
   }
 
   if (isError || !data) {
-    return (
-      <Alert variant="error">
-        {t('cardSelectionLoadError', 'Unable to load household members. Please try again later.')}
-      </Alert>
-    )
+    return <Alert variant="error">{t('cardSelectionLoadError')}</Alert>
   }
 
   const groups = buildCaseGroups(data.summerEbtCases)
@@ -78,12 +74,7 @@ export function CardSelection({ confirmPath = 'select/confirm' }: CardSelectionP
     const hasCases = data.summerEbtCases.length > 0
     return (
       <Alert variant="info">
-        {hasCases
-          ? t(
-              'cardSelectionAllInCooldown',
-              'All cards were recently replaced. Please try again later.'
-            )
-          : t('cardSelectionNoChildren', 'No children found in your household.')}
+        {hasCases ? t('cardSelectionAllInCooldown') : t('cardSelectionNoChildren')}
       </Alert>
     )
   }
@@ -105,7 +96,7 @@ export function CardSelection({ confirmPath = 'select/confirm' }: CardSelectionP
     e.preventDefault()
 
     if (selectedCases.size === 0) {
-      setError(t('cardSelectionRequired', 'Please select at least one card.'))
+      setError(t('cardSelectionRequired'))
       return
     }
 
@@ -183,9 +174,9 @@ export function CardSelection({ confirmPath = 'select/confirm' }: CardSelectionP
           type="button"
           onClick={() => router.back()}
         >
-          {tCommon('back', 'Back')}
+          {tCommon('back')}
         </Button>
-        <Button type="submit">{tCommon('continue', 'Continue')}</Button>
+        <Button type="submit">{tCommon('continue')}</Button>
       </div>
     </form>
   )

@@ -64,7 +64,7 @@ export function DashboardContent() {
   }, [isLoading, isError, data, sessionIsCoLoaded, setPageData, setUserData, trackEvent])
 
   // Visually hidden h1 for accessibility - provides page structure for screen readers
-  const pageHeading = <h1 className="usa-sr-only">{t('pageTitle', 'SUN Bucks Dashboard')}</h1>
+  const pageHeading = <h1 className="usa-sr-only">{t('pageTitle')}</h1>
 
   if (isLoading || requiresProofing) {
     if (isCO) {
@@ -72,11 +72,8 @@ export function DashboardContent() {
       // here to avoid two h1 elements on the same view.
       return (
         <CoLoadingScreen
-          title={tProcessing('title', 'Please wait...')}
-          message={tProcessing(
-            'body',
-            'Do not exit the page. Checking to see if we have enough information.'
-          )}
+          title={tProcessing('title')}
+          message={tProcessing('body')}
         />
       )
     }
@@ -98,12 +95,9 @@ export function DashboardContent() {
         <SignOutLink />
         <Alert
           variant="error"
-          heading={t('errorHeading', 'Error loading dashboard')}
+          heading={t('errorHeading')}
         >
-          {t(
-            'errorDescription',
-            'There was an error loading your dashboard. Please try again later.'
-          )}
+          {t('errorDescription')}
         </Alert>
       </>
     )

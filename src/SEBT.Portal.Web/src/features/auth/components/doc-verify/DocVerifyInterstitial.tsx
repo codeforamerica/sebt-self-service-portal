@@ -33,9 +33,9 @@ export function DocVerifyInterstitial({
       <p className="font-sans-sm">{t('offBoarding:body1')}</p>
 
       <ul className="usa-list font-sans-sm">
-        <li>{t('interstitialIdTypeDriversLicense', "driver's license")}</li>
-        <li>{t('interstitialIdTypeForeignPassport', 'foreign passport')}</li>
-        <li>{t('interstitialIdTypeOtherPhotoId', 'or another photo ID')}</li>
+        <li>{t('interstitialIdTypeDriversLicense')}</li>
+        <li>{t('interstitialIdTypeForeignPassport')}</li>
+        <li>{t('interstitialIdTypeOtherPhotoId')}</li>
       </ul>
 
       {allowIdRetry && <p className="font-sans-sm">{t('offBoarding:body3')}</p>}
@@ -47,7 +47,7 @@ export function DocVerifyInterstitial({
             className="usa-button--outline margin-right-2"
             onClick={onEnterIdNumber}
           >
-            {t('interstitialActionEnterId', 'Enter an ID number')}
+            {t('interstitialActionEnterId')}
           </Button>
         )}
 
@@ -55,7 +55,7 @@ export function DocVerifyInterstitial({
           type="button"
           onClick={onContinue}
           isLoading={isStartingChallenge}
-          loadingText={t('interstitialLoading', 'Loading...')}
+          loadingText={t('interstitialLoading')}
           disabled={isStartingChallenge}
         >
           {t('common:continue')}
@@ -77,7 +77,7 @@ export function DocVerifyInterstitial({
             rel="noopener noreferrer"
             className="usa-link"
           >
-            {t('interstitialContactUsLink', 'Need help? Contact us.')}
+            {t('interstitialContactUsLink')}
           </a>
         </p>
       </div>

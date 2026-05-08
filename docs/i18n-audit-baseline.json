@@ -1,818 +1,3730 @@
 {
   "$schema": "i18n-audit-baseline-v1",
-  "recordedAt": "2026-05-07",
+  "recordedAt": "2026-05-08",
   "note": "Grandfathered missing/empty translation issues. Shrink, never grow.",
-  "count": 116,
+  "count": 532,
   "entries": [
     {
-      "kind": "empty",
+      "kind": "missing",
       "ns": "common",
       "key": "alertBeta",
       "locale": "en",
       "state": "dc"
     },
     {
-      "kind": "empty",
+      "kind": "missing",
       "ns": "common",
       "key": "alertBeta",
       "locale": "es",
       "state": "dc"
     },
     {
-      "kind": "empty",
+      "kind": "missing",
+      "ns": "common",
+      "key": "errorId",
+      "locale": "en",
+      "state": "co"
+    },
+    {
+      "kind": "missing",
+      "ns": "common",
+      "key": "errorId",
+      "locale": "en",
+      "state": "co"
+    },
+    {
+      "kind": "missing",
+      "ns": "common",
+      "key": "errorId",
+      "locale": "en",
+      "state": "dc"
+    },
+    {
+      "kind": "missing",
+      "ns": "common",
+      "key": "errorId",
+      "locale": "en",
+      "state": "dc"
+    },
+    {
+      "kind": "missing",
+      "ns": "common",
+      "key": "errorId",
+      "locale": "es",
+      "state": "co"
+    },
+    {
+      "kind": "missing",
+      "ns": "common",
+      "key": "errorId",
+      "locale": "es",
+      "state": "co"
+    },
+    {
+      "kind": "missing",
+      "ns": "common",
+      "key": "errorId",
+      "locale": "es",
+      "state": "dc"
+    },
+    {
+      "kind": "missing",
+      "ns": "common",
+      "key": "errorId",
+      "locale": "es",
+      "state": "dc"
+    },
+    {
+      "kind": "missing",
+      "ns": "common",
+      "key": "errorLogInAgain",
+      "locale": "en",
+      "state": "co"
+    },
+    {
+      "kind": "missing",
+      "ns": "common",
+      "key": "errorLogInAgain",
+      "locale": "en",
+      "state": "co"
+    },
+    {
+      "kind": "missing",
+      "ns": "common",
+      "key": "errorLogInAgain",
+      "locale": "en",
+      "state": "dc"
+    },
+    {
+      "kind": "missing",
+      "ns": "common",
+      "key": "errorLogInAgain",
+      "locale": "en",
+      "state": "dc"
+    },
+    {
+      "kind": "missing",
+      "ns": "common",
+      "key": "errorLogInAgain",
+      "locale": "es",
+      "state": "co"
+    },
+    {
+      "kind": "missing",
+      "ns": "common",
+      "key": "errorLogInAgain",
+      "locale": "es",
+      "state": "co"
+    },
+    {
+      "kind": "missing",
+      "ns": "common",
+      "key": "errorLogInAgain",
+      "locale": "es",
+      "state": "dc"
+    },
+    {
+      "kind": "missing",
+      "ns": "common",
+      "key": "errorLogInAgain",
+      "locale": "es",
+      "state": "dc"
+    },
+    {
+      "kind": "missing",
+      "ns": "common",
+      "key": "errorPageBody",
+      "locale": "en",
+      "state": "co"
+    },
+    {
+      "kind": "missing",
+      "ns": "common",
+      "key": "errorPageBody",
+      "locale": "en",
+      "state": "dc"
+    },
+    {
+      "kind": "missing",
+      "ns": "common",
+      "key": "errorPageBody",
+      "locale": "es",
+      "state": "co"
+    },
+    {
+      "kind": "missing",
+      "ns": "common",
+      "key": "errorPageBody",
+      "locale": "es",
+      "state": "dc"
+    },
+    {
+      "kind": "missing",
+      "ns": "common",
+      "key": "errorSessionExpired",
+      "locale": "en",
+      "state": "co"
+    },
+    {
+      "kind": "missing",
+      "ns": "common",
+      "key": "errorSessionExpired",
+      "locale": "en",
+      "state": "dc"
+    },
+    {
+      "kind": "missing",
+      "ns": "common",
+      "key": "errorSessionExpired",
+      "locale": "es",
+      "state": "co"
+    },
+    {
+      "kind": "missing",
+      "ns": "common",
+      "key": "errorSessionExpired",
+      "locale": "es",
+      "state": "dc"
+    },
+    {
+      "kind": "missing",
+      "ns": "common",
+      "key": "errorSessionExpiredBody",
+      "locale": "en",
+      "state": "co"
+    },
+    {
+      "kind": "missing",
+      "ns": "common",
+      "key": "errorSessionExpiredBody",
+      "locale": "en",
+      "state": "dc"
+    },
+    {
+      "kind": "missing",
+      "ns": "common",
+      "key": "errorSessionExpiredBody",
+      "locale": "es",
+      "state": "co"
+    },
+    {
+      "kind": "missing",
+      "ns": "common",
+      "key": "errorSessionExpiredBody",
+      "locale": "es",
+      "state": "dc"
+    },
+    {
+      "kind": "missing",
+      "ns": "common",
+      "key": "errorSomethingWentWrong",
+      "locale": "en",
+      "state": "co"
+    },
+    {
+      "kind": "missing",
+      "ns": "common",
+      "key": "errorSomethingWentWrong",
+      "locale": "en",
+      "state": "co"
+    },
+    {
+      "kind": "missing",
+      "ns": "common",
+      "key": "errorSomethingWentWrong",
+      "locale": "en",
+      "state": "dc"
+    },
+    {
+      "kind": "missing",
+      "ns": "common",
+      "key": "errorSomethingWentWrong",
+      "locale": "en",
+      "state": "dc"
+    },
+    {
+      "kind": "missing",
+      "ns": "common",
+      "key": "errorSomethingWentWrong",
+      "locale": "es",
+      "state": "co"
+    },
+    {
+      "kind": "missing",
+      "ns": "common",
+      "key": "errorSomethingWentWrong",
+      "locale": "es",
+      "state": "co"
+    },
+    {
+      "kind": "missing",
+      "ns": "common",
+      "key": "errorSomethingWentWrong",
+      "locale": "es",
+      "state": "dc"
+    },
+    {
+      "kind": "missing",
+      "ns": "common",
+      "key": "errorSomethingWentWrong",
+      "locale": "es",
+      "state": "dc"
+    },
+    {
+      "kind": "missing",
+      "ns": "common",
+      "key": "errorTryAgain",
+      "locale": "en",
+      "state": "co"
+    },
+    {
+      "kind": "missing",
+      "ns": "common",
+      "key": "errorTryAgain",
+      "locale": "en",
+      "state": "co"
+    },
+    {
+      "kind": "missing",
+      "ns": "common",
+      "key": "errorTryAgain",
+      "locale": "en",
+      "state": "dc"
+    },
+    {
+      "kind": "missing",
+      "ns": "common",
+      "key": "errorTryAgain",
+      "locale": "en",
+      "state": "dc"
+    },
+    {
+      "kind": "missing",
+      "ns": "common",
+      "key": "errorTryAgain",
+      "locale": "es",
+      "state": "co"
+    },
+    {
+      "kind": "missing",
+      "ns": "common",
+      "key": "errorTryAgain",
+      "locale": "es",
+      "state": "co"
+    },
+    {
+      "kind": "missing",
+      "ns": "common",
+      "key": "errorTryAgain",
+      "locale": "es",
+      "state": "dc"
+    },
+    {
+      "kind": "missing",
+      "ns": "common",
+      "key": "errorTryAgain",
+      "locale": "es",
+      "state": "dc"
+    },
+    {
+      "kind": "missing",
+      "ns": "common",
+      "key": "errorUnexpectedBody",
+      "locale": "en",
+      "state": "co"
+    },
+    {
+      "kind": "missing",
+      "ns": "common",
+      "key": "errorUnexpectedBody",
+      "locale": "en",
+      "state": "dc"
+    },
+    {
+      "kind": "missing",
+      "ns": "common",
+      "key": "errorUnexpectedBody",
+      "locale": "es",
+      "state": "co"
+    },
+    {
+      "kind": "missing",
+      "ns": "common",
+      "key": "errorUnexpectedBody",
+      "locale": "es",
+      "state": "dc"
+    },
+    {
+      "kind": "missing",
+      "ns": "common",
+      "key": "ialGuardChallengeTitle",
+      "locale": "en",
+      "state": "co"
+    },
+    {
+      "kind": "missing",
+      "ns": "common",
+      "key": "ialGuardChallengeTitle",
+      "locale": "en",
+      "state": "dc"
+    },
+    {
+      "kind": "missing",
+      "ns": "common",
+      "key": "ialGuardChallengeTitle",
+      "locale": "es",
+      "state": "co"
+    },
+    {
+      "kind": "missing",
+      "ns": "common",
+      "key": "ialGuardChallengeTitle",
+      "locale": "es",
+      "state": "dc"
+    },
+    {
+      "kind": "missing",
+      "ns": "common",
+      "key": "ialGuardCheckingTitle",
+      "locale": "en",
+      "state": "co"
+    },
+    {
+      "kind": "missing",
+      "ns": "common",
+      "key": "ialGuardCheckingTitle",
+      "locale": "en",
+      "state": "dc"
+    },
+    {
+      "kind": "missing",
+      "ns": "common",
+      "key": "ialGuardCheckingTitle",
+      "locale": "es",
+      "state": "co"
+    },
+    {
+      "kind": "missing",
+      "ns": "common",
+      "key": "ialGuardCheckingTitle",
+      "locale": "es",
+      "state": "dc"
+    },
+    {
+      "kind": "missing",
       "ns": "common",
       "key": "linkFaqs",
       "locale": "en",
       "state": "co"
     },
     {
-      "kind": "empty",
+      "kind": "missing",
       "ns": "common",
       "key": "linkFaqs",
       "locale": "en",
       "state": "co"
     },
     {
-      "kind": "empty",
+      "kind": "missing",
       "ns": "common",
       "key": "linkFaqs",
       "locale": "es",
       "state": "co"
     },
     {
-      "kind": "empty",
+      "kind": "missing",
       "ns": "common",
       "key": "linkFaqs",
       "locale": "es",
       "state": "co"
     },
     {
-      "kind": "empty",
+      "kind": "missing",
+      "ns": "common",
+      "key": "loading",
+      "locale": "en",
+      "state": "co"
+    },
+    {
+      "kind": "missing",
+      "ns": "common",
+      "key": "loading",
+      "locale": "en",
+      "state": "co"
+    },
+    {
+      "kind": "missing",
+      "ns": "common",
+      "key": "loading",
+      "locale": "en",
+      "state": "co"
+    },
+    {
+      "kind": "missing",
+      "ns": "common",
+      "key": "loading",
+      "locale": "en",
+      "state": "co"
+    },
+    {
+      "kind": "missing",
+      "ns": "common",
+      "key": "loading",
+      "locale": "en",
+      "state": "co"
+    },
+    {
+      "kind": "missing",
+      "ns": "common",
+      "key": "loading",
+      "locale": "en",
+      "state": "co"
+    },
+    {
+      "kind": "missing",
+      "ns": "common",
+      "key": "loading",
+      "locale": "en",
+      "state": "co"
+    },
+    {
+      "kind": "missing",
+      "ns": "common",
+      "key": "loading",
+      "locale": "en",
+      "state": "co"
+    },
+    {
+      "kind": "missing",
+      "ns": "common",
+      "key": "loading",
+      "locale": "en",
+      "state": "co"
+    },
+    {
+      "kind": "missing",
+      "ns": "common",
+      "key": "loading",
+      "locale": "en",
+      "state": "dc"
+    },
+    {
+      "kind": "missing",
+      "ns": "common",
+      "key": "loading",
+      "locale": "en",
+      "state": "dc"
+    },
+    {
+      "kind": "missing",
+      "ns": "common",
+      "key": "loading",
+      "locale": "en",
+      "state": "dc"
+    },
+    {
+      "kind": "missing",
+      "ns": "common",
+      "key": "loading",
+      "locale": "en",
+      "state": "dc"
+    },
+    {
+      "kind": "missing",
+      "ns": "common",
+      "key": "loading",
+      "locale": "en",
+      "state": "dc"
+    },
+    {
+      "kind": "missing",
+      "ns": "common",
+      "key": "loading",
+      "locale": "en",
+      "state": "dc"
+    },
+    {
+      "kind": "missing",
+      "ns": "common",
+      "key": "loading",
+      "locale": "en",
+      "state": "dc"
+    },
+    {
+      "kind": "missing",
+      "ns": "common",
+      "key": "loading",
+      "locale": "en",
+      "state": "dc"
+    },
+    {
+      "kind": "missing",
+      "ns": "common",
+      "key": "loading",
+      "locale": "en",
+      "state": "dc"
+    },
+    {
+      "kind": "missing",
+      "ns": "common",
+      "key": "loading",
+      "locale": "es",
+      "state": "co"
+    },
+    {
+      "kind": "missing",
+      "ns": "common",
+      "key": "loading",
+      "locale": "es",
+      "state": "co"
+    },
+    {
+      "kind": "missing",
+      "ns": "common",
+      "key": "loading",
+      "locale": "es",
+      "state": "co"
+    },
+    {
+      "kind": "missing",
+      "ns": "common",
+      "key": "loading",
+      "locale": "es",
+      "state": "co"
+    },
+    {
+      "kind": "missing",
+      "ns": "common",
+      "key": "loading",
+      "locale": "es",
+      "state": "co"
+    },
+    {
+      "kind": "missing",
+      "ns": "common",
+      "key": "loading",
+      "locale": "es",
+      "state": "co"
+    },
+    {
+      "kind": "missing",
+      "ns": "common",
+      "key": "loading",
+      "locale": "es",
+      "state": "co"
+    },
+    {
+      "kind": "missing",
+      "ns": "common",
+      "key": "loading",
+      "locale": "es",
+      "state": "co"
+    },
+    {
+      "kind": "missing",
+      "ns": "common",
+      "key": "loading",
+      "locale": "es",
+      "state": "co"
+    },
+    {
+      "kind": "missing",
+      "ns": "common",
+      "key": "loading",
+      "locale": "es",
+      "state": "dc"
+    },
+    {
+      "kind": "missing",
+      "ns": "common",
+      "key": "loading",
+      "locale": "es",
+      "state": "dc"
+    },
+    {
+      "kind": "missing",
+      "ns": "common",
+      "key": "loading",
+      "locale": "es",
+      "state": "dc"
+    },
+    {
+      "kind": "missing",
+      "ns": "common",
+      "key": "loading",
+      "locale": "es",
+      "state": "dc"
+    },
+    {
+      "kind": "missing",
+      "ns": "common",
+      "key": "loading",
+      "locale": "es",
+      "state": "dc"
+    },
+    {
+      "kind": "missing",
+      "ns": "common",
+      "key": "loading",
+      "locale": "es",
+      "state": "dc"
+    },
+    {
+      "kind": "missing",
+      "ns": "common",
+      "key": "loading",
+      "locale": "es",
+      "state": "dc"
+    },
+    {
+      "kind": "missing",
+      "ns": "common",
+      "key": "loading",
+      "locale": "es",
+      "state": "dc"
+    },
+    {
+      "kind": "missing",
+      "ns": "common",
+      "key": "loading",
+      "locale": "es",
+      "state": "dc"
+    },
+    {
+      "kind": "missing",
+      "ns": "common",
+      "key": "pageNotFound",
+      "locale": "en",
+      "state": "co"
+    },
+    {
+      "kind": "missing",
+      "ns": "common",
+      "key": "pageNotFound",
+      "locale": "en",
+      "state": "dc"
+    },
+    {
+      "kind": "missing",
+      "ns": "common",
+      "key": "pageNotFound",
+      "locale": "es",
+      "state": "co"
+    },
+    {
+      "kind": "missing",
+      "ns": "common",
+      "key": "pageNotFound",
+      "locale": "es",
+      "state": "dc"
+    },
+    {
+      "kind": "missing",
+      "ns": "common",
+      "key": "pageNotFoundBody",
+      "locale": "en",
+      "state": "co"
+    },
+    {
+      "kind": "missing",
+      "ns": "common",
+      "key": "pageNotFoundBody",
+      "locale": "en",
+      "state": "dc"
+    },
+    {
+      "kind": "missing",
+      "ns": "common",
+      "key": "pageNotFoundBody",
+      "locale": "es",
+      "state": "co"
+    },
+    {
+      "kind": "missing",
+      "ns": "common",
+      "key": "pageNotFoundBody",
+      "locale": "es",
+      "state": "dc"
+    },
+    {
+      "kind": "missing",
+      "ns": "common",
+      "key": "returnToHome",
+      "locale": "en",
+      "state": "co"
+    },
+    {
+      "kind": "missing",
+      "ns": "common",
+      "key": "returnToHome",
+      "locale": "en",
+      "state": "dc"
+    },
+    {
+      "kind": "missing",
+      "ns": "common",
+      "key": "returnToHome",
+      "locale": "es",
+      "state": "co"
+    },
+    {
+      "kind": "missing",
+      "ns": "common",
+      "key": "returnToHome",
+      "locale": "es",
+      "state": "dc"
+    },
+    {
+      "kind": "missing",
+      "ns": "confirmInfo",
+      "key": "abbreviatedBody1",
+      "locale": "en",
+      "state": "co"
+    },
+    {
+      "kind": "missing",
+      "ns": "confirmInfo",
+      "key": "abbreviatedBody1",
+      "locale": "en",
+      "state": "dc"
+    },
+    {
+      "kind": "missing",
+      "ns": "confirmInfo",
+      "key": "abbreviatedBody1",
+      "locale": "es",
+      "state": "co"
+    },
+    {
+      "kind": "missing",
+      "ns": "confirmInfo",
+      "key": "abbreviatedBody1",
+      "locale": "es",
+      "state": "dc"
+    },
+    {
+      "kind": "missing",
+      "ns": "confirmInfo",
+      "key": "abbreviatedBody4",
+      "locale": "en",
+      "state": "co"
+    },
+    {
+      "kind": "missing",
+      "ns": "confirmInfo",
+      "key": "abbreviatedBody4",
+      "locale": "en",
+      "state": "dc"
+    },
+    {
+      "kind": "missing",
+      "ns": "confirmInfo",
+      "key": "abbreviatedBody4",
+      "locale": "es",
+      "state": "co"
+    },
+    {
+      "kind": "missing",
+      "ns": "confirmInfo",
+      "key": "abbreviatedBody4",
+      "locale": "es",
+      "state": "dc"
+    },
+    {
+      "kind": "missing",
+      "ns": "confirmInfo",
+      "key": "abbreviatedTitle",
+      "locale": "en",
+      "state": "co"
+    },
+    {
+      "kind": "missing",
+      "ns": "confirmInfo",
+      "key": "abbreviatedTitle",
+      "locale": "en",
+      "state": "dc"
+    },
+    {
+      "kind": "missing",
+      "ns": "confirmInfo",
+      "key": "abbreviatedTitle",
+      "locale": "es",
+      "state": "co"
+    },
+    {
+      "kind": "missing",
+      "ns": "confirmInfo",
+      "key": "abbreviatedTitle",
+      "locale": "es",
+      "state": "dc"
+    },
+    {
+      "kind": "missing",
+      "ns": "confirmInfo",
+      "key": "addressUpdateError",
+      "locale": "en",
+      "state": "co"
+    },
+    {
+      "kind": "missing",
+      "ns": "confirmInfo",
+      "key": "addressUpdateError",
+      "locale": "en",
+      "state": "co"
+    },
+    {
+      "kind": "missing",
+      "ns": "confirmInfo",
+      "key": "addressUpdateError",
+      "locale": "en",
+      "state": "co"
+    },
+    {
+      "kind": "missing",
+      "ns": "confirmInfo",
+      "key": "addressUpdateError",
+      "locale": "en",
+      "state": "dc"
+    },
+    {
+      "kind": "missing",
+      "ns": "confirmInfo",
+      "key": "addressUpdateError",
+      "locale": "en",
+      "state": "dc"
+    },
+    {
+      "kind": "missing",
+      "ns": "confirmInfo",
+      "key": "addressUpdateError",
+      "locale": "en",
+      "state": "dc"
+    },
+    {
+      "kind": "missing",
+      "ns": "confirmInfo",
+      "key": "addressUpdateError",
+      "locale": "es",
+      "state": "co"
+    },
+    {
+      "kind": "missing",
+      "ns": "confirmInfo",
+      "key": "addressUpdateError",
+      "locale": "es",
+      "state": "co"
+    },
+    {
+      "kind": "missing",
+      "ns": "confirmInfo",
+      "key": "addressUpdateError",
+      "locale": "es",
+      "state": "co"
+    },
+    {
+      "kind": "missing",
+      "ns": "confirmInfo",
+      "key": "addressUpdateError",
+      "locale": "es",
+      "state": "dc"
+    },
+    {
+      "kind": "missing",
+      "ns": "confirmInfo",
+      "key": "addressUpdateError",
+      "locale": "es",
+      "state": "dc"
+    },
+    {
+      "kind": "missing",
+      "ns": "confirmInfo",
+      "key": "addressUpdateError",
+      "locale": "es",
+      "state": "dc"
+    },
+    {
+      "kind": "missing",
+      "ns": "confirmInfo",
+      "key": "addressUpdateTitle",
+      "locale": "en",
+      "state": "co"
+    },
+    {
+      "kind": "missing",
+      "ns": "confirmInfo",
+      "key": "addressUpdateTitle",
+      "locale": "en",
+      "state": "dc"
+    },
+    {
+      "kind": "missing",
+      "ns": "confirmInfo",
+      "key": "addressUpdateTitle",
+      "locale": "es",
+      "state": "co"
+    },
+    {
+      "kind": "missing",
+      "ns": "confirmInfo",
+      "key": "addressUpdateTitle",
+      "locale": "es",
+      "state": "dc"
+    },
+    {
+      "kind": "missing",
+      "ns": "confirmInfo",
+      "key": "autocompleteMultiUnit",
+      "locale": "en",
+      "state": "co"
+    },
+    {
+      "kind": "missing",
+      "ns": "confirmInfo",
+      "key": "autocompleteMultiUnit",
+      "locale": "en",
+      "state": "dc"
+    },
+    {
+      "kind": "missing",
+      "ns": "confirmInfo",
+      "key": "autocompleteMultiUnit",
+      "locale": "es",
+      "state": "co"
+    },
+    {
+      "kind": "missing",
+      "ns": "confirmInfo",
+      "key": "autocompleteMultiUnit",
+      "locale": "es",
+      "state": "dc"
+    },
+    {
+      "kind": "missing",
+      "ns": "confirmInfo",
+      "key": "autocompleteSuggestionsAvailable",
+      "locale": "en",
+      "state": "co"
+    },
+    {
+      "kind": "missing",
+      "ns": "confirmInfo",
+      "key": "autocompleteSuggestionsAvailable",
+      "locale": "en",
+      "state": "dc"
+    },
+    {
+      "kind": "missing",
+      "ns": "confirmInfo",
+      "key": "autocompleteSuggestionsAvailable",
+      "locale": "es",
+      "state": "co"
+    },
+    {
+      "kind": "missing",
+      "ns": "confirmInfo",
+      "key": "autocompleteSuggestionsAvailable",
+      "locale": "es",
+      "state": "dc"
+    },
+    {
+      "kind": "missing",
+      "ns": "confirmInfo",
+      "key": "blockedBody",
+      "locale": "en",
+      "state": "co"
+    },
+    {
+      "kind": "missing",
+      "ns": "confirmInfo",
+      "key": "blockedBody",
+      "locale": "en",
+      "state": "dc"
+    },
+    {
+      "kind": "missing",
+      "ns": "confirmInfo",
+      "key": "blockedBody",
+      "locale": "es",
+      "state": "co"
+    },
+    {
+      "kind": "missing",
+      "ns": "confirmInfo",
+      "key": "blockedBody",
+      "locale": "es",
+      "state": "dc"
+    },
+    {
+      "kind": "missing",
+      "ns": "confirmInfo",
+      "key": "blockedTitle",
+      "locale": "en",
+      "state": "co"
+    },
+    {
+      "kind": "missing",
+      "ns": "confirmInfo",
+      "key": "blockedTitle",
+      "locale": "en",
+      "state": "dc"
+    },
+    {
+      "kind": "missing",
+      "ns": "confirmInfo",
+      "key": "blockedTitle",
+      "locale": "es",
+      "state": "co"
+    },
+    {
+      "kind": "missing",
+      "ns": "confirmInfo",
+      "key": "blockedTitle",
+      "locale": "es",
+      "state": "dc"
+    },
+    {
+      "kind": "missing",
+      "ns": "confirmInfo",
+      "key": "cardReplacementError",
+      "locale": "en",
+      "state": "co"
+    },
+    {
+      "kind": "missing",
+      "ns": "confirmInfo",
+      "key": "cardReplacementError",
+      "locale": "en",
+      "state": "dc"
+    },
+    {
+      "kind": "missing",
+      "ns": "confirmInfo",
+      "key": "cardReplacementError",
+      "locale": "es",
+      "state": "co"
+    },
+    {
+      "kind": "missing",
+      "ns": "confirmInfo",
+      "key": "cardReplacementError",
+      "locale": "es",
+      "state": "dc"
+    },
+    {
+      "kind": "missing",
+      "ns": "confirmInfo",
+      "key": "cardSelectionAllInCooldown",
+      "locale": "en",
+      "state": "co"
+    },
+    {
+      "kind": "missing",
+      "ns": "confirmInfo",
+      "key": "cardSelectionAllInCooldown",
+      "locale": "en",
+      "state": "dc"
+    },
+    {
+      "kind": "missing",
+      "ns": "confirmInfo",
+      "key": "cardSelectionAllInCooldown",
+      "locale": "es",
+      "state": "co"
+    },
+    {
+      "kind": "missing",
+      "ns": "confirmInfo",
+      "key": "cardSelectionAllInCooldown",
+      "locale": "es",
+      "state": "dc"
+    },
+    {
+      "kind": "missing",
+      "ns": "confirmInfo",
+      "key": "cardSelectionLoadError",
+      "locale": "en",
+      "state": "co"
+    },
+    {
+      "kind": "missing",
+      "ns": "confirmInfo",
+      "key": "cardSelectionLoadError",
+      "locale": "en",
+      "state": "dc"
+    },
+    {
+      "kind": "missing",
+      "ns": "confirmInfo",
+      "key": "cardSelectionLoadError",
+      "locale": "es",
+      "state": "co"
+    },
+    {
+      "kind": "missing",
+      "ns": "confirmInfo",
+      "key": "cardSelectionLoadError",
+      "locale": "es",
+      "state": "dc"
+    },
+    {
+      "kind": "missing",
+      "ns": "confirmInfo",
+      "key": "cardSelectionNoChildren",
+      "locale": "en",
+      "state": "co"
+    },
+    {
+      "kind": "missing",
+      "ns": "confirmInfo",
+      "key": "cardSelectionNoChildren",
+      "locale": "en",
+      "state": "dc"
+    },
+    {
+      "kind": "missing",
+      "ns": "confirmInfo",
+      "key": "cardSelectionNoChildren",
+      "locale": "es",
+      "state": "co"
+    },
+    {
+      "kind": "missing",
+      "ns": "confirmInfo",
+      "key": "cardSelectionNoChildren",
+      "locale": "es",
+      "state": "dc"
+    },
+    {
+      "kind": "missing",
+      "ns": "confirmInfo",
+      "key": "cardSelectionPageTitle",
+      "locale": "en",
+      "state": "co"
+    },
+    {
+      "kind": "missing",
+      "ns": "confirmInfo",
+      "key": "cardSelectionPageTitle",
+      "locale": "en",
+      "state": "dc"
+    },
+    {
+      "kind": "missing",
+      "ns": "confirmInfo",
+      "key": "cardSelectionPageTitle",
+      "locale": "es",
+      "state": "co"
+    },
+    {
+      "kind": "missing",
+      "ns": "confirmInfo",
+      "key": "cardSelectionPageTitle",
+      "locale": "es",
+      "state": "dc"
+    },
+    {
+      "kind": "missing",
+      "ns": "confirmInfo",
+      "key": "cardSelectionRequired",
+      "locale": "en",
+      "state": "co"
+    },
+    {
+      "kind": "missing",
+      "ns": "confirmInfo",
+      "key": "cardSelectionRequired",
+      "locale": "en",
+      "state": "dc"
+    },
+    {
+      "kind": "missing",
+      "ns": "confirmInfo",
+      "key": "cardSelectionRequired",
+      "locale": "es",
+      "state": "co"
+    },
+    {
+      "kind": "missing",
+      "ns": "confirmInfo",
+      "key": "cardSelectionRequired",
+      "locale": "es",
+      "state": "dc"
+    },
+    {
+      "kind": "missing",
+      "ns": "confirmInfo",
+      "key": "cardSelectionTitle",
+      "locale": "en",
+      "state": "co"
+    },
+    {
+      "kind": "missing",
+      "ns": "confirmInfo",
+      "key": "cardSelectionTitle",
+      "locale": "en",
+      "state": "dc"
+    },
+    {
+      "kind": "missing",
+      "ns": "confirmInfo",
+      "key": "cardSelectionTitle",
+      "locale": "es",
+      "state": "co"
+    },
+    {
+      "kind": "missing",
+      "ns": "confirmInfo",
+      "key": "cardSelectionTitle",
+      "locale": "es",
+      "state": "dc"
+    },
+    {
+      "kind": "missing",
+      "ns": "confirmInfo",
+      "key": "formErrorSummary",
+      "locale": "en",
+      "state": "co"
+    },
+    {
+      "kind": "missing",
+      "ns": "confirmInfo",
+      "key": "formErrorSummary",
+      "locale": "en",
+      "state": "dc"
+    },
+    {
+      "kind": "missing",
+      "ns": "confirmInfo",
+      "key": "formErrorSummary",
+      "locale": "es",
+      "state": "co"
+    },
+    {
+      "kind": "missing",
+      "ns": "confirmInfo",
+      "key": "formErrorSummary",
+      "locale": "es",
+      "state": "dc"
+    },
+    {
+      "kind": "missing",
+      "ns": "confirmInfo",
+      "key": "hintStreetAddressDc",
+      "locale": "en",
+      "state": "co"
+    },
+    {
+      "kind": "missing",
+      "ns": "confirmInfo",
+      "key": "hintStreetAddressDc",
+      "locale": "en",
+      "state": "dc"
+    },
+    {
+      "kind": "missing",
+      "ns": "confirmInfo",
+      "key": "hintStreetAddressDc",
+      "locale": "es",
+      "state": "co"
+    },
+    {
+      "kind": "missing",
+      "ns": "confirmInfo",
+      "key": "hintStreetAddressDc",
+      "locale": "es",
+      "state": "dc"
+    },
+    {
+      "kind": "missing",
       "ns": "confirmInfo",
       "key": "notFoundActionHelp",
       "locale": "en",
       "state": "co"
     },
     {
-      "kind": "empty",
+      "kind": "missing",
       "ns": "confirmInfo",
       "key": "notFoundActionHelp",
       "locale": "es",
       "state": "co"
     },
     {
-      "kind": "empty",
+      "kind": "missing",
+      "ns": "confirmInfo",
+      "key": "notFoundContinue",
+      "locale": "en",
+      "state": "dc"
+    },
+    {
+      "kind": "missing",
+      "ns": "confirmInfo",
+      "key": "notFoundContinue",
+      "locale": "es",
+      "state": "dc"
+    },
+    {
+      "kind": "missing",
+      "ns": "confirmInfo",
+      "key": "postalCodeInvalid",
+      "locale": "en",
+      "state": "co"
+    },
+    {
+      "kind": "missing",
+      "ns": "confirmInfo",
+      "key": "postalCodeInvalid",
+      "locale": "en",
+      "state": "dc"
+    },
+    {
+      "kind": "missing",
+      "ns": "confirmInfo",
+      "key": "postalCodeInvalid",
+      "locale": "es",
+      "state": "co"
+    },
+    {
+      "kind": "missing",
+      "ns": "confirmInfo",
+      "key": "postalCodeInvalid",
+      "locale": "es",
+      "state": "dc"
+    },
+    {
+      "kind": "missing",
+      "ns": "confirmInfo",
+      "key": "replacementCardsCriteriaLost",
+      "locale": "en",
+      "state": "co"
+    },
+    {
+      "kind": "missing",
+      "ns": "confirmInfo",
+      "key": "replacementCardsCriteriaLost",
+      "locale": "en",
+      "state": "dc"
+    },
+    {
+      "kind": "missing",
+      "ns": "confirmInfo",
+      "key": "replacementCardsCriteriaLost",
+      "locale": "es",
+      "state": "co"
+    },
+    {
+      "kind": "missing",
+      "ns": "confirmInfo",
+      "key": "replacementCardsCriteriaLost",
+      "locale": "es",
+      "state": "dc"
+    },
+    {
+      "kind": "missing",
+      "ns": "confirmInfo",
+      "key": "replacementCardsCriteriaNotReceived",
+      "locale": "en",
+      "state": "co"
+    },
+    {
+      "kind": "missing",
+      "ns": "confirmInfo",
+      "key": "replacementCardsCriteriaNotReceived",
+      "locale": "en",
+      "state": "dc"
+    },
+    {
+      "kind": "missing",
+      "ns": "confirmInfo",
+      "key": "replacementCardsCriteriaNotReceived",
+      "locale": "es",
+      "state": "co"
+    },
+    {
+      "kind": "missing",
+      "ns": "confirmInfo",
+      "key": "replacementCardsCriteriaNotReceived",
+      "locale": "es",
+      "state": "dc"
+    },
+    {
+      "kind": "missing",
+      "ns": "confirmInfo",
+      "key": "replacementCardsTitle",
+      "locale": "en",
+      "state": "co"
+    },
+    {
+      "kind": "missing",
+      "ns": "confirmInfo",
+      "key": "replacementCardsTitle",
+      "locale": "en",
+      "state": "dc"
+    },
+    {
+      "kind": "missing",
+      "ns": "confirmInfo",
+      "key": "replacementCardsTitle",
+      "locale": "es",
+      "state": "co"
+    },
+    {
+      "kind": "missing",
+      "ns": "confirmInfo",
+      "key": "replacementCardsTitle",
+      "locale": "es",
+      "state": "dc"
+    },
+    {
+      "kind": "missing",
+      "ns": "confirmInfo",
+      "key": "selectOneError",
+      "locale": "en",
+      "state": "co"
+    },
+    {
+      "kind": "missing",
+      "ns": "confirmInfo",
+      "key": "selectOneError",
+      "locale": "en",
+      "state": "co"
+    },
+    {
+      "kind": "missing",
+      "ns": "confirmInfo",
+      "key": "selectOneError",
+      "locale": "en",
+      "state": "dc"
+    },
+    {
+      "kind": "missing",
+      "ns": "confirmInfo",
+      "key": "selectOneError",
+      "locale": "en",
+      "state": "dc"
+    },
+    {
+      "kind": "missing",
+      "ns": "confirmInfo",
+      "key": "selectOneError",
+      "locale": "es",
+      "state": "co"
+    },
+    {
+      "kind": "missing",
+      "ns": "confirmInfo",
+      "key": "selectOneError",
+      "locale": "es",
+      "state": "co"
+    },
+    {
+      "kind": "missing",
+      "ns": "confirmInfo",
+      "key": "selectOneError",
+      "locale": "es",
+      "state": "dc"
+    },
+    {
+      "kind": "missing",
+      "ns": "confirmInfo",
+      "key": "selectOneError",
+      "locale": "es",
+      "state": "dc"
+    },
+    {
+      "kind": "missing",
+      "ns": "confirmInfo",
+      "key": "snapTanfCallout",
+      "locale": "en",
+      "state": "co"
+    },
+    {
+      "kind": "missing",
+      "ns": "confirmInfo",
+      "key": "snapTanfCallout",
+      "locale": "en",
+      "state": "dc"
+    },
+    {
+      "kind": "missing",
+      "ns": "confirmInfo",
+      "key": "snapTanfCallout",
+      "locale": "es",
+      "state": "co"
+    },
+    {
+      "kind": "missing",
+      "ns": "confirmInfo",
+      "key": "snapTanfCallout",
+      "locale": "es",
+      "state": "dc"
+    },
+    {
+      "kind": "missing",
+      "ns": "confirmInfo",
+      "key": "streetAddressInlineError",
+      "locale": "en",
+      "state": "co"
+    },
+    {
+      "kind": "missing",
+      "ns": "confirmInfo",
+      "key": "streetAddressInlineError",
+      "locale": "en",
+      "state": "dc"
+    },
+    {
+      "kind": "missing",
+      "ns": "confirmInfo",
+      "key": "streetAddressInlineError",
+      "locale": "es",
+      "state": "co"
+    },
+    {
+      "kind": "missing",
+      "ns": "confirmInfo",
+      "key": "streetAddressInlineError",
+      "locale": "es",
+      "state": "dc"
+    },
+    {
+      "kind": "missing",
+      "ns": "dashboard",
+      "key": "actionNavigationNavLabel",
+      "locale": "en",
+      "state": "co"
+    },
+    {
+      "kind": "missing",
+      "ns": "dashboard",
+      "key": "actionNavigationNavLabel",
+      "locale": "en",
+      "state": "dc"
+    },
+    {
+      "kind": "missing",
+      "ns": "dashboard",
+      "key": "actionNavigationNavLabel",
+      "locale": "es",
+      "state": "co"
+    },
+    {
+      "kind": "missing",
+      "ns": "dashboard",
+      "key": "actionNavigationNavLabel",
+      "locale": "es",
+      "state": "dc"
+    },
+    {
+      "kind": "missing",
+      "ns": "dashboard",
+      "key": "actionNavigationSelfServiceUnavailable",
+      "locale": "en",
+      "state": "co"
+    },
+    {
+      "kind": "missing",
+      "ns": "dashboard",
+      "key": "actionNavigationSelfServiceUnavailable",
+      "locale": "en",
+      "state": "dc"
+    },
+    {
+      "kind": "missing",
+      "ns": "dashboard",
+      "key": "actionNavigationSelfServiceUnavailable",
+      "locale": "es",
+      "state": "co"
+    },
+    {
+      "kind": "missing",
+      "ns": "dashboard",
+      "key": "actionNavigationSelfServiceUnavailable",
+      "locale": "es",
+      "state": "dc"
+    },
+    {
+      "kind": "missing",
+      "ns": "dashboard",
+      "key": "alertAddressUpdatedBody",
+      "locale": "en",
+      "state": "co"
+    },
+    {
+      "kind": "missing",
+      "ns": "dashboard",
+      "key": "alertAddressUpdatedBody",
+      "locale": "en",
+      "state": "dc"
+    },
+    {
+      "kind": "missing",
+      "ns": "dashboard",
+      "key": "alertAddressUpdatedBody",
+      "locale": "es",
+      "state": "co"
+    },
+    {
+      "kind": "missing",
+      "ns": "dashboard",
+      "key": "alertAddressUpdatedBody",
+      "locale": "es",
+      "state": "dc"
+    },
+    {
+      "kind": "missing",
+      "ns": "dashboard",
+      "key": "alertAddressUpdatedHeading",
+      "locale": "en",
+      "state": "co"
+    },
+    {
+      "kind": "missing",
+      "ns": "dashboard",
+      "key": "alertAddressUpdatedHeading",
+      "locale": "en",
+      "state": "dc"
+    },
+    {
+      "kind": "missing",
+      "ns": "dashboard",
+      "key": "alertAddressUpdatedHeading",
+      "locale": "es",
+      "state": "co"
+    },
+    {
+      "kind": "missing",
+      "ns": "dashboard",
+      "key": "alertAddressUpdatedHeading",
+      "locale": "es",
+      "state": "dc"
+    },
+    {
+      "kind": "missing",
+      "ns": "dashboard",
+      "key": "alertAddressUpdateFailedBody",
+      "locale": "en",
+      "state": "co"
+    },
+    {
+      "kind": "missing",
+      "ns": "dashboard",
+      "key": "alertAddressUpdateFailedBody",
+      "locale": "en",
+      "state": "dc"
+    },
+    {
+      "kind": "missing",
+      "ns": "dashboard",
+      "key": "alertAddressUpdateFailedBody",
+      "locale": "es",
+      "state": "co"
+    },
+    {
+      "kind": "missing",
+      "ns": "dashboard",
+      "key": "alertAddressUpdateFailedBody",
+      "locale": "es",
+      "state": "dc"
+    },
+    {
+      "kind": "missing",
+      "ns": "dashboard",
+      "key": "alertAddressUpdateFailedHeading",
+      "locale": "en",
+      "state": "co"
+    },
+    {
+      "kind": "missing",
+      "ns": "dashboard",
+      "key": "alertAddressUpdateFailedHeading",
+      "locale": "en",
+      "state": "dc"
+    },
+    {
+      "kind": "missing",
+      "ns": "dashboard",
+      "key": "alertAddressUpdateFailedHeading",
+      "locale": "es",
+      "state": "co"
+    },
+    {
+      "kind": "missing",
+      "ns": "dashboard",
+      "key": "alertAddressUpdateFailedHeading",
+      "locale": "es",
+      "state": "dc"
+    },
+    {
+      "kind": "missing",
+      "ns": "dashboard",
+      "key": "alertAddressVerificationBody",
+      "locale": "en",
+      "state": "co"
+    },
+    {
+      "kind": "missing",
+      "ns": "dashboard",
+      "key": "alertAddressVerificationBody",
+      "locale": "en",
+      "state": "dc"
+    },
+    {
+      "kind": "missing",
+      "ns": "dashboard",
+      "key": "alertAddressVerificationBody",
+      "locale": "es",
+      "state": "co"
+    },
+    {
+      "kind": "missing",
+      "ns": "dashboard",
+      "key": "alertAddressVerificationBody",
+      "locale": "es",
+      "state": "dc"
+    },
+    {
+      "kind": "missing",
+      "ns": "dashboard",
+      "key": "alertCardReplacedBody",
+      "locale": "en",
+      "state": "co"
+    },
+    {
+      "kind": "missing",
+      "ns": "dashboard",
+      "key": "alertCardReplacedBody",
+      "locale": "en",
+      "state": "dc"
+    },
+    {
+      "kind": "missing",
+      "ns": "dashboard",
+      "key": "alertCardReplacedBody",
+      "locale": "es",
+      "state": "co"
+    },
+    {
+      "kind": "missing",
+      "ns": "dashboard",
+      "key": "alertCardReplacedBody",
+      "locale": "es",
+      "state": "dc"
+    },
+    {
+      "kind": "missing",
+      "ns": "dashboard",
+      "key": "alertCardReplacedBodyWithAddress",
+      "locale": "en",
+      "state": "co"
+    },
+    {
+      "kind": "missing",
+      "ns": "dashboard",
+      "key": "alertCardReplacedBodyWithAddress",
+      "locale": "en",
+      "state": "dc"
+    },
+    {
+      "kind": "missing",
+      "ns": "dashboard",
+      "key": "alertCardReplacedBodyWithAddress",
+      "locale": "es",
+      "state": "co"
+    },
+    {
+      "kind": "missing",
+      "ns": "dashboard",
+      "key": "alertCardReplacedBodyWithAddress",
+      "locale": "es",
+      "state": "dc"
+    },
+    {
+      "kind": "missing",
+      "ns": "dashboard",
+      "key": "alertCardReplacedHeading",
+      "locale": "en",
+      "state": "co"
+    },
+    {
+      "kind": "missing",
+      "ns": "dashboard",
+      "key": "alertCardReplacedHeading",
+      "locale": "en",
+      "state": "dc"
+    },
+    {
+      "kind": "missing",
+      "ns": "dashboard",
+      "key": "alertCardReplacedHeading",
+      "locale": "es",
+      "state": "co"
+    },
+    {
+      "kind": "missing",
+      "ns": "dashboard",
+      "key": "alertCardReplacedHeading",
+      "locale": "es",
+      "state": "dc"
+    },
+    {
+      "kind": "missing",
+      "ns": "dashboard",
+      "key": "alertCardsRequestedBody",
+      "locale": "en",
+      "state": "co"
+    },
+    {
+      "kind": "missing",
+      "ns": "dashboard",
+      "key": "alertCardsRequestedBody",
+      "locale": "en",
+      "state": "dc"
+    },
+    {
+      "kind": "missing",
+      "ns": "dashboard",
+      "key": "alertCardsRequestedBody",
+      "locale": "es",
+      "state": "co"
+    },
+    {
+      "kind": "missing",
+      "ns": "dashboard",
+      "key": "alertCardsRequestedBody",
+      "locale": "es",
+      "state": "dc"
+    },
+    {
+      "kind": "missing",
+      "ns": "dashboard",
+      "key": "alertCardsRequestedHeading",
+      "locale": "en",
+      "state": "co"
+    },
+    {
+      "kind": "missing",
+      "ns": "dashboard",
+      "key": "alertCardsRequestedHeading",
+      "locale": "en",
+      "state": "dc"
+    },
+    {
+      "kind": "missing",
+      "ns": "dashboard",
+      "key": "alertCardsRequestedHeading",
+      "locale": "es",
+      "state": "co"
+    },
+    {
+      "kind": "missing",
+      "ns": "dashboard",
+      "key": "alertCardsRequestedHeading",
+      "locale": "es",
+      "state": "dc"
+    },
+    {
+      "kind": "missing",
+      "ns": "dashboard",
+      "key": "alertContactUpdateFailedBody",
+      "locale": "en",
+      "state": "co"
+    },
+    {
+      "kind": "missing",
+      "ns": "dashboard",
+      "key": "alertContactUpdateFailedBody",
+      "locale": "en",
+      "state": "dc"
+    },
+    {
+      "kind": "missing",
+      "ns": "dashboard",
+      "key": "alertContactUpdateFailedBody",
+      "locale": "es",
+      "state": "co"
+    },
+    {
+      "kind": "missing",
+      "ns": "dashboard",
+      "key": "alertContactUpdateFailedBody",
+      "locale": "es",
+      "state": "dc"
+    },
+    {
+      "kind": "missing",
+      "ns": "dashboard",
+      "key": "alertContactUpdateFailedHeading",
+      "locale": "en",
+      "state": "co"
+    },
+    {
+      "kind": "missing",
+      "ns": "dashboard",
+      "key": "alertContactUpdateFailedHeading",
+      "locale": "en",
+      "state": "dc"
+    },
+    {
+      "kind": "missing",
+      "ns": "dashboard",
+      "key": "alertContactUpdateFailedHeading",
+      "locale": "es",
+      "state": "co"
+    },
+    {
+      "kind": "missing",
+      "ns": "dashboard",
+      "key": "alertContactUpdateFailedHeading",
+      "locale": "es",
+      "state": "dc"
+    },
+    {
+      "kind": "missing",
+      "ns": "dashboard",
+      "key": "alertEbtEdgeSectionHeading",
+      "locale": "en",
+      "state": "co"
+    },
+    {
+      "kind": "missing",
+      "ns": "dashboard",
+      "key": "alertEbtEdgeSectionHeading",
+      "locale": "en",
+      "state": "dc"
+    },
+    {
+      "kind": "missing",
+      "ns": "dashboard",
+      "key": "alertEbtEdgeSectionHeading",
+      "locale": "es",
+      "state": "co"
+    },
+    {
+      "kind": "missing",
+      "ns": "dashboard",
+      "key": "alertEbtEdgeSectionHeading",
+      "locale": "es",
+      "state": "dc"
+    },
+    {
+      "kind": "missing",
+      "ns": "dashboard",
+      "key": "applicationsTableHeadingNumber",
+      "locale": "en",
+      "state": "dc"
+    },
+    {
+      "kind": "missing",
+      "ns": "dashboard",
+      "key": "applicationsTableHeadingNumber",
+      "locale": "es",
+      "state": "dc"
+    },
+    {
+      "kind": "missing",
+      "ns": "dashboard",
+      "key": "cardTableHeadingCardNumber",
+      "locale": "en",
+      "state": "dc"
+    },
+    {
+      "kind": "missing",
+      "ns": "dashboard",
+      "key": "cardTableHeadingCardNumber",
+      "locale": "es",
+      "state": "dc"
+    },
+    {
+      "kind": "missing",
+      "ns": "dashboard",
+      "key": "cardTableHeadingSebtId",
+      "locale": "en",
+      "state": "dc"
+    },
+    {
+      "kind": "missing",
+      "ns": "dashboard",
+      "key": "cardTableHeadingSebtId",
+      "locale": "es",
+      "state": "dc"
+    },
+    {
+      "kind": "missing",
+      "ns": "dashboard",
+      "key": "cardTableLastFourDigits",
+      "locale": "en",
+      "state": "dc"
+    },
+    {
+      "kind": "missing",
+      "ns": "dashboard",
+      "key": "cardTableLastFourDigits",
+      "locale": "es",
+      "state": "dc"
+    },
+    {
+      "kind": "missing",
+      "ns": "dashboard",
+      "key": "cardTableStatusActive",
+      "locale": "en",
+      "state": "dc"
+    },
+    {
+      "kind": "missing",
+      "ns": "dashboard",
+      "key": "cardTableStatusActive",
+      "locale": "es",
+      "state": "dc"
+    },
+    {
+      "kind": "missing",
+      "ns": "dashboard",
+      "key": "cardTableStatusDeactivated",
+      "locale": "en",
+      "state": "dc"
+    },
+    {
+      "kind": "missing",
+      "ns": "dashboard",
+      "key": "cardTableStatusDeactivated",
+      "locale": "es",
+      "state": "dc"
+    },
+    {
+      "kind": "missing",
       "ns": "dashboard",
       "key": "cardTableStatusIssued",
       "locale": "en",
       "state": "co"
     },
     {
-      "kind": "empty",
+      "kind": "missing",
       "ns": "dashboard",
       "key": "cardTableStatusIssued",
       "locale": "es",
       "state": "co"
     },
     {
-      "kind": "empty",
+      "kind": "missing",
       "ns": "dashboard",
       "key": "cardTableStatusMailed",
       "locale": "en",
       "state": "co"
     },
     {
-      "kind": "empty",
+      "kind": "missing",
+      "ns": "dashboard",
+      "key": "cardTableStatusMailed",
+      "locale": "en",
+      "state": "dc"
+    },
+    {
+      "kind": "missing",
       "ns": "dashboard",
       "key": "cardTableStatusMailed",
       "locale": "es",
       "state": "co"
     },
     {
-      "kind": "empty",
+      "kind": "missing",
+      "ns": "dashboard",
+      "key": "cardTableStatusMailed",
+      "locale": "es",
+      "state": "dc"
+    },
+    {
+      "kind": "missing",
       "ns": "dashboard",
       "key": "cardTableStatusMessageActive",
       "locale": "en",
       "state": "dc"
     },
     {
-      "kind": "empty",
+      "kind": "missing",
+      "ns": "dashboard",
+      "key": "cardTableStatusMessageActive",
+      "locale": "es",
+      "state": "dc"
+    },
+    {
+      "kind": "missing",
       "ns": "dashboard",
       "key": "cardTableStatusMessageDeactivated",
       "locale": "en",
       "state": "dc"
     },
     {
-      "kind": "empty",
+      "kind": "missing",
+      "ns": "dashboard",
+      "key": "cardTableStatusMessageDeactivated",
+      "locale": "es",
+      "state": "dc"
+    },
+    {
+      "kind": "missing",
       "ns": "dashboard",
       "key": "cardTableStatusMessageMailed",
       "locale": "en",
       "state": "co"
     },
     {
-      "kind": "empty",
+      "kind": "missing",
       "ns": "dashboard",
       "key": "cardTableStatusMessageMailed",
       "locale": "en",
       "state": "dc"
     },
     {
-      "kind": "empty",
+      "kind": "missing",
       "ns": "dashboard",
       "key": "cardTableStatusMessageMailed",
       "locale": "es",
       "state": "co"
     },
     {
-      "kind": "empty",
+      "kind": "missing",
+      "ns": "dashboard",
+      "key": "cardTableStatusMessageMailed",
+      "locale": "es",
+      "state": "dc"
+    },
+    {
+      "kind": "missing",
       "ns": "dashboard",
       "key": "cardTableStatusMessageRequested1",
       "locale": "en",
       "state": "co"
     },
     {
-      "kind": "empty",
+      "kind": "missing",
       "ns": "dashboard",
       "key": "cardTableStatusMessageRequested1",
       "locale": "en",
       "state": "dc"
     },
     {
-      "kind": "empty",
+      "kind": "missing",
       "ns": "dashboard",
       "key": "cardTableStatusMessageRequested1",
       "locale": "es",
       "state": "co"
     },
     {
-      "kind": "empty",
+      "kind": "missing",
+      "ns": "dashboard",
+      "key": "cardTableStatusMessageRequested1",
+      "locale": "es",
+      "state": "dc"
+    },
+    {
+      "kind": "missing",
       "ns": "dashboard",
       "key": "cardTableStatusRequested",
       "locale": "en",
       "state": "co"
     },
     {
-      "kind": "empty",
+      "kind": "missing",
+      "ns": "dashboard",
+      "key": "cardTableStatusRequested",
+      "locale": "en",
+      "state": "dc"
+    },
+    {
+      "kind": "missing",
       "ns": "dashboard",
       "key": "cardTableStatusRequested",
       "locale": "es",
       "state": "co"
     },
     {
-      "kind": "empty",
+      "kind": "missing",
+      "ns": "dashboard",
+      "key": "cardTableStatusRequested",
+      "locale": "es",
+      "state": "dc"
+    },
+    {
+      "kind": "missing",
       "ns": "dashboard",
       "key": "coLoadedAddressUpdateAction2",
       "locale": "en",
       "state": "co"
     },
     {
-      "kind": "empty",
+      "kind": "missing",
       "ns": "dashboard",
       "key": "coLoadedAddressUpdateAction2",
       "locale": "es",
       "state": "co"
     },
     {
-      "kind": "empty",
-      "ns": "dashboard",
-      "key": "coLoadedAddressUpdateAction2",
-      "locale": "es",
-      "state": "dc"
-    },
-    {
-      "kind": "empty",
+      "kind": "missing",
       "ns": "dashboard",
       "key": "coLoadedAddressUpdateAction3",
       "locale": "en",
       "state": "co"
     },
     {
-      "kind": "empty",
+      "kind": "missing",
       "ns": "dashboard",
       "key": "coLoadedAddressUpdateAction3",
       "locale": "es",
       "state": "co"
     },
     {
-      "kind": "empty",
-      "ns": "dashboard",
-      "key": "coLoadedAddressUpdateAction3",
-      "locale": "es",
-      "state": "dc"
-    },
-    {
-      "kind": "empty",
+      "kind": "missing",
       "ns": "dashboard",
       "key": "coLoadedAddressUpdateBody1",
       "locale": "en",
       "state": "co"
     },
     {
-      "kind": "empty",
+      "kind": "missing",
       "ns": "dashboard",
       "key": "coLoadedAddressUpdateBody1",
       "locale": "es",
       "state": "co"
     },
     {
-      "kind": "empty",
-      "ns": "dashboard",
-      "key": "coLoadedAddressUpdateBody1",
-      "locale": "es",
-      "state": "dc"
-    },
-    {
-      "kind": "empty",
+      "kind": "missing",
       "ns": "dashboard",
       "key": "coLoadedAddressUpdateBody2",
       "locale": "en",
       "state": "co"
     },
     {
-      "kind": "empty",
+      "kind": "missing",
       "ns": "dashboard",
       "key": "coLoadedAddressUpdateBody2",
       "locale": "es",
       "state": "co"
     },
     {
-      "kind": "empty",
-      "ns": "dashboard",
-      "key": "coLoadedAddressUpdateBody2",
-      "locale": "es",
-      "state": "dc"
-    },
-    {
-      "kind": "empty",
+      "kind": "missing",
       "ns": "dashboard",
       "key": "coLoadedAddressUpdateBody3",
       "locale": "en",
       "state": "co"
     },
     {
-      "kind": "empty",
+      "kind": "missing",
       "ns": "dashboard",
       "key": "coLoadedAddressUpdateBody3",
       "locale": "es",
       "state": "co"
     },
     {
-      "kind": "empty",
-      "ns": "dashboard",
-      "key": "coLoadedAddressUpdateBody3",
-      "locale": "es",
-      "state": "dc"
-    },
-    {
-      "kind": "empty",
+      "kind": "missing",
       "ns": "dashboard",
       "key": "coLoadedAddressUpdateTitle",
       "locale": "en",
       "state": "co"
     },
     {
-      "kind": "empty",
+      "kind": "missing",
       "ns": "dashboard",
       "key": "coLoadedAddressUpdateTitle",
       "locale": "es",
       "state": "co"
     },
     {
-      "kind": "empty",
+      "kind": "missing",
       "ns": "dashboard",
-      "key": "coLoadedAddressUpdateTitle",
+      "key": "errorDescription",
+      "locale": "en",
+      "state": "co"
+    },
+    {
+      "kind": "missing",
+      "ns": "dashboard",
+      "key": "errorDescription",
+      "locale": "en",
+      "state": "dc"
+    },
+    {
+      "kind": "missing",
+      "ns": "dashboard",
+      "key": "errorDescription",
+      "locale": "es",
+      "state": "co"
+    },
+    {
+      "kind": "missing",
+      "ns": "dashboard",
+      "key": "errorDescription",
       "locale": "es",
       "state": "dc"
     },
     {
-      "kind": "empty",
+      "kind": "missing",
+      "ns": "dashboard",
+      "key": "errorHeading",
+      "locale": "en",
+      "state": "co"
+    },
+    {
+      "kind": "missing",
+      "ns": "dashboard",
+      "key": "errorHeading",
+      "locale": "en",
+      "state": "dc"
+    },
+    {
+      "kind": "missing",
+      "ns": "dashboard",
+      "key": "errorHeading",
+      "locale": "es",
+      "state": "co"
+    },
+    {
+      "kind": "missing",
+      "ns": "dashboard",
+      "key": "errorHeading",
+      "locale": "es",
+      "state": "dc"
+    },
+    {
+      "kind": "missing",
+      "ns": "dashboard",
+      "key": "pageTitle",
+      "locale": "en",
+      "state": "co"
+    },
+    {
+      "kind": "missing",
+      "ns": "dashboard",
+      "key": "pageTitle",
+      "locale": "en",
+      "state": "dc"
+    },
+    {
+      "kind": "missing",
+      "ns": "dashboard",
+      "key": "pageTitle",
+      "locale": "es",
+      "state": "co"
+    },
+    {
+      "kind": "missing",
+      "ns": "dashboard",
+      "key": "pageTitle",
+      "locale": "es",
+      "state": "dc"
+    },
+    {
+      "kind": "missing",
       "ns": "dashboard",
       "key": "profileTableCo-loadedAddress",
       "locale": "en",
       "state": "co"
     },
     {
-      "kind": "empty",
+      "kind": "missing",
       "ns": "dashboard",
       "key": "profileTableCo-loadedAddress",
       "locale": "es",
       "state": "co"
     },
     {
-      "kind": "empty",
-      "ns": "dashboard",
-      "key": "profileTableCo-loadedAddress",
-      "locale": "es",
-      "state": "dc"
-    },
-    {
-      "kind": "empty",
+      "kind": "missing",
       "ns": "idProofing",
       "key": "body",
       "locale": "en",
       "state": "co"
     },
     {
-      "kind": "empty",
+      "kind": "missing",
       "ns": "idProofing",
       "key": "body",
       "locale": "es",
       "state": "co"
     },
     {
-      "kind": "empty",
+      "kind": "missing",
+      "ns": "idProofing",
+      "key": "docVerifyResubmitError",
+      "locale": "en",
+      "state": "co"
+    },
+    {
+      "kind": "missing",
+      "ns": "idProofing",
+      "key": "docVerifyResubmitError",
+      "locale": "en",
+      "state": "dc"
+    },
+    {
+      "kind": "missing",
+      "ns": "idProofing",
+      "key": "docVerifyResubmitError",
+      "locale": "es",
+      "state": "co"
+    },
+    {
+      "kind": "missing",
+      "ns": "idProofing",
+      "key": "docVerifyResubmitError",
+      "locale": "es",
+      "state": "dc"
+    },
+    {
+      "kind": "missing",
+      "ns": "idProofing",
+      "key": "docVerifyStartError",
+      "locale": "en",
+      "state": "co"
+    },
+    {
+      "kind": "missing",
+      "ns": "idProofing",
+      "key": "docVerifyStartError",
+      "locale": "en",
+      "state": "dc"
+    },
+    {
+      "kind": "missing",
+      "ns": "idProofing",
+      "key": "docVerifyStartError",
+      "locale": "es",
+      "state": "co"
+    },
+    {
+      "kind": "missing",
+      "ns": "idProofing",
+      "key": "docVerifyStartError",
+      "locale": "es",
+      "state": "dc"
+    },
+    {
+      "kind": "missing",
+      "ns": "idProofing",
+      "key": "idProofingGenericError",
+      "locale": "en",
+      "state": "co"
+    },
+    {
+      "kind": "missing",
+      "ns": "idProofing",
+      "key": "idProofingGenericError",
+      "locale": "en",
+      "state": "dc"
+    },
+    {
+      "kind": "missing",
+      "ns": "idProofing",
+      "key": "idProofingGenericError",
+      "locale": "es",
+      "state": "co"
+    },
+    {
+      "kind": "missing",
+      "ns": "idProofing",
+      "key": "idProofingGenericError",
+      "locale": "es",
+      "state": "dc"
+    },
+    {
+      "kind": "missing",
+      "ns": "idProofing",
+      "key": "idProofingStartError",
+      "locale": "en",
+      "state": "co"
+    },
+    {
+      "kind": "missing",
+      "ns": "idProofing",
+      "key": "idProofingStartError",
+      "locale": "en",
+      "state": "dc"
+    },
+    {
+      "kind": "missing",
+      "ns": "idProofing",
+      "key": "idProofingStartError",
+      "locale": "es",
+      "state": "co"
+    },
+    {
+      "kind": "missing",
+      "ns": "idProofing",
+      "key": "idProofingStartError",
+      "locale": "es",
+      "state": "dc"
+    },
+    {
+      "kind": "missing",
+      "ns": "idProofing",
+      "key": "interstitialActionEnterId",
+      "locale": "en",
+      "state": "co"
+    },
+    {
+      "kind": "missing",
+      "ns": "idProofing",
+      "key": "interstitialActionEnterId",
+      "locale": "en",
+      "state": "dc"
+    },
+    {
+      "kind": "missing",
+      "ns": "idProofing",
+      "key": "interstitialActionEnterId",
+      "locale": "es",
+      "state": "co"
+    },
+    {
+      "kind": "missing",
+      "ns": "idProofing",
+      "key": "interstitialActionEnterId",
+      "locale": "es",
+      "state": "dc"
+    },
+    {
+      "kind": "missing",
+      "ns": "idProofing",
+      "key": "interstitialContactUsLink",
+      "locale": "en",
+      "state": "co"
+    },
+    {
+      "kind": "missing",
+      "ns": "idProofing",
+      "key": "interstitialContactUsLink",
+      "locale": "en",
+      "state": "dc"
+    },
+    {
+      "kind": "missing",
+      "ns": "idProofing",
+      "key": "interstitialContactUsLink",
+      "locale": "es",
+      "state": "co"
+    },
+    {
+      "kind": "missing",
+      "ns": "idProofing",
+      "key": "interstitialContactUsLink",
+      "locale": "es",
+      "state": "dc"
+    },
+    {
+      "kind": "missing",
+      "ns": "idProofing",
+      "key": "interstitialIdTypeDriversLicense",
+      "locale": "en",
+      "state": "co"
+    },
+    {
+      "kind": "missing",
+      "ns": "idProofing",
+      "key": "interstitialIdTypeDriversLicense",
+      "locale": "en",
+      "state": "dc"
+    },
+    {
+      "kind": "missing",
+      "ns": "idProofing",
+      "key": "interstitialIdTypeDriversLicense",
+      "locale": "es",
+      "state": "co"
+    },
+    {
+      "kind": "missing",
+      "ns": "idProofing",
+      "key": "interstitialIdTypeDriversLicense",
+      "locale": "es",
+      "state": "dc"
+    },
+    {
+      "kind": "missing",
+      "ns": "idProofing",
+      "key": "interstitialIdTypeForeignPassport",
+      "locale": "en",
+      "state": "co"
+    },
+    {
+      "kind": "missing",
+      "ns": "idProofing",
+      "key": "interstitialIdTypeForeignPassport",
+      "locale": "en",
+      "state": "dc"
+    },
+    {
+      "kind": "missing",
+      "ns": "idProofing",
+      "key": "interstitialIdTypeForeignPassport",
+      "locale": "es",
+      "state": "co"
+    },
+    {
+      "kind": "missing",
+      "ns": "idProofing",
+      "key": "interstitialIdTypeForeignPassport",
+      "locale": "es",
+      "state": "dc"
+    },
+    {
+      "kind": "missing",
+      "ns": "idProofing",
+      "key": "interstitialIdTypeOtherPhotoId",
+      "locale": "en",
+      "state": "co"
+    },
+    {
+      "kind": "missing",
+      "ns": "idProofing",
+      "key": "interstitialIdTypeOtherPhotoId",
+      "locale": "en",
+      "state": "dc"
+    },
+    {
+      "kind": "missing",
+      "ns": "idProofing",
+      "key": "interstitialIdTypeOtherPhotoId",
+      "locale": "es",
+      "state": "co"
+    },
+    {
+      "kind": "missing",
+      "ns": "idProofing",
+      "key": "interstitialIdTypeOtherPhotoId",
+      "locale": "es",
+      "state": "dc"
+    },
+    {
+      "kind": "missing",
+      "ns": "idProofing",
+      "key": "interstitialLoading",
+      "locale": "en",
+      "state": "co"
+    },
+    {
+      "kind": "missing",
+      "ns": "idProofing",
+      "key": "interstitialLoading",
+      "locale": "en",
+      "state": "dc"
+    },
+    {
+      "kind": "missing",
+      "ns": "idProofing",
+      "key": "interstitialLoading",
+      "locale": "es",
+      "state": "co"
+    },
+    {
+      "kind": "missing",
+      "ns": "idProofing",
+      "key": "interstitialLoading",
+      "locale": "es",
+      "state": "dc"
+    },
+    {
+      "kind": "missing",
       "ns": "idProofing",
       "key": "labelDob",
       "locale": "en",
       "state": "co"
     },
     {
-      "kind": "empty",
+      "kind": "missing",
       "ns": "idProofing",
       "key": "labelDob",
       "locale": "es",
       "state": "co"
     },
     {
-      "kind": "empty",
+      "kind": "missing",
       "ns": "idProofing",
       "key": "labelId",
       "locale": "en",
       "state": "co"
     },
     {
-      "kind": "empty",
+      "kind": "missing",
       "ns": "idProofing",
       "key": "labelId",
       "locale": "es",
       "state": "co"
     },
     {
-      "kind": "empty",
+      "kind": "missing",
+      "ns": "idProofing",
+      "key": "offboardingActionApply",
+      "locale": "en",
+      "state": "co"
+    },
+    {
+      "kind": "missing",
+      "ns": "idProofing",
+      "key": "offboardingActionApply",
+      "locale": "en",
+      "state": "dc"
+    },
+    {
+      "kind": "missing",
+      "ns": "idProofing",
+      "key": "offboardingActionApply",
+      "locale": "es",
+      "state": "co"
+    },
+    {
+      "kind": "missing",
+      "ns": "idProofing",
+      "key": "offboardingActionApply",
+      "locale": "es",
+      "state": "dc"
+    },
+    {
+      "kind": "missing",
+      "ns": "idProofing",
+      "key": "offboardingActionContact",
+      "locale": "en",
+      "state": "co"
+    },
+    {
+      "kind": "missing",
+      "ns": "idProofing",
+      "key": "offboardingActionContact",
+      "locale": "en",
+      "state": "dc"
+    },
+    {
+      "kind": "missing",
+      "ns": "idProofing",
+      "key": "offboardingActionContact",
+      "locale": "es",
+      "state": "co"
+    },
+    {
+      "kind": "missing",
+      "ns": "idProofing",
+      "key": "offboardingActionContact",
+      "locale": "es",
+      "state": "dc"
+    },
+    {
+      "kind": "missing",
+      "ns": "idProofing",
+      "key": "offboardingContactUsLink",
+      "locale": "en",
+      "state": "co"
+    },
+    {
+      "kind": "missing",
+      "ns": "idProofing",
+      "key": "offboardingContactUsLink",
+      "locale": "en",
+      "state": "dc"
+    },
+    {
+      "kind": "missing",
+      "ns": "idProofing",
+      "key": "offboardingContactUsLink",
+      "locale": "es",
+      "state": "co"
+    },
+    {
+      "kind": "missing",
+      "ns": "idProofing",
+      "key": "offboardingContactUsLink",
+      "locale": "es",
+      "state": "dc"
+    },
+    {
+      "kind": "missing",
+      "ns": "idProofing",
+      "key": "offboardingHeading",
+      "locale": "en",
+      "state": "co"
+    },
+    {
+      "kind": "missing",
+      "ns": "idProofing",
+      "key": "offboardingHeading",
+      "locale": "en",
+      "state": "dc"
+    },
+    {
+      "kind": "missing",
+      "ns": "idProofing",
+      "key": "offboardingHeading",
+      "locale": "es",
+      "state": "co"
+    },
+    {
+      "kind": "missing",
+      "ns": "idProofing",
+      "key": "offboardingHeading",
+      "locale": "es",
+      "state": "dc"
+    },
+    {
+      "kind": "missing",
+      "ns": "idProofing",
+      "key": "resubmitActionTryAgain",
+      "locale": "en",
+      "state": "co"
+    },
+    {
+      "kind": "missing",
+      "ns": "idProofing",
+      "key": "resubmitActionTryAgain",
+      "locale": "en",
+      "state": "dc"
+    },
+    {
+      "kind": "missing",
+      "ns": "idProofing",
+      "key": "resubmitActionTryAgain",
+      "locale": "es",
+      "state": "co"
+    },
+    {
+      "kind": "missing",
+      "ns": "idProofing",
+      "key": "resubmitActionTryAgain",
+      "locale": "es",
+      "state": "dc"
+    },
+    {
+      "kind": "missing",
+      "ns": "idProofing",
+      "key": "resubmitBody",
+      "locale": "en",
+      "state": "co"
+    },
+    {
+      "kind": "missing",
+      "ns": "idProofing",
+      "key": "resubmitBody",
+      "locale": "en",
+      "state": "dc"
+    },
+    {
+      "kind": "missing",
+      "ns": "idProofing",
+      "key": "resubmitBody",
+      "locale": "es",
+      "state": "co"
+    },
+    {
+      "kind": "missing",
+      "ns": "idProofing",
+      "key": "resubmitBody",
+      "locale": "es",
+      "state": "dc"
+    },
+    {
+      "kind": "missing",
+      "ns": "idProofing",
+      "key": "resubmitHeading",
+      "locale": "en",
+      "state": "co"
+    },
+    {
+      "kind": "missing",
+      "ns": "idProofing",
+      "key": "resubmitHeading",
+      "locale": "en",
+      "state": "dc"
+    },
+    {
+      "kind": "missing",
+      "ns": "idProofing",
+      "key": "resubmitHeading",
+      "locale": "es",
+      "state": "co"
+    },
+    {
+      "kind": "missing",
+      "ns": "idProofing",
+      "key": "resubmitHeading",
+      "locale": "es",
+      "state": "dc"
+    },
+    {
+      "kind": "missing",
+      "ns": "idProofing",
+      "key": "resubmitLoading",
+      "locale": "en",
+      "state": "co"
+    },
+    {
+      "kind": "missing",
+      "ns": "idProofing",
+      "key": "resubmitLoading",
+      "locale": "en",
+      "state": "dc"
+    },
+    {
+      "kind": "missing",
+      "ns": "idProofing",
+      "key": "resubmitLoading",
+      "locale": "es",
+      "state": "co"
+    },
+    {
+      "kind": "missing",
+      "ns": "idProofing",
+      "key": "resubmitLoading",
+      "locale": "es",
+      "state": "dc"
+    },
+    {
+      "kind": "missing",
       "ns": "idProofing",
       "key": "title",
       "locale": "en",
       "state": "co"
     },
     {
-      "kind": "empty",
+      "kind": "missing",
       "ns": "idProofing",
       "key": "title",
       "locale": "es",
       "state": "co"
     },
     {
-      "kind": "empty",
+      "kind": "missing",
+      "ns": "idProofing",
+      "key": "verificationPendingActionCheckStatus",
+      "locale": "en",
+      "state": "co"
+    },
+    {
+      "kind": "missing",
+      "ns": "idProofing",
+      "key": "verificationPendingActionCheckStatus",
+      "locale": "en",
+      "state": "dc"
+    },
+    {
+      "kind": "missing",
+      "ns": "idProofing",
+      "key": "verificationPendingActionCheckStatus",
+      "locale": "es",
+      "state": "co"
+    },
+    {
+      "kind": "missing",
+      "ns": "idProofing",
+      "key": "verificationPendingActionCheckStatus",
+      "locale": "es",
+      "state": "dc"
+    },
+    {
+      "kind": "missing",
+      "ns": "idProofing",
+      "key": "verificationPendingAriaLabel",
+      "locale": "en",
+      "state": "co"
+    },
+    {
+      "kind": "missing",
+      "ns": "idProofing",
+      "key": "verificationPendingAriaLabel",
+      "locale": "en",
+      "state": "dc"
+    },
+    {
+      "kind": "missing",
+      "ns": "idProofing",
+      "key": "verificationPendingAriaLabel",
+      "locale": "es",
+      "state": "co"
+    },
+    {
+      "kind": "missing",
+      "ns": "idProofing",
+      "key": "verificationPendingAriaLabel",
+      "locale": "es",
+      "state": "dc"
+    },
+    {
+      "kind": "missing",
+      "ns": "idProofing",
+      "key": "verificationPendingBody",
+      "locale": "en",
+      "state": "co"
+    },
+    {
+      "kind": "missing",
+      "ns": "idProofing",
+      "key": "verificationPendingBody",
+      "locale": "en",
+      "state": "dc"
+    },
+    {
+      "kind": "missing",
+      "ns": "idProofing",
+      "key": "verificationPendingBody",
+      "locale": "es",
+      "state": "co"
+    },
+    {
+      "kind": "missing",
+      "ns": "idProofing",
+      "key": "verificationPendingBody",
+      "locale": "es",
+      "state": "dc"
+    },
+    {
+      "kind": "missing",
+      "ns": "idProofing",
+      "key": "verificationPendingHeading",
+      "locale": "en",
+      "state": "co"
+    },
+    {
+      "kind": "missing",
+      "ns": "idProofing",
+      "key": "verificationPendingHeading",
+      "locale": "en",
+      "state": "dc"
+    },
+    {
+      "kind": "missing",
+      "ns": "idProofing",
+      "key": "verificationPendingHeading",
+      "locale": "es",
+      "state": "co"
+    },
+    {
+      "kind": "missing",
+      "ns": "idProofing",
+      "key": "verificationPendingHeading",
+      "locale": "es",
+      "state": "dc"
+    },
+    {
+      "kind": "missing",
+      "ns": "idProofing",
+      "key": "verificationPendingStatusLabel",
+      "locale": "en",
+      "state": "co"
+    },
+    {
+      "kind": "missing",
+      "ns": "idProofing",
+      "key": "verificationPendingStatusLabel",
+      "locale": "en",
+      "state": "dc"
+    },
+    {
+      "kind": "missing",
+      "ns": "idProofing",
+      "key": "verificationPendingStatusLabel",
+      "locale": "es",
+      "state": "co"
+    },
+    {
+      "kind": "missing",
+      "ns": "idProofing",
+      "key": "verificationPendingStatusLabel",
+      "locale": "es",
+      "state": "dc"
+    },
+    {
+      "kind": "missing",
+      "ns": "idProofing",
+      "key": "verificationPendingStillCheckingBody",
+      "locale": "en",
+      "state": "co"
+    },
+    {
+      "kind": "missing",
+      "ns": "idProofing",
+      "key": "verificationPendingStillCheckingBody",
+      "locale": "en",
+      "state": "dc"
+    },
+    {
+      "kind": "missing",
+      "ns": "idProofing",
+      "key": "verificationPendingStillCheckingBody",
+      "locale": "es",
+      "state": "co"
+    },
+    {
+      "kind": "missing",
+      "ns": "idProofing",
+      "key": "verificationPendingStillCheckingBody",
+      "locale": "es",
+      "state": "dc"
+    },
+    {
+      "kind": "missing",
+      "ns": "idProofing",
+      "key": "verificationPendingStillCheckingHeading",
+      "locale": "en",
+      "state": "co"
+    },
+    {
+      "kind": "missing",
+      "ns": "idProofing",
+      "key": "verificationPendingStillCheckingHeading",
+      "locale": "en",
+      "state": "dc"
+    },
+    {
+      "kind": "missing",
+      "ns": "idProofing",
+      "key": "verificationPendingStillCheckingHeading",
+      "locale": "es",
+      "state": "co"
+    },
+    {
+      "kind": "missing",
+      "ns": "idProofing",
+      "key": "verificationPendingStillCheckingHeading",
+      "locale": "es",
+      "state": "dc"
+    },
+    {
+      "kind": "missing",
       "ns": "login",
       "key": "body",
       "locale": "en",
       "state": "co"
     },
     {
-      "kind": "empty",
+      "kind": "missing",
       "ns": "login",
       "key": "body",
       "locale": "es",
       "state": "co"
     },
     {
-      "kind": "empty",
+      "kind": "missing",
+      "ns": "login",
+      "key": "callbackSigningIn",
+      "locale": "en",
+      "state": "co"
+    },
+    {
+      "kind": "missing",
+      "ns": "login",
+      "key": "callbackSigningIn",
+      "locale": "en",
+      "state": "dc"
+    },
+    {
+      "kind": "missing",
+      "ns": "login",
+      "key": "callbackSigningIn",
+      "locale": "es",
+      "state": "co"
+    },
+    {
+      "kind": "missing",
+      "ns": "login",
+      "key": "callbackSigningIn",
+      "locale": "es",
+      "state": "dc"
+    },
+    {
+      "kind": "missing",
       "ns": "login",
       "key": "labelEmail",
       "locale": "en",
       "state": "co"
     },
     {
-      "kind": "empty",
+      "kind": "missing",
       "ns": "login",
       "key": "labelEmail",
       "locale": "es",
       "state": "co"
     },
     {
-      "kind": "empty",
+      "kind": "missing",
+      "ns": "login",
+      "key": "logInDisclaimerBody1",
+      "locale": "en",
+      "state": "dc"
+    },
+    {
+      "kind": "missing",
+      "ns": "login",
+      "key": "logInDisclaimerBody1",
+      "locale": "es",
+      "state": "dc"
+    },
+    {
+      "kind": "missing",
       "ns": "login",
       "key": "verifyActionConfirm",
       "locale": "en",
       "state": "co"
     },
     {
-      "kind": "empty",
+      "kind": "missing",
       "ns": "login",
       "key": "verifyActionConfirm",
       "locale": "en",
       "state": "co"
     },
     {
-      "kind": "empty",
+      "kind": "missing",
       "ns": "login",
       "key": "verifyActionConfirm",
       "locale": "es",
       "state": "co"
     },
     {
-      "kind": "empty",
+      "kind": "missing",
       "ns": "login",
       "key": "verifyActionConfirm",
       "locale": "es",
       "state": "co"
     },
     {
-      "kind": "empty",
+      "kind": "missing",
       "ns": "login",
       "key": "verifyActionResend",
       "locale": "en",
       "state": "co"
     },
     {
-      "kind": "empty",
+      "kind": "missing",
       "ns": "login",
       "key": "verifyActionResend",
       "locale": "en",
       "state": "co"
     },
     {
-      "kind": "empty",
+      "kind": "missing",
       "ns": "login",
       "key": "verifyActionResend",
       "locale": "es",
       "state": "co"
     },
     {
-      "kind": "empty",
+      "kind": "missing",
       "ns": "login",
       "key": "verifyActionResend",
       "locale": "es",
       "state": "co"
     },
     {
-      "kind": "empty",
+      "kind": "missing",
       "ns": "login",
       "key": "verifyLabelCode",
       "locale": "en",
       "state": "co"
     },
     {
-      "kind": "empty",
+      "kind": "missing",
       "ns": "login",
       "key": "verifyLabelCode",
       "locale": "es",
       "state": "co"
     },
     {
-      "kind": "empty",
+      "kind": "missing",
       "ns": "login",
       "key": "verifyTitle",
       "locale": "en",
       "state": "co"
     },
     {
-      "kind": "empty",
+      "kind": "missing",
       "ns": "login",
       "key": "verifyTitle",
       "locale": "es",
       "state": "co"
     },
     {
-      "kind": "empty",
+      "kind": "missing",
+      "ns": "offBoarding",
+      "key": "action",
+      "locale": "en",
+      "state": "co"
+    },
+    {
+      "kind": "missing",
+      "ns": "offBoarding",
+      "key": "action",
+      "locale": "es",
+      "state": "co"
+    },
+    {
+      "kind": "missing",
+      "ns": "offBoarding",
+      "key": "action2",
+      "locale": "en",
+      "state": "co"
+    },
+    {
+      "kind": "missing",
+      "ns": "offBoarding",
+      "key": "action2",
+      "locale": "en",
+      "state": "dc"
+    },
+    {
+      "kind": "missing",
+      "ns": "offBoarding",
+      "key": "action2",
+      "locale": "es",
+      "state": "co"
+    },
+    {
+      "kind": "missing",
+      "ns": "offBoarding",
+      "key": "action2",
+      "locale": "es",
+      "state": "dc"
+    },
+    {
+      "kind": "missing",
       "ns": "offBoarding",
       "key": "body1",
       "locale": "en",
       "state": "co"
     },
     {
-      "kind": "empty",
+      "kind": "missing",
       "ns": "offBoarding",
       "key": "body1",
       "locale": "en",
       "state": "co"
     },
     {
-      "kind": "empty",
+      "kind": "missing",
       "ns": "offBoarding",
       "key": "body1",
       "locale": "es",
       "state": "co"
     },
     {
-      "kind": "empty",
+      "kind": "missing",
       "ns": "offBoarding",
       "key": "body1",
       "locale": "es",
       "state": "co"
     },
     {
-      "kind": "empty",
+      "kind": "missing",
+      "ns": "offBoarding",
+      "key": "body2",
+      "locale": "en",
+      "state": "co"
+    },
+    {
+      "kind": "missing",
+      "ns": "offBoarding",
+      "key": "body2",
+      "locale": "es",
+      "state": "co"
+    },
+    {
+      "kind": "missing",
       "ns": "offBoarding",
       "key": "body3",
       "locale": "en",
       "state": "co"
     },
     {
-      "kind": "empty",
+      "kind": "missing",
+      "ns": "offBoarding",
+      "key": "body3",
+      "locale": "en",
+      "state": "co"
+    },
+    {
+      "kind": "missing",
       "ns": "offBoarding",
       "key": "body3",
       "locale": "es",
       "state": "co"
     },
     {
-      "kind": "empty",
+      "kind": "missing",
+      "ns": "offBoarding",
+      "key": "body3",
+      "locale": "es",
+      "state": "co"
+    },
+    {
+      "kind": "missing",
       "ns": "offBoarding",
       "key": "title",
       "locale": "en",
       "state": "co"
     },
     {
-      "kind": "empty",
+      "kind": "missing",
       "ns": "offBoarding",
       "key": "title",
       "locale": "en",
       "state": "co"
     },
     {
-      "kind": "empty",
+      "kind": "missing",
       "ns": "offBoarding",
       "key": "title",
       "locale": "es",
       "state": "co"
     },
     {
-      "kind": "empty",
+      "kind": "missing",
       "ns": "offBoarding",
       "key": "title",
       "locale": "es",
       "state": "co"
     },
     {
-      "kind": "empty",
+      "kind": "missing",
       "ns": "result",
       "key": "replaceCardBody1",
       "locale": "en",
       "state": "co"
     },
     {
-      "kind": "empty",
+      "kind": "missing",
       "ns": "result",
       "key": "replaceCardBody1",
       "locale": "es",
       "state": "co"
     },
     {
-      "kind": "empty",
+      "kind": "missing",
       "ns": "result",
       "key": "replaceCardBody2",
       "locale": "en",
       "state": "co"
     },
     {
-      "kind": "empty",
+      "kind": "missing",
       "ns": "result",
       "key": "replaceCardBody2",
       "locale": "es",
       "state": "co"
     },
     {
-      "kind": "empty",
+      "kind": "missing",
       "ns": "result",
       "key": "replaceCardBody3",
       "locale": "en",
       "state": "co"
     },
     {
-      "kind": "empty",
+      "kind": "missing",
       "ns": "result",
       "key": "replaceCardBody3",
       "locale": "es",
       "state": "co"
     },
     {
-      "kind": "empty",
+      "kind": "missing",
       "ns": "result",
       "key": "replaceCardBody4",
       "locale": "en",
       "state": "co"
     },
     {
-      "kind": "empty",
+      "kind": "missing",
       "ns": "result",
       "key": "replaceCardBody4",
       "locale": "es",
       "state": "co"
     },
     {
-      "kind": "empty",
+      "kind": "missing",
+      "ns": "result",
+      "key": "requestReplacementCardFisTitle",
+      "locale": "en",
+      "state": "co"
+    },
+    {
+      "kind": "missing",
+      "ns": "result",
+      "key": "requestReplacementCardFisTitle",
+      "locale": "es",
+      "state": "co"
+    },
+    {
+      "kind": "missing",
+      "ns": "step-upProcessing",
+      "key": "body",
+      "locale": "en",
+      "state": "dc"
+    },
+    {
+      "kind": "missing",
+      "ns": "step-upProcessing",
+      "key": "body",
+      "locale": "en",
+      "state": "dc"
+    },
+    {
+      "kind": "missing",
+      "ns": "step-upProcessing",
+      "key": "body",
+      "locale": "en",
+      "state": "dc"
+    },
+    {
+      "kind": "missing",
+      "ns": "step-upProcessing",
+      "key": "body",
+      "locale": "en",
+      "state": "dc"
+    },
+    {
+      "kind": "missing",
       "ns": "step-upProcessing",
       "key": "body",
       "locale": "es",
       "state": "dc"
     },
     {
-      "kind": "empty",
+      "kind": "missing",
+      "ns": "step-upProcessing",
+      "key": "body",
+      "locale": "es",
+      "state": "dc"
+    },
+    {
+      "kind": "missing",
+      "ns": "step-upProcessing",
+      "key": "body",
+      "locale": "es",
+      "state": "dc"
+    },
+    {
+      "kind": "missing",
+      "ns": "step-upProcessing",
+      "key": "body",
+      "locale": "es",
+      "state": "dc"
+    },
+    {
+      "kind": "missing",
+      "ns": "step-upProcessing",
+      "key": "title",
+      "locale": "en",
+      "state": "dc"
+    },
+    {
+      "kind": "missing",
+      "ns": "step-upProcessing",
+      "key": "title",
+      "locale": "en",
+      "state": "dc"
+    },
+    {
+      "kind": "missing",
+      "ns": "step-upProcessing",
+      "key": "title",
+      "locale": "en",
+      "state": "dc"
+    },
+    {
+      "kind": "missing",
+      "ns": "step-upProcessing",
+      "key": "title",
+      "locale": "es",
+      "state": "dc"
+    },
+    {
+      "kind": "missing",
+      "ns": "step-upProcessing",
+      "key": "title",
+      "locale": "es",
+      "state": "dc"
+    },
+    {
+      "kind": "missing",
+      "ns": "step-upProcessing",
+      "key": "title",
+      "locale": "es",
+      "state": "dc"
+    },
+    {
+      "kind": "missing",
+      "ns": "stepUpDisclaimer",
+      "key": "action",
+      "locale": "en",
+      "state": "dc"
+    },
+    {
+      "kind": "missing",
       "ns": "stepUpDisclaimer",
       "key": "action",
       "locale": "es",
       "state": "dc"
     },
     {
-      "kind": "empty",
+      "kind": "missing",
+      "ns": "stepUpDisclaimer",
+      "key": "body",
+      "locale": "en",
+      "state": "dc"
+    },
+    {
+      "kind": "missing",
       "ns": "stepUpDisclaimer",
       "key": "body",
       "locale": "es",
       "state": "dc"
     },
     {
-      "kind": "empty",
+      "kind": "missing",
+      "ns": "stepUpFailure",
+      "key": "body",
+      "locale": "en",
+      "state": "dc"
+    },
+    {
+      "kind": "missing",
       "ns": "stepUpFailure",
       "key": "body",
       "locale": "es",
       "state": "dc"
     },
     {
-      "kind": "empty",
+      "kind": "missing",
+      "ns": "stepUpFailure",
+      "key": "title",
+      "locale": "en",
+      "state": "dc"
+    },
+    {
+      "kind": "missing",
       "ns": "stepUpFailure",
       "key": "title",
       "locale": "es",
       "state": "dc"
     },
     {
-      "kind": "empty",
+      "kind": "missing",
       "ns": "validation",
       "key": "newCode",
       "locale": "en",
       "state": "co"
     },
     {
-      "kind": "empty",
+      "kind": "missing",
       "ns": "validation",
       "key": "newCode",
       "locale": "es",
       "state": "co"
     },
     {
-      "kind": "empty",
+      "kind": "missing",
       "ns": "validation",
       "key": "otpInvalid",
       "locale": "en",
       "state": "co"
     },
     {
-      "kind": "empty",
+      "kind": "missing",
       "ns": "validation",
       "key": "otpInvalid",
-      "locale": "es",
-      "state": "co"
-    },
-    {
-      "kind": "missing",
-      "ns": "confirmInfo",
-      "key": "blockedBody",
-      "locale": "en",
-      "state": "co"
-    },
-    {
-      "kind": "missing",
-      "ns": "confirmInfo",
-      "key": "blockedBody",
-      "locale": "en",
-      "state": "dc"
-    },
-    {
-      "kind": "missing",
-      "ns": "confirmInfo",
-      "key": "blockedBody",
-      "locale": "es",
-      "state": "co"
-    },
-    {
-      "kind": "missing",
-      "ns": "confirmInfo",
-      "key": "blockedBody",
-      "locale": "es",
-      "state": "dc"
-    },
-    {
-      "kind": "missing",
-      "ns": "confirmInfo",
-      "key": "replacementCardsTitle",
-      "locale": "en",
-      "state": "co"
-    },
-    {
-      "kind": "missing",
-      "ns": "confirmInfo",
-      "key": "replacementCardsTitle",
-      "locale": "en",
-      "state": "dc"
-    },
-    {
-      "kind": "missing",
-      "ns": "confirmInfo",
-      "key": "replacementCardsTitle",
-      "locale": "es",
-      "state": "co"
-    },
-    {
-      "kind": "missing",
-      "ns": "confirmInfo",
-      "key": "replacementCardsTitle",
-      "locale": "es",
-      "state": "dc"
-    },
-    {
-      "kind": "missing",
-      "ns": "dashboard",
-      "key": "actionNavigationSelfServiceUnavailable",
-      "locale": "en",
-      "state": "co"
-    },
-    {
-      "kind": "missing",
-      "ns": "dashboard",
-      "key": "actionNavigationSelfServiceUnavailable",
-      "locale": "en",
-      "state": "dc"
-    },
-    {
-      "kind": "missing",
-      "ns": "dashboard",
-      "key": "actionNavigationSelfServiceUnavailable",
-      "locale": "es",
-      "state": "co"
-    },
-    {
-      "kind": "missing",
-      "ns": "dashboard",
-      "key": "actionNavigationSelfServiceUnavailable",
-      "locale": "es",
-      "state": "dc"
-    },
-    {
-      "kind": "missing",
-      "ns": "idProofing",
-      "key": "resubmitBody",
-      "locale": "en",
-      "state": "co"
-    },
-    {
-      "kind": "missing",
-      "ns": "idProofing",
-      "key": "resubmitBody",
-      "locale": "en",
-      "state": "dc"
-    },
-    {
-      "kind": "missing",
-      "ns": "idProofing",
-      "key": "resubmitBody",
-      "locale": "es",
-      "state": "co"
-    },
-    {
-      "kind": "missing",
-      "ns": "idProofing",
-      "key": "resubmitBody",
-      "locale": "es",
-      "state": "dc"
-    },
-    {
-      "kind": "missing",
-      "ns": "login",
-      "key": "callbackSigningIn",
-      "locale": "en",
-      "state": "co"
-    },
-    {
-      "kind": "missing",
-      "ns": "login",
-      "key": "callbackSigningIn",
-      "locale": "en",
-      "state": "dc"
-    },
-    {
-      "kind": "missing",
-      "ns": "login",
-      "key": "callbackSigningIn",
-      "locale": "es",
-      "state": "co"
-    },
-    {
-      "kind": "missing",
-      "ns": "login",
-      "key": "callbackSigningIn",
-      "locale": "es",
-      "state": "dc"
-    },
-    {
-      "kind": "missing",
-      "ns": "result",
-      "key": "requestReplacementCardFisTitle",
-      "locale": "en",
-      "state": "co"
-    },
-    {
-      "kind": "missing",
-      "ns": "result",
-      "key": "requestReplacementCardFisTitle",
       "locale": "es",
       "state": "co"
     }

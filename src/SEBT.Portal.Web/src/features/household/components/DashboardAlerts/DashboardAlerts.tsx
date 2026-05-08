@@ -57,38 +57,29 @@ export function DashboardAlerts() {
       {alerts.addressUpdated && !alerts.cardsRequested && (
         <Alert
           variant="success"
-          heading={t('alertAddressUpdatedHeading', 'Address update recorded')}
+          heading={t('alertAddressUpdatedHeading')}
         >
-          {t('alertAddressUpdatedBody', 'Your address update has been recorded.')}
+          {t('alertAddressUpdatedBody')}
         </Alert>
       )}
 
       {alerts.addressUpdated && alerts.cardsRequested && (
         <Alert
           variant="success"
-          heading={t('alertCardsRequestedHeading', 'Address update and card replacement recorded')}
+          heading={t('alertCardsRequestedHeading')}
         >
-          {t(
-            'alertCardsRequestedBody',
-            'Your address update and card replacement request have been recorded.'
-          )}
+          {t('alertCardsRequestedBody')}
         </Alert>
       )}
 
       {alerts.cardReplaced && (
         <Alert
           variant="success"
-          heading={t('alertCardReplacedHeading', 'Your replacement card request has been recorded')}
+          heading={t('alertCardReplacedHeading')}
         >
           {householdData?.addressOnFile
-            ? t(
-                'alertCardReplacedBodyWithAddress',
-                'New cards usually arrive in your mailbox within 7-10 business days. Check back here in 1-2 business days to see your updated card details.'
-              )
-            : t(
-                'alertCardReplacedBody',
-                'New cards usually arrive in your mailbox within 7-10 business days.'
-              )}
+            ? t('alertCardReplacedBodyWithAddress')
+            : t('alertCardReplacedBody')}
         </Alert>
       )}
 
@@ -99,27 +90,18 @@ export function DashboardAlerts() {
       {alerts.addressUpdateFailed && (
         <Alert
           variant="warning"
-          heading={t(
-            'alertAddressUpdateFailedHeading',
-            'There was an issue updating your mailing address.'
-          )}
+          heading={t('alertAddressUpdateFailedHeading')}
         >
-          {t(
-            'alertAddressUpdateFailedBody',
-            'Please try again later or contact the Summer EBT Help Desk for assistance.'
-          )}
+          {t('alertAddressUpdateFailedBody')}
         </Alert>
       )}
 
       {alerts.contactUpdateFailed && (
         <Alert
           variant="warning"
-          heading={t(
-            'alertContactUpdateFailedHeading',
-            'There was an issue updating your contact preferences.'
-          )}
+          heading={t('alertContactUpdateFailedHeading')}
         >
-          {t('alertContactUpdateFailedBody', 'Please try again later.')}
+          {t('alertContactUpdateFailedBody')}
         </Alert>
       )}
 
@@ -128,10 +110,7 @@ export function DashboardAlerts() {
           variant="warning"
           heading={t('alertCheckAddressTitle')}
         >
-          {t(
-            'alertAddressVerificationBody',
-            'Please verify your mailing address is up to date so you can receive your Summer EBT cards.'
-          )}
+          {t('alertAddressVerificationBody')}
         </Alert>
       )}
     </div>

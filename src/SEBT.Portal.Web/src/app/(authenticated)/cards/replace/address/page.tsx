@@ -17,7 +17,7 @@ export default function CardReplaceAddressPage() {
   const caseId = searchParams.get('case')
 
   if (isLoading) {
-    return <p>{tCommon('loading', 'Loading...')}</p>
+    return <p>{tCommon('loading')}</p>
   }
 
   if (isError || !data || !caseId) {
@@ -26,9 +26,7 @@ export default function CardReplaceAddressPage() {
 
   return (
     <div className="grid-container maxw-tablet padding-top-4 padding-bottom-4">
-      <h1 className="font-sans-xl text-primary">
-        {t('addressUpdateTitle', 'Update your mailing address')}
-      </h1>
+      <h1 className="font-sans-xl text-primary">{t('addressUpdateTitle')}</h1>
       <AddressFlowProvider>
         <AddressForm
           initialAddress={data.addressOnFile ?? null}

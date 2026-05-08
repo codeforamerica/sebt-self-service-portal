@@ -15,19 +15,14 @@ export default function NotFound() {
       <div className="grid-container">
         <Alert
           variant="error"
-          heading={t('pageNotFound', 'Page not found')}
+          heading={t('pageNotFound')}
         >
-          <p>
-            {t(
-              'pageNotFoundBody',
-              'The page you are looking for does not exist or has been moved.'
-            )}
-          </p>
+          <p>{t('pageNotFoundBody')}</p>
           <Link
             href="/"
             className="usa-button margin-top-2"
           >
-            {t('returnToHome', 'Return to home')}
+            {t('returnToHome')}
           </Link>
         </Alert>
       </div>

@@ -9,9 +9,7 @@ export default function CardSelectionPage() {
 
   return (
     <div className="grid-container maxw-tablet padding-top-4 padding-bottom-4">
-      <h1 className="font-sans-xl text-primary">
-        {t('cardSelectionTitle', 'Which cards need to be replaced?')}
-      </h1>
+      <h1 className="font-sans-xl text-primary">{t('cardSelectionTitle')}</h1>
       <CardSelection />
     </div>
   )

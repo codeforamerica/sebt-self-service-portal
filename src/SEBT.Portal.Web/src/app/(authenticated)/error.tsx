@@ -28,26 +28,12 @@ export default function AuthenticatedError({ error, reset }: ErrorProps) {
       <div className="grid-container">
         <Alert
           variant="error"
-          heading={
-            isAuthError
-              ? t('errorSessionExpired', 'Session expired')
-              : t('errorSomethingWentWrong', 'Something went wrong')
-          }
+          heading={isAuthError ? t('errorSessionExpired') : t('errorSomethingWentWrong')}
         >
-          <p>
-            {isAuthError
-              ? t(
-                  'errorSessionExpiredBody',
-                  'Your session has expired. Please log in again to continue.'
-                )
-              : t(
-                  'errorPageBody',
-                  'We encountered an error loading this page. Please try again or log in again if the problem persists.'
-                )}
-          </p>
+          <p>{isAuthError ? t('errorSessionExpiredBody') : t('errorPageBody')}</p>
           {error.digest && (
             <p className="font-mono text-base-dark margin-top-1">
-              {t('errorId', 'Error ID: ')}
+              {t('errorId')}
               {error.digest}
             </p>
           )}
@@ -57,7 +43,7 @@ export default function AuthenticatedError({ error, reset }: ErrorProps) {
                 type="button"
                 onClick={() => (window.location.href = '/login')}
               >
-                {t('errorLogInAgain', 'Log in again')}
+                {t('errorLogInAgain')}
               </Button>
             ) : (
               <>
@@ -66,14 +52,14 @@ export default function AuthenticatedError({ error, reset }: ErrorProps) {
                   onClick={reset}
                   className="margin-right-2"
                 >
-                  {t('errorTryAgain', 'Try again')}
+                  {t('errorTryAgain')}
                 </Button>
                 <Button
                   type="button"
                   variant="outline"
                   onClick={() => (window.location.href = '/login')}
                 >
-                  {t('errorLogInAgain', 'Log in again')}
+                  {t('errorLogInAgain')}
                 </Button>
               </>
             )}

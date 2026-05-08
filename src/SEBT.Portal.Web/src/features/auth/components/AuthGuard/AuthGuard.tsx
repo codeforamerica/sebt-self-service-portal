@@ -40,8 +40,8 @@ export function AuthGuard({ children }: AuthGuardProps) {
   if (!isHydrated || isLoading) {
     return (
       <CoLoadingScreen
-        title={t('title', 'Please wait...')}
-        message={t('body', 'Do not exit the page. Checking to see if we have enough information.')}
+        title={t('title')}
+        message={t('body')}
       />
     )
   }

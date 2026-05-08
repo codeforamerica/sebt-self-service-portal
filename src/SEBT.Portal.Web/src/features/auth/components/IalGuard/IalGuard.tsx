@@ -86,7 +86,7 @@ export function IalGuard({ children, requiredIal = STEP_UP_REQUIRED_IAL }: IalGu
 
   const checkingCopy = useMemo(
     () => ({
-      title: t('ialGuardCheckingTitle', 'Please wait…'),
+      title: t('ialGuardCheckingTitle'),
       body: t('step-upProcessing:body')
     }),
     [t]
@@ -136,10 +136,7 @@ export function IalGuard({ children, requiredIal = STEP_UP_REQUIRED_IAL }: IalGu
               id="ial-guard-challenge-title"
               className="font-heading-lg text-primary margin-bottom-3 line-height-sans-1"
             >
-              {t(
-                'ialGuardChallengeTitle',
-                'To keep your account safe, we need to confirm it’s really you'
-              )}
+              {t('ialGuardChallengeTitle')}
             </h1>
             <p className="font-sans-sm margin-bottom-3">{t('stepUpDisclaimer:body')}</p>
             <div className="display-flex flex-row flex-wrap flex-gap-2 margin-top-3">

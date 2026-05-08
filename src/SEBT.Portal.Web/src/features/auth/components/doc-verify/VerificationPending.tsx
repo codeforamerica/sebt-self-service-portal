@@ -66,42 +66,35 @@ export function VerificationPending({
   }, [error, onRejected])
 
   return (
-    <section aria-label={t('verificationPendingAriaLabel', 'Verification status')}>
+    <section aria-label={t('verificationPendingAriaLabel')}>
       {!showStillChecking ? (
         <div className="text-center padding-y-6">
           <p className="font-sans-lg text-bold margin-bottom-2">
-            {t('verificationPendingHeading', 'Verifying your document...')}
+            {t('verificationPendingHeading')}
           </p>
-          <p className="font-sans-sm text-base-dark">
-            {t('verificationPendingBody', "This may take a moment. Please don't close this page.")}
-          </p>
+          <p className="font-sans-sm text-base-dark">{t('verificationPendingBody')}</p>
           {/* USWDS loading indicator */}
           <div
             className="margin-top-3"
             aria-busy="true"
             aria-live="polite"
           >
-            <span className="text-base-dark">
-              {t('verificationPendingStatusLabel', 'Checking verification status')}
-            </span>
+            <span className="text-base-dark">{t('verificationPendingStatusLabel')}</span>
           </div>
         </div>
       ) : (
         <div className="text-center padding-y-6">
           <p className="font-sans-lg text-bold margin-bottom-2">
-            {t('verificationPendingStillCheckingHeading', "We're still checking your document")}
+            {t('verificationPendingStillCheckingHeading')}
           </p>
           <p className="font-sans-sm text-base-dark margin-bottom-3">
-            {t(
-              'verificationPendingStillCheckingBody',
-              'Verification is taking longer than expected. You can check the status or try again later.'
-            )}
+            {t('verificationPendingStillCheckingBody')}
           </p>
           <Button
             type="button"
             onClick={() => refetch()}
           >
-            {t('verificationPendingActionCheckStatus', 'Check status')}
+            {t('verificationPendingActionCheckStatus')}
           </Button>
         </div>
       )}

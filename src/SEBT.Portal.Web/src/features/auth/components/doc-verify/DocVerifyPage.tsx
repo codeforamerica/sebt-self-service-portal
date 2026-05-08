@@ -127,12 +127,7 @@ export function DocVerifyPage({ contactLink }: DocVerifyPageProps) {
       })
       .catch(() => {
         if (captureTab && !captureTab.closed) captureTab.close()
-        setError(
-          t(
-            'docVerifyStartError',
-            'Something went wrong starting document verification. Please try again.'
-          )
-        )
+        setError(t('docVerifyStartError'))
       })
   }
 
@@ -228,9 +223,7 @@ export function DocVerifyPage({ contactLink }: DocVerifyPageProps) {
       })
       .catch(() => {
         if (captureTab && !captureTab.closed) captureTab.close()
-        setError(
-          t('docVerifyResubmitError', "We couldn't start a retry. Please try again in a moment.")
-        )
+        setError(t('docVerifyResubmitError'))
       })
   }
 

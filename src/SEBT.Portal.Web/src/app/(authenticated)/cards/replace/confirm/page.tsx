@@ -16,7 +16,7 @@ export default function CardReplaceConfirmPage() {
   const caseId = searchParams.get('case')
 
   if (isLoading) {
-    return <p>{tCommon('loading', 'Loading...')}</p>
+    return <p>{tCommon('loading')}</p>
   }
 
   if (isError || !data || !caseId) {

@@ -96,11 +96,8 @@ export default function CallbackPage() {
   if (isCO) {
     return (
       <CoLoadingScreen
-        title={tProcessing('title', 'Please wait...')}
-        message={tProcessing(
-          'body',
-          'Do not exit the page. Checking to see if we have enough information.'
-        )}
+        title={tProcessing('title')}
+        message={tProcessing('body')}
       />
     )
   }

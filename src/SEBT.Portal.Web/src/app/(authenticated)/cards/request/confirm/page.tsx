@@ -17,7 +17,7 @@ export default function ConfirmReplacementCardsPage() {
   const selectedCaseIds = casesParam ? casesParam.split(',') : []
 
   if (isLoading) {
-    return <p>{tCommon('loading', 'Loading...')}</p>
+    return <p>{tCommon('loading')}</p>
   }
 
   if (isError || !data || !data.addressOnFile) {

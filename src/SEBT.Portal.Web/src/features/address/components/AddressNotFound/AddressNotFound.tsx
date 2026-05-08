@@ -38,7 +38,7 @@ export function AddressNotFound() {
     <div className="grid-container maxw-tablet padding-top-4 padding-bottom-4">
       <h1 className="font-sans-xl text-primary">
         {isBlocked
-          ? t('blockedTitle', "This address can't be used") // TODO REMOVE FALLBACK
+          ? t('blockedTitle') // TODO REMOVE FALLBACK
           : t('notFoundTitle')}
       </h1>
       <p>

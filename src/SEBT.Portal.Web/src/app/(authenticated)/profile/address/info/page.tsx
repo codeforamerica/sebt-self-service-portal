@@ -98,7 +98,7 @@ export default function CoLoadedAddressInfoPage() {
         onClick={() => router.back()}
         className="margin-top-3"
       >
-        {tCommon('back', 'Back')}
+        {tCommon('back')}
       </Button>
     </div>
   )

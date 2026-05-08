@@ -57,9 +57,9 @@ export default function OffBoardingPage() {
     title = t('coLoadedTitle')
     body = t('coLoadedBody1')
     contactLabel = t('coLoadedAction1')
-    applyBody = t('coLoadedBody2', '') || undefined
+    applyBody = t('coLoadedBody2') || undefined
     applySkipBody = undefined
-    applyLabel = t('coLoadedAction2', '') || undefined
+    applyLabel = t('coLoadedAction2') || undefined
   } else if (reason === 'noIdProvided') {
     title = 'We need an ID to verify you'
     body =
@@ -83,9 +83,9 @@ export default function OffBoardingPage() {
     body = t('body1')
     // TODO: Use t('action1') once key is available in dc.csv
     contactLabel = tCommon('linkContactUs')
-    applyBody = t('body2', '') || undefined
-    applySkipBody = t('body3', '') || undefined
-    applyLabel = t('action2', '') || undefined
+    applyBody = t('body2') || undefined
+    applySkipBody = t('body3') || undefined
+    applyLabel = t('action2') || undefined
   }
 
   return (
@@ -96,7 +96,7 @@ export default function OffBoardingPage() {
             title={title}
             body={body}
             backHref={backHref}
-            backLabel={t('action', '') || tCommon('back')}
+            backLabel={t('action') || tCommon('back')}
             contactHref={contactHref}
             contactLabel={contactLabel}
             canApply={canApply}

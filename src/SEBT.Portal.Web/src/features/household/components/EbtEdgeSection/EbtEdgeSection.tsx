@@ -26,7 +26,7 @@ export function EbtEdgeSection() {
         id="help-section-heading"
         className="usa-sr-only"
       >
-        {t('alertEbtEdgeSectionHeading', 'EBT Card Help')}
+        {t('alertEbtEdgeSectionHeading')}
       </h2>
       <div className="usa-accordion">
         <h3 className="usa-accordion__heading">

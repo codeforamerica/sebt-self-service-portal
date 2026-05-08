@@ -26,16 +26,14 @@ export default function RequestReplacementCardsPage() {
         aria-busy="true"
         role="status"
       >
-        <span className="usa-sr-only">{tCommon('loading', 'Loading...')}</span>
+        <span className="usa-sr-only">{tCommon('loading')}</span>
       </div>
     )
   }
 
   return (
     <div className="grid-container maxw-tablet padding-top-4 padding-bottom-4">
-      <h1 className="font-sans-xl text-primary">
-        {t('cardSelectionPageTitle', 'Which card would you like to replace?')}
-      </h1>
+      <h1 className="font-sans-xl text-primary">{t('cardSelectionPageTitle')}</h1>
       <CardSelection confirmPath="/cards/request/confirm" />
     </div>
   )

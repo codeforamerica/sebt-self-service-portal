@@ -22,17 +22,12 @@ export default function Error({ error, reset }: ErrorProps) {
       <div className="grid-container">
         <Alert
           variant="error"
-          heading={t('errorSomethingWentWrong', 'Something went wrong')}
+          heading={t('errorSomethingWentWrong')}
         >
-          <p>
-            {t(
-              'errorUnexpectedBody',
-              'An unexpected error occurred. Please try again or contact support if the problem persists.'
-            )}
-          </p>
+          <p>{t('errorUnexpectedBody')}</p>
           {error.digest && (
             <p className="font-mono text-base-dark margin-top-1">
-              {t('errorId', 'Error ID: ')}
+              {t('errorId')}
               {error.digest}
             </p>
           )}
@@ -41,7 +36,7 @@ export default function Error({ error, reset }: ErrorProps) {
             onClick={reset}
             className="margin-top-2"
           >
-            {t('errorTryAgain', 'Try again')}
+            {t('errorTryAgain')}
           </Button>
         </Alert>
       </div>

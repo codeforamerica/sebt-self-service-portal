@@ -65,7 +65,7 @@ export function ActionButtons({ allowedActions }: ActionButtonsProps) {
   return (
     <nav
       className="margin-bottom-4"
-      aria-label={t('actionNavigationNavLabel', 'Quick actions')}
+      aria-label={t('actionNavigationNavLabel')}
     >
       <p className="margin-top-0 margin-bottom-2 text-base-dark">{t('actionNavigationLead')}</p>
 
