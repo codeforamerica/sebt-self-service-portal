@@ -113,6 +113,18 @@ public class MockHouseholdRepository : IHouseholdRepository
         return Task.FromResult(false);
     }
 
+    /// <inheritdoc />
+    public Task<HouseholdData?> GetHouseholdByBenefitIdentifierAndGuardianDobAsync(
+        string guardianLoginEmail,
+        string benefitIdentifierIc,
+        DateOnly guardianDateOfBirth,
+        PiiVisibility piiVisibility,
+        UserIalLevel userIalLevel,
+        CancellationToken cancellationToken = default)
+    {
+        return Task.FromResult<HouseholdData?>(null);
+    }
+
     public Task UpsertHouseholdAsync(
         HouseholdData householdData,
         CancellationToken cancellationToken = default)

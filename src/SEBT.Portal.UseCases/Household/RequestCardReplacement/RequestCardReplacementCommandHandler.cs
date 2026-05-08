@@ -9,6 +9,7 @@ using SEBT.Portal.Kernel;
 using SEBT.Portal.Kernel.Results;
 using IStateCardReplacementService = SEBT.Portal.StatesPlugins.Interfaces.ICardReplacementService;
 using PluginCardReplacementRequest = SEBT.Portal.StatesPlugins.Interfaces.Models.Household.CardReplacementRequest;
+using PluginCaseRef = SEBT.Portal.StatesPlugins.Interfaces.Models.Household.CaseRef;
 using CardReplacementResult = SEBT.Portal.StatesPlugins.Interfaces.Models.Household.CardReplacementResult;
 
 namespace SEBT.Portal.UseCases.Household;
@@ -87,8 +88,11 @@ public class RequestCardReplacementCommandHandler(
         }
 
         // Co-loaded cases are managed by caseworkers, not the portal.
+        var requestedSummerEbtCaseIds = command.CaseRefs
+            .Select(r => r.SummerEbtCaseId)
+            .ToHashSet(StringComparer.Ordinal);
         var requestedCases = household.SummerEbtCases
-            .Where(c => c.SummerEBTCaseID != null && command.CaseIds.Contains(c.SummerEBTCaseID))
+            .Where(c => c.SummerEBTCaseID != null && requestedSummerEbtCaseIds.Contains(c.SummerEBTCaseID))
             .ToList();
         if (requestedCases.Any(c => c.IsCoLoaded))
         {
@@ -136,9 +140,9 @@ public class RequestCardReplacementCommandHandler(
             var householdHash = identifierHasher.Hash(identifier.Value);
             var cooldownErrors = new List<ValidationError>();
 
-            foreach (var caseId in command.CaseIds)
+            foreach (var caseRef in command.CaseRefs)
             {
-                var caseHash = identifierHasher.Hash(caseId);
+                var caseHash = identifierHasher.Hash(caseRef.SummerEbtCaseId);
                 if (householdHash != null && caseHash != null)
                 {
                     var hasCooldown = await cardReplacementRepo.HasRecentRequestAsync(
@@ -146,7 +150,7 @@ public class RequestCardReplacementCommandHandler(
                     if (hasCooldown)
                     {
                         cooldownErrors.Add(new ValidationError(
-                            "CaseIds",
+                            "CaseRefs",
                             $"A card replacement was requested for this case within the last 14 days."));
                     }
                 }
@@ -166,12 +170,21 @@ public class RequestCardReplacementCommandHandler(
             logger.LogInformation(
                 "Card replacement dispatching to state connector for household identifier kind {Kind}, {Count} case(s)",
                 identifierKind,
-                command.CaseIds.Count);
+                command.CaseRefs.Count);
+
+            var pluginCaseRefs = command.CaseRefs
+                .Select(r => new PluginCaseRef
+                {
+                    SummerEbtCaseId = r.SummerEbtCaseId,
+                    ApplicationId = r.ApplicationId,
+                    ApplicationStudentId = r.ApplicationStudentId,
+                })
+                .ToList();
 
             var pluginRequest = new PluginCardReplacementRequest
             {
                 HouseholdIdentifierValue = identifier.Value,
-                CaseIds = command.CaseIds,
+                CaseRefs = pluginCaseRefs,
                 Reason = StatesPlugins.Interfaces.Models.Household.CardReplacementReason.Unspecified,
             };
 
@@ -192,7 +205,7 @@ public class RequestCardReplacementCommandHandler(
                     ex,
                     "Card replacement plugin threw for household identifier kind {Kind}, {Count} case(s); cooldown NOT recorded, user may retry",
                     identifierKind,
-                    command.CaseIds.Count);
+                    command.CaseRefs.Count);
                 return Result.DependencyFailed(
                     DependencyFailedReason.ConnectionFailed,
                     "Card replacement service is temporarily unavailable.");
@@ -230,9 +243,9 @@ public class RequestCardReplacementCommandHandler(
             // until next portal-side persist succeeds).
             try
             {
-                foreach (var caseId in command.CaseIds)
+                foreach (var caseRef in command.CaseRefs)
                 {
-                    var caseHash = identifierHasher.Hash(caseId);
+                    var caseHash = identifierHasher.Hash(caseRef.SummerEbtCaseId);
                     if (householdHash != null && caseHash != null)
                     {
                         await cardReplacementRepo.CreateAsync(
@@ -246,7 +259,7 @@ public class RequestCardReplacementCommandHandler(
                     ex,
                     "Card replacement: connector reported success but cooldown persistence failed for household identifier kind {Kind}, {Count} case(s). Subsequent portal requests within {Days} days will not be cooldown-blocked; relying on DC-side dedup.",
                     identifierKind,
-                    command.CaseIds.Count,
+                    command.CaseRefs.Count,
                     CooldownPeriod.TotalDays);
                 // The user-facing action did execute — return success rather than
                 // misleading the user with a failure for an action that happened.
@@ -256,7 +269,7 @@ public class RequestCardReplacementCommandHandler(
             logger.LogInformation(
                 "Card replacement request completed for household identifier kind {Kind}, {Count} case(s)",
                 identifierKind,
-                command.CaseIds.Count);
+                command.CaseRefs.Count);
             return Result.Success();
         }
     }

@@ -201,6 +201,47 @@ describe('ConfirmRequest', () => {
     })
   })
 
+  it('sends caseRefs with applicationId/applicationStudentId from each case', async () => {
+    let capturedBody: unknown = null
+    server.use(
+      http.post('/api/household/cards/replace', async ({ request }) => {
+        capturedBody = await request.json()
+        return new HttpResponse(null, { status: 204 })
+      })
+    )
+
+    // First case: auto-eligible shape (no applicationId/applicationStudentId).
+    // Second case: application-based shape with both populated.
+    const cases: SummerEbtCase[] = [
+      TEST_CASES[0]!,
+      {
+        ...TEST_CASES[1]!,
+        applicationId: 'APP-2',
+        applicationStudentId: 'STU-2'
+      }
+    ]
+
+    const { user } = renderConfirmRequest({ cases })
+
+    await user.click(screen.getByRole('button', { name: /order card/i }))
+
+    await waitFor(() => expect(capturedBody).not.toBeNull())
+    expect(capturedBody).toEqual({
+      caseRefs: [
+        {
+          summerEbtCaseId: 'SEBT-001',
+          applicationId: null,
+          applicationStudentId: null
+        },
+        {
+          summerEbtCaseId: 'SEBT-002',
+          applicationId: 'APP-2',
+          applicationStudentId: 'STU-2'
+        }
+      ]
+    })
+  })
+
   it('disables order button while submitting', async () => {
     let resolveRequest: () => void
     const pending = new Promise<void>((resolve) => {

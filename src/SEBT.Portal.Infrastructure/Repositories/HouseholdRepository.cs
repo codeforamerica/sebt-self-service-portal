@@ -146,6 +146,55 @@ public class HouseholdRepository : IHouseholdRepository
             cancellationToken);
     }
 
+    /// <inheritdoc />
+    public async Task<HouseholdData?> GetHouseholdByBenefitIdentifierAndGuardianDobAsync(
+        string guardianLoginEmail,
+        string benefitIdentifierIc,
+        DateOnly guardianDateOfBirth,
+        PiiVisibility piiVisibility,
+        UserIalLevel userIalLevel,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(piiVisibility);
+        if (string.IsNullOrWhiteSpace(guardianLoginEmail))
+        {
+            return null;
+        }
+
+        if (string.IsNullOrWhiteSpace(benefitIdentifierIc))
+        {
+            return null;
+        }
+
+        var normalizedEmail = EmailNormalizer.Normalize(guardianLoginEmail);
+        var pluginPii = new PluginPiiVisibility(
+            IncludeAddress: true,
+            IncludeEmail: true,
+            IncludePhone: true);
+        var pluginIal = (PluginIdentityAssuranceLevel)(int)userIalLevel;
+
+        var pluginHousehold = await _summerEbtCaseService.GetHouseholdByBenefitIdentifierAndDobAsync(
+            benefitIdentifierIc.Trim(),
+            guardianDateOfBirth,
+            normalizedEmail,
+            pluginPii,
+            pluginIal,
+            cancellationToken);
+
+        if (pluginHousehold == null)
+        {
+            return null;
+        }
+
+        var core = PluginHouseholdDataMapper.ToCore(pluginHousehold);
+        if (core == null)
+        {
+            return null;
+        }
+
+        return ApplyPiiVisibility(core, piiVisibility);
+    }
+
     private static HouseholdData ApplyPiiVisibility(HouseholdData source, PiiVisibility piiVisibility)
     {
         return source with
