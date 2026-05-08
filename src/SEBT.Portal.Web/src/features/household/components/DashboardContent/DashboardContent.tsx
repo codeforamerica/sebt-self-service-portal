@@ -21,12 +21,26 @@ import { EnrolledChildren } from '../EnrolledChildren'
 import { HouseholdSummary } from '../HouseholdSummary'
 import { UserProfileCard } from '../UserProfileCard'
 
+/**
+ * Closed taxonomy of dashboard error codes per docs/adr/0015-co-loaded-error-code-taxonomy.md.
+ * Adding a new value requires an ADR amendment plus matching updates in the
+ * Serilog `OutcomeCode` field on the backend and in the i18n locale keys.
+ */
+export type DashboardErrorCode =
+  | 'NOT_FOUND'
+  | 'NO_CHILDREN'
+  | 'AUTH_FAILURE'
+  | 'TECH_ERROR'
+  | 'INVALID_INPUT'
+
 // Maps an HTTP failure to one of the analytics taxonomy buckets. NOT_FOUND
 // covers 404 (the connector returned no household for the user); 4xx other
 // than 404 are treated as auth/permission failures (the API redirects 401/403
 // before reaching the dashboard, but tag them here defensively); everything
-// else lands in TECH_ERROR.
-function dashboardErrorCodeFromStatus(error: unknown): string {
+// else lands in TECH_ERROR. INVALID_INPUT is reserved for form-submission
+// 400s with ValidationProblemDetails — the dashboard doesn't submit forms,
+// so it is intentionally never produced here.
+function dashboardErrorCodeFromStatus(error: unknown): DashboardErrorCode {
   if (!(error instanceof ApiError)) return 'TECH_ERROR'
   if (error.status === 404) return 'NOT_FOUND'
   if (error.status === 401 || error.status === 403) return 'AUTH_FAILURE'
@@ -45,6 +59,10 @@ export function DashboardContent() {
 
   useEffect(() => {
     if (isLoading) return
+    // 403 with requiredIal is a redirect to ID proofing, not a dashboard error.
+    // Skip analytics emission so the household_result event isn't tagged as
+    // an AUTH_FAILURE for what is really a step-up flow.
+    if (requiresProofing) return
     if (isError) {
       setPageData('household_status', 'error')
       setPageData('error_code', dashboardErrorCodeFromStatus(error))
@@ -52,6 +70,10 @@ export function DashboardContent() {
       const childCount = data.summerEbtCases.length
       const isEmpty = childCount === 0 && data.applications.length === 0
       setPageData('household_status', isEmpty ? 'empty' : 'success')
+      // Reset error_code so a stale value from a prior render (e.g. the user
+      // refreshed off an error state into success) does not persist on the
+      // next household_result event.
+      setPageData('error_code', null)
       setUserData('household_linked_children', childCount, ['default', 'analytics'])
       setUserData('co_loaded_cohort', toAnalyticsCohort(data.coLoadedCohort), [
         'default',
@@ -82,7 +104,17 @@ export function DashboardContent() {
       }
     }
     trackEvent(AnalyticsEvents.HOUSEHOLD_RESULT)
-  }, [isLoading, isError, error, data, sessionIsCoLoaded, setPageData, setUserData, trackEvent])
+  }, [
+    isLoading,
+    isError,
+    error,
+    data,
+    requiresProofing,
+    sessionIsCoLoaded,
+    setPageData,
+    setUserData,
+    trackEvent
+  ])
 
   // Visually hidden h1 for accessibility - provides page structure for screen readers
   const pageHeading = <h1 className="usa-sr-only">{t('pageTitle', 'SUN Bucks Dashboard')}</h1>
