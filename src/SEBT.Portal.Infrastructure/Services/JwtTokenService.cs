@@ -212,7 +212,7 @@ public class JwtTokenService : ILocalLoginTokenService, IOidcTokenService, ISess
             .ToDictionary(c => c.Type, c => c.Value, StringComparer.OrdinalIgnoreCase);
 
         // Resolve IAL: use whichever is higher between the existing session claim
-        // and the DB value. This lets the post-DocV elevation (DB=IAL2, claim=IAL1)
+        // and the DB value. This lets the post-DocV elevation (DB=IAL1plus, claim=IAL1)
         // take effect on refresh, without ever allowing a stale or admin-edited DB
         // downgrade to supersede a current claim (defense-in-depth).
         var existingIalClaim = existingClaims.GetValueOrDefault(JwtClaimTypes.Ial);
