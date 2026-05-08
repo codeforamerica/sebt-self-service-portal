@@ -1,5 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging.Abstractions;
+using SEBT.Portal.Core.Exceptions;
+using SEBT.Portal.Core.Services;
 using SEBT.Portal.Core.Utilities;
 using SEBT.Portal.Infrastructure.Data.Entities;
 using SEBT.Portal.Infrastructure.Helpers;
@@ -103,5 +105,88 @@ public class PiiPlaintextEncryptionBackfillTests : IClassFixture<SqlServerTestFi
         Assert.Equal(
             EmailNormalizer.Normalize(email),
             TestPortalCryptography.PiiSymmetricEncryption.DecryptOrPassThroughLegacy(storedUserAfter2.Email));
+    }
+
+    [Fact]
+    public async Task ApplyAsync_whenDecryptFails_doesNotPartiallyCommitBatch()
+    {
+        using var seedDb = _fixture.CreateContext();
+        var firstEmail = $"backfill-fail-first-{Guid.NewGuid()}@example.com";
+        var secondEmail = $"backfill-fail-second-{Guid.NewGuid()}@example.com";
+
+        seedDb.Users.Add(UserFactory.CreateUserEntity(e =>
+        {
+            e.Email = firstEmail;
+            e.EmailHash = null;
+            e.Phone = "+15555550101";
+        }));
+        seedDb.Users.Add(UserFactory.CreateUserEntity(e =>
+        {
+            e.Email = secondEmail;
+            e.EmailHash = null;
+            e.Phone = "+15555550102";
+        }));
+        await seedDb.SaveChangesAsync();
+
+        // Throw on second row in the same batch to verify SaveChanges is not partially applied.
+        var throwingCrypto = new ThrowOnNthDecryptCrypto(
+            inner: TestPortalCryptography.PiiSymmetricEncryption,
+            throwOnCall: 2);
+
+        using var runDb = _fixture.CreateContext();
+        var backfill = new PiiPlaintextEncryptionBackfill(
+            runDb,
+            throwingCrypto,
+            TestPortalCryptography.EmailLookupHasher,
+            NullLogger<PiiPlaintextEncryptionBackfill>.Instance);
+
+        await Assert.ThrowsAsync<PiiDecryptException>(() => backfill.ApplyAsync());
+
+        using var verifyDb = _fixture.CreateContext();
+        var users = await verifyDb.Users
+            .Where(u => u.Email == firstEmail || u.Email == secondEmail)
+            .OrderBy(u => u.Email)
+            .ToListAsync();
+
+        Assert.Equal(2, users.Count);
+        Assert.All(users, u =>
+        {
+            Assert.DoesNotContain(PiiAesGcmSymmetricEncryption.EnvelopePrefix, u.Email ?? string.Empty, StringComparison.Ordinal);
+            Assert.Null(u.EmailHash);
+            Assert.DoesNotContain(PiiAesGcmSymmetricEncryption.EnvelopePrefix, u.Phone ?? string.Empty, StringComparison.Ordinal);
+        });
+    }
+
+    private sealed class ThrowOnNthDecryptCrypto : IPiiSymmetricEncryption
+    {
+        private readonly IPiiSymmetricEncryption _inner;
+        private readonly int _throwOnCall;
+        private int _callCount;
+
+        public ThrowOnNthDecryptCrypto(IPiiSymmetricEncryption inner, int throwOnCall)
+        {
+            _inner = inner;
+            _throwOnCall = throwOnCall;
+        }
+
+        public bool IsEnvelope(string? storedValue) => _inner.IsEnvelope(storedValue);
+
+        public string? Encrypt(string? plaintext) => _inner.Encrypt(plaintext);
+
+        public string Decrypt(string storedValue) => _inner.Decrypt(storedValue);
+
+        public string? DecryptOrPassThroughLegacy(string? storedValue)
+        {
+            _callCount++;
+            if (_callCount == _throwOnCall)
+            {
+                throw new PiiDecryptException("Synthetic decrypt failure for batch rollback test.");
+            }
+
+            return _inner.DecryptOrPassThroughLegacy(storedValue);
+        }
+
+        public string ReSealWithActiveEncryptor(string envelopeCiphertext) =>
+            _inner.ReSealWithActiveEncryptor(envelopeCiphertext);
     }
 }

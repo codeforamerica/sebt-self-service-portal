@@ -1,5 +1,6 @@
 using System.Text;
 using System.Threading.RateLimiting;
+using System.Data.Common;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Microsoft.AspNetCore.HttpOverrides;
@@ -15,6 +16,7 @@ using SEBT.Portal.Api.Middleware;
 using SEBT.Portal.Api.Options;
 using SEBT.Portal.Api.Services;
 using SEBT.Portal.Core.AppSettings;
+using SEBT.Portal.Core.Exceptions;
 using SEBT.Portal.Core.Services;
 using SEBT.Portal.Infrastructure.Configuration;
 using SEBT.Portal.Infrastructure.Services;
@@ -437,6 +439,20 @@ try
     {
         var piiBackfill = scope.ServiceProvider.GetRequiredService<PiiPlaintextEncryptionBackfill>();
         await piiBackfill.ApplyAsync(CancellationToken.None);
+    }
+    catch (PiiDecryptException backfillEx)
+    {
+        Log.Error(
+            backfillEx,
+            "PII ciphertext backfill failed due to decryption/authentication error. " +
+            "Startup continues, but legacy plaintext may remain until this is resolved.");
+    }
+    catch (DbException backfillEx)
+    {
+        Log.Warning(
+            backfillEx,
+            "PII ciphertext backfill hit a database error (likely transient). " +
+            "Startup continues; backfill should be retried.");
     }
     catch (Exception backfillEx)
     {
