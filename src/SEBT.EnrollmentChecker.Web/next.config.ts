@@ -21,7 +21,7 @@ const nextConfig: NextConfig = {
   // avoid pulling react-i18next into the RSC server bundle via the barrel export.
   env: {
     NEXT_PUBLIC_STATE: state,
-    NEXT_BASE_PATH: basePath,
+    NEXT_PUBLIC_BASE_PATH: basePath,
   },
   experimental: {
     // Use our custom sass-loader configuration instead of built-in
