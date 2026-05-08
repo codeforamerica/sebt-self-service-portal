@@ -396,7 +396,7 @@ public class PortalDbContextTests
     [Fact]
     public void Users_EmailHash_ShouldHaveFilteredUniqueIndex()
     {
-        // Equality lookup uses EmailHash; ciphertext Email is intentionally non-unique/non-indexed at the DB layer.
+        // Primary equality lookup uses EmailHash; ciphertext rows omit IX_Users_Email_LegacyLookup (filtered out).
         // Arrange
         var options = new DbContextOptionsBuilder<PortalDbContext>()
             .UseInMemoryDatabase(databaseName: Guid.NewGuid().ToString())
@@ -414,6 +414,28 @@ public class PortalDbContextTests
         Assert.True(emailHashIndex!.IsUnique);
         Assert.Equal("IX_Users_EmailHash", emailHashIndex.GetDatabaseName());
         Assert.Equal("[EmailHash] IS NOT NULL", emailHashIndex.GetFilter());
+    }
+
+    [Fact]
+    public void Users_Email_ShouldHaveFilteredNonUniqueIndex_ForLegacyPlaintextLookup()
+    {
+        // Arrange
+        var options = new DbContextOptionsBuilder<PortalDbContext>()
+            .UseInMemoryDatabase(databaseName: Guid.NewGuid().ToString())
+            .Options;
+
+        using var context = new PortalDbContext(options);
+
+        // Act
+        var entityType = context.Model.FindEntityType(typeof(UserEntity));
+        var legacyEmailIndex = entityType!.GetIndexes()
+            .FirstOrDefault(i => i.Properties.Count == 1 && i.Properties[0].Name == "Email");
+
+        // Assert
+        Assert.NotNull(legacyEmailIndex);
+        Assert.False(legacyEmailIndex!.IsUnique);
+        Assert.Equal("IX_Users_Email_LegacyLookup", legacyEmailIndex.GetDatabaseName());
+        Assert.Equal("[EmailHash] IS NULL AND [Email] IS NOT NULL", legacyEmailIndex.GetFilter());
     }
 
     [Fact]

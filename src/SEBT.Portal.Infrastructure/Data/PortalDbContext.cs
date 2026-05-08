@@ -83,6 +83,12 @@ public class PortalDbContext : DbContext
                 .IsUnique()
                 .HasDatabaseName("IX_Users_EmailHash")
                 .HasFilter("[EmailHash] IS NOT NULL");
+
+            // Non-unique filtered index for transitional plaintext rows (EmailHash null): keeps OR-branch lookups in
+            // DatabaseUserRepository from scanning Users after IX_Users_Email was dropped for ciphertext Email column widths.
+            entity.HasIndex(e => e.Email)
+                .HasDatabaseName("IX_Users_Email_LegacyLookup")
+                .HasFilter("[EmailHash] IS NULL AND [Email] IS NOT NULL");
             entity.Property(e => e.IdProofingStatus)
                 .IsRequired()
                 .HasDefaultValue(0); // 0 = NotStarted
