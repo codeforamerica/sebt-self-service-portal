@@ -33,4 +33,11 @@ public class UpdateAddressCommand : ICommand<AddressValidationResult>
     [Required(ErrorMessage = "Postal code is required.")]
     [RegularExpression(@"^\d{5}(-\d{4})?$", ErrorMessage = "Postal code must be a valid 5- or 9-digit ZIP code.")]
     public required string PostalCode { get; init; }
+
+    /// <summary>
+    /// When true and address verification produced a normalized suggestion, persist the command fields
+    /// (what the user entered) instead of returning another suggestion. Used after the user explicitly
+    /// chooses "address you entered" on the suggestion screen.
+    /// </summary>
+    public bool AcceptEnteredAddress { get; init; }
 }

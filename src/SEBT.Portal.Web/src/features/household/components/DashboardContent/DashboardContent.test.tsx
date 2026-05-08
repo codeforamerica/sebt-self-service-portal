@@ -216,6 +216,25 @@ describe('DashboardContent', () => {
     expect(screen.getByRole('link', { name: /logout|sign out/i })).toBeInTheDocument()
   })
 
+  it('renders sign-out link on the populated dashboard when userProfile is missing', async () => {
+    // DC's vw_HouseholdCases view does not surface guardian-name columns, so
+    // a fully populated DC household resolves with userProfile=null. The card
+    // returns null in that case; without a fallback the user has no logout.
+    server.use(
+      http.get('/api/household/data', () => {
+        return HttpResponse.json({ ...TEST_HOUSEHOLD_DATA, userProfile: null })
+      })
+    )
+
+    renderWithProviders(<DashboardContent />)
+
+    await waitFor(() => {
+      expect(screen.getByText('Sophia Martinez')).toBeInTheDocument()
+    })
+
+    expect(screen.getByRole('link', { name: /logout|sign out/i })).toBeInTheDocument()
+  })
+
   it('renders sign-out link on 404', async () => {
     server.use(
       http.get('/api/household/data', () => {

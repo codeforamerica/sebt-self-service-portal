@@ -177,7 +177,7 @@ export function DashboardContent() {
       {pageHeading}
       <DashboardAlerts />
       <ActionButtons allowedActions={data.allowedActions} />
-      <UserProfileCard />
+      {data.userProfile ? <UserProfileCard /> : <SignOutLink />}
       <HouseholdSummary />
       <EnrolledChildren />
       <EbtEdgeSection />
