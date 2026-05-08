@@ -26,4 +26,9 @@ public record UpdateAddressRequest
     [Required(ErrorMessage = "Postal code is required.")]
     [RegularExpression(@"^\d{5}(-\d{4})?$", ErrorMessage = "Postal code must be a valid 5- or 9-digit ZIP code.")]
     public required string PostalCode { get; init; }
+
+    /// <summary>
+    /// Persist the submitted address even when verification suggests an alternative (user chose entered address).
+    /// </summary>
+    public bool? AcceptEnteredAddress { get; init; }
 }

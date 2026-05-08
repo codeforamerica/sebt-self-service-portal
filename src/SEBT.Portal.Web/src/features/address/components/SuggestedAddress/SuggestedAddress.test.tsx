@@ -215,7 +215,30 @@ describe('SuggestedAddress', () => {
     })
   })
 
-  it('calls setAddress with entered address when "Address you entered" is selected', async () => {
+  it('calls API with acceptEnteredAddress when "Address you entered" is selected', async () => {
+    server.use(
+      http.put('/api/household/address', async ({ request }) => {
+        const body = (await request.json()) as UpdateAddressRequest
+        expect(body.acceptEnteredAddress).toBe(true)
+        expect(body).toMatchObject({
+          streetAddress1: '123 Martin Luther King Jr Ave NW',
+          city: 'Washington',
+          state: 'District of Columbia',
+          postalCode: '20001'
+        })
+        return HttpResponse.json({
+          status: 'valid',
+          normalizedAddress: {
+            streetAddress1: body.streetAddress1,
+            streetAddress2: body.streetAddress2 ?? null,
+            city: body.city,
+            state: body.state,
+            postalCode: body.postalCode
+          }
+        })
+      })
+    )
+
     const { user } = renderSuggestedAddress()
 
     const enteredRadio = screen.getByRole('radio', { name: /address you entered/i })
@@ -224,7 +247,9 @@ describe('SuggestedAddress', () => {
     const continueButton = screen.getByRole('button', { name: /continue/i })
     await user.click(continueButton)
 
-    expect(mockPush).toHaveBeenCalledWith('/profile/address/replacement-cards')
+    await waitFor(() => {
+      expect(mockPush).toHaveBeenCalledWith('/profile/address/replacement-cards')
+    })
   })
 
   it('navigates using context continuePath when configured', async () => {
@@ -266,6 +291,40 @@ describe('SuggestedAddress', () => {
         HttpResponse.json({
           status: 'valid',
           normalizedAddress: {
+            streetAddress1: '123 MLK JR AVE NW',
+            streetAddress2: null,
+            city: 'WASHINGTON',
+            state: 'DC',
+            postalCode: '20001-0001'
+          }
+        })
+      )
+    )
+
+    const { user } = renderSuggestedAddress(mockSuggestionResult, mockEntered, {
+      includeInspector: true
+    })
+
+    const continueButton = screen.getByRole('button', { name: /continue/i })
+    await user.click(continueButton)
+
+    await waitFor(() => {
+      expect(screen.getByTestId('has-address')).toHaveTextContent('yes')
+      const contextData = JSON.parse(screen.getByTestId('address-json').textContent ?? '{}')
+      expect(contextData.streetAddress1).toBe('123 MLK JR AVE NW')
+      expect(contextData.city).toBe('WASHINGTON')
+      expect(contextData.postalCode).toBe('20001-0001')
+      expect(mockPush).toHaveBeenCalledWith('/profile/address/replacement-cards')
+    })
+  })
+
+  it('continues when API returns suggestion after selecting suggested address', async () => {
+    server.use(
+      http.put('/api/household/address', () =>
+        HttpResponse.json({
+          status: 'suggestion',
+          reason: 'suggested',
+          suggestedAddress: {
             streetAddress1: '123 MLK JR AVE NW',
             streetAddress2: null,
             city: 'WASHINGTON',

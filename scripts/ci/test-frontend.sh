@@ -8,8 +8,7 @@
 # Options:
 #   --skip-install    Skip dependency installation (useful if already installed)
 
-set -e  # Exit on error
-set -u  # Exit on undefined variable
+set -euo pipefail  # Exit on error, undefined variable, or pipeline failure
 
 # Colors for output
 RED='\033[0;31m'

@@ -2,6 +2,7 @@ import type { NextConfig } from 'next'
 import path from 'path'
 
 const state = process.env.STATE ?? 'co'
+const basePath = process.env.BASE_PATH ?? ''
 
 // @sebt/design-system is a workspace dependency installed into this package's local node_modules.
 // __dirname is src/SEBT.EnrollmentChecker.Web/
@@ -13,12 +14,14 @@ if (process.env.BUILD_STANDALONE === 'true' && process.env.BUILD_STATIC === 'tru
 
 const nextConfig: NextConfig = {
   reactCompiler: true,
+  basePath: basePath,
   transpilePackages: ['@sebt/design-system'],
   // Note: react-i18next is NOT in serverExternalPackages here (unlike the portal).
   // Instead, layout.tsx uses direct imports from @sebt/design-system subpaths to
   // avoid pulling react-i18next into the RSC server bundle via the barrel export.
   env: {
-    NEXT_PUBLIC_STATE: state
+    NEXT_PUBLIC_STATE: state,
+    NEXT_PUBLIC_BASE_PATH: basePath,
   },
   experimental: {
     // Use our custom sass-loader configuration instead of built-in

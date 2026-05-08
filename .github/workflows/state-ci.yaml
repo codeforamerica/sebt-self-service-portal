@@ -4,6 +4,9 @@
 
 name: State CI
 
+permissions:
+  contents: read
+
 on:
   push:
     branches: ["main", "deploy/*"]
@@ -98,8 +101,7 @@ jobs:
           echo "pnpm: ${{ steps.config.outputs.pnpm_version }}"
           echo ".NET: ${{ steps.config.outputs.dotnet_version }}"
           echo "Build Config: ${{ steps.config.outputs.build_config }}"
-      
-      
+
       - name: Determine state connector ref
         id: connector-ref
         run: |
@@ -122,7 +124,7 @@ jobs:
           repository: codeforamerica/sebt-self-service-portal-state-connector
           ref: ${{ steps.connector-ref.outputs.ref }}
           path: state-connector
-      
+
       # Docker Build Path
       - name: Build Backend (Docker)
         if: steps.config.outputs.use_docker == 'true'
@@ -214,3 +216,14 @@ jobs:
             src/**/bin/${{ steps.config.outputs.build_config }}
             output/backend-dependencies.csv
           retention-days: 7
+
+  ci-scripts-test:
+    name: CI scripts smoke tests
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Run scripts/ci/tests/run-all.sh
+        run: bash scripts/ci/tests/run-all.sh
