@@ -4,7 +4,7 @@ using SEBT.Portal.Core.AppSettings;
 namespace SEBT.Portal.Infrastructure.Configuration;
 
 /// <summary>
-/// Ensures <see cref="PiiEncryptionSettings"/> binds coherently: key ring parses, lengths, and ActiveKeyId resolves.
+/// Ensures <see cref="PiiEncryptionSettings"/> binds coherently: key ring parses, 256-bit key lengths, and ActiveKeyId resolves.
 /// </summary>
 public sealed class PiiEncryptionSettingsValidator : IValidateOptions<PiiEncryptionSettings>
 {

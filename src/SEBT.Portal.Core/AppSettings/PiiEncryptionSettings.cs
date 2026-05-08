@@ -3,11 +3,14 @@ using System.ComponentModel.DataAnnotations;
 namespace SEBT.Portal.Core.AppSettings;
 
 /// <summary>
-/// AES-GCM key material configuration for reversible PII column encryption (see ADR).
+/// AES-256-GCM key material configuration for reversible PII column encryption (see ADR).
 /// </summary>
 public class PiiEncryptionSettings
 {
     public const string SectionName = "PiiEncryption";
+
+    /// <summary>Decoded key material must be exactly this many bytes (256-bit AES only).</summary>
+    public const int RequiredKeyMaterialLengthBytes = 32;
 
     /// <summary>The key id entries are encrypted or re-encrypted with at write time.</summary>
     [Required(ErrorMessage = "PiiEncryption:ActiveKeyId is required.")]
@@ -35,10 +38,10 @@ public class PiiEncryptionSettings
 
         foreach (var (id, raw) in dictionary)
         {
-            if (raw.Length is not (16 or 24 or 32))
+            if (raw.Length != RequiredKeyMaterialLengthBytes)
             {
                 throw new InvalidOperationException(
-                    $"PII encryption key '{id}' length must be 16, 24, or 32 bytes.");
+                    $"PII encryption key '{id}' must decode to exactly {RequiredKeyMaterialLengthBytes} bytes (256-bit AES-GCM); actual length was {raw.Length}.");
             }
         }
 
@@ -63,7 +66,7 @@ public class PiiEncryptionKeySetting
     [MinLength(1)]
     public string KeyId { get; set; } = "";
 
-    /// <summary>Raw AES key bytes (UTF-16 — store base64 in configuration).</summary>
+    /// <summary>Raw AES-256 key bytes (store Base64 in configuration; decoded length must be 32).</summary>
     [Required(ErrorMessage = "Each PII encryption key entry requires KeyMaterialBase64.")]
     [MinLength(1)]
     public string KeyMaterialBase64 { get; set; } = "";

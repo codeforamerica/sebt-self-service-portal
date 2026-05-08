@@ -31,6 +31,30 @@ public class PiiEncryptionSettingsValidatorTests
     }
 
     [Fact]
+    public void Validate_WhenKeyMaterialNot256Bits_ReturnsFail()
+    {
+        var options = new PiiEncryptionSettings
+        {
+            ActiveKeyId = "short-key",
+            Keys =
+            [
+                new PiiEncryptionKeySetting
+                {
+                    KeyId = "short-key",
+                    // Decodes to 16 bytes — AES-128-sized; only 256-bit keys are allowed.
+                    KeyMaterialBase64 = Convert.ToBase64String(new byte[16])
+                }
+            ]
+        };
+
+        var result = _validator.Validate(Options.DefaultName, options);
+
+        Assert.True(result.Failed);
+        Assert.Contains("256-bit", result.FailureMessage, StringComparison.Ordinal);
+        Assert.Contains("32", result.FailureMessage, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void Validate_WhenActiveKeyMissingFromRing_ReturnsFail()
     {
         var options = new PiiEncryptionSettings
