@@ -75,8 +75,7 @@ public sealed class PiiPlaintextEncryptionBackfill
             return 0;
         }
 
-        await _dbContext.SaveChangesAsync(cancellationToken);
-        _dbContext.ChangeTracker.Clear();
+        await SaveChangesAndDetachBatchAsync(cancellationToken);
 
         _logger.LogInformation("PII ciphertext backfill: encrypted {Rows} Users row batch.", batch.Count);
         return batch.Count;
@@ -123,6 +122,17 @@ public sealed class PiiPlaintextEncryptionBackfill
         write(string.IsNullOrEmpty(plaintext) ? null : _crypto.Encrypt(plaintext));
     }
 
+    /// <summary>
+    /// Persists then clears the change tracker. Not redundant with <see cref="DbContext.SaveChangesAsync(System.Threading.CancellationToken)"/> —
+    /// saved entities stay tracked as <see cref="EntityState.Unchanged"/>; without <see cref="ChangeTracker.Clear"/>,
+    /// each batch would retain prior rows until backfill completes (unbounded tracker growth).
+    /// </summary>
+    private async Task SaveChangesAndDetachBatchAsync(CancellationToken cancellationToken)
+    {
+        await _dbContext.SaveChangesAsync(cancellationToken);
+        _dbContext.ChangeTracker.Clear();
+    }
+
     private async Task MigrateDocVerificationLoopAsync(CancellationToken cancellationToken)
     {
         int migrated;
@@ -158,8 +168,7 @@ public sealed class PiiPlaintextEncryptionBackfill
             return 0;
         }
 
-        await _dbContext.SaveChangesAsync(cancellationToken);
-        _dbContext.ChangeTracker.Clear();
+        await SaveChangesAndDetachBatchAsync(cancellationToken);
 
         _logger.LogInformation(
             "PII ciphertext backfill: encrypted {Rows} DocVerificationChallenge row batch.",
