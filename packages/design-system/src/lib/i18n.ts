@@ -60,8 +60,6 @@ export function initI18n(
   // eslint-disable-next-line security/detect-object-injection -- state is validated at build time
   const resources = stateResources[state] ?? stateResources['dc'] ?? {}
 
-  const isDev = process.env.NODE_ENV === 'development'
-
   i18n.use(initReactI18next).init({
     resources,
     lng: 'en',
@@ -78,22 +76,7 @@ export function initI18n(
       }
     },
     react: { useSuspense: false },
-    debug: isDev,
-    // Respect caller-supplied fallbacks (including explicit empty strings, which
-    // callers use with the `t(key, { defaultValue: '' }) || jsFallback` pattern).
-    // Only flag bare t('key') calls with no defaultValue at all.
-    parseMissingKeyHandler: (key: string, defaultValue?: string): string => {
-      if (defaultValue !== undefined) return defaultValue
-      if (isDev) return `⚠ NO COPY: ${key}`
-      return key
-    },
-    saveMissing: isDev,
-    missingKeyHandler: isDev
-      ? (lngs: readonly string[], ns: string, key: string): void => {
-          // eslint-disable-next-line no-console
-          console.warn(`[i18n] Missing copy: ${lngs.join(',')} / ${ns} / ${key}`)
-        }
-      : false
+    debug: process.env.NODE_ENV === 'development'
   })
 }
 
