@@ -720,7 +720,7 @@ public class SubmitIdProofingCommandHandlerTests
         await handler.Handle(command, CancellationToken.None);
 
         Assert.Equal(IdProofingStatus.Completed, user.IdProofingStatus);
-        Assert.Equal(UserIalLevel.IAL2, user.IalLevel);
+        Assert.Equal(UserIalLevel.IAL1plus, user.IalLevel);
         Assert.NotNull(user.IdProofingCompletedAt);
     }
 

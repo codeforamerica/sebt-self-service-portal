@@ -18,7 +18,7 @@ export function LandingPage() {
     <div className="usa-section">
       <div className="grid-container">
         <Image
-          src={`/images/states/co/summer-ebt-logo.svg`}
+          src={`${process.env.NEXT_PUBLIC_BASE_PATH}/images/states/co/summer-ebt-logo.svg`}
           alt="Summer EBT"
           width={287}
           height={33}

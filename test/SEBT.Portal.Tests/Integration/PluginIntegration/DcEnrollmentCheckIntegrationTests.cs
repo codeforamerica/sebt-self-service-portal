@@ -14,6 +14,8 @@ namespace SEBT.Portal.Tests.Integration.PluginIntegration;
 /// These tests require:
 /// - DC plugin DLLs built into plugins-dc/ (with all transitive dependencies)
 /// - Docker running (for the MSSQL Testcontainer)
+/// - <c>DCConnector:CheckEligibilityProcName</c> pointing at the fixture stub (<c>dbo.sp_CheckEligibility</c>),
+///   matching production behavior where the proc name has no default.
 ///
 /// Tests skip gracefully when plugin DLLs are not present or can't be loaded.
 /// </summary>
@@ -46,7 +48,7 @@ public class DcEnrollmentCheckIntegrationTests : IClassFixture<DcSourceDatabaseF
                     configOverrides: new Dictionary<string, string>
                     {
                         ["DCConnector:ConnectionString"] = dcDatabase.ConnectionString,
-                        // Required by DcEnrollmentCheckService (no default); must match DcSourceDatabaseFixture stub.
+                        // Required by DcEnrollmentCheckService (no default); must match dbo.sp_CheckEligibility in DcSourceDatabaseFixture.
                         ["DCConnector:CheckEligibilityProcName"] = "dbo.sp_CheckEligibility"
                     });
 

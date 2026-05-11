@@ -386,7 +386,7 @@ describe('DocVerifyPage', () => {
       })
 
       // Refresh must be awaited before navigation so the dashboard's first
-      // fetches carry the rotated JWT with IAL2.
+      // fetches carry the rotated JWT with IAL1+.
       expect(callOrder).toEqual(['refresh', 'navigate'])
     })
 

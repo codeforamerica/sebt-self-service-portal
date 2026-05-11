@@ -83,6 +83,22 @@ public static class Dependencies
                 : sp.GetRequiredService<PassThroughAddressUpdateService>();
         });
 
+        // Per-state blocked-address data file. CO ships a CSV
+        // (county/government office addresses) embedded in this assembly; other
+        // states fall back to the empty source and rely on the inline list in
+        // AddressValidationData:BlockedAddresses for any small hand-curated entries.
+        services.AddSingleton<IBlockedAddressDataSource>(_ =>
+        {
+            var state = Environment.GetEnvironmentVariable("STATE")?.ToLowerInvariant();
+            return state switch
+            {
+                "co" => new CsvBlockedAddressDataSource(
+                    typeof(CsvBlockedAddressDataSource).Assembly,
+                    "SEBT.Portal.Infrastructure.BlockedAddresses.co-undeliverable-addresses.csv"),
+                _ => new EmptyBlockedAddressDataSource()
+            };
+        });
+
         // Address validation — checks blocked addresses and street abbreviations per state config
         services.AddSingleton<IAddressValidationService, AddressValidationService>();
 
