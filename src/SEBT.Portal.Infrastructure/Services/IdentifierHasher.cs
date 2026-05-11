@@ -14,17 +14,29 @@ namespace SEBT.Portal.Infrastructure.Services;
 public class IdentifierHasher : IIdentifierHasher
 {
     private readonly byte[] _keyBytes;
+    private readonly byte[] _analyticsKeyBytes;
     private const int HashLengthHex = 64;
 
     public IdentifierHasher(IOptions<IdentifierHasherSettings> options)
     {
-        var secretKey = options?.Value?.SecretKey
+        var settings = options?.Value
+            ?? throw new InvalidOperationException("IdentifierHasher settings must be configured.");
+
+        var secretKey = settings.SecretKey
             ?? throw new InvalidOperationException("IdentifierHasher:SecretKey must be configured.");
         _keyBytes = Encoding.UTF8.GetBytes(secretKey);
         if (_keyBytes.Length < 32)
         {
             throw new InvalidOperationException("IdentifierHasher:SecretKey must be at least 32 characters.");
         }
+
+        // Separate analytics key keeps rotation safe: rotating the analytics
+        // secret only churns vendor-side digests, leaving stored cooldown
+        // hashes intact. Falls back to SecretKey when unset for back-compat.
+        var analyticsKey = settings.AnalyticsSecretKey;
+        _analyticsKeyBytes = !string.IsNullOrEmpty(analyticsKey)
+            ? Encoding.UTF8.GetBytes(analyticsKey)
+            : _keyBytes;
     }
 
     /// <inheritdoc />
@@ -57,6 +69,18 @@ public class IdentifierHasher : IIdentifierHasher
         var computedBytes = Convert.FromHexString(computed);
         var storedBytes = Convert.FromHexString(storedHash);
         return CryptographicOperations.FixedTimeEquals(computedBytes, storedBytes);
+    }
+
+    /// <inheritdoc />
+    public string? HashForAnalytics(string? plaintext)
+    {
+        if (string.IsNullOrWhiteSpace(plaintext))
+        {
+            return null;
+        }
+
+        var hash = HMACSHA256.HashData(_analyticsKeyBytes, Encoding.UTF8.GetBytes(plaintext));
+        return Convert.ToHexString(hash).ToLowerInvariant();
     }
 
     /// <inheritdoc />

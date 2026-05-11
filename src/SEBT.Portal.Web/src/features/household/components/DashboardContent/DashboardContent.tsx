@@ -59,6 +59,11 @@ export function DashboardContent() {
       if (isEmpty && sessionIsCoLoaded === true) {
         setPageData('household_reason', 'no_children')
       }
+
+      // hashedAppId is gated server-side (CO only); skip the call when absent.
+      if (data.hashedAppId) {
+        setUserData('hashed_app_id', data.hashedAppId, ['default', 'analytics'])
+      }
     }
     trackEvent(AnalyticsEvents.HOUSEHOLD_RESULT)
   }, [isLoading, isError, data, sessionIsCoLoaded, setPageData, setUserData, trackEvent])

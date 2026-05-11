@@ -66,6 +66,7 @@ describe('AuthContext', () => {
 
       expect(result.current.isAuthenticated).toBe(true)
       expect(result.current.session).toEqual({
+        userId: null,
         email: 'user@example.com',
         ial: '1plus',
         idProofingStatus: 2,
