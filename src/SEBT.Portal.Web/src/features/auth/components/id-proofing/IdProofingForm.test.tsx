@@ -973,6 +973,88 @@ describe('IdProofingForm', () => {
     })
   })
 
+  describe('Loading state while submission is in flight', () => {
+    // DC-378: a slow Socure response used to leave the form fully visible with only
+    // the submit button changing to "Continue...". Users couldn't tell the system
+    // was working, so a final off-boarding or error result read as "we showed me
+    // an error after I waited." Replacing the form with a dedicated
+    // LoadingInterstitial gives an unambiguous "we're processing" state.
+    it('replaces the form with a loading interstitial while the mutation is pending', async () => {
+      // Hand-controlled promise so we can hold the mutation in its pending state
+      // long enough to assert what is on screen.
+      let resolveResponse: () => void = () => {}
+      const responsePromise = new Promise<void>((resolve) => {
+        resolveResponse = resolve
+      })
+
+      server.use(
+        http.post('/api/id-proofing', async () => {
+          await responsePromise
+          return HttpResponse.json({ result: 'matched' })
+        })
+      )
+
+      const user = userEvent.setup()
+      renderWithProviders(
+        <IdProofingForm
+          idOptions={TEST_ID_OPTIONS}
+          contactLink={TEST_CONTACT_LINK}
+        />
+      )
+
+      await user.selectOptions(screen.getByRole('combobox', { name: /month/i }), '03')
+      await user.type(screen.getByRole('textbox', { name: INPUT_LABEL_DAY }), '10')
+      await user.type(screen.getByRole('textbox', { name: INPUT_LABEL_YEAR }), '1990')
+      await user.click(screen.getByRole('radio', { name: LABEL_SSN }))
+      await user.type(await screen.findByRole('textbox', { name: INPUT_LABEL_SSN }), '999999999')
+      await user.click(screen.getByRole('button', { name: /continue/i }))
+
+      // While the mutation is in flight: loading interstitial visible, form gone.
+      await waitFor(() => {
+        expect(screen.getByRole('status')).toBeInTheDocument()
+      })
+      expect(screen.queryByRole('button', { name: /continue/i })).not.toBeInTheDocument()
+      expect(screen.queryByRole('radio', { name: LABEL_SSN })).not.toBeInTheDocument()
+
+      // Let the mutation resolve and confirm the success path still navigates.
+      resolveResponse()
+      await waitFor(() => {
+        expect(mockPush).toHaveBeenCalledWith('/dashboard')
+      })
+    })
+
+    it('restores the form and shows the submit error alert when the mutation throws', async () => {
+      // The error path must NOT leave the loading interstitial stuck on screen —
+      // the user needs to see the alert above the form so they can retry.
+      server.use(
+        http.post('/api/id-proofing', () => {
+          return HttpResponse.json({ error: 'Test API error' }, { status: 400 })
+        })
+      )
+
+      const user = userEvent.setup()
+      renderWithProviders(
+        <IdProofingForm
+          idOptions={TEST_ID_OPTIONS}
+          contactLink={TEST_CONTACT_LINK}
+        />
+      )
+
+      await user.selectOptions(screen.getByRole('combobox', { name: /month/i }), '01')
+      await user.type(screen.getByRole('textbox', { name: INPUT_LABEL_DAY }), '15')
+      await user.type(screen.getByRole('textbox', { name: INPUT_LABEL_YEAR }), '1990')
+      await user.click(screen.getByRole('radio', { name: LABEL_NONE }))
+      await user.click(screen.getByRole('button', { name: /continue/i }))
+
+      await waitFor(() => {
+        expect(screen.getByRole('alert')).toHaveTextContent('Something went wrong')
+      })
+      // Form is back; interstitial is gone.
+      expect(screen.getByRole('button', { name: /continue/i })).toBeInTheDocument()
+      expect(screen.queryByRole('status')).not.toBeInTheDocument()
+    })
+  })
+
   describe('API error handling', () => {
     it('shows a submit error alert when the API returns an error', async () => {
       const user = userEvent.setup()

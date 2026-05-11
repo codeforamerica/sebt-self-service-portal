@@ -5,7 +5,7 @@ import { useId, useState, type FormEvent } from 'react'
 import { useTranslation } from 'react-i18next'
 
 import { AnalyticsEvents, useDataLayer } from '@sebt/analytics'
-import { Alert, Button, InputField } from '@sebt/design-system'
+import { Alert, Button, InputField, LoadingInterstitial } from '@sebt/design-system'
 
 import { useAuth } from '@/features/auth'
 import {
@@ -89,6 +89,7 @@ export function IdProofingForm({ idOptions, contactLink, getDiToken }: IdProofin
   const { t: tCommon } = useTranslation('common')
   const { t: tPersonalInfo } = useTranslation('personalInfo')
   const { t: tValidation } = useTranslation('validation')
+  const { t: tProcessing } = useTranslation('step-upProcessing')
   const formId = useId()
   const months = getLocalizedMonths(i18n.language)
 
@@ -278,6 +279,20 @@ export function IdProofingForm({ idOptions, contactLink, getDiToken }: IdProofin
       void err
       setSubmitError(t('idProofingGenericError', 'Something went wrong. Please try again.'))
     }
+  }
+
+  // While the Socure-backed mutation is in flight, replace the form with a
+  // dedicated loading interstitial. The mutation can take several seconds when
+  // Socure responds slowly; without this, users only see the submit button text
+  // change to "Continue..." and any eventual outcome (off-boarding navigation or
+  // an inline error) reads as "we just got an error after waiting."
+  if (submitIdProofing.isPending) {
+    return (
+      <LoadingInterstitial
+        title={tProcessing('title')}
+        message={tProcessing('body')}
+      />
+    )
   }
 
   return (
