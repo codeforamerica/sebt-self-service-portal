@@ -53,6 +53,7 @@ public class UpdateAddressCommandHandler(
 
         var addressOutcome = await addressUpdateService.ValidateAndNormalizeAsync(addressRequest, cancellationToken);
         Address? normalizedAddress = null;
+        var normalizationCorrectedAddress = false;
         switch (addressOutcome)
         {
             case ValidationFailedResult<AddressUpdateSuccess> addressValidationFailed:
@@ -72,6 +73,7 @@ public class UpdateAddressCommandHandler(
                 return Result<AddressValidationResult>.DependencyFailed(addressDependencyFailed.Reason, addressDependencyFailed.Message);
             case SuccessResult<AddressUpdateSuccess> success:
                 normalizedAddress = success.Value.NormalizedAddress;
+                normalizationCorrectedAddress = success.Value.WasCorrected;
                 break;
             default:
                 return Result<AddressValidationResult>.DependencyFailed(
@@ -81,14 +83,71 @@ public class UpdateAddressCommandHandler(
 
         // Run state-specific address checks (blocked addresses, DC abbreviations, 30-char limit)
         // after Smarty normalization so we validate the canonical form.
-        var stateValidation = await addressValidationService.ValidateAsync(
+        var stateValidationOnNormalized = await addressValidationService.ValidateAsync(
             normalizedAddress!, cancellationToken);
-        if (!stateValidation.IsValid)
+
+        // Smarty's USPS-long canonical street can exceed DC's connector limit while the user's typed
+        // street still fits. Abbreviated suggestions must not loop forever when the user explicitly
+        // chooses "address you entered" - validate and persist those lines instead.
+        var abbreviatedOnlyBlocksPersist = false;
+        if (!stateValidationOnNormalized.IsValid)
         {
+            // Only abbreviated-normalization mismatch may proceed; entered lines are validated below before persist.
+            if (stateValidationOnNormalized.Reason != "abbreviated")
+            {
+                logger.LogInformation(
+                    "Address failed state-specific validation: {Reason}",
+                    stateValidationOnNormalized.Reason);
+                return Result<AddressValidationResult>.Success(stateValidationOnNormalized);
+            }
+
+            if (!command.AcceptEnteredAddress)
+            {
+                logger.LogInformation(
+                    "Address failed state-specific validation: {Reason}",
+                    stateValidationOnNormalized.Reason);
+                return Result<AddressValidationResult>.Success(stateValidationOnNormalized);
+            }
+
+            abbreviatedOnlyBlocksPersist = true;
+        }
+
+        Address persistAddress = normalizedAddress!;
+
+        var enteredAddressModel = new Address
+        {
+            StreetAddress1 = command.StreetAddress1.Trim(),
+            StreetAddress2 = string.IsNullOrWhiteSpace(command.StreetAddress2)
+                ? null
+                : command.StreetAddress2.Trim(),
+            City = command.City.Trim(),
+            State = command.State.Trim(),
+            PostalCode = command.PostalCode.Trim()
+        };
+
+        if (command.AcceptEnteredAddress)
+        {
+            var enteredStateValidation =
+                await addressValidationService.ValidateAsync(enteredAddressModel, cancellationToken);
+            if (!enteredStateValidation.IsValid)
+            {
+                logger.LogInformation(
+                    "User-opted entered address failed state-specific validation: {Reason}",
+                    enteredStateValidation.Reason);
+                return Result<AddressValidationResult>.Success(enteredStateValidation);
+            }
+
+            persistAddress = enteredAddressModel;
             logger.LogInformation(
-                "Address failed state-specific validation: {Reason}",
-                stateValidation.Reason);
-            return Result<AddressValidationResult>.Success(stateValidation);
+                abbreviatedOnlyBlocksPersist
+                    ? "Persisting user-entered address after opting out of abbreviated connector form"
+                    : "Persisting user-entered address after opting out of normalization suggestion");
+        }
+        else if (normalizationCorrectedAddress)
+        {
+            logger.LogInformation("Address normalization produced a suggested alternative");
+            return Result<AddressValidationResult>.Success(
+                AddressValidationResult.Suggestion(normalizedAddress!, "suggested"));
         }
 
         var identifier = await resolver.ResolveAsync(command.User, cancellationToken);
@@ -98,7 +157,7 @@ public class UpdateAddressCommandHandler(
             return Result<AddressValidationResult>.Unauthorized("Unable to identify user from token.");
         }
 
-        // Never log raw address fields — PII policy.
+        // Never log raw address fields - PII policy.
         // Extract enum name to a local to break CodeQL taint chain (identifier is tainted via .Value).
         var identifierKind = identifier.Type.ToString();
 
@@ -165,14 +224,14 @@ public class UpdateAddressCommandHandler(
             }
         }
 
-        // Use the normalized address from validation for the state connector call.
+        // Use the persisted address (normalized or user-entered when opted in) for the state connector call.
         var pluginAddress = new PluginAddress
         {
-            StreetAddress1 = normalizedAddress!.StreetAddress1,
-            StreetAddress2 = normalizedAddress.StreetAddress2,
-            City = normalizedAddress.City,
-            State = normalizedAddress.State,
-            PostalCode = normalizedAddress.PostalCode
+            StreetAddress1 = persistAddress.StreetAddress1,
+            StreetAddress2 = persistAddress.StreetAddress2,
+            City = persistAddress.City,
+            State = persistAddress.State,
+            PostalCode = persistAddress.PostalCode
         };
 
         var updateRequest = new PluginAddressUpdateRequest
@@ -189,7 +248,7 @@ public class UpdateAddressCommandHandler(
             {
                 logger.LogInformation("Address update completed for household identifier kind {Kind}", identifierKind);
                 return Result<AddressValidationResult>.Success(
-                    AddressValidationResult.Valid(normalizedAddress));
+                    AddressValidationResult.Valid(persistAddress));
             }
 
             if (updateResult.IsPolicyRejection)

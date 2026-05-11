@@ -56,6 +56,18 @@ public interface IHouseholdRepository
         CancellationToken cancellationToken = default);
 
     /// <summary>
+    /// DC co-loaded fallback: loads household via warehouse IC + guardian DOB when rows use IC as <c>PortalID</c>.
+    /// Sets envelope email to <paramref name="guardianLoginEmail"/>; non-DC plugins return <c>null</c>.
+    /// </summary>
+    Task<HouseholdData?> GetHouseholdByBenefitIdentifierAndGuardianDobAsync(
+        string guardianLoginEmail,
+        string benefitIdentifierIc,
+        DateOnly guardianDateOfBirth,
+        PiiVisibility piiVisibility,
+        UserIalLevel userIalLevel,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
     /// Creates or updates household data.
     /// </summary>
     /// <param name="householdData">The household data to create or update.</param>

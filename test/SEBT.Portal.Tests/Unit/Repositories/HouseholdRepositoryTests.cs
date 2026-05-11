@@ -3,6 +3,7 @@ using NSubstitute;
 using SEBT.Portal.Core.Models;
 using SEBT.Portal.Core.Models.Auth;
 using SEBT.Portal.Core.Models.Household;
+using SEBT.Portal.Core.Utilities;
 using SEBT.Portal.Infrastructure.Repositories;
 using ISummerEbtCaseService = SEBT.Portal.StatesPlugins.Interfaces.ISummerEbtCaseService;
 using PluginHouseholdIdentifierType = SEBT.Portal.StatesPlugins.Interfaces.Models.Household.HouseholdIdentifierType;
@@ -96,6 +97,47 @@ public class HouseholdRepositoryTests
         await _summerEbtCaseService.Received(1).TryMatchCoLoadedGuardianByBenefitIdAndDobAsync(
             "IC1",
             dob,
+            Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task GetHouseholdByBenefitIdentifierAndGuardianDobAsync_DelegatesToPlugin_AndMapsCore()
+    {
+        var loginEmail = "guardian@example.com";
+        var dob = new DateOnly(1984, 3, 5);
+        var pluginData = new PluginHouseholdData
+        {
+            Email = EmailNormalizer.Normalize(loginEmail),
+            BenefitIssuanceType = PluginBenefitIssuanceType.SnapEbtCard,
+            Applications = new List<PluginApplication>(),
+            SummerEbtCases = new List<PluginSummerEbtCase>()
+        };
+
+        _summerEbtCaseService
+            .GetHouseholdByBenefitIdentifierAndDobAsync(
+                "IC000001",
+                dob,
+                EmailNormalizer.Normalize(loginEmail),
+                Arg.Any<PluginPiiVisibility>(),
+                PluginIdentityAssuranceLevel.IAL1plus,
+                Arg.Any<CancellationToken>())
+            .Returns(pluginData);
+
+        var result = await _repository.GetHouseholdByBenefitIdentifierAndGuardianDobAsync(
+            loginEmail,
+            "IC000001",
+            dob,
+            FullPii,
+            UserIalLevel.IAL1plus);
+
+        Assert.NotNull(result);
+        Assert.Equal(EmailNormalizer.Normalize(loginEmail), result!.Email);
+        await _summerEbtCaseService.Received(1).GetHouseholdByBenefitIdentifierAndDobAsync(
+            "IC000001",
+            dob,
+            EmailNormalizer.Normalize(loginEmail),
+            Arg.Any<PluginPiiVisibility>(),
+            PluginIdentityAssuranceLevel.IAL1plus,
             Arg.Any<CancellationToken>());
     }
 

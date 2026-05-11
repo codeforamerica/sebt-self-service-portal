@@ -158,7 +158,7 @@ export function DocVerifyPage({ contactLink }: DocVerifyPageProps) {
     trackEvent(AnalyticsEvents.IDV_FINAL_RESULT)
     clearChallengeContext()
 
-    // DC-296: the webhook just bumped the user to IAL2 server-side. Await a
+    // DC-296: the webhook just bumped the user to IAL1+ server-side. Await a
     // token refresh so the rotated HttpOnly cookie is in place before we
     // navigate. Otherwise the dashboard's first fetches race the refresh and
     // hit the IAL guard with the stale IAL1 JWT. Swallow failures so we never

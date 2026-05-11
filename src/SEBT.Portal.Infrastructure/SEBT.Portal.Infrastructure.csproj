@@ -81,6 +81,7 @@
     <ItemGroup>
       <EmbeddedResource Include="Templates\Email\OtpEmail.html" />
       <EmbeddedResource Include="Templates\Email\logo.png" />
+      <EmbeddedResource Include="BlockedAddresses\co-undeliverable-addresses.csv" />
     </ItemGroup>
 
 </Project>
