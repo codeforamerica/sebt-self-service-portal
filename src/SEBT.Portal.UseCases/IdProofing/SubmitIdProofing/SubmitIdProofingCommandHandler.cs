@@ -302,7 +302,7 @@ public class SubmitIdProofingCommandHandler(
                 // Single save: attempt count + proofing completion together
                 return await CompleteProofingAndRespond(
                     user,
-                    UserIalLevel.IAL2,
+                    UserIalLevel.IAL1plus,
                     cancellationToken,
                     "Socure ACCEPT (no DocV required)");
 

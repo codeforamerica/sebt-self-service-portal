@@ -125,7 +125,7 @@ export function ResultsPage({ results, applicationUrl }: ResultsPageProps) {
     <div className="usa-section">
       <div className="grid-container">
         <Image
-          src="/images/states/co/icon-review-card.svg" // TODO dynamically load icons based on status
+          src={`${process.env.NEXT_PUBLIC_BASE_PATH}/images/states/co/icon-review-card.svg`} // TODO dynamically load icons based on status
           alt=""
           width={100}
           height={75}

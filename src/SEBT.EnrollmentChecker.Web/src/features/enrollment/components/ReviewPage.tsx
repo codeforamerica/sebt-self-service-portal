@@ -26,7 +26,7 @@ export function ReviewPage({ onSubmit }: ReviewPageProps) {
     <div className="usa-section">
       <div className="grid-container">
         <Image
-          src="/images/states/co/icon-review-card.svg"
+          src={`${process.env.NEXT_PUBLIC_BASE_PATH}/images/states/co/icon-review-card.svg`}
           alt=""
           width={100}
           height={75}
