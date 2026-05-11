@@ -77,14 +77,25 @@ export function CardSelection({ confirmPath = 'select/confirm' }: CardSelectionP
   if (groups.length === 0) {
     const hasCases = data.summerEbtCases.length > 0
     return (
-      <Alert variant="info">
-        {hasCases
-          ? t(
-              'cardSelectionAllInCooldown',
-              'All cards were recently replaced. Please try again later.'
-            )
-          : t('cardSelectionNoChildren', 'No children found in your household.')}
-      </Alert>
+      <>
+        <Alert variant="info">
+          {hasCases
+            ? t(
+                'cardSelectionAllInCooldown',
+                'All cards were recently replaced. Please try again later.'
+              )
+            : t('cardSelectionNoChildren', 'No children found in your household.')}
+        </Alert>
+        <div className="margin-top-3">
+          <Button
+            variant="outline"
+            type="button"
+            onClick={() => router.back()}
+          >
+            {tCommon('back')}
+          </Button>
+        </div>
+      </>
     )
   }
 
@@ -185,9 +196,9 @@ export function CardSelection({ confirmPath = 'select/confirm' }: CardSelectionP
           type="button"
           onClick={() => router.back()}
         >
-          {tCommon('back', 'Back')}
+          {tCommon('back')}
         </Button>
-        <Button type="submit">{tCommon('continue', 'Continue')}</Button>
+        <Button type="submit">{tCommon('continue')}</Button>
       </div>
     </form>
   )
