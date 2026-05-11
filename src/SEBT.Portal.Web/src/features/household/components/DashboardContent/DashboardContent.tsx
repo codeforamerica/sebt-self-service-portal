@@ -21,6 +21,32 @@ import { EnrolledChildren } from '../EnrolledChildren'
 import { HouseholdSummary } from '../HouseholdSummary'
 import { UserProfileCard } from '../UserProfileCard'
 
+/**
+ * Closed taxonomy of dashboard error codes per docs/adr/0015-co-loaded-error-code-taxonomy.md.
+ * Adding a new value requires an ADR amendment plus matching updates in the
+ * Serilog `OutcomeCode` field on the backend and in the i18n locale keys.
+ */
+export type DashboardErrorCode =
+  | 'NOT_FOUND'
+  | 'NO_CHILDREN'
+  | 'AUTH_FAILURE'
+  | 'TECH_ERROR'
+  | 'INVALID_INPUT'
+
+// Maps an HTTP failure to one of the analytics taxonomy buckets. NOT_FOUND
+// covers 404 (the connector returned no household for the user); 4xx other
+// than 404 are treated as auth/permission failures (the API redirects 401/403
+// before reaching the dashboard, but tag them here defensively); everything
+// else lands in TECH_ERROR. INVALID_INPUT is reserved for form-submission
+// 400s with ValidationProblemDetails — the dashboard doesn't submit forms,
+// so it is intentionally never produced here.
+function dashboardErrorCodeFromStatus(error: unknown): DashboardErrorCode {
+  if (!(error instanceof ApiError)) return 'TECH_ERROR'
+  if (error.status === 404) return 'NOT_FOUND'
+  if (error.status === 401 || error.status === 403) return 'AUTH_FAILURE'
+  return 'TECH_ERROR'
+}
+
 // TODO: Add to CSV: "S2 - Portal Dashboard - Error Heading" and "S2 - Portal Dashboard - Error Description"
 export function DashboardContent() {
   const { t } = useTranslation('dashboard')
@@ -33,31 +59,48 @@ export function DashboardContent() {
 
   useEffect(() => {
     if (isLoading) return
+    // 403 with requiredIal is a redirect to ID proofing, not a dashboard error.
+    // Skip analytics emission so the household_result event isn't tagged as
+    // an AUTH_FAILURE for what is really a step-up flow.
+    if (requiresProofing) return
     if (isError) {
       setPageData('household_status', 'error')
+      setPageData('error_code', dashboardErrorCodeFromStatus(error))
     } else if (data) {
       const childCount = data.summerEbtCases.length
       const isEmpty = childCount === 0 && data.applications.length === 0
       setPageData('household_status', isEmpty ? 'empty' : 'success')
+      // Reset error_code so a stale value from a prior render (e.g. the user
+      // refreshed off an error state into success) does not persist on the
+      // next household_result event.
+      setPageData('error_code', null)
       setUserData('household_linked_children', childCount, ['default', 'analytics'])
       setUserData('co_loaded_cohort', toAnalyticsCohort(data.coLoadedCohort), [
         'default',
         'analytics'
       ])
 
-      // DC-215: classify the household into one of four buckets so analytics can
-      // segment dashboard usage. Same value is mirrored on user.* (persists across
-      // pages) and page.* (lives with this page_load / household_result event).
-      // Passing the raw nullable claim means an unresolved auth state tags
-      // `unknown` instead of biasing toward `non_co_loaded`.
+      // Classify the household into one of four buckets so analytics can
+      // segment dashboard usage. Same value is mirrored on user.* (persists
+      // across pages) and page.* (lives with this page_load /
+      // household_result event). Passing the raw nullable claim means an
+      // unresolved auth state tags `unknown` instead of biasing toward
+      // `non_co_loaded`.
       const coloadingStatus = getColoadingStatus(sessionIsCoLoaded, data)
       setUserData('coloading_status', coloadingStatus, ['default', 'analytics'])
       setPageData('household_type', coloadingStatus)
-      // Distinguishes a co-loaded user who matched but has no enrolled children
-      // from a non-co-loaded applicant seeing the same empty screen. Only fires
-      // for a definitively true claim — null/undefined auth shouldn't infer it.
-      if (isEmpty && sessionIsCoLoaded === true) {
-        setPageData('household_reason', 'no_children')
+      // An empty household is a separate analytics failure category from
+      // server errors — surface it as error_code='NO_CHILDREN' so dashboards
+      // can split "couldn't reach data" from "got data, none qualifies".
+      if (isEmpty) {
+        setPageData('error_code', 'NO_CHILDREN')
+        // Distinguishes a co-loaded user who matched but has no enrolled
+        // children from a non-co-loaded applicant seeing the same empty
+        // screen. Only fires for a definitively true claim — null/undefined
+        // auth shouldn't infer it.
+        if (sessionIsCoLoaded === true) {
+          setPageData('household_reason', 'no_children')
+        }
       }
 
       // hashedAppId is gated server-side (CO only); skip the call when absent.
@@ -66,7 +109,17 @@ export function DashboardContent() {
       }
     }
     trackEvent(AnalyticsEvents.HOUSEHOLD_RESULT)
-  }, [isLoading, isError, data, sessionIsCoLoaded, setPageData, setUserData, trackEvent])
+  }, [
+    isLoading,
+    isError,
+    error,
+    data,
+    requiresProofing,
+    sessionIsCoLoaded,
+    setPageData,
+    setUserData,
+    trackEvent
+  ])
 
   // Visually hidden h1 for accessibility - provides page structure for screen readers
   const pageHeading = <h1 className="usa-sr-only">{t('pageTitle', 'SUN Bucks Dashboard')}</h1>
