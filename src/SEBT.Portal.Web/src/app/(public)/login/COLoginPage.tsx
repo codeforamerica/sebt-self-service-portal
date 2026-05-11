@@ -1,13 +1,10 @@
 'use client'
 
 import type { StateCode } from '@sebt/design-system'
-import { TextLink, getStateLinks } from '@sebt/design-system'
 import { useTranslation } from 'react-i18next'
 import { MyColoradoLogo } from './MyColoradoLogo'
 
 export function COLoginPage({ state }: { state: StateCode }) {
-  const links = getStateLinks(state)
-
   const { t } = useTranslation('login')
   const { t: tCommon } = useTranslation('common')
 
@@ -55,12 +52,6 @@ export function COLoginPage({ state }: { state: StateCode }) {
               {tCommon('logInEsp')}
             </button>
           </div>
-
-          <p className="margin-top-4 font-sans-sm">
-            <TextLink href={links.external.contactUsAssistance}>
-              {t('logInDisclaimerBody2')}
-            </TextLink>
-          </p>
         </section>
       </div>
     </div>

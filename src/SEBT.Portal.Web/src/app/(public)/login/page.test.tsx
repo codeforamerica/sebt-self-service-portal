@@ -114,13 +114,6 @@ describe('LoginPage', () => {
       expect(espButton.querySelector('[data-testid="mycolorado-logo"]')).toBeInTheDocument()
     })
 
-    it('renders the contact assistance link', () => {
-      render(<LoginPage />)
-      expect(
-        screen.getByText('Contact us if you need assistance logging into your account.')
-      ).toBeInTheDocument()
-    })
-
     it('does not render LoginForm', () => {
       render(<LoginPage />)
       expect(screen.queryByTestId('login-form')).not.toBeInTheDocument()
@@ -130,6 +123,13 @@ describe('LoginPage', () => {
   describe('DC state', () => {
     beforeEach(() => {
       mockGetState.mockReturnValue('dc')
+    })
+
+    it('renders the contact assistance link', () => {
+      render(<LoginPage />)
+      expect(
+        screen.getByText('Contact us if you need assistance logging into your account.')
+      ).toBeInTheDocument()
     })
 
     it('renders LoginForm', () => {
