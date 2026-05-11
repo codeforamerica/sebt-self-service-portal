@@ -21,6 +21,11 @@ export function useUserDataSync() {
 
     if (!session) return
 
+    // Portal user UUID (Guid v7), used for per-user analytics correlation.
+    if (session.userId) {
+      setUserData('portal_id', session.userId, ANALYTICS_SCOPE)
+    }
+
     if (session.ial) {
       const ialNumeric = session.ial === '1plus' ? 1.5 : Number(session.ial)
       setUserData('identity_assurance_level', ialNumeric, ANALYTICS_SCOPE)

@@ -50,7 +50,7 @@ export function ChildFormPage({ showSchoolField, apiBaseUrl }: ChildFormPageProp
     <div className="usa-section">
       <div className="grid-container">
         <Image
-          src="/images/states/co/icon-form-card.svg"
+          src={`${process.env.NEXT_PUBLIC_BASE_PATH}/images/states/co/icon-form-card.svg`}
           alt=""
           width={100}
           height={75}
