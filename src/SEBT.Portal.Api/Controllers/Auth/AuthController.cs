@@ -52,6 +52,7 @@ public class AuthController(
 
         return Ok(new AuthorizationStatusResponse(
             IsAuthorized: true,
+            UserId: userId,
             Email: User.GetUserEmail(),
             Ial: User.FindFirst(JwtClaimTypes.Ial)?.Value,
             IdProofingStatus: int.TryParse(User.FindFirst(JwtClaimTypes.IdProofingStatus)?.Value, out var s) ? s : null,

@@ -17,6 +17,7 @@ public class GetHouseholdDataQueryHandlerTests
 {
     private readonly IHouseholdIdentifierResolver _resolver = Substitute.For<IHouseholdIdentifierResolver>();
     private readonly IHouseholdRepository _repository = Substitute.For<IHouseholdRepository>();
+    private readonly IUserRepository _userRepository = Substitute.For<IUserRepository>();
     private readonly IPiiVisibilityService _piiVisibilityService = Substitute.For<IPiiVisibilityService>();
     private readonly IIdProofingService _idProofingService = Substitute.For<IIdProofingService>();
     private readonly ISelfServiceEvaluator _selfServiceEvaluator = Substitute.For<ISelfServiceEvaluator>();
@@ -28,6 +29,7 @@ public class GetHouseholdDataQueryHandlerTests
         new(
             _resolver,
             _repository,
+            _userRepository,
             _piiVisibilityService,
             _idProofingService,
             _selfServiceEvaluator,
@@ -38,6 +40,9 @@ public class GetHouseholdDataQueryHandlerTests
 
     public GetHouseholdDataQueryHandlerTests()
     {
+        _userRepository.GetUserByIdAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
+            .Returns((User?)null);
+
         // Default: no elevated IAL requirement, so existing tests pass without per-test mock setup.
         _idProofingService.Evaluate(
             Arg.Any<ProtectedResource>(), Arg.Any<ProtectedAction>(),
@@ -74,6 +79,140 @@ public class GetHouseholdDataQueryHandlerTests
         var claims = new List<Claim> { new Claim(ClaimTypes.Email, email) };
         var identity = new ClaimsIdentity(claims, "Test");
         return new ClaimsPrincipal(identity);
+    }
+
+    private static ClaimsPrincipal CreateUserWithSub(string email, UserIalLevel ialLevel, Guid userId)
+    {
+        var ial = ialLevel switch
+        {
+            UserIalLevel.IAL1 => "1",
+            UserIalLevel.IAL1plus => "1plus",
+            UserIalLevel.IAL2 => "2",
+            _ => "0"
+        };
+        var claims = new List<Claim>
+        {
+            new Claim(ClaimTypes.Email, email),
+            new Claim(JwtClaimTypes.Ial, ial),
+            new Claim("sub", userId.ToString())
+        };
+        var identity = new ClaimsIdentity(claims, "Test");
+        return new ClaimsPrincipal(identity);
+    }
+
+    [Fact]
+    public async Task Handle_WhenEmailLookupFails_AndCoLoadedUserHasBenefitIc_LoadsHouseholdViaIcDobFallback()
+    {
+        var email = "guardian@example.com";
+        var normalizedEmail = EmailNormalizer.Normalize(email);
+        var userId = Guid.Parse("a1111111-1111-4111-8111-111111111111");
+        var dob = new DateOnly(1984, 3, 5);
+        var principal = CreateUserWithSub(email, UserIalLevel.IAL1plus, userId);
+        var piiVisibility = new PiiVisibility(IncludeAddress: true, IncludeEmail: true, IncludePhone: true);
+
+        _piiVisibilityService.GetVisibility(UserIalLevel.IAL1plus).Returns(piiVisibility);
+        _resolver.ResolveAsync(principal, Arg.Any<CancellationToken>())
+            .Returns(new HouseholdIdentifier(PreferredHouseholdIdType.Email, normalizedEmail));
+
+        _repository.GetHouseholdByIdentifierAsync(
+                Arg.Is<HouseholdIdentifier>(i => i.Type == PreferredHouseholdIdType.Email && i.Value == normalizedEmail),
+                Arg.Any<PiiVisibility>(),
+                UserIalLevel.IAL1plus,
+                Arg.Any<CancellationToken>())
+            .Returns((HouseholdData?)null);
+
+        _userRepository.GetUserByIdAsync(userId, Arg.Any<CancellationToken>())
+            .Returns(new User
+            {
+                Id = userId,
+                Email = email,
+                IsCoLoaded = true,
+                DateOfBirth = dob,
+                SnapId = "IC000001"
+            });
+
+        var fallbackHousehold = new HouseholdData
+        {
+            Email = normalizedEmail,
+            SummerEbtCases = new List<SummerEbtCase>
+            {
+                new()
+                {
+                    SummerEBTCaseID = "SEBT-01",
+                    ChildFirstName = "A",
+                    ChildLastName = "B",
+                    ChildDateOfBirth = new DateTime(2014, 1, 1),
+                    HouseholdType = "DHS",
+                    EligibilityType = "FOOD_STREAMLINE",
+                    ApplicationStatus = ApplicationStatus.Approved,
+                    IssuanceType = IssuanceType.SnapEbtCard,
+                    IsCoLoaded = true,
+                    IsStreamlineCertified = true
+                }
+            },
+            Applications = new List<Application>()
+        };
+
+        _repository.GetHouseholdByBenefitIdentifierAndGuardianDobAsync(
+                normalizedEmail,
+                "IC000001",
+                dob,
+                Arg.Any<PiiVisibility>(),
+                UserIalLevel.IAL1plus,
+                Arg.Any<CancellationToken>())
+            .Returns(fallbackHousehold);
+
+        _identifierHasher.Hash(normalizedEmail).Returns((string?)null);
+
+        var handler = CreateHandler();
+        var result = await handler.Handle(new GetHouseholdDataQuery { User = principal });
+
+        Assert.True(result.IsSuccess);
+        var successResult = Assert.IsType<SuccessResult<HouseholdData>>(result);
+        Assert.Single(successResult.Value.SummerEbtCases);
+        await _repository.Received(1).GetHouseholdByBenefitIdentifierAndGuardianDobAsync(
+            normalizedEmail,
+            "IC000001",
+            dob,
+            Arg.Any<PiiVisibility>(),
+            UserIalLevel.IAL1plus,
+            Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task Handle_WhenEmailLookupFails_AndUserNotCoLoaded_DoesNotInvokeIcDobFallback()
+    {
+        var email = "solo@example.com";
+        var normalizedEmail = EmailNormalizer.Normalize(email);
+        var userId = Guid.Parse("b2222222-2222-4222-8222-222222222222");
+        var principal = CreateUserWithSub(email, UserIalLevel.IAL1plus, userId);
+        var piiVisibility = new PiiVisibility(IncludeAddress: true, IncludeEmail: true, IncludePhone: true);
+
+        _piiVisibilityService.GetVisibility(UserIalLevel.IAL1plus).Returns(piiVisibility);
+        _resolver.ResolveAsync(principal, Arg.Any<CancellationToken>())
+            .Returns(new HouseholdIdentifier(PreferredHouseholdIdType.Email, normalizedEmail));
+
+        _repository.GetHouseholdByIdentifierAsync(
+                Arg.Any<HouseholdIdentifier>(),
+                Arg.Any<PiiVisibility>(),
+                Arg.Any<UserIalLevel>(),
+                Arg.Any<CancellationToken>())
+            .Returns((HouseholdData?)null);
+
+        _userRepository.GetUserByIdAsync(userId, Arg.Any<CancellationToken>())
+            .Returns(new User { Id = userId, Email = email, IsCoLoaded = false, SnapId = "IC000001", DateOfBirth = new DateOnly(1980, 1, 1) });
+
+        var handler = CreateHandler();
+        var result = await handler.Handle(new GetHouseholdDataQuery { User = principal });
+
+        Assert.False(result.IsSuccess);
+        await _repository.DidNotReceive().GetHouseholdByBenefitIdentifierAndGuardianDobAsync(
+            Arg.Any<string>(),
+            Arg.Any<string>(),
+            Arg.Any<DateOnly>(),
+            Arg.Any<PiiVisibility>(),
+            Arg.Any<UserIalLevel>(),
+            Arg.Any<CancellationToken>());
     }
 
     [Fact]
