@@ -5,9 +5,13 @@ import { v4 as uuidv4 } from 'uuid'
 import { z } from 'zod'
 import { toDateOfBirth } from '../schemas/childSchema'
 import type { ChildFormValues } from '../schemas/childSchema'
+import { useIdleTimeout } from './useIdleTimeout'
 
 // Must match the backend's EnrollmentCheckApiRequest.MaxChildren
 export const MAX_CHILDREN = 20
+
+// Auto-clear stored child info after inactivity to limit exposure on shared devices.
+export const IDLE_TIMEOUT_MS = 15 * 60 * 1000
 
 // ── Types ──────────────────────────────────────────────────────────────────
 
@@ -119,6 +123,13 @@ export function EnrollmentProvider({ children }: { children: ReactNode }) {
     })
   }
 
+  function clearState() {
+    if (typeof window !== 'undefined') sessionStorage.removeItem(STORAGE_KEY)
+    setState(initialState)
+  }
+
+  useIdleTimeout(clearState, IDLE_TIMEOUT_MS)
+
   const actions: EnrollmentActions = {
     addChild: (values) => update(s => {
       if (s.children.length >= MAX_CHILDREN) return s
@@ -154,10 +165,7 @@ export function EnrollmentProvider({ children }: { children: ReactNode }) {
       children: s.children.filter(child => child.id !== id)
     })),
     setEditingChildId: (id) => update(s => ({ ...s, editingChildId: id })),
-    clearState: () => {
-      if (typeof window !== 'undefined') sessionStorage.removeItem(STORAGE_KEY)
-      setState(initialState)
-    }
+    clearState
   }
 
   return (
