@@ -1,5 +1,6 @@
 'use client'
 
+import { useRouter } from 'next/navigation'
 import { createContext, useContext, useEffect, useState, type ReactNode } from 'react'
 import { v4 as uuidv4 } from 'uuid'
 import { z } from 'zod'
@@ -107,6 +108,7 @@ function saveToStorage(state: EnrollmentState): void {
 }
 
 export function EnrollmentProvider({ children }: { children: ReactNode }) {
+  const router = useRouter()
   const [state, setState] = useState<EnrollmentState>(initialState)
 
   // Hydrate from sessionStorage after mount (avoids SSR mismatch)
@@ -128,7 +130,10 @@ export function EnrollmentProvider({ children }: { children: ReactNode }) {
     setState(initialState)
   }
 
-  useIdleTimeout(clearState, IDLE_TIMEOUT_MS)
+  useIdleTimeout(() => {
+    clearState()
+    router.push('/')
+  }, IDLE_TIMEOUT_MS)
 
   const actions: EnrollmentActions = {
     addChild: (values) => update(s => {

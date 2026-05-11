@@ -2,6 +2,9 @@ import { act, renderHook } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { EnrollmentProvider, IDLE_TIMEOUT_MS, useEnrollment } from './EnrollmentContext'
 
+const mockPush = vi.fn()
+vi.mock('next/navigation', () => ({ useRouter: () => ({ push: mockPush }) }))
+
 const wrapper = ({ children }: { children: React.ReactNode }) => (
   <EnrollmentProvider>{children}</EnrollmentProvider>
 )
@@ -86,10 +89,13 @@ describe('EnrollmentContext', () => {
   })
 
   describe('idle timeout', () => {
-    beforeEach(() => vi.useFakeTimers())
+    beforeEach(() => {
+      vi.useFakeTimers()
+      mockPush.mockClear()
+    })
     afterEach(() => vi.useRealTimers())
 
-    it('clears state after IDLE_TIMEOUT_MS of inactivity', () => {
+    it('clears state and routes to landing after IDLE_TIMEOUT_MS of inactivity', () => {
       const { result } = renderHook(() => useEnrollment(), { wrapper })
       act(() => result.current.addChild(child))
       expect(result.current.state.children).toHaveLength(1)
@@ -98,6 +104,7 @@ describe('EnrollmentContext', () => {
 
       expect(result.current.state.children).toHaveLength(0)
       expect(sessionStorage.getItem('enrollmentState')).toBeNull()
+      expect(mockPush).toHaveBeenCalledWith('/')
     })
 
     it('resets the idle timer on user activity', () => {
