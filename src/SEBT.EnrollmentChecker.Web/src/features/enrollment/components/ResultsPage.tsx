@@ -1,18 +1,20 @@
 'use client'
 
+import { getApplyHref } from '@/lib/applyHref'
 import Image from 'next/image'
-  import { useState } from 'react'
+import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import type { ChildCheckApiResponse } from '../schemas/enrollmentSchema'
 
 import { mapApiStatus } from '../schemas/enrollmentSchema'
 import { ChildResultCard } from './ChildResultCard'
 import { EnrolledSection } from './EnrolledSection'
+import { IncomeCalculator } from './IncomeCalculator'
 import { NotEnrolledSection } from './NotEnrolledSection'
 
 interface ResultsPageProps {
   results: ChildCheckApiResponse[]
-  applicationUrl: string
+  portalUrl: string
 }
 
 type HouseholdEnrollmentResult = 'allEnrolled' | 'noneEnrolled' | 'mixedEnrolled' | 'indeterminate'
@@ -32,9 +34,10 @@ function computeHouseholdEnrollmentResult(
   }
 }
 
-export function ResultsPage({ results, applicationUrl }: ResultsPageProps) {
-  const { t } = useTranslation('result')
+export function ResultsPage({ results, portalUrl }: ResultsPageProps) {
+  const { t, i18n } = useTranslation('result')
   const [isAccordionExpanded, setIsAccordionExpanded] = useState(false)
+  const applyHref = getApplyHref(i18n.language)
 
   const notEnrolledNextSteps = (
     <section data-testid="not-enrolled-next-steps">
@@ -42,7 +45,7 @@ export function ResultsPage({ results, applicationUrl }: ResultsPageProps) {
       <p className="margin-top-05">{t('applyForSebtBody2')}</p>
       <p>
         <a
-          href={applicationUrl}
+          href={applyHref}
           data-analytics-cta="apply_cta"
           className="usa-button"
           data-testid="apply-for-sebt-link"
@@ -59,8 +62,7 @@ export function ResultsPage({ results, applicationUrl }: ResultsPageProps) {
       <p className="margin-top-05">{t('streamlinedEnrolledAlertBody')}</p>
       <p>
         <a
-          href="http://google.com"
-          // data-analytics-cta="apply_cta" TODO replace w action for dashbaord
+          href={portalUrl}
           className="usa-button"
           data-testid="portal-link"
         >
@@ -84,26 +86,20 @@ export function ResultsPage({ results, applicationUrl }: ResultsPageProps) {
         </button>
       </h2>
       <div
+        id="faq-content"
         className="usa-accordion__content usa-prose"
         hidden={!isAccordionExpanded}
       >
-        <p> {t('applyForSebtAccordionBody1')} </p>
-
-        {/* TO DO: IMPLEMENT CALCULATOR
-        <p> {t('applyForSebtAccordionBody2')} </p>
-        <p> {t('applyForSebtAccordionBody3')} </p>
-        <p> {t('applyForSebtAccordionLabelSelectNumberPeople')} </p>
-        <p> {t('applyForSebtBody3')} </p>
-        <p> {t('applyForSebtBody4')} </p>
+        <p>{t('applyForSebtAccordionBody1')}</p>
         <p>
           <a
-            href={applicationUrl}
-            data-analytics-cta="apply_cta"
-            className="usa-button"
-          >{t('applyLink')}
-          </a> 
-        </p> 
-          </section> */}
+            href={applyHref}
+            data-analytics-cta="apply_cta_accordion"
+          >
+            {t('applyForSebtAccordionBody2')}
+          </a>
+        </p>
+        <IncomeCalculator />
       </div>
     </div>
   )
@@ -117,15 +113,11 @@ export function ResultsPage({ results, applicationUrl }: ResultsPageProps) {
     notEnrolled.length
   )
 
-  // const checkmarkIcon = 'icon-checkmark-card.svg'
-  // const exclaimIcon = 'icon-alert-card.svg'
-  // const reviewIcon = 'icon-review-card.svg'
-
   return (
     <div className="usa-section">
       <div className="grid-container">
         <Image
-          src={`${process.env.NEXT_PUBLIC_BASE_PATH}/images/states/co/icon-review-card.svg`} // TODO dynamically load icons based on status
+          src={`${process.env.NEXT_PUBLIC_BASE_PATH}/images/states/co/icon-review-card.svg`}
           alt=""
           width={100}
           height={75}
@@ -136,10 +128,7 @@ export function ResultsPage({ results, applicationUrl }: ResultsPageProps) {
         {['mixedEnrolled', 'noneEnrolled'].includes(householdEnrollmentResult) && (
           <section >
             <div className="usa-summary-box">
-              <NotEnrolledSection
-                results={notEnrolled}
-                applicationUrl={applicationUrl}
-              />
+              <NotEnrolledSection results={notEnrolled} />
             </div>
             <div className="margin-top-3">
               <EnrolledSection results={enrolled} />

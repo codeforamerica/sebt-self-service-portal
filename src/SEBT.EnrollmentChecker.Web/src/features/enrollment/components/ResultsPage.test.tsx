@@ -6,6 +6,11 @@ import { ResultsPage } from './ResultsPage'
 const mockPush = vi.fn()
 vi.mock('next/navigation', () => ({ useRouter: () => ({ push: mockPush }) }))
 
+const mockApplyHref = 'https://apply.example.gov/?language=en_US'
+vi.mock('@/lib/applyHref', () => ({
+  getApplyHref: () => mockApplyHref
+}))
+
 const mixedEnrolled: ChildCheckApiResponse[] = [
   { 
     checkId: '1', 
@@ -85,6 +90,7 @@ const eligibilityAccordionText = 'How do I know if'
 const enrolledSectionText = 'already enrolled'
 const notEnrolledSectionText = 'NOT enrolled'
 const nextStepsSectionText = 'Next Steps'
+const portalUrl = 'https://portal.example.gov'
 
 describe('ResultsPage', () => {
   describe('Mixed enrollment household', () => {
@@ -92,7 +98,7 @@ describe('ResultsPage', () => {
       render(
         <ResultsPage
           results={mixedEnrolled}
-          applicationUrl="https://apply.example.gov"
+          portalUrl={portalUrl}
         />
       )
     })
@@ -119,13 +125,14 @@ describe('ResultsPage', () => {
 
     it('shows link to apply for sebt', () => {
       const applyLink = screen.getByTestId('apply-for-sebt-link')
-      // TODO update once link copy is added
       expect(applyLink).toBeVisible()
+      expect(applyLink).toHaveAttribute('href', mockApplyHref)
     })
 
     it('shows link to log into sebt portal', () => {
       const portalLink = screen.getByTestId('portal-link')
       expect(portalLink).toHaveTextContent('Summer EBT Portal')
+      expect(portalLink).toHaveAttribute('href', portalUrl)
     })
 
     it('shows eligibility accordion', () => {
@@ -139,7 +146,7 @@ describe('ResultsPage', () => {
       render(
         <ResultsPage
           results={allEnrolled}
-          applicationUrl="https://apply.example.gov"
+          portalUrl={portalUrl}
         />
       )
     })
@@ -159,6 +166,7 @@ describe('ResultsPage', () => {
     it('shows link to log into sebt portal', () => {
       const portalLink = screen.getByTestId('portal-link')
       expect(portalLink).toHaveTextContent('Summer EBT Portal')
+      expect(portalLink).toHaveAttribute('href', portalUrl)
     })
 
     it('does not show link to apply', () => {
@@ -179,7 +187,7 @@ describe('ResultsPage', () => {
       render(
         <ResultsPage
           results={noneEnrolled}
-          applicationUrl="https://apply.example.gov"
+          portalUrl={portalUrl}
         />
       )
     })
@@ -197,8 +205,8 @@ describe('ResultsPage', () => {
 
     it('shows link to apply for sebt', () => {
       const applyLink = screen.getByTestId('apply-for-sebt-link')
-      // TODO update once link copy is added
       expect(applyLink).toBeVisible()
+      expect(applyLink).toHaveAttribute('href', mockApplyHref)
     })
 
     it('does not link to portal', () => {
@@ -216,7 +224,7 @@ describe('ResultsPage', () => {
       render(
         <ResultsPage
           results={errorResponse}
-          applicationUrl="https://apply.example.gov"
+          portalUrl={portalUrl}
         />
       )
     })
@@ -225,6 +233,49 @@ describe('ResultsPage', () => {
     })
     it('shows next steps list', () => {
       expect(screen.getByText(nextStepsSectionText)).toBeVisible()
+    })
+  })
+
+  describe('IncomeCalculator rendering', () => {
+    it('renders IncomeCalculator on mixedEnrolled branch', () => {
+      render(
+        <ResultsPage
+          results={mixedEnrolled}
+          portalUrl={portalUrl}
+        />
+      )
+      expect(screen.getByTestId('income-calculator')).toBeInTheDocument()
+    })
+
+    it('renders IncomeCalculator on noneEnrolled branch', () => {
+      render(
+        <ResultsPage
+          results={noneEnrolled}
+          portalUrl={portalUrl}
+        />
+      )
+      expect(screen.getByTestId('income-calculator')).toBeInTheDocument()
+    })
+
+    it('does NOT render IncomeCalculator on allEnrolled branch', () => {
+      render(
+        <ResultsPage
+          results={allEnrolled}
+          portalUrl={portalUrl}
+        />
+      )
+      expect(screen.queryByTestId('income-calculator')).toBeNull()
+    })
+
+    it('renders IncomeCalculator on indeterminate branch (inherited behavior)', () => {
+      // indeterminate: no enrolled, no notEnrolled — all results are error
+      render(
+        <ResultsPage
+          results={errorResponse}
+          portalUrl={portalUrl}
+        />
+      )
+      expect(screen.getByTestId('income-calculator')).toBeInTheDocument()
     })
   })
 })
