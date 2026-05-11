@@ -92,7 +92,7 @@ export function CardSelection({ confirmPath = 'select/confirm' }: CardSelectionP
             type="button"
             onClick={() => router.back()}
           >
-            {tCommon('back', 'Back')}
+            {tCommon('back')}
           </Button>
         </div>
       </>
@@ -196,9 +196,9 @@ export function CardSelection({ confirmPath = 'select/confirm' }: CardSelectionP
           type="button"
           onClick={() => router.back()}
         >
-          {tCommon('back', 'Back')}
+          {tCommon('back')}
         </Button>
-        <Button type="submit">{tCommon('continue', 'Continue')}</Button>
+        <Button type="submit">{tCommon('continue')}</Button>
       </div>
     </form>
   )
