@@ -56,6 +56,7 @@ function renderComponent() {
 
 function session(isCoLoaded: boolean): SessionInfo {
   return {
+    userId: null,
     email: 'user@example.com',
     ial: '1plus',
     idProofingStatus: 0,

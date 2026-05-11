@@ -315,6 +315,41 @@ describe('DashboardContent', () => {
     })
   })
 
+  describe('hashed_app_id user data', () => {
+    it('sets user.hashed_app_id when the API includes hashedAppId', async () => {
+      const expectedDigest = 'ca383d90647e371547d6e66297cda8089b81fc1c5cb30da6cfcbdf744d9e2861'
+      server.use(
+        http.get('/api/household/data', () => {
+          return HttpResponse.json({ ...TEST_HOUSEHOLD_DATA, hashedAppId: expectedDigest })
+        })
+      )
+
+      renderWithProviders(<DashboardContent />)
+
+      await waitFor(() => {
+        expect(mockSetUserData).toHaveBeenCalledWith('hashed_app_id', expectedDigest, [
+          'default',
+          'analytics'
+        ])
+      })
+    })
+
+    it('does not set user.hashed_app_id when the API omits it (e.g. non-CO state)', async () => {
+      // TEST_HOUSEHOLD_DATA has no hashedAppId — backend gates by state.
+      renderWithProviders(<DashboardContent />)
+
+      await waitFor(() => {
+        expect(mockTrackEvent).toHaveBeenCalledWith('household_result')
+      })
+
+      expect(mockSetUserData).not.toHaveBeenCalledWith(
+        'hashed_app_id',
+        expect.anything(),
+        expect.anything()
+      )
+    })
+  })
+
   describe('co-loaded cohort analytics', () => {
     // Each test ships the backend's coLoadedCohort value and asserts the
     // standardized snake_case analytics property. The payload shape matches

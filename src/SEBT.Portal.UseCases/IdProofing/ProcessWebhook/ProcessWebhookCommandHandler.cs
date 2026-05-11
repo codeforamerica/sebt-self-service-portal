@@ -233,13 +233,13 @@ public class ProcessWebhookCommandHandler(
         }
 
         user.IdProofingStatus = IdProofingStatus.Completed;
-        user.IalLevel = UserIalLevel.IAL2;
+        user.IalLevel = UserIalLevel.IAL1plus;
         user.IdProofingCompletedAt = DateTime.UtcNow;
 
         await userRepository.UpdateUserAsync(user, cancellationToken);
 
         logger.LogInformation(
-            "User {UserId} proofing status updated to Completed, IAL2 after document verification",
+            "User {UserId} proofing status updated to Completed, IAL1plus after document verification",
             userId);
     }
 }

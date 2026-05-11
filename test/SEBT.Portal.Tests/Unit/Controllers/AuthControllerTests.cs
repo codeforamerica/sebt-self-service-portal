@@ -83,6 +83,35 @@ public class AuthControllerTests
     }
 
     [Fact]
+    public void GetAuthorizationStatus_WhenSubClaimPresent_PopulatesUserIdFromGuidClaim()
+    {
+        // Lock in the JWT sub claim → AuthorizationStatusResponse.UserId mapping
+        // so analytics correlation never silently breaks if the claim shape shifts.
+        var userId = Guid.NewGuid();
+        SetupAuthenticatedUserWithSub(userId, email: "user@example.com");
+
+        var result = _controller.GetAuthorizationStatus();
+
+        var okResult = Assert.IsType<OkObjectResult>(result);
+        var response = Assert.IsType<AuthorizationStatusResponse>(okResult.Value);
+        Assert.Equal(userId, response.UserId);
+    }
+
+    [Fact]
+    public void GetAuthorizationStatus_WhenSubClaimAbsent_LeavesUserIdNull()
+    {
+        // No sub claim, only email. Response.UserId must be null rather than
+        // some default Guid.Empty so the frontend can detect "no portal_id".
+        SetupAuthenticatedUser("user@example.com");
+
+        var result = _controller.GetAuthorizationStatus();
+
+        var okResult = Assert.IsType<OkObjectResult>(result);
+        var response = Assert.IsType<AuthorizationStatusResponse>(okResult.Value);
+        Assert.Null(response.UserId);
+    }
+
+    [Fact]
     public void GetAuthorizationStatus_WhenIalAndIdProofingClaimsPresent_IncludesThemInResponse()
     {
         // Arrange

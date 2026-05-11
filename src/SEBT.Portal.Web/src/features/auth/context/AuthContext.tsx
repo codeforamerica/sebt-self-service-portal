@@ -20,6 +20,8 @@ import { AuthorizationStatusResponseSchema } from '../api/auth-status'
  * Mirrors the validated GET /api/auth/status response, minus the always-true `isAuthorized` flag.
  */
 export interface SessionInfo {
+  /** Stable, non-PII portal user UUID. Surfaced for analytics correlation. */
+  userId: string | null
   email: string | null
   ial: string | null
   idProofingStatus: number | null
@@ -51,6 +53,7 @@ async function fetchSession(): Promise<SessionInfo | null> {
     const response = await apiFetch('/auth/status', { schema: AuthorizationStatusResponseSchema })
     if (!response.isAuthorized) return null
     return {
+      userId: response.userId ?? null,
       email: response.email ?? null,
       ial: response.ial ?? null,
       idProofingStatus: response.idProofingStatus ?? null,
