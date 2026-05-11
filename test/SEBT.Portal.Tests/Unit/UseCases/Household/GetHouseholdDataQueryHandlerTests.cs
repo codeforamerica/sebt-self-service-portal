@@ -49,6 +49,11 @@ public class GetHouseholdDataQueryHandlerTests
             Arg.Any<UserIalLevel>(), Arg.Any<IReadOnlyList<SummerEbtCase>>())
             .Returns(new IdProofingDecision(IsAllowed: true, RequiredLevel: UserIalLevel.None));
 
+        // Default: case-aware visibility returns full PII so existing tests don't need to
+        // wire up the cases-aware overload. Tests verifying masking behavior should override.
+        _piiVisibilityService.GetVisibility(Arg.Any<UserIalLevel>(), Arg.Any<IReadOnlyList<SummerEbtCase>>())
+            .Returns(new PiiVisibility(IncludeAddress: true, IncludeEmail: true, IncludePhone: true));
+
         // Default: self-service rules allow both actions so existing tests don't need to mock this.
         _selfServiceEvaluator.Evaluate(Arg.Any<SummerEbtCase>())
             .Returns(new AllowedActions { CanUpdateAddress = true, CanRequestReplacementCard = true });
@@ -228,10 +233,8 @@ public class GetHouseholdDataQueryHandlerTests
             AddressOnFile = new Address { StreetAddress1 = "123 Main St", City = "Denver", State = "CO", PostalCode = "80202" }
         };
 
-        var piiVisibility = new PiiVisibility(IncludeAddress: true, IncludeEmail: true, IncludePhone: true);
         _resolver.ResolveAsync(Arg.Any<ClaimsPrincipal>(), Arg.Any<CancellationToken>())
             .Returns(identifier);
-        _piiVisibilityService.GetVisibility(UserIalLevel.IAL1plus).Returns(piiVisibility);
         _repository.GetHouseholdByIdentifierAsync(identifier, Arg.Any<PiiVisibility>(), Arg.Any<UserIalLevel>(), Arg.Any<CancellationToken>())
             .Returns(householdData);
 
@@ -244,8 +247,7 @@ public class GetHouseholdDataQueryHandlerTests
         // Assert
         Assert.True(result.IsSuccess);
         var successResult = Assert.IsType<SuccessResult<HouseholdData>>(result);
-        Assert.Same(householdData, successResult.Value);
-        Assert.NotNull(successResult.Value.AddressOnFile);
+        Assert.Equal("123 Main St", successResult.Value.AddressOnFile?.StreetAddress1);
         await _repository.Received(1).GetHouseholdByIdentifierAsync(
             Arg.Is<HouseholdIdentifier>(id => id.Type == PreferredHouseholdIdType.Email && id.Value == EmailNormalizer.Normalize(email)),
             Arg.Any<PiiVisibility>(),
@@ -256,16 +258,20 @@ public class GetHouseholdDataQueryHandlerTests
     [Fact]
     public async Task Handle_WhenIdentifierResolvedAndHouseholdExistsButNotIdVerified_ReturnsSuccessWithoutAddress()
     {
-        // Arrange
+        // Arrange: case-aware visibility resolves to address-hidden for this user.
         var email = "user@example.com";
         var user = CreateUser(email, UserIalLevel.None);
         var identifier = HouseholdIdentifier.Email(EmailNormalizer.Normalize(email));
-        var householdData = new HouseholdData { Email = email };
+        var householdData = new HouseholdData
+        {
+            Email = email,
+            AddressOnFile = new Address { StreetAddress1 = "123 Main St", City = "Denver", State = "CO", PostalCode = "80202" }
+        };
 
-        var piiVisibility = new PiiVisibility(IncludeAddress: false, IncludeEmail: true, IncludePhone: true);
         _resolver.ResolveAsync(Arg.Any<ClaimsPrincipal>(), Arg.Any<CancellationToken>())
             .Returns(identifier);
-        _piiVisibilityService.GetVisibility(UserIalLevel.None).Returns(piiVisibility);
+        _piiVisibilityService.GetVisibility(UserIalLevel.None, Arg.Any<IReadOnlyList<SummerEbtCase>>())
+            .Returns(new PiiVisibility(IncludeAddress: false, IncludeEmail: true, IncludePhone: true));
         _repository.GetHouseholdByIdentifierAsync(identifier, Arg.Any<PiiVisibility>(), Arg.Any<UserIalLevel>(), Arg.Any<CancellationToken>())
             .Returns(householdData);
 
@@ -278,7 +284,7 @@ public class GetHouseholdDataQueryHandlerTests
         // Assert
         Assert.True(result.IsSuccess);
         var successResult = Assert.IsType<SuccessResult<HouseholdData>>(result);
-        Assert.Same(householdData, successResult.Value);
+        Assert.Equal("****", successResult.Value.AddressOnFile?.StreetAddress1);
         await _repository.Received(1).GetHouseholdByIdentifierAsync(
             Arg.Any<HouseholdIdentifier>(),
             Arg.Any<PiiVisibility>(),
@@ -441,8 +447,6 @@ public class GetHouseholdDataQueryHandlerTests
 
         _resolver.ResolveAsync(Arg.Any<ClaimsPrincipal>(), Arg.Any<CancellationToken>())
             .Returns(identifier);
-        _piiVisibilityService.GetVisibility(UserIalLevel.IAL1plus)
-            .Returns(new PiiVisibility(IncludeAddress: true, IncludeEmail: true, IncludePhone: true));
         _repository.GetHouseholdByIdentifierAsync(Arg.Any<HouseholdIdentifier>(), Arg.Any<PiiVisibility>(), Arg.Any<UserIalLevel>(), Arg.Any<CancellationToken>())
             .Returns(householdData);
         _idProofingService.Evaluate(
@@ -459,7 +463,7 @@ public class GetHouseholdDataQueryHandlerTests
         // Assert
         Assert.True(result.IsSuccess);
         var success = Assert.IsType<SuccessResult<HouseholdData>>(result);
-        Assert.Same(householdData, success.Value);
+        Assert.Equal(email, success.Value.Email);
     }
 
     [Fact]

@@ -47,6 +47,10 @@ public class HouseholdControllerTests
             Arg.Any<ProtectedResource>(), Arg.Any<ProtectedAction>(),
             Arg.Any<UserIalLevel>(), Arg.Any<IReadOnlyList<SummerEbtCase>>())
             .Returns(new IdProofingDecision(IsAllowed: true, RequiredLevel: UserIalLevel.None));
+        // Default: case-aware visibility returns full PII so existing tests don't need to
+        // wire up the cases-aware overload. Tests verifying masking behavior should override.
+        _piiVisibilityService.GetVisibility(Arg.Any<UserIalLevel>(), Arg.Any<IReadOnlyList<SummerEbtCase>>())
+            .Returns(new PiiVisibility(IncludeAddress: true, IncludeEmail: true, IncludePhone: true));
         // Default: self-service rules allow both actions
         _selfServiceEvaluator.Evaluate(Arg.Any<SummerEbtCase>())
             .Returns(new AllowedActions { CanUpdateAddress = true, CanRequestReplacementCard = true });

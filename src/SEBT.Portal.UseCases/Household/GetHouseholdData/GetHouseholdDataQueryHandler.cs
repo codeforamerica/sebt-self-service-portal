@@ -1,5 +1,6 @@
 using Microsoft.Extensions.Logging;
 using SEBT.Portal.Core.AppSettings;
+using SEBT.Portal.Core.Models;
 using SEBT.Portal.Core.Models.Auth;
 using SEBT.Portal.Core.Models.Household;
 using SEBT.Portal.Core.Repositories;
@@ -33,25 +34,23 @@ public class GetHouseholdDataQueryHandler(
 
         if (identifier == null)
         {
-            logger.LogWarning("Household data request attempted but no household identifier could be resolved from claims");
+            logger.LogError("Household data request attempted but no household identifier could be resolved from claims");
             return Result<HouseholdData>.Unauthorized("Unable to identify user from token.");
         }
 
         logger.LogDebug("Household data request received for identifier type {Type}", identifier.Type);
 
         var userIalLevel = UserIalLevelExtensions.FromClaimsPrincipal(query.User);
-        var piiVisibility = piiVisibilityService.GetVisibility(userIalLevel);
 
-        logger.LogInformation(
-            "PII visibility for user (IalLevel={IalLevel}): Address={IncludeAddress}, Email={IncludeEmail}, Phone={IncludePhone}",
-            userIalLevel,
-            piiVisibility.IncludeAddress,
-            piiVisibility.IncludeEmail,
-            piiVisibility.IncludePhone);
+        // Fetch with full PII so per-case-type view requirements (e.g. address+view)
+        // can be resolved against the household's actual cases below. The
+        // case-aware visibility computed after the fetch decides what's masked
+        // before returning to the caller.
+        var fullPiiVisibility = new PiiVisibility(IncludeAddress: true, IncludeEmail: true, IncludePhone: true);
 
         var householdData = await repository.GetHouseholdByIdentifierAsync(
             identifier,
-            piiVisibility,
+            fullPiiVisibility,
             userIalLevel,
             cancellationToken);
 
@@ -71,7 +70,7 @@ public class GetHouseholdDataQueryHandler(
                         identifier.Value,
                         benefitIc.Trim(),
                         verifiedDob,
-                        piiVisibility,
+                        fullPiiVisibility,
                         userIalLevel,
                         cancellationToken);
                     if (householdData != null)
@@ -105,6 +104,21 @@ public class GetHouseholdDataQueryHandler(
                 $"This household requires {decision.RequiredLevel}. Complete identity verification to access this data.",
                 new Dictionary<string, object?> { ["requiredIal"] = decision.RequiredLevel.ToString() });
         }
+
+        // Resolve PII visibility now that we have the household's cases — needed for
+        // per-case-type view requirements like address+view, which the case-less
+        // overload can't evaluate ("no cases = no case-derived reason to require
+        // elevated IAL"). Then apply masking before returning.
+        var piiVisibility = piiVisibilityService.GetVisibility(userIalLevel, householdData.SummerEbtCases);
+
+        logger.LogInformation(
+            "PII visibility for user (IalLevel={IalLevel}): Address={IncludeAddress}, Email={IncludeEmail}, Phone={IncludePhone}",
+            userIalLevel,
+            piiVisibility.IncludeAddress,
+            piiVisibility.IncludeEmail,
+            piiVisibility.IncludePhone);
+
+        householdData = HouseholdPiiFilter.Apply(householdData, piiVisibility);
 
         // Classify the household on the PRE-filter state so analytics can
         // distinguish cohorts even after co-loaded cases are suppressed. Then

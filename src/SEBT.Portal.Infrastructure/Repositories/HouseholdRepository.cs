@@ -103,7 +103,7 @@ public class HouseholdRepository : IHouseholdRepository
         {
             return null;
         }
-        return ApplyPiiVisibility(core, piiVisibility);
+        return HouseholdPiiFilter.Apply(core, piiVisibility);
     }
 
     private static PluginHouseholdIdentifierType? MapToPluginIdentifierType(PreferredHouseholdIdType type)
@@ -192,34 +192,7 @@ public class HouseholdRepository : IHouseholdRepository
             return null;
         }
 
-        return ApplyPiiVisibility(core, piiVisibility);
-    }
-
-    private static HouseholdData ApplyPiiVisibility(HouseholdData source, PiiVisibility piiVisibility)
-    {
-        return source with
-        {
-            Email = piiVisibility.IncludeEmail ? source.Email : PiiMasker.MaskEmail(source.Email),
-            Phone = piiVisibility.IncludePhone ? source.Phone : PiiMasker.MaskPhone(source.Phone),
-            AddressOnFile = piiVisibility.IncludeAddress && source.AddressOnFile != null
-                ? new Address
-                {
-                    StreetAddress1 = source.AddressOnFile.StreetAddress1,
-                    StreetAddress2 = source.AddressOnFile.StreetAddress2,
-                    City = source.AddressOnFile.City,
-                    State = source.AddressOnFile.State,
-                    PostalCode = source.AddressOnFile.PostalCode
-                }
-                : source.AddressOnFile != null
-                    ? new Address
-                    {
-                        StreetAddress1 = PiiMasker.MaskStreetAddress(source.AddressOnFile.StreetAddress1, source.AddressOnFile.StreetAddress2),
-                        City = source.AddressOnFile.City,
-                        State = source.AddressOnFile.State,
-                        PostalCode = source.AddressOnFile.PostalCode
-                    }
-                    : null
-        };
+        return HouseholdPiiFilter.Apply(core, piiVisibility);
     }
 
     /// <inheritdoc />
