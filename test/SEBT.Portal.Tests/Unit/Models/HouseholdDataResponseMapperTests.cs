@@ -250,4 +250,34 @@ public class HouseholdDataResponseMapperTests
         Assert.Equal("CBMS-REF", sec.EbtCaseNumber);
         Assert.Equal("APP-DISPLAY", sec.CaseDisplayNumber);
     }
+
+    [Fact]
+    public void ToResponse_PassesHashedAppIdThrough_WhenProvided()
+    {
+        var domain = new HouseholdData
+        {
+            Email = "test@example.com",
+            SummerEbtCases = new List<SummerEbtCase>(),
+            Applications = new List<Application>()
+        };
+
+        var response = domain.ToResponse(hashedAppId: "ca383d90647e371547d6e66297cda8089b81fc1c5cb30da6cfcbdf744d9e2861");
+
+        Assert.Equal("ca383d90647e371547d6e66297cda8089b81fc1c5cb30da6cfcbdf744d9e2861", response.HashedAppId);
+    }
+
+    [Fact]
+    public void ToResponse_DefaultsHashedAppIdToNull_WhenNotProvided()
+    {
+        var domain = new HouseholdData
+        {
+            Email = "test@example.com",
+            SummerEbtCases = new List<SummerEbtCase>(),
+            Applications = new List<Application>()
+        };
+
+        var response = domain.ToResponse();
+
+        Assert.Null(response.HashedAppId);
+    }
 }
