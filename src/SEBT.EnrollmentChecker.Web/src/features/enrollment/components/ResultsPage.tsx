@@ -65,9 +65,9 @@ export function ResultsPage({ results, portalUrl }: ResultsPageProps) {
         {' '}
         {t('streamlinedEnrolledAlertTitle')}
       </h2>
-      <p className="margin-top-2">
+      <div className="margin-top-2">
         <RichText>{t('streamlinedEnrolledAlertBody')}</RichText>
-      </p>
+      </div>
       <p>
         <a
           href={portalUrl}
