@@ -6,6 +6,7 @@ import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import type { ChildCheckApiResponse } from '../schemas/enrollmentSchema'
 
+import { RichText } from '@sebt/design-system'
 import { mapApiStatus } from '../schemas/enrollmentSchema'
 import { ChildResultCard } from './ChildResultCard'
 import { EnrolledSection } from './EnrolledSection'
@@ -35,7 +36,7 @@ function computeHouseholdEnrollmentResult(
 }
 
 export function ResultsPage({ results, portalUrl }: ResultsPageProps) {
-  const { t } = useTranslation('result')
+  const { t, i18n } = useTranslation('result')
   const { t: tCommon } = useTranslation('common')
 
   const [isAccordionExpanded, setIsAccordionExpanded] = useState(false)
@@ -43,7 +44,7 @@ export function ResultsPage({ results, portalUrl }: ResultsPageProps) {
 
   const notEnrolledNextSteps = (
     <section data-testid="not-enrolled-next-steps">
-      <h2 className="usa-process-list__heading">{t('applyForSebtActionApply')}</h2>
+      <h2 className="usa-process-list__heading margin-top-4">{t('applyForSebtActionApply')}</h2>
       <p className="margin-top-05">{t('applyForSebtBody2')}</p>
       <p>
         <a
@@ -60,8 +61,13 @@ export function ResultsPage({ results, portalUrl }: ResultsPageProps) {
 
   const enrolledNextSteps = (
     <section data-testid="enrolled-next-steps">
-      <h2 className="usa-process-list__heading"> {t('streamlinedEnrolledAlertTitle')}</h2>
-      <p className="margin-top-05">{t('streamlinedEnrolledAlertBody')}</p>
+      <h2 className="usa-process-list__heading margin-top-4">
+        {' '}
+        {t('streamlinedEnrolledAlertTitle')}
+      </h2>
+      <p className="margin-top-2">
+        <RichText>{t('streamlinedEnrolledAlertBody')}</RichText>
+      </p>
       <p>
         <a
           href={portalUrl}
@@ -75,7 +81,10 @@ export function ResultsPage({ results, portalUrl }: ResultsPageProps) {
   )
 
   const eligibilityAccordion = (
-    <div className="usa-accordion margin-top-4" data-testid="eligibility-accordion">
+    <div
+      className="usa-accordion margin-top-4"
+      data-testid="eligibility-accordion"
+    >
       <h2 className="usa-accordion__heading">
         <button
           type="button"
@@ -128,7 +137,7 @@ export function ResultsPage({ results, portalUrl }: ResultsPageProps) {
         <h1 className="font-family-sans margin-top-1">{t('title')}</h1>
 
         {['mixedEnrolled', 'noneEnrolled'].includes(householdEnrollmentResult) && (
-          <section >
+          <section>
             <div className="usa-summary-box">
               <NotEnrolledSection results={notEnrolled} />
             </div>
@@ -139,7 +148,7 @@ export function ResultsPage({ results, portalUrl }: ResultsPageProps) {
         )}
 
         {householdEnrollmentResult === 'allEnrolled' && (
-          <div className="usa-summary-box" >
+          <div className="usa-summary-box">
             <EnrolledSection results={enrolled} />
           </div>
         )}
@@ -161,13 +170,17 @@ export function ResultsPage({ results, portalUrl }: ResultsPageProps) {
 
         {['mixedEnrolled', 'indeterminate'].includes(householdEnrollmentResult) && (
           <section data-testid="next-steps">
-            <h1 className="font-family-sans margin-top-1">{t('streamlinedEnrolledStepsHeading')}</h1>
-            <ol className="usa-process-list">
-              <li className="usa-process-list__item">{notEnrolledNextSteps}</li>
-              <li className="usa-process-list__item">{enrolledNextSteps}</li>
+            <h1 className="font-family-sans margin-top-4">
+              {t('streamlinedEnrolledStepsHeading')}
+            </h1>
+            <ol className="usa-process-list  margin-top-1">
+              <li className="usa-process-list__item margin-top-2">{notEnrolledNextSteps}</li>
+              <li className="usa-process-list__item margin-top-2">{enrolledNextSteps}</li>
             </ol>
 
             {eligibilityAccordion}
+            <p> {t('applyForSebtBody3')}</p>
+            <p> {t('applyForSebtBody4')}</p>
           </section>
         )}
 
@@ -175,12 +188,12 @@ export function ResultsPage({ results, portalUrl }: ResultsPageProps) {
           <section>
             {notEnrolledNextSteps}
             {eligibilityAccordion}
+            <p> {t('applyForSebtBody3')}</p>
+            <p> {t('applyForSebtBody4')}</p>
           </section>
         )}
 
-        {householdEnrollmentResult === 'allEnrolled' && (
-          <section>{enrolledNextSteps}</section>
-        )}
+        {householdEnrollmentResult === 'allEnrolled' && <section>{enrolledNextSteps}</section>}
       </div>
     </div>
   )
