@@ -2,46 +2,40 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 
 import { getApplyHref } from './applyHref'
 
-let mockState = 'co'
-vi.mock('@sebt/design-system', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@sebt/design-system')>()
-  return { ...actual, getState: () => mockState }
-})
-
 afterEach(() => {
-  mockState = 'co'
+  vi.unstubAllEnvs()
 })
 
 describe('getApplyHref', () => {
-  it('returns the CO PEAK starting-page URL with English language param when locale is en', () => {
-    mockState = 'co'
+  it('returns the PEAK starting-page URL with English language param when locale is en', () => {
     expect(getApplyHref('en')).toBe(
       'https://peak.my.site.com/SEBT/s/apply-for-sebt-starting-page?language=en_US'
     )
   })
 
-  it('returns the CO PEAK starting-page URL with Spanish language param when locale is es', () => {
-    mockState = 'co'
+  it('returns the PEAK starting-page URL with Spanish language param when locale is es', () => {
     expect(getApplyHref('es')).toBe(
-      'https://peak.my.site.com/SEBT/s/apply-for-sebt-starting-page?language=es_US'
+      'https://peak.my.site.com/SEBT/s/apply-for-sebt-starting-page?language=es'
     )
   })
 
-  it('falls back to en_US for an unknown locale on CO', () => {
-    mockState = 'co'
+  it('falls back to en_US for an unknown locale', () => {
     expect(getApplyHref('fr')).toBe(
       'https://peak.my.site.com/SEBT/s/apply-for-sebt-starting-page?language=en_US'
     )
   })
 
-  it('returns /apply when state is dc, regardless of locale', () => {
-    mockState = 'dc'
-    expect(getApplyHref('en')).toBe('/apply')
-    expect(getApplyHref('es')).toBe('/apply')
+  it('returns the PEAK URL when NEXT_PUBLIC_STATE is empty', () => {
+    vi.stubEnv('NEXT_PUBLIC_STATE', '')
+    expect(getApplyHref('en')).toBe(
+      'https://peak.my.site.com/SEBT/s/apply-for-sebt-starting-page?language=en_US'
+    )
   })
 
-  it('falls back to /apply for an unknown state', () => {
-    mockState = 'xx'
-    expect(getApplyHref('en')).toBe('/apply')
+  it('returns the PEAK URL when NEXT_PUBLIC_STATE is dc', () => {
+    vi.stubEnv('NEXT_PUBLIC_STATE', 'dc')
+    expect(getApplyHref('en')).toBe(
+      'https://peak.my.site.com/SEBT/s/apply-for-sebt-starting-page?language=en_US'
+    )
   })
 })
