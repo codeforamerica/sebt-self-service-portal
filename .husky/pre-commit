@@ -29,6 +29,11 @@ has_frontend_changes() {
   git diff --cached --name-only | grep -qE '^src/SEBT\.Portal\.Web/' || return 1
 }
 
+# Check if cooldown-exclusion sources were staged (workspace policy or lockfile)
+has_cooldown_exclusion_changes() {
+  git diff --cached --name-only | grep -qE '^(pnpm-workspace\.yaml|pnpm-lock\.yaml)$' || return 1
+}
+
 log_info "=== Running pre-commit checks ==="
 echo ""
 
