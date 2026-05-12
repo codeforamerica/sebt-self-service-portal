@@ -153,6 +153,7 @@ public class SubmitIdProofingCommandHandler(
                 if (await householdRepository.TryMatchCoLoadedGuardianByBenefitIdAndDobAsync(
                         command.IdValue.Trim(),
                         submittedDob,
+                        command.UserId,
                         cancellationToken))
                 {
                     IdProofingBenefitIdentifierTypes.PersistBenefitIdentifierOnUser(user, command.IdType, command.IdValue);
