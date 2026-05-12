@@ -12,7 +12,8 @@ export function LandingPage() {
   const [isAccordionExpanded, setIsAccordionExpanded] = useState(false)
 
   // body3 is \n-delimited list items — split and filter empties
-  const body3Items = t('body3').split('\n').filter(Boolean)
+  const reaonsForAutoEnrollment = t('body3').split('\n').filter(Boolean)
+  const reasonsToApply = t('body5').split('\n').filter(Boolean)
 
   return (
     <div className="usa-section">
@@ -78,11 +79,18 @@ export function LandingPage() {
           >
             <RichText>{t('body2')}</RichText>
             <ul className="usa-list margin-top-2">
-              {body3Items.map((item, index) => (
-                <li key={index}>{item}</li>
+              {reaonsForAutoEnrollment.map((item, index) => (
+                <li key={index}><RichText>{item}</RichText></li>
+
               ))}
             </ul>
             <RichText>{t('body4')}</RichText>
+            <ul className="usa-list margin-top-2">
+              {reasonsToApply.map((item, index) => (
+                <li key={index}><RichText>{item}</RichText></li>
+              ))}
+            </ul>
+            <p className="margin-top-2">{t('body6')}</p>
           </div>
         </div>
       </div>
