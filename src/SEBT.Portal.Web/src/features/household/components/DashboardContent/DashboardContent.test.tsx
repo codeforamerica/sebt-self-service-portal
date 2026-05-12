@@ -157,7 +157,10 @@ describe('DashboardContent', () => {
       expect(screen.getByRole('alert')).toBeInTheDocument()
     })
 
-    expect(screen.getByRole('link', { name: /apply/i })).toHaveAttribute('href', '/apply')
+    expect(screen.getByRole('link', { name: /apply/i })).toHaveAttribute(
+      'href',
+      'https://forms.sunbucks.dc.gov/s3/AppUpdate2026'
+    )
   })
 
   it('renders UserProfileCard in empty state when userProfile available', async () => {
