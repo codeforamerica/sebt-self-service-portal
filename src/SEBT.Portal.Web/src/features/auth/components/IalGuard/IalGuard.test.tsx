@@ -1,7 +1,10 @@
+import { i18n } from '@sebt/design-system/client'
 import { act, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
 
+import enCoStepUpProcessing from '@/content/locales/en/co/step-upProcessing.json'
+import enCoStepUpDisclaimer from '@/content/locales/en/co/stepUpDisclaimer.json'
 import { AuthProvider } from '@/features/auth/context'
 
 import { IalGuard } from './IalGuard'
@@ -77,6 +80,18 @@ function setupApiFetchMock(options: {
 
 describe('IalGuard', () => {
   let prevNextPublicState: string | undefined
+
+  // IalGuard renders CO-only step-up copy (the gate is CO-specific). Tests run under
+  // DC locale by default, so load the CO bundles for these namespaces explicitly.
+  beforeAll(() => {
+    i18n.addResourceBundle('en', 'stepUpDisclaimer', enCoStepUpDisclaimer, true, true)
+    i18n.addResourceBundle('en', 'step-upProcessing', enCoStepUpProcessing, true, true)
+  })
+
+  afterAll(() => {
+    i18n.removeResourceBundle('en', 'stepUpDisclaimer')
+    i18n.removeResourceBundle('en', 'step-upProcessing')
+  })
 
   beforeEach(() => {
     prevNextPublicState = process.env.NEXT_PUBLIC_STATE

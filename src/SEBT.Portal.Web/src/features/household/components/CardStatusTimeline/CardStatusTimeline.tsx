@@ -44,16 +44,17 @@ export function CardStatusTimeline({
   const config = STATUS_CONFIG[cardStatus]
   if (!config) return null
 
-  // i18next returns '' (not the fallback arg) when a key exists with an empty value.
-  // DC locale has some keys blank pending content-team updates to the Google Sheet.
-  // TODO: DC CSV has empty values for Active and Deactivated — fallbacks used until
-  // content team updates the Google Sheet.
+  // i18next returns '' (not the fallback arg) when a key exists with an empty value;
+  // and the global parseMissingKeyHandler returns the key itself when no defaultValue
+  // is supplied. Passing `{ defaultValue: '' }` collapses both cases to a falsy string
+  // so the `|| jsFallback` chain reliably supplies English copy when the key is empty
+  // or missing in the current state's locale.
   const statusLabels: Partial<Record<CardStatus, string>> = {
-    Requested: t('cardTableStatusRequested') || 'Requested on [MM/DD/YYYY]',
-    Mailed: t('cardTableStatusIssued') || 'Issued on [MM/DD/YYYY]',
-    Processed: t('cardTableStatusMailed') || 'Processed on [MM/DD/YYYY]',
-    Active: t('cardTableStatusActive') || 'Active',
-    Deactivated: t('cardTableStatusDeactivated') || 'Deactivated'
+    Requested: t('cardTableStatusRequested', { defaultValue: '' }) || 'Requested on [MM/DD/YYYY]',
+    Mailed: t('cardTableStatusIssued', { defaultValue: '' }) || 'Issued on [MM/DD/YYYY]',
+    Processed: t('cardTableStatusMailed', { defaultValue: '' }) || 'Processed on [MM/DD/YYYY]',
+    Active: t('cardTableStatusActive', { defaultValue: '' }) || 'Active',
+    Deactivated: t('cardTableStatusDeactivated', { defaultValue: '' }) || 'Deactivated'
   }
 
   const statusDates: Partial<Record<CardStatus, string | null>> = {
@@ -94,13 +95,13 @@ export function CardStatusTimeline({
             Showing the new-enrollee message as the default for now. */}
         {cardStatus === 'Requested' && (
           <p className="margin-top-2 margin-bottom-0">
-            {t('cardTableStatusMessageRequested1') ||
+            {t('cardTableStatusMessageRequested1', { defaultValue: '' }) ||
               "We've requested a new DC SUN Bucks card that will arrive in the mail within 2–3 weeks. Check back here to see when the card has been mailed."}
           </p>
         )}
         {(cardStatus === 'Mailed' || cardStatus === 'Processed') && (
           <p className="margin-top-2 margin-bottom-0">
-            {t('cardTableStatusMessageMailed') ||
+            {t('cardTableStatusMessageMailed', { defaultValue: '' }) ||
               "After the new card is mailed, it should arrive in around 5–7 days. If it doesn't arrive after two weeks, you can request a replacement card."}
           </p>
         )}
@@ -109,12 +110,14 @@ export function CardStatusTimeline({
             replace with real DC copy once content team updates the Google Sheet. */}
         {cardStatus === 'Active' && (
           <p className="margin-top-2 margin-bottom-0">
-            {t('cardTableStatusMessageActive') || 'Your card is active and ready to use.'}
+            {t('cardTableStatusMessageActive', { defaultValue: '' }) ||
+              'Your card is active and ready to use.'}
           </p>
         )}
         {cardStatus === 'Deactivated' && (
           <p className="margin-top-2 margin-bottom-0">
-            {t('cardTableStatusMessageDeactivated') || 'This card has been deactivated.'}
+            {t('cardTableStatusMessageDeactivated', { defaultValue: '' }) ||
+              'This card has been deactivated.'}
           </p>
         )}
       </dd>

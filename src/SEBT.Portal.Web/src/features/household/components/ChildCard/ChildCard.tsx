@@ -114,7 +114,9 @@ export function ChildCard({
         <dl className="margin-0">
           {showCaseNumber && referenceIdShown && (
             <>
-              <dt className="text-bold margin-top-2">{t('cardTableHeadingSebtId')}</dt>
+              <dt className="text-bold margin-top-2">
+                {t('cardTableHeadingSebtId', { defaultValue: 'DC SUN Bucks ID' })}
+              </dt>
               <dd className="margin-left-0">{referenceIdShown}</dd>
             </>
           )}
@@ -138,9 +140,14 @@ export function ChildCard({
           )}
           {showCardLast4 && ebtCardLastFour && (
             <>
-              <dt className="text-bold margin-top-2">{t('cardTableHeadingCardNumber')}</dt>
+              <dt className="text-bold margin-top-2">
+                {t('cardTableHeadingCardNumber', { defaultValue: 'Card number' })}
+              </dt>
               <dd className="margin-left-0">
-                {t('cardTableLastFourDigits').replace('[9999]', ebtCardLastFour)}
+                {t('cardTableLastFourDigits', { defaultValue: '[9999]' }).replace(
+                  '[9999]',
+                  ebtCardLastFour
+                )}
               </dd>
             </>
           )}

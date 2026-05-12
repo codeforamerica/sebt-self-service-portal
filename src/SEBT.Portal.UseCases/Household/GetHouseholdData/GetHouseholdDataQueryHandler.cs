@@ -73,6 +73,7 @@ public class GetHouseholdDataQueryHandler(
                         verifiedDob,
                         piiVisibility,
                         userIalLevel,
+                        userId.Value,
                         cancellationToken);
                     if (householdData != null)
                     {

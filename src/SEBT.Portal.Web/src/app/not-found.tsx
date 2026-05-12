@@ -15,9 +15,11 @@ export default function NotFound() {
       <div className="grid-container">
         <Alert
           variant="error"
+          // TODO add string 
           heading={t('pageNotFound', 'Page not found')}
         >
           <p>
+            {/* TODO add string */}
             {t(
               'pageNotFoundBody',
               'The page you are looking for does not exist or has been moved.'
@@ -27,6 +29,7 @@ export default function NotFound() {
             href="/"
             className="usa-button margin-top-2"
           >
+            {/* TODO add string */}
             {t('returnToHome', 'Return to home')}
           </Link>
         </Alert>
