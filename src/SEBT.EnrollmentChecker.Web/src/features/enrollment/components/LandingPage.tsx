@@ -3,13 +3,23 @@
 import { Button, RichText } from '@sebt/design-system'
 import Image from 'next/image'
 import { useRouter } from 'next/navigation'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+
+import { useEnrollment } from '../context/EnrollmentContext'
 
 export function LandingPage() {
   const { t } = useTranslation('landing')
   const router = useRouter()
+  const { clearState } = useEnrollment()
   const [isAccordionExpanded, setIsAccordionExpanded] = useState(false)
+
+  // The landing page is a fresh-start screen — clicking the logo from any
+  // deep page lands here, and the cached children should not persist.
+  useEffect(() => {
+    clearState()
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- run once on mount
+  }, [])
 
   // body3 is \n-delimited list items — split and filter empties
   const reaonsForAutoEnrollment = t('body3').split('\n').filter(Boolean)
