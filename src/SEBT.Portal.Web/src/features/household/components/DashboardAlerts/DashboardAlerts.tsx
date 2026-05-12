@@ -79,9 +79,10 @@ export function DashboardAlerts() {
       {alerts.cardReplaced && (
         <Alert
           variant="success"
+          // TODO update copy for alertCardReplacedHeading
           heading={t('alertCardReplacedHeading', 'Your replacement card request has been recorded')}
         >
-          {/* TODO update copy */}
+          {/* TODO update copy for alertCardReplacedBodyWithAddress and alertCardReplacedBody */}
           {householdData?.addressOnFile
             ? t(
                 'alertCardReplacedBodyWithAddress',
@@ -99,7 +100,7 @@ export function DashboardAlerts() {
           Currently triggered by URL params for visual verification. */}
 
       {alerts.addressUpdateFailed && (
-       // TODO update copy
+        // TODO update copy
         <Alert
           variant="warning"
           heading={t(

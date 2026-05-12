@@ -5,7 +5,7 @@ import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
 import type { Address, SummerEbtCase } from '@/features/household/api/schema'
-import { Alert, Button, getState } from '@sebt/design-system'
+import { Alert, Button, getState, RichText } from '@sebt/design-system'
 
 import { useRequestCardReplacement } from '../../api/client'
 
@@ -49,11 +49,22 @@ export function ConfirmRequest({ cases, address, onBack }: ConfirmRequestProps) 
     )
   }
 
+  // t('body') is \n-delimited list items — split and filter empties
+  const replacingCards = t('body').split('\n').filter(Boolean)
+
   return (
     <div>
       <h1 className="font-sans-xl text-primary">{t('title')}</h1>
 
-      <p className="margin-top-05">{t('body')}</p>
+      <div className="margin-top-05">
+        <ul className="usa-list margin-top-2">
+          {replacingCards.map((item, index) => (
+            <li key={index}>
+              <RichText>{item}</RichText>
+            </li>
+          ))}
+        </ul>
+      </div>
 
       <div className="usa-card__container margin-top-3">
         <div className="usa-card__body">
