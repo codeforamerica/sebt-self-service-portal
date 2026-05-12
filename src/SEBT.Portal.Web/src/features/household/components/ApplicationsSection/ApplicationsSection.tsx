@@ -16,8 +16,7 @@ function getStatusTextClass(status: string): string {
     case 'Cancelled':
       return 'text-base-dark'
     default:
-      // TODO update
-      return 'text-gold'
+      return 'text-green'
   }
 }
 

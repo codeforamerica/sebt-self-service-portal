@@ -100,7 +100,7 @@ describe('HouseholdSummary', () => {
     mockReturnData = { ...defaultMockData, summerEbtCases: [], applications: [pendingApp] }
     render(<HouseholdSummary />)
     const statusText = screen.getByText('Application pending')
-    expect(statusText).toHaveClass('text-gold')
+    expect(statusText).toHaveClass('text-green')
   })
 
   it('does not render enrolled description when no cases and application pending', () => {
