@@ -5,7 +5,7 @@ import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
 import type { Address, SummerEbtCase } from '@/features/household/api/schema'
-import { Alert, Button, getState } from '@sebt/design-system'
+import { Alert, Button, getState, RichText } from '@sebt/design-system'
 
 import { useRequestCardReplacement } from '../../api/client'
 
@@ -15,19 +15,17 @@ interface ConfirmRequestProps {
   onBack: () => void
 }
 
-function getStateProgramName(state: string): string {
-  return state === 'dc' ? 'DC SUN Bucks' : 'Summer EBT'
-}
-
 export function ConfirmRequest({ cases, address, onBack }: ConfirmRequestProps) {
-  const { t } = useTranslation('confirmInfo')
+  const { t } = useTranslation('result')
+  const { t: tDev } = useTranslation('dev')
   const { t: tCommon } = useTranslation('common')
+  const { t: tDashboard } = useTranslation('dashboard')
+
   const router = useRouter()
   const currentState = getState()
   const mutation = useRequestCardReplacement()
   const [error, setError] = useState<string | null>(null)
 
-  const programName = getStateProgramName(currentState)
   const caseRefs = cases
     .filter((c): c is SummerEbtCase & { summerEBTCaseID: string } => c.summerEBTCaseID != null)
     .map((c) => ({
@@ -45,46 +43,32 @@ export function ConfirmRequest({ cases, address, onBack }: ConfirmRequestProps) 
           router.push('/dashboard?flash=card_replaced')
         },
         onError: () => {
-          setError(
-            t(
-              'cardReplacementError',
-              'There was an issue requesting your replacement card. Please try again later.'
-            )
-          )
+          setError(tDashboard('alertCardReplaceError'))
         }
       }
     )
   }
 
+  // t('body') is \n-delimited list items — split and filter empties
+  const replacingCards = t('body').split('\n').filter(Boolean)
+
   return (
     <div>
-      <h1 className="font-sans-xl text-primary">
-        {/* TODO: Use t('confirmReplacementTitle') once key is available in CSV */}A few things to
-        know before replacing {programName} cards
-      </h1>
+      <h1 className="font-sans-xl text-primary">{t('title')}</h1>
 
-      <ul className="usa-list">
-        <li>
-          {/* TODO: Use t('confirmDeactivation') once key is available in CSV */}
-          Once a replacement card is created, the previous card will be permanently deactivated
-        </li>
-        <li>
-          {/* TODO: Use t('confirmDelivery') once key is available in CSV */}
-          Cards will arrive by mail in around 7-10 business days
-        </li>
-        <li>
-          {/* TODO: Use t('confirmBalanceRollover') once key is available in CSV */}
-          Any remaining balance on the previous card will automatically be rolled over to the
-          replacement card
-        </li>
-      </ul>
+      <div className="margin-top-05">
+        <ul className="usa-list margin-top-2">
+          {replacingCards.map((item, index) => (
+            <li key={index}>
+              <RichText>{item}</RichText>
+            </li>
+          ))}
+        </ul>
+      </div>
 
       <div className="usa-card__container margin-top-3">
         <div className="usa-card__body">
-          <h2 className="usa-card__heading font-sans-md">
-            {/* TODO: Use t('cardOrderSummary') once key is available in CSV */}
-            Card order summary
-          </h2>
+          <h2 className="usa-card__heading font-sans-md">{t('summaryTitle')}</h2>
 
           <ul className="usa-list usa-list--unstyled">
             {cases.map((c) => (
@@ -93,11 +77,12 @@ export function ConfirmRequest({ cases, address, onBack }: ConfirmRequestProps) 
                 className="margin-bottom-1"
               >
                 <span className="text-bold">
+                  {/* TODO update */}
                   {c.childFirstName} {c.childLastName}&apos;s card
                 </span>
                 {currentState === 'co' && c.ebtCardLastFour && (
                   <span className="display-block text-base-dark">
-                    {/* TODO: Use t('cardNumberLabel') once key is available in CSV */}
+                    {/* TODO: Use t('pre-title') once key is updated in CSV */}
                     Card number: {c.ebtCardLastFour} (last 4 digits)
                   </span>
                 )}
@@ -105,10 +90,7 @@ export function ConfirmRequest({ cases, address, onBack }: ConfirmRequestProps) 
             ))}
           </ul>
 
-          <p className="margin-top-2">
-            {/* TODO: Use t('confirmMailingTo') once key is available in CSV */}A new card will be
-            mailed to the following address:
-          </p>
+          <p className="margin-top-2">{t('summaryAddress')}</p>
 
           <address className="margin-top-1 font-sans-sm">
             {address.streetAddress1 && (
@@ -140,15 +122,14 @@ export function ConfirmRequest({ cases, address, onBack }: ConfirmRequestProps) 
           onClick={onBack}
           disabled={mutation.isPending}
         >
-          {tCommon('back', 'Back')}
+          {tCommon('back')}
         </Button>
         <Button
           type="button"
           onClick={handleSubmit}
           disabled={mutation.isPending}
         >
-          {/* TODO: Use t('orderCard') once key is available in CSV */}
-          {mutation.isPending ? tCommon('loading', 'Loading...') : 'Order card'}
+          {mutation.isPending ? tDev('loading') : t('action')}
         </Button>
       </div>
     </div>

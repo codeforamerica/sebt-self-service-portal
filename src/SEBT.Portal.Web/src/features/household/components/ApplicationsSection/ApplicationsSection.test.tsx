@@ -112,7 +112,7 @@ describe('ApplicationsSection', () => {
 
     const statusText = screen.getByText('Pending')
     expect(statusText).toHaveClass('text-bold')
-    expect(statusText).toHaveClass('text-gold')
+    expect(statusText).toHaveClass('text-green')
   })
 
   it('renders nothing when no applications', () => {
