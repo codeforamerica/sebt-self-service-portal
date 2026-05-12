@@ -89,7 +89,7 @@ const errorResponse: ChildCheckApiResponse[] = [
 const eligibilityAccordionText = 'How do I know if'
 const enrolledSectionText = 'already enrolled'
 const notEnrolledSectionText = 'NOT enrolled'
-const nextStepsSectionText = 'Next Steps'
+const nextStepsSectionText = 'Next steps'
 const portalUrl = 'https://portal.example.gov'
 
 describe('ResultsPage', () => {

@@ -83,7 +83,7 @@ describe('HouseholdSummary', () => {
   it('renders enrolled status description when cases exist', () => {
     render(<HouseholdSummary />)
     expect(
-      screen.getByText(/Your children are enrolled because we have enough information/)
+      screen.getByText(/Your students are enrolled because we have enough information/)
     ).toBeInTheDocument()
   })
 
@@ -92,16 +92,15 @@ describe('HouseholdSummary', () => {
     mockReturnData = { ...defaultMockData, applications: [pendingApp] }
     render(<HouseholdSummary />)
     expect(screen.getByText('Enrolled')).toBeInTheDocument()
-    expect(screen.getByText('Application in-progress')).toBeInTheDocument()
+    expect(screen.getByText('Application pending')).toBeInTheDocument()
   })
 
   it('renders in-progress status for pending application when no cases', () => {
     const pendingApp: Application = { ...mockApplication, applicationStatus: 'Pending' }
     mockReturnData = { ...defaultMockData, summerEbtCases: [], applications: [pendingApp] }
     render(<HouseholdSummary />)
-    // TODO update when DC copy import
-    const statusText = screen.getByText('Application in-progress')
-    expect(statusText).toHaveClass('text-gold')
+    const statusText = screen.getByText('Application pending')
+    expect(statusText).toHaveClass('text-green')
   })
 
   it('does not render enrolled description when no cases and application pending', () => {

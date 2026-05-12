@@ -15,6 +15,8 @@ interface ReplacementCardPromptProps {
 export function ReplacementCardPrompt({ address }: ReplacementCardPromptProps) {
   const { t } = useTranslation('confirmInfo')
   const { t: tCommon } = useTranslation('common')
+  const { t: tValidation } = useTranslation('validation')
+
   const router = useRouter()
   const currentState = getState()
 
@@ -32,7 +34,7 @@ export function ReplacementCardPrompt({ address }: ReplacementCardPromptProps) {
     e.preventDefault()
 
     if (selection === null) {
-      setError(t('selectOneError', 'Please select an option.'))
+      setError(tValidation('selectOption'))
       return
     }
 
@@ -59,15 +61,11 @@ export function ReplacementCardPrompt({ address }: ReplacementCardPromptProps) {
         </p>
       </div>
 
-      <p>{t('replacementCardsCriteria', 'We can send replacement cards if')}</p>
+      <p>{t('replacementCardsBody1')}</p>
       <ul className="usa-list">
         <li>
-          {t(
-            'replacementCardsCriteriaNotReceived',
-            "You haven't received them in the mail after two weeks"
-          )}
+          {t('replacementCardsBody2')}
         </li>
-        <li>{t('replacementCardsCriteriaLost', 'Or you no longer have them')}</li>
       </ul>
 
       {currentState === 'dc' && (
@@ -76,6 +74,7 @@ export function ReplacementCardPrompt({ address }: ReplacementCardPromptProps) {
           slim
           className="margin-bottom-3"
         >
+          {/* TODO update copy */}
           {t(
             'snapTanfCallout',
             'If your child is eligible for DC SUN Bucks through SNAP or TANF participation, they will not receive a DC SUN Bucks card.'
@@ -84,16 +83,16 @@ export function ReplacementCardPrompt({ address }: ReplacementCardPromptProps) {
       )}
 
       <p className="usa-hint margin-bottom-3">
-        {t('requiredFieldsNote', 'Asterisks (*) indicate a required field')}
+        {tCommon('requiredFields')}
       </p>
 
       <fieldset
         className="usa-fieldset"
-        aria-label={t('selectOneLabel', 'Select one')}
+        aria-label={tCommon('selectOne')}
         aria-describedby={error ? 'replacement-choice-error' : undefined}
       >
         <legend className="usa-legend text-bold">
-          {t('selectOneLabel', 'Select one')}
+          {tCommon('selectOne')}
           <span className="text-secondary-dark"> *</span>
         </legend>
 
@@ -126,7 +125,7 @@ export function ReplacementCardPrompt({ address }: ReplacementCardPromptProps) {
             className="usa-radio__label text-bold"
             htmlFor="replacement-yes"
           >
-            {tCommon('yes', 'Yes')}
+            {tCommon('yes')}
           </label>
         </div>
 
@@ -147,7 +146,7 @@ export function ReplacementCardPrompt({ address }: ReplacementCardPromptProps) {
             className="usa-radio__label text-bold"
             htmlFor="replacement-no"
           >
-            {tCommon('no', 'No')}
+            {tCommon('no')}
           </label>
         </div>
       </fieldset>
@@ -158,9 +157,9 @@ export function ReplacementCardPrompt({ address }: ReplacementCardPromptProps) {
           type="button"
           onClick={() => router.back()}
         >
-          {tCommon('back', 'Back')}
+          {tCommon('back')}
         </Button>
-        <Button type="submit">{tCommon('continue', 'Continue')}</Button>
+        <Button type="submit">{tCommon('continue')}</Button>
       </div>
     </form>
   )
