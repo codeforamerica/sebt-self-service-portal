@@ -196,6 +196,7 @@ public class SubmitIdProofingCommandHandlerTests
         householdRepository.TryMatchCoLoadedGuardianByBenefitIdAndDobAsync(
                 "IC000001",
                 new DateOnly(1984, 3, 5),
+                Arg.Any<Guid>(),
                 Arg.Any<CancellationToken>())
             .Returns(true);
 
@@ -208,6 +209,7 @@ public class SubmitIdProofingCommandHandlerTests
         await householdRepository.Received(1).TryMatchCoLoadedGuardianByBenefitIdAndDobAsync(
             "IC000001",
             new DateOnly(1984, 3, 5),
+            Arg.Any<Guid>(),
             Arg.Any<CancellationToken>());
         await householdRepository.DidNotReceive()
             .GetHouseholdByEmailAsync(
@@ -242,7 +244,7 @@ public class SubmitIdProofingCommandHandlerTests
         challengeRepository.GetActiveByUserIdAsync(command.UserId, Arg.Any<CancellationToken>())
             .Returns((DocVerificationChallenge?)null);
         householdRepository.TryMatchCoLoadedGuardianByBenefitIdAndDobAsync(
-                Arg.Any<string>(), Arg.Any<DateOnly>(), Arg.Any<CancellationToken>())
+                Arg.Any<string>(), Arg.Any<DateOnly>(), Arg.Any<Guid>(), Arg.Any<CancellationToken>())
             .ThrowsAsync(new OperationCanceledException());
 
         await Assert.ThrowsAsync<OperationCanceledException>(
@@ -434,7 +436,7 @@ public class SubmitIdProofingCommandHandlerTests
         await userRepository.DidNotReceive().GetUserByIdAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>());
         await householdRepository.DidNotReceive()
             .TryMatchCoLoadedGuardianByBenefitIdAndDobAsync(
-                Arg.Any<string>(), Arg.Any<DateOnly>(), Arg.Any<CancellationToken>());
+                Arg.Any<string>(), Arg.Any<DateOnly>(), Arg.Any<Guid>(), Arg.Any<CancellationToken>());
         await socureClient.DidNotReceive()
             .RunIdProofingAssessmentAsync(
                 Arg.Any<Guid>(), Arg.Any<string>(), Arg.Any<string>(),
@@ -599,7 +601,7 @@ public class SubmitIdProofingCommandHandlerTests
         challengeRepository.GetActiveByUserIdAsync(command.UserId, Arg.Any<CancellationToken>())
             .Returns((DocVerificationChallenge?)null);
         householdRepository.TryMatchCoLoadedGuardianByBenefitIdAndDobAsync(
-                Arg.Any<string>(), Arg.Any<DateOnly>(), Arg.Any<CancellationToken>())
+                Arg.Any<string>(), Arg.Any<DateOnly>(), Arg.Any<Guid>(), Arg.Any<CancellationToken>())
             .Returns(false);
         householdRepository.GetHouseholdByEmailAsync(
                 Arg.Any<string>(), Arg.Any<PiiVisibility>(), Arg.Any<UserIalLevel>(), Arg.Any<CancellationToken>())
@@ -608,7 +610,7 @@ public class SubmitIdProofingCommandHandlerTests
         await handler.Handle(command, CancellationToken.None);
 
         await householdRepository.Received(1).TryMatchCoLoadedGuardianByBenefitIdAndDobAsync(
-            "987654321", new DateOnly(1984, 3, 5), Arg.Any<CancellationToken>());
+            "987654321", new DateOnly(1984, 3, 5), Arg.Any<Guid>(), Arg.Any<CancellationToken>());
         await socureClient.DidNotReceive()
             .RunIdProofingAssessmentAsync(
                 Arg.Any<Guid>(), Arg.Any<string>(), Arg.Any<string>(),
@@ -638,7 +640,7 @@ public class SubmitIdProofingCommandHandlerTests
         challengeRepository.GetActiveByUserIdAsync(command.UserId, Arg.Any<CancellationToken>())
             .Returns((DocVerificationChallenge?)null);
         householdRepository.TryMatchCoLoadedGuardianByBenefitIdAndDobAsync(
-                "IC000001", new DateOnly(1984, 3, 5), Arg.Any<CancellationToken>())
+                "IC000001", new DateOnly(1984, 3, 5), Arg.Any<Guid>(), Arg.Any<CancellationToken>())
             .Returns(true);
 
         var result = await handler.Handle(command, CancellationToken.None);

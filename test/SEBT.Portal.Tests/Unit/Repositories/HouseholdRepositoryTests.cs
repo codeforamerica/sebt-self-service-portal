@@ -87,16 +87,18 @@ public class HouseholdRepositoryTests
     public async Task TryMatchCoLoadedGuardianByBenefitIdAndDobAsync_DelegatesToPlugin()
     {
         var dob = new DateOnly(2000, 1, 1);
+        var userId = Guid.NewGuid();
         _summerEbtCaseService
-            .TryMatchCoLoadedGuardianByBenefitIdAndDobAsync("IC1", dob, Arg.Any<CancellationToken>())
+            .TryMatchCoLoadedGuardianByBenefitIdAndDobAsync("IC1", dob, userId, Arg.Any<CancellationToken>())
             .Returns(true);
 
-        var result = await _repository.TryMatchCoLoadedGuardianByBenefitIdAndDobAsync("IC1", dob);
+        var result = await _repository.TryMatchCoLoadedGuardianByBenefitIdAndDobAsync("IC1", dob, userId);
 
         Assert.True(result);
         await _summerEbtCaseService.Received(1).TryMatchCoLoadedGuardianByBenefitIdAndDobAsync(
             "IC1",
             dob,
+            userId,
             Arg.Any<CancellationToken>());
     }
 
@@ -105,6 +107,7 @@ public class HouseholdRepositoryTests
     {
         var loginEmail = "guardian@example.com";
         var dob = new DateOnly(1984, 3, 5);
+        var userId = Guid.NewGuid();
         var pluginData = new PluginHouseholdData
         {
             Email = EmailNormalizer.Normalize(loginEmail),
@@ -120,6 +123,7 @@ public class HouseholdRepositoryTests
                 EmailNormalizer.Normalize(loginEmail),
                 Arg.Any<PluginPiiVisibility>(),
                 PluginIdentityAssuranceLevel.IAL1plus,
+                userId,
                 Arg.Any<CancellationToken>())
             .Returns(pluginData);
 
@@ -128,7 +132,8 @@ public class HouseholdRepositoryTests
             "IC000001",
             dob,
             FullPii,
-            UserIalLevel.IAL1plus);
+            UserIalLevel.IAL1plus,
+            userId);
 
         Assert.NotNull(result);
         Assert.Equal(EmailNormalizer.Normalize(loginEmail), result!.Email);
@@ -138,6 +143,7 @@ public class HouseholdRepositoryTests
             EmailNormalizer.Normalize(loginEmail),
             Arg.Any<PluginPiiVisibility>(),
             PluginIdentityAssuranceLevel.IAL1plus,
+            userId,
             Arg.Any<CancellationToken>());
     }
 

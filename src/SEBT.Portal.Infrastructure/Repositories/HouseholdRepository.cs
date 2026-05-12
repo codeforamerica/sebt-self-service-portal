@@ -138,11 +138,13 @@ public class HouseholdRepository : IHouseholdRepository
     public Task<bool> TryMatchCoLoadedGuardianByBenefitIdAndDobAsync(
         string benefitIdentifierIc,
         DateOnly guardianDateOfBirth,
+        Guid portalUserId,
         CancellationToken cancellationToken = default)
     {
         return _summerEbtCaseService.TryMatchCoLoadedGuardianByBenefitIdAndDobAsync(
             benefitIdentifierIc,
             guardianDateOfBirth,
+            portalUserId,
             cancellationToken);
     }
 
@@ -153,6 +155,7 @@ public class HouseholdRepository : IHouseholdRepository
         DateOnly guardianDateOfBirth,
         PiiVisibility piiVisibility,
         UserIalLevel userIalLevel,
+        Guid portalUserId,
         CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(piiVisibility);
@@ -179,6 +182,7 @@ public class HouseholdRepository : IHouseholdRepository
             normalizedEmail,
             pluginPii,
             pluginIal,
+            portalUserId,
             cancellationToken);
 
         if (pluginHousehold == null)

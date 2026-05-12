@@ -108,6 +108,7 @@ public class MockHouseholdRepository : IHouseholdRepository
     public Task<bool> TryMatchCoLoadedGuardianByBenefitIdAndDobAsync(
         string benefitIdentifierIc,
         DateOnly guardianDateOfBirth,
+        Guid portalUserId,
         CancellationToken cancellationToken = default)
     {
         return Task.FromResult(false);
@@ -120,6 +121,7 @@ public class MockHouseholdRepository : IHouseholdRepository
         DateOnly guardianDateOfBirth,
         PiiVisibility piiVisibility,
         UserIalLevel userIalLevel,
+        Guid portalUserId,
         CancellationToken cancellationToken = default)
     {
         return Task.FromResult<HouseholdData?>(null);

@@ -141,6 +141,9 @@ const CONFIG = {
     // S8 - Edit screens
     'contact preferences update': 'editContactPreferences',
     'mailing address edit': 'editMailingAddress',
+    // S5 - CO Bulk Order New Cards flow (initial + who screens share optionalId via S5 fallback,
+    // but the "bulk order new cards" intro screen is used by components in confirmInfo namespace)
+    'bulk order new cards': 'confirmInfo',
     // S10 - Step-up verification screens
     'step-up disclaimer': 'stepUpDisclaimer',
     'step-up failure': 'stepUpFailure',
@@ -166,6 +169,7 @@ const CONFIG = {
     'suggested address': 'suggested',
     'abbreviated address': 'abbreviated',
     'callback': 'callback',
+    'bulk order new cards': 'replacementCards',
   },
 };
 

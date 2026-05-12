@@ -41,6 +41,7 @@ export function IalGuard({ children, requiredIal = STEP_UP_REQUIRED_IAL }: IalGu
   const { session } = useAuth()
   const router = useRouter()
   const { t, i18n } = useTranslation('common')
+  const { t: tDisclaimer} = useTranslation('stepUpDisclaimer')
 
   const useOidcStepUpGate = getState() === 'co'
   const debugRepeatOidcStepUp = isDebugRepeatOidcStepUp()
@@ -84,6 +85,7 @@ export function IalGuard({ children, requiredIal = STEP_UP_REQUIRED_IAL }: IalGu
     startOidcStepUpRedirect(i18n.language)
   }, [i18n.language])
 
+  // TODO replace with tStep('body') / tStep('title')
   const checkingCopy = useMemo(
     () => ({
       title: t('ialGuardCheckingTitle', 'Please wait…'),
@@ -139,16 +141,14 @@ export function IalGuard({ children, requiredIal = STEP_UP_REQUIRED_IAL }: IalGu
               id="ial-guard-challenge-title"
               className="font-heading-lg text-primary margin-bottom-3 line-height-sans-1"
             >
+              {/* TODO update */}
               {t(
                 'ialGuardChallengeTitle',
                 'To keep your account safe, we need to confirm it’s really you'
               )}
             </h1>
             <p className="font-sans-sm margin-bottom-3">
-              {t(
-                'ialGuardChallengeBody',
-                'We need to share some information with our third-party vendor to verify your identity. We will do this only once and will not share or save anything without your permission.'
-              )}
+              {tDisclaimer('body')}
             </p>
             <div className="display-flex flex-row flex-wrap flex-gap-2 margin-top-3">
               <Button
@@ -157,7 +157,7 @@ export function IalGuard({ children, requiredIal = STEP_UP_REQUIRED_IAL }: IalGu
                 className="border-primary text-primary"
                 onClick={handleBack}
               >
-                {t('ialGuardBack', 'Back')}
+                {t('back')}
               </Button>
               <Button
                 type="button"
@@ -165,7 +165,7 @@ export function IalGuard({ children, requiredIal = STEP_UP_REQUIRED_IAL }: IalGu
                 className="bg-primary-dark text-white border-primary-dark"
                 onClick={handleVerify}
               >
-                {t('ialGuardVerify', 'Verify')}
+                {tDisclaimer('action')}
               </Button>
             </div>
           </section>

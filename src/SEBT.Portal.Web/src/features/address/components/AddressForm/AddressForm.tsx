@@ -74,6 +74,7 @@ export function AddressForm({ initialAddress, redirectPath }: AddressFormProps) 
   const { t } = useTranslation('confirmInfo')
   const { t: tValidation } = useTranslation('validation')
   const { t: tCommon } = useTranslation('common')
+
   const router = useRouter()
   const pathname = usePathname()
   const searchParams = useSearchParams()
@@ -116,17 +117,20 @@ export function AddressForm({ initialAddress, redirectPath }: AddressFormProps) 
 
   function validate(): FieldErrors {
     const errors: FieldErrors = {}
-    const required = tValidation('required', 'This field is required.')
+    const required = tValidation('required')
 
     if (!streetAddress1.trim()) {
       errors.streetAddress1 = required
+    } else if (streetAddress1.trim().length > 30) {
+      // TODO: Backend does not yet enforce this limit — add [MaxLength(30)] when confirmed
+      errors.streetAddress1 = t('helperStreetAddress')
     }
     if (!city.trim()) errors.city = required
     if (!stateValue.trim()) errors.state = required
     if (!postalCode.trim()) {
       errors.postalCode = required
     } else if (!isValidZip(postalCode.trim())) {
-      errors.postalCode = t('postalCodeInvalid', 'Enter a valid 5- or 9-digit ZIP code.')
+      errors.postalCode = tValidation('enterZip')
     }
 
     return errors
@@ -163,10 +167,7 @@ export function AddressForm({ initialAddress, redirectPath }: AddressFormProps) 
       // too_long stays on the form: inline field error + portal banner via showStreetLengthAlert.
       if (result.reason === 'too_long') {
         setFieldErrors({
-          streetAddress1: t(
-            'streetAddressInlineError',
-            'Enter a street address shorter than 30 characters'
-          )
+          streetAddress1: t('validationStreetAddress')
         })
         return
       }
@@ -180,7 +181,7 @@ export function AddressForm({ initialAddress, redirectPath }: AddressFormProps) 
       }
     } catch (err) {
       void err
-      setSubmitError(t('addressUpdateError', 'Something went wrong. Please try again.'))
+      setSubmitError(tValidation('globalInternalError'))
     }
   }
 
@@ -200,16 +201,13 @@ export function AddressForm({ initialAddress, redirectPath }: AddressFormProps) 
             className="margin-bottom-0"
             textClassName="text-bold"
           >
-            {t(
-              'streetAddressWarning',
-              'There was an issue with the address provided. If you can, please, enter a street address shorter than 30 characters.'
-            )}
+            {t('alertBody')}
             <br />
             <a
               href={getStateLinks(currentState).help.contactUs}
               className="usa-link"
             >
-              {t('contactUsHelp', 'Contact us if you need more help.')}
+              {t('alertAction')}
             </a>
           </Alert>,
           siteAlertsEl
@@ -239,6 +237,7 @@ export function AddressForm({ initialAddress, redirectPath }: AddressFormProps) 
           >
             <div className="usa-alert__body">
               <p className="usa-alert__text">
+                {/* TODO update */}
                 {t('formErrorSummary', 'Please correct the errors below.')}
               </p>
             </div>
@@ -246,10 +245,8 @@ export function AddressForm({ initialAddress, redirectPath }: AddressFormProps) 
         )}
 
         <AddressAutocomplete
-          label={t('labelStreetAddress', 'Street address')}
-          {...(currentState === 'dc'
-            ? { hint: t('hintStreetAddressDc', 'Include direction. NW, NE, SE, or SW.') }
-            : {})}
+          label={tCommon('streetAddress')}
+          {...(currentState === 'dc' ? { hint: tCommon('helperStreetAddress') } : {})}
           name="streetAddress1"
           value={streetAddress1}
           onChange={(e) => setStreetAddress1(e.target.value)}
@@ -266,11 +263,8 @@ export function AddressForm({ initialAddress, redirectPath }: AddressFormProps) 
         />
 
         <InputField
-          label={t('labelStreetAddress2', 'Street address line 2')}
-          hint={t(
-            'hintStreetAddress2',
-            'For example, an apartment number, unit number, floor, or PO Box.'
-          )}
+          label={tCommon('streetAddress2')}
+          hint={tCommon('helperStreetAddress2')}
           name="streetAddress2"
           value={streetAddress2}
           onChange={(e) => setStreetAddress2(e.target.value)}
@@ -278,7 +272,7 @@ export function AddressForm({ initialAddress, redirectPath }: AddressFormProps) 
         />
 
         <InputField
-          label={t('labelCity', 'City')}
+          label={tCommon('city')}
           name="city"
           value={city}
           onChange={(e) => setCity(e.target.value)}
@@ -294,7 +288,7 @@ export function AddressForm({ initialAddress, redirectPath }: AddressFormProps) 
             className="usa-label"
             htmlFor="address-state"
           >
-            {t('labelState', 'State or territory')}
+            {tCommon('stateOrTerritory')}
             <span className="text-secondary-dark"> *</span>
           </label>
           {fieldErrors.state && (
@@ -317,7 +311,7 @@ export function AddressForm({ initialAddress, redirectPath }: AddressFormProps) 
             aria-invalid={!!fieldErrors.state}
             aria-describedby={fieldErrors.state ? 'address-state-error' : undefined}
           >
-            <option value="">- Select -</option>
+            <option value="">{`- ${tCommon('selectOne')} -`}</option>
             {US_STATE_OPTIONS.map(({ code, name }) => (
               <option
                 key={code}
@@ -330,7 +324,7 @@ export function AddressForm({ initialAddress, redirectPath }: AddressFormProps) 
         </div>
 
         <InputField
-          label={t('labelPostalCode', 'ZIP Code')}
+          label={tCommon('zipCode')}
           name="postalCode"
           value={postalCode}
           onChange={(e) => setPostalCode(e.target.value)}
@@ -345,15 +339,15 @@ export function AddressForm({ initialAddress, redirectPath }: AddressFormProps) 
             type="button"
             onClick={() => router.back()}
           >
-            {tCommon('back', 'Back')}
+            {tCommon('back')}
           </Button>
           <Button
             type="submit"
             isLoading={isSubmitting}
-            loadingText={`${tCommon('continue', 'Continue')}...`}
+            loadingText={`${tCommon('continue')}...`}
             disabled={isSubmitting}
           >
-            {tCommon('continue', 'Continue')}
+            {tCommon('continue')}
           </Button>
         </div>
       </form>
