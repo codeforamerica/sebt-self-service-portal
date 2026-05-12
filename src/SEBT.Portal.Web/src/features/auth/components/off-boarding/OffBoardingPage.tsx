@@ -126,7 +126,6 @@ export function OffBoardingPage({ contactLink, applyLink }: OffBoardingPageProps
               >
                 {/* TODO check on this copy */}
                 {t('offboardingContactUsLink', 'Need help? Contact us.')}
-                {t('offboardingContactUsLink', 'Need help? Contact us.')}
               </a>
             </p>
           </div>
