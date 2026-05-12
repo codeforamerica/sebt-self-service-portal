@@ -121,10 +121,10 @@ export function SuggestedAddress() {
   // Labels for the radio group items
   const suggestedLabel = isAbbreviated
     ? t('abbreviatedBody2', 'Suggested address') // TODO remove fallback
-    : tCommon('suggestedAddress', 'Suggested address') // TODO remove fallback
+    : tCommon('suggestedAddress')
   const enteredLabel = isAbbreviated
     ? t('abbreviatedBody3', 'Address you entered') // TODO remove fallback
-    : tCommon('addressYouEntered', 'Address you entered') // TODO remove fallback
+    : tCommon('addressEntered')
 
   function formatAddress(addr: UpdateAddressRequest | null) {
     if (!addr) return null
@@ -161,9 +161,7 @@ export function SuggestedAddress() {
         </Alert>
       )}
 
-      <p className="font-sans-3xs text-base margin-bottom-0">
-        {t('requiredFieldNote', 'Asterisks (*) indicate a required field.')}
-      </p>
+      <p className="font-sans-3xs text-base margin-bottom-0">{tCommon('requiredFields')}</p>
 
       <fieldset className="usa-fieldset margin-top-3">
         <legend className="usa-legend">
@@ -216,7 +214,7 @@ export function SuggestedAddress() {
           type="button"
           onClick={handleBack}
         >
-          {tCommon('back', 'Back')}
+          {tCommon('back')}
         </Button>
         <Button
           type="button"

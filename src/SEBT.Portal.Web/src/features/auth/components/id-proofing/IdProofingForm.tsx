@@ -90,6 +90,8 @@ export function IdProofingForm({ idOptions, contactLink, getDiToken }: IdProofin
   const { t: tPersonalInfo } = useTranslation('personalInfo')
   const { t: tValidation } = useTranslation('validation')
   const { t: tProcessing } = useTranslation('step-upProcessing')
+  const { t: tDev } = useTranslation('dev')
+
   const formId = useId()
   const months = getLocalizedMonths(i18n.language)
 
@@ -232,9 +234,7 @@ export function IdProofingForm({ idOptions, contactLink, getDiToken }: IdProofin
         setUserData('docv_required', true, ['default', 'analytics'])
         trackEvent(AnalyticsEvents.IDV_PRIMARY_RESULT)
         if (!response.challengeId) {
-          setSubmitError(
-            t('idProofingStartError', 'Unable to start document verification. Please try again.')
-          )
+          setSubmitError(tDev('alertVerificationRetry'))
           return
         }
         clearChallengeContext()
@@ -277,7 +277,7 @@ export function IdProofingForm({ idOptions, contactLink, getDiToken }: IdProofin
       // All errors get the same user-facing message. Raw ApiError.message may contain
       // backend wording not intended for end users — avoid displaying it directly.
       void err
-      setSubmitError(t('idProofingGenericError', 'Something went wrong. Please try again.'))
+      setSubmitError(tValidation('globalInternalError'))
     }
   }
 

@@ -51,6 +51,7 @@ function dashboardErrorCodeFromStatus(error: unknown): DashboardErrorCode {
 export function DashboardContent() {
   const { t } = useTranslation('dashboard')
   const { t: tProcessing } = useTranslation('step-upProcessing')
+
   const { data, isLoading, isError, error, requiresProofing } = useHouseholdData()
   const { setPageData, setUserData, trackEvent } = useDataLayer()
   const { session } = useAuth()
@@ -130,11 +131,8 @@ export function DashboardContent() {
       // here to avoid two h1 elements on the same view.
       return (
         <CoLoadingScreen
-          title={tProcessing('title', 'Please wait...')}
-          message={tProcessing(
-            'body',
-            'Do not exit the page. Checking to see if we have enough information.'
-          )}
+          title={tProcessing('title')}
+          message={tProcessing('body')}
         />
       )
     }
