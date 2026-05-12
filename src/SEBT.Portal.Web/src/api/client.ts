@@ -64,9 +64,18 @@ export async function apiFetch<T>(endpoint: string, options: ApiFetchOptions<T> 
     ...headers
   }
 
+  let resolvedEndpoint = endpoint
+  if (method === 'GET') {
+    // Append per-request UUID so edge caches (e.g. Cloudflare) can never
+    // serve User A's authenticated response to User B. See ADR 0016.
+    const url = new URL(endpoint, 'http://placeholder.invalid')
+    url.searchParams.set('_', crypto.randomUUID())
+    resolvedEndpoint = `${url.pathname}${url.search}`
+  }
+
   let response: Response
   try {
-    response = await fetch(`${API_ROUTE_PREFIX}${endpoint}`, {
+    response = await fetch(`${API_ROUTE_PREFIX}${resolvedEndpoint}`, {
       method,
       headers: requestHeaders,
       body: body !== undefined ? JSON.stringify(body) : null,
