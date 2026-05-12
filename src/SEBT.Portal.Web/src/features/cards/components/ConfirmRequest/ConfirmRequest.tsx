@@ -26,8 +26,6 @@ export function ConfirmRequest({ cases, address, onBack }: ConfirmRequestProps) 
   const mutation = useRequestCardReplacement()
   const [error, setError] = useState<string | null>(null)
 
-<<<<<<< HEAD
-  const programName = getStateProgramName(currentState)
   const caseRefs = cases
     .filter((c): c is SummerEbtCase & { summerEBTCaseID: string } => c.summerEBTCaseID != null)
     .map((c) => ({
@@ -35,9 +33,6 @@ export function ConfirmRequest({ cases, address, onBack }: ConfirmRequestProps) 
       applicationId: c.applicationId ?? null,
       applicationStudentId: c.applicationStudentId ?? null
     }))
-=======
-  const caseIds = cases.map((c) => c.summerEBTCaseID).filter((id): id is string => id != null)
->>>>>>> fb8b2802 (Replace hardcoded strings)
 
   function handleSubmit() {
     setError(null)
@@ -48,9 +43,7 @@ export function ConfirmRequest({ cases, address, onBack }: ConfirmRequestProps) 
           router.push('/dashboard?flash=card_replaced')
         },
         onError: () => {
-          setError(
-            tDashboard('alertCardReplaceError')
-          )
+          setError(tDashboard('alertCardReplaceError'))
         }
       }
     )
@@ -58,17 +51,13 @@ export function ConfirmRequest({ cases, address, onBack }: ConfirmRequestProps) 
 
   return (
     <div>
-      <h1 className="font-sans-xl text-primary">
-        {t('title')}
-      </h1>
+      <h1 className="font-sans-xl text-primary">{t('title')}</h1>
 
       <p className="margin-top-05">{t('body')}</p>
 
       <div className="usa-card__container margin-top-3">
         <div className="usa-card__body">
-          <h2 className="usa-card__heading font-sans-md">
-            {t('summaryTitle')}
-          </h2>
+          <h2 className="usa-card__heading font-sans-md">{t('summaryTitle')}</h2>
 
           <ul className="usa-list usa-list--unstyled">
             {cases.map((c) => (
@@ -90,9 +79,7 @@ export function ConfirmRequest({ cases, address, onBack }: ConfirmRequestProps) 
             ))}
           </ul>
 
-          <p className="margin-top-2">
-            {t('summaryAddress')}
-          </p>
+          <p className="margin-top-2">{t('summaryAddress')}</p>
 
           <address className="margin-top-1 font-sans-sm">
             {address.streetAddress1 && (
