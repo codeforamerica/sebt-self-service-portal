@@ -68,7 +68,7 @@ describe('ChildForm', () => {
     await userEvent.type(screen.getByRole('textbox', { name: /day/i }), '12')
     await userEvent.type(screen.getByRole('textbox', { name: /year/i }), '2020')
     await userEvent.click(screen.getByRole('button', { name: /continue/i }))
-    // TODO update once validation is updated
+    // TODO update once error message copy is added
     expect(await screen.findByText(/Enter child/i)).toBeInTheDocument()
   })
 
@@ -87,7 +87,7 @@ describe('ChildForm', () => {
     await userEvent.type(screen.getByRole('textbox', { name: /day/i }), '12')
     await userEvent.type(screen.getByRole('textbox', { name: /year/i }), '2020')
     await userEvent.click(screen.getByRole('button', { name: /continue/i }))
-    // TODO update once validation is updated
+     // TODO update once error message copy is added
     expect(await screen.findByText(/Enter child/i)).toBeInTheDocument()
   })
 
