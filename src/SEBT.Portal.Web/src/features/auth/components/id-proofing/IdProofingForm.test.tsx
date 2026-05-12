@@ -1029,6 +1029,50 @@ describe('IdProofingForm', () => {
       })
     })
 
+    it('shows the loading interstitial during the getDiToken phase, before the mutation starts', async () => {
+      // `getDiToken` is awaited before `submitIdProofing.mutateAsync`. The
+      // mutation's `isPending` only flips during the mutation itself, so if we
+      // gate the interstitial on `isPending` alone, a slow Socure DI SDK call
+      // leaves the form on screen while the user waits for the token. The
+      // interstitial must show as soon as the submit handler starts its async
+      // work, not only once the mutation reaches the server.
+      let resolveToken: (token: string | null) => void = () => {}
+      const tokenPromise = new Promise<string | null>((resolve) => {
+        resolveToken = resolve
+      })
+      const getDiToken = vi.fn(() => tokenPromise)
+
+      const user = userEvent.setup()
+      renderWithProviders(
+        <IdProofingForm
+          idOptions={TEST_ID_OPTIONS}
+          contactLink={TEST_CONTACT_LINK}
+          getDiToken={getDiToken}
+        />
+      )
+
+      await user.selectOptions(screen.getByRole('combobox', { name: /month/i }), '03')
+      await user.type(screen.getByRole('textbox', { name: INPUT_LABEL_DAY }), '10')
+      await user.type(screen.getByRole('textbox', { name: INPUT_LABEL_YEAR }), '1990')
+      await user.click(screen.getByRole('radio', { name: LABEL_SSN }))
+      await user.type(await screen.findByRole('textbox', { name: INPUT_LABEL_SSN }), '999999999')
+      await user.click(screen.getByRole('button', { name: /continue/i }))
+
+      // getDiToken has been called but has not resolved. The mutation has not
+      // started yet. The interstitial must already be on screen.
+      await waitFor(() => {
+        expect(getDiToken).toHaveBeenCalled()
+      })
+      expect(screen.getByRole('status')).toBeInTheDocument()
+      expect(screen.queryByRole('button', { name: /continue/i })).not.toBeInTheDocument()
+
+      // Let the token resolve; the mutation then runs and navigates.
+      resolveToken(null)
+      await waitFor(() => {
+        expect(mockPush).toHaveBeenCalledWith('/dashboard')
+      })
+    })
+
     it('restores the form and shows the submit error alert when the mutation throws', async () => {
       // The error path must NOT leave the loading interstitial stuck on screen —
       // the user needs to see the alert above the form so they can retry.
