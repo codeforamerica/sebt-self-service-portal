@@ -68,7 +68,27 @@ describe('ChildForm', () => {
     await userEvent.type(screen.getByRole('textbox', { name: /day/i }), '12')
     await userEvent.type(screen.getByRole('textbox', { name: /year/i }), '2020')
     await userEvent.click(screen.getByRole('button', { name: /continue/i }))
-    expect(await screen.findByText(/This is required/i)).toBeInTheDocument();
+    // TODO update once error message copy is added
+    expect(await screen.findByText(/Enter child/i)).toBeInTheDocument()
+  })
+
+  it('shows validation error on submit when lastName contains a number', async () => {
+    render(
+      <ChildForm
+        onSubmit={vi.fn()}
+        showSchoolField={false}
+        apiBaseUrl=""
+      />,
+      { wrapper }
+    )
+    await userEvent.type(screen.getByRole('textbox', { name: /first name/i }), 'Jane')
+    await userEvent.type(screen.getByRole('textbox', { name: /last name/i }), 'Doe1')
+    await userEvent.selectOptions(screen.getByRole('combobox', { name: /month/i }), 'April')
+    await userEvent.type(screen.getByRole('textbox', { name: /day/i }), '12')
+    await userEvent.type(screen.getByRole('textbox', { name: /year/i }), '2020')
+    await userEvent.click(screen.getByRole('button', { name: /continue/i }))
+     // TODO update once error message copy is added
+    expect(await screen.findByText(/Enter child/i)).toBeInTheDocument()
   })
 
   it('shows validation error on submit when day is empty', async () => {
@@ -83,6 +103,24 @@ describe('ChildForm', () => {
     await userEvent.type(screen.getByRole('textbox', { name: /first name/i }), 'Jane')
     await userEvent.type(screen.getByRole('textbox', { name: /last name/i }), 'Doe')
     await userEvent.selectOptions(screen.getByRole('combobox', { name: /month/i }), 'April')
+    await userEvent.type(screen.getByRole('textbox', { name: /year/i }), '2020')
+    await userEvent.click(screen.getByRole('button', { name: /continue/i }))
+    expect(await screen.findByText(/Provide a day/i)).toBeInTheDocument()
+  })
+
+  it('shows validation error on submit when day is invalid', async () => {
+    render(
+      <ChildForm
+        onSubmit={vi.fn()}
+        showSchoolField={false}
+        apiBaseUrl=""
+      />,
+      { wrapper }
+    )
+    await userEvent.type(screen.getByRole('textbox', { name: /first name/i }), 'Jane')
+    await userEvent.type(screen.getByRole('textbox', { name: /last name/i }), 'Doe')
+    await userEvent.selectOptions(screen.getByRole('combobox', { name: /month/i }), 'April')
+    await userEvent.type(screen.getByRole('textbox', { name: /day/i }), '42')
     await userEvent.type(screen.getByRole('textbox', { name: /year/i }), '2020')
     await userEvent.click(screen.getByRole('button', { name: /continue/i }))
     expect(await screen.findByText(/Provide a day/i)).toBeInTheDocument()

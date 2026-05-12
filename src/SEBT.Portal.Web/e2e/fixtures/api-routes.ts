@@ -58,9 +58,14 @@ export async function setupApiRoutes(page: Page, overrides: ApiRouteOverrides = 
           : null
   const cardReplaceStatus = overrides.cardReplaceStatus ?? 204
 
+  // The trailing `*` on GET routes tolerates the per-request `?_=<uuid>`
+  // cache-bust query string that apiFetch appends to defeat edge-cache leaks
+  // (see ADR 0016). Playwright glob `*` matches any characters except `/`,
+  // so it equally matches the bare path and the path-plus-query form.
+
   // Provide an authenticated session for AuthContext — IAL/id-proofing claims
   // satisfy the CO step-up gate; DC ignores them.
-  await page.route('**/api/auth/status', (route) => {
+  await page.route('**/api/auth/status*', (route) => {
     void route.fulfill({
       status: 200,
       contentType: 'application/json',
@@ -83,7 +88,7 @@ export async function setupApiRoutes(page: Page, overrides: ApiRouteOverrides = 
     void route.fulfill({ status: 204 })
   })
 
-  await page.route('**/api/household/data', (route) => {
+  await page.route('**/api/household/data*', (route) => {
     void route.fulfill({
       status: 200,
       contentType: 'application/json',
@@ -91,7 +96,7 @@ export async function setupApiRoutes(page: Page, overrides: ApiRouteOverrides = 
     })
   })
 
-  await page.route('**/api/features', (route) => {
+  await page.route('**/api/features*', (route) => {
     void route.fulfill({
       status: 200,
       contentType: 'application/json',
