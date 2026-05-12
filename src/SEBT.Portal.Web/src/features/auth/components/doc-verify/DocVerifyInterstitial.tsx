@@ -20,6 +20,9 @@ export function DocVerifyInterstitial({
   contactLink
 }: DocVerifyInterstitialProps) {
   const { t } = useTranslation('idProofing')
+  const { t: tOffboard } = useTranslation('offBoarding')
+  const { t: tCommon } = useTranslation('common')
+  const { t: tDev } = useTranslation('dev')
 
   return (
     <section aria-labelledby="doc-verify-title">
@@ -27,17 +30,13 @@ export function DocVerifyInterstitial({
         id="doc-verify-title"
         className="font-sans-xl text-bold line-height-sans-1 margin-bottom-3"
       >
-        {t('interstitialHeading', 'We want to keep your account safe')}
+        {tOffboard('title')}
       </h1>
 
-      <p className="font-sans-sm">
-        {t(
-          'interstitialBody',
-          "In order to confirm your identity we need to ask for additional documentation. On the next screen, we'll ask you to upload a photo of your:"
-        )}
-      </p>
+      <p className="font-sans-sm">{tOffboard('body1')}</p>
 
       <ul className="usa-list font-sans-sm">
+        {/* TODO update copy*/}
         <li>{t('interstitialIdTypeDriversLicense', "driver's license")}</li>
         <li>{t('interstitialIdTypeForeignPassport', 'foreign passport')}</li>
         <li>{t('interstitialIdTypeOtherPhotoId', 'or another photo ID')}</li>
@@ -59,7 +58,7 @@ export function DocVerifyInterstitial({
             className="usa-button--outline margin-right-2"
             onClick={onEnterIdNumber}
           >
-            {t('interstitialActionEnterId', 'Enter an ID number')}
+            {tOffboard('action')}
           </Button>
         )}
 
@@ -67,23 +66,21 @@ export function DocVerifyInterstitial({
           type="button"
           onClick={onContinue}
           isLoading={isStartingChallenge}
-          loadingText={t('interstitialLoading', 'Loading...')}
+          loadingText={tDev('loading')}
           disabled={isStartingChallenge}
         >
-          {t('interstitialActionContinue', 'Continue')}
+          {tCommon('continue')}
         </Button>
       </div>
 
       {/* FAQs placeholder */}
       <div className="margin-top-6">
-        <h2 className="font-sans-lg text-bold">{t('interstitialFaqsHeading', 'FAQs')}</h2>
+        <h2 className="font-sans-lg text-bold">{tCommon('linkFaqs')}</h2>
       </div>
 
       {/* Contact Us */}
       <div className="margin-top-4">
-        <h2 className="font-sans-lg text-bold">
-          {t('interstitialContactUsHeading', 'Contact Us')}
-        </h2>
+        <h2 className="font-sans-lg text-bold">{tCommon('linkContactUs')}</h2>
         <p className="font-sans-sm">
           <a
             href={contactLink}

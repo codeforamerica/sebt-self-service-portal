@@ -61,6 +61,7 @@ export default function OffBoardingPage() {
     applySkipBody = undefined
     applyLabel = t('coLoadedAction2', '') || undefined
   } else if (reason === 'noIdProvided') {
+    // TODO REMOVE HARDCODED STRINGS
     title = 'We need an ID to verify you'
     body =
       "To confirm your identity, we need one of the listed IDs. If you don't have any of these IDs, contact us for help."
