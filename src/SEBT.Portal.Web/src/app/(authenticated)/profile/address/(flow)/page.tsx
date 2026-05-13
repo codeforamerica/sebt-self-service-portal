@@ -16,7 +16,7 @@ export default function AddressFormPage() {
   const { t } = useTranslation('confirmInfo')
   const { t: tCommon } = useTranslation('common')
   const { t: tDev } = useTranslation('dev')
-  
+
   const { data, isLoading } = useHouseholdData()
   const router = useRouter()
   const canUpdateAddress = data?.allowedActions?.canUpdateAddress ?? true
@@ -42,12 +42,8 @@ export default function AddressFormPage() {
 
   return (
     <div className="grid-container maxw-tablet padding-top-4 padding-bottom-4">
-      <h1 className="font-sans-xl text-primary">
-        {t('titleYour')}
-      </h1>
-      <p className="usa-hint">
-        {tCommon('requiredFields')}
-      </p>
+      <h1 className="font-sans-xl text-primary">{t('titleYour')}</h1>
+      <p className="usa-hint">{tCommon('requiredFields')}</p>
       <AddressForm initialAddress={data?.addressOnFile ?? null} />
     </div>
   )

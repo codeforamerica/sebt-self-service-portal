@@ -15,7 +15,7 @@ export default function NotFound() {
       <div className="grid-container">
         <Alert
           variant="error"
-          // TODO add string 
+          // TODO add string
           heading={t('pageNotFound', 'Page not found')}
         >
           <p>

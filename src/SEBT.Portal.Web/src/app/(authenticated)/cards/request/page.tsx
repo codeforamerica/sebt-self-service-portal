@@ -33,9 +33,7 @@ export default function RequestReplacementCardsPage() {
 
   return (
     <div className="grid-container maxw-tablet padding-top-4 padding-bottom-4">
-      <h1 className="font-sans-xl text-primary">
-        {tOptional('title')}
-      </h1>
+      <h1 className="font-sans-xl text-primary">{tOptional('title')}</h1>
       <CardSelection confirmPath="/cards/request/confirm" />
     </div>
   )

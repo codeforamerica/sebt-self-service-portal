@@ -161,9 +161,7 @@ export function SuggestedAddress() {
         </Alert>
       )}
 
-      <p className="font-sans-3xs text-base margin-bottom-0">
-        {tCommon('requiredFields')}
-      </p>
+      <p className="font-sans-3xs text-base margin-bottom-0">{tCommon('requiredFields')}</p>
 
       <fieldset className="usa-fieldset margin-top-3">
         <legend className="usa-legend">
