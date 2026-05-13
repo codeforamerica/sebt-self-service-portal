@@ -89,6 +89,7 @@ export function ChildForm({
       <InputField
         label={tCommon('labelFirstName')}
         value={values.firstName ?? ''}
+        maxLength={35}
         onChange={(e) => set('firstName', e.target.value)}
         {...(errors.firstName && { error: errors.firstName })}
         isRequired
@@ -103,6 +104,7 @@ export function ChildForm({
       <InputField
         label={tCommon('labelLastName')}
         value={values.lastName ?? ''}
+        maxLength={40}
         onChange={(e) => set('lastName', e.target.value)}
         {...(errors.lastName && { error: errors.lastName })}
         isRequired

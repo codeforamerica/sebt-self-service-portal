@@ -33,15 +33,11 @@ export default function AuthenticatedError({ error, reset }: ErrorProps) {
           heading={
             isAuthError
               ? tDev('alertSession', 'Session expired')
-              // TODO update with correct string
-              : t('errorSomethingWentWrong', 'Something went wrong')
+              : // TODO update with correct string
+                t('errorSomethingWentWrong', 'Something went wrong')
           }
         >
-          <p>
-            {isAuthError
-              ? tDev('alertSessionClient')
-              : tValidation('globalInternalError')}
-          </p>
+          <p>{isAuthError ? tDev('alertSessionClient') : tValidation('globalInternalError')}</p>
           {error.digest && (
             <p className="font-mono text-base-dark margin-top-1">
               {tDev('errorPrefix')}

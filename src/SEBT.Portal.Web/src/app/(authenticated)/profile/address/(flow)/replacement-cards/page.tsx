@@ -25,9 +25,7 @@ export default function ReplacementCardsPage() {
 
   return (
     <div className="grid-container maxw-tablet padding-top-4 padding-bottom-4">
-      <h1 className="font-sans-xl text-primary">
-        {t('replacementCardsTitle')}
-      </h1>
+      <h1 className="font-sans-xl text-primary">{t('replacementCardsTitle')}</h1>
       <ReplacementCardPrompt address={address} />
     </div>
   )

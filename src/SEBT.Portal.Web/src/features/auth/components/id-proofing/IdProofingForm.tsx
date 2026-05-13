@@ -5,7 +5,7 @@ import { useId, useState, type FormEvent } from 'react'
 import { useTranslation } from 'react-i18next'
 
 import { AnalyticsEvents, useDataLayer } from '@sebt/analytics'
-import { Alert, Button, InputField } from '@sebt/design-system'
+import { Alert, Button, InputField, LoadingInterstitial } from '@sebt/design-system'
 
 import { useAuth } from '@/features/auth'
 import {
@@ -89,6 +89,7 @@ export function IdProofingForm({ idOptions, contactLink, getDiToken }: IdProofin
   const { t: tCommon } = useTranslation('common')
   const { t: tPersonalInfo } = useTranslation('personalInfo')
   const { t: tValidation } = useTranslation('validation')
+  const { t: tProcessing } = useTranslation('step-upProcessing')
   const { t: tDev } = useTranslation('dev')
 
   const formId = useId()
@@ -107,6 +108,10 @@ export function IdProofingForm({ idOptions, contactLink, getDiToken }: IdProofin
   const [idTypeError, setIdTypeError] = useState<string | null>(null)
   const [idValueError, setIdValueError] = useState<string | null>(null)
   const [submitError, setSubmitError] = useState<string | null>(null)
+  // Covers the full submit flow, not just the mutation. The Socure DI token
+  // fetch runs before mutateAsync, so leaning on `submitIdProofing.isPending`
+  // alone would leave the form on screen during a slow token call.
+  const [isProcessing, setIsProcessing] = useState(false)
 
   const submitIdProofing = useSubmitIdProofing()
   const refreshToken = useRefreshToken()
@@ -215,6 +220,7 @@ export function IdProofingForm({ idOptions, contactLink, getDiToken }: IdProofin
     if (!validateFields()) return
 
     trackEvent(AnalyticsEvents.IDV_PRIMARY_START)
+    setIsProcessing(true)
 
     try {
       // Best-effort: retrieve DI token if the SDK is ready
@@ -233,9 +239,7 @@ export function IdProofingForm({ idOptions, contactLink, getDiToken }: IdProofin
         setUserData('docv_required', true, ['default', 'analytics'])
         trackEvent(AnalyticsEvents.IDV_PRIMARY_RESULT)
         if (!response.challengeId) {
-          setSubmitError(
-            tDev('alertVerificationRetry')
-          )
+          setSubmitError(tDev('alertVerificationRetry'))
           return
         }
         clearChallengeContext()
@@ -279,7 +283,24 @@ export function IdProofingForm({ idOptions, contactLink, getDiToken }: IdProofin
       // backend wording not intended for end users — avoid displaying it directly.
       void err
       setSubmitError(tValidation('globalInternalError'))
+    } finally {
+      setIsProcessing(false)
     }
+  }
+
+  // While the Socure-backed submission is in flight (DI token fetch + mutation),
+  // replace the form with a dedicated loading interstitial. The full flow can
+  // take several seconds when Socure responds slowly; without this, users only
+  // see the submit button text change to "Continue..." and any eventual outcome
+  // (off-boarding navigation or an inline error) reads as "we just got an error
+  // after waiting."
+  if (isProcessing || submitIdProofing.isPending) {
+    return (
+      <LoadingInterstitial
+        title={tProcessing('title')}
+        message={tProcessing('body')}
+      />
+    )
   }
 
   return (
