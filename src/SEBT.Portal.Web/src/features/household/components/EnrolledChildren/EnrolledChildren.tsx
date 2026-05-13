@@ -13,6 +13,10 @@ export function EnrolledChildren() {
   const data = useRequiredHouseholdData()
   const applyHref = getApplyHref(i18n.language)
 
+  if (data.summerEbtCases.length === 0) {
+    return null
+  }
+
   return (
     <section aria-labelledby="enrolled-children-heading">
       <h2

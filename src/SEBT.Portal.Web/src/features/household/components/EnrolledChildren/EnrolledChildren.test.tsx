@@ -111,4 +111,10 @@ describe('EnrolledChildren', () => {
     expect(mockGetApplyHref).toHaveBeenCalledWith(expect.any(String))
     expect(mockGetApplyHref.mock.calls[0]![0]).not.toBe('')
   })
+
+  it('renders nothing when there are no enrolled children', () => {
+    mockReturnData = { ...defaultMockData, summerEbtCases: [] }
+    const { container } = render(<EnrolledChildren />)
+    expect(container.firstChild).toBeNull()
+  })
 })

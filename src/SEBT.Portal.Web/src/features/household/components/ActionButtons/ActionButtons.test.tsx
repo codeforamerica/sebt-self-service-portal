@@ -125,9 +125,33 @@ describe('ActionButtons', () => {
     expect(screen.queryByText('Request new cards')).toBeNull()
   })
 
-  it('shows info alert when at least one self-service action is denied', () => {
+  it('hides Check existing cards CTA when hasCases is false', () => {
+    render(
+      <ActionButtons
+        allowedActions={allowAll}
+        hasCases={false}
+      />
+    )
+    expect(screen.queryByText('Check existing cards')).toBeNull()
+    // Other CTAs unaffected
+    expect(screen.getByText('Change my mailing address')).toBeInTheDocument()
+    expect(screen.getByText('Request new cards')).toBeInTheDocument()
+    expect(screen.getByText('Check existing applications')).toBeInTheDocument()
+  })
+
+  it('shows Check existing cards CTA when hasCases is true', () => {
+    render(
+      <ActionButtons
+        allowedActions={allowAll}
+        hasCases={true}
+      />
+    )
+    expect(screen.getByText('Check existing cards')).toBeInTheDocument()
+  })
+
+  it('does not render the self-service-unavailable alert even when actions are denied', () => {
     render(<ActionButtons allowedActions={denyAll} />)
-    expect(screen.getByRole('status')).toBeInTheDocument()
+    expect(screen.queryByRole('status')).toBeNull()
   })
 
   it('does not show info alert when all self-service actions are allowed', () => {
