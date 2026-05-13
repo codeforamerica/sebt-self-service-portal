@@ -58,4 +58,14 @@ public record HouseholdDataResponse
     /// from non-co-loaded and co-loaded-only households.
     /// </summary>
     public CoLoadedCohort CoLoadedCohort { get; init; }
+
+    /// <summary>
+    /// HMAC-SHA256 digest of the SEBT App ID, lowercase hex. Surfaced for
+    /// analytics so CO/CfA can join vendor exports (Mixpanel/Amplitude) back
+    /// to state program data via a shared deterministic hash without
+    /// exposing raw identifiers. Populated only when the active state is
+    /// configured to emit it (CO today) and an App ID exists for the
+    /// household; null otherwise. See docs/analytics/hashed-sebt-app-id.md.
+    /// </summary>
+    public string? HashedAppId { get; init; }
 }

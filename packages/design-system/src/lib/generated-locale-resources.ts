@@ -4,13 +4,12 @@
 import enCOCommon from '@/content/locales/en/co/common.json'
 import enCOConfirmInfo from '@/content/locales/en/co/confirmInfo.json'
 import enCODashboard from '@/content/locales/en/co/dashboard.json'
+import enCODev from '@/content/locales/en/co/dev.json'
 import enCODisclaimer from '@/content/locales/en/co/disclaimer.json'
 import enCOEdit from '@/content/locales/en/co/edit.json'
 import enCOEditContactPreferences from '@/content/locales/en/co/editContactPreferences.json'
-import enCOEditMailingAddress from '@/content/locales/en/co/editMailingAddress.json'
 import enCOEmail from '@/content/locales/en/co/email.json'
 import enCOEnterEmail from '@/content/locales/en/co/enterEmail.json'
-import enCOIdProofing from '@/content/locales/en/co/idProofing.json'
 import enCOLanding from '@/content/locales/en/co/landing.json'
 import enCOLanguage from '@/content/locales/en/co/language.json'
 import enCOLogin from '@/content/locales/en/co/login.json'
@@ -24,41 +23,35 @@ import enCOSignIn from '@/content/locales/en/co/signIn.json'
 import enCOStepUpProcessing from '@/content/locales/en/co/step-upProcessing.json'
 import enCOStepUpDisclaimer from '@/content/locales/en/co/stepUpDisclaimer.json'
 import enCOStepUpFailure from '@/content/locales/en/co/stepUpFailure.json'
-import enCOText from '@/content/locales/en/co/text.json'
 import enCOValidation from '@/content/locales/en/co/validation.json'
 import enDCCommon from '@/content/locales/en/dc/common.json'
 import enDCConfirmInfo from '@/content/locales/en/dc/confirmInfo.json'
 import enDCDashboard from '@/content/locales/en/dc/dashboard.json'
+import enDCDev from '@/content/locales/en/dc/dev.json'
 import enDCDisclaimer from '@/content/locales/en/dc/disclaimer.json'
 import enDCEditContactPreferences from '@/content/locales/en/dc/editContactPreferences.json'
-import enDCEditMailingAddress from '@/content/locales/en/dc/editMailingAddress.json'
 import enDCEmail from '@/content/locales/en/dc/email.json'
-import enDCEnterEmail from '@/content/locales/en/dc/enterEmail.json'
 import enDCIdProofing from '@/content/locales/en/dc/idProofing.json'
 import enDCLanding from '@/content/locales/en/dc/landing.json'
 import enDCLanguage from '@/content/locales/en/dc/language.json'
 import enDCLogin from '@/content/locales/en/dc/login.json'
 import enDCOffBoarding from '@/content/locales/en/dc/offBoarding.json'
-import enDCOptIn from '@/content/locales/en/dc/optIn.json'
 import enDCOptionalId from '@/content/locales/en/dc/optionalId.json'
 import enDCPersonalInfo from '@/content/locales/en/dc/personalInfo.json'
 import enDCProto from '@/content/locales/en/dc/proto.json'
 import enDCResult from '@/content/locales/en/dc/result.json'
-import enDCStepUpProcessing from '@/content/locales/en/dc/step-upProcessing.json'
-import enDCStepUpDisclaimer from '@/content/locales/en/dc/stepUpDisclaimer.json'
-import enDCStepUpFailure from '@/content/locales/en/dc/stepUpFailure.json'
+import enDCSignIn from '@/content/locales/en/dc/signIn.json'
 import enDCText from '@/content/locales/en/dc/text.json'
 import enDCValidation from '@/content/locales/en/dc/validation.json'
 import esCOCommon from '@/content/locales/es/co/common.json'
 import esCOConfirmInfo from '@/content/locales/es/co/confirmInfo.json'
 import esCODashboard from '@/content/locales/es/co/dashboard.json'
+import esCODev from '@/content/locales/es/co/dev.json'
 import esCODisclaimer from '@/content/locales/es/co/disclaimer.json'
 import esCOEdit from '@/content/locales/es/co/edit.json'
 import esCOEditContactPreferences from '@/content/locales/es/co/editContactPreferences.json'
-import esCOEditMailingAddress from '@/content/locales/es/co/editMailingAddress.json'
 import esCOEmail from '@/content/locales/es/co/email.json'
 import esCOEnterEmail from '@/content/locales/es/co/enterEmail.json'
-import esCOIdProofing from '@/content/locales/es/co/idProofing.json'
 import esCOLanding from '@/content/locales/es/co/landing.json'
 import esCOLanguage from '@/content/locales/es/co/language.json'
 import esCOLogin from '@/content/locales/es/co/login.json'
@@ -72,29 +65,24 @@ import esCOSignIn from '@/content/locales/es/co/signIn.json'
 import esCOStepUpProcessing from '@/content/locales/es/co/step-upProcessing.json'
 import esCOStepUpDisclaimer from '@/content/locales/es/co/stepUpDisclaimer.json'
 import esCOStepUpFailure from '@/content/locales/es/co/stepUpFailure.json'
-import esCOText from '@/content/locales/es/co/text.json'
 import esCOValidation from '@/content/locales/es/co/validation.json'
 import esDCCommon from '@/content/locales/es/dc/common.json'
 import esDCConfirmInfo from '@/content/locales/es/dc/confirmInfo.json'
 import esDCDashboard from '@/content/locales/es/dc/dashboard.json'
+import esDCDev from '@/content/locales/es/dc/dev.json'
 import esDCDisclaimer from '@/content/locales/es/dc/disclaimer.json'
 import esDCEditContactPreferences from '@/content/locales/es/dc/editContactPreferences.json'
-import esDCEditMailingAddress from '@/content/locales/es/dc/editMailingAddress.json'
 import esDCEmail from '@/content/locales/es/dc/email.json'
-import esDCEnterEmail from '@/content/locales/es/dc/enterEmail.json'
 import esDCIdProofing from '@/content/locales/es/dc/idProofing.json'
 import esDCLanding from '@/content/locales/es/dc/landing.json'
 import esDCLanguage from '@/content/locales/es/dc/language.json'
 import esDCLogin from '@/content/locales/es/dc/login.json'
 import esDCOffBoarding from '@/content/locales/es/dc/offBoarding.json'
-import esDCOptIn from '@/content/locales/es/dc/optIn.json'
 import esDCOptionalId from '@/content/locales/es/dc/optionalId.json'
 import esDCPersonalInfo from '@/content/locales/es/dc/personalInfo.json'
 import esDCProto from '@/content/locales/es/dc/proto.json'
 import esDCResult from '@/content/locales/es/dc/result.json'
-import esDCStepUpProcessing from '@/content/locales/es/dc/step-upProcessing.json'
-import esDCStepUpDisclaimer from '@/content/locales/es/dc/stepUpDisclaimer.json'
-import esDCStepUpFailure from '@/content/locales/es/dc/stepUpFailure.json'
+import esDCSignIn from '@/content/locales/es/dc/signIn.json'
 import esDCText from '@/content/locales/es/dc/text.json'
 import esDCValidation from '@/content/locales/es/dc/validation.json'
 
@@ -104,13 +92,12 @@ export const stateResources = {
       common: enCOCommon,
       confirmInfo: enCOConfirmInfo,
       dashboard: enCODashboard,
+      dev: enCODev,
       disclaimer: enCODisclaimer,
       edit: enCOEdit,
       editContactPreferences: enCOEditContactPreferences,
-      editMailingAddress: enCOEditMailingAddress,
       email: enCOEmail,
       enterEmail: enCOEnterEmail,
-      idProofing: enCOIdProofing,
       landing: enCOLanding,
       language: enCOLanguage,
       login: enCOLogin,
@@ -124,20 +111,18 @@ export const stateResources = {
       'step-upProcessing': enCOStepUpProcessing,
       stepUpDisclaimer: enCOStepUpDisclaimer,
       stepUpFailure: enCOStepUpFailure,
-      text: enCOText,
       validation: enCOValidation,
     },
     es: {
       common: esCOCommon,
       confirmInfo: esCOConfirmInfo,
       dashboard: esCODashboard,
+      dev: esCODev,
       disclaimer: esCODisclaimer,
       edit: esCOEdit,
       editContactPreferences: esCOEditContactPreferences,
-      editMailingAddress: esCOEditMailingAddress,
       email: esCOEmail,
       enterEmail: esCOEnterEmail,
-      idProofing: esCOIdProofing,
       landing: esCOLanding,
       language: esCOLanguage,
       login: esCOLogin,
@@ -151,7 +136,6 @@ export const stateResources = {
       'step-upProcessing': esCOStepUpProcessing,
       stepUpDisclaimer: esCOStepUpDisclaimer,
       stepUpFailure: esCOStepUpFailure,
-      text: esCOText,
       validation: esCOValidation,
     },
   },
@@ -160,24 +144,20 @@ export const stateResources = {
       common: enDCCommon,
       confirmInfo: enDCConfirmInfo,
       dashboard: enDCDashboard,
+      dev: enDCDev,
       disclaimer: enDCDisclaimer,
       editContactPreferences: enDCEditContactPreferences,
-      editMailingAddress: enDCEditMailingAddress,
       email: enDCEmail,
-      enterEmail: enDCEnterEmail,
       idProofing: enDCIdProofing,
       landing: enDCLanding,
       language: enDCLanguage,
       login: enDCLogin,
       offBoarding: enDCOffBoarding,
-      optIn: enDCOptIn,
       optionalId: enDCOptionalId,
       personalInfo: enDCPersonalInfo,
       proto: enDCProto,
       result: enDCResult,
-      'step-upProcessing': enDCStepUpProcessing,
-      stepUpDisclaimer: enDCStepUpDisclaimer,
-      stepUpFailure: enDCStepUpFailure,
+      signIn: enDCSignIn,
       text: enDCText,
       validation: enDCValidation,
     },
@@ -185,29 +165,25 @@ export const stateResources = {
       common: esDCCommon,
       confirmInfo: esDCConfirmInfo,
       dashboard: esDCDashboard,
+      dev: esDCDev,
       disclaimer: esDCDisclaimer,
       editContactPreferences: esDCEditContactPreferences,
-      editMailingAddress: esDCEditMailingAddress,
       email: esDCEmail,
-      enterEmail: esDCEnterEmail,
       idProofing: esDCIdProofing,
       landing: esDCLanding,
       language: esDCLanguage,
       login: esDCLogin,
       offBoarding: esDCOffBoarding,
-      optIn: esDCOptIn,
       optionalId: esDCOptionalId,
       personalInfo: esDCPersonalInfo,
       proto: esDCProto,
       result: esDCResult,
-      'step-upProcessing': esDCStepUpProcessing,
-      stepUpDisclaimer: esDCStepUpDisclaimer,
-      stepUpFailure: esDCStepUpFailure,
+      signIn: esDCSignIn,
       text: esDCText,
       validation: esDCValidation,
     },
   },
 }
 
-export const namespaces = ['common', 'confirmInfo', 'dashboard', 'disclaimer', 'edit', 'editContactPreferences', 'editMailingAddress', 'email', 'enterEmail', 'idProofing', 'landing', 'language', 'login', 'offBoarding', 'optIn', 'optionalId', 'personalInfo', 'proto', 'result', 'signIn', 'step-upProcessing', 'stepUpDisclaimer', 'stepUpFailure', 'text', 'validation'] as const
+export const namespaces = ['common', 'confirmInfo', 'dashboard', 'dev', 'disclaimer', 'edit', 'editContactPreferences', 'email', 'enterEmail', 'idProofing', 'landing', 'language', 'login', 'offBoarding', 'optIn', 'optionalId', 'personalInfo', 'proto', 'result', 'signIn', 'step-upProcessing', 'stepUpDisclaimer', 'stepUpFailure', 'text', 'validation'] as const
 export type Namespace = (typeof namespaces)[number]

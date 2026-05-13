@@ -3,6 +3,7 @@ using NSubstitute;
 using SEBT.Portal.Core.Models;
 using SEBT.Portal.Core.Models.Auth;
 using SEBT.Portal.Core.Models.Household;
+using SEBT.Portal.Core.Utilities;
 using SEBT.Portal.Infrastructure.Repositories;
 using ISummerEbtCaseService = SEBT.Portal.StatesPlugins.Interfaces.ISummerEbtCaseService;
 using PluginHouseholdIdentifierType = SEBT.Portal.StatesPlugins.Interfaces.Models.Household.HouseholdIdentifierType;
@@ -86,16 +87,63 @@ public class HouseholdRepositoryTests
     public async Task TryMatchCoLoadedGuardianByBenefitIdAndDobAsync_DelegatesToPlugin()
     {
         var dob = new DateOnly(2000, 1, 1);
+        var userId = Guid.NewGuid();
         _summerEbtCaseService
-            .TryMatchCoLoadedGuardianByBenefitIdAndDobAsync("IC1", dob, Arg.Any<CancellationToken>())
+            .TryMatchCoLoadedGuardianByBenefitIdAndDobAsync("IC1", dob, userId, Arg.Any<CancellationToken>())
             .Returns(true);
 
-        var result = await _repository.TryMatchCoLoadedGuardianByBenefitIdAndDobAsync("IC1", dob);
+        var result = await _repository.TryMatchCoLoadedGuardianByBenefitIdAndDobAsync("IC1", dob, userId);
 
         Assert.True(result);
         await _summerEbtCaseService.Received(1).TryMatchCoLoadedGuardianByBenefitIdAndDobAsync(
             "IC1",
             dob,
+            userId,
+            Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task GetHouseholdByBenefitIdentifierAndGuardianDobAsync_DelegatesToPlugin_AndMapsCore()
+    {
+        var loginEmail = "guardian@example.com";
+        var dob = new DateOnly(1984, 3, 5);
+        var userId = Guid.NewGuid();
+        var pluginData = new PluginHouseholdData
+        {
+            Email = EmailNormalizer.Normalize(loginEmail),
+            BenefitIssuanceType = PluginBenefitIssuanceType.SnapEbtCard,
+            Applications = new List<PluginApplication>(),
+            SummerEbtCases = new List<PluginSummerEbtCase>()
+        };
+
+        _summerEbtCaseService
+            .GetHouseholdByBenefitIdentifierAndDobAsync(
+                "IC000001",
+                dob,
+                EmailNormalizer.Normalize(loginEmail),
+                Arg.Any<PluginPiiVisibility>(),
+                PluginIdentityAssuranceLevel.IAL1plus,
+                userId,
+                Arg.Any<CancellationToken>())
+            .Returns(pluginData);
+
+        var result = await _repository.GetHouseholdByBenefitIdentifierAndGuardianDobAsync(
+            loginEmail,
+            "IC000001",
+            dob,
+            FullPii,
+            UserIalLevel.IAL1plus,
+            userId);
+
+        Assert.NotNull(result);
+        Assert.Equal(EmailNormalizer.Normalize(loginEmail), result!.Email);
+        await _summerEbtCaseService.Received(1).GetHouseholdByBenefitIdentifierAndDobAsync(
+            "IC000001",
+            dob,
+            EmailNormalizer.Normalize(loginEmail),
+            Arg.Any<PluginPiiVisibility>(),
+            PluginIdentityAssuranceLevel.IAL1plus,
+            userId,
             Arg.Any<CancellationToken>());
     }
 

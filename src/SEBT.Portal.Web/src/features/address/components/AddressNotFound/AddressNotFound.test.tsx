@@ -56,16 +56,23 @@ const TEST_VALIDATION_RESULT: AddressUpdateResponse = {
 function ContextSeeder({
   enteredAddress,
   validationResult,
-  includeInspector = false
+  includeInspector = false,
+  formPath,
+  continuePath
 }: {
   enteredAddress: UpdateAddressRequest
   validationResult: AddressUpdateResponse
   includeInspector?: boolean
+  formPath?: string
+  continuePath?: string
 }) {
-  const { setValidationResult } = useAddressFlow()
+  const { setValidationResult, setNavigationTargets } = useAddressFlow()
 
   useEffect(() => {
     setValidationResult(validationResult, enteredAddress)
+    if (formPath && continuePath) {
+      setNavigationTargets({ formPath, continuePath })
+    }
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   return (
@@ -92,7 +99,11 @@ function ContextInspector() {
 function renderComponent(
   enteredAddress: UpdateAddressRequest = TEST_ADDRESS,
   validationResult: AddressUpdateResponse = TEST_VALIDATION_RESULT,
-  { includeInspector = false }: { includeInspector?: boolean } = {}
+  {
+    includeInspector = false,
+    formPath,
+    continuePath
+  }: { includeInspector?: boolean; formPath?: string; continuePath?: string } = {}
 ) {
   const user = userEvent.setup()
   return {
@@ -103,6 +114,8 @@ function renderComponent(
           enteredAddress={enteredAddress}
           validationResult={validationResult}
           includeInspector={includeInspector}
+          {...(formPath ? { formPath } : {})}
+          {...(continuePath ? { continuePath } : {})}
         />
       </AddressFlowProvider>
     )
@@ -211,6 +224,19 @@ describe('AddressNotFound', () => {
       expect(mockPush).toHaveBeenCalledWith('/profile/address/replacement-cards')
     })
 
+    it('CO: "Use this address" uses context continuePath when configured', async () => {
+      mockState = 'co'
+      const { user } = renderComponent(TEST_ADDRESS, TEST_VALIDATION_RESULT, {
+        formPath: '/cards/replace/address?case=SEBT-001',
+        continuePath: '/cards/replace/confirm?case=SEBT-001'
+      })
+
+      const useButton = screen.getByRole('button', { name: /use this address/i })
+      await user.click(useButton)
+
+      expect(mockPush).toHaveBeenCalledWith('/cards/replace/confirm?case=SEBT-001')
+    })
+
     it('CO: "Use this address" preserves validationResult in context (prevents FlowGuard race)', async () => {
       mockState = 'co'
       const { user } = renderComponent(TEST_ADDRESS, TEST_VALIDATION_RESULT, {
@@ -235,6 +261,18 @@ describe('AddressNotFound', () => {
     await user.click(editButton)
 
     expect(mockPush).toHaveBeenCalledWith('/profile/address')
+  })
+
+  it('"Edit the address" uses context formPath when configured', async () => {
+    const { user } = renderComponent(TEST_ADDRESS, TEST_VALIDATION_RESULT, {
+      formPath: '/cards/replace/address?case=SEBT-001',
+      continuePath: '/cards/replace/confirm?case=SEBT-001'
+    })
+
+    const editButton = screen.getByRole('button', { name: /edit the address/i })
+    await user.click(editButton)
+
+    expect(mockPush).toHaveBeenCalledWith('/cards/replace/address?case=SEBT-001')
   })
 
   // --- Blocked address ---

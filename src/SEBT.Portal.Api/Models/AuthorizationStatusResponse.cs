@@ -7,6 +7,11 @@ namespace SEBT.Portal.Api.Models;
 /// and cannot be decoded client-side.
 /// </summary>
 /// <param name="IsAuthorized">Always true when this response is returned (200 OK).</param>
+/// <param name="UserId">
+/// Stable, non-PII portal user identifier (the portal's own user UUID). Surfaced for
+/// analytics so events can be correlated per-user across page loads without exposing
+/// email or other PII to vendor tooling. Null when the claim is absent.
+/// </param>
 /// <param name="Email">The email address of the authenticated user.</param>
 /// <param name="Ial">
 /// Identity assurance level claim from the JWT ("0", "1", "1plus", or "2"). Null when unknown.
@@ -35,6 +40,7 @@ namespace SEBT.Portal.Api.Models;
 /// </param>
 public record AuthorizationStatusResponse(
     bool IsAuthorized,
+    Guid? UserId = null,
     string? Email = null,
     string? Ial = null,
     int? IdProofingStatus = null,

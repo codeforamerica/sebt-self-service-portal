@@ -16,7 +16,7 @@ function getStatusTextClass(status: string): string {
     case 'Cancelled':
       return 'text-base-dark'
     default:
-      return 'text-gold'
+      return 'text-green'
   }
 }
 
@@ -26,7 +26,10 @@ const APPLICATION_STATUS_KEYS: Record<string, { key: string; fallback: string }>
   Approved: { key: 'applicationsTableStatusApproved', fallback: 'Approved' },
   Denied: { key: 'applicationsTableStatusDenied', fallback: 'Denied' },
   Pending: { key: 'applicationsTableStatusPending', fallback: 'Pending' },
+  // TODO update
   UnderReview: { key: 'applicationsTableStatusUnderReview', fallback: 'Under Review' },
+  // TODO update
+
   Cancelled: { key: 'applicationsTableStatusCancelled', fallback: 'Cancelled' }
 }
 
@@ -71,7 +74,6 @@ function ApplicationCard({ application }: { application: Application }) {
   )
 }
 
-// Keys map to CSV: "S2 - Portal Dashboard - Section Applications - {Key}"
 export function ApplicationsSection() {
   const { t } = useTranslation('dashboard')
   const data = useRequiredHouseholdData()

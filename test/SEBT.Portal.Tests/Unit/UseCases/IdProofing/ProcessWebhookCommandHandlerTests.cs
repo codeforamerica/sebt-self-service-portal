@@ -207,11 +207,11 @@ public class ProcessWebhookCommandHandlerTests
                 && c.SocureEventId == "evt-123"),
                 Arg.Any<CancellationToken>());
 
-        // User should be updated to Completed + IAL2
+        // User should be updated to Completed + IAL1plus
         await userRepository.Received(1)
             .UpdateUserAsync(Arg.Is<User>(u =>
                 u.IdProofingStatus == IdProofingStatus.Completed
-                && u.IalLevel == UserIalLevel.IAL2),
+                && u.IalLevel == UserIalLevel.IAL1plus),
                 Arg.Any<CancellationToken>());
     }
 
@@ -510,7 +510,7 @@ public class ProcessWebhookCommandHandlerTests
         await userRepository.Received(1)
             .UpdateUserAsync(Arg.Is<User>(u =>
                 u.IdProofingStatus == IdProofingStatus.Completed
-                && u.IalLevel == UserIalLevel.IAL2),
+                && u.IalLevel == UserIalLevel.IAL1plus),
                 Arg.Any<CancellationToken>());
     }
 
@@ -539,7 +539,7 @@ public class ProcessWebhookCommandHandlerTests
             .UpdateUserAsync(Arg.Any<User>(), Arg.Any<CancellationToken>());
     }
 
-    // --- Latent-bug fix: DI-rejected workflow with DocV "accept" must NOT grant IAL2 ---
+    // --- Latent-bug fix: DI-rejected workflow with DocV "accept" must NOT grant IAL1plus ---
 
     [Fact]
     public async Task HandleAsync_EvaluationCompleted_WorkflowRejectButDocvAccept_TransitionsToRejected()
@@ -570,7 +570,7 @@ public class ProcessWebhookCommandHandlerTests
                 && c.OffboardingReason == "docVerificationFailed"),
                 Arg.Any<CancellationToken>());
 
-        // Critical: user must NOT be updated to IAL2
+        // Critical: user must NOT be updated to completed proofing / elevated IAL
         await userRepository.DidNotReceive()
             .UpdateUserAsync(Arg.Any<User>(), Arg.Any<CancellationToken>());
     }

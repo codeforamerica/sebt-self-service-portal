@@ -21,7 +21,21 @@ declare global {
   }
 }
 
-const PAGE_FIELDS = ['name', 'flow', 'step', 'application', 'environment'] as const
+const PAGE_FIELDS = [
+  'name',
+  'flow',
+  'step',
+  'application',
+  'environment',
+  // Dashboard analytics taxonomy fields. household_status and error_code are
+  // set by DashboardContent before household_result fires; including them in
+  // the page-context bag keeps Mixpanel events aligned with the data layer
+  // contract documented in docs/adr/0015-co-loaded-error-code-taxonomy.md.
+  'household_status',
+  'household_type',
+  'household_reason',
+  'error_code'
+] as const
 const USER_FIELDS = ['authenticated', 'identity_assurance_level', 'id_proofed'] as const
 
 function collectAnalyticsContext(dl: DataLayerRoot): Record<string, unknown> {
@@ -83,7 +97,11 @@ function attachBridge(dl: DataLayerRoot): () => void {
 
 export function initMixpanelBridge(token: string): () => void {
   const mp = window.mixpanel
-  if (!mp?.init || !mp?.track) {
+  // Only `init` is required up-front. The official Mixpanel boot snippet
+  // defines `init` immediately on the queue stub but only attaches `track`
+  // (and the rest of the API surface) the first time `init()` is called —
+  // checking for `track` here would always fail and never bootstrap the SDK.
+  if (!mp?.init) {
     return () => {}
   }
 

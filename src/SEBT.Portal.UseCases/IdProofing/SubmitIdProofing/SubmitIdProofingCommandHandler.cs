@@ -153,8 +153,10 @@ public class SubmitIdProofingCommandHandler(
                 if (await householdRepository.TryMatchCoLoadedGuardianByBenefitIdAndDobAsync(
                         command.IdValue.Trim(),
                         submittedDob,
+                        command.UserId,
                         cancellationToken))
                 {
+                    IdProofingBenefitIdentifierTypes.PersistBenefitIdentifierOnUser(user, command.IdType, command.IdValue);
                     logger.LogInformation(
                         "User {UserId} co-loaded benefit ID verified via DC warehouse (IC+DOB) for type {IdType}",
                         command.UserId,
@@ -194,6 +196,7 @@ public class SubmitIdProofingCommandHandler(
 
             if (CoLoadedBenefitIdentifierMatch.Matches(user, benefitHousehold, command.IdType, command.IdValue))
             {
+                IdProofingBenefitIdentifierTypes.PersistBenefitIdentifierOnUser(user, command.IdType, command.IdValue);
                 logger.LogInformation(
                     "User {UserId} co-loaded benefit ID verified for type {IdType}",
                     command.UserId, command.IdType);
@@ -300,7 +303,7 @@ public class SubmitIdProofingCommandHandler(
                 // Single save: attempt count + proofing completion together
                 return await CompleteProofingAndRespond(
                     user,
-                    UserIalLevel.IAL2,
+                    UserIalLevel.IAL1plus,
                     cancellationToken,
                     "Socure ACCEPT (no DocV required)");
 
