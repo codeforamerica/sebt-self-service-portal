@@ -20,12 +20,15 @@ declare global {
   }
 }
 
-// Top-level path segment becomes the SiteImprove category so analysts can
-// segment by flow (`dashboard`, `cards`, `profile`, `login`, …). Falls back
-// to `root` for `/`.
-function deriveCategory(): string {
-  const segment = window.location.pathname.split('/').filter(Boolean)[0]
-  return segment ?? 'root'
+// Category is derived from the data layer's page.flow + page.step (the per-route
+// values registered in analytics-routes.ts → DataLayerProvider). Combined as
+// `flow:step` so analysts can segment by both. Falls back to whichever field is
+// populated, then to `unknown` when an unmapped route renders.
+function deriveCategory(dl: DataLayerRoot): string {
+  const flow = dl.get('page.flow', 'analytics', '') as string
+  const step = dl.get('page.step', 'analytics', '') as string
+  if (flow && step) return `${flow}:${step}`
+  return flow || step || 'unknown'
 }
 
 // Keys that may carry PII are dropped before the label is serialized. The
@@ -101,7 +104,7 @@ function attachBridge(dl: DataLayerRoot): () => void {
     // Label carries the JSON-serialized event payload with known PII keys
     // dropped (see PII_KEYS). When DC confirms a per-event label scheme this
     // can be tightened to a per-event allow-list.
-    const category = deriveCategory()
+    const category = deriveCategory(dl)
     const scrubbed = detail.eventData ? (scrubPii(detail.eventData) as Record<string, unknown>) : undefined
     const hasData = scrubbed && Object.keys(scrubbed).length > 0
     pushToSz(

@@ -12,15 +12,12 @@ describe('initSiteImproveBridge', () => {
     pushSpy = vi.fn()
     ;(window as unknown as Record<string, unknown>)._sz = { push: pushSpy }
     teardown = undefined
-    // Reset path so deriveCategory() returns a predictable bucket per test.
-    window.history.replaceState({}, '', '/')
   })
 
   afterEach(() => {
     teardown?.()
     delete (window as unknown as Record<string, unknown>)._sz
     delete (window as unknown as Record<string, unknown>).digitalData
-    window.history.replaceState({}, '', '/')
   })
 
   it('forwards page_load to _sz with a trackdynamic command', () => {
@@ -39,9 +36,10 @@ describe('initSiteImproveBridge', () => {
     })
   })
 
-  it('forwards trackEvent with the path-derived category and event name as action', () => {
-    window.history.replaceState({}, '', '/cards/info')
+  it('forwards trackEvent with category derived from page.flow + page.step and event name as action', () => {
     new DataLayer('digitalData')
+    window.digitalData!.page.set('flow', 'cards')
+    window.digitalData!.page.set('step', 'info')
     teardown = initSiteImproveBridge()
 
     window.digitalData!.trackEvent('cta_click', { target: 'replace_card' })
@@ -49,19 +47,29 @@ describe('initSiteImproveBridge', () => {
     expect(pushSpy).toHaveBeenCalledTimes(1)
     expect(pushSpy.mock.calls[0][0]).toEqual([
       'event',
-      'cards',
+      'cards:info',
       'cta_click',
       JSON.stringify({ target: 'replace_card' })
     ])
   })
 
-  it('uses "root" as the category when on /', () => {
+  it('falls back to "unknown" category when page.flow and page.step are unset', () => {
     new DataLayer('digitalData')
     teardown = initSiteImproveBridge()
 
     window.digitalData!.trackEvent('page_load')
 
-    expect(pushSpy.mock.calls[0][0]).toEqual(['event', 'root', 'page_load'])
+    expect(pushSpy.mock.calls[0][0]).toEqual(['event', 'unknown', 'page_load'])
+  })
+
+  it('uses just page.flow when page.step is unset', () => {
+    new DataLayer('digitalData')
+    window.digitalData!.page.set('flow', 'auth')
+    teardown = initSiteImproveBridge()
+
+    window.digitalData!.trackEvent('page_load')
+
+    expect(pushSpy.mock.calls[0][0]).toEqual(['event', 'auth', 'page_load'])
   })
 
   it('omits the label when the event has no data', () => {
@@ -70,12 +78,13 @@ describe('initSiteImproveBridge', () => {
 
     window.digitalData!.trackEvent('page_load')
 
-    expect(pushSpy.mock.calls[0][0]).toEqual(['event', 'root', 'page_load'])
+    expect(pushSpy.mock.calls[0][0]).toEqual(['event', 'unknown', 'page_load'])
   })
 
   it('strips PII keys from the label payload before serializing', () => {
-    window.history.replaceState({}, '', '/profile/address')
     new DataLayer('digitalData')
+    window.digitalData!.page.set('flow', 'address_update')
+    window.digitalData!.page.set('step', 'address_form')
     teardown = initSiteImproveBridge()
 
     window.digitalData!.trackEvent('cta_click', {
@@ -90,7 +99,7 @@ describe('initSiteImproveBridge', () => {
 
     expect(pushSpy.mock.calls[0][0]).toEqual([
       'event',
-      'profile',
+      'address_update:address_form',
       'cta_click',
       JSON.stringify({ target: 'save_address', household_type: 'co_loaded_only' })
     ])
@@ -107,7 +116,7 @@ describe('initSiteImproveBridge', () => {
 
     expect(pushSpy.mock.calls[0][0]).toEqual([
       'event',
-      'root',
+      'unknown',
       'cta_click',
       JSON.stringify({ target: 'submit', user: { id: 'abc-123' } })
     ])
@@ -122,7 +131,7 @@ describe('initSiteImproveBridge', () => {
       phone: '202-555-0100'
     })
 
-    expect(pushSpy.mock.calls[0][0]).toEqual(['event', 'root', 'cta_click'])
+    expect(pushSpy.mock.calls[0][0]).toEqual(['event', 'unknown', 'cta_click'])
   })
 
   it('seeds _sz as an array if SiteImprove script has not loaded yet', () => {
