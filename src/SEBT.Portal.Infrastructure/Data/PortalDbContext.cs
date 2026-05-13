@@ -128,6 +128,9 @@ public class PortalDbContext : DbContext
             entity.Property(e => e.IdProofingAttemptCount)
                 .IsRequired()
                 .HasDefaultValue(0);
+
+            entity.Property(e => e.DateOfBirth)
+                .HasColumnType("date");
         });
 
         modelBuilder.Entity<DocVerificationChallengeEntity>(entity =>
