@@ -1,8 +1,9 @@
 /**
  * DOM event bridge that listens to DataLayer CustomEvents and forwards
- * them to Amplitude. Only forwards EventTracked events — the Amplitude
- * init is configured with no session replay, no autocapture, and no
- * user identity.
+ * them to Amplitude. Forwards both PageViewed (page_load) and EventTracked
+ * events. The Amplitude init is configured with no session replay, no
+ * autocapture, and no user identity — page tracking is opt-in via the
+ * data layer's pageLoad() call rather than Amplitude's defaultTracking.
  *
  * @see docs/tdd/analytics-data-layer.md — "DOM Bridge & Sample Integration"
  */
@@ -16,7 +17,7 @@ export interface AmplitudeLike {
 }
 
 function attachBridge(dl: DataLayerRoot, amplitude: AmplitudeLike): () => void {
-  function handleEventTracked(event: Event) {
+  function forward(event: Event) {
     const detail = (event as CustomEvent).detail as
       | {
           eventName?: string
@@ -29,12 +30,15 @@ function attachBridge(dl: DataLayerRoot, amplitude: AmplitudeLike): () => void {
     amplitude.track(detail.eventName, detail.eventData)
   }
 
+  const pageViewedEvent = dl.eventTypes.PAGE_VIEWED!
   const eventTrackedEvent = dl.eventTypes.EVENT_TRACKED!
 
-  document.addEventListener(eventTrackedEvent, handleEventTracked)
+  document.addEventListener(pageViewedEvent, forward)
+  document.addEventListener(eventTrackedEvent, forward)
 
   return () => {
-    document.removeEventListener(eventTrackedEvent, handleEventTracked)
+    document.removeEventListener(pageViewedEvent, forward)
+    document.removeEventListener(eventTrackedEvent, forward)
   }
 }
 

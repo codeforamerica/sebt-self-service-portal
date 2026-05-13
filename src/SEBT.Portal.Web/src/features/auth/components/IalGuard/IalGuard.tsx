@@ -41,7 +41,7 @@ export function IalGuard({ children, requiredIal = STEP_UP_REQUIRED_IAL }: IalGu
   const { session } = useAuth()
   const router = useRouter()
   const { t, i18n } = useTranslation('common')
-  const { t: tDisclaimer} = useTranslation('stepUpDisclaimer')
+  const { t: tDisclaimer } = useTranslation('stepUpDisclaimer')
 
   const useOidcStepUpGate = getState() === 'co'
   const debugRepeatOidcStepUp = isDebugRepeatOidcStepUp()
@@ -147,9 +147,7 @@ export function IalGuard({ children, requiredIal = STEP_UP_REQUIRED_IAL }: IalGu
                 'To keep your account safe, we need to confirm it’s really you'
               )}
             </h1>
-            <p className="font-sans-sm margin-bottom-3">
-              {tDisclaimer('body')}
-            </p>
+            <p className="font-sans-sm margin-bottom-3">{tDisclaimer('body')}</p>
             <div className="display-flex flex-row flex-wrap flex-gap-2 margin-top-3">
               <Button
                 type="button"

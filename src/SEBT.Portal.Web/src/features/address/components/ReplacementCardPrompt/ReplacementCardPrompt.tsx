@@ -63,9 +63,7 @@ export function ReplacementCardPrompt({ address }: ReplacementCardPromptProps) {
 
       <p>{t('replacementCardsBody1')}</p>
       <ul className="usa-list">
-        <li>
-          {t('replacementCardsBody2')}
-        </li>
+        <li>{t('replacementCardsBody2')}</li>
       </ul>
 
       {currentState === 'dc' && (
@@ -82,9 +80,7 @@ export function ReplacementCardPrompt({ address }: ReplacementCardPromptProps) {
         </Alert>
       )}
 
-      <p className="usa-hint margin-bottom-3">
-        {tCommon('requiredFields')}
-      </p>
+      <p className="usa-hint margin-bottom-3">{tCommon('requiredFields')}</p>
 
       <fieldset
         className="usa-fieldset"

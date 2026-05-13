@@ -1,0 +1,26 @@
+<Project>
+
+  <!--
+    Repository-wide MSBuild defaults. Applied to every .csproj below this directory
+    via MSBuild's automatic import of Directory.Build.props.
+
+    NuGet vulnerability auditing: enabled by default in .NET 8+, but we set it
+    explicitly so the policy is discoverable in source rather than relying on
+    SDK defaults. Audit results surface as NU190x warnings during `dotnet restore`;
+    promoting them to errors causes restore (and therefore build/CI) to fail on
+    any known CVE in direct or transitive dependencies.
+
+      NU1901 = low      NU1902 = moderate
+      NU1903 = high     NU1904 = critical
+
+    Without lockfiles, this is our primary defense against silently picking up
+    a vulnerable transitive package on a fresh restore.
+  -->
+  <PropertyGroup>
+    <NuGetAudit>true</NuGetAudit>
+    <NuGetAuditMode>all</NuGetAuditMode>
+    <NuGetAuditLevel>moderate</NuGetAuditLevel>
+    <WarningsAsErrors>$(WarningsAsErrors);NU1903;NU1904</WarningsAsErrors>
+  </PropertyGroup>
+
+</Project>

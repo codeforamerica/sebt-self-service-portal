@@ -11,7 +11,7 @@ import { Alert } from '@sebt/design-system'
 export default function CardReplaceAddressPage() {
   const { t } = useTranslation('confirmInfo')
   const { t: tCommon } = useTranslation('common')
-  
+
   const searchParams = useSearchParams()
   const { data, isLoading, isError } = useHouseholdData()
 
@@ -27,9 +27,7 @@ export default function CardReplaceAddressPage() {
 
   return (
     <div className="grid-container maxw-tablet padding-top-4 padding-bottom-4">
-      <h1 className="font-sans-xl text-primary">
-        {t('titleYour')}
-      </h1>
+      <h1 className="font-sans-xl text-primary">{t('titleYour')}</h1>
       <AddressFlowProvider>
         <AddressForm
           initialAddress={data.addressOnFile ?? null}
