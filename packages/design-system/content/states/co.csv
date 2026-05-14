@@ -218,7 +218,7 @@ When asked to enter the date of birth, enter your child’s birthdate and use th
 
 When asked to ""enter the primary cardholder's"" ZIP Code, enter the ZIP Code of the address your card was mailed to.","Esta tarjeta ya se te envió. Está lista para hacer compras en cuanto le pongas el PIN. Cuando llegue la tarjeta, llama al Servicio al Cliente de EBT al (888) 328-2656 para configurar el PIN de la tarjeta.
 
-Cuando te pidan ingresar la fecha de nacimiento, escribe la fecha de nacimiento de tu niño/a usando el formato DD-MM-YYYY (día-mes-año).
+Cuando te pidan ingresar la fecha de nacimiento, escribe la fecha de nacimiento de tu niño/a usando el formato MM-DD-YYYY (mes-día-año).
 
 Cuando te pidan “ingresar el código postal del titular principal de la tarjeta”, ingresa el código postal de la dirección a la que se envió por correo tu tarjeta.","Esta tarjeta ya se te envió. Está lista para hacer compras en cuanto le pongas el PIN. Cuando llegue la tarjeta, llama al Servicio al Cliente de EBT al (888) 328-2656 para configurar el PIN de la tarjeta.
 
@@ -383,7 +383,7 @@ When asked to ""enter your date of birth"" by the recording, do not enter your o
 
 When asked to ""enter the primary cardholder's"" ZIP Code, enter the ZIP Code of the address it was mailed to.","La tarjeta de tu niño/a queda activa en el momento en que se envía por correo. Para hacer compras, tendrás que establecer el número de PIN de la tarjeta. Puedes llamar al Servicio al Cliente de EBT al (888) 328-2656 y seguir las instrucciones para establecer el PIN.
 
-Ingresa la fecha de nacimiento de tu niño/a en el formato DD-MM-YYYY (día-mes-año).
+Ingresa la fecha de nacimiento de tu niño/a en el formato MM-DD-YYYY (mes-día-año).
 
 Cuando se te pida que ingreses el código postal de la persona titular principal de la tarjeta, ingresa el código postal de la dirección a la que se envió por correo.","Cuando recibas la tarjeta de tu niño/a, llama al servicio al cliente de EBT al (888) 328-2656. Sigue las instrucciones para crear el número PIN y activar la tarjeta.
 
@@ -664,7 +664,9 @@ GLOBAL - Link Google Translate,!N/A!,Google Translate Disclaimer,!N/A!,Aviso leg
 GLOBAL - Link About,!N/A!,About DC.GOV,!N/A!,Acerca de DC.GOV,
 GLOBAL - Link Terms,!N/A!,Terms and Conditions,!N/A!,Términos y condiciones,
 GLOBAL - Copyrite,© 2026 State of Colorado,© [YYYY] District of Columbia,© 2026 Estado de Colorado,© [YYYY] Distrito de Columbia,
+GLOBAL - Alert Sitewide,This site is currently in beta. Some features may be incomplete or missing.,,Este sitio está actualmente en versión beta. Es posible que algunas funciones estén incompletas o no disponibles.,,
 GLOBAL - Alert Beta,This site is currently in beta. Some features may be incomplete or missing.,This site is currently in beta. Some features may be incomplete or missing.,Este sitio está actualmente en versión beta. Es posible que algunas funciones estén incompletas o no disponibles.,Este sitio está actualmente en versión beta. Es posible que algunas funciones estén incompletas o no disponibles.,
+GLOBAL - Alert Issue Pending,Benefits will be issued in late May. Check back then for details regarding your enrolled children and their Summer EBT cards.,Benefits will be issued in late May. Check back then for details regarding your enrolled children and their Summer EBT cards.,Los beneficios serán emitidos a finales de mayo. Vuelve a revisar el portal en esas fechas para ver los detalles sobre tus niños inscritos y sus tarjetas de Summer EBT.,Los beneficios serán emitidos a finales de mayo. Vuelve a revisar el portal en esas fechas para ver los detalles sobre tus niños inscritos y sus tarjetas de Summer EBT.,
 VALIDATION - Summary,"We're sorry. Some required questions aren't filled or we can't accept some of the answers. We'll be able to continue your application once these issues are fixed.
 
 If you need additional support (especially in a language other than English or español), please contact us.","We're sorry. Some required questions aren't filled or we can't accept some of the answers. We'll be able to continue your application once these issues are fixed.
@@ -684,7 +686,7 @@ VALIDATION - Enter Year,Provide a year using four numbers,Provide a year using f
 VALIDATION - Select Year,Select a year,Select a year,Selecciona un año,Selecciona un año,
 VALIDATION - Enter Email,Provide a valid email address,Provide a valid email address,Ingresa un correo electrónico válido,Ingresa un correo electrónico válido,
 VALIDATION - SSN,!N/A!,Provide a valid Social Security Number with 9 numbers,!N/A!,Ingrese un número de Seguro Social válido con nueve números,
-VALIDATION - ID Number,!N/A!,Provide a valid ID number that is 7 or 8 digits long,!N/A!,,
+VALIDATION - ID Number,!N/A!,Provide a valid ID number that is 7 or 8 digits long,!N/A!,Proporciona un número de identificación válido de 7 u 8 dígitos,
 VALIDATION - OTP Invalid,!N/A!,Enter a valid [6] digit code. Tap here to send a new code.,!N/A!,Ingresa un código válido de 6 dígitos. Toca aquí para enviar un nuevo código.,
 VALIDATION - Global Internal Error,An error occurred on our end. Please try again.,An error occurred on our end. Please try again.,"Ocurrió un error de nuestro lado. Por favor, inténtalo de nuevo.","Ocurrió un error de nuestro lado. Por favor, inténtalo de nuevo.",
 VALIDATION - Global Sign-in Error,There was an issue signing in. Please try again.,There was an issue signing in. Please try again.,"Hubo un problema al iniciar sesión. Por favor, inténtalo de nuevo.","Hubo un problema al iniciar sesión. Por favor, inténtalo de nuevo.",
