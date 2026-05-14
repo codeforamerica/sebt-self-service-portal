@@ -6,14 +6,11 @@ import { ChildResultCard } from './ChildResultCard'
 
 interface NotEnrolledSectionProps {
   results: ChildCheckApiResponse[]
-  applicationUrl: string
 }
 
-export function NotEnrolledSection({ results, applicationUrl }: NotEnrolledSectionProps) {
+export function NotEnrolledSection({ results }: NotEnrolledSectionProps) {
   const { t } = useTranslation('result')
   if (results.length === 0) return null
-
-  console.log(applicationUrl) // TODO REMOVE
 
   return (
     <section data-testid="not-enrolled-summary-box">

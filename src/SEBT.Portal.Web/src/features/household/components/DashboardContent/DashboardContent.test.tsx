@@ -157,7 +157,10 @@ describe('DashboardContent', () => {
       expect(screen.getByRole('alert')).toBeInTheDocument()
     })
 
-    expect(screen.getByRole('link', { name: /apply/i })).toHaveAttribute('href', '/apply')
+    expect(screen.getByRole('link', { name: /apply/i })).toHaveAttribute(
+      'href',
+      'https://forms.sunbucks.dc.gov/s3/AppUpdate2026'
+    )
   })
 
   it('renders UserProfileCard in empty state when userProfile available', async () => {
@@ -315,6 +318,41 @@ describe('DashboardContent', () => {
     })
   })
 
+  describe('hashed_app_id user data', () => {
+    it('sets user.hashed_app_id when the API includes hashedAppId', async () => {
+      const expectedDigest = 'ca383d90647e371547d6e66297cda8089b81fc1c5cb30da6cfcbdf744d9e2861'
+      server.use(
+        http.get('/api/household/data', () => {
+          return HttpResponse.json({ ...TEST_HOUSEHOLD_DATA, hashedAppId: expectedDigest })
+        })
+      )
+
+      renderWithProviders(<DashboardContent />)
+
+      await waitFor(() => {
+        expect(mockSetUserData).toHaveBeenCalledWith('hashed_app_id', expectedDigest, [
+          'default',
+          'analytics'
+        ])
+      })
+    })
+
+    it('does not set user.hashed_app_id when the API omits it (e.g. non-CO state)', async () => {
+      // TEST_HOUSEHOLD_DATA has no hashedAppId — backend gates by state.
+      renderWithProviders(<DashboardContent />)
+
+      await waitFor(() => {
+        expect(mockTrackEvent).toHaveBeenCalledWith('household_result')
+      })
+
+      expect(mockSetUserData).not.toHaveBeenCalledWith(
+        'hashed_app_id',
+        expect.anything(),
+        expect.anything()
+      )
+    })
+  })
+
   describe('co-loaded cohort analytics', () => {
     // Each test ships the backend's coLoadedCohort value and asserts the
     // standardized snake_case analytics property. The payload shape matches
@@ -412,7 +450,135 @@ describe('DashboardContent', () => {
     })
   })
 
-  describe('coloading_status / household_type tagging (DC-215)', () => {
+  describe('error_code tagging on the household_result event', () => {
+    it("tags error_code='NOT_FOUND' when the API returns 404", async () => {
+      server.use(
+        http.get('/api/household/data', () => {
+          return HttpResponse.json({ error: 'Not found' }, { status: 404 })
+        })
+      )
+
+      renderWithProviders(<DashboardContent />)
+
+      await waitFor(() => {
+        expect(mockTrackEvent).toHaveBeenCalledWith('household_result')
+      })
+      expect(mockSetPageData).toHaveBeenCalledWith('error_code', 'NOT_FOUND')
+    })
+
+    it("tags error_code='TECH_ERROR' when the API returns 400", async () => {
+      // Using 400 instead of 5xx because the household-data hook retries 5xx
+      // up to twice with exponential backoff, blowing past the test timeout.
+      // 400 hits the same TECH_ERROR mapping branch and skips the retry path.
+      server.use(
+        http.get('/api/household/data', () => {
+          return HttpResponse.json({ error: 'Bad Request' }, { status: 400 })
+        })
+      )
+
+      renderWithProviders(<DashboardContent />)
+
+      await waitFor(() => {
+        expect(mockTrackEvent).toHaveBeenCalledWith('household_result')
+      })
+      expect(mockSetPageData).toHaveBeenCalledWith('error_code', 'TECH_ERROR')
+    })
+
+    it("tags error_code='NO_CHILDREN' when the response is empty (no cases, no applications)", async () => {
+      server.use(
+        http.get('/api/household/data', () => {
+          return HttpResponse.json({
+            ...TEST_HOUSEHOLD_DATA,
+            summerEbtCases: [],
+            applications: []
+          })
+        })
+      )
+
+      renderWithProviders(<DashboardContent />)
+
+      await waitFor(() => {
+        expect(mockTrackEvent).toHaveBeenCalledWith('household_result')
+      })
+      expect(mockSetPageData).toHaveBeenCalledWith('error_code', 'NO_CHILDREN')
+    })
+
+    it('clears error_code on the success path so a stale value does not persist', async () => {
+      // Default TEST_HOUSEHOLD_DATA has non-empty cases — the success path.
+      renderWithProviders(<DashboardContent />)
+
+      await waitFor(() => {
+        expect(mockTrackEvent).toHaveBeenCalledWith('household_result')
+      })
+      // Success explicitly resets error_code to null. A previous error render
+      // could have set the value on the data layer; the success render must
+      // not let it leak into the next household_result event.
+      expect(mockSetPageData).toHaveBeenCalledWith('error_code', null)
+    })
+
+    it("tags error_code='AUTH_FAILURE' when the API returns 403 without requiredIal", async () => {
+      // 403 without a requiredIal extension means the user is forbidden but
+      // not because of IAL — falls into the AUTH_FAILURE bucket.
+      server.use(
+        http.get('/api/household/data', () => {
+          return HttpResponse.json({ error: 'Forbidden' }, { status: 403 })
+        })
+      )
+
+      renderWithProviders(<DashboardContent />)
+
+      await waitFor(() => {
+        expect(mockTrackEvent).toHaveBeenCalledWith('household_result')
+      })
+      expect(mockSetPageData).toHaveBeenCalledWith('error_code', 'AUTH_FAILURE')
+    })
+
+    it('skips analytics emission on 403 with requiredIal (IAL step-up redirect, not an error)', async () => {
+      // 403 with requiredIal triggers the requiresProofing redirect path. The
+      // dashboard is on its way to /login/id-proofing, so the household_result
+      // event is suppressed entirely to avoid mislabeling a routing step as
+      // an analytics-visible failure.
+      server.use(
+        http.get('/api/household/data', () => {
+          return HttpResponse.json(
+            { type: 'about:blank', title: 'Insufficient IAL', requiredIal: 'IAL1plus' },
+            { status: 403 }
+          )
+        })
+      )
+
+      renderWithProviders(<DashboardContent />)
+
+      // Give the effect a chance to run and verify nothing fires.
+      await new Promise((resolve) => setTimeout(resolve, 50))
+      expect(mockTrackEvent).not.toHaveBeenCalledWith('household_result')
+      expect(mockSetPageData).not.toHaveBeenCalledWith('error_code', expect.anything())
+    })
+
+    it("tags error_code='TECH_ERROR' when the failure is not an ApiError (e.g., a thrown network error)", async () => {
+      // HttpResponse.error() simulates a fetch-level failure (no response,
+      // no ApiError wrapping). The hook retries non-ApiError failures up to
+      // twice with exponential backoff, so the test waits past the ~3s
+      // retry window before checking the eventual settled state.
+      server.use(
+        http.get('/api/household/data', () => {
+          return HttpResponse.error()
+        })
+      )
+
+      renderWithProviders(<DashboardContent />)
+
+      await waitFor(
+        () => {
+          expect(mockTrackEvent).toHaveBeenCalledWith('household_result')
+        },
+        { timeout: 8000 }
+      )
+      expect(mockSetPageData).toHaveBeenCalledWith('error_code', 'TECH_ERROR')
+    }, 10000)
+  })
+
+  describe('coloading_status / household_type tagging', () => {
     it('tags non_co_loaded when session.isCoLoaded is false', async () => {
       mockAuthSession.isCoLoaded = false
       renderWithProviders(<DashboardContent />)

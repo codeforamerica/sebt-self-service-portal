@@ -102,7 +102,7 @@ function COFooter({ state = 'co' }: FooterProps) {
       <div className="usa-footer__primary-section padding-y-2">
         <div className="grid-container text-center">
           <p className="margin-0 text-ink font-sans-xs">
-            {t('copyrite', '© 2026 State of Colorado')}
+            {t('copyrite')}
             {' | '}
             <Link
               href={links.footer.transparencyOnline ?? '#'}
@@ -119,7 +119,7 @@ function COFooter({ state = 'co' }: FooterProps) {
               rel="noopener noreferrer"
               className="usa-link text-ink text-underline"
             >
-              {t('generalNotices', 'General Notices')}
+              {t('linkPublicNotices')}
             </Link>
           </p>
         </div>

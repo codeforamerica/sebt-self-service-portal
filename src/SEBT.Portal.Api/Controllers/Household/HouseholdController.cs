@@ -1,7 +1,9 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Configuration;
 using SEBT.Portal.Api.Models;
 using SEBT.Portal.Api.Models.Household;
+using SEBT.Portal.Core.Services;
 using SEBT.Portal.Kernel;
 using SEBT.Portal.Kernel.AspNetCore;
 using SEBT.Portal.Kernel.Results;
@@ -37,13 +39,15 @@ public class HouseholdController : ControllerBase
     [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status404NotFound)]
     public async Task<IActionResult> GetHouseholdData(
         [FromServices] IQueryHandler<GetHouseholdDataQuery, Core.Models.Household.HouseholdData> queryHandler,
+        [FromServices] IIdentifierHasher identifierHasher,
+        [FromServices] IConfiguration configuration,
         CancellationToken cancellationToken = default)
     {
         var query = new GetHouseholdDataQuery { User = User };
         var result = await queryHandler.Handle(query, cancellationToken);
 
         return result.ToActionResult(
-            successMap: data => Ok(data.ToResponse()),
+            successMap: data => Ok(data.ToResponse(ResolveHashedAppId(data, identifierHasher, configuration))),
             failureMap: r => r switch
             {
                 UnauthorizedResult<Core.Models.Household.HouseholdData> unauthorized => Unauthorized(new ErrorResponse(unauthorized.Message)),
@@ -55,6 +59,39 @@ public class HouseholdController : ControllerBase
                 PreconditionFailedResult<Core.Models.Household.HouseholdData> preconditionFailed => NotFound(new ErrorResponse(preconditionFailed.Message)),
                 _ => StatusCode(StatusCodes.Status500InternalServerError, new ErrorResponse("An unexpected error occurred."))
             });
+    }
+
+    /// <summary>
+    /// Resolves the analytics-side hashed SEBT App ID for the household. CO-only
+    /// today (gated on the active state so DC payloads stay unchanged). Returns
+    /// null when no application carries an ApplicationNumber (e.g. auto-issued
+    /// SummerEbt cases). The frontend treats null as "do not emit".
+    /// State is read from IConfiguration["STATE"], which surfaces the STATE
+    /// env var via the default ASP.NET configuration providers and lets tests
+    /// inject an in-memory value without touching process state.
+    /// </summary>
+    private static string? ResolveHashedAppId(
+        Core.Models.Household.HouseholdData data,
+        IIdentifierHasher identifierHasher,
+        IConfiguration configuration)
+    {
+        var state = configuration["STATE"];
+        if (!string.Equals(state, "co", StringComparison.OrdinalIgnoreCase))
+        {
+            return null;
+        }
+
+        // Sort lexicographically so a household with multiple applications
+        // always hashes the same one, regardless of the order the connector
+        // returns rows in. Otherwise hashed_app_id could shift across page
+        // loads and break per-user analytics correlation.
+        var applicationNumber = data.Applications
+            .Select(a => a.ApplicationNumber)
+            .Where(n => !string.IsNullOrWhiteSpace(n))
+            .OrderBy(n => n, StringComparer.Ordinal)
+            .FirstOrDefault();
+
+        return identifierHasher.HashForAnalytics(applicationNumber);
     }
 
     /// <summary>

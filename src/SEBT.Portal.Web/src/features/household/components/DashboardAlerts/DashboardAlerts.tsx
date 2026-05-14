@@ -16,6 +16,7 @@ import { useHouseholdData } from '@/features/household'
  */
 export function DashboardAlerts() {
   const { t } = useTranslation('dashboard')
+
   const searchParams = useSearchParams()
   const router = useRouter()
   const pathname = usePathname()
@@ -78,8 +79,10 @@ export function DashboardAlerts() {
       {alerts.cardReplaced && (
         <Alert
           variant="success"
+          // TODO update copy for alertCardReplacedHeading
           heading={t('alertCardReplacedHeading', 'Your replacement card request has been recorded')}
         >
+          {/* TODO update copy for alertCardReplacedBodyWithAddress and alertCardReplacedBody */}
           {householdData?.addressOnFile
             ? t(
                 'alertCardReplacedBodyWithAddress',
@@ -97,10 +100,11 @@ export function DashboardAlerts() {
           Currently triggered by URL params for visual verification. */}
 
       {alerts.addressUpdateFailed && (
+        // TODO update copy
         <Alert
           variant="warning"
           heading={t(
-            'alertAddressUpdateFailedHeading',
+            'alertAddressUpdateError',
             'There was an issue updating your mailing address.'
           )}
         >
@@ -112,22 +116,24 @@ export function DashboardAlerts() {
       )}
 
       {alerts.contactUpdateFailed && (
+        // TODO update copy
         <Alert
           variant="warning"
           heading={t(
-            'alertContactUpdateFailedHeading',
+            'alertContactUpdateError',
             'There was an issue updating your contact preferences.'
           )}
         >
-          {t('alertContactUpdateFailedBody', 'Please try again later.')}
+          {t('alertContactUpdateError')}
         </Alert>
       )}
 
       {alerts.addressVerification && (
         <Alert
           variant="warning"
-          heading={t('alertAddressVerificationHeading', 'Is your address correct?')}
+          heading={t('alertCheckAddressTitle')}
         >
+          {/* TODO update copy */}
           {t(
             'alertAddressVerificationBody',
             'Please verify your mailing address is up to date so you can receive your Summer EBT cards.'

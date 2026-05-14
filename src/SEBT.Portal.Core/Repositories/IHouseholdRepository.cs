@@ -48,23 +48,27 @@ public interface IHouseholdRepository
     /// </summary>
     /// <param name="benefitIdentifierIc">SNAP/TANF identifier from onboarding, mapped to warehouse IC.</param>
     /// <param name="guardianDateOfBirth">Guardian DOB from ID proofing.</param>
+    /// <param name="portalUserId">Portal <c>User.Id</c>. DC merges this into the warehouse GuardianIdentifiers JSON as <c>PortalUUID</c> for cross-system correlation.</param>
     /// <param name="cancellationToken">Cancellation token.</param>
     /// <returns><c>true</c> if the state reports a match.</returns>
     Task<bool> TryMatchCoLoadedGuardianByBenefitIdAndDobAsync(
         string benefitIdentifierIc,
         DateOnly guardianDateOfBirth,
+        Guid portalUserId,
         CancellationToken cancellationToken = default);
 
     /// <summary>
     /// DC co-loaded fallback: loads household via warehouse IC + guardian DOB when rows use IC as <c>PortalID</c>.
     /// Sets envelope email to <paramref name="guardianLoginEmail"/>; non-DC plugins return <c>null</c>.
     /// </summary>
+    /// <param name="portalUserId">Portal <c>User.Id</c>. DC merges this into the warehouse GuardianIdentifiers JSON as <c>PortalUUID</c> for cross-system correlation.</param>
     Task<HouseholdData?> GetHouseholdByBenefitIdentifierAndGuardianDobAsync(
         string guardianLoginEmail,
         string benefitIdentifierIc,
         DateOnly guardianDateOfBirth,
         PiiVisibility piiVisibility,
         UserIalLevel userIalLevel,
+        Guid portalUserId,
         CancellationToken cancellationToken = default);
 
     /// <summary>

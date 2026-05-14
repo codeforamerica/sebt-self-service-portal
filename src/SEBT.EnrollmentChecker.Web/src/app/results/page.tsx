@@ -48,5 +48,10 @@ export default function Page() {
 
   if (!response) return null
 
-  return <ResultsPage results={response.results} applicationUrl={config.applicationUrl} />
+  return (
+    <ResultsPage
+      results={response.results}
+      portalUrl={config.portalUrl}
+    />
+  )
 }
