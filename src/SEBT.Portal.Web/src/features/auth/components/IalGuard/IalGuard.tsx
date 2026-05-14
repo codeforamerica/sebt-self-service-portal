@@ -141,11 +141,7 @@ export function IalGuard({ children, requiredIal = STEP_UP_REQUIRED_IAL }: IalGu
               id="ial-guard-challenge-title"
               className="font-heading-lg text-primary margin-bottom-3 line-height-sans-1"
             >
-              {/* TODO update */}
-              {t(
-                'ialGuardChallengeTitle',
-                'To keep your account safe, we need to confirm it’s really you'
-              )}
+              {tDisclaimer('title')}
             </h1>
             <p className="font-sans-sm margin-bottom-3">{tDisclaimer('body')}</p>
             <div className="display-flex flex-row flex-wrap flex-gap-2 margin-top-3">

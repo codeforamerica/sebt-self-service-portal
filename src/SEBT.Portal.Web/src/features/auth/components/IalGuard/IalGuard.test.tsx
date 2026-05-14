@@ -163,6 +163,27 @@ describe('IalGuard', () => {
     expect(window.location.href).toContain('stepUp=true')
   })
 
+  it('challenge heading resolves stepUpDisclaimer.title, not a hardcoded fallback', async () => {
+    setupApiFetchMock({ ial: '1' })
+
+    render(
+      <AuthProvider>
+        <IalGuard>
+          <p>Protected</p>
+        </IalGuard>
+      </AuthProvider>
+    )
+
+    await waitFor(() => expect(screen.getByText(/Please wait/)).toBeInTheDocument())
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(500)
+    })
+
+    await waitFor(() => {
+      expect(screen.getByRole('heading', { name: enCoStepUpDisclaimer.title })).toBeInTheDocument()
+    })
+  })
+
   it('Back uses router.back when history length > 1', async () => {
     setupApiFetchMock({ ial: '1' })
     vi.spyOn(window.history, 'length', 'get').mockReturnValue(2)
