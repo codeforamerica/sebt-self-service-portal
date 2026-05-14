@@ -179,11 +179,18 @@ export function DashboardContent() {
     <>
       {pageHeading}
       <DashboardAlerts />
-      <ActionButtons allowedActions={data.allowedActions} />
+      <ActionButtons
+        allowedActions={data.allowedActions}
+        hasCases={data.summerEbtCases.length > 0}
+      />
       {data.userProfile ? <UserProfileCard /> : <SignOutLink />}
       <HouseholdSummary />
-      <EnrolledChildren />
-      <EbtEdgeSection />
+      {data.summerEbtCases.length > 0 && (
+        <>
+          <EnrolledChildren />
+          <EbtEdgeSection />
+        </>
+      )}
       <ApplicationsSection />
     </>
   )
