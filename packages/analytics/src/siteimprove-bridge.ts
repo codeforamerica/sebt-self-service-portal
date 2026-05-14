@@ -32,8 +32,10 @@ function deriveCategory(dl: DataLayerRoot): string {
 }
 
 // Keys that may carry PII are dropped before the label is serialized. The
-// match is case-insensitive against the lowercased key. This is a defensive
-// floor — callers should still scope payloads to non-PII fields up front.
+// match is case-insensitive and underscore-insensitive — `Email_Address`,
+// `email_address`, and `emailAddress` all hit `emailaddress` in the set.
+// This is a defensive floor — callers should still scope payloads to
+// non-PII fields up front.
 const PII_KEYS = new Set([
   'email',
   'emailaddress',
@@ -59,18 +61,43 @@ const PII_KEYS = new Set([
   'dateofbirth',
   'birthdate',
   'ssn',
-  'socialsecuritynumber'
+  'itin',
+  'socialsecuritynumber',
+  'snapid',
+  'tanfid',
+  'medicaidid',
+  'caseid',
+  'householdid'
 ])
+
+function normalizeKey(key: string): string {
+  return key.toLowerCase().replace(/_/g, '')
+}
 
 function scrubPii(value: unknown): unknown {
   if (value === null || typeof value !== 'object') return value
   if (Array.isArray(value)) return value.map(scrubPii)
   const out: Record<string, unknown> = {}
   for (const [k, v] of Object.entries(value as Record<string, unknown>)) {
-    if (PII_KEYS.has(k.toLowerCase())) continue
+    if (PII_KEYS.has(normalizeKey(k))) continue
     out[k] = scrubPii(v)
   }
   return out
+}
+
+// Safely scrub PII keys and serialize to a JSON label. SiteImprove labels must
+// be a string, and we never want an analytics bridge to throw on weird payloads
+// (circular refs from caller bugs, BigInts, JSON.stringify failures). Returns
+// null when either scrubbing or serialization fails — the caller then omits
+// the label entirely.
+function safeBuildLabel(value: Record<string, unknown>): string | null {
+  try {
+    const scrubbed = scrubPii(value) as Record<string, unknown>
+    if (Object.keys(scrubbed).length === 0) return null
+    return JSON.stringify(scrubbed)
+  } catch {
+    return null
+  }
 }
 
 function pushToSz(cmd: SzCommand): void {
@@ -105,11 +132,10 @@ function attachBridge(dl: DataLayerRoot): () => void {
     // dropped (see PII_KEYS). When DC confirms a per-event label scheme this
     // can be tightened to a per-event allow-list.
     const category = deriveCategory(dl)
-    const scrubbed = detail.eventData ? (scrubPii(detail.eventData) as Record<string, unknown>) : undefined
-    const hasData = scrubbed && Object.keys(scrubbed).length > 0
+    const label = detail.eventData ? safeBuildLabel(detail.eventData) : null
     pushToSz(
-      hasData
-        ? ['event', category, detail.eventName, JSON.stringify(scrubbed)]
+      label !== null
+        ? ['event', category, detail.eventName, label]
         : ['event', category, detail.eventName]
     )
   }

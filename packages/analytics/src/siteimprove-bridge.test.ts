@@ -134,6 +134,63 @@ describe('initSiteImproveBridge', () => {
     expect(pushSpy.mock.calls[0][0]).toEqual(['event', 'unknown', 'cta_click'])
   })
 
+  it('strips snake_case PII keys (underscore-insensitive match)', () => {
+    new DataLayer('digitalData')
+    teardown = initSiteImproveBridge()
+
+    window.digitalData!.trackEvent('cta_click', {
+      target: 'save',
+      email_address: 'user@example.com',
+      first_name: 'Alex',
+      last_name: 'Smith',
+      date_of_birth: '1990-01-01',
+      social_security_number: '111-22-3333',
+      phone_number: '202-555-0100',
+      street_address: '123 Main St',
+      case_id: 'CASE-001'
+    })
+
+    expect(pushSpy.mock.calls[0][0]).toEqual([
+      'event',
+      'unknown',
+      'cta_click',
+      JSON.stringify({ target: 'save' })
+    ])
+  })
+
+  it('strips program-identifier PII keys (itin, snap_id, tanf_id, medicaid_id, household_id)', () => {
+    new DataLayer('digitalData')
+    teardown = initSiteImproveBridge()
+
+    window.digitalData!.trackEvent('cta_click', {
+      target: 'submit',
+      itin: '900-00-0000',
+      snap_id: 'IC0000001',
+      tanf_id: 'TANF-1',
+      medicaid_id: 'MED-1',
+      household_id: 'HH-1'
+    })
+
+    expect(pushSpy.mock.calls[0][0]).toEqual([
+      'event',
+      'unknown',
+      'cta_click',
+      JSON.stringify({ target: 'submit' })
+    ])
+  })
+
+  it('omits the label when the payload contains BigInts or circular refs', () => {
+    new DataLayer('digitalData')
+    teardown = initSiteImproveBridge()
+
+    const circular: Record<string, unknown> = { target: 'submit' }
+    circular.self = circular
+
+    window.digitalData!.trackEvent('cta_click', circular)
+
+    expect(pushSpy.mock.calls[0][0]).toEqual(['event', 'unknown', 'cta_click'])
+  })
+
   it('seeds _sz as an array if SiteImprove script has not loaded yet', () => {
     delete (window as unknown as Record<string, unknown>)._sz
     new DataLayer('digitalData')

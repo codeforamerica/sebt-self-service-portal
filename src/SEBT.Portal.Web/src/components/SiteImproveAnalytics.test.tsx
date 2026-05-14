@@ -7,6 +7,12 @@ vi.mock('@sebt/analytics', () => ({
   initSiteImproveBridge: () => mockInit()
 }))
 
+let mockState = 'dc'
+vi.mock('@sebt/design-system', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@sebt/design-system')>()
+  return { ...actual, getState: () => mockState }
+})
+
 vi.mock('next/script', () => ({
   default: ({ onLoad, src, nonce }: { onLoad?: () => void; src: string; nonce?: string }) => {
     onLoad?.()
@@ -30,6 +36,7 @@ describe('SiteImproveAnalytics', () => {
     mockInit.mockClear()
     mockTeardown.mockClear()
     mockInit.mockReturnValue(mockTeardown)
+    mockState = 'dc'
   })
 
   it('renders a script tag pointing at the SiteImprove CDN with the encoded site id', () => {
@@ -71,5 +78,21 @@ describe('SiteImproveAnalytics', () => {
     const src = getByTestId('siteimprove-script').getAttribute('src')!
     expect(src).not.toContain('../')
     expect(src).toBe('https://siteimproveanalytics.com/js/siteanalyze_abc%2F..%2F..%2Fevil.js')
+  })
+
+  it('renders nothing when state is co (defense in depth against env-var leak)', () => {
+    mockState = 'co'
+    const { container } = render(<SiteImproveAnalytics siteId="123456" />)
+
+    expect(container.querySelector('[data-testid="siteimprove-script"]')).toBeNull()
+    expect(mockInit).not.toHaveBeenCalled()
+  })
+
+  it('renders nothing for any non-dc state', () => {
+    mockState = 'xx'
+    const { container } = render(<SiteImproveAnalytics siteId="123456" />)
+
+    expect(container.querySelector('[data-testid="siteimprove-script"]')).toBeNull()
+    expect(mockInit).not.toHaveBeenCalled()
   })
 })
