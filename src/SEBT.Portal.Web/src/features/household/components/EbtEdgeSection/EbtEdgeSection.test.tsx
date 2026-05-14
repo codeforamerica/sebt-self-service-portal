@@ -1,10 +1,49 @@
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { describe, expect, it } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
+
+import type { HouseholdData, SummerEbtCase } from '../../api'
 
 import { EbtEdgeSection } from './EbtEdgeSection'
 
+const mockCase: SummerEbtCase = {
+  summerEBTCaseID: 'SEBT-001',
+  childFirstName: 'Sophia',
+  childLastName: 'Martinez',
+  householdType: 'OSSE',
+  eligibilityType: 'NSLP',
+  issuanceType: 'SummerEbt',
+  allowAddressChange: true,
+  allowCardReplacement: true
+}
+
+const defaultMockData: HouseholdData = {
+  email: 'test@example.com',
+  phone: '3035550100',
+  summerEbtCases: [mockCase],
+  applications: [],
+  addressOnFile: null,
+  coLoadedCohort: 'NonCoLoaded'
+}
+
+let mockReturnData: HouseholdData
+
+vi.mock('../../api', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('../../api')>()),
+  useRequiredHouseholdData: () => mockReturnData
+}))
+
 describe('EbtEdgeSection', () => {
+  beforeEach(() => {
+    mockReturnData = defaultMockData
+  })
+
+  it('renders nothing when there are no enrolled children', () => {
+    mockReturnData = { ...defaultMockData, summerEbtCases: [] }
+    const { container } = render(<EbtEdgeSection />)
+    expect(container.firstChild).toBeNull()
+  })
+
   it('renders section with accessible heading', () => {
     render(<EbtEdgeSection />)
 

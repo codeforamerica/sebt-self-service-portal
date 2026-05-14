@@ -3,13 +3,22 @@
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
+import { useRequiredHouseholdData } from '../../api'
+
 // Keys map to CSV: "S2 - Portal Dashboard - Alert EBT Edge - {Key}"
 export function EbtEdgeSection() {
   const { t } = useTranslation('dashboard')
+  const data = useRequiredHouseholdData()
   const [isExpanded, setIsExpanded] = useState(false)
 
   const handleToggle = () => {
     setIsExpanded((prev) => !prev)
+  }
+
+  // EBT cards are only issued to households with enrolled children, so the
+  // card-help accordion has nothing to point at without any cases.
+  if (data.summerEbtCases.length === 0) {
+    return null
   }
 
   // Parse features string into array of bullet points
