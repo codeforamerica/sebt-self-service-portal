@@ -1,6 +1,7 @@
 import { AmplitudeAnalytics } from '@/components/AmplitudeAnalytics'
 import { BetaBanner } from '@/components/BetaBanner'
 import { MixpanelAnalytics } from '@/components/MixpanelAnalytics'
+import { SiteImproveAnalytics } from '@/components/SiteImproveAnalytics'
 import { primaryFont } from '@/design/fonts'
 import { portalRoutes } from '@/lib/analytics-routes'
 import {
@@ -28,6 +29,7 @@ function getDefaultBaseUrl() {
 const gaId = process.env.NEXT_PUBLIC_GA_ID
 const mixpanelToken = process.env.NEXT_PUBLIC_MIXPANEL_TOKEN
 const amplitudeApiKey = process.env.NEXT_PUBLIC_AMPLITUDE_API_KEY
+const siteImproveId = process.env.NEXT_PUBLIC_SITEIMPROVE_ID
 
 export const viewport: Viewport = {
   width: 'device-width',
@@ -157,6 +159,14 @@ export default async function RootLayout({
       )}
       {/* Amplitude - only rendered when NEXT_PUBLIC_AMPLITUDE_API_KEY is configured */}
       {amplitudeApiKey && <AmplitudeAnalytics apiKey={amplitudeApiKey} />}
+      {/* SiteImprove — DC-only per DC-272. Gated by both state and env var so an
+          accidentally-set NEXT_PUBLIC_SITEIMPROVE_ID in another state does not enable it. */}
+      {state === 'dc' && siteImproveId && (
+        <SiteImproveAnalytics
+          siteId={siteImproveId}
+          {...(nonce ? { nonce } : {})}
+        />
+      )}
     </html>
   )
 }
