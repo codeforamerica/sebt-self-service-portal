@@ -31,6 +31,11 @@ jobs:
   build:
     name: Build DC IIS bundle
     runs-on: ubuntu-latest
+    # Scope only release-producing triggers (workflow_dispatch + tag push) to the
+    # prod-dc environment so client-side NEXT_PUBLIC_* vars resolve from prod
+    # values. PR validation runs unscoped and intentionally produces an artifact
+    # with empty client-side keys.
+    environment: ${{ (github.event_name == 'workflow_dispatch' || startsWith(github.ref, 'refs/tags/release/dc-v')) && 'prod-dc' || '' }}
     permissions:
       contents: write # needed to upload artifacts
     env:
@@ -168,6 +173,19 @@ jobs:
         run: ./scripts/ci/publish-api.sh --output staging --configuration Release
 
       - name: Build and package frontend
+        # NEXT_PUBLIC_* values are inlined into the client bundle at build time
+        # (Next.js webpack-replaces them; web.config runtime env vars cannot
+        # rescue them after the fact). These vars resolve from the prod-dc
+        # GitHub Environment when this job is scoped to it; on PR validation
+        # runs they resolve to empty and ship empty in the artifact, which is
+        # intentional — PR builds are not deployed.
+        env:
+          NEXT_PUBLIC_SMARTY_EMBEDDED_KEY: ${{ vars.SMARTY_EMBEDDED_KEY }}
+          NEXT_PUBLIC_SOCURE_SDK_KEY: ${{ vars.SOCURE_SDK_KEY }}
+          NEXT_PUBLIC_SOCURE_DI_SDK_KEY: ${{ vars.SOCURE_DI_SDK_KEY }}
+          NEXT_PUBLIC_MOCK_SOCURE: ${{ vars.MOCK_SOCURE }}
+          NEXT_PUBLIC_AMPLITUDE_API_KEY: ${{ vars.AMPLITUDE_API_KEY }}
+          NEXT_PUBLIC_MIXPANEL_TOKEN: ${{ vars.MIXPANEL_TOKEN }}
         run: |
           ./.github/workflows/scripts/build-frontend.sh --production
           ./scripts/ci/package-frontend.sh --skip-build --output output/sebt-web.zip
