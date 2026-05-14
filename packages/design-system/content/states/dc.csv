@@ -533,12 +533,12 @@ Español (Spanish)
 Español (Spanish)","English (inglés)
 Español
  አማርኛ (Amárico)","Inglés (English)
-Español","እንግሊዘኛ
-ስፓኒሽ (ስፓኒሽ)
-አማርኛ (አማርኛ)",
-GLOBAL - Language - English,English,English,Inglés (English),Inglés (English),እንግሊዘኛ,
-GLOBAL - Language - Español,Español (Spanish),Español (Spanish),Español,Español,ስፓኒሽ (ስፓኒሽ),
-GLOBAL - Language - Amharic,አማርኛ (Amharic),አማርኛ (Amharic), አማርኛ (Amárico),አማርኛ (Amárico),አማርኛ (አማርኛ),
+Español","English (እንግሊዘኛ)
+Español (ስፓኒሽ)
+አማርኛ",
+GLOBAL - Language - English,English,English,Inglés (English),Inglés (English),English (እንግሊዘኛ),
+GLOBAL - Language - Español,Español (Spanish),Español (Spanish),Español,Español,Español (ስፓኒሽ),
+GLOBAL - Language - Amharic,አማርኛ (Amharic),አማርኛ (Amharic), አማርኛ (Amárico),አማርኛ (Amárico),አማርኛ,
 GLOBAL - Address Format,"[Street address line 1]
 [Street address line 2]
 [City], [State] [ZIP Code]","[Street address line 1]
