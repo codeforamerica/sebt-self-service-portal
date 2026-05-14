@@ -185,8 +185,12 @@ export function DashboardContent() {
       />
       {data.userProfile ? <UserProfileCard /> : <SignOutLink />}
       <HouseholdSummary />
-      <EnrolledChildren />
-      <EbtEdgeSection />
+      {data.summerEbtCases.length > 0 && (
+        <>
+          <EnrolledChildren />
+          <EbtEdgeSection />
+        </>
+      )}
       <ApplicationsSection />
     </>
   )

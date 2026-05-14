@@ -302,8 +302,22 @@ describe('DashboardContent', () => {
     expect(screen.queryByText('Check existing cards')).toBeNull()
     // Enrolled Children section must not render (no enrolled cases)
     expect(document.getElementById('enrolled-children-heading')).toBeNull()
+    // EBT Card Help accordion must not render (no cards without enrolled cases)
+    expect(document.getElementById('help-section-heading')).toBeNull()
     // Check existing applications CTA must appear (applications do exist)
     expect(screen.getByText('Check existing applications')).toBeInTheDocument()
+  })
+
+  it('renders the enrolled-children and EBT Card Help sections when the household has enrolled cases', async () => {
+    // Default TEST_HOUSEHOLD_DATA has enrolled cases.
+    renderWithProviders(<DashboardContent />)
+
+    await waitFor(() => {
+      expect(screen.getByText('Sophia Martinez')).toBeInTheDocument()
+    })
+
+    expect(document.getElementById('enrolled-children-heading')).not.toBeNull()
+    expect(document.getElementById('help-section-heading')).not.toBeNull()
   })
 
   describe('analytics tagging when a co-loaded user lands on an empty dashboard', () => {
