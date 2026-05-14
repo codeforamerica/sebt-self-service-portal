@@ -13,11 +13,15 @@ interface ActionButton {
   ctaId: string
   /** Which allowedActions field gates this CTA. When set, the CTA is hidden if the field is false. */
   gatedBy?: keyof Pick<AllowedActions, 'canUpdateAddress' | 'canRequestReplacementCard'>
+  /** When true, the CTA is hidden if hasCases is explicitly false. Omitting hasCases keeps the CTA visible (backward-compatible). */
+  requiresCases?: boolean
 }
 
 interface ActionButtonsProps {
   /** Server-computed action permissions from the household data response. */
   allowedActions?: AllowedActions | null | undefined
+  /** Whether the household has any enrolled children (summerEbtCases.length > 0). When false, CTAs that require cases are hidden. */
+  hasCases?: boolean
 }
 
 // Keys map to CSV: "S2 - Portal Dashboard - Action Navigation - {Key}"
@@ -37,7 +41,8 @@ const ACTIONS: ActionButton[] = [
   {
     labelKey: 'actionNavigationCheckExistingCards',
     href: '#enrolled-children-heading',
-    ctaId: 'check_cards_cta'
+    ctaId: 'check_cards_cta',
+    requiresCases: true
   },
   {
     labelKey: 'actionNavigationCheckExistingApplications',
@@ -46,16 +51,12 @@ const ACTIONS: ActionButton[] = [
   }
 ]
 
-export function ActionButtons({ allowedActions }: ActionButtonsProps) {
+export function ActionButtons({ allowedActions, hasCases }: ActionButtonsProps) {
   const { t } = useTranslation('dashboard')
   const { actionButtonBg, actionButtonText } = getStateConfig(getState())
 
-  const hasDeniedAction =
-    allowedActions !== null &&
-    allowedActions !== undefined &&
-    (!allowedActions.canUpdateAddress || !allowedActions.canRequestReplacementCard)
-
   const visibleActions = ACTIONS.filter((action) => {
+    if (action.requiresCases && hasCases === false) return false
     if (!action.gatedBy) return true
     // When allowedActions is not provided, default to showing the CTA (backward-compatible).
     if (!allowedActions) return true
@@ -68,17 +69,6 @@ export function ActionButtons({ allowedActions }: ActionButtonsProps) {
       aria-label={t('actionNavigationNavLabel', 'Quick actions')}
     >
       <p className="margin-top-0 margin-bottom-2 text-base-dark">{t('actionNavigationLead')}</p>
-
-      {hasDeniedAction && (
-        <div
-          className="usa-alert usa-alert--info usa-alert--slim margin-bottom-2"
-          role="status"
-        >
-          <div className="usa-alert__body">
-            <p className="usa-alert__text">{t('actionNavigationSelfServiceUnavailable')}</p>
-          </div>
-        </div>
-      )}
 
       <ul className="usa-list usa-list--unstyled">
         {visibleActions.map((action) => (
