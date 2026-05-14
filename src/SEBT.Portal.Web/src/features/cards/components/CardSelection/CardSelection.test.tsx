@@ -1,7 +1,7 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { http, HttpResponse } from 'msw'
+import { delay, http, HttpResponse } from 'msw'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { server } from '@/mocks/server'
@@ -134,6 +134,23 @@ describe('CardSelection', () => {
 
     const checkboxes = screen.getAllByRole('checkbox')
     expect(checkboxes).toHaveLength(2)
+  })
+
+  // --- Loading state ---
+
+  it('shows real loading copy while household data is fetching', async () => {
+    server.use(
+      http.get('/api/household/data', async () => {
+        await delay('infinite')
+        return HttpResponse.json(TWO_CHILD_HOUSEHOLD)
+      })
+    )
+
+    renderCardSelection()
+
+    // The loading text must resolve to real copy ("Loading..." from the `dev`
+    // namespace), not an unresolved key string.
+    expect(await screen.findByText('Loading...')).toBeInTheDocument()
   })
 
   // --- State-specific content ---

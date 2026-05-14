@@ -47,6 +47,7 @@ export function CardSelection({ confirmPath = 'select/confirm' }: CardSelectionP
   const { t } = useTranslation('confirmInfo')
   const { t: tOptional } = useTranslation('optionalId')
   const { t: tCommon } = useTranslation('common')
+  const { t: tDev } = useTranslation('dev')
 
   const router = useRouter()
   const currentState = getState()
@@ -63,7 +64,7 @@ export function CardSelection({ confirmPath = 'select/confirm' }: CardSelectionP
   }, [error])
 
   if (isLoading) {
-    return <p>{tCommon('loading')}</p>
+    return <p>{tDev('loading')}</p>
   }
 
   if (isError || !data) {

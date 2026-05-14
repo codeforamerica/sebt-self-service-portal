@@ -35,7 +35,8 @@ describe('DashboardAlerts', () => {
     render(<DashboardAlerts />)
 
     expect(screen.getByRole('alert')).toBeInTheDocument()
-    expect(screen.getByText(/address update recorded/i)).toBeInTheDocument()
+    // Heading resolves from the `alertAddressUpdated` key, not a missing one.
+    expect(screen.getByText('Your mailing address has been updated')).toBeInTheDocument()
   })
 
   it('renders card request alert when both addressUpdated and cardsRequested params are present', () => {
@@ -74,7 +75,7 @@ describe('DashboardAlerts', () => {
 
     // Alert should still be visible even though params are gone
     expect(screen.getByRole('alert')).toBeInTheDocument()
-    expect(screen.getByText(/address update recorded/i)).toBeInTheDocument()
+    expect(screen.getByText('Your mailing address has been updated')).toBeInTheDocument()
   })
 
   it('renders card replaced alert when flash=card_replaced param is present', () => {
@@ -83,6 +84,38 @@ describe('DashboardAlerts', () => {
 
     expect(screen.getByRole('alert')).toBeInTheDocument()
     expect(screen.getByText(/replacement card request has been recorded/i)).toBeInTheDocument()
+  })
+
+  it('renders the address-verification warning with a resolved heading and body', () => {
+    mockSearchParams = new URLSearchParams('addressVerification=true')
+    render(<DashboardAlerts />)
+
+    expect(screen.getByRole('alert')).toBeInTheDocument()
+    expect(screen.getByText('Is your address correct?')).toBeInTheDocument()
+    // Body resolves from `alertCheckAddressBody`, the semantic pair of the
+    // `alertCheckAddressTitle` heading.
+    expect(screen.getByText(/please check your preferred mailing address/i)).toBeInTheDocument()
+  })
+
+  it('renders the address-update-failed warning heading from a resolved key', () => {
+    mockSearchParams = new URLSearchParams('addressUpdateFailed=true')
+    render(<DashboardAlerts />)
+
+    expect(
+      screen.getByText('There was an issue updating your mailing address. Please try again later.')
+    ).toBeInTheDocument()
+  })
+
+  it('renders the contact-update-failed warning heading from a resolved key', () => {
+    mockSearchParams = new URLSearchParams('contactUpdateFailed=true')
+    render(<DashboardAlerts />)
+
+    // alertContactUpdateError currently renders as both heading and body in DashboardAlerts — pre-existing, out of scope here
+    expect(
+      screen.getAllByText(
+        'There was an issue updating your contact preferences. Please try again later.'
+      ).length
+    ).toBeGreaterThan(0)
   })
 
   it('combined alert persists after URL params are cleaned', () => {

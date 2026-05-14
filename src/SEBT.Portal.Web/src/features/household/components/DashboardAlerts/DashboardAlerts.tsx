@@ -58,7 +58,7 @@ export function DashboardAlerts() {
       {alerts.addressUpdated && !alerts.cardsRequested && (
         <Alert
           variant="success"
-          heading={t('alertAddressUpdatedHeading', 'Address update recorded')}
+          heading={t('alertAddressUpdated')}
         >
           {t('alertAddressUpdatedBody', 'Your address update has been recorded.')}
         </Alert>
@@ -103,10 +103,7 @@ export function DashboardAlerts() {
         // TODO update copy
         <Alert
           variant="warning"
-          heading={t(
-            'alertAddressUpdateError',
-            'There was an issue updating your mailing address.'
-          )}
+          heading={t('alertAddressUpdateError')}
         >
           {t(
             'alertAddressUpdateFailedBody',
@@ -119,10 +116,7 @@ export function DashboardAlerts() {
         // TODO update copy
         <Alert
           variant="warning"
-          heading={t(
-            'alertContactUpdateError',
-            'There was an issue updating your contact preferences.'
-          )}
+          heading={t('alertContactUpdateError')}
         >
           {t('alertContactUpdateError')}
         </Alert>
@@ -133,11 +127,7 @@ export function DashboardAlerts() {
           variant="warning"
           heading={t('alertCheckAddressTitle')}
         >
-          {/* TODO update copy */}
-          {t(
-            'alertAddressVerificationBody',
-            'Please verify your mailing address is up to date so you can receive your Summer EBT cards.'
-          )}
+          {t('alertCheckAddressBody')}
         </Alert>
       )}
     </div>
