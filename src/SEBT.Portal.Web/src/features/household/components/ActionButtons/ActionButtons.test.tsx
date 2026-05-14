@@ -125,17 +125,18 @@ describe('ActionButtons', () => {
     expect(screen.queryByText('Request new cards')).toBeNull()
   })
 
-  it('hides Check existing cards CTA when hasCases is false', () => {
+  it('shows only the Check existing applications CTA for a no-case household', () => {
+    // A household with no enrolled cases: the backend evaluator denies address
+    // and card actions, so denyAll is the realistic allowedActions shape here.
     render(
       <ActionButtons
-        allowedActions={allowAll}
+        allowedActions={denyAll}
         hasCases={false}
       />
     )
     expect(screen.queryByText('Check existing cards')).toBeNull()
-    // Other CTAs unaffected
-    expect(screen.getByText('Change my mailing address')).toBeInTheDocument()
-    expect(screen.getByText('Request new cards')).toBeInTheDocument()
+    expect(screen.queryByText('Change my mailing address')).toBeNull()
+    expect(screen.queryByText('Request new cards')).toBeNull()
     expect(screen.getByText('Check existing applications')).toBeInTheDocument()
   })
 
