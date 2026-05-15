@@ -11,10 +11,10 @@ using SEBT.Portal.Kernel.Results;
 namespace SEBT.Portal.Infrastructure.Services;
 
 internal record OtpEmailTranslation(
-    [property: JsonPropertyName("subject")]     string Subject,
+    [property: JsonPropertyName("subject")] string Subject,
     [property: JsonPropertyName("programName")] string ProgramName,
-    [property: JsonPropertyName("body1")]       string Body1,
-    [property: JsonPropertyName("body3")]       string Body3);
+    [property: JsonPropertyName("body1")] string Body1,
+    [property: JsonPropertyName("body3")] string Body3);
 
 /// <summary>
 /// Sends OTP codes via HTML email, rendering the template in the recipient's language.
