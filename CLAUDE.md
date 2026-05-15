@@ -129,9 +129,9 @@ Adding a new client-exposed var requires wire-ups across **both** deployment pat
 6. Set `vars.FOO` on the appropriate per-environment scope (admin, out-of-band):
    - Docker/ECR DC dev: `dev-dc` environment in `deploy-ecr.yaml`'s deploy-dc job.
    - Docker/ECR CO: `dev-co` environment in `deploy-ecr.yaml`'s deploy-co job.
-   - IIS DC prod: `prod-dc` environment scoped on `release-iis-dc.yaml`'s build job (only applied to `workflow_dispatch` and `release/dc-v*` tag push triggers; PR validation runs unscoped and intentionally ships an artifact with empty client-side keys).
+   - IIS DC prod: `prod-dc` environment on `release-iis-dc.yaml`'s build job for `workflow_dispatch` + `release/dc-v*` tag push. PR runs bind to `prod-dc-test`, populated with non-empty sentinel values (e.g. `SMARTY_EMBEDDED_KEY=PR-VALIDATION-SENTINEL`). This means every PR artifact validates the var-threading pipeline end-to-end without exposing real prod keys.
 
-Local dev reads from `.env`/`.env.local` and bypasses this whole pipeline, so the gap only surfaces in deployed environments. To verify a deployed bundle, inspect the workflow artifact: client values that were inlined as empty show up as `"NEXT_PUBLIC_FOO": ""` in `.next/required-server-files.json` (for vars threaded through `next.config.ts`'s `env:` block) or as missing entirely from `.next/static/chunks/*.js` (for vars Next.js auto-inlined and tree-shook).
+Local dev reads from `.env`/`.env.local` and bypasses this whole pipeline, so the gap only surfaces in deployed environments. To verify a deployed bundle, inspect the workflow artifact: client values that were inlined as empty show up as `"NEXT_PUBLIC_FOO": ""` in `.next/required-server-files.json` (for vars threaded through `next.config.ts`'s `env:` block) or as missing entirely from `.next/static/chunks/*.js` (for vars Next.js auto-inlined and tree-shook). A PR-run IIS artifact should show the `prod-dc-test` sentinel values for every plumbed var — if any are empty, the wiring is broken.
 
 ### Data boundary enforcement
 - Enforce access control at the data boundary (the API endpoint that returns the data), not at the UI layer. Client-side guards are UX conveniences, not security controls.
