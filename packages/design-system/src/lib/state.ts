@@ -9,6 +9,15 @@
 /** Supported state codes — add new states here */
 export type StateCode = 'dc' | 'co'
 
+/**
+ * Full set of language codes the design system knows how to render labels for.
+ * The runtime list of languages offered to a user is per-state (see
+ * `StateConfig.supportedLanguages`), but `languageNames` and
+ * `languageTranslationKeys` cover every member of this union so a state that
+ * offers a given language always has its native label available.
+ */
+export type SupportedLanguage = 'en' | 'es' | 'am'
+
 export interface StateConfig {
   /** Full display name (e.g., 'District of Columbia') */
   name: string
@@ -16,6 +25,8 @@ export interface StateConfig {
   programName: string
   /** Alt text for the state seal image in the footer */
   sealAlt: string
+  /** Languages offered in this state's UI (drives the LanguageSelector and `?lang=` validation) */
+  supportedLanguages: readonly SupportedLanguage[]
   /** Extra CSS classes appended to the mobile language selector button */
   languageSelectorClass?: string
   /** Extra CSS classes appended to the mobile language submenu */
@@ -35,6 +46,7 @@ const stateConfigs: Record<StateCode, StateConfig> = {
     name: 'District of Columbia',
     programName: 'DC SUN Bucks',
     sealAlt: 'Government of the District of Columbia - Muriel Bowser, Mayor',
+    supportedLanguages: ['en', 'es', 'am'],
     actionButtonBg: 'bg-secondary',
     actionButtonText: 'text-ink'
   },
@@ -42,6 +54,7 @@ const stateConfigs: Record<StateCode, StateConfig> = {
     name: 'Colorado',
     programName: 'Summer EBT',
     sealAlt: 'Colorado Official State Web Portal',
+    supportedLanguages: ['en', 'es'],
     languageSelectorClass: 'border-primary radius-md text-primary',
     languageSubmenuClass: 'bg-primary-dark',
     actionButtonBg: 'bg-primary',

@@ -29,9 +29,15 @@
 import i18n from 'i18next'
 import { initReactI18next } from 'react-i18next'
 
-// Supported languages
-export const supportedLanguages = ['en', 'es', 'am'] as const
-export type SupportedLanguage = (typeof supportedLanguages)[number]
+import { getState, getStateConfig, type SupportedLanguage } from './state'
+
+export type { SupportedLanguage }
+
+// Languages offered in the current deployment, resolved from the per-state
+// config in `state.ts`. The `SupportedLanguage` type stays the full union so
+// `languageNames` and `languageTranslationKeys` keep covering every label.
+export const supportedLanguages: readonly SupportedLanguage[] =
+  getStateConfig(getState()).supportedLanguages
 
 /** Map of state code → i18next resource bundle (language → namespace → key → value) */
 export type StateResources = Record<
