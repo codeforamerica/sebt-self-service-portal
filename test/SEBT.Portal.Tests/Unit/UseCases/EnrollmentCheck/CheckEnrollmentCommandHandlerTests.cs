@@ -181,6 +181,54 @@ public class CheckEnrollmentCommandHandlerTests
     }
 
     [Fact]
+    public async Task Handle_AlwaysReplacesConnectorNameAndDobWithSubmittedValues()
+    {
+        // The connector now returns CBMS values (not submitted ones). The handler must
+        // replace FirstName/LastName/DateOfBirth with the submitted values before
+        // returning to the API — regardless of flag state — so no state-system PII
+        // is ever surfaced to the UI.
+        _featureManager
+            .IsEnabledAsync(FeatureFlags.EnrollmentCheckRequiresAtLeastOneExactMatchedField)
+            .Returns(false);
+
+        var handler = CreateHandler();
+        var command = new CheckEnrollmentCommand
+        {
+            Children =
+            [
+                new() { FirstName = "Jane", LastName = "Doe", DateOfBirth = new DateOnly(2015, 3, 12) }
+            ],
+            IpAddress = "127.0.0.1"
+        };
+
+        // Connector returns CBMS-normalized values — different name, different month/day
+        _enrollmentCheckService
+            .CheckEnrollmentAsync(Arg.Any<EnrollmentCheckRequest>(), Arg.Any<CancellationToken>())
+            .Returns(call => new EnrollmentCheckResult
+            {
+                Results =
+                [
+                    new()
+                    {
+                        CheckId = call.Arg<EnrollmentCheckRequest>().Children[0].CheckId,
+                        FirstName = "JANE",
+                        LastName = "DOE",
+                        DateOfBirth = new DateOnly(2015, 3, 12),
+                        Status = EnrollmentStatus.Match
+                    }
+                ]
+            });
+
+        var result = await handler.Handle(command);
+
+        Assert.True(result.IsSuccess);
+        var returned = Assert.Single(result.Value.Results);
+        Assert.Equal("Jane", returned.FirstName);
+        Assert.Equal("Doe", returned.LastName);
+        Assert.Equal(new DateOnly(2015, 3, 12), returned.DateOfBirth);
+    }
+
+    [Fact]
     public async Task Handle_WhenExactMatchFlagEnabled_DropsResultWithNoExactMatch()
     {
         _featureManager

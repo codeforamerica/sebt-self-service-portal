@@ -77,6 +77,32 @@ public class CheckEnrollmentCommandHandler(
             result = new EnrollmentCheckResult { Results = filtered, ResponseMessage = result.ResponseMessage };
         }
 
+        // Replace connector-returned identity fields with submitted values so no state-system
+        // PII is ever surfaced to the UI, regardless of flag state.
+        var submittedById = request.Children.ToDictionary(c => c.CheckId);
+        result = new EnrollmentCheckResult
+        {
+            Results = result.Results.Select(r =>
+            {
+                if (!submittedById.TryGetValue(r.CheckId, out var submitted))
+                    return r;
+
+                return new ChildCheckResult
+                {
+                    CheckId = r.CheckId,
+                    FirstName = submitted.FirstName,
+                    LastName = submitted.LastName,
+                    DateOfBirth = submitted.DateOfBirth,
+                    Status = r.Status,
+                    MatchConfidence = r.MatchConfidence,
+                    StatusMessage = r.StatusMessage,
+                    SchoolName = r.SchoolName,
+                    EligibilityType = r.EligibilityType
+                };
+            }).ToList(),
+            ResponseMessage = result.ResponseMessage
+        };
+
         // Log de-identified submission (fire and forget, don't fail the request)
         try
         {
