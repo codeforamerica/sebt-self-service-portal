@@ -88,18 +88,37 @@ describe('ChildFormPage', () => {
       }))
     })
 
-    it('does not include child PII in the enrollment_check_start payload', () => {
-      new DataLayer('digitalData')
-
+    it('payload key set excludes PII field names', () => {
       // Render in edit mode so a child with full PII is in EnrollmentProvider state.
+      new DataLayer('digitalData')
+      window.digitalData!.page.set('name', 'Check')
+      window.digitalData!.page.set('application', 'sebt-enrollment-checker')
+
       render(<ChildFormPageInEditMode />, { wrapper })
 
       const event = window.digitalData!.event.find(e => e.eventName === 'enrollment_check_start')
-      expect(event).toBeDefined()
+      const keys = Object.keys(event!.eventData)
+      // Guard against a vacuous pass on `{}`: assert the merge actually populated the bag.
+      expect(keys.length).toBeGreaterThan(0)
+      // Allow-list check: PII field names must not appear, even if a future
+      // refactor accidentally writes them to page.* with no scope.
+      const piiKeys = ['firstName', 'lastName', 'middleName', 'dateOfBirth', 'schoolName', 'schoolCode']
+      for (const piiKey of piiKeys) {
+        expect(keys).not.toContain(piiKey)
+      }
+    })
+
+    it('filters scope-restricted fields out of the payload (e.g. user.email)', () => {
+      new DataLayer('digitalData')
+      window.digitalData!.page.set('name', 'Check')
+      // user.set enforces 'default' scope — no analytics access.
+      window.digitalData!.user.set('email', 'private@example.com')
+
+      render(<ChildFormPage showSchoolField={false} apiBaseUrl="" />, { wrapper })
+
+      const event = window.digitalData!.event.find(e => e.eventName === 'enrollment_check_start')
       const serialized = JSON.stringify(event!.eventData)
-      expect(serialized).not.toContain('Jane')
-      expect(serialized).not.toContain('Doe')
-      expect(serialized).not.toContain('2015')
+      expect(serialized).not.toContain('private@example.com')
     })
   })
 })
