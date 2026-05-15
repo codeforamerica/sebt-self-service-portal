@@ -129,7 +129,7 @@ export default function CardInfoPage() {
         type="button"
         onClick={() => router.back()}
       >
-        {tCommon('back', 'Back')}
+        {tCommon('back')}
       </Button>
     </div>
   )
