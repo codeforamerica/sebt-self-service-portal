@@ -110,14 +110,28 @@ We follow a test-driven development (TDD) approach: write tests first to fail, t
 - This is easy to miss because CSP is not enforced in local dev or in tests (MSW intercepts network calls). A missing entry means the feature silently fails in production — the browser blocks the request, and error-handling code gracefully degrades as if the service is down.
 
 ### Client-side env vars (`NEXT_PUBLIC_*`)
-Next.js inlines `NEXT_PUBLIC_*` references into the client bundle at **build time**, not runtime. Adding a new client-exposed var requires four wire-ups, all needed for it to appear in deployed builds:
+Next.js inlines `NEXT_PUBLIC_*` references into the client bundle at **build time**, not runtime. Setting them at runtime (e.g. in IIS `web.config`'s `<environmentVariables>`, or container env vars on a server already-built) has **no effect on browser code** — the empty value is already baked into static JS chunks. The only place that matters is the environment of the `pnpm build` step.
 
-1. `src/SEBT.Portal.Web/src/env.ts` — declare in the `client` schema and pass through.
+Adding a new client-exposed var requires wire-ups across **both** deployment paths:
+
+**Shared:**
+1. `src/SEBT.Portal.Web/src/env.ts` — declare in the `client` schema and `runtimeEnv` pass-through.
+
+**Docker / ECR path (DC dev, CO):**
 2. `src/SEBT.Portal.Web/Dockerfile` — add `ARG NEXT_PUBLIC_FOO=""` (BuildKit auto-exposes named ARGs as env vars to subsequent RUN steps; no explicit `ENV` bridge needed).
 3. `.github/workflows/deploy-ecr.yaml` — add `--build-arg NEXT_PUBLIC_FOO=${{ vars.FOO }}` to **both** the DC and CO docker build steps.
-4. **GitHub repo Variables** — set `vars.FOO` per environment (admin, out-of-band).
 
-Skipping any of (2)–(4) results in the var being empty in deployed bundles. Local dev reads from `.env`/`.env.local` and bypasses this whole pipeline, so the gap only surfaces in deployed environments.
+**IIS path (DC prod):**
+4. `.github/workflows/release-iis-dc.yaml` — add `NEXT_PUBLIC_FOO: ${{ vars.FOO }}` under the `env:` block of the `Build and package frontend` step. The IIS build runs `pnpm build` on the runner directly (no Docker), so the var must be in the runner's process env when that script executes.
+5. The `scripts/ci/templates/web.config` runtime env block is **not** the right place — it only affects the Node.js process at runtime, and `NEXT_PUBLIC_*` references in browser code are already inlined by then. Don't add it there.
+
+**GitHub Variables — required for both paths:**
+6. Set `vars.FOO` on the appropriate per-environment scope (admin, out-of-band):
+   - Docker/ECR DC dev: `dev-dc` environment in `deploy-ecr.yaml`'s deploy-dc job.
+   - Docker/ECR CO: `dev-co` environment in `deploy-ecr.yaml`'s deploy-co job.
+   - IIS DC prod: `prod-dc` environment on `release-iis-dc.yaml`'s build job for `workflow_dispatch` + `release/dc-v*` tag push. PR runs bind to `prod-dc-test`, populated with non-empty sentinel values (e.g. `SMARTY_EMBEDDED_KEY=PR-VALIDATION-SENTINEL`). This means every PR artifact validates the var-threading pipeline end-to-end without exposing real prod keys.
+
+Local dev reads from `.env`/`.env.local` and bypasses this whole pipeline, so the gap only surfaces in deployed environments. To verify a deployed bundle, inspect the workflow artifact: client values that were inlined as empty show up as `"NEXT_PUBLIC_FOO": ""` in `.next/required-server-files.json` (for vars threaded through `next.config.ts`'s `env:` block) or as missing entirely from `.next/static/chunks/*.js` (for vars Next.js auto-inlined and tree-shook). A PR-run IIS artifact should show the `prod-dc-test` sentinel values for every plumbed var — if any are empty, the wiring is broken.
 
 ### Data boundary enforcement
 - Enforce access control at the data boundary (the API endpoint that returns the data), not at the UI layer. Client-side guards are UX conveniences, not security controls.

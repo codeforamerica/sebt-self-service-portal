@@ -90,6 +90,7 @@ const CONFIG = {
     : join(contentDir, 'locales'),
   hashFile: join(contentDir, '.copy-hash'),
   locales: {
+    am: 'Amharic',    
     en: 'English',
     es: 'Español',
   },
@@ -331,6 +332,10 @@ function buildStateLocaleData(rows, state) {
     h.toLowerCase().includes('español current')
   );
 
+  const amharicIdx = headerRow.findIndex((h) =>
+    h.toLowerCase().includes('amharic current')
+  );
+
   if (contentIdx === -1 || englishIdx === -1) {
     throw new Error(`CSV for ${state} must have "Content" and "English" columns`);
   }
@@ -346,6 +351,7 @@ function buildStateLocaleData(rows, state) {
     const contentKey = row[contentIdx];
     const englishValue = row[englishIdx] || '';
     const spanishValue = spanishIdx !== -1 ? row[spanishIdx] || '' : '';
+    const amharicValue = amharicIdx !== -1 ? row[amharicIdx] || '' : '';
 
     // Skip empty rows or rows without content keys
     if (!contentKey || !contentKey.trim() || englishValue === ignoredStringIndicator) continue;
@@ -374,6 +380,16 @@ function buildStateLocaleData(rows, state) {
       }
       if (spanishValue || !data.es[namespace][key]) {
         data.es[namespace][key] = spanishValue;
+      }
+    }
+
+    // amharic — same collision protection
+    if (amharicIdx !== -1) {
+      if (!data.am[namespace]) {
+        data.am[namespace] = {};
+      }
+      if (amharicValue || !data.am[namespace][key]) {
+        data.am[namespace][key] = amharicValue;
       }
     }
   }
@@ -507,13 +523,17 @@ function validateStateCompleteness(stateData, state) {
     }
   }
 
-  // Check Spanish for missing keys
+  // Check other locales for missing keys
   for (const [fullKey] of englishKeys) {
     const [namespace, key] = fullKey.split('.');
     if (!stateData.es?.[namespace]?.[key]) {
       warnings.push(`Missing Spanish translation in ${state}: ${fullKey}`);
     }
+    if (!stateData.am?.[namespace]?.[key]) {
+      warnings.push(`Missing Amharic translation in ${state}: ${fullKey}`);
+    }
   }
+  
 
   return warnings;
 }

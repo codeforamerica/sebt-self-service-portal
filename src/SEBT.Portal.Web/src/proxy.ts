@@ -39,11 +39,10 @@ export function proxy(request: NextRequest) {
   const nonce = Buffer.from(crypto.randomUUID()).toString('base64')
   const isDev = process.env.NODE_ENV === 'development'
   const hasAmplitude = !!process.env.NEXT_PUBLIC_AMPLITUDE_API_KEY
+  const hasSiteImprove = !!process.env.NEXT_PUBLIC_SITEIMPROVE_ID
   const proto =
     request.headers.get('x-forwarded-proto') ?? request.nextUrl.protocol.replace(':', '')
   const isHttps = proto === 'https'
-  // Only add upgrade-insecure-requests when actually served over HTTPS.
-  const upgradeInsecure = !isDev && isHttps ? 'upgrade-insecure-requests;' : ''
 
   // Build CSP header with nonce for scripts; 'unsafe-inline' for styles.
   // Development: Allow unsafe-eval for Next.js hot reload.
@@ -60,24 +59,60 @@ export function proxy(request: NextRequest) {
   //
   // 'https://browser-intake-datadoghq.com' in connect-src is Socure's embedded
   // Datadog RUM telemetry endpoint — required by the Doc Verify SDK.
-  const cspHeader = `
-    default-src 'self';
-    script-src 'self' 'nonce-${nonce}' 'strict-dynamic' https://www.googletagmanager.com https://sdk.dv.socure.io ${isDev ? "'unsafe-eval'" : ''};
-    style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://verify-v2.socure.com;
-    font-src 'self' https://fonts.gstatic.com https://verify-v2.socure.com;
-    img-src 'self' data: https: https://www.google-analytics.com;
-    connect-src 'self' https://www.google-analytics.com https://*.google-analytics.com https://www.googletagmanager.com https://auth.pingone.com https://*.socure.com https://*.socure.io https://browser-intake-datadoghq.com https://us-autocomplete-pro.api.smarty.com ${hasAmplitude ? 'https://api2.amplitude.com https://sr-client-cfg.amplitude.com' : ''} ${isDev ? 'ws://localhost:* http://localhost:*' : ''};
-    frame-src https://verify-v2.socure.com;
-    child-src https://verify-v2.socure.com;
-    worker-src 'self';
-    frame-ancestors 'none';
-    base-uri 'self';
-    form-action 'self';
-    object-src 'none';
-    ${upgradeInsecure}
-  `
+  //
+  // Convention: a directive's sources are an array (joined via the helper below)
+  // only when any entry is conditional. Fully-static directives stay as plain
+  // strings. Add a row to the relevant array when allow-listing a new vendor.
+  const join = (parts: (string | false)[]) => parts.filter(Boolean).join(' ')
 
-  const contentSecurityPolicyHeaderValue = cspHeader.replace(/\s{2,}/g, ' ').trim()
+  const scriptSrc = join([
+    "'self'",
+    `'nonce-${nonce}'`,
+    "'strict-dynamic'",
+    'https://www.googletagmanager.com',
+    'https://sdk.dv.socure.io',
+    hasSiteImprove && 'https://siteimproveanalytics.com',
+    isDev && "'unsafe-eval'"
+  ])
+
+  const styleSrc =
+    "'self' 'unsafe-inline' https://fonts.googleapis.com https://verify-v2.socure.com"
+  const fontSrc = "'self' https://fonts.gstatic.com https://verify-v2.socure.com"
+  const imgSrc = "'self' data: https: https://www.google-analytics.com"
+
+  const connectSrc = join([
+    "'self'",
+    'https://www.google-analytics.com',
+    'https://*.google-analytics.com',
+    'https://www.googletagmanager.com',
+    'https://auth.pingone.com',
+    'https://*.socure.com',
+    'https://*.socure.io',
+    'https://browser-intake-datadoghq.com',
+    'https://us-autocomplete-pro.api.smarty.com',
+    hasAmplitude && 'https://api2.amplitude.com https://sr-client-cfg.amplitude.com',
+    hasSiteImprove && 'https://siteimproveanalytics.io',
+    isDev && 'ws://localhost:* http://localhost:*'
+  ])
+
+  const directives = [
+    `default-src 'self'`,
+    `script-src ${scriptSrc}`,
+    `style-src ${styleSrc}`,
+    `font-src ${fontSrc}`,
+    `img-src ${imgSrc}`,
+    `connect-src ${connectSrc}`,
+    `frame-src https://verify-v2.socure.com`,
+    `child-src https://verify-v2.socure.com`,
+    `worker-src 'self'`,
+    `frame-ancestors 'none'`,
+    `base-uri 'self'`,
+    `form-action 'self'`,
+    `object-src 'none'`,
+    !isDev && isHttps && 'upgrade-insecure-requests'
+  ].filter(Boolean)
+
+  const contentSecurityPolicyHeaderValue = directives.join('; ')
 
   // Set nonce in request headers for use in components
   const requestHeaders = new Headers(request.headers)
