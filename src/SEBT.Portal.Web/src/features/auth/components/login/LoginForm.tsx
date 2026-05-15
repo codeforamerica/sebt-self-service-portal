@@ -11,7 +11,7 @@ import { RequestOtpRequestSchema, useRequestOtp } from '../../api'
 
 export function LoginForm() {
   const router = useRouter()
-  const { t } = useTranslation('common')
+  const { t, i18n } = useTranslation('common')
   const { t: tLogin } = useTranslation('login')
   const { t: tValidation } = useTranslation('validation')
   const [email, setEmail] = useState('')
@@ -43,7 +43,7 @@ export function LoginForm() {
     setFieldError(null)
 
     try {
-      await requestOtp.mutateAsync({ email })
+      await requestOtp.mutateAsync({ email, locale: i18n.language })
       sessionStorage.setItem('otp_email', email)
       router.push('/login/verify')
     } catch (err) {

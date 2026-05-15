@@ -1,4 +1,6 @@
 using System.Reflection;
+using System.Text.Json;
+using System.Text.Json.Serialization;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using SEBT.Portal.Core.AppSettings;
@@ -8,17 +10,17 @@ using SEBT.Portal.Kernel.Results;
 
 namespace SEBT.Portal.Infrastructure.Services;
 
+internal record OtpEmailTranslation(
+    [property: JsonPropertyName("subject")]     string Subject,
+    [property: JsonPropertyName("programName")] string ProgramName,
+    [property: JsonPropertyName("body1")]       string Body1,
+    [property: JsonPropertyName("body3")]       string Body3);
+
 /// <summary>
-/// Service responsible for sending One-Time Password (OTP) codes via email.
+/// Sends OTP codes via HTML email, rendering the template in the recipient's language.
+/// Translations are loaded from the EmailContent.{state}.json embedded resource,
+/// generated from the content CSVs via <c>pnpm copy:generate</c>.
 /// </summary>
-/// <remarks>
-/// This service uses SMTP to send HTML-formatted emails containing OTP codes
-/// for user authentication purposes. Email content is loaded from an embedded
-/// HTML template and populated with configurable values.
-/// </remarks>
-/// <param name="optionsMonitor">The options monitor for email sender settings.</param>
-/// <param name="smtpClientService">The SMTP client service used to send emails.</param>
-/// <param name="logger">The logger for recording email sending operations.</param>
 public class EmailOtpSenderService(
     IOptionsMonitor<EmailOtpSenderServiceSettings> optionsMonitor,
     ILogger<EmailOtpSenderService> logger,
@@ -28,18 +30,20 @@ public class EmailOtpSenderService(
     private readonly EmailOtpSenderServiceSettings _settings = optionsMonitor.CurrentValue;
     private static readonly Lazy<string> _cachedTemplate = new(LoadEmailTemplate);
     private static readonly Lazy<byte[]> _cachedLogo = new(LoadLogoData);
+    private readonly IReadOnlyDictionary<string, OtpEmailTranslation> _translations = LoadTranslations();
 
-    public async Task<Result> SendOtpAsync(string to, string otp)
+    public async Task<Result> SendOtpAsync(string to, string otp, string locale)
     {
         try
         {
-            var htmlBody = RenderEmailTemplate(otp);
+            var translation = GetTranslation(locale);
+            var htmlBody = RenderEmailTemplate(otp, locale, translation);
             var linkedResources = GetLinkedResources();
 
             await smtpClientService.SendEmailAsync(
                 to,
                 _settings.SenderEmail,
-                _settings.Subject,
+                translation.Subject,
                 htmlBody,
                 linkedResources);
         }
@@ -52,41 +56,57 @@ public class EmailOtpSenderService(
         return new SuccessResult();
     }
 
-    /// <summary>
-    /// Renders the OTP email template with the provided OTP code and configured settings.
-    /// </summary>
-    /// <param name="otp">The one-time password code to include in the email.</param>
-    /// <returns>The fully rendered HTML email content.</returns>
-    private string RenderEmailTemplate(string otp)
+    private OtpEmailTranslation GetTranslation(string locale)
+    {
+        if (_translations.TryGetValue(locale, out var translation))
+            return translation;
+        if (_translations.TryGetValue("en", out var fallback))
+            return fallback;
+        throw new InvalidOperationException(
+            $"No OTP email translation found for locale '{locale}' and no 'en' fallback is present in the content file.");
+    }
+
+    private static string RenderEmailTemplate(string otp, string locale, OtpEmailTranslation translation)
     {
         var template = _cachedTemplate.Value;
-        var logoHtml = $"<img src=\"cid:{LogoContentId}\" alt=\"{_settings.ProgramName}\" width=\"140\" style=\"max-width: 100%; height: auto;\" />";
+        var logoHtml = $"<img src=\"cid:{LogoContentId}\" alt=\"{translation.ProgramName}\" width=\"140\" style=\"max-width: 100%; height: auto;\" />";
 
         return template
             .Replace("{{OtpCode}}", otp)
-            .Replace("{{StateName}}", _settings.StateName)
-            .Replace("{{ProgramName}}", _settings.ProgramName)
-            .Replace("{{ExpiryMinutes}}", _settings.ExpiryMinutes.ToString())
-            .Replace("{{Language}}", _settings.Language)
+            .Replace("{{Locale}}", locale)
+            .Replace("{{Subject}}", translation.Subject)
+            .Replace("{{ProgramName}}", translation.ProgramName)
+            .Replace("{{Body1}}", translation.Body1)
+            .Replace("{{Body3}}", translation.Body3)
             .Replace("{{LogoHtml}}", logoHtml);
     }
 
-    /// <summary>
-    /// Gets the linked resources (embedded images) for the email.
-    /// </summary>
-    /// <returns>Collection of linked resources to embed in the email.</returns>
-    private static List<EmailLinkedResource> GetLinkedResources()
+    private static List<EmailLinkedResource> GetLinkedResources() =>
+    [
+        new EmailLinkedResource(LogoContentId, _cachedLogo.Value, "image/png", "logo.png")
+    ];
+
+    private static IReadOnlyDictionary<string, OtpEmailTranslation> LoadTranslations()
     {
-        return
-        [
-            new EmailLinkedResource(LogoContentId, _cachedLogo.Value, "image/png", "logo.png")
-        ];
+        var state = Environment.GetEnvironmentVariable("STATE")?.ToLowerInvariant()
+            ?? throw new InvalidOperationException("STATE environment variable is not set.");
+
+        var assembly = Assembly.GetExecutingAssembly();
+        var resourceName = $"SEBT.Portal.Infrastructure.Templates.Email.EmailContent.{state}.json";
+
+        using var stream = assembly.GetManifestResourceStream(resourceName)
+            ?? throw new InvalidOperationException(
+                $"Email content resource not found for state '{state}'. " +
+                $"Expected embedded resource: {resourceName}. " +
+                $"Run 'pnpm copy:generate' and rebuild to regenerate.");
+
+        using var reader = new StreamReader(stream);
+        var json = reader.ReadToEnd();
+
+        return JsonSerializer.Deserialize<Dictionary<string, OtpEmailTranslation>>(json)
+            ?? throw new InvalidOperationException($"Failed to deserialize email content for state '{state}'.");
     }
 
-    /// <summary>
-    /// Loads the logo image data from the embedded resource.
-    /// </summary>
-    /// <returns>The logo image as a byte array.</returns>
     private static byte[] LoadLogoData()
     {
         var assembly = Assembly.GetExecutingAssembly();
@@ -100,10 +120,6 @@ public class EmailOtpSenderService(
         return memoryStream.ToArray();
     }
 
-    /// <summary>
-    /// Loads the email template from the embedded resource.
-    /// </summary>
-    /// <returns>The raw HTML template string.</returns>
     private static string LoadEmailTemplate()
     {
         var assembly = Assembly.GetExecutingAssembly();
