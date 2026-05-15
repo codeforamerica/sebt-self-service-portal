@@ -11,12 +11,10 @@ import { AddressFlowProvider } from '../../context'
 import { AddressForm } from './AddressForm'
 
 const mockPush = vi.fn()
-const mockBack = vi.fn()
 
 vi.mock('next/navigation', () => ({
   useRouter: () => ({
-    push: mockPush,
-    back: mockBack
+    push: mockPush
   }),
   usePathname: () => '/profile/address',
   useSearchParams: () => new URLSearchParams()
@@ -90,7 +88,6 @@ function getPostalInput() {
 describe('AddressForm', () => {
   beforeEach(() => {
     mockPush.mockClear()
-    mockBack.mockClear()
     mockState = 'dc'
 
     // Portal target for site-level alerts
@@ -444,13 +441,13 @@ describe('AddressForm', () => {
 
   // --- Back button ---
 
-  it('navigates back when back button is clicked', async () => {
+  it('navigates to dashboard when back button is clicked', async () => {
     const { user } = renderForm()
 
     const backButton = screen.getByRole('button', { name: /back/i })
     await user.click(backButton)
 
-    expect(mockBack).toHaveBeenCalled()
+    expect(mockPush).toHaveBeenCalledWith('/dashboard')
   })
 
   // --- Autocomplete integration ---

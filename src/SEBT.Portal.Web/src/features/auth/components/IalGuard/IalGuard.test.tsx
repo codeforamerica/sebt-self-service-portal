@@ -163,35 +163,8 @@ describe('IalGuard', () => {
     expect(window.location.href).toContain('stepUp=true')
   })
 
-  it('Back uses router.back when history length > 1', async () => {
+  it('Back navigates to dashboard', async () => {
     setupApiFetchMock({ ial: '1' })
-    vi.spyOn(window.history, 'length', 'get').mockReturnValue(2)
-
-    render(
-      <AuthProvider>
-        <IalGuard>
-          <p>Protected</p>
-        </IalGuard>
-      </AuthProvider>
-    )
-
-    await waitFor(() => expect(screen.getByText(/Please wait/)).toBeInTheDocument())
-    await act(async () => {
-      await vi.advanceTimersByTimeAsync(500)
-    })
-
-    await waitFor(() => {
-      expect(screen.getByRole('button', { name: 'Back' })).toBeInTheDocument()
-    })
-
-    await userEvent.click(screen.getByRole('button', { name: 'Back' }))
-    expect(mockBack).toHaveBeenCalledTimes(1)
-    expect(mockPush).not.toHaveBeenCalled()
-  })
-
-  it('Back falls back to dashboard when history length is 1', async () => {
-    setupApiFetchMock({ ial: '1' })
-    vi.spyOn(window.history, 'length', 'get').mockReturnValue(1)
 
     render(
       <AuthProvider>
@@ -212,5 +185,6 @@ describe('IalGuard', () => {
 
     await userEvent.click(screen.getByRole('button', { name: 'Back' }))
     expect(mockPush).toHaveBeenCalledWith('/dashboard')
+    expect(mockBack).not.toHaveBeenCalled()
   })
 })
