@@ -1,6 +1,8 @@
 using System.Security.Cryptography;
 using System.Text;
 using Microsoft.Extensions.Logging;
+using Microsoft.FeatureManagement;
+using SEBT.Portal.Core.AppSettings;
 using SEBT.Portal.Core.Models.EnrollmentCheck;
 using SEBT.Portal.Core.Services;
 using SEBT.Portal.Kernel;
@@ -13,7 +15,8 @@ namespace SEBT.Portal.UseCases.EnrollmentCheck;
 public class CheckEnrollmentCommandHandler(
     IEnrollmentCheckService enrollmentCheckService,
     IEnrollmentCheckSubmissionLogger submissionLogger,
-    ILogger<CheckEnrollmentCommandHandler> logger)
+    ILogger<CheckEnrollmentCommandHandler> logger,
+    IFeatureManager featureManager)
     : ICommandHandler<CheckEnrollmentCommand, EnrollmentCheckResult>
 {
     public async Task<Result<EnrollmentCheckResult>> Handle(
@@ -58,6 +61,20 @@ public class CheckEnrollmentCommandHandler(
             return Result<EnrollmentCheckResult>.DependencyFailed(
                 DependencyFailedReason.ConnectionFailed,
                 "Enrollment check service is temporarily unavailable.");
+        }
+
+        if (await featureManager.IsEnabledAsync(FeatureFlags.EnrollmentCheckRequiresAtLeastOneExactMatchedField))
+        {
+            var beforeCount = result.Results.Count;
+            var filtered = EnrollmentCheckResultFilter.Filter(request.Children, result.Results);
+            var droppedCount = beforeCount - filtered.Count;
+
+            if (droppedCount > 0)
+                logger.LogWarning(
+                    "Enrollment check filter dropped {DroppedCount} of {TotalCount} candidates — neither DOB nor full name matched the submission",
+                    droppedCount, beforeCount);
+
+            result = new EnrollmentCheckResult { Results = filtered, ResponseMessage = result.ResponseMessage };
         }
 
         // Log de-identified submission (fire and forget, don't fail the request)

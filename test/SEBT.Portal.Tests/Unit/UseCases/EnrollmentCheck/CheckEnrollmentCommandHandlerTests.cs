@@ -1,6 +1,8 @@
 using Microsoft.Extensions.Logging;
+using Microsoft.FeatureManagement;
 using NSubstitute;
 using NSubstitute.ExceptionExtensions;
+using SEBT.Portal.Core.AppSettings;
 using SEBT.Portal.Core.Services;
 using SEBT.Portal.StatesPlugins.Interfaces;
 using SEBT.Portal.StatesPlugins.Interfaces.Models.EnrollmentCheck;
@@ -13,9 +15,10 @@ public class CheckEnrollmentCommandHandlerTests
     private readonly IEnrollmentCheckService _enrollmentCheckService = Substitute.For<IEnrollmentCheckService>();
     private readonly IEnrollmentCheckSubmissionLogger _submissionLogger = Substitute.For<IEnrollmentCheckSubmissionLogger>();
     private readonly ILogger<CheckEnrollmentCommandHandler> _logger = Substitute.For<ILogger<CheckEnrollmentCommandHandler>>();
+    private readonly IFeatureManager _featureManager = Substitute.For<IFeatureManager>();
 
     private CheckEnrollmentCommandHandler CreateHandler() =>
-        new(_enrollmentCheckService, _submissionLogger, _logger);
+        new(_enrollmentCheckService, _submissionLogger, _logger, _featureManager);
 
     [Fact]
     public async Task Handle_WhenNoChildren_ReturnsValidationFailed()
@@ -175,5 +178,87 @@ public class CheckEnrollmentCommandHandlerTests
 
         Assert.False(result.IsSuccess);
         Assert.IsType<Portal.Kernel.Results.DependencyFailedResult<EnrollmentCheckResult>>(result);
+    }
+
+    [Fact]
+    public async Task Handle_WhenExactMatchFlagEnabled_DropsResultWithNoExactMatch()
+    {
+        _featureManager
+            .IsEnabledAsync(FeatureFlags.EnrollmentCheckRequiresAtLeastOneExactMatchedField)
+            .Returns(true);
+
+        var handler = CreateHandler();
+        var command = new CheckEnrollmentCommand
+        {
+            Children =
+            [
+                new() { FirstName = "Jane", LastName = "Doe", DateOfBirth = new DateOnly(2015, 3, 12) }
+            ],
+            IpAddress = "127.0.0.1"
+        };
+
+        // Connector returns a candidate whose name and DOB don't match the submission
+        _enrollmentCheckService
+            .CheckEnrollmentAsync(Arg.Any<EnrollmentCheckRequest>(), Arg.Any<CancellationToken>())
+            .Returns(call => new EnrollmentCheckResult
+            {
+                Results =
+                [
+                    new()
+                    {
+                        CheckId = call.Arg<EnrollmentCheckRequest>().Children[0].CheckId,
+                        FirstName = "Robert",
+                        LastName = "Smith",
+                        DateOfBirth = new DateOnly(2010, 6, 1),
+                        Status = EnrollmentStatus.PossibleMatch
+                    }
+                ]
+            });
+
+        var result = await handler.Handle(command);
+
+        Assert.True(result.IsSuccess);
+        Assert.Empty(result.Value.Results);
+    }
+
+    [Fact]
+    public async Task Handle_WhenExactMatchFlagDisabled_KeepsResultRegardlessOfMatch()
+    {
+        _featureManager
+            .IsEnabledAsync(FeatureFlags.EnrollmentCheckRequiresAtLeastOneExactMatchedField)
+            .Returns(false);
+
+        var handler = CreateHandler();
+        var command = new CheckEnrollmentCommand
+        {
+            Children =
+            [
+                new() { FirstName = "Jane", LastName = "Doe", DateOfBirth = new DateOnly(2015, 3, 12) }
+            ],
+            IpAddress = "127.0.0.1"
+        };
+
+        // Same non-matching candidate as above — should be kept because flag is off
+        _enrollmentCheckService
+            .CheckEnrollmentAsync(Arg.Any<EnrollmentCheckRequest>(), Arg.Any<CancellationToken>())
+            .Returns(call => new EnrollmentCheckResult
+            {
+                Results =
+                [
+                    new()
+                    {
+                        CheckId = call.Arg<EnrollmentCheckRequest>().Children[0].CheckId,
+                        FirstName = "Robert",
+                        LastName = "Smith",
+                        DateOfBirth = new DateOnly(2010, 6, 1),
+                        Status = EnrollmentStatus.PossibleMatch
+                    }
+                ]
+            });
+
+        var result = await handler.Handle(command);
+
+        Assert.True(result.IsSuccess);
+        Assert.Single(result.Value.Results);
     }
 }
