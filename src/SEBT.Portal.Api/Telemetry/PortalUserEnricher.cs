@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Http;
 using SEBT.Portal.Api.Filters;
+using SEBT.Portal.Core.Utilities;
 using Serilog;
 using Serilog.Configuration;
 using Serilog.Core;
@@ -8,13 +9,17 @@ using Serilog.Events;
 namespace SEBT.Portal.Api.Telemetry;
 
 /// <summary>
-/// Appends <c>portal_user_id</c> to every log event during authenticated requests.
-/// Reads the resolved portal user ID stored in <see cref="HttpContext.Items"/> by
-/// <see cref="ResolveUserFilter"/>. Produces no property for unauthenticated or pre-auth events.
+/// Appends portal user identity properties to every log event during authenticated requests:
+/// <list type="bullet">
+///   <item><c>portal_user_id</c> — resolved and DB-verified GUID, set by <see cref="ResolveUserFilter"/></item>
+///   <item><c>portal_user_email</c> — masked email from JWT claims</item>
+///   <item><c>portal_user_phone</c> — masked phone from JWT claims</item>
+/// </list>
+/// Email and phone are available from the JWT after authentication; user ID only after
+/// <see cref="ResolveUserFilter"/> has run. All three are absent on unauthenticated requests.
 /// </summary>
 public class PortalUserEnricher : ILogEventEnricher
 {
-    private const string PropertyName = "portal_user_id";
     private readonly IHttpContextAccessor _contextAccessor;
 
     public PortalUserEnricher() : this(new HttpContextAccessor()) { }
@@ -26,9 +31,27 @@ public class PortalUserEnricher : ILogEventEnricher
 
     public void Enrich(LogEvent logEvent, ILogEventPropertyFactory propertyFactory)
     {
-        if (_contextAccessor.HttpContext?.Items[ResolveUserFilter.UserIdKey] is Guid userId)
+        var context = _contextAccessor.HttpContext;
+        if (context == null)
         {
-            logEvent.AddPropertyIfAbsent(propertyFactory.CreateProperty(PropertyName, userId));
+            return;
+        }
+
+        if (context.Items[ResolveUserFilter.UserIdKey] is Guid userId)
+        {
+            logEvent.AddPropertyIfAbsent(propertyFactory.CreateProperty("portal_user_id", userId));
+        }
+
+        var maskedEmail = PiiMasker.MaskEmail(context.User.GetUserEmail());
+        if (maskedEmail != null)
+        {
+            logEvent.AddPropertyIfAbsent(propertyFactory.CreateProperty("portal_user_email", maskedEmail));
+        }
+
+        var maskedPhone = PiiMasker.MaskPhone(context.User.GetUserPhone());
+        if (maskedPhone != null)
+        {
+            logEvent.AddPropertyIfAbsent(propertyFactory.CreateProperty("portal_user_phone", maskedPhone));
         }
     }
 }
