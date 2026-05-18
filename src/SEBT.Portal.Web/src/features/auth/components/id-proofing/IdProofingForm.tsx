@@ -124,10 +124,8 @@ export function IdProofingForm({ idOptions, contactLink, getDiToken }: IdProofin
   const showIdValueInput = selectedIdType !== null && selectedIdType !== NONE_VALUE
 
   const REQUIRED_FIELD_ERROR = tValidation('required')
-  // TODO: Use t('validation.ssnItinDigits') once key is available in dc.csv
-  const SSN_ITIN_SHAPE_ERROR = 'Enter exactly 9 digits.'
-  // TODO: Use t('validation.sevenOrEightDigits') once key is available in dc.csv
-  const SEVEN_OR_EIGHT_DIGITS_ERROR = 'Enter 7 or 8 digits.'
+  const SSN_ITIN_SHAPE_ERROR = tValidation('ssn')
+  const SEVEN_OR_EIGHT_DIGITS_ERROR = tValidation('idNumber')
   // TODO: Use t('validation.dobInvalid') once key is available in dc.csv
   const DOB_INVALID_ERROR = 'Enter a valid date of birth.'
 

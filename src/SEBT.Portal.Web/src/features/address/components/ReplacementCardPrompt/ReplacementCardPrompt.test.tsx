@@ -2,6 +2,8 @@ import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
+import enDcCommon from '@/content/locales/en/dc/common.json'
+
 import { ReplacementCardPrompt } from './ReplacementCardPrompt'
 
 const mockPush = vi.fn()
@@ -65,6 +67,13 @@ describe('ReplacementCardPrompt', () => {
     render(<ReplacementCardPrompt address={TEST_ADDRESS} />)
 
     expect(screen.getByText(/SNAP or TANF/i)).toBeInTheDocument()
+  })
+
+  it('SNAP/TANF callout resolves common.co-loadedCardHelper, not a hardcoded fallback', () => {
+    mockState = 'dc'
+    render(<ReplacementCardPrompt address={TEST_ADDRESS} />)
+
+    expect(screen.getByText(enDcCommon['co-loadedCardHelper'])).toBeInTheDocument()
   })
 
   it('does not show SNAP/TANF callout for CO', () => {

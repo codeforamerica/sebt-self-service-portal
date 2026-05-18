@@ -72,11 +72,7 @@ export function ReplacementCardPrompt({ address }: ReplacementCardPromptProps) {
           slim
           className="margin-bottom-3"
         >
-          {/* TODO update copy */}
-          {t(
-            'snapTanfCallout',
-            'If your child is eligible for DC SUN Bucks through SNAP or TANF participation, they will not receive a DC SUN Bucks card.'
-          )}
+          {tCommon('co-loadedCardHelper')}
         </Alert>
       )}
 
