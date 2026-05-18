@@ -57,6 +57,6 @@ public class PortalUserEnricher : ILogEventEnricher
 
 public static class PortalUserEnricherExtensions
 {
-    public static LoggerConfiguration WithPortalUserId(this LoggerEnrichmentConfiguration enrich) =>
+    public static LoggerConfiguration WithPortalUserInfo(this LoggerEnrichmentConfiguration enrich) =>
         enrich.With<PortalUserEnricher>();
 }

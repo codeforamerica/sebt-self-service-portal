@@ -40,7 +40,7 @@ var logConfig = new LoggerConfiguration()
     .ReadFrom.Configuration(builder.Configuration)
     .Enrich.FromLogContext()
     .Enrich.WithOtelTracingSpanId()
-    .Enrich.WithPortalUserId();
+    .Enrich.WithPortalUserInfo();
 
 if (useJsonLogs)
 {
