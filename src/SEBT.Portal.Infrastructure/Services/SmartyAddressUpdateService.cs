@@ -84,7 +84,7 @@ public sealed class SmartyAddressUpdateService(
 
             if (!httpResponse.IsSuccessStatusCode)
             {
-                logger.LogWarning(
+                logger.LogError(
                     "Smarty US Street API returned {StatusCode} for correlation {CorrelationId}",
                     (int)httpResponse.StatusCode,
                     request.CorrelationId ?? "(none)");
@@ -95,7 +95,7 @@ public sealed class SmartyAddressUpdateService(
 
             if (string.IsNullOrWhiteSpace(body))
             {
-                logger.LogWarning(
+                logger.LogError(
                     "Smarty US Street API returned empty body for correlation {CorrelationId}",
                     request.CorrelationId ?? "(none)");
                 return Result<AddressUpdateSuccess>.DependencyFailed(
@@ -110,7 +110,7 @@ public sealed class SmartyAddressUpdateService(
             }
             catch (JsonException ex)
             {
-                logger.LogWarning(ex, "Smarty response could not be parsed.");
+                logger.LogError(ex, "Smarty response could not be parsed.");
                 return Result<AddressUpdateSuccess>.DependencyFailed(
                     DependencyFailedReason.ConnectionFailed,
                     "Address verification returned an unexpected response.");
@@ -156,14 +156,14 @@ public sealed class SmartyAddressUpdateService(
         }
         catch (TaskCanceledException ex) when (!cancellationToken.IsCancellationRequested)
         {
-            logger.LogWarning(ex, "Smarty request timed out.");
+            logger.LogError(ex, "Smarty request timed out.");
             return Result<AddressUpdateSuccess>.DependencyFailed(
                 DependencyFailedReason.Timeout,
                 "Address verification timed out. Please try again.");
         }
         catch (HttpRequestException ex)
         {
-            logger.LogWarning(ex, "Smarty HTTP request failed.");
+            logger.LogError(ex, "Smarty HTTP request failed.");
             return Result<AddressUpdateSuccess>.DependencyFailed(
                 DependencyFailedReason.ConnectionFailed,
                 "Address verification is temporarily unavailable. Please try again later.");

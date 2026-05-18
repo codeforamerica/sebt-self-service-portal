@@ -8,6 +8,7 @@ using Microsoft.IdentityModel.Tokens;
 using SEBT.Portal.Api;
 using SEBT.Portal.Api.Composition;
 using SEBT.Portal.Api.Filters;
+using SEBT.Portal.Api.Telemetry;
 using Serilog;
 using Serilog.Templates;
 using Microsoft.FeatureManagement;
@@ -38,7 +39,8 @@ var useJsonLogs = string.Equals(
 var logConfig = new LoggerConfiguration()
     .ReadFrom.Configuration(builder.Configuration)
     .Enrich.FromLogContext()
-    .Enrich.WithOtelTracingSpanId();
+    .Enrich.WithOtelTracingSpanId()
+    .Enrich.WithPortalUserInfo();
 
 if (useJsonLogs)
 {
@@ -448,7 +450,7 @@ try
 }
 catch (Exception ex)
 {
-    Log.Warning(ex, "Database migrations failed or database unavailable. App will continue to start.");
+    Log.Error(ex, "Database migrations failed or database unavailable. App will continue to start.");
 }
 
 // Configure the HTTP request pipeline.

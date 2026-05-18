@@ -94,9 +94,10 @@ public class HouseholdRepository : IHouseholdRepository
         }
 
         _logger.LogInformation(
-            "Retrieved household data for identifier type {Type} with {ApplicationCount} application(s)",
+            "Retrieved household data for identifier type {Type} with {ApplicationCount} application(s) and {CaseCount} case(s)",
             identifierType,
-            pluginHousehold.Applications.Count);
+            pluginHousehold.Applications.Count,
+            pluginHousehold.SummerEbtCases.Count);
 
         var core = PluginHouseholdDataMapper.ToCore(pluginHousehold);
         if (core == null)
