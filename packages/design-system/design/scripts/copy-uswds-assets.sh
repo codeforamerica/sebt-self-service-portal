@@ -8,8 +8,8 @@ set -e
 USWDS_DIST="node_modules/@uswds/uswds/dist"
 PUBLIC_DIR="public"
 
-# Check if assets already exist (skip if already copied)
-if [ -d "$PUBLIC_DIR/fonts" ] && [ "$(ls -A $PUBLIC_DIR/fonts)" ]; then
+# Sentinel files must be USWDS-specific — public/fonts is non-empty in git (museo-slab).
+if [ -f "$PUBLIC_DIR/js/uswds-init.min.js" ] && [ -f "$PUBLIC_DIR/img/sprite.svg" ]; then
   echo "✓ USWDS assets already exist, skipping copy"
   exit 0
 fi
