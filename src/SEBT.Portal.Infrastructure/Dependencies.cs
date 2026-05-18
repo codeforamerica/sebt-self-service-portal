@@ -296,6 +296,8 @@ public static class Dependencies
 
         services.AddOptions<IdProofingValiditySettings>()
             .BindConfiguration(IdProofingValiditySettings.SectionName);
+        services.AddOptions<IdProofingEligibilitySettings>()
+            .BindConfiguration(IdProofingEligibilitySettings.SectionName);
         services.AddOptions<OidcVerificationClaimSettings>()
             .BindConfiguration(OidcVerificationClaimSettings.SectionName);
 

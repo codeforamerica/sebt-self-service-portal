@@ -165,7 +165,11 @@ export function DashboardContent() {
     )
   }
 
-  if (!data || isNotFound || (data.summerEbtCases.length === 0 && data.applications.length === 0)) {
+  // Do not key off `isNotFound` here: TanStack Query keeps the last successful
+  // `data` when a background refetch 404s (e.g. after router.back from
+  // /profile/address). Treating any 404 as "empty household" would drop the
+  // populated dashboard even though cached data is still valid.
+  if (!data || (data.summerEbtCases.length === 0 && data.applications.length === 0)) {
     return (
       <>
         {pageHeading}
@@ -179,11 +183,18 @@ export function DashboardContent() {
     <>
       {pageHeading}
       <DashboardAlerts />
-      <ActionButtons allowedActions={data.allowedActions} />
+      <ActionButtons
+        allowedActions={data.allowedActions}
+        hasCases={data.summerEbtCases.length > 0}
+      />
       {data.userProfile ? <UserProfileCard /> : <SignOutLink />}
       <HouseholdSummary />
-      <EnrolledChildren />
-      <EbtEdgeSection />
+      {data.summerEbtCases.length > 0 && (
+        <>
+          <EnrolledChildren />
+          <EbtEdgeSection />
+        </>
+      )}
       <ApplicationsSection />
     </>
   )
