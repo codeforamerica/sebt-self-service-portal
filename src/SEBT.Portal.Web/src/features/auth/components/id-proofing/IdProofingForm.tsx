@@ -247,9 +247,13 @@ export function IdProofingForm({ idOptions, contactLink, getDiToken }: IdProofin
         router.push(`/login/id-proofing/doc-verify?challengeId=${response.challengeId}`)
       } else if (response.result === 'failed') {
         setPageData('idv_primary_status', 'fail')
-        // Co-loaded users reach "failed" only via SNAP/TANF + DOB mismatch (no Socure),
-        // so their failure is always a not-found. Non-co-loaded failures come from Socure.
-        setPageData('idv_primary_reason', isCoLoaded ? 'not_found' : 'socure_fail')
+        if (response.offboardingReason === 'noQualifyingHousehold') {
+          setPageData('idv_primary_reason', 'no_qualifying_household')
+        } else {
+          // Co-loaded users reach "failed" only via SNAP/TANF + DOB mismatch (no Socure),
+          // so their failure is always a not-found. Non-co-loaded failures come from Socure.
+          setPageData('idv_primary_reason', isCoLoaded ? 'not_found' : 'socure_fail')
+        }
         trackEvent(AnalyticsEvents.IDV_PRIMARY_RESULT)
         // Hand off offboarding context via URL query params so the server-rendered
         // route page can branch copy (noIdProvided gets a distinct heading).

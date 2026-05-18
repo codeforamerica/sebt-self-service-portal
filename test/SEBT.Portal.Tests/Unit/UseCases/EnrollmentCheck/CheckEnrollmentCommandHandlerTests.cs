@@ -3,6 +3,7 @@ using Microsoft.FeatureManagement;
 using NSubstitute;
 using NSubstitute.ExceptionExtensions;
 using SEBT.Portal.Core.AppSettings;
+using SEBT.Portal.Core.Models.EnrollmentCheck;
 using SEBT.Portal.Core.Services;
 using SEBT.Portal.StatesPlugins.Interfaces;
 using SEBT.Portal.StatesPlugins.Interfaces.Models.EnrollmentCheck;
@@ -143,7 +144,7 @@ public class CheckEnrollmentCommandHandlerTests
         await handler.Handle(command);
 
         await _submissionLogger.Received(1).LogSubmissionAsync(
-            Arg.Is<Core.Models.EnrollmentCheck.EnrollmentCheckSubmission>(s =>
+            Arg.Is<EnrollmentCheckSubmission>(s =>
                 s.ChildrenChecked == 1 &&
                 s.ChildResults[0].BirthYear == 2015 &&
                 s.ChildResults[0].Status == "Match" &&

@@ -35,7 +35,10 @@ const POPULATED_KEYS = new Set([
   'stepUpFailure:title',
   'stepUpFailure:body',
   'common:linkContactUs',
-  'common:back'
+  'common:back',
+  'dashboard:alertApplicationsTitle',
+  'dashboard:alertApplicationsBody',
+  'dashboard:alertApplicationsAction'
 ])
 let emptyKeys = new Set<string>()
 vi.mock('react-i18next', () => ({
@@ -310,6 +313,17 @@ describe('OffBoardingPage', () => {
 
       const content = screen.getByTestId('off-boarding-content')
       expect(content).toHaveAttribute('data-can-apply', 'false')
+    })
+
+    it('uses dashboard application-alert copy when reason is noQualifyingHousehold', async () => {
+      await renderPage({ reason: 'noQualifyingHousehold' })
+
+      const content = screen.getByTestId('off-boarding-content')
+      expect(content).toHaveAttribute('data-title', 'dashboard:alertApplicationsTitle')
+      expect(content).toHaveAttribute('data-body', 'dashboard:alertApplicationsBody')
+      expect(content).toHaveAttribute('data-apply-label', 'dashboard:alertApplicationsAction')
+      expect(content).toHaveAttribute('data-back-href', '/login/id-proofing')
+      expect(content).toHaveAttribute('data-can-apply', 'true')
     })
   })
 })
