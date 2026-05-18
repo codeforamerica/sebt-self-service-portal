@@ -73,11 +73,7 @@ export function IalGuard({ children, requiredIal = STEP_UP_REQUIRED_IAL }: IalGu
   }, [needsChallengeFlow])
 
   const handleBack = useCallback(() => {
-    if (typeof window !== 'undefined' && window.history.length > 1) {
-      router.back()
-    } else {
-      router.push('/dashboard')
-    }
+    router.push('/dashboard')
   }, [router])
 
   const handleVerify = useCallback(() => {
