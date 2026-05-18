@@ -1,5 +1,4 @@
 using Microsoft.AspNetCore.Http;
-using SEBT.Portal.Api.Filters;
 using SEBT.Portal.Core.Utilities;
 using Serilog;
 using Serilog.Configuration;
@@ -11,12 +10,12 @@ namespace SEBT.Portal.Api.Telemetry;
 /// <summary>
 /// Appends portal user identity properties to every log event during authenticated requests:
 /// <list type="bullet">
-///   <item><c>portal_user_id</c> — resolved and DB-verified GUID, set by <see cref="ResolveUserFilter"/></item>
+///   <item><c>portal_user_id</c> — portal user GUID from the JWT <c>sub</c> claim</item>
 ///   <item><c>portal_user_email</c> — masked email from JWT claims</item>
 ///   <item><c>portal_user_phone</c> — masked phone from JWT claims</item>
 /// </list>
-/// Email and phone are available from the JWT after authentication; user ID only after
-/// <see cref="ResolveUserFilter"/> has run. All three are absent on unauthenticated requests.
+/// All three are read directly from JWT claims and are available as soon as authentication
+/// succeeds. Absent on unauthenticated requests.
 /// </summary>
 public class PortalUserEnricher : ILogEventEnricher
 {
@@ -31,24 +30,24 @@ public class PortalUserEnricher : ILogEventEnricher
 
     public void Enrich(LogEvent logEvent, ILogEventPropertyFactory propertyFactory)
     {
-        var context = _contextAccessor.HttpContext;
-        if (context == null)
+        var user = _contextAccessor.HttpContext?.User;
+        if (user == null)
         {
             return;
         }
 
-        if (context.Items[ResolveUserFilter.UserIdKey] is Guid userId)
+        if (user.GetUserId() is Guid userId)
         {
             logEvent.AddPropertyIfAbsent(propertyFactory.CreateProperty("portal_user_id", userId));
         }
 
-        var maskedEmail = PiiMasker.MaskEmail(context.User.GetUserEmail());
+        var maskedEmail = PiiMasker.MaskEmail(user.GetUserEmail());
         if (maskedEmail != null)
         {
             logEvent.AddPropertyIfAbsent(propertyFactory.CreateProperty("portal_user_email", maskedEmail));
         }
 
-        var maskedPhone = PiiMasker.MaskPhone(context.User.GetUserPhone());
+        var maskedPhone = PiiMasker.MaskPhone(user.GetUserPhone());
         if (maskedPhone != null)
         {
             logEvent.AddPropertyIfAbsent(propertyFactory.CreateProperty("portal_user_phone", maskedPhone));
