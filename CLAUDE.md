@@ -18,7 +18,7 @@ We're colleagues working together. Neither of us is afraid to admit we don't kno
 - **Locale JSON files are generated — NEVER hand-edit them.** They are produced by `packages/design-system/content/scripts/generate-locales.js` from CSV exports in `packages/design-system/content/states/`. To add or change content: update the source Google Sheet, re-export the CSV, and re-run the generator (run `pnpm copy:generate` from within `src/SEBT.Portal.Web/` or `src/SEBT.EnrollmentChecker.Web/`). This also runs automatically via the `predev` and `prebuild` hooks. If a key is missing, note it as a content gap to resolve in the spreadsheet — do not add it directly to the JSON.
 
 ### Code style
-- C#: 4-space indent, Allman brace style (braces on own line), nullable reference types enabled (see `.editorconfig`)
+- C#: 4-space indent, Allman brace style (braces on own line), nullable reference types enabled (see `.editorconfig`). Always use braces for control-flow bodies (`if`, `else`, `for`, `foreach`, `while`) even when the body is a single line.
 - Frontend: TypeScript (not JavaScript). ESLint + Prettier with organize-imports plugin
 - Unix line endings (LF) enforced project-wide
 
