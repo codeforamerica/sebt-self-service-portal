@@ -337,7 +337,7 @@ export function AddressForm({ initialAddress, redirectPath }: AddressFormProps) 
           <Button
             variant="outline"
             type="button"
-            onClick={() => router.back()}
+            onClick={() => router.push('/dashboard')}
           >
             {tCommon('back')}
           </Button>

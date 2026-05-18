@@ -127,7 +127,7 @@ public class HttpSocureClient(
 
             if (!httpResponse.IsSuccessStatusCode)
             {
-                logger.LogWarning(
+                logger.LogError(
                     "Socure API returned {StatusCode} for user {UserId}",
                     httpResponse.StatusCode, userId);
                 return Result<IdProofingAssessmentResult>.DependencyFailed(
@@ -140,7 +140,7 @@ public class HttpSocureClient(
 
             if (response == null)
             {
-                logger.LogWarning("Socure API returned null/unparseable response for user {UserId}", userId);
+                logger.LogError("Socure API returned null/unparseable response for user {UserId}", userId);
                 return Result<IdProofingAssessmentResult>.DependencyFailed(
                     DependencyFailedReason.ConnectionFailed, "Socure API returned an unparseable response.");
             }
@@ -149,13 +149,13 @@ public class HttpSocureClient(
         }
         catch (TaskCanceledException ex) when (!cancellationToken.IsCancellationRequested)
         {
-            logger.LogWarning(ex, "Socure API request timed out for user {UserId}", userId);
+            logger.LogError(ex, "Socure API request timed out for user {UserId}", userId);
             return Result<IdProofingAssessmentResult>.DependencyFailed(
                 DependencyFailedReason.Timeout, "Socure API request timed out.");
         }
         catch (HttpRequestException ex)
         {
-            logger.LogWarning(ex, "Socure API request failed for user {UserId}", userId);
+            logger.LogError(ex, "Socure API request failed for user {UserId}", userId);
             return Result<IdProofingAssessmentResult>.DependencyFailed(
                 DependencyFailedReason.ConnectionFailed, "Socure API connection failed.");
         }
