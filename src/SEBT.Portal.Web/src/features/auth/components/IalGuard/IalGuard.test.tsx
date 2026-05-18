@@ -184,6 +184,23 @@ describe('IalGuard', () => {
     })
   })
 
+  it('checking copy resolves step-upProcessing.title and .body, not hardcoded fallbacks', async () => {
+    setupApiFetchMock({ ial: '1' })
+
+    render(
+      <AuthProvider>
+        <IalGuard>
+          <p>Protected</p>
+        </IalGuard>
+      </AuthProvider>
+    )
+
+    await waitFor(() => {
+      expect(screen.getByRole('heading', { name: enCoStepUpProcessing.title })).toBeInTheDocument()
+    })
+    expect(screen.getByText(enCoStepUpProcessing.body)).toBeInTheDocument()
+  })
+
   it('Back uses router.back when history length > 1', async () => {
     setupApiFetchMock({ ial: '1' })
     vi.spyOn(window.history, 'length', 'get').mockReturnValue(2)

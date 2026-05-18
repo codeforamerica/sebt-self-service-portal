@@ -1,10 +1,18 @@
 import { render, screen } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
+import enDcDashboard from '@/content/locales/en/dc/dashboard.json'
+
 import { DashboardAlerts } from './DashboardAlerts'
 
+let mockHouseholdData: { data: unknown; isLoading: boolean; isError: boolean } = {
+  data: null,
+  isLoading: false,
+  isError: false
+}
+
 vi.mock('@/features/household', () => ({
-  useHouseholdData: () => ({ data: null, isLoading: false, isError: false })
+  useHouseholdData: () => mockHouseholdData
 }))
 
 const mockReplace = vi.fn()
@@ -22,6 +30,7 @@ describe('DashboardAlerts', () => {
   beforeEach(() => {
     mockReplace.mockClear()
     mockSearchParams = new URLSearchParams()
+    mockHouseholdData = { data: null, isLoading: false, isError: false }
   })
 
   it('renders nothing when no alert params are present', () => {
@@ -84,6 +93,18 @@ describe('DashboardAlerts', () => {
 
     expect(screen.getByRole('alert')).toBeInTheDocument()
     expect(screen.getByText(/replacement card request has been recorded/i)).toBeInTheDocument()
+  })
+
+  it('card-replaced with-address body resolves dashboard.alertAddressBody, not a hardcoded fallback', () => {
+    mockHouseholdData = {
+      data: { addressOnFile: '123 Main St' },
+      isLoading: false,
+      isError: false
+    }
+    mockSearchParams = new URLSearchParams('flash=card_replaced')
+    render(<DashboardAlerts />)
+
+    expect(screen.getByText(enDcDashboard.alertAddressBody)).toBeInTheDocument()
   })
 
   it('renders the address-verification warning with a resolved heading and body', () => {

@@ -82,12 +82,9 @@ export function DashboardAlerts() {
           // TODO update copy for alertCardReplacedHeading
           heading={t('alertCardReplacedHeading', 'Your replacement card request has been recorded')}
         >
-          {/* TODO update copy for alertCardReplacedBodyWithAddress and alertCardReplacedBody */}
+          {/* TODO update copy for alertCardReplacedBody (no-address branch) */}
           {householdData?.addressOnFile
-            ? t(
-                'alertCardReplacedBodyWithAddress',
-                'New cards usually arrive in your mailbox within 7-10 business days. Check back here in 1-2 business days to see your updated card details.'
-              )
+            ? t('alertAddressBody')
             : t(
                 'alertCardReplacedBody',
                 'New cards usually arrive in your mailbox within 7-10 business days.'

@@ -42,6 +42,7 @@ export function IalGuard({ children, requiredIal = STEP_UP_REQUIRED_IAL }: IalGu
   const router = useRouter()
   const { t, i18n } = useTranslation('common')
   const { t: tDisclaimer } = useTranslation('stepUpDisclaimer')
+  const { t: tProcessing } = useTranslation('step-upProcessing')
 
   const useOidcStepUpGate = getState() === 'co'
   const debugRepeatOidcStepUp = isDebugRepeatOidcStepUp()
@@ -85,16 +86,12 @@ export function IalGuard({ children, requiredIal = STEP_UP_REQUIRED_IAL }: IalGu
     startOidcStepUpRedirect(i18n.language)
   }, [i18n.language])
 
-  // TODO replace with tStep('body') / tStep('title')
   const checkingCopy = useMemo(
     () => ({
-      title: t('ialGuardCheckingTitle', 'Please wait…'),
-      body: t(
-        'ialGuardCheckingBody',
-        'Do not exit the page. Checking to see if we have enough information.'
-      )
+      title: tProcessing('title'),
+      body: tProcessing('body')
     }),
-    [t]
+    [tProcessing]
   )
 
   if (passesWithoutStepUp) {
