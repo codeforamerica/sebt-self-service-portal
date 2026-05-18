@@ -1,4 +1,5 @@
 using Microsoft.Extensions.Logging.Abstractions;
+using Microsoft.Extensions.Options;
 using NSubstitute;
 using SEBT.Portal.Core.AppSettings;
 using SEBT.Portal.Core.Models.Auth;
@@ -30,8 +31,12 @@ public class StartChallengeCommandHandlerTests
     private readonly NullLogger<StartChallengeCommandHandler> logger =
         NullLogger<StartChallengeCommandHandler>.Instance;
 
+    private readonly IOptions<IdProofingEligibilitySettings> idProofingEligibilitySettings =
+        Options.Create(new IdProofingEligibilitySettings());
+
     private StartChallengeCommandHandler CreateHandler() =>
-        new(challengeRepository, userRepository, householdRepository, socureClient, socureSettings, validator, logger);
+        new(challengeRepository, userRepository, householdRepository, socureClient, socureSettings,
+            idProofingEligibilitySettings, validator, logger);
 
     // --- IDOR prevention (Codex test 1) ---
 
