@@ -236,6 +236,7 @@ public class SubmitIdProofingCommandHandler(
         Address? address = null;
         string? householdPhone = null;
         HouseholdData? householdForSocure = null;
+        var householdLookupFailed = false;
         try
         {
             householdForSocure = await householdRepository.GetHouseholdByEmailAsync(
@@ -254,25 +255,39 @@ public class SubmitIdProofingCommandHandler(
             }
             householdPhone = householdForSocure?.Phone;
         }
-        catch (Exception ex)
+        catch (Exception ex) when (ex is not OperationCanceledException)
         {
+            householdLookupFailed = true;
             logger.LogWarning(ex,
-                "Household lookup failed for user {UserId}, proceeding without name/address/phone from CMS",
+                "Household lookup failed ({ExceptionType}) for user {UserId}, proceeding without name/address/phone from CMS",
+                ex.GetType().Name,
                 command.UserId);
         }
 
-        if (idProofingEligibilitySettings.Value.RequireQualifyingHouseholdForSocure
-            && !HouseholdSocureEligibility.HasQualifyingHouseholdForSocure(householdForSocure))
+        if (idProofingEligibilitySettings.Value.RequireQualifyingHouseholdForSocure)
         {
-            logger.LogInformation(
-                "ID proofing Socure blocked for user {UserId}: no qualifying portal household (record missing or no cases and no applications).",
-                command.UserId);
-            return Result<SubmitIdProofingResponse>.Success(
-                new SubmitIdProofingResponse(
-                    "failed",
-                    AllowIdRetry: false,
-                    CanApply: true,
-                    OffboardingReason: "noQualifyingHousehold"));
+            if (householdLookupFailed)
+            {
+                logger.LogWarning(
+                    "ID proofing Socure blocked for user {UserId}: qualifying-household check could not complete because household lookup failed.",
+                    command.UserId);
+                return Result<SubmitIdProofingResponse>.DependencyFailed(
+                    DependencyFailedReason.ConnectionFailed,
+                    "Unable to verify household eligibility. Please try again later.");
+            }
+
+            if (!HouseholdSocureEligibility.HasQualifyingHouseholdForSocure(householdForSocure))
+            {
+                logger.LogInformation(
+                    "ID proofing Socure blocked for user {UserId}: no qualifying portal household (record missing or no cases and no applications).",
+                    command.UserId);
+                return Result<SubmitIdProofingResponse>.Success(
+                    new SubmitIdProofingResponse(
+                        "failed",
+                        AllowIdRetry: false,
+                        CanApply: true,
+                        OffboardingReason: "noQualifyingHousehold"));
+            }
         }
 
         // Sandbox phone override lets developers receive DocV SMS on a real phone
