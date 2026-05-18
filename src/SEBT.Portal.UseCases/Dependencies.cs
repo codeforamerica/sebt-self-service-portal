@@ -23,7 +23,6 @@ public static class Dependencies
         services.RegisterCommandHandler<StartChallengeCommand, StartChallengeResponse, StartChallengeCommandHandler>();
         services.RegisterCommandHandler<ResubmitChallengeCommand, ResubmitChallengeResponse, ResubmitChallengeCommandHandler>();
         services.RegisterQueryHandler<GetVerificationStatusQuery, VerificationStatusResponse, GetVerificationStatusQueryHandler>();
-        services.RegisterQueryHandler<GetSocureEligibilityQuery, SocureEligibilityResponse, GetSocureEligibilityQueryHandler>();
         services.RegisterCommandHandler<ProcessWebhookCommand, ProcessWebhookCommandHandler>();
         services.RegisterCommandHandler<CheckEnrollmentCommand, EnrollmentCheckResult, CheckEnrollmentCommandHandler>();
         services.RegisterCommandHandler<UpdateAddressCommand, Core.Services.AddressValidationResult, UpdateAddressCommandHandler>();

@@ -322,7 +322,7 @@ describe('OffBoardingPage', () => {
       expect(content).toHaveAttribute('data-title', 'dashboard:alertApplicationsTitle')
       expect(content).toHaveAttribute('data-body', 'dashboard:alertApplicationsBody')
       expect(content).toHaveAttribute('data-apply-label', 'dashboard:alertApplicationsAction')
-      expect(content).toHaveAttribute('data-back-href', '/dashboard')
+      expect(content).toHaveAttribute('data-back-href', '/login/id-proofing')
       expect(content).toHaveAttribute('data-can-apply', 'true')
     })
   })

@@ -83,21 +83,4 @@ public class IdProofingController : ControllerBase
         var result = await handler.Handle(query, cancellationToken);
         return result.ToActionResult();
     }
-
-    /// <summary>
-    /// Whether ID proofing may proceed toward Socure DocV for this user. When configured (DC),
-    /// users without a qualifying portal household receive <c>canProceedToSocure: false</c>.
-    /// </summary>
-    [HttpGet("socure-eligibility")]
-    [ProducesResponseType(typeof(SocureEligibilityResponse), StatusCodes.Status200OK)]
-    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
-    public async Task<IActionResult> GetSocureEligibility(
-        [FromServices] IQueryHandler<GetSocureEligibilityQuery, SocureEligibilityResponse> handler,
-        CancellationToken cancellationToken)
-    {
-        var query = new GetSocureEligibilityQuery { User = User };
-
-        var result = await handler.Handle(query, cancellationToken);
-        return result.ToActionResult();
-    }
 }

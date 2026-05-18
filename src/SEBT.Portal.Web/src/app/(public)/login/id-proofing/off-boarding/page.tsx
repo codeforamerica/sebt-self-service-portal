@@ -64,7 +64,6 @@ export default function OffBoardingPage() {
   } else if (reason === 'noQualifyingHousehold') {
     title = tDashboard('alertApplicationsTitle')
     body = tDashboard('alertApplicationsBody')
-    backHref = '/dashboard'
     contactLabel = tCommon('linkContactUs')
     applyBody = undefined
     applySkipBody = undefined
