@@ -1,4 +1,5 @@
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 using SEBT.Portal.Core.AppSettings;
 using SEBT.Portal.Core.Models;
 using SEBT.Portal.Core.Models.Auth;
@@ -6,6 +7,7 @@ using SEBT.Portal.Core.Models.DocVerification;
 using SEBT.Portal.Core.Models.Household;
 using SEBT.Portal.Core.Repositories;
 using SEBT.Portal.Core.Services;
+using SEBT.Portal.Core.Utilities;
 using SEBT.Portal.Kernel;
 using SEBT.Portal.Kernel.Results;
 
@@ -23,6 +25,7 @@ public class StartChallengeCommandHandler(
     IHouseholdRepository householdRepository,
     ISocureClient socureClient,
     SocureSettings socureSettings,
+    IOptions<IdProofingEligibilitySettings> idProofingEligibilitySettings,
     IValidator<StartChallengeCommand> validator,
     ILogger<StartChallengeCommandHandler> logger)
     : ICommandHandler<StartChallengeCommand, StartChallengeResponse>
@@ -245,10 +248,13 @@ public class StartChallengeCommandHandler(
         string? householdPhone = null;
         try
         {
+            var warehouseIal = PreSocureHouseholdWarehouseIal.ForEmailLinkedHouseholdRead(
+                user.IalLevel,
+                idProofingEligibilitySettings.Value.RequireQualifyingHouseholdForSocure);
             var household = await householdRepository.GetHouseholdByEmailAsync(
                 user.Email,
                 new PiiVisibility(IncludeAddress: true, IncludeEmail: true, IncludePhone: true),
-                user.IalLevel,
+                warehouseIal,
                 cancellationToken);
             if (household?.UserProfile != null)
             {
