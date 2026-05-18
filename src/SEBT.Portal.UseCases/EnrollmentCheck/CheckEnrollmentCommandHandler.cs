@@ -74,7 +74,25 @@ public class CheckEnrollmentCommandHandler(
                     "Enrollment check filter dropped {DroppedCount} of {TotalCount} candidates — neither DOB nor full name matched the submission",
                     droppedCount, beforeCount);
 
-            result = new EnrollmentCheckResult { Results = filtered, ResponseMessage = result.ResponseMessage };
+            // For any submitted child with no surviving candidate, insert a NonMatch so the
+            // response always contains one result per submitted child.
+            var survivingIds = filtered.Select(r => r.CheckId).ToHashSet();
+            var synthetic = request.Children
+                .Where(c => !survivingIds.Contains(c.CheckId))
+                .Select(c => new ChildCheckResult
+                {
+                    CheckId = c.CheckId,
+                    FirstName = c.FirstName,
+                    LastName = c.LastName,
+                    DateOfBirth = c.DateOfBirth,
+                    Status = EnrollmentStatus.NonMatch
+                });
+
+            result = new EnrollmentCheckResult
+            {
+                Results = [.. filtered, .. synthetic],
+                ResponseMessage = result.ResponseMessage
+            };
         }
 
         // Replace connector-returned identity fields with submitted values so no state-system

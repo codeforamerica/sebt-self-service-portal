@@ -229,6 +229,51 @@ public class CheckEnrollmentCommandHandlerTests
     }
 
     [Fact]
+    public async Task Handle_WhenAllCandidatesDroppedByFilter_InsertsSyntheticNonMatch()
+    {
+        _featureManager
+            .IsEnabledAsync(FeatureFlags.EnrollmentCheckRequiresAtLeastOneExactMatchedField)
+            .Returns(true);
+
+        var handler = CreateHandler();
+        var command = new CheckEnrollmentCommand
+        {
+            Children =
+            [
+                new() { FirstName = "Jane", LastName = "Doe", DateOfBirth = new DateOnly(2015, 3, 12) }
+            ],
+            IpAddress = "127.0.0.1"
+        };
+
+        // Connector returns a candidate with a wrong year — filter drops it, leaving no result for this child
+        _enrollmentCheckService
+            .CheckEnrollmentAsync(Arg.Any<EnrollmentCheckRequest>(), Arg.Any<CancellationToken>())
+            .Returns(call => new EnrollmentCheckResult
+            {
+                Results =
+                [
+                    new()
+                    {
+                        CheckId = call.Arg<EnrollmentCheckRequest>().Children[0].CheckId,
+                        FirstName = "Jane",
+                        LastName = "Doe",
+                        DateOfBirth = new DateOnly(2014, 3, 12),
+                        Status = EnrollmentStatus.Match
+                    }
+                ]
+            });
+
+        var result = await handler.Handle(command);
+
+        Assert.True(result.IsSuccess);
+        var returned = Assert.Single(result.Value.Results);
+        Assert.Equal(EnrollmentStatus.NonMatch, returned.Status);
+        Assert.Equal("Jane", returned.FirstName);
+        Assert.Equal("Doe", returned.LastName);
+        Assert.Equal(new DateOnly(2015, 3, 12), returned.DateOfBirth);
+    }
+
+    [Fact]
     public async Task Handle_WhenExactMatchFlagEnabled_DropsResultWithNoExactMatch()
     {
         _featureManager
@@ -266,7 +311,8 @@ public class CheckEnrollmentCommandHandlerTests
         var result = await handler.Handle(command);
 
         Assert.True(result.IsSuccess);
-        Assert.Empty(result.Value.Results);
+        var returned = Assert.Single(result.Value.Results);
+        Assert.Equal(EnrollmentStatus.NonMatch, returned.Status);
     }
 
     [Fact]
