@@ -199,6 +199,25 @@ describe('DashboardContent', () => {
     })
   })
 
+  it('keeps populated dashboard when a background refetch returns 404 but cache still has data', async () => {
+    const queryClient = createTestQueryClient()
+    queryClient.setQueryData(['householdData'], TEST_HOUSEHOLD_DATA)
+
+    server.use(
+      http.get('/api/household/data', () => {
+        return HttpResponse.json({ error: 'Not found' }, { status: 404 })
+      })
+    )
+
+    render(<QueryClientProvider client={queryClient}>{<DashboardContent />}</QueryClientProvider>)
+
+    await waitFor(() => {
+      expect(screen.getByText('Sophia Martinez')).toBeInTheDocument()
+    })
+    expect(screen.getByLabelText(/quick actions/i)).toBeInTheDocument()
+    expect(screen.queryByText(/no children enrolled/i)).not.toBeInTheDocument()
+  })
+
   it('renders sign-out link in empty state', async () => {
     server.use(
       http.get('/api/household/data', () => {

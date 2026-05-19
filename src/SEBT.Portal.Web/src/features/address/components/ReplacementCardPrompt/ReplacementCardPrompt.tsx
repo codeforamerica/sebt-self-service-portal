@@ -147,7 +147,7 @@ export function ReplacementCardPrompt({ address }: ReplacementCardPromptProps) {
         <Button
           variant="outline"
           type="button"
-          onClick={() => router.back()}
+          onClick={() => router.push('/dashboard')}
         >
           {tCommon('back')}
         </Button>

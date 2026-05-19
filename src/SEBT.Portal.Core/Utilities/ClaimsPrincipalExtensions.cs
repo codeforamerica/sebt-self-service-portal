@@ -30,4 +30,15 @@ public static class ClaimsPrincipalExtensions
         return principal.FindFirst(ClaimTypes.Email)?.Value
             ?? principal.FindFirst("email")?.Value;
     }
+
+    /// <summary>
+    /// Extracts the user's phone number from the JWT claims. Checks <c>phone</c> first
+    /// (OTP-flow users) then <c>phone_number</c> (OIDC IdP passthrough). Returns null
+    /// when absent.
+    /// </summary>
+    public static string? GetUserPhone(this ClaimsPrincipal principal)
+    {
+        return principal.FindFirst("phone")?.Value
+            ?? principal.FindFirst("phone_number")?.Value;
+    }
 }
