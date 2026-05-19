@@ -840,7 +840,7 @@ public class OidcControllerTests
             CoStateKey, stepUp: true, returnUrl: "/cards/replace",
             exchangeService: exchangeService);
 
-        var redirect = Assert.IsType<RedirectResult>(result);
+        var redirect = Assert.IsType<LocalRedirectResult>(result);
         Assert.Equal("/cards/replace", redirect.Url);
 
         await _sessionStore.DidNotReceive().CreateAsync(
@@ -863,7 +863,7 @@ public class OidcControllerTests
             CoStateKey, stepUp: true, returnUrl: "/profile/address",
             exchangeService: exchangeService);
 
-        var redirect = Assert.IsType<RedirectResult>(result);
+        var redirect = Assert.IsType<LocalRedirectResult>(result);
         Assert.Equal("/profile/address", redirect.Url);
     }
 
@@ -878,7 +878,7 @@ public class OidcControllerTests
         var result = await _controller.Authorize(
             CoStateKey, stepUp: true, returnUrl: null, exchangeService: exchangeService);
 
-        var redirect = Assert.IsType<RedirectResult>(result);
+        var redirect = Assert.IsType<LocalRedirectResult>(result);
         Assert.Equal("/dashboard", redirect.Url);
     }
 
@@ -898,7 +898,7 @@ public class OidcControllerTests
             CoStateKey, stepUp: true, returnUrl: "https://evil.example/phish",
             exchangeService: exchangeService);
 
-        var redirect = Assert.IsType<RedirectResult>(result);
+        var redirect = Assert.IsType<LocalRedirectResult>(result);
         Assert.Equal("/dashboard", redirect.Url);
     }
 

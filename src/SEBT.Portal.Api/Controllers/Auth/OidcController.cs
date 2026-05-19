@@ -147,7 +147,7 @@ public class OidcController(
             logger.LogInformation(
                 "OIDC Authorize: step-up short-circuited (reason=already_ial1plus, StateCode={StateCode})",
                 stateCode);
-            return Redirect(safeReturnUrl ?? "/dashboard");
+            return LocalRedirect(safeReturnUrl ?? "/dashboard");
         }
 
         var clientId = stepUp ? config["Oidc:StepUp:ClientId"] : config["Oidc:ClientId"];
@@ -502,14 +502,13 @@ public class OidcController(
     private const int MaxStepUpReturnUrlLength = 4096;
 
     /// <summary>
-    /// Mirrors the frontend's <c>hasIal1Plus(session) && isIdProofingCompletionFresh(session)</c>:
-    /// the portal JWT has an <c>ial</c> claim of "1plus" or "2" and an unexpired
+    /// Mirrors the frontend's <c>hasIal1Plus(session) &amp;&amp; isIdProofingCompletionFresh(session)</c>:
+    /// the portal JWT carries at least <see cref="UserIalLevel.IAL1plus"/> and an unexpired
     /// <c>id_proofing_expires_at</c> Unix-seconds claim.
     /// </summary>
     private static bool HasFreshIal1Plus(ClaimsPrincipal user)
     {
-        var ial = user.FindFirst(JwtClaimTypes.Ial)?.Value;
-        if (ial != "1plus" && ial != "2")
+        if (user.GetIalLevel() < UserIalLevel.IAL1plus)
             return false;
 
         var expiresAtClaim = user.FindFirst(JwtClaimTypes.IdProofingExpiresAt)?.Value;
