@@ -4,6 +4,7 @@ using SEBT.Portal.Core.Models.Auth;
 using SEBT.Portal.Core.Models.Household;
 using SEBT.Portal.Core.Repositories;
 using SEBT.Portal.Core.Services;
+using SEBT.Portal.Core.Utilities;
 using SEBT.Portal.Kernel;
 using SEBT.Portal.Kernel.Results;
 using SEBT.Portal.StatesPlugins.Interfaces;
@@ -169,7 +170,11 @@ public class UpdateAddressCommandHandler(
         var userIalLevel = UserIalLevelExtensions.FromClaimsPrincipal(command.User);
         var piiVisibility = piiVisibilityService.GetVisibility(userIalLevel);
         var household = await householdRepository.GetHouseholdByIdentifierAsync(
-            identifier, piiVisibility, userIalLevel, cancellationToken);
+            identifier,
+            piiVisibility,
+            userIalLevel,
+            command.User.GetUserId(),
+            cancellationToken);
 
         if (household == null)
         {

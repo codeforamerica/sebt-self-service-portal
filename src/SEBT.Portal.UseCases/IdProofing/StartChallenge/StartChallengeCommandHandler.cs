@@ -255,6 +255,7 @@ public class StartChallengeCommandHandler(
                 user.Email,
                 new PiiVisibility(IncludeAddress: true, IncludeEmail: true, IncludePhone: true),
                 warehouseIal,
+                user.Id,
                 cancellationToken);
             if (household?.UserProfile != null)
             {

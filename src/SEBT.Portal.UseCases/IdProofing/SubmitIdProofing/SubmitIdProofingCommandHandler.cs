@@ -192,6 +192,7 @@ public class SubmitIdProofingCommandHandler(
                     user.Email,
                     new PiiVisibility(IncludeAddress: false, IncludeEmail: false, IncludePhone: false),
                     warehouseIalForEmailReads,
+                    command.UserId,
                     cancellationToken);
             }
             catch (Exception ex) when (ex is not OperationCanceledException)
@@ -243,6 +244,7 @@ public class SubmitIdProofingCommandHandler(
                 user.Email,
                 new PiiVisibility(IncludeAddress: true, IncludeEmail: true, IncludePhone: true),
                 warehouseIalForEmailReads,
+                command.UserId,
                 cancellationToken);
             if (householdForSocure?.UserProfile != null)
             {

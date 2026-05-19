@@ -125,6 +125,7 @@ public class RequestCardReplacementCommandHandlerTests
             Arg.Any<HouseholdIdentifier>(),
             Arg.Any<PiiVisibility>(),
             Arg.Any<UserIalLevel>(),
+            Arg.Any<Guid?>(),
             Arg.Any<CancellationToken>()
         ).Returns(householdData);
     }
@@ -564,6 +565,7 @@ public class RequestCardReplacementCommandHandlerTests
             Arg.Any<HouseholdIdentifier>(),
             Arg.Any<PiiVisibility>(),
             UserIalLevel.IAL1plus,
+            Arg.Any<Guid?>(),
             Arg.Any<CancellationToken>());
     }
 
@@ -588,6 +590,7 @@ public class RequestCardReplacementCommandHandlerTests
             Arg.Any<HouseholdIdentifier>(),
             Arg.Any<PiiVisibility>(),
             UserIalLevel.None,
+            Arg.Any<Guid?>(),
             Arg.Any<CancellationToken>());
     }
 
