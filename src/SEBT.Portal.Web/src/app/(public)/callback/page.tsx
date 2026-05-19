@@ -8,6 +8,7 @@ import {
   OidcCallbackTokenResponseSchema,
   OidcCompleteLoginResponseSchema
 } from '@/features/auth/api/oidc'
+import { hasIal1Plus, isIdProofingCompletionFresh } from '@/lib/jwt'
 import { getState } from '@sebt/design-system'
 import { useRouter } from 'next/navigation'
 import { useEffect, useRef } from 'react'
@@ -28,7 +29,7 @@ import { useTranslation } from 'react-i18next'
  */
 export default function CallbackPage() {
   const router = useRouter()
-  const { login } = useAuth()
+  const { session, login } = useAuth()
   const { t } = useTranslation('login')
   const { t: tProcessing } = useTranslation('step-upProcessing')
   const exchangeStartedRef = useRef(false)
@@ -51,6 +52,15 @@ export default function CallbackPage() {
     }
 
     if (exchangeStartedRef.current) return
+
+    // Back-button re-entry after a successful step-up: the visitor already has IAL1+
+    // and a fresh proofing window. Re-running the exchange here would burn the
+    // single-use code and bounce them to off-boarding.
+    if (hasIal1Plus(session) && isIdProofingCompletionFresh(session)) {
+      router.replace('/dashboard')
+      return
+    }
+
     exchangeStartedRef.current = true
 
     let cancelled = false
@@ -89,9 +99,8 @@ export default function CallbackPage() {
     run()
     return () => {
       cancelled = true
-      exchangeStartedRef.current = false
     }
-  }, [login, router])
+  }, [session, login, router])
 
   if (isCO) {
     return (
