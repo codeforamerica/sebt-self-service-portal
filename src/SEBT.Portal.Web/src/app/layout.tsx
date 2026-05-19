@@ -1,5 +1,4 @@
 import { AmplitudeAnalytics } from '@/components/AmplitudeAnalytics'
-import { BetaBanner } from '@/components/BetaBanner'
 import { MixpanelAnalytics } from '@/components/MixpanelAnalytics'
 import { SiteImproveAnalytics } from '@/components/SiteImproveAnalytics'
 import { primaryFont } from '@/design/fonts'
@@ -8,7 +7,6 @@ import {
   AuthProvider,
   AxeProvider,
   DataLayerProvider,
-  FeatureFlagsProvider,
   I18nProvider,
   QueryProvider
 } from '@/providers'
@@ -113,23 +111,21 @@ export default async function RootLayout({
         >
           <QueryProvider>
             <AuthProvider>
-              <FeatureFlagsProvider>
-                <I18nProvider>
-                  <SkipNav />
-                  <AxeProvider>
-                    {/* Portal target for page-level alerts rendered above the header.
-                        Currently used by AddressForm (30-char street address error).
-                        If a second consumer appears, refactor to a SiteAlertContext so
-                        child components call setSiteAlert() instead of using createPortal directly. */}
-                    <div id="site-alerts" />
-                    <BetaBanner />
-                    <Header state={state} />
-                    <main id="main-content">{children}</main>
-                    <HelpSection state={state} />
-                    <Footer state={state} />
-                  </AxeProvider>
-                </I18nProvider>
-              </FeatureFlagsProvider>
+              <I18nProvider>
+                <SkipNav />
+                <AxeProvider>
+                  {/* Portal target for page-level alerts rendered above the header.
+                      Currently used by AddressForm (30-char street address error).
+                      If a second consumer appears, refactor to a SiteAlertContext so
+                      child components call setSiteAlert() instead of using createPortal directly. */}
+                  <div id="site-alerts" />
+                  {/* FeatureFlagsProvider lives in (authenticated) so public routes don't fire /features. */}
+                  <Header state={state} />
+                  <main id="main-content">{children}</main>
+                  <HelpSection state={state} />
+                  <Footer state={state} />
+                </AxeProvider>
+              </I18nProvider>
             </AuthProvider>
           </QueryProvider>
         </DataLayerProvider>
