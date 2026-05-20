@@ -1,6 +1,6 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.FeatureManagement;
+using Microsoft.FeatureManagement.Mvc;
 using SEBT.Portal.Core.AppSettings;
 using SEBT.Portal.Kernel;
 using SEBT.Portal.UseCases.Diagnostics;
@@ -15,21 +15,18 @@ namespace SEBT.Portal.Api.Controllers.Diagnostics;
 [ApiController]
 [Route("api/test-error")]
 [AllowAnonymous]
+[FeatureGate(FeatureFlags.TestErrorEndpointsEnabled)]
 [Tags("Diagnostics")]
-public class TestErrorController(IFeatureManager featureManager) : ControllerBase
+public class TestErrorController : ControllerBase
 {
-    private Task<bool> IsEnabled() =>
-        featureManager.IsEnabledAsync(FeatureFlags.TestErrorEndpointsEnabled);
-
     /// <summary>
     /// Returns the specified HTTP status code without going through a command handler.
     /// Useful for testing frontend error-handling branches in isolation.
     /// </summary>
     [HttpGet("http/{statusCode:int}")]
     [ProducesResponseType(StatusCodes.Status200OK)]
-    public async Task<IActionResult> HttpStatus([FromRoute] int statusCode)
+    public IActionResult HttpStatus([FromRoute] int statusCode)
     {
-        if (!await IsEnabled()) return NotFound();
         return StatusCode(statusCode);
     }
 
@@ -43,7 +40,6 @@ public class TestErrorController(IFeatureManager featureManager) : ControllerBas
         [FromServices] ICommandHandler<TestErrorCommand> handler,
         CancellationToken cancellationToken)
     {
-        if (!await IsEnabled()) return NotFound();
         await handler.Handle(new TestErrorCommand(), cancellationToken);
         return Ok();
     }
@@ -58,7 +54,6 @@ public class TestErrorController(IFeatureManager featureManager) : ControllerBas
     public async Task<IActionResult> SimulateTimeout(
         [FromServices] ICommandHandler<TestErrorCommand> handler)
     {
-        if (!await IsEnabled()) return NotFound();
         using var cts = new CancellationTokenSource(TimeSpan.FromMilliseconds(500));
         await handler.Handle(new TestErrorCommand { WithDelay = true }, cts.Token);
         return Ok();
@@ -74,8 +69,6 @@ public class TestErrorController(IFeatureManager featureManager) : ControllerBas
     public async Task<IActionResult> SimulateSmartyFailure(
         [FromServices] IHttpClientFactory httpClientFactory)
     {
-        if (!await IsEnabled()) return NotFound();
-
         var client = httpClientFactory.CreateClient("Smarty");
         try
         {
