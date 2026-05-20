@@ -56,12 +56,7 @@ export function DashboardAlerts() {
   return (
     <div className="margin-bottom-3 display-flex flex-column gap-2">
       {alerts.addressUpdated && !alerts.cardsRequested && (
-        <Alert
-          variant="success"
-          heading={t('alertAddressUpdated')}
-        >
-          {t('alertAddressUpdatedBody', 'Your address update has been recorded.')}
-        </Alert>
+        <Alert variant="success">{t('alertAddressUpdated')}</Alert>
       )}
 
       {alerts.addressUpdated && alerts.cardsRequested && (

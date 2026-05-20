@@ -48,6 +48,16 @@ describe('DashboardAlerts', () => {
     expect(screen.getByText('Your mailing address has been updated')).toBeInTheDocument()
   })
 
+  it('address success alert shows only the alertAddressUpdated copy, no hardcoded body', () => {
+    mockSearchParams = new URLSearchParams('addressUpdated=true')
+    render(<DashboardAlerts />)
+
+    expect(screen.getByText('Your mailing address has been updated')).toBeInTheDocument()
+    // There is no separate body-level content key, so the alert must not fall
+    // back to a hardcoded body string.
+    expect(screen.queryByText('Your address update has been recorded.')).not.toBeInTheDocument()
+  })
+
   it('renders card request alert when both addressUpdated and cardsRequested params are present', () => {
     mockSearchParams = new URLSearchParams('addressUpdated=true&cardsRequested=true')
     render(<DashboardAlerts />)

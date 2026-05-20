@@ -163,7 +163,7 @@ describe('CoLoadedAddressInfoPage', () => {
     expect(
       screen.queryByRole('heading', { name: /mailing address for snap or tanf ebt card/i })
     ).not.toBeInTheDocument()
-    expect(screen.getByText(/unable to load address details/i)).toBeInTheDocument()
+    expect(screen.getByText(/an error occurred on our end/i)).toBeInTheDocument()
   })
 
   it('tags the in-page CTAs with data-analytics-cta for click tracking', () => {

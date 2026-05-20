@@ -9,6 +9,7 @@ import { Alert } from '@sebt/design-system'
 
 export default function CardReplacePage() {
   const { t: tDev } = useTranslation('dev')
+  const { t: tValidation } = useTranslation('validation')
   const searchParams = useSearchParams()
   const { data, isLoading, isError } = useHouseholdData()
 
@@ -19,7 +20,7 @@ export default function CardReplacePage() {
   }
 
   if (isError || !data || !caseId) {
-    return <Alert variant="error">Unable to load card details. Please try again.</Alert>
+    return <Alert variant="error">{tValidation('globalInternalError')}</Alert>
   }
 
   const summerEbtCase = data.summerEbtCases.find((c) => c.summerEBTCaseID === caseId)

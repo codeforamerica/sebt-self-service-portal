@@ -48,6 +48,7 @@ export function CardSelection({ confirmPath = 'select/confirm' }: CardSelectionP
   const { t: tOptional } = useTranslation('optionalId')
   const { t: tCommon } = useTranslation('common')
   const { t: tDev } = useTranslation('dev')
+  const { t: tValidation } = useTranslation('validation')
 
   const router = useRouter()
   const currentState = getState()
@@ -68,11 +69,7 @@ export function CardSelection({ confirmPath = 'select/confirm' }: CardSelectionP
   }
 
   if (isError || !data) {
-    return (
-      <Alert variant="error">
-        {t('cardSelectionLoadError', 'Unable to load household members. Please try again later.')}
-      </Alert>
-    )
+    return <Alert variant="error">{tValidation('globalInternalError')}</Alert>
   }
 
   const groups = buildCaseGroups(data.summerEbtCases)

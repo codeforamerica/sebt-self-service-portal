@@ -262,7 +262,7 @@ describe('CardSelection', () => {
     renderCardSelection()
 
     await waitFor(() => {
-      expect(screen.getByText(/unable to load household members/i)).toBeInTheDocument()
+      expect(screen.getByText(/an error occurred on our end/i)).toBeInTheDocument()
     })
   })
 

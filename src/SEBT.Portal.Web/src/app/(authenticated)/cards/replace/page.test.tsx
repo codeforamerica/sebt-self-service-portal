@@ -37,7 +37,8 @@ vi.mock('@/features/cards/components/ConfirmAddress', () => ({
 // page must request the key from the namespace that actually defines it.
 const NAMESPACE_KEYS: Record<string, Record<string, string>> = {
   dev: { loading: 'Loading...' },
-  common: {}
+  common: {},
+  validation: { globalInternalError: 'An error occurred on our end. Please try again.' }
 }
 vi.mock('react-i18next', () => ({
   useTranslation: (ns: string) => ({
@@ -59,5 +60,12 @@ describe('CardReplacePage', () => {
     render(<CardReplacePage />)
 
     expect(screen.getByText('Loading...')).toBeInTheDocument()
+  })
+
+  it('renders the generic error copy from the validation namespace when the fetch fails', () => {
+    mockIsError = true
+    render(<CardReplacePage />)
+
+    expect(screen.getByText('An error occurred on our end. Please try again.')).toBeInTheDocument()
   })
 })
