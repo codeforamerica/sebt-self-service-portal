@@ -15,7 +15,7 @@ export function ReviewPage({ onSubmit }: ReviewPageProps) {
   const { t } = useTranslation('confirmInfo')
   const { t: tCommon } = useTranslation('common')
   const router = useRouter()
-  const { state, setEditingChildId } = useEnrollment()
+  const { state, setEditingChildId, removeChild } = useEnrollment()
 
   function handleEdit(id: string) {
     setEditingChildId(id)
@@ -41,6 +41,7 @@ export function ReviewPage({ onSubmit }: ReviewPageProps) {
               key={child.id}
               child={child}
               onEdit={handleEdit}
+              onRemove={removeChild}
             />
           ))}
         </div>
