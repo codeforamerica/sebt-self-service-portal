@@ -63,4 +63,15 @@ describe('ReviewPage', () => {
     await userEvent.click(screen.getByRole('button', { name: /remove/i }))
     expect(screen.queryByText(/Jane Doe/i)).not.toBeInTheDocument()
   })
+
+  it('disables Submit when the last child is removed and ignores clicks', async () => {
+    const onSubmit = vi.fn()
+    render(<ReviewPageWithChild onSubmit={onSubmit} />)
+    await screen.findByText(/Jane Doe/i)
+    await userEvent.click(screen.getByRole('button', { name: /remove/i }))
+    const submit = screen.getByRole('button', { name: /submit/i })
+    expect(submit).toBeDisabled()
+    await userEvent.click(submit)
+    expect(onSubmit).not.toHaveBeenCalled()
+  })
 })

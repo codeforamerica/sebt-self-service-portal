@@ -37,6 +37,7 @@ export function ChildReviewCard({ child, onEdit, onRemove }: ChildReviewCardProp
         <button
           type="button"
           className="usa-link usa-button--unstyled"
+          aria-label={`${t('tableAction')}: ${fullName}`}
           onClick={() => onEdit(child.id)}
         >
           {t('tableAction')}
@@ -44,6 +45,7 @@ export function ChildReviewCard({ child, onEdit, onRemove }: ChildReviewCardProp
         <button
           type="button"
           className="usa-link usa-button--unstyled text-error-dark"
+          aria-label={`${tCommon('remove')}: ${fullName}`}
           onClick={() => onRemove(child.id)}
         >
           {tCommon('remove')}

@@ -54,7 +54,12 @@ export function ReviewPage({ onSubmit }: ReviewPageProps) {
           >
             {tCommon('back')}
           </Button>
-          <Button onClick={onSubmit}>{tCommon('submit')}</Button>
+          <Button
+            onClick={onSubmit}
+            disabled={state.children.length === 0}
+          >
+            {tCommon('submit')}
+          </Button>
         </div>
         <div className="margin-top-2">
           <button

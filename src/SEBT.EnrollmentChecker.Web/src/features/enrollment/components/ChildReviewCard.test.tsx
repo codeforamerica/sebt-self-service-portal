@@ -36,4 +36,12 @@ describe('ChildReviewCard', () => {
     await userEvent.click(screen.getByRole('button', { name: /remove/i }))
     expect(onRemove).toHaveBeenCalledWith('1')
   })
+
+  it('includes the child name in each action button accessible name so screen readers distinguish rows', () => {
+    render(<ChildReviewCard child={child} onEdit={vi.fn()} onRemove={vi.fn()} />)
+    expect(
+      screen.getByRole('button', { name: /update this child's information: Jane Doe/i })
+    ).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /remove: Jane Doe/i })).toBeInTheDocument()
+  })
 })
