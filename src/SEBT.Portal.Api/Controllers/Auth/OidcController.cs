@@ -139,6 +139,17 @@ public class OidcController(
             }
         }
 
+        // Skip the IdP round-trip (and the cost of another Socure call) when the caller
+        // is already step-up complete. Catches browser-back navigation that lands back
+        // on this endpoint after a successful step-up.
+        if (stepUp && HasFreshIal1Plus(HttpContext.User))
+        {
+            logger.LogInformation(
+                "OIDC Authorize: step-up short-circuited (reason=already_ial1plus, StateCode={StateCode})",
+                stateCode);
+            return LocalRedirect(safeReturnUrl ?? "/dashboard");
+        }
+
         var clientId = stepUp ? config["Oidc:StepUp:ClientId"] : config["Oidc:ClientId"];
         var redirectUri = stepUp
             ? (config["Oidc:StepUp:RedirectUri"] ?? config["Oidc:CallbackRedirectUri"])
@@ -489,6 +500,23 @@ public class OidcController(
     }
 
     private const int MaxStepUpReturnUrlLength = 4096;
+
+    /// <summary>
+    /// Mirrors the frontend's <c>hasIal1Plus(session) &amp;&amp; isIdProofingCompletionFresh(session)</c>:
+    /// the portal JWT carries at least <see cref="UserIalLevel.IAL1plus"/> and an unexpired
+    /// <c>id_proofing_expires_at</c> Unix-seconds claim.
+    /// </summary>
+    private static bool HasFreshIal1Plus(ClaimsPrincipal user)
+    {
+        if (user.GetIalLevel() < UserIalLevel.IAL1plus)
+            return false;
+
+        var expiresAtClaim = user.FindFirst(JwtClaimTypes.IdProofingExpiresAt)?.Value;
+        if (!long.TryParse(expiresAtClaim, out var expiresAtUnix))
+            return false;
+
+        return DateTimeOffset.FromUnixTimeSeconds(expiresAtUnix) > DateTimeOffset.UtcNow;
+    }
 
     /// <summary>
     /// Step-up post-login navigation: only same-document relative paths (for example <c>/profile/address</c>).

@@ -3,6 +3,11 @@ import {
   enrollmentCheckResponseSchema,
   type EnrollmentCheckResponse
 } from '../schemas/enrollmentSchema'
+import {
+  CBMS_FIRST_NAME_MAX,
+  CBMS_LAST_NAME_MAX,
+  sanitizeNameForCbms
+} from './sanitizeForCbms'
 
 /**
  * POST /api/enrollment/check
@@ -25,8 +30,8 @@ export async function checkEnrollment(
       }
 
       return {
-        firstName: child.firstName,
-        lastName: child.lastName,
+        firstName: sanitizeNameForCbms(child.firstName, CBMS_FIRST_NAME_MAX),
+        lastName: sanitizeNameForCbms(child.lastName, CBMS_LAST_NAME_MAX),
         dateOfBirth: child.dateOfBirth,
         ...(child.schoolName ? { schoolName: child.schoolName } : {}),
         ...(child.schoolCode ? { schoolCode: child.schoolCode } : {}),

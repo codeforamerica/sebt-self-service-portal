@@ -5,12 +5,10 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { ReplacementCardPrompt } from './ReplacementCardPrompt'
 
 const mockPush = vi.fn()
-const mockBack = vi.fn()
 
 vi.mock('next/navigation', () => ({
   useRouter: () => ({
-    push: mockPush,
-    back: mockBack
+    push: mockPush
   })
 }))
 
@@ -34,7 +32,6 @@ const TEST_ADDRESS = {
 describe('ReplacementCardPrompt', () => {
   beforeEach(() => {
     mockPush.mockClear()
-    mockBack.mockClear()
     mockState = 'dc'
   })
 
@@ -136,14 +133,14 @@ describe('ReplacementCardPrompt', () => {
     expect(mockPush).toHaveBeenCalledWith('/profile/address/replacement-cards/select')
   })
 
-  it('navigates back when back button is clicked', async () => {
+  it('navigates to dashboard when back button is clicked', async () => {
     const user = userEvent.setup()
     render(<ReplacementCardPrompt address={TEST_ADDRESS} />)
 
     const backButton = screen.getByRole('button', { name: /back/i })
     await user.click(backButton)
 
-    expect(mockBack).toHaveBeenCalled()
+    expect(mockPush).toHaveBeenCalledWith('/dashboard')
   })
 
   // --- Accessibility ---
