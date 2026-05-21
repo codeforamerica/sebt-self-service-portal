@@ -50,7 +50,7 @@ var logConfig = new LoggerConfiguration()
 if (useJsonLogs)
 {
     logConfig.WriteTo.Console(new ExpressionTemplate(
-        "{ {date: @t, service: 'sebt-portal-api', status: @l, message: @m, exception: @x, ..@p} }\n"));
+        "{ {date: @t, timestamp: @t, status: @l, level: @l, message: @m, exception: @x, ..@p} }\n"));
 }
 else
 {
