@@ -1,7 +1,4 @@
-import { AmplitudeAnalytics } from '@/components/AmplitudeAnalytics'
 import { BetaBanner } from '@/components/BetaBanner'
-import { MixpanelAnalytics } from '@/components/MixpanelAnalytics'
-import { SiteImproveAnalytics } from '@/components/SiteImproveAnalytics'
 import { primaryFont } from '@/design/fonts'
 import { portalRoutes } from '@/lib/analytics-routes'
 import {
@@ -13,6 +10,7 @@ import {
   QueryProvider
 } from '@/providers'
 import { GoogleAnalytics } from '@next/third-parties/google'
+import { AmplitudeAnalytics, MixpanelAnalytics, SiteImproveAnalytics } from '@sebt/analytics'
 import { getState, getStateName, SkipNav } from '@sebt/design-system'
 import { Footer, Header, HelpSection } from '@sebt/design-system/client'
 import type { Metadata, Viewport } from 'next'
@@ -163,6 +161,7 @@ export default async function RootLayout({
           accidentally-set NEXT_PUBLIC_SITEIMPROVE_ID in another state does not enable it. */}
       {state === 'dc' && siteImproveId && (
         <SiteImproveAnalytics
+          state={state}
           siteId={siteImproveId}
           {...(nonce ? { nonce } : {})}
         />
