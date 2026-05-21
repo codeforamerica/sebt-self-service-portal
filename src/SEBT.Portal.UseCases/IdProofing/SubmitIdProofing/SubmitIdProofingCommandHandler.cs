@@ -179,7 +179,7 @@ public class SubmitIdProofingCommandHandler(
             }
             catch (Exception ex) when (ex is not OperationCanceledException)
             {
-                logger.LogWarning(
+                logger.LogError(
                     "DC warehouse IC+DOB match failed ({ExceptionType}) for co-loaded benefit ID verification for user {UserId}",
                     ex.GetType().Name,
                     command.UserId);
@@ -196,7 +196,7 @@ public class SubmitIdProofingCommandHandler(
             }
             catch (Exception ex) when (ex is not OperationCanceledException)
             {
-                logger.LogWarning(
+                logger.LogError(
                     "Household lookup failed ({ExceptionType}) for co-loaded benefit ID verification for user {UserId}",
                     ex.GetType().Name,
                     command.UserId);
@@ -258,7 +258,7 @@ public class SubmitIdProofingCommandHandler(
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
             householdLookupFailed = true;
-            logger.LogWarning(ex,
+            logger.LogError(ex,
                 "Household lookup failed ({ExceptionType}) for user {UserId}, proceeding without name/address/phone from CMS",
                 ex.GetType().Name,
                 command.UserId);
@@ -315,7 +315,7 @@ public class SubmitIdProofingCommandHandler(
 
         if (!assessmentResult.IsSuccess)
         {
-            logger.LogWarning("Socure assessment failed for user {UserId}", command.UserId);
+            logger.LogError("Socure assessment failed for user {UserId}", command.UserId);
 
             if (assessmentResult is DependencyFailedResult<IdProofingAssessmentResult> depFailed)
             {
