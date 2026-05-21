@@ -54,8 +54,7 @@ public class OtpController(
 
         if (string.IsNullOrEmpty(request.Locale))
         {
-            logger.LogWarning("OTP request for {MaskedEmail} did not specify a locale; defaulting to 'en'.",
-                PiiMasker.MaskEmail(request.Email));
+            logger.LogWarning("OTP request did not specify a locale; defaulting to 'en'.");
         }
 
         var command = new RequestOtpCommand

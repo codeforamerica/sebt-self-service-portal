@@ -67,7 +67,7 @@ public class UpdateAddressCommandHandler(
                         firstError?.Message ?? "Address could not be verified.",
                         "not-found"));
             case DependencyFailedResult<AddressUpdateSuccess> addressDependencyFailed:
-                logger.LogWarning(
+                logger.LogError(
                     "Address verification dependency failed: {Reason}",
                     addressDependencyFailed.Reason);
                 return Result<AddressValidationResult>.DependencyFailed(addressDependencyFailed.Reason, addressDependencyFailed.Message);

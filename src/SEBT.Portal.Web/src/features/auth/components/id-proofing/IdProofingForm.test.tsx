@@ -18,6 +18,7 @@ import userEvent from '@testing-library/user-event'
 import { http, HttpResponse } from 'msw'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
+import enDcValidation from '@/content/locales/en/dc/validation.json'
 import { server } from '@/mocks/server'
 
 import {
@@ -650,6 +651,29 @@ describe('IdProofingForm', () => {
       })
       expect(submitCalled).toBe(false)
       expect(mockPush).not.toHaveBeenCalled()
+    })
+
+    it('SSN shape error resolves validation.ssn, not a hardcoded fallback', async () => {
+      const user = userEvent.setup()
+      renderWithProviders(
+        <IdProofingForm
+          idOptions={TEST_ID_OPTIONS}
+          contactLink={TEST_CONTACT_LINK}
+        />
+      )
+
+      await user.selectOptions(screen.getByRole('combobox', { name: /month/i }), '01')
+      await user.type(screen.getByRole('textbox', { name: INPUT_LABEL_DAY }), '15')
+      await user.type(screen.getByRole('textbox', { name: INPUT_LABEL_YEAR }), '1990')
+
+      await user.click(screen.getByRole('radio', { name: LABEL_SSN }))
+      const ssnInput = await screen.findByRole('textbox', { name: INPUT_LABEL_SSN })
+      await user.type(ssnInput, '12345678')
+      await user.click(screen.getByRole('button', { name: /continue/i }))
+
+      await waitFor(() => {
+        expect(screen.getByText(enDcValidation.ssn)).toBeInTheDocument()
+      })
     })
 
     it('blocks submit and shows a DOB error when the DOB is in the future', async () => {

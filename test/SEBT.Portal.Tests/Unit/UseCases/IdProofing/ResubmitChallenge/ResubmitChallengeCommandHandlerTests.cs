@@ -1,4 +1,5 @@
 using Microsoft.Extensions.Logging.Abstractions;
+using Microsoft.Extensions.Options;
 using NSubstitute;
 using SEBT.Portal.Core.AppSettings;
 using SEBT.Portal.Core.Models.Auth;
@@ -30,9 +31,12 @@ public class ResubmitChallengeCommandHandlerTests
     private readonly NullLogger<ResubmitChallengeCommandHandler> logger =
         NullLogger<ResubmitChallengeCommandHandler>.Instance;
 
+    private readonly IOptions<IdProofingEligibilitySettings> idProofingEligibilitySettings =
+        Options.Create(new IdProofingEligibilitySettings());
+
     private ResubmitChallengeCommandHandler CreateHandler() => new(
         challengeRepository, userRepository, householdRepository,
-        socureClient, socureSettings, validator, logger);
+        socureClient, socureSettings, validator, idProofingEligibilitySettings, logger);
 
     private static SocureDocvSession FreshSession() => new(
         DocvTransactionToken: "new-token-" + Guid.NewGuid(),

@@ -32,7 +32,11 @@ vi.mock('next/navigation', () => ({
 }))
 
 // Mock @/features/auth without loading the barrel (barrel pulls IalGuard → @/env and breaks Vitest).
-const { mockLogin } = vi.hoisted(() => ({ mockLogin: vi.fn() }))
+// `sessionState` is mutable so individual tests can simulate an already-authenticated visitor.
+const { mockLogin, sessionState } = vi.hoisted(() => ({
+  mockLogin: vi.fn(),
+  sessionState: { current: null as Record<string, unknown> | null }
+}))
 vi.mock('@/features/auth', async () => {
   const api = await vi.importActual<typeof import('@/features/auth/api')>('@/features/auth/api')
   return {
@@ -40,8 +44,8 @@ vi.mock('@/features/auth', async () => {
     useAuth: () => ({
       login: mockLogin,
       logout: vi.fn(),
-      isAuthenticated: false,
-      session: null,
+      isAuthenticated: sessionState.current !== null,
+      session: sessionState.current,
       isLoading: false
     })
   }
@@ -81,6 +85,7 @@ import CallbackPage from './page'
 describe('CallbackPage', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    sessionState.current = null
     // Default: URL has code and state
     Object.defineProperty(window, 'location', {
       value: {
@@ -276,6 +281,33 @@ describe('CallbackPage', () => {
       await waitFor(() => {
         expect(mockReplace).toHaveBeenCalledWith(OIDC_CALLBACK_ERROR_OFF_BOARDING)
       })
+    })
+  })
+
+  describe('back-button re-entry after successful login', () => {
+    it('skips the code exchange and redirects to /dashboard when the visitor is already authenticated', async () => {
+      sessionState.current = { ial: '1plus', idProofingExpiresAt: 9999999999 }
+      const callbackSpy = vi.fn()
+      const completeLoginSpy = vi.fn()
+      server.use(
+        http.post('/api/auth/oidc/callback', () => {
+          callbackSpy()
+          return HttpResponse.json({ callbackToken: 'should-not-be-issued' })
+        }),
+        http.post('/api/auth/oidc/complete-login', () => {
+          completeLoginSpy()
+          return HttpResponse.json({})
+        })
+      )
+
+      render(<CallbackPage />)
+
+      await waitFor(() => {
+        expect(mockReplace).toHaveBeenCalledWith('/dashboard')
+      })
+      expect(callbackSpy).not.toHaveBeenCalled()
+      expect(completeLoginSpy).not.toHaveBeenCalled()
+      expect(mockReplace).not.toHaveBeenCalledWith(OIDC_CALLBACK_ERROR_OFF_BOARDING)
     })
   })
 })

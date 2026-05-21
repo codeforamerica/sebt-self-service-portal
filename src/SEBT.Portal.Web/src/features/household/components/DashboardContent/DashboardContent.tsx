@@ -165,7 +165,11 @@ export function DashboardContent() {
     )
   }
 
-  if (!data || isNotFound || (data.summerEbtCases.length === 0 && data.applications.length === 0)) {
+  // Do not key off `isNotFound` here: TanStack Query keeps the last successful
+  // `data` when a background refetch 404s (e.g. after router.back from
+  // /profile/address). Treating any 404 as "empty household" would drop the
+  // populated dashboard even though cached data is still valid.
+  if (!data || (data.summerEbtCases.length === 0 && data.applications.length === 0)) {
     return (
       <>
         {pageHeading}
