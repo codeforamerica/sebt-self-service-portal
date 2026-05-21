@@ -93,6 +93,37 @@ public class EmailSenderServiceTests
             Arg.Any<IEnumerable<EmailLinkedResource>>());
     }
 
+    [Fact]
+    public async Task SendOtpAsync_WithUnknownLocale_ShouldUseFallbackLocaleInLangAttribute()
+    {
+        var service = new EmailOtpSenderService(_optionsMonitor, _logger, _smtpClientService);
+
+        await service.SendOtpAsync("recipient@example.com", "123456", "fr");
+
+        await _smtpClientService.Received().SendEmailAsync(
+            Arg.Any<string>(),
+            Arg.Any<string>(),
+            Arg.Any<string>(),
+            Arg.Is<string>(body => body.Contains("lang=\"en\"") && !body.Contains("lang=\"fr\"")),
+            Arg.Any<IEnumerable<EmailLinkedResource>>());
+    }
+
+    [Fact]
+    public async Task SendOtpAsync_WithInjectedLocale_ShouldNotRenderRawLocaleInHtml()
+    {
+        const string injectedLocale = "\"><script>alert(1)</script><html lang=\"";
+        var service = new EmailOtpSenderService(_optionsMonitor, _logger, _smtpClientService);
+
+        await service.SendOtpAsync("recipient@example.com", "123456", injectedLocale);
+
+        await _smtpClientService.Received().SendEmailAsync(
+            Arg.Any<string>(),
+            Arg.Any<string>(),
+            Arg.Any<string>(),
+            Arg.Is<string>(body => !body.Contains(injectedLocale) && body.Contains("lang=\"en\"")),
+            Arg.Any<IEnumerable<EmailLinkedResource>>());
+    }
+
     [Theory]
     [InlineData("es", "Tu código de acceso de DC SUN Bucks", "Usa este código para iniciar sesión en tu cuenta")]
     [InlineData("am", "የእርስዎ የDC SUN Bucks የመግቢያ ኮድ", "ወደ መለያዎ ለመግባት ይህንን ኮድ ይጠቀሙ።")]

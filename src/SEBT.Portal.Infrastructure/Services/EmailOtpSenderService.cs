@@ -36,8 +36,8 @@ public class EmailOtpSenderService(
     {
         try
         {
-            var translation = GetTranslation(locale);
-            var htmlBody = RenderEmailTemplate(otp, locale, translation);
+            var (translation, resolvedLocale) = GetTranslation(locale);
+            var htmlBody = RenderEmailTemplate(otp, resolvedLocale, translation);
             var linkedResources = GetLinkedResources();
 
             await smtpClientService.SendEmailAsync(
@@ -56,12 +56,12 @@ public class EmailOtpSenderService(
         return new SuccessResult();
     }
 
-    private OtpEmailTranslation GetTranslation(string locale)
+    private (OtpEmailTranslation Translation, string ResolvedLocale) GetTranslation(string locale)
     {
         if (_translations.TryGetValue(locale, out var translation))
-            return translation;
+            return (translation, locale);
         if (_translations.TryGetValue("en", out var fallback))
-            return fallback;
+            return (fallback, "en");
         throw new InvalidOperationException(
             $"No OTP email translation found for locale '{locale}' and no 'en' fallback is present in the content file.");
     }
