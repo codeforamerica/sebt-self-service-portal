@@ -35,7 +35,7 @@ describe('SiteImproveAnalytics', () => {
   })
 
   it('renders a script tag pointing at the SiteImprove CDN with the encoded site id', () => {
-    const { getByTestId } = render(<SiteImproveAnalytics siteId="123456" state="dc" />)
+    const { getByTestId } = render(<SiteImproveAnalytics siteId="123456" />)
 
     const script = getByTestId('siteimprove-script') as HTMLScriptElement
     expect(script.getAttribute('src')).toBe(
@@ -56,12 +56,12 @@ describe('SiteImproveAnalytics', () => {
   })
 
   it('initializes the bridge once when the script loads', () => {
-    render(<SiteImproveAnalytics siteId="123456" state="dc" />)
+    render(<SiteImproveAnalytics siteId="123456" />)
     expect(mockInit).toHaveBeenCalledTimes(1)
   })
 
   it('invokes the teardown function on unmount', () => {
-    const { unmount } = render(<SiteImproveAnalytics siteId="123456" state="dc" />)
+    const { unmount } = render(<SiteImproveAnalytics siteId="123456" />)
 
     expect(mockTeardown).not.toHaveBeenCalled()
     unmount()
@@ -69,24 +69,11 @@ describe('SiteImproveAnalytics', () => {
   })
 
   it('encodes the site id in the script src to prevent path injection', () => {
-    const { getByTestId } = render(<SiteImproveAnalytics siteId="abc/../../evil" state="dc" />)
+    const { getByTestId } = render(<SiteImproveAnalytics siteId="abc/../../evil" />)
 
     const src = getByTestId('siteimprove-script').getAttribute('src')!
     expect(src).not.toContain('../')
     expect(src).toBe('https://siteimproveanalytics.com/js/siteanalyze_abc%2F..%2F..%2Fevil.js')
   })
 
-  it('renders nothing when state is co (defense in depth against env-var leak)', () => {
-    const { container } = render(<SiteImproveAnalytics siteId="123456" state="co" />)
-
-    expect(container.querySelector('[data-testid="siteimprove-script"]')).toBeNull()
-    expect(mockInit).not.toHaveBeenCalled()
-  })
-
-  it('renders nothing for any non-dc state', () => {
-    const { container } = render(<SiteImproveAnalytics siteId="123456" state="xx" />)
-
-    expect(container.querySelector('[data-testid="siteimprove-script"]')).toBeNull()
-    expect(mockInit).not.toHaveBeenCalled()
-  })
 })

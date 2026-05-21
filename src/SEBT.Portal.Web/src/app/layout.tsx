@@ -157,11 +157,9 @@ export default async function RootLayout({
       )}
       {/* Amplitude - only rendered when NEXT_PUBLIC_AMPLITUDE_API_KEY is configured */}
       {amplitudeApiKey && <AmplitudeAnalytics apiKey={amplitudeApiKey} />}
-      {/* SiteImprove — DC-only per DC-272. Gated by both state and env var so an
-          accidentally-set NEXT_PUBLIC_SITEIMPROVE_ID in another state does not enable it. */}
-      {state === 'dc' && siteImproveId && (
+      {/* SiteImprove — only rendered when NEXT_PUBLIC_SITEIMPROVE_ID is configured */}
+      {siteImproveId && (
         <SiteImproveAnalytics
-          state={state}
           siteId={siteImproveId}
           {...(nonce ? { nonce } : {})}
         />

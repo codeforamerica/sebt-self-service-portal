@@ -59,7 +59,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       {/* Amplitude - only rendered when NEXT_PUBLIC_AMPLITUDE_API_KEY is configured */}
       {amplitudeApiKey && <AmplitudeAnalytics apiKey={amplitudeApiKey} />}
       {/* SiteImprove — only rendered when NEXT_PUBLIC_SITEIMPROVE_ID is configured */}
-      {&& siteImproveId && <SiteImproveAnalytics state={state} siteId={siteImproveId} />}
+      {siteImproveId && <SiteImproveAnalytics siteId={siteImproveId} />}
     </html>
   )
 }

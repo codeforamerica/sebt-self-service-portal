@@ -6,14 +6,10 @@ import { initSiteImproveBridge } from './siteimprove-bridge'
 
 interface SiteImproveAnalyticsProps {
   siteId: string
-  // Caller supplies the current state so this package stays free of the
-  // design-system dependency. Callers should also gate rendering on state at
-  // the layout level; this check is defense in depth.
-  state: string
   nonce?: string
 }
 
-export function SiteImproveAnalytics({ siteId, state, nonce }: SiteImproveAnalyticsProps) {
+export function SiteImproveAnalytics({ siteId, nonce }: SiteImproveAnalyticsProps) {
   const teardownRef = useRef<(() => void) | null>(null)
 
   useEffect(() => {
@@ -22,11 +18,6 @@ export function SiteImproveAnalytics({ siteId, state, nonce }: SiteImproveAnalyt
       teardownRef.current = null
     }
   }, [siteId])
-
-  // DC-only per DC-272. The layout-level state gate already requires state===dc;
-  // this check is defense in depth so an accidentally-set env var in another
-  // state still can't load SiteImprove.
-  if (state !== 'dc') return null
 
   return (
     <Script
