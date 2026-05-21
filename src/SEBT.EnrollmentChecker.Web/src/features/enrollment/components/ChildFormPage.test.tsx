@@ -1,7 +1,8 @@
 import { render, screen } from '@testing-library/react'
-import { describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { useEffect } from 'react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { DataLayer } from '@sebt/analytics'
 import { EnrollmentProvider, useEnrollment } from '../context/EnrollmentContext'
 import { ChildFormPage } from './ChildFormPage'
 
@@ -60,5 +61,64 @@ describe('ChildFormPage', () => {
     expect(await screen.findByRole('heading', { level: 1 })).toBeInTheDocument()
     // In edit mode, the form should be pre-populated with the child's firstName
     expect(await screen.findByDisplayValue('Jane')).toBeInTheDocument()
+  })
+
+  describe('analytics — DC-178', () => {
+    beforeEach(() => {
+      delete (window as unknown as Record<string, unknown>).digitalData
+    })
+    afterEach(() => {
+      delete (window as unknown as Record<string, unknown>).digitalData
+    })
+
+    it('fires enrollment_check_start with name + application from the data layer', () => {
+      new DataLayer('digitalData')
+      // page.name + page.application are normally set by DataLayerProvider;
+      // seeded directly here to isolate the trackEvent merge contract.
+      window.digitalData!.page.set('name', 'Check')
+      window.digitalData!.page.set('application', 'sebt-enrollment-checker')
+
+      render(<ChildFormPage showSchoolField={false} apiBaseUrl="" />, { wrapper })
+
+      const event = window.digitalData!.event.find(e => e.eventName === 'enrollment_check_start')
+      expect(event).toBeDefined()
+      expect(event!.eventData).toEqual(expect.objectContaining({
+        name: 'Check',
+        application: 'sebt-enrollment-checker'
+      }))
+    })
+
+    it('payload key set excludes PII field names', () => {
+      // Render in edit mode so a child with full PII is in EnrollmentProvider state.
+      new DataLayer('digitalData')
+      window.digitalData!.page.set('name', 'Check')
+      window.digitalData!.page.set('application', 'sebt-enrollment-checker')
+
+      render(<ChildFormPageInEditMode />, { wrapper })
+
+      const event = window.digitalData!.event.find(e => e.eventName === 'enrollment_check_start')
+      const keys = Object.keys(event!.eventData)
+      // Guard against a vacuous pass on `{}`: assert the merge actually populated the bag.
+      expect(keys.length).toBeGreaterThan(0)
+      // Allow-list check: PII field names must not appear, even if a future
+      // refactor accidentally writes them to page.* with no scope.
+      const piiKeys = ['firstName', 'lastName', 'middleName', 'dateOfBirth', 'schoolName', 'schoolCode']
+      for (const piiKey of piiKeys) {
+        expect(keys).not.toContain(piiKey)
+      }
+    })
+
+    it('filters scope-restricted fields out of the payload (e.g. user.email)', () => {
+      new DataLayer('digitalData')
+      window.digitalData!.page.set('name', 'Check')
+      // user.set enforces 'default' scope — no analytics access.
+      window.digitalData!.user.set('email', 'private@example.com')
+
+      render(<ChildFormPage showSchoolField={false} apiBaseUrl="" />, { wrapper })
+
+      const event = window.digitalData!.event.find(e => e.eventName === 'enrollment_check_start')
+      const serialized = JSON.stringify(event!.eventData)
+      expect(serialized).not.toContain('private@example.com')
+    })
   })
 })

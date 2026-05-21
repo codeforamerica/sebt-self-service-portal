@@ -10,7 +10,7 @@ public class DocVerificationChallenge
     /// <summary>
     /// Database primary key. Not exposed in API responses — use <see cref="PublicId"/> instead.
     /// </summary>
-    public int Id { get; init; }
+    public Guid Id { get; init; } = Guid.CreateVersion7();
 
     /// <summary>
     /// Opaque identifier exposed to API consumers. Prevents IDOR enumeration of challenge records.
@@ -21,7 +21,7 @@ public class DocVerificationChallenge
     /// The ID of the user who owns this challenge.
     /// All API reads are scoped by (PublicId, UserId) to enforce ownership.
     /// </summary>
-    public int UserId { get; init; }
+    public Guid UserId { get; init; }
 
     /// <summary>
     /// Current lifecycle state. Transitions enforced by <see cref="TransitionTo"/>.
@@ -76,16 +76,39 @@ public class DocVerificationChallenge
     public DateTime? ExpiresAt { get; set; }
 
     /// <summary>
-    /// Whether this challenge is in a terminal state (Verified, Rejected, or Expired).
-    /// Terminal challenges cannot be modified.
+    /// Date of birth (yyyy-MM-dd) from the ID-proofing submission that created this challenge.
+    /// Used to re-run Socure evaluation when the DocV transaction token expires.
+    /// </summary>
+    public string? ProofingDateOfBirth { get; set; }
+
+    /// <summary>
+    /// Government ID type from the ID-proofing submission (e.g. ssn, itin).
+    /// </summary>
+    public string? ProofingIdType { get; set; }
+
+    /// <summary>
+    /// Government ID value from the ID-proofing submission.
+    /// </summary>
+    public string? ProofingIdValue { get; set; }
+
+    /// <summary>
+    /// When <see cref="DocvTransactionToken"/> was last issued or refreshed (UTC).
+    /// </summary>
+    public DateTime? DocvTokenIssuedAt { get; set; }
+
+    /// <summary>
+    /// Whether this challenge is in a terminal state (Verified, Rejected, Expired, or Resubmit).
+    /// Terminal challenges cannot be modified. A Resubmit challenge is terminal at this challenge's
+    /// scope; the user opens a fresh challenge to retry.
     /// </summary>
     public bool IsTerminal => Status is DocVerificationStatus.Verified
         or DocVerificationStatus.Rejected
-        or DocVerificationStatus.Expired;
+        or DocVerificationStatus.Expired
+        or DocVerificationStatus.Resubmit;
 
     /// <summary>
     /// Transitions the challenge to a new status, enforcing valid state transitions.
-    /// Allowed: Created → Pending → Verified | Rejected | Expired.
+    /// Allowed: Created → Pending → Verified | Rejected | Expired | Resubmit.
     /// Terminal states cannot be overwritten.
     /// </summary>
     /// <param name="newStatus">The target status.</param>
@@ -102,6 +125,19 @@ public class DocVerificationChallenge
 
         Status = newStatus;
         UpdatedAt = DateTime.UtcNow;
+
+        // Scrub id-proofing PII once the challenge reaches a terminal state. These fields
+        // exist only to re-issue a Socure DocV token while the challenge is still active;
+        // once terminal they serve no further purpose and should not sit at rest. Resubmit
+        // is included: any retry opens a brand-new challenge with freshly minted tokens.
+        // Keep DocvTokenIssuedAt — it is a timestamp, not PII, and is useful for auditing
+        // how long the last-issued token lived before the terminal transition.
+        if (IsTerminal)
+        {
+            ProofingDateOfBirth = null;
+            ProofingIdType = null;
+            ProofingIdValue = null;
+        }
     }
 
     private bool IsValidTransition(DocVerificationStatus newStatus) =>
@@ -111,6 +147,7 @@ public class DocVerificationChallenge
             (DocVerificationStatus.Pending, DocVerificationStatus.Verified) => true,
             (DocVerificationStatus.Pending, DocVerificationStatus.Rejected) => true,
             (DocVerificationStatus.Pending, DocVerificationStatus.Expired) => true,
+            (DocVerificationStatus.Pending, DocVerificationStatus.Resubmit) => true,
             // Created can also expire directly if the user never starts
             (DocVerificationStatus.Created, DocVerificationStatus.Expired) => true,
             _ => false
@@ -122,9 +159,9 @@ public class DocVerificationChallenge
     /// <see cref="TransitionTo"/> instead.
     /// </summary>
     public static DocVerificationChallenge Reconstitute(
-        int id,
+        Guid id,
         Guid publicId,
-        int userId,
+        Guid userId,
         DocVerificationStatus status,
         string? socureReferenceId,
         string? evalId,
@@ -135,7 +172,11 @@ public class DocVerificationChallenge
         bool allowIdRetry,
         DateTime createdAt,
         DateTime updatedAt,
-        DateTime? expiresAt)
+        DateTime? expiresAt,
+        string? proofingDateOfBirth = null,
+        string? proofingIdType = null,
+        string? proofingIdValue = null,
+        DateTime? docvTokenIssuedAt = null)
     {
         var challenge = new DocVerificationChallenge
         {
@@ -151,7 +192,11 @@ public class DocVerificationChallenge
             AllowIdRetry = allowIdRetry,
             CreatedAt = createdAt,
             UpdatedAt = updatedAt,
-            ExpiresAt = expiresAt
+            ExpiresAt = expiresAt,
+            ProofingDateOfBirth = proofingDateOfBirth,
+            ProofingIdType = proofingIdType,
+            ProofingIdValue = proofingIdValue,
+            DocvTokenIssuedAt = docvTokenIssuedAt
         };
 
         // Set status directly — bypasses TransitionTo because this is reconstitution,

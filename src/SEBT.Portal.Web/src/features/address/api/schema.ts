@@ -20,14 +20,13 @@ export function isValidZip(value: string): boolean {
  * Mirrors the backend UpdateAddressRequest DTO.
  */
 export const UpdateAddressRequestSchema = z.object({
-  streetAddress1: z.string().min(1, 'Street address is required.'),
+  streetAddress1: z.string().min(1),
   streetAddress2: z.string().optional(),
-  city: z.string().min(1, 'City is required.'),
-  state: z.string().min(1, 'State is required.'),
-  postalCode: z
-    .string()
-    .min(1, 'Postal code is required.')
-    .refine(isValidZip, 'Postal code must be a valid 5- or 9-digit ZIP code.')
+  city: z.string().min(1),
+  state: z.string().min(1),
+  postalCode: z.string().min(1).refine(isValidZip),
+  /** When true, API persists these fields even if Smarty suggested a correction. */
+  acceptEnteredAddress: z.boolean().optional()
 })
 
 export type UpdateAddressRequest = z.infer<typeof UpdateAddressRequestSchema>
@@ -52,6 +51,7 @@ export const AddressUpdateResponseSchema = z.object({
   status: z.enum(['valid', 'invalid', 'suggestion']),
   reason: z.string().nullable().optional(),
   message: z.string().nullable().optional(),
+  normalizedAddress: AddressResponseSchema.nullable().optional(),
   suggestedAddress: AddressResponseSchema.nullable().optional()
 })
 

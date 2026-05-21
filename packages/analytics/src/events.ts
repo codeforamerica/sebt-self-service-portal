@@ -18,6 +18,7 @@ export const IDV_PRIMARY_RESULT = 'idv_primary_result'
 export const DOCV_START = 'docv_start'
 export const DOCV_UPLOAD = 'docv_upload'
 export const DOCV_RESULT = 'docv_result'
+export const DOCV_RESUBMIT = 'docv_resubmit'
 export const IDV_FINAL_RESULT = 'idv_final_result'
 
 // Benefits Dashboard
@@ -31,7 +32,14 @@ export const CARD_REPLACEMENT_START = 'card_replacement_start'
 export const CARD_REPLACEMENT_SUBMIT = 'card_replacement_submit'
 export const CARD_REPLACEMENT_ERROR = 'card_replacement_error'
 
-// Enrollment Checker
+// Enrollment Checker — per the SEBT Data Layer Dictionary, each event carries
+// the analytics-scoped page + user context the data layer has at fire time
+// (merged automatically by `_trackEvent`). Privacy: none of these payloads
+// include child PII (firstName, lastName, DOB, school) — verified by tests.
+
+/** Fired when the user lands on the child-form page. Carries `name` + `application` from page context. */
 export const ENROLLMENT_CHECK_START = 'enrollment_check_start'
+/** Fired when the eligibility result page loads. Carries `enrollment_match_type` (page) + `sebt_eligible` (user). */
 export const ENROLLMENT_CHECK_RESULT = 'enrollment_check_result'
+/** Fired when the submission API call fails. Carries `error_code` (page). */
 export const ENROLLMENT_CHECK_ERROR = 'enrollment_check_error'

@@ -1,7 +1,9 @@
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using SEBT.Portal.Core.AppSettings;
 using SEBT.Portal.Core.Repositories;
 using SEBT.Portal.Infrastructure;
+using SEBT.Portal.StatesPlugins.Interfaces.Services;
 
 namespace SEBT.Portal.Tests.Unit.Infrastructure;
 
@@ -31,5 +33,68 @@ public class DependenciesTests
             provider.GetRequiredService<IHouseholdRepository>());
         Assert.Contains("UseMockHouseholdData is false", ex.Message);
         Assert.Contains("no household plugin", ex.Message);
+    }
+
+    [Fact]
+    public void ResolveIHMACHSHA256Hasher_ResolvesFromAddPortalInfrastructureServices()
+    {
+        // Arrange
+        var services = new ServiceCollection();
+        var config = new ConfigurationBuilder()
+            .AddInMemoryCollection(new Dictionary<string, string?>
+            {
+                [$"{IdentifierHasherSettings.SectionName}:SecretKey"] = "test-secret-key-that-is-at-least-32-chars!",
+            })
+            .Build();
+
+        services.AddSingleton<IConfiguration>(config);
+        services.AddLogging();
+        services.AddPortalInfrastructureAppSettings(config);
+        services.AddPortalInfrastructureServices(config);
+
+        var provider = services.BuildServiceProvider();
+
+        // Act
+        var hasher = provider.GetRequiredService<IHMACSHA256Hasher>();
+
+        // Assert
+        Assert.NotNull(hasher);
+    }
+
+    [Fact]
+    public void CreateSmartyHttpClient_CanBeCreatedFromScope_WhenSmartyEnabled()
+    {
+        // Arrange — build a real DI container with Smarty enabled and scope
+        // validation on, mimicking how ASP.NET Core validates service lifetimes.
+        var services = new ServiceCollection();
+        var config = new ConfigurationBuilder()
+            .AddInMemoryCollection(new Dictionary<string, string?>
+            {
+                ["Smarty:Enabled"] = "true",
+                ["Smarty:AuthId"] = "test-id",
+                ["Smarty:AuthToken"] = "test-token",
+                ["Smarty:BaseUrl"] = "https://us-street.api.smartystreets.com",
+            })
+            .Build();
+
+        services.AddSingleton<IConfiguration>(config);
+        services.AddLogging();
+        services.AddPortalInfrastructureAppSettings(config);
+        services.AddPortalInfrastructureServices(config);
+
+        var provider = services.BuildServiceProvider(new ServiceProviderOptions
+        {
+            ValidateScopes = true
+        });
+
+        // Act — creating the named HttpClient triggers the configuration delegate
+        // which must resolve options from the root provider.
+        using var scope = provider.CreateScope();
+        var factory = scope.ServiceProvider.GetRequiredService<IHttpClientFactory>();
+        var client = factory.CreateClient("Smarty");
+
+        // Assert
+        Assert.NotNull(client);
+        Assert.Equal(new Uri("https://us-street.api.smartystreets.com/"), client.BaseAddress);
     }
 }

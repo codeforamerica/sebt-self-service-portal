@@ -5,6 +5,9 @@ import { createContext, useCallback, useContext, useMemo, useState } from 'react
 
 import type { AddressUpdateResponse, UpdateAddressRequest } from '../api/schema'
 
+const DEFAULT_FORM_PATH = '/profile/address'
+const DEFAULT_CONTINUE_PATH = '/profile/address/replacement-cards'
+
 interface AddressFlowContextValue {
   /** The address submitted by the user. Null until form submission. */
   address: UpdateAddressRequest | null
@@ -20,6 +23,12 @@ interface AddressFlowContextValue {
   setValidationResult: (result: AddressUpdateResponse, entered: UpdateAddressRequest) => void
   /** Clear validation state (e.g. when navigating back to the address form). */
   clearValidationResult: () => void
+  /** Path to return to when user edits address from suggestion/not-found pages. */
+  formPath: string
+  /** Path to continue to after an address is accepted. */
+  continuePath: string
+  /** Update the active address-flow navigation targets. */
+  setNavigationTargets: (targets: { formPath: string; continuePath: string }) => void
 }
 
 const AddressFlowContext = createContext<AddressFlowContextValue | undefined>(undefined)
@@ -28,6 +37,8 @@ export function AddressFlowProvider({ children }: { children: ReactNode }) {
   const [address, setAddressState] = useState<UpdateAddressRequest | null>(null)
   const [validationResult, setValidationResultState] = useState<AddressUpdateResponse | null>(null)
   const [enteredAddress, setEnteredAddressState] = useState<UpdateAddressRequest | null>(null)
+  const [formPath, setFormPath] = useState(DEFAULT_FORM_PATH)
+  const [continuePath, setContinuePath] = useState(DEFAULT_CONTINUE_PATH)
 
   const setAddress = useCallback((addr: UpdateAddressRequest) => {
     setAddressState(addr)
@@ -50,6 +61,14 @@ export function AddressFlowProvider({ children }: { children: ReactNode }) {
     setEnteredAddressState(null)
   }, [])
 
+  const setNavigationTargets = useCallback(
+    (targets: { formPath: string; continuePath: string }) => {
+      setFormPath(targets.formPath)
+      setContinuePath(targets.continuePath)
+    },
+    []
+  )
+
   const value = useMemo<AddressFlowContextValue>(
     () => ({
       address,
@@ -58,7 +77,10 @@ export function AddressFlowProvider({ children }: { children: ReactNode }) {
       validationResult,
       enteredAddress,
       setValidationResult,
-      clearValidationResult
+      clearValidationResult,
+      formPath,
+      continuePath,
+      setNavigationTargets
     }),
     [
       address,
@@ -67,7 +89,10 @@ export function AddressFlowProvider({ children }: { children: ReactNode }) {
       validationResult,
       enteredAddress,
       setValidationResult,
-      clearValidationResult
+      clearValidationResult,
+      formPath,
+      continuePath,
+      setNavigationTargets
     ]
   )
 

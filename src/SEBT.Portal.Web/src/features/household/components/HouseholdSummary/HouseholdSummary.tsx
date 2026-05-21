@@ -3,6 +3,8 @@
 import Link from 'next/link'
 import { useTranslation } from 'react-i18next'
 
+import { useFeatureFlag } from '@/features/feature-flags'
+
 import type { Address, HouseholdData } from '../../api'
 import { formatUsPhone, useRequiredHouseholdData } from '../../api'
 
@@ -40,7 +42,7 @@ function getApplicationStatus(data: HouseholdData): StatusInfo | null {
   if (statuses.includes('Pending') || statuses.includes('UnderReview')) {
     return {
       labelKey: 'profileTableStatusApplicationIn-progress',
-      fallback: 'Application in-progress',
+      fallback: 'Application in-process',
       variant: 'warning'
     }
   }
@@ -83,7 +85,7 @@ function getStatusTextClass(variant: string): string {
     case 'error':
       return 'text-red'
     case 'warning':
-      return 'text-gold'
+      return 'text-green'
     default:
       return 'text-base-dark'
   }
@@ -94,6 +96,8 @@ export function HouseholdSummary() {
   const { t } = useTranslation('dashboard')
   const data = useRequiredHouseholdData()
   const { primary, secondary } = getOverallStatus(data)
+  const canUpdateAddress = data.allowedActions?.canUpdateAddress ?? true
+  const showContactPreferences = useFeatureFlag('show_contact_preferences')
 
   return (
     <div className="usa-card__container margin-bottom-4">
@@ -121,29 +125,34 @@ export function HouseholdSummary() {
           </dd>
 
           {/* Your mailing address */}
-          {data.addressOnFile && (
-            <>
-              <dt className="text-bold">{t('profileTableHeadingAddress')}</dt>
-              <dd className="margin-left-0 margin-bottom-2">
-                <span style={{ whiteSpace: 'pre-line' }}>{formatAddress(data.addressOnFile)}</span>
-                {data.summerEbtCases.some((c) => c.allowAddressChange) && (
-                  <>
-                    <br />
-                    <Link
-                      href="/profile/address"
-                      data-analytics-cta="update_address_cta"
-                      className="usa-link"
-                    >
-                      {t('profileTableActionChangeAddress')}
-                    </Link>
-                  </>
-                )}
-              </dd>
-            </>
-          )}
+          <dt className="text-bold">{t('profileTableHeadingAddress')}</dt>
+          <dd className="margin-left-0 margin-bottom-2">
+            <span style={{ whiteSpace: 'pre-line' }}>
+              {data.addressOnFile ? formatAddress(data.addressOnFile) : '—'}
+            </span>
+            <br />
+            {canUpdateAddress ? (
+              <Link
+                href="/profile/address"
+                data-analytics-cta="update_address_cta"
+                className="usa-link margin-top-1"
+              >
+                {t('profileTableActionChangeAddress')}
+              </Link>
+            ) : (
+              <Link
+                href="/profile/address/info"
+                data-analytics-cta="update_address_info_cta"
+                className="usa-link display-inline-block margin-top-1"
+              >
+                {/* TODO: design to add copy for if not editable and not co-loaded */}
+                {t('profileTableCo-loadedAddress', '')}
+              </Link>
+            )}
+          </dd>
 
           {/* Your preferred contact */}
-          {(data.email || data.phone) && (
+          {showContactPreferences && (data.email || data.phone) && (
             <>
               <dt className="text-bold">{t('profileTableHeadingContact')}</dt>
               <dd className="margin-left-0 margin-bottom-2">

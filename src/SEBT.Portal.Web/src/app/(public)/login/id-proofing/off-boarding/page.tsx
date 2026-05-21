@@ -1,40 +1,118 @@
-import { OffBoardingContent } from '@/features/auth'
-import { getTranslations } from '@/lib/translations'
+'use client'
+
+import { useSearchParams } from 'next/navigation'
+import { useTranslation } from 'react-i18next'
+
+import { OffBoardingContent, useAuth } from '@/features/auth'
+import { getApplyHref } from '@/lib/applyHref'
 import { getState, getStateLinks } from '@sebt/design-system'
 
-interface OffBoardingPageProps {
-  searchParams: Promise<{ canApply?: string }>
-}
+export default function OffBoardingPage() {
+  const searchParams = useSearchParams()
+  const reason = searchParams.get('reason')
+  const canApplyParam = searchParams.get('canApply') !== 'false'
 
-export default async function OffBoardingPage({ searchParams }: OffBoardingPageProps) {
-  const params = await searchParams
-  const canApply = params.canApply !== 'false'
+  const { session } = useAuth()
+  const isCoLoaded = session?.isCoLoaded === true
+
+  const { t, i18n } = useTranslation('offBoarding')
+  const { t: tDashboard } = useTranslation('dashboard')
+  const { t: tCommon } = useTranslation('common')
+  const { t: tStepUpFailure } = useTranslation('stepUpFailure')
 
   const state = getState()
   const links = getStateLinks(state)
-  const t = getTranslations('offBoarding')
 
   // Prefer the web contact page; fall back to help desk email for states
   // where the contact URL is not yet available (e.g., CO uses a mailto link).
   const contactHref =
     links.help.contactUs !== '#' ? links.help.contactUs : (links.help.helpDeskEmail ?? '#')
 
+  // Branch order: OIDC `/callback` failures, then co-loaded copy,
+  // then reason-specific copy for the non-co-loaded path, then generic offBoarding copy.
+  // - Co-loaded users cannot off-board to Socure DocV per PRD; they see a
+  //   "cannot identify you" screen instead of the DocV-flavored copy.
+  // - Reason-specific branches force canApply=false until product decides
+  //   which failure modes allow re-application.
+  // TODO: Replace hardcoded strings with t(...) keys once they exist in dc.csv.
+  let title: string
+  let body: string
+  let backHref = '/login/id-proofing'
+  let canApply = canApplyParam
+  let contactLabel: string
+  let applyBody: string | undefined
+  let applySkipBody: string | undefined
+  let applyLabel: string | undefined
+
+  if (reason === 'oidcCallbackError') {
+    title =
+      tStepUpFailure('title') || "We're sorry, we aren't able to show your Summer EBT information"
+    body = tStepUpFailure('body') || 'You can contact us if you need more help.'
+    backHref = '/dashboard'
+    canApply = false
+    contactLabel = tCommon('linkContactUs')
+    applyBody = undefined
+    applySkipBody = undefined
+    applyLabel = undefined
+  } else if (isCoLoaded) {
+    title = t('coLoadedTitle')
+    body = t('coLoadedBody1')
+    contactLabel = t('coLoadedAction1')
+    applyBody = t('coLoadedBody2', '') || undefined
+    applySkipBody = undefined
+    applyLabel = t('coLoadedAction2', '') || undefined
+  } else if (reason === 'noQualifyingHousehold') {
+    title = tDashboard('alertApplicationsTitle')
+    body = tDashboard('alertApplicationsBody')
+    contactLabel = tCommon('linkContactUs')
+    applyBody = undefined
+    applySkipBody = undefined
+    applyLabel = tDashboard('alertApplicationsAction')
+  } else if (reason === 'noIdProvided') {
+    // TODO REMOVE HARDCODED STRINGS
+    title = 'We need an ID to verify you'
+    body =
+      "To confirm your identity, we need one of the listed IDs. If you don't have any of these IDs, contact us for help."
+    canApply = false
+    contactLabel = tCommon('linkContactUs')
+    applyBody = undefined
+    applySkipBody = undefined
+    applyLabel = undefined
+  } else if (reason === 'docVerificationFailed') {
+    title = "We couldn't verify your identity"
+    body =
+      "Your document couldn't be verified. You can try again with a different ID, or contact us if you need help."
+    canApply = false
+    contactLabel = tCommon('linkContactUs')
+    applyBody = undefined
+    applySkipBody = undefined
+    applyLabel = undefined
+  } else {
+    title = t('title')
+    body = t('body1')
+    // TODO: Use t('action1') once key is available in dc.csv
+    contactLabel = tCommon('linkContactUs')
+    applyBody = t('body2', '') || undefined
+    applySkipBody = t('body3', '') || undefined
+    applyLabel = t('action2', '') || undefined
+  }
+
   return (
     <div className="usa-section">
       <div className="grid-container maxw-tablet">
         <section aria-labelledby="off-boarding-title">
           <OffBoardingContent
-            title={t('title')}
-            body={t('body1')}
-            backHref="/login/id-proofing"
+            title={title}
+            body={body}
+            backHref={backHref}
+            backLabel={t('action', '') || tCommon('back')}
             contactHref={contactHref}
-            // TODO: Use t('action1') once key is available in dc.csv
-            contactLabel="Contact us"
+            contactLabel={contactLabel}
             canApply={canApply}
-            applyBody={t('body2', '') || undefined}
-            applySkipBody={t('body3', '') || undefined}
-            applyLabel={t('action2', '') || undefined}
-            // TODO: Pass applyHref once the state-specific apply URL is added to StateLinks
+            applyBody={applyBody}
+            applySkipBody={applySkipBody}
+            applyLabel={applyLabel}
+            applyHref={getApplyHref(i18n.language)}
           />
         </section>
       </div>

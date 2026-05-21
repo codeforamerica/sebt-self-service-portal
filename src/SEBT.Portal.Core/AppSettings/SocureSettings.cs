@@ -48,6 +48,14 @@ public class SocureSettings
     public int ChallengeExpirationMinutes { get; set; } = 30;
 
     /// <summary>
+    /// How long a Socure DocV transaction token is treated as valid after issuance, in minutes.
+    /// When exceeded, <c>StartChallenge</c> runs a new evaluation to obtain a fresh token for the same user.
+    /// </summary>
+    [Range(1, 120, ErrorMessage = "DocvTransactionTokenTtlMinutes must be between 1 and 120.")]
+    [DefaultValue(20)]
+    public int DocvTransactionTokenTtlMinutes { get; set; } = 20;
+
+    /// <summary>
     /// Socure API version header value.
     /// </summary>
     public string ApiVersion { get; set; } = "2025-01-01.orion";
@@ -57,6 +65,13 @@ public class SocureSettings
     /// Configurable per environment — may differ between sandbox and production.
     /// </summary>
     public string Workflow { get; set; } = "consumer_onboarding";
+
+    /// <summary>
+    /// Socure workflow name for DocV step-up retries (DC-301). Used when a user clicks
+    /// "try again" from a Resubmit prompt. The step-up workflow only emits ACCEPT/REJECT,
+    /// so retries are structurally capped at one attempt.
+    /// </summary>
+    public string DocvStepupWorkflow { get; set; } = "docv_stepup";
 
     /// <summary>
     /// Identifier used to locate the DocV enrichment in the evaluation response.

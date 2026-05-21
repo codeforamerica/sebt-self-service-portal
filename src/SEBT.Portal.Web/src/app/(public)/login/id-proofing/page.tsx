@@ -1,57 +1,16 @@
-import { type IdOption } from '@/features/auth'
-import { IdProofingWithDi } from '@/features/auth/components/id-proofing/IdProofingWithDi'
-import { getTranslations } from '@/lib/translations'
-import { getState, getStateLinks } from '@sebt/design-system'
+'use client'
 
-// DC-only: CO uses external auth and never reaches this route.
-// If a future state adopts OTP auth with id-proofing, add a state-based options
-// map or guard here.
-//
-// The full set shown here is for non-co-loaded users. Once the backend confirms
-// which options are available for co-loaded users (via JWT claim), this list can
-// be made dynamic at the page level.
-// TODO: Filter options based on co-loaded status once that claim is available in the JWT.
-const DC_ID_OPTIONS: IdOption[] = [
-  {
-    value: 'ssn',
-    labelKey: 'optionLabelSsn',
-    inputLabelKey: 'labelSsn'
-  },
-  {
-    value: 'itin',
-    labelKey: 'optionLabelItin',
-    inputLabelKey: 'labelItin'
-  },
-  {
-    value: 'medicaidId',
-    labelKey: 'optionLabelMedicaidId',
-    helperKey: 'optionHelperMedicaidId',
-    inputLabelKey: 'labelMedicaidId'
-  },
-  {
-    value: 'snapAccountId',
-    labelKey: 'optionAccountId',
-    helperKey: 'optionHelperAccountId',
-    inputLabelKey: 'labelAccountId'
-  },
-  {
-    value: 'snapPersonId',
-    labelKey: 'optionPersonId',
-    helperKey: 'optionHelperPersonId',
-    inputLabelKey: 'labelPersonId'
-  },
-  {
-    value: 'none',
-    // TODO: Use t('optionLabelNone') once key is available in dc.csv
-    labelKey: 'optionLabelNone'
-  }
-]
+import { IdProofingWithDi } from '@/features/auth/components/id-proofing/IdProofingWithDi'
+import { getState, getStateLinks } from '@sebt/design-system'
+import { useTranslation } from 'react-i18next'
+
+import { DC_ID_OPTIONS, DC_ID_OPTIONS_CO_LOADED } from './dc-id-options'
 
 export default function IdProofingPage() {
   const state = getState()
   const links = getStateLinks(state)
-  const t = getTranslations('idProofing')
-  const tCommon = getTranslations('common')
+  const { t } = useTranslation('idProofing')
+  const { t: tCommon } = useTranslation('common')
 
   return (
     <div className="usa-section">
@@ -70,6 +29,7 @@ export default function IdProofingPage() {
 
           <IdProofingWithDi
             idOptions={DC_ID_OPTIONS}
+            coLoadedIdOptions={DC_ID_OPTIONS_CO_LOADED}
             contactLink={links.external.contactUsAssistance}
           />
         </section>

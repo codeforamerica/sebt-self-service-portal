@@ -131,8 +131,8 @@ describe('initMixpanelBridge', () => {
         'cta_click',
         expect.objectContaining({
           cta_id: 'nav',
-          page_name: 'Dashboard',
-          page_flow: 'dashboard'
+          name: 'Dashboard',
+          flow: 'dashboard'
         })
       )
     })
@@ -149,8 +149,8 @@ describe('initMixpanelBridge', () => {
         'otp_result',
         expect.objectContaining({
           status: 'success',
-          user_authenticated: true,
-          user_identity_assurance_level: 2
+          authenticated: true,
+          identity_assurance_level: 2
         })
       )
     })
@@ -164,7 +164,7 @@ describe('initMixpanelBridge', () => {
       window.digitalData!.trackEvent('otp_result')
 
       const payload = mixpanelStub.track.mock.calls[0]![1] as Record<string, unknown>
-      expect(payload).not.toHaveProperty('user_email')
+      expect(payload).not.toHaveProperty('email')
     })
 
     it('forwards events without eventData', () => {
@@ -189,7 +189,7 @@ describe('initMixpanelBridge', () => {
 
       expect(mixpanelStub.track).toHaveBeenCalledWith(
         'household_result',
-        expect.objectContaining({ user_authenticated: true })
+        expect.objectContaining({ authenticated: true })
       )
     })
   })

@@ -16,6 +16,7 @@ import { useHouseholdData } from '@/features/household'
  */
 export function DashboardAlerts() {
   const { t } = useTranslation('dashboard')
+
   const searchParams = useSearchParams()
   const router = useRouter()
   const pathname = usePathname()
@@ -55,15 +56,7 @@ export function DashboardAlerts() {
   return (
     <div className="margin-bottom-3 display-flex flex-column gap-2">
       {alerts.addressUpdated && !alerts.cardsRequested && (
-        <Alert
-          variant="success"
-          heading={t('alertAddressUpdatedHeading', 'Address update recorded')}
-        >
-          {t(
-            'alertAddressUpdatedBody',
-            'Your address update has been recorded. State system integration is pending — changes are not yet reflected in the benefits system.'
-          )}
-        </Alert>
+        <Alert variant="success">{t('alertAddressUpdated')}</Alert>
       )}
 
       {alerts.addressUpdated && alerts.cardsRequested && (
@@ -73,7 +66,7 @@ export function DashboardAlerts() {
         >
           {t(
             'alertCardsRequestedBody',
-            'Your address update and card replacement request have been recorded. State system integration is pending — changes are not yet reflected in the benefits system.'
+            'Your address update and card replacement request have been recorded.'
           )}
         </Alert>
       )}
@@ -81,13 +74,12 @@ export function DashboardAlerts() {
       {alerts.cardReplaced && (
         <Alert
           variant="success"
+          // TODO update copy for alertCardReplacedHeading
           heading={t('alertCardReplacedHeading', 'Your replacement card request has been recorded')}
         >
+          {/* TODO update copy for alertCardReplacedBody (no-address branch) */}
           {householdData?.addressOnFile
-            ? t(
-                'alertCardReplacedBodyWithAddress',
-                'New cards usually arrive in your mailbox within 7-10 business days. Check back here in 1-2 business days to see your updated card details.'
-              )
+            ? t('alertAddressBody')
             : t(
                 'alertCardReplacedBody',
                 'New cards usually arrive in your mailbox within 7-10 business days.'
@@ -100,12 +92,10 @@ export function DashboardAlerts() {
           Currently triggered by URL params for visual verification. */}
 
       {alerts.addressUpdateFailed && (
+        // TODO update copy
         <Alert
           variant="warning"
-          heading={t(
-            'alertAddressUpdateFailedHeading',
-            'There was an issue updating your mailing address.'
-          )}
+          heading={t('alertAddressUpdateError')}
         >
           {t(
             'alertAddressUpdateFailedBody',
@@ -115,26 +105,21 @@ export function DashboardAlerts() {
       )}
 
       {alerts.contactUpdateFailed && (
+        // TODO update copy
         <Alert
           variant="warning"
-          heading={t(
-            'alertContactUpdateFailedHeading',
-            'There was an issue updating your contact preferences.'
-          )}
+          heading={t('alertContactUpdateError')}
         >
-          {t('alertContactUpdateFailedBody', 'Please try again later.')}
+          {t('alertContactUpdateError')}
         </Alert>
       )}
 
       {alerts.addressVerification && (
         <Alert
           variant="warning"
-          heading={t('alertAddressVerificationHeading', 'Is your address correct?')}
+          heading={t('alertCheckAddressTitle')}
         >
-          {t(
-            'alertAddressVerificationBody',
-            'Please verify your mailing address is up to date so you can receive your Summer EBT cards.'
-          )}
+          {t('alertCheckAddressBody')}
         </Alert>
       )}
     </div>

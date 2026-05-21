@@ -77,6 +77,8 @@ const contentDir = join(__dirname, '..');
 const rootDir = join(contentDir, '..');
 const rel = p => relative(rootDir, p);
 
+const ignoredStringIndicator = "!N/A!"
+
 // Configuration
 const CONFIG = {
   // State CSV files directory (content/states/{state}.csv)
@@ -88,6 +90,7 @@ const CONFIG = {
     : join(contentDir, 'locales'),
   hashFile: join(contentDir, '.copy-hash'),
   locales: {
+    am: 'Amharic',    
     en: 'English',
     es: 'Español',
   },
@@ -139,6 +142,9 @@ const CONFIG = {
     // S8 - Edit screens
     'contact preferences update': 'editContactPreferences',
     'mailing address edit': 'editMailingAddress',
+    // S5 - CO Bulk Order New Cards flow (initial + who screens share optionalId via S5 fallback,
+    // but the "bulk order new cards" intro screen is used by components in confirmInfo namespace)
+    'bulk order new cards': 'confirmInfo',
     // S10 - Step-up verification screens
     'step-up disclaimer': 'stepUpDisclaimer',
     'step-up failure': 'stepUpFailure',
@@ -156,10 +162,15 @@ const CONFIG = {
     'otp confirm': 'verify',
     'otp email message': 'email',
     'co-loaded off-boarding': 'coLoaded',
+    // "Co-loaded Address Update" shares the `dashboard` namespace with "Pin Card".
+    // Prefix isolates the co-loaded mailing-address page so its keys don't
+    // collide with (and overwrite) `title` / `body` / `action` from Pin Card.
+    'co-loaded address update': 'coLoadedAddressUpdate',
     'address not found': 'notFound',
     'suggested address': 'suggested',
     'abbreviated address': 'abbreviated',
     'callback': 'callback',
+    'bulk order new cards': 'replacementCards',
   },
 };
 
@@ -321,6 +332,10 @@ function buildStateLocaleData(rows, state) {
     h.toLowerCase().includes('español current')
   );
 
+  const amharicIdx = headerRow.findIndex((h) =>
+    h.toLowerCase().includes('amharic current')
+  );
+
   if (contentIdx === -1 || englishIdx === -1) {
     throw new Error(`CSV for ${state} must have "Content" and "English" columns`);
   }
@@ -336,9 +351,10 @@ function buildStateLocaleData(rows, state) {
     const contentKey = row[contentIdx];
     const englishValue = row[englishIdx] || '';
     const spanishValue = spanishIdx !== -1 ? row[spanishIdx] || '' : '';
+    const amharicValue = amharicIdx !== -1 ? row[amharicIdx] || '' : '';
 
     // Skip empty rows or rows without content keys
-    if (!contentKey || !contentKey.trim()) continue;
+    if (!contentKey || !contentKey.trim() || englishValue === ignoredStringIndicator) continue;
 
     const parsed = parseContentKey(contentKey);
     if (!parsed) continue;
@@ -364,6 +380,16 @@ function buildStateLocaleData(rows, state) {
       }
       if (spanishValue || !data.es[namespace][key]) {
         data.es[namespace][key] = spanishValue;
+      }
+    }
+
+    // amharic — same collision protection
+    if (amharicIdx !== -1) {
+      if (!data.am[namespace]) {
+        data.am[namespace] = {};
+      }
+      if (amharicValue || !data.am[namespace][key]) {
+        data.am[namespace][key] = amharicValue;
       }
     }
   }
@@ -497,13 +523,17 @@ function validateStateCompleteness(stateData, state) {
     }
   }
 
-  // Check Spanish for missing keys
+  // Check other locales for missing keys
   for (const [fullKey] of englishKeys) {
     const [namespace, key] = fullKey.split('.');
     if (!stateData.es?.[namespace]?.[key]) {
       warnings.push(`Missing Spanish translation in ${state}: ${fullKey}`);
     }
+    if (!stateData.am?.[namespace]?.[key]) {
+      warnings.push(`Missing Amharic translation in ${state}: ${fullKey}`);
+    }
   }
+  
 
   return warnings;
 }

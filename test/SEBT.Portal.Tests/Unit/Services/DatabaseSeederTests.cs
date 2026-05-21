@@ -340,7 +340,7 @@ public class DatabaseSeederTests : IClassFixture<SqlServerTestFixture>
 
         // Verify Phone/SnapId/TanfId stored as plaintext; SSN stored as hash
         var coLoaded = users.First(u => u.Email == "co-loaded@example.com");
-        Assert.Equal("5551234567", coLoaded.Phone);
+        Assert.Equal("8185558439", coLoaded.Phone);
         Assert.Equal("SNAP-CO-001", coLoaded.SnapId);
         Assert.Equal("TANF-CO-001", coLoaded.TanfId);
         Assert.NotNull(coLoaded.Ssn);
@@ -677,13 +677,83 @@ public class DatabaseSeederTests : IClassFixture<SqlServerTestFixture>
 
         // Assert
         var users = await context.Users.ToListAsync();
-        Assert.Equal(13, users.Count);
+        Assert.Equal(19, users.Count);
 
         var emails = users.Select(u => u.Email).ToHashSet();
         Assert.Contains("sebt.co+co-loaded@codeforamerica.org", emails);
         Assert.Contains("sebt.co+verified@codeforamerica.org", emails);
         Assert.Contains("sebt.co+singlechild@codeforamerica.org", emails);
         Assert.Contains("sebt.co+pending@codeforamerica.org", emails);
+        Assert.Contains("sebt.co+co-undeliverable@codeforamerica.org", emails);
+        Assert.Contains("sebt.co+co-frozen@codeforamerica.org", emails);
+        Assert.Contains("sebt.co+co-notactivated@codeforamerica.org", emails);
+        Assert.Contains("sebt.co+co-deactivatedbystate@codeforamerica.org", emails);
+        Assert.Contains("sebt.co+co-active@codeforamerica.org", emails);
+    }
+
+    [Fact]
+    public async Task SeedTestUsersAsync_WithMockHouseholdData_IdProofInProgressUser_HasInProgressStatus()
+    {
+        using var context = CreateContext();
+        await CleanupDatabaseAsync(context);
+        var settings = new SeedingSettings { EmailPattern = "{0}@example.com", State = "dc" };
+        var seeder = CreateSeeder(context, settings);
+
+        await seeder.SeedTestUsersAsync(useMockHouseholdData: true);
+
+        var user = await context.Users
+            .SingleOrDefaultAsync(u => u.Email == "id-proof-in-progress@example.com");
+        Assert.NotNull(user);
+        Assert.False(user!.IsCoLoaded);
+        Assert.Equal((int)IdProofingStatus.InProgress, user.IdProofingStatus);
+        Assert.Equal((int)UserIalLevel.None, user.IalLevel);
+        Assert.Null(user.IdProofingCompletedAt);
+        Assert.Null(user.IdProofingExpiresAt);
+    }
+
+    [Fact]
+    public async Task SeedTestUsersAsync_WithMockHouseholdData_AndStateDc_ShouldSeedCoLoadedPendingIdProofingUser()
+    {
+        using var context = CreateContext();
+        await CleanupDatabaseAsync(context);
+        var settings = new SeedingSettings { EmailPattern = "{0}@example.com", State = "dc" };
+        var seeder = CreateSeeder(context, settings);
+
+        await seeder.SeedTestUsersAsync(useMockHouseholdData: true);
+
+        var users = await context.Users.ToListAsync();
+        Assert.Equal(SeedScenarios.UserScenarios.Count, users.Count);
+        var pending = await context.Users
+            .SingleOrDefaultAsync(u => u.Email == "co-loaded-pending-id-proofing@example.com");
+        Assert.NotNull(pending);
+        Assert.True(pending!.IsCoLoaded);
+        Assert.Equal((int)IdProofingStatus.NotStarted, pending.IdProofingStatus);
+        Assert.Equal((int)UserIalLevel.None, pending.IalLevel);
+        Assert.Null(pending.IdProofingCompletedAt);
+        Assert.Null(pending.IdProofingExpiresAt);
+        Assert.Equal("8185558438", pending.Phone);
+        Assert.Equal("SNAP-CO-001", pending.SnapId);
+        Assert.Equal("TANF-CO-001", pending.TanfId);
+    }
+
+    [Fact]
+    public async Task SeedTestUsersAsync_WithMockHouseholdData_AndStateDc_NoIal0Or1UserHasIdProofingCompletedAt()
+    {
+        using var context = CreateContext();
+        await CleanupDatabaseAsync(context);
+        var settings = new SeedingSettings { EmailPattern = "{0}@example.com", State = "dc" };
+        var seeder = CreateSeeder(context, settings);
+
+        await seeder.SeedTestUsersAsync(useMockHouseholdData: true);
+
+        var users = await context.Users.ToListAsync();
+        var invalid = users
+            .Where(u =>
+                (u.IalLevel == (int)UserIalLevel.None || u.IalLevel == (int)UserIalLevel.IAL1) &&
+                u.IdProofingCompletedAt != null)
+            .Select(u => u.Email)
+            .ToList();
+        Assert.Empty(invalid);
     }
 
     [Fact]

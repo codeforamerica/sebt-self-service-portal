@@ -38,6 +38,11 @@ public class PortalDbContext : DbContext
     /// </summary>
     public DbSet<DeidentifiedChildResultEntity> DeidentifiedChildResults { get; set; }
 
+    /// <summary>
+    /// Card replacement request records for cooldown enforcement.
+    /// </summary>
+    public DbSet<CardReplacementRequestEntity> CardReplacementRequests { get; set; }
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
@@ -46,6 +51,7 @@ public class PortalDbContext : DbContext
         {
             entity.ToTable("UserOptIns");
             entity.HasKey(e => e.Id);
+            entity.Property(e => e.Id).ValueGeneratedNever();
             entity.HasIndex(e => e.Email).IsUnique();
             entity.Property(e => e.Email).IsRequired().HasMaxLength(255);
             entity.Property(e => e.EmailOptIn)
@@ -68,9 +74,7 @@ public class PortalDbContext : DbContext
         {
             entity.ToTable("Users");
             entity.HasKey(e => e.Id);
-            entity.Property(e => e.Id)
-                .ValueGeneratedOnAdd()
-                .UseIdentityColumn();
+            entity.Property(e => e.Id).ValueGeneratedNever();
             entity.Property(e => e.Email)
                 .HasMaxLength(255);
             entity.HasIndex(e => e.Email)
@@ -114,15 +118,23 @@ public class PortalDbContext : DbContext
                 .IsUnique()
                 .HasDatabaseName("IX_Users_ExternalProviderId")
                 .HasFilter("[ExternalProviderId] IS NOT NULL");
+
+            // The DF_Users_IdProofingAttemptCount default constraint has existed in the DB
+            // since migration 20260409181556_AddIdProofingAttemptCountToUsers created the
+            // column with defaultValue: 0. That prior migration never added the matching
+            // .HasDefaultValue(0) here, so EF's model snapshot has drifted from the actual
+            // schema. Declaring it here re-aligns the snapshot with the DB reality and
+            // ensures future migrations won't generate spurious "remove default" deltas.
+            entity.Property(e => e.IdProofingAttemptCount)
+                .IsRequired()
+                .HasDefaultValue(0);
         });
 
         modelBuilder.Entity<DocVerificationChallengeEntity>(entity =>
         {
             entity.ToTable("DocVerificationChallenges");
             entity.HasKey(e => e.Id);
-            entity.Property(e => e.Id)
-                .ValueGeneratedOnAdd()
-                .UseIdentityColumn();
+            entity.Property(e => e.Id).ValueGeneratedNever();
 
             // Opaque public ID for API consumers
             entity.Property(e => e.PublicId)
@@ -166,6 +178,16 @@ public class PortalDbContext : DbContext
             entity.Property(e => e.OffboardingReason)
                 .HasMaxLength(255);
 
+            entity.Property(e => e.ProofingDateOfBirth)
+                .HasMaxLength(32);
+            entity.Property(e => e.ProofingIdType)
+                .HasMaxLength(64);
+            entity.Property(e => e.ProofingIdValue)
+                .HasMaxLength(255);
+
+            entity.Property(e => e.DocvTokenIssuedAt)
+                .HasColumnType("datetime2");
+
             entity.Property(e => e.AllowIdRetry)
                 .IsRequired()
                 .HasDefaultValue(true);
@@ -207,6 +229,37 @@ public class PortalDbContext : DbContext
             entity.Property(e => e.Status).IsRequired().HasMaxLength(50);
             entity.Property(e => e.EligibilityType).HasMaxLength(50);
             entity.Property(e => e.SchoolName).HasMaxLength(255);
+        });
+
+        modelBuilder.Entity<CardReplacementRequestEntity>(entity =>
+        {
+            entity.ToTable("CardReplacementRequests");
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.Id).ValueGeneratedNever();
+
+            entity.Property(e => e.HouseholdIdentifierHash)
+                .IsRequired()
+                .HasMaxLength(64);
+
+            entity.Property(e => e.CaseIdHash)
+                .IsRequired()
+                .HasMaxLength(64);
+
+            entity.Property(e => e.RequestedAt)
+                .IsRequired();
+
+            entity.Property(e => e.RequestedByUserId)
+                .IsRequired();
+
+            entity.HasOne(e => e.RequestedByUser)
+                .WithMany()
+                .HasForeignKey(e => e.RequestedByUserId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            // Composite index covering the cooldown lookup query:
+            // WHERE HouseholdIdentifierHash = @hash AND CaseIdHash = @hash AND RequestedAt > @cutoff
+            entity.HasIndex(e => new { e.HouseholdIdentifierHash, e.CaseIdHash, e.RequestedAt })
+                .HasDatabaseName("IX_CardReplacementRequests_Household_Case_RequestedAt");
         });
     }
 }

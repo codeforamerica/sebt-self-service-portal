@@ -9,13 +9,14 @@ public static class ClaimsPrincipalExtensions
 {
     /// <summary>
     /// Extracts the portal's internal user ID from the authenticated JWT's <c>sub</c> claim.
-    /// Returns null when the claim is absent or does not parse to a positive integer
-    /// (e.g. an unauthenticated principal or a malformed token).
+    /// Returns null when the claim is absent or does not parse to a Guid (e.g. an
+    /// unauthenticated principal, a malformed token, or a legacy int-valued sub from
+    /// before the UUID migration — those are treated as invalid and require re-authentication).
     /// </summary>
-    public static int? GetUserId(this ClaimsPrincipal principal)
+    public static Guid? GetUserId(this ClaimsPrincipal principal)
     {
         var subValue = principal.FindFirst("sub")?.Value;
-        return int.TryParse(subValue, out var id) && id > 0 ? id : null;
+        return Guid.TryParse(subValue, out var id) ? id : null;
     }
 
     /// <summary>
@@ -28,5 +29,16 @@ public static class ClaimsPrincipalExtensions
     {
         return principal.FindFirst(ClaimTypes.Email)?.Value
             ?? principal.FindFirst("email")?.Value;
+    }
+
+    /// <summary>
+    /// Extracts the user's phone number from the JWT claims. Checks <c>phone</c> first
+    /// (OTP-flow users) then <c>phone_number</c> (OIDC IdP passthrough). Returns null
+    /// when absent.
+    /// </summary>
+    public static string? GetUserPhone(this ClaimsPrincipal principal)
+    {
+        return principal.FindFirst("phone")?.Value
+            ?? principal.FindFirst("phone_number")?.Value;
     }
 }

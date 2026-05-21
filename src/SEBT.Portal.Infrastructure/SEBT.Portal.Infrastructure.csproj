@@ -24,6 +24,8 @@
     </ItemGroup>
 
     <ItemGroup>
+      <PackageReference Include="DistributedLock.Redis" Version="1.1.1" />
+      <PackageReference Include="DistributedLock.SqlServer" Version="1.0.7" />
       <PackageReference Include="MailKit" Version="4.16.0" />
       <PackageReference Include="Microsoft.EntityFrameworkCore.SqlServer" Version="10.0.0" />
       <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="10.0.0">
@@ -34,6 +36,7 @@
       <PackageReference Include="Microsoft.Extensions.Caching.Hybrid" Version="10.4.0" />
       <PackageReference Include="Microsoft.Extensions.Caching.Memory" Version="10.0.4" />
       <PackageReference Include="Bogus" Version="35.6.5" />
+      <PackageReference Include="libphonenumber-csharp" Version="9.0.27" />
       <PackageReference Include="Microsoft.Extensions.Caching.StackExchangeRedis" Version="10.0.5" />
       <PackageReference Include="Microsoft.Extensions.Http" Version="10.0.0" />
       <PackageReference Include="Microsoft.Extensions.Logging" Version="10.0.0" />
@@ -70,7 +73,7 @@
     </When>
     <Otherwise>
       <ItemGroup>
-        <PackageReference Include="SEBT.Portal.StatesPlugins.Interfaces" Version="0.0.1-*" PrivateAssets="compile" />
+        <PackageReference Include="SEBT.Portal.StatesPlugins.Interfaces" Version="0.0.2-*" PrivateAssets="compile" />
       </ItemGroup>
     </Otherwise>
   </Choose>
@@ -78,6 +81,7 @@
     <ItemGroup>
       <EmbeddedResource Include="Templates\Email\OtpEmail.html" />
       <EmbeddedResource Include="Templates\Email\logo.png" />
+      <EmbeddedResource Include="BlockedAddresses\co-undeliverable-addresses.csv" />
     </ItemGroup>
 
 </Project>

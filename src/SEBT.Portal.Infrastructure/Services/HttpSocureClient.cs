@@ -30,7 +30,7 @@ public class HttpSocureClient(
     };
 
     public async Task<Result<IdProofingAssessmentResult>> RunIdProofingAssessmentAsync(
-        int userId,
+        Guid userId,
         string email,
         string dateOfBirth,
         string? idType,
@@ -43,9 +43,73 @@ public class HttpSocureClient(
         string? diSessionToken = null,
         CancellationToken cancellationToken = default)
     {
-        var settings = socureSettingsSnapshot.Value;
+        return await RunEvaluationAsync(
+            userId, email, dateOfBirth, idType, idValue,
+            workflow: null,
+            ipAddress, phoneNumber, givenName, familyName, address, diSessionToken,
+            cancellationToken);
+    }
 
-        var request = BuildEvaluationRequest(userId, email, dateOfBirth, idType, idValue, settings, ipAddress, phoneNumber, givenName, familyName, address, diSessionToken);
+    public async Task<Result<IdProofingAssessmentResult>> RunDocvStepupAssessmentAsync(
+        Guid userId,
+        string email,
+        string? phoneNumber = null,
+        string? givenName = null,
+        string? familyName = null,
+        Address? address = null,
+        string? diSessionToken = null,
+        CancellationToken cancellationToken = default)
+    {
+        var stepupWorkflow = socureSettingsSnapshot.Value.DocvStepupWorkflow;
+
+        // docv_stepup tolerates an empty DOB and no national_id; the workflow only re-runs the
+        // Document Request enrichment to mint a fresh capture URL. Sandbox-confirmed via
+        // docs/.local/socure-context/docv_stepup-experiments/FINDINGS.md (2026-04-18).
+        return await RunEvaluationAsync(
+            userId, email,
+            dateOfBirth: string.Empty,
+            idType: null,
+            idValue: null,
+            workflow: stepupWorkflow,
+            ipAddress: null,
+            phoneNumber, givenName, familyName, address, diSessionToken,
+            cancellationToken);
+    }
+
+    private async Task<Result<IdProofingAssessmentResult>> RunEvaluationAsync(
+        Guid userId,
+        string email,
+        string dateOfBirth,
+        string? idType,
+        string? idValue,
+        string? workflow,
+        string? ipAddress,
+        string? phoneNumber,
+        string? givenName,
+        string? familyName,
+        Address? address,
+        string? diSessionToken,
+        CancellationToken cancellationToken)
+    {
+        var settings = socureSettingsSnapshot.Value;
+        var effectiveWorkflow = !string.IsNullOrWhiteSpace(workflow) ? workflow : settings.Workflow;
+
+        // Normalize phone to E.164 at the Socure boundary. Defense-in-depth:
+        // malformed upstream values (e.g. seed-data artifacts) must not reach the API.
+        var normalizedPhone = PhoneNormalizer.Normalize(phoneNumber);
+        if (normalizedPhone is null && !string.IsNullOrWhiteSpace(phoneNumber))
+        {
+            logger.LogWarning("Phone number could not be normalized to E.164; dropping from Socure payload");
+        }
+        var e164Phone = normalizedPhone is null ? null : $"+1{normalizedPhone}";
+
+        // Truncate names to OpenAPI Individual maxLength (240). Names are CMS-sourced and
+        // never user-entered, so the FE cannot police this. Truncation is preferred over
+        // rejection: the name itself is valid, just over-long.
+        var truncatedGivenName = TruncateNameOrWarn(givenName, nameof(givenName));
+        var truncatedFamilyName = TruncateNameOrWarn(familyName, nameof(familyName));
+
+        var request = BuildEvaluationRequest(userId, email, dateOfBirth, idType, idValue, settings, ipAddress, e164Phone, truncatedGivenName, truncatedFamilyName, address, diSessionToken, effectiveWorkflow);
         var jsonContent = JsonSerializer.Serialize(request, JsonOptions);
 
         var httpClient = httpClientFactory.CreateClient("Socure");
@@ -63,7 +127,7 @@ public class HttpSocureClient(
 
             if (!httpResponse.IsSuccessStatusCode)
             {
-                logger.LogWarning(
+                logger.LogError(
                     "Socure API returned {StatusCode} for user {UserId}",
                     httpResponse.StatusCode, userId);
                 return Result<IdProofingAssessmentResult>.DependencyFailed(
@@ -76,7 +140,7 @@ public class HttpSocureClient(
 
             if (response == null)
             {
-                logger.LogWarning("Socure API returned null/unparseable response for user {UserId}", userId);
+                logger.LogError("Socure API returned null/unparseable response for user {UserId}", userId);
                 return Result<IdProofingAssessmentResult>.DependencyFailed(
                     DependencyFailedReason.ConnectionFailed, "Socure API returned an unparseable response.");
             }
@@ -85,20 +149,20 @@ public class HttpSocureClient(
         }
         catch (TaskCanceledException ex) when (!cancellationToken.IsCancellationRequested)
         {
-            logger.LogWarning(ex, "Socure API request timed out for user {UserId}", userId);
+            logger.LogError(ex, "Socure API request timed out for user {UserId}", userId);
             return Result<IdProofingAssessmentResult>.DependencyFailed(
                 DependencyFailedReason.Timeout, "Socure API request timed out.");
         }
         catch (HttpRequestException ex)
         {
-            logger.LogWarning(ex, "Socure API request failed for user {UserId}", userId);
+            logger.LogError(ex, "Socure API request failed for user {UserId}", userId);
             return Result<IdProofingAssessmentResult>.DependencyFailed(
                 DependencyFailedReason.ConnectionFailed, "Socure API connection failed.");
         }
     }
 
     public Task<Result<SocureDocvSession>> StartDocvSessionAsync(
-        int userId,
+        Guid userId,
         string email,
         CancellationToken cancellationToken = default)
     {
@@ -111,7 +175,7 @@ public class HttpSocureClient(
     }
 
     private static SocureEvaluationRequest BuildEvaluationRequest(
-        int userId,
+        Guid userId,
         string email,
         string dateOfBirth,
         string? idType,
@@ -122,7 +186,8 @@ public class HttpSocureClient(
         string? givenName = null,
         string? familyName = null,
         Address? address = null,
-        string? diSessionToken = null)
+        string? diSessionToken = null,
+        string? workflow = null)
     {
         // Frontend-provided DI token takes precedence over config fallback
         var effectiveDiToken = !string.IsNullOrWhiteSpace(diSessionToken)
@@ -130,6 +195,9 @@ public class HttpSocureClient(
             : !string.IsNullOrWhiteSpace(settings.DiSessionToken)
                 ? settings.DiSessionToken
                 : null;
+
+        var sendIdentifierToSocure = !string.IsNullOrWhiteSpace(idType)
+            && !SocureExcludedIdentifierTypes.IsExcludedFromSocurePayload(idType);
 
         var mappedAddress = MapAddress(address);
         if (mappedAddress == null)
@@ -161,11 +229,10 @@ public class HttpSocureClient(
             Email = email,
             DateOfBirth = dateOfBirth,
             Country = "US",
-            NationalId = !string.IsNullOrWhiteSpace(idType) && !string.IsNullOrWhiteSpace(idValue)
+            NationalId = sendIdentifierToSocure && !string.IsNullOrWhiteSpace(idValue)
                 ? idValue
                 : null,
             DiSessionToken = effectiveDiToken,
-            IpAddress = ipAddress,
             PhoneNumber = phoneNumber,
             GivenName = givenName,
             FamilyName = familyName,
@@ -175,12 +242,34 @@ public class HttpSocureClient(
 
         return new SocureEvaluationRequest
         {
-            Id = userId.ToString(),
-            Workflow = settings.Workflow,
+            // Per OpenAPI ConsumerOnboarding.id: must be unique per evaluation. Reusing an id
+            // causes RiskOS to treat the request as a re-run and can impact downstream workflows.
+            // The customer/transaction identifier stays on individual.id (userId).
+            Id = Guid.NewGuid().ToString(),
+            Workflow = !string.IsNullOrWhiteSpace(workflow) ? workflow : settings.Workflow,
             Timestamp = DateTime.UtcNow.ToString("o"),
-            Data = new SocureEvaluationRequestData { Individual = individual }
+            Data = new SocureEvaluationRequestData { Individual = individual, IpAddress = ipAddress }
         };
     }
+
+    /// <summary>
+    /// Truncates a name to <see cref="MaxNameLength"/> characters if needed, logging a warning.
+    /// OpenAPI Individual.given_name and Individual.family_name both specify maxLength: 240.
+    /// </summary>
+    private string? TruncateNameOrWarn(string? name, string fieldName)
+    {
+        if (name is null || name.Length <= MaxNameLength)
+        {
+            return name;
+        }
+
+        logger.LogWarning(
+            "Name field {FieldName} exceeded {MaxLength} chars ({ActualLength}); truncating for Socure payload",
+            fieldName, MaxNameLength, name.Length);
+        return name[..MaxNameLength];
+    }
+
+    private const int MaxNameLength = 240;
 
     private static SocureAddress? MapAddress(Address? address)
     {

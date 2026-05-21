@@ -6,6 +6,7 @@ import type { Child } from '../context/EnrollmentContext'
 interface ChildReviewCardProps {
   child: Child
   onEdit: (id: string) => void
+  onRemove: (id: string) => void
 }
 
 /** Format ISO date (YYYY-MM-DD) as a locale-aware date string (e.g., "April 12, 2015"). */
@@ -15,8 +16,9 @@ function formatBirthdate(dateOfBirth: string, locale: string): string {
   return date.toLocaleDateString(locale, { year: 'numeric', month: 'long', day: 'numeric' })
 }
 
-export function ChildReviewCard({ child, onEdit }: ChildReviewCardProps) {
+export function ChildReviewCard({ child, onEdit, onRemove }: ChildReviewCardProps) {
   const { t, i18n } = useTranslation('confirmInfo')
+  const { t: tCommon } = useTranslation('common')
 
   const middleInitial = child.middleName ? ` ${child.middleName.charAt(0)}.` : ''
   const fullName = `${child.firstName}${middleInitial} ${child.lastName}`
@@ -31,13 +33,24 @@ export function ChildReviewCard({ child, onEdit }: ChildReviewCardProps) {
         <strong>{t('tableBirthdateHeading')}</strong>
       </p>
       <p className="usa-prose margin-top-0">{formatBirthdate(child.dateOfBirth, i18n.language)}</p>
-      <button
-        type="button"
-        className="usa-button usa-button--unstyled"
-        onClick={() => onEdit(child.id)}
-      >
-        {t('tableAction')}
-      </button>
+      <div className="display-flex flex-row flex-wrap gap-2">
+        <button
+          type="button"
+          className="usa-link usa-button--unstyled"
+          aria-label={`${t('tableAction')}: ${fullName}`}
+          onClick={() => onEdit(child.id)}
+        >
+          {t('tableAction')}
+        </button>
+        <button
+          type="button"
+          className="usa-link usa-button--unstyled text-error-dark"
+          aria-label={`${tCommon('remove')}: ${fullName}`}
+          onClick={() => onRemove(child.id)}
+        >
+          {tCommon('remove')}
+        </button>
+      </div>
     </div>
   )
 }

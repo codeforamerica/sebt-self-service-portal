@@ -87,15 +87,16 @@ internal static class PluginHouseholdDataMapper
             ApplicationStatus = (ApplicationStatus)(GetProp(t, source, "ApplicationStatus") ?? (int)ApplicationStatus.Unknown),
             MailingAddress = ToCoreAddress(GetProp(t, source, "MailingAddress")),
             EbtCaseNumber = GetProp<string>(t, source, "EbtCaseNumber"),
+            CaseDisplayNumber = GetProp<string>(t, source, "CaseDisplayNumber"),
             EbtCardLastFour = GetProp<string>(t, source, "EbtCardLastFour"),
             EbtCardStatus = GetProp<string>(t, source, "EbtCardStatus"),
             EbtCardIssueDate = ToDateTimeOrNull(GetProp(t, source, "EbtCardIssueDate")),
             EbtCardBalance = GetProp<decimal?>(t, source, "EbtCardBalance"),
             IsCoLoaded = GetProp<bool>(t, source, "IsCoLoaded"),
             IsStreamlineCertified = GetProp<bool>(t, source, "IsStreamlineCertified"),
-            CardRequestedAt = GetProp<DateTime?>(t, source, "CardRequestedAt"),
             BenefitAvailableDate = ToDateTimeOrNull(GetProp(t, source, "BenefitAvailableDate")),
-            BenefitExpirationDate = ToDateTimeOrNull(GetProp(t, source, "BenefitExpirationDate"))
+            BenefitExpirationDate = ToDateTimeOrNull(GetProp(t, source, "BenefitExpirationDate")),
+            IssuanceType = (IssuanceType)(GetProp(t, source, nameof(SummerEbtCase.IssuanceType)) ?? (int)IssuanceType.Unknown)
         };
     }
 

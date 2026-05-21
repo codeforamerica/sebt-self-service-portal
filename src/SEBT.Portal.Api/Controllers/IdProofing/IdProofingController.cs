@@ -37,7 +37,7 @@ public class IdProofingController : ControllerBase
         [FromServices] ICommandHandler<SubmitIdProofingCommand, SubmitIdProofingResponse> handler,
         CancellationToken cancellationToken)
     {
-        var userId = (int)HttpContext.Items[ResolveUserFilter.UserIdKey]!;
+        var userId = (Guid)HttpContext.Items[ResolveUserFilter.UserIdKey]!;
 
         var command = new SubmitIdProofingCommand
         {
@@ -72,7 +72,7 @@ public class IdProofingController : ControllerBase
         [FromServices] IQueryHandler<GetVerificationStatusQuery, VerificationStatusResponse> handler,
         CancellationToken cancellationToken)
     {
-        var userId = (int)HttpContext.Items[ResolveUserFilter.UserIdKey]!;
+        var userId = (Guid)HttpContext.Items[ResolveUserFilter.UserIdKey]!;
 
         var query = new GetVerificationStatusQuery
         {

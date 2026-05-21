@@ -29,6 +29,7 @@ export default function Page() {
     if (!raw) { router.replace('/'); return }
     try {
       const parsed = enrollmentCheckResponseSchema.parse(JSON.parse(raw))
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setResponse(parsed)
 
       // Track analytics inline — avoids a second useEffect reacting to state change
@@ -47,5 +48,10 @@ export default function Page() {
 
   if (!response) return null
 
-  return <ResultsPage results={response.results} applicationUrl={config.applicationUrl} />
+  return (
+    <ResultsPage
+      results={response.results}
+      portalUrl={config.portalUrl}
+    />
+  )
 }

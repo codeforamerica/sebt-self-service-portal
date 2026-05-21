@@ -1,0 +1,18 @@
+feature:
+  - head-branch: ['^(feat|feature)/']
+bugfix:
+  - head-branch: ['^(fix|bugfix|bug|hotfix)/']
+chore:
+  - head-branch: ['^chore/']
+documentation:
+  - head-branch: ['^(docs|doc|documentation)/']
+proof of concept:
+  - head-branch: ['^poc/']
+security:
+  - head-branch: ['^(security|vuln|sec)/']
+infrastructure:
+  - head-branch: ['^(infra|infrastructure)/']
+dependabot:
+  - head-branch: ['^dependabot/']
+refactor:
+  - head-branch: ['^refactor/']

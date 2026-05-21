@@ -5,6 +5,7 @@ namespace SEBT.Portal.Api.Models.Household;
 using Address = Core::SEBT.Portal.Core.Models.Household.Address;
 using Application = Core::SEBT.Portal.Core.Models.Household.Application;
 using Child = Core::SEBT.Portal.Core.Models.Household.Child;
+using AllowedActions = Core::SEBT.Portal.Core.Models.Household.AllowedActions;
 using HouseholdData = Core::SEBT.Portal.Core.Models.Household.HouseholdData;
 using SummerEbtCase = Core::SEBT.Portal.Core.Models.Household.SummerEbtCase;
 using UserProfile = Core::SEBT.Portal.Core.Models.Household.UserProfile;
@@ -15,9 +16,11 @@ using UserProfile = Core::SEBT.Portal.Core.Models.Household.UserProfile;
 public static class HouseholdDataResponseMapper
 {
     /// <summary>
-    /// Maps domain HouseholdData to the API response model.
+    /// Maps domain HouseholdData to the API response model. The mapper stays a
+    /// pure projection. The controller decides which states emit the analytics
+    /// digest and which App ID to feed in.
     /// </summary>
-    public static HouseholdDataResponse ToResponse(this HouseholdData domain)
+    public static HouseholdDataResponse ToResponse(this HouseholdData domain, string? hashedAppId = null)
     {
         return new HouseholdDataResponse
         {
@@ -27,7 +30,10 @@ public static class HouseholdDataResponseMapper
             Applications = domain.Applications.Select(a => ToResponse(a, domain.BenefitIssuanceType)).ToList(),
             AddressOnFile = domain.AddressOnFile?.ToResponse(),
             UserProfile = domain.UserProfile?.ToResponse(),
-            BenefitIssuanceType = domain.BenefitIssuanceType
+            BenefitIssuanceType = domain.BenefitIssuanceType,
+            AllowedActions = domain.AllowedActions?.ToResponse(),
+            CoLoadedCohort = domain.CoLoadedCohort,
+            HashedAppId = hashedAppId
         };
     }
 
@@ -49,6 +55,7 @@ public static class HouseholdDataResponseMapper
             ApplicationStatus = domain.ApplicationStatus,
             MailingAddress = domain.MailingAddress?.ToResponse(),
             EbtCaseNumber = domain.EbtCaseNumber,
+            CaseDisplayNumber = domain.CaseDisplayNumber,
             EbtCardLastFour = domain.EbtCardLastFour,
             EbtCardStatus = domain.EbtCardStatus,
             EbtCardIssueDate = domain.EbtCardIssueDate,
@@ -56,8 +63,10 @@ public static class HouseholdDataResponseMapper
             CardRequestedAt = domain.CardRequestedAt,
             BenefitAvailableDate = domain.BenefitAvailableDate,
             BenefitExpirationDate = domain.BenefitExpirationDate,
-            AllowAddressChange = !domain.IsCoLoaded,
-            AllowCardReplacement = !domain.IsCoLoaded
+            // Per-case gating is driven by the per-case evaluator result; co-loaded
+            // cases are always denied regardless of rules config (handled elsewhere).
+            AllowAddressChange = (domain.AllowedActions?.CanUpdateAddress ?? false) && !domain.IsCoLoaded,
+            AllowCardReplacement = (domain.AllowedActions?.CanRequestReplacementCard ?? false) && !domain.IsCoLoaded
         };
     }
 
@@ -120,6 +129,17 @@ public static class HouseholdDataResponseMapper
             FirstName = domain.FirstName,
             MiddleName = domain.MiddleName,
             LastName = domain.LastName
+        };
+    }
+
+    private static AllowedActionsResponse ToResponse(this AllowedActions domain)
+    {
+        return new AllowedActionsResponse
+        {
+            CanUpdateAddress = domain.CanUpdateAddress,
+            CanRequestReplacementCard = domain.CanRequestReplacementCard,
+            AddressUpdateDeniedMessageKey = domain.AddressUpdateDeniedMessageKey,
+            CardReplacementDeniedMessageKey = domain.CardReplacementDeniedMessageKey
         };
     }
 }

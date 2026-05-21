@@ -32,7 +32,8 @@ const defaultMockData: HouseholdData = {
   phone: '3035550100',
   summerEbtCases: [],
   applications: [mockApplication],
-  addressOnFile: null
+  addressOnFile: null,
+  coLoadedCohort: 'NonCoLoaded'
 }
 
 let mockReturnData: HouseholdData
@@ -111,7 +112,7 @@ describe('ApplicationsSection', () => {
 
     const statusText = screen.getByText('Pending')
     expect(statusText).toHaveClass('text-bold')
-    expect(statusText).toHaveClass('text-gold')
+    expect(statusText).toHaveClass('text-green')
   })
 
   it('renders nothing when no applications', () => {

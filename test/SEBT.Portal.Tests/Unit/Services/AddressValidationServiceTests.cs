@@ -1,12 +1,18 @@
 using Microsoft.Extensions.Options;
 using SEBT.Portal.Core.AppSettings;
 using SEBT.Portal.Core.Models.Household;
+using SEBT.Portal.Core.Services;
 using SEBT.Portal.Infrastructure.Services;
 
 namespace SEBT.Portal.Tests.Unit.Services;
 
 public class AddressValidationServiceTests
 {
+    private sealed class StubBlockedAddressDataSource(params BlockedAddressEntry[] entries) : IBlockedAddressDataSource
+    {
+        public IReadOnlyCollection<BlockedAddressEntry> GetEntries() => entries;
+    }
+
     /// <summary>
     /// DC settings: 5 blocked addresses, 6 street abbreviation mappings, 30-char limit.
     /// Mirrors the data that would be in appsettings.dc.json.
@@ -45,8 +51,10 @@ public class AddressValidationServiceTests
         ]
     };
 
-    private static AddressValidationService CreateService(AddressValidationDataSettings settings) =>
-        new(Options.Create(settings));
+    private static AddressValidationService CreateService(
+        AddressValidationDataSettings settings,
+        IBlockedAddressDataSource? blockedAddressData = null) =>
+        new(Options.Create(settings), blockedAddressData ?? new EmptyBlockedAddressDataSource());
 
     // --- Blocked address detection ---
 
@@ -328,6 +336,238 @@ public class AddressValidationServiceTests
         var address = new Address
         {
             StreetAddress1 = "2100 Martin Luther King Jr Avenue SE",
+            City = "Washington",
+            State = "District of Columbia",
+            PostalCode = "20020"
+        };
+
+        var result = await service.ValidateAsync(address);
+
+        Assert.True(result.IsValid);
+    }
+
+    // --- Data-source-backed blocked addresses (street + 5-digit ZIP) ---
+
+    [Fact]
+    public async Task ValidateAsync_DataSourceEntry_BlocksWhenStreetAndZipMatch()
+    {
+        var service = CreateService(
+            new AddressValidationDataSettings(),
+            new StubBlockedAddressDataSource(new BlockedAddressEntry("1575 Sherman St", "80203")));
+        var address = new Address
+        {
+            StreetAddress1 = "1575 Sherman St",
+            City = "Denver",
+            State = "Colorado",
+            PostalCode = "80203"
+        };
+
+        var result = await service.ValidateAsync(address);
+
+        Assert.False(result.IsValid);
+        Assert.Equal("blocked", result.Reason);
+    }
+
+    [Fact]
+    public async Task ValidateAsync_DataSourceEntry_DoesNotBlockSameStreetAtDifferentZip()
+    {
+        // 333-row CO list spans the state; "100 Main St" at 80205 must not block 80123.
+        var service = CreateService(
+            new AddressValidationDataSettings(),
+            new StubBlockedAddressDataSource(new BlockedAddressEntry("100 Main St", "80205")));
+        var address = new Address
+        {
+            StreetAddress1 = "100 Main St",
+            City = "Littleton",
+            State = "Colorado",
+            PostalCode = "80123"
+        };
+
+        var result = await service.ValidateAsync(address);
+
+        Assert.True(result.IsValid);
+    }
+
+    [Fact]
+    public async Task ValidateAsync_DataSourceEntry_BlocksWhenUserSubmitsZipPlusFour()
+    {
+        // CSV records ZIP+4 ("80203-1702") but user input may be 5- or 9-digit.
+        // The matcher normalizes to first 5.
+        var service = CreateService(
+            new AddressValidationDataSettings(),
+            new StubBlockedAddressDataSource(new BlockedAddressEntry("1575 Sherman St", "80203")));
+        var address = new Address
+        {
+            StreetAddress1 = "1575 Sherman St",
+            City = "Denver",
+            State = "Colorado",
+            PostalCode = "80203-1702"
+        };
+
+        var result = await service.ValidateAsync(address);
+
+        Assert.False(result.IsValid);
+    }
+
+    [Fact]
+    public async Task ValidateAsync_DataSourceEntry_RespectsStreetTypeNormalization()
+    {
+        // CSV stores "ST"; user enters "Street". Both must match through normalization.
+        var service = CreateService(
+            new AddressValidationDataSettings(),
+            new StubBlockedAddressDataSource(new BlockedAddressEntry("1575 SHERMAN ST", "80203")));
+        var address = new Address
+        {
+            StreetAddress1 = "1575 Sherman Street",
+            City = "Denver",
+            State = "Colorado",
+            PostalCode = "80203"
+        };
+
+        var result = await service.ValidateAsync(address);
+
+        Assert.False(result.IsValid);
+    }
+
+    [Fact]
+    public async Task ValidateAsync_DataSourceEntry_BlocksPoBoxAtMatchingZip()
+    {
+        // PO-box-only CSV row synthesizes "PO BOX {n}" as the street key.
+        var service = CreateService(
+            new AddressValidationDataSettings(),
+            new StubBlockedAddressDataSource(new BlockedAddressEntry("PO BOX 220", "80701")));
+        var address = new Address
+        {
+            StreetAddress1 = "PO Box 220",
+            City = "Fort Morgan",
+            State = "Colorado",
+            PostalCode = "80701"
+        };
+
+        var result = await service.ValidateAsync(address);
+
+        Assert.False(result.IsValid);
+        Assert.Equal("blocked", result.Reason);
+    }
+
+    [Fact]
+    public async Task ValidateAsync_DataSourceEntry_DoesNotBlockOnMissingZip()
+    {
+        // If user input has no postal code, the ZIP-keyed matcher must not throw and must not match.
+        var service = CreateService(
+            new AddressValidationDataSettings(),
+            new StubBlockedAddressDataSource(new BlockedAddressEntry("1575 Sherman St", "80203")));
+        var address = new Address
+        {
+            StreetAddress1 = "1575 Sherman St",
+            City = "Denver",
+            State = "Colorado",
+            PostalCode = null
+        };
+
+        var result = await service.ValidateAsync(address);
+
+        Assert.True(result.IsValid);
+    }
+
+    // --- Smarty directional drift (ZIP-keyed entries only) ---
+
+    [Theory]
+    [InlineData("1575 N Sherman St")]   // Smarty adds North directional (the production case)
+    [InlineData("1575 S Sherman St")]   // Hypothetical: Smarty adds South
+    [InlineData("1575 NE Sherman St")]  // Compound directional inserted before street
+    [InlineData("1575 Sherman St NE")]  // Directional appended as suffix (DC-style)
+    [InlineData("1575 North Sherman St")] // Full word directional
+    public async Task ValidateAsync_DataSourceEntry_BlocksWhenSmartyAddsDirectional(string streetWithDirectional)
+    {
+        // CSV stores "1575 Sherman St" with no directional; Smarty's canonical form
+        // adds one. The ZIP-keyed matcher must reconcile both forms so the blocked
+        // address still gets caught after Smarty normalization.
+        var service = CreateService(
+            new AddressValidationDataSettings(),
+            new StubBlockedAddressDataSource(new BlockedAddressEntry("1575 Sherman St", "80203")));
+        var address = new Address
+        {
+            StreetAddress1 = streetWithDirectional,
+            City = "Denver",
+            State = "Colorado",
+            PostalCode = "80203"
+        };
+
+        var result = await service.ValidateAsync(address);
+
+        Assert.False(result.IsValid);
+        Assert.Equal("blocked", result.Reason);
+    }
+
+    [Fact]
+    public async Task ValidateAsync_DataSourceEntry_BlocksWhenCsvHasDirectionalButUserOmits()
+    {
+        // Mirror: CSV stores a directional, user input doesn't. Same loose-match
+        // behavior applies in the other direction.
+        var service = CreateService(
+            new AddressValidationDataSettings(),
+            new StubBlockedAddressDataSource(new BlockedAddressEntry("1575 N Sherman St", "80203")));
+        var address = new Address
+        {
+            StreetAddress1 = "1575 Sherman St",
+            City = "Denver",
+            State = "Colorado",
+            PostalCode = "80203"
+        };
+
+        var result = await service.ValidateAsync(address);
+
+        Assert.False(result.IsValid);
+    }
+
+    [Theory]
+    [InlineData("1575 N Sherman St Ste 200")]    // Suite, abbreviated
+    [InlineData("1575 Sherman St Suite 200")]    // Suite, full word
+    [InlineData("1575 Sherman St Apt 4B")]       // Apartment
+    [InlineData("1575 Sherman St Apartment 4B")] // Apartment, full word
+    [InlineData("1575 Sherman St Unit 5")]       // Unit
+    [InlineData("1575 Sherman St Fl 7")]         // Floor, abbreviated
+    [InlineData("1575 Sherman St Floor 7")]      // Floor, full word
+    [InlineData("1575 Sherman St Rm 100")]       // Room
+    [InlineData("1575 Sherman St Bldg A Ste 200")] // Multiple unit indicators
+    public async Task ValidateAsync_DataSourceEntry_BlocksWhenSmartyKeepsUnitInLine1(string streetWithUnit)
+    {
+        // Smarty's US Street API sometimes leaves unit indicators (Ste/Apt/Fl/etc.) in
+        // streetAddress1 rather than parsing them out into streetAddress2. The CSV
+        // entries don't carry unit info in L1, so the loose matcher must drop unit
+        // suffixes to keep the comparison equivalent.
+        var service = CreateService(
+            new AddressValidationDataSettings(),
+            new StubBlockedAddressDataSource(new BlockedAddressEntry("1575 Sherman St", "80203")));
+        var address = new Address
+        {
+            StreetAddress1 = streetWithUnit,
+            City = "Denver",
+            State = "Colorado",
+            PostalCode = "80203"
+        };
+
+        var result = await service.ValidateAsync(address);
+
+        Assert.False(result.IsValid);
+        Assert.Equal("blocked", result.Reason);
+    }
+
+    [Fact]
+    public async Task ValidateAsync_LegacyEntry_DistinguishesDcQuadrants()
+    {
+        // DC street naming requires the quadrant suffix (NE, NW, SE, SW) to disambiguate.
+        // Loose matching applied to legacy L1-only entries would conflate "Taylor St NW"
+        // (blocked) with "Taylor St SW" (residential). The legacy path must stay strict.
+        var dcSettings = new AddressValidationDataSettings
+        {
+            BlockedAddresses = ["1207 Taylor Street NW"]
+        };
+        var service = CreateService(dcSettings);
+        var address = new Address
+        {
+            StreetAddress1 = "1207 Taylor Street SW",
             City = "Washington",
             State = "District of Columbia",
             PostalCode = "20020"

@@ -40,7 +40,25 @@ public record HouseholdData
     public UserProfile? UserProfile { get; set; }
 
     /// <summary>
-    /// The type of benefit issuance for this household.
+    /// The type of benefit issuance for this household, reflecting the cases the
+    /// client will receive. Plugin-sourced at load time; the query handler may
+    /// realign this value when it filters the case list (e.g. a mixed-eligibility
+    /// household whose co-loaded cases are filtered out becomes <c>SummerEbt</c>)
+    /// so that downstream routing keyed on this field matches the visible view.
     /// </summary>
     public BenefitIssuanceType BenefitIssuanceType { get; set; } = BenefitIssuanceType.Unknown;
+
+    /// <summary>
+    /// Computed permissions for self-service portal actions.
+    /// Set by the query handler after evaluating config rules against household data.
+    /// </summary>
+    public AllowedActions? AllowedActions { get; set; }
+
+    /// <summary>
+    /// Classification of the household relative to co-loaded benefits. Derived
+    /// by the query handler from the full pre-filter household state and used
+    /// both by the filter (to suppress co-loaded cases for excluded households)
+    /// and by the frontend analytics layer to segment usage. See <see cref="CoLoadedCohort"/>.
+    /// </summary>
+    public CoLoadedCohort CoLoadedCohort { get; set; } = CoLoadedCohort.NonCoLoaded;
 }

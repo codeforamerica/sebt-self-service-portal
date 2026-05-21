@@ -26,6 +26,12 @@ variable "apply_immediately" {
   default     = false
 }
 
+variable "db_ingress_cidrs" {
+  type        = list(string)
+  description = "Extra CIDR blocks allowed to connect to the database on TCP 1433. Used to grant VPC-internal clients (e.g. the SSM bastion) access without plumbing security groups."
+  default     = []
+}
+
 variable "desired_containers" {
   type        = number
   description = "Number of desired containers for each service."
@@ -187,10 +193,10 @@ variable "seeding_email_pattern" {
   default     = ""
 }
 
-variable "use_mock_household_data" {
+variable "dc_source_db_name" {
   type        = string
-  description = "Enable mock household data seeding to create all test user scenarios."
-  default     = "false"
+  description = "DC-only: name of the DcSource database (alongside SebtPortal on the same RDS instance) holding the seeded mock data the DC plugin's stored procedures read from. When non-empty, the API task gets a DC_SOURCE_DB_NAME env var so Program.cs builds DCConnector:ConnectionString. Empty means the DC plugin path isn't wired (the typical case for CO and for in-memory mock mode)."
+  default     = ""
 }
 
 variable "log_as_json" {

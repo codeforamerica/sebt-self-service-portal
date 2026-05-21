@@ -15,7 +15,7 @@ public class DisabledSocureClient : ISocureClient
     private const string DisabledMessage = "Socure integration is not enabled for this deployment.";
 
     public Task<Result<IdProofingAssessmentResult>> RunIdProofingAssessmentAsync(
-        int userId,
+        Guid userId,
         string email,
         string dateOfBirth,
         string? idType,
@@ -34,12 +34,27 @@ public class DisabledSocureClient : ISocureClient
     }
 
     public Task<Result<SocureDocvSession>> StartDocvSessionAsync(
-        int userId,
+        Guid userId,
         string email,
         CancellationToken cancellationToken = default)
     {
         return Task.FromResult(
             Result<SocureDocvSession>.DependencyFailed(
+                DependencyFailedReason.NotConfigured, DisabledMessage));
+    }
+
+    public Task<Result<IdProofingAssessmentResult>> RunDocvStepupAssessmentAsync(
+        Guid userId,
+        string email,
+        string? phoneNumber = null,
+        string? givenName = null,
+        string? familyName = null,
+        Address? address = null,
+        string? diSessionToken = null,
+        CancellationToken cancellationToken = default)
+    {
+        return Task.FromResult(
+            Result<IdProofingAssessmentResult>.DependencyFailed(
                 DependencyFailedReason.NotConfigured, DisabledMessage));
     }
 }

@@ -20,11 +20,18 @@ import { AuthorizationStatusResponseSchema } from '../api/auth-status'
  * Mirrors the validated GET /api/auth/status response, minus the always-true `isAuthorized` flag.
  */
 export interface SessionInfo {
+  /** Stable, non-PII portal user UUID. Surfaced for analytics correlation. */
+  userId: string | null
   email: string | null
   ial: string | null
   idProofingStatus: number | null
   idProofingCompletedAt: number | null
   idProofingExpiresAt: number | null
+  isCoLoaded: boolean | null
+  /** Unix epoch seconds when the sliding session cookie expires. */
+  expiresAt: number | null
+  /** Unix epoch seconds when the absolute session lifetime cap is reached. */
+  absoluteExpiresAt: number | null
 }
 
 interface AuthContextValue {
@@ -37,8 +44,6 @@ interface AuthContextValue {
    * waiting for React state to flush.
    */
   login: () => Promise<SessionInfo | null>
-  /** Clears the server cookie via /auth/logout and resets local state. */
-  logout: () => Promise<void>
 }
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined)
@@ -48,11 +53,15 @@ async function fetchSession(): Promise<SessionInfo | null> {
     const response = await apiFetch('/auth/status', { schema: AuthorizationStatusResponseSchema })
     if (!response.isAuthorized) return null
     return {
+      userId: response.userId ?? null,
       email: response.email ?? null,
       ial: response.ial ?? null,
       idProofingStatus: response.idProofingStatus ?? null,
       idProofingCompletedAt: response.idProofingCompletedAt ?? null,
-      idProofingExpiresAt: response.idProofingExpiresAt ?? null
+      idProofingExpiresAt: response.idProofingExpiresAt ?? null,
+      isCoLoaded: response.isCoLoaded ?? null,
+      expiresAt: response.expiresAt ?? null,
+      absoluteExpiresAt: response.absoluteExpiresAt ?? null
     }
   } catch (error) {
     // 401 means not logged in; anything else we also treat as unauthenticated
@@ -95,24 +104,14 @@ export function AuthProvider({ children }: AuthProviderProps) {
     return result
   }, [])
 
-  const logout = useCallback(async () => {
-    try {
-      await apiFetch('/auth/logout', { method: 'POST' })
-    } catch {
-      // Logout is best-effort — clear local state even if the server call failed.
-    }
-    setSession(null)
-  }, [])
-
   const value = useMemo<AuthContextValue>(
     () => ({
       session,
       isAuthenticated: session !== null,
       isLoading,
-      login,
-      logout
+      login
     }),
-    [session, isLoading, login, logout]
+    [session, isLoading, login]
   )
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>

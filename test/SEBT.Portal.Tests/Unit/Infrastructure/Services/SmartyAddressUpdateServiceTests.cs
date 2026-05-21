@@ -73,6 +73,9 @@ public class SmartyAddressUpdateServiceTests
               "delivery_line_1": "123 Main St",
               "delivery_line_2": null,
               "components": {
+                "primary_number": "123",
+                "street_name": "Main",
+                "street_suffix": "St",
                 "city_name": "Washington",
                 "state_abbreviation": "DC",
                 "zipcode": "20001",
@@ -104,6 +107,10 @@ public class SmartyAddressUpdateServiceTests
               "delivery_line_1": "123 Main St NW",
               "delivery_line_2": null,
               "components": {
+                "primary_number": "123",
+                "street_name": "Main",
+                "street_suffix": "St",
+                "street_postdirection": "NW",
                 "city_name": "Washington",
                 "state_abbreviation": "DC",
                 "zipcode": "20001",
@@ -260,6 +267,149 @@ public class SmartyAddressUpdateServiceTests
 
         var df = Assert.IsType<DependencyFailedResult<AddressUpdateSuccess>>(result);
         Assert.Equal(DependencyFailedReason.ConnectionFailed, df.Reason);
+    }
+
+    // Smarty's delivery_line_1 is a USPS-style mailing label (primary + street + secondary
+    // concatenated). The components object exposes the structured parts. We must build
+    // StreetAddress1 and StreetAddress2 from components so the secondary unit lands on
+    // line 2 instead of being collapsed into line 1.
+    [Fact]
+    public async Task ValidateAndNormalizeAsync_BuildsLine1FromComponents_WhenPredirectionIsPresent()
+    {
+        // Honolulu-style address with a predirection (e.g. "123 N King St").
+        var json =
+            """
+            [{
+              "input_index": 0,
+              "candidate_index": 0,
+              "delivery_line_1": "123 N King St",
+              "delivery_line_2": null,
+              "components": {
+                "primary_number": "123",
+                "street_predirection": "N",
+                "street_name": "King",
+                "street_suffix": "St",
+                "city_name": "Honolulu",
+                "state_abbreviation": "HI",
+                "zipcode": "96813",
+                "plus4_code": null
+              },
+              "metadata": { "record_type": "S" },
+              "analysis": { "dpv_match_code": "Y" }
+            }]
+            """;
+
+        var service = CreateService(new MockHttpHandler(HttpStatusCode.OK, json));
+        var result = await service.ValidateAndNormalizeAsync(BaseRequest());
+
+        var success = Assert.IsType<SuccessResult<AddressUpdateSuccess>>(result);
+        Assert.Equal("123 N King St", success.Value.NormalizedAddress.StreetAddress1);
+        Assert.Null(success.Value.NormalizedAddress.StreetAddress2);
+    }
+
+    [Fact]
+    public async Task ValidateAndNormalizeAsync_BuildsLine2FromPmbComponents_WhenSecondaryIsAbsent()
+    {
+        // Private mailbox (PMB) only, no apartment-style secondary.
+        var json =
+            """
+            [{
+              "input_index": 0,
+              "candidate_index": 0,
+              "delivery_line_1": "456 Oak Ave PMB 12",
+              "delivery_line_2": null,
+              "components": {
+                "primary_number": "456",
+                "street_name": "Oak",
+                "street_suffix": "Ave",
+                "pmb_designator": "PMB",
+                "pmb_number": "12",
+                "city_name": "Denver",
+                "state_abbreviation": "CO",
+                "zipcode": "80202",
+                "plus4_code": null
+              },
+              "metadata": { "record_type": "S" },
+              "analysis": { "dpv_match_code": "Y" }
+            }]
+            """;
+
+        var service = CreateService(new MockHttpHandler(HttpStatusCode.OK, json));
+        var result = await service.ValidateAndNormalizeAsync(BaseRequest());
+
+        var success = Assert.IsType<SuccessResult<AddressUpdateSuccess>>(result);
+        Assert.Equal("456 Oak Ave", success.Value.NormalizedAddress.StreetAddress1);
+        Assert.Equal("PMB 12", success.Value.NormalizedAddress.StreetAddress2);
+    }
+
+    [Fact]
+    public async Task ValidateAndNormalizeAsync_PreservesDeliveryLine2_WhenSmartyPopulatesIt()
+    {
+        // delivery_line_2 is rare but used for "C/O" and similar lines. Append after any
+        // structured secondary so we don't drop the carrier-routed text.
+        var json =
+            """
+            [{
+              "input_index": 0,
+              "candidate_index": 0,
+              "delivery_line_1": "789 Pine Rd",
+              "delivery_line_2": "C/O Jane Doe",
+              "components": {
+                "primary_number": "789",
+                "street_name": "Pine",
+                "street_suffix": "Rd",
+                "city_name": "Washington",
+                "state_abbreviation": "DC",
+                "zipcode": "20001",
+                "plus4_code": null
+              },
+              "metadata": { "record_type": "S" },
+              "analysis": { "dpv_match_code": "Y" }
+            }]
+            """;
+
+        var service = CreateService(new MockHttpHandler(HttpStatusCode.OK, json));
+        var result = await service.ValidateAndNormalizeAsync(BaseRequest());
+
+        var success = Assert.IsType<SuccessResult<AddressUpdateSuccess>>(result);
+        Assert.Equal("789 Pine Rd", success.Value.NormalizedAddress.StreetAddress1);
+        Assert.Equal("C/O Jane Doe", success.Value.NormalizedAddress.StreetAddress2);
+    }
+
+    [Fact]
+    public async Task ValidateAndNormalizeAsync_SplitsSecondaryUnitFromLine1_UsingComponents()
+    {
+        var json =
+            """
+            [{
+              "input_index": 0,
+              "candidate_index": 0,
+              "delivery_line_1": "123 Main St NW Apt 5",
+              "delivery_line_2": null,
+              "components": {
+                "primary_number": "123",
+                "street_name": "Main",
+                "street_suffix": "St",
+                "street_postdirection": "NW",
+                "secondary_designator": "Apt",
+                "secondary_number": "5",
+                "city_name": "Washington",
+                "state_abbreviation": "DC",
+                "zipcode": "20001",
+                "plus4_code": "1234"
+              },
+              "metadata": { "record_type": "H" },
+              "analysis": { "dpv_match_code": "Y" }
+            }]
+            """;
+
+        var request = BaseRequest() with { StreetAddress1 = "123 Main St NW", StreetAddress2 = "Apt 5" };
+        var service = CreateService(new MockHttpHandler(HttpStatusCode.OK, json));
+        var result = await service.ValidateAndNormalizeAsync(request);
+
+        var success = Assert.IsType<SuccessResult<AddressUpdateSuccess>>(result);
+        Assert.Equal("123 Main St NW", success.Value.NormalizedAddress.StreetAddress1);
+        Assert.Equal("Apt 5", success.Value.NormalizedAddress.StreetAddress2);
     }
 }
 

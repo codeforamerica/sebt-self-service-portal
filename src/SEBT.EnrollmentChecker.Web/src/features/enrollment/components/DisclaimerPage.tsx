@@ -15,20 +15,21 @@ export function DisclaimerPage() {
         <div className="usa-prose">
           <p>
             <strong>{t('body1')}</strong>{' '}
-            {t('body2')}
           </p>
+          <p>{t('body2')}</p>
           <p>
             <strong>{t('body3')}</strong>{' '}
-            {t('body4')}
           </p>
+          <p>{t('body4')}</p>
         </div>
         <div className="margin-top-4">
-          <Button variant="outline" onClick={() => router.push('/')}>
+          <Button
+            variant="outline"
+            onClick={() => router.push('/')}
+          >
             {t('back', { ns: 'common' })}
           </Button>
-          <Button onClick={() => router.push('/check')}>
-            {t('continue', { ns: 'common' })}
-          </Button>
+          <Button onClick={() => router.push('/check')}>{t('continue', { ns: 'common' })}</Button>
         </div>
       </div>
     </div>

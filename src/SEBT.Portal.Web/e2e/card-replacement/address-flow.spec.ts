@@ -84,7 +84,7 @@ test.describe('Address update flow', () => {
       // DashboardAlerts captures the addressUpdated param in state then cleans the URL.
       await expect(page).toHaveURL('/dashboard')
       await expect(
-        page.locator('.usa-alert--success', { hasText: 'Address update recorded' })
+        page.locator('.usa-alert--success', { hasText: 'Your mailing address has been updated' })
       ).toBeVisible()
     })
 

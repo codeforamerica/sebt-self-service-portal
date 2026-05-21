@@ -1,23 +1,22 @@
 'use client'
 
-import { TextLink } from '@sebt/design-system'
 import { useTranslation } from 'react-i18next'
 import type { ChildCheckApiResponse } from '../schemas/enrollmentSchema'
 import { ChildResultCard } from './ChildResultCard'
 
 interface NotEnrolledSectionProps {
   results: ChildCheckApiResponse[]
-  applicationUrl: string
 }
 
-export function NotEnrolledSection({ results, applicationUrl }: NotEnrolledSectionProps) {
+export function NotEnrolledSection({ results }: NotEnrolledSectionProps) {
   const { t } = useTranslation('result')
   if (results.length === 0) return null
 
   return (
-    <section>
-      <h2 className="font-family-sans">{t('notEnrolledHeading')}</h2>
-      {results.map(child => (
+    <section data-testid="not-enrolled-summary-box">
+      <h3 className="usa-summary-box__heading">{t('applyForSebtBody1')}</h3>
+      <ul>
+        {results.map(child => (
         <ChildResultCard
           key={child.checkId}
           firstName={child.firstName}
@@ -25,15 +24,7 @@ export function NotEnrolledSection({ results, applicationUrl }: NotEnrolledSecti
           displayStatus="notEnrolled"
         />
       ))}
-      <p className="usa-prose">
-        {t('notEnrolledCta')}{' '}
-        <TextLink
-          href={applicationUrl}
-          data-analytics-cta="apply_cta"
-        >
-          {t('applyLink')}
-        </TextLink>
-      </p>
+      </ul>
     </section>
   )
 }

@@ -5,6 +5,7 @@ using NSubstitute;
 using SEBT.Portal.Core.Repositories;
 using SEBT.Portal.Core.Services;
 using SEBT.Portal.Kernel;
+using SEBT.Portal.StatesPlugins.Interfaces;
 using SEBT.Portal.UseCases;
 using SEBT.Portal.UseCases.Household;
 
@@ -23,8 +24,13 @@ public class DependenciesTests
         // Stub infrastructure dependencies that handlers need at construction time
         services.AddSingleton(Substitute.For<IHouseholdIdentifierResolver>());
         services.AddSingleton(Substitute.For<IHouseholdRepository>());
-        services.AddSingleton(Substitute.For<IMinimumIalService>());
-        services.AddSingleton(TimeProvider.System);
+        services.AddSingleton(Substitute.For<IIdProofingService>());
+        services.AddSingleton(Substitute.For<IPiiVisibilityService>());
+        services.AddSingleton(Substitute.For<ISelfServiceEvaluator>());
+        services.AddSingleton(Substitute.For<ICardReplacementService>());
+        services.AddSingleton(Substitute.For<ICardReplacementRequestRepository>());
+        services.AddSingleton(Substitute.For<IIdentifierHasher>());
+        services.AddSingleton(Substitute.For<Medallion.Threading.IDistributedLockProvider>());
         services.AddSingleton(typeof(ILogger<>), typeof(NullLogger<>));
 
         return services.BuildServiceProvider();

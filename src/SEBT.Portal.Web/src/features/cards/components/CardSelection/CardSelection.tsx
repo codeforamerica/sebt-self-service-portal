@@ -20,7 +20,11 @@ function buildCaseGroups(cases: SummerEbtCase[]): CaseGroup[] {
   return cases
     .filter(
       (c): c is SummerEbtCase & { summerEBTCaseID: string } =>
-        c.summerEBTCaseID != null && !isWithinCooldownPeriod(c.cardRequestedAt)
+        c.summerEBTCaseID != null &&
+        c.allowCardReplacement &&
+        !isWithinCooldownPeriod(c.cardRequestedAt) &&
+        c.issuanceType !== 'TanfEbtCard' &&
+        c.issuanceType !== 'SnapEbtCard'
     )
     .map((c) => ({
       caseId: c.summerEBTCaseID,
@@ -30,9 +34,22 @@ function buildCaseGroups(cases: SummerEbtCase[]): CaseGroup[] {
     }))
 }
 
-export function CardSelection() {
+interface CardSelectionProps {
+  /**
+   * Path pushed on submit with `?cases=...` appended. Defaults to the
+   * address-flow sibling route `select/confirm` (relative). Callers outside
+   * that tree should pass an explicit path (absolute or relative).
+   */
+  confirmPath?: string
+}
+
+export function CardSelection({ confirmPath = 'select/confirm' }: CardSelectionProps = {}) {
   const { t } = useTranslation('confirmInfo')
+  const { t: tOptional } = useTranslation('optionalId')
   const { t: tCommon } = useTranslation('common')
+  const { t: tDev } = useTranslation('dev')
+  const { t: tValidation } = useTranslation('validation')
+
   const router = useRouter()
   const currentState = getState()
   const { data, isLoading, isError } = useHouseholdData()
@@ -48,15 +65,11 @@ export function CardSelection() {
   }, [error])
 
   if (isLoading) {
-    return <p>{tCommon('loading', 'Loading...')}</p>
+    return <p>{tDev('loading')}</p>
   }
 
   if (isError || !data) {
-    return (
-      <Alert variant="error">
-        {t('cardSelectionLoadError', 'Unable to load household members. Please try again later.')}
-      </Alert>
-    )
+    return <Alert variant="error">{tValidation('globalInternalError')}</Alert>
   }
 
   const groups = buildCaseGroups(data.summerEbtCases)
@@ -64,14 +77,25 @@ export function CardSelection() {
   if (groups.length === 0) {
     const hasCases = data.summerEbtCases.length > 0
     return (
-      <Alert variant="info">
-        {hasCases
-          ? t(
-              'cardSelectionAllInCooldown',
-              'All cards were recently replaced. Please try again later.'
-            )
-          : t('cardSelectionNoChildren', 'No children found in your household.')}
-      </Alert>
+      <>
+        <Alert variant="info">
+          {hasCases
+            ? t(
+                'cardSelectionAllInCooldown',
+                'All cards were recently replaced. Please try again later.'
+              )
+            : t('cardSelectionNoChildren', 'No children found in your household.')}
+        </Alert>
+        <div className="margin-top-3">
+          <Button
+            variant="outline"
+            type="button"
+            onClick={() => router.back()}
+          >
+            {tCommon('back')}
+          </Button>
+        </div>
+      </>
     )
   }
 
@@ -92,12 +116,13 @@ export function CardSelection() {
     e.preventDefault()
 
     if (selectedCases.size === 0) {
-      setError(t('cardSelectionRequired', 'Please select at least one card.'))
+      setError(tCommon('helperSelectAtLeastOne'))
       return
     }
 
     const cases = Array.from(selectedCases).join(',')
-    router.push(`select/confirm?cases=${encodeURIComponent(cases)}`)
+    const separator = confirmPath.includes('?') ? '&' : '?'
+    router.push(`${confirmPath}${separator}cases=${encodeURIComponent(cases)}`)
   }
 
   return (
@@ -106,17 +131,15 @@ export function CardSelection() {
       onSubmit={handleSubmit}
       noValidate
     >
-      <p className="usa-hint">
-        {t('requiredFieldsNote', 'Asterisks (*) indicate a required field')}
-      </p>
+      <p className="usa-hint">{tCommon('requiredFields')}</p>
 
       <fieldset
         className="usa-fieldset"
-        aria-label={t('cardSelectionLabel', 'Select which cards you want to replace')}
+        aria-label={tOptional('labelSelectCards')}
         aria-describedby={error ? 'card-selection-error' : undefined}
       >
         <legend className="usa-legend">
-          {t('cardSelectionLabel', 'Select which cards you want to replace')}
+          {tOptional('labelSelectCards')}
           <span className="text-secondary-dark"> *</span>
         </legend>
 
@@ -156,6 +179,7 @@ export function CardSelection() {
                 {group.childFirstName} {group.childLastName}&apos;s card
                 {currentState === 'co' && group.ebtCardLastFour && (
                   <span className="usa-checkbox__label-description">
+                    {/* TODO update with {t('cardNumber')} */}
                     Card number: {group.ebtCardLastFour} (last 4 digits)
                   </span>
                 )}
@@ -171,9 +195,9 @@ export function CardSelection() {
           type="button"
           onClick={() => router.back()}
         >
-          {tCommon('back', 'Back')}
+          {tCommon('back')}
         </Button>
-        <Button type="submit">{tCommon('continue', 'Continue')}</Button>
+        <Button type="submit">{tCommon('continue')}</Button>
       </div>
     </form>
   )

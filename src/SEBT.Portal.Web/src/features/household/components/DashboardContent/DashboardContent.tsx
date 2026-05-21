@@ -1,12 +1,16 @@
 'use client'
 
 import { ApiError } from '@/api'
+import { CoLoadingScreen } from '@/components/CoLoadingScreen'
+import { SignOutLink, useAuth } from '@/features/auth'
+import { getColoadingStatus } from '@/lib/coloadingStatus'
 import { AnalyticsEvents, useDataLayer } from '@sebt/analytics'
-import { Alert } from '@sebt/design-system'
+import { Alert, getState } from '@sebt/design-system'
 import { useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 
 import { useHouseholdData } from '../../api'
+import { toAnalyticsCohort } from '../../api/schema'
 import { ActionButtons } from '../ActionButtons'
 import { ApplicationsSection } from '../ApplicationsSection'
 import { DashboardAlerts } from '../DashboardAlerts'
@@ -17,28 +21,121 @@ import { EnrolledChildren } from '../EnrolledChildren'
 import { HouseholdSummary } from '../HouseholdSummary'
 import { UserProfileCard } from '../UserProfileCard'
 
+/**
+ * Closed taxonomy of dashboard error codes per docs/adr/0015-co-loaded-error-code-taxonomy.md.
+ * Adding a new value requires an ADR amendment plus matching updates in the
+ * Serilog `OutcomeCode` field on the backend and in the i18n locale keys.
+ */
+export type DashboardErrorCode =
+  | 'NOT_FOUND'
+  | 'NO_CHILDREN'
+  | 'AUTH_FAILURE'
+  | 'TECH_ERROR'
+  | 'INVALID_INPUT'
+
+// Maps an HTTP failure to one of the analytics taxonomy buckets. NOT_FOUND
+// covers 404 (the connector returned no household for the user); 4xx other
+// than 404 are treated as auth/permission failures (the API redirects 401/403
+// before reaching the dashboard, but tag them here defensively); everything
+// else lands in TECH_ERROR. INVALID_INPUT is reserved for form-submission
+// 400s with ValidationProblemDetails — the dashboard doesn't submit forms,
+// so it is intentionally never produced here.
+function dashboardErrorCodeFromStatus(error: unknown): DashboardErrorCode {
+  if (!(error instanceof ApiError)) return 'TECH_ERROR'
+  if (error.status === 404) return 'NOT_FOUND'
+  if (error.status === 401 || error.status === 403) return 'AUTH_FAILURE'
+  return 'TECH_ERROR'
+}
+
 // TODO: Add to CSV: "S2 - Portal Dashboard - Error Heading" and "S2 - Portal Dashboard - Error Description"
 export function DashboardContent() {
   const { t } = useTranslation('dashboard')
+  const { t: tProcessing } = useTranslation('step-upProcessing')
+
   const { data, isLoading, isError, error, requiresProofing } = useHouseholdData()
   const { setPageData, setUserData, trackEvent } = useDataLayer()
+  const { session } = useAuth()
+  const sessionIsCoLoaded = session?.isCoLoaded
+  const isCO = getState() === 'co'
 
   useEffect(() => {
     if (isLoading) return
+    // 403 with requiredIal is a redirect to ID proofing, not a dashboard error.
+    // Skip analytics emission so the household_result event isn't tagged as
+    // an AUTH_FAILURE for what is really a step-up flow.
+    if (requiresProofing) return
     if (isError) {
       setPageData('household_status', 'error')
+      setPageData('error_code', dashboardErrorCodeFromStatus(error))
     } else if (data) {
-      setPageData('household_status', 'success')
       const childCount = data.summerEbtCases.length
+      const isEmpty = childCount === 0 && data.applications.length === 0
+      setPageData('household_status', isEmpty ? 'empty' : 'success')
+      // Reset error_code so a stale value from a prior render (e.g. the user
+      // refreshed off an error state into success) does not persist on the
+      // next household_result event.
+      setPageData('error_code', null)
       setUserData('household_linked_children', childCount, ['default', 'analytics'])
+      setUserData('co_loaded_cohort', toAnalyticsCohort(data.coLoadedCohort), [
+        'default',
+        'analytics'
+      ])
+
+      // Classify the household into one of four buckets so analytics can
+      // segment dashboard usage. Same value is mirrored on user.* (persists
+      // across pages) and page.* (lives with this page_load /
+      // household_result event). Passing the raw nullable claim means an
+      // unresolved auth state tags `unknown` instead of biasing toward
+      // `non_co_loaded`.
+      const coloadingStatus = getColoadingStatus(sessionIsCoLoaded, data)
+      setUserData('coloading_status', coloadingStatus, ['default', 'analytics'])
+      setPageData('household_type', coloadingStatus)
+      // An empty household is a separate analytics failure category from
+      // server errors — surface it as error_code='NO_CHILDREN' so dashboards
+      // can split "couldn't reach data" from "got data, none qualifies".
+      if (isEmpty) {
+        setPageData('error_code', 'NO_CHILDREN')
+        // Distinguishes a co-loaded user who matched but has no enrolled
+        // children from a non-co-loaded applicant seeing the same empty
+        // screen. Only fires for a definitively true claim — null/undefined
+        // auth shouldn't infer it.
+        if (sessionIsCoLoaded === true) {
+          setPageData('household_reason', 'no_children')
+        }
+      }
+
+      // hashedAppId is gated server-side (CO only); skip the call when absent.
+      if (data.hashedAppId) {
+        setUserData('hashed_app_id', data.hashedAppId, ['default', 'analytics'])
+      }
     }
     trackEvent(AnalyticsEvents.HOUSEHOLD_RESULT)
-  }, [isLoading, isError, data, setPageData, setUserData, trackEvent])
+  }, [
+    isLoading,
+    isError,
+    error,
+    data,
+    requiresProofing,
+    sessionIsCoLoaded,
+    setPageData,
+    setUserData,
+    trackEvent
+  ])
 
   // Visually hidden h1 for accessibility - provides page structure for screen readers
   const pageHeading = <h1 className="usa-sr-only">{t('pageTitle', 'SUN Bucks Dashboard')}</h1>
 
   if (isLoading || requiresProofing) {
+    if (isCO) {
+      // CoLoadingScreen renders its own h1 ("Please wait..."), so omit pageHeading
+      // here to avoid two h1 elements on the same view.
+      return (
+        <CoLoadingScreen
+          title={tProcessing('title')}
+          message={tProcessing('body')}
+        />
+      )
+    }
     return (
       <>
         {pageHeading}
@@ -54,6 +151,7 @@ export function DashboardContent() {
     return (
       <>
         {pageHeading}
+        <SignOutLink />
         <Alert
           variant="error"
           heading={t('errorHeading', 'Error loading dashboard')}
@@ -67,11 +165,15 @@ export function DashboardContent() {
     )
   }
 
-  if (!data || isNotFound || (data.summerEbtCases.length === 0 && data.applications.length === 0)) {
+  // Do not key off `isNotFound` here: TanStack Query keeps the last successful
+  // `data` when a background refetch 404s (e.g. after router.back from
+  // /profile/address). Treating any 404 as "empty household" would drop the
+  // populated dashboard even though cached data is still valid.
+  if (!data || (data.summerEbtCases.length === 0 && data.applications.length === 0)) {
     return (
       <>
         {pageHeading}
-        {data?.userProfile && <UserProfileCard />}
+        {data?.userProfile ? <UserProfileCard /> : <SignOutLink />}
         <EmptyState />
       </>
     )
@@ -81,11 +183,18 @@ export function DashboardContent() {
     <>
       {pageHeading}
       <DashboardAlerts />
-      <ActionButtons cases={data.summerEbtCases} />
-      <UserProfileCard />
+      <ActionButtons
+        allowedActions={data.allowedActions}
+        hasCases={data.summerEbtCases.length > 0}
+      />
+      {data.userProfile ? <UserProfileCard /> : <SignOutLink />}
       <HouseholdSummary />
-      <EnrolledChildren />
-      <EbtEdgeSection />
+      {data.summerEbtCases.length > 0 && (
+        <>
+          <EnrolledChildren />
+          <EbtEdgeSection />
+        </>
+      )}
       <ApplicationsSection />
     </>
   )

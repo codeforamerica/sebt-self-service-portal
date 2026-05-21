@@ -9,7 +9,8 @@ const mockHouseholdData: HouseholdData = {
   phone: '(202) 555-0100',
   summerEbtCases: [],
   applications: [],
-  addressOnFile: null
+  addressOnFile: null,
+  coLoadedCohort: 'NonCoLoaded'
 }
 
 let mockData: HouseholdData | undefined

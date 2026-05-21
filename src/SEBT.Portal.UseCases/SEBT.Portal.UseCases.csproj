@@ -20,6 +20,12 @@
     <ItemGroup>
     </ItemGroup>
 
+    <ItemGroup>
+      <PackageReference Include="DistributedLock.Core" Version="1.0.9" />
+      <PackageReference Include="Microsoft.Extensions.Options" Version="10.0.5" />
+      <PackageReference Include="Microsoft.FeatureManagement" Version="3.3.0" />
+    </ItemGroup>
+
   <!-- State connector as sibling repo only. Sibling under parent of portal, or CI path. -->
   <PropertyGroup>
     <_StateConnectorInterfacesProjectSiblingPath>$([System.IO.Path]::GetFullPath('$(MSBuildThisFileDirectory)../../../sebt-self-service-portal-state-connector/src/SEBT.Portal.StatesPlugins.Interfaces/SEBT.Portal.StatesPlugins.Interfaces.csproj'))</_StateConnectorInterfacesProjectSiblingPath>
@@ -40,7 +46,7 @@
     </When>
     <Otherwise>
       <ItemGroup>
-        <PackageReference Include="SEBT.Portal.StatesPlugins.Interfaces" Version="0.0.1-*" PrivateAssets="compile" />
+        <PackageReference Include="SEBT.Portal.StatesPlugins.Interfaces" Version="0.0.2-*" PrivateAssets="compile" />
       </ItemGroup>
     </Otherwise>
   </Choose>

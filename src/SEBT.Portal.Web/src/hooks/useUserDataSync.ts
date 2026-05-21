@@ -4,12 +4,9 @@ import { useDataLayer } from '@sebt/analytics'
 import { useEffect } from 'react'
 
 import { useAuth } from '@/features/auth/context'
+import { IdProofingStatus, isIdProofedForAnalytics } from '@/lib/idProofingStatus'
 
 const ANALYTICS_SCOPE: string[] = ['default', 'analytics']
-
-// Mirrors SEBT.Portal.Core.Models.Auth.IdProofingStatus enum values exposed via /auth/status.
-const ID_PROOFING_NOT_STARTED = 0
-const ID_PROOFING_COMPLETED = 2
 
 /**
  * Syncs user-level data from the current session into the data layer.
@@ -24,6 +21,11 @@ export function useUserDataSync() {
 
     if (!session) return
 
+    // Portal user UUID (Guid v7), used for per-user analytics correlation.
+    if (session.userId) {
+      setUserData('portal_id', session.userId, ANALYTICS_SCOPE)
+    }
+
     if (session.ial) {
       const ialNumeric = session.ial === '1plus' ? 1.5 : Number(session.ial)
       setUserData('identity_assurance_level', ialNumeric, ANALYTICS_SCOPE)
@@ -32,12 +34,12 @@ export function useUserDataSync() {
     const idProofingStatus = session.idProofingStatus
     setUserData(
       'id_proofed',
-      idProofingStatus === ID_PROOFING_COMPLETED || !!session.idProofingCompletedAt,
+      isIdProofedForAnalytics(idProofingStatus, session.idProofingCompletedAt),
       ANALYTICS_SCOPE
     )
     setUserData(
       'has_dob',
-      idProofingStatus != null && idProofingStatus !== ID_PROOFING_NOT_STARTED,
+      idProofingStatus != null && idProofingStatus !== IdProofingStatus.NotStarted,
       ANALYTICS_SCOPE
     )
 

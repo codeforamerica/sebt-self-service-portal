@@ -1,6 +1,6 @@
 'use client'
 
-import { InputField } from '@sebt/design-system'
+import { Button, InputField } from '@sebt/design-system'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import type { Child } from '../context/EnrollmentContext'
@@ -17,8 +17,18 @@ interface ChildFormProps {
 }
 
 const MONTH_KEYS = [
-  'january', 'february', 'march', 'april', 'may', 'june',
-  'july', 'august', 'september', 'october', 'november', 'december'
+  'january',
+  'february',
+  'march',
+  'april',
+  'may',
+  'june',
+  'july',
+  'august',
+  'september',
+  'october',
+  'november',
+  'december'
 ] as const
 
 export function ChildForm({
@@ -49,7 +59,7 @@ export function ChildForm({
   const [errors, setErrors] = useState<Partial<Record<keyof ChildFormValues, string>>>({})
 
   function set(field: keyof ChildFormValues, value: string) {
-    setValues(v => ({ ...v, [field]: value }))
+    setValues((v) => ({ ...v, [field]: value }))
   }
 
   function handleSubmit(e: React.FormEvent) {
@@ -72,11 +82,15 @@ export function ChildForm({
   const nameHint = tCommon('legallyAsItAppears')
 
   return (
-    <form onSubmit={handleSubmit} noValidate>
+    <form
+      onSubmit={handleSubmit}
+      noValidate
+    >
       <InputField
         label={tCommon('labelFirstName')}
         value={values.firstName ?? ''}
-        onChange={e => set('firstName', e.target.value)}
+        maxLength={35}
+        onChange={(e) => set('firstName', e.target.value)}
         {...(errors.firstName && { error: errors.firstName })}
         isRequired
         hint={nameHint}
@@ -84,27 +98,48 @@ export function ChildForm({
       <InputField
         label={tCommon('labelMiddleName')}
         value={values.middleName ?? ''}
-        onChange={e => set('middleName', e.target.value)}
+        onChange={(e) => set('middleName', e.target.value)}
         hint={tCommon('optional')}
       />
       <InputField
         label={tCommon('labelLastName')}
         value={values.lastName ?? ''}
-        onChange={e => set('lastName', e.target.value)}
+        maxLength={40}
+        onChange={(e) => set('lastName', e.target.value)}
         {...(errors.lastName && { error: errors.lastName })}
         isRequired
         hint={nameHint}
       />
 
       {/* USWDS memorable-date pattern: Month dropdown + Day/Year text inputs */}
-      <fieldset className="usa-fieldset">
+      <fieldset className="usa-fieldset margin-top-4">
         <legend className="usa-legend">
-          {t('labelBirthdate')} <abbr title="required" className="usa-hint usa-hint--required">*</abbr>
+          <strong>{t('labelBirthdate')}{' '} </strong>
+          <span
+            title="required"
+            className="usa-hint usa-hint--required"
+          >
+            *
+          </span>
         </legend>
         <div className="usa-memorable-date">
           <div className="usa-form-group usa-form-group--month">
-            <label className="usa-label" htmlFor="date-month">{t('labelMonth')}</label>
-            {errors.month && <span id="date-month-error" className="usa-error-message" role="alert">{errors.month}</span>}
+            <label
+              className="usa-label"
+              htmlFor="date-month"
+            >
+              {t('labelMonth')}
+              <span className="usa-hint usa-hint--required"> *</span>
+            </label>
+            {errors.month && (
+              <span
+                id="date-month-error"
+                className="usa-error-message"
+                role="alert"
+              >
+                {errors.month}
+              </span>
+            )}
             <select
               className={`usa-select${errors.month ? ' usa-input--error' : ''}`}
               id="date-month"
@@ -113,46 +148,82 @@ export function ChildForm({
               aria-invalid={!!errors.month}
               aria-describedby={errors.month ? 'date-month-error' : undefined}
               value={values.month ?? ''}
-              onChange={e => set('month', e.target.value)}
+              onChange={(e) => set('month', e.target.value)}
             >
               <option value="">{tCommon('selectOne')}</option>
               {MONTH_KEYS.map((key, i) => (
-                <option key={i + 1} value={String(i + 1)}>{tCommon(`months.${key}`)}</option>
+                <option
+                  key={i + 1}
+                  value={String(i + 1)}
+                >
+                  {tCommon(`${key}`)}
+                </option>
               ))}
             </select>
           </div>
           <div className="usa-form-group usa-form-group--day">
-            <label className="usa-label" htmlFor="date-day">{t('labelDay')}</label>
-            {errors.day && <span id="date-day-error" className="usa-error-message" role="alert">{errors.day}</span>}
+            <label
+              className="usa-label"
+              htmlFor="date-day"
+            >
+              {t('labelDay')}
+              <span className="usa-hint usa-hint--required"> *</span>
+            </label>
+            {errors.day && (
+              <span
+                id="date-day-error"
+                className="usa-error-message"
+                role="alert"
+              >
+                {errors.day}
+              </span>
+            )}
             <input
               className={`usa-input usa-input--inline${errors.day ? ' usa-input--error' : ''}`}
               id="date-day"
               name="day"
               type="text"
               inputMode="numeric"
+              minLength={1}
               maxLength={2}
               aria-label={t('labelDay')}
               aria-invalid={!!errors.day}
               aria-describedby={errors.day ? 'date-day-error' : undefined}
               value={values.day ?? ''}
-              onChange={e => set('day', e.target.value)}
+              onChange={(e) => set('day', e.target.value)}
             />
           </div>
           <div className="usa-form-group usa-form-group--year">
-            <label className="usa-label" htmlFor="date-year">{t('labelYear')}</label>
-            {errors.year && <span id="date-year-error" className="usa-error-message" role="alert">{errors.year}</span>}
+            <label
+              title="required"
+              className="usa-label"
+              htmlFor="date-year"
+            >
+              {t('labelYear')}
+              <span className="usa-hint usa-hint--required"> *</span>
+            </label>
+            {errors.year && (
+              <span
+                id="date-year-error"
+                className="usa-error-message"
+                role="alert"
+              >
+                {errors.year}
+              </span>
+            )}
             <input
               className={`usa-input usa-input--inline${errors.year ? ' usa-input--error' : ''}`}
               id="date-year"
               name="year"
               type="text"
               inputMode="numeric"
+              minLength={4}
               maxLength={4}
               aria-label={t('labelYear')}
               aria-invalid={!!errors.year}
               aria-describedby={errors.year ? 'date-year-error' : undefined}
               value={values.year ?? ''}
-              onChange={e => set('year', e.target.value)}
+              onChange={(e) => set('year', e.target.value)}
             />
           </div>
         </div>
@@ -169,13 +240,20 @@ export function ChildForm({
       />
       <div className="display-flex flex-row flex-align-center margin-top-4">
         {onCancel && (
-          <button type="button" className="usa-button usa-button--outline margin-right-1" onClick={onCancel}>
+          <button
+            type="button"
+            className="usa-button usa-button--outline margin-right-1"
+            onClick={onCancel}
+          >
             {tCommon('back')}
           </button>
         )}
-        <button type="submit" className="usa-button">
+        <Button
+          type="submit"
+          className="usa-button"
+        >
           {tCommon('continue')}
-        </button>
+        </Button>
       </div>
     </form>
   )

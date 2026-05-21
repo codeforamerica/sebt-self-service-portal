@@ -31,12 +31,14 @@ public class UpdateAddressCommandHandlerTests
     private readonly IAddressValidationService _addressValidationService = Substitute.For<IAddressValidationService>();
     private readonly IHouseholdRepository _householdRepository =
         Substitute.For<IHouseholdRepository>();
-    private readonly IIdProofingRequirementsService _idProofingRequirementsService =
-        Substitute.For<IIdProofingRequirementsService>();
+    private readonly IPiiVisibilityService _piiVisibilityService =
+        Substitute.For<IPiiVisibilityService>();
     private readonly IStateAddressUpdateService _stateAddressUpdateService =
         Substitute.For<IStateAddressUpdateService>();
-    private readonly IMinimumIalService _minimumIalService =
-        Substitute.For<IMinimumIalService>();
+    private readonly IIdProofingService _idProofingService =
+        Substitute.For<IIdProofingService>();
+    private readonly ISelfServiceEvaluator _selfServiceEvaluator =
+        Substitute.For<ISelfServiceEvaluator>();
     private readonly NullLogger<UpdateAddressCommandHandler> _logger =
         NullLogger<UpdateAddressCommandHandler>.Instance;
 
@@ -53,7 +55,7 @@ public class UpdateAddressCommandHandlerTests
                         {
                             StreetAddress1 = "123 Main St NW",
                             City = "Washington",
-                            State = "DC",
+                            State = "District of Columbia",
                             PostalCode = "20001"
                         },
                         WasCorrected = false,
@@ -63,15 +65,21 @@ public class UpdateAddressCommandHandlerTests
             .Returns(AddressValidationResult.Valid());
         _stateAddressUpdateService.UpdateAddressAsync(Arg.Any<AddressUpdateRequest>(), Arg.Any<CancellationToken>())
             .Returns(AddressUpdateResult.Success());
-        _idProofingRequirementsService.GetPiiVisibility(Arg.Any<UserIalLevel>())
+        _piiVisibilityService.GetVisibility(Arg.Any<UserIalLevel>())
             .Returns(new PiiVisibility(false, false, false));
         // Default: IAL gate passes (no elevated requirement)
-        _minimumIalService.GetMinimumIal(Arg.Any<IReadOnlyList<SummerEbtCase>>()).Returns(UserIalLevel.None);
+        _idProofingService.Evaluate(
+            Arg.Any<ProtectedResource>(), Arg.Any<ProtectedAction>(),
+            Arg.Any<UserIalLevel>(), Arg.Any<IReadOnlyList<SummerEbtCase>>())
+            .Returns(new IdProofingDecision(IsAllowed: true, RequiredLevel: UserIalLevel.None));
+        // Default: self-service rules allow address update
+        _selfServiceEvaluator.EvaluateHousehold(Arg.Any<IReadOnlyList<SummerEbtCase>>())
+            .Returns(new AllowedActions { CanUpdateAddress = true, CanRequestReplacementCard = true });
     }
 
     private UpdateAddressCommandHandler CreateHandler() =>
         new(_validator, _addressUpdateService, _addressValidationService, _resolver, _householdRepository,
-            _idProofingRequirementsService, _minimumIalService, _stateAddressUpdateService, _logger);
+            _piiVisibilityService, _idProofingService, _selfServiceEvaluator, _stateAddressUpdateService, _logger);
 
     private static ClaimsPrincipal CreateUser(string email)
     {
@@ -102,6 +110,14 @@ public class UpdateAddressCommandHandlerTests
                 Arg.Any<HouseholdIdentifier>(), Arg.Any<PiiVisibility>(),
                 Arg.Any<UserIalLevel>(), Arg.Any<CancellationToken>())
             .Returns(new HouseholdData { SummerEbtCases = cases.ToList() });
+    }
+
+    private void SetupHouseholdWithBenefitType(BenefitIssuanceType benefitType)
+    {
+        _householdRepository.GetHouseholdByIdentifierAsync(
+                Arg.Any<HouseholdIdentifier>(), Arg.Any<PiiVisibility>(),
+                Arg.Any<UserIalLevel>(), Arg.Any<CancellationToken>())
+            .Returns(new HouseholdData { BenefitIssuanceType = benefitType });
     }
 
     [Fact]
@@ -255,7 +271,7 @@ public class UpdateAddressCommandHandlerTests
     }
 
     [Fact]
-    public async Task Handle_ReturnsPreconditionFailed_WhenAnyCaseIsCoLoaded()
+    public async Task Handle_ReturnsPreconditionFailed_WhenAllCasesAreCoLoaded()
     {
         var handler = CreateHandler();
         var command = CreateValidCommand();
@@ -272,8 +288,10 @@ public class UpdateAddressCommandHandlerTests
     }
 
     [Fact]
-    public async Task Handle_ReturnsPreconditionFailed_WhenMixedCoLoadedAndNonCoLoaded()
+    public async Task Handle_AllowsUpdate_WhenMixedCoLoadedAndNonCoLoaded()
     {
+        // Per reviewer feedback on PR #181: a household with any non-co-loaded case
+        // should retain address-update access; only fully-co-loaded households are blocked.
         var handler = CreateHandler();
         var command = CreateValidCommand();
 
@@ -284,9 +302,51 @@ public class UpdateAddressCommandHandlerTests
 
         var result = await handler.Handle(command, CancellationToken.None);
 
+        Assert.True(result.IsSuccess);
+    }
+
+    [Fact]
+    public async Task Handle_EvaluatesSelfServiceRulesOnNonCoLoadedSubset()
+    {
+        // Rules evaluation runs on the non-co-loaded subset, not the full case list:
+        // co-loaded cases are excluded from the permission surface before rules apply.
+        var handler = CreateHandler();
+        var command = CreateValidCommand();
+
+        SetupResolverReturnsEmail();
+        SetupHouseholdWithCases(
+            new SummerEbtCase { SummerEBTCaseID = "S1", ChildFirstName = "A", ChildLastName = "B", IsCoLoaded = true },
+            new SummerEbtCase { SummerEBTCaseID = "S2", ChildFirstName = "C", ChildLastName = "D", IsCoLoaded = false });
+
+        await handler.Handle(command, CancellationToken.None);
+
+        await Task.CompletedTask; // Sync assertion — NSubstitute captures synchronous .Received() calls below.
+        _selfServiceEvaluator.Received(1).EvaluateHousehold(
+            Arg.Is<IReadOnlyList<SummerEbtCase>>(list =>
+                list.Count == 1 && list[0].SummerEBTCaseID == "S2"));
+    }
+
+    [Fact]
+    public async Task Handle_ReturnsPreconditionFailed_WhenSelfServiceRulesDenyAddressUpdate()
+    {
+        var handler = CreateHandler();
+        var command = CreateValidCommand();
+
+        SetupResolverReturnsEmail();
+        SetupHouseholdWithCases(
+            new SummerEbtCase { SummerEBTCaseID = "S1", ChildFirstName = "A", ChildLastName = "B", IsCoLoaded = false });
+        _selfServiceEvaluator.EvaluateHousehold(Arg.Any<IReadOnlyList<SummerEbtCase>>())
+            .Returns(new AllowedActions
+            {
+                CanUpdateAddress = false,
+                AddressUpdateDeniedMessageKey = "selfServiceUnavailable"
+            });
+
+        var result = await handler.Handle(command, CancellationToken.None);
+
         Assert.False(result.IsSuccess);
         var preconditionFailed = Assert.IsType<PreconditionFailedResult<AddressValidationResult>>(result);
-        Assert.Equal(PreconditionFailedReason.Conflict, preconditionFailed.Reason);
+        Assert.Equal(PreconditionFailedReason.NotAllowed, preconditionFailed.Reason);
     }
 
     [Fact]
@@ -319,7 +379,7 @@ public class UpdateAddressCommandHandlerTests
     }
 
     [Fact]
-    public async Task Handle_AllowsUpdate_WhenHouseholdNotFound()
+    public async Task Handle_ReturnsPreconditionFailed_WhenHouseholdNotFound()
     {
         var handler = CreateHandler();
         var command = CreateValidCommand();
@@ -332,7 +392,46 @@ public class UpdateAddressCommandHandlerTests
 
         var result = await handler.Handle(command, CancellationToken.None);
 
-        Assert.True(result.IsSuccess);
+        Assert.False(result.IsSuccess);
+        Assert.IsType<PreconditionFailedResult<AddressValidationResult>>(result);
+    }
+
+    [Fact]
+    public async Task Handle_ReturnsForbidden_WhenUserIalBelowRequired()
+    {
+        var handler = CreateHandler();
+        var command = CreateValidCommand();
+
+        SetupResolverReturnsEmail();
+        SetupHouseholdWithBenefitType(BenefitIssuanceType.SummerEbt);
+        _idProofingService.Evaluate(
+                Arg.Any<ProtectedResource>(), Arg.Any<ProtectedAction>(),
+                Arg.Any<UserIalLevel>(), Arg.Any<IReadOnlyList<SummerEbtCase>>())
+            .Returns(new IdProofingDecision(IsAllowed: false, RequiredLevel: UserIalLevel.IAL1plus));
+
+        var result = await handler.Handle(command, CancellationToken.None);
+
+        Assert.False(result.IsSuccess);
+        Assert.IsType<ForbiddenResult<AddressValidationResult>>(result);
+    }
+
+    [Fact]
+    public async Task Handle_DoesNotCallStateConnector_WhenIalInsufficient()
+    {
+        var handler = CreateHandler();
+        var command = CreateValidCommand();
+
+        SetupResolverReturnsEmail();
+        SetupHouseholdWithBenefitType(BenefitIssuanceType.SummerEbt);
+        _idProofingService.Evaluate(
+                Arg.Any<ProtectedResource>(), Arg.Any<ProtectedAction>(),
+                Arg.Any<UserIalLevel>(), Arg.Any<IReadOnlyList<SummerEbtCase>>())
+            .Returns(new IdProofingDecision(IsAllowed: false, RequiredLevel: UserIalLevel.IAL1plus));
+
+        await handler.Handle(command, CancellationToken.None);
+
+        await _stateAddressUpdateService.DidNotReceive()
+            .UpdateAddressAsync(Arg.Any<AddressUpdateRequest>(), Arg.Any<CancellationToken>());
     }
 
     [Fact]
@@ -609,7 +708,7 @@ public class UpdateAddressCommandHandlerTests
     }
 
     [Fact]
-    public async Task Handle_UsesNormalizedAddressForStateConnector()
+    public async Task Handle_ReturnsSuggestion_WhenSmartyNormalizesAddressForStateConnector()
     {
         var normalizedAddress = new Address
         {
@@ -636,14 +735,359 @@ public class UpdateAddressCommandHandlerTests
         SetupResolverReturnsEmail();
         SetupHouseholdWithCases();
 
-        await handler.Handle(command, CancellationToken.None);
+        var result = await handler.Handle(command, CancellationToken.None);
+
+        Assert.True(result.IsSuccess);
+        var success = Assert.IsType<SuccessResult<AddressValidationResult>>(result);
+        Assert.False(success.Value.IsValid);
+        Assert.Equal("suggested", success.Value.Reason);
+        Assert.Equal("123 MAIN ST NW", success.Value.SuggestedAddress?.StreetAddress1);
+        await _stateAddressUpdateService.DidNotReceive()
+            .UpdateAddressAsync(Arg.Any<AddressUpdateRequest>(), Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task Handle_ReturnsSuggestion_WhenSmartyNormalizedAddressDiffersFromInput()
+    {
+        _addressUpdateService
+            .ValidateAndNormalizeAsync(Arg.Any<AddressUpdateOperationRequest>(), Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult(
+                Result<AddressUpdateSuccess>.Success(
+                    new AddressUpdateSuccess
+                    {
+                        NormalizedAddress = new Address
+                        {
+                            StreetAddress1 = "2400 MLK JR Ave SE",
+                            City = "Washington",
+                            State = "DC",
+                            PostalCode = "20020"
+                        },
+                        WasCorrected = true,
+                        IsGeneralDelivery = false
+                    })));
+
+        var handler = CreateHandler();
+        var command = new UpdateAddressCommand
+        {
+            User = CreateUser("user@example.com"),
+            StreetAddress1 = "2400 Martin Luther King Jr Ave SE",
+            City = "Washington",
+            State = "DC",
+            PostalCode = "20020"
+        };
+
+        var result = await handler.Handle(command, CancellationToken.None);
+
+        Assert.True(result.IsSuccess);
+        var success = Assert.IsType<SuccessResult<AddressValidationResult>>(result);
+        Assert.False(success.Value.IsValid);
+        Assert.Equal("suggested", success.Value.Reason);
+        Assert.Equal("2400 MLK JR Ave SE", success.Value.SuggestedAddress?.StreetAddress1);
+        await _stateAddressUpdateService.DidNotReceive()
+            .UpdateAddressAsync(Arg.Any<AddressUpdateRequest>(), Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task Handle_PersistsEnteredAddress_WhenAcceptEnteredAddressAndSmartySuggestedCorrection()
+    {
+        _addressUpdateService
+            .ValidateAndNormalizeAsync(Arg.Any<AddressUpdateOperationRequest>(), Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult(
+                Result<AddressUpdateSuccess>.Success(
+                    new AddressUpdateSuccess
+                    {
+                        NormalizedAddress = new Address
+                        {
+                            StreetAddress1 = "2400 MLK JR Ave SE",
+                            City = "Washington",
+                            State = "DC",
+                            PostalCode = "20020"
+                        },
+                        WasCorrected = true,
+                        IsGeneralDelivery = false
+                    })));
+
+        var handler = CreateHandler();
+        var command = new UpdateAddressCommand
+        {
+            User = CreateUser("user@example.com"),
+            StreetAddress1 = "2400 Martin Luther King Jr Ave SE",
+            City = "Washington",
+            State = "DC",
+            PostalCode = "20020",
+            AcceptEnteredAddress = true
+        };
+
+        SetupResolverReturnsEmail();
+        SetupHouseholdWithCases();
+
+        var result = await handler.Handle(command, CancellationToken.None);
+
+        Assert.True(result.IsSuccess);
+        var success = Assert.IsType<SuccessResult<AddressValidationResult>>(result);
+        Assert.True(success.Value.IsValid);
+        Assert.Equal("2400 Martin Luther King Jr Ave SE", success.Value.NormalizedAddress?.StreetAddress1);
 
         await _stateAddressUpdateService.Received(1).UpdateAddressAsync(
             Arg.Is<AddressUpdateRequest>(r =>
-                r.Address.StreetAddress1 == "123 MAIN ST NW" &&
-                r.Address.City == "WASHINGTON" &&
-                r.Address.State == "DC" &&
-                r.Address.PostalCode == "20001-0001"),
+                r.Address.StreetAddress1 == "2400 Martin Luther King Jr Ave SE"),
             Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task Handle_PersistsEnteredStreet_WithDrive_WhenAcceptEnteredAddressTrue_AndSmartyCorrectedToDr()
+    {
+        _addressUpdateService
+            .ValidateAndNormalizeAsync(Arg.Any<AddressUpdateOperationRequest>(), Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult(
+                Result<AddressUpdateSuccess>.Success(
+                    new AddressUpdateSuccess
+                    {
+                        NormalizedAddress = new Address
+                        {
+                            StreetAddress1 = "2207 Orchard Creek Dr",
+                            City = "Newman",
+                            State = "CA",
+                            PostalCode = "95360-2424"
+                        },
+                        WasCorrected = true,
+                        IsGeneralDelivery = false
+                    })));
+
+        var handler = CreateHandler();
+        var command = new UpdateAddressCommand
+        {
+            User = CreateUser("user@example.com"),
+            StreetAddress1 = "2207 Orchard Creek Drive",
+            City = "Newman",
+            State = "CA",
+            PostalCode = "95360-2424",
+            AcceptEnteredAddress = true
+        };
+
+        SetupResolverReturnsEmail();
+        SetupHouseholdWithCases();
+
+        var result = await handler.Handle(command, CancellationToken.None);
+
+        Assert.True(result.IsSuccess);
+        await _stateAddressUpdateService.Received(1).UpdateAddressAsync(
+            Arg.Is<AddressUpdateRequest>(r =>
+                r.Address.StreetAddress1 == "2207 Orchard Creek Drive"),
+            Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task Handle_PersistsNormalizedStreet_WithDr_WhenAcceptEnteredAddressFalse_AndSmartyWasCorrectedFalse()
+    {
+        _addressUpdateService
+            .ValidateAndNormalizeAsync(Arg.Any<AddressUpdateOperationRequest>(), Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult(
+                Result<AddressUpdateSuccess>.Success(
+                    new AddressUpdateSuccess
+                    {
+                        NormalizedAddress = new Address
+                        {
+                            StreetAddress1 = "2207 Orchard Creek Dr",
+                            City = "Newman",
+                            State = "CA",
+                            PostalCode = "95360-2424"
+                        },
+                        WasCorrected = false,
+                        IsGeneralDelivery = false
+                    })));
+
+        var handler = CreateHandler();
+        var command = new UpdateAddressCommand
+        {
+            User = CreateUser("user@example.com"),
+            StreetAddress1 = "2207 Orchard Creek Drive",
+            City = "Newman",
+            State = "CA",
+            PostalCode = "95360-2424",
+            AcceptEnteredAddress = false
+        };
+
+        SetupResolverReturnsEmail();
+        SetupHouseholdWithCases();
+
+        var result = await handler.Handle(command, CancellationToken.None);
+
+        Assert.True(result.IsSuccess);
+        await _stateAddressUpdateService.Received(1).UpdateAddressAsync(
+            Arg.Is<AddressUpdateRequest>(r =>
+                r.Address.StreetAddress1 == "2207 Orchard Creek Dr"),
+            Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task Handle_PersistsEnteredAddress_WhenAcceptEnteredAddressAndSmartyCanonicalFailsDcAbbreviationRule()
+    {
+        // USPS-normalized street exceeds DC connector width → abbreviated 422 on first submit.
+        // Second submit with AcceptEnteredAddress must not re-return that suggestion; persist typed street.
+        _addressUpdateService
+            .ValidateAndNormalizeAsync(Arg.Any<AddressUpdateOperationRequest>(), Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult(
+                Result<AddressUpdateSuccess>.Success(
+                    new AddressUpdateSuccess
+                    {
+                        NormalizedAddress = new Address
+                        {
+                            StreetAddress1 = "2207 Orchard Creek Drive Suite Building North Wing A",
+                            City = "Newman",
+                            State = "CA",
+                            PostalCode = "95360-2424"
+                        },
+                        WasCorrected = false,
+                        IsGeneralDelivery = false
+                    })));
+
+        _addressValidationService
+            .ValidateAsync(Arg.Any<Address>(), Arg.Any<CancellationToken>())
+            .Returns(call =>
+            {
+                var addr = call.Arg<Address>();
+                if ((addr.StreetAddress1?.Length ?? 0) > 30)
+                {
+                    return Task.FromResult(
+                        AddressValidationResult.Suggestion(
+                            new Address
+                            {
+                                StreetAddress1 = "2207 Orchard Crk Dr STE B",
+                                City = addr.City,
+                                State = addr.State,
+                                PostalCode = addr.PostalCode
+                            },
+                            "abbreviated"));
+                }
+
+                return Task.FromResult(AddressValidationResult.Valid());
+            });
+
+        var handler = CreateHandler();
+        var command = new UpdateAddressCommand
+        {
+            User = CreateUser("user@example.com"),
+            StreetAddress1 = "2207 Orchard Creek Drive",
+            City = "Newman",
+            State = "CA",
+            PostalCode = "95360-2424",
+            AcceptEnteredAddress = true
+        };
+
+        SetupResolverReturnsEmail();
+        SetupHouseholdWithCases();
+
+        var result = await handler.Handle(command, CancellationToken.None);
+
+        Assert.True(result.IsSuccess);
+        var success = Assert.IsType<SuccessResult<AddressValidationResult>>(result);
+        Assert.True(success.Value.IsValid);
+        Assert.Equal("2207 Orchard Creek Drive", success.Value.NormalizedAddress?.StreetAddress1);
+
+        await _stateAddressUpdateService.Received(1).UpdateAddressAsync(
+            Arg.Is<AddressUpdateRequest>(r =>
+                r.Address.StreetAddress1 == "2207 Orchard Creek Drive"),
+            Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task Handle_ReturnsInvalid_WhenAcceptEnteredAddressButEnteredFailsStateValidation()
+    {
+        _addressUpdateService
+            .ValidateAndNormalizeAsync(Arg.Any<AddressUpdateOperationRequest>(), Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult(
+                Result<AddressUpdateSuccess>.Success(
+                    new AddressUpdateSuccess
+                    {
+                        NormalizedAddress = new Address
+                        {
+                            StreetAddress1 = "SHORT",
+                            City = "Washington",
+                            State = "DC",
+                            PostalCode = "20001"
+                        },
+                        WasCorrected = true,
+                        IsGeneralDelivery = false
+                    })));
+
+        var callCount = 0;
+        _addressValidationService
+            .ValidateAsync(Arg.Any<Address>(), Arg.Any<CancellationToken>())
+            .Returns(_ =>
+            {
+                callCount++;
+                return Task.FromResult(
+                    callCount == 1
+                        ? AddressValidationResult.Valid()
+                        : AddressValidationResult.Invalid(
+                            "Enter a street address shorter than 30 characters.",
+                            "too_long"));
+            });
+
+        var handler = CreateHandler();
+        var command = new UpdateAddressCommand
+        {
+            User = CreateUser("user@example.com"),
+            StreetAddress1 = new string('X', 35),
+            City = "Washington",
+            State = "DC",
+            PostalCode = "20001",
+            AcceptEnteredAddress = true
+        };
+
+        SetupResolverReturnsEmail();
+        SetupHouseholdWithCases();
+
+        var result = await handler.Handle(command, CancellationToken.None);
+
+        Assert.True(result.IsSuccess);
+        var success = Assert.IsType<SuccessResult<AddressValidationResult>>(result);
+        Assert.False(success.Value.IsValid);
+        Assert.Equal("too_long", success.Value.Reason);
+        await _stateAddressUpdateService.DidNotReceive()
+            .UpdateAddressAsync(Arg.Any<AddressUpdateRequest>(), Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task Handle_DoesNotReturnSuggestion_WhenDifferenceIsOnlyCase()
+    {
+        _addressUpdateService
+            .ValidateAndNormalizeAsync(Arg.Any<AddressUpdateOperationRequest>(), Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult(
+                Result<AddressUpdateSuccess>.Success(
+                    new AddressUpdateSuccess
+                    {
+                        NormalizedAddress = new Address
+                        {
+                            StreetAddress1 = "123 MAIN ST NW",
+                            City = "WASHINGTON",
+                            State = "dc",
+                            PostalCode = "20001"
+                        },
+                        WasCorrected = false,
+                        IsGeneralDelivery = false
+                    })));
+
+        var handler = CreateHandler();
+        var command = new UpdateAddressCommand
+        {
+            User = CreateUser("user@example.com"),
+            StreetAddress1 = "123 Main St NW",
+            City = "Washington",
+            State = "DC",
+            PostalCode = "20001"
+        };
+
+        SetupResolverReturnsEmail();
+        SetupHouseholdWithCases();
+
+        var result = await handler.Handle(command, CancellationToken.None);
+
+        Assert.True(result.IsSuccess);
+        var success = Assert.IsType<SuccessResult<AddressValidationResult>>(result);
+        Assert.True(success.Value.IsValid);
+        await _stateAddressUpdateService.Received(1)
+            .UpdateAddressAsync(Arg.Any<AddressUpdateRequest>(), Arg.Any<CancellationToken>());
     }
 }

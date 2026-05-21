@@ -1,7 +1,13 @@
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
+using SEBT.Portal.Core.AppSettings;
+using SEBT.Portal.Core.Models;
+using SEBT.Portal.Core.Models.Auth;
 using SEBT.Portal.Core.Models.DocVerification;
+using SEBT.Portal.Core.Models.Household;
 using SEBT.Portal.Core.Repositories;
 using SEBT.Portal.Core.Services;
+using SEBT.Portal.Core.Utilities;
 using SEBT.Portal.Kernel;
 using SEBT.Portal.Kernel.Results;
 
@@ -16,7 +22,10 @@ namespace SEBT.Portal.UseCases.IdProofing;
 public class StartChallengeCommandHandler(
     IDocVerificationChallengeRepository challengeRepository,
     IUserRepository userRepository,
+    IHouseholdRepository householdRepository,
     ISocureClient socureClient,
+    SocureSettings socureSettings,
+    IOptions<IdProofingEligibilitySettings> idProofingEligibilitySettings,
     IValidator<StartChallengeCommand> validator,
     ILogger<StartChallengeCommandHandler> logger)
     : ICommandHandler<StartChallengeCommand, StartChallengeResponse>
@@ -62,13 +71,11 @@ public class StartChallengeCommandHandler(
                 "Challenge has expired. Please re-submit your information.");
         }
 
-        // Must be in Created state to start
-        if (challenge.Status != DocVerificationStatus.Created)
+        if (challenge.Status == DocVerificationStatus.Pending
+            && challenge.DocvTransactionToken != null
+            && challenge.DocvUrl != null)
         {
-            // If already Pending, return the existing token (idempotent for repeated start, Codex test 6)
-            if (challenge.Status == DocVerificationStatus.Pending
-                && challenge.DocvTransactionToken != null
-                && challenge.DocvUrl != null)
+            if (!IsDocvTransactionTokenStale(challenge))
             {
                 logger.LogInformation(
                     "Challenge {ChallengeId} already Pending, returning existing token for user {UserId}",
@@ -77,6 +84,23 @@ public class StartChallengeCommandHandler(
                     new StartChallengeResponse(challenge.DocvTransactionToken, challenge.DocvUrl));
             }
 
+            logger.LogInformation(
+                "Challenge {ChallengeId} DocV token stale for user {UserId}, refreshing via Socure",
+                command.ChallengeId, command.UserId);
+
+            var refreshResult = await RefreshDocvTransactionTokenAsync(challenge, cancellationToken);
+            if (!refreshResult.IsSuccess)
+            {
+                return refreshResult;
+            }
+
+            await challengeRepository.UpdateAsync(challenge, cancellationToken);
+            return refreshResult;
+        }
+
+        // Must be in Created state to start (terminal and other states)
+        if (challenge.Status != DocVerificationStatus.Created)
+        {
             logger.LogWarning(
                 "Challenge {ChallengeId} is in {Status} state, cannot start",
                 command.ChallengeId, challenge.Status);
@@ -88,6 +112,23 @@ public class StartChallengeCommandHandler(
         // If DocV data was stored during assessment (single-call design), use it directly
         if (challenge.DocvTransactionToken != null && challenge.DocvUrl != null)
         {
+            if (IsDocvTransactionTokenStale(challenge))
+            {
+                logger.LogInformation(
+                    "Challenge {ChallengeId} stored DocV token stale for user {UserId}, refreshing",
+                    command.ChallengeId, command.UserId);
+
+                var refreshResult = await RefreshDocvTransactionTokenAsync(challenge, cancellationToken);
+                if (!refreshResult.IsSuccess)
+                {
+                    return refreshResult;
+                }
+
+                challenge.TransitionTo(DocVerificationStatus.Pending);
+                await challengeRepository.UpdateAsync(challenge, cancellationToken);
+                return refreshResult;
+            }
+
             challenge.TransitionTo(DocVerificationStatus.Pending);
             await challengeRepository.UpdateAsync(challenge, cancellationToken);
 
@@ -125,7 +166,7 @@ public class StartChallengeCommandHandler(
         }
         catch (NotSupportedException)
         {
-            logger.LogWarning(
+            logger.LogError(
                 "Challenge {ChallengeId} has no stored DocV data and the Socure client does not " +
                 "support on-demand session creation. User {UserId} must re-submit ID proofing.",
                 command.ChallengeId, command.UserId);
@@ -136,7 +177,7 @@ public class StartChallengeCommandHandler(
 
         if (!sessionResult.IsSuccess)
         {
-            logger.LogWarning("Socure DocV session creation failed for user {UserId}", command.UserId);
+            logger.LogError("Socure DocV session creation failed for user {UserId}", command.UserId);
             return Result<StartChallengeResponse>.DependencyFailed(
                 DependencyFailedReason.ConnectionFailed, "Failed to create document verification session.");
         }
@@ -148,6 +189,7 @@ public class StartChallengeCommandHandler(
         challenge.EvalId = session.EvalId;
         challenge.DocvTransactionToken = session.DocvTransactionToken;
         challenge.DocvUrl = session.DocvUrl;
+        challenge.DocvTokenIssuedAt = DateTime.UtcNow;
         challenge.TransitionTo(DocVerificationStatus.Pending);
 
         await challengeRepository.UpdateAsync(challenge, cancellationToken);
@@ -155,6 +197,149 @@ public class StartChallengeCommandHandler(
         logger.LogInformation(
             "Started DocV session for challenge {ChallengeId}, user {UserId}",
             command.ChallengeId, command.UserId);
+
+        return Result<StartChallengeResponse>.Success(
+            new StartChallengeResponse(session.DocvTransactionToken, session.DocvUrl));
+    }
+
+    private bool IsDocvTransactionTokenStale(DocVerificationChallenge challenge)
+    {
+        if (!challenge.DocvTokenIssuedAt.HasValue)
+        {
+            return true;
+        }
+
+        var ttl = TimeSpan.FromMinutes(socureSettings.DocvTransactionTokenTtlMinutes);
+        return DateTime.UtcNow - challenge.DocvTokenIssuedAt.Value > ttl;
+    }
+
+    private async Task<Result<StartChallengeResponse>> RefreshDocvTransactionTokenAsync(
+        DocVerificationChallenge challenge,
+        CancellationToken cancellationToken)
+    {
+        if (string.IsNullOrWhiteSpace(challenge.ProofingDateOfBirth)
+            || string.IsNullOrWhiteSpace(challenge.ProofingIdType)
+            || string.IsNullOrWhiteSpace(challenge.ProofingIdValue))
+        {
+            logger.LogError(
+                "Cannot refresh DocV token for challenge {ChallengeId}: missing stored id-proofing inputs",
+                challenge.PublicId);
+            return Result<StartChallengeResponse>.PreconditionFailed(
+                PreconditionFailedReason.Conflict,
+                "Document verification session expired. Please re-submit your information.");
+        }
+
+        var user = await userRepository.GetUserByIdAsync(challenge.UserId, cancellationToken);
+        if (user == null)
+        {
+            return Result<StartChallengeResponse>.PreconditionFailed(
+                PreconditionFailedReason.NotFound, "User not found.");
+        }
+
+        if (string.IsNullOrWhiteSpace(user.Email))
+        {
+            return Result<StartChallengeResponse>.PreconditionFailed(
+                PreconditionFailedReason.Conflict, "Email is required for document verification.");
+        }
+
+        string? givenName = null;
+        string? familyName = null;
+        Address? address = null;
+        string? householdPhone = null;
+        try
+        {
+            var warehouseIal = PreSocureHouseholdWarehouseIal.ForEmailLinkedHouseholdRead(
+                user.IalLevel,
+                idProofingEligibilitySettings.Value.RequireQualifyingHouseholdForSocure);
+            var household = await householdRepository.GetHouseholdByEmailAsync(
+                user.Email,
+                new PiiVisibility(IncludeAddress: true, IncludeEmail: true, IncludePhone: true),
+                warehouseIal,
+                cancellationToken);
+            if (household?.UserProfile != null)
+            {
+                givenName = household.UserProfile.FirstName;
+                familyName = household.UserProfile.LastName;
+            }
+            if (household?.AddressOnFile != null)
+            {
+                address = household.AddressOnFile;
+            }
+            householdPhone = household?.Phone;
+        }
+        catch (Exception ex)
+        {
+            logger.LogWarning(
+                "Household lookup failed ({ExceptionType}) for user {UserId} during DocV token refresh, proceeding without name/address/phone from CMS",
+                ex.GetType().FullName, challenge.UserId);
+        }
+
+        var phoneNumber = !string.IsNullOrWhiteSpace(socureSettings.SandboxPhoneOverride)
+            ? socureSettings.SandboxPhoneOverride
+            : !string.IsNullOrWhiteSpace(householdPhone)
+                ? householdPhone
+                : user.Phone;
+
+        var assessmentResult = await socureClient.RunIdProofingAssessmentAsync(
+            challenge.UserId,
+            user.Email!,
+            challenge.ProofingDateOfBirth,
+            challenge.ProofingIdType,
+            challenge.ProofingIdValue,
+            ipAddress: null,
+            phoneNumber: phoneNumber,
+            givenName: givenName,
+            familyName: familyName,
+            address: address,
+            diSessionToken: null,
+            cancellationToken: cancellationToken);
+
+        if (!assessmentResult.IsSuccess)
+        {
+            logger.LogError(
+                "Socure assessment failed during DocV token refresh for user {UserId}",
+                challenge.UserId);
+
+            if (assessmentResult is DependencyFailedResult<IdProofingAssessmentResult> depFailed)
+            {
+                return Result<StartChallengeResponse>.DependencyFailed(
+                    depFailed.Reason, depFailed.Message);
+            }
+
+            return Result<StartChallengeResponse>.DependencyFailed(
+                DependencyFailedReason.ConnectionFailed,
+                "Failed to refresh document verification session.");
+        }
+
+        var assessment = assessmentResult.Value;
+        if (assessment.Outcome != IdProofingOutcome.DocumentVerificationRequired
+            || assessment.DocvSession == null)
+        {
+            logger.LogError(
+                "Socure assessment during DocV token refresh returned unexpected outcome {Outcome} for user {UserId}",
+                assessment.Outcome, challenge.UserId);
+            return Result<StartChallengeResponse>.PreconditionFailed(
+                PreconditionFailedReason.Conflict,
+                "Unable to refresh document verification. Please re-submit your information.");
+        }
+
+        var session = assessment.DocvSession;
+        challenge.SocureReferenceId = session.ReferenceId;
+        challenge.EvalId = session.EvalId;
+        challenge.DocvTransactionToken = session.DocvTransactionToken;
+        challenge.DocvUrl = session.DocvUrl;
+        challenge.DocvTokenIssuedAt = DateTime.UtcNow;
+        challenge.SocureEventId = null;
+
+        var extendedExpiresAt = DateTime.UtcNow.AddMinutes(socureSettings.ChallengeExpirationMinutes);
+        if (!challenge.ExpiresAt.HasValue || challenge.ExpiresAt.Value < extendedExpiresAt)
+        {
+            challenge.ExpiresAt = extendedExpiresAt;
+        }
+
+        logger.LogInformation(
+            "Refreshed DocV transaction token for challenge {ChallengeId}, user {UserId}, ExpiresAt={ExpiresAt}",
+            challenge.PublicId, challenge.UserId, challenge.ExpiresAt);
 
         return Result<StartChallengeResponse>.Success(
             new StartChallengeResponse(session.DocvTransactionToken, session.DocvUrl));

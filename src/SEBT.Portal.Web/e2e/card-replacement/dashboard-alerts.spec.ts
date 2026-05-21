@@ -17,7 +17,7 @@ test.describe('DashboardAlerts', () => {
   test('shows address updated alert on ?addressUpdated=true', async ({ page }) => {
     await page.goto('/dashboard?addressUpdated=true')
     await expect(
-      page.locator('.usa-alert--success', { hasText: 'Address update recorded' })
+      page.locator('.usa-alert--success', { hasText: 'Your mailing address has been updated' })
     ).toBeVisible()
   })
 

@@ -33,7 +33,11 @@ const defaultFlags: FeatureFlagsContextValue = {
 }
 
 function renderWithFlags(
-  props: { summerEbtCase: SummerEbtCase; defaultExpanded?: boolean },
+  props: {
+    summerEbtCase: SummerEbtCase
+    defaultExpanded?: boolean
+    canRequestReplacementCard?: boolean
+  },
   flags: FeatureFlagsContextValue = defaultFlags
 ) {
   return render(
@@ -69,6 +73,45 @@ describe('ChildCard', () => {
     // Card type heading should not be present (i18n key: cardTableHeadingCardType → "Benefit issued to")
     expect(screen.queryByText('Benefit issued to')).not.toBeInTheDocument()
   })
+
+  // TODO add test for COlike scenario
+  // it('does not render cardTableTypeSnap when empty and issuance type 1', () => {
+  //   const caseWithoutIssuanceType = createMockSummerEbtCase({
+  //     ...mockCase,
+  //     issuanceType: null
+  //   })
+
+  //   renderWithFlags({ summerEbtCase: caseWithoutIssuanceType })
+
+  //   // Card type heading should not be present (i18n key: cardTableHeadingCardType → "Benefit issued to")
+  //   expect(screen.queryByText('Benefit issued to')).not.toBeInTheDocument()
+  // })
+
+  // TODO add test for DClike scenario
+  // it('renders cardTableTypeSnap when defined and issuance type 3', () => {
+  //   const caseWithoutIssuanceType = createMockSummerEbtCase({
+  //     ...mockCase,
+  //     issuanceType: 3
+  //   })
+
+  //   renderWithFlags({ summerEbtCase: caseWithoutIssuanceType })
+
+  //   // Card type heading should not be present (i18n key: cardTableHeadingCardType → "Benefit issued to")
+  //   expect(screen.queryByText('Benefit issued to')).not.toBeInTheDocument()
+  // })
+
+  // TODO add test for DClike scenario
+  // it('renders cardTableTypeTanf when defined and issuance type 2', () => {
+  //   const caseWithoutIssuanceType = createMockSummerEbtCase({
+  //     ...mockCase,
+  //     issuanceType: 2
+  //   })
+
+  //   renderWithFlags({ summerEbtCase: caseWithoutIssuanceType })
+
+  //   // Card type heading should not be present (i18n key: cardTableHeadingCardType → "Benefit issued to")
+  //   expect(screen.queryByText('Benefit issued to')).not.toBeInTheDocument()
+  // })
 
   it('renders child name in accordion header', () => {
     renderWithFlags({ summerEbtCase: mockCase })
@@ -249,9 +292,10 @@ describe('ChildCard', () => {
     expect(screen.queryByText('Card status')).not.toBeInTheDocument()
   })
 
-  it('shows info link instead of replacement link when allowCardReplacement is false', () => {
+  it('shows info link instead of replacement link for a co-loaded case', () => {
     const coLoadedCase = createMockSummerEbtCase({
       ...mockCase,
+      issuanceType: 'SnapEbtCard',
       allowCardReplacement: false
     })
 
@@ -266,6 +310,31 @@ describe('ChildCard', () => {
 
     const link = screen.getByRole('link')
     expect(link).toHaveAttribute('href', '/cards/info')
+    expect(link).toHaveTextContent(/request a replacement card/i)
+  })
+
+  it('shows info link for a co-loaded case even when household-level canRequestReplacementCard is false', () => {
+    // Regression: when every child is co-loaded, the rules engine sets the household
+    // flag to false. The per-case link must still render so co-loaded users can reach
+    // the explainer page.
+    const coLoadedCase = createMockSummerEbtCase({
+      ...mockCase,
+      issuanceType: 'TanfEbtCard',
+      allowCardReplacement: false
+    })
+
+    renderWithFlags(
+      { summerEbtCase: coLoadedCase, canRequestReplacementCard: false },
+      {
+        flags: { ...TEST_FEATURE_FLAGS, enable_card_replacement: true },
+        isLoading: false,
+        isError: false
+      }
+    )
+
+    const link = screen.getByRole('link')
+    expect(link).toHaveAttribute('href', '/cards/info')
+    expect(link).toHaveTextContent(/request a replacement card/i)
   })
 
   it('shows replacement link for SummerEbt when feature flag is enabled', () => {
@@ -287,7 +356,7 @@ describe('ChildCard', () => {
     expect(screen.getByText('Request a replacement card')).toBeInTheDocument()
   })
 
-  it('hides replacement link when enable_card_replacement flag is off', () => {
+  it('hides replacement link when canRequestReplacementCard is false', () => {
     const summerEbtCase = createMockSummerEbtCase({
       ...mockCase,
       issuanceType: 'SummerEbt',
@@ -295,9 +364,9 @@ describe('ChildCard', () => {
     })
 
     renderWithFlags(
-      { summerEbtCase },
+      { summerEbtCase, canRequestReplacementCard: false },
       {
-        flags: { ...TEST_FEATURE_FLAGS, enable_card_replacement: false },
+        flags: TEST_FEATURE_FLAGS,
         isLoading: false,
         isError: false
       }

@@ -53,6 +53,7 @@ public class GetVerificationStatusQueryHandler(
             DocVerificationStatus.Verified => "verified",
             DocVerificationStatus.Rejected => "rejected",
             DocVerificationStatus.Expired => "rejected",
+            DocVerificationStatus.Resubmit => "resubmit",
             _ => "pending"
         };
 

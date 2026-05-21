@@ -21,14 +21,22 @@ function hasCardLifecycleTimeline(summerEbtCase: SummerEbtCase): boolean {
   return summerEbtCase.cardRequestedAt != null
 }
 
-function getReplacementLink(summerEbtCase: SummerEbtCase): string | null {
-  const { summerEBTCaseID, allowCardReplacement, cardRequestedAt } = summerEbtCase
+function isCoLoadedIssuance(issuanceType: IssuanceType | null | undefined): boolean {
+  return issuanceType === 'SnapEbtCard' || issuanceType === 'TanfEbtCard'
+}
+
+function getReplacementLink(
+  summerEbtCase: SummerEbtCase,
+  canRequestReplacementCard: boolean
+): string | null {
+  const { summerEBTCaseID, issuanceType, cardRequestedAt } = summerEbtCase
   if (!summerEBTCaseID) return null
 
-  if (!allowCardReplacement) {
-    return '/cards/info'
-  }
+  // Co-loaded cases always link to the info page — they cannot be replaced in-portal,
+  // and the household-level allow flag is irrelevant for the educational link.
+  if (isCoLoadedIssuance(issuanceType)) return '/cards/info'
 
+  if (!canRequestReplacementCard) return null
   if (isWithinCooldownPeriod(cardRequestedAt)) return null
 
   return `/cards/replace?case=${encodeURIComponent(summerEBTCaseID)}`
@@ -37,6 +45,12 @@ function getReplacementLink(summerEbtCase: SummerEbtCase): string | null {
 interface ChildCardProps {
   summerEbtCase: SummerEbtCase
   defaultExpanded?: boolean
+  /**
+   * Server-computed permission for requesting a replacement card. When false,
+   * the per-case replacement link is hidden regardless of per-case eligibility.
+   * When omitted, defaults to allowed (backward-compatible).
+   */
+  canRequestReplacementCard?: boolean | undefined
 }
 
 // Keys map to CSV: "S2 - Portal Dashboard - Card Table - cardTableType{Sebt|Snap|Tanf}"
@@ -47,9 +61,12 @@ const CARD_TYPE_KEYS: Partial<Record<IssuanceType, string>> = {
 }
 
 // Keys map to CSV: "S2 - Portal Dashboard - Card Table - {Key}"
-export function ChildCard({ summerEbtCase, defaultExpanded = true }: ChildCardProps) {
+export function ChildCard({
+  summerEbtCase,
+  defaultExpanded = true,
+  canRequestReplacementCard = true
+}: ChildCardProps) {
   const { t, i18n } = useTranslation('dashboard')
-  const enableCardReplacement = useFeatureFlag('enable_card_replacement')
   const showCaseNumber = useFeatureFlag('show_case_number')
   const showCardLast4 = useFeatureFlag('show_card_last4')
   const [isExpanded, setIsExpanded] = useState(defaultExpanded)
@@ -58,6 +75,7 @@ export function ChildCard({ summerEbtCase, defaultExpanded = true }: ChildCardPr
 
   const {
     ebtCaseNumber,
+    caseDisplayNumber,
     benefitAvailableDate,
     benefitExpirationDate,
     ebtCardLastFour,
@@ -67,8 +85,12 @@ export function ChildCard({ summerEbtCase, defaultExpanded = true }: ChildCardPr
     cardMailedAt,
     cardDeactivatedAt
   } = summerEbtCase
+  const referenceIdShown =
+    caseDisplayNumber !== undefined && caseDisplayNumber !== null && caseDisplayNumber !== ''
+      ? caseDisplayNumber
+      : ebtCaseNumber
   const cardTypeKey = issuanceType ? (CARD_TYPE_KEYS[issuanceType] ?? null) : null
-  const replacementLink = enableCardReplacement ? getReplacementLink(summerEbtCase) : null
+  const replacementLink = getReplacementLink(summerEbtCase, canRequestReplacementCard)
 
   return (
     <div className="usa-accordion__item">
@@ -90,10 +112,12 @@ export function ChildCard({ summerEbtCase, defaultExpanded = true }: ChildCardPr
         data-testid="accordion-content"
       >
         <dl className="margin-0">
-          {showCaseNumber && ebtCaseNumber && (
+          {showCaseNumber && referenceIdShown && (
             <>
-              <dt className="text-bold margin-top-2">{t('cardTableHeadingSebtId')}</dt>
-              <dd className="margin-left-0">{ebtCaseNumber}</dd>
+              <dt className="text-bold margin-top-2">
+                {t('cardTableHeadingSebtId', { defaultValue: 'DC SUN Bucks ID' })}
+              </dt>
+              <dd className="margin-left-0">{referenceIdShown}</dd>
             </>
           )}
           {benefitAvailableDate && (
@@ -116,9 +140,14 @@ export function ChildCard({ summerEbtCase, defaultExpanded = true }: ChildCardPr
           )}
           {showCardLast4 && ebtCardLastFour && (
             <>
-              <dt className="text-bold margin-top-2">{t('cardTableHeadingCardNumber')}</dt>
+              <dt className="text-bold margin-top-2">
+                {t('cardTableHeadingCardNumber', { defaultValue: 'Card number' })}
+              </dt>
               <dd className="margin-left-0">
-                {t('cardTableLastFourDigits').replace('[9999]', ebtCardLastFour)}
+                {t('cardTableLastFourDigits', { defaultValue: '[9999]' }).replace(
+                  '[9999]',
+                  ebtCardLastFour
+                )}
               </dd>
             </>
           )}
@@ -140,7 +169,7 @@ export function ChildCard({ summerEbtCase, defaultExpanded = true }: ChildCardPr
             data-analytics-cta="replacement_card_cta"
             className="usa-link display-inline-block margin-top-2"
           >
-            {t('cardTableActionRequestReplacement', 'Request a replacement card')}
+            {t('cardTableActionRequestReplacement')}
           </Link>
         )}
       </div>

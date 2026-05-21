@@ -3,13 +3,12 @@ using System.Threading.RateLimiting;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Microsoft.AspNetCore.HttpOverrides;
-using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
 using SEBT.Portal.Api;
 using SEBT.Portal.Api.Composition;
 using SEBT.Portal.Api.Filters;
-using SEBT.Portal.Api.Models;
+using SEBT.Portal.Api.Telemetry;
 using Serilog;
 using Serilog.Templates;
 using Microsoft.FeatureManagement;
@@ -22,11 +21,9 @@ using SEBT.Portal.Infrastructure.Configuration;
 using SEBT.Portal.Infrastructure.Services;
 using SEBT.Portal.Infrastructure.Seeding.Services;
 using SEBT.Portal.UseCases;
+using SEBT.Portal.UseCases.Auth.SessionLifetime;
 using SEBT.Portal.Infrastructure;
 using SEBT.Portal.Api.Startup;
-using SEBT.Portal.Core.Models.Auth;
-using SEBT.Portal.Core.Repositories;
-using SEBT.Portal.Core.Utilities;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -41,7 +38,9 @@ var useJsonLogs = string.Equals(
 
 var logConfig = new LoggerConfiguration()
     .ReadFrom.Configuration(builder.Configuration)
-    .Enrich.FromLogContext();
+    .Enrich.FromLogContext()
+    .Enrich.WithOtelTracingSpanId()
+    .Enrich.WithPortalUserInfo();
 
 if (useJsonLogs)
 {
@@ -57,6 +56,7 @@ else
 Log.Logger = logConfig.CreateLogger();
 
 builder.Host.UseSerilog();
+builder.SetupOpenTelemetry();
 
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddHttpClient();
@@ -70,6 +70,7 @@ builder.Services.AddHttpClient();
 var state = Environment.GetEnvironmentVariable("STATE");
 if (!string.IsNullOrEmpty(state))
 {
+    Log.Logger.Information("Loading state-specific config: {State}", state);
     var stateConfigFile = $"appsettings.{state.ToLowerInvariant()}.json";
     builder.Configuration.AddJsonFile(stateConfigFile, optional: true, reloadOnChange: true);
 }
@@ -116,10 +117,18 @@ if (!string.IsNullOrEmpty(dbHost) && !string.IsNullOrEmpty(dbPassword))
     var dbUser = Environment.GetEnvironmentVariable("DB_USER") ?? "admin";
     builder.Configuration["ConnectionStrings:DefaultConnection"] =
         $"Server={dbHost},{dbPort};Database={dbName};User Id={dbUser};Password={dbPassword};Encrypt=True;TrustServerCertificate=True;";
+
+    var dcSourceDbName = Environment.GetEnvironmentVariable("DC_SOURCE_DB_NAME");
+    if (!string.IsNullOrEmpty(dcSourceDbName))
+    {
+        builder.Configuration["DCConnector:ConnectionString"] =
+            $"Server={dbHost},{dbPort};Database={dcSourceDbName};User Id={dbUser};Password={dbPassword};Encrypt=True;TrustServerCertificate=True;";
+    }
 }
 
 // Caching must be registered before plugins — plugins may depend on HybridCache
 builder.Services.AddCaching(builder.Configuration);
+builder.Services.AddDistributedLocking(builder.Configuration);
 
 // Registers plugins and allows them to be constructor injected into ASP.NET controllers
 builder.Services.AddPlugins(builder.Configuration, builder.Environment.ContentRootPath);
@@ -224,6 +233,31 @@ builder.Services.AddOptions<JwtBearerOptions>(JwtBearerDefaults.AuthenticationSc
                     {
                         context.Token = cookieToken;
                     }
+                }
+                return Task.CompletedTask;
+            },
+            OnTokenValidated = context =>
+            {
+                // Enforce the absolute session lifetime cap on every authenticated request.
+                // Tokens missing auth_time (e.g., minted before the cap was introduced) or
+                // older than the cap are rejected here so the SPA's 401 handler kicks in.
+                if (context.Principal is null)
+                {
+                    return Task.CompletedTask;
+                }
+
+                var policy = context.HttpContext.RequestServices
+                    .GetRequiredService<SessionLifetimePolicy>();
+                var outcome = policy.Evaluate(context.Principal);
+
+                if (outcome != SessionLifetimePolicy.Outcome.Valid)
+                {
+                    AuthCookies.ClearAuthCookie(context.Response);
+                    var logger = context.HttpContext.RequestServices
+                        .GetRequiredService<ILogger<JwtBearerEvents>>();
+                    logger.LogInformation(
+                        "JWT rejected by absolute session lifetime policy: {Outcome}", outcome);
+                    context.Fail($"Absolute session lifetime: {outcome}");
                 }
                 return Task.CompletedTask;
             }
@@ -416,7 +450,7 @@ try
 }
 catch (Exception ex)
 {
-    Log.Warning(ex, "Database migrations failed or database unavailable. App will continue to start.");
+    Log.Error(ex, "Database migrations failed or database unavailable. App will continue to start.");
 }
 
 // Configure the HTTP request pipeline.

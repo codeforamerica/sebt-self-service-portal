@@ -1,6 +1,7 @@
 import bundleAnalyzer from '@next/bundle-analyzer'
 import type { NextConfig } from 'next'
 import path from 'path'
+import { getRouteHeaders } from './src/lib/route-headers'
 
 const state = process.env.STATE || 'dc'
 
@@ -21,7 +22,8 @@ const nextConfig: NextConfig = {
   // into server-safe (index.ts) and client (client.ts) entry points instead.
   reactCompiler: true,
   env: {
-    NEXT_PUBLIC_STATE: state
+    NEXT_PUBLIC_STATE: state,
+    NEXT_PUBLIC_SMARTY_EMBEDDED_KEY: process.env.NEXT_PUBLIC_SMARTY_EMBEDDED_KEY || ''
   },
   experimental: {
     // Use our custom sass-loader configuration instead of built-in
@@ -70,7 +72,8 @@ const nextConfig: NextConfig = {
   // Local dev uses standard output so `next start` serves public/ and static/ correctly
   ...(process.env.BUILD_STANDALONE === 'true' && { output: 'standalone' as const }),
   poweredByHeader: false,
-  reactStrictMode: true
+  reactStrictMode: true,
+  headers: getRouteHeaders
 }
 
 export default withBundleAnalyzer(nextConfig)

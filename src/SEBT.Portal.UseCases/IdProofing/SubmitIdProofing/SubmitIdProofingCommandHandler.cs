@@ -1,4 +1,6 @@
+using System.Globalization;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 using SEBT.Portal.Core.AppSettings;
 using SEBT.Portal.Core.Exceptions;
 using SEBT.Portal.Core.Models;
@@ -7,6 +9,7 @@ using SEBT.Portal.Core.Models.DocVerification;
 using SEBT.Portal.Core.Models.Household;
 using SEBT.Portal.Core.Repositories;
 using SEBT.Portal.Core.Services;
+using SEBT.Portal.Core.Utilities;
 using SEBT.Portal.Kernel;
 using SEBT.Portal.Kernel.Results;
 
@@ -17,9 +20,11 @@ namespace SEBT.Portal.UseCases.IdProofing;
 /// 1. Validate input
 /// 2. Early exit if no ID provided (noIdProvided off-boarding)
 /// 3. Reuse existing active challenge if one exists
-/// 4. Load household PII for Socure when available (name, address, phone from state/CMS)
-/// 5. Call Socure for risk assessment
-/// 6. Create a new challenge if document verification is required
+/// 4. Co-loaded users with SNAP/TANF ID: complete at IAL1+ without Socure (DC warehouse IC+DOB when applicable, then on-file match)
+/// 5. Load household PII for Socure when available (name, address, phone from state/CMS),
+///    then apply qualifying-household gate for Socure (DC) after the user has submitted the form
+/// 6. Call Socure for risk assessment
+/// 7. Create a new challenge if document verification is required
 /// </summary>
 public class SubmitIdProofingCommandHandler(
     IUserRepository userRepository,
@@ -28,6 +33,7 @@ public class SubmitIdProofingCommandHandler(
     ISocureClient socureClient,
     SocureSettings socureSettings,
     IValidator<SubmitIdProofingCommand> validator,
+    IOptions<IdProofingEligibilitySettings> idProofingEligibilitySettings,
     ILogger<SubmitIdProofingCommandHandler> logger)
     : ICommandHandler<SubmitIdProofingCommand, SubmitIdProofingResponse>
 {
@@ -40,6 +46,35 @@ public class SubmitIdProofingCommandHandler(
         {
             logger.LogWarning("ID proofing submission validation failed for user {UserId}", command.UserId);
             return Result<SubmitIdProofingResponse>.ValidationFailed(validationFailed.Errors);
+        }
+
+        if (!DateOnly.TryParse(
+                command.DateOfBirth,
+                CultureInfo.InvariantCulture,
+                DateTimeStyles.None,
+                out var submittedDob))
+        {
+            logger.LogWarning(
+                "ID proofing submission rejected for user {UserId}: DateOfBirth could not be parsed as yyyy-MM-dd",
+                command.UserId);
+            return Result<SubmitIdProofingResponse>.ValidationFailed(
+                nameof(SubmitIdProofingCommand.DateOfBirth),
+                "DateOfBirth must be a valid date in yyyy-MM-dd format.");
+        }
+
+        // Defense-in-depth: SSN/ITIN must be exactly 9 digits after stripping non-digit
+        // characters. OpenAPI permits 4-digit partial SSNs, but product decision for DC-296
+        // is full 9 only (aligned with the frontend schema). Other id types have different
+        // format rules and are not policed here.
+        if (IsSsnOrItin(command.IdType)
+            && !IsExactlyNineDigitsAfterStripping(command.IdValue))
+        {
+            logger.LogWarning(
+                "ID proofing submission rejected for user {UserId}: IdValue for SSN/ITIN is not 9 digits",
+                command.UserId);
+            return Result<SubmitIdProofingResponse>.ValidationFailed(
+                nameof(SubmitIdProofingCommand.IdValue),
+                "IdValue must be 9 digits for SSN or ITIN.");
         }
 
         // Load the user — needed for email (passed to Socure)
@@ -73,12 +108,24 @@ public class SubmitIdProofingCommandHandler(
                     OffboardingReason: "maxAttemptsReached"));
         }
 
-        // No ID provided → off-board immediately (Codex test 5)
+        // Co-loaded users still need a SNAP/TANF identifier so we can household them; off-board
+        // when no ID is provided. Non-co-loaded users fall through to Socure DocV — Socure's
+        // consumer_onboarding workflow short-circuits to document verification when KYC can't
+        // resolve the consumer, so national_id is optional for that path.
         if (string.IsNullOrWhiteSpace(command.IdType))
         {
-            logger.LogInformation("User {UserId} submitted ID proofing without an ID type", command.UserId);
-            return Result<SubmitIdProofingResponse>.Success(
-                new SubmitIdProofingResponse("failed", OffboardingReason: "noIdProvided"));
+            if (user.IsCoLoaded)
+            {
+                logger.LogInformation(
+                    "Co-loaded user {UserId} submitted ID proofing without an ID type; off-boarding (householding requires a benefit ID)",
+                    command.UserId);
+                return Result<SubmitIdProofingResponse>.Success(
+                    new SubmitIdProofingResponse("failed", OffboardingReason: "noIdProvided"));
+            }
+
+            logger.LogInformation(
+                "Non-co-loaded user {UserId} submitted ID proofing without an ID type; proceeding to Socure DocV with no national_id",
+                command.UserId);
         }
 
         // Check for an existing active challenge → reuse instead of creating a duplicate
@@ -96,34 +143,151 @@ public class SubmitIdProofingCommandHandler(
                     AllowIdRetry: activeChallenge.AllowIdRetry));
         }
 
+        // Persist the parsed DOB on the user; all downstream save paths will carry it through.
+        user.DateOfBirth = submittedDob;
+
+        var warehouseIalForEmailReads = PreSocureHouseholdWarehouseIal.ForEmailLinkedHouseholdRead(
+            user.IalLevel,
+            idProofingEligibilitySettings.Value.RequireQualifyingHouseholdForSocure);
+
+        // Co-loaded discovery: SNAP/TANF ids are an in-portal lookup (never Socure as national_id).
+        // User-level IsCoLoaded isn't presumed from a pre-populated flag — the match itself is the
+        // determination, and on success we persist it so downstream UI flows can rely on the claim.
+        if (IdProofingBenefitIdentifierTypes.IsSnapOrTanfPortalSelection(command.IdType)
+            && !string.IsNullOrWhiteSpace(command.IdValue))
+        {
+            try
+            {
+                if (await householdRepository.TryMatchCoLoadedGuardianByBenefitIdAndDobAsync(
+                        command.IdValue.Trim(),
+                        submittedDob,
+                        command.UserId,
+                        cancellationToken))
+                {
+                    IdProofingBenefitIdentifierTypes.PersistBenefitIdentifierOnUser(user, command.IdType, command.IdValue);
+                    logger.LogInformation(
+                        "User {UserId} co-loaded benefit ID verified via DC warehouse (IC+DOB) for type {IdType}",
+                        command.UserId,
+                        command.IdType);
+                    return await CompleteProofingAndRespond(
+                        user,
+                        UserIalLevel.IAL1plus,
+                        cancellationToken,
+                        "co-loaded SNAP/TANF matched via DC GetHouseholdByGuardian IC+DOB (no Socure)",
+                        markCoLoaded: true);
+                }
+            }
+            catch (Exception ex) when (ex is not OperationCanceledException)
+            {
+                logger.LogError(
+                    "DC warehouse IC+DOB match failed ({ExceptionType}) for co-loaded benefit ID verification for user {UserId}",
+                    ex.GetType().Name,
+                    command.UserId);
+            }
+
+            HouseholdData? benefitHousehold = null;
+            try
+            {
+                benefitHousehold = await householdRepository.GetHouseholdByEmailAsync(
+                    user.Email,
+                    new PiiVisibility(IncludeAddress: false, IncludeEmail: false, IncludePhone: false),
+                    warehouseIalForEmailReads,
+                    cancellationToken);
+            }
+            catch (Exception ex) when (ex is not OperationCanceledException)
+            {
+                logger.LogError(
+                    "Household lookup failed ({ExceptionType}) for co-loaded benefit ID verification for user {UserId}",
+                    ex.GetType().Name,
+                    command.UserId);
+            }
+
+            if (CoLoadedBenefitIdentifierMatch.Matches(user, benefitHousehold, command.IdType, command.IdValue))
+            {
+                IdProofingBenefitIdentifierTypes.PersistBenefitIdentifierOnUser(user, command.IdType, command.IdValue);
+                logger.LogInformation(
+                    "User {UserId} co-loaded benefit ID verified for type {IdType}",
+                    command.UserId, command.IdType);
+                return await CompleteProofingAndRespond(
+                    user,
+                    UserIalLevel.IAL1plus,
+                    cancellationToken,
+                    "co-loaded SNAP/TANF matched to on-file records (no Socure)",
+                    markCoLoaded: true);
+            }
+
+            logger.LogInformation(
+                "User {UserId} co-loaded benefit ID did not match on-file records for type {IdType}",
+                command.UserId, command.IdType);
+
+            user.IdProofingAttemptCount++;
+            var allowBenefitRetry = user.IdProofingAttemptCount < maxAttempts;
+            await userRepository.UpdateUserAsync(user, cancellationToken);
+            return Result<SubmitIdProofingResponse>.Success(
+                new SubmitIdProofingResponse(
+                    "failed",
+                    AllowIdRetry: allowBenefitRetry,
+                    OffboardingReason: "idProofingFailed"));
+        }
+
         // Fetch household data for Socure: state/CMS may supply name, address, and phone when available.
         string? givenName = null;
         string? familyName = null;
         Address? address = null;
         string? householdPhone = null;
+        HouseholdData? householdForSocure = null;
+        var householdLookupFailed = false;
         try
         {
-            var household = await householdRepository.GetHouseholdByEmailAsync(
+            householdForSocure = await householdRepository.GetHouseholdByEmailAsync(
                 user.Email,
                 new PiiVisibility(IncludeAddress: true, IncludeEmail: true, IncludePhone: true),
-                user.IalLevel,
+                warehouseIalForEmailReads,
                 cancellationToken);
-            if (household?.UserProfile != null)
+            if (householdForSocure?.UserProfile != null)
             {
-                givenName = household.UserProfile.FirstName;
-                familyName = household.UserProfile.LastName;
+                givenName = householdForSocure.UserProfile.FirstName;
+                familyName = householdForSocure.UserProfile.LastName;
             }
-            if (household?.AddressOnFile != null)
+            if (householdForSocure?.AddressOnFile != null)
             {
-                address = household.AddressOnFile;
+                address = householdForSocure.AddressOnFile;
             }
-            householdPhone = household?.Phone;
+            householdPhone = householdForSocure?.Phone;
         }
-        catch (Exception ex)
+        catch (Exception ex) when (ex is not OperationCanceledException)
         {
-            logger.LogWarning(ex,
-                "Household lookup failed for user {UserId}, proceeding without name/address/phone from CMS",
+            householdLookupFailed = true;
+            logger.LogError(ex,
+                "Household lookup failed ({ExceptionType}) for user {UserId}, proceeding without name/address/phone from CMS",
+                ex.GetType().Name,
                 command.UserId);
+        }
+
+        if (idProofingEligibilitySettings.Value.RequireQualifyingHouseholdForSocure)
+        {
+            if (householdLookupFailed)
+            {
+                logger.LogWarning(
+                    "ID proofing Socure blocked for user {UserId}: qualifying-household check could not complete because household lookup failed.",
+                    command.UserId);
+                return Result<SubmitIdProofingResponse>.DependencyFailed(
+                    DependencyFailedReason.ConnectionFailed,
+                    "Unable to verify household eligibility. Please try again later.");
+            }
+
+            if (!HouseholdSocureEligibility.HasQualifyingHouseholdForSocure(householdForSocure))
+            {
+                logger.LogInformation(
+                    "ID proofing Socure blocked for user {UserId}: no qualifying portal household (record missing or no cases and no applications).",
+                    command.UserId);
+                return Result<SubmitIdProofingResponse>.Success(
+                    new SubmitIdProofingResponse(
+                        "failed",
+                        AllowIdRetry: false,
+                        CanApply: true,
+                        OffboardingReason: "noQualifyingHousehold"));
+            }
         }
 
         // Sandbox phone override lets developers receive DocV SMS on a real phone
@@ -151,7 +315,7 @@ public class SubmitIdProofingCommandHandler(
 
         if (!assessmentResult.IsSuccess)
         {
-            logger.LogWarning("Socure assessment failed for user {UserId}", command.UserId);
+            logger.LogError("Socure assessment failed for user {UserId}", command.UserId);
 
             if (assessmentResult is DependencyFailedResult<IdProofingAssessmentResult> depFailed)
             {
@@ -175,7 +339,11 @@ public class SubmitIdProofingCommandHandler(
         {
             case IdProofingOutcome.Matched:
                 // Single save: attempt count + proofing completion together
-                return await CompleteProofingAndRespond(user, cancellationToken);
+                return await CompleteProofingAndRespond(
+                    user,
+                    UserIalLevel.IAL1plus,
+                    cancellationToken,
+                    "Socure ACCEPT (no DocV required)");
 
             case IdProofingOutcome.Failed:
                 await userRepository.UpdateUserAsync(user, cancellationToken);
@@ -188,7 +356,7 @@ public class SubmitIdProofingCommandHandler(
             case IdProofingOutcome.DocumentVerificationRequired:
                 await userRepository.UpdateUserAsync(user, cancellationToken);
                 return await CreateChallengeAndRespond(
-                    command.UserId, assessment, allowIdRetry, cancellationToken);
+                    command, assessment, allowIdRetry, cancellationToken);
 
             default:
                 throw new InvalidOperationException(
@@ -198,27 +366,39 @@ public class SubmitIdProofingCommandHandler(
 
     private async Task<Result<SubmitIdProofingResponse>> CompleteProofingAndRespond(
         User user,
-        CancellationToken cancellationToken)
+        UserIalLevel ialLevelOnCompletion,
+        CancellationToken cancellationToken,
+        string completionReasonForLog,
+        bool markCoLoaded = false)
     {
         user.IdProofingStatus = IdProofingStatus.Completed;
-        user.IalLevel = UserIalLevel.IAL2;
+        user.IalLevel = ialLevelOnCompletion;
         user.IdProofingCompletedAt = DateTime.UtcNow;
+
+        if (markCoLoaded)
+        {
+            user.IsCoLoaded = true;
+            user.CoLoadedLastUpdated = DateTime.UtcNow;
+        }
+
         await userRepository.UpdateUserAsync(user, cancellationToken);
 
         logger.LogInformation(
-            "User {UserId} proofing completed via Socure ACCEPT (no DocV required)",
-            user.Id);
+            "User {UserId} ID proofing completed: {Reason}",
+            user.Id,
+            completionReasonForLog);
 
         return Result<SubmitIdProofingResponse>.Success(
             new SubmitIdProofingResponse("matched"));
     }
 
     private async Task<Result<SubmitIdProofingResponse>> CreateChallengeAndRespond(
-        int userId,
+        SubmitIdProofingCommand command,
         IdProofingAssessmentResult assessment,
         bool allowIdRetry,
         CancellationToken cancellationToken)
     {
+        var userId = command.UserId;
         var challenge = new DocVerificationChallenge
         {
             UserId = userId,
@@ -227,7 +407,11 @@ public class SubmitIdProofingCommandHandler(
             DocvTransactionToken = assessment.DocvSession?.DocvTransactionToken,
             DocvUrl = assessment.DocvSession?.DocvUrl,
             SocureReferenceId = assessment.DocvSession?.ReferenceId,
-            EvalId = assessment.DocvSession?.EvalId
+            EvalId = assessment.DocvSession?.EvalId,
+            ProofingDateOfBirth = command.DateOfBirth,
+            ProofingIdType = command.IdType,
+            ProofingIdValue = command.IdValue,
+            DocvTokenIssuedAt = assessment.DocvSession != null ? DateTime.UtcNow : null
         };
 
         try
@@ -264,5 +448,33 @@ public class SubmitIdProofingCommandHandler(
                 "documentVerificationRequired",
                 ChallengeId: challenge.PublicId,
                 AllowIdRetry: allowIdRetry));
+    }
+
+    private static bool IsSsnOrItin(string? idType)
+    {
+        return string.Equals(idType, "ssn", StringComparison.OrdinalIgnoreCase)
+            || string.Equals(idType, "itin", StringComparison.OrdinalIgnoreCase);
+    }
+
+    private static bool IsExactlyNineDigitsAfterStripping(string? idValue)
+    {
+        if (idValue is null)
+        {
+            return false;
+        }
+
+        var digitCount = 0;
+        foreach (var ch in idValue)
+        {
+            if (char.IsDigit(ch))
+            {
+                digitCount++;
+                if (digitCount > 9)
+                {
+                    return false;
+                }
+            }
+        }
+        return digitCount == 9;
     }
 }

@@ -14,7 +14,7 @@ namespace SEBT.Portal.Infrastructure.Services;
 public class StubSocureClient(ILogger<StubSocureClient> logger) : ISocureClient
 {
     public Task<Result<IdProofingAssessmentResult>> RunIdProofingAssessmentAsync(
-        int userId,
+        Guid userId,
         string email,
         string dateOfBirth,
         string? idType,
@@ -47,7 +47,7 @@ public class StubSocureClient(ILogger<StubSocureClient> logger) : ISocureClient
     }
 
     public Task<Result<SocureDocvSession>> StartDocvSessionAsync(
-        int userId,
+        Guid userId,
         string email,
         CancellationToken cancellationToken = default)
     {
@@ -63,5 +63,31 @@ public class StubSocureClient(ILogger<StubSocureClient> logger) : ISocureClient
             EvalId: Guid.NewGuid().ToString());
 
         return Task.FromResult(Result<SocureDocvSession>.Success(session));
+    }
+
+    public Task<Result<IdProofingAssessmentResult>> RunDocvStepupAssessmentAsync(
+        Guid userId,
+        string email,
+        string? phoneNumber = null,
+        string? givenName = null,
+        string? familyName = null,
+        Address? address = null,
+        string? diSessionToken = null,
+        CancellationToken cancellationToken = default)
+    {
+        logger.LogInformation("Stub: Starting DocV step-up evaluation for user {UserId}", userId);
+
+        var token = Guid.NewGuid().ToString();
+        var session = new SocureDocvSession(
+            DocvTransactionToken: token,
+            DocvUrl: $"https://verify.socure.com/#/dv/{token}",
+            ReferenceId: Guid.NewGuid().ToString(),
+            EvalId: Guid.NewGuid().ToString());
+
+        return Task.FromResult(Result<IdProofingAssessmentResult>.Success(
+            new IdProofingAssessmentResult(
+                Outcome: IdProofingOutcome.DocumentVerificationRequired,
+                AllowIdRetry: true,
+                DocvSession: session)));
     }
 }
