@@ -163,6 +163,44 @@ describe('IalGuard', () => {
     expect(window.location.href).toContain('stepUp=true')
   })
 
+  it('challenge heading resolves stepUpDisclaimer.title, not a hardcoded fallback', async () => {
+    setupApiFetchMock({ ial: '1' })
+
+    render(
+      <AuthProvider>
+        <IalGuard>
+          <p>Protected</p>
+        </IalGuard>
+      </AuthProvider>
+    )
+
+    await waitFor(() => expect(screen.getByText(/Please wait/)).toBeInTheDocument())
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(500)
+    })
+
+    await waitFor(() => {
+      expect(screen.getByRole('heading', { name: enCoStepUpDisclaimer.title })).toBeInTheDocument()
+    })
+  })
+
+  it('checking copy resolves step-upProcessing.title and .body, not hardcoded fallbacks', async () => {
+    setupApiFetchMock({ ial: '1' })
+
+    render(
+      <AuthProvider>
+        <IalGuard>
+          <p>Protected</p>
+        </IalGuard>
+      </AuthProvider>
+    )
+
+    await waitFor(() => {
+      expect(screen.getByRole('heading', { name: enCoStepUpProcessing.title })).toBeInTheDocument()
+    })
+    expect(screen.getByText(enCoStepUpProcessing.body)).toBeInTheDocument()
+  })
+
   it('Back navigates to dashboard', async () => {
     setupApiFetchMock({ ial: '1' })
 
