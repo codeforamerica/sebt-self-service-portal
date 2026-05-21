@@ -30,6 +30,7 @@ function toUpdateAddressRequestOrNull(
 export function SuggestedAddress() {
   const { t } = useTranslation('confirmInfo')
   const { t: tCommon } = useTranslation('common')
+  const { t: tDev } = useTranslation('dev')
   const router = useRouter()
   const currentState = getState()
   const updateAddress = useUpdateAddress()
@@ -221,9 +222,7 @@ export function SuggestedAddress() {
           onClick={handleContinue}
           disabled={updateAddress.isPending}
         >
-          {updateAddress.isPending
-            ? tCommon('loading', 'Loading...')
-            : tCommon('continue', 'Continue')}
+          {updateAddress.isPending ? tDev('loading') : tCommon('continue')}
         </Button>
       </div>
     </div>

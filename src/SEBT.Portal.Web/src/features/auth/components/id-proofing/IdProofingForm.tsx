@@ -124,10 +124,8 @@ export function IdProofingForm({ idOptions, contactLink, getDiToken }: IdProofin
   const showIdValueInput = selectedIdType !== null && selectedIdType !== NONE_VALUE
 
   const REQUIRED_FIELD_ERROR = tValidation('required')
-  // TODO: Use t('validation.ssnItinDigits') once key is available in dc.csv
-  const SSN_ITIN_SHAPE_ERROR = 'Enter exactly 9 digits.'
-  // TODO: Use t('validation.sevenOrEightDigits') once key is available in dc.csv
-  const SEVEN_OR_EIGHT_DIGITS_ERROR = 'Enter 7 or 8 digits.'
+  const SSN_ITIN_SHAPE_ERROR = tValidation('ssn')
+  const SEVEN_OR_EIGHT_DIGITS_ERROR = tValidation('idNumber')
   // TODO: Use t('validation.dobInvalid') once key is available in dc.csv
   const DOB_INVALID_ERROR = 'Enter a valid date of birth.'
 
@@ -247,9 +245,13 @@ export function IdProofingForm({ idOptions, contactLink, getDiToken }: IdProofin
         router.push(`/login/id-proofing/doc-verify?challengeId=${response.challengeId}`)
       } else if (response.result === 'failed') {
         setPageData('idv_primary_status', 'fail')
-        // Co-loaded users reach "failed" only via SNAP/TANF + DOB mismatch (no Socure),
-        // so their failure is always a not-found. Non-co-loaded failures come from Socure.
-        setPageData('idv_primary_reason', isCoLoaded ? 'not_found' : 'socure_fail')
+        if (response.offboardingReason === 'noQualifyingHousehold') {
+          setPageData('idv_primary_reason', 'no_qualifying_household')
+        } else {
+          // Co-loaded users reach "failed" only via SNAP/TANF + DOB mismatch (no Socure),
+          // so their failure is always a not-found. Non-co-loaded failures come from Socure.
+          setPageData('idv_primary_reason', isCoLoaded ? 'not_found' : 'socure_fail')
+        }
         trackEvent(AnalyticsEvents.IDV_PRIMARY_RESULT)
         // Hand off offboarding context via URL query params so the server-rendered
         // route page can branch copy (noIdProvided gets a distinct heading).

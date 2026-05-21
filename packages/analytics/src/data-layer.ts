@@ -227,12 +227,33 @@ export class DataLayer {
     return true
   }
 
+  // Collect analytics-scoped scalar fields off a top-level root (e.g. `page`,
+  // `user`). Nested objects and functions are skipped so consumers get a flat
+  // bag of scalars; downstream bridges and dashboards key on those names.
+  private _collectAnalyticsScope(rootKey: 'page' | 'user'): Record<string, unknown> {
+    const root = this._data[rootKey] as Record<string, unknown>
+    const out: Record<string, unknown> = {}
+    for (const key of Object.keys(root)) {
+      const value = root[key]
+      if (typeof value === 'function' || (typeof value === 'object' && value !== null)) continue
+      if (!this._hasAccess(`${rootKey}.${key}`, 'analytics')) continue
+      out[key] = value
+    }
+    return out
+  }
+
   // ── Event tracking ──
 
   private _trackEvent(eventName: string, eventData?: Record<string, unknown>): void {
+    // Snapshot analytics-scoped page + user context so events carry the same
+    // page/user state pageLoad does. Explicit eventData wins on key collision.
+    const pageContext = this._collectAnalyticsScope('page')
+    const userContext = this._collectAnalyticsScope('user')
+    const merged = { ...pageContext, ...userContext, ...(eventData ?? {}) }
+
     const eventObj: DataLayerEvent = {
       eventName,
-      eventData: eventData ?? {},
+      eventData: merged,
       timeStamp: Date.now(),
       scope: []
     }
@@ -251,16 +272,7 @@ export class DataLayer {
   // ── Page load tracking ──
 
   private _pageLoad(data?: Record<string, unknown>): void {
-    // Collect analytics-scoped fields only — pageLoad emits an analytics event
-    const page = this._data.page as Record<string, unknown>
-    const pageContext: Record<string, unknown> = {}
-    for (const key of Object.keys(page)) {
-      const value = page[key]
-      if (typeof value === 'function' || (typeof value === 'object' && value !== null)) continue
-      if (!this._hasAccess(`page.${key}`, 'analytics')) continue
-      pageContext[key] = value
-    }
-
+    const pageContext = this._collectAnalyticsScope('page')
     const merged = { ...pageContext, ...(data ?? {}) }
 
     const eventObj: DataLayerEvent = {

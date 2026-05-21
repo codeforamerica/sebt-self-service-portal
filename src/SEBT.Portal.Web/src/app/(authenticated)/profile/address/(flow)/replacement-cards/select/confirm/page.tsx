@@ -9,7 +9,7 @@ import { useHouseholdData } from '@/features/household'
 import { Alert } from '@sebt/design-system'
 
 export default function ConfirmCardReplacementPage() {
-  const { t: tCommon } = useTranslation('common')
+  const { t: tDev } = useTranslation('dev')
   const router = useRouter()
   const searchParams = useSearchParams()
   const { address } = useAddressFlow()
@@ -19,7 +19,7 @@ export default function ConfirmCardReplacementPage() {
   const selectedCaseIds = casesParam ? casesParam.split(',') : []
 
   if (isLoading) {
-    return <p>{tCommon('loading', 'Loading...')}</p>
+    return <p>{tDev('loading')}</p>
   }
 
   if (isError || !data || !address) {

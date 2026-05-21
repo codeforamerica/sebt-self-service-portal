@@ -69,6 +69,12 @@ describe('VerifyOtpForm', () => {
   })
 
   describe('Rendering', () => {
+    // RTL waitFor + default fake timers can exceed Vitest's 5s test timeout on slow CI;
+    // these tests do not need timer mocking.
+    beforeEach(() => {
+      vi.useRealTimers()
+    })
+
     it('should render OTP input field', async () => {
       renderWithProviders(
         <VerifyOtpForm
@@ -661,25 +667,31 @@ describe('VerifyOtpForm', () => {
   })
 
   describe('Accessibility', () => {
-    it('should have accessible form structure', async () => {
-      renderWithProviders(
-        <VerifyOtpForm
-          email={TEST_EMAILS.success}
-          contactLink={TEST_CONTACT_LINK}
-        />
-      )
-
-      await waitFor(() => {
-        expect(
-          screen.getByRole('textbox', { name: /enter.*confirmation code/i })
-        ).toBeInTheDocument()
+    describe('form structure', () => {
+      beforeEach(() => {
+        vi.useRealTimers()
       })
 
-      const form = document.querySelector('form')
-      expect(form).toBeInTheDocument()
+      it('should have accessible form structure', async () => {
+        renderWithProviders(
+          <VerifyOtpForm
+            email={TEST_EMAILS.success}
+            contactLink={TEST_CONTACT_LINK}
+          />
+        )
 
-      const otpInput = screen.getByRole('textbox', { name: /enter.*confirmation code/i })
-      expect(otpInput).toHaveAttribute('aria-required', 'true')
+        await waitFor(() => {
+          expect(
+            screen.getByRole('textbox', { name: /enter.*confirmation code/i })
+          ).toBeInTheDocument()
+        })
+
+        const form = document.querySelector('form')
+        expect(form).toBeInTheDocument()
+
+        const otpInput = screen.getByRole('textbox', { name: /enter.*confirmation code/i })
+        expect(otpInput).toHaveAttribute('aria-required', 'true')
+      })
     })
 
     it('should display error in alert role', async () => {

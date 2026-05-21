@@ -163,9 +163,8 @@ describe('IalGuard', () => {
     expect(window.location.href).toContain('stepUp=true')
   })
 
-  it('Back uses router.back when history length > 1', async () => {
+  it('challenge heading resolves stepUpDisclaimer.title, not a hardcoded fallback', async () => {
     setupApiFetchMock({ ial: '1' })
-    vi.spyOn(window.history, 'length', 'get').mockReturnValue(2)
 
     render(
       <AuthProvider>
@@ -181,17 +180,29 @@ describe('IalGuard', () => {
     })
 
     await waitFor(() => {
-      expect(screen.getByRole('button', { name: 'Back' })).toBeInTheDocument()
+      expect(screen.getByRole('heading', { name: enCoStepUpDisclaimer.title })).toBeInTheDocument()
     })
-
-    await userEvent.click(screen.getByRole('button', { name: 'Back' }))
-    expect(mockBack).toHaveBeenCalledTimes(1)
-    expect(mockPush).not.toHaveBeenCalled()
   })
 
-  it('Back falls back to dashboard when history length is 1', async () => {
+  it('checking copy resolves step-upProcessing.title and .body, not hardcoded fallbacks', async () => {
     setupApiFetchMock({ ial: '1' })
-    vi.spyOn(window.history, 'length', 'get').mockReturnValue(1)
+
+    render(
+      <AuthProvider>
+        <IalGuard>
+          <p>Protected</p>
+        </IalGuard>
+      </AuthProvider>
+    )
+
+    await waitFor(() => {
+      expect(screen.getByRole('heading', { name: enCoStepUpProcessing.title })).toBeInTheDocument()
+    })
+    expect(screen.getByText(enCoStepUpProcessing.body)).toBeInTheDocument()
+  })
+
+  it('Back navigates to dashboard', async () => {
+    setupApiFetchMock({ ial: '1' })
 
     render(
       <AuthProvider>
@@ -212,5 +223,6 @@ describe('IalGuard', () => {
 
     await userEvent.click(screen.getByRole('button', { name: 'Back' }))
     expect(mockPush).toHaveBeenCalledWith('/dashboard')
+    expect(mockBack).not.toHaveBeenCalled()
   })
 })

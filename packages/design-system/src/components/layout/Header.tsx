@@ -37,7 +37,7 @@ export function Header({ state = 'dc' }: HeaderProps) {
             >
               <Image
                 src={`/images/states/${state}/logo.svg`}
-                alt={t('logoAlt')}
+                alt={t('bannerImageAltText')}
                 width={width}
                 height={height}
                 priority

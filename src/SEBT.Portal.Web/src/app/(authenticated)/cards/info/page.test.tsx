@@ -184,7 +184,7 @@ describe('CardInfoPage', () => {
     expect(
       screen.queryByRole('heading', { name: /getting a replacement snap or tanf ebt card/i })
     ).not.toBeInTheDocument()
-    expect(screen.getByText(/unable to load card details/i)).toBeInTheDocument()
+    expect(screen.getByText(/an error occurred on our end/i)).toBeInTheDocument()
   })
 
   it('exposes a Back button that calls router.back()', async () => {
