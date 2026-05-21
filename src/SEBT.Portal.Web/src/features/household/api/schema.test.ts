@@ -127,6 +127,35 @@ describe('HouseholdDataSchema coLoadedCohort', () => {
   })
 })
 
+describe('HouseholdDataSchema hashedAppId', () => {
+  const baseFixture = {
+    email: 'user@example.com',
+    summerEbtCases: [],
+    applications: [],
+    coLoadedCohort: 0
+  }
+
+  it('passes a non-empty string through unchanged', () => {
+    const parsed = HouseholdDataSchema.parse({ ...baseFixture, hashedAppId: 'abc123' })
+    expect(parsed.hashedAppId).toBe('abc123')
+  })
+
+  it('coerces whitespace-only strings to null so analytics never sees a blank digest', () => {
+    const parsed = HouseholdDataSchema.parse({ ...baseFixture, hashedAppId: '   ' })
+    expect(parsed.hashedAppId).toBeNull()
+  })
+
+  it('coerces empty strings to null', () => {
+    const parsed = HouseholdDataSchema.parse({ ...baseFixture, hashedAppId: '' })
+    expect(parsed.hashedAppId).toBeNull()
+  })
+
+  it('passes null through as null', () => {
+    const parsed = HouseholdDataSchema.parse({ ...baseFixture, hashedAppId: null })
+    expect(parsed.hashedAppId).toBeNull()
+  })
+})
+
 describe('formatUsPhone', () => {
   it('formats a 10-digit string with hyphens', () => {
     expect(formatUsPhone('3035550100')).toBe('303-555-0100')

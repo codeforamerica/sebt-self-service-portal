@@ -45,7 +45,11 @@ interface CardSelectionProps {
 
 export function CardSelection({ confirmPath = 'select/confirm' }: CardSelectionProps = {}) {
   const { t } = useTranslation('confirmInfo')
+  const { t: tOptional } = useTranslation('optionalId')
   const { t: tCommon } = useTranslation('common')
+  const { t: tDev } = useTranslation('dev')
+  const { t: tValidation } = useTranslation('validation')
+
   const router = useRouter()
   const currentState = getState()
   const { data, isLoading, isError } = useHouseholdData()
@@ -61,15 +65,11 @@ export function CardSelection({ confirmPath = 'select/confirm' }: CardSelectionP
   }, [error])
 
   if (isLoading) {
-    return <p>{tCommon('loading', 'Loading...')}</p>
+    return <p>{tDev('loading')}</p>
   }
 
   if (isError || !data) {
-    return (
-      <Alert variant="error">
-        {t('cardSelectionLoadError', 'Unable to load household members. Please try again later.')}
-      </Alert>
-    )
+    return <Alert variant="error">{tValidation('globalInternalError')}</Alert>
   }
 
   const groups = buildCaseGroups(data.summerEbtCases)
@@ -77,14 +77,25 @@ export function CardSelection({ confirmPath = 'select/confirm' }: CardSelectionP
   if (groups.length === 0) {
     const hasCases = data.summerEbtCases.length > 0
     return (
-      <Alert variant="info">
-        {hasCases
-          ? t(
-              'cardSelectionAllInCooldown',
-              'All cards were recently replaced. Please try again later.'
-            )
-          : t('cardSelectionNoChildren', 'No children found in your household.')}
-      </Alert>
+      <>
+        <Alert variant="info">
+          {hasCases
+            ? t(
+                'cardSelectionAllInCooldown',
+                'All cards were recently replaced. Please try again later.'
+              )
+            : t('cardSelectionNoChildren', 'No children found in your household.')}
+        </Alert>
+        <div className="margin-top-3">
+          <Button
+            variant="outline"
+            type="button"
+            onClick={() => router.back()}
+          >
+            {tCommon('back')}
+          </Button>
+        </div>
+      </>
     )
   }
 
@@ -105,7 +116,7 @@ export function CardSelection({ confirmPath = 'select/confirm' }: CardSelectionP
     e.preventDefault()
 
     if (selectedCases.size === 0) {
-      setError(t('cardSelectionRequired', 'Please select at least one card.'))
+      setError(tCommon('helperSelectAtLeastOne'))
       return
     }
 
@@ -120,17 +131,15 @@ export function CardSelection({ confirmPath = 'select/confirm' }: CardSelectionP
       onSubmit={handleSubmit}
       noValidate
     >
-      <p className="usa-hint">
-        {t('requiredFieldsNote', 'Asterisks (*) indicate a required field')}
-      </p>
+      <p className="usa-hint">{tCommon('requiredFields')}</p>
 
       <fieldset
         className="usa-fieldset"
-        aria-label={t('cardSelectionLabel', 'Select which cards you want to replace')}
+        aria-label={tOptional('labelSelectCards')}
         aria-describedby={error ? 'card-selection-error' : undefined}
       >
         <legend className="usa-legend">
-          {t('cardSelectionLabel', 'Select which cards you want to replace')}
+          {tOptional('labelSelectCards')}
           <span className="text-secondary-dark"> *</span>
         </legend>
 
@@ -170,6 +179,7 @@ export function CardSelection({ confirmPath = 'select/confirm' }: CardSelectionP
                 {group.childFirstName} {group.childLastName}&apos;s card
                 {currentState === 'co' && group.ebtCardLastFour && (
                   <span className="usa-checkbox__label-description">
+                    {/* TODO update with {t('cardNumber')} */}
                     Card number: {group.ebtCardLastFour} (last 4 digits)
                   </span>
                 )}
@@ -185,9 +195,9 @@ export function CardSelection({ confirmPath = 'select/confirm' }: CardSelectionP
           type="button"
           onClick={() => router.back()}
         >
-          {tCommon('back', 'Back')}
+          {tCommon('back')}
         </Button>
-        <Button type="submit">{tCommon('continue', 'Continue')}</Button>
+        <Button type="submit">{tCommon('continue')}</Button>
       </div>
     </form>
   )

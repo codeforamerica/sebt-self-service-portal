@@ -228,7 +228,7 @@ public class ProcessWebhookCommandHandler(
         var user = await userRepository.GetUserByIdAsync(userId, cancellationToken);
         if (user == null)
         {
-            logger.LogWarning("User {UserId} not found when updating proofing status after verification", userId);
+            logger.LogError("User {UserId} not found when updating proofing status after verification — Socure confirmed identity but portal state cannot be updated", userId);
             return;
         }
 

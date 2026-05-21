@@ -5,6 +5,7 @@ import type { SessionInfo } from '@/features/auth/context'
 import { hasIal1Plus, isIdProofingCompletionFresh } from './jwt'
 
 const EMPTY_SESSION: SessionInfo = {
+  userId: null,
   email: null,
   ial: null,
   idProofingStatus: null,

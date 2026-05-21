@@ -1,4 +1,5 @@
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 using SEBT.Portal.Core.AppSettings;
 using SEBT.Portal.Core.Models;
 using SEBT.Portal.Core.Models.Auth;
@@ -6,6 +7,7 @@ using SEBT.Portal.Core.Models.DocVerification;
 using SEBT.Portal.Core.Models.Household;
 using SEBT.Portal.Core.Repositories;
 using SEBT.Portal.Core.Services;
+using SEBT.Portal.Core.Utilities;
 using SEBT.Portal.Kernel;
 using SEBT.Portal.Kernel.Results;
 
@@ -23,6 +25,7 @@ public class StartChallengeCommandHandler(
     IHouseholdRepository householdRepository,
     ISocureClient socureClient,
     SocureSettings socureSettings,
+    IOptions<IdProofingEligibilitySettings> idProofingEligibilitySettings,
     IValidator<StartChallengeCommand> validator,
     ILogger<StartChallengeCommandHandler> logger)
     : ICommandHandler<StartChallengeCommand, StartChallengeResponse>
@@ -163,7 +166,7 @@ public class StartChallengeCommandHandler(
         }
         catch (NotSupportedException)
         {
-            logger.LogWarning(
+            logger.LogError(
                 "Challenge {ChallengeId} has no stored DocV data and the Socure client does not " +
                 "support on-demand session creation. User {UserId} must re-submit ID proofing.",
                 command.ChallengeId, command.UserId);
@@ -174,7 +177,7 @@ public class StartChallengeCommandHandler(
 
         if (!sessionResult.IsSuccess)
         {
-            logger.LogWarning("Socure DocV session creation failed for user {UserId}", command.UserId);
+            logger.LogError("Socure DocV session creation failed for user {UserId}", command.UserId);
             return Result<StartChallengeResponse>.DependencyFailed(
                 DependencyFailedReason.ConnectionFailed, "Failed to create document verification session.");
         }
@@ -218,7 +221,7 @@ public class StartChallengeCommandHandler(
             || string.IsNullOrWhiteSpace(challenge.ProofingIdType)
             || string.IsNullOrWhiteSpace(challenge.ProofingIdValue))
         {
-            logger.LogWarning(
+            logger.LogError(
                 "Cannot refresh DocV token for challenge {ChallengeId}: missing stored id-proofing inputs",
                 challenge.PublicId);
             return Result<StartChallengeResponse>.PreconditionFailed(
@@ -245,10 +248,13 @@ public class StartChallengeCommandHandler(
         string? householdPhone = null;
         try
         {
+            var warehouseIal = PreSocureHouseholdWarehouseIal.ForEmailLinkedHouseholdRead(
+                user.IalLevel,
+                idProofingEligibilitySettings.Value.RequireQualifyingHouseholdForSocure);
             var household = await householdRepository.GetHouseholdByEmailAsync(
                 user.Email,
                 new PiiVisibility(IncludeAddress: true, IncludeEmail: true, IncludePhone: true),
-                user.IalLevel,
+                warehouseIal,
                 cancellationToken);
             if (household?.UserProfile != null)
             {
@@ -290,7 +296,7 @@ public class StartChallengeCommandHandler(
 
         if (!assessmentResult.IsSuccess)
         {
-            logger.LogWarning(
+            logger.LogError(
                 "Socure assessment failed during DocV token refresh for user {UserId}",
                 challenge.UserId);
 
@@ -309,7 +315,7 @@ public class StartChallengeCommandHandler(
         if (assessment.Outcome != IdProofingOutcome.DocumentVerificationRequired
             || assessment.DocvSession == null)
         {
-            logger.LogWarning(
+            logger.LogError(
                 "Socure assessment during DocV token refresh returned unexpected outcome {Outcome} for user {UserId}",
                 assessment.Outcome, challenge.UserId);
             return Result<StartChallengeResponse>.PreconditionFailed(

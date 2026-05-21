@@ -1,4 +1,5 @@
 using Microsoft.Extensions.Logging.Abstractions;
+using Microsoft.Extensions.Options;
 using NSubstitute;
 using NSubstitute.ExceptionExtensions;
 using SEBT.Portal.Core.AppSettings;
@@ -30,8 +31,22 @@ public class SubmitIdProofingCommandHandlerTests
     private readonly NullLogger<SubmitIdProofingCommandHandler> logger =
         NullLogger<SubmitIdProofingCommandHandler>.Instance;
 
-    private SubmitIdProofingCommandHandler CreateHandler() =>
-        new(userRepository, householdRepository, challengeRepository, socureClient, socureSettings, validator, logger);
+    private static readonly IOptions<IdProofingEligibilitySettings> EligibilityDisabled =
+        Options.Create(new IdProofingEligibilitySettings());
+
+    private static readonly IOptions<IdProofingEligibilitySettings> EligibilityEnabled =
+        Options.Create(new IdProofingEligibilitySettings { RequireQualifyingHouseholdForSocure = true });
+
+    private SubmitIdProofingCommandHandler CreateHandler(IOptions<IdProofingEligibilitySettings>? eligibilityOptions = null) =>
+        new(
+            userRepository,
+            householdRepository,
+            challengeRepository,
+            socureClient,
+            socureSettings,
+            validator,
+            eligibilityOptions ?? EligibilityDisabled,
+            logger);
 
     private static SubmitIdProofingCommand CreateValidCommand(
         Guid? userId = null,
@@ -196,6 +211,7 @@ public class SubmitIdProofingCommandHandlerTests
         householdRepository.TryMatchCoLoadedGuardianByBenefitIdAndDobAsync(
                 "IC000001",
                 new DateOnly(1984, 3, 5),
+                Arg.Any<Guid>(),
                 Arg.Any<CancellationToken>())
             .Returns(true);
 
@@ -208,6 +224,7 @@ public class SubmitIdProofingCommandHandlerTests
         await householdRepository.Received(1).TryMatchCoLoadedGuardianByBenefitIdAndDobAsync(
             "IC000001",
             new DateOnly(1984, 3, 5),
+            Arg.Any<Guid>(),
             Arg.Any<CancellationToken>());
         await householdRepository.DidNotReceive()
             .GetHouseholdByEmailAsync(
@@ -242,7 +259,7 @@ public class SubmitIdProofingCommandHandlerTests
         challengeRepository.GetActiveByUserIdAsync(command.UserId, Arg.Any<CancellationToken>())
             .Returns((DocVerificationChallenge?)null);
         householdRepository.TryMatchCoLoadedGuardianByBenefitIdAndDobAsync(
-                Arg.Any<string>(), Arg.Any<DateOnly>(), Arg.Any<CancellationToken>())
+                Arg.Any<string>(), Arg.Any<DateOnly>(), Arg.Any<Guid>(), Arg.Any<CancellationToken>())
             .ThrowsAsync(new OperationCanceledException());
 
         await Assert.ThrowsAsync<OperationCanceledException>(
@@ -434,7 +451,7 @@ public class SubmitIdProofingCommandHandlerTests
         await userRepository.DidNotReceive().GetUserByIdAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>());
         await householdRepository.DidNotReceive()
             .TryMatchCoLoadedGuardianByBenefitIdAndDobAsync(
-                Arg.Any<string>(), Arg.Any<DateOnly>(), Arg.Any<CancellationToken>());
+                Arg.Any<string>(), Arg.Any<DateOnly>(), Arg.Any<Guid>(), Arg.Any<CancellationToken>());
         await socureClient.DidNotReceive()
             .RunIdProofingAssessmentAsync(
                 Arg.Any<Guid>(), Arg.Any<string>(), Arg.Any<string>(),
@@ -599,7 +616,7 @@ public class SubmitIdProofingCommandHandlerTests
         challengeRepository.GetActiveByUserIdAsync(command.UserId, Arg.Any<CancellationToken>())
             .Returns((DocVerificationChallenge?)null);
         householdRepository.TryMatchCoLoadedGuardianByBenefitIdAndDobAsync(
-                Arg.Any<string>(), Arg.Any<DateOnly>(), Arg.Any<CancellationToken>())
+                Arg.Any<string>(), Arg.Any<DateOnly>(), Arg.Any<Guid>(), Arg.Any<CancellationToken>())
             .Returns(false);
         householdRepository.GetHouseholdByEmailAsync(
                 Arg.Any<string>(), Arg.Any<PiiVisibility>(), Arg.Any<UserIalLevel>(), Arg.Any<CancellationToken>())
@@ -608,7 +625,7 @@ public class SubmitIdProofingCommandHandlerTests
         await handler.Handle(command, CancellationToken.None);
 
         await householdRepository.Received(1).TryMatchCoLoadedGuardianByBenefitIdAndDobAsync(
-            "987654321", new DateOnly(1984, 3, 5), Arg.Any<CancellationToken>());
+            "987654321", new DateOnly(1984, 3, 5), Arg.Any<Guid>(), Arg.Any<CancellationToken>());
         await socureClient.DidNotReceive()
             .RunIdProofingAssessmentAsync(
                 Arg.Any<Guid>(), Arg.Any<string>(), Arg.Any<string>(),
@@ -638,7 +655,7 @@ public class SubmitIdProofingCommandHandlerTests
         challengeRepository.GetActiveByUserIdAsync(command.UserId, Arg.Any<CancellationToken>())
             .Returns((DocVerificationChallenge?)null);
         householdRepository.TryMatchCoLoadedGuardianByBenefitIdAndDobAsync(
-                "IC000001", new DateOnly(1984, 3, 5), Arg.Any<CancellationToken>())
+                "IC000001", new DateOnly(1984, 3, 5), Arg.Any<Guid>(), Arg.Any<CancellationToken>())
             .Returns(true);
 
         var result = await handler.Handle(command, CancellationToken.None);
@@ -1273,5 +1290,187 @@ public class SubmitIdProofingCommandHandlerTests
 
         await Assert.ThrowsAsync<DuplicateRecordException>(
             () => handler.Handle(command, CancellationToken.None));
+    }
+
+    // --- DC: household gate before Socure ---
+
+    [Fact]
+    public async Task Handle_ShouldBlockSocure_WhenHouseholdGateEnabled_AndHouseholdMissing()
+    {
+        var handler = CreateHandler(EligibilityEnabled);
+        var command = CreateValidCommand();
+
+        userRepository.GetUserByIdAsync(command.UserId, Arg.Any<CancellationToken>())
+            .Returns(new User { Id = command.UserId, Email = "test@example.com", IsCoLoaded = false });
+        challengeRepository.GetActiveByUserIdAsync(command.UserId, Arg.Any<CancellationToken>())
+            .Returns((DocVerificationChallenge?)null);
+
+        householdRepository.GetHouseholdByEmailAsync(
+                "test@example.com",
+                Arg.Any<PiiVisibility>(),
+                Arg.Any<UserIalLevel>(),
+                Arg.Any<CancellationToken>())
+            .Returns((HouseholdData?)null);
+
+        var result = await handler.Handle(command, CancellationToken.None);
+
+        Assert.True(result.IsSuccess);
+        Assert.Equal("failed", result.Value.Result);
+        Assert.Equal("noQualifyingHousehold", result.Value.OffboardingReason);
+        Assert.False(result.Value.AllowIdRetry);
+        Assert.True(result.Value.CanApply);
+
+        await socureClient.DidNotReceive()
+            .RunIdProofingAssessmentAsync(
+                Arg.Any<Guid>(), Arg.Any<string>(), Arg.Any<string>(),
+                Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<string?>(),
+                Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<Address?>(), Arg.Any<string?>(),
+                Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task Handle_ShouldBlockSocure_WhenHouseholdGateEnabled_AndHouseholdEmpty()
+    {
+        var handler = CreateHandler(EligibilityEnabled);
+        var command = CreateValidCommand();
+
+        userRepository.GetUserByIdAsync(command.UserId, Arg.Any<CancellationToken>())
+            .Returns(new User { Id = command.UserId, Email = "test@example.com", IsCoLoaded = false });
+        challengeRepository.GetActiveByUserIdAsync(command.UserId, Arg.Any<CancellationToken>())
+            .Returns((DocVerificationChallenge?)null);
+
+        var emptyHousehold = new HouseholdData();
+        householdRepository.GetHouseholdByEmailAsync(
+                "test@example.com",
+                Arg.Any<PiiVisibility>(),
+                Arg.Any<UserIalLevel>(),
+                Arg.Any<CancellationToken>())
+            .Returns(emptyHousehold);
+
+        var result = await handler.Handle(command, CancellationToken.None);
+
+        Assert.True(result.IsSuccess);
+        Assert.Equal("failed", result.Value.Result);
+        Assert.Equal("noQualifyingHousehold", result.Value.OffboardingReason);
+
+        await socureClient.DidNotReceive()
+            .RunIdProofingAssessmentAsync(
+                Arg.Any<Guid>(), Arg.Any<string>(), Arg.Any<string>(),
+                Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<string?>(),
+                Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<Address?>(), Arg.Any<string?>(),
+                Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task Handle_ShouldReturnDependencyFailed_WhenHouseholdGateEnabled_AndHouseholdLookupThrows()
+    {
+        var handler = CreateHandler(EligibilityEnabled);
+        var command = CreateValidCommand();
+
+        userRepository.GetUserByIdAsync(command.UserId, Arg.Any<CancellationToken>())
+            .Returns(new User { Id = command.UserId, Email = "test@example.com", IsCoLoaded = false });
+        challengeRepository.GetActiveByUserIdAsync(command.UserId, Arg.Any<CancellationToken>())
+            .Returns((DocVerificationChallenge?)null);
+
+        householdRepository.GetHouseholdByEmailAsync(
+                "test@example.com",
+                Arg.Any<PiiVisibility>(),
+                Arg.Any<UserIalLevel>(),
+                Arg.Any<CancellationToken>())
+            .ThrowsAsync(new InvalidOperationException("warehouse unavailable"));
+
+        var result = await handler.Handle(command, CancellationToken.None);
+
+        var depFailed = Assert.IsType<DependencyFailedResult<SubmitIdProofingResponse>>(result);
+        Assert.Equal(DependencyFailedReason.ConnectionFailed, depFailed.Reason);
+
+        await socureClient.DidNotReceive()
+            .RunIdProofingAssessmentAsync(
+                Arg.Any<Guid>(), Arg.Any<string>(), Arg.Any<string>(),
+                Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<string?>(),
+                Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<Address?>(), Arg.Any<string?>(),
+                Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task Handle_ShouldCallSocure_WhenHouseholdGateDisabled_AndHouseholdLookupThrows()
+    {
+        var handler = CreateHandler(EligibilityDisabled);
+        var command = CreateValidCommand();
+
+        userRepository.GetUserByIdAsync(command.UserId, Arg.Any<CancellationToken>())
+            .Returns(new User { Id = command.UserId, Email = "test@example.com", IsCoLoaded = false });
+        challengeRepository.GetActiveByUserIdAsync(command.UserId, Arg.Any<CancellationToken>())
+            .Returns((DocVerificationChallenge?)null);
+
+        householdRepository.GetHouseholdByEmailAsync(
+                "test@example.com",
+                Arg.Any<PiiVisibility>(),
+                Arg.Any<UserIalLevel>(),
+                Arg.Any<CancellationToken>())
+            .ThrowsAsync(new InvalidOperationException("warehouse unavailable"));
+
+        socureClient.RunIdProofingAssessmentAsync(
+                command.UserId, "test@example.com", command.DateOfBirth,
+                command.IdType, command.IdValue, Arg.Any<string?>(), Arg.Any<string?>(),
+                Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<Address?>(), Arg.Any<string?>(),
+                Arg.Any<CancellationToken>())
+            .Returns(Result<IdProofingAssessmentResult>.Success(
+                new IdProofingAssessmentResult(IdProofingOutcome.Matched, AllowIdRetry: false)));
+
+        var result = await handler.Handle(command, CancellationToken.None);
+
+        Assert.True(result.IsSuccess);
+        Assert.Equal("matched", result.Value.Result);
+
+        await socureClient.Received(1)
+            .RunIdProofingAssessmentAsync(
+                command.UserId, "test@example.com", command.DateOfBirth,
+                command.IdType, command.IdValue, Arg.Any<string?>(), Arg.Any<string?>(),
+                Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<Address?>(), Arg.Any<string?>(),
+                Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task Handle_ShouldCallSocure_WhenHouseholdGateEnabled_AndHouseholdHasCase()
+    {
+        var handler = CreateHandler(EligibilityEnabled);
+        var command = CreateValidCommand();
+
+        userRepository.GetUserByIdAsync(command.UserId, Arg.Any<CancellationToken>())
+            .Returns(new User { Id = command.UserId, Email = "test@example.com", IsCoLoaded = false });
+        challengeRepository.GetActiveByUserIdAsync(command.UserId, Arg.Any<CancellationToken>())
+            .Returns((DocVerificationChallenge?)null);
+
+        var householdWithCase = new HouseholdData
+        {
+            SummerEbtCases = [new SummerEbtCase()]
+        };
+        householdRepository.GetHouseholdByEmailAsync(
+                "test@example.com",
+                Arg.Any<PiiVisibility>(),
+                Arg.Any<UserIalLevel>(),
+                Arg.Any<CancellationToken>())
+            .Returns(householdWithCase);
+
+        socureClient.RunIdProofingAssessmentAsync(
+                command.UserId, "test@example.com", command.DateOfBirth,
+                command.IdType, command.IdValue, Arg.Any<string?>(), Arg.Any<string?>(),
+                Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<Address?>(), Arg.Any<string?>(),
+                Arg.Any<CancellationToken>())
+            .Returns(Result<IdProofingAssessmentResult>.Success(
+                new IdProofingAssessmentResult(IdProofingOutcome.Matched, AllowIdRetry: false)));
+
+        var result = await handler.Handle(command, CancellationToken.None);
+
+        Assert.True(result.IsSuccess);
+        Assert.Equal("matched", result.Value.Result);
+
+        await socureClient.Received(1)
+            .RunIdProofingAssessmentAsync(
+                command.UserId, "test@example.com", command.DateOfBirth,
+                command.IdType, command.IdValue, Arg.Any<string?>(), Arg.Any<string?>(),
+                Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<Address?>(), Arg.Any<string?>(),
+                Arg.Any<CancellationToken>());
     }
 }

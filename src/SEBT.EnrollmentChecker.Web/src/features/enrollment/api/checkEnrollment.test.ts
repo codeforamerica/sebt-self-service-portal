@@ -72,4 +72,36 @@ describe('checkEnrollment', () => {
     await checkEnrollment(children, 'http://portal.example.gov')
     expect(url).toContain('portal.example.gov')
   })
+
+  it('sanitizes diacritics, curly quotes, and overlong names before sending to CBMS', async () => {
+    let captured: unknown
+    server.use(
+      http.post('/api/enrollment/check', async ({ request }) => {
+        captured = await request.json()
+        return HttpResponse.json({ results: [] })
+      })
+    )
+
+    const dirty: Child[] = [
+      {
+        id: '1',
+        firstName: 'Élian',
+        lastName: 'O’Connor',
+        dateOfBirth: '2015-04-12'
+      },
+      {
+        id: '2',
+        firstName: 'A'.repeat(50),
+        lastName: 'B'.repeat(60),
+        dateOfBirth: '2017-06-01'
+      }
+    ]
+
+    await checkEnrollment(dirty, '')
+    const body = enrollmentCheckRequestSchema.parse(captured)
+    expect(body.children[0]?.firstName).toBe('Elian')
+    expect(body.children[0]?.lastName).toBe("O'Connor")
+    expect(body.children[1]?.firstName).toHaveLength(35)
+    expect(body.children[1]?.lastName).toHaveLength(40)
+  })
 })

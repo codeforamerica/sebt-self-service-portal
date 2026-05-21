@@ -159,6 +159,7 @@ public class GetHouseholdDataQueryHandlerTests
                 dob,
                 Arg.Any<PiiVisibility>(),
                 UserIalLevel.IAL1plus,
+                Arg.Any<Guid>(),
                 Arg.Any<CancellationToken>())
             .Returns(fallbackHousehold);
 
@@ -176,6 +177,7 @@ public class GetHouseholdDataQueryHandlerTests
             dob,
             Arg.Any<PiiVisibility>(),
             UserIalLevel.IAL1plus,
+            Arg.Any<Guid>(),
             Arg.Any<CancellationToken>());
     }
 
@@ -212,6 +214,7 @@ public class GetHouseholdDataQueryHandlerTests
             Arg.Any<DateOnly>(),
             Arg.Any<PiiVisibility>(),
             Arg.Any<UserIalLevel>(),
+            Arg.Any<Guid>(),
             Arg.Any<CancellationToken>());
     }
 

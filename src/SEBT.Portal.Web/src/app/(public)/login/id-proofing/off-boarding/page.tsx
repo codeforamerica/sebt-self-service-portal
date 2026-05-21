@@ -16,6 +16,7 @@ export default function OffBoardingPage() {
   const isCoLoaded = session?.isCoLoaded === true
 
   const { t, i18n } = useTranslation('offBoarding')
+  const { t: tDashboard } = useTranslation('dashboard')
   const { t: tCommon } = useTranslation('common')
   const { t: tStepUpFailure } = useTranslation('stepUpFailure')
 
@@ -60,7 +61,15 @@ export default function OffBoardingPage() {
     applyBody = t('coLoadedBody2', '') || undefined
     applySkipBody = undefined
     applyLabel = t('coLoadedAction2', '') || undefined
+  } else if (reason === 'noQualifyingHousehold') {
+    title = tDashboard('alertApplicationsTitle')
+    body = tDashboard('alertApplicationsBody')
+    contactLabel = tCommon('linkContactUs')
+    applyBody = undefined
+    applySkipBody = undefined
+    applyLabel = tDashboard('alertApplicationsAction')
   } else if (reason === 'noIdProvided') {
+    // TODO REMOVE HARDCODED STRINGS
     title = 'We need an ID to verify you'
     body =
       "To confirm your identity, we need one of the listed IDs. If you don't have any of these IDs, contact us for help."

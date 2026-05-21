@@ -1,4 +1,5 @@
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 using SEBT.Portal.Core.AppSettings;
 using SEBT.Portal.Core.Models;
 using SEBT.Portal.Core.Models.Auth;
@@ -6,6 +7,7 @@ using SEBT.Portal.Core.Models.DocVerification;
 using SEBT.Portal.Core.Models.Household;
 using SEBT.Portal.Core.Repositories;
 using SEBT.Portal.Core.Services;
+using SEBT.Portal.Core.Utilities;
 using SEBT.Portal.Kernel;
 using SEBT.Portal.Kernel.Results;
 
@@ -27,6 +29,7 @@ public class ResubmitChallengeCommandHandler(
     ISocureClient socureClient,
     SocureSettings socureSettings,
     IValidator<ResubmitChallengeCommand> validator,
+    IOptions<IdProofingEligibilitySettings> idProofingEligibilitySettings,
     ILogger<ResubmitChallengeCommandHandler> logger)
     : ICommandHandler<ResubmitChallengeCommand, ResubmitChallengeResponse>
 {
@@ -90,10 +93,13 @@ public class ResubmitChallengeCommandHandler(
         string? householdPhone = null;
         try
         {
+            var warehouseIal = PreSocureHouseholdWarehouseIal.ForEmailLinkedHouseholdRead(
+                user.IalLevel,
+                idProofingEligibilitySettings.Value.RequireQualifyingHouseholdForSocure);
             var household = await householdRepository.GetHouseholdByEmailAsync(
                 user.Email,
                 new PiiVisibility(IncludeAddress: true, IncludeEmail: true, IncludePhone: true),
-                user.IalLevel,
+                warehouseIal,
                 cancellationToken);
             if (household?.UserProfile != null)
             {
@@ -131,7 +137,7 @@ public class ResubmitChallengeCommandHandler(
 
         if (!assessmentResult.IsSuccess)
         {
-            logger.LogWarning(
+            logger.LogError(
                 "ResubmitChallenge: docv_stepup assessment failed for user {UserId}",
                 command.UserId);
             if (assessmentResult is DependencyFailedResult<IdProofingAssessmentResult> depFailed)
@@ -147,7 +153,7 @@ public class ResubmitChallengeCommandHandler(
         if (assessment.Outcome != IdProofingOutcome.DocumentVerificationRequired
             || assessment.DocvSession == null)
         {
-            logger.LogWarning(
+            logger.LogError(
                 "ResubmitChallenge: docv_stepup returned unexpected outcome {Outcome} (DocvSession={HasSession}) for user {UserId}",
                 assessment.Outcome, assessment.DocvSession != null, command.UserId);
             return Result<ResubmitChallengeResponse>.PreconditionFailed(
