@@ -17,6 +17,7 @@ internal sealed class DefaultSummerEbtCaseService : ISummerEbtCaseService
         string identifierValue,
         PiiVisibility piiVisibility,
         IdentityAssuranceLevel identityAssuranceLevel,
+        Guid? portalUserId = null,
         CancellationToken cancellationToken = default)
     {
         return Task.FromResult<HouseholdData?>(null);
@@ -27,6 +28,7 @@ internal sealed class DefaultSummerEbtCaseService : ISummerEbtCaseService
         string guardianEmail,
         PiiVisibility piiVisibility,
         IdentityAssuranceLevel identityAssuranceLevel,
+        Guid? portalUserId = null,
         CancellationToken cancellationToken = default)
     {
         return Task.FromResult<HouseholdData?>(null);

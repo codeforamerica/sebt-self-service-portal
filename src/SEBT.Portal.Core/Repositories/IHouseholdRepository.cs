@@ -19,12 +19,14 @@ public interface IHouseholdRepository
     /// <param name="identifier">The household identifier (type and value) to look up.</param>
     /// <param name="piiVisibility">Which PII elements to include. Required; no default. Callers must obtain this from <see cref="IIdProofingService"/> based on the user's IAL level.</param>
     /// <param name="userIalLevel">Identity Assurance Level the user has achieved. Passed to state plugins for backend policy (e.g. whether to return address).</param>
+    /// <param name="portalUserId">Portal <c>User.Id</c>. DC passes this as <c>PortalUUID</c> in warehouse <c>@guardianIdentifiers</c> for correlation in PortalLog.</param>
     /// <param name="cancellationToken">A token to monitor for cancellation requests.</param>
     /// <returns>The household data if found; otherwise, <c>null</c>.</returns>
     Task<HouseholdData?> GetHouseholdByIdentifierAsync(
         HouseholdIdentifier identifier,
         PiiVisibility piiVisibility,
         UserIalLevel userIalLevel,
+        Guid? portalUserId = null,
         CancellationToken cancellationToken = default);
 
     /// <summary>
@@ -34,12 +36,14 @@ public interface IHouseholdRepository
     /// <param name="email">The email address of the household.</param>
     /// <param name="piiVisibility">Which PII elements to include. Required; no default. Callers must obtain this from <see cref="IIdProofingService"/> based on the user's ID proofing status.</param>
     /// <param name="userIalLevel">Identity Assurance Level the user has achieved. Passed to state plugins for backend policy.</param>
+    /// <param name="portalUserId">Portal <c>User.Id</c>. DC passes this as <c>PortalUUID</c> in warehouse <c>@guardianIdentifiers</c> for correlation in PortalLog.</param>
     /// <param name="cancellationToken">A token to monitor for cancellation requests.</param>
     /// <returns>The household data if found; otherwise, <c>null</c>.</returns>
     Task<HouseholdData?> GetHouseholdByEmailAsync(
         string email,
         PiiVisibility piiVisibility,
         UserIalLevel userIalLevel,
+        Guid? portalUserId = null,
         CancellationToken cancellationToken = default);
 
     /// <summary>
