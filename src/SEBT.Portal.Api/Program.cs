@@ -30,7 +30,7 @@ var builder = WebApplication.CreateBuilder(args);
 // Configure Serilog early so that configuration providers can log.
 // Console sink is configured in code (not appsettings) so we can use
 // human-readable text locally and structured JSON in deployed environments.
-// Field names match Datadog's reserved attributes (`date`, `status`, `service`,
+// Field names match Datadog's reserved attributes (`date`, `status`,
 // `message`) so they are auto-recognized without configuring a per-service
 // log pipeline. Without these names the Forwarder Lambda falls back to the
 // CloudWatch event time for the timeline and tags the log with
