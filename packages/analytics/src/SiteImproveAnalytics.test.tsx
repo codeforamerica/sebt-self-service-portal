@@ -47,7 +47,6 @@ describe('SiteImproveAnalytics', () => {
     const { getByTestId } = render(
       <SiteImproveAnalytics
         siteId="123456"
-        state="dc"
         nonce="test-nonce"
       />
     )
