@@ -43,6 +43,7 @@ public class MockHouseholdRepository : IHouseholdRepository
         HouseholdIdentifier identifier,
         PiiVisibility piiVisibility,
         UserIalLevel userIalLevel,
+        Guid? portalUserId = null,
         CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(piiVisibility);
@@ -99,9 +100,15 @@ public class MockHouseholdRepository : IHouseholdRepository
         string email,
         PiiVisibility piiVisibility,
         UserIalLevel userIalLevel,
+        Guid? portalUserId = null,
         CancellationToken cancellationToken = default)
     {
-        return GetHouseholdByIdentifierAsync(HouseholdIdentifier.Email(email), piiVisibility, userIalLevel, cancellationToken);
+        return GetHouseholdByIdentifierAsync(
+            HouseholdIdentifier.Email(email),
+            piiVisibility,
+            userIalLevel,
+            portalUserId,
+            cancellationToken);
     }
 
     /// <inheritdoc />

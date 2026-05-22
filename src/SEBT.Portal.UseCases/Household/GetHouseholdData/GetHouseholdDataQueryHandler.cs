@@ -49,19 +49,20 @@ public class GetHouseholdDataQueryHandler(
             piiVisibility.IncludeEmail,
             piiVisibility.IncludePhone);
 
+        var portalUserId = query.User.GetUserId();
         var householdData = await repository.GetHouseholdByIdentifierAsync(
             identifier,
             piiVisibility,
             userIalLevel,
+            portalUserId,
             cancellationToken);
 
         if (householdData == null
             && identifier.Type == PreferredHouseholdIdType.Email)
         {
-            var userId = query.User.GetUserId();
-            if (userId != null)
+            if (portalUserId != null)
             {
-                var user = await userRepository.GetUserByIdAsync(userId.Value, cancellationToken);
+                var user = await userRepository.GetUserByIdAsync(portalUserId.Value, cancellationToken);
                 var benefitIc = string.IsNullOrWhiteSpace(user?.SnapId) ? user?.TanfId : user?.SnapId;
                 if (user?.IsCoLoaded == true
                     && user.DateOfBirth is { } verifiedDob
@@ -73,13 +74,13 @@ public class GetHouseholdDataQueryHandler(
                         verifiedDob,
                         piiVisibility,
                         userIalLevel,
-                        userId.Value,
+                        portalUserId.Value,
                         cancellationToken);
                     if (householdData != null)
                     {
                         logger.LogInformation(
                             "Household data loaded via co-loaded IC + DOB fallback for user {UserId}",
-                            userId);
+                            portalUserId);
                     }
                 }
             }
