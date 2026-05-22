@@ -13,6 +13,7 @@ public interface ISummerEbtCaseService : IStatePlugin
     /// <param name="identifierValue">Normalized value (e.g. email or phone number).</param>
     /// <param name="piiVisibility">Which PII elements the caller is allowed to receive.</param>
     /// <param name="identityAssuranceLevel">The IAL the user has achieved.</param>
+    /// <param name="portalUserId">Portal <c>User.Id</c>. DC passes this as <c>PortalUUID</c> in <c>@guardianIdentifiers</c> for email lookups; ignored by other states when null.</param>
     /// <param name="cancellationToken">Cancellation token.</param>
     /// <returns>Household data with Summer EBT cases, or null if none found or type not supported.</returns>
     Task<HouseholdData?> GetHouseholdByIdentifierAsync(
@@ -20,6 +21,7 @@ public interface ISummerEbtCaseService : IStatePlugin
         string identifierValue,
         PiiVisibility piiVisibility,
         IdentityAssuranceLevel identityAssuranceLevel,
+        Guid? portalUserId = null,
         CancellationToken cancellationToken = default);
 
     /// <summary>
@@ -29,12 +31,14 @@ public interface ISummerEbtCaseService : IStatePlugin
     /// <param name="guardianEmail">The guardian's email address used for OTP authentication.</param>
     /// <param name="piiVisibility">Which PII elements the caller is allowed to receive. Required; no default.</param>
     /// <param name="identityAssuranceLevel">The IAL the user has achieved; used for backend policy such as whether to return address.</param>
+    /// <param name="portalUserId">Portal <c>User.Id</c>. DC merges this into <c>@guardianIdentifiers</c> as <c>PortalUUID</c> for PortalLog correlation; ignored by other states when null.</param>
     /// <param name="cancellationToken">Cancellation token.</param>
     /// <returns>Household data with Summer EBT cases, or null if none found.</returns>
     Task<HouseholdData?> GetHouseholdByGuardianEmailAsync(
         string guardianEmail,
         PiiVisibility piiVisibility,
         IdentityAssuranceLevel identityAssuranceLevel,
+        Guid? portalUserId = null,
         CancellationToken cancellationToken = default);
 
     /// <summary>
