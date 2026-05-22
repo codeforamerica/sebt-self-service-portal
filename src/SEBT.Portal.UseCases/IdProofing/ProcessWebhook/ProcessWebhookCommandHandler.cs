@@ -247,39 +247,15 @@ public class ProcessWebhookCommandHandler(
             user.IalLevel,
             idProofingEligibilitySettings.Value.RequireQualifyingHouseholdForSocure);
 
-        var household = await TryGetHouseholdByEmailAsync(
+        var household = await IdProofingHouseholdLookup.TryGetByEmailForCohortCheckAsync(
+            householdRepository,
+            logger,
             user,
             warehouseIal,
             userId,
             cancellationToken);
 
         return CoLoadedCohortClassifier.ResolveOffboardingReason(defaultReason, household);
-    }
-
-    private async Task<HouseholdData?> TryGetHouseholdByEmailAsync(
-        User user,
-        UserIalLevel warehouseIalForEmailReads,
-        Guid portalUserId,
-        CancellationToken cancellationToken)
-    {
-        try
-        {
-            return await householdRepository.GetHouseholdByEmailAsync(
-                user.Email!,
-                new PiiVisibility(IncludeAddress: false, IncludeEmail: false, IncludePhone: false),
-                warehouseIalForEmailReads,
-                portalUserId,
-                cancellationToken);
-        }
-        catch (Exception ex) when (ex is not OperationCanceledException)
-        {
-            logger.LogError(
-                ex,
-                "Household lookup failed ({ExceptionType}) for user {UserId} during DocV rejection cohort check",
-                ex.GetType().Name,
-                portalUserId);
-            return null;
-        }
     }
 
     private async Task UpdateUserProofingStatus(Guid userId, CancellationToken cancellationToken)

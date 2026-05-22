@@ -106,7 +106,9 @@ public class SubmitIdProofingCommandHandler(
             logger.LogInformation(
                 "User {UserId} has reached the maximum ID proofing attempts ({MaxAttempts})",
                 command.UserId, maxAttempts);
-            var householdForMaxAttempts = await TryGetHouseholdByEmailAsync(
+            var householdForMaxAttempts = await IdProofingHouseholdLookup.TryGetByEmailForCohortCheckAsync(
+                householdRepository,
+                logger,
                 user,
                 warehouseIalForEmailReads,
                 command.UserId,
@@ -125,7 +127,9 @@ public class SubmitIdProofingCommandHandler(
         // resolve the consumer, so national_id is optional for that path.
         if (string.IsNullOrWhiteSpace(command.IdType))
         {
-            var householdForNoId = await TryGetHouseholdByEmailAsync(
+            var householdForNoId = await IdProofingHouseholdLookup.TryGetByEmailForCohortCheckAsync(
+                householdRepository,
+                logger,
                 user,
                 warehouseIalForEmailReads,
                 command.UserId,
@@ -502,29 +506,4 @@ public class SubmitIdProofingCommandHandler(
         return digitCount == 9;
     }
 
-    private async Task<HouseholdData?> TryGetHouseholdByEmailAsync(
-        User user,
-        UserIalLevel warehouseIalForEmailReads,
-        Guid portalUserId,
-        CancellationToken cancellationToken)
-    {
-        try
-        {
-            return await householdRepository.GetHouseholdByEmailAsync(
-                user.Email!,
-                new PiiVisibility(IncludeAddress: false, IncludeEmail: false, IncludePhone: false),
-                warehouseIalForEmailReads,
-                portalUserId,
-                cancellationToken);
-        }
-        catch (Exception ex) when (ex is not OperationCanceledException)
-        {
-            logger.LogError(
-                ex,
-                "Household lookup failed ({ExceptionType}) for user {UserId} during ID proofing cohort check",
-                ex.GetType().Name,
-                portalUserId);
-            return null;
-        }
-    }
 }
