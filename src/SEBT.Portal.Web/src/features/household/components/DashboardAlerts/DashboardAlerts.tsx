@@ -56,12 +56,7 @@ export function DashboardAlerts() {
   return (
     <div className="margin-bottom-3 display-flex flex-column gap-2">
       {alerts.addressUpdated && !alerts.cardsRequested && (
-        <Alert
-          variant="success"
-          heading={t('alertAddressUpdatedHeading', 'Address update recorded')}
-        >
-          {t('alertAddressUpdatedBody', 'Your address update has been recorded.')}
-        </Alert>
+        <Alert variant="success">{t('alertAddressUpdated')}</Alert>
       )}
 
       {alerts.addressUpdated && alerts.cardsRequested && (
@@ -82,12 +77,9 @@ export function DashboardAlerts() {
           // TODO update copy for alertCardReplacedHeading
           heading={t('alertCardReplacedHeading', 'Your replacement card request has been recorded')}
         >
-          {/* TODO update copy for alertCardReplacedBodyWithAddress and alertCardReplacedBody */}
+          {/* TODO update copy for alertCardReplacedBody (no-address branch) */}
           {householdData?.addressOnFile
-            ? t(
-                'alertCardReplacedBodyWithAddress',
-                'New cards usually arrive in your mailbox within 7-10 business days. Check back here in 1-2 business days to see your updated card details.'
-              )
+            ? t('alertAddressBody')
             : t(
                 'alertCardReplacedBody',
                 'New cards usually arrive in your mailbox within 7-10 business days.'
@@ -103,10 +95,7 @@ export function DashboardAlerts() {
         // TODO update copy
         <Alert
           variant="warning"
-          heading={t(
-            'alertAddressUpdateError',
-            'There was an issue updating your mailing address.'
-          )}
+          heading={t('alertAddressUpdateError')}
         >
           {t(
             'alertAddressUpdateFailedBody',
@@ -119,10 +108,7 @@ export function DashboardAlerts() {
         // TODO update copy
         <Alert
           variant="warning"
-          heading={t(
-            'alertContactUpdateError',
-            'There was an issue updating your contact preferences.'
-          )}
+          heading={t('alertContactUpdateError')}
         >
           {t('alertContactUpdateError')}
         </Alert>
@@ -133,11 +119,7 @@ export function DashboardAlerts() {
           variant="warning"
           heading={t('alertCheckAddressTitle')}
         >
-          {/* TODO update copy */}
-          {t(
-            'alertAddressVerificationBody',
-            'Please verify your mailing address is up to date so you can receive your Summer EBT cards.'
-          )}
+          {t('alertCheckAddressBody')}
         </Alert>
       )}
     </div>

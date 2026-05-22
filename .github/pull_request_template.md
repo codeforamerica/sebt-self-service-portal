@@ -1,3 +1,7 @@
+---
+title: "[TICKET] <short description>"
+---
+
 #### 🔗 Jira ticket
 <!-- Add link to the issue -->
 

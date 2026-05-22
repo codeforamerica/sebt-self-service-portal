@@ -100,6 +100,7 @@ public class ResubmitChallengeCommandHandler(
                 user.Email,
                 new PiiVisibility(IncludeAddress: true, IncludeEmail: true, IncludePhone: true),
                 warehouseIal,
+                user.Id,
                 cancellationToken);
             if (household?.UserProfile != null)
             {
@@ -137,7 +138,7 @@ public class ResubmitChallengeCommandHandler(
 
         if (!assessmentResult.IsSuccess)
         {
-            logger.LogWarning(
+            logger.LogError(
                 "ResubmitChallenge: docv_stepup assessment failed for user {UserId}",
                 command.UserId);
             if (assessmentResult is DependencyFailedResult<IdProofingAssessmentResult> depFailed)
@@ -153,7 +154,7 @@ public class ResubmitChallengeCommandHandler(
         if (assessment.Outcome != IdProofingOutcome.DocumentVerificationRequired
             || assessment.DocvSession == null)
         {
-            logger.LogWarning(
+            logger.LogError(
                 "ResubmitChallenge: docv_stepup returned unexpected outcome {Outcome} (DocvSession={HasSession}) for user {UserId}",
                 assessment.Outcome, assessment.DocvSession != null, command.UserId);
             return Result<ResubmitChallengeResponse>.PreconditionFailed(
