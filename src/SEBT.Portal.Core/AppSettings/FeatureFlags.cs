@@ -14,4 +14,11 @@ public static class FeatureFlags
     /// </summary>
     public const string EnrollmentCheckRequiresAtLeastOneExactMatchedField =
         "enrollment_check_requires_at_least_one_exact_matched_field";
+
+    /// <summary>
+    /// When enabled, the diagnostic test-error endpoints under /api/test-error are active.
+    /// Disabled by default; enable in Development or staging via appsettings.Development.json
+    /// or AWS AppConfig. Never enable in production.
+    /// </summary>
+    public const string TestErrorEndpointsEnabled = "test_error_endpoints_enabled";
 }

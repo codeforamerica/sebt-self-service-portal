@@ -8,18 +8,19 @@ import { useHouseholdData } from '@/features/household'
 import { Alert } from '@sebt/design-system'
 
 export default function CardReplacePage() {
-  const { t: tCommon } = useTranslation('common')
+  const { t: tDev } = useTranslation('dev')
+  const { t: tValidation } = useTranslation('validation')
   const searchParams = useSearchParams()
   const { data, isLoading, isError } = useHouseholdData()
 
   const caseId = searchParams.get('case')
 
   if (isLoading) {
-    return <p>{tCommon('loading', 'Loading...')}</p>
+    return <p>{tDev('loading')}</p>
   }
 
   if (isError || !data || !caseId) {
-    return <Alert variant="error">Unable to load card details. Please try again.</Alert>
+    return <Alert variant="error">{tValidation('globalInternalError')}</Alert>
   }
 
   const summerEbtCase = data.summerEbtCases.find((c) => c.summerEBTCaseID === caseId)

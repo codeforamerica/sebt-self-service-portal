@@ -43,8 +43,7 @@ function validateDateOfBirth(
   if (!isRealCalendarDate(year, month, day)) {
     ctx.addIssue({
       code: z.ZodIssueCode.custom,
-      path: ['dateOfBirth'],
-      message: 'dateOfBirth must be a real calendar date'
+      path: ['dateOfBirth']
     })
     return
   }
@@ -54,8 +53,7 @@ function validateDateOfBirth(
   if (dobDate.getTime() > now.getTime()) {
     ctx.addIssue({
       code: z.ZodIssueCode.custom,
-      path: ['dateOfBirth'],
-      message: 'dateOfBirth cannot be in the future'
+      path: ['dateOfBirth']
     })
     return
   }
@@ -64,8 +62,7 @@ function validateDateOfBirth(
   if (dobDate.getTime() < oldestAllowed.getTime()) {
     ctx.addIssue({
       code: z.ZodIssueCode.custom,
-      path: ['dateOfBirth'],
-      message: `dateOfBirth cannot be more than ${MAX_AGE_YEARS} years ago`
+      path: ['dateOfBirth']
     })
   }
 }
@@ -76,8 +73,7 @@ function validateIdValueShape(idType: IdType, idValue: string, ctx: z.Refinement
     if (digits.length !== SSN_ITIN_DIGIT_COUNT) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
-        path: ['idValue'],
-        message: `${idType} must be exactly ${SSN_ITIN_DIGIT_COUNT} digits`
+        path: ['idValue']
       })
     }
   }
@@ -103,8 +99,7 @@ export const SubmitIdProofingRequestSchema = z
     if (data.idType === null && data.idValue !== null) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
-        path: ['idValue'],
-        message: 'idValue must be null when idType is null'
+        path: ['idValue']
       })
     }
     if (data.idType !== null) {
@@ -112,8 +107,7 @@ export const SubmitIdProofingRequestSchema = z
       if (v === null || v.trim() === '') {
         ctx.addIssue({
           code: z.ZodIssueCode.custom,
-          path: ['idValue'],
-          message: 'idValue is required when idType is not null'
+          path: ['idValue']
         })
       } else {
         validateIdValueShape(data.idType, v, ctx)

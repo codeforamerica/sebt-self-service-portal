@@ -36,6 +36,8 @@ public class CheckEnrollmentCommandHandler(
                 "Children", $"A maximum of {maxChildren} children can be checked per request.");
         }
 
+        logger.LogInformation("Enrollment check requested for {ChildCount} child(ren)", command.Children.Count);
+
         var request = new EnrollmentCheckRequest
         {
             Children = command.Children.Select(c => new ChildCheckRequest
