@@ -405,6 +405,99 @@ public class SubmitIdProofingCommandHandlerTests
     }
 
     [Fact]
+    public async Task Handle_ShouldReturnCoLoadedOnlyOffboarding_WhenBenefitIdDoesNotMatchAndHouseholdIsCoLoadedOnly()
+    {
+        var handler = CreateHandler();
+        var command = CreateValidCommand(idType: "snapAccountId", idValue: "wrong-id");
+        var user = new User
+        {
+            Id = command.UserId,
+            Email = "test@example.com",
+            IsCoLoaded = false,
+            IdProofingAttemptCount = 0
+        };
+
+        userRepository.GetUserByIdAsync(command.UserId, Arg.Any<CancellationToken>())
+            .Returns(user);
+        challengeRepository.GetActiveByUserIdAsync(command.UserId, Arg.Any<CancellationToken>())
+            .Returns((DocVerificationChallenge?)null);
+        householdRepository.TryMatchCoLoadedGuardianByBenefitIdAndDobAsync(
+                Arg.Any<string>(), Arg.Any<DateOnly>(), Arg.Any<Guid>(), Arg.Any<CancellationToken>())
+            .Returns(false);
+        householdRepository.GetHouseholdByEmailAsync(
+                user.Email,
+                Arg.Any<PiiVisibility>(),
+                Arg.Any<UserIalLevel>(),
+                Arg.Any<Guid?>(),
+                Arg.Any<CancellationToken>())
+            .Returns(new HouseholdData
+            {
+                SummerEbtCases =
+                [
+                    new SummerEbtCase
+                    {
+                        SummerEBTCaseID = "S1",
+                        ChildFirstName = "A",
+                        ChildLastName = "B",
+                        IsCoLoaded = true
+                    }
+                ]
+            });
+
+        var result = await handler.Handle(command, CancellationToken.None);
+
+        Assert.True(result.IsSuccess);
+        Assert.Equal("failed", result.Value.Result);
+        Assert.Equal("coLoadedOnly", result.Value.OffboardingReason);
+    }
+
+    [Fact]
+    public async Task Handle_ShouldReturnCoLoadedOnlyOffboarding_WhenNoIdProvidedAndHouseholdIsCoLoadedOnly()
+    {
+        var handler = CreateHandler();
+        var command = CreateValidCommand(idType: null, idValue: null);
+        var user = new User
+        {
+            Id = command.UserId,
+            Email = "test@example.com",
+            IsCoLoaded = false
+        };
+
+        userRepository.GetUserByIdAsync(command.UserId, Arg.Any<CancellationToken>())
+            .Returns(user);
+        householdRepository.GetHouseholdByEmailAsync(
+                user.Email,
+                Arg.Any<PiiVisibility>(),
+                Arg.Any<UserIalLevel>(),
+                Arg.Any<Guid?>(),
+                Arg.Any<CancellationToken>())
+            .Returns(new HouseholdData
+            {
+                SummerEbtCases =
+                [
+                    new SummerEbtCase
+                    {
+                        SummerEBTCaseID = "S1",
+                        ChildFirstName = "A",
+                        ChildLastName = "B",
+                        IsCoLoaded = true
+                    }
+                ]
+            });
+
+        var result = await handler.Handle(command, CancellationToken.None);
+
+        Assert.True(result.IsSuccess);
+        Assert.Equal("failed", result.Value.Result);
+        Assert.Equal("coLoadedOnly", result.Value.OffboardingReason);
+
+        await socureClient.DidNotReceive()
+            .RunIdProofingAssessmentAsync(
+                Arg.Any<Guid>(), Arg.Any<string>(), Arg.Any<string>(),
+                Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<Address?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
     public async Task Handle_ShouldPersistDateOfBirth_WhenSubmittedDobIsParseable()
     {
         var handler = CreateHandler();

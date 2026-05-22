@@ -66,7 +66,7 @@ public class DatabaseSeeder : Core.Services.IDatabaseSeeder
     /// <returns>An array of User instances configured for testing.</returns>
     private User[] CreateTestUsers(DateTime now)
     {
-        return new[]
+        var users = new List<User>
         {
             UserFactory.CreateCoLoadedUser(u =>
             {
@@ -80,6 +80,26 @@ public class DatabaseSeeder : Core.Services.IDatabaseSeeder
                 u.TanfId = "TANF-CO-001";
                 u.Ssn = "123456789";
             }),
+        };
+
+        if (IsDc)
+        {
+            users.Add(UserFactory.CreateNonCoLoadedUser(u =>
+            {
+                u.Email = _settings.BuildEmail(SeedScenarios.CoLoadedPendingIdProofing.Name);
+                u.IdProofingStatus = IdProofingStatus.NotStarted;
+                u.IalLevel = UserIalLevel.None;
+                u.IdProofingCompletedAt = null;
+                u.IdProofingExpiresAt = null;
+                u.Phone = "8185558438";
+                u.SnapId = "SNAP-CO-001";
+                u.TanfId = "TANF-CO-001";
+                u.Ssn = "123456789";
+            }));
+        }
+
+        users.AddRange(
+        [
             UserFactory.CreateNonCoLoadedUser(u =>
             {
                 u.Email = _settings.BuildEmail(SeedScenarios.NonCoLoaded.Name);
@@ -98,7 +118,9 @@ public class DatabaseSeeder : Core.Services.IDatabaseSeeder
                 u.IdProofingCompletedAt = null;
                 u.IdProofingExpiresAt = null;
             })
-        };
+        ]);
+
+        return users.ToArray();
     }
 
     /// <summary>
@@ -170,14 +192,13 @@ public class DatabaseSeeder : Core.Services.IDatabaseSeeder
                     }
                     else if (normalizedEmail == coLoadedPendingIdProofingEmail)
                     {
-                        user = UserFactory.CreateCoLoadedUser(u =>
+                        user = UserFactory.CreateNonCoLoadedUser(u =>
                         {
                             u.Email = normalizedEmail;
                             u.IdProofingStatus = IdProofingStatus.NotStarted;
                             u.IalLevel = UserIalLevel.None;
                             u.IdProofingCompletedAt = null;
                             u.IdProofingExpiresAt = null;
-                            u.CoLoadedLastUpdated = now.AddDays(DaysSinceCoLoadedUpdate);
                             u.Phone = "8185558438";
                             u.SnapId = "SNAP-CO-001";
                             u.TanfId = "TANF-CO-001";
@@ -370,14 +391,13 @@ public class DatabaseSeeder : Core.Services.IDatabaseSeeder
                     }
                     else if (normalizedEmail == coLoadedPendingIdProofingEmail)
                     {
-                        user = UserFactory.CreateCoLoadedUser(u =>
+                        user = UserFactory.CreateNonCoLoadedUser(u =>
                         {
                             u.Email = normalizedEmail;
                             u.IdProofingStatus = IdProofingStatus.NotStarted;
                             u.IalLevel = UserIalLevel.None;
                             u.IdProofingCompletedAt = null;
                             u.IdProofingExpiresAt = null;
-                            u.CoLoadedLastUpdated = now.AddDays(DaysSinceCoLoadedUpdate);
                             u.Phone = "8185558438";
                             u.SnapId = "SNAP-CO-001";
                             u.TanfId = "TANF-CO-001";
