@@ -73,6 +73,7 @@ export function proxy(request: NextRequest) {
     'https://www.googletagmanager.com',
     'https://sdk.dv.socure.io',
     hasSiteImprove && 'https://siteimproveanalytics.com',
+    hasMixpanel && 'https://cdn.mxpnl.com',
     isDev && "'unsafe-eval'"
   ])
 
