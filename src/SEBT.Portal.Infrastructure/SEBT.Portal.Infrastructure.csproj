@@ -27,30 +27,23 @@
       <PackageReference Include="DistributedLock.Redis" Version="1.1.1" />
       <PackageReference Include="DistributedLock.SqlServer" Version="1.0.7" />
       <PackageReference Include="MailKit" Version="4.16.0" />
-      <PackageReference Include="Microsoft.EntityFrameworkCore.SqlServer" Version="10.0.0" />
-      <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="10.0.0">
+      <PackageReference Include="Microsoft.EntityFrameworkCore.SqlServer" Version="10.0.8" />
+      <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="10.0.8">
         <PrivateAssets>all</PrivateAssets>
         <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
       </PackageReference>
-      <PackageReference Include="Microsoft.EntityFrameworkCore.Tools" Version="10.0.0" />
-      <PackageReference Include="Microsoft.Extensions.Caching.Hybrid" Version="10.4.0" />
-      <PackageReference Include="Microsoft.Extensions.Caching.Memory" Version="10.0.4" />
+      <PackageReference Include="Microsoft.EntityFrameworkCore.Tools" Version="10.0.8" />
+      <PackageReference Include="Microsoft.Extensions.Caching.Hybrid" Version="10.6.0" />
+      <PackageReference Include="Microsoft.Extensions.Caching.Memory" Version="10.0.8" />
       <PackageReference Include="Bogus" Version="35.6.5" />
-      <PackageReference Include="libphonenumber-csharp" Version="9.0.27" />
-      <PackageReference Include="Microsoft.Extensions.Caching.StackExchangeRedis" Version="10.0.5" />
-      <PackageReference Include="Microsoft.Extensions.Http" Version="10.0.0" />
-      <PackageReference Include="Microsoft.Extensions.Logging" Version="10.0.0" />
-      <PackageReference Include="Microsoft.Extensions.Options" Version="10.0.5" />
-      <PackageReference Include="Microsoft.Extensions.Options.ConfigurationExtensions" Version="10.0.0" />
-      <PackageReference Include="Microsoft.FeatureManagement" Version="3.3.0" />
-      <PackageReference Include="System.IdentityModel.Tokens.Jwt" Version="8.2.1" />
-      <!--
-        Pinned to override the transitive 9.0.0 pulled in by Microsoft.EntityFrameworkCore.Tools →
-        Microsoft.Build.Tasks.Core. 9.0.0 is flagged by NU1903 for CVE-2026-33116 and CVE-2026-26171
-        (DoS). 9.0.15 is the first patched release on the 9.x line. Remove this pin once
-        Microsoft.Build.Tasks.Core updates its transitive dependency.
-      -->
-      <PackageReference Include="System.Security.Cryptography.Xml" Version="9.0.15" />
+      <PackageReference Include="libphonenumber-csharp" Version="9.0.30" />
+      <PackageReference Include="Microsoft.Extensions.Caching.StackExchangeRedis" Version="10.0.8" />
+      <PackageReference Include="Microsoft.Extensions.Http" Version="10.0.8" />
+      <PackageReference Include="Microsoft.Extensions.Logging" Version="10.0.8" />
+      <PackageReference Include="Microsoft.Extensions.Options" Version="10.0.8" />
+      <PackageReference Include="Microsoft.Extensions.Options.ConfigurationExtensions" Version="10.0.8" />
+      <PackageReference Include="Microsoft.FeatureManagement" Version="4.5.0" />
+      <PackageReference Include="System.IdentityModel.Tokens.Jwt" Version="8.18.0" />
     </ItemGroup>
 
   <!-- State connector as sibling repo only. Sibling under parent of portal, or CI path. -->
