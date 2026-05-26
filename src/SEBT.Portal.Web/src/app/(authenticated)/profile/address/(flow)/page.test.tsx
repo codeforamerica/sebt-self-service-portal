@@ -28,6 +28,10 @@ vi.mock('@/features/address/components/AddressForm', () => ({
   )
 }))
 
+vi.mock('@/hooks/useFlowStartAnalytics', () => ({
+  useFlowStartAnalytics: vi.fn()
+}))
+
 let mockHouseholdData: HouseholdData | null = null
 let mockIsLoading = false
 vi.mock('@/features/household', () => ({

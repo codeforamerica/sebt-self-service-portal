@@ -5,6 +5,8 @@ import { useTranslation } from 'react-i18next'
 
 import { ConfirmAddress } from '@/features/cards/components/ConfirmAddress'
 import { useHouseholdData } from '@/features/household'
+import { useFlowStartAnalytics } from '@/hooks/useFlowStartAnalytics'
+import { AnalyticsEvents } from '@sebt/analytics'
 import { Alert } from '@sebt/design-system'
 
 export default function CardReplacePage() {
@@ -14,6 +16,11 @@ export default function CardReplacePage() {
   const { data, isLoading, isError } = useHouseholdData()
 
   const caseId = searchParams.get('case')
+  const summerEbtCase = data?.summerEbtCases.find((c) => c.summerEBTCaseID === caseId)
+  const address = data?.addressOnFile
+  const isReady = !isLoading && !isError && !!data && !!caseId && !!summerEbtCase && !!address
+
+  useFlowStartAnalytics(AnalyticsEvents.CARD_REPLACEMENT_START, isReady)
 
   if (isLoading) {
     return <p>{tDev('loading')}</p>
@@ -22,9 +29,6 @@ export default function CardReplacePage() {
   if (isError || !data || !caseId) {
     return <Alert variant="error">{tValidation('globalInternalError')}</Alert>
   }
-
-  const summerEbtCase = data.summerEbtCases.find((c) => c.summerEBTCaseID === caseId)
-  const address = data.addressOnFile
 
   if (!summerEbtCase || !address) {
     return (
