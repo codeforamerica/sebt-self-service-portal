@@ -159,7 +159,7 @@ public class MockHouseholdRepositoryTests
         Assert.Equal(email, result!.Email);
         Assert.Equal("8185558438", result.Phone);
         Assert.NotNull(result.SummerEbtCases);
-        var snapCase = Assert.Single(result.SummerEbtCases.Where(c => c.EbtCaseNumber == "SNAP-CO-001"));
+        var snapCase = Assert.Single(result.SummerEbtCases, c => c.EbtCaseNumber == "SNAP-CO-001");
         Assert.True(snapCase.IsCoLoaded);
     }
 

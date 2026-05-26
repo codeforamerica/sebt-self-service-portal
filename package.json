@@ -32,6 +32,8 @@
     "ci:test:state:co": "act workflow_dispatch -W .github/workflows/state-ci.yaml --input state=co",
     "ci:test:pr": "./act-test.sh pr",
     "ci:validate": "./act-test.sh dry-run",
+    "check:cooldown-exclusions": "tsx scripts/security/check-cooldown-exclusions.ts",
+    "test:scripts": "tsx --test scripts/**/*.test.ts",
     "prepare": "husky"
   },
   "devDependencies": {
@@ -39,19 +41,11 @@
     "husky": "^9.1.7",
     "knip": "^6.13.1",
     "lint-staged": "^17.0.4",
-    "tsx": "^4.22.0"
+    "tsx": "^4.22.0",
+    "yaml": "~2.8.4"
   },
   "engines": {
     "node": ">=24.0.0",
     "pnpm": ">=10.0.0"
-  },
-  "pnpm": {
-    "overrides": {
-      "ws": ">=8.20.1",
-      "postcss": ">=8.5.10",
-      "vite": ">=8.0.0",
-      "tmp": ">=0.2.4",
-      "uuid": ">=11.1.1"
-    }
   }
 }
