@@ -73,7 +73,7 @@ namespace SEBT.Portal.UseCases.Auth
                     $"An error occurred while processing the OTP request");
             }
 
-            var sendResult = await emailService.SendOtpAsync(command.Email, otp.Code);
+            var sendResult = await emailService.SendOtpAsync(command.Email, otp.Code, command.Locale);
 
             if (sendResult.IsSuccess)
             {

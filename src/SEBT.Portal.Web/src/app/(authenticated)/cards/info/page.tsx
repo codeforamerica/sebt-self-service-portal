@@ -17,6 +17,7 @@ export default function CardInfoPage() {
   const { t: tInfo } = useTranslation('confirmInfo')
   const { t: tResult } = useTranslation('result')
   const { t: tCommon } = useTranslation('common')
+  const { t: tValidation } = useTranslation('validation')
   const router = useRouter()
   const { data, isLoading, isError } = useHouseholdData()
   const { session } = useAuth()
@@ -55,7 +56,7 @@ export default function CardInfoPage() {
   if (isError || !data) {
     return (
       <div className="grid-container maxw-tablet padding-top-4">
-        <Alert variant="error">Unable to load card details. Please try again.</Alert>
+        <Alert variant="error">{tValidation('globalInternalError')}</Alert>
       </div>
     )
   }
@@ -129,7 +130,7 @@ export default function CardInfoPage() {
         type="button"
         onClick={() => router.back()}
       >
-        {tCommon('back', 'Back')}
+        {tCommon('back')}
       </Button>
     </div>
   )

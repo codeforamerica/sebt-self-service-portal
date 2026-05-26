@@ -14,6 +14,8 @@ import { Alert, Button, getState } from '@sebt/design-system'
 export default function CoLoadedAddressInfoPage() {
   const { t: tDashboard } = useTranslation('dashboard')
   const { t: tCommon } = useTranslation('common')
+  const { t: tDev } = useTranslation('dev')
+  const { t: tValidation } = useTranslation('validation')
 
   const router = useRouter()
   const { data, isLoading, isError } = useHouseholdData()
@@ -49,8 +51,7 @@ export default function CoLoadedAddressInfoPage() {
   if (isError) {
     return (
       <div className="grid-container maxw-tablet padding-top-4 padding-bottom-4">
-        {/* TODO update hardcoded string */}
-        <Alert variant="error">Unable to load address details. Please try again.</Alert>
+        <Alert variant="error">{tValidation('globalInternalError')}</Alert>
       </div>
     )
   }
@@ -61,7 +62,7 @@ export default function CoLoadedAddressInfoPage() {
         aria-busy="true"
         role="status"
       >
-        <span className="usa-sr-only">{tCommon('loading')}</span>
+        <span className="usa-sr-only">{tDev('loading')}</span>
       </div>
     )
   }

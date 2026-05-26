@@ -25,7 +25,7 @@ export function VerificationPending({
   onRejected,
   onResubmit
 }: VerificationPendingProps) {
-  const { t } = useTranslation('idProofing')
+  const { t: tDev } = useTranslation('dev')
   // Persist "still checking" state across remounts so the UI doesn't oscillate
   const [timerExpired, setTimerExpired] = useState(
     () => sessionStorage.getItem(SK_STILL_CHECKING) === 'true'
@@ -66,42 +66,31 @@ export function VerificationPending({
   }, [error, onRejected])
 
   return (
-    <section aria-label={t('verificationPendingAriaLabel', 'Verification status')}>
+    <section aria-label={tDev('alertVerification')}>
       {!showStillChecking ? (
         <div className="text-center padding-y-6">
-          <p className="font-sans-lg text-bold margin-bottom-2">
-            {t('verificationPendingHeading', 'Verifying your document...')}
-          </p>
-          <p className="font-sans-sm text-base-dark">
-            {t('verificationPendingBody', "This may take a moment. Please don't close this page.")}
-          </p>
+          <p className="font-sans-lg text-bold margin-bottom-2">{tDev('alertVerifyDocument')}</p>
+          <p className="font-sans-sm text-base-dark">{tDev('alertKeepPageOpen')}</p>
           {/* USWDS loading indicator */}
           <div
             className="margin-top-3"
             aria-busy="true"
             aria-live="polite"
           >
-            <span className="text-base-dark">
-              {t('verificationPendingStatusLabel', 'Checking verification status')}
-            </span>
+            <span className="text-base-dark">{tDev('alertCheckVerification')}</span>
           </div>
         </div>
       ) : (
         <div className="text-center padding-y-6">
-          <p className="font-sans-lg text-bold margin-bottom-2">
-            {t('verificationPendingStillCheckingHeading', "We're still checking your document")}
-          </p>
+          <p className="font-sans-lg text-bold margin-bottom-2">{tDev('alertStillChecking')}</p>
           <p className="font-sans-sm text-base-dark margin-bottom-3">
-            {t(
-              'verificationPendingStillCheckingBody',
-              'Verification is taking longer than expected. You can check the status or try again later.'
-            )}
+            {tDev('alertVerificationDelay')}
           </p>
           <Button
             type="button"
             onClick={() => refetch()}
           >
-            {t('verificationPendingActionCheckStatus', 'Check status')}
+            {tDev('alertStatus')}
           </Button>
         </div>
       )}
