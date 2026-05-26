@@ -29,6 +29,11 @@ has_frontend_changes() {
   git diff --cached --name-only | grep -qE '^src/SEBT\.Portal\.Web/' || return 1
 }
 
+# Check if cooldown-exclusion sources were staged (workspace policy or lockfile)
+has_cooldown_exclusion_changes() {
+  git diff --cached --name-only | grep -qE '^(pnpm-workspace\.yaml|pnpm-lock\.yaml)$' || return 1
+}
+
 log_info "=== Running pre-commit checks ==="
 echo ""
 
@@ -48,6 +53,12 @@ fi
 STEP_NUM=0
 TOTAL_STEPS=0
 
+COOLDOWN_CHANGES=false
+if has_cooldown_exclusion_changes; then
+  COOLDOWN_CHANGES=true
+  TOTAL_STEPS=$((TOTAL_STEPS + 1))  # cooldown exclusion staleness check
+fi
+
 if [ "$FRONTEND_CHANGES" = "true" ]; then
   TOTAL_STEPS=$((TOTAL_STEPS + 3))  # lint-staged + build + tests
 fi
@@ -56,7 +67,20 @@ if [ "$BACKEND_CHANGES" = "true" ]; then
   TOTAL_STEPS=$((TOTAL_STEPS + 3))  # format + build + tests
 fi
 
-# Step 1: Frontend linting (if frontend changes)
+# Step 1: Cooldown exclusion staleness check (if workspace policy or lockfile staged)
+if [ "$COOLDOWN_CHANGES" = "true" ]; then
+  STEP_NUM=$((STEP_NUM + 1))
+  log_info "Step $STEP_NUM/$TOTAL_STEPS: Checking pnpm cooldown exclusions for staleness..."
+  cd "$PROJECT_ROOT"
+  pnpm --silent check:cooldown-exclusions || {
+    log_error "Stale minimumReleaseAgeExclude entries detected — remove them before committing"
+    exit 1
+  }
+  log_success "Cooldown exclusions are current"
+  echo ""
+fi
+
+# Step 2: Frontend linting (if frontend changes)
 if [ "$FRONTEND_CHANGES" = "true" ]; then
   STEP_NUM=$((STEP_NUM + 1))
   log_info "Step $STEP_NUM/$TOTAL_STEPS: Running linters and auto-fixing staged files..."
@@ -85,7 +109,7 @@ if [ "$FRONTEND_CHANGES" = "true" ]; then
   cd "$PROJECT_ROOT"
 fi
 
-# Step 2: Backend formatting (if backend changes)
+# Step 3: Backend formatting (if backend changes)
 if [ "$BACKEND_CHANGES" = "true" ]; then
   STEP_NUM=$((STEP_NUM + 1))
   log_info "Step $STEP_NUM/$TOTAL_STEPS: Running .NET code formatting and analyzer checks..."
@@ -119,7 +143,7 @@ if [ "$BACKEND_CHANGES" = "true" ]; then
   echo ""
 fi
 
-# Step 3: Backend build (if backend changes)
+# Step 4: Backend build (if backend changes)
 if [ "$BACKEND_CHANGES" = "true" ]; then
   STEP_NUM=$((STEP_NUM + 1))
   log_info "Step $STEP_NUM/$TOTAL_STEPS: Validating backend build..."
@@ -142,7 +166,7 @@ if [ "$BACKEND_CHANGES" = "true" ]; then
   echo ""
 fi
 
-# Step 4: Frontend build (if frontend changes)
+# Step 5: Frontend build (if frontend changes)
 if [ "$FRONTEND_CHANGES" = "true" ]; then
   STEP_NUM=$((STEP_NUM + 1))
   log_info "Step $STEP_NUM/$TOTAL_STEPS: Validating frontend build..."
@@ -160,7 +184,7 @@ if [ "$FRONTEND_CHANGES" = "true" ]; then
   cd "$PROJECT_ROOT"
 fi
 
-# Step 5: Backend tests (if backend changes)
+# Step 6: Backend tests (if backend changes)
 if [ "$BACKEND_CHANGES" = "true" ]; then
   STEP_NUM=$((STEP_NUM + 1))
   log_info "Step $STEP_NUM/$TOTAL_STEPS: Running backend tests..."
@@ -182,7 +206,7 @@ if [ "$BACKEND_CHANGES" = "true" ]; then
   echo ""
 fi
 
-# Step 6: Frontend tests (if frontend changes)
+# Step 7: Frontend tests (if frontend changes)
 if [ "$FRONTEND_CHANGES" = "true" ]; then
   STEP_NUM=$((STEP_NUM + 1))
   log_info "Step $STEP_NUM/$TOTAL_STEPS: Running frontend tests..."
