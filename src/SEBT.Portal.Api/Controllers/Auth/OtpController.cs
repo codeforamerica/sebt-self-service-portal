@@ -52,9 +52,15 @@ public class OtpController(
                 && !string.IsNullOrEmpty(request.Email)
                 && request.Email == OtpBypassSettings.Email;
 
+        if (string.IsNullOrEmpty(request.Locale))
+        {
+            logger.LogWarning("OTP request did not specify a locale; defaulting to 'en'.");
+        }
+
         var command = new RequestOtpCommand
         {
             Email = request.Email,
+            Locale = request.Locale ?? "en",
             BypassOtp = enableOtpBypass
         };
 
