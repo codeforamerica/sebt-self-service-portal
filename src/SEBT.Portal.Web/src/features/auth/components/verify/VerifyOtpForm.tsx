@@ -24,7 +24,7 @@ interface VerifyOtpFormProps {
 export function VerifyOtpForm({ email, contactLink }: VerifyOtpFormProps) {
   const router = useRouter()
   const { login } = useAuth()
-  const { t: tLogin } = useTranslation('login')
+  const { t: tLogin, i18n } = useTranslation('login')
   const { t: tValidation } = useTranslation('validation')
 
   const [otp, setOtp] = useState('')
@@ -112,7 +112,7 @@ export function VerifyOtpForm({ email, contactLink }: VerifyOtpFormProps) {
     trackEvent(AnalyticsEvents.OTP_REQUEST)
 
     try {
-      await requestOtp.mutateAsync({ email })
+      await requestOtp.mutateAsync({ email, locale: i18n.language })
       // TODO: "codeSentSuccess" value exists in CSV but under a broken row key ("VALIDATION -" with no key name) — needs CSV fix
       setSuccessMessage(tLogin('codeSentSuccess', 'A new code has been sent to your email.'))
       resetCountdown()
