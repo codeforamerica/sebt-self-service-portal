@@ -39,6 +39,7 @@ export function proxy(request: NextRequest) {
   const nonce = Buffer.from(crypto.randomUUID()).toString('base64')
   const isDev = process.env.NODE_ENV === 'development'
   const hasAmplitude = !!process.env.NEXT_PUBLIC_AMPLITUDE_API_KEY
+  const hasMixpanel = !!process.env.NEXT_PUBLIC_MIXPANEL_TOKEN
   const hasSiteImprove = !!process.env.NEXT_PUBLIC_SITEIMPROVE_ID
   const proto =
     request.headers.get('x-forwarded-proto') ?? request.nextUrl.protocol.replace(':', '')
@@ -72,6 +73,7 @@ export function proxy(request: NextRequest) {
     'https://www.googletagmanager.com',
     'https://sdk.dv.socure.io',
     hasSiteImprove && 'https://siteimproveanalytics.com',
+    hasMixpanel && 'https://cdn.mxpnl.com',
     isDev && "'unsafe-eval'"
   ])
 
@@ -91,6 +93,7 @@ export function proxy(request: NextRequest) {
     'https://browser-intake-datadoghq.com',
     'https://us-autocomplete-pro.api.smarty.com',
     hasAmplitude && 'https://api2.amplitude.com https://sr-client-cfg.amplitude.com',
+    hasMixpanel && 'https://api-js.mixpanel.com',
     hasSiteImprove && 'https://siteimproveanalytics.io',
     isDev && 'ws://localhost:* http://localhost:*'
   ])

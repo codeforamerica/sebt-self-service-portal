@@ -6,7 +6,8 @@
  * @see docs/tdd/analytics-data-layer.md — "DOM Bridge & Sample Integration"
  */
 
-import type { DataLayerRoot } from './data-layer'
+import type { DataLayerEvent, DataLayerRoot } from './data-layer'
+import { PAGE_LOAD } from './events'
 
 /** Subset of the Mixpanel SDK API used by the bridge. */
 interface MixpanelLike {
@@ -53,6 +54,17 @@ function attachBridge(dl: DataLayerRoot): () => void {
 
   document.addEventListener(pageViewedEvent, handlePageViewed)
   document.addEventListener(eventTrackedEvent, handleEventTracked)
+
+  // Replay the most recent page_load that fired before the bridge attached.
+  // dl.event[] is append-only — the last PAGE_LOAD entry is the current page.
+  const missed = [...dl.event].reverse().find((e: DataLayerEvent) => e.eventName === PAGE_LOAD)
+  if (missed) {
+    if (mp.track_pageview) {
+      mp.track_pageview(missed.eventData)
+    } else {
+      mp.track('page_view', missed.eventData)
+    }
+  }
 
   return () => {
     document.removeEventListener(pageViewedEvent, handlePageViewed)

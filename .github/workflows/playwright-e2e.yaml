@@ -136,14 +136,22 @@ jobs:
       - name: Build backend
         run: ./.github/workflows/scripts/build-backend.sh --configuration Release
 
-      - name: Install Chrome for Pa11y
-        run: cd src/SEBT.Portal.Web && pnpm exec puppeteer browsers install chrome
-
       - name: Build frontend for Pa11y
         env:
           STATE: dc
           NEXT_PUBLIC_STATE: dc
-        run: ./.github/workflows/scripts/build-frontend.sh --production
+        run: ./.github/workflows/scripts/build-frontend.sh --production --skip-install
+
+      - name: Cache Playwright browsers
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml') }}
+          restore-keys: |
+            playwright-${{ runner.os }}-
+
+      - name: Install Playwright Chromium for Pa11y
+        run: cd src/SEBT.Portal.Web && pnpm exec playwright install --with-deps chromium
 
       - name: Run Pa11y accessibility tests
         env:
@@ -167,5 +175,11 @@ jobs:
             sleep 2
           done
           curl -sf --max-time 15 http://localhost:3000 > /dev/null || (echo "Server failed to start" && exit 1)
+          export PUPPETEER_EXECUTABLE_PATH="$(cd src/SEBT.Portal.Web && node -e "const { chromium } = require('@playwright/test'); console.log(chromium.executablePath());")"
+          if [ -z "$PUPPETEER_EXECUTABLE_PATH" ] || [ ! -x "$PUPPETEER_EXECUTABLE_PATH" ]; then
+            echo "Chromium verification failed: Playwright did not report an executable path"
+            exit 1
+          fi
+          echo "Pa11y will use Chromium at $PUPPETEER_EXECUTABLE_PATH"
           echo "Running Pa11y accessibility tests..."
           pnpm ci:test:a11y
