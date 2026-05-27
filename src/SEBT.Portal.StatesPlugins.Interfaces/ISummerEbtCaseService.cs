@@ -22,6 +22,7 @@ public interface ISummerEbtCaseService : IStatePlugin
         PiiVisibility piiVisibility,
         IdentityAssuranceLevel identityAssuranceLevel,
         Guid? portalUserId = null,
+        bool includeCardService = true,
         CancellationToken cancellationToken = default);
 
     /// <summary>
@@ -39,6 +40,7 @@ public interface ISummerEbtCaseService : IStatePlugin
         PiiVisibility piiVisibility,
         IdentityAssuranceLevel identityAssuranceLevel,
         Guid? portalUserId = null,
+        bool includeCardService = true,
         CancellationToken cancellationToken = default);
 
     /// <summary>
