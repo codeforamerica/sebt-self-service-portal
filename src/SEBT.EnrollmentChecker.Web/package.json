@@ -21,6 +21,7 @@
     "test:a11y": "pa11y-ci"
   },
   "dependencies": {
+    "@amplitude/analytics-browser": "^2.40.0",
     "@sebt/analytics": "workspace:*",
     "@sebt/design-system": "workspace:*",
     "@t3-oss/env-nextjs": "^0.13.11",
