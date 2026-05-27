@@ -20,7 +20,7 @@ export function CardStatusTimeline({ cardRequestedAt }: CardStatusTimelineProps)
 
   const rawLabel = t('cardTableStatusRequested', { defaultValue: '' })
   const label = interpolateDate(rawLabel, cardRequestedAt ?? null, i18n.language)
-  const message = t('cardTableStatusMessageRequested1', { defaultValue: '' })
+  const message = t('cardTableStatusMessageRequested2', { defaultValue: '' })
 
   return (
     <div className="margin-top-2">

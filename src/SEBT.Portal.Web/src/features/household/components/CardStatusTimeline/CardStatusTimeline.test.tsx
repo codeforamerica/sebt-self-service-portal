@@ -12,8 +12,8 @@ beforeAll(() => {
     {
       cardTableHeadingCardStatus: 'Card status',
       cardTableStatusRequested: 'Requested on [MM/DD/YYYY]',
-      cardTableStatusMessageRequested1:
-        "We've requested a new card that will arrive in the mail within 2–3 weeks. Check back here to see when the card has been mailed."
+      cardTableStatusMessageRequested2:
+        'A replacement card will arrive in the mail in around 7-10 business days.'
     },
     true,
     true
@@ -37,7 +37,7 @@ describe('CardStatusTimeline', () => {
 
   it('shows the cooldown reassurance message', () => {
     render(<CardStatusTimeline cardRequestedAt="2026-01-01T00:00:00Z" />)
-    expect(screen.getByText(/arrive in the mail within 2–3 weeks/i)).toBeInTheDocument()
+    expect(screen.getByText(/arrive in the mail in around 7-10 business days/i)).toBeInTheDocument()
   })
 
   it('renders without a date when cardRequestedAt is null', () => {
