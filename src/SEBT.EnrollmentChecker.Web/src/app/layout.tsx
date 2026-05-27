@@ -38,7 +38,6 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           <meta name="build-sha" content={process.env.NEXT_PUBLIC_BUILD_SHA} />
         )}
         {process.env.NEXT_PUBLIC_META_PIXEL && (
-           <!-- Facebook Pixel Code -->
            <script>
            !function(f,b,e,v,n,t,s){if(f.fbq)return;n=f.fbq=function(){n.callMethod?
            n.callMethod.apply(n,arguments):n.queue.push(arguments)};if(!f._fbq)f._fbq=n;
@@ -50,7 +49,6 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
            <noscript><img height="1" width="1" style="display:none"
            src="https://www.facebook.com/tr?id={process.env.NEXT_PUBLIC_META_PIXEL}&ev=PageView&noscript=1"
            /></noscript>
-           <!-- End Facebook Pixel Code -->
         )}
       </head>
       <body>
