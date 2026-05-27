@@ -20,7 +20,7 @@ function getReplacementLink(
   summerEbtCase: SummerEbtCase,
   canRequestReplacementCard: boolean
 ): string | null {
-  const { summerEBTCaseID, issuanceType, cardRequestedAt } = summerEbtCase
+  const { summerEBTCaseID, issuanceType, cardRequestedAt, allowCardReplacement } = summerEbtCase
   if (!summerEBTCaseID) return null
 
   // Co-loaded cases always link to the info page — they cannot be replaced in-portal,
@@ -28,6 +28,7 @@ function getReplacementLink(
   if (isCoLoadedIssuance(issuanceType)) return '/cards/info'
 
   if (!canRequestReplacementCard) return null
+  if (!allowCardReplacement) return null
   if (isWithinCooldownPeriod(cardRequestedAt)) return null
 
   return `/cards/replace?case=${encodeURIComponent(summerEBTCaseID)}`
@@ -141,12 +142,11 @@ export function ChildCard({
               </dd>
             </>
           )}
-          {summerEbtCase.allowCardReplacement &&
-            (isWithinCooldownPeriod(cardRequestedAt) ? (
-              <CardStatusTimeline cardRequestedAt={cardRequestedAt} />
-            ) : (
-              <CardStatusDisplay cardStatus={ebtCardStatus} cardIssuedAt={ebtCardIssueDate} />
-            ))}
+          {isWithinCooldownPeriod(cardRequestedAt) ? (
+            <CardStatusTimeline cardRequestedAt={cardRequestedAt} />
+          ) : (
+            <CardStatusDisplay cardStatus={ebtCardStatus} cardIssuedAt={ebtCardIssueDate} />
+          )}
         </dl>
         {replacementLink && (
           <Link

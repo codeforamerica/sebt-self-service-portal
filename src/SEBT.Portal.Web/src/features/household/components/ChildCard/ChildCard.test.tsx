@@ -270,7 +270,7 @@ describe('ChildCard', () => {
     expect(screen.queryByText(/1234/)).not.toBeInTheDocument()
   })
 
-  it('hides card status when allowCardReplacement is false (co-loaded case)', () => {
+  it('shows card status for a co-loaded case when ebtCardStatus is provided', () => {
     const coLoadedCase = createMockSummerEbtCase({
       ...mockCase,
       issuanceType: 'SnapEbtCard',
@@ -280,8 +280,7 @@ describe('ChildCard', () => {
 
     renderWithFlags({ summerEbtCase: coLoadedCase })
 
-    expect(screen.queryByTestId('card-status-badge')).not.toBeInTheDocument()
-    expect(screen.queryByText('Card status')).not.toBeInTheDocument()
+    expect(screen.getByTestId('card-status-badge')).toBeInTheDocument()
   })
 
   it('shows info link instead of replacement link for a co-loaded case', () => {
@@ -346,6 +345,26 @@ describe('ChildCard', () => {
     )
 
     expect(screen.getByText('Request a replacement card')).toBeInTheDocument()
+  })
+
+  it('hides replacement link when per-case allowCardReplacement is false', () => {
+    const summerEbtCaseNoReplacement = createMockSummerEbtCase({
+      ...mockCase,
+      issuanceType: 'SummerEbt',
+      cardRequestedAt: '2025-01-01T00:00:00Z',
+      allowCardReplacement: false
+    })
+
+    renderWithFlags(
+      { summerEbtCase: summerEbtCaseNoReplacement, canRequestReplacementCard: true },
+      {
+        flags: { ...TEST_FEATURE_FLAGS, enable_card_replacement: true },
+        isLoading: false,
+        isError: false
+      }
+    )
+
+    expect(screen.queryByRole('link')).toBeNull()
   })
 
   it('hides replacement link when canRequestReplacementCard is false', () => {
