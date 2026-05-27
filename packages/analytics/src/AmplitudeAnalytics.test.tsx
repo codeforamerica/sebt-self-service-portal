@@ -12,7 +12,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 const mockTeardown = vi.fn()
 const mockInit = vi.fn().mockReturnValue(mockTeardown)
-vi.mock('@sebt/analytics', () => ({
+vi.mock('./amplitude-bridge', () => ({
   initAmplitudeBridge: (apiKey: string, amp: unknown) => mockInit(apiKey, amp)
 }))
 
