@@ -8,6 +8,7 @@ import type { ErrorProps } from './types'
 
 export default function Error({ error, reset }: ErrorProps) {
   const { t } = useTranslation('common')
+  const { t: tDev } = useTranslation('dev')
 
   useEffect(() => {
     // TODO: Log error to monitoring service in production
@@ -32,8 +33,7 @@ export default function Error({ error, reset }: ErrorProps) {
           </p>
           {error.digest && (
             <p className="font-mono text-base-dark margin-top-1">
-              {t('errorId', 'Error ID: ')}
-              {error.digest}
+              {tDev('errorPrefix')} {error.digest}
             </p>
           )}
           <Button
@@ -41,7 +41,7 @@ export default function Error({ error, reset }: ErrorProps) {
             onClick={reset}
             className="margin-top-2"
           >
-            {t('errorTryAgain', 'Try again')}
+            {tDev('alertTryAgain')}
           </Button>
         </Alert>
       </div>

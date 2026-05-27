@@ -15,8 +15,7 @@ public class SqlServerTestFixture : IAsyncLifetime
     public SqlServerTestFixture()
     {
         // Password is hardcoded for test isolation
-        _container = new MsSqlBuilder()
-            .WithImage("mcr.microsoft.com/mssql/server:2022-latest")
+        _container = new MsSqlBuilder("mcr.microsoft.com/mssql/server:2022-latest")
             .WithPassword("YourStrong@Passw0rd")
             .Build();
     }

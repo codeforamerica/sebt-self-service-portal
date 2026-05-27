@@ -1,9 +1,12 @@
+import { i18n } from '@sebt/design-system/client'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { http, HttpResponse } from 'msw'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
+import enCoResult from '@/content/locales/en/co/result.json'
+import enDcResult from '@/content/locales/en/dc/result.json'
 import type { Address, SummerEbtCase } from '@/features/household/api/schema'
 import { server } from '@/mocks/server'
 
@@ -100,6 +103,9 @@ describe('ConfirmRequest', () => {
     mockPush.mockClear()
     mockBack.mockClear()
     mockState = 'dc'
+    // Restore DC 'result' bundle in case a prior test swapped to CO. addResourceBundle
+    // with deep+overwrite ensures we get the DC values regardless of previous state.
+    i18n.addResourceBundle('en', 'result', enDcResult, true, true)
   })
 
   // --- Content rendering ---
@@ -111,6 +117,8 @@ describe('ConfirmRequest', () => {
 
   it('renders the state-specific title for CO', () => {
     mockState = 'co'
+    // Swap to CO 'result' bundle for this test; beforeEach restores DC for subsequent tests.
+    i18n.addResourceBundle('en', 'result', enCoResult, true, true)
     renderConfirmRequest()
     expect(screen.getByText(/Summer EBT/)).toBeInTheDocument()
   })
@@ -192,6 +200,47 @@ describe('ConfirmRequest', () => {
 
     await waitFor(() => {
       expect(screen.getByText(/issue requesting/i)).toBeInTheDocument()
+    })
+  })
+
+  it('sends caseRefs with applicationId/applicationStudentId from each case', async () => {
+    let capturedBody: unknown = null
+    server.use(
+      http.post('/api/household/cards/replace', async ({ request }) => {
+        capturedBody = await request.json()
+        return new HttpResponse(null, { status: 204 })
+      })
+    )
+
+    // First case: auto-eligible shape (no applicationId/applicationStudentId).
+    // Second case: application-based shape with both populated.
+    const cases: SummerEbtCase[] = [
+      TEST_CASES[0]!,
+      {
+        ...TEST_CASES[1]!,
+        applicationId: 'APP-2',
+        applicationStudentId: 'STU-2'
+      }
+    ]
+
+    const { user } = renderConfirmRequest({ cases })
+
+    await user.click(screen.getByRole('button', { name: /order card/i }))
+
+    await waitFor(() => expect(capturedBody).not.toBeNull())
+    expect(capturedBody).toEqual({
+      caseRefs: [
+        {
+          summerEbtCaseId: 'SEBT-001',
+          applicationId: null,
+          applicationStudentId: null
+        },
+        {
+          summerEbtCaseId: 'SEBT-002',
+          applicationId: 'APP-2',
+          applicationStudentId: 'STU-2'
+        }
+      ]
     })
   })
 

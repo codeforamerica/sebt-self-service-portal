@@ -16,9 +16,11 @@ using UserProfile = Core::SEBT.Portal.Core.Models.Household.UserProfile;
 public static class HouseholdDataResponseMapper
 {
     /// <summary>
-    /// Maps domain HouseholdData to the API response model.
+    /// Maps domain HouseholdData to the API response model. The mapper stays a
+    /// pure projection. The controller decides which states emit the analytics
+    /// digest and which App ID to feed in.
     /// </summary>
-    public static HouseholdDataResponse ToResponse(this HouseholdData domain)
+    public static HouseholdDataResponse ToResponse(this HouseholdData domain, string? hashedAppId = null)
     {
         return new HouseholdDataResponse
         {
@@ -30,7 +32,8 @@ public static class HouseholdDataResponseMapper
             UserProfile = domain.UserProfile?.ToResponse(),
             BenefitIssuanceType = domain.BenefitIssuanceType,
             AllowedActions = domain.AllowedActions?.ToResponse(),
-            CoLoadedCohort = domain.CoLoadedCohort
+            CoLoadedCohort = domain.CoLoadedCohort,
+            HashedAppId = hashedAppId
         };
     }
 

@@ -17,6 +17,7 @@ internal sealed class DefaultSummerEbtCaseService : ISummerEbtCaseService
         string identifierValue,
         PiiVisibility piiVisibility,
         IdentityAssuranceLevel identityAssuranceLevel,
+        Guid? portalUserId = null,
         CancellationToken cancellationToken = default)
     {
         return Task.FromResult<HouseholdData?>(null);
@@ -27,6 +28,7 @@ internal sealed class DefaultSummerEbtCaseService : ISummerEbtCaseService
         string guardianEmail,
         PiiVisibility piiVisibility,
         IdentityAssuranceLevel identityAssuranceLevel,
+        Guid? portalUserId = null,
         CancellationToken cancellationToken = default)
     {
         return Task.FromResult<HouseholdData?>(null);
@@ -36,8 +38,22 @@ internal sealed class DefaultSummerEbtCaseService : ISummerEbtCaseService
     public Task<bool> TryMatchCoLoadedGuardianByBenefitIdAndDobAsync(
         string benefitIdentifierIc,
         DateOnly guardianDateOfBirth,
+        Guid portalUserId,
         CancellationToken cancellationToken = default)
     {
         return Task.FromResult(false);
+    }
+
+    /// <inheritdoc />
+    public Task<HouseholdData?> GetHouseholdByBenefitIdentifierAndDobAsync(
+        string benefitIdentifierIc,
+        DateOnly guardianDateOfBirth,
+        string guardianLoginEmail,
+        PiiVisibility piiVisibility,
+        IdentityAssuranceLevel identityAssuranceLevel,
+        Guid portalUserId,
+        CancellationToken cancellationToken = default)
+    {
+        return Task.FromResult<HouseholdData?>(null);
     }
 }

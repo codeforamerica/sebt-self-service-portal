@@ -1,7 +1,7 @@
 /**
  * DOM event bridge that listens to DataLayer CustomEvents and forwards
- * them to Mixpanel. Reads only analytics-scoped data from the data layer
- * to build vendor payloads.
+ * them to Mixpanel. The data layer pre-merges analytics-scoped page + user
+ * context into eventData, so the bridge passes payloads through as-is.
  *
  * @see docs/tdd/analytics-data-layer.md — "DOM Bridge & Sample Integration"
  */
@@ -19,29 +19,6 @@ declare global {
   interface Window {
     mixpanel?: MixpanelLike
   }
-}
-
-const PAGE_FIELDS = ['name', 'flow', 'step', 'application', 'environment'] as const
-const USER_FIELDS = ['authenticated', 'identity_assurance_level', 'id_proofed'] as const
-
-function collectAnalyticsContext(dl: DataLayerRoot): Record<string, unknown> {
-  const context: Record<string, unknown> = {}
-
-  for (const field of PAGE_FIELDS) {
-    const value = dl.get(`page.${field}`, 'analytics')
-    if (value !== undefined) {
-      context[`page_${field}`] = value
-    }
-  }
-
-  for (const field of USER_FIELDS) {
-    const value = dl.get(`user.${field}`, 'analytics')
-    if (value !== undefined) {
-      context[`user_${field}`] = value
-    }
-  }
-
-  return context
 }
 
 function attachBridge(dl: DataLayerRoot): () => void {
@@ -65,8 +42,10 @@ function attachBridge(dl: DataLayerRoot): () => void {
 
     if (!detail?.eventName) return
 
-    const context = collectAnalyticsContext(dl)
-    mp.track(detail.eventName, { ...context, ...detail.eventData })
+    // The data layer merges analytics-scoped page + user context into every
+    // event's eventData (see _trackEvent in data-layer.ts), so the bridge
+    // forwards the payload as-is.
+    mp.track(detail.eventName, detail.eventData)
   }
 
   const pageViewedEvent = dl.eventTypes.PAGE_VIEWED!
@@ -83,7 +62,11 @@ function attachBridge(dl: DataLayerRoot): () => void {
 
 export function initMixpanelBridge(token: string): () => void {
   const mp = window.mixpanel
-  if (!mp?.init || !mp?.track) {
+  // Only `init` is required up-front. The official Mixpanel boot snippet
+  // defines `init` immediately on the queue stub but only attaches `track`
+  // (and the rest of the API surface) the first time `init()` is called —
+  // checking for `track` here would always fail and never bootstrap the SDK.
+  if (!mp?.init) {
     return () => {}
   }
 

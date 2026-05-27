@@ -1,6 +1,7 @@
 import bundleAnalyzer from '@next/bundle-analyzer'
 import type { NextConfig } from 'next'
 import path from 'path'
+import { getRouteHeaders } from './src/lib/route-headers'
 
 const state = process.env.STATE || 'dc'
 
@@ -71,7 +72,8 @@ const nextConfig: NextConfig = {
   // Local dev uses standard output so `next start` serves public/ and static/ correctly
   ...(process.env.BUILD_STANDALONE === 'true' && { output: 'standalone' as const }),
   poweredByHeader: false,
-  reactStrictMode: true
+  reactStrictMode: true,
+  headers: getRouteHeaders
 }
 
 export default withBundleAnalyzer(nextConfig)

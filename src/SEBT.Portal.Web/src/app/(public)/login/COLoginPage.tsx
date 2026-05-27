@@ -1,15 +1,18 @@
 'use client'
 
 import type { StateCode } from '@sebt/design-system'
-import { TextLink, getStateLinks } from '@sebt/design-system'
 import { useTranslation } from 'react-i18next'
 import { MyColoradoLogo } from './MyColoradoLogo'
 
 export function COLoginPage({ state }: { state: StateCode }) {
-  const links = getStateLinks(state)
-
-  const { t } = useTranslation('login')
+  const { t, i18n } = useTranslation('login')
   const { t: tCommon } = useTranslation('common')
+
+  // The `logIn` translation key resolves to the current UI language's label, and
+  // `logInEsp` resolves to the *other* language's label. Pair each button's link
+  // target with its label so the user lands in the language they chose.
+  const currentLang = i18n.language.startsWith('es') ? 'es' : 'en'
+  const otherLang = currentLang === 'es' ? 'en' : 'es'
 
   function startOidcLogin(language: string) {
     // Persist the user's language choice so the UI matches after the redirect.
@@ -36,8 +39,9 @@ export function COLoginPage({ state }: { state: StateCode }) {
           <div className="margin-top-4">
             <button
               type="button"
-              onClick={() => startOidcLogin('en')}
+              onClick={() => startOidcLogin(currentLang)}
               className="usa-button usa-button--mycolorado display-flex flex-align-center"
+              lang={currentLang}
             >
               <MyColoradoLogo className="margin-right-1" />
               {tCommon('logIn')}
@@ -47,20 +51,14 @@ export function COLoginPage({ state }: { state: StateCode }) {
           <div className="margin-top-2">
             <button
               type="button"
-              onClick={() => startOidcLogin('es')}
+              onClick={() => startOidcLogin(otherLang)}
               className="usa-button usa-button--outline usa-button--mycolorado display-flex flex-align-center"
-              lang="es"
+              lang={otherLang}
             >
               <MyColoradoLogo className="margin-right-1" />
               {tCommon('logInEsp')}
             </button>
           </div>
-
-          <p className="margin-top-4 font-sans-sm">
-            <TextLink href={links.external.contactUsAssistance}>
-              {t('logInDisclaimerBody2')}
-            </TextLink>
-          </p>
         </section>
       </div>
     </div>

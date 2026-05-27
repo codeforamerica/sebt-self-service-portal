@@ -11,12 +11,16 @@ namespace SEBT.Portal.Infrastructure.Services;
 /// Runs after Smarty normalization (handled by <c>UpdateAddressCommandHandler</c>)
 /// so that checks operate on the canonical address form.
 ///
-/// All state-specific data (blocked addresses, abbreviation mappings, length limits)
-/// is loaded from <see cref="AddressValidationDataSettings"/> via appsettings configuration.
+/// Two blocked-address paths participate:
+/// 1. The legacy inline list from <see cref="AddressValidationDataSettings.BlockedAddresses"/>,
+///    matched on normalized street alone (used for small hand-curated lists, e.g. DC's 5 entries).
+/// 2. <see cref="IBlockedAddressDataSource"/> entries, matched on (normalized street + 5-digit ZIP)
+///    so that large state-wide lists can disambiguate same-street collisions across cities.
 /// </summary>
 public class AddressValidationService : IAddressValidationService
 {
-    private readonly HashSet<string> _blockedAddresses;
+    private readonly HashSet<string> _blockedStreetsLegacy;
+    private readonly Dictionary<string, HashSet<string>> _blockedStreetsByZip;
     private readonly Dictionary<string, string> _streetAbbreviations;
     private readonly int _maxStreetAddressLength;
 
@@ -43,13 +47,67 @@ public class AddressValidationService : IAddressValidationService
         ["Hwy"] = "Highway"
     };
 
-    public AddressValidationService(IOptions<AddressValidationDataSettings> options)
+    /// <summary>
+    /// Standalone directional tokens that USPS / Smarty may add or omit.
+    /// Stripped only on the ZIP-keyed matching path: ZIP context narrows the
+    /// match enough that cross-directional collisions are negligible. The
+    /// legacy L1-only path keeps directionals because DC street names depend
+    /// on the quadrant suffix to disambiguate (e.g. Taylor St NW vs SW).
+    /// </summary>
+    private static readonly HashSet<string> Directionals = new(StringComparer.OrdinalIgnoreCase)
+    {
+        "N", "S", "E", "W", "NE", "NW", "SE", "SW",
+        "North", "South", "East", "West",
+        "Northeast", "Northwest", "Southeast", "Southwest"
+    };
+
+    /// <summary>
+    /// USPS secondary unit designators (Pub 28 Appendix C2). Smarty's US Street
+    /// API sometimes parses these into streetAddress2 and sometimes leaves them
+    /// in streetAddress1; when they land in L1 they break exact-match against a
+    /// CSV row that has no unit info. The loose matcher truncates from the first
+    /// indicator onwards because USPS convention places unit data at the END of
+    /// the street component.
+    /// </summary>
+    private static readonly HashSet<string> UnitIndicators = new(StringComparer.OrdinalIgnoreCase)
+    {
+        "Ste", "Suite",
+        "Apt", "Apartment",
+        "Unit",
+        "Fl", "Floor",
+        "Rm", "Room",
+        "Bldg", "Building",
+        "Bsmt", "Basement",
+        "Dept", "Department",
+        "Lowr", "Lower",
+        "Uppr", "Upper",
+        "Ph", "Penthouse",
+        "Trlr", "Trailer",
+        "Hngr", "Hangar",
+        "Ofc", "Office",
+        "Spc", "Space",
+        "Lot", "Slip", "Stop", "Pier", "Key",
+        "Frnt", "Front", "Rear", "Side"
+    };
+
+    public AddressValidationService(
+        IOptions<AddressValidationDataSettings> options,
+        IBlockedAddressDataSource blockedAddressData)
     {
         var settings = options.Value;
 
-        _blockedAddresses = new HashSet<string>(
+        _blockedStreetsLegacy = new HashSet<string>(
             settings.BlockedAddresses.Select(NormalizeStreet),
             StringComparer.OrdinalIgnoreCase);
+
+        _blockedStreetsByZip = blockedAddressData.GetEntries()
+            .GroupBy(e => e.PostalCodeFive, StringComparer.Ordinal)
+            .ToDictionary(
+                g => g.Key,
+                g => new HashSet<string>(
+                    g.Select(e => NormalizeStreetLoose(e.Street)),
+                    StringComparer.OrdinalIgnoreCase),
+                StringComparer.Ordinal);
 
         _streetAbbreviations = new Dictionary<string, string>(
             settings.StreetAbbreviations,
@@ -96,8 +154,20 @@ public class AddressValidationService : IAddressValidationService
             return false;
         }
 
-        var normalized = NormalizeStreet(address.StreetAddress1);
-        return _blockedAddresses.Contains(normalized);
+        if (_blockedStreetsLegacy.Contains(NormalizeStreet(address.StreetAddress1)))
+        {
+            return true;
+        }
+
+        var zip5 = TryGetZipFive(address.PostalCode);
+        if (zip5 is not null
+            && _blockedStreetsByZip.TryGetValue(zip5, out var streetsAtZip)
+            && streetsAtZip.Contains(NormalizeStreetLoose(address.StreetAddress1)))
+        {
+            return true;
+        }
+
+        return false;
     }
 
     /// <summary>
@@ -150,5 +220,61 @@ public class AddressValidationService : IAddressValidationService
         }
 
         return string.Join(' ', words);
+    }
+
+    /// <summary>
+    /// Like NormalizeStreet but additionally drops standalone directional tokens
+    /// and truncates from the first unit indicator. Used on the ZIP-keyed matching
+    /// path to absorb Smarty's two main canonicalization drifts:
+    ///
+    /// 1. Directional drift: Smarty may add or omit "N"/"S"/"E"/"W" on streets
+    ///    where it isn't required (e.g. CSV "1575 Sherman St" → Smarty's "1575 N Sherman St").
+    /// 2. Unit drift: Smarty sometimes leaves "Ste 200"/"Apt 4B"/"Fl 7" in L1 rather
+    ///    than splitting it into L2; the source CSV doesn't carry unit info in L1,
+    ///    so an exact match would miss the building.
+    ///
+    /// ZIP context constrains both transformations enough that they're safe in practice.
+    /// </summary>
+    private static string NormalizeStreetLoose(string street)
+    {
+        var normalized = NormalizeStreet(street);
+        var words = normalized.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+        var kept = new List<string>(words.Length);
+        foreach (var word in words)
+        {
+            if (UnitIndicators.Contains(word))
+            {
+                break;
+            }
+            if (Directionals.Contains(word))
+            {
+                continue;
+            }
+            kept.Add(word);
+        }
+        return string.Join(' ', kept);
+    }
+
+    /// <summary>
+    /// Returns the first 5 digits of a postal code, or null if input is empty/has
+    /// fewer than 5 digits. Strips whitespace, hyphens, and any +4 suffix.
+    /// </summary>
+    private static string? TryGetZipFive(string? postalCode)
+    {
+        if (string.IsNullOrWhiteSpace(postalCode))
+        {
+            return null;
+        }
+
+        Span<char> digits = stackalloc char[5];
+        var written = 0;
+        foreach (var ch in postalCode)
+        {
+            if (!char.IsDigit(ch)) continue;
+            digits[written++] = ch;
+            if (written == 5) return new string(digits);
+        }
+
+        return null;
     }
 }

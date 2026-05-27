@@ -1,7 +1,10 @@
+import { i18n } from '@sebt/design-system/client'
 import { act, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
 
+import enCoStepUpProcessing from '@/content/locales/en/co/step-upProcessing.json'
+import enCoStepUpDisclaimer from '@/content/locales/en/co/stepUpDisclaimer.json'
 import { AuthProvider } from '@/features/auth/context'
 
 import { IalGuard } from './IalGuard'
@@ -78,6 +81,18 @@ function setupApiFetchMock(options: {
 describe('IalGuard', () => {
   let prevNextPublicState: string | undefined
 
+  // IalGuard renders CO-only step-up copy (the gate is CO-specific). Tests run under
+  // DC locale by default, so load the CO bundles for these namespaces explicitly.
+  beforeAll(() => {
+    i18n.addResourceBundle('en', 'stepUpDisclaimer', enCoStepUpDisclaimer, true, true)
+    i18n.addResourceBundle('en', 'step-upProcessing', enCoStepUpProcessing, true, true)
+  })
+
+  afterAll(() => {
+    i18n.removeResourceBundle('en', 'stepUpDisclaimer')
+    i18n.removeResourceBundle('en', 'step-upProcessing')
+  })
+
   beforeEach(() => {
     prevNextPublicState = process.env.NEXT_PUBLIC_STATE
     process.env.NEXT_PUBLIC_STATE = 'co'
@@ -148,9 +163,8 @@ describe('IalGuard', () => {
     expect(window.location.href).toContain('stepUp=true')
   })
 
-  it('Back uses router.back when history length > 1', async () => {
+  it('challenge heading resolves stepUpDisclaimer.title, not a hardcoded fallback', async () => {
     setupApiFetchMock({ ial: '1' })
-    vi.spyOn(window.history, 'length', 'get').mockReturnValue(2)
 
     render(
       <AuthProvider>
@@ -166,17 +180,29 @@ describe('IalGuard', () => {
     })
 
     await waitFor(() => {
-      expect(screen.getByRole('button', { name: 'Back' })).toBeInTheDocument()
+      expect(screen.getByRole('heading', { name: enCoStepUpDisclaimer.title })).toBeInTheDocument()
     })
-
-    await userEvent.click(screen.getByRole('button', { name: 'Back' }))
-    expect(mockBack).toHaveBeenCalledTimes(1)
-    expect(mockPush).not.toHaveBeenCalled()
   })
 
-  it('Back falls back to dashboard when history length is 1', async () => {
+  it('checking copy resolves step-upProcessing.title and .body, not hardcoded fallbacks', async () => {
     setupApiFetchMock({ ial: '1' })
-    vi.spyOn(window.history, 'length', 'get').mockReturnValue(1)
+
+    render(
+      <AuthProvider>
+        <IalGuard>
+          <p>Protected</p>
+        </IalGuard>
+      </AuthProvider>
+    )
+
+    await waitFor(() => {
+      expect(screen.getByRole('heading', { name: enCoStepUpProcessing.title })).toBeInTheDocument()
+    })
+    expect(screen.getByText(enCoStepUpProcessing.body)).toBeInTheDocument()
+  })
+
+  it('Back navigates to dashboard', async () => {
+    setupApiFetchMock({ ial: '1' })
 
     render(
       <AuthProvider>
@@ -197,5 +223,6 @@ describe('IalGuard', () => {
 
     await userEvent.click(screen.getByRole('button', { name: 'Back' }))
     expect(mockPush).toHaveBeenCalledWith('/dashboard')
+    expect(mockBack).not.toHaveBeenCalled()
   })
 })

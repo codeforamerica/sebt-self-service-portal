@@ -1,10 +1,10 @@
 <!DOCTYPE html>
-<html lang="{{Language}}">
+<html lang="{{Locale}}">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta http-equiv="X-UA-Compatible" content="IE=edge" />
-    <title>Your {{StateName}} Login Code</title>
+    <title>{{Subject}}</title>
     <!--[if mso]>
       <noscript>
         <xml>
@@ -123,9 +123,8 @@
                   color: #1b1b1b;
                 "
               >
-                <!-- TODO: Internationalize email body text for multi-language support -->
                 <p style="margin: 0 0 16px 0">
-                  Use this code to log in to your account.
+                  {{Body1}}
                 </p>
 
                 <p
@@ -150,8 +149,7 @@
                     margin-bottom: 0;
                   "
                 >
-                  The code will expire in {{ExpiryMinutes}} minutes. Do not
-                  share this code with anyone.
+                  {{Body3}}
                 </p>
 
                 <p

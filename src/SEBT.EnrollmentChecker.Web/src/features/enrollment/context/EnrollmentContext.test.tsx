@@ -1,6 +1,9 @@
 import { act, renderHook } from '@testing-library/react'
-import { afterEach, beforeEach, describe, expect, it } from 'vitest'
-import { EnrollmentProvider, useEnrollment } from './EnrollmentContext'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { EnrollmentProvider, IDLE_TIMEOUT_MS, useEnrollment } from './EnrollmentContext'
+
+const mockPush = vi.fn()
+vi.mock('next/navigation', () => ({ useRouter: () => ({ push: mockPush }) }))
 
 const wrapper = ({ children }: { children: React.ReactNode }) => (
   <EnrollmentProvider>{children}</EnrollmentProvider>
@@ -83,5 +86,41 @@ describe('EnrollmentContext', () => {
     expect(result.current.state.editingChildId).toBe(id)
     act(() => result.current.setEditingChildId(null))
     expect(result.current.state.editingChildId).toBeNull()
+  })
+
+  describe('idle timeout', () => {
+    beforeEach(() => {
+      vi.useFakeTimers()
+      mockPush.mockClear()
+    })
+    afterEach(() => vi.useRealTimers())
+
+    it('clears state and routes to landing after IDLE_TIMEOUT_MS of inactivity', () => {
+      const { result } = renderHook(() => useEnrollment(), { wrapper })
+      act(() => result.current.addChild(child))
+      expect(result.current.state.children).toHaveLength(1)
+
+      act(() => vi.advanceTimersByTime(IDLE_TIMEOUT_MS))
+
+      expect(result.current.state.children).toHaveLength(0)
+      expect(sessionStorage.getItem('enrollmentState')).toBeNull()
+      expect(mockPush).toHaveBeenCalledWith('/')
+    })
+
+    it('resets the idle timer on user activity', () => {
+      const { result } = renderHook(() => useEnrollment(), { wrapper })
+      act(() => result.current.addChild(child))
+
+      // Almost-timeout, then activity resets the clock
+      act(() => vi.advanceTimersByTime(IDLE_TIMEOUT_MS - 1000))
+      act(() => window.dispatchEvent(new Event('keydown')))
+      // Past where the original timer would have fired
+      act(() => vi.advanceTimersByTime(2000))
+      expect(result.current.state.children).toHaveLength(1)
+
+      // A full new timeout window after the activity clears it
+      act(() => vi.advanceTimersByTime(IDLE_TIMEOUT_MS))
+      expect(result.current.state.children).toHaveLength(0)
+    })
   })
 })

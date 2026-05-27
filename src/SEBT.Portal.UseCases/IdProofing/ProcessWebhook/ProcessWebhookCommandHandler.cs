@@ -228,18 +228,18 @@ public class ProcessWebhookCommandHandler(
         var user = await userRepository.GetUserByIdAsync(userId, cancellationToken);
         if (user == null)
         {
-            logger.LogWarning("User {UserId} not found when updating proofing status after verification", userId);
+            logger.LogError("User {UserId} not found when updating proofing status after verification — Socure confirmed identity but portal state cannot be updated", userId);
             return;
         }
 
         user.IdProofingStatus = IdProofingStatus.Completed;
-        user.IalLevel = UserIalLevel.IAL2;
+        user.IalLevel = UserIalLevel.IAL1plus;
         user.IdProofingCompletedAt = DateTime.UtcNow;
 
         await userRepository.UpdateUserAsync(user, cancellationToken);
 
         logger.LogInformation(
-            "User {UserId} proofing status updated to Completed, IAL2 after document verification",
+            "User {UserId} proofing status updated to Completed, IAL1plus after document verification",
             userId);
     }
 }

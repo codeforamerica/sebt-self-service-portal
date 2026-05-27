@@ -15,7 +15,7 @@ export function ReviewPage({ onSubmit }: ReviewPageProps) {
   const { t } = useTranslation('confirmInfo')
   const { t: tCommon } = useTranslation('common')
   const router = useRouter()
-  const { state, setEditingChildId } = useEnrollment()
+  const { state, setEditingChildId, removeChild } = useEnrollment()
 
   function handleEdit(id: string) {
     setEditingChildId(id)
@@ -26,7 +26,7 @@ export function ReviewPage({ onSubmit }: ReviewPageProps) {
     <div className="usa-section">
       <div className="grid-container">
         <Image
-          src="/images/states/co/icon-review-card.svg"
+          src={`${process.env.NEXT_PUBLIC_BASE_PATH}/images/states/co/icon-review-card.svg`}
           alt=""
           width={100}
           height={75}
@@ -41,6 +41,7 @@ export function ReviewPage({ onSubmit }: ReviewPageProps) {
               key={child.id}
               child={child}
               onEdit={handleEdit}
+              onRemove={removeChild}
             />
           ))}
         </div>
@@ -53,7 +54,12 @@ export function ReviewPage({ onSubmit }: ReviewPageProps) {
           >
             {tCommon('back')}
           </Button>
-          <Button onClick={onSubmit}>{tCommon('submit')}</Button>
+          <Button
+            onClick={onSubmit}
+            disabled={state.children.length === 0}
+          >
+            {tCommon('submit')}
+          </Button>
         </div>
         <div className="margin-top-2">
           <button

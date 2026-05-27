@@ -8,6 +8,7 @@ using Microsoft.IdentityModel.Tokens;
 using SEBT.Portal.Api;
 using SEBT.Portal.Api.Composition;
 using SEBT.Portal.Api.Filters;
+using SEBT.Portal.Api.Telemetry;
 using Serilog;
 using Serilog.Templates;
 using Microsoft.FeatureManagement;
@@ -29,8 +30,13 @@ var builder = WebApplication.CreateBuilder(args);
 // Configure Serilog early so that configuration providers can log.
 // Console sink is configured in code (not appsettings) so we can use
 // human-readable text locally and structured JSON in deployed environments.
-// The JSON format uses field names that Datadog auto-recognizes (level,
-// message, timestamp) so log severity maps correctly without custom pipelines.
+// Field names match Datadog's reserved attributes (`date`, `status`,
+// `message`) so they are auto-recognized without configuring a per-service
+// log pipeline. Without these names the Forwarder Lambda falls back to the
+// CloudWatch event time for the timeline and tags the log with
+// `service:cloudwatch`. The literal service value must match the OTEL
+// ServiceName constant in OpenTelemetrySetup so traces and logs correlate
+// under the same service in Datadog.
 // Set LOG_FORMAT=json in ECS task definitions to enable structured output.
 var useJsonLogs = string.Equals(
     Environment.GetEnvironmentVariable("LOG_FORMAT"), "json", StringComparison.OrdinalIgnoreCase);
@@ -38,12 +44,13 @@ var useJsonLogs = string.Equals(
 var logConfig = new LoggerConfiguration()
     .ReadFrom.Configuration(builder.Configuration)
     .Enrich.FromLogContext()
-    .Enrich.WithOtelTracingSpanId();
+    .Enrich.WithOtelTracingSpanId()
+    .Enrich.WithPortalUserInfo();
 
 if (useJsonLogs)
 {
     logConfig.WriteTo.Console(new ExpressionTemplate(
-        "{ {timestamp: @t, level: @l, message: @m, exception: @x, ..@p} }\n"));
+        "{ {date: @t, timestamp: @t, status: @l, level: @l, message: @m, exception: @x, ..@p} }\n"));
 }
 else
 {
@@ -448,7 +455,7 @@ try
 }
 catch (Exception ex)
 {
-    Log.Warning(ex, "Database migrations failed or database unavailable. App will continue to start.");
+    Log.Error(ex, "Database migrations failed or database unavailable. App will continue to start.");
 }
 
 // Configure the HTTP request pipeline.

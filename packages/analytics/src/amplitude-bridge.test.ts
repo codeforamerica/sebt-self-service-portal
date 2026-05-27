@@ -81,15 +81,6 @@ describe('initAmplitudeBridge', () => {
       expect(amplitudeStub.track).toHaveBeenCalledWith('logout', {})
     })
 
-    it('does not forward PageViewed events (only EventTracked)', () => {
-      new DataLayer('digitalData')
-      initAmplitudeBridge('test-key', amplitudeStub)
-
-      window.digitalData!.pageLoad({ name: 'Dashboard' })
-
-      expect(amplitudeStub.track).not.toHaveBeenCalled()
-    })
-
     it('ignores EventTracked events with an empty detail object', () => {
       new DataLayer('digitalData')
       initAmplitudeBridge('test-key', amplitudeStub)
@@ -98,6 +89,20 @@ describe('initAmplitudeBridge', () => {
       document.dispatchEvent(new CustomEvent(eventTrackedEvent, { detail: {} }))
 
       expect(amplitudeStub.track).not.toHaveBeenCalled()
+    })
+  })
+
+  describe('PageViewed forwarding', () => {
+    it('forwards pageLoad to amplitude.track with page_load and eventData', () => {
+      new DataLayer('digitalData')
+      initAmplitudeBridge('test-key', amplitudeStub)
+
+      window.digitalData!.pageLoad({ name: 'Dashboard' })
+
+      expect(amplitudeStub.track).toHaveBeenCalledWith(
+        'page_load',
+        expect.objectContaining({ name: 'Dashboard' })
+      )
     })
   })
 

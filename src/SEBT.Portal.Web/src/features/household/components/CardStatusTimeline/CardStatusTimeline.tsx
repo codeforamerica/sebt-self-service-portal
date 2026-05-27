@@ -9,10 +9,6 @@ interface CardStatusTimelineProps {
   cardRequestedAt: string | null | undefined
 }
 
-const REQUESTED_LABEL_FALLBACK = 'Requested on [MM/DD/YYYY]'
-const REQUESTED_MESSAGE_FALLBACK =
-  "We've requested a new card that will arrive in the mail within 2–3 weeks. Check back here to see when the card has been mailed."
-
 /**
  * Renders a single-state notice that a card replacement is in flight.
  * Shown only while the user is within the cooldown window after submitting
@@ -22,10 +18,9 @@ const REQUESTED_MESSAGE_FALLBACK =
 export function CardStatusTimeline({ cardRequestedAt }: CardStatusTimelineProps) {
   const { t, i18n } = useTranslation('dashboard')
 
-  const rawLabel = t('cardTableStatusRequested') || REQUESTED_LABEL_FALLBACK
+  const rawLabel = t('cardTableStatusRequested', { defaultValue: '' })
   const label = interpolateDate(rawLabel, cardRequestedAt ?? null, i18n.language)
-  const message =
-    t('cardTableStatusMessageRequested1', { defaultValue: '' }) || REQUESTED_MESSAGE_FALLBACK
+  const message = t('cardTableStatusMessageRequested1', { defaultValue: '' })
 
   return (
     <div className="margin-top-2">

@@ -22,8 +22,9 @@ export function ConfirmAddress({
   confirmPath,
   changePath
 }: ConfirmAddressProps) {
-  const { t } = useTranslation('confirmInfo')
+  const { t } = useTranslation('validation')
   const { t: tCommon } = useTranslation('common')
+
   const router = useRouter()
 
   const [selection, setSelection] = useState<'yes' | 'no' | null>(null)
@@ -52,7 +53,7 @@ export function ConfirmAddress({
     e.preventDefault()
 
     if (selection === null) {
-      setError(t('selectOneError', 'Please select an option.'))
+      setError(t('selectOption'))
       return
     }
 
@@ -71,7 +72,7 @@ export function ConfirmAddress({
     >
       {subtitle && (
         <p className="text-base-dark margin-bottom-1">
-          {/* TODO: Use t('replaceCardFor') once key is available in CSV */}
+          {/* TODO update below with tResult('pre-title')} */}
           {subtitle}
         </p>
       )}
@@ -88,17 +89,15 @@ export function ConfirmAddress({
         </p>
       </div>
 
-      <p className="usa-hint margin-bottom-3">
-        {t('requiredFieldsNote', 'Asterisks (*) indicate a required field')}
-      </p>
+      <p className="usa-hint margin-bottom-3">{tCommon('requiredFields')}</p>
 
       <fieldset
         className="usa-fieldset"
-        aria-label={t('selectOneLabel', 'Select one')}
+        aria-label={tCommon('selectOne')}
         aria-describedby={error ? 'confirm-address-error' : undefined}
       >
         <legend className="usa-legend text-bold">
-          {t('selectOneLabel', 'Select one')}
+          {tCommon('selectOne')}
           <span className="text-secondary-dark"> *</span>
         </legend>
 
@@ -131,7 +130,7 @@ export function ConfirmAddress({
             className="usa-radio__label text-bold"
             htmlFor="confirm-address-yes"
           >
-            {tCommon('yes', 'Yes')}
+            {tCommon('yes')}
           </label>
         </div>
 
@@ -152,7 +151,7 @@ export function ConfirmAddress({
             className="usa-radio__label text-bold"
             htmlFor="confirm-address-no"
           >
-            {tCommon('no', 'No')}
+            {tCommon('no')}
           </label>
         </div>
       </fieldset>
@@ -163,9 +162,9 @@ export function ConfirmAddress({
           type="button"
           onClick={() => router.back()}
         >
-          {tCommon('back', 'Back')}
+          {tCommon('back')}
         </Button>
-        <Button type="submit">{tCommon('continue', 'Continue')}</Button>
+        <Button type="submit">{tCommon('continue')}</Button>
       </div>
     </form>
   )

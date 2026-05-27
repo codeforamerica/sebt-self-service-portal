@@ -5,7 +5,7 @@ import { useId, useState, type FormEvent } from 'react'
 import { useTranslation } from 'react-i18next'
 
 import { AnalyticsEvents, useDataLayer } from '@sebt/analytics'
-import { Alert, Button, InputField } from '@sebt/design-system'
+import { Alert, Button, InputField, LoadingInterstitial } from '@sebt/design-system'
 
 import { useAuth } from '@/features/auth'
 import {
@@ -89,6 +89,9 @@ export function IdProofingForm({ idOptions, contactLink, getDiToken }: IdProofin
   const { t: tCommon } = useTranslation('common')
   const { t: tPersonalInfo } = useTranslation('personalInfo')
   const { t: tValidation } = useTranslation('validation')
+  const { t: tProcessing } = useTranslation('step-upProcessing')
+  const { t: tDev } = useTranslation('dev')
+
   const formId = useId()
   const months = getLocalizedMonths(i18n.language)
 
@@ -105,6 +108,10 @@ export function IdProofingForm({ idOptions, contactLink, getDiToken }: IdProofin
   const [idTypeError, setIdTypeError] = useState<string | null>(null)
   const [idValueError, setIdValueError] = useState<string | null>(null)
   const [submitError, setSubmitError] = useState<string | null>(null)
+  // Covers the full submit flow, not just the mutation. The Socure DI token
+  // fetch runs before mutateAsync, so leaning on `submitIdProofing.isPending`
+  // alone would leave the form on screen during a slow token call.
+  const [isProcessing, setIsProcessing] = useState(false)
 
   const submitIdProofing = useSubmitIdProofing()
   const refreshToken = useRefreshToken()
@@ -117,10 +124,8 @@ export function IdProofingForm({ idOptions, contactLink, getDiToken }: IdProofin
   const showIdValueInput = selectedIdType !== null && selectedIdType !== NONE_VALUE
 
   const REQUIRED_FIELD_ERROR = tValidation('required')
-  // TODO: Use t('validation.ssnItinDigits') once key is available in dc.csv
-  const SSN_ITIN_SHAPE_ERROR = 'Enter exactly 9 digits.'
-  // TODO: Use t('validation.sevenOrEightDigits') once key is available in dc.csv
-  const SEVEN_OR_EIGHT_DIGITS_ERROR = 'Enter 7 or 8 digits.'
+  const SSN_ITIN_SHAPE_ERROR = tValidation('ssn')
+  const SEVEN_OR_EIGHT_DIGITS_ERROR = tValidation('idNumber')
   // TODO: Use t('validation.dobInvalid') once key is available in dc.csv
   const DOB_INVALID_ERROR = 'Enter a valid date of birth.'
 
@@ -213,6 +218,7 @@ export function IdProofingForm({ idOptions, contactLink, getDiToken }: IdProofin
     if (!validateFields()) return
 
     trackEvent(AnalyticsEvents.IDV_PRIMARY_START)
+    setIsProcessing(true)
 
     try {
       // Best-effort: retrieve DI token if the SDK is ready
@@ -231,9 +237,7 @@ export function IdProofingForm({ idOptions, contactLink, getDiToken }: IdProofin
         setUserData('docv_required', true, ['default', 'analytics'])
         trackEvent(AnalyticsEvents.IDV_PRIMARY_RESULT)
         if (!response.challengeId) {
-          setSubmitError(
-            t('idProofingStartError', 'Unable to start document verification. Please try again.')
-          )
+          setSubmitError(tDev('alertVerificationRetry'))
           return
         }
         clearChallengeContext()
@@ -241,9 +245,13 @@ export function IdProofingForm({ idOptions, contactLink, getDiToken }: IdProofin
         router.push(`/login/id-proofing/doc-verify?challengeId=${response.challengeId}`)
       } else if (response.result === 'failed') {
         setPageData('idv_primary_status', 'fail')
-        // Co-loaded users reach "failed" only via SNAP/TANF + DOB mismatch (no Socure),
-        // so their failure is always a not-found. Non-co-loaded failures come from Socure.
-        setPageData('idv_primary_reason', isCoLoaded ? 'not_found' : 'socure_fail')
+        if (response.offboardingReason === 'noQualifyingHousehold') {
+          setPageData('idv_primary_reason', 'no_qualifying_household')
+        } else {
+          // Co-loaded users reach "failed" only via SNAP/TANF + DOB mismatch (no Socure),
+          // so their failure is always a not-found. Non-co-loaded failures come from Socure.
+          setPageData('idv_primary_reason', isCoLoaded ? 'not_found' : 'socure_fail')
+        }
         trackEvent(AnalyticsEvents.IDV_PRIMARY_RESULT)
         // Hand off offboarding context via URL query params so the server-rendered
         // route page can branch copy (noIdProvided gets a distinct heading).
@@ -276,8 +284,25 @@ export function IdProofingForm({ idOptions, contactLink, getDiToken }: IdProofin
       // All errors get the same user-facing message. Raw ApiError.message may contain
       // backend wording not intended for end users — avoid displaying it directly.
       void err
-      setSubmitError(t('idProofingGenericError', 'Something went wrong. Please try again.'))
+      setSubmitError(tValidation('globalInternalError'))
+    } finally {
+      setIsProcessing(false)
     }
+  }
+
+  // While the Socure-backed submission is in flight (DI token fetch + mutation),
+  // replace the form with a dedicated loading interstitial. The full flow can
+  // take several seconds when Socure responds slowly; without this, users only
+  // see the submit button text change to "Continue..." and any eventual outcome
+  // (off-boarding navigation or an inline error) reads as "we just got an error
+  // after waiting."
+  if (isProcessing || submitIdProofing.isPending) {
+    return (
+      <LoadingInterstitial
+        title={tProcessing('title')}
+        message={tProcessing('body')}
+      />
+    )
   }
 
   return (

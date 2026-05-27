@@ -1,7 +1,7 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { http, HttpResponse } from 'msw'
+import { delay, http, HttpResponse } from 'msw'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { server } from '@/mocks/server'
@@ -130,6 +130,23 @@ describe('CardSelection', () => {
     expect(checkboxes).toHaveLength(2)
   })
 
+  // --- Loading state ---
+
+  it('shows real loading copy while household data is fetching', async () => {
+    server.use(
+      http.get('/api/household/data', async () => {
+        await delay('infinite')
+        return HttpResponse.json(TWO_CHILD_HOUSEHOLD)
+      })
+    )
+
+    renderCardSelection()
+
+    // The loading text must resolve to real copy ("Loading..." from the `dev`
+    // namespace), not an unresolved key string.
+    expect(await screen.findByText('Loading...')).toBeInTheDocument()
+  })
+
   // --- State-specific content ---
 
   it('shows card number for CO', async () => {
@@ -239,7 +256,7 @@ describe('CardSelection', () => {
     renderCardSelection()
 
     await waitFor(() => {
-      expect(screen.getByText(/unable to load household members/i)).toBeInTheDocument()
+      expect(screen.getByText(/an error occurred on our end/i)).toBeInTheDocument()
     })
   })
 
@@ -252,6 +269,82 @@ describe('CardSelection', () => {
 
     await waitFor(() => {
       expect(screen.getByText(/Sophia Martinez/)).toBeInTheDocument()
+    })
+
+    const backButton = screen.getByRole('button', { name: /back/i })
+    await user.click(backButton)
+
+    expect(mockBack).toHaveBeenCalled()
+  })
+
+  // DC-357: when all cards are filtered out client-side (cooldown / no eligible
+  // children), the user previously got a bare alert with no way out.
+  it('shows a back button when all cards are within the cooldown window', async () => {
+    const recentlyRequested = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString()
+    server.use(
+      http.get('/api/household/data', () =>
+        HttpResponse.json({
+          email: 'cooldown@example.com',
+          phone: '3035550100',
+          benefitIssuanceType: 1,
+          summerEbtCases: [
+            {
+              summerEBTCaseID: 'SEBT-COOL-1',
+              childFirstName: 'Cool',
+              childLastName: 'Down',
+              householdType: 'OSSE',
+              eligibilityType: 'NSLP',
+              issuanceType: 1,
+              allowCardReplacement: true,
+              cardRequestedAt: recentlyRequested
+            }
+          ],
+          applications: [],
+          addressOnFile: {
+            streetAddress1: '123 Main St',
+            city: 'Washington',
+            state: 'DC',
+            postalCode: '20001'
+          }
+        })
+      )
+    )
+
+    const { user } = renderCardSelection()
+
+    await waitFor(() => {
+      expect(screen.getByText(/recently replaced/i)).toBeInTheDocument()
+    })
+
+    const backButton = screen.getByRole('button', { name: /back/i })
+    await user.click(backButton)
+
+    expect(mockBack).toHaveBeenCalled()
+  })
+
+  it('shows a back button when the household has no eligible children', async () => {
+    server.use(
+      http.get('/api/household/data', () =>
+        HttpResponse.json({
+          email: 'empty@example.com',
+          phone: '3035550100',
+          benefitIssuanceType: 1,
+          summerEbtCases: [],
+          applications: [],
+          addressOnFile: {
+            streetAddress1: '123 Main St',
+            city: 'Washington',
+            state: 'DC',
+            postalCode: '20001'
+          }
+        })
+      )
+    )
+
+    const { user } = renderCardSelection()
+
+    await waitFor(() => {
+      expect(screen.getByText(/no children found/i)).toBeInTheDocument()
     })
 
     const backButton = screen.getByRole('button', { name: /back/i })
