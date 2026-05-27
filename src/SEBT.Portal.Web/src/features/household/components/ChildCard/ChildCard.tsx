@@ -145,7 +145,7 @@ export function ChildCard({
           {isWithinCooldownPeriod(cardRequestedAt) ? (
             <CardStatusTimeline cardRequestedAt={cardRequestedAt} />
           ) : (
-            <CardStatusDisplay cardStatus={ebtCardStatus} cardIssuedAt={ebtCardIssueDate} />
+            <CardStatusDisplay cardStatus={ebtCardStatus} cardIssuedAt={ebtCardIssueDate ?? null} />
           )}
         </dl>
         {replacementLink && (

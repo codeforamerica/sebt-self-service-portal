@@ -8,7 +8,7 @@ import { toUiCardStatus } from '../../api'
 
 interface CardStatusDisplayProps {
   cardStatus: CardStatus | null | undefined
-  cardIssuedAt?: string | null
+  cardIssuedAt?: string | null | undefined
 }
 
 // Keys map to CSV: "S2 - Portal Dashboard - Card Table - Status {Status}"
