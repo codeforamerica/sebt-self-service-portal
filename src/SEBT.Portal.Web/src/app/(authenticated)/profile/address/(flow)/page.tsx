@@ -46,9 +46,9 @@ export default function AddressFormPage() {
       <h1 className="font-sans-xl text-primary">{t('titleYour')}</h1>
       <p className="usa-hint">{tCommon('requiredFields')}</p>
       <AddressForm
-      initialAddress={data?.addressOnFile ?? null}
-      redirectPath={canRequestReplacementCard ? undefined : '/dashboard?addressUpdated=true'}
-    />
+        initialAddress={data?.addressOnFile ?? null}
+        {...(!canRequestReplacementCard && { redirectPath: '/dashboard?addressUpdated=true' })}
+      />
     </div>
   )
 }
