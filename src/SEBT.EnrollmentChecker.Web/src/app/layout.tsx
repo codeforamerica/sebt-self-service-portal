@@ -38,6 +38,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           <meta name="build-sha" content={process.env.NEXT_PUBLIC_BUILD_SHA} />
         )}
         {process.env.NEXT_PUBLIC_META_PIXEL && (
+           <meta http-equiv="Content-Security-Policy" content="script-src 'self' https://facebook.net; connect-src 'self' https://graph.facebook.com;">
            <script>{`!function(f,b,e,v,n,t,s){if(f.fbq)return;n=f.fbq=function(){n.callMethod?
            n.callMethod.apply(n,arguments):n.queue.push(arguments)};if(!f._fbq)f._fbq=n;
            n.push=n;n.loaded=!0;n.version='2.0';n.queue=[];t=b.createElement(e);t.async=!0;
