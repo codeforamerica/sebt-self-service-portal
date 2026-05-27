@@ -137,7 +137,6 @@ public class HouseholdControllerTests
                     ApplicationStatus = ApplicationStatus.Approved,
                     BenefitIssueDate = DateTime.UtcNow.AddDays(-30),
                     BenefitExpirationDate = DateTime.UtcNow.AddDays(60),
-                    Last4DigitsOfCard = "1234",
                     Children = new List<Child>
                     {
                         new Child { FirstName = "John", LastName = "Doe" }
@@ -617,7 +616,6 @@ public class HouseholdControllerTests
                     ApplicationStatus = ApplicationStatus.Approved,
                     BenefitIssueDate = DateTime.UtcNow.AddDays(-30),
                     BenefitExpirationDate = DateTime.UtcNow.AddDays(60),
-                    Last4DigitsOfCard = "1234",
                     Children = new List<Child>
                     {
                         new Child { FirstName = "John", LastName = "Doe" },
