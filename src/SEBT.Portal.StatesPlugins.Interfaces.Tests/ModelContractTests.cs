@@ -78,17 +78,11 @@ public class ModelContractTests
         Assert.Contains("ApplicationStatus", names);
         Assert.Contains("BenefitIssueDate", names);
         Assert.Contains("BenefitExpirationDate", names);
-        Assert.Contains("Last4DigitsOfCard", names);
-        Assert.Contains("CardStatus", names);
-        Assert.Contains("CardRequestedAt", names);
-        Assert.Contains("CardMailedAt", names);
-        Assert.Contains("CardActivatedAt", names);
-        Assert.Contains("CardDeactivatedAt", names);
         Assert.Contains("Children", names);
         Assert.Contains("ChildrenOnApplication", names);
         Assert.Contains("IssuanceType", names);
         Assert.Contains("ApplicationDate", names);
-        Assert.Equal(15, names.Length);
+        Assert.Equal(9, names.Length);
     }
 
     [Fact]

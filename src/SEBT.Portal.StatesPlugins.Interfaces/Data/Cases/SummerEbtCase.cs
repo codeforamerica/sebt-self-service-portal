@@ -31,7 +31,7 @@ public class SummerEbtCase
     /// </summary>
     public string? CaseDisplayNumber { get; init; }
     public string? EbtCardLastFour { get; init; }
-    public string? EbtCardStatus { get; init; }
+    public CardStatus? EbtCardStatus { get; init; }
     public DateOnly? EbtCardIssueDate { get; init; }
     public decimal? EbtCardBalance { get; init; }
     public DateOnly? BenefitAvailableDate { get; init; }

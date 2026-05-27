@@ -22,19 +22,16 @@ public class EnumContractTests
     }
 
     [Theory]
-    [InlineData(CardStatus.Requested, 0)]
-    [InlineData(CardStatus.Mailed, 1)]
-    [InlineData(CardStatus.Active, 2)]
-    [InlineData(CardStatus.Deactivated, 3)]
-    [InlineData(CardStatus.Unknown, 4)]
-    [InlineData(CardStatus.Processed, 5)]
-    [InlineData(CardStatus.Lost, 6)]
+    [InlineData(CardStatus.Active, 0)]
+    [InlineData(CardStatus.Damaged, 1)]
+    [InlineData(CardStatus.DeactivatedByState, 2)]
+    [InlineData(CardStatus.Frozen, 3)]
+    [InlineData(CardStatus.Lost, 4)]
+    [InlineData(CardStatus.NotActivated, 5)]
+    [InlineData(CardStatus.Processed, 6)]
     [InlineData(CardStatus.Stolen, 7)]
-    [InlineData(CardStatus.Damaged, 8)]
-    [InlineData(CardStatus.DeactivatedByState, 9)]
-    [InlineData(CardStatus.NotActivated, 10)]
-    [InlineData(CardStatus.Frozen, 11)]
-    [InlineData(CardStatus.Undeliverable, 12)]
+    [InlineData(CardStatus.Undeliverable, 8)]
+    [InlineData(CardStatus.Unknown, 9)]
     public void CardStatus_has_expected_values(CardStatus value, int expected)
     {
         Assert.Equal(expected, (int)value);

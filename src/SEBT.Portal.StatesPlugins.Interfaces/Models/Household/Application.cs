@@ -11,12 +11,6 @@ public class Application
     public DateTime? ApplicationDate { get; set; }
     public DateTime? BenefitIssueDate { get; set; }
     public DateTime? BenefitExpirationDate { get; set; }
-    public string? Last4DigitsOfCard { get; set; }
-    public CardStatus CardStatus { get; set; } = CardStatus.Requested;
-    public DateTime? CardRequestedAt { get; set; }
-    public DateTime? CardMailedAt { get; set; }
-    public DateTime? CardActivatedAt { get; set; }
-    public DateTime? CardDeactivatedAt { get; set; }
     public List<Child> Children { get; set; } = new();
     public int ChildrenOnApplication => Children.Count;
     public IssuanceType IssuanceType { get; set; } = IssuanceType.Unknown;
