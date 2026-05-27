@@ -29,8 +29,8 @@ describe('IncomeCalculator', () => {
     })
     const options = within(select).getAllByRole('option') as HTMLOptionElement[]
     expect(options).toHaveLength(20)
-    expect(options[0].value).toBe('1')
-    expect(options[19].value).toBe('20')
+    expect(options[0]!.value).toBe('1')
+    expect(options[19]!.value).toBe('20')
     expect((select as HTMLSelectElement).value).toBe('1')
   })
 

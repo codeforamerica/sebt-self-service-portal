@@ -11,16 +11,23 @@
     "test": "vitest run"
   },
   "peerDependencies": {
+    "@amplitude/analytics-browser": ">=2",
     "next": ">=16",
     "react": ">=19"
   },
+  "peerDependenciesMeta": {
+    "@amplitude/analytics-browser": {
+      "optional": true
+    }
+  },
   "devDependencies": {
-    "@testing-library/react": "^16.3.0",
-    "@types/react": "^19",
-    "jsdom": "^27.3.0",
+    "@amplitude/analytics-browser": "^2.40.0",
+    "@testing-library/react": "^16.3.2",
+    "@types/react": "^19.2.14",
+    "jsdom": "^29.1.1",
     "next": "16.2.6",
-    "react": "19.2.1",
-    "react-dom": "19.2.1",
-    "vitest": "^4.0.15"
+    "react": "19.2.6",
+    "react-dom": "19.2.6",
+    "vitest": "^4.1.6"
   }
 }

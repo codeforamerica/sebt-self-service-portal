@@ -23,6 +23,9 @@ export const env = createEnv({
     NEXT_PUBLIC_BOT_PROTECTION_ENABLED: boolEnv(false),
     NEXT_PUBLIC_PORTAL_URL: z.string().url(),
     NEXT_PUBLIC_APPLICATION_URL: z.string().url(),
+    NEXT_PUBLIC_AMPLITUDE_API_KEY: z.string().min(1).optional(),
+    NEXT_PUBLIC_MIXPANEL_TOKEN: z.string().min(1).optional(),
+    NEXT_PUBLIC_SITEIMPROVE_ID: z.string().min(1).optional(),
     NEXT_PUBLIC_GA_ID: z.string().regex(/^G-/).optional()
   },
   runtimeEnv: {
@@ -36,6 +39,9 @@ export const env = createEnv({
     NEXT_PUBLIC_BOT_PROTECTION_ENABLED: process.env.NEXT_PUBLIC_BOT_PROTECTION_ENABLED,
     NEXT_PUBLIC_PORTAL_URL: process.env.NEXT_PUBLIC_PORTAL_URL,
     NEXT_PUBLIC_APPLICATION_URL: process.env.NEXT_PUBLIC_APPLICATION_URL,
+    NEXT_PUBLIC_AMPLITUDE_API_KEY: process.env.NEXT_PUBLIC_AMPLITUDE_API_KEY,
+    NEXT_PUBLIC_MIXPANEL_TOKEN: process.env.NEXT_PUBLIC_MIXPANEL_TOKEN,
+    NEXT_PUBLIC_SITEIMPROVE_ID: process.env.NEXT_PUBLIC_SITEIMPROVE_ID,
     NEXT_PUBLIC_GA_ID: process.env.NEXT_PUBLIC_GA_ID
   },
   skipValidation: !!process.env.SKIP_ENV_VALIDATION,
