@@ -26,7 +26,7 @@ export default function Page() {
     setIsSubmitting(true)
     try {
       if (process.env.NEXT_PUBLIC_META_PIXEL && process.env.NEXT_PUBLIC_META_PIXEL_ACTION) {
-        window.fbq('trackSingleCustom', process.env.NEXT_PUBLIC_META_PIXEL, process.env.NEXT_PUBLIC_META_PIXEL_ACTION); 
+        (window as any).fbq('trackSingleCustom', process.env.NEXT_PUBLIC_META_PIXEL, process.env.NEXT_PUBLIC_META_PIXEL_ACTION); 
       }
       const response = await checkEnrollment(state.children, config.apiBaseUrl)
       // Pass results via sessionStorage (avoids URL length limits and keeps data off URL)
