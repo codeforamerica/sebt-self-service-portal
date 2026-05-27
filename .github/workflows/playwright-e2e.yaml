@@ -136,14 +136,19 @@ jobs:
       - name: Build backend
         run: ./.github/workflows/scripts/build-backend.sh --configuration Release
 
-      - name: Install Chrome for Pa11y
-        run: cd src/SEBT.Portal.Web && pnpm exec puppeteer browsers install chrome
-
       - name: Build frontend for Pa11y
         env:
           STATE: dc
           NEXT_PUBLIC_STATE: dc
-        run: ./.github/workflows/scripts/build-frontend.sh --production
+        run: ./.github/workflows/scripts/build-frontend.sh --production --skip-install
+
+      - name: Cache Puppeteer browsers
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/puppeteer
+          key: puppeteer-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml') }}
+          restore-keys: |
+            puppeteer-${{ runner.os }}-
 
       - name: Run Pa11y accessibility tests
         env:
@@ -167,5 +172,16 @@ jobs:
             sleep 2
           done
           curl -sf --max-time 15 http://localhost:3000 > /dev/null || (echo "Server failed to start" && exit 1)
+          echo "Installing Chrome for Pa11y..."
+          cd src/SEBT.Portal.Web
+          CHROME_INSTALL_OUTPUT="$(pnpm exec puppeteer browsers install chrome)"
+          echo "$CHROME_INSTALL_OUTPUT"
+          CHROME_PATH="${CHROME_INSTALL_OUTPUT#* }"
+          if [ -z "$CHROME_PATH" ] || [ "$CHROME_PATH" = "$CHROME_INSTALL_OUTPUT" ] || [ ! -x "$CHROME_PATH" ]; then
+            echo "Chrome install verification failed: puppeteer did not report an executable path"
+            exit 1
+          fi
+          echo "Chrome ready at $CHROME_PATH"
+          cd ../..
           echo "Running Pa11y accessibility tests..."
           pnpm ci:test:a11y
