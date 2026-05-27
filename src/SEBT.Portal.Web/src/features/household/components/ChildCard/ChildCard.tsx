@@ -71,6 +71,7 @@ export function ChildCard({
     benefitExpirationDate,
     ebtCardLastFour,
     ebtCardStatus,
+    ebtCardIssueDate,
     issuanceType,
     cardRequestedAt
   } = summerEbtCase
@@ -144,7 +145,7 @@ export function ChildCard({
             (isWithinCooldownPeriod(cardRequestedAt) ? (
               <CardStatusTimeline cardRequestedAt={cardRequestedAt} />
             ) : (
-              <CardStatusDisplay cardStatus={ebtCardStatus} />
+              <CardStatusDisplay cardStatus={ebtCardStatus} cardIssuedAt={ebtCardIssueDate} />
             ))}
         </dl>
         {replacementLink && (

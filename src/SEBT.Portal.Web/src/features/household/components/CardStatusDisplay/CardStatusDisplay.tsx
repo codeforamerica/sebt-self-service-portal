@@ -2,17 +2,19 @@
 
 import { useTranslation } from 'react-i18next'
 
+import { interpolateDate } from '../../api'
 import type { CardStatus, UiCardStatus } from '../../api'
 import { toUiCardStatus } from '../../api'
 
 interface CardStatusDisplayProps {
   cardStatus: CardStatus | null | undefined
+  cardIssuedAt?: string | null
 }
 
 // Keys map to CSV: "S2 - Portal Dashboard - Card Table - Status {Status}"
 const STATUS_CONFIG: Record<UiCardStatus, { colorClass: string; labelKey: string }> = {
   Active: { colorClass: 'bg-success-dark text-white', labelKey: 'cardTableStatusActive' },
-  Processed: { colorClass: 'bg-info-dark text-white', labelKey: 'cardTableStatusProcessed' },
+  Processed: { colorClass: 'bg-info-dark text-white', labelKey: 'cardTableStatusIssued' },
   Inactive: { colorClass: 'bg-error-dark text-white', labelKey: 'cardTableStatusInactive' },
   Frozen: { colorClass: 'bg-warning-dark text-white', labelKey: 'cardTableStatusFrozen' },
   Undeliverable: {
@@ -33,14 +35,14 @@ const DESCRIPTION_KEY: Partial<Record<CardStatus, string>> = {
   Undeliverable: 'cardTableStatusMessageUndeliverable'
 }
 
-export function CardStatusDisplay({ cardStatus }: CardStatusDisplayProps) {
-  const { t } = useTranslation('dashboard')
+export function CardStatusDisplay({ cardStatus, cardIssuedAt }: CardStatusDisplayProps) {
+  const { t, i18n } = useTranslation('dashboard')
 
   if (!cardStatus || cardStatus === 'Unknown') return null
 
   const uiStatus = toUiCardStatus(cardStatus)
   const { colorClass, labelKey } = STATUS_CONFIG[uiStatus]
-  const statusLabel = t(labelKey, { defaultValue: '' })
+  const statusLabel = interpolateDate(t(labelKey, { defaultValue: '' }), cardIssuedAt ?? null, i18n.language)
   const descriptionKey = DESCRIPTION_KEY[cardStatus] ?? 'cardTableStatusMessageInactive'
   const statusDescription = t(descriptionKey, { defaultValue: '' })
 
@@ -56,9 +58,11 @@ export function CardStatusDisplay({ cardStatus }: CardStatusDisplayProps) {
             {statusLabel}
           </span>
 
-          <p className="margin-top-1 margin-bottom-0 text-base-dark font-body-xs">
-            {statusDescription}
-          </p>
+          {statusDescription && (
+            <p className="margin-top-1 margin-bottom-0 text-base-dark font-body-xs">
+              {statusDescription}
+            </p>
+          )}
 
           {/* Replacement link is rendered by ChildCard, not here */}
         </div>

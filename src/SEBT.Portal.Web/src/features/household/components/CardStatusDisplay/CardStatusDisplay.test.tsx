@@ -2,6 +2,7 @@ import { render, screen } from '@testing-library/react'
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 
 import enCODashboard from '@/content/locales/en/co/dashboard.json'
+import enDCDashboard from '@/content/locales/en/dc/dashboard.json'
 import { i18n } from '@sebt/design-system/client'
 
 import type { CardStatus } from '../../api'
@@ -10,15 +11,16 @@ import { CardStatusDisplay } from './CardStatusDisplay'
 // CardStatusDisplay is CO-specific. Tests default to the DC locale, so we
 // add CO dashboard translations before the suite runs and remove them after.
 beforeAll(() => {
-  i18n.addResourceBundle('en', 'dashboard', enCODashboard, true, true)
+  // CO provides most card status keys; DC provides cardTableStatusIssued (Processed is DC-only)
+  i18n.addResourceBundle('en', 'dashboard', { ...enCODashboard, ...enDCDashboard }, true, true)
 })
 
 afterAll(() => {
   i18n.removeResourceBundle('en', 'dashboard')
 })
 
-function renderWithStatus(cardStatus: CardStatus | null | undefined) {
-  return render(<CardStatusDisplay cardStatus={cardStatus} />)
+function renderWithStatus(cardStatus: CardStatus | null | undefined, cardIssuedAt?: string | null) {
+  return render(<CardStatusDisplay cardStatus={cardStatus} cardIssuedAt={cardIssuedAt} />)
 }
 
 describe('CardStatusDisplay', () => {
@@ -72,16 +74,21 @@ describe('CardStatusDisplay', () => {
     expect(screen.getByTestId('card-status-badge')).toHaveTextContent('Inactive')
   })
 
-  it('renders Processed status badge with info styling', () => {
-    renderWithStatus('Processed')
+  it('renders Processed status badge with interpolated issue date', () => {
+    renderWithStatus('Processed', '2026-01-15T00:00:00Z')
 
-    // cardTableStatusProcessed is pending content-team population in the CSV;
-    // verify the badge renders with the correct info-dark styling.
+    // cardTableStatusIssued → "Issued on [MM/DD/YYYY]"; interpolateDate substitutes the date
+    expect(screen.getByTestId('card-status-badge')).toHaveTextContent('Issued on 01/15/2026')
+  })
+
+  it('renders Processed status badge with info styling', () => {
+    renderWithStatus('Processed', '2026-01-15T00:00:00Z')
+
     expect(screen.getByTestId('card-status-badge').className).toContain('bg-info-dark')
   })
 
   it('does not show replacement card link for Processed status', () => {
-    renderWithStatus('Processed')
+    renderWithStatus('Processed', '2026-01-15T00:00:00Z')
 
     expect(screen.queryByRole('link')).toBeNull()
   })
