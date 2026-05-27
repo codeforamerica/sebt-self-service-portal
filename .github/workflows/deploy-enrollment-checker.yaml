@@ -61,6 +61,9 @@ jobs:
           NEXT_PUBLIC_PORTAL_URL: ${{ vars.ENROLLMENT_CHECKER_PORTAL_URL }}
           NEXT_PUBLIC_APPLICATION_URL: ${{ vars.ENROLLMENT_CHECKER_APPLICATION_URL }}
           NEXT_PUBLIC_BUILD_SHA: ${{ github.sha }}
+          NEXT_PUBLIC_AMPLITUDE_API_KEY: ${{ vars.AMPLITUDE_API_KEY }}
+          NEXT_PUBLIC_MIXPANEL_TOKEN: ${{ vars.MIXPANEL_TOKEN }}
+          NEXT_PUBLIC_SITEIMPROVE_ID: ${{ vars.SITEIMPROVE_ID }}
 
       - name: Upload static site artifact
         uses: actions/upload-artifact@v6
