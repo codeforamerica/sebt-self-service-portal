@@ -87,7 +87,7 @@ public class HouseholdRepository : IHouseholdRepository
             pluginPii,
             pluginIal,
             portalUserId,
-            cancellationToken);
+            cancellationToken: cancellationToken);
 
         if (pluginHousehold == null)
         {
@@ -190,7 +190,7 @@ public class HouseholdRepository : IHouseholdRepository
             pluginPii,
             pluginIal,
             portalUserId,
-            cancellationToken);
+            cancellationToken: cancellationToken);
 
         if (pluginHousehold == null)
         {
