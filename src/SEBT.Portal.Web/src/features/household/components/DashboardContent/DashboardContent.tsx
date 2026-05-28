@@ -3,6 +3,7 @@
 import { ApiError } from '@/api'
 import { CoLoadingScreen } from '@/components/CoLoadingScreen'
 import { SignOutLink, useAuth } from '@/features/auth'
+import { useFeatureFlag } from '@/features/feature-flags'
 import { getColoadingStatus } from '@/lib/coloadingStatus'
 import { AnalyticsEvents, useDataLayer } from '@sebt/analytics'
 import { Alert, getState } from '@sebt/design-system'
@@ -11,6 +12,7 @@ import { useTranslation } from 'react-i18next'
 
 import { useHouseholdData } from '../../api'
 import { toAnalyticsCohort } from '../../api/schema'
+import { HouseholdCardDetailsLoadingProvider } from '../../context/HouseholdCardDetailsLoadingContext'
 import { ActionButtons } from '../ActionButtons'
 import { ApplicationsSection } from '../ApplicationsSection'
 import { DashboardAlerts } from '../DashboardAlerts'
@@ -52,11 +54,15 @@ export function DashboardContent() {
   const { t } = useTranslation('dashboard')
   const { t: tProcessing } = useTranslation('step-upProcessing')
 
-  const { data, isLoading, isError, error, requiresProofing } = useHouseholdData()
+  const deferEbtCardLoading = useFeatureFlag('defer_ebt_card_data_loading')
+  const isCO = getState() === 'co'
+  const { data, isLoading, isError, error, requiresProofing, isLoadingCardDetails } =
+    useHouseholdData({
+      deferCardDetailsOnLoad: isCO && deferEbtCardLoading
+    })
   const { setPageData, setUserData, trackEvent } = useDataLayer()
   const { session } = useAuth()
   const sessionIsCoLoaded = session?.isCoLoaded
-  const isCO = getState() === 'co'
 
   useEffect(() => {
     if (isLoading) return
@@ -180,7 +186,7 @@ export function DashboardContent() {
   }
 
   return (
-    <>
+    <HouseholdCardDetailsLoadingProvider value={isLoadingCardDetails}>
       {pageHeading}
       <DashboardAlerts />
       <ActionButtons
@@ -196,6 +202,6 @@ export function DashboardContent() {
         </>
       )}
       <ApplicationsSection />
-    </>
+    </HouseholdCardDetailsLoadingProvider>
   )
 }

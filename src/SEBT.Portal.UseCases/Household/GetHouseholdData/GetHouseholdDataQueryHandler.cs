@@ -1,4 +1,5 @@
 using Microsoft.Extensions.Logging;
+using Microsoft.FeatureManagement;
 using SEBT.Portal.Core.AppSettings;
 using SEBT.Portal.Core.Models.Auth;
 using SEBT.Portal.Core.Models.Household;
@@ -24,11 +25,16 @@ public class GetHouseholdDataQueryHandler(
     ICardReplacementRequestRepository cardReplacementRepo,
     IIdentifierHasher identifierHasher,
     CoLoadedCohortFilterSettings coLoadedCohortFilter,
+    IFeatureManager featureManager,
     ILogger<GetHouseholdDataQueryHandler> logger)
     : IQueryHandler<GetHouseholdDataQuery, HouseholdData>
 {
     public async Task<Result<HouseholdData>> Handle(GetHouseholdDataQuery query, CancellationToken cancellationToken = default)
     {
+        var deferCardLoadingEnabled = await featureManager
+            .IsEnabledAsync(FeatureFlags.DeferEbtCardDataLoading)
+            .ConfigureAwait(false);
+        var includeCardService = deferCardLoadingEnabled ? query.IncludeCardDetails : true;
         var identifier = await resolver.ResolveAsync(query.User, cancellationToken);
 
         if (identifier == null)
@@ -55,6 +61,7 @@ public class GetHouseholdDataQueryHandler(
             piiVisibility,
             userIalLevel,
             portalUserId,
+            includeCardService,
             cancellationToken);
 
         if (householdData == null

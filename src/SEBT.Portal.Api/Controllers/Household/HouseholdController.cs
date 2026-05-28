@@ -41,9 +41,14 @@ public class HouseholdController : ControllerBase
         [FromServices] IQueryHandler<GetHouseholdDataQuery, Core.Models.Household.HouseholdData> queryHandler,
         [FromServices] IIdentifierHasher identifierHasher,
         [FromServices] IConfiguration configuration,
+        [FromQuery] bool includeCardDetails = true,
         CancellationToken cancellationToken = default)
     {
-        var query = new GetHouseholdDataQuery { User = User };
+        var query = new GetHouseholdDataQuery
+        {
+            User = User,
+            IncludeCardDetails = includeCardDetails
+        };
         var result = await queryHandler.Handle(query, cancellationToken);
 
         return result.ToActionResult(
