@@ -107,8 +107,8 @@ export function useHouseholdData({
   const isRedirecting = query.error instanceof ApiError && query.error.isRedirecting
   const isError = query.isError && !isRedirecting
   const isLoading = query.isLoading || isRedirecting
-  const isLoadingCardDetails =
-    shouldFetchCardDetails && (cardDetailsQuery.isLoading || cardDetailsQuery.isFetching)
+  // Initial card fetch only; background refetches (refetchOnWindowFocus) keep showing merged card data.
+  const isLoadingCardDetails = shouldFetchCardDetails && cardDetailsQuery.isLoading
 
   useEffect(() => {
     if (requiresProofing && redirectOnInsufficientIal) {
