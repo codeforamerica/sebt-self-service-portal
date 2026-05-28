@@ -6,6 +6,8 @@ import { useTranslation } from 'react-i18next'
 
 import { AddressForm } from '@/features/address/components/AddressForm'
 import { useHouseholdData } from '@/features/household'
+import { useFlowStartAnalytics } from '@/hooks/useFlowStartAnalytics'
+import { AnalyticsEvents } from '@sebt/analytics'
 import { getState } from '@sebt/design-system'
 
 // TODO: Card-flow entry point — when accessed via /profile/address?from=cards,
@@ -23,6 +25,9 @@ export default function AddressFormPage() {
   const canRequestReplacementCard = data?.allowedActions?.canRequestReplacementCard ?? true
 
   const isDC = getState() === 'dc'
+  const isReady = !isLoading && !!data && canUpdateAddress
+
+  useFlowStartAnalytics(AnalyticsEvents.ADDRESS_UPDATE_START, isReady)
 
   useEffect(() => {
     if (!isLoading && data && !canUpdateAddress) {

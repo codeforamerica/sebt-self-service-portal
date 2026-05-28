@@ -6,6 +6,8 @@ import { useTranslation } from 'react-i18next'
 
 import { CardSelection } from '@/features/address/components/CardSelection'
 import { useHouseholdData } from '@/features/household'
+import { useFlowStartAnalytics } from '@/hooks/useFlowStartAnalytics'
+import { AnalyticsEvents } from '@sebt/analytics'
 
 export default function RequestReplacementCardsPage() {
   const { t: tOptional } = useTranslation('optionalId')
@@ -13,6 +15,9 @@ export default function RequestReplacementCardsPage() {
   const router = useRouter()
   const { data, isLoading } = useHouseholdData()
   const canRequestReplacementCard = data?.allowedActions?.canRequestReplacementCard ?? true
+  const isReady = !isLoading && !!data && canRequestReplacementCard
+
+  useFlowStartAnalytics(AnalyticsEvents.CARD_REPLACEMENT_START, isReady)
 
   useEffect(() => {
     if (!isLoading && data && !canRequestReplacementCard) {
