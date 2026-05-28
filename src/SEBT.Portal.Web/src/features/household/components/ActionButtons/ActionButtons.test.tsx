@@ -194,4 +194,48 @@ describe('ActionButtons', () => {
       })
     })
   })
+
+  // The "Activate a card" CTA is state-gated: CO has the authored label, DC's is still
+  // !N/A! upstream, so the entry is gated to CO until DC content lands. Tests assert on
+  // href/data-analytics-cta rather than label text because the unit-test i18n bundle is
+  // always DC (NEXT_PUBLIC_STATE=dc), so the CO-only label key never resolves here.
+  describe('Activate a card CTA (DC-162)', () => {
+    const activateLink = (container: HTMLElement) =>
+      container.querySelector('a[href="/cards/activate"]')
+
+    it('renders the activate-card CTA for CO when the household has cases', () => {
+      mockGetState.mockReturnValue('co')
+      const { container } = render(
+        <ActionButtons
+          allowedActions={allowAll}
+          hasCases={true}
+        />
+      )
+      const link = activateLink(container)
+      expect(link).toBeInTheDocument()
+      expect(link).toHaveAttribute('data-analytics-cta', 'activate_card_cta')
+    })
+
+    it('does not render the activate-card CTA for DC (label not yet published)', () => {
+      mockGetState.mockReturnValue('dc')
+      const { container } = render(
+        <ActionButtons
+          allowedActions={allowAll}
+          hasCases={true}
+        />
+      )
+      expect(activateLink(container)).toBeNull()
+    })
+
+    it('hides the activate-card CTA for CO when the household has no cases', () => {
+      mockGetState.mockReturnValue('co')
+      const { container } = render(
+        <ActionButtons
+          allowedActions={allowAll}
+          hasCases={false}
+        />
+      )
+      expect(activateLink(container)).toBeNull()
+    })
+  })
 })
