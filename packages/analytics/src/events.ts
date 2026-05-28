@@ -11,6 +11,7 @@ export const CTA_CLICK = 'cta_click'
 export const OTP_REQUEST = 'otp_request'
 export const OTP_CHALLENGE = 'otp_challenge'
 export const OTP_RESULT = 'otp_result'
+export const OIDC_START = 'oidc_start'
 
 // ID Proofing
 export const IDV_PRIMARY_START = 'idv_primary_start'
