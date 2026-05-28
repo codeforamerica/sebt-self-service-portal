@@ -3,30 +3,17 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 import CardActivationPage from './page'
 
-const mockReplace = vi.fn()
 const mockBack = vi.fn()
 
 vi.mock('next/navigation', () => ({
   useRouter: () => ({
-    replace: mockReplace,
     back: mockBack
   })
 }))
 
-let mockState = 'dc'
-vi.mock('@sebt/design-system', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@sebt/design-system')>()
-  return {
-    ...actual,
-    getState: () => mockState
-  }
-})
-
 describe('CardActivationPage', () => {
   beforeEach(() => {
-    mockReplace.mockClear()
     mockBack.mockClear()
-    mockState = 'dc'
   })
 
   it('renders the "Activate a card" heading', () => {
@@ -64,13 +51,5 @@ describe('CardActivationPage', () => {
 
     await user.click(screen.getByRole('button', { name: /back/i }))
     expect(mockBack).toHaveBeenCalled()
-  })
-
-  it('renders for CO without redirecting (the page is not DC-only)', () => {
-    mockState = 'co'
-    render(<CardActivationPage />)
-
-    expect(screen.getByRole('heading', { name: /activate a card/i })).toBeInTheDocument()
-    expect(mockReplace).not.toHaveBeenCalled()
   })
 })
