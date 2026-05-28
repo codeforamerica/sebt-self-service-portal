@@ -96,12 +96,12 @@ describe('LoginPage', () => {
       ).toBeInTheDocument()
     })
 
-    it('applies text-primary-dark class to the title', () => {
+    it('applies text-primart class to the title', () => {
       render(<LoginPage />)
       const heading = screen.getByRole('heading', {
         name: /Access your Summer EBT account/i
       })
-      expect(heading).toHaveClass('text-primary-dark')
+      expect(heading).toHaveClass('text-primary')
     })
 
     it('renders the disclaimer body text', () => {
