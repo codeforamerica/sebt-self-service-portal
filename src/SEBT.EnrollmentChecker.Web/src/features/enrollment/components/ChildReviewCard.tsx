@@ -33,10 +33,10 @@ export function ChildReviewCard({ child, onEdit, onRemove }: ChildReviewCardProp
         <strong>{t('tableBirthdateHeading')}</strong>
       </p>
       <p className="usa-prose margin-top-0">{formatBirthdate(child.dateOfBirth, i18n.language)}</p>
-      <div className="display-flex flex-row flex-wrap gap-2">
+      <div className="display-flex flex-row flex-wrap">
         <button
           type="button"
-          className="usa-link usa-button--unstyled"
+          className="usa-link usa-button--unstyled margin-right-2"
           aria-label={`${t('tableAction')}: ${fullName}`}
           onClick={() => onEdit(child.id)}
         >

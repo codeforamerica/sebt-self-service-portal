@@ -36,7 +36,7 @@ export function LandingPage() {
           className="margin-bottom-2"
           priority
         />
-        <h1 className="font-family-sans">{t('title')}</h1>
+        <h1 className="font-family-sans text-primary">{t('title')}</h1>
         <div className="usa-prose">
           <RichText>{t('body')}</RichText>
         </div>
@@ -69,7 +69,7 @@ export function LandingPage() {
               aria-controls="faq-content"
               onClick={() => setIsAccordionExpanded((prev) => !prev)}
             >
-              <span className="display-flex flex-align-center text-info-darker">
+              <span className="display-flex flex-align-center text-primary">
                 <svg
                   className="usa-icon margin-right-1"
                   aria-hidden="true"
