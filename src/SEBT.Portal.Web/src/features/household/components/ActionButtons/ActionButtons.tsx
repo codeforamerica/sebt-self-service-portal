@@ -15,6 +15,8 @@ interface ActionButton {
   gatedBy?: keyof Pick<AllowedActions, 'canUpdateAddress' | 'canRequestReplacementCard'>
   /** When true, the CTA is hidden if hasCases is explicitly false. Omitting hasCases keeps the CTA visible (backward-compatible). */
   requiresCases?: boolean
+  /** When set, the CTA renders only for these states. Omitting it shows the CTA for every state. */
+  states?: string[]
 }
 
 interface ActionButtonsProps {
@@ -48,14 +50,25 @@ const ACTIONS: ActionButton[] = [
     labelKey: 'actionNavigationCheckExistingApplications',
     href: '#applications-heading',
     ctaId: 'check_applications_cta'
+  },
+  {
+    // CO-only for now: the authored label exists for CO, while DC's is still !N/A!
+    // upstream. Add 'dc' once the DC content is published (see DC-162 follow-up).
+    labelKey: 'actionNavigationActivateCard',
+    href: '/cards/activate',
+    ctaId: 'activate_card_cta',
+    requiresCases: true,
+    states: ['co']
   }
 ]
 
 export function ActionButtons({ allowedActions, hasCases }: ActionButtonsProps) {
   const { t } = useTranslation('dashboard')
-  const { actionButtonBg, actionButtonText } = getStateConfig(getState())
+  const currentState = getState()
+  const { actionButtonBg, actionButtonText } = getStateConfig(currentState)
 
   const visibleActions = ACTIONS.filter((action) => {
+    if (action.states && !action.states.includes(currentState)) return false
     if (action.requiresCases && hasCases === false) return false
     if (!action.gatedBy) return true
     // When allowedActions is not provided, default to showing the CTA (backward-compatible).
