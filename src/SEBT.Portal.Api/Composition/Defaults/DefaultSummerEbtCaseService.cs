@@ -18,6 +18,7 @@ internal sealed class DefaultSummerEbtCaseService : ISummerEbtCaseService
         PiiVisibility piiVisibility,
         IdentityAssuranceLevel identityAssuranceLevel,
         Guid? portalUserId = null,
+        bool includeCardService = true,
         CancellationToken cancellationToken = default)
     {
         return Task.FromResult<HouseholdData?>(null);
@@ -29,6 +30,7 @@ internal sealed class DefaultSummerEbtCaseService : ISummerEbtCaseService
         PiiVisibility piiVisibility,
         IdentityAssuranceLevel identityAssuranceLevel,
         Guid? portalUserId = null,
+        bool includeCardService = true,
         CancellationToken cancellationToken = default)
     {
         return Task.FromResult<HouseholdData?>(null);

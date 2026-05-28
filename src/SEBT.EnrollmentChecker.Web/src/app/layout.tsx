@@ -2,6 +2,9 @@
 // re-exports react-i18next-dependent modules. Importing from the barrel in a
 // Server Component would pull react-i18next into the RSC bundle and crash.
 import { primaryFont } from '@/design/fonts'
+import { env } from '@/lib/env'
+import { Providers } from '@/providers/Providers'
+import { AmplitudeAnalytics, MixpanelAnalytics, SiteImproveAnalytics } from '@sebt/analytics'
 import { Footer } from '@sebt/design-system/src/components/layout/Footer'
 import { Header } from '@sebt/design-system/src/components/layout/Header'
 import { HelpSection } from '@sebt/design-system/src/components/layout/HelpSection'
@@ -11,10 +14,13 @@ import type { Metadata, Viewport } from 'next'
 import Script from 'next/script'
 import './globals.css'
 import './styles.scss'
-import { Providers } from '../providers/Providers'
 
 const state = getState()
 const stateName = getStateName(state)
+
+const amplitudeApiKey = env.NEXT_PUBLIC_AMPLITUDE_API_KEY
+const mixpanelToken = env.NEXT_PUBLIC_MIXPANEL_TOKEN
+const siteImproveId = env.NEXT_PUBLIC_SITEIMPROVE_ID
 
 export const viewport: Viewport = {
   width: 'device-width',
@@ -55,6 +61,12 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         </Providers>
         <script src="/js/uswds-init.min.js" defer />
       </body>
+      {/* Mixpanel - only rendered when MIXPANEL_TOKEN is configured */}
+      {mixpanelToken && <MixpanelAnalytics token={mixpanelToken} />}
+      {/* Amplitude - only rendered when NEXT_PUBLIC_AMPLITUDE_API_KEY is configured */}
+      {amplitudeApiKey && <AmplitudeAnalytics apiKey={amplitudeApiKey} />}
+      {/* SiteImprove — only rendered when NEXT_PUBLIC_SITEIMPROVE_ID is configured */}
+      {siteImproveId && <SiteImproveAnalytics siteId={siteImproveId} />}
     </html>
   )
 }

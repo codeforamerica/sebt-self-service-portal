@@ -59,9 +59,6 @@ const TEST_CASES: SummerEbtCase[] = [
     ebtCardLastFour: '1234',
     ebtCardStatus: 'Active',
     cardRequestedAt: '2026-01-01T00:00:00Z',
-    cardMailedAt: '2026-01-03T00:00:00Z',
-    cardActivatedAt: '2026-01-08T00:00:00Z',
-    cardDeactivatedAt: null,
     allowAddressChange: true,
     allowCardReplacement: true
   },
@@ -75,9 +72,6 @@ const TEST_CASES: SummerEbtCase[] = [
     ebtCardLastFour: '1234',
     ebtCardStatus: 'Active',
     cardRequestedAt: '2026-01-01T00:00:00Z',
-    cardMailedAt: '2026-01-03T00:00:00Z',
-    cardActivatedAt: '2026-01-08T00:00:00Z',
-    cardDeactivatedAt: null,
     allowAddressChange: true,
     allowCardReplacement: true
   }

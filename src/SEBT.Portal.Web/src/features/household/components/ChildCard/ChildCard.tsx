@@ -12,15 +12,6 @@ import { formatDate } from '../../api'
 import { CardStatusDisplay } from '../CardStatusDisplay'
 import { CardStatusTimeline } from '../CardStatusTimeline'
 
-/**
- * DC cards always originate as 'Requested' and carry a cardRequestedAt timestamp.
- * CO cards are issued directly without a Requested stage, so cardRequestedAt is absent.
- * This is the data-driven discriminator between the two card lifecycle models.
- */
-function hasCardLifecycleTimeline(summerEbtCase: SummerEbtCase): boolean {
-  return summerEbtCase.cardRequestedAt != null
-}
-
 function isCoLoadedIssuance(issuanceType: IssuanceType | null | undefined): boolean {
   return issuanceType === 'SnapEbtCard' || issuanceType === 'TanfEbtCard'
 }
@@ -29,7 +20,7 @@ function getReplacementLink(
   summerEbtCase: SummerEbtCase,
   canRequestReplacementCard: boolean
 ): string | null {
-  const { summerEBTCaseID, issuanceType, cardRequestedAt } = summerEbtCase
+  const { summerEBTCaseID, issuanceType, cardRequestedAt, allowCardReplacement } = summerEbtCase
   if (!summerEBTCaseID) return null
 
   // Co-loaded cases always link to the info page — they cannot be replaced in-portal,
@@ -37,6 +28,7 @@ function getReplacementLink(
   if (isCoLoadedIssuance(issuanceType)) return '/cards/info'
 
   if (!canRequestReplacementCard) return null
+  if (!allowCardReplacement) return null
   if (isWithinCooldownPeriod(cardRequestedAt)) return null
 
   return `/cards/replace?case=${encodeURIComponent(summerEBTCaseID)}`
@@ -80,10 +72,9 @@ export function ChildCard({
     benefitExpirationDate,
     ebtCardLastFour,
     ebtCardStatus,
+    ebtCardIssueDate,
     issuanceType,
-    cardRequestedAt,
-    cardMailedAt,
-    cardDeactivatedAt
+    cardRequestedAt
   } = summerEbtCase
   const referenceIdShown =
     caseDisplayNumber !== undefined && caseDisplayNumber !== null && caseDisplayNumber !== ''
@@ -151,17 +142,11 @@ export function ChildCard({
               </dd>
             </>
           )}
-          {summerEbtCase.allowCardReplacement &&
-            (hasCardLifecycleTimeline(summerEbtCase) ? (
-              <CardStatusTimeline
-                cardStatus={ebtCardStatus}
-                cardRequestedAt={cardRequestedAt}
-                cardMailedAt={cardMailedAt}
-                cardDeactivatedAt={cardDeactivatedAt}
-              />
-            ) : (
-              <CardStatusDisplay cardStatus={ebtCardStatus} />
-            ))}
+          {isWithinCooldownPeriod(cardRequestedAt) ? (
+            <CardStatusTimeline cardRequestedAt={cardRequestedAt} />
+          ) : (
+            <CardStatusDisplay cardStatus={ebtCardStatus} cardIssuedAt={ebtCardIssueDate ?? null} />
+          )}
         </dl>
         {replacementLink && (
           <Link

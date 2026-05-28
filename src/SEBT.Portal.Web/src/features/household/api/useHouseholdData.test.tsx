@@ -31,12 +31,6 @@ const TEST_HOUSEHOLD_DATA = {
       applicationStatus: 'Approved',
       benefitIssueDate: '2026-01-15T00:00:00Z',
       benefitExpirationDate: '2026-06-30T00:00:00Z',
-      last4DigitsOfCard: '1234',
-      cardStatus: 'Active',
-      cardRequestedAt: '2026-01-01T00:00:00Z',
-      cardMailedAt: '2026-01-05T00:00:00Z',
-      cardActivatedAt: '2026-01-15T00:00:00Z',
-      cardDeactivatedAt: null,
       issuanceType: 1,
       children: [{ firstName: 'Test', lastName: 'Child' }],
       childrenOnApplication: 1
@@ -119,8 +113,7 @@ describe('useHouseholdData', () => {
           {
             ...TEST_HOUSEHOLD_DATA.applications[0],
             issuanceType: 99, // Unknown future enum value
-            applicationStatus: 99, // Unknown future enum value
-            cardStatus: 99 // Unknown future enum value
+            applicationStatus: 99 // Unknown future enum value
           }
         ]
       }
@@ -143,7 +136,6 @@ describe('useHouseholdData', () => {
       expect(result.current.data?.benefitIssuanceType).toBe('Unknown')
       expect(result.current.data?.applications?.[0]?.issuanceType).toBe('Unknown')
       expect(result.current.data?.applications?.[0]?.applicationStatus).toBe('Unknown')
-      expect(result.current.data?.applications?.[0]?.cardStatus).toBe('Unknown')
     })
   })
 
