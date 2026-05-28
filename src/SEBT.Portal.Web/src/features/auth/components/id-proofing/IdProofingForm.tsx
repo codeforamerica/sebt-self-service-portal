@@ -5,7 +5,7 @@ import { useId, useState, type FormEvent } from 'react'
 import { useTranslation } from 'react-i18next'
 
 import { AnalyticsEvents, useDataLayer } from '@sebt/analytics'
-import { Alert, Button, InputField, LoadingInterstitial } from '@sebt/design-system'
+import { Alert, Button, getState, InputField, LoadingInterstitial } from '@sebt/design-system'
 
 import { useAuth } from '@/features/auth'
 import {
@@ -296,12 +296,32 @@ export function IdProofingForm({ idOptions, contactLink, getDiToken }: IdProofin
   // see the submit button text change to "Continue..." and any eventual outcome
   // (off-boarding navigation or an inline error) reads as "we just got an error
   // after waiting."
+  //
+  // CO has step-upProcessing copy for the titled interstitial. DC marks those
+  // rows !N/A! in the content sheet, so the namespace is not registered for DC
+  // and tProcessing('title')/tProcessing('body') would render the literal key
+  // names. For DC, render a spinner-only status region instead.
   if (isProcessing || submitIdProofing.isPending) {
+    if (getState() === 'co') {
+      return (
+        <LoadingInterstitial
+          title={tProcessing('title')}
+          message={tProcessing('body')}
+        />
+      )
+    }
     return (
-      <LoadingInterstitial
-        title={tProcessing('title')}
-        message={tProcessing('body')}
-      />
+      <div
+        className="padding-y-4 text-center"
+        role="status"
+        aria-busy="true"
+        aria-live="polite"
+      >
+        <span
+          className="usa-spinner"
+          aria-hidden="true"
+        />
+      </div>
     )
   }
 

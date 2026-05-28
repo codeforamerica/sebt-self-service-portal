@@ -1097,6 +1097,51 @@ describe('IdProofingForm', () => {
       })
     })
 
+    it('does not leak step-upProcessing key names as visible copy during DC loading', async () => {
+      // DC's content sheet marks S10 - Step-up Processing rows as !N/A!, so the
+      // step-upProcessing namespace is not registered for DC. If the form renders
+      // LoadingInterstitial with tProcessing('title') / tProcessing('body'),
+      // i18next falls back to the literal key names — DC users see "body" in a
+      // box. The loading state must avoid those keys for DC.
+      let resolveResponse: () => void = () => {}
+      const responsePromise = new Promise<void>((resolve) => {
+        resolveResponse = resolve
+      })
+
+      server.use(
+        http.post('/api/id-proofing', async () => {
+          await responsePromise
+          return HttpResponse.json({ result: 'matched' })
+        })
+      )
+
+      const user = userEvent.setup()
+      renderWithProviders(
+        <IdProofingForm
+          idOptions={TEST_ID_OPTIONS}
+          contactLink={TEST_CONTACT_LINK}
+        />
+      )
+
+      await user.selectOptions(screen.getByRole('combobox', { name: /month/i }), '03')
+      await user.type(screen.getByRole('textbox', { name: INPUT_LABEL_DAY }), '10')
+      await user.type(screen.getByRole('textbox', { name: INPUT_LABEL_YEAR }), '1990')
+      await user.click(screen.getByRole('radio', { name: LABEL_SSN }))
+      await user.type(await screen.findByRole('textbox', { name: INPUT_LABEL_SSN }), '999999999')
+      await user.click(screen.getByRole('button', { name: /continue/i }))
+
+      await waitFor(() => {
+        expect(screen.getByRole('status')).toBeInTheDocument()
+      })
+      expect(screen.queryByText(/^title$/)).not.toBeInTheDocument()
+      expect(screen.queryByText(/^body$/)).not.toBeInTheDocument()
+
+      resolveResponse()
+      await waitFor(() => {
+        expect(mockPush).toHaveBeenCalledWith('/dashboard')
+      })
+    })
+
     it('restores the form and shows the submit error alert when the mutation throws', async () => {
       // The error path must NOT leave the loading interstitial stuck on screen —
       // the user needs to see the alert above the form so they can retry.
