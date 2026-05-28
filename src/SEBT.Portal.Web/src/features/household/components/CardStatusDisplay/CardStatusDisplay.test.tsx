@@ -20,7 +20,12 @@ afterAll(() => {
 })
 
 function renderWithStatus(cardStatus: CardStatus | null | undefined, cardIssuedAt?: string | null) {
-  return render(<CardStatusDisplay cardStatus={cardStatus} cardIssuedAt={cardIssuedAt} />)
+  return render(
+    <CardStatusDisplay
+      cardStatus={cardStatus}
+      cardIssuedAt={cardIssuedAt}
+    />
+  )
 }
 
 describe('CardStatusDisplay', () => {
@@ -41,6 +46,7 @@ describe('CardStatusDisplay', () => {
 
     // i18n key: cardTableStatusActive → "Active"
     expect(screen.getByTestId('card-status-badge')).toHaveTextContent('Active')
+    expect(screen.getByTestId('card-status-badge').className).toContain('info')
   })
 
   it('renders Inactive badge for Lost status', () => {
@@ -81,10 +87,10 @@ describe('CardStatusDisplay', () => {
     expect(screen.getByTestId('card-status-badge')).toHaveTextContent('Issued on 01/15/2026')
   })
 
-  it('renders Processed status badge with info styling', () => {
+  it('renders Processed status badge with success styling', () => {
     renderWithStatus('Processed', '2026-01-15T00:00:00Z')
 
-    expect(screen.getByTestId('card-status-badge').className).toContain('bg-info-dark')
+    expect(screen.getByTestId('card-status-badge').className).toContain('success')
   })
 
   it('does not show replacement card link for Processed status', () => {
@@ -105,6 +111,7 @@ describe('CardStatusDisplay', () => {
 
     // i18n key: cardTableStatusUndeliverable → "Undeliverable"
     expect(screen.getByTestId('card-status-badge')).toHaveTextContent('Undeliverable')
+    expect(screen.getByTestId('card-status-badge').className).toContain('warning')
   })
 
   // ── Replacement link ──

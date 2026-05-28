@@ -1,5 +1,6 @@
 'use client'
 
+import { RichText } from '@sebt/design-system'
 import Image from 'next/image'
 import { useTranslation } from 'react-i18next'
 
@@ -37,7 +38,9 @@ export function CardStatusTimeline({ cardRequestedAt }: CardStatusTimelineProps)
           />
           <span>{label}</span>
         </div>
-        <p className="margin-top-2 margin-bottom-0">{message}</p>
+        <p className="margin-top-2 margin-bottom-0 text-base-dark font-body-xs">
+          <RichText>{message}</RichText>
+        </p>
       </dd>
     </div>
   )

@@ -193,7 +193,7 @@ S2 - Portal Dashboard - Card Table - Heading Card Number,Card number,Card number
 S2 - Portal Dashboard - Card Table - Last Four Digits,[9999] (last 4 digits),[9999] (last 4 digits),[9999] (últimos 4 dígitos),[9999] (últimos 4 dígitos),
 S2 - Portal Dashboard - Card Table - Heading Card Status,Card status,Card status,Estado de la tarjeta,Estado de la tarjeta,
 S2 - Portal Dashboard - Card Table - Heading Mailing address,!N/A!,Mailing address,!N/A!,Dirección de correspondencia,
-S2 - Portal Dashboard - Card Table - Status Requested,!N/A!,Requested on [MM/DD/YYYY],!N/A!,Solicitada [DD/MM/YYYY],
+S2 - Portal Dashboard - Card Table - Status Requested,Requested on [MM/DD/YYYY],Requested on [MM/DD/YYYY],Solicitada [DD/MM/YYYY],Solicitada [DD/MM/YYYY],
 S2 - Portal Dashboard - Card Table - Status Issued,!N/A!,Issued on [MM/DD/YYYY],!N/A!,Emitida el [DD/MM/YYYY],
 S2 - Portal Dashboard - Card Table - Status Mailed,!N/A!,Mailed on [MM/DD/YYYY],!N/A!,Enviada por correo el [DD/MM/YYYY],
 S2 - Portal Dashboard - Card Table - Status Active,Active,Active,Activa,Activa,
