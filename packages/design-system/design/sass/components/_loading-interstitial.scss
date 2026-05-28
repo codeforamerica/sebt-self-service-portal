@@ -1,0 +1,31 @@
+/*
+----------------------------------------
+LoadingInterstitial Spinner
+----------------------------------------
+Rotating arc indicator shown above the "Please wait" heading on slow-response
+screens (CO Enrollment Checker submit, CO portal dashboard initial load) so
+users see the page is actively working while CBMS resolves.
+----------------------------------------
+*/
+
+@use 'uswds-core' as *;
+
+.loading-interstitial__spinner {
+  display: inline-block;
+  width: units(6);
+  height: units(6);
+  border: 5px solid color('primary');
+  border-bottom-color: transparent;
+  border-radius: 50%;
+  box-sizing: border-box;
+  animation: loading-interstitial-spin 1s linear infinite;
+
+  @media (prefers-reduced-motion: reduce) {
+    animation: none;
+  }
+}
+
+@keyframes loading-interstitial-spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
