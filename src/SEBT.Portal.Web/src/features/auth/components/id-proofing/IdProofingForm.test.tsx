@@ -18,6 +18,9 @@ import userEvent from '@testing-library/user-event'
 import { http, HttpResponse } from 'msw'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
+import { i18n } from '@sebt/design-system/client'
+
+import enCoStepUpProcessing from '@/content/locales/en/co/step-upProcessing.json'
 import enDcValidation from '@/content/locales/en/dc/validation.json'
 import { server } from '@/mocks/server'
 
@@ -1097,12 +1100,63 @@ describe('IdProofingForm', () => {
       })
     })
 
-    it('does not leak step-upProcessing key names as visible copy during DC loading', async () => {
-      // DC's content sheet marks S10 - Step-up Processing rows as !N/A!, so the
-      // step-upProcessing namespace is not registered for DC. If the form renders
-      // LoadingInterstitial with tProcessing('title') / tProcessing('body'),
-      // i18next falls back to the literal key names — DC users see "body" in a
-      // box. The loading state must avoid those keys for DC.
+    it('renders the titled LoadingInterstitial when step-upProcessing copy is present in the locale bundle', async () => {
+      // Forward-compatibility guard: when a state's content sheet ships
+      // step-upProcessing.title/body upstream, the form must pick it up and
+      // render the titled interstitial without any code change. We simulate
+      // that by adding the CO bundle for the duration of this test.
+      i18n.addResourceBundle('en', 'step-upProcessing', enCoStepUpProcessing, true, true)
+      try {
+        let resolveResponse: () => void = () => {}
+        const responsePromise = new Promise<void>((resolve) => {
+          resolveResponse = resolve
+        })
+
+        server.use(
+          http.post('/api/id-proofing', async () => {
+            await responsePromise
+            return HttpResponse.json({ result: 'matched' })
+          })
+        )
+
+        const user = userEvent.setup()
+        renderWithProviders(
+          <IdProofingForm
+            idOptions={TEST_ID_OPTIONS}
+            contactLink={TEST_CONTACT_LINK}
+          />
+        )
+
+        await user.selectOptions(screen.getByRole('combobox', { name: /month/i }), '03')
+        await user.type(screen.getByRole('textbox', { name: INPUT_LABEL_DAY }), '10')
+        await user.type(screen.getByRole('textbox', { name: INPUT_LABEL_YEAR }), '1990')
+        await user.click(screen.getByRole('radio', { name: LABEL_SSN }))
+        await user.type(await screen.findByRole('textbox', { name: INPUT_LABEL_SSN }), '999999999')
+        await user.click(screen.getByRole('button', { name: /continue/i }))
+
+        await waitFor(() => {
+          expect(screen.getByRole('status')).toBeInTheDocument()
+        })
+        expect(screen.getByText(enCoStepUpProcessing.title)).toBeInTheDocument()
+        expect(screen.getByText(enCoStepUpProcessing.body)).toBeInTheDocument()
+
+        resolveResponse()
+        await waitFor(() => {
+          expect(mockPush).toHaveBeenCalledWith('/dashboard')
+        })
+      } finally {
+        i18n.removeResourceBundle('en', 'step-upProcessing')
+      }
+    })
+
+    it('renders a spinner-only status region when step-upProcessing copy is missing from the active locale bundle', async () => {
+      // DC's content sheet currently marks S10 - Step-up Processing rows as
+      // !N/A!, so the step-upProcessing namespace is not registered for DC. If
+      // the form rendered LoadingInterstitial with tProcessing('title') /
+      // tProcessing('body'), i18next would fall back to the literal key names
+      // — DC users would see "body" in a box. The loading state falls back to a
+      // spinner-only status region whenever the copy is missing, regardless of
+      // which state is active.
       let resolveResponse: () => void = () => {}
       const responsePromise = new Promise<void>((resolve) => {
         resolveResponse = resolve

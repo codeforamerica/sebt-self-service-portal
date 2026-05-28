@@ -5,7 +5,7 @@ import { useId, useState, type FormEvent } from 'react'
 import { useTranslation } from 'react-i18next'
 
 import { AnalyticsEvents, useDataLayer } from '@sebt/analytics'
-import { Alert, Button, getState, InputField, LoadingInterstitial } from '@sebt/design-system'
+import { Alert, Button, InputField, LoadingInterstitial } from '@sebt/design-system'
 
 import { useAuth } from '@/features/auth'
 import {
@@ -297,12 +297,16 @@ export function IdProofingForm({ idOptions, contactLink, getDiToken }: IdProofin
   // (off-boarding navigation or an inline error) reads as "we just got an error
   // after waiting."
   //
-  // CO has step-upProcessing copy for the titled interstitial. DC marks those
-  // rows !N/A! in the content sheet, so the namespace is not registered for DC
-  // and tProcessing('title')/tProcessing('body') would render the literal key
-  // names. For DC, render a spinner-only status region instead.
+  // The titled interstitial only renders when the active locale bundle has
+  // step-upProcessing copy. States whose content sheet omits those rows (DC
+  // marks them !N/A!) would otherwise see i18next leak the literal key names
+  // "title"/"body" through the fallback chain — they fall back to a spinner-only
+  // status region. Adding the copy upstream is enough to switch in the titled
+  // interstitial; no code change needed.
   if (isProcessing || submitIdProofing.isPending) {
-    if (getState() === 'co') {
+    const hasInterstitialCopy =
+      i18n.exists('step-upProcessing:title') && i18n.exists('step-upProcessing:body')
+    if (hasInterstitialCopy) {
       return (
         <LoadingInterstitial
           title={tProcessing('title')}
