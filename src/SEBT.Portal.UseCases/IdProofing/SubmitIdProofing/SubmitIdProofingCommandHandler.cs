@@ -193,7 +193,7 @@ public class SubmitIdProofingCommandHandler(
                     new PiiVisibility(IncludeAddress: false, IncludeEmail: false, IncludePhone: false),
                     warehouseIalForEmailReads,
                     command.UserId,
-                    cancellationToken);
+                    cancellationToken: cancellationToken);
             }
             catch (Exception ex) when (ex is not OperationCanceledException)
             {
@@ -245,7 +245,7 @@ public class SubmitIdProofingCommandHandler(
                 new PiiVisibility(IncludeAddress: true, IncludeEmail: true, IncludePhone: true),
                 warehouseIalForEmailReads,
                 command.UserId,
-                cancellationToken);
+                cancellationToken: cancellationToken);
             if (householdForSocure?.UserProfile != null)
             {
                 givenName = householdForSocure.UserProfile.FirstName;

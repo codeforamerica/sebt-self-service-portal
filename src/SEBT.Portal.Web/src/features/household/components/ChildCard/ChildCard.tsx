@@ -43,6 +43,8 @@ interface ChildCardProps {
    * When omitted, defaults to allowed (backward-compatible).
    */
   canRequestReplacementCard?: boolean | undefined
+  /** True while a deferred CBMS card-details request is in flight (CO dashboard). */
+  cardDetailsLoading?: boolean
 }
 
 // Keys map to CSV: "S2 - Portal Dashboard - Card Table - cardTableType{Sebt|Snap|Tanf}"
@@ -56,7 +58,8 @@ const CARD_TYPE_KEYS: Partial<Record<IssuanceType, string>> = {
 export function ChildCard({
   summerEbtCase,
   defaultExpanded = true,
-  canRequestReplacementCard = true
+  canRequestReplacementCard = true,
+  cardDetailsLoading = false
 }: ChildCardProps) {
   const { t, i18n } = useTranslation('dashboard')
   const showCaseNumber = useFeatureFlag('show_case_number')
@@ -129,23 +132,42 @@ export function ChildCard({
               <dd className="margin-left-0">{t(cardTypeKey)}</dd>
             </>
           )}
-          {showCardLast4 && ebtCardLastFour && (
+          {cardDetailsLoading ? (
             <>
-              <dt className="text-bold margin-top-2">
-                {t('cardTableHeadingCardNumber', { defaultValue: 'Card number' })}
-              </dt>
-              <dd className="margin-left-0">
-                {t('cardTableLastFourDigits', { defaultValue: '[9999]' }).replace(
-                  '[9999]',
-                  ebtCardLastFour
-                )}
+              <dt className="text-bold margin-top-2">{t('cardTableHeadingCardStatus')}</dt>
+              <dd
+                className="margin-left-0"
+                aria-live="polite"
+              >
+                {t('cardTableCardDetailsLoading', {
+                  defaultValue: 'Loading card information…'
+                })}
               </dd>
             </>
-          )}
-          {isWithinCooldownPeriod(cardRequestedAt) ? (
-            <CardStatusTimeline cardRequestedAt={cardRequestedAt} />
           ) : (
-            <CardStatusDisplay cardStatus={ebtCardStatus} cardIssuedAt={ebtCardIssueDate ?? null} />
+            <>
+              {showCardLast4 && ebtCardLastFour && (
+                <>
+                  <dt className="text-bold margin-top-2">
+                    {t('cardTableHeadingCardNumber', { defaultValue: 'Card number' })}
+                  </dt>
+                  <dd className="margin-left-0">
+                    {t('cardTableLastFourDigits', { defaultValue: '[9999]' }).replace(
+                      '[9999]',
+                      ebtCardLastFour
+                    )}
+                  </dd>
+                </>
+              )}
+              {isWithinCooldownPeriod(cardRequestedAt) ? (
+                <CardStatusTimeline cardRequestedAt={cardRequestedAt} />
+              ) : (
+                <CardStatusDisplay
+                  cardStatus={ebtCardStatus}
+                  cardIssuedAt={ebtCardIssueDate ?? null}
+                />
+              )}
+            </>
           )}
         </dl>
         {replacementLink && (

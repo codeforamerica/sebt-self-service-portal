@@ -65,7 +65,7 @@ public class RequestCardReplacementCommandHandler(
             new PiiVisibility(IncludeAddress: false, IncludeEmail: false, IncludePhone: false),
             userIalLevel,
             command.User.GetUserId(),
-            cancellationToken);
+            cancellationToken: cancellationToken);
 
         if (household == null)
         {

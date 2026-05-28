@@ -101,7 +101,7 @@ public class ResubmitChallengeCommandHandler(
                 new PiiVisibility(IncludeAddress: true, IncludeEmail: true, IncludePhone: true),
                 warehouseIal,
                 user.Id,
-                cancellationToken);
+                cancellationToken: cancellationToken);
             if (household?.UserProfile != null)
             {
                 givenName = household.UserProfile.FirstName;

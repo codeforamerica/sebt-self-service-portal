@@ -174,7 +174,7 @@ public class UpdateAddressCommandHandler(
             piiVisibility,
             userIalLevel,
             command.User.GetUserId(),
-            cancellationToken);
+            cancellationToken: cancellationToken);
 
         if (household == null)
         {
