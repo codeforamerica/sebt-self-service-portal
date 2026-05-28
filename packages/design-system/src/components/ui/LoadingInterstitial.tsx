@@ -12,7 +12,7 @@ export function LoadingInterstitial({ title, message }: LoadingInterstitialProps
       aria-busy="true"
     >
       <div className="text-center margin-bottom-3">
-        <span className="loading-interstitial__spinner" aria-hidden="true" />
+        <span className="usa-spinner" aria-hidden="true" />
       </div>
       <h1 className="font-sans-xl text-primary text-center margin-bottom-4">
         {title}

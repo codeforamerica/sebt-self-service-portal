@@ -1,16 +1,17 @@
 /*
 ----------------------------------------
-LoadingInterstitial Spinner
+Spinner
 ----------------------------------------
-Rotating arc indicator shown above the "Please wait" heading on slow-response
-screens (CO Enrollment Checker submit, CO portal dashboard initial load) so
-users see the page is actively working while CBMS resolves.
+Rotating arc indicator shown alongside busy/loading states. Used by the
+shared LoadingInterstitial component (CO Enrollment Checker submit, CO
+portal dashboard initial load) and the Next.js segment-loading boundary.
+Color follows the per-state primary theme via USWDS tokens.
 ----------------------------------------
 */
 
 @use 'uswds-core' as *;
 
-.loading-interstitial__spinner {
+.usa-spinner {
   display: inline-block;
   width: units(6);
   height: units(6);
@@ -18,14 +19,14 @@ users see the page is actively working while CBMS resolves.
   border-bottom-color: transparent;
   border-radius: 50%;
   box-sizing: border-box;
-  animation: loading-interstitial-spin 1s linear infinite;
+  animation: usa-spinner-rotate 1s linear infinite;
 
   @media (prefers-reduced-motion: reduce) {
     animation: none;
   }
 }
 
-@keyframes loading-interstitial-spin {
+@keyframes usa-spinner-rotate {
   from { transform: rotate(0deg); }
   to { transform: rotate(360deg); }
 }

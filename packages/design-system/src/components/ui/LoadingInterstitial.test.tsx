@@ -37,7 +37,7 @@ describe('LoadingInterstitial', () => {
       />
     )
 
-    const spinner = container.querySelector('.loading-interstitial__spinner')
+    const spinner = container.querySelector('.usa-spinner')
     expect(spinner).not.toBeNull()
     expect(spinner).toHaveAttribute('aria-hidden', 'true')
   })
