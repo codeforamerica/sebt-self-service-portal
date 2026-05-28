@@ -96,7 +96,7 @@ describe('LoginPage', () => {
       ).toBeInTheDocument()
     })
 
-    it('applies text-primart class to the title', () => {
+    it('applies text-primary class to the title', () => {
       render(<LoginPage />)
       const heading = screen.getByRole('heading', {
         name: /Access your Summer EBT account/i
