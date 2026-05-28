@@ -29,4 +29,16 @@ describe('LoadingInterstitial', () => {
     expect(status).toHaveAttribute('aria-busy', 'true')
   })
 
+  it('renders a spinner hidden from assistive tech (live region announces the wait)', () => {
+    const { container } = render(
+      <LoadingInterstitial
+        title="Please wait..."
+        message="Checking your information."
+      />
+    )
+
+    const spinner = container.querySelector('.usa-spinner')
+    expect(spinner).not.toBeNull()
+    expect(spinner).toHaveAttribute('aria-hidden', 'true')
+  })
 })
