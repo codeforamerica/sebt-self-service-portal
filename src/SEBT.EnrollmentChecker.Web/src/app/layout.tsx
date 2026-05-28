@@ -48,7 +48,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
            <meta http-equiv="Content-Security-Policy" content="script-src 'self' https://connect.facebook.net; connect-src 'self' https://graph.facebook.com;" />
         )}
         {process.env.NEXT_PUBLIC_META_PIXEL && (
-           <Script src=`${process.env.NEXT_PUBLIC_BASE_PATH}/meta_pixel.js` />
+           <Script src={`${process.env.NEXT_PUBLIC_BASE_PATH}/meta_pixel.js`} />
         )}
       </head>
       <body>
