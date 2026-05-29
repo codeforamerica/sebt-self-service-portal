@@ -382,5 +382,24 @@ describe('CallbackPage', () => {
       })
       expect(mockReplace).not.toHaveBeenCalledWith('/dashboard')
     })
+
+    it('redirects to off-boarding for IdP error before auth status finishes loading', async () => {
+      authLoading.current = true
+      sessionState.current = { ial: '1plus', idProofingExpiresAt: 9999999999 }
+      Object.defineProperty(window, 'location', {
+        value: {
+          search: '?error=server_error',
+          href: 'http://localhost:3000/callback?error=server_error'
+        },
+        writable: true
+      })
+
+      render(<CallbackPage />)
+
+      await waitFor(() => {
+        expect(mockReplace).toHaveBeenCalledWith(OIDC_CALLBACK_ERROR_OFF_BOARDING)
+      })
+      expect(mockReplace).not.toHaveBeenCalledWith('/dashboard')
+    })
   })
 })

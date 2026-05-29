@@ -24,8 +24,10 @@ import { useTranslation } from 'react-i18next'
  * All flow metadata (stateCode, isStepUp, returnUrl) is stored in the server-side
  * pre-auth session — no sessionStorage is used.
  *
- * Any failure (IdP error redirect, missing params, token exchange error) sends the user
- * to id-proofing off-boarding with {@link OIDC_CALLBACK_ERROR_OFF_BOARDING}.
+ * IdP error redirects (?error=) always go to off-boarding immediately, including when the
+ * visitor already has a portal session (step-up denied, back-button into PingOne, etc.).
+ * Other failures (missing params when logged out, token exchange error) also use
+ * {@link OIDC_CALLBACK_ERROR_OFF_BOARDING}.
  *
  * Back-button re-entry: authenticated visitors with no OAuth params, or who already
  * completed step-up (IAL1+ with a fresh proofing window), skip exchange so stale codes
@@ -46,17 +48,19 @@ export default function CallbackPage() {
   )
 
   useEffect(() => {
-    if (isLoading) {
-      return
-    }
-
     const params = new URLSearchParams(typeof window !== 'undefined' ? window.location.search : '')
     const code = params.get('code')
     const state = params.get('state')
     const errorParam = params.get('error')
 
+    // IdP errors do not require /auth/status; evaluate before isLoading and before
+    // authenticated back-button shortcuts so step-up failures are not sent to /dashboard.
     if (errorParam) {
       router.replace(OIDC_CALLBACK_ERROR_OFF_BOARDING)
+      return
+    }
+
+    if (isLoading) {
       return
     }
 
