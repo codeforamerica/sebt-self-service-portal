@@ -8,7 +8,6 @@ import {
   OidcCallbackTokenResponseSchema,
   OidcCompleteLoginResponseSchema
 } from '@/features/auth/api/oidc'
-import { hasIal1Plus, isIdProofingCompletionFresh } from '@/lib/jwt'
 import { getState } from '@sebt/design-system'
 import { useRouter } from 'next/navigation'
 import { useEffect, useRef } from 'react'
@@ -26,16 +25,28 @@ import { useTranslation } from 'react-i18next'
  *
  * Any failure (IdP error redirect, missing params, token exchange error) sends the user
  * to id-proofing off-boarding with {@link OIDC_CALLBACK_ERROR_OFF_BOARDING}.
+ *
+ * Back-button re-entry: if the visitor already has a portal session, skip exchange and
+ * return to the dashboard so a stale or missing authorization code is not treated as failure.
  */
 export default function CallbackPage() {
   const router = useRouter()
-  const { session, login } = useAuth()
+  const { isAuthenticated, isLoading, login } = useAuth()
   const { t } = useTranslation('login')
   const { t: tProcessing } = useTranslation('step-upProcessing')
   const exchangeStartedRef = useRef(false)
   const isCO = getState() === 'co'
 
   useEffect(() => {
+    if (isLoading) {
+      return
+    }
+
+    if (isAuthenticated) {
+      router.replace('/dashboard')
+      return
+    }
+
     const params = new URLSearchParams(typeof window !== 'undefined' ? window.location.search : '')
     const code = params.get('code')
     const state = params.get('state')
@@ -51,13 +62,7 @@ export default function CallbackPage() {
       return
     }
 
-    if (exchangeStartedRef.current) return
-
-    // Back-button re-entry after a successful step-up: the visitor already has IAL1+
-    // and a fresh proofing window. Re-running the exchange here would burn the
-    // single-use code and bounce them to off-boarding.
-    if (hasIal1Plus(session) && isIdProofingCompletionFresh(session)) {
-      router.replace('/dashboard')
+    if (exchangeStartedRef.current) {
       return
     }
 
@@ -71,20 +76,26 @@ export default function CallbackPage() {
           body: { code, state },
           schema: OidcCallbackTokenResponseSchema
         })
-        if (cancelled) return
+        if (cancelled) {
+          return
+        }
 
         const response = await apiFetch('/auth/oidc/complete-login', {
           method: 'POST',
           body: { callbackToken },
           schema: OidcCompleteLoginResponseSchema
         })
-        if (cancelled) return
+        if (cancelled) {
+          return
+        }
 
         await login()
         const destination = response.returnUrl ?? '/dashboard'
         router.replace(destination)
       } catch (e) {
-        if (cancelled) return
+        if (cancelled) {
+          return
+        }
         const statusCode = e instanceof ApiError ? e.status : undefined
         const logDetail = e instanceof Error ? e.message : ''
         if (process.env.NODE_ENV === 'development') {
@@ -100,7 +111,7 @@ export default function CallbackPage() {
     return () => {
       cancelled = true
     }
-  }, [session, login, router])
+  }, [isAuthenticated, isLoading, login, router])
 
   if (isCO) {
     return (

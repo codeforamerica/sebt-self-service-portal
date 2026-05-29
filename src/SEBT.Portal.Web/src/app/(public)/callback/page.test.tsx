@@ -32,10 +32,11 @@ vi.mock('next/navigation', () => ({
 }))
 
 // Mock @/features/auth without loading the barrel (barrel pulls IalGuard → @/env and breaks Vitest).
-// `sessionState` is mutable so individual tests can simulate an already-authenticated visitor.
-const { mockLogin, sessionState } = vi.hoisted(() => ({
+// `sessionState` / `authLoading` are mutable so tests can simulate session hydration and back-button re-entry.
+const { mockLogin, sessionState, authLoading } = vi.hoisted(() => ({
   mockLogin: vi.fn(),
-  sessionState: { current: null as Record<string, unknown> | null }
+  sessionState: { current: null as Record<string, unknown> | null },
+  authLoading: { current: false }
 }))
 vi.mock('@/features/auth', async () => {
   const api = await vi.importActual<typeof import('@/features/auth/api')>('@/features/auth/api')
@@ -46,7 +47,7 @@ vi.mock('@/features/auth', async () => {
       logout: vi.fn(),
       isAuthenticated: sessionState.current !== null,
       session: sessionState.current,
-      isLoading: false
+      isLoading: authLoading.current
     })
   }
 })
@@ -86,6 +87,7 @@ describe('CallbackPage', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     sessionState.current = null
+    authLoading.current = false
     // Default: URL has code and state
     Object.defineProperty(window, 'location', {
       value: {
@@ -286,7 +288,7 @@ describe('CallbackPage', () => {
 
   describe('back-button re-entry after successful login', () => {
     it('skips the code exchange and redirects to /dashboard when the visitor is already authenticated', async () => {
-      sessionState.current = { ial: '1plus', idProofingExpiresAt: 9999999999 }
+      sessionState.current = { ial: '1', userId: 'user-1' }
       const callbackSpy = vi.fn()
       const completeLoginSpy = vi.fn()
       server.use(
@@ -308,6 +310,35 @@ describe('CallbackPage', () => {
       expect(callbackSpy).not.toHaveBeenCalled()
       expect(completeLoginSpy).not.toHaveBeenCalled()
       expect(mockReplace).not.toHaveBeenCalledWith(OIDC_CALLBACK_ERROR_OFF_BOARDING)
+    })
+
+    it('redirects to /dashboard when authenticated and callback URL has no code or state', async () => {
+      sessionState.current = { ial: '1plus', userId: 'user-1' }
+      Object.defineProperty(window, 'location', {
+        value: { search: '', href: 'http://localhost:3000/callback' },
+        writable: true
+      })
+
+      render(<CallbackPage />)
+
+      await waitFor(() => {
+        expect(mockReplace).toHaveBeenCalledWith('/dashboard')
+      })
+      expect(mockReplace).not.toHaveBeenCalledWith(OIDC_CALLBACK_ERROR_OFF_BOARDING)
+    })
+
+    it('does not treat missing code as failure while auth status is still loading', async () => {
+      authLoading.current = true
+      Object.defineProperty(window, 'location', {
+        value: { search: '', href: 'http://localhost:3000/callback' },
+        writable: true
+      })
+
+      render(<CallbackPage />)
+
+      await waitFor(() => {
+        expect(mockReplace).not.toHaveBeenCalled()
+      })
     })
   })
 })
