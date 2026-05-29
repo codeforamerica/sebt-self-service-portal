@@ -1,0 +1,329 @@
+Claude finished the response
+i want to be able to automate release notes via github on a weekly basis
+
+
+Thought process
+Thought process
+
+Used 9 tools, created 3 files, loaded tools
+Used 9 tools, created 3 files, loaded tools
+Three files to drop into your repo:
+
+weekly-release-notes.yml → goes in .github/workflows/
+update-google-doc.py → goes in scripts/
+SETUP.md → walk-through for the 5 GitHub secrets you'll need to configure
+The two things that require setup before it'll work: a Gmail App Password (2-step verification must be on), and a Google Cloud service account with the Docs API enabled and Editor access to your doc. SETUP.md walks through both step by step.
+
+
+Weekly release notes
+YML 
+
+Update google doc
+PY 
+
+Setup
+Document · MD 
+wiat where do i drop them i'm confused
+
+No worries! Here's exactly where each file goes in your GitHub repo:
+
+your-repo/
+├── .github/
+│   └── workflows/
+│       └── weekly-release-notes.yml   ← here
+└── scripts/
+    └── update-google-doc.py           ← here
+If the .github/workflows/ or scripts/ folders don't exist yet, just create them. The SETUP.md is just for your reference — you don't need to add it to the repo.
+
+Once the files are in place, head to your repo's Settings → Secrets and variables → Actions to add the 5 secrets (the SETUP.md file walks through each one). That's it — GitHub will automatically run the workflow every Monday after that.
+
+i'm confused where to start
+
+Start here — in order:
+
+Add the two files to your GitHub repo (you can do this directly on GitHub.com — no need to clone locally):
+Go to your repo → click "Add file" → "Create new file"
+Name it .github/workflows/weekly-release-notes.yml, paste the contents, commit
+Repeat for scripts/update-google-doc.py
+Set up Gmail App Password (so the workflow can send email):
+Go to myaccount.google.com → Security → 2-Step Verification → App passwords
+Create one called "GitHub Actions", copy the 16-character code
+Set up Google service account (so it can write to your Google Doc):
+This is the most involved step — SETUP.md walks through it, but let me know if you want me to guide you through it live
+Add your 5 secrets to the repo: Settings → Secrets and variables → Actions
+Which step do you want to tackle first, or would you like me to walk you through any of them?
+
+but do i need to create a new repo in github? i'm super confused i don't know where to start
+
+Got it — let me back up. Do you already have a GitHub repo for the project you want release notes for?
+
+my engineers do yes
+
+Perfect. Then you don't need to create anything new. Just ask one of your engineers to add these two files to that existing repo, and point them to the SETUP.md for the configuration steps. That's it — they'll know exactly where to put them.
+
+Want me to draft a quick message you can send them explaining what you need?
+
+no i need to do that can you please help me i am super confused
+
+Of course! Let's do it together step by step. First question:
+
+Can you open your GitHub repo in your browser right now? If you go to github.com, do you see the repo listed there?
+
+https://github.com/codeforamerica/sebt-self-service-portal
+
+Perfect, I can see your repo. Now let's add the first file.
+
+Step 1: Click this link to start creating the workflow file directly in your browser:
+
+👉 Create the workflow file
+
+It'll open a text editor in GitHub. Once you're there, let me know and I'll tell you exactly what to paste in.
+
+i have it open
+
+Great! The filename field at the top should already say .github/workflows/weekly-release-notes.yml.
+
+Now copy everything from your weekly-release-notes.yml file and paste it into the big text area below. Then scroll down, click "Commit changes", and hit the green "Commit changes" button in the popup.
+
+Let me know when that's done!
+
+i just want to make sure i am clear about the requirements - i want it to be friendly to non technical people and organized around features. i also want it to highlight changes that were specific to coloardo and dc product requirements
+
+That's really helpful context — it changes the approach quite a bit. Let me pause before you commit that file.
+
+A few quick questions so I can rebuild it the right way:
+
+How do your engineers label PRs? For example, do they use labels like "feature", "bug", "colorado", "dc"? Or is that info usually in the PR title/description?
+Who's the audience for these release notes? Just internal team, or also stakeholders/clients in Colorado and DC?
+What format do you want? Something like:
+✨ New Features
+
+You can now save your application progress
+🏔 Colorado-specific
+
+Updated income limits to match new state guidelines
+Does that feel right, or different?
+
+it going to be stakeholders and exteranl partners - and yes i like that format. for the PRs they should label them or it shoudl say CO or DC and if it doesn't it might be for both
+
+Got it. So the logic would be:
+
+PR title/label contains CO or Colorado → Colorado section
+PR title/label contains DC → DC section
+Neither → Both States section
+And the tone should be plain English, not technical (no commit hashes, no developer jargon).
+
+Before I rewrite the workflow — do your engineers currently use any labels on PRs at all, or is it mostly in the PR titles? I want to make sure the script actually picks up the right PRs rather than missing things.
+
+im not sure tbh
+
+That's fine — I'll make it check both the PR title and labels, so it catches everything either way.
+
+Let me rewrite the workflow now. Don't commit that file yet — go ahead and close that GitHub tab and I'll give you a fresh version to use instead.
+
+
+Used 2 tools, created a file, read a file
+Used 2 tools, created a file, read a file
+Here's the updated file. The release notes will now look like this each week:
+
+SEBT Self-Service Portal — Weekly Update May 20 through May 27
+
+Here's a summary of what changed in the portal this week.
+
+🌐 Updates for All States
+
+Users can now save their progress and return later
+🏔️ Colorado-Specific Updates
+
+Updated income eligibility thresholds
+🏛️ Washington DC-Specific Updates
+
+Fixed issue with DC address verification
+Now — go back to GitHub and create that file. Click this link:
+
+👉 Create the workflow file
+
+Paste the contents of the file above, commit it, and let me know when it's done!
+
+
+Weekly release notes
+YML 
+what am i pasting? im confused
+
+Sorry! Here's exactly what to do:
+
+Click the link above — it opens a text editor in GitHub
+Open the weekly-release-notes.yml file I just shared (click on it above)
+Select all the text in it (Ctrl+A on Windows, Cmd+A on Mac)
+Copy it (Ctrl+C / Cmd+C)
+Click into the big text area in GitHub and paste (Ctrl+V / Cmd+V)
+The file should already have the right name (.github/workflows/weekly-release-notes.yml) filled in at the top.
+
+Does the file open when you click on it?
+
+
+
+
+
+Claude is AI and can make mistakes. Please double-check responses.
+Weekly release notes · YML
+name: Weekly Release Notes
+ 
+on:
+  schedule:
+    - cron: '0 9 * * 1'  # Every Monday at 9am UTC
+  workflow_dispatch:      # Also allow manual trigger
+ 
+permissions:
+  contents: write
+  pull-requests: read
+ 
+jobs:
+  release-notes:
+    runs-on: ubuntu-latest
+ 
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+ 
+      # ─── 1. Collect PRs and generate friendly release notes ──────────────────
+      - name: Generate release notes
+        id: notes
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const oneWeekAgo = new Date();
+            oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
+ 
+            // Fetch merged PRs from the past week
+            const allPRs = await github.paginate(github.rest.pulls.list, {
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              state: 'closed',
+              sort: 'updated',
+              direction: 'desc',
+              per_page: 100,
+            });
+ 
+            const mergedPRs = allPRs.filter(pr =>
+              pr.merged_at && new Date(pr.merged_at) >= oneWeekAgo
+            );
+ 
+            // Helper: check if a PR is tagged for CO or DC
+            // Checks both the PR title and any labels
+            function isColorado(pr) {
+              const text = (pr.title + ' ' + pr.labels.map(l => l.name).join(' ')).toLowerCase();
+              return text.includes('co') || text.includes('colorado');
+            }
+            function isDC(pr) {
+              const text = (pr.title + ' ' + pr.labels.map(l => l.name).join(' ')).toLowerCase();
+              return text.includes(' dc') || text.includes('district of columbia') || text.includes('[dc]');
+            }
+ 
+            // Helper: clean up a PR title for non-technical readers
+            // Strips ticket numbers, branch refs, and common dev jargon
+            function friendlyTitle(title) {
+              return title
+                .replace(/^\[?(fix|feat|chore|refactor|hotfix|bug|update|wip)\]?:?\s*/i, '')
+                .replace(/\(#\d+\)/g, '')
+                .replace(/#\d+/g, '')
+                .replace(/\[CO\]|\[DC\]|\[co\]|\[dc\]/gi, '')
+                .trim();
+            }
+ 
+            // Sort PRs into buckets
+            const colorado = [];
+            const dc = [];
+            const both = [];
+ 
+            for (const pr of mergedPRs) {
+              const co = isColorado(pr);
+              const d  = isDC(pr);
+              const entry = `- ${friendlyTitle(pr.title)}`;
+              if (co && !d) colorado.push(entry);
+              else if (d && !co) dc.push(entry);
+              else both.push(entry); // neither tagged = applies to both states
+            }
+ 
+            const today     = new Date().toISOString().split('T')[0];
+            const weekStart = oneWeekAgo.toISOString().split('T')[0];
+ 
+            // ── Build the friendly doc ────────────────────────────────────────
+            let md = `# SEBT Self-Service Portal — Weekly Update\n`;
+            md += `**${weekStart} through ${today}**\n\n`;
+            md += `Here's a summary of what changed in the portal this week.\n\n`;
+ 
+            if (both.length > 0) {
+              md += `## 🌐 Updates for All States\n\n`;
+              md += both.join('\n') + '\n\n';
+            }
+ 
+            if (colorado.length > 0) {
+              md += `## 🏔️ Colorado-Specific Updates\n\n`;
+              md += colorado.join('\n') + '\n\n';
+            }
+ 
+            if (dc.length > 0) {
+              md += `## 🏛️ Washington DC-Specific Updates\n\n`;
+              md += dc.join('\n') + '\n\n';
+            }
+ 
+            if (mergedPRs.length === 0) {
+              md += `_No updates were released this week._\n\n`;
+            }
+ 
+            md += `---\n_This update was generated automatically. Questions? Reach out to the engineering team._\n`;
+ 
+            core.setOutput('notes', md);
+            core.setOutput('today', today);
+            core.setOutput('week_start', weekStart);
+            core.setOutput('tag', `weekly-${today}`);
+ 
+      # ─── 2. Create GitHub Release ────────────────────────────────────────────
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.notes.outputs.tag }}
+          name: "Weekly Update – ${{ steps.notes.outputs.today }}"
+          body: ${{ steps.notes.outputs.notes }}
+          draft: false
+          prerelease: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+ 
+      # ─── 3. Save notes to file ───────────────────────────────────────────────
+      - name: Save notes to file
+        run: echo "$NOTES" > release-notes.md
+        env:
+          NOTES: ${{ steps.notes.outputs.notes }}
+ 
+      # ─── 4. Send Email via Gmail ─────────────────────────────────────────────
+      - name: Send email
+        uses: dawidd6/action-send-mail@v3
+        with:
+          server_address: smtp.gmail.com
+          server_port: 465
+          secure: true
+          username: ${{ secrets.MAIL_USERNAME }}
+          password: ${{ secrets.MAIL_PASSWORD }}
+          subject: "SEBT Portal Weekly Update: ${{ steps.notes.outputs.week_start }} → ${{ steps.notes.outputs.today }}"
+          to: ${{ secrets.MAIL_TO }}
+          from: "SEBT Portal Updates <${{ secrets.MAIL_USERNAME }}>"
+          content_type: text/plain
+          body: ${{ steps.notes.outputs.notes }}
+ 
+      # ─── 5. Append to Google Doc ─────────────────────────────────────────────
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+ 
+      - name: Install Google API client
+        run: pip install google-api-python-client google-auth
+ 
+      - name: Append to Google Doc
+        env:
+          GOOGLE_SERVICE_ACCOUNT_JSON: ${{ secrets.GOOGLE_SERVICE_ACCOUNT_JSON }}
+          GOOGLE_DOC_ID: ${{ secrets.GOOGLE_DOC_ID }}
+          NOTES: ${{ steps.notes.outputs.notes }}
+        run: python scripts/update-google-doc.py
