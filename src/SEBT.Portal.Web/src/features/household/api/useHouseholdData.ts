@@ -1,17 +1,38 @@
 'use client'
 
-import { useQuery } from '@tanstack/react-query'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useRouter } from 'next/navigation'
-import { useEffect } from 'react'
+import { useEffect, useMemo } from 'react'
 
 import { ApiError, apiFetch } from '@/api'
 
+import { mergeHouseholdCardDetails } from './mergeHouseholdCardDetails'
 import { HouseholdDataSchema, type HouseholdData } from './schema'
 
-async function fetchHouseholdData(): Promise<HouseholdData> {
-  return apiFetch<HouseholdData>('/household/data', {
+async function fetchHouseholdData(includeCardDetails = true): Promise<HouseholdData> {
+  const query = includeCardDetails ? '' : '?includeCardDetails=false'
+  return apiFetch<HouseholdData>(`/household/data${query}`, {
     schema: HouseholdDataSchema
   })
+}
+
+const householdRetry = (failureCount: number, error: Error) => {
+  if (error instanceof ApiError && error.status >= 400 && error.status < 500) {
+    return false
+  }
+  return failureCount < 2
+}
+
+const householdRetryDelay = (attemptIndex: number) => Math.min(1000 * 2 ** attemptIndex, 10000)
+
+export interface UseHouseholdDataOptions {
+  /** Whether to auto-redirect on 403 with requiredIal. Defaults to true. */
+  redirectOnInsufficientIal?: boolean
+  /**
+   * When true (CO dashboard with defer_ebt_card_data_loading), loads household
+   * without card details first, then fetches card fields for enrolled children.
+   */
+  deferCardDetailsOnLoad?: boolean
 }
 
 /**
@@ -23,45 +44,71 @@ async function fetchHouseholdData(): Promise<HouseholdData> {
  * below the minimum required by their cases. By default the hook redirects
  * to `/login/id-proofing` and exposes `requiresProofing` so consumers can
  * render a loading state during the redirect.
- *
- * @param options.redirectOnInsufficientIal - Whether to auto-redirect on 403.
- *   Defaults to `true`. Set to `false` to handle the 403 yourself (e.g., show
- *   an inline prompt instead of redirecting).
- * @returns TanStack Query result with household data, plus `requiresProofing` flag
  */
-export function useHouseholdData({ redirectOnInsufficientIal = true } = {}) {
+export function useHouseholdData({
+  redirectOnInsufficientIal = true,
+  deferCardDetailsOnLoad = false
+}: UseHouseholdDataOptions = {}) {
   const router = useRouter()
+  const queryClient = useQueryClient()
 
   const query = useQuery({
     queryKey: ['householdData'],
-    queryFn: fetchHouseholdData,
+    queryFn: () => (deferCardDetailsOnLoad ? fetchHouseholdData(false) : fetchHouseholdData(true)),
     staleTime: 0,
     gcTime: 5 * 60 * 1000, // 5 minutes for back-navigation
     refetchOnWindowFocus: true,
-    retry: (failureCount, error) => {
-      // Don't retry client errors (4xx)
-      if (error instanceof ApiError && error.status >= 400 && error.status < 500) {
-        return false
-      }
-      // Retry server errors up to 2 times
-      return failureCount < 2
-    },
-    retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 10000)
+    retry: householdRetry,
+    retryDelay: householdRetryDelay
   })
 
-  // A 403 with requiredIal in the response body means the user's IAL is below
-  // the minimum required by their cases. Redirect to ID proofing.
+  const shouldFetchCardDetails =
+    deferCardDetailsOnLoad && query.isSuccess && (query.data?.summerEbtCases.length ?? 0) > 0
+
+  const cardDetailsQuery = useQuery({
+    queryKey: ['householdData', 'cardDetails'],
+    queryFn: () => fetchHouseholdData(true),
+    enabled: shouldFetchCardDetails,
+    staleTime: 0,
+    gcTime: 5 * 60 * 1000,
+    refetchOnWindowFocus: true,
+    retry: householdRetry,
+    retryDelay: householdRetryDelay
+  })
+
+  const data = useMemo(() => {
+    if (!query.data) {
+      return query.data
+    }
+
+    if (cardDetailsQuery.data) {
+      return mergeHouseholdCardDetails(query.data, cardDetailsQuery.data)
+    }
+
+    return query.data
+  }, [query.data, cardDetailsQuery.data])
+
+  useEffect(() => {
+    if (!query.data || !cardDetailsQuery.data) {
+      return
+    }
+
+    queryClient.setQueryData(
+      ['householdData'],
+      mergeHouseholdCardDetails(query.data, cardDetailsQuery.data)
+    )
+  }, [query.data, cardDetailsQuery.data, queryClient])
+
   const requiresProofing =
     query.error instanceof ApiError &&
     query.error.status === 403 &&
     'requiredIal' in ((query.error.data as Record<string, unknown>) ?? {})
 
-  // When apiFetch has triggered a 401 redirect to /login, suppress the error
-  // state so the dashboard stays in its loading shell instead of flashing the
-  // error alert before the browser navigates.
   const isRedirecting = query.error instanceof ApiError && query.error.isRedirecting
   const isError = query.isError && !isRedirecting
   const isLoading = query.isLoading || isRedirecting
+  // Initial card fetch only; background refetches (refetchOnWindowFocus) keep showing merged card data.
+  const isLoadingCardDetails = shouldFetchCardDetails && cardDetailsQuery.isLoading
 
   useEffect(() => {
     if (requiresProofing && redirectOnInsufficientIal) {
@@ -69,5 +116,5 @@ export function useHouseholdData({ redirectOnInsufficientIal = true } = {}) {
     }
   }, [requiresProofing, redirectOnInsufficientIal, router])
 
-  return { ...query, isError, isLoading, requiresProofing }
+  return { ...query, data, isError, isLoading, requiresProofing, isLoadingCardDetails }
 }
