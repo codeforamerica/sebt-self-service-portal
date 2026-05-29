@@ -287,8 +287,8 @@ describe('CallbackPage', () => {
   })
 
   describe('back-button re-entry after successful login', () => {
-    it('skips the code exchange and redirects to /dashboard when the visitor is already authenticated', async () => {
-      sessionState.current = { ial: '1', userId: 'user-1' }
+    it('skips exchange and redirects to /dashboard when step-up is already complete (stale code in URL)', async () => {
+      sessionState.current = { ial: '1plus', idProofingExpiresAt: 9999999999 }
       const callbackSpy = vi.fn()
       const completeLoginSpy = vi.fn()
       server.use(
@@ -309,6 +309,30 @@ describe('CallbackPage', () => {
       })
       expect(callbackSpy).not.toHaveBeenCalled()
       expect(completeLoginSpy).not.toHaveBeenCalled()
+      expect(mockReplace).not.toHaveBeenCalledWith(OIDC_CALLBACK_ERROR_OFF_BOARDING)
+    })
+
+    it('runs exchange when authenticated but step-up is still in progress', async () => {
+      sessionState.current = { ial: '1', userId: 'user-1' }
+      const callbackSpy = vi.fn()
+      server.use(
+        http.post('/api/auth/oidc/callback', () => {
+          callbackSpy()
+          return HttpResponse.json({ callbackToken: 'mock-callback-token-for-step-up' })
+        }),
+        http.post('/api/auth/oidc/complete-login', () => {
+          return HttpResponse.json({ returnUrl: '/profile/address' })
+        })
+      )
+
+      render(<CallbackPage />)
+
+      await waitFor(() => {
+        expect(callbackSpy).toHaveBeenCalled()
+      })
+      await waitFor(() => {
+        expect(mockReplace).toHaveBeenCalledWith('/profile/address')
+      })
       expect(mockReplace).not.toHaveBeenCalledWith(OIDC_CALLBACK_ERROR_OFF_BOARDING)
     })
 
@@ -339,6 +363,24 @@ describe('CallbackPage', () => {
       await waitFor(() => {
         expect(mockReplace).not.toHaveBeenCalled()
       })
+    })
+
+    it('redirects to off-boarding for IdP error even when already authenticated', async () => {
+      sessionState.current = { ial: '1plus', idProofingExpiresAt: 9999999999 }
+      Object.defineProperty(window, 'location', {
+        value: {
+          search: '?error=access_denied',
+          href: 'http://localhost:3000/callback?error=access_denied'
+        },
+        writable: true
+      })
+
+      render(<CallbackPage />)
+
+      await waitFor(() => {
+        expect(mockReplace).toHaveBeenCalledWith(OIDC_CALLBACK_ERROR_OFF_BOARDING)
+      })
+      expect(mockReplace).not.toHaveBeenCalledWith('/dashboard')
     })
   })
 })

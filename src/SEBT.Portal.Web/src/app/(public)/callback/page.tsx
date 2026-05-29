@@ -8,9 +8,10 @@ import {
   OidcCallbackTokenResponseSchema,
   OidcCompleteLoginResponseSchema
 } from '@/features/auth/api/oidc'
+import { hasIal1Plus, isIdProofingCompletionFresh } from '@/lib/jwt'
 import { getState } from '@sebt/design-system'
 import { useRouter } from 'next/navigation'
-import { useEffect, useRef } from 'react'
+import { useEffect, useMemo, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 
 /**
@@ -26,24 +27,26 @@ import { useTranslation } from 'react-i18next'
  * Any failure (IdP error redirect, missing params, token exchange error) sends the user
  * to id-proofing off-boarding with {@link OIDC_CALLBACK_ERROR_OFF_BOARDING}.
  *
- * Back-button re-entry: if the visitor already has a portal session, skip exchange and
- * return to the dashboard so a stale or missing authorization code is not treated as failure.
+ * Back-button re-entry: authenticated visitors with no OAuth params, or who already
+ * completed step-up (IAL1+ with a fresh proofing window), skip exchange so stale codes
+ * are not treated as failure. In-progress step-up still runs exchange when code and state
+ * are present, even if a portal session already exists from the initial sign-in.
  */
 export default function CallbackPage() {
   const router = useRouter()
-  const { isAuthenticated, isLoading, login } = useAuth()
+  const { session, isAuthenticated, isLoading, login } = useAuth()
   const { t } = useTranslation('login')
   const { t: tProcessing } = useTranslation('step-upProcessing')
   const exchangeStartedRef = useRef(false)
   const isCO = getState() === 'co'
 
+  const isProofedReEntry = useMemo(
+    () => hasIal1Plus(session) && isIdProofingCompletionFresh(session),
+    [session]
+  )
+
   useEffect(() => {
     if (isLoading) {
-      return
-    }
-
-    if (isAuthenticated) {
-      router.replace('/dashboard')
       return
     }
 
@@ -54,6 +57,16 @@ export default function CallbackPage() {
 
     if (errorParam) {
       router.replace(OIDC_CALLBACK_ERROR_OFF_BOARDING)
+      return
+    }
+
+    if (isAuthenticated && (!code || !state)) {
+      router.replace('/dashboard')
+      return
+    }
+
+    if (isProofedReEntry) {
+      router.replace('/dashboard')
       return
     }
 
@@ -111,7 +124,7 @@ export default function CallbackPage() {
     return () => {
       cancelled = true
     }
-  }, [isAuthenticated, isLoading, login, router])
+  }, [isAuthenticated, isLoading, isProofedReEntry, login, router])
 
   if (isCO) {
     return (
