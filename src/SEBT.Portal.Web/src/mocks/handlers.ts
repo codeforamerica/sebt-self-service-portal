@@ -46,6 +46,7 @@ export const TEST_FEATURE_FLAGS = {
   show_application_number: true,
   show_case_number: true,
   show_card_last4: true,
+  defer_ebt_card_data_loading: false,
   enable_beta_banner: false
 } as const
 
@@ -332,10 +333,25 @@ export const handlers = [
   })(),
 
   // Household data endpoint
-  http.get('/api/household/data', async () => {
+  http.get('/api/household/data', async ({ request }) => {
     await delay(50)
 
-    return HttpResponse.json(TEST_HOUSEHOLD_DATA)
+    const url = new URL(request.url)
+    const includeCardDetails = url.searchParams.get('includeCardDetails') !== 'false'
+    if (includeCardDetails) {
+      return HttpResponse.json(TEST_HOUSEHOLD_DATA)
+    }
+
+    return HttpResponse.json({
+      ...TEST_HOUSEHOLD_DATA,
+      summerEbtCases: TEST_HOUSEHOLD_DATA.summerEbtCases.map((c) => ({
+        ...c,
+        ebtCardLastFour: undefined,
+        ebtCardStatus: 'Unknown',
+        ebtCardIssueDate: undefined,
+        ebtCardBalance: undefined
+      }))
+    })
   }),
 
   // Address update endpoint

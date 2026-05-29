@@ -44,6 +44,7 @@ public class MockHouseholdRepository : IHouseholdRepository
         PiiVisibility piiVisibility,
         UserIalLevel userIalLevel,
         Guid? portalUserId = null,
+        bool includeCardService = true,
         CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(piiVisibility);
@@ -101,6 +102,7 @@ public class MockHouseholdRepository : IHouseholdRepository
         PiiVisibility piiVisibility,
         UserIalLevel userIalLevel,
         Guid? portalUserId = null,
+        bool includeCardService = true,
         CancellationToken cancellationToken = default)
     {
         return GetHouseholdByIdentifierAsync(
@@ -108,6 +110,7 @@ public class MockHouseholdRepository : IHouseholdRepository
             piiVisibility,
             userIalLevel,
             portalUserId,
+            includeCardService,
             cancellationToken);
     }
 
