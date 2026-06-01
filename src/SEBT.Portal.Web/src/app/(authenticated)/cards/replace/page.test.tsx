@@ -10,6 +10,10 @@ vi.mock('next/navigation', () => ({
   useSearchParams: () => mockSearchParams
 }))
 
+vi.mock('@/hooks/useFlowStartAnalytics', () => ({
+  useFlowStartAnalytics: vi.fn()
+}))
+
 let mockHouseholdData: HouseholdData | null = null
 let mockIsLoading = false
 let mockIsError = false

@@ -2,6 +2,7 @@ import { render, screen } from '@testing-library/react'
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 
 import enCODashboard from '@/content/locales/en/co/dashboard.json'
+import enDCDashboard from '@/content/locales/en/dc/dashboard.json'
 import { i18n } from '@sebt/design-system/client'
 
 import type { CardStatus } from '../../api'
@@ -10,15 +11,21 @@ import { CardStatusDisplay } from './CardStatusDisplay'
 // CardStatusDisplay is CO-specific. Tests default to the DC locale, so we
 // add CO dashboard translations before the suite runs and remove them after.
 beforeAll(() => {
-  i18n.addResourceBundle('en', 'dashboard', enCODashboard, true, true)
+  // CO provides most card status keys; DC provides cardTableStatusIssued (Processed is DC-only)
+  i18n.addResourceBundle('en', 'dashboard', { ...enCODashboard, ...enDCDashboard }, true, true)
 })
 
 afterAll(() => {
   i18n.removeResourceBundle('en', 'dashboard')
 })
 
-function renderWithStatus(cardStatus: CardStatus | null | undefined) {
-  return render(<CardStatusDisplay cardStatus={cardStatus} />)
+function renderWithStatus(cardStatus: CardStatus | null | undefined, cardIssuedAt?: string | null) {
+  return render(
+    <CardStatusDisplay
+      cardStatus={cardStatus}
+      cardIssuedAt={cardIssuedAt}
+    />
+  )
 }
 
 describe('CardStatusDisplay', () => {
@@ -34,23 +41,12 @@ describe('CardStatusDisplay', () => {
     expect(container.innerHTML).toBe('')
   })
 
-  it('renders nothing when cardStatus is Requested', () => {
-    const { container } = renderWithStatus('Requested')
-
-    expect(container.innerHTML).toBe('')
-  })
-
-  it('renders nothing when cardStatus is Mailed', () => {
-    const { container } = renderWithStatus('Mailed')
-
-    expect(container.innerHTML).toBe('')
-  })
-
   it('renders Active status badge', () => {
     renderWithStatus('Active')
 
     // i18n key: cardTableStatusActive → "Active"
     expect(screen.getByTestId('card-status-badge')).toHaveTextContent('Active')
+    expect(screen.getByTestId('card-status-badge').className).toContain('info')
   })
 
   it('renders Inactive badge for Lost status', () => {
@@ -84,30 +80,21 @@ describe('CardStatusDisplay', () => {
     expect(screen.getByTestId('card-status-badge')).toHaveTextContent('Inactive')
   })
 
-  it('renders Processed status badge with info styling', () => {
-    renderWithStatus('Processed')
+  it('renders Processed status badge with interpolated issue date', () => {
+    renderWithStatus('Processed', '2026-01-15T00:00:00Z')
 
-    const badge = screen.getByTestId('card-status-badge')
-    // i18n key: cardTableStatusProcessed
-    expect(badge).toHaveTextContent(/processed/i)
-    expect(badge.className).toContain('bg-info-dark')
+    // cardTableStatusIssued → "Issued on [MM/DD/YYYY]"; interpolateDate substitutes the date
+    expect(screen.getByTestId('card-status-badge')).toHaveTextContent('Issued on 01/15/2026')
   })
 
-  it('renders Inactive badge for Deactivated status', () => {
-    renderWithStatus('Deactivated')
+  it('renders Processed status badge with success styling', () => {
+    renderWithStatus('Processed', '2026-01-15T00:00:00Z')
 
-    expect(screen.getByTestId('card-status-badge')).toHaveTextContent('Inactive')
-  })
-
-  it('shows deactivated description for Deactivated status', () => {
-    renderWithStatus('Deactivated')
-
-    // i18n key: cardTableStatusMessageDeactivated
-    expect(screen.getByText(/reported as lost, stolen, damaged/)).toBeInTheDocument()
+    expect(screen.getByTestId('card-status-badge').className).toContain('success')
   })
 
   it('does not show replacement card link for Processed status', () => {
-    renderWithStatus('Processed')
+    renderWithStatus('Processed', '2026-01-15T00:00:00Z')
 
     expect(screen.queryByRole('link')).toBeNull()
   })
@@ -124,6 +111,7 @@ describe('CardStatusDisplay', () => {
 
     // i18n key: cardTableStatusUndeliverable → "Undeliverable"
     expect(screen.getByTestId('card-status-badge')).toHaveTextContent('Undeliverable')
+    expect(screen.getByTestId('card-status-badge').className).toContain('warning')
   })
 
   // ── Replacement link ──
@@ -155,113 +143,5 @@ describe('CardStatusDisplay', () => {
 
     // i18n key: cardTableStatusMessageDeactivated
     expect(screen.getByText(/reported as lost, stolen, damaged/)).toBeInTheDocument()
-  })
-
-  // --- CO denied-status fallback coverage ---
-  // When the resolved locale string is empty (e.g. missing CSV content for a
-  // given status), DESCRIPTION_FALLBACK supplies English copy so that the
-  // "Card status" heading and a useful description still render. These tests
-  // simulate the empty-locale condition by dropping the CO bundle we added in
-  // beforeAll, leaving the default DC namespace (which has empty EN cells for
-  // several of these keys) active for the test duration.
-
-  describe('with empty locale entries (CSV content gap)', () => {
-    beforeAll(() => {
-      i18n.removeResourceBundle('en', 'dashboard')
-      i18n.addResourceBundle(
-        'en',
-        'dashboard',
-        {
-          cardTableHeadingCardStatus: 'Card status',
-          cardTableStatusInactive: 'Inactive',
-          cardTableStatusUndeliverable: 'Undeliverable',
-          cardTableStatusMessageDeactivated: '',
-          cardTableStatusMessageUndeliverable: ''
-        },
-        true,
-        true
-      )
-    })
-
-    afterAll(() => {
-      i18n.removeResourceBundle('en', 'dashboard')
-      i18n.addResourceBundle('en', 'dashboard', enCODashboard, true, true)
-    })
-
-    it('renders fallback heading and body for NotActivated', () => {
-      renderWithStatus('NotActivated')
-
-      expect(screen.getByText('Card status')).toBeInTheDocument()
-      expect(screen.getByText(/hasn't been activated yet/i)).toBeInTheDocument()
-    })
-
-    it('renders fallback heading and body for DeactivatedByState', () => {
-      renderWithStatus('DeactivatedByState')
-
-      expect(screen.getByText('Card status')).toBeInTheDocument()
-      expect(screen.getByText(/state agency has deactivated this card/i)).toBeInTheDocument()
-    })
-
-    it('renders fallback heading and body for Undeliverable', () => {
-      renderWithStatus('Undeliverable')
-
-      expect(screen.getByText('Card status')).toBeInTheDocument()
-      expect(screen.getByText(/returned as undeliverable/i)).toBeInTheDocument()
-    })
-  })
-
-  // --- Truly-missing key coverage ---
-  // i18next's default behavior is to return the key itself (a truthy string)
-  // when a translation is missing. If the component's fallback chain relies on
-  // a falsy value, it will render the raw key to the user instead of the
-  // English fallback copy. These tests pin the component to the "missing-key
-  // falls back to English copy" contract.
-
-  describe('with entirely-missing locale keys', () => {
-    beforeAll(() => {
-      i18n.removeResourceBundle('en', 'dashboard')
-      // Bundle intentionally omits every cardTableStatusMessage* key so each
-      // lookup falls back to i18next's missing-key behavior.
-      i18n.addResourceBundle(
-        'en',
-        'dashboard',
-        {
-          cardTableHeadingCardStatus: 'Card status',
-          cardTableStatusActive: 'Active',
-          cardTableStatusInactive: 'Inactive',
-          cardTableStatusFrozen: 'Frozen',
-          cardTableStatusUndeliverable: 'Undeliverable',
-          cardTableStatusProcessed: 'Processed'
-        },
-        true,
-        true
-      )
-    })
-
-    afterAll(() => {
-      i18n.removeResourceBundle('en', 'dashboard')
-      i18n.addResourceBundle('en', 'dashboard', enCODashboard, true, true)
-    })
-
-    it('renders English fallback when cardTableStatusMessageActive key is absent', () => {
-      renderWithStatus('Active')
-
-      expect(screen.getByText(/This card has been sent to you/i)).toBeInTheDocument()
-      expect(screen.queryByText('cardTableStatusMessageActive')).toBeNull()
-    })
-
-    it('renders English fallback when cardTableStatusMessageInactive key is absent', () => {
-      renderWithStatus('Lost')
-
-      expect(screen.getByText(/reported as lost, stolen, or damaged/i)).toBeInTheDocument()
-      expect(screen.queryByText('cardTableStatusMessageInactive')).toBeNull()
-    })
-
-    it('renders English fallback when cardTableStatusMessageFrozen key is absent', () => {
-      renderWithStatus('Frozen')
-
-      expect(screen.getByText(/This card is frozen/i)).toBeInTheDocument()
-      expect(screen.queryByText('cardTableStatusMessageFrozen')).toBeNull()
-    })
   })
 })

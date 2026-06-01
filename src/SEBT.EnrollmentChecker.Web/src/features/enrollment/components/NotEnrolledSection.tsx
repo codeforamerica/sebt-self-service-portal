@@ -14,17 +14,19 @@ export function NotEnrolledSection({ results }: NotEnrolledSectionProps) {
 
   return (
     <section data-testid="not-enrolled-summary-box">
-      <h3 className="usa-summary-box__heading">{t('applyForSebtBody1')}</h3>
-      <ul>
+      <h4 className="usa-summary-box__heading">{t('applyForSebtBody1')}</h4>
+      <div className="usa-summary-box__text">
+        <ul>
         {results.map(child => (
-        <ChildResultCard
-          key={child.checkId}
-          firstName={child.firstName}
-          lastName={child.lastName}
-          displayStatus="notEnrolled"
-        />
-      ))}
-      </ul>
+          <ChildResultCard
+            key={child.checkId}
+            firstName={child.firstName}
+            lastName={child.lastName}
+            displayStatus="notEnrolled"
+          />
+        ))}
+        </ul>
+      </div>
     </section>
   )
 }

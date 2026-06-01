@@ -32,7 +32,7 @@ export function ReviewPage({ onSubmit }: ReviewPageProps) {
           height={75}
           aria-hidden="true"
         />
-        <h1 className="font-family-sans margin-top-1">{t('title')}</h1>
+        <h1 className="font-family-sans margin-top-1 text-primary">{t('title')}</h1>
         <p className="usa-prose">{t('body')}</p>
 
         <div className="margin-top-3">

@@ -94,7 +94,7 @@ public class SelfServiceRulesSettingsValidatorTests
                 { "SelfServiceRules:AddressUpdate:DisabledMessageKey", "addressUpdateDisabled" },
                 { "SelfServiceRules:AddressUpdate:ByIssuanceType:SummerEbt:Enabled", "true" },
                 { "SelfServiceRules:AddressUpdate:ByIssuanceType:SummerEbt:AllowedCardStatuses:0", "Active" },
-                { "SelfServiceRules:AddressUpdate:ByIssuanceType:SummerEbt:AllowedCardStatuses:1", "Mailed" },
+                { "SelfServiceRules:AddressUpdate:ByIssuanceType:SummerEbt:AllowedCardStatuses:1", "Processed" },
                 { "SelfServiceRules:AddressUpdate:ByIssuanceType:TanfEbtCard:Enabled", "false" },
                 { "SelfServiceRules:AddressUpdate:ByIssuanceType:SnapEbtCard:Enabled", "false" },
                 { "SelfServiceRules:CardReplacement:Enabled", "true" },
@@ -112,7 +112,7 @@ public class SelfServiceRulesSettingsValidatorTests
         Assert.Equal("addressUpdateDisabled", settings.AddressUpdate.DisabledMessageKey);
         Assert.True(settings.AddressUpdate.ByIssuanceType[IssuanceType.SummerEbt].Enabled);
         Assert.Contains(CardStatus.Active, settings.AddressUpdate.ByIssuanceType[IssuanceType.SummerEbt].AllowedCardStatuses);
-        Assert.Contains(CardStatus.Mailed, settings.AddressUpdate.ByIssuanceType[IssuanceType.SummerEbt].AllowedCardStatuses);
+        Assert.Contains(CardStatus.Processed, settings.AddressUpdate.ByIssuanceType[IssuanceType.SummerEbt].AllowedCardStatuses);
         Assert.False(settings.AddressUpdate.ByIssuanceType[IssuanceType.TanfEbtCard].Enabled);
 
         Assert.True(settings.CardReplacement.Enabled);
@@ -129,7 +129,7 @@ public class SelfServiceRulesSettingsValidatorTests
             DisabledMessageKey = "actionNavigationSelfServiceUnavailable",
             ByIssuanceType = new Dictionary<IssuanceType, IssuanceTypeRuleSettings>
             {
-                [IssuanceType.SummerEbt] = new() { Enabled = true, AllowedCardStatuses = [CardStatus.Active, CardStatus.Mailed] },
+                [IssuanceType.SummerEbt] = new() { Enabled = true, AllowedCardStatuses = [CardStatus.Active, CardStatus.Processed] },
                 [IssuanceType.TanfEbtCard] = new() { Enabled = false },
                 [IssuanceType.SnapEbtCard] = new() { Enabled = false },
                 [IssuanceType.Unknown] = new() { Enabled = false }
