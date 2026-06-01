@@ -35,7 +35,13 @@ export { SkipNav } from './components/layout/SkipNav'
 
 // State configuration
 export type { StateCode, StateConfig } from './lib/state'
-export { getState, getStateConfig, getStateName, getStateAssetPath } from './lib/state'
+export {
+  getState,
+  getStateConfig,
+  getStateName,
+  getSiteDisplayName,
+  getStateAssetPath
+} from './lib/state'
 
 // External links
 export type { StateLinks, LinkItem } from './lib/links'

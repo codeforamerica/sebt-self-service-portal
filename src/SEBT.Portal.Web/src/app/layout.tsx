@@ -11,7 +11,7 @@ import {
 } from '@/providers'
 import { GoogleAnalytics } from '@next/third-parties/google'
 import { AmplitudeAnalytics, MixpanelAnalytics, SiteImproveAnalytics } from '@sebt/analytics'
-import { getState, getStateName, SkipNav } from '@sebt/design-system'
+import { getSiteDisplayName, getState, getStateName, SkipNav } from '@sebt/design-system'
 import { Footer, Header, HelpSection } from '@sebt/design-system/client'
 import type { Metadata, Viewport } from 'next'
 import { headers } from 'next/headers'
@@ -20,6 +20,8 @@ import './styles.scss'
 
 const state = getState()
 const stateName = getStateName(state)
+const siteDisplayName = getSiteDisplayName(state)
+const portalTitle = `${siteDisplayName} Self-Service Portal`
 
 function getDefaultBaseUrl() {
   return process.env.NEXT_PUBLIC_BASE_URL ?? `https://sebt.${state}.gov`
@@ -43,8 +45,8 @@ export async function generateMetadata(): Promise<Metadata> {
 
   return {
     title: {
-      default: `${stateName} SUN Bucks Self-Service Portal`,
-      template: `%s | ${stateName} SUN Bucks`
+      default: portalTitle,
+      template: `%s | ${siteDisplayName}`
     },
     description: `Apply for Summer EBT (SUN Bucks) benefits in ${stateName}. Check eligibility, track your application status, and manage your benefits online.`,
     keywords: ['SUN Bucks', 'Summer EBT', 'SEBT', 'summer meals', 'food benefits', stateName],
@@ -64,21 +66,21 @@ export async function generateMetadata(): Promise<Metadata> {
       type: 'website',
       locale: 'en_US',
       url: baseUrl,
-      siteName: `${stateName} SUN Bucks`,
-      title: `${stateName} SUN Bucks Self-Service Portal`,
+      siteName: siteDisplayName,
+      title: portalTitle,
       description: `Apply for Summer EBT (SUN Bucks) benefits in ${stateName}. Check eligibility and manage your benefits online.`,
       images: [
         {
           url: `${baseUrl}/images/states/${state}/og-image.png`,
           width: 1200,
           height: 630,
-          alt: `${stateName} SUN Bucks Portal`
+          alt: `${siteDisplayName} Portal`
         }
       ]
     },
     twitter: {
       card: 'summary_large_image',
-      title: `${stateName} SUN Bucks Self-Service Portal`,
+      title: portalTitle,
       description: `Apply for Summer EBT (SUN Bucks) benefits in ${stateName}.`,
       images: [`${baseUrl}/images/states/${state}/og-image.png`]
     },

@@ -23,6 +23,8 @@ export interface StateConfig {
   name: string
   /** State-specific program name (e.g., 'DC SUN Bucks', 'Summer EBT') */
   programName: string
+  /** Branded site name for page titles and link previews (e.g., 'DC SUN Bucks', 'Colorado Summer EBT') */
+  siteDisplayName: string
   /** Alt text for the state seal image in the footer */
   sealAlt: string
   /** Languages offered in this state's UI (drives the LanguageSelector and `?lang=` validation) */
@@ -45,6 +47,7 @@ const stateConfigs: Record<StateCode, StateConfig> = {
   dc: {
     name: 'District of Columbia',
     programName: 'DC SUN Bucks',
+    siteDisplayName: 'DC SUN Bucks',
     sealAlt: 'Government of the District of Columbia - Muriel Bowser, Mayor',
     supportedLanguages: ['en', 'es', 'am'],
     actionButtonBg: 'bg-secondary',
@@ -53,6 +56,7 @@ const stateConfigs: Record<StateCode, StateConfig> = {
   co: {
     name: 'Colorado',
     programName: 'Summer EBT',
+    siteDisplayName: 'Colorado Summer EBT',
     sealAlt: 'Colorado Official State Web Portal',
     supportedLanguages: ['en', 'es'],
     languageSelectorClass: 'border-primary radius-md text-primary',
@@ -85,6 +89,13 @@ export function getState(): StateCode {
  */
 export function getStateName(state: StateCode): string {
   return getStateConfig(state).name
+}
+
+/**
+ * Branded site name for page titles, Open Graph, and link previews.
+ */
+export function getSiteDisplayName(state: StateCode): string {
+  return getStateConfig(state).siteDisplayName
 }
 
 /**

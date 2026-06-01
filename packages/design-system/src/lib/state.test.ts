@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import { getStateConfig } from './state'
+import { getStateConfig, getSiteDisplayName } from './state'
 
 describe('getStateConfig — supportedLanguages', () => {
   it('omits Amharic from the CO config', () => {
@@ -17,5 +17,15 @@ describe('getStateConfig — supportedLanguages', () => {
 
   it('exposes English, Spanish, and Amharic for DC', () => {
     expect(getStateConfig('dc').supportedLanguages).toEqual(['en', 'es', 'am'])
+  })
+})
+
+describe('getSiteDisplayName', () => {
+  it('returns Colorado Summer EBT for CO', () => {
+    expect(getSiteDisplayName('co')).toBe('Colorado Summer EBT')
+  })
+
+  it('returns DC SUN Bucks for DC', () => {
+    expect(getSiteDisplayName('dc')).toBe('DC SUN Bucks')
   })
 })
