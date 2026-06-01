@@ -49,7 +49,7 @@ const stateConfigs: Record<StateCode, StateConfig> = {
   dc: {
     name: 'District of Columbia',
     programName: 'DC SUN Bucks',
-    siteDisplayName: 'DC SUN Bucks',
+    siteDisplayName: 'District of Columbia SUN Bucks',
     portalMetadataDescription:
       'Apply for Summer EBT (SUN Bucks) benefits in District of Columbia. Check eligibility, track your application status, and manage your benefits online.',
     sealAlt: 'Government of the District of Columbia - Muriel Bowser, Mayor',

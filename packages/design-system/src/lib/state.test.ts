@@ -25,8 +25,8 @@ describe('getSiteDisplayName', () => {
     expect(getSiteDisplayName('co')).toBe('Colorado Summer EBT')
   })
 
-  it('returns DC SUN Bucks for DC', () => {
-    expect(getSiteDisplayName('dc')).toBe('DC SUN Bucks')
+  it('returns District of Columbia SUN Bucks for DC', () => {
+    expect(getSiteDisplayName('dc')).toBe('District of Columbia SUN Bucks')
   })
 })
 
