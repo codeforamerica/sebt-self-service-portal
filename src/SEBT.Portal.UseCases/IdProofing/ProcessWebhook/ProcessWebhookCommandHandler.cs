@@ -247,15 +247,14 @@ public class ProcessWebhookCommandHandler(
             user.IalLevel,
             idProofingEligibilitySettings.Value.RequireQualifyingHouseholdForSocure);
 
-        var household = await IdProofingHouseholdLookup.TryGetByEmailForCohortCheckAsync(
+        return await IdProofingHouseholdLookup.ResolveOffboardingReasonAsync(
             householdRepository,
             logger,
             user,
             warehouseIal,
             userId,
+            defaultReason,
             cancellationToken);
-
-        return CoLoadedCohortClassifier.ResolveOffboardingReason(defaultReason, household);
     }
 
     private async Task UpdateUserProofingStatus(Guid userId, CancellationToken cancellationToken)

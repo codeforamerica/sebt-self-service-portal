@@ -295,6 +295,7 @@ public class ProcessWebhookCommandHandlerTests
                 Arg.Any<PiiVisibility>(),
                 Arg.Any<UserIalLevel>(),
                 Arg.Any<Guid?>(),
+                Arg.Any<bool>(),
                 Arg.Any<CancellationToken>())
             .Returns(new HouseholdData
             {

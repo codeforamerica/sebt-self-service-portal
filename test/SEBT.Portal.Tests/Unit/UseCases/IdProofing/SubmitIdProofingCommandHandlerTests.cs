@@ -433,6 +433,7 @@ public class SubmitIdProofingCommandHandlerTests
                 Arg.Any<PiiVisibility>(),
                 Arg.Any<UserIalLevel>(),
                 Arg.Any<Guid?>(),
+                Arg.Any<bool>(),
                 Arg.Any<CancellationToken>())
             .Returns(new HouseholdData
             {
@@ -474,6 +475,7 @@ public class SubmitIdProofingCommandHandlerTests
                 Arg.Any<PiiVisibility>(),
                 Arg.Any<UserIalLevel>(),
                 Arg.Any<Guid?>(),
+                Arg.Any<bool>(),
                 Arg.Any<CancellationToken>())
             .Returns(new HouseholdData
             {

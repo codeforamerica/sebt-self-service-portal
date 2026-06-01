@@ -106,19 +106,18 @@ public class SubmitIdProofingCommandHandler(
             logger.LogInformation(
                 "User {UserId} has reached the maximum ID proofing attempts ({MaxAttempts})",
                 command.UserId, maxAttempts);
-            var householdForMaxAttempts = await IdProofingHouseholdLookup.TryGetByEmailForCohortCheckAsync(
-                householdRepository,
-                logger,
-                user,
-                warehouseIalForEmailReads,
-                command.UserId,
-                cancellationToken);
             return Result<SubmitIdProofingResponse>.Success(
-                new SubmitIdProofingResponse("failed",
+                new SubmitIdProofingResponse(
+                    "failed",
                     AllowIdRetry: false,
-                    OffboardingReason: CoLoadedCohortClassifier.ResolveOffboardingReason(
+                    OffboardingReason: await IdProofingHouseholdLookup.ResolveOffboardingReasonAsync(
+                        householdRepository,
+                        logger,
+                        user,
+                        warehouseIalForEmailReads,
+                        command.UserId,
                         "maxAttemptsReached",
-                        householdForMaxAttempts)));
+                        cancellationToken)));
         }
 
         // Co-loaded-only households still need a SNAP/TANF identifier so we can household them;

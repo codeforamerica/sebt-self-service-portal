@@ -26,6 +26,7 @@ internal static class IdProofingHouseholdLookup
                 new PiiVisibility(IncludeAddress: false, IncludeEmail: false, IncludePhone: false),
                 warehouseIalForEmailReads,
                 portalUserId,
+                includeCardService: false,
                 cancellationToken);
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
@@ -37,5 +38,25 @@ internal static class IdProofingHouseholdLookup
                 portalUserId);
             return null;
         }
+    }
+
+    internal static async Task<string> ResolveOffboardingReasonAsync(
+        IHouseholdRepository householdRepository,
+        ILogger logger,
+        User user,
+        UserIalLevel warehouseIalForEmailReads,
+        Guid portalUserId,
+        string defaultReason,
+        CancellationToken cancellationToken)
+    {
+        var household = await TryGetByEmailForCohortCheckAsync(
+            householdRepository,
+            logger,
+            user,
+            warehouseIalForEmailReads,
+            portalUserId,
+            cancellationToken);
+
+        return CoLoadedCohortClassifier.ResolveOffboardingReason(defaultReason, household);
     }
 }
