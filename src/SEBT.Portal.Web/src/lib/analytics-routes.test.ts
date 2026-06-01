@@ -24,7 +24,15 @@ describe('portalRoutes', () => {
       '/profile/address',
       '/profile/address/replacement-cards',
       '/profile/address/replacement-cards/select',
-      '/profile/address/info'
+      '/profile/address/info',
+      '/profile/address/suggested-address',
+      '/profile/address/address-not-found',
+      '/profile/address/replacement-cards/select/confirm',
+      '/cards/replace',
+      '/cards/replace/address',
+      '/cards/replace/confirm',
+      '/cards/request',
+      '/cards/request/confirm'
     ]
 
     for (const path of expectedPaths) {

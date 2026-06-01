@@ -321,7 +321,6 @@ public class MockHouseholdRepositoryTests
         Assert.NotNull(app.BenefitExpirationDate);
         Assert.Equal("APP-2025-01-100001", app.ApplicationNumber);
         Assert.Equal("CASE-100001", app.CaseNumber);
-        Assert.Equal("1234", app.Last4DigitsOfCard);
         Assert.Equal(IssuanceType.SummerEbt, app.IssuanceType);
         Assert.NotNull(result.AddressOnFile);
         Assert.Equal("123 Main Street", result.AddressOnFile.StreetAddress1);
@@ -340,10 +339,9 @@ public class MockHouseholdRepositoryTests
         Assert.NotNull(result);
         var app = result.Applications.First();
         Assert.Equal(ApplicationStatus.Approved, app.ApplicationStatus);
-        Assert.Equal(CardStatus.NotActivated, app.CardStatus);
         Assert.Equal(IssuanceType.SummerEbt, app.IssuanceType);
         Assert.Single(result.SummerEbtCases);
-        Assert.Equal("NotActivated", result.SummerEbtCases[0].EbtCardStatus);
+        Assert.Equal(CardStatus.NotActivated, result.SummerEbtCases[0].EbtCardStatus);
         Assert.Equal(IssuanceType.SummerEbt, result.SummerEbtCases[0].IssuanceType);
     }
 
@@ -360,10 +358,9 @@ public class MockHouseholdRepositoryTests
         Assert.NotNull(result);
         var app = result.Applications.First();
         Assert.Equal(ApplicationStatus.Approved, app.ApplicationStatus);
-        Assert.Equal(CardStatus.DeactivatedByState, app.CardStatus);
         Assert.Equal(IssuanceType.SummerEbt, app.IssuanceType);
         Assert.Single(result.SummerEbtCases);
-        Assert.Equal("DeactivatedByState", result.SummerEbtCases[0].EbtCardStatus);
+        Assert.Equal(CardStatus.DeactivatedByState, result.SummerEbtCases[0].EbtCardStatus);
         Assert.Equal(IssuanceType.SummerEbt, result.SummerEbtCases[0].IssuanceType);
     }
 
@@ -380,10 +377,9 @@ public class MockHouseholdRepositoryTests
         Assert.NotNull(result);
         var app = result.Applications.First();
         Assert.Equal(ApplicationStatus.Approved, app.ApplicationStatus);
-        Assert.Equal(CardStatus.Active, app.CardStatus);
         Assert.Equal(IssuanceType.SummerEbt, app.IssuanceType);
         Assert.Single(result.SummerEbtCases);
-        Assert.Equal("Active", result.SummerEbtCases[0].EbtCardStatus);
+        Assert.Equal(CardStatus.Active, result.SummerEbtCases[0].EbtCardStatus);
         Assert.Equal(IssuanceType.SummerEbt, result.SummerEbtCases[0].IssuanceType);
     }
 
@@ -664,7 +660,6 @@ public class MockHouseholdRepositoryTests
         Assert.Equal("John", app.Children[0].FirstName);
         Assert.Equal("Doe", app.Children[0].LastName);
         Assert.Equal("APP-2025-01-100001", app.ApplicationNumber);
-        Assert.Equal("1234", app.Last4DigitsOfCard);
         Assert.NotNull(result.AddressOnFile);
         Assert.Equal("123 Main Street", result.AddressOnFile.StreetAddress1);
     }
@@ -753,7 +748,7 @@ public class MockHouseholdRepositoryTests
         Assert.NotNull(result);
         Assert.Single(result.SummerEbtCases);
         var sebtCase = result.SummerEbtCases[0];
-        Assert.Equal("Deactivated", sebtCase.EbtCardStatus);
+        Assert.Equal(CardStatus.DeactivatedByState, sebtCase.EbtCardStatus);
         Assert.NotNull(sebtCase.BenefitExpirationDate);
         Assert.True(sebtCase.BenefitExpirationDate < _timeProvider.GetUtcNow().UtcDateTime);
     }

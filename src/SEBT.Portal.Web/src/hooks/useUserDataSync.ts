@@ -4,9 +4,8 @@ import { useDataLayer } from '@sebt/analytics'
 import { useEffect } from 'react'
 
 import { useAuth } from '@/features/auth/context'
+import { ANALYTICS_SCOPE } from '@/lib/analytics-helpers'
 import { IdProofingStatus, isIdProofedForAnalytics } from '@/lib/idProofingStatus'
-
-const ANALYTICS_SCOPE: string[] = ['default', 'analytics']
 
 /**
  * Syncs user-level data from the current session into the data layer.

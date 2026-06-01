@@ -9,11 +9,31 @@ import enCoResult from '@/content/locales/en/co/result.json'
 import enDcResult from '@/content/locales/en/dc/result.json'
 import type { Address, SummerEbtCase } from '@/features/household/api/schema'
 import { server } from '@/mocks/server'
+import { AnalyticsEvents } from '@sebt/analytics'
 
 import { ConfirmRequest } from './ConfirmRequest'
 
 const mockPush = vi.fn()
 const mockBack = vi.fn()
+const mockSetPageData = vi.fn()
+const mockTrackEvent = vi.fn()
+
+vi.mock('@sebt/analytics', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@sebt/analytics')>()
+  return {
+    ...actual,
+    useDataLayer: () => ({
+      setPageData: mockSetPageData,
+      trackEvent: mockTrackEvent,
+      pageLoad: vi.fn(),
+      setPageCategory: vi.fn(),
+      setPageAttribute: vi.fn(),
+      setUserData: vi.fn(),
+      setUserProfile: vi.fn(),
+      get: vi.fn()
+    })
+  }
+})
 
 vi.mock('next/navigation', () => ({
   useRouter: () => ({
@@ -59,9 +79,6 @@ const TEST_CASES: SummerEbtCase[] = [
     ebtCardLastFour: '1234',
     ebtCardStatus: 'Active',
     cardRequestedAt: '2026-01-01T00:00:00Z',
-    cardMailedAt: '2026-01-03T00:00:00Z',
-    cardActivatedAt: '2026-01-08T00:00:00Z',
-    cardDeactivatedAt: null,
     allowAddressChange: true,
     allowCardReplacement: true
   },
@@ -75,9 +92,6 @@ const TEST_CASES: SummerEbtCase[] = [
     ebtCardLastFour: '1234',
     ebtCardStatus: 'Active',
     cardRequestedAt: '2026-01-01T00:00:00Z',
-    cardMailedAt: '2026-01-03T00:00:00Z',
-    cardActivatedAt: '2026-01-08T00:00:00Z',
-    cardDeactivatedAt: null,
     allowAddressChange: true,
     allowCardReplacement: true
   }
@@ -108,6 +122,8 @@ describe('ConfirmRequest', () => {
   beforeEach(() => {
     mockPush.mockClear()
     mockBack.mockClear()
+    mockSetPageData.mockClear()
+    mockTrackEvent.mockClear()
     mockState = 'dc'
     // Restore DC 'result' bundle in case a prior test swapped to CO. addResourceBundle
     // with deep+overwrite ensures we get the DC values regardless of previous state.
@@ -190,6 +206,10 @@ describe('ConfirmRequest', () => {
     await waitFor(() => {
       expect(mockPush).toHaveBeenCalledWith('/dashboard?flash=card_replaced')
     })
+    expect(mockSetPageData).toHaveBeenCalledWith('card_replacement_status', 'success')
+    expect(mockSetPageData).toHaveBeenCalledWith('error_code', null)
+    expect(mockTrackEvent).toHaveBeenCalledWith(AnalyticsEvents.CARD_REPLACEMENT_SUBMIT)
+    expect(mockTrackEvent).not.toHaveBeenCalledWith(AnalyticsEvents.CARD_REPLACEMENT_ERROR)
   })
 
   it('shows error message when submission fails', async () => {
@@ -207,6 +227,10 @@ describe('ConfirmRequest', () => {
     await waitFor(() => {
       expect(screen.getByText(/issue requesting/i)).toBeInTheDocument()
     })
+    expect(mockSetPageData).toHaveBeenCalledWith('card_replacement_status', 'error')
+    expect(mockSetPageData).toHaveBeenCalledWith('error_code', 'INVALID_INPUT')
+    expect(mockTrackEvent).toHaveBeenCalledWith(AnalyticsEvents.CARD_REPLACEMENT_SUBMIT)
+    expect(mockTrackEvent).toHaveBeenCalledWith(AnalyticsEvents.CARD_REPLACEMENT_ERROR)
   })
 
   it('sends caseRefs with applicationId/applicationStudentId from each case', async () => {

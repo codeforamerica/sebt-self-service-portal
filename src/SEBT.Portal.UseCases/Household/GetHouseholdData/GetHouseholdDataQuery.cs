@@ -15,4 +15,10 @@ public class GetHouseholdDataQuery : IQuery<Core.Models.Household.HouseholdData>
     /// </summary>
     [Required]
     public required ClaimsPrincipal User { get; init; }
+
+    /// <summary>
+    /// When false, state connectors that support it (CO CBMS) skip the FIS card lookup.
+    /// Honored only when <see cref="FeatureFlags.DeferEbtCardDataLoading"/> is enabled.
+    /// </summary>
+    public bool IncludeCardDetails { get; init; } = true;
 }

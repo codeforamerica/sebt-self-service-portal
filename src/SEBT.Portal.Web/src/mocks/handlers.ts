@@ -46,6 +46,7 @@ export const TEST_FEATURE_FLAGS = {
   show_application_number: true,
   show_case_number: true,
   show_card_last4: true,
+  defer_ebt_card_data_loading: false,
   enable_beta_banner: false
 } as const
 
@@ -85,12 +86,6 @@ export const TEST_HOUSEHOLD_DATA = {
       applicationStatus: 'Approved',
       benefitIssueDate: '2026-01-08T00:00:00Z',
       benefitExpirationDate: '2026-03-19T00:00:00Z',
-      last4DigitsOfCard: '1234',
-      cardStatus: 'Active',
-      cardRequestedAt: '2026-01-01T00:00:00Z',
-      cardMailedAt: '2026-01-03T00:00:00Z',
-      cardActivatedAt: '2026-01-08T00:00:00Z',
-      cardDeactivatedAt: null,
       issuanceType: 3, // SnapEbtCard
       children: [
         { caseNumber: 456001, firstName: 'Sophia', lastName: 'Martinez' },
@@ -338,10 +333,25 @@ export const handlers = [
   })(),
 
   // Household data endpoint
-  http.get('/api/household/data', async () => {
+  http.get('/api/household/data', async ({ request }) => {
     await delay(50)
 
-    return HttpResponse.json(TEST_HOUSEHOLD_DATA)
+    const url = new URL(request.url)
+    const includeCardDetails = url.searchParams.get('includeCardDetails') !== 'false'
+    if (includeCardDetails) {
+      return HttpResponse.json(TEST_HOUSEHOLD_DATA)
+    }
+
+    return HttpResponse.json({
+      ...TEST_HOUSEHOLD_DATA,
+      summerEbtCases: TEST_HOUSEHOLD_DATA.summerEbtCases.map((c) => ({
+        ...c,
+        ebtCardLastFour: undefined,
+        ebtCardStatus: 'Unknown',
+        ebtCardIssueDate: undefined,
+        ebtCardBalance: undefined
+      }))
+    })
   }),
 
   // Address update endpoint

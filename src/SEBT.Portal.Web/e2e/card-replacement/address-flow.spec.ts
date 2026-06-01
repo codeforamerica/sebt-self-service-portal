@@ -43,8 +43,8 @@ test.describe('Address update flow', () => {
     await injectAuth(page)
     await setupApiRoutes(page, {
       householdData: makeHouseholdData({
-        summerEbtCases: [makeSummerEbtCase({ issuanceType: 1 })],
-        applications: [makeApplication({ cardRequestedAt: OLD_CARD_DATE, issuanceType: 1 })]
+        summerEbtCases: [makeSummerEbtCase({ issuanceType: 1, cardRequestedAt: OLD_CARD_DATE })],
+        applications: [makeApplication({ issuanceType: 1 })]
       })
     })
   })

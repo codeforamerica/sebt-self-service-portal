@@ -10,22 +10,6 @@ const APPLICATION_STATUS_MAP: Record<number, string> = {
   5: 'Cancelled'
 }
 
-const CARD_STATUS_MAP: Record<number, string> = {
-  0: 'Requested',
-  1: 'Mailed',
-  2: 'Active',
-  3: 'Deactivated',
-  4: 'Unknown',
-  5: 'Processed',
-  6: 'Lost',
-  7: 'Stolen',
-  8: 'Damaged',
-  9: 'DeactivatedByState',
-  10: 'NotActivated',
-  11: 'Frozen',
-  12: 'Undeliverable'
-}
-
 const ISSUANCE_TYPE_MAP: Record<number, string> = {
   0: 'Unknown',
   1: 'SummerEbt',
@@ -102,35 +86,22 @@ export function toAnalyticsCohort(cohort: CoLoadedCohort): string {
   }
 }
 
-const CARD_STATUS_STRING_MAP: Record<string, string> = Object.fromEntries(
-  Object.values(CARD_STATUS_MAP).map((v) => [v.toUpperCase(), v])
-)
+export const CARD_STATUSES = [
+  'Active',
+  'Damaged',
+  'DeactivatedByState',
+  'Frozen',
+  'Lost',
+  'NotActivated',
+  'Processed',
+  'Stolen',
+  'Undeliverable',
+  'Unknown'
+] as const
 
-export const CardStatusSchema = z.preprocess(
-  (val) =>
-    typeof val === 'number'
-      ? (CARD_STATUS_MAP[val as keyof typeof CARD_STATUS_MAP] ?? 'Unknown')
-      : typeof val === 'string'
-        ? (CARD_STATUS_STRING_MAP[val.toUpperCase()] ?? (val || 'Unknown'))
-        : val,
-  z.enum([
-    'Unknown',
-    'Requested',
-    'Mailed',
-    'Active',
-    'Deactivated',
-    'Processed',
-    'Lost',
-    'Stolen',
-    'Damaged',
-    'DeactivatedByState',
-    'NotActivated',
-    'Frozen',
-    'Undeliverable'
-  ])
-)
+export type CardStatus = (typeof CARD_STATUSES)[number]
 
-export type CardStatus = z.infer<typeof CardStatusSchema>
+export const CardStatusSchema = z.enum(CARD_STATUSES).nullable().optional()
 
 /**
  * UI-facing card statuses displayed to the user.
@@ -152,7 +123,6 @@ export function toUiCardStatus(cardStatus: CardStatus): UiCardStatus {
     case 'Lost':
     case 'Stolen':
     case 'Damaged':
-    case 'Deactivated':
     case 'DeactivatedByState':
     case 'NotActivated':
       return 'Inactive'
@@ -160,11 +130,7 @@ export function toUiCardStatus(cardStatus: CardStatus): UiCardStatus {
       return 'Frozen'
     case 'Undeliverable':
       return 'Undeliverable'
-    case 'Requested':
-    case 'Mailed':
     default:
-      // Requested and Mailed are not in the status display spec (DC-95);
-      // CardStatusDisplay returns null for these before this value is used.
       return 'Active'
   }
 }
@@ -210,20 +176,16 @@ export const SummerEbtCaseSchema = z.object({
   ebtCaseNumber: z.string().nullable().optional(),
   caseDisplayNumber: z.string().nullable().optional(),
   ebtCardLastFour: z.string().nullable().optional(),
-  ebtCardStatus: CardStatusSchema.nullable().optional(),
+  ebtCardStatus: CardStatusSchema,
   ebtCardIssueDate: z.string().nullable().optional(),
   ebtCardBalance: z.number().nullable().optional(),
   benefitAvailableDate: z.string().nullable().optional(),
   benefitExpirationDate: z.string().nullable().optional(),
   eligibilitySource: z.string().nullable().optional(),
   issuanceType: IssuanceTypeSchema.nullable().optional(),
-  // Card lifecycle timestamps — not yet populated by any state connector backend.
-  // TODO: Add these fields to the state-connector SummerEbtCase interface model
-  // so connectors can provide card fulfillment timeline data for enrolled children.
+  // Cooldown timestamp persisted by the portal: when set, indicates a recent
+  // replacement request and gates the timeline UI in ChildCard.
   cardRequestedAt: z.string().nullable().optional(),
-  cardMailedAt: z.string().nullable().optional(),
-  cardActivatedAt: z.string().nullable().optional(),
-  cardDeactivatedAt: z.string().nullable().optional(),
   allowAddressChange: z.boolean().optional().default(true),
   allowCardReplacement: z.boolean().optional().default(true)
 })
@@ -237,12 +199,6 @@ export const ApplicationSchema = z.object({
   applicationDate: z.string().nullable().optional(),
   benefitIssueDate: z.string().nullable().optional(),
   benefitExpirationDate: z.string().nullable().optional(),
-  last4DigitsOfCard: z.string().nullable().optional(),
-  cardStatus: CardStatusSchema.nullable().optional(),
-  cardRequestedAt: z.string().nullable().optional(),
-  cardMailedAt: z.string().nullable().optional(),
-  cardActivatedAt: z.string().nullable().optional(),
-  cardDeactivatedAt: z.string().nullable().optional(),
   children: z.array(ChildSchema),
   childrenOnApplication: z.number(),
   issuanceType: IssuanceTypeSchema.nullable().optional()
