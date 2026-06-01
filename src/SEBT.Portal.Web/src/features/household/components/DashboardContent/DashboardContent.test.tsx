@@ -339,6 +339,30 @@ describe('DashboardContent', () => {
     expect(document.getElementById('help-section-heading')).not.toBeNull()
   })
 
+  it('hides the Check existing applications CTA when the household has cases but no applications', async () => {
+    server.use(
+      http.get('/api/household/data', () => {
+        return HttpResponse.json({
+          ...TEST_HOUSEHOLD_DATA,
+          applications: []
+        })
+      })
+    )
+
+    renderWithProviders(<DashboardContent />)
+
+    await waitFor(() => {
+      expect(screen.getByText('Sophia Martinez')).toBeInTheDocument()
+    })
+
+    // No applications: the section (and its scroll anchor) must not render, so the
+    // CTA that scrolls to it must be hidden.
+    expect(screen.queryByText('Check existing applications')).toBeNull()
+    expect(document.getElementById('applications-heading')).toBeNull()
+    // The case-based CTA still renders because there are enrolled cases.
+    expect(screen.getByText('Check existing cards')).toBeInTheDocument()
+  })
+
   describe('analytics tagging when a co-loaded user lands on an empty dashboard', () => {
     it('tags household_reason="no_children" when a co-loaded user lands on an empty dashboard', async () => {
       mockAuthSession.isCoLoaded = true
