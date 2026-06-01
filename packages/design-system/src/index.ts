@@ -40,6 +40,7 @@ export {
   getStateConfig,
   getStateName,
   getSiteDisplayName,
+  getPortalMetadataDescription,
   getStateAssetPath
 } from './lib/state'
 

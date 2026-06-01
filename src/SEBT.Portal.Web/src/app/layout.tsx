@@ -11,7 +11,13 @@ import {
 } from '@/providers'
 import { GoogleAnalytics } from '@next/third-parties/google'
 import { AmplitudeAnalytics, MixpanelAnalytics, SiteImproveAnalytics } from '@sebt/analytics'
-import { getSiteDisplayName, getState, getStateName, SkipNav } from '@sebt/design-system'
+import {
+  getPortalMetadataDescription,
+  getSiteDisplayName,
+  getState,
+  getStateName,
+  SkipNav
+} from '@sebt/design-system'
 import { Footer, Header, HelpSection } from '@sebt/design-system/client'
 import type { Metadata, Viewport } from 'next'
 import { headers } from 'next/headers'
@@ -21,6 +27,7 @@ import './styles.scss'
 const state = getState()
 const stateName = getStateName(state)
 const siteDisplayName = getSiteDisplayName(state)
+const portalMetadataDescription = getPortalMetadataDescription(state)
 const portalTitle = `${siteDisplayName} Self-Service Portal`
 
 function getDefaultBaseUrl() {
@@ -48,7 +55,7 @@ export async function generateMetadata(): Promise<Metadata> {
       default: portalTitle,
       template: `%s | ${siteDisplayName}`
     },
-    description: `Apply for Summer EBT (SUN Bucks) benefits in ${stateName}. Check eligibility, track your application status, and manage your benefits online.`,
+    description: portalMetadataDescription,
     keywords: ['SUN Bucks', 'Summer EBT', 'SEBT', 'summer meals', 'food benefits', stateName],
     authors: [{ name: `${stateName} Government` }],
     robots: {
@@ -68,7 +75,7 @@ export async function generateMetadata(): Promise<Metadata> {
       url: baseUrl,
       siteName: siteDisplayName,
       title: portalTitle,
-      description: `Apply for Summer EBT (SUN Bucks) benefits in ${stateName}. Check eligibility and manage your benefits online.`,
+      description: portalMetadataDescription,
       images: [
         {
           url: `${baseUrl}/images/states/${state}/og-image.png`,
@@ -81,7 +88,7 @@ export async function generateMetadata(): Promise<Metadata> {
     twitter: {
       card: 'summary_large_image',
       title: portalTitle,
-      description: `Apply for Summer EBT (SUN Bucks) benefits in ${stateName}.`,
+      description: portalMetadataDescription,
       images: [`${baseUrl}/images/states/${state}/og-image.png`]
     },
     icons: {
