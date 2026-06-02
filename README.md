@@ -147,7 +147,11 @@ When no Redis connection string is configured, the application falls back to in-
 
 ### Jaeger (Local OpenTelemetry Tracing)
 
-[Jaeger](https://github.com/jaegertracing/jaeger) acts as a local OTLP collector for OpenTelemetry tracing. The default configuration for the portal sends traces and metrics via OTLP over gRPC to http://localhost:4317, which is the standard port. Local traces can be viewed in the Jaeger UI at [http://localhost:16686](http://localhost:16686).
+[Jaeger](https://github.com/jaegertracing/jaeger) acts as a local OTLP collector for OpenTelemetry tracing. Both the Next.js frontend (`sebt-portal-web`) and the .NET API (`sebt-portal-api`) send traces and metrics via OTLP over gRPC to `http://localhost:4317` by default. Local traces can be viewed in the Jaeger UI at [http://localhost:16686](http://localhost:16686).
+
+**Distributed traces:** The Next.js proxy route creates an `http.proxy` span for every request it forwards. `UndiciInstrumentation` automatically injects a W3C `traceparent` header into the outgoing fetch, so the .NET backend's spans become children of the Next.js span. In Jaeger, a single browser request appears as one connected trace spanning both services — no manual correlation needed.
+
+To disable tracing in a specific environment, set `OTEL_TRACES_EXPORTER=none` (or `OTEL_METRICS_EXPORTER=none` for metrics). See [docs/adr/0017-opentelemetry-distributed-tracing.md](./docs/adr/0017-opentelemetry-distributed-tracing.md) for the full design rationale.
 
 ### Local Build & Test (Debug mode)
 
