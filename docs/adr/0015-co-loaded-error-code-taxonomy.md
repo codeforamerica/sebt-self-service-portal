@@ -21,16 +21,35 @@ We adopt a **fixed taxonomy of co-loaded outcome codes** carried on the analytic
 | `NOT_FOUND` | Backend returned 404 — no household record exists for this user. | Empty-state alert (apply CTA). |
 | `NO_CHILDREN` | 200 with zero `summerEbtCases` and zero `applications`. Distinct from `NOT_FOUND`: a record exists, none of its members qualify. | Empty-state alert. |
 | `AUTH_FAILURE` | 401 / 403. The auth middleware normally redirects before the dashboard renders, but the code is reserved so middleware bypasses (e.g. test seams) still tag correctly. | Login redirect. |
+| `RATE_LIMIT` | 429 — the client hit a rate limit (e.g. OTP or API throttling). | Rate-limit / try-again messaging. |
 | `TECH_ERROR` | Anything else — network failure, 5xx, schema-parse rejection, an unparseable response. The catch-all bucket. | Generic error alert with retry guidance. |
-| `INVALID_INPUT` | Reserved for forms that submit user-entered identifiers (ID proofing, address update). Maps to a 400 with `ValidationProblemDetails`. | Inline field-level errors. |
+| `INVALID_INPUT` | Form submissions where the server rejects the request as client error (400 with `ValidationProblemDetails`, business-rule 400s such as card-replacement cooldown). | Inline field-level errors or flow-specific error screens. |
 
 Codes are **uppercase snake_case strings**, used verbatim across:
 
-- **Frontend analytics** — `setPageData('error_code', code)` immediately before the `household_result` (or equivalent) event fires. See `DashboardContent.tsx`.
+- **Frontend analytics** — `setPageData('error_code', code)` immediately before the relevant event fires. Dashboard lookups use `DashboardContent.tsx`; self-service address update and card replacement use `apiErrorCodeFromUnknown()` in `analytics-helpers.ts`.
 - **Backend logs** — structured Serilog field `OutcomeCode` (Pascal-cased to match Serilog conventions) attached to every co-loaded lookup.
 - **i18n / user copy** — when a user-facing message varies by code, locale keys take a `.{code}` suffix (e.g. `dashboard.errorBody.NO_CHILDREN`). When the same generic copy is acceptable across codes, we reuse a single key — the PRD calls out shared error screens for the dashboard's first-error path.
 
 Codes are **closed over the union above**. New codes require an ADR amendment and updates in all three layers.
+
+### HTTP status mapping for form submissions
+
+Self-service flows (address update, card replacement) map API failures through `apiErrorCodeFromUnknown()` in `src/SEBT.Portal.Web/src/lib/analytics-helpers.ts`:
+
+| HTTP status | `error_code` |
+|---|---|
+| 401 / 403 | `AUTH_FAILURE` |
+| 404 | `NOT_FOUND` |
+| 429 | `RATE_LIMIT` |
+| Other 4xx | `INVALID_INPUT` |
+| 5xx, network, non-`ApiError` | `TECH_ERROR` |
+
+The dashboard read path (`DashboardContent.tsx`) intentionally maps all non-404/401/403 4xx responses to `TECH_ERROR` because it does not submit user input — only the form paths above emit `INVALID_INPUT` for generic 4xx.
+
+### Address validation outcome codes on submit
+
+When PUT `/household/address` returns a structured validation outcome (HTTP 422 with `AddressUpdateResponse`), the `address_update_submit` event carries the backend `reason` uppercased in `page.error_code` (e.g. `ABBREVIATED`, `BLOCKED`). These are **validation outcome labels**, not additions to the closed taxonomy above: they pass through from the backend validation layer and do not emit a separate `address_update_error` event. API transport failures on the same endpoint still use the HTTP mapping table and emit both `address_update_submit` and `address_update_error`.
 
 ## Consequences
 
@@ -47,4 +66,4 @@ Codes are **closed over the union above**. New codes require an ADR amendment an
 
 **Neutral**
 
-- Codes are defined where they're emitted, not in a shared schema package. This keeps the JS bundle and the .NET assemblies decoupled. The taxonomy in this ADR is the contract; the strings are duplicated by design (frontend in `DashboardContent.tsx` / form components, backend in the connector logging path).
+- Codes are defined where they're emitted, not in a shared schema package. This keeps the JS bundle and the .NET assemblies decoupled. The taxonomy in this ADR is the contract; the strings are duplicated by design (frontend in `DashboardContent.tsx` / `analytics-helpers.ts`, backend in the connector logging path).

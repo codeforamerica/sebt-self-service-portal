@@ -32,7 +32,7 @@ export function COLoginPage({ state }: { state: StateCode }) {
         <section aria-labelledby="login-title">
           <h1
             id="login-title"
-            className="font-sans-xl text-bold line-height-sans-1 margin-bottom-3 text-primary-dark"
+            className="font-sans-xl text-bold line-height-sans-1 margin-bottom-3 text-primary"
           >
             {t('title')}
           </h1>

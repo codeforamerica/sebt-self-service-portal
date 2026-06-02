@@ -449,6 +449,7 @@ FodyWeavers.xsd
 CLAUDE.local.md
 .claude/settings.local.json
 .claude/qa-summary.*
+.claude/scheduled_tasks.lock
 
 # Developer-local workflow artifacts (branch context, PR reviews, screenshots)
 docs/.local/

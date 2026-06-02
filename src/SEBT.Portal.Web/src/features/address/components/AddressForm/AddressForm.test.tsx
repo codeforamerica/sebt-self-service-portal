@@ -6,11 +6,31 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import type { Address } from '@/features/household/api'
 import { server } from '@/mocks/server'
+import { AnalyticsEvents } from '@sebt/analytics'
 
 import { AddressFlowProvider } from '../../context'
 import { AddressForm } from './AddressForm'
 
 const mockPush = vi.fn()
+const mockSetPageData = vi.fn()
+const mockTrackEvent = vi.fn()
+
+vi.mock('@sebt/analytics', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@sebt/analytics')>()
+  return {
+    ...actual,
+    useDataLayer: () => ({
+      setPageData: mockSetPageData,
+      trackEvent: mockTrackEvent,
+      pageLoad: vi.fn(),
+      setPageCategory: vi.fn(),
+      setPageAttribute: vi.fn(),
+      setUserData: vi.fn(),
+      setUserProfile: vi.fn(),
+      get: vi.fn()
+    })
+  }
+})
 
 vi.mock('next/navigation', () => ({
   useRouter: () => ({
@@ -88,6 +108,8 @@ function getPostalInput() {
 describe('AddressForm', () => {
   beforeEach(() => {
     mockPush.mockClear()
+    mockSetPageData.mockClear()
+    mockTrackEvent.mockClear()
     mockState = 'dc'
 
     // Portal target for site-level alerts
@@ -415,6 +437,10 @@ describe('AddressForm', () => {
     await waitFor(() => {
       expect(mockPush).toHaveBeenCalledWith('/profile/address/replacement-cards')
     })
+    expect(mockSetPageData).toHaveBeenCalledWith('address_update_status', 'success')
+    expect(mockSetPageData).toHaveBeenCalledWith('error_code', null)
+    expect(mockTrackEvent).toHaveBeenCalledWith(AnalyticsEvents.ADDRESS_UPDATE_SUBMIT)
+    expect(mockTrackEvent).not.toHaveBeenCalledWith(AnalyticsEvents.ADDRESS_UPDATE_ERROR)
   })
 
   // --- Failed submission ---
@@ -437,6 +463,10 @@ describe('AddressForm', () => {
     await waitFor(() => {
       expect(screen.getByText(/an error occurred on our end/i)).toBeInTheDocument()
     })
+    expect(mockSetPageData).toHaveBeenCalledWith('address_update_status', 'error')
+    expect(mockSetPageData).toHaveBeenCalledWith('error_code', 'INVALID_INPUT')
+    expect(mockTrackEvent).toHaveBeenCalledWith(AnalyticsEvents.ADDRESS_UPDATE_SUBMIT)
+    expect(mockTrackEvent).toHaveBeenCalledWith(AnalyticsEvents.ADDRESS_UPDATE_ERROR)
   })
 
   // --- Back button ---

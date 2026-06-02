@@ -23,7 +23,7 @@ public class SelfServiceEvaluatorTests
         => new()
         {
             IssuanceType = issuanceType,
-            EbtCardStatus = cardStatus.ToString(),
+            EbtCardStatus = cardStatus,
             ApplicationStatus = applicationStatus,
             IsCoLoaded = isCoLoaded
         };
@@ -38,7 +38,7 @@ public class SelfServiceEvaluatorTests
             DisabledMessageKey = "selfServiceUnavailable",
             ByIssuanceType = new Dictionary<IssuanceType, IssuanceTypeRuleSettings>
             {
-                [IssuanceType.SummerEbt] = new() { Enabled = true, AllowedCardStatuses = [CardStatus.Active, CardStatus.Mailed] },
+                [IssuanceType.SummerEbt] = new() { Enabled = true, AllowedCardStatuses = [CardStatus.Active, CardStatus.Processed] },
                 [IssuanceType.TanfEbtCard] = new() { Enabled = false },
                 [IssuanceType.SnapEbtCard] = new() { Enabled = false },
                 [IssuanceType.Unknown] = new() { Enabled = false }
@@ -168,14 +168,13 @@ public class SelfServiceEvaluatorTests
     }
 
     [Fact]
-    public void PerCase_CardStatusParsedFromEbtCardStatusString()
+    public void PerCase_LostCard_CanRequestReplacement_TypedEnum()
     {
         var evaluator = CreateEvaluator(DcSettings());
-        // CardStatus is computed from EbtCardStatus string.
         var summerEbtCase = new SummerEbtCase
         {
             IssuanceType = IssuanceType.SummerEbt,
-            EbtCardStatus = "Lost"
+            EbtCardStatus = CardStatus.Lost
         };
 
         var result = evaluator.Evaluate(summerEbtCase);
