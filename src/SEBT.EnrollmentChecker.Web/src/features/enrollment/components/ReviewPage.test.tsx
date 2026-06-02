@@ -9,11 +9,17 @@ const mockPush = vi.fn()
 vi.mock('next/navigation', () => ({ useRouter: () => ({ push: mockPush }) }))
 
 // Helper to pre-populate context with a child
-function ReviewPageWithChild({ onSubmit }: { onSubmit: () => void }) {
+function ReviewPageWithChild({
+  onSubmit,
+  isSubmitting
+}: {
+  onSubmit: () => void
+  isSubmitting?: boolean
+}) {
   return (
     <EnrollmentProvider>
       <Seeder />
-      <ReviewPage onSubmit={onSubmit} />
+      <ReviewPage onSubmit={onSubmit} isSubmitting={isSubmitting} />
     </EnrollmentProvider>
   )
 }
@@ -62,6 +68,15 @@ describe('ReviewPage', () => {
     await screen.findByText(/Jane Doe/i)
     await userEvent.click(screen.getByRole('button', { name: /remove/i }))
     expect(screen.queryByText(/Jane Doe/i)).not.toBeInTheDocument()
+  })
+
+  it('disables Submit and Back while submitting', async () => {
+    render(<ReviewPageWithChild onSubmit={vi.fn()} isSubmitting />)
+    await screen.findByText(/Jane Doe/i)
+    const submit = screen.getByRole('button', { name: /submit/i })
+    expect(submit).toBeDisabled()
+    expect(submit).toHaveAttribute('aria-busy', 'true')
+    expect(screen.getByRole('button', { name: /back/i })).toBeDisabled()
   })
 
   it('disables Submit when the last child is removed and ignores clicks', async () => {

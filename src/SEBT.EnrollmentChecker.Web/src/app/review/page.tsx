@@ -6,7 +6,7 @@ import { useEnrollment } from '@/features/enrollment/context/EnrollmentContext'
 import { AnalyticsEvents, useDataLayer } from '@sebt/analytics'
 import { Alert, LoadingInterstitial } from '@sebt/design-system'
 import { useRouter } from 'next/navigation'
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { getEnrollmentConfig } from '@/lib/stateConfig'
 
@@ -17,11 +17,17 @@ export default function Page() {
   const { state } = useEnrollment()
   const [error, setError] = useState<string | null>(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
+  // Synchronous re-entrancy guard. `isSubmitting` state can't catch a fast
+  // double-click: both handlers run against the same render with the stale value
+  // `false`, so both pass the guard before React re-renders. A ref is read/written
+  // synchronously, so the second click sees the flag the first click just set.
+  const submittingRef = useRef(false)
   const config = getEnrollmentConfig()
   const { setPageData, trackEvent } = useDataLayer()
 
   async function handleSubmit() {
-    if (isSubmitting) return
+    if (submittingRef.current) return
+    submittingRef.current = true
     setError(null)
     setIsSubmitting(true)
     try {
@@ -36,6 +42,7 @@ export default function Page() {
       trackEvent(AnalyticsEvents.ENROLLMENT_CHECK_ERROR)
       setError(message.includes('rate') ? t('rateLimitError') : t('submitError'))
     } finally {
+      submittingRef.current = false
       setIsSubmitting(false)
     }
   }
@@ -57,7 +64,7 @@ export default function Page() {
   return (
     <>
       {error && <Alert variant="error">{error}</Alert>}
-      <ReviewPage onSubmit={handleSubmit} />
+      <ReviewPage onSubmit={handleSubmit} isSubmitting={isSubmitting} />
     </>
   )
 }
