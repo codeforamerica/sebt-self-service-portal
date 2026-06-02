@@ -88,7 +88,7 @@ if (ssns.length) {
 // Pattern: solvvy/redact-pii (16-digit + 15-digit Amex format)
 // Validated with Luhn checksum per microsoft/presidio approach
 const CC_RE =
-  /\b\d{4}[ -]?\d{4}[ -]?\d{4}[ -]?\d{4}\b|\b\d{4}[ -]?\d{6}[ -]?\d{4}\d?\b/g;
+  /\b\d{4}[ -]?\d{4}[ -]?\d{4}[ -]?\d{4}\b|\b\d{4}[ -]?\d{6}[ -]?\d{5}\b/g;
 
 function luhnCheck(cardString) {
   const digits = cardString.replace(/\D/g, '');
