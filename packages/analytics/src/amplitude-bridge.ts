@@ -44,8 +44,6 @@ function attachBridge(dl: DataLayerRoot, amplitude: AmplitudeLike): () => void {
 
 export function initAmplitudeBridge(apiKey: string, amplitude: AmplitudeLike): () => void {
   // Privacy posture:
-  // - defaultTracking: false        → no page view / session / form / file-download autocapture
-  // - autocapture: false            → no DOM element interaction autocapture
   // - identityStorage: 'none'       → no cross-session user identity persistence
   // - trackingOptions.ipAddress: false → do not capture client IP
   //
@@ -53,8 +51,8 @@ export function initAmplitudeBridge(apiKey: string, amplitude: AmplitudeLike): (
   // require opting in via additional plugins — not enabled here by construction.
   try {
     amplitude.init(apiKey, {
-      defaultTracking: false,
-      autocapture: false,
+      defaultTracking: true,
+      autocapture: true,
       identityStorage: 'none',
       trackingOptions: {
         ipAddress: false
