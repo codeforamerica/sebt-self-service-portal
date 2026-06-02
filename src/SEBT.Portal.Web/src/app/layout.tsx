@@ -1,7 +1,4 @@
-import { AmplitudeAnalytics } from '@/components/AmplitudeAnalytics'
 import { BetaBanner } from '@/components/BetaBanner'
-import { MixpanelAnalytics } from '@/components/MixpanelAnalytics'
-import { SiteImproveAnalytics } from '@/components/SiteImproveAnalytics'
 import { primaryFont } from '@/design/fonts'
 import { portalRoutes } from '@/lib/analytics-routes'
 import {
@@ -13,7 +10,14 @@ import {
   QueryProvider
 } from '@/providers'
 import { GoogleAnalytics } from '@next/third-parties/google'
-import { getState, getStateName, SkipNav } from '@sebt/design-system'
+import { AmplitudeAnalytics, MixpanelAnalytics, SiteImproveAnalytics } from '@sebt/analytics'
+import {
+  getPortalMetadataDescription,
+  getSiteDisplayName,
+  getState,
+  getStateName,
+  SkipNav
+} from '@sebt/design-system'
 import { Footer, Header, HelpSection } from '@sebt/design-system/client'
 import type { Metadata, Viewport } from 'next'
 import { headers } from 'next/headers'
@@ -22,6 +26,9 @@ import './styles.scss'
 
 const state = getState()
 const stateName = getStateName(state)
+const siteDisplayName = getSiteDisplayName(state)
+const portalMetadataDescription = getPortalMetadataDescription(state)
+const portalTitle = `${siteDisplayName} Self-Service Portal`
 
 function getDefaultBaseUrl() {
   return process.env.NEXT_PUBLIC_BASE_URL ?? `https://sebt.${state}.gov`
@@ -45,10 +52,10 @@ export async function generateMetadata(): Promise<Metadata> {
 
   return {
     title: {
-      default: `${stateName} SUN Bucks Self-Service Portal`,
-      template: `%s | ${stateName} SUN Bucks`
+      default: portalTitle,
+      template: `%s | ${siteDisplayName}`
     },
-    description: `Apply for Summer EBT (SUN Bucks) benefits in ${stateName}. Check eligibility, track your application status, and manage your benefits online.`,
+    description: portalMetadataDescription,
     keywords: ['SUN Bucks', 'Summer EBT', 'SEBT', 'summer meals', 'food benefits', stateName],
     authors: [{ name: `${stateName} Government` }],
     robots: {
@@ -66,22 +73,22 @@ export async function generateMetadata(): Promise<Metadata> {
       type: 'website',
       locale: 'en_US',
       url: baseUrl,
-      siteName: `${stateName} SUN Bucks`,
-      title: `${stateName} SUN Bucks Self-Service Portal`,
-      description: `Apply for Summer EBT (SUN Bucks) benefits in ${stateName}. Check eligibility and manage your benefits online.`,
+      siteName: siteDisplayName,
+      title: portalTitle,
+      description: portalMetadataDescription,
       images: [
         {
           url: `${baseUrl}/images/states/${state}/og-image.png`,
           width: 1200,
           height: 630,
-          alt: `${stateName} SUN Bucks Portal`
+          alt: `${siteDisplayName} Portal`
         }
       ]
     },
     twitter: {
       card: 'summary_large_image',
-      title: `${stateName} SUN Bucks Self-Service Portal`,
-      description: `Apply for Summer EBT (SUN Bucks) benefits in ${stateName}.`,
+      title: portalTitle,
+      description: portalMetadataDescription,
       images: [`${baseUrl}/images/states/${state}/og-image.png`]
     },
     icons: {
@@ -159,9 +166,8 @@ export default async function RootLayout({
       )}
       {/* Amplitude - only rendered when NEXT_PUBLIC_AMPLITUDE_API_KEY is configured */}
       {amplitudeApiKey && <AmplitudeAnalytics apiKey={amplitudeApiKey} />}
-      {/* SiteImprove — DC-only per DC-272. Gated by both state and env var so an
-          accidentally-set NEXT_PUBLIC_SITEIMPROVE_ID in another state does not enable it. */}
-      {state === 'dc' && siteImproveId && (
+      {/* SiteImprove — only rendered when NEXT_PUBLIC_SITEIMPROVE_ID is configured */}
+      {siteImproveId && (
         <SiteImproveAnalytics
           siteId={siteImproveId}
           {...(nonce ? { nonce } : {})}

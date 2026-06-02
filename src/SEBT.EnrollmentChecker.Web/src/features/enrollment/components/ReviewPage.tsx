@@ -9,9 +9,10 @@ import { ChildReviewCard } from './ChildReviewCard'
 
 interface ReviewPageProps {
   onSubmit: () => void
+  isSubmitting?: boolean
 }
 
-export function ReviewPage({ onSubmit }: ReviewPageProps) {
+export function ReviewPage({ onSubmit, isSubmitting = false }: ReviewPageProps) {
   const { t } = useTranslation('confirmInfo')
   const { t: tCommon } = useTranslation('common')
   const router = useRouter()
@@ -32,7 +33,7 @@ export function ReviewPage({ onSubmit }: ReviewPageProps) {
           height={75}
           aria-hidden="true"
         />
-        <h1 className="font-family-sans margin-top-1">{t('title')}</h1>
+        <h1 className="font-family-sans margin-top-1 text-primary">{t('title')}</h1>
         <p className="usa-prose">{t('body')}</p>
 
         <div className="margin-top-3">
@@ -51,12 +52,15 @@ export function ReviewPage({ onSubmit }: ReviewPageProps) {
             variant="outline"
             className="margin-right-1"
             onClick={() => router.push('/check')}
+            disabled={isSubmitting}
           >
             {tCommon('back')}
           </Button>
           <Button
             onClick={onSubmit}
             disabled={state.children.length === 0}
+            isLoading={isSubmitting}
+            loadingText={`${tCommon('submit')}...`}
           >
             {tCommon('submit')}
           </Button>

@@ -91,12 +91,6 @@ const TWO_CHILD_HOUSEHOLD = {
       applicationStatus: 'Approved',
       benefitIssueDate: '2026-01-08T00:00:00Z',
       benefitExpirationDate: '2026-03-19T00:00:00Z',
-      last4DigitsOfCard: '1234',
-      cardStatus: 'Active',
-      cardRequestedAt: '2026-01-01T00:00:00Z',
-      cardMailedAt: '2026-01-03T00:00:00Z',
-      cardActivatedAt: '2026-01-08T00:00:00Z',
-      cardDeactivatedAt: null,
       issuanceType: 1,
       children: [
         { caseNumber: 456001, firstName: 'Sophia', lastName: 'Martinez' },

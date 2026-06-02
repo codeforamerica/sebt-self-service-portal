@@ -194,6 +194,45 @@ describe('initMixpanelBridge', () => {
     })
   })
 
+  describe('missed page_load replay', () => {
+    it('replays a page_load that fired before the bridge attached', () => {
+      new DataLayer('digitalData')
+      window.digitalData!.page.set('flow', 'landing')
+      window.digitalData!.pageLoad()
+
+      initMixpanelBridge('test-token')
+
+      expect(mixpanelStub.track_pageview).toHaveBeenCalledTimes(1)
+      expect(mixpanelStub.track_pageview).toHaveBeenCalledWith(
+        expect.objectContaining({ flow: 'landing' })
+      )
+    })
+
+    it('does not double-track when the bridge was present for the page_load', () => {
+      new DataLayer('digitalData')
+      initMixpanelBridge('test-token')
+
+      window.digitalData!.pageLoad()
+
+      expect(mixpanelStub.track_pageview).toHaveBeenCalledTimes(1)
+    })
+
+    it('replays only the most recent page_load after multiple navigations', () => {
+      new DataLayer('digitalData')
+      window.digitalData!.page.set('flow', 'landing')
+      window.digitalData!.pageLoad()
+      window.digitalData!.page.set('flow', 'disclaimer')
+      window.digitalData!.pageLoad()
+
+      initMixpanelBridge('test-token')
+
+      expect(mixpanelStub.track_pageview).toHaveBeenCalledTimes(1)
+      expect(mixpanelStub.track_pageview).toHaveBeenCalledWith(
+        expect.objectContaining({ flow: 'disclaimer' })
+      )
+    })
+  })
+
   describe('SDK compatibility', () => {
     it('disables session replay by default to avoid PII capture', () => {
       new DataLayer('digitalData')

@@ -31,12 +31,6 @@ const TEST_HOUSEHOLD_DATA = {
       applicationStatus: 'Approved',
       benefitIssueDate: '2026-01-15T00:00:00Z',
       benefitExpirationDate: '2026-06-30T00:00:00Z',
-      last4DigitsOfCard: '1234',
-      cardStatus: 'Active',
-      cardRequestedAt: '2026-01-01T00:00:00Z',
-      cardMailedAt: '2026-01-05T00:00:00Z',
-      cardActivatedAt: '2026-01-15T00:00:00Z',
-      cardDeactivatedAt: null,
       issuanceType: 1,
       children: [{ firstName: 'Test', lastName: 'Child' }],
       childrenOnApplication: 1
@@ -119,8 +113,7 @@ describe('useHouseholdData', () => {
           {
             ...TEST_HOUSEHOLD_DATA.applications[0],
             issuanceType: 99, // Unknown future enum value
-            applicationStatus: 99, // Unknown future enum value
-            cardStatus: 99 // Unknown future enum value
+            applicationStatus: 99 // Unknown future enum value
           }
         ]
       }
@@ -143,7 +136,6 @@ describe('useHouseholdData', () => {
       expect(result.current.data?.benefitIssuanceType).toBe('Unknown')
       expect(result.current.data?.applications?.[0]?.issuanceType).toBe('Unknown')
       expect(result.current.data?.applications?.[0]?.applicationStatus).toBe('Unknown')
-      expect(result.current.data?.applications?.[0]?.cardStatus).toBe('Unknown')
     })
   })
 
@@ -348,6 +340,56 @@ describe('useHouseholdData', () => {
       })
 
       expect(result.current.error).toBeDefined()
+    })
+  })
+
+  describe('Deferred card details', () => {
+    it('fetches shell then full household when deferCardDetailsOnLoad is true', async () => {
+      vi.useRealTimers()
+      const requests: string[] = []
+      server.use(
+        http.get('/api/household/data', ({ request }) => {
+          const url = new URL(request.url)
+          requests.push(url.searchParams.get('includeCardDetails') ?? 'true')
+          const includeCardDetails = url.searchParams.get('includeCardDetails') !== 'false'
+          const caseData = includeCardDetails
+            ? { ebtCardLastFour: '9999', ebtCardStatus: 'Active' }
+            : { ebtCardStatus: 'Unknown' }
+          return HttpResponse.json({
+            email: 'test@example.com',
+            benefitIssuanceType: 1,
+            summerEbtCases: [
+              {
+                summerEBTCaseID: 'CASE-1',
+                childFirstName: 'Test',
+                childLastName: 'Child',
+                childDateOfBirth: '2015-01-01',
+                householdType: 'SEBT',
+                eligibilityType: 'NSLP',
+                issuanceType: 1,
+                ...caseData
+              }
+            ],
+            applications: [],
+            coLoadedCohort: 0
+          })
+        })
+      )
+
+      const { result } = renderHook(() => useHouseholdData({ deferCardDetailsOnLoad: true }), {
+        wrapper: createWrapper()
+      })
+
+      await waitFor(() => {
+        expect(result.current.isSuccess).toBe(true)
+      })
+
+      await waitFor(() => {
+        expect(result.current.data?.summerEbtCases[0]?.ebtCardLastFour).toBe('9999')
+      })
+
+      expect(requests.filter((r) => r === 'false').length).toBeGreaterThanOrEqual(1)
+      expect(requests.filter((r) => r === 'true').length).toBeGreaterThanOrEqual(1)
     })
   })
 })

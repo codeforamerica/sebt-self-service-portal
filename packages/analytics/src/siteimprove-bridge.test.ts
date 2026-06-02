@@ -49,7 +49,7 @@ describe('initSiteImproveBridge', () => {
       'event',
       'cards:info',
       'cta_click',
-      JSON.stringify({ target: 'replace_card' })
+      JSON.stringify({ flow: 'cards', step: 'info', target: 'replace_card' })
     ])
   })
 
@@ -69,7 +69,7 @@ describe('initSiteImproveBridge', () => {
 
     window.digitalData!.trackEvent('page_load')
 
-    expect(pushSpy.mock.calls[0][0]).toEqual(['event', 'auth', 'page_load'])
+    expect(pushSpy.mock.calls[0][0]).toEqual(['event', 'auth', 'page_load', JSON.stringify({ flow: 'auth' })])
   })
 
   it('omits the label when the event has no data', () => {
@@ -101,7 +101,12 @@ describe('initSiteImproveBridge', () => {
       'event',
       'address_update:address_form',
       'cta_click',
-      JSON.stringify({ target: 'save_address', household_type: 'co_loaded_only' })
+      JSON.stringify({
+        flow: 'address_update',
+        step: 'address_form',
+        target: 'save_address',
+        household_type: 'co_loaded_only'
+      })
     ])
   })
 

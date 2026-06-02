@@ -27,6 +27,7 @@ public interface IHouseholdRepository
         PiiVisibility piiVisibility,
         UserIalLevel userIalLevel,
         Guid? portalUserId = null,
+        bool includeCardService = true,
         CancellationToken cancellationToken = default);
 
     /// <summary>
@@ -44,6 +45,7 @@ public interface IHouseholdRepository
         PiiVisibility piiVisibility,
         UserIalLevel userIalLevel,
         Guid? portalUserId = null,
+        bool includeCardService = true,
         CancellationToken cancellationToken = default);
 
     /// <summary>

@@ -115,7 +115,6 @@ public class HouseholdFactoryTests
         Assert.Equal(ApplicationStatus.Approved, app.ApplicationStatus);
         Assert.NotNull(app.BenefitIssueDate);
         Assert.NotNull(app.BenefitExpirationDate);
-        Assert.NotNull(app.Last4DigitsOfCard);
         Assert.NotNull(app.CaseNumber);
         Assert.True(app.BenefitExpirationDate > app.BenefitIssueDate);
     }
@@ -133,7 +132,6 @@ public class HouseholdFactoryTests
         Assert.Equal(ApplicationStatus.Unknown, app.ApplicationStatus);
         Assert.Null(app.BenefitIssueDate);
         Assert.Null(app.BenefitExpirationDate);
-        Assert.Null(app.Last4DigitsOfCard);
         Assert.Null(app.CaseNumber);
         Assert.Null(app.ApplicationNumber);
     }
@@ -328,7 +326,7 @@ public class HouseholdFactoryTests
 
         // Assert
         Assert.Equal(ApplicationStatus.Approved, result.ApplicationStatus);
-        Assert.Equal("Active", result.EbtCardStatus);
+        Assert.Equal(CardStatus.Active, result.EbtCardStatus);
     }
 
     [Fact]
@@ -382,13 +380,13 @@ public class HouseholdFactoryTests
         var result = HouseholdFactory.CreateSummerEbtCase("Jane", "Doe", "TANF", c =>
         {
             c.IssuanceType = IssuanceType.TanfEbtCard;
-            c.EbtCardStatus = "Deactivated";
+            c.EbtCardStatus = CardStatus.DeactivatedByState;
         });
 
         // Assert
         Assert.Equal("Jane", result.ChildFirstName);
         Assert.Equal("TANF", result.EligibilityType);
         Assert.Equal(IssuanceType.TanfEbtCard, result.IssuanceType);
-        Assert.Equal("Deactivated", result.EbtCardStatus);
+        Assert.Equal(CardStatus.DeactivatedByState, result.EbtCardStatus);
     }
 }
