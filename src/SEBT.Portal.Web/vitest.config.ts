@@ -6,7 +6,8 @@ export default defineConfig({
     // @/env createEnv() requires NEXT_PUBLIC_STATE; SKIP_ENV_VALIDATION skips strict OIDC checks during tests.
     env: {
       SKIP_ENV_VALIDATION: '1',
-      NEXT_PUBLIC_STATE: 'dc'
+      NEXT_PUBLIC_STATE: 'dc',
+      BACKEND_URL: 'http://localhost:5280'
     },
     environment: 'jsdom',
     setupFiles: ['./src/test-env-preload.ts', './src/test-setup.ts'],
