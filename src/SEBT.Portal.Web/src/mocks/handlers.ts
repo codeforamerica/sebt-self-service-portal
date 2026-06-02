@@ -46,6 +46,7 @@ export const TEST_FEATURE_FLAGS = {
   show_application_number: true,
   show_case_number: true,
   show_card_last4: true,
+  show_application_date: true,
   defer_ebt_card_data_loading: false,
   enable_beta_banner: false
 } as const

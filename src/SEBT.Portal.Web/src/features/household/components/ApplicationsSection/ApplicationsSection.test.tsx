@@ -12,6 +12,7 @@ const mockApplication: Application = {
   applicationNumber: 'APP-2026-001',
   caseNumber: 'CASE-DC-2026-001',
   applicationStatus: 'Approved',
+  applicationDate: '2026-01-15T00:00:00Z',
   benefitIssueDate: '2026-01-08T00:00:00Z',
   benefitExpirationDate: '2026-03-19T00:00:00Z',
   children: [
@@ -32,8 +33,11 @@ const defaultMockData: HouseholdData = {
 
 let mockReturnData: HouseholdData
 
+// formatDate is stubbed to a deterministic sentinel so date assertions don't
+// depend on locale/Intl behavior — we only verify it's wired to applicationDate.
 vi.mock('../../api', () => ({
-  useRequiredHouseholdData: () => mockReturnData
+  useRequiredHouseholdData: () => mockReturnData,
+  formatDate: (isoDate: string) => `formatted:${isoDate}`
 }))
 
 const defaultFlags: FeatureFlagsContextValue = {
@@ -150,5 +154,33 @@ describe('ApplicationsSection', () => {
     })
 
     expect(screen.queryByText('CASE-DC-2026-001')).not.toBeInTheDocument()
+  })
+
+  it('renders application date when show_application_date flag is on', () => {
+    renderWithFlags()
+
+    expect(screen.getByText('formatted:2026-01-15T00:00:00Z')).toBeInTheDocument()
+  })
+
+  it('hides application date when show_application_date flag is off', () => {
+    renderWithFlags({
+      flags: { ...TEST_FEATURE_FLAGS, show_application_date: false },
+      isLoading: false,
+      isError: false
+    })
+
+    expect(screen.queryByText('formatted:2026-01-15T00:00:00Z')).not.toBeInTheDocument()
+  })
+
+  it('hides application date when applicationDate is absent', () => {
+    const appWithoutDate: Application = { ...mockApplication, applicationDate: undefined }
+    mockReturnData = {
+      ...defaultMockData,
+      applications: [appWithoutDate]
+    }
+
+    renderWithFlags()
+
+    expect(screen.queryByText(/^formatted:/)).not.toBeInTheDocument()
   })
 })
