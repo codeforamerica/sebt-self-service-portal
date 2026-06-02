@@ -214,6 +214,8 @@ jobs:
       TF_VAR_vpc_cidr: ${{ vars.VPC_CIDR }}
       TF_VAR_private_subnets: ${{ vars.PRIVATE_SUBNETS }}
       TF_VAR_public_subnets: ${{ vars.PUBLIC_SUBNETS }}
+      TF_VAR_otel_exporter_otlp_endpoint: ${{ vars.OTEL_EXPORTER_OTLP_ENDPOINT }}
+      TF_VAR_otel_exporter_otlp_protocol: ${{ vars.OTEL_EXPORTER_OTLP_PROTOCOL }}
 
     steps:
       - name: Checkout
@@ -304,6 +306,8 @@ jobs:
       TF_VAR_vpc_cidr: ${{ vars.VPC_CIDR }}
       TF_VAR_private_subnets: ${{ vars.PRIVATE_SUBNETS }}
       TF_VAR_public_subnets: ${{ vars.PUBLIC_SUBNETS }}
+      TF_VAR_otel_exporter_otlp_endpoint: ${{ vars.OTEL_EXPORTER_OTLP_ENDPOINT }}
+      TF_VAR_otel_exporter_otlp_protocol: ${{ vars.OTEL_EXPORTER_OTLP_PROTOCOL }}
 
     steps:
       - name: Checkout
