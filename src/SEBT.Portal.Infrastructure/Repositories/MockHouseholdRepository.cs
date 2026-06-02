@@ -320,6 +320,20 @@ public class MockHouseholdRepository : IHouseholdRepository
             });
             _households[coLoadedNoChildrenEmail] = coLoadedNoChildren;
             IndexByPhone(coLoadedNoChildren);
+
+            // Co-loaded household with enrolled cases but ZERO applications. Lands on the
+            // dashboard (ID verified, address on file) and must NOT show the "Check existing
+            // applications" CTA — the applications section renders nothing at zero applications,
+            // so the CTA would scroll to a missing anchor (DC-402).
+            var coLoadedNoApplicationEmail = _settings.BuildEmail(SeedScenarios.CoLoadedNoApplication.Name);
+            var coLoadedNoApplication = CreateCopy(coLoaded, fullPii) with
+            {
+                Email = coLoadedNoApplicationEmail,
+                Phone = "8185558441",
+                Applications = new List<Application>(),
+            };
+            _households[coLoadedNoApplicationEmail] = coLoadedNoApplication;
+            IndexByPhone(coLoadedNoApplication);
         }
 
         // Scenario 2: Approved application with address (ID verified user)
