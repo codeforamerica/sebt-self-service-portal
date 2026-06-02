@@ -1,6 +1,8 @@
+using Medallion.Threading;
 using Microsoft.Extensions.Caching.Hybrid;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
+using NSubstitute;
 using SEBT.Portal.Api.Services;
 
 namespace SEBT.Portal.Tests.Unit.Services;
@@ -22,7 +24,14 @@ public class PreAuthSessionStoreTests : IDisposable
         services.AddMemoryCache();
         _serviceProvider = services.BuildServiceProvider();
         var cache = _serviceProvider.GetRequiredService<HybridCache>();
-        _store = new PreAuthSessionStore(cache, NullLogger<PreAuthSessionStore>.Instance);
+
+        var mockLock = Substitute.For<IDistributedLock>();
+        mockLock.AcquireAsync(Arg.Any<TimeSpan?>(), Arg.Any<CancellationToken>())
+            .Returns(Substitute.For<IDistributedSynchronizationHandle>());
+        var lockProvider = Substitute.For<IDistributedLockProvider>();
+        lockProvider.CreateLock(Arg.Any<string>()).Returns(mockLock);
+
+        _store = new PreAuthSessionStore(cache, lockProvider, NullLogger<PreAuthSessionStore>.Instance);
     }
 
     public void Dispose() => _serviceProvider.Dispose();
@@ -148,6 +157,37 @@ public class PreAuthSessionStoreTests : IDisposable
         var result = await _store.GetAsync(session.Id);
 
         Assert.Null(result);
+    }
+
+    [Fact]
+    public async Task Get_ReturnsSession_WhenSessionExistsInCacheButNotCreatedByThisInstance()
+    {
+        // Regression test for DC-504: KnownSessionIds was an in-memory gate that
+        // short-circuited cache lookups for IDs not created by the current process.
+        // On a multi-container deployment, sessions created on Container A never
+        // appeared in Container B's KnownSessionIds, so every cross-instance lookup
+        // returned null (missing_session) even though the session was in Redis.
+        //
+        // This test simulates that by seeding the HybridCache directly (bypassing
+        // CreateAsync, which was the only path that populated KnownSessionIds).
+        var cache = _serviceProvider.GetRequiredService<HybridCache>();
+        var sessionId = "simulated-remote-session";
+        var session = new PreAuthSession
+        {
+            Id = sessionId,
+            State = "remote-state",
+            CodeVerifier = "remote-verifier",
+            StateCode = "co",
+            RedirectUri = "https://example.com/callback",
+            Phase = PreAuthSessionPhase.Created
+        };
+
+        await cache.SetAsync(PreAuthSessionStore.CacheKeyPrefix + sessionId, session);
+
+        var retrieved = await _store.GetAsync(sessionId);
+
+        Assert.NotNull(retrieved);
+        Assert.Equal(sessionId, retrieved.Id);
     }
 
     [Fact]
