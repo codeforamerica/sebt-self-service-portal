@@ -1,9 +1,7 @@
 /**
  * DOM event bridge that listens to DataLayer CustomEvents and forwards
  * them to Amplitude. Forwards both PageViewed (page_load) and EventTracked
- * events. The Amplitude init is configured with no session replay, no
- * autocapture, and no user identity — page tracking is opt-in via the
- * data layer's pageLoad() call rather than Amplitude's defaultTracking.
+ * events. 
  *
  * @see docs/tdd/analytics-data-layer.md — "DOM Bridge & Sample Integration"
  */
