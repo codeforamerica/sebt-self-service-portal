@@ -12,6 +12,7 @@ public class HouseholdDataResponseMapperTests
     public void ToResponse_MapsAllHouseholdDataProperties_WhenFullyPopulated()
     {
         // Arrange
+        var applicationDate = new DateTime(2025, 12, 15, 9, 0, 0, DateTimeKind.Utc);
         var benefitIssue = new DateTime(2026, 1, 1, 10, 0, 0, DateTimeKind.Utc);
         var benefitExpiry = new DateTime(2026, 4, 1, 10, 0, 0, DateTimeKind.Utc);
 
@@ -27,6 +28,7 @@ public class HouseholdDataResponseMapperTests
                     ApplicationNumber = "APP-123",
                     CaseNumber = "CASE-456",
                     ApplicationStatus = ApplicationStatus.Approved,
+                    ApplicationDate = applicationDate,
                     IssuanceType = IssuanceType.SnapEbtCard,
                     BenefitIssueDate = benefitIssue,
                     BenefitExpirationDate = benefitExpiry,
@@ -79,6 +81,7 @@ public class HouseholdDataResponseMapperTests
         Assert.Equal("APP-123", app.ApplicationNumber);
         Assert.Equal("CASE-456", app.CaseNumber);
         Assert.Equal(ApplicationStatus.Approved, app.ApplicationStatus);
+        Assert.Equal(applicationDate, app.ApplicationDate);
         Assert.Equal(IssuanceType.SnapEbtCard, app.IssuanceType);
         Assert.Equal(benefitIssue, app.BenefitIssueDate);
         Assert.Equal(benefitExpiry, app.BenefitExpirationDate);
@@ -199,6 +202,7 @@ public class HouseholdDataResponseMapperTests
     [Fact]
     public void ToResponse_MapsSummerEbtCases()
     {
+        var caseApplicationDate = new DateTime(2025, 11, 1, 0, 0, 0, DateTimeKind.Utc);
         var domain = new HouseholdData
         {
             Email = "user@example.com",
@@ -212,6 +216,7 @@ public class HouseholdDataResponseMapperTests
                     ChildLastName = "Garcia",
                     ChildDateOfBirth = new DateTime(2015, 5, 15),
                     ApplicationStatus = ApplicationStatus.Approved,
+                    ApplicationDate = caseApplicationDate,
                     EbtCardLastFour = "1234",
                     EbtCardBalance = 120.50m,
                     EbtCaseNumber = "CBMS-REF",
@@ -230,6 +235,7 @@ public class HouseholdDataResponseMapperTests
         Assert.Equal("Garcia", sec.ChildLastName);
         Assert.Equal(new DateTime(2015, 5, 15), sec.ChildDateOfBirth);
         Assert.Equal(ApplicationStatus.Approved, sec.ApplicationStatus);
+        Assert.Equal(caseApplicationDate, sec.ApplicationDate);
         Assert.Equal("1234", sec.EbtCardLastFour);
         Assert.Equal(120.50m, sec.EbtCardBalance);
         Assert.Equal("CBMS-REF", sec.EbtCaseNumber);

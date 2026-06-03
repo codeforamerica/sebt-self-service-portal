@@ -24,6 +24,25 @@ vi.mock('next/navigation', () => ({
   })
 }))
 
+// Mock analytics to spy on trackEvent without needing a live data layer.
+const mockTrackEvent = vi.fn()
+vi.mock('@sebt/analytics', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@sebt/analytics')>()
+  return {
+    ...actual,
+    useDataLayer: () => ({
+      trackEvent: mockTrackEvent,
+      pageLoad: vi.fn(),
+      setPageData: vi.fn(),
+      setPageCategory: vi.fn(),
+      setPageAttribute: vi.fn(),
+      setUserData: vi.fn(),
+      setUserProfile: vi.fn(),
+      get: vi.fn()
+    })
+  }
+})
+
 // Helper to create a fresh QueryClient for each test
 // Important: We disable retries to avoid waiting for exponential backoff in tests
 function createTestQueryClient() {
@@ -50,6 +69,7 @@ function renderWithProviders(ui: React.ReactElement) {
 describe('LoginForm', () => {
   beforeEach(() => {
     mockPush.mockClear()
+    mockTrackEvent.mockClear()
     sessionStorage.clear()
   })
 
@@ -163,6 +183,23 @@ describe('LoginForm', () => {
 
       await waitFor(() => {
         expect(mockPush).toHaveBeenCalled()
+      })
+    })
+  })
+
+  describe('Analytics', () => {
+    it('fires otp_request when a valid email is submitted', async () => {
+      const user = userEvent.setup()
+      renderWithProviders(<LoginForm />)
+
+      const emailInput = screen.getByRole('textbox', { name: /enter your email address/i })
+      const submitButton = screen.getByRole('button', { name: /continue/i })
+
+      await user.type(emailInput, TEST_EMAILS.success)
+      await user.click(submitButton)
+
+      await waitFor(() => {
+        expect(mockTrackEvent).toHaveBeenCalledWith('otp_request')
       })
     })
   })
