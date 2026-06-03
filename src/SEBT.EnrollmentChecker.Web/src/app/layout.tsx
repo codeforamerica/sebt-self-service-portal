@@ -30,10 +30,10 @@ export const viewport: Viewport = {
 
 export const metadata: Metadata = {
   title: {
-    default: `${stateName} SUN Bucks Enrollment Checker`,
-    template: `%s | ${stateName} SUN Bucks`
+    default: `${stateName} Summer EBT Enrollment Checker`,
+    template: `%s | ${stateName} Summer EBT`
   },
-  description: `Check if your child is already enrolled in Summer EBT (SUN Bucks) in ${stateName}.`,
+  description: `Check if your child is already enrolled in Summer EBT in ${stateName}.`,
   robots: { index: false, follow: false }
 }
 
