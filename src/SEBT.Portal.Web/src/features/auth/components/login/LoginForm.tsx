@@ -5,6 +5,7 @@ import { useState, type FormEvent } from 'react'
 import { useTranslation } from 'react-i18next'
 
 import { ApiError } from '@/api/client'
+import { AnalyticsEvents, useDataLayer } from '@sebt/analytics'
 import { Alert, Button, InputField } from '@sebt/design-system'
 
 import { RequestOtpRequestSchema, useRequestOtp } from '../../api'
@@ -19,6 +20,7 @@ export function LoginForm() {
   const [submitError, setSubmitError] = useState<string | null>(null)
 
   const requestOtp = useRequestOtp()
+  const { trackEvent } = useDataLayer()
 
   function validateEmail(value: string): string | null {
     if (!value.trim()) {
@@ -41,6 +43,8 @@ export function LoginForm() {
       return
     }
     setFieldError(null)
+
+    trackEvent(AnalyticsEvents.OTP_REQUEST)
 
     try {
       await requestOtp.mutateAsync({ email, locale: i18n.language })
