@@ -1,6 +1,6 @@
 using Medallion.Threading;
 using Medallion.Threading.Redis;
-using Microsoft.Extensions.Caching.Hybrid;
+using Microsoft.Extensions.Caching.Distributed;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
 using SEBT.Portal.Api.Services;
@@ -38,14 +38,12 @@ public sealed class RedisPreAuthSessionStoreFixture : IAsyncLifetime
     public (ServiceProvider ServiceProvider, PreAuthSessionStore Store) CreateInstance()
     {
         var services = new ServiceCollection();
-        services.AddMemoryCache();
-        services.AddHybridCache();
         // Each instance gets its own multiplexer so disposing the ServiceProvider
         // doesn't tear down the shared lock-provider connection.
         services.AddStackExchangeRedisCache(options =>
             options.Configuration = _container.GetConnectionString());
         var sp = services.BuildServiceProvider();
-        var cache = sp.GetRequiredService<HybridCache>();
+        var cache = sp.GetRequiredService<IDistributedCache>();
         var store = new PreAuthSessionStore(cache, LockProvider, NullLogger<PreAuthSessionStore>.Instance);
         return (sp, store);
     }
