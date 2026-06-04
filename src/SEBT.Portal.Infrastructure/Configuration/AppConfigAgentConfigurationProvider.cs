@@ -74,6 +74,7 @@ public sealed class AppConfigAgentConfigurationProvider : ConfigurationProvider,
     /// </summary>
     public async Task ReloadAsync(CancellationToken cancellationToken = default)
     {
+        _logger?.LogInformation("ReloadAsync called for {ProfileId}, disposed={Disposed}", _profile.ProfileId, _disposed); // TEMP
         if (_disposed)
         {
             return;
