@@ -347,6 +347,7 @@ public class MockHouseholdRepository : IHouseholdRepository
                 app.ApplicationNumber = "APP-2025-01-100001";
                 app.CaseNumber = "CASE-100001";
                 app.IssuanceType = IssuanceType.SummerEbt;
+                app.ApplicationDate = now.AddDays(-45);
                 app.BenefitIssueDate = now.AddDays(-30);
                 app.BenefitExpirationDate = now.AddDays(60);
                 // Set specific children names for test
@@ -714,6 +715,7 @@ public class MockHouseholdRepository : IHouseholdRepository
                 ApplicationNumber = $"APP-{now.AddDays(-30):yyyy-MM}-{faker.Random.Number(100000, 999999)}",
                 CaseNumber = $"CASE-{faker.Random.Number(100000, 999999)}",
                 ApplicationStatus = ApplicationStatus.Approved,
+                ApplicationDate = now.AddDays(-45),
                 IssuanceType = IssuanceType.SummerEbt,
                 BenefitIssueDate = now.AddDays(-30),
                 BenefitExpirationDate = now.AddDays(60),
@@ -728,6 +730,7 @@ public class MockHouseholdRepository : IHouseholdRepository
             {
                 ApplicationNumber = $"APP-{now.AddDays(-10):yyyy-MM}-{faker.Random.Number(100000, 999999)}",
                 ApplicationStatus = ApplicationStatus.Pending,
+                ApplicationDate = now.AddDays(-12),
                 Children = new List<Child>
                 {
                     new Child { FirstName = "Olivia", LastName = "Wilson" }
@@ -1226,6 +1229,7 @@ public class MockHouseholdRepository : IHouseholdRepository
                 ApplicationNumber = a.ApplicationNumber,
                 CaseNumber = a.CaseNumber,
                 ApplicationStatus = a.ApplicationStatus,
+                ApplicationDate = a.ApplicationDate,
                 BenefitIssueDate = a.BenefitIssueDate,
                 BenefitExpirationDate = a.BenefitExpirationDate,
                 // If application-level issuance type isn't set, inherit from the

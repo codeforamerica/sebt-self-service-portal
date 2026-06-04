@@ -1,6 +1,142 @@
 {
+  "permissions": {
+    "deny": [
+      "Bash(rm -rf:*)",
+      "Bash(git push --force:*)",
+      "Bash(git push -f:*)",
+      "Bash(git clean -f:*)",
+      "Bash(gh pr comment:*)",
+      "Bash(gh pr review:*)",
+      "Bash(gh issue comment:*)",
+      "Bash(gh pr merge:*)",
+      "Bash(gh pr close:*)",
+      "Bash(gh issue close:*)",
+      "Bash(gh secret set:*)",
+      "Bash(gh secret delete:*)",
+      "mcp__plugin_figma_figma__add_code_connect_map",
+      "mcp__plugin_figma_figma__create_design_system_rules",
+      "mcp__plugin_figma_figma__create_new_file",
+      "mcp__plugin_figma_figma__generate_diagram",
+      "mcp__plugin_figma_figma__generate_figma_design",
+      "mcp__plugin_figma_figma__send_code_connect_mappings",
+      "mcp__plugin_figma_figma__use_figma"
+    ],
+    "allow": [
+      "Bash(git status)",
+      "Bash(git status:*)",
+      "Bash(git log:*)",
+      "Bash(git diff)",
+      "Bash(git diff:*)",
+      "Bash(git show:*)",
+      "Bash(git branch:*)",
+      "Bash(git branch -vv)",
+      "Bash(git fetch)",
+      "Bash(git fetch:*)",
+      "Bash(git ls-tree:*)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(git stash)",
+      "Bash(git stash:*)",
+      "Bash(git checkout:*)",
+      "Bash(git pull)",
+      "Bash(git pull:*)",
+      "Bash(git mv:*)",
+      "Bash(git rm:*)",
+      "Bash(git check-ignore:*)",
+      "Bash(dotnet build:*)",
+      "Bash(dotnet restore:*)",
+      "Bash(dotnet test:*)",
+      "Bash(dotnet tool restore:*)",
+      "Bash(dotnet nuget:*)",
+      "Bash(dotnet pack:*)",
+      "Bash(dotnet list:*)",
+      "Bash(dotnet format:*)",
+      "Bash(pnpm build)",
+      "Bash(pnpm build:*)",
+      "Bash(pnpm test:*)",
+      "Bash(pnpm dev:*)",
+      "Bash(pnpm lint:*)",
+      "Bash(pnpm api:build)",
+      "Bash(pnpm api:build:*)",
+      "Bash(pnpm api:test)",
+      "Bash(pnpm api:test:*)",
+      "Bash(pnpm ci:build)",
+      "Bash(pnpm ci:test)",
+      "Bash(pnpm prebuild:*)",
+      "Bash(pnpm copy:generate)",
+      "Bash(pnpm tokens:*)",
+      "Bash(pnpm ls:*)",
+      "Bash(pnpm vitest:*)",
+      "Bash(npx tsc:*)",
+      "Bash(npx vitest:*)",
+      "Bash(adr new:*)",
+      "Bash(ls:*)",
+      "Bash(gh pr list:*)",
+      "Bash(gh pr view:*)",
+      "Bash(gh pr checks:*)",
+      "Bash(gh run list:*)",
+      "Bash(gh run view:*)",
+      "WebSearch",
+      "WebFetch(domain:github.com)",
+      "WebFetch(domain:raw.githubusercontent.com)",
+      "WebFetch(domain:www.nuget.org)",
+      "WebFetch(domain:api.github.com)",
+      "Skill(commit-commands:*)",
+      "Skill(multi-repo-git:*)",
+      "Skill(test:*)",
+      "Skill(review-prep:*)",
+      "mcp__plugin_figma_figma__get_screenshot",
+      "mcp__plugin_figma_figma__get_design_context",
+      "mcp__plugin_figma_figma__get_metadata",
+      "mcp__plugin_figma_figma__whoami"
+    ],
+    "additionalDirectories": [
+      "../sebt-self-service-portal-state-connector",
+      "../sebt-self-service-portal-dc-connector",
+      "../sebt-self-service-portal-co-connector"
+    ]
+  },
   "enabledPlugins": {
     "csharp-lsp@claude-plugins-official": true,
-    "typescript-lsp@claude-plugins-official": true
+    "typescript-lsp@claude-plugins-official": true,
+    "superpowers@claude-plugins-official": true,
+    "commit-commands@claude-plugins-official": true,
+    "pr-review-toolkit@claude-plugins-official": true,
+    "code-simplifier@claude-plugins-official": true,
+    "claude-md-management@claude-plugins-official": true,
+    "skill-creator@claude-plugins-official": true,
+    "github@claude-plugins-official": true,
+    "figma@claude-plugins-official": true,
+    "atlassian@claude-plugins-official": true,
+    "context7@claude-plugins-official": true,
+    "playwright@claude-plugins-official": true,
+    "chrome-devtools-mcp@claude-plugins-official": true,
+    "security-guidance@claude-plugins-official": true
+  },
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Edit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node .claude/hooks/check-pii.js"
+          }
+        ]
+      },
+      {
+        "matcher": "Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node .claude/hooks/check-pii.js"
+          }
+        ]
+      }
+    ]
+  },
+  "sandbox": {
+    "enabled": true,
+    "allowUnsandboxedCommands": false
   }
 }
