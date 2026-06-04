@@ -16,7 +16,19 @@ public sealed class PreAuthSessionStore : IPreAuthSessionStore
     private static readonly HybridCacheEntryOptions CacheOptions = new()
     {
         Expiration = SessionTtl,
-        LocalCacheExpiration = SessionTtl
+        LocalCacheExpiration = SessionTtl,
+    };
+
+    // Read-only lookup: suppress L1/L2 writes so a miss (factory returning null) does
+    // not cache a null entry for an attacker-controlled session ID. Without this,
+    // any fabricated session ID submitted via the OIDC callback cookie would pollute
+    // the cache with a null entry (TTL = SessionTtl), enabling cache amplification.
+    private static readonly HybridCacheEntryOptions LookupOptions = new()
+    {
+        Expiration = SessionTtl,
+        LocalCacheExpiration = SessionTtl,
+        Flags = HybridCacheEntryFlags.DisableLocalCacheWrite
+              | HybridCacheEntryFlags.DisableDistributedCacheWrite,
     };
 
     internal const string CacheKeyPrefix = "oidc:preauth:";
@@ -65,11 +77,34 @@ public sealed class PreAuthSessionStore : IPreAuthSessionStore
     /// <inheritdoc/>
     public async Task<PreAuthSession?> GetAsync(string sessionId, CancellationToken cancellationToken = default)
     {
-        return await _cache.GetOrCreateAsync(
+        var session = await _cache.GetOrCreateAsync(
             CacheKey(sessionId),
             _ => ValueTask.FromResult<PreAuthSession?>(null),
-            CacheOptions,
+            LookupOptions,
             cancellationToken: cancellationToken);
+
+        if (session is not null)
+        {
+            // Promote to L1 (no L2 write — L2 already has it on the path that needed promotion;
+            // L1 hits result in a harmless re-write). TTL is the session's remaining absolute
+            // lifetime, not a fresh SessionTtl, so reads do not extend the session expiration.
+            var remaining = session.CreatedAt + SessionTtl - DateTimeOffset.UtcNow;
+            if (remaining > TimeSpan.Zero)
+            {
+                await _cache.SetAsync(
+                    CacheKey(sessionId),
+                    session,
+                    new HybridCacheEntryOptions
+                    {
+                        Expiration = remaining,
+                        LocalCacheExpiration = remaining,
+                        Flags = HybridCacheEntryFlags.DisableDistributedCacheWrite,
+                    },
+                    cancellationToken: cancellationToken);
+            }
+        }
+
+        return session;
     }
 
     /// <inheritdoc/>
@@ -80,7 +115,7 @@ public sealed class PreAuthSessionStore : IPreAuthSessionStore
     {
         var tokenWithTimeout = WithLockTimeout(cancellationToken);
 
-        await using (await _lockProvider.AcquireLockAsync(LockKey(sessionId), cancellationToken: cancellationToken))
+        await using (await _lockProvider.AcquireLockAsync(LockKey(sessionId), cancellationToken: tokenWithTimeout))
         {
             var session = await GetAsync(sessionId, cancellationToken);
             if (session == null)
@@ -109,7 +144,9 @@ public sealed class PreAuthSessionStore : IPreAuthSessionStore
         string callbackTokenHash,
         CancellationToken cancellationToken = default)
     {
-        await using (await _lockProvider.AcquireLockAsync(LockKey(sessionId), cancellationToken: cancellationToken))
+        var tokenWithTimeout = WithLockTimeout(cancellationToken);
+
+        await using (await _lockProvider.AcquireLockAsync(LockKey(sessionId), cancellationToken: tokenWithTimeout))
         {
             var session = await GetAsync(sessionId, cancellationToken);
             if (session == null)
