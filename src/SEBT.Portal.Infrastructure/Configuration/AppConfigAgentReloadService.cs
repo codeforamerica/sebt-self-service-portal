@@ -60,7 +60,6 @@ public sealed class AppConfigAgentReloadService : BackgroundService
         {
             while (await timer.WaitForNextTickAsync(stoppingToken).ConfigureAwait(false))
             {
-                _logger.LogInformation("Reload tick fired"); // TEMP
                 foreach (var provider in providers)
                 {
                     try
@@ -75,6 +74,10 @@ public sealed class AppConfigAgentReloadService : BackgroundService
                             provider);
                     }
                 }
+
+                _logger.LogInformation(
+                    "Post-reload root read: enable_beta_banner={Value}",
+                    _configuration["FeatureManagement:enable_beta_banner"]); // TEMP
 
                 var now = _timeProvider.GetUtcNow();
                 if (now - lastHeartbeat >= HeartbeatInterval)

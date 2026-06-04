@@ -11,7 +11,7 @@ public sealed class PreAuthSessionStore : IPreAuthSessionStore
     /// <summary>Pre-auth sessions expire after 15 minutes (covers IdP redirect + user interaction).</summary>
     private static readonly TimeSpan SessionTtl = TimeSpan.FromMinutes(15);
 
-    private static readonly DistributedCacheEntryOptions CacheOptions = new ()
+    private static readonly DistributedCacheEntryOptions CacheOptions = new()
     {
         AbsoluteExpirationRelativeToNow = SessionTtl
     };

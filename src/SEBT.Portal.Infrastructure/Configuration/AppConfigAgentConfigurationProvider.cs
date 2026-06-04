@@ -74,7 +74,6 @@ public sealed class AppConfigAgentConfigurationProvider : ConfigurationProvider,
     /// </summary>
     public async Task ReloadAsync(CancellationToken cancellationToken = default)
     {
-        _logger?.LogInformation("ReloadAsync called for {ProfileId}, disposed={Disposed}", _profile.ProfileId, _disposed); // TEMP
         await LoadAsync(cancellationToken).ConfigureAwait(false);
     }
 
@@ -128,7 +127,7 @@ public sealed class AppConfigAgentConfigurationProvider : ConfigurationProvider,
         try
         {
             var endpointUrl = _profile.GetEndpointUrl();
-            _logger?.LogInformation("Fetching configuration from AppConfig Agent: {EndpointUrl}", endpointUrl);
+            _logger?.LogDebug("Fetching configuration from AppConfig Agent: {EndpointUrl}", endpointUrl);
 
             using var response = await _httpClient.GetAsync(endpointUrl, HttpCompletionOption.ResponseHeadersRead, cancellationToken).ConfigureAwait(false);
 
@@ -142,7 +141,7 @@ public sealed class AppConfigAgentConfigurationProvider : ConfigurationProvider,
             }
 
             var contentType = response.Content.Headers.ContentType?.MediaType;
-            _logger?.LogInformation("AppConfig Agent returned content type: {ContentType}", contentType);
+            _logger?.LogDebug("AppConfig Agent returned content type: {ContentType}", contentType);
 
             await using var stream = await response.Content.ReadAsStreamAsync(cancellationToken).ConfigureAwait(false);
 
@@ -163,7 +162,7 @@ public sealed class AppConfigAgentConfigurationProvider : ConfigurationProvider,
                 }
                 else
                 {
-                    _logger?.LogInformation(
+                    _logger?.LogDebug(
                         "No configuration changes for profile {ProfileId} ({Count} items)",
                         _profile.ProfileId,
                         parsedData.Count);
