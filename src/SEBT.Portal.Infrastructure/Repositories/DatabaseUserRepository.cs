@@ -1,4 +1,6 @@
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Options;
+using SEBT.Portal.Core.AppSettings;
 using SEBT.Portal.Core.Models.Auth;
 using SEBT.Portal.Core.Repositories;
 using SEBT.Portal.Core.Services;
@@ -10,8 +12,13 @@ namespace SEBT.Portal.Infrastructure.Repositories;
 /// <summary>
 /// Database-backed implementation of <see cref="IUserRepository"/> using Entity Framework Core.
 /// </summary>
-public class DatabaseUserRepository(PortalDbContext dbContext, IIdentifierHasher identifierHasher) : IUserRepository
+public class DatabaseUserRepository(
+    PortalDbContext dbContext,
+    IIdentifierHasher identifierHasher,
+    IOptions<IdProofingValiditySettings> validitySettings) : IUserRepository
 {
+    private readonly IdProofingValiditySettings _validitySettings = validitySettings.Value;
+
     public async Task<User?> GetUserByEmailAsync(string email, CancellationToken cancellationToken = default)
     {
         if (string.IsNullOrWhiteSpace(email))
@@ -88,7 +95,7 @@ public class DatabaseUserRepository(PortalDbContext dbContext, IIdentifierHasher
         entity.IalLevel = (int)user.IalLevel;
         entity.IdProofingSessionId = user.IdProofingSessionId;
         entity.IdProofingCompletedAt = user.IdProofingCompletedAt;
-        entity.IdProofingExpiresAt = user.IdProofingExpiresAt;
+        entity.IdProofingExpiresAt = ComputeStoredExpiration(user.IdProofingCompletedAt);
         entity.DateOfBirth = user.DateOfBirth;
         entity.IsCoLoaded = user.IsCoLoaded;
         entity.CoLoadedLastUpdated = user.CoLoadedLastUpdated;
@@ -307,6 +314,13 @@ public class DatabaseUserRepository(PortalDbContext dbContext, IIdentifierHasher
         return email.Trim().ToLowerInvariant();
     }
 
+    /// <summary>
+    /// Persists a derived expiration for legacy DB readers. Runtime/JWT use
+    /// <see cref="IdProofingCompletedAt"/> + <see cref="IdProofingValiditySettings.ValidityDays"/>.
+    /// </summary>
+    private DateTime? ComputeStoredExpiration(DateTime? completedAt) =>
+        IdProofingExpiration.ComputeStoredExpiration(completedAt, _validitySettings.ValidityDays);
+
     private static User MapToDomainModel(UserEntity entity)
     {
         return new User
@@ -318,7 +332,6 @@ public class DatabaseUserRepository(PortalDbContext dbContext, IIdentifierHasher
             IalLevel = (UserIalLevel)entity.IalLevel,
             IdProofingSessionId = entity.IdProofingSessionId,
             IdProofingCompletedAt = entity.IdProofingCompletedAt,
-            IdProofingExpiresAt = entity.IdProofingExpiresAt,
             DateOfBirth = entity.DateOfBirth,
             IsCoLoaded = entity.IsCoLoaded,
             CoLoadedLastUpdated = entity.CoLoadedLastUpdated,
@@ -343,7 +356,7 @@ public class DatabaseUserRepository(PortalDbContext dbContext, IIdentifierHasher
             IalLevel = (int)user.IalLevel,
             IdProofingSessionId = user.IdProofingSessionId,
             IdProofingCompletedAt = user.IdProofingCompletedAt,
-            IdProofingExpiresAt = user.IdProofingExpiresAt,
+            IdProofingExpiresAt = ComputeStoredExpiration(user.IdProofingCompletedAt),
             DateOfBirth = user.DateOfBirth,
             IsCoLoaded = user.IsCoLoaded,
             CoLoadedLastUpdated = user.CoLoadedLastUpdated,

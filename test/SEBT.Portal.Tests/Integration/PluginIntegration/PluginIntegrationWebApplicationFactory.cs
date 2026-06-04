@@ -4,6 +4,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using NSubstitute;
+using SEBT.Portal.Api.Composition.Defaults;
 using SEBT.Portal.Core.Services;
 using SEBT.Portal.Infrastructure.Data;
 using SEBT.Portal.Infrastructure.Services;
@@ -47,9 +48,7 @@ public class PluginIntegrationWebApplicationFactory : WebApplicationFactory<Prog
         // Override plugin assembly paths via environment variables BEFORE the server starts.
         // Environment variables are visible immediately when Program.cs reads configuration,
         // unlike AddInMemoryCollection which can be applied too late.
-        Environment.SetEnvironmentVariable("PluginAssemblyPaths__0",
-            _pluginDir != null ? PluginPathResolver.Resolve(_pluginDir) : "plugins-none");
-        Environment.SetEnvironmentVariable("PluginAssemblyPaths__1", "plugins-none");
+        SetPluginAssemblyPathEnvironmentVariables(_pluginDir);
         Environment.SetEnvironmentVariable("JwtSettings__SecretKey",
             "integration-test-key-must-be-at-least-32-bytes-long");
         Environment.SetEnvironmentVariable("IdProofingRequirements__household+view__application", "IAL1");
@@ -92,13 +91,55 @@ public class PluginIntegrationWebApplicationFactory : WebApplicationFactory<Prog
             // HouseholdRepository depends on it. Register a mock so DI validation
             // passes. TryAddSingleton is a no-op if a real plugin already registered it.
             services.TryAddSingleton(Substitute.For<ISummerEbtCaseService>());
+
+            foreach (var descriptor in services
+                         .Where(d => d.ServiceType == typeof(IEnrollmentCheckSubmissionLogger))
+                         .ToList())
+            {
+                services.Remove(descriptor);
+            }
+
+            services.AddScoped(_ => Substitute.For<IEnrollmentCheckSubmissionLogger>());
+
+            if (_pluginDir == null)
+            {
+                foreach (var descriptor in services
+                             .Where(d => d.ServiceType == typeof(IEnrollmentCheckService))
+                             .ToList())
+                {
+                    services.Remove(descriptor);
+                }
+
+                services.AddSingleton<IEnrollmentCheckService, DefaultEnrollmentCheckService>();
+            }
         });
+    }
+
+    /// <summary>
+    /// Sets a single absolute plugin directory and clears any extra indices from
+    /// <c>appsettings.Development.json</c> (e.g. <c>plugins-co</c>) so only the intended connector loads.
+    /// </summary>
+    private static void SetPluginAssemblyPathEnvironmentVariables(string? pluginDir)
+    {
+        const int maxPluginPathIndices = 8;
+        var primaryPath = pluginDir != null
+            ? PluginPathResolver.Resolve(pluginDir)
+            : PluginPathResolver.Resolve("plugins-none");
+
+        Environment.SetEnvironmentVariable("PluginAssemblyPaths__0", primaryPath);
+        for (var i = 1; i < maxPluginPathIndices; i++)
+        {
+            Environment.SetEnvironmentVariable($"PluginAssemblyPaths__{i}", null);
+        }
     }
 
     protected override void Dispose(bool disposing)
     {
-        Environment.SetEnvironmentVariable("PluginAssemblyPaths__0", null);
-        Environment.SetEnvironmentVariable("PluginAssemblyPaths__1", null);
+        const int maxPluginPathIndices = 8;
+        for (var i = 0; i < maxPluginPathIndices; i++)
+        {
+            Environment.SetEnvironmentVariable($"PluginAssemblyPaths__{i}", null);
+        }
         Environment.SetEnvironmentVariable("JwtSettings__SecretKey", null);
         Environment.SetEnvironmentVariable("IdProofingRequirements__household+view__application", null);
         Environment.SetEnvironmentVariable("IdProofingRequirements__household+view__coloadedStreamline", null);

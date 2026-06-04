@@ -18,6 +18,9 @@ public class DatabaseUserRepositoryTests : IClassFixture<SqlServerTestFixture>
     private static readonly IIdentifierHasher TestHasher = new IdentifierHasher(
         Options.Create(new IdentifierHasherSettings { SecretKey = "TestKeyMustBeAtLeast32CharactersLong!!" }));
 
+    private static readonly IOptions<IdProofingValiditySettings> TestValiditySettings =
+        Options.Create(new IdProofingValiditySettings { ValidityDays = 1826 });
+
     public DatabaseUserRepositoryTests(SqlServerTestFixture fixture)
     {
         _fixture = fixture;
@@ -29,7 +32,7 @@ public class DatabaseUserRepositoryTests : IClassFixture<SqlServerTestFixture>
     }
 
     private static DatabaseUserRepository CreateRepository(PortalDbContext context) =>
-        new(context, TestHasher);
+        new(context, TestHasher, TestValiditySettings);
 
     [Fact]
     public async Task GetUserByEmailAsync_WhenUserExists_ShouldReturnUser()
@@ -225,12 +228,12 @@ public class DatabaseUserRepositoryTests : IClassFixture<SqlServerTestFixture>
         context.Users.Add(entity);
         await context.SaveChangesAsync();
 
+        var completedAt = DateTime.UtcNow;
         var user = UserFactory.CreateUserWithEmail(uniqueEmail, u =>
         {
             u.IalLevel = UserIalLevel.IAL1plus;
             u.IdProofingSessionId = "new-session-456";
-            u.IdProofingCompletedAt = DateTime.UtcNow;
-            u.IdProofingExpiresAt = DateTime.UtcNow.AddYears(1);
+            u.IdProofingCompletedAt = completedAt;
         });
         // Set init-only properties using reflection
         var idProperty = typeof(User).GetProperty(nameof(User.Id));
@@ -247,7 +250,9 @@ public class DatabaseUserRepositoryTests : IClassFixture<SqlServerTestFixture>
         Assert.Equal((int)UserIalLevel.IAL1plus, updated!.IalLevel);
         Assert.Equal("new-session-456", updated.IdProofingSessionId);
         Assert.NotNull(updated.IdProofingCompletedAt);
-        Assert.NotNull(updated.IdProofingExpiresAt);
+        Assert.Equal(
+            completedAt.AddDays(TestValiditySettings.Value.ValidityDays),
+            updated.IdProofingExpiresAt);
     }
 
     [Fact]
@@ -744,7 +749,6 @@ public class DatabaseUserRepositoryTests : IClassFixture<SqlServerTestFixture>
         Assert.Equal(UserIalLevel.IAL1plus, result.IalLevel);
         Assert.Equal("test-session", result.IdProofingSessionId);
         Assert.Equal(completedAt, result.IdProofingCompletedAt);
-        Assert.Equal(expiresAt, result.IdProofingExpiresAt);
         Assert.True(result.IsCoLoaded);
         Assert.Equal(coLoadedUpdated, result.CoLoadedLastUpdated);
         Assert.Equal(createdAt, result.CreatedAt);
@@ -798,7 +802,6 @@ public class DatabaseUserRepositoryTests : IClassFixture<SqlServerTestFixture>
             u.IalLevel = UserIalLevel.None;
             u.IdProofingSessionId = "full-session";
             u.IdProofingCompletedAt = completedAt;
-            u.IdProofingExpiresAt = expiresAt;
             u.IsCoLoaded = true;
             u.CoLoadedLastUpdated = coLoadedUpdated;
             u.UpdatedAt = DateTime.UtcNow.AddDays(-5);
@@ -816,7 +819,9 @@ public class DatabaseUserRepositoryTests : IClassFixture<SqlServerTestFixture>
         Assert.Equal((int)UserIalLevel.None, stored!.IalLevel);
         Assert.Equal("full-session", stored.IdProofingSessionId);
         Assert.Equal(completedAt, stored.IdProofingCompletedAt);
-        Assert.Equal(expiresAt, stored.IdProofingExpiresAt);
+        Assert.Equal(
+            completedAt.AddDays(TestValiditySettings.Value.ValidityDays),
+            stored.IdProofingExpiresAt);
         Assert.True(stored.IsCoLoaded);
         Assert.Equal(coLoadedUpdated, stored.CoLoadedLastUpdated);
     }

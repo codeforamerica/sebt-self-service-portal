@@ -3,6 +3,7 @@ using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Text;
 using System.Text.Json;
+using Microsoft.AspNetCore.Http;
 using Microsoft.IdentityModel.Protocols;
 using Microsoft.IdentityModel.Protocols.OpenIdConnect;
 using Microsoft.IdentityModel.Tokens;
@@ -27,6 +28,7 @@ public interface IOidcExchangeService
     /// <param name="codeVerifier">PKCE code_verifier (from the pre-auth session, never from the browser).</param>
     /// <param name="redirectUri">redirect_uri that was sent in the authorization request.</param>
     /// <param name="isStepUp">True when this is a step-up (IAL1+) flow.</param>
+    /// <param name="sessionId">Pre-auth session id for correlated off-boarding logs.</param>
     /// <param name="cancellationToken">Cancellation.</param>
     /// <returns>Signed callback token (short-lived JWT) on success.</returns>
     Task<OidcExchangeResult> ExchangeCodeAsync(
@@ -34,6 +36,7 @@ public interface IOidcExchangeService
         string codeVerifier,
         string redirectUri,
         bool isStepUp,
+        string? sessionId = null,
         CancellationToken cancellationToken = default);
 
     /// <summary>
@@ -90,6 +93,7 @@ public sealed class OidcExchangeService : IOidcExchangeService
     private readonly IConfiguration _config;
     private readonly IHttpClientFactory _httpFactory;
     private readonly ILogger<OidcExchangeService> _logger;
+    private readonly IOidcCallbackFailureLogger _callbackFailureLogger;
 
     /// <summary>strict exp check — ≤10 seconds clock skew tolerance.</summary>
     private static readonly TimeSpan IdTokenClockSkew = TimeSpan.FromSeconds(10);
@@ -128,11 +132,13 @@ public sealed class OidcExchangeService : IOidcExchangeService
     public OidcExchangeService(
         IConfiguration config,
         IHttpClientFactory httpFactory,
-        ILogger<OidcExchangeService> logger)
+        ILogger<OidcExchangeService> logger,
+        IOidcCallbackFailureLogger callbackFailureLogger)
     {
         _config = config;
         _httpFactory = httpFactory;
         _logger = logger;
+        _callbackFailureLogger = callbackFailureLogger;
     }
 
     /// <inheritdoc/>
@@ -166,6 +172,7 @@ public sealed class OidcExchangeService : IOidcExchangeService
         string codeVerifier,
         string redirectUri,
         bool isStepUp,
+        string? sessionId = null,
         CancellationToken cancellationToken = default)
     {
         // --- Resolve per-flow config ---
@@ -176,7 +183,14 @@ public sealed class OidcExchangeService : IOidcExchangeService
         if (string.IsNullOrEmpty(clientId)
             || string.IsNullOrEmpty(clientSecret) || string.IsNullOrEmpty(signingKey))
         {
-            _logger.LogWarning("OIDC exchange: missing config (reason=oidc_not_configured, isStepUp={IsStepUp})", isStepUp);
+            LogOffboardingFailure(new OidcCallbackFailureLogEntry
+            {
+                Reason = "oidc_not_configured",
+                Phase = "callback",
+                SessionId = sessionId,
+                IsStepUp = isStepUp,
+                HttpStatus = StatusCodes.Status503ServiceUnavailable
+            });
             return OidcExchangeResult.Fail("OIDC not configured.", 503);
         }
 
@@ -188,12 +202,28 @@ public sealed class OidcExchangeService : IOidcExchangeService
         }
         catch (Exception ex)
         {
-            _logger.LogWarning(ex, "OIDC exchange: failed to fetch discovery document (reason=discovery_failed)");
+            LogOffboardingFailure(new OidcCallbackFailureLogEntry
+            {
+                Reason = "discovery_failed",
+                Phase = "callback",
+                SessionId = sessionId,
+                IsStepUp = isStepUp,
+                HttpStatus = StatusCodes.Status502BadGateway,
+                ApiError = OidcLogSanitizer.Sanitize(ex.Message)
+            }, ex);
             return OidcExchangeResult.Fail("Failed to load OIDC discovery document.", 502);
         }
 
         if (string.IsNullOrEmpty(oidcConfig.TokenEndpoint))
         {
+            LogOffboardingFailure(new OidcCallbackFailureLogEntry
+            {
+                Reason = "discovery_invalid",
+                Phase = "callback",
+                SessionId = sessionId,
+                IsStepUp = isStepUp,
+                HttpStatus = StatusCodes.Status502BadGateway
+            });
             return OidcExchangeResult.Fail("Invalid discovery document (missing token_endpoint).", 502);
         }
 
@@ -217,28 +247,45 @@ public sealed class OidcExchangeService : IOidcExchangeService
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "OIDC exchange: token request failed (reason=token_request_failed)");
+            LogOffboardingFailure(new OidcCallbackFailureLogEntry
+            {
+                Reason = "token_request_failed",
+                Phase = "callback",
+                SessionId = sessionId,
+                IsStepUp = isStepUp,
+                ApiError = OidcLogSanitizer.Sanitize(ex.Message)
+            }, ex);
             return OidcExchangeResult.Fail("Token exchange failed.");
         }
 
         var tokenBody = await tokenRes.Content.ReadAsStringAsync(cancellationToken);
         if (!tokenRes.IsSuccessStatusCode)
         {
-            // Log the raw IdP error for debugging but never forward it to the client
+            // Log IdP OAuth error fields for support; never forward them to the client
             // (error_description can contain internal IdP infrastructure details).
+            string? idpError = null;
+            string? idpDescription = null;
             try
             {
                 using var doc = JsonDocument.Parse(tokenBody);
-                var desc = doc.RootElement.TryGetProperty("error_description", out var ed) ? ed.GetString() : null;
-                var err = doc.RootElement.TryGetProperty("error", out var e) ? e.GetString() : null;
-                _logger.LogError(
-                    "OIDC exchange: token endpoint returned {StatusCode}, error={Error}, description={Description} (reason=token_exchange_rejected)",
-                    (int)tokenRes.StatusCode, err, desc);
+                idpDescription = doc.RootElement.TryGetProperty("error_description", out var ed) ? ed.GetString() : null;
+                idpError = doc.RootElement.TryGetProperty("error", out var e) ? e.GetString() : null;
             }
             catch
             {
-                _logger.LogError("OIDC exchange: token endpoint returned {StatusCode} (reason=token_exchange_rejected)", (int)tokenRes.StatusCode);
+                // Non-JSON error body — HttpStatus only.
             }
+
+            LogOffboardingFailure(new OidcCallbackFailureLogEntry
+            {
+                Reason = "token_exchange_rejected",
+                Phase = "callback",
+                SessionId = sessionId,
+                HttpStatus = (int)tokenRes.StatusCode,
+                IdpError = idpError,
+                IdpErrorDescription = idpDescription,
+                IsStepUp = isStepUp
+            });
             return OidcExchangeResult.Fail("Token exchange was rejected by the identity provider.");
         }
 
@@ -253,12 +300,27 @@ public sealed class OidcExchangeService : IOidcExchangeService
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "OIDC exchange: failed to parse token response (reason=token_parse_failed)");
+            LogOffboardingFailure(new OidcCallbackFailureLogEntry
+            {
+                Reason = "token_parse_failed",
+                Phase = "callback",
+                SessionId = sessionId,
+                IsStepUp = isStepUp,
+                ApiError = OidcLogSanitizer.Sanitize(ex.Message)
+            }, ex);
             return OidcExchangeResult.Fail("Failed to parse token response.");
         }
 
         if (string.IsNullOrEmpty(idTokenRaw))
         {
+            LogOffboardingFailure(new OidcCallbackFailureLogEntry
+            {
+                Reason = "missing_id_token",
+                Phase = "callback",
+                SessionId = sessionId,
+                IsStepUp = isStepUp,
+                HttpStatus = StatusCodes.Status400BadRequest
+            });
             return OidcExchangeResult.Fail("No id_token in token response.");
         }
 
@@ -284,14 +346,30 @@ public sealed class OidcExchangeService : IOidcExchangeService
         {
             principal = handler.ValidateToken(idTokenRaw, validationParams, out _);
         }
-        catch (SecurityTokenExpiredException)
+        catch (SecurityTokenExpiredException ex)
         {
-            _logger.LogError("OIDC exchange: id_token expired beyond {Skew}s skew (reason=expired_token)", IdTokenClockSkew.TotalSeconds);
+            LogOffboardingFailure(new OidcCallbackFailureLogEntry
+            {
+                Reason = "expired_token",
+                Phase = "callback",
+                SessionId = sessionId,
+                IsStepUp = isStepUp,
+                HttpStatus = StatusCodes.Status400BadRequest,
+                ApiError = OidcLogSanitizer.Sanitize(ex.Message)
+            }, ex);
             return OidcExchangeResult.Fail("Id token has expired.");
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "OIDC exchange: id_token validation failed (reason=token_validation_failed)");
+            LogOffboardingFailure(new OidcCallbackFailureLogEntry
+            {
+                Reason = "token_validation_failed",
+                Phase = "callback",
+                SessionId = sessionId,
+                IsStepUp = isStepUp,
+                HttpStatus = StatusCodes.Status400BadRequest,
+                ApiError = OidcLogSanitizer.Sanitize(ex.Message)
+            }, ex);
             return OidcExchangeResult.Fail("Id token validation failed.");
         }
 
@@ -344,7 +422,14 @@ public sealed class OidcExchangeService : IOidcExchangeService
         // --- Verify we have at least sub or email ---
         if (!claims.ContainsKey("sub") && !claims.ContainsKey("email"))
         {
-            _logger.LogError("OIDC exchange: id_token + userinfo had no sub or email (reason=missing_identity_claim)");
+            LogOffboardingFailure(new OidcCallbackFailureLogEntry
+            {
+                Reason = "missing_identity_claim",
+                Phase = "callback",
+                SessionId = sessionId,
+                IsStepUp = isStepUp,
+                HttpStatus = StatusCodes.Status400BadRequest
+            });
             return OidcExchangeResult.Fail("Callback token must contain an email or sub claim.");
         }
 
@@ -374,6 +459,19 @@ public sealed class OidcExchangeService : IOidcExchangeService
             isStepUp);
 
         return OidcExchangeResult.Ok(callbackToken, phoneClaim);
+    }
+
+    /// <summary>
+    /// Writes the unified off-boarding log line and, when <paramref name="ex"/> is set,
+    /// a second error-level log entry with the full exception for Datadog.
+    /// </summary>
+    private void LogOffboardingFailure(OidcCallbackFailureLogEntry entry, Exception? ex = null)
+    {
+        _callbackFailureLogger.Log(entry);
+        if (ex != null)
+        {
+            _logger.LogError(ex, "OIDC exchange off-boarding: {Reason}", entry.Reason);
+        }
     }
 
     private async Task EnrichClaimsFromUserInfo(

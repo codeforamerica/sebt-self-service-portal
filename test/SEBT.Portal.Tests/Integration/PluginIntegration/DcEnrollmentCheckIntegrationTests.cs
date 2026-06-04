@@ -1,6 +1,7 @@
 using System.Net;
 using System.Net.Http.Json;
 using System.Text.Json;
+using Microsoft.Data.SqlClient;
 using Microsoft.Extensions.DependencyInjection;
 using SEBT.Portal.StatesPlugins.Interfaces;
 
@@ -21,6 +22,7 @@ namespace SEBT.Portal.Tests.Integration.PluginIntegration;
 /// </summary>
 [Collection("Integration")]
 [Trait("Category", "Integration")]
+[Trait("Category", "SqlServer")]
 public class DcEnrollmentCheckIntegrationTests : IClassFixture<DcSourceDatabaseFixture>, IDisposable
 {
     private readonly PluginIntegrationWebApplicationFactory? _factory;
@@ -55,13 +57,22 @@ public class DcEnrollmentCheckIntegrationTests : IClassFixture<DcSourceDatabaseF
                 using (var scope = factory.Services.CreateScope())
                 {
                     var enrollment = scope.ServiceProvider.GetRequiredService<IEnrollmentCheckService>();
-                    if (enrollment.GetType().Name == "DefaultEnrollmentCheckService")
+                    if (enrollment.GetType().Name != "DcEnrollmentCheckService")
                     {
                         factory.Dispose();
                         factory = null;
                         skipReason =
-                            "plugins-dc has no IEnrollmentCheckService export; only the API default stub is registered. Rebuild dc-connector and copy DLLs to plugins-dc.";
+                            "Expected DcEnrollmentCheckService but got " +
+                            $"{enrollment.GetType().FullName}. Rebuild dc-connector, copy DLLs to plugins-dc, " +
+                            "and ensure no other enrollment plugin is loaded.";
                     }
+                }
+
+                if (factory != null && !CanConnectToDcSource(dcDatabase.ConnectionString, out var connectError))
+                {
+                    factory.Dispose();
+                    factory = null;
+                    skipReason = connectError;
                 }
 
                 if (factory != null)
@@ -155,5 +166,22 @@ public class DcEnrollmentCheckIntegrationTests : IClassFixture<DcSourceDatabaseF
     {
         _client?.Dispose();
         _factory?.Dispose();
+    }
+
+    private static bool CanConnectToDcSource(string connectionString, out string skipReason)
+    {
+        try
+        {
+            using var connection = new SqlConnection(connectionString);
+            connection.Open();
+            skipReason = string.Empty;
+            return true;
+        }
+        catch (Exception ex)
+        {
+            skipReason =
+                $"DC source database is not reachable (Docker/Testcontainers may be unavailable): {ex.GetBaseException().Message}";
+            return false;
+        }
     }
 }
