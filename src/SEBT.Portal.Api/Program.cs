@@ -89,9 +89,8 @@ var environmentId = agentSection["EnvironmentId"];
 if (!string.IsNullOrEmpty(applicationId) && !string.IsNullOrEmpty(environmentId))
 {
     var baseUrl = agentSection["BaseUrl"] ?? "http://localhost:2772";
-    var reloadAfterSeconds = agentSection.GetValue<int?>("ReloadAfterSeconds") ?? 90;
 
-    using var loggerFactory = LoggerFactory.Create(lb => lb.AddSerilog());
+    var loggerFactory = LoggerFactory.Create(lb => lb.AddSerilog());
     var appConfigLogger = loggerFactory.CreateLogger<AppConfigAgentConfigurationProvider>();
 
     var featureFlagsProfileId = builder.Configuration["AppConfig:FeatureFlags:ProfileId"];
@@ -99,7 +98,7 @@ if (!string.IsNullOrEmpty(applicationId) && !string.IsNullOrEmpty(environmentId)
     {
         builder.Configuration.AddAppConfigAgent(
             baseUrl, applicationId, environmentId, featureFlagsProfileId,
-            reloadAfterSeconds, isFeatureFlag: true, logger: appConfigLogger);
+            isFeatureFlag: true, logger: appConfigLogger);
     }
 
     var appSettingsProfileId = builder.Configuration["AppConfig:AppSettings:ProfileId"];
@@ -107,8 +106,11 @@ if (!string.IsNullOrEmpty(applicationId) && !string.IsNullOrEmpty(environmentId)
     {
         builder.Configuration.AddAppConfigAgent(
             baseUrl, applicationId, environmentId, appSettingsProfileId,
-            reloadAfterSeconds, isFeatureFlag: false, logger: appConfigLogger);
+            isFeatureFlag: false, logger: appConfigLogger);
     }
+
+    builder.Services.AddSingleton(TimeProvider.System);
+    builder.Services.AddHostedService<AppConfigAgentReloadService>();
 }
 
 // Build database connection string from environment variables when deployed

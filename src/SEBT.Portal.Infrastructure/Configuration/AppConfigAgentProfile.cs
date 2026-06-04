@@ -26,11 +26,6 @@ public class AppConfigAgentProfile
     public required string ProfileId { get; set; }
 
     /// <summary>
-    /// Reload interval in seconds (default: 90).
-    /// </summary>
-    public int? ReloadAfterSeconds { get; set; } = 90;
-
-    /// <summary>
     /// Whether this is a feature flag profile.
     /// </summary>
     public bool IsFeatureFlag { get; set; } = true;

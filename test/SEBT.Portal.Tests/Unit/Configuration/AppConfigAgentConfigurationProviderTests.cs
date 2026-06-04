@@ -590,8 +590,7 @@ public class AppConfigAgentConfigurationProviderTests : IDisposable
             BaseUrl = "http://localhost:2772",
             ApplicationId = "test-app",
             EnvironmentId = "test-env",
-            ProfileId = "test-profile",
-            ReloadAfterSeconds = 90
+            ProfileId = "test-profile"
         };
 
         var provider = new AppConfigAgentConfigurationProvider(_httpClient, profile, _logger, ownsHttpClient: false);
@@ -612,7 +611,6 @@ public class AppConfigAgentConfigurationProviderTests : IDisposable
             ApplicationId = "test-app",
             EnvironmentId = "test-env",
             ProfileId = "test-profile",
-            ReloadAfterSeconds = 90,
             IsFeatureFlag = true
         };
 
@@ -623,12 +621,12 @@ public class AppConfigAgentConfigurationProviderTests : IDisposable
 
         // Assert
         Assert.Contains("AppConfigAgentConfigurationProvider", result);
-        Assert.Contains("test-app:test-env:test-profile:90", result);
+        Assert.Contains("test-app:test-env:test-profile", result);
         Assert.Contains("Feature Flag", result);
     }
 
     [Fact]
-    public void Load_WithReloadAfterSeconds_ShouldSetupReloadMechanism()
+    public void Load_CalledMultipleTimes_DoesNotThrow()
     {
         // Arrange
         var profile = new AppConfigAgentProfile
@@ -636,82 +634,7 @@ public class AppConfigAgentConfigurationProviderTests : IDisposable
             BaseUrl = "http://localhost:2772",
             ApplicationId = "test-app",
             EnvironmentId = "test-env",
-            ProfileId = "test-profile",
-            ReloadAfterSeconds = 1
-        };
-
-        var featureFlagsJson = new
-        {
-            feature1 = new { enabled = true }
-        };
-
-        _mockHttpHandler
-            .When("http://localhost:2772/applications/test-app/environments/test-env/configurations/test-profile")
-            .Respond(HttpStatusCode.OK, "application/json", JsonSerializer.Serialize(featureFlagsJson));
-
-        var provider = new AppConfigAgentConfigurationProvider(_httpClient, profile, _logger, ownsHttpClient: false);
-
-        // Act
-        provider.Load();
-
-        // Assert
-        Assert.True(provider.TryGet("FeatureManagement:feature1", out var value));
-        Assert.Equal("true", value);
-
-        // Calling Load() again should not throw 
-        var exception = Record.Exception(() => provider.Load());
-        Assert.Null(exception);
-
-        provider.Dispose();
-    }
-
-    [Fact]
-    public void Load_WithReloadAfterSecondsNull_ShouldNotSetupReload()
-    {
-        // Arrange
-        var profile = new AppConfigAgentProfile
-        {
-            BaseUrl = "http://localhost:2772",
-            ApplicationId = "test-app",
-            EnvironmentId = "test-env",
-            ProfileId = "test-profile",
-            ReloadAfterSeconds = null // This disables the reload mechanism
-        };
-
-        var featureFlagsJson = new
-        {
-            feature1 = new { enabled = true }
-        };
-
-        _mockHttpHandler
-            .When("http://localhost:2772/applications/test-app/environments/test-env/configurations/test-profile")
-            .Respond(HttpStatusCode.OK, "application/json", JsonSerializer.Serialize(featureFlagsJson));
-
-        var provider = new AppConfigAgentConfigurationProvider(_httpClient, profile, _logger, ownsHttpClient: false);
-
-        // Act
-        provider.Load();
-
-        // Assert
-        Assert.True(provider.TryGet("FeatureManagement:feature1", out var value));
-        Assert.Equal("true", value);
-
-        // Calling Load() again should work fine for this case
-        var exception = Record.Exception(() => provider.Load());
-        Assert.Null(exception);
-    }
-
-    [Fact]
-    public void Load_MultipleTimes_ShouldDisposePreviousReloadToken()
-    {
-        // Arrange
-        var profile = new AppConfigAgentProfile
-        {
-            BaseUrl = "http://localhost:2772",
-            ApplicationId = "test-app",
-            EnvironmentId = "test-env",
-            ProfileId = "test-profile",
-            ReloadAfterSeconds = 1
+            ProfileId = "test-profile"
         };
 
         var featureFlagsJson = new
@@ -745,7 +668,7 @@ public class AppConfigAgentConfigurationProviderTests : IDisposable
     }
 
     [Fact]
-    public void Dispose_WithReloadMechanism_ShouldDisposeReloadToken()
+    public void Dispose_CalledTwice_DoesNotThrow()
     {
         // Arrange
         var profile = new AppConfigAgentProfile
@@ -753,8 +676,7 @@ public class AppConfigAgentConfigurationProviderTests : IDisposable
             BaseUrl = "http://localhost:2772",
             ApplicationId = "test-app",
             EnvironmentId = "test-env",
-            ProfileId = "test-profile",
-            ReloadAfterSeconds = 90
+            ProfileId = "test-profile"
         };
 
         var featureFlagsJson = new
@@ -937,8 +859,7 @@ public class AppConfigAgentConfigurationProviderTests : IDisposable
             ApplicationId = "test-app",
             EnvironmentId = "test-env",
             ProfileId = "test-profile",
-            IsFeatureFlag = false,
-            ReloadAfterSeconds = null // Disable reload timer for test isolation
+            IsFeatureFlag = false
         };
 
         var configJson = """{"Cbms": {"UseMockResponses": true}}""";
@@ -973,8 +894,7 @@ public class AppConfigAgentConfigurationProviderTests : IDisposable
             ApplicationId = "test-app",
             EnvironmentId = "test-env",
             ProfileId = "test-profile",
-            IsFeatureFlag = false,
-            ReloadAfterSeconds = null
+            IsFeatureFlag = false
         };
 
         var handler = new FailThenSucceedHandler(
@@ -1005,8 +925,7 @@ public class AppConfigAgentConfigurationProviderTests : IDisposable
             ApplicationId = "test-app",
             EnvironmentId = "test-env",
             ProfileId = "test-profile",
-            IsFeatureFlag = false,
-            ReloadAfterSeconds = null
+            IsFeatureFlag = false
         };
 
         var configJson = """{"Key1": "value1"}""";
@@ -1035,6 +954,83 @@ public class AppConfigAgentConfigurationProviderTests : IDisposable
         Assert.Equal(2, handler.CallCount);
 
         provider.Dispose();
+    }
+
+    [Fact]
+    public async Task ReloadAsync_WhenConfigUnchanged_DoesNotFireReloadToken()
+    {
+        // Arrange
+        var profile = new AppConfigAgentProfile
+        {
+            BaseUrl = "http://localhost:2772",
+            ApplicationId = "test-app",
+            EnvironmentId = "test-env",
+            ProfileId = "test-profile",
+            IsFeatureFlag = true
+        };
+
+        var featureFlagJson = new { feature1 = new { enabled = true } };
+
+        _mockHttpHandler
+            .When("http://localhost:2772/applications/test-app/environments/test-env/configurations/test-profile")
+            .Respond(HttpStatusCode.OK, "application/json", JsonSerializer.Serialize(featureFlagJson));
+
+        var provider = new AppConfigAgentConfigurationProvider(_httpClient, profile, _logger, ownsHttpClient: false);
+
+        // Act
+        provider.Load(); // initial load populates Data
+        var token = provider.GetReloadToken(); // capture the change token before reloading
+        await provider.ReloadAsync(); // agent returns the same data again
+
+        // Assert
+        Assert.False(token.HasChanged); // unchanged config must NOT raise a reload
+        Assert.True(provider.TryGet("FeatureManagement:feature1", out var value));
+        Assert.Equal("true", value);
+    }
+
+    [Fact]
+    public async Task ReloadAsync_WhenConfigChanged_UpdatesValueAndFiresReloadToken()
+    {
+        // Arrange
+        var profile = new AppConfigAgentProfile
+        {
+            BaseUrl = "http://localhost:2772",
+            ApplicationId = "test-app",
+            EnvironmentId = "test-env",
+            ProfileId = "test-profile",
+            IsFeatureFlag = true
+        };
+
+        // First request returns feature1 = true, every request after returns feature1 = false.
+        var callCount = 0;
+        _mockHttpHandler
+            .When("http://localhost:2772/applications/test-app/environments/test-env/configurations/test-profile")
+            .Respond(_ =>
+            {
+                callCount++;
+                var json = callCount == 1
+                    ? JsonSerializer.Serialize(new { feature1 = new { enabled = true } })
+                    : JsonSerializer.Serialize(new { feature1 = new { enabled = false } });
+                return new HttpResponseMessage(HttpStatusCode.OK)
+                {
+                    Content = new StringContent(json, Encoding.UTF8, "application/json")
+                };
+            });
+
+        var provider = new AppConfigAgentConfigurationProvider(_httpClient, profile, _logger, ownsHttpClient: false);
+
+        // Act - initial load gets feature1 = true
+        provider.Load();
+        Assert.True(provider.TryGet("FeatureManagement:feature1", out var before));
+        Assert.Equal("true", before);
+
+        var token = provider.GetReloadToken(); // capture before the reload
+        await provider.ReloadAsync(); // second fetch returns feature1 = false
+
+        // Assert
+        Assert.True(token.HasChanged); // changed config DID raise a reload
+        Assert.True(provider.TryGet("FeatureManagement:feature1", out var after));
+        Assert.Equal("false", after);
     }
 
     /// <summary>

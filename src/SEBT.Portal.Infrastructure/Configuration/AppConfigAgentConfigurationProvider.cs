@@ -20,7 +20,6 @@ public sealed class AppConfigAgentConfigurationProvider : ConfigurationProvider,
     private readonly ILogger<AppConfigAgentConfigurationProvider>? _logger;
     private readonly bool _ownsHttpClient;
 
-    private Timer? _reloadTimer;
     private int _isLoading; // 0 = not loading, 1 = loading
     private volatile bool _disposed;
     private bool _initialLoadCompleted;
@@ -59,20 +58,28 @@ public sealed class AppConfigAgentConfigurationProvider : ConfigurationProvider,
             }
             else
             {
-                LoadAsync().GetAwaiter().GetResult();
-            }
-
-            if (_profile.ReloadAfterSeconds.HasValue)
-            {
-                var delay = TimeSpan.FromSeconds(_profile.ReloadAfterSeconds.Value);
-                _reloadTimer?.Dispose();
-                _reloadTimer = new Timer(_ => OnReloadTimerFired(), null, delay, Timeout.InfiniteTimeSpan);
+                LoadAsync(CancellationToken.None).GetAwaiter().GetResult();
             }
         }
         finally
         {
             Interlocked.Exchange(ref _isLoading, 0);
         }
+    }
+
+    /// <summary>
+    /// Re-fetches configuration from the AppConfig Agent. Called by the reload background service
+    /// on its polling interval. Only raises a change notification when the configuration actually
+    /// changed.
+    /// </summary>
+    public async Task ReloadAsync(CancellationToken cancellationToken = default)
+    {
+        if (_disposed)
+        {
+            return;
+        }
+
+        await LoadAsync(cancellationToken).ConfigureAwait(false);
     }
 
     /// <summary>
@@ -86,7 +93,7 @@ public sealed class AppConfigAgentConfigurationProvider : ConfigurationProvider,
         {
             try
             {
-                await LoadAsync().ConfigureAwait(false);
+                await LoadAsync(CancellationToken.None).ConfigureAwait(false);
 
                 // If Data has items, the load succeeded.
                 if (Data.Count > 0)
@@ -114,16 +121,10 @@ public sealed class AppConfigAgentConfigurationProvider : ConfigurationProvider,
             _profile.ProfileId);
     }
 
-    private void OnReloadTimerFired()
-    {
-        if (!_disposed)
-            Load();
-    }
-
-    private async Task LoadAsync()
+    private async Task LoadAsync(CancellationToken cancellationToken)
     {
         // ConfigureAwait(false) throughout to avoid deadlock when Load() is called synchronously (e.g. from tests or config build).
-        if (!await _lock.WaitAsync(LockReleaseTimeout).ConfigureAwait(false))
+        if (!await _lock.WaitAsync(LockReleaseTimeout, cancellationToken).ConfigureAwait(false))
         {
             return;
         }
@@ -133,7 +134,7 @@ public sealed class AppConfigAgentConfigurationProvider : ConfigurationProvider,
             var endpointUrl = _profile.GetEndpointUrl();
             _logger?.LogDebug("Fetching configuration from AppConfig Agent: {EndpointUrl}", endpointUrl);
 
-            using var response = await _httpClient.GetAsync(endpointUrl, HttpCompletionOption.ResponseHeadersRead).ConfigureAwait(false);
+            using var response = await _httpClient.GetAsync(endpointUrl, HttpCompletionOption.ResponseHeadersRead, cancellationToken).ConfigureAwait(false);
 
             if (!response.IsSuccessStatusCode)
             {
@@ -147,23 +148,36 @@ public sealed class AppConfigAgentConfigurationProvider : ConfigurationProvider,
             var contentType = response.Content.Headers.ContentType?.MediaType;
             _logger?.LogDebug("AppConfig Agent returned content type: {ContentType}", contentType);
 
-            await using var stream = await response.Content.ReadAsStreamAsync().ConfigureAwait(false);
+            await using var stream = await response.Content.ReadAsStreamAsync(cancellationToken).ConfigureAwait(false);
 
             // Parse the configuration from the AppConfig Agent response
             var parsedData = ParseConfig(stream, contentType);
 
             if (parsedData.Count > 0)
             {
+                var changed = !ConfigurationEquals(parsedData, Data);
                 Data = parsedData;
-                OnReload();
-                _logger?.LogInformation(
-                    "Loaded {Count} configuration items from AppConfig Agent for profile {ProfileId}",
-                    parsedData.Count,
-                    _profile.ProfileId);
+                if (changed)
+                {
+                    OnReload();
+                    _logger?.LogInformation(
+                        "Loaded {Count} configuration items from AppConfig Agent for profile {ProfileId}",
+                        parsedData.Count,
+                        _profile.ProfileId);
+                }
+                else
+                {
+                    _logger?.LogDebug(
+                        "No configuration changes for profile {ProfileId} ({Count} items)",
+                        _profile.ProfileId,
+                        parsedData.Count);
+                }
             }
             else
             {
-                _logger?.LogDebug("AppConfig Agent returned empty configuration for profile {ProfileId}", _profile.ProfileId);
+                _logger?.LogWarning(
+                    "AppConfig Agent returned empty configuration for profile {ProfileId}. Configuration will not be updated.",
+                    _profile.ProfileId);
             }
         }
         catch (HttpRequestException ex)
@@ -180,6 +194,24 @@ public sealed class AppConfigAgentConfigurationProvider : ConfigurationProvider,
         {
             _lock.Release();
         }
+    }
+
+    private static bool ConfigurationEquals(IDictionary<string, string?> incomingData,
+        IDictionary<string, string?> existingData)
+    {
+        if (incomingData.Count != existingData.Count)
+        {
+            return false;
+        }
+
+        foreach (var kvp in incomingData)
+        {
+            if (!existingData.TryGetValue(kvp.Key, out var existingValue) || existingValue != kvp.Value)
+            {
+                return false;
+            }
+        }
+        return true;
     }
 
     private IDictionary<string, string?> ParseConfig(Stream stream, string? contentType)
@@ -318,8 +350,6 @@ public sealed class AppConfigAgentConfigurationProvider : ConfigurationProvider,
 
         _disposed = true;
 
-        _reloadTimer?.Dispose();
-        _reloadTimer = null;
         _lock?.Dispose();
 
         // Dispose HttpClient if we own it
@@ -332,7 +362,7 @@ public sealed class AppConfigAgentConfigurationProvider : ConfigurationProvider,
     public override string ToString()
     {
         var className = GetType().Name;
-        var profile = $"{_profile.ApplicationId}:{_profile.EnvironmentId}:{_profile.ProfileId}:{_profile.ReloadAfterSeconds}";
+        var profile = $"{_profile.ApplicationId}:{_profile.EnvironmentId}:{_profile.ProfileId}";
         var isFeatureFlag = _profile.IsFeatureFlag ? " (Feature Flag)" : string.Empty;
 
         return $"{className} - {profile}{isFeatureFlag}";
