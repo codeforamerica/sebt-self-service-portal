@@ -132,7 +132,7 @@ if (!string.IsNullOrEmpty(dbHost) && !string.IsNullOrEmpty(dbPassword))
 }
 
 // Caching must be registered before plugins — plugins may depend on HybridCache
-builder.Services.AddCaching(builder.Configuration);
+builder.Services.AddCaching(builder.Configuration, builder.Environment);
 builder.Services.AddDistributedLocking(builder.Configuration);
 
 // Registers plugins and allows them to be constructor injected into ASP.NET controllers
