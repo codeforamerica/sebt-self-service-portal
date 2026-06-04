@@ -132,7 +132,7 @@ public sealed class AppConfigAgentConfigurationProvider : ConfigurationProvider,
         try
         {
             var endpointUrl = _profile.GetEndpointUrl();
-            _logger?.LogDebug("Fetching configuration from AppConfig Agent: {EndpointUrl}", endpointUrl);
+            _logger?.LogInformation("Fetching configuration from AppConfig Agent: {EndpointUrl}", endpointUrl);
 
             using var response = await _httpClient.GetAsync(endpointUrl, HttpCompletionOption.ResponseHeadersRead, cancellationToken).ConfigureAwait(false);
 
@@ -146,7 +146,7 @@ public sealed class AppConfigAgentConfigurationProvider : ConfigurationProvider,
             }
 
             var contentType = response.Content.Headers.ContentType?.MediaType;
-            _logger?.LogDebug("AppConfig Agent returned content type: {ContentType}", contentType);
+            _logger?.LogInformation("AppConfig Agent returned content type: {ContentType}", contentType);
 
             await using var stream = await response.Content.ReadAsStreamAsync(cancellationToken).ConfigureAwait(false);
 
@@ -167,7 +167,7 @@ public sealed class AppConfigAgentConfigurationProvider : ConfigurationProvider,
                 }
                 else
                 {
-                    _logger?.LogDebug(
+                    _logger?.LogInformation(
                         "No configuration changes for profile {ProfileId} ({Count} items)",
                         _profile.ProfileId,
                         parsedData.Count);

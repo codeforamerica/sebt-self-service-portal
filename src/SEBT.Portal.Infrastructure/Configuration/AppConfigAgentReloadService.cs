@@ -60,6 +60,7 @@ public sealed class AppConfigAgentReloadService : BackgroundService
         {
             while (await timer.WaitForNextTickAsync(stoppingToken).ConfigureAwait(false))
             {
+                _logger.LogInformation("Reload tick fired"); // TEMP
                 foreach (var provider in providers)
                 {
                     try
