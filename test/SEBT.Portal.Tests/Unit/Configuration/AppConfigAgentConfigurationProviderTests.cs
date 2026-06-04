@@ -989,6 +989,53 @@ public class AppConfigAgentConfigurationProviderTests : IDisposable
     }
 
     [Fact]
+    public async Task ReloadAsync_AfterDispose_StillReloads()
+    {
+        // The host disposes configuration providers shortly after Build(), yet the app
+        // keeps reading from this provider for its lifetime. Hot-reload must survive that
+        // disposal — otherwise AppConfig changes never reach the running container.
+        var profile = new AppConfigAgentProfile
+        {
+            BaseUrl = "http://localhost:2772",
+            ApplicationId = "test-app",
+            EnvironmentId = "test-env",
+            ProfileId = "test-profile",
+            IsFeatureFlag = true
+        };
+
+        var callCount = 0;
+        _mockHttpHandler
+            .When("http://localhost:2772/applications/test-app/environments/test-env/configurations/test-profile")
+            .Respond(_ =>
+            {
+                callCount++;
+                var json = callCount == 1
+                    ? JsonSerializer.Serialize(new { feature1 = new { enabled = true } })
+                    : JsonSerializer.Serialize(new { feature1 = new { enabled = false } });
+                return new HttpResponseMessage(HttpStatusCode.OK)
+                {
+                    Content = new StringContent(json, Encoding.UTF8, "application/json")
+                };
+            });
+
+        var provider = new AppConfigAgentConfigurationProvider(_httpClient, profile, _logger, ownsHttpClient: false);
+
+        provider.Load();
+        Assert.True(provider.TryGet("FeatureManagement:feature1", out var before));
+        Assert.Equal("true", before);
+
+        // Simulate the host's post-Build disposal of the provider.
+        provider.Dispose();
+
+        var token = provider.GetReloadToken();
+        await provider.ReloadAsync(); // must still fetch + apply the change despite being disposed
+
+        Assert.True(token.HasChanged);
+        Assert.True(provider.TryGet("FeatureManagement:feature1", out var after));
+        Assert.Equal("false", after);
+    }
+
+    [Fact]
     public async Task ReloadAsync_WhenConfigChanged_UpdatesValueAndFiresReloadToken()
     {
         // Arrange

@@ -75,11 +75,6 @@ public sealed class AppConfigAgentConfigurationProvider : ConfigurationProvider,
     public async Task ReloadAsync(CancellationToken cancellationToken = default)
     {
         _logger?.LogInformation("ReloadAsync called for {ProfileId}, disposed={Disposed}", _profile.ProfileId, _disposed); // TEMP
-        if (_disposed)
-        {
-            return;
-        }
-
         await LoadAsync(cancellationToken).ConfigureAwait(false);
     }
 
@@ -346,12 +341,16 @@ public sealed class AppConfigAgentConfigurationProvider : ConfigurationProvider,
 
     public void Dispose()
     {
+        // The host (WebApplicationBuilder/HostApplicationBuilder) disposes configuration
+        // providers shortly after Build(), even though the app keeps reading from this
+        // provider for its entire lifetime. We deliberately do NOT dispose the lock here:
+        // doing so would make the next reload throw ObjectDisposedException and silently
+        // kill hot-reload. The SemaphoreSlim is reclaimed at process exit, and the reload
+        // background service stops polling on shutdown via its stopping token.
         if (_disposed)
             return;
 
         _disposed = true;
-
-        _lock?.Dispose();
 
         // Dispose HttpClient if we own it
         if (_ownsHttpClient)
