@@ -192,6 +192,7 @@ export function DashboardContent() {
       <ActionButtons
         allowedActions={data.allowedActions}
         hasCases={data.summerEbtCases.length > 0}
+        hasApplications={data.applications.length > 0}
       />
       {data.userProfile ? <UserProfileCard /> : <SignOutLink />}
       <HouseholdSummary />
