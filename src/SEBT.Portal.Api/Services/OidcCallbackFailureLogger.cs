@@ -94,7 +94,7 @@ public sealed class OidcCallbackFailureLogger(
             OidcLogSanitizer.Sanitize(entry.ApiError),
             entry.SessionId,
             entry.IsStepUp,
-            entry.Phase,
+            OidcLogSanitizer.Sanitize(entry.Phase),
             entry.HasCode,
             entry.HasState);
     }
