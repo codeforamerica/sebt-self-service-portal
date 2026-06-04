@@ -1,3 +1,4 @@
+using Medallion.Threading;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.EntityFrameworkCore;
@@ -8,6 +9,7 @@ using SEBT.Portal.Core.Services;
 using SEBT.Portal.Infrastructure.Data;
 using SEBT.Portal.Infrastructure.Services;
 using SEBT.Portal.StatesPlugins.Interfaces;
+using SEBT.Portal.Tests.Helpers;
 
 namespace SEBT.Portal.Tests.Integration.PluginIntegration;
 
@@ -52,6 +54,10 @@ public class PluginIntegrationWebApplicationFactory : WebApplicationFactory<Prog
         Environment.SetEnvironmentVariable("PluginAssemblyPaths__1", "plugins-none");
         Environment.SetEnvironmentVariable("JwtSettings__SecretKey",
             "integration-test-key-must-be-at-least-32-bytes-long");
+        // Disable Redis so HybridCache uses in-memory only and distributed locking falls
+        // back to SQL. Matches PortalWebApplicationFactory — prevents env-var leakage from
+        // a preceding factory from leaving a non-empty Redis connection string in place.
+        Environment.SetEnvironmentVariable("ConnectionStrings__Redis", "");
         Environment.SetEnvironmentVariable("IdProofingRequirements__household+view__application", "IAL1");
         Environment.SetEnvironmentVariable("IdProofingRequirements__household+view__coloadedStreamline", "IAL1");
         Environment.SetEnvironmentVariable("IdProofingRequirements__household+view__streamline", "IAL1plus");
@@ -92,6 +98,14 @@ public class PluginIntegrationWebApplicationFactory : WebApplicationFactory<Prog
             // HouseholdRepository depends on it. Register a mock so DI validation
             // passes. TryAddSingleton is a no-op if a real plugin already registered it.
             services.TryAddSingleton(Substitute.For<ISummerEbtCaseService>());
+
+            // Replace the distributed lock provider with an in-process implementation so
+            // tests that exercise IPreAuthSessionStore do not depend on a reachable SQL
+            // Server or Redis instance for lock acquisition.
+            var lockDescriptor = services.SingleOrDefault(d => d.ServiceType == typeof(IDistributedLockProvider));
+            if (lockDescriptor != null)
+                services.Remove(lockDescriptor);
+            services.AddSingleton<IDistributedLockProvider>(new InProcessLockProvider());
         });
     }
 
@@ -100,6 +114,7 @@ public class PluginIntegrationWebApplicationFactory : WebApplicationFactory<Prog
         Environment.SetEnvironmentVariable("PluginAssemblyPaths__0", null);
         Environment.SetEnvironmentVariable("PluginAssemblyPaths__1", null);
         Environment.SetEnvironmentVariable("JwtSettings__SecretKey", null);
+        Environment.SetEnvironmentVariable("ConnectionStrings__Redis", null);
         Environment.SetEnvironmentVariable("IdProofingRequirements__household+view__application", null);
         Environment.SetEnvironmentVariable("IdProofingRequirements__household+view__coloadedStreamline", null);
         Environment.SetEnvironmentVariable("IdProofingRequirements__household+view__streamline", null);
