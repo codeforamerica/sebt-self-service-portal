@@ -78,6 +78,8 @@ public sealed class PreAuthSessionStore : IPreAuthSessionStore
         string callbackTokenHash,
         CancellationToken cancellationToken = default)
     {
+        var tokenWithTimeout = WithLockTimeout(cancellationToken);
+
         await using (await _lockProvider.AcquireLockAsync(LockKey(sessionId), cancellationToken: cancellationToken))
         {
             var session = await GetAsync(sessionId, cancellationToken);
@@ -145,6 +147,17 @@ public sealed class PreAuthSessionStore : IPreAuthSessionStore
 
     private static string CacheKey(string sessionId) => $"{CacheKeyPrefix}{sessionId}";
     private static string LockKey(string sessionId) => $"{CacheKeyPrefix}lock:{sessionId}";
+
+    private static CancellationToken WithLockTimeout(CancellationToken sourceToken)
+    {
+        var timeoutCts = new CancellationTokenSource(TimeSpan.FromSeconds(5));
+
+        var linkedCts = CancellationTokenSource.CreateLinkedTokenSource(
+            sourceToken,
+            timeoutCts.Token);
+
+        return linkedCts.Token;
+    }
 
     private static string SanitizeForLog(string? value)
     {
