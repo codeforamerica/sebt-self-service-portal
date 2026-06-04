@@ -1,3 +1,4 @@
+using System.Collections.Concurrent;
 using Medallion.Threading;
 using Microsoft.Extensions.Caching.Hybrid;
 using Microsoft.Extensions.DependencyInjection;
@@ -207,5 +208,98 @@ public class PreAuthSessionStoreTests : IDisposable
         var hash2 = IPreAuthSessionStore.HashCallbackToken("token-b");
 
         Assert.NotEqual(hash1, hash2);
+    }
+
+    [Fact]
+    public async Task TryAdvanceToCallbackCompleted_OnlyOneSucceeds_WhenCalledConcurrentlyAcrossInstances()
+    {
+        // Two stores share the same backing cache and a real in-process lock provider
+        // (not a mock), simulating two container replicas coordinating via a shared lock.
+        // The lock must serialize the read-modify-write: whichever store acquires first
+        // advances the phase to CallbackCompleted; the second reads that updated phase
+        // and returns false.
+        var cache = _serviceProvider.GetRequiredService<HybridCache>();
+        var lockProvider = new InProcessLockProvider();
+        var storeA = new PreAuthSessionStore(cache, lockProvider, NullLogger<PreAuthSessionStore>.Instance);
+        var storeB = new PreAuthSessionStore(cache, lockProvider, NullLogger<PreAuthSessionStore>.Instance);
+
+        var session = await storeA.CreateAsync("co", "s", "v", "https://r", false);
+
+        var results = await Task.WhenAll(
+            storeA.TryAdvanceToCallbackCompletedAsync(session.Id, "hash-a"),
+            storeB.TryAdvanceToCallbackCompletedAsync(session.Id, "hash-b"));
+
+        Assert.Equal(1, results.Count(r => r));
+        Assert.Equal(1, results.Count(r => !r));
+    }
+}
+
+/// <summary>
+/// In-process <see cref="IDistributedLockProvider"/> backed by per-key <see cref="SemaphoreSlim"/>s.
+/// Used in tests that need real lock semantics (blocking, not mock) without an external service.
+/// </summary>
+file sealed class InProcessLockProvider : IDistributedLockProvider
+{
+    private readonly ConcurrentDictionary<string, SemaphoreSlim> _semaphores = new();
+
+    public IDistributedLock CreateLock(string name) =>
+        new InProcessLock(name, _semaphores.GetOrAdd(name, _ => new SemaphoreSlim(1, 1)));
+
+    private sealed class InProcessLock(string name, SemaphoreSlim semaphore) : IDistributedLock
+    {
+        public string Name => name;
+
+        public IDistributedSynchronizationHandle? TryAcquire(TimeSpan timeout = default, CancellationToken cancellationToken = default)
+        {
+            if (!semaphore.Wait(timeout, cancellationToken))
+                return null;
+            return new Handle(semaphore);
+        }
+
+        public IDistributedSynchronizationHandle Acquire(TimeSpan? timeout = null, CancellationToken cancellationToken = default)
+        {
+            if (timeout.HasValue)
+            {
+                if (!semaphore.Wait(timeout.Value, cancellationToken))
+                    throw new TimeoutException($"Could not acquire lock '{name}'");
+            }
+            else
+            {
+                semaphore.Wait(cancellationToken);
+            }
+            return new Handle(semaphore);
+        }
+
+        public async ValueTask<IDistributedSynchronizationHandle?> TryAcquireAsync(TimeSpan timeout = default, CancellationToken cancellationToken = default)
+        {
+            var acquired = await semaphore.WaitAsync(timeout, cancellationToken);
+            return acquired ? new Handle(semaphore) : null;
+        }
+
+        public async ValueTask<IDistributedSynchronizationHandle> AcquireAsync(TimeSpan? timeout = null, CancellationToken cancellationToken = default)
+        {
+            if (timeout.HasValue)
+            {
+                var acquired = await semaphore.WaitAsync(timeout.Value, cancellationToken);
+                if (!acquired)
+                    throw new TimeoutException($"Could not acquire lock '{name}'");
+            }
+            else
+            {
+                await semaphore.WaitAsync(cancellationToken);
+            }
+            return new Handle(semaphore);
+        }
+    }
+
+    private sealed class Handle(SemaphoreSlim semaphore) : IDistributedSynchronizationHandle
+    {
+        public CancellationToken HandleLostToken => CancellationToken.None;
+        public void Dispose() => semaphore.Release();
+        public ValueTask DisposeAsync()
+        {
+            semaphore.Release();
+            return ValueTask.CompletedTask;
+        }
     }
 }

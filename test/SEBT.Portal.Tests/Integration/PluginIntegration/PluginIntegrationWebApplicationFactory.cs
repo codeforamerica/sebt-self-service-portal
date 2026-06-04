@@ -52,6 +52,10 @@ public class PluginIntegrationWebApplicationFactory : WebApplicationFactory<Prog
         Environment.SetEnvironmentVariable("PluginAssemblyPaths__1", "plugins-none");
         Environment.SetEnvironmentVariable("JwtSettings__SecretKey",
             "integration-test-key-must-be-at-least-32-bytes-long");
+        // Disable Redis so HybridCache uses in-memory only and distributed locking falls
+        // back to SQL. Matches PortalWebApplicationFactory — prevents env-var leakage from
+        // a preceding factory from leaving a non-empty Redis connection string in place.
+        Environment.SetEnvironmentVariable("ConnectionStrings__Redis", "");
         Environment.SetEnvironmentVariable("IdProofingRequirements__household+view__application", "IAL1");
         Environment.SetEnvironmentVariable("IdProofingRequirements__household+view__coloadedStreamline", "IAL1");
         Environment.SetEnvironmentVariable("IdProofingRequirements__household+view__streamline", "IAL1plus");
@@ -100,6 +104,7 @@ public class PluginIntegrationWebApplicationFactory : WebApplicationFactory<Prog
         Environment.SetEnvironmentVariable("PluginAssemblyPaths__0", null);
         Environment.SetEnvironmentVariable("PluginAssemblyPaths__1", null);
         Environment.SetEnvironmentVariable("JwtSettings__SecretKey", null);
+        Environment.SetEnvironmentVariable("ConnectionStrings__Redis", null);
         Environment.SetEnvironmentVariable("IdProofingRequirements__household+view__application", null);
         Environment.SetEnvironmentVariable("IdProofingRequirements__household+view__coloadedStreamline", null);
         Environment.SetEnvironmentVariable("IdProofingRequirements__household+view__streamline", null);

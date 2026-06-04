@@ -78,7 +78,7 @@ public sealed class PreAuthSessionStore : IPreAuthSessionStore
         string callbackTokenHash,
         CancellationToken cancellationToken = default)
     {
-        await using (await _lockProvider.AcquireLockAsync(CacheKey(sessionId), cancellationToken: cancellationToken))
+        await using (await _lockProvider.AcquireLockAsync(LockKey(sessionId), cancellationToken: cancellationToken))
         {
             var session = await GetAsync(sessionId, cancellationToken);
             if (session == null)
@@ -107,7 +107,7 @@ public sealed class PreAuthSessionStore : IPreAuthSessionStore
         string callbackTokenHash,
         CancellationToken cancellationToken = default)
     {
-        await using (await _lockProvider.AcquireLockAsync(CacheKey(sessionId), cancellationToken: cancellationToken))
+        await using (await _lockProvider.AcquireLockAsync(LockKey(sessionId), cancellationToken: cancellationToken))
         {
             var session = await GetAsync(sessionId, cancellationToken);
             if (session == null)
@@ -144,6 +144,7 @@ public sealed class PreAuthSessionStore : IPreAuthSessionStore
     }
 
     private static string CacheKey(string sessionId) => $"{CacheKeyPrefix}{sessionId}";
+    private static string LockKey(string sessionId) => $"{CacheKeyPrefix}lock:{sessionId}";
 
     private static string SanitizeForLog(string? value)
     {
