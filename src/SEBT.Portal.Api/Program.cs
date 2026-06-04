@@ -132,7 +132,7 @@ if (!string.IsNullOrEmpty(dbHost) && !string.IsNullOrEmpty(dbPassword))
 }
 
 // Caching must be registered before plugins — plugins may depend on HybridCache
-builder.Services.AddCaching(builder.Configuration);
+builder.Services.AddCaching(builder.Configuration, builder.Environment);
 builder.Services.AddDistributedLocking(builder.Configuration);
 
 // Registers plugins and allows them to be constructor injected into ASP.NET controllers
@@ -167,6 +167,7 @@ builder.Services.AddScoped<ResolveUserFilter>();
 
 // OIDC token exchange (replaces the Next.js /api/auth/oidc/callback route)
 builder.Services.AddScoped<IOidcExchangeService, OidcExchangeService>();
+builder.Services.AddScoped<IOidcCallbackFailureLogger, OidcCallbackFailureLogger>();
 // pre-auth session store (HybridCache-backed, 15 min TTL)
 builder.Services.AddSingleton<IPreAuthSessionStore, PreAuthSessionStore>();
 
