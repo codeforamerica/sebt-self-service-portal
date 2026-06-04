@@ -1,3 +1,4 @@
+using Medallion.Threading;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.EntityFrameworkCore;
@@ -8,6 +9,7 @@ using SEBT.Portal.Core.Services;
 using SEBT.Portal.Infrastructure.Data;
 using SEBT.Portal.Infrastructure.Services;
 using SEBT.Portal.StatesPlugins.Interfaces;
+using SEBT.Portal.Tests.Helpers;
 
 namespace SEBT.Portal.Tests.Integration.PluginIntegration;
 
@@ -96,6 +98,14 @@ public class PluginIntegrationWebApplicationFactory : WebApplicationFactory<Prog
             // HouseholdRepository depends on it. Register a mock so DI validation
             // passes. TryAddSingleton is a no-op if a real plugin already registered it.
             services.TryAddSingleton(Substitute.For<ISummerEbtCaseService>());
+
+            // Replace the distributed lock provider with an in-process implementation so
+            // tests that exercise IPreAuthSessionStore do not depend on a reachable SQL
+            // Server or Redis instance for lock acquisition.
+            var lockDescriptor = services.SingleOrDefault(d => d.ServiceType == typeof(IDistributedLockProvider));
+            if (lockDescriptor != null)
+                services.Remove(lockDescriptor);
+            services.AddSingleton<IDistributedLockProvider>(new InProcessLockProvider());
         });
     }
 
