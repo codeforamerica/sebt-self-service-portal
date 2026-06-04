@@ -45,7 +45,7 @@ interface ApiRouteOverrides {
  * in the HttpOnly session cookie, not the response body).
  */
 export async function setupApiRoutes(page: Page, overrides: ApiRouteOverrides = {}): Promise<void> {
-  const householdData = overrides.householdData ?? makeHouseholdData()
+  const householdSnapshot = structuredClone(overrides.householdData ?? makeHouseholdData())
   const featureFlags = { ...DEFAULT_FEATURE_FLAGS, ...(overrides.featureFlags ?? {}) }
   const addressUpdateStatus = overrides.addressUpdateStatus ?? 200
   const addressUpdateBody =
@@ -92,7 +92,7 @@ export async function setupApiRoutes(page: Page, overrides: ApiRouteOverrides = 
     void route.fulfill({
       status: 200,
       contentType: 'application/json',
-      body: JSON.stringify(householdData)
+      body: JSON.stringify(householdSnapshot)
     })
   })
 
@@ -104,7 +104,30 @@ export async function setupApiRoutes(page: Page, overrides: ApiRouteOverrides = 
     })
   })
 
-  await page.route('**/api/household/address', (route) => {
+  await page.route('**/api/household/address', async (route) => {
+    if (route.request().method() === 'PUT' && addressUpdateStatus === 200) {
+      try {
+        const body = (await route.request().postDataJSON()) as {
+          streetAddress1?: string
+          streetAddress2?: string | null
+          city?: string
+          state?: string
+          postalCode?: string
+        }
+        if (body.streetAddress1 && body.city && body.state && body.postalCode) {
+          householdSnapshot.addressOnFile = {
+            streetAddress1: body.streetAddress1,
+            streetAddress2: body.streetAddress2 ?? null,
+            city: body.city,
+            state: body.state,
+            postalCode: body.postalCode
+          }
+        }
+      } catch {
+        // Keep default snapshot when the request body is not JSON.
+      }
+    }
+
     void route.fulfill({
       status: addressUpdateStatus,
       ...(addressUpdateBody != null
