@@ -176,6 +176,22 @@ public class MockHouseholdRepositoryTests
     }
 
     [Fact]
+    public async Task GetHouseholdByEmailAsync_WhenDcCoLoadedNoApplication_HasCoLoadedCasesAndZeroApplications()
+    {
+        var repo = CreateRepository("{0}@example.com", state: "dc");
+        const string email = "co-loaded-no-application@example.com";
+
+        var result = await repo.GetHouseholdByEmailAsync(email, FullPiiVisibility, UserIalLevel.IAL1plus);
+
+        Assert.NotNull(result);
+        Assert.Equal(email, result!.Email);
+        Assert.Equal("8185558441", result.Phone);
+        Assert.NotEmpty(result.SummerEbtCases);
+        Assert.All(result.SummerEbtCases, c => Assert.True(c.IsCoLoaded));
+        Assert.Empty(result.Applications);
+    }
+
+    [Fact]
     public async Task GetHouseholdByEmailAsync_WhenHouseholdDoesNotExist_ReturnsNull()
     {
         // Arrange

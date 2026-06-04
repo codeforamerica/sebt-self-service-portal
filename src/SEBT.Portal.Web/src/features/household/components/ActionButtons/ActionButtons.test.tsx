@@ -150,6 +150,31 @@ describe('ActionButtons', () => {
     expect(screen.getByText('Check existing cards')).toBeInTheDocument()
   })
 
+  it('hides Check existing applications CTA when hasApplications is false', () => {
+    // Co-loaded households have cases but no applications; the CTA scrolls to an
+    // applications section that does not render, so it must hide (DC-402).
+    render(
+      <ActionButtons
+        allowedActions={allowAll}
+        hasCases={true}
+        hasApplications={false}
+      />
+    )
+    expect(screen.queryByText('Check existing applications')).toBeNull()
+    expect(screen.getByText('Check existing cards')).toBeInTheDocument()
+  })
+
+  it('shows Check existing applications CTA when hasApplications is true', () => {
+    render(
+      <ActionButtons
+        allowedActions={allowAll}
+        hasCases={true}
+        hasApplications={true}
+      />
+    )
+    expect(screen.getByText('Check existing applications')).toBeInTheDocument()
+  })
+
   it('does not render the self-service-unavailable alert even when actions are denied', () => {
     render(<ActionButtons allowedActions={denyAll} />)
     expect(screen.queryByRole('status')).toBeNull()
