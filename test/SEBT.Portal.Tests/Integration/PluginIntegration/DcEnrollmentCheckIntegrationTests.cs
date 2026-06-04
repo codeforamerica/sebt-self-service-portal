@@ -1,8 +1,10 @@
 using System.Net;
 using System.Net.Http.Json;
 using System.Text.Json;
-using Microsoft.Data.SqlClient;
+using Microsoft.AspNetCore.Hosting;
 using Microsoft.Extensions.DependencyInjection;
+using NSubstitute;
+using SEBT.Portal.Core.Services;
 using SEBT.Portal.StatesPlugins.Interfaces;
 
 namespace SEBT.Portal.Tests.Integration.PluginIntegration;
@@ -22,17 +24,16 @@ namespace SEBT.Portal.Tests.Integration.PluginIntegration;
 /// </summary>
 [Collection("Integration")]
 [Trait("Category", "Integration")]
-[Trait("Category", "SqlServer")]
 public class DcEnrollmentCheckIntegrationTests : IClassFixture<DcSourceDatabaseFixture>, IDisposable
 {
-    private readonly PluginIntegrationWebApplicationFactory? _factory;
+    private readonly DcEnrollmentCheckWebApplicationFactory? _factory;
     private readonly HttpClient? _client;
     private readonly bool _canRun;
     private readonly string _skipReason;
 
     public DcEnrollmentCheckIntegrationTests(DcSourceDatabaseFixture dcDatabase)
     {
-        PluginIntegrationWebApplicationFactory? factory = null;
+        DcEnrollmentCheckWebApplicationFactory? factory = null;
         HttpClient? client = null;
         var canRun = false;
         var skipReason = string.Empty;
@@ -45,14 +46,7 @@ public class DcEnrollmentCheckIntegrationTests : IClassFixture<DcSourceDatabaseF
         {
             try
             {
-                factory = new PluginIntegrationWebApplicationFactory(
-                    pluginDir: "plugins-dc",
-                    configOverrides: new Dictionary<string, string>
-                    {
-                        ["DCConnector:ConnectionString"] = dcDatabase.ConnectionString,
-                        // Required by DcEnrollmentCheckService (no default); must match dbo.sp_CheckEligibility in DcSourceDatabaseFixture.
-                        ["DCConnector:CheckEligibilityProcName"] = "dbo.sp_CheckEligibility"
-                    });
+                factory = new DcEnrollmentCheckWebApplicationFactory(dcDatabase.ConnectionString);
 
                 using (var scope = factory.Services.CreateScope())
                 {
@@ -63,16 +57,8 @@ public class DcEnrollmentCheckIntegrationTests : IClassFixture<DcSourceDatabaseF
                         factory = null;
                         skipReason =
                             "Expected DcEnrollmentCheckService but got " +
-                            $"{enrollment.GetType().FullName}. Rebuild dc-connector, copy DLLs to plugins-dc, " +
-                            "and ensure no other enrollment plugin is loaded.";
+                            $"{enrollment.GetType().FullName}. Rebuild dc-connector and copy DLLs to plugins-dc.";
                     }
-                }
-
-                if (factory != null && !CanConnectToDcSource(dcDatabase.ConnectionString, out var connectError))
-                {
-                    factory.Dispose();
-                    factory = null;
-                    skipReason = connectError;
                 }
 
                 if (factory != null)
@@ -168,20 +154,48 @@ public class DcEnrollmentCheckIntegrationTests : IClassFixture<DcSourceDatabaseF
         _factory?.Dispose();
     }
 
-    private static bool CanConnectToDcSource(string connectionString, out string skipReason)
+    private sealed class DcEnrollmentCheckWebApplicationFactory : PluginIntegrationWebApplicationFactory
     {
-        try
+        private const int MaxPluginPathIndices = 8;
+        private readonly string _connectionString;
+
+        public DcEnrollmentCheckWebApplicationFactory(string connectionString)
+            : base(pluginDir: "plugins-dc")
         {
-            using var connection = new SqlConnection(connectionString);
-            connection.Open();
-            skipReason = string.Empty;
-            return true;
+            _connectionString = connectionString;
         }
-        catch (Exception ex)
+
+        protected override void ConfigureWebHost(IWebHostBuilder builder)
         {
-            skipReason =
-                $"DC source database is not reachable (Docker/Testcontainers may be unavailable): {ex.GetBaseException().Message}";
-            return false;
+            base.ConfigureWebHost(builder);
+
+            Environment.SetEnvironmentVariable("PluginAssemblyPaths__0", PluginPathResolver.Resolve("plugins-dc"));
+            for (var i = 1; i < MaxPluginPathIndices; i++)
+            {
+                Environment.SetEnvironmentVariable($"PluginAssemblyPaths__{i}", null);
+            }
+
+            Environment.SetEnvironmentVariable("DCConnector__ConnectionString", _connectionString);
+            Environment.SetEnvironmentVariable("DCConnector__CheckEligibilityProcName", "dbo.sp_CheckEligibility");
+
+            builder.ConfigureServices(services =>
+            {
+                foreach (var descriptor in services
+                             .Where(d => d.ServiceType == typeof(IEnrollmentCheckSubmissionLogger))
+                             .ToList())
+                {
+                    services.Remove(descriptor);
+                }
+
+                services.AddScoped(_ => Substitute.For<IEnrollmentCheckSubmissionLogger>());
+            });
+        }
+
+        protected override void Dispose(bool disposing)
+        {
+            Environment.SetEnvironmentVariable("DCConnector__ConnectionString", null);
+            Environment.SetEnvironmentVariable("DCConnector__CheckEligibilityProcName", null);
+            base.Dispose(disposing);
         }
     }
 }
