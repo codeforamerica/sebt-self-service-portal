@@ -1,6 +1,7 @@
 using System.Security.Cryptography;
 using Medallion.Threading;
 using Microsoft.Extensions.Caching.Distributed;
+using SEBT.Portal.Api.Extensions;
 
 namespace SEBT.Portal.Api.Services;
 
@@ -17,7 +18,7 @@ public sealed class PreAuthSessionStore : IPreAuthSessionStore
 
     private readonly IDistributedCache _cache;
     private readonly IDistributedLockProvider _lockProvider;
-    private readonly ILogger<PreAuthSessionStore> _logger;   
+    private readonly ILogger<PreAuthSessionStore> _logger;
 
     internal const string CacheKeyPrefix = "oidc:preauth:";
 

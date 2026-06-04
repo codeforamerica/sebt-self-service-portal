@@ -189,6 +189,14 @@ public static class Dependencies
                 options.Configuration = redisConnectionString;
             });
         }
+        else
+        {
+            // Fallback so IDistributedCache is always resolvable (PreAuthSessionStore
+            // depends on it). Used for local dev without Redis and for integration tests
+            // that set ConnectionStrings:Redis empty. Production paths always configure
+            // Redis via appsettings.{state}.json.
+            services.AddDistributedMemoryCache();
+        }
 
         // HybridCache provides an L1 in-memory cache with optional L2 distributed backing.
         // When Redis is registered above, HybridCache automatically uses it as L2.
