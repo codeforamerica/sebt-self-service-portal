@@ -1,5 +1,5 @@
 import { BetaBanner } from '@/components/BetaBanner'
-import { primaryFont } from '@/design/fonts'
+import { headingFont, primaryFont } from '@/design/fonts'
 import { portalRoutes } from '@/lib/analytics-routes'
 import {
   AuthProvider,
@@ -111,7 +111,7 @@ export default async function RootLayout({
     <html
       lang="en"
       data-state={state}
-      className={`usa-js-loading ${primaryFont.variable}`}
+      className={`usa-js-loading ${primaryFont.variable} ${headingFont.variable}`}
     >
       <body>
         <DataLayerProvider

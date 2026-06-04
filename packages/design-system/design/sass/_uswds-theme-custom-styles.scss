@@ -28,23 +28,69 @@ This ensures all USWDS components use our design token font.
 ----------------------------------------
 */
 
-// Override all USWDS font-family declarations to use our custom font
-// This is necessary because USWDS sets font-family on many utility classes
-// TODO: Register the design token font as a custom USWDS typeface to remove !important hack
+// Override all USWDS font-family declarations to use our design-token fonts.
+// This is necessary because USWDS sets font-family on many utility classes.
+// TODO: Register the design token fonts as custom USWDS typefaces to drop the !important hack
 // See: https://designsystem.digital.gov/documentation/settings/#typography-settings
+
+// Shared system-font fallback chain, used until our web font loads.
+$font-system-fallbacks:
+  system-ui,
+  -apple-system,
+  BlinkMacSystemFont,
+  'Segoe UI',
+  Roboto,
+  sans-serif;
+
+// Body text uses the body font (--font-primary).
 body,
 .usa-prose,
 [class*='font-'],
 [class*='text-'],
 [class*='usa-'] {
-  font-family:
-    var(--font-primary),
-    system-ui,
-    -apple-system,
-    BlinkMacSystemFont,
-    'Segoe UI',
-    Roboto,
-    sans-serif !important;
+  font-family: var(--font-primary), $font-system-fallbacks !important;
+}
+
+// Headings use the heading font (--font-heading). Single-font states (e.g. DC)
+// never set --font-heading, so the fallback resolves headings to the body font.
+// The `:is(h1..h6)[class]` selector raises specificity above the [class*='font-']
+// / [class*='text-'] body rules above, so USWDS size utilities (font-sans-xl,
+// text-bold) on a heading don't pull the body font back in.
+:is(h1, h2, h3, h4, h5, h6),
+:is(h1, h2, h3, h4, h5, h6)[class] {
+  font-family: var(--font-heading, var(--font-primary)), $font-system-fallbacks !important;
+}
+
+// CO page headings are uniformly the primary teal (cyan-50) per Figma. Scoped to
+// CO via the <html data-state> hook; :not([class*='usa-']) leaves USWDS component
+// headings (alert, card, etc.) with their own colors.
+[data-state='co'] :is(h1, h2, h3, h4, h5, h6):not([class*='usa-']) {
+  color: color('primary');
+}
+
+// CO footer region (help section + slim footer) uses Trebuchet MS per Figma.
+// Trebuchet MS is a proprietary system font that cannot be self-hosted, so it is
+// applied as a scoped system-font stack here rather than through the design-token
+// font pipeline. !important + the [data-state='co'] container specificity beats the
+// global body (--font-primary) and heading (--font-heading) overrides above.
+$font-trebuchet: 'Trebuchet MS', 'Helvetica Neue', Helvetica, Arial, sans-serif;
+
+[data-state='co'] .co-help-section,
+[data-state='co'] .usa-footer--co {
+  &,
+  :is(h1, h2, h3, h4, h5, h6),
+  p,
+  a,
+  span,
+  li {
+    font-family: $font-trebuchet !important;
+  }
+}
+
+// Help-section labels render black, overriding the CO cyan page-heading color.
+// color('black') is the USWDS #000000 token (color('ink') is #1b1b1b, not pure black).
+[data-state='co'] .co-help-section :is(h1, h2, h3, h4, h5, h6) {
+  color: color('black');
 }
 
 /*
