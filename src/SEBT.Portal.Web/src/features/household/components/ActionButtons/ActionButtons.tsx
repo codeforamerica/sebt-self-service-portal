@@ -15,6 +15,8 @@ interface ActionButton {
   gatedBy?: keyof Pick<AllowedActions, 'canUpdateAddress' | 'canRequestReplacementCard'>
   /** When true, the CTA is hidden if hasCases is explicitly false. Omitting hasCases keeps the CTA visible (backward-compatible). */
   requiresCases?: boolean
+  /** When true, the CTA is hidden if hasApplications is explicitly false. Omitting hasApplications keeps the CTA visible (backward-compatible). */
+  requiresApplications?: boolean
   /** When set, the CTA renders only for these states. Omitting it shows the CTA for every state. */
   states?: string[]
 }
@@ -24,6 +26,8 @@ interface ActionButtonsProps {
   allowedActions?: AllowedActions | null | undefined
   /** Whether the household has any enrolled children (summerEbtCases.length > 0). When false, CTAs that require cases are hidden. */
   hasCases?: boolean
+  /** Whether the household has any applications (applications.length > 0). When false, CTAs that require applications are hidden. */
+  hasApplications?: boolean
 }
 
 // Keys map to CSV: "S2 - Portal Dashboard - Action Navigation - {Key}"
@@ -49,7 +53,8 @@ const ACTIONS: ActionButton[] = [
   {
     labelKey: 'actionNavigationCheckExistingApplications',
     href: '#applications-heading',
-    ctaId: 'check_applications_cta'
+    ctaId: 'check_applications_cta',
+    requiresApplications: true
   },
   {
     // CO-only for now: the authored label exists for CO, while DC's is still !N/A!
@@ -62,7 +67,7 @@ const ACTIONS: ActionButton[] = [
   }
 ]
 
-export function ActionButtons({ allowedActions, hasCases }: ActionButtonsProps) {
+export function ActionButtons({ allowedActions, hasCases, hasApplications }: ActionButtonsProps) {
   const { t } = useTranslation('dashboard')
   const currentState = getState()
   const { actionButtonBg, actionButtonText } = getStateConfig(currentState)
@@ -70,6 +75,7 @@ export function ActionButtons({ allowedActions, hasCases }: ActionButtonsProps) 
   const visibleActions = ACTIONS.filter((action) => {
     if (action.states && !action.states.includes(currentState)) return false
     if (action.requiresCases && hasCases === false) return false
+    if (action.requiresApplications && hasApplications === false) return false
     if (!action.gatedBy) return true
     // When allowedActions is not provided, default to showing the CTA (backward-compatible).
     if (!allowedActions) return true
