@@ -83,7 +83,8 @@ public class HouseholdRepository : IHouseholdRepository
             normalizedValue,
             pluginPii,
             pluginIal,
-            cancellationToken);
+            portalUserId: null,
+            cancellationToken: cancellationToken);
 
         if (pluginHousehold == null)
         {

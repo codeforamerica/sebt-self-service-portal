@@ -1,5 +1,3 @@
-using System.ComponentModel.DataAnnotations;
-
 namespace SEBT.Portal.Core.AppSettings;
 
 /// <summary>
@@ -12,15 +10,43 @@ public class PiiEncryptionSettings
     /// <summary>Decoded key material must be exactly this many bytes (256-bit AES only).</summary>
     public const int RequiredKeyMaterialLengthBytes = 32;
 
-    /// <summary>The key id entries are encrypted or re-encrypted with at write time.</summary>
-    [Required(ErrorMessage = "PiiEncryption:ActiveKeyId is required.")]
-    [MinLength(1)]
+    /// <summary>
+    /// When true, new and updated PII columns are stored as AES-GCM envelopes. When false, writes persist trimmed plaintext
+    /// (reads still decrypt existing envelopes). Opt in per state/deployment; when true in production, keys are validated (see PiiEncryptionGuard).
+    /// </summary>
+    public bool EncryptAtRest { get; set; } = false;
+
+    /// <summary>
+    /// When true, <see cref="Infrastructure.Services.PiiPlaintextEncryptionBackfill"/> runs after EF migrations on startup.
+    /// </summary>
+    public bool RunStartupBackfill { get; set; } = false;
+
+    /// <summary>The key id entries are encrypted or re-encrypted with at write time. Required when <see cref="EncryptAtRest"/> is true.</summary>
     public string ActiveKeyId { get; set; } = "";
 
-    /// <summary>Historical + active symmetric keys keyed by logical id.</summary>
-    [Required(ErrorMessage = "PiiEncryption:Keys is required.")]
-    [MinLength(1, ErrorMessage = "PiiEncryption requires at least one key entry.")]
+    /// <summary>Historical + active symmetric keys keyed by logical id. Required when <see cref="EncryptAtRest"/> is true.</summary>
     public List<PiiEncryptionKeySetting> Keys { get; set; } = [];
+
+    /// <summary>True when ActiveKeyId and at least one non-empty key entry are bound (coherence validated separately when encryption is on).</summary>
+    public bool HasKeyRingConfiguration()
+    {
+        if (string.IsNullOrWhiteSpace(ActiveKeyId) || Keys == null || Keys.Count == 0)
+        {
+            return false;
+        }
+
+        foreach (var entry in Keys)
+        {
+            if (entry == null
+                || string.IsNullOrWhiteSpace(entry.KeyId)
+                || string.IsNullOrWhiteSpace(entry.KeyMaterialBase64))
+            {
+                return false;
+            }
+        }
+
+        return true;
+    }
 
     public IReadOnlyDictionary<string, byte[]> ResolveKeyRing()
     {
@@ -62,12 +88,8 @@ public class PiiEncryptionKeySetting
     /// <summary>
     /// Logical identifier embedded in ciphertext (stable across deployments for rotation/decrypt).
     /// </summary>
-    [Required(ErrorMessage = "Each PII encryption key entry requires KeyId.")]
-    [MinLength(1)]
     public string KeyId { get; set; } = "";
 
     /// <summary>Raw AES-256 key bytes (store Base64 in configuration; decoded length must be 32).</summary>
-    [Required(ErrorMessage = "Each PII encryption key entry requires KeyMaterialBase64.")]
-    [MinLength(1)]
     public string KeyMaterialBase64 { get; set; } = "";
 }

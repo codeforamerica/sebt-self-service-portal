@@ -7,11 +7,28 @@ namespace SEBT.Portal.Tests.Unit.Startup;
 public class PiiEncryptionGuardTests
 {
     [Fact]
-    public void ValidateForProduction_WhenNull_Throws()
+    public void ValidateForProduction_WhenNull_DoesNotThrow()
     {
-        var ex = Assert.Throws<InvalidOperationException>(() =>
-            PiiEncryptionGuard.ValidateForProduction(null));
-        Assert.Contains("PiiEncryption", ex.Message, StringComparison.Ordinal);
+        PiiEncryptionGuard.ValidateForProduction(null);
+    }
+
+    [Fact]
+    public void ValidateForProduction_WhenEncryptAtRestDisabled_DoesNotThrow()
+    {
+        PiiEncryptionGuard.ValidateForProduction(
+            new PiiEncryptionSettings
+            {
+                EncryptAtRest = false,
+                ActiveKeyId = PiiEncryptionGuard.ForbiddenDevelopmentActiveKeyId,
+                Keys =
+                [
+                    new PiiEncryptionKeySetting
+                    {
+                        KeyId = "k1",
+                        KeyMaterialBase64 = PiiEncryptionGuard.ForbiddenPlaceholderKeyMaterialBase64
+                    }
+                ]
+            });
     }
 
     [Fact]
@@ -21,6 +38,7 @@ public class PiiEncryptionGuardTests
             PiiEncryptionGuard.ValidateForProduction(
                 new PiiEncryptionSettings
                 {
+                    EncryptAtRest = true,
                     ActiveKeyId = "   ",
                     Keys = [new PiiEncryptionKeySetting { KeyId = "k1", KeyMaterialBase64 = "YjJiYmJiYmJiYmJiYmJiYmJiYmJiYmJiYmJiYmJiYmI=" }]
                 }));
@@ -32,7 +50,7 @@ public class PiiEncryptionGuardTests
     {
         var ex = Assert.Throws<InvalidOperationException>(() =>
             PiiEncryptionGuard.ValidateForProduction(
-                new PiiEncryptionSettings { ActiveKeyId = "prod-key", Keys = [] }));
+                new PiiEncryptionSettings { EncryptAtRest = true, ActiveKeyId = "prod-key", Keys = [] }));
         Assert.Contains("Keys", ex.Message, StringComparison.Ordinal);
     }
 
@@ -43,6 +61,7 @@ public class PiiEncryptionGuardTests
             PiiEncryptionGuard.ValidateForProduction(
                 new PiiEncryptionSettings
                 {
+                    EncryptAtRest = true,
                     ActiveKeyId = PiiEncryptionGuard.ForbiddenDevelopmentActiveKeyId,
                     Keys =
                     [
@@ -63,6 +82,7 @@ public class PiiEncryptionGuardTests
             PiiEncryptionGuard.ValidateForProduction(
                 new PiiEncryptionSettings
                 {
+                    EncryptAtRest = true,
                     ActiveKeyId = "prod-key",
                     Keys = [null!, new PiiEncryptionKeySetting { KeyId = "prod-key", KeyMaterialBase64 = "YjJiYmJiYmJiYmJiYmJiYmJiYmJiYmJiYmJiYmJiYmI=" }]
                 }));
@@ -76,6 +96,7 @@ public class PiiEncryptionGuardTests
             PiiEncryptionGuard.ValidateForProduction(
                 new PiiEncryptionSettings
                 {
+                    EncryptAtRest = true,
                     ActiveKeyId = "prod-key",
                     Keys =
                     [
@@ -92,6 +113,7 @@ public class PiiEncryptionGuardTests
             PiiEncryptionGuard.ValidateForProduction(
                 new PiiEncryptionSettings
                 {
+                    EncryptAtRest = true,
                     ActiveKeyId = "prod-key",
                     Keys =
                     [
@@ -108,6 +130,7 @@ public class PiiEncryptionGuardTests
             PiiEncryptionGuard.ValidateForProduction(
                 new PiiEncryptionSettings
                 {
+                    EncryptAtRest = true,
                     ActiveKeyId = "prod-key",
                     Keys =
                     [
@@ -127,6 +150,7 @@ public class PiiEncryptionGuardTests
         PiiEncryptionGuard.ValidateForProduction(
             new PiiEncryptionSettings
             {
+                EncryptAtRest = true,
                 ActiveKeyId = "prod-key",
                 Keys =
                 [

@@ -14,14 +14,14 @@ public static class PiiEncryptionGuard
     public const string ForbiddenPlaceholderKeyMaterialBase64 = "YWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWE=";
 
     /// <summary>
-    /// Validates configured PII encryption for production. Throws if missing, empty, or known placeholders.
+    /// When <see cref="PiiEncryptionSettings.EncryptAtRest"/> is true in production, validates keys are present and not placeholders.
+    /// When encryption is off (e.g. CO production), returns without error.
     /// </summary>
     public static void ValidateForProduction(PiiEncryptionSettings? settings)
     {
-        if (settings == null)
+        if (settings == null || !settings.EncryptAtRest)
         {
-            throw new InvalidOperationException(
-                "PiiEncryption configuration section is missing. Configure PiiEncryption:ActiveKeyId and PiiEncryption:Keys.");
+            return;
         }
 
         if (string.IsNullOrWhiteSpace(settings.ActiveKeyId))

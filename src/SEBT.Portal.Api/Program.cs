@@ -437,31 +437,20 @@ try
     var databaseMigrator = scope.ServiceProvider.GetRequiredService<IDatabaseMigrator>();
     await databaseMigrator.MigrateAsync();
 
-    try
-    {
-        var piiBackfill = scope.ServiceProvider.GetRequiredService<PiiPlaintextEncryptionBackfill>();
-        await piiBackfill.ApplyAsync(CancellationToken.None);
-    }
-    catch (PiiDecryptException backfillEx)
-    {
-        Log.Error(
-            backfillEx,
-            "PII ciphertext backfill failed due to decryption/authentication error. " +
-            "Startup continues, but legacy plaintext may remain until this is resolved.");
-    }
-    catch (DbException backfillEx)
-    {
-        Log.Warning(
-            backfillEx,
-            "PII ciphertext backfill hit a database error (likely transient). " +
-            "Startup continues; backfill should be retried.");
-    }
-    catch (Exception backfillEx)
-    {
-        // Error severity so deploy logs / Datadog can alert; app still starts so a transient DB
-        // blip does not take down the service — see docs/adr/0015-pii-encryption-at-rest.md.
-        Log.Error(backfillEx, "PII ciphertext backfill step failed.");
-    }
+    var piiEncryptionOptions = app.Configuration.GetSection(PiiEncryptionSettings.SectionName)
+        .Get<PiiEncryptionSettings>() ?? new PiiEncryptionSettings();
+    var piiBackfillLogger = scope.ServiceProvider
+        .GetRequiredService<ILoggerFactory>()
+        .CreateLogger(nameof(PiiEncryptionStartupBackfill));
+    await PiiEncryptionStartupBackfill.RunIfEnabledAsync(
+        piiEncryptionOptions,
+        async ct =>
+        {
+            var piiBackfill = scope.ServiceProvider.GetRequiredService<PiiPlaintextEncryptionBackfill>();
+            await piiBackfill.ApplyAsync(ct);
+        },
+        piiBackfillLogger,
+        CancellationToken.None);
 
     var seedingSettings = app.Configuration.GetSection(SeedingSettings.SectionName).Get<SeedingSettings>();
     if (app.Environment.IsDevelopment() || seedingSettings?.Enabled == true)

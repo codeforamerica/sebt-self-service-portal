@@ -14,6 +14,7 @@ public class PiiEncryptionSettingsValidatorTests
     {
         var options = new PiiEncryptionSettings
         {
+            EncryptAtRest = true,
             ActiveKeyId = "primary",
             Keys =
             [
@@ -35,6 +36,7 @@ public class PiiEncryptionSettingsValidatorTests
     {
         var options = new PiiEncryptionSettings
         {
+            EncryptAtRest = true,
             ActiveKeyId = "short-key",
             Keys =
             [
@@ -59,6 +61,7 @@ public class PiiEncryptionSettingsValidatorTests
     {
         var options = new PiiEncryptionSettings
         {
+            EncryptAtRest = true,
             ActiveKeyId = "missing",
             Keys =
             [
@@ -82,5 +85,26 @@ public class PiiEncryptionSettingsValidatorTests
         var result = _validator.Validate(Options.DefaultName, null!);
 
         Assert.True(result.Failed);
+    }
+
+    [Fact]
+    public void Validate_WhenEncryptAtRestFalseAndNoKeys_ReturnsSuccess()
+    {
+        var result = _validator.Validate(
+            Options.DefaultName,
+            new PiiEncryptionSettings { EncryptAtRest = false });
+
+        Assert.True(result.Succeeded);
+    }
+
+    [Fact]
+    public void Validate_WhenEncryptAtRestTrueAndNoKeys_ReturnsFail()
+    {
+        var result = _validator.Validate(
+            Options.DefaultName,
+            new PiiEncryptionSettings { EncryptAtRest = true });
+
+        Assert.True(result.Failed);
+        Assert.Contains("EncryptAtRest", result.FailureMessage, StringComparison.Ordinal);
     }
 }

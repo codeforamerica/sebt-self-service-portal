@@ -106,7 +106,8 @@ public static class Dependencies
         services.AddTransient<ISelfServiceEvaluator, SelfServiceEvaluator>();
         services.AddSingleton<IIdentifierHasher, IdentifierHasher>();
         services.AddSingleton<IHMACSHA256Hasher, HMACSHA256Hasher>();
-        services.AddSingleton<IPiiSymmetricEncryption, PiiAesGcmSymmetricEncryption>();
+        services.AddSingleton<IPiiSymmetricEncryption>(sp =>
+            PiiSymmetricEncryptionFactory.Create(sp.GetRequiredService<IOptions<PiiEncryptionSettings>>()));
         services.AddSingleton<IEmailLookupHasher, EmailLookupHasher>();
 
         // Expose SocureSettings directly for use case injection (avoids IOptions dependency in UseCases layer).
@@ -278,8 +279,7 @@ public static class Dependencies
             .BindConfiguration(StateHouseholdIdSettings.SectionName);
         services.AddSingleton<IValidateOptions<PiiEncryptionSettings>, PiiEncryptionSettingsValidator>();
         services.AddOptionsWithValidateOnStart<PiiEncryptionSettings>()
-            .BindConfiguration(PiiEncryptionSettings.SectionName)
-            .ValidateDataAnnotations();
+            .BindConfiguration(PiiEncryptionSettings.SectionName);
         services.AddOptionsWithValidateOnStart<IdentifierHasherSettings>()
             .BindConfiguration(IdentifierHasherSettings.SectionName)
             .ValidateDataAnnotations();

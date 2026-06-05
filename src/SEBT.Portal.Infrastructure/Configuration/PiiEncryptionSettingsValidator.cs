@@ -16,6 +16,17 @@ public sealed class PiiEncryptionSettingsValidator : IValidateOptions<PiiEncrypt
             return ValidateOptionsResult.Fail("PiiEncryption configuration section is not present.");
         }
 
+        if (!options.EncryptAtRest)
+        {
+            return ValidateOptionsResult.Success;
+        }
+
+        if (!options.HasKeyRingConfiguration())
+        {
+            return ValidateOptionsResult.Fail(
+                "PiiEncryption:ActiveKeyId and PiiEncryption:Keys are required when EncryptAtRest is true.");
+        }
+
         try
         {
             _ = options.ResolveKeyRing();
