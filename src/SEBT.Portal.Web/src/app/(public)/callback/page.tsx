@@ -1,12 +1,12 @@
 'use client'
 
-import { ApiError, apiFetch } from '@/api'
+import { apiFetch } from '@/api'
 import { CoLoadingScreen } from '@/components/CoLoadingScreen'
 import { useAuth } from '@/features/auth'
 import {
-  OIDC_CALLBACK_ERROR_OFF_BOARDING,
   OidcCallbackTokenResponseSchema,
-  OidcCompleteLoginResponseSchema
+  OidcCompleteLoginResponseSchema,
+  redirectToOidcOffBoarding
 } from '@/features/auth/api/oidc'
 import { hasIal1Plus, isIdProofingCompletionFresh } from '@/lib/jwt'
 import { getState } from '@sebt/design-system'
@@ -56,7 +56,11 @@ export default function CallbackPage() {
     // IdP errors do not require /auth/status; evaluate before isLoading and before
     // authenticated back-button shortcuts so step-up failures are not sent to /dashboard.
     if (errorParam) {
-      router.replace(OIDC_CALLBACK_ERROR_OFF_BOARDING)
+      redirectToOidcOffBoarding(router, {
+        reason: 'idp_redirect',
+        idpError: errorParam,
+        idpErrorDescription: params.get('error_description') ?? undefined
+      })
       return
     }
 
@@ -75,7 +79,11 @@ export default function CallbackPage() {
     }
 
     if (!code || !state) {
-      router.replace(OIDC_CALLBACK_ERROR_OFF_BOARDING)
+      redirectToOidcOffBoarding(router, {
+        reason: 'missing_params',
+        hasCode: Boolean(code),
+        hasState: Boolean(state)
+      })
       return
     }
 
@@ -109,19 +117,12 @@ export default function CallbackPage() {
         await login()
         const destination = response.returnUrl ?? '/dashboard'
         router.replace(destination)
-      } catch (e) {
+      } catch {
         if (cancelled) {
           return
         }
-        const statusCode = e instanceof ApiError ? e.status : undefined
-        const logDetail = e instanceof Error ? e.message : ''
-        if (process.env.NODE_ENV === 'development') {
-          console.warn('[callback] OIDC exchange failed', {
-            statusCode,
-            detail: logDetail.slice(0, 500)
-          })
-        }
-        router.replace(OIDC_CALLBACK_ERROR_OFF_BOARDING)
+        // API failures are logged server-side; only browser-only failures use report-failure.
+        redirectToOidcOffBoarding(router)
       }
     }
     run()

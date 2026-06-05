@@ -1,42 +1,29 @@
 using System.Security.Cryptography;
 using Medallion.Threading;
-using Microsoft.Extensions.Caching.Hybrid;
+using Microsoft.Extensions.Caching.Distributed;
+using SEBT.Portal.Api.Extensions;
 
 namespace SEBT.Portal.Api.Services;
 
 /// <inheritdoc cref="IPreAuthSessionStore"/>
 public sealed class PreAuthSessionStore : IPreAuthSessionStore
 {
-    private readonly HybridCache _cache;
-    private readonly ILogger<PreAuthSessionStore> _logger;
-
     /// <summary>Pre-auth sessions expire after 15 minutes (covers IdP redirect + user interaction).</summary>
     private static readonly TimeSpan SessionTtl = TimeSpan.FromMinutes(15);
 
-    private static readonly HybridCacheEntryOptions CacheOptions = new()
+    private static readonly DistributedCacheEntryOptions CacheOptions = new ()
     {
-        Expiration = SessionTtl,
-        LocalCacheExpiration = SessionTtl,
+        AbsoluteExpirationRelativeToNow = SessionTtl
     };
 
-    // Read-only lookup: suppress L1/L2 writes so a miss (factory returning null) does
-    // not cache a null entry for an attacker-controlled session ID. Without this,
-    // any fabricated session ID submitted via the OIDC callback cookie would pollute
-    // the cache with a null entry (TTL = SessionTtl), enabling cache amplification.
-    private static readonly HybridCacheEntryOptions LookupOptions = new()
-    {
-        Expiration = SessionTtl,
-        LocalCacheExpiration = SessionTtl,
-        Flags = HybridCacheEntryFlags.DisableLocalCacheWrite
-              | HybridCacheEntryFlags.DisableDistributedCacheWrite,
-    };
+    private readonly IDistributedCache _cache;
+    private readonly IDistributedLockProvider _lockProvider;
+    private readonly ILogger<PreAuthSessionStore> _logger;
 
     internal const string CacheKeyPrefix = "oidc:preauth:";
 
-    private readonly IDistributedLockProvider _lockProvider;
-
     /// <inheritdoc cref="PreAuthSessionStore"/>
-    public PreAuthSessionStore(HybridCache cache, IDistributedLockProvider lockProvider, ILogger<PreAuthSessionStore> logger)
+    public PreAuthSessionStore(IDistributedCache cache, IDistributedLockProvider lockProvider, ILogger<PreAuthSessionStore> logger)
     {
         _cache = cache;
         _lockProvider = lockProvider;
@@ -67,7 +54,7 @@ public sealed class PreAuthSessionStore : IPreAuthSessionStore
             Phase = PreAuthSessionPhase.Created
         };
 
-        await _cache.SetAsync(CacheKey(sessionId), session, CacheOptions, cancellationToken: cancellationToken);
+        await _cache.SetAsync(CacheKey(sessionId), session, CacheOptions, cancellationToken);
         _logger.LogInformation(
             "Pre-auth session created: SessionId={SessionId}, StateCode={StateCode} (reason=session_created)",
             sessionId, SanitizeForLog(stateCode));
@@ -75,37 +62,8 @@ public sealed class PreAuthSessionStore : IPreAuthSessionStore
     }
 
     /// <inheritdoc/>
-    public async Task<PreAuthSession?> GetAsync(string sessionId, CancellationToken cancellationToken = default)
-    {
-        var session = await _cache.GetOrCreateAsync(
-            CacheKey(sessionId),
-            _ => ValueTask.FromResult<PreAuthSession?>(null),
-            LookupOptions,
-            cancellationToken: cancellationToken);
-
-        if (session is not null)
-        {
-            // Promote to L1 (no L2 write — L2 already has it on the path that needed promotion;
-            // L1 hits result in a harmless re-write). TTL is the session's remaining absolute
-            // lifetime, not a fresh SessionTtl, so reads do not extend the session expiration.
-            var remaining = session.CreatedAt + SessionTtl - DateTimeOffset.UtcNow;
-            if (remaining > TimeSpan.Zero)
-            {
-                await _cache.SetAsync(
-                    CacheKey(sessionId),
-                    session,
-                    new HybridCacheEntryOptions
-                    {
-                        Expiration = remaining,
-                        LocalCacheExpiration = remaining,
-                        Flags = HybridCacheEntryFlags.DisableDistributedCacheWrite,
-                    },
-                    cancellationToken: cancellationToken);
-            }
-        }
-
-        return session;
-    }
+    public async Task<PreAuthSession?> GetAsync(string sessionId, CancellationToken cancellationToken = default) =>
+        await _cache.GetAsync<PreAuthSession>(CacheKey(sessionId), cancellationToken);
 
     /// <inheritdoc/>
     public async Task<bool> TryAdvanceToCallbackCompletedAsync(
@@ -135,7 +93,7 @@ public sealed class PreAuthSessionStore : IPreAuthSessionStore
             }
 
             var advanced = session with { Phase = PreAuthSessionPhase.CallbackCompleted, CallbackTokenHash = callbackTokenHash };
-            await _cache.SetAsync(CacheKey(sessionId), advanced, CacheOptions, cancellationToken: cancellationToken);
+            await _cache.SetAsync(CacheKey(sessionId), advanced, CacheOptions, cancellationToken);
             _logger.LogInformation("Pre-auth session advanced to CallbackCompleted: SessionId={SessionId} (reason=callback_completed)", sessionId);
             return true;
         }
@@ -176,7 +134,7 @@ public sealed class PreAuthSessionStore : IPreAuthSessionStore
             }
 
             var completed = session with { Phase = PreAuthSessionPhase.LoginCompleted };
-            await _cache.SetAsync(CacheKey(sessionId), completed, CacheOptions, cancellationToken: cancellationToken);
+            await _cache.SetAsync(CacheKey(sessionId), completed, CacheOptions, cancellationToken);
             _logger.LogInformation("Pre-auth session advanced to LoginCompleted: SessionId={SessionId} (reason=login_completed)", sessionId);
             return true;
         }

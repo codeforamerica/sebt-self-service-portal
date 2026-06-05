@@ -1,8 +1,9 @@
 using Medallion.Threading;
-using Microsoft.Extensions.Caching.Hybrid;
+using Microsoft.Extensions.Caching.Distributed;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
 using NSubstitute;
+using SEBT.Portal.Api.Extensions;
 using SEBT.Portal.Api.Services;
 using SEBT.Portal.Tests.Helpers;
 
@@ -10,7 +11,7 @@ namespace SEBT.Portal.Tests.Unit.Services;
 
 /// <summary>
 /// exercises the pre-auth session lifecycle against a real in-memory
-/// <see cref="HybridCache"/> (no Redis needed). Validates the state machine
+/// <see cref="IDistributedCache"/> (no Redis needed). Validates the state machine
 /// transitions that protect against replay and session confusion.
 /// </summary>
 public class PreAuthSessionStoreTests : IDisposable
@@ -21,10 +22,9 @@ public class PreAuthSessionStoreTests : IDisposable
     public PreAuthSessionStoreTests()
     {
         var services = new ServiceCollection();
-        services.AddHybridCache();
-        services.AddMemoryCache();
+        services.AddDistributedMemoryCache();
         _serviceProvider = services.BuildServiceProvider();
-        var cache = _serviceProvider.GetRequiredService<HybridCache>();
+        var cache = _serviceProvider.GetRequiredService<IDistributedCache>();
 
         var mockLock = Substitute.For<IDistributedLock>();
         mockLock.AcquireAsync(Arg.Any<TimeSpan?>(), Arg.Any<CancellationToken>())
@@ -169,9 +169,10 @@ public class PreAuthSessionStoreTests : IDisposable
         // appeared in Container B's KnownSessionIds, so every cross-instance lookup
         // returned null (missing_session) even though the session was in Redis.
         //
-        // This test simulates that by seeding the HybridCache directly (bypassing
-        // CreateAsync, which was the only path that populated KnownSessionIds).
-        var cache = _serviceProvider.GetRequiredService<HybridCache>();
+        // This test simulates that by seeding the distributed cache directly,
+        // bypassing CreateAsync (the only path that previously populated
+        // KnownSessionIds on the current process).
+        var cache = _serviceProvider.GetRequiredService<IDistributedCache>();
         var sessionId = "simulated-remote-session";
         var session = new PreAuthSession
         {
@@ -183,7 +184,10 @@ public class PreAuthSessionStoreTests : IDisposable
             Phase = PreAuthSessionPhase.Created
         };
 
-        await cache.SetAsync(PreAuthSessionStore.CacheKeyPrefix + sessionId, session);
+        await cache.SetAsync(
+            PreAuthSessionStore.CacheKeyPrefix + sessionId,
+            session,
+            new DistributedCacheEntryOptions());
 
         var retrieved = await _store.GetAsync(sessionId);
 
@@ -218,7 +222,7 @@ public class PreAuthSessionStoreTests : IDisposable
         // The lock must serialize the read-modify-write: whichever store acquires first
         // advances the phase to CallbackCompleted; the second reads that updated phase
         // and returns false.
-        var cache = _serviceProvider.GetRequiredService<HybridCache>();
+        var cache = _serviceProvider.GetRequiredService<IDistributedCache>();
         var lockProvider = new InProcessLockProvider();
         var storeA = new PreAuthSessionStore(cache, lockProvider, NullLogger<PreAuthSessionStore>.Instance);
         var storeB = new PreAuthSessionStore(cache, lockProvider, NullLogger<PreAuthSessionStore>.Instance);
