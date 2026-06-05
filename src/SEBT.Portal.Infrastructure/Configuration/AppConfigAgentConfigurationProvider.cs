@@ -72,9 +72,10 @@ public sealed class AppConfigAgentConfigurationProvider : ConfigurationProvider,
     /// on its polling interval. Only raises a change notification when the configuration actually
     /// changed.
     /// </summary>
-    public async Task ReloadAsync(CancellationToken cancellationToken = default)
+    /// <returns><c>true</c> if the configuration changed since the last load; otherwise <c>false</c>.</returns>
+    public async Task<bool> ReloadAsync(CancellationToken cancellationToken = default)
     {
-        await LoadAsync(cancellationToken).ConfigureAwait(false);
+        return await LoadAsync(cancellationToken).ConfigureAwait(false);
     }
 
     /// <summary>
@@ -116,12 +117,12 @@ public sealed class AppConfigAgentConfigurationProvider : ConfigurationProvider,
             _profile.ProfileId);
     }
 
-    private async Task LoadAsync(CancellationToken cancellationToken)
+    private async Task<bool> LoadAsync(CancellationToken cancellationToken)
     {
         // ConfigureAwait(false) throughout to avoid deadlock when Load() is called synchronously (e.g. from tests or config build).
         if (!await _lock.WaitAsync(LockReleaseTimeout, cancellationToken).ConfigureAwait(false))
         {
-            return;
+            return false;
         }
 
         try
@@ -137,7 +138,7 @@ public sealed class AppConfigAgentConfigurationProvider : ConfigurationProvider,
                     "AppConfig Agent returned status {StatusCode} for {EndpointUrl}. Configuration will not be updated.",
                     response.StatusCode,
                     endpointUrl);
-                return;
+                return false;
             }
 
             var contentType = response.Content.Headers.ContentType?.MediaType;
@@ -148,42 +149,45 @@ public sealed class AppConfigAgentConfigurationProvider : ConfigurationProvider,
             // Parse the configuration from the AppConfig Agent response
             var parsedData = ParseConfig(stream, contentType);
 
-            if (parsedData.Count > 0)
-            {
-                var changed = !ConfigurationEquals(parsedData, Data);
-                Data = parsedData;
-                if (changed)
-                {
-                    OnReload();
-                    _logger?.LogInformation(
-                        "Loaded {Count} configuration items from AppConfig Agent for profile {ProfileId}",
-                        parsedData.Count,
-                        _profile.ProfileId);
-                }
-                else
-                {
-                    _logger?.LogDebug(
-                        "No configuration changes for profile {ProfileId} ({Count} items)",
-                        _profile.ProfileId,
-                        parsedData.Count);
-                }
-            }
-            else
+            if (parsedData.Count == 0)
             {
                 _logger?.LogWarning(
                     "AppConfig Agent returned empty configuration for profile {ProfileId}. Configuration will not be updated.",
                     _profile.ProfileId);
+                return false;
             }
+
+            var changed = !ConfigurationEquals(parsedData, Data);
+            Data = parsedData;
+            if (changed)
+            {
+                OnReload();
+                _logger?.LogInformation(
+                    "Loaded {Count} configuration items from AppConfig Agent for profile {ProfileId}",
+                    parsedData.Count,
+                    _profile.ProfileId);
+            }
+            else
+            {
+                _logger?.LogDebug(
+                    "No configuration changes for profile {ProfileId} ({Count} items)",
+                    _profile.ProfileId,
+                    parsedData.Count);
+            }
+
+            return changed;
         }
         catch (HttpRequestException ex)
         {
             _logger?.LogWarning(ex, "Failed to fetch configuration from AppConfig Agent. Configuration will not be updated.");
             // Don't throw - allow app to continue with existing config
+            return false;
         }
         catch (Exception ex)
         {
             _logger?.LogError(ex, "Unexpected error loading configuration from AppConfig Agent");
             // Don't throw - allow app to continue with existing config
+            return false;
         }
         finally
         {

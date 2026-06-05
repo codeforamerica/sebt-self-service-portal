@@ -11,6 +11,11 @@ namespace SEBT.Portal.Tests.Unit.Configuration;
 
 public class AppConfigAgentReloadServiceTests
 {
+    // Generous wall-clock budget for an async loop continuation to run after fakeTime.Advance().
+    // WaitForAsync returns as soon as the condition is met, so a large timeout only affects the
+    // failure path — it keeps the test from flaking under a loaded, parallel test suite.
+    private static readonly TimeSpan WaitTimeout = TimeSpan.FromSeconds(15);
+
     [Fact]
     public async Task ReloadLoop_FiresMoreThanOnce()
     {
@@ -26,10 +31,10 @@ public class AppConfigAgentReloadServiceTests
 
         // Each advance is one reload interval; the loop should fire on each.
         fakeTime.Advance(TimeSpan.FromSeconds(1));
-        await WaitForAsync(() => handler.Count >= afterStart + 1, TimeSpan.FromSeconds(2));
+        await WaitForAsync(() => handler.Count >= afterStart + 1, WaitTimeout);
 
         fakeTime.Advance(TimeSpan.FromSeconds(1));
-        await WaitForAsync(() => handler.Count >= afterStart + 2, TimeSpan.FromSeconds(2));
+        await WaitForAsync(() => handler.Count >= afterStart + 2, WaitTimeout);
 
         await service.StopAsync(CancellationToken.None);
 
@@ -55,10 +60,10 @@ public class AppConfigAgentReloadServiceTests
         var afterStart = handler.Count;
 
         fakeTime.Advance(TimeSpan.FromSeconds(1)); // failing reload
-        await WaitForAsync(() => handler.Count >= afterStart + 1, TimeSpan.FromSeconds(2));
+        await WaitForAsync(() => handler.Count >= afterStart + 1, WaitTimeout);
 
         fakeTime.Advance(TimeSpan.FromSeconds(1)); // must still happen despite the prior failure
-        await WaitForAsync(() => handler.Count >= afterStart + 2, TimeSpan.FromSeconds(2));
+        await WaitForAsync(() => handler.Count >= afterStart + 2, WaitTimeout);
 
         await service.StopAsync(CancellationToken.None);
 

@@ -60,24 +60,7 @@ public sealed class AppConfigAgentReloadService : BackgroundService
         {
             while (await timer.WaitForNextTickAsync(stoppingToken).ConfigureAwait(false))
             {
-                foreach (var provider in providers)
-                {
-                    try
-                    {
-                        await provider.ReloadAsync(stoppingToken).ConfigureAwait(false);
-                    }
-                    catch (Exception ex)
-                    {
-                        // One failing reload must not stop the loop, the next tick retries.
-                        _logger.LogWarning(ex,
-                            "AppConfig reload failed for {Provider}, will retry at the next interval.",
-                            provider);
-                    }
-                }
-
-                _logger.LogInformation(
-                    "Post-reload root read: enable_beta_banner={Value}",
-                    _configuration["FeatureManagement:enable_beta_banner"]); // TEMP
+                await ReloadOnceAsync(stoppingToken).ConfigureAwait(false);
 
                 var now = _timeProvider.GetUtcNow();
                 if (now - lastHeartbeat >= HeartbeatInterval)
@@ -93,6 +76,55 @@ public sealed class AppConfigAgentReloadService : BackgroundService
         {
             // Expected on shutdown when the stopping token is canceled.
         }
+    }
+
+    /// <summary>
+    /// Performs a single reload pass: re-fetches every AppConfig agent provider and, when any of
+    /// them changed, re-raises the configuration root's change token so cached consumers
+    /// (<c>IFeatureManager</c>, <c>IOptionsMonitor&lt;T&gt;</c>) refresh.
+    /// </summary>
+    /// <returns><c>true</c> if any provider's configuration changed; otherwise <c>false</c>.</returns>
+    internal async Task<bool> ReloadOnceAsync(CancellationToken cancellationToken = default)
+    {
+        var providers = (_configuration as IConfigurationRoot)?
+            .Providers
+            .OfType<AppConfigAgentConfigurationProvider>()
+            .ToList();
+
+        if (providers is null || providers.Count == 0)
+        {
+            return false;
+        }
+
+        var anyChanged = false;
+        foreach (var provider in providers)
+        {
+            try
+            {
+                anyChanged |= await provider.ReloadAsync(cancellationToken).ConfigureAwait(false);
+            }
+            catch (Exception ex)
+            {
+                // One failing reload must not stop the loop, the next tick retries.
+                _logger.LogWarning(ex,
+                    "AppConfig reload failed for {Provider}, will retry at the next interval.",
+                    provider);
+            }
+        }
+
+        if (anyChanged)
+        {
+            // The host's ConfigurationManager is disposed during startup: a transient
+            // ServiceProvider built to construct plugin health checks takes ownership of it and
+            // disposes it, severing the provider -> configuration-root change-token bridge. After
+            // that, a provider's OnReload() no longer reaches IFeatureManager / IOptionsMonitor<T>.
+            // IConfigurationRoot.Reload() calls RaiseChanged() directly, so consumers are
+            // re-notified even on a disposed manager. The providers' own Load() short-circuits when
+            // disposed, so this does not re-fetch from the agent.
+            (_configuration as IConfigurationRoot)?.Reload();
+        }
+
+        return anyChanged;
     }
 
     private int ResolveIntervalSeconds()
