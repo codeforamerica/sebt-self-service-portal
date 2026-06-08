@@ -114,6 +114,7 @@ module "app" {
   image_tags_mutable     = true
   enable_execute_command = true
   enable_appconfig       = true
+  desired_containers     = 2
 
   state_api_environment_variables = {
     "Oidc__DiscoveryEndpoint"                        = var.oidc_discovery_endpoint
