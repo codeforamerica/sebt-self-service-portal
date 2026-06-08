@@ -124,10 +124,8 @@ export function IdProofingForm({ idOptions, contactLink, getDiToken }: IdProofin
   const showIdValueInput = selectedIdType !== null && selectedIdType !== NONE_VALUE
 
   const REQUIRED_FIELD_ERROR = tValidation('required')
-  // TODO: Use t('validation.ssnItinDigits') once key is available in dc.csv
-  const SSN_ITIN_SHAPE_ERROR = 'Enter exactly 9 digits.'
-  // TODO: Use t('validation.sevenOrEightDigits') once key is available in dc.csv
-  const SEVEN_OR_EIGHT_DIGITS_ERROR = 'Enter 7 or 8 digits.'
+  const SSN_ITIN_SHAPE_ERROR = tValidation('ssn')
+  const SEVEN_OR_EIGHT_DIGITS_ERROR = tValidation('idNumber')
   // TODO: Use t('validation.dobInvalid') once key is available in dc.csv
   const DOB_INVALID_ERROR = 'Enter a valid date of birth.'
 
@@ -298,12 +296,36 @@ export function IdProofingForm({ idOptions, contactLink, getDiToken }: IdProofin
   // see the submit button text change to "Continue..." and any eventual outcome
   // (off-boarding navigation or an inline error) reads as "we just got an error
   // after waiting."
+  //
+  // The titled interstitial only renders when the active locale bundle has
+  // step-upProcessing copy. States whose content sheet omits those rows (DC
+  // marks them !N/A!) would otherwise see i18next leak the literal key names
+  // "title"/"body" through the fallback chain — they fall back to a spinner-only
+  // status region. Adding the copy upstream is enough to switch in the titled
+  // interstitial; no code change needed.
   if (isProcessing || submitIdProofing.isPending) {
+    const hasInterstitialCopy =
+      i18n.exists('step-upProcessing:title') && i18n.exists('step-upProcessing:body')
+    if (hasInterstitialCopy) {
+      return (
+        <LoadingInterstitial
+          title={tProcessing('title')}
+          message={tProcessing('body')}
+        />
+      )
+    }
     return (
-      <LoadingInterstitial
-        title={tProcessing('title')}
-        message={tProcessing('body')}
-      />
+      <div
+        className="padding-y-4 text-center"
+        role="status"
+        aria-busy="true"
+        aria-live="polite"
+      >
+        <span
+          className="usa-spinner"
+          aria-hidden="true"
+        />
+      </div>
     )
   }
 

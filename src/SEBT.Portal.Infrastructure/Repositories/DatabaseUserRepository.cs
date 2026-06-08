@@ -1,4 +1,6 @@
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Options;
+using SEBT.Portal.Core.AppSettings;
 using SEBT.Portal.Core.Exceptions;
 using SEBT.Portal.Core.Models.Auth;
 using SEBT.Portal.Core.Repositories;
@@ -17,8 +19,11 @@ public class DatabaseUserRepository(
     PortalDbContext dbContext,
     IIdentifierHasher identifierHasher,
     IPiiSymmetricEncryption piiEncryption,
-    IEmailLookupHasher emailLookupHasher) : IUserRepository
+    IEmailLookupHasher emailLookupHasher,
+    IOptions<IdProofingValiditySettings> validitySettings) : IUserRepository
 {
+    private readonly IdProofingValiditySettings _validitySettings = validitySettings.Value;
+
     public async Task<User?> GetUserByEmailAsync(string email, CancellationToken cancellationToken = default)
     {
         var normalizedEmail = NormalizeEmail(email);
@@ -113,7 +118,7 @@ public class DatabaseUserRepository(
         entity.IalLevel = (int)user.IalLevel;
         entity.IdProofingSessionId = user.IdProofingSessionId;
         entity.IdProofingCompletedAt = user.IdProofingCompletedAt;
-        entity.IdProofingExpiresAt = user.IdProofingExpiresAt;
+        entity.IdProofingExpiresAt = ComputeStoredExpiration(user.IdProofingCompletedAt);
         entity.IsCoLoaded = user.IsCoLoaded;
         entity.CoLoadedLastUpdated = user.CoLoadedLastUpdated;
         entity.Ssn = identifierHasher.HashForStorage(user.Ssn);
@@ -331,6 +336,13 @@ public class DatabaseUserRepository(
 
     private static string? NormalizeEmail(string? email) => EmailNormalizer.NormalizeOrNull(email);
 
+    /// <summary>
+    /// Persists a derived expiration for legacy DB readers. Runtime/JWT use
+    /// <see cref="IdProofingCompletedAt"/> + <see cref="IdProofingValiditySettings.ValidityDays"/>.
+    /// </summary>
+    private DateTime? ComputeStoredExpiration(DateTime? completedAt) =>
+        IdProofingExpiration.ComputeStoredExpiration(completedAt, _validitySettings.ValidityDays);
+
     private async Task<UserEntity?> FindUserEntityByNormalizedEmailAsync(
         string normalizedEmail,
         string lookupHash,
@@ -473,7 +485,7 @@ public class DatabaseUserRepository(
             IalLevel = (int)user.IalLevel,
             IdProofingSessionId = user.IdProofingSessionId,
             IdProofingCompletedAt = user.IdProofingCompletedAt,
-            IdProofingExpiresAt = user.IdProofingExpiresAt,
+            IdProofingExpiresAt = ComputeStoredExpiration(user.IdProofingCompletedAt),
             IsCoLoaded = user.IsCoLoaded,
             CoLoadedLastUpdated = user.CoLoadedLastUpdated,
             IdProofingAttemptCount = user.IdProofingAttemptCount,

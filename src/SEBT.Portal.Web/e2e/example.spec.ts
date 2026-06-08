@@ -1,5 +1,9 @@
 import { expect, test } from '@playwright/test'
 
+import { currentState } from './fixtures/state'
+
+const expectedPortalTitle = currentState === 'co' ? /Colorado Summer EBT/i : /SUN Bucks/i
+
 /**
  * Example E2E Test - SEBT Portal entry + login
  *
@@ -14,7 +18,7 @@ test.describe('Homepage', () => {
   test('should load and display the login entry', async ({ page }) => {
     await page.goto('/login')
 
-    await expect(page).toHaveTitle(/SUN Bucks/i)
+    await expect(page).toHaveTitle(expectedPortalTitle)
 
     // DC: submit shows "Continue"; CO: "Sign in with myColorado®"
     const primaryAction = page.getByRole('button', { name: /continue|log in|sign in/i }).first()

@@ -14,7 +14,13 @@ public class RequestOtpCommand : ICommand
     [EmailAddress(ErrorMessage = "Invalid email format.")]
     public string Email { get; init; } = string.Empty;
     /// <summary>
-    /// Indicates whether to bypass OTP generation and sending, allowing for testing of the login flow without needing to receive an OTP. 
+    /// BCP 47 language tag for the email to send (e.g. "en", "es", "am").
+    /// Falls back to "en" if the locale has no matching translation.
+    /// </summary>
+    public string Locale { get; init; } = "en";
+
+    /// <summary>
+    /// Indicates whether to bypass OTP generation and sending, allowing for testing of the login flow without needing to receive an OTP.
     /// </summary>
     public bool BypassOtp { get; init; } = false;
 }

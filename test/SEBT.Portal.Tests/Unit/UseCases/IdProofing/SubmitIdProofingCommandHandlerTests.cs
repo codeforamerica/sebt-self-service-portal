@@ -231,6 +231,8 @@ public class SubmitIdProofingCommandHandlerTests
                 Arg.Any<string>(),
                 Arg.Any<PiiVisibility>(),
                 Arg.Any<UserIalLevel>(),
+                Arg.Any<Guid?>(),
+                Arg.Any<bool>(),
                 Arg.Any<CancellationToken>());
         await socureClient.DidNotReceive()
             .RunIdProofingAssessmentAsync(
@@ -268,7 +270,7 @@ public class SubmitIdProofingCommandHandlerTests
         await householdRepository.DidNotReceive()
             .GetHouseholdByEmailAsync(
                 Arg.Any<string>(), Arg.Any<PiiVisibility>(),
-                Arg.Any<UserIalLevel>(), Arg.Any<CancellationToken>());
+                Arg.Any<UserIalLevel>(), Arg.Any<Guid?>(), Arg.Any<bool>(), Arg.Any<CancellationToken>());
     }
 
     [Fact]
@@ -293,6 +295,8 @@ public class SubmitIdProofingCommandHandlerTests
                 user.Email,
                 Arg.Any<PiiVisibility>(),
                 user.IalLevel,
+                Arg.Any<Guid?>(),
+                Arg.Any<bool>(),
                 Arg.Any<CancellationToken>())
             .Returns((HouseholdData?)null);
 
@@ -344,6 +348,8 @@ public class SubmitIdProofingCommandHandlerTests
                 user.Email,
                 Arg.Any<PiiVisibility>(),
                 user.IalLevel,
+                Arg.Any<Guid?>(),
+                Arg.Any<bool>(),
                 Arg.Any<CancellationToken>())
             .Returns(household);
 
@@ -382,6 +388,8 @@ public class SubmitIdProofingCommandHandlerTests
                 user.Email,
                 Arg.Any<PiiVisibility>(),
                 user.IalLevel,
+                Arg.Any<Guid?>(),
+                Arg.Any<bool>(),
                 Arg.Any<CancellationToken>())
             .Returns((HouseholdData?)null);
 
@@ -422,7 +430,7 @@ public class SubmitIdProofingCommandHandlerTests
         challengeRepository.GetActiveByUserIdAsync(command.UserId, Arg.Any<CancellationToken>())
             .Returns((DocVerificationChallenge?)null);
         householdRepository.GetHouseholdByEmailAsync(
-                user.Email, Arg.Any<PiiVisibility>(), user.IalLevel, Arg.Any<CancellationToken>())
+                user.Email, Arg.Any<PiiVisibility>(), user.IalLevel, Arg.Any<Guid?>(), Arg.Any<bool>(), Arg.Any<CancellationToken>())
             .Returns((HouseholdData?)null);
 
         await handler.Handle(command, CancellationToken.None);
@@ -619,7 +627,7 @@ public class SubmitIdProofingCommandHandlerTests
                 Arg.Any<string>(), Arg.Any<DateOnly>(), Arg.Any<Guid>(), Arg.Any<CancellationToken>())
             .Returns(false);
         householdRepository.GetHouseholdByEmailAsync(
-                Arg.Any<string>(), Arg.Any<PiiVisibility>(), Arg.Any<UserIalLevel>(), Arg.Any<CancellationToken>())
+                Arg.Any<string>(), Arg.Any<PiiVisibility>(), Arg.Any<UserIalLevel>(), Arg.Any<Guid?>(), Arg.Any<bool>(), Arg.Any<CancellationToken>())
             .Returns((HouseholdData?)null);
 
         await handler.Handle(command, CancellationToken.None);
@@ -957,7 +965,7 @@ public class SubmitIdProofingCommandHandlerTests
         challengeRepository.GetActiveByUserIdAsync(command.UserId, Arg.Any<CancellationToken>())
             .Returns((DocVerificationChallenge?)null);
         householdRepository.GetHouseholdByEmailAsync(
-                "test@example.com", Arg.Any<PiiVisibility>(), Arg.Any<UserIalLevel>(), Arg.Any<CancellationToken>())
+                "test@example.com", Arg.Any<PiiVisibility>(), Arg.Any<UserIalLevel>(), Arg.Any<Guid?>(), Arg.Any<bool>(), Arg.Any<CancellationToken>())
             .Returns(new HouseholdData
             {
                 UserProfile = new UserProfile { FirstName = "Jane", LastName = "Doe" },
@@ -1001,7 +1009,9 @@ public class SubmitIdProofingCommandHandlerTests
             "test@example.com",
             Arg.Is<PiiVisibility>(p => p.IncludeAddress && p.IncludeEmail && p.IncludePhone),
             Arg.Any<UserIalLevel>(),
-            Arg.Any<CancellationToken>());
+            Arg.Any<Guid?>(),
+                Arg.Any<bool>(),
+                Arg.Any<CancellationToken>());
     }
 
     [Fact]
@@ -1015,7 +1025,7 @@ public class SubmitIdProofingCommandHandlerTests
         challengeRepository.GetActiveByUserIdAsync(command.UserId, Arg.Any<CancellationToken>())
             .Returns((DocVerificationChallenge?)null);
         householdRepository.GetHouseholdByEmailAsync(
-                Arg.Any<string>(), Arg.Any<PiiVisibility>(), Arg.Any<UserIalLevel>(), Arg.Any<CancellationToken>())
+                Arg.Any<string>(), Arg.Any<PiiVisibility>(), Arg.Any<UserIalLevel>(), Arg.Any<Guid?>(), Arg.Any<bool>(), Arg.Any<CancellationToken>())
             .ThrowsAsync(new InvalidOperationException("DB timeout"));
         socureClient.RunIdProofingAssessmentAsync(
                 command.UserId, "test@example.com", command.DateOfBirth,
@@ -1309,6 +1319,8 @@ public class SubmitIdProofingCommandHandlerTests
                 "test@example.com",
                 Arg.Any<PiiVisibility>(),
                 Arg.Any<UserIalLevel>(),
+                Arg.Any<Guid?>(),
+                Arg.Any<bool>(),
                 Arg.Any<CancellationToken>())
             .Returns((HouseholdData?)null);
 
@@ -1344,6 +1356,8 @@ public class SubmitIdProofingCommandHandlerTests
                 "test@example.com",
                 Arg.Any<PiiVisibility>(),
                 Arg.Any<UserIalLevel>(),
+                Arg.Any<Guid?>(),
+                Arg.Any<bool>(),
                 Arg.Any<CancellationToken>())
             .Returns(emptyHousehold);
 
@@ -1376,6 +1390,8 @@ public class SubmitIdProofingCommandHandlerTests
                 "test@example.com",
                 Arg.Any<PiiVisibility>(),
                 Arg.Any<UserIalLevel>(),
+                Arg.Any<Guid?>(),
+                Arg.Any<bool>(),
                 Arg.Any<CancellationToken>())
             .ThrowsAsync(new InvalidOperationException("warehouse unavailable"));
 
@@ -1407,6 +1423,8 @@ public class SubmitIdProofingCommandHandlerTests
                 "test@example.com",
                 Arg.Any<PiiVisibility>(),
                 Arg.Any<UserIalLevel>(),
+                Arg.Any<Guid?>(),
+                Arg.Any<bool>(),
                 Arg.Any<CancellationToken>())
             .ThrowsAsync(new InvalidOperationException("warehouse unavailable"));
 
@@ -1450,6 +1468,8 @@ public class SubmitIdProofingCommandHandlerTests
                 "test@example.com",
                 Arg.Any<PiiVisibility>(),
                 Arg.Any<UserIalLevel>(),
+                Arg.Any<Guid?>(),
+                Arg.Any<bool>(),
                 Arg.Any<CancellationToken>())
             .Returns(householdWithCase);
 

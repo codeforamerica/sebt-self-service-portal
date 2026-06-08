@@ -3,8 +3,14 @@ packages:
   - src/SEBT.EnrollmentChecker.Web
   - packages/*
 
+# [SECURITY] Force-upgrade vulnerable transitive dependencies. Lives here (not in
+# package.json's `pnpm.overrides`) because pnpm 11 no longer honors that location.
 overrides:
-  tmp@<=0.2.3: '>=0.2.4'
+  ws: '>=8.20.1' # CVE — uninitialized memory disclosure
+  postcss: '>=8.5.10' # CVE — XSS via unescaped `</style>`
+  vite: '>=8.0.0' # CVEs — path traversal, dev-server WS arbitrary read, server.fs.deny bypass
+  tmp: '>=0.2.4' # CVE — arbitrary write via symlink `dir` param
+  uuid: '>=11.1.1' # CVE — missing buffer bounds check
 
 # [SECURITY] Enforce minimum package age. Consult Security Team before updating.
 minimumReleaseAge: 10080 # 7 days (minutes)

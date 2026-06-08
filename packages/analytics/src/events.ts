@@ -11,6 +11,7 @@ export const CTA_CLICK = 'cta_click'
 export const OTP_REQUEST = 'otp_request'
 export const OTP_CHALLENGE = 'otp_challenge'
 export const OTP_RESULT = 'otp_result'
+export const OIDC_START = 'oidc_start'
 
 // ID Proofing
 export const IDV_PRIMARY_START = 'idv_primary_start'
@@ -25,11 +26,18 @@ export const IDV_FINAL_RESULT = 'idv_final_result'
 export const HOUSEHOLD_RESULT = 'household_result'
 
 // Self-Service Address Update & Replacement Card
+
+/** Fired when the user enters the address update form. */
 export const ADDRESS_UPDATE_START = 'address_update_start'
+/** Fired when the address update API call completes. Carries `address_update_status` (page). */
 export const ADDRESS_UPDATE_SUBMIT = 'address_update_submit'
+/** Fired when the address update API call fails. Carries `error_code` (page). */
 export const ADDRESS_UPDATE_ERROR = 'address_update_error'
+/** Fired when the user enters the card replacement flow. */
 export const CARD_REPLACEMENT_START = 'card_replacement_start'
+/** Fired when the card replacement API call completes. Carries `card_replacement_status` (page). */
 export const CARD_REPLACEMENT_SUBMIT = 'card_replacement_submit'
+/** Fired when the card replacement API call fails. Carries `error_code` (page). */
 export const CARD_REPLACEMENT_ERROR = 'card_replacement_error'
 
 // Enrollment Checker — per the SEBT Data Layer Dictionary, each event carries

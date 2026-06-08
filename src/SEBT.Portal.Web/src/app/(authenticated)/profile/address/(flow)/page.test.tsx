@@ -23,9 +23,24 @@ vi.mock('@sebt/design-system', async (importOriginal) => {
 })
 
 vi.mock('@/features/address/components/AddressForm', () => ({
-  AddressForm: ({ initialAddress }: { initialAddress: unknown }) => (
-    <div data-testid="address-form">{initialAddress ? 'has-address' : 'no-address'}</div>
+  AddressForm: ({
+    initialAddress,
+    redirectPath
+  }: {
+    initialAddress: unknown
+    redirectPath?: string
+  }) => (
+    <div
+      data-testid="address-form"
+      data-redirect-path={redirectPath ?? ''}
+    >
+      {initialAddress ? 'has-address' : 'no-address'}
+    </div>
   )
+}))
+
+vi.mock('@/hooks/useFlowStartAnalytics', () => ({
+  useFlowStartAnalytics: vi.fn()
 }))
 
 let mockHouseholdData: HouseholdData | null = null
@@ -100,6 +115,23 @@ describe('AddressFormPage', () => {
     render(<AddressFormPage />)
 
     expect(mockReplace).toHaveBeenCalledWith('/dashboard')
+  })
+
+  it('skips replacement-card prompt when canRequestReplacementCard is false', () => {
+    mockHouseholdData = makeHousehold({
+      allowedActions: {
+        canUpdateAddress: true,
+        canRequestReplacementCard: false,
+        addressUpdateDeniedMessageKey: null,
+        cardReplacementDeniedMessageKey: null
+      }
+    })
+    render(<AddressFormPage />)
+
+    expect(screen.getByTestId('address-form')).toHaveAttribute(
+      'data-redirect-path',
+      '/dashboard?addressUpdated=true'
+    )
   })
 
   it('renders form when allowedActions is not provided (backward-compatible default)', () => {

@@ -8,7 +8,7 @@ import { useHouseholdData } from '@/features/household'
 import { Alert } from '@sebt/design-system'
 
 export default function CardReplaceConfirmPage() {
-  const { t: tCommon } = useTranslation('common')
+  const { t: tDev } = useTranslation('dev')
   const router = useRouter()
   const searchParams = useSearchParams()
   const { data, isLoading, isError } = useHouseholdData()
@@ -16,7 +16,7 @@ export default function CardReplaceConfirmPage() {
   const caseId = searchParams.get('case')
 
   if (isLoading) {
-    return <p>{tCommon('loading', 'Loading...')}</p>
+    return <p>{tDev('loading')}</p>
   }
 
   if (isError || !data || !caseId) {

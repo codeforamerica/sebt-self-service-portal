@@ -32,8 +32,13 @@ var builder = WebApplication.CreateBuilder(args);
 // Configure Serilog early so that configuration providers can log.
 // Console sink is configured in code (not appsettings) so we can use
 // human-readable text locally and structured JSON in deployed environments.
-// The JSON format uses field names that Datadog auto-recognizes (level,
-// message, timestamp) so log severity maps correctly without custom pipelines.
+// Field names match Datadog's reserved attributes (`date`, `status`,
+// `message`) so they are auto-recognized without configuring a per-service
+// log pipeline. Without these names the Forwarder Lambda falls back to the
+// CloudWatch event time for the timeline and tags the log with
+// `service:cloudwatch`. The literal service value must match the OTEL
+// ServiceName constant in OpenTelemetrySetup so traces and logs correlate
+// under the same service in Datadog.
 // Set LOG_FORMAT=json in ECS task definitions to enable structured output.
 var useJsonLogs = string.Equals(
     Environment.GetEnvironmentVariable("LOG_FORMAT"), "json", StringComparison.OrdinalIgnoreCase);
@@ -47,7 +52,7 @@ var logConfig = new LoggerConfiguration()
 if (useJsonLogs)
 {
     logConfig.WriteTo.Console(new ExpressionTemplate(
-        "{ {timestamp: @t, level: @l, message: @m, exception: @x, ..@p} }\n"));
+        "{ {date: @t, timestamp: @t, status: @l, level: @l, message: @m, exception: @x, ..@p} }\n"));
 }
 else
 {
@@ -129,7 +134,7 @@ if (!string.IsNullOrEmpty(dbHost) && !string.IsNullOrEmpty(dbPassword))
 }
 
 // Caching must be registered before plugins — plugins may depend on HybridCache
-builder.Services.AddCaching(builder.Configuration);
+builder.Services.AddCaching(builder.Configuration, builder.Environment);
 builder.Services.AddDistributedLocking(builder.Configuration);
 
 // Registers plugins and allows them to be constructor injected into ASP.NET controllers
@@ -164,6 +169,7 @@ builder.Services.AddScoped<ResolveUserFilter>();
 
 // OIDC token exchange (replaces the Next.js /api/auth/oidc/callback route)
 builder.Services.AddScoped<IOidcExchangeService, OidcExchangeService>();
+builder.Services.AddScoped<IOidcCallbackFailureLogger, OidcCallbackFailureLogger>();
 // pre-auth session store (HybridCache-backed, 15 min TTL)
 builder.Services.AddSingleton<IPreAuthSessionStore, PreAuthSessionStore>();
 

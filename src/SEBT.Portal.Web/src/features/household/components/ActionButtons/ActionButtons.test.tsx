@@ -150,6 +150,31 @@ describe('ActionButtons', () => {
     expect(screen.getByText('Check existing cards')).toBeInTheDocument()
   })
 
+  it('hides Check existing applications CTA when hasApplications is false', () => {
+    // Co-loaded households have cases but no applications; the CTA scrolls to an
+    // applications section that does not render, so it must hide (DC-402).
+    render(
+      <ActionButtons
+        allowedActions={allowAll}
+        hasCases={true}
+        hasApplications={false}
+      />
+    )
+    expect(screen.queryByText('Check existing applications')).toBeNull()
+    expect(screen.getByText('Check existing cards')).toBeInTheDocument()
+  })
+
+  it('shows Check existing applications CTA when hasApplications is true', () => {
+    render(
+      <ActionButtons
+        allowedActions={allowAll}
+        hasCases={true}
+        hasApplications={true}
+      />
+    )
+    expect(screen.getByText('Check existing applications')).toBeInTheDocument()
+  })
+
   it('does not render the self-service-unavailable alert even when actions are denied', () => {
     render(<ActionButtons allowedActions={denyAll} />)
     expect(screen.queryByRole('status')).toBeNull()
@@ -192,6 +217,50 @@ describe('ActionButtons', () => {
         expect(link).toHaveClass('bg-primary')
         expect(link).toHaveClass('text-white')
       })
+    })
+  })
+
+  // The "Activate a card" CTA is state-gated: CO has the authored label, DC's is still
+  // !N/A! upstream, so the entry is gated to CO until DC content lands. Tests assert on
+  // href/data-analytics-cta rather than label text because the unit-test i18n bundle is
+  // always DC (NEXT_PUBLIC_STATE=dc), so the CO-only label key never resolves here.
+  describe('Activate a card CTA (DC-162)', () => {
+    const activateLink = (container: HTMLElement) =>
+      container.querySelector('a[href="/cards/activate"]')
+
+    it('renders the activate-card CTA for CO when the household has cases', () => {
+      mockGetState.mockReturnValue('co')
+      const { container } = render(
+        <ActionButtons
+          allowedActions={allowAll}
+          hasCases={true}
+        />
+      )
+      const link = activateLink(container)
+      expect(link).toBeInTheDocument()
+      expect(link).toHaveAttribute('data-analytics-cta', 'activate_card_cta')
+    })
+
+    it('does not render the activate-card CTA for DC (label not yet published)', () => {
+      mockGetState.mockReturnValue('dc')
+      const { container } = render(
+        <ActionButtons
+          allowedActions={allowAll}
+          hasCases={true}
+        />
+      )
+      expect(activateLink(container)).toBeNull()
+    })
+
+    it('hides the activate-card CTA for CO when the household has no cases', () => {
+      mockGetState.mockReturnValue('co')
+      const { container } = render(
+        <ActionButtons
+          allowedActions={allowAll}
+          hasCases={false}
+        />
+      )
+      expect(activateLink(container)).toBeNull()
     })
   })
 })

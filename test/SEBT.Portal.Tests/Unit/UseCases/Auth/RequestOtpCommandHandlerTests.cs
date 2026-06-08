@@ -38,7 +38,7 @@ public class RequestOtpCommandHandlerTests
     {
         // Arrange
         var command = new RequestOtpCommand { Email = "user@example.com" };
-        emailSender.SendOtpAsync(command.Email, Arg.Any<string>())
+        emailSender.SendOtpAsync(command.Email, Arg.Any<string>(), Arg.Any<string>())
             .Returns(Result.Success());
         // Act
         var result = await handler.Handle(command, CancellationToken.None);
@@ -55,7 +55,7 @@ public class RequestOtpCommandHandlerTests
     {
         // Arrange
         var command = new RequestOtpCommand { Email = "user@example.com" };
-        emailSender.SendOtpAsync(command.Email, Arg.Any<string>())
+        emailSender.SendOtpAsync(command.Email, Arg.Any<string>(), Arg.Any<string>())
             .Returns(Result.Success());
 
         // Act
@@ -99,7 +99,7 @@ public class RequestOtpCommandHandlerTests
     {
         // Arrange
         var command = new RequestOtpCommand { Email = "user@example.com" };
-        emailSender.SendOtpAsync(command.Email, Arg.Any<string>())
+        emailSender.SendOtpAsync(command.Email, Arg.Any<string>(), Arg.Any<string>())
             .Returns(Result.Success());
 
         // Act
@@ -122,7 +122,7 @@ public class RequestOtpCommandHandlerTests
     {
         // Arrange
         var command = new RequestOtpCommand { Email = "user@example.com" };
-        emailSender.SendOtpAsync(command.Email, Arg.Any<string>())
+        emailSender.SendOtpAsync(command.Email, Arg.Any<string>(), Arg.Any<string>())
             .Returns(Result.DependencyFailed(DependencyFailedReason.ConnectionFailed, "Email service unavailable"));
 
         // Act
@@ -145,7 +145,7 @@ public class RequestOtpCommandHandlerTests
     {
         // Arrange
         var command = new RequestOtpCommand { Email = "user@example.com" };
-        emailSender.SendOtpAsync(command.Email, Arg.Any<string>())
+        emailSender.SendOtpAsync(command.Email, Arg.Any<string>(), Arg.Any<string>())
             .Returns(Result.Success());
 
         // Act
@@ -164,7 +164,7 @@ public class RequestOtpCommandHandlerTests
 
         // Arrange
         var command = new RequestOtpCommand { Email = "user@example.com" };
-        emailSender.SendOtpAsync(command.Email, Arg.Any<string>())
+        emailSender.SendOtpAsync(command.Email, Arg.Any<string>(), Arg.Any<string>())
             .Returns(Result.Success());
 
         // Act
@@ -172,7 +172,7 @@ public class RequestOtpCommandHandlerTests
 
         // Assert
         await emailSender
-            .Received(1).SendOtpAsync(command.Email, Arg.Any<string>());
+            .Received(1).SendOtpAsync(command.Email, Arg.Any<string>(), Arg.Any<string>());
     }
 
     /// <summary>
@@ -184,7 +184,7 @@ public class RequestOtpCommandHandlerTests
 
         // Arrange
         var command = new RequestOtpCommand { Email = "user@example.com" };
-        emailSender.SendOtpAsync(command.Email, Arg.Any<string>())
+        emailSender.SendOtpAsync(command.Email, Arg.Any<string>(), Arg.Any<string>())
             .Returns(Result.Success());
 
         // Act
@@ -229,7 +229,7 @@ public class RequestOtpCommandHandlerTests
 
         // Assert
         Assert.True(result.IsSuccess);
-        await emailSender.DidNotReceive().SendOtpAsync(Arg.Any<string>(), Arg.Any<string>());
+        await emailSender.DidNotReceive().SendOtpAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>());
         await otpRepository.DidNotReceive().SaveOtpCodeAsync(Arg.Any<OtpCode>());
         otpGenerator.DidNotReceive().GenerateOtp();
     }

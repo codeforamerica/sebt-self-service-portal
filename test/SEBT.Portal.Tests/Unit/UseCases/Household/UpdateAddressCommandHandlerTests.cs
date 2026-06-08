@@ -108,7 +108,7 @@ public class UpdateAddressCommandHandlerTests
     {
         _householdRepository.GetHouseholdByIdentifierAsync(
                 Arg.Any<HouseholdIdentifier>(), Arg.Any<PiiVisibility>(),
-                Arg.Any<UserIalLevel>(), Arg.Any<CancellationToken>())
+                Arg.Any<UserIalLevel>(), Arg.Any<Guid?>(), Arg.Any<bool>(), Arg.Any<CancellationToken>())
             .Returns(new HouseholdData { SummerEbtCases = cases.ToList() });
     }
 
@@ -116,7 +116,7 @@ public class UpdateAddressCommandHandlerTests
     {
         _householdRepository.GetHouseholdByIdentifierAsync(
                 Arg.Any<HouseholdIdentifier>(), Arg.Any<PiiVisibility>(),
-                Arg.Any<UserIalLevel>(), Arg.Any<CancellationToken>())
+                Arg.Any<UserIalLevel>(), Arg.Any<Guid?>(), Arg.Any<bool>(), Arg.Any<CancellationToken>())
             .Returns(new HouseholdData { BenefitIssuanceType = benefitType });
     }
 
@@ -387,7 +387,7 @@ public class UpdateAddressCommandHandlerTests
         SetupResolverReturnsEmail();
         _householdRepository.GetHouseholdByIdentifierAsync(
                 Arg.Any<HouseholdIdentifier>(), Arg.Any<PiiVisibility>(),
-                Arg.Any<UserIalLevel>(), Arg.Any<CancellationToken>())
+                Arg.Any<UserIalLevel>(), Arg.Any<Guid?>(), Arg.Any<bool>(), Arg.Any<CancellationToken>())
             .Returns((HouseholdData?)null);
 
         var result = await handler.Handle(command, CancellationToken.None);

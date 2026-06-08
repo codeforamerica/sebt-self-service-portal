@@ -5,13 +5,14 @@ import { useState, type FormEvent } from 'react'
 import { useTranslation } from 'react-i18next'
 
 import { ApiError } from '@/api/client'
+import { AnalyticsEvents, useDataLayer } from '@sebt/analytics'
 import { Alert, Button, InputField } from '@sebt/design-system'
 
 import { RequestOtpRequestSchema, useRequestOtp } from '../../api'
 
 export function LoginForm() {
   const router = useRouter()
-  const { t } = useTranslation('common')
+  const { t, i18n } = useTranslation('common')
   const { t: tLogin } = useTranslation('login')
   const { t: tValidation } = useTranslation('validation')
   const [email, setEmail] = useState('')
@@ -19,6 +20,7 @@ export function LoginForm() {
   const [submitError, setSubmitError] = useState<string | null>(null)
 
   const requestOtp = useRequestOtp()
+  const { trackEvent } = useDataLayer()
 
   function validateEmail(value: string): string | null {
     if (!value.trim()) {
@@ -42,8 +44,10 @@ export function LoginForm() {
     }
     setFieldError(null)
 
+    trackEvent(AnalyticsEvents.OTP_REQUEST)
+
     try {
-      await requestOtp.mutateAsync({ email })
+      await requestOtp.mutateAsync({ email, locale: i18n.language })
       sessionStorage.setItem('otp_email', email)
       router.push('/login/verify')
     } catch (err) {

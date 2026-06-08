@@ -60,8 +60,9 @@ public class SelfServiceEvaluator(IOptionsMonitor<SelfServiceRulesSettings> opti
         }
 
         // Card-status dimension: empty list means any card status is permitted.
+        // Null EbtCardStatus is treated as Unknown for rules evaluation.
         if (typeRule.AllowedCardStatuses.Count > 0
-            && !typeRule.AllowedCardStatuses.Contains(summerEbtCase.CardStatus))
+            && !typeRule.AllowedCardStatuses.Contains(summerEbtCase.EbtCardStatus ?? CardStatus.Unknown))
         {
             return false;
         }

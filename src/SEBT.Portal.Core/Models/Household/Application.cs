@@ -38,36 +38,6 @@ public class Application
     public DateTime? BenefitExpirationDate { get; set; }
 
     /// <summary>
-    /// The last 4 digits of the card the benefit is issued to for this application.
-    /// </summary>
-    public string? Last4DigitsOfCard { get; set; }
-
-    /// <summary>
-    /// The status of the card for this application.
-    /// </summary>
-    public CardStatus CardStatus { get; set; } = CardStatus.Requested;
-
-    /// <summary>
-    /// The date and time when the card status was set to Requested.
-    /// </summary>
-    public DateTime? CardRequestedAt { get; set; }
-
-    /// <summary>
-    /// The date and time when the card status was set to Mailed.
-    /// </summary>
-    public DateTime? CardMailedAt { get; set; }
-
-    /// <summary>
-    /// The date and time when the card status was set to Active.
-    /// </summary>
-    public DateTime? CardActivatedAt { get; set; }
-
-    /// <summary>
-    /// The date and time when the card status was set to Deactivated.
-    /// </summary>
-    public DateTime? CardDeactivatedAt { get; set; }
-
-    /// <summary>
     /// The list of children on this application.
     /// </summary>
     public List<Child> Children { get; set; } = new();

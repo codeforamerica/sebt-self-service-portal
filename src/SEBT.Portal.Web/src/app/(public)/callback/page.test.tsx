@@ -32,10 +32,11 @@ vi.mock('next/navigation', () => ({
 }))
 
 // Mock @/features/auth without loading the barrel (barrel pulls IalGuard → @/env and breaks Vitest).
-// `sessionState` is mutable so individual tests can simulate an already-authenticated visitor.
-const { mockLogin, sessionState } = vi.hoisted(() => ({
+// `sessionState` / `authLoading` are mutable so tests can simulate session hydration and back-button re-entry.
+const { mockLogin, sessionState, authLoading } = vi.hoisted(() => ({
   mockLogin: vi.fn(),
-  sessionState: { current: null as Record<string, unknown> | null }
+  sessionState: { current: null as Record<string, unknown> | null },
+  authLoading: { current: false }
 }))
 vi.mock('@/features/auth', async () => {
   const api = await vi.importActual<typeof import('@/features/auth/api')>('@/features/auth/api')
@@ -46,7 +47,7 @@ vi.mock('@/features/auth', async () => {
       logout: vi.fn(),
       isAuthenticated: sessionState.current !== null,
       session: sessionState.current,
-      isLoading: false
+      isLoading: authLoading.current
     })
   }
 })
@@ -86,6 +87,7 @@ describe('CallbackPage', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     sessionState.current = null
+    authLoading.current = false
     // Default: URL has code and state
     Object.defineProperty(window, 'location', {
       value: {
@@ -192,6 +194,14 @@ describe('CallbackPage', () => {
 
   describe('IdP error redirect (?error=)', () => {
     it('redirects to step-up failure for server_error with description', async () => {
+      const reportBodies: unknown[] = []
+      server.use(
+        http.post('/api/auth/oidc/report-failure', async ({ request }) => {
+          reportBodies.push(await request.json())
+          return new HttpResponse(null, { status: 204 })
+        })
+      )
+
       Object.defineProperty(window, 'location', {
         value: {
           search: '?error=server_error&error_description=User+cancelled',
@@ -204,6 +214,11 @@ describe('CallbackPage', () => {
 
       await waitFor(() => {
         expect(mockReplace).toHaveBeenCalledWith(OIDC_CALLBACK_ERROR_OFF_BOARDING)
+        expect(reportBodies).toContainEqual({
+          reason: 'idp_redirect',
+          idpError: 'server_error',
+          idpErrorDescription: 'User cancelled'
+        })
       })
     })
 
@@ -285,7 +300,7 @@ describe('CallbackPage', () => {
   })
 
   describe('back-button re-entry after successful login', () => {
-    it('skips the code exchange and redirects to /dashboard when the visitor is already authenticated', async () => {
+    it('skips exchange and redirects to /dashboard when step-up is already complete (stale code in URL)', async () => {
       sessionState.current = { ial: '1plus', idProofingExpiresAt: 9999999999 }
       const callbackSpy = vi.fn()
       const completeLoginSpy = vi.fn()
@@ -308,6 +323,96 @@ describe('CallbackPage', () => {
       expect(callbackSpy).not.toHaveBeenCalled()
       expect(completeLoginSpy).not.toHaveBeenCalled()
       expect(mockReplace).not.toHaveBeenCalledWith(OIDC_CALLBACK_ERROR_OFF_BOARDING)
+    })
+
+    it('runs exchange when authenticated but step-up is still in progress', async () => {
+      sessionState.current = { ial: '1', userId: 'user-1' }
+      const callbackSpy = vi.fn()
+      server.use(
+        http.post('/api/auth/oidc/callback', () => {
+          callbackSpy()
+          return HttpResponse.json({ callbackToken: 'mock-callback-token-for-step-up' })
+        }),
+        http.post('/api/auth/oidc/complete-login', () => {
+          return HttpResponse.json({ returnUrl: '/profile/address' })
+        })
+      )
+
+      render(<CallbackPage />)
+
+      await waitFor(() => {
+        expect(callbackSpy).toHaveBeenCalled()
+      })
+      await waitFor(() => {
+        expect(mockReplace).toHaveBeenCalledWith('/profile/address')
+      })
+      expect(mockReplace).not.toHaveBeenCalledWith(OIDC_CALLBACK_ERROR_OFF_BOARDING)
+    })
+
+    it('redirects to /dashboard when authenticated and callback URL has no code or state', async () => {
+      sessionState.current = { ial: '1plus', userId: 'user-1' }
+      Object.defineProperty(window, 'location', {
+        value: { search: '', href: 'http://localhost:3000/callback' },
+        writable: true
+      })
+
+      render(<CallbackPage />)
+
+      await waitFor(() => {
+        expect(mockReplace).toHaveBeenCalledWith('/dashboard')
+      })
+      expect(mockReplace).not.toHaveBeenCalledWith(OIDC_CALLBACK_ERROR_OFF_BOARDING)
+    })
+
+    it('does not treat missing code as failure while auth status is still loading', async () => {
+      authLoading.current = true
+      Object.defineProperty(window, 'location', {
+        value: { search: '', href: 'http://localhost:3000/callback' },
+        writable: true
+      })
+
+      render(<CallbackPage />)
+
+      await waitFor(() => {
+        expect(mockReplace).not.toHaveBeenCalled()
+      })
+    })
+
+    it('redirects to off-boarding for IdP error even when already authenticated', async () => {
+      sessionState.current = { ial: '1plus', idProofingExpiresAt: 9999999999 }
+      Object.defineProperty(window, 'location', {
+        value: {
+          search: '?error=access_denied',
+          href: 'http://localhost:3000/callback?error=access_denied'
+        },
+        writable: true
+      })
+
+      render(<CallbackPage />)
+
+      await waitFor(() => {
+        expect(mockReplace).toHaveBeenCalledWith(OIDC_CALLBACK_ERROR_OFF_BOARDING)
+      })
+      expect(mockReplace).not.toHaveBeenCalledWith('/dashboard')
+    })
+
+    it('redirects to off-boarding for IdP error before auth status finishes loading', async () => {
+      authLoading.current = true
+      sessionState.current = { ial: '1plus', idProofingExpiresAt: 9999999999 }
+      Object.defineProperty(window, 'location', {
+        value: {
+          search: '?error=server_error',
+          href: 'http://localhost:3000/callback?error=server_error'
+        },
+        writable: true
+      })
+
+      render(<CallbackPage />)
+
+      await waitFor(() => {
+        expect(mockReplace).toHaveBeenCalledWith(OIDC_CALLBACK_ERROR_OFF_BOARDING)
+      })
+      expect(mockReplace).not.toHaveBeenCalledWith('/dashboard')
     })
   })
 })

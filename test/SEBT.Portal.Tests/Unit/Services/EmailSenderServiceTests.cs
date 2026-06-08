@@ -8,29 +8,22 @@ using SEBT.Portal.Kernel.Results;
 
 namespace SEBT.Portal.Tests.Unit.Services;
 
-public class EmailSenderServiceTests
+public class EmailSenderServiceTests : IDisposable
 {
     private readonly IOptionsMonitor<EmailOtpSenderServiceSettings> _optionsMonitor =
         Substitute.For<IOptionsMonitor<EmailOtpSenderServiceSettings>>();
     private readonly ILogger<EmailOtpSenderService> _logger = Substitute.For<ILogger<EmailOtpSenderService>>();
     private readonly ISmtpClientService _smtpClientService = Substitute.For<ISmtpClientService>();
 
-    [Fact]
-    public async Task SendOtpAsync_WithValidParams_ShouldSendEmailSuccessfully()
+    public EmailSenderServiceTests()
     {
-        // Arrange
-        var emailSettings = new EmailOtpSenderServiceSettings
-        {
-            SenderEmail = "jon@example.com",
-            SenderName = "Test Sender",
-            Subject = "Test Subject",
-            ProgramName = "Test Program",
-            StateName = "Test State",
-            ExpiryMinutes = 10,
-            Language = "en"
-        };
-        _optionsMonitor.CurrentValue.Returns(emailSettings);
-
+        // EmailOtpSenderService.LoadTranslations() reads STATE to pick which embedded
+        // resource to load. Cleared in Dispose so this test does not pollute STATE
+        // for other tests that run in parallel — without that cleanup, any
+        // WebApplicationFactory-based test building its host concurrently can read
+        // STATE=dc and load appsettings.dc.json with the wrong PluginAssemblyPaths.
+        Environment.SetEnvironmentVariable("STATE", "dc");
+        _optionsMonitor.CurrentValue.Returns(new EmailOtpSenderServiceSettings { SenderEmail = "sender@example.com" });
         _smtpClientService.SendEmailAsync(
             Arg.Any<string>(),
             Arg.Any<string>(),
@@ -38,52 +31,41 @@ public class EmailSenderServiceTests
             Arg.Any<string>(),
             Arg.Any<IEnumerable<EmailLinkedResource>>())
             .Returns(Task.CompletedTask);
+    }
 
-        var emailSenderService = new EmailOtpSenderService(_optionsMonitor, _logger, _smtpClientService);
-        var sendEmailResult = await emailSenderService.SendOtpAsync("jane@example.com", "123456");
-
-        // Assert
-        Assert.True(sendEmailResult.IsSuccess);
-        Assert.IsType<SuccessResult>(sendEmailResult);
+    public void Dispose()
+    {
+        Environment.SetEnvironmentVariable("STATE", null);
+        GC.SuppressFinalize(this);
     }
 
     [Fact]
-    public async Task SendOtpAsync_WithValidParams_ShouldUseSettingsCorrectly()
+    public async Task SendOtpAsync_WithValidParams_ShouldSendEmailSuccessfully()
     {
-        // Arrange
-        var emailSettings = new EmailOtpSenderServiceSettings
-        {
-            SenderEmail = "jon@example.com",
-            SenderName = "Test Sender",
-            Subject = "Test Subject",
-            ProgramName = "Test Program",
-            StateName = "Test State",
-            ExpiryMinutes = 10,
-            Language = "es"
-        };
-        _optionsMonitor.CurrentValue.Returns(emailSettings);
-        _smtpClientService.SendEmailAsync(
-            Arg.Any<string>(),
-            Arg.Any<string>(),
-            Arg.Any<string>(),
-            Arg.Any<string>(),
-            Arg.Any<IEnumerable<EmailLinkedResource>>())
-            .Returns(Task.CompletedTask);
+        var service = new EmailOtpSenderService(_optionsMonitor, _logger, _smtpClientService);
 
-        var emailSenderService = new EmailOtpSenderService(_optionsMonitor, _logger, _smtpClientService);
-        await emailSenderService.SendOtpAsync("jane@example.com", "123456");
+        var result = await service.SendOtpAsync("jane@example.com", "123456", "en");
 
-        // Assert - verify email was sent with correct sender, subject, HTML body containing OTP and settings, and linked resources
+        Assert.True(result.IsSuccess);
+        Assert.IsType<SuccessResult>(result);
+    }
+
+    [Fact]
+    public async Task SendOtpAsync_WithEnglishLocale_ShouldUseCorrectSubjectAndBody()
+    {
+        var service = new EmailOtpSenderService(_optionsMonitor, _logger, _smtpClientService);
+
+        await service.SendOtpAsync("jane@example.com", "123456", "en");
+
         await _smtpClientService.Received().SendEmailAsync(
             "jane@example.com",
-            emailSettings.SenderEmail,
-            emailSettings.Subject,
+            "sender@example.com",
+            "Your DC SUN Bucks Login Code",
             Arg.Is<string>(body =>
                 body.Contains("123456") &&
-                body.Contains(emailSettings.StateName) &&
-                body.Contains(emailSettings.ProgramName) &&
-                body.Contains(emailSettings.ExpiryMinutes.ToString()) &&
-                body.Contains($"lang=\"{emailSettings.Language}\"") &&
+                body.Contains("DC SUN Bucks") &&
+                body.Contains("Use this code to log in to your account.") &&
+                body.Contains("lang=\"en\"") &&
                 body.Contains("cid:logo")),
             Arg.Is<IEnumerable<EmailLinkedResource>>(resources =>
                 resources.Any(r => r.ContentId == "logo" && r.ContentType == "image/png")));
@@ -93,122 +75,80 @@ public class EmailSenderServiceTests
     [InlineData("en")]
     [InlineData("es")]
     [InlineData("am")]
-    public async Task SendOtpAsync_WithDifferentLanguages_ShouldSetCorrectLangAttribute(string language)
+    public async Task SendOtpAsync_WithSupportedLocale_ShouldSetCorrectLangAttribute(string locale)
     {
-        // Arrange
-        var emailSettings = new EmailOtpSenderServiceSettings
-        {
-            SenderEmail = "sender@example.com",
-            SenderName = "Test Sender",
-            Subject = "Test Subject",
-            ProgramName = "Test Program",
-            StateName = "Test State",
-            ExpiryMinutes = 10,
-            Language = language
-        };
-        _optionsMonitor.CurrentValue.Returns(emailSettings);
-        _smtpClientService.SendEmailAsync(
-            Arg.Any<string>(),
-            Arg.Any<string>(),
-            Arg.Any<string>(),
-            Arg.Any<string>(),
-            Arg.Any<IEnumerable<EmailLinkedResource>>())
-            .Returns(Task.CompletedTask);
+        var service = new EmailOtpSenderService(_optionsMonitor, _logger, _smtpClientService);
 
-        var emailSenderService = new EmailOtpSenderService(_optionsMonitor, _logger, _smtpClientService);
+        await service.SendOtpAsync("recipient@example.com", "123456", locale);
 
-        // Act
-        await emailSenderService.SendOtpAsync("recipient@example.com", "123456");
-
-        // Assert
         await _smtpClientService.Received().SendEmailAsync(
             Arg.Any<string>(),
             Arg.Any<string>(),
             Arg.Any<string>(),
-            Arg.Is<string>(body => body.Contains($"lang=\"{language}\"")),
+            Arg.Is<string>(body => body.Contains($"lang=\"{locale}\"")),
+            Arg.Any<IEnumerable<EmailLinkedResource>>());
+    }
+
+    [Fact]
+    public async Task SendOtpAsync_WithUnknownLocale_ShouldFallBackToEnglishContent()
+    {
+        var service = new EmailOtpSenderService(_optionsMonitor, _logger, _smtpClientService);
+
+        await service.SendOtpAsync("recipient@example.com", "123456", "fr");
+
+        await _smtpClientService.Received().SendEmailAsync(
+            Arg.Any<string>(),
+            Arg.Any<string>(),
+            "Your DC SUN Bucks Login Code",
+            Arg.Is<string>(body => body.Contains("Use this code to log in to your account.")),
+            Arg.Any<IEnumerable<EmailLinkedResource>>());
+    }
+
+    [Fact]
+    public async Task SendOtpAsync_WithUnknownLocale_ShouldUseFallbackLocaleInLangAttribute()
+    {
+        var service = new EmailOtpSenderService(_optionsMonitor, _logger, _smtpClientService);
+
+        await service.SendOtpAsync("recipient@example.com", "123456", "fr");
+
+        await _smtpClientService.Received().SendEmailAsync(
+            Arg.Any<string>(),
+            Arg.Any<string>(),
+            Arg.Any<string>(),
+            Arg.Is<string>(body => body.Contains("lang=\"en\"") && !body.Contains("lang=\"fr\"")),
+            Arg.Any<IEnumerable<EmailLinkedResource>>());
+    }
+
+    [Fact]
+    public async Task SendOtpAsync_WithInjectedLocale_ShouldNotRenderRawLocaleInHtml()
+    {
+        const string injectedLocale = "\"><script>alert(1)</script><html lang=\"";
+        var service = new EmailOtpSenderService(_optionsMonitor, _logger, _smtpClientService);
+
+        await service.SendOtpAsync("recipient@example.com", "123456", injectedLocale);
+
+        await _smtpClientService.Received().SendEmailAsync(
+            Arg.Any<string>(),
+            Arg.Any<string>(),
+            Arg.Any<string>(),
+            Arg.Is<string>(body => !body.Contains(injectedLocale) && body.Contains("lang=\"en\"")),
             Arg.Any<IEnumerable<EmailLinkedResource>>());
     }
 
     [Theory]
-    [InlineData(5)]
-    [InlineData(10)]
-    [InlineData(15)]
-    [InlineData(30)]
-    public async Task SendOtpAsync_WithDifferentExpiryMinutes_ShouldIncludeCorrectExpiry(int expiryMinutes)
+    [InlineData("es", "Tu código de acceso de DC SUN Bucks", "Usa este código para iniciar sesión en tu cuenta")]
+    [InlineData("am", "የእርስዎ የDC SUN Bucks የመግቢያ ኮድ", "ወደ መለያዎ ለመግባት ይህንን ኮድ ይጠቀሙ።")]
+    public async Task SendOtpAsync_WithNonEnglishLocale_ShouldUseLocalizedContent(string locale, string expectedSubject, string expectedBody1)
     {
-        // Arrange
-        var emailSettings = new EmailOtpSenderServiceSettings
-        {
-            SenderEmail = "sender@example.com",
-            SenderName = "Test Sender",
-            Subject = "Test Subject",
-            ProgramName = "Test Program",
-            StateName = "Test State",
-            ExpiryMinutes = expiryMinutes,
-            Language = "en"
-        };
-        _optionsMonitor.CurrentValue.Returns(emailSettings);
-        _smtpClientService.SendEmailAsync(
-            Arg.Any<string>(),
-            Arg.Any<string>(),
-            Arg.Any<string>(),
-            Arg.Any<string>(),
-            Arg.Any<IEnumerable<EmailLinkedResource>>())
-            .Returns(Task.CompletedTask);
+        var service = new EmailOtpSenderService(_optionsMonitor, _logger, _smtpClientService);
 
-        var emailSenderService = new EmailOtpSenderService(_optionsMonitor, _logger, _smtpClientService);
+        await service.SendOtpAsync("recipient@example.com", "123456", locale);
 
-        // Act
-        await emailSenderService.SendOtpAsync("recipient@example.com", "123456");
-
-        // Assert
         await _smtpClientService.Received().SendEmailAsync(
             Arg.Any<string>(),
             Arg.Any<string>(),
-            Arg.Any<string>(),
-            Arg.Is<string>(body => body.Contains(expiryMinutes.ToString())),
-            Arg.Any<IEnumerable<EmailLinkedResource>>());
-    }
-
-    [Theory]
-    [InlineData("DC SUN Bucks", "DC SUN Bucks")]
-    [InlineData("CO Summer EBT", "Colorado Summer EBT")]
-    [InlineData("VA SNAP", "Virginia SNAP Benefits")]
-    public async Task SendOtpAsync_WithDifferentStateSettings_ShouldIncludeCorrectStateInfo(string programName, string stateName)
-    {
-        // Arrange
-        var emailSettings = new EmailOtpSenderServiceSettings
-        {
-            SenderEmail = "sender@example.com",
-            SenderName = "Test Sender",
-            Subject = "Test Subject",
-            ProgramName = programName,
-            StateName = stateName,
-            ExpiryMinutes = 10,
-            Language = "en"
-        };
-        _optionsMonitor.CurrentValue.Returns(emailSettings);
-        _smtpClientService.SendEmailAsync(
-            Arg.Any<string>(),
-            Arg.Any<string>(),
-            Arg.Any<string>(),
-            Arg.Any<string>(),
-            Arg.Any<IEnumerable<EmailLinkedResource>>())
-            .Returns(Task.CompletedTask);
-
-        var emailSenderService = new EmailOtpSenderService(_optionsMonitor, _logger, _smtpClientService);
-
-        // Act
-        await emailSenderService.SendOtpAsync("recipient@example.com", "123456");
-
-        // Assert
-        await _smtpClientService.Received().SendEmailAsync(
-            Arg.Any<string>(),
-            Arg.Any<string>(),
-            Arg.Any<string>(),
-            Arg.Is<string>(body =>
-                body.Contains(programName) &&
-                body.Contains(stateName)),
+            expectedSubject,
+            Arg.Is<string>(body => body.Contains(expectedBody1)),
             Arg.Any<IEnumerable<EmailLinkedResource>>());
     }
 
@@ -219,32 +159,10 @@ public class EmailSenderServiceTests
     [InlineData("ABC123")]
     public async Task SendOtpAsync_WithDifferentOtpCodes_ShouldIncludeCorrectCode(string otpCode)
     {
-        // Arrange
-        var emailSettings = new EmailOtpSenderServiceSettings
-        {
-            SenderEmail = "sender@example.com",
-            SenderName = "Test Sender",
-            Subject = "Test Subject",
-            ProgramName = "Test Program",
-            StateName = "Test State",
-            ExpiryMinutes = 10,
-            Language = "en"
-        };
-        _optionsMonitor.CurrentValue.Returns(emailSettings);
-        _smtpClientService.SendEmailAsync(
-            Arg.Any<string>(),
-            Arg.Any<string>(),
-            Arg.Any<string>(),
-            Arg.Any<string>(),
-            Arg.Any<IEnumerable<EmailLinkedResource>>())
-            .Returns(Task.CompletedTask);
+        var service = new EmailOtpSenderService(_optionsMonitor, _logger, _smtpClientService);
 
-        var emailSenderService = new EmailOtpSenderService(_optionsMonitor, _logger, _smtpClientService);
+        await service.SendOtpAsync("recipient@example.com", otpCode, "en");
 
-        // Act
-        await emailSenderService.SendOtpAsync("recipient@example.com", otpCode);
-
-        // Assert
         await _smtpClientService.Received().SendEmailAsync(
             Arg.Any<string>(),
             Arg.Any<string>(),
@@ -256,32 +174,10 @@ public class EmailSenderServiceTests
     [Fact]
     public async Task SendOtpAsync_ShouldIncludeLogoAsLinkedResource()
     {
-        // Arrange
-        var emailSettings = new EmailOtpSenderServiceSettings
-        {
-            SenderEmail = "sender@example.com",
-            SenderName = "Test Sender",
-            Subject = "Test Subject",
-            ProgramName = "Test Program",
-            StateName = "Test State",
-            ExpiryMinutes = 10,
-            Language = "en"
-        };
-        _optionsMonitor.CurrentValue.Returns(emailSettings);
-        _smtpClientService.SendEmailAsync(
-            Arg.Any<string>(),
-            Arg.Any<string>(),
-            Arg.Any<string>(),
-            Arg.Any<string>(),
-            Arg.Any<IEnumerable<EmailLinkedResource>>())
-            .Returns(Task.CompletedTask);
+        var service = new EmailOtpSenderService(_optionsMonitor, _logger, _smtpClientService);
 
-        var emailSenderService = new EmailOtpSenderService(_optionsMonitor, _logger, _smtpClientService);
+        await service.SendOtpAsync("recipient@example.com", "123456", "en");
 
-        // Act
-        await emailSenderService.SendOtpAsync("recipient@example.com", "123456");
-
-        // Assert - verify logo linked resource is included with correct properties
         await _smtpClientService.Received().SendEmailAsync(
             Arg.Any<string>(),
             Arg.Any<string>(),
@@ -298,18 +194,6 @@ public class EmailSenderServiceTests
     [Fact]
     public async Task SendOtpAsync_WhenSmtpServiceThrows_ShouldReturnPreconditionFailedResult()
     {
-        // Arrange
-        var emailSettings = new EmailOtpSenderServiceSettings
-        {
-            SenderEmail = "sender@example.com",
-            SenderName = "Test Sender",
-            Subject = "Test Subject",
-            ProgramName = "Test Program",
-            StateName = "Test State",
-            ExpiryMinutes = 10,
-            Language = "en"
-        };
-        _optionsMonitor.CurrentValue.Returns(emailSettings);
         _smtpClientService.SendEmailAsync(
             Arg.Any<string>(),
             Arg.Any<string>(),
@@ -318,50 +202,26 @@ public class EmailSenderServiceTests
             Arg.Any<IEnumerable<EmailLinkedResource>>())
             .Returns(Task.FromException(new Exception("SMTP connection failed")));
 
-        var emailSenderService = new EmailOtpSenderService(_optionsMonitor, _logger, _smtpClientService);
+        var service = new EmailOtpSenderService(_optionsMonitor, _logger, _smtpClientService);
 
-        // Act
-        var result = await emailSenderService.SendOtpAsync("recipient@example.com", "123456");
+        var result = await service.SendOtpAsync("recipient@example.com", "123456", "en");
 
-        // Assert
         Assert.False(result.IsSuccess);
         Assert.IsType<PreconditionFailedResult>(result);
     }
 
     [Fact]
-    public async Task SendOtpAsync_ShouldGenerateCorrectLogoAltText()
+    public async Task SendOtpAsync_ShouldUseTranslatedProgramNameAsLogoAltText()
     {
-        // Arrange
-        var emailSettings = new EmailOtpSenderServiceSettings
-        {
-            SenderEmail = "sender@example.com",
-            SenderName = "Test Sender",
-            Subject = "Test Subject",
-            ProgramName = "My Custom Program",
-            StateName = "Test State",
-            ExpiryMinutes = 10,
-            Language = "en"
-        };
-        _optionsMonitor.CurrentValue.Returns(emailSettings);
-        _smtpClientService.SendEmailAsync(
-            Arg.Any<string>(),
-            Arg.Any<string>(),
-            Arg.Any<string>(),
-            Arg.Any<string>(),
-            Arg.Any<IEnumerable<EmailLinkedResource>>())
-            .Returns(Task.CompletedTask);
+        var service = new EmailOtpSenderService(_optionsMonitor, _logger, _smtpClientService);
 
-        var emailSenderService = new EmailOtpSenderService(_optionsMonitor, _logger, _smtpClientService);
+        await service.SendOtpAsync("recipient@example.com", "123456", "en");
 
-        // Act
-        await emailSenderService.SendOtpAsync("recipient@example.com", "123456");
-
-        // Assert - verify logo alt text uses ProgramName
         await _smtpClientService.Received().SendEmailAsync(
             Arg.Any<string>(),
             Arg.Any<string>(),
             Arg.Any<string>(),
-            Arg.Is<string>(body => body.Contains($"alt=\"{emailSettings.ProgramName}\"")),
+            Arg.Is<string>(body => body.Contains("alt=\"DC SUN Bucks\"")),
             Arg.Any<IEnumerable<EmailLinkedResource>>());
     }
 }

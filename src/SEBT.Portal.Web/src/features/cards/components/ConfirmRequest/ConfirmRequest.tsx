@@ -5,6 +5,8 @@ import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
 import type { Address, SummerEbtCase } from '@/features/household/api/schema'
+import { trackCardReplacementSubmit } from '@/lib/analytics-helpers'
+import { useDataLayer } from '@sebt/analytics'
 import { Alert, Button, getState, RichText } from '@sebt/design-system'
 
 import { useRequestCardReplacement } from '../../api/client'
@@ -24,6 +26,7 @@ export function ConfirmRequest({ cases, address, onBack }: ConfirmRequestProps) 
   const router = useRouter()
   const currentState = getState()
   const mutation = useRequestCardReplacement()
+  const { setPageData, trackEvent } = useDataLayer()
   const [error, setError] = useState<string | null>(null)
 
   const caseRefs = cases
@@ -40,9 +43,11 @@ export function ConfirmRequest({ cases, address, onBack }: ConfirmRequestProps) 
       { caseRefs },
       {
         onSuccess: () => {
+          trackCardReplacementSubmit({ setPageData, trackEvent }, null)
           router.push('/dashboard?flash=card_replaced')
         },
-        onError: () => {
+        onError: (err) => {
+          trackCardReplacementSubmit({ setPageData, trackEvent }, err)
           setError(tDashboard('alertCardReplaceError'))
         }
       }

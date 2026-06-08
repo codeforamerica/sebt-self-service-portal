@@ -41,6 +41,35 @@ public class HouseholdRepositoryTests
     }
 
     [Fact]
+    public async Task GetHouseholdByEmailAsync_PassesPortalUserIdToPlugin()
+    {
+        var email = "user@example.com";
+        var portalUserId = Guid.Parse("a1111111-1111-4111-8111-111111111111");
+
+        _summerEbtCaseService
+            .GetHouseholdByIdentifierAsync(
+                PluginHouseholdIdentifierType.Email,
+                email,
+                Arg.Any<PluginPiiVisibility>(),
+                Arg.Any<PluginIdentityAssuranceLevel>(),
+                portalUserId,
+                Arg.Any<bool>(),
+                Arg.Any<CancellationToken>())
+            .Returns((PluginHouseholdData?)null);
+
+        await _repository.GetHouseholdByEmailAsync(email, FullPii, UserIalLevel.IAL1plus, portalUserId);
+
+        await _summerEbtCaseService.Received(1).GetHouseholdByIdentifierAsync(
+            PluginHouseholdIdentifierType.Email,
+            email,
+            Arg.Any<PluginPiiVisibility>(),
+            Arg.Any<PluginIdentityAssuranceLevel>(),
+            portalUserId,
+            Arg.Any<bool>(),
+            Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
     public async Task GetHouseholdByEmailAsync_WhenPluginReturnsData_ReturnsMappedCoreHouseholdData()
     {
         var email = "guardian@example.com";
