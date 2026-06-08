@@ -17,7 +17,7 @@ public sealed class PlaintextPiiSymmetricEncryption : IPiiSymmetricEncryption
         !string.IsNullOrEmpty(storedValue)
         && storedValue.StartsWith(PiiAesGcmSymmetricEncryption.EnvelopePrefix, StringComparison.Ordinal);
 
-    public string? Encrypt(string? plaintext) => StorePlaintextForColumn(plaintext);
+    public string? Encrypt(string? plaintext) => PiiPlaintextColumnStorage.StorePlaintextForColumn(plaintext);
 
     public string Decrypt(string storedValue)
     {
@@ -46,15 +46,4 @@ public sealed class PlaintextPiiSymmetricEncryption : IPiiSymmetricEncryption
 
     public string ReSealWithActiveEncryptor(string envelopeCiphertext) =>
         Decrypt(envelopeCiphertext);
-
-    private static string? StorePlaintextForColumn(string? plaintext)
-    {
-        if (string.IsNullOrEmpty(plaintext))
-        {
-            return null;
-        }
-
-        var trimmed = plaintext.Trim();
-        return trimmed.Length == 0 ? null : trimmed;
-    }
 }

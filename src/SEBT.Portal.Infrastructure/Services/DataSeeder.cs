@@ -36,45 +36,48 @@ public class DataSeeder : IDataSeeder
 
     private List<User> FilterOutUsersMatchingExistingEmails(List<User> usersList)
     {
-        var keyed = usersList
-            .Select(u => (User: u, Normalized: EmailNormalizer.NormalizeOrNull(u.Email)))
-            .Where(x => x.Normalized != null)
-            .ToList();
-
-        if (keyed.Count == 0)
+        var distinct = CollectDistinctNormalizableEmails(usersList);
+        if (distinct.Count == 0)
         {
-            return [];
+            return usersList;
         }
 
-        var distinct = keyed.Select(x => x.Normalized!).Distinct().ToList();
         var existing = GetExistingUserEmails(distinct);
-        return keyed
-            .Where(x => !existing.Contains(x.Normalized!, StringComparer.Ordinal))
-            .Select(x => x.User)
-            .ToList();
+        return FilterUsersWithoutMatchingEmails(usersList, existing);
     }
 
     private async Task<List<User>> FilterOutUsersMatchingExistingEmailsAsync(
         List<User> usersList,
         CancellationToken cancellationToken)
     {
-        var keyed = usersList
-            .Select(u => (User: u, Normalized: EmailNormalizer.NormalizeOrNull(u.Email)))
-            .Where(x => x.Normalized != null)
-            .ToList();
-
-        if (keyed.Count == 0)
+        var distinct = CollectDistinctNormalizableEmails(usersList);
+        if (distinct.Count == 0)
         {
-            return [];
+            return usersList;
         }
 
-        var distinct = keyed.Select(x => x.Normalized!).Distinct().ToList();
         var existing = await GetExistingUserEmailsAsync(distinct, cancellationToken);
-        return keyed
-            .Where(x => !existing.Contains(x.Normalized!, StringComparer.Ordinal))
-            .Select(x => x.User)
-            .ToList();
+        return FilterUsersWithoutMatchingEmails(usersList, existing);
     }
+
+    private static List<string> CollectDistinctNormalizableEmails(List<User> usersList) =>
+        usersList
+            .Select(u => EmailNormalizer.NormalizeOrNull(u.Email))
+            .Where(normalized => normalized != null)
+            .Distinct(StringComparer.Ordinal)
+            .Select(normalized => normalized!)
+            .ToList();
+
+    private static List<User> FilterUsersWithoutMatchingEmails(
+        List<User> usersList,
+        IReadOnlySet<string> existingNormalizedEmails) =>
+        usersList
+            .Where(user =>
+            {
+                var normalized = EmailNormalizer.NormalizeOrNull(user.Email);
+                return normalized == null || !existingNormalizedEmails.Contains(normalized);
+            })
+            .ToList();
 
     private UserEntity MapToEntity(User user)
     {
@@ -150,43 +153,11 @@ public class DataSeeder : IDataSeeder
     {
         ArgumentNullException.ThrowIfNull(emails);
 
-        var normalizedEmails = emails.Select(EmailNormalizer.Normalize).Distinct().ToList();
-        var prefix = PiiAesGcmSymmetricEncryption.EnvelopePrefix;
+        var normalizedEmails = emails.Select(EmailNormalizer.Normalize).Distinct(StringComparer.Ordinal).ToList();
+        var matches = new HashSet<string>(StringComparer.Ordinal);
 
-        var matches = new HashSet<string>();
-
-        foreach (var normalized in normalizedEmails)
-        {
-            var fingerprint = _emailLookupHasher.HashNormalized(normalized);
-            if (fingerprint != null &&
-                await _dbContext.Users.AnyAsync(u => u.EmailHash == fingerprint, cancellationToken))
-            {
-                matches.Add(normalized);
-            }
-        }
-
-        var plaintextMatches = await _dbContext.Users
-            .Where(u => u.EmailHash == null && u.Email != null && normalizedEmails.Contains(u.Email))
-            .Select(u => u.Email!)
-            .ToListAsync(cancellationToken);
-        foreach (var hit in plaintextMatches)
-        {
-            matches.Add(hit);
-        }
-
-        var envelopeOrphans = await _dbContext.Users
-            .AsNoTracking()
-            .Where(u => u.Email != null && u.EmailHash == null && u.Email.StartsWith(prefix))
-            .ToListAsync(cancellationToken);
-
-        foreach (var row in envelopeOrphans)
-        {
-            var normalized = TryHydrateNormalizedEmail(row.Email);
-            if (normalized != null && normalizedEmails.Contains(normalized))
-            {
-                matches.Add(normalized);
-            }
-        }
+        await AddHashMatchesAsync(normalizedEmails, matches, cancellationToken);
+        await AddPlaintextAndOrphanMatchesAsync(normalizedEmails, matches, cancellationToken);
 
         return matches;
     }
@@ -316,43 +287,135 @@ public class DataSeeder : IDataSeeder
     {
         ArgumentNullException.ThrowIfNull(emails);
 
-        var normalizedEmails = emails.Select(EmailNormalizer.Normalize).Distinct().ToList();
-        var prefix = PiiAesGcmSymmetricEncryption.EnvelopePrefix;
+        var normalizedEmails = emails.Select(EmailNormalizer.Normalize).Distinct(StringComparer.Ordinal).ToList();
+        var matches = new HashSet<string>(StringComparer.Ordinal);
 
-        var matches = new HashSet<string>();
+        AddHashMatchesSync(normalizedEmails, matches);
+        AddPlaintextAndOrphanMatchesSync(normalizedEmails, matches);
 
-        foreach (var normalized in normalizedEmails)
+        return matches;
+    }
+
+    private List<(string Normalized, string Fingerprint)> BuildFingerprintPairs(List<string> normalizedEmails) =>
+        normalizedEmails
+            .Select(normalized => (Normalized: normalized, Fingerprint: _emailLookupHasher.HashNormalized(normalized)))
+            .Where(pair => pair.Fingerprint != null)
+            .Select(pair => (pair.Normalized, pair.Fingerprint!))
+            .ToList();
+
+    private async Task AddHashMatchesAsync(
+        List<string> normalizedEmails,
+        HashSet<string> matches,
+        CancellationToken cancellationToken)
+    {
+        var pairs = BuildFingerprintPairs(normalizedEmails);
+        if (pairs.Count == 0)
         {
-            var fingerprint = _emailLookupHasher.HashNormalized(normalized);
-            if (fingerprint != null && _dbContext.Users.Any(u => u.EmailHash == fingerprint))
+            return;
+        }
+
+        var fingerprints = pairs.Select(pair => pair.Fingerprint).Distinct(StringComparer.Ordinal).ToList();
+        var foundHashes = await _dbContext.Users
+            .AsNoTracking()
+            .Where(user => user.EmailHash != null && fingerprints.Contains(user.EmailHash))
+            .Select(user => user.EmailHash!)
+            .ToListAsync(cancellationToken);
+
+        var foundHashSet = foundHashes.ToHashSet(StringComparer.Ordinal);
+        foreach (var (normalized, fingerprint) in pairs)
+        {
+            if (foundHashSet.Contains(fingerprint))
             {
                 matches.Add(normalized);
             }
         }
+    }
 
-        foreach (var row in _dbContext.Users.Where(u =>
-                     u.EmailHash == null &&
-                     u.Email != null &&
-                     normalizedEmails.Contains(u.Email))
-                 .Select(u => u.Email!))
+    private void AddHashMatchesSync(List<string> normalizedEmails, HashSet<string> matches)
+    {
+        var pairs = BuildFingerprintPairs(normalizedEmails);
+        if (pairs.Count == 0)
         {
-            matches.Add(row);
+            return;
         }
 
-        foreach (var row in _dbContext.Users.Where(u =>
-                     u.Email != null &&
-                     u.EmailHash == null &&
-                     u.Email.StartsWith(prefix))
-                 .Select(u => u.Email!))
+        var fingerprints = pairs.Select(pair => pair.Fingerprint).Distinct(StringComparer.Ordinal).ToList();
+        var foundHashSet = _dbContext.Users
+            .AsNoTracking()
+            .Where(user => user.EmailHash != null && fingerprints.Contains(user.EmailHash))
+            .Select(user => user.EmailHash!)
+            .ToHashSet(StringComparer.Ordinal);
+
+        foreach (var (normalized, fingerprint) in pairs)
         {
-            var normalized = TryHydrateNormalizedEmail(row);
+            if (foundHashSet.Contains(fingerprint))
+            {
+                matches.Add(normalized);
+            }
+        }
+    }
+
+    private async Task AddPlaintextAndOrphanMatchesAsync(
+        List<string> normalizedEmails,
+        HashSet<string> matches,
+        CancellationToken cancellationToken)
+    {
+        var prefix = PiiAesGcmSymmetricEncryption.EnvelopePrefix;
+
+        var plaintextMatches = await _dbContext.Users
+            .AsNoTracking()
+            .Where(user => user.EmailHash == null && user.Email != null && normalizedEmails.Contains(user.Email))
+            .Select(user => user.Email!)
+            .ToListAsync(cancellationToken);
+        foreach (var hit in plaintextMatches)
+        {
+            matches.Add(hit);
+        }
+
+        var envelopeOrphans = await _dbContext.Users
+            .AsNoTracking()
+            .Where(user => user.Email != null && user.EmailHash == null && user.Email.StartsWith(prefix))
+            .ToListAsync(cancellationToken);
+
+        AddEnvelopeOrphanMatches(normalizedEmails, matches, envelopeOrphans);
+    }
+
+    private void AddPlaintextAndOrphanMatchesSync(List<string> normalizedEmails, HashSet<string> matches)
+    {
+        var prefix = PiiAesGcmSymmetricEncryption.EnvelopePrefix;
+
+        foreach (var plaintext in _dbContext.Users
+                     .AsNoTracking()
+                     .Where(user =>
+                         user.EmailHash == null &&
+                         user.Email != null &&
+                         normalizedEmails.Contains(user.Email))
+                     .Select(user => user.Email!))
+        {
+            matches.Add(plaintext);
+        }
+
+        var envelopeOrphans = _dbContext.Users
+            .AsNoTracking()
+            .Where(user => user.Email != null && user.EmailHash == null && user.Email.StartsWith(prefix))
+            .ToList();
+
+        AddEnvelopeOrphanMatches(normalizedEmails, matches, envelopeOrphans);
+    }
+
+    private void AddEnvelopeOrphanMatches(
+        List<string> normalizedEmails,
+        HashSet<string> matches,
+        IEnumerable<UserEntity> envelopeOrphans)
+    {
+        foreach (var row in envelopeOrphans)
+        {
+            var normalized = TryHydrateNormalizedEmail(row.Email);
             if (normalized != null && normalizedEmails.Contains(normalized))
             {
                 matches.Add(normalized);
             }
         }
-
-        return matches;
     }
 
     public bool AnyUsersExist()

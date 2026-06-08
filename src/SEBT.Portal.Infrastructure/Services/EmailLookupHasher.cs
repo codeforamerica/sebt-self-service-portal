@@ -21,7 +21,7 @@ public sealed class EmailLookupHasher : IEmailLookupHasher
         _keyBytes = Encoding.UTF8.GetBytes(secretKey);
         if (_keyBytes.Length < 32)
         {
-            throw new InvalidOperationException("IdentifierHasher:SecretKey must be at least 32 characters.");
+            throw new InvalidOperationException("IdentifierHasher:SecretKey must be at least 32 bytes.");
         }
     }
 

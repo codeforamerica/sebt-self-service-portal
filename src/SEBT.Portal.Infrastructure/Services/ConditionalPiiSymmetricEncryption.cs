@@ -32,7 +32,7 @@ public sealed class ConditionalPiiSymmetricEncryption : IPiiSymmetricEncryption
             return _inner.Encrypt(plaintext);
         }
 
-        return StorePlaintextForColumn(plaintext);
+        return PiiPlaintextColumnStorage.StorePlaintextForColumn(plaintext);
     }
 
     public string Decrypt(string storedValue) => _inner.Decrypt(storedValue);
@@ -55,16 +55,5 @@ public sealed class ConditionalPiiSymmetricEncryption : IPiiSymmetricEncryption
         }
 
         return plaintext;
-    }
-
-    private static string? StorePlaintextForColumn(string? plaintext)
-    {
-        if (string.IsNullOrEmpty(plaintext))
-        {
-            return null;
-        }
-
-        var trimmed = plaintext.Trim();
-        return trimmed.Length == 0 ? null : trimmed;
     }
 }

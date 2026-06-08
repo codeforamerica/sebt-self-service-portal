@@ -112,7 +112,46 @@ public sealed class PiiAesGcmSymmetricEncryption : IPiiSymmetricEncryption
     public string Decrypt(string storedValue)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(storedValue, nameof(storedValue));
+        return DecodeAndDecryptWrapped(storedValue);
+    }
 
+    public string? DecryptOrPassThroughLegacy(string? storedValue)
+    {
+        if (string.IsNullOrEmpty(storedValue))
+        {
+            return storedValue;
+        }
+
+        return IsEnvelope(storedValue)
+            ? Decrypt(storedValue)
+            : storedValue.Trim();
+    }
+
+    public string ReSealWithActiveEncryptor(string envelopeCiphertext)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(envelopeCiphertext);
+        var plaintext = DecodeAndDecryptWrapped(envelopeCiphertext);
+        return EncryptNonEmptyPlaintext(plaintext);
+    }
+
+    private string EncryptNonEmptyPlaintext(string plaintext)
+    {
+        var sealedValue = Encrypt(plaintext);
+        if (sealedValue == null)
+        {
+            throw new PiiDecryptException(
+                "PII envelope round-trip decryption produced whitespace-only payloads (unexpected).");
+        }
+
+        return sealedValue;
+    }
+
+    private static PiiDecryptException WrapDecrypt(Exception inner) =>
+        new(
+            "PII ciphertext decryption failed — data may have been corrupted or altered while at rest.", inner);
+
+    private string DecodeAndDecryptWrapped(string storedValue)
+    {
         try
         {
             return DecodeAndDecrypt(storedValue);
@@ -134,57 +173,6 @@ public sealed class PiiAesGcmSymmetricEncryption : IPiiSymmetricEncryption
             throw;
         }
     }
-
-    public string? DecryptOrPassThroughLegacy(string? storedValue)
-    {
-        if (string.IsNullOrEmpty(storedValue))
-        {
-            return storedValue;
-        }
-
-        return IsEnvelope(storedValue)
-            ? Decrypt(storedValue)
-            : storedValue.Trim();
-    }
-
-    public string ReSealWithActiveEncryptor(string envelopeCiphertext)
-    {
-        ArgumentException.ThrowIfNullOrWhiteSpace(envelopeCiphertext);
-
-        try
-        {
-            var plaintext = DecodeAndDecrypt(envelopeCiphertext);
-            return EncryptNonEmptyPlaintext(plaintext);
-        }
-        catch (CryptographicException ex)
-        {
-            throw WrapDecrypt(ex);
-        }
-        catch (FormatException ex)
-        {
-            throw WrapDecrypt(ex);
-        }
-        catch (PiiDecryptException)
-        {
-            throw;
-        }
-    }
-
-    private string EncryptNonEmptyPlaintext(string plaintext)
-    {
-        var sealedValue = Encrypt(plaintext);
-        if (sealedValue == null)
-        {
-            throw new PiiDecryptException(
-                "PII envelope round-trip decryption produced whitespace-only payloads (unexpected).");
-        }
-
-        return sealedValue;
-    }
-
-    private static PiiDecryptException WrapDecrypt(Exception inner) =>
-        new(
-            "PII ciphertext decryption failed — data may have been corrupted or altered while at rest.", inner);
 
     private string DecodeAndDecrypt(string storedValue)
     {
