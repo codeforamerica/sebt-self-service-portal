@@ -1,9 +1,17 @@
-import { render, screen } from '@testing-library/react'
+import { fireEvent, render, screen } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 import enDcDashboard from '@/content/locales/en/dc/dashboard.json'
 
 import { DashboardAlerts } from './DashboardAlerts'
+
+const mockAddress = {
+  streetAddress1: '123 Main St',
+  streetAddress2: 'Apt 4B',
+  city: 'Washington',
+  state: 'DC',
+  postalCode: '20001'
+}
 
 let mockHouseholdData: { data: unknown; isLoading: boolean; isError: boolean } = {
   data: null,
@@ -44,7 +52,6 @@ describe('DashboardAlerts', () => {
     render(<DashboardAlerts />)
 
     expect(screen.getByRole('alert')).toBeInTheDocument()
-    // Heading resolves from the `alertAddressUpdated` key, not a missing one.
     expect(screen.getByText('Your mailing address has been updated')).toBeInTheDocument()
   })
 
@@ -53,18 +60,15 @@ describe('DashboardAlerts', () => {
     render(<DashboardAlerts />)
 
     expect(screen.getByText('Your mailing address has been updated')).toBeInTheDocument()
-    // There is no separate body-level content key, so the alert must not fall
-    // back to a hardcoded body string.
     expect(screen.queryByText('Your address update has been recorded.')).not.toBeInTheDocument()
   })
 
-  it('renders card request alert when both addressUpdated and cardsRequested params are present', () => {
-    mockSearchParams = new URLSearchParams('addressUpdated=true&cardsRequested=true')
+  it('renders the contact-preferences success alert when contactUpdated param is present', () => {
+    mockSearchParams = new URLSearchParams('contactUpdated=true')
     render(<DashboardAlerts />)
 
-    const alerts = screen.getAllByRole('alert')
-    expect(alerts.length).toBeGreaterThanOrEqual(1)
-    expect(screen.getByText(/card replacement recorded/i)).toBeInTheDocument()
+    expect(screen.getByText('Your contact preferences have been updated')).toBeInTheDocument()
+    expect(mockReplace).toHaveBeenCalledWith('/dashboard', { scroll: false })
   })
 
   it('cleans URL params after displaying alerts', () => {
@@ -97,68 +101,88 @@ describe('DashboardAlerts', () => {
     expect(screen.getByText('Your mailing address has been updated')).toBeInTheDocument()
   })
 
-  it('renders card replaced alert when flash=card_replaced param is present', () => {
-    mockSearchParams = new URLSearchParams('flash=card_replaced')
-    render(<DashboardAlerts />)
-
-    expect(screen.getByRole('alert')).toBeInTheDocument()
-    expect(screen.getByText(/replacement card request has been recorded/i)).toBeInTheDocument()
-  })
-
-  it('card-replaced with-address body resolves dashboard.alertAddressBody, not a hardcoded fallback', () => {
+  it('renders card replaced alert with the design body and the household address', () => {
     mockHouseholdData = {
-      data: { addressOnFile: '123 Main St' },
+      data: { addressOnFile: mockAddress },
       isLoading: false,
       isError: false
     }
     mockSearchParams = new URLSearchParams('flash=card_replaced')
     render(<DashboardAlerts />)
 
+    expect(screen.getByRole('alert')).toBeInTheDocument()
     expect(screen.getByText(enDcDashboard.alertAddressBody)).toBeInTheDocument()
+    expect(screen.getByText('123 Main St')).toBeInTheDocument()
+    expect(screen.getByText('Washington, DC 20001')).toBeInTheDocument()
   })
 
-  it('renders the address-verification warning with a resolved heading and body', () => {
-    mockSearchParams = new URLSearchParams('addressVerification=true')
+  it('renders the card replaced alert without an address block when none is on file', () => {
+    mockSearchParams = new URLSearchParams('flash=card_replaced')
     render(<DashboardAlerts />)
 
-    expect(screen.getByRole('alert')).toBeInTheDocument()
-    expect(screen.getByText('Is your address correct?')).toBeInTheDocument()
-    // Body resolves from `alertCheckAddressBody`, the semantic pair of the
-    // `alertCheckAddressTitle` heading.
-    expect(screen.getByText(/please check your preferred mailing address/i)).toBeInTheDocument()
+    expect(screen.getByText(enDcDashboard.alertAddressBody)).toBeInTheDocument()
+    expect(screen.queryByText('123 Main St')).not.toBeInTheDocument()
   })
 
-  it('renders the address-update-failed warning heading from a resolved key', () => {
+  it('renders the address-update-failed warning as a single sentence with no fallback body', () => {
     mockSearchParams = new URLSearchParams('addressUpdateFailed=true')
     render(<DashboardAlerts />)
 
     expect(
       screen.getByText('There was an issue updating your mailing address. Please try again later.')
     ).toBeInTheDocument()
+    // The non-design help-desk fallback body must not appear.
+    expect(screen.queryByText(/contact the Summer EBT Help Desk/i)).not.toBeInTheDocument()
   })
 
-  it('renders the contact-update-failed warning heading from a resolved key', () => {
+  it('renders the contact-update-failed warning exactly once (no duplicate heading + body)', () => {
     mockSearchParams = new URLSearchParams('contactUpdateFailed=true')
     render(<DashboardAlerts />)
 
-    // alertContactUpdateError currently renders as both heading and body in DashboardAlerts — pre-existing, out of scope here
     expect(
       screen.getAllByText(
         'There was an issue updating your contact preferences. Please try again later.'
-      ).length
-    ).toBeGreaterThan(0)
+      )
+    ).toHaveLength(1)
   })
 
-  it('combined alert persists after URL params are cleaned', () => {
-    mockSearchParams = new URLSearchParams('addressUpdated=true&cardsRequested=true')
-    const { rerender } = render(<DashboardAlerts />)
+  describe('address-verification ("Is your address correct?") alert', () => {
+    it('renders the heading, body, address, and both actions', () => {
+      mockHouseholdData = {
+        data: { addressOnFile: mockAddress },
+        isLoading: false,
+        isError: false
+      }
+      mockSearchParams = new URLSearchParams('addressVerification=true')
+      render(<DashboardAlerts />)
 
-    expect(screen.getByText(/card replacement recorded/i)).toBeInTheDocument()
+      expect(screen.getByText('Is your address correct?')).toBeInTheDocument()
+      expect(screen.getByText(/please check your preferred mailing address/i)).toBeInTheDocument()
+      expect(screen.getByText('123 Main St')).toBeInTheDocument()
+      expect(screen.getByText('Washington, DC 20001')).toBeInTheDocument()
+      expect(screen.getByText('Yes, this is my address')).toBeInTheDocument()
 
-    // Simulate URL cleanup re-render
-    mockSearchParams = new URLSearchParams()
-    rerender(<DashboardAlerts />)
+      const changeLink = screen.getByText('No, change my mailing address')
+      expect(changeLink).toHaveAttribute('href', '/profile/address')
+    })
 
-    expect(screen.getByText(/card replacement recorded/i)).toBeInTheDocument()
+    it('dismisses the alert when "Yes, this is my address" is clicked', () => {
+      mockSearchParams = new URLSearchParams('addressVerification=true')
+      render(<DashboardAlerts />)
+
+      expect(screen.getByRole('alert')).toBeInTheDocument()
+
+      fireEvent.click(screen.getByText('Yes, this is my address'))
+
+      expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+    })
+
+    it('renders without an address block when none is on file', () => {
+      mockSearchParams = new URLSearchParams('addressVerification=true')
+      render(<DashboardAlerts />)
+
+      expect(screen.getByText('Is your address correct?')).toBeInTheDocument()
+      expect(screen.queryByText('123 Main St')).not.toBeInTheDocument()
+    })
   })
 })
