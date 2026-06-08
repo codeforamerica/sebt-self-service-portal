@@ -36,8 +36,8 @@ describe('getApplyHref', () => {
 
   it('returns the DC application form URL when state is dc, regardless of locale', () => {
     mockState = 'dc'
-    expect(getApplyHref('en')).toBe('https://forms.sunbucks.dc.gov/s3/AppUpdate2026')
-    expect(getApplyHref('es')).toBe('https://forms.sunbucks.dc.gov/s3/AppUpdate2026')
+    expect(getApplyHref('en')).toBe('https://forms.sunbucks.dc.gov/s3/app2026')
+    expect(getApplyHref('es')).toBe('https://forms.sunbucks.dc.gov/s3/app2026')
   })
 
   it('falls back to /apply for an unknown state', () => {
