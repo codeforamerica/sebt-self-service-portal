@@ -159,7 +159,7 @@ describe('DashboardContent', () => {
 
     expect(screen.getByRole('link', { name: /apply/i })).toHaveAttribute(
       'href',
-      'https://forms.sunbucks.dc.gov/s3/AppUpdate2026'
+      'https://forms.sunbucks.dc.gov/s3/app2026'
     )
   })
 
