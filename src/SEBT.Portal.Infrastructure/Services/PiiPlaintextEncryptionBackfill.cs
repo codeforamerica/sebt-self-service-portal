@@ -51,7 +51,7 @@ public sealed class PiiPlaintextEncryptionBackfill
         var prefix = PiiAesGcmSymmetricEncryption.EnvelopePrefix;
         var batch = await _dbContext.Users
             .Where(user =>
-                user.Email != null && !(user.Email.StartsWith(prefix) && user.EmailHash != null)
+                user.Email != null && user.EmailHash == null
                 || user.Phone != null && !user.Phone.StartsWith(prefix)
                 || user.SnapId != null && !user.SnapId.StartsWith(prefix)
                 || user.TanfId != null && !user.TanfId.StartsWith(prefix)
@@ -89,7 +89,7 @@ public sealed class PiiPlaintextEncryptionBackfill
             return;
         }
 
-        if (entity.Email.StartsWith(envelopePrefix, StringComparison.Ordinal) && entity.EmailHash != null)
+        if (entity.EmailHash != null)
         {
             return;
         }

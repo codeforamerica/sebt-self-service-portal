@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using SEBT.Portal.Core.Exceptions;
 using SEBT.Portal.Core.Models.Auth;
 using SEBT.Portal.Core.Repositories;
 using SEBT.Portal.Core.Services;
@@ -32,13 +33,11 @@ public class DatabaseUserRepository(
             return null;
         }
 
-        var entity = await dbContext.Users
-            .AsNoTracking()
-            .FirstOrDefaultAsync(
-                u =>
-                    u.EmailHash == lookupHash ||
-                    u.EmailHash == null && u.Email != null && u.Email == normalizedEmail,
-                cancellationToken);
+        var entity = await FindUserEntityByNormalizedEmailAsync(
+            normalizedEmail,
+            lookupHash,
+            track: false,
+            cancellationToken);
 
         return entity == null ? null : UserEncryptedFieldMapper.ToDomain(entity, piiEncryption);
     }
@@ -88,17 +87,12 @@ public class DatabaseUserRepository(
         if (NormalizeEmail(user.Email) != null)
         {
             var normalizedIncoming = NormalizeEmail(user.Email)!;
-            var envelopePrefix = PiiAesGcmSymmetricEncryption.EnvelopePrefix;
-            var plaintextDupe = await dbContext.Users.AnyAsync(
-                u =>
-                    u.Id != user.Id &&
-                    u.EmailHash == null &&
-                    u.Email != null &&
-                    !u.Email.StartsWith(envelopePrefix) &&
-                    u.Email == normalizedIncoming,
-                cancellationToken);
-
-            if (plaintextDupe)
+            var incomingHash = emailLookupHasher.HashNormalized(normalizedIncoming)!;
+            if (await AnyOtherUserHasNormalizedEmailAsync(
+                    user.Id,
+                    normalizedIncoming,
+                    incomingHash,
+                    cancellationToken))
             {
                 throw new InvalidOperationException("A user with this email address already exists.");
             }
@@ -155,12 +149,10 @@ public class DatabaseUserRepository(
         var normalizedEmail = NormalizeEmail(email)!;
         var lookupHash = emailLookupHasher.HashNormalized(normalizedEmail)!;
 
-        var entity = await dbContext.Users
-            .FirstOrDefaultAsync(
-                u =>
-                    u.EmailHash == lookupHash ||
-                    u.EmailHash == null && u.Email != null && u.Email == normalizedEmail,
-                cancellationToken);
+        var entity = await FindUserEntityByNormalizedEmailForMutationAsync(
+            normalizedEmail,
+            lookupHash,
+            cancellationToken);
 
         if (entity != null)
         {
@@ -193,10 +185,9 @@ public class DatabaseUserRepository(
                 ex.InnerException?.Message.Contains("UNIQUE") == true ||
                 ex.InnerException?.Message.Contains("duplicate key") == true)
             {
-                entity = await dbContext.Users.FirstOrDefaultAsync(
-                    u =>
-                        u.EmailHash == lookupHash ||
-                        u.EmailHash == null && u.Email != null && u.Email == normalizedEmail,
+                entity = await FindUserEntityByNormalizedEmailForMutationAsync(
+                    normalizedEmail,
+                    lookupHash,
                     cancellationToken);
 
                 if (entity != null)
@@ -280,12 +271,15 @@ public class DatabaseUserRepository(
 
             if (normalizedEmail != null && lookupHash != null)
             {
-                var legacyEntity = await dbContext.Users.FirstOrDefaultAsync(
-                    u =>
-                        u.ExternalProviderId == null &&
-                        (u.EmailHash == lookupHash ||
-                         u.EmailHash == null && u.Email != null && u.Email == normalizedEmail),
+                var legacyEntity = await FindUserEntityByNormalizedEmailForMutationAsync(
+                    normalizedEmail,
+                    lookupHash,
                     cancellationToken);
+
+                if (legacyEntity != null && legacyEntity.ExternalProviderId != null)
+                {
+                    legacyEntity = null;
+                }
 
                 if (legacyEntity != null)
                 {
@@ -336,6 +330,138 @@ public class DatabaseUserRepository(
     }
 
     private static string? NormalizeEmail(string? email) => EmailNormalizer.NormalizeOrNull(email);
+
+    private async Task<UserEntity?> FindUserEntityByNormalizedEmailAsync(
+        string normalizedEmail,
+        string lookupHash,
+        bool track,
+        CancellationToken cancellationToken)
+    {
+        var match = await FindUserEntityByNormalizedEmailReadOnlyAsync(
+            normalizedEmail,
+            lookupHash,
+            cancellationToken);
+
+        if (match == null || !track)
+        {
+            return match;
+        }
+
+        return await dbContext.Users.FirstOrDefaultAsync(u => u.Id == match.Id, cancellationToken);
+    }
+
+    private Task<UserEntity?> FindUserEntityByNormalizedEmailForMutationAsync(
+        string normalizedEmail,
+        string lookupHash,
+        CancellationToken cancellationToken) =>
+        FindUserEntityByNormalizedEmailAsync(normalizedEmail, lookupHash, track: true, cancellationToken);
+
+    private async Task<UserEntity?> FindUserEntityByNormalizedEmailReadOnlyAsync(
+        string normalizedEmail,
+        string lookupHash,
+        CancellationToken cancellationToken)
+    {
+        var query = dbContext.Users.AsNoTracking();
+
+        var byHashOrPlaintext = await query.FirstOrDefaultAsync(
+            u =>
+                u.EmailHash == lookupHash ||
+                (u.EmailHash == null && u.Email != null && u.Email == normalizedEmail),
+            cancellationToken);
+
+        if (byHashOrPlaintext != null)
+        {
+            return byHashOrPlaintext;
+        }
+
+        return await FindEnvelopeOrphanByNormalizedEmailAsync(query, normalizedEmail, cancellationToken);
+    }
+
+    private async Task<UserEntity?> FindEnvelopeOrphanByNormalizedEmailAsync(
+        IQueryable<UserEntity> query,
+        string normalizedEmail,
+        CancellationToken cancellationToken)
+    {
+        var prefix = PiiAesGcmSymmetricEncryption.EnvelopePrefix;
+        var orphans = await query
+            .Where(u => u.Email != null && u.EmailHash == null && u.Email.StartsWith(prefix))
+            .ToListAsync(cancellationToken);
+
+        foreach (var orphan in orphans)
+        {
+            if (TryNormalizeStoredEmail(orphan.Email) == normalizedEmail)
+            {
+                return orphan;
+            }
+        }
+
+        return null;
+    }
+
+    private async Task<bool> AnyOtherUserHasNormalizedEmailAsync(
+        Guid excludeUserId,
+        string normalizedEmail,
+        string lookupHash,
+        CancellationToken cancellationToken)
+    {
+        if (await dbContext.Users.AnyAsync(
+                u => u.Id != excludeUserId && u.EmailHash == lookupHash,
+                cancellationToken))
+        {
+            return true;
+        }
+
+        var envelopePrefix = PiiAesGcmSymmetricEncryption.EnvelopePrefix;
+        if (await dbContext.Users.AnyAsync(
+                u =>
+                    u.Id != excludeUserId &&
+                    u.EmailHash == null &&
+                    u.Email != null &&
+                    !u.Email.StartsWith(envelopePrefix) &&
+                    u.Email == normalizedEmail,
+                cancellationToken))
+        {
+            return true;
+        }
+
+        var orphans = await dbContext.Users
+            .AsNoTracking()
+            .Where(u =>
+                u.Id != excludeUserId &&
+                u.Email != null &&
+                u.EmailHash == null &&
+                u.Email.StartsWith(envelopePrefix))
+            .Select(u => u.Email!)
+            .ToListAsync(cancellationToken);
+
+        foreach (var stored in orphans)
+        {
+            if (TryNormalizeStoredEmail(stored) == normalizedEmail)
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private string? TryNormalizeStoredEmail(string? stored)
+    {
+        if (string.IsNullOrEmpty(stored))
+        {
+            return null;
+        }
+
+        try
+        {
+            var plain = piiEncryption.DecryptOrPassThroughLegacy(stored);
+            return EmailNormalizer.NormalizeOrNull(plain);
+        }
+        catch (PiiDecryptException)
+        {
+            return null;
+        }
+    }
 
     private UserEntity NewTrackedEntityStructural(User user)
     {

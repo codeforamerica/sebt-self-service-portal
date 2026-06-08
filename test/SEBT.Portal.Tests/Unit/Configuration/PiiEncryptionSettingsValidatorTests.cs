@@ -107,4 +107,20 @@ public class PiiEncryptionSettingsValidatorTests
         Assert.True(result.Failed);
         Assert.Contains("EncryptAtRest", result.FailureMessage, StringComparison.Ordinal);
     }
+
+    [Fact]
+    public void Validate_WhenRunStartupBackfillTrueAndEncryptAtRestFalse_ReturnsFail()
+    {
+        var result = _validator.Validate(
+            Options.DefaultName,
+            new PiiEncryptionSettings
+            {
+                EncryptAtRest = false,
+                RunStartupBackfill = true
+            });
+
+        Assert.True(result.Failed);
+        Assert.Contains("RunStartupBackfill", result.FailureMessage, StringComparison.Ordinal);
+        Assert.Contains("EncryptAtRest", result.FailureMessage, StringComparison.Ordinal);
+    }
 }

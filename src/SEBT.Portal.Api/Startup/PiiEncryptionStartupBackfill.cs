@@ -18,7 +18,7 @@ public static class PiiEncryptionStartupBackfill
     public static bool ShouldRunStartupBackfill(PiiEncryptionSettings settings)
     {
         ArgumentNullException.ThrowIfNull(settings);
-        return settings.RunStartupBackfill;
+        return settings.RunStartupBackfill && settings.EncryptAtRest;
     }
 
     /// <summary>

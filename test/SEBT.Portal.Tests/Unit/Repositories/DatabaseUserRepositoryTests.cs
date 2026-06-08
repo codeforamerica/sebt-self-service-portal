@@ -834,6 +834,52 @@ public class DatabaseUserRepositoryTests : IClassFixture<SqlServerTestFixture>
         Assert.Equal(coLoadedUpdated, stored.CoLoadedLastUpdated);
     }
 
+    [Fact]
+    public async Task GetUserByEmailAsync_WhenEnvelopeOrphanWithoutEmailHash_FindsUser()
+    {
+        using var context = CreateContext();
+        var repository = CreateRepository(context);
+        var email = $"orphan-{Guid.NewGuid()}@example.com";
+        var normalized = email.ToLowerInvariant();
+        var encryptedEmail = TestPortalCryptography.PiiSymmetricEncryption.Encrypt(normalized);
+
+        context.Users.Add(UserFactory.CreateUserEntity(e =>
+        {
+            e.Email = encryptedEmail;
+            e.EmailHash = null;
+        }));
+        await context.SaveChangesAsync();
+
+        var result = await repository.GetUserByEmailAsync(email);
+
+        Assert.NotNull(result);
+        Assert.Equal(normalized, result!.Email);
+    }
+
+    [Fact]
+    public async Task GetOrCreateUserAsync_WhenEnvelopeOrphanWithoutEmailHash_ReturnsExistingUser()
+    {
+        using var context = CreateContext();
+        var repository = CreateRepository(context);
+        var email = $"orphan-create-{Guid.NewGuid()}@example.com";
+        var normalized = email.ToLowerInvariant();
+        var encryptedEmail = TestPortalCryptography.PiiSymmetricEncryption.Encrypt(normalized);
+
+        var seeded = UserFactory.CreateUserEntity(e =>
+        {
+            e.Email = encryptedEmail;
+            e.EmailHash = null;
+        });
+        context.Users.Add(seeded);
+        await context.SaveChangesAsync();
+
+        var (user, isNew) = await repository.GetOrCreateUserAsync(email);
+
+        Assert.False(isNew);
+        Assert.Equal(seeded.Id, user.Id);
+        Assert.Equal(normalized, user.Email);
+    }
+
     private static async Task<UserEntity?> FindStoredUserWithLegacyPlaintextFallbackAsync(
         PortalDbContext ctx,
         string normalizedEmailPlaintext)

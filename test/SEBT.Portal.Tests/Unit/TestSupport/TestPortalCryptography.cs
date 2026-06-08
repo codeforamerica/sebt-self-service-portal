@@ -16,6 +16,7 @@ public static class TestPortalCryptography
     public static readonly IOptions<PiiEncryptionSettings> PiiOptions = Options.Create(
         new PiiEncryptionSettings
         {
+            EncryptAtRest = true,
             ActiveKeyId = "test-primary",
             Keys =
             [

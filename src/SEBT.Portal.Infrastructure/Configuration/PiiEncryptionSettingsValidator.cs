@@ -16,6 +16,12 @@ public sealed class PiiEncryptionSettingsValidator : IValidateOptions<PiiEncrypt
             return ValidateOptionsResult.Fail("PiiEncryption configuration section is not present.");
         }
 
+        if (options.RunStartupBackfill && !options.EncryptAtRest)
+        {
+            return ValidateOptionsResult.Fail(
+                "PiiEncryption:RunStartupBackfill requires EncryptAtRest to be true.");
+        }
+
         if (!options.EncryptAtRest)
         {
             return ValidateOptionsResult.Success;

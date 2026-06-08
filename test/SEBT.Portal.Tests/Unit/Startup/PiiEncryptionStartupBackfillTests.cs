@@ -18,7 +18,14 @@ public class PiiEncryptionStartupBackfillTests
     public void ShouldRunStartupBackfill_WhenExplicitlyTrue_ReturnsTrue()
     {
         Assert.True(PiiEncryptionStartupBackfill.ShouldRunStartupBackfill(
-            new PiiEncryptionSettings { RunStartupBackfill = true }));
+            new PiiEncryptionSettings { RunStartupBackfill = true, EncryptAtRest = true }));
+    }
+
+    [Fact]
+    public void ShouldRunStartupBackfill_WhenBackfillTrueButEncryptionFalse_ReturnsFalse()
+    {
+        Assert.False(PiiEncryptionStartupBackfill.ShouldRunStartupBackfill(
+            new PiiEncryptionSettings { RunStartupBackfill = true, EncryptAtRest = false }));
     }
 
     [Fact]
@@ -58,7 +65,7 @@ public class PiiEncryptionStartupBackfillTests
         var invoked = false;
 
         await PiiEncryptionStartupBackfill.RunIfEnabledAsync(
-            new PiiEncryptionSettings { RunStartupBackfill = true },
+            new PiiEncryptionSettings { RunStartupBackfill = true, EncryptAtRest = true },
             _ =>
             {
                 invoked = true;
@@ -73,7 +80,7 @@ public class PiiEncryptionStartupBackfillTests
     public async Task RunIfEnabledAsync_WhenBackfillThrowsPiiDecryptException_DoesNotPropagate()
     {
         await PiiEncryptionStartupBackfill.RunIfEnabledAsync(
-            new PiiEncryptionSettings { RunStartupBackfill = true },
+            new PiiEncryptionSettings { RunStartupBackfill = true, EncryptAtRest = true },
             _ => throw new PiiDecryptException("tampered"),
             NullLogger.Instance);
     }
@@ -82,7 +89,7 @@ public class PiiEncryptionStartupBackfillTests
     public async Task RunIfEnabledAsync_WhenBackfillThrowsUnexpectedException_DoesNotPropagate()
     {
         await PiiEncryptionStartupBackfill.RunIfEnabledAsync(
-            new PiiEncryptionSettings { RunStartupBackfill = true },
+            new PiiEncryptionSettings { RunStartupBackfill = true, EncryptAtRest = true },
             _ => throw new InvalidOperationException("transient"),
             NullLogger.Instance);
     }
