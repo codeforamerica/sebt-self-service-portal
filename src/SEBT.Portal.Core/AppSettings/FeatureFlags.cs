@@ -27,4 +27,10 @@ public static class FeatureFlags
     /// or AWS AppConfig. Never enable in production.
     /// </summary>
     public const string TestErrorEndpointsEnabled = "test_error_endpoints_enabled";
+
+    /// <summary>
+    /// When enabled, the portal shows a sitewide outage page instead of normal routes.
+    /// State partners can toggle via appsettings.{State}.json or AWS AppConfig.
+    /// </summary>
+    public const string OutagePageEnabled = "outage_page_enabled";
 }

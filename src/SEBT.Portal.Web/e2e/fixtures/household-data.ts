@@ -219,5 +219,6 @@ export const DEFAULT_FEATURE_FLAGS = {
   enable_spanish_support: true,
   show_application_number: true,
   show_case_number: true,
-  show_card_last4: true
+  show_card_last4: true,
+  outage_page_enabled: false
 }

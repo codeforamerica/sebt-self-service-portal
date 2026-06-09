@@ -1,4 +1,4 @@
-import { BetaBanner } from '@/components/BetaBanner'
+import { AppShell } from '@/components/AppShell'
 import { primaryFont } from '@/design/fonts'
 import { portalRoutes } from '@/lib/analytics-routes'
 import {
@@ -18,7 +18,6 @@ import {
   getStateName,
   SkipNav
 } from '@sebt/design-system'
-import { Footer, Header, HelpSection } from '@sebt/design-system/client'
 import type { Metadata, Viewport } from 'next'
 import { headers } from 'next/headers'
 import './globals.css'
@@ -129,11 +128,7 @@ export default async function RootLayout({
                         If a second consumer appears, refactor to a SiteAlertContext so
                         child components call setSiteAlert() instead of using createPortal directly. */}
                     <div id="site-alerts" />
-                    <BetaBanner />
-                    <Header state={state} />
-                    <main id="main-content">{children}</main>
-                    <HelpSection state={state} />
-                    <Footer state={state} />
+                    <AppShell state={state}>{children}</AppShell>
                   </AxeProvider>
                 </I18nProvider>
               </FeatureFlagsProvider>
