@@ -5,6 +5,7 @@ using SEBT.Portal.Infrastructure.Data;
 using SEBT.Portal.Infrastructure.Data.Entities;
 using SEBT.Portal.Infrastructure.Helpers;
 using SEBT.Portal.Infrastructure.Repositories;
+using SEBT.Portal.Tests.Unit.TestSupport;
 
 namespace SEBT.Portal.Tests.Unit.Repositories;
 
@@ -56,7 +57,7 @@ public class DatabaseDocVerificationChallengeRepositoryTests : IClassFixture<Sql
             status: (int)DocVerificationStatus.Pending,
             expiresAt: DateTime.UtcNow.AddMinutes(-5));
 
-        var repo = new DatabaseDocVerificationChallengeRepository(context);
+        var repo = new DatabaseDocVerificationChallengeRepository(context, TestPortalCryptography.PiiSymmetricEncryption);
         var result = await repo.GetActiveByUserIdAsync(userId);
 
         Assert.Null(result);
@@ -70,7 +71,7 @@ public class DatabaseDocVerificationChallengeRepositoryTests : IClassFixture<Sql
             status: (int)DocVerificationStatus.Pending,
             expiresAt: DateTime.UtcNow.AddMinutes(25));
 
-        var repo = new DatabaseDocVerificationChallengeRepository(context);
+        var repo = new DatabaseDocVerificationChallengeRepository(context, TestPortalCryptography.PiiSymmetricEncryption);
         var result = await repo.GetActiveByUserIdAsync(userId);
 
         Assert.NotNull(result);
@@ -84,7 +85,7 @@ public class DatabaseDocVerificationChallengeRepositoryTests : IClassFixture<Sql
             status: (int)DocVerificationStatus.Created,
             expiresAt: null);
 
-        var repo = new DatabaseDocVerificationChallengeRepository(context);
+        var repo = new DatabaseDocVerificationChallengeRepository(context, TestPortalCryptography.PiiSymmetricEncryption);
         var result = await repo.GetActiveByUserIdAsync(userId);
 
         Assert.NotNull(result);
@@ -98,7 +99,7 @@ public class DatabaseDocVerificationChallengeRepositoryTests : IClassFixture<Sql
             status: (int)DocVerificationStatus.Created,
             expiresAt: DateTime.UtcNow.AddMinutes(-10));
 
-        var repo = new DatabaseDocVerificationChallengeRepository(context);
+        var repo = new DatabaseDocVerificationChallengeRepository(context, TestPortalCryptography.PiiSymmetricEncryption);
         var result = await repo.GetActiveByUserIdAsync(userId);
 
         Assert.Null(result);
@@ -139,7 +140,7 @@ public class DatabaseDocVerificationChallengeRepositoryTests : IClassFixture<Sql
             status: (int)DocVerificationStatus.Created,
             expiresAt: DateTime.UtcNow.AddMinutes(-10));
 
-        var repo = new DatabaseDocVerificationChallengeRepository(context);
+        var repo = new DatabaseDocVerificationChallengeRepository(context, TestPortalCryptography.PiiSymmetricEncryption);
         var challenge = new DocVerificationChallenge
         {
             UserId = userId,
@@ -167,7 +168,7 @@ public class DatabaseDocVerificationChallengeRepositoryTests : IClassFixture<Sql
             status: (int)DocVerificationStatus.Created,
             expiresAt: DateTime.UtcNow.AddMinutes(30));
 
-        var repo = new DatabaseDocVerificationChallengeRepository(context);
+        var repo = new DatabaseDocVerificationChallengeRepository(context, TestPortalCryptography.PiiSymmetricEncryption);
         var duplicate = new DocVerificationChallenge
         {
             UserId = userId,
