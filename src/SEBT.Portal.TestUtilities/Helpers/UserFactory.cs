@@ -21,8 +21,6 @@ public static class UserFactory
             u.IalLevel is UserIalLevel.IAL1plus or UserIalLevel.IAL2
                 ? f.Date.Recent(30)
                 : null)
-        .RuleFor(u => u.IdProofingExpiresAt, (f, u) =>
-            u.IdProofingCompletedAt?.AddYears(1))
         .RuleFor(u => u.DateOfBirth, f =>
             DateOnly.FromDateTime(f.Date.Between(DateTime.UtcNow.AddYears(-65), DateTime.UtcNow.AddYears(-21))))
         .RuleFor(u => u.IsCoLoaded, f => f.Random.Bool(0.3f))

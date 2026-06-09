@@ -21,13 +21,11 @@ test.describe('DashboardAlerts', () => {
     ).toBeVisible()
   })
 
-  test('shows address + card replacement alert on ?addressUpdated=true&cardsRequested=true', async ({
-    page
-  }) => {
-    await page.goto('/dashboard?addressUpdated=true&cardsRequested=true')
+  test('shows contact preferences updated alert on ?contactUpdated=true', async ({ page }) => {
+    await page.goto('/dashboard?contactUpdated=true')
     await expect(
       page.locator('.usa-alert--success', {
-        hasText: 'Address update and card replacement recorded'
+        hasText: 'Your contact preferences have been updated'
       })
     ).toBeVisible()
   })

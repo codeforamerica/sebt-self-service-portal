@@ -453,8 +453,7 @@ public class ValidateOtpCommandHandlerTests
             Email = command.Email,
             IalLevel = UserIalLevel.IAL1,
             IdProofingSessionId = "session-123",
-            IdProofingCompletedAt = null,
-            IdProofingExpiresAt = DateTime.UtcNow.AddYears(1)
+            IdProofingCompletedAt = null
         };
 
         otpRepository.GetOtpCodeByEmailAsync(Arg.Is<string>(email => email == command.Email))
