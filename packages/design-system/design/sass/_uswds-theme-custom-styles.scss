@@ -61,12 +61,9 @@ body,
   font-family: var(--font-heading, var(--font-primary)), $font-system-fallbacks !important;
 }
 
-// CO page headings are uniformly the primary teal (cyan-50) per Figma. Scoped to
-// CO via the <html data-state> hook; :not([class*='usa-']) leaves USWDS component
-// headings (alert, card, etc.) with their own colors.
-[data-state='co'] :is(h1, h2, h3, h4, h5, h6):not([class*='usa-']) {
-  color: color('primary');
-}
+// Heading color is intentionally not set globally. Page titles that should be
+// teal carry an explicit `text-primary` utility class; section headings keep
+// the USWDS default ink, matching the per-component utility-class pattern.
 
 // CO footer region (help section + slim footer) uses Trebuchet MS per Figma.
 // Trebuchet MS is a proprietary system font that cannot be self-hosted, so it is
@@ -87,7 +84,7 @@ $font-trebuchet: 'Trebuchet MS', 'Helvetica Neue', Helvetica, Arial, sans-serif;
   }
 }
 
-// Help-section labels render black, overriding the CO cyan page-heading color.
+// Help-section labels are pure black per Figma, not the default heading ink.
 // color('black') is the USWDS #000000 token (color('ink') is #1b1b1b, not pure black).
 [data-state='co'] .co-help-section :is(h1, h2, h3, h4, h5, h6) {
   color: color('black');
