@@ -6,7 +6,7 @@ import { getState } from '@sebt/design-system'
 // state-hosted survey URL with no language variant exposed today.
 
 const PEAK_APPLY_URL = 'https://peak.my.site.com/SEBT/s/apply-for-sebt-starting-page'
-const DC_APPLY_URL = 'https://forms.sunbucks.dc.gov/s3/AppUpdate2026'
+const DC_APPLY_URL = 'https://forms.sunbucks.dc.gov/s3/app2026'
 
 // Map i18next locale codes to the language param PEAK expects on its URL.
 // Unknown locales fall back to en_US.
