@@ -4,6 +4,7 @@ using SEBT.Portal.Core.Models.DocVerification;
 using SEBT.Portal.Core.Repositories;
 using SEBT.Portal.Infrastructure.Data;
 using SEBT.Portal.Infrastructure.Data.Entities;
+using SEBT.Portal.Core.Services;
 
 namespace SEBT.Portal.Infrastructure.Repositories;
 
@@ -11,7 +12,9 @@ namespace SEBT.Portal.Infrastructure.Repositories;
 /// Database-backed implementation of <see cref="IDocVerificationChallengeRepository"/> using Entity Framework Core.
 /// All read operations are scoped by userId to enforce ownership.
 /// </summary>
-public class DatabaseDocVerificationChallengeRepository(PortalDbContext dbContext)
+public class DatabaseDocVerificationChallengeRepository(
+    PortalDbContext dbContext,
+    IPiiSymmetricEncryption piiSymmetricEncryption)
     : IDocVerificationChallengeRepository
 {
     private const string OneActivePerUserIndex = "IX_DocVerificationChallenges_OneActivePerUser";
@@ -27,7 +30,7 @@ public class DatabaseDocVerificationChallengeRepository(PortalDbContext dbContex
                 c => c.PublicId == publicId && c.UserId == userId,
                 cancellationToken);
 
-        return entity == null ? null : MapToDomainModel(entity);
+        return entity == null ? null : MapToDomainModel(entity, piiSymmetricEncryption);
     }
 
     public async Task<DocVerificationChallenge?> GetActiveByUserIdAsync(
@@ -44,7 +47,7 @@ public class DatabaseDocVerificationChallengeRepository(PortalDbContext dbContex
                      && (c.ExpiresAt == null || c.ExpiresAt > DateTime.UtcNow),
                 cancellationToken);
 
-        return entity == null ? null : MapToDomainModel(entity);
+        return entity == null ? null : MapToDomainModel(entity, piiSymmetricEncryption);
     }
 
     public async Task<DocVerificationChallenge?> GetBySocureReferenceIdAsync(
@@ -60,7 +63,7 @@ public class DatabaseDocVerificationChallengeRepository(PortalDbContext dbContex
             .AsNoTracking()
             .FirstOrDefaultAsync(c => c.SocureReferenceId == referenceId, cancellationToken);
 
-        return entity == null ? null : MapToDomainModel(entity);
+        return entity == null ? null : MapToDomainModel(entity, piiSymmetricEncryption);
     }
 
     public async Task<DocVerificationChallenge?> GetByEvalIdAsync(
@@ -76,7 +79,7 @@ public class DatabaseDocVerificationChallengeRepository(PortalDbContext dbContex
             .AsNoTracking()
             .FirstOrDefaultAsync(c => c.EvalId == evalId, cancellationToken);
 
-        return entity == null ? null : MapToDomainModel(entity);
+        return entity == null ? null : MapToDomainModel(entity, piiSymmetricEncryption);
     }
 
     public async Task CreateAsync(
@@ -112,7 +115,7 @@ public class DatabaseDocVerificationChallengeRepository(PortalDbContext dbContex
                         .SetProperty(e => e.UpdatedAt, now),
                     cancellationToken);
 
-            var entity = MapToEntity(challenge);
+            var entity = MapToEntity(challenge, piiSymmetricEncryption);
             dbContext.DocVerificationChallenges.Add(entity);
 
             try
@@ -161,9 +164,11 @@ public class DatabaseDocVerificationChallengeRepository(PortalDbContext dbContex
         entity.OffboardingReason = challenge.OffboardingReason;
         entity.AllowIdRetry = challenge.AllowIdRetry;
         entity.ExpiresAt = challenge.ExpiresAt;
-        entity.ProofingDateOfBirth = challenge.ProofingDateOfBirth;
-        entity.ProofingIdType = challenge.ProofingIdType;
-        entity.ProofingIdValue = challenge.ProofingIdValue;
+        entity.ProofingDateOfBirth =
+            piiSymmetricEncryption.Encrypt(challenge.ProofingDateOfBirth);
+        entity.ProofingIdType = piiSymmetricEncryption.Encrypt(challenge.ProofingIdType);
+        entity.ProofingIdValue =
+            piiSymmetricEncryption.Encrypt(challenge.ProofingIdValue);
         entity.DocvTokenIssuedAt = challenge.DocvTokenIssuedAt;
         entity.UpdatedAt = DateTime.UtcNow;
 
@@ -178,7 +183,9 @@ public class DatabaseDocVerificationChallengeRepository(PortalDbContext dbContex
         }
     }
 
-    private static DocVerificationChallenge MapToDomainModel(DocVerificationChallengeEntity entity)
+    private static DocVerificationChallenge MapToDomainModel(
+        DocVerificationChallengeEntity entity,
+        IPiiSymmetricEncryption crypto)
     {
         return DocVerificationChallenge.Reconstitute(
             id: entity.Id,
@@ -195,13 +202,17 @@ public class DatabaseDocVerificationChallengeRepository(PortalDbContext dbContex
             createdAt: entity.CreatedAt,
             updatedAt: entity.UpdatedAt,
             expiresAt: entity.ExpiresAt,
-            proofingDateOfBirth: entity.ProofingDateOfBirth,
-            proofingIdType: entity.ProofingIdType,
-            proofingIdValue: entity.ProofingIdValue,
+            proofingDateOfBirth:
+                crypto.DecryptOrPassThroughLegacy(entity.ProofingDateOfBirth),
+            proofingIdType: crypto.DecryptOrPassThroughLegacy(entity.ProofingIdType),
+            proofingIdValue:
+                crypto.DecryptOrPassThroughLegacy(entity.ProofingIdValue),
             docvTokenIssuedAt: entity.DocvTokenIssuedAt);
     }
 
-    private static DocVerificationChallengeEntity MapToEntity(DocVerificationChallenge challenge)
+    private static DocVerificationChallengeEntity MapToEntity(
+        DocVerificationChallenge challenge,
+        IPiiSymmetricEncryption crypto)
     {
         return new DocVerificationChallengeEntity
         {
@@ -219,9 +230,9 @@ public class DatabaseDocVerificationChallengeRepository(PortalDbContext dbContex
             CreatedAt = challenge.CreatedAt,
             UpdatedAt = challenge.UpdatedAt,
             ExpiresAt = challenge.ExpiresAt,
-            ProofingDateOfBirth = challenge.ProofingDateOfBirth,
-            ProofingIdType = challenge.ProofingIdType,
-            ProofingIdValue = challenge.ProofingIdValue,
+            ProofingDateOfBirth = crypto.Encrypt(challenge.ProofingDateOfBirth),
+            ProofingIdType = crypto.Encrypt(challenge.ProofingIdType),
+            ProofingIdValue = crypto.Encrypt(challenge.ProofingIdValue),
             DocvTokenIssuedAt = challenge.DocvTokenIssuedAt
         };
     }

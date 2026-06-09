@@ -3,19 +3,19 @@
 // Server Component would pull react-i18next into the RSC bundle and crash.
 import { headingFont, primaryFont } from '@/design/fonts'
 import { env } from '@/lib/env'
+import { buildRootMetadata } from '@/lib/metadata'
 import { Providers } from '@/providers/Providers'
 import { AmplitudeAnalytics, MixpanelAnalytics, SiteImproveAnalytics } from '@sebt/analytics'
 import { Footer } from '@sebt/design-system/src/components/layout/Footer'
 import { Header } from '@sebt/design-system/src/components/layout/Header'
 import { HelpSection } from '@sebt/design-system/src/components/layout/HelpSection'
 import { SkipNav } from '@sebt/design-system/src/components/layout/SkipNav'
-import { getState, getStateName } from '@sebt/design-system/src/lib/state'
-import type { Metadata, Viewport } from 'next'
+import { getState } from '@sebt/design-system/src/lib/state'
+import type { Viewport } from 'next'
 import './globals.css'
 import './styles.scss'
 
 const state = getState()
-const stateName = getStateName(state)
 
 const amplitudeApiKey = env.NEXT_PUBLIC_AMPLITUDE_API_KEY
 const mixpanelToken = env.NEXT_PUBLIC_MIXPANEL_TOKEN
@@ -27,14 +27,7 @@ export const viewport: Viewport = {
   maximumScale: 5
 }
 
-export const metadata: Metadata = {
-  title: {
-    default: `${stateName} SUN Bucks Enrollment Checker`,
-    template: `%s | ${stateName} SUN Bucks`
-  },
-  description: `Check if your child is already enrolled in Summer EBT (SUN Bucks) in ${stateName}.`,
-  robots: { index: false, follow: false }
-}
+export const metadata = buildRootMetadata(state)
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
