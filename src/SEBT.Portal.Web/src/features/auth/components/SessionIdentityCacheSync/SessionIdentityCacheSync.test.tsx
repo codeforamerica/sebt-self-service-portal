@@ -88,4 +88,51 @@ describe('SessionIdentityCacheSync', () => {
     })
     expect(queryClient.getQueryData(householdDataQueryKey(USER_A_ID))).toBeUndefined()
   })
+
+  it('clears household cache when the user logs out', async () => {
+    let statusCallCount = 0
+    server.use(
+      http.get('/api/auth/status', () => {
+        statusCallCount += 1
+        if (statusCallCount === 1) {
+          return HttpResponse.json({
+            isAuthorized: true,
+            userId: USER_A_ID,
+            email: 'user-a@example.com',
+            ial: '1'
+          })
+        }
+        return HttpResponse.json({ isAuthorized: false }, { status: 401 })
+      })
+    )
+
+    const queryClient = new QueryClient({
+      defaultOptions: { queries: { retry: false } }
+    })
+    queryClient.setQueryData(householdDataQueryKey(USER_A_ID), { email: 'user-a@example.com' })
+
+    const user = userEvent.setup()
+
+    render(
+      <QueryClientProvider client={queryClient}>
+        <AuthProvider>
+          <TestHarness />
+        </AuthProvider>
+      </QueryClientProvider>
+    )
+
+    await waitFor(() => {
+      expect(screen.getByTestId('user-id')).toHaveTextContent(USER_A_ID)
+    })
+    expect(queryClient.getQueryData(householdDataQueryKey(USER_A_ID))).toBeDefined()
+
+    await act(async () => {
+      await user.click(screen.getByRole('button', { name: /refresh session/i }))
+    })
+
+    await waitFor(() => {
+      expect(screen.getByTestId('user-id')).toHaveTextContent('none')
+    })
+    expect(queryClient.getQueryData(householdDataQueryKey(USER_A_ID))).toBeUndefined()
+  })
 })

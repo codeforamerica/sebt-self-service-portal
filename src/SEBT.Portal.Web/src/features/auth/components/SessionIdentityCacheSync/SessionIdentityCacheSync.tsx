@@ -8,7 +8,7 @@ import { clearHouseholdQueryCache } from '@/features/household/api/clearHousehol
 import { useAuth } from '../../context'
 
 /**
- * Drops cached household data when the authenticated portal user changes
+ * Drops cached household data when portal identity changes (user switch or logout).
  * Query keys are also scoped by userId; this clears any stale entries eagerly.
  */
 export function SessionIdentityCacheSync() {
@@ -20,7 +20,7 @@ export function SessionIdentityCacheSync() {
     const userId = session?.userId ?? null
     const previousUserId = previousUserIdRef.current
 
-    if (previousUserId && userId && previousUserId !== userId) {
+    if (previousUserId !== null && previousUserId !== userId) {
       clearHouseholdQueryCache(queryClient)
     }
 
