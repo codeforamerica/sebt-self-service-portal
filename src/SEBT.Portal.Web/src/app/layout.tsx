@@ -1,5 +1,6 @@
 import { BetaBanner } from '@/components/BetaBanner'
 import { primaryFont } from '@/design/fonts'
+import { SessionIdentityCacheSync } from '@/features/auth/components/SessionIdentityCacheSync'
 import { portalRoutes } from '@/lib/analytics-routes'
 import {
   AuthProvider,
@@ -131,6 +132,7 @@ export default async function RootLayout({
         >
           <QueryProvider>
             <AuthProvider>
+              <SessionIdentityCacheSync />
               <FeatureFlagsProvider>
                 <I18nProvider>
                   <SkipNav />
