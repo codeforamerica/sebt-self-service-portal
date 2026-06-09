@@ -12,6 +12,7 @@ import { HelpSection } from '@sebt/design-system/src/components/layout/HelpSecti
 import { SkipNav } from '@sebt/design-system/src/components/layout/SkipNav'
 import { getState } from '@sebt/design-system/src/lib/state'
 import type { Viewport } from 'next'
+import Script from 'next/script'
 import './globals.css'
 import './styles.scss'
 
