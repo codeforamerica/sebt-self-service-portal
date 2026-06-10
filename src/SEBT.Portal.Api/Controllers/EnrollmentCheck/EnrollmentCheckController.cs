@@ -1,8 +1,11 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
+using Microsoft.Extensions.Options;
+using Microsoft.FeatureManagement;
 using SEBT.Portal.Api.Models;
 using SEBT.Portal.Api.Models.EnrollmentCheck;
+using SEBT.Portal.Core.AppSettings;
 using SEBT.Portal.Kernel;
 using SEBT.Portal.Kernel.AspNetCore;
 using SEBT.Portal.Kernel.Results;
@@ -78,6 +81,42 @@ public class EnrollmentCheckController : ControllerBase
                         }),
                 _ => result.ToActionResult()
             });
+    }
+
+    /// <summary>
+    /// Returns runtime feature state for the standalone enrollment checker app
+    /// (currently the maintenance banner toggle and its per-language copy).
+    /// This is a public, unauthenticated endpoint. The checker is statically hosted
+    /// with no server of its own, so it polls this endpoint at runtime — that is what
+    /// lets the banner be toggled and its copy updated via AWS AppConfig without a
+    /// checker redeploy.
+    /// </summary>
+    /// <param name="featureManager">Feature manager resolving the banner toggle.</param>
+    /// <param name="settings">Enrollment checker settings (banner copy).</param>
+    /// <returns>An OK result with the checker feature state.</returns>
+    /// <response code="200">Returns the current checker feature state.</response>
+    [HttpGet("features")]
+    [AllowAnonymous]
+    [Produces("application/json")]
+    [ProducesResponseType(typeof(EnrollmentCheckerFeaturesResponse), StatusCodes.Status200OK)]
+    public async Task<IActionResult> GetFeatures(
+        [FromServices] IFeatureManager featureManager,
+        [FromServices] IOptionsMonitor<EnrollmentCheckerSettings> settings)
+    {
+        var bannerEnabled = await featureManager.IsEnabledAsync(FeatureFlags.EnableCheckerMaintenanceBanner);
+
+        // IOptionsMonitor.CurrentValue (not IOptions) so AWS AppConfig hot-reloads
+        // take effect without an app restart.
+        var message = settings.CurrentValue.MaintenanceBanner.Message;
+
+        return Ok(new EnrollmentCheckerFeaturesResponse
+        {
+            MaintenanceBanner = new MaintenanceBannerFeature
+            {
+                Enabled = bannerEnabled,
+                Message = message
+            }
+        });
     }
 
     private static EnrollmentCheckApiResponse MapToApiResponse(EnrollmentCheckResult result)

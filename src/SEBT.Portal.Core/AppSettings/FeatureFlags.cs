@@ -27,4 +27,12 @@ public static class FeatureFlags
     /// or AWS AppConfig. Never enable in production.
     /// </summary>
     public const string TestErrorEndpointsEnabled = "test_error_endpoints_enabled";
+
+    /// <summary>
+    /// When enabled, the standalone enrollment checker app shows a maintenance banner.
+    /// The banner message is selected by EnrollmentChecker:MaintenanceBanner:MessageKey.
+    /// Toggle at runtime via AWS AppConfig; the checker polls the enrollment features
+    /// endpoint, so no checker redeploy is required.
+    /// </summary>
+    public const string EnableCheckerMaintenanceBanner = "enable_checker_maintenance_banner";
 }

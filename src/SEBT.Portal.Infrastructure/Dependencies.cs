@@ -354,6 +354,9 @@ public static class Dependencies
         services.AddOptionsWithValidateOnStart<SelfServiceRulesSettings>()
             .BindConfiguration(SelfServiceRulesSettings.SectionName);
 
+        services.AddOptions<EnrollmentCheckerSettings>()
+            .BindConfiguration(EnrollmentCheckerSettings.SectionName);
+
         services.AddOptions<CoLoadedCohortFilterSettings>()
             .BindConfiguration(CoLoadedCohortFilterSettings.SectionName);
         services.AddScoped(sp => sp.GetRequiredService<IOptionsSnapshot<CoLoadedCohortFilterSettings>>().Value);
