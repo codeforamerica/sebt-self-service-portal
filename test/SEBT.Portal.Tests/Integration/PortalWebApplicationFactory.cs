@@ -1,9 +1,11 @@
+using Medallion.Threading;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Extensions.DependencyInjection;
 using NSubstitute;
 using SEBT.Portal.Core.Services;
 using SEBT.Portal.Infrastructure.Services;
+using SEBT.Portal.Tests.Helpers;
 
 namespace SEBT.Portal.Tests.Integration;
 
@@ -37,7 +39,11 @@ public class PortalWebApplicationFactory : WebApplicationFactory<Program>
         "ConnectionStrings__Redis",
         "IdProofingRequirements__household+view__application",
         "IdProofingRequirements__household+view__coloadedStreamline",
-        "IdProofingRequirements__household+view__streamline"
+        "IdProofingRequirements__household+view__streamline",
+        "Oidc__StepUp__DiscoveryEndpoint",
+        "Oidc__StepUp__ClientId",
+        "Oidc__StepUp__ClientSecret",
+        "Oidc__StepUp__RedirectUri"
     ];
 
 
@@ -55,13 +61,16 @@ public class PortalWebApplicationFactory : WebApplicationFactory<Program>
         Environment.SetEnvironmentVariable("Oidc__CallbackRedirectUri", "http://localhost:3000/callback");
         Environment.SetEnvironmentVariable("Oidc__CompleteLoginSigningKey", JwtSecretKey);
 
-        // Disable Redis so HybridCache uses in-memory only (no 5s timeout per op)
-        Environment.SetEnvironmentVariable("ConnectionStrings__Redis", "");
-
         // IdProofingRequirements are configured via env vars for integration tests
         Environment.SetEnvironmentVariable("IdProofingRequirements__household+view__application", "IAL1");
         Environment.SetEnvironmentVariable("IdProofingRequirements__household+view__coloadedStreamline", "IAL1");
         Environment.SetEnvironmentVariable("IdProofingRequirements__household+view__streamline", "IAL1plus");
+
+        // Prevent developer user-secrets step-up values from tripping IdProofingRequirementsCoherenceValidator.
+        Environment.SetEnvironmentVariable("Oidc__StepUp__DiscoveryEndpoint", "");
+        Environment.SetEnvironmentVariable("Oidc__StepUp__ClientId", "");
+        Environment.SetEnvironmentVariable("Oidc__StepUp__ClientSecret", "");
+        Environment.SetEnvironmentVariable("Oidc__StepUp__RedirectUri", "");
 
         builder.ConfigureServices(services =>
         {
@@ -70,13 +79,14 @@ public class PortalWebApplicationFactory : WebApplicationFactory<Program>
             ReplaceWithMock<IDatabaseMigrator>(services);
             ReplaceWithMock<IDatabaseSeeder>(services);
 
-            // Remove Redis-backed IDistributedCache if registered (belt-and-braces alongside
-            // the empty connection string above).
-            var redisDescriptor = services.SingleOrDefault(d =>
-                d.ServiceType == typeof(Microsoft.Extensions.Caching.Distributed.IDistributedCache)
-                && d.ImplementationType?.FullName?.Contains("Redis", StringComparison.OrdinalIgnoreCase) == true);
-            if (redisDescriptor != null)
-                services.Remove(redisDescriptor);
+            // Replace the distributed lock provider with an in-process implementation.
+            // Without this, AddDistributedLocking falls back to SqlDistributedSynchronizationProvider
+            // (since Redis is disabled above), which tries to open a real SQL connection on lock
+            // acquisition — failing in CI where no SQL Server is reachable at the default address.
+            var lockDescriptor = services.SingleOrDefault(d => d.ServiceType == typeof(IDistributedLockProvider));
+            if (lockDescriptor != null)
+                services.Remove(lockDescriptor);
+            services.AddSingleton<IDistributedLockProvider>(new InProcessLockProvider());
         });
     }
 

@@ -1,3 +1,5 @@
+using System.Globalization;
+using SEBT.Portal.Core.AppSettings;
 using SEBT.Portal.Core.Models.Auth;
 using SEBT.Portal.Core.Utilities;
 using SEBT.Portal.Infrastructure.Data.Entities;
@@ -91,12 +93,13 @@ public static class UserFactory
         {
             Id = user.Id,
             Email = user.Email != null ? EmailNormalizer.Normalize(user.Email) : null,
+            EmailHash = null,
             IdProofingStatus = (int)user.IdProofingStatus,
             IalLevel = (int)user.IalLevel,
             IdProofingSessionId = user.IdProofingSessionId,
             IdProofingCompletedAt = user.IdProofingCompletedAt,
-            IdProofingExpiresAt = user.IdProofingExpiresAt,
-            DateOfBirth = user.DateOfBirth,
+            IdProofingExpiresAt = IdProofingExpiration.ComputeStoredExpiration(user.IdProofingCompletedAt),
+            DateOfBirth = user.DateOfBirth?.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture),
             IsCoLoaded = user.IsCoLoaded,
             CoLoadedLastUpdated = user.CoLoadedLastUpdated,
             IdProofingAttemptCount = user.IdProofingAttemptCount,

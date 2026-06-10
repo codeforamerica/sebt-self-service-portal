@@ -1,5 +1,6 @@
 import { BetaBanner } from '@/components/BetaBanner'
 import { primaryFont } from '@/design/fonts'
+import { SessionIdentityCacheSync } from '@/features/auth/components/SessionIdentityCacheSync'
 import { portalRoutes } from '@/lib/analytics-routes'
 import {
   AuthProvider,
@@ -113,6 +114,17 @@ export default async function RootLayout({
       data-state={state}
       className={`usa-js-loading ${primaryFont.variable}`}
     >
+      <head>
+        {/* Build SHA exposed for identifying the deployed commit per environment.
+            Inlined at build time from NEXT_PUBLIC_BUILD_SHA (set to the GitHub
+            commit SHA in CI); absent in local/dev builds. */}
+        {process.env.NEXT_PUBLIC_BUILD_SHA && (
+          <meta
+            name="build-sha"
+            content={process.env.NEXT_PUBLIC_BUILD_SHA}
+          />
+        )}
+      </head>
       <body>
         <DataLayerProvider
           application="sebt-portal"
@@ -120,6 +132,7 @@ export default async function RootLayout({
         >
           <QueryProvider>
             <AuthProvider>
+              <SessionIdentityCacheSync />
               <FeatureFlagsProvider>
                 <I18nProvider>
                   <SkipNav />

@@ -1,5 +1,6 @@
 using System.Text;
 using System.Threading.RateLimiting;
+using System.Data.Common;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Microsoft.AspNetCore.HttpOverrides;
@@ -16,6 +17,7 @@ using SEBT.Portal.Api.Middleware;
 using SEBT.Portal.Api.Options;
 using SEBT.Portal.Api.Services;
 using SEBT.Portal.Core.AppSettings;
+using SEBT.Portal.Core.Exceptions;
 using SEBT.Portal.Core.Services;
 using SEBT.Portal.Infrastructure.Configuration;
 using SEBT.Portal.Infrastructure.Services;
@@ -89,9 +91,8 @@ var environmentId = agentSection["EnvironmentId"];
 if (!string.IsNullOrEmpty(applicationId) && !string.IsNullOrEmpty(environmentId))
 {
     var baseUrl = agentSection["BaseUrl"] ?? "http://localhost:2772";
-    var reloadAfterSeconds = agentSection.GetValue<int?>("ReloadAfterSeconds") ?? 90;
 
-    using var loggerFactory = LoggerFactory.Create(lb => lb.AddSerilog());
+    var loggerFactory = LoggerFactory.Create(lb => lb.AddSerilog());
     var appConfigLogger = loggerFactory.CreateLogger<AppConfigAgentConfigurationProvider>();
 
     var featureFlagsProfileId = builder.Configuration["AppConfig:FeatureFlags:ProfileId"];
@@ -99,7 +100,7 @@ if (!string.IsNullOrEmpty(applicationId) && !string.IsNullOrEmpty(environmentId)
     {
         builder.Configuration.AddAppConfigAgent(
             baseUrl, applicationId, environmentId, featureFlagsProfileId,
-            reloadAfterSeconds, isFeatureFlag: true, logger: appConfigLogger);
+            isFeatureFlag: true, logger: appConfigLogger);
     }
 
     var appSettingsProfileId = builder.Configuration["AppConfig:AppSettings:ProfileId"];
@@ -107,8 +108,11 @@ if (!string.IsNullOrEmpty(applicationId) && !string.IsNullOrEmpty(environmentId)
     {
         builder.Configuration.AddAppConfigAgent(
             baseUrl, applicationId, environmentId, appSettingsProfileId,
-            reloadAfterSeconds, isFeatureFlag: false, logger: appConfigLogger);
+            isFeatureFlag: false, logger: appConfigLogger);
     }
+
+    builder.Services.AddSingleton(TimeProvider.System);
+    builder.Services.AddHostedService<AppConfigAgentReloadService>();
 }
 
 // Build database connection string from environment variables when deployed
@@ -132,7 +136,7 @@ if (!string.IsNullOrEmpty(dbHost) && !string.IsNullOrEmpty(dbPassword))
 }
 
 // Caching must be registered before plugins — plugins may depend on HybridCache
-builder.Services.AddCaching(builder.Configuration);
+builder.Services.AddCaching(builder.Configuration, builder.Environment);
 builder.Services.AddDistributedLocking(builder.Configuration);
 
 // Registers plugins and allows them to be constructor injected into ASP.NET controllers
@@ -167,6 +171,7 @@ builder.Services.AddScoped<ResolveUserFilter>();
 
 // OIDC token exchange (replaces the Next.js /api/auth/oidc/callback route)
 builder.Services.AddScoped<IOidcExchangeService, OidcExchangeService>();
+builder.Services.AddScoped<IOidcCallbackFailureLogger, OidcCallbackFailureLogger>();
 // pre-auth session store (HybridCache-backed, 15 min TTL)
 builder.Services.AddSingleton<IPreAuthSessionStore, PreAuthSessionStore>();
 
@@ -418,6 +423,10 @@ var app = builder.Build();
 if (app.Environment.IsProduction())
 {
     IdentifierHasherGuard.ValidateForProduction(app.Configuration["IdentifierHasher:SecretKey"]);
+
+    var piiEncryptionSettings = app.Configuration.GetSection(PiiEncryptionSettings.SectionName)
+        .Get<PiiEncryptionSettings>();
+    PiiEncryptionGuard.ValidateForProduction(piiEncryptionSettings);
 }
 
 // HMAC-SHA256 requires ≥256-bit (32-byte) key. Fail fast if configured but too short.
@@ -435,6 +444,21 @@ try
     await using var scope = app.Services.CreateAsyncScope();
     var databaseMigrator = scope.ServiceProvider.GetRequiredService<IDatabaseMigrator>();
     await databaseMigrator.MigrateAsync();
+
+    var piiEncryptionOptions = app.Configuration.GetSection(PiiEncryptionSettings.SectionName)
+        .Get<PiiEncryptionSettings>() ?? new PiiEncryptionSettings();
+    var piiBackfillLogger = scope.ServiceProvider
+        .GetRequiredService<ILoggerFactory>()
+        .CreateLogger(nameof(PiiEncryptionStartupBackfill));
+    await PiiEncryptionStartupBackfill.RunIfEnabledAsync(
+        piiEncryptionOptions,
+        async ct =>
+        {
+            var piiBackfill = scope.ServiceProvider.GetRequiredService<PiiPlaintextEncryptionBackfill>();
+            await piiBackfill.ApplyAsync(ct);
+        },
+        piiBackfillLogger,
+        CancellationToken.None);
 
     var seedingSettings = app.Configuration.GetSection(SeedingSettings.SectionName).Get<SeedingSettings>();
     if (app.Environment.IsDevelopment() || seedingSettings?.Enabled == true)

@@ -228,6 +228,8 @@ export const handlers = [
     })
   }),
 
+  http.post('/api/auth/oidc/report-failure', () => new HttpResponse(null, { status: 204 })),
+
   // OIDC callback (Next.js: exchange + validate; returns callbackToken for complete-login)
   // callback no longer expects code_verifier from the browser — the server
   // reads it from the pre-auth session. We only check code + stateCode here.
