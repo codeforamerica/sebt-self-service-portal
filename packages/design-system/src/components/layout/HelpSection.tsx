@@ -71,7 +71,7 @@ function COHelpSection({ state = 'co' }: HelpSectionProps) {
 
   return (
     <section
-      className="bg-base-lightest padding-x-3 padding-y-4"
+      className="co-help-section bg-base-lightest padding-x-3 padding-y-4"
       aria-labelledby="help-section-title"
     >
       <div className="maxw-tablet margin-x-auto">
