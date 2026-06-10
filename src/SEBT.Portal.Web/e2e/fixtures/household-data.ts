@@ -20,6 +20,9 @@ import { currentState, type StateCode } from './state'
  */
 export const MOCK_JWT = 'e2e-mock-session-token'
 
+/** Stable portal user UUID for E2E auth/status mocks (required for user-scoped household cache). */
+export const MOCK_USER_ID = '018f0000-0000-7000-8000-0000000000e2'
+
 export type IssuanceTypeInt = 0 | 1 | 2 | 3
 export type ApplicationStatusInt = 0 | 1 | 2 | 3 | 4 | 5
 

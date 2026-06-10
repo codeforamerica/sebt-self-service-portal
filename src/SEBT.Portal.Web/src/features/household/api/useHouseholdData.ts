@@ -5,8 +5,10 @@ import { useRouter } from 'next/navigation'
 import { useEffect, useMemo } from 'react'
 
 import { ApiError, apiFetch } from '@/api'
+import { useAuth } from '@/features/auth'
 
 import { mergeHouseholdCardDetails } from './mergeHouseholdCardDetails'
+import { householdCardDetailsQueryKey, householdDataQueryKey } from './queryKeys'
 import { HouseholdDataSchema, type HouseholdData } from './schema'
 
 async function fetchHouseholdData(includeCardDetails = true): Promise<HouseholdData> {
@@ -39,6 +41,8 @@ export interface UseHouseholdDataOptions {
  * Hook to fetch household data for the authenticated user.
  * Uses real-time fetching (staleTime: 0) to ensure data freshness
  * per ticket requirement to mitigate stale household/custody data.
+ * Query keys include the portal userId so a new login in the same tab
+ * cannot render the previous user's cached household.
  *
  * When the API returns 403 with a `requiredIal` extension, the user's IAL is
  * below the minimum required by their cases. By default the hook redirects
@@ -51,10 +55,13 @@ export function useHouseholdData({
 }: UseHouseholdDataOptions = {}) {
   const router = useRouter()
   const queryClient = useQueryClient()
+  const { session } = useAuth()
+  const userId = session?.userId
 
   const query = useQuery({
-    queryKey: ['householdData'],
+    queryKey: userId ? householdDataQueryKey(userId) : householdDataQueryKey('pending'),
     queryFn: () => (deferCardDetailsOnLoad ? fetchHouseholdData(false) : fetchHouseholdData(true)),
+    enabled: !!userId,
     staleTime: 0,
     gcTime: 5 * 60 * 1000, // 5 minutes for back-navigation
     refetchOnWindowFocus: true,
@@ -66,9 +73,11 @@ export function useHouseholdData({
     deferCardDetailsOnLoad && query.isSuccess && (query.data?.summerEbtCases.length ?? 0) > 0
 
   const cardDetailsQuery = useQuery({
-    queryKey: ['householdData', 'cardDetails'],
+    queryKey: userId
+      ? householdCardDetailsQueryKey(userId)
+      : householdCardDetailsQueryKey('pending'),
     queryFn: () => fetchHouseholdData(true),
-    enabled: shouldFetchCardDetails,
+    enabled: !!userId && shouldFetchCardDetails,
     staleTime: 0,
     gcTime: 5 * 60 * 1000,
     refetchOnWindowFocus: true,
@@ -93,11 +102,15 @@ export function useHouseholdData({
       return
     }
 
+    if (!userId) {
+      return
+    }
+
     queryClient.setQueryData(
-      ['householdData'],
+      householdDataQueryKey(userId),
       mergeHouseholdCardDetails(query.data, cardDetailsQuery.data)
     )
-  }, [query.data, cardDetailsQuery.data, queryClient])
+  }, [query.data, cardDetailsQuery.data, queryClient, userId])
 
   const requiresProofing =
     query.error instanceof ApiError &&

@@ -18,6 +18,33 @@ vi.mock('next/navigation', () => ({
   useRouter: () => ({ push: vi.fn() })
 }))
 
+const TEST_USER_ID = '018f0000-0000-7000-8000-000000000001'
+const TEST_USER_B_ID = '018f0000-0000-7000-8000-000000000002'
+
+const mockAuthSession = {
+  userId: TEST_USER_ID,
+  email: 'test@example.com',
+  ial: '1plus' as const,
+  idProofingStatus: 2,
+  idProofingCompletedAt: null,
+  idProofingExpiresAt: null,
+  isCoLoaded: false as boolean | null,
+  expiresAt: null,
+  absoluteExpiresAt: null
+}
+
+vi.mock('@/features/auth', () => ({
+  useAuth: vi.fn(() => ({
+    session: mockAuthSession,
+    isAuthenticated: true,
+    isLoading: false,
+    login: vi.fn()
+  }))
+}))
+
+import { useAuth } from '@/features/auth'
+
+import { householdDataQueryKey } from './queryKeys'
 import { useHouseholdData } from './useHouseholdData'
 
 const TEST_HOUSEHOLD_DATA = {
@@ -57,6 +84,14 @@ function createWrapper() {
 describe('useHouseholdData', () => {
   beforeEach(() => {
     vi.useFakeTimers({ shouldAdvanceTime: true })
+    mockAuthSession.userId = TEST_USER_ID
+    mockAuthSession.email = 'test@example.com'
+    vi.mocked(useAuth).mockReturnValue({
+      session: mockAuthSession,
+      isAuthenticated: true,
+      isLoading: false,
+      login: vi.fn()
+    })
   })
 
   afterEach(() => {
@@ -278,7 +313,7 @@ describe('useHouseholdData', () => {
   })
 
   describe('Query Configuration', () => {
-    it('should use correct query key', async () => {
+    it('should use query key scoped to the authenticated userId', async () => {
       server.use(
         http.get('/api/household/data', () => {
           return HttpResponse.json(TEST_HOUSEHOLD_DATA)
@@ -294,7 +329,7 @@ describe('useHouseholdData', () => {
       })
 
       await waitFor(() => {
-        expect(queryClient.getQueryData(['householdData'])).toBeDefined()
+        expect(queryClient.getQueryData(householdDataQueryKey(TEST_USER_ID))).toBeDefined()
       })
     })
 
@@ -318,8 +353,70 @@ describe('useHouseholdData', () => {
       })
 
       // With staleTime: 0, data should be immediately stale
-      const queryState = queryClient.getQueryState(['householdData'])
+      const queryState = queryClient.getQueryState(householdDataQueryKey(TEST_USER_ID))
       expect(queryState?.isInvalidated || queryState?.dataUpdatedAt).toBeTruthy()
+    })
+  })
+
+  describe('Session identity isolation', () => {
+    it('does not show prior user household data after session userId changes', async () => {
+      vi.useRealTimers()
+
+      const householdA = { ...TEST_HOUSEHOLD_DATA, email: 'user-a@example.com' }
+      const householdB = { ...TEST_HOUSEHOLD_DATA, email: 'user-b@example.com' }
+
+      server.use(
+        http.get('/api/household/data', () => {
+          return HttpResponse.json(householdA)
+        })
+      )
+
+      const queryClient = createTestQueryClient()
+      const wrapper = ({ children }: { children: React.ReactNode }) => (
+        <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
+      )
+
+      const { result, rerender } = renderHook(() => useHouseholdData(), { wrapper })
+
+      await waitFor(() => {
+        expect(result.current.isSuccess).toBe(true)
+      })
+      expect(result.current.data?.email).toBe('user-a@example.com')
+
+      server.use(
+        http.get('/api/household/data', () => {
+          return HttpResponse.json(householdB)
+        })
+      )
+
+      const sessionB = { ...mockAuthSession, userId: TEST_USER_B_ID, email: 'user-b@example.com' }
+      vi.mocked(useAuth).mockReturnValue({
+        session: sessionB,
+        isAuthenticated: true,
+        isLoading: false,
+        login: vi.fn()
+      })
+
+      rerender()
+
+      await waitFor(() => {
+        expect(result.current.data?.email).toBe('user-b@example.com')
+      })
+
+      expect(
+        (
+          queryClient.getQueryData(householdDataQueryKey(TEST_USER_ID)) as
+            | { email: string }
+            | undefined
+        )?.email
+      ).toBe('user-a@example.com')
+      expect(
+        (
+          queryClient.getQueryData(householdDataQueryKey(TEST_USER_B_ID)) as
+            | { email: string }
+            | undefined
+        )?.email
+      ).toBe('user-b@example.com')
     })
   })
 
