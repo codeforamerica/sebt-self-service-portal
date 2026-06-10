@@ -21,8 +21,12 @@ interface AddressFlowContextValue {
   enteredAddress: UpdateAddressRequest | null
   /** Store the validation result and the entered address together after backend response. */
   setValidationResult: (result: AddressUpdateResponse, entered: UpdateAddressRequest) => void
-  /** Clear validation state (e.g. when navigating back to the address form). */
+  /** Clear validation outcome only; keeps enteredAddress for form re-edit. */
+  clearValidationOutcome: () => void
+  /** Clear validation outcome and entered address. */
   clearValidationResult: () => void
+  /** Clear entered address after a successful persist. */
+  clearEnteredAddress: () => void
   /** Path to return to when user edits address from suggestion/not-found pages. */
   formPath: string
   /** Path to continue to after an address is accepted. */
@@ -56,8 +60,16 @@ export function AddressFlowProvider({ children }: { children: ReactNode }) {
     []
   )
 
+  const clearValidationOutcome = useCallback(() => {
+    setValidationResultState(null)
+  }, [])
+
   const clearValidationResult = useCallback(() => {
     setValidationResultState(null)
+    setEnteredAddressState(null)
+  }, [])
+
+  const clearEnteredAddress = useCallback(() => {
     setEnteredAddressState(null)
   }, [])
 
@@ -77,7 +89,9 @@ export function AddressFlowProvider({ children }: { children: ReactNode }) {
       validationResult,
       enteredAddress,
       setValidationResult,
+      clearValidationOutcome,
       clearValidationResult,
+      clearEnteredAddress,
       formPath,
       continuePath,
       setNavigationTargets
@@ -89,7 +103,9 @@ export function AddressFlowProvider({ children }: { children: ReactNode }) {
       validationResult,
       enteredAddress,
       setValidationResult,
+      clearValidationOutcome,
       clearValidationResult,
+      clearEnteredAddress,
       formPath,
       continuePath,
       setNavigationTargets

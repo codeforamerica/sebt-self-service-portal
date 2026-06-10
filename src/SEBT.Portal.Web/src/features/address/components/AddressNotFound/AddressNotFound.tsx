@@ -16,14 +16,14 @@ export function AddressNotFound() {
     enteredAddress,
     validationResult,
     setAddress,
-    clearValidationResult,
+    clearValidationOutcome,
     continuePath,
     formPath
   } = useAddressFlow()
   const isBlocked = validationResult?.reason === 'blocked'
 
   function handleEditAddress() {
-    clearValidationResult()
+    clearValidationOutcome()
     router.push(formPath)
   }
 

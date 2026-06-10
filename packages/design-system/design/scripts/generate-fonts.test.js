@@ -1,9 +1,38 @@
 import { describe, expect, it } from 'vitest'
-import { generateFontsTs } from './generate-fonts.js'
+import { extractFonts, generateFontsTs } from './generate-fonts.js'
+
+describe('extractFonts', () => {
+  it('maps the sans typeface to body and the serif typeface to heading', () => {
+    const result = extractFonts({
+      theme: {
+        'theme-font-type-sans': { $value: 'Atkinson Hyperlegible' },
+        'theme-font-type-serif': { $value: 'Museo Slab' }
+      }
+    })
+
+    expect(result).toEqual({ body: 'atkinson hyperlegible', heading: 'museo slab' })
+  })
+
+  it('returns equal body and heading when one typeface fills both roles', () => {
+    const result = extractFonts({
+      theme: {
+        'theme-font-type-sans': { $value: 'Urbanist' },
+        'theme-font-type-serif': { $value: 'Urbanist' }
+      }
+    })
+
+    expect(result).toEqual({ body: 'urbanist', heading: 'urbanist' })
+  })
+
+  it('returns nulls when no typefaces are declared', () => {
+    expect(extractFonts({ theme: {} })).toEqual({ body: null, heading: null })
+    expect(extractFonts({})).toEqual({ body: null, heading: null })
+  })
+})
 
 describe('generateFontsTs', () => {
-  it('emits next/font/google for a known Google font (Urbanist)', () => {
-    const out = generateFontsTs(new Set(['urbanist']), 'dc')
+  it('emits next/font/google for a known Google body font bound to --font-primary', () => {
+    const out = generateFontsTs({ body: 'urbanist', heading: 'urbanist' }, 'dc')
 
     expect(out).toContain("from 'next/font/google'")
     expect(out).toContain('Urbanist')
@@ -11,29 +40,51 @@ describe('generateFontsTs', () => {
     expect(out).toContain('export const primaryFont')
   })
 
-  it('emits next/font/local for Museo Slab using the locally-hosted woff2', () => {
-    const out = generateFontsTs(new Set(['museo slab']), 'co')
+  it('aliases headingFont to primaryFont when body and heading share a typeface', () => {
+    const out = generateFontsTs({ body: 'urbanist', heading: 'urbanist' }, 'dc')
 
-    expect(out).toContain("from 'next/font/local'")
-    expect(out).toContain('Museo_Slab_500_2-webfont.woff2')
-    expect(out).toContain("weight: '500'")
-    expect(out).toContain("variable: '--font-primary'")
-    expect(out).toContain('export const primaryFont')
-    expect(out).not.toContain("from 'next/font/google'")
+    expect(out).toContain('export const headingFont = primaryFont')
+    expect(out).not.toContain("variable: '--font-heading'")
   })
 
-  it('falls back to system fonts for an unknown font', () => {
-    const out = generateFontsTs(new Set(['some unknown font']), 'co')
+  it('emits a separate heading loader bound to --font-heading when body and heading differ', () => {
+    const out = generateFontsTs({ body: 'atkinson hyperlegible', heading: 'museo slab' }, 'co')
+
+    // Body: Atkinson via next/font/google bound to --font-primary
+    expect(out).toContain("from 'next/font/google'")
+    expect(out).toContain('Atkinson_Hyperlegible_Next')
+    expect(out).toContain("variable: '--font-primary'")
+    expect(out).toContain('export const primaryFont')
+
+    // Heading: Museo Slab via next/font/local bound to --font-heading
+    expect(out).toContain("from 'next/font/local'")
+    expect(out).toContain('Museo_Slab_500_2-webfont.woff2')
+    expect(out).toContain("variable: '--font-heading'")
+    expect(out).toContain('export const headingFont')
+    expect(out).not.toContain('export const headingFont = primaryFont')
+  })
+
+  it('imports each next/font loader exactly once when mixing google body + local heading', () => {
+    const out = generateFontsTs({ body: 'atkinson hyperlegible', heading: 'museo slab' }, 'co')
+
+    expect(out.match(/from 'next\/font\/local'/g)).toHaveLength(1)
+    expect(out.match(/from 'next\/font\/google'/g)).toHaveLength(1)
+  })
+
+  it('falls back to system fonts but still exports both fonts for an unknown typeface', () => {
+    const out = generateFontsTs({ body: 'some unknown font', heading: 'some unknown font' }, 'co')
 
     expect(out).toContain('export const primaryFont')
+    expect(out).toContain('export const headingFont')
     expect(out).not.toContain("from 'next/font/google'")
     expect(out).not.toContain("from 'next/font/local'")
   })
 
-  it('emits the empty-state stub when no fonts are declared', () => {
-    const out = generateFontsTs(new Set(), 'co')
+  it('emits the empty-state stub for both fonts when no typefaces are declared', () => {
+    const out = generateFontsTs({ body: null, heading: null }, 'co')
 
     expect(out).toContain('export const primaryFont')
+    expect(out).toContain('export const headingFont')
     expect(out).not.toContain("from 'next/font/google'")
     expect(out).not.toContain("from 'next/font/local'")
   })

@@ -72,6 +72,28 @@ function toUpdateAddressRequestOrNull(
   }
 }
 
+function updateRequestToAddress(address: UpdateAddressRequest): Address {
+  return {
+    streetAddress1: address.streetAddress1,
+    streetAddress2: address.streetAddress2 ?? null,
+    city: address.city,
+    state: address.state,
+    postalCode: address.postalCode
+  }
+}
+
+/** Prefer in-flow edits when returning from suggestion/not-found screens. */
+function resolveFormSeedAddress(
+  enteredAddress: UpdateAddressRequest | null,
+  initialAddress: Address | null
+): Address | null {
+  if (enteredAddress) {
+    return updateRequestToAddress(enteredAddress)
+  }
+
+  return initialAddress
+}
+
 export function AddressForm({ initialAddress, redirectPath }: AddressFormProps) {
   const { t } = useTranslation('confirmInfo')
   const { t: tValidation } = useTranslation('validation')
@@ -81,21 +103,28 @@ export function AddressForm({ initialAddress, redirectPath }: AddressFormProps) 
   const pathname = usePathname()
   const searchParams = useSearchParams()
   const updateAddress = useUpdateAddress()
-  const { setAddress, setValidationResult, setNavigationTargets } = useAddressFlow()
+  const {
+    enteredAddress,
+    setAddress,
+    setValidationResult,
+    clearEnteredAddress,
+    setNavigationTargets
+  } = useAddressFlow()
   const { setPageData, trackEvent } = useDataLayer()
   const errorSummaryRef = useRef<HTMLDivElement>(null)
 
   const currentState = getState()
   // eslint-disable-next-line security/detect-object-injection -- currentState is typed StateCode
   const defaults = STATE_DEFAULTS[currentState] ?? { city: '', state: '' }
+  const seedAddress = resolveFormSeedAddress(enteredAddress, initialAddress)
 
-  const [streetAddress1, setStreetAddress1] = useState(initialAddress?.streetAddress1 ?? '')
-  const [streetAddress2, setStreetAddress2] = useState(initialAddress?.streetAddress2 ?? '')
-  const [city, setCity] = useState(initialAddress?.city ?? defaults.city)
+  const [streetAddress1, setStreetAddress1] = useState(seedAddress?.streetAddress1 ?? '')
+  const [streetAddress2, setStreetAddress2] = useState(seedAddress?.streetAddress2 ?? '')
+  const [city, setCity] = useState(seedAddress?.city ?? defaults.city)
   const [stateValue, setStateValue] = useState(
-    resolveStateValue(initialAddress?.state, defaults.state)
+    resolveStateValue(seedAddress?.state, defaults.state)
   )
-  const [postalCode, setPostalCode] = useState(initialAddress?.postalCode ?? '')
+  const [postalCode, setPostalCode] = useState(seedAddress?.postalCode ?? '')
 
   const [fieldErrors, setFieldErrors] = useState<FieldErrors>({})
   const [submitError, setSubmitError] = useState<string | null>(null)
@@ -164,6 +193,7 @@ export function AddressForm({ initialAddress, redirectPath }: AddressFormProps) 
 
       if (result.status === 'valid') {
         setAddress(toUpdateAddressRequestOrNull(result.normalizedAddress) ?? addressData)
+        clearEnteredAddress()
         router.push(redirectPath ?? DEFAULT_REDIRECT)
         return
       }

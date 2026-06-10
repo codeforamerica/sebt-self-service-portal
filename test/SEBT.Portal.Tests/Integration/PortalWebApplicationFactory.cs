@@ -39,7 +39,11 @@ public class PortalWebApplicationFactory : WebApplicationFactory<Program>
         "ConnectionStrings__Redis",
         "IdProofingRequirements__household+view__application",
         "IdProofingRequirements__household+view__coloadedStreamline",
-        "IdProofingRequirements__household+view__streamline"
+        "IdProofingRequirements__household+view__streamline",
+        "Oidc__StepUp__DiscoveryEndpoint",
+        "Oidc__StepUp__ClientId",
+        "Oidc__StepUp__ClientSecret",
+        "Oidc__StepUp__RedirectUri"
     ];
 
 
@@ -61,6 +65,12 @@ public class PortalWebApplicationFactory : WebApplicationFactory<Program>
         Environment.SetEnvironmentVariable("IdProofingRequirements__household+view__application", "IAL1");
         Environment.SetEnvironmentVariable("IdProofingRequirements__household+view__coloadedStreamline", "IAL1");
         Environment.SetEnvironmentVariable("IdProofingRequirements__household+view__streamline", "IAL1plus");
+
+        // Prevent developer user-secrets step-up values from tripping IdProofingRequirementsCoherenceValidator.
+        Environment.SetEnvironmentVariable("Oidc__StepUp__DiscoveryEndpoint", "");
+        Environment.SetEnvironmentVariable("Oidc__StepUp__ClientId", "");
+        Environment.SetEnvironmentVariable("Oidc__StepUp__ClientSecret", "");
+        Environment.SetEnvironmentVariable("Oidc__StepUp__RedirectUri", "");
 
         builder.ConfigureServices(services =>
         {
