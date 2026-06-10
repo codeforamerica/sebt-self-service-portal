@@ -13,6 +13,9 @@ interface OutageGuardProps {
 /**
  * Redirects all portal routes to the outage page when the outage_page_enabled
  * feature flag is on. State partners toggle the flag via appsettings or AppConfig.
+ *
+ * Renders children while feature flags load so normal routes are not gated on
+ * /features. Once the flag is confirmed on, non-outage routes redirect.
  */
 export function OutageGuard({ children }: OutageGuardProps) {
   const outageEnabled = useFeatureFlag('outage_page_enabled')
@@ -36,15 +39,11 @@ export function OutageGuard({ children }: OutageGuardProps) {
     }
   }, [isLoading, outageEnabled, isOutagePage, router])
 
-  if (isLoading) {
+  if (!isLoading && outageEnabled && !isOutagePage) {
     return null
   }
 
-  if (outageEnabled && !isOutagePage) {
-    return null
-  }
-
-  if (!outageEnabled && isOutagePage) {
+  if (!isLoading && !outageEnabled && isOutagePage) {
     return null
   }
 

@@ -71,10 +71,10 @@ describe('OutageGuard', () => {
     expect(mockReplace).toHaveBeenCalledWith('/login')
   })
 
-  it('does not redirect while feature flags are loading', () => {
+  it('renders children optimistically while feature flags are loading', () => {
     renderWithFlags({ outage_page_enabled: true }, { isLoading: true })
 
-    expect(screen.queryByText('Portal Content')).not.toBeInTheDocument()
+    expect(screen.getByText('Portal Content')).toBeInTheDocument()
     expect(mockReplace).not.toHaveBeenCalled()
   })
 })
