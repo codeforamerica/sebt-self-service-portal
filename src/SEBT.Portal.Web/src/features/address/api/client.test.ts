@@ -2,8 +2,11 @@ import { QueryClient } from '@tanstack/react-query'
 import { describe, expect, it } from 'vitest'
 
 import type { HouseholdData } from '@/features/household/api'
+import { householdDataQueryKey } from '@/features/household/api/queryKeys'
 
 import { patchHouseholdAddressOnFileCache } from './client'
+
+const TEST_USER_ID = '018f0000-0000-7000-8000-000000000001'
 
 const BASE_HOUSEHOLD: HouseholdData = {
   email: 'test@example.com',
@@ -22,7 +25,7 @@ const BASE_HOUSEHOLD: HouseholdData = {
 describe('patchHouseholdAddressOnFileCache', () => {
   it('updates addressOnFile in householdData cache when status is valid', () => {
     const queryClient = new QueryClient()
-    queryClient.setQueryData(['householdData'], BASE_HOUSEHOLD)
+    queryClient.setQueryData(householdDataQueryKey(TEST_USER_ID), BASE_HOUSEHOLD)
 
     patchHouseholdAddressOnFileCache(
       queryClient,
@@ -44,13 +47,13 @@ describe('patchHouseholdAddressOnFileCache', () => {
       }
     )
 
-    const updated = queryClient.getQueryData<HouseholdData>(['householdData'])
+    const updated = queryClient.getQueryData<HouseholdData>(householdDataQueryKey(TEST_USER_ID))
     expect(updated?.addressOnFile?.streetAddress1).toBe('456 Oak Avenue NW')
   })
 
   it('falls back to submitted address when normalizedAddress is missing', () => {
     const queryClient = new QueryClient()
-    queryClient.setQueryData(['householdData'], BASE_HOUSEHOLD)
+    queryClient.setQueryData(householdDataQueryKey(TEST_USER_ID), BASE_HOUSEHOLD)
 
     patchHouseholdAddressOnFileCache(
       queryClient,
@@ -63,13 +66,13 @@ describe('patchHouseholdAddressOnFileCache', () => {
       }
     )
 
-    const updated = queryClient.getQueryData<HouseholdData>(['householdData'])
+    const updated = queryClient.getQueryData<HouseholdData>(householdDataQueryKey(TEST_USER_ID))
     expect(updated?.addressOnFile?.streetAddress1).toBe('789 New St')
   })
 
   it('does not patch cache for non-valid responses', () => {
     const queryClient = new QueryClient()
-    queryClient.setQueryData(['householdData'], BASE_HOUSEHOLD)
+    queryClient.setQueryData(householdDataQueryKey(TEST_USER_ID), BASE_HOUSEHOLD)
 
     patchHouseholdAddressOnFileCache(
       queryClient,
@@ -82,7 +85,7 @@ describe('patchHouseholdAddressOnFileCache', () => {
       }
     )
 
-    const unchanged = queryClient.getQueryData<HouseholdData>(['householdData'])
+    const unchanged = queryClient.getQueryData<HouseholdData>(householdDataQueryKey(TEST_USER_ID))
     expect(unchanged?.addressOnFile?.streetAddress1).toBe('1350 Pennsylvania Ave NW')
   })
 })

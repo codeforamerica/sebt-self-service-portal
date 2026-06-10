@@ -1,6 +1,11 @@
 import type { Page } from '@playwright/test'
 
-import { DEFAULT_FEATURE_FLAGS, makeHouseholdData, type MockHouseholdData } from './household-data'
+import {
+  DEFAULT_FEATURE_FLAGS,
+  makeHouseholdData,
+  MOCK_USER_ID,
+  type MockHouseholdData
+} from './household-data'
 
 interface ApiRouteOverrides {
   /** Override the household data response. Defaults to makeHouseholdData(). */
@@ -71,6 +76,7 @@ export async function setupApiRoutes(page: Page, overrides: ApiRouteOverrides = 
       contentType: 'application/json',
       body: JSON.stringify({
         isAuthorized: true,
+        userId: MOCK_USER_ID,
         email: 'e2e@example.com',
         ial: '1plus',
         idProofingStatus: 2,

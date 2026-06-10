@@ -4,13 +4,12 @@ import { useMutation, useQueryClient, type QueryClient } from '@tanstack/react-q
 
 import { ApiError, apiFetch } from '@/api/client'
 import type { Address, HouseholdData } from '@/features/household/api'
+import { HOUSEHOLD_DATA_QUERY_KEY_PREFIX } from '@/features/household/api/queryKeys'
 
 import type { AddressResponse, AddressUpdateResponse, UpdateAddressRequest } from './schema'
 import { AddressUpdateResponseSchema } from './schema'
 
 const ADDRESS_ENDPOINT = '/household/address'
-const HOUSEHOLD_DATA_KEY = ['householdData'] as const
-const HOUSEHOLD_CARD_DETAILS_KEY = ['householdData', 'cardDetails'] as const
 
 function addressResponseToOnFile(address: AddressResponse | null | undefined): Address | undefined {
   if (!address?.streetAddress1 || !address.city || !address.state || !address.postalCode) {
@@ -52,8 +51,7 @@ export function patchHouseholdAddressOnFileCache(
   const patch = (existing: HouseholdData | undefined) =>
     existing ? { ...existing, addressOnFile } : existing
 
-  queryClient.setQueryData(HOUSEHOLD_DATA_KEY, patch)
-  queryClient.setQueryData(HOUSEHOLD_CARD_DETAILS_KEY, patch)
+  queryClient.setQueriesData<HouseholdData>({ queryKey: HOUSEHOLD_DATA_QUERY_KEY_PREFIX }, patch)
 }
 
 async function updateAddress(data: UpdateAddressRequest): Promise<AddressUpdateResponse> {
