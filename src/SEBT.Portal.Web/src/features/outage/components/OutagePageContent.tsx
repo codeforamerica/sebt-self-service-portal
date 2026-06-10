@@ -1,6 +1,7 @@
 'use client'
 
 import { MaintenanceIcon } from '@/features/outage/components/MaintenanceIcon'
+import { getFooterLinkLabel } from '@/features/outage/getFooterLinkLabel'
 import { getOutageFooterCopy, getOutageMessages } from '@/features/outage/getOutageMessages'
 import {
   getSiteDisplayName,
@@ -16,16 +17,6 @@ const DEFAULT_LOGO_DIMENSIONS = { width: 122, height: 52 } as const
 const logoDimensions: Record<StateCode, { width: number; height: number }> = {
   dc: { width: 122, height: 52 },
   co: { width: 192, height: 28 }
-}
-
-function getFooterLinkLabel(href: string): string {
-  if (!href.startsWith('http')) {
-    return href
-  }
-
-  const url = new URL(href)
-  const path = url.pathname === '/' ? '' : url.pathname
-  return `${url.hostname}${path}`
 }
 
 export function OutagePageContent() {
