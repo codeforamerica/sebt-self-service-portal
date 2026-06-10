@@ -1,5 +1,5 @@
 import { AppShell } from '@/components/AppShell'
-import { primaryFont } from '@/design/fonts'
+import { headingFont, primaryFont } from '@/design/fonts'
 import { SessionIdentityCacheSync } from '@/features/auth/components/SessionIdentityCacheSync'
 import { portalRoutes } from '@/lib/analytics-routes'
 import {
@@ -111,7 +111,7 @@ export default async function RootLayout({
     <html
       lang="en"
       data-state={state}
-      className={`usa-js-loading ${primaryFont.variable}`}
+      className={`usa-js-loading ${primaryFont.variable} ${headingFont.variable}`}
     >
       <head>
         {/* Build SHA exposed for identifying the deployed commit per environment.
