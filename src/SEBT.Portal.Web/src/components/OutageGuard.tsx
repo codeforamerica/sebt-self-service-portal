@@ -1,8 +1,9 @@
 'use client'
 
 import { useFeatureFlag, useFeatureFlagsStatus } from '@/features/feature-flags'
+import { readCachedOutageFlag, writeCachedOutageFlag } from '@/features/outage/outageFlagCache'
 import { usePathname, useRouter } from 'next/navigation'
-import { useEffect, type ReactNode } from 'react'
+import { useEffect, useState, type ReactNode } from 'react'
 
 export const OUTAGE_PATH = '/outage'
 
@@ -14,8 +15,10 @@ interface OutageGuardProps {
  * Redirects all portal routes to the outage page when the outage_page_enabled
  * feature flag is on. State partners toggle the flag via appsettings or AppConfig.
  *
- * Renders children while feature flags load so normal routes are not gated on
- * /features. Once the flag is confirmed on, non-outage routes redirect.
+ * Uses sessionStorage to remember the last-known flag value. When cached true,
+ * non-outage routes block immediately (no flash of login/dashboard). When cached
+ * false or missing, children render while /features loads so normal routes are
+ * not gated on every navigation.
  */
 export function OutageGuard({ children }: OutageGuardProps) {
   const outageEnabled = useFeatureFlag('outage_page_enabled')
@@ -23,27 +26,32 @@ export function OutageGuard({ children }: OutageGuardProps) {
   const pathname = usePathname()
   const router = useRouter()
   const isOutagePage = pathname === OUTAGE_PATH
+  const [cachedOutageEnabled] = useState(() => readCachedOutageFlag())
+
+  const outageActiveWhileLoading = cachedOutageEnabled === true
+  const outageActive = isLoading ? outageActiveWhileLoading : outageEnabled
 
   useEffect(() => {
-    if (isLoading) {
-      return
+    if (!isLoading) {
+      writeCachedOutageFlag(outageEnabled)
     }
+  }, [isLoading, outageEnabled])
 
-    if (outageEnabled && !isOutagePage) {
+  useEffect(() => {
+    if (outageActive && !isOutagePage) {
       router.replace(OUTAGE_PATH)
       return
     }
 
-    if (!outageEnabled && isOutagePage) {
+    if (!isLoading && !outageEnabled && isOutagePage) {
       router.replace('/login')
     }
-  }, [isLoading, outageEnabled, isOutagePage, router])
+  }, [isLoading, outageActive, outageEnabled, isOutagePage, router])
 
-  if (!isLoading && outageEnabled && !isOutagePage) {
-    return null
-  }
+  const hideForOutageRedirect = !isOutagePage && outageActive
+  const hideForLoginRedirect = isOutagePage && !isLoading && !outageEnabled
 
-  if (!isLoading && !outageEnabled && isOutagePage) {
+  if (hideForOutageRedirect || hideForLoginRedirect) {
     return null
   }
 

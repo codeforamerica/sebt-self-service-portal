@@ -2,6 +2,7 @@ import { render, screen } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { FeatureFlagsContext, type FeatureFlagsContextValue } from '@/features/feature-flags'
+import { clearCachedOutageFlag, writeCachedOutageFlag } from '@/features/outage/outageFlagCache'
 import { TEST_FEATURE_FLAGS } from '@/mocks/handlers'
 
 import { OutageGuard } from './OutageGuard'
@@ -38,6 +39,7 @@ function renderWithFlags(
 describe('OutageGuard', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    clearCachedOutageFlag()
     mockPathname.mockReturnValue('/dashboard')
   })
 
@@ -71,10 +73,24 @@ describe('OutageGuard', () => {
     expect(mockReplace).toHaveBeenCalledWith('/login')
   })
 
-  it('renders children optimistically while feature flags are loading', () => {
+  it('renders children while feature flags load when outage is not cached as enabled', () => {
     renderWithFlags({ outage_page_enabled: true }, { isLoading: true })
 
     expect(screen.getByText('Portal Content')).toBeInTheDocument()
     expect(mockReplace).not.toHaveBeenCalled()
+  })
+
+  it('blocks and redirects while feature flags load when outage is cached as enabled', () => {
+    writeCachedOutageFlag(true)
+    renderWithFlags({ outage_page_enabled: false }, { isLoading: true })
+
+    expect(screen.queryByText('Portal Content')).not.toBeInTheDocument()
+    expect(mockReplace).toHaveBeenCalledWith('/outage')
+  })
+
+  it('persists the live flag to sessionStorage after features load', () => {
+    renderWithFlags({ outage_page_enabled: true })
+
+    expect(window.sessionStorage.getItem('sebt_outage_page_enabled')).toBe('true')
   })
 })
