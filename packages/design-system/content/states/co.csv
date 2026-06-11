@@ -138,8 +138,43 @@ S1 - Result - Error - Title,Something went wrong on our end,Something went wrong
 S1 - Result - Error - Body,We aren’t able to able to share enrollment information for your children. You may try to check again later or continue with these next steps.,We aren’t able to able to share enrollment information for your children. You may try to check again later or continue with these next steps.,No podemos compartir información de inscripción de tus niños en este momento. Puedes intentar revisar de nuevo más tarde o continuar con estos siguientes pasos.,No podemos compartir información de inscripción de tus niños en este momento. Puedes intentar revisar de nuevo más tarde o continuar con estos siguientes pasos.,
 S2 - Log In Disclaimer - Title,Access the Summer EBT portal,Log in to your Summer EBT account,Accede a tu cuenta de Summer EBT,Inicia sesión en tu cuenta de Summer EBT,
 S2 - Log In Disclaimer - Log In Disclaimer - Body 1,"After tapping ""Sign in"", you'll be redirected to sign in using your myColorado® account. If you don't have an account, you'll be able to create one using your name, email address, phone number, and date of birth.","You can use the same login you use to access PEAK. Also, if you don't have an account, you can create one using your email address.","Después de tocar “Iniciar sesión”, se te redirigirá para entrar con tu cuenta de myColorado®. Si no tienes una cuenta, podrás crearla usando tu nombre, correo electrónico, número de teléfono y fecha de nacimiento.","Puedes usar el mismo inicio de sesión que utilizas para acceder al portal de PEAK. Si no tienes una cuenta, puedes crear una. ",
-S2 - Log In Disclaimer - Log In Disclaimer - Body 2,Contact us if you need assistance signing in.,Contact us if you need assistance logging into your account.,Contáctanos si necesitas ayuda para iniciar sesión en tu cuenta.,Contáctanos si necesitas  ayuda para iniciar sesión en su cuenta. ,
-S2 - Log In Disclaimer - Log In Disclaimer - Body 3,!N/A!,Summer EBT Call Center.,!N/A!,línea de servicio al cliente de Summer EBT.,
+S2 - Log In Disclaimer - Log In Disclaimer - Body 2,Having trouble logging into the portal?,Contact us if you need assistance logging into your account.,Contáctanos si necesitas ayuda para iniciar sesión en tu cuenta,Contáctanos si necesitas  ayuda para iniciar sesión en tu cuenta. ,
+S2 - Log In Disclaimer - Log In Disclaimer - Body 3,Contact myColorado® Support,Contact myColorado® Support,Comunícate con la ayuda de myColorado® ,Comunícate con la ayuda de myColorado® ,
+S2 - Log In Disclaimer - Card Title,About the Summer EBT portal,About the Summer EBT portal,Sobre el portal de Summer EBT,Sobre el portal de Summer EBT,
+S2 - Log In Disclaimer - Card Body 1,"The Summer EBT portal is the fastest way to manage your family's Summer EBT benefits without ever making a phone call.
+
+By creating a secure account, the main parent or guardian on file can:","The Summer EBT portal is the fastest way to manage your family's Summer EBT benefits without ever making a phone call.
+
+By creating a secure account, the main parent or guardian on file can:","El portal de Summer EBT es la forma más rápida de manejar los beneficios de Summer EBT de tu familia sin tener que hacer ninguna llamada telefónica. 
+
+Al crear una cuenta segura, el padre, madre o tutor principal registrado puede:","El portal de Summer EBT es la forma más rápida de manejar los beneficios de Summer EBT de tu familia sin tener que hacer ninguna llamada telefónica. 
+
+Al crear una cuenta segura, el padre, madre o tutor principal registrado puede:",
+S2 - Log In Disclaimer - Card Body 2,"Request a new Summer EBT card if their child’s is lost, stolen, or damaged.
+Update your mailing address so you don’t miss important mail.
+Check benefits and card status for all enrolled children in your household.
+See the application status for any applications that you submitted.
+Opt-in to email communications about your benefits.","Request a new Summer EBT card if their child’s is lost, stolen, or damaged.
+Update your mailing address so you don’t miss important mail.
+Check benefits and card status for all enrolled children in your household.
+See the application status for any applications that you submitted.
+Opt-in to email communications about your benefits.","Pedir una nueva Tarjeta Summer EBT si la de tu niño/a se perdió, fue robada o está dañada.
+
+Actualizar tu dirección de correspondencia para no perderte correo importante.
+
+Revisar los beneficios y el estado de la tarjeta de todos los niños inscritos en tu hogar.
+
+Ver el estado de cualquier solicitud que hayas enviado.
+
+Inscribirte para recibir comunicaciones por correo electrónico sobre tus beneficios.","Pedir una nueva Tarjeta Summer EBT si la de tu niño/a se perdió, fue robada o está dañada.
+
+Actualizar tu dirección de correspondencia para no perderte correo importante.
+
+Revisar los beneficios y el estado de la tarjeta de todos los niños inscritos en tu hogar.
+
+Ver el estado de cualquier solicitud que hayas enviado.
+
+Inscribirte para recibir comunicaciones por correo electrónico sobre tus beneficios.",
 S2 - Portal Dashboard - Alert Address Updated,Your mailing address has been updated,Your mailing address has been updated,Tu dirección ha sido actualizada,Tu dirección ha sido actualizada,
 S2 - Portal Dashboard - Alert Address Title,"A replacement for the card[s] ending in [[9999], [9999], and [9999],] will be sent to the following address","A replacement for the card[s] ending in [[9999], [9999], and [9999],] will be sent to the following address","Las tarjeta terminadas en [[9999], [9999], y [9999], van a ser remplazadas y enviadas a la siguiente dirección","Las tarjeta terminadas en [[9999], [9999], y [9999], van a ser remplazadas y enviadas a la siguiente dirección",
 S2 - Portal Dashboard - Alert Address Body,New cards usually arrive in your mailbox within 7–10 business days. Check back here in 1–2 business days to see your updated card details.,New cards usually arrive in your mailbox within 7–10 business days. Check back here in 1–2 business days to see your updated card details.,Las tarjetas nuevas generalmente llegan por correo en un plazo de 7 a 10 días hábiles. Vuelve a consultar aquí en 1 a 2 días hábiles para ver la información actualizada de tu tarjeta.,Las tarjetas nuevas generalmente llegan por correo en un plazo de 7 a 10 días hábiles. Vuelve a consultar aquí en 1 a 2 días hábiles para ver la información actualizada de tu tarjeta.,
@@ -225,8 +260,8 @@ Cuando te pidan “ingresar el código postal del titular principal de la tarjet
 Cuando te pidan ingresar la fecha de nacimiento, escribe la fecha de nacimiento de tu niño/a usando el formato DD-MM-YYYY (día-mes-año).
 
 Cuando te pidan “ingresar el código postal del titular principal de la tarjeta”, ingresa el código postal de la dirección a la que se envió por correo tu tarjeta.",For version in Español the format is DD-MM-YYYY
-S2 - Portal Dashboard - Card Table - Status Message Deactivated,"This card was reported as lost, stolen, damaged, or otherwise inactive.","This card was reported as lost, stolen, damaged, or otherwise inactive.","Esta tarjeta fue reportada como perdida, robada, dañada o inactiva.","Esta tarjeta fue reportada como perdida, robada, dañada o inactiva.",
-S2 - Portal Dashboard - Card Table - Status Message Inactive,"This card was reported as lost, stolen, damaged, or otherwise inactive.","This card was reported as lost, stolen, damaged, or otherwise inactive.","Esta tarjeta fue reportada como perdida, robada, dañada o inactiva.","Esta tarjeta fue reportada como perdida, robada, dañada o inactiva.",
+S2 - Portal Dashboard - Card Table - Status Message Deactivated,!N/A!,"This card was reported as lost, stolen, damaged, or otherwise inactive.",!N/A!,"Esta tarjeta fue reportada como perdida, robada, dañada o inactiva.",
+S2 - Portal Dashboard - Card Table - Status Message Inactive,!N/A!,"This card was reported as lost, stolen, damaged, or otherwise inactive.",!N/A!,"Esta tarjeta fue reportada como perdida, robada, dañada o inactiva.",
 S2 - Portal Dashboard - Card Table - Status Message Frozen,"You won’t be able to use your benefits while this card is frozen. Unfreeze the card to keep using your benefits. This can be done with the ebtEDGE, MyCoBenefits, or Propel apps.","You won’t be able to use your benefits while this card is frozen. Unfreeze the card to keep using your benefits. This can be done with the ebtEDGE, MyCoBenefits, or Propel apps.","No podrás usar tus beneficios mientras esta tarjeta esté congelada. Descongela la tarjeta para seguir usando tus beneficios. Puedes hacerlo con las aplicaciones ebtEDGE, MyCoBenefits o Propel.","No podrás usar tus beneficios mientras esta tarjeta esté congelada. Descongela la tarjeta para seguir usando tus beneficios. Puedes hacerlo con las aplicaciones ebtEDGE, MyCoBenefits o Propel.",
 S2 - Portal Dashboard - Card Table - Status Message Undeliverable,The card could not be delivered to the address on file. ,The card could not be delivered to the address on file. ,No se pudo entregar la tarjeta a la dirección que tenemos registrada.,No se pudo entregar la tarjeta a la dirección que tenemos registrada.,
 S2 - Portal Dashboard - Card Table - Action Update Mailing Address,Update this card's mailing address,Update this card's mailing address,Actualizar la dirección de correspondencia de esta tarjeta,Actualizar la dirección de correspondencia de esta tarjeta,
@@ -419,6 +454,7 @@ S8 - OTP Email Message - Body 3,!N/A!,The code will expire in 10 minutes. Do not
 S8 - ID Proofing Optional ID Info - Title,!N/A!,"Thank you for confirming your email. To keep your account safe, we need to check your identity",!N/A!,"Gracias por confirmar tu correo electrónico. Para mantener tu cuenta segura, necesitamos verificar tu identidad",
 S8 - ID Proofing Optional ID Info - Body,!N/A!,"By providing your date of birth and one ID number, you consent to sharing this information with our third-party vendor. We will only use these once and not share or save them without your permission.  ",!N/A!,"Al proporcionar tu fecha de nacimiento y un número de identificación, das tu consentimiento para compartir esta información con nuestro proveedor externo. Solo utilizaremos estos datos una vez y no los compartiremos ni los guardaremos sin tu permiso.",
 S8 - ID Proofing Optional ID Info - Label DOB,!N/A!,What's your date of birth?,!N/A!,¿Cuál es tu fecha de nacimiento?,
+S8 - ID Proofing Optional ID Info - Label SNAP or TANF,!N/A!,Do you receive SNAP or TANF?,!N/A!,,
 S8 - ID Proofing Optional ID Info - Label ID,!N/A!,Which ID number can you provide?,!N/A!,¿Qué número de identificación puedes proporcionar?,
 S8 - ID Proofing Optional ID Info - Helper ID,!N/A!,!!!,!N/A!,!!!,
 S8 - ID Proofing Optional ID Info - Option Label SSN,!N/A!,Social Security Number (SSN),!N/A!,Número de seguro social (SSN),
@@ -664,7 +700,8 @@ GLOBAL - Link Google Translate,!N/A!,Google Translate Disclaimer,!N/A!,Aviso leg
 GLOBAL - Link About,!N/A!,About DC.GOV,!N/A!,Acerca de DC.GOV,
 GLOBAL - Link Terms,!N/A!,Terms and Conditions,!N/A!,Términos y condiciones,
 GLOBAL - Copyrite,© 2026 State of Colorado,© [YYYY] District of Columbia,© 2026 Estado de Colorado,© [YYYY] Distrito de Columbia,
-GLOBAL - Alert Sitewide,This site is currently in beta. Some features may be incomplete or missing.,,Este sitio está actualmente en versión beta. Es posible que algunas funciones estén incompletas o no disponibles.,,
+GLOBAL - Alert Sitewide,"The S-EBT Portal will be unavailable on Saturday, June 13 from 7:00 a.m. to 3:00 p.m. due to system maintenance.
+",,El portal de Summer EBT no estará disponible el sábado 13 de junio de 7:00 a.m. a 3:00 p.m. debido a mantenimiento del sistema.,,User-facing banner that appears at the top of the page for all screens.
 GLOBAL - Alert Beta,This site is currently in beta. Some features may be incomplete or missing.,This site is currently in beta. Some features may be incomplete or missing.,Este sitio está actualmente en versión beta. Es posible que algunas funciones estén incompletas o no disponibles.,Este sitio está actualmente en versión beta. Es posible que algunas funciones estén incompletas o no disponibles.,
 GLOBAL - Alert Issue Pending,Benefits will be issued in late May. Check back then for details regarding your enrolled children and their Summer EBT cards.,Benefits will be issued in late May. Check back then for details regarding your enrolled children and their Summer EBT cards.,Los beneficios serán emitidos a finales de mayo. Vuelve a revisar el portal en esas fechas para ver los detalles sobre tus niños inscritos y sus tarjetas de Summer EBT.,Los beneficios serán emitidos a finales de mayo. Vuelve a revisar el portal en esas fechas para ver los detalles sobre tus niños inscritos y sus tarjetas de Summer EBT.,
 GLOBAL - Remove,Remove,Remove,Eliminar,Eliminar,
@@ -683,12 +720,12 @@ VALIDATION - Enter Phone,"Provide a valid phone number, including the area code"
 VALIDATION - Enter ZIP,Provide a valid ZIP Code with at least five numbers,Provide a valid ZIP Code with at least five numbers,Ingresa un código de área válido con por lo menos cinco números,Ingresa un código de área válido con por lo menos cinco números,
 VALIDATION - Select Month,Select a month,Select a month,Selecciona un mes,Selecciona un mes,
 VALIDATION - Enter Day,Provide a day using one or two numbers,Provide a day using one or two numbers,Escribe un día usando uno o dos números,Escribe un día usando uno o dos números,
-VALIDATION - Enter Year,Provide a year using four numbers,Provide a year using four numbers,Escribe un año usando cuatro números.,Escribe un año usando cuatro números,
+VALIDATION - Enter Year,Provide a year using four numbers,Provide a year using four numbers,Escribe un año usando cuatro números.,Escribe un año usando cuatro números.,
 VALIDATION - Select Year,Select a year,Select a year,Selecciona un año,Selecciona un año,
 VALIDATION - Enter Email,Provide a valid email address,Provide a valid email address,Ingresa un correo electrónico válido,Ingresa un correo electrónico válido,
 VALIDATION - SSN,!N/A!,Provide a valid Social Security Number with 9 numbers,!N/A!,Ingrese un número de Seguro Social válido con nueve números,
 VALIDATION - ID Number,!N/A!,Provide a valid ID number that is 7 or 8 digits long,!N/A!,Proporciona un número de identificación válido de 7 u 8 dígitos,
-VALIDATION - OTP Invalid,!N/A!,Enter a valid [6] digit code. Tap here to send a new code.,!N/A!,Ingresa un código válido de 6 dígitos. Toca aquí para enviar un nuevo código.,
+VALIDATION - OTP Invalid,!N/A!,Enter a valid [6] digit code. Tap here to send a new code.,!N/A!,Ingresa un código válido de 6 dígitos. Toca aquí para enviar un nuevo código,
 VALIDATION - Global Internal Error,An error occurred on our end. Please try again.,An error occurred on our end. Please try again.,"Ocurrió un error de nuestro lado. Por favor, inténtalo de nuevo.","Ocurrió un error de nuestro lado. Por favor, inténtalo de nuevo.",
 VALIDATION - Global Sign-in Error,There was an issue signing in. Please try again.,There was an issue signing in. Please try again.,"Hubo un problema al iniciar sesión. Por favor, inténtalo de nuevo.","Hubo un problema al iniciar sesión. Por favor, inténtalo de nuevo.",
 VALIDATION - New Code,!N/A!,A new code has been sent to your email.,!N/A!,Se ha enviado un nuevo código a tu correo electrónico.,
@@ -741,7 +778,7 @@ DEV - Alert Verify Document,Verifying your document...,Verifying your document..
 DEV - Alert Check Verification,Checking verification status,Checking verification status,Comprobando el estado de verificación,Comprobando el estado de verificación,
 DEV - Alert Verification Delay,Verification is taking longer than expected. You can check the status or try again later.,Verification is taking longer than expected. You can check the status or try again later.,La verificación está tardando más de lo esperado. Puedes verificar el estado o intentarlo de nuevo más tarde.,La verificación está tardando más de lo esperado. Puedes verificar el estado o intentarlo de nuevo más tarde.,
 DEV - Alert Still Checking,We're still checking your document,We're still checking your document,Todavía estamos revisando tu documento.,Todavía estamos revisando tu documento,
-DEV - Alert Verification Retry,Unable to start document verification. Please try again.,Unable to start document verification. Please try again.,"No se pudo iniciar la verificación del documento. Por favor, inténtalo de nuevo.","No se pudo iniciar la verificación del documento. Por favor, inténtalo de nuevo."
+DEV - Alert Verification Retry,Unable to start document verification. Please try again.,Unable to start document verification. Please try again.,"No se pudo iniciar la verificación del documento. Por favor, inténtalo de nuevo.","No se pudo iniciar la verificación del documento. Por favor, inténtalo de nuevo.",
 S9 - Outage Page - Body 1,We are down for maintenance and will be back up shortly.,We are down for maintenance and will be back up shortly.,Estamos en mantenimiento y volveremos en breve.,Estamos en mantenimiento y volveremos en breve.,
 S9 - Outage Page - Body 2,Try waiting a few minutes and refresh this page.,Try waiting a few minutes and refresh this page.,Le rogamos que espere unos minutos y actualice esta página.,Le rogamos que espere unos minutos y actualice esta página.,
 S9 - Outage Page - Footer,"For more information, visit","For more information, visit","Para más información, visite","Para más información, visite"
