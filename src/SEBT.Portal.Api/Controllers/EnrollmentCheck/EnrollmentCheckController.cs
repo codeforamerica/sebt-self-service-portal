@@ -86,10 +86,10 @@ public class EnrollmentCheckController : ControllerBase
     /// <summary>
     /// Returns runtime feature state for the standalone enrollment checker app
     /// (currently the maintenance banner toggle and its per-language copy).
-    /// This is a public, unauthenticated endpoint. The checker is statically hosted
-    /// with no server of its own, so it polls this endpoint at runtime — that is what
-    /// lets the banner be toggled and its copy updated via AWS AppConfig without a
-    /// checker redeploy.
+    /// This is a public, unauthenticated endpoint. In static-hosting deployments
+    /// (e.g. CO) the checker has no server of its own, so it polls this endpoint at
+    /// runtime, which is what lets the banner be toggled and its copy updated via
+    /// AWS AppConfig without a checker redeploy.
     /// </summary>
     /// <param name="featureManager">Feature manager resolving the banner toggle.</param>
     /// <param name="settings">Enrollment checker settings (banner copy).</param>
@@ -97,8 +97,10 @@ public class EnrollmentCheckController : ControllerBase
     /// <response code="200">Returns the current checker feature state.</response>
     [HttpGet("features")]
     [AllowAnonymous]
+    [EnableRateLimiting(RateLimitPolicies.CheckerFeatures)]
     [Produces("application/json")]
     [ProducesResponseType(typeof(EnrollmentCheckerFeaturesResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status429TooManyRequests)]
     public async Task<IActionResult> GetFeatures(
         [FromServices] IFeatureManager featureManager,
         [FromServices] IOptionsMonitor<EnrollmentCheckerSettings> settings)

@@ -30,9 +30,10 @@ public static class FeatureFlags
 
     /// <summary>
     /// When enabled, the standalone enrollment checker app shows a maintenance banner.
-    /// The banner message is selected by EnrollmentChecker:MaintenanceBanner:MessageKey.
-    /// Toggle at runtime via AWS AppConfig; the checker polls the enrollment features
-    /// endpoint, so no checker redeploy is required.
+    /// Banner copy comes from the EnrollmentChecker:MaintenanceBanner:Message per-language
+    /// map (see <see cref="MaintenanceBannerSettings"/>); the checker selects the active
+    /// language's copy client-side. Toggle at runtime via AWS AppConfig; the checker polls
+    /// the enrollment features endpoint, so no checker redeploy is required.
     /// </summary>
     public const string EnableCheckerMaintenanceBanner = "enable_checker_maintenance_banner";
 }

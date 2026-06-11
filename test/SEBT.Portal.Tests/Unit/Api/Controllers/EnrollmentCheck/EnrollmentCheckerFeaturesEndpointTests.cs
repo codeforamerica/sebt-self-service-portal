@@ -1,7 +1,10 @@
+using System.Reflection;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.Extensions.Options;
 using Microsoft.FeatureManagement;
 using NSubstitute;
+using SEBT.Portal.Api;
 using SEBT.Portal.Api.Controllers.EnrollmentCheck;
 using SEBT.Portal.Api.Models.EnrollmentCheck;
 using SEBT.Portal.Core.AppSettings;
@@ -80,5 +83,19 @@ public class EnrollmentCheckerFeaturesEndpointTests
             Assert.IsType<OkObjectResult>(secondResult).Value);
         Assert.Equal(DefaultMessage, firstResponse.MaintenanceBanner.Message);
         Assert.Equal(updatedMessage, secondResponse.MaintenanceBanner.Message);
+    }
+
+    [Fact]
+    public void GetFeatures_HasDedicatedRateLimitPolicy()
+    {
+        var attribute = typeof(EnrollmentCheckController)
+            .GetMethod(nameof(EnrollmentCheckController.GetFeatures))!
+            .GetCustomAttribute<EnableRateLimitingAttribute>();
+
+        Assert.NotNull(attribute);
+        Assert.Equal(RateLimitPolicies.CheckerFeatures, attribute.PolicyName);
+        // The features poll must not share the enrollment-check partition: open checker
+        // tabs polling once a minute would drain the per-IP budget real checks need.
+        Assert.NotEqual(RateLimitPolicies.EnrollmentCheck, attribute.PolicyName);
     }
 }

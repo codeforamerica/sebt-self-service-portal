@@ -338,6 +338,10 @@ public static class Dependencies
             .BindConfiguration(EnrollmentCheckRateLimitSettings.SectionName)
             .ValidateDataAnnotations();
 
+        services.AddOptionsWithValidateOnStart<CheckerFeaturesRateLimitSettings>()
+            .BindConfiguration(CheckerFeaturesRateLimitSettings.SectionName)
+            .ValidateDataAnnotations();
+
         services.AddOptionsWithValidateOnStart<WebhookRateLimitSettings>()
             .BindConfiguration(WebhookRateLimitSettings.SectionName)
             .ValidateDataAnnotations();
