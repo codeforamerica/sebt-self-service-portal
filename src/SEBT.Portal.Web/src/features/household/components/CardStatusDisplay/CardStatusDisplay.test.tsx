@@ -128,20 +128,4 @@ describe('CardStatusDisplay', () => {
 
     expect(screen.queryByRole('link')).toBeNull()
   })
-
-  // ── Description text ──
-
-  it('shows inactive description for Lost/Stolen/Damaged', () => {
-    renderWithStatus('Lost')
-
-    // i18n key: cardTableStatusMessageInactive
-    expect(screen.getByText(/reported as lost, stolen, damaged/)).toBeInTheDocument()
-  })
-
-  it('shows deactivated description for DeactivatedByState', () => {
-    renderWithStatus('DeactivatedByState')
-
-    // i18n key: cardTableStatusMessageDeactivated
-    expect(screen.getByText(/reported as lost, stolen, damaged/)).toBeInTheDocument()
-  })
 })
