@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react'
+import { render, screen, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { FeatureFlagsContext, type FeatureFlagsContextValue } from '@/features/feature-flags'
@@ -80,11 +80,13 @@ describe('OutageGuard', () => {
     expect(mockReplace).not.toHaveBeenCalled()
   })
 
-  it('blocks and redirects while feature flags load when outage is cached as enabled', () => {
+  it('blocks and redirects while feature flags load when outage is cached as enabled', async () => {
     writeCachedOutageFlag(true)
     renderWithFlags({ outage_page_enabled: false }, { isLoading: true })
 
-    expect(screen.queryByText('Portal Content')).not.toBeInTheDocument()
+    await waitFor(() => {
+      expect(screen.queryByText('Portal Content')).not.toBeInTheDocument()
+    })
     expect(mockReplace).toHaveBeenCalledWith('/outage')
   })
 

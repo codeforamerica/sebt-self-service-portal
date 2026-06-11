@@ -3,12 +3,25 @@
 import { useFeatureFlag, useFeatureFlagsStatus } from '@/features/feature-flags'
 import { readCachedOutageFlag, writeCachedOutageFlag } from '@/features/outage/outageFlagCache'
 import { usePathname, useRouter } from 'next/navigation'
-import { useEffect, useState, type ReactNode } from 'react'
+import { useEffect, useSyncExternalStore, type ReactNode } from 'react'
 
 export const OUTAGE_PATH = '/outage'
 
 interface OutageGuardProps {
   children: ReactNode
+}
+
+function subscribeToOutageFlagCache(callback: () => void) {
+  window.addEventListener('storage', callback)
+  return () => window.removeEventListener('storage', callback)
+}
+
+function getOutageFlagCacheSnapshot(): boolean | null {
+  return readCachedOutageFlag()
+}
+
+function getOutageFlagCacheServerSnapshot(): boolean | null {
+  return null
 }
 
 /**
@@ -26,7 +39,13 @@ export function OutageGuard({ children }: OutageGuardProps) {
   const pathname = usePathname()
   const router = useRouter()
   const isOutagePage = pathname === OUTAGE_PATH
-  const [cachedOutageEnabled] = useState(() => readCachedOutageFlag())
+  // useSyncExternalStore keeps SSR/hydration aligned (server snapshot is null) while
+  // still reading sessionStorage on the client after hydration.
+  const cachedOutageEnabled = useSyncExternalStore(
+    subscribeToOutageFlagCache,
+    getOutageFlagCacheSnapshot,
+    getOutageFlagCacheServerSnapshot
+  )
 
   const outageActiveWhileLoading = cachedOutageEnabled === true
   const outageActive = isLoading ? outageActiveWhileLoading : outageEnabled
