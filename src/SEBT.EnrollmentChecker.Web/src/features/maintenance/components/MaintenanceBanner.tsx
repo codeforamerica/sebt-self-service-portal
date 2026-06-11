@@ -12,17 +12,24 @@ export function MaintenanceBanner() {
   // re-resolves its configured copy when the user switches languages.
   const { i18n } = useTranslation()
   const { apiBaseUrl } = getEnrollmentConfig()
-  const { data, error } = useCheckerFeatures(apiBaseUrl)
+  const { data, error, isStale } = useCheckerFeatures(apiBaseUrl)
 
   useEffect(() => {
-    if (error) {
-      // Fail closed (no banner) so a config outage doesn't look like planned
-      // maintenance, but keep the failure observable.
-      console.warn('Maintenance banner state unavailable; hiding banner.', error)
+    if (!error) {
+      return
     }
-  }, [error])
+    if (data && !isStale) {
+      // A poll failed but the last successful state is recent enough to trust;
+      // keep showing it so a transient blip doesn't blank a real notice.
+      console.warn('Features poll failed; showing last-known maintenance banner state.', error)
+    } else {
+      // Fail closed (no banner): nothing trustworthy to show, either because no
+      // fetch has succeeded yet or failures outlasted the staleness tolerance.
+      console.warn('Maintenance banner state unavailable or stale; hiding banner.', error)
+    }
+  }, [error, data, isStale])
 
-  if (!data) {
+  if (!data || isStale) {
     return null
   }
 
