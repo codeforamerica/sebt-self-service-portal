@@ -11,7 +11,7 @@ vi.mock('next/navigation', () => ({ useRouter: () => ({ push: mockPush }) }))
 // Helper to pre-populate context with a child
 function ReviewPageWithChild({
   onSubmit,
-  isSubmitting
+  isSubmitting = false
 }: {
   onSubmit: () => void
   isSubmitting?: boolean
