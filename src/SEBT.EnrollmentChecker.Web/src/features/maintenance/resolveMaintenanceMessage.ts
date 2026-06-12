@@ -33,7 +33,8 @@ export function resolveMaintenanceMessage(
     }
   }
 
-  const baseLanguage = (language ?? 'en').toLowerCase().split('-')[0]
+  // split() always yields at least one element; the fallback satisfies noUncheckedIndexedAccess
+  const baseLanguage = (language ?? 'en').toLowerCase().split('-')[0] ?? 'en'
   const activeMessage = normalized.get(baseLanguage)
   if (activeMessage !== undefined) {
     return activeMessage
