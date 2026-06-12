@@ -66,7 +66,6 @@ const stateLinks: Record<string, StateLinks> = {
   },
   co: {
     footer: {
-      // CO footer URLs are placeholders — real URLs needed from the CO state team before launch
       publicNotifications: '#',
       accessibility: '#',
       privacyAndSecurity: '#',
@@ -78,12 +77,11 @@ const stateLinks: Record<string, StateLinks> = {
       digitalAccessibility: 'https://cdhs.colorado.gov/accessibility-at-cdhs'
     },
     help: {
-      faqs: '#',
-      contactUs: '#',
-      helpDeskEmail: 'mailto:cdhs_sebt_supportcenter@state.co.us'
+      faqs: '',
+      contactUs: '',
+      helpDeskEmail: ''
     },
     external: {
-      // CO contact URL is a placeholder — real URL needed from the CO state team before launch
       contactUsAssistance: '#'
     }
   }
