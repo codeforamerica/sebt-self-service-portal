@@ -15,7 +15,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "pretypecheck": "pnpm --silent copy:generate",
+    "pretypecheck": "pnpm --silent tokens:fonts && pnpm --silent copy:generate",
     "typecheck": "tsc --noEmit",
     "pretest": "pnpm --silent copy:generate",
     "test": "vitest",
