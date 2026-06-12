@@ -19,5 +19,10 @@ export const handlers = [
       { name: 'Adams Elementary', code: 'AES' },
       { name: 'Baker Middle School', code: 'BMS' }
     ])
+  ),
+  http.get('/api/enrollment/features', () =>
+    HttpResponse.json({
+      maintenanceBanner: { enabled: false, message: {} }
+    })
   )
 ]

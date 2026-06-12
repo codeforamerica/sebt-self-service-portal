@@ -33,4 +33,13 @@ public static class FeatureFlags
     /// State partners can toggle via appsettings.{State}.json or AWS AppConfig.
     /// </summary>
     public const string OutagePageEnabled = "outage_page_enabled";
+
+    /// <summary>
+    /// When enabled, the standalone enrollment checker app shows a maintenance banner.
+    /// Banner copy comes from the EnrollmentChecker:MaintenanceBanner:Message per-language
+    /// map (see <see cref="MaintenanceBannerSettings"/>); the checker selects the active
+    /// language's copy client-side. Toggle at runtime via AWS AppConfig; the checker polls
+    /// the enrollment features endpoint, so no checker redeploy is required.
+    /// </summary>
+    public const string EnableCheckerMaintenanceBanner = "enable_checker_maintenance_banner";
 }

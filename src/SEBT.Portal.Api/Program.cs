@@ -321,6 +321,14 @@ builder.Services.AddRateLimiter(options =>
                 new { Error = $"Rate limit exceeded. Maximum {enrollmentSettings.PermitLimit} enrollment checks per {windowDescription} allowed." },
                 cancellationToken);
         }
+        else if (rateLimitAttribute?.PolicyName == RateLimitPolicies.CheckerFeatures)
+        {
+            // The checker's features poll just retries on its next cycle; no
+            // user-facing message is needed.
+            await context.HttpContext.Response.WriteAsJsonAsync(
+                new { Error = "Rate limit exceeded." },
+                cancellationToken);
+        }
         else if (rateLimitAttribute?.PolicyName == RateLimitPolicies.Webhook)
         {
             // Webhook callers (Socure) don't need a friendly message, but log for observability
@@ -376,6 +384,30 @@ builder.Services.AddRateLimiter(options =>
         var ipAddress = httpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown";
         return RateLimitPartition.GetFixedWindowLimiter(
             partitionKey: $"enrollment-check:{ipAddress}",
+            factory: _ => new FixedWindowRateLimiterOptions
+            {
+                PermitLimit = rateLimitOptions.PermitLimit,
+                Window = TimeSpan.FromMinutes(rateLimitOptions.WindowMinutes),
+                QueueProcessingOrder = QueueProcessingOrder.OldestFirst,
+                QueueLimit = 0,
+                AutoReplenishment = true
+            });
+    });
+
+    // Add fixed window limiter policy for the checker features poll with IP-based
+    // partitioning. Deliberately separate from the enrollment-check policy: every open
+    // checker tab polls features once a minute, so a shared partition would let a few
+    // tabs behind one NAT (school computer lab, library) drain the per-IP budget that
+    // real enrollment checks need.
+    options.AddPolicy(RateLimitPolicies.CheckerFeatures, httpContext =>
+    {
+        var rateLimitOptions = httpContext.RequestServices
+            .GetRequiredService<IOptionsMonitor<CheckerFeaturesRateLimitSettings>>()
+            .CurrentValue;
+
+        var ipAddress = httpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown";
+        return RateLimitPartition.GetFixedWindowLimiter(
+            partitionKey: $"checker-features:{ipAddress}",
             factory: _ => new FixedWindowRateLimiterOptions
             {
                 PermitLimit = rateLimitOptions.PermitLimit,
