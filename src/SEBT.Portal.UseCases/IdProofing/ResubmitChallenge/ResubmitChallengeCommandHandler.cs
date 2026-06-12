@@ -74,6 +74,16 @@ public class ResubmitChallengeCommandHandler(
                 PreconditionFailedReason.NotFound, "User not found.");
         }
 
+        if (SocureDocvEgregiousReasonCooldown.IsUserInCooldown(user, DateTime.UtcNow))
+        {
+            logger.LogInformation(
+                "ResubmitChallenge blocked: user {UserId} is within DocV egregious-reason cooldown until {CooldownUntil}",
+                command.UserId, user.IdProofingCooldownUntil);
+            return Result<ResubmitChallengeResponse>.PreconditionFailed(
+                PreconditionFailedReason.Conflict,
+                "Document verification is temporarily unavailable. Please try again later.");
+        }
+
         if (string.IsNullOrWhiteSpace(user.Email))
         {
             logger.LogWarning(

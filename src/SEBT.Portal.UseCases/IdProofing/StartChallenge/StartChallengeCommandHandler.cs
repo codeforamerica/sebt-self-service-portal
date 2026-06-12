@@ -54,6 +54,23 @@ public class StartChallengeCommandHandler(
                 PreconditionFailedReason.NotFound, "Challenge not found.");
         }
 
+        var user = await userRepository.GetUserByIdAsync(command.UserId, cancellationToken);
+        if (user == null)
+        {
+            return Result<StartChallengeResponse>.PreconditionFailed(
+                PreconditionFailedReason.NotFound, "User not found.");
+        }
+
+        if (SocureDocvEgregiousReasonCooldown.IsUserInCooldown(user, DateTime.UtcNow))
+        {
+            logger.LogInformation(
+                "StartChallenge blocked: user {UserId} is within DocV egregious-reason cooldown until {CooldownUntil}",
+                command.UserId, user.IdProofingCooldownUntil);
+            return Result<StartChallengeResponse>.PreconditionFailed(
+                PreconditionFailedReason.Conflict,
+                "Document verification is temporarily unavailable. Please try again later.");
+        }
+
         // Check-on-read expiration: if Created and past ExpiresAt, transition to Expired
         if (challenge.Status == DocVerificationStatus.Created
             && challenge.ExpiresAt.HasValue
@@ -145,13 +162,6 @@ public class StartChallengeCommandHandler(
         // not support StartDocvSessionAsync. If we reach here with the real client, it means the
         // challenge was created without DocV data — return a clear error so the frontend can
         // redirect the user to re-submit ID proofing.
-        var user = await userRepository.GetUserByIdAsync(command.UserId, cancellationToken);
-        if (user == null)
-        {
-            return Result<StartChallengeResponse>.PreconditionFailed(
-                PreconditionFailedReason.NotFound, "User not found.");
-        }
-
         if (string.IsNullOrWhiteSpace(user.Email))
         {
             return Result<StartChallengeResponse>.PreconditionFailed(

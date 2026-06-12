@@ -28,6 +28,7 @@ internal static class UserEncryptedFieldMapper
             TanfId = crypto.DecryptOrPassThroughLegacy(entity.TanfId),
             Ssn = entity.Ssn,
             IdProofingAttemptCount = entity.IdProofingAttemptCount,
+            IdProofingCooldownUntil = entity.IdProofingCooldownUntil,
             CreatedAt = entity.CreatedAt,
             UpdatedAt = entity.UpdatedAt
         };

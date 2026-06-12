@@ -178,4 +178,31 @@ public class SocureSettingsValidatorTests
         Assert.False(result.Succeeded);
         Assert.Contains("WebhookSecret", result.Failures!.Single());
     }
+
+    [Fact]
+    public void Validate_ShouldFail_WhenEgregiousCooldownEnabledWithNoReasonCodes()
+    {
+        var validator = CreateValidator("Development");
+        var settings = CreateValidStubSettings();
+        settings.DocvEgregiousReasonCooldown.Enabled = true;
+        settings.DocvEgregiousReasonCooldown.ReasonCodes = [];
+
+        var result = validator.Validate(null, settings);
+
+        Assert.False(result.Succeeded);
+        Assert.Contains("ReasonCodes", result.Failures!.Single());
+    }
+
+    [Fact]
+    public void Validate_ShouldSucceed_WhenEgregiousCooldownEnabledWithReasonCodes()
+    {
+        var validator = CreateValidator("Development");
+        var settings = CreateValidStubSettings();
+        settings.DocvEgregiousReasonCooldown.Enabled = true;
+        settings.DocvEgregiousReasonCooldown.ReasonCodes = ["R815"];
+
+        var result = validator.Validate(null, settings);
+
+        Assert.True(result.Succeeded);
+    }
 }

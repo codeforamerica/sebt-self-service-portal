@@ -38,6 +38,13 @@ public class StartChallengeCommandHandlerTests
         new(challengeRepository, userRepository, householdRepository, socureClient, socureSettings,
             idProofingEligibilitySettings, validator, logger);
 
+
+    private void StubUserWithoutCooldown(Guid userId, string email = "test@example.com")
+    {
+        userRepository.GetUserByIdAsync(userId, Arg.Any<CancellationToken>())
+            .Returns(new User { Id = userId, Email = email });
+    }
+
     // --- IDOR prevention (Codex test 1) ---
 
     [Fact]
@@ -96,12 +103,44 @@ public class StartChallengeCommandHandlerTests
 
         challengeRepository.GetByPublicIdAsync(command.ChallengeId, command.UserId, Arg.Any<CancellationToken>())
             .Returns(challenge);
+        StubUserWithoutCooldown(command.UserId);
 
         var result = await handler.Handle(command, CancellationToken.None);
 
         Assert.False(result.IsSuccess);
         var preconditionFailed = Assert.IsType<PreconditionFailedResult<StartChallengeResponse>>(result);
         Assert.Equal(PreconditionFailedReason.Conflict, preconditionFailed.Reason);
+    }
+
+
+    [Fact]
+    public async Task Handle_ShouldReturnConflict_WhenUserIsInDocvEgregiousReasonCooldown()
+    {
+        var handler = CreateHandler();
+        var challenge = DocVerificationChallengeFactory.CreatePendingChallenge();
+        var command = new StartChallengeCommand
+        {
+            ChallengeId = challenge.PublicId,
+            UserId = challenge.UserId
+        };
+
+        challengeRepository.GetByPublicIdAsync(command.ChallengeId, command.UserId, Arg.Any<CancellationToken>())
+            .Returns(challenge);
+        userRepository.GetUserByIdAsync(command.UserId, Arg.Any<CancellationToken>())
+            .Returns(new User
+            {
+                Id = command.UserId,
+                Email = "test@example.com",
+                IdProofingCooldownUntil = DateTime.UtcNow.AddDays(7)
+            });
+
+        var result = await handler.Handle(command, CancellationToken.None);
+
+        Assert.False(result.IsSuccess);
+        var preconditionFailed = Assert.IsType<PreconditionFailedResult<StartChallengeResponse>>(result);
+        Assert.Equal(PreconditionFailedReason.Conflict, preconditionFailed.Reason);
+        await socureClient.DidNotReceive()
+            .StartDocvSessionAsync(Arg.Any<Guid>(), Arg.Any<string>(), Arg.Any<CancellationToken>());
     }
 
     // --- Repeated start call returns existing token (Codex test 6) ---
@@ -119,6 +158,7 @@ public class StartChallengeCommandHandlerTests
 
         challengeRepository.GetByPublicIdAsync(command.ChallengeId, command.UserId, Arg.Any<CancellationToken>())
             .Returns(challenge);
+        StubUserWithoutCooldown(command.UserId);
 
         var result = await handler.Handle(command, CancellationToken.None);
 
@@ -201,6 +241,7 @@ public class StartChallengeCommandHandlerTests
 
         challengeRepository.GetByPublicIdAsync(command.ChallengeId, command.UserId, Arg.Any<CancellationToken>())
             .Returns(challenge);
+        StubUserWithoutCooldown(command.UserId);
 
         var result = await handler.Handle(command, CancellationToken.None);
 
@@ -411,6 +452,7 @@ public class StartChallengeCommandHandlerTests
 
         challengeRepository.GetByPublicIdAsync(command.ChallengeId, command.UserId, Arg.Any<CancellationToken>())
             .Returns(challenge);
+        StubUserWithoutCooldown(command.UserId);
 
         var result = await handler.Handle(command, CancellationToken.None);
 
@@ -422,9 +464,6 @@ public class StartChallengeCommandHandlerTests
         // Should NOT call Socure — data was already stored
         await socureClient.DidNotReceive()
             .StartDocvSessionAsync(Arg.Any<Guid>(), Arg.Any<string>(), Arg.Any<CancellationToken>());
-        // Should NOT need to look up the user
-        await userRepository.DidNotReceive()
-            .GetUserByIdAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>());
         // Should update challenge to Pending
         await challengeRepository.Received(1)
             .UpdateAsync(Arg.Is<DocVerificationChallenge>(c =>
@@ -590,6 +629,7 @@ public class StartChallengeCommandHandlerTests
 
         challengeRepository.GetByPublicIdAsync(command.ChallengeId, command.UserId, Arg.Any<CancellationToken>())
             .Returns(challenge);
+        StubUserWithoutCooldown(command.UserId);
 
         var result = await handler.Handle(command, CancellationToken.None);
 
@@ -621,6 +661,7 @@ public class StartChallengeCommandHandlerTests
 
         challengeRepository.GetByPublicIdAsync(command.ChallengeId, command.UserId, Arg.Any<CancellationToken>())
             .Returns(challenge);
+        StubUserWithoutCooldown(command.UserId);
 
         var result = await handler.Handle(command, CancellationToken.None);
 
@@ -645,6 +686,7 @@ public class StartChallengeCommandHandlerTests
 
         challengeRepository.GetByPublicIdAsync(command.ChallengeId, command.UserId, Arg.Any<CancellationToken>())
             .Returns(challenge);
+        StubUserWithoutCooldown(command.UserId);
 
         var result = await handler.Handle(command, CancellationToken.None);
 

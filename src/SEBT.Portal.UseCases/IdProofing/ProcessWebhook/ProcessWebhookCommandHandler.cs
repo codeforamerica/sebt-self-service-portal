@@ -6,6 +6,7 @@ using SEBT.Portal.Core.Exceptions;
 using SEBT.Portal.Core.Models.Auth;
 using SEBT.Portal.Core.Models.DocVerification;
 using SEBT.Portal.Core.Repositories;
+using SEBT.Portal.Core.Utilities;
 using SEBT.Portal.Kernel;
 using SEBT.Portal.Kernel.Results;
 
@@ -98,7 +99,17 @@ public class ProcessWebhookCommandHandler(
         // Route on the top-level workflow decision (DC-296). The DocV enrichment decision is
         // diagnostic only: it reflects document quality alone and can disagree with the
         // workflow outcome when Digital Intelligence signals drive a reject.
+        var egregiousReasonCodes = SocureDocvEgregiousReasonCooldown.GetMatchingEgregiousCodes(
+            socureSettings.DocvEgregiousReasonCooldown,
+            command.DocumentVerificationReasonCodes);
+
         var newStatus = MapWorkflowDecisionToStatus(command.WorkflowDecision);
+        if (egregiousReasonCodes != null)
+        {
+            // Egregious DocV failures are terminal rejects with a cooldown — never retry-eligible.
+            newStatus = DocVerificationStatus.Rejected;
+        }
+
         if (newStatus == null)
         {
             logger.LogWarning(
@@ -125,7 +136,13 @@ public class ProcessWebhookCommandHandler(
 
         if (newStatus == DocVerificationStatus.Rejected)
         {
-            challenge.OffboardingReason = "docVerificationFailed";
+            challenge.OffboardingReason = egregiousReasonCodes != null
+                ? SocureDocvEgregiousReasonCooldown.OffboardingReason
+                : "docVerificationFailed";
+            if (egregiousReasonCodes != null)
+            {
+                challenge.AllowIdRetry = false;
+            }
         }
 
         try
@@ -143,11 +160,21 @@ public class ProcessWebhookCommandHandler(
             return Result.Success();
         }
 
+        if (egregiousReasonCodes != null)
+        {
+            await ApplyEgregiousReasonCooldownAsync(
+                challenge.UserId,
+                egregiousReasonCodes,
+                cancellationToken);
+        }
+
         logger.LogInformation(
             "Webhook event {EventId}: challenge {ChallengeId} transitioned to {Status} " +
-            "(workflow_decision={WorkflowDecision}, docv_decision={DocumentDecision})",
+            "(workflow_decision={WorkflowDecision}, docv_decision={DocumentDecision}, " +
+            "egregious_docv_codes={EgregiousCodes})",
             SanitizeForLogging(command.EventId), challenge.PublicId, newStatus,
-            SanitizeForLogging(command.WorkflowDecision), SanitizeForLogging(command.DocumentDecision));
+            SanitizeForLogging(command.WorkflowDecision), SanitizeForLogging(command.DocumentDecision),
+            string.Join(',', egregiousReasonCodes ?? Array.Empty<string>()));
 
         // If verified: update user's proofing status and IAL level
         if (newStatus == DocVerificationStatus.Verified)
@@ -241,5 +268,34 @@ public class ProcessWebhookCommandHandler(
         logger.LogInformation(
             "User {UserId} proofing status updated to Completed, IAL1plus after document verification",
             userId);
+    }
+
+    private async Task ApplyEgregiousReasonCooldownAsync(
+        Guid userId,
+        IReadOnlyList<string> egregiousReasonCodes,
+        CancellationToken cancellationToken)
+    {
+        var user = await userRepository.GetUserByIdAsync(userId, cancellationToken);
+        if (user == null)
+        {
+            logger.LogError(
+                "User {UserId} not found when applying DocV egregious-reason cooldown",
+                userId);
+            return;
+        }
+
+        var cooldownUntil = SocureDocvEgregiousReasonCooldown.ComputeCooldownUntil(
+            socureSettings.DocvEgregiousReasonCooldown,
+            user,
+            DateTime.UtcNow);
+        user.IdProofingCooldownUntil = cooldownUntil;
+
+        await userRepository.UpdateUserAsync(user, cancellationToken);
+
+        logger.LogInformation(
+            "User {UserId} DocV egregious-reason cooldown applied until {CooldownUntil} (codes: {Codes})",
+            userId,
+            cooldownUntil,
+            string.Join(',', egregiousReasonCodes));
     }
 }

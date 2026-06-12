@@ -6,6 +6,7 @@ using SEBT.Portal.Core.Exceptions;
 using SEBT.Portal.Core.Models.Auth;
 using SEBT.Portal.Core.Models.DocVerification;
 using SEBT.Portal.Core.Repositories;
+using SEBT.Portal.Core.Utilities;
 using SEBT.Portal.Kernel;
 using SEBT.Portal.Kernel.Results;
 using SEBT.Portal.TestUtilities.Helpers;
@@ -18,7 +19,16 @@ public class ProcessWebhookCommandHandlerTests
     private readonly IDocVerificationChallengeRepository challengeRepository =
         Substitute.For<IDocVerificationChallengeRepository>();
     private readonly IUserRepository userRepository = Substitute.For<IUserRepository>();
-    private readonly SocureSettings socureSettings = new() { UseStub = true };
+    private readonly SocureSettings socureSettings = new()
+    {
+        UseStub = true,
+        DocvEgregiousReasonCooldown = new SocureDocvEgregiousReasonCooldownSettings
+        {
+            Enabled = true,
+            CooldownDays = 14,
+            ReasonCodes = ["R815", "R836"]
+        }
+    };
     private readonly IValidator<ProcessWebhookCommand> validator =
         new DataAnnotationsValidator<ProcessWebhookCommand>(null!);
     private readonly NullLogger<ProcessWebhookCommandHandler> logger =
@@ -32,14 +42,16 @@ public class ProcessWebhookCommandHandlerTests
         string? referenceId = "ref-456",
         string? workflowDecision = "ACCEPT",
         string? documentDecision = "accept",
-        string? eventType = "evaluation_completed") =>
+        string? eventType = "evaluation_completed",
+        IReadOnlyList<string>? documentVerificationReasonCodes = null) =>
         new()
         {
             EventId = eventId,
             ReferenceId = referenceId,
             WorkflowDecision = workflowDecision,
             DocumentDecision = documentDecision,
-            EventType = eventType
+            EventType = eventType,
+            DocumentVerificationReasonCodes = documentVerificationReasonCodes
         };
 
     // --- Webhook signature rejection (Codex test 2) ---
@@ -690,6 +702,72 @@ public class ProcessWebhookCommandHandlerTests
             .GetBySocureReferenceIdAsync(Arg.Any<string>(), Arg.Any<CancellationToken>());
         await challengeRepository.DidNotReceive()
             .GetByEvalIdAsync(Arg.Any<string>(), Arg.Any<CancellationToken>());
+    }
+
+    // --- Egregious DocV reason cooldown ---
+
+    [Fact]
+    public async Task HandleAsync_EgregiousDocvReasonCode_AppliesUserCooldownAndRejectsChallenge()
+    {
+        var handler = CreateHandler();
+        var challenge = DocVerificationChallengeFactory.CreatePendingChallenge();
+        var user = new User
+        {
+            Id = challenge.UserId,
+            Email = "test@example.com"
+        };
+
+        challengeRepository.GetBySocureReferenceIdAsync("ref-456", Arg.Any<CancellationToken>())
+            .Returns(challenge);
+        userRepository.GetUserByIdAsync(challenge.UserId, Arg.Any<CancellationToken>())
+            .Returns(user);
+
+        var before = DateTime.UtcNow;
+        var command = CreateValidCommand(
+            workflowDecision: "RESUBMIT",
+            documentDecision: null,
+            documentVerificationReasonCodes: ["R815"]);
+        var result = await handler.Handle(command, CancellationToken.None);
+        var after = DateTime.UtcNow;
+
+        Assert.True(result.IsSuccess);
+        await challengeRepository.Received(1)
+            .UpdateAsync(Arg.Is<DocVerificationChallenge>(c =>
+                c.Status == DocVerificationStatus.Rejected
+                && c.OffboardingReason == SocureDocvEgregiousReasonCooldown.OffboardingReason
+                && c.AllowIdRetry == false),
+                Arg.Any<CancellationToken>());
+        await userRepository.Received(1)
+            .UpdateUserAsync(Arg.Is<User>(u =>
+                u.IdProofingCooldownUntil.HasValue
+                && u.IdProofingCooldownUntil.Value >= before.AddDays(14)
+                && u.IdProofingCooldownUntil.Value <= after.AddDays(14).AddSeconds(1)),
+                Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task HandleAsync_NonEgregiousDocvReasonCode_DoesNotApplyCooldown()
+    {
+        var handler = CreateHandler();
+        var challenge = DocVerificationChallengeFactory.CreatePendingChallenge();
+
+        challengeRepository.GetBySocureReferenceIdAsync("ref-456", Arg.Any<CancellationToken>())
+            .Returns(challenge);
+
+        var command = CreateValidCommand(
+            workflowDecision: "REJECT",
+            documentDecision: "reject",
+            documentVerificationReasonCodes: ["R940"]);
+        var result = await handler.Handle(command, CancellationToken.None);
+
+        Assert.True(result.IsSuccess);
+        await challengeRepository.Received(1)
+            .UpdateAsync(Arg.Is<DocVerificationChallenge>(c =>
+                c.Status == DocVerificationStatus.Rejected
+                && c.OffboardingReason == "docVerificationFailed"),
+                Arg.Any<CancellationToken>());
+        await userRepository.DidNotReceive()
+            .UpdateUserAsync(Arg.Any<User>(), Arg.Any<CancellationToken>());
     }
 
     // --- Input sanitization: control characters rejected ---

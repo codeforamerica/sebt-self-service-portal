@@ -92,4 +92,9 @@ public class UserEntity
     /// Number of times this user has submitted ID proofing to Socure.
     /// </summary>
     public int IdProofingAttemptCount { get; set; }
+
+    /// <summary>
+    /// UTC timestamp until which ID proofing / DocV is blocked after an egregious Socure reason code.
+    /// </summary>
+    public DateTime? IdProofingCooldownUntil { get; set; }
 }

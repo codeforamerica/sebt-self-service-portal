@@ -36,6 +36,22 @@ public class SocureSettingsValidator(IHostEnvironment environment) : IValidateOp
                 "Socure:DocvTransactionTokenTtlMinutes must be between 1 and 120.");
         }
 
+        if (options.DocvEgregiousReasonCooldown.Enabled)
+        {
+            if (options.DocvEgregiousReasonCooldown.CooldownDays < 1
+                || options.DocvEgregiousReasonCooldown.CooldownDays > 365)
+            {
+                return ValidateOptionsResult.Fail(
+                    "Socure:DocvEgregiousReasonCooldown:CooldownDays must be between 1 and 365.");
+            }
+
+            if (options.DocvEgregiousReasonCooldown.ReasonCodes.Count == 0)
+            {
+                return ValidateOptionsResult.Fail(
+                    "Socure:DocvEgregiousReasonCooldown:ReasonCodes must contain at least one code when Enabled is true.");
+            }
+        }
+
         // UseStub bypasses webhook signature validation — only safe in Development
         if (options.UseStub && !environment.IsDevelopment())
         {

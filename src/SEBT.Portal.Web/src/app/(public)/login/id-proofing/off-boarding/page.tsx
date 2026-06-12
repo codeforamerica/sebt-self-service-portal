@@ -87,6 +87,16 @@ export default function OffBoardingPage() {
     applyBody = undefined
     applySkipBody = undefined
     applyLabel = undefined
+  } else if (reason === 'docVerificationCooldown') {
+    title = 'Document verification is temporarily unavailable'
+    body =
+      'We were unable to verify your identity from the documents you submitted. ' +
+      'Please wait before trying again, or contact us if you need help.'
+    canApply = false
+    contactLabel = tCommon('linkContactUs')
+    applyBody = undefined
+    applySkipBody = undefined
+    applyLabel = undefined
   } else {
     title = t('title')
     body = t('body1')

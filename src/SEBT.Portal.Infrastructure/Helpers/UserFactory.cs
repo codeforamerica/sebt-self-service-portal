@@ -103,6 +103,7 @@ public static class UserFactory
             IsCoLoaded = user.IsCoLoaded,
             CoLoadedLastUpdated = user.CoLoadedLastUpdated,
             IdProofingAttemptCount = user.IdProofingAttemptCount,
+            IdProofingCooldownUntil = user.IdProofingCooldownUntil,
             CreatedAt = user.CreatedAt,
             UpdatedAt = user.UpdatedAt
         };

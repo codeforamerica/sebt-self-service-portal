@@ -54,6 +54,7 @@ public class WebhookController(
             WorkflowDecision = payload.Data?.Decision,
             // DocV enrichment decision is kept for diagnostic logging, not routing.
             DocumentDecision = ExtractDocumentDecision(payload),
+            DocumentVerificationReasonCodes = ExtractDocumentVerificationReasonCodes(payload),
             WebhookSignature = bearerToken
         };
 
@@ -122,6 +123,37 @@ public class WebhookController(
         catch (KeyNotFoundException)
         {
             return null;
+        }
+    }
+
+    private static IReadOnlyList<string> ExtractDocumentVerificationReasonCodes(WebhookPayload payload)
+    {
+        var docvEnrichment = payload.Data?.DataEnrichments?
+            .FirstOrDefault(e => e.Response != null && HasDocumentVerification(e.Response.Value));
+
+        if (docvEnrichment?.Response == null)
+        {
+            return Array.Empty<string>();
+        }
+
+        try
+        {
+            var docv = docvEnrichment.Response.Value.GetProperty("documentVerification");
+            if (!docv.TryGetProperty("reasonCodes", out var codes)
+                || codes.ValueKind != JsonValueKind.Array)
+            {
+                return Array.Empty<string>();
+            }
+
+            return codes.EnumerateArray()
+                .Select(element => element.GetString())
+                .Where(code => !string.IsNullOrWhiteSpace(code))
+                .Select(code => code!)
+                .ToList();
+        }
+        catch (KeyNotFoundException)
+        {
+            return Array.Empty<string>();
         }
     }
 

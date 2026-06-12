@@ -95,6 +95,7 @@ public class DataSeeder : IDataSeeder
             IsCoLoaded = user.IsCoLoaded,
             CoLoadedLastUpdated = user.CoLoadedLastUpdated,
             IdProofingAttemptCount = user.IdProofingAttemptCount,
+            IdProofingCooldownUntil = user.IdProofingCooldownUntil,
             CreatedAt = user.CreatedAt,
             UpdatedAt = user.UpdatedAt,
             Ssn = _identifierHasher.HashForStorage(user.Ssn)

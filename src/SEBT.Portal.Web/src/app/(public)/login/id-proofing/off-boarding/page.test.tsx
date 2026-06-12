@@ -290,6 +290,17 @@ describe('OffBoardingPage', () => {
       )
     })
 
+    it('renders cooldown-specific copy when reason is docVerificationCooldown', async () => {
+      await renderPage({ reason: 'docVerificationCooldown' })
+
+      const content = screen.getByTestId('off-boarding-content')
+      expect(content).toHaveAttribute(
+        'data-title',
+        'Document verification is temporarily unavailable'
+      )
+      expect(content).toHaveAttribute('data-can-apply', 'false')
+    })
+
     it('uses step-up failure copy for OIDC callback errors (CO MyCO step-up)', async () => {
       await renderPage({ reason: 'oidcCallbackError', isCoLoaded: false })
 

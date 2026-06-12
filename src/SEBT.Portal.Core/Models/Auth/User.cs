@@ -102,4 +102,10 @@ public class User
     /// Used to enforce the retry cap (max 3 attempts).
     /// </summary>
     public int IdProofingAttemptCount { get; set; }
+
+    /// <summary>
+    /// When set and in the future, the user is blocked from ID proofing and DocV retries
+    /// due to a prior Socure DocV egregious reason code (see Socure DocV cooldown config).
+    /// </summary>
+    public DateTime? IdProofingCooldownUntil { get; set; }
 }

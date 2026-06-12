@@ -94,4 +94,10 @@ public class SocureSettings
     /// Leave null in production.
     /// </summary>
     public string? SandboxPhoneOverride { get; set; }
+
+    /// <summary>
+    /// Cooldown policy for known egregious Socure DocV reason codes. Disabled by default;
+    /// DC enables this in <c>appsettings.dc.json</c>.
+    /// </summary>
+    public SocureDocvEgregiousReasonCooldownSettings DocvEgregiousReasonCooldown { get; set; } = new();
 }

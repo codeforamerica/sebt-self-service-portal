@@ -108,6 +108,18 @@ public class SubmitIdProofingCommandHandler(
                     OffboardingReason: "maxAttemptsReached"));
         }
 
+        if (SocureDocvEgregiousReasonCooldown.IsUserInCooldown(user, DateTime.UtcNow))
+        {
+            logger.LogInformation(
+                "User {UserId} is within DocV egregious-reason cooldown until {CooldownUntil}",
+                command.UserId, user.IdProofingCooldownUntil);
+            return Result<SubmitIdProofingResponse>.Success(
+                new SubmitIdProofingResponse(
+                    "failed",
+                    AllowIdRetry: false,
+                    OffboardingReason: SocureDocvEgregiousReasonCooldown.OffboardingReason));
+        }
+
         // Co-loaded users still need a SNAP/TANF identifier so we can household them; off-board
         // when no ID is provided. Non-co-loaded users fall through to Socure DocV — Socure's
         // consumer_onboarding workflow short-circuits to document verification when KYC can't
