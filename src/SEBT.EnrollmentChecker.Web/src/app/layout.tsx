@@ -2,6 +2,7 @@
 // re-exports react-i18next-dependent modules. Importing from the barrel in a
 // Server Component would pull react-i18next into the RSC bundle and crash.
 import { headingFont, primaryFont } from '@/design/fonts'
+import { MaintenanceBanner } from '@/features/maintenance'
 import { env } from '@/lib/env'
 import { buildRootMetadata } from '@/lib/metadata'
 import { Providers } from '@/providers/Providers'
@@ -48,6 +49,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <body>
         <Providers>
           <SkipNav />
+          <MaintenanceBanner />
           <Header state={state} />
           <main id="main-content">{children}</main>
           <HelpSection state={state} />
