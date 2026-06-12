@@ -5,6 +5,7 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using SEBT.Portal.Core.AppSettings;
 using SEBT.Portal.Core.Services;
+using SEBT.Portal.Core.Utilities;
 
 namespace SEBT.Portal.Infrastructure.Services;
 
@@ -74,7 +75,7 @@ public class SmtpClientService(IOptionsMonitor<SmtpClientSettings> optionsMonito
         }
         catch (Exception ex)
         {
-            logger.LogError(ex, "Error sending email to: {Recipients}", message.To);
+            logger.LogError(ex, "Error sending email to {Recipient}", PiiMasker.MaskEmail(to));
             throw;
         }
     }
