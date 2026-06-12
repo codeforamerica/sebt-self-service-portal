@@ -48,7 +48,8 @@ export const TEST_FEATURE_FLAGS = {
   show_card_last4: true,
   show_application_date: true,
   defer_ebt_card_data_loading: false,
-  enable_beta_banner: false
+  enable_beta_banner: false,
+  outage_page_enabled: false
 } as const
 
 // Test household data (mirrors MockHouseholdRepository seeded data)
