@@ -29,6 +29,12 @@ public static class FeatureFlags
     public const string TestErrorEndpointsEnabled = "test_error_endpoints_enabled";
 
     /// <summary>
+    /// When enabled, the portal shows a sitewide outage page instead of normal routes.
+    /// State partners can toggle via appsettings.{State}.json or AWS AppConfig.
+    /// </summary>
+    public const string OutagePageEnabled = "outage_page_enabled";
+
+    /// <summary>
     /// When enabled, the standalone enrollment checker app shows a maintenance banner.
     /// Banner copy comes from the EnrollmentChecker:MaintenanceBanner:Message per-language
     /// map (see <see cref="MaintenanceBannerSettings"/>); the checker selects the active
