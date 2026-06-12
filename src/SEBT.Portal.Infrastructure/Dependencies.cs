@@ -338,6 +338,10 @@ public static class Dependencies
             .BindConfiguration(EnrollmentCheckRateLimitSettings.SectionName)
             .ValidateDataAnnotations();
 
+        services.AddOptionsWithValidateOnStart<CheckerFeaturesRateLimitSettings>()
+            .BindConfiguration(CheckerFeaturesRateLimitSettings.SectionName)
+            .ValidateDataAnnotations();
+
         services.AddOptionsWithValidateOnStart<WebhookRateLimitSettings>()
             .BindConfiguration(WebhookRateLimitSettings.SectionName)
             .ValidateDataAnnotations();
@@ -353,6 +357,9 @@ public static class Dependencies
         services.AddSingleton<IValidateOptions<SelfServiceRulesSettings>, SelfServiceRulesSettingsValidator>();
         services.AddOptionsWithValidateOnStart<SelfServiceRulesSettings>()
             .BindConfiguration(SelfServiceRulesSettings.SectionName);
+
+        services.AddOptions<EnrollmentCheckerSettings>()
+            .BindConfiguration(EnrollmentCheckerSettings.SectionName);
 
         services.AddOptions<CoLoadedCohortFilterSettings>()
             .BindConfiguration(CoLoadedCohortFilterSettings.SectionName);
