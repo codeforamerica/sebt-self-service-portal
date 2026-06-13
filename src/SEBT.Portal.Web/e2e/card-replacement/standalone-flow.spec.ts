@@ -78,7 +78,9 @@ test.describe('Standalone replacement flow', () => {
 
     test('renders confirm request page with child name and address', async ({ page }) => {
       await page.goto(`/cards/replace/confirm?case=${ENCODED_CASE}`)
-      await expect(page.getByText("John Doe's card")).toBeVisible()
+      // Scope to the summary list item — the pre-title above the heading also
+      // contains the child's name, so a bare text match would be ambiguous.
+      await expect(page.getByRole('listitem').filter({ hasText: "John Doe's card" })).toBeVisible()
       await expect(page.locator('address')).toContainText(EXPECTED_ADDRESS)
     })
 

@@ -5,7 +5,9 @@ import userEvent from '@testing-library/user-event'
 import { http, HttpResponse } from 'msw'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
+import enCoOptionalId from '@/content/locales/en/co/optionalId.json'
 import enCoResult from '@/content/locales/en/co/result.json'
+import enDcOptionalId from '@/content/locales/en/dc/optionalId.json'
 import enDcResult from '@/content/locales/en/dc/result.json'
 import type { Address, SummerEbtCase } from '@/features/household/api/schema'
 import { server } from '@/mocks/server'
@@ -50,6 +52,22 @@ vi.mock('@sebt/design-system', async (importOriginal) => {
     getState: () => mockState
   }
 })
+
+// i18next's deep addResourceBundle mutates the bundle object already in its
+// store, and initI18n seeds the store with the very module objects the JSON
+// imports above resolve to. Snapshot pristine copies before any test runs and
+// only ever hand clones to addResourceBundle, so a state swap can never
+// corrupt the restore source.
+const pristineBundles = {
+  dc: { result: structuredClone(enDcResult), optionalId: structuredClone(enDcOptionalId) },
+  co: { result: structuredClone(enCoResult), optionalId: structuredClone(enCoOptionalId) }
+} as const
+
+function loadStateBundles(state: keyof typeof pristineBundles) {
+  const bundles = state === 'co' ? pristineBundles.co : pristineBundles.dc
+  i18n.addResourceBundle('en', 'result', structuredClone(bundles.result), true, true)
+  i18n.addResourceBundle('en', 'optionalId', structuredClone(bundles.optionalId), true, true)
+}
 
 function createTestQueryClient() {
   return new QueryClient({
@@ -125,9 +143,8 @@ describe('ConfirmRequest', () => {
     mockSetPageData.mockClear()
     mockTrackEvent.mockClear()
     mockState = 'dc'
-    // Restore DC 'result' bundle in case a prior test swapped to CO. addResourceBundle
-    // with deep+overwrite ensures we get the DC values regardless of previous state.
-    i18n.addResourceBundle('en', 'result', enDcResult, true, true)
+    // Restore pristine DC bundles in case a prior test swapped to CO or overrode keys.
+    loadStateBundles('dc')
   })
 
   // --- Content rendering ---
@@ -139,8 +156,8 @@ describe('ConfirmRequest', () => {
 
   it('renders the state-specific title for CO', () => {
     mockState = 'co'
-    // Swap to CO 'result' bundle for this test; beforeEach restores DC for subsequent tests.
-    i18n.addResourceBundle('en', 'result', enCoResult, true, true)
+    // Swap to CO bundles for this test; beforeEach restores DC for subsequent tests.
+    loadStateBundles('co')
     renderConfirmRequest()
     expect(screen.getByText(/Summer EBT/)).toBeInTheDocument()
   })
@@ -167,6 +184,7 @@ describe('ConfirmRequest', () => {
 
   it('shows card number in summary for CO', () => {
     mockState = 'co'
+    loadStateBundles('co')
     renderConfirmRequest()
     expect(screen.getAllByText(/1234 \(last 4 digits\)/)).toHaveLength(2)
   })
@@ -175,6 +193,92 @@ describe('ConfirmRequest', () => {
     mockState = 'dc'
     renderConfirmRequest()
     expect(screen.queryByText(/last 4 digits/i)).not.toBeInTheDocument()
+  })
+
+  it('renders the child card lines from the optionalId who-is-card key', () => {
+    // Sentinel template proves the component reads the translation key (with
+    // [M.] stripped, since the case model has no middle name) instead of
+    // hardcoding the English word order.
+    i18n.addResourceBundle(
+      'en',
+      'optionalId',
+      { "who'sCard": 'Card belonging to [First name] [M.] [Last name]' },
+      true,
+      true
+    )
+    renderConfirmRequest()
+    expect(screen.getByText('Card belonging to Sophia Martinez')).toBeInTheDocument()
+    expect(screen.getByText('Card belonging to James Martinez')).toBeInTheDocument()
+  })
+
+  it('renders the card number lines from the optionalId cardNumber key for CO', () => {
+    mockState = 'co'
+    i18n.addResourceBundle(
+      'en',
+      'optionalId',
+      { cardNumber: 'Número de tarjeta: [9999]' },
+      true,
+      true
+    )
+    renderConfirmRequest()
+    expect(screen.getAllByText('Número de tarjeta: 1234')).toHaveLength(2)
+  })
+
+  it('renders the card list with visible bullets', () => {
+    renderConfirmRequest()
+    const list = screen.getByText(/Sophia Martinez/).closest('ul')
+    expect(list).toHaveClass('usa-list')
+    expect(list).not.toHaveClass('usa-list--unstyled')
+  })
+
+  // --- Single vs multi card copy ---
+
+  it('uses plural copy for a multi-card order', () => {
+    renderConfirmRequest()
+    expect(screen.getByRole('button', { name: 'Order cards' })).toBeInTheDocument()
+    expect(
+      screen.getByText('New cards will be mailed to the following address:')
+    ).toBeInTheDocument()
+    expect(screen.getByText(/Once replacement cards are created/)).toBeInTheDocument()
+  })
+
+  it('uses singular copy for a single-card order', () => {
+    renderConfirmRequest({ cases: [TEST_CASES[0]!] })
+    expect(screen.getByRole('button', { name: 'Order card' })).toBeInTheDocument()
+    expect(
+      screen.getByText('Your new card will be mailed to the following address:')
+    ).toBeInTheDocument()
+    expect(screen.getByText(/Once a replacement card is created/)).toBeInTheDocument()
+  })
+
+  // --- Pre-title ---
+
+  it('renders the pre-title for a single-card order (DC)', () => {
+    renderConfirmRequest({ cases: [TEST_CASES[0]!] })
+    expect(screen.getByText("Replace Sophia Martinez's card")).toBeInTheDocument()
+  })
+
+  it('renders the card-ending pre-title for a single-card order (CO)', () => {
+    mockState = 'co'
+    loadStateBundles('co')
+    renderConfirmRequest({ cases: [TEST_CASES[0]!] })
+    expect(screen.getByText('Replace card ending in 1234')).toBeInTheDocument()
+  })
+
+  it('does not render a pre-title for a multi-card order', () => {
+    renderConfirmRequest()
+    expect(screen.queryByText("Replace Sophia Martinez's card")).not.toBeInTheDocument()
+    expect(screen.queryByText(/Replace card ending in/)).not.toBeInTheDocument()
+  })
+
+  it('skips the pre-title when a placeholder cannot be filled (CO without last 4)', () => {
+    mockState = 'co'
+    loadStateBundles('co')
+    renderConfirmRequest({
+      cases: [{ ...TEST_CASES[0]!, ebtCardLastFour: null }]
+    })
+    expect(screen.queryByText(/Replace card ending in/)).not.toBeInTheDocument()
+    expect(screen.queryByText(/\[9999\]/)).not.toBeInTheDocument()
   })
 
   // --- Navigation ---
