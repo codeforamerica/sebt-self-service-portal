@@ -118,7 +118,7 @@ public class GetHouseholdDataQueryHandler(
         // Classify the household on the PRE-filter state so analytics can
         // distinguish cohorts even after co-loaded cases are suppressed. Then
         // apply the suppression for the excluded cohort.
-        householdData.CoLoadedCohort = ClassifyCoLoadedCohort(householdData);
+        householdData.CoLoadedCohort = CoLoadedCohortClassifier.Classify(householdData);
 
         var nonCoLoaded = householdData.SummerEbtCases.Where(c => !c.IsCoLoaded).ToList();
         if (coLoadedCohortFilter.SuppressCoLoadedCasesForExcludedCohort
@@ -171,44 +171,4 @@ public class GetHouseholdDataQueryHandler(
         return Result<HouseholdData>.Success(householdData);
     }
 
-    /// <summary>
-    /// Classifies the household based on its pre-filter case list and applications.
-    /// See <see cref="CoLoadedCohort"/> for the rule.
-    /// The rule is intentionally derived at runtime from case and application state; changing
-    /// who falls into each cohort still requires a code change. Whether co-loaded cases are
-    /// suppressed for the excluded cohort is configured via
-    /// <see cref="CoLoadedCohortFilterSettings.SuppressCoLoadedCasesForExcludedCohort"/>.
-    /// </summary>
-    private static CoLoadedCohort ClassifyCoLoadedCohort(HouseholdData household)
-    {
-        var hasCoLoaded = household.SummerEbtCases.Any(c => c.IsCoLoaded);
-        if (!hasCoLoaded)
-        {
-            return CoLoadedCohort.NonCoLoaded;
-        }
-
-        var hasNonCoLoaded = household.SummerEbtCases.Any(c => !c.IsCoLoaded);
-        var hasInFlightHouseholdApplication = household.Applications.Any(IsInFlightHouseholdApplication);
-        var hasPendingCase = household.SummerEbtCases.Any(IsPendingApplicant);
-
-        return hasNonCoLoaded || hasInFlightHouseholdApplication || hasPendingCase
-            ? CoLoadedCohort.MixedOrApplicantExcluded
-            : CoLoadedCohort.CoLoadedOnly;
-    }
-
-    /// <summary>
-    /// A case whose application hasn't been adjudicated yet represents an
-    /// in-flight applicant experience, which places the household in the
-    /// applicant-excluded cohort even when the case itself is co-loaded.
-    /// </summary>
-    private static bool IsPendingApplicant(SummerEbtCase summerEbtCase) =>
-        summerEbtCase.ApplicationStatus is ApplicationStatus.Pending or ApplicationStatus.UnderReview;
-
-    /// <summary>
-    /// Household-level <see cref="HouseholdData.Applications"/> often retains historical rows
-    /// (approved/denied/cancelled). Only pending or under-review applications indicate an active
-    /// applicant journey alongside co-loaded cases.
-    /// </summary>
-    private static bool IsInFlightHouseholdApplication(Application application) =>
-        application.ApplicationStatus is ApplicationStatus.Pending or ApplicationStatus.UnderReview;
 }
