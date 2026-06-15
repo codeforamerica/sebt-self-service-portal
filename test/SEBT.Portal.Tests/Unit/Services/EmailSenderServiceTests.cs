@@ -18,6 +18,11 @@ public class EmailSenderServiceTests : IDisposable
 
     public EmailSenderServiceTests()
     {
+        // EmailOtpSenderService.LoadTranslations() reads STATE to pick which embedded
+        // resource to load. Cleared in Dispose so this test does not pollute STATE
+        // for other tests that run in parallel — without that cleanup, any
+        // WebApplicationFactory-based test building its host concurrently can read
+        // STATE=dc and load appsettings.dc.json with the wrong PluginAssemblyPaths.
         _previousState = Environment.GetEnvironmentVariable("STATE");
         Environment.SetEnvironmentVariable("STATE", "dc");
         _optionsMonitor.CurrentValue.Returns(new EmailOtpSenderServiceSettings { SenderEmail = "sender@example.com" });

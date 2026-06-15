@@ -14,6 +14,8 @@ public static class SeedScenarios
     public static readonly SeedScenario CoLoadedPendingIdProofing = new("co-loaded-pending-id-proofing", UserIalLevel.None);
     /// <summary>Co-loaded with SNAP/TANF on file; ID proofing completed, but the linked household has zero enrolled children and zero applications.</summary>
     public static readonly SeedScenario CoLoadedNoChildren = new("co-loaded-no-children", UserIalLevel.IAL1plus);
+    /// <summary>Co-loaded with SNAP/TANF on file and enrolled cases, but zero applications. ID proofing completed (IAL1+) so it lands on the dashboard; the "Check existing applications" CTA must stay hidden (DC-402).</summary>
+    public static readonly SeedScenario CoLoadedNoApplication = new("co-loaded-no-application", UserIalLevel.IAL1plus);
     public static readonly SeedScenario Verified = new("verified", UserIalLevel.IAL1plus);
     public static readonly SeedScenario Expired = new("expired", UserIalLevel.IAL1plus);
     public static readonly SeedScenario Review = new("review", UserIalLevel.IAL1plus);
@@ -62,7 +64,7 @@ public static class SeedScenarios
     /// </summary>
     public static readonly IReadOnlyList<SeedScenario> UserScenarios =
     [
-        CoLoaded, CoLoadedPendingIdProofing, CoLoadedNoChildren, Verified, SingleChild, LargeFamily, Expired,
+        CoLoaded, CoLoadedPendingIdProofing, CoLoadedNoChildren, CoLoadedNoApplication, Verified, SingleChild, LargeFamily, Expired,
         NonCoLoaded, IdProofInProgress, NotStarted, Pending, Minimal, Denied,
         Review, Cancelled, Unknown, SummerActive, SummerLost,
         DcMixed, CoUndeliverable, CoFrozen, CoNotActivated, CoDeactivatedByState, CoActive,
@@ -79,6 +81,7 @@ public static class SeedScenarios
             Simple1, Simple2, Simple3, Simple4, Simple5, Simple6, Simple7,
             CoLoadedPendingIdProofing,
             CoLoadedNoChildren,
+            CoLoadedNoApplication,
         };
 
     /// <summary>

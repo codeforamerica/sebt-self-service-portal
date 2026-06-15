@@ -106,7 +106,6 @@ public class DatabaseSeeder : Core.Services.IDatabaseSeeder
                 u.IdProofingStatus = IdProofingStatus.InProgress;
                 u.IalLevel = UserIalLevel.None;
                 u.IdProofingCompletedAt = null;
-                u.IdProofingExpiresAt = null;
                 u.Phone = "5555551234";
                 u.SnapId = "SNAP-NCO-001";
             }),
@@ -116,7 +115,6 @@ public class DatabaseSeeder : Core.Services.IDatabaseSeeder
                 u.IdProofingStatus = IdProofingStatus.NotStarted;
                 u.IalLevel = UserIalLevel.None;
                 u.IdProofingCompletedAt = null;
-                u.IdProofingExpiresAt = null;
             })
         ]);
 
@@ -243,7 +241,6 @@ public class DatabaseSeeder : Core.Services.IDatabaseSeeder
                             u.IdProofingStatus = IdProofingStatus.InProgress;
                             u.IalLevel = UserIalLevel.None;
                             u.IdProofingCompletedAt = null;
-                            u.IdProofingExpiresAt = null;
                             u.IsCoLoaded = false;
                             u.CoLoadedLastUpdated = null;
                             u.Phone = "5552223344";
@@ -269,7 +266,6 @@ public class DatabaseSeeder : Core.Services.IDatabaseSeeder
                                 // Bogus may pre-set timestamps when the random draw is IAL1+; clear
                                 // so IAL None/1 never retain IdProofingCompletedAt from the generator.
                                 u.IdProofingCompletedAt = null;
-                                u.IdProofingExpiresAt = null;
                             }
                             u.IsCoLoaded = false;
                             u.CoLoadedLastUpdated = null;
@@ -442,7 +438,6 @@ public class DatabaseSeeder : Core.Services.IDatabaseSeeder
                             u.IdProofingStatus = IdProofingStatus.InProgress;
                             u.IalLevel = UserIalLevel.None;
                             u.IdProofingCompletedAt = null;
-                            u.IdProofingExpiresAt = null;
                             u.IsCoLoaded = false;
                             u.CoLoadedLastUpdated = null;
                             u.Phone = "5552223344";
@@ -466,7 +461,6 @@ public class DatabaseSeeder : Core.Services.IDatabaseSeeder
                             else
                             {
                                 u.IdProofingCompletedAt = null;
-                                u.IdProofingExpiresAt = null;
                             }
                             u.IsCoLoaded = false;
                             u.CoLoadedLastUpdated = null;

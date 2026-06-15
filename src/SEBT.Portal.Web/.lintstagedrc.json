@@ -1,5 +1,10 @@
 {
-  "*.{ts,tsx}": ["eslint --fix", "prettier --write", "bash -c 'tsc --noEmit'"],
+  "*.{ts,tsx}": [
+    "eslint --fix",
+    "prettier --write",
+    "bash -c 'pnpm --silent tokens:fonts'",
+    "bash -c 'tsc --noEmit'"
+  ],
   "*.{css,scss}": ["prettier --write"],
   "*.{json,md}": ["prettier --write"],
   "../../packages/design-system/design/sass/**/*.scss": [

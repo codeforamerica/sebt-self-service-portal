@@ -105,6 +105,7 @@ module "app" {
   force_delete           = true
   image_tags_mutable     = true
   enable_execute_command = true
+  desired_containers     = 1
 
   seeding_enabled       = "true"
   seeding_email_pattern = "sebt.dc+{0}@codeforamerica.org"

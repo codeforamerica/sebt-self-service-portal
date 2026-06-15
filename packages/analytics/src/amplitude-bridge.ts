@@ -1,9 +1,7 @@
 /**
  * DOM event bridge that listens to DataLayer CustomEvents and forwards
  * them to Amplitude. Forwards both PageViewed (page_load) and EventTracked
- * events. The Amplitude init is configured with no session replay, no
- * autocapture, and no user identity — page tracking is opt-in via the
- * data layer's pageLoad() call rather than Amplitude's defaultTracking.
+ * events. 
  *
  * @see docs/tdd/analytics-data-layer.md — "DOM Bridge & Sample Integration"
  */
@@ -44,8 +42,6 @@ function attachBridge(dl: DataLayerRoot, amplitude: AmplitudeLike): () => void {
 
 export function initAmplitudeBridge(apiKey: string, amplitude: AmplitudeLike): () => void {
   // Privacy posture:
-  // - defaultTracking: false        → no page view / session / form / file-download autocapture
-  // - autocapture: false            → no DOM element interaction autocapture
   // - identityStorage: 'none'       → no cross-session user identity persistence
   // - trackingOptions.ipAddress: false → do not capture client IP
   //
@@ -53,8 +49,8 @@ export function initAmplitudeBridge(apiKey: string, amplitude: AmplitudeLike): (
   // require opting in via additional plugins — not enabled here by construction.
   try {
     amplitude.init(apiKey, {
-      defaultTracking: false,
-      autocapture: false,
+      defaultTracking: true,
+      autocapture: true,
       identityStorage: 'none',
       trackingOptions: {
         ipAddress: false

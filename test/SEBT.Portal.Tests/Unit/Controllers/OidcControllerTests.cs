@@ -29,6 +29,7 @@ public class OidcControllerTests
     private readonly IUserRepository _userRepository;
     private readonly IOidcTokenService _oidcTokenService;
     private readonly IPreAuthSessionStore _sessionStore;
+    private readonly IOidcCallbackFailureLogger _callbackFailureLogger;
     private readonly OidcController _controller;
 
     public OidcControllerTests()
@@ -66,9 +67,14 @@ public class OidcControllerTests
         var env = Substitute.For<IWebHostEnvironment>();
         env.EnvironmentName.Returns("Development");
 
+        _callbackFailureLogger = new OidcCallbackFailureLogger(
+            NullLogger<OidcCallbackFailureLogger>.Instance,
+            new HttpContextAccessor());
+
         _controller = new OidcController(
             _config,
             NullLogger<OidcController>.Instance,
+            _callbackFailureLogger,
             _userRepository,
             _oidcTokenService,
             jwtSettings,
@@ -170,6 +176,7 @@ public class OidcControllerTests
         var controller = new OidcController(
             _config,
             NullLogger<OidcController>.Instance,
+            _callbackFailureLogger,
             _userRepository,
             _oidcTokenService,
             jwtSettings,
@@ -980,6 +987,30 @@ public class OidcControllerTests
             ],
             authenticationType: "Test");
         controller.ControllerContext.HttpContext.User = new ClaimsPrincipal(identity);
+    }
+
+    [Fact]
+    public async Task ReportCallbackFailure_WithIdpRedirect_Returns204()
+    {
+        var result = await _controller.ReportCallbackFailure(
+            new OidcCallbackFailureReportRequest(
+                Reason: "idp_redirect",
+                IdpError: "access_denied",
+                IdpErrorDescription: "User cancelled"),
+            CancellationToken.None);
+
+        Assert.IsType<NoContentResult>(result);
+    }
+
+    [Fact]
+    public async Task ReportCallbackFailure_WithInvalidReason_Returns400()
+    {
+        var result = await _controller.ReportCallbackFailure(
+            new OidcCallbackFailureReportRequest(Reason: "not_a_real_reason"),
+            CancellationToken.None);
+
+        var badRequest = Assert.IsType<BadRequestObjectResult>(result);
+        Assert.NotNull(badRequest.Value);
     }
 
     #endregion

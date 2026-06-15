@@ -28,7 +28,6 @@ public class AppConfigAgentConfigurationExtensionsTests
             "test-app",
             "test-env",
             "test-profile",
-            reloadAfterSeconds: 90,
             isFeatureFlag: true,
             _logger);
 
@@ -50,7 +49,6 @@ public class AppConfigAgentConfigurationExtensionsTests
             { "AppConfig:Agent:ApplicationId", "test-app" },
             { "AppConfig:Agent:EnvironmentId", "test-env" },
             { "AppConfig:Agent:ProfileId", "test-profile" },
-            { "AppConfig:Agent:ReloadAfterSeconds", "90" },
             { "AppConfig:Agent:IsFeatureFlag", "true" }
         });
 
@@ -107,7 +105,7 @@ public class AppConfigAgentConfigurationExtensionsTests
             { "AppConfig:Agent:ApplicationId", "test-app" },
             { "AppConfig:Agent:EnvironmentId", "test-env" },
             { "AppConfig:Agent:ProfileId", "test-profile" }
-            // BaseUrl, ReloadAfterSeconds, IsFeatureFlag not specified 
+            // BaseUrl and IsFeatureFlag not specified 
         });
 
         // Act

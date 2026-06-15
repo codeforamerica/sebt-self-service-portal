@@ -1,6 +1,12 @@
 using System.Net;
 using System.Net.Http.Json;
 using System.Text.Json;
+using Microsoft.AspNetCore.Hosting;
+using Microsoft.Extensions.DependencyInjection;
+using NSubstitute;
+using SEBT.Portal.Api.Composition.Defaults;
+using SEBT.Portal.Core.Services;
+using SEBT.Portal.StatesPlugins.Interfaces;
 
 namespace SEBT.Portal.Tests.Integration.PluginIntegration;
 
@@ -13,13 +19,14 @@ namespace SEBT.Portal.Tests.Integration.PluginIntegration;
 [Trait("Category", "Integration")]
 public class DefaultEnrollmentCheckIntegrationTests : IDisposable
 {
-    private readonly PluginIntegrationWebApplicationFactory _factory;
+    private const int MaxPluginPathIndices = 8;
+
+    private readonly DefaultEnrollmentCheckWebApplicationFactory _factory;
     private readonly HttpClient _client;
 
     public DefaultEnrollmentCheckIntegrationTests()
     {
-        // Load no plugins — DefaultEnrollmentCheckService provides the fallback
-        _factory = new PluginIntegrationWebApplicationFactory(pluginDir: null);
+        _factory = new DefaultEnrollmentCheckWebApplicationFactory();
         _client = _factory.CreateClient();
     }
 
@@ -66,5 +73,49 @@ public class DefaultEnrollmentCheckIntegrationTests : IDisposable
     {
         _client.Dispose();
         _factory.Dispose();
+    }
+
+    /// <summary>
+    /// Loads no connector plugins and always registers <see cref="DefaultEnrollmentCheckService"/>.
+    /// </summary>
+    private sealed class DefaultEnrollmentCheckWebApplicationFactory : PluginIntegrationWebApplicationFactory
+    {
+        public DefaultEnrollmentCheckWebApplicationFactory()
+            : base(pluginDir: null)
+        {
+        }
+
+        protected override void ConfigureWebHost(IWebHostBuilder builder)
+        {
+            base.ConfigureWebHost(builder);
+
+            var pluginsNonePath = PluginPathResolver.Resolve("plugins-none");
+            Environment.SetEnvironmentVariable("PluginAssemblyPaths__0", pluginsNonePath);
+            for (var i = 1; i < MaxPluginPathIndices; i++)
+            {
+                Environment.SetEnvironmentVariable($"PluginAssemblyPaths__{i}", null);
+            }
+
+            builder.ConfigureServices(services =>
+            {
+                foreach (var descriptor in services
+                             .Where(d => d.ServiceType == typeof(IEnrollmentCheckSubmissionLogger))
+                             .ToList())
+                {
+                    services.Remove(descriptor);
+                }
+
+                services.AddScoped(_ => Substitute.For<IEnrollmentCheckSubmissionLogger>());
+
+                foreach (var descriptor in services
+                             .Where(d => d.ServiceType == typeof(IEnrollmentCheckService))
+                             .ToList())
+                {
+                    services.Remove(descriptor);
+                }
+
+                services.AddSingleton<IEnrollmentCheckService, DefaultEnrollmentCheckService>();
+            });
+        }
     }
 }

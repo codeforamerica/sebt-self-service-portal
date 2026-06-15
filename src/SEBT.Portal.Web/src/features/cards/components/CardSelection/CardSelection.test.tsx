@@ -27,6 +27,31 @@ vi.mock('@sebt/design-system', async (importOriginal) => {
   }
 })
 
+const TEST_USER_ID = '018f0000-0000-7000-8000-000000000001'
+
+vi.mock('@/features/auth', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/features/auth')>()
+  return {
+    ...actual,
+    useAuth: () => ({
+      session: {
+        userId: TEST_USER_ID,
+        email: 'test@example.com',
+        ial: '1plus',
+        idProofingStatus: 2,
+        idProofingCompletedAt: null,
+        idProofingExpiresAt: null,
+        isCoLoaded: false,
+        expiresAt: null,
+        absoluteExpiresAt: null
+      },
+      isAuthenticated: true,
+      isLoading: false,
+      login: vi.fn()
+    })
+  }
+})
+
 function createTestQueryClient() {
   return new QueryClient({
     defaultOptions: {

@@ -164,7 +164,6 @@ public class ConfigurationProviderPriorityTests : IDisposable
                     ApplicationId = AppId,
                     EnvironmentId = EnvId,
                     ProfileId = featureFlagProfileId,
-                    ReloadAfterSeconds = null,
                     IsFeatureFlag = true,
                 },
             });
@@ -181,7 +180,6 @@ public class ConfigurationProviderPriorityTests : IDisposable
                     ApplicationId = AppId,
                     EnvironmentId = EnvId,
                     ProfileId = appSettingsProfileId,
-                    ReloadAfterSeconds = null,
                     IsFeatureFlag = false,
                 },
             });

@@ -10,6 +10,7 @@ using SEBT.Portal.Infrastructure.Data.Entities;
 using SEBT.Portal.Infrastructure.Seeding.Services;
 using SEBT.Portal.Infrastructure.Services;
 using SEBT.Portal.Tests.Unit.Repositories;
+using SEBT.Portal.Tests.Unit.TestSupport;
 using UserEntityFactory = SEBT.Portal.Infrastructure.Helpers.UserFactory;
 
 namespace SEBT.Portal.Tests.Unit.Services;
@@ -37,7 +38,11 @@ public class DatabaseSeederTests : IClassFixture<SqlServerTestFixture>
 
     private DatabaseSeeder CreateSeeder(PortalDbContext context, SeedingSettings? settings = null)
     {
-        var dataSeeder = new DataSeeder(context, TestHasher);
+        var dataSeeder = new DataSeeder(
+            context,
+            TestHasher,
+            TestPortalCryptography.PiiSymmetricEncryption,
+            TestPortalCryptography.EmailLookupHasher);
         var timeProvider = new FakeTimeProvider(FixedSeedTime);
         return new DatabaseSeeder(dataSeeder, settings, timeProvider: timeProvider);
     }
@@ -138,7 +143,8 @@ public class DatabaseSeederTests : IClassFixture<SqlServerTestFixture>
         Assert.All(users, user =>
         {
             Assert.NotNull(user.Email);
-            Assert.Equal(user.Email, user.Email!.ToLowerInvariant());
+            var plain = TestPortalCryptography.StoredEmailPlaintext(user.Email!);
+            Assert.Equal(plain, plain.ToLowerInvariant());
         });
     }
 
@@ -190,7 +196,7 @@ public class DatabaseSeederTests : IClassFixture<SqlServerTestFixture>
         var users = await context.Users.ToListAsync();
         Assert.Equal(3, users.Count);
 
-        var emails = users.Select(u => u.Email).ToHashSet();
+        var emails = users.Select(u => TestPortalCryptography.StoredEmailPlaintext(u.Email!)).ToHashSet();
         Assert.Contains("co-loaded@example.com", emails);
         Assert.Contains("non-co-loaded@example.com", emails);
         Assert.Contains("not-started@example.com", emails);
@@ -209,7 +215,7 @@ public class DatabaseSeederTests : IClassFixture<SqlServerTestFixture>
 
         // Assert - Check co-loaded user
         var coLoadedUser = await context.Users
-            .FirstOrDefaultAsync(u => u.Email == "co-loaded@example.com");
+            .FirstOrDefaultAsync(u => u.EmailHash == TestPortalCryptography.FingerprintEmail("co-loaded@example.com") || u.EmailHash == null && u.Email == TestPortalCryptography.NormalizeEmailStrict("co-loaded@example.com"));
         Assert.NotNull(coLoadedUser);
         Assert.True(coLoadedUser!.IsCoLoaded);
         Assert.Equal((int)IdProofingStatus.Completed, coLoadedUser.IdProofingStatus);
@@ -219,7 +225,7 @@ public class DatabaseSeederTests : IClassFixture<SqlServerTestFixture>
 
         // Check non-co-loaded user
         var nonCoLoadedUser = await context.Users
-            .FirstOrDefaultAsync(u => u.Email == "non-co-loaded@example.com");
+            .FirstOrDefaultAsync(u => u.EmailHash == TestPortalCryptography.FingerprintEmail("non-co-loaded@example.com") || u.EmailHash == null && u.Email == TestPortalCryptography.NormalizeEmailStrict("non-co-loaded@example.com"));
         Assert.NotNull(nonCoLoadedUser);
         Assert.False(nonCoLoadedUser!.IsCoLoaded);
         Assert.Equal((int)IdProofingStatus.InProgress, nonCoLoadedUser.IdProofingStatus);
@@ -227,7 +233,7 @@ public class DatabaseSeederTests : IClassFixture<SqlServerTestFixture>
 
         // Check not-started user
         var notStartedUser = await context.Users
-            .FirstOrDefaultAsync(u => u.Email == "not-started@example.com");
+            .FirstOrDefaultAsync(u => u.EmailHash == TestPortalCryptography.FingerprintEmail("not-started@example.com") || u.EmailHash == null && u.Email == TestPortalCryptography.NormalizeEmailStrict("not-started@example.com"));
         Assert.NotNull(notStartedUser);
         Assert.False(notStartedUser!.IsCoLoaded);
         Assert.Equal((int)IdProofingStatus.NotStarted, notStartedUser.IdProofingStatus);
@@ -261,7 +267,7 @@ public class DatabaseSeederTests : IClassFixture<SqlServerTestFixture>
 
         // Verify the existing user wasn't modified
         var coLoadedUser = await context.Users
-            .FirstOrDefaultAsync(u => u.Email == "co-loaded@example.com");
+            .FirstOrDefaultAsync(u => u.EmailHash == TestPortalCryptography.FingerprintEmail("co-loaded@example.com") || u.EmailHash == null && u.Email == TestPortalCryptography.NormalizeEmailStrict("co-loaded@example.com"));
         Assert.NotNull(coLoadedUser);
         Assert.False(coLoadedUser!.IsCoLoaded); // Should remain as originally set
     }
@@ -333,23 +339,23 @@ public class DatabaseSeederTests : IClassFixture<SqlServerTestFixture>
         var users = await context.Users.ToListAsync();
         Assert.Equal(3, users.Count);
 
-        var emails = users.Select(u => u.Email).ToHashSet();
+        var emails = users.Select(u => TestPortalCryptography.StoredEmailPlaintext(u.Email!)).ToHashSet();
         Assert.Contains("co-loaded@example.com", emails);
         Assert.Contains("non-co-loaded@example.com", emails);
         Assert.Contains("not-started@example.com", emails);
 
         // Verify Phone/SnapId/TanfId stored as plaintext; SSN stored as hash
-        var coLoaded = users.First(u => u.Email == "co-loaded@example.com");
-        Assert.Equal("8185558439", coLoaded.Phone);
-        Assert.Equal("SNAP-CO-001", coLoaded.SnapId);
-        Assert.Equal("TANF-CO-001", coLoaded.TanfId);
+        var coLoaded = users.First(u => u.EmailHash == TestPortalCryptography.FingerprintEmail("co-loaded@example.com") || u.EmailHash == null && u.Email == TestPortalCryptography.NormalizeEmailStrict("co-loaded@example.com"));
+        Assert.Equal("8185558439", TestPortalCryptography.PiiSymmetricEncryption.DecryptOrPassThroughLegacy(coLoaded.Phone!));
+        Assert.Equal("SNAP-CO-001", TestPortalCryptography.PiiSymmetricEncryption.DecryptOrPassThroughLegacy(coLoaded.SnapId!));
+        Assert.Equal("TANF-CO-001", TestPortalCryptography.PiiSymmetricEncryption.DecryptOrPassThroughLegacy(coLoaded.TanfId!));
         Assert.NotNull(coLoaded.Ssn);
         Assert.Equal(64, coLoaded.Ssn!.Length);
         Assert.NotEqual("123456789", coLoaded.Ssn);
 
-        var nonCoLoaded = users.First(u => u.Email == "non-co-loaded@example.com");
-        Assert.Equal("5555551234", nonCoLoaded.Phone);
-        Assert.Equal("SNAP-NCO-001", nonCoLoaded.SnapId);
+        var nonCoLoaded = users.First(u => u.EmailHash == TestPortalCryptography.FingerprintEmail("non-co-loaded@example.com") || u.EmailHash == null && u.Email == TestPortalCryptography.NormalizeEmailStrict("non-co-loaded@example.com"));
+        Assert.Equal("5555551234", TestPortalCryptography.PiiSymmetricEncryption.DecryptOrPassThroughLegacy(nonCoLoaded.Phone!));
+        Assert.Equal("SNAP-NCO-001", TestPortalCryptography.PiiSymmetricEncryption.DecryptOrPassThroughLegacy(nonCoLoaded.SnapId!));
     }
 
     [Fact]
@@ -560,7 +566,7 @@ public class DatabaseSeederTests : IClassFixture<SqlServerTestFixture>
         // Assert - Only non-scenario users should remain
         var users = await context.Users.ToListAsync();
         Assert.Equal(2, users.Count);
-        var emails = users.Select(u => u.Email).ToHashSet();
+        var emails = users.Select(u => TestPortalCryptography.StoredEmailPlaintext(u.Email!)).ToHashSet();
         Assert.Contains("user1@production.com", emails);
         Assert.Contains("random@example.com", emails);
         Assert.DoesNotContain("co-loaded@example.com", emails);
@@ -586,7 +592,8 @@ public class DatabaseSeederTests : IClassFixture<SqlServerTestFixture>
         {
             Assert.NotNull(user.Email);
             Assert.NotEmpty(user.Email!);
-            Assert.Contains("@", user.Email!);
+            var plainEmail = TestPortalCryptography.StoredEmailPlaintext(user.Email!);
+            Assert.Contains("@", plainEmail);
             Assert.InRange(user.IalLevel, 0, 3); // Valid UserIalLevel range
             Assert.NotEqual(default(DateTime), user.CreatedAt);
             Assert.NotEqual(default(DateTime), user.UpdatedAt);
@@ -609,7 +616,8 @@ public class DatabaseSeederTests : IClassFixture<SqlServerTestFixture>
         Assert.All(users, user =>
         {
             Assert.NotNull(user.Email);
-            Assert.Equal(user.Email, user.Email!.ToLowerInvariant());
+            var plain = TestPortalCryptography.StoredEmailPlaintext(user.Email!);
+            Assert.Equal(plain, plain.ToLowerInvariant());
         });
     }
 
@@ -629,7 +637,8 @@ public class DatabaseSeederTests : IClassFixture<SqlServerTestFixture>
         Assert.All(users, user =>
         {
             Assert.NotNull(user.Email);
-            Assert.Equal(user.Email, user.Email!.ToLowerInvariant());
+            var plain = TestPortalCryptography.StoredEmailPlaintext(user.Email!);
+            Assert.Equal(plain, plain.ToLowerInvariant());
         });
     }
 
@@ -649,14 +658,14 @@ public class DatabaseSeederTests : IClassFixture<SqlServerTestFixture>
         var users = await context.Users.ToListAsync();
         Assert.Equal(3, users.Count);
 
-        var emails = users.Select(u => u.Email).ToHashSet();
+        var emails = users.Select(u => TestPortalCryptography.StoredEmailPlaintext(u.Email!)).ToHashSet();
         Assert.Contains("sebt.dc+co-loaded@codeforamerica.org", emails);
         Assert.Contains("sebt.dc+non-co-loaded@codeforamerica.org", emails);
         Assert.Contains("sebt.dc+not-started@codeforamerica.org", emails);
 
         // Verify co-loaded user still has correct properties
         var coLoadedUser = await context.Users
-            .FirstOrDefaultAsync(u => u.Email == "sebt.dc+co-loaded@codeforamerica.org");
+            .FirstOrDefaultAsync(u => u.EmailHash == TestPortalCryptography.FingerprintEmail("sebt.dc+co-loaded@codeforamerica.org") || u.EmailHash == null && u.Email == TestPortalCryptography.NormalizeEmailStrict("sebt.dc+co-loaded@codeforamerica.org"));
         Assert.NotNull(coLoadedUser);
         Assert.True(coLoadedUser!.IsCoLoaded);
         Assert.Equal((int)IdProofingStatus.Completed, coLoadedUser.IdProofingStatus);
@@ -679,7 +688,7 @@ public class DatabaseSeederTests : IClassFixture<SqlServerTestFixture>
         var users = await context.Users.ToListAsync();
         Assert.Equal(19, users.Count);
 
-        var emails = users.Select(u => u.Email).ToHashSet();
+        var emails = users.Select(u => TestPortalCryptography.StoredEmailPlaintext(u.Email!)).ToHashSet();
         Assert.Contains("sebt.co+co-loaded@codeforamerica.org", emails);
         Assert.Contains("sebt.co+verified@codeforamerica.org", emails);
         Assert.Contains("sebt.co+singlechild@codeforamerica.org", emails);
@@ -702,7 +711,7 @@ public class DatabaseSeederTests : IClassFixture<SqlServerTestFixture>
         await seeder.SeedTestUsersAsync(useMockHouseholdData: true);
 
         var user = await context.Users
-            .SingleOrDefaultAsync(u => u.Email == "id-proof-in-progress@example.com");
+            .SingleOrDefaultAsync(u => u.EmailHash == TestPortalCryptography.FingerprintEmail("id-proof-in-progress@example.com") || u.EmailHash == null && u.Email == TestPortalCryptography.NormalizeEmailStrict("id-proof-in-progress@example.com"));
         Assert.NotNull(user);
         Assert.False(user!.IsCoLoaded);
         Assert.Equal((int)IdProofingStatus.InProgress, user.IdProofingStatus);
@@ -724,16 +733,16 @@ public class DatabaseSeederTests : IClassFixture<SqlServerTestFixture>
         var users = await context.Users.ToListAsync();
         Assert.Equal(SeedScenarios.UserScenarios.Count, users.Count);
         var pending = await context.Users
-            .SingleOrDefaultAsync(u => u.Email == "co-loaded-pending-id-proofing@example.com");
+            .SingleOrDefaultAsync(u => u.EmailHash == TestPortalCryptography.FingerprintEmail("co-loaded-pending-id-proofing@example.com") || u.EmailHash == null && u.Email == TestPortalCryptography.NormalizeEmailStrict("co-loaded-pending-id-proofing@example.com"));
         Assert.NotNull(pending);
         Assert.False(pending!.IsCoLoaded);
         Assert.Equal((int)IdProofingStatus.NotStarted, pending.IdProofingStatus);
         Assert.Equal((int)UserIalLevel.None, pending.IalLevel);
         Assert.Null(pending.IdProofingCompletedAt);
         Assert.Null(pending.IdProofingExpiresAt);
-        Assert.Equal("8185558438", pending.Phone);
-        Assert.Equal("SNAP-CO-001", pending.SnapId);
-        Assert.Equal("TANF-CO-001", pending.TanfId);
+        Assert.Equal("8185558438", TestPortalCryptography.PiiSymmetricEncryption.DecryptOrPassThroughLegacy(pending.Phone!));
+        Assert.Equal("SNAP-CO-001", TestPortalCryptography.PiiSymmetricEncryption.DecryptOrPassThroughLegacy(pending.SnapId!));
+        Assert.Equal("TANF-CO-001", TestPortalCryptography.PiiSymmetricEncryption.DecryptOrPassThroughLegacy(pending.TanfId!));
     }
 
     [Fact]
@@ -751,7 +760,7 @@ public class DatabaseSeederTests : IClassFixture<SqlServerTestFixture>
             .Where(u =>
                 (u.IalLevel == (int)UserIalLevel.None || u.IalLevel == (int)UserIalLevel.IAL1) &&
                 u.IdProofingCompletedAt != null)
-            .Select(u => u.Email)
+            .Select(u => TestPortalCryptography.StoredEmailPlaintext(u.Email!))
             .ToList();
         Assert.Empty(invalid);
     }

@@ -394,10 +394,9 @@ public class PortalDbContextTests
     }
 
     [Fact]
-    public void Users_Email_ShouldHaveFilteredUniqueIndex()
+    public void Users_EmailHash_ShouldHaveFilteredUniqueIndex()
     {
-        // The filtered index ensures uniqueness only among non-null emails,
-        // allowing multiple OIDC users with no email address.
+        // Primary equality lookup uses EmailHash; ciphertext rows omit IX_Users_Email_LegacyLookup (filtered out).
         // Arrange
         var options = new DbContextOptionsBuilder<PortalDbContext>()
             .UseInMemoryDatabase(databaseName: Guid.NewGuid().ToString())
@@ -407,14 +406,36 @@ public class PortalDbContextTests
 
         // Act
         var entityType = context.Model.FindEntityType(typeof(UserEntity));
-        var emailIndex = entityType!.GetIndexes()
+        var emailHashIndex = entityType!.GetIndexes()
+            .FirstOrDefault(i => i.Properties.Count == 1 && i.Properties[0].Name == "EmailHash");
+
+        // Assert
+        Assert.NotNull(emailHashIndex);
+        Assert.True(emailHashIndex!.IsUnique);
+        Assert.Equal("IX_Users_EmailHash", emailHashIndex.GetDatabaseName());
+        Assert.Equal("[EmailHash] IS NOT NULL", emailHashIndex.GetFilter());
+    }
+
+    [Fact]
+    public void Users_Email_ShouldHaveFilteredNonUniqueIndex_ForLegacyPlaintextLookup()
+    {
+        // Arrange
+        var options = new DbContextOptionsBuilder<PortalDbContext>()
+            .UseInMemoryDatabase(databaseName: Guid.NewGuid().ToString())
+            .Options;
+
+        using var context = new PortalDbContext(options);
+
+        // Act
+        var entityType = context.Model.FindEntityType(typeof(UserEntity));
+        var legacyEmailIndex = entityType!.GetIndexes()
             .FirstOrDefault(i => i.Properties.Count == 1 && i.Properties[0].Name == "Email");
 
         // Assert
-        Assert.NotNull(emailIndex);
-        Assert.True(emailIndex!.IsUnique);
-        Assert.Equal("IX_Users_Email", emailIndex.GetDatabaseName());
-        Assert.Equal("[Email] IS NOT NULL", emailIndex.GetFilter());
+        Assert.NotNull(legacyEmailIndex);
+        Assert.False(legacyEmailIndex!.IsUnique);
+        Assert.Equal("IX_Users_Email_LegacyLookup", legacyEmailIndex.GetDatabaseName());
+        Assert.Equal("[EmailHash] IS NULL AND [Email] IS NOT NULL", legacyEmailIndex.GetFilter());
     }
 
     [Fact]
@@ -462,8 +483,9 @@ public class PortalDbContextTests
     }
 
     [Fact]
-    public void Users_Email_ShouldHaveMaxLength255()
+    public void Users_Email_ShouldHaveMaxLength512()
     {
+        // Email column holds AES-GCM envelopes (much wider than plaintext addresses).
         // Arrange
         var options = new DbContextOptionsBuilder<PortalDbContext>()
             .UseInMemoryDatabase(databaseName: Guid.NewGuid().ToString())
@@ -477,7 +499,7 @@ public class PortalDbContextTests
 
         // Assert
         Assert.NotNull(emailProperty);
-        Assert.Equal(255, emailProperty!.GetMaxLength());
+        Assert.Equal(512, emailProperty!.GetMaxLength());
     }
 
     [Fact]

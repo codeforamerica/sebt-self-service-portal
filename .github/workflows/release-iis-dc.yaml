@@ -185,6 +185,7 @@ jobs:
           NEXT_PUBLIC_SOCURE_DI_SDK_KEY: ${{ vars.SOCURE_DI_SDK_KEY }}
           NEXT_PUBLIC_MOCK_SOCURE: ${{ vars.MOCK_SOCURE }}
           NEXT_PUBLIC_SITEIMPROVE_ID: ${{ vars.SITEIMPROVE_ID }}
+          NEXT_PUBLIC_BUILD_SHA: ${{ github.sha }}
         run: |
           ./.github/workflows/scripts/build-frontend.sh --production
           ./scripts/ci/package-frontend.sh --skip-build --output output/sebt-web.zip

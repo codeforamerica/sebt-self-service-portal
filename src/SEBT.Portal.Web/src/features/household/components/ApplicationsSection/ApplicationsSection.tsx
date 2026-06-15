@@ -5,7 +5,7 @@ import { useTranslation } from 'react-i18next'
 import { useFeatureFlag } from '@/features/feature-flags'
 
 import type { Application } from '../../api'
-import { useRequiredHouseholdData } from '../../api'
+import { formatDate, useRequiredHouseholdData } from '../../api'
 
 function getStatusTextClass(status: string): string {
   switch (status) {
@@ -34,8 +34,9 @@ const APPLICATION_STATUS_KEYS: Record<string, { key: string; fallback: string }>
 }
 
 function ApplicationCard({ application }: { application: Application }) {
-  const { t } = useTranslation('dashboard')
+  const { t, i18n } = useTranslation('dashboard')
   const showCaseNumber = useFeatureFlag('show_case_number')
+  const showApplicationDate = useFeatureFlag('show_application_date')
 
   const childrenNames = application.children
     .map((child) => `${child.firstName} ${child.lastName}`)
@@ -45,6 +46,15 @@ function ApplicationCard({ application }: { application: Application }) {
     <div className="usa-card__container margin-bottom-2">
       <div className="usa-card__body">
         <dl className="margin-0">
+          {showApplicationDate && application.applicationDate && (
+            <>
+              <dt className="text-bold">{t('applicationsTableHeadingDateSubmitted')}</dt>
+              <dd className="margin-left-0 margin-bottom-2">
+                {formatDate(application.applicationDate, i18n.language)}
+              </dd>
+            </>
+          )}
+
           {showCaseNumber && application.caseNumber && (
             <>
               <dt className="text-bold">{t('applicationsTableHeadingNumber')}</dt>
