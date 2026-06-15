@@ -6,12 +6,23 @@ using SEBT.Portal.Core.Repositories;
 
 namespace SEBT.Portal.UseCases.IdProofing;
 
+internal enum IdProofingHouseholdLookupOutcome
+{
+    Found,
+    NotFound,
+    Failed
+}
+
+internal readonly record struct IdProofingHouseholdLookupResult(
+    HouseholdData? Household,
+    IdProofingHouseholdLookupOutcome Outcome);
+
 /// <summary>
 /// Shared warehouse household reads for ID proofing off-boarding cohort checks.
 /// </summary>
 internal static class IdProofingHouseholdLookup
 {
-    internal static async Task<HouseholdData?> TryGetByEmailForCohortCheckAsync(
+    internal static async Task<IdProofingHouseholdLookupResult> TryGetByEmailForCohortCheckAsync(
         IHouseholdRepository householdRepository,
         ILogger logger,
         User user,
@@ -21,13 +32,23 @@ internal static class IdProofingHouseholdLookup
     {
         try
         {
-            return await householdRepository.GetHouseholdByEmailAsync(
+            var household = await householdRepository.GetHouseholdByEmailAsync(
                 user.Email!,
                 new PiiVisibility(IncludeAddress: false, IncludeEmail: false, IncludePhone: false),
                 warehouseIalForEmailReads,
                 portalUserId,
                 includeCardService: false,
                 cancellationToken);
+
+            if (household == null)
+            {
+                logger.LogInformation(
+                    "No household found for user {UserId} during off-boarding cohort check",
+                    portalUserId);
+                return new IdProofingHouseholdLookupResult(null, IdProofingHouseholdLookupOutcome.NotFound);
+            }
+
+            return new IdProofingHouseholdLookupResult(household, IdProofingHouseholdLookupOutcome.Found);
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
@@ -36,7 +57,7 @@ internal static class IdProofingHouseholdLookup
                 "Household lookup failed ({ExceptionType}) for user {UserId} during off-boarding cohort check",
                 ex.GetType().Name,
                 portalUserId);
-            return null;
+            return new IdProofingHouseholdLookupResult(null, IdProofingHouseholdLookupOutcome.Failed);
         }
     }
 
@@ -49,7 +70,7 @@ internal static class IdProofingHouseholdLookup
         string defaultReason,
         CancellationToken cancellationToken)
     {
-        var household = await TryGetByEmailForCohortCheckAsync(
+        var lookup = await TryGetByEmailForCohortCheckAsync(
             householdRepository,
             logger,
             user,
@@ -57,6 +78,6 @@ internal static class IdProofingHouseholdLookup
             portalUserId,
             cancellationToken);
 
-        return CoLoadedCohortClassifier.ResolveOffboardingReason(defaultReason, household);
+        return CoLoadedCohortClassifier.ResolveOffboardingReason(defaultReason, lookup.Household);
     }
 }

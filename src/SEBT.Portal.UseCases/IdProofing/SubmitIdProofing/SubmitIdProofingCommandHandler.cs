@@ -126,14 +126,15 @@ public class SubmitIdProofingCommandHandler(
         // resolve the consumer, so national_id is optional for that path.
         if (string.IsNullOrWhiteSpace(command.IdType))
         {
-            var householdForNoId = await IdProofingHouseholdLookup.TryGetByEmailForCohortCheckAsync(
+            var householdLookupForNoId = await IdProofingHouseholdLookup.TryGetByEmailForCohortCheckAsync(
                 householdRepository,
                 logger,
                 user,
                 warehouseIalForEmailReads,
                 command.UserId,
                 cancellationToken);
-            var coLoadedOnlyCohort = CoLoadedCohortClassifier.Classify(householdForNoId) == CoLoadedCohort.CoLoadedOnly;
+            var coLoadedOnlyCohort = CoLoadedCohortClassifier.Classify(householdLookupForNoId.Household)
+                == CoLoadedCohort.CoLoadedOnly;
 
             if (user.IsCoLoaded || coLoadedOnlyCohort)
             {
@@ -145,7 +146,7 @@ public class SubmitIdProofingCommandHandler(
                         "failed",
                         OffboardingReason: CoLoadedCohortClassifier.ResolveOffboardingReason(
                             "noIdProvided",
-                            householdForNoId)));
+                            householdLookupForNoId.Household)));
             }
 
             logger.LogInformation(
