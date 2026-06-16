@@ -19,6 +19,9 @@ internal static class UserEncryptedFieldMapper
             IalLevel = (UserIalLevel)entity.IalLevel,
             IdProofingSessionId = entity.IdProofingSessionId,
             IdProofingCompletedAt = entity.IdProofingCompletedAt,
+#pragma warning disable CS0618 // legacy column mapping preserved until column is retired — see chore/retire-id-proofing-expires-at-column
+            IdProofingExpiresAt = entity.IdProofingExpiresAt,
+#pragma warning restore CS0618
             DateOfBirth = DecodeDateOnlySafe(crypto, entity.DateOfBirth),
             IsCoLoaded = entity.IsCoLoaded,
             CoLoadedLastUpdated = entity.CoLoadedLastUpdated,
