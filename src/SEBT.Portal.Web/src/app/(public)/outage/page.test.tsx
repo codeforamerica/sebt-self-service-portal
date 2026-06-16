@@ -8,12 +8,12 @@ vi.mock('@/features/outage/getOutageMessages', () => ({
     {
       language: 'en',
       body1: 'We are down for maintenance and will be back up shortly.',
-      body2: 'Try waiting a few minutes and refresh this page.'
+      body2: 'Try waiting a few hours and come back this page.'
     },
     {
       language: 'es',
       body1: 'Estamos en mantenimiento y volveremos en breve.',
-      body2: 'Le rogamos que espere unos minutos y actualice esta página.'
+      body2: 'Le rogamos que espere unas horas y vuelva a esta página.'
     }
   ],
   getOutageFooterCopy: () => ({

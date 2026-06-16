@@ -1,6 +1,5 @@
 'use client'
 
-import { MaintenanceIcon } from '@/features/outage/components/MaintenanceIcon'
 import { getFooterLinkLabel } from '@/features/outage/getFooterLinkLabel'
 import { getOutageFooterCopy, getOutageMessages } from '@/features/outage/getOutageMessages'
 import {
@@ -36,8 +35,6 @@ export function OutagePageContent() {
   return (
     <div className="display-flex flex-align-center flex-justify-center minh-viewport padding-y-4 padding-x-2">
       <div className="width-full maxw-mobile-lg text-center text-base-dark">
-        <MaintenanceIcon />
-
         <h1 className="usa-sr-only">{primaryMessage ?? 'Maintenance'}</h1>
 
         <div className="display-flex flex-column gap-4 margin-bottom-5">
