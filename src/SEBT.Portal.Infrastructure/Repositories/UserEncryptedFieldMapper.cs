@@ -19,7 +19,6 @@ internal static class UserEncryptedFieldMapper
             IalLevel = (UserIalLevel)entity.IalLevel,
             IdProofingSessionId = entity.IdProofingSessionId,
             IdProofingCompletedAt = entity.IdProofingCompletedAt,
-            IdProofingExpiresAt = entity.IdProofingExpiresAt,
             DateOfBirth = DecodeDateOnlySafe(crypto, entity.DateOfBirth),
             IsCoLoaded = entity.IsCoLoaded,
             CoLoadedLastUpdated = entity.CoLoadedLastUpdated,
