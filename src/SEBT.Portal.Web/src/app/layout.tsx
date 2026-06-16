@@ -75,25 +75,15 @@ export async function generateMetadata(): Promise<Metadata> {
       url: baseUrl,
       siteName: siteDisplayName,
       title: portalTitle,
-      description: portalMetadataDescription,
-      images: [
-        {
-          url: `${baseUrl}/images/states/${state}/og-image.png`,
-          width: 1200,
-          height: 630,
-          alt: `${siteDisplayName} Portal`
-        }
-      ]
+      description: portalMetadataDescription
     },
     twitter: {
-      card: 'summary_large_image',
+      card: 'summary',
       title: portalTitle,
-      description: portalMetadataDescription,
-      images: [`${baseUrl}/images/states/${state}/og-image.png`]
+      description: portalMetadataDescription
     },
     icons: {
-      icon: '/favicon.ico',
-      apple: '/apple-touch-icon.png'
+      icon: '/favicon.ico'
     },
     metadataBase: new URL(baseUrl)
   }
