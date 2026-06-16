@@ -1,4 +1,4 @@
-import { BetaBanner } from '@/components/BetaBanner'
+import { AppShell } from '@/components/AppShell'
 import { headingFont, primaryFont } from '@/design/fonts'
 import { SessionIdentityCacheSync } from '@/features/auth/components/SessionIdentityCacheSync'
 import { portalRoutes } from '@/lib/analytics-routes'
@@ -19,7 +19,6 @@ import {
   getStateName,
   SkipNav
 } from '@sebt/design-system'
-import { Footer, Header, HelpSection } from '@sebt/design-system/client'
 import type { Metadata, Viewport } from 'next'
 import { headers } from 'next/headers'
 import './globals.css'
@@ -76,25 +75,15 @@ export async function generateMetadata(): Promise<Metadata> {
       url: baseUrl,
       siteName: siteDisplayName,
       title: portalTitle,
-      description: portalMetadataDescription,
-      images: [
-        {
-          url: `${baseUrl}/images/states/${state}/og-image.png`,
-          width: 1200,
-          height: 630,
-          alt: `${siteDisplayName} Portal`
-        }
-      ]
+      description: portalMetadataDescription
     },
     twitter: {
-      card: 'summary_large_image',
+      card: 'summary',
       title: portalTitle,
-      description: portalMetadataDescription,
-      images: [`${baseUrl}/images/states/${state}/og-image.png`]
+      description: portalMetadataDescription
     },
     icons: {
-      icon: '/favicon.ico',
-      apple: '/apple-touch-icon.png'
+      icon: '/favicon.ico'
     },
     metadataBase: new URL(baseUrl)
   }
@@ -142,11 +131,7 @@ export default async function RootLayout({
                         If a second consumer appears, refactor to a SiteAlertContext so
                         child components call setSiteAlert() instead of using createPortal directly. */}
                     <div id="site-alerts" />
-                    <BetaBanner />
-                    <Header state={state} />
-                    <main id="main-content">{children}</main>
-                    <HelpSection state={state} />
-                    <Footer state={state} />
+                    <AppShell state={state}>{children}</AppShell>
                   </AxeProvider>
                 </I18nProvider>
               </FeatureFlagsProvider>

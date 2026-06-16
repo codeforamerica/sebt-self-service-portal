@@ -209,6 +209,15 @@ describe('OffBoardingPage', () => {
       expect(content).toHaveAttribute('data-apply-body', 'offBoarding:coLoadedBody2')
       expect(content).toHaveAttribute('data-apply-label', 'offBoarding:coLoadedAction2')
     })
+
+    it('uses the co-loaded off-boarding copy when reason is coLoadedOnly', () => {
+      renderPage({ isCoLoaded: false, reason: 'coLoadedOnly' })
+
+      const content = screen.getByTestId('off-boarding-content')
+      expect(content).toHaveAttribute('data-title', 'offBoarding:coLoadedTitle')
+      expect(content).toHaveAttribute('data-body', 'offBoarding:coLoadedBody1')
+      expect(content).toHaveAttribute('data-contact-label', 'offBoarding:coLoadedAction1')
+    })
   })
 
   describe('Static props', () => {

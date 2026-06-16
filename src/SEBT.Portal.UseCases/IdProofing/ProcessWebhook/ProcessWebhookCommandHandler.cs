@@ -1,10 +1,13 @@
 using System.Security.Cryptography;
 using System.Text;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 using SEBT.Portal.Core.AppSettings;
 using SEBT.Portal.Core.Exceptions;
+using SEBT.Portal.Core.Models;
 using SEBT.Portal.Core.Models.Auth;
 using SEBT.Portal.Core.Models.DocVerification;
+using SEBT.Portal.Core.Models.Household;
 using SEBT.Portal.Core.Repositories;
 using SEBT.Portal.Core.Utilities;
 using SEBT.Portal.Kernel;
@@ -22,7 +25,9 @@ namespace SEBT.Portal.UseCases.IdProofing;
 public class ProcessWebhookCommandHandler(
     IDocVerificationChallengeRepository challengeRepository,
     IUserRepository userRepository,
+    IHouseholdRepository householdRepository,
     SocureSettings socureSettings,
+    IOptions<IdProofingEligibilitySettings> idProofingEligibilitySettings,
     IValidator<ProcessWebhookCommand> validator,
     ILogger<ProcessWebhookCommandHandler> logger)
     : ICommandHandler<ProcessWebhookCommand>
@@ -139,7 +144,9 @@ public class ProcessWebhookCommandHandler(
         {
             challenge.OffboardingReason = egregiousReasonCodes != null
                 ? DocVerificationOffboardingReasons.EgregiousFailed
-                : DocVerificationOffboardingReasons.Failed;
+                : await ResolveRejectionOffboardingReasonAsync(
+                    challenge.UserId,
+                    cancellationToken);
         }
 
         try
@@ -237,6 +244,32 @@ public class ProcessWebhookCommandHandler(
             "REVIEW" => DocVerificationStatus.Rejected,
             _ => null
         };
+    }
+
+    private async Task<string> ResolveRejectionOffboardingReasonAsync(
+        Guid userId,
+        CancellationToken cancellationToken)
+    {
+        const string defaultReason = "docVerificationFailed";
+
+        var user = await userRepository.GetUserByIdAsync(userId, cancellationToken);
+        if (user == null || string.IsNullOrWhiteSpace(user.Email))
+        {
+            return defaultReason;
+        }
+
+        var warehouseIal = PreSocureHouseholdWarehouseIal.ForEmailLinkedHouseholdRead(
+            user.IalLevel,
+            idProofingEligibilitySettings.Value.RequireQualifyingHouseholdForSocure);
+
+        return await IdProofingHouseholdLookup.ResolveOffboardingReasonAsync(
+            householdRepository,
+            logger,
+            user,
+            warehouseIal,
+            userId,
+            defaultReason,
+            cancellationToken);
     }
 
     private async Task UpdateUserProofingStatus(Guid userId, CancellationToken cancellationToken)

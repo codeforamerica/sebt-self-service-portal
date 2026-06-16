@@ -24,6 +24,7 @@ public class PluginIntegrationWebApplicationFactory : WebApplicationFactory<Prog
 {
     private readonly string? _pluginDir;
     private readonly List<string> _envKeysToClean = new();
+    private string? _previousState;
 
     public PluginIntegrationWebApplicationFactory(
         string? pluginDir = null,
@@ -46,6 +47,11 @@ public class PluginIntegrationWebApplicationFactory : WebApplicationFactory<Prog
 
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
+        // Prevent appsettings.{state}.json from loading after env vars and overriding
+        // PluginAssemblyPaths (e.g. appsettings.dc.json when STATE=dc leaks from unit tests).
+        _previousState = Environment.GetEnvironmentVariable("STATE");
+        Environment.SetEnvironmentVariable("STATE", null);
+
         // Override plugin assembly paths via environment variables BEFORE the server starts.
         // Environment variables are visible immediately when Program.cs reads configuration,
         // unlike AddInMemoryCollection which can be applied too late.
@@ -122,6 +128,8 @@ public class PluginIntegrationWebApplicationFactory : WebApplicationFactory<Prog
         {
             Environment.SetEnvironmentVariable(key, null);
         }
+
+        Environment.SetEnvironmentVariable("STATE", _previousState);
 
         base.Dispose(disposing);
     }

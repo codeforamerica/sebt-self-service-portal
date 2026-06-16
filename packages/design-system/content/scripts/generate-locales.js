@@ -145,6 +145,8 @@ const CONFIG = {
     // S5 - CO Bulk Order New Cards flow (initial + who screens share optionalId via S5 fallback,
     // but the "bulk order new cards" intro screen is used by components in confirmInfo namespace)
     'bulk order new cards': 'confirmInfo',
+    // S9 - Outage page
+    'outage page': 'outage',
     // S10 - Step-up verification screens
     'step-up disclaimer': 'stepUpDisclaimer',
     'step-up failure': 'stepUpFailure',
@@ -552,6 +554,7 @@ const NAMESPACE_APP = {
   idProofing:             'portal',
   optIn:                  'portal',
   offBoarding:            'portal',
+  outage:                 'portal',
   dashboard:              'portal',
   edit:                   'portal',
   editContactPreferences: 'portal',

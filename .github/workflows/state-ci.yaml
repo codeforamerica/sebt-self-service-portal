@@ -217,6 +217,60 @@ jobs:
             output/backend-dependencies.csv
           retention-days: 7
 
+  # The enrollment checker is built only by deploy-enrollment-checker.yaml, which
+  # triggers on pushes to main. Without this job, pull requests never lint, build,
+  # type-check, or test the app, so its errors only surface after merge.
+  # Build steps and tool versions mirror deploy-enrollment-checker.yaml.
+  enrollment-checker:
+    name: Enrollment Checker - Build & Test
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: "pnpm"
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      # next build no longer runs ESLint, so lint is its own gate.
+      - name: Lint
+        run: pnpm --filter @sebt/enrollment-checker lint
+
+      # next build only type-checks files reachable from the app's entry
+      # points; tsc --noEmit covers the full tsconfig include set, notably
+      # vitest test files.
+      - name: Type check
+        run: pnpm --filter @sebt/enrollment-checker typecheck
+
+      - name: Test
+        run: pnpm ci:test:enrollment-checker
+
+      # The static export cannot include SSR-only route handlers; the deploy
+      # workflow removes them before building, so do the same here for parity.
+      - name: Remove SSR-only API routes
+        run: rm -rf src/SEBT.EnrollmentChecker.Web/src/app/api
+
+      - name: Build static export
+        run: BUILD_STATIC=true pnpm --filter @sebt/enrollment-checker build
+        env:
+          STATE: co
+          NEXT_PUBLIC_STATE: co
+          # Required by the client env schema (src/lib/env.ts). This job only
+          # validates that the app builds, so sentinel URLs stand in for the
+          # deployment values that deploy-enrollment-checker.yaml provides.
+          NEXT_PUBLIC_PORTAL_URL: https://portal.ci-validation.example.gov
+          NEXT_PUBLIC_APPLICATION_URL: https://apply.ci-validation.example.gov
+
   ci-scripts-test:
     name: CI scripts smoke tests
     runs-on: ubuntu-latest
