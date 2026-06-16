@@ -10,6 +10,7 @@ namespace SEBT.Portal.Tests.Unit.Services;
 
 public class EmailSenderServiceTests : IDisposable
 {
+    private readonly string? _previousState;
     private readonly IOptionsMonitor<EmailOtpSenderServiceSettings> _optionsMonitor =
         Substitute.For<IOptionsMonitor<EmailOtpSenderServiceSettings>>();
     private readonly ILogger<EmailOtpSenderService> _logger = Substitute.For<ILogger<EmailOtpSenderService>>();
@@ -22,6 +23,7 @@ public class EmailSenderServiceTests : IDisposable
         // for other tests that run in parallel — without that cleanup, any
         // WebApplicationFactory-based test building its host concurrently can read
         // STATE=dc and load appsettings.dc.json with the wrong PluginAssemblyPaths.
+        _previousState = Environment.GetEnvironmentVariable("STATE");
         Environment.SetEnvironmentVariable("STATE", "dc");
         _optionsMonitor.CurrentValue.Returns(new EmailOtpSenderServiceSettings { SenderEmail = "sender@example.com" });
         _smtpClientService.SendEmailAsync(
@@ -31,12 +33,6 @@ public class EmailSenderServiceTests : IDisposable
             Arg.Any<string>(),
             Arg.Any<IEnumerable<EmailLinkedResource>>())
             .Returns(Task.CompletedTask);
-    }
-
-    public void Dispose()
-    {
-        Environment.SetEnvironmentVariable("STATE", null);
-        GC.SuppressFinalize(this);
     }
 
     [Fact]
@@ -223,5 +219,10 @@ public class EmailSenderServiceTests : IDisposable
             Arg.Any<string>(),
             Arg.Is<string>(body => body.Contains("alt=\"DC SUN Bucks\"")),
             Arg.Any<IEnumerable<EmailLinkedResource>>());
+    }
+
+    public void Dispose()
+    {
+        Environment.SetEnvironmentVariable("STATE", _previousState);
     }
 }
