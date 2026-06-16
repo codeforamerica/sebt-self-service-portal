@@ -89,4 +89,50 @@ public class SubmitIdProofingEgregiousReasonTests
         await challengeRepository.DidNotReceive()
             .CreateAsync(Arg.Any<DocVerificationChallenge>(), Arg.Any<CancellationToken>());
     }
+
+    [Fact]
+    public async Task Handle_ShouldCompleteProofing_WhenMatchedDespiteEgregiousReasonCode()
+    {
+        var handler = CreateHandler();
+        var command = new SubmitIdProofingCommand
+        {
+            UserId = Guid.CreateVersion7(),
+            DateOfBirth = "1990-01-01",
+            IdType = "ssn",
+            IdValue = "123456789"
+        };
+
+        userRepository.GetUserByIdAsync(command.UserId, Arg.Any<CancellationToken>())
+            .Returns(new User
+            {
+                Id = command.UserId,
+                Email = "test@example.com"
+            });
+        challengeRepository.GetActiveByUserIdAsync(command.UserId, Arg.Any<CancellationToken>())
+            .Returns((DocVerificationChallenge?)null);
+        socureClient.RunIdProofingAssessmentAsync(
+                Arg.Any<Guid>(), Arg.Any<string>(), Arg.Any<string>(),
+                Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<string?>(),
+                Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<Address?>(),
+                Arg.Any<string?>(), Arg.Any<CancellationToken>())
+            .Returns(Result<IdProofingAssessmentResult>.Success(
+                new IdProofingAssessmentResult(
+                    IdProofingOutcome.Matched,
+                    AllowIdRetry: true,
+                    DocumentVerificationReasonCodes: ["R815"])));
+
+        var result = await handler.Handle(command, CancellationToken.None);
+
+        Assert.True(result.IsSuccess);
+        Assert.Equal("matched", result.Value.Result);
+
+        await userRepository.Received(1)
+            .UpdateUserAsync(
+                Arg.Is<User>(u =>
+                    u.IdProofingStatus == IdProofingStatus.Completed
+                    && u.IalLevel == UserIalLevel.IAL1plus),
+                Arg.Any<CancellationToken>());
+        await challengeRepository.DidNotReceive()
+            .CreateAsync(Arg.Any<DocVerificationChallenge>(), Arg.Any<CancellationToken>());
+    }
 }

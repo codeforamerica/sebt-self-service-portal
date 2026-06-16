@@ -364,24 +364,12 @@ public class SubmitIdProofingCommandHandler(
         var egregiousReasonCodes = SocureDocvEgregiousReasonCodes.GetMatchingEgregiousCodes(
             socureSettings.DocvEgregiousReasonRejection,
             assessment.DocumentVerificationReasonCodes);
-        if (egregiousReasonCodes != null)
-        {
-            logger.LogInformation(
-                "User {UserId} rejected for egregious DocV reason codes ({Codes}); not routing to DocV",
-                command.UserId,
-                string.Join(',', egregiousReasonCodes));
-            await userRepository.UpdateUserAsync(user, cancellationToken);
-            return Result<SubmitIdProofingResponse>.Success(
-                new SubmitIdProofingResponse(
-                    "failed",
-                    AllowIdRetry: allowIdRetry,
-                    OffboardingReason: DocVerificationOffboardingReasons.EgregiousFailed));
-        }
 
         switch (assessment.Outcome)
         {
             case IdProofingOutcome.Matched:
-                // Single save: attempt count + proofing completion together
+                // Top-level ACCEPT wins even when DocV enrichment carries egregious codes
+                // (same as webhook: workflow ACCEPT is not overridden).
                 return await CompleteProofingAndRespond(
                     user,
                     UserIalLevel.IAL1plus,
@@ -394,11 +382,27 @@ public class SubmitIdProofingCommandHandler(
                     new SubmitIdProofingResponse(
                         "failed",
                         AllowIdRetry: allowIdRetry,
-                        OffboardingReason: CoLoadedCohortClassifier.ResolveOffboardingReason(
-                            "idProofingFailed",
-                            householdForSocure)));
+                        OffboardingReason: egregiousReasonCodes != null
+                            ? DocVerificationOffboardingReasons.EgregiousFailed
+                            : CoLoadedCohortClassifier.ResolveOffboardingReason(
+                                "idProofingFailed",
+                                householdForSocure)));
 
             case IdProofingOutcome.DocumentVerificationRequired:
+                if (egregiousReasonCodes != null)
+                {
+                    logger.LogInformation(
+                        "User {UserId} rejected for egregious DocV reason codes ({Codes}); not routing to DocV",
+                        command.UserId,
+                        string.Join(',', egregiousReasonCodes));
+                    await userRepository.UpdateUserAsync(user, cancellationToken);
+                    return Result<SubmitIdProofingResponse>.Success(
+                        new SubmitIdProofingResponse(
+                            "failed",
+                            AllowIdRetry: allowIdRetry,
+                            OffboardingReason: DocVerificationOffboardingReasons.EgregiousFailed));
+                }
+
                 await userRepository.UpdateUserAsync(user, cancellationToken);
                 return await CreateChallengeAndRespond(
                     command, assessment, allowIdRetry, cancellationToken);
