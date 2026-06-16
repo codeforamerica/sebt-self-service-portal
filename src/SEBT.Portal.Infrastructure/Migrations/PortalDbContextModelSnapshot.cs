@@ -17,7 +17,7 @@ namespace SEBT.Portal.Infrastructure.Migrations
         {
 #pragma warning disable 612, 618
             modelBuilder
-                .HasAnnotation("ProductVersion", "10.0.8")
+                .HasAnnotation("ProductVersion", "10.0.0")
                 .HasAnnotation("Relational:MaxIdentifierLength", 128);
 
             SqlServerModelBuilderExtensions.UseIdentityColumns(modelBuilder);
@@ -243,7 +243,6 @@ namespace SEBT.Portal.Infrastructure.Migrations
 
                     b.Property<DateTime?>("IdProofingCompletedAt")
                         .HasColumnType("datetime2");
-
 
                     b.Property<DateTime?>("IdProofingExpiresAt")
                         .HasColumnType("datetime2");
