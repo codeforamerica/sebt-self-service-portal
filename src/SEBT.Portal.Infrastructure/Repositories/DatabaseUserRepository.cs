@@ -118,7 +118,6 @@ public class DatabaseUserRepository(
         entity.IalLevel = (int)user.IalLevel;
         entity.IdProofingSessionId = user.IdProofingSessionId;
         entity.IdProofingCompletedAt = user.IdProofingCompletedAt;
-        entity.IdProofingExpiresAt = ComputeStoredExpiration(user.IdProofingCompletedAt);
         entity.IsCoLoaded = user.IsCoLoaded;
         entity.CoLoadedLastUpdated = user.CoLoadedLastUpdated;
         entity.Ssn = identifierHasher.HashForStorage(user.Ssn);
@@ -336,13 +335,6 @@ public class DatabaseUserRepository(
 
     private static string? NormalizeEmail(string? email) => EmailNormalizer.NormalizeOrNull(email);
 
-    /// <summary>
-    /// Persists a derived expiration for legacy DB readers. Runtime/JWT use
-    /// <see cref="IdProofingCompletedAt"/> + <see cref="IdProofingValiditySettings.ValidityDays"/>.
-    /// </summary>
-    private DateTime? ComputeStoredExpiration(DateTime? completedAt) =>
-        IdProofingExpiration.ComputeStoredExpiration(completedAt, _validitySettings.ValidityDays);
-
     private async Task<UserEntity?> FindUserEntityByNormalizedEmailAsync(
         string normalizedEmail,
         string lookupHash,
@@ -485,7 +477,6 @@ public class DatabaseUserRepository(
             IalLevel = (int)user.IalLevel,
             IdProofingSessionId = user.IdProofingSessionId,
             IdProofingCompletedAt = user.IdProofingCompletedAt,
-            IdProofingExpiresAt = ComputeStoredExpiration(user.IdProofingCompletedAt),
             IsCoLoaded = user.IsCoLoaded,
             CoLoadedLastUpdated = user.CoLoadedLastUpdated,
             IdProofingAttemptCount = user.IdProofingAttemptCount,

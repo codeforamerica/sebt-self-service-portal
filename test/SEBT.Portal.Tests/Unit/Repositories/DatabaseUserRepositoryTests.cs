@@ -256,9 +256,6 @@ public class DatabaseUserRepositoryTests : IClassFixture<SqlServerTestFixture>
         Assert.Equal((int)UserIalLevel.IAL1plus, updated!.IalLevel);
         Assert.Equal("new-session-456", updated.IdProofingSessionId);
         Assert.NotNull(updated.IdProofingCompletedAt);
-        Assert.Equal(
-            completedAt.AddDays(TestValiditySettings.Value.ValidityDays),
-            updated.IdProofingExpiresAt);
     }
 
     [Fact]
@@ -727,7 +724,6 @@ public class DatabaseUserRepositoryTests : IClassFixture<SqlServerTestFixture>
 
         var uniqueEmail = $"mapping-{Guid.NewGuid()}@example.com";
         var completedAt = DateTime.UtcNow.AddDays(-1);
-        var expiresAt = DateTime.UtcNow.AddYears(1);
         var createdAt = DateTime.UtcNow.AddDays(-5);
         var updatedAt = DateTime.UtcNow.AddDays(-2);
 
@@ -738,7 +734,6 @@ public class DatabaseUserRepositoryTests : IClassFixture<SqlServerTestFixture>
             e.IalLevel = (int)UserIalLevel.IAL1plus;
             e.IdProofingSessionId = "test-session";
             e.IdProofingCompletedAt = completedAt;
-            e.IdProofingExpiresAt = expiresAt;
             e.CoLoadedLastUpdated = coLoadedUpdated;
             e.CreatedAt = createdAt;
             e.UpdatedAt = updatedAt;
@@ -755,9 +750,6 @@ public class DatabaseUserRepositoryTests : IClassFixture<SqlServerTestFixture>
         Assert.Equal(UserIalLevel.IAL1plus, result.IalLevel);
         Assert.Equal("test-session", result.IdProofingSessionId);
         Assert.Equal(completedAt, result.IdProofingCompletedAt);
-#pragma warning disable CS0618 // User.IdProofingExpiresAt — verifying EF ↔ domain mapping until column retired
-        Assert.Equal(expiresAt, result.IdProofingExpiresAt);
-#pragma warning restore CS0618
         Assert.True(result.IsCoLoaded);
         Assert.Equal(coLoadedUpdated, result.CoLoadedLastUpdated);
         Assert.Equal(createdAt, result.CreatedAt);
@@ -809,7 +801,6 @@ public class DatabaseUserRepositoryTests : IClassFixture<SqlServerTestFixture>
 
         var uniqueEmail = $"fulluser-{Guid.NewGuid()}@example.com";
         var completedAt = DateTime.UtcNow.AddDays(-1);
-        var expiresAt = DateTime.UtcNow.AddYears(1);
         var coLoadedUpdated = DateTime.UtcNow.AddDays(-2);
 
         var user = UserFactory.CreateUserWithEmail(uniqueEmail, u =>
@@ -821,9 +812,6 @@ public class DatabaseUserRepositoryTests : IClassFixture<SqlServerTestFixture>
             u.CoLoadedLastUpdated = coLoadedUpdated;
             u.UpdatedAt = DateTime.UtcNow.AddDays(-5);
         });
-#pragma warning disable CS0618 // User.IdProofingExpiresAt — persistence round-trip for legacy column
-        user.IdProofingExpiresAt = expiresAt;
-#pragma warning restore CS0618
         // Set init-only CreatedAt using reflection
         var createdAtProperty = typeof(User).GetProperty(nameof(User.CreatedAt));
         createdAtProperty?.SetValue(user, DateTime.UtcNow.AddDays(-10));
@@ -837,9 +825,6 @@ public class DatabaseUserRepositoryTests : IClassFixture<SqlServerTestFixture>
         Assert.Equal((int)UserIalLevel.None, stored!.IalLevel);
         Assert.Equal("full-session", stored.IdProofingSessionId);
         Assert.Equal(completedAt, stored.IdProofingCompletedAt);
-        Assert.Equal(
-            completedAt.AddDays(TestValiditySettings.Value.ValidityDays),
-            stored.IdProofingExpiresAt);
         Assert.True(stored.IsCoLoaded);
         Assert.Equal(coLoadedUpdated, stored.CoLoadedLastUpdated);
     }
