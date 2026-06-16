@@ -78,7 +78,8 @@ const nextConfig: NextConfig = {
     return [
       // Bots and stray links probe /index.html (a legacy SPA entry point the App
       // Router never serves); redirect to the homepage so these don't 404.
-      { source: '/index.html', destination: '/', permanent: true }
+      // Temporary (307) so it isn't cached in clients' browsers and stays easy to change.
+      { source: '/index.html', destination: '/', permanent: false }
     ]
   }
 }
