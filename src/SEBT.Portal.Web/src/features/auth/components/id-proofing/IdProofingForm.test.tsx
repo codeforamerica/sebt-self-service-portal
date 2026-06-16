@@ -13,15 +13,17 @@
  * Missing i18n keys (e.g. optionLabelNone) fall back to the key string itself.
  */
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { render, screen, waitFor } from '@testing-library/react'
+import { act, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { http, HttpResponse } from 'msw'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { i18n } from '@sebt/design-system/client'
 
+import amDcValidation from '@/content/locales/am/dc/validation.json'
 import enCoStepUpProcessing from '@/content/locales/en/co/step-upProcessing.json'
 import enDcValidation from '@/content/locales/en/dc/validation.json'
+import esDcValidation from '@/content/locales/es/dc/validation.json'
 import { server } from '@/mocks/server'
 
 import {
@@ -143,6 +145,42 @@ describe('IdProofingForm', () => {
     mockSetPageData.mockClear()
     mockSetUserData.mockClear()
     mockTrackEvent.mockClear()
+  })
+
+  describe('Error language switching (DC-454)', () => {
+    // The i18n instance is a shared singleton; reset to English after each test.
+    afterEach(async () => {
+      await act(async () => {
+        await i18n.changeLanguage('en')
+      })
+    })
+
+    it('re-translates required-field errors across all DC languages', async () => {
+      const user = userEvent.setup()
+      renderWithProviders(
+        <IdProofingForm
+          idOptions={TEST_ID_OPTIONS}
+          contactLink={TEST_CONTACT_LINK}
+        />
+      )
+
+      // Submitting empty flags the required DOB/ID fields. Those errors use real validation
+      // keys (stored as { ns, key } and resolved at render), so they re-translate on a
+      // language switch. (The hardcoded DOB-invalid / digit-count messages have no key yet.)
+      await user.click(screen.getByRole('button', { name: /continue/i }))
+      expect((await screen.findAllByText(enDcValidation.required)).length).toBeGreaterThan(0)
+
+      await act(async () => {
+        await i18n.changeLanguage('es')
+      })
+      expect((await screen.findAllByText(esDcValidation.required)).length).toBeGreaterThan(0)
+
+      await act(async () => {
+        await i18n.changeLanguage('am')
+      })
+      expect((await screen.findAllByText(amDcValidation.required)).length).toBeGreaterThan(0)
+      expect(screen.queryAllByText(enDcValidation.required)).toHaveLength(0)
+    })
   })
 
   describe('Rendering', () => {
