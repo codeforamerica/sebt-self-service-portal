@@ -104,9 +104,10 @@ public class ProcessWebhookCommandHandler(
             command.DocumentVerificationReasonCodes);
 
         var newStatus = MapWorkflowDecisionToStatus(command.WorkflowDecision);
-        if (egregiousReasonCodes != null)
+        if (egregiousReasonCodes != null && newStatus == DocVerificationStatus.Resubmit)
         {
-            // Egregious DocV failures reject immediately
+            // Block DocV step-up: egregious codes reject immediately instead of RESUBMIT retry.
+            // Workflow ACCEPT/REJECT/REVIEW are left unchanged — Socure's top-level decision wins.
             newStatus = DocVerificationStatus.Rejected;
         }
 
@@ -136,7 +137,9 @@ public class ProcessWebhookCommandHandler(
 
         if (newStatus == DocVerificationStatus.Rejected)
         {
-            challenge.OffboardingReason = SocureDocvEgregiousReasonCodes.OffboardingReason;
+            challenge.OffboardingReason = egregiousReasonCodes != null
+                ? DocVerificationOffboardingReasons.EgregiousFailed
+                : DocVerificationOffboardingReasons.Failed;
         }
 
         try

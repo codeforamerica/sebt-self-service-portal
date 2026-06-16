@@ -279,6 +279,18 @@ describe('OffBoardingPage', () => {
       expect(content).toHaveAttribute('data-title', 'offBoarding:title')
     })
 
+    it('renders docVerificationEgregiousFailed-specific copy matching docVerificationFailed', async () => {
+      await renderPage({ reason: 'docVerificationEgregiousFailed' })
+
+      const content = screen.getByTestId('off-boarding-content')
+      expect(content).toHaveAttribute('data-title', "We couldn't verify your identity")
+      expect(content).toHaveAttribute(
+        'data-body',
+        "Your document couldn't be verified. You can try again with a different ID, or contact us if you need help."
+      )
+      expect(content).toHaveAttribute('data-can-apply', 'false')
+    })
+
     it('renders docVerificationFailed-specific title and body when reason is docVerificationFailed', async () => {
       await renderPage({ reason: 'docVerificationFailed' })
 

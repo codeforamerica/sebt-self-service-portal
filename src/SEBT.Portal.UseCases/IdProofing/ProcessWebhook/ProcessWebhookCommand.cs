@@ -63,7 +63,7 @@ public class ProcessWebhookCommand : ICommand
 
     /// <summary>
     /// Socure DocV reason codes from the documentVerification enrichment, when present.
-    /// Used to detect egregious failures that trigger a portal-side cooldown.
+    /// Used to detect egregious failures that trigger immediate rejection without DocV step-up.
     /// </summary>
     public IReadOnlyList<string>? DocumentVerificationReasonCodes { get; init; }
 }

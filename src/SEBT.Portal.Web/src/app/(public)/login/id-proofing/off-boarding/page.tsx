@@ -78,7 +78,7 @@ export default function OffBoardingPage() {
     applyBody = undefined
     applySkipBody = undefined
     applyLabel = undefined
-  } else if (reason === 'docVerificationFailed') {
+  } else if (reason === 'docVerificationFailed' || reason === 'docVerificationEgregiousFailed') {
     title = "We couldn't verify your identity"
     body =
       "Your document couldn't be verified. You can try again with a different ID, or contact us if you need help."

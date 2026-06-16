@@ -351,7 +351,7 @@ public class SubmitIdProofingCommandHandler(
                 new SubmitIdProofingResponse(
                     "failed",
                     AllowIdRetry: allowIdRetry,
-                    OffboardingReason: SocureDocvEgregiousReasonCodes.OffboardingReason));
+                    OffboardingReason: DocVerificationOffboardingReasons.EgregiousFailed));
         }
 
         switch (assessment.Outcome)

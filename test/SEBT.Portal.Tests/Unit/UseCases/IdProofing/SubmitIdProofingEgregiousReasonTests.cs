@@ -83,7 +83,7 @@ public class SubmitIdProofingEgregiousReasonTests
         Assert.True(result.IsSuccess);
         var response = result.Value;
         Assert.Equal("failed", response.Result);
-        Assert.Equal(SocureDocvEgregiousReasonCodes.OffboardingReason, response.OffboardingReason);
+        Assert.Equal(DocVerificationOffboardingReasons.EgregiousFailed, response.OffboardingReason);
         Assert.True(response.AllowIdRetry);
 
         await challengeRepository.DidNotReceive()

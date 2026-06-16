@@ -8,11 +8,6 @@ namespace SEBT.Portal.Core.Utilities;
 public static class SocureDocvEgregiousReasonCodes
 {
     /// <summary>
-    /// Off-boarding reason when DocV fails with an egregious reason code. User may retry ID proofing.
-    /// </summary>
-    public const string OffboardingReason = "docVerificationFailed";
-
-    /// <summary>
     /// Returns the configured egregious reason codes present on the DocV payload, if any.
     /// </summary>
     public static IReadOnlyList<string>? GetMatchingEgregiousCodes(
