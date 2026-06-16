@@ -8,7 +8,7 @@ vi.mock('@/features/outage/getOutageMessages', () => ({
     {
       language: 'en',
       body1: 'We are down for maintenance and will be back up shortly.',
-      body2: 'Try waiting a few hours and come back this page.'
+      body2: 'Try waiting a few hours and come back to this page.'
     },
     {
       language: 'es',
