@@ -99,14 +99,14 @@ public class ProcessWebhookCommandHandler(
         // Route on the top-level workflow decision (DC-296). The DocV enrichment decision is
         // diagnostic only: it reflects document quality alone and can disagree with the
         // workflow outcome when Digital Intelligence signals drive a reject.
-        var egregiousReasonCodes = SocureDocvEgregiousReasonCooldown.GetMatchingEgregiousCodes(
-            socureSettings.DocvEgregiousReasonCooldown,
+        var egregiousReasonCodes = SocureDocvEgregiousReasonCodes.GetMatchingEgregiousCodes(
+            socureSettings.DocvEgregiousReasonRejection,
             command.DocumentVerificationReasonCodes);
 
         var newStatus = MapWorkflowDecisionToStatus(command.WorkflowDecision);
         if (egregiousReasonCodes != null)
         {
-            // Egregious DocV failures are terminal rejects with a cooldown — never retry-eligible.
+            // Egregious DocV failures reject immediately
             newStatus = DocVerificationStatus.Rejected;
         }
 
@@ -136,13 +136,7 @@ public class ProcessWebhookCommandHandler(
 
         if (newStatus == DocVerificationStatus.Rejected)
         {
-            challenge.OffboardingReason = egregiousReasonCodes != null
-                ? SocureDocvEgregiousReasonCooldown.OffboardingReason
-                : "docVerificationFailed";
-            if (egregiousReasonCodes != null)
-            {
-                challenge.AllowIdRetry = false;
-            }
+            challenge.OffboardingReason = SocureDocvEgregiousReasonCodes.OffboardingReason;
         }
 
         try
@@ -158,14 +152,6 @@ public class ProcessWebhookCommandHandler(
                 "another thread already processed it",
                 SanitizeForLogging(command.EventId), challenge.PublicId);
             return Result.Success();
-        }
-
-        if (egregiousReasonCodes != null)
-        {
-            await ApplyEgregiousReasonCooldownAsync(
-                challenge.UserId,
-                egregiousReasonCodes,
-                cancellationToken);
         }
 
         logger.LogInformation(
@@ -268,34 +254,5 @@ public class ProcessWebhookCommandHandler(
         logger.LogInformation(
             "User {UserId} proofing status updated to Completed, IAL1plus after document verification",
             userId);
-    }
-
-    private async Task ApplyEgregiousReasonCooldownAsync(
-        Guid userId,
-        IReadOnlyList<string> egregiousReasonCodes,
-        CancellationToken cancellationToken)
-    {
-        var user = await userRepository.GetUserByIdAsync(userId, cancellationToken);
-        if (user == null)
-        {
-            logger.LogError(
-                "User {UserId} not found when applying DocV egregious-reason cooldown",
-                userId);
-            return;
-        }
-
-        var cooldownUntil = SocureDocvEgregiousReasonCooldown.ComputeCooldownUntil(
-            socureSettings.DocvEgregiousReasonCooldown,
-            user,
-            DateTime.UtcNow);
-        user.IdProofingCooldownUntil = cooldownUntil;
-
-        await userRepository.UpdateUserAsync(user, cancellationToken);
-
-        logger.LogInformation(
-            "User {UserId} DocV egregious-reason cooldown applied until {CooldownUntil} (codes: {Codes})",
-            userId,
-            cooldownUntil,
-            string.Join(',', egregiousReasonCodes));
     }
 }

@@ -74,16 +74,6 @@ public class ResubmitChallengeCommandHandler(
                 PreconditionFailedReason.NotFound, "User not found.");
         }
 
-        if (SocureDocvEgregiousReasonCooldown.IsUserInCooldown(user, DateTime.UtcNow))
-        {
-            logger.LogInformation(
-                "ResubmitChallenge blocked: user {UserId} is within DocV egregious-reason cooldown until {CooldownUntil}",
-                command.UserId, user.IdProofingCooldownUntil);
-            return Result<ResubmitChallengeResponse>.PreconditionFailed(
-                PreconditionFailedReason.Conflict,
-                "Document verification is temporarily unavailable. Please try again later.");
-        }
-
         if (string.IsNullOrWhiteSpace(user.Email))
         {
             logger.LogWarning(
@@ -161,6 +151,21 @@ public class ResubmitChallengeCommandHandler(
         }
 
         var assessment = assessmentResult.Value;
+
+        var egregiousReasonCodes = SocureDocvEgregiousReasonCodes.GetMatchingEgregiousCodes(
+            socureSettings.DocvEgregiousReasonRejection,
+            assessment.DocumentVerificationReasonCodes);
+        if (egregiousReasonCodes != null)
+        {
+            logger.LogInformation(
+                "ResubmitChallenge blocked: user {UserId} has egregious DocV reason codes ({Codes})",
+                command.UserId,
+                string.Join(',', egregiousReasonCodes));
+            return Result<ResubmitChallengeResponse>.PreconditionFailed(
+                PreconditionFailedReason.Conflict,
+                "Document verification cannot be retried for this submission. Please try again with different information.");
+        }
+
         if (assessment.Outcome != IdProofingOutcome.DocumentVerificationRequired
             || assessment.DocvSession == null)
         {

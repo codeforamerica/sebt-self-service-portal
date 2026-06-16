@@ -15,14 +15,21 @@ using SEBT.Portal.UseCases.IdProofing;
 
 namespace SEBT.Portal.Tests.Unit.UseCases.IdProofing;
 
-public class SubmitIdProofingDocvCooldownTests
+public class SubmitIdProofingEgregiousReasonTests
 {
     private readonly IUserRepository userRepository = Substitute.For<IUserRepository>();
     private readonly IHouseholdRepository householdRepository = Substitute.For<IHouseholdRepository>();
     private readonly IDocVerificationChallengeRepository challengeRepository =
         Substitute.For<IDocVerificationChallengeRepository>();
     private readonly ISocureClient socureClient = Substitute.For<ISocureClient>();
-    private readonly SocureSettings socureSettings = new();
+    private readonly SocureSettings socureSettings = new()
+    {
+        DocvEgregiousReasonRejection = new SocureDocvEgregiousReasonRejectionSettings
+        {
+            Enabled = true,
+            ReasonCodes = ["R815"]
+        }
+    };
     private readonly IValidator<SubmitIdProofingCommand> validator =
         new DataAnnotationsValidator<SubmitIdProofingCommand>(null!);
     private readonly NullLogger<SubmitIdProofingCommandHandler> logger =
@@ -36,11 +43,11 @@ public class SubmitIdProofingDocvCooldownTests
             socureClient,
             socureSettings,
             validator,
-            Options.Create(new IdProofingEligibilitySettings { RequireQualifyingHouseholdForSocure = true }),
+            Options.Create(new IdProofingEligibilitySettings { RequireQualifyingHouseholdForSocure = false }),
             logger);
 
     [Fact]
-    public async Task Handle_ShouldBlockSubmission_WhenUserIsInDocvEgregiousReasonCooldown()
+    public async Task Handle_ShouldRejectWithoutDocV_WhenAssessmentHasEgregiousReasonCode()
     {
         var handler = CreateHandler();
         var command = new SubmitIdProofingCommand
@@ -55,25 +62,31 @@ public class SubmitIdProofingDocvCooldownTests
             .Returns(new User
             {
                 Id = command.UserId,
-                Email = "test@example.com",
-                IdProofingCooldownUntil = DateTime.UtcNow.AddDays(7)
+                Email = "test@example.com"
             });
         challengeRepository.GetActiveByUserIdAsync(command.UserId, Arg.Any<CancellationToken>())
             .Returns((DocVerificationChallenge?)null);
+        socureClient.RunIdProofingAssessmentAsync(
+                Arg.Any<Guid>(), Arg.Any<string>(), Arg.Any<string>(),
+                Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<string?>(),
+                Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<Address?>(),
+                Arg.Any<string?>(), Arg.Any<CancellationToken>())
+            .Returns(Result<IdProofingAssessmentResult>.Success(
+                new IdProofingAssessmentResult(
+                    IdProofingOutcome.DocumentVerificationRequired,
+                    AllowIdRetry: true,
+                    DocvSession: new SocureDocvSession("token", "https://verify.socure.com", "ref", "eval"),
+                    DocumentVerificationReasonCodes: ["R815"])));
 
         var result = await handler.Handle(command, CancellationToken.None);
 
         Assert.True(result.IsSuccess);
         var response = result.Value;
         Assert.Equal("failed", response.Result);
-        Assert.Equal(SocureDocvEgregiousReasonCooldown.OffboardingReason, response.OffboardingReason);
-        Assert.False(response.AllowIdRetry);
+        Assert.Equal(SocureDocvEgregiousReasonCodes.OffboardingReason, response.OffboardingReason);
+        Assert.True(response.AllowIdRetry);
 
-        await socureClient.DidNotReceive()
-            .RunIdProofingAssessmentAsync(
-                Arg.Any<Guid>(), Arg.Any<string>(), Arg.Any<string>(),
-                Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<string?>(),
-                Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<Address?>(),
-                Arg.Any<string?>(), Arg.Any<CancellationToken>());
+        await challengeRepository.DidNotReceive()
+            .CreateAsync(Arg.Any<DocVerificationChallenge>(), Arg.Any<CancellationToken>());
     }
 }

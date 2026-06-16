@@ -61,16 +61,6 @@ public class StartChallengeCommandHandler(
                 PreconditionFailedReason.NotFound, "User not found.");
         }
 
-        if (SocureDocvEgregiousReasonCooldown.IsUserInCooldown(user, DateTime.UtcNow))
-        {
-            logger.LogInformation(
-                "StartChallenge blocked: user {UserId} is within DocV egregious-reason cooldown until {CooldownUntil}",
-                command.UserId, user.IdProofingCooldownUntil);
-            return Result<StartChallengeResponse>.PreconditionFailed(
-                PreconditionFailedReason.Conflict,
-                "Document verification is temporarily unavailable. Please try again later.");
-        }
-
         // Check-on-read expiration: if Created and past ExpiresAt, transition to Expired
         if (challenge.Status == DocVerificationStatus.Created
             && challenge.ExpiresAt.HasValue
@@ -323,6 +313,21 @@ public class StartChallengeCommandHandler(
         }
 
         var assessment = assessmentResult.Value;
+
+        var egregiousReasonCodes = SocureDocvEgregiousReasonCodes.GetMatchingEgregiousCodes(
+            socureSettings.DocvEgregiousReasonRejection,
+            assessment.DocumentVerificationReasonCodes);
+        if (egregiousReasonCodes != null)
+        {
+            logger.LogInformation(
+                "DocV token refresh blocked for challenge {ChallengeId}: egregious reason codes ({Codes})",
+                challenge.PublicId,
+                string.Join(',', egregiousReasonCodes));
+            return Result<StartChallengeResponse>.PreconditionFailed(
+                PreconditionFailedReason.Conflict,
+                "Document verification session expired. Please re-submit your information.");
+        }
+
         if (assessment.Outcome != IdProofingOutcome.DocumentVerificationRequired
             || assessment.DocvSession == null)
         {

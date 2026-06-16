@@ -123,7 +123,6 @@ public class DatabaseUserRepository(
         entity.CoLoadedLastUpdated = user.CoLoadedLastUpdated;
         entity.Ssn = identifierHasher.HashForStorage(user.Ssn);
         entity.IdProofingAttemptCount = user.IdProofingAttemptCount;
-        entity.IdProofingCooldownUntil = user.IdProofingCooldownUntil;
         entity.UpdatedAt = DateTime.UtcNow;
 
         try
@@ -490,7 +489,6 @@ public class DatabaseUserRepository(
             IsCoLoaded = user.IsCoLoaded,
             CoLoadedLastUpdated = user.CoLoadedLastUpdated,
             IdProofingAttemptCount = user.IdProofingAttemptCount,
-            IdProofingCooldownUntil = user.IdProofingCooldownUntil,
             CreatedAt = user.CreatedAt,
             UpdatedAt = user.UpdatedAt
         };

@@ -244,8 +244,6 @@ namespace SEBT.Portal.Infrastructure.Migrations
                     b.Property<DateTime?>("IdProofingCompletedAt")
                         .HasColumnType("datetime2");
 
-                    b.Property<DateTime?>("IdProofingCooldownUntil")
-                        .HasColumnType("datetime2");
 
                     b.Property<DateTime?>("IdProofingExpiresAt")
                         .HasColumnType("datetime2");

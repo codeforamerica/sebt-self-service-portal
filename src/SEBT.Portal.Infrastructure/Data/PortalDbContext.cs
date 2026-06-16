@@ -137,8 +137,6 @@ public class PortalDbContext : DbContext
             entity.Property(e => e.IdProofingAttemptCount)
                 .IsRequired()
                 .HasDefaultValue(0);
-
-            entity.Property(e => e.IdProofingCooldownUntil);
         });
 
         modelBuilder.Entity<DocVerificationChallengeEntity>(entity =>

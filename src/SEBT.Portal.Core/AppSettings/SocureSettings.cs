@@ -96,8 +96,15 @@ public class SocureSettings
     public string? SandboxPhoneOverride { get; set; }
 
     /// <summary>
-    /// Cooldown policy for known egregious Socure DocV reason codes. Disabled by default;
+    /// Immediate-rejection policy for known egregious Socure DocV reason codes. Disabled by default;
     /// DC enables this in <c>appsettings.dc.json</c>.
     /// </summary>
-    public SocureDocvEgregiousReasonCooldownSettings DocvEgregiousReasonCooldown { get; set; } = new();
+    public SocureDocvEgregiousReasonRejectionSettings DocvEgregiousReasonRejection { get; set; } = new();
+
+    /// <summary>
+    /// Legacy configuration key from the DC-475 cooldown iteration. When
+    /// <see cref="DocvEgregiousReasonRejection"/> is not enabled, values from this section
+    /// are merged at startup validation. Prefer <see cref="DocvEgregiousReasonRejection"/> in new config.
+    /// </summary>
+    public SocureDocvEgregiousReasonRejectionSettings? DocvEgregiousReasonCooldown { get; set; }
 }

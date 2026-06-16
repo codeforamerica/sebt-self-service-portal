@@ -22,10 +22,9 @@ public class ProcessWebhookCommandHandlerTests
     private readonly SocureSettings socureSettings = new()
     {
         UseStub = true,
-        DocvEgregiousReasonCooldown = new SocureDocvEgregiousReasonCooldownSettings
+        DocvEgregiousReasonRejection = new SocureDocvEgregiousReasonRejectionSettings
         {
             Enabled = true,
-            CooldownDays = 14,
             ReasonCodes = ["R815", "R836"]
         }
     };
@@ -704,49 +703,35 @@ public class ProcessWebhookCommandHandlerTests
             .GetByEvalIdAsync(Arg.Any<string>(), Arg.Any<CancellationToken>());
     }
 
-    // --- Egregious DocV reason cooldown ---
+    // --- Egregious DocV reason rejection ---
 
     [Fact]
-    public async Task HandleAsync_EgregiousDocvReasonCode_AppliesUserCooldownAndRejectsChallenge()
+    public async Task HandleAsync_EgregiousDocvReasonCode_RejectsChallengeWithoutStepUp()
     {
         var handler = CreateHandler();
         var challenge = DocVerificationChallengeFactory.CreatePendingChallenge();
-        var user = new User
-        {
-            Id = challenge.UserId,
-            Email = "test@example.com"
-        };
 
         challengeRepository.GetBySocureReferenceIdAsync("ref-456", Arg.Any<CancellationToken>())
             .Returns(challenge);
-        userRepository.GetUserByIdAsync(challenge.UserId, Arg.Any<CancellationToken>())
-            .Returns(user);
 
-        var before = DateTime.UtcNow;
         var command = CreateValidCommand(
             workflowDecision: "RESUBMIT",
             documentDecision: null,
             documentVerificationReasonCodes: ["R815"]);
         var result = await handler.Handle(command, CancellationToken.None);
-        var after = DateTime.UtcNow;
 
         Assert.True(result.IsSuccess);
         await challengeRepository.Received(1)
             .UpdateAsync(Arg.Is<DocVerificationChallenge>(c =>
                 c.Status == DocVerificationStatus.Rejected
-                && c.OffboardingReason == SocureDocvEgregiousReasonCooldown.OffboardingReason
-                && c.AllowIdRetry == false),
+                && c.OffboardingReason == SocureDocvEgregiousReasonCodes.OffboardingReason),
                 Arg.Any<CancellationToken>());
-        await userRepository.Received(1)
-            .UpdateUserAsync(Arg.Is<User>(u =>
-                u.IdProofingCooldownUntil.HasValue
-                && u.IdProofingCooldownUntil.Value >= before.AddDays(14)
-                && u.IdProofingCooldownUntil.Value <= after.AddDays(14).AddSeconds(1)),
-                Arg.Any<CancellationToken>());
+        await userRepository.DidNotReceive()
+            .UpdateUserAsync(Arg.Any<User>(), Arg.Any<CancellationToken>());
     }
 
     [Fact]
-    public async Task HandleAsync_NonEgregiousDocvReasonCode_DoesNotApplyCooldown()
+    public async Task HandleAsync_NonEgregiousDocvReasonCode_DoesNotForceEgregiousReject()
     {
         var handler = CreateHandler();
         var challenge = DocVerificationChallengeFactory.CreatePendingChallenge();

@@ -108,18 +108,6 @@ public class SubmitIdProofingCommandHandler(
                     OffboardingReason: "maxAttemptsReached"));
         }
 
-        if (SocureDocvEgregiousReasonCooldown.IsUserInCooldown(user, DateTime.UtcNow))
-        {
-            logger.LogInformation(
-                "User {UserId} is within DocV egregious-reason cooldown until {CooldownUntil}",
-                command.UserId, user.IdProofingCooldownUntil);
-            return Result<SubmitIdProofingResponse>.Success(
-                new SubmitIdProofingResponse(
-                    "failed",
-                    AllowIdRetry: false,
-                    OffboardingReason: SocureDocvEgregiousReasonCooldown.OffboardingReason));
-        }
-
         // Co-loaded users still need a SNAP/TANF identifier so we can household them; off-board
         // when no ID is provided. Non-co-loaded users fall through to Socure DocV — Socure's
         // consumer_onboarding workflow short-circuits to document verification when KYC can't
@@ -348,6 +336,23 @@ public class SubmitIdProofingCommandHandler(
 
         // Derive retry eligibility from attempt count (overrides Socure's value)
         var allowIdRetry = user.IdProofingAttemptCount < maxAttempts;
+
+        var egregiousReasonCodes = SocureDocvEgregiousReasonCodes.GetMatchingEgregiousCodes(
+            socureSettings.DocvEgregiousReasonRejection,
+            assessment.DocumentVerificationReasonCodes);
+        if (egregiousReasonCodes != null)
+        {
+            logger.LogInformation(
+                "User {UserId} rejected for egregious DocV reason codes ({Codes}); not routing to DocV",
+                command.UserId,
+                string.Join(',', egregiousReasonCodes));
+            await userRepository.UpdateUserAsync(user, cancellationToken);
+            return Result<SubmitIdProofingResponse>.Success(
+                new SubmitIdProofingResponse(
+                    "failed",
+                    AllowIdRetry: allowIdRetry,
+                    OffboardingReason: SocureDocvEgregiousReasonCodes.OffboardingReason));
+        }
 
         switch (assessment.Outcome)
         {

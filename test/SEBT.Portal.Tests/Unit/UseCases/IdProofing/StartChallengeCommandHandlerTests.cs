@@ -113,36 +113,6 @@ public class StartChallengeCommandHandlerTests
     }
 
 
-    [Fact]
-    public async Task Handle_ShouldReturnConflict_WhenUserIsInDocvEgregiousReasonCooldown()
-    {
-        var handler = CreateHandler();
-        var challenge = DocVerificationChallengeFactory.CreatePendingChallenge();
-        var command = new StartChallengeCommand
-        {
-            ChallengeId = challenge.PublicId,
-            UserId = challenge.UserId
-        };
-
-        challengeRepository.GetByPublicIdAsync(command.ChallengeId, command.UserId, Arg.Any<CancellationToken>())
-            .Returns(challenge);
-        userRepository.GetUserByIdAsync(command.UserId, Arg.Any<CancellationToken>())
-            .Returns(new User
-            {
-                Id = command.UserId,
-                Email = "test@example.com",
-                IdProofingCooldownUntil = DateTime.UtcNow.AddDays(7)
-            });
-
-        var result = await handler.Handle(command, CancellationToken.None);
-
-        Assert.False(result.IsSuccess);
-        var preconditionFailed = Assert.IsType<PreconditionFailedResult<StartChallengeResponse>>(result);
-        Assert.Equal(PreconditionFailedReason.Conflict, preconditionFailed.Reason);
-        await socureClient.DidNotReceive()
-            .StartDocvSessionAsync(Arg.Any<Guid>(), Arg.Any<string>(), Arg.Any<CancellationToken>());
-    }
-
     // --- Repeated start call returns existing token (Codex test 6) ---
 
     [Fact]
@@ -220,6 +190,61 @@ public class StartChallengeCommandHandlerTests
                     c.DocvTransactionToken == "new-token"
                     && c.EvalId == "eval-y"),
                 Arg.Any<CancellationToken>());
+    }
+
+
+    [Fact]
+    public async Task Handle_ShouldReturnConflict_WhenRefreshReturnsEgregiousReasonCode()
+    {
+        var settings = new SocureSettings
+        {
+            DocvTransactionTokenTtlMinutes = 20,
+            ChallengeExpirationMinutes = 30,
+            DocvEgregiousReasonRejection = new SocureDocvEgregiousReasonRejectionSettings
+            {
+                Enabled = true,
+                ReasonCodes = ["R815"]
+            }
+        };
+        var handler = new StartChallengeCommandHandler(
+            challengeRepository, userRepository, householdRepository, socureClient, settings,
+            idProofingEligibilitySettings, validator, logger);
+        var challenge = DocVerificationChallengeFactory.CreatePendingChallenge(c =>
+        {
+            c.ProofingDateOfBirth = "1990-01-01";
+            c.ProofingIdType = "ssn";
+            c.ProofingIdValue = "999-99-9999";
+            c.DocvTokenIssuedAt = DateTime.UtcNow.AddMinutes(-settings.DocvTransactionTokenTtlMinutes - 1);
+        });
+        var command = new StartChallengeCommand
+        {
+            ChallengeId = challenge.PublicId,
+            UserId = challenge.UserId
+        };
+
+        challengeRepository.GetByPublicIdAsync(command.ChallengeId, command.UserId, Arg.Any<CancellationToken>())
+            .Returns(challenge);
+        userRepository.GetUserByIdAsync(command.UserId, Arg.Any<CancellationToken>())
+            .Returns(new User { Id = command.UserId, Email = "test@example.com" });
+        socureClient.RunIdProofingAssessmentAsync(
+                Arg.Any<Guid>(), Arg.Any<string>(), Arg.Any<string>(),
+                Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<string?>(),
+                Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<Address?>(),
+                Arg.Any<string?>(), Arg.Any<CancellationToken>())
+            .Returns(Result<IdProofingAssessmentResult>.Success(
+                new IdProofingAssessmentResult(
+                    IdProofingOutcome.DocumentVerificationRequired,
+                    AllowIdRetry: true,
+                    DocvSession: new SocureDocvSession("new-token", "https://verify.socure.com/#/dv/new-token", "ref-x", "eval-y"),
+                    DocumentVerificationReasonCodes: ["R815"])));
+
+        var result = await handler.Handle(command, CancellationToken.None);
+
+        Assert.False(result.IsSuccess);
+        var preconditionFailed = Assert.IsType<PreconditionFailedResult<StartChallengeResponse>>(result);
+        Assert.Equal(PreconditionFailedReason.Conflict, preconditionFailed.Reason);
+        await challengeRepository.DidNotReceive()
+            .UpdateAsync(Arg.Any<DocVerificationChallenge>(), Arg.Any<CancellationToken>());
     }
 
     [Fact]

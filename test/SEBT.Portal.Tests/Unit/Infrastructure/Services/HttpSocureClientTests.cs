@@ -131,6 +131,47 @@ public class HttpSocureClientTests
         Assert.Equal(IdProofingOutcome.Failed, result.Value.Outcome);
     }
 
+    [Fact]
+    public async Task RunIdProofingAssessment_ShouldExtractDocumentVerificationReasonCodes_WhenPresent()
+    {
+        var handler = RespondWith(HttpStatusCode.OK, new
+        {
+            eval_id = "eval-123",
+            decision = "REVIEW",
+            eval_status = "evaluation_paused",
+            data_enrichments = new[]
+            {
+                new
+                {
+                    enrichment_name = "Socure Document Request - Default Flow",
+                    enrichment_provider = "SocureDocRequest",
+                    status_code = 200,
+                    response = new
+                    {
+                        data = new
+                        {
+                            docvTransactionToken = "token-abc",
+                            url = "https://verify.socure.com/#/dv/token-abc"
+                        },
+                        referenceId = "ref-456",
+                        documentVerification = new
+                        {
+                            reasonCodes = new[] { "R815", "I520" }
+                        }
+                    }
+                }
+            }
+        });
+
+        var client = CreateClient(handler);
+        var result = await client.RunIdProofingAssessmentAsync(
+            Guid.CreateVersion7(), "test@example.com", "1990-01-01", "ssn", "999-99-9999");
+
+        Assert.True(result.IsSuccess);
+        Assert.NotNull(result.Value.DocumentVerificationReasonCodes);
+        Assert.Equal(["R815", "I520"], result.Value.DocumentVerificationReasonCodes);
+    }
+
     // --- HTTP error → DependencyFailed ---
 
     [Fact]

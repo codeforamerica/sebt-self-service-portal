@@ -180,12 +180,12 @@ public class SocureSettingsValidatorTests
     }
 
     [Fact]
-    public void Validate_ShouldFail_WhenEgregiousCooldownEnabledWithNoReasonCodes()
+    public void Validate_ShouldFail_WhenEgregiousRejectionEnabledWithNoReasonCodes()
     {
         var validator = CreateValidator("Development");
         var settings = CreateValidStubSettings();
-        settings.DocvEgregiousReasonCooldown.Enabled = true;
-        settings.DocvEgregiousReasonCooldown.ReasonCodes = [];
+        settings.DocvEgregiousReasonRejection.Enabled = true;
+        settings.DocvEgregiousReasonRejection.ReasonCodes = [];
 
         var result = validator.Validate(null, settings);
 
@@ -194,15 +194,35 @@ public class SocureSettingsValidatorTests
     }
 
     [Fact]
-    public void Validate_ShouldSucceed_WhenEgregiousCooldownEnabledWithReasonCodes()
+    public void Validate_ShouldSucceed_WhenEgregiousRejectionEnabledWithReasonCodes()
     {
         var validator = CreateValidator("Development");
         var settings = CreateValidStubSettings();
-        settings.DocvEgregiousReasonCooldown.Enabled = true;
-        settings.DocvEgregiousReasonCooldown.ReasonCodes = ["R815"];
+        settings.DocvEgregiousReasonRejection.Enabled = true;
+        settings.DocvEgregiousReasonRejection.ReasonCodes = ["R815"];
 
         var result = validator.Validate(null, settings);
 
         Assert.True(result.Succeeded);
+    }
+
+    [Fact]
+    public void Validate_ShouldMergeLegacyEgregiousReasonCooldown_WhenRejectionNotEnabled()
+    {
+        var validator = CreateValidator("Development");
+        var settings = CreateValidStubSettings();
+        settings.DocvEgregiousReasonRejection.Enabled = false;
+        settings.DocvEgregiousReasonRejection.ReasonCodes = [];
+        settings.DocvEgregiousReasonCooldown = new SocureDocvEgregiousReasonRejectionSettings
+        {
+            Enabled = true,
+            ReasonCodes = ["R815", "R836"]
+        };
+
+        var result = validator.Validate(null, settings);
+
+        Assert.True(result.Succeeded);
+        Assert.True(settings.DocvEgregiousReasonRejection.Enabled);
+        Assert.Equal(["R815", "R836"], settings.DocvEgregiousReasonRejection.ReasonCodes);
     }
 }
