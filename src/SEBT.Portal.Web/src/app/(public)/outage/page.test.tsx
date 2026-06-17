@@ -8,12 +8,12 @@ vi.mock('@/features/outage/getOutageMessages', () => ({
     {
       language: 'en',
       body1: 'We are down for maintenance and will be back up shortly.',
-      body2: 'Try waiting a few minutes and refresh this page.'
+      body2: 'Try waiting a few hours and come back to this page.'
     },
     {
       language: 'es',
       body1: 'Estamos en mantenimiento y volveremos en breve.',
-      body2: 'Le rogamos que espere unos minutos y actualice esta página.'
+      body2: 'Le rogamos que espere unas horas y vuelva a esta página.'
     }
   ],
   getOutageFooterCopy: () => ({
@@ -58,6 +58,12 @@ describe('OutagePageContent', () => {
       })
     ).toBeInTheDocument()
     expect(screen.getByText('Estamos en mantenimiento y volveremos en breve.')).toBeInTheDocument()
+    expect(
+      screen.getByText('Try waiting a few hours and come back to this page.')
+    ).toBeInTheDocument()
+    expect(
+      screen.getByText('Le rogamos que espere unas horas y vuelva a esta página.')
+    ).toBeInTheDocument()
     expect(screen.getByRole('img', { name: 'District of Columbia SUN Bucks' })).toBeInTheDocument()
 
     const footerLink = screen.getByRole('link', { name: /sunbucks\.dc\.gov\/page\/contact-us/i })
