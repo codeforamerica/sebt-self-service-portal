@@ -1,4 +1,7 @@
 {
+  "env": {
+    "DOTNET_CLI_TELEMETRY_OPTOUT": "1"
+  },
   "permissions": {
     "deny": [
       "Bash(rm -rf:*)",
