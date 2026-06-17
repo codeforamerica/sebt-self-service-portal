@@ -276,7 +276,7 @@ describe('ActionButtons', () => {
       mockGetState.mockReturnValue('dc')
       render(<ActionButtons allowedActions={allowAll} />)
       const link = screen.getByText('Apply for DC SUN Bucks')
-      expect(link).toHaveAttribute('href', 'https://forms.sunbucks.dc.gov/s3/AppUpdate2026')
+      expect(link).toHaveAttribute('href', 'https://forms.sunbucks.dc.gov/s3/app2026')
       expect(link).toHaveAttribute('data-analytics-cta', 'apply_cta')
       expect(link).toHaveAttribute('data-analytics-cta-destination-type', 'external_only')
     })
