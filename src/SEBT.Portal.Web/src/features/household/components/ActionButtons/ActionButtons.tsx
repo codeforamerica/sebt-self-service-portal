@@ -5,11 +5,18 @@ import { useTranslation } from 'react-i18next'
 
 import { getState, getStateConfig } from '@sebt/design-system'
 
+import { getApplyHref } from '@/lib/applyHref'
+
 import type { AllowedActions } from '../../api'
 
 interface ActionButton {
   labelKey: string
-  href: string
+  /** Static destination. Mutually exclusive with resolveHref. */
+  href?: string
+  /** Destination computed at render time (e.g. the per-state, locale-aware apply URL). */
+  resolveHref?: (locale: string) => string
+  /** When true, renders an outbound <a> (same tab) instead of a client-side <Link>. */
+  external?: boolean
   ctaId: string
   /** Which allowedActions field gates this CTA. When set, the CTA is hidden if the field is false. */
   gatedBy?: keyof Pick<AllowedActions, 'canUpdateAddress' | 'canRequestReplacementCard'>
@@ -32,6 +39,13 @@ interface ActionButtonsProps {
 
 // Keys map to CSV: "S2 - Portal Dashboard - Action Navigation - {Key}"
 const ACTIONS: ActionButton[] = [
+  {
+    // Outbound link to the state's apply form; shown for both states, always.
+    labelKey: 'actionNavigationApply',
+    resolveHref: getApplyHref,
+    external: true,
+    ctaId: 'apply_cta'
+  },
   {
     labelKey: 'actionNavigationChangeMyMailingAddress',
     href: '/profile/address',
@@ -68,7 +82,7 @@ const ACTIONS: ActionButton[] = [
 ]
 
 export function ActionButtons({ allowedActions, hasCases, hasApplications }: ActionButtonsProps) {
-  const { t } = useTranslation('dashboard')
+  const { t, i18n } = useTranslation('dashboard')
   const currentState = getState()
   const { actionButtonBg, actionButtonText } = getStateConfig(currentState)
 
@@ -90,24 +104,11 @@ export function ActionButtons({ allowedActions, hasCases, hasApplications }: Act
       <p className="margin-top-0 margin-bottom-2 text-base-dark">{t('actionNavigationLead')}</p>
 
       <ul className="usa-list usa-list--unstyled">
-        {visibleActions.map((action) => (
-          <li
-            key={action.labelKey}
-            className="margin-bottom-2"
-          >
-            <Link
-              href={action.href}
-              data-analytics-cta={action.ctaId}
-              className={`display-inline-flex flex-align-center padding-y-1 padding-x-205 text-no-underline ${actionButtonText} ${actionButtonBg} radius-pill font-sans-md text-semibold`}
-              {...(action.href.startsWith('#') && {
-                onClick: (e: React.MouseEvent) => {
-                  e.preventDefault()
-                  document
-                    .getElementById(action.href.slice(1))
-                    ?.scrollIntoView({ behavior: 'smooth' })
-                }
-              })}
-            >
+        {visibleActions.map((action) => {
+          const href = action.resolveHref ? action.resolveHref(i18n.language) : (action.href ?? '')
+          const className = `display-inline-flex flex-align-center padding-y-1 padding-x-205 text-no-underline ${actionButtonText} ${actionButtonBg} radius-pill font-sans-md text-semibold`
+          const content = (
+            <>
               {t(action.labelKey)}
               <svg
                 aria-hidden="true"
@@ -119,9 +120,41 @@ export function ActionButtons({ allowedActions, hasCases, hasApplications }: Act
               >
                 <path d="M10 6 8.59 7.41 13.17 12l-4.58 4.59L10 18l6-6z" />
               </svg>
-            </Link>
-          </li>
-        ))}
+            </>
+          )
+
+          return (
+            <li
+              key={action.labelKey}
+              className="margin-bottom-2"
+            >
+              {action.external ? (
+                <a
+                  href={href}
+                  data-analytics-cta={action.ctaId}
+                  data-analytics-cta-destination-type="external_only"
+                  className={className}
+                >
+                  {content}
+                </a>
+              ) : (
+                <Link
+                  href={href}
+                  data-analytics-cta={action.ctaId}
+                  className={className}
+                  {...(href.startsWith('#') && {
+                    onClick: (e: React.MouseEvent) => {
+                      e.preventDefault()
+                      document.getElementById(href.slice(1))?.scrollIntoView({ behavior: 'smooth' })
+                    }
+                  })}
+                >
+                  {content}
+                </Link>
+              )}
+            </li>
+          )
+        })}
       </ul>
     </nav>
   )

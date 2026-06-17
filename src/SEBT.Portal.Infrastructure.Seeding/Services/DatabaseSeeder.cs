@@ -90,7 +90,6 @@ public class DatabaseSeeder : Core.Services.IDatabaseSeeder
                 u.IdProofingStatus = IdProofingStatus.NotStarted;
                 u.IalLevel = UserIalLevel.None;
                 u.IdProofingCompletedAt = null;
-                u.IdProofingExpiresAt = null;
                 u.Phone = "8185558438";
                 u.SnapId = "SNAP-CO-001";
                 u.TanfId = "TANF-CO-001";
@@ -196,7 +195,6 @@ public class DatabaseSeeder : Core.Services.IDatabaseSeeder
                             u.IdProofingStatus = IdProofingStatus.NotStarted;
                             u.IalLevel = UserIalLevel.None;
                             u.IdProofingCompletedAt = null;
-                            u.IdProofingExpiresAt = null;
                             u.Phone = "8185558438";
                             u.SnapId = "SNAP-CO-001";
                             u.TanfId = "TANF-CO-001";
@@ -393,7 +391,6 @@ public class DatabaseSeeder : Core.Services.IDatabaseSeeder
                             u.IdProofingStatus = IdProofingStatus.NotStarted;
                             u.IalLevel = UserIalLevel.None;
                             u.IdProofingCompletedAt = null;
-                            u.IdProofingExpiresAt = null;
                             u.Phone = "8185558438";
                             u.SnapId = "SNAP-CO-001";
                             u.TanfId = "TANF-CO-001";
