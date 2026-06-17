@@ -1,4 +1,5 @@
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 using Microsoft.FeatureManagement;
 using SEBT.Portal.Core.AppSettings;
 using SEBT.Portal.Kernel.Services;
@@ -16,6 +17,7 @@ public class FeatureFlagQueryService : IFeatureFlagQueryService
 {
     private readonly IFeatureManager _featureManager;
     private readonly IOutageScheduleEvaluator _outageScheduleEvaluator;
+    private readonly IOptionsMonitor<OutageScheduleSettings> _outageScheduleOptions;
     private readonly ILogger<FeatureFlagQueryService> _logger;
 
     /// <summary>
@@ -23,14 +25,17 @@ public class FeatureFlagQueryService : IFeatureFlagQueryService
     /// </summary>
     /// <param name="featureManager">The feature manager from Microsoft.FeatureManagement.</param>
     /// <param name="outageScheduleEvaluator">Evaluates whether a scheduled outage window is active.</param>
+    /// <param name="outageScheduleOptions">Outage schedule configuration (windows and timezone).</param>
     /// <param name="logger">The logger.</param>
     public FeatureFlagQueryService(
         IFeatureManager featureManager,
         IOutageScheduleEvaluator outageScheduleEvaluator,
+        IOptionsMonitor<OutageScheduleSettings> outageScheduleOptions,
         ILogger<FeatureFlagQueryService> logger)
     {
         _featureManager = featureManager;
         _outageScheduleEvaluator = outageScheduleEvaluator;
+        _outageScheduleOptions = outageScheduleOptions;
         _logger = logger;
     }
 
@@ -82,14 +87,32 @@ public class FeatureFlagQueryService : IFeatureFlagQueryService
             throw;
         }
 
-        // Auto-enable the outage page during a scheduled outage window without requiring a manual
-        // flag toggle. OR semantics: a manual "true" still wins, and the key is added if absent.
-        if (_outageScheduleEvaluator.IsOutageActive())
+        ApplyOutagePageFlag(flags);
+
+        return flags;
+    }
+
+    /// <summary>
+    /// Resolves <see cref="FeatureFlags.OutagePageEnabled"/> after feature-manager values are loaded.
+    /// When <see cref="OutageScheduleSettings.Windows"/> is non-empty, the outage page follows the
+    /// schedule only (inside window = on, outside = off) so a manual/AppConfig "true" cannot bypass
+    /// the maintenance calendar. When no windows are configured, the feature-manager value is kept
+    /// and an active window (if any) can still force the flag on.
+    /// </summary>
+    private void ApplyOutagePageFlag(Dictionary<string, bool> flags)
+    {
+        var scheduleActive = _outageScheduleEvaluator.IsOutageActive();
+
+        if (_outageScheduleOptions.CurrentValue.Windows.Count > 0)
+        {
+            flags[FeatureFlags.OutagePageEnabled] = scheduleActive;
+            return;
+        }
+
+        if (scheduleActive)
         {
             flags[FeatureFlags.OutagePageEnabled] = true;
         }
-
-        return flags;
     }
 
     /// <summary>
