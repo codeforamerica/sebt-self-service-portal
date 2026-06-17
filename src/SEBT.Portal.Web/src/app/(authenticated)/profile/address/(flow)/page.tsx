@@ -6,6 +6,8 @@ import { useTranslation } from 'react-i18next'
 
 import { AddressForm } from '@/features/address/components/AddressForm'
 import { useHouseholdData } from '@/features/household'
+import { useFlowStartAnalytics } from '@/hooks/useFlowStartAnalytics'
+import { AnalyticsEvents } from '@sebt/analytics'
 import { getState } from '@sebt/design-system'
 
 // TODO: Card-flow entry point — when accessed via /profile/address?from=cards,
@@ -14,11 +16,18 @@ import { getState } from '@sebt/design-system'
 
 export default function AddressFormPage() {
   const { t } = useTranslation('confirmInfo')
+  const { t: tCommon } = useTranslation('common')
+  const { t: tDev } = useTranslation('dev')
+
   const { data, isLoading } = useHouseholdData()
   const router = useRouter()
   const canUpdateAddress = data?.allowedActions?.canUpdateAddress ?? true
+  const canRequestReplacementCard = data?.allowedActions?.canRequestReplacementCard ?? true
 
   const isDC = getState() === 'dc'
+  const isReady = !isLoading && !!data && canUpdateAddress
+
+  useFlowStartAnalytics(AnalyticsEvents.ADDRESS_UPDATE_START, isReady)
 
   useEffect(() => {
     if (!isLoading && data && !canUpdateAddress) {
@@ -32,20 +41,19 @@ export default function AddressFormPage() {
         aria-busy="true"
         role="status"
       >
-        <span className="usa-sr-only">Loading…</span>
+        <span className="usa-sr-only">{tDev('loading')}</span>
       </div>
     )
   }
 
   return (
     <div className="grid-container maxw-tablet padding-top-4 padding-bottom-4">
-      <h1 className="font-sans-xl text-primary">
-        {t('pageTitle', 'Tell us where to safely send your mail')}
-      </h1>
-      <p className="usa-hint">
-        {t('requiredFieldsNote', 'Asterisks (*) indicate a required field')}
-      </p>
-      <AddressForm initialAddress={data?.addressOnFile ?? null} />
+      <h1 className="font-sans-xl text-primary">{t('titleYour')}</h1>
+      <p className="usa-hint">{tCommon('requiredFields')}</p>
+      <AddressForm
+        initialAddress={data?.addressOnFile ?? null}
+        {...(!canRequestReplacementCard && { redirectPath: '/dashboard?addressUpdated=true' })}
+      />
     </div>
   )
 }

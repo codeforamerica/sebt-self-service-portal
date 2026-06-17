@@ -97,12 +97,15 @@ public class RequestCardReplacementCommandHandlerTests
 
     private static RequestCardReplacementCommand CreateValidCommand(
         ClaimsPrincipal? user = null,
-        List<string>? caseIds = null) =>
-        new()
+        List<string>? caseIds = null)
+    {
+        var ids = caseIds ?? new List<string> { "SEBT-001" };
+        return new()
         {
             User = user ?? CreateUser("user@example.com"),
-            CaseIds = caseIds ?? new List<string> { "SEBT-001" }
+            CaseRefs = ids.Select(id => new CaseRefDto(id, null, null)).ToList()
         };
+    }
 
     private static HouseholdData CreateHouseholdWithCases(params SummerEbtCase[] cases) =>
         new()
@@ -122,14 +125,16 @@ public class RequestCardReplacementCommandHandlerTests
             Arg.Any<HouseholdIdentifier>(),
             Arg.Any<PiiVisibility>(),
             Arg.Any<UserIalLevel>(),
-            Arg.Any<CancellationToken>()
+            Arg.Any<Guid?>(),
+                Arg.Any<bool>(),
+                Arg.Any<CancellationToken>()
         ).Returns(householdData);
     }
 
     // --- Validation tests ---
 
     [Fact]
-    public async Task Handle_ReturnsValidationFailed_WhenCaseIdsIsEmpty()
+    public async Task Handle_ReturnsValidationFailed_WhenCaseRefsIsEmpty()
     {
         var handler = CreateHandler();
         var command = CreateValidCommand(caseIds: new List<string>());
@@ -561,7 +566,9 @@ public class RequestCardReplacementCommandHandlerTests
             Arg.Any<HouseholdIdentifier>(),
             Arg.Any<PiiVisibility>(),
             UserIalLevel.IAL1plus,
-            Arg.Any<CancellationToken>());
+            Arg.Any<Guid?>(),
+                Arg.Any<bool>(),
+                Arg.Any<CancellationToken>());
     }
 
     [Fact]
@@ -585,7 +592,9 @@ public class RequestCardReplacementCommandHandlerTests
             Arg.Any<HouseholdIdentifier>(),
             Arg.Any<PiiVisibility>(),
             UserIalLevel.None,
-            Arg.Any<CancellationToken>());
+            Arg.Any<Guid?>(),
+                Arg.Any<bool>(),
+                Arg.Any<CancellationToken>());
     }
 
     // --- Hashing verification ---
@@ -805,7 +814,7 @@ public class RequestCardReplacementCommandHandlerTests
     }
 
     [Fact]
-    public async Task Handle_PassesCaseIdsAndIdentifierToConnector()
+    public async Task Handle_PassesCaseRefsAndIdentifierToConnector()
     {
         var handler = CreateHandler();
         var caseIds = new List<string> { "SEBT-001", "SEBT-002" };
@@ -821,9 +830,9 @@ public class RequestCardReplacementCommandHandlerTests
         await _cardReplacementService.Received(1).RequestCardReplacementAsync(
             Arg.Is<CardReplacementRequest>(r =>
                 r.HouseholdIdentifierValue == EmailNormalizer.Normalize("user@example.com") &&
-                r.CaseIds.Count == 2 &&
-                r.CaseIds[0] == "SEBT-001" &&
-                r.CaseIds[1] == "SEBT-002"),
+                r.CaseRefs.Count == 2 &&
+                r.CaseRefs[0].SummerEbtCaseId == "SEBT-001" &&
+                r.CaseRefs[1].SummerEbtCaseId == "SEBT-002"),
             Arg.Any<CancellationToken>());
     }
 

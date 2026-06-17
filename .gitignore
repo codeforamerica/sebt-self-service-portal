@@ -271,6 +271,7 @@ _pkginfo.txt
 *.[Cc]ache
 # but keep track of directories ending in .cache
 !?*.[Cc]ache/
+*.lscache
 
 # Others
 ClientBin/
@@ -448,6 +449,7 @@ FodyWeavers.xsd
 CLAUDE.local.md
 .claude/settings.local.json
 .claude/qa-summary.*
+.claude/scheduled_tasks.lock
 
 # Developer-local workflow artifacts (branch context, PR reviews, screenshots)
 docs/.local/
@@ -498,3 +500,6 @@ email-templates/_snapshots/
 
 # Generated design-system locale output (app reads from Web's gitignored copy)
 packages/design-system/content/locales/
+
+## macOS Cruft
+.DS_Store

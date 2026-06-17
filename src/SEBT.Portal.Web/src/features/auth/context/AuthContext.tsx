@@ -20,12 +20,18 @@ import { AuthorizationStatusResponseSchema } from '../api/auth-status'
  * Mirrors the validated GET /api/auth/status response, minus the always-true `isAuthorized` flag.
  */
 export interface SessionInfo {
+  /** Stable, non-PII portal user UUID. Surfaced for analytics correlation. */
+  userId: string | null
   email: string | null
   ial: string | null
   idProofingStatus: number | null
   idProofingCompletedAt: number | null
   idProofingExpiresAt: number | null
   isCoLoaded: boolean | null
+  /** Unix epoch seconds when the sliding session cookie expires. */
+  expiresAt: number | null
+  /** Unix epoch seconds when the absolute session lifetime cap is reached. */
+  absoluteExpiresAt: number | null
 }
 
 interface AuthContextValue {
@@ -47,12 +53,15 @@ async function fetchSession(): Promise<SessionInfo | null> {
     const response = await apiFetch('/auth/status', { schema: AuthorizationStatusResponseSchema })
     if (!response.isAuthorized) return null
     return {
+      userId: response.userId ?? null,
       email: response.email ?? null,
       ial: response.ial ?? null,
       idProofingStatus: response.idProofingStatus ?? null,
       idProofingCompletedAt: response.idProofingCompletedAt ?? null,
       idProofingExpiresAt: response.idProofingExpiresAt ?? null,
-      isCoLoaded: response.isCoLoaded ?? null
+      isCoLoaded: response.isCoLoaded ?? null,
+      expiresAt: response.expiresAt ?? null,
+      absoluteExpiresAt: response.absoluteExpiresAt ?? null
     }
   } catch (error) {
     // 401 means not logged in; anything else we also treat as unauthenticated

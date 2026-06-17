@@ -1,8 +1,11 @@
 using Microsoft.Extensions.Logging;
+using Microsoft.FeatureManagement;
+using SEBT.Portal.Core.AppSettings;
 using SEBT.Portal.Core.Models.Auth;
 using SEBT.Portal.Core.Models.Household;
 using SEBT.Portal.Core.Repositories;
 using SEBT.Portal.Core.Services;
+using SEBT.Portal.Core.Utilities;
 using SEBT.Portal.Kernel;
 using SEBT.Portal.Kernel.Results;
 
@@ -15,16 +18,23 @@ namespace SEBT.Portal.UseCases.Household;
 public class GetHouseholdDataQueryHandler(
     IHouseholdIdentifierResolver resolver,
     IHouseholdRepository repository,
+    IUserRepository userRepository,
     IPiiVisibilityService piiVisibilityService,
     IIdProofingService idProofingService,
     ISelfServiceEvaluator selfServiceEvaluator,
     ICardReplacementRequestRepository cardReplacementRepo,
     IIdentifierHasher identifierHasher,
+    CoLoadedCohortFilterSettings coLoadedCohortFilter,
+    IFeatureManager featureManager,
     ILogger<GetHouseholdDataQueryHandler> logger)
     : IQueryHandler<GetHouseholdDataQuery, HouseholdData>
 {
     public async Task<Result<HouseholdData>> Handle(GetHouseholdDataQuery query, CancellationToken cancellationToken = default)
     {
+        var deferCardLoadingEnabled = await featureManager
+            .IsEnabledAsync(FeatureFlags.DeferEbtCardDataLoading)
+            .ConfigureAwait(false);
+        var includeCardService = deferCardLoadingEnabled ? query.IncludeCardDetails : true;
         var identifier = await resolver.ResolveAsync(query.User, cancellationToken);
 
         if (identifier == null)
@@ -45,11 +55,43 @@ public class GetHouseholdDataQueryHandler(
             piiVisibility.IncludeEmail,
             piiVisibility.IncludePhone);
 
+        var portalUserId = query.User.GetUserId();
         var householdData = await repository.GetHouseholdByIdentifierAsync(
             identifier,
             piiVisibility,
             userIalLevel,
+            portalUserId,
+            includeCardService,
             cancellationToken);
+
+        if (householdData == null
+            && identifier.Type == PreferredHouseholdIdType.Email)
+        {
+            if (portalUserId != null)
+            {
+                var user = await userRepository.GetUserByIdAsync(portalUserId.Value, cancellationToken);
+                var benefitIc = string.IsNullOrWhiteSpace(user?.SnapId) ? user?.TanfId : user?.SnapId;
+                if (user?.IsCoLoaded == true
+                    && user.DateOfBirth is { } verifiedDob
+                    && !string.IsNullOrWhiteSpace(benefitIc))
+                {
+                    householdData = await repository.GetHouseholdByBenefitIdentifierAndGuardianDobAsync(
+                        identifier.Value,
+                        benefitIc.Trim(),
+                        verifiedDob,
+                        piiVisibility,
+                        userIalLevel,
+                        portalUserId.Value,
+                        cancellationToken);
+                    if (householdData != null)
+                    {
+                        logger.LogInformation(
+                            "Household data loaded via co-loaded IC + DOB fallback for user {UserId}",
+                            portalUserId);
+                    }
+                }
+            }
+        }
 
         if (householdData == null)
         {
@@ -73,13 +115,19 @@ public class GetHouseholdDataQueryHandler(
                 new Dictionary<string, object?> { ["requiredIal"] = decision.RequiredLevel.ToString() });
         }
 
-        // Mixed-eligibility households: hide co-loaded cases so the user only sees
-        // and manages their non-co-loaded cases. Co-loaded-only households still see
-        // their cases (they're all the user has), but per-case flags prevent actions.
-        // MVP intent confirmed by product: mixed households are not visually supported.
+        // Classify the household on the PRE-filter state so analytics can
+        // distinguish cohorts even after co-loaded cases are suppressed. Then
+        // apply the suppression for the excluded cohort.
+        householdData.CoLoadedCohort = CoLoadedCohortClassifier.Classify(householdData);
+
         var nonCoLoaded = householdData.SummerEbtCases.Where(c => !c.IsCoLoaded).ToList();
-        if (nonCoLoaded.Count > 0)
+        if (coLoadedCohortFilter.SuppressCoLoadedCasesForExcludedCohort
+            && householdData.CoLoadedCohort == CoLoadedCohort.MixedOrApplicantExcluded)
         {
+            // Suppress co-loaded cases from the payload for the excluded cohort
+            // (mixed-eligibility families and applicants with co-loaded benefits).
+            // Co-loaded-only households keep their cases so the dashboard isn't
+            // empty; per-case flags still deny self-service actions for them.
             householdData.SummerEbtCases = nonCoLoaded;
             // Realign the household-level issuance type with the filtered view.
             // Downstream consumers (e.g. the address-info page's co-loaded guard)
@@ -116,7 +164,11 @@ public class GetHouseholdDataQueryHandler(
         // co-loaded cases are structurally excluded from self-service regardless of rules.
         householdData.AllowedActions = selfServiceEvaluator.EvaluateHousehold(nonCoLoaded);
 
-        logger.LogDebug("Household data retrieved successfully for identifier type {Type}", identifier.Type);
+        logger.LogDebug(
+            "Household data retrieved successfully for identifier type {Type}, cohort {Cohort}",
+            identifier.Type,
+            householdData.CoLoadedCohort);
         return Result<HouseholdData>.Success(householdData);
     }
+
 }

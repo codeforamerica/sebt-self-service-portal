@@ -4,6 +4,7 @@ using Medallion.Threading.SqlServer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using SEBT.Portal.Core.AppSettings;
@@ -15,6 +16,7 @@ using SEBT.Portal.Infrastructure.Data;
 using SEBT.Portal.Infrastructure.Repositories;
 using SEBT.Portal.Infrastructure.Services;
 using StackExchange.Redis;
+using SEBT.Portal.StatesPlugins.Interfaces.Services;
 using ISummerEbtCaseService = SEBT.Portal.StatesPlugins.Interfaces.ISummerEbtCaseService;
 
 namespace SEBT.Portal.Infrastructure;
@@ -82,12 +84,32 @@ public static class Dependencies
                 : sp.GetRequiredService<PassThroughAddressUpdateService>();
         });
 
+        // Per-state blocked-address data file. CO ships a CSV
+        // (county/government office addresses) embedded in this assembly; other
+        // states fall back to the empty source and rely on the inline list in
+        // AddressValidationData:BlockedAddresses for any small hand-curated entries.
+        services.AddSingleton<IBlockedAddressDataSource>(_ =>
+        {
+            var state = Environment.GetEnvironmentVariable("STATE")?.ToLowerInvariant();
+            return state switch
+            {
+                "co" => new CsvBlockedAddressDataSource(
+                    typeof(CsvBlockedAddressDataSource).Assembly,
+                    "SEBT.Portal.Infrastructure.BlockedAddresses.co-undeliverable-addresses.csv"),
+                _ => new EmptyBlockedAddressDataSource()
+            };
+        });
+
         // Address validation — checks blocked addresses and street abbreviations per state config
         services.AddSingleton<IAddressValidationService, AddressValidationService>();
 
         // Self-service rules evaluator — evaluates per-state config against household data
         services.AddTransient<ISelfServiceEvaluator, SelfServiceEvaluator>();
         services.AddSingleton<IIdentifierHasher, IdentifierHasher>();
+        services.AddSingleton<IHMACSHA256Hasher, HMACSHA256Hasher>();
+        services.AddSingleton<IPiiSymmetricEncryption>(sp =>
+            PiiSymmetricEncryptionFactory.Create(sp.GetRequiredService<IOptions<PiiEncryptionSettings>>()));
+        services.AddSingleton<IEmailLookupHasher, EmailLookupHasher>();
 
         // Expose SocureSettings directly for use case injection (avoids IOptions dependency in UseCases layer).
         // Scoped so each request gets a consistent snapshot, supporting live AppConfig reload.
@@ -157,10 +179,15 @@ public static class Dependencies
     /// <summary>
     /// Registers caching services. When a Redis connection string is configured,
     /// uses Redis as the distributed cache (L2) backing HybridCache.
-    /// Otherwise, falls back to in-memory caching only.
+    /// Otherwise, falls back to in-memory caching only — except in non-Development
+    /// environments with OIDC configured, where Redis is required for cross-container
+    /// session lookup and startup fails fast.
     /// Call this before AddPlugins — plugins may depend on HybridCache.
     /// </summary>
-    public static IServiceCollection AddCaching(this IServiceCollection services, IConfiguration? configuration)
+    public static IServiceCollection AddCaching(
+        this IServiceCollection services,
+        IConfiguration? configuration,
+        IHostEnvironment environment)
     {
         var redisConnectionString = configuration?.GetConnectionString("Redis");
 
@@ -170,6 +197,25 @@ public static class Dependencies
             {
                 options.Configuration = redisConnectionString;
             });
+        }
+        else if (!environment.IsDevelopment()
+            && !string.IsNullOrEmpty(configuration?["Oidc:DiscoveryEndpoint"]))
+        {
+            // Outside Development, OIDC + no Redis is misconfiguration: pre-auth sessions
+            // live in a per-container in-memory cache, so callbacks landing on a different
+            // container than the authorize-redirect see missing_session or replay errors.
+            // Fail fast at startup instead of silently shipping a broken login flow.
+            throw new InvalidOperationException(
+                "Redis is required when OIDC is configured outside Development: " +
+                "set ConnectionStrings:Redis. Cross-container session lookup " +
+                "depends on a shared distributed cache.");
+        }
+        else
+        {
+            // Fallback so IDistributedCache is always resolvable (PreAuthSessionStore
+            // depends on it). Used for local dev without Redis and for integration tests
+            // that set ConnectionStrings:Redis empty.
+            services.AddDistributedMemoryCache();
         }
 
         // HybridCache provides an L1 in-memory cache with optional L2 distributed backing.
@@ -232,6 +278,7 @@ public static class Dependencies
             configureOptions?.Invoke(options);
         });
 
+        services.AddScoped<PiiPlaintextEncryptionBackfill>();
         services.AddScoped<IDatabaseMigrator, DatabaseMigrator>();
         services.AddScoped<IDataSeeder, DataSeeder>();
 
@@ -249,11 +296,15 @@ public static class Dependencies
         services.AddOptionsWithValidateOnStart<OtpRateLimitSettings>()
             .BindConfiguration(OtpRateLimitSettings.SectionName)
             .ValidateDataAnnotations();
+        services.AddSingleton<IValidateOptions<JwtSettings>, JwtSettingsValidator>();
         services.AddOptionsWithValidateOnStart<JwtSettings>()
             .BindConfiguration(JwtSettings.SectionName)
             .ValidateDataAnnotations();
         services.AddOptions<StateHouseholdIdSettings>()
             .BindConfiguration(StateHouseholdIdSettings.SectionName);
+        services.AddSingleton<IValidateOptions<PiiEncryptionSettings>, PiiEncryptionSettingsValidator>();
+        services.AddOptionsWithValidateOnStart<PiiEncryptionSettings>()
+            .BindConfiguration(PiiEncryptionSettings.SectionName);
         services.AddOptionsWithValidateOnStart<IdentifierHasherSettings>()
             .BindConfiguration(IdentifierHasherSettings.SectionName)
             .ValidateDataAnnotations();
@@ -270,6 +321,8 @@ public static class Dependencies
 
         services.AddOptions<IdProofingValiditySettings>()
             .BindConfiguration(IdProofingValiditySettings.SectionName);
+        services.AddOptions<IdProofingEligibilitySettings>()
+            .BindConfiguration(IdProofingEligibilitySettings.SectionName);
         services.AddOptions<OidcVerificationClaimSettings>()
             .BindConfiguration(OidcVerificationClaimSettings.SectionName);
 
@@ -283,6 +336,10 @@ public static class Dependencies
 
         services.AddOptionsWithValidateOnStart<EnrollmentCheckRateLimitSettings>()
             .BindConfiguration(EnrollmentCheckRateLimitSettings.SectionName)
+            .ValidateDataAnnotations();
+
+        services.AddOptionsWithValidateOnStart<CheckerFeaturesRateLimitSettings>()
+            .BindConfiguration(CheckerFeaturesRateLimitSettings.SectionName)
             .ValidateDataAnnotations();
 
         services.AddOptionsWithValidateOnStart<WebhookRateLimitSettings>()
@@ -300,6 +357,13 @@ public static class Dependencies
         services.AddSingleton<IValidateOptions<SelfServiceRulesSettings>, SelfServiceRulesSettingsValidator>();
         services.AddOptionsWithValidateOnStart<SelfServiceRulesSettings>()
             .BindConfiguration(SelfServiceRulesSettings.SectionName);
+
+        services.AddOptions<EnrollmentCheckerSettings>()
+            .BindConfiguration(EnrollmentCheckerSettings.SectionName);
+
+        services.AddOptions<CoLoadedCohortFilterSettings>()
+            .BindConfiguration(CoLoadedCohortFilterSettings.SectionName);
+        services.AddScoped(sp => sp.GetRequiredService<IOptionsSnapshot<CoLoadedCohortFilterSettings>>().Value);
 
         services.AddSingleton<IValidateOptions<SmartySettings>, SmartySettingsValidator>();
         services.AddOptionsWithValidateOnStart<SmartySettings>()

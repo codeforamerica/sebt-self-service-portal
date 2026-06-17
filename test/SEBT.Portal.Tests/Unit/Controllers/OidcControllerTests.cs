@@ -29,6 +29,7 @@ public class OidcControllerTests
     private readonly IUserRepository _userRepository;
     private readonly IOidcTokenService _oidcTokenService;
     private readonly IPreAuthSessionStore _sessionStore;
+    private readonly IOidcCallbackFailureLogger _callbackFailureLogger;
     private readonly OidcController _controller;
 
     public OidcControllerTests()
@@ -66,9 +67,14 @@ public class OidcControllerTests
         var env = Substitute.For<IWebHostEnvironment>();
         env.EnvironmentName.Returns("Development");
 
+        _callbackFailureLogger = new OidcCallbackFailureLogger(
+            NullLogger<OidcCallbackFailureLogger>.Instance,
+            new HttpContextAccessor());
+
         _controller = new OidcController(
             _config,
             NullLogger<OidcController>.Instance,
+            _callbackFailureLogger,
             _userRepository,
             _oidcTokenService,
             jwtSettings,
@@ -170,6 +176,7 @@ public class OidcControllerTests
         var controller = new OidcController(
             _config,
             NullLogger<OidcController>.Instance,
+            _callbackFailureLogger,
             _userRepository,
             _oidcTokenService,
             jwtSettings,
@@ -821,6 +828,189 @@ public class OidcControllerTests
 
         var redirect = Assert.IsType<RedirectResult>(result);
         Assert.DoesNotContain("code_verifier", redirect.Url);
+    }
+
+    /// <summary>
+    /// DC-463: when the user already has IAL1+ with a fresh expiry, hitting Authorize with
+    /// stepUp=true must short-circuit — no PingOne redirect, no new pre-auth session, and
+    /// therefore no second Socure call. The user is redirected to the sanitized returnUrl.
+    /// </summary>
+    [Fact]
+    public async Task Authorize_WhenStepUpAndUserAlreadyIal1Plus_ShortCircuitsToReturnUrl()
+    {
+        _config["Oidc:StepUp:ClientId"].Returns("step-up-client-id");
+        _config["Oidc:StepUp:RedirectUri"].Returns("http://localhost:3000/callback");
+        var exchangeService = MockExchangeServiceWithDiscovery("https://auth.example.com/authorize");
+        SetUser(_controller, ial: "1plus", idProofingExpiresAt: DateTimeOffset.UtcNow.AddDays(30));
+
+        var result = await _controller.Authorize(
+            CoStateKey, stepUp: true, returnUrl: "/cards/replace",
+            exchangeService: exchangeService);
+
+        var redirect = Assert.IsType<LocalRedirectResult>(result);
+        Assert.Equal("/cards/replace", redirect.Url);
+
+        await _sessionStore.DidNotReceive().CreateAsync(
+            Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(),
+            Arg.Any<string>(), Arg.Any<bool>(), Arg.Any<string?>(),
+            Arg.Any<CancellationToken>());
+        await exchangeService.DidNotReceive().GetDiscoveryConfigAsync(
+            Arg.Any<bool>(), Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task Authorize_WhenStepUpAndUserAlreadyIal2_ShortCircuits()
+    {
+        _config["Oidc:StepUp:ClientId"].Returns("step-up-client-id");
+        _config["Oidc:StepUp:RedirectUri"].Returns("http://localhost:3000/callback");
+        var exchangeService = MockExchangeServiceWithDiscovery("https://auth.example.com/authorize");
+        SetUser(_controller, ial: "2", idProofingExpiresAt: DateTimeOffset.UtcNow.AddDays(30));
+
+        var result = await _controller.Authorize(
+            CoStateKey, stepUp: true, returnUrl: "/profile/address",
+            exchangeService: exchangeService);
+
+        var redirect = Assert.IsType<LocalRedirectResult>(result);
+        Assert.Equal("/profile/address", redirect.Url);
+    }
+
+    [Fact]
+    public async Task Authorize_WhenStepUpAndIal1Plus_WithNoReturnUrl_ShortCircuitsToDashboard()
+    {
+        _config["Oidc:StepUp:ClientId"].Returns("step-up-client-id");
+        _config["Oidc:StepUp:RedirectUri"].Returns("http://localhost:3000/callback");
+        var exchangeService = MockExchangeServiceWithDiscovery("https://auth.example.com/authorize");
+        SetUser(_controller, ial: "1plus", idProofingExpiresAt: DateTimeOffset.UtcNow.AddDays(30));
+
+        var result = await _controller.Authorize(
+            CoStateKey, stepUp: true, returnUrl: null, exchangeService: exchangeService);
+
+        var redirect = Assert.IsType<LocalRedirectResult>(result);
+        Assert.Equal("/dashboard", redirect.Url);
+    }
+
+    /// <summary>
+    /// An open-redirect returnUrl is sanitized to null. Short-circuit must still fall back
+    /// to a safe relative path rather than echoing the unsafe value.
+    /// </summary>
+    [Fact]
+    public async Task Authorize_WhenStepUpAndIal1Plus_WithUnsafeReturnUrl_ShortCircuitsToDashboard()
+    {
+        _config["Oidc:StepUp:ClientId"].Returns("step-up-client-id");
+        _config["Oidc:StepUp:RedirectUri"].Returns("http://localhost:3000/callback");
+        var exchangeService = MockExchangeServiceWithDiscovery("https://auth.example.com/authorize");
+        SetUser(_controller, ial: "1plus", idProofingExpiresAt: DateTimeOffset.UtcNow.AddDays(30));
+
+        var result = await _controller.Authorize(
+            CoStateKey, stepUp: true, returnUrl: "https://evil.example/phish",
+            exchangeService: exchangeService);
+
+        var redirect = Assert.IsType<LocalRedirectResult>(result);
+        Assert.Equal("/dashboard", redirect.Url);
+    }
+
+    [Fact]
+    public async Task Authorize_WhenStepUpAndIal1PlusButExpired_ProceedsToIdp()
+    {
+        _config["Oidc:StepUp:ClientId"].Returns("step-up-client-id");
+        _config["Oidc:StepUp:RedirectUri"].Returns("http://localhost:3000/callback");
+        var exchangeService = MockExchangeServiceWithDiscovery("https://auth.example.com/authorize");
+        SetUser(_controller, ial: "1plus", idProofingExpiresAt: DateTimeOffset.UtcNow.AddSeconds(-60));
+
+        var result = await _controller.Authorize(
+            CoStateKey, stepUp: true, returnUrl: "/cards/replace",
+            exchangeService: exchangeService);
+
+        var redirect = Assert.IsType<RedirectResult>(result);
+        Assert.StartsWith("https://auth.example.com/authorize?", redirect.Url);
+    }
+
+    [Fact]
+    public async Task Authorize_WhenStepUpAndIal1_ProceedsToIdp()
+    {
+        _config["Oidc:StepUp:ClientId"].Returns("step-up-client-id");
+        _config["Oidc:StepUp:RedirectUri"].Returns("http://localhost:3000/callback");
+        var exchangeService = MockExchangeServiceWithDiscovery("https://auth.example.com/authorize");
+        SetUser(_controller, ial: "1", idProofingExpiresAt: DateTimeOffset.UtcNow.AddDays(30));
+
+        var result = await _controller.Authorize(
+            CoStateKey, stepUp: true, returnUrl: "/cards/replace",
+            exchangeService: exchangeService);
+
+        var redirect = Assert.IsType<RedirectResult>(result);
+        Assert.StartsWith("https://auth.example.com/authorize?", redirect.Url);
+    }
+
+    [Fact]
+    public async Task Authorize_WhenStepUpAndNoJwt_ProceedsToIdp()
+    {
+        _config["Oidc:StepUp:ClientId"].Returns("step-up-client-id");
+        _config["Oidc:StepUp:RedirectUri"].Returns("http://localhost:3000/callback");
+        var exchangeService = MockExchangeServiceWithDiscovery("https://auth.example.com/authorize");
+        // HttpContext.User is a default unauthenticated principal — no claims set.
+
+        var result = await _controller.Authorize(
+            CoStateKey, stepUp: true, returnUrl: "/cards/replace",
+            exchangeService: exchangeService);
+
+        var redirect = Assert.IsType<RedirectResult>(result);
+        Assert.StartsWith("https://auth.example.com/authorize?", redirect.Url);
+    }
+
+    /// <summary>
+    /// Normal (non-step-up) login must always proceed to the IdP even if the caller
+    /// happens to have IAL1+ already. The guard is scoped to <c>stepUp=true</c> only.
+    /// </summary>
+    [Fact]
+    public async Task Authorize_WhenNotStepUpAndUserAlreadyIal1Plus_StillProceedsToIdp()
+    {
+        _config["Oidc:ClientId"].Returns("test-client-id");
+        _config["Oidc:CallbackRedirectUri"].Returns("http://localhost:3000/callback");
+        var exchangeService = MockExchangeServiceWithDiscovery("https://auth.example.com/authorize");
+        SetUser(_controller, ial: "1plus", idProofingExpiresAt: DateTimeOffset.UtcNow.AddDays(30));
+
+        var result = await _controller.Authorize(
+            CoStateKey, stepUp: false, exchangeService: exchangeService);
+
+        var redirect = Assert.IsType<RedirectResult>(result);
+        Assert.StartsWith("https://auth.example.com/authorize?", redirect.Url);
+    }
+
+    private static void SetUser(OidcController controller, string ial, DateTimeOffset idProofingExpiresAt)
+    {
+        var identity = new ClaimsIdentity(
+            [
+                new Claim(JwtClaimTypes.Ial, ial),
+                new Claim(
+                    JwtClaimTypes.IdProofingExpiresAt,
+                    idProofingExpiresAt.ToUnixTimeSeconds().ToString())
+            ],
+            authenticationType: "Test");
+        controller.ControllerContext.HttpContext.User = new ClaimsPrincipal(identity);
+    }
+
+    [Fact]
+    public async Task ReportCallbackFailure_WithIdpRedirect_Returns204()
+    {
+        var result = await _controller.ReportCallbackFailure(
+            new OidcCallbackFailureReportRequest(
+                Reason: "idp_redirect",
+                IdpError: "access_denied",
+                IdpErrorDescription: "User cancelled"),
+            CancellationToken.None);
+
+        Assert.IsType<NoContentResult>(result);
+    }
+
+    [Fact]
+    public async Task ReportCallbackFailure_WithInvalidReason_Returns400()
+    {
+        var result = await _controller.ReportCallbackFailure(
+            new OidcCallbackFailureReportRequest(Reason: "not_a_real_reason"),
+            CancellationToken.None);
+
+        var badRequest = Assert.IsType<BadRequestObjectResult>(result);
+        Assert.NotNull(badRequest.Value);
     }
 
     #endregion

@@ -13,7 +13,7 @@ const STEP_UP_REQUIRED_IAL = 'IAL1plus' as const
 /** Minimum time to show the “checking” screen so the flow never flashes straight to the challenge. */
 const MIN_CHECKING_MS = 500
 
-type GuardPhase = 'challenge' | 'redirecting' | 'error'
+type GuardPhase = 'challenge' | 'redirecting'
 
 interface IalGuardProps {
   children: ReactNode
@@ -41,7 +41,8 @@ export function IalGuard({ children, requiredIal = STEP_UP_REQUIRED_IAL }: IalGu
   const { session } = useAuth()
   const router = useRouter()
   const { t, i18n } = useTranslation('common')
-  const { t: tStepUpFailure } = useTranslation('stepUpFailure')
+  const { t: tDisclaimer } = useTranslation('stepUpDisclaimer')
+  const { t: tProcessing } = useTranslation('step-upProcessing')
 
   const useOidcStepUpGate = getState() === 'co'
   const debugRepeatOidcStepUp = isDebugRepeatOidcStepUp()
@@ -73,11 +74,7 @@ export function IalGuard({ children, requiredIal = STEP_UP_REQUIRED_IAL }: IalGu
   }, [needsChallengeFlow])
 
   const handleBack = useCallback(() => {
-    if (typeof window !== 'undefined' && window.history.length > 1) {
-      router.back()
-    } else {
-      router.push('/dashboard')
-    }
+    router.push('/dashboard')
   }, [router])
 
   const handleVerify = useCallback(() => {
@@ -87,58 +84,14 @@ export function IalGuard({ children, requiredIal = STEP_UP_REQUIRED_IAL }: IalGu
 
   const checkingCopy = useMemo(
     () => ({
-      title: t('ialGuardCheckingTitle', 'Please wait…'),
-      body: t(
-        'ialGuardCheckingBody',
-        'Do not exit the page. Checking to see if we have enough information.'
-      )
+      title: tProcessing('title'),
+      body: tProcessing('body')
     }),
-    [t]
+    [tProcessing]
   )
 
   if (passesWithoutStepUp) {
     return <>{children}</>
-  }
-
-  if (phase === 'error') {
-    return (
-      <div className="usa-section">
-        <div className="grid-container maxw-tablet">
-          <section aria-labelledby="ial-guard-error-title">
-            <h1
-              id="ial-guard-error-title"
-              className="font-heading-lg text-primary margin-bottom-3 line-height-sans-1"
-            >
-              {tStepUpFailure(
-                'title',
-                "We're sorry, we aren't able to show your Summer EBT information"
-              )}
-            </h1>
-            <p className="font-sans-sm margin-bottom-3">
-              {tStepUpFailure('body', 'You can contact us if you need more help.')}
-            </p>
-            <div className="display-flex flex-row flex-wrap flex-gap-2 margin-top-3">
-              <Button
-                type="button"
-                variant="outline"
-                className="border-primary text-primary"
-                onClick={handleBack}
-              >
-                {t('ialGuardBack', 'Back')}
-              </Button>
-              <Button
-                type="button"
-                variant="primary"
-                className="bg-primary-dark text-white border-primary-dark"
-                onClick={handleBack}
-              >
-                {tStepUpFailure('continue', 'Continue')}
-              </Button>
-            </div>
-          </section>
-        </div>
-      </div>
-    )
   }
 
   const showChecking = phase === null || phase === 'redirecting'
@@ -181,17 +134,9 @@ export function IalGuard({ children, requiredIal = STEP_UP_REQUIRED_IAL }: IalGu
               id="ial-guard-challenge-title"
               className="font-heading-lg text-primary margin-bottom-3 line-height-sans-1"
             >
-              {t(
-                'ialGuardChallengeTitle',
-                'To keep your account safe, we need to confirm it’s really you'
-              )}
+              {tDisclaimer('title')}
             </h1>
-            <p className="font-sans-sm margin-bottom-3">
-              {t(
-                'ialGuardChallengeBody',
-                'We need to share some information with our third-party vendor to verify your identity. We will do this only once and will not share or save anything without your permission.'
-              )}
-            </p>
+            <p className="font-sans-sm margin-bottom-3">{tDisclaimer('body')}</p>
             <div className="display-flex flex-row flex-wrap flex-gap-2 margin-top-3">
               <Button
                 type="button"
@@ -199,7 +144,7 @@ export function IalGuard({ children, requiredIal = STEP_UP_REQUIRED_IAL }: IalGu
                 className="border-primary text-primary"
                 onClick={handleBack}
               >
-                {t('ialGuardBack', 'Back')}
+                {t('back')}
               </Button>
               <Button
                 type="button"
@@ -207,7 +152,7 @@ export function IalGuard({ children, requiredIal = STEP_UP_REQUIRED_IAL }: IalGu
                 className="bg-primary-dark text-white border-primary-dark"
                 onClick={handleVerify}
               >
-                {t('ialGuardVerify', 'Verify')}
+                {tDisclaimer('action')}
               </Button>
             </div>
           </section>

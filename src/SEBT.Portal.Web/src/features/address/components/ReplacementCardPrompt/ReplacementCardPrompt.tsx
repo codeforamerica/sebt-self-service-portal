@@ -15,24 +15,28 @@ interface ReplacementCardPromptProps {
 export function ReplacementCardPrompt({ address }: ReplacementCardPromptProps) {
   const { t } = useTranslation('confirmInfo')
   const { t: tCommon } = useTranslation('common')
+  const { t: tValidation } = useTranslation('validation')
+
   const router = useRouter()
   const currentState = getState()
 
   const [selection, setSelection] = useState<'yes' | 'no' | null>(null)
-  const [error, setError] = useState<string | null>(null)
+  // Store the i18n key (not the resolved string) so the error re-translates at render
+  // time when the user switches language (DC-454).
+  const [errorKey, setErrorKey] = useState<string | null>(null)
   const errorRef = useRef<HTMLSpanElement>(null)
 
   useEffect(() => {
-    if (error) {
+    if (errorKey) {
       errorRef.current?.focus()
     }
-  }, [error])
+  }, [errorKey])
 
   function handleSubmit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault()
 
     if (selection === null) {
-      setError(t('selectOneError', 'Please select an option.'))
+      setErrorKey('selectOption')
       return
     }
 
@@ -59,15 +63,9 @@ export function ReplacementCardPrompt({ address }: ReplacementCardPromptProps) {
         </p>
       </div>
 
-      <p>{t('replacementCardsCriteria', 'We can send replacement cards if')}</p>
+      <p>{t('replacementCardsBody1')}</p>
       <ul className="usa-list">
-        <li>
-          {t(
-            'replacementCardsCriteriaNotReceived',
-            "You haven't received them in the mail after two weeks"
-          )}
-        </li>
-        <li>{t('replacementCardsCriteriaLost', 'Or you no longer have them')}</li>
+        <li>{t('replacementCardsBody2')}</li>
       </ul>
 
       {currentState === 'dc' && (
@@ -76,28 +74,23 @@ export function ReplacementCardPrompt({ address }: ReplacementCardPromptProps) {
           slim
           className="margin-bottom-3"
         >
-          {t(
-            'snapTanfCallout',
-            'If your child is eligible for DC SUN Bucks through SNAP or TANF participation, they will not receive a DC SUN Bucks card.'
-          )}
+          {tCommon('co-loadedCardHelper')}
         </Alert>
       )}
 
-      <p className="usa-hint margin-bottom-3">
-        {t('requiredFieldsNote', 'Asterisks (*) indicate a required field')}
-      </p>
+      <p className="usa-hint margin-bottom-3">{tCommon('requiredFields')}</p>
 
       <fieldset
         className="usa-fieldset"
-        aria-label={t('selectOneLabel', 'Select one')}
-        aria-describedby={error ? 'replacement-choice-error' : undefined}
+        aria-label={tCommon('selectOne')}
+        aria-describedby={errorKey ? 'replacement-choice-error' : undefined}
       >
         <legend className="usa-legend text-bold">
-          {t('selectOneLabel', 'Select one')}
+          {tCommon('selectOne')}
           <span className="text-secondary-dark"> *</span>
         </legend>
 
-        {error && (
+        {errorKey && (
           <span
             ref={errorRef}
             id="replacement-choice-error"
@@ -105,7 +98,7 @@ export function ReplacementCardPrompt({ address }: ReplacementCardPromptProps) {
             role="alert"
             tabIndex={-1}
           >
-            {error}
+            {tValidation(errorKey)}
           </span>
         )}
 
@@ -119,14 +112,14 @@ export function ReplacementCardPrompt({ address }: ReplacementCardPromptProps) {
             checked={selection === 'yes'}
             onChange={() => {
               setSelection('yes')
-              setError(null)
+              setErrorKey(null)
             }}
           />
           <label
             className="usa-radio__label text-bold"
             htmlFor="replacement-yes"
           >
-            {tCommon('yes', 'Yes')}
+            {tCommon('yes')}
           </label>
         </div>
 
@@ -140,14 +133,14 @@ export function ReplacementCardPrompt({ address }: ReplacementCardPromptProps) {
             checked={selection === 'no'}
             onChange={() => {
               setSelection('no')
-              setError(null)
+              setErrorKey(null)
             }}
           />
           <label
             className="usa-radio__label text-bold"
             htmlFor="replacement-no"
           >
-            {tCommon('no', 'No')}
+            {tCommon('no')}
           </label>
         </div>
       </fieldset>
@@ -156,11 +149,11 @@ export function ReplacementCardPrompt({ address }: ReplacementCardPromptProps) {
         <Button
           variant="outline"
           type="button"
-          onClick={() => router.back()}
+          onClick={() => router.push('/dashboard')}
         >
-          {tCommon('back', 'Back')}
+          {tCommon('back')}
         </Button>
-        <Button type="submit">{tCommon('continue', 'Continue')}</Button>
+        <Button type="submit">{tCommon('continue')}</Button>
       </div>
     </form>
   )

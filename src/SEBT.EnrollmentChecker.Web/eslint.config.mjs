@@ -40,9 +40,11 @@ const eslintConfig = defineConfig([
   },
   // Override default ignores of eslint-config-next.
   globalIgnores([
-    // Default ignores of eslint-config-next:
-    ".next/**",
-    "out/**",
+    // Default ignores of eslint-config-next, widened (.next*, out*) so parked
+    // copies of build output (e.g. a renamed .next/ kept for comparison) stay
+    // out of lint.
+    ".next*/**",
+    "out*/**",
     "build/**",
     "next-env.d.ts",
     // Vendor files

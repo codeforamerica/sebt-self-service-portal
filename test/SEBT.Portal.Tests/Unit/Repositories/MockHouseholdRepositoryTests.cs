@@ -55,6 +55,19 @@ public class MockHouseholdRepositoryTests
     }
 
     [Fact]
+    public async Task GetHouseholdByIdentifierAsync_WhenEmailIsIdProofInProgressScenario_ReturnsHouseholdData()
+    {
+        var identifier = HouseholdIdentifier.Email("id-proof-in-progress@example.com");
+
+        var result = await _repository.GetHouseholdByIdentifierAsync(identifier, FullPiiVisibility, UserIalLevel.IAL1);
+
+        Assert.NotNull(result);
+        Assert.Equal("id-proof-in-progress@example.com", result.Email);
+        Assert.NotNull(result.Applications);
+        Assert.Equal(ApplicationStatus.Pending, result.Applications!.First().ApplicationStatus);
+    }
+
+    [Fact]
     public async Task GetHouseholdByIdentifierAsync_WhenPhoneIdentifierAndHouseholdExists_ReturnsHouseholdData()
     {
         // Mock supports phone lookup for DevelopmentPhoneOverride; co-loaded uses default override phone
@@ -146,7 +159,7 @@ public class MockHouseholdRepositoryTests
         Assert.Equal(email, result!.Email);
         Assert.Equal("8185558438", result.Phone);
         Assert.NotNull(result.SummerEbtCases);
-        var snapCase = Assert.Single(result.SummerEbtCases.Where(c => c.EbtCaseNumber == "SNAP-CO-001"));
+        var snapCase = Assert.Single(result.SummerEbtCases, c => c.EbtCaseNumber == "SNAP-CO-001");
         Assert.True(snapCase.IsCoLoaded);
     }
 
@@ -160,6 +173,22 @@ public class MockHouseholdRepositoryTests
 
         Assert.NotNull(result);
         Assert.Equal("co-loaded-pending-id-proofing@example.com", result!.Email);
+    }
+
+    [Fact]
+    public async Task GetHouseholdByEmailAsync_WhenDcCoLoadedNoApplication_HasCoLoadedCasesAndZeroApplications()
+    {
+        var repo = CreateRepository("{0}@example.com", state: "dc");
+        const string email = "co-loaded-no-application@example.com";
+
+        var result = await repo.GetHouseholdByEmailAsync(email, FullPiiVisibility, UserIalLevel.IAL1plus);
+
+        Assert.NotNull(result);
+        Assert.Equal(email, result!.Email);
+        Assert.Equal("8185558441", result.Phone);
+        Assert.NotEmpty(result.SummerEbtCases);
+        Assert.All(result.SummerEbtCases, c => Assert.True(c.IsCoLoaded));
+        Assert.Empty(result.Applications);
     }
 
     [Fact]
@@ -308,7 +337,6 @@ public class MockHouseholdRepositoryTests
         Assert.NotNull(app.BenefitExpirationDate);
         Assert.Equal("APP-2025-01-100001", app.ApplicationNumber);
         Assert.Equal("CASE-100001", app.CaseNumber);
-        Assert.Equal("1234", app.Last4DigitsOfCard);
         Assert.Equal(IssuanceType.SummerEbt, app.IssuanceType);
         Assert.NotNull(result.AddressOnFile);
         Assert.Equal("123 Main Street", result.AddressOnFile.StreetAddress1);
@@ -327,10 +355,9 @@ public class MockHouseholdRepositoryTests
         Assert.NotNull(result);
         var app = result.Applications.First();
         Assert.Equal(ApplicationStatus.Approved, app.ApplicationStatus);
-        Assert.Equal(CardStatus.NotActivated, app.CardStatus);
         Assert.Equal(IssuanceType.SummerEbt, app.IssuanceType);
         Assert.Single(result.SummerEbtCases);
-        Assert.Equal("NotActivated", result.SummerEbtCases[0].EbtCardStatus);
+        Assert.Equal(CardStatus.NotActivated, result.SummerEbtCases[0].EbtCardStatus);
         Assert.Equal(IssuanceType.SummerEbt, result.SummerEbtCases[0].IssuanceType);
     }
 
@@ -347,10 +374,9 @@ public class MockHouseholdRepositoryTests
         Assert.NotNull(result);
         var app = result.Applications.First();
         Assert.Equal(ApplicationStatus.Approved, app.ApplicationStatus);
-        Assert.Equal(CardStatus.DeactivatedByState, app.CardStatus);
         Assert.Equal(IssuanceType.SummerEbt, app.IssuanceType);
         Assert.Single(result.SummerEbtCases);
-        Assert.Equal("DeactivatedByState", result.SummerEbtCases[0].EbtCardStatus);
+        Assert.Equal(CardStatus.DeactivatedByState, result.SummerEbtCases[0].EbtCardStatus);
         Assert.Equal(IssuanceType.SummerEbt, result.SummerEbtCases[0].IssuanceType);
     }
 
@@ -367,10 +393,9 @@ public class MockHouseholdRepositoryTests
         Assert.NotNull(result);
         var app = result.Applications.First();
         Assert.Equal(ApplicationStatus.Approved, app.ApplicationStatus);
-        Assert.Equal(CardStatus.Active, app.CardStatus);
         Assert.Equal(IssuanceType.SummerEbt, app.IssuanceType);
         Assert.Single(result.SummerEbtCases);
-        Assert.Equal("Active", result.SummerEbtCases[0].EbtCardStatus);
+        Assert.Equal(CardStatus.Active, result.SummerEbtCases[0].EbtCardStatus);
         Assert.Equal(IssuanceType.SummerEbt, result.SummerEbtCases[0].IssuanceType);
     }
 
@@ -651,7 +676,6 @@ public class MockHouseholdRepositoryTests
         Assert.Equal("John", app.Children[0].FirstName);
         Assert.Equal("Doe", app.Children[0].LastName);
         Assert.Equal("APP-2025-01-100001", app.ApplicationNumber);
-        Assert.Equal("1234", app.Last4DigitsOfCard);
         Assert.NotNull(result.AddressOnFile);
         Assert.Equal("123 Main Street", result.AddressOnFile.StreetAddress1);
     }
@@ -740,7 +764,7 @@ public class MockHouseholdRepositoryTests
         Assert.NotNull(result);
         Assert.Single(result.SummerEbtCases);
         var sebtCase = result.SummerEbtCases[0];
-        Assert.Equal("Deactivated", sebtCase.EbtCardStatus);
+        Assert.Equal(CardStatus.DeactivatedByState, sebtCase.EbtCardStatus);
         Assert.NotNull(sebtCase.BenefitExpirationDate);
         Assert.True(sebtCase.BenefitExpirationDate < _timeProvider.GetUtcNow().UtcDateTime);
     }

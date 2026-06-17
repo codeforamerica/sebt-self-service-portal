@@ -9,13 +9,14 @@ import { ChildReviewCard } from './ChildReviewCard'
 
 interface ReviewPageProps {
   onSubmit: () => void
+  isSubmitting?: boolean
 }
 
-export function ReviewPage({ onSubmit }: ReviewPageProps) {
+export function ReviewPage({ onSubmit, isSubmitting = false }: ReviewPageProps) {
   const { t } = useTranslation('confirmInfo')
   const { t: tCommon } = useTranslation('common')
   const router = useRouter()
-  const { state, setEditingChildId } = useEnrollment()
+  const { state, setEditingChildId, removeChild } = useEnrollment()
 
   function handleEdit(id: string) {
     setEditingChildId(id)
@@ -26,13 +27,13 @@ export function ReviewPage({ onSubmit }: ReviewPageProps) {
     <div className="usa-section">
       <div className="grid-container">
         <Image
-          src="/images/states/co/icon-review-card.svg"
+          src={`${process.env.NEXT_PUBLIC_BASE_PATH}/images/states/co/icon-review-card.svg`}
           alt=""
           width={100}
           height={75}
           aria-hidden="true"
         />
-        <h1 className="font-family-sans margin-top-1">{t('title')}</h1>
+        <h1 className="font-family-sans margin-top-1 text-primary">{t('title')}</h1>
         <p className="usa-prose">{t('body')}</p>
 
         <div className="margin-top-3">
@@ -41,6 +42,7 @@ export function ReviewPage({ onSubmit }: ReviewPageProps) {
               key={child.id}
               child={child}
               onEdit={handleEdit}
+              onRemove={removeChild}
             />
           ))}
         </div>
@@ -50,10 +52,18 @@ export function ReviewPage({ onSubmit }: ReviewPageProps) {
             variant="outline"
             className="margin-right-1"
             onClick={() => router.push('/check')}
+            disabled={isSubmitting}
           >
             {tCommon('back')}
           </Button>
-          <Button onClick={onSubmit}>{tCommon('submit')}</Button>
+          <Button
+            onClick={onSubmit}
+            disabled={state.children.length === 0}
+            isLoading={isSubmitting}
+            loadingText={`${tCommon('submit')}...`}
+          >
+            {tCommon('submit')}
+          </Button>
         </div>
         <div className="margin-top-2">
           <button

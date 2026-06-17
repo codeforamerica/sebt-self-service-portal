@@ -1,10 +1,13 @@
 using Microsoft.Extensions.Logging.Abstractions;
+using Microsoft.Extensions.Options;
 using NSubstitute;
 using NSubstitute.ExceptionExtensions;
 using SEBT.Portal.Core.AppSettings;
 using SEBT.Portal.Core.Exceptions;
+using SEBT.Portal.Core.Models;
 using SEBT.Portal.Core.Models.Auth;
 using SEBT.Portal.Core.Models.DocVerification;
+using SEBT.Portal.Core.Models.Household;
 using SEBT.Portal.Core.Repositories;
 using SEBT.Portal.Kernel;
 using SEBT.Portal.Kernel.Results;
@@ -18,14 +21,24 @@ public class ProcessWebhookCommandHandlerTests
     private readonly IDocVerificationChallengeRepository challengeRepository =
         Substitute.For<IDocVerificationChallengeRepository>();
     private readonly IUserRepository userRepository = Substitute.For<IUserRepository>();
+    private readonly IHouseholdRepository householdRepository = Substitute.For<IHouseholdRepository>();
     private readonly SocureSettings socureSettings = new() { UseStub = true };
+    private readonly IOptions<IdProofingEligibilitySettings> idProofingEligibilitySettings =
+        Options.Create(new IdProofingEligibilitySettings { RequireQualifyingHouseholdForSocure = true });
     private readonly IValidator<ProcessWebhookCommand> validator =
         new DataAnnotationsValidator<ProcessWebhookCommand>(null!);
     private readonly NullLogger<ProcessWebhookCommandHandler> logger =
         NullLogger<ProcessWebhookCommandHandler>.Instance;
 
     private ProcessWebhookCommandHandler CreateHandler() =>
-        new(challengeRepository, userRepository, socureSettings, validator, logger);
+        new(
+            challengeRepository,
+            userRepository,
+            householdRepository,
+            socureSettings,
+            idProofingEligibilitySettings,
+            validator,
+            logger);
 
     private static ProcessWebhookCommand CreateValidCommand(
         string eventId = "evt-123",
@@ -49,7 +62,13 @@ public class ProcessWebhookCommandHandlerTests
     {
         var settings = new SocureSettings { UseStub = false, WebhookSecret = "secret" };
         var handler = new ProcessWebhookCommandHandler(
-            challengeRepository, userRepository, settings, validator, logger);
+            challengeRepository,
+            userRepository,
+            householdRepository,
+            settings,
+            idProofingEligibilitySettings,
+            validator,
+            logger);
 
         var command = new ProcessWebhookCommand
         {
@@ -76,7 +95,13 @@ public class ProcessWebhookCommandHandlerTests
     {
         var settings = new SocureSettings { UseStub = false, WebhookSecret = "my-webhook-secret" };
         var handler = new ProcessWebhookCommandHandler(
-            challengeRepository, userRepository, settings, validator, logger);
+            challengeRepository,
+            userRepository,
+            householdRepository,
+            settings,
+            idProofingEligibilitySettings,
+            validator,
+            logger);
         var challenge = DocVerificationChallengeFactory.CreatePendingChallenge();
         var user = new User { Id = challenge.UserId, Email = "test@example.com" };
 
@@ -105,7 +130,13 @@ public class ProcessWebhookCommandHandlerTests
     {
         var settings = new SocureSettings { UseStub = false, WebhookSecret = "correct-secret" };
         var handler = new ProcessWebhookCommandHandler(
-            challengeRepository, userRepository, settings, validator, logger);
+            challengeRepository,
+            userRepository,
+            householdRepository,
+            settings,
+            idProofingEligibilitySettings,
+            validator,
+            logger);
 
         var command = new ProcessWebhookCommand
         {
@@ -207,11 +238,11 @@ public class ProcessWebhookCommandHandlerTests
                 && c.SocureEventId == "evt-123"),
                 Arg.Any<CancellationToken>());
 
-        // User should be updated to Completed + IAL2
+        // User should be updated to Completed + IAL1plus
         await userRepository.Received(1)
             .UpdateUserAsync(Arg.Is<User>(u =>
                 u.IdProofingStatus == IdProofingStatus.Completed
-                && u.IalLevel == UserIalLevel.IAL2),
+                && u.IalLevel == UserIalLevel.IAL1plus),
                 Arg.Any<CancellationToken>());
     }
 
@@ -241,6 +272,54 @@ public class ProcessWebhookCommandHandlerTests
         // User should NOT be updated on rejection
         await userRepository.DidNotReceive()
             .UpdateUserAsync(Arg.Any<User>(), Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task Handle_ShouldReturnCoLoadedOnlyOffboarding_WhenDocVRejectedAndHouseholdIsCoLoadedOnly()
+    {
+        var handler = CreateHandler();
+        var challenge = DocVerificationChallengeFactory.CreatePendingChallenge();
+        var user = new User
+        {
+            Id = challenge.UserId,
+            Email = "test@example.com",
+            IsCoLoaded = false
+        };
+
+        challengeRepository.GetBySocureReferenceIdAsync("ref-456", Arg.Any<CancellationToken>())
+            .Returns(challenge);
+        userRepository.GetUserByIdAsync(challenge.UserId, Arg.Any<CancellationToken>())
+            .Returns(user);
+        householdRepository.GetHouseholdByEmailAsync(
+                user.Email,
+                Arg.Any<PiiVisibility>(),
+                Arg.Any<UserIalLevel>(),
+                Arg.Any<Guid?>(),
+                Arg.Any<bool>(),
+                Arg.Any<CancellationToken>())
+            .Returns(new HouseholdData
+            {
+                SummerEbtCases =
+                [
+                    new SummerEbtCase
+                    {
+                        SummerEBTCaseID = "S1",
+                        ChildFirstName = "A",
+                        ChildLastName = "B",
+                        IsCoLoaded = true
+                    }
+                ]
+            });
+
+        var command = CreateValidCommand(workflowDecision: "REJECT", documentDecision: "reject");
+        var result = await handler.Handle(command, CancellationToken.None);
+
+        Assert.True(result.IsSuccess);
+        await challengeRepository.Received(1)
+            .UpdateAsync(Arg.Is<DocVerificationChallenge>(c =>
+                c.Status == DocVerificationStatus.Rejected
+                && c.OffboardingReason == "coLoadedOnly"),
+                Arg.Any<CancellationToken>());
     }
 
     // --- EvalId fallback correlation (D6) ---
@@ -510,7 +589,7 @@ public class ProcessWebhookCommandHandlerTests
         await userRepository.Received(1)
             .UpdateUserAsync(Arg.Is<User>(u =>
                 u.IdProofingStatus == IdProofingStatus.Completed
-                && u.IalLevel == UserIalLevel.IAL2),
+                && u.IalLevel == UserIalLevel.IAL1plus),
                 Arg.Any<CancellationToken>());
     }
 
@@ -539,7 +618,7 @@ public class ProcessWebhookCommandHandlerTests
             .UpdateUserAsync(Arg.Any<User>(), Arg.Any<CancellationToken>());
     }
 
-    // --- Latent-bug fix: DI-rejected workflow with DocV "accept" must NOT grant IAL2 ---
+    // --- Latent-bug fix: DI-rejected workflow with DocV "accept" must NOT grant IAL1plus ---
 
     [Fact]
     public async Task HandleAsync_EvaluationCompleted_WorkflowRejectButDocvAccept_TransitionsToRejected()
@@ -570,7 +649,7 @@ public class ProcessWebhookCommandHandlerTests
                 && c.OffboardingReason == "docVerificationFailed"),
                 Arg.Any<CancellationToken>());
 
-        // Critical: user must NOT be updated to IAL2
+        // Critical: user must NOT be updated to completed proofing / elevated IAL
         await userRepository.DidNotReceive()
             .UpdateUserAsync(Arg.Any<User>(), Arg.Any<CancellationToken>());
     }

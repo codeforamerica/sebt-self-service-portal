@@ -33,6 +33,8 @@ public class HouseholdRepository : IHouseholdRepository
         HouseholdIdentifier identifier,
         PiiVisibility piiVisibility,
         UserIalLevel userIalLevel,
+        Guid? portalUserId = null,
+        bool includeCardService = true,
         CancellationToken cancellationToken = default)
     {
         var pluginType = MapToPluginIdentifierType(identifier.Type);
@@ -47,6 +49,8 @@ public class HouseholdRepository : IHouseholdRepository
             identifier.Value,
             piiVisibility,
             userIalLevel,
+            portalUserId,
+            includeCardService,
             cancellationToken);
     }
 
@@ -55,6 +59,8 @@ public class HouseholdRepository : IHouseholdRepository
         string identifierValue,
         PiiVisibility piiVisibility,
         UserIalLevel userIalLevel,
+        Guid? portalUserId,
+        bool includeCardService,
         CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(piiVisibility);
@@ -83,7 +89,9 @@ public class HouseholdRepository : IHouseholdRepository
             normalizedValue,
             pluginPii,
             pluginIal,
-            cancellationToken);
+            portalUserId,
+            includeCardService,
+            cancellationToken: cancellationToken);
 
         if (pluginHousehold == null)
         {
@@ -94,9 +102,10 @@ public class HouseholdRepository : IHouseholdRepository
         }
 
         _logger.LogInformation(
-            "Retrieved household data for identifier type {Type} with {ApplicationCount} application(s)",
+            "Retrieved household data for identifier type {Type} with {ApplicationCount} application(s) and {CaseCount} case(s)",
             identifierType,
-            pluginHousehold.Applications.Count);
+            pluginHousehold.Applications.Count,
+            pluginHousehold.SummerEbtCases.Count);
 
         var core = PluginHouseholdDataMapper.ToCore(pluginHousehold);
         if (core == null)
@@ -124,6 +133,8 @@ public class HouseholdRepository : IHouseholdRepository
         string email,
         PiiVisibility piiVisibility,
         UserIalLevel userIalLevel,
+        Guid? portalUserId = null,
+        bool includeCardService = true,
         CancellationToken cancellationToken = default)
     {
         return GetHouseholdByIdentifierInternalAsync(
@@ -131,6 +142,8 @@ public class HouseholdRepository : IHouseholdRepository
             email ?? string.Empty,
             piiVisibility,
             userIalLevel,
+            portalUserId,
+            includeCardService,
             cancellationToken);
     }
 
@@ -138,12 +151,65 @@ public class HouseholdRepository : IHouseholdRepository
     public Task<bool> TryMatchCoLoadedGuardianByBenefitIdAndDobAsync(
         string benefitIdentifierIc,
         DateOnly guardianDateOfBirth,
+        Guid portalUserId,
         CancellationToken cancellationToken = default)
     {
         return _summerEbtCaseService.TryMatchCoLoadedGuardianByBenefitIdAndDobAsync(
             benefitIdentifierIc,
             guardianDateOfBirth,
+            portalUserId,
             cancellationToken);
+    }
+
+    /// <inheritdoc />
+    public async Task<HouseholdData?> GetHouseholdByBenefitIdentifierAndGuardianDobAsync(
+        string guardianLoginEmail,
+        string benefitIdentifierIc,
+        DateOnly guardianDateOfBirth,
+        PiiVisibility piiVisibility,
+        UserIalLevel userIalLevel,
+        Guid portalUserId,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(piiVisibility);
+        if (string.IsNullOrWhiteSpace(guardianLoginEmail))
+        {
+            return null;
+        }
+
+        if (string.IsNullOrWhiteSpace(benefitIdentifierIc))
+        {
+            return null;
+        }
+
+        var normalizedEmail = EmailNormalizer.Normalize(guardianLoginEmail);
+        var pluginPii = new PluginPiiVisibility(
+            IncludeAddress: true,
+            IncludeEmail: true,
+            IncludePhone: true);
+        var pluginIal = (PluginIdentityAssuranceLevel)(int)userIalLevel;
+
+        var pluginHousehold = await _summerEbtCaseService.GetHouseholdByBenefitIdentifierAndDobAsync(
+            benefitIdentifierIc.Trim(),
+            guardianDateOfBirth,
+            normalizedEmail,
+            pluginPii,
+            pluginIal,
+            portalUserId,
+            cancellationToken);
+
+        if (pluginHousehold == null)
+        {
+            return null;
+        }
+
+        var core = PluginHouseholdDataMapper.ToCore(pluginHousehold);
+        if (core == null)
+        {
+            return null;
+        }
+
+        return ApplyPiiVisibility(core, piiVisibility);
     }
 
     private static HouseholdData ApplyPiiVisibility(HouseholdData source, PiiVisibility piiVisibility)

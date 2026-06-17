@@ -7,6 +7,11 @@ namespace SEBT.Portal.Api.Models;
 /// and cannot be decoded client-side.
 /// </summary>
 /// <param name="IsAuthorized">Always true when this response is returned (200 OK).</param>
+/// <param name="UserId">
+/// Stable, non-PII portal user identifier (the portal's own user UUID). Surfaced for
+/// analytics so events can be correlated per-user across page loads without exposing
+/// email or other PII to vendor tooling. Null when the claim is absent.
+/// </param>
 /// <param name="Email">The email address of the authenticated user.</param>
 /// <param name="Ial">
 /// Identity assurance level claim from the JWT ("0", "1", "1plus", or "2"). Null when unknown.
@@ -24,12 +29,24 @@ namespace SEBT.Portal.Api.Models;
 /// <param name="IsCoLoaded">
 /// Whether the user's record was co-loaded from an external state system. Null when the claim is absent.
 /// </param>
+/// <param name="ExpiresAt">
+/// Unix seconds timestamp at which the current session cookie expires (sliding/idle expiry).
+/// The SPA uses this to schedule activity-gated refreshes. Null when the claim is absent.
+/// </param>
+/// <param name="AbsoluteExpiresAt">
+/// Unix seconds timestamp at which the session reaches its absolute lifetime cap, regardless of
+/// activity. Computed from the JWT <c>auth_time</c> claim plus <c>JwtSettings.AbsoluteExpirationMinutes</c>.
+/// Null when <c>auth_time</c> is absent.
+/// </param>
 public record AuthorizationStatusResponse(
     bool IsAuthorized,
+    Guid? UserId = null,
     string? Email = null,
     string? Ial = null,
     int? IdProofingStatus = null,
     long? IdProofingCompletedAt = null,
     long? IdProofingExpiresAt = null,
-    bool? IsCoLoaded = null);
+    bool? IsCoLoaded = null,
+    long? ExpiresAt = null,
+    long? AbsoluteExpiresAt = null);
 

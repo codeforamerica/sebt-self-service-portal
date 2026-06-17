@@ -32,8 +32,13 @@ const POPULATED_KEYS = new Set([
   'offBoarding:coLoadedAction1',
   'offBoarding:coLoadedBody2',
   'offBoarding:coLoadedAction2',
+  'stepUpFailure:title',
+  'stepUpFailure:body',
   'common:linkContactUs',
-  'common:back'
+  'common:back',
+  'dashboard:alertApplicationsTitle',
+  'dashboard:alertApplicationsBody',
+  'dashboard:alertApplicationsAction'
 ])
 let emptyKeys = new Set<string>()
 vi.mock('react-i18next', () => ({
@@ -43,7 +48,8 @@ vi.mock('react-i18next', () => ({
       if (emptyKeys.has(fullKey)) return defaultValue ?? fullKey
       if (POPULATED_KEYS.has(fullKey)) return fullKey
       return defaultValue ?? fullKey
-    }
+    },
+    i18n: { language: 'en' }
   })
 }))
 
@@ -203,6 +209,15 @@ describe('OffBoardingPage', () => {
       expect(content).toHaveAttribute('data-apply-body', 'offBoarding:coLoadedBody2')
       expect(content).toHaveAttribute('data-apply-label', 'offBoarding:coLoadedAction2')
     })
+
+    it('uses the co-loaded off-boarding copy when reason is coLoadedOnly', () => {
+      renderPage({ isCoLoaded: false, reason: 'coLoadedOnly' })
+
+      const content = screen.getByTestId('off-boarding-content')
+      expect(content).toHaveAttribute('data-title', 'offBoarding:coLoadedTitle')
+      expect(content).toHaveAttribute('data-body', 'offBoarding:coLoadedBody1')
+      expect(content).toHaveAttribute('data-contact-label', 'offBoarding:coLoadedAction1')
+    })
   })
 
   describe('Static props', () => {
@@ -284,11 +299,40 @@ describe('OffBoardingPage', () => {
       )
     })
 
+    it('uses step-up failure copy for OIDC callback errors (CO MyCO step-up)', async () => {
+      await renderPage({ reason: 'oidcCallbackError', isCoLoaded: false })
+
+      const content = screen.getByTestId('off-boarding-content')
+      expect(content).toHaveAttribute('data-title', 'stepUpFailure:title')
+      expect(content).toHaveAttribute('data-body', 'stepUpFailure:body')
+      expect(content).toHaveAttribute('data-back-href', '/dashboard')
+      expect(content).toHaveAttribute('data-contact-label', 'common:linkContactUs')
+      expect(content).toHaveAttribute('data-can-apply', 'false')
+    })
+
+    it('OIDC callback error reason wins over co-loaded session copy', async () => {
+      await renderPage({ reason: 'oidcCallbackError', isCoLoaded: true })
+
+      const content = screen.getByTestId('off-boarding-content')
+      expect(content).toHaveAttribute('data-title', 'stepUpFailure:title')
+    })
+
     it('forces canApply to false for docVerificationFailed regardless of query param', async () => {
       await renderPage({ reason: 'docVerificationFailed', canApply: 'true' })
 
       const content = screen.getByTestId('off-boarding-content')
       expect(content).toHaveAttribute('data-can-apply', 'false')
+    })
+
+    it('uses dashboard application-alert copy when reason is noQualifyingHousehold', async () => {
+      await renderPage({ reason: 'noQualifyingHousehold' })
+
+      const content = screen.getByTestId('off-boarding-content')
+      expect(content).toHaveAttribute('data-title', 'dashboard:alertApplicationsTitle')
+      expect(content).toHaveAttribute('data-body', 'dashboard:alertApplicationsBody')
+      expect(content).toHaveAttribute('data-apply-label', 'dashboard:alertApplicationsAction')
+      expect(content).toHaveAttribute('data-back-href', '/login/id-proofing')
+      expect(content).toHaveAttribute('data-can-apply', 'true')
     })
   })
 })

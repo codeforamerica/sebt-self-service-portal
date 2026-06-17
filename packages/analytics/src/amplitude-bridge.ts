@@ -1,8 +1,7 @@
 /**
  * DOM event bridge that listens to DataLayer CustomEvents and forwards
- * them to Amplitude. Only forwards EventTracked events — the Amplitude
- * init is configured with no session replay, no autocapture, and no
- * user identity.
+ * them to Amplitude. Forwards both PageViewed (page_load) and EventTracked
+ * events. 
  *
  * @see docs/tdd/analytics-data-layer.md — "DOM Bridge & Sample Integration"
  */
@@ -16,7 +15,7 @@ export interface AmplitudeLike {
 }
 
 function attachBridge(dl: DataLayerRoot, amplitude: AmplitudeLike): () => void {
-  function handleEventTracked(event: Event) {
+  function forward(event: Event) {
     const detail = (event as CustomEvent).detail as
       | {
           eventName?: string
@@ -29,19 +28,20 @@ function attachBridge(dl: DataLayerRoot, amplitude: AmplitudeLike): () => void {
     amplitude.track(detail.eventName, detail.eventData)
   }
 
+  const pageViewedEvent = dl.eventTypes.PAGE_VIEWED!
   const eventTrackedEvent = dl.eventTypes.EVENT_TRACKED!
 
-  document.addEventListener(eventTrackedEvent, handleEventTracked)
+  document.addEventListener(pageViewedEvent, forward)
+  document.addEventListener(eventTrackedEvent, forward)
 
   return () => {
-    document.removeEventListener(eventTrackedEvent, handleEventTracked)
+    document.removeEventListener(pageViewedEvent, forward)
+    document.removeEventListener(eventTrackedEvent, forward)
   }
 }
 
 export function initAmplitudeBridge(apiKey: string, amplitude: AmplitudeLike): () => void {
   // Privacy posture:
-  // - defaultTracking: false        → no page view / session / form / file-download autocapture
-  // - autocapture: false            → no DOM element interaction autocapture
   // - identityStorage: 'none'       → no cross-session user identity persistence
   // - trackingOptions.ipAddress: false → do not capture client IP
   //
@@ -49,8 +49,8 @@ export function initAmplitudeBridge(apiKey: string, amplitude: AmplitudeLike): (
   // require opting in via additional plugins — not enabled here by construction.
   try {
     amplitude.init(apiKey, {
-      defaultTracking: false,
-      autocapture: false,
+      defaultTracking: true,
+      autocapture: true,
       identityStorage: 'none',
       trackingOptions: {
         ipAddress: false

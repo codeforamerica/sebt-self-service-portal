@@ -12,11 +12,9 @@ public class HouseholdDataResponseMapperTests
     public void ToResponse_MapsAllHouseholdDataProperties_WhenFullyPopulated()
     {
         // Arrange
+        var applicationDate = new DateTime(2025, 12, 15, 9, 0, 0, DateTimeKind.Utc);
         var benefitIssue = new DateTime(2026, 1, 1, 10, 0, 0, DateTimeKind.Utc);
         var benefitExpiry = new DateTime(2026, 4, 1, 10, 0, 0, DateTimeKind.Utc);
-        var cardRequested = new DateTime(2025, 11, 11, 12, 0, 0, DateTimeKind.Utc);
-        var cardMailed = new DateTime(2025, 11, 28, 12, 0, 0, DateTimeKind.Utc);
-        var cardActivated = new DateTime(2025, 12, 2, 12, 0, 0, DateTimeKind.Utc);
 
         var domain = new HouseholdData
         {
@@ -30,15 +28,10 @@ public class HouseholdDataResponseMapperTests
                     ApplicationNumber = "APP-123",
                     CaseNumber = "CASE-456",
                     ApplicationStatus = ApplicationStatus.Approved,
+                    ApplicationDate = applicationDate,
                     IssuanceType = IssuanceType.SnapEbtCard,
                     BenefitIssueDate = benefitIssue,
                     BenefitExpirationDate = benefitExpiry,
-                    Last4DigitsOfCard = "1234",
-                    CardStatus = CardStatus.Active,
-                    CardRequestedAt = cardRequested,
-                    CardMailedAt = cardMailed,
-                    CardActivatedAt = cardActivated,
-                    CardDeactivatedAt = null,
                     Children = new List<Child>
                     {
                         new Child { FirstName = "John", LastName = "Doe" },
@@ -88,15 +81,10 @@ public class HouseholdDataResponseMapperTests
         Assert.Equal("APP-123", app.ApplicationNumber);
         Assert.Equal("CASE-456", app.CaseNumber);
         Assert.Equal(ApplicationStatus.Approved, app.ApplicationStatus);
+        Assert.Equal(applicationDate, app.ApplicationDate);
         Assert.Equal(IssuanceType.SnapEbtCard, app.IssuanceType);
         Assert.Equal(benefitIssue, app.BenefitIssueDate);
         Assert.Equal(benefitExpiry, app.BenefitExpirationDate);
-        Assert.Equal("1234", app.Last4DigitsOfCard);
-        Assert.Equal(CardStatus.Active, app.CardStatus);
-        Assert.Equal(cardRequested, app.CardRequestedAt);
-        Assert.Equal(cardMailed, app.CardMailedAt);
-        Assert.Equal(cardActivated, app.CardActivatedAt);
-        Assert.Null(app.CardDeactivatedAt);
         Assert.Equal(2, app.ChildrenOnApplication);
         Assert.Equal(2, app.Children.Count);
         Assert.Equal("John", app.Children[0].FirstName);
@@ -214,6 +202,7 @@ public class HouseholdDataResponseMapperTests
     [Fact]
     public void ToResponse_MapsSummerEbtCases()
     {
+        var caseApplicationDate = new DateTime(2025, 11, 1, 0, 0, 0, DateTimeKind.Utc);
         var domain = new HouseholdData
         {
             Email = "user@example.com",
@@ -227,8 +216,11 @@ public class HouseholdDataResponseMapperTests
                     ChildLastName = "Garcia",
                     ChildDateOfBirth = new DateTime(2015, 5, 15),
                     ApplicationStatus = ApplicationStatus.Approved,
+                    ApplicationDate = caseApplicationDate,
                     EbtCardLastFour = "1234",
-                    EbtCardBalance = 120.50m
+                    EbtCardBalance = 120.50m,
+                    EbtCaseNumber = "CBMS-REF",
+                    CaseDisplayNumber = "APP-DISPLAY"
                 }
             }
         };
@@ -243,7 +235,40 @@ public class HouseholdDataResponseMapperTests
         Assert.Equal("Garcia", sec.ChildLastName);
         Assert.Equal(new DateTime(2015, 5, 15), sec.ChildDateOfBirth);
         Assert.Equal(ApplicationStatus.Approved, sec.ApplicationStatus);
+        Assert.Equal(caseApplicationDate, sec.ApplicationDate);
         Assert.Equal("1234", sec.EbtCardLastFour);
         Assert.Equal(120.50m, sec.EbtCardBalance);
+        Assert.Equal("CBMS-REF", sec.EbtCaseNumber);
+        Assert.Equal("APP-DISPLAY", sec.CaseDisplayNumber);
+    }
+
+    [Fact]
+    public void ToResponse_PassesHashedAppIdThrough_WhenProvided()
+    {
+        var domain = new HouseholdData
+        {
+            Email = "test@example.com",
+            SummerEbtCases = new List<SummerEbtCase>(),
+            Applications = new List<Application>()
+        };
+
+        var response = domain.ToResponse(hashedAppId: "ca383d90647e371547d6e66297cda8089b81fc1c5cb30da6cfcbdf744d9e2861");
+
+        Assert.Equal("ca383d90647e371547d6e66297cda8089b81fc1c5cb30da6cfcbdf744d9e2861", response.HashedAppId);
+    }
+
+    [Fact]
+    public void ToResponse_DefaultsHashedAppIdToNull_WhenNotProvided()
+    {
+        var domain = new HouseholdData
+        {
+            Email = "test@example.com",
+            SummerEbtCases = new List<SummerEbtCase>(),
+            Applications = new List<Application>()
+        };
+
+        var response = domain.ToResponse();
+
+        Assert.Null(response.HashedAppId);
     }
 }

@@ -2,13 +2,18 @@
 
 import { useTranslation } from 'react-i18next'
 
+import { getApplyHref } from '@/lib/applyHref'
+
 import { useRequiredHouseholdData } from '../../api'
+import { useHouseholdCardDetailsLoading } from '../../context/HouseholdCardDetailsLoadingContext'
 import { ChildCard } from '../ChildCard'
 
 // Keys map to CSV: "S2 - Portal Dashboard - Section Enrolled Children - {Key}"
 export function EnrolledChildren() {
-  const { t } = useTranslation('dashboard')
+  const { t, i18n } = useTranslation('dashboard')
   const data = useRequiredHouseholdData()
+  const cardDetailsLoading = useHouseholdCardDetailsLoading()
+  const applyHref = getApplyHref(i18n.language)
 
   return (
     <section aria-labelledby="enrolled-children-heading">
@@ -21,7 +26,7 @@ export function EnrolledChildren() {
       <p className="margin-bottom-3">
         {t('sectionEnrolledChildrenBody1')}{' '}
         <a
-          href="/apply"
+          href={applyHref}
           className="usa-link"
         >
           {t('sectionEnrolledChildrenAction')}
@@ -38,6 +43,7 @@ export function EnrolledChildren() {
             summerEbtCase={c}
             defaultExpanded={index === 0}
             canRequestReplacementCard={data.allowedActions?.canRequestReplacementCard}
+            cardDetailsLoading={cardDetailsLoading}
           />
         ))}
       </div>

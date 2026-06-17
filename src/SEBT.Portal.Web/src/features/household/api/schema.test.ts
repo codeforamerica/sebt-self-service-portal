@@ -3,40 +3,46 @@ import { describe, expect, it } from 'vitest'
 import {
   ApplicationStatusSchema,
   CardStatusSchema,
+  CoLoadedCohortSchema,
   formatUsPhone,
+  HouseholdDataSchema,
   interpolateDate,
-  IssuanceTypeSchema
+  IssuanceTypeSchema,
+  toAnalyticsCohort
 } from './schema'
 
 /**
- * These tests verify that frontend Zod enum schemas correctly map the integer
- * values sent by the .NET API (System.Text.Json default: enums as integers).
- *
- * Backend enum definitions (source of truth):
- *   CardStatus:        Requested=0, Mailed=1, Active=2, Deactivated=3
+ * Backend enum definitions (source of truth for wire values):
+ *   EbtCardStatus:     string enum, serialized by name (Active, Lost, Stolen, Damaged,
+ *                      DeactivatedByState, NotActivated, Frozen, Undeliverable,
+ *                      Processed, Unknown)
  *   ApplicationStatus: Unknown=0, Pending=1, Approved=2, Denied=3, UnderReview=4, Cancelled=5
  *   IssuanceType:      Unknown=0, SummerEbt=1, TanfEbtCard=2, SnapEbtCard=3
+ *   CoLoadedCohort:    NonCoLoaded=0, CoLoadedOnly=1, MixedOrApplicantExcluded=2
+ * Frontend-only: CoLoaded cohort parse value `Unknown` for absent/unrecognized wire values (not a backend enum member).
  */
 describe('CardStatusSchema', () => {
   it.each([
-    [0, 'Requested'],
-    [1, 'Mailed'],
-    [2, 'Active'],
-    [3, 'Deactivated']
-  ])('maps integer %i to "%s"', (input, expected) => {
-    expect(CardStatusSchema.parse(input)).toBe(expected)
+    'Active',
+    'Damaged',
+    'DeactivatedByState',
+    'Frozen',
+    'Lost',
+    'NotActivated',
+    'Processed',
+    'Stolen',
+    'Undeliverable',
+    'Unknown'
+  ])('passes through string value %s unchanged', (input) => {
+    expect(CardStatusSchema.parse(input)).toBe(input)
   })
 
-  it('maps unrecognized integer to "Unknown"', () => {
-    expect(CardStatusSchema.parse(99)).toBe('Unknown')
+  it('accepts null', () => {
+    expect(CardStatusSchema.parse(null)).toBe(null)
   })
 
-  it('passes through string values unchanged', () => {
-    expect(CardStatusSchema.parse('Active')).toBe('Active')
-  })
-
-  it('maps empty string to Unknown (CBMS returns "" for denied/pending children)', () => {
-    expect(CardStatusSchema.parse('')).toBe('Unknown')
+  it('accepts undefined', () => {
+    expect(CardStatusSchema.parse(undefined)).toBe(undefined)
   })
 })
 
@@ -61,6 +67,96 @@ describe('IssuanceTypeSchema', () => {
     [3, 'SnapEbtCard']
   ])('maps integer %i to "%s"', (input, expected) => {
     expect(IssuanceTypeSchema.parse(input)).toBe(expected)
+  })
+})
+
+describe('CoLoadedCohortSchema', () => {
+  // Backend enum — stay aligned with SEBT.Portal.Core.Models.Household.CoLoadedCohort:
+  //   NonCoLoaded=0, CoLoadedOnly=1, MixedOrApplicantExcluded=2
+  it.each([
+    [0, 'NonCoLoaded'],
+    [1, 'CoLoadedOnly'],
+    [2, 'MixedOrApplicantExcluded']
+  ])('maps integer %i to "%s"', (input, expected) => {
+    expect(CoLoadedCohortSchema.parse(input)).toBe(expected)
+  })
+
+  it('maps absent and null to Unknown', () => {
+    expect(CoLoadedCohortSchema.parse(undefined)).toBe('Unknown')
+    expect(CoLoadedCohortSchema.parse(null)).toBe('Unknown')
+  })
+
+  it('passes through string values unchanged', () => {
+    expect(CoLoadedCohortSchema.parse('MixedOrApplicantExcluded')).toBe('MixedOrApplicantExcluded')
+  })
+
+  it('maps unrecognized integers to Unknown (distinct analytics bucket)', () => {
+    expect(CoLoadedCohortSchema.parse(99)).toBe('Unknown')
+  })
+})
+
+describe('toAnalyticsCohort', () => {
+  it.each([
+    ['NonCoLoaded', 'non_co_loaded'],
+    ['CoLoadedOnly', 'co_loaded_only'],
+    ['MixedOrApplicantExcluded', 'mixed_or_applicant_excluded'],
+    ['Unknown', 'unknown']
+  ] as const)('maps %s to standardized analytics value %s', (input, expected) => {
+    expect(toAnalyticsCohort(input)).toBe(expected)
+  })
+})
+
+describe('HouseholdDataSchema coLoadedCohort', () => {
+  const minimalHousehold = {
+    applications: [
+      {
+        applicationStatus: 'Approved' as const,
+        children: [{ firstName: 'A', lastName: 'B' }],
+        childrenOnApplication: 1
+      }
+    ]
+  }
+
+  it('defaults missing coLoadedCohort to Unknown after parse', () => {
+    const data = HouseholdDataSchema.parse(minimalHousehold)
+    expect(data.coLoadedCohort).toBe('Unknown')
+  })
+
+  it('preserves explicit NonCoLoaded', () => {
+    const data = HouseholdDataSchema.parse({
+      ...minimalHousehold,
+      coLoadedCohort: 0
+    })
+    expect(data.coLoadedCohort).toBe('NonCoLoaded')
+  })
+})
+
+describe('HouseholdDataSchema hashedAppId', () => {
+  const baseFixture = {
+    email: 'user@example.com',
+    summerEbtCases: [],
+    applications: [],
+    coLoadedCohort: 0
+  }
+
+  it('passes a non-empty string through unchanged', () => {
+    const parsed = HouseholdDataSchema.parse({ ...baseFixture, hashedAppId: 'abc123' })
+    expect(parsed.hashedAppId).toBe('abc123')
+  })
+
+  it('coerces whitespace-only strings to null so analytics never sees a blank digest', () => {
+    const parsed = HouseholdDataSchema.parse({ ...baseFixture, hashedAppId: '   ' })
+    expect(parsed.hashedAppId).toBeNull()
+  })
+
+  it('coerces empty strings to null', () => {
+    const parsed = HouseholdDataSchema.parse({ ...baseFixture, hashedAppId: '' })
+    expect(parsed.hashedAppId).toBeNull()
+  })
+
+  it('passes null through as null', () => {
+    const parsed = HouseholdDataSchema.parse({ ...baseFixture, hashedAppId: null })
+    expect(parsed.hashedAppId).toBeNull()
   })
 })
 

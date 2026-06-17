@@ -26,5 +26,11 @@ export {
   type UserProfile
 } from './schema'
 
+export { clearHouseholdQueryCache } from './clearHouseholdQueryCache'
+export {
+  HOUSEHOLD_DATA_QUERY_KEY_PREFIX,
+  householdCardDetailsQueryKey,
+  householdDataQueryKey
+} from './queryKeys'
 export { useHouseholdData } from './useHouseholdData'
 export { useRequiredHouseholdData } from './useRequiredHouseholdData'

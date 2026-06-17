@@ -11,6 +11,7 @@ export const CTA_CLICK = 'cta_click'
 export const OTP_REQUEST = 'otp_request'
 export const OTP_CHALLENGE = 'otp_challenge'
 export const OTP_RESULT = 'otp_result'
+export const OIDC_START = 'oidc_start'
 
 // ID Proofing
 export const IDV_PRIMARY_START = 'idv_primary_start'
@@ -25,14 +26,28 @@ export const IDV_FINAL_RESULT = 'idv_final_result'
 export const HOUSEHOLD_RESULT = 'household_result'
 
 // Self-Service Address Update & Replacement Card
+
+/** Fired when the user enters the address update form. */
 export const ADDRESS_UPDATE_START = 'address_update_start'
+/** Fired when the address update API call completes. Carries `address_update_status` (page). */
 export const ADDRESS_UPDATE_SUBMIT = 'address_update_submit'
+/** Fired when the address update API call fails. Carries `error_code` (page). */
 export const ADDRESS_UPDATE_ERROR = 'address_update_error'
+/** Fired when the user enters the card replacement flow. */
 export const CARD_REPLACEMENT_START = 'card_replacement_start'
+/** Fired when the card replacement API call completes. Carries `card_replacement_status` (page). */
 export const CARD_REPLACEMENT_SUBMIT = 'card_replacement_submit'
+/** Fired when the card replacement API call fails. Carries `error_code` (page). */
 export const CARD_REPLACEMENT_ERROR = 'card_replacement_error'
 
-// Enrollment Checker
+// Enrollment Checker — per the SEBT Data Layer Dictionary, each event carries
+// the analytics-scoped page + user context the data layer has at fire time
+// (merged automatically by `_trackEvent`). Privacy: none of these payloads
+// include child PII (firstName, lastName, DOB, school) — verified by tests.
+
+/** Fired when the user lands on the child-form page. Carries `name` + `application` from page context. */
 export const ENROLLMENT_CHECK_START = 'enrollment_check_start'
+/** Fired when the eligibility result page loads. Carries `enrollment_match_type` (page) + `sebt_eligible` (user). */
 export const ENROLLMENT_CHECK_RESULT = 'enrollment_check_result'
+/** Fired when the submission API call fails. Carries `error_code` (page). */
 export const ENROLLMENT_CHECK_ERROR = 'enrollment_check_error'

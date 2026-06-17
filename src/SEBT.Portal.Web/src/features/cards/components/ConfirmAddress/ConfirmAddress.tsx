@@ -22,19 +22,22 @@ export function ConfirmAddress({
   confirmPath,
   changePath
 }: ConfirmAddressProps) {
-  const { t } = useTranslation('confirmInfo')
+  const { t } = useTranslation('validation')
   const { t: tCommon } = useTranslation('common')
+
   const router = useRouter()
 
   const [selection, setSelection] = useState<'yes' | 'no' | null>(null)
-  const [error, setError] = useState<string | null>(null)
+  // Store the i18n key (not the resolved string) so the error re-translates at render
+  // time when the user switches language (DC-454).
+  const [errorKey, setErrorKey] = useState<string | null>(null)
   const errorRef = useRef<HTMLSpanElement>(null)
 
   useEffect(() => {
-    if (error) {
+    if (errorKey) {
       errorRef.current?.focus()
     }
-  }, [error])
+  }, [errorKey])
 
   const currentState = getState()
   const childName =
@@ -52,7 +55,7 @@ export function ConfirmAddress({
     e.preventDefault()
 
     if (selection === null) {
-      setError(t('selectOneError', 'Please select an option.'))
+      setErrorKey('selectOption')
       return
     }
 
@@ -71,7 +74,7 @@ export function ConfirmAddress({
     >
       {subtitle && (
         <p className="text-base-dark margin-bottom-1">
-          {/* TODO: Use t('replaceCardFor') once key is available in CSV */}
+          {/* TODO update below with tResult('pre-title')} */}
           {subtitle}
         </p>
       )}
@@ -88,21 +91,19 @@ export function ConfirmAddress({
         </p>
       </div>
 
-      <p className="usa-hint margin-bottom-3">
-        {t('requiredFieldsNote', 'Asterisks (*) indicate a required field')}
-      </p>
+      <p className="usa-hint margin-bottom-3">{tCommon('requiredFields')}</p>
 
       <fieldset
         className="usa-fieldset"
-        aria-label={t('selectOneLabel', 'Select one')}
-        aria-describedby={error ? 'confirm-address-error' : undefined}
+        aria-label={tCommon('selectOne')}
+        aria-describedby={errorKey ? 'confirm-address-error' : undefined}
       >
         <legend className="usa-legend text-bold">
-          {t('selectOneLabel', 'Select one')}
+          {tCommon('selectOne')}
           <span className="text-secondary-dark"> *</span>
         </legend>
 
-        {error && (
+        {errorKey && (
           <span
             ref={errorRef}
             id="confirm-address-error"
@@ -110,7 +111,7 @@ export function ConfirmAddress({
             role="alert"
             tabIndex={-1}
           >
-            {error}
+            {t(errorKey)}
           </span>
         )}
 
@@ -124,14 +125,14 @@ export function ConfirmAddress({
             checked={selection === 'yes'}
             onChange={() => {
               setSelection('yes')
-              setError(null)
+              setErrorKey(null)
             }}
           />
           <label
             className="usa-radio__label text-bold"
             htmlFor="confirm-address-yes"
           >
-            {tCommon('yes', 'Yes')}
+            {tCommon('yes')}
           </label>
         </div>
 
@@ -145,14 +146,14 @@ export function ConfirmAddress({
             checked={selection === 'no'}
             onChange={() => {
               setSelection('no')
-              setError(null)
+              setErrorKey(null)
             }}
           />
           <label
             className="usa-radio__label text-bold"
             htmlFor="confirm-address-no"
           >
-            {tCommon('no', 'No')}
+            {tCommon('no')}
           </label>
         </div>
       </fieldset>
@@ -163,9 +164,9 @@ export function ConfirmAddress({
           type="button"
           onClick={() => router.back()}
         >
-          {tCommon('back', 'Back')}
+          {tCommon('back')}
         </Button>
-        <Button type="submit">{tCommon('continue', 'Continue')}</Button>
+        <Button type="submit">{tCommon('continue')}</Button>
       </div>
     </form>
   )

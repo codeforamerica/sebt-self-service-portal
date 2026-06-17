@@ -1,9 +1,11 @@
-import { getTranslations } from '@/lib/translations'
+'use client'
+
 import { Alert } from '@sebt/design-system'
 import Link from 'next/link'
+import { useTranslation } from 'react-i18next'
 
 export default function NotFound() {
-  const t = getTranslations('common')
+  const { t } = useTranslation('common')
 
   return (
     <section
@@ -13,9 +15,11 @@ export default function NotFound() {
       <div className="grid-container">
         <Alert
           variant="error"
+          // TODO add string
           heading={t('pageNotFound', 'Page not found')}
         >
           <p>
+            {/* TODO add string */}
             {t(
               'pageNotFoundBody',
               'The page you are looking for does not exist or has been moved.'
@@ -25,6 +29,7 @@ export default function NotFound() {
             href="/"
             className="usa-button margin-top-2"
           >
+            {/* TODO add string */}
             {t('returnToHome', 'Return to home')}
           </Link>
         </Alert>

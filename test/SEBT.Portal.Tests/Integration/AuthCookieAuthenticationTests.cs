@@ -80,10 +80,13 @@ public class AuthCookieAuthenticationTests : IClassFixture<PortalWebApplicationF
     {
         var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(PortalWebApplicationFactory.JwtSecretKey));
         var credentials = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
+        var nowUnixSeconds = DateTimeOffset.UtcNow.ToUnixTimeSeconds().ToString();
         var claims = new[]
         {
             new Claim("email", email),
-            new Claim("sub", email)
+            new Claim("sub", email),
+            // auth_time required by SessionLifetimePolicy in the bearer middleware.
+            new Claim("auth_time", nowUnixSeconds)
         };
         var now = DateTime.UtcNow;
         // notBefore must precede expires; pad it well behind expires to cover negative

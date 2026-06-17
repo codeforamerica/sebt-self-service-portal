@@ -136,17 +136,17 @@ public class SessionRefreshTokenServiceTests : JwtTokenServiceTestBase
 
     // --- DocV elevation flow ---
 
-    // Critical scenario from the DocV webhook bug: DB has been updated to IAL2/Completed
+    // Critical scenario from the DocV webhook bug: DB has been updated to IAL1+/Completed
     // after a successful DocV webhook, but the current session JWT still carries the pre-
     // DocV ial=1/NotStarted claims. Refresh must adopt the elevated DB state, not the stale
     // claims, so the user can access the IAL1plus-gated dashboard.
     [Fact]
-    public void ElevatesFromIal1NotStartedToIal2Completed_WhenDbHasPostDocVState()
+    public void ElevatesFromIal1NotStartedToIal1PlusCompleted_WhenDbHasPostDocVState()
     {
         var completedAt = new DateTime(2026, 4, 24, 17, 2, 31, DateTimeKind.Utc);
         var user = new User
         {
-            IalLevel = UserIalLevel.IAL2,
+            IalLevel = UserIalLevel.IAL1plus,
             IdProofingStatus = IdProofingStatus.Completed,
             IdProofingCompletedAt = completedAt,
             Email = "user@example.com"
@@ -159,7 +159,7 @@ public class SessionRefreshTokenServiceTests : JwtTokenServiceTestBase
         var token = Service.GenerateForSessionRefresh(user, principal);
 
         var jwt = ReadJwt(token);
-        Assert.Equal("2", jwt.Claims.First(c => c.Type == JwtClaimTypes.Ial).Value);
+        Assert.Equal("1plus", jwt.Claims.First(c => c.Type == JwtClaimTypes.Ial).Value);
         Assert.Equal(
             ((int)IdProofingStatus.Completed).ToString(),
             jwt.Claims.First(c => c.Type == JwtClaimTypes.IdProofingStatus).Value);
@@ -230,7 +230,7 @@ public class SessionRefreshTokenServiceTests : JwtTokenServiceTestBase
         var completedAt = new DateTime(2026, 4, 24, 10, 30, 0, DateTimeKind.Utc);
         var user = new User
         {
-            IalLevel = UserIalLevel.IAL2,
+            IalLevel = UserIalLevel.IAL1plus,
             IdProofingStatus = IdProofingStatus.Completed,
             IdProofingCompletedAt = completedAt,
             Email = "user@example.com"

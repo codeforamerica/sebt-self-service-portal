@@ -1,43 +1,67 @@
 'use client'
 
-import { Alert } from '@sebt/design-system'
+import { Alert, Button } from '@sebt/design-system'
+import Link from 'next/link'
 import { usePathname, useRouter, useSearchParams } from 'next/navigation'
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
 import { useHouseholdData } from '@/features/household'
 
+import type { Address } from '../../api'
+
+/** Renders a mailing address as stacked lines. */
+function AddressLines({ address }: { address: Address }) {
+  return (
+    <span className="display-block margin-top-1">
+      {address.streetAddress1 && <span className="display-block">{address.streetAddress1}</span>}
+      {address.streetAddress2 && <span className="display-block">{address.streetAddress2}</span>}
+      {(address.city || address.state || address.postalCode) && (
+        <span className="display-block">
+          {address.city}, {address.state} {address.postalCode}
+        </span>
+      )}
+    </span>
+  )
+}
+
 /**
  * Displays success and warning alerts on the dashboard triggered by URL search params.
- * Captures alert state on first read, then cleans the params from the URL.
- * The alert persists because rendering is driven by captured state, not live params.
- * Card replacement success (flash=card_replaced) checks the household data cache
- * for address presence to tailor the alert body, avoiding PII in URL params.
+ * Captures alert state on first read, then cleans the params from the URL so the alert
+ * persists (rendering is driven by captured state, not live params). The card-replacement
+ * success body reads the household cache for the address to avoid PII in URL params.
+ *
+ * Triggers are URL params today. The address-verification ("check your mailing address")
+ * alert will eventually be driven by a backend returned-mail signal; until that data
+ * exists, any producer can deep-link to /dashboard?addressVerification=true.
  */
 export function DashboardAlerts() {
   const { t } = useTranslation('dashboard')
+
   const searchParams = useSearchParams()
   const router = useRouter()
   const pathname = usePathname()
   const { data: householdData } = useHouseholdData()
 
-  // Capture alert state from URL params on first read so the alert
-  // survives the URL cleanup that follows.
+  // Capture alert state from URL params on first read so the alert survives the
+  // URL cleanup that follows.
   const [alerts] = useState(() => ({
     addressUpdated: searchParams.get('addressUpdated') === 'true',
-    cardsRequested: searchParams.get('cardsRequested') === 'true',
     cardReplaced: searchParams.get('flash') === 'card_replaced',
+    contactUpdated: searchParams.get('contactUpdated') === 'true',
     addressUpdateFailed: searchParams.get('addressUpdateFailed') === 'true',
     contactUpdateFailed: searchParams.get('contactUpdateFailed') === 'true',
-    // TODO: Determine trigger logic — possibly driven by household data (e.g., address
-    // hasn't been confirmed in N months, or address on file doesn't match state records).
     addressVerification: searchParams.get('addressVerification') === 'true'
   }))
 
+  // "Yes, this is my address" dismisses the check-address prompt in place. There is no
+  // backend acknowledgment yet, so this is local-only.
+  const [addressVerifyDismissed, setAddressVerifyDismissed] = useState(false)
+
   const hasAlerts =
     alerts.addressUpdated ||
-    alerts.cardsRequested ||
     alerts.cardReplaced ||
+    alerts.contactUpdated ||
     alerts.addressUpdateFailed ||
     alerts.contactUpdateFailed ||
     alerts.addressVerification
@@ -54,87 +78,48 @@ export function DashboardAlerts() {
 
   return (
     <div className="margin-bottom-3 display-flex flex-column gap-2">
-      {alerts.addressUpdated && !alerts.cardsRequested && (
-        <Alert
-          variant="success"
-          heading={t('alertAddressUpdatedHeading', 'Address update recorded')}
-        >
-          {t(
-            'alertAddressUpdatedBody',
-            'Your address update has been recorded. State system integration is pending — changes are not yet reflected in the benefits system.'
-          )}
-        </Alert>
-      )}
-
-      {alerts.addressUpdated && alerts.cardsRequested && (
-        <Alert
-          variant="success"
-          heading={t('alertCardsRequestedHeading', 'Address update and card replacement recorded')}
-        >
-          {t(
-            'alertCardsRequestedBody',
-            'Your address update and card replacement request have been recorded. State system integration is pending — changes are not yet reflected in the benefits system.'
-          )}
-        </Alert>
-      )}
+      {alerts.addressUpdated && <Alert variant="success">{t('alertAddressUpdated')}</Alert>}
 
       {alerts.cardReplaced && (
         <Alert
           variant="success"
           heading={t('alertCardReplacedHeading', 'Your replacement card request has been recorded')}
         >
-          {householdData?.addressOnFile
-            ? t(
-                'alertCardReplacedBodyWithAddress',
-                'New cards usually arrive in your mailbox within 7-10 business days. Check back here in 1-2 business days to see your updated card details.'
-              )
-            : t(
-                'alertCardReplacedBody',
-                'New cards usually arrive in your mailbox within 7-10 business days.'
-              )}
+          {householdData?.addressOnFile && <AddressLines address={householdData.addressOnFile} />}
+          {t('alertAddressBody')}
         </Alert>
       )}
 
-      {/* Warning alerts per CO-05 mockup — yellow with dark yellow left border.
-          TODO: Wire to actual error flows once state connector persistence is integrated.
-          Currently triggered by URL params for visual verification. */}
+      {alerts.contactUpdated && <Alert variant="success">{t('alertContactUpdated')}</Alert>}
 
       {alerts.addressUpdateFailed && (
-        <Alert
-          variant="warning"
-          heading={t(
-            'alertAddressUpdateFailedHeading',
-            'There was an issue updating your mailing address.'
-          )}
-        >
-          {t(
-            'alertAddressUpdateFailedBody',
-            'Please try again later or contact the Summer EBT Help Desk for assistance.'
-          )}
-        </Alert>
+        <Alert variant="warning">{t('alertAddressUpdateError')}</Alert>
       )}
 
       {alerts.contactUpdateFailed && (
-        <Alert
-          variant="warning"
-          heading={t(
-            'alertContactUpdateFailedHeading',
-            'There was an issue updating your contact preferences.'
-          )}
-        >
-          {t('alertContactUpdateFailedBody', 'Please try again later.')}
-        </Alert>
+        <Alert variant="warning">{t('alertContactUpdateError')}</Alert>
       )}
 
-      {alerts.addressVerification && (
+      {alerts.addressVerification && !addressVerifyDismissed && (
         <Alert
           variant="warning"
-          heading={t('alertAddressVerificationHeading', 'Is your address correct?')}
+          heading={t('alertCheckAddressTitle')}
         >
-          {t(
-            'alertAddressVerificationBody',
-            'Please verify your mailing address is up to date so you can receive your Summer EBT cards.'
-          )}
+          {t('alertCheckAddressBody')}
+          {householdData?.addressOnFile && <AddressLines address={householdData.addressOnFile} />}
+          <Button
+            variant="unstyled"
+            className="display-block margin-top-2"
+            onClick={() => setAddressVerifyDismissed(true)}
+          >
+            {t('alertCheckAddressLink1')}
+          </Button>
+          <Link
+            href="/profile/address"
+            className="usa-link display-block margin-top-1"
+          >
+            {t('alertCheckAddressLink2')}
+          </Link>
         </Alert>
       )}
     </div>

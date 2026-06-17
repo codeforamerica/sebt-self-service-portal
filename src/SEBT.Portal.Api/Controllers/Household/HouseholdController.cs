@@ -1,7 +1,9 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Configuration;
 using SEBT.Portal.Api.Models;
 using SEBT.Portal.Api.Models.Household;
+using SEBT.Portal.Core.Services;
 using SEBT.Portal.Kernel;
 using SEBT.Portal.Kernel.AspNetCore;
 using SEBT.Portal.Kernel.Results;
@@ -23,6 +25,9 @@ public class HouseholdController : ControllerBase
     /// PII data is only included when the user meets the ID proofing requirements configured for the state.
     /// </summary>
     /// <param name="queryHandler">The use case handler for retrieving household data.</param>
+    /// <param name="identifierHasher">Hashes household application IDs before returning them to the client.</param>
+    /// <param name="configuration">Application configuration, used to resolve the hashed app ID field name.</param>
+    /// <param name="includeCardDetails">When false, card-related fields are excluded from the response.</param>
     /// <param name="cancellationToken">A token to monitor for cancellation requests.</param>
     /// <returns>An OK result with household data if found; otherwise, NotFound or Unauthorized.</returns>
     /// <response code="200">Household data retrieved successfully.</response>
@@ -37,13 +42,20 @@ public class HouseholdController : ControllerBase
     [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status404NotFound)]
     public async Task<IActionResult> GetHouseholdData(
         [FromServices] IQueryHandler<GetHouseholdDataQuery, Core.Models.Household.HouseholdData> queryHandler,
+        [FromServices] IIdentifierHasher identifierHasher,
+        [FromServices] IConfiguration configuration,
+        [FromQuery] bool includeCardDetails = true,
         CancellationToken cancellationToken = default)
     {
-        var query = new GetHouseholdDataQuery { User = User };
+        var query = new GetHouseholdDataQuery
+        {
+            User = User,
+            IncludeCardDetails = includeCardDetails
+        };
         var result = await queryHandler.Handle(query, cancellationToken);
 
         return result.ToActionResult(
-            successMap: data => Ok(data.ToResponse()),
+            successMap: data => Ok(data.ToResponse(ResolveHashedAppId(data, identifierHasher, configuration))),
             failureMap: r => r switch
             {
                 UnauthorizedResult<Core.Models.Household.HouseholdData> unauthorized => Unauthorized(new ErrorResponse(unauthorized.Message)),
@@ -55,6 +67,39 @@ public class HouseholdController : ControllerBase
                 PreconditionFailedResult<Core.Models.Household.HouseholdData> preconditionFailed => NotFound(new ErrorResponse(preconditionFailed.Message)),
                 _ => StatusCode(StatusCodes.Status500InternalServerError, new ErrorResponse("An unexpected error occurred."))
             });
+    }
+
+    /// <summary>
+    /// Resolves the analytics-side hashed SEBT App ID for the household. CO-only
+    /// today (gated on the active state so DC payloads stay unchanged). Returns
+    /// null when no application carries an ApplicationNumber (e.g. auto-issued
+    /// SummerEbt cases). The frontend treats null as "do not emit".
+    /// State is read from IConfiguration["STATE"], which surfaces the STATE
+    /// env var via the default ASP.NET configuration providers and lets tests
+    /// inject an in-memory value without touching process state.
+    /// </summary>
+    private static string? ResolveHashedAppId(
+        Core.Models.Household.HouseholdData data,
+        IIdentifierHasher identifierHasher,
+        IConfiguration configuration)
+    {
+        var state = configuration["STATE"];
+        if (!string.Equals(state, "co", StringComparison.OrdinalIgnoreCase))
+        {
+            return null;
+        }
+
+        // Sort lexicographically so a household with multiple applications
+        // always hashes the same one, regardless of the order the connector
+        // returns rows in. Otherwise hashed_app_id could shift across page
+        // loads and break per-user analytics correlation.
+        var applicationNumber = data.Applications
+            .Select(a => a.ApplicationNumber)
+            .Where(n => !string.IsNullOrWhiteSpace(n))
+            .OrderBy(n => n, StringComparer.Ordinal)
+            .FirstOrDefault();
+
+        return identifierHasher.HashForAnalytics(applicationNumber);
     }
 
     /// <summary>
@@ -90,7 +135,8 @@ public class HouseholdController : ControllerBase
             StreetAddress2 = request.StreetAddress2,
             City = request.City,
             State = request.State,
-            PostalCode = request.PostalCode
+            PostalCode = request.PostalCode,
+            AcceptEnteredAddress = request.AcceptEnteredAddress ?? false
         };
 
         var result = await commandHandler.Handle(command, cancellationToken);
@@ -100,7 +146,20 @@ public class HouseholdController : ControllerBase
             {
                 if (validationResult.IsValid)
                 {
-                    return Ok(new AddressUpdateResponse { Status = "valid" });
+                    return Ok(new AddressUpdateResponse
+                    {
+                        Status = "valid",
+                        NormalizedAddress = validationResult.NormalizedAddress != null
+                            ? new AddressResponse
+                            {
+                                StreetAddress1 = validationResult.NormalizedAddress.StreetAddress1,
+                                StreetAddress2 = validationResult.NormalizedAddress.StreetAddress2,
+                                City = validationResult.NormalizedAddress.City,
+                                State = validationResult.NormalizedAddress.State,
+                                PostalCode = validationResult.NormalizedAddress.PostalCode
+                            }
+                            : null
+                    });
                 }
 
                 var response = new AddressUpdateResponse
@@ -146,10 +205,13 @@ public class HouseholdController : ControllerBase
         [FromServices] ICommandHandler<RequestCardReplacementCommand> commandHandler,
         CancellationToken cancellationToken = default)
     {
+        var caseRefs = request.CaseRefs
+            .Select(r => new CaseRefDto(r.SummerEbtCaseId, r.ApplicationId, r.ApplicationStudentId))
+            .ToList();
         var command = new RequestCardReplacementCommand
         {
             User = User,
-            CaseIds = request.CaseIds
+            CaseRefs = caseRefs
         };
 
         var result = await commandHandler.Handle(command, cancellationToken);

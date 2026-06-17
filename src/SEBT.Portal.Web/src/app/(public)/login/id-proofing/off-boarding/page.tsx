@@ -4,6 +4,7 @@ import { useSearchParams } from 'next/navigation'
 import { useTranslation } from 'react-i18next'
 
 import { OffBoardingContent, useAuth } from '@/features/auth'
+import { getApplyHref } from '@/lib/applyHref'
 import { getState, getStateLinks } from '@sebt/design-system'
 
 export default function OffBoardingPage() {
@@ -13,9 +14,12 @@ export default function OffBoardingPage() {
 
   const { session } = useAuth()
   const isCoLoaded = session?.isCoLoaded === true
+  const useCoLoadedOffboarding = isCoLoaded || reason === 'coLoadedOnly'
 
-  const { t } = useTranslation('offBoarding')
+  const { t, i18n } = useTranslation('offBoarding')
+  const { t: tDashboard } = useTranslation('dashboard')
   const { t: tCommon } = useTranslation('common')
+  const { t: tStepUpFailure } = useTranslation('stepUpFailure')
 
   const state = getState()
   const links = getStateLinks(state)
@@ -25,29 +29,45 @@ export default function OffBoardingPage() {
   const contactHref =
     links.help.contactUs !== '#' ? links.help.contactUs : (links.help.helpDeskEmail ?? '#')
 
-  // Branch order: co-loaded copy wins, then reason-specific copy for the
-  // non-co-loaded path, then generic offBoarding copy.
-  // - Co-loaded users cannot off-board to Socure DocV per PRD; they see a
-  //   "cannot identify you" screen instead of the DocV-flavored copy.
-  // - Reason-specific branches force canApply=false until product decides
-  //   which failure modes allow re-application.
+  // Branch order: OIDC `/callback` failures, then co-loaded copy (session flag or
+  // coLoadedOnly reason from household cohort lookup during ID proofing), then
+  // reason-specific copy for the non-co-loaded path, then generic offBoarding copy.
   // TODO: Replace hardcoded strings with t(...) keys once they exist in dc.csv.
   let title: string
   let body: string
+  let backHref = '/login/id-proofing'
   let canApply = canApplyParam
   let contactLabel: string
   let applyBody: string | undefined
   let applySkipBody: string | undefined
   let applyLabel: string | undefined
 
-  if (isCoLoaded) {
+  if (reason === 'oidcCallbackError') {
+    title =
+      tStepUpFailure('title') || "We're sorry, we aren't able to show your Summer EBT information"
+    body = tStepUpFailure('body') || 'You can contact us if you need more help.'
+    backHref = '/dashboard'
+    canApply = false
+    contactLabel = tCommon('linkContactUs')
+    applyBody = undefined
+    applySkipBody = undefined
+    applyLabel = undefined
+  } else if (useCoLoadedOffboarding) {
     title = t('coLoadedTitle')
     body = t('coLoadedBody1')
     contactLabel = t('coLoadedAction1')
     applyBody = t('coLoadedBody2', '') || undefined
     applySkipBody = undefined
     applyLabel = t('coLoadedAction2', '') || undefined
+  } else if (reason === 'noQualifyingHousehold') {
+    title = tDashboard('alertApplicationsTitle')
+    body = tDashboard('alertApplicationsBody')
+    contactLabel = tCommon('linkContactUs')
+    applyBody = undefined
+    applySkipBody = undefined
+    applyLabel = tDashboard('alertApplicationsAction')
   } else if (reason === 'noIdProvided') {
+    // TODO REMOVE HARDCODED STRINGS
     title = 'We need an ID to verify you'
     body =
       "To confirm your identity, we need one of the listed IDs. If you don't have any of these IDs, contact us for help."
@@ -82,7 +102,7 @@ export default function OffBoardingPage() {
           <OffBoardingContent
             title={title}
             body={body}
-            backHref="/login/id-proofing"
+            backHref={backHref}
             backLabel={t('action', '') || tCommon('back')}
             contactHref={contactHref}
             contactLabel={contactLabel}
@@ -90,7 +110,7 @@ export default function OffBoardingPage() {
             applyBody={applyBody}
             applySkipBody={applySkipBody}
             applyLabel={applyLabel}
-            applyHref="/apply"
+            applyHref={getApplyHref(i18n.language)}
           />
         </section>
       </div>

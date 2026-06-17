@@ -16,9 +16,11 @@ using UserProfile = Core::SEBT.Portal.Core.Models.Household.UserProfile;
 public static class HouseholdDataResponseMapper
 {
     /// <summary>
-    /// Maps domain HouseholdData to the API response model.
+    /// Maps domain HouseholdData to the API response model. The mapper stays a
+    /// pure projection. The controller decides which states emit the analytics
+    /// digest and which App ID to feed in.
     /// </summary>
-    public static HouseholdDataResponse ToResponse(this HouseholdData domain)
+    public static HouseholdDataResponse ToResponse(this HouseholdData domain, string? hashedAppId = null)
     {
         return new HouseholdDataResponse
         {
@@ -29,7 +31,9 @@ public static class HouseholdDataResponseMapper
             AddressOnFile = domain.AddressOnFile?.ToResponse(),
             UserProfile = domain.UserProfile?.ToResponse(),
             BenefitIssuanceType = domain.BenefitIssuanceType,
-            AllowedActions = domain.AllowedActions?.ToResponse()
+            AllowedActions = domain.AllowedActions?.ToResponse(),
+            CoLoadedCohort = domain.CoLoadedCohort,
+            HashedAppId = hashedAppId
         };
     }
 
@@ -51,6 +55,7 @@ public static class HouseholdDataResponseMapper
             ApplicationStatus = domain.ApplicationStatus,
             MailingAddress = domain.MailingAddress?.ToResponse(),
             EbtCaseNumber = domain.EbtCaseNumber,
+            CaseDisplayNumber = domain.CaseDisplayNumber,
             EbtCardLastFour = domain.EbtCardLastFour,
             EbtCardStatus = domain.EbtCardStatus,
             EbtCardIssueDate = domain.EbtCardIssueDate,
@@ -83,12 +88,6 @@ public static class HouseholdDataResponseMapper
             ApplicationDate = domain.ApplicationDate,
             BenefitIssueDate = domain.BenefitIssueDate,
             BenefitExpirationDate = domain.BenefitExpirationDate,
-            Last4DigitsOfCard = domain.Last4DigitsOfCard,
-            CardStatus = domain.CardStatus,
-            CardRequestedAt = domain.CardRequestedAt,
-            CardMailedAt = domain.CardMailedAt,
-            CardActivatedAt = domain.CardActivatedAt,
-            CardDeactivatedAt = domain.CardDeactivatedAt,
             Children = domain.Children.Select(ToResponse).ToList(),
             ChildrenOnApplication = domain.ChildrenOnApplication,
             IssuanceType = issuanceType

@@ -1,13 +1,18 @@
 'use client'
 
+import { useRouter } from 'next/navigation'
 import { createContext, useContext, useEffect, useState, type ReactNode } from 'react'
 import { v4 as uuidv4 } from 'uuid'
 import { z } from 'zod'
 import { toDateOfBirth } from '../schemas/childSchema'
 import type { ChildFormValues } from '../schemas/childSchema'
+import { useIdleTimeout } from './useIdleTimeout'
 
 // Must match the backend's EnrollmentCheckApiRequest.MaxChildren
 export const MAX_CHILDREN = 20
+
+// Auto-clear stored child info after inactivity to limit exposure on shared devices.
+export const IDLE_TIMEOUT_MS = 15 * 60 * 1000
 
 // ── Types ──────────────────────────────────────────────────────────────────
 
@@ -103,6 +108,7 @@ function saveToStorage(state: EnrollmentState): void {
 }
 
 export function EnrollmentProvider({ children }: { children: ReactNode }) {
+  const router = useRouter()
   const [state, setState] = useState<EnrollmentState>(initialState)
 
   // Hydrate from sessionStorage after mount (avoids SSR mismatch)
@@ -118,6 +124,16 @@ export function EnrollmentProvider({ children }: { children: ReactNode }) {
       return next
     })
   }
+
+  function clearState() {
+    if (typeof window !== 'undefined') sessionStorage.removeItem(STORAGE_KEY)
+    setState(initialState)
+  }
+
+  useIdleTimeout(() => {
+    clearState()
+    router.push('/')
+  }, IDLE_TIMEOUT_MS)
 
   const actions: EnrollmentActions = {
     addChild: (values) => update(s => {
@@ -154,10 +170,7 @@ export function EnrollmentProvider({ children }: { children: ReactNode }) {
       children: s.children.filter(child => child.id !== id)
     })),
     setEditingChildId: (id) => update(s => ({ ...s, editingChildId: id })),
-    clearState: () => {
-      if (typeof window !== 'undefined') sessionStorage.removeItem(STORAGE_KEY)
-      setState(initialState)
-    }
+    clearState
   }
 
   return (

@@ -5,12 +5,15 @@ import type { SessionInfo } from '@/features/auth/context'
 import { hasIal1Plus, isIdProofingCompletionFresh } from './jwt'
 
 const EMPTY_SESSION: SessionInfo = {
+  userId: null,
   email: null,
   ial: null,
   idProofingStatus: null,
   idProofingCompletedAt: null,
   idProofingExpiresAt: null,
-  isCoLoaded: null
+  isCoLoaded: null,
+  expiresAt: null,
+  absoluteExpiresAt: null
 }
 
 function sessionWith(partial: Partial<SessionInfo>): SessionInfo {

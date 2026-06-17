@@ -1,15 +1,18 @@
 'use client'
 
 import { apiFetch } from '@/api'
+import { CoLoadingScreen } from '@/components/CoLoadingScreen'
 import { useAuth } from '@/features/auth'
 import {
   OidcCallbackTokenResponseSchema,
-  OidcCompleteLoginResponseSchema
-} from '@/features/auth/api/oidc/schema'
-import { getTranslations } from '@/lib/translations'
-import { Alert } from '@sebt/design-system'
+  OidcCompleteLoginResponseSchema,
+  redirectToOidcOffBoarding
+} from '@/features/auth/api/oidc'
+import { hasIal1Plus, isIdProofingCompletionFresh } from '@/lib/jwt'
+import { getState } from '@sebt/design-system'
 import { useRouter } from 'next/navigation'
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef } from 'react'
+import { useTranslation } from 'react-i18next'
 
 /**
  * OIDC callback: the IdP redirects here with ?code=...&state=...
@@ -20,95 +23,125 @@ import { useEffect, useRef, useState } from 'react'
  *
  * All flow metadata (stateCode, isStepUp, returnUrl) is stored in the server-side
  * pre-auth session — no sessionStorage is used.
+ *
+ * IdP error redirects (?error=) always go to off-boarding immediately, including when the
+ * visitor already has a portal session (step-up denied, back-button into PingOne, etc.).
+ * Other failures (missing params when logged out, token exchange error) also use
+ * {@link OIDC_CALLBACK_ERROR_OFF_BOARDING}.
+ *
+ * Back-button re-entry: authenticated visitors with no OAuth params, or who already
+ * completed step-up (IAL1+ with a fresh proofing window), skip exchange so stale codes
+ * are not treated as failure. In-progress step-up still runs exchange when code and state
+ * are present, even if a portal session already exists from the initial sign-in.
  */
 export default function CallbackPage() {
   const router = useRouter()
-  const { login } = useAuth()
-  const t = getTranslations('login')
-  const [status, setStatus] = useState<'loading' | 'error'>('loading')
-  const [errorDetail, setErrorDetail] = useState<string | null>(null)
+  const { session, isAuthenticated, isLoading, login } = useAuth()
+  const { t } = useTranslation('login')
+  const { t: tProcessing } = useTranslation('step-upProcessing')
   const exchangeStartedRef = useRef(false)
+  const isCO = getState() === 'co'
+
+  const isProofedReEntry = useMemo(
+    () => hasIal1Plus(session) && isIdProofingCompletionFresh(session),
+    [session]
+  )
 
   useEffect(() => {
     const params = new URLSearchParams(typeof window !== 'undefined' ? window.location.search : '')
     const code = params.get('code')
     const state = params.get('state')
     const errorParam = params.get('error')
-    const errorDescription = params.get('error_description')
 
-    // IdP returned an error (e.g., user cancelled login).
+    // IdP errors do not require /auth/status; evaluate before isLoading and before
+    // authenticated back-button shortcuts so step-up failures are not sent to /dashboard.
     if (errorParam) {
-      const idpDetail = errorDescription?.trim() ?? ''
-      const portalLine = t('callbackErrorIdpRedirect', t('callbackErrorGeneric'))
-      const message = idpDetail ? `${portalLine} ${idpDetail}` : portalLine
-      queueMicrotask(() => {
-        setErrorDetail(message)
-        setStatus('error')
+      redirectToOidcOffBoarding(router, {
+        reason: 'idp_redirect',
+        idpError: errorParam,
+        idpErrorDescription: params.get('error_description') ?? undefined
       })
+      return
+    }
+
+    if (isLoading) {
+      return
+    }
+
+    if (isAuthenticated && (!code || !state)) {
+      router.replace('/dashboard')
+      return
+    }
+
+    if (isProofedReEntry) {
+      router.replace('/dashboard')
       return
     }
 
     if (!code || !state) {
-      queueMicrotask(() => {
-        setErrorDetail(t('callbackErrorMissingParams'))
-        setStatus('error')
+      redirectToOidcOffBoarding(router, {
+        reason: 'missing_params',
+        hasCode: Boolean(code),
+        hasState: Boolean(state)
       })
       return
     }
 
-    if (exchangeStartedRef.current) return
+    if (exchangeStartedRef.current) {
+      return
+    }
+
     exchangeStartedRef.current = true
 
     let cancelled = false
     async function run() {
       try {
-        // Send code + state to the server. The server reads stateCode, code_verifier,
-        // isStepUp, and returnUrl from the pre-auth session (oidc_session cookie).
         const { callbackToken } = await apiFetch('/auth/oidc/callback', {
           method: 'POST',
           body: { code, state },
           schema: OidcCallbackTokenResponseSchema
         })
-        if (cancelled) return
+        if (cancelled) {
+          return
+        }
 
         const response = await apiFetch('/auth/oidc/complete-login', {
           method: 'POST',
           body: { callbackToken },
           schema: OidcCompleteLoginResponseSchema
         })
-        if (cancelled) return
+        if (cancelled) {
+          return
+        }
 
-        // Backend set the HttpOnly session cookie; refresh the context from /auth/status.
         await login()
         const destination = response.returnUrl ?? '/dashboard'
         router.replace(destination)
-      } catch (e) {
-        const errMsg =
-          e instanceof Error ? e.message : typeof e === 'string' ? e : t('callbackErrorGeneric')
-        setErrorDetail(errMsg || t('callbackErrorGeneric'))
-        if (!cancelled) {
-          setStatus('error')
+      } catch {
+        if (cancelled) {
+          return
         }
+        // API failures are logged server-side; only browser-only failures use report-failure.
+        redirectToOidcOffBoarding(router)
       }
     }
     run()
     return () => {
       cancelled = true
-      // React Strict Mode remounts effects: allow the next mount to run the exchange;
-      // otherwise ref stays true and the retried effect bails while the aborted run skipped navigation.
-      exchangeStartedRef.current = false
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- t (getTranslations) is a static lookup
-  }, [login, router])
+  }, [isAuthenticated, isLoading, isProofedReEntry, login, router])
 
-  useEffect(() => {
-    if (status === 'error') {
-      // Give user a moment to read the error before redirecting to login
-      const timeout = setTimeout(() => router.replace('/login'), 5000)
-      return () => clearTimeout(timeout)
-    }
-    return undefined
-  }, [status, router])
+  if (isCO) {
+    return (
+      <CoLoadingScreen
+        title={tProcessing('title', 'Please wait...')}
+        message={tProcessing(
+          'body',
+          'Do not exit the page. Checking to see if we have enough information.'
+        )}
+      />
+    )
+  }
 
   return (
     <div className="usa-section">
@@ -117,16 +150,7 @@ export default function CallbackPage() {
         aria-live="polite"
         role="status"
       >
-        {status === 'error' ? (
-          <Alert
-            variant="error"
-            heading={t('callbackSignInIssue')}
-          >
-            {errorDetail}
-          </Alert>
-        ) : (
-          <p className="font-sans-md">{t('callbackSigningIn')}</p>
-        )}
+        <p className="font-sans-md">{t('callbackSigningIn')}</p>
       </div>
     </div>
   )

@@ -1,11 +1,15 @@
 using System.Security.Cryptography;
 using System.Text;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 using SEBT.Portal.Core.AppSettings;
 using SEBT.Portal.Core.Exceptions;
+using SEBT.Portal.Core.Models;
 using SEBT.Portal.Core.Models.Auth;
 using SEBT.Portal.Core.Models.DocVerification;
+using SEBT.Portal.Core.Models.Household;
 using SEBT.Portal.Core.Repositories;
+using SEBT.Portal.Core.Utilities;
 using SEBT.Portal.Kernel;
 using SEBT.Portal.Kernel.Results;
 
@@ -21,7 +25,9 @@ namespace SEBT.Portal.UseCases.IdProofing;
 public class ProcessWebhookCommandHandler(
     IDocVerificationChallengeRepository challengeRepository,
     IUserRepository userRepository,
+    IHouseholdRepository householdRepository,
     SocureSettings socureSettings,
+    IOptions<IdProofingEligibilitySettings> idProofingEligibilitySettings,
     IValidator<ProcessWebhookCommand> validator,
     ILogger<ProcessWebhookCommandHandler> logger)
     : ICommandHandler<ProcessWebhookCommand>
@@ -125,7 +131,9 @@ public class ProcessWebhookCommandHandler(
 
         if (newStatus == DocVerificationStatus.Rejected)
         {
-            challenge.OffboardingReason = "docVerificationFailed";
+            challenge.OffboardingReason = await ResolveRejectionOffboardingReasonAsync(
+                challenge.UserId,
+                cancellationToken);
         }
 
         try
@@ -223,23 +231,49 @@ public class ProcessWebhookCommandHandler(
         };
     }
 
+    private async Task<string> ResolveRejectionOffboardingReasonAsync(
+        Guid userId,
+        CancellationToken cancellationToken)
+    {
+        const string defaultReason = "docVerificationFailed";
+
+        var user = await userRepository.GetUserByIdAsync(userId, cancellationToken);
+        if (user == null || string.IsNullOrWhiteSpace(user.Email))
+        {
+            return defaultReason;
+        }
+
+        var warehouseIal = PreSocureHouseholdWarehouseIal.ForEmailLinkedHouseholdRead(
+            user.IalLevel,
+            idProofingEligibilitySettings.Value.RequireQualifyingHouseholdForSocure);
+
+        return await IdProofingHouseholdLookup.ResolveOffboardingReasonAsync(
+            householdRepository,
+            logger,
+            user,
+            warehouseIal,
+            userId,
+            defaultReason,
+            cancellationToken);
+    }
+
     private async Task UpdateUserProofingStatus(Guid userId, CancellationToken cancellationToken)
     {
         var user = await userRepository.GetUserByIdAsync(userId, cancellationToken);
         if (user == null)
         {
-            logger.LogWarning("User {UserId} not found when updating proofing status after verification", userId);
+            logger.LogError("User {UserId} not found when updating proofing status after verification — Socure confirmed identity but portal state cannot be updated", userId);
             return;
         }
 
         user.IdProofingStatus = IdProofingStatus.Completed;
-        user.IalLevel = UserIalLevel.IAL2;
+        user.IalLevel = UserIalLevel.IAL1plus;
         user.IdProofingCompletedAt = DateTime.UtcNow;
 
         await userRepository.UpdateUserAsync(user, cancellationToken);
 
         logger.LogInformation(
-            "User {UserId} proofing status updated to Completed, IAL2 after document verification",
+            "User {UserId} proofing status updated to Completed, IAL1plus after document verification",
             userId);
     }
 }

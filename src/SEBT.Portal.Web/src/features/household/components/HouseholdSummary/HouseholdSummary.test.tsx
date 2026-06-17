@@ -30,12 +30,6 @@ const mockApplication: Application = {
   applicationStatus: 'Approved',
   benefitIssueDate: '2026-01-08T00:00:00Z',
   benefitExpirationDate: '2026-03-19T00:00:00Z',
-  last4DigitsOfCard: '1234',
-  cardStatus: 'Active',
-  cardRequestedAt: null,
-  cardMailedAt: null,
-  cardActivatedAt: null,
-  cardDeactivatedAt: null,
   children: [{ firstName: 'Sophia', lastName: 'Martinez' }],
   childrenOnApplication: 1
 }
@@ -51,7 +45,8 @@ const defaultMockData: HouseholdData = {
     city: 'Washington',
     state: 'DC',
     postalCode: '20004'
-  }
+  },
+  coLoadedCohort: 'NonCoLoaded'
 }
 
 let mockReturnData: HouseholdData
@@ -82,7 +77,7 @@ describe('HouseholdSummary', () => {
   it('renders enrolled status description when cases exist', () => {
     render(<HouseholdSummary />)
     expect(
-      screen.getByText(/Your children are enrolled because we have enough information/)
+      screen.getByText(/Your students are enrolled because we have enough information/)
     ).toBeInTheDocument()
   })
 
@@ -91,15 +86,15 @@ describe('HouseholdSummary', () => {
     mockReturnData = { ...defaultMockData, applications: [pendingApp] }
     render(<HouseholdSummary />)
     expect(screen.getByText('Enrolled')).toBeInTheDocument()
-    expect(screen.getByText('Application in-progress')).toBeInTheDocument()
+    expect(screen.getByText('Application pending')).toBeInTheDocument()
   })
 
   it('renders in-progress status for pending application when no cases', () => {
     const pendingApp: Application = { ...mockApplication, applicationStatus: 'Pending' }
     mockReturnData = { ...defaultMockData, summerEbtCases: [], applications: [pendingApp] }
     render(<HouseholdSummary />)
-    const statusText = screen.getByText('Application in-progress')
-    expect(statusText).toHaveClass('text-gold')
+    const statusText = screen.getByText('Application pending')
+    expect(statusText).toHaveClass('text-green')
   })
 
   it('does not render enrolled description when no cases and application pending', () => {
@@ -158,7 +153,7 @@ describe('HouseholdSummary', () => {
     expect(
       screen.queryByRole('link', { name: 'Change my mailing address' })
     ).not.toBeInTheDocument()
-    const infoLink = screen.getByRole('link', { name: /how to change your mailing address/i })
+    const infoLink = screen.getByRole('link', { name: /how we determine your mailing address/i })
     expect(infoLink).toHaveAttribute('href', '/profile/address/info')
     expect(infoLink).toHaveAttribute('data-analytics-cta', 'update_address_info_cta')
   })

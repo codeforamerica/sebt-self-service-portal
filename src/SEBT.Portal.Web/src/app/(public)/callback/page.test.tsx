@@ -3,9 +3,9 @@
  *
  * Tests the OIDC callback flow including:
  * - Successful token exchange and redirect to dashboard
- * - Missing code/state parameters
- * - Exchange-code failure
- * - IdP error redirect (?error=)
+ * - Missing code/state parameters → step-up failure page
+ * - Exchange-code failure → step-up failure page
+ * - IdP error redirect (?error=) → step-up failure page
  *
  * PKCE/sessionStorage validation tests have been removed — all flow metadata
  * (stateCode, isStepUp, returnUrl, state validation) is now handled server-side
@@ -15,6 +15,7 @@ import { render, screen, waitFor } from '@testing-library/react'
 import { http, HttpResponse } from 'msw'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
+import { OIDC_CALLBACK_ERROR_OFF_BOARDING } from '@/features/auth/api/oidc'
 import { server } from '@/mocks/server'
 
 // Mock router
@@ -31,7 +32,12 @@ vi.mock('next/navigation', () => ({
 }))
 
 // Mock @/features/auth without loading the barrel (barrel pulls IalGuard → @/env and breaks Vitest).
-const { mockLogin } = vi.hoisted(() => ({ mockLogin: vi.fn() }))
+// `sessionState` / `authLoading` are mutable so tests can simulate session hydration and back-button re-entry.
+const { mockLogin, sessionState, authLoading } = vi.hoisted(() => ({
+  mockLogin: vi.fn(),
+  sessionState: { current: null as Record<string, unknown> | null },
+  authLoading: { current: false }
+}))
 vi.mock('@/features/auth', async () => {
   const api = await vi.importActual<typeof import('@/features/auth/api')>('@/features/auth/api')
   return {
@@ -39,29 +45,30 @@ vi.mock('@/features/auth', async () => {
     useAuth: () => ({
       login: mockLogin,
       logout: vi.fn(),
-      isAuthenticated: false,
-      session: null,
-      isLoading: false
+      isAuthenticated: sessionState.current !== null,
+      session: sessionState.current,
+      isLoading: authLoading.current
     })
   }
 })
 
-// Mock translations
-vi.mock('@/lib/translations', () => ({
-  getTranslations: vi.fn().mockImplementation((namespace: string) => {
-    const namespaces: Record<string, Record<string, string>> = {
-      login: {
-        callbackSigningIn: 'Signing you in…',
-        callbackSignInIssue: 'Sign-in issue',
-        callbackErrorMissingParams: 'Missing sign-in information.',
-        callbackErrorGeneric: 'Something went wrong.',
-        callbackErrorIdpRedirect: 'Primary MyColorado sign-in did not finish.'
-      }
-    }
-    /* eslint-disable security/detect-object-injection -- test mock */
-    const translations = namespaces[namespace] ?? {}
-    return (key: string, defaultValue?: string) => translations[key] ?? defaultValue ?? key
+const TEST_TRANSLATIONS: Record<string, Record<string, string>> = {
+  login: {
+    callbackSigningIn: 'Signing you in…'
+  },
+  'step-upProcessing': {
+    title: 'Please wait...',
+    body: 'Do not exit the page. Checking to see if we have enough information.'
+  }
+}
+
+vi.mock('react-i18next', () => ({
+  useTranslation: (namespace: string) => ({
+    /* eslint-disable security/detect-object-injection -- test mock; namespace + key controlled */
+    t: (key: string, defaultValue?: string) =>
+      TEST_TRANSLATIONS[namespace]?.[key] ?? defaultValue ?? key,
     /* eslint-enable security/detect-object-injection */
+    i18n: { language: 'en' }
   })
 }))
 
@@ -79,6 +86,8 @@ import CallbackPage from './page'
 describe('CallbackPage', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    sessionState.current = null
+    authLoading.current = false
     // Default: URL has code and state
     Object.defineProperty(window, 'location', {
       value: {
@@ -90,7 +99,7 @@ describe('CallbackPage', () => {
   })
 
   describe('missing URL parameters', () => {
-    it('shows error when code is missing from URL', async () => {
+    it('redirects to step-up failure when code is missing from URL', async () => {
       Object.defineProperty(window, 'location', {
         value: {
           search: '?state=test-state',
@@ -102,11 +111,11 @@ describe('CallbackPage', () => {
       render(<CallbackPage />)
 
       await waitFor(() => {
-        expect(screen.getByText('Missing sign-in information.')).toBeInTheDocument()
+        expect(mockReplace).toHaveBeenCalledWith(OIDC_CALLBACK_ERROR_OFF_BOARDING)
       })
     })
 
-    it('shows error when state is missing from URL', async () => {
+    it('redirects to step-up failure when state is missing from URL', async () => {
       Object.defineProperty(window, 'location', {
         value: { search: '?code=test-code', href: 'http://localhost:3000/callback?code=test-code' },
         writable: true
@@ -115,14 +124,13 @@ describe('CallbackPage', () => {
       render(<CallbackPage />)
 
       await waitFor(() => {
-        expect(screen.getByText('Missing sign-in information.')).toBeInTheDocument()
+        expect(mockReplace).toHaveBeenCalledWith(OIDC_CALLBACK_ERROR_OFF_BOARDING)
       })
     })
   })
 
   describe('successful flow', () => {
     beforeEach(() => {
-      // callback returns callbackToken, complete-login sets cookie and returns empty body
       server.use(
         http.post('/api/auth/oidc/callback', () => {
           return HttpResponse.json({ callbackToken: 'mock-callback-token-for-testing' })
@@ -133,9 +141,11 @@ describe('CallbackPage', () => {
       )
     })
 
-    it('shows signing in message initially', () => {
+    it('shows the CO loading interstitial initially', () => {
       render(<CallbackPage />)
-      expect(screen.getByText('Signing you in…')).toBeInTheDocument()
+      const status = screen.getByRole('status')
+      expect(status).toHaveAttribute('aria-busy', 'true')
+      expect(screen.getByText('Please wait...')).toBeInTheDocument()
     })
 
     it('redirects to dashboard on successful login', async () => {
@@ -166,7 +176,7 @@ describe('CallbackPage', () => {
   })
 
   describe('token exchange failure', () => {
-    it('shows error when exchange-code endpoint fails', async () => {
+    it('redirects to step-up failure without rendering raw IdP text', async () => {
       server.use(
         http.post('/api/auth/oidc/callback', () => {
           return HttpResponse.json({ error: 'Token exchange failed' }, { status: 400 })
@@ -176,17 +186,26 @@ describe('CallbackPage', () => {
       render(<CallbackPage />)
 
       await waitFor(() => {
-        expect(screen.getByText('Token exchange failed')).toBeInTheDocument()
+        expect(mockReplace).toHaveBeenCalledWith(OIDC_CALLBACK_ERROR_OFF_BOARDING)
       })
+      expect(screen.queryByText('Token exchange failed')).not.toBeInTheDocument()
     })
   })
 
   describe('IdP error redirect (?error=)', () => {
-    it('shows error message with IdP description', async () => {
+    it('redirects to step-up failure for server_error with description', async () => {
+      const reportBodies: unknown[] = []
+      server.use(
+        http.post('/api/auth/oidc/report-failure', async ({ request }) => {
+          reportBodies.push(await request.json())
+          return new HttpResponse(null, { status: 204 })
+        })
+      )
+
       Object.defineProperty(window, 'location', {
         value: {
-          search: '?error=access_denied&error_description=User+cancelled',
-          href: 'http://localhost:3000/callback?error=access_denied'
+          search: '?error=server_error&error_description=User+cancelled',
+          href: 'http://localhost:3000/callback?error=server_error'
         },
         writable: true
       })
@@ -194,13 +213,16 @@ describe('CallbackPage', () => {
       render(<CallbackPage />)
 
       await waitFor(() => {
-        expect(
-          screen.getByText('Primary MyColorado sign-in did not finish. User cancelled')
-        ).toBeInTheDocument()
+        expect(mockReplace).toHaveBeenCalledWith(OIDC_CALLBACK_ERROR_OFF_BOARDING)
+        expect(reportBodies).toContainEqual({
+          reason: 'idp_redirect',
+          idpError: 'server_error',
+          idpErrorDescription: 'User cancelled'
+        })
       })
     })
 
-    it('shows error message without description when IdP omits it', async () => {
+    it('redirects to step-up failure when IdP omits error_description', async () => {
       Object.defineProperty(window, 'location', {
         value: {
           search: '?error=server_error',
@@ -212,15 +234,123 @@ describe('CallbackPage', () => {
       render(<CallbackPage />)
 
       await waitFor(() => {
-        expect(screen.getByText('Primary MyColorado sign-in did not finish.')).toBeInTheDocument()
+        expect(mockReplace).toHaveBeenCalledWith(OIDC_CALLBACK_ERROR_OFF_BOARDING)
+      })
+    })
+
+    it('redirects to step-up failure for structured JSON error_description (no blob rendered)', async () => {
+      const blob = JSON.stringify({
+        code: 'errorResponse',
+        interactionId: '03018f37-c15e-4da2-9f79-26dd163f9c9f',
+        errors: { nested: { message: 'Error creating delayed response' } }
+      })
+      Object.defineProperty(window, 'location', {
+        value: {
+          search: `?error=invalid_request&error_description=${encodeURIComponent(blob)}`,
+          href: 'http://localhost:3000/callback'
+        },
+        writable: true
+      })
+
+      render(<CallbackPage />)
+
+      await waitFor(() => {
+        expect(mockReplace).toHaveBeenCalledWith(OIDC_CALLBACK_ERROR_OFF_BOARDING)
+      })
+      expect(screen.queryByText(/interactionId/i)).not.toBeInTheDocument()
+    })
+
+    it('redirects to step-up failure when Socure consent text appears inside a connector blob', async () => {
+      const blob = JSON.stringify({
+        errors: {
+          x: { additionalProperties: { errorMsg: 'User opted out' } }
+        },
+        additionalProperties: { errorObj: 'User denied consent' }
+      })
+      Object.defineProperty(window, 'location', {
+        value: {
+          search: `?error=invalid_request&error_description=${encodeURIComponent(blob)}`,
+          href: 'http://localhost:3000/callback'
+        },
+        writable: true
+      })
+
+      render(<CallbackPage />)
+
+      await waitFor(() => {
+        expect(mockReplace).toHaveBeenCalledWith(OIDC_CALLBACK_ERROR_OFF_BOARDING)
+      })
+    })
+
+    it('redirects to step-up failure for access_denied', async () => {
+      Object.defineProperty(window, 'location', {
+        value: {
+          search: '?error=access_denied',
+          href: 'http://localhost:3000/callback?error=access_denied'
+        },
+        writable: true
+      })
+
+      render(<CallbackPage />)
+
+      await waitFor(() => {
+        expect(mockReplace).toHaveBeenCalledWith(OIDC_CALLBACK_ERROR_OFF_BOARDING)
       })
     })
   })
 
-  describe('error redirect', () => {
-    it('redirects to login after showing error', async () => {
-      vi.useFakeTimers({ shouldAdvanceTime: true })
+  describe('back-button re-entry after successful login', () => {
+    it('skips exchange and redirects to /dashboard when step-up is already complete (stale code in URL)', async () => {
+      sessionState.current = { ial: '1plus', idProofingExpiresAt: 9999999999 }
+      const callbackSpy = vi.fn()
+      const completeLoginSpy = vi.fn()
+      server.use(
+        http.post('/api/auth/oidc/callback', () => {
+          callbackSpy()
+          return HttpResponse.json({ callbackToken: 'should-not-be-issued' })
+        }),
+        http.post('/api/auth/oidc/complete-login', () => {
+          completeLoginSpy()
+          return HttpResponse.json({})
+        })
+      )
 
+      render(<CallbackPage />)
+
+      await waitFor(() => {
+        expect(mockReplace).toHaveBeenCalledWith('/dashboard')
+      })
+      expect(callbackSpy).not.toHaveBeenCalled()
+      expect(completeLoginSpy).not.toHaveBeenCalled()
+      expect(mockReplace).not.toHaveBeenCalledWith(OIDC_CALLBACK_ERROR_OFF_BOARDING)
+    })
+
+    it('runs exchange when authenticated but step-up is still in progress', async () => {
+      sessionState.current = { ial: '1', userId: 'user-1' }
+      const callbackSpy = vi.fn()
+      server.use(
+        http.post('/api/auth/oidc/callback', () => {
+          callbackSpy()
+          return HttpResponse.json({ callbackToken: 'mock-callback-token-for-step-up' })
+        }),
+        http.post('/api/auth/oidc/complete-login', () => {
+          return HttpResponse.json({ returnUrl: '/profile/address' })
+        })
+      )
+
+      render(<CallbackPage />)
+
+      await waitFor(() => {
+        expect(callbackSpy).toHaveBeenCalled()
+      })
+      await waitFor(() => {
+        expect(mockReplace).toHaveBeenCalledWith('/profile/address')
+      })
+      expect(mockReplace).not.toHaveBeenCalledWith(OIDC_CALLBACK_ERROR_OFF_BOARDING)
+    })
+
+    it('redirects to /dashboard when authenticated and callback URL has no code or state', async () => {
+      sessionState.current = { ial: '1plus', userId: 'user-1' }
       Object.defineProperty(window, 'location', {
         value: { search: '', href: 'http://localhost:3000/callback' },
         writable: true
@@ -229,14 +359,60 @@ describe('CallbackPage', () => {
       render(<CallbackPage />)
 
       await waitFor(() => {
-        expect(screen.getByText('Missing sign-in information.')).toBeInTheDocument()
+        expect(mockReplace).toHaveBeenCalledWith('/dashboard')
+      })
+      expect(mockReplace).not.toHaveBeenCalledWith(OIDC_CALLBACK_ERROR_OFF_BOARDING)
+    })
+
+    it('does not treat missing code as failure while auth status is still loading', async () => {
+      authLoading.current = true
+      Object.defineProperty(window, 'location', {
+        value: { search: '', href: 'http://localhost:3000/callback' },
+        writable: true
       })
 
-      await vi.advanceTimersByTimeAsync(5000)
+      render(<CallbackPage />)
 
-      expect(mockReplace).toHaveBeenCalledWith('/login')
+      await waitFor(() => {
+        expect(mockReplace).not.toHaveBeenCalled()
+      })
+    })
 
-      vi.useRealTimers()
+    it('redirects to off-boarding for IdP error even when already authenticated', async () => {
+      sessionState.current = { ial: '1plus', idProofingExpiresAt: 9999999999 }
+      Object.defineProperty(window, 'location', {
+        value: {
+          search: '?error=access_denied',
+          href: 'http://localhost:3000/callback?error=access_denied'
+        },
+        writable: true
+      })
+
+      render(<CallbackPage />)
+
+      await waitFor(() => {
+        expect(mockReplace).toHaveBeenCalledWith(OIDC_CALLBACK_ERROR_OFF_BOARDING)
+      })
+      expect(mockReplace).not.toHaveBeenCalledWith('/dashboard')
+    })
+
+    it('redirects to off-boarding for IdP error before auth status finishes loading', async () => {
+      authLoading.current = true
+      sessionState.current = { ial: '1plus', idProofingExpiresAt: 9999999999 }
+      Object.defineProperty(window, 'location', {
+        value: {
+          search: '?error=server_error',
+          href: 'http://localhost:3000/callback?error=server_error'
+        },
+        writable: true
+      })
+
+      render(<CallbackPage />)
+
+      await waitFor(() => {
+        expect(mockReplace).toHaveBeenCalledWith(OIDC_CALLBACK_ERROR_OFF_BOARDING)
+      })
+      expect(mockReplace).not.toHaveBeenCalledWith('/dashboard')
     })
   })
 })

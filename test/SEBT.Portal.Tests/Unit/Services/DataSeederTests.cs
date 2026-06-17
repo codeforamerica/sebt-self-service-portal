@@ -1,12 +1,14 @@
 using Microsoft.EntityFrameworkCore;
 using NSubstitute;
 using SEBT.Portal.Core.Models.Auth;
+using SEBT.Portal.Core.Utilities;
 using SEBT.Portal.Core.Services;
 using SEBT.Portal.Infrastructure.Data;
 using SEBT.Portal.Infrastructure.Data.Entities;
 using SEBT.Portal.Infrastructure.Services;
 using SEBT.Portal.TestUtilities.Helpers;
 using SEBT.Portal.Tests.Unit.Repositories;
+using SEBT.Portal.Tests.Unit.TestSupport;
 using UserEntityFactory = SEBT.Portal.Infrastructure.Helpers.UserFactory;
 
 namespace SEBT.Portal.Tests.Unit.Services;
@@ -28,7 +30,31 @@ public class DataSeederTests : IClassFixture<SqlServerTestFixture>
     {
         var identifierHasher = Substitute.For<IIdentifierHasher>();
         identifierHasher.HashForStorage(Arg.Any<string?>()).Returns(c => c.Arg<string?>());
-        return new DataSeeder(context, identifierHasher);
+        return new DataSeeder(
+            context,
+            identifierHasher,
+            TestPortalCryptography.PiiSymmetricEncryption,
+            TestPortalCryptography.EmailLookupHasher);
+    }
+
+    private static string NormalizeEmailStrict(string plaintext) =>
+        EmailNormalizer.Normalize(plaintext);
+
+    private static string EmailFingerprint(string plaintextNormalizedOrAnyCase) =>
+        TestPortalCryptography.EmailLookupHasher.HashNormalized(NormalizeEmailStrict(plaintextNormalizedOrAnyCase))!;
+
+    private static string StoredEmailPlaintext(UserEntity row) =>
+        TestPortalCryptography.PiiSymmetricEncryption.DecryptOrPassThroughLegacy(row.Email!)!;
+
+    private static async Task<UserEntity?> LoadUserRawRowAsync(PortalDbContext ctx, string emailAnyCase)
+    {
+        var norm = NormalizeEmailStrict(emailAnyCase);
+        var fp = EmailFingerprint(emailAnyCase);
+        return await ctx.Users.FirstOrDefaultAsync(
+            u =>
+                u.EmailHash == fp ||
+                u.EmailHash == null && u.Email != null && u.Email == norm,
+            CancellationToken.None);
     }
 
     private async Task CleanupDatabaseAsync(PortalDbContext context)
@@ -144,9 +170,9 @@ public class DataSeederTests : IClassFixture<SqlServerTestFixture>
 
         await seeder.AddUsersAsync(new[] { user });
 
-        var stored = await context.Users.FirstOrDefaultAsync(u => u.Email == email);
+        var stored = await LoadUserRawRowAsync(context, email);
         Assert.NotNull(stored);
-        Assert.Equal(email, stored!.Email);
+        Assert.Equal(NormalizeEmailStrict(email), StoredEmailPlaintext(stored!));
     }
 
     [Fact]
@@ -188,7 +214,10 @@ public class DataSeederTests : IClassFixture<SqlServerTestFixture>
 
         await seeder.AddUsersAsync(new[] { user });
 
-        var users = await newContext.Users.Where(u => u.Email == email).ToListAsync();
+        var fingerprint = EmailFingerprint(email);
+        var users = await newContext.Users
+            .Where(u => u.EmailHash == fingerprint || u.EmailHash == null && u.Email == NormalizeEmailStrict(email))
+            .ToListAsync();
         Assert.Single(users);
     }
 
@@ -244,9 +273,12 @@ public class DataSeederTests : IClassFixture<SqlServerTestFixture>
         await seeder.RemoveUsersByEmailAsync(new[] { toRemove });
         await seeder.SaveChangesAsync();
 
-        var remaining = await context.Users.Select(u => u.Email).ToListAsync();
-        Assert.DoesNotContain(toRemove, remaining);
-        Assert.Contains(toKeep, remaining);
+        var remainingEmails = await context.Users.Select(u => u.Email!).ToListAsync();
+        var decrypted = remainingEmails
+            .Select(e => TestPortalCryptography.PiiSymmetricEncryption.DecryptOrPassThroughLegacy(e)!)
+            .ToList();
+        Assert.DoesNotContain(NormalizeEmailStrict(toRemove), decrypted);
+        Assert.Contains(NormalizeEmailStrict(toKeep), decrypted);
     }
 
     [Fact]
@@ -273,8 +305,11 @@ public class DataSeederTests : IClassFixture<SqlServerTestFixture>
         await seeder.RemoveUsersByEmailAsync(new[] { email.ToUpperInvariant() });
         await seeder.SaveChangesAsync();
 
-        var count = await context.Users.CountAsync(u => u.Email == email);
-        Assert.Equal(0, count);
+        var fingerprint = EmailFingerprint(email);
+        var rowStillThere = await context.Users.FirstOrDefaultAsync(
+            u => u.EmailHash == fingerprint ||
+                 u.EmailHash == null && u.Email == NormalizeEmailStrict(email));
+        Assert.Null(rowStillThere);
     }
 
     [Fact]
@@ -320,7 +355,7 @@ public class DataSeederTests : IClassFixture<SqlServerTestFixture>
 
         await seeder.SaveChangesAsync();
 
-        var stored = await context.Users.FirstOrDefaultAsync(u => u.Email == email);
+        var stored = await LoadUserRawRowAsync(context, email);
         Assert.NotNull(stored);
     }
 
@@ -392,9 +427,11 @@ public class DataSeederTests : IClassFixture<SqlServerTestFixture>
 
         seeder.AddUsers(new[] { user });
 
-        var stored = context.Users.FirstOrDefault(u => u.Email == email);
+        var stored = context.Users.SingleOrDefault(
+            u => u.EmailHash == EmailFingerprint(email) ||
+                 u.EmailHash == null && u.Email == NormalizeEmailStrict(email));
         Assert.NotNull(stored);
-        Assert.Equal(email, stored!.Email);
+        Assert.Equal(NormalizeEmailStrict(email), StoredEmailPlaintext(stored!));
     }
 
     [Fact]
@@ -429,7 +466,10 @@ public class DataSeederTests : IClassFixture<SqlServerTestFixture>
 
         seeder.SaveChanges();
 
-        var stored = context.Users.FirstOrDefault(u => u.Email == email);
+        var stored = context.Users.SingleOrDefault(
+            u =>
+                u.EmailHash == EmailFingerprint(email) ||
+                u.EmailHash == null && u.Email == NormalizeEmailStrict(email));
         Assert.NotNull(stored);
     }
 
@@ -438,6 +478,9 @@ public class DataSeederTests : IClassFixture<SqlServerTestFixture>
     {
         var identifierHasher = Substitute.For<IIdentifierHasher>();
         Assert.Throws<ArgumentNullException>(() =>
-            new DataSeeder(null!, identifierHasher));
+            new DataSeeder(
+                null!, identifierHasher,
+                TestPortalCryptography.PiiSymmetricEncryption,
+                TestPortalCryptography.EmailLookupHasher));
     }
 }

@@ -1,6 +1,7 @@
-import { act, render, screen } from '@testing-library/react'
+import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { describe, expect, it, vi } from 'vitest'
+import { useEffect } from 'react'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { EnrollmentProvider, useEnrollment } from '../context/EnrollmentContext'
 import { ReviewPage } from './ReviewPage'
 
@@ -8,23 +9,40 @@ const mockPush = vi.fn()
 vi.mock('next/navigation', () => ({ useRouter: () => ({ push: mockPush }) }))
 
 // Helper to pre-populate context with a child
-function ReviewPageWithChild({ onSubmit }: { onSubmit: () => void }) {
+function ReviewPageWithChild({
+  onSubmit,
+  isSubmitting = false
+}: {
+  onSubmit: () => void
+  isSubmitting?: boolean
+}) {
   return (
     <EnrollmentProvider>
       <Seeder />
-      <ReviewPage onSubmit={onSubmit} />
+      <ReviewPage onSubmit={onSubmit} isSubmitting={isSubmitting} />
     </EnrollmentProvider>
   )
 }
 function Seeder() {
   const { addChild } = useEnrollment()
-  act(() => {
+  // useEffect with empty deps so the seed fires exactly once per mount —
+  // calling addChild during render would re-fire on every parent re-render and
+  // pile up duplicate children.
+  useEffect(() => {
     addChild({ firstName: 'Jane', lastName: 'Doe', month: '4', day: '12', year: '2015' })
-  })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
   return null
 }
 
 describe('ReviewPage', () => {
+  // EnrollmentProvider persists state to sessionStorage; without clearing,
+  // earlier tests' seeded children bleed into later tests and we see duplicates.
+  beforeEach(() => {
+    sessionStorage.clear()
+    mockPush.mockClear()
+  })
+
   it('lists added children', async () => {
     render(<ReviewPageWithChild onSubmit={vi.fn()} />)
     expect(await screen.findByText(/Jane Doe/i)).toBeInTheDocument()
@@ -43,5 +61,32 @@ describe('ReviewPage', () => {
     await screen.findByText(/Jane Doe/i)
     await userEvent.click(screen.getByRole('button', { name: /add another child/i }))
     expect(mockPush).toHaveBeenCalledWith('/check')
+  })
+
+  it('removes a child from the review list when Remove is clicked', async () => {
+    render(<ReviewPageWithChild onSubmit={vi.fn()} />)
+    await screen.findByText(/Jane Doe/i)
+    await userEvent.click(screen.getByRole('button', { name: /remove/i }))
+    expect(screen.queryByText(/Jane Doe/i)).not.toBeInTheDocument()
+  })
+
+  it('disables Submit and Back while submitting', async () => {
+    render(<ReviewPageWithChild onSubmit={vi.fn()} isSubmitting />)
+    await screen.findByText(/Jane Doe/i)
+    const submit = screen.getByRole('button', { name: /submit/i })
+    expect(submit).toBeDisabled()
+    expect(submit).toHaveAttribute('aria-busy', 'true')
+    expect(screen.getByRole('button', { name: /back/i })).toBeDisabled()
+  })
+
+  it('disables Submit when the last child is removed and ignores clicks', async () => {
+    const onSubmit = vi.fn()
+    render(<ReviewPageWithChild onSubmit={onSubmit} />)
+    await screen.findByText(/Jane Doe/i)
+    await userEvent.click(screen.getByRole('button', { name: /remove/i }))
+    const submit = screen.getByRole('button', { name: /submit/i })
+    expect(submit).toBeDisabled()
+    await userEvent.click(submit)
+    expect(onSubmit).not.toHaveBeenCalled()
   })
 })

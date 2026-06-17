@@ -23,6 +23,8 @@ export { TextLink } from './components/ui/TextLink'
 export type { TextLinkProps } from './components/ui/TextLink'
 export { SummaryBox } from './components/ui/SummaryBox'
 export type { SummaryBoxProps } from './components/ui/SummaryBox'
+export { LoadingInterstitial } from './components/ui/LoadingInterstitial'
+export type { LoadingInterstitialProps } from './components/ui/LoadingInterstitial'
 
 // Rich text rendering (markdown-to-jsx)
 export { RichText } from './components/RichText/RichText'
@@ -33,7 +35,14 @@ export { SkipNav } from './components/layout/SkipNav'
 
 // State configuration
 export type { StateCode, StateConfig } from './lib/state'
-export { getState, getStateConfig, getStateName, getStateAssetPath } from './lib/state'
+export {
+  getState,
+  getStateConfig,
+  getStateName,
+  getSiteDisplayName,
+  getPortalMetadataDescription,
+  getStateAssetPath
+} from './lib/state'
 
 // External links
 export type { StateLinks, LinkItem } from './lib/links'

@@ -46,7 +46,10 @@ export const TEST_FEATURE_FLAGS = {
   show_application_number: true,
   show_case_number: true,
   show_card_last4: true,
-  enable_beta_banner: false
+  show_application_date: true,
+  defer_ebt_card_data_loading: false,
+  enable_beta_banner: false,
+  outage_page_enabled: false
 } as const
 
 // Test household data (mirrors MockHouseholdRepository seeded data)
@@ -85,12 +88,6 @@ export const TEST_HOUSEHOLD_DATA = {
       applicationStatus: 'Approved',
       benefitIssueDate: '2026-01-08T00:00:00Z',
       benefitExpirationDate: '2026-03-19T00:00:00Z',
-      last4DigitsOfCard: '1234',
-      cardStatus: 'Active',
-      cardRequestedAt: '2026-01-01T00:00:00Z',
-      cardMailedAt: '2026-01-03T00:00:00Z',
-      cardActivatedAt: '2026-01-08T00:00:00Z',
-      cardDeactivatedAt: null,
       issuanceType: 3, // SnapEbtCard
       children: [
         { caseNumber: 456001, firstName: 'Sophia', lastName: 'Martinez' },
@@ -116,7 +113,9 @@ export const TEST_HOUSEHOLD_DATA = {
     canRequestReplacementCard: false,
     addressUpdateDeniedMessageKey: 'actionNavigationSelfServiceUnavailable',
     cardReplacementDeniedMessageKey: 'actionNavigationSelfServiceUnavailable'
-  }
+  },
+  // Matches API: CoLoadedCohort enum as integer (NonCoLoaded=0)
+  coLoadedCohort: 0
 } as const
 
 export const handlers = [
@@ -230,6 +229,8 @@ export const handlers = [
     })
   }),
 
+  http.post('/api/auth/oidc/report-failure', () => new HttpResponse(null, { status: 204 })),
+
   // OIDC callback (Next.js: exchange + validate; returns callbackToken for complete-login)
   // callback no longer expects code_verifier from the browser — the server
   // reads it from the pre-auth session. We only check code + stateCode here.
@@ -293,12 +294,6 @@ export const handlers = [
       })
     }
 
-    // Simulate step-up failure (canApply: false) with Medicaid ID for dev testing.
-    // In production, the backend determines canApply based on the user's enrollment pathway.
-    if (body.idType === 'medicaidId') {
-      return HttpResponse.json({ result: 'failed', canApply: false })
-    }
-
     // Default: identity matched
     return HttpResponse.json({ result: 'matched' })
   }),
@@ -342,10 +337,25 @@ export const handlers = [
   })(),
 
   // Household data endpoint
-  http.get('/api/household/data', async () => {
+  http.get('/api/household/data', async ({ request }) => {
     await delay(50)
 
-    return HttpResponse.json(TEST_HOUSEHOLD_DATA)
+    const url = new URL(request.url)
+    const includeCardDetails = url.searchParams.get('includeCardDetails') !== 'false'
+    if (includeCardDetails) {
+      return HttpResponse.json(TEST_HOUSEHOLD_DATA)
+    }
+
+    return HttpResponse.json({
+      ...TEST_HOUSEHOLD_DATA,
+      summerEbtCases: TEST_HOUSEHOLD_DATA.summerEbtCases.map((c) => ({
+        ...c,
+        ebtCardLastFour: undefined,
+        ebtCardStatus: 'Unknown',
+        ebtCardIssueDate: undefined,
+        ebtCardBalance: undefined
+      }))
+    })
   }),
 
   // Address update endpoint

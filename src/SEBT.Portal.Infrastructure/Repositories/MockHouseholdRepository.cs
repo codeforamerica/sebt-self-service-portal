@@ -43,6 +43,8 @@ public class MockHouseholdRepository : IHouseholdRepository
         HouseholdIdentifier identifier,
         PiiVisibility piiVisibility,
         UserIalLevel userIalLevel,
+        Guid? portalUserId = null,
+        bool includeCardService = true,
         CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(piiVisibility);
@@ -99,18 +101,40 @@ public class MockHouseholdRepository : IHouseholdRepository
         string email,
         PiiVisibility piiVisibility,
         UserIalLevel userIalLevel,
+        Guid? portalUserId = null,
+        bool includeCardService = true,
         CancellationToken cancellationToken = default)
     {
-        return GetHouseholdByIdentifierAsync(HouseholdIdentifier.Email(email), piiVisibility, userIalLevel, cancellationToken);
+        return GetHouseholdByIdentifierAsync(
+            HouseholdIdentifier.Email(email),
+            piiVisibility,
+            userIalLevel,
+            portalUserId,
+            includeCardService,
+            cancellationToken);
     }
 
     /// <inheritdoc />
     public Task<bool> TryMatchCoLoadedGuardianByBenefitIdAndDobAsync(
         string benefitIdentifierIc,
         DateOnly guardianDateOfBirth,
+        Guid portalUserId,
         CancellationToken cancellationToken = default)
     {
         return Task.FromResult(false);
+    }
+
+    /// <inheritdoc />
+    public Task<HouseholdData?> GetHouseholdByBenefitIdentifierAndGuardianDobAsync(
+        string guardianLoginEmail,
+        string benefitIdentifierIc,
+        DateOnly guardianDateOfBirth,
+        PiiVisibility piiVisibility,
+        UserIalLevel userIalLevel,
+        Guid portalUserId,
+        CancellationToken cancellationToken = default)
+    {
+        return Task.FromResult<HouseholdData?>(null);
     }
 
     public Task UpsertHouseholdAsync(
@@ -225,8 +249,6 @@ public class MockHouseholdRepository : IHouseholdRepository
                 app.IssuanceType = IssuanceType.SnapEbtCard;
                 app.BenefitIssueDate = now.AddDays(-20);
                 app.BenefitExpirationDate = now.AddDays(70);
-                app.Last4DigitsOfCard = "0000";
-                app.CardStatus = CardStatus.Active;
                 // Set specific children names for test
                 app.Children = new List<Child>
                 {
@@ -298,6 +320,20 @@ public class MockHouseholdRepository : IHouseholdRepository
             });
             _households[coLoadedNoChildrenEmail] = coLoadedNoChildren;
             IndexByPhone(coLoadedNoChildren);
+
+            // Co-loaded household with enrolled cases but ZERO applications. Lands on the
+            // dashboard (ID verified, address on file) and must NOT show the "Check existing
+            // applications" CTA — the applications section renders nothing at zero applications,
+            // so the CTA would scroll to a missing anchor (DC-402).
+            var coLoadedNoApplicationEmail = _settings.BuildEmail(SeedScenarios.CoLoadedNoApplication.Name);
+            var coLoadedNoApplication = CreateCopy(coLoaded, fullPii) with
+            {
+                Email = coLoadedNoApplicationEmail,
+                Phone = "8185558441",
+                Applications = new List<Application>(),
+            };
+            _households[coLoadedNoApplicationEmail] = coLoadedNoApplication;
+            IndexByPhone(coLoadedNoApplication);
         }
 
         // Scenario 2: Approved application with address (ID verified user)
@@ -311,10 +347,9 @@ public class MockHouseholdRepository : IHouseholdRepository
                 app.ApplicationNumber = "APP-2025-01-100001";
                 app.CaseNumber = "CASE-100001";
                 app.IssuanceType = IssuanceType.SummerEbt;
+                app.ApplicationDate = now.AddDays(-45);
                 app.BenefitIssueDate = now.AddDays(-30);
                 app.BenefitExpirationDate = now.AddDays(60);
-                app.Last4DigitsOfCard = "1234"; // Specific value for test
-                app.CardStatus = CardStatus.Active;
                 // Set specific children names for test
                 app.Children = new List<Child>
                 {
@@ -421,13 +456,11 @@ public class MockHouseholdRepository : IHouseholdRepository
             var app = h.Applications.FirstOrDefault();
             if (app != null)
             {
-                app.CardStatus = CardStatus.Active;
                 // Use Bogus to generate child name
                 var childFaker = new Faker<Child>()
                     .RuleFor(c => c.FirstName, f => f.Name.FirstName())
                     .RuleFor(c => c.LastName, f => f.Name.LastName());
                 app.Children = childFaker.Generate(1);
-                app.CardRequestedAt = now.AddDays(-7);
             }
             var reviewChild = h.Applications.First().Children.First();
             h.SummerEbtCases = new List<SummerEbtCase>
@@ -467,6 +500,16 @@ public class MockHouseholdRepository : IHouseholdRepository
         nonCoLoaded.UserProfile = new UserProfile { FirstName = "Carlos", MiddleName = "Miguel", LastName = "GarciaMOCK" };
         _households[nonCoLoadedEmail] = nonCoLoaded;
         IndexByPhone(nonCoLoaded);
+
+        var idProofInProgressEmail = _settings.BuildEmail(SeedScenarios.IdProofInProgress.Name);
+        var idProofFullPii = new PiiVisibility(IncludeAddress: true, IncludeEmail: true, IncludePhone: true);
+        var idProofInProgressHousehold = CreateCopy(nonCoLoaded, idProofFullPii) with
+        {
+            Email = idProofInProgressEmail,
+            Phone = "5552223344"
+        };
+        _households[idProofInProgressEmail] = idProofInProgressHousehold;
+        IndexByPhone(idProofInProgressHousehold);
 
         // Scenario 5c: Not-started user (ID proofing not started)
         var notStartedEmail = _settings.BuildEmail(SeedScenarios.NotStarted.Name);
@@ -527,7 +570,6 @@ public class MockHouseholdRepository : IHouseholdRepository
                 app.IssuanceType = IssuanceType.SummerEbt;
                 app.BenefitIssueDate = now.AddDays(-15);
                 app.BenefitExpirationDate = now.AddDays(75);
-                app.CardStatus = CardStatus.Active;
                 // Use Bogus to generate child name
                 var childFaker = new Faker<Child>()
                     .RuleFor(c => c.FirstName, f => f.Name.FirstName())
@@ -567,8 +609,6 @@ public class MockHouseholdRepository : IHouseholdRepository
                 app.IssuanceType = IssuanceType.TanfEbtCard;
                 app.BenefitIssueDate = now.AddDays(-45);
                 app.BenefitExpirationDate = now.AddDays(45);
-                app.Last4DigitsOfCard = "4321";
-                app.CardStatus = CardStatus.Active;
                 // Set specific children names for test
                 app.Children = new List<Child>
                 {
@@ -626,7 +666,6 @@ public class MockHouseholdRepository : IHouseholdRepository
             {
                 app.BenefitIssueDate = now.AddDays(-120);
                 app.BenefitExpirationDate = now.AddDays(-10); // Expired
-                app.CardStatus = CardStatus.Deactivated;
                 // Use Bogus to generate child name
                 var childFaker = new Faker<Child>()
                     .RuleFor(c => c.FirstName, f => f.Name.FirstName())
@@ -638,7 +677,7 @@ public class MockHouseholdRepository : IHouseholdRepository
             {
                 HouseholdFactory.CreateSummerEbtCase(expiredChild.FirstName, expiredChild.LastName, "NSLP", c =>
                 {
-                    c.EbtCardStatus = "Deactivated";
+                    c.EbtCardStatus = CardStatus.DeactivatedByState;
                     c.BenefitAvailableDate = now.AddDays(-120);
                     c.BenefitExpirationDate = now.AddDays(-10);
                 })
@@ -676,14 +715,10 @@ public class MockHouseholdRepository : IHouseholdRepository
                 ApplicationNumber = $"APP-{now.AddDays(-30):yyyy-MM}-{faker.Random.Number(100000, 999999)}",
                 CaseNumber = $"CASE-{faker.Random.Number(100000, 999999)}",
                 ApplicationStatus = ApplicationStatus.Approved,
+                ApplicationDate = now.AddDays(-45),
                 IssuanceType = IssuanceType.SummerEbt,
                 BenefitIssueDate = now.AddDays(-30),
                 BenefitExpirationDate = now.AddDays(60),
-                Last4DigitsOfCard = "5678",
-                CardStatus = CardStatus.Active,
-                CardRequestedAt = now.AddDays(-60),
-                CardMailedAt = now.AddDays(-45),
-                CardActivatedAt = now.AddDays(-40),
                 Children = new List<Child>
                 {
                     new Child { FirstName = "Emma", LastName = "Wilson" },
@@ -695,8 +730,7 @@ public class MockHouseholdRepository : IHouseholdRepository
             {
                 ApplicationNumber = $"APP-{now.AddDays(-10):yyyy-MM}-{faker.Random.Number(100000, 999999)}",
                 ApplicationStatus = ApplicationStatus.Pending,
-                CardStatus = CardStatus.Requested,
-                CardRequestedAt = now.AddDays(-10),
+                ApplicationDate = now.AddDays(-12),
                 Children = new List<Child>
                 {
                     new Child { FirstName = "Olivia", LastName = "Wilson" }
@@ -726,12 +760,8 @@ public class MockHouseholdRepository : IHouseholdRepository
             if (app != null)
             {
                 app.IssuanceType = IssuanceType.SummerEbt;
-                app.CardStatus = CardStatus.Undeliverable;
                 app.BenefitIssueDate = now.AddDays(-20);
                 app.BenefitExpirationDate = now.AddDays(70);
-                app.Last4DigitsOfCard = "3311";
-                app.CardRequestedAt = now.AddDays(-35);
-                app.CardMailedAt = now.AddDays(-30);
                 app.Children = new List<Child>
                 {
                     new Child { FirstName = "Maya", LastName = "Torres" }
@@ -748,7 +778,7 @@ public class MockHouseholdRepository : IHouseholdRepository
             {
                 HouseholdFactory.CreateSummerEbtCase("Maya", "Torres", "NSLP", c =>
                 {
-                    c.EbtCardStatus = "Undeliverable";
+                    c.EbtCardStatus = CardStatus.Undeliverable;
                 })
             };
         });
@@ -767,12 +797,8 @@ public class MockHouseholdRepository : IHouseholdRepository
             if (app != null)
             {
                 app.IssuanceType = IssuanceType.SummerEbt;
-                app.CardStatus = CardStatus.Frozen;
                 app.BenefitIssueDate = now.AddDays(-20);
                 app.BenefitExpirationDate = now.AddDays(70);
-                app.Last4DigitsOfCard = "4422";
-                app.CardRequestedAt = now.AddDays(-35);
-                app.CardMailedAt = now.AddDays(-30);
                 app.Children = new List<Child>
                 {
                     new Child { FirstName = "Lucas", LastName = "Rivera" }
@@ -789,7 +815,7 @@ public class MockHouseholdRepository : IHouseholdRepository
             {
                 HouseholdFactory.CreateSummerEbtCase("Lucas", "Rivera", "NSLP", c =>
                 {
-                    c.EbtCardStatus = "Frozen";
+                    c.EbtCardStatus = CardStatus.Frozen;
                 })
             };
         });
@@ -809,10 +835,8 @@ public class MockHouseholdRepository : IHouseholdRepository
             if (app != null)
             {
                 app.IssuanceType = IssuanceType.SummerEbt;
-                app.CardStatus = CardStatus.NotActivated;
                 app.BenefitIssueDate = now.AddDays(-5);
                 app.BenefitExpirationDate = now.AddDays(85);
-                app.Last4DigitsOfCard = "5533";
                 app.Children = new List<Child>
                 {
                     new Child { FirstName = "Sofia", LastName = "Morales" }
@@ -830,7 +854,7 @@ public class MockHouseholdRepository : IHouseholdRepository
                 HouseholdFactory.CreateSummerEbtCase("Sofia", "Morales", "NSLP", c =>
                 {
                     c.IssuanceType = IssuanceType.SummerEbt;
-                    c.EbtCardStatus = "NotActivated";
+                    c.EbtCardStatus = CardStatus.NotActivated;
                 })
             };
         });
@@ -850,13 +874,8 @@ public class MockHouseholdRepository : IHouseholdRepository
             if (app != null)
             {
                 app.IssuanceType = IssuanceType.SummerEbt;
-                app.CardStatus = CardStatus.DeactivatedByState;
                 app.BenefitIssueDate = now.AddDays(-40);
                 app.BenefitExpirationDate = now.AddDays(50);
-                app.Last4DigitsOfCard = "6644";
-                app.CardRequestedAt = now.AddDays(-60);
-                app.CardMailedAt = now.AddDays(-55);
-                app.CardDeactivatedAt = now.AddDays(-10);
                 app.Children = new List<Child>
                 {
                     new Child { FirstName = "Diego", LastName = "Navarro" }
@@ -874,7 +893,7 @@ public class MockHouseholdRepository : IHouseholdRepository
                 HouseholdFactory.CreateSummerEbtCase("Diego", "Navarro", "NSLP", c =>
                 {
                     c.IssuanceType = IssuanceType.SummerEbt;
-                    c.EbtCardStatus = "DeactivatedByState";
+                    c.EbtCardStatus = CardStatus.DeactivatedByState;
                 })
             };
         });
@@ -896,13 +915,8 @@ public class MockHouseholdRepository : IHouseholdRepository
             if (app != null)
             {
                 app.IssuanceType = IssuanceType.SummerEbt;
-                app.CardStatus = CardStatus.Active;
                 app.BenefitIssueDate = now.AddDays(-25);
                 app.BenefitExpirationDate = now.AddDays(65);
-                app.Last4DigitsOfCard = "7755";
-                app.CardRequestedAt = now.AddDays(-45);
-                app.CardMailedAt = now.AddDays(-40);
-                app.CardActivatedAt = now.AddDays(-30);
                 app.Children = new List<Child>
                 {
                     new Child { FirstName = "Camila", LastName = "Ortiz" }
@@ -920,7 +934,7 @@ public class MockHouseholdRepository : IHouseholdRepository
                 HouseholdFactory.CreateSummerEbtCase("Camila", "Ortiz", "NSLP", c =>
                 {
                     c.IssuanceType = IssuanceType.SummerEbt;
-                    c.EbtCardStatus = "Active";
+                    c.EbtCardStatus = CardStatus.Active;
                 })
             };
         });
@@ -942,13 +956,8 @@ public class MockHouseholdRepository : IHouseholdRepository
                 if (app != null)
                 {
                     app.IssuanceType = IssuanceType.SummerEbt;
-                    app.CardStatus = CardStatus.Active;
                     app.BenefitIssueDate = now.AddDays(-25);
                     app.BenefitExpirationDate = now.AddDays(65);
-                    app.Last4DigitsOfCard = "7777";
-                    app.CardRequestedAt = now.AddDays(-40);
-                    app.CardMailedAt = now.AddDays(-35);
-                    app.CardActivatedAt = now.AddDays(-25);
                     app.Children = new List<Child>
                     {
                     new Child { FirstName = "Noah", LastName = "Reyes" },
@@ -988,13 +997,8 @@ public class MockHouseholdRepository : IHouseholdRepository
                 if (app != null)
                 {
                     app.IssuanceType = IssuanceType.SummerEbt;
-                    app.CardStatus = CardStatus.Lost;
                     app.BenefitIssueDate = now.AddDays(-30);
                     app.BenefitExpirationDate = now.AddDays(60);
-                    app.Last4DigitsOfCard = "8888";
-                    app.CardRequestedAt = now.AddDays(-50);
-                    app.CardMailedAt = now.AddDays(-45);
-                    app.CardActivatedAt = now.AddDays(-30);
                     app.Children = new List<Child>
                     {
                     new Child { FirstName = "Ethan", LastName = "Park" }
@@ -1013,7 +1017,7 @@ public class MockHouseholdRepository : IHouseholdRepository
                     HouseholdFactory.CreateSummerEbtCase("Ethan", "Park", "NSLP", c =>
                     {
                         c.IssuanceType = IssuanceType.SummerEbt;
-                        c.EbtCardStatus = "Lost";
+                        c.EbtCardStatus = CardStatus.Lost;
                     })
                 };
             });
@@ -1031,13 +1035,8 @@ public class MockHouseholdRepository : IHouseholdRepository
                 if (app != null)
                 {
                     app.IssuanceType = IssuanceType.SummerEbt;
-                    app.CardStatus = CardStatus.Active;
                     app.BenefitIssueDate = now.AddDays(-20);
                     app.BenefitExpirationDate = now.AddDays(70);
-                    app.Last4DigitsOfCard = "5599";
-                    app.CardRequestedAt = now.AddDays(-35);
-                    app.CardMailedAt = now.AddDays(-30);
-                    app.CardActivatedAt = now.AddDays(-20);
                     app.Children = new List<Child>
                     {
                         new Child { FirstName = "Aiden", LastName = "Chen" },
@@ -1090,7 +1089,6 @@ public class MockHouseholdRepository : IHouseholdRepository
                     {
                         app.BenefitIssueDate = now.AddDays(-20);
                         app.BenefitExpirationDate = now.AddDays(122);
-                        app.CardStatus = CardStatus.Active;
                         app.Children = dcChildFaker.Generate(1);
                         var dcChild = app.Children.First();
                         h.SummerEbtCases = new List<SummerEbtCase>
@@ -1210,6 +1208,7 @@ public class MockHouseholdRepository : IHouseholdRepository
                 IsCoLoaded = sec.IsCoLoaded,
                 IsStreamlineCertified = sec.IsStreamlineCertified,
                 EbtCaseNumber = sec.EbtCaseNumber,
+                CaseDisplayNumber = sec.CaseDisplayNumber,
                 EbtCardLastFour = sec.EbtCardLastFour,
                 EbtCardStatus = sec.EbtCardStatus,
                 EbtCardIssueDate = sec.EbtCardIssueDate,
@@ -1230,14 +1229,9 @@ public class MockHouseholdRepository : IHouseholdRepository
                 ApplicationNumber = a.ApplicationNumber,
                 CaseNumber = a.CaseNumber,
                 ApplicationStatus = a.ApplicationStatus,
+                ApplicationDate = a.ApplicationDate,
                 BenefitIssueDate = a.BenefitIssueDate,
                 BenefitExpirationDate = a.BenefitExpirationDate,
-                Last4DigitsOfCard = a.Last4DigitsOfCard,
-                CardStatus = a.CardStatus,
-                CardRequestedAt = a.CardRequestedAt,
-                CardMailedAt = a.CardMailedAt,
-                CardActivatedAt = a.CardActivatedAt,
-                CardDeactivatedAt = a.CardDeactivatedAt,
                 // If application-level issuance type isn't set, inherit from the
                 // household-level BenefitIssuanceType (both enums share the same values)
                 IssuanceType = a.IssuanceType != IssuanceType.Unknown

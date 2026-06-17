@@ -5,25 +5,30 @@ import { useTranslation } from 'react-i18next'
 
 import { ConfirmAddress } from '@/features/cards/components/ConfirmAddress'
 import { useHouseholdData } from '@/features/household'
+import { useFlowStartAnalytics } from '@/hooks/useFlowStartAnalytics'
+import { AnalyticsEvents } from '@sebt/analytics'
 import { Alert } from '@sebt/design-system'
 
 export default function CardReplacePage() {
-  const { t: tCommon } = useTranslation('common')
+  const { t: tDev } = useTranslation('dev')
+  const { t: tValidation } = useTranslation('validation')
   const searchParams = useSearchParams()
   const { data, isLoading, isError } = useHouseholdData()
 
   const caseId = searchParams.get('case')
+  const summerEbtCase = data?.summerEbtCases.find((c) => c.summerEBTCaseID === caseId)
+  const address = data?.addressOnFile
+  const isReady = !isLoading && !isError && !!data && !!caseId && !!summerEbtCase && !!address
+
+  useFlowStartAnalytics(AnalyticsEvents.CARD_REPLACEMENT_START, isReady)
 
   if (isLoading) {
-    return <p>{tCommon('loading', 'Loading...')}</p>
+    return <p>{tDev('loading')}</p>
   }
 
   if (isError || !data || !caseId) {
-    return <Alert variant="error">Unable to load card details. Please try again.</Alert>
+    return <Alert variant="error">{tValidation('globalInternalError')}</Alert>
   }
-
-  const summerEbtCase = data.summerEbtCases.find((c) => c.summerEBTCaseID === caseId)
-  const address = data.addressOnFile
 
   if (!summerEbtCase || !address) {
     return (
