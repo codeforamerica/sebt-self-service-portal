@@ -73,7 +73,15 @@ const nextConfig: NextConfig = {
   ...(process.env.BUILD_STANDALONE === 'true' && { output: 'standalone' as const }),
   poweredByHeader: false,
   reactStrictMode: true,
-  headers: getRouteHeaders
+  headers: getRouteHeaders,
+  async redirects() {
+    return [
+      // Bots and stray links probe /index.html (a legacy SPA entry point the App
+      // Router never serves); redirect to the homepage so these don't 404.
+      // Temporary (307) so it isn't cached in clients' browsers and stays easy to change.
+      { source: '/index.html', destination: '/', permanent: false }
+    ]
+  }
 }
 
 export default withBundleAnalyzer(nextConfig)
