@@ -105,6 +105,22 @@ function COFooter({ state = 'co' }: FooterProps) {
             {t('copyrite')}
             {' | '}
             <Link
+              href={links.help.helpDeskEmail ?? '#'}
+              className="usa-link text-ink text-underline"
+            >
+              {t('titleContactUs')}
+            </Link>
+            {' | '}
+            <Link
+              href={links.footer.digitalAccessibility ?? '#'}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="usa-link text-ink text-underline"
+            >
+              {t('linkAccessibility')}
+            </Link>
+            {' | '}
+            <Link
               href={links.footer.transparencyOnline ?? '#'}
               target="_blank"
               rel="noopener noreferrer"

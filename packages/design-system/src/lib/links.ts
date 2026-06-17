@@ -77,9 +77,9 @@ const stateLinks: Record<string, StateLinks> = {
       digitalAccessibility: 'https://cdhs.colorado.gov/accessibility-at-cdhs'
     },
     help: {
-      faqs: '',
+      faqs: 'https://cdhs.colorado.gov/summer-ebt-faq',
       contactUs: '',
-      helpDeskEmail: ''
+      helpDeskEmail: 'mailto:cdhs_sebt_supportcenter@state.co.us'
     },
     external: {
       contactUsAssistance: '#'
