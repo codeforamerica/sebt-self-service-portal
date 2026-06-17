@@ -17,8 +17,11 @@ services:
       # Do NOT include this in connection strings for deployed environments (UAT, production).
       - ConnectionStrings__DefaultConnection=Server=${MSSQL_SERVER:-mssql},${MSSQL_PORT:-1433};Database=${MSSQL_DATABASE:-SebtPortal};User Id=${MSSQL_USER:-sa};Password=${MSSQL_SA_PASSWORD:-YourStrong@Passw0rd};TrustServerCertificate=True;
       - SmtpClientSettings__SmtpServer=mailpit
+      - Redis__Host=redis
     depends_on:
       mssql:
+        condition: service_healthy
+      redis:
         condition: service_healthy
     networks:
       - sebt.portal.api

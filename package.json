@@ -36,7 +36,10 @@
     "ci:validate": "./act-test.sh dry-run",
     "check:cooldown-exclusions": "tsx scripts/security/check-cooldown-exclusions.ts",
     "test:scripts": "tsx --test scripts/**/*.test.ts",
-    "prepare": "husky"
+    "prepare": "husky",
+    "claude:api:build": "dotnet build --nodeReuse:false -maxcpucount:1",
+    "claude:api:test": "dotnet test --nodeReuse:false -maxcpucount:1",
+    "claude:api:test:unit": "dotnet test --nodeReuse:false -maxcpucount:1 --filter \"Category!=SqlServer&Category!=Socure&Category!=Integration\""
   },
   "devDependencies": {
     "concurrently": "^9.2.1",
