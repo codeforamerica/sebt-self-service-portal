@@ -1,5 +1,6 @@
 using Microsoft.Extensions.Logging;
 using Microsoft.FeatureManagement;
+using SEBT.Portal.Core.AppSettings;
 using SEBT.Portal.Kernel.Services;
 
 namespace SEBT.Portal.Infrastructure.Services;
@@ -14,18 +15,22 @@ namespace SEBT.Portal.Infrastructure.Services;
 public class FeatureFlagQueryService : IFeatureFlagQueryService
 {
     private readonly IFeatureManager _featureManager;
+    private readonly IOutageScheduleEvaluator _outageScheduleEvaluator;
     private readonly ILogger<FeatureFlagQueryService> _logger;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="FeatureFlagQueryService"/> class.
     /// </summary>
     /// <param name="featureManager">The feature manager from Microsoft.FeatureManagement.</param>
+    /// <param name="outageScheduleEvaluator">Evaluates whether a scheduled outage window is active.</param>
     /// <param name="logger">The logger.</param>
     public FeatureFlagQueryService(
         IFeatureManager featureManager,
+        IOutageScheduleEvaluator outageScheduleEvaluator,
         ILogger<FeatureFlagQueryService> logger)
     {
         _featureManager = featureManager;
+        _outageScheduleEvaluator = outageScheduleEvaluator;
         _logger = logger;
     }
 
@@ -75,6 +80,13 @@ public class FeatureFlagQueryService : IFeatureFlagQueryService
         {
             _logger.LogError(ex, "Failed to retrieve feature flags");
             throw;
+        }
+
+        // Auto-enable the outage page during a scheduled outage window without requiring a manual
+        // flag toggle. OR semantics: a manual "true" still wins, and the key is added if absent.
+        if (_outageScheduleEvaluator.IsOutageActive())
+        {
+            flags[FeatureFlags.OutagePageEnabled] = true;
         }
 
         return flags;
