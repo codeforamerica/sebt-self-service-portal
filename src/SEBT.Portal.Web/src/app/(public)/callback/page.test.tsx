@@ -194,6 +194,14 @@ describe('CallbackPage', () => {
 
   describe('IdP error redirect (?error=)', () => {
     it('redirects to step-up failure for server_error with description', async () => {
+      const reportBodies: unknown[] = []
+      server.use(
+        http.post('/api/auth/oidc/report-failure', async ({ request }) => {
+          reportBodies.push(await request.json())
+          return new HttpResponse(null, { status: 204 })
+        })
+      )
+
       Object.defineProperty(window, 'location', {
         value: {
           search: '?error=server_error&error_description=User+cancelled',
@@ -206,6 +214,11 @@ describe('CallbackPage', () => {
 
       await waitFor(() => {
         expect(mockReplace).toHaveBeenCalledWith(OIDC_CALLBACK_ERROR_OFF_BOARDING)
+        expect(reportBodies).toContainEqual({
+          reason: 'idp_redirect',
+          idpError: 'server_error',
+          idpErrorDescription: 'User cancelled'
+        })
       })
     })
 

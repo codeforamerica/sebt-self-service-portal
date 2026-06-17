@@ -73,12 +73,33 @@ vi.mock('@/features/auth', () => ({
   useAuth: () => ({ isAuthenticated: false })
 }))
 
+// Spy on the data layer so we can assert OIDC_START fires from the CO buttons
+// without booting a real DataLayer instance.
+const mockTrackEvent = vi.fn()
+vi.mock('@sebt/analytics', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@sebt/analytics')>()
+  return {
+    ...actual,
+    useDataLayer: () => ({
+      trackEvent: mockTrackEvent,
+      pageLoad: vi.fn(),
+      setPageData: vi.fn(),
+      setPageCategory: vi.fn(),
+      setPageAttribute: vi.fn(),
+      setUserData: vi.fn(),
+      setUserProfile: vi.fn(),
+      get: vi.fn()
+    })
+  }
+})
+
 import { getState } from '@sebt/design-system'
 const mockGetState = vi.mocked(getState)
 
 describe('LoginPage', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    mockTrackEvent.mockClear()
     mockLanguage = 'en'
   })
 
@@ -138,6 +159,35 @@ describe('LoginPage', () => {
     it('does not render LoginForm', () => {
       render(<LoginPage />)
       expect(screen.queryByTestId('login-form')).not.toBeInTheDocument()
+    })
+
+    describe('analytics', () => {
+      it('tags both auth buttons with data-analytics-cta for cta_click tracking', () => {
+        render(<LoginPage />)
+        const primary = screen.getByRole('button', { name: /Log in with myColorado/i })
+        const secondary = screen.getByRole('button', { name: /Iniciar sesión con myColorado/i })
+
+        expect(primary).toHaveAttribute('data-analytics-cta', 'login_cta')
+        expect(secondary).toHaveAttribute('data-analytics-cta', 'login_cta_alt_lang')
+      })
+
+      it('fires oidc_start when the primary auth button is clicked', () => {
+        render(<LoginPage />)
+        const primary = screen.getByRole('button', { name: /Log in with myColorado/i })
+
+        primary.click()
+
+        expect(mockTrackEvent).toHaveBeenCalledWith('oidc_start')
+      })
+
+      it('fires oidc_start when the secondary auth button is clicked', () => {
+        render(<LoginPage />)
+        const secondary = screen.getByRole('button', { name: /Iniciar sesión con myColorado/i })
+
+        secondary.click()
+
+        expect(mockTrackEvent).toHaveBeenCalledWith('oidc_start')
+      })
     })
 
     describe('language routing', () => {

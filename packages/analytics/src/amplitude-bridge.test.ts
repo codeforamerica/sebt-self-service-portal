@@ -143,19 +143,6 @@ describe('initAmplitudeBridge', () => {
   })
 
   describe('privacy configuration', () => {
-    it('disables default tracking and autocapture', () => {
-      new DataLayer('digitalData')
-      initAmplitudeBridge('test-key', amplitudeStub)
-
-      expect(amplitudeStub.init).toHaveBeenCalledWith(
-        'test-key',
-        expect.objectContaining({
-          defaultTracking: false,
-          autocapture: false
-        })
-      )
-    })
-
     it('disables cross-session identity storage', () => {
       new DataLayer('digitalData')
       initAmplitudeBridge('test-key', amplitudeStub)

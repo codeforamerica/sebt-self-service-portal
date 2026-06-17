@@ -42,7 +42,7 @@ export function SuggestedAddress() {
     validationResult,
     enteredAddress,
     setAddress,
-    clearValidationResult,
+    clearValidationOutcome,
     continuePath,
     formPath
   } = useAddressFlow()
@@ -108,7 +108,7 @@ export function SuggestedAddress() {
   }
 
   function handleBack() {
-    clearValidationResult()
+    clearValidationOutcome()
     router.push(formPath)
   }
 

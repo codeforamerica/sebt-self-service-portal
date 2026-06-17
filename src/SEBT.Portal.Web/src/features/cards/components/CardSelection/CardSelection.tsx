@@ -55,14 +55,16 @@ export function CardSelection({ confirmPath = 'select/confirm' }: CardSelectionP
   const { data, isLoading, isError } = useHouseholdData()
 
   const [selectedCases, setSelectedCases] = useState<Set<string>>(new Set())
-  const [error, setError] = useState<string | null>(null)
+  // Store the i18n key (not the resolved string) so the error re-translates at render
+  // time when the user switches language (DC-454).
+  const [errorKey, setErrorKey] = useState<string | null>(null)
   const errorRef = useRef<HTMLSpanElement>(null)
 
   useEffect(() => {
-    if (error) {
+    if (errorKey) {
       errorRef.current?.focus()
     }
-  }, [error])
+  }, [errorKey])
 
   if (isLoading) {
     return <p>{tDev('loading')}</p>
@@ -109,14 +111,14 @@ export function CardSelection({ confirmPath = 'select/confirm' }: CardSelectionP
       }
       return next
     })
-    setError(null)
+    setErrorKey(null)
   }
 
   function handleSubmit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault()
 
     if (selectedCases.size === 0) {
-      setError(tCommon('helperSelectAtLeastOne'))
+      setErrorKey('helperSelectAtLeastOne')
       return
     }
 
@@ -136,14 +138,14 @@ export function CardSelection({ confirmPath = 'select/confirm' }: CardSelectionP
       <fieldset
         className="usa-fieldset"
         aria-label={tOptional('labelSelectCards')}
-        aria-describedby={error ? 'card-selection-error' : undefined}
+        aria-describedby={errorKey ? 'card-selection-error' : undefined}
       >
         <legend className="usa-legend">
           {tOptional('labelSelectCards')}
           <span className="text-secondary-dark"> *</span>
         </legend>
 
-        {error && (
+        {errorKey && (
           <span
             ref={errorRef}
             id="card-selection-error"
@@ -151,7 +153,7 @@ export function CardSelection({ confirmPath = 'select/confirm' }: CardSelectionP
             role="alert"
             tabIndex={-1}
           >
-            {error}
+            {tCommon(errorKey)}
           </span>
         )}
 

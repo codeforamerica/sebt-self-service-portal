@@ -8,8 +8,9 @@ using SEBT.Portal.Kernel.Results;
 
 namespace SEBT.Portal.Tests.Unit.Services;
 
-public class EmailSenderServiceTests
+public class EmailSenderServiceTests : IDisposable
 {
+    private readonly string? _previousState;
     private readonly IOptionsMonitor<EmailOtpSenderServiceSettings> _optionsMonitor =
         Substitute.For<IOptionsMonitor<EmailOtpSenderServiceSettings>>();
     private readonly ILogger<EmailOtpSenderService> _logger = Substitute.For<ILogger<EmailOtpSenderService>>();
@@ -17,6 +18,12 @@ public class EmailSenderServiceTests
 
     public EmailSenderServiceTests()
     {
+        // EmailOtpSenderService.LoadTranslations() reads STATE to pick which embedded
+        // resource to load. Cleared in Dispose so this test does not pollute STATE
+        // for other tests that run in parallel — without that cleanup, any
+        // WebApplicationFactory-based test building its host concurrently can read
+        // STATE=dc and load appsettings.dc.json with the wrong PluginAssemblyPaths.
+        _previousState = Environment.GetEnvironmentVariable("STATE");
         Environment.SetEnvironmentVariable("STATE", "dc");
         _optionsMonitor.CurrentValue.Returns(new EmailOtpSenderServiceSettings { SenderEmail = "sender@example.com" });
         _smtpClientService.SendEmailAsync(
@@ -212,5 +219,10 @@ public class EmailSenderServiceTests
             Arg.Any<string>(),
             Arg.Is<string>(body => body.Contains("alt=\"DC SUN Bucks\"")),
             Arg.Any<IEnumerable<EmailLinkedResource>>());
+    }
+
+    public void Dispose()
+    {
+        Environment.SetEnvironmentVariable("STATE", _previousState);
     }
 }
