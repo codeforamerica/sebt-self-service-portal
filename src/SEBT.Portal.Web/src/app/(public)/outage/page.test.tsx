@@ -58,6 +58,12 @@ describe('OutagePageContent', () => {
       })
     ).toBeInTheDocument()
     expect(screen.getByText('Estamos en mantenimiento y volveremos en breve.')).toBeInTheDocument()
+    expect(
+      screen.getByText('Try waiting a few hours and come back to this page.')
+    ).toBeInTheDocument()
+    expect(
+      screen.getByText('Le rogamos que espere unas horas y vuelva a esta página.')
+    ).toBeInTheDocument()
     expect(screen.getByRole('img', { name: 'District of Columbia SUN Bucks' })).toBeInTheDocument()
 
     const footerLink = screen.getByRole('link', { name: /sunbucks\.dc\.gov\/page\/contact-us/i })
