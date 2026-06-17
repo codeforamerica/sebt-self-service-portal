@@ -27,7 +27,9 @@ export function ConfirmRequest({ cases, address, onBack }: ConfirmRequestProps) 
   const currentState = getState()
   const mutation = useRequestCardReplacement()
   const { setPageData, trackEvent } = useDataLayer()
-  const [error, setError] = useState<string | null>(null)
+  // Store the i18n key (not the resolved string) so the banner re-translates at render
+  // time when the user switches language (DC-454).
+  const [errorKey, setErrorKey] = useState<string | null>(null)
 
   const caseRefs = cases
     .filter((c): c is SummerEbtCase & { summerEBTCaseID: string } => c.summerEBTCaseID != null)
@@ -38,7 +40,7 @@ export function ConfirmRequest({ cases, address, onBack }: ConfirmRequestProps) 
     }))
 
   function handleSubmit() {
-    setError(null)
+    setErrorKey(null)
     mutation.mutate(
       { caseRefs },
       {
@@ -48,7 +50,7 @@ export function ConfirmRequest({ cases, address, onBack }: ConfirmRequestProps) 
         },
         onError: (err) => {
           trackCardReplacementSubmit({ setPageData, trackEvent }, err)
-          setError(tDashboard('alertCardReplaceError'))
+          setErrorKey('alertCardReplaceError')
         }
       }
     )
@@ -111,12 +113,12 @@ export function ConfirmRequest({ cases, address, onBack }: ConfirmRequestProps) 
         </div>
       </div>
 
-      {error && (
+      {errorKey && (
         <Alert
           variant="error"
           className="margin-top-3"
         >
-          {error}
+          {tDashboard(errorKey)}
         </Alert>
       )}
 

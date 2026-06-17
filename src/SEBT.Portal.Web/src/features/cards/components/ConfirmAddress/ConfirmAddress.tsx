@@ -28,14 +28,16 @@ export function ConfirmAddress({
   const router = useRouter()
 
   const [selection, setSelection] = useState<'yes' | 'no' | null>(null)
-  const [error, setError] = useState<string | null>(null)
+  // Store the i18n key (not the resolved string) so the error re-translates at render
+  // time when the user switches language (DC-454).
+  const [errorKey, setErrorKey] = useState<string | null>(null)
   const errorRef = useRef<HTMLSpanElement>(null)
 
   useEffect(() => {
-    if (error) {
+    if (errorKey) {
       errorRef.current?.focus()
     }
-  }, [error])
+  }, [errorKey])
 
   const currentState = getState()
   const childName =
@@ -53,7 +55,7 @@ export function ConfirmAddress({
     e.preventDefault()
 
     if (selection === null) {
-      setError(t('selectOption'))
+      setErrorKey('selectOption')
       return
     }
 
@@ -94,14 +96,14 @@ export function ConfirmAddress({
       <fieldset
         className="usa-fieldset"
         aria-label={tCommon('selectOne')}
-        aria-describedby={error ? 'confirm-address-error' : undefined}
+        aria-describedby={errorKey ? 'confirm-address-error' : undefined}
       >
         <legend className="usa-legend text-bold">
           {tCommon('selectOne')}
           <span className="text-secondary-dark"> *</span>
         </legend>
 
-        {error && (
+        {errorKey && (
           <span
             ref={errorRef}
             id="confirm-address-error"
@@ -109,7 +111,7 @@ export function ConfirmAddress({
             role="alert"
             tabIndex={-1}
           >
-            {error}
+            {t(errorKey)}
           </span>
         )}
 
@@ -123,7 +125,7 @@ export function ConfirmAddress({
             checked={selection === 'yes'}
             onChange={() => {
               setSelection('yes')
-              setError(null)
+              setErrorKey(null)
             }}
           />
           <label
@@ -144,7 +146,7 @@ export function ConfirmAddress({
             checked={selection === 'no'}
             onChange={() => {
               setSelection('no')
-              setError(null)
+              setErrorKey(null)
             }}
           />
           <label
