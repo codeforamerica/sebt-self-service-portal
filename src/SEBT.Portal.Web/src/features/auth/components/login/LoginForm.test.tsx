@@ -8,10 +8,15 @@
  * - Error handling for various scenarios
  */
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { render, screen, waitFor } from '@testing-library/react'
+import { act, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
+import { i18n } from '@sebt/design-system/client'
+
+import amDcValidation from '@/content/locales/am/dc/validation.json'
+import enDcValidation from '@/content/locales/en/dc/validation.json'
+import esDcValidation from '@/content/locales/es/dc/validation.json'
 import { TEST_EMAILS } from '@/mocks/handlers'
 
 import { LoginForm } from './LoginForm'
@@ -201,6 +206,68 @@ describe('LoginForm', () => {
       await waitFor(() => {
         expect(mockTrackEvent).toHaveBeenCalledWith('otp_request')
       })
+    })
+  })
+
+  describe('Error language switching (DC-454)', () => {
+    // The i18n instance is a shared singleton; reset to English so sibling tests
+    // (which assume English labels) aren't affected by a lingering Spanish switch.
+    afterEach(async () => {
+      await act(async () => {
+        await i18n.changeLanguage('en')
+      })
+    })
+
+    it('re-translates the submit error across all DC languages, without resubmitting', async () => {
+      const user = userEvent.setup()
+      renderWithProviders(<LoginForm />)
+
+      const emailInput = screen.getByRole('textbox', { name: /enter your email address/i })
+      const submitButton = screen.getByRole('button', { name: /continue/i })
+
+      // 429 (rate limit) is a client error: the request hook does not retry it, so the error
+      // surfaces deterministically. Any API failure maps to the translatable globalInternalError
+      // copy (not the raw English backend text). Assert against the locale JSON for each DC language.
+      await user.type(emailInput, TEST_EMAILS.rateLimit)
+      await user.click(submitButton)
+
+      expect(await screen.findByText(enDcValidation.globalInternalError)).toBeInTheDocument()
+
+      // Cycle DC languages with the error on screen — no resubmit.
+      await act(async () => {
+        await i18n.changeLanguage('es')
+      })
+      expect(await screen.findByText(esDcValidation.globalInternalError)).toBeInTheDocument()
+
+      await act(async () => {
+        await i18n.changeLanguage('am')
+      })
+      expect(await screen.findByText(amDcValidation.globalInternalError)).toBeInTheDocument()
+      expect(screen.queryByText(enDcValidation.globalInternalError)).toBeNull()
+    })
+
+    it('re-translates the email validation error across all DC languages', async () => {
+      const user = userEvent.setup()
+      renderWithProviders(<LoginForm />)
+
+      const emailInput = screen.getByRole('textbox', { name: /enter your email address/i })
+      const submitButton = screen.getByRole('button', { name: /continue/i })
+
+      await user.type(emailInput, 'not-an-email')
+      await user.click(submitButton)
+
+      expect(await screen.findByText(enDcValidation.enterEmail)).toBeInTheDocument()
+
+      await act(async () => {
+        await i18n.changeLanguage('es')
+      })
+      expect(await screen.findByText(esDcValidation.enterEmail)).toBeInTheDocument()
+
+      await act(async () => {
+        await i18n.changeLanguage('am')
+      })
+      expect(await screen.findByText(amDcValidation.enterEmail)).toBeInTheDocument()
+      expect(screen.queryByText(enDcValidation.enterEmail)).toBeNull()
     })
   })
 

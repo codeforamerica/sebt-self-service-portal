@@ -258,10 +258,11 @@ public class UpdateAddressCommandHandler(
 
             if (updateResult.IsPolicyRejection)
             {
-                logger.LogWarning(
-                    "Address update policy rejection for household identifier kind {Kind}: {ErrorCode}",
+                logger.LogError(
+                    "Address update policy rejection for household identifier kind {Kind}: {ErrorCode} - {ErrorDetail}",
                     identifierKind,
-                    updateResult.ErrorCode);
+                    updateResult.ErrorCode,
+                    updateResult.ErrorMessage);
                 return Result<AddressValidationResult>.PreconditionFailed(PreconditionFailedReason.Conflict, updateResult.ErrorMessage);
             }
 

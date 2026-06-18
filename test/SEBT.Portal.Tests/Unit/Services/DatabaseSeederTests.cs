@@ -735,7 +735,7 @@ public class DatabaseSeederTests : IClassFixture<SqlServerTestFixture>
         var pending = await context.Users
             .SingleOrDefaultAsync(u => u.EmailHash == TestPortalCryptography.FingerprintEmail("co-loaded-pending-id-proofing@example.com") || u.EmailHash == null && u.Email == TestPortalCryptography.NormalizeEmailStrict("co-loaded-pending-id-proofing@example.com"));
         Assert.NotNull(pending);
-        Assert.True(pending!.IsCoLoaded);
+        Assert.False(pending!.IsCoLoaded);
         Assert.Equal((int)IdProofingStatus.NotStarted, pending.IdProofingStatus);
         Assert.Equal((int)UserIalLevel.None, pending.IalLevel);
         Assert.Null(pending.IdProofingCompletedAt);

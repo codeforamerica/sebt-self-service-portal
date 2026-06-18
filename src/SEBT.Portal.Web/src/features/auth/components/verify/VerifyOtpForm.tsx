@@ -28,9 +28,11 @@ export function VerifyOtpForm({ email, contactLink }: VerifyOtpFormProps) {
   const { t: tValidation } = useTranslation('validation')
 
   const [otp, setOtp] = useState('')
-  const [fieldError, setFieldError] = useState<string | null>(null)
-  const [submitError, setSubmitError] = useState<string | null>(null)
-  const [successMessage, setSuccessMessage] = useState<string | null>(null)
+  // Error/status state holds `validation` namespace keys (not resolved strings) so the
+  // messages re-translate at render time when the user switches language (DC-454).
+  const [fieldErrorKey, setFieldErrorKey] = useState<string | null>(null)
+  const [submitErrorKey, setSubmitErrorKey] = useState<string | null>(null)
+  const [successMessageKey, setSuccessMessageKey] = useState<string | null>(null)
 
   const [count, { startCountdown, resetCountdown }] = useCountdown({
     countStart: RESEND_COOLDOWN_SECONDS,
@@ -42,31 +44,29 @@ export function VerifyOtpForm({ email, contactLink }: VerifyOtpFormProps) {
   const requestOtp = useRequestOtp()
   const { setPageData, setUserData, trackEvent } = useDataLayer()
 
-  const validateCode = useCallback(
-    (value: string): string | null => {
-      if (!value.trim()) {
-        return tValidation('required')
-      }
-      const result = ValidateOtpRequestSchema.shape.otp.safeParse(value)
-      if (!result.success) {
-        return tValidation('otpInvalid')
-      }
-      return null
-    },
-    [tValidation]
-  )
+  // Returns a `validation` namespace key (resolved at render), or null when valid.
+  const validateCode = useCallback((value: string): string | null => {
+    if (!value.trim()) {
+      return 'required'
+    }
+    const result = ValidateOtpRequestSchema.shape.otp.safeParse(value)
+    if (!result.success) {
+      return 'otpInvalid'
+    }
+    return null
+  }, [])
 
   async function handleSubmit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault()
-    setSubmitError(null)
-    setSuccessMessage(null)
+    setSubmitErrorKey(null)
+    setSuccessMessageKey(null)
 
-    const error = validateCode(otp)
-    if (error) {
-      setFieldError(error)
+    const errorKey = validateCode(otp)
+    if (errorKey) {
+      setFieldErrorKey(errorKey)
       return
     }
-    setFieldError(null)
+    setFieldErrorKey(null)
 
     trackEvent(AnalyticsEvents.OTP_CHALLENGE)
 
@@ -80,7 +80,7 @@ export function VerifyOtpForm({ email, contactLink }: VerifyOtpFormProps) {
         setPageData('otp_status', 'error')
         setUserData('authenticated', false, ['default', 'analytics'])
         trackEvent(AnalyticsEvents.OTP_RESULT)
-        setSubmitError(tValidation('globalInternalError'))
+        setSubmitErrorKey('globalInternalError')
         return
       }
       trackEvent(AnalyticsEvents.OTP_RESULT)
@@ -91,11 +91,13 @@ export function VerifyOtpForm({ email, contactLink }: VerifyOtpFormProps) {
     } catch (err) {
       setPageData('otp_status', 'error')
       trackEvent(AnalyticsEvents.OTP_RESULT)
-      if (err instanceof ApiError) {
-        setSubmitError(err.message)
-      } else {
-        setSubmitError(tValidation('globalInternalError'))
-      }
+      // A 401 means the code was wrong or expired — both resolve to the actionable
+      // "enter a valid code, request a new one" copy. Other failures get the generic
+      // internal-error message. Both are i18n keys resolved at render so they follow a
+      // language switch (DC-454); raw backend messages are English-only and would freeze.
+      setSubmitErrorKey(
+        err instanceof ApiError && err.status === 401 ? 'otpInvalid' : 'globalInternalError'
+      )
     }
   }
 
@@ -106,24 +108,22 @@ export function VerifyOtpForm({ email, contactLink }: VerifyOtpFormProps) {
   async function handleResend() {
     if (isCountdownActive) return
 
-    setSubmitError(null)
-    setSuccessMessage(null)
+    setSubmitErrorKey(null)
+    setSuccessMessageKey(null)
 
     trackEvent(AnalyticsEvents.OTP_REQUEST)
 
     try {
       await requestOtp.mutateAsync({ email, locale: i18n.language })
-      // TODO: "codeSentSuccess" value exists in CSV but under a broken row key ("VALIDATION -" with no key name) — needs CSV fix
-      setSuccessMessage(tLogin('codeSentSuccess', 'A new code has been sent to your email.'))
+      // validation:newCode carries the intended "A new code has been sent" copy in every
+      // language; resolved at render so it follows a language switch (DC-454). The
+      // login:codeSentSuccess row in the content sheet is malformed — tracked separately.
+      setSuccessMessageKey('newCode')
       resetCountdown()
       startCountdown()
       setHasStartedCountdown(true)
-    } catch (err) {
-      if (err instanceof ApiError) {
-        setSubmitError(err.message)
-      } else {
-        setSubmitError(tValidation('globalInternalError'))
-      }
+    } catch {
+      setSubmitErrorKey('globalInternalError')
     }
   }
 
@@ -136,23 +136,23 @@ export function VerifyOtpForm({ email, contactLink }: VerifyOtpFormProps) {
       className="usa-form maxw-full text-left"
       onSubmit={handleSubmit}
     >
-      {submitError && (
+      {submitErrorKey && (
         <Alert
           variant="error"
           slim
           className="margin-bottom-2"
         >
-          {submitError}
+          {tValidation(submitErrorKey)}
         </Alert>
       )}
 
-      {successMessage && (
+      {successMessageKey && (
         <Alert
           variant="success"
           slim
           className="margin-bottom-2"
         >
-          {successMessage}
+          {tValidation(successMessageKey)}
         </Alert>
       )}
 
@@ -166,10 +166,10 @@ export function VerifyOtpForm({ email, contactLink }: VerifyOtpFormProps) {
         maxLength={6}
         value={otp}
         onChange={(e) => setOtp(e.target.value)}
-        onBlur={() => setFieldError(validateCode(otp))}
+        onBlur={() => setFieldErrorKey(validateCode(otp))}
         disabled={isSubmitting}
         className="maxw-full"
-        {...(fieldError ? { error: fieldError } : {})}
+        {...(fieldErrorKey ? { error: tValidation(fieldErrorKey) } : {})}
       />
 
       {/* Confirm button */}

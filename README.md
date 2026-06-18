@@ -169,6 +169,20 @@ pnpm ci:test:frontend    # Test frontend only
 pnpm ci:test:backend     # Test backend only
 ```
 
+### Warnings as errors
+
+The .NET solution is configured with `<TreatWarningsAsErrors>true</TreatWarningsAsErrors>` in `Directory.Build.props`. Any compiler warning will fail the build.
+
+If you need to allow a specific warning code, demote it back to a warning in the affected `.csproj`:
+
+```xml
+<PropertyGroup>
+  <WarningsNotAsErrors>$(WarningsNotAsErrors);CS1591</WarningsNotAsErrors>
+</PropertyGroup>
+```
+
+Prefer this over `<NoWarn>`, which silences the warning entirely.
+
 ### CI Testing (Local)
 
 ```bash
