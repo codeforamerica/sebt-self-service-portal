@@ -4,7 +4,6 @@ import { useRouter } from 'next/navigation'
 import { useState, type FormEvent } from 'react'
 import { useTranslation } from 'react-i18next'
 
-import { ApiError } from '@/api/client'
 import { AnalyticsEvents, useDataLayer } from '@sebt/analytics'
 import { Alert, Button, InputField } from '@sebt/design-system'
 
@@ -16,33 +15,36 @@ export function LoginForm() {
   const { t: tLogin } = useTranslation('login')
   const { t: tValidation } = useTranslation('validation')
   const [email, setEmail] = useState('')
-  const [fieldError, setFieldError] = useState<string | null>(null)
-  const [submitError, setSubmitError] = useState<string | null>(null)
+  // Error state holds `validation` namespace keys (not resolved strings) so the messages
+  // re-translate at render time when the user switches language (DC-454).
+  const [fieldErrorKey, setFieldErrorKey] = useState<string | null>(null)
+  const [submitErrorKey, setSubmitErrorKey] = useState<string | null>(null)
 
   const requestOtp = useRequestOtp()
   const { trackEvent } = useDataLayer()
 
+  // Returns a `validation` namespace key (resolved at render), or null when valid.
   function validateEmail(value: string): string | null {
     if (!value.trim()) {
-      return tValidation('required')
+      return 'required'
     }
     const result = RequestOtpRequestSchema.shape.email.safeParse(value)
     if (!result.success) {
-      return tValidation('enterEmail')
+      return 'enterEmail'
     }
     return null
   }
 
   async function handleSubmit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault()
-    setSubmitError(null)
+    setSubmitErrorKey(null)
 
-    const error = validateEmail(email)
-    if (error) {
-      setFieldError(error)
+    const errorKey = validateEmail(email)
+    if (errorKey) {
+      setFieldErrorKey(errorKey)
       return
     }
-    setFieldError(null)
+    setFieldErrorKey(null)
 
     trackEvent(AnalyticsEvents.OTP_REQUEST)
 
@@ -50,12 +52,10 @@ export function LoginForm() {
       await requestOtp.mutateAsync({ email, locale: i18n.language })
       sessionStorage.setItem('otp_email', email)
       router.push('/login/verify')
-    } catch (err) {
-      if (err instanceof ApiError) {
-        setSubmitError(err.message)
-      } else {
-        setSubmitError(tValidation('globalInternalError'))
-      }
+    } catch {
+      // Map any failure to a key so the banner follows the active language. Backend
+      // messages are English-only and would freeze on a language switch.
+      setSubmitErrorKey('globalInternalError')
     }
   }
 
@@ -64,13 +64,13 @@ export function LoginForm() {
       className="usa-form maxw-full text-left"
       onSubmit={handleSubmit}
     >
-      {submitError && (
+      {submitErrorKey && (
         <Alert
           variant="error"
           slim
           className="margin-bottom-2"
         >
-          {submitError}
+          {tValidation(submitErrorKey)}
         </Alert>
       )}
 
@@ -82,10 +82,10 @@ export function LoginForm() {
         isRequired
         value={email}
         onChange={(e) => setEmail(e.target.value)}
-        onBlur={() => setFieldError(validateEmail(email))}
+        onBlur={() => setFieldErrorKey(validateEmail(email))}
         disabled={requestOtp.isPending}
         className="maxw-full"
-        {...(fieldError ? { error: fieldError } : {})}
+        {...(fieldErrorKey ? { error: tValidation(fieldErrorKey) } : {})}
       />
 
       <Button

@@ -17,7 +17,8 @@ namespace SEBT.Portal.Tests.Unit.Api.Services;
 /// </summary>
 public sealed class RedisPreAuthSessionStoreFixture : IAsyncLifetime
 {
-    private readonly RedisContainer _container = new RedisBuilder("redis:7-alpine").Build();
+    // Pin to major version so patches apply automatically but a Redis 8 breaking change can't sneak in.
+    private readonly RedisContainer _container = new RedisBuilder("redis:7").Build();
     private ConnectionMultiplexer _multiplexer = null!;
 
     public IDistributedLockProvider LockProvider { get; private set; } = null!;
