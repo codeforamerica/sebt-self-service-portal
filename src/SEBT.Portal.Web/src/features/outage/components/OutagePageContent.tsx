@@ -23,8 +23,7 @@ export function OutagePageContent() {
   const messages = getOutageMessages()
   const footerCopy = getOutageFooterCopy()
   const links = getStateLinks(state)
-  const contactHref =
-    links.help.contactUs !== '#' ? links.help.contactUs : (links.help.helpDeskEmail ?? '#')
+  const contactHref = links.help.sebtMainSite ?? links.help.helpDeskEmail ?? '#'
   const isExternalLink = contactHref.startsWith('http')
   const footerLinkLabel = getFooterLinkLabel(contactHref)
   const { width, height } = logoDimensions[state] ?? DEFAULT_LOGO_DIMENSIONS
@@ -43,11 +42,10 @@ export function OutagePageContent() {
               key={message.language}
               lang={message.language}
               aria-label={message.language}
+              className="margin-bottom-3"
             >
               {message.body1 && (
-                <p className="margin-top-0 margin-bottom-1 font-body-md line-height-body-3">
-                  {message.body1}
-                </p>
+                <p className="margin-top-0 font-body-md line-height-body-3">{message.body1}</p>
               )}
               {message.body2 && (
                 <p className="margin-0 font-body-sm line-height-body-3">{message.body2}</p>
@@ -67,18 +65,25 @@ export function OutagePageContent() {
           />
         </div>
 
-        <p className="margin-0 font-body-sm line-height-body-3">
-          {footerCopy.prefix}{' '}
-          <a
-            href={contactHref}
-            {...(isExternalLink ? { target: '_blank', rel: 'noopener noreferrer' } : {})}
-            className="usa-link text-base-dark"
+        {footerCopy.map((copy) => (
+          <p
+            key={copy.language}
+            lang={copy.language}
+            aria-label={copy.language}
+            className="margin-0 font-body-sm line-height-body-3"
           >
-            {footerLinkLabel}
-            {isExternalLink && <span className="usa-sr-only"> (opens in a new tab)</span>}
-          </a>
-          .
-        </p>
+            {copy.prefix}{' '}
+            <a
+              href={contactHref}
+              {...(isExternalLink ? { target: '_blank', rel: 'noopener noreferrer' } : {})}
+              className="usa-link text-base-dark"
+            >
+              {footerLinkLabel}
+              {isExternalLink && <span className="usa-sr-only"> (opens in a new tab)</span>}
+            </a>
+            .
+          </p>
+        ))}
       </div>
     </div>
   )
