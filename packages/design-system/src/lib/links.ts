@@ -82,7 +82,7 @@ const stateLinks: Record<string, StateLinks> = {
       helpDeskEmail: ''
     },
     external: {
-      contactUsAssistance: '#'
+      contactUsAssistance: 'https://mycolorado.state.co.us/customer-support'
     }
   }
 }
