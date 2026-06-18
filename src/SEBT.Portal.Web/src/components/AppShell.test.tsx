@@ -43,17 +43,22 @@ describe('AppShell', () => {
     expect(screen.getByText('Portal page')).toBeInTheDocument()
   })
 
-  it('reserves full-viewport height on normal routes to prevent loading layout shift', () => {
+  it('uses a sticky-footer layout so content shift does not move the footer', () => {
     render(
       <AppShell state="dc">
         <div>Portal page</div>
       </AppShell>
     )
 
-    // minh-viewport (min-height: 100vh) keeps the main box a full viewport tall
-    // during the loading state, so content filling in does not shift the footer
-    // and the page below (the DC-310 Cumulative Layout Shift fix).
-    expect(document.getElementById('main-content')).toHaveClass('minh-viewport')
+    // The chrome wrapper is a full-viewport flex column; <main> fills the leftover
+    // space (flex-fill) instead of being a fixed 100vh tall. This pins the footer
+    // to the bottom of the viewport during the loading state, so content filling in
+    // does not shift the footer (the DC-310 Cumulative Layout Shift fix), and lets
+    // the page scroll naturally when content exceeds the viewport.
+    const main = document.getElementById('main-content')
+    expect(main).toHaveClass('flex-fill')
+    expect(main).not.toHaveClass('minh-viewport')
+    expect(main?.parentElement).toHaveClass('display-flex', 'flex-column', 'minh-viewport')
   })
 
   it('renders a minimal shell on the outage route', () => {
