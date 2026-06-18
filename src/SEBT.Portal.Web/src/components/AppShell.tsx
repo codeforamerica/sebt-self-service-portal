@@ -35,7 +35,10 @@ export function AppShell({ children, state }: AppShellProps) {
     <>
       <BetaBanner />
       <Header state={state} />
-      <main id="main-content">
+      <main
+        id="main-content"
+        className="minh-viewport"
+      >
         <OutageGuard>{children}</OutageGuard>
       </main>
       <HelpSection state={state} />

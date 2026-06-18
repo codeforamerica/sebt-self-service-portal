@@ -43,6 +43,19 @@ describe('AppShell', () => {
     expect(screen.getByText('Portal page')).toBeInTheDocument()
   })
 
+  it('reserves full-viewport height on normal routes to prevent loading layout shift', () => {
+    render(
+      <AppShell state="dc">
+        <div>Portal page</div>
+      </AppShell>
+    )
+
+    // minh-viewport (min-height: 100vh) keeps the main box a full viewport tall
+    // during the loading state, so content filling in does not shift the footer
+    // and the page below (the DC-310 Cumulative Layout Shift fix).
+    expect(document.getElementById('main-content')).toHaveClass('minh-viewport')
+  })
+
   it('renders a minimal shell on the outage route', () => {
     mockPathname.mockReturnValue('/outage')
 
