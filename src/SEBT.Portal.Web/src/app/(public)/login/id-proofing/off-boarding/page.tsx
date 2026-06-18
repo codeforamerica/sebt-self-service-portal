@@ -14,6 +14,7 @@ export default function OffBoardingPage() {
 
   const { session } = useAuth()
   const isCoLoaded = session?.isCoLoaded === true
+  const useCoLoadedOffboarding = isCoLoaded || reason === 'coLoadedOnly'
 
   const { t, i18n } = useTranslation('offBoarding')
   const { t: tDashboard } = useTranslation('dashboard')
@@ -28,12 +29,9 @@ export default function OffBoardingPage() {
   const contactHref =
     links.help.contactUs !== '#' ? links.help.contactUs : (links.help.helpDeskEmail ?? '#')
 
-  // Branch order: OIDC `/callback` failures, then co-loaded copy,
-  // then reason-specific copy for the non-co-loaded path, then generic offBoarding copy.
-  // - Co-loaded users cannot off-board to Socure DocV per PRD; they see a
-  //   "cannot identify you" screen instead of the DocV-flavored copy.
-  // - Reason-specific branches force canApply=false until product decides
-  //   which failure modes allow re-application.
+  // Branch order: OIDC `/callback` failures, then co-loaded copy (session flag or
+  // coLoadedOnly reason from household cohort lookup during ID proofing), then
+  // reason-specific copy for the non-co-loaded path, then generic offBoarding copy.
   // TODO: Replace hardcoded strings with t(...) keys once they exist in dc.csv.
   let title: string
   let body: string
@@ -58,7 +56,7 @@ export default function OffBoardingPage() {
     applyBody = undefined
     applySkipBody = undefined
     applyLabel = undefined
-  } else if (isCoLoaded) {
+  } else if (useCoLoadedOffboarding) {
     title = t('coLoadedTitle')
     body = t('coLoadedBody1')
     contactLabel = t('coLoadedAction1')

@@ -1,7 +1,7 @@
 import { z } from 'zod'
 
 export const CaseRefSchema = z.object({
-  summerEbtCaseId: z.string().min(1, 'summerEbtCaseId is required.'),
+  summerEbtCaseId: z.string().min(1),
   applicationId: z.string().nullable().optional(),
   applicationStudentId: z.string().nullable().optional()
 })
@@ -9,7 +9,7 @@ export const CaseRefSchema = z.object({
 export type CaseRef = z.infer<typeof CaseRefSchema>
 
 export const RequestCardReplacementSchema = z.object({
-  caseRefs: z.array(CaseRefSchema).min(1, 'At least one case reference is required.')
+  caseRefs: z.array(CaseRefSchema).min(1)
 })
 
 export type RequestCardReplacementRequest = z.infer<typeof RequestCardReplacementSchema>

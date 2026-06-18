@@ -1,7 +1,12 @@
-import { render, screen } from '@testing-library/react'
+import { act, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
+import { i18n } from '@sebt/design-system/client'
+
+import amDcValidation from '@/content/locales/am/dc/validation.json'
+import enDcValidation from '@/content/locales/en/dc/validation.json'
+import esDcValidation from '@/content/locales/es/dc/validation.json'
 import type { Address, SummerEbtCase } from '@/features/household/api/schema'
 
 import { ConfirmAddress } from './ConfirmAddress'
@@ -43,9 +48,6 @@ const TEST_CASE: SummerEbtCase = {
   ebtCardLastFour: '1234',
   ebtCardStatus: 'Active',
   cardRequestedAt: null,
-  cardMailedAt: null,
-  cardActivatedAt: null,
-  cardDeactivatedAt: null,
   allowAddressChange: true,
   allowCardReplacement: true
 }
@@ -70,6 +72,14 @@ describe('ConfirmAddress', () => {
     mockPush.mockClear()
     mockBack.mockClear()
     mockState = 'dc'
+  })
+
+  // The i18n instance is a shared singleton; reset to English so sibling tests
+  // (which assume English labels) aren't affected by a lingering Spanish switch.
+  afterEach(async () => {
+    await act(async () => {
+      await i18n.changeLanguage('en')
+    })
   })
 
   it('renders child name subtitle for DC', () => {
@@ -112,6 +122,26 @@ describe('ConfirmAddress', () => {
     await user.click(screen.getByRole('button', { name: /continue/i }))
 
     expect(mockPush).toHaveBeenCalledWith('/cards/replace/address?case=SEBT-001')
+  })
+
+  it('re-translates the selection error across all DC languages, without resubmitting (DC-454)', async () => {
+    const { user } = renderConfirmAddress()
+
+    await user.click(screen.getByRole('button', { name: /continue/i }))
+    // Scope to the alert: in Spanish/Amharic the legend (common:selectOne) and the error
+    // (validation:selectOption) can render as the same text, so a free-text query would match
+    // multiple elements. toHaveTextContent substring-matches within the alert only.
+    expect(await screen.findByRole('alert')).toHaveTextContent(enDcValidation.selectOption)
+
+    await act(async () => {
+      await i18n.changeLanguage('es')
+    })
+    expect(await screen.findByRole('alert')).toHaveTextContent(esDcValidation.selectOption)
+
+    await act(async () => {
+      await i18n.changeLanguage('am')
+    })
+    expect(await screen.findByRole('alert')).toHaveTextContent(amDcValidation.selectOption)
   })
 
   it('navigates back when back button is clicked', async () => {

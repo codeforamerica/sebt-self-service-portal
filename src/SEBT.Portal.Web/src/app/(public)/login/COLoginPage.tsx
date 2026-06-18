@@ -1,5 +1,6 @@
 'use client'
 
+import { AnalyticsEvents, useDataLayer } from '@sebt/analytics'
 import type { StateCode } from '@sebt/design-system'
 import { useTranslation } from 'react-i18next'
 import { MyColoradoLogo } from './MyColoradoLogo'
@@ -7,6 +8,7 @@ import { MyColoradoLogo } from './MyColoradoLogo'
 export function COLoginPage({ state }: { state: StateCode }) {
   const { t, i18n } = useTranslation('login')
   const { t: tCommon } = useTranslation('common')
+  const { trackEvent } = useDataLayer()
 
   // The `logIn` translation key resolves to the current UI language's label, and
   // `logInEsp` resolves to the *other* language's label. Pair each button's link
@@ -15,6 +17,7 @@ export function COLoginPage({ state }: { state: StateCode }) {
   const otherLang = currentLang === 'es' ? 'en' : 'es'
 
   function startOidcLogin(language: string) {
+    trackEvent(AnalyticsEvents.OIDC_START)
     // Persist the user's language choice so the UI matches after the redirect.
     localStorage.setItem('i18nextLng', language)
     // Navigate to the server-side authorize endpoint, which builds the full
@@ -29,7 +32,7 @@ export function COLoginPage({ state }: { state: StateCode }) {
         <section aria-labelledby="login-title">
           <h1
             id="login-title"
-            className="font-sans-xl text-bold line-height-sans-1 margin-bottom-3 text-primary-dark"
+            className="font-sans-xl text-bold line-height-sans-1 margin-bottom-3 text-primary"
           >
             {t('title')}
           </h1>
@@ -42,6 +45,7 @@ export function COLoginPage({ state }: { state: StateCode }) {
               onClick={() => startOidcLogin(currentLang)}
               className="usa-button usa-button--mycolorado display-flex flex-align-center"
               lang={currentLang}
+              data-analytics-cta="login_cta"
             >
               <MyColoradoLogo className="margin-right-1" />
               {tCommon('logIn')}
@@ -54,6 +58,7 @@ export function COLoginPage({ state }: { state: StateCode }) {
               onClick={() => startOidcLogin(otherLang)}
               className="usa-button usa-button--outline usa-button--mycolorado display-flex flex-align-center"
               lang={otherLang}
+              data-analytics-cta="login_cta_alt_lang"
             >
               <MyColoradoLogo className="margin-right-1" />
               {tCommon('logInEsp')}

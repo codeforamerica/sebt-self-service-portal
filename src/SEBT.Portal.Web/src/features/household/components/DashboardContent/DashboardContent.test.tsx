@@ -3,6 +3,7 @@ import { render, screen, waitFor } from '@testing-library/react'
 import { http, HttpResponse } from 'msw'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
+import { householdDataQueryKey } from '@/features/household/api/queryKeys'
 import { TEST_HOUSEHOLD_DATA } from '@/mocks/handlers'
 import { server } from '@/mocks/server'
 
@@ -43,7 +44,11 @@ vi.mock('next/navigation', () => ({
 // anchor to /api/auth/logout); only DashboardContent itself reads useAuth
 // for the co-loaded analytics branch. Preserve the real SignOutLink by
 // extending the actual module instead of replacing it.
-const mockAuthSession: { isCoLoaded: boolean | null } = { isCoLoaded: false }
+const TEST_USER_ID = '018f0000-0000-7000-8000-000000000001'
+const mockAuthSession: { userId: string; isCoLoaded: boolean | null } = {
+  userId: TEST_USER_ID,
+  isCoLoaded: false
+}
 vi.mock('@/features/auth', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/features/auth')>()
   return {
@@ -159,7 +164,7 @@ describe('DashboardContent', () => {
 
     expect(screen.getByRole('link', { name: /apply/i })).toHaveAttribute(
       'href',
-      'https://forms.sunbucks.dc.gov/s3/AppUpdate2026'
+      'https://forms.sunbucks.dc.gov/s3/app2026'
     )
   })
 
@@ -201,7 +206,7 @@ describe('DashboardContent', () => {
 
   it('keeps populated dashboard when a background refetch returns 404 but cache still has data', async () => {
     const queryClient = createTestQueryClient()
-    queryClient.setQueryData(['householdData'], TEST_HOUSEHOLD_DATA)
+    queryClient.setQueryData(householdDataQueryKey(TEST_USER_ID), TEST_HOUSEHOLD_DATA)
 
     server.use(
       http.get('/api/household/data', () => {

@@ -255,7 +255,8 @@ public class StartChallengeCommandHandler(
                 user.Email,
                 new PiiVisibility(IncludeAddress: true, IncludeEmail: true, IncludePhone: true),
                 warehouseIal,
-                cancellationToken);
+                user.Id,
+                cancellationToken: cancellationToken);
             if (household?.UserProfile != null)
             {
                 givenName = household.UserProfile.FirstName;

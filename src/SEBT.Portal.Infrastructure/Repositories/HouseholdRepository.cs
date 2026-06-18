@@ -33,6 +33,8 @@ public class HouseholdRepository : IHouseholdRepository
         HouseholdIdentifier identifier,
         PiiVisibility piiVisibility,
         UserIalLevel userIalLevel,
+        Guid? portalUserId = null,
+        bool includeCardService = true,
         CancellationToken cancellationToken = default)
     {
         var pluginType = MapToPluginIdentifierType(identifier.Type);
@@ -47,6 +49,8 @@ public class HouseholdRepository : IHouseholdRepository
             identifier.Value,
             piiVisibility,
             userIalLevel,
+            portalUserId,
+            includeCardService,
             cancellationToken);
     }
 
@@ -55,6 +59,8 @@ public class HouseholdRepository : IHouseholdRepository
         string identifierValue,
         PiiVisibility piiVisibility,
         UserIalLevel userIalLevel,
+        Guid? portalUserId,
+        bool includeCardService,
         CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(piiVisibility);
@@ -83,7 +89,9 @@ public class HouseholdRepository : IHouseholdRepository
             normalizedValue,
             pluginPii,
             pluginIal,
-            cancellationToken);
+            portalUserId,
+            includeCardService,
+            cancellationToken: cancellationToken);
 
         if (pluginHousehold == null)
         {
@@ -125,6 +133,8 @@ public class HouseholdRepository : IHouseholdRepository
         string email,
         PiiVisibility piiVisibility,
         UserIalLevel userIalLevel,
+        Guid? portalUserId = null,
+        bool includeCardService = true,
         CancellationToken cancellationToken = default)
     {
         return GetHouseholdByIdentifierInternalAsync(
@@ -132,6 +142,8 @@ public class HouseholdRepository : IHouseholdRepository
             email ?? string.Empty,
             piiVisibility,
             userIalLevel,
+            portalUserId,
+            includeCardService,
             cancellationToken);
     }
 

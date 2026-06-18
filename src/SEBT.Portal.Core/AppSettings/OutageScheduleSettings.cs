@@ -1,0 +1,35 @@
+namespace SEBT.Portal.Core.AppSettings;
+
+/// <summary>
+/// Configurable schedule of outage windows. When the current time (interpreted in
+/// <see cref="TimeZoneId"/>) falls within any window, the portal force-enables the
+/// <c>outage_page_enabled</c> feature flag so the outage page appears automatically — no manual
+/// toggling required. Bind from appsettings.{State}.json or the AWS AppConfig AppSettings profile
+/// (the latter allows updating windows at runtime without a redeploy).
+/// </summary>
+public sealed class OutageScheduleSettings
+{
+    public const string SectionName = "OutageSchedule";
+
+    /// <summary>
+    /// IANA timezone used to interpret each window's local Start/End (e.g. "America/Denver").
+    /// </summary>
+    public string TimeZoneId { get; set; } = "America/Denver";
+
+    /// <summary>
+    /// Scheduled outage windows. Empty (the default) means no scheduled outages.
+    /// </summary>
+    public List<OutageWindow> Windows { get; set; } = new();
+}
+
+/// <summary>
+/// A single scheduled outage window. <see cref="Start"/> and <see cref="End"/> are local wall-clock
+/// date-times in the schedule's <see cref="OutageScheduleSettings.TimeZoneId"/> (ISO-8601 with no
+/// offset, e.g. "2026-06-21T22:00:00"). The window is start-inclusive and end-exclusive.
+/// </summary>
+public sealed class OutageWindow
+{
+    public string Start { get; set; } = string.Empty;
+
+    public string End { get; set; } = string.Empty;
+}

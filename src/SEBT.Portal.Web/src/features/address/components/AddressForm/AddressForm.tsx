@@ -8,6 +8,8 @@ import { useTranslation } from 'react-i18next'
 import { Alert, Button, InputField, getState, getStateLinks } from '@sebt/design-system'
 
 import type { Address } from '@/features/household/api'
+import { trackAddressUpdateSubmit } from '@/lib/analytics-helpers'
+import { useDataLayer } from '@sebt/analytics'
 
 import { isValidZip, useUpdateAddress } from '../../api'
 import type { AddressResponse, UpdateAddressRequest } from '../../api/schema'
@@ -21,11 +23,16 @@ interface AddressFormProps {
   redirectPath?: string
 }
 
+// Field errors store an i18n key + its namespace (not the resolved string) so the messages
+// re-translate at render time when the user switches language (DC-454). Most keys live in the
+// `validation` namespace; the street-address ones live in `confirmInfo`.
+type FieldErrorDescriptor = { ns: 'validation' | 'confirmInfo'; key: string }
+
 interface FieldErrors {
-  streetAddress1?: string
-  city?: string
-  state?: string
-  postalCode?: string
+  streetAddress1?: FieldErrorDescriptor
+  city?: FieldErrorDescriptor
+  state?: FieldErrorDescriptor
+  postalCode?: FieldErrorDescriptor
 }
 
 const STATE_DEFAULTS: Record<string, { city: string; state: string }> = {
@@ -70,6 +77,28 @@ function toUpdateAddressRequestOrNull(
   }
 }
 
+function updateRequestToAddress(address: UpdateAddressRequest): Address {
+  return {
+    streetAddress1: address.streetAddress1,
+    streetAddress2: address.streetAddress2 ?? null,
+    city: address.city,
+    state: address.state,
+    postalCode: address.postalCode
+  }
+}
+
+/** Prefer in-flow edits when returning from suggestion/not-found screens. */
+function resolveFormSeedAddress(
+  enteredAddress: UpdateAddressRequest | null,
+  initialAddress: Address | null
+): Address | null {
+  if (enteredAddress) {
+    return updateRequestToAddress(enteredAddress)
+  }
+
+  return initialAddress
+}
+
 export function AddressForm({ initialAddress, redirectPath }: AddressFormProps) {
   const { t } = useTranslation('confirmInfo')
   const { t: tValidation } = useTranslation('validation')
@@ -79,23 +108,36 @@ export function AddressForm({ initialAddress, redirectPath }: AddressFormProps) 
   const pathname = usePathname()
   const searchParams = useSearchParams()
   const updateAddress = useUpdateAddress()
-  const { setAddress, setValidationResult, setNavigationTargets } = useAddressFlow()
+  const {
+    enteredAddress,
+    setAddress,
+    setValidationResult,
+    clearEnteredAddress,
+    setNavigationTargets
+  } = useAddressFlow()
+  const { setPageData, trackEvent } = useDataLayer()
   const errorSummaryRef = useRef<HTMLDivElement>(null)
 
   const currentState = getState()
   // eslint-disable-next-line security/detect-object-injection -- currentState is typed StateCode
   const defaults = STATE_DEFAULTS[currentState] ?? { city: '', state: '' }
+  const seedAddress = resolveFormSeedAddress(enteredAddress, initialAddress)
 
-  const [streetAddress1, setStreetAddress1] = useState(initialAddress?.streetAddress1 ?? '')
-  const [streetAddress2, setStreetAddress2] = useState(initialAddress?.streetAddress2 ?? '')
-  const [city, setCity] = useState(initialAddress?.city ?? defaults.city)
+  const [streetAddress1, setStreetAddress1] = useState(seedAddress?.streetAddress1 ?? '')
+  const [streetAddress2, setStreetAddress2] = useState(seedAddress?.streetAddress2 ?? '')
+  const [city, setCity] = useState(seedAddress?.city ?? defaults.city)
   const [stateValue, setStateValue] = useState(
-    resolveStateValue(initialAddress?.state, defaults.state)
+    resolveStateValue(seedAddress?.state, defaults.state)
   )
-  const [postalCode, setPostalCode] = useState(initialAddress?.postalCode ?? '')
+  const [postalCode, setPostalCode] = useState(seedAddress?.postalCode ?? '')
 
   const [fieldErrors, setFieldErrors] = useState<FieldErrors>({})
-  const [submitError, setSubmitError] = useState<string | null>(null)
+  const [submitErrorKey, setSubmitErrorKey] = useState<string | null>(null)
+
+  // Resolve a field-error descriptor at render time: confirmInfo keys via `t`, validation
+  // keys via `tValidation`. Call sites guard on the descriptor being present.
+  const resolveFieldError = (d: FieldErrorDescriptor): string =>
+    d.ns === 'validation' ? tValidation(d.key) : t(d.key)
 
   const isSubmitting = updateAddress.isPending
   const hasErrors = Object.keys(fieldErrors).length > 0
@@ -117,20 +159,20 @@ export function AddressForm({ initialAddress, redirectPath }: AddressFormProps) 
 
   function validate(): FieldErrors {
     const errors: FieldErrors = {}
-    const required = tValidation('required')
+    const required: FieldErrorDescriptor = { ns: 'validation', key: 'required' }
 
     if (!streetAddress1.trim()) {
       errors.streetAddress1 = required
     } else if (streetAddress1.trim().length > 30) {
       // TODO: Backend does not yet enforce this limit — add [MaxLength(30)] when confirmed
-      errors.streetAddress1 = t('helperStreetAddress')
+      errors.streetAddress1 = { ns: 'confirmInfo', key: 'helperStreetAddress' }
     }
     if (!city.trim()) errors.city = required
     if (!stateValue.trim()) errors.state = required
     if (!postalCode.trim()) {
       errors.postalCode = required
     } else if (!isValidZip(postalCode.trim())) {
-      errors.postalCode = tValidation('enterZip')
+      errors.postalCode = { ns: 'validation', key: 'enterZip' }
     }
 
     return errors
@@ -138,7 +180,7 @@ export function AddressForm({ initialAddress, redirectPath }: AddressFormProps) 
 
   async function handleSubmit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault()
-    setSubmitError(null)
+    setSubmitErrorKey(null)
 
     const errors = validate()
     setFieldErrors(errors)
@@ -157,9 +199,11 @@ export function AddressForm({ initialAddress, redirectPath }: AddressFormProps) 
 
     try {
       const result = await updateAddress.mutateAsync(addressData)
+      trackAddressUpdateSubmit({ setPageData, trackEvent }, result, null)
 
       if (result.status === 'valid') {
         setAddress(toUpdateAddressRequestOrNull(result.normalizedAddress) ?? addressData)
+        clearEnteredAddress()
         router.push(redirectPath ?? DEFAULT_REDIRECT)
         return
       }
@@ -167,7 +211,7 @@ export function AddressForm({ initialAddress, redirectPath }: AddressFormProps) 
       // too_long stays on the form: inline field error + portal banner via showStreetLengthAlert.
       if (result.reason === 'too_long') {
         setFieldErrors({
-          streetAddress1: t('validationStreetAddress')
+          streetAddress1: { ns: 'confirmInfo', key: 'validationStreetAddress' }
         })
         return
       }
@@ -180,8 +224,8 @@ export function AddressForm({ initialAddress, redirectPath }: AddressFormProps) 
         router.push('/profile/address/address-not-found')
       }
     } catch (err) {
-      void err
-      setSubmitError(tValidation('globalInternalError'))
+      trackAddressUpdateSubmit({ setPageData, trackEvent }, null, err)
+      setSubmitErrorKey('globalInternalError')
     }
   }
 
@@ -218,13 +262,13 @@ export function AddressForm({ initialAddress, redirectPath }: AddressFormProps) 
         onSubmit={handleSubmit}
         noValidate
       >
-        {submitError && (
+        {submitErrorKey && (
           <Alert
             variant="error"
             slim
             className="margin-bottom-2"
           >
-            {submitError}
+            {tValidation(submitErrorKey)}
           </Alert>
         )}
 
@@ -259,7 +303,9 @@ export function AddressForm({ initialAddress, redirectPath }: AddressFormProps) 
           }}
           autoComplete="address-line1"
           isRequired
-          {...(fieldErrors.streetAddress1 ? { error: fieldErrors.streetAddress1 } : {})}
+          {...(fieldErrors.streetAddress1
+            ? { error: resolveFieldError(fieldErrors.streetAddress1) }
+            : {})}
         />
 
         <InputField
@@ -278,7 +324,7 @@ export function AddressForm({ initialAddress, redirectPath }: AddressFormProps) 
           onChange={(e) => setCity(e.target.value)}
           autoComplete="address-level2"
           isRequired
-          {...(fieldErrors.city ? { error: fieldErrors.city } : {})}
+          {...(fieldErrors.city ? { error: resolveFieldError(fieldErrors.city) } : {})}
         />
 
         <div
@@ -297,7 +343,7 @@ export function AddressForm({ initialAddress, redirectPath }: AddressFormProps) 
               id="address-state-error"
               role="alert"
             >
-              {fieldErrors.state}
+              {resolveFieldError(fieldErrors.state)}
             </span>
           )}
           <select
@@ -330,7 +376,7 @@ export function AddressForm({ initialAddress, redirectPath }: AddressFormProps) 
           onChange={(e) => setPostalCode(e.target.value)}
           autoComplete="postal-code"
           isRequired
-          {...(fieldErrors.postalCode ? { error: fieldErrors.postalCode } : {})}
+          {...(fieldErrors.postalCode ? { error: resolveFieldError(fieldErrors.postalCode) } : {})}
         />
 
         <div className="margin-top-3 display-flex flex-row gap-2">

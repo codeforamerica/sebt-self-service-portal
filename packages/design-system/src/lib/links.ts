@@ -34,6 +34,7 @@ export interface StateLinks {
   help: {
     faqs: string
     contactUs: string
+    sebtMainSite?: string
     /** CO-specific: Help desk email (mailto: link) */
     helpDeskEmail?: string
   }
@@ -66,7 +67,6 @@ const stateLinks: Record<string, StateLinks> = {
   },
   co: {
     footer: {
-      // CO footer URLs are placeholders — real URLs needed from the CO state team before launch
       publicNotifications: '#',
       accessibility: '#',
       privacyAndSecurity: '#',
@@ -78,12 +78,12 @@ const stateLinks: Record<string, StateLinks> = {
       digitalAccessibility: 'https://cdhs.colorado.gov/accessibility-at-cdhs'
     },
     help: {
-      faqs: '#',
-      contactUs: '#',
-      helpDeskEmail: 'mailto:cdhs_sebt_supportcenter@state.co.us'
+      faqs: '',
+      contactUs: '',
+      sebtMainSite: 'https://co.gov/sebt',
+      helpDeskEmail: ''
     },
     external: {
-      // CO contact URL is a placeholder — real URL needed from the CO state team before launch
       contactUsAssistance: '#'
     }
   }

@@ -21,20 +21,22 @@ export function ReplacementCardPrompt({ address }: ReplacementCardPromptProps) {
   const currentState = getState()
 
   const [selection, setSelection] = useState<'yes' | 'no' | null>(null)
-  const [error, setError] = useState<string | null>(null)
+  // Store the i18n key (not the resolved string) so the error re-translates at render
+  // time when the user switches language (DC-454).
+  const [errorKey, setErrorKey] = useState<string | null>(null)
   const errorRef = useRef<HTMLSpanElement>(null)
 
   useEffect(() => {
-    if (error) {
+    if (errorKey) {
       errorRef.current?.focus()
     }
-  }, [error])
+  }, [errorKey])
 
   function handleSubmit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault()
 
     if (selection === null) {
-      setError(tValidation('selectOption'))
+      setErrorKey('selectOption')
       return
     }
 
@@ -72,11 +74,7 @@ export function ReplacementCardPrompt({ address }: ReplacementCardPromptProps) {
           slim
           className="margin-bottom-3"
         >
-          {/* TODO update copy */}
-          {t(
-            'snapTanfCallout',
-            'If your child is eligible for DC SUN Bucks through SNAP or TANF participation, they will not receive a DC SUN Bucks card.'
-          )}
+          {tCommon('co-loadedCardHelper')}
         </Alert>
       )}
 
@@ -85,14 +83,14 @@ export function ReplacementCardPrompt({ address }: ReplacementCardPromptProps) {
       <fieldset
         className="usa-fieldset"
         aria-label={tCommon('selectOne')}
-        aria-describedby={error ? 'replacement-choice-error' : undefined}
+        aria-describedby={errorKey ? 'replacement-choice-error' : undefined}
       >
         <legend className="usa-legend text-bold">
           {tCommon('selectOne')}
           <span className="text-secondary-dark"> *</span>
         </legend>
 
-        {error && (
+        {errorKey && (
           <span
             ref={errorRef}
             id="replacement-choice-error"
@@ -100,7 +98,7 @@ export function ReplacementCardPrompt({ address }: ReplacementCardPromptProps) {
             role="alert"
             tabIndex={-1}
           >
-            {error}
+            {tValidation(errorKey)}
           </span>
         )}
 
@@ -114,7 +112,7 @@ export function ReplacementCardPrompt({ address }: ReplacementCardPromptProps) {
             checked={selection === 'yes'}
             onChange={() => {
               setSelection('yes')
-              setError(null)
+              setErrorKey(null)
             }}
           />
           <label
@@ -135,7 +133,7 @@ export function ReplacementCardPrompt({ address }: ReplacementCardPromptProps) {
             checked={selection === 'no'}
             onChange={() => {
               setSelection('no')
-              setError(null)
+              setErrorKey(null)
             }}
           />
           <label

@@ -17,7 +17,7 @@ namespace SEBT.Portal.Api.Telemetry;
 /// All three are read directly from JWT claims and are available as soon as authentication
 /// succeeds. Absent on unauthenticated requests.
 /// </summary>
-public class PortalUserEnricher : ILogEventEnricher
+internal class PortalUserEnricher : ILogEventEnricher
 {
     private readonly IHttpContextAccessor _contextAccessor;
 
@@ -55,7 +55,7 @@ public class PortalUserEnricher : ILogEventEnricher
     }
 }
 
-public static class PortalUserEnricherExtensions
+internal static class PortalUserEnricherExtensions
 {
     public static LoggerConfiguration WithPortalUserInfo(this LoggerEnrichmentConfiguration enrich) =>
         enrich.With<PortalUserEnricher>();

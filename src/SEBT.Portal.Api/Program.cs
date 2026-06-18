@@ -1,5 +1,6 @@
 using System.Text;
 using System.Threading.RateLimiting;
+using System.Data.Common;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Microsoft.AspNetCore.HttpOverrides;
@@ -16,6 +17,7 @@ using SEBT.Portal.Api.Middleware;
 using SEBT.Portal.Api.Options;
 using SEBT.Portal.Api.Services;
 using SEBT.Portal.Core.AppSettings;
+using SEBT.Portal.Core.Exceptions;
 using SEBT.Portal.Core.Services;
 using SEBT.Portal.Infrastructure.Configuration;
 using SEBT.Portal.Infrastructure.Services;
@@ -30,8 +32,13 @@ var builder = WebApplication.CreateBuilder(args);
 // Configure Serilog early so that configuration providers can log.
 // Console sink is configured in code (not appsettings) so we can use
 // human-readable text locally and structured JSON in deployed environments.
-// The JSON format uses field names that Datadog auto-recognizes (level,
-// message, timestamp) so log severity maps correctly without custom pipelines.
+// Field names match Datadog's reserved attributes (`date`, `status`,
+// `message`) so they are auto-recognized without configuring a per-service
+// log pipeline. Without these names the Forwarder Lambda falls back to the
+// CloudWatch event time for the timeline and tags the log with
+// `service:cloudwatch`. The literal service value must match the OTEL
+// ServiceName constant in OpenTelemetrySetup so traces and logs correlate
+// under the same service in Datadog.
 // Set LOG_FORMAT=json in ECS task definitions to enable structured output.
 var useJsonLogs = string.Equals(
     Environment.GetEnvironmentVariable("LOG_FORMAT"), "json", StringComparison.OrdinalIgnoreCase);
@@ -45,7 +52,7 @@ var logConfig = new LoggerConfiguration()
 if (useJsonLogs)
 {
     logConfig.WriteTo.Console(new ExpressionTemplate(
-        "{ {timestamp: @t, level: @l, message: @m, exception: @x, ..@p} }\n"));
+        "{ {date: @t, timestamp: @t, status: @l, level: @l, message: @m, exception: @x, ..@p} }\n"));
 }
 else
 {
@@ -84,9 +91,8 @@ var environmentId = agentSection["EnvironmentId"];
 if (!string.IsNullOrEmpty(applicationId) && !string.IsNullOrEmpty(environmentId))
 {
     var baseUrl = agentSection["BaseUrl"] ?? "http://localhost:2772";
-    var reloadAfterSeconds = agentSection.GetValue<int?>("ReloadAfterSeconds") ?? 90;
 
-    using var loggerFactory = LoggerFactory.Create(lb => lb.AddSerilog());
+    var loggerFactory = LoggerFactory.Create(lb => lb.AddSerilog());
     var appConfigLogger = loggerFactory.CreateLogger<AppConfigAgentConfigurationProvider>();
 
     var featureFlagsProfileId = builder.Configuration["AppConfig:FeatureFlags:ProfileId"];
@@ -94,7 +100,7 @@ if (!string.IsNullOrEmpty(applicationId) && !string.IsNullOrEmpty(environmentId)
     {
         builder.Configuration.AddAppConfigAgent(
             baseUrl, applicationId, environmentId, featureFlagsProfileId,
-            reloadAfterSeconds, isFeatureFlag: true, logger: appConfigLogger);
+            isFeatureFlag: true, logger: appConfigLogger);
     }
 
     var appSettingsProfileId = builder.Configuration["AppConfig:AppSettings:ProfileId"];
@@ -102,8 +108,11 @@ if (!string.IsNullOrEmpty(applicationId) && !string.IsNullOrEmpty(environmentId)
     {
         builder.Configuration.AddAppConfigAgent(
             baseUrl, applicationId, environmentId, appSettingsProfileId,
-            reloadAfterSeconds, isFeatureFlag: false, logger: appConfigLogger);
+            isFeatureFlag: false, logger: appConfigLogger);
     }
+
+    builder.Services.AddSingleton(TimeProvider.System);
+    builder.Services.AddHostedService<AppConfigAgentReloadService>();
 }
 
 // Build database connection string from environment variables when deployed
@@ -127,7 +136,7 @@ if (!string.IsNullOrEmpty(dbHost) && !string.IsNullOrEmpty(dbPassword))
 }
 
 // Caching must be registered before plugins — plugins may depend on HybridCache
-builder.Services.AddCaching(builder.Configuration);
+builder.Services.AddCaching(builder.Configuration, builder.Environment);
 builder.Services.AddDistributedLocking(builder.Configuration);
 
 // Registers plugins and allows them to be constructor injected into ASP.NET controllers
@@ -162,6 +171,7 @@ builder.Services.AddScoped<ResolveUserFilter>();
 
 // OIDC token exchange (replaces the Next.js /api/auth/oidc/callback route)
 builder.Services.AddScoped<IOidcExchangeService, OidcExchangeService>();
+builder.Services.AddScoped<IOidcCallbackFailureLogger, OidcCallbackFailureLogger>();
 // pre-auth session store (HybridCache-backed, 15 min TTL)
 builder.Services.AddSingleton<IPreAuthSessionStore, PreAuthSessionStore>();
 
@@ -311,6 +321,14 @@ builder.Services.AddRateLimiter(options =>
                 new { Error = $"Rate limit exceeded. Maximum {enrollmentSettings.PermitLimit} enrollment checks per {windowDescription} allowed." },
                 cancellationToken);
         }
+        else if (rateLimitAttribute?.PolicyName == RateLimitPolicies.CheckerFeatures)
+        {
+            // The checker's features poll just retries on its next cycle; no
+            // user-facing message is needed.
+            await context.HttpContext.Response.WriteAsJsonAsync(
+                new { Error = "Rate limit exceeded." },
+                cancellationToken);
+        }
         else if (rateLimitAttribute?.PolicyName == RateLimitPolicies.Webhook)
         {
             // Webhook callers (Socure) don't need a friendly message, but log for observability
@@ -376,6 +394,30 @@ builder.Services.AddRateLimiter(options =>
             });
     });
 
+    // Add fixed window limiter policy for the checker features poll with IP-based
+    // partitioning. Deliberately separate from the enrollment-check policy: every open
+    // checker tab polls features once a minute, so a shared partition would let a few
+    // tabs behind one NAT (school computer lab, library) drain the per-IP budget that
+    // real enrollment checks need.
+    options.AddPolicy(RateLimitPolicies.CheckerFeatures, httpContext =>
+    {
+        var rateLimitOptions = httpContext.RequestServices
+            .GetRequiredService<IOptionsMonitor<CheckerFeaturesRateLimitSettings>>()
+            .CurrentValue;
+
+        var ipAddress = httpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown";
+        return RateLimitPartition.GetFixedWindowLimiter(
+            partitionKey: $"checker-features:{ipAddress}",
+            factory: _ => new FixedWindowRateLimiterOptions
+            {
+                PermitLimit = rateLimitOptions.PermitLimit,
+                Window = TimeSpan.FromMinutes(rateLimitOptions.WindowMinutes),
+                QueueProcessingOrder = QueueProcessingOrder.OldestFirst,
+                QueueLimit = 0,
+                AutoReplenishment = true
+            });
+    });
+
     // Add fixed window limiter policy for Socure webhook endpoint with IP-based partitioning
     // TODO: Confirm appropriate thresholds with Socure and the team
     options.AddPolicy(RateLimitPolicies.Webhook, httpContext =>
@@ -413,6 +455,10 @@ var app = builder.Build();
 if (app.Environment.IsProduction())
 {
     IdentifierHasherGuard.ValidateForProduction(app.Configuration["IdentifierHasher:SecretKey"]);
+
+    var piiEncryptionSettings = app.Configuration.GetSection(PiiEncryptionSettings.SectionName)
+        .Get<PiiEncryptionSettings>();
+    PiiEncryptionGuard.ValidateForProduction(piiEncryptionSettings);
 }
 
 // HMAC-SHA256 requires ≥256-bit (32-byte) key. Fail fast if configured but too short.
@@ -430,6 +476,21 @@ try
     await using var scope = app.Services.CreateAsyncScope();
     var databaseMigrator = scope.ServiceProvider.GetRequiredService<IDatabaseMigrator>();
     await databaseMigrator.MigrateAsync();
+
+    var piiEncryptionOptions = app.Configuration.GetSection(PiiEncryptionSettings.SectionName)
+        .Get<PiiEncryptionSettings>() ?? new PiiEncryptionSettings();
+    var piiBackfillLogger = scope.ServiceProvider
+        .GetRequiredService<ILoggerFactory>()
+        .CreateLogger(nameof(PiiEncryptionStartupBackfill));
+    await PiiEncryptionStartupBackfill.RunIfEnabledAsync(
+        piiEncryptionOptions,
+        async ct =>
+        {
+            var piiBackfill = scope.ServiceProvider.GetRequiredService<PiiPlaintextEncryptionBackfill>();
+            await piiBackfill.ApplyAsync(ct);
+        },
+        piiBackfillLogger,
+        CancellationToken.None);
 
     var seedingSettings = app.Configuration.GetSection(SeedingSettings.SectionName).Get<SeedingSettings>();
     if (app.Environment.IsDevelopment() || seedingSettings?.Enabled == true)

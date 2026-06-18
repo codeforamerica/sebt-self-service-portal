@@ -15,6 +15,6 @@ describe('EmptyState', () => {
     render(<EmptyState />)
 
     const link = screen.getByRole('link')
-    expect(link).toHaveAttribute('href', 'https://forms.sunbucks.dc.gov/s3/AppUpdate2026')
+    expect(link).toHaveAttribute('href', 'https://forms.sunbucks.dc.gov/s3/app2026')
   })
 })

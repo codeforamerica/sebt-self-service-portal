@@ -1,16 +1,40 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { render, screen, waitFor } from '@testing-library/react'
+import { act, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { http, HttpResponse } from 'msw'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
+import amDcValidation from '@/content/locales/am/dc/validation.json'
+import enDcValidation from '@/content/locales/en/dc/validation.json'
+import esDcValidation from '@/content/locales/es/dc/validation.json'
 import type { Address } from '@/features/household/api'
 import { server } from '@/mocks/server'
+import { AnalyticsEvents } from '@sebt/analytics'
+import { i18n } from '@sebt/design-system/client'
 
 import { AddressFlowProvider } from '../../context'
 import { AddressForm } from './AddressForm'
 
 const mockPush = vi.fn()
+const mockSetPageData = vi.fn()
+const mockTrackEvent = vi.fn()
+
+vi.mock('@sebt/analytics', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@sebt/analytics')>()
+  return {
+    ...actual,
+    useDataLayer: () => ({
+      setPageData: mockSetPageData,
+      trackEvent: mockTrackEvent,
+      pageLoad: vi.fn(),
+      setPageCategory: vi.fn(),
+      setPageAttribute: vi.fn(),
+      setUserData: vi.fn(),
+      setUserProfile: vi.fn(),
+      get: vi.fn()
+    })
+  }
+})
 
 vi.mock('next/navigation', () => ({
   useRouter: () => ({
@@ -88,6 +112,8 @@ function getPostalInput() {
 describe('AddressForm', () => {
   beforeEach(() => {
     mockPush.mockClear()
+    mockSetPageData.mockClear()
+    mockTrackEvent.mockClear()
     mockState = 'dc'
 
     // Portal target for site-level alerts
@@ -98,6 +124,38 @@ describe('AddressForm', () => {
       document.body.appendChild(siteAlerts)
     }
     siteAlerts.innerHTML = ''
+  })
+
+  // --- Error language switching (DC-454) ---
+
+  describe('Error language switching (DC-454)', () => {
+    // The i18n instance is a shared singleton; reset to English after each test.
+    afterEach(async () => {
+      await act(async () => {
+        await i18n.changeLanguage('en')
+      })
+    })
+
+    it('re-translates field validation errors across all DC languages', async () => {
+      const { user } = renderForm()
+
+      // Submitting an empty form flags every required field. The errors are stored as
+      // { ns, key } descriptors and resolved at render, so a language switch re-translates
+      // them without re-submitting. Assert against the locale JSON for each DC language.
+      await user.click(screen.getByRole('button', { name: /continue/i }))
+      expect((await screen.findAllByText(enDcValidation.required)).length).toBeGreaterThan(0)
+
+      await act(async () => {
+        await i18n.changeLanguage('es')
+      })
+      expect((await screen.findAllByText(esDcValidation.required)).length).toBeGreaterThan(0)
+
+      await act(async () => {
+        await i18n.changeLanguage('am')
+      })
+      expect((await screen.findAllByText(amDcValidation.required)).length).toBeGreaterThan(0)
+      expect(screen.queryAllByText(enDcValidation.required)).toHaveLength(0)
+    })
   })
 
   // --- Field rendering ---
@@ -415,6 +473,10 @@ describe('AddressForm', () => {
     await waitFor(() => {
       expect(mockPush).toHaveBeenCalledWith('/profile/address/replacement-cards')
     })
+    expect(mockSetPageData).toHaveBeenCalledWith('address_update_status', 'success')
+    expect(mockSetPageData).toHaveBeenCalledWith('error_code', null)
+    expect(mockTrackEvent).toHaveBeenCalledWith(AnalyticsEvents.ADDRESS_UPDATE_SUBMIT)
+    expect(mockTrackEvent).not.toHaveBeenCalledWith(AnalyticsEvents.ADDRESS_UPDATE_ERROR)
   })
 
   // --- Failed submission ---
@@ -437,6 +499,10 @@ describe('AddressForm', () => {
     await waitFor(() => {
       expect(screen.getByText(/an error occurred on our end/i)).toBeInTheDocument()
     })
+    expect(mockSetPageData).toHaveBeenCalledWith('address_update_status', 'error')
+    expect(mockSetPageData).toHaveBeenCalledWith('error_code', 'INVALID_INPUT')
+    expect(mockTrackEvent).toHaveBeenCalledWith(AnalyticsEvents.ADDRESS_UPDATE_SUBMIT)
+    expect(mockTrackEvent).toHaveBeenCalledWith(AnalyticsEvents.ADDRESS_UPDATE_ERROR)
   })
 
   // --- Back button ---

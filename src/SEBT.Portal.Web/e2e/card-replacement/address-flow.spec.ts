@@ -43,8 +43,8 @@ test.describe('Address update flow', () => {
     await injectAuth(page)
     await setupApiRoutes(page, {
       householdData: makeHouseholdData({
-        summerEbtCases: [makeSummerEbtCase({ issuanceType: 1 })],
-        applications: [makeApplication({ cardRequestedAt: OLD_CARD_DATE, issuanceType: 1 })]
+        summerEbtCases: [makeSummerEbtCase({ issuanceType: 1, cardRequestedAt: OLD_CARD_DATE })],
+        applications: [makeApplication({ issuanceType: 1 })]
       })
     })
   })
@@ -84,7 +84,7 @@ test.describe('Address update flow', () => {
       // DashboardAlerts captures the addressUpdated param in state then cleans the URL.
       await expect(page).toHaveURL('/dashboard')
       await expect(
-        page.locator('.usa-alert--success', { hasText: 'Address update recorded' })
+        page.locator('.usa-alert--success', { hasText: 'Your mailing address has been updated' })
       ).toBeVisible()
     })
 

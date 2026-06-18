@@ -1,4 +1,5 @@
 using Microsoft.Extensions.Logging;
+using Microsoft.FeatureManagement;
 using SEBT.Portal.Core.AppSettings;
 using SEBT.Portal.Core.Models.Auth;
 using SEBT.Portal.Core.Models.Household;
@@ -24,11 +25,16 @@ public class GetHouseholdDataQueryHandler(
     ICardReplacementRequestRepository cardReplacementRepo,
     IIdentifierHasher identifierHasher,
     CoLoadedCohortFilterSettings coLoadedCohortFilter,
+    IFeatureManager featureManager,
     ILogger<GetHouseholdDataQueryHandler> logger)
     : IQueryHandler<GetHouseholdDataQuery, HouseholdData>
 {
     public async Task<Result<HouseholdData>> Handle(GetHouseholdDataQuery query, CancellationToken cancellationToken = default)
     {
+        var deferCardLoadingEnabled = await featureManager
+            .IsEnabledAsync(FeatureFlags.DeferEbtCardDataLoading)
+            .ConfigureAwait(false);
+        var includeCardService = deferCardLoadingEnabled ? query.IncludeCardDetails : true;
         var identifier = await resolver.ResolveAsync(query.User, cancellationToken);
 
         if (identifier == null)
@@ -49,19 +55,21 @@ public class GetHouseholdDataQueryHandler(
             piiVisibility.IncludeEmail,
             piiVisibility.IncludePhone);
 
+        var portalUserId = query.User.GetUserId();
         var householdData = await repository.GetHouseholdByIdentifierAsync(
             identifier,
             piiVisibility,
             userIalLevel,
+            portalUserId,
+            includeCardService,
             cancellationToken);
 
         if (householdData == null
             && identifier.Type == PreferredHouseholdIdType.Email)
         {
-            var userId = query.User.GetUserId();
-            if (userId != null)
+            if (portalUserId != null)
             {
-                var user = await userRepository.GetUserByIdAsync(userId.Value, cancellationToken);
+                var user = await userRepository.GetUserByIdAsync(portalUserId.Value, cancellationToken);
                 var benefitIc = string.IsNullOrWhiteSpace(user?.SnapId) ? user?.TanfId : user?.SnapId;
                 if (user?.IsCoLoaded == true
                     && user.DateOfBirth is { } verifiedDob
@@ -73,13 +81,13 @@ public class GetHouseholdDataQueryHandler(
                         verifiedDob,
                         piiVisibility,
                         userIalLevel,
-                        userId.Value,
+                        portalUserId.Value,
                         cancellationToken);
                     if (householdData != null)
                     {
                         logger.LogInformation(
                             "Household data loaded via co-loaded IC + DOB fallback for user {UserId}",
-                            userId);
+                            portalUserId);
                     }
                 }
             }
@@ -110,7 +118,7 @@ public class GetHouseholdDataQueryHandler(
         // Classify the household on the PRE-filter state so analytics can
         // distinguish cohorts even after co-loaded cases are suppressed. Then
         // apply the suppression for the excluded cohort.
-        householdData.CoLoadedCohort = ClassifyCoLoadedCohort(householdData);
+        householdData.CoLoadedCohort = CoLoadedCohortClassifier.Classify(householdData);
 
         var nonCoLoaded = householdData.SummerEbtCases.Where(c => !c.IsCoLoaded).ToList();
         if (coLoadedCohortFilter.SuppressCoLoadedCasesForExcludedCohort
@@ -163,44 +171,4 @@ public class GetHouseholdDataQueryHandler(
         return Result<HouseholdData>.Success(householdData);
     }
 
-    /// <summary>
-    /// Classifies the household based on its pre-filter case list and applications.
-    /// See <see cref="CoLoadedCohort"/> for the rule.
-    /// The rule is intentionally derived at runtime from case and application state; changing
-    /// who falls into each cohort still requires a code change. Whether co-loaded cases are
-    /// suppressed for the excluded cohort is configured via
-    /// <see cref="CoLoadedCohortFilterSettings.SuppressCoLoadedCasesForExcludedCohort"/>.
-    /// </summary>
-    private static CoLoadedCohort ClassifyCoLoadedCohort(HouseholdData household)
-    {
-        var hasCoLoaded = household.SummerEbtCases.Any(c => c.IsCoLoaded);
-        if (!hasCoLoaded)
-        {
-            return CoLoadedCohort.NonCoLoaded;
-        }
-
-        var hasNonCoLoaded = household.SummerEbtCases.Any(c => !c.IsCoLoaded);
-        var hasInFlightHouseholdApplication = household.Applications.Any(IsInFlightHouseholdApplication);
-        var hasPendingCase = household.SummerEbtCases.Any(IsPendingApplicant);
-
-        return hasNonCoLoaded || hasInFlightHouseholdApplication || hasPendingCase
-            ? CoLoadedCohort.MixedOrApplicantExcluded
-            : CoLoadedCohort.CoLoadedOnly;
-    }
-
-    /// <summary>
-    /// A case whose application hasn't been adjudicated yet represents an
-    /// in-flight applicant experience, which places the household in the
-    /// applicant-excluded cohort even when the case itself is co-loaded.
-    /// </summary>
-    private static bool IsPendingApplicant(SummerEbtCase summerEbtCase) =>
-        summerEbtCase.ApplicationStatus is ApplicationStatus.Pending or ApplicationStatus.UnderReview;
-
-    /// <summary>
-    /// Household-level <see cref="HouseholdData.Applications"/> often retains historical rows
-    /// (approved/denied/cancelled). Only pending or under-review applications indicate an active
-    /// applicant journey alongside co-loaded cases.
-    /// </summary>
-    private static bool IsInFlightHouseholdApplication(Application application) =>
-        application.ApplicationStatus is ApplicationStatus.Pending or ApplicationStatus.UnderReview;
 }

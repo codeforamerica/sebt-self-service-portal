@@ -95,6 +95,10 @@ public class SubmitIdProofingCommandHandler(
                 PreconditionFailedReason.Conflict, "Email is required for ID proofing.");
         }
 
+        var warehouseIalForEmailReads = PreSocureHouseholdWarehouseIal.ForEmailLinkedHouseholdRead(
+            user.IalLevel,
+            idProofingEligibilitySettings.Value.RequireQualifyingHouseholdForSocure);
+
         // Max attempts reached → off-board (3-attempt cap)
         const int maxAttempts = 3;
         if (user.IdProofingAttemptCount >= maxAttempts)
@@ -103,24 +107,46 @@ public class SubmitIdProofingCommandHandler(
                 "User {UserId} has reached the maximum ID proofing attempts ({MaxAttempts})",
                 command.UserId, maxAttempts);
             return Result<SubmitIdProofingResponse>.Success(
-                new SubmitIdProofingResponse("failed",
+                new SubmitIdProofingResponse(
+                    "failed",
                     AllowIdRetry: false,
-                    OffboardingReason: "maxAttemptsReached"));
+                    OffboardingReason: await IdProofingHouseholdLookup.ResolveOffboardingReasonAsync(
+                        householdRepository,
+                        logger,
+                        user,
+                        warehouseIalForEmailReads,
+                        command.UserId,
+                        "maxAttemptsReached",
+                        cancellationToken)));
         }
 
-        // Co-loaded users still need a SNAP/TANF identifier so we can household them; off-board
-        // when no ID is provided. Non-co-loaded users fall through to Socure DocV — Socure's
+        // Co-loaded-only households still need a SNAP/TANF identifier so we can household them;
+        // off-board when no ID is provided. Other users fall through to Socure DocV — Socure's
         // consumer_onboarding workflow short-circuits to document verification when KYC can't
         // resolve the consumer, so national_id is optional for that path.
         if (string.IsNullOrWhiteSpace(command.IdType))
         {
-            if (user.IsCoLoaded)
+            var householdLookupForNoId = await IdProofingHouseholdLookup.TryGetByEmailForCohortCheckAsync(
+                householdRepository,
+                logger,
+                user,
+                warehouseIalForEmailReads,
+                command.UserId,
+                cancellationToken);
+            var coLoadedOnlyCohort = CoLoadedCohortClassifier.Classify(householdLookupForNoId.Household)
+                == CoLoadedCohort.CoLoadedOnly;
+
+            if (user.IsCoLoaded || coLoadedOnlyCohort)
             {
                 logger.LogInformation(
-                    "Co-loaded user {UserId} submitted ID proofing without an ID type; off-boarding (householding requires a benefit ID)",
+                    "User {UserId} submitted ID proofing without an ID type; off-boarding (householding requires a benefit ID)",
                     command.UserId);
                 return Result<SubmitIdProofingResponse>.Success(
-                    new SubmitIdProofingResponse("failed", OffboardingReason: "noIdProvided"));
+                    new SubmitIdProofingResponse(
+                        "failed",
+                        OffboardingReason: CoLoadedCohortClassifier.ResolveOffboardingReason(
+                            "noIdProvided",
+                            householdLookupForNoId.Household)));
             }
 
             logger.LogInformation(
@@ -145,10 +171,6 @@ public class SubmitIdProofingCommandHandler(
 
         // Persist the parsed DOB on the user; all downstream save paths will carry it through.
         user.DateOfBirth = submittedDob;
-
-        var warehouseIalForEmailReads = PreSocureHouseholdWarehouseIal.ForEmailLinkedHouseholdRead(
-            user.IalLevel,
-            idProofingEligibilitySettings.Value.RequireQualifyingHouseholdForSocure);
 
         // Co-loaded discovery: SNAP/TANF ids are an in-portal lookup (never Socure as national_id).
         // User-level IsCoLoaded isn't presumed from a pre-populated flag — the match itself is the
@@ -192,7 +214,8 @@ public class SubmitIdProofingCommandHandler(
                     user.Email,
                     new PiiVisibility(IncludeAddress: false, IncludeEmail: false, IncludePhone: false),
                     warehouseIalForEmailReads,
-                    cancellationToken);
+                    command.UserId,
+                    cancellationToken: cancellationToken);
             }
             catch (Exception ex) when (ex is not OperationCanceledException)
             {
@@ -227,7 +250,9 @@ public class SubmitIdProofingCommandHandler(
                 new SubmitIdProofingResponse(
                     "failed",
                     AllowIdRetry: allowBenefitRetry,
-                    OffboardingReason: "idProofingFailed"));
+                    OffboardingReason: CoLoadedCohortClassifier.ResolveOffboardingReason(
+                        "idProofingFailed",
+                        benefitHousehold)));
         }
 
         // Fetch household data for Socure: state/CMS may supply name, address, and phone when available.
@@ -243,7 +268,8 @@ public class SubmitIdProofingCommandHandler(
                 user.Email,
                 new PiiVisibility(IncludeAddress: true, IncludeEmail: true, IncludePhone: true),
                 warehouseIalForEmailReads,
-                cancellationToken);
+                command.UserId,
+                cancellationToken: cancellationToken);
             if (householdForSocure?.UserProfile != null)
             {
                 givenName = householdForSocure.UserProfile.FirstName;
@@ -351,7 +377,9 @@ public class SubmitIdProofingCommandHandler(
                     new SubmitIdProofingResponse(
                         "failed",
                         AllowIdRetry: allowIdRetry,
-                        OffboardingReason: "idProofingFailed"));
+                        OffboardingReason: CoLoadedCohortClassifier.ResolveOffboardingReason(
+                            "idProofingFailed",
+                            householdForSocure)));
 
             case IdProofingOutcome.DocumentVerificationRequired:
                 await userRepository.UpdateUserAsync(user, cancellationToken);
@@ -477,4 +505,5 @@ public class SubmitIdProofingCommandHandler(
         }
         return digitCount == 9;
     }
+
 }

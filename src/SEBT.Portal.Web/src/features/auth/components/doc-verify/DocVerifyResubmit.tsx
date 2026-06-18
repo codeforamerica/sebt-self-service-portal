@@ -20,6 +20,7 @@ interface DocVerifyResubmitProps {
 // behavior with Laura, then split copy by reason if consent-decline lands here in prod too.
 export function DocVerifyResubmit({ onResubmit, isResubmitting, error }: DocVerifyResubmitProps) {
   const { t } = useTranslation('idProofing')
+  const { t: tDev } = useTranslation('dev')
 
   return (
     <section aria-labelledby="doc-verify-resubmit-title">
@@ -53,10 +54,10 @@ export function DocVerifyResubmit({ onResubmit, isResubmitting, error }: DocVeri
           type="button"
           onClick={onResubmit}
           isLoading={isResubmitting}
-          loadingText={t('resubmitLoading', 'Starting retry...')}
+          loadingText={tDev('alertStartingRetry')}
           disabled={isResubmitting}
         >
-          {t('resubmitActionTryAgain', 'Try again')}
+          {tDev('alertTryAgain')}
         </Button>
       </div>
     </section>

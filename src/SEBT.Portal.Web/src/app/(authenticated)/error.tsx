@@ -32,7 +32,7 @@ export default function AuthenticatedError({ error, reset }: ErrorProps) {
           variant="error"
           heading={
             isAuthError
-              ? tDev('alertSession', 'Session expired')
+              ? tDev('alertSession')
               : // TODO update with correct string
                 t('errorSomethingWentWrong', 'Something went wrong')
           }
