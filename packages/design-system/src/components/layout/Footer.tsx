@@ -108,7 +108,7 @@ function COFooter({ state = 'co' }: FooterProps) {
               href={links.help.helpDeskEmail ?? '#'}
               className="usa-link text-ink text-underline"
             >
-              {t('titleContactUs')}
+              {t('linkContactUs')}
             </Link>
             {' | '}
             <Link

@@ -88,7 +88,7 @@ function COHelpSection({ state = 'co' }: HelpSectionProps) {
           rel="noopener noreferrer"
           className="usa-link text-ink font-sans-sm"
         >
-          {t('linkFaqsLearnMore')}
+          {t('linkFaqs')}
         </Link>
       </div>
     </section>

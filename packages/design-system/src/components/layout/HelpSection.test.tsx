@@ -34,7 +34,7 @@ describe('HelpSection (CO)', () => {
   it('renders the FAQ heading and a learn-more link to the CDHS FAQ page', () => {
     render(<HelpSection state="co" />)
     expect(screen.getByRole('heading', { name: 'titleFaqs' })).toBeInTheDocument()
-    expect(screen.getByRole('link', { name: 'linkFaqsLearnMore' })).toHaveAttribute(
+    expect(screen.getByRole('link', { name: 'linkFaqs' })).toHaveAttribute(
       'href',
       'https://cdhs.colorado.gov/summer-ebt-faq'
     )

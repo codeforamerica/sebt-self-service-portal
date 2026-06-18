@@ -42,7 +42,7 @@ describe('Footer (CO)', () => {
     const helpDeskHref = getStateLinks('co').help.helpDeskEmail ?? ''
     expect(helpDeskHref).toMatch(/^mailto:/)
     expect(helpDeskHref).toContain('state.co.us')
-    expect(screen.getByRole('link', { name: 'titleContactUs' })).toHaveAttribute(
+    expect(screen.getByRole('link', { name: 'linkContactUs' })).toHaveAttribute(
       'href',
       helpDeskHref
     )
@@ -58,6 +58,6 @@ describe('Footer (CO)', () => {
 
   it('does not leak the CO help-desk link into the DC footer', () => {
     render(<Footer state="dc" />)
-    expect(screen.queryByRole('link', { name: 'titleContactUs' })).toBeNull()
+    expect(screen.queryByRole('link', { name: 'linkContactUs' })).toBeNull()
   })
 })
