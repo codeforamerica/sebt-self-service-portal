@@ -250,12 +250,10 @@ public class ProcessWebhookCommandHandler(
         Guid userId,
         CancellationToken cancellationToken)
     {
-        const string defaultReason = "docVerificationFailed";
-
         var user = await userRepository.GetUserByIdAsync(userId, cancellationToken);
         if (user == null || string.IsNullOrWhiteSpace(user.Email))
         {
-            return defaultReason;
+            return DocVerificationOffboardingReasons.Failed;
         }
 
         var warehouseIal = PreSocureHouseholdWarehouseIal.ForEmailLinkedHouseholdRead(
@@ -268,7 +266,7 @@ public class ProcessWebhookCommandHandler(
             user,
             warehouseIal,
             userId,
-            defaultReason,
+            DocVerificationOffboardingReasons.Failed,
             cancellationToken);
     }
 
