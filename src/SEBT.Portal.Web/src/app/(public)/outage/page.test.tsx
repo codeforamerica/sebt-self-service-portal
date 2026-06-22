@@ -16,9 +16,16 @@ vi.mock('@/features/outage/getOutageMessages', () => ({
       body2: 'Le rogamos que espere unas horas y vuelva a esta página.'
     }
   ],
-  getOutageFooterCopy: () => ({
-    prefix: 'For more information, visit'
-  })
+  getOutageFooterCopy: () => [
+    {
+      language: 'en',
+      prefix: 'For more information, visit'
+    },
+    {
+      language: 'es',
+      prefix: 'Para más información, visite'
+    }
+  ]
 }))
 
 vi.mock('@sebt/design-system', async (importOriginal) => {
@@ -30,7 +37,7 @@ vi.mock('@sebt/design-system', async (importOriginal) => {
     getSiteDisplayName: () => 'District of Columbia SUN Bucks',
     getStateLinks: () => ({
       help: {
-        contactUs: 'https://sunbucks.dc.gov/page/contact-us',
+        sebtMainSite: 'https://sunbucks.dc.gov/page/contact-us',
         helpDeskEmail: 'mailto:help@example.com'
       }
     })
@@ -66,9 +73,14 @@ describe('OutagePageContent', () => {
     ).toBeInTheDocument()
     expect(screen.getByRole('img', { name: 'District of Columbia SUN Bucks' })).toBeInTheDocument()
 
-    const footerLink = screen.getByRole('link', { name: /sunbucks\.dc\.gov\/page\/contact-us/i })
-    expect(footerLink).toHaveAttribute('href', 'https://sunbucks.dc.gov/page/contact-us')
-    expect(footerLink).toHaveAttribute('target', '_blank')
+    const footerLinks = screen.getAllByRole('link', {
+      name: /sunbucks\.dc\.gov\/page\/contact-us/i
+    })
+    expect(footerLinks).toHaveLength(2)
+    footerLinks.forEach((link) => {
+      expect(link).toHaveAttribute('href', 'https://sunbucks.dc.gov/page/contact-us')
+      expect(link).toHaveAttribute('target', '_blank')
+    })
     expect(screen.getByText(/For more information, visit/i)).toBeInTheDocument()
   })
 })

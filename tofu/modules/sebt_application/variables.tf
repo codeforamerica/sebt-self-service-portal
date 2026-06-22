@@ -127,6 +127,20 @@ variable "rate_limit_window" {
   default     = 60
 }
 
+variable "security_agent_user_agent" {
+  type        = string
+  description = <<-EOT
+    User-Agent value used by the AWS Security Agent penetration test. When set in
+    the development environment, requests with this User-Agent are allowed
+    through the WAF and bypass all subsequent rules. Leave empty to disable.
+
+    SECURITY: User-Agent is trivially spoofable and is recorded in WAF/ALB logs,
+    so anyone who learns this value can bypass the WAF. The dev-only guard lives
+    in locals.tf; clear this value once the engagement is complete.
+    EOT
+  default     = "securityagent-0609137"
+}
+
 variable "sender_email" {
   type        = string
   description = "Email address used as the sender for OTP emails."

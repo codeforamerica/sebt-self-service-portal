@@ -54,6 +54,9 @@ public static class Dependencies
         // Feature Flag Services
         services.AddScoped<IFeatureFlagQueryService, Services.FeatureFlagQueryService>();
 
+        // Auto-enables the outage page during configured outage windows (drives outage_page_enabled).
+        services.AddSingleton<IOutageScheduleEvaluator, Services.OutageScheduleEvaluator>();
+
         // Household identifier resolution (state-configurable preferred household ID type)
         services.AddTransient<IHouseholdIdentifierResolver, HouseholdIdentifierResolver>();
 
@@ -373,6 +376,10 @@ public static class Dependencies
             .BindConfiguration(AddressValidationPolicySettings.SectionName);
         services.AddOptions<AddressValidationDataSettings>()
             .BindConfiguration(AddressValidationDataSettings.SectionName);
+
+        // Outage schedule windows. IOptionsMonitor so AppConfig updates hot-reload without a redeploy.
+        services.AddOptions<OutageScheduleSettings>()
+            .BindConfiguration(OutageScheduleSettings.SectionName);
 
         return services;
     }
