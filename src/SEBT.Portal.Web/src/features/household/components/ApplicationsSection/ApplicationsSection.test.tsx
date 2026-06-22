@@ -172,6 +172,23 @@ describe('ApplicationsSection', () => {
     expect(screen.queryByText('formatted:2026-01-15T00:00:00Z')).not.toBeInTheDocument()
   })
 
+  it('hides application date when show_application_date is not enabled', () => {
+    // CO does not enable this flag, so it is absent from GET /api/features and
+    // useFeatureFlag falls back to its `?? false` default — the date must stay
+    // hidden even when an application carries one.
+    const flagsWithoutApplicationDate = Object.fromEntries(
+      Object.entries(TEST_FEATURE_FLAGS).filter(([name]) => name !== 'show_application_date')
+    )
+
+    renderWithFlags({
+      flags: flagsWithoutApplicationDate,
+      isLoading: false,
+      isError: false
+    })
+
+    expect(screen.queryByText('formatted:2026-01-15T00:00:00Z')).not.toBeInTheDocument()
+  })
+
   it('hides application date when applicationDate is absent', () => {
     const appWithoutDate: Application = { ...mockApplication, applicationDate: undefined }
     mockReturnData = {
