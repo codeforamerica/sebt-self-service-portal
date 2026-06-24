@@ -283,7 +283,7 @@ public class MockHouseholdRepository : IHouseholdRepository
             };
         });
         coLoaded.Email = coLoadedEmail;
-        coLoaded.Phone = "8185558437"; // Matches default DevelopmentPhoneOverride for mock + phone lookup in dev
+        coLoaded.Phone = "18185558437"; // E.164 digits without '+': NormalizePhone strips '+' so PingOne's +18185558437 → 18185558437
         coLoaded.UserProfile = new UserProfile { FirstName = "Maria", MiddleName = "Elena", LastName = "MartinezMOCK" };
         _households[coLoadedEmail] = coLoaded;
         IndexByPhone(coLoaded);
@@ -306,7 +306,7 @@ public class MockHouseholdRepository : IHouseholdRepository
             var coLoadedNoChildren = HouseholdFactory.CreateHouseholdData(h =>
             {
                 h.Email = coLoadedNoChildrenEmail;
-                h.Phone = "8185558439";
+                h.Phone = "18185558439";
                 h.BenefitIssuanceType = BenefitIssuanceType.SnapEbtCard;
                 h.SummerEbtCases = new List<SummerEbtCase>();
                 h.Applications = new List<Application>();
@@ -496,7 +496,7 @@ public class MockHouseholdRepository : IHouseholdRepository
             };
         });
         nonCoLoaded.Email = nonCoLoadedEmail;
-        nonCoLoaded.Phone = "8185558439";
+        nonCoLoaded.Phone = "18185558439";
         nonCoLoaded.UserProfile = new UserProfile { FirstName = "Carlos", MiddleName = "Miguel", LastName = "GarciaMOCK" };
         _households[nonCoLoadedEmail] = nonCoLoaded;
         IndexByPhone(nonCoLoaded);
@@ -506,7 +506,7 @@ public class MockHouseholdRepository : IHouseholdRepository
         var idProofInProgressHousehold = CreateCopy(nonCoLoaded, idProofFullPii) with
         {
             Email = idProofInProgressEmail,
-            Phone = "5552223344"
+            Phone = "15552223344"
         };
         _households[idProofInProgressEmail] = idProofInProgressHousehold;
         IndexByPhone(idProofInProgressHousehold);
@@ -538,7 +538,7 @@ public class MockHouseholdRepository : IHouseholdRepository
             };
         });
         notStarted.Email = notStartedEmail;
-        notStarted.Phone = "8185558440";
+        notStarted.Phone = "18185558440";
         notStarted.UserProfile = new UserProfile { FirstName = "Jordan", MiddleName = "Lee", LastName = "AndersonMOCK" };
         _households[notStartedEmail] = notStarted;
         IndexByPhone(notStarted);
@@ -636,6 +636,7 @@ public class MockHouseholdRepository : IHouseholdRepository
         });
         largeFamily.Email = largeFamilyEmail;
         largeFamily.UserProfile = new UserProfile { FirstName = "Christopher", MiddleName = "Michael", LastName = "BrownMOCK" };
+        largeFamily.Phone = "17198004382";
         _households[largeFamilyEmail] = largeFamily;
         IndexByPhone(largeFamily);
 
@@ -783,7 +784,7 @@ public class MockHouseholdRepository : IHouseholdRepository
             };
         });
         coUndeliverable.Email = coUndeliverableEmail;
-        coUndeliverable.Phone = "3035551005"; // Deterministic phone so CO DevelopmentPhoneOverride can route to this persona in dev
+        coUndeliverable.Phone = "13035551005"; // E.164 digits without '+': matches PingOne's +13035551005 after NormalizePhone stripping
         coUndeliverable.UserProfile = new UserProfile { FirstName = "Sandra", MiddleName = "Maria", LastName = "TorresMOCK" };
         _households[coUndeliverableEmail] = coUndeliverable;
         IndexByPhone(coUndeliverable);
@@ -820,7 +821,7 @@ public class MockHouseholdRepository : IHouseholdRepository
             };
         });
         coFrozen.Email = coFrozenEmail;
-        coFrozen.Phone = "3035551006"; // Deterministic phone so CO DevelopmentPhoneOverride can route to this persona in dev
+        coFrozen.Phone = "13035551006"; // E.164 digits without '+': matches PingOne's +13035551006 after NormalizePhone stripping
         coFrozen.UserProfile = new UserProfile { FirstName = "Miguel", MiddleName = "Angel", LastName = "RiveraMOCK" };
         _households[coFrozenEmail] = coFrozen;
         IndexByPhone(coFrozen);
@@ -859,7 +860,7 @@ public class MockHouseholdRepository : IHouseholdRepository
             };
         });
         coNotActivated.Email = coNotActivatedEmail;
-        coNotActivated.Phone = "3035551007"; // Deterministic phone so CO DevelopmentPhoneOverride can route to this persona in dev
+        coNotActivated.Phone = "13035551007"; // E.164 digits without '+': matches PingOne's +13035551007 after NormalizePhone stripping
         coNotActivated.UserProfile = new UserProfile { FirstName = "Teresa", MiddleName = "Luz", LastName = "MoralesMOCK" };
         _households[coNotActivatedEmail] = coNotActivated;
         IndexByPhone(coNotActivated);
@@ -898,7 +899,7 @@ public class MockHouseholdRepository : IHouseholdRepository
             };
         });
         coDeactivatedByState.Email = coDeactivatedByStateEmail;
-        coDeactivatedByState.Phone = "3035551008"; // Deterministic phone so CO DevelopmentPhoneOverride can route to this persona in dev
+        coDeactivatedByState.Phone = "13035551008"; // E.164 digits without '+': matches PingOne's +13035551008 after NormalizePhone stripping
         coDeactivatedByState.UserProfile = new UserProfile { FirstName = "Ana", MiddleName = "Sol", LastName = "NavarroMOCK" };
         _households[coDeactivatedByStateEmail] = coDeactivatedByState;
         IndexByPhone(coDeactivatedByState);
@@ -939,7 +940,7 @@ public class MockHouseholdRepository : IHouseholdRepository
             };
         });
         coActive.Email = coActiveEmail;
-        coActive.Phone = "3035551009"; // Deterministic phone so CO DevelopmentPhoneOverride can route to this persona in dev
+        coActive.Phone = "13035551009"; // E.164 digits without '+': matches PingOne's +13035551009 after NormalizePhone stripping
         coActive.UserProfile = new UserProfile { FirstName = "Lorena", MiddleName = "Paz", LastName = "OrtizMOCK" };
         _households[coActiveEmail] = coActive;
         IndexByPhone(coActive);

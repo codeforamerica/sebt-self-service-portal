@@ -141,14 +141,15 @@ internal static class ServiceCollectionPluginExtensions
 
         // When mock household data is enabled, state connector write operations should also
         // be mocked — the real state backend is unavailable. Override any plugin-provided
-        // IAddressUpdateService with an in-memory mock that updates the MockHouseholdRepository
-        // so subsequent reads reflect the change.
+        // write services with in-memory mocks so address updates and card replacement
+        // requests succeed without calling the real state backend.
         var useMockHouseholdData = configuration.GetValue<bool>("UseMockHouseholdData", false);
         if (useMockHouseholdData)
         {
             services.AddSingleton<IAddressUpdateService>(sp =>
                 new Defaults.MockStateAddressUpdateService(
                     sp.GetRequiredService<MockHouseholdRepository>()));
+            services.AddSingleton<ICardReplacementService, Defaults.MockCardReplacementService>();
         }
 
         // Register in-process defaults only for services no connector plugin provided.
