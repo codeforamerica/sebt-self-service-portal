@@ -212,6 +212,11 @@ module "cloudfront_waf" {
   passive        = var.passive_waf
   hosted_zone_id = var.hosted_zone_id
 
+  # AWS Security Agent penetration test bypass (development only). Evaluated
+  # before the rate-limit rule so the test's traffic is allowed and terminating.
+  webhooks          = local.security_agent_waf_rules
+  webhooks_priority = 1
+
   rate_limit_rules = var.rate_limit_requests > 0 ? {
     base = {
       action   = var.passive_waf ? "count" : "block"
