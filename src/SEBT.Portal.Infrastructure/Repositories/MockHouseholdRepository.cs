@@ -388,6 +388,7 @@ public class MockHouseholdRepository : IHouseholdRepository
             };
         });
         verified.Email = verifiedEmail;
+        verified.Phone = "17192595068";
         verified.UserProfile = new UserProfile { FirstName = "John", MiddleName = "Robert", LastName = "DoeMOCK" };
         _households[verifiedEmail] = verified;
         IndexByPhone(verified);
@@ -420,6 +421,7 @@ public class MockHouseholdRepository : IHouseholdRepository
             };
         });
         pending.Email = pendingEmail;
+        pending.Phone = "17196627895";
         pending.UserProfile = new UserProfile { FirstName = "Jane", MiddleName = "Marie", LastName = "SmithMOCK" };
         _households[pendingEmail] = pending;
         IndexByPhone(pending);
@@ -436,6 +438,7 @@ public class MockHouseholdRepository : IHouseholdRepository
             }
         });
         denied.Email = deniedEmail;
+        denied.Phone = "17192833113";
         denied.UserProfile = new UserProfile { FirstName = "Robert", MiddleName = null, LastName = "JohnsonMOCK" };
         _households[deniedEmail] = denied;
         IndexByPhone(denied);
@@ -469,6 +472,7 @@ public class MockHouseholdRepository : IHouseholdRepository
             };
         });
         review.Email = reviewEmail;
+        review.Phone = "17197518675";
         review.UserProfile = new UserProfile { FirstName = "Susan", MiddleName = "Lee", LastName = "WilliamsMOCK" };
         _households[reviewEmail] = review;
         IndexByPhone(review);
@@ -555,6 +559,7 @@ public class MockHouseholdRepository : IHouseholdRepository
             }
         });
         cancelled.Email = cancelledEmail;
+        cancelled.Phone = "17207073837";
         cancelled.UserProfile = new UserProfile { FirstName = "David", MiddleName = "James", LastName = "DavisMOCK" };
         _households[cancelledEmail] = cancelled;
         IndexByPhone(cancelled);
@@ -594,6 +599,7 @@ public class MockHouseholdRepository : IHouseholdRepository
             };
         });
         singleChild.Email = singleChildEmail;
+        singleChild.Phone = "17197671993";
         singleChild.UserProfile = new UserProfile { FirstName = "Amanda", MiddleName = "Rose", LastName = "TaylorMOCK" };
         _households[singleChildEmail] = singleChild;
         IndexByPhone(singleChild);
@@ -645,7 +651,7 @@ public class MockHouseholdRepository : IHouseholdRepository
         var minimal = HouseholdFactory.CreateHouseholdDataWithStatus(ApplicationStatus.Pending, h =>
         {
             h.BenefitIssuanceType = BenefitIssuanceType.Unknown;
-            h.Phone = null;
+            h.Phone = "17209289672";
             var app = h.Applications.FirstOrDefault();
             if (app != null)
             {
@@ -685,6 +691,7 @@ public class MockHouseholdRepository : IHouseholdRepository
             };
         });
         expired.Email = expiredEmail;
+        expired.Phone = "17193564665";
         expired.UserProfile = new UserProfile { FirstName = "Patricia", MiddleName = "Ann", LastName = "GarciaMOCK" };
         _households[expiredEmail] = expired;
         IndexByPhone(expired);
@@ -701,6 +708,7 @@ public class MockHouseholdRepository : IHouseholdRepository
             }
         });
         unknown.Email = unknownEmail;
+        unknown.Phone = "17207593371";
         unknown.UserProfile = new UserProfile { FirstName = "Unknown", MiddleName = null, LastName = "UserMOCK" };
         _households[unknownEmail] = unknown;
         IndexByPhone(unknown);
