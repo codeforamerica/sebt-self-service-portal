@@ -128,33 +128,3 @@ jobs:
         env:
           NOTES: ${{ steps.notes.outputs.notes }}
  
-      # ─── 4. Send Email via Gmail ─────────────────────────────────────────────
-      - name: Send email
-        uses: dawidd6/action-send-mail@v3
-        with:
-          server_address: smtp.gmail.com
-          server_port: 465
-          secure: true
-          username: ${{ secrets.MAIL_USERNAME }}
-          password: ${{ secrets.MAIL_PASSWORD }}
-          subject: "SEBT Portal Weekly Update: ${{ steps.notes.outputs.week_start }} → ${{ steps.notes.outputs.today }}"
-          to: ${{ secrets.MAIL_TO }}
-          from: "SEBT Portal Updates <${{ secrets.MAIL_USERNAME }}>"
-          content_type: text/plain
-          body: ${{ steps.notes.outputs.notes }}
- 
-      # ─── 5. Append to Google Doc ─────────────────────────────────────────────
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: '3.12'
- 
-      - name: Install Google API client
-        run: pip install google-api-python-client google-auth
- 
-      - name: Append to Google Doc
-        env:
-          GOOGLE_SERVICE_ACCOUNT_JSON: ${{ secrets.GOOGLE_SERVICE_ACCOUNT_JSON }}
-          GOOGLE_DOC_ID: ${{ secrets.GOOGLE_DOC_ID }}
-          NOTES: ${{ steps.notes.outputs.notes }}
-        run: python scripts/update-google-doc.py
