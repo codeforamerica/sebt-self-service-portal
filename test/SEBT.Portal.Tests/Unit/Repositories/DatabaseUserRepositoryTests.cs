@@ -38,8 +38,7 @@ public class DatabaseUserRepositoryTests : IClassFixture<SqlServerTestFixture>
             context,
             TestHasher,
             TestPortalCryptography.PiiSymmetricEncryption,
-            TestPortalCryptography.EmailLookupHasher,
-            TestValiditySettings);
+            TestPortalCryptography.EmailLookupHasher);
 
     [Fact]
     public async Task GetUserByEmailAsync_WhenUserExists_ShouldReturnUser()
