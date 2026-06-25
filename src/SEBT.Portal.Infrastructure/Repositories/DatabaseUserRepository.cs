@@ -1,6 +1,4 @@
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Options;
-using SEBT.Portal.Core.AppSettings;
 using SEBT.Portal.Core.Exceptions;
 using SEBT.Portal.Core.Models.Auth;
 using SEBT.Portal.Core.Repositories;
@@ -19,11 +17,8 @@ public class DatabaseUserRepository(
     PortalDbContext dbContext,
     IIdentifierHasher identifierHasher,
     IPiiSymmetricEncryption piiEncryption,
-    IEmailLookupHasher emailLookupHasher,
-    IOptions<IdProofingValiditySettings> validitySettings) : IUserRepository
+    IEmailLookupHasher emailLookupHasher) : IUserRepository
 {
-    private readonly IdProofingValiditySettings _validitySettings = validitySettings.Value;
-
     public async Task<User?> GetUserByEmailAsync(string email, CancellationToken cancellationToken = default)
     {
         var normalizedEmail = NormalizeEmail(email);
