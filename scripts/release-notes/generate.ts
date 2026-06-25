@@ -108,13 +108,13 @@ async function main(): Promise<void> {
 
   // scripts/release-notes/generate.ts → up 3 levels → repo root
   const repoRoot = resolve(fileURLToPath(import.meta.url), '../../..')
-  const outDir = resolve(repoRoot, 'docs/release-notes')
+  const outDir = resolve(repoRoot, 'scripts/release-notes/output')
   mkdirSync(outDir, { recursive: true })
 
   const outPath = resolve(outDir, `${today}.md`)
   writeFileSync(outPath, md, 'utf8')
 
-  console.log(`Written to: docs/release-notes/${today}.md`)
+  console.log(`Written to: scripts/release-notes/output/${today}.md`)
   console.log(`Covered ${mergedPRs.length} merged PR(s) from ${weekStart} through ${today}.`)
 }
 

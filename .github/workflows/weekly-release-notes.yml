@@ -1,130 +1,49 @@
 name: Weekly Release Notes
- 
+
 on:
   schedule:
     - cron: '0 9 * * 1'  # Every Monday at 9am UTC
   workflow_dispatch:      # Also allow manual trigger
- 
+
 permissions:
   contents: write
   pull-requests: read
- 
+
 jobs:
   release-notes:
     runs-on: ubuntu-latest
- 
+
     steps:
       - name: Checkout
         uses: actions/checkout@v4
- 
-      # ─── 1. Collect PRs and generate friendly release notes ──────────────────
-      - name: Generate release notes
-        id: notes
-        uses: actions/github-script@v7
+
+      - name: Compute date outputs
+        id: date
+        run: |
+          echo "today=$(date +%Y-%m-%d)" >> $GITHUB_OUTPUT
+          echo "tag=weekly-$(date +%Y-%m-%d)" >> $GITHUB_OUTPUT
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
         with:
-          script: |
-            const oneWeekAgo = new Date();
-            oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
- 
-            // Fetch merged PRs from the past week
-            const allPRs = await github.paginate(github.rest.pulls.list, {
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              state: 'closed',
-              sort: 'updated',
-              direction: 'desc',
-              per_page: 100,
-            });
- 
-            const mergedPRs = allPRs.filter(pr =>
-              pr.merged_at && new Date(pr.merged_at) >= oneWeekAgo
-            );
- 
-            // Helper: check if a PR is tagged for CO or DC
-            // Checks both the PR title and any labels
-            function isColorado(pr) {
-              const text = (pr.title + ' ' + pr.labels.map(l => l.name).join(' ')).toLowerCase();
-              return text.includes('co') || text.includes('colorado');
-            }
-            function isDC(pr) {
-              const text = (pr.title + ' ' + pr.labels.map(l => l.name).join(' ')).toLowerCase();
-              return text.includes(' dc') || text.includes('district of columbia') || text.includes('[dc]');
-            }
- 
-            // Helper: clean up a PR title for non-technical readers
-            // Strips ticket numbers, branch refs, and common dev jargon
-            function friendlyTitle(title) {
-              return title
-                .replace(/^\[?(fix|feat|chore|refactor|hotfix|bug|update|wip)\]?:?\s*/i, '')
-                .replace(/\(#\d+\)/g, '')
-                .replace(/#\d+/g, '')
-                .replace(/\[CO\]|\[DC\]|\[co\]|\[dc\]/gi, '')
-                .trim();
-            }
- 
-            // Sort PRs into buckets
-            const colorado = [];
-            const dc = [];
-            const both = [];
- 
-            for (const pr of mergedPRs) {
-              const co = isColorado(pr);
-              const d  = isDC(pr);
-              const entry = `- ${friendlyTitle(pr.title)}`;
-              if (co && !d) colorado.push(entry);
-              else if (d && !co) dc.push(entry);
-              else both.push(entry); // neither tagged = applies to both states
-            }
- 
-            const today     = new Date().toISOString().split('T')[0];
-            const weekStart = oneWeekAgo.toISOString().split('T')[0];
- 
-            // ── Build the friendly doc ────────────────────────────────────────
-            let md = `# SEBT Self-Service Portal — Weekly Update\n`;
-            md += `**${weekStart} through ${today}**\n\n`;
-            md += `Here's a summary of what changed in the portal this week.\n\n`;
- 
-            if (both.length > 0) {
-              md += `## 🌐 Updates for All States\n\n`;
-              md += both.join('\n') + '\n\n';
-            }
- 
-            if (colorado.length > 0) {
-              md += `## 🏔️ Colorado-Specific Updates\n\n`;
-              md += colorado.join('\n') + '\n\n';
-            }
- 
-            if (dc.length > 0) {
-              md += `## 🏛️ Washington DC-Specific Updates\n\n`;
-              md += dc.join('\n') + '\n\n';
-            }
- 
-            if (mergedPRs.length === 0) {
-              md += `_No updates were released this week._\n\n`;
-            }
- 
-            md += `---\n_This update was generated automatically. Questions? Reach out to the engineering team._\n`;
- 
-            core.setOutput('notes', md);
-            core.setOutput('today', today);
-            core.setOutput('week_start', weekStart);
-            core.setOutput('tag', `weekly-${today}`);
- 
-      # ─── 2. Create GitHub Release ────────────────────────────────────────────
+          node-version: '24'
+
+      # ─── Generate release notes ───────────────────────────────────────────────
+      # Runs scripts/release-notes/generate.ts, which writes
+      # docs/release-notes/YYYY-MM-DD.md using merged PRs fetched via gh CLI.
+      - name: Generate release notes
+        run: npx --yes tsx@4 scripts/release-notes/generate.ts
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      # ─── Create GitHub Release ────────────────────────────────────────────────
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: ${{ steps.notes.outputs.tag }}
-          name: "Weekly Update – ${{ steps.notes.outputs.today }}"
-          body: ${{ steps.notes.outputs.notes }}
+          tag_name: ${{ steps.date.outputs.tag }}
+          name: "Weekly Update – ${{ steps.date.outputs.today }}"
+          body_path: scripts/release-notes/output/${{ steps.date.outputs.today }}.md
           draft: false
           prerelease: false
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
- 
-      # ─── 3. Save notes to file ───────────────────────────────────────────────
-      - name: Save notes to file
-        run: echo "$NOTES" > release-notes.md
-        env:
-          NOTES: ${{ steps.notes.outputs.notes }}
- 
