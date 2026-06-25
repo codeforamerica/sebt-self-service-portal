@@ -250,6 +250,8 @@ export function AddressForm({ initialAddress, redirectPath }: AddressFormProps) 
             <a
               href={getStateLinks(currentState).help.contactUs}
               className="usa-link"
+              data-analytics-cta="address_form_contact_us_cta"
+              data-analytics-cta-destination-type="external_only"
             >
               {t('alertAction')}
             </a>
