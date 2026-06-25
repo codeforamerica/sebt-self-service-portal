@@ -32,14 +32,17 @@ export function AppShell({ children, state }: AppShellProps) {
   }
 
   return (
-    <>
+    <div className="display-flex flex-column minh-viewport">
       <BetaBanner />
       <Header state={state} />
-      <main id="main-content">
+      <main
+        id="main-content"
+        className="flex-fill"
+      >
         <OutageGuard>{children}</OutageGuard>
       </main>
       <HelpSection state={state} />
       <Footer state={state} />
-    </>
+    </div>
   )
 }
