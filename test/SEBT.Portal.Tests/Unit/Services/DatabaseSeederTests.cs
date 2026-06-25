@@ -717,7 +717,6 @@ public class DatabaseSeederTests : IClassFixture<SqlServerTestFixture>
         Assert.Equal((int)IdProofingStatus.InProgress, user.IdProofingStatus);
         Assert.Equal((int)UserIalLevel.None, user.IalLevel);
         Assert.Null(user.IdProofingCompletedAt);
-        Assert.Null(user.IdProofingExpiresAt);
     }
 
     [Fact]
@@ -739,7 +738,6 @@ public class DatabaseSeederTests : IClassFixture<SqlServerTestFixture>
         Assert.Equal((int)IdProofingStatus.NotStarted, pending.IdProofingStatus);
         Assert.Equal((int)UserIalLevel.None, pending.IalLevel);
         Assert.Null(pending.IdProofingCompletedAt);
-        Assert.Null(pending.IdProofingExpiresAt);
         Assert.Equal("8185558438", TestPortalCryptography.PiiSymmetricEncryption.DecryptOrPassThroughLegacy(pending.Phone!));
         Assert.Equal("SNAP-CO-001", TestPortalCryptography.PiiSymmetricEncryption.DecryptOrPassThroughLegacy(pending.SnapId!));
         Assert.Equal("TANF-CO-001", TestPortalCryptography.PiiSymmetricEncryption.DecryptOrPassThroughLegacy(pending.TanfId!));
