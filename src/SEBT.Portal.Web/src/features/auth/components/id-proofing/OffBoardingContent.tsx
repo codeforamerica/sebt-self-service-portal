@@ -12,6 +12,19 @@ interface OffBoardingContentProps {
   applySkipBody?: string | undefined
   applyLabel?: string | undefined
   applyHref?: string | undefined
+  /**
+   * Items shown as a bulleted list directly under the body (e.g. accepted ID
+   * types). Always visible, independent of canApply.
+   */
+  bodyList?: string[] | undefined
+  /** Note shown under the body list (e.g. the "you may be able to skip" line). */
+  bodyNote?: string | undefined
+  /**
+   * When both are provided, a "Continue" primary button replaces the Contact
+   * button. Contact stays reachable via the global help section below.
+   */
+  continueHref?: string | undefined
+  continueLabel?: string | undefined
 }
 
 export function OffBoardingContent({
@@ -25,9 +38,14 @@ export function OffBoardingContent({
   applyBody,
   applySkipBody,
   applyLabel,
-  applyHref
+  applyHref,
+  bodyList,
+  bodyNote,
+  continueHref,
+  continueLabel
 }: OffBoardingContentProps) {
   const isExternalLink = contactHref.startsWith('http')
+  const showContinue = Boolean(continueHref && continueLabel)
 
   return (
     <>
@@ -40,6 +58,16 @@ export function OffBoardingContent({
 
       <p className="font-sans-sm">{body}</p>
 
+      {bodyList && bodyList.length > 0 && (
+        <ul className="usa-list font-sans-sm">
+          {bodyList.map((item) => (
+            <li key={item}>{item}</li>
+          ))}
+        </ul>
+      )}
+
+      {bodyNote && <p className="font-sans-sm">{bodyNote}</p>}
+
       <div className="display-flex flex-row gap-2 margin-y-4">
         <Link
           href={backHref}
@@ -47,14 +75,23 @@ export function OffBoardingContent({
         >
           {backLabel}
         </Link>
-        <a
-          href={contactHref}
-          {...(isExternalLink ? { target: '_blank', rel: 'noopener noreferrer' } : {})}
-          className="usa-button"
-        >
-          {contactLabel}
-          {isExternalLink && <span className="usa-sr-only"> (opens in a new tab)</span>}
-        </a>
+        {showContinue ? (
+          <Link
+            href={continueHref!}
+            className="usa-button"
+          >
+            {continueLabel}
+          </Link>
+        ) : (
+          <a
+            href={contactHref}
+            {...(isExternalLink ? { target: '_blank', rel: 'noopener noreferrer' } : {})}
+            className="usa-button"
+          >
+            {contactLabel}
+            {isExternalLink && <span className="usa-sr-only"> (opens in a new tab)</span>}
+          </a>
+        )}
       </div>
 
       {canApply && (applyBody || applySkipBody || (applyLabel && applyHref)) && (
