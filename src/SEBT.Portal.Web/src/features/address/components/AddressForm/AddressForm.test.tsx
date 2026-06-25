@@ -475,8 +475,24 @@ describe('AddressForm', () => {
     })
     expect(mockSetPageData).toHaveBeenCalledWith('address_update_status', 'success')
     expect(mockSetPageData).toHaveBeenCalledWith('error_code', null)
+    expect(mockSetPageData).toHaveBeenCalledWith('address_state_category', 'home_state')
     expect(mockTrackEvent).toHaveBeenCalledWith(AnalyticsEvents.ADDRESS_UPDATE_SUBMIT)
     expect(mockTrackEvent).not.toHaveBeenCalledWith(AnalyticsEvents.ADDRESS_UPDATE_ERROR)
+  })
+
+  it('classifies an out-of-state address as out_of_state on a DC deployment', async () => {
+    const { user } = renderForm()
+
+    await user.type(getStreetInput(), '123 Main St NW')
+    await user.type(getPostalInput(), '20001')
+    await user.selectOptions(getStateSelect(), 'VA')
+
+    await user.click(screen.getByRole('button', { name: /continue/i }))
+
+    await waitFor(() => {
+      expect(mockSetPageData).toHaveBeenCalledWith('address_state_category', 'out_of_state')
+    })
+    expect(mockTrackEvent).toHaveBeenCalledWith(AnalyticsEvents.ADDRESS_UPDATE_SUBMIT)
   })
 
   // --- Failed submission ---

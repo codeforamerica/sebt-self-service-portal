@@ -29,7 +29,11 @@ export const HOUSEHOLD_RESULT = 'household_result'
 
 /** Fired when the user enters the address update form. */
 export const ADDRESS_UPDATE_START = 'address_update_start'
-/** Fired when the address update API call completes. Carries `address_update_status` (page). */
+/**
+ * Fired when the address update API call completes. Carries `address_update_status` and
+ * `address_state_category` (page) — the latter classifies the submitted state as `home_state`
+ * or `out_of_state` relative to the deployment's home state (per ADR).
+ */
 export const ADDRESS_UPDATE_SUBMIT = 'address_update_submit'
 /** Fired when the address update API call fails. Carries `error_code` (page). */
 export const ADDRESS_UPDATE_ERROR = 'address_update_error'

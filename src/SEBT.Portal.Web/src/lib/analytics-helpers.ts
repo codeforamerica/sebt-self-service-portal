@@ -10,6 +10,9 @@ type AddressUpdateAnalyticsStatus = 'success' | 'suggestion' | 'validation_error
 
 type CardReplacementAnalyticsStatus = 'success' | 'error'
 
+/** Whether a submitted address's state matches the portal's deployment (home) state, per ADR. */
+export type AddressStateCategory = 'home_state' | 'out_of_state'
+
 interface DataLayerTrackFns {
   setPageData: (path: string, value: unknown, scope?: string | string[]) => void
   setUserData: (path: string, value: unknown, scope?: string | string[]) => void
@@ -49,12 +52,32 @@ function addressUpdateErrorCodeFromResult(result: AddressUpdateResponse): string
   return result.status.toUpperCase()
 }
 
+/**
+ * Classifies a submitted address by whether its state matches the portal's deployment (home)
+ * state, for page.address_state_category on address_update_submit events (per ADR). Compares
+ * case-insensitively (submitted USPS code vs the deployment state code), so a DC deployment
+ * treats "DC" as home_state and "VA" as out_of_state. An absent state classifies as out_of_state.
+ */
+export function classifyAddressState(
+  submittedState: string | null | undefined,
+  homeState: string
+): AddressStateCategory {
+  return submittedState?.trim().toUpperCase() === homeState.trim().toUpperCase()
+    ? 'home_state'
+    : 'out_of_state'
+}
+
 /** Emits address_update_submit; emits address_update_error when the API call fails. */
 export function trackAddressUpdateSubmit(
   dl: Pick<DataLayerTrackFns, 'setPageData' | 'trackEvent'>,
   result: AddressUpdateResponse | null,
-  error: unknown | null
+  error: unknown | null,
+  addressStateCategory: AddressStateCategory | null = null
 ): void {
+  if (addressStateCategory != null) {
+    dl.setPageData('address_state_category', addressStateCategory)
+  }
+
   if (error != null) {
     dl.setPageData('address_update_status', 'error')
     dl.setPageData('error_code', apiErrorCodeFromUnknown(error))
