@@ -33,6 +33,12 @@ export const ADDRESS_UPDATE_START = 'address_update_start'
 export const ADDRESS_UPDATE_SUBMIT = 'address_update_submit'
 /** Fired when the address update API call fails. Carries `error_code` (page). */
 export const ADDRESS_UPDATE_ERROR = 'address_update_error'
+/**
+ * Fired when local (client-side) form validation blocks the address-update submit before any
+ * backend request — so failures like an over-length street address are still measured. Carries
+ * `error_code` and `field_name` (page); `flow`/`step` ride along from the page context.
+ */
+export const ADDRESS_UPDATE_VALIDATION_ERROR = 'address_update_validation_error'
 /** Fired when the user enters the card replacement flow. */
 export const CARD_REPLACEMENT_START = 'card_replacement_start'
 /** Fired when the card replacement API call completes. Carries `card_replacement_status` (page). */
