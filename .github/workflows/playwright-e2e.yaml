@@ -192,7 +192,7 @@ jobs:
           BACKEND_URL: http://localhost:5280
           MAILPIT_API_URL: http://localhost:8025
           ASPNETCORE_ENVIRONMENT: Development
-          ConnectionStrings__DefaultConnection: "Server=localhost,1433;Database=SebtPortal;User Id=sa;Password=YourStrong@Passw0rd;TrustServerCertificate=True;"
+          ConnectionStrings__DefaultConnection: "Server=localhost,1433;Database=SebtPortal;User Id=sa;Password=YourStrong@Passw0rd;TrustServerCertificate=True;Encrypt=False;"
           JwtSettings__SecretKey: "ci-e2e-jwt-secret-at-least-32-characters-long"
           IdentifierHasher__SecretKey: "ci-e2e-identifier-hasher-key-32chars"
           Oidc__CompleteLoginSigningKey: "ci-e2e-oidc-signing-key-at-least-32-chars"
