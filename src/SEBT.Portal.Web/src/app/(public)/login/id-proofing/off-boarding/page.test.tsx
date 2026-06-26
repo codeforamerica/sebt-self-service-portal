@@ -32,6 +32,8 @@ const POPULATED_KEYS = new Set([
   'offBoarding:coLoadedAction1',
   'offBoarding:coLoadedBody2',
   'offBoarding:coLoadedAction2',
+  'offBoarding:docVerificationFailedTitle',
+  'offBoarding:docVerificationFailedBody',
   'stepUpFailure:title',
   'stepUpFailure:body',
   'common:linkContactUs',
@@ -292,11 +294,8 @@ describe('OffBoardingPage', () => {
       await renderPage({ reason: 'docVerificationEgregiousFailed' })
 
       const content = screen.getByTestId('off-boarding-content')
-      expect(content).toHaveAttribute('data-title', "We couldn't verify your identity")
-      expect(content).toHaveAttribute(
-        'data-body',
-        "Your document couldn't be verified. You can try again with a different ID, or contact us if you need help."
-      )
+      expect(content).toHaveAttribute('data-title', 'offBoarding:docVerificationFailedTitle')
+      expect(content).toHaveAttribute('data-body', 'offBoarding:docVerificationFailedBody')
       expect(content).toHaveAttribute('data-can-apply', 'false')
     })
 
@@ -304,11 +303,8 @@ describe('OffBoardingPage', () => {
       await renderPage({ reason: 'docVerificationFailed' })
 
       const content = screen.getByTestId('off-boarding-content')
-      expect(content).toHaveAttribute('data-title', "We couldn't verify your identity")
-      expect(content).toHaveAttribute(
-        'data-body',
-        "Your document couldn't be verified. You can try again with a different ID, or contact us if you need help."
-      )
+      expect(content).toHaveAttribute('data-title', 'offBoarding:docVerificationFailedTitle')
+      expect(content).toHaveAttribute('data-body', 'offBoarding:docVerificationFailedBody')
     })
 
     it('uses step-up failure copy for OIDC callback errors (CO MyCO step-up)', async () => {
