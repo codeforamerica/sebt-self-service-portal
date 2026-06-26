@@ -165,7 +165,7 @@ jobs:
           # Wait for SQL Server to accept connections from the job host (service health runs inside the container).
           for i in $(seq 1 30); do
             if docker run --rm --network host mcr.microsoft.com/mssql/server:2022-latest \
-              /opt/mssql-tools18/bin/sqlcmd -S localhost,1433 -U sa -P 'YourStrong@Passw0rd' -Q 'SELECT 1' -C -b -o /dev/null 2>&1; then
+              /opt/mssql-tools18/bin/sqlcmd -S localhost,1433 -U sa -P 'YourStrong@Passw0rd' -Q 'SELECT 1' -No -b -o /dev/null 2>&1; then
               echo "SQL Server ready"
               break
             fi
