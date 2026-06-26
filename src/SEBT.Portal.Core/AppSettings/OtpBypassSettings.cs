@@ -1,8 +1,8 @@
 namespace SEBT.Portal.Core.AppSettings;
 
 /// <summary>
-/// Settings related to bypassing OTP validation for a specific email address in staging environment.
-/// This is intended to facilitate SEBT's DAST scanning in staging, but should be used
+/// Settings related to bypassing OTP validation for a specific email address in non-production environments.
+/// This is intended to facilitate SEBT's DAST scanning, but should be used
 /// with caution and should never be enabled in production or for any real user accounts.
 /// </summary>
 public static class OtpBypassSettings
@@ -15,20 +15,20 @@ public static class OtpBypassSettings
     /// <summary>
     /// Fixed, well-known OTP code used by the DAST scanner to bypass validation.
     /// The value is intentionally predictable; safety is provided by the gating criteria
-    /// (feature flag + staging environment + scanner-specific email).
+    /// (feature flag + non-production environment + scanner-specific email).
     /// </summary>
     public static readonly string OtpCode = "123456";
 
     /// <summary>
     /// Feature flag name to enable OTP bypass. When enabled, requests that meet the bypass criteria will skip OTP validation.
-    /// This should only be enabled in staging and should never be enabled in production.
+    /// This should only be enabled in non-production environments and should never be enabled in production.
     /// The bypass criteria are:
     /// 1. The feature flag named by <see cref="FeatureFlagName"/> is enabled
-    /// 2. The application is running in the staging environment
+    /// 2. The application is running in a non-production environment
     /// 3. The email in the request matches <see cref="Email"/>
     /// 4. The OTP code in the request matches <see cref="OtpCode"/>
     /// When all criteria are met, OTP validation will be bypassed, allowing testing of the login flow without needing to receive an OTP.
-    /// This is intended to facilitate SEBT's DAST scanning in staging, but should be used with caution and should never be enabled in production or for any real user accounts.
+    /// This is intended to facilitate SEBT's DAST scanning, but should be used with caution and should never be enabled in production or for any real user accounts.
     /// </summary>
     public static readonly string FeatureFlagName = "bypass_otp";
 }

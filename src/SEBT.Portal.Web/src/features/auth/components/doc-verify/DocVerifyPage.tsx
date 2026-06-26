@@ -180,8 +180,8 @@ export function DocVerifyPage({ contactLink }: DocVerifyPageProps) {
       trackEvent(AnalyticsEvents.IDV_FINAL_RESULT)
       clearChallengeContext()
       // Pass the reason via URL so the off-boarding route can render distinct
-      // copy (docVerificationFailed, challengeNotFound, etc). Mirrors the
-      // pattern IdProofingForm uses for noIdProvided.
+      // copy where it has a dedicated branch (e.g. noIdProvided). Socure
+      // rejects route to the generic "keep your account safe" screen.
       const params = new URLSearchParams()
       if (offboardingReason) {
         params.set('reason', offboardingReason)

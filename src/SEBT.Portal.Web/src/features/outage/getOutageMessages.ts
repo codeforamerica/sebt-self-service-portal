@@ -8,6 +8,7 @@ export interface OutageMessage {
 }
 
 export interface OutageFooterCopy {
+  language: SupportedLanguage
   prefix: string
 }
 
@@ -41,11 +42,19 @@ export function getOutageMessages(): OutageMessage[] {
   })
 }
 
-export function getOutageFooterCopy(): OutageFooterCopy {
+export function getOutageFooterCopy(): OutageFooterCopy[] {
   const state = getState()
-  const copy = getOutageNamespace('en', state)
+  const copyEn = getOutageNamespace('en', state)
+  const copyEs = getOutageNamespace('es', state)
 
-  return {
-    prefix: copy?.footer?.trim() ?? 'For more information, visit'
-  }
+  return [
+    {
+      language: 'en',
+      prefix: copyEn?.footer?.trim() ?? 'For more information, visit'
+    },
+    {
+      language: 'es',
+      prefix: copyEs?.footer?.trim() ?? 'Para más información, visite'
+    }
+  ]
 }
