@@ -347,6 +347,42 @@ describe('DataLayer', () => {
 
       document.removeEventListener('digitalData:EventTracked', handler)
     })
+
+    it('merges analytics-scoped page and user fields into eventData', () => {
+      new DataLayer('digitalData')
+      window.digitalData!.page.set('flow', 'auth')
+      window.digitalData!.page.set('step', 'verify_otp')
+      window.digitalData!.page.set('otp_status', 'success')
+      window.digitalData!.user.set('authenticated', true, ['default', 'analytics'])
+
+      window.digitalData!.trackEvent('otp_result')
+
+      expect(window.digitalData!.event[0]!.eventData).toEqual({
+        flow: 'auth',
+        step: 'verify_otp',
+        otp_status: 'success',
+        authenticated: true
+      })
+    })
+
+    it('explicit eventData wins on key collision with page/user context', () => {
+      new DataLayer('digitalData')
+      window.digitalData!.page.set('flow', 'auth')
+
+      window.digitalData!.trackEvent('cta_click', { flow: 'overridden' })
+
+      expect(window.digitalData!.event[0]!.eventData).toEqual({ flow: 'overridden' })
+    })
+
+    it('excludes page or user fields whose registered scope omits analytics', () => {
+      new DataLayer('digitalData')
+      // user.set enforces a 'default' scope when no scope arg is passed.
+      window.digitalData!.user.set('email', 'private@example.com')
+
+      window.digitalData!.trackEvent('logout')
+
+      expect(window.digitalData!.event[0]!.eventData).not.toHaveProperty('email')
+    })
   })
 
   // ── pageLoad ──

@@ -1,7 +1,7 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { http, HttpResponse } from 'msw'
+import { delay, http, HttpResponse } from 'msw'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { server } from '@/mocks/server'
@@ -24,6 +24,31 @@ vi.mock('@sebt/design-system', async (importOriginal) => {
   return {
     ...actual,
     getState: () => mockState
+  }
+})
+
+const TEST_USER_ID = '018f0000-0000-7000-8000-000000000001'
+
+vi.mock('@/features/auth', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/features/auth')>()
+  return {
+    ...actual,
+    useAuth: () => ({
+      session: {
+        userId: TEST_USER_ID,
+        email: 'test@example.com',
+        ial: '1plus',
+        idProofingStatus: 2,
+        idProofingCompletedAt: null,
+        idProofingExpiresAt: null,
+        isCoLoaded: false,
+        expiresAt: null,
+        absoluteExpiresAt: null
+      },
+      isAuthenticated: true,
+      isLoading: false,
+      login: vi.fn()
+    })
   }
 })
 
@@ -91,12 +116,6 @@ const TWO_CHILD_HOUSEHOLD = {
       applicationStatus: 'Approved',
       benefitIssueDate: '2026-01-08T00:00:00Z',
       benefitExpirationDate: '2026-03-19T00:00:00Z',
-      last4DigitsOfCard: '1234',
-      cardStatus: 'Active',
-      cardRequestedAt: '2026-01-01T00:00:00Z',
-      cardMailedAt: '2026-01-03T00:00:00Z',
-      cardActivatedAt: '2026-01-08T00:00:00Z',
-      cardDeactivatedAt: null,
       issuanceType: 1,
       children: [
         { caseNumber: 456001, firstName: 'Sophia', lastName: 'Martinez' },
@@ -134,6 +153,23 @@ describe('CardSelection', () => {
 
     const checkboxes = screen.getAllByRole('checkbox')
     expect(checkboxes).toHaveLength(2)
+  })
+
+  // --- Loading state ---
+
+  it('shows real loading copy while household data is fetching', async () => {
+    server.use(
+      http.get('/api/household/data', async () => {
+        await delay('infinite')
+        return HttpResponse.json(TWO_CHILD_HOUSEHOLD)
+      })
+    )
+
+    renderCardSelection()
+
+    // The loading text must resolve to real copy ("Loading..." from the `dev`
+    // namespace), not an unresolved key string.
+    expect(await screen.findByText('Loading...')).toBeInTheDocument()
   })
 
   // --- State-specific content ---
@@ -245,7 +281,7 @@ describe('CardSelection', () => {
     renderCardSelection()
 
     await waitFor(() => {
-      expect(screen.getByText(/unable to load household members/i)).toBeInTheDocument()
+      expect(screen.getByText(/an error occurred on our end/i)).toBeInTheDocument()
     })
   })
 

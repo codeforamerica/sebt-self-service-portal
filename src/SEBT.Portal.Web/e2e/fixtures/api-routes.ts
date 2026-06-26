@@ -1,6 +1,11 @@
 import type { Page } from '@playwright/test'
 
-import { DEFAULT_FEATURE_FLAGS, makeHouseholdData, type MockHouseholdData } from './household-data'
+import {
+  DEFAULT_FEATURE_FLAGS,
+  makeHouseholdData,
+  MOCK_USER_ID,
+  type MockHouseholdData
+} from './household-data'
 
 interface ApiRouteOverrides {
   /** Override the household data response. Defaults to makeHouseholdData(). */
@@ -45,7 +50,7 @@ interface ApiRouteOverrides {
  * in the HttpOnly session cookie, not the response body).
  */
 export async function setupApiRoutes(page: Page, overrides: ApiRouteOverrides = {}): Promise<void> {
-  const householdData = overrides.householdData ?? makeHouseholdData()
+  const householdSnapshot = structuredClone(overrides.householdData ?? makeHouseholdData())
   const featureFlags = { ...DEFAULT_FEATURE_FLAGS, ...(overrides.featureFlags ?? {}) }
   const addressUpdateStatus = overrides.addressUpdateStatus ?? 200
   const addressUpdateBody =
@@ -58,14 +63,20 @@ export async function setupApiRoutes(page: Page, overrides: ApiRouteOverrides = 
           : null
   const cardReplaceStatus = overrides.cardReplaceStatus ?? 204
 
+  // The trailing `*` on GET routes tolerates the per-request `?_=<uuid>`
+  // cache-bust query string that apiFetch appends to defeat edge-cache leaks
+  // (see ADR 0016). Playwright glob `*` matches any characters except `/`,
+  // so it equally matches the bare path and the path-plus-query form.
+
   // Provide an authenticated session for AuthContext — IAL/id-proofing claims
   // satisfy the CO step-up gate; DC ignores them.
-  await page.route('**/api/auth/status', (route) => {
+  await page.route('**/api/auth/status*', (route) => {
     void route.fulfill({
       status: 200,
       contentType: 'application/json',
       body: JSON.stringify({
         isAuthorized: true,
+        userId: MOCK_USER_ID,
         email: 'e2e@example.com',
         ial: '1plus',
         idProofingStatus: 2,
@@ -83,15 +94,15 @@ export async function setupApiRoutes(page: Page, overrides: ApiRouteOverrides = 
     void route.fulfill({ status: 204 })
   })
 
-  await page.route('**/api/household/data', (route) => {
+  await page.route('**/api/household/data*', (route) => {
     void route.fulfill({
       status: 200,
       contentType: 'application/json',
-      body: JSON.stringify(householdData)
+      body: JSON.stringify(householdSnapshot)
     })
   })
 
-  await page.route('**/api/features', (route) => {
+  await page.route('**/api/features*', (route) => {
     void route.fulfill({
       status: 200,
       contentType: 'application/json',
@@ -99,7 +110,30 @@ export async function setupApiRoutes(page: Page, overrides: ApiRouteOverrides = 
     })
   })
 
-  await page.route('**/api/household/address', (route) => {
+  await page.route('**/api/household/address', async (route) => {
+    if (route.request().method() === 'PUT' && addressUpdateStatus === 200) {
+      try {
+        const body = (await route.request().postDataJSON()) as {
+          streetAddress1?: string
+          streetAddress2?: string | null
+          city?: string
+          state?: string
+          postalCode?: string
+        }
+        if (body.streetAddress1 && body.city && body.state && body.postalCode) {
+          householdSnapshot.addressOnFile = {
+            streetAddress1: body.streetAddress1,
+            streetAddress2: body.streetAddress2 ?? null,
+            city: body.city,
+            state: body.state,
+            postalCode: body.postalCode
+          }
+        }
+      } catch {
+        // Keep default snapshot when the request body is not JSON.
+      }
+    }
+
     void route.fulfill({
       status: addressUpdateStatus,
       ...(addressUpdateBody != null

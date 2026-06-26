@@ -1,3 +1,4 @@
+using Medallion.Threading;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.EntityFrameworkCore;
@@ -8,6 +9,7 @@ using SEBT.Portal.Core.Services;
 using SEBT.Portal.Infrastructure.Data;
 using SEBT.Portal.Infrastructure.Services;
 using SEBT.Portal.StatesPlugins.Interfaces;
+using SEBT.Portal.Tests.Helpers;
 
 namespace SEBT.Portal.Tests.Integration.PluginIntegration;
 
@@ -22,6 +24,7 @@ public class PluginIntegrationWebApplicationFactory : WebApplicationFactory<Prog
 {
     private readonly string? _pluginDir;
     private readonly List<string> _envKeysToClean = new();
+    private string? _previousState;
 
     public PluginIntegrationWebApplicationFactory(
         string? pluginDir = null,
@@ -44,6 +47,11 @@ public class PluginIntegrationWebApplicationFactory : WebApplicationFactory<Prog
 
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
+        // Prevent appsettings.{state}.json from loading after env vars and overriding
+        // PluginAssemblyPaths (e.g. appsettings.dc.json when STATE=dc leaks from unit tests).
+        _previousState = Environment.GetEnvironmentVariable("STATE");
+        Environment.SetEnvironmentVariable("STATE", null);
+
         // Override plugin assembly paths via environment variables BEFORE the server starts.
         // Environment variables are visible immediately when Program.cs reads configuration,
         // unlike AddInMemoryCollection which can be applied too late.
@@ -52,6 +60,10 @@ public class PluginIntegrationWebApplicationFactory : WebApplicationFactory<Prog
         Environment.SetEnvironmentVariable("PluginAssemblyPaths__1", "plugins-none");
         Environment.SetEnvironmentVariable("JwtSettings__SecretKey",
             "integration-test-key-must-be-at-least-32-bytes-long");
+        // Disable Redis so HybridCache uses in-memory only and distributed locking falls
+        // back to SQL. Matches PortalWebApplicationFactory — prevents env-var leakage from
+        // a preceding factory from leaving a non-empty Redis connection string in place.
+        Environment.SetEnvironmentVariable("ConnectionStrings__Redis", "");
         Environment.SetEnvironmentVariable("IdProofingRequirements__household+view__application", "IAL1");
         Environment.SetEnvironmentVariable("IdProofingRequirements__household+view__coloadedStreamline", "IAL1");
         Environment.SetEnvironmentVariable("IdProofingRequirements__household+view__streamline", "IAL1plus");
@@ -92,6 +104,14 @@ public class PluginIntegrationWebApplicationFactory : WebApplicationFactory<Prog
             // HouseholdRepository depends on it. Register a mock so DI validation
             // passes. TryAddSingleton is a no-op if a real plugin already registered it.
             services.TryAddSingleton(Substitute.For<ISummerEbtCaseService>());
+
+            // Replace the distributed lock provider with an in-process implementation so
+            // tests that exercise IPreAuthSessionStore do not depend on a reachable SQL
+            // Server or Redis instance for lock acquisition.
+            var lockDescriptor = services.SingleOrDefault(d => d.ServiceType == typeof(IDistributedLockProvider));
+            if (lockDescriptor != null)
+                services.Remove(lockDescriptor);
+            services.AddSingleton<IDistributedLockProvider>(new InProcessLockProvider());
         });
     }
 
@@ -100,6 +120,7 @@ public class PluginIntegrationWebApplicationFactory : WebApplicationFactory<Prog
         Environment.SetEnvironmentVariable("PluginAssemblyPaths__0", null);
         Environment.SetEnvironmentVariable("PluginAssemblyPaths__1", null);
         Environment.SetEnvironmentVariable("JwtSettings__SecretKey", null);
+        Environment.SetEnvironmentVariable("ConnectionStrings__Redis", null);
         Environment.SetEnvironmentVariable("IdProofingRequirements__household+view__application", null);
         Environment.SetEnvironmentVariable("IdProofingRequirements__household+view__coloadedStreamline", null);
         Environment.SetEnvironmentVariable("IdProofingRequirements__household+view__streamline", null);
@@ -107,6 +128,8 @@ public class PluginIntegrationWebApplicationFactory : WebApplicationFactory<Prog
         {
             Environment.SetEnvironmentVariable(key, null);
         }
+
+        Environment.SetEnvironmentVariable("STATE", _previousState);
 
         base.Dispose(disposing);
     }

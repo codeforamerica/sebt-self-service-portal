@@ -451,4 +451,116 @@ describe('apiFetch', () => {
       expect((caught as ApiError).isRedirecting).toBe(false)
     })
   })
+
+  describe('Cache Busting', () => {
+    const UUID_V4_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/
+
+    it('appends a UUID cache-bust query param named _ to GET requests', async () => {
+      let capturedUrl: string | undefined
+      server.use(
+        http.get('/api/test', ({ request }) => {
+          capturedUrl = request.url
+          return HttpResponse.json({ ok: true })
+        })
+      )
+
+      await apiFetch('/test')
+
+      expect(capturedUrl).toBeDefined()
+      const params = new URL(capturedUrl!).searchParams
+      expect(params.get('_')).toMatch(UUID_V4_REGEX)
+    })
+
+    it('preserves existing query params alongside the cache-bust param', async () => {
+      let capturedUrl: string | undefined
+      server.use(
+        http.get('/api/test', ({ request }) => {
+          capturedUrl = request.url
+          return HttpResponse.json({ ok: true })
+        })
+      )
+
+      await apiFetch('/test?challengeId=abc-123')
+
+      const params = new URL(capturedUrl!).searchParams
+      expect(params.get('challengeId')).toBe('abc-123')
+      expect(params.get('_')).toMatch(UUID_V4_REGEX)
+    })
+
+    it('generates a fresh cache-bust value on every GET call', async () => {
+      const capturedUrls: string[] = []
+      server.use(
+        http.get('/api/test', ({ request }) => {
+          capturedUrls.push(request.url)
+          return HttpResponse.json({ ok: true })
+        })
+      )
+
+      await apiFetch('/test')
+      await apiFetch('/test')
+
+      expect(capturedUrls).toHaveLength(2)
+      const bust1 = new URL(capturedUrls[0]!).searchParams.get('_')
+      const bust2 = new URL(capturedUrls[1]!).searchParams.get('_')
+      expect(bust1).toMatch(UUID_V4_REGEX)
+      expect(bust2).toMatch(UUID_V4_REGEX)
+      expect(bust1).not.toBe(bust2)
+    })
+
+    it('does not append a cache-bust param to POST requests', async () => {
+      let capturedUrl: string | undefined
+      server.use(
+        http.post('/api/test', ({ request }) => {
+          capturedUrl = request.url
+          return new HttpResponse(null, { status: 204 })
+        })
+      )
+
+      await apiFetch('/test', { method: 'POST', body: { x: 1 } })
+
+      expect(new URL(capturedUrl!).searchParams.get('_')).toBeNull()
+    })
+
+    it('does not append a cache-bust param to PUT requests', async () => {
+      let capturedUrl: string | undefined
+      server.use(
+        http.put('/api/test', ({ request }) => {
+          capturedUrl = request.url
+          return new HttpResponse(null, { status: 204 })
+        })
+      )
+
+      await apiFetch('/test', { method: 'PUT', body: { x: 1 } })
+
+      expect(new URL(capturedUrl!).searchParams.get('_')).toBeNull()
+    })
+
+    it('does not append a cache-bust param to PATCH requests', async () => {
+      let capturedUrl: string | undefined
+      server.use(
+        http.patch('/api/test', ({ request }) => {
+          capturedUrl = request.url
+          return new HttpResponse(null, { status: 204 })
+        })
+      )
+
+      await apiFetch('/test', { method: 'PATCH', body: { x: 1 } })
+
+      expect(new URL(capturedUrl!).searchParams.get('_')).toBeNull()
+    })
+
+    it('does not append a cache-bust param to DELETE requests', async () => {
+      let capturedUrl: string | undefined
+      server.use(
+        http.delete('/api/test', ({ request }) => {
+          capturedUrl = request.url
+          return new HttpResponse(null, { status: 204 })
+        })
+      )
+
+      await apiFetch('/test', { method: 'DELETE' })
+
+      expect(new URL(capturedUrl!).searchParams.get('_')).toBeNull()
+    })
+  })
 })

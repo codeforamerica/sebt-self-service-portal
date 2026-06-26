@@ -169,6 +169,20 @@ pnpm ci:test:frontend    # Test frontend only
 pnpm ci:test:backend     # Test backend only
 ```
 
+### Warnings as errors
+
+The .NET solution is configured with `<TreatWarningsAsErrors>true</TreatWarningsAsErrors>` in `Directory.Build.props`. Any compiler warning will fail the build.
+
+If you need to allow a specific warning code, demote it back to a warning in the affected `.csproj`:
+
+```xml
+<PropertyGroup>
+  <WarningsNotAsErrors>$(WarningsNotAsErrors);CS1591</WarningsNotAsErrors>
+</PropertyGroup>
+```
+
+Prefer this over `<NoWarn>`, which silences the warning entirely.
+
 ### CI Testing (Local)
 
 ```bash
@@ -260,6 +274,17 @@ For states that use phone number as their primary Household ID and OIDC, local d
 ```
 
 The resolver then uses this phone for household lookup instead of the one from the JWT or user record. You can still complete the OIDC flow as usual; the phone number used to satisfy MFA may differ from the one the portal uses for lookups.
+
+### OTP Bypass (DAST scanning, non-production only)
+
+To let SEBT's DAST (Dynamic Application Security Testing) scanner exercise the email login flow without receiving a one-time password, the portal can bypass OTP validation for a single, well-known scanner identity. The bypass is gated by **all** of the following criteria — if any one fails, normal OTP validation applies:
+
+1. The `bypass_otp` feature flag is enabled (`FeatureManagement` in `appsettings.json`; defaults to `false`).
+2. The application is running in a **non-production** environment (`ASPNETCORE_ENVIRONMENT` is anything other than `Production`).
+3. The request email matches the scanner-specific address (`OtpBypassSettings.Email`).
+4. (Validation only) The submitted OTP matches the fixed scanner code (`OtpBypassSettings.OtpCode`).
+
+**Never enable `bypass_otp` in production, and never use the scanner email for a real user account.** The settings live in [`OtpBypassSettings`](src/SEBT.Portal.Core/AppSettings/OtpBypassSettings.cs); the gating is enforced in [`OtpController`](src/SEBT.Portal.Api/Controllers/Auth/OtpController.cs).
 
 ### ID Proofing Requirements
 

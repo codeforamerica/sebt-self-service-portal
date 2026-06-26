@@ -35,7 +35,11 @@ const POPULATED_KEYS = new Set([
   'stepUpFailure:title',
   'stepUpFailure:body',
   'common:linkContactUs',
-  'common:back'
+  'common:back',
+  'common:continue',
+  'dashboard:alertApplicationsTitle',
+  'dashboard:alertApplicationsBody',
+  'dashboard:alertApplicationsAction'
 ])
 let emptyKeys = new Set<string>()
 vi.mock('react-i18next', () => ({
@@ -72,6 +76,10 @@ vi.mock('@/features/auth', () => ({
       data-apply-label={String(props.applyLabel)}
       data-back-href={String(props.backHref)}
       data-back-label={String(props.backLabel)}
+      data-body-list={String(props.bodyList)}
+      data-body-note={String(props.bodyNote)}
+      data-continue-href={String(props.continueHref)}
+      data-continue-label={String(props.continueLabel)}
     />
   )
 }))
@@ -192,8 +200,18 @@ describe('OffBoardingPage', () => {
       const content = screen.getByTestId('off-boarding-content')
       expect(content).toHaveAttribute('data-title', 'offBoarding:title')
       expect(content).toHaveAttribute('data-body', 'offBoarding:body1')
-      expect(content).toHaveAttribute('data-apply-body', 'offBoarding:body2')
-      expect(content).toHaveAttribute('data-apply-label', 'offBoarding:action2')
+      // body2/body3 are now core body content (list + note), not the apply section
+      expect(content).toHaveAttribute('data-body-list', 'offBoarding:body2')
+      expect(content).toHaveAttribute('data-body-note', 'offBoarding:body3')
+      expect(content).toHaveAttribute('data-apply-body', 'undefined')
+    })
+
+    it('passes a Continue primary action to /login/id-proofing on the generic screen', () => {
+      renderPage({ isCoLoaded: false })
+
+      const content = screen.getByTestId('off-boarding-content')
+      expect(content).toHaveAttribute('data-continue-href', '/login/id-proofing')
+      expect(content).toHaveAttribute('data-continue-label', 'common:continue')
     })
 
     it('uses the co-loaded off-boarding copy when the session is co-loaded', () => {
@@ -205,6 +223,15 @@ describe('OffBoardingPage', () => {
       expect(content).toHaveAttribute('data-contact-label', 'offBoarding:coLoadedAction1')
       expect(content).toHaveAttribute('data-apply-body', 'offBoarding:coLoadedBody2')
       expect(content).toHaveAttribute('data-apply-label', 'offBoarding:coLoadedAction2')
+    })
+
+    it('uses the co-loaded off-boarding copy when reason is coLoadedOnly', () => {
+      renderPage({ isCoLoaded: false, reason: 'coLoadedOnly' })
+
+      const content = screen.getByTestId('off-boarding-content')
+      expect(content).toHaveAttribute('data-title', 'offBoarding:coLoadedTitle')
+      expect(content).toHaveAttribute('data-body', 'offBoarding:coLoadedBody1')
+      expect(content).toHaveAttribute('data-contact-label', 'offBoarding:coLoadedAction1')
     })
   })
 
@@ -276,15 +303,14 @@ describe('OffBoardingPage', () => {
       expect(content).toHaveAttribute('data-title', 'offBoarding:title')
     })
 
-    it('renders docVerificationFailed-specific title and body when reason is docVerificationFailed', async () => {
+    it('routes docVerificationFailed to the generic "keep your account safe" screen with Continue', async () => {
       await renderPage({ reason: 'docVerificationFailed' })
 
       const content = screen.getByTestId('off-boarding-content')
-      expect(content).toHaveAttribute('data-title', "We couldn't verify your identity")
-      expect(content).toHaveAttribute(
-        'data-body',
-        "Your document couldn't be verified. You can try again with a different ID, or contact us if you need help."
-      )
+      expect(content).toHaveAttribute('data-title', 'offBoarding:title')
+      expect(content).toHaveAttribute('data-body', 'offBoarding:body1')
+      expect(content).toHaveAttribute('data-continue-href', '/login/id-proofing')
+      expect(content).toHaveAttribute('data-continue-label', 'common:continue')
     })
 
     it('uses step-up failure copy for OIDC callback errors (CO MyCO step-up)', async () => {
@@ -305,11 +331,15 @@ describe('OffBoardingPage', () => {
       expect(content).toHaveAttribute('data-title', 'stepUpFailure:title')
     })
 
-    it('forces canApply to false for docVerificationFailed regardless of query param', async () => {
-      await renderPage({ reason: 'docVerificationFailed', canApply: 'true' })
+    it('uses dashboard application-alert copy when reason is noQualifyingHousehold', async () => {
+      await renderPage({ reason: 'noQualifyingHousehold' })
 
       const content = screen.getByTestId('off-boarding-content')
-      expect(content).toHaveAttribute('data-can-apply', 'false')
+      expect(content).toHaveAttribute('data-title', 'dashboard:alertApplicationsTitle')
+      expect(content).toHaveAttribute('data-body', 'dashboard:alertApplicationsBody')
+      expect(content).toHaveAttribute('data-apply-label', 'dashboard:alertApplicationsAction')
+      expect(content).toHaveAttribute('data-back-href', '/login/id-proofing')
+      expect(content).toHaveAttribute('data-can-apply', 'true')
     })
   })
 })

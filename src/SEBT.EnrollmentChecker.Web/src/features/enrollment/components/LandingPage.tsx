@@ -3,16 +3,27 @@
 import { Button, RichText } from '@sebt/design-system'
 import Image from 'next/image'
 import { useRouter } from 'next/navigation'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+
+import { useEnrollment } from '../context/EnrollmentContext'
 
 export function LandingPage() {
   const { t } = useTranslation('landing')
   const router = useRouter()
+  const { clearState } = useEnrollment()
   const [isAccordionExpanded, setIsAccordionExpanded] = useState(false)
 
+  // The landing page is a fresh-start screen — clicking the logo from any
+  // deep page lands here, and the cached children should not persist.
+  useEffect(() => {
+    clearState()
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- run once on mount
+  }, [])
+
   // body3 is \n-delimited list items — split and filter empties
-  const body3Items = t('body3').split('\n').filter(Boolean)
+  const reaonsForAutoEnrollment = t('body3').split('\n').filter(Boolean)
+  const reasonsToApply = t('body5').split('\n').filter(Boolean)
 
   return (
     <div className="usa-section">
@@ -25,7 +36,7 @@ export function LandingPage() {
           className="margin-bottom-2"
           priority
         />
-        <h1 className="font-family-sans">{t('title')}</h1>
+        <h1 className="font-family-sans text-primary">{t('title')}</h1>
         <div className="usa-prose">
           <RichText>{t('body')}</RichText>
         </div>
@@ -58,7 +69,7 @@ export function LandingPage() {
               aria-controls="faq-content"
               onClick={() => setIsAccordionExpanded((prev) => !prev)}
             >
-              <span className="display-flex flex-align-center text-info-darker">
+              <span className="display-flex flex-align-center text-primary">
                 <svg
                   className="usa-icon margin-right-1"
                   aria-hidden="true"
@@ -78,11 +89,18 @@ export function LandingPage() {
           >
             <RichText>{t('body2')}</RichText>
             <ul className="usa-list margin-top-2">
-              {body3Items.map((item, index) => (
-                <li key={index}>{item}</li>
+              {reaonsForAutoEnrollment.map((item, index) => (
+                <li key={index}><RichText>{item}</RichText></li>
+
               ))}
             </ul>
             <RichText>{t('body4')}</RichText>
+            <ul className="usa-list margin-top-2">
+              {reasonsToApply.map((item, index) => (
+                <li key={index}><RichText>{item}</RichText></li>
+              ))}
+            </ul>
+            <p className="margin-top-2">{t('body6')}</p>
           </div>
         </div>
       </div>

@@ -3,6 +3,7 @@
 import { ApiError } from '@/api'
 import { CoLoadingScreen } from '@/components/CoLoadingScreen'
 import { SignOutLink, useAuth } from '@/features/auth'
+import { useFeatureFlag } from '@/features/feature-flags'
 import { getColoadingStatus } from '@/lib/coloadingStatus'
 import { AnalyticsEvents, useDataLayer } from '@sebt/analytics'
 import { Alert, getState } from '@sebt/design-system'
@@ -11,6 +12,7 @@ import { useTranslation } from 'react-i18next'
 
 import { useHouseholdData } from '../../api'
 import { toAnalyticsCohort } from '../../api/schema'
+import { HouseholdCardDetailsLoadingProvider } from '../../context/HouseholdCardDetailsLoadingContext'
 import { ActionButtons } from '../ActionButtons'
 import { ApplicationsSection } from '../ApplicationsSection'
 import { DashboardAlerts } from '../DashboardAlerts'
@@ -51,11 +53,16 @@ function dashboardErrorCodeFromStatus(error: unknown): DashboardErrorCode {
 export function DashboardContent() {
   const { t } = useTranslation('dashboard')
   const { t: tProcessing } = useTranslation('step-upProcessing')
-  const { data, isLoading, isError, error, requiresProofing } = useHouseholdData()
+
+  const deferEbtCardLoading = useFeatureFlag('defer_ebt_card_data_loading')
+  const isCO = getState() === 'co'
+  const { data, isLoading, isError, error, requiresProofing, isLoadingCardDetails } =
+    useHouseholdData({
+      deferCardDetailsOnLoad: isCO && deferEbtCardLoading
+    })
   const { setPageData, setUserData, trackEvent } = useDataLayer()
   const { session } = useAuth()
   const sessionIsCoLoaded = session?.isCoLoaded
-  const isCO = getState() === 'co'
 
   useEffect(() => {
     if (isLoading) return
@@ -130,11 +137,8 @@ export function DashboardContent() {
       // here to avoid two h1 elements on the same view.
       return (
         <CoLoadingScreen
-          title={tProcessing('title', 'Please wait...')}
-          message={tProcessing(
-            'body',
-            'Do not exit the page. Checking to see if we have enough information.'
-          )}
+          title={tProcessing('title')}
+          message={tProcessing('body')}
         />
       )
     }
@@ -167,7 +171,11 @@ export function DashboardContent() {
     )
   }
 
-  if (!data || isNotFound || (data.summerEbtCases.length === 0 && data.applications.length === 0)) {
+  // Do not key off `isNotFound` here: TanStack Query keeps the last successful
+  // `data` when a background refetch 404s (e.g. after router.back from
+  // /profile/address). Treating any 404 as "empty household" would drop the
+  // populated dashboard even though cached data is still valid.
+  if (!data || (data.summerEbtCases.length === 0 && data.applications.length === 0)) {
     return (
       <>
         {pageHeading}
@@ -178,15 +186,23 @@ export function DashboardContent() {
   }
 
   return (
-    <>
+    <HouseholdCardDetailsLoadingProvider value={isLoadingCardDetails}>
       {pageHeading}
       <DashboardAlerts />
-      <ActionButtons allowedActions={data.allowedActions} />
+      <ActionButtons
+        allowedActions={data.allowedActions}
+        hasCases={data.summerEbtCases.length > 0}
+        hasApplications={data.applications.length > 0}
+      />
       {data.userProfile ? <UserProfileCard /> : <SignOutLink />}
       <HouseholdSummary />
-      <EnrolledChildren />
-      <EbtEdgeSection />
+      {data.summerEbtCases.length > 0 && (
+        <>
+          <EnrolledChildren />
+          <EbtEdgeSection />
+        </>
+      )}
       <ApplicationsSection />
-    </>
+    </HouseholdCardDetailsLoadingProvider>
   )
 }

@@ -27,6 +27,7 @@ namespace SEBT.Portal.Api.Controllers.Auth;
 public class OidcController(
     IConfiguration config,
     ILogger<OidcController> logger,
+    IOidcCallbackFailureLogger callbackFailureLogger,
     IUserRepository userRepository,
     IOidcTokenService oidcTokenService,
     IOptions<JwtSettings> jwtSettingsOptions,
@@ -139,6 +140,17 @@ public class OidcController(
             }
         }
 
+        // Skip the IdP round-trip (and the cost of another Socure call) when the caller
+        // is already step-up complete. Catches browser-back navigation that lands back
+        // on this endpoint after a successful step-up.
+        if (stepUp && HasFreshIal1Plus(HttpContext.User))
+        {
+            logger.LogInformation(
+                "OIDC Authorize: step-up short-circuited (reason=already_ial1plus, StateCode={StateCode})",
+                stateCode);
+            return LocalRedirect(safeReturnUrl ?? "/dashboard");
+        }
+
         var clientId = stepUp ? config["Oidc:StepUp:ClientId"] : config["Oidc:ClientId"];
         var redirectUri = stepUp
             ? (config["Oidc:StepUp:RedirectUri"] ?? config["Oidc:CallbackRedirectUri"])
@@ -225,6 +237,50 @@ public class OidcController(
     }
 
     /// <summary>
+    /// Records browser-only OIDC callback failures (IdP redirect <c>?error=</c> or missing
+    /// <c>code</c>/<c>state</c>) before redirect to off-boarding. Failures from
+    /// <c>POST callback</c> / <c>complete-login</c> are logged server-side only.
+    /// </summary>
+    [HttpPost("report-failure")]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status400BadRequest)]
+    public async Task<IActionResult> ReportCallbackFailure(
+        [FromBody] OidcCallbackFailureReportRequest? body,
+        CancellationToken cancellationToken)
+    {
+        if (body == null
+            || string.IsNullOrWhiteSpace(body.Reason)
+            || !callbackFailureLogger.IsAllowedClientReason(body.Reason))
+        {
+            return BadRequest(new ErrorResponse("Invalid or missing reason."));
+        }
+
+        var sessionId = OidcSessionCookie.Read(Request);
+        bool? isStepUp = null;
+        if (!string.IsNullOrEmpty(sessionId))
+        {
+            var session = await sessionStore.GetAsync(sessionId, cancellationToken);
+            isStepUp = session?.IsStepUp;
+        }
+
+        callbackFailureLogger.Log(new OidcCallbackFailureLogEntry
+        {
+            Reason = body.Reason,
+            IdpError = body.IdpError,
+            IdpErrorDescription = body.IdpErrorDescription,
+            HttpStatus = body.HttpStatus,
+            ApiError = body.ApiError,
+            SessionId = sessionId,
+            IsStepUp = isStepUp,
+            Phase = body.Phase,
+            HasCode = body.HasCode,
+            HasState = body.HasState
+        });
+
+        return NoContent();
+    }
+
+    /// <summary>
     /// Server-side OIDC callback. Requires the <c>oidc_session</c> cookie to
     /// locate the pre-auth session. Validates <c>state</c> against the stored value,
     /// uses the stored <c>code_verifier</c> for the token exchange (never from the
@@ -249,31 +305,54 @@ public class OidcController(
         var sessionId = OidcSessionCookie.Read(Request);
         if (string.IsNullOrEmpty(sessionId))
         {
-            logger.LogError("OIDC Callback rejected: missing oidc_session cookie (reason=missing_session)");
+            callbackFailureLogger.Log(new OidcCallbackFailureLogEntry
+            {
+                Reason = "missing_session",
+                Phase = "callback",
+                HttpStatus = StatusCodes.Status403Forbidden
+            });
             return StatusCode(StatusCodes.Status403Forbidden, new ErrorResponse("Missing pre-auth session."));
         }
 
         var session = await sessionStore.GetAsync(sessionId, cancellationToken);
         if (session == null)
         {
-            logger.LogError("OIDC Callback rejected: session {SessionId} not found or expired (reason=missing_session)", sessionId);
+            callbackFailureLogger.Log(new OidcCallbackFailureLogEntry
+            {
+                Reason = "missing_session",
+                Phase = "callback",
+                SessionId = sessionId,
+                HttpStatus = StatusCodes.Status403Forbidden
+            });
             return StatusCode(StatusCodes.Status403Forbidden, new ErrorResponse("Pre-auth session expired or invalid."));
         }
 
         // --- Validate state matches stored value (CSRF protection) ---
         if (string.IsNullOrEmpty(body.State) || body.State != session.State)
         {
-            logger.LogError(
-                "OIDC Callback rejected: state mismatch (reason=mismatched_state, SessionId={SessionId})", sessionId);
+            callbackFailureLogger.Log(new OidcCallbackFailureLogEntry
+            {
+                Reason = "mismatched_state",
+                Phase = "callback",
+                SessionId = sessionId,
+                IsStepUp = session.IsStepUp,
+                HttpStatus = StatusCodes.Status400BadRequest
+            });
             return BadRequest(new ErrorResponse("State parameter mismatch."));
         }
 
         // --- Verify the session hasn't already been used (fail fast before the exchange) ---
         if (session.Phase != PreAuthSessionPhase.Created)
         {
-            logger.LogError(
-                "OIDC Callback rejected: session already used, Phase={Phase} (reason=replay, SessionId={SessionId})",
-                session.Phase, sessionId);
+            callbackFailureLogger.Log(new OidcCallbackFailureLogEntry
+            {
+                Reason = "replay",
+                Phase = "callback",
+                SessionId = sessionId,
+                IsStepUp = session.IsStepUp,
+                HttpStatus = StatusCodes.Status400BadRequest,
+                ApiError = $"Phase={session.Phase}"
+            });
             return BadRequest(new ErrorResponse("Pre-auth session has already been used."));
         }
 
@@ -285,13 +364,12 @@ public class OidcController(
             session.CodeVerifier,
             session.RedirectUri,
             session.IsStepUp,
+            sessionId,
             cancellationToken);
 
         if (!result.Success)
         {
-            logger.LogError(
-                "OIDC Callback exchange failed: {Error} (reason=exchange_failed, SessionId={SessionId})",
-                result.Error, sessionId);
+            // Exchange failures are logged in <see cref="OidcExchangeService"/> with SessionId and IdP detail.
             return StatusCode(result.StatusCode, new ErrorResponse(result.Error ?? "Exchange failed."));
         }
 
@@ -300,8 +378,14 @@ public class OidcController(
         var advanced = await sessionStore.TryAdvanceToCallbackCompletedAsync(sessionId, tokenHash, cancellationToken);
         if (!advanced)
         {
-            logger.LogError(
-                "OIDC Callback rejected: session could not advance (reason=replay, SessionId={SessionId})", sessionId);
+            callbackFailureLogger.Log(new OidcCallbackFailureLogEntry
+            {
+                Reason = "replay",
+                Phase = "callback",
+                SessionId = sessionId,
+                IsStepUp = session.IsStepUp,
+                HttpStatus = StatusCodes.Status400BadRequest
+            });
             return BadRequest(new ErrorResponse("Pre-auth session has already been used."));
         }
 
@@ -341,7 +425,12 @@ public class OidcController(
         var sessionId = OidcSessionCookie.Read(Request);
         if (string.IsNullOrEmpty(sessionId))
         {
-            logger.LogError("OIDC CompleteLogin rejected: missing oidc_session cookie (reason=missing_session)");
+            callbackFailureLogger.Log(new OidcCallbackFailureLogEntry
+            {
+                Reason = "missing_session",
+                Phase = "complete-login",
+                HttpStatus = StatusCodes.Status403Forbidden
+            });
             return StatusCode(StatusCodes.Status403Forbidden, new ErrorResponse("Missing pre-auth session."));
         }
 
@@ -349,7 +438,13 @@ public class OidcController(
         var session = await sessionStore.GetAsync(sessionId, cancellationToken);
         if (session == null)
         {
-            logger.LogError("OIDC CompleteLogin rejected: session not found (reason=missing_session, SessionId={SessionId})", sessionId);
+            callbackFailureLogger.Log(new OidcCallbackFailureLogEntry
+            {
+                Reason = "missing_session",
+                Phase = "complete-login",
+                SessionId = sessionId,
+                HttpStatus = StatusCodes.Status403Forbidden
+            });
             return StatusCode(StatusCodes.Status403Forbidden, new ErrorResponse("Pre-auth session invalid, expired, or already used."));
         }
 
@@ -358,8 +453,14 @@ public class OidcController(
         var advanced = await sessionStore.TryAdvanceToLoginCompletedAsync(sessionId, tokenHash, cancellationToken);
         if (!advanced)
         {
-            logger.LogError(
-                "OIDC CompleteLogin rejected: session advance failed (reason=replay, SessionId={SessionId})", sessionId);
+            callbackFailureLogger.Log(new OidcCallbackFailureLogEntry
+            {
+                Reason = "replay",
+                Phase = "complete-login",
+                SessionId = sessionId,
+                IsStepUp = session.IsStepUp,
+                HttpStatus = StatusCodes.Status403Forbidden
+            });
             return StatusCode(StatusCodes.Status403Forbidden, new ErrorResponse("Pre-auth session invalid, expired, or already used."));
         }
 
@@ -372,7 +473,14 @@ public class OidcController(
         var signingKey = config["Oidc:CompleteLoginSigningKey"];
         if (string.IsNullOrEmpty(signingKey))
         {
-            logger.LogError("Oidc:CompleteLoginSigningKey is not configured (SessionId={SessionId}).", sessionId);
+            callbackFailureLogger.Log(new OidcCallbackFailureLogEntry
+            {
+                Reason = "complete_login_not_configured",
+                Phase = "complete-login",
+                SessionId = sessionId,
+                IsStepUp = session.IsStepUp,
+                HttpStatus = StatusCodes.Status503ServiceUnavailable
+            });
             var hint = environment.IsDevelopment() ? "Set Oidc:CompleteLoginSigningKey in appsettings." : "";
             return StatusCode(StatusCodes.Status503ServiceUnavailable, new { error = "Complete-login not configured.", hint });
         }
@@ -402,8 +510,16 @@ public class OidcController(
         }
         catch (Exception ex)
         {
-            logger.LogError(ex, "Invalid or expired callback token for state {StateCode} (SessionId={SessionId})",
-                SanitizeForLog(session.StateCode), sessionId);
+            callbackFailureLogger.Log(new OidcCallbackFailureLogEntry
+            {
+                Reason = "invalid_callback_token",
+                Phase = "complete-login",
+                SessionId = sessionId,
+                IsStepUp = session.IsStepUp,
+                HttpStatus = StatusCodes.Status400BadRequest,
+                ApiError = OidcLogSanitizer.Sanitize(ex.Message)
+            });
+            logger.LogError(ex, "OIDC complete-login off-boarding: invalid_callback_token (SessionId={SessionId})", sessionId);
             return BadRequest(new ErrorResponse("Invalid or expired callback token."));
         }
 
@@ -421,7 +537,14 @@ public class OidcController(
 
         if (string.IsNullOrWhiteSpace(email) && string.IsNullOrWhiteSpace(subClaim))
         {
-            logger.LogError("Callback token had no email or sub claim (SessionId={SessionId})", sessionId);
+            callbackFailureLogger.Log(new OidcCallbackFailureLogEntry
+            {
+                Reason = "missing_identity_claim",
+                Phase = "complete-login",
+                SessionId = sessionId,
+                IsStepUp = session.IsStepUp,
+                HttpStatus = StatusCodes.Status400BadRequest
+            });
             return BadRequest(new ErrorResponse("Callback token must contain an email or sub claim."));
         }
 
@@ -431,16 +554,28 @@ public class OidcController(
         {
             if (string.IsNullOrWhiteSpace(subClaim))
             {
-                logger.LogError("Step-up complete-login: missing sub claim (SessionId={SessionId})", sessionId);
+                callbackFailureLogger.Log(new OidcCallbackFailureLogEntry
+                {
+                    Reason = "missing_sub_claim",
+                    Phase = "complete-login",
+                    SessionId = sessionId,
+                    IsStepUp = true,
+                    HttpStatus = StatusCodes.Status400BadRequest
+                });
                 return BadRequest(new ErrorResponse("Callback token must contain a sub claim."));
             }
 
             var existingEntity = await userRepository.GetUserByExternalIdAsync(subClaim, cancellationToken);
             if (existingEntity == null)
             {
-                logger.LogError(
-                    "Step-up complete-login: no existing portal user for sub claim; sign-in required first (SessionId={SessionId}).",
-                    sessionId);
+                callbackFailureLogger.Log(new OidcCallbackFailureLogEntry
+                {
+                    Reason = "step_up_user_not_found",
+                    Phase = "complete-login",
+                    SessionId = sessionId,
+                    IsStepUp = true,
+                    HttpStatus = StatusCodes.Status400BadRequest
+                });
                 return BadRequest(new { error = "Step-up requires an existing session. Please sign in again." });
             }
 
@@ -450,9 +585,14 @@ public class OidcController(
         {
             if (string.IsNullOrWhiteSpace(subClaim))
             {
-                logger.LogError(
-                    "OIDC CompleteLogin: callback token missing sub claim (SessionId={SessionId})",
-                    sessionId);
+                callbackFailureLogger.Log(new OidcCallbackFailureLogEntry
+                {
+                    Reason = "missing_sub_claim",
+                    Phase = "complete-login",
+                    SessionId = sessionId,
+                    IsStepUp = false,
+                    HttpStatus = StatusCodes.Status400BadRequest
+                });
                 return BadRequest(new ErrorResponse("Callback token must contain a sub claim."));
             }
 
@@ -471,9 +611,15 @@ public class OidcController(
 
         if (!tokenResult.IsSuccess)
         {
-            logger.LogError(
-                "OIDC token generation failed: {Message} (SessionId={SessionId})",
-                tokenResult.Message, sessionId);
+            callbackFailureLogger.Log(new OidcCallbackFailureLogEntry
+            {
+                Reason = "token_generation_failed",
+                Phase = "complete-login",
+                SessionId = sessionId,
+                IsStepUp = session.IsStepUp,
+                HttpStatus = StatusCodes.Status400BadRequest,
+                ApiError = tokenResult.Message
+            });
             return BadRequest(new { error = "Step-up verification failed. Please try again." });
         }
 
@@ -489,6 +635,23 @@ public class OidcController(
     }
 
     private const int MaxStepUpReturnUrlLength = 4096;
+
+    /// <summary>
+    /// Mirrors the frontend's <c>hasIal1Plus(session) &amp;&amp; isIdProofingCompletionFresh(session)</c>:
+    /// the portal JWT carries at least <see cref="UserIalLevel.IAL1plus"/> and an unexpired
+    /// <c>id_proofing_expires_at</c> Unix-seconds claim.
+    /// </summary>
+    private static bool HasFreshIal1Plus(ClaimsPrincipal user)
+    {
+        if (user.GetIalLevel() < UserIalLevel.IAL1plus)
+            return false;
+
+        var expiresAtClaim = user.FindFirst(JwtClaimTypes.IdProofingExpiresAt)?.Value;
+        if (!long.TryParse(expiresAtClaim, out var expiresAtUnix))
+            return false;
+
+        return DateTimeOffset.FromUnixTimeSeconds(expiresAtUnix) > DateTimeOffset.UtcNow;
+    }
 
     /// <summary>
     /// Step-up post-login navigation: only same-document relative paths (for example <c>/profile/address</c>).

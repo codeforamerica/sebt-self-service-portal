@@ -3,6 +3,7 @@ import { render, screen, waitFor } from '@testing-library/react'
 import { http, HttpResponse } from 'msw'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
+import { householdDataQueryKey } from '@/features/household/api/queryKeys'
 import { TEST_HOUSEHOLD_DATA } from '@/mocks/handlers'
 import { server } from '@/mocks/server'
 
@@ -43,7 +44,11 @@ vi.mock('next/navigation', () => ({
 // anchor to /api/auth/logout); only DashboardContent itself reads useAuth
 // for the co-loaded analytics branch. Preserve the real SignOutLink by
 // extending the actual module instead of replacing it.
-const mockAuthSession: { isCoLoaded: boolean | null } = { isCoLoaded: false }
+const TEST_USER_ID = '018f0000-0000-7000-8000-000000000001'
+const mockAuthSession: { userId: string; isCoLoaded: boolean | null } = {
+  userId: TEST_USER_ID,
+  isCoLoaded: false
+}
 vi.mock('@/features/auth', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/features/auth')>()
   return {
@@ -157,7 +162,10 @@ describe('DashboardContent', () => {
       expect(screen.getByRole('alert')).toBeInTheDocument()
     })
 
-    expect(screen.getByRole('link', { name: /apply/i })).toHaveAttribute('href', '/apply')
+    expect(screen.getByRole('link', { name: /apply/i })).toHaveAttribute(
+      'href',
+      'https://forms.sunbucks.dc.gov/s3/app2026'
+    )
   })
 
   it('renders UserProfileCard in empty state when userProfile available', async () => {
@@ -194,6 +202,25 @@ describe('DashboardContent', () => {
     await waitFor(() => {
       expect(screen.getByRole('alert')).toBeInTheDocument()
     })
+  })
+
+  it('keeps populated dashboard when a background refetch returns 404 but cache still has data', async () => {
+    const queryClient = createTestQueryClient()
+    queryClient.setQueryData(householdDataQueryKey(TEST_USER_ID), TEST_HOUSEHOLD_DATA)
+
+    server.use(
+      http.get('/api/household/data', () => {
+        return HttpResponse.json({ error: 'Not found' }, { status: 404 })
+      })
+    )
+
+    render(<QueryClientProvider client={queryClient}>{<DashboardContent />}</QueryClientProvider>)
+
+    await waitFor(() => {
+      expect(screen.getByText('Sophia Martinez')).toBeInTheDocument()
+    })
+    expect(screen.getByLabelText(/quick actions/i)).toBeInTheDocument()
+    expect(screen.queryByText(/no children enrolled/i)).not.toBeInTheDocument()
   })
 
   it('renders sign-out link in empty state', async () => {
@@ -249,6 +276,72 @@ describe('DashboardContent', () => {
     })
 
     expect(screen.getByRole('link', { name: /logout|sign out/i })).toBeInTheDocument()
+  })
+
+  it('hides Check existing cards CTA and enrolled-children section when household has applications but no enrolled cases', async () => {
+    server.use(
+      http.get('/api/household/data', () => {
+        return HttpResponse.json({
+          ...TEST_HOUSEHOLD_DATA,
+          summerEbtCases: [],
+          applications: [
+            {
+              applicationNumber: 'APP-2026-PENDING',
+              caseNumber: null,
+              applicationStatus: 'Pending',
+              applicationDate: '2026-04-01T00:00:00Z',
+              benefitIssueDate: null,
+              benefitExpirationDate: null,
+              last4DigitsOfCard: null,
+              cardStatus: null,
+              cardRequestedAt: null,
+              cardMailedAt: null,
+              cardActivatedAt: null,
+              cardDeactivatedAt: null,
+              issuanceType: 1,
+              children: [],
+              childrenOnApplication: 1
+            }
+          ],
+          allowedActions: {
+            canUpdateAddress: false,
+            canRequestReplacementCard: false,
+            addressUpdateDeniedMessageKey: 'actionNavigationSelfServiceUnavailable',
+            cardReplacementDeniedMessageKey: 'actionNavigationSelfServiceUnavailable'
+          }
+        })
+      })
+    )
+
+    renderWithProviders(<DashboardContent />)
+
+    await waitFor(() => {
+      expect(screen.getByText('Check existing applications')).toBeInTheDocument()
+    })
+
+    // No alert or status element anywhere on the page
+    expect(screen.queryByRole('status')).toBeNull()
+    expect(document.querySelector('.usa-alert')).toBeNull()
+    // Check existing cards CTA must not appear (no enrolled cases to scroll to)
+    expect(screen.queryByText('Check existing cards')).toBeNull()
+    // Enrolled Children section must not render (no enrolled cases)
+    expect(document.getElementById('enrolled-children-heading')).toBeNull()
+    // EBT Card Help accordion must not render (no cards without enrolled cases)
+    expect(document.getElementById('help-section-heading')).toBeNull()
+    // Check existing applications CTA must appear (applications do exist)
+    expect(screen.getByText('Check existing applications')).toBeInTheDocument()
+  })
+
+  it('renders the enrolled-children and EBT Card Help sections when the household has enrolled cases', async () => {
+    // Default TEST_HOUSEHOLD_DATA has enrolled cases.
+    renderWithProviders(<DashboardContent />)
+
+    await waitFor(() => {
+      expect(screen.getByText('Sophia Martinez')).toBeInTheDocument()
+    })
+
+    expect(document.getElementById('enrolled-children-heading')).not.toBeNull()
+    expect(document.getElementById('help-section-heading')).not.toBeNull()
   })
 
   describe('analytics tagging when a co-loaded user lands on an empty dashboard', () => {

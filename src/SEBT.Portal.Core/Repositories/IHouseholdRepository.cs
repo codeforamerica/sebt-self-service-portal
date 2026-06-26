@@ -19,12 +19,15 @@ public interface IHouseholdRepository
     /// <param name="identifier">The household identifier (type and value) to look up.</param>
     /// <param name="piiVisibility">Which PII elements to include. Required; no default. Callers must obtain this from <see cref="IIdProofingService"/> based on the user's IAL level.</param>
     /// <param name="userIalLevel">Identity Assurance Level the user has achieved. Passed to state plugins for backend policy (e.g. whether to return address).</param>
+    /// <param name="portalUserId">Portal <c>User.Id</c>. DC passes this as <c>PortalUUID</c> in warehouse <c>@guardianIdentifiers</c> for correlation in PortalLog.</param>
     /// <param name="cancellationToken">A token to monitor for cancellation requests.</param>
     /// <returns>The household data if found; otherwise, <c>null</c>.</returns>
     Task<HouseholdData?> GetHouseholdByIdentifierAsync(
         HouseholdIdentifier identifier,
         PiiVisibility piiVisibility,
         UserIalLevel userIalLevel,
+        Guid? portalUserId = null,
+        bool includeCardService = true,
         CancellationToken cancellationToken = default);
 
     /// <summary>
@@ -34,12 +37,15 @@ public interface IHouseholdRepository
     /// <param name="email">The email address of the household.</param>
     /// <param name="piiVisibility">Which PII elements to include. Required; no default. Callers must obtain this from <see cref="IIdProofingService"/> based on the user's ID proofing status.</param>
     /// <param name="userIalLevel">Identity Assurance Level the user has achieved. Passed to state plugins for backend policy.</param>
+    /// <param name="portalUserId">Portal <c>User.Id</c>. DC passes this as <c>PortalUUID</c> in warehouse <c>@guardianIdentifiers</c> for correlation in PortalLog.</param>
     /// <param name="cancellationToken">A token to monitor for cancellation requests.</param>
     /// <returns>The household data if found; otherwise, <c>null</c>.</returns>
     Task<HouseholdData?> GetHouseholdByEmailAsync(
         string email,
         PiiVisibility piiVisibility,
         UserIalLevel userIalLevel,
+        Guid? portalUserId = null,
+        bool includeCardService = true,
         CancellationToken cancellationToken = default);
 
     /// <summary>
@@ -48,23 +54,27 @@ public interface IHouseholdRepository
     /// </summary>
     /// <param name="benefitIdentifierIc">SNAP/TANF identifier from onboarding, mapped to warehouse IC.</param>
     /// <param name="guardianDateOfBirth">Guardian DOB from ID proofing.</param>
+    /// <param name="portalUserId">Portal <c>User.Id</c>. DC merges this into the warehouse GuardianIdentifiers JSON as <c>PortalUUID</c> for cross-system correlation.</param>
     /// <param name="cancellationToken">Cancellation token.</param>
     /// <returns><c>true</c> if the state reports a match.</returns>
     Task<bool> TryMatchCoLoadedGuardianByBenefitIdAndDobAsync(
         string benefitIdentifierIc,
         DateOnly guardianDateOfBirth,
+        Guid portalUserId,
         CancellationToken cancellationToken = default);
 
     /// <summary>
     /// DC co-loaded fallback: loads household via warehouse IC + guardian DOB when rows use IC as <c>PortalID</c>.
     /// Sets envelope email to <paramref name="guardianLoginEmail"/>; non-DC plugins return <c>null</c>.
     /// </summary>
+    /// <param name="portalUserId">Portal <c>User.Id</c>. DC merges this into the warehouse GuardianIdentifiers JSON as <c>PortalUUID</c> for cross-system correlation.</param>
     Task<HouseholdData?> GetHouseholdByBenefitIdentifierAndGuardianDobAsync(
         string guardianLoginEmail,
         string benefitIdentifierIc,
         DateOnly guardianDateOfBirth,
         PiiVisibility piiVisibility,
         UserIalLevel userIalLevel,
+        Guid portalUserId,
         CancellationToken cancellationToken = default);
 
     /// <summary>

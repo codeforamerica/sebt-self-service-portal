@@ -45,7 +45,8 @@ describe('ActionButtons', () => {
   it('renders all action buttons when all actions are allowed', () => {
     render(<ActionButtons allowedActions={allowAll} />)
     const links = screen.getAllByRole('link')
-    expect(links).toHaveLength(4)
+    // Apply (always-on) + change address + request cards + check cards + check applications
+    expect(links).toHaveLength(5)
   })
 
   it('renders check existing cards button', () => {
@@ -120,14 +121,65 @@ describe('ActionButtons', () => {
   it('hides all gated CTAs when all self-service actions are denied', () => {
     render(<ActionButtons allowedActions={denyAll} />)
     const links = screen.getAllByRole('link')
-    expect(links).toHaveLength(2)
+    // Apply (always-on) + check cards + check applications remain; address & replacement are gated out
+    expect(links).toHaveLength(3)
     expect(screen.queryByText('Change my mailing address')).toBeNull()
     expect(screen.queryByText('Request new cards')).toBeNull()
   })
 
-  it('shows info alert when at least one self-service action is denied', () => {
+  it('shows only the Check existing applications CTA for a no-case household', () => {
+    // A household with no enrolled cases: the backend evaluator denies address
+    // and card actions, so denyAll is the realistic allowedActions shape here.
+    render(
+      <ActionButtons
+        allowedActions={denyAll}
+        hasCases={false}
+      />
+    )
+    expect(screen.queryByText('Check existing cards')).toBeNull()
+    expect(screen.queryByText('Change my mailing address')).toBeNull()
+    expect(screen.queryByText('Request new cards')).toBeNull()
+    expect(screen.getByText('Check existing applications')).toBeInTheDocument()
+  })
+
+  it('shows Check existing cards CTA when hasCases is true', () => {
+    render(
+      <ActionButtons
+        allowedActions={allowAll}
+        hasCases={true}
+      />
+    )
+    expect(screen.getByText('Check existing cards')).toBeInTheDocument()
+  })
+
+  it('hides Check existing applications CTA when hasApplications is false', () => {
+    // Co-loaded households have cases but no applications; the CTA scrolls to an
+    // applications section that does not render, so it must hide (DC-402).
+    render(
+      <ActionButtons
+        allowedActions={allowAll}
+        hasCases={true}
+        hasApplications={false}
+      />
+    )
+    expect(screen.queryByText('Check existing applications')).toBeNull()
+    expect(screen.getByText('Check existing cards')).toBeInTheDocument()
+  })
+
+  it('shows Check existing applications CTA when hasApplications is true', () => {
+    render(
+      <ActionButtons
+        allowedActions={allowAll}
+        hasCases={true}
+        hasApplications={true}
+      />
+    )
+    expect(screen.getByText('Check existing applications')).toBeInTheDocument()
+  })
+
+  it('does not render the self-service-unavailable alert even when actions are denied', () => {
     render(<ActionButtons allowedActions={denyAll} />)
-    expect(screen.getByRole('status')).toBeInTheDocument()
+    expect(screen.queryByRole('status')).toBeNull()
   })
 
   it('does not show info alert when all self-service actions are allowed', () => {
@@ -138,7 +190,7 @@ describe('ActionButtons', () => {
   it('shows all CTAs when allowedActions is not provided (backward compatible)', () => {
     render(<ActionButtons />)
     const links = screen.getAllByRole('link')
-    expect(links).toHaveLength(4)
+    expect(links).toHaveLength(5)
     expect(screen.queryByRole('status')).toBeNull()
   })
 
@@ -167,6 +219,86 @@ describe('ActionButtons', () => {
         expect(link).toHaveClass('bg-primary')
         expect(link).toHaveClass('text-white')
       })
+    })
+  })
+
+  // The "Activate a card" CTA is state-gated: CO has the authored label, DC's is still
+  // !N/A! upstream, so the entry is gated to CO until DC content lands. Tests assert on
+  // href/data-analytics-cta rather than label text because the unit-test i18n bundle is
+  // always DC (NEXT_PUBLIC_STATE=dc), so the CO-only label key never resolves here.
+  describe('Activate a card CTA (DC-162)', () => {
+    const activateLink = (container: HTMLElement) =>
+      container.querySelector('a[href="/cards/activate"]')
+
+    it('renders the activate-card CTA for CO when the household has cases', () => {
+      mockGetState.mockReturnValue('co')
+      const { container } = render(
+        <ActionButtons
+          allowedActions={allowAll}
+          hasCases={true}
+        />
+      )
+      const link = activateLink(container)
+      expect(link).toBeInTheDocument()
+      expect(link).toHaveAttribute('data-analytics-cta', 'activate_card_cta')
+    })
+
+    it('does not render the activate-card CTA for DC (label not yet published)', () => {
+      mockGetState.mockReturnValue('dc')
+      const { container } = render(
+        <ActionButtons
+          allowedActions={allowAll}
+          hasCases={true}
+        />
+      )
+      expect(activateLink(container)).toBeNull()
+    })
+
+    it('hides the activate-card CTA for CO when the household has no cases', () => {
+      mockGetState.mockReturnValue('co')
+      const { container } = render(
+        <ActionButtons
+          allowedActions={allowAll}
+          hasCases={false}
+        />
+      )
+      expect(activateLink(container)).toBeNull()
+    })
+  })
+
+  // The apply CTA is an outbound link shown for both states, regardless of cases. The unit-test
+  // i18n bundle is always DC, so the CO case asserts on href/cta rather than the label text.
+  describe('Apply for benefits CTA', () => {
+    const applyLink = (container: HTMLElement) =>
+      container.querySelector('a[data-analytics-cta="apply_cta"]')
+
+    it('renders the DC apply CTA linking to the DC apply form', () => {
+      mockGetState.mockReturnValue('dc')
+      render(<ActionButtons allowedActions={allowAll} />)
+      const link = screen.getByText('Apply for DC SUN Bucks')
+      expect(link).toHaveAttribute('href', 'https://forms.sunbucks.dc.gov/s3/app2026')
+      expect(link).toHaveAttribute('data-analytics-cta', 'apply_cta')
+      expect(link).toHaveAttribute('data-analytics-cta-destination-type', 'external_only')
+    })
+
+    it('renders the CO apply CTA linking to the PEAK apply form', () => {
+      mockGetState.mockReturnValue('co')
+      const { container } = render(<ActionButtons allowedActions={allowAll} />)
+      const link = applyLink(container)
+      expect(link).toBeInTheDocument()
+      expect(link?.getAttribute('href')).toContain(
+        'peak.my.site.com/SEBT/s/apply-for-sebt-starting-page'
+      )
+    })
+
+    it('shows the apply CTA even when actions are denied and there are no cases', () => {
+      const { container } = render(
+        <ActionButtons
+          allowedActions={denyAll}
+          hasCases={false}
+        />
+      )
+      expect(applyLink(container)).toBeInTheDocument()
     })
   })
 })

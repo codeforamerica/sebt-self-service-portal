@@ -1,19 +1,26 @@
 // Direct subpath imports avoid the @sebt/design-system barrel export, which
 // re-exports react-i18next-dependent modules. Importing from the barrel in a
 // Server Component would pull react-i18next into the RSC bundle and crash.
-import { primaryFont } from '@/design/fonts'
+import { headingFont, primaryFont } from '@/design/fonts'
+import { MaintenanceBanner } from '@/features/maintenance'
+import { env } from '@/lib/env'
+import { buildRootMetadata } from '@/lib/metadata'
+import { Providers } from '@/providers/Providers'
+import { AmplitudeAnalytics, MixpanelAnalytics, SiteImproveAnalytics } from '@sebt/analytics'
 import { Footer } from '@sebt/design-system/src/components/layout/Footer'
 import { Header } from '@sebt/design-system/src/components/layout/Header'
 import { HelpSection } from '@sebt/design-system/src/components/layout/HelpSection'
 import { SkipNav } from '@sebt/design-system/src/components/layout/SkipNav'
-import { getState, getStateName } from '@sebt/design-system/src/lib/state'
-import type { Metadata, Viewport } from 'next'
+import { getState } from '@sebt/design-system/src/lib/state'
+import type { Viewport } from 'next'
 import './globals.css'
 import './styles.scss'
-import { Providers } from '../providers/Providers'
 
 const state = getState()
-const stateName = getStateName(state)
+
+const amplitudeApiKey = env.NEXT_PUBLIC_AMPLITUDE_API_KEY
+const mixpanelToken = env.NEXT_PUBLIC_MIXPANEL_TOKEN
+const siteImproveId = env.NEXT_PUBLIC_SITEIMPROVE_ID
 
 export const viewport: Viewport = {
   width: 'device-width',
@@ -21,18 +28,15 @@ export const viewport: Viewport = {
   maximumScale: 5
 }
 
-export const metadata: Metadata = {
-  title: {
-    default: `${stateName} SUN Bucks Enrollment Checker`,
-    template: `%s | ${stateName} SUN Bucks`
-  },
-  description: `Check if your child is already enrolled in Summer EBT (SUN Bucks) in ${stateName}.`,
-  robots: { index: false, follow: false }
-}
+export const metadata = buildRootMetadata(state)
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en" data-state={state} className={`usa-js-loading ${primaryFont.variable}`}>
+    <html
+      lang="en"
+      data-state={state}
+      className={`usa-js-loading ${primaryFont.variable} ${headingFont.variable}`}
+    >
       <head>
         {process.env.NEXT_PUBLIC_BUILD_SHA && (
           <meta name="build-sha" content={process.env.NEXT_PUBLIC_BUILD_SHA} />
@@ -41,6 +45,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <body>
         <Providers>
           <SkipNav />
+          <MaintenanceBanner />
           <Header state={state} />
           <main id="main-content">{children}</main>
           <HelpSection state={state} />
@@ -48,6 +53,12 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         </Providers>
         <script src="/js/uswds-init.min.js" defer />
       </body>
+      {/* Mixpanel - only rendered when MIXPANEL_TOKEN is configured */}
+      {mixpanelToken && <MixpanelAnalytics token={mixpanelToken} />}
+      {/* Amplitude - only rendered when NEXT_PUBLIC_AMPLITUDE_API_KEY is configured */}
+      {amplitudeApiKey && <AmplitudeAnalytics apiKey={amplitudeApiKey} />}
+      {/* SiteImprove — only rendered when NEXT_PUBLIC_SITEIMPROVE_ID is configured */}
+      {siteImproveId && <SiteImproveAnalytics siteId={siteImproveId} />}
     </html>
   )
 }

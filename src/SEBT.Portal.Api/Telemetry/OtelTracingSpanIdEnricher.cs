@@ -4,7 +4,7 @@ using Serilog.Configuration;
 using Serilog.Core;
 using Serilog.Events;
 
-public class OtelTracingSpanIdEnricher : ILogEventEnricher
+internal class OtelTracingSpanIdEnricher : ILogEventEnricher
 {
     private const string PropertyName = "span_id";
 
@@ -17,7 +17,7 @@ public class OtelTracingSpanIdEnricher : ILogEventEnricher
     }
 }
 
-public static class OtelTracingSpanIdEnrichmenetExtensions
+internal static class OtelTracingSpanIdEnrichmenetExtensions
 {
     public static LoggerConfiguration WithOtelTracingSpanId(this LoggerEnrichmentConfiguration enrich) =>
         enrich.With(new OtelTracingSpanIdEnricher());

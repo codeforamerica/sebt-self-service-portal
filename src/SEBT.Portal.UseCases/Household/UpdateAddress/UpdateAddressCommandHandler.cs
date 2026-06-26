@@ -4,6 +4,7 @@ using SEBT.Portal.Core.Models.Auth;
 using SEBT.Portal.Core.Models.Household;
 using SEBT.Portal.Core.Repositories;
 using SEBT.Portal.Core.Services;
+using SEBT.Portal.Core.Utilities;
 using SEBT.Portal.Kernel;
 using SEBT.Portal.Kernel.Results;
 using SEBT.Portal.StatesPlugins.Interfaces;
@@ -67,7 +68,7 @@ public class UpdateAddressCommandHandler(
                         firstError?.Message ?? "Address could not be verified.",
                         "not-found"));
             case DependencyFailedResult<AddressUpdateSuccess> addressDependencyFailed:
-                logger.LogWarning(
+                logger.LogError(
                     "Address verification dependency failed: {Reason}",
                     addressDependencyFailed.Reason);
                 return Result<AddressValidationResult>.DependencyFailed(addressDependencyFailed.Reason, addressDependencyFailed.Message);
@@ -169,7 +170,11 @@ public class UpdateAddressCommandHandler(
         var userIalLevel = UserIalLevelExtensions.FromClaimsPrincipal(command.User);
         var piiVisibility = piiVisibilityService.GetVisibility(userIalLevel);
         var household = await householdRepository.GetHouseholdByIdentifierAsync(
-            identifier, piiVisibility, userIalLevel, cancellationToken);
+            identifier,
+            piiVisibility,
+            userIalLevel,
+            command.User.GetUserId(),
+            cancellationToken: cancellationToken);
 
         if (household == null)
         {
@@ -253,10 +258,11 @@ public class UpdateAddressCommandHandler(
 
             if (updateResult.IsPolicyRejection)
             {
-                logger.LogWarning(
-                    "Address update policy rejection for household identifier kind {Kind}: {ErrorCode}",
+                logger.LogError(
+                    "Address update policy rejection for household identifier kind {Kind}: {ErrorCode} - {ErrorDetail}",
                     identifierKind,
-                    updateResult.ErrorCode);
+                    updateResult.ErrorCode,
+                    updateResult.ErrorMessage);
                 return Result<AddressValidationResult>.PreconditionFailed(PreconditionFailedReason.Conflict, updateResult.ErrorMessage);
             }
 

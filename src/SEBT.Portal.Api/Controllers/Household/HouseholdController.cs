@@ -25,6 +25,9 @@ public class HouseholdController : ControllerBase
     /// PII data is only included when the user meets the ID proofing requirements configured for the state.
     /// </summary>
     /// <param name="queryHandler">The use case handler for retrieving household data.</param>
+    /// <param name="identifierHasher">Hashes household application IDs before returning them to the client.</param>
+    /// <param name="configuration">Application configuration, used to resolve the hashed app ID field name.</param>
+    /// <param name="includeCardDetails">When false, card-related fields are excluded from the response.</param>
     /// <param name="cancellationToken">A token to monitor for cancellation requests.</param>
     /// <returns>An OK result with household data if found; otherwise, NotFound or Unauthorized.</returns>
     /// <response code="200">Household data retrieved successfully.</response>
@@ -41,9 +44,14 @@ public class HouseholdController : ControllerBase
         [FromServices] IQueryHandler<GetHouseholdDataQuery, Core.Models.Household.HouseholdData> queryHandler,
         [FromServices] IIdentifierHasher identifierHasher,
         [FromServices] IConfiguration configuration,
+        [FromQuery] bool includeCardDetails = true,
         CancellationToken cancellationToken = default)
     {
-        var query = new GetHouseholdDataQuery { User = User };
+        var query = new GetHouseholdDataQuery
+        {
+            User = User,
+            IncludeCardDetails = includeCardDetails
+        };
         var result = await queryHandler.Handle(query, cancellationToken);
 
         return result.ToActionResult(

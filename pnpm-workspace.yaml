@@ -3,8 +3,32 @@ packages:
   - src/SEBT.EnrollmentChecker.Web
   - packages/*
 
+# [SECURITY] Force-upgrade vulnerable transitive dependencies. Lives here (not in
+# package.json's `pnpm.overrides`) because pnpm 11 no longer honors that location.
 overrides:
-  tmp@<=0.2.3: '>=0.2.4'
+  ws: '>=8.20.1' # CVE — uninitialized memory disclosure
+  postcss: '>=8.5.10' # CVE — XSS via unescaped `</style>`
+  vite: '>=8.0.0' # CVEs — path traversal, dev-server WS arbitrary read, server.fs.deny bypass
+  tmp: '>=0.2.4' # CVE — arbitrary write via symlink `dir` param
+  uuid: '>=11.1.1' # CVE — missing buffer bounds check
 
 # [SECURITY] Enforce minimum package age. Consult Security Team before updating.
 minimumReleaseAge: 10080 # 7 days (minutes)
+
+# [SECURITY] Version-pinned exemptions to the cooldown above. Each entry must
+# reference a specific package@version, so the exemption ages out automatically
+# on the next version bump. Justify each addition with a CVE or ticket link.
+minimumReleaseAgeExclude:
+  # DC-410: CVE-2026-45109 (High) — middleware/proxy bypass via segment-prefetch.
+  # Includes next + its sibling @next/* packages that ship from the same Vercel
+  # release. Remove once minimumReleaseAge naturally allows 16.2.6 (after 2026-05-14).
+  - next@16.2.6
+  - '@next/env@16.2.6'
+  - '@next/swc-darwin-arm64@16.2.6'
+  - '@next/swc-darwin-x64@16.2.6'
+  - '@next/swc-linux-arm64-gnu@16.2.6'
+  - '@next/swc-linux-arm64-musl@16.2.6'
+  - '@next/swc-linux-x64-gnu@16.2.6'
+  - '@next/swc-linux-x64-musl@16.2.6'
+  - '@next/swc-win32-arm64-msvc@16.2.6'
+  - '@next/swc-win32-x64-msvc@16.2.6'

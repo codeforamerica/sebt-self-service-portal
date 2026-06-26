@@ -9,13 +9,28 @@
 /** Supported state codes — add new states here */
 export type StateCode = 'dc' | 'co'
 
+/**
+ * Full set of language codes the design system knows how to render labels for.
+ * The runtime list of languages offered to a user is per-state (see
+ * `StateConfig.supportedLanguages`), but `languageNames` and
+ * `languageTranslationKeys` cover every member of this union so a state that
+ * offers a given language always has its native label available.
+ */
+export type SupportedLanguage = 'en' | 'es' | 'am'
+
 export interface StateConfig {
   /** Full display name (e.g., 'District of Columbia') */
   name: string
   /** State-specific program name (e.g., 'DC SUN Bucks', 'Summer EBT') */
   programName: string
+  /** Branded site name for page titles and link previews (e.g., 'DC SUN Bucks', 'Colorado Summer EBT') */
+  siteDisplayName: string
+  /** Meta description for page titles, Open Graph, and link previews */
+  portalMetadataDescription: string
   /** Alt text for the state seal image in the footer */
   sealAlt: string
+  /** Languages offered in this state's UI (drives the LanguageSelector and `?lang=` validation) */
+  supportedLanguages: readonly SupportedLanguage[]
   /** Extra CSS classes appended to the mobile language selector button */
   languageSelectorClass?: string
   /** Extra CSS classes appended to the mobile language submenu */
@@ -34,14 +49,21 @@ const stateConfigs: Record<StateCode, StateConfig> = {
   dc: {
     name: 'District of Columbia',
     programName: 'DC SUN Bucks',
+    siteDisplayName: 'District of Columbia SUN Bucks',
+    portalMetadataDescription:
+      'Apply for Summer EBT (SUN Bucks) benefits in District of Columbia. Check eligibility, track your application status, and manage your benefits online.',
     sealAlt: 'Government of the District of Columbia - Muriel Bowser, Mayor',
+    supportedLanguages: ['en', 'es', 'am'],
     actionButtonBg: 'bg-secondary',
     actionButtonText: 'text-ink'
   },
   co: {
     name: 'Colorado',
     programName: 'Summer EBT',
+    siteDisplayName: 'Colorado Summer EBT',
+    portalMetadataDescription: 'Manage your CO Summer EBT benefits online.',
     sealAlt: 'Colorado Official State Web Portal',
+    supportedLanguages: ['en', 'es'],
     languageSelectorClass: 'border-primary radius-md text-primary',
     languageSubmenuClass: 'bg-primary-dark',
     actionButtonBg: 'bg-primary',
@@ -72,6 +94,20 @@ export function getState(): StateCode {
  */
 export function getStateName(state: StateCode): string {
   return getStateConfig(state).name
+}
+
+/**
+ * Branded site name for page titles, Open Graph, and link previews.
+ */
+export function getSiteDisplayName(state: StateCode): string {
+  return getStateConfig(state).siteDisplayName
+}
+
+/**
+ * Meta description for page titles, Open Graph, and link previews.
+ */
+export function getPortalMetadataDescription(state: StateCode): string {
+  return getStateConfig(state).portalMetadataDescription
 }
 
 /**

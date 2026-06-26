@@ -16,7 +16,6 @@ public static class AppConfigAgentConfigurationExtensions
     /// <param name="applicationId">Application identifier.</param>
     /// <param name="environmentId">Environment identifier.</param>
     /// <param name="profileId">Configuration profile identifier.</param>
-    /// <param name="reloadAfterSeconds">Reload interval in seconds (default: 90).</param>
     /// <param name="isFeatureFlag">Whether this is a feature flag profile (default: true).</param>
     /// <param name="logger">Optional logger for the provider.</param>
     /// <returns>The configuration builder for chaining.</returns>
@@ -26,7 +25,6 @@ public static class AppConfigAgentConfigurationExtensions
         string applicationId,
         string environmentId,
         string profileId,
-        int? reloadAfterSeconds = 90,
         bool isFeatureFlag = true,
         ILogger<AppConfigAgentConfigurationProvider>? logger = null)
     {
@@ -36,7 +34,6 @@ public static class AppConfigAgentConfigurationExtensions
             ApplicationId = applicationId,
             EnvironmentId = environmentId,
             ProfileId = profileId,
-            ReloadAfterSeconds = reloadAfterSeconds,
             IsFeatureFlag = isFeatureFlag
         };
 
@@ -80,7 +77,6 @@ public static class AppConfigAgentConfigurationExtensions
         var applicationId = section.GetValue<string>("ApplicationId");
         var environmentId = section.GetValue<string>("EnvironmentId");
         var profileId = section.GetValue<string>("ProfileId");
-        var reloadAfterSeconds = section.GetValue<int?>("ReloadAfterSeconds") ?? 90;
         var isFeatureFlag = section.GetValue<bool?>("IsFeatureFlag") ?? true;
 
         if (string.IsNullOrEmpty(applicationId) || string.IsNullOrEmpty(environmentId) || string.IsNullOrEmpty(profileId))
@@ -96,7 +92,6 @@ public static class AppConfigAgentConfigurationExtensions
             applicationId,
             environmentId,
             profileId,
-            reloadAfterSeconds,
             isFeatureFlag,
             logger);
     }

@@ -5,7 +5,10 @@ import { useState } from 'react'
 import { flushSync } from 'react-dom'
 import { useTranslation } from 'react-i18next'
 
+import { useDataLayer } from '@sebt/analytics'
 import { Alert, Button, getState } from '@sebt/design-system'
+
+import { trackAddressUpdateSubmit } from '@/lib/analytics-helpers'
 
 import { useUpdateAddress } from '../../api'
 import type { AddressResponse, UpdateAddressRequest } from '../../api/schema'
@@ -30,14 +33,16 @@ function toUpdateAddressRequestOrNull(
 export function SuggestedAddress() {
   const { t } = useTranslation('confirmInfo')
   const { t: tCommon } = useTranslation('common')
+  const { t: tDev } = useTranslation('dev')
   const router = useRouter()
   const currentState = getState()
   const updateAddress = useUpdateAddress()
+  const { setPageData, trackEvent } = useDataLayer()
   const {
     validationResult,
     enteredAddress,
     setAddress,
-    clearValidationResult,
+    clearValidationOutcome,
     continuePath,
     formPath
   } = useAddressFlow()
@@ -73,6 +78,7 @@ export function SuggestedAddress() {
           : selectedAddress
 
       const result = await updateAddress.mutateAsync(payload)
+      trackAddressUpdateSubmit({ setPageData, trackEvent }, result, null)
 
       if (result.status !== 'valid' && result.status !== 'suggestion') {
         setSubmitError(t('addressUpdateError', 'Something went wrong. Please try again.'))
@@ -95,13 +101,14 @@ export function SuggestedAddress() {
 
       flushSync(() => setAddress(selectedAddress))
       router.push(continuePath)
-    } catch {
+    } catch (err) {
+      trackAddressUpdateSubmit({ setPageData, trackEvent }, null, err)
       setSubmitError(t('addressUpdateError', 'Something went wrong. Please try again.'))
     }
   }
 
   function handleBack() {
-    clearValidationResult()
+    clearValidationOutcome()
     router.push(formPath)
   }
 
@@ -121,10 +128,10 @@ export function SuggestedAddress() {
   // Labels for the radio group items
   const suggestedLabel = isAbbreviated
     ? t('abbreviatedBody2', 'Suggested address') // TODO remove fallback
-    : tCommon('suggestedAddress', 'Suggested address') // TODO remove fallback
+    : tCommon('suggestedAddress')
   const enteredLabel = isAbbreviated
     ? t('abbreviatedBody3', 'Address you entered') // TODO remove fallback
-    : tCommon('addressYouEntered', 'Address you entered') // TODO remove fallback
+    : tCommon('addressEntered')
 
   function formatAddress(addr: UpdateAddressRequest | null) {
     if (!addr) return null
@@ -161,9 +168,7 @@ export function SuggestedAddress() {
         </Alert>
       )}
 
-      <p className="font-sans-3xs text-base margin-bottom-0">
-        {t('requiredFieldNote', 'Asterisks (*) indicate a required field.')}
-      </p>
+      <p className="font-sans-3xs text-base margin-bottom-0">{tCommon('requiredFields')}</p>
 
       <fieldset className="usa-fieldset margin-top-3">
         <legend className="usa-legend">
@@ -216,16 +221,14 @@ export function SuggestedAddress() {
           type="button"
           onClick={handleBack}
         >
-          {tCommon('back', 'Back')}
+          {tCommon('back')}
         </Button>
         <Button
           type="button"
           onClick={handleContinue}
           disabled={updateAddress.isPending}
         >
-          {updateAddress.isPending
-            ? tCommon('loading', 'Loading...')
-            : tCommon('continue', 'Continue')}
+          {updateAddress.isPending ? tDev('loading') : tCommon('continue')}
         </Button>
       </div>
     </div>

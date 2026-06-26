@@ -149,6 +149,10 @@ describe('CoLoadedAddressInfoPage', () => {
     expect(
       screen.queryByRole('heading', { name: /mailing address for snap or tanf ebt card/i })
     ).not.toBeInTheDocument()
+    // The visually-hidden status text must resolve to real copy, not an
+    // unresolved key. "loading" lives in the `dev` namespace, not `common`,
+    // so the rendered text must be "Loading..." rather than the bare key.
+    expect(screen.getByRole('status')).toHaveTextContent('Loading...')
   })
 
   it('renders an error alert when the household fetch fails', () => {
@@ -159,7 +163,7 @@ describe('CoLoadedAddressInfoPage', () => {
     expect(
       screen.queryByRole('heading', { name: /mailing address for snap or tanf ebt card/i })
     ).not.toBeInTheDocument()
-    expect(screen.getByText(/unable to load address details/i)).toBeInTheDocument()
+    expect(screen.getByText(/an error occurred on our end/i)).toBeInTheDocument()
   })
 
   it('tags the in-page CTAs with data-analytics-cta for click tracking', () => {

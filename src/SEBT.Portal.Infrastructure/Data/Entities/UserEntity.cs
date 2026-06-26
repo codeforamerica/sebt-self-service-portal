@@ -11,9 +11,12 @@ public class UserEntity
     public Guid Id { get; set; } = Guid.CreateVersion7();
 
     /// <summary>
-    /// The user's email address, used as a unique identifier.
+    /// AES-GCM ciphertext for the canonical (lowercase) email. Equality lookup uses <see cref="EmailHash"/>.
     /// </summary>
     public string? Email { get; set; }
+
+    /// <summary>HMAC-derived lookup fingerprint for canonical email equality in SQL.</summary>
+    public string? EmailHash { get; set; }
 
     /// <summary>
     /// The subject identifier from the external identity provider (e.g., PingOne sub claim).
@@ -22,9 +25,9 @@ public class UserEntity
     public string? ExternalProviderId { get; set; }
 
     /// <summary>
-    /// The user's date of birth, when collected.
+    /// Encrypted <c>yyyy-MM-dd</c> payload (or transitional ISO plaintext during migration/backfill).
     /// </summary>
-    public DateOnly? DateOfBirth { get; set; }
+    public string? DateOfBirth { get; set; }
 
     /// <summary>
     /// Workflow state of ID proofing (NotStarted, InProgress, Completed, Failed, Expired)
@@ -46,11 +49,6 @@ public class UserEntity
     /// The date and time when ID proofing was completed.
     /// </summary>
     public DateTime? IdProofingCompletedAt { get; set; }
-
-    /// <summary>
-    /// The date and time when ID proofing expires (if applicable).
-    /// </summary>
-    public DateTime? IdProofingExpiresAt { get; set; }
 
     /// <summary>
     /// The date and time when the user was first created.

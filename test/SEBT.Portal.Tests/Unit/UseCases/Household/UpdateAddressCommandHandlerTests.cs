@@ -1,5 +1,5 @@
 using System.Security.Claims;
-using Microsoft.Extensions.Logging.Abstractions;
+using Microsoft.Extensions.Logging;
 using NSubstitute;
 using NSubstitute.ExceptionExtensions;
 using SEBT.Portal.Core.Models;
@@ -39,8 +39,8 @@ public class UpdateAddressCommandHandlerTests
         Substitute.For<IIdProofingService>();
     private readonly ISelfServiceEvaluator _selfServiceEvaluator =
         Substitute.For<ISelfServiceEvaluator>();
-    private readonly NullLogger<UpdateAddressCommandHandler> _logger =
-        NullLogger<UpdateAddressCommandHandler>.Instance;
+    private readonly ILogger<UpdateAddressCommandHandler> _logger =
+        Substitute.For<ILogger<UpdateAddressCommandHandler>>();
 
     public UpdateAddressCommandHandlerTests()
     {
@@ -108,7 +108,7 @@ public class UpdateAddressCommandHandlerTests
     {
         _householdRepository.GetHouseholdByIdentifierAsync(
                 Arg.Any<HouseholdIdentifier>(), Arg.Any<PiiVisibility>(),
-                Arg.Any<UserIalLevel>(), Arg.Any<CancellationToken>())
+                Arg.Any<UserIalLevel>(), Arg.Any<Guid?>(), Arg.Any<bool>(), Arg.Any<CancellationToken>())
             .Returns(new HouseholdData { SummerEbtCases = cases.ToList() });
     }
 
@@ -116,7 +116,7 @@ public class UpdateAddressCommandHandlerTests
     {
         _householdRepository.GetHouseholdByIdentifierAsync(
                 Arg.Any<HouseholdIdentifier>(), Arg.Any<PiiVisibility>(),
-                Arg.Any<UserIalLevel>(), Arg.Any<CancellationToken>())
+                Arg.Any<UserIalLevel>(), Arg.Any<Guid?>(), Arg.Any<bool>(), Arg.Any<CancellationToken>())
             .Returns(new HouseholdData { BenefitIssuanceType = benefitType });
     }
 
@@ -387,7 +387,7 @@ public class UpdateAddressCommandHandlerTests
         SetupResolverReturnsEmail();
         _householdRepository.GetHouseholdByIdentifierAsync(
                 Arg.Any<HouseholdIdentifier>(), Arg.Any<PiiVisibility>(),
-                Arg.Any<UserIalLevel>(), Arg.Any<CancellationToken>())
+                Arg.Any<UserIalLevel>(), Arg.Any<Guid?>(), Arg.Any<bool>(), Arg.Any<CancellationToken>())
             .Returns((HouseholdData?)null);
 
         var result = await handler.Handle(command, CancellationToken.None);
@@ -544,6 +544,30 @@ public class UpdateAddressCommandHandlerTests
         Assert.False(result.IsSuccess);
         var preconditionFailed = Assert.IsType<PreconditionFailedResult<AddressValidationResult>>(result);
         Assert.Equal(PreconditionFailedReason.Conflict, preconditionFailed.Reason);
+    }
+
+    [Fact]
+    public async Task Handle_LogsErrorWithDetail_WhenStateConnectorReturnsPolicyRejection()
+    {
+        var handler = CreateHandler();
+        var command = CreateValidCommand();
+
+        SetupResolverReturnsEmail();
+        SetupHouseholdWithCases();
+        _stateAddressUpdateService.UpdateAddressAsync(Arg.Any<AddressUpdateRequest>(), Arg.Any<CancellationToken>())
+            .Returns(AddressUpdateResult.PolicyRejected("HOUSEHOLD_NOT_FOUND", "No enrollment rows for the household."));
+
+        await handler.Handle(command, CancellationToken.None);
+
+        // Policy rejections are logged at Error with both the machine code and the full detail message.
+        _logger.Received().Log(
+            LogLevel.Error,
+            Arg.Any<EventId>(),
+            Arg.Is<object>(o =>
+                o.ToString()!.Contains("HOUSEHOLD_NOT_FOUND") &&
+                o.ToString()!.Contains("No enrollment rows for the household.")),
+            Arg.Any<Exception?>(),
+            Arg.Any<Func<object, Exception?, string>>());
     }
 
     [Fact]

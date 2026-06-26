@@ -131,8 +131,8 @@ describe('initMixpanelBridge', () => {
         'cta_click',
         expect.objectContaining({
           cta_id: 'nav',
-          page_name: 'Dashboard',
-          page_flow: 'dashboard'
+          name: 'Dashboard',
+          flow: 'dashboard'
         })
       )
     })
@@ -149,8 +149,8 @@ describe('initMixpanelBridge', () => {
         'otp_result',
         expect.objectContaining({
           status: 'success',
-          user_authenticated: true,
-          user_identity_assurance_level: 2
+          authenticated: true,
+          identity_assurance_level: 2
         })
       )
     })
@@ -164,7 +164,7 @@ describe('initMixpanelBridge', () => {
       window.digitalData!.trackEvent('otp_result')
 
       const payload = mixpanelStub.track.mock.calls[0]![1] as Record<string, unknown>
-      expect(payload).not.toHaveProperty('user_email')
+      expect(payload).not.toHaveProperty('email')
     })
 
     it('forwards events without eventData', () => {
@@ -189,7 +189,46 @@ describe('initMixpanelBridge', () => {
 
       expect(mixpanelStub.track).toHaveBeenCalledWith(
         'household_result',
-        expect.objectContaining({ user_authenticated: true })
+        expect.objectContaining({ authenticated: true })
+      )
+    })
+  })
+
+  describe('missed page_load replay', () => {
+    it('replays a page_load that fired before the bridge attached', () => {
+      new DataLayer('digitalData')
+      window.digitalData!.page.set('flow', 'landing')
+      window.digitalData!.pageLoad()
+
+      initMixpanelBridge('test-token')
+
+      expect(mixpanelStub.track_pageview).toHaveBeenCalledTimes(1)
+      expect(mixpanelStub.track_pageview).toHaveBeenCalledWith(
+        expect.objectContaining({ flow: 'landing' })
+      )
+    })
+
+    it('does not double-track when the bridge was present for the page_load', () => {
+      new DataLayer('digitalData')
+      initMixpanelBridge('test-token')
+
+      window.digitalData!.pageLoad()
+
+      expect(mixpanelStub.track_pageview).toHaveBeenCalledTimes(1)
+    })
+
+    it('replays only the most recent page_load after multiple navigations', () => {
+      new DataLayer('digitalData')
+      window.digitalData!.page.set('flow', 'landing')
+      window.digitalData!.pageLoad()
+      window.digitalData!.page.set('flow', 'disclaimer')
+      window.digitalData!.pageLoad()
+
+      initMixpanelBridge('test-token')
+
+      expect(mixpanelStub.track_pageview).toHaveBeenCalledTimes(1)
+      expect(mixpanelStub.track_pageview).toHaveBeenCalledWith(
+        expect.objectContaining({ flow: 'disclaimer' })
       )
     })
   })

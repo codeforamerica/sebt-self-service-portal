@@ -125,7 +125,9 @@ public class RequestCardReplacementCommandHandlerTests
             Arg.Any<HouseholdIdentifier>(),
             Arg.Any<PiiVisibility>(),
             Arg.Any<UserIalLevel>(),
-            Arg.Any<CancellationToken>()
+            Arg.Any<Guid?>(),
+                Arg.Any<bool>(),
+                Arg.Any<CancellationToken>()
         ).Returns(householdData);
     }
 
@@ -564,7 +566,9 @@ public class RequestCardReplacementCommandHandlerTests
             Arg.Any<HouseholdIdentifier>(),
             Arg.Any<PiiVisibility>(),
             UserIalLevel.IAL1plus,
-            Arg.Any<CancellationToken>());
+            Arg.Any<Guid?>(),
+                Arg.Any<bool>(),
+                Arg.Any<CancellationToken>());
     }
 
     [Fact]
@@ -588,7 +592,9 @@ public class RequestCardReplacementCommandHandlerTests
             Arg.Any<HouseholdIdentifier>(),
             Arg.Any<PiiVisibility>(),
             UserIalLevel.None,
-            Arg.Any<CancellationToken>());
+            Arg.Any<Guid?>(),
+                Arg.Any<bool>(),
+                Arg.Any<CancellationToken>());
     }
 
     // --- Hashing verification ---

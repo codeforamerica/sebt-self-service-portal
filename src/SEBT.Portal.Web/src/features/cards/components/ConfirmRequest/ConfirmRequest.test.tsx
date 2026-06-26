@@ -1,16 +1,42 @@
+import { i18n } from '@sebt/design-system/client'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { render, screen, waitFor } from '@testing-library/react'
+import { act, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { http, HttpResponse } from 'msw'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
+import amDcDashboard from '@/content/locales/am/dc/dashboard.json'
+import enCoResult from '@/content/locales/en/co/result.json'
+import enDcDashboard from '@/content/locales/en/dc/dashboard.json'
+import enDcResult from '@/content/locales/en/dc/result.json'
+import esDcDashboard from '@/content/locales/es/dc/dashboard.json'
 import type { Address, SummerEbtCase } from '@/features/household/api/schema'
 import { server } from '@/mocks/server'
+import { AnalyticsEvents } from '@sebt/analytics'
 
 import { ConfirmRequest } from './ConfirmRequest'
 
 const mockPush = vi.fn()
 const mockBack = vi.fn()
+const mockSetPageData = vi.fn()
+const mockTrackEvent = vi.fn()
+
+vi.mock('@sebt/analytics', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@sebt/analytics')>()
+  return {
+    ...actual,
+    useDataLayer: () => ({
+      setPageData: mockSetPageData,
+      trackEvent: mockTrackEvent,
+      pageLoad: vi.fn(),
+      setPageCategory: vi.fn(),
+      setPageAttribute: vi.fn(),
+      setUserData: vi.fn(),
+      setUserProfile: vi.fn(),
+      get: vi.fn()
+    })
+  }
+})
 
 vi.mock('next/navigation', () => ({
   useRouter: () => ({
@@ -56,9 +82,6 @@ const TEST_CASES: SummerEbtCase[] = [
     ebtCardLastFour: '1234',
     ebtCardStatus: 'Active',
     cardRequestedAt: '2026-01-01T00:00:00Z',
-    cardMailedAt: '2026-01-03T00:00:00Z',
-    cardActivatedAt: '2026-01-08T00:00:00Z',
-    cardDeactivatedAt: null,
     allowAddressChange: true,
     allowCardReplacement: true
   },
@@ -72,9 +95,6 @@ const TEST_CASES: SummerEbtCase[] = [
     ebtCardLastFour: '1234',
     ebtCardStatus: 'Active',
     cardRequestedAt: '2026-01-01T00:00:00Z',
-    cardMailedAt: '2026-01-03T00:00:00Z',
-    cardActivatedAt: '2026-01-08T00:00:00Z',
-    cardDeactivatedAt: null,
     allowAddressChange: true,
     allowCardReplacement: true
   }
@@ -105,7 +125,20 @@ describe('ConfirmRequest', () => {
   beforeEach(() => {
     mockPush.mockClear()
     mockBack.mockClear()
+    mockSetPageData.mockClear()
+    mockTrackEvent.mockClear()
     mockState = 'dc'
+    // Restore DC 'result' bundle in case a prior test swapped to CO. addResourceBundle
+    // with deep+overwrite ensures we get the DC values regardless of previous state.
+    i18n.addResourceBundle('en', 'result', enDcResult, true, true)
+  })
+
+  // The i18n instance is a shared singleton; reset to English so sibling tests
+  // (which assume English copy) aren't affected by a lingering language switch.
+  afterEach(async () => {
+    await act(async () => {
+      await i18n.changeLanguage('en')
+    })
   })
 
   // --- Content rendering ---
@@ -117,6 +150,8 @@ describe('ConfirmRequest', () => {
 
   it('renders the state-specific title for CO', () => {
     mockState = 'co'
+    // Swap to CO 'result' bundle for this test; beforeEach restores DC for subsequent tests.
+    i18n.addResourceBundle('en', 'result', enCoResult, true, true)
     renderConfirmRequest()
     expect(screen.getByText(/Summer EBT/)).toBeInTheDocument()
   })
@@ -182,6 +217,10 @@ describe('ConfirmRequest', () => {
     await waitFor(() => {
       expect(mockPush).toHaveBeenCalledWith('/dashboard?flash=card_replaced')
     })
+    expect(mockSetPageData).toHaveBeenCalledWith('card_replacement_status', 'success')
+    expect(mockSetPageData).toHaveBeenCalledWith('error_code', null)
+    expect(mockTrackEvent).toHaveBeenCalledWith(AnalyticsEvents.CARD_REPLACEMENT_SUBMIT)
+    expect(mockTrackEvent).not.toHaveBeenCalledWith(AnalyticsEvents.CARD_REPLACEMENT_ERROR)
   })
 
   it('shows error message when submission fails', async () => {
@@ -199,6 +238,34 @@ describe('ConfirmRequest', () => {
     await waitFor(() => {
       expect(screen.getByText(/issue requesting/i)).toBeInTheDocument()
     })
+    expect(mockSetPageData).toHaveBeenCalledWith('card_replacement_status', 'error')
+    expect(mockSetPageData).toHaveBeenCalledWith('error_code', 'INVALID_INPUT')
+    expect(mockTrackEvent).toHaveBeenCalledWith(AnalyticsEvents.CARD_REPLACEMENT_SUBMIT)
+    expect(mockTrackEvent).toHaveBeenCalledWith(AnalyticsEvents.CARD_REPLACEMENT_ERROR)
+  })
+
+  it('re-translates the submit error across all DC languages, without resubmitting (DC-454)', async () => {
+    server.use(
+      http.post('/api/household/cards/replace', () =>
+        HttpResponse.json({ error: 'Cooldown active' }, { status: 400 })
+      )
+    )
+    const { user } = renderConfirmRequest()
+
+    await user.click(screen.getByRole('button', { name: /order card/i }))
+    expect(await screen.findByText(enDcDashboard.alertCardReplaceError)).toBeInTheDocument()
+
+    // Cycle DC languages with the error on screen — no resubmit. afterEach resets to English.
+    await act(async () => {
+      await i18n.changeLanguage('es')
+    })
+    expect(await screen.findByText(esDcDashboard.alertCardReplaceError)).toBeInTheDocument()
+
+    await act(async () => {
+      await i18n.changeLanguage('am')
+    })
+    expect(await screen.findByText(amDcDashboard.alertCardReplaceError)).toBeInTheDocument()
+    expect(screen.queryByText(enDcDashboard.alertCardReplaceError)).toBeNull()
   })
 
   it('sends caseRefs with applicationId/applicationStudentId from each case', async () => {

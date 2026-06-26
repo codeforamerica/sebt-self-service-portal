@@ -64,6 +64,10 @@ public class HouseholdControllerTests
     {
         var logger = NullLogger<GetHouseholdDataQueryHandler>.Instance;
         var userRepository = Substitute.For<IUserRepository>();
+        var featureManager = Substitute.For<Microsoft.FeatureManagement.IFeatureManager>();
+        featureManager.IsEnabledAsync(SEBT.Portal.Core.AppSettings.FeatureFlags.DeferEbtCardDataLoading)
+            .Returns(false);
+
         return new GetHouseholdDataQueryHandler(
             resolver,
             repository,
@@ -74,6 +78,7 @@ public class HouseholdControllerTests
             _cardReplacementRepo,
             _identifierHasher,
             new CoLoadedCohortFilterSettings(),
+            featureManager,
             logger);
     }
 
@@ -141,7 +146,6 @@ public class HouseholdControllerTests
                     ApplicationStatus = ApplicationStatus.Approved,
                     BenefitIssueDate = DateTime.UtcNow.AddDays(-30),
                     BenefitExpirationDate = DateTime.UtcNow.AddDays(60),
-                    Last4DigitsOfCard = "1234",
                     Children = new List<Child>
                     {
                         new Child { FirstName = "John", LastName = "Doe" }
@@ -159,7 +163,7 @@ public class HouseholdControllerTests
 
         var resolverMock = CreateResolverMock(email);
         var repositoryMock = Substitute.For<IHouseholdRepository>();
-        repositoryMock.GetHouseholdByIdentifierAsync(Arg.Is<HouseholdIdentifier>(id => id.Type == PreferredHouseholdIdType.Email && id.Value == EmailNormalizer.Normalize(email)), Arg.Any<PiiVisibility>(), Arg.Any<UserIalLevel>(), Arg.Any<CancellationToken>())
+        repositoryMock.GetHouseholdByIdentifierAsync(Arg.Is<HouseholdIdentifier>(id => id.Type == PreferredHouseholdIdType.Email && id.Value == EmailNormalizer.Normalize(email)), Arg.Any<PiiVisibility>(), Arg.Any<UserIalLevel>(), Arg.Any<Guid?>(), Arg.Any<bool>(), Arg.Any<CancellationToken>())
             .Returns(householdData);
 
         // Act
@@ -172,7 +176,7 @@ public class HouseholdControllerTests
         Assert.Equal(email, response.Email);
         Assert.NotNull(response.AddressOnFile);
         Assert.Equal("123 Main St", response.AddressOnFile.StreetAddress1);
-        await repositoryMock.Received(1).GetHouseholdByIdentifierAsync(Arg.Is<HouseholdIdentifier>(id => id.Type == PreferredHouseholdIdType.Email && id.Value == EmailNormalizer.Normalize(email)), Arg.Any<PiiVisibility>(), Arg.Any<UserIalLevel>(), Arg.Any<CancellationToken>());
+        await repositoryMock.Received(1).GetHouseholdByIdentifierAsync(Arg.Is<HouseholdIdentifier>(id => id.Type == PreferredHouseholdIdType.Email && id.Value == EmailNormalizer.Normalize(email)), Arg.Any<PiiVisibility>(), Arg.Any<UserIalLevel>(), Arg.Any<Guid?>(), Arg.Any<bool>(), Arg.Any<CancellationToken>());
     }
 
     [Fact]
@@ -203,7 +207,7 @@ public class HouseholdControllerTests
 
         var resolverMock = CreateResolverMock(email);
         var repositoryMock = Substitute.For<IHouseholdRepository>();
-        repositoryMock.GetHouseholdByIdentifierAsync(Arg.Is<HouseholdIdentifier>(id => id.Type == PreferredHouseholdIdType.Email && id.Value == EmailNormalizer.Normalize(email)), Arg.Any<PiiVisibility>(), Arg.Any<UserIalLevel>(), Arg.Any<CancellationToken>())
+        repositoryMock.GetHouseholdByIdentifierAsync(Arg.Is<HouseholdIdentifier>(id => id.Type == PreferredHouseholdIdType.Email && id.Value == EmailNormalizer.Normalize(email)), Arg.Any<PiiVisibility>(), Arg.Any<UserIalLevel>(), Arg.Any<Guid?>(), Arg.Any<bool>(), Arg.Any<CancellationToken>())
             .Returns(householdData);
 
         // Act
@@ -215,7 +219,7 @@ public class HouseholdControllerTests
         var response = Assert.IsType<HouseholdDataResponse>(okResult.Value);
         Assert.Equal(email, response.Email);
         Assert.Null(response.AddressOnFile);
-        await repositoryMock.Received(1).GetHouseholdByIdentifierAsync(Arg.Is<HouseholdIdentifier>(id => id.Type == PreferredHouseholdIdType.Email && id.Value == EmailNormalizer.Normalize(email)), Arg.Any<PiiVisibility>(), Arg.Any<UserIalLevel>(), Arg.Any<CancellationToken>());
+        await repositoryMock.Received(1).GetHouseholdByIdentifierAsync(Arg.Is<HouseholdIdentifier>(id => id.Type == PreferredHouseholdIdType.Email && id.Value == EmailNormalizer.Normalize(email)), Arg.Any<PiiVisibility>(), Arg.Any<UserIalLevel>(), Arg.Any<Guid?>(), Arg.Any<bool>(), Arg.Any<CancellationToken>());
     }
 
     [Fact]
@@ -229,7 +233,7 @@ public class HouseholdControllerTests
 
         var resolverMock = CreateResolverMock(email);
         var repositoryMock = Substitute.For<IHouseholdRepository>();
-        repositoryMock.GetHouseholdByIdentifierAsync(Arg.Is<HouseholdIdentifier>(id => id.Type == PreferredHouseholdIdType.Email && id.Value == EmailNormalizer.Normalize(email)), Arg.Any<PiiVisibility>(), Arg.Any<UserIalLevel>(), Arg.Any<CancellationToken>())
+        repositoryMock.GetHouseholdByIdentifierAsync(Arg.Is<HouseholdIdentifier>(id => id.Type == PreferredHouseholdIdType.Email && id.Value == EmailNormalizer.Normalize(email)), Arg.Any<PiiVisibility>(), Arg.Any<UserIalLevel>(), Arg.Any<Guid?>(), Arg.Any<bool>(), Arg.Any<CancellationToken>())
             .Returns((HouseholdData?)null);
 
         // Act
@@ -240,7 +244,7 @@ public class HouseholdControllerTests
         var notFoundResult = Assert.IsType<NotFoundObjectResult>(result);
         var errorResponse = Assert.IsType<ErrorResponse>(notFoundResult.Value);
         Assert.Contains("Household data not found", errorResponse.Error, StringComparison.OrdinalIgnoreCase);
-        await repositoryMock.Received(1).GetHouseholdByIdentifierAsync(Arg.Is<HouseholdIdentifier>(id => id.Type == PreferredHouseholdIdType.Email && id.Value == EmailNormalizer.Normalize(email)), Arg.Any<PiiVisibility>(), Arg.Any<UserIalLevel>(), Arg.Any<CancellationToken>());
+        await repositoryMock.Received(1).GetHouseholdByIdentifierAsync(Arg.Is<HouseholdIdentifier>(id => id.Type == PreferredHouseholdIdType.Email && id.Value == EmailNormalizer.Normalize(email)), Arg.Any<PiiVisibility>(), Arg.Any<UserIalLevel>(), Arg.Any<Guid?>(), Arg.Any<bool>(), Arg.Any<CancellationToken>());
     }
 
     [Fact]
@@ -266,7 +270,7 @@ public class HouseholdControllerTests
         var unauthorizedResult = Assert.IsType<UnauthorizedObjectResult>(result);
         var errorResponse = Assert.IsType<ErrorResponse>(unauthorizedResult.Value);
         Assert.Contains("Unable to identify user", errorResponse.Error, StringComparison.OrdinalIgnoreCase);
-        await repositoryMock.DidNotReceive().GetHouseholdByIdentifierAsync(Arg.Any<HouseholdIdentifier>(), Arg.Any<PiiVisibility>(), Arg.Any<UserIalLevel>(), Arg.Any<CancellationToken>());
+        await repositoryMock.DidNotReceive().GetHouseholdByIdentifierAsync(Arg.Any<HouseholdIdentifier>(), Arg.Any<PiiVisibility>(), Arg.Any<UserIalLevel>(), Arg.Any<Guid?>(), Arg.Any<bool>(), Arg.Any<CancellationToken>());
     }
 
     [Fact]
@@ -290,7 +294,7 @@ public class HouseholdControllerTests
 
         var resolverMock = CreateResolverMock(email);
         var repositoryMock = Substitute.For<IHouseholdRepository>();
-        repositoryMock.GetHouseholdByIdentifierAsync(Arg.Is<HouseholdIdentifier>(id => id.Type == PreferredHouseholdIdType.Email && id.Value == EmailNormalizer.Normalize(email)), Arg.Any<PiiVisibility>(), Arg.Any<UserIalLevel>(), Arg.Any<CancellationToken>())
+        repositoryMock.GetHouseholdByIdentifierAsync(Arg.Is<HouseholdIdentifier>(id => id.Type == PreferredHouseholdIdType.Email && id.Value == EmailNormalizer.Normalize(email)), Arg.Any<PiiVisibility>(), Arg.Any<UserIalLevel>(), Arg.Any<Guid?>(), Arg.Any<bool>(), Arg.Any<CancellationToken>())
             .Returns(householdData);
 
         // Act
@@ -299,7 +303,7 @@ public class HouseholdControllerTests
         // Assert
         Assert.NotNull(result);
         var okResult = Assert.IsType<OkObjectResult>(result);
-        await repositoryMock.Received(1).GetHouseholdByIdentifierAsync(Arg.Is<HouseholdIdentifier>(id => id.Type == PreferredHouseholdIdType.Email && id.Value == EmailNormalizer.Normalize(email)), Arg.Any<PiiVisibility>(), Arg.Any<UserIalLevel>(), Arg.Any<CancellationToken>());
+        await repositoryMock.Received(1).GetHouseholdByIdentifierAsync(Arg.Is<HouseholdIdentifier>(id => id.Type == PreferredHouseholdIdType.Email && id.Value == EmailNormalizer.Normalize(email)), Arg.Any<PiiVisibility>(), Arg.Any<UserIalLevel>(), Arg.Any<Guid?>(), Arg.Any<bool>(), Arg.Any<CancellationToken>());
     }
 
     [Fact]
@@ -322,7 +326,7 @@ public class HouseholdControllerTests
 
         var resolverMock = CreateResolverMock(email);
         var repositoryMock = Substitute.For<IHouseholdRepository>();
-        repositoryMock.GetHouseholdByIdentifierAsync(Arg.Is<HouseholdIdentifier>(id => id.Type == PreferredHouseholdIdType.Email && id.Value == EmailNormalizer.Normalize(email)), Arg.Any<PiiVisibility>(), Arg.Any<UserIalLevel>(), Arg.Any<CancellationToken>())
+        repositoryMock.GetHouseholdByIdentifierAsync(Arg.Is<HouseholdIdentifier>(id => id.Type == PreferredHouseholdIdType.Email && id.Value == EmailNormalizer.Normalize(email)), Arg.Any<PiiVisibility>(), Arg.Any<UserIalLevel>(), Arg.Any<Guid?>(), Arg.Any<bool>(), Arg.Any<CancellationToken>())
             .Returns(householdData);
 
         // Act
@@ -330,7 +334,7 @@ public class HouseholdControllerTests
 
         // Assert
         Assert.NotNull(result);
-        await repositoryMock.Received(1).GetHouseholdByIdentifierAsync(Arg.Is<HouseholdIdentifier>(id => id.Type == PreferredHouseholdIdType.Email && id.Value == EmailNormalizer.Normalize(email)), Arg.Any<PiiVisibility>(), Arg.Any<UserIalLevel>(), Arg.Any<CancellationToken>());
+        await repositoryMock.Received(1).GetHouseholdByIdentifierAsync(Arg.Is<HouseholdIdentifier>(id => id.Type == PreferredHouseholdIdType.Email && id.Value == EmailNormalizer.Normalize(email)), Arg.Any<PiiVisibility>(), Arg.Any<UserIalLevel>(), Arg.Any<Guid?>(), Arg.Any<bool>(), Arg.Any<CancellationToken>());
     }
 
     [Fact]
@@ -363,7 +367,7 @@ public class HouseholdControllerTests
 
         var resolverMock = CreateResolverMock(email);
         var repositoryMock = Substitute.For<IHouseholdRepository>();
-        repositoryMock.GetHouseholdByIdentifierAsync(Arg.Is<HouseholdIdentifier>(id => id.Type == PreferredHouseholdIdType.Email && id.Value == EmailNormalizer.Normalize(email)), Arg.Any<PiiVisibility>(), Arg.Any<UserIalLevel>(), Arg.Any<CancellationToken>())
+        repositoryMock.GetHouseholdByIdentifierAsync(Arg.Is<HouseholdIdentifier>(id => id.Type == PreferredHouseholdIdType.Email && id.Value == EmailNormalizer.Normalize(email)), Arg.Any<PiiVisibility>(), Arg.Any<UserIalLevel>(), Arg.Any<Guid?>(), Arg.Any<bool>(), Arg.Any<CancellationToken>())
             .Returns(householdData);
 
         // Act
@@ -372,7 +376,7 @@ public class HouseholdControllerTests
         // Assert
         Assert.NotNull(result);
         var okResult = Assert.IsType<OkObjectResult>(result);
-        await repositoryMock.Received(1).GetHouseholdByIdentifierAsync(Arg.Is<HouseholdIdentifier>(id => id.Type == PreferredHouseholdIdType.Email && id.Value == EmailNormalizer.Normalize(email)), Arg.Any<PiiVisibility>(), Arg.Any<UserIalLevel>(), Arg.Any<CancellationToken>());
+        await repositoryMock.Received(1).GetHouseholdByIdentifierAsync(Arg.Is<HouseholdIdentifier>(id => id.Type == PreferredHouseholdIdType.Email && id.Value == EmailNormalizer.Normalize(email)), Arg.Any<PiiVisibility>(), Arg.Any<UserIalLevel>(), Arg.Any<Guid?>(), Arg.Any<bool>(), Arg.Any<CancellationToken>());
     }
 
     [Fact]
@@ -405,7 +409,7 @@ public class HouseholdControllerTests
 
         var resolverMock = CreateResolverMock(email);
         var repositoryMock = Substitute.For<IHouseholdRepository>();
-        repositoryMock.GetHouseholdByIdentifierAsync(Arg.Is<HouseholdIdentifier>(id => id.Type == PreferredHouseholdIdType.Email && id.Value == EmailNormalizer.Normalize(email)), Arg.Any<PiiVisibility>(), Arg.Any<UserIalLevel>(), Arg.Any<CancellationToken>())
+        repositoryMock.GetHouseholdByIdentifierAsync(Arg.Is<HouseholdIdentifier>(id => id.Type == PreferredHouseholdIdType.Email && id.Value == EmailNormalizer.Normalize(email)), Arg.Any<PiiVisibility>(), Arg.Any<UserIalLevel>(), Arg.Any<Guid?>(), Arg.Any<bool>(), Arg.Any<CancellationToken>())
             .Returns(householdData);
 
         // Act
@@ -414,7 +418,7 @@ public class HouseholdControllerTests
         // Assert
         Assert.NotNull(result);
         var okResult = Assert.IsType<OkObjectResult>(result);
-        await repositoryMock.Received(1).GetHouseholdByIdentifierAsync(Arg.Is<HouseholdIdentifier>(id => id.Type == PreferredHouseholdIdType.Email && id.Value == EmailNormalizer.Normalize(email)), Arg.Any<PiiVisibility>(), Arg.Any<UserIalLevel>(), Arg.Any<CancellationToken>());
+        await repositoryMock.Received(1).GetHouseholdByIdentifierAsync(Arg.Is<HouseholdIdentifier>(id => id.Type == PreferredHouseholdIdType.Email && id.Value == EmailNormalizer.Normalize(email)), Arg.Any<PiiVisibility>(), Arg.Any<UserIalLevel>(), Arg.Any<Guid?>(), Arg.Any<bool>(), Arg.Any<CancellationToken>());
     }
 
     [Fact]
@@ -429,7 +433,7 @@ public class HouseholdControllerTests
         var householdData = new HouseholdData { Email = email };
         var resolverMock = CreateResolverMock(email);
         var repositoryMock = Substitute.For<IHouseholdRepository>();
-        repositoryMock.GetHouseholdByIdentifierAsync(Arg.Is<HouseholdIdentifier>(id => id.Type == PreferredHouseholdIdType.Email && id.Value == EmailNormalizer.Normalize(email)), Arg.Any<PiiVisibility>(), Arg.Any<UserIalLevel>(), Arg.Any<CancellationToken>())
+        repositoryMock.GetHouseholdByIdentifierAsync(Arg.Is<HouseholdIdentifier>(id => id.Type == PreferredHouseholdIdType.Email && id.Value == EmailNormalizer.Normalize(email)), Arg.Any<PiiVisibility>(), Arg.Any<UserIalLevel>(), Arg.Any<Guid?>(), Arg.Any<bool>(), Arg.Any<CancellationToken>())
             .Returns(householdData);
 
         // Act
@@ -437,7 +441,7 @@ public class HouseholdControllerTests
 
         // Assert
         Assert.NotNull(result);
-        await repositoryMock.Received(1).GetHouseholdByIdentifierAsync(Arg.Is<HouseholdIdentifier>(id => id.Type == PreferredHouseholdIdType.Email && id.Value == EmailNormalizer.Normalize(email)), Arg.Any<PiiVisibility>(), Arg.Any<UserIalLevel>(), Arg.Any<CancellationToken>());
+        await repositoryMock.Received(1).GetHouseholdByIdentifierAsync(Arg.Is<HouseholdIdentifier>(id => id.Type == PreferredHouseholdIdType.Email && id.Value == EmailNormalizer.Normalize(email)), Arg.Any<PiiVisibility>(), Arg.Any<UserIalLevel>(), Arg.Any<Guid?>(), Arg.Any<bool>(), Arg.Any<CancellationToken>());
     }
 
     [Fact]
@@ -452,7 +456,7 @@ public class HouseholdControllerTests
         var householdData = new HouseholdData { Email = email };
         var resolverMock = CreateResolverMock(email);
         var repositoryMock = Substitute.For<IHouseholdRepository>();
-        repositoryMock.GetHouseholdByIdentifierAsync(Arg.Is<HouseholdIdentifier>(id => id.Type == PreferredHouseholdIdType.Email && id.Value == EmailNormalizer.Normalize(email)), Arg.Any<PiiVisibility>(), Arg.Any<UserIalLevel>(), Arg.Any<CancellationToken>())
+        repositoryMock.GetHouseholdByIdentifierAsync(Arg.Is<HouseholdIdentifier>(id => id.Type == PreferredHouseholdIdType.Email && id.Value == EmailNormalizer.Normalize(email)), Arg.Any<PiiVisibility>(), Arg.Any<UserIalLevel>(), Arg.Any<Guid?>(), Arg.Any<bool>(), Arg.Any<CancellationToken>())
             .Returns(householdData);
 
         // Act
@@ -460,7 +464,7 @@ public class HouseholdControllerTests
 
         // Assert
         Assert.NotNull(result);
-        await repositoryMock.Received(1).GetHouseholdByIdentifierAsync(Arg.Is<HouseholdIdentifier>(id => id.Type == PreferredHouseholdIdType.Email && id.Value == EmailNormalizer.Normalize(email)), Arg.Any<PiiVisibility>(), Arg.Any<UserIalLevel>(), Arg.Any<CancellationToken>());
+        await repositoryMock.Received(1).GetHouseholdByIdentifierAsync(Arg.Is<HouseholdIdentifier>(id => id.Type == PreferredHouseholdIdType.Email && id.Value == EmailNormalizer.Normalize(email)), Arg.Any<PiiVisibility>(), Arg.Any<UserIalLevel>(), Arg.Any<Guid?>(), Arg.Any<bool>(), Arg.Any<CancellationToken>());
     }
 
     [Fact]
@@ -482,7 +486,7 @@ public class HouseholdControllerTests
         var householdData = new HouseholdData { Email = email };
         var resolverMock = CreateResolverMock(email);
         var repositoryMock = Substitute.For<IHouseholdRepository>();
-        repositoryMock.GetHouseholdByIdentifierAsync(Arg.Is<HouseholdIdentifier>(id => id.Type == PreferredHouseholdIdType.Email && id.Value == EmailNormalizer.Normalize(email)), Arg.Any<PiiVisibility>(), Arg.Any<UserIalLevel>(), Arg.Any<CancellationToken>())
+        repositoryMock.GetHouseholdByIdentifierAsync(Arg.Is<HouseholdIdentifier>(id => id.Type == PreferredHouseholdIdType.Email && id.Value == EmailNormalizer.Normalize(email)), Arg.Any<PiiVisibility>(), Arg.Any<UserIalLevel>(), Arg.Any<Guid?>(), Arg.Any<bool>(), Arg.Any<CancellationToken>())
             .Returns(householdData);
 
         // Act
@@ -490,7 +494,7 @@ public class HouseholdControllerTests
 
         // Assert
         Assert.NotNull(result);
-        await repositoryMock.Received(1).GetHouseholdByIdentifierAsync(Arg.Is<HouseholdIdentifier>(id => id.Type == PreferredHouseholdIdType.Email && id.Value == EmailNormalizer.Normalize(email)), Arg.Any<PiiVisibility>(), Arg.Any<UserIalLevel>(), Arg.Any<CancellationToken>());
+        await repositoryMock.Received(1).GetHouseholdByIdentifierAsync(Arg.Is<HouseholdIdentifier>(id => id.Type == PreferredHouseholdIdType.Email && id.Value == EmailNormalizer.Normalize(email)), Arg.Any<PiiVisibility>(), Arg.Any<UserIalLevel>(), Arg.Any<Guid?>(), Arg.Any<bool>(), Arg.Any<CancellationToken>());
     }
 
     // --- RequestCardReplacement tests ---
@@ -588,7 +592,7 @@ public class HouseholdControllerTests
 
         var resolverMock = CreateResolverMock(email);
         var repositoryMock = Substitute.For<IHouseholdRepository>();
-        repositoryMock.GetHouseholdByIdentifierAsync(Arg.Is<HouseholdIdentifier>(id => id.Type == PreferredHouseholdIdType.Email && id.Value == EmailNormalizer.Normalize(email)), Arg.Any<PiiVisibility>(), Arg.Any<UserIalLevel>(), Arg.Any<CancellationToken>())
+        repositoryMock.GetHouseholdByIdentifierAsync(Arg.Is<HouseholdIdentifier>(id => id.Type == PreferredHouseholdIdType.Email && id.Value == EmailNormalizer.Normalize(email)), Arg.Any<PiiVisibility>(), Arg.Any<UserIalLevel>(), Arg.Any<Guid?>(), Arg.Any<bool>(), Arg.Any<CancellationToken>())
             .Returns(householdData);
 
         // Act
@@ -596,7 +600,7 @@ public class HouseholdControllerTests
 
         // Assert
         Assert.NotNull(result);
-        await repositoryMock.Received(1).GetHouseholdByIdentifierAsync(Arg.Is<HouseholdIdentifier>(id => id.Type == PreferredHouseholdIdType.Email && id.Value == EmailNormalizer.Normalize(email)), Arg.Any<PiiVisibility>(), Arg.Any<UserIalLevel>(), Arg.Any<CancellationToken>());
+        await repositoryMock.Received(1).GetHouseholdByIdentifierAsync(Arg.Is<HouseholdIdentifier>(id => id.Type == PreferredHouseholdIdType.Email && id.Value == EmailNormalizer.Normalize(email)), Arg.Any<PiiVisibility>(), Arg.Any<UserIalLevel>(), Arg.Any<Guid?>(), Arg.Any<bool>(), Arg.Any<CancellationToken>());
     }
 
     [Fact]
@@ -621,7 +625,6 @@ public class HouseholdControllerTests
                     ApplicationStatus = ApplicationStatus.Approved,
                     BenefitIssueDate = DateTime.UtcNow.AddDays(-30),
                     BenefitExpirationDate = DateTime.UtcNow.AddDays(60),
-                    Last4DigitsOfCard = "1234",
                     Children = new List<Child>
                     {
                         new Child { FirstName = "John", LastName = "Doe" },
@@ -642,7 +645,7 @@ public class HouseholdControllerTests
 
         var resolverMock = CreateResolverMock(email);
         var repositoryMock = Substitute.For<IHouseholdRepository>();
-        repositoryMock.GetHouseholdByIdentifierAsync(Arg.Is<HouseholdIdentifier>(id => id.Type == PreferredHouseholdIdType.Email && id.Value == EmailNormalizer.Normalize(email)), Arg.Any<PiiVisibility>(), Arg.Any<UserIalLevel>(), Arg.Any<CancellationToken>())
+        repositoryMock.GetHouseholdByIdentifierAsync(Arg.Is<HouseholdIdentifier>(id => id.Type == PreferredHouseholdIdType.Email && id.Value == EmailNormalizer.Normalize(email)), Arg.Any<PiiVisibility>(), Arg.Any<UserIalLevel>(), Arg.Any<Guid?>(), Arg.Any<bool>(), Arg.Any<CancellationToken>())
             .Returns(householdData);
 
         // Act
@@ -695,7 +698,7 @@ public class HouseholdControllerTests
         var repositoryMock = Substitute.For<IHouseholdRepository>();
         repositoryMock.GetHouseholdByIdentifierAsync(
             Arg.Any<HouseholdIdentifier>(), Arg.Any<PiiVisibility>(),
-            Arg.Any<UserIalLevel>(), Arg.Any<CancellationToken>())
+            Arg.Any<UserIalLevel>(), Arg.Any<Guid?>(), Arg.Any<bool>(), Arg.Any<CancellationToken>())
             .Returns(householdData);
 
         var coConfig = new ConfigurationBuilder()
@@ -739,7 +742,7 @@ public class HouseholdControllerTests
         var repositoryMock = Substitute.For<IHouseholdRepository>();
         repositoryMock.GetHouseholdByIdentifierAsync(
             Arg.Any<HouseholdIdentifier>(), Arg.Any<PiiVisibility>(),
-            Arg.Any<UserIalLevel>(), Arg.Any<CancellationToken>())
+            Arg.Any<UserIalLevel>(), Arg.Any<Guid?>(), Arg.Any<bool>(), Arg.Any<CancellationToken>())
             .Returns(householdData);
 
         var coConfig = new ConfigurationBuilder()
@@ -779,7 +782,7 @@ public class HouseholdControllerTests
         var repositoryMock = Substitute.For<IHouseholdRepository>();
         repositoryMock.GetHouseholdByIdentifierAsync(
             Arg.Any<HouseholdIdentifier>(), Arg.Any<PiiVisibility>(),
-            Arg.Any<UserIalLevel>(), Arg.Any<CancellationToken>())
+            Arg.Any<UserIalLevel>(), Arg.Any<Guid?>(), Arg.Any<bool>(), Arg.Any<CancellationToken>())
             .Returns(householdData);
 
         var dcConfig = new ConfigurationBuilder()

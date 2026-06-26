@@ -48,13 +48,19 @@ public class OtpController(
         }
 
         var enableOtpBypass = await featureManager.IsEnabledAsync(OtpBypassSettings.FeatureFlagName)
-                && hostEnvironment.IsStaging()
+                && !hostEnvironment.IsProduction()
                 && !string.IsNullOrEmpty(request.Email)
                 && request.Email == OtpBypassSettings.Email;
+
+        if (string.IsNullOrEmpty(request.Locale))
+        {
+            logger.LogWarning("OTP request did not specify a locale; defaulting to 'en'.");
+        }
 
         var command = new RequestOtpCommand
         {
             Email = request.Email,
+            Locale = request.Locale ?? "en",
             BypassOtp = enableOtpBypass
         };
 
@@ -99,7 +105,7 @@ public class OtpController(
         logger.LogInformation("OTP validation request received for {MaskedEmail}", PiiMasker.MaskEmail(request.Email));
 
         var isOtpByPassEnabled = await featureManager.IsEnabledAsync(OtpBypassSettings.FeatureFlagName)
-                && hostEnvironment.IsStaging()
+                && !hostEnvironment.IsProduction()
                 && !string.IsNullOrEmpty(request.Email)
                 && request.Email == OtpBypassSettings.Email
                 && request.Otp == OtpBypassSettings.OtpCode;

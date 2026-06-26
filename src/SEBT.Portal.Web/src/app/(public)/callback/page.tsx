@@ -1,16 +1,17 @@
 'use client'
 
-import { ApiError, apiFetch } from '@/api'
+import { apiFetch } from '@/api'
 import { CoLoadingScreen } from '@/components/CoLoadingScreen'
 import { useAuth } from '@/features/auth'
 import {
-  OIDC_CALLBACK_ERROR_OFF_BOARDING,
   OidcCallbackTokenResponseSchema,
-  OidcCompleteLoginResponseSchema
+  OidcCompleteLoginResponseSchema,
+  redirectToOidcOffBoarding
 } from '@/features/auth/api/oidc'
+import { hasIal1Plus, isIdProofingCompletionFresh } from '@/lib/jwt'
 import { getState } from '@sebt/design-system'
 import { useRouter } from 'next/navigation'
-import { useEffect, useRef } from 'react'
+import { useEffect, useMemo, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 
 /**
@@ -23,16 +24,28 @@ import { useTranslation } from 'react-i18next'
  * All flow metadata (stateCode, isStepUp, returnUrl) is stored in the server-side
  * pre-auth session — no sessionStorage is used.
  *
- * Any failure (IdP error redirect, missing params, token exchange error) sends the user
- * to id-proofing off-boarding with {@link OIDC_CALLBACK_ERROR_OFF_BOARDING}.
+ * IdP error redirects (?error=) always go to off-boarding immediately, including when the
+ * visitor already has a portal session (step-up denied, back-button into PingOne, etc.).
+ * Other failures (missing params when logged out, token exchange error) also use
+ * {@link OIDC_CALLBACK_ERROR_OFF_BOARDING}.
+ *
+ * Back-button re-entry: authenticated visitors with no OAuth params, or who already
+ * completed step-up (IAL1+ with a fresh proofing window), skip exchange so stale codes
+ * are not treated as failure. In-progress step-up still runs exchange when code and state
+ * are present, even if a portal session already exists from the initial sign-in.
  */
 export default function CallbackPage() {
   const router = useRouter()
-  const { login } = useAuth()
+  const { session, isAuthenticated, isLoading, login } = useAuth()
   const { t } = useTranslation('login')
   const { t: tProcessing } = useTranslation('step-upProcessing')
   const exchangeStartedRef = useRef(false)
   const isCO = getState() === 'co'
+
+  const isProofedReEntry = useMemo(
+    () => hasIal1Plus(session) && isIdProofingCompletionFresh(session),
+    [session]
+  )
 
   useEffect(() => {
     const params = new URLSearchParams(typeof window !== 'undefined' ? window.location.search : '')
@@ -40,17 +53,44 @@ export default function CallbackPage() {
     const state = params.get('state')
     const errorParam = params.get('error')
 
+    // IdP errors do not require /auth/status; evaluate before isLoading and before
+    // authenticated back-button shortcuts so step-up failures are not sent to /dashboard.
     if (errorParam) {
-      router.replace(OIDC_CALLBACK_ERROR_OFF_BOARDING)
+      redirectToOidcOffBoarding(router, {
+        reason: 'idp_redirect',
+        idpError: errorParam,
+        idpErrorDescription: params.get('error_description') ?? undefined
+      })
+      return
+    }
+
+    if (isLoading) {
+      return
+    }
+
+    if (isAuthenticated && (!code || !state)) {
+      router.replace('/dashboard')
+      return
+    }
+
+    if (isProofedReEntry) {
+      router.replace('/dashboard')
       return
     }
 
     if (!code || !state) {
-      router.replace(OIDC_CALLBACK_ERROR_OFF_BOARDING)
+      redirectToOidcOffBoarding(router, {
+        reason: 'missing_params',
+        hasCode: Boolean(code),
+        hasState: Boolean(state)
+      })
       return
     }
 
-    if (exchangeStartedRef.current) return
+    if (exchangeStartedRef.current) {
+      return
+    }
+
     exchangeStartedRef.current = true
 
     let cancelled = false
@@ -61,37 +101,35 @@ export default function CallbackPage() {
           body: { code, state },
           schema: OidcCallbackTokenResponseSchema
         })
-        if (cancelled) return
+        if (cancelled) {
+          return
+        }
 
         const response = await apiFetch('/auth/oidc/complete-login', {
           method: 'POST',
           body: { callbackToken },
           schema: OidcCompleteLoginResponseSchema
         })
-        if (cancelled) return
+        if (cancelled) {
+          return
+        }
 
         await login()
         const destination = response.returnUrl ?? '/dashboard'
         router.replace(destination)
-      } catch (e) {
-        if (cancelled) return
-        const statusCode = e instanceof ApiError ? e.status : undefined
-        const logDetail = e instanceof Error ? e.message : ''
-        if (process.env.NODE_ENV === 'development') {
-          console.warn('[callback] OIDC exchange failed', {
-            statusCode,
-            detail: logDetail.slice(0, 500)
-          })
+      } catch {
+        if (cancelled) {
+          return
         }
-        router.replace(OIDC_CALLBACK_ERROR_OFF_BOARDING)
+        // API failures are logged server-side; only browser-only failures use report-failure.
+        redirectToOidcOffBoarding(router)
       }
     }
     run()
     return () => {
       cancelled = true
-      exchangeStartedRef.current = false
     }
-  }, [login, router])
+  }, [isAuthenticated, isLoading, isProofedReEntry, login, router])
 
   if (isCO) {
     return (

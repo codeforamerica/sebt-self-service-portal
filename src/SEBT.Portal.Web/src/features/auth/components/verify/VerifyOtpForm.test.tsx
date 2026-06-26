@@ -14,6 +14,11 @@ import userEvent from '@testing-library/user-event'
 import { http, HttpResponse } from 'msw'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
+import { i18n } from '@sebt/design-system/client'
+
+import amDcValidation from '@/content/locales/am/dc/validation.json'
+import enDcValidation from '@/content/locales/en/dc/validation.json'
+import esDcValidation from '@/content/locales/es/dc/validation.json'
 import { TEST_EMAILS, TEST_OTP } from '@/mocks/handlers'
 import { server } from '@/mocks/server'
 
@@ -69,6 +74,12 @@ describe('VerifyOtpForm', () => {
   })
 
   describe('Rendering', () => {
+    // RTL waitFor + default fake timers can exceed Vitest's 5s test timeout on slow CI;
+    // these tests do not need timer mocking.
+    beforeEach(() => {
+      vi.useRealTimers()
+    })
+
     it('should render OTP input field', async () => {
       renderWithProviders(
         <VerifyOtpForm
@@ -521,9 +532,11 @@ describe('VerifyOtpForm', () => {
       await user.type(otpInput, TEST_OTP.invalid)
       await user.click(confirmButton)
 
+      // A 401 maps to the translatable, actionable otpInvalid copy ("enter a valid code,
+      // tap to send a new code") rather than the raw English backend message (DC-454).
       await waitFor(() => {
         expect(screen.getByRole('alert')).toBeInTheDocument()
-        expect(screen.getByText(/invalid otp/i)).toBeInTheDocument()
+        expect(screen.getByText(/enter a valid.*digit code/i)).toBeInTheDocument()
       })
     })
 
@@ -548,10 +561,54 @@ describe('VerifyOtpForm', () => {
       await user.type(otpInput, TEST_OTP.expired)
       await user.click(confirmButton)
 
+      // Expired and invalid 401s share the same actionable "send a new code" copy; the
+      // backend's English-only "expired" wording is no longer surfaced directly (DC-454).
       await waitFor(() => {
         expect(screen.getByRole('alert')).toBeInTheDocument()
-        expect(screen.getByText(/expired/i)).toBeInTheDocument()
+        expect(screen.getByText(/enter a valid.*digit code/i)).toBeInTheDocument()
       })
+    })
+  })
+
+  describe('Error language switching (DC-454)', () => {
+    // Real timers: RTL waitFor + the i18n changeLanguage await can exceed the test timeout
+    // under fake timers. The i18n instance is a shared singleton; reset to English after.
+    beforeEach(() => {
+      vi.useRealTimers()
+    })
+
+    afterEach(async () => {
+      await act(async () => {
+        await i18n.changeLanguage('en')
+      })
+    })
+
+    it('re-translates the submit error across all DC languages, without resubmitting', async () => {
+      const user = userEvent.setup()
+      renderWithProviders(
+        <VerifyOtpForm
+          email={TEST_EMAILS.success}
+          contactLink={TEST_CONTACT_LINK}
+        />
+      )
+
+      const otpInput = await screen.findByRole('textbox', { name: /enter.*confirmation code/i })
+      // A wrong 6-digit code reaches the server and returns 401 → the actionable otpInvalid copy.
+      await user.type(otpInput, TEST_OTP.invalid)
+      await user.click(screen.getByRole('button', { name: /confirm/i }))
+
+      expect(await screen.findByText(enDcValidation.otpInvalid)).toBeInTheDocument()
+
+      await act(async () => {
+        await i18n.changeLanguage('es')
+      })
+      expect(await screen.findByText(esDcValidation.otpInvalid)).toBeInTheDocument()
+
+      await act(async () => {
+        await i18n.changeLanguage('am')
+      })
+      expect(await screen.findByText(amDcValidation.otpInvalid)).toBeInTheDocument()
+      expect(screen.queryByText(enDcValidation.otpInvalid)).toBeNull()
     })
   })
 
@@ -661,25 +718,31 @@ describe('VerifyOtpForm', () => {
   })
 
   describe('Accessibility', () => {
-    it('should have accessible form structure', async () => {
-      renderWithProviders(
-        <VerifyOtpForm
-          email={TEST_EMAILS.success}
-          contactLink={TEST_CONTACT_LINK}
-        />
-      )
-
-      await waitFor(() => {
-        expect(
-          screen.getByRole('textbox', { name: /enter.*confirmation code/i })
-        ).toBeInTheDocument()
+    describe('form structure', () => {
+      beforeEach(() => {
+        vi.useRealTimers()
       })
 
-      const form = document.querySelector('form')
-      expect(form).toBeInTheDocument()
+      it('should have accessible form structure', async () => {
+        renderWithProviders(
+          <VerifyOtpForm
+            email={TEST_EMAILS.success}
+            contactLink={TEST_CONTACT_LINK}
+          />
+        )
 
-      const otpInput = screen.getByRole('textbox', { name: /enter.*confirmation code/i })
-      expect(otpInput).toHaveAttribute('aria-required', 'true')
+        await waitFor(() => {
+          expect(
+            screen.getByRole('textbox', { name: /enter.*confirmation code/i })
+          ).toBeInTheDocument()
+        })
+
+        const form = document.querySelector('form')
+        expect(form).toBeInTheDocument()
+
+        const otpInput = screen.getByRole('textbox', { name: /enter.*confirmation code/i })
+        expect(otpInput).toHaveAttribute('aria-required', 'true')
+      })
     })
 
     it('should display error in alert role', async () => {

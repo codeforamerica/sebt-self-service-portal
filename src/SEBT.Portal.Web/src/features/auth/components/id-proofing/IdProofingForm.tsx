@@ -5,7 +5,7 @@ import { useId, useState, type FormEvent } from 'react'
 import { useTranslation } from 'react-i18next'
 
 import { AnalyticsEvents, useDataLayer } from '@sebt/analytics'
-import { Alert, Button, InputField } from '@sebt/design-system'
+import { Alert, Button, InputField, LoadingInterstitial } from '@sebt/design-system'
 
 import { useAuth } from '@/features/auth'
 import {
@@ -74,6 +74,12 @@ interface IdProofingFormProps {
   getDiToken?: () => Promise<string | null>
 }
 
+/**
+ * A field/submit message that defers translation to render time (DC-454): either an i18n key
+ * in a given namespace, or a literal English string for messages that have no key yet.
+ */
+type Msg = { ns: 'validation' | 'dev'; key: string } | { literal: string }
+
 // Generate localized month names using Intl.DateTimeFormat
 function getLocalizedMonths(locale: string) {
   const formatter = new Intl.DateTimeFormat(locale, { month: 'long' })
@@ -89,6 +95,9 @@ export function IdProofingForm({ idOptions, contactLink, getDiToken }: IdProofin
   const { t: tCommon } = useTranslation('common')
   const { t: tPersonalInfo } = useTranslation('personalInfo')
   const { t: tValidation } = useTranslation('validation')
+  const { t: tProcessing } = useTranslation('step-upProcessing')
+  const { t: tDev } = useTranslation('dev')
+
   const formId = useId()
   const months = getLocalizedMonths(i18n.language)
 
@@ -98,13 +107,20 @@ export function IdProofingForm({ idOptions, contactLink, getDiToken }: IdProofin
   const [selectedIdType, setSelectedIdType] = useState<IdOptionValue | null>(null)
   const [idValue, setIdValue] = useState('')
 
-  const [dobErrors, setDobErrors] = useState<{ month?: string; day?: string; year?: string }>({})
+  // Error state holds deferred messages (Msg), not resolved strings, so the keyed ones
+  // re-translate at render time when the user switches language (DC-454). Messages with no
+  // i18n key yet are carried as literals (content gap) and stay English until a key exists.
+  const [dobErrors, setDobErrors] = useState<{ month?: Msg; day?: Msg; year?: Msg }>({})
   // Composite errors that describe the date as a whole (impossible calendar date,
   // future, >120 years ago) belong to the fieldset, not to any single input.
-  const [dobFieldsetError, setDobFieldsetError] = useState<string | null>(null)
-  const [idTypeError, setIdTypeError] = useState<string | null>(null)
-  const [idValueError, setIdValueError] = useState<string | null>(null)
-  const [submitError, setSubmitError] = useState<string | null>(null)
+  const [dobFieldsetError, setDobFieldsetError] = useState<Msg | null>(null)
+  const [idTypeError, setIdTypeError] = useState<Msg | null>(null)
+  const [idValueError, setIdValueError] = useState<Msg | null>(null)
+  const [submitError, setSubmitError] = useState<Msg | null>(null)
+  // Covers the full submit flow, not just the mutation. The Socure DI token
+  // fetch runs before mutateAsync, so leaning on `submitIdProofing.isPending`
+  // alone would leave the form on screen during a slow token call.
+  const [isProcessing, setIsProcessing] = useState(false)
 
   const submitIdProofing = useSubmitIdProofing()
   const refreshToken = useRefreshToken()
@@ -116,39 +132,43 @@ export function IdProofingForm({ idOptions, contactLink, getDiToken }: IdProofin
   const selectedOption = idOptions.find((opt) => opt.value === selectedIdType)
   const showIdValueInput = selectedIdType !== null && selectedIdType !== NONE_VALUE
 
-  const REQUIRED_FIELD_ERROR = tValidation('required')
-  // TODO: Use t('validation.ssnItinDigits') once key is available in dc.csv
-  const SSN_ITIN_SHAPE_ERROR = 'Enter exactly 9 digits.'
-  // TODO: Use t('validation.sevenOrEightDigits') once key is available in dc.csv
-  const SEVEN_OR_EIGHT_DIGITS_ERROR = 'Enter 7 or 8 digits.'
-  // TODO: Use t('validation.dobInvalid') once key is available in dc.csv
-  const DOB_INVALID_ERROR = 'Enter a valid date of birth.'
+  const REQUIRED_FIELD_ERROR: Msg = { ns: 'validation', key: 'required' }
+  const SSN_ITIN_SHAPE_ERROR: Msg = { ns: 'validation', key: 'ssn' }
+  const SEVEN_OR_EIGHT_DIGITS_ERROR: Msg = { ns: 'validation', key: 'idNumber' }
+  // TODO: replace with a keyed message once a DOB-invalid key exists in dc.csv (content gap).
+  const DOB_INVALID_ERROR: Msg = { literal: 'Enter a valid date of birth.' }
 
-  // Pick the user-facing error message that matches the rule's shape. The SSN
-  // and ITIN messages stay verbatim so the existing wording carries through;
-  // [7, 8] rules use a shared message; other shapes fall back to a generic.
-  function digitRuleErrorMessage(rule: IdOptionValidation): string {
+  // Resolve a deferred message at render time so it follows a language switch (DC-454).
+  // Call sites guard on the message being present.
+  const resolveMsg = (m: Msg): string => {
+    if ('literal' in m) return m.literal
+    return m.ns === 'dev' ? tDev(m.key) : tValidation(m.key)
+  }
+
+  // Pick the user-facing error message that matches the rule's shape. SSN/ITIN and [7, 8]
+  // rules reuse existing keys; other shapes have no key yet and stay as literals (content gap).
+  function digitRuleErrorMessage(rule: IdOptionValidation): Msg {
     const [min, max] = digitBounds(rule)
     if (min === max && min === 9) return SSN_ITIN_SHAPE_ERROR
     if (min === 7 && max === 8) return SEVEN_OR_EIGHT_DIGITS_ERROR
-    if (min === max) return `Enter exactly ${min} digits.`
-    return `Enter ${min} or ${max} digits.`
+    if (min === max) return { literal: `Enter exactly ${min} digits.` }
+    return { literal: `Enter ${min} or ${max} digits.` }
   }
 
   function validateFields(): boolean {
-    const newDobErrors: { month?: string; day?: string; year?: string } = {}
-    let newDobFieldsetError: string | null = null
+    const newDobErrors: { month?: Msg; day?: Msg; year?: Msg } = {}
+    let newDobFieldsetError: Msg | null = null
 
     if (!dobMonth) newDobErrors.month = REQUIRED_FIELD_ERROR
     if (!dobDay) newDobErrors.day = REQUIRED_FIELD_ERROR
     if (!dobYear) newDobErrors.year = REQUIRED_FIELD_ERROR
 
-    let idTypeErr: string | null = null
+    let idTypeErr: Msg | null = null
     if (selectedIdType === null) {
       idTypeErr = REQUIRED_FIELD_ERROR
     }
 
-    let idError: string | null = null
+    let idError: Msg | null = null
     if (showIdValueInput && !idValue.trim()) {
       idError = REQUIRED_FIELD_ERROR
     }
@@ -213,6 +233,7 @@ export function IdProofingForm({ idOptions, contactLink, getDiToken }: IdProofin
     if (!validateFields()) return
 
     trackEvent(AnalyticsEvents.IDV_PRIMARY_START)
+    setIsProcessing(true)
 
     try {
       // Best-effort: retrieve DI token if the SDK is ready
@@ -231,9 +252,7 @@ export function IdProofingForm({ idOptions, contactLink, getDiToken }: IdProofin
         setUserData('docv_required', true, ['default', 'analytics'])
         trackEvent(AnalyticsEvents.IDV_PRIMARY_RESULT)
         if (!response.challengeId) {
-          setSubmitError(
-            t('idProofingStartError', 'Unable to start document verification. Please try again.')
-          )
+          setSubmitError({ ns: 'dev', key: 'alertVerificationRetry' })
           return
         }
         clearChallengeContext()
@@ -241,9 +260,18 @@ export function IdProofingForm({ idOptions, contactLink, getDiToken }: IdProofin
         router.push(`/login/id-proofing/doc-verify?challengeId=${response.challengeId}`)
       } else if (response.result === 'failed') {
         setPageData('idv_primary_status', 'fail')
-        // Co-loaded users reach "failed" only via SNAP/TANF + DOB mismatch (no Socure),
-        // so their failure is always a not-found. Non-co-loaded failures come from Socure.
-        setPageData('idv_primary_reason', isCoLoaded ? 'not_found' : 'socure_fail')
+        if (response.offboardingReason === 'noQualifyingHousehold') {
+          setPageData('idv_primary_reason', 'no_qualifying_household')
+        } else {
+          // Co-loaded users reach "failed" only via SNAP/TANF + DOB mismatch (no Socure),
+          // or when the backend classified the household as co-loaded-only.
+          setPageData(
+            'idv_primary_reason',
+            isCoLoaded || response.offboardingReason === 'coLoadedOnly'
+              ? 'not_found'
+              : 'socure_fail'
+          )
+        }
         trackEvent(AnalyticsEvents.IDV_PRIMARY_RESULT)
         // Hand off offboarding context via URL query params so the server-rendered
         // route page can branch copy (noIdProvided gets a distinct heading).
@@ -276,8 +304,49 @@ export function IdProofingForm({ idOptions, contactLink, getDiToken }: IdProofin
       // All errors get the same user-facing message. Raw ApiError.message may contain
       // backend wording not intended for end users — avoid displaying it directly.
       void err
-      setSubmitError(t('idProofingGenericError', 'Something went wrong. Please try again.'))
+      setSubmitError({ ns: 'validation', key: 'globalInternalError' })
+    } finally {
+      setIsProcessing(false)
     }
+  }
+
+  // While the Socure-backed submission is in flight (DI token fetch + mutation),
+  // replace the form with a dedicated loading interstitial. The full flow can
+  // take several seconds when Socure responds slowly; without this, users only
+  // see the submit button text change to "Continue..." and any eventual outcome
+  // (off-boarding navigation or an inline error) reads as "we just got an error
+  // after waiting."
+  //
+  // The titled interstitial only renders when the active locale bundle has
+  // step-upProcessing copy. States whose content sheet omits those rows (DC
+  // marks them !N/A!) would otherwise see i18next leak the literal key names
+  // "title"/"body" through the fallback chain — they fall back to a spinner-only
+  // status region. Adding the copy upstream is enough to switch in the titled
+  // interstitial; no code change needed.
+  if (isProcessing || submitIdProofing.isPending) {
+    const hasInterstitialCopy =
+      i18n.exists('step-upProcessing:title') && i18n.exists('step-upProcessing:body')
+    if (hasInterstitialCopy) {
+      return (
+        <LoadingInterstitial
+          title={tProcessing('title')}
+          message={tProcessing('body')}
+        />
+      )
+    }
+    return (
+      <div
+        className="padding-y-4 text-center"
+        role="status"
+        aria-busy="true"
+        aria-live="polite"
+      >
+        <span
+          className="usa-spinner"
+          aria-hidden="true"
+        />
+      </div>
+    )
   }
 
   return (
@@ -291,7 +360,7 @@ export function IdProofingForm({ idOptions, contactLink, getDiToken }: IdProofin
           slim
           className="margin-bottom-2"
         >
-          {submitError}
+          {resolveMsg(submitError)}
         </Alert>
       )}
 
@@ -307,7 +376,7 @@ export function IdProofingForm({ idOptions, contactLink, getDiToken }: IdProofin
             className="usa-error-message"
             role="alert"
           >
-            {dobFieldsetError}
+            {resolveMsg(dobFieldsetError)}
           </span>
         )}
 
@@ -330,7 +399,7 @@ export function IdProofingForm({ idOptions, contactLink, getDiToken }: IdProofin
                   className="usa-error-message"
                   role="alert"
                 >
-                  {dobErrors.month}
+                  {resolveMsg(dobErrors.month)}
                 </span>
               )}
               <select
@@ -367,7 +436,7 @@ export function IdProofingForm({ idOptions, contactLink, getDiToken }: IdProofin
               onChange={(e) => setDobDay(e.target.value)}
               autoComplete="bday-day"
               isRequired
-              {...(dobErrors.day ? { error: dobErrors.day } : {})}
+              {...(dobErrors.day ? { error: resolveMsg(dobErrors.day) } : {})}
             />
           </div>
 
@@ -383,7 +452,7 @@ export function IdProofingForm({ idOptions, contactLink, getDiToken }: IdProofin
               onChange={(e) => setDobYear(e.target.value)}
               autoComplete="bday-year"
               isRequired
-              {...(dobErrors.year ? { error: dobErrors.year } : {})}
+              {...(dobErrors.year ? { error: resolveMsg(dobErrors.year) } : {})}
             />
           </div>
         </div>
@@ -401,7 +470,7 @@ export function IdProofingForm({ idOptions, contactLink, getDiToken }: IdProofin
             className="usa-error-message"
             role="alert"
           >
-            {idTypeError}
+            {resolveMsg(idTypeError)}
           </span>
         )}
 
@@ -470,7 +539,7 @@ export function IdProofingForm({ idOptions, contactLink, getDiToken }: IdProofin
                   maxLength: digitBounds(selectedOption.validation)[1]
                 }
               : {})}
-            {...(idValueError ? { error: idValueError } : {})}
+            {...(idValueError ? { error: resolveMsg(idValueError) } : {})}
           />
         </div>
       )}

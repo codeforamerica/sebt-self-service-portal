@@ -17,7 +17,7 @@ namespace SEBT.Portal.Infrastructure.Migrations
         {
 #pragma warning disable 612, 618
             modelBuilder
-                .HasAnnotation("ProductVersion", "10.0.0")
+                .HasAnnotation("ProductVersion", "10.0.8")
                 .HasAnnotation("Relational:MaxIdentifierLength", 128);
 
             SqlServerModelBuilderExtensions.UseIdentityColumns(modelBuilder);
@@ -123,16 +123,16 @@ namespace SEBT.Portal.Infrastructure.Migrations
                         .HasColumnType("nvarchar(255)");
 
                     b.Property<string>("ProofingDateOfBirth")
-                        .HasMaxLength(32)
-                        .HasColumnType("nvarchar(32)");
+                        .HasMaxLength(512)
+                        .HasColumnType("nvarchar(512)");
 
                     b.Property<string>("ProofingIdType")
-                        .HasMaxLength(64)
-                        .HasColumnType("nvarchar(64)");
+                        .HasMaxLength(512)
+                        .HasColumnType("nvarchar(512)");
 
                     b.Property<string>("ProofingIdValue")
-                        .HasMaxLength(255)
-                        .HasColumnType("nvarchar(255)");
+                        .HasMaxLength(512)
+                        .HasColumnType("nvarchar(512)");
 
                     b.Property<Guid>("PublicId")
                         .HasColumnType("uniqueidentifier");
@@ -215,12 +215,17 @@ namespace SEBT.Portal.Infrastructure.Migrations
                         .HasColumnType("datetime2")
                         .HasDefaultValueSql("GETUTCDATE()");
 
-                    b.Property<DateOnly?>("DateOfBirth")
-                        .HasColumnType("date");
+                    b.Property<string>("DateOfBirth")
+                        .HasMaxLength(512)
+                        .HasColumnType("nvarchar(512)");
 
                     b.Property<string>("Email")
-                        .HasMaxLength(255)
-                        .HasColumnType("nvarchar(255)");
+                        .HasMaxLength(512)
+                        .HasColumnType("nvarchar(512)");
+
+                    b.Property<string>("EmailHash")
+                        .HasMaxLength(64)
+                        .HasColumnType("nvarchar(64)");
 
                     b.Property<string>("ExternalProviderId")
                         .HasMaxLength(255)
@@ -239,9 +244,6 @@ namespace SEBT.Portal.Infrastructure.Migrations
                     b.Property<DateTime?>("IdProofingCompletedAt")
                         .HasColumnType("datetime2");
 
-                    b.Property<DateTime?>("IdProofingExpiresAt")
-                        .HasColumnType("datetime2");
-
                     b.Property<string>("IdProofingSessionId")
                         .HasMaxLength(255)
                         .HasColumnType("nvarchar(255)");
@@ -257,20 +259,20 @@ namespace SEBT.Portal.Infrastructure.Migrations
                         .HasDefaultValue(false);
 
                     b.Property<string>("Phone")
-                        .HasMaxLength(64)
-                        .HasColumnType("nvarchar(64)");
+                        .HasMaxLength(512)
+                        .HasColumnType("nvarchar(512)");
 
                     b.Property<string>("SnapId")
-                        .HasMaxLength(64)
-                        .HasColumnType("nvarchar(64)");
+                        .HasMaxLength(512)
+                        .HasColumnType("nvarchar(512)");
 
                     b.Property<string>("Ssn")
                         .HasMaxLength(64)
                         .HasColumnType("nvarchar(64)");
 
                     b.Property<string>("TanfId")
-                        .HasMaxLength(64)
-                        .HasColumnType("nvarchar(64)");
+                        .HasMaxLength(512)
+                        .HasColumnType("nvarchar(512)");
 
                     b.Property<DateTime>("UpdatedAt")
                         .ValueGeneratedOnAdd()
@@ -280,9 +282,13 @@ namespace SEBT.Portal.Infrastructure.Migrations
                     b.HasKey("Id");
 
                     b.HasIndex("Email")
+                        .HasDatabaseName("IX_Users_Email_LegacyLookup")
+                        .HasFilter("[EmailHash] IS NULL AND [Email] IS NOT NULL");
+
+                    b.HasIndex("EmailHash")
                         .IsUnique()
-                        .HasDatabaseName("IX_Users_Email")
-                        .HasFilter("[Email] IS NOT NULL");
+                        .HasDatabaseName("IX_Users_EmailHash")
+                        .HasFilter("[EmailHash] IS NOT NULL");
 
                     b.HasIndex("ExternalProviderId")
                         .IsUnique()
