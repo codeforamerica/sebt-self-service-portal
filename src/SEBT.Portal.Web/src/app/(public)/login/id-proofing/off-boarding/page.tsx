@@ -40,6 +40,10 @@ export default function OffBoardingPage() {
   let applyBody: string | undefined
   let applySkipBody: string | undefined
   let applyLabel: string | undefined
+  let bodyList: string[] | undefined
+  let bodyNote: string | undefined
+  let continueHref: string | undefined
+  let continueLabel: string | undefined
 
   if (reason === 'oidcCallbackError') {
     title =
@@ -75,7 +79,7 @@ export default function OffBoardingPage() {
     applyBody = undefined
     applySkipBody = undefined
     applyLabel = undefined
-  } else if (reason === 'docVerificationFailed' || reason === 'docVerificationEgregiousFailed') {
+  } else if (reason === 'docVerificationEgregiousFailed') {
     // i18next returns '' (not the fallback arg) when a key exists with an empty value.
     title = t('docVerificationFailedTitle') || "We couldn't verify your identity"
     body =
@@ -87,13 +91,18 @@ export default function OffBoardingPage() {
     applySkipBody = undefined
     applyLabel = undefined
   } else {
+    // Generic "We want to keep your account safe" screen. Both inline Socure
+    // rejects (reason=idProofingFailed) and webhook rejects/resubmits land here.
+    // The accepted-ID list and skip note are core body content; the primary
+    // action is "Continue" (forward), with "Enter an ID number" as the back
+    // affordance. Both route to the form; contact lives in the global help band.
     title = t('title')
     body = t('body1')
-    // TODO: Use t('action1') once key is available in dc.csv
     contactLabel = tCommon('linkContactUs')
-    applyBody = t('body2', '') || undefined
-    applySkipBody = t('body3', '') || undefined
-    applyLabel = t('action2', '') || undefined
+    bodyList = (t('body2', '') || '').split('\n').filter(Boolean)
+    bodyNote = t('body3', '') || undefined
+    continueHref = '/login/id-proofing'
+    continueLabel = tCommon('continue')
   }
 
   return (
@@ -112,6 +121,10 @@ export default function OffBoardingPage() {
             applySkipBody={applySkipBody}
             applyLabel={applyLabel}
             applyHref={getApplyHref(i18n.language)}
+            bodyList={bodyList}
+            bodyNote={bodyNote}
+            continueHref={continueHref}
+            continueLabel={continueLabel}
           />
         </section>
       </div>

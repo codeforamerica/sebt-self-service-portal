@@ -38,6 +38,7 @@ const POPULATED_KEYS = new Set([
   'stepUpFailure:body',
   'common:linkContactUs',
   'common:back',
+  'common:continue',
   'dashboard:alertApplicationsTitle',
   'dashboard:alertApplicationsBody',
   'dashboard:alertApplicationsAction'
@@ -77,6 +78,10 @@ vi.mock('@/features/auth', () => ({
       data-apply-label={String(props.applyLabel)}
       data-back-href={String(props.backHref)}
       data-back-label={String(props.backLabel)}
+      data-body-list={String(props.bodyList)}
+      data-body-note={String(props.bodyNote)}
+      data-continue-href={String(props.continueHref)}
+      data-continue-label={String(props.continueLabel)}
     />
   )
 }))
@@ -197,8 +202,18 @@ describe('OffBoardingPage', () => {
       const content = screen.getByTestId('off-boarding-content')
       expect(content).toHaveAttribute('data-title', 'offBoarding:title')
       expect(content).toHaveAttribute('data-body', 'offBoarding:body1')
-      expect(content).toHaveAttribute('data-apply-body', 'offBoarding:body2')
-      expect(content).toHaveAttribute('data-apply-label', 'offBoarding:action2')
+      // body2/body3 are now core body content (list + note), not the apply section
+      expect(content).toHaveAttribute('data-body-list', 'offBoarding:body2')
+      expect(content).toHaveAttribute('data-body-note', 'offBoarding:body3')
+      expect(content).toHaveAttribute('data-apply-body', 'undefined')
+    })
+
+    it('passes a Continue primary action to /login/id-proofing on the generic screen', () => {
+      renderPage({ isCoLoaded: false })
+
+      const content = screen.getByTestId('off-boarding-content')
+      expect(content).toHaveAttribute('data-continue-href', '/login/id-proofing')
+      expect(content).toHaveAttribute('data-continue-label', 'common:continue')
     })
 
     it('uses the co-loaded off-boarding copy when the session is co-loaded', () => {
@@ -290,7 +305,7 @@ describe('OffBoardingPage', () => {
       expect(content).toHaveAttribute('data-title', 'offBoarding:title')
     })
 
-    it('renders docVerificationEgregiousFailed-specific copy matching docVerificationFailed', async () => {
+    it('renders docVerificationEgregiousFailed-specific copy', async () => {
       await renderPage({ reason: 'docVerificationEgregiousFailed' })
 
       const content = screen.getByTestId('off-boarding-content')
@@ -299,12 +314,14 @@ describe('OffBoardingPage', () => {
       expect(content).toHaveAttribute('data-can-apply', 'false')
     })
 
-    it('renders docVerificationFailed-specific title and body when reason is docVerificationFailed', async () => {
+    it('routes docVerificationFailed to the generic "keep your account safe" screen with Continue', async () => {
       await renderPage({ reason: 'docVerificationFailed' })
 
       const content = screen.getByTestId('off-boarding-content')
-      expect(content).toHaveAttribute('data-title', 'offBoarding:docVerificationFailedTitle')
-      expect(content).toHaveAttribute('data-body', 'offBoarding:docVerificationFailedBody')
+      expect(content).toHaveAttribute('data-title', 'offBoarding:title')
+      expect(content).toHaveAttribute('data-body', 'offBoarding:body1')
+      expect(content).toHaveAttribute('data-continue-href', '/login/id-proofing')
+      expect(content).toHaveAttribute('data-continue-label', 'common:continue')
     })
 
     it('uses step-up failure copy for OIDC callback errors (CO MyCO step-up)', async () => {
@@ -323,13 +340,6 @@ describe('OffBoardingPage', () => {
 
       const content = screen.getByTestId('off-boarding-content')
       expect(content).toHaveAttribute('data-title', 'stepUpFailure:title')
-    })
-
-    it('forces canApply to false for docVerificationFailed regardless of query param', async () => {
-      await renderPage({ reason: 'docVerificationFailed', canApply: 'true' })
-
-      const content = screen.getByTestId('off-boarding-content')
-      expect(content).toHaveAttribute('data-can-apply', 'false')
     })
 
     it('uses dashboard application-alert copy when reason is noQualifyingHousehold', async () => {
