@@ -160,7 +160,7 @@ jobs:
         env:
           ASPNETCORE_ENVIRONMENT: Development
           STATE: dc
-          ConnectionStrings__DefaultConnection: "Server=localhost,1433;Database=SebtPortal;User Id=sa;Password=YourStrong@Passw0rd;TrustServerCertificate=True;"
+          ConnectionStrings__DefaultConnection: "Server=localhost,1433;Database=SebtPortal;User Id=sa;Password=YourStrong@Passw0rd;TrustServerCertificate=True;Encrypt=False;"
         run: |
           # Wait for SQL Server to accept connections from the job host (service health runs inside the container).
           for i in $(seq 1 30); do
