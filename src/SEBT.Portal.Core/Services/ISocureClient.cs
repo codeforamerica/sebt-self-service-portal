@@ -102,7 +102,9 @@ public enum IdProofingOutcome
 /// <param name="Outcome">Whether the user matched, needs doc verification, or failed.</param>
 /// <param name="AllowIdRetry">Whether the user can retry with a different ID number.</param>
 /// <param name="DocvSession">DocV session data from the evaluation response, if document verification is required.</param>
+/// <param name="DocumentVerificationReasonCodes">Socure DocV reason codes from the evaluation enrichments, when present.</param>
 public record IdProofingAssessmentResult(
     IdProofingOutcome Outcome,
     bool AllowIdRetry,
-    SocureDocvSession? DocvSession = null);
+    SocureDocvSession? DocvSession = null,
+    IReadOnlyList<string>? DocumentVerificationReasonCodes = null);
