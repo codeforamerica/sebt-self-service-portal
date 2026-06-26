@@ -52,12 +52,10 @@ public class GetHouseholdDataQueryHandler(
         // can be resolved against the household's actual cases below. The
         // case-aware visibility computed after the fetch decides what's masked
         // before returning to the caller.
-        var fullPiiVisibility = new PiiVisibility(IncludeAddress: true, IncludeEmail: true, IncludePhone: true);
-
         var portalUserId = query.User.GetUserId();
         var householdData = await repository.GetHouseholdByIdentifierAsync(
             identifier,
-            fullPiiVisibility,
+            PiiVisibility.Full,
             userIalLevel,
             portalUserId,
             includeCardService,
@@ -78,7 +76,7 @@ public class GetHouseholdDataQueryHandler(
                         identifier.Value,
                         benefitIc.Trim(),
                         verifiedDob,
-                        fullPiiVisibility,
+                        PiiVisibility.Full,
                         userIalLevel,
                         portalUserId.Value,
                         cancellationToken);
