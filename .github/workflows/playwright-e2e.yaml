@@ -160,8 +160,9 @@ jobs:
         env:
           ASPNETCORE_ENVIRONMENT: Development
           STATE: dc
-          ConnectionStrings__DefaultConnection: "Server=localhost,1433;Database=SebtPortal;User Id=sa;Password=YourStrong@Passw0rd;TrustServerCertificate=True;Encrypt=False;"
         run: |
+          CONN="Server=localhost,1433;Database=SebtPortal;User Id=sa;Password=YourStrong@Passw0rd;TrustServerCertificate=True;Encrypt=False;"
+
           # Wait for SQL Server to accept connections from the job host (service health runs inside the container).
           for i in $(seq 1 30); do
             if docker run --rm --network host mcr.microsoft.com/mssql/server:2022-latest \
@@ -176,12 +177,12 @@ jobs:
             sleep 1
           done
 
-          export ConnectionStrings__DefaultConnection="Server=localhost,1433;Database=SebtPortal;User Id=sa;Password=YourStrong@Passw0rd;TrustServerCertificate=True;Encrypt=False;"
           dotnet ef database update \
             --project src/SEBT.Portal.Infrastructure/SEBT.Portal.Infrastructure.csproj \
             --startup-project src/SEBT.Portal.Api/SEBT.Portal.Api.csproj \
             --configuration Release \
-            --no-build
+            --no-build \
+            --connection "$CONN"
 
       - name: Run Playwright integration E2E tests
         env:
