@@ -32,6 +32,8 @@ const POPULATED_KEYS = new Set([
   'offBoarding:coLoadedAction1',
   'offBoarding:coLoadedBody2',
   'offBoarding:coLoadedAction2',
+  'offBoarding:docVerificationFailedTitle',
+  'offBoarding:docVerificationFailedBody',
   'stepUpFailure:title',
   'stepUpFailure:body',
   'common:linkContactUs',
@@ -301,6 +303,15 @@ describe('OffBoardingPage', () => {
 
       const content = screen.getByTestId('off-boarding-content')
       expect(content).toHaveAttribute('data-title', 'offBoarding:title')
+    })
+
+    it('renders docVerificationEgregiousFailed-specific copy', async () => {
+      await renderPage({ reason: 'docVerificationEgregiousFailed' })
+
+      const content = screen.getByTestId('off-boarding-content')
+      expect(content).toHaveAttribute('data-title', 'offBoarding:docVerificationFailedTitle')
+      expect(content).toHaveAttribute('data-body', 'offBoarding:docVerificationFailedBody')
+      expect(content).toHaveAttribute('data-can-apply', 'false')
     })
 
     it('routes docVerificationFailed to the generic "keep your account safe" screen with Continue', async () => {

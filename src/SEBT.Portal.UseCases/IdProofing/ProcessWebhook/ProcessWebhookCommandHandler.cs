@@ -104,7 +104,18 @@ public class ProcessWebhookCommandHandler(
         // Route on the top-level workflow decision (DC-296). The DocV enrichment decision is
         // diagnostic only: it reflects document quality alone and can disagree with the
         // workflow outcome when Digital Intelligence signals drive a reject.
+        var egregiousReasonCodes = SocureDocvEgregiousReasonCodes.GetMatchingEgregiousCodes(
+            socureSettings.DocvEgregiousReasonRejection,
+            command.DocumentVerificationReasonCodes);
+
         var newStatus = MapWorkflowDecisionToStatus(command.WorkflowDecision);
+        if (egregiousReasonCodes != null && newStatus == DocVerificationStatus.Resubmit)
+        {
+            // Block DocV step-up: egregious codes reject immediately instead of RESUBMIT retry.
+            // Workflow ACCEPT/REJECT/REVIEW are left unchanged — Socure's top-level decision wins.
+            newStatus = DocVerificationStatus.Rejected;
+        }
+
         if (newStatus == null)
         {
             logger.LogWarning(
@@ -131,9 +142,11 @@ public class ProcessWebhookCommandHandler(
 
         if (newStatus == DocVerificationStatus.Rejected)
         {
-            challenge.OffboardingReason = await ResolveRejectionOffboardingReasonAsync(
-                challenge.UserId,
-                cancellationToken);
+            challenge.OffboardingReason = egregiousReasonCodes != null
+                ? DocVerificationOffboardingReasons.EgregiousFailed
+                : await ResolveRejectionOffboardingReasonAsync(
+                    challenge.UserId,
+                    cancellationToken);
         }
 
         try
@@ -153,9 +166,11 @@ public class ProcessWebhookCommandHandler(
 
         logger.LogInformation(
             "Webhook event {EventId}: challenge {ChallengeId} transitioned to {Status} " +
-            "(workflow_decision={WorkflowDecision}, docv_decision={DocumentDecision})",
+            "(workflow_decision={WorkflowDecision}, docv_decision={DocumentDecision}, " +
+            "egregious_docv_codes={EgregiousCodes})",
             SanitizeForLogging(command.EventId), challenge.PublicId, newStatus,
-            SanitizeForLogging(command.WorkflowDecision), SanitizeForLogging(command.DocumentDecision));
+            SanitizeForLogging(command.WorkflowDecision), SanitizeForLogging(command.DocumentDecision),
+            string.Join(',', egregiousReasonCodes ?? Array.Empty<string>()));
 
         // If verified: update user's proofing status and IAL level
         if (newStatus == DocVerificationStatus.Verified)
@@ -235,12 +250,10 @@ public class ProcessWebhookCommandHandler(
         Guid userId,
         CancellationToken cancellationToken)
     {
-        const string defaultReason = "docVerificationFailed";
-
         var user = await userRepository.GetUserByIdAsync(userId, cancellationToken);
         if (user == null || string.IsNullOrWhiteSpace(user.Email))
         {
-            return defaultReason;
+            return DocVerificationOffboardingReasons.Failed;
         }
 
         var warehouseIal = PreSocureHouseholdWarehouseIal.ForEmailLinkedHouseholdRead(
@@ -253,7 +266,7 @@ public class ProcessWebhookCommandHandler(
             user,
             warehouseIal,
             userId,
-            defaultReason,
+            DocVerificationOffboardingReasons.Failed,
             cancellationToken);
     }
 

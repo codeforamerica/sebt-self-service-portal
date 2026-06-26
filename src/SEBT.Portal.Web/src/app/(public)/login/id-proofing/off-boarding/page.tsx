@@ -32,7 +32,6 @@ export default function OffBoardingPage() {
   // Branch order: OIDC `/callback` failures, then co-loaded copy (session flag or
   // coLoadedOnly reason from household cohort lookup during ID proofing), then
   // reason-specific copy for the non-co-loaded path, then generic offBoarding copy.
-  // TODO: Replace hardcoded strings with t(...) keys once they exist in dc.csv.
   let title: string
   let body: string
   let backHref = '/login/id-proofing'
@@ -75,6 +74,17 @@ export default function OffBoardingPage() {
     title = 'We need an ID to verify you'
     body =
       "To confirm your identity, we need one of the listed IDs. If you don't have any of these IDs, contact us for help."
+    canApply = false
+    contactLabel = tCommon('linkContactUs')
+    applyBody = undefined
+    applySkipBody = undefined
+    applyLabel = undefined
+  } else if (reason === 'docVerificationEgregiousFailed') {
+    // i18next returns '' (not the fallback arg) when a key exists with an empty value.
+    title = t('docVerificationFailedTitle') || "We couldn't verify your identity"
+    body =
+      t('docVerificationFailedBody') ||
+      "Your document couldn't be verified. You can try again with a different ID, or contact us if you need help."
     canApply = false
     contactLabel = tCommon('linkContactUs')
     applyBody = undefined
