@@ -151,6 +151,37 @@ jobs:
       - name: Install Playwright browsers
         run: cd src/SEBT.Portal.Web && pnpm exec playwright install --with-deps chromium
 
+      - name: Install dotnet-ef
+        run: |
+          dotnet tool install --global dotnet-ef
+          echo "$HOME/.dotnet/tools" >> "$GITHUB_PATH"
+
+      - name: Initialize SQL Server Database
+        env:
+          ASPNETCORE_ENVIRONMENT: Development
+          STATE: dc
+          ConnectionStrings__DefaultConnection: "Server=localhost,1433;Database=SebtPortal;User Id=sa;Password=YourStrong@Passw0rd;TrustServerCertificate=True;"
+        run: |
+          # Wait for SQL Server to accept connections from the job host (service health runs inside the container).
+          for i in $(seq 1 30); do
+            if docker run --rm --network host mcr.microsoft.com/mssql/server:2022-latest \
+              /opt/mssql-tools18/bin/sqlcmd -S localhost,1433 -U sa -P 'YourStrong@Passw0rd' -Q 'SELECT 1' -C -b -o /dev/null 2>&1; then
+              echo "SQL Server ready"
+              break
+            fi
+            if [ "$i" -eq 30 ]; then
+              echo "SQL Server did not become ready in time"
+              exit 1
+            fi
+            sleep 1
+          done
+
+          dotnet ef database update \
+            --project src/SEBT.Portal.Infrastructure/SEBT.Portal.Infrastructure.csproj \
+            --startup-project src/SEBT.Portal.Api/SEBT.Portal.Api.csproj \
+            --configuration Release \
+            --no-build
+
       - name: Run Playwright integration E2E tests
         env:
           CI: true
