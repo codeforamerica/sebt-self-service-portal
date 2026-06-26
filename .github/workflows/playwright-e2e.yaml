@@ -176,6 +176,7 @@ jobs:
             sleep 1
           done
 
+          export ConnectionStrings__DefaultConnection="Server=localhost,1433;Database=SebtPortal;User Id=sa;Password=YourStrong@Passw0rd;TrustServerCertificate=True;Encrypt=False;"
           dotnet ef database update \
             --project src/SEBT.Portal.Infrastructure/SEBT.Portal.Infrastructure.csproj \
             --startup-project src/SEBT.Portal.Api/SEBT.Portal.Api.csproj \
