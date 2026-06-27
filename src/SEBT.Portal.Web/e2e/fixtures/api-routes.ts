@@ -117,9 +117,10 @@ export async function setupApiRoutes(page: Page, overrides: ApiRouteOverrides = 
       return
     }
 
+    // Match ASP.NET ProblemDetails (application/problem+json), not generic JSON.
     void route.fulfill({
       status: householdDataStatus,
-      contentType: 'application/json',
+      contentType: 'application/problem+json; charset=utf-8',
       body: JSON.stringify(householdDataProblem)
     })
   })
