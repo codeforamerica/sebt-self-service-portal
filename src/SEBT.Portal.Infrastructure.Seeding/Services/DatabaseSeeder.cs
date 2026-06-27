@@ -120,6 +120,21 @@ public class DatabaseSeeder : Core.Services.IDatabaseSeeder
         return users.ToArray();
     }
 
+    private static User CreateExpiredMockHouseholdUser(
+        string normalizedEmail,
+        UserIalLevel ialLevel,
+        DateTime now)
+    {
+        return UserFactory.CreateUserWithEmail(normalizedEmail, u =>
+        {
+            u.IdProofingStatus = IdProofingStatus.Expired;
+            u.IalLevel = ialLevel;
+            u.IdProofingCompletedAt = now.AddDays(DaysSinceIdProofingCompleted);
+            u.IsCoLoaded = false;
+            u.CoLoadedLastUpdated = null;
+        });
+    }
+
     /// <summary>
     /// Seeds the database with specific test users for development.
     /// </summary>
@@ -250,14 +265,7 @@ public class DatabaseSeeder : Core.Services.IDatabaseSeeder
                     }
                     else if (normalizedEmail == expiredEmail)
                     {
-                        user = UserFactory.CreateUserWithEmail(normalizedEmail, u =>
-                        {
-                            u.IdProofingStatus = IdProofingStatus.Expired;
-                            u.IalLevel = scenario.IalLevel;
-                            u.IdProofingCompletedAt = now.AddDays(DaysSinceIdProofingCompleted);
-                            u.IsCoLoaded = false;
-                            u.CoLoadedLastUpdated = null;
-                        });
+                        user = CreateExpiredMockHouseholdUser(normalizedEmail, scenario.IalLevel, now);
                     }
                     else
                     {
@@ -458,14 +466,7 @@ public class DatabaseSeeder : Core.Services.IDatabaseSeeder
                     }
                     else if (normalizedEmail == expiredEmail)
                     {
-                        user = UserFactory.CreateUserWithEmail(normalizedEmail, u =>
-                        {
-                            u.IdProofingStatus = IdProofingStatus.Expired;
-                            u.IalLevel = scenario.IalLevel;
-                            u.IdProofingCompletedAt = now.AddDays(DaysSinceIdProofingCompleted);
-                            u.IsCoLoaded = false;
-                            u.CoLoadedLastUpdated = null;
-                        });
+                        user = CreateExpiredMockHouseholdUser(normalizedEmail, scenario.IalLevel, now);
                     }
                     else
                     {
