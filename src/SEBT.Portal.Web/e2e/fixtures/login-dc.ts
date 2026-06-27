@@ -4,37 +4,70 @@ import { clearMailpitMessages, waitForOtpEmail } from './mailpit'
 import { DC_VERIFIED_EMAIL } from './seed-users'
 
 /**
- * Completes the DC email OTP login flow against a live backend.
- * Clears Mailpit first, submits the login form, reads the OTP from Mailpit, and verifies.
+ * Submits the login form and waits for the OTP verify screen.
+ * Returns a Mailpit poll promise when the caller will read the emailed code.
  */
-export async function loginWithEmailOtp(page: Page, email: string): Promise<void> {
+export async function reachOtpVerifyPage(
+  page: Page,
+  email: string,
+  options: { waitForEmail?: boolean } = {}
+): Promise<{ otpEmailPromise?: Promise<string> }> {
+  const waitForEmail = options.waitForEmail ?? true
+
   await clearMailpitMessages()
 
   await page.goto('/login')
-  await page.locator('[name="email"]').fill(email)
+  const emailInput = page.getByRole('textbox', { name: /email/i })
+  await expect(emailInput).toBeVisible()
+  await emailInput.fill(email)
+  await expect(emailInput).toHaveValue(email)
 
   const otpRequestResponse = page.waitForResponse(
     (response) =>
-      response.url().includes('/api/auth/otp/request') &&
-      response.request().method() === 'POST' &&
-      response.ok()
+      response.url().includes('/api/auth/otp/request') && response.request().method() === 'POST'
   )
-  const otpEmailPromise = waitForOtpEmail(email)
 
   await page.getByRole('button', { name: /^continue$/i }).click()
-  await otpRequestResponse
+  const otpRequest = await otpRequestResponse
+  expect(
+    otpRequest.ok(),
+    `OTP request failed with status ${otpRequest.status()} for ${email}`
+  ).toBeTruthy()
+
+  // Poll Mailpit only after the OTP request succeeds so the timeout covers delivery time.
+  const otpEmailPromise = waitForEmail ? waitForOtpEmail(email) : undefined
 
   // LoginForm sets otp_email in sessionStorage then router.push('/login/verify').
   await expect(page).toHaveURL(/\/login\/verify\/?$/, { timeout: 15_000 })
   await expect
     .poll(async () => page.evaluate(() => sessionStorage.getItem('otp_email')))
     .toBe(email)
-  const otpInput = page.locator('[name="otp"]')
-  await expect(otpInput).toBeVisible({ timeout: 15_000 })
+  await expect(page.locator('[name="otp"]')).toBeVisible({ timeout: 15_000 })
 
-  const otp = await otpEmailPromise
-  await otpInput.fill(otp)
+  return { otpEmailPromise }
+}
+
+/** Submits an OTP code on /login/verify and waits for the validate API response. */
+export async function submitOtpOnVerifyPage(page: Page, otp: string) {
+  const validateResponse = page.waitForResponse(
+    (response) =>
+      response.url().includes('/api/auth/otp/validate') && response.request().method() === 'POST'
+  )
+
+  await page.locator('[name="otp"]').fill(otp)
   await page.getByRole('button', { name: /^confirm$/i }).click()
+
+  return await validateResponse
+}
+
+/**
+ * Completes the DC email OTP login flow against a live backend.
+ * Clears Mailpit first, submits the login form, reads the OTP from Mailpit, and verifies.
+ */
+export async function loginWithEmailOtp(page: Page, email: string): Promise<void> {
+  const { otpEmailPromise } = await reachOtpVerifyPage(page, email)
+  const otp = await otpEmailPromise!
+  await submitOtpOnVerifyPage(page, otp)
 }
 
 /** Logs in with OTP and waits for the browser to land on the expected post-login URL. */

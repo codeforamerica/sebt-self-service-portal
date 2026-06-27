@@ -96,7 +96,9 @@ export function VerifyOtpForm({ email, contactLink }: VerifyOtpFormProps) {
       // internal-error message. Both are i18n keys resolved at render so they follow a
       // language switch (DC-454); raw backend messages are English-only and would freeze.
       setSubmitErrorKey(
-        err instanceof ApiError && err.status === 401 ? 'otpInvalid' : 'globalInternalError'
+        err instanceof ApiError && (err.status === 401 || err.status === 400)
+          ? 'otpInvalid'
+          : 'globalInternalError'
       )
     }
   }
