@@ -225,6 +225,8 @@ jobs:
           IdentifierHasher__SecretKey: "ci-e2e-identifier-hasher-key-32chars"
           Oidc__CompleteLoginSigningKey: "ci-e2e-oidc-signing-key-at-least-32-chars"
           PluginAssemblyPaths__0: "plugins-dc"
+          Seeding__State: dc
+          Seeding__EmailPattern: "sebt.dc+{0}@codeforamerica.org"
           UseMockHouseholdData: "true"
           Socure__UseStub: "true"
           SmtpClientSettings__SmtpServer: "localhost"
@@ -350,6 +352,8 @@ jobs:
           IdentifierHasher__SecretKey: "ci-e2e-identifier-hasher-key-32chars"
           Oidc__CompleteLoginSigningKey: "ci-e2e-oidc-signing-key-at-least-32-chars"
           PluginAssemblyPaths__0: "plugins-dc"
+          Seeding__State: dc
+          Seeding__EmailPattern: "sebt.dc+{0}@codeforamerica.org"
           UseMockHouseholdData: "true"
         run: |
           ASPNETCORE_ENVIRONMENT=Development dotnet run --project src/SEBT.Portal.Api --launch-profile http --configuration Release --no-build &
