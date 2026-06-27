@@ -67,6 +67,7 @@ design/sass/_uswds-settings.scss
 # Playwright Test Output
 playwright-report/
 test-results/
+e2e/.auth/
 
 # Lighthouse CI Reports
 .lighthouseci/

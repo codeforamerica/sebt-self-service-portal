@@ -232,6 +232,7 @@ jobs:
           SmtpClientSettings__SmtpServer: "localhost"
           SmtpClientSettings__SmtpPort: "1025"
           SmtpClientSettings__EnableSsl: "false"
+          OtpRateLimitSettings__PermitLimit: "30"
         run: |
           ASPNETCORE_ENVIRONMENT=Development dotnet run --project src/SEBT.Portal.Api --launch-profile http --configuration Release --no-build &
           (cd src/SEBT.Portal.Web && pnpm start) &

@@ -12,7 +12,20 @@ export async function loginWithEmailOtp(page: Page, email: string): Promise<void
 
   await page.goto('/login')
   await page.locator('[name="email"]').fill(email)
+
+  const otpRequestResponse = page.waitForResponse(
+    (response) =>
+      response.url().includes('/api/auth/otp/request') &&
+      response.request().method() === 'POST' &&
+      response.ok()
+  )
   await page.getByRole('button', { name: /^continue$/i }).click()
+  await otpRequestResponse
+
+  // Production `next start` can miss client-side router.push in headless CI.
+  if (!page.url().match(/\/login\/verify\/?$/)) {
+    await page.goto('/login/verify')
+  }
 
   await expect(page).toHaveURL(/\/login\/verify\/?$/)
   await expect(page.locator('[name="otp"]')).toBeVisible()
