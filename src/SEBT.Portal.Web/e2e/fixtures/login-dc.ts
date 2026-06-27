@@ -19,19 +19,28 @@ export async function loginWithEmailOtp(page: Page, email: string): Promise<void
       response.request().method() === 'POST' &&
       response.ok()
   )
+  const otpEmailPromise = waitForOtpEmail(email)
+
   await page.getByRole('button', { name: /^continue$/i }).click()
   await otpRequestResponse
 
-  // Production `next start` can miss client-side router.push in headless CI.
-  if (!page.url().match(/\/login\/verify\/?$/)) {
+  // VerifyOtpFormWrapper reads otp_email from sessionStorage and redirects to /login when it is missing.
+  await page.evaluate((expectedEmail) => {
+    sessionStorage.setItem('otp_email', expectedEmail)
+  }, email)
+
+  try {
+    await page.waitForURL(/\/login\/verify\/?$/, { timeout: 15_000 })
+  } catch {
     await page.goto('/login/verify')
   }
 
   await expect(page).toHaveURL(/\/login\/verify\/?$/)
-  await expect(page.locator('[name="otp"]')).toBeVisible()
+  const otpInput = page.locator('[name="otp"]')
+  await expect(otpInput).toBeVisible({ timeout: 15_000 })
 
-  const otp = await waitForOtpEmail(email)
-  await page.locator('[name="otp"]').fill(otp)
+  const otp = await otpEmailPromise
+  await otpInput.fill(otp)
   await page.getByRole('button', { name: /^confirm$/i }).click()
 }
 

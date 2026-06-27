@@ -10,6 +10,7 @@ import { skipUnlessState } from '../../fixtures/state'
 
 const authDir = path.join(path.dirname(fileURLToPath(import.meta.url)), '../../.auth')
 const verifiedDashboardAuthFile = path.join(authDir, 'verified-dashboard.json')
+const emptyStorageState = JSON.stringify({ cookies: [], origins: [] })
 
 test.describe('DC dashboard (full stack)', () => {
   test.beforeEach(() => {
@@ -20,11 +21,13 @@ test.describe('DC dashboard (full stack)', () => {
   test.describe('after OTP login', () => {
     test.describe.configure({ mode: 'serial' })
 
+    // Child test.use({ storageState }) still applies to this beforeAll hook.
+    // Seed an empty auth file first so browser.newContext() can load it, then overwrite after login.
     test.beforeAll(async ({ browser }) => {
       fs.mkdirSync(authDir, { recursive: true })
+      fs.writeFileSync(verifiedDashboardAuthFile, emptyStorageState)
 
       if (!isFullStackE2E) {
-        fs.writeFileSync(verifiedDashboardAuthFile, JSON.stringify({ cookies: [], origins: [] }))
         return
       }
 
@@ -35,38 +38,40 @@ test.describe('DC dashboard (full stack)', () => {
       await context.close()
     })
 
-    test.use({ storageState: verifiedDashboardAuthFile })
+    test.describe('with saved session', () => {
+      test.use({ storageState: verifiedDashboardAuthFile })
 
-    test('shows the household dashboard with enrolled children', async ({ page }) => {
-      await page.goto('/dashboard')
-      // MockHouseholdRepository "verified" scenario — John and Jane Doe enrolled cases.
-      await expect(page.getByText('John', { exact: false }).first()).toBeVisible()
-      await expect(page.getByText('Jane', { exact: false }).first()).toBeVisible()
-    })
-
-    test('shows guardian profile and household summary', async ({ page }) => {
-      await page.goto('/dashboard')
-      await expect(page.getByRole('heading', { name: /John R\. DoeMOCK/i })).toBeVisible()
-      await expect(page.getByText('Enrolled', { exact: true })).toBeVisible()
-      await expect(page.getByText('123 Main Street')).toBeVisible()
-      await expect(page.getByText('Denver', { exact: false })).toBeVisible()
-    })
-
-    test('shows co-loaded mailing address info link', async ({ page }) => {
-      await page.goto('/dashboard')
-      // Verified mock cases use SnapEbtCard issuance — address updates are not self-service in DC.
-      const addressInfoLink = page.getByRole('link', {
-        name: /how we determine your mailing address/i
+      test('shows the household dashboard with enrolled children', async ({ page }) => {
+        await page.goto('/dashboard')
+        // MockHouseholdRepository "verified" scenario — John and Jane Doe enrolled cases.
+        await expect(page.getByText('John', { exact: false }).first()).toBeVisible()
+        await expect(page.getByText('Jane', { exact: false }).first()).toBeVisible()
       })
-      await expect(addressInfoLink).toBeVisible()
-      await expect(addressInfoLink).toHaveAttribute('href', '/profile/address/info')
-    })
 
-    test('shows logout link on the dashboard', async ({ page }) => {
-      await page.goto('/dashboard')
-      const logoutLink = page.getByRole('link', { name: /log out|logout/i })
-      await expect(logoutLink).toBeVisible()
-      await expect(logoutLink).toHaveAttribute('href', '/api/auth/logout')
+      test('shows guardian profile and household summary', async ({ page }) => {
+        await page.goto('/dashboard')
+        await expect(page.getByRole('heading', { name: /John R\. DoeMOCK/i })).toBeVisible()
+        await expect(page.getByText('Enrolled', { exact: true })).toBeVisible()
+        await expect(page.getByText('123 Main Street')).toBeVisible()
+        await expect(page.getByText('Denver', { exact: false })).toBeVisible()
+      })
+
+      test('shows co-loaded mailing address info link', async ({ page }) => {
+        await page.goto('/dashboard')
+        // Verified mock cases use SnapEbtCard issuance — address updates are not self-service in DC.
+        const addressInfoLink = page.getByRole('link', {
+          name: /how we determine your mailing address/i
+        })
+        await expect(addressInfoLink).toBeVisible()
+        await expect(addressInfoLink).toHaveAttribute('href', '/profile/address/info')
+      })
+
+      test('shows logout link on the dashboard', async ({ page }) => {
+        await page.goto('/dashboard')
+        const logoutLink = page.getByRole('link', { name: /log out|logout/i })
+        await expect(logoutLink).toBeVisible()
+        await expect(logoutLink).toHaveAttribute('href', '/api/auth/logout')
+      })
     })
   })
 
