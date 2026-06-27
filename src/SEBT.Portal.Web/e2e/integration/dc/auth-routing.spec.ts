@@ -6,7 +6,14 @@ import {
   reachOtpVerifyPage,
   submitOtpOnVerifyPage
 } from '../../fixtures/login-dc'
-import { DC_ID_PROOF_IN_PROGRESS_EMAIL, DC_VERIFIED_EMAIL } from '../../fixtures/seed-users'
+import { waitForOtpEmail } from '../../fixtures/mailpit'
+import {
+  DC_CANCELLED_EMAIL,
+  DC_DENIED_EMAIL,
+  DC_EXPIRED_ID_PROOFING_EMAIL,
+  DC_ID_PROOF_IN_PROGRESS_EMAIL,
+  DC_VERIFIED_EMAIL
+} from '../../fixtures/seed-users'
 import { skipUnlessState } from '../../fixtures/state'
 
 test.describe('DC auth routing (full stack)', () => {
@@ -26,12 +33,46 @@ test.describe('DC auth routing (full stack)', () => {
       .toBeNull()
   })
 
+  test('recovers and completes login after submitting wrong OTP first', async ({ page }) => {
+    await reachOtpVerifyPage(page, DC_VERIFIED_EMAIL, { waitForEmail: false })
+
+    await submitOtpOnVerifyPage(page, '000000')
+    await expect(page.locator('.usa-alert--error')).toBeVisible()
+    await expect(page).toHaveURL(/\/login\/verify\/?$/)
+
+    const otp = await waitForOtpEmail(DC_VERIFIED_EMAIL)
+    await submitOtpOnVerifyPage(page, otp)
+
+    await expect(page).toHaveURL(/\/dashboard\/?$/, { timeout: 30_000 })
+    await expect
+      .poll(async () => page.evaluate(() => sessionStorage.getItem('otp_email')))
+      .toBeNull()
+  })
+
   test('id-proof-in-progress user lands on id-proofing after OTP', async ({ page }) => {
     await loginWithEmailOtpExpecting(
       page,
       DC_ID_PROOF_IN_PROGRESS_EMAIL,
       /\/login\/id-proofing\/?$/
     )
+
+    await expect(page.locator('#id-proofing-title')).toBeVisible()
+  })
+
+  test('expired ID proofing user lands on id-proofing after OTP', async ({ page }) => {
+    await loginWithEmailOtpExpecting(page, DC_EXPIRED_ID_PROOFING_EMAIL, /\/login\/id-proofing\/?$/)
+
+    await expect(page.locator('#id-proofing-title')).toBeVisible()
+  })
+
+  test('denied-application user lands on id-proofing after OTP', async ({ page }) => {
+    await loginWithEmailOtpExpecting(page, DC_DENIED_EMAIL, /\/login\/id-proofing\/?$/)
+
+    await expect(page.locator('#id-proofing-title')).toBeVisible()
+  })
+
+  test('cancelled-application user lands on id-proofing after OTP', async ({ page }) => {
+    await loginWithEmailOtpExpecting(page, DC_CANCELLED_EMAIL, /\/login\/id-proofing\/?$/)
 
     await expect(page.locator('#id-proofing-title')).toBeVisible()
   })

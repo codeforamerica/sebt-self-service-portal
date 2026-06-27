@@ -148,6 +148,7 @@ public class DatabaseSeeder : Core.Services.IDatabaseSeeder
             var coLoadedNoChildrenEmail = EmailNormalizer.Normalize(
                 _settings.BuildEmail(SeedScenarios.CoLoadedNoChildren.Name));
             var verifiedEmail = EmailNormalizer.Normalize(_settings.BuildEmail(SeedScenarios.Verified.Name));
+            var expiredEmail = EmailNormalizer.Normalize(_settings.BuildEmail(SeedScenarios.Expired.Name));
             var idProofInProgressEmail = EmailNormalizer.Normalize(
                 _settings.BuildEmail(SeedScenarios.IdProofInProgress.Name));
 
@@ -245,6 +246,17 @@ public class DatabaseSeeder : Core.Services.IDatabaseSeeder
                             u.SnapId = "SNAP-IPR-001";
                             u.TanfId = "TANF-IPR-001";
                             u.Ssn = "123456789";
+                        });
+                    }
+                    else if (normalizedEmail == expiredEmail)
+                    {
+                        user = UserFactory.CreateUserWithEmail(normalizedEmail, u =>
+                        {
+                            u.IdProofingStatus = IdProofingStatus.Expired;
+                            u.IalLevel = scenario.IalLevel;
+                            u.IdProofingCompletedAt = now.AddDays(DaysSinceIdProofingCompleted);
+                            u.IsCoLoaded = false;
+                            u.CoLoadedLastUpdated = null;
                         });
                     }
                     else
@@ -345,6 +357,7 @@ public class DatabaseSeeder : Core.Services.IDatabaseSeeder
             var coLoadedNoChildrenEmail = EmailNormalizer.Normalize(
                 _settings.BuildEmail(SeedScenarios.CoLoadedNoChildren.Name));
             var verifiedEmail = EmailNormalizer.Normalize(_settings.BuildEmail(SeedScenarios.Verified.Name));
+            var expiredEmail = EmailNormalizer.Normalize(_settings.BuildEmail(SeedScenarios.Expired.Name));
             var idProofInProgressEmail = EmailNormalizer.Normalize(
                 _settings.BuildEmail(SeedScenarios.IdProofInProgress.Name));
             foreach (var scenario in SeedScenarios.UserScenarios)
@@ -441,6 +454,17 @@ public class DatabaseSeeder : Core.Services.IDatabaseSeeder
                             u.SnapId = "SNAP-IPR-001";
                             u.TanfId = "TANF-IPR-001";
                             u.Ssn = "123456789";
+                        });
+                    }
+                    else if (normalizedEmail == expiredEmail)
+                    {
+                        user = UserFactory.CreateUserWithEmail(normalizedEmail, u =>
+                        {
+                            u.IdProofingStatus = IdProofingStatus.Expired;
+                            u.IalLevel = scenario.IalLevel;
+                            u.IdProofingCompletedAt = now.AddDays(DaysSinceIdProofingCompleted);
+                            u.IsCoLoaded = false;
+                            u.CoLoadedLastUpdated = null;
                         });
                     }
                     else
