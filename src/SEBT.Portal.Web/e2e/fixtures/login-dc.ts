@@ -1,6 +1,7 @@
 import { expect, type Page } from '@playwright/test'
 
 import { clearMailpitMessages, waitForOtpEmail } from './mailpit'
+import { DC_VERIFIED_EMAIL } from './seed-users'
 
 /**
  * Completes the DC email OTP login flow against a live backend.
@@ -19,4 +20,11 @@ export async function loginWithEmailOtp(page: Page, email: string): Promise<void
   const otp = await waitForOtpEmail(email)
   await page.locator('[name="otp"]').fill(otp)
   await page.getByRole('button', { name: /^confirm$/i }).click()
+}
+
+/** Logs in as the verified DC seed user and waits for the dashboard to load. */
+export async function loginToVerifiedDashboard(page: Page): Promise<void> {
+  await loginWithEmailOtp(page, DC_VERIFIED_EMAIL)
+  await expect(page).toHaveURL(/\/dashboard\/?$/, { timeout: 30_000 })
+  await expect(page.getByRole('heading', { name: /SUN Bucks Dashboard/i })).toBeAttached()
 }
