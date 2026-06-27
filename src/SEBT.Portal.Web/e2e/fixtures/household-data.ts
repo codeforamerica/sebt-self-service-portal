@@ -79,6 +79,8 @@ export interface MockHouseholdData {
   addressOnFile: MockAddress
   userProfile: { firstName: string; middleName: string; lastName: string }
   benefitIssuanceType: IssuanceTypeInt
+  /** Backend enum: 0=NonCoLoaded, 1=CoLoadedOnly, 2=MixedOrApplicantExcluded */
+  coLoadedCohort?: number
 }
 
 /** A date string well outside the 14-day cooldown window. */
@@ -202,6 +204,7 @@ interface HouseholdDataOptions {
   applications?: MockApplication[]
   benefitIssuanceType?: IssuanceTypeInt
   addressOnFile?: MockAddress
+  coLoadedCohort?: number
 }
 
 export function makeHouseholdData(overrides: HouseholdDataOptions = {}): MockHouseholdData {
@@ -212,7 +215,8 @@ export function makeHouseholdData(overrides: HouseholdDataOptions = {}): MockHou
     applications: overrides.applications ?? [makeApplication()],
     addressOnFile: overrides.addressOnFile ?? ADDRESS_DEFAULTS[currentState],
     userProfile: { firstName: 'Jane', middleName: 'M', lastName: 'Doe' },
-    benefitIssuanceType: overrides.benefitIssuanceType ?? 1
+    benefitIssuanceType: overrides.benefitIssuanceType ?? 1,
+    coLoadedCohort: overrides.coLoadedCohort ?? 0
   }
 }
 
