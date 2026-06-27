@@ -9,6 +9,12 @@ on:
   pull_request:
     branches: ["main"]
 
+# Pinned third-party CI images/tools — avoid mutable :latest tags (Aikido supply-chain checks).
+env:
+  CI_MSSQL_IMAGE: mcr.microsoft.com/mssql/server:2022-CU16-ubuntu-22.04@sha256:45a1a9d13ca5574cf8e0fe4ae73ab77248b66d9c3132ac9658fb6c16dd72a8af
+  CI_MAILPIT_IMAGE: axllent/mailpit:v1.30.2@sha256:37a38e48e9338cd7e89dfeb487f37b02ebfcd9cb23111bed2d345e79d37d6dd6
+  CI_DOTNET_EF_VERSION: "10.0.9"
+
 jobs:
   e2e:
     name: Playwright E2E Tests (${{ matrix.state }})
@@ -78,7 +84,7 @@ jobs:
 
     services:
       mssql:
-        image: mcr.microsoft.com/mssql/server:2022-latest
+        image: mcr.microsoft.com/mssql/server:2022-CU16-ubuntu-22.04@sha256:45a1a9d13ca5574cf8e0fe4ae73ab77248b66d9c3132ac9658fb6c16dd72a8af
         env:
           ACCEPT_EULA: Y
           MSSQL_SA_PASSWORD: YourStrong@Passw0rd
@@ -92,7 +98,7 @@ jobs:
           --health-start-period=10s
 
       mailpit:
-        image: axllent/mailpit
+        image: axllent/mailpit:v1.30.2@sha256:37a38e48e9338cd7e89dfeb487f37b02ebfcd9cb23111bed2d345e79d37d6dd6
         ports:
           - 1025:1025
           - 8025:8025
@@ -153,7 +159,7 @@ jobs:
 
       - name: Install dotnet-ef
         run: |
-          dotnet tool install --global dotnet-ef
+          dotnet tool install --global dotnet-ef --version "$CI_DOTNET_EF_VERSION"
           echo "$HOME/.dotnet/tools" >> "$GITHUB_PATH"
 
       - name: Initialize SQL Server Database
@@ -166,7 +172,7 @@ jobs:
 
           CONN="Server=localhost,1433;Database=SebtPortal;User Id=sa;Password=YourStrong@Passw0rd;TrustServerCertificate=True;"
           SA_PASSWORD='YourStrong@Passw0rd'
-          SQLCMD_IMAGE="mcr.microsoft.com/mssql/server:2022-latest"
+          SQLCMD_IMAGE="$CI_MSSQL_IMAGE"
 
           run_sqlcmd() {
             docker run --rm --network host "$SQLCMD_IMAGE" \
@@ -266,7 +272,7 @@ jobs:
 
     services:
       mssql:
-        image: mcr.microsoft.com/mssql/server:2022-latest
+        image: mcr.microsoft.com/mssql/server:2022-CU16-ubuntu-22.04@sha256:45a1a9d13ca5574cf8e0fe4ae73ab77248b66d9c3132ac9658fb6c16dd72a8af
         env:
           ACCEPT_EULA: Y
           MSSQL_SA_PASSWORD: YourStrong@Passw0rd
