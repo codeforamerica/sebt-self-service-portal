@@ -192,7 +192,7 @@ public static class Dependencies
         IConfiguration? configuration,
         IHostEnvironment environment)
     {
-        var redisOptions = ResolveRedisConfigurationOptions(configuration);
+        var redisOptions = ResolveRedisConfigurationOptions(configuration, environment);
 
         if (redisOptions != null)
         {
@@ -237,9 +237,10 @@ public static class Dependencies
     /// </summary>
     public static IServiceCollection AddDistributedLocking(
         this IServiceCollection services,
-        IConfiguration configuration)
+        IConfiguration configuration,
+        IHostEnvironment environment)
     {
-        var redisOptions = ResolveRedisConfigurationOptions(configuration);
+        var redisOptions = ResolveRedisConfigurationOptions(configuration, environment);
 
         if (redisOptions != null)
         {
@@ -266,11 +267,21 @@ public static class Dependencies
     /// precedence; falls back to the legacy ConnectionStrings:Redis connection string.
     /// Returns null when neither is configured.
     /// </summary>
-    private static ConfigurationOptions? ResolveRedisConfigurationOptions(IConfiguration? configuration)
+    private static ConfigurationOptions? ResolveRedisConfigurationOptions(
+        IConfiguration? configuration,
+        IHostEnvironment environment)
     {
         var settings = configuration?.GetSection(RedisSettings.SectionName).Get<RedisSettings>();
         if (settings?.IsConfigured == true)
         {
+            if (settings.AcceptSelfSignedCertificates && environment.IsProduction())
+            {
+                throw new InvalidOperationException(
+                    "Redis:AcceptSelfSignedCertificates must not be true in Production. " +
+                    "Remove it from configuration — Elasticache presents an AWS-signed cert " +
+                    "that .NET trusts natively.");
+            }
+
             var options = new ConfigurationOptions();
             options.EndPoints.Add(settings.Host!, settings.Port);
             if (!string.IsNullOrEmpty(settings.Password))
