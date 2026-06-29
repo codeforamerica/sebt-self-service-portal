@@ -282,6 +282,13 @@ public static class Dependencies
             {
                 options.SslHost = settings.SslHost;
             }
+            if (settings.AcceptSelfSignedCertificates)
+            {
+                // Bypasses TLS cert validation for local dev with self-signed certs.
+                // In production, Elasticache presents an AWS-signed cert that .NET
+                // trusts without this — AcceptSelfSignedCertificates must be false.
+                options.CertificateValidation += (_, _, _, _) => true;
+            }
             return options;
         }
 

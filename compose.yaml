@@ -18,6 +18,12 @@ services:
       - ConnectionStrings__DefaultConnection=Server=${MSSQL_SERVER:-mssql},${MSSQL_PORT:-1433};Database=${MSSQL_DATABASE:-SebtPortal};User Id=${MSSQL_USER:-sa};Password=${MSSQL_SA_PASSWORD:-YourStrong@Passw0rd};TrustServerCertificate=True;
       - SmtpClientSettings__SmtpServer=mailpit
       - Redis__Host=redis
+      - Redis__Port=6380
+      - Redis__Ssl=true
+      - Redis__SslHost=redis
+      # AcceptSelfSignedCertificates bypasses CA trust for our dev cert.
+      # Elasticache presents an AWS-signed cert that .NET trusts without this.
+      - Redis__AcceptSelfSignedCertificates=true
     depends_on:
       mssql:
         condition: service_healthy
@@ -38,16 +44,37 @@ services:
     networks:
       - sebt.portal.api
 
-  # Redis Cache (used as distributed cache backing for HybridCache)
+  # Redis Cache (used as distributed cache backing for HybridCache).
+  # Runs with TLS to match AWS Elasticache in-transit encryption.
+  # Plain port 6379 remains available for redis-commander and local dev without compose.
+  # TLS port 6380 is what the portal API connects to when running via compose.
+  # Before first run: ./scripts/dev/gen-redis-certs.sh
   redis:
     image: redis:7-alpine
     container_name: sebt_redis
+    command:
+      - redis-server
+      - --tls-port
+      - "6380"
+      - --port
+      - "6379"
+      - --tls-cert-file
+      - /certs/redis-server.crt
+      - --tls-key-file
+      - /certs/redis-server.key
+      - --tls-ca-cert-file
+      - /certs/redisCA.crt
+      - --tls-auth-clients
+      - "no"
     ports:
-      - "6379:6379"
+      - "6379:6379"   # plain (redis-commander, direct redis-cli)
+      - "6380:6380"   # TLS (portal API via compose)
+    volumes:
+      - ./certs:/certs:ro
     networks:
       - sebt.portal.api
     healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
+      test: ["CMD", "redis-cli", "-p", "6379", "ping"]
       interval: 10s
       timeout: 5s
       retries: 5

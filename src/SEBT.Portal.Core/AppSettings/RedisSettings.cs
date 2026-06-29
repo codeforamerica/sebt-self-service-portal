@@ -25,6 +25,12 @@ public class RedisSettings
     /// </summary>
     public string? SslHost { get; set; }
 
+    /// <summary>
+    /// Skips TLS certificate validation. For local development with self-signed
+    /// certificates only — never set true in production environments.
+    /// </summary>
+    public bool AcceptSelfSignedCertificates { get; set; } = false;
+
     /// <summary>Returns true when a host has been configured.</summary>
     public bool IsConfigured => !string.IsNullOrWhiteSpace(Host);
 }
