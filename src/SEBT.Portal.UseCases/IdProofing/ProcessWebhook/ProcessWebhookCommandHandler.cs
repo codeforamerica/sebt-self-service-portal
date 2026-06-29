@@ -1,11 +1,15 @@
 using System.Security.Cryptography;
 using System.Text;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 using SEBT.Portal.Core.AppSettings;
 using SEBT.Portal.Core.Exceptions;
+using SEBT.Portal.Core.Models;
 using SEBT.Portal.Core.Models.Auth;
 using SEBT.Portal.Core.Models.DocVerification;
+using SEBT.Portal.Core.Models.Household;
 using SEBT.Portal.Core.Repositories;
+using SEBT.Portal.Core.Utilities;
 using SEBT.Portal.Kernel;
 using SEBT.Portal.Kernel.Results;
 
@@ -21,7 +25,9 @@ namespace SEBT.Portal.UseCases.IdProofing;
 public class ProcessWebhookCommandHandler(
     IDocVerificationChallengeRepository challengeRepository,
     IUserRepository userRepository,
+    IHouseholdRepository householdRepository,
     SocureSettings socureSettings,
+    IOptions<IdProofingEligibilitySettings> idProofingEligibilitySettings,
     IValidator<ProcessWebhookCommand> validator,
     ILogger<ProcessWebhookCommandHandler> logger)
     : ICommandHandler<ProcessWebhookCommand>
@@ -98,7 +104,18 @@ public class ProcessWebhookCommandHandler(
         // Route on the top-level workflow decision (DC-296). The DocV enrichment decision is
         // diagnostic only: it reflects document quality alone and can disagree with the
         // workflow outcome when Digital Intelligence signals drive a reject.
+        var egregiousReasonCodes = SocureDocvEgregiousReasonCodes.GetMatchingEgregiousCodes(
+            socureSettings.DocvEgregiousReasonRejection,
+            command.DocumentVerificationReasonCodes);
+
         var newStatus = MapWorkflowDecisionToStatus(command.WorkflowDecision);
+        if (egregiousReasonCodes != null && newStatus == DocVerificationStatus.Resubmit)
+        {
+            // Block DocV step-up: egregious codes reject immediately instead of RESUBMIT retry.
+            // Workflow ACCEPT/REJECT/REVIEW are left unchanged — Socure's top-level decision wins.
+            newStatus = DocVerificationStatus.Rejected;
+        }
+
         if (newStatus == null)
         {
             logger.LogWarning(
@@ -125,7 +142,11 @@ public class ProcessWebhookCommandHandler(
 
         if (newStatus == DocVerificationStatus.Rejected)
         {
-            challenge.OffboardingReason = "docVerificationFailed";
+            challenge.OffboardingReason = egregiousReasonCodes != null
+                ? DocVerificationOffboardingReasons.EgregiousFailed
+                : await ResolveRejectionOffboardingReasonAsync(
+                    challenge.UserId,
+                    cancellationToken);
         }
 
         try
@@ -145,9 +166,11 @@ public class ProcessWebhookCommandHandler(
 
         logger.LogInformation(
             "Webhook event {EventId}: challenge {ChallengeId} transitioned to {Status} " +
-            "(workflow_decision={WorkflowDecision}, docv_decision={DocumentDecision})",
+            "(workflow_decision={WorkflowDecision}, docv_decision={DocumentDecision}, " +
+            "egregious_docv_codes={EgregiousCodes})",
             SanitizeForLogging(command.EventId), challenge.PublicId, newStatus,
-            SanitizeForLogging(command.WorkflowDecision), SanitizeForLogging(command.DocumentDecision));
+            SanitizeForLogging(command.WorkflowDecision), SanitizeForLogging(command.DocumentDecision),
+            string.Join(',', egregiousReasonCodes ?? Array.Empty<string>()));
 
         // If verified: update user's proofing status and IAL level
         if (newStatus == DocVerificationStatus.Verified)
@@ -221,6 +244,30 @@ public class ProcessWebhookCommandHandler(
             "REVIEW" => DocVerificationStatus.Rejected,
             _ => null
         };
+    }
+
+    private async Task<string> ResolveRejectionOffboardingReasonAsync(
+        Guid userId,
+        CancellationToken cancellationToken)
+    {
+        var user = await userRepository.GetUserByIdAsync(userId, cancellationToken);
+        if (user == null || string.IsNullOrWhiteSpace(user.Email))
+        {
+            return DocVerificationOffboardingReasons.Failed;
+        }
+
+        var warehouseIal = PreSocureHouseholdWarehouseIal.ForEmailLinkedHouseholdRead(
+            user.IalLevel,
+            idProofingEligibilitySettings.Value.RequireQualifyingHouseholdForSocure);
+
+        return await IdProofingHouseholdLookup.ResolveOffboardingReasonAsync(
+            householdRepository,
+            logger,
+            user,
+            warehouseIal,
+            userId,
+            DocVerificationOffboardingReasons.Failed,
+            cancellationToken);
     }
 
     private async Task UpdateUserProofingStatus(Guid userId, CancellationToken cancellationToken)

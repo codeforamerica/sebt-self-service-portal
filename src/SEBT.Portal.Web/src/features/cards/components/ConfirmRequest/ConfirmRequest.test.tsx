@@ -1,14 +1,17 @@
 import { i18n } from '@sebt/design-system/client'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { render, screen, waitFor } from '@testing-library/react'
+import { act, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { http, HttpResponse } from 'msw'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
+import amDcDashboard from '@/content/locales/am/dc/dashboard.json'
 import enCoOptionalId from '@/content/locales/en/co/optionalId.json'
 import enCoResult from '@/content/locales/en/co/result.json'
+import enDcDashboard from '@/content/locales/en/dc/dashboard.json'
 import enDcOptionalId from '@/content/locales/en/dc/optionalId.json'
 import enDcResult from '@/content/locales/en/dc/result.json'
+import esDcDashboard from '@/content/locales/es/dc/dashboard.json'
 import type { Address, SummerEbtCase } from '@/features/household/api/schema'
 import { server } from '@/mocks/server'
 import { AnalyticsEvents } from '@sebt/analytics'
@@ -145,6 +148,14 @@ describe('ConfirmRequest', () => {
     mockState = 'dc'
     // Restore pristine DC bundles in case a prior test swapped to CO or overrode keys.
     loadStateBundles('dc')
+  })
+
+  // The i18n instance is a shared singleton; reset to English so sibling tests
+  // (which assume English copy) aren't affected by a lingering language switch.
+  afterEach(async () => {
+    await act(async () => {
+      await i18n.changeLanguage('en')
+    })
   })
 
   // --- Content rendering ---
@@ -335,6 +346,30 @@ describe('ConfirmRequest', () => {
     expect(mockSetPageData).toHaveBeenCalledWith('error_code', 'INVALID_INPUT')
     expect(mockTrackEvent).toHaveBeenCalledWith(AnalyticsEvents.CARD_REPLACEMENT_SUBMIT)
     expect(mockTrackEvent).toHaveBeenCalledWith(AnalyticsEvents.CARD_REPLACEMENT_ERROR)
+  })
+
+  it('re-translates the submit error across all DC languages, without resubmitting (DC-454)', async () => {
+    server.use(
+      http.post('/api/household/cards/replace', () =>
+        HttpResponse.json({ error: 'Cooldown active' }, { status: 400 })
+      )
+    )
+    const { user } = renderConfirmRequest()
+
+    await user.click(screen.getByRole('button', { name: /order card/i }))
+    expect(await screen.findByText(enDcDashboard.alertCardReplaceError)).toBeInTheDocument()
+
+    // Cycle DC languages with the error on screen — no resubmit. afterEach resets to English.
+    await act(async () => {
+      await i18n.changeLanguage('es')
+    })
+    expect(await screen.findByText(esDcDashboard.alertCardReplaceError)).toBeInTheDocument()
+
+    await act(async () => {
+      await i18n.changeLanguage('am')
+    })
+    expect(await screen.findByText(amDcDashboard.alertCardReplaceError)).toBeInTheDocument()
+    expect(screen.queryByText(enDcDashboard.alertCardReplaceError)).toBeNull()
   })
 
   it('sends caseRefs with applicationId/applicationStudentId from each case', async () => {

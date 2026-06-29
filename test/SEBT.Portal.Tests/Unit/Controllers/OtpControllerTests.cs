@@ -224,12 +224,14 @@ public class OtpControllerTests
 
     #region RequestOtp bypass decision tests
 
-    [Fact]
-    public async Task RequestOtp_WhenBypassEnabled_AndStaging_AndMatchingEmail_SetsCommandBypassTrue()
+    [Theory]
+    [InlineData("Staging")]
+    [InlineData("Development")]
+    public async Task RequestOtp_WhenBypassEnabled_AndNonProduction_AndMatchingEmail_SetsCommandBypassTrue(string environmentName)
     {
         // Arrange
         _featureManager.IsEnabledAsync(OtpBypassSettings.FeatureFlagName).Returns(true);
-        _hostEnvironment.EnvironmentName.Returns("Staging");
+        _hostEnvironment.EnvironmentName.Returns(environmentName);
 
         var request = new RequestOtpApiRequest(OtpBypassSettings.Email);
         var handlerMock = Substitute.For<ICommandHandler<RequestOtpCommand>>();
@@ -261,7 +263,7 @@ public class OtpControllerTests
     }
 
     [Fact]
-    public async Task RequestOtp_WhenBypassEnabled_AndStaging_ButWrongEmail_SetsCommandBypassFalse()
+    public async Task RequestOtp_WhenBypassEnabled_AndNonProduction_ButWrongEmail_SetsCommandBypassFalse()
     {
         // Arrange
         _featureManager.IsEnabledAsync(OtpBypassSettings.FeatureFlagName).Returns(true);
@@ -300,12 +302,14 @@ public class OtpControllerTests
 
     #region ValidateOtp bypass decision tests
 
-    [Fact]
-    public async Task ValidateOtp_WhenBypassEnabled_AndStaging_AndMatchingEmail_SetsCommandBypassTrue()
+    [Theory]
+    [InlineData("Staging")]
+    [InlineData("Development")]
+    public async Task ValidateOtp_WhenBypassEnabled_AndNonProduction_AndMatchingEmail_SetsCommandBypassTrue(string environmentName)
     {
         // Arrange
         _featureManager.IsEnabledAsync(OtpBypassSettings.FeatureFlagName).Returns(true);
-        _hostEnvironment.EnvironmentName.Returns("Staging");
+        _hostEnvironment.EnvironmentName.Returns(environmentName);
 
         var request = new ValidateOtpApiRequest(OtpBypassSettings.Email, OtpBypassSettings.OtpCode);
         var handlerMock = Substitute.For<ICommandHandler<ValidateOtpCommand, string>>();
@@ -337,7 +341,7 @@ public class OtpControllerTests
     }
 
     [Fact]
-    public async Task ValidateOtp_WhenBypassEnabled_AndStaging_ButWrongEmail_SetsCommandBypassFalse()
+    public async Task ValidateOtp_WhenBypassEnabled_AndNonProduction_ButWrongEmail_SetsCommandBypassFalse()
     {
         // Arrange
         _featureManager.IsEnabledAsync(OtpBypassSettings.FeatureFlagName).Returns(true);

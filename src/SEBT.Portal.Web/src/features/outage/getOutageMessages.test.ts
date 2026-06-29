@@ -12,6 +12,14 @@ describe('getOutageMessages', () => {
   })
 
   it('returns English footer prefix copy', () => {
-    expect(getOutageFooterCopy().prefix.length).toBeGreaterThan(0)
+    const copy = getOutageFooterCopy()[0]!
+    expect(copy.language).toEqual('en')
+    expect(copy.prefix.length).toBeGreaterThan(0)
+  })
+
+  it('returns Spanish footer prefix copy', () => {
+    const copy = getOutageFooterCopy()[1]!
+    expect(copy.language).toEqual('es')
+    expect(copy.prefix.length).toBeGreaterThan(0)
   })
 })
