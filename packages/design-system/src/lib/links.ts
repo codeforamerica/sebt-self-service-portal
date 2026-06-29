@@ -34,6 +34,7 @@ export interface StateLinks {
   help: {
     faqs: string
     contactUs: string
+    sebtMainSite?: string
     /** CO-specific: Help desk email (mailto: link) */
     helpDeskEmail?: string
   }
@@ -79,6 +80,7 @@ const stateLinks: Record<string, StateLinks> = {
     help: {
       faqs: '',
       contactUs: '',
+      sebtMainSite: 'https://co.gov/sebt',
       helpDeskEmail: ''
     },
     external: {

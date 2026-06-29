@@ -1,5 +1,4 @@
 using Microsoft.EntityFrameworkCore;
-using SEBT.Portal.Core.AppSettings;
 using SEBT.Portal.Core.Exceptions;
 using SEBT.Portal.Core.Models.Auth;
 using SEBT.Portal.Core.Services;
@@ -91,7 +90,6 @@ public class DataSeeder : IDataSeeder
             IalLevel = (int)user.IalLevel,
             IdProofingSessionId = user.IdProofingSessionId,
             IdProofingCompletedAt = user.IdProofingCompletedAt,
-            IdProofingExpiresAt = IdProofingExpiration.ComputeStoredExpiration(user.IdProofingCompletedAt),
             IsCoLoaded = user.IsCoLoaded,
             CoLoadedLastUpdated = user.CoLoadedLastUpdated,
             IdProofingAttemptCount = user.IdProofingAttemptCount,
