@@ -7,6 +7,7 @@ using SEBT.Portal.Core.Models.DocVerification;
 using SEBT.Portal.Core.Models.Household;
 using SEBT.Portal.Core.Repositories;
 using SEBT.Portal.Core.Services;
+using SEBT.Portal.Core.Utilities;
 using SEBT.Portal.Kernel;
 using SEBT.Portal.Kernel.Results;
 using SEBT.Portal.TestUtilities.Helpers;
@@ -335,6 +336,46 @@ public class ResubmitChallengeCommandHandlerTests
             Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<string?>(),
             Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<Address?>(), Arg.Any<string?>(),
             Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task Handle_ShouldReturnConflict_WhenStepupAssessmentHasEgregiousReasonCode()
+    {
+        var handler = CreateHandler();
+        socureSettings.DocvEgregiousReasonRejection = new SocureDocvEgregiousReasonRejectionSettings
+        {
+            Enabled = true,
+            ReasonCodes = ["R815"]
+        };
+        var challenge = DocVerificationChallengeFactory.CreateResubmitChallenge();
+        var command = new ResubmitChallengeCommand
+        {
+            ChallengeId = challenge.PublicId,
+            UserId = challenge.UserId
+        };
+
+        challengeRepository.GetByPublicIdAsync(command.ChallengeId, command.UserId, Arg.Any<CancellationToken>())
+            .Returns(challenge);
+        userRepository.GetUserByIdAsync(command.UserId, Arg.Any<CancellationToken>())
+            .Returns(new User { Id = command.UserId, Email = "user@example.com" });
+        socureClient.RunDocvStepupAssessmentAsync(
+                Arg.Any<Guid>(), Arg.Any<string>(),
+                Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<string?>(),
+                Arg.Any<Address?>(), Arg.Any<string?>(),
+                Arg.Any<CancellationToken>())
+            .Returns(Result<IdProofingAssessmentResult>.Success(
+                new IdProofingAssessmentResult(
+                    IdProofingOutcome.DocumentVerificationRequired,
+                    AllowIdRetry: true,
+                    DocvSession: FreshSession(),
+                    DocumentVerificationReasonCodes: ["R815"])));
+
+        var result = await handler.Handle(command, CancellationToken.None);
+
+        Assert.False(result.IsSuccess);
+        Assert.IsType<PreconditionFailedResult<ResubmitChallengeResponse>>(result);
+        await challengeRepository.DidNotReceive()
+            .CreateAsync(Arg.Any<DocVerificationChallenge>(), Arg.Any<CancellationToken>());
     }
 
     private static DocVerificationChallenge CreateExpiredChallenge()
