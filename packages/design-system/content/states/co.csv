@@ -405,8 +405,8 @@ Cualquier saldo restante en la tarjeta anterior se transferirá automáticamente
 Las tarjetas llegarán por correo en aproximadamente 7 a 10 días hábiles.
 Cualquier saldo restante en la tarjeta anterior se transferirá automáticamente a la tarjeta de reemplazo."
 S6 - Confirm Request Replacement Card - Summary Title,Card order summary,Card order summary,Resumen del pedido de tarjetas,Resumen del pedido de tarjetas
-S6 - Confirm Request Replacement Card - Summary Address,A new card will be mailed to the following address:,A new card will be mailed to the following address:,Las nuevas tarjetas se enviarán por correo a la siguiente dirección:,Las nuevas tarjetas se enviarán por correo a la siguiente dirección:
-S6 - Confirm Request Replacement Card - Action,Order card,Order card,Pedir tarjetas,Pedir tarjetas
+S6 - Confirm Request Replacement Card - Summary Address,A new card will be mailed to the following address:,A new card will be mailed to the following address:,Una nueva tarjeta se enviará por correo a la siguiente dirección:,Las nuevas tarjetas se enviarán por correo a la siguiente dirección:
+S6 - Confirm Request Replacement Card - Action,Order card,Order card,Pedir tarjeta,Pedir tarjetas
 S7 - Pin Card - Title,Activate a card,Activate a card,Activar una tarjeta,Activar una tarjeta
 S7 - Pin Card - Body,"Your child's card is active when it's mailed to you. To make purchases, you will need to set the card's PIN number. You may call EBT Customer Service at (888) 328-2656 and follow the instructions to set the PIN number.
 

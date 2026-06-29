@@ -375,7 +375,7 @@ S5 - Bulk Order New Cards Who - Label Select Cards,Select which cards you want t
 S5 - Bulk Order New Cards Who - Who's Card,[First name] [M.] [Last name]'s card,[First name] [M.] [Last name]'s card,Tarjeta de [First name] [M.] [Last name],Tarjeta de [First name] [M.] [Last name],የ[First name] [M.] [Last name] ካርድ,
 S5 - Bulk Order New Cards Who - Card Number,!N/A!,Card number: [9999] (last 4 digits),!N/A!,Número de tarjeta: [9999] (últimos 4 dígitos),!N/A!,
 S5 - Bulk Order New Cards Confirm - Action,Order cards,Order cards,Pedir tarjetas,Pedir tarjetas,የትዕዛዝ ካርዶች,
-S6 - Replacement Card - Pre-title,Replace [First name] [M.] [Last name]'s card,Replace card ending in [9999],Reemplazar la tarjeta que termina en [9999],Reemplazar la tarjeta que termina en [9999],የ [First name] [M.] [Last name] ካርድን ይተኩ።,
+S6 - Replacement Card - Pre-title,Replace [First name] [M.] [Last name]'s card,Replace card ending in [9999],Reemplazar la tarjeta de [First name] [M.] [Last name],Reemplazar la tarjeta que termina en [9999],የ [First name] [M.] [Last name] ካርድን ይተኩ።,
 S6 - Replacement Card Address - Title,Do you want the new card mailed to this address?,Do you want the new card mailed to this address?,¿Deseas que el reemplazo de la tarjeta que termina en [9999] se envíe por correo a esta dirección?,¿Deseas que el reemplazo de la tarjeta que termina en [9999] se envíe por correo a esta dirección?,አዲሱ ካርድ ወደዚህ አድራሻ በፖስታ እንዲላክልዎት ይፈልጋሉ?,
 S6 - Request Replacement Card FIS - Title,Getting a replacement SNAP or TANF EBT card,A few things to know before replacing cards,Cosas que saber antes de solicitar una tarjeta de reemplazo,Cosas que saber antes de solicitar una tarjeta de reemplazo,ምትክ የSNAP ወይም የTANF EBT ካርድ ማግኘት,
 S6 - Request Replacement Card FIS - Replace Card Body 1,"You can get a replacement SNAP or TANF EBT card at a DHS EBT Card Office. 
@@ -417,8 +417,8 @@ Cualquier saldo restante en la tarjeta anterior se transferirá automáticamente
 ካርዶቹ በፖስታ ከ7-10 ባሉት የስራ ቀናት ውስጥ ይደርሳሉ
 በቀድሞው ካርድ ላይ የቀረው ማንኛውም ቀሪ ሂሳብ በራስ-ሰር ወደ ምትክ ካርድ ይተላለፋል",
 S6 - Confirm Request Replacement Card - Summary Title,Card order summary,Card order summary,Resumen del pedido de tarjetas,Resumen del pedido de tarjetas,የካርድ ትዕዛዝ ማጠቃለያ,
-S6 - Confirm Request Replacement Card - Summary Address,Your new card will be mailed to the following address:,A new card will be mailed to the following address:,Las nuevas tarjetas se enviarán por correo a la siguiente dirección:,Las nuevas tarjetas se enviarán por correo a la siguiente dirección:,አዲሱ ካርድዎ ወደሚከተለው አድራሻ በፖስታ ይላካል፦,
-S6 - Confirm Request Replacement Card - Action,Order card,Order card,Pedir tarjetas,Pedir tarjetas,የትዕዛዝ ካርድ,
+S6 - Confirm Request Replacement Card - Summary Address,Your new card will be mailed to the following address:,A new card will be mailed to the following address:,Tu nueva tarjeta se enviará por correo a la siguiente dirección:,Las nuevas tarjetas se enviarán por correo a la siguiente dirección:,አዲሱ ካርድዎ ወደሚከተለው አድራሻ በፖስታ ይላካል፦,
+S6 - Confirm Request Replacement Card - Action,Order card,Order card,Pedir tarjeta,Pedir tarjetas,የትዕዛዝ ካርድ,
 S7 - Pin Card - Title,Activate a card,Activate a card,Activar una tarjeta,Activar una tarjeta,ካርድ ያግብሩ,
 S7 - Pin Card - Body,"Once you receive your student's card, call EBT Customer Service at (888) 328-2656. Follow the instructions to set the PIN number to activate the card.
 
