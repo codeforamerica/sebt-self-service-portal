@@ -7,6 +7,42 @@ using SEBT.Portal.Kernel;
 namespace SEBT.Portal.Infrastructure.Services;
 
 /// <summary>
+/// Deterministic Socure stub personas for local development and QA.
+/// </summary>
+internal static class StubSocurePersonas
+{
+    /// <summary>
+    /// SSN (9 digits) that returns egregious DocV reason code R815 when <see cref="SocureSettings.UseStub"/> is true.
+    /// </summary>
+    public const string EgregiousDocvIdValue = "999997815";
+
+    public static readonly IReadOnlyList<string> EgregiousReasonCodes = ["R815"];
+
+    public static bool IsEgregiousDocvPersona(string? idValue) =>
+        NormalizeIdDigits(idValue) == EgregiousDocvIdValue;
+
+    private static string? NormalizeIdDigits(string? idValue)
+    {
+        if (string.IsNullOrWhiteSpace(idValue))
+        {
+            return null;
+        }
+
+        var digits = new char[idValue.Length];
+        var count = 0;
+        foreach (var ch in idValue)
+        {
+            if (char.IsDigit(ch))
+            {
+                digits[count++] = ch;
+            }
+        }
+
+        return count == 0 ? null : new string(digits, 0, count);
+    }
+}
+
+/// <summary>
 /// Stub implementation of <see cref="ISocureClient"/> for development and testing.
 /// Returns deterministic data without making HTTP calls.
 /// Swapped for the real HTTP client when Socure credentials are available.
@@ -36,6 +72,19 @@ public class StubSocureClient(ILogger<StubSocureClient> logger) : ISocureClient
         {
             return Task.FromResult(Result<IdProofingAssessmentResult>.Success(
                 new IdProofingAssessmentResult(IdProofingOutcome.Failed, AllowIdRetry: false)));
+        }
+
+        if (StubSocurePersonas.IsEgregiousDocvPersona(idValue))
+        {
+            logger.LogInformation(
+                "Stub: Returning egregious DocV reason codes ({Codes}) for user {UserId}",
+                string.Join(',', StubSocurePersonas.EgregiousReasonCodes),
+                userId);
+            return Task.FromResult(Result<IdProofingAssessmentResult>.Success(
+                new IdProofingAssessmentResult(
+                    Outcome: IdProofingOutcome.DocumentVerificationRequired,
+                    AllowIdRetry: true,
+                    DocumentVerificationReasonCodes: StubSocurePersonas.EgregiousReasonCodes)));
         }
 
         // Stub: always require document verification so the full flow can be tested

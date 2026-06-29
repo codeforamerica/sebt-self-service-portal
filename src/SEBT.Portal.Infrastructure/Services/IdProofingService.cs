@@ -61,16 +61,21 @@ public class IdProofingService : IIdProofingService, IPiiVisibilityService
 
     public PiiVisibility GetVisibility(UserIalLevel userIalLevel)
     {
-        return new PiiVisibility(
-            IncludeAddress: EvaluateView(ProtectedResource.Address, userIalLevel),
-            IncludeEmail: EvaluateView(ProtectedResource.Email, userIalLevel),
-            IncludePhone: EvaluateView(ProtectedResource.Phone, userIalLevel));
+        return GetVisibility(userIalLevel, []);
     }
 
-    private bool EvaluateView(ProtectedResource resource, UserIalLevel userIalLevel)
+    public PiiVisibility GetVisibility(UserIalLevel userIalLevel, IReadOnlyList<SummerEbtCase> cases)
+    {
+        return new PiiVisibility(
+            IncludeAddress: EvaluateView(ProtectedResource.Address, userIalLevel, cases),
+            IncludeEmail: EvaluateView(ProtectedResource.Email, userIalLevel, cases),
+            IncludePhone: EvaluateView(ProtectedResource.Phone, userIalLevel, cases));
+    }
+
+    private bool EvaluateView(ProtectedResource resource, UserIalLevel userIalLevel, IReadOnlyList<SummerEbtCase> cases)
     {
         var requirement = _settings.Get(resource, ProtectedAction.View);
-        var requiredLevel = requirement.Resolve([]);
+        var requiredLevel = requirement.Resolve(cases);
         return userIalLevel >= requiredLevel;
     }
 }
