@@ -267,7 +267,7 @@ public static class Dependencies
     /// precedence; falls back to the legacy ConnectionStrings:Redis connection string.
     /// Returns null when neither is configured.
     /// </summary>
-    private static ConfigurationOptions? ResolveRedisConfigurationOptions(
+    internal static ConfigurationOptions? ResolveRedisConfigurationOptions(
         IConfiguration? configuration,
         IHostEnvironment environment)
     {

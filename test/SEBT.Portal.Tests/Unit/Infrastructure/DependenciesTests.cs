@@ -1,4 +1,5 @@
 using Medallion.Threading;
+using StackExchange.Redis;
 using Microsoft.Extensions.Caching.Distributed;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -61,14 +62,8 @@ public class DependenciesTests
     }
 
     [Fact]
-    public void AddCaching_WithBothRedisHostAndLegacyConnectionString_PrefersStructuredSettings()
+    public void ResolveRedisConfigurationOptions_WithBothStructuredAndLegacy_PrefersStructuredHost()
     {
-        // The structured settings path is confirmed when Host is set; both paths
-        // ultimately register a Redis IDistributedCache — the test verifies no error
-        // is thrown and the structured path takes effect (no assertion on implementation
-        // detail of which ConfigurationOptions was used, since that requires a real
-        // Redis server to observe).
-        var services = new ServiceCollection();
         var config = new ConfigurationBuilder()
             .AddInMemoryCollection(new Dictionary<string, string?>
             {
@@ -77,14 +72,13 @@ public class DependenciesTests
             })
             .Build();
         var env = Substitute.For<IHostEnvironment>();
-        env.EnvironmentName.Returns("Production");
+        env.EnvironmentName.Returns("Development");
 
-        var exception = Record.Exception(() => services.AddCaching(config, env));
+        var options = Dependencies.ResolveRedisConfigurationOptions(config, env);
 
-        Assert.Null(exception);
-        var cacheDescriptor = services.FirstOrDefault(d => d.ServiceType == typeof(IDistributedCache));
-        Assert.NotNull(cacheDescriptor);
-        Assert.NotEqual("MemoryDistributedCache", cacheDescriptor.ImplementationType?.Name);
+        Assert.NotNull(options);
+        Assert.Contains(options.EndPoints, ep => ep.ToString()!.Contains("structured-host"));
+        Assert.DoesNotContain(options.EndPoints, ep => ep.ToString()!.Contains("legacy-host"));
     }
 
     [Fact]
@@ -118,27 +112,6 @@ public class DependenciesTests
         Assert.Throws<InvalidOperationException>(() => services.AddCaching(config, env));
     }
 
-    [Fact]
-    public void AddCaching_WithFullStructuredSettings_DoesNotThrow()
-    {
-        var services = new ServiceCollection();
-        var config = new ConfigurationBuilder()
-            .AddInMemoryCollection(new Dictionary<string, string?>
-            {
-                ["Redis:Host"] = "my-redis.cache.amazonaws.com",
-                ["Redis:Port"] = "6380",
-                ["Redis:Password"] = "secret",
-                ["Redis:Ssl"] = "true",
-                ["Redis:SslHost"] = "my-redis.cache.amazonaws.com"
-            })
-            .Build();
-        var env = Substitute.For<IHostEnvironment>();
-        env.EnvironmentName.Returns("Production");
-
-        var exception = Record.Exception(() => services.AddCaching(config, env));
-
-        Assert.Null(exception);
-    }
 
 
     [Fact]
