@@ -13,6 +13,14 @@ locals {
     database-agent = module.database.log_group_names["agent"]
   }
 
+  # Datadog does not ingest OpenTelemetry traces from AWS X-Ray. When the
+  # Datadog integration API key secret is present, override the default ADOT
+  # collector config to forward traces directly to Datadog APM.
+  otel_override_config = length(data.aws_secretsmanager_secrets.datadog_key.arns) > 0
+  otel_secrets = local.otel_override_config ? {
+    DD_API_KEY = data.aws_secretsmanager_secret.datadog_key["this"].arn
+  } : {}
+
   # Allow the AWS Security Agent penetration test to bypass the WAF in the
   # development environment by matching its unique User-Agent. "allow" is a
   # terminating action, so matching requests skip all subsequent rules
