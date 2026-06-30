@@ -36,6 +36,7 @@ public class PortalWebApplicationFactory : WebApplicationFactory<Program>
         "Oidc__ClientId",
         "Oidc__CallbackRedirectUri",
         "Oidc__CompleteLoginSigningKey",
+        "Redis__Host",
         "ConnectionStrings__Redis",
         "IdProofingRequirements__household+view__application",
         "IdProofingRequirements__household+view__coloadedStreamline",

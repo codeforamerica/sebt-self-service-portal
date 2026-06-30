@@ -133,17 +133,46 @@ docker compose down -v
 
 ### Redis (Distributed Cache)
 
-[Redis](https://redis.io/) is used as an optional distributed cache backing for `HybridCache`. It's included in Docker Compose and starts automatically with `docker compose up -d`.
+[Redis](https://redis.io/) is used as an optional distributed cache backing for `HybridCache`. It's included in Docker Compose and runs with TLS enabled to mirror AWS Elasticache in-transit encryption.
 
-To enable Redis caching for a state, add a Redis connection string to the state's `appsettings.{state}.json`:
+#### First-time setup
+
+Before running `docker compose up` for the first time, generate the local TLS certificates:
+
+```bash
+./scripts/dev/gen-redis-certs.sh
+```
+
+This writes self-signed certs to `certs/` (gitignored). The script is idempotent — existing certs are not overwritten. Re-run it if Redis TLS stops working (certs expire after one year).
+
+#### Ports
+
+| Port | Protocol | Used by |
+|------|----------|---------|
+| 6379 | plain    | `redis-commander`, direct `redis-cli` |
+| 6380 | TLS      | portal API |
+
+#### Configuration
+
+Add the following to your local `appsettings.{state}.json` to connect to the TLS port:
 
 ```json
-"ConnectionStrings": {
-  "Redis": "localhost:6379"
+"Redis": {
+  "Host": "localhost",
+  "Port": 6380,
+  "Ssl": true,
+  "SslHost": "redis",
+  "AcceptSelfSignedCertificates": true
 }
 ```
 
-When no Redis connection string is configured, the application falls back to in-memory caching only. See `appsettings.co.example.json` for an example.
+`SslHost` should match the hostname in the server certificate — `redis` locally (the Docker service name), or the Elasticache cluster endpoint in production. An optional `Password` field supports Redis AUTH tokens.
+
+`AcceptSelfSignedCertificates: true` bypasses CA trust for the local self-signed cert. **Never set it in production** — Elasticache presents an AWS-signed cert that .NET trusts natively. See `appsettings.co.example.json` for the full example.
+
+The legacy `ConnectionStrings:Redis` connection string is still accepted as a fallback, but new deployments should use the structured form.
+
+When neither is configured, the application falls back to in-memory caching only. See `appsettings.co.example.json` for a full example.
 
 ### Jaeger (Local OpenTelemetry Tracing)
 
