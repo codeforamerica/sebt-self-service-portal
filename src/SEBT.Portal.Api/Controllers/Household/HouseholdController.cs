@@ -29,17 +29,15 @@ public class HouseholdController : ControllerBase
     /// <param name="configuration">Application configuration, used to resolve the hashed app ID field name.</param>
     /// <param name="includeCardDetails">When false, card-related fields are excluded from the response.</param>
     /// <param name="cancellationToken">A token to monitor for cancellation requests.</param>
-    /// <returns>An OK result with household data if found; otherwise, NotFound or Unauthorized.</returns>
-    /// <response code="200">Household data retrieved successfully.</response>
+    /// <returns>An OK result with household data if found, or an empty payload when no household exists; otherwise, Unauthorized or Forbidden.</returns>
+    /// <response code="200">Household data retrieved successfully. Returns empty arrays when no household is found for the authenticated user.</response>
     /// <response code="401">User is not authorized or no household identifier could be resolved from token.</response>
     /// <response code="403">User's identity assurance level is below the minimum required by their cases.</response>
-    /// <response code="404">Household data not found for the authenticated user.</response>
     [HttpGet("data")]
     [Authorize]
     [ProducesResponseType(typeof(HouseholdDataResponse), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
-    [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status404NotFound)]
     public async Task<IActionResult> GetHouseholdData(
         [FromServices] IQueryHandler<GetHouseholdDataQuery, Core.Models.Household.HouseholdData> queryHandler,
         [FromServices] IIdentifierHasher identifierHasher,
@@ -69,7 +67,6 @@ public class HouseholdController : ControllerBase
                 // Zod schema rejects as a parse failure and renders the red error alert
                 // instead of the correct yellow empty-state message.
                 PreconditionFailedResult<Core.Models.Household.HouseholdData> { Reason: PreconditionFailedReason.NotFound } => Ok(new HouseholdDataResponse()),
-                PreconditionFailedResult<Core.Models.Household.HouseholdData> preconditionFailed => NotFound(new ErrorResponse(preconditionFailed.Message)),
                 _ => StatusCode(StatusCodes.Status500InternalServerError, new ErrorResponse("An unexpected error occurred."))
             });
     }
