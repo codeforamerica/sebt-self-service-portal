@@ -132,10 +132,10 @@ if [ "$BACKEND_CHANGES" = "true" ]; then
         exit 1
       }
 
-      # dotnet format SEBT.Portal.sln analyzers --verify-no-changes --verbosity quiet $INCLUDE_FLAGS || {
-      #   log_error ".NET analyzer checks failed - run 'pnpm api:format:staged' to fix"
-      #   exit 1
-      # }
+      dotnet format SEBT.Portal.sln analyzers --verify-no-changes --verbosity quiet $INCLUDE_FLAGS || {
+        log_error ".NET analyzer checks failed - fix the reported issues"
+        exit 1
+      }
     fi
     
     log_success ".NET linting passed"
