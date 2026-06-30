@@ -4,6 +4,7 @@
   "private": true,
   "description": "Summer EBT (SUN Bucks) Self-Service Portal - Root package for convenience scripts",
   "scripts": {
+    "predev": "./scripts/dev/gen-redis-certs.sh",
     "dev": "pnpm dev:kill-port && concurrently -n \"API,Web\" -c \"blue,green\" \"pnpm api:dev\" \"pnpm web:dev\"",
     "dev:co": "export STATE=co && export ENROLLMENT_CHECKER_ORIGIN=http://localhost:3001 && pnpm api:build-co && pnpm dev",
     "dev:co-enroll": "export STATE=co && pnpm api:build-co && pnpm dev:kill-port && concurrently -n \"API,EnrollChecker\" -c \"blue,green\" \"pnpm api:dev\" \"pnpm --filter @sebt/enrollment-checker dev\"",
