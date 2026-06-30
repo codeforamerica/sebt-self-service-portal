@@ -64,6 +64,11 @@ public class HouseholdController : ControllerBase
                     title: "Insufficient identity assurance level",
                     statusCode: StatusCodes.Status403Forbidden,
                     extensions: forbidden.Extensions),
+                // Return 200 with empty arrays when no household is found rather than 404.
+                // Some state WAFs rewrite 404s to 200 HTML error pages, which the frontend's
+                // Zod schema rejects as a parse failure and renders the red error alert
+                // instead of the correct yellow empty-state message.
+                PreconditionFailedResult<Core.Models.Household.HouseholdData> { Reason: PreconditionFailedReason.NotFound } => Ok(new HouseholdDataResponse()),
                 PreconditionFailedResult<Core.Models.Household.HouseholdData> preconditionFailed => NotFound(new ErrorResponse(preconditionFailed.Message)),
                 _ => StatusCode(StatusCodes.Status500InternalServerError, new ErrorResponse("An unexpected error occurred."))
             });
