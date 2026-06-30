@@ -76,7 +76,7 @@ public class OidcOriginValidationMiddleware
 
             if (!_allowedOrigins.Contains(origin))
             {
-                _logger.LogWarning(
+                _logger.LogError(
                     "OIDC Origin check: POST to {Path} has disallowed Origin {Origin} (reason=origin_mismatch, allowed={Allowed})",
                     path,
                     origin,
