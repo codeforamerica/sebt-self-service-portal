@@ -48,13 +48,17 @@ public sealed class AppConfigAgentReloadService : BackgroundService
             return;
         }
 
+        // Create the timer before logging "started": the test waits for that log message and
+        // immediately advances FakeTimeProvider. PeriodicTimer buffers one tick once it exists,
+        // so the advance is safe even if WaitForNextTickAsync hasn't been called yet. Logging
+        // before timer creation loses the tick when the test's Advance() races the constructor.
+        using var timer = new PeriodicTimer(TimeSpan.FromSeconds(intervalSeconds), _timeProvider);
+        var lastHeartbeat = _timeProvider.GetUtcNow();
+
         _logger.LogInformation(
             "AppConfig reload polling started: interval = {IntervalSeconds}s, providers = {Providers}.",
             intervalSeconds,
             string.Join(", ", providers));
-
-        using var timer = new PeriodicTimer(TimeSpan.FromSeconds(intervalSeconds), _timeProvider);
-        var lastHeartbeat = _timeProvider.GetUtcNow();
 
         try
         {
