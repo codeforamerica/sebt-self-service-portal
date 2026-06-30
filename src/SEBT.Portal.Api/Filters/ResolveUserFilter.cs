@@ -28,7 +28,7 @@ public class ResolveUserFilter(
         var userId = context.HttpContext.User.GetUserId();
         if (userId == null)
         {
-            logger.LogWarning("Request to resolved-user endpoint but sub claim missing or invalid");
+            logger.LogError("Request to resolved-user endpoint but sub claim missing or invalid");
             context.Result = new UnauthorizedObjectResult(
                 new ErrorResponse("Unable to identify user from token."));
             return;
