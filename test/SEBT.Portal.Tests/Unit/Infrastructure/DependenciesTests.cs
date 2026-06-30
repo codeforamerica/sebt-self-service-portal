@@ -1,5 +1,3 @@
-using Medallion.Threading;
-using StackExchange.Redis;
 using Microsoft.Extensions.Caching.Distributed;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -112,6 +110,45 @@ public class DependenciesTests
         Assert.Throws<InvalidOperationException>(() => services.AddCaching(config, env));
     }
 
+    [Theory]
+    [InlineData(true, "Development", true)]
+    [InlineData(true, "Test", false)]
+    [InlineData(true, "Production", false)]
+    [InlineData(false, "Development", true)]
+    [InlineData(false, "Test", true)]
+    [InlineData(false, "Production", true)]
+    public void AddCaching_AcceptSelfSignedCertificates_ValidatesOnlyDevelopment(
+        bool acceptSelfSignedCertificates,
+        string environmentName,
+        bool shouldSucceed)
+    {
+        var services = new ServiceCollection();
+        var config = new ConfigurationBuilder()
+            .AddInMemoryCollection(new Dictionary<string, string?>
+            {
+                ["Redis:Host"] = "localhost",
+                ["Redis:Port"] = "6380",
+                ["Redis:Ssl"] = "true",
+                ["Redis:SslHost"] = "redis",
+                ["Redis:AcceptSelfSignedCertificates"] = acceptSelfSignedCertificates.ToString()
+            })
+            .Build();
+        var env = Substitute.For<IHostEnvironment>();
+        env.EnvironmentName.Returns(environmentName);
+
+        if (!shouldSucceed)
+        {
+            Assert.Throws<InvalidOperationException>(() => services.AddCaching(config, env));
+        }
+        else
+        {
+            services.AddCaching(config, env);
+
+            var cacheDescriptor = services.FirstOrDefault(d => d.ServiceType == typeof(IDistributedCache));
+            Assert.NotNull(cacheDescriptor);
+            Assert.Equal("RedisCacheImpl", cacheDescriptor.ImplementationType?.Name);
+        }
+    }
 
 
     [Fact]

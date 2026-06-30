@@ -274,10 +274,11 @@ public static class Dependencies
         var settings = configuration?.GetSection(RedisSettings.SectionName).Get<RedisSettings>();
         if (settings?.IsConfigured == true)
         {
-            if (settings.AcceptSelfSignedCertificates && environment.IsProduction())
+            if (settings.AcceptSelfSignedCertificates && !environment.IsDevelopment())
             {
                 throw new InvalidOperationException(
-                    "Redis:AcceptSelfSignedCertificates must not be true in Production. " +
+                    "Redis:AcceptSelfSignedCertificates must only be true " +
+                    "when ASPNETCORE_ENVIRONMENT == Development. " +
                     "Remove it from configuration — Elasticache presents an AWS-signed cert " +
                     "that .NET trusts natively.");
             }
