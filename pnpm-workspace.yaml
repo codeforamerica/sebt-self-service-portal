@@ -1,6 +1,6 @@
 packages:
-  - src/SEBT.Portal.Web
-  - src/SEBT.EnrollmentChecker.Web
+  - apps/portal/src/SEBT.Portal.Web
+  - apps/portal/src/SEBT.EnrollmentChecker.Web
   - packages/*
 
 # [SECURITY] Force-upgrade vulnerable transitive dependencies. Lives here (not in

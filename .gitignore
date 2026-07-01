@@ -32,9 +32,9 @@ certs/
 *.env
 
 # Local/deployed config (use matching .example.json as template)
-src/SEBT.Portal.Api/appsettings.Development.json
-src/SEBT.Portal.Api/appsettings.dc.json
-src/SEBT.Portal.Api/appsettings.co.json
+apps/portal/src/SEBT.Portal.Api/appsettings.Development.json
+apps/portal/src/SEBT.Portal.Api/appsettings.dc.json
+apps/portal/src/SEBT.Portal.Api/appsettings.co.json
 
 # User-specific files (MonoDevelop/Xamarin Studio)
 *.userprefs
