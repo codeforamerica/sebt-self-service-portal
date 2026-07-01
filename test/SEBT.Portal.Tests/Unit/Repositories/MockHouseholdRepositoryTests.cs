@@ -397,6 +397,39 @@ public class MockHouseholdRepositoryTests
         Assert.Single(result.SummerEbtCases);
         Assert.Equal(CardStatus.Active, result.SummerEbtCases[0].EbtCardStatus);
         Assert.Equal(IssuanceType.SummerEbt, result.SummerEbtCases[0].IssuanceType);
+        Assert.Equal("1234", result.SummerEbtCases[0].EbtCardLastFour);
+    }
+
+    [Fact]
+    public async Task GetHouseholdByEmailAsync_CoUndeliverableScenario_HasUndeliverableCardWithLastFour()
+    {
+        // Tester AC: CO Undeliverable persona is in CO CardReplacement.AllowedCardStatuses,
+        // so the Request Replacement confirm screen must have a last-four to render its
+        // pre-title and summary card-number line.
+        var email = "co-undeliverable@example.com";
+
+        var result = await _repository.GetHouseholdByEmailAsync(email, FullPiiVisibility, UserIalLevel.IAL1plus);
+
+        Assert.NotNull(result);
+        Assert.Single(result.SummerEbtCases);
+        Assert.Equal(CardStatus.Undeliverable, result.SummerEbtCases[0].EbtCardStatus);
+        Assert.Equal("5678", result.SummerEbtCases[0].EbtCardLastFour);
+    }
+
+    [Fact]
+    public async Task GetHouseholdByEmailAsync_CoFrozenScenario_HasFrozenCardWithLastFour()
+    {
+        // Tester AC: CO Frozen persona is in CO CardReplacement.AllowedCardStatuses,
+        // so the Request Replacement confirm screen must have a last-four to render its
+        // pre-title and summary card-number line.
+        var email = "co-frozen@example.com";
+
+        var result = await _repository.GetHouseholdByEmailAsync(email, FullPiiVisibility, UserIalLevel.IAL1plus);
+
+        Assert.NotNull(result);
+        Assert.Single(result.SummerEbtCases);
+        Assert.Equal(CardStatus.Frozen, result.SummerEbtCases[0].EbtCardStatus);
+        Assert.Equal("9012", result.SummerEbtCases[0].EbtCardLastFour);
     }
 
     [Fact]

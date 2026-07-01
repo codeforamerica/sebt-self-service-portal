@@ -116,24 +116,27 @@ if [ "$BACKEND_CHANGES" = "true" ]; then
   cd "$PROJECT_ROOT"
 
   if command -v dotnet &> /dev/null; then
-    # Verify code formatting matches .editorconfig (fails if changes needed)
-    # Exclude sibling repos (state-connector, dc-connector, co-connector) that get
-    # pulled in via conditional ProjectReference but live outside this repository.
-    dotnet format SEBT.Portal.sln --verify-no-changes --verbosity quiet \
-      --exclude ../sebt-self-service-portal-state-connector/ \
-      --exclude ../sebt-self-service-portal-dc-connector/ \
-      --exclude ../sebt-self-service-portal-co-connector/ || {
-      log_error ".NET code formatting check failed - run 'dotnet format SEBT.Portal.sln' to fix"
-      exit 1
-    }
+    # Verify formatting only for staged .cs files. --include scopes dotnet format to
+    # exactly those files, so --exclude for sibling repos isn't needed (staged paths
+    # from this repo can never resolve to ../sibling-repo/).
+    STAGED_CS_FILES=$(git diff --cached --name-only --diff-filter=ACMR | grep '\.cs$' || true)
 
-    dotnet format SEBT.Portal.sln analyzers --verify-no-changes --verbosity quiet \
-      --exclude ../sebt-self-service-portal-state-connector/ \
-      --exclude ../sebt-self-service-portal-dc-connector/ \
-      --exclude ../sebt-self-service-portal-co-connector/ || {
-      log_error ".NET analyzer checks failed - fix the reported issues"
-      exit 1
-    }
+    if [ -n "$STAGED_CS_FILES" ]; then
+      INCLUDE_FLAGS=""
+      for f in $STAGED_CS_FILES; do
+        INCLUDE_FLAGS="$INCLUDE_FLAGS --include $f"
+      done
+
+      dotnet format SEBT.Portal.sln whitespace --verify-no-changes --verbosity quiet $INCLUDE_FLAGS || {
+        log_error ".NET code formatting check failed - run 'pnpm api:format:staged' to fix"
+        exit 1
+      }
+
+      dotnet format SEBT.Portal.sln analyzers --verify-no-changes --verbosity quiet $INCLUDE_FLAGS || {
+        log_error ".NET analyzer checks failed - fix the reported issues"
+        exit 1
+      }
+    fi
     
     log_success ".NET linting passed"
   else

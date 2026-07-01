@@ -96,6 +96,15 @@ module "api" {
     "Smarty__AuthId"               = "${module.secrets.secrets["smarty"].secret_arn}:auth_id"
     "Smarty__AuthToken"            = "${module.secrets.secrets["smarty"].secret_arn}:auth_token"
   }, var.state_api_environment_secrets)
+
+  # Forward application traces to Datadog APM when the integration API key is
+  # available. Metrics pipelines are unchanged from the default ADOT config.
+  otel_collector_version = "v0.47.0"
+  otel_config = local.otel_override_config ? templatefile("${path.module}/templates/otel-config.yaml.tftpl", {
+    app_namespace = "${var.project}-${var.state}/api"
+    environment   = var.environment
+  }) : null
+  otel_secrets = local.otel_secrets
 }
 
 # Create the Web service. This is a public-facing Next.js application served                                                                      
