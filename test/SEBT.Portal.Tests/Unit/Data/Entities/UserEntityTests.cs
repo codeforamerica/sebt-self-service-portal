@@ -17,7 +17,6 @@ public class UserEntityTests
         Assert.Equal(0, entity.IalLevel); // UserIalLevel.None
         Assert.Null(entity.IdProofingSessionId);
         Assert.Null(entity.IdProofingCompletedAt);
-        Assert.Null(entity.IdProofingExpiresAt);
         Assert.True(entity.CreatedAt <= DateTime.UtcNow);
         Assert.True(entity.UpdatedAt <= DateTime.UtcNow);
     }
@@ -30,7 +29,6 @@ public class UserEntityTests
         var testEmail = "test@example.com";
         var testSessionId = "session-123";
         var testCompletedAt = DateTime.UtcNow.AddDays(-1);
-        var testExpiresAt = DateTime.UtcNow.AddYears(1);
         var testCreatedAt = DateTime.UtcNow.AddDays(-5);
         var testUpdatedAt = DateTime.UtcNow.AddDays(-2);
 
@@ -39,7 +37,6 @@ public class UserEntityTests
         entity.IalLevel = (int)UserIalLevel.IAL1plus;
         entity.IdProofingSessionId = testSessionId;
         entity.IdProofingCompletedAt = testCompletedAt;
-        entity.IdProofingExpiresAt = testExpiresAt;
         entity.CreatedAt = testCreatedAt;
         entity.UpdatedAt = testUpdatedAt;
 
@@ -48,7 +45,6 @@ public class UserEntityTests
         Assert.Equal((int)UserIalLevel.IAL1plus, entity.IalLevel);
         Assert.Equal(testSessionId, entity.IdProofingSessionId);
         Assert.Equal(testCompletedAt, entity.IdProofingCompletedAt);
-        Assert.Equal(testExpiresAt, entity.IdProofingExpiresAt);
         Assert.Equal(testCreatedAt, entity.CreatedAt);
         Assert.Equal(testUpdatedAt, entity.UpdatedAt);
     }
@@ -95,20 +91,6 @@ public class UserEntityTests
 
         // Assert
         Assert.Null(entity.IdProofingCompletedAt);
-    }
-
-    [Fact]
-    public void UserEntity_ShouldAllowNullExpiresAt()
-    {
-        // Arrange
-        var entity = new UserEntity
-        {
-            Email = "user@example.com",
-            IdProofingExpiresAt = null
-        };
-
-        // Assert
-        Assert.Null(entity.IdProofingExpiresAt);
     }
 
     [Fact]

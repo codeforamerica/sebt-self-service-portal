@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
 using SEBT.Portal.Api.Models.IdProofing;
 using SEBT.Portal.Core.AppSettings;
+using SEBT.Portal.Infrastructure.Services.Socure;
 using SEBT.Portal.Kernel;
 using SEBT.Portal.Kernel.AspNetCore;
 using SEBT.Portal.UseCases.IdProofing;
@@ -44,6 +45,8 @@ public class WebhookController(
             ? signature["Bearer ".Length..]
             : signature;
 
+        var reasonCodes = ExtractDocumentVerificationReasonCodes(payload);
+
         var command = new ProcessWebhookCommand
         {
             EventId = payload.EventId ?? string.Empty,
@@ -54,6 +57,7 @@ public class WebhookController(
             WorkflowDecision = payload.Data?.Decision,
             // DocV enrichment decision is kept for diagnostic logging, not routing.
             DocumentDecision = ExtractDocumentDecision(payload),
+            DocumentVerificationReasonCodes = reasonCodes,
             WebhookSignature = bearerToken
         };
 
@@ -64,13 +68,14 @@ public class WebhookController(
         logger.LogInformation(
             "Webhook received: EventId={EventId}, EventType={EventType}, EvalId={EvalId}, " +
             "ReferenceId={ReferenceId}, WorkflowDecision={WorkflowDecision}, " +
-            "DocumentDecision={DocumentDecision}",
+            "DocumentDecision={DocumentDecision}, DocvReasonCodeCount={DocvReasonCodeCount}",
             SanitizeForLog(command.EventId),
             SanitizeForLog(command.EventType),
             SanitizeForLog(command.EvalId),
             SanitizeForLog(command.ReferenceId),
             SanitizeForLog(command.WorkflowDecision),
-            SanitizeForLog(command.DocumentDecision));
+            SanitizeForLog(command.DocumentDecision),
+            reasonCodes.Count);
 
         var result = await handler.Handle(command, cancellationToken);
 
@@ -102,32 +107,33 @@ public class WebhookController(
         }
     }
 
-    private static string? ExtractDocumentDecision(WebhookPayload payload)
+    private string? ExtractDocumentDecision(WebhookPayload payload)
     {
-        // The DocV decision is in the enrichment that has a documentVerification property
-        var docvEnrichment = payload.Data?.DataEnrichments?
-            .FirstOrDefault(e => e.Response != null && HasDocumentVerification(e.Response.Value));
-
-        if (docvEnrichment?.Response == null)
-            return null;
-
-        try
-        {
-            return docvEnrichment.Response.Value
-                .GetProperty("documentVerification")
-                .GetProperty("decision")
-                .GetProperty("value")
-                .GetString();
-        }
-        catch (KeyNotFoundException)
-        {
-            return null;
-        }
+        var enrichmentResponse = TryGetDocvEnrichmentResponse(payload);
+        return enrichmentResponse == null
+            ? null
+            : SocureDocumentVerificationEnrichmentParser.ExtractDocumentDecisionValue(enrichmentResponse.Value);
     }
 
-    private static bool HasDocumentVerification(JsonElement response)
+    private IReadOnlyList<string> ExtractDocumentVerificationReasonCodes(WebhookPayload payload)
     {
-        return response.TryGetProperty("documentVerification", out _);
+        var enrichmentResponse = TryGetDocvEnrichmentResponse(payload);
+        return enrichmentResponse == null
+            ? Array.Empty<string>()
+            : SocureDocumentVerificationEnrichmentParser.ExtractReasonCodes(enrichmentResponse.Value);
+    }
+
+    private JsonElement? TryGetDocvEnrichmentResponse(WebhookPayload payload)
+    {
+        if (payload.Data?.DataEnrichments == null)
+        {
+            return null;
+        }
+
+        return SocureDocumentVerificationEnrichmentParser.TryGetEnrichmentResponse(
+            payload.Data.DataEnrichments.Select(e => new SocureEnrichmentResponseRef(
+                e.EnrichmentProvider, e.Response)),
+            socureSettings.DocvEnrichmentName);
     }
 
     /// <summary>

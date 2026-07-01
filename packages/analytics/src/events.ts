@@ -5,6 +5,20 @@
 
 // Global
 export const PAGE_LOAD = 'page_load'
+/**
+ * Fired when the user clicks any element tagged with `data-analytics-cta` (via the global
+ * CtaTracker delegated listener). Carries:
+ *  - `cta_id` (event): stable, snake_case identifier for the clicked CTA, read from the
+ *    element's `data-analytics-cta` attribute (falls back to the element id). Kept stable
+ *    across copy/markup changes; convention is a trailing `_cta`. Address-update help/support
+ *    examples: `address_form_contact_us_cta`, `address_not_found_contact_us_cta`.
+ *  - `cta_target` (event): human-readable label — the element's `aria-label`, else its
+ *    trimmed text content.
+ *  - `cta_destination_type` (event, optional): from `data-analytics-cta-destination-type`,
+ *    e.g. `external_only` for phone/mailto/third-party links; omitted for internal navigation.
+ *  - `flow` + `step` (page): auto-merged from page context (see lib/analytics-routes.ts); on
+ *    the address-update flow these are `flow: 'address_update'` with the route's step.
+ */
 export const CTA_CLICK = 'cta_click'
 
 // Authentication

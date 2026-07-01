@@ -94,6 +94,8 @@ export function AddressNotFound() {
           <a
             href={getStateLinks(currentState).help.contactUs}
             className="usa-link"
+            data-analytics-cta="address_not_found_contact_us_cta"
+            data-analytics-cta-destination-type="external_only"
           >
             {t('notFoundActionHelp')}
           </a>
