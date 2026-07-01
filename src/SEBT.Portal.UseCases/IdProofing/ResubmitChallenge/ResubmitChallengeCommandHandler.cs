@@ -151,6 +151,21 @@ public class ResubmitChallengeCommandHandler(
         }
 
         var assessment = assessmentResult.Value;
+
+        var egregiousReasonCodes = SocureDocvEgregiousReasonCodes.GetMatchingEgregiousCodes(
+            socureSettings.DocvEgregiousReasonRejection,
+            assessment.DocumentVerificationReasonCodes);
+        if (egregiousReasonCodes != null)
+        {
+            logger.LogInformation(
+                "ResubmitChallenge blocked: user {UserId} has egregious DocV reason codes ({Codes})",
+                command.UserId,
+                string.Join(',', egregiousReasonCodes));
+            return Result<ResubmitChallengeResponse>.PreconditionFailed(
+                PreconditionFailedReason.Conflict,
+                "Document verification cannot be retried for this submission. Please try again with different information.");
+        }
+
         if (assessment.Outcome != IdProofingOutcome.DocumentVerificationRequired
             || assessment.DocvSession == null)
         {

@@ -81,4 +81,45 @@ public class WebhookControllerTests
             Arg.Any<Exception?>(),
             Arg.Any<Func<object, Exception?, string>>());
     }
+
+    [Fact]
+    public async Task HandleWebhook_PassesDocumentVerificationReasonCodesToHandler()
+    {
+        var controller = CreateController();
+        var payload = new WebhookPayload
+        {
+            EventId = "evt-egregious",
+            EventType = "evaluation_completed",
+            Data = new WebhookData
+            {
+                EvalId = "eval-1",
+                Decision = "RESUBMIT",
+                DataEnrichments =
+                [
+                    new WebhookDataEnrichment
+                    {
+                        EnrichmentProvider = "SocureDocRequest",
+                        Response = System.Text.Json.JsonDocument.Parse(
+                            """
+                            {
+                              "documentVerification": {
+                                "reasonCodes": ["R815", "R836"]
+                              }
+                            }
+                            """).RootElement
+                    }
+                ]
+            }
+        };
+
+        await controller.HandleWebhook(payload, handler, CancellationToken.None);
+
+        await handler.Received(1).Handle(
+            Arg.Is<ProcessWebhookCommand>(c =>
+                c.DocumentVerificationReasonCodes != null
+                && c.DocumentVerificationReasonCodes.Count == 2
+                && c.DocumentVerificationReasonCodes.Contains("R815")
+                && c.DocumentVerificationReasonCodes.Contains("R836")),
+            Arg.Any<CancellationToken>());
+    }
 }

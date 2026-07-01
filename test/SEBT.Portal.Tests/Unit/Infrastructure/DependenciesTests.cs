@@ -1,5 +1,8 @@
+using Microsoft.Extensions.Caching.Distributed;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
+using NSubstitute;
 using SEBT.Portal.Core.AppSettings;
 using SEBT.Portal.Core.Repositories;
 using SEBT.Portal.Infrastructure;
@@ -12,6 +15,142 @@ namespace SEBT.Portal.Tests.Unit.Infrastructure;
 /// </summary>
 public class DependenciesTests
 {
+    // ---------------------------------------------------------------------------
+    // AddCaching — Redis resolution priority
+    // ---------------------------------------------------------------------------
+
+    [Fact]
+    public void AddCaching_WithRedisHostSettings_RegistersRedisDistributedCache()
+    {
+        var services = new ServiceCollection();
+        var config = new ConfigurationBuilder()
+            .AddInMemoryCollection(new Dictionary<string, string?>
+            {
+                ["Redis:Host"] = "localhost"
+            })
+            .Build();
+        var env = Substitute.For<IHostEnvironment>();
+        env.EnvironmentName.Returns("Production");
+
+        services.AddCaching(config, env);
+
+        var cacheDescriptor = services.FirstOrDefault(d => d.ServiceType == typeof(IDistributedCache));
+        Assert.NotNull(cacheDescriptor);
+        Assert.NotEqual("MemoryDistributedCache", cacheDescriptor.ImplementationType?.Name);
+    }
+
+    [Fact]
+    public void AddCaching_WithLegacyConnectionString_RegistersRedisDistributedCache()
+    {
+        var services = new ServiceCollection();
+        var config = new ConfigurationBuilder()
+            .AddInMemoryCollection(new Dictionary<string, string?>
+            {
+                ["ConnectionStrings:Redis"] = "localhost:6379"
+            })
+            .Build();
+        var env = Substitute.For<IHostEnvironment>();
+        env.EnvironmentName.Returns("Production");
+
+        services.AddCaching(config, env);
+
+        var cacheDescriptor = services.FirstOrDefault(d => d.ServiceType == typeof(IDistributedCache));
+        Assert.NotNull(cacheDescriptor);
+        Assert.NotEqual("MemoryDistributedCache", cacheDescriptor.ImplementationType?.Name);
+    }
+
+    [Fact]
+    public void ResolveRedisConfigurationOptions_WithBothStructuredAndLegacy_PrefersStructuredHost()
+    {
+        var config = new ConfigurationBuilder()
+            .AddInMemoryCollection(new Dictionary<string, string?>
+            {
+                ["Redis:Host"] = "structured-host",
+                ["ConnectionStrings:Redis"] = "legacy-host:6379"
+            })
+            .Build();
+        var env = Substitute.For<IHostEnvironment>();
+        env.EnvironmentName.Returns("Development");
+
+        var options = Dependencies.ResolveRedisConfigurationOptions(config, env);
+
+        Assert.NotNull(options);
+        Assert.Contains(options.EndPoints, ep => ep.ToString()!.Contains("structured-host"));
+        Assert.DoesNotContain(options.EndPoints, ep => ep.ToString()!.Contains("legacy-host"));
+    }
+
+    [Fact]
+    public void AddCaching_WithoutAnyRedisConfig_InDevelopment_RegistersMemoryDistributedCache()
+    {
+        var services = new ServiceCollection();
+        var config = new ConfigurationBuilder().Build();
+        var env = Substitute.For<IHostEnvironment>();
+        env.EnvironmentName.Returns("Development");
+
+        services.AddCaching(config, env);
+
+        var cacheDescriptor = services.FirstOrDefault(d => d.ServiceType == typeof(IDistributedCache));
+        Assert.NotNull(cacheDescriptor);
+        Assert.Equal("MemoryDistributedCache", cacheDescriptor.ImplementationType?.Name);
+    }
+
+    [Fact]
+    public void AddCaching_WithoutAnyRedisConfig_NonDevelopmentWithOidc_ThrowsInvalidOperationException()
+    {
+        var services = new ServiceCollection();
+        var config = new ConfigurationBuilder()
+            .AddInMemoryCollection(new Dictionary<string, string?>
+            {
+                ["Oidc:DiscoveryEndpoint"] = "https://auth.example.com/.well-known/openid-configuration"
+            })
+            .Build();
+        var env = Substitute.For<IHostEnvironment>();
+        env.EnvironmentName.Returns("Production");
+
+        Assert.Throws<InvalidOperationException>(() => services.AddCaching(config, env));
+    }
+
+    [Theory]
+    [InlineData(true, "Development", true)]
+    [InlineData(true, "Test", false)]
+    [InlineData(true, "Production", false)]
+    [InlineData(false, "Development", true)]
+    [InlineData(false, "Test", true)]
+    [InlineData(false, "Production", true)]
+    public void AddCaching_AcceptSelfSignedCertificates_ValidatesOnlyDevelopment(
+        bool acceptSelfSignedCertificates,
+        string environmentName,
+        bool shouldSucceed)
+    {
+        var services = new ServiceCollection();
+        var config = new ConfigurationBuilder()
+            .AddInMemoryCollection(new Dictionary<string, string?>
+            {
+                ["Redis:Host"] = "localhost",
+                ["Redis:Port"] = "6380",
+                ["Redis:Ssl"] = "true",
+                ["Redis:SslHost"] = "redis",
+                ["Redis:AcceptSelfSignedCertificates"] = acceptSelfSignedCertificates.ToString()
+            })
+            .Build();
+        var env = Substitute.For<IHostEnvironment>();
+        env.EnvironmentName.Returns(environmentName);
+
+        if (!shouldSucceed)
+        {
+            Assert.Throws<InvalidOperationException>(() => services.AddCaching(config, env));
+        }
+        else
+        {
+            services.AddCaching(config, env);
+
+            var cacheDescriptor = services.FirstOrDefault(d => d.ServiceType == typeof(IDistributedCache));
+            Assert.NotNull(cacheDescriptor);
+            Assert.Equal("RedisCacheImpl", cacheDescriptor.ImplementationType?.Name);
+        }
+    }
+
+
     [Fact]
     public void ResolveIHouseholdRepository_WhenUseMockHouseholdDataFalseAndNoPlugin_ThrowsInvalidOperationException()
     {

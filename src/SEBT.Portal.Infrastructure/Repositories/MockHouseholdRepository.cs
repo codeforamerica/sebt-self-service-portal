@@ -779,6 +779,7 @@ public class MockHouseholdRepository : IHouseholdRepository
                 HouseholdFactory.CreateSummerEbtCase("Maya", "Torres", "NSLP", c =>
                 {
                     c.EbtCardStatus = CardStatus.Undeliverable;
+                    c.EbtCardLastFour = "5678";
                 })
             };
         });
@@ -816,6 +817,7 @@ public class MockHouseholdRepository : IHouseholdRepository
                 HouseholdFactory.CreateSummerEbtCase("Lucas", "Rivera", "NSLP", c =>
                 {
                     c.EbtCardStatus = CardStatus.Frozen;
+                    c.EbtCardLastFour = "9012";
                 })
             };
         });
@@ -935,6 +937,7 @@ public class MockHouseholdRepository : IHouseholdRepository
                 {
                     c.IssuanceType = IssuanceType.SummerEbt;
                     c.EbtCardStatus = CardStatus.Active;
+                    c.EbtCardLastFour = "1234";
                 })
             };
         });
