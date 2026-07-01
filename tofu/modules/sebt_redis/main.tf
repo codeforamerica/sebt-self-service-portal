@@ -83,4 +83,16 @@ resource "aws_elasticache_replication_group" "main" {
   tags = {
     Name = "${local.prefix}-redis"
   }
+
+  lifecycle {
+    precondition {
+      condition     = !var.automatic_failover_enabled || var.num_cache_clusters >= 2
+      error_message = "automatic_failover_enabled requires num_cache_clusters >= 2."
+    }
+
+    precondition {
+      condition     = !var.multi_az_enabled || var.automatic_failover_enabled
+      error_message = "multi_az_enabled requires automatic_failover_enabled."
+    }
+  }
 }

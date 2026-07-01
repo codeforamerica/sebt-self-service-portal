@@ -86,8 +86,8 @@ variable "project_short" {
 
 variable "secret_recovery_period" {
   type        = number
-  description = "Number of days before the AUTH token secret is permanently deleted after destruction. 0 forces immediate deletion (dev-friendly)."
-  default     = 0
+  description = "Number of days to retain the AUTH token secret before permanent deletion. 0 forces immediate deletion."
+  default     = 7
 }
 
 variable "snapshot_retention_limit" {
