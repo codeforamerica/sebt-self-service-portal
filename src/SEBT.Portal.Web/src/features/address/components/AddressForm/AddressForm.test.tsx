@@ -369,6 +369,8 @@ describe('AddressForm', () => {
     expect(contactLink).toBeInTheDocument()
     expect(contactLink).toHaveTextContent(/contact us/i)
     expect(contactLink).toHaveAttribute('href', expect.stringContaining('contact'))
+    expect(contactLink).toHaveAttribute('data-analytics-cta', 'address_form_contact_us_cta')
+    expect(contactLink).toHaveAttribute('data-analytics-cta-destination-type', 'external_only')
   })
 
   // TODO: Re-enable once the local 30-char validation in AddressForm.validate() is
