@@ -223,9 +223,14 @@ public class HouseholdControllerTests
     }
 
     [Fact]
-    public async Task GetHouseholdData_WhenHouseholdNotFound_ReturnsNotFound()
+    public async Task GetHouseholdData_WhenHouseholdNotFound_Returns200WithEmptyArrays()
     {
         // Arrange
+        // When the state connector finds no household (e.g. the user has no enrolled
+        // children), the API must return 200 + empty arrays rather than 404. A WAF
+        // in some state deployments rewrites 404 responses to 200 HTML error pages,
+        // which the frontend's Zod schema rejects as a parse error and shows the
+        // red "Error loading dashboard" alert instead of the yellow empty-state message.
         var email = "nonexistent@example.com";
         SetupAuthenticatedUser(email, ial: "1plus");
         _piiVisibilityService.GetVisibility(UserIalLevel.IAL1plus)
@@ -241,9 +246,10 @@ public class HouseholdControllerTests
 
         // Assert
         Assert.NotNull(result);
-        var notFoundResult = Assert.IsType<NotFoundObjectResult>(result);
-        var errorResponse = Assert.IsType<ErrorResponse>(notFoundResult.Value);
-        Assert.Contains("Household data not found", errorResponse.Error, StringComparison.OrdinalIgnoreCase);
+        var okResult = Assert.IsType<OkObjectResult>(result);
+        var response = Assert.IsType<HouseholdDataResponse>(okResult.Value);
+        Assert.Empty(response.SummerEbtCases);
+        Assert.Empty(response.Applications);
         await repositoryMock.Received(1).GetHouseholdByIdentifierAsync(Arg.Is<HouseholdIdentifier>(id => id.Type == PreferredHouseholdIdType.Email && id.Value == EmailNormalizer.Normalize(email)), Arg.Any<PiiVisibility>(), Arg.Any<UserIalLevel>(), Arg.Any<Guid?>(), Arg.Any<bool>(), Arg.Any<CancellationToken>());
     }
 

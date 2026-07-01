@@ -170,6 +170,15 @@ pnpm ci:build             # Full Release build
 pnpm ci:test              # Full Release test suite
 ```
 
+#### Sandbox builds
+The Claude Code sandbox blocks MSBuild's named-pipe IPC to worker nodes, causing `pnpm api:build` and `pnpm api:test` to hang for ~5 minutes. Use these instead:
+```bash
+pnpm claude:api:build       # dotnet build --nodeReuse:false -maxcpucount:1
+pnpm claude:api:test        # dotnet test --nodeReuse:false -maxcpucount:1
+pnpm claude:api:test:unit   # same, with unit-only filter
+```
+If a build still hangs, run `dotnet build-server shutdown` to clear stuck worker processes before retrying.
+
 ### State-Specific Development
 ```bash
 pnpm dev:dc               # Build DC plugin + start API & Web for DC

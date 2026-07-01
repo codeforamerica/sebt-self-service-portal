@@ -11,7 +11,14 @@ test.describe('DashboardAlerts', () => {
 
   test('shows no alert on plain dashboard', async ({ page }) => {
     await page.goto('/dashboard')
-    await expect(page.locator('.usa-alert')).toHaveCount(0)
+    // Anchor on rendered household data first: toHaveCount(0) would otherwise
+    // pass vacuously while the dashboard is still fetching.
+    await expect(page.getByRole('button', { name: 'John Doe' })).toBeVisible()
+    // Page-level alerts render via the design-system Alert (usa-alert class
+    // AND role="alert"). The card-status badge reuses usa-alert classes for
+    // styling but is not an alert, and the Next.js route announcer has the
+    // role but not the class; both are correctly excluded here.
+    await expect(page.locator('.usa-alert[role="alert"]')).toHaveCount(0)
   })
 
   test('shows address updated alert on ?addressUpdated=true', async ({ page }) => {

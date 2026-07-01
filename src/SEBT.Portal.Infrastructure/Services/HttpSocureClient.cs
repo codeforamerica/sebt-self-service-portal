@@ -294,11 +294,13 @@ public class HttpSocureClient(
     {
         var outcome = MapDecisionToOutcome(response.Decision, response.EvalStatus);
         var docvSession = ExtractDocvSession(response, settings.DocvEnrichmentName);
+        var reasonCodes = ExtractDocumentVerificationReasonCodes(response, settings.DocvEnrichmentName);
 
         return new IdProofingAssessmentResult(
             Outcome: outcome,
             AllowIdRetry: true, // Socure doesn't provide retry guidance; handler overrides based on attempt count
-            DocvSession: docvSession);
+            DocvSession: docvSession,
+            DocumentVerificationReasonCodes: reasonCodes);
     }
 
     private static IdProofingOutcome MapDecisionToOutcome(string? decision, string? evalStatus)
@@ -358,5 +360,24 @@ public class HttpSocureClient(
         {
             return null;
         }
+    }
+
+    private static IReadOnlyList<string> ExtractDocumentVerificationReasonCodes(
+        SocureEvaluationResponse response,
+        string docvEnrichmentProviderName)
+    {
+        if (response.DataEnrichments == null)
+        {
+            return Array.Empty<string>();
+        }
+
+        var enrichmentResponse = SocureDocumentVerificationEnrichmentParser.TryGetEnrichmentResponse(
+            response.DataEnrichments.Select(e => new SocureEnrichmentResponseRef(
+                e.EnrichmentProvider, e.Response)),
+            docvEnrichmentProviderName);
+
+        return enrichmentResponse == null
+            ? Array.Empty<string>()
+            : SocureDocumentVerificationEnrichmentParser.ExtractReasonCodes(enrichmentResponse.Value);
     }
 }

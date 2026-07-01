@@ -70,7 +70,7 @@ public class OidcController(
             : config["Oidc:CallbackRedirectUri"];
         if (string.IsNullOrEmpty(clientId) || string.IsNullOrEmpty(redirectUri))
         {
-            logger.LogWarning(
+            logger.LogError(
                 "OIDC config missing for stateCode {StateCode} (reason=oidc_not_configured)",
                 stateCode);
             var hint = environment.IsDevelopment()
@@ -157,7 +157,7 @@ public class OidcController(
             : config["Oidc:CallbackRedirectUri"];
         if (string.IsNullOrEmpty(clientId) || string.IsNullOrEmpty(redirectUri))
         {
-            logger.LogWarning(
+            logger.LogError(
                 "OIDC config missing for stateCode {StateCode} (reason=oidc_not_configured)",
                 stateCode);
             return Redirect("/login");
@@ -171,13 +171,13 @@ public class OidcController(
         }
         catch (Exception ex)
         {
-            logger.LogWarning(ex, "OIDC Authorize: failed to fetch discovery document (reason=discovery_failed)");
+            logger.LogError(ex, "OIDC Authorize: failed to fetch discovery document (reason=discovery_failed)");
             return Redirect("/login");
         }
 
         if (string.IsNullOrEmpty(oidcConfig.AuthorizationEndpoint))
         {
-            logger.LogWarning("OIDC Authorize: discovery document missing authorization_endpoint");
+            logger.LogError("OIDC Authorize: discovery document missing authorization_endpoint");
             return Redirect("/login");
         }
 
