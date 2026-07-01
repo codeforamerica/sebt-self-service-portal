@@ -79,34 +79,16 @@ function COHelpSection({ state = 'co' }: HelpSectionProps) {
           id="help-section-title"
           className="font-sans-lg text-bold margin-top-0 margin-bottom-1"
         >
-          {t('titleContactUs')}
+          {t('titleFaqs')}
         </h2>
-
-        <p className="font-sans-sm margin-top-0">
-          {t('linkContactUs')}{' '}
-          <Link
-            href={links.help.helpDeskEmail ?? ''}
-            className="usa-link text-ink"
-          >
-            {t('linkContactUs2')}
-          </Link>
-        </p>
-
-        <h2 className="font-sans-lg text-bold margin-top-4 margin-bottom-1">
-          {t('titleAccessibility')}
-        </h2>
-
-        <p className="font-sans-sm margin-top-0">
-          {t('bodyAccessibility')}
-        </p>
 
         <Link
-          href={links.footer.digitalAccessibility ?? '#'}
+          href={links.help.faqs}
           target="_blank"
           rel="noopener noreferrer"
-          className="usa-button usa-button--outline border-primary text-primary display-block text-center"
+          className="usa-link text-ink font-sans-sm"
         >
-          {t('linkAccessibility')}
+          {t('linkFaqs')}
         </Link>
       </div>
     </section>

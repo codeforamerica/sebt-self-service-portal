@@ -58,7 +58,7 @@ internal static class ServiceCollectionPluginExtensions
                 try { return a.GetExportedTypes(); }
                 catch (TypeLoadException ex)
                 {
-                    Log.Warning(ex, "Could not load types from assembly {Assembly}", a.FullName);
+                    Log.Error(ex, "Could not load types from assembly {Assembly}", a.FullName);
                     return [];
                 }
             })
@@ -133,9 +133,9 @@ internal static class ServiceCollectionPluginExtensions
 
         if (pluginTypes.Count == 0 && loadedAssemblies.Count > 0)
         {
-            Log.Warning(
+            Log.Error(
                 "Loaded {AssemblyCount} plugin assemblies but discovered 0 IStatePlugin implementations. " +
-                "See earlier warnings for TypeLoadException from GetExportedTypes.",
+                "See earlier errors for TypeLoadException from GetExportedTypes.",
                 loadedAssemblies.Count);
         }
 

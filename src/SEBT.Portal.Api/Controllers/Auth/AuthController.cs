@@ -139,7 +139,7 @@ public class AuthController(
 
         if (userId == null)
         {
-            logger.LogWarning("Token refresh attempted but user ID could not be extracted from claims");
+            logger.LogError("Token refresh attempted but user ID could not be extracted from claims");
             return Unauthorized(new ErrorResponse("Unable to identify user from token."));
         }
 
