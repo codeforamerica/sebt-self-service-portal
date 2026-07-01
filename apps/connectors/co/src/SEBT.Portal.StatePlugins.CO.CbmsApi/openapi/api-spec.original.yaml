@@ -1,0 +1,540 @@
+openapi: 3.0.0
+info:
+  title: cbms-sebt-eapi
+  description: This RAML defines the different methods used by SEBT External System to interact with CBMS system.
+  version: 1.0.1
+paths:
+  /ping:
+    get:
+      description: To check if the application is up and running.
+      responses:
+        "200":
+          description: ""
+          content:
+            application/json:
+              schema:
+                example:
+                  response: success
+  /sebt: {}
+  /sebt/check-enrollment:
+    post:
+      operationId: Check Enrollment
+      description: Validates student enrollment status based on child and school identifiers.
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/type"
+      responses:
+        "200":
+          description: ""
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/type_1"
+        "400":
+          description: ""
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/type_2"
+        "404":
+          description: ""
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/type_2"
+        "500":
+          description: ""
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/type_2"
+  /sebt/get-account-details:
+    post:
+      operationId: Get Account Details
+      description: Retrieves SEBT card balances, benefits availability and guardian contact information.
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/type_3"
+      responses:
+        "200":
+          description: ""
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/type_4"
+        "400":
+          description: ""
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/type_2"
+        "404":
+          description: ""
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/type_2"
+        "500":
+          description: ""
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/type_2"
+  /sebt/update-std-dtls:
+    patch:
+      operationId: Update Student Details
+      description: Updates student address information or requests a new SEBT card.
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: array
+              items:
+                $ref: "#/components/schemas/type_5"
+      responses:
+        "200":
+          description: ""
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/type_6"
+        "400":
+          description: ""
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/type_2"
+        "404":
+          description: ""
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/type_2"
+        "500":
+          description: ""
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/type_2"
+components:
+  schemas:
+    type:
+      example:
+        -
+          stdFirstName: John
+          stdLastName: Smith
+          stdDob: 2012-04-20
+          cbmsCsId: C12345
+          stdSasId: S98765
+          stdSchlCd: SCH44
+          sebtYear: "2024"
+          stdReqInd: REQ-001
+      type: array
+      items:
+        type: object
+        required:
+          - stdFirstName
+          - stdLastName
+          - stdDob
+        properties:
+          stdFirstName:
+            type: string
+            pattern: ^(|[^<>{}\[\]]+)$
+          stdLastName:
+            type: string
+            pattern: ^(|[^<>{}\[\]]+)$
+          stdDob:
+            type: string
+            pattern: ^(|[^<>{}\[\]]+)$
+          cbmsCsId:
+            type: string
+            pattern: ^(|[^<>{}\[\]]+)$
+          stdSasId:
+            type: string
+            pattern: ^(|[^<>{}\[\]]+)$
+          stdSchlCd:
+            type: string
+            pattern: ^(|[^<>{}\[\]]+)$
+          sebtYear:
+            type: string
+            pattern: ^(|[^<>{}\[\]]+)$
+          stdReqInd:
+            type: string
+            pattern: ^(|[^<>{}\[\]]+)$
+    type_1:
+      example:
+        respCd: "200"
+        respMsg: Success
+        stdntDtls:
+          -
+            stdFstNm: John
+            stdLstNm: Doe
+            stdDob: 2015-05-15
+            mtchCnfd: 95
+            stdntEligSts: ELIGIBLE
+            sebtYear: "2024"
+            sebtAppId: APP12345
+            sebtChldId: CHLD9876
+            stdReqInd: REQ-001
+      type: object
+      required:
+        - stdntDtls
+      properties:
+        respCd:
+          type: string
+          pattern: ^(|[^<>{}\[\]]+)$
+        respMsg:
+          type: string
+          pattern: ^(|[^<>{}\[\]]+)$
+        stdntDtls:
+          type: array
+          items:
+            type: object
+            properties:
+              stdFstNm:
+                type: string
+                pattern: ^(|[^<>{}\[\]]+)$
+              stdLstNm:
+                type: string
+                pattern: ^(|[^<>{}\[\]]+)$
+              stdDob:
+                type: string
+                pattern: ^(|[^<>{}\[\]]+)$
+              mtchCnfd:
+                type: number
+              stdntEligSts:
+                type: string
+                pattern: ^(|[^<>{}\[\]]+)$
+              sebtYear:
+                type: string
+                pattern: ^(|[^<>{}\[\]]+)$
+              sebtAppId:
+                type: string
+                pattern: ^(|[^<>{}\[\]]+)$
+              sebtChldId:
+                type: string
+                pattern: ^(|[^<>{}\[\]]+)$
+              stdReqInd:
+                type: string
+                pattern: ^(|[^<>{}\[\]]+)$
+    type_2:
+      x-amf-examples:
+        example_0:
+          apiName: cbms-sebt-eapi-impl
+          correlationId: 11174770-a6a1-4949-b216-622e363e872e
+          timestamp: 2026-01-30T16:00:35.143Z
+          errorDetails:
+            -
+              code: "404"
+              message: Not Found
+        example_1:
+          apiName: cbms-sebt-eapi-impl
+          correlationId: 11174770-a6a1-4949-b216-622e363e872e
+          timestamp: 2026-01-30T16:00:35.143Z
+          errorDetails:
+            -
+              code: "500"
+              message: Internal Server Error
+        amf_example_1:
+          apiName: cbms-sebt-eapi-impl
+          correlationId: 11174770-a6a1-4949-b216-622e363e872e
+          timestamp: 2026-01-30T16:00:35.143Z
+          errorDetails:
+            -
+              code: "400"
+              message: Bad Request
+      type: object
+      properties:
+        apiName:
+          type: string
+          pattern: ^[^<>{}\[\]]+$
+        correlationId:
+          type: string
+          pattern: ^[^<>{}\[\]]+$
+        timestamp:
+          type: string
+          pattern: ^(20\d{2})-(0[1-9]|1[0-2])-(0[1-9]|[12][0-9]|3[01])T([01]?[0-9]|2[0-3]):([0-5]?[0-9]):([0-5]?[0-9])(\.\d+)?Z$
+        errorDetails:
+          type: array
+          items:
+            type: object
+            properties:
+              code:
+                type: string
+                pattern: ^[^<>{}\[\]]+$
+              message:
+                type: string
+                pattern: ^[^<>{}\[\]]+$
+    type_3:
+      example:
+        phnNm: "3035550199"
+      type: object
+      required:
+        - phnNm
+      properties:
+        phnNm:
+          type: string
+          pattern: ^[0-9]{10}$
+    type_4:
+      example:
+        stdntEnrollDtls:
+          -
+            gurdFstNm: Jane
+            gurdLstNm: Smith
+            gurdPhnNm: 555-0123
+            gurdEmailAddr: jane.smith@example.com
+            sebtYear: "2024"
+            sebtAppId: APP-556677
+            stdFstNm: Johnny
+            stdLstNm: Smith
+            stdDob: 2016-10-20
+            mtchCnfd: 100
+            stdntEligSts: ENROLLED
+            sebtAppSts: APPROVED
+            eligSrc: DIRECT_CERT
+            sebtChldId: C-990011
+            sebtChldCwin: W123456789
+            addrLn1: 123 Maple Avenue
+            addrLn2: Apt 4B
+            cty: Denver
+            staCd: CO
+            zip: "80202"
+            zip4: "1234"
+            ebtCardLastFour: "4422"
+            benAvalDt: 2024-06-01
+            benExpDt: 2024-08-31
+            ebtCardSts: ACTIVE
+            cardIssDt: 2024-05-20
+            cardBal: 120.50
+            cbmsCsId: C8887727
+            dircElig_src: SNAP
+      type: object
+      required:
+        - stdntEnrollDtls
+      properties:
+        stdntEnrollDtls:
+          type: array
+          items:
+            type: object
+            properties:
+              gurdFstNm:
+                type: string
+                pattern: ^(|[^<>{}\[\]]+)$
+              gurdLstNm:
+                type: string
+                pattern: ^(|[^<>{}\[\]]+)$
+              gurdPhnNm:
+                type: string
+                pattern: ^(|[^<>{}\[\]]+)$
+              gurdEmailAddr:
+                type: string
+                pattern: ^(|[^<>{}\[\]]+)$
+              sebtYear:
+                type: string
+                pattern: ^(|[^<>{}\[\]]+)$
+              sebtAppId:
+                type: string
+                pattern: ^(|[^<>{}\[\]]+)$
+              stdFstNm:
+                type: string
+                pattern: ^(|[^<>{}\[\]]+)$
+              stdLstNm:
+                type: string
+                pattern: ^(|[^<>{}\[\]]+)$
+              stdDob:
+                type: string
+                pattern: ^(|[^<>{}\[\]]+)$
+              mtchCnfd:
+                type: number
+              stdntEligSts:
+                type: string
+                pattern: ^(|[^<>{}\[\]]+)$
+              sebtAppSts:
+                type: string
+                pattern: ^(|[^<>{}\[\]]+)$
+              eligSrc:
+                type: string
+                pattern: ^(|[^<>{}\[\]]+)$
+              sebtChldId:
+                type: string
+                pattern: ^(|[^<>{}\[\]]+)$
+              sebtChldCwin:
+                type: string
+                pattern: ^(|[^<>{}\[\]]+)$
+              addrLn1:
+                type: string
+                pattern: ^(|[^<>{}\[\]]+)$
+              addrLn2:
+                type: string
+                pattern: ^(|[^<>{}\[\]]+)$
+              cty:
+                type: string
+                pattern: ^(|[^<>{}\[\]]+)$
+              staCd:
+                type: string
+                pattern: ^(|[^<>{}\[\]]+)$
+              zip:
+                type: string
+                pattern: ^(|[^<>{}\[\]]+)$
+              zip4:
+                type: string
+                pattern: ^(|[^<>{}\[\]]+)$
+              ebtCardLastFour:
+                type: string
+                pattern: ^(|[^<>{}\[\]]+)$
+              benAvalDt:
+                type: string
+                pattern: ^(|[^<>{}\[\]]+)$
+              benExpDt:
+                type: string
+                pattern: ^(|[^<>{}\[\]]+)$
+              ebtCardSts:
+                type: string
+                pattern: ^(|[^<>{}\[\]]+)$
+              cardIssDt:
+                type: string
+                pattern: ^(|[^<>{}\[\]]+)$
+              cardBal:
+                type: number
+              cbmsCsId:
+                type: string
+                pattern: ^(|[^<>{}\[\]]+)$
+              dircEligSrc:
+                type: string
+                pattern: ^(|[^<>{}\[\]]+)$
+    type_5:
+      example:
+        sebtChldId: CH-88291
+        sebtChldCwin: W998877
+        addr:
+          addrLn1: 456 Oak Street
+          addrLn2: Suite 200
+          cty: Denver
+          staCd: CO
+          zip: "80202"
+          zip4: "4421"
+        reqNewCard: Y
+        optOut: N
+        gurdFstNm: Jane
+        gurdLstNm: Smith
+        gurdEmailAddr: jane.smith@example.com
+        ntfnOptInSw: Y
+        ntfnSrc: email
+      type: object
+      required:
+        - addr
+      properties:
+        sebtChldId:
+          type: string
+          pattern: ^(|[^<>{}\[\]]+)$
+        sebtAppId:
+          type: string
+          pattern: ^(|[^<>{}\[\]]+)$
+        addr:
+          type: object
+          properties:
+            addrLn1:
+              type: string
+              pattern: ^(|[^<>{}\[\]]+)$
+            addrLn2:
+              type: string
+              pattern: ^(|[^<>{}\[\]]+)$
+            cty:
+              type: string
+              pattern: ^(|[^<>{}\[\]]+)$
+            staCd:
+              type: string
+              pattern: ^(|[^<>{}\[\]]+)$
+            zip:
+              type: string
+              pattern: ^(|[^<>{}\[\]]+)$
+            zip4:
+              type: string
+              pattern: ^(|[^<>{}\[\]]+)$
+        reqNewCard:
+          type: string
+          pattern: ^(|[^<>{}\[\]]+)$
+        optOut:
+          type: string
+          pattern: ^(|[^<>{}\[\]]+)$
+        gurdFstNm:
+          type: string
+          pattern: ^(|[^<>{}\[\]]+)$
+        gurdLstNm:
+          type: string
+          pattern: ^(|[^<>{}\[\]]+)$
+        gurdEmailAddr:
+          type: string
+          pattern: ^(|[^<>{}\[\]]+)$
+        ntfnOptInSw:
+          type: string
+          pattern: ^(|[^<>{}\[\]]+)$
+        ntfnSrc:
+          type: string
+          pattern: ^(|[^<>{}\[\]]+)$
+    type_6:
+      example:
+        respCd: "200"
+        respMsg: Success
+      type: object
+      properties:
+        respCd:
+          type: string
+          pattern: ^(|[^<>{}\[\]]+)$
+        respMsg:
+          type: string
+          pattern: ^(|[^<>{}\[\]]+)$
+  securitySchemes:
+    oauth_2_0:
+      type: oauth2
+      description: Mule OAuth 2.0.
+      x-amf-describedBy:
+        headers:
+          Authorization:
+            description: Used to send a valid OAuth 2 access token.
+            type: any
+        responses:
+          "401":
+            description: Bad or expired token.
+            headers:
+              Content-Type:
+                enum:
+                  - application/json
+                type: any
+            body:
+              application/json:
+                example: "{\"message\": \"API limit exceeded\"}"
+                type: any
+          "403":
+            description: Bad or expired token.
+            headers:
+              Content-Type:
+                enum:
+                  - application/json
+                type: any
+            body:
+              application/json:
+                example: "{\"message\": \"API limit exceeded\"}"
+                type: any
+      flows:
+        authorizationCode:
+          authorizationUrl: http://0.0.0.0:8081/authorize
+          tokenUrl: http://0.0.0.0:8081/access-token
+          scopes:
+            "*": ""
+        password:
+          tokenUrl: http://0.0.0.0:8081/access-token
+          scopes:
+            "*": ""
+        clientCredentials:
+          tokenUrl: http://0.0.0.0:8081/access-token
+          scopes:
+            "*": ""
+        implicit:
+          authorizationUrl: http://0.0.0.0:8081/authorize
+          scopes:
+            "*": ""
