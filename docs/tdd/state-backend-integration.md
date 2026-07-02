@@ -76,7 +76,7 @@ public static class IdentitySignalType
 
 DC passes `[StateBenefitId, DateOfBirth]`. CO might pass `[StateIssuedId, DateOfBirth]`. A third state could pass `[PhoneNumber, DateOfBirth]` or a signal type not listed above — the portal passes it through without needing a code change.
 
-This is an _optional capability interface_. States that support co-loading export it via MEF (plugin path) or implement `POST /households/identify` in their REST endpoint. The portal checks for the capability before attempting a match; if absent, it skips the co-loaded path entirely.
+This is an _optional capability interface_. States that support co-loading export it via the plugin path or advertise `cases.coLoadedLookup` in their capabilities response. The portal checks for the capability before attempting a match; if absent, it skips the co-loaded path entirely. On the REST path, co-loading is a second call to `POST /cases/lookup` with a different signal set — not a separate endpoint. The adapter merges the returned cases into the portal's `Household` model alongside the primary lookup results.
 
 ### Capability discovery drives `allowedActions` (combined with feature flags)
 
@@ -96,11 +96,9 @@ Capability values are structured objects rather than booleans, even though `supp
 ```json
 {
   "capabilities": {
-    "household": {
-      "resolve":                { "supported": true },
-      "coLoadedIdentityMatch":  { "supported": true }
-    },
     "cases": {
+      "coLoadedLookup":  { "supported": true },
+      "cardDetails":     { "supported": true },
       "cardReplacement": { "supported": true },
       "addressUpdate":   { "supported": true },
       "cardActivation":  { "supported": false }
@@ -160,15 +158,35 @@ Migrating a state from plugin to REST = adding `StateBackend:BaseUrl` to its con
 
 This is deliberately asymmetric: a state cannot accidentally get the plugin path by having a DLL in the directory if REST is configured. The new integration pattern wins explicitly.
 
-### Household resolution uses opaque state-native references
+### State backends are case-centric; household grouping is the adapter's job
 
-State backends don't have a concept of a "portal household ID." Resolution always starts from natural key(s) — email, phone, state-issued ID — and returns a `stateReferenceId` that is opaque to the portal. The portal treats it as a session-scoped handle for subsequent operations. The state backend interprets it however it needs to (a primary key, a token, a compound key encoded as a string).
+State backends don't have a stable portal household ID. They have cases (one per child) indexed by natural keys — guardian email, phone, state-issued benefit IDs. The "household" concept (cases grouped under one guardian) is a portal-side abstraction that doesn't exist natively in most state CMS systems.
 
-`POST /households/resolve` is the resolution entry point. It accepts a list of identifier signals (same structure as the co-loading identify endpoint) and returns a `HouseholdData` object including `stateReferenceId`. Subsequent operations — address update, card replacement, card details — use `{stateReferenceId}` in the path. The portal never constructs or inspects this value; it only stores and forwards it.
+The REST adapter is responsible for that grouping. When it calls `POST /cases/lookup`, the signal set used to find those cases defines the household — all returned cases belong to the same household by virtue of matching the same identity. The adapter builds the portal's `Household` model from the flat case list and caches it for the session. No household ID circulates in the state backend API.
 
-Cases within a household similarly carry a `caseReferenceId` returned from `/households/{ref}/cases`. Case-level operations use that reference.
+Consequences:
 
-There is no pagination for `/cases`. Household sizes in this program are bounded by family structure and program rules. State backends must return all cases in a single response. The spec will document a reasonable upper bound (e.g., 20) and note that the portal will not request pages.
+- **No path-based household reference** in the external contract. Operations that apply to all cases in a household (address update) receive explicit case IDs in the request body. Operations that apply to a single case (card replacement) use the state's native case ID, which is returned from `/cases/lookup`.
+- **Address update is a batch operation.** The adapter collects all case IDs for the household and sends them together: `PATCH /cases/address` with `{ "caseIds": ["..."], "address": {...} }`. The state backend applies the update to each listed case.
+- **No pagination.** Household sizes in this program are bounded by family structure and program rules. State backends return all cases in a single response. The spec documents a reasonable upper bound (e.g., 20).
+
+### Card details are a household-level fetch, not per-case
+
+Some state backends (notably CO) load EBT card details for all cases in a single CMS round-trip. Fetching card details one case at a time either isn't supported or would be prohibitively expensive.
+
+Card details are therefore requested at lookup time via an opt-in flag:
+
+```json
+POST /cases/lookup
+{
+  "signals": [...],
+  "includeCardDetails": true
+}
+```
+
+The `cases.cardDetails` capability indicates whether the state backend supports this. When not supported, the portal omits card-management features for that state.
+
+The portal only requests `includeCardDetails: true` on pages that need the data (card management flows), not on the dashboard. This keeps the common path fast.
 
 ### `HouseholdLookupContext` replaces ad-hoc parameters
 
@@ -179,7 +197,7 @@ These are replaced by an options object:
 ```csharp
 public record HouseholdLookupContext
 {
-    public bool IncludeCardDetails { get; init; } = true;
+    public bool IncludeCardDetails { get; init; } = false;
     public string? CorrelationId { get; init; }
 }
 ```
@@ -196,15 +214,12 @@ The canonical contract is `docs/openapi.yaml` (see Phase 1 deliverables). The ta
 |---|---|---|
 | `GET` | `/health` | Liveness / readiness |
 | `GET` | `/capabilities` | Capability discovery |
-| `POST` | `/households/resolve` | Resolve a household from identifier signals; returns `HouseholdData` with `stateReferenceId` |
-| `POST` | `/households/identify` | Co-loading identity match; returns match result + `stateReferenceId` if matched |
-| `GET` | `/households/{ref}/cases` | All cases for a resolved household (no pagination) |
-| `PATCH` | `/households/{ref}/address` | Update mailing address |
-| `POST` | `/households/{ref}/cases/{caseRef}/card-replacement` | Request card replacement |
-| `GET` | `/households/{ref}/cases/{caseRef}/card` | EBT card details |
+| `POST` | `/cases/lookup` | Find cases by identity signals; returns flat case list; pass `includeCardDetails: true` to include EBT card data |
+| `PATCH` | `/cases/address` | Batch address update; body: `{ caseIds, address }` |
+| `POST` | `/cases/{caseId}/card-replacement` | Request card replacement for a specific case |
 | `GET` | `/enrollment` | Enrollment eligibility check |
 
-`{ref}` and `{caseRef}` are opaque `stateReferenceId` / `caseReferenceId` values returned from the resolution step. The portal does not construct or interpret them.
+`{caseId}` is the state backend's native case identifier, returned in each case object from `POST /cases/lookup`. The portal treats it as opaque.
 
 **Error format:** ProblemDetails (RFC 9457) throughout, consistent with the portal's existing error shape. The REST adapter normalizes non-ProblemDetails error responses from backends that can't fully conform.
 
@@ -233,11 +248,18 @@ All thresholds are configurable under `StateBackend:Resilience`. Circuit-open st
 
 ### Caching in the REST adapter
 
-The REST adapter caches `HouseholdData` (household + cases) with a short configurable TTL (default: 30s). This matches the CO connector's existing caching behavior and avoids redundant round-trips within a single user session (e.g., loading the dashboard then immediately navigating to the card replacement flow).
+The portal already uses `HybridCache` (Microsoft.Extensions.Caching.Hybrid, .NET 9+), which provides L1 in-process and optional L2 distributed caching behind a single API. The REST adapter uses the same infrastructure.
 
-Cache keys are scoped to `stateReferenceId`. Write operations (address update, card replacement) invalidate the cached entry for that reference.
+Two separately TTL'd entries:
+
+- **Household data** (cases without card details) — short TTL, default 30s. Avoids redundant round-trips within a single user session (e.g., dashboard load followed by navigating to card replacement). Cache key: `portalUserId`.
+- **Card details** — configurable TTL, default 60s. Card status changes infrequently enough that a slightly longer TTL is safe. Cached separately so dashboard loads don't pay the card-detail fetch cost. Cache key: `portalUserId:cards`.
+
+Write operations (address update, card replacement) invalidate both entries for the affected user.
 
 Capabilities are cached separately with a longer TTL (default: 5 minutes). If the `/capabilities` response includes `Cache-Control: max-age`, that value takes precedence over the configured default. This lets state backends that want finer control set their own TTL without requiring portal config changes.
+
+L2 (distributed) caching is optional — if Redis is not configured, `HybridCache` falls back to L1 only. This keeps single-instance deployments simple while supporting multi-replica deployments without code changes.
 
 ---
 
@@ -260,14 +282,15 @@ User context (IAL, co-loading)   ←         |
                                API response → frontend
 ```
 
-Co-loading identity match path:
+Co-loading lookup path:
 
 ```
 User supplies identity signals (from UI)
   → ICoLoadedIdentityService.TryMatchAsync(signals)
        ├─ Plugin path: DLL method call
-       └─ REST path:   POST /households/identify
-  → CoLoadedIdentityMatchResult { Matched, HouseholdId? }
+       └─ REST path:   POST /cases/lookup  (with co-loading signals)
+  → CoLoadedIdentityMatchResult { Matched, Cases[] }
+  → Adapter merges co-loaded cases into portal's Household model
   → (existing co-loading enrollment flow continues)
 ```
 
